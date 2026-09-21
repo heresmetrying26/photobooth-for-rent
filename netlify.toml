@@ -1,0 +1,21 @@
+[build]
+  # Re-bundles protected/booth.html into the server function every deploy,
+  # so you only ever edit protected/booth.html.
+  command = "node scripts/build-booth.mjs"
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[headers]]
+  for = "/admin*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"

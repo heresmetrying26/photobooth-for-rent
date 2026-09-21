@@ -1,0 +1,12 @@
+{
+  "name": "photo-booth-rental",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Photo booth with rental lock (trial + one-time day-based codes) and admin panel",
+  "scripts": {
+    "build": "node scripts/build-booth.mjs"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

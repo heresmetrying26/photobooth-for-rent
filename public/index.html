@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Photo Booth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px 16px;
+    font-family:'Inter',system-ui,sans-serif; color:#3c5165;
+    background:linear-gradient(180deg,#ffffff 0%,#eaf5fb 55%,#ddeef8 100%);
+  }
+  .card{
+    width:100%; max-width:400px; background:#fff; border:1.5px solid #d6ebf5; border-radius:20px;
+    padding:30px 24px 24px; text-align:center; box-shadow:0 16px 40px rgba(79,140,175,0.18);
+  }
+  .lock{
+    width:58px; height:58px; margin:0 auto 14px; border-radius:50%; background:#eef8fc; color:#4f8caf;
+    display:flex; align-items:center; justify-content:center;
+  }
+  h1{font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:34px; margin:0; color:#4f8caf;}
+  .sub{font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:#89a4b6; margin:6px 0 22px;}
+  input{
+    width:100%; padding:14px; font-size:16px; text-align:center; letter-spacing:1px;
+    border:1.5px solid #d6ebf5; border-radius:12px; background:#f4fafd; color:#3c5165; outline:none;
+    font-family:inherit;
+  }
+  input:focus{border-color:#4f8caf; background:#fff;}
+  button{
+    width:100%; margin-top:12px; padding:14px; font-size:15px; font-weight:700; font-family:inherit;
+    background:#4f8caf; color:#fff; border:none; border-radius:12px; cursor:pointer;
+  }
+  button:disabled{opacity:.6; cursor:default;}
+  .msg{margin-top:14px; font-size:13.5px; line-height:1.45; min-height:20px;}
+  .msg.error{color:#c0392b;} .msg.warn{color:#b9770e;} .msg.ok{color:#1e8449;}
+  .hint{margin-top:16px; font-size:12px; color:#89a4b6; line-height:1.5;}
+  .busy{display:none;}
+  body.loading .form{display:none;} body.loading .busy{display:block;}
+  .spinner{width:26px;height:26px;margin:6px auto 10px;border:3px solid #cfe9f5;border-top-color:#4f8caf;border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body class="loading">
+  <div class="card">
+    <div class="lock">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    </div>
+    <h1>Photo Booth</h1>
+    <div class="sub">Enter your access code</div>
+
+    <div class="busy"><div class="spinner"></div><div id="busyText" style="font-size:13.5px;color:#89a4b6;">Checking access…</div></div>
+
+    <div class="form">
+      <input id="code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Password or rental code">
+      <button id="unlockBtn">Unlock</button>
+    </div>
+    <div class="msg" id="msg"></div>
+    <div class="hint">Rental code: one-time use, and it starts counting down the moment you enter it.<br>Trying it out? Use the trial password.</div>
+  </div>
+
+<script>
+(function(){
+  var TOKEN_KEY = 'pb_token', DEV_KEY = 'pb_device';
+  var MESSAGES = {
+    'expired': 'Your rental period has ended. Enter a new code to keep using the photo booth.',
+    'trial-ended': 'Your trial has ended. Enter a rental code to keep going.',
+    'trial-disabled': 'The trial is no longer available. Please enter a rental code.',
+    'revoked': 'This access has been disabled. Please contact the owner.',
+    'invalid': 'Please enter your password or rental code to continue.'
+  };
+  var msg = document.getElementById('msg');
+  var codeEl = document.getElementById('code');
+  var btn = document.getElementById('unlockBtn');
+
+  function show(text, kind){ msg.textContent = text || ''; msg.className = 'msg ' + (kind || ''); }
+  function busy(on, text){
+    document.body.classList.toggle('loading', on);
+    if(text) document.getElementById('busyText').textContent = text;
+  }
+  function deviceId(){
+    var d = localStorage.getItem(DEV_KEY);
+    if(!d){
+      d = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (String(Math.random()).slice(2) + Date.now());
+      localStorage.setItem(DEV_KEY, d);
+    }
+    return d;
+  }
+
+  // Ask the server for the app. It is only ever sent to a valid license, then
+  // written straight into this page.
+  async function openApp(token){
+    var r;
+    try{
+      r = await fetch('/api/app', { headers: { 'Authorization': 'Bearer ' + token, 'X-Device-Id': deviceId() }, cache: 'no-store' });
+    }catch(e){
+      busy(false);
+      show("Can't reach the server. Check your internet connection and try again.", 'warn');
+      return false;
+    }
+    if(r.ok){
+      var fresh = r.headers.get('x-refreshed-token');
+      if(fresh) localStorage.setItem(TOKEN_KEY, fresh);
+      var html = await r.text();
+      document.open(); document.write(html); document.close();
+      return true;
+    }
+    var j = {};
+    try{ j = await r.json(); }catch(e){}
+    localStorage.removeItem(TOKEN_KEY);
+    busy(false);
+    show(MESSAGES[j.reason] || MESSAGES.invalid, 'warn');
+    return false;
+  }
+
+  async function unlock(){
+    var code = codeEl.value.trim();
+    if(!code){ show('Please enter your password or code.', 'error'); return; }
+    btn.disabled = true; show('');
+    try{
+      var r = await fetch('/api/redeem', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ code: code, deviceId: deviceId() })
+      });
+      var j = await r.json();
+      if(!r.ok){ show(j.error || 'Something went wrong. Please try again.', 'error'); btn.disabled = false; return; }
+      localStorage.setItem(TOKEN_KEY, j.token);
+      var note = j.type === 'trial'
+        ? 'Trial unlocked — ' + j.minutes + ' minutes.'
+        : (j.days ? 'Unlocked — ' + j.days + ' day' + (j.days === 1 ? '' : 's') + ' of access starts now.' : 'Welcome back!');
+      show(note, 'ok');
+      setTimeout(function(){ openApp(j.token).then(function(ok){ if(!ok) btn.disabled = false; }); }, 900);
+    }catch(e){
+      show("Can't reach the server. Check your internet connection and try again.", 'warn');
+      btn.disabled = false;
+    }
+  }
+
+  btn.addEventListener('click', unlock);
+  codeEl.addEventListener('keydown', function(e){ if(e.key === 'Enter') unlock(); });
+
+  (async function boot(){
+    var notice = null;
+    try{ notice = sessionStorage.getItem('pb_notice'); sessionStorage.removeItem('pb_notice'); }catch(e){}
+    var token = localStorage.getItem(TOKEN_KEY);
+    if(notice){
+      busy(false);
+      show(MESSAGES[notice] || MESSAGES.invalid, 'warn');
+      localStorage.removeItem(TOKEN_KEY);
+      return;
+    }
+    if(token){ busy(true, 'Checking access…'); await openApp(token); }
+    else busy(false);
+  })();
+})();
+</script>
+</body>
+</html>

@@ -490,7 +490,7 @@
   .thumb-list{display:flex; flex-wrap:wrap; gap:10px;}
   .thumb{
     position:relative; width:64px; height:64px; border-radius:8px; overflow:hidden;
-    border:2px solid var(--line); cursor:pointer;
+    border:2px solid var(--line); cursor:default;
   }
   .thumb.thumb-selected{border-color:var(--blue-deep);}
   .thumb img{width:100%; height:100%; object-fit:cover; display:block;}
@@ -850,7 +850,7 @@
       <div class="panel-section hidden" id="shotsSection">
         <p class="panel-label">Your shots</p>
         <div class="thumb-list" id="thumbList"></div>
-        <p class="panel-hint" id="thumbHint">Tap a shot to retake it.</p>
+        <p class="panel-hint" id="thumbHint">Not happy with these? Retake the whole set below.</p>
       </div>
 
       <div class="panel-section" id="actionsSection">
@@ -1281,7 +1281,7 @@
 
   const LAYOUT_HINTS = {
     strip: 'Classic vertical strip — 4 square shots stacked.',
-    grid: '2x2 grid with your backdrop showing through.'
+    grid: '2x2 grid — every shot shown in full, nothing cropped, with your backdrop showing through.'
   };
 
   // contentH = area used for photos. Actual canvas height = contentH + label band.
@@ -1294,8 +1294,21 @@
   const STRIP_CONTENT_H = STRIP_MARGIN * 2 + STRIP_PHOTO * STRIP_SHOTS + STRIP_GAP * (STRIP_SHOTS - 1);
 
   const GRID_SHOTS = 4;
-  const GRID_W = 1500;   // landscape, bigger canvas so the 2x2 grid shows larger
-  const GRID_H = 960;
+  // Shots are taken at the live preview's 4:5 shape. The plain 2x2 grid is sized so
+  // every polaroid holds a full, uncropped 4:5 shot (a polaroid frame is 1.15 x 1.5
+  // photo-widths, and that math sets the canvas height below).
+  const SHOT_ASPECT = 4 / 5;
+  const GRID_MARGIN_R = 0.05, GRID_GAP_R = 0.037;
+  const GRID_FRAME_W = 1 + 0.12 / SHOT_ASPECT;   // frame width  / photo width
+  const GRID_FRAME_H = 1.2 / SHOT_ASPECT;        // frame height / photo width
+  const GRID_W = 1200;
+  const GRID_H = Math.round(
+    GRID_W * GRID_MARGIN_R * 2 + GRID_W * GRID_GAP_R +
+    2 * GRID_FRAME_H * ((GRID_W * (1 - GRID_MARGIN_R * 2 - GRID_GAP_R) / 2) / GRID_FRAME_W)
+  );
+  // Grid with a custom photo beside it keeps the wide layout (1 shot on top, 3 below).
+  const GRID_SIDE_W = 1500;
+  const GRID_SIDE_H = 960;
 
   const LAYOUTS = {
     strip:   { w: STRIP_W,  contentH: STRIP_CONTENT_H, render: renderStrip },
@@ -1872,7 +1885,8 @@
     }
     shotsSection.classList.toggle('hidden', !hasAllShots || isCapturing);
     actionsSection.classList.toggle('hidden', isCapturing);
-    retakeAllBtn.classList.add('hidden');
+    retakeAllBtn.classList.toggle('hidden', !hasAllShots);
+    retakeAllBtn.textContent = currentLayout === 'strip' ? '↺ Retake whole strip' : '↺ Retake whole grid';
     shareBtn.classList.toggle('hidden', !hasAllShots);
 
     const showQr = hasAllShots && !isCapturing;
@@ -1884,7 +1898,7 @@
 
   function thumbHintUpdate(){
     const hint = document.getElementById('thumbHint');
-    hint.textContent = 'Use the retake icon on any shot to reshoot just that one.';
+    hint.textContent = 'Not happy with these? Retake the whole ' + (currentLayout === 'strip' ? 'strip' : 'grid') + ' below.';
   }
 
   function updateFilmTrack(){
@@ -1917,23 +1931,10 @@
     shotCanvases.forEach((c, i) => {
       if(!c) return;
       const wrap = document.createElement('div');
-      wrap.className = 'thumb' + (currentLayout === 'single' && mainIndex === i ? ' thumb-selected' : '');
+      wrap.className = 'thumb';
       const img = document.createElement('img');
       img.src = c.toDataURL('image/png');
       wrap.appendChild(img);
-
-      const retake = document.createElement('button');
-      retake.className = 'thumb-retake';
-      retake.title = 'Retake this shot';
-      retake.textContent = '↺';
-      retake.addEventListener('click', (ev) => { ev.stopPropagation(); retakeOne(i); });
-      wrap.appendChild(retake);
-
-      wrap.addEventListener('click', () => {
-        mainIndex = i;
-        renderThumbnails();
-        if(currentLayout === 'single') renderComposite();
-      });
 
       thumbList.appendChild(wrap);
     });
@@ -1948,7 +1949,7 @@
   // Matches the .stage-frame CSS `aspect-ratio:4/5` so the captured photo
   // only ever contains the region actually visible during the live session
   // (same "cover" crop math the video element uses on screen).
-  const STAGE_ASPECT = 4 / 5;
+  const STAGE_ASPECT = SHOT_ASPECT;
 
   function captureFrame(index){
     const vw = video.videoWidth || 720;
@@ -2036,24 +2037,6 @@
     updateUI();
     showQRForCurrentPhoto();
     if(autoSaveDeviceToggle.checked) saveToDevice();
-  }
-
-  async function retakeOne(index){
-    if(!streamActive){
-      const ok = await initCamera(cameraSelect.value || null);
-      if(!ok) return;
-    }
-    const prevState = state;
-    state = 'capturing';
-    updateUI();
-    await countdownThenCapture(index);
-    state = prevState;
-    qrResults.innerHTML = '';
-    lastRenderedFolderUrl = null;
-    renderThumbnails();
-    renderComposite();
-    updateUI();
-    showQRForCurrentPhoto();
   }
 
   startBtn.addEventListener('click', startSession);
@@ -2273,21 +2256,21 @@
   }
 
   function renderGrid(ctx, shots, W, H){
-    // Landscape 2x2 grid: separate X/Y margins so the wider canvas gives
-    // each photo more room instead of just adding empty side padding.
-    const marginX = W * 0.05;
-    const marginY = H * 0.07;
-    const gapX = W * 0.035;
-    const gapY = H * 0.05;
-    const cellW = (W - marginX * 2 - gapX) / 2;
-    const cellH = (H - marginY * 2 - gapY) / 2;
-    const positions = [
-      [marginX + cellW / 2,        marginY + cellH / 2],
-      [marginX + cellW * 1.5 + gapX, marginY + cellH / 2],
-      [marginX + cellW / 2,        marginY + cellH * 1.5 + gapY],
-      [marginX + cellW * 1.5 + gapX, marginY + cellH * 1.5 + gapY]
-    ];
-    positions.forEach((p, i) => drawPolaroid(ctx, shots[i], p[0], p[1], cellW * 0.88, cellH * 0.88, 0));
+    // 2x2 grid where each photo keeps the live preview's 4:5 shape, so nothing
+    // gets cropped. Photo size is whatever fits the cell once the polaroid
+    // border is included.
+    const m = W * GRID_MARGIN_R;
+    const gap = W * GRID_GAP_R;
+    const cellW = (W - m * 2 - gap) / 2;
+    const cellH = (H - m * 2 - gap) / 2;
+    const pw = Math.min(cellW / GRID_FRAME_W, cellH / GRID_FRAME_H);
+    const ph = pw / SHOT_ASPECT;
+    const dy = -0.04 * ph; // centre the whole polaroid (thicker bottom border) in its cell
+    const xs = [m + cellW / 2, m + cellW * 1.5 + gap];
+    const ys = [m + cellH / 2, m + cellH * 1.5 + gap];
+    for(let i = 0; i < 4; i++){
+      drawPolaroid(ctx, shots[i], xs[i % 2], ys[Math.floor(i / 2)] + dy, pw, ph, 0);
+    }
   }
 
   // Grid + a custom photo beside it: 1 shot sits up top next to the photo,
@@ -2521,7 +2504,6 @@
   // ---- Shared composite builder, used for both the real result and the
   // Setup tab's live preview, so they never fall out of sync. ----
   function composeCanvas(layoutKey, targetCanvas, shots){
-    const layout = LAYOUTS[layoutKey];
     const trimmed = (labelInput.value || '').trim();
     const dateText = currentDateLabel();
     const hasBand = !!trimmed || !!dateText;
@@ -2530,6 +2512,11 @@
     const growth = 1 + Math.max(0, titleSizeMultiplier - 1) * 0.6;
     const customPhotoActive = backdropPreset === 'custom' && !!backgroundImg;
     const bandPlacement = customPhotoActive && photoPlacement === 'band';
+    // Plain/backdrop grid is portrait so every shot fits uncropped; only the
+    // grid-with-side-photo layout uses the wider canvas.
+    const layout = (layoutKey === 'grid' && bandPlacement)
+      ? Object.assign({}, LAYOUTS.grid, { w: GRID_SIDE_W, contentH: GRID_SIDE_H })
+      : LAYOUTS[layoutKey];
     // Always reserve a little breathing room at the bottom, even with no
     // event name or date typed in yet, instead of shots running to the edge.
     const minBottomMargin = Math.round(layout.w * 0.05);
@@ -2611,18 +2598,19 @@
     const shots = [];
     for(let i = 0; i < count; i++){
       const c = document.createElement('canvas');
-      c.width = size; c.height = size;
+      const cw = Math.round(size * SHOT_ASPECT), ch = size;   // same 4:5 shape as real shots
+      c.width = cw; c.height = ch;
       const pctx = c.getContext('2d');
       pctx.fillStyle = '#dce9f0';
-      pctx.fillRect(0, 0, size, size);
+      pctx.fillRect(0, 0, cw, ch);
       pctx.strokeStyle = '#b7cfdc';
       pctx.lineWidth = Math.max(1, size * 0.015);
-      pctx.strokeRect(pctx.lineWidth/2, pctx.lineWidth/2, size - pctx.lineWidth, size - pctx.lineWidth);
+      pctx.strokeRect(pctx.lineWidth/2, pctx.lineWidth/2, cw - pctx.lineWidth, ch - pctx.lineWidth);
       pctx.fillStyle = '#8ba8b8';
       pctx.font = Math.round(size * 0.28) + 'px Inter, sans-serif';
       pctx.textAlign = 'center';
       pctx.textBaseline = 'middle';
-      pctx.fillText(String(i + 1), size / 2, size / 2);
+      pctx.fillText(String(i + 1), cw / 2, ch / 2);
       shots.push(c);
     }
     return shots;

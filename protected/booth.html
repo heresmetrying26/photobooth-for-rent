@@ -1,0 +1,2687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo Booth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Dancing+Script:wght@600;700&family=Pacifico&family=Great+Vibes&family=Sacramento&family=Alex+Brush&family=Satisfy&family=Parisienne&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Cinzel:wght@600;700&family=Marck+Script&family=Tangerine:wght@700&family=Allura&family=Cookie&family=Italianno&family=Petit+Formal+Script&family=Lobster&family=Josefin+Sans:wght@600;700&family=Montserrat:wght@600;700&family=Poppins:wght@600;700&family=Raleway:wght@600;700&family=Merriweather:wght@700&family=Abril+Fatface&family=Bebas+Neue&family=Caveat:wght@600;700&family=Amatic+SC:wght@700&family=EB+Garamond:ital,wght@0,600;1,600&family=Quicksand:wght@600;700&family=Comfortaa:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-page:#eaf5fb;
+    --panel:#ffffff;
+    --panel-2:#f4fafd;
+    --line:#d6ebf5;
+    --ink:#3c5165;
+    --ink-dim:#89a4b6;
+    --blue:#9dd0ea;
+    --blue-soft:#cfe9f5;
+    --blue-deep:#4f8caf;
+    --white:#ffffff;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:linear-gradient(180deg, #ffffff 0%, var(--bg-page) 55%, #ddeef8 100%);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    padding:28px 16px 60px;
+  }
+  .marquee{
+    text-align:center;
+    margin-bottom:26px;
+  }
+  .marquee-bulbs{
+    display:flex;
+    justify-content:center;
+    gap:9px;
+    margin-bottom:10px;
+  }
+  .marquee-bulbs span{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--blue-soft);
+    box-shadow:0 0 0 rgba(157,208,234,0);
+    animation:bulb-glow 2.6s infinite ease-in-out;
+  }
+  .marquee-bulbs span:nth-child(odd){animation-delay:0.2s;}
+  .marquee-bulbs span:nth-child(3n){animation-delay:0.6s;}
+  @keyframes bulb-glow{
+    0%,100%{background:var(--blue-soft); box-shadow:0 0 0 rgba(157,208,234,0);}
+    50%{background:var(--blue-deep); box-shadow:0 0 9px rgba(157,208,234,0.9);}
+  }
+  h1{
+    font-family:'Playfair Display', serif;
+    font-style:italic;
+    font-weight:700;
+    font-size:clamp(30px,6.5vw,46px);
+    letter-spacing:0.5px;
+    margin:0;
+    color:var(--blue-deep);
+  }
+  .subtitle{
+    color:var(--ink-dim);
+    font-size:12.5px;
+    letter-spacing:1.5px;
+    margin-top:6px;
+    text-transform:uppercase;
+  }
+  .app-shell{
+    max-width:1180px;
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:1.15fr 0.85fr;
+    gap:22px;
+    align-items:start;
+    transition: grid-template-columns 0.3s ease;
+  }
+  .app-shell.has-qr{
+    grid-template-columns:1.05fr 0.75fr 0.75fr;
+  }
+  .app-shell.capturing{
+    grid-template-columns:1fr;
+    max-width:560px;
+  }
+  .app-shell.capturing .panel{
+    display:none;
+  }
+  @media (max-width:860px){
+    .app-shell{grid-template-columns:1fr;}
+    .app-shell.has-qr{grid-template-columns:1fr;}
+  }
+
+  /* ---- Tabs ---- */
+  .tab-bar{
+    max-width:1180px;
+    margin:0 auto 22px;
+    display:flex;
+    gap:10px;
+    justify-content:center;
+  }
+  .tab-btn{
+    display:flex; align-items:center; gap:8px;
+    background:var(--panel);
+    border:1.5px solid var(--line);
+    color:var(--ink-dim);
+    padding:11px 20px;
+    border-radius:30px;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+    transition:all 0.15s ease;
+  }
+  .tab-btn .tab-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:20px; height:20px; border-radius:50%;
+    background:var(--panel-2); color:var(--ink-dim);
+    font-size:11px; font-weight:700;
+  }
+  .tab-btn.active{
+    border-color:var(--blue-deep); color:var(--blue-deep);
+    background:#eef8fc;
+    box-shadow:0 4px 14px rgba(79,140,175,0.15);
+  }
+  .tab-btn.active .tab-num{background:var(--blue-deep); color:#fff;}
+  .tab-btn:hover{border-color:var(--blue-deep);}
+
+  .tab-panel.hidden{display:none;}
+
+  /* ---- Setup tab ---- */
+  .setup-shell{
+    max-width:560px;
+    margin:0 auto;
+    display:flex; flex-direction:column; gap:16px;
+  }
+  .setup-next-wrap{
+    display:flex; justify-content:center; margin-top:6px;
+  }
+
+  /* font picker */
+  .font-grid{
+    display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:12px;
+  }
+  .font-btn{
+    background:var(--panel-2);
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    padding:12px 6px;
+    cursor:pointer;
+    color:var(--ink);
+    font-size:15px;
+    text-align:center;
+  }
+  .font-btn.active{border-color:var(--blue-deep); background:#eef8fc; color:var(--blue-deep);}
+  .color-swatch-btn{
+    width:26px; height:26px; border-radius:50%; border:1.5px solid transparent;
+    cursor:pointer; padding:0;
+  }
+  .color-swatch-btn.active{border-color:var(--blue-deep); box-shadow:0 0 0 2px #eef8fc;}
+  .frame-swatch{
+    width:30px; height:30px; border-radius:8px; padding:0; cursor:pointer;
+    border:1.5px solid var(--line);
+    box-shadow:0 1px 3px rgba(0,0,0,0.12);
+  }
+  .frame-swatch.active{border-color:var(--blue-deep); box-shadow:0 0 0 2px #eef8fc, 0 0 0 4px var(--blue-deep);}
+  .custom-dd{position:relative;}
+  .custom-dd-btn{
+    width:100%; text-align:left; background:var(--panel-2); border:1.5px solid var(--line);
+    border-radius:10px; padding:12px 14px; font-size:16px; color:var(--ink); cursor:pointer;
+  }
+  .custom-dd-list{
+    display:none; position:absolute; z-index:50; top:calc(100% + 4px); left:0; right:0;
+    max-height:260px; overflow-y:auto; background:#fff; border:1.5px solid var(--line);
+    border-radius:10px; box-shadow:0 10px 26px rgba(0,0,0,0.14);
+  }
+  .custom-dd-list.open{display:block;}
+  .custom-dd-item{padding:11px 14px; font-size:16px; color:var(--ink); cursor:pointer;}
+  .custom-dd-item:hover, .custom-dd-item.active{background:var(--panel-2);}
+  .sub-group{background:var(--panel-2); border-radius:10px; padding:12px 14px; margin-top:12px;}
+  .sub-group:first-of-type{margin-top:2px;}
+  .sub-label{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--ink-dim); margin:0 0 8px;}
+
+  /* qr panel sits beside camera/results, no extra scroll */
+  .qr-panel{display:flex; flex-direction:column;}
+
+  /* ---- Stage / viewfinder ---- */
+  .stage-wrap{
+    position:relative;
+  }
+  .stage-frame{
+    position:relative;
+    background:#0e1216;
+    border-radius:var(--radius);
+    overflow:hidden;
+    aspect-ratio:4/5;
+    border:5px solid var(--white);
+    box-shadow:0 16px 40px rgba(79,140,175,0.18), 0 0 0 1px var(--line);
+  }
+  .sprockets{
+    position:absolute;
+    top:0;bottom:0;
+    width:16px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-evenly;
+    align-items:center;
+    z-index:5;
+    pointer-events:none;
+  }
+  .sprockets.left{left:0; background:linear-gradient(90deg, rgba(0,0,0,0.35), transparent);}
+  .sprockets.right{right:0; background:linear-gradient(-90deg, rgba(0,0,0,0.35), transparent);}
+  .sprockets i{
+    width:6px;height:10px;border-radius:2px;
+    background:rgba(207,233,245,0.75);
+    display:block;
+  }
+  video, #previewCanvas{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+  video{background:#050505;}
+  #previewCanvas{display:none; object-fit:contain; background:#0e1216;}
+
+  .camera-error{
+    position:absolute; inset:0; display:none;
+    flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:30px; gap:14px; z-index:6;
+    background:#11161b;
+  }
+  .camera-error p{color:#b9c7d1; font-size:14px; line-height:1.5; max-width:320px; margin:0;}
+
+  .countdown-overlay{
+    position:absolute; inset:0; z-index:4;
+    display:none;
+    align-items:center; justify-content:center;
+    background:rgba(0,0,0,0.15);
+  }
+  .countdown-num{
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+    font-size:120px;
+    color:#ffffff;
+    text-shadow:0 0 30px rgba(0,0,0,0.6);
+  }
+  .countdown-num.pulse{animation:pulse-pop 1s ease-out;}
+  .countdown-num.word{font-size:56px; letter-spacing:2px; text-transform:uppercase;}
+  @keyframes pulse-pop{
+    0%{transform:scale(1.6); opacity:0;}
+    30%{transform:scale(1); opacity:1;}
+    100%{transform:scale(1); opacity:1;}
+  }
+  .flash-overlay{
+    position:absolute; inset:0; background:#fff; opacity:0; z-index:7; pointer-events:none;
+    transition:opacity 90ms ease-out;
+  }
+  .flash-overlay.flash-active{opacity:0.9; transition:opacity 20ms ease-in;}
+
+  .ready-overlay{
+    position:absolute; inset:0; z-index:8;
+    display:none;
+    flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    background:rgba(14,18,22,0.72);
+    text-align:center; padding:24px;
+  }
+  .ready-overlay.ready-active{display:flex;}
+  .ready-title{
+    font-family:'Playfair Display', serif;
+    font-style:italic;
+    font-weight:700;
+    font-size:28px;
+    color:#ffffff;
+    margin:0;
+  }
+  .ready-sub{
+    color:#cfe9f5;
+    font-size:13px;
+    letter-spacing:0.5px;
+    margin:0 0 8px;
+  }
+
+  .rec-dot{
+    position:absolute; top:14px; left:26px; z-index:5;
+    display:flex; align-items:center; gap:6px;
+    font-size:11px; letter-spacing:1px; color:#cfe9f5;
+  }
+  .rec-dot i{width:8px;height:8px;border-radius:50%;background:#7fd3a3; box-shadow:0 0 8px #7fd3a3;}
+
+  .film-track{
+    display:flex; gap:8px; margin-top:12px; justify-content:center;
+  }
+  .film-frame{
+    width:56px; height:56px; border-radius:10px;
+    background:var(--panel);
+    border:1.5px dashed var(--line);
+    overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--ink-dim); font-size:12px;
+  }
+  .film-frame img{width:100%; height:100%; object-fit:cover; display:block;}
+  .film-frame.filled{border-style:solid; border-color:var(--blue-deep);}
+
+  .start-btn-wrap{
+    display:flex; justify-content:center; margin-top:16px;
+  }
+  .shutter-btn{
+    display:flex; align-items:center; gap:10px;
+    background:var(--blue-deep);
+    color:#ffffff;
+    border:none;
+    padding:14px 26px;
+    border-radius:40px;
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+    font-style:italic;
+    font-size:17px;
+    letter-spacing:0.5px;
+    cursor:pointer;
+    box-shadow:0 8px 20px rgba(79,140,175,0.35);
+    transition:transform 0.15s ease;
+  }
+  .shutter-btn:hover{transform:translateY(-2px);}
+  .shutter-btn:active{transform:translateY(0);}
+  .shutter-btn .ring{
+    width:15px;height:15px;border-radius:50%;
+    border:2.5px solid #ffffff;
+  }
+  .shutter-btn[disabled]{opacity:0.5; cursor:default; transform:none;}
+
+  /* ---- Control panel ---- */
+  .panel{
+    display:flex; flex-direction:column; gap:16px;
+  }
+  .panel-section{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px 16px 18px;
+    box-shadow:0 4px 16px rgba(79,140,175,0.06);
+  }
+  .panel-label{
+    font-family:'Playfair Display', serif;
+    font-weight:600;
+    font-style:italic;
+    letter-spacing:0.3px;
+    font-size:16px;
+    color:var(--blue-deep);
+    margin:0 0 10px;
+  }
+  .panel-label.accordion-toggle{
+    cursor:pointer; display:flex; align-items:center; justify-content:space-between;
+    user-select:none; margin-bottom:0;
+  }
+  .panel-section.accordion.open .panel-label.accordion-toggle{ margin-bottom:10px; }
+  .panel-label .chev{ font-style:normal; font-size:14px; color:var(--ink-dim); transition:transform .15s ease; }
+  .panel-section.accordion:not(.open) .chev{ transform:rotate(-90deg); }
+  .panel-section.accordion:not(.open) > *:not(.panel-label){ display:none !important; }
+  .panel-hint{color:var(--ink-dim); font-size:12px; margin:6px 0 0; line-height:1.5;}
+
+  /* background uploader */
+  .bg-row{display:flex; align-items:center; gap:12px;}
+  .bg-thumb{
+    width:56px; height:56px; border-radius:10px; object-fit:cover;
+    background:var(--panel-2); border:1px solid var(--line); display:none;
+  }
+  .upload-btn{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--ink);
+    padding:10px 14px;
+    border-radius:10px;
+    font-size:13px;
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  .upload-btn:hover{border-color:var(--blue-deep);}
+  .remove-link{
+    background:none; border:none; color:var(--ink-dim); font-size:12px;
+    text-decoration:underline; cursor:pointer; margin-top:8px; padding:0; display:none;
+  }
+
+  /* event label input */
+  .label-input{
+    width:100%;
+    padding:11px 13px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+  }
+  .label-input:focus{outline:none; border-color:var(--blue-deep);}
+  .label-input::placeholder{color:var(--ink-dim); font-family:'Inter',sans-serif; font-size:13px;}
+  .label-input{font-family:'Inter', sans-serif; font-size:15px; color:var(--ink);}
+
+  /* backdrop presets */
+  .preset-grid{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px;
+  }
+  .preset-btn{
+    position:relative;
+    aspect-ratio:1/1;
+    border-radius:10px;
+    border:2px solid var(--line);
+    cursor:pointer;
+    overflow:hidden;
+    padding:0;
+  }
+  .preset-btn.active{border-color:var(--blue-deep); box-shadow:0 0 0 2px rgba(79,140,175,0.25);}
+  .preset-btn span{
+    position:absolute; left:0; right:0; bottom:0;
+    font-size:9.5px; letter-spacing:0.3px; color:#fff;
+    background:rgba(0,0,0,0.38);
+    padding:3px 2px;
+    font-family:'Inter',sans-serif; font-weight:600;
+  }
+  .preset-swatch{position:absolute; inset:0;}
+  .preset-swatch.swatch-gold{background:linear-gradient(135deg,#caa24a,#f4dd9a 40%,#caa24a 70%,#8a6a24);}
+  .preset-swatch.swatch-gold i{position:absolute; width:2px; height:2px; background:#fff9dd; border-radius:50%; box-shadow:0 0 3px 1px rgba(255,250,220,0.9);}
+  .preset-swatch.swatch-sky{background:linear-gradient(180deg,#bfe0f7 0%,#eaf6ff 55%,#fdf6ee 100%);}
+  .preset-swatch.swatch-stars{background:linear-gradient(180deg,#0b0d1a 0%,#161a30 100%);}
+  .preset-swatch.swatch-stars i{position:absolute; background:#f0c869; border-radius:50%;}
+  .preset-swatch.swatch-cream{background:linear-gradient(160deg,#faf3e6 0%,#f3e6cf 100%);}
+  .preset-btn[data-preset="none"] .preset-swatch{
+    background:var(--panel-2);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .preset-btn[data-preset="none"] .preset-swatch::after{
+    content:'✕'; color:var(--ink-dim); font-size:16px;
+  }
+
+  /* setup live preview */
+  .setup-preview-wrap{display:flex; justify-content:center;}
+  .setup-preview-frame{
+    position:relative;
+    background:#0e1216;
+    border-radius:12px;
+    overflow:hidden;
+    border:5px solid var(--white);
+    box-shadow:0 12px 30px rgba(79,140,175,0.18), 0 0 0 1px var(--line);
+    max-width:260px;
+  }
+  #setupPreviewCanvas{display:block; width:100%; height:auto;}
+
+  /* date / subtitle */
+  .date-row{display:flex; align-items:center; gap:10px; margin-top:10px;}
+  .date-row input[type="date"]{
+    flex:1;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+  }
+  .toggle-row{display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--ink); cursor:pointer;}
+  .toggle-row input{width:16px; height:16px; cursor:pointer;}
+
+  /* layout picker */
+  .layout-grid{
+    display:grid; grid-template-columns:repeat(2,1fr); gap:8px;
+  }
+  .layout-btn{
+    background:var(--panel-2);
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    padding:10px 4px 8px;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    cursor:pointer; color:var(--ink-dim); font-size:10.5px; letter-spacing:0.5px;
+  }
+  .layout-btn.active{border-color:var(--blue-deep); color:var(--ink); background:#eef8fc;}
+  .icon-box{width:34px; height:34px; position:relative;}
+  .icon-strip{display:flex; flex-direction:column; gap:2px; justify-content:center; height:100%;}
+  .icon-strip i{height:5px; background:var(--blue-soft); border-radius:1px; width:60%; margin:0 auto;}
+  .layout-btn.active .icon-strip i{background:var(--blue-deep);}
+  .icon-grid{display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:3px; height:100%;}
+  .icon-grid i{background:var(--blue-soft); border-radius:2px;}
+  .layout-btn.active .icon-grid i{background:var(--blue-deep);}
+  .icon-single{display:flex; align-items:center; justify-content:center; height:100%;}
+  .icon-single i{width:24px; height:24px; background:var(--blue-soft); border-radius:3px;}
+  .layout-btn.active .icon-single i{background:var(--blue-deep);}
+
+  /* thumbnails / review */
+  .thumb-list{display:flex; flex-wrap:wrap; gap:10px;}
+  .thumb{
+    position:relative; width:64px; height:64px; border-radius:8px; overflow:hidden;
+    border:2px solid var(--line); cursor:pointer;
+  }
+  .thumb.thumb-selected{border-color:var(--blue-deep);}
+  .thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+  .thumb-retake{
+    position:absolute; bottom:2px; right:2px;
+    width:20px; height:20px; border-radius:50%;
+    background:rgba(60,81,101,0.7); color:#ffffff;
+    border:none; font-size:12px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .thumb-retake:hover{background:var(--blue-deep);}
+
+  /* action buttons */
+  .actions{display:flex; flex-direction:column; gap:10px;}
+  .action-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    padding:12px 14px; border-radius:12px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--ink);
+    font-size:14px; font-weight:600; cursor:pointer;
+  }
+  .action-btn:hover{border-color:var(--blue-deep);}
+  .action-btn.primary{background:var(--blue-deep); color:#ffffff; border-color:var(--blue-deep);}
+  .action-btn.primary:hover{filter:brightness(1.06);}
+  .action-btn.ghost{background:transparent; color:var(--ink-dim);}
+
+  .hidden{display:none !important;}
+
+  .toast{
+    position:fixed; left:50%; bottom:26px; transform:translate(-50%, 20px);
+    background:var(--panel); border:1px solid var(--line);
+    color:var(--ink); padding:12px 20px; border-radius:30px;
+    font-size:13px; opacity:0; pointer-events:none;
+    box-shadow:0 8px 24px rgba(79,140,175,0.2);
+    transition:all 0.25s ease; z-index:50; max-width:88vw; text-align:center;
+  }
+  .toast.toast-visible{opacity:1; transform:translate(-50%, 0);}
+
+  /* camera select */
+  .cam-select{
+    width:100%;
+    padding:11px 13px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    cursor:pointer;
+    appearance:auto;
+  }
+  .cam-select:focus{outline:none; border-color:var(--blue-deep);}
+
+  input[type=file]{display:none;}
+
+  /* QR share section */
+  .qr-results{
+    display:flex; flex-wrap:wrap; gap:14px; margin-top:12px;
+  }
+  .qr-results #qrLoading{ width:100%; margin:0; text-align:center; }
+  .qr-result{
+    flex:1 1 120px;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    background:var(--panel-2); border:1px solid var(--line);
+    border-radius:12px; padding:12px 10px;
+  }
+  .qr-img{
+    width:150px; height:150px; border-radius:8px; background:#ffffff;
+    padding:6px; border:1px solid var(--line);
+  }
+  .qr-caption{
+    font-size:12.5px; font-weight:600; color:var(--ink); margin:0; text-align:center;
+  }
+  .qr-link{
+    font-size:11.5px; color:var(--blue-deep); text-decoration:underline;
+    word-break:break-all; text-align:center;
+  }
+  .qr-expiry-row{
+    display:flex; align-items:center; gap:8px; margin-bottom:10px;
+  }
+  .qr-expiry-row label{ font-size:12px; color:var(--ink-dim); white-space:nowrap; }
+  .drive-connect-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  #driveStatusText{ margin:0 0 12px; }
+</style>
+</head>
+<body>
+
+<div class="marquee">
+  <div class="marquee-bulbs">
+    <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+  </div>
+  <h1>Photo Booth</h1>
+  <div class="subtitle">Strip or Grid · counts down 5,4,3,2,1,Pose · your backdrop</div>
+</div>
+
+<div class="tab-bar" id="tabBar">
+  <button class="tab-btn active" id="tabBtnSetup" data-tab="setup">
+    <span class="tab-num">1</span> Setup
+  </button>
+  <button class="tab-btn" id="tabBtnSession" data-tab="session">
+    <span class="tab-num">2</span> Photo Session
+  </button>
+</div>
+
+<!-- TAB 1: SETUP -->
+<div class="tab-panel" id="tabSetup">
+  <div class="setup-shell">
+
+    <div class="panel-section accordion open" id="formatSection">
+      <p class="panel-label accordion-toggle" data-target="formatSection">1 · Format <span class="chev">⌄</span></p>
+      <div class="layout-grid" id="layoutGrid">
+        <button class="layout-btn active" data-layout="strip">
+          <span class="icon-box icon-strip"><i></i><i></i><i></i><i></i></span>
+          Strip
+        </button>
+        <button class="layout-btn" data-layout="grid">
+          <span class="icon-box icon-grid"><i></i><i></i><i></i><i></i></span>
+          4 Shots (Grid)
+        </button>
+      </div>
+      <p class="panel-hint" id="layoutHint">Classic vertical strip of all 4 shots. Only this format is saved — pick the one you want before the session.</p>
+    </div>
+
+    <div class="panel-section accordion" id="backdropSection">
+      <p class="panel-label accordion-toggle" data-target="backdropSection">2 · Backdrop <span class="chev">⌄</span></p>
+      <p class="sub-label">Preset</p>
+      <div class="preset-grid" id="presetGrid">
+        <button class="preset-btn" data-preset="none" title="No preset">
+          <span class="preset-swatch"></span>
+          <span>Plain</span>
+        </button>
+        <button class="preset-btn" data-preset="gold" title="Gold with glitter">
+          <span class="preset-swatch swatch-gold" id="swatchGold"></span>
+          <span>Gold Glitter</span>
+        </button>
+        <button class="preset-btn" data-preset="sky" title="Pastel blue with skies">
+          <span class="preset-swatch swatch-sky" id="swatchSky"></span>
+          <span>Pastel Sky</span>
+        </button>
+        <button class="preset-btn" data-preset="stars" title="Black with gold stars">
+          <span class="preset-swatch swatch-stars" id="swatchStars"></span>
+          <span>Black &amp; Gold</span>
+        </button>
+        <button class="preset-btn" data-preset="cream" title="Cream with aesthetic elements">
+          <span class="preset-swatch swatch-cream" id="swatchCream"></span>
+          <span>Cream</span>
+        </button>
+        <button class="preset-btn" data-preset="custom" title="Your own photo" id="customPresetBtn">
+          <span class="preset-swatch" id="customSwatch" style="background:var(--panel-2); display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--ink-dim);">Upload</span>
+          <span>Custom</span>
+        </button>
+      </div>
+      <div class="sub-group" style="margin-top:14px;">
+        <p class="sub-label">Custom photo</p>
+        <div class="bg-row">
+          <img class="bg-thumb" id="bgThumb" alt="background preview">
+          <label class="upload-btn" for="bgInput">Choose photo</label>
+          <input type="file" id="bgInput" accept="image/*">
+        </div>
+        <button class="remove-link" id="removeBgBtn">Remove backdrop</button>
+        <div id="bandPositionWrap" style="display:none; margin-top:10px;">
+          <p class="panel-hint" style="margin-bottom:6px;">Photo placement</p>
+          <select id="photoPlacementSelect" class="label-input" style="font-size:13px;">
+            <option value="band" selected>On its own strip/side, next to the shots</option>
+            <option value="background">Full background, behind everything</option>
+          </select>
+          <p class="panel-hint" id="bandPositionHint" style="margin-top:6px;">Your photo sits above the shots.</p>
+          <p class="panel-hint" style="margin:10px 0 6px;">Polaroid frame color</p>
+          <div id="frameSwatchRow" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <button type="button" class="frame-swatch active" data-color="#ffffff" data-name="White" title="White" style="background:#ffffff;"></button>
+            <button type="button" class="frame-swatch" data-color="#111111" data-name="Black" title="Black" style="background:#111111;"></button>
+            <button type="button" class="frame-swatch" data-color="#3a3a3a" data-name="Dark gray" title="Dark gray" style="background:#3a3a3a;"></button>
+            <button type="button" class="frame-swatch" data-color="#f3ead6" data-name="Cream" title="Cream" style="background:#f3ead6;"></button>
+            <button type="button" class="frame-swatch" data-color="#9a7a2c" data-name="Dark gold" title="Dark gold" style="background:linear-gradient(135deg,#b8963e,#8a6a1f);"></button>
+            <span class="panel-hint" id="frameSwatchName" style="margin:0;">White</span>
+          </div>
+          <p class="panel-hint" style="margin-top:8px;">The background color is picked automatically from your photo's main color, with a soft sparkle texture — and it adjusts itself to contrast with the frame you choose.</p>
+          <p class="panel-hint" style="margin:10px 0 6px;">Photo crop focus</p>
+          <select id="cropFocusSelect" class="label-input" style="font-size:13px;"></select>
+        </div>
+      </div>
+      <p class="panel-hint">Pick a preset, or upload your own photo to use as the Custom backdrop. Plain uses a plain white background with black polaroid frames.</p>
+    </div>
+
+    <div class="panel-section accordion" id="labelSection">
+      <p class="panel-label accordion-toggle" data-target="labelSection">3 · Event name <span class="chev">⌄</span></p>
+
+      <div class="sub-group">
+        <p class="sub-label">Event name</p>
+        <input type="text" class="label-input" id="labelInput" placeholder="e.g. Baby Sofia's Dedication" maxlength="60">
+        <p class="panel-hint" style="margin:10px 0 6px;">Font</p>
+        <div class="custom-dd" id="fontDropdown">
+          <button type="button" class="custom-dd-btn label-input" id="fontDropdownBtn"></button>
+          <div class="custom-dd-list" id="fontDropdownList"></div>
+        </div>
+      </div>
+
+      <div class="sub-group">
+        <p class="sub-label">Date</p>
+        <label class="toggle-row">
+          <input type="checkbox" id="dateToggle">
+          Add the date below the event name
+        </label>
+        <div class="date-row" id="dateRow" style="display:none;">
+          <input type="date" id="dateInput">
+          <span class="panel-hint" id="datePreviewText" style="margin:0;">MM/DD/YY</span>
+        </div>
+        <div id="dateFontWrap" style="display:none; margin-top:10px;">
+          <p class="panel-hint" style="margin-bottom:6px;">Date font</p>
+          <div class="custom-dd" id="dateFontDropdown">
+            <button type="button" class="custom-dd-btn label-input" id="dateFontDropdownBtn"></button>
+            <div class="custom-dd-list" id="dateFontDropdownList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-group">
+        <p class="sub-label">Color</p>
+        <div id="colorSwatchRow" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="color-swatch-btn active" data-color="#1f4166" style="background:#1f4166;"></button>
+          <button type="button" class="color-swatch-btn" data-color="#2b2b2b" style="background:#2b2b2b;"></button>
+          <button type="button" class="color-swatch-btn" data-color="#4a4a4a" style="background:#4a4a4a;"></button>
+          <button type="button" class="color-swatch-btn" data-color="#5c4a3a" style="background:#5c4a3a;"></button>
+          <button type="button" class="color-swatch-btn" data-color="#7a6a58" style="background:#7a6a58;"></button>
+          <button type="button" class="color-swatch-btn" data-color="#f5f0e8" style="background:#f5f0e8; border:1.5px solid var(--line);"></button>
+          <button type="button" class="color-swatch-btn" data-color="#ffffff" style="background:#ffffff; border:1.5px solid var(--line);"></button>
+          <input type="color" id="textColorInput" value="#1f4166" title="Custom color" style="width:30px; height:30px; border:1px solid var(--line); border-radius:8px; padding:0; cursor:pointer; margin-left:2px;">
+        </div>
+      </div>
+
+      <div class="sub-group">
+        <p class="sub-label">Event name size</p>
+        <input type="range" id="titleSizeSlider" min="60" max="170" value="100" style="width:100%;">
+      </div>
+
+      <div class="sub-group">
+        <p class="sub-label">Background panel</p>
+        <label class="toggle-row">
+          <input type="checkbox" id="titleBgToggle" checked>
+          Show a background panel behind the text
+        </label>
+        <div id="titleBgColorWrap" style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+          <span class="panel-hint" style="margin:0;">Panel color</span>
+          <input type="color" id="titleBgColorInput" value="#ffffff" style="width:30px; height:30px; border:1px solid var(--line); border-radius:8px; padding:0; cursor:pointer;">
+        </div>
+      </div>
+
+      <div class="sub-group">
+        <p class="sub-label">Outline &amp; shadow</p>
+        <p class="panel-hint" style="margin:0 0 10px;">Applies to both the event name and the date below it.</p>
+        <label class="toggle-row" style="margin-bottom:8px;">
+          <input type="checkbox" id="outlineToggle" checked> Outline
+        </label>
+        <select id="outlineColorSelect" class="label-input" style="font-size:13px; padding:8px 10px; margin-bottom:12px;">
+          <option value="#ffffff">White outline</option>
+          <option value="#000000">Black outline</option>
+        </select>
+        <label class="toggle-row"><input type="checkbox" id="shadowToggle" checked> Soft drop shadow</label>
+      </div>
+
+      <p class="panel-hint">Space is always reserved at the bottom for the event name, even before you type one. Leave it blank to keep that space plain — and blank, the event name shows larger. The size slider is capped so text never overflows the frame.</p>
+    </div>
+
+
+    <div class="panel-section" id="previewSection">
+      <p class="panel-label">Preview</p>
+      <div class="setup-preview-wrap">
+        <div class="setup-preview-frame">
+          <canvas id="setupPreviewCanvas"></canvas>
+        </div>
+      </div>
+      <p class="panel-hint" style="text-align:center;">Live preview of your chosen format, backdrop, event name and date. Actual photos replace the placeholders during the session.</p>
+    </div>
+
+    <div class="panel-section accordion" id="driveSetupSection">
+      <p class="panel-label accordion-toggle" data-target="driveSetupSection">4 · Google Drive <span class="chev">⌄</span></p>
+      <p class="panel-hint" id="driveStatusText">Type this booking's folder name or link below — it's required before you can start the photo session.</p>
+      <input type="text" class="label-input" id="driveFolderKeyInput" placeholder="This booking's folder: paste a link, or type a new folder name" style="font-family:'Inter',sans-serif; font-size:13px; margin:10px 0 0;">
+      <p class="panel-hint" id="driveFolderError" style="display:none; color:#c0392b; font-weight:600;"></p>
+      <p class="panel-hint" id="driveFolderStatus" style="display:none;"></p>
+      <div id="driveFolderQrPreview" style="display:none; margin-top:10px; text-align:center;">
+        <img id="driveFolderQrImg" class="qr-img" style="width:120px;height:120px;" alt="Folder QR preview">
+        <p class="qr-caption" id="driveFolderQrCaption">Scan to open the folder</p>
+      </div>
+      <p class="panel-hint">A folder name or link is required — type one above and its QR code will appear here right away, then keep showing after every photo session.</p>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13.5px; color:var(--ink); cursor:pointer;">
+        <input type="checkbox" id="autoSaveDeviceToggle" style="width:16px; height:16px; cursor:pointer;">
+        Also auto-save each finished photo to this device
+      </label>
+      <p class="panel-hint" style="margin-top:6px;">Off by default — every session already uploads to Google Drive automatically. Turn this on if you also want a copy saved straight to this computer's Downloads folder after each session.</p>
+    </div>
+
+    <div class="setup-next-wrap">
+      <button class="action-btn primary" id="goToSessionBtn" style="width:auto; padding:12px 26px;">Continue to Photo Session →</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- TAB 2: PHOTO SESSION -->
+<div class="tab-panel hidden" id="tabSession">
+  <div class="app-shell">
+
+    <!-- STAGE -->
+    <div class="stage-wrap">
+      <div class="stage-frame" id="stageFrame">
+        <div class="sprockets left">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div class="sprockets right">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="previewCanvas"></canvas>
+
+        <div class="rec-dot" id="recDot"><i></i><span>LIVE</span></div>
+
+        <div class="countdown-overlay" id="countdownOverlay">
+          <div class="countdown-num" id="countdownNum">3</div>
+        </div>
+        <div class="ready-overlay" id="readyOverlay">
+          <p class="ready-title">Get ready!</p>
+          <p class="ready-sub" id="readySub">4 shots · 5,4,3,2,1,Pose</p>
+          <button class="shutter-btn" id="readyStartBtn"><span class="ring"></span>Start Session</button>
+        </div>
+        <div class="flash-overlay" id="flashOverlay"></div>
+
+        <div class="camera-error" id="cameraError">
+          <p id="cameraErrorText">We need access to your camera to start the booth.</p>
+          <button class="action-btn primary" id="retryCameraBtn" style="width:auto; padding:10px 20px;">Try Again</button>
+        </div>
+      </div>
+
+      <div class="film-track" id="filmTrack">
+        <div class="film-frame">1</div>
+        <div class="film-frame">2</div>
+        <div class="film-frame">3</div>
+        <div class="film-frame">4</div>
+      </div>
+
+      <div class="start-btn-wrap">
+        <button class="shutter-btn" id="startBtn"><span class="ring"></span>Start Session</button>
+      </div>
+    </div>
+
+    <!-- PANEL -->
+    <div class="panel">
+
+      <div class="panel-section" id="cameraSection">
+        <p class="panel-label">Camera</p>
+        <select class="cam-select" id="cameraSelect">
+          <option value="">Loading cameras…</option>
+        </select>
+        <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
+      </div>
+
+      <div class="panel-section hidden" id="shotsSection">
+        <p class="panel-label">Your shots</p>
+        <div class="thumb-list" id="thumbList"></div>
+        <p class="panel-hint" id="thumbHint">Tap a shot to retake it.</p>
+      </div>
+
+      <div class="panel-section" id="actionsSection">
+        <div class="actions">
+          <button class="action-btn ghost hidden" id="retakeAllBtn">↺ Retake all</button>
+          <button class="action-btn hidden" id="shareBtn">↗ Share</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- QR PANEL (beside camera/result, visible without scrolling) -->
+    <div class="panel qr-panel hidden" id="qrSection">
+      <div class="panel-section">
+        <p class="panel-label">Scan &amp; Download</p>
+        <div class="qr-results" id="qrResults"></div>
+        <p class="panel-hint" id="qrHint">Your chosen format uploads automatically as soon as all 4 shots are taken, named so sessions sort in order (e.g. 1_strip, 2_strip). The booking folder set up in the Setup tab gets one QR code that takes guests straight to that shared folder — the same code all event long.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const video = document.getElementById('video');
+  const previewCanvas = document.getElementById('previewCanvas');
+  const cameraError = document.getElementById('cameraError');
+  const cameraErrorText = document.getElementById('cameraErrorText');
+  const retryCameraBtn = document.getElementById('retryCameraBtn');
+  const countdownOverlay = document.getElementById('countdownOverlay');
+  const countdownNum = document.getElementById('countdownNum');
+  const readyOverlay = document.getElementById('readyOverlay');
+  const readyStartBtn = document.getElementById('readyStartBtn');
+  const flashOverlay = document.getElementById('flashOverlay');
+  const recDot = document.getElementById('recDot');
+  const filmTrack = document.getElementById('filmTrack');
+  const startBtn = document.getElementById('startBtn');
+  const bgInput = document.getElementById('bgInput');
+  const bgThumb = document.getElementById('bgThumb');
+  const removeBgBtn = document.getElementById('removeBgBtn');
+  const labelInput = document.getElementById('labelInput');
+  const layoutGrid = document.getElementById('layoutGrid');
+  const layoutHint = document.getElementById('layoutHint');
+  const shotsSection = document.getElementById('shotsSection');
+  const thumbList = document.getElementById('thumbList');
+  const retakeAllBtn = document.getElementById('retakeAllBtn');
+  const shareBtn = document.getElementById('shareBtn');
+  const autoSaveDeviceToggle = document.getElementById('autoSaveDeviceToggle');
+  const toast = document.getElementById('toast');
+  const qrSection = document.getElementById('qrSection');
+  const qrResults = document.getElementById('qrResults');
+  const driveStatusText = document.getElementById('driveStatusText');
+  const driveFolderKeyInput = document.getElementById('driveFolderKeyInput');
+  const driveFolderStatus = document.getElementById('driveFolderStatus');
+  const driveFolderError = document.getElementById('driveFolderError');
+  const driveFolderQrPreview = document.getElementById('driveFolderQrPreview');
+  const driveFolderQrImg = document.getElementById('driveFolderQrImg');
+  const driveFolderQrCaption = document.getElementById('driveFolderQrCaption');
+  const tabBtnSetup = document.getElementById('tabBtnSetup');
+  const tabBtnSession = document.getElementById('tabBtnSession');
+  const tabSetup = document.getElementById('tabSetup');
+  const tabSession = document.getElementById('tabSession');
+  const goToSessionBtn = document.getElementById('goToSessionBtn');
+  const fontDropdownBtn = document.getElementById('fontDropdownBtn');
+  const dateToggle = document.getElementById('dateToggle');
+  const dateRow = document.getElementById('dateRow');
+  const dateInput = document.getElementById('dateInput');
+  const datePreviewText = document.getElementById('datePreviewText');
+  const dateFontWrap = document.getElementById('dateFontWrap');
+  const presetGrid = document.getElementById('presetGrid');
+  const setupPreviewCanvas = document.getElementById('setupPreviewCanvas');
+  const textColorInput = document.getElementById('textColorInput');
+  const outlineToggle = document.getElementById('outlineToggle');
+  const shadowToggle = document.getElementById('shadowToggle');
+  const bandPositionWrap = document.getElementById('bandPositionWrap');
+  const bandPositionSelect = document.getElementById('bandPositionSelect');
+  const readySub = document.getElementById('readySub');
+  let currentFont = "'Times New Roman', serif";
+  let currentDateFont = "'Times New Roman', serif";
+  let backdropPreset = 'none'; // none | gold | sky | stars | cream | custom
+  let textColor = '#1f4166';
+  let useOutline = true;
+  let useShadow = true;
+  let outlineColor = '#ffffff';
+  let bgBandPosition = 'above'; // above | below (strip + custom photo only)
+  let photoHue = 205;   // dominant hue of the uploaded photo (0-360)
+  let photoSat = 0.4;   // how colorful that dominant color is (0-1)
+  let frameColorChoice = '#ffffff';
+  let cropFocus = 'center';
+  let titleBgEnabled = true;
+  let titleBgColor = '#ffffff';
+  let photoPlacement = 'band'; // band | background (custom photo only)
+  let currentFrameColor = '#ffffff';
+
+  // ---- Tab switching ----
+  function switchTab(tab){
+    const toSession = tab === 'session';
+    tabBtnSetup.classList.toggle('active', !toSession);
+    tabBtnSession.classList.toggle('active', toSession);
+    tabSetup.classList.toggle('hidden', toSession);
+    tabSession.classList.toggle('hidden', !toSession);
+  }
+  tabBtnSetup.addEventListener('click', () => switchTab('setup'));
+  tabBtnSession.addEventListener('click', () => switchTab('session'));
+
+  function showDriveFolderError(msg){
+    driveFolderError.textContent = msg;
+    driveFolderError.style.display = 'block';
+    driveFolderKeyInput.style.borderColor = '#c0392b';
+  }
+  function clearDriveFolderError(){
+    driveFolderError.style.display = 'none';
+    driveFolderError.textContent = '';
+    driveFolderKeyInput.style.borderColor = '';
+  }
+
+  goToSessionBtn.addEventListener('click', () => {
+    if(!rawFolderKey()){
+      showDriveFolderError('Please type a folder name (or paste a folder link) for Google Drive before continuing.');
+      driveFolderKeyInput.focus();
+      return;
+    }
+    clearDriveFolderError();
+    switchTab('session');
+  });
+
+  // ---- Font pickers (event name gets its own font, date gets its own) ----
+  // Built as custom dropdowns (not native <select>) because mobile browsers
+  // ignore per-<option> font-family styling, so a native select can't
+  // preview each font — this one renders every item in its real font.
+  const FONT_OPTIONS = [
+    ["'Times New Roman', serif", 'Times New Roman'],
+    ['Arial, sans-serif', 'Arial'],
+    ["'Pacifico', cursive", 'Pacifico'],
+    ["'Dancing Script', cursive", 'Dancing Script'],
+    ["'Great Vibes', cursive", 'Great Vibes'],
+    ["'Sacramento', cursive", 'Sacramento'],
+    ["'Alex Brush', cursive", 'Alex Brush'],
+    ["'Satisfy', cursive", 'Satisfy'],
+    ["'Parisienne', cursive", 'Parisienne'],
+    ["'Playfair Display', serif", 'Playfair Display'],
+    ["'Inter', sans-serif", 'Inter'],
+    ["'Cormorant Garamond', serif", 'Cormorant Garamond'],
+    ["'Cinzel', serif", 'Cinzel'],
+    ["'Marck Script', cursive", 'Marck Script'],
+    ["'Tangerine', cursive", 'Tangerine'],
+    ["'Allura', cursive", 'Allura'],
+    ["'Cookie', cursive", 'Cookie'],
+    ["'Italianno', cursive", 'Italianno'],
+    ["'Petit Formal Script', cursive", 'Petit Formal Script'],
+    ["'Lobster', cursive", 'Lobster'],
+    ["'Josefin Sans', sans-serif", 'Josefin Sans'],
+    ["'Montserrat', sans-serif", 'Montserrat'],
+    ["'Poppins', sans-serif", 'Poppins'],
+    ["'Raleway', sans-serif", 'Raleway'],
+    ["'Merriweather', serif", 'Merriweather'],
+    ["'Abril Fatface', cursive", 'Abril Fatface'],
+    ["'Bebas Neue', cursive", 'Bebas Neue'],
+    ["'Caveat', cursive", 'Caveat'],
+    ["'Amatic SC', cursive", 'Amatic SC'],
+    ["'EB Garamond', serif", 'EB Garamond'],
+    ["'Quicksand', sans-serif", 'Quicksand'],
+    ["'Comfortaa', sans-serif", 'Comfortaa']
+  ];
+
+  function buildFontDropdown(btn, listEl, options, onPick){
+    options.forEach(([value, label]) => {
+      const item = document.createElement('div');
+      item.className = 'custom-dd-item';
+      item.textContent = label;
+      item.style.fontFamily = value;
+      item.dataset.value = value;
+      item.addEventListener('click', () => {
+        btn.textContent = label;
+        btn.style.fontFamily = value;
+        [...listEl.children].forEach(c => c.classList.toggle('active', c === item));
+        listEl.classList.remove('open');
+        onPick(value);
+      });
+      listEl.appendChild(item);
+    });
+    // Set initial button label/font from the first option (the default font).
+    btn.textContent = options[0][1];
+    btn.style.fontFamily = options[0][0];
+    listEl.children[0].classList.add('active');
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const wasOpen = listEl.classList.contains('open');
+      document.querySelectorAll('.custom-dd-list.open').forEach(l => l.classList.remove('open'));
+      if(!wasOpen) listEl.classList.add('open');
+    });
+  }
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.custom-dd-list.open').forEach(l => l.classList.remove('open'));
+  });
+
+  buildFontDropdown(fontDropdownBtn, document.getElementById('fontDropdownList'), FONT_OPTIONS, (value) => {
+    currentFont = value;
+    applyLabelInputFont();
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    renderComposite();
+    renderSetupPreview();
+  });
+  buildFontDropdown(document.getElementById('dateFontDropdownBtn'), document.getElementById('dateFontDropdownList'), FONT_OPTIONS, (value) => {
+    currentDateFont = value;
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    renderComposite();
+    renderSetupPreview();
+  });
+
+  // ---- Date subtitle (MM/DD/YY, shown below the event name) ----
+  function formatDateMMDDYY(value){
+    if(!value) return '';
+    const parts = value.split('-'); // value is YYYY-MM-DD from <input type="date">
+    if(parts.length !== 3) return '';
+    const [yyyy, mm, dd] = parts;
+    return mm + '/' + dd + '/' + yyyy.slice(2);
+  }
+  function currentDateLabel(){
+    if(!dateToggle.checked) return '';
+    return formatDateMMDDYY(dateInput.value);
+  }
+  dateToggle.addEventListener('change', () => {
+    const on = dateToggle.checked;
+    dateRow.style.display = on ? 'flex' : 'none';
+    dateFontWrap.style.display = on ? 'block' : 'none';
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    renderComposite();
+    renderSetupPreview();
+  });
+  dateInput.addEventListener('input', () => {
+    datePreviewText.textContent = formatDateMMDDYY(dateInput.value) || 'MM/DD/YY';
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    renderComposite();
+    renderSetupPreview();
+  });
+
+  // ---- Text style: color / outline / shadow ----
+  const colorSwatchRow = document.getElementById('colorSwatchRow');
+  const titleSizeSlider = document.getElementById('titleSizeSlider');
+  let titleSizeMultiplier = 1;
+  colorSwatchRow.addEventListener('click', (e) => {
+    const btn = e.target.closest('.color-swatch-btn');
+    if(!btn) return;
+    textColor = btn.dataset.color;
+    textColorInput.value = textColor;
+    [...colorSwatchRow.querySelectorAll('.color-swatch-btn')].forEach(b => b.classList.toggle('active', b === btn));
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    renderComposite();
+    renderSetupPreview();
+  });
+  textColorInput.addEventListener('input', () => {
+    textColor = textColorInput.value;
+    [...colorSwatchRow.querySelectorAll('.color-swatch-btn')].forEach(b => b.classList.remove('active'));
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    renderComposite();
+    renderSetupPreview();
+  });
+  titleSizeSlider.addEventListener('input', () => {
+    // 60–170% of the default size; the shrink-to-fit loop and a hard height
+    // clamp in drawLabelBand still guard against overflow at the max setting.
+    titleSizeMultiplier = titleSizeSlider.value / 100;
+    renderComposite();
+    renderSetupPreview();
+  });
+  outlineToggle.addEventListener('change', () => {
+    useOutline = outlineToggle.checked;
+    renderComposite();
+    renderSetupPreview();
+  });
+  shadowToggle.addEventListener('change', () => {
+    useShadow = shadowToggle.checked;
+    renderComposite();
+    renderSetupPreview();
+  });
+  const outlineColorSelect = document.getElementById('outlineColorSelect');
+  outlineColorSelect.addEventListener('change', () => {
+    outlineColor = outlineColorSelect.value;
+    renderComposite();
+    renderSetupPreview();
+  });
+  const titleBgToggle = document.getElementById('titleBgToggle');
+  const titleBgColorInput = document.getElementById('titleBgColorInput');
+  const titleBgColorWrap = document.getElementById('titleBgColorWrap');
+  titleBgToggle.addEventListener('change', () => {
+    titleBgEnabled = titleBgToggle.checked;
+    titleBgColorWrap.style.display = titleBgEnabled ? 'flex' : 'none';
+    renderComposite();
+    renderSetupPreview();
+  });
+  titleBgColorInput.addEventListener('input', () => {
+    titleBgColor = titleBgColorInput.value;
+    renderComposite();
+    renderSetupPreview();
+  });
+  const frameSwatchRow = document.getElementById('frameSwatchRow');
+  const frameSwatchName = document.getElementById('frameSwatchName');
+  const photoPlacementSelect = document.getElementById('photoPlacementSelect');
+  photoPlacementSelect.addEventListener('change', () => {
+    photoPlacement = photoPlacementSelect.value;
+    updateBandPositionVisibility();
+    renderComposite();
+    renderSetupPreview();
+  });
+  frameSwatchRow.addEventListener('click', (e) => {
+    const btn = e.target.closest('.frame-swatch');
+    if(!btn) return;
+    frameColorChoice = btn.dataset.color;
+    frameSwatchName.textContent = btn.dataset.name;
+    [...frameSwatchRow.querySelectorAll('.frame-swatch')].forEach(b => b.classList.toggle('active', b === btn));
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    renderComposite();
+    renderSetupPreview();
+  });
+  const cropFocusSelect = document.getElementById('cropFocusSelect');
+  // Strip crops a wide photo down to a short band, so only vertical focus
+  // makes sense; Grid crops a tall photo down to a narrow column, so only
+  // horizontal focus makes sense — only show the options that actually apply.
+  const CROP_OPTIONS_BY_LAYOUT = {
+    strip: [['top', 'Top'], ['center', 'Center'], ['bottom', 'Bottom']],
+    grid:  [['left', 'Left'], ['center', 'Center'], ['right', 'Right']]
+  };
+  function rebuildCropFocusOptions(){
+    const opts = CROP_OPTIONS_BY_LAYOUT[currentLayout] || CROP_OPTIONS_BY_LAYOUT.strip;
+    const stillValid = opts.some(([v]) => v === cropFocus);
+    cropFocusSelect.innerHTML = '';
+    opts.forEach(([value, label]) => {
+      const opt = document.createElement('option');
+      opt.value = value; opt.textContent = label;
+      if(value === (stillValid ? cropFocus : 'center')) opt.selected = true;
+      cropFocusSelect.appendChild(opt);
+    });
+    cropFocus = stillValid ? cropFocus : 'center';
+  }
+  cropFocusSelect.addEventListener('change', () => {
+    cropFocus = cropFocusSelect.value;
+    renderComposite();
+    renderSetupPreview();
+  });
+
+  // ---- Strip/Grid + custom photo: photo always goes above (strip) or on
+  // the left (grid) — no manual choice, keeps things simple and consistent. ----
+  function updateBandPositionVisibility(){
+    const show = (currentLayout === 'strip' || currentLayout === 'grid') && backdropPreset === 'custom' && !!backgroundImg;
+    bandPositionWrap.style.display = show ? 'block' : 'none';
+    rebuildCropFocusOptions();
+    const hintEl = document.getElementById('bandPositionHint');
+    if(hintEl){
+      if(photoPlacement === 'background'){
+        hintEl.textContent = 'Your photo fills the whole background, edge to edge, behind the shots.';
+      } else {
+        hintEl.textContent = currentLayout === 'grid'
+          ? 'Your photo sits on the left, full height. On the right: 1 shot up top, 3 shots in a row below, with the event name and date underneath — never under the photo.'
+          : 'Your photo sits above the shots.';
+      }
+    }
+  }
+
+  // ---- Google Drive upload, via a Google Apps Script relay ----
+  // Guests never sign into anything: the photo is POSTed to a small script
+  // that already runs under YOUR Google account (set up once, see the
+  // instructions Claude gave you), which drops the file straight into the
+  // Drive folder for this booking.
+  const DRIVE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIsebY2jRqYvPXWn-ytIvWCT-x6N91Ay8lvmnCSWj6IaWWohXCxry4r2VzUxJZP9P3IA/exec';
+
+  function driveScriptUrl(){
+    return DRIVE_SCRIPT_URL;
+  }
+
+  function rawFolderKey(){
+    return (driveFolderKeyInput.value || '').trim();
+  }
+
+  function hasFolderKey(){
+    return !!rawFolderKey();
+  }
+
+  function driveReady(){
+    // Drive is only "ready" once a booking folder name/link is actually
+    // typed — no silent fallback to a shared default folder.
+    return !!driveScriptUrl() && hasFolderKey();
+  }
+
+  function blobToBase64(blob){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function uploadToDrive(blob, filename){
+    // Sent as text/plain (not application/json) on purpose: it keeps this a
+    // CORS "simple request" so the browser skips a preflight OPTIONS call,
+    // which Apps Script Web Apps don't handle — this is what makes the
+    // request work cross-origin at all.
+    const base64Data = await blobToBase64(blob);
+    const res = await fetch(driveScriptUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        filename: filename,
+        mimeType: blob.type || 'image/png',
+        imageBase64: base64Data,
+        folderKey: (driveFolderKeyInput.value || '').trim()
+      })
+    });
+    if(!res.ok) throw new Error('Drive upload failed (' + res.status + ')');
+    const data = await res.json();
+    if(!data.ok) throw new Error(data.error || 'Drive upload failed');
+    // folderUrl is optional on the Apps Script side (older scripts may not
+    // return it yet) — everything still works, we just can't show the
+    // one persistent folder QR until it's added. See note in the script.
+    return { fileId: data.fileId, downloadUrl: data.downloadUrl, folderUrl: data.folderUrl || null };
+  }
+
+
+  const LAYOUT_HINTS = {
+    strip: 'Classic vertical strip — 4 square shots stacked.',
+    grid: '2x2 grid with your backdrop showing through.'
+  };
+
+  // contentH = area used for photos. Actual canvas height = contentH + label band.
+  // Strip: 600px wide, each photo is 600x600 square, 4 stacked = tall vertical strip
+  const STRIP_W = 600;
+  const STRIP_PHOTO = 500; // square photo size
+  const STRIP_GAP = 6;
+  const STRIP_MARGIN = 42;
+  const STRIP_SHOTS = 3; // classic strips show 3 photos, not 4
+  const STRIP_CONTENT_H = STRIP_MARGIN * 2 + STRIP_PHOTO * STRIP_SHOTS + STRIP_GAP * (STRIP_SHOTS - 1);
+
+  const GRID_SHOTS = 4;
+  const GRID_W = 1500;   // landscape, bigger canvas so the 2x2 grid shows larger
+  const GRID_H = 960;
+
+  const LAYOUTS = {
+    strip:   { w: STRIP_W,  contentH: STRIP_CONTENT_H, render: renderStrip },
+    grid:    { w: GRID_W,   contentH: GRID_H,           render: renderGrid }
+  };
+  function shotsNeeded(layoutKey){
+    return (layoutKey || currentLayout) === 'strip' ? STRIP_SHOTS : GRID_SHOTS;
+  }
+  const LABEL_BAND_RATIO = 0.16; // relative to canvas width
+
+  let state = 'idle'; // idle | capturing | result
+  let currentLayout = 'strip';
+  let backgroundImg = null;
+  let shotCanvases = new Array(shotsNeeded('strip')).fill(null);
+  let mainIndex = 0;
+  let streamActive = false;
+  let toastTimer = null;
+
+  // ---- Decorative clouds & stars (matches the dedication-template backdrop) ----
+  function drawStar(ctx, cx, cy, outerR, points, rotation, color, opacity){
+    const innerR = outerR * 0.45;
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.fillStyle = color;
+    ctx.translate(cx, cy);
+    ctx.rotate(rotation);
+    ctx.beginPath();
+    for(let i = 0; i < points * 2; i++){
+      const r = (i % 2 === 0) ? outerR : innerR;
+      const angle = (Math.PI / points) * i;
+      const x = r * Math.sin(angle);
+      const y = -r * Math.cos(angle);
+      if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawCloud(ctx, cx, cy, scale, color, opacity){
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(cx - 34*scale, cy + 4*scale, 17*scale, 0, Math.PI*2);
+    ctx.arc(cx - 12*scale, cy - 10*scale, 21*scale, 0, Math.PI*2);
+    ctx.arc(cx + 14*scale, cy - 8*scale, 19*scale, 0, Math.PI*2);
+    ctx.arc(cx + 36*scale, cy + 5*scale, 15*scale, 0, Math.PI*2);
+    ctx.arc(cx + 2*scale, cy + 10*scale, 23*scale, 0, Math.PI*2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Relative (0-1) positions so decorations scale to any canvas size/layout.
+  const STAR_SPOTS = [
+    {x:0.06, y:0.05, r:0.020, rot:0.2},  {x:0.15, y:0.11, r:0.013, rot:-0.4},
+    {x:0.90, y:0.06, r:0.017, rot:0.5},  {x:0.95, y:0.16, r:0.012, rot:-0.2},
+    {x:0.04, y:0.32, r:0.011, rot:0.3},  {x:0.08, y:0.55, r:0.015, rot:-0.5},
+    {x:0.92, y:0.40, r:0.013, rot:0.4},  {x:0.05, y:0.78, r:0.017, rot:0.1},
+    {x:0.93, y:0.75, r:0.014, rot:-0.3}, {x:0.88, y:0.92, r:0.018, rot:0.25},
+    {x:0.10, y:0.94, r:0.012, rot:-0.15},{x:0.5,  y:0.05, r:0.010, rot:0.3}
+  ];
+  const CLOUD_SPOTS = [
+    {x:0.10, y:0.16, scale:0.9}, {x:0.90, y:0.22, scale:1.05},
+    {x:0.06, y:0.62, scale:0.8}, {x:0.94, y:0.60, scale:0.95},
+    {x:0.14, y:0.90, scale:0.85},{x:0.86, y:0.10, scale:0.7}
+  ];
+
+  function drawDecorations(ctx, w, h){
+    const shortSide = Math.min(w, h);
+    CLOUD_SPOTS.forEach(c => drawCloud(ctx, c.x * w, c.y * h, c.scale * (shortSide/700), '#ffffff', 0.55));
+    STAR_SPOTS.forEach(s => drawStar(ctx, s.x * w, s.y * h, s.r * shortSide, 5, s.rot, '#f0c869', 0.85));
+  }
+
+  // ---- Backdrop presets (drawn procedurally, no external images needed) ----
+  function seededRand(seed){
+    let s = seed % 2147483647;
+    if(s <= 0) s += 2147483646;
+    return function(){
+      s = (s * 16807) % 2147483647;
+      return (s - 1) / 2147483646;
+    };
+  }
+
+  function drawGoldGlitterBackdrop(ctx, w, h){
+    const g = ctx.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0, '#8a6a24');
+    g.addColorStop(0.35, '#d9ae52');
+    g.addColorStop(0.6, '#f6e3a1');
+    g.addColorStop(0.8, '#caa24a');
+    g.addColorStop(1, '#7a5c1e');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    const rand = seededRand(42);
+    // Denser, more visible glitter — a fine speckle layer plus larger bright flecks.
+    const count = Math.round((w * h) / 900);
+    for(let i = 0; i < count; i++){
+      const x = rand() * w, y = rand() * h;
+      const r = rand() * 1.8 + 0.4;
+      ctx.globalAlpha = rand() * 0.65 + 0.35;
+      ctx.fillStyle = '#fff9dd';
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const bigCount = Math.round((w * h) / 9000);
+    for(let i = 0; i < bigCount; i++){
+      const x = rand() * w, y = rand() * h;
+      const r = rand() * 2.6 + 1.6;
+      ctx.globalAlpha = rand() * 0.5 + 0.5;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      // small sparkle cross for a few of the larger flecks
+      if(rand() > 0.5){
+        ctx.strokeStyle = '#fffdf2';
+        ctx.lineWidth = Math.max(0.6, r * 0.25);
+        ctx.beginPath();
+        ctx.moveTo(x - r*2.2, y); ctx.lineTo(x + r*2.2, y);
+        ctx.moveTo(x, y - r*2.2); ctx.lineTo(x, y + r*2.2);
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawPastelSkyBackdrop(ctx, w, h){
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, '#bfe0f7');
+    g.addColorStop(0.55, '#e6f4ff');
+    g.addColorStop(1, '#fdf6ee');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    drawDecorations(ctx, w, h);
+  }
+
+  function drawBlackGoldStarsBackdrop(ctx, w, h){
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, '#0b0d1a');
+    g.addColorStop(1, '#1c2038');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    const rand = seededRand(7);
+    for(let i = 0; i < 36; i++){
+      const x = rand() * w, y = rand() * h;
+      const r = rand() * (Math.min(w,h) * 0.012) + Math.min(w,h) * 0.003;
+      drawStar(ctx, x, y, r, 4, rand() * Math.PI, '#f0c869', rand() * 0.5 + 0.45);
+    }
+    for(let i = 0; i < 80; i++){
+      const x = rand() * w, y = rand() * h;
+      ctx.globalAlpha = rand() * 0.6 + 0.2;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x, y, rand() * 1.1 + 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawCreamAestheticBackdrop(ctx, w, h){
+    const g = ctx.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0, '#faf3e6');
+    g.addColorStop(1, '#f0e2c6');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    const rand = seededRand(19);
+    // Fine speckle layer, like the visible grain in Gold Glitter / Pastel Sky.
+    const speckleCount = Math.round((w * h) / 1400);
+    for(let i = 0; i < speckleCount; i++){
+      const x = rand() * w, y = rand() * h;
+      ctx.globalAlpha = rand() * 0.35 + 0.15;
+      ctx.fillStyle = '#c9a86a';
+      ctx.beginPath();
+      ctx.arc(x, y, rand() * 1.1 + 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Bigger soft dot clusters for visible texture, not just a hint of one.
+    for(let i = 0; i < 26; i++){
+      const x = rand() * w, y = rand() * h;
+      ctx.globalAlpha = rand() * 0.25 + 0.3;
+      ctx.fillStyle = '#c9a86a';
+      ctx.beginPath();
+      ctx.arc(x, y, rand() * 3.4 + 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // A few tiny gold accent stars, echoing Pastel Sky's decorations.
+    for(let i = 0; i < 10; i++){
+      const x = rand() * w, y = rand() * h;
+      const r = rand() * (Math.min(w,h) * 0.01) + Math.min(w,h) * 0.004;
+      drawStar(ctx, x, y, r, 5, rand() * Math.PI, '#c9a86a', rand() * 0.35 + 0.4);
+    }
+    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = '#c9a86a';
+    ctx.lineWidth = Math.max(1, w * 0.0015);
+    ctx.beginPath();
+    ctx.arc(w * 0.5, h * 0.08, w * 0.14, Math.PI * 0.15, Math.PI * 0.85);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(w * 0.5, h * 0.97, w * 0.14, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  const BACKDROP_PRESETS = {
+    gold: drawGoldGlitterBackdrop,
+    sky: drawPastelSkyBackdrop,
+    stars: drawBlackGoldStarsBackdrop,
+    cream: drawCreamAestheticBackdrop
+  };
+
+  // ---- Polaroid frame color: switches to black on light backgrounds so it
+  // still reads against them, white on dark backgrounds — Plain, and each
+  // custom-photo fill color, all pick sensible frame contrast automatically. ----
+  function frameColorFor(){
+    if(backdropPreset === 'none') return '#000000'; // flat white fallback bg
+    if(backdropPreset === 'custom' && backgroundImg){
+      return frameColorChoice; // user-picked: white / black / dark gray / cream / dark gold
+    }
+    return '#ffffff';
+  }
+
+  function drawBackdrop(ctx, w, h){
+    if(backdropPreset === 'custom' && backgroundImg && photoPlacement === 'background'){
+      drawImageCover(ctx, backgroundImg, 0, 0, w, h, cropFocus);
+      return;
+    }
+    if(backdropPreset !== 'none' && BACKDROP_PRESETS[backdropPreset]){
+      BACKDROP_PRESETS[backdropPreset](ctx, w, h);
+      return;
+    }
+    // Plain: flat white, no gradient/decorations — polaroid frames switch to
+    // black borders on this flat white so they still stand out.
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  // ---- QR / temporary hosting ----
+  async function uploadToLitterbox(blob, filename, time){
+    const form = new FormData();
+    form.append('reqtype', 'fileupload');
+    form.append('time', time || '1h');
+    form.append('fileToUpload', blob, filename);
+    const res = await fetch('https://litterbox.catbox.moe/resources/internals/api.php', {
+      method: 'POST',
+      body: form
+    });
+    if(!res.ok) throw new Error('Upload failed (' + res.status + ')');
+    const url = (await res.text()).trim();
+    if(!url.startsWith('http')) throw new Error(url || 'Upload failed');
+    return url;
+  }
+
+  function qrImageUrl(targetUrl){
+    return 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(targetUrl);
+  }
+
+  function addQrResult(label, fileUrl){
+    const wrap = document.createElement('div');
+    wrap.className = 'qr-result';
+
+    const img = document.createElement('img');
+    img.className = 'qr-img';
+    img.src = qrImageUrl(fileUrl);
+    img.alt = label + ' QR code';
+
+    const cap = document.createElement('p');
+    cap.className = 'qr-caption';
+    cap.textContent = label;
+
+    const link = document.createElement('a');
+    link.href = fileUrl;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.className = 'qr-link';
+    link.textContent = 'Open link';
+
+    wrap.appendChild(img);
+    wrap.appendChild(cap);
+    wrap.appendChild(link);
+    qrResults.appendChild(wrap);
+  }
+
+  const LAYOUT_DISPLAY_NAMES = {
+    strip: 'Strip',
+    grid: 'Grid'
+  };
+
+  // ---- Per-booking-folder caching ----
+  // The Drive folder for a booking never changes mid-event, so we only need
+  // to look up/show its QR once. It's cached in localStorage per folder key
+  // so it survives page reloads and doesn't need to be regenerated.
+  function currentFolderKey(){
+    return rawFolderKey() || 'default';
+  }
+  function folderUrlStorageKey(){ return 'photoBoothDrive:' + currentFolderKey() + ':folderUrl'; }
+  function sessionNumStorageKey(){ return 'photoBoothDrive:' + currentFolderKey() + ':sessionNum'; }
+
+  function getCachedFolderUrl(){
+    return localStorage.getItem(folderUrlStorageKey());
+  }
+  function rememberFolderUrl(url){
+    if(!url) return;
+    localStorage.setItem(folderUrlStorageKey(), url);
+  }
+  function nextSessionNumber(){
+    const n = parseInt(localStorage.getItem(sessionNumStorageKey()) || '0', 10) + 1;
+    localStorage.setItem(sessionNumStorageKey(), String(n));
+    return n;
+  }
+  // Called after the folder resolves, so a precreated/reused folder that
+  // already has files in it (from another device, or a previous event)
+  // doesn't collide with them — we trust the server's scan of the actual
+  // folder contents over whatever this browser happens to remember.
+  function syncSessionNumberFromServer(serverNext){
+    if(!serverNext) return;
+    const localNext = parseInt(localStorage.getItem(sessionNumStorageKey()) || '0', 10) + 1;
+    if(serverNext > localNext){
+      localStorage.setItem(sessionNumStorageKey(), String(serverNext - 1));
+    }
+  }
+
+  function showDriveFolderPreview(url, name){
+    driveFolderStatus.style.display = 'block';
+    driveFolderStatus.textContent = '✓ Folder ready' + (name ? (': ' + name) : '') + ' — this QR will keep showing after every photo session.';
+    driveFolderQrImg.src = qrImageUrl(url);
+    driveFolderQrPreview.style.display = 'block';
+  }
+
+  let resolveTimer = null;
+
+  // Resolves (or creates) the Drive folder for whatever's currently typed,
+  // as soon as it's typed — no need to wait for a photo session.
+  async function resolveDriveFolder(){
+    const key = rawFolderKey();
+    if(!key){
+      driveFolderStatus.style.display = 'none';
+      driveFolderQrPreview.style.display = 'none';
+      return;
+    }
+    const cached = getCachedFolderUrl();
+    if(cached){
+      showDriveFolderPreview(cached);
+      return;
+    }
+    driveFolderStatus.style.display = 'block';
+    driveFolderStatus.textContent = 'Setting up this folder\u2026';
+    driveFolderQrPreview.style.display = 'none';
+    try{
+      const res = await fetch(driveScriptUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ folderKey: key, resolveOnly: true })
+      });
+      const data = await res.json();
+      if(!data.ok) throw new Error(data.error || 'Could not set up that folder');
+      rememberFolderUrl(data.folderUrl);
+      syncSessionNumberFromServer(data.nextSessionNumber);
+      showDriveFolderPreview(data.folderUrl, data.folderName);
+      if(shotCanvases.every(Boolean)) renderFolderQR(data.folderUrl);
+    }catch(err){
+      driveFolderStatus.textContent = "Couldn't set up that folder — check the name/link and your connection, then try again.";
+      driveFolderQrPreview.style.display = 'none';
+    }
+  }
+
+  let sessionNumber = null; // set once per completed session, reused across its retakes
+  let lastRenderedFolderUrl = null;
+
+  function renderFolderQR(url){
+    if(lastRenderedFolderUrl === url) return; // same folder as last time — nothing to redraw
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = url;
+    addQrResult('Shared Google Drive Folder', url);
+  }
+
+  function renderSingleFileQR(url, label){
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    addQrResult(label || 'Download', url);
+  }
+
+  async function uploadLayoutForQR(layoutKey){
+    const tempCanvas = document.createElement('canvas');
+    renderCompositeToCanvas(layoutKey, tempCanvas);
+    const blob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
+    const label = LAYOUT_DISPLAY_NAMES[layoutKey] + ' Layout';
+    // e.g. "1_strip.png" / "2_grid.png" so files sort cleanly in the folder —
+    // only the chosen format is ever uploaded, so the folder only ever
+    // fills up with that one kind of file.
+    const filename = (sessionNumber || 1) + '_' + layoutKey + '.png';
+
+    if(driveReady()){
+      const drive = await uploadToDrive(blob, filename);
+      if(drive.folderUrl) rememberFolderUrl(drive.folderUrl);
+      return { label: label + ' (Google Drive)', url: drive.downloadUrl };
+    } else {
+      const url = await uploadToLitterbox(blob, filename, '1h');
+      return { label: label, url: url };
+    }
+  }
+
+  let qrGeneration = 0;
+
+  async function showQRForCurrentPhoto(){
+    if(!shotCanvases.every(Boolean)) return;
+    const myGeneration = ++qrGeneration;
+
+    // If we already know this booking's folder link, show its QR right away —
+    // guests don't need to wait on the upload to scan it, and it's the same
+    // code every session so there's nothing new to generate.
+    const cachedFolderUrl = driveReady() ? getCachedFolderUrl() : null;
+    if(cachedFolderUrl){
+      renderFolderQR(cachedFolderUrl);
+    } else {
+      qrResults.innerHTML = '<p class="panel-hint" id="qrLoading">Preparing QR code\u2026</p>';
+    }
+
+    // Only the format chosen in Setup is rendered and uploaded — the Drive
+    // folder ends up containing just that one layout's files.
+    let result = null;
+    let lastError = null;
+    try {
+      result = await uploadLayoutForQR(currentLayout);
+    } catch(err){
+      lastError = err;
+      console.error('Photo upload failed:', err);
+    }
+
+    if(myGeneration !== qrGeneration) return;
+
+    if(!result){
+      if(!getCachedFolderUrl()) qrResults.innerHTML = '';
+      const detail = lastError && lastError.message ? (': ' + lastError.message) : '';
+      showToast('Couldn\'t upload the photo' + detail, 5000);
+      return;
+    }
+
+    if(driveReady()){
+      const folderUrl = getCachedFolderUrl();
+      if(folderUrl){
+        renderFolderQR(folderUrl);
+      } else {
+        qrResults.innerHTML = '<p class="panel-hint">Saved to Google Drive, but no shareable folder link was returned — add folderUrl to your Apps Script response to enable the folder QR.</p>';
+      }
+      showToast('Saved to Google Drive!');
+    } else {
+      renderSingleFileQR(result.url, result.label);
+    }
+  }
+
+  function saveToDevice(){
+    const link = document.createElement('a');
+    link.download = 'photo-booth-' + currentLayout + '-' + Date.now() + '.png';
+    link.href = previewCanvas.toDataURL('image/png');
+    link.click();
+    showToast(driveReady() ? 'Saved to your device (already backed up to Drive).' : 'Saved to your device.');
+  }
+
+  function showToast(msg, duration){
+    toast.textContent = msg;
+    toast.classList.add('toast-visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=> toast.classList.remove('toast-visible'), duration || 3200);
+  }
+
+  function wait(ms){ return new Promise(res => setTimeout(res, ms)); }
+
+  const cameraSelect = document.getElementById('cameraSelect');
+  const cameraSection = document.getElementById('cameraSection');
+  let currentDeviceId = null;
+  let currentStream = null;
+
+  async function enumerateCameras(){
+    try{
+      // Need permission first to get labels
+      const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      tempStream.getTracks().forEach(t => t.stop());
+    }catch(e){ /* permission denied — labels won't show */ }
+
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+
+    cameraSelect.innerHTML = '';
+    videoDevices.forEach((d, i) => {
+      const opt = document.createElement('option');
+      opt.value = d.deviceId;
+      opt.textContent = d.label || 'Camera ' + (i + 1);
+      cameraSelect.appendChild(opt);
+    });
+
+    if(videoDevices.length <= 1){
+      cameraSection.style.display = 'none';
+    } else {
+      cameraSection.style.display = '';
+    }
+
+    // Default: prefer front-facing (user) camera
+    const frontCam = videoDevices.find(d => d.label.toLowerCase().includes('front') || d.label.toLowerCase().includes('facetime'));
+    if(frontCam) cameraSelect.value = frontCam.deviceId;
+
+    return videoDevices;
+  }
+
+  async function initCamera(deviceId){
+    // Stop any existing stream
+    if(currentStream){
+      currentStream.getTracks().forEach(t => t.stop());
+      currentStream = null;
+    }
+    try{
+      const constraints = {
+        video: deviceId
+          ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 1280 } }
+          : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 1280 } },
+        audio: false
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      currentStream = stream;
+      video.srcObject = stream;
+      await video.play();
+      streamActive = true;
+      currentDeviceId = deviceId || null;
+      // Mirror the live preview for a natural selfie feel; captureFrame()
+      // un-mirrors it again so any text on props reads correctly in the
+      // final photo.
+      video.style.transform = isFrontCamera() ? 'scaleX(-1)' : 'scaleX(1)';
+      cameraError.style.display = 'none';
+      recDot.style.display = 'flex';
+      return true;
+    }catch(err){
+      streamActive = false;
+      cameraErrorText.textContent = 'Camera access was blocked or unavailable. If you are viewing this inside an embedded preview, download the file and open it directly in your browser, then allow camera access when prompted.';
+      cameraError.style.display = 'flex';
+      recDot.style.display = 'none';
+      return false;
+    }
+  }
+
+  cameraSelect.addEventListener('change', () => {
+    initCamera(cameraSelect.value);
+  });
+
+  retryCameraBtn.addEventListener('click', () => initCamera(cameraSelect.value || null));
+
+  const actionsSection = document.getElementById('actionsSection');
+  const appShell = document.querySelector('.app-shell');
+
+  function updateUI(){
+    const hasAllShots = shotCanvases.every(Boolean);
+    const isCapturing = state === 'capturing';
+
+    // Center camera during capture
+    appShell.classList.toggle('capturing', isCapturing);
+
+    video.style.display = state === 'result' ? 'none' : 'block';
+    previewCanvas.style.display = state === 'result' ? 'block' : 'none';
+    countdownOverlay.style.display = isCapturing ? 'flex' : 'none';
+
+    startBtn.parentElement.style.display = isCapturing ? 'none' : 'flex';
+    startBtn.textContent = '';
+    const ring = document.createElement('span'); ring.className = 'ring';
+    startBtn.appendChild(ring);
+    startBtn.appendChild(document.createTextNode(state === 'result' ? ' New Session' : ' Start Session'));
+    startBtn.disabled = isCapturing;
+
+    // Hide all panel sections during capture, show after
+    // Camera section: only show if multiple cameras available
+    if(!isCapturing){
+      cameraSection.classList.toggle('hidden', cameraSelect.options.length <= 1);
+    } else {
+      cameraSection.classList.add('hidden');
+    }
+    shotsSection.classList.toggle('hidden', !hasAllShots || isCapturing);
+    actionsSection.classList.toggle('hidden', isCapturing);
+    retakeAllBtn.classList.add('hidden');
+    shareBtn.classList.toggle('hidden', !hasAllShots);
+
+    const showQr = hasAllShots && !isCapturing;
+    qrSection.classList.toggle('hidden', !showQr);
+    appShell.classList.toggle('has-qr', showQr);
+
+    thumbHintUpdate();
+  }
+
+  function thumbHintUpdate(){
+    const hint = document.getElementById('thumbHint');
+    hint.textContent = 'Use the retake icon on any shot to reshoot just that one.';
+  }
+
+  function updateFilmTrack(){
+    // Rebuild frames to match the current format's shot count (3 for
+    // Strip, 4 for Grid) rather than assuming a fixed 4.
+    if(filmTrack.children.length !== shotCanvases.length){
+      filmTrack.innerHTML = '';
+      for(let i = 0; i < shotCanvases.length; i++){
+        const frame = document.createElement('div');
+        frame.className = 'film-frame';
+        frame.textContent = String(i + 1);
+        filmTrack.appendChild(frame);
+      }
+    }
+    const frames = filmTrack.querySelectorAll('.film-frame');
+    frames.forEach((frame, i) => {
+      const shot = shotCanvases[i];
+      frame.classList.toggle('filled', !!shot);
+      frame.innerHTML = shot ? '' : String(i+1);
+      if (shot){
+        let img = frame.querySelector('img');
+        if(!img){ img = document.createElement('img'); frame.appendChild(img); }
+        img.src = shot.toDataURL('image/png');
+      }
+    });
+  }
+
+  function renderThumbnails(){
+    thumbList.innerHTML = '';
+    shotCanvases.forEach((c, i) => {
+      if(!c) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'thumb' + (currentLayout === 'single' && mainIndex === i ? ' thumb-selected' : '');
+      const img = document.createElement('img');
+      img.src = c.toDataURL('image/png');
+      wrap.appendChild(img);
+
+      const retake = document.createElement('button');
+      retake.className = 'thumb-retake';
+      retake.title = 'Retake this shot';
+      retake.textContent = '↺';
+      retake.addEventListener('click', (ev) => { ev.stopPropagation(); retakeOne(i); });
+      wrap.appendChild(retake);
+
+      wrap.addEventListener('click', () => {
+        mainIndex = i;
+        renderThumbnails();
+        if(currentLayout === 'single') renderComposite();
+      });
+
+      thumbList.appendChild(wrap);
+    });
+  }
+
+  function isFrontCamera(){
+    const label = (cameraSelect.options[cameraSelect.selectedIndex]?.text || '').toLowerCase();
+    // If label contains back/rear, don't mirror; otherwise default to mirroring
+    return !label.includes('back') && !label.includes('rear') && !label.includes('environment');
+  }
+
+  // Matches the .stage-frame CSS `aspect-ratio:4/5` so the captured photo
+  // only ever contains the region actually visible during the live session
+  // (same "cover" crop math the video element uses on screen).
+  const STAGE_ASPECT = 4 / 5;
+
+  function captureFrame(index){
+    const vw = video.videoWidth || 720;
+    const vh = video.videoHeight || 900;
+    const videoRatio = vw / vh;
+
+    let sx, sy, sw, sh;
+    if(videoRatio > STAGE_ASPECT){
+      sh = vh; sw = sh * STAGE_ASPECT; sx = (vw - sw) / 2; sy = 0;
+    }else{
+      sw = vw; sh = sw / STAGE_ASPECT; sx = 0; sy = (vh - sh) / 2;
+    }
+
+    const c = document.createElement('canvas');
+    c.width = sw;
+    c.height = sh;
+    const ctx = c.getContext('2d');
+    // The CSS mirror on <video> is purely a display effect — it doesn't
+    // touch the underlying frame data, so drawImage() here already reads
+    // the true, non-mirrored feed. No extra flip needed: this is what
+    // makes any text on props come out reading correctly.
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    shotCanvases[index] = c;
+    updateFilmTrack();
+  }
+
+  async function countdownThenCapture(index){
+    countdownNum.classList.remove('word');
+    for(let n = 5; n >= 1; n--){
+      countdownNum.textContent = n;
+      countdownNum.classList.remove('pulse');
+      void countdownNum.offsetWidth;
+      countdownNum.classList.add('pulse');
+      await wait(1000);
+    }
+    countdownNum.textContent = 'Pose';
+    countdownNum.classList.add('word');
+    countdownNum.classList.remove('pulse');
+    void countdownNum.offsetWidth;
+    countdownNum.classList.add('pulse');
+    await wait(700);
+    flashOverlay.classList.add('flash-active');
+    captureFrame(index);
+    await wait(180);
+    flashOverlay.classList.remove('flash-active');
+  }
+
+  function waitForReadyTap(){
+    return new Promise((resolve) => {
+      readyOverlay.classList.add('ready-active');
+      const onClick = () => {
+        readyOverlay.classList.remove('ready-active');
+        readyStartBtn.removeEventListener('click', onClick);
+        resolve();
+      };
+      readyStartBtn.addEventListener('click', onClick);
+    });
+  }
+
+  async function startSession(){
+    if(!streamActive){
+      const ok = await initCamera(cameraSelect.value || null);
+      if(!ok) return;
+    }
+    // Show live feed again if we're coming from result state
+    video.style.display = 'block';
+    previewCanvas.style.display = 'none';
+    state = 'capturing';
+    shotCanvases = new Array(shotsNeeded()).fill(null);
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    updateFilmTrack();
+    updateUI();
+
+    await waitForReadyTap();
+
+    for(let i = 0; i < shotCanvases.length; i++){
+      await countdownThenCapture(i);
+    }
+
+    state = 'result';
+    sessionNumber = nextSessionNumber();
+    renderThumbnails();
+    renderComposite();
+    updateUI();
+    showQRForCurrentPhoto();
+    if(autoSaveDeviceToggle.checked) saveToDevice();
+  }
+
+  async function retakeOne(index){
+    if(!streamActive){
+      const ok = await initCamera(cameraSelect.value || null);
+      if(!ok) return;
+    }
+    const prevState = state;
+    state = 'capturing';
+    updateUI();
+    await countdownThenCapture(index);
+    state = prevState;
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    renderThumbnails();
+    renderComposite();
+    updateUI();
+    showQRForCurrentPhoto();
+  }
+
+  startBtn.addEventListener('click', startSession);
+  retakeAllBtn.addEventListener('click', startSession);
+
+  // ---- Backdrop presets ----
+  function setActivePresetBtn(){
+    [...presetGrid.children].forEach(b => b.classList.toggle('active', b.dataset.preset === backdropPreset));
+  }
+  presetGrid.addEventListener('click', (e) => {
+    const btn = e.target.closest('.preset-btn');
+    if(!btn) return;
+    const preset = btn.dataset.preset;
+    if(preset === 'custom' && !backgroundImg){
+      bgInput.click();
+      return;
+    }
+    backdropPreset = preset;
+    setActivePresetBtn();
+    updateBandPositionVisibility();
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    renderComposite();
+    renderSetupPreview();
+  });
+
+  // ---- Dominant color of an uploaded photo (hue + saturation). Instead of a
+  // plain average (which turns muddy/gray on busy photos), pixels vote by how
+  // vivid they are, so the photo's real "main color" wins. ----
+  function rgbToHsl(r, g, b){
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    const d = max - min;
+    let h = 0, s = 0;
+    if(d){
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      if(max === r) h = (g - b) / d + (g < b ? 6 : 0);
+      else if(max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60;
+    }
+    return [h, s, l];
+  }
+  function computeDominantColor(img){
+    const fallback = { h: 205, s: 0.4 };
+    try{
+      const size = 48;
+      const c = document.createElement('canvas');
+      c.width = size; c.height = size;
+      const cctx = c.getContext('2d');
+      cctx.drawImage(img, 0, 0, size, size);
+      const data = cctx.getImageData(0, 0, size, size).data;
+      const BINS = 24;
+      const bins = Array.from({ length: BINS }, () => ({ w: 0, x: 0, y: 0, s: 0 }));
+      for(let i = 0; i < data.length; i += 4){
+        if(data[i + 3] < 10) continue;
+        const [h, s, l] = rgbToHsl(data[i], data[i + 1], data[i + 2]);
+        const wgt = s * (1 - Math.abs(2 * l - 1)); // vivid, mid-tone pixels count most
+        if(wgt < 0.03) continue;
+        const b = bins[Math.floor(h / (360 / BINS)) % BINS];
+        const rad = h * Math.PI / 180;
+        b.w += wgt; b.x += Math.cos(rad) * wgt; b.y += Math.sin(rad) * wgt; b.s += s * wgt;
+      }
+      let best = -1, bestScore = 0;
+      for(let i = 0; i < BINS; i++){
+        const score = bins[i].w + 0.5 * (bins[(i + 1) % BINS].w + bins[(i + BINS - 1) % BINS].w);
+        if(score > bestScore){ bestScore = score; best = i; }
+      }
+      if(best < 0) return { h: 0, s: 0 }; // basically a black/white/gray photo -> neutral backdrop
+      const b = bins[best];
+      let h = Math.atan2(b.y, b.x) * 180 / Math.PI;
+      if(h < 0) h += 360;
+      return { h, s: b.s / b.w };
+    }catch(e){
+      return fallback; // e.g. tainted canvas from a cross-origin image
+    }
+  }
+
+  // ---- Background upload (used for the Custom preset) ----
+  bgInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const img = new Image();
+    img.onload = () => {
+      backgroundImg = img;
+      const dom = computeDominantColor(img);
+      photoHue = dom.h; photoSat = dom.s;
+      backdropPreset = 'custom';
+      bgThumb.src = img.src;
+      bgThumb.style.display = 'block';
+      removeBgBtn.style.display = 'inline';
+      setActivePresetBtn();
+      updateBandPositionVisibility();
+      qrResults.innerHTML = '';
+      lastRenderedFolderUrl = null;
+      renderComposite();
+      renderSetupPreview();
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+  removeBgBtn.addEventListener('click', () => {
+    backgroundImg = null;
+    backdropPreset = 'none';
+    bgThumb.style.display = 'none';
+    removeBgBtn.style.display = 'none';
+    bgInput.value = '';
+    setActivePresetBtn();
+    updateBandPositionVisibility();
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    renderComposite();
+    renderSetupPreview();
+  });
+
+  // ---- Booking folder switch ----
+  // Different folder key = different folder, so the cached QR no longer
+  // applies; clear it and re-check the cache for whichever folder is now set.
+  driveFolderKeyInput.addEventListener('input', () => {
+    if(rawFolderKey()) clearDriveFolderError();
+    lastRenderedFolderUrl = null;
+    if(shotCanvases.every(Boolean)){
+      const cached = driveReady() ? getCachedFolderUrl() : null;
+      if(cached) renderFolderQR(cached);
+      else qrResults.innerHTML = '';
+    }
+    clearTimeout(resolveTimer);
+    resolveTimer = setTimeout(resolveDriveFolder, 700);
+  });
+  driveFolderKeyInput.addEventListener('blur', () => {
+    clearTimeout(resolveTimer);
+    resolveDriveFolder();
+  });
+
+  // ---- Event label ----
+  labelInput.addEventListener('input', () => {
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    renderComposite();
+    renderSetupPreview();
+  });
+
+  function applyLabelInputFont(){
+    labelInput.style.fontFamily = currentFont;
+    labelInput.style.fontWeight = BOLD_FONTS.has(currentFont) ? '700' : '400';
+  }
+
+  // ---- Layout picker ----
+  layoutGrid.addEventListener('click', (e) => {
+    const btn = e.target.closest('.layout-btn');
+    if(!btn) return;
+    currentLayout = btn.dataset.layout;
+    [...layoutGrid.children].forEach(b => b.classList.toggle('active', b === btn));
+    layoutHint.textContent = LAYOUT_HINTS[currentLayout];
+    updateBandPositionVisibility();
+    if(readySub) readySub.textContent = shotsNeeded() + ' shots · 5,4,3,2,1,Pose';
+    renderThumbnails();
+    renderComposite();
+    renderSetupPreview();
+    thumbHintUpdate();
+  });
+
+  // ---- Canvas compositing ----
+  function drawImageCover(ctx, img, x, y, w, h, focus){
+    const iw = img.width, ih = img.height;
+    const imgRatio = iw / ih;
+    const boxRatio = w / h;
+    let sx, sy, sw, sh;
+    if(imgRatio > boxRatio){
+      sh = ih; sw = sh * boxRatio;
+      // Horizontal crop: which side of the source photo we keep when it's
+      // wider than the target box.
+      if(focus === 'left') sx = 0;
+      else if(focus === 'right') sx = iw - sw;
+      else sx = (iw - sw) / 2;
+      sy = 0;
+    }else{
+      sw = iw; sh = sw / boxRatio;
+      // Vertical crop.
+      if(focus === 'top') sy = 0;
+      else if(focus === 'bottom') sy = ih - sh;
+      else sy = (ih - sh) / 2;
+      sx = 0;
+    }
+    ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+  }
+
+  function drawPolaroid(ctx, img, cx, cy, w, h, rotDeg){
+    if(!img) return;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rotDeg * Math.PI / 180);
+    ctx.shadowColor = 'rgba(79,140,175,0.35)';
+    ctx.shadowBlur = 22;
+    ctx.shadowOffsetY = 10;
+    const borderSide = h * 0.06;
+    const borderTop = h * 0.06;
+    const borderBottom = h * 0.14;
+    ctx.fillStyle = currentFrameColor;
+    ctx.fillRect(-w/2 - borderSide, -h/2 - borderTop, w + borderSide*2, h + borderTop + borderBottom);
+    ctx.shadowColor = 'transparent';
+    drawImageCover(ctx, img, -w/2, -h/2, w, h);
+    ctx.restore();
+  }
+
+  function renderStrip(ctx, shots, W, H){
+    // Vertical strip: 3 square photos stacked with equal margins/gaps
+    const photoSize = STRIP_PHOTO;
+    const margin = STRIP_MARGIN;
+    const gap = STRIP_GAP;
+    const cx = W / 2;
+    for(let i = 0; i < STRIP_SHOTS; i++){
+      const cy = margin + photoSize / 2 + i * (photoSize + gap);
+      drawPolaroid(ctx, shots[i], cx, cy, photoSize * 0.9, photoSize * 0.9, 0);
+    }
+  }
+
+  function renderGrid(ctx, shots, W, H){
+    // Landscape 2x2 grid: separate X/Y margins so the wider canvas gives
+    // each photo more room instead of just adding empty side padding.
+    const marginX = W * 0.05;
+    const marginY = H * 0.07;
+    const gapX = W * 0.035;
+    const gapY = H * 0.05;
+    const cellW = (W - marginX * 2 - gapX) / 2;
+    const cellH = (H - marginY * 2 - gapY) / 2;
+    const positions = [
+      [marginX + cellW / 2,        marginY + cellH / 2],
+      [marginX + cellW * 1.5 + gapX, marginY + cellH / 2],
+      [marginX + cellW / 2,        marginY + cellH * 1.5 + gapY],
+      [marginX + cellW * 1.5 + gapX, marginY + cellH * 1.5 + gapY]
+    ];
+    positions.forEach((p, i) => drawPolaroid(ctx, shots[i], p[0], p[1], cellW * 0.88, cellH * 0.88, 0));
+  }
+
+  // Grid + a custom photo beside it: 1 shot sits up top next to the photo,
+  // the other 3 sit in a row underneath — like a classic templated layout,
+  // instead of a plain 2x2 squeezed into the leftover width.
+  function renderGridSidePhoto(ctx, shots, W, H){
+    const marginX = W * 0.08;
+    const marginY = H * 0.06;
+    const gapY = H * 0.06;
+    const gapX = W * 0.045;
+    const topH = H * 0.52;
+    const bottomH = H - topH - marginY * 2 - gapY;
+    const topW = W - marginX * 2;
+
+    // Top: one shot, full available width.
+    drawPolaroid(ctx, shots[0], marginX + topW / 2, marginY + topH / 2, topW * 0.9, topH * 0.88, 0);
+
+    // Bottom: the remaining 3 shots, side by side.
+    const cellW = (topW - gapX * 2) / 3;
+    const cy = marginY + topH + gapY + bottomH / 2;
+    for(let i = 0; i < 3; i++){
+      const cx = marginX + cellW * (i + 0.5) + gapX * i;
+      drawPolaroid(ctx, shots[i + 1], cx, cy, cellW * 0.88, bottomH * 0.88, 0);
+    }
+  }
+
+  function hexToRgbTriplet(hex){
+    const num = parseInt(hex.replace('#',''), 16);
+    return ((num >> 16) & 255) + ',' + ((num >> 8) & 255) + ',' + (num & 255);
+  }
+
+  const BOLD_FONTS = new Set(["'Times New Roman', serif"]);
+  function fontString(family, size){
+    return (BOLD_FONTS.has(family) ? 'bold ' : '') + size + 'px ' + family;
+  }
+
+  function drawLabelBand(ctx, W, contentH, bandH, text, xOffset){
+    xOffset = xOffset || 0;
+    const trimmed = (text || '').trim();
+    const dateText = currentDateLabel();
+    if(!trimmed && !dateText) return; // no band at all if nothing to show
+
+    if(titleBgEnabled){
+      const rgb = hexToRgbTriplet(titleBgColor);
+      const grad = ctx.createLinearGradient(0, contentH, 0, contentH + bandH);
+      grad.addColorStop(0, 'rgba(' + rgb + ',0)');
+      grad.addColorStop(0.4, 'rgba(' + rgb + ',0.6)');
+      grad.addColorStop(1, 'rgba(' + rgb + ',0.88)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(xOffset, contentH, W, bandH);
+    }
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const tx = xOffset + W / 2;
+    const maxTextWidth = W * 0.92;
+    // Title sits higher when a date subtitle follows it; centered alone otherwise.
+    const titleY = dateText ? contentH + bandH * 0.42 : contentH + bandH * 0.54;
+    // No backdrop at all (plain gradient, nothing uploaded/chosen) leaves more
+    // visual breathing room, so let the event name run noticeably bigger.
+    const noBackdrop = backdropPreset === 'none';
+    const titleScale = dateText ? 0.34 : (noBackdrop ? 0.52 : 0.42);
+
+    if(trimmed){
+      // Auto-shrink so long text still fits within the band width, and hard-cap
+      // the height so a maxed-out size slider still can't push past the band.
+      let fontSize = Math.round(bandH * titleScale * titleSizeMultiplier);
+      const maxByHeight = Math.round(bandH * (dateText ? 0.62 : 0.86));
+      if(fontSize > maxByHeight) fontSize = maxByHeight;
+      ctx.font = fontString(currentFont, fontSize);
+      while(ctx.measureText(trimmed).width > maxTextWidth && fontSize > 10){
+        fontSize -= 2;
+        ctx.font = fontString(currentFont, fontSize);
+      }
+
+      if(useShadow){
+        // Soft drop shadow, like the puffy-sticker look in the reference image.
+        ctx.shadowColor = 'rgba(79,140,175,0.35)';
+        ctx.shadowBlur = fontSize * 0.08;
+        ctx.shadowOffsetY = fontSize * 0.03;
+      }
+
+      if(useOutline){
+        // Thick outline behind the fill gives the "sticker" edge seen
+        // around the "Caleb Josh" lettering in the template.
+        ctx.strokeStyle = outlineColor;
+        ctx.lineWidth = fontSize * 0.09;
+        ctx.lineJoin = 'round';
+        ctx.miterLimit = 2;
+        ctx.strokeText(trimmed, tx, titleY);
+      }
+
+      ctx.shadowColor = 'transparent';
+      ctx.fillStyle = textColor;
+      ctx.fillText(trimmed, tx, titleY);
+    }
+
+    if(dateText){
+      let dSize = Math.round(bandH * (noBackdrop && !trimmed ? 0.26 : 0.19));
+      ctx.font = fontString(currentDateFont, dSize);
+      while(ctx.measureText(dateText).width > maxTextWidth && dSize > 8){
+        dSize -= 1;
+        ctx.font = fontString(currentDateFont, dSize);
+      }
+      const dateY = trimmed ? contentH + bandH * 0.78 : contentH + bandH * 0.54;
+
+      if(useShadow){
+        ctx.shadowColor = 'rgba(79,140,175,0.35)';
+        ctx.shadowBlur = dSize * 0.08;
+        ctx.shadowOffsetY = dSize * 0.03;
+      }
+      if(useOutline){
+        ctx.strokeStyle = outlineColor;
+        ctx.lineWidth = dSize * 0.09;
+        ctx.lineJoin = 'round';
+        ctx.miterLimit = 2;
+        ctx.globalAlpha = 0.85;
+        ctx.strokeText(dateText, tx, dateY);
+      }
+
+      ctx.shadowColor = 'transparent';
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = textColor;
+      ctx.fillText(dateText, tx, dateY);
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+  }
+
+  // ---- Photo-matched textured backdrop (used around a custom uploaded photo).
+  // The hue comes from the photo's dominant color; the lightness flips to
+  // contrast with the chosen polaroid frame (light frames -> richer, deeper
+  // background; dark frames -> soft pastel). A fine sparkle texture, little
+  // stars and soft dots add depth, like the built-in backgrounds. ----
+  function hexLuminance(hex){
+    const num = parseInt(hex.replace('#',''), 16);
+    const r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  }
+  function hsl(h, s, l){
+    return 'hsl(' + Math.round(((h % 360) + 360) % 360) + ',' + Math.round(s * 100) + '%,' + Math.round(l * 100) + '%)';
+  }
+  function drawPhotoMatchedBackdrop(ctx, w, h){
+    const lightFrame = hexLuminance(currentFrameColor) > 0.55;
+    const neutral = photoSat < 0.08;
+    const s = neutral ? photoSat : Math.max(0.3, Math.min(0.72, photoSat));
+    const sBg = lightFrame ? s : s * 0.85;
+    const hue = photoHue;
+    const k = Math.max(1, w / 900); // keep texture visible on the wider grid canvas
+
+    // Base gradient
+    const c1 = lightFrame ? hsl(hue - 8, sBg, 0.48) : hsl(hue - 8, sBg, 0.86);
+    const c2 = lightFrame ? hsl(hue,     sBg, 0.36) : hsl(hue,     sBg, 0.77);
+    const c3 = lightFrame ? hsl(hue + 10, sBg, 0.26) : hsl(hue + 10, sBg, 0.68);
+    const g = ctx.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0, c1);
+    g.addColorStop(0.55, c2);
+    g.addColorStop(1, c3);
+    ctx.save();
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+
+    // Soft glow for depth
+    const glow = ctx.createRadialGradient(w * 0.25, h * 0.15, 0, w * 0.25, h * 0.15, Math.max(w, h) * 0.7);
+    glow.addColorStop(0, 'rgba(255,255,255,' + (lightFrame ? 0.16 : 0.35) + ')');
+    glow.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+
+    const bright = lightFrame ? hsl(hue, 0.7, 0.9) : '#ffffff';
+    const deep = lightFrame ? '#ffffff' : hsl(hue, Math.min(0.8, sBg + 0.15), 0.5);
+    const rand = seededRand(23);
+
+    // Fine speckle layer
+    const speckles = Math.round((w * h) / 1000);
+    for(let i = 0; i < speckles; i++){
+      const x = rand() * w, y = rand() * h;
+      ctx.globalAlpha = rand() * 0.5 + 0.2;
+      ctx.fillStyle = rand() > 0.3 ? bright : deep;
+      ctx.beginPath();
+      ctx.arc(x, y, (rand() * 1.3 + 0.35) * k, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Larger soft dots
+    const dots = Math.round((w * h) / 16000);
+    for(let i = 0; i < dots; i++){
+      const x = rand() * w, y = rand() * h;
+      ctx.globalAlpha = rand() * 0.22 + 0.16;
+      ctx.fillStyle = rand() > 0.5 ? bright : deep;
+      ctx.beginPath();
+      ctx.arc(x, y, (rand() * 3.2 + 1.6) * k, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Bright flecks, some with a tiny sparkle cross
+    const flecks = Math.round((w * h) / 12000);
+    for(let i = 0; i < flecks; i++){
+      const x = rand() * w, y = rand() * h;
+      const r = (rand() * 1.6 + 1.2) * k;
+      ctx.globalAlpha = rand() * 0.4 + 0.5;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      if(rand() > 0.55){
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(0.6, r * 0.28);
+        ctx.beginPath();
+        ctx.moveTo(x - r * 2.4, y); ctx.lineTo(x + r * 2.4, y);
+        ctx.moveTo(x, y - r * 2.4); ctx.lineTo(x, y + r * 2.4);
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    // A handful of small stars
+    const shortSide = Math.min(w, h);
+    const starCount = Math.round((w * h) / 45000) + 6;
+    for(let i = 0; i < starCount; i++){
+      const x = rand() * w, y = rand() * h;
+      const r = rand() * shortSide * 0.011 + shortSide * 0.004;
+      drawStar(ctx, x, y, r, rand() > 0.5 ? 4 : 5, rand() * Math.PI, rand() > 0.4 ? '#ffffff' : bright, rand() * 0.35 + 0.4);
+    }
+    ctx.restore();
+  }
+
+  // ---- Shared composite builder, used for both the real result and the
+  // Setup tab's live preview, so they never fall out of sync. ----
+  function composeCanvas(layoutKey, targetCanvas, shots){
+    const layout = LAYOUTS[layoutKey];
+    const trimmed = (labelInput.value || '').trim();
+    const dateText = currentDateLabel();
+    const hasBand = !!trimmed || !!dateText;
+    // Band grows a little as the title size slider goes up, so a bigger
+    // event name gets more room instead of overflowing a fixed-height band.
+    const growth = 1 + Math.max(0, titleSizeMultiplier - 1) * 0.6;
+    const customPhotoActive = backdropPreset === 'custom' && !!backgroundImg;
+    const bandPlacement = customPhotoActive && photoPlacement === 'band';
+    // Always reserve a little breathing room at the bottom, even with no
+    // event name or date typed in yet, instead of shots running to the edge.
+    const minBottomMargin = Math.round(layout.w * 0.05);
+    const bandH = hasBand ? Math.round(layout.w * (dateText ? LABEL_BAND_RATIO * 1.35 : LABEL_BAND_RATIO) * growth) : minBottomMargin;
+
+    // Strip + a custom uploaded photo (band placement): the photo becomes a
+    // band above the shots, and the rest of the strip fills with a textured
+    // color matched to the photo. ('background' placement instead goes full-bleed via drawBackdrop.)
+    const imgBandActive = layoutKey === 'strip' && bandPlacement;
+    const imgBandH = imgBandActive ? Math.round(layout.w * 0.34) : 0;
+
+    // Grid + a custom uploaded photo (band placement): the photo becomes a
+    // tall column on the left (full height, including alongside the caption
+    // area). On its right: 1 shot up top, the other 3 in a row underneath —
+    // and the event name/date sit at the very bottom, but only under that
+    // grid area, never overlapping the photo itself.
+    const imgSideActive = layoutKey === 'grid' && bandPlacement;
+    const imgSideW = imgSideActive ? Math.round(layout.w * 0.44) : 0;
+
+    const totalH = imgBandH + layout.contentH + bandH;
+    targetCanvas.width = layout.w;
+    targetCanvas.height = totalH;
+    const ctx = targetCanvas.getContext('2d');
+    currentFrameColor = frameColorFor();
+
+    let photoOffsetY = 0;
+    if(imgBandActive){
+      drawPhotoMatchedBackdrop(ctx, layout.w, totalH);
+      photoOffsetY = imgBandH;
+      drawImageCover(ctx, backgroundImg, 0, 0, layout.w, imgBandH, cropFocus);
+    } else if(imgSideActive){
+      drawPhotoMatchedBackdrop(ctx, layout.w, totalH);
+      // Photo spans the full height, band included, so it runs alongside
+      // the caption area at the bottom rather than stopping above it.
+      drawImageCover(ctx, backgroundImg, 0, 0, imgSideW, totalH, cropFocus);
+    } else {
+      drawBackdrop(ctx, layout.w, totalH);
+    }
+
+    ctx.save();
+    ctx.translate(imgSideActive ? imgSideW : 0, photoOffsetY);
+    if(imgSideActive){
+      renderGridSidePhoto(ctx, shots, layout.w - imgSideW, layout.contentH);
+    } else {
+      layout.render(ctx, shots, layout.w, layout.contentH);
+    }
+    ctx.restore();
+
+    let labelY, labelW, labelX;
+    if(imgSideActive){
+      // Bottom, but only under the grid area — never under the photo.
+      labelY = layout.contentH;
+      labelW = layout.w - imgSideW;
+      labelX = imgSideW;
+    } else if(imgBandActive){
+      labelY = imgBandH + layout.contentH;
+      labelW = layout.w;
+      labelX = 0;
+    } else {
+      labelY = layout.contentH;
+      labelW = layout.w;
+      labelX = 0;
+    }
+    if(bandH) drawLabelBand(ctx, labelW, labelY, bandH, labelInput.value, labelX);
+    return targetCanvas;
+  }
+
+  function renderCompositeToCanvas(layoutKey, targetCanvas){
+    return composeCanvas(layoutKey, targetCanvas, shotCanvases);
+  }
+
+  function renderComposite(){
+    if(!shotCanvases.every(Boolean)) return;
+    renderCompositeToCanvas(currentLayout, previewCanvas);
+  }
+
+  // ---- Setup-tab live preview (uses placeholder shots before any photos exist) ----
+  function buildPlaceholderShots(size, count){
+    const shots = [];
+    for(let i = 0; i < count; i++){
+      const c = document.createElement('canvas');
+      c.width = size; c.height = size;
+      const pctx = c.getContext('2d');
+      pctx.fillStyle = '#dce9f0';
+      pctx.fillRect(0, 0, size, size);
+      pctx.strokeStyle = '#b7cfdc';
+      pctx.lineWidth = Math.max(1, size * 0.015);
+      pctx.strokeRect(pctx.lineWidth/2, pctx.lineWidth/2, size - pctx.lineWidth, size - pctx.lineWidth);
+      pctx.fillStyle = '#8ba8b8';
+      pctx.font = Math.round(size * 0.28) + 'px Inter, sans-serif';
+      pctx.textAlign = 'center';
+      pctx.textBaseline = 'middle';
+      pctx.fillText(String(i + 1), size / 2, size / 2);
+      shots.push(c);
+    }
+    return shots;
+  }
+
+  function renderSetupPreview(){
+    if(!setupPreviewCanvas) return;
+    const needed = shotsNeeded(currentLayout);
+    const haveRealShots = shotCanvases.length === needed && shotCanvases.every(Boolean);
+    const shotsToUse = haveRealShots ? shotCanvases : buildPlaceholderShots(400, needed);
+    composeCanvas(currentLayout, setupPreviewCanvas, shotsToUse);
+  }
+
+
+  // ---- Download / Share ----
+
+  shareBtn.addEventListener('click', () => {
+    previewCanvas.toBlob(async (blob) => {
+      if(!blob) return;
+      const file = new File([blob], 'photo-booth.png', { type: 'image/png' });
+      if(navigator.canShare && navigator.canShare({ files: [file] })){
+        try{
+          await navigator.share({ files: [file], title: 'My Photo Booth', text: 'Check out my photo booth pic!' });
+        }catch(err){
+          // user cancelled the share sheet, nothing to do
+        }
+      }else{
+        const link = document.createElement('a');
+        link.download = 'photo-booth-' + Date.now() + '.png';
+        link.href = previewCanvas.toDataURL('image/png');
+        link.click();
+        showToast('Direct sharing isn\'t supported on this browser, so we saved the photo instead \u2014 attach it in Messenger manually.', 4200);
+      }
+    }, 'image/png');
+  });
+
+  // ---- Init ----
+  // ---- Setup accordion: numbered sections (Format → Backdrop → Event name →
+  // Google Drive) so the panel isn't one long scroll — expand one at a time. ----
+  document.querySelectorAll('.panel-label.accordion-toggle').forEach((label) => {
+    label.addEventListener('click', () => {
+      const section = document.getElementById(label.dataset.target);
+      const willOpen = !section.classList.contains('open');
+      document.querySelectorAll('.panel-section.accordion.open').forEach(s => s.classList.remove('open'));
+      if(willOpen) section.classList.add('open');
+    });
+  });
+
+  setActivePresetBtn();
+  updateBandPositionVisibility();
+  applyLabelInputFont();
+  if(readySub) readySub.textContent = shotsNeeded() + ' shots · 5,4,3,2,1,Pose';
+  renderSetupPreview();
+  (async () => {
+    await enumerateCameras();
+    await initCamera(cameraSelect.value || null);
+    updateUI();
+  })();
+})();
+</script>
+</body>
+</html>

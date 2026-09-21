@@ -486,23 +486,6 @@
   .icon-single i{width:24px; height:24px; background:var(--blue-soft); border-radius:3px;}
   .layout-btn.active .icon-single i{background:var(--blue-deep);}
 
-  /* thumbnails / review */
-  .thumb-list{display:flex; flex-wrap:wrap; gap:10px;}
-  .thumb{
-    position:relative; width:64px; height:64px; border-radius:8px; overflow:hidden;
-    border:2px solid var(--line); cursor:default;
-  }
-  .thumb.thumb-selected{border-color:var(--blue-deep);}
-  .thumb img{width:100%; height:100%; object-fit:cover; display:block;}
-  .thumb-retake{
-    position:absolute; bottom:2px; right:2px;
-    width:20px; height:20px; border-radius:50%;
-    background:rgba(60,81,101,0.7); color:#ffffff;
-    border:none; font-size:12px; cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .thumb-retake:hover{background:var(--blue-deep);}
-
   /* action buttons */
   .actions{display:flex; flex-direction:column; gap:10px;}
   .action-btn{
@@ -847,15 +830,8 @@
         <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
       </div>
 
-      <div class="panel-section hidden" id="shotsSection">
-        <p class="panel-label">Your shots</p>
-        <div class="thumb-list" id="thumbList"></div>
-        <p class="panel-hint" id="thumbHint">Not happy with these? Retake the whole set below.</p>
-      </div>
-
       <div class="panel-section" id="actionsSection">
         <div class="actions">
-          <button class="action-btn ghost hidden" id="retakeAllBtn">↺ Retake all</button>
           <button class="action-btn hidden" id="shareBtn">↗ Share</button>
         </div>
       </div>
@@ -897,9 +873,6 @@
   const labelInput = document.getElementById('labelInput');
   const layoutGrid = document.getElementById('layoutGrid');
   const layoutHint = document.getElementById('layoutHint');
-  const shotsSection = document.getElementById('shotsSection');
-  const thumbList = document.getElementById('thumbList');
-  const retakeAllBtn = document.getElementById('retakeAllBtn');
   const shareBtn = document.getElementById('shareBtn');
   const autoSaveDeviceToggle = document.getElementById('autoSaveDeviceToggle');
   const toast = document.getElementById('toast');
@@ -1883,22 +1856,13 @@
     } else {
       cameraSection.classList.add('hidden');
     }
-    shotsSection.classList.toggle('hidden', !hasAllShots || isCapturing);
     actionsSection.classList.toggle('hidden', isCapturing);
-    retakeAllBtn.classList.toggle('hidden', !hasAllShots);
-    retakeAllBtn.textContent = currentLayout === 'strip' ? '↺ Retake whole strip' : '↺ Retake whole grid';
     shareBtn.classList.toggle('hidden', !hasAllShots);
 
     const showQr = hasAllShots && !isCapturing;
     qrSection.classList.toggle('hidden', !showQr);
     appShell.classList.toggle('has-qr', showQr);
 
-    thumbHintUpdate();
-  }
-
-  function thumbHintUpdate(){
-    const hint = document.getElementById('thumbHint');
-    hint.textContent = 'Not happy with these? Retake the whole ' + (currentLayout === 'strip' ? 'strip' : 'grid') + ' below.';
   }
 
   function updateFilmTrack(){
@@ -1923,20 +1887,6 @@
         if(!img){ img = document.createElement('img'); frame.appendChild(img); }
         img.src = shot.toDataURL('image/png');
       }
-    });
-  }
-
-  function renderThumbnails(){
-    thumbList.innerHTML = '';
-    shotCanvases.forEach((c, i) => {
-      if(!c) return;
-      const wrap = document.createElement('div');
-      wrap.className = 'thumb';
-      const img = document.createElement('img');
-      img.src = c.toDataURL('image/png');
-      wrap.appendChild(img);
-
-      thumbList.appendChild(wrap);
     });
   }
 
@@ -2032,7 +1982,6 @@
 
     state = 'result';
     sessionNumber = nextSessionNumber();
-    renderThumbnails();
     renderComposite();
     updateUI();
     showQRForCurrentPhoto();
@@ -2040,7 +1989,6 @@
   }
 
   startBtn.addEventListener('click', startSession);
-  retakeAllBtn.addEventListener('click', startSession);
 
   // ---- Backdrop presets ----
   function setActivePresetBtn(){
@@ -2194,10 +2142,8 @@
     layoutHint.textContent = LAYOUT_HINTS[currentLayout];
     updateBandPositionVisibility();
     if(readySub) readySub.textContent = shotsNeeded() + ' shots · 5,4,3,2,1,Pose';
-    renderThumbnails();
     renderComposite();
     renderSetupPreview();
-    thumbHintUpdate();
   });
 
   // ---- Canvas compositing ----

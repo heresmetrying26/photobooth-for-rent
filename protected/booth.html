@@ -750,6 +750,7 @@
     <div class="panel-section accordion" id="driveSetupSection">
       <p class="panel-label accordion-toggle" data-target="driveSetupSection">4 · Google Drive <span class="chev">⌄</span></p>
       <p class="panel-hint" id="driveStatusText">Type this booking's folder name or link below — it's required before you can start the photo session.</p>
+      <p class="panel-hint" id="driveFolderAutoNote" style="display:none; color:#1e8449; font-weight:600;"></p>
       <input type="text" class="label-input" id="driveFolderKeyInput" placeholder="This booking's folder: paste a link, or type a new folder name" style="font-family:'Inter',sans-serif; font-size:13px; margin:10px 0 0;">
       <p class="panel-hint" id="driveFolderError" style="display:none; color:#c0392b; font-weight:600;"></p>
       <p class="panel-hint" id="driveFolderStatus" style="display:none;"></p>
@@ -2614,6 +2615,26 @@
     await enumerateCameras();
     await initCamera(cameraSelect.value || null);
     updateUI();
+  })();
+  // ---- Rental/trial auto folder ----
+  // When this booth was opened through the rental lock screen, window.__PB
+  // carries the folder to use: the event label typed in Admin for a rental
+  // code, or a fresh throwaway folder for a trial session. Fill it in and
+  // resolve it immediately, so the QR appears without anyone typing anything.
+  (function () {
+    var pb = window.__PB;
+    if (!pb || !pb.folderKey) return;
+    driveFolderKeyInput.value = pb.folderKey;
+    var note = document.getElementById('driveFolderAutoNote');
+    if (pb.lockFolder) {
+      driveFolderKeyInput.readOnly = true;
+      driveFolderKeyInput.style.opacity = '0.7';
+      note.textContent = 'Trial mode — using a temporary test folder, separate from real bookings.';
+    } else {
+      note.textContent = 'Folder set automatically from this booking\u2019s rental code.';
+    }
+    note.style.display = 'block';
+    resolveDriveFolder();
   })();
 })();
 </script>

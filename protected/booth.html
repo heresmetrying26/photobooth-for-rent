@@ -1608,7 +1608,7 @@
 
   function showDriveFolderPreview(url, name){
     driveFolderStatus.style.display = 'block';
-    driveFolderStatus.textContent = '✓ Folder ready' + (name ? (': ' + name) : '') + ' — this QR will keep showing after every photo session.';
+    driveFolderStatus.textContent = '✓ Folder ready' + (name ? (': ' + name) : '') + ' — every photo uploads to Google Drive automatically, and this same QR keeps showing after each session so guests can scan it to see all of tonight\u2019s photos.';
     driveFolderQrImg.src = qrImageUrl(url);
     driveFolderQrPreview.style.display = 'block';
   }

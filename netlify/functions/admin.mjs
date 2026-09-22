@@ -116,9 +116,11 @@ export default safe(async (req, context) => {
     case 'settings': {
       const pw = String(b.trialPassword || '').trim();
       const minutes = intIn(b.trialMinutes, 1, 240);
+      const prefix = String(b.trialFolderPrefix || 'Trial test shots').trim().slice(0, 60);
       if (pw.length < 3 || pw.length > 40) return json({ error: 'Trial password must be 3-40 characters.' }, 400);
       if (!minutes) return json({ error: 'Trial length must be 1-240 minutes.' }, 400);
-      const settings = { trialEnabled: !!b.trialEnabled, trialPassword: pw, trialMinutes: minutes };
+      if (!prefix) return json({ error: 'Trial folder name cannot be empty.' }, 400);
+      const settings = { trialEnabled: !!b.trialEnabled, trialPassword: pw, trialMinutes: minutes, trialFolderPrefix: prefix };
       await meta().setJSON('settings', settings);
       return json({ settings });
     }

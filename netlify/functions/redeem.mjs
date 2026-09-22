@@ -1,4 +1,4 @@
-import { safe, json, licenses, getSettings, sign, normCode, throttle, recordFail, clearFail, DAY } from '../lib/core.mjs';
+import { safe, json, licenses, getSettings, sign, normCode, throttle, recordFail, clearFail, shortId, DAY } from '../lib/core.mjs';
 
 export default safe(async (req, context) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -50,8 +50,11 @@ export default safe(async (req, context) => {
   const settings = await getSettings();
   if (settings.trialEnabled && input.toLowerCase() === String(settings.trialPassword).trim().toLowerCase()) {
     const exp = now + settings.trialMinutes * 60000;
+    // Each trial redemption gets its own throwaway Drive folder, so two people
+    // trialling it at once never land in the same folder or see each other's shots.
+    const folderKey = (settings.trialFolderPrefix || 'Trial') + ' ' + shortId();
     await clearFail(t);
-    return json({ ok: true, type: 'trial', exp, minutes: settings.trialMinutes, token: sign({ t: 'trial', d: deviceId, exp }) });
+    return json({ ok: true, type: 'trial', exp, minutes: settings.trialMinutes, folderKey, token: sign({ t: 'trial', d: deviceId, exp, f: folderKey }) });
   }
 
   await recordFail(t);

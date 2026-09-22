@@ -63,7 +63,10 @@ export default safe(async (req, context) => {
       for (let i = 0; i < count; i++) {
         let key;
         do { key = newCode(); } while (await store.get(key));
-        const rec = { key, code: displayCode(key), label, days, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null };
+        // A rental's Drive folder name comes from this label. If the admin left it
+        // blank, fall back to the code itself so folderKey is NEVER empty — the
+        // renter should never have to type a folder name at the booth.
+        const rec = { key, code: displayCode(key), label: label || displayCode(key), days, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null };
         await store.setJSON(key, rec);
         created.push(rec);
       }

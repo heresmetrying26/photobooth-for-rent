@@ -58,6 +58,13 @@ export function newCode() {
   for (let i = 0; i < 12; i++) s += ALPHABET[randomInt(ALPHABET.length)];
   return s;
 }
+// Short random suffix so every trial session gets its own Drive folder,
+// even when several people are trialling it at the same time.
+export function shortId() {
+  let s = '';
+  for (let i = 0; i < 6; i++) s += ALPHABET[randomInt(ALPHABET.length)];
+  return s;
+}
 export const displayCode = (key) => key.replace(/^(PB)(.{4})(.{4})(.{4})$/, '$1-$2-$3-$4');
 export const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
@@ -68,6 +75,7 @@ export async function getSettings() {
     trialEnabled: true,
     trialPassword: process.env.TRIAL_PASSWORD || 'TRIAL',
     trialMinutes: 15,
+    trialFolderPrefix: 'Trial test shots',
     ...(saved || {})
   };
 }
@@ -98,7 +106,7 @@ export async function checkLicense(token, deviceId) {
     if (p.exp <= now) return { valid: false, reason: 'trial-ended' };
     const s = await getSettings();
     if (!s.trialEnabled) return { valid: false, reason: 'trial-disabled' };
-    return { valid: true, type: 'trial', exp: p.exp, token };
+    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null };
   }
 
   const rec = await licenses().get(p.k, { type: 'json' });
@@ -108,5 +116,5 @@ export async function checkLicense(token, deviceId) {
   // Expiry always comes from the server record, so an admin "extend" applies instantly.
   const exp = rec.expiresAt;
   const fresh = exp === p.exp ? token : sign({ t: 'rental', k: p.k, d: p.d, exp });
-  return { valid: true, type: 'rental', exp, token: fresh };
+  return { valid: true, type: 'rental', exp, token: fresh, folderKey: (rec.label || '').trim() || null };
 }

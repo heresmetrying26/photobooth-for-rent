@@ -76,6 +76,9 @@
         <div style="flex:2;"><label>Trial password (reusable)</label><input id="trialPw" type="text"></div>
         <div><label>Trial minutes</label><input id="trialMin" type="number" min="1" max="240"></div>
       </div>
+      <label style="margin-top:10px;">Trial Drive folder name</label>
+      <input id="trialFolderPrefix" type="text" maxlength="60">
+      <div class="meta" style="margin-bottom:0;">Each trial gets its own folder like "Prefix ABC123", so simultaneous trials never share photos.</div>
       <button class="primary" id="saveTrialBtn" style="margin-top:12px;">Save trial settings</button>
     </div>
 
@@ -156,6 +159,7 @@
     $('trialEnabled').checked = !!s.trialEnabled;
     $('trialPw').value = s.trialPassword;
     $('trialMin').value = s.trialMinutes;
+    $('trialFolderPrefix').value = s.trialFolderPrefix;
   }
 
   function renderList(rows, now){
@@ -217,7 +221,7 @@
 
   $('saveTrialBtn').addEventListener('click', async function(){
     try{
-      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value });
+      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value });
       toast('Trial settings saved');
     }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
   });

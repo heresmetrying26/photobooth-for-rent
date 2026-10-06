@@ -434,6 +434,21 @@
     content:'✕'; color:var(--ink-dim); font-size:16px;
   }
 
+  /* backdrop color row */
+  .bd-color-row{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;}
+  .bd-swatch{
+    width:30px; height:30px; border-radius:50%; padding:0; cursor:pointer; position:relative;
+    border:1.5px solid var(--line); box-shadow:0 1px 3px rgba(0,0,0,0.12); overflow:hidden;
+  }
+  .bd-swatch.active{border-color:var(--blue-deep); box-shadow:0 0 0 2px rgba(79,140,175,0.35);}
+  .bd-swatch.bd-auto{
+    width:auto; border-radius:15px; padding:0 11px; background:var(--panel-2); color:var(--ink-dim);
+    font-family:'Inter',sans-serif; font-size:11px; font-weight:600;
+  }
+  .bd-swatch.bd-auto.active{color:var(--blue-deep); background:#eef8fc;}
+  .bd-swatch.bd-custom{background:conic-gradient(#ff6b6b,#ffd166,#6bff9e,#6bc7ff,#c66bff,#ff6b6b);}
+  .bd-swatch.bd-custom input{position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; border:0; padding:0;}
+
   /* setup live preview */
   .setup-preview-wrap{display:flex; justify-content:center;}
   .setup-preview-frame{
@@ -625,6 +640,26 @@
           <span>Custom</span>
         </button>
       </div>
+      <div class="sub-group" id="bdColorGroup" style="margin-top:14px;">
+        <p class="sub-label">Backdrop color</p>
+        <div class="bd-color-row" id="bdColorRow">
+          <button type="button" class="bd-swatch bd-auto active" data-color="" title="Use the style's own colors">Auto</button>
+          <button type="button" class="bd-swatch" data-color="#f8c8d4" title="Blush" style="background:#f8c8d4;"></button>
+          <button type="button" class="bd-swatch" data-color="#e58ba3" title="Rose" style="background:#e58ba3;"></button>
+          <button type="button" class="bd-swatch" data-color="#f9c9a8" title="Peach" style="background:#f9c9a8;"></button>
+          <button type="button" class="bd-swatch" data-color="#cdb8ee" title="Lavender" style="background:#cdb8ee;"></button>
+          <button type="button" class="bd-swatch" data-color="#a9d4f5" title="Sky blue" style="background:#a9d4f5;"></button>
+          <button type="button" class="bd-swatch" data-color="#2f8f8f" title="Teal" style="background:#2f8f8f;"></button>
+          <button type="button" class="bd-swatch" data-color="#bfe8d2" title="Mint" style="background:#bfe8d2;"></button>
+          <button type="button" class="bd-swatch" data-color="#9db89a" title="Sage" style="background:#9db89a;"></button>
+          <button type="button" class="bd-swatch" data-color="#1f3a68" title="Navy" style="background:#1f3a68;"></button>
+          <button type="button" class="bd-swatch" data-color="#7a1f3d" title="Burgundy" style="background:#7a1f3d;"></button>
+          <button type="button" class="bd-swatch" data-color="#161616" title="Black" style="background:#161616;"></button>
+          <button type="button" class="bd-swatch" data-color="#ffffff" title="White" style="background:#ffffff;"></button>
+          <label class="bd-swatch bd-custom" id="bdCustomSwatch" title="Pick any color"><input type="color" id="bdColorInput" value="#f4b6c2"></label>
+        </div>
+        <p class="panel-hint" style="margin-top:8px;">Pick any color — the selected style's sparkles, clouds or stars are drawn on top of it. Choose Auto to go back to the style's own colors.</p>
+      </div>
       <div class="sub-group" style="margin-top:14px;">
         <p class="sub-label">Custom photo</p>
         <div class="bg-row">
@@ -758,12 +793,8 @@
         <img id="driveFolderQrImg" class="qr-img" style="width:120px;height:120px;" alt="Folder QR preview">
         <p class="qr-caption" id="driveFolderQrCaption">Scan to open the folder</p>
       </div>
-      <p class="panel-hint">A folder name or link is required — type one above and its QR code will appear here right away, then keep showing after every photo session.</p>
-      <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13.5px; color:var(--ink); cursor:pointer;">
-        <input type="checkbox" id="autoSaveDeviceToggle" style="width:16px; height:16px; cursor:pointer;">
-        Also auto-save each finished photo to this device
-      </label>
-      <p class="panel-hint" style="margin-top:6px;">Off by default — every session already uploads to Google Drive automatically. Turn this on if you also want a copy saved straight to this computer's Downloads folder after each session.</p>
+      <p class="panel-hint" id="driveFolderHelp">A folder name or link is required — type one above and its QR code will appear here right away, then keep showing after every photo session.</p>
+      <p class="panel-hint" style="margin-top:12px;">Every finished session is saved to this device's Downloads folder as well as Google Drive. Your browser may ask once to allow multiple downloads — choose Allow so each session can save automatically.</p>
     </div>
 
     <div class="setup-next-wrap">
@@ -875,7 +906,6 @@
   const layoutGrid = document.getElementById('layoutGrid');
   const layoutHint = document.getElementById('layoutHint');
   const shareBtn = document.getElementById('shareBtn');
-  const autoSaveDeviceToggle = document.getElementById('autoSaveDeviceToggle');
   const toast = document.getElementById('toast');
   const qrSection = document.getElementById('qrSection');
   const qrResults = document.getElementById('qrResults');
@@ -908,6 +938,7 @@
   let currentFont = "'Times New Roman', serif";
   let currentDateFont = "'Times New Roman', serif";
   let backdropPreset = 'none'; // none | gold | sky | stars | cream | custom
+  let backdropColor = null;    // null = the style's own colors, else a '#rrggbb' picked in Backdrop color
   let textColor = '#1f4166';
   let useOutline = true;
   let useShadow = true;
@@ -1352,10 +1383,11 @@
     {x:0.14, y:0.90, scale:0.85},{x:0.86, y:0.10, scale:0.7}
   ];
 
-  function drawDecorations(ctx, w, h){
+  function drawDecorations(ctx, w, h, P){
+    P = P || DEFAULT_PAL;
     const shortSide = Math.min(w, h);
-    CLOUD_SPOTS.forEach(c => drawCloud(ctx, c.x * w, c.y * h, c.scale * (shortSide/700), '#ffffff', 0.55));
-    STAR_SPOTS.forEach(s => drawStar(ctx, s.x * w, s.y * h, s.r * shortSide, 5, s.rot, '#f0c869', 0.85));
+    CLOUD_SPOTS.forEach(c => drawCloud(ctx, c.x * w, c.y * h, c.scale * (shortSide/700), P.cloud, P.cloudOp));
+    STAR_SPOTS.forEach(s => drawStar(ctx, s.x * w, s.y * h, s.r * shortSide, 5, s.rot, P.gold, 0.85));
   }
 
   // ---- Backdrop presets (drawn procedurally, no external images needed) ----
@@ -1368,13 +1400,77 @@
     };
   }
 
-  function drawGoldGlitterBackdrop(ctx, w, h){
+  // ---- Backdrop palettes. DEFAULT_PAL is each style's original look; picking a
+  // Backdrop color builds a matching palette so the same generic decorations
+  // (glitter flecks, clouds, stars, speckle) are drawn on top of any color. ----
+  function hexToRgb(hex){
+    hex = String(hex).replace('#', '');
+    if(hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+    const n = parseInt(hex, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function rgbToHex(r, g, b){
+    return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+  }
+  function mixHex(a, b, t){
+    const A = hexToRgb(a), B = hexToRgb(b);
+    return rgbToHex(A[0] + (B[0]-A[0])*t, A[1] + (B[1]-A[1])*t, A[2] + (B[2]-A[2])*t);
+  }
+  function lumOf(hex){
+    const c = hexToRgb(hex);
+    return (0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2]) / 255;
+  }
+  function colorDist(a, b){
+    const A = hexToRgb(a), B = hexToRgb(b);
+    return Math.sqrt((A[0]-B[0])**2 + (A[1]-B[1])**2 + (A[2]-B[2])**2);
+  }
+
+  const DEFAULT_PAL = {
+    g5: ['#8a6a24', '#d9ae52', '#f6e3a1', '#caa24a', '#7a5c1e'],  // gold glitter gradient
+    sky3: ['#bfe0f7', '#e6f4ff', '#fdf6ee'],
+    night2: ['#0b0d1a', '#1c2038'],
+    cream2: ['#faf3e6', '#f0e2c6'],
+    fleck: '#fff9dd', big: '#ffffff', cross: '#fffdf2',
+    cloud: '#ffffff', cloudOp: 0.55,
+    gold: '#f0c869', dot: '#ffffff', speck: '#c9a86a'
+  };
+
+  let palCache = { color: null, pal: null };
+  function buildPalette(base){
+    if(palCache.color === base) return palCache.pal;
+    const lum = lumOf(base);
+    const isLight = lum > 0.72, isDark = lum < 0.35;
+    const k = isLight ? 0.16 : 0.4;
+    const shade = (amt) => mixHex(base, '#000000', amt);
+    const tint = (amt) => mixHex(base, '#ffffff', amt);
+    const goldOk = colorDist('#f0c869', base) > 90;
+    const pal = {
+      g5: [shade(k), tint(0.12), tint(isLight ? 0.5 : 0.55), shade(0.06), shade(k * 1.15)],
+      sky3: isDark ? [shade(0.3), base, tint(0.2)] : [base, tint(0.55), tint(0.85)],
+      night2: [shade(isLight ? 0.2 : 0.45), isLight ? base : tint(0.08)],
+      cream2: [tint(0.2), shade(0.05)],
+      // sparkle tones: bright tints on mid/dark colors, darker tones on very light ones
+      fleck: isLight ? shade(0.28) : tint(0.88),
+      big: isLight ? shade(0.42) : '#ffffff',
+      cross: isLight ? shade(0.5) : tint(0.95),
+      cloud: isDark ? '#ffffff' : '#ffffff',
+      cloudOp: isDark ? 0.2 : (isLight ? 0.7 : 0.5),
+      gold: goldOk ? '#f0c869' : (isLight ? shade(0.45) : '#ffffff'),
+      dot: isLight ? shade(0.4) : '#ffffff',
+      speck: isLight ? shade(0.32) : (isDark ? tint(0.55) : shade(0.28))
+    };
+    palCache = { color: base, pal: pal };
+    return pal;
+  }
+
+  function drawGoldGlitterBackdrop(ctx, w, h, P){
+    P = P || DEFAULT_PAL;
     const g = ctx.createLinearGradient(0, 0, w, h);
-    g.addColorStop(0, '#8a6a24');
-    g.addColorStop(0.35, '#d9ae52');
-    g.addColorStop(0.6, '#f6e3a1');
-    g.addColorStop(0.8, '#caa24a');
-    g.addColorStop(1, '#7a5c1e');
+    g.addColorStop(0, P.g5[0]);
+    g.addColorStop(0.35, P.g5[1]);
+    g.addColorStop(0.6, P.g5[2]);
+    g.addColorStop(0.8, P.g5[3]);
+    g.addColorStop(1, P.g5[4]);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
     const rand = seededRand(42);
@@ -1384,7 +1480,7 @@
       const x = rand() * w, y = rand() * h;
       const r = rand() * 1.8 + 0.4;
       ctx.globalAlpha = rand() * 0.65 + 0.35;
-      ctx.fillStyle = '#fff9dd';
+      ctx.fillStyle = P.fleck;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
@@ -1394,13 +1490,13 @@
       const x = rand() * w, y = rand() * h;
       const r = rand() * 2.6 + 1.6;
       ctx.globalAlpha = rand() * 0.5 + 0.5;
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = P.big;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
       // small sparkle cross for a few of the larger flecks
       if(rand() > 0.5){
-        ctx.strokeStyle = '#fffdf2';
+        ctx.strokeStyle = P.cross;
         ctx.lineWidth = Math.max(0.6, r * 0.25);
         ctx.beginPath();
         ctx.moveTo(x - r*2.2, y); ctx.lineTo(x + r*2.2, y);
@@ -1411,32 +1507,34 @@
     ctx.globalAlpha = 1;
   }
 
-  function drawPastelSkyBackdrop(ctx, w, h){
+  function drawPastelSkyBackdrop(ctx, w, h, P){
+    P = P || DEFAULT_PAL;
     const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, '#bfe0f7');
-    g.addColorStop(0.55, '#e6f4ff');
-    g.addColorStop(1, '#fdf6ee');
+    g.addColorStop(0, P.sky3[0]);
+    g.addColorStop(0.55, P.sky3[1]);
+    g.addColorStop(1, P.sky3[2]);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
-    drawDecorations(ctx, w, h);
+    drawDecorations(ctx, w, h, P);
   }
 
-  function drawBlackGoldStarsBackdrop(ctx, w, h){
+  function drawBlackGoldStarsBackdrop(ctx, w, h, P){
+    P = P || DEFAULT_PAL;
     const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, '#0b0d1a');
-    g.addColorStop(1, '#1c2038');
+    g.addColorStop(0, P.night2[0]);
+    g.addColorStop(1, P.night2[1]);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
     const rand = seededRand(7);
     for(let i = 0; i < 36; i++){
       const x = rand() * w, y = rand() * h;
       const r = rand() * (Math.min(w,h) * 0.012) + Math.min(w,h) * 0.003;
-      drawStar(ctx, x, y, r, 4, rand() * Math.PI, '#f0c869', rand() * 0.5 + 0.45);
+      drawStar(ctx, x, y, r, 4, rand() * Math.PI, P.gold, rand() * 0.5 + 0.45);
     }
     for(let i = 0; i < 80; i++){
       const x = rand() * w, y = rand() * h;
       ctx.globalAlpha = rand() * 0.6 + 0.2;
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = P.dot;
       ctx.beginPath();
       ctx.arc(x, y, rand() * 1.1 + 0.3, 0, Math.PI * 2);
       ctx.fill();
@@ -1444,10 +1542,11 @@
     ctx.globalAlpha = 1;
   }
 
-  function drawCreamAestheticBackdrop(ctx, w, h){
+  function drawCreamAestheticBackdrop(ctx, w, h, P){
+    P = P || DEFAULT_PAL;
     const g = ctx.createLinearGradient(0, 0, w, h);
-    g.addColorStop(0, '#faf3e6');
-    g.addColorStop(1, '#f0e2c6');
+    g.addColorStop(0, P.cream2[0]);
+    g.addColorStop(1, P.cream2[1]);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
     const rand = seededRand(19);
@@ -1456,7 +1555,7 @@
     for(let i = 0; i < speckleCount; i++){
       const x = rand() * w, y = rand() * h;
       ctx.globalAlpha = rand() * 0.35 + 0.15;
-      ctx.fillStyle = '#c9a86a';
+      ctx.fillStyle = P.speck;
       ctx.beginPath();
       ctx.arc(x, y, rand() * 1.1 + 0.3, 0, Math.PI * 2);
       ctx.fill();
@@ -1465,19 +1564,19 @@
     for(let i = 0; i < 26; i++){
       const x = rand() * w, y = rand() * h;
       ctx.globalAlpha = rand() * 0.25 + 0.3;
-      ctx.fillStyle = '#c9a86a';
+      ctx.fillStyle = P.speck;
       ctx.beginPath();
       ctx.arc(x, y, rand() * 3.4 + 1.5, 0, Math.PI * 2);
       ctx.fill();
     }
-    // A few tiny gold accent stars, echoing Pastel Sky's decorations.
+    // A few tiny accent stars, echoing Pastel Sky's decorations.
     for(let i = 0; i < 10; i++){
       const x = rand() * w, y = rand() * h;
       const r = rand() * (Math.min(w,h) * 0.01) + Math.min(w,h) * 0.004;
-      drawStar(ctx, x, y, r, 5, rand() * Math.PI, '#c9a86a', rand() * 0.35 + 0.4);
+      drawStar(ctx, x, y, r, 5, rand() * Math.PI, P.speck, rand() * 0.35 + 0.4);
     }
     ctx.globalAlpha = 0.5;
-    ctx.strokeStyle = '#c9a86a';
+    ctx.strokeStyle = P.speck;
     ctx.lineWidth = Math.max(1, w * 0.0015);
     ctx.beginPath();
     ctx.arc(w * 0.5, h * 0.08, w * 0.14, Math.PI * 0.15, Math.PI * 0.85);
@@ -1503,6 +1602,8 @@
     if(backdropPreset === 'custom' && backgroundImg){
       return frameColorChoice; // user-picked: white / black / dark gray / cream / dark gold
     }
+    // A light picked Backdrop color needs a dark frame to stay readable.
+    if(backdropColor && lumOf(backdropColor) > 0.72) return '#111111';
     return '#ffffff';
   }
 
@@ -1512,7 +1613,7 @@
       return;
     }
     if(backdropPreset !== 'none' && BACKDROP_PRESETS[backdropPreset]){
-      BACKDROP_PRESETS[backdropPreset](ctx, w, h);
+      BACKDROP_PRESETS[backdropPreset](ctx, w, h, backdropColor ? buildPalette(backdropColor) : null);
       return;
     }
     // Plain: flat white, no gradient/decorations — polaroid frames switch to
@@ -1741,6 +1842,13 @@
     link.href = previewCanvas.toDataURL('image/png');
     link.click();
     showToast(driveReady() ? 'Saved to your device (already backed up to Drive).' : 'Saved to your device.');
+  }
+
+  function showMultipleDownloadsHint(){
+    const storageKey = 'photoBoothMultipleDownloadsHintShown';
+    if(localStorage.getItem(storageKey)) return;
+    showToast('Your browser may ask to allow multiple downloads. Choose Allow so every finished session saves automatically.', 6500);
+    localStorage.setItem(storageKey, '1');
   }
 
   function showToast(msg, duration){
@@ -1986,7 +2094,8 @@
     renderComposite();
     updateUI();
     showQRForCurrentPhoto();
-    if(autoSaveDeviceToggle.checked) saveToDevice();
+    showMultipleDownloadsHint();
+    saveToDevice();
   }
 
   startBtn.addEventListener('click', startSession);
@@ -1994,7 +2103,48 @@
   // ---- Backdrop presets ----
   function setActivePresetBtn(){
     [...presetGrid.children].forEach(b => b.classList.toggle('active', b.dataset.preset === backdropPreset));
+    // Backdrop color only applies to the built-in styles, not an uploaded photo.
+    const grp = document.getElementById('bdColorGroup');
+    if(grp) grp.style.display = (backdropPreset === 'custom') ? 'none' : 'block';
   }
+
+  // ---- Backdrop color: tints any style while keeping its generic decorations ----
+  const bdColorRow = document.getElementById('bdColorRow');
+  const bdColorInput = document.getElementById('bdColorInput');
+  const bdCustomSwatch = document.getElementById('bdCustomSwatch');
+  function refreshPresetSwatches(){
+    const P = backdropColor ? buildPalette(backdropColor) : null;
+    const set = (id, css) => { const el = document.getElementById(id); if(el) el.style.background = css; };
+    if(!P){
+      ['swatchGold', 'swatchSky', 'swatchStars', 'swatchCream'].forEach(id => { const el = document.getElementById(id); if(el) el.style.background = ''; });
+      return;
+    }
+    set('swatchGold', 'linear-gradient(135deg,' + P.g5[0] + ',' + P.g5[2] + ' 40%,' + P.g5[3] + ' 70%,' + P.g5[4] + ')');
+    set('swatchSky', 'linear-gradient(180deg,' + P.sky3[0] + ',' + P.sky3[1] + ' 55%,' + P.sky3[2] + ')');
+    set('swatchStars', 'linear-gradient(180deg,' + P.night2[0] + ',' + P.night2[1] + ')');
+    set('swatchCream', 'linear-gradient(160deg,' + P.cream2[0] + ',' + P.cream2[1] + ')');
+  }
+  function applyBackdropColor(color, activeEl){
+    backdropColor = color || null;
+    // Plain has no decorations, so a picked color starts from the glitter style.
+    if(backdropColor && backdropPreset === 'none') backdropPreset = 'gold';
+    [...bdColorRow.querySelectorAll('.bd-swatch')].forEach(b => b.classList.toggle('active', b === activeEl));
+    bdCustomSwatch.style.background = (activeEl === bdCustomSwatch && backdropColor) ? backdropColor : '';
+    setActivePresetBtn();
+    refreshPresetSwatches();
+    updateBandPositionVisibility();
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    renderComposite();
+    renderSetupPreview();
+  }
+  bdColorRow.addEventListener('click', (e) => {
+    const btn = e.target.closest('.bd-swatch');
+    if(!btn || btn === bdCustomSwatch || btn.parentElement !== bdColorRow) return;
+    applyBackdropColor(btn.dataset.color || null, btn);
+  });
+  bdColorInput.addEventListener('input', () => applyBackdropColor(bdColorInput.value, bdCustomSwatch));
+  setActivePresetBtn();
   presetGrid.addEventListener('click', (e) => {
     const btn = e.target.closest('.preset-btn');
     if(!btn) return;
@@ -2629,7 +2779,15 @@
     if (pb.lockFolder) {
       driveFolderKeyInput.readOnly = true;
       driveFolderKeyInput.style.opacity = '0.7';
-      note.textContent = 'Trial mode — using a temporary test folder, separate from real bookings.';
+      driveFolderKeyInput.style.display = 'none';
+      driveFolderError.style.display = 'none';
+      document.getElementById('driveFolderHelp').style.display = 'none';
+      driveStatusText.textContent = 'This booth is connected to its event folder automatically.';
+      if (pb.type === 'trial') {
+        note.textContent = 'Trial mode — using a temporary test folder, separate from real bookings.';
+      } else {
+        note.textContent = 'Drive folder set from this rental code. Scan the QR below to open the shared event folder.';
+      }
     } else {
       note.textContent = 'Folder set automatically from this booking\u2019s rental code.';
     }

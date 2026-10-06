@@ -60,7 +60,8 @@
     <div class="card">
       <h2>Create rental codes</h2>
       <div class="row">
-        <div style="flex:2;min-width:160px;"><label>Client / event (also used as the Drive folder name)</label><input id="newLabel" type="text" maxlength="80" placeholder="e.g. Sofia's Dedication — leave blank to use the code"></div>
+        <div style="flex:2;min-width:160px;"><label>Client / event</label><input id="newLabel" type="text" maxlength="80" placeholder="e.g. Sofia's Dedication"></div>
+        <div style="flex:2;min-width:160px;"><label>Drive folder name</label><input id="newFolderName" type="text" maxlength="80" placeholder="Defaults to client / event"></div>
         <div><label>Days</label><input id="newDays" type="number" min="1" max="365" value="3"></div>
         <div><label>How many</label><input id="newCount" type="number" min="1" max="20" value="1"></div>
       </div>
@@ -179,7 +180,7 @@
         : '<button class="small danger" data-a="revoke" data-c="' + esc(l.code) + '">Disable</button>';
       acts += '<button class="small danger" data-a="delete" data-c="' + esc(l.code) + '">Delete</button>';
       return '<div class="lic"><div class="lic-head"><span class="code">' + esc(l.code) + '</span><span class="badge b-' + st + '">' + st + '</span></div>' +
-        '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + info + '</div>' +
+        '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + 'Drive folder: <b>' + esc(l.folderName || l.label || l.code) + '</b><br>' + info + '</div>' +
         '<div class="actions"><button class="small" data-a="copy" data-c="' + esc(l.code) + '">Copy</button>' + acts + '</div></div>';
     }).join('');
   }
@@ -204,15 +205,23 @@
   $('createBtn').addEventListener('click', async function(){
     var btn = this; btn.disabled = true;
     try{
-      var j = await api({ action: 'create', label: $('newLabel').value, days: $('newDays').value, count: $('newCount').value });
+      var j = await api({ action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value });
       var box = $('newBox');
       box.classList.remove('hidden');
       box.innerHTML = '<b style="font-size:12px;">New code' + (j.created.length > 1 ? 's' : '') + ' — copy and send to the renter</b>' +
         j.created.map(function(l){ return '<div class="code"><span>' + esc(l.code) + '</span><button class="small" data-copy="' + esc(l.code) + '">Copy</button></div>'; }).join('');
       $('newLabel').value = '';
+      $('newFolderName').value = '';
+      delete $('newFolderName').dataset.edited;
       load();
     }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
     btn.disabled = false;
+  });
+  $('newLabel').addEventListener('input', function(){
+    if(!$('newFolderName').dataset.edited) $('newFolderName').value = this.value;
+  });
+  $('newFolderName').addEventListener('input', function(){
+    this.dataset.edited = this.value ? 'true' : '';
   });
   $('newBox').addEventListener('click', function(e){
     var b = e.target.closest('button[data-copy]'); if(!b) return;

@@ -59,14 +59,14 @@ export default safe(async (req, context) => {
       if (!days) return json({ error: 'Days must be between 1 and 365.' }, 400);
       if (!count) return json({ error: 'Count must be between 1 and 20.' }, 400);
       const label = String(b.label || '').trim().slice(0, 80);
+      const folderName = String(b.folderName || label).trim().slice(0, 80);
       const created = [];
       for (let i = 0; i < count; i++) {
         let key;
         do { key = newCode(); } while (await store.get(key));
-        // A rental's Drive folder name comes from this label. If the admin left it
-        // blank, fall back to the code itself so folderKey is NEVER empty — the
-        // renter should never have to type a folder name at the booth.
-        const rec = { key, code: displayCode(key), label: label || displayCode(key), days, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null };
+        // Keep a dedicated Drive folder name. If neither field was supplied,
+        // fall back to the code so the renter never has to configure Drive.
+        const rec = { key, code: displayCode(key), label: label || displayCode(key), folderName: folderName || displayCode(key), days, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null };
         await store.setJSON(key, rec);
         created.push(rec);
       }

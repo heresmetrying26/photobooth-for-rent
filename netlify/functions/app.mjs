@@ -58,7 +58,7 @@ export default safe(async (req) => {
   const res = await checkLicense(token, device);
   if (!res.valid) return json({ error: 'locked', reason: res.reason }, 401);
 
-  const inject = '<script>window.__PB=' + JSON.stringify({ type: res.type, exp: res.exp, folderKey: res.folderKey || null, lockFolder: res.type === 'trial' }) + ';' + WATCHER + '</script>';
+  const inject = '<script>window.__PB=' + JSON.stringify({ type: res.type, exp: res.exp, folderKey: res.folderKey || null, lockFolder: !!res.folderKey }) + ';' + WATCHER + '</script>';
   const i = booth.lastIndexOf('</body>');
   const html = i >= 0 ? booth.slice(0, i) + inject + booth.slice(i) : booth + inject;
 

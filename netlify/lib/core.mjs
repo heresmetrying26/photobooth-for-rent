@@ -116,5 +116,5 @@ export async function checkLicense(token, deviceId) {
   // Expiry always comes from the server record, so an admin "extend" applies instantly.
   const exp = rec.expiresAt;
   const fresh = exp === p.exp ? token : sign({ t: 'rental', k: p.k, d: p.d, exp });
-  return { valid: true, type: 'rental', exp, token: fresh, folderKey: (rec.label || '').trim() || null };
+  return { valid: true, type: 'rental', exp, token: fresh, folderKey: (rec.folderName || rec.label || '').trim() || null };
 }

@@ -45,7 +45,14 @@ const WATCHER = `
       body: JSON.stringify({ token: localStorage.getItem(TOKEN_KEY), deviceId: localStorage.getItem(DEV_KEY) })
     }).then(function(r){ return r.json(); }).then(function(j){
       if (j && j.valid === false) { if (!locking) { locking = true; tryLock(j.reason || 'invalid'); } }
-      else if (j && j.valid) { L.exp = j.exp; if (j.token) localStorage.setItem(TOKEN_KEY, j.token); }
+      else if (j && j.valid) {
+        L.exp = j.exp; if (j.token) localStorage.setItem(TOKEN_KEY, j.token);
+        // Admin can switch printing on/off mid-rental; tell the booth.
+        if (j.print && JSON.stringify(j.print) !== JSON.stringify(L.print)) {
+          L.print = j.print;
+          window.dispatchEvent(new Event('pb-print-change'));
+        }
+      }
     }).catch(function(){ /* offline: keep running until the known expiry */ });
   }
   setInterval(check, 5 * 60 * 1000);
@@ -58,9 +65,18 @@ export default safe(async (req) => {
   const res = await checkLicense(token, device);
   if (!res.valid) return json({ error: 'locked', reason: res.reason }, 401);
 
-  const inject = '<script>window.__PB=' + JSON.stringify({ type: res.type, exp: res.exp, folderKey: res.folderKey || null, lockFolder: !!res.folderKey }) + ';' + WATCHER + '</script>';
-  const i = booth.lastIndexOf('</body>');
-  const html = i >= 0 ? booth.slice(0, i) + inject + booth.slice(i) : booth + inject;
+  // window.__PB must exist BEFORE the booth's own script runs, because the booth
+  // reads it once at startup to fill in the Drive folder and show its QR. So it
+  // goes in <head>. The watcher needs document.body, so it stays before </body>.
+  // '<' is escaped so a folder name can never close the script tag early.
+  const pb = JSON.stringify({ type: res.type, exp: res.exp, folderKey: res.folderKey || null, lockFolder: !!res.folderKey, print: res.print || { enabled: false, sizes: [] } }).replace(/</g, '\\u003c');
+  const head = '<script>window.__PB=' + pb + ';</script>';
+  const tail = '<script>' + WATCHER + '</script>';
+  let html = booth;
+  const h = html.indexOf('</head>');
+  html = h >= 0 ? html.slice(0, h) + head + html.slice(h) : head + html;
+  const i = html.lastIndexOf('</body>');
+  html = i >= 0 ? html.slice(0, i) + tail + html.slice(i) : html + tail;
 
   return new Response(html, {
     status: 200,

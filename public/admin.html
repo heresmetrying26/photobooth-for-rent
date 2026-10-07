@@ -39,6 +39,14 @@
   .hidden{display:none;}
   .newbox{background:var(--soft);border:1.5px dashed var(--blue);border-radius:12px;padding:12px;margin-top:12px;}
   .newbox .code{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;}
+  .printbox{margin-top:12px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:#f9fcfe;}
+  .printbox .toggle{margin-bottom:0;font-weight:600;}
+  .sizes{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .sizes.off{display:none;}
+  .size-chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink);padding:6px 10px;border:1.5px solid var(--line);border-radius:999px;background:#fff;cursor:pointer;margin:0;}
+  .size-chip:has(input:checked){border-color:var(--blue);background:var(--soft);}
+  .b-print{background:#fff4e0;color:#a2620c;}
+  .lic .printbox{margin:0 0 10px;}
 </style>
 </head>
 <body>
@@ -65,6 +73,7 @@
         <div><label>Days</label><input id="newDays" type="number" min="1" max="365" value="3"></div>
         <div><label>How many</label><input id="newCount" type="number" min="1" max="20" value="1"></div>
       </div>
+      <div class="printbox" id="newPrint"></div>
       <button class="primary" id="createBtn" style="margin-top:12px;">Generate</button>
       <div id="newBox" class="newbox hidden"></div>
       <div class="meta" style="margin-bottom:0;">Each code works once. The days start counting when the renter first enters it.</div>
@@ -80,6 +89,7 @@
       <label style="margin-top:10px;">Trial Drive folder name</label>
       <input id="trialFolderPrefix" type="text" maxlength="60">
       <div class="meta" style="margin-bottom:0;">Each trial gets its own folder like "Prefix ABC123", so simultaneous trials never share photos.</div>
+      <div class="printbox" id="trialPrint"></div>
       <button class="primary" id="saveTrialBtn" style="margin-top:12px;">Save trial settings</button>
     </div>
 
@@ -96,6 +106,37 @@
   var TOKEN = sessionStorage.getItem('pb_admin') || '';
   var $ = function(id){ return document.getElementById(id); };
   var DAY = 86400000;
+  // Same keys as PAPER_SIZES in netlify/lib/core.mjs.
+  var PAPER = [
+    ['2x6', '2×6 in strip'], ['4x6', '4×6 in'], ['5x7', '5×7 in'],
+    ['A6', 'A6'], ['A5', 'A5'], ['A4', 'A4'], ['Letter', 'Letter']
+  ];
+  var PAPER_NAME = {}; PAPER.forEach(function(p){ PAPER_NAME[p[0]] = p[1]; });
+  var DEFAULT_SIZES = ['2x6', '4x6'];
+
+  // Printing on/off + allowed paper sizes, used for new codes, each existing
+  // code and the trial. Sizes are hidden while printing is off.
+  function printPicker(box, print, title){
+    print = print || { enabled: false, sizes: DEFAULT_SIZES };
+    var sizes = print.sizes && print.sizes.length ? print.sizes : DEFAULT_SIZES;
+    box.innerHTML = '<label class="toggle"><input type="checkbox" class="pp-on"' + (print.enabled ? ' checked' : '') + '> ' + esc(title) + '</label>' +
+      '<div class="sizes' + (print.enabled ? '' : ' off') + '">' + PAPER.map(function(p){
+        return '<label class="size-chip"><input type="checkbox" class="pp-size" value="' + p[0] + '"' + (sizes.indexOf(p[0]) >= 0 ? ' checked' : '') + '>' + esc(p[1]) + '</label>';
+      }).join('') + '</div>';
+    box.querySelector('.pp-on').addEventListener('change', function(){
+      box.querySelector('.sizes').classList.toggle('off', !this.checked);
+    });
+  }
+  function readPrint(box){
+    return {
+      enabled: box.querySelector('.pp-on').checked,
+      sizes: [].slice.call(box.querySelectorAll('.pp-size:checked')).map(function(i){ return i.value; })
+    };
+  }
+  function printSummary(p){
+    if(!p || !p.enabled || !p.sizes || !p.sizes.length) return 'Printing: off';
+    return 'Printing: <b>' + p.sizes.map(function(k){ return esc(PAPER_NAME[k] || k); }).join(', ') + '</b>';
+  }
 
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   var tt;
@@ -161,11 +202,14 @@
     $('trialPw').value = s.trialPassword;
     $('trialMin').value = s.trialMinutes;
     $('trialFolderPrefix').value = s.trialFolderPrefix;
+    printPicker($('trialPrint'), { enabled: s.trialPrintEnabled, sizes: s.trialPrintSizes }, 'Allow printing during trials');
   }
 
+  var LIC = {};
   function renderList(rows, now){
     var el = $('list');
     if(!rows.length){ el.innerHTML = '<div class="empty">No codes yet. Generate one above.</div>'; return; }
+    LIC = {}; rows.forEach(function(l){ LIC[l.code] = l; });
     el.innerHTML = rows.map(function(l){
       var st = statusOf(l, now), info = '';
       if(st === 'unused') info = l.days + ' day' + (l.days === 1 ? '' : 's') + ' · not redeemed yet';
@@ -175,12 +219,15 @@
       var acts = '';
       if(st === 'active') acts += '<button class="small" data-a="unbind" data-c="' + esc(l.code) + '">Allow new device</button>';
       if(st !== 'revoked') acts += '<button class="small" data-a="extend" data-c="' + esc(l.code) + '">+ Add days</button>';
+      acts += '<button class="small" data-a="printedit" data-c="' + esc(l.code) + '">Print settings</button>';
       acts += st === 'revoked'
         ? '<button class="small" data-a="restore" data-c="' + esc(l.code) + '">Restore</button>'
         : '<button class="small danger" data-a="revoke" data-c="' + esc(l.code) + '">Disable</button>';
       acts += '<button class="small danger" data-a="delete" data-c="' + esc(l.code) + '">Delete</button>';
-      return '<div class="lic"><div class="lic-head"><span class="code">' + esc(l.code) + '</span><span class="badge b-' + st + '">' + st + '</span></div>' +
-        '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + 'Drive folder: <b>' + esc(l.folderName || l.label || l.code) + '</b><br>' + info + '</div>' +
+      var printOn = l.print && l.print.enabled;
+      return '<div class="lic" data-code="' + esc(l.code) + '"><div class="lic-head"><span class="code">' + esc(l.code) + '</span><span>' + (printOn ? '<span class="badge b-print">print</span> ' : '') + '<span class="badge b-' + st + '">' + st + '</span></span></div>' +
+        '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + 'Drive folder: <b>' + esc(l.folderName || l.label || l.code) + '</b><br>' + printSummary(l.print) + '<br>' + info + '</div>' +
+        '<div class="printbox hidden" data-print-edit></div>' +
         '<div class="actions"><button class="small" data-a="copy" data-c="' + esc(l.code) + '">Copy</button>' + acts + '</div></div>';
     }).join('');
   }
@@ -190,6 +237,21 @@
     var a = b.dataset.a, code = b.dataset.c;
     try{
       if(a === 'copy'){ await navigator.clipboard.writeText(code); toast('Copied ' + code); return; }
+      if(a === 'printedit'){
+        var box = b.closest('.lic').querySelector('[data-print-edit]');
+        if(!box.classList.contains('hidden')){ box.classList.add('hidden'); return; }
+        printPicker(box, LIC[code] && LIC[code].print, 'Allow printing for this rental');
+        box.insertAdjacentHTML('beforeend', '<div class="actions" style="margin-top:10px;"><button class="small primary" data-a="printsave" data-c="' + esc(code) + '">Save print settings</button></div>');
+        box.classList.remove('hidden');
+        return;
+      }
+      if(a === 'printsave'){
+        var pb = readPrint(b.closest('[data-print-edit]'));
+        await api({ action: 'print', code: code, printEnabled: pb.enabled, printSizes: pb.sizes });
+        toast('Print settings saved — an open booth picks them up within ~5 minutes');
+        load();
+        return;
+      }
       if(a === 'delete' && !confirm('Delete ' + code + ' permanently? If it is active, the renter is locked out.')) return;
       if(a === 'revoke' && !confirm('Disable ' + code + '? The renter is locked out at their next check (within ~5 minutes).')) return;
       var body = { action: a, code: code };
@@ -205,7 +267,8 @@
   $('createBtn').addEventListener('click', async function(){
     var btn = this; btn.disabled = true;
     try{
-      var j = await api({ action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value });
+      var np = readPrint($('newPrint'));
+      var j = await api({ action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, printEnabled: np.enabled, printSizes: np.sizes });
       var box = $('newBox');
       box.classList.remove('hidden');
       box.innerHTML = '<b style="font-size:12px;">New code' + (j.created.length > 1 ? 's' : '') + ' — copy and send to the renter</b>' +
@@ -230,11 +293,13 @@
 
   $('saveTrialBtn').addEventListener('click', async function(){
     try{
-      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value });
+      var tp = readPrint($('trialPrint'));
+      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes });
       toast('Trial settings saved');
     }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
   });
 
+  printPicker($('newPrint'), null, 'Allow printing for these codes');
   if(TOKEN){ showAdmin(true); load(); }
 })();
 </script>

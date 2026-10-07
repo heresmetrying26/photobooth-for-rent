@@ -1,6 +1,6 @@
 import {
   safe, json, licenses, meta, getSettings, sign, verifyToken, sha,
-  newCode, displayCode, normCode, throttle, recordFail, clearFail, DAY
+  newCode, displayCode, normCode, throttle, recordFail, clearFail, normPrint, DAY
 } from '../lib/core.mjs';
 import { timingSafeEqual } from 'node:crypto';
 
@@ -60,13 +60,15 @@ export default safe(async (req, context) => {
       if (!count) return json({ error: 'Count must be between 1 and 20.' }, 400);
       const label = String(b.label || '').trim().slice(0, 80);
       const folderName = String(b.folderName || label).trim().slice(0, 80);
+      const print = normPrint(b.printEnabled, b.printSizes);
+      if (b.printEnabled && !print.enabled) return json({ error: 'Pick at least one paper size, or turn printing off.' }, 400);
       const created = [];
       for (let i = 0; i < count; i++) {
         let key;
         do { key = newCode(); } while (await store.get(key));
         // Keep a dedicated Drive folder name. If neither field was supplied,
         // fall back to the code so the renter never has to configure Drive.
-        const rec = { key, code: displayCode(key), label: label || displayCode(key), folderName: folderName || displayCode(key), days, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null };
+        const rec = { key, code: displayCode(key), label: label || displayCode(key), folderName: folderName || displayCode(key), days, print, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null };
         await store.setJSON(key, rec);
         created.push(rec);
       }
@@ -109,6 +111,16 @@ export default safe(async (req, context) => {
       return json({ ok: true });
     }
 
+    case 'print': { // change printing for one code; applies to an active booth within ~5 minutes
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      const print = normPrint(b.printEnabled, b.printSizes);
+      if (b.printEnabled && !print.enabled) return json({ error: 'Pick at least one paper size, or turn printing off.' }, 400);
+      rec.print = print;
+      await store.setJSON(key, rec);
+      return json({ ok: true, print });
+    }
+
     case 'delete': {
       const { key, rec } = await getRec();
       if (!rec) return json({ error: 'Code not found.' }, 404);
@@ -123,7 +135,10 @@ export default safe(async (req, context) => {
       if (pw.length < 3 || pw.length > 40) return json({ error: 'Trial password must be 3-40 characters.' }, 400);
       if (!minutes) return json({ error: 'Trial length must be 1-240 minutes.' }, 400);
       if (!prefix) return json({ error: 'Trial folder name cannot be empty.' }, 400);
-      const settings = { trialEnabled: !!b.trialEnabled, trialPassword: pw, trialMinutes: minutes, trialFolderPrefix: prefix };
+      const trialPrint = normPrint(b.trialPrintEnabled, b.trialPrintSizes);
+      if (b.trialPrintEnabled && !trialPrint.enabled) return json({ error: 'Pick at least one trial paper size, or turn trial printing off.' }, 400);
+      const settings = { trialEnabled: !!b.trialEnabled, trialPassword: pw, trialMinutes: minutes, trialFolderPrefix: prefix,
+        trialPrintEnabled: trialPrint.enabled, trialPrintSizes: trialPrint.sizes.length ? trialPrint.sizes : ['4x6'] };
       await meta().setJSON('settings', settings);
       return json({ settings });
     }

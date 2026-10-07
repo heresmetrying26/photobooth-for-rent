@@ -24,3 +24,35 @@ Edit `protected/booth.html` and redeploy. (The build step re-bundles it automati
 - **Admin** – create codes (by days), see status/time left, add days, disable/restore, delete,
   "Allow new device" (if the renter switches tablets), and edit trial settings.
 - When time is up, the app returns to the lock screen (after any photo session in progress).
+
+## Printing (per rental)
+Printing is **off** unless you turn it on in Admin — when creating codes, or later with
+**Print settings** on any code (an open booth picks the change up within ~5 minutes).
+Pick which paper sizes that renter may use: 2×6 strip, 4×6, 5×7, A6, A5, A4, Letter.
+Trials have their own print switch in the Trial card (off by default).
+
+When allowed, the booth shows a **Print** box after each session with only the approved
+sizes. Prints come out at the real paper size (300 dpi, zero margins):
+- **Strip** on 2×6 prints one strip; on any bigger sheet it prints **two strips side by side**
+  to cut down the middle (the classic photo-booth sheet).
+- **Grid** prints one image filling the sheet. 2×6 is only offered for the Strip format.
+- When the photo and paper shapes are close, the print fills edge to edge (trimming a
+  sliver of backdrop); otherwise it fits the whole image with white borders.
+
+### Kiosk / silent printing (no print dialog)
+Browsers always show a print dialog unless Chrome/Edge is started in kiosk-printing mode,
+which sends every print straight to the **default printer**:
+
+1. Set the photo printer as the computer's **default printer**, and in its printer
+   preferences choose the paper size you'll use (e.g. 4×6) and **borderless** if offered.
+2. Close all Chrome windows, then start Chrome with:
+   - Windows (shortcut target):
+     `"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk --kiosk-printing https://YOUR-SITE.netlify.app/`
+   - macOS: `open -a "Google Chrome" --args --kiosk --kiosk-printing https://YOUR-SITE.netlify.app/`
+   - Edge works the same with `msedge.exe --kiosk https://YOUR-SITE.netlify.app/ --kiosk-printing`.
+   Leave out `--kiosk` if you want a normal window but still silent printing.
+3. Do one test print first. If the size or margins are off, fix them in the printer's own
+   preferences — silent mode uses the printer defaults for anything the page doesn't set.
+
+Without kiosk mode the normal print dialog opens: pick the photo printer, set Margins to
+**None** and Scale to **Default/100%**, then print.

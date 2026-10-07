@@ -68,6 +68,18 @@ export function shortId() {
 export const displayCode = (key) => key.replace(/^(PB)(.{4})(.{4})(.{4})$/, '$1-$2-$3-$4');
 export const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
+// ---------- printing ----------
+// Paper sizes the admin can allow per rental. Keys are stored in license data;
+// the booth has its own table with the physical dimensions.
+export const PAPER_SIZES = ['2x6', '4x6', '5x7', 'A6', 'A5', 'A4', 'Letter'];
+// Cleans whatever was stored/sent into { enabled, sizes } with known sizes in a
+// fixed order. Printing counts as on only when at least one size is allowed.
+// Older codes have no print data at all, so they come out as printing off.
+export function normPrint(enabled, sizes) {
+  const list = Array.isArray(sizes) ? PAPER_SIZES.filter((s) => sizes.includes(s)) : [];
+  return { enabled: !!enabled && list.length > 0, sizes: list };
+}
+
 // ---------- settings ----------
 export async function getSettings() {
   const saved = await meta().get('settings', { type: 'json' });
@@ -76,6 +88,8 @@ export async function getSettings() {
     trialPassword: process.env.TRIAL_PASSWORD || 'TRIAL',
     trialMinutes: 15,
     trialFolderPrefix: 'Trial test shots',
+    trialPrintEnabled: false,
+    trialPrintSizes: ['4x6'],
     ...(saved || {})
   };
 }
@@ -106,7 +120,7 @@ export async function checkLicense(token, deviceId) {
     if (p.exp <= now) return { valid: false, reason: 'trial-ended' };
     const s = await getSettings();
     if (!s.trialEnabled) return { valid: false, reason: 'trial-disabled' };
-    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null };
+    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes) };
   }
 
   const rec = await licenses().get(p.k, { type: 'json' });
@@ -116,5 +130,5 @@ export async function checkLicense(token, deviceId) {
   // Expiry always comes from the server record, so an admin "extend" applies instantly.
   const exp = rec.expiresAt;
   const fresh = exp === p.exp ? token : sign({ t: 'rental', k: p.k, d: p.d, exp });
-  return { valid: true, type: 'rental', exp, token: fresh, folderKey: (rec.folderName || rec.label || '').trim() || null };
+  return { valid: true, type: 'rental', exp, token: fresh, folderKey: (rec.folderName || rec.label || '').trim() || null, print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes) };
 }

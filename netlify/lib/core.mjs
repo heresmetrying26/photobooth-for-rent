@@ -71,12 +71,23 @@ export const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/
 // ---------- printing ----------
 // Paper sizes the admin can allow per rental. Keys are stored in license data;
 // the booth has its own table with the physical dimensions.
-export const PAPER_SIZES = ['2x6', '4x6', '5x7', 'A6', 'A5', 'A4', 'Letter'];
-// Cleans whatever was stored/sent into { enabled, sizes } with known sizes in a
-// fixed order. Printing counts as on only when at least one size is allowed.
-// Older codes have no print data at all, so they come out as printing off.
+export const PAPER_SIZES = ['2x6', '3.5x5', '4x6', '5x7', '6x8', '8x10', 'A6', 'A5', 'A4', 'Letter'];
+// Custom sizes are stored as "<width>x<height><unit>", e.g. "4x4in" or "100x148mm".
+const CUSTOM_RE = /^(\d{1,3}(?:\.\d{1,2})?)x(\d{1,3}(?:\.\d{1,2})?)(in|mm)$/;
+export function customPaperOk(key) {
+  const m = CUSTOM_RE.exec(String(key));
+  if (!m) return false;
+  const [lo, hi] = m[3] === 'in' ? [1, 20] : [25, 500];
+  const w = Number(m[1]), h = Number(m[2]);
+  return w >= lo && w <= hi && h >= lo && h <= hi;
+}
+// Cleans whatever was stored/sent into { enabled, sizes }: built-in sizes in a
+// fixed order, then up to 6 valid custom sizes. Printing counts as on only when
+// at least one size is allowed. Older codes have no print data -> printing off.
 export function normPrint(enabled, sizes) {
-  const list = Array.isArray(sizes) ? PAPER_SIZES.filter((s) => sizes.includes(s)) : [];
+  const given = Array.isArray(sizes) ? sizes.map(String) : [];
+  const custom = [...new Set(given.filter((s) => !PAPER_SIZES.includes(s) && customPaperOk(s)))].slice(0, 6);
+  const list = PAPER_SIZES.filter((s) => given.includes(s)).concat(custom);
   return { enabled: !!enabled && list.length > 0, sizes: list };
 }
 

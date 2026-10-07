@@ -28,14 +28,16 @@ Edit `protected/booth.html` and redeploy. (The build step re-bundles it automati
 ## Printing (per rental)
 Printing is **off** unless you turn it on in Admin — when creating codes, or later with
 **Print settings** on any code (an open booth picks the change up within ~5 minutes).
-Pick which paper sizes that renter may use: 2×6 strip, 4×6, 5×7, A6, A5, A4, Letter.
+Pick which paper sizes that renter may use: 2×6 strip, 3R (3.5×5), 4R (4×6), 5R (5×7),
+6R (6×8), 8R (8×10), A6, A5, A4, Letter — or add up to 6 **custom sizes** (width × height in
+inches or mm, e.g. 4×4 in square or 100×148 mm). Custom sizes always print portrait.
 Trials have their own print switch in the Trial card (off by default).
 
 When allowed, the booth shows a **Print** box after each session with only the approved
 sizes. Prints come out at the real paper size (300 dpi, zero margins):
-- **Strip** on 2×6 prints one strip; on any bigger sheet it prints **two strips side by side**
-  to cut down the middle (the classic photo-booth sheet).
-- **Grid** prints one image filling the sheet. 2×6 is only offered for the Strip format.
+- **Strip** on 2×6 (or any similarly narrow sheet) prints one strip; on wider sheets it prints
+  **two strips side by side** to cut down the middle (the classic photo-booth sheet).
+- **Grid** prints one image filling the sheet. Very narrow sheets like 2×6 are Strip-only.
 - When the photo and paper shapes are close, the print fills edge to edge (trimming a
   sliver of backdrop); otherwise it fits the whole image with white borders.
 

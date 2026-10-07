@@ -427,12 +427,6 @@
   .preset-swatch.swatch-stars i{position:absolute; background:#f0c869; border-radius:50%;}
   .preset-swatch.swatch-cream{background:linear-gradient(160deg,#faf3e6 0%,#f3e6cf 100%);}
   .preset-swatch.swatch-maroon{background:radial-gradient(circle at 30% 30%,rgba(255,231,163,0.9) 0 1.5px,transparent 2px),radial-gradient(circle at 70% 55%,rgba(255,231,163,0.85) 0 1.5px,transparent 2px),radial-gradient(circle at 45% 78%,rgba(255,231,163,0.8) 0 1px,transparent 1.5px),linear-gradient(135deg,#3f0a1a,#7a1f3d 50%,#521128);}
-  /* Elements picker: each tile is a live mini-render of that set */
-  .element-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:8px;}
-  .element-btn{position:relative; aspect-ratio:1/1; border-radius:10px; border:2px solid var(--line); cursor:pointer; overflow:hidden; padding:0; background:var(--panel-2);}
-  .element-btn.active{border-color:var(--blue-deep); box-shadow:0 0 0 2px rgba(79,140,175,0.25);}
-  .element-btn canvas{position:absolute; inset:0; width:100%; height:100%;}
-  .element-btn span{position:absolute; left:0; right:0; bottom:0; font-size:9.5px; letter-spacing:0.3px; color:#fff; background:rgba(0,0,0,0.38); padding:3px 2px; font-family:'Inter',sans-serif; font-weight:600;}
   .frame-swatch.frame-auto{width:auto; padding:0 11px; font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:var(--ink-dim); background:var(--panel-2);}
   .frame-swatch.frame-auto.active{color:var(--blue-deep); background:#eef8fc;}
   .preset-btn[data-preset="none"] .preset-swatch{
@@ -688,12 +682,12 @@
           <button type="button" class="bd-swatch" data-color="#ffffff" title="White" style="background:#ffffff;"></button>
           <label class="bd-swatch bd-custom" id="bdCustomSwatch" title="Pick any color"><input type="color" id="bdColorInput" value="#f4b6c2"></label>
         </div>
-        <p class="panel-hint" style="margin-top:8px;">Pick any color — the elements below are drawn on top of it. Choose Auto to go back to the style's own colors.</p>
+        <p class="panel-hint" style="margin-top:8px;" id="bdColorHint">Pick any color — the elements below are drawn on top of it. Choose Auto to go back to the style's own colors.</p>
       </div>
       <div class="sub-group" id="elementsGroup" style="margin-top:14px;">
         <p class="sub-label">Elements</p>
-        <div class="element-grid" id="elementGrid"></div>
-        <p class="panel-hint" style="margin-top:8px;">Auto uses the preset's own decorations. Pick any other set to draw it on top of the backdrop color instead.</p>
+        <select id="elementsSelect" class="label-input" style="font-size:13px;"></select>
+        <p class="panel-hint" style="margin-top:8px;">Auto uses the preset's own decorations (or, with an uploaded photo, the sparkle texture matched to it). Pick any other set to draw it on top of the backdrop instead.</p>
       </div>
       <div class="sub-group" style="margin-top:14px;">
         <p class="sub-label">Polaroid color</p>
@@ -723,7 +717,7 @@
             <option value="background">Full background, behind everything</option>
           </select>
           <p class="panel-hint" id="bandPositionHint" style="margin-top:6px;">Your photo sits above the shots.</p>
-          <p class="panel-hint" style="margin-top:8px;">The background color is picked automatically from your photo's main color, with a soft sparkle texture — and it adjusts itself to contrast with the Polaroid color you choose above.</p>
+          <p class="panel-hint" style="margin-top:8px;">On Auto, the background color is picked from your photo's main color, with a soft sparkle texture, and adjusts itself to contrast with the Polaroid color. Pick a Backdrop color or Elements above to change it.</p>
           <p class="panel-hint" style="margin:10px 0 6px;">Photo crop focus</p>
           <select id="cropFocusSelect" class="label-input" style="font-size:13px;"></select>
         </div>
@@ -1215,6 +1209,7 @@
   const photoPlacementSelect = document.getElementById('photoPlacementSelect');
   photoPlacementSelect.addEventListener('change', () => {
     photoPlacement = photoPlacementSelect.value;
+    setActivePresetBtn();
     updateBandPositionVisibility();
     renderComposite();
     renderSetupPreview();
@@ -1678,9 +1673,7 @@
   }
   // Photos cover most of the canvas, so most decorations go where they show:
   // the side and top borders and the caption area at the bottom.
-  let elementTilePreview = false; // the small Elements tiles spread decorations evenly
   function visiblePos(rand, w, h){
-    if(elementTilePreview) return [rand() * w, rand() * h];
     const band = Math.min(w, h) * 0.06, r = rand();
     if(r < 0.4) return [rand() < 0.5 ? rand() * band : w - rand() * band, rand() * h];
     if(r < 0.6) return [rand() * w, rand() * band];
@@ -2023,7 +2016,9 @@
   // white/black so it stands out against the backdrop. ----
   function frameColorFor(){
     if(frameColorChoice !== 'auto') return frameColorChoice;
-    if(backdropPreset === 'custom' && backgroundImg) return '#ffffff';
+    if(backdropPreset === 'custom' && backgroundImg){
+      return (backdropColor && photoPlacement === 'band' && lumOf(backdropColor) > 0.72) ? '#111111' : '#ffffff';
+    }
     if(backdropPreset === 'none' && !backdropColor) return '#000000'; // flat white bg
     // A light picked Backdrop color needs a dark frame to stay readable.
     if(backdropColor && lumOf(backdropColor) > 0.72) return '#111111';
@@ -2033,6 +2028,8 @@
   function drawBackdrop(ctx, w, h){
     if(backdropPreset === 'custom' && backgroundImg && photoPlacement === 'background'){
       drawImageCover(ctx, backgroundImg, 0, 0, w, h, cropFocus);
+      const draw = elementsChoice === 'auto' ? null : ELEMENT_SETS[elementsChoice];
+      if(draw) draw(ctx, w, h, buildPalette(hslToHex(photoHue, photoSat, 0.5)));
       return;
     }
     const preset = backdropPreset === 'custom' ? 'none' : backdropPreset;
@@ -2521,38 +2518,28 @@
   // ---- Backdrop presets ----
   function setActivePresetBtn(){
     [...presetGrid.children].forEach(b => b.classList.toggle('active', b.dataset.preset === backdropPreset));
-    // Backdrop color only applies to the built-in styles, not an uploaded photo.
+    // Backdrop color + Elements work with every preset and with an uploaded
+    // photo. Only a photo filling the whole background leaves no room for a color.
+    const customPhoto = backdropPreset === 'custom' && !!backgroundImg;
     const grp = document.getElementById('bdColorGroup');
-    if(grp) grp.style.display = (backdropPreset === 'custom') ? 'none' : 'block';
-    const elGrp = document.getElementById('elementsGroup');
-    if(elGrp) elGrp.style.display = (backdropPreset === 'custom') ? 'none' : 'block';
-    refreshElementPreviews();
+    if(grp) grp.style.display = (customPhoto && photoPlacement === 'background') ? 'none' : 'block';
+    const hint = document.getElementById('bdColorHint');
+    if(hint) hint.textContent = customPhoto
+      ? 'Auto matches the background to your photo\u2019s main color. Pick a color to use that instead \u2014 the elements below are drawn on top of it.'
+      : 'Pick any color \u2014 the elements below are drawn on top of it. Choose Auto to go back to the style\u2019s own colors.';
+    refreshElementsSelect();
   }
 
   // ---- Backdrop color: tints any style while keeping its generic decorations ----
   const bdColorRow = document.getElementById('bdColorRow');
   const bdColorInput = document.getElementById('bdColorInput');
   const bdCustomSwatch = document.getElementById('bdCustomSwatch');
-  function refreshPresetSwatches(){
-    const P = backdropColor ? buildPalette(backdropColor) : null;
-    const set = (id, css) => { const el = document.getElementById(id); if(el) el.style.background = css; };
-    if(!P){
-      ['swatchGold', 'swatchSky', 'swatchStars', 'swatchCream', 'swatchMaroon'].forEach(id => { const el = document.getElementById(id); if(el) el.style.background = ''; });
-      return;
-    }
-    set('swatchGold', 'linear-gradient(135deg,' + P.g5[0] + ',' + P.g5[2] + ' 40%,' + P.g5[3] + ' 70%,' + P.g5[4] + ')');
-    set('swatchSky', 'linear-gradient(180deg,' + P.sky3[0] + ',' + P.sky3[1] + ' 55%,' + P.sky3[2] + ')');
-    set('swatchStars', 'linear-gradient(180deg,' + P.night2[0] + ',' + P.night2[1] + ')');
-    set('swatchCream', 'linear-gradient(160deg,' + P.cream2[0] + ',' + P.cream2[1] + ')');
-    set('swatchMaroon', 'linear-gradient(135deg,' + P.maroon3[0] + ',' + P.maroon3[1] + ' 50%,' + P.maroon3[2] + ')');
-  }
   function applyBackdropColor(color, activeEl){
     backdropColor = color || null;
     // Plain + a picked color = a flat backdrop in that color (add Elements on top if wanted).
     [...bdColorRow.querySelectorAll('.bd-swatch')].forEach(b => b.classList.toggle('active', b === activeEl));
     bdCustomSwatch.style.background = (activeEl === bdCustomSwatch && backdropColor) ? backdropColor : '';
     setActivePresetBtn();
-    refreshPresetSwatches();
     updateBandPositionVisibility();
     qrResults.innerHTML = '';
     lastRenderedFolderUrl = null;
@@ -2566,40 +2553,28 @@
   });
   bdColorInput.addEventListener('input', () => applyBackdropColor(bdColorInput.value, bdCustomSwatch));
 
-  // ---- Elements picker: tiles are mini-renders on the current backdrop ----
-  const elementGrid = document.getElementById('elementGrid');
+  // ---- Elements picker (dropdown) ----
+  const elementsSelect = document.getElementById('elementsSelect');
   ELEMENT_OPTIONS.forEach(([key, name]) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'element-btn' + (key === elementsChoice ? ' active' : '');
-    b.dataset.el = key;
-    b.title = name;
-    const c = document.createElement('canvas');
-    c.width = 120; c.height = 120;
-    const label = document.createElement('span');
-    label.textContent = name;
-    b.appendChild(c); b.appendChild(label);
-    elementGrid.appendChild(b);
+    const o = document.createElement('option');
+    o.value = key; o.textContent = name;
+    elementsSelect.appendChild(o);
   });
-  function refreshElementPreviews(){
-    if(!elementGrid) return;
-    const preset = backdropPreset === 'custom' ? 'none' : backdropPreset;
-    [...elementGrid.children].forEach(b => {
-      const key = b.dataset.el;
-      b.classList.toggle('active', key === elementsChoice);
-      const c = b.querySelector('canvas');
-      const ctx = c.getContext('2d');
-      ctx.clearRect(0, 0, c.width, c.height);
-      const elKey = key === 'auto' ? (BACKDROP_PRESETS[preset] ? BACKDROP_PRESETS[preset].elements : 'none') : key;
-      elementTilePreview = true;
-      try{ paintBackdrop(ctx, c.width, c.height, preset, elKey); } finally { elementTilePreview = false; }
-    });
+  function refreshElementsSelect(){
+    // Name what "Auto" means for the current backdrop.
+    const auto = elementsSelect.querySelector('option[value="auto"]');
+    let autoName = 'None';
+    if(backdropPreset === 'custom' && backgroundImg){
+      autoName = photoPlacement === 'background' ? 'None' : (backdropColor ? 'Glitter' : 'Sparkles matched to your photo');
+    } else if(BACKDROP_PRESETS[backdropPreset]){
+      const own = BACKDROP_PRESETS[backdropPreset].elements;
+      autoName = (ELEMENT_OPTIONS.find(o => o[0] === own) || [, own])[1];
+    }
+    auto.textContent = 'Auto \u2014 ' + autoName;
+    elementsSelect.value = elementsChoice;
   }
-  elementGrid.addEventListener('click', (e) => {
-    const b = e.target.closest('.element-btn');
-    if(!b) return;
-    elementsChoice = b.dataset.el;
-    refreshElementPreviews();
+  elementsSelect.addEventListener('change', () => {
+    elementsChoice = elementsSelect.value;
     qrResults.innerHTML = '';
     lastRenderedFolderUrl = null;
     renderComposite();
@@ -2975,7 +2950,40 @@
   function hsl(h, s, l){
     return 'hsl(' + Math.round(((h % 360) + 360) % 360) + ',' + Math.round(s * 100) + '%,' + Math.round(l * 100) + '%)';
   }
-  function drawPhotoMatchedBackdrop(ctx, w, h){
+  function hslToHex(h, s, l){
+    h = ((h % 360) + 360) % 360;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => { const k = (n + h / 30) % 12; return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+    return rgbToHex(f(0) * 255, f(8) * 255, f(4) * 255);
+  }
+  // The color the photo-matched backdrop reads as (its mid gradient tone).
+  function photoMatchedBaseHex(){
+    const lightFrame = hexLuminance(currentFrameColor) > 0.55;
+    const neutral = photoSat < 0.08;
+    const s = neutral ? photoSat : Math.max(0.3, Math.min(0.72, photoSat));
+    return hslToHex(photoHue, lightFrame ? s : s * 0.85, lightFrame ? 0.36 : 0.77);
+  }
+  // Backdrop around an uploaded photo (strip band / grid side placements):
+  // Auto = colors + sparkle texture matched to the photo; a picked Backdrop
+  // color replaces the photo-matched colors; Elements draw on top of either.
+  function drawCustomPhotoBackdrop(ctx, w, h){
+    if(backdropColor){
+      ctx.fillStyle = backdropColor;
+      ctx.fillRect(0, 0, w, h);
+      const draw = ELEMENT_SETS[elementsChoice === 'auto' ? 'glitter' : elementsChoice];
+      if(draw) draw(ctx, w, h, buildPalette(backdropColor));
+      return;
+    }
+    if(elementsChoice === 'auto'){
+      drawPhotoMatchedBackdrop(ctx, w, h, true);
+      return;
+    }
+    drawPhotoMatchedBackdrop(ctx, w, h, false);
+    const draw = ELEMENT_SETS[elementsChoice];
+    if(draw) draw(ctx, w, h, buildPalette(photoMatchedBaseHex()));
+  }
+
+  function drawPhotoMatchedBackdrop(ctx, w, h, withTexture){
     const lightFrame = hexLuminance(currentFrameColor) > 0.55;
     const neutral = photoSat < 0.08;
     const s = neutral ? photoSat : Math.max(0.3, Math.min(0.72, photoSat));
@@ -3001,6 +3009,7 @@
     glow.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, w, h);
+    if(withTexture === false){ ctx.restore(); return; } // colors only; Elements go on top
 
     const bright = lightFrame ? hsl(hue, 0.7, 0.9) : '#ffffff';
     const deep = lightFrame ? '#ffffff' : hsl(hue, Math.min(0.8, sBg + 0.15), 0.5);
@@ -3103,11 +3112,11 @@
 
     let photoOffsetY = 0;
     if(imgBandActive){
-      drawPhotoMatchedBackdrop(ctx, layout.w, totalH);
+      drawCustomPhotoBackdrop(ctx, layout.w, totalH);
       photoOffsetY = imgBandH;
       drawImageCover(ctx, backgroundImg, 0, 0, layout.w, imgBandH, cropFocus);
     } else if(imgSideActive){
-      drawPhotoMatchedBackdrop(ctx, layout.w, totalH);
+      drawCustomPhotoBackdrop(ctx, layout.w, totalH);
       // Photo spans the full height, band included, so it runs alongside
       // the caption area at the bottom rather than stopping above it.
       drawImageCover(ctx, backgroundImg, 0, 0, imgSideW, totalH, cropFocus);
@@ -3212,9 +3221,12 @@
   // license check updates it live (pb-print-change) if Admin changes it.
   // Each paper size is printed at its real physical size via @page, at 300 dpi.
   const PAPER = {
-    '2x6':    { name: '2\u00d76 strip', w: 50.8,  h: 152.4, stripOnly: true },
-    '4x6':    { name: '4\u00d76',       w: 101.6, h: 152.4 },
-    '5x7':    { name: '5\u00d77',       w: 127,   h: 177.8 },
+    '2x6':    { name: '2\u00d76 strip', w: 50.8,  h: 152.4 },
+    '3.5x5':  { name: '3R',             w: 88.9,  h: 127 },
+    '4x6':    { name: '4R (4\u00d76)',  w: 101.6, h: 152.4 },
+    '5x7':    { name: '5R (5\u00d77)',  w: 127,   h: 177.8 },
+    '6x8':    { name: '6R (6\u00d78)',  w: 152.4, h: 203.2 },
+    '8x10':   { name: '8R (8\u00d710)', w: 203.2, h: 254 },
     'A6':     { name: 'A6',             w: 105,   h: 148 },
     'A5':     { name: 'A5',             w: 148,   h: 210 },
     'A4':     { name: 'A4',             w: 210,   h: 297 },
@@ -3230,15 +3242,30 @@
   let printSize = null;
   let printing = false;
 
+  // Custom sizes set in Admin look like "4x4in" / "100x148mm"; always printed portrait.
+  function paperFor(key){
+    if(PAPER[key]) return PAPER[key];
+    const m = /^(\d{1,3}(?:\.\d{1,2})?)x(\d{1,3}(?:\.\d{1,2})?)(in|mm)$/.exec(key);
+    if(!m) return null;
+    const k = m[3] === 'in' ? 25.4 : 1;
+    const a = Number(m[1]) * k, b = Number(m[2]) * k;
+    return { name: m[1] + '\u00d7' + m[2] + ' ' + m[3], w: Math.min(a, b), h: Math.max(a, b) };
+  }
   function printSettings(){
     const p = window.__PB && window.__PB.print;
     if(!p || !p.enabled || !Array.isArray(p.sizes)) return null;
-    const sizes = p.sizes.filter(k => PAPER[k]);
+    const sizes = p.sizes.filter(k => paperFor(k));
     return sizes.length ? sizes : null;
   }
-  // A 2x6 sheet only suits the tall strip; the grid would print tiny.
+  // Very narrow sheets (like 2x6) only suit the tall strip; the grid would print tiny.
   function sizeFitsLayout(key){
-    return !PAPER[key].stripOnly || currentLayout === 'strip';
+    const p = paperFor(key);
+    return currentLayout === 'strip' || p.w / p.h >= 0.45;
+  }
+  // Wider sheets get two strips side by side, to cut down the middle.
+  function stripTwoUp(key){
+    const p = paperFor(key);
+    return currentLayout === 'strip' && p.w / p.h >= 0.5;
   }
   function refreshPrintUI(){
     const sizes = printSettings();
@@ -3252,21 +3279,21 @@
       b.type = 'button';
       b.className = 'print-size-btn' + (key === printSize ? ' active' : '');
       b.dataset.size = key;
-      b.textContent = PAPER[key].name;
+      b.textContent = paperFor(key).name;
       b.disabled = !sizeFitsLayout(key);
-      if(b.disabled) b.title = 'Only for the Strip format';
+      if(b.disabled) b.title = 'Too narrow for the Grid format \u2014 Strip only';
       printSizeRow.appendChild(b);
     });
     const ready = state === 'result' && shotCanvases.every(Boolean);
     printBtn.disabled = !ready || !printSize || printing;
     if(!printSize){
-      printHint.textContent = 'This rental only allows 2\u00d76 strip paper \u2014 switch the Format to Strip in Setup to print.';
+      printHint.textContent = 'The allowed paper is too narrow for the Grid \u2014 switch the Format to Strip in Setup to print.';
     } else if(!ready){
       printHint.textContent = 'Finish a photo session to print it.';
-    } else if(currentLayout === 'strip' && printSize !== '2x6'){
+    } else if(stripTwoUp(printSize)){
       printHint.textContent = 'Prints two strips side by side \u2014 cut down the middle to share.';
     } else {
-      printHint.textContent = 'Prints at the exact ' + PAPER[printSize].name + ' size.';
+      printHint.textContent = 'Prints at the exact ' + paperFor(printSize).name + ' size.';
     }
   }
   printSizeRow.addEventListener('click', (e) => {
@@ -3291,7 +3318,7 @@
     ctx.restore();
   }
   function buildPrintCanvas(key){
-    const paper = PAPER[key];
+    const paper = paperFor(key);
     const src = document.createElement('canvas');
     renderCompositeToCanvas(currentLayout, src);
     const c = document.createElement('canvas');
@@ -3301,7 +3328,7 @@
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, c.width, c.height);
     ctx.imageSmoothingQuality = 'high';
-    if(currentLayout === 'strip' && key !== '2x6'){
+    if(stripTwoUp(key)){
       // Classic photo-booth sheet: two identical strips, cut down the middle.
       const half = c.width / 2;
       drawFitted(ctx, src, 0, 0, half, c.height);
@@ -3316,7 +3343,7 @@
     printing = true;
     refreshPrintUI();
     try{
-      const paper = PAPER[printSize];
+      const paper = paperFor(printSize);
       const c = buildPrintCanvas(printSize);
       const blob = await new Promise(res => c.toBlob(res, 'image/png'));
       const url = URL.createObjectURL(blob);

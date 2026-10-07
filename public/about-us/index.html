@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An easy, customizable DIY photo booth for your event.">
+  <title>About Us | Photo Booth for Your Event</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+  <style>
+    :root{--ink:#26313d;--muted:#637284;--blue:#4f8caf;--blue-pale:#eaf5fb;--cream:#fffaf2;--line:#d9e8ef;}
+    *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;color:var(--ink);font-family:'DM Sans',Arial,sans-serif;background:linear-gradient(135deg,#fffdf9 0%,#f2f9fc 50%,#fffaf3 100%)}
+    a{color:inherit} .site-header{display:flex;align-items:center;justify-content:space-between;gap:16px;width:min(1160px,calc(100% - 40px));margin:0 auto;padding:22px 0}
+    .brand{font-family:'Playfair Display',serif;font-style:italic;font-size:clamp(21px,3vw,28px);font-weight:700;text-decoration:none;color:#437e9e}.back{font-size:14px;font-weight:700;text-decoration:none;padding:10px 15px;border:1px solid var(--line);border-radius:999px;background:#fff;transition:.2s ease}.back:hover,.back:focus-visible{border-color:var(--blue);color:var(--blue);outline:none}
+    main{width:min(1160px,calc(100% - 40px));margin:0 auto;padding:26px 0 70px}.eyebrow{margin:0 0 10px;text-align:center;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--blue)}
+    h1{max-width:760px;margin:0 auto 14px;text-align:center;font-family:'Playfair Display',serif;font-size:clamp(38px,6vw,70px);line-height:1.02;letter-spacing:-.045em}.intro{max-width:570px;margin:0 auto 32px;text-align:center;font-size:clamp(16px,2vw,18px);line-height:1.6;color:var(--muted)}
+    .slider{position:relative;isolation:isolate;margin:0 auto;border-radius:28px;background:#fff;border:1px solid rgba(217,232,239,.9);box-shadow:0 20px 60px rgba(63,117,148,.15);overflow:hidden}.slides{position:relative;min-height:clamp(420px,68vw,700px);background:#f7f2ea}.slide{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .5s ease}.slide.active{opacity:1;pointer-events:auto}.slide img{width:100%;height:100%;object-fit:contain;display:block}.slide-caption{position:absolute;left:22px;bottom:22px;max-width:min(360px,calc(100% - 44px));padding:15px 18px;border-radius:16px;background:rgba(255,255,255,.91);box-shadow:0 6px 25px rgba(38,49,61,.12);backdrop-filter:blur(10px)}.slide-caption strong{display:block;font-size:16px}.slide-caption span{display:block;margin-top:3px;font-size:13px;line-height:1.4;color:var(--muted)}
+    .arrow{position:absolute;z-index:2;top:50%;display:grid;place-items:center;width:46px;height:46px;border:0;border-radius:50%;background:rgba(255,255,255,.92);color:#355e74;font-size:28px;line-height:1;cursor:pointer;box-shadow:0 4px 16px rgba(38,49,61,.15);transform:translateY(-50%);transition:.2s}.arrow:hover,.arrow:focus-visible{background:var(--blue);color:#fff;outline:none}.prev{left:18px}.next{right:18px}
+    .slider-footer{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 22px;background:#fff}.dots{display:flex;align-items:center;gap:8px}.dot{width:10px;height:10px;padding:0;border:0;border-radius:50%;background:#c7dce6;cursor:pointer;transition:.2s}.dot[aria-current="true"]{width:28px;border-radius:9px;background:var(--blue)}.dot:focus-visible{outline:3px solid #a9d5e7;outline-offset:3px}.counter{margin:0;font-size:13px;font-weight:700;color:var(--muted)}
+    .details{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:30px 0}.detail{padding:22px;border-radius:18px;background:rgba(255,255,255,.68);border:1px solid rgba(217,232,239,.9)}.detail-number{display:grid;place-items:center;width:29px;height:29px;margin-bottom:10px;border-radius:50%;background:var(--blue-pale);font-size:13px;font-weight:700;color:var(--blue)}.detail h2{margin:0 0 6px;font-size:16px}.detail p{margin:0;font-size:14px;line-height:1.5;color:var(--muted)}
+    .cta{display:flex;align-items:center;justify-content:space-between;gap:25px;padding:28px 30px;border-radius:22px;background:#315f78;color:#fff}.cta h2{margin:0 0 6px;font-family:'Playfair Display',serif;font-size:28px}.cta p{margin:0;color:#d7edf7;line-height:1.5}.trial-note{margin-top:10px!important;font-size:14px}.trial-note code{padding:3px 7px;border-radius:6px;background:rgba(255,255,255,.16);color:#fff;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em;font-weight:700;letter-spacing:.04em}.contact-note{margin-top:10px!important;font-size:14px}.contact-note a{padding:0;background:transparent;color:#fff;text-decoration:underline;text-underline-offset:3px;font-weight:700;border-radius:0}.contact-note a:hover,.contact-note a:focus-visible{transform:none;color:#d7edf7;box-shadow:none}.cta > a{flex:none;padding:13px 19px;border-radius:999px;background:#fff;color:#315f78;text-decoration:none;font-weight:700;transition:.2s}.cta > a:hover,.cta > a:focus-visible{transform:translateY(-2px);outline:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+    @media (max-width:650px){.site-header,main{width:min(100% - 28px,1160px)}.site-header{padding:16px 0}.brand{font-size:21px}.back{padding:8px 12px;font-size:12px}.slider{border-radius:20px}.slides{min-height:0;aspect-ratio:1/1}.slide-caption{left:12px;bottom:12px;padding:11px 13px}.slide-caption strong{font-size:14px}.slide-caption span{font-size:12px}.arrow{width:38px;height:38px;font-size:24px}.prev{left:10px}.next{right:10px}.slider-footer{padding:13px 15px}.details{grid-template-columns:1fr;gap:10px;margin:22px 0}.detail{padding:16px}.cta{display:block;padding:24px}.cta a{display:inline-block;margin-top:18px}h1{font-size:40px}.intro{margin-bottom:22px}}
+    @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition-duration:.01ms!important}}
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">Photo Booth for Your Event</a>
+    <a class="back" href="/">Open photo booth</a>
+  </header>
+  <main>
+    <p class="eyebrow">Simple setup · big memories</p>
+    <h1>Your event, your photo booth.</h1>
+    <p class="intro">A friendly, browser-based photo booth that turns any tablet or phone into a keepsake-making station—no bulky booth required.</p>
+
+    <section class="slider" aria-label="How the photo booth works" aria-roledescription="carousel">
+      <div class="slides">
+        <article class="slide active" id="slide-1" aria-label="Slide 1 of 5">
+          <img src="assets/diy-photobooth-setup.png" alt="DIY photo booth displayed on a tablet attached to a tripod">
+          <div class="slide-caption"><strong>Set up in minutes</strong><span>Use your own tablet or phone, open the booth, and you are ready to capture.</span></div>
+        </article>
+        <article class="slide" id="slide-2" aria-label="Slide 2 of 5">
+          <img src="assets/choose-your-layout.png" alt="Two photo booth layout choices: a classic strip and a four-photo grid">
+          <div class="slide-caption"><strong>Choose your layout</strong><span>Pick the timeless photo strip or a spacious four-shot grid before the event begins.</span></div>
+        </article>
+        <article class="slide" id="slide-3" aria-label="Slide 3 of 5">
+          <img src="assets/customize-your-booth.png" alt="A photo booth customization screen with event name, font, colors, frame and background controls">
+          <div class="slide-caption"><strong>Make it yours</strong><span>Add your event name, select a style, and see every change in the live preview.</span></div>
+        </article>
+        <article class="slide" id="slide-4" aria-label="Slide 4 of 5">
+          <img src="assets/everything-you-need.png" alt="Tablet, online photo booth and tripod shown as the complete photo booth setup">
+          <div class="slide-caption"><strong>Bring only the essentials</strong><span>Your device, our photo booth, and a tripod are all you need for a stable setup.</span></div>
+        </article>
+        <article class="slide" id="slide-5" aria-label="Slide 5 of 5">
+          <img src="assets/traditional-laptop-camera-booth.png" alt="Laptop, connected camera on tripod and guest-facing monitor arranged as a traditional photo booth">
+          <div class="slide-caption"><strong>Prefer a classic booth setup?</strong><span>Open the website on a laptop, connect your camera, and let a separate monitor guide your guests.</span></div>
+        </article>
+      </div>
+      <button class="arrow prev" type="button" aria-label="Show previous slide">‹</button>
+      <button class="arrow next" type="button" aria-label="Show next slide">›</button>
+      <div class="slider-footer">
+        <div class="dots" aria-label="Choose a slide">
+          <button class="dot" type="button" aria-label="Show slide 1" aria-controls="slide-1" aria-current="true"></button>
+          <button class="dot" type="button" aria-label="Show slide 2" aria-controls="slide-2" aria-current="false"></button>
+          <button class="dot" type="button" aria-label="Show slide 3" aria-controls="slide-3" aria-current="false"></button>
+          <button class="dot" type="button" aria-label="Show slide 4" aria-controls="slide-4" aria-current="false"></button>
+          <button class="dot" type="button" aria-label="Show slide 5" aria-controls="slide-5" aria-current="false"></button>
+        </div>
+        <p class="counter" aria-live="polite"><span id="current">01</span> / 05</p>
+      </div>
+    </section>
+
+    <section class="details" aria-label="Photo booth highlights">
+      <article class="detail"><span class="detail-number">01</span><h2>Runs in your browser</h2><p>No app download or expensive rental booth needed.</p></article>
+      <article class="detail"><span class="detail-number">02</span><h2>Made for your occasion</h2><p>Layouts, text, frames and backgrounds can reflect your celebration.</p></article>
+      <article class="detail"><span class="detail-number">03</span><h2>Easy for every guest</h2><p>A simple, guided camera experience keeps the line moving.</p></article>
+    </section>
+
+    <section class="cta">
+      <div><h2>Ready to make some memories?</h2><p>Open the photo booth and start creating your event setup.</p><p class="trial-note">Want to try it out? Use code <code>TRIALMODE</code>.</p><p class="contact-note">Wanna avail and rent it for your event? <a href="https://www.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer">Message us on Facebook</a> or <a href="mailto:roktetnachi28@gmail.com">email roktetnachi28@gmail.com</a>.</p></div>
+      <a href="/">Try the photo booth</a>
+    </section>
+  </main>
+  <script>
+    (function(){
+      var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+      var dots = Array.prototype.slice.call(document.querySelectorAll('.dot'));
+      var current = document.getElementById('current');
+      var carousel = document.querySelector('.slider');
+      var index = 0, timer, pause = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      function show(next){
+        index = (next + slides.length) % slides.length;
+        slides.forEach(function(slide, i){ slide.classList.toggle('active', i === index); });
+        dots.forEach(function(dot, i){ dot.setAttribute('aria-current', i === index ? 'true' : 'false'); });
+        current.textContent = String(index + 1).padStart(2, '0');
+      }
+      function stop(){ window.clearInterval(timer); }
+      function start(){ stop(); if(!pause) timer = window.setInterval(function(){ show(index + 1); }, 6000); }
+      document.querySelector('.prev').addEventListener('click', function(){ show(index - 1); start(); });
+      document.querySelector('.next').addEventListener('click', function(){ show(index + 1); start(); });
+      dots.forEach(function(dot, i){ dot.addEventListener('click', function(){ show(i); start(); }); });
+      carousel.addEventListener('mouseenter', stop);
+      carousel.addEventListener('mouseleave', start);
+      carousel.addEventListener('focusin', stop);
+      carousel.addEventListener('focusout', function(){ window.setTimeout(function(){ if(!carousel.contains(document.activeElement)) start(); }, 0); });
+      document.addEventListener('visibilitychange', function(){ if(document.hidden) stop(); else start(); });
+      start();
+    })();
+  </script>
+</body>
+</html>

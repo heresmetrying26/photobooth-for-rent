@@ -3,30 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Photo Booth</title>
+<title>photobooth4u</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Dancing+Script:wght@600;700&family=Pacifico&family=Great+Vibes&family=Sacramento&family=Alex+Brush&family=Satisfy&family=Parisienne&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Cinzel:wght@600;700&family=Marck+Script&family=Tangerine:wght@700&family=Allura&family=Cookie&family=Italianno&family=Petit+Formal+Script&family=Lobster&family=Josefin+Sans:wght@600;700&family=Montserrat:wght@600;700&family=Poppins:wght@600;700&family=Raleway:wght@600;700&family=Merriweather:wght@700&family=Abril+Fatface&family=Bebas+Neue&family=Caveat:wght@600;700&family=Amatic+SC:wght@700&family=EB+Garamond:ital,wght@0,600;1,600&family=Quicksand:wght@600;700&family=Comfortaa:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&family=Dancing+Script:wght@600;700&family=Pacifico&family=Great+Vibes&family=Sacramento&family=Alex+Brush&family=Satisfy&family=Parisienne&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Cinzel:wght@600;700&family=Marck+Script&family=Tangerine:wght@700&family=Allura&family=Cookie&family=Italianno&family=Petit+Formal+Script&family=Lobster&family=Josefin+Sans:wght@600;700&family=Montserrat:wght@600;700&family=Poppins:wght@600;700&family=Raleway:wght@600;700&family=Merriweather:wght@700&family=Abril+Fatface&family=Bebas+Neue&family=Caveat:wght@600;700&family=Amatic+SC:wght@700&family=EB+Garamond:ital,wght@0,600;1,600&family=Quicksand:wght@600;700&family=Comfortaa:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg-page:#eaf5fb;
+    --bg-page:#F5F1EA;
     --panel:#ffffff;
-    --panel-2:#f4fafd;
-    --line:#d6ebf5;
-    --ink:#3c5165;
-    --ink-dim:#89a4b6;
-    --blue:#9dd0ea;
-    --blue-soft:#cfe9f5;
-    --blue-deep:#4f8caf;
+    --panel-2:#FAF7F2;
+    --line:#E4DCCF;
+    --ink:#1C1A1E;
+    --ink-dim:#6B666C;
+    --blue:#E7B9AE;
+    --blue-soft:#F2D9D2;
+    --blue-deep:#C93D27;
+    --tint:#FBEDEA;
     --white:#ffffff;
     --radius:16px;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    background:linear-gradient(180deg, #ffffff 0%, var(--bg-page) 55%, #ddeef8 100%);
+    background:var(--bg-page);
     color:var(--ink);
-    font-family:'Inter',sans-serif;
+    font-family:'Manrope',sans-serif;
     min-height:100vh;
     padding:28px 16px 60px;
   }
@@ -53,7 +54,7 @@
     50%{background:var(--blue-deep); box-shadow:0 0 9px rgba(157,208,234,0.9);}
   }
   h1{
-    font-family:'Playfair Display', serif;
+    font-family:'Fraunces', Georgia, serif;
     font-style:italic;
     font-weight:700;
     font-size:clamp(30px,6.5vw,46px);
@@ -107,7 +108,7 @@
     color:var(--ink-dim);
     padding:11px 20px;
     border-radius:30px;
-    font-family:'Inter',sans-serif;
+    font-family:'Manrope',sans-serif;
     font-weight:600;
     font-size:14px;
     cursor:pointer;
@@ -121,8 +122,8 @@
   }
   .tab-btn.active{
     border-color:var(--blue-deep); color:var(--blue-deep);
-    background:#eef8fc;
-    box-shadow:0 4px 14px rgba(79,140,175,0.15);
+    background:var(--tint);
+    box-shadow:0 4px 14px rgba(70,45,25,0.15);
   }
   .tab-btn.active .tab-num{background:var(--blue-deep); color:#fff;}
   .tab-btn:hover{border-color:var(--blue-deep);}
@@ -153,18 +154,18 @@
     font-size:15px;
     text-align:center;
   }
-  .font-btn.active{border-color:var(--blue-deep); background:#eef8fc; color:var(--blue-deep);}
+  .font-btn.active{border-color:var(--blue-deep); background:var(--tint); color:var(--blue-deep);}
   .color-swatch-btn{
     width:26px; height:26px; border-radius:50%; border:1.5px solid transparent;
     cursor:pointer; padding:0;
   }
-  .color-swatch-btn.active{border-color:var(--blue-deep); box-shadow:0 0 0 2px #eef8fc;}
+  .color-swatch-btn.active{border-color:var(--blue-deep); box-shadow:0 0 0 2px var(--tint);}
   .frame-swatch{
     width:30px; height:30px; border-radius:8px; padding:0; cursor:pointer;
     border:1.5px solid var(--line);
     box-shadow:0 1px 3px rgba(0,0,0,0.12);
   }
-  .frame-swatch.active{border-color:var(--blue-deep); box-shadow:0 0 0 2px #eef8fc, 0 0 0 4px var(--blue-deep);}
+  .frame-swatch.active{border-color:var(--blue-deep); box-shadow:0 0 0 2px var(--tint), 0 0 0 4px var(--blue-deep);}
   .custom-dd{position:relative;}
   .custom-dd-btn{
     width:100%; text-align:left; background:var(--panel-2); border:1.5px solid var(--line);
@@ -196,7 +197,7 @@
     overflow:hidden;
     aspect-ratio:4/5;
     border:5px solid var(--white);
-    box-shadow:0 16px 40px rgba(79,140,175,0.18), 0 0 0 1px var(--line);
+    box-shadow:0 16px 40px rgba(70,45,25,0.18), 0 0 0 1px var(--line);
   }
   .sprockets{
     position:absolute;
@@ -241,7 +242,7 @@
     background:rgba(0,0,0,0.15);
   }
   .countdown-num{
-    font-family:'Playfair Display', serif;
+    font-family:'Fraunces', Georgia, serif;
     font-weight:700;
     font-size:120px;
     color:#ffffff;
@@ -269,7 +270,7 @@
   }
   .ready-overlay.ready-active{display:flex;}
   .ready-title{
-    font-family:'Playfair Display', serif;
+    font-family:'Fraunces', Georgia, serif;
     font-style:italic;
     font-weight:700;
     font-size:28px;
@@ -277,7 +278,7 @@
     margin:0;
   }
   .ready-sub{
-    color:#cfe9f5;
+    color:#F2D9D2;
     font-size:13px;
     letter-spacing:0.5px;
     margin:0 0 8px;
@@ -286,7 +287,7 @@
   .rec-dot{
     position:absolute; top:14px; left:26px; z-index:5;
     display:flex; align-items:center; gap:6px;
-    font-size:11px; letter-spacing:1px; color:#cfe9f5;
+    font-size:11px; letter-spacing:1px; color:#F2D9D2;
   }
   .rec-dot i{width:8px;height:8px;border-radius:50%;background:#7fd3a3; box-shadow:0 0 8px #7fd3a3;}
 
@@ -314,13 +315,13 @@
     border:none;
     padding:14px 26px;
     border-radius:40px;
-    font-family:'Playfair Display', serif;
+    font-family:'Fraunces', Georgia, serif;
     font-weight:700;
     font-style:italic;
     font-size:17px;
     letter-spacing:0.5px;
     cursor:pointer;
-    box-shadow:0 8px 20px rgba(79,140,175,0.35);
+    box-shadow:0 8px 20px rgba(70,45,25,0.35);
     transition:transform 0.15s ease;
   }
   .shutter-btn:hover{transform:translateY(-2px);}
@@ -340,10 +341,10 @@
     border:1px solid var(--line);
     border-radius:var(--radius);
     padding:16px 16px 18px;
-    box-shadow:0 4px 16px rgba(79,140,175,0.06);
+    box-shadow:0 4px 16px rgba(70,45,25,0.06);
   }
   .panel-label{
-    font-family:'Playfair Display', serif;
+    font-family:'Fraunces', Georgia, serif;
     font-weight:600;
     font-style:italic;
     letter-spacing:0.3px;
@@ -375,7 +376,7 @@
     border-radius:10px;
     font-size:13px;
     cursor:pointer;
-    font-family:'Inter',sans-serif;
+    font-family:'Manrope',sans-serif;
   }
   .upload-btn:hover{border-color:var(--blue-deep);}
   .remove-link{
@@ -391,12 +392,12 @@
     border:1px solid var(--line);
     background:var(--panel-2);
     color:var(--ink);
-    font-family:'Inter',sans-serif;
+    font-family:'Manrope',sans-serif;
     font-size:14px;
   }
   .label-input:focus{outline:none; border-color:var(--blue-deep);}
-  .label-input::placeholder{color:var(--ink-dim); font-family:'Inter',sans-serif; font-size:13px;}
-  .label-input{font-family:'Inter', sans-serif; font-size:15px; color:var(--ink);}
+  .label-input::placeholder{color:var(--ink-dim); font-family:'Manrope',sans-serif; font-size:13px;}
+  .label-input{font-family:'Manrope', sans-serif; font-size:15px; color:var(--ink);}
 
   /* backdrop presets */
   .preset-grid{
@@ -411,13 +412,13 @@
     overflow:hidden;
     padding:0;
   }
-  .preset-btn.active{border-color:var(--blue-deep); box-shadow:0 0 0 2px rgba(79,140,175,0.25);}
+  .preset-btn.active{border-color:var(--blue-deep); box-shadow:0 0 0 2px rgba(70,45,25,0.25);}
   .preset-btn span{
     position:absolute; left:0; right:0; bottom:0;
     font-size:9.5px; letter-spacing:0.3px; color:#fff;
     background:rgba(0,0,0,0.38);
     padding:3px 2px;
-    font-family:'Inter',sans-serif; font-weight:600;
+    font-family:'Manrope',sans-serif; font-weight:600;
   }
   .preset-swatch{position:absolute; inset:0;}
   .preset-swatch.swatch-gold{background:linear-gradient(135deg,#caa24a,#f4dd9a 40%,#caa24a 70%,#8a6a24);}
@@ -427,8 +428,8 @@
   .preset-swatch.swatch-stars i{position:absolute; background:#f0c869; border-radius:50%;}
   .preset-swatch.swatch-cream{background:linear-gradient(160deg,#faf3e6 0%,#f3e6cf 100%);}
   .preset-swatch.swatch-maroon{background:radial-gradient(circle at 30% 30%,rgba(255,231,163,0.9) 0 1.5px,transparent 2px),radial-gradient(circle at 70% 55%,rgba(255,231,163,0.85) 0 1.5px,transparent 2px),radial-gradient(circle at 45% 78%,rgba(255,231,163,0.8) 0 1px,transparent 1.5px),linear-gradient(135deg,#3f0a1a,#7a1f3d 50%,#521128);}
-  .frame-swatch.frame-auto{width:auto; padding:0 11px; font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:var(--ink-dim); background:var(--panel-2);}
-  .frame-swatch.frame-auto.active{color:var(--blue-deep); background:#eef8fc;}
+  .frame-swatch.frame-auto{width:auto; padding:0 11px; font-family:'Manrope',sans-serif; font-size:11px; font-weight:600; color:var(--ink-dim); background:var(--panel-2);}
+  .frame-swatch.frame-auto.active{color:var(--blue-deep); background:var(--tint);}
   .preset-btn[data-preset="none"] .preset-swatch{
     background:var(--panel-2);
     display:flex; align-items:center; justify-content:center;
@@ -443,12 +444,12 @@
     width:30px; height:30px; border-radius:50%; padding:0; cursor:pointer; position:relative;
     border:1.5px solid var(--line); box-shadow:0 1px 3px rgba(0,0,0,0.12); overflow:hidden;
   }
-  .bd-swatch.active{border-color:var(--blue-deep); box-shadow:0 0 0 2px rgba(79,140,175,0.35);}
+  .bd-swatch.active{border-color:var(--blue-deep); box-shadow:0 0 0 2px rgba(70,45,25,0.35);}
   .bd-swatch.bd-auto{
     width:auto; border-radius:15px; padding:0 11px; background:var(--panel-2); color:var(--ink-dim);
-    font-family:'Inter',sans-serif; font-size:11px; font-weight:600;
+    font-family:'Manrope',sans-serif; font-size:11px; font-weight:600;
   }
-  .bd-swatch.bd-auto.active{color:var(--blue-deep); background:#eef8fc;}
+  .bd-swatch.bd-auto.active{color:var(--blue-deep); background:var(--tint);}
   .bd-swatch.bd-custom{background:conic-gradient(#ff6b6b,#ffd166,#6bff9e,#6bc7ff,#c66bff,#ff6b6b);}
   .bd-swatch.bd-custom input{position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; border:0; padding:0;}
 
@@ -460,7 +461,7 @@
     border-radius:12px;
     overflow:hidden;
     border:5px solid var(--white);
-    box-shadow:0 12px 30px rgba(79,140,175,0.18), 0 0 0 1px var(--line);
+    box-shadow:0 12px 30px rgba(70,45,25,0.18), 0 0 0 1px var(--line);
     max-width:260px;
   }
   #setupPreviewCanvas{display:block; width:100%; height:auto;}
@@ -474,7 +475,7 @@
     border:1px solid var(--line);
     background:var(--panel-2);
     color:var(--ink);
-    font-family:'Inter',sans-serif;
+    font-family:'Manrope',sans-serif;
     font-size:13px;
   }
   .toggle-row{display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--ink); cursor:pointer;}
@@ -492,7 +493,7 @@
     display:flex; flex-direction:column; align-items:center; gap:6px;
     cursor:pointer; color:var(--ink-dim); font-size:10.5px; letter-spacing:0.5px;
   }
-  .layout-btn.active{border-color:var(--blue-deep); color:var(--ink); background:#eef8fc;}
+  .layout-btn.active{border-color:var(--blue-deep); color:var(--ink); background:var(--tint);}
   .icon-box{width:34px; height:34px; position:relative;}
   .icon-strip{display:flex; flex-direction:column; gap:2px; justify-content:center; height:100%;}
   .icon-strip i{height:5px; background:var(--blue-soft); border-radius:1px; width:60%; margin:0 auto;}
@@ -524,9 +525,9 @@
   .print-size-btn{
     background:var(--panel-2); border:1.5px solid var(--line); border-radius:999px;
     padding:6px 11px; cursor:pointer; color:var(--ink-dim);
-    font-family:'Inter',sans-serif; font-size:12px; font-weight:600;
+    font-family:'Manrope',sans-serif; font-size:12px; font-weight:600;
   }
-  .print-size-btn.active{border-color:var(--blue-deep); color:var(--blue-deep); background:#eef8fc;}
+  .print-size-btn.active{border-color:var(--blue-deep); color:var(--blue-deep); background:var(--tint);}
   .print-size-btn:disabled{opacity:0.4; cursor:not-allowed;}
   #printArea{display:none;}
   @media print{
@@ -541,7 +542,7 @@
     background:var(--panel); border:1px solid var(--line);
     color:var(--ink); padding:12px 20px; border-radius:30px;
     font-size:13px; opacity:0; pointer-events:none;
-    box-shadow:0 8px 24px rgba(79,140,175,0.2);
+    box-shadow:0 8px 24px rgba(70,45,25,0.2);
     transition:all 0.25s ease; z-index:50; max-width:88vw; text-align:center;
   }
   .toast.toast-visible{opacity:1; transform:translate(-50%, 0);}
@@ -554,7 +555,7 @@
     border:1px solid var(--line);
     background:var(--panel-2);
     color:var(--ink);
-    font-family:'Inter',sans-serif;
+    font-family:'Manrope',sans-serif;
     font-size:14px;
     cursor:pointer;
     appearance:auto;
@@ -591,17 +592,138 @@
   .qr-expiry-row label{ font-size:12px; color:var(--ink-dim); white-space:nowrap; }
   .drive-connect-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
   #driveStatusText{ margin:0 0 12px; }
+
+  /* ================= photobooth4u brand ================= */
+  .brandbar{display:flex; flex-direction:column; align-items:center; gap:6px; margin-bottom:22px;}
+  .brand-logo{display:flex; align-items:center; gap:12px; color:var(--ink);}
+  .brand-mark{display:grid; grid-template-columns:1fr 1fr; gap:3px; width:28px; height:28px; flex:none;}
+  .brand-mark i{background:var(--ink); border-radius:4px;}
+  .brand-mark i:nth-child(2){background:var(--blue-deep);}
+  .brand-word{display:flex; align-items:flex-start;}
+  .brand-word b{font-family:'Fraunces', Georgia, serif; font-weight:600; font-size:clamp(26px,5vw,34px); letter-spacing:-0.035em; line-height:1;}
+  .brand-word em{font-style:normal; margin-left:4px; padding:2px 7px 4px; border-radius:8px; background:var(--blue-deep); color:#fff;
+    font-family:'Manrope',sans-serif; font-weight:800; font-size:clamp(13px,2.4vw,16px); letter-spacing:-0.02em; line-height:1; transform:rotate(-7deg);}
+  .brandbar .subtitle{font-family:'Manrope',sans-serif; font-weight:700; letter-spacing:0.28em; font-size:11px;}
+
+  /* Start screen (shown once, before Setup) */
+  .start-screen{position:fixed; inset:0; z-index:200; background:var(--bg-page); overflow:hidden; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px;
+    transition:opacity .35s ease;}
+  .start-screen.leaving{opacity:0; pointer-events:none;}
+  .start-screen .ss-status{position:absolute; top:24px; left:28px; display:flex; align-items:center; gap:9px;
+    font:700 11px 'Manrope',sans-serif; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim);}
+  .start-screen .ss-status i{width:8px; height:8px; border-radius:50%; background:var(--blue-deep);}
+  .ss-polaroid{position:absolute; background:#fff; border-radius:6px; box-shadow:0 18px 40px rgba(60,40,20,.14), 0 2px 6px rgba(60,40,20,.08); box-sizing:border-box;}
+  .ss-polaroid i{display:block; width:100%; height:100%; border-radius:2px;}
+  .ss-p1{left:-46px; bottom:60px; width:230px; height:276px; padding:14px 14px 52px; transform:rotate(-8deg);}
+  .ss-p2{left:96px; bottom:-6px; width:196px; height:236px; padding:12px 12px 46px; transform:rotate(5deg);}
+  .ss-p3{right:-40px; top:60px; width:220px; height:264px; padding:14px 14px 50px; transform:rotate(7deg);}
+  .ss-strip{position:absolute; right:70px; top:196px; width:64px; height:196px; padding:6px; display:flex; flex-direction:column; gap:5px;
+    background:#fff; border-radius:4px; box-shadow:0 18px 40px rgba(60,40,20,.14); transform:rotate(-6deg); box-sizing:border-box;}
+  .ss-strip i{flex:1; display:block;}
+  .ss-a{background:#C9D5C4;} .ss-b{background:#EBC9BC;} .ss-c{background:#BFD0DE;} .ss-r{background:var(--blue-deep);}
+  .ss-center{position:relative; display:flex; flex-direction:column; align-items:center;}
+  .ss-center .brand-mark{width:46px; height:46px; gap:5px;}
+  .ss-center .brand-mark i{border-radius:5px;}
+  .ss-word{display:flex; align-items:flex-start; margin-top:24px; color:var(--ink);}
+  .ss-word b{font-family:'Fraunces', Georgia, serif; font-weight:600; font-size:clamp(54px,11vw,96px); letter-spacing:-0.035em; line-height:1;}
+  .ss-word em{font-style:normal; margin-left:8px; margin-top:2px; padding:6px 12px 8px; border-radius:14px; background:var(--blue-deep); color:#fff;
+    font-family:'Manrope',sans-serif; font-weight:800; font-size:clamp(24px,4.6vw,40px); letter-spacing:-0.03em; line-height:1; transform:rotate(-7deg);}
+  .ss-tag{margin:18px 0 0; font:600 13px 'Manrope',sans-serif; letter-spacing:0.32em; text-transform:uppercase; color:var(--ink-dim);}
+  .ss-btn{position:relative; margin-top:56px; width:128px; height:128px; border-radius:50%; border:1.5px solid var(--ink); background:transparent;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;}
+  .ss-btn .core{width:92px; height:92px; border-radius:50%; background:var(--blue-deep); box-shadow:inset 0 -6px 0 rgba(0,0,0,.12);}
+  .ss-btn .halo{position:absolute; inset:-1px; border-radius:50%; border:1.5px solid var(--blue-deep); animation:ss-halo 2.4s ease-out infinite;}
+  .ss-btn .halo.h2{animation-delay:1.2s;}
+  @keyframes ss-halo{0%{transform:scale(1); opacity:.55;} 100%{transform:scale(1.55); opacity:0;}}
+  .ss-cta{margin:22px 0 0; font:800 13px 'Manrope',sans-serif; letter-spacing:0.3em; text-transform:uppercase; color:var(--blue-deep);}
+  .ss-event{position:absolute; left:0; right:0; bottom:30px; display:flex; flex-direction:column; align-items:center; gap:4px;}
+  .ss-event p{margin:0;}
+  .ss-event .ev{font-family:'Fraunces', Georgia, serif; font-style:italic; font-size:22px; color:var(--ink);}
+  .ss-event .dt{font:600 12px 'Manrope',sans-serif; letter-spacing:0.2em; color:var(--ink-dim);}
+  @media (max-width:700px), (max-height:560px){ .ss-p1,.ss-p2,.ss-p3,.ss-strip{display:none;} }
+
+  /* Layout picker (data-driven thumbnails) */
+  .layout-grid.lg-many{grid-template-columns:repeat(auto-fill, minmax(96px, 1fr));}
+  .layout-btn .lt{position:relative; width:40px; height:60px; background:#fff; border-radius:3px; box-shadow:0 3px 8px rgba(60,40,20,.14);}
+  .layout-btn .lt.lt-strip{width:20px;}
+  .layout-btn .lt i{position:absolute; background:#DDD5C9; border-radius:1px;}
+  .layout-btn.active .lt i{background:#E7B9AE;}
+  .layout-btn.active .lt i:first-child{background:var(--blue-deep);}
+  .layout-btn .ln{font-size:12px; font-weight:700; color:var(--ink); letter-spacing:0;}
+  .layout-btn .ls{font-size:9.5px; font-weight:700; letter-spacing:0.16em; color:var(--ink-dim);}
+
+  /* Countdown settings */
+  .chip-row{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px;}
+  .chip{height:44px; border-radius:10px; border:1.5px solid var(--line); background:#fff; color:var(--ink);
+    font:800 15px 'Manrope',sans-serif; cursor:pointer;}
+  .chip.active{background:var(--ink); border-color:var(--ink); color:#fff;}
+  .stepper{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px;}
+  .stepper .lbl{font-size:13px; font-weight:600; color:var(--ink-dim);}
+  .stepper .ctl{display:flex; align-items:center; gap:6px;}
+  .step-btn{width:44px; height:44px; border-radius:50%; border:1.5px solid var(--line); background:#fff; color:var(--ink);
+    font:700 20px 'Manrope',sans-serif; cursor:pointer; padding:0;}
+  .step-val{min-width:64px; text-align:center; font-family:'Fraunces', Georgia, serif; font-size:24px; font-weight:600;}
+  .mini-select{padding:9px 10px; border-radius:10px; border:1px solid var(--line); background:var(--panel-2); color:var(--ink); font:600 13px 'Manrope',sans-serif;}
+
+  /* Event name + calendar-icon date */
+  .name-row{display:flex; gap:8px; align-items:center;}
+  .name-row .label-input{flex:1; min-width:0;}
+  .cal-btn{width:46px; height:46px; flex:none; border-radius:10px; border:1.5px solid var(--line); background:#fff; color:var(--ink-dim);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;}
+  .cal-btn.on{background:var(--blue-deep); border-color:var(--blue-deep); color:#fff;}
+  .date-chip-row{display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;}
+  .date-chip{position:relative; display:inline-flex; align-items:center; gap:8px; height:40px; padding:0 14px; border-radius:20px;
+    border:1.5px solid var(--blue-deep); background:var(--tint); color:var(--blue-deep); font:700 14px 'Manrope',sans-serif; overflow:hidden;}
+  .date-chip input[type=date]{position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; border:0; padding:0; margin:0; font-size:16px;}
+  .date-x{height:40px; padding:0 12px; border-radius:20px; border:1px solid var(--line); background:#fff; color:var(--ink-dim); font:600 12.5px 'Manrope',sans-serif; cursor:pointer;}
+
+  /* Countdown ring on the stage */
+  .cd-wrap{position:relative; width:min(62%, 260px); aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;}
+  .cd-ring{position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg);}
+  .cd-ring .trk{fill:rgba(20,18,22,0.45); stroke:rgba(255,255,255,0.25); stroke-width:4;}
+  .cd-ring .bar{fill:none; stroke:var(--blue-deep); stroke-width:4; stroke-linecap:round;}
+  .cd-wrap .countdown-num{position:relative;}
+  .cd-shot{position:absolute; top:14px; right:16px; z-index:5; padding:6px 12px; border-radius:16px; background:rgba(20,18,22,.6);
+    color:#fff; font:800 11px 'Manrope',sans-serif; letter-spacing:.18em; text-transform:uppercase;}
+
+  /* Guest screen (traditional mode) */
+  .guest-status{display:flex; align-items:center; gap:8px; margin:0 0 10px; font-size:13px; font-weight:600;}
+  .guest-status i{width:9px; height:9px; border-radius:50%; background:#CFC7BB;}
+  .guest-status.on i{background:#1e8449;}
+  .switch-row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; font-size:13.5px; font-weight:700; cursor:pointer;}
+  .switch-row input{width:20px; height:20px; accent-color:var(--blue-deep); cursor:pointer;}
 </style>
 </head>
 <body>
 
-<div class="marquee">
-  <div class="marquee-bulbs">
-    <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+<!-- START SCREEN: shown once, before Setup. Tap anywhere to begin. -->
+<div class="start-screen" id="startScreen" role="button" tabindex="0" aria-label="Tap to start">
+  <div class="ss-polaroid ss-p1"><i class="ss-a"></i></div>
+  <div class="ss-polaroid ss-p2"><i class="ss-b"></i></div>
+  <div class="ss-polaroid ss-p3"><i class="ss-c"></i></div>
+  <div class="ss-strip"><i class="ss-a"></i><i class="ss-b"></i><i class="ss-r"></i><i class="ss-c"></i></div>
+  <div class="ss-status"><i></i><span id="ssStatus">Ready</span></div>
+  <div class="ss-center">
+    <span class="brand-mark"><i></i><i></i><i></i><i></i></span>
+    <div class="ss-word"><b>photobooth</b><em>4u</em></div>
+    <p class="ss-tag">Snap · Print · Share</p>
+    <span class="ss-btn" aria-hidden="true"><span class="halo"></span><span class="halo h2"></span><span class="core"></span></span>
+    <p class="ss-cta">Tap to start</p>
   </div>
-  <h1>Photo Booth</h1>
-  <div class="subtitle">Strip or Grid · counts down 5,4,3,2,1,Pose · your backdrop</div>
+  <div class="ss-event">
+    <p class="ev" id="ssEvent"></p>
+    <p class="dt" id="ssDate"></p>
+  </div>
 </div>
+
+<header class="brandbar">
+  <div class="brand-logo">
+    <span class="brand-mark"><i></i><i></i><i></i><i></i></span>
+    <span class="brand-word"><b>photobooth</b><em>4u</em></span>
+  </div>
+  <div class="subtitle" id="brandSubtitle">Snap · Print · Share</div>
+</header>
 
 <div class="tab-bar" id="tabBar">
   <button class="tab-btn active" id="tabBtnSetup" data-tab="setup">
@@ -617,18 +739,48 @@
   <div class="setup-shell">
 
     <div class="panel-section accordion open" id="formatSection">
-      <p class="panel-label accordion-toggle" data-target="formatSection">1 · Format <span class="chev">⌄</span></p>
-      <div class="layout-grid" id="layoutGrid">
-        <button class="layout-btn active" data-layout="strip">
-          <span class="icon-box icon-strip"><i></i><i></i><i></i><i></i></span>
-          Strip
-        </button>
-        <button class="layout-btn" data-layout="grid">
-          <span class="icon-box icon-grid"><i></i><i></i><i></i><i></i></span>
-          4 Shots (Grid)
-        </button>
+      <p class="panel-label accordion-toggle" data-target="formatSection">1 · Layout &amp; timer <span class="chev">⌄</span></p>
+      <p class="sub-label">Choose your layout</p>
+      <div class="layout-grid lg-many" id="layoutGrid"></div>
+      <p class="panel-hint" id="layoutHint"></p>
+
+      <div class="sub-group" style="margin-top:14px;">
+        <p class="sub-label">Countdown per shot</p>
+        <div class="chip-row" id="timerChips">
+          <button type="button" class="chip" data-sec="3">3s</button>
+          <button type="button" class="chip active" data-sec="5">5s</button>
+          <button type="button" class="chip" data-sec="7">7s</button>
+          <button type="button" class="chip" data-sec="10">10s</button>
+        </div>
+        <div class="stepper">
+          <span class="lbl">Fine-tune (½ s steps)</span>
+          <span class="ctl">
+            <button type="button" class="step-btn" id="timerMinus" aria-label="Half a second less">−</button>
+            <span class="step-val" id="timerVal">5 s</span>
+            <button type="button" class="step-btn" id="timerPlus" aria-label="Half a second more">+</button>
+          </span>
+        </div>
+        <div class="stepper">
+          <span class="lbl">Extra time before the first shot</span>
+          <select class="mini-select" id="firstExtraSelect">
+            <option value="0" selected>None</option>
+            <option value="2">+2 s</option>
+            <option value="3">+3 s</option>
+            <option value="5">+5 s</option>
+          </select>
+        </div>
+        <div class="stepper">
+          <span class="lbl">Pause between shots</span>
+          <select class="mini-select" id="betweenSelect">
+            <option value="0.5">½ s</option>
+            <option value="1">1 s</option>
+            <option value="1.5" selected>1½ s</option>
+            <option value="2">2 s</option>
+            <option value="3">3 s</option>
+          </select>
+        </div>
+        <p class="panel-hint" style="margin-top:10px;">The ring around the number drains smoothly, so half seconds feel natural — the numbers still tick down whole seconds, then “Pose”.</p>
       </div>
-      <p class="panel-hint" id="layoutHint">Classic vertical strip of all 4 shots. Only this format is saved — pick the one you want before the session.</p>
     </div>
 
     <div class="panel-section accordion" id="backdropSection">
@@ -729,8 +881,22 @@
       <p class="panel-label accordion-toggle" data-target="labelSection">3 · Event name <span class="chev">⌄</span></p>
 
       <div class="sub-group">
-        <p class="sub-label">Event name</p>
-        <input type="text" class="label-input" id="labelInput" placeholder="e.g. Baby Sofia's Dedication" maxlength="60">
+        <p class="sub-label">Event name &amp; date</p>
+        <div class="name-row">
+          <input type="text" class="label-input" id="labelInput" placeholder="e.g. Baby Sofia's Dedication" maxlength="60" aria-label="Event name">
+          <button type="button" class="cal-btn" id="dateToggle" aria-pressed="false" aria-label="Add the date under the event name" title="Add the date">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
+          </button>
+        </div>
+        <div class="date-chip-row" id="dateRow" style="display:none;">
+          <label class="date-chip" title="Change the date">
+            <span id="datePreviewText">MM/DD/YY</span>
+            <span style="font-weight:600; opacity:.75;">· change</span>
+            <input type="date" id="dateInput" aria-label="Pick the date">
+          </label>
+          <button type="button" class="date-x" id="dateRemove">✕ Remove date</button>
+        </div>
+        <p class="panel-hint" id="dateHint" style="margin-top:8px;">Tap the calendar to add today’s date under the event name.</p>
         <p class="panel-hint" style="margin:10px 0 6px;">Font</p>
         <div class="custom-dd" id="fontDropdown">
           <button type="button" class="custom-dd-btn label-input" id="fontDropdownBtn"></button>
@@ -738,17 +904,8 @@
         </div>
       </div>
 
-      <div class="sub-group">
-        <p class="sub-label">Date</p>
-        <label class="toggle-row">
-          <input type="checkbox" id="dateToggle">
-          Add the date below the event name
-        </label>
-        <div class="date-row" id="dateRow" style="display:none;">
-          <input type="date" id="dateInput">
-          <span class="panel-hint" id="datePreviewText" style="margin:0;">MM/DD/YY</span>
-        </div>
-        <div id="dateFontWrap" style="display:none; margin-top:10px;">
+      <div class="sub-group" id="dateFontGroup" style="display:none;">
+        <div id="dateFontWrap" style="display:none;">
           <p class="panel-hint" style="margin-bottom:6px;">Date font</p>
           <div class="custom-dd" id="dateFontDropdown">
             <button type="button" class="custom-dd-btn label-input" id="dateFontDropdownBtn"></button>
@@ -819,7 +976,7 @@
       <p class="panel-label accordion-toggle" data-target="driveSetupSection">4 · Google Drive <span class="chev">⌄</span></p>
       <p class="panel-hint" id="driveStatusText">Type this booking's folder name or link below — it's required before you can start the photo session.</p>
       <p class="panel-hint" id="driveFolderAutoNote" style="display:none; color:#1e8449; font-weight:600;"></p>
-      <input type="text" class="label-input" id="driveFolderKeyInput" placeholder="This booking's folder: paste a link, or type a new folder name" style="font-family:'Inter',sans-serif; font-size:13px; margin:10px 0 0;">
+      <input type="text" class="label-input" id="driveFolderKeyInput" placeholder="This booking's folder: paste a link, or type a new folder name" style="font-family:'Manrope',sans-serif; font-size:13px; margin:10px 0 0;">
       <p class="panel-hint" id="driveFolderError" style="display:none; color:#c0392b; font-weight:600;"></p>
       <p class="panel-hint" id="driveFolderStatus" style="display:none;"></p>
       <div id="driveFolderQrPreview" style="display:none; margin-top:10px; text-align:center;">
@@ -857,7 +1014,11 @@
         <div class="rec-dot" id="recDot"><i></i><span>LIVE</span></div>
 
         <div class="countdown-overlay" id="countdownOverlay">
-          <div class="countdown-num" id="countdownNum">3</div>
+          <div class="cd-wrap">
+            <svg class="cd-ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="trk" cx="50" cy="50" r="46"/><circle class="bar" id="cdBar" cx="50" cy="50" r="46" pathLength="100" stroke-dasharray="100" stroke-dashoffset="0"/></svg>
+            <div class="countdown-num" id="countdownNum">3</div>
+          </div>
+          <div class="cd-shot" id="cdShot"></div>
         </div>
         <div class="ready-overlay" id="readyOverlay">
           <p class="ready-title">Get ready!</p>
@@ -901,12 +1062,25 @@
         </div>
       </div>
 
+      <div class="panel-section hidden" id="guestSection">
+        <p class="panel-label">Guest screen</p>
+        <p class="guest-status" id="guestStatus"><i></i><span>Not open yet</span></p>
+        <button class="action-btn primary" id="guestOpenBtn">&#128250; Open guest screen</button>
+        <p class="panel-hint" id="guestHint">Connect the second monitor (set to <b>Extend</b>), then open the guest screen. Chrome or Edge can move it onto that monitor for you — allow “window management” if asked. Click the guest screen once to make it full screen.</p>
+        <p class="panel-hint">Guests start a session by tapping the guest screen, or pressing <b>Space</b> / a presenter clicker. Setup, printing and the QR code stay on this screen.</p>
+      </div>
+
       <div class="panel-section hidden" id="printSection">
         <p class="panel-label">Print</p>
         <p class="sub-label" style="margin-bottom:4px;">Paper size</p>
         <div class="print-size-row" id="printSizeRow"></div>
         <button class="action-btn primary" id="printBtn">&#128424; Print</button>
         <p class="panel-hint" id="printHint"></p>
+        <label class="switch-row hidden" id="autoPrintRow">
+          <span>Auto-print every session</span>
+          <input type="checkbox" id="autoPrintToggle">
+        </label>
+        <p class="panel-hint hidden" id="autoPrintHint">Turns on after your first print: every session after that prints by itself on the same paper. With Chrome started with <b>--kiosk-printing</b> it prints with no dialog at all.</p>
       </div>
 
     </div>
@@ -916,7 +1090,7 @@
       <div class="panel-section">
         <p class="panel-label">Scan &amp; Download</p>
         <div class="qr-results" id="qrResults"></div>
-        <p class="panel-hint" id="qrHint">Your chosen format uploads automatically as soon as all 4 shots are taken, named so sessions sort in order (e.g. 1_strip, 2_strip). The booking folder set up in the Setup tab gets one QR code that takes guests straight to that shared folder — the same code all event long.</p>
+        <p class="panel-hint" id="qrHint">Your chosen layout uploads automatically as soon as the last shot is taken, named so sessions sort in order (e.g. 1_strip, 2_strip). The booking folder set up in the Setup tab gets one QR code that takes guests straight to that shared folder — the same code all event long.</p>
       </div>
     </div>
 
@@ -1123,25 +1297,52 @@
     const [yyyy, mm, dd] = parts;
     return mm + '/' + dd + '/' + yyyy.slice(2);
   }
+  // Date is optional and controlled by the calendar icon next to the event
+  // name: tap it once to add today's date, tap the date chip to pick another
+  // day (the real date input sits invisibly on top of the chip, so the native
+  // picker opens on iPad and Android alike), and Remove / tap the icon again
+  // to drop it.
+  let dateOn = false;
+  const dateHint = document.getElementById('dateHint');
+  const dateFontGroup = document.getElementById('dateFontGroup');
+  function todayISO(){
+    const d = new Date();
+    const p = n => (n < 10 ? '0' : '') + n;
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
   function currentDateLabel(){
-    if(!dateToggle.checked) return '';
+    if(!dateOn) return '';
     return formatDateMMDDYY(dateInput.value);
   }
-  dateToggle.addEventListener('change', () => {
-    const on = dateToggle.checked;
+  function setDateOn(on){
+    dateOn = on;
+    if(on && !dateInput.value) dateInput.value = todayISO();
+    dateToggle.classList.toggle('on', on);
+    dateToggle.setAttribute('aria-pressed', on ? 'true' : 'false');
+    dateToggle.setAttribute('aria-label', on ? 'Remove the date' : 'Add the date under the event name');
+    dateToggle.title = on ? 'Remove the date' : 'Add the date';
     dateRow.style.display = on ? 'flex' : 'none';
     dateFontWrap.style.display = on ? 'block' : 'none';
-    qrResults.innerHTML = '';
-    lastRenderedFolderUrl = null;
-    renderComposite();
-    renderSetupPreview();
-  });
-  dateInput.addEventListener('input', () => {
+    dateFontGroup.style.display = on ? 'block' : 'none';
     datePreviewText.textContent = formatDateMMDDYY(dateInput.value) || 'MM/DD/YY';
+    dateHint.textContent = on
+      ? 'The date prints under the event name. Tap the date to pick another day.'
+      : 'Tap the calendar to add today’s date under the event name.';
     qrResults.innerHTML = '';
     lastRenderedFolderUrl = null;
     renderComposite();
     renderSetupPreview();
+    if(typeof refreshStartScreen === 'function') refreshStartScreen();
+  }
+  dateToggle.addEventListener('click', () => setDateOn(!dateOn));
+  document.getElementById('dateRemove').addEventListener('click', () => setDateOn(false));
+  dateInput.addEventListener('input', () => {
+    if(!dateInput.value) dateInput.value = todayISO();
+    setDateOn(true);
+  });
+  dateInput.addEventListener('change', () => {
+    if(!dateInput.value) dateInput.value = todayISO();
+    setDateOn(true);
   });
 
   // ---- Text style: color / outline / shadow ----
@@ -1234,7 +1435,9 @@
     grid:  [['left', 'Left'], ['center', 'Center'], ['right', 'Right']]
   };
   function rebuildCropFocusOptions(){
-    const opts = CROP_OPTIONS_BY_LAYOUT[currentLayout] || CROP_OPTIONS_BY_LAYOUT.strip;
+    // A wide band (strip + photo above it) crops top/bottom; every other spot
+    // for the photo is taller than the photo, so it crops left/right.
+    const opts = (isStripLayout() && placement() === 'band') ? CROP_OPTIONS_BY_LAYOUT.strip : CROP_OPTIONS_BY_LAYOUT.grid;
     const stillValid = opts.some(([v]) => v === cropFocus);
     cropFocusSelect.innerHTML = '';
     opts.forEach(([value, label]) => {
@@ -1254,12 +1457,15 @@
   // ---- Strip/Grid + custom photo: photo always goes above (strip) or on
   // the left (grid) — no manual choice, keeps things simple and consistent. ----
   function updateBandPositionVisibility(){
-    const show = (currentLayout === 'strip' || currentLayout === 'grid') && backdropPreset === 'custom' && !!backgroundImg;
+    const show = backdropPreset === 'custom' && !!backgroundImg;
     bandPositionWrap.style.display = show ? 'block' : 'none';
+    photoPlacementSelect.style.display = layoutDef().bandOk ? '' : 'none';
     rebuildCropFocusOptions();
     const hintEl = document.getElementById('bandPositionHint');
     if(hintEl){
-      if(photoPlacement === 'background'){
+      if(!layoutDef().bandOk){
+        hintEl.textContent = 'With this layout your photo fills the whole background, behind the shots.';
+      } else if(photoPlacement === 'background'){
         hintEl.textContent = 'Your photo fills the whole background, edge to edge, behind the shots.';
       } else {
         hintEl.textContent = currentLayout === 'grid'
@@ -1329,10 +1535,6 @@
   }
 
 
-  const LAYOUT_HINTS = {
-    strip: 'Classic vertical strip — 4 square shots stacked.',
-    grid: '2x2 grid — every shot shown in full, nothing cropped, with your backdrop showing through.'
-  };
 
   // contentH = area used for photos. Actual canvas height = contentH + label band.
   // Strip: 600px wide, each photo is 600x600 square, 4 stacked = tall vertical strip
@@ -1360,12 +1562,77 @@
   const GRID_SIDE_W = 1500;
   const GRID_SIDE_H = 960;
 
+  // Strip 4: same look as the classic strip, one more shot, slightly smaller
+  // squares so it stays close to a 2x6 strip's shape.
+  const STRIP4_PHOTO = 400;
+  const STRIP4_CONTENT_H = STRIP_MARGIN * 2 + STRIP4_PHOTO * 4 + STRIP_GAP * 3;
+
+  // ---- Sheet layouts: every one is a 4R (4x6) portrait sheet ----
+  // Rows of cells, as relative heights; each row has 1+ columns. The shot
+  // index runs left to right, top to bottom. The label band (event name /
+  // date) sits under the cells and the whole canvas is always 1200x1800, so
+  // it prints edge to edge on 4R.
+  const SHEET_W = 1200, SHEET_H = 1800;
+  const SHEET_ROWS = {
+    grid4:   [[1, 2], [1, 2]],
+    hero:    [[1.55, 1], [1, 3]],
+    solo:    [[1, 1]],
+    duo:     [[1, 1], [1, 1]],
+    trio:    [[1, 1], [1, 1], [1, 1]],
+    feature: [[1.2, 1], [1, 2]],
+    film6:   [[1, 2], [1, 2], [1, 2]]
+  };
+  // Cell boxes for a sheet layout inside a W x H content area.
+  function sheetCells(key, W, H){
+    const rows = SHEET_ROWS[key];
+    const m = W * 0.05, g = W * 0.025;
+    const iw = W - m * 2, ih = H - m - m * 0.5;
+    const totalWeight = rows.reduce((a, r) => a + r[0], 0);
+    const rowsH = ih - g * (rows.length - 1);
+    const cells = [];
+    let y = m;
+    rows.forEach(([weight, cols]) => {
+      const rh = rowsH * weight / totalWeight;
+      const cw = (iw - g * (cols - 1)) / cols;
+      for(let c = 0; c < cols; c++) cells.push({ x: m + c * (cw + g), y, w: cw, h: rh });
+      y += rh + g;
+    });
+    return cells;
+  }
+
+  // Every layout the booth offers. kind: 'strip' (tall strip; prints two side
+  // by side on wider paper), 'polaroid' (the original 2x2 polaroid grid), or
+  // 'sheet' (cells on a 4R sheet). bandOk = supports a custom photo placed in
+  // its own band/side next to the shots (otherwise a custom photo is used as
+  // the full background).
+  const LAYOUT_DEFS = {
+    strip:   { name: 'Classic strip', shots: 3, kind: 'strip', bandOk: true,  hint: 'Tall photo-booth strip of 3 shots. On 4R paper it prints two strips side by side, to cut down the middle.' },
+    strip4:  { name: 'Strip 4',       shots: 4, kind: 'strip', bandOk: true,  hint: 'Tall strip of 4 shots. On 4R paper it prints two strips side by side, to cut down the middle.' },
+    grid:    { name: 'Polaroid 4',    shots: 4, kind: 'polaroid', bandOk: true, hint: '2x2 polaroids — every shot shown in full, nothing cropped, with your backdrop showing through.' },
+    grid4:   { name: 'Grid 4',        shots: 4, kind: 'sheet', hint: 'Four even shots on one 4R sheet.' },
+    hero:    { name: 'Hero 1+3',      shots: 4, kind: 'sheet', hint: 'One big shot on top, three small ones underneath.' },
+    solo:    { name: 'Solo',          shots: 1, kind: 'sheet', hint: 'One big shot filling the sheet.' },
+    duo:     { name: 'Duo',           shots: 2, kind: 'sheet', hint: 'Two shots stacked.' },
+    trio:    { name: 'Trio',          shots: 3, kind: 'sheet', hint: 'Three wide shots stacked.' },
+    feature: { name: 'Feature 1+2',   shots: 3, kind: 'sheet', hint: 'One wide shot on top, two side by side underneath.' },
+    film6:   { name: 'Film 6',        shots: 6, kind: 'sheet', hint: 'Six shots in a 2x3 contact-sheet grid.' }
+  };
+  const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'trio', 'feature', 'film6'];
+  function layoutDef(key){ return LAYOUT_DEFS[key || currentLayout] || LAYOUT_DEFS.strip; }
+  function isStripLayout(key){ return layoutDef(key).kind === 'strip'; }
+
   const LAYOUTS = {
-    strip:   { w: STRIP_W,  contentH: STRIP_CONTENT_H, render: renderStrip },
+    strip:   { w: STRIP_W,  contentH: STRIP_CONTENT_H, render: (ctx, shots, W, H) => renderStrip(ctx, shots, W, H, 3, STRIP_PHOTO) },
+    strip4:  { w: STRIP_W,  contentH: STRIP4_CONTENT_H, render: (ctx, shots, W, H) => renderStrip(ctx, shots, W, H, 4, STRIP4_PHOTO) },
     grid:    { w: GRID_W,   contentH: GRID_H,           render: renderGrid }
   };
   function shotsNeeded(layoutKey){
-    return (layoutKey || currentLayout) === 'strip' ? STRIP_SHOTS : GRID_SHOTS;
+    return layoutDef(layoutKey).shots;
+  }
+  // A custom photo can only sit in its own band/side on layouts built for it;
+  // everywhere else it becomes the full background.
+  function placement(layoutKey){
+    return layoutDef(layoutKey).bandOk ? photoPlacement : 'background';
   }
   const LABEL_BAND_RATIO = 0.16; // relative to canvas width
 
@@ -2017,7 +2284,7 @@
   function frameColorFor(){
     if(frameColorChoice !== 'auto') return frameColorChoice;
     if(backdropPreset === 'custom' && backgroundImg){
-      return (backdropColor && photoPlacement === 'band' && lumOf(backdropColor) > 0.72) ? '#111111' : '#ffffff';
+      return (backdropColor && placement() === 'band' && lumOf(backdropColor) > 0.72) ? '#111111' : '#ffffff';
     }
     if(backdropPreset === 'none' && !backdropColor) return '#000000'; // flat white bg
     // A light picked Backdrop color needs a dark frame to stay readable.
@@ -2026,7 +2293,7 @@
   }
 
   function drawBackdrop(ctx, w, h){
-    if(backdropPreset === 'custom' && backgroundImg && photoPlacement === 'background'){
+    if(backdropPreset === 'custom' && backgroundImg && placement() === 'background'){
       drawImageCover(ctx, backgroundImg, 0, 0, w, h, cropFocus);
       const draw = elementsChoice === 'auto' ? null : ELEMENT_SETS[elementsChoice];
       if(draw) draw(ctx, w, h, buildPalette(hslToHex(photoHue, photoSat, 0.5)));
@@ -2080,12 +2347,9 @@
     wrap.appendChild(cap);
     wrap.appendChild(link);
     qrResults.appendChild(wrap);
+    guestRender();
   }
 
-  const LAYOUT_DISPLAY_NAMES = {
-    strip: 'Strip',
-    grid: 'Grid'
-  };
 
   // ---- Per-booking-folder caching ----
   // The Drive folder for a booking never changes mid-event, so we only need
@@ -2185,7 +2449,7 @@
     const tempCanvas = document.createElement('canvas');
     renderCompositeToCanvas(layoutKey, tempCanvas);
     const blob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
-    const label = LAYOUT_DISPLAY_NAMES[layoutKey] + ' Layout';
+    const label = layoutDef(layoutKey).name + ' Layout';
     // e.g. "1_strip.png" / "2_grid.png" so files sort cleanly in the folder —
     // only the chosen format is ever uploaded, so the folder only ever
     // fills up with that one kind of file.
@@ -2333,6 +2597,7 @@
       // un-mirrors it again so any text on props reads correctly in the
       // final photo.
       video.style.transform = isFrontCamera() ? 'scaleX(-1)' : 'scaleX(1)';
+      guestCall('camera');
       cameraError.style.display = 'none';
       recDot.style.display = 'flex';
       return true;
@@ -2386,7 +2651,7 @@
     const showQr = hasAllShots && !isCapturing;
     qrSection.classList.toggle('hidden', !showQr);
     appShell.classList.toggle('has-qr', showQr);
-
+    guestRender();
   }
 
   function updateFilmTrack(){
@@ -2450,30 +2715,92 @@
     updateFilmTrack();
   }
 
-  async function countdownThenCapture(index){
-    countdownNum.classList.remove('word');
-    for(let n = 5; n >= 1; n--){
-      countdownNum.textContent = n;
-      countdownNum.classList.remove('pulse');
-      void countdownNum.offsetWidth;
-      countdownNum.classList.add('pulse');
-      await wait(1000);
-    }
-    countdownNum.textContent = 'Pose';
-    countdownNum.classList.add('word');
+  // ---- Countdown settings (Setup → Layout & timer) ----
+  let timerSec = 5;        // per shot, in ½-second steps
+  let firstExtraSec = 0;   // added to the first shot only
+  let betweenSec = 1.5;    // pause after each shot (not after the last)
+  const timerChips = document.getElementById('timerChips');
+  const timerVal = document.getElementById('timerVal');
+  const cdBar = document.getElementById('cdBar');
+  const cdShot = document.getElementById('cdShot');
+  function fmtSec(v){ return (v % 1 === 0 ? String(v) : v.toFixed(1)); }
+  function updateReadySub(){
+    if(readySub) readySub.textContent = shotsNeeded() + (shotsNeeded() === 1 ? ' shot' : ' shots') + ' · ' + fmtSec(timerSec) + ' s countdown each';
+  }
+  function setTimer(v){
+    timerSec = Math.max(2, Math.min(15, Math.round(v * 2) / 2));
+    timerVal.textContent = fmtSec(timerSec) + ' s';
+    [...timerChips.children].forEach(c => c.classList.toggle('active', Number(c.dataset.sec) === timerSec));
+    updateReadySub();
+  }
+  timerChips.addEventListener('click', (e) => {
+    const c = e.target.closest('.chip');
+    if(c) setTimer(Number(c.dataset.sec));
+  });
+  document.getElementById('timerMinus').addEventListener('click', () => setTimer(timerSec - 0.5));
+  document.getElementById('timerPlus').addEventListener('click', () => setTimer(timerSec + 0.5));
+  document.getElementById('firstExtraSelect').addEventListener('change', (e) => { firstExtraSec = Number(e.target.value) || 0; });
+  document.getElementById('betweenSelect').addEventListener('change', (e) => { betweenSec = Number(e.target.value) || 0; });
+
+  function popNum(text, isWord){
+    countdownNum.textContent = text;
+    countdownNum.classList.toggle('word', !!isWord);
     countdownNum.classList.remove('pulse');
     void countdownNum.offsetWidth;
     countdownNum.classList.add('pulse');
-    await wait(700);
+  }
+
+  // Smooth countdown: the ring drains continuously over the whole time (so
+  // 5.5 s really is 5.5 s), while the number ticks whole seconds and never
+  // shows more than the whole seconds chosen (5.5 s starts at "5").
+  // Timestamps, not frame counts, so it stays accurate even if the window
+  // is in the background (guest screen in front).
+  function runCountdown(totalSec, index){
+    const total = totalSec * 1000;
+    const cap = Math.max(1, Math.floor(totalSec));
+    const start = performance.now();
+    let shown = null;
+    cdShot.textContent = shotsNeeded() > 1 ? ('Shot ' + (index + 1) + ' of ' + shotsNeeded()) : '';
+    return new Promise(resolve => {
+      const step = () => {
+        const left = Math.max(0, total - (performance.now() - start));
+        const frac = total ? left / total : 0;
+        cdBar.style.strokeDashoffset = String(100 * (1 - frac));
+        const n = Math.min(cap, Math.max(1, Math.ceil(left / 1000)));
+        if(n !== shown){ shown = n; popNum(n, false); }
+        guestCall('tick', String(n), false, frac, cdShot.textContent);
+        if(left <= 0){ clearInterval(timer); resolve(); }
+      };
+      const timer = setInterval(step, 40);
+      step();
+    });
+  }
+
+  async function countdownThenCapture(index){
+    const extra = index === 0 ? firstExtraSec : 0;
+    await runCountdown(timerSec + extra, index);
+    popNum('Pose', true);
+    cdBar.style.strokeDashoffset = '100';
+    guestCall('tick', 'Pose', true, 0, cdShot.textContent);
+    await wait(600);
     flashOverlay.classList.add('flash-active');
+    guestCall('flash');
     captureFrame(index);
+    guestCall('shots');
     await wait(180);
     flashOverlay.classList.remove('flash-active');
+    if(index < shotCanvases.length - 1 && betweenSec > 0){
+      popNum('Nice!', true);
+      guestCall('tick', 'Nice!', true, 1, 'Next: shot ' + (index + 2) + ' of ' + shotsNeeded());
+      cdBar.style.strokeDashoffset = '0';
+      await wait(betweenSec * 1000);
+    }
   }
 
   function waitForReadyTap(){
     return new Promise((resolve) => {
       readyOverlay.classList.add('ready-active');
+      guestRender();
       const onClick = () => {
         readyOverlay.classList.remove('ready-active');
         readyStartBtn.removeEventListener('click', onClick);
@@ -2483,7 +2810,8 @@
     });
   }
 
-  async function startSession(){
+  async function startSession(skipReady){
+    if(state === 'capturing') return;
     if(!streamActive){
       const ok = await initCamera(cameraSelect.value || null);
       if(!ok) return;
@@ -2498,11 +2826,14 @@
     updateFilmTrack();
     updateUI();
 
-    await waitForReadyTap();
+    if(skipReady !== true) await waitForReadyTap();
+    countingDown = true;
+    guestRender();
 
     for(let i = 0; i < shotCanvases.length; i++){
       await countdownThenCapture(i);
     }
+    countingDown = false;
 
     state = 'result';
     sessionNumber = nextSessionNumber();
@@ -2511,9 +2842,10 @@
     showQRForCurrentPhoto();
     showMultipleDownloadsHint();
     saveToDevice();
+    maybeAutoPrint();
   }
 
-  startBtn.addEventListener('click', startSession);
+  startBtn.addEventListener('click', () => startSession(false));
 
   // ---- Backdrop presets ----
   function setActivePresetBtn(){
@@ -2522,7 +2854,7 @@
     // photo. Only a photo filling the whole background leaves no room for a color.
     const customPhoto = backdropPreset === 'custom' && !!backgroundImg;
     const grp = document.getElementById('bdColorGroup');
-    if(grp) grp.style.display = (customPhoto && photoPlacement === 'background') ? 'none' : 'block';
+    if(grp) grp.style.display = (customPhoto && placement() === 'background') ? 'none' : 'block';
     const hint = document.getElementById('bdColorHint');
     if(hint) hint.textContent = customPhoto
       ? 'Auto matches the background to your photo\u2019s main color. Pick a color to use that instead \u2014 the elements below are drawn on top of it.'
@@ -2565,7 +2897,7 @@
     const auto = elementsSelect.querySelector('option[value="auto"]');
     let autoName = 'None';
     if(backdropPreset === 'custom' && backgroundImg){
-      autoName = photoPlacement === 'background' ? 'None' : (backdropColor ? 'Glitter' : 'Sparkles matched to your photo');
+      autoName = placement() === 'background' ? 'None' : (backdropColor ? 'Glitter' : 'Sparkles matched to your photo');
     } else if(BACKDROP_PRESETS[backdropPreset]){
       const own = BACKDROP_PRESETS[backdropPreset].elements;
       autoName = (ELEMENT_OPTIONS.find(o => o[0] === own) || [, own])[1];
@@ -2720,15 +3052,65 @@
     labelInput.style.fontWeight = BOLD_FONTS.has(currentFont) ? '700' : '400';
   }
 
-  // ---- Layout picker ----
+  // ---- Layout picker (built from LAYOUT_DEFS) ----
+  function layoutThumbCells(key){
+    const d = LAYOUT_DEFS[key];
+    const pct = (x, y, w, h) => ({ l: x, t: y, w: w, h: h });
+    if(d.kind === 'strip'){
+      const n = d.shots, top = 6, avail = 80, gap = 2;
+      const h = (avail - gap * (n - 1)) / n;
+      return Array.from({ length: n }, (_, i) => pct(12, top + i * (h + gap), 76, h));
+    }
+    if(d.kind === 'polaroid'){
+      return [pct(10, 7, 36, 30), pct(54, 7, 36, 30), pct(10, 44, 36, 30), pct(54, 44, 36, 30)];
+    }
+    const W = 40, H = 60 * 0.86;
+    return sheetCells(key, W, H).map(c => pct(c.x / W * 100, c.y / 60 * 100, c.w / W * 100, c.h / 60 * 100));
+  }
+  function buildLayoutPicker(){
+    layoutGrid.innerHTML = '';
+    LAYOUT_ORDER.forEach(key => {
+      const d = LAYOUT_DEFS[key];
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'layout-btn' + (key === currentLayout ? ' active' : '');
+      b.dataset.layout = key;
+      b.setAttribute('aria-pressed', key === currentLayout ? 'true' : 'false');
+      const thumb = document.createElement('span');
+      thumb.className = 'lt' + (d.kind === 'strip' ? ' lt-strip' : '');
+      layoutThumbCells(key).forEach(c => {
+        const i = document.createElement('i');
+        i.style.left = c.l + '%'; i.style.top = c.t + '%';
+        i.style.width = c.w + '%'; i.style.height = c.h + '%';
+        thumb.appendChild(i);
+      });
+      const n = document.createElement('span'); n.className = 'ln'; n.textContent = d.name;
+      const s = document.createElement('span'); s.className = 'ls'; s.textContent = d.shots + (d.shots === 1 ? ' SHOT' : ' SHOTS');
+      b.append(thumb, n, s);
+      layoutGrid.appendChild(b);
+    });
+    layoutHint.textContent = layoutDef().hint;
+  }
   layoutGrid.addEventListener('click', (e) => {
     const btn = e.target.closest('.layout-btn');
     if(!btn) return;
     currentLayout = btn.dataset.layout;
-    [...layoutGrid.children].forEach(b => b.classList.toggle('active', b === btn));
-    layoutHint.textContent = LAYOUT_HINTS[currentLayout];
+    [...layoutGrid.children].forEach(b => {
+      b.classList.toggle('active', b === btn);
+      b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+    });
+    layoutHint.textContent = layoutDef().hint;
+    // A finished session with a different shot count can't be re-laid out.
+    if(shotCanvases.length !== shotsNeeded()){
+      shotCanvases = new Array(shotsNeeded()).fill(null);
+      if(state === 'result') state = 'idle';
+      updateFilmTrack();
+      updateUI();
+      if(typeof guestRender === 'function') guestRender();
+    }
+    setActivePresetBtn();
     updateBandPositionVisibility();
-    if(readySub) readySub.textContent = shotsNeeded() + ' shots · 5,4,3,2,1,Pose';
+    updateReadySub();
     renderComposite();
     renderSetupPreview();
     refreshPrintUI();
@@ -2777,13 +3159,13 @@
     ctx.restore();
   }
 
-  function renderStrip(ctx, shots, W, H){
-    // Vertical strip: 3 square photos stacked with equal margins/gaps
-    const photoSize = STRIP_PHOTO;
+  function renderStrip(ctx, shots, W, H, count, size){
+    // Vertical strip: square photos stacked with equal margins/gaps
+    const photoSize = size || STRIP_PHOTO;
     const margin = STRIP_MARGIN;
     const gap = STRIP_GAP;
     const cx = W / 2;
-    for(let i = 0; i < STRIP_SHOTS; i++){
+    for(let i = 0; i < (count || STRIP_SHOTS); i++){
       const cy = margin + photoSize / 2 + i * (photoSize + gap);
       drawPolaroid(ctx, shots[i], cx, cy, photoSize * 0.9, photoSize * 0.9, 0);
     }
@@ -2829,6 +3211,26 @@
       const cx = marginX + cellW * (i + 0.5) + gapX * i;
       drawPolaroid(ctx, shots[i + 1], cx, cy, cellW * 0.88, bottomH * 0.88, 0);
     }
+  }
+
+  // Sheet layouts: each shot in a clean frame (the Polaroid color) with an
+  // even border, cropped to fill its cell.
+  function renderSheet(ctx, shots, W, H, key){
+    const cells = sheetCells(key, W, H);
+    cells.forEach((c, i) => {
+      const img = shots[i];
+      ctx.save();
+      ctx.shadowColor = 'rgba(40,30,20,0.28)';
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetY = 6;
+      ctx.fillStyle = currentFrameColor;
+      ctx.fillRect(c.x, c.y, c.w, c.h);
+      ctx.restore();
+      if(img){
+        const pad = Math.max(6, Math.min(c.w, c.h) * 0.035);
+        drawImageCover(ctx, img, c.x + pad, c.y + pad, c.w - pad * 2, c.h - pad * 2);
+      }
+    });
   }
 
   function hexToRgbTriplet(hex){
@@ -3079,21 +3481,29 @@
     // event name gets more room instead of overflowing a fixed-height band.
     const growth = 1 + Math.max(0, titleSizeMultiplier - 1) * 0.6;
     const customPhotoActive = backdropPreset === 'custom' && !!backgroundImg;
-    const bandPlacement = customPhotoActive && photoPlacement === 'band';
+    const bandPlacement = customPhotoActive && placement(layoutKey) === 'band';
+    const isSheet = layoutDef(layoutKey).kind === 'sheet';
     // Plain/backdrop grid is portrait so every shot fits uncropped; only the
     // grid-with-side-photo layout uses the wider canvas.
-    const layout = (layoutKey === 'grid' && bandPlacement)
-      ? Object.assign({}, LAYOUTS.grid, { w: GRID_SIDE_W, contentH: GRID_SIDE_H })
-      : LAYOUTS[layoutKey];
+    let layout;
+    if(isSheet){
+      layout = { w: SHEET_W, contentH: 0, render: (ctx, shots, W, H) => renderSheet(ctx, shots, W, H, layoutKey) };
+    } else if(layoutKey === 'grid' && bandPlacement){
+      layout = Object.assign({}, LAYOUTS.grid, { w: GRID_SIDE_W, contentH: GRID_SIDE_H });
+    } else {
+      layout = LAYOUTS[layoutKey];
+    }
     // Always reserve a little breathing room at the bottom, even with no
     // event name or date typed in yet, instead of shots running to the edge.
     const minBottomMargin = Math.round(layout.w * 0.05);
     const bandH = hasBand ? Math.round(layout.w * (dateText ? LABEL_BAND_RATIO * 1.35 : LABEL_BAND_RATIO) * growth) : minBottomMargin;
+    // Sheets are always exactly 4R: the shots get whatever the label band leaves.
+    if(isSheet) layout.contentH = SHEET_H - bandH;
 
     // Strip + a custom uploaded photo (band placement): the photo becomes a
     // band above the shots, and the rest of the strip fills with a textured
     // color matched to the photo. ('background' placement instead goes full-bleed via drawBackdrop.)
-    const imgBandActive = layoutKey === 'strip' && bandPlacement;
+    const imgBandActive = isStripLayout(layoutKey) && bandPlacement;
     const imgBandH = imgBandActive ? Math.round(layout.w * 0.34) : 0;
 
     // Grid + a custom uploaded photo (band placement): the photo becomes a
@@ -3260,14 +3670,15 @@
   // Very narrow sheets (like 2x6) only suit the tall strip; the grid would print tiny.
   function sizeFitsLayout(key){
     const p = paperFor(key);
-    return currentLayout === 'strip' || p.w / p.h >= 0.45;
+    return isStripLayout() || p.w / p.h >= 0.45;
   }
   // Wider sheets get two strips side by side, to cut down the middle.
   function stripTwoUp(key){
     const p = paperFor(key);
-    return currentLayout === 'strip' && p.w / p.h >= 0.5;
+    return isStripLayout() && p.w / p.h >= 0.5;
   }
   function refreshPrintUI(){
+    updateAutoPrintUI();
     const sizes = printSettings();
     printSection.classList.toggle('hidden', !sizes);
     if(!sizes){ printSize = null; return; }
@@ -3281,13 +3692,13 @@
       b.dataset.size = key;
       b.textContent = paperFor(key).name;
       b.disabled = !sizeFitsLayout(key);
-      if(b.disabled) b.title = 'Too narrow for the Grid format \u2014 Strip only';
+      if(b.disabled) b.title = 'Too narrow for this layout \u2014 strips only';
       printSizeRow.appendChild(b);
     });
     const ready = state === 'result' && shotCanvases.every(Boolean);
     printBtn.disabled = !ready || !printSize || printing;
     if(!printSize){
-      printHint.textContent = 'The allowed paper is too narrow for the Grid \u2014 switch the Format to Strip in Setup to print.';
+      printHint.textContent = 'The allowed paper is too narrow for this layout \u2014 pick a strip layout in Setup to print.';
     } else if(!ready){
       printHint.textContent = 'Finish a photo session to print it.';
     } else if(stripTwoUp(printSize)){
@@ -3338,7 +3749,7 @@
     }
     return c;
   }
-  async function printCurrentPhoto(){
+  async function printCurrentPhoto(auto){
     if(printing || !printSize || !(state === 'result' && shotCanvases.every(Boolean))) return;
     printing = true;
     refreshPrintUI();
@@ -3358,7 +3769,8 @@
       window.print();
       // Silent (kiosk) printing returns right away; clean up a moment later.
       setTimeout(() => { printArea.innerHTML = ''; URL.revokeObjectURL(url); }, 2000);
-      showToast('Sent to the printer (' + paper.name + ').');
+      showToast((auto === true ? 'Auto-printing (' : 'Sent to the printer (') + paper.name + ').');
+      armAutoPrintAfterFirst(auto === true);
     }catch(err){
       console.error('Print failed:', err);
       showToast('Couldn\u2019t prepare the print \u2014 please try again.', 4500);
@@ -3367,7 +3779,284 @@
       refreshPrintUI();
     }
   }
-  printBtn.addEventListener('click', printCurrentPhoto);
+  printBtn.addEventListener('click', () => printCurrentPhoto(false));
+
+  // ---- Auto-print (traditional booth only) ----
+  // The laptop is plugged into the printer, so after the operator's first
+  // print every later session prints by itself on the same paper. Chrome/Edge
+  // started with --kiosk-printing skips the dialog, so it's fully hands-free.
+  const autoPrintRow = document.getElementById('autoPrintRow');
+  const autoPrintHint = document.getElementById('autoPrintHint');
+  const autoPrintToggle = document.getElementById('autoPrintToggle');
+  let autoPrint = false;
+  let autoPrintDecided = false; // the operator switched it themselves: don't override
+  function updateAutoPrintUI(){
+    const show = isTraditional() && !!printSettings();
+    autoPrintRow.classList.toggle('hidden', !show);
+    autoPrintHint.classList.toggle('hidden', !show);
+    autoPrintToggle.checked = autoPrint;
+  }
+  autoPrintToggle.addEventListener('change', () => {
+    autoPrint = autoPrintToggle.checked;
+    autoPrintDecided = true;
+    showToast(autoPrint ? 'Auto-print on — every session prints by itself.' : 'Auto-print off.');
+  });
+  function armAutoPrintAfterFirst(wasAuto){
+    if(wasAuto || autoPrint || autoPrintDecided || !isTraditional()) return;
+    autoPrint = true;
+    autoPrintToggle.checked = true;
+    setTimeout(() => showToast('Auto-print is on — the next sessions print by themselves on ' + paperFor(printSize).name + '.', 4500), 1600);
+  }
+  function maybeAutoPrint(){
+    if(!isTraditional() || !autoPrint || !printSize || !printSettings()) return;
+    if(!printSettings().includes(printSize) || !sizeFitsLayout(printSize)) return;
+    setTimeout(() => printCurrentPhoto(true), 500);
+  }
+
+  // ---- Traditional booth: laptop + guest screen on an extended monitor ----
+  // Turned on per rental code in Admin. The operator keeps Setup, printing
+  // and the QR on the laptop; a second window on the extended monitor shows
+  // guests the live camera, the countdown and their finished photo. That
+  // window is created by this page (same origin), so this page drives it
+  // directly — no server or extra connection needed.
+  const guestSection = document.getElementById('guestSection');
+  const guestStatus = document.getElementById('guestStatus');
+  const guestOpenBtn = document.getElementById('guestOpenBtn');
+  let guestWin = null;
+  let G = null;            // the guest window's elements
+  let countingDown = false;
+  function isTraditional(){ return !!(window.__PB && window.__PB.traditional); }
+  function guestOpen(){ return !!(guestWin && !guestWin.closed && G); }
+
+  function refreshTraditionalUI(){
+    const on = isTraditional();
+    guestSection.classList.toggle('hidden', !on);
+    document.getElementById('brandSubtitle').textContent = on ? 'Snap · Print · Share — traditional booth' : 'Snap · Print · Share';
+    if(!on && guestOpen()){ try{ guestWin.close(); }catch(e){} }
+    updateGuestStatus();
+    updateAutoPrintUI();
+    refreshStartScreen();
+  }
+  window.addEventListener('pb-mode-change', refreshTraditionalUI);
+
+  function updateGuestStatus(){
+    const open = guestOpen();
+    guestStatus.classList.toggle('on', open);
+    guestStatus.querySelector('span').textContent = open ? 'Guest screen is open' : 'Not open yet';
+    guestOpenBtn.textContent = open ? '↻ Move / reopen guest screen' : '📺 Open guest screen';
+  }
+  setInterval(() => { if(guestWin && guestWin.closed){ guestWin = null; G = null; updateGuestStatus(); } }, 1500);
+  window.addEventListener('beforeunload', () => { try{ if(guestWin) guestWin.close(); }catch(e){} });
+
+  const GUEST_HTML = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+    '<title>photobooth4u · Guest screen</title>' +
+    '<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">' +
+    '<style>' +
+    ':root{--bg:#F5F1EA;--ink:#1C1A1E;--dim:#6B666C;--red:#C93D27;}' +
+    '*{box-sizing:border-box;}html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:Manrope,system-ui,sans-serif;overflow:hidden;user-select:none;}' +
+    '.g{position:fixed;inset:0;display:grid;grid-template-columns:1fr auto 1fr;gap:2.4vw;padding:3vh 2.4vw;align-items:center;}' +
+    '.side{height:100%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;text-align:center;gap:2vh;min-width:0;}' +
+    '.logo{display:flex;align-items:center;gap:.7vw;}' +
+    '.mark{display:grid;grid-template-columns:1fr 1fr;gap:.25vw;width:2.2vw;height:2.2vw;min-width:22px;min-height:22px;}.mark i{background:var(--ink);border-radius:3px;}.mark i:nth-child(2){background:var(--red);}' +
+    '.word{display:flex;align-items:flex-start;}.word b{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(20px,2.4vw,44px);letter-spacing:-.035em;line-height:1;}' +
+    '.word em{font-style:normal;margin-left:.3vw;padding:.15em .4em .25em;border-radius:.4em;background:var(--red);color:#fff;font-weight:800;font-size:clamp(10px,1vw,19px);line-height:1;transform:rotate(-7deg);}' +
+    '.ev{font-family:Fraunces,Georgia,serif;font-style:italic;font-size:clamp(18px,2vw,38px);margin:0;}.dt{font-weight:700;letter-spacing:.2em;font-size:clamp(10px,.9vw,16px);color:var(--dim);margin:.6vh 0 0;}' +
+    '.msg{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(22px,2.6vw,52px);line-height:1.1;margin:0;letter-spacing:-.02em;}' +
+    '.sub{font-weight:700;letter-spacing:.24em;text-transform:uppercase;font-size:clamp(10px,.85vw,15px);color:var(--red);margin:1.4vh 0 0;}' +
+    '.frame{position:relative;height:94vh;aspect-ratio:4/5;border-radius:18px;overflow:hidden;background:#141216;box-shadow:0 20px 50px rgba(60,40,20,.22);}' +
+    '.frame video,.frame img.res{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}.frame img.res{object-fit:contain;background:var(--bg);display:none;}' +
+    '.cd{position:absolute;inset:0;display:none;align-items:center;justify-content:center;}' +
+    '.cdw{position:relative;width:46%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;}' +
+    '.cdw svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);}' +
+    '.cdw .trk{fill:rgba(20,18,22,.5);stroke:rgba(255,255,255,.25);stroke-width:4;}.cdw .bar{fill:none;stroke:var(--red);stroke-width:4;stroke-linecap:round;}' +
+    '.num{position:relative;color:#fff;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:min(16vh,9vw);line-height:1;text-shadow:0 0 30px rgba(0,0,0,.4);}' +
+    '.num.word{font-size:min(7vh,4vw);letter-spacing:.04em;text-transform:uppercase;}' +
+    '.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity 120ms ease-out;}.flash.on{opacity:.92;transition:opacity 20ms;}' +
+    '.film{display:flex;flex-direction:column;gap:1.2vh;align-items:center;}' +
+    '.film div{width:9vh;aspect-ratio:4/5;border-radius:8px;border:2px dashed #D6CEC1;background-size:cover;background-position:center;}' +
+    '.film div.f{border:2px solid var(--red);}' +
+    '.chip{padding:.8vh 1.2vw;border-radius:99px;background:var(--ink);color:#fff;font-weight:800;font-size:clamp(10px,.85vw,15px);letter-spacing:.18em;text-transform:uppercase;}' +
+    '.qr{width:min(26vh,15vw);aspect-ratio:1/1;background:#fff;border-radius:14px;padding:1vh;box-shadow:0 10px 30px rgba(60,40,20,.12);}' +
+    '.qr img{width:100%;height:100%;display:block;}' +
+    '.fs{position:fixed;top:1.6vh;left:50%;transform:translateX(-50%);z-index:5;padding:10px 18px;border-radius:99px;border:1.5px solid #D6CEC1;background:#fff;color:var(--ink);font:700 13px Manrope,sans-serif;cursor:pointer;}' +
+    '.hide{display:none !important;}' +
+    '</style></head><body>' +
+    '<button class="fs" id="fs" type="button">⛶ Click for full screen</button>' +
+    '<div class="g">' +
+      '<div class="side">' +
+        '<div class="logo"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span></div>' +
+        '<div><p class="msg" id="msg">Tap or press the button to start</p><p class="sub" id="sub"></p></div>' +
+        '<div><p class="ev" id="ev"></p><p class="dt" id="dt"></p></div>' +
+      '</div>' +
+      '<div class="frame" id="frame"><video id="v" autoplay playsinline muted></video><img class="res" id="res" alt="Your photo">' +
+        '<div class="cd" id="cd"><div class="cdw"><svg viewBox="0 0 100 100"><circle class="trk" cx="50" cy="50" r="46"/><circle class="bar" id="bar" cx="50" cy="50" r="46" pathLength="100" stroke-dasharray="100" stroke-dashoffset="0"/></svg><div class="num" id="num">5</div></div></div>' +
+        '<div class="flash" id="flash"></div></div>' +
+      '<div class="side">' +
+        '<span class="chip" id="chip">Ready</span>' +
+        '<div class="film" id="film"></div>' +
+        '<div class="qr hide" id="qrw"><img id="qr" alt="QR code to get your photos"></div>' +
+      '</div>' +
+    '</div></body></html>';
+
+  function buildGuestDoc(){
+    const d = guestWin.document;
+    d.open(); d.write(GUEST_HTML); d.close();
+    const $g = id => d.getElementById(id);
+    G = { d, v: $g('v'), res: $g('res'), cd: $g('cd'), bar: $g('bar'), num: $g('num'), flash: $g('flash'), film: $g('film'),
+          msg: $g('msg'), sub: $g('sub'), ev: $g('ev'), dt: $g('dt'), chip: $g('chip'), qrw: $g('qrw'), qr: $g('qr'), fs: $g('fs') };
+    G.fs.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const el = d.documentElement;
+      (el.requestFullscreen ? el.requestFullscreen() : Promise.reject()).catch(() => {});
+    });
+    d.addEventListener('fullscreenchange', () => G && G.fs.classList.toggle('hide', !!d.fullscreenElement));
+    d.addEventListener('click', () => boothTrigger(true));
+    d.addEventListener('keydown', onTriggerKey);
+    guestCall('camera');
+    guestRender();
+  }
+
+  async function openGuestScreen(){
+    // Open first, while the click still counts as a user gesture (pop-up blockers).
+    guestWin = window.open('', 'pb4uGuest', 'popup=yes,width=1280,height=720,left=40,top=40');
+    if(!guestWin){
+      showToast('The guest screen was blocked — allow pop-ups for this site (icon in the address bar), then try again.', 6000);
+      return;
+    }
+    buildGuestDoc();
+    updateGuestStatus();
+    // Chrome/Edge: move it onto the other monitor (asks once for "window management").
+    let placed = false;
+    if('getScreenDetails' in window){
+      try{
+        const sd = await window.getScreenDetails();
+        const other = sd.screens.find(sc => sc !== sd.currentScreen) || null;
+        if(other){
+          guestWin.moveTo(other.availLeft, other.availTop);
+          guestWin.resizeTo(other.availWidth, other.availHeight);
+          placed = true;
+        }
+      }catch(e){ /* permission denied or not supported: drag it over by hand */ }
+    }
+    showToast(placed
+      ? 'Guest screen is on the second monitor — click it once for full screen.'
+      : 'Drag the guest screen window onto the second monitor, then click it for full screen (or press F11).', 6000);
+    guestWin.focus();
+  }
+  guestOpenBtn.addEventListener('click', openGuestScreen);
+
+  // Calls into the guest window; a no-op when it isn't open.
+  function guestCall(what, a, b, c, d){
+    if(!guestOpen()) return;
+    try{
+      if(what === 'camera'){
+        if(currentStream && G.v.srcObject !== currentStream){ G.v.srcObject = currentStream; G.v.play().catch(() => {}); }
+        G.v.style.transform = isFrontCamera() ? 'scaleX(-1)' : 'scaleX(1)';
+      } else if(what === 'tick'){
+        G.cd.style.display = 'flex';
+        if(G.num.textContent !== a) G.num.textContent = a;
+        G.num.classList.toggle('word', !!b);
+        G.bar.style.strokeDashoffset = String(100 * (1 - c));
+        G.chip.textContent = d || 'Smile!';
+      } else if(what === 'flash'){
+        G.flash.classList.add('on');
+        setTimeout(() => G && G.flash.classList.remove('on'), 180);
+      } else if(what === 'shots'){
+        guestFilm();
+      }
+    }catch(e){ /* guest window closed mid-call */ }
+  }
+  function guestFilm(){
+    if(!guestOpen()) return;
+    const n = shotCanvases.length;
+    if(G.film.children.length !== n){
+      G.film.innerHTML = '';
+      for(let i = 0; i < n; i++) G.film.appendChild(G.d.createElement('div'));
+    }
+    [...G.film.children].forEach((el, i) => {
+      const shot = shotCanvases[i];
+      el.classList.toggle('f', !!shot);
+      el.style.backgroundImage = shot ? 'url(' + shot.toDataURL('image/jpeg', 0.7) + ')' : '';
+    });
+  }
+  // Redraws the guest screen for the booth's current state.
+  function guestRender(){
+    if(!guestOpen()) return;
+    try{
+      const ready = readyOverlay.classList.contains('ready-active');
+      const result = state === 'result' && shotCanvases.every(Boolean);
+      G.ev.textContent = (labelInput.value || '').trim();
+      G.dt.textContent = currentDateLabel();
+      G.res.style.display = result ? 'block' : 'none';
+      G.v.style.display = result ? 'none' : 'block';
+      if(!(state === 'capturing' && countingDown)) G.cd.style.display = 'none';
+      const qrImg = qrResults.querySelector('.qr-img');
+      const showQr = result && !!qrImg;
+      G.qrw.classList.toggle('hide', !showQr);
+      if(showQr && G.qr.src !== qrImg.src) G.qr.src = qrImg.src;
+      G.film.classList.toggle('hide', showQr);
+      guestFilm();
+      if(result){
+        G.res.src = previewCanvas.toDataURL('image/jpeg', 0.9);
+        G.msg.textContent = 'Looking good!';
+        G.sub.textContent = showQr ? 'Scan the code for your photos' : (autoPrint ? 'Printing…' : 'Your photo is ready');
+        G.chip.textContent = 'Done';
+      } else if(state === 'capturing' && countingDown){
+        G.msg.textContent = 'Look at the camera';
+        G.sub.textContent = shotsNeeded() + (shotsNeeded() === 1 ? ' shot' : ' shots');
+      } else if(ready){
+        G.msg.textContent = 'Get ready!';
+        G.sub.textContent = 'Tap or press the button to start';
+        G.chip.textContent = shotsNeeded() + (shotsNeeded() === 1 ? ' shot' : ' shots');
+      } else {
+        G.msg.textContent = 'Tap or press the button to start';
+        G.sub.textContent = layoutDef().name + ' · ' + shotsNeeded() + (shotsNeeded() === 1 ? ' shot' : ' shots');
+        G.chip.textContent = 'Ready';
+      }
+    }catch(e){ /* closed */ }
+  }
+  // One trigger for the guest screen, the keyboard and presenter clickers:
+  // answers "Get ready", or starts a new session from the Photo Session tab.
+  function boothTrigger(fromGuest){
+    if(!startScreen.classList.contains('gone')) { leaveStartScreen(); return; }
+    if(readyOverlay.classList.contains('ready-active')){ readyStartBtn.click(); return; }
+    if(state === 'capturing' || printing) return;
+    if(tabSession.classList.contains('hidden')){
+      if(fromGuest) showToast('Finish Setup and open the Photo Session tab first.');
+      return;
+    }
+    if(!rawFolderKey()) return;
+    startSession(true);
+  }
+  // Space / Enter / presenter-clicker keys (they send PageDown, PageUp or arrows).
+  const TRIGGER_KEYS = new Set([' ', 'Enter', 'PageDown', 'PageUp', 'ArrowRight', 'ArrowDown', 'b', 'B']);
+  function onTriggerKey(e){
+    if(!TRIGGER_KEYS.has(e.key)) return;
+    const t = e.target;
+    const tag = t && t.tagName;
+    if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || (t && t.isContentEditable)) return;
+    e.preventDefault();
+    boothTrigger(false);
+  }
+  document.addEventListener('keydown', onTriggerKey);
+
+  // ---- Start screen (before Setup) ----
+  const startScreen = document.getElementById('startScreen');
+  function refreshStartScreen(){
+    const pb = window.__PB || {};
+    const ev = (labelInput.value || '').trim() || (pb.type === 'rental' && pb.folderKey ? pb.folderKey : '');
+    document.getElementById('ssEvent').textContent = ev;
+    document.getElementById('ssDate').textContent = currentDateLabel() || (pb.type === 'trial' ? 'TRIAL' : '');
+    document.getElementById('ssStatus').textContent = isTraditional() ? 'Ready · Traditional booth' : 'Ready';
+  }
+  function leaveStartScreen(){
+    if(startScreen.classList.contains('gone')) return;
+    startScreen.classList.add('leaving', 'gone');
+    setTimeout(() => { startScreen.style.display = 'none'; }, 380);
+  }
+  startScreen.addEventListener('click', leaveStartScreen);
+  startScreen.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.stopPropagation(); leaveStartScreen(); } });
+  labelInput.addEventListener('input', () => { refreshStartScreen(); guestRender(); });
 
   // ---- Init ----
   // ---- Setup accordion: numbered sections (Format → Backdrop → Event name →
@@ -3384,7 +4073,10 @@
   setActivePresetBtn();
   updateBandPositionVisibility();
   applyLabelInputFont();
-  if(readySub) readySub.textContent = shotsNeeded() + ' shots · 5,4,3,2,1,Pose';
+  buildLayoutPicker();
+  updateReadySub();
+  refreshTraditionalUI();
+  refreshStartScreen();
   renderSetupPreview();
   (async () => {
     await enumerateCameras();

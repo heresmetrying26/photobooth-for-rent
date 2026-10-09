@@ -68,7 +68,7 @@ export default safe(async (req, context) => {
         do { key = newCode(); } while (await store.get(key));
         // Keep a dedicated Drive folder name. If neither field was supplied,
         // fall back to the code so the renter never has to configure Drive.
-        const rec = { key, code: displayCode(key), label: label || displayCode(key), folderName: folderName || displayCode(key), days, print, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null };
+        const rec = { key, code: displayCode(key), label: label || displayCode(key), folderName: folderName || displayCode(key), days, print, traditional: !!b.traditional, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null };
         await store.setJSON(key, rec);
         created.push(rec);
       }
@@ -121,6 +121,14 @@ export default safe(async (req, context) => {
       return json({ ok: true, print });
     }
 
+    case 'traditional': { // laptop + guest screen mode; applies to an open booth within ~5 minutes
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      rec.traditional = !!b.traditional;
+      await store.setJSON(key, rec);
+      return json({ ok: true, traditional: rec.traditional });
+    }
+
     case 'delete': {
       const { key, rec } = await getRec();
       if (!rec) return json({ error: 'Code not found.' }, 404);
@@ -138,7 +146,8 @@ export default safe(async (req, context) => {
       const trialPrint = normPrint(b.trialPrintEnabled, b.trialPrintSizes);
       if (b.trialPrintEnabled && !trialPrint.enabled) return json({ error: 'Pick at least one trial paper size, or turn trial printing off.' }, 400);
       const settings = { trialEnabled: !!b.trialEnabled, trialPassword: pw, trialMinutes: minutes, trialFolderPrefix: prefix,
-        trialPrintEnabled: trialPrint.enabled, trialPrintSizes: trialPrint.sizes.length ? trialPrint.sizes : ['4x6'] };
+        trialPrintEnabled: trialPrint.enabled, trialPrintSizes: trialPrint.sizes.length ? trialPrint.sizes : ['4x6'],
+        trialTraditional: !!b.trialTraditional };
       await meta().setJSON('settings', settings);
       return json({ settings });
     }

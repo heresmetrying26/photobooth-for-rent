@@ -1,4 +1,4 @@
-# Photo Booth – rental edition
+# photobooth4u – rental edition
 
 **Lock screen → password → app.** The booth itself (`protected/booth.html`) is never
 public; a Netlify Function only sends it to someone with a valid trial or rental license.
@@ -58,3 +58,33 @@ which sends every print straight to the **default printer**:
 
 Without kiosk mode the normal print dialog opens: pick the photo printer, set Margins to
 **None** and Scale to **Default/100%**, then print.
+
+## Layouts, countdown and date
+- **10 layouts** (Setup → 1 · Layout & timer): Classic strip (3), Strip 4, Polaroid 4, Grid 4,
+  Hero 1+3, Solo, Duo, Trio, Feature 1+2, Film 6. Strips print two side by side on 4R; every
+  other layout is built as an exact 4R (4×6) sheet. New sheet layouts are one line each in
+  `SHEET_ROWS` + `LAYOUT_DEFS` inside `protected/booth.html`.
+- **Countdown**: 3 / 5 / 7 / 10 s, fine-tuned in ½-second steps (2–15 s). A ring drains smoothly
+  while the numbers tick whole seconds. Optional extra time before the first shot, and a pause
+  between shots.
+- **Date**: tap the calendar icon next to the event name to add today's date; tap the date to
+  pick another day; Remove (or the icon again) takes it off. Works on iPad and Android.
+
+## Traditional booth (laptop + guest screen)
+Admin turns it on per rental code (**Make traditional**, or tick it when generating codes); the
+trial has its own switch. An open booth switches within ~5 minutes. Tablets (iPad / Android)
+stay in the normal tablet mode.
+
+1. Connect the second monitor and set Windows/macOS display to **Extend**.
+2. Start Chrome or Edge **without `--kiosk`** but with silent printing, e.g.
+   `"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing https://YOUR-SITE.netlify.app/`
+   (`--kiosk` forces one full-screen window, which blocks the guest screen.)
+3. Unlock, finish Setup, go to **Photo Session → Open guest screen**. Allow pop-ups and
+   "window management" if Chrome asks; it then moves the guest screen to the second monitor.
+   Click the guest screen once for full screen.
+4. Guests start a session by tapping the guest screen, or pressing **Space / Enter** or a
+   presenter clicker (Page Down / arrows). The finished photo and QR show on the guest screen.
+
+**Auto-print** (traditional only): after the operator's first print, every following session
+prints by itself on the same paper size (switch it off any time in the Print box). With
+`--kiosk-printing` there is no dialog at all.

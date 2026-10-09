@@ -101,6 +101,7 @@ export async function getSettings() {
     trialFolderPrefix: 'Trial test shots',
     trialPrintEnabled: false,
     trialPrintSizes: ['4x6'],
+    trialTraditional: false,
     ...(saved || {})
   };
 }
@@ -131,7 +132,7 @@ export async function checkLicense(token, deviceId) {
     if (p.exp <= now) return { valid: false, reason: 'trial-ended' };
     const s = await getSettings();
     if (!s.trialEnabled) return { valid: false, reason: 'trial-disabled' };
-    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes) };
+    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes), traditional: !!s.trialTraditional };
   }
 
   const rec = await licenses().get(p.k, { type: 'json' });
@@ -141,5 +142,5 @@ export async function checkLicense(token, deviceId) {
   // Expiry always comes from the server record, so an admin "extend" applies instantly.
   const exp = rec.expiresAt;
   const fresh = exp === p.exp ? token : sign({ t: 'rental', k: p.k, d: p.d, exp });
-  return { valid: true, type: 'rental', exp, token: fresh, folderKey: (rec.folderName || rec.label || '').trim() || null, print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes) };
+  return { valid: true, type: 'rental', exp, token: fresh, folderKey: (rec.folderName || rec.label || '').trim() || null, print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes), traditional: !!rec.traditional };
 }

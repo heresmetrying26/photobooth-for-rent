@@ -17,7 +17,7 @@ const WATCHER = `
     lock(reason);
   }
   var chip = document.createElement('div');
-  chip.style.cssText = 'position:fixed;right:10px;bottom:10px;z-index:99999;background:rgba(31,65,102,.9);color:#fff;font:600 12px Inter,system-ui,sans-serif;padding:6px 12px;border-radius:999px;pointer-events:none;display:none;';
+  chip.style.cssText = 'position:fixed;right:10px;bottom:10px;z-index:99999;background:rgba(28,26,30,.9);color:#fff;font:600 12px Manrope,system-ui,sans-serif;padding:6px 12px;border-radius:999px;pointer-events:none;display:none;';
   document.body.appendChild(chip);
   var locking = false;
   function tick(){
@@ -52,6 +52,11 @@ const WATCHER = `
           L.print = j.print;
           window.dispatchEvent(new Event('pb-print-change'));
         }
+        // Admin can also switch traditional (laptop + guest screen) mode.
+        if (typeof j.traditional === 'boolean' && j.traditional !== !!L.traditional) {
+          L.traditional = j.traditional;
+          window.dispatchEvent(new Event('pb-mode-change'));
+        }
       }
     }).catch(function(){ /* offline: keep running until the known expiry */ });
   }
@@ -69,7 +74,7 @@ export default safe(async (req) => {
   // reads it once at startup to fill in the Drive folder and show its QR. So it
   // goes in <head>. The watcher needs document.body, so it stays before </body>.
   // '<' is escaped so a folder name can never close the script tag early.
-  const pb = JSON.stringify({ type: res.type, exp: res.exp, folderKey: res.folderKey || null, lockFolder: !!res.folderKey, print: res.print || { enabled: false, sizes: [] } }).replace(/</g, '\\u003c');
+  const pb = JSON.stringify({ type: res.type, exp: res.exp, folderKey: res.folderKey || null, lockFolder: !!res.folderKey, print: res.print || { enabled: false, sizes: [] }, traditional: !!res.traditional }).replace(/</g, '\\u003c');
   const head = '<script>window.__PB=' + pb + ';</script>';
   const tail = '<script>' + WATCHER + '</script>';
   let html = booth;

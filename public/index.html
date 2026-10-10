@@ -59,7 +59,7 @@
       <button id="unlockBtn">Unlock</button>
     </div>
     <div class="msg" id="msg"></div>
-    <div class="hint">Rental code: one-time use, and it starts counting down the moment you enter it.<br>Trying it out? Use the trial password.</div>
+    <div class="hint">Your code stays unlocked on the device you first enter it on.<br>Booked for a date? It opens on your event day.<br>Trying it out? Use the trial password.<br><a href="/lifetime/" style="color:inherit;font-weight:700;">Find your event photos &amp; setup guide →</a></div>
   </div>
 
 <script>
@@ -68,6 +68,8 @@
   var MESSAGES = {
     'expired': 'Your rental period has ended. Enter a new code to keep using the photo booth.',
     'trial-ended': 'Your trial has ended. Enter a rental code to keep going.',
+    'bonus-ended': 'Your bonus time has ended. Use your event code on the day of your event.',
+    'device-removed': 'This device was removed from the code. Enter the code again, or contact the owner.',
     'trial-disabled': 'The trial is no longer available. Please enter a rental code.',
     'revoked': 'This access has been disabled. Please contact the owner.',
     'invalid': 'Please enter your password or rental code to continue.'
@@ -129,9 +131,23 @@
       var j = await r.json();
       if(!r.ok){ show(j.error || 'Something went wrong. Please try again.', 'error'); btn.disabled = false; return; }
       localStorage.setItem(TOKEN_KEY, j.token);
+      var until = function(){ try{ return new Date(j.exp).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); }catch(e){ return ''; } };
       var note = j.type === 'trial'
         ? 'Trial unlocked — ' + j.minutes + ' minutes.'
-        : (j.days ? 'Unlocked — ' + j.days + ' day' + (j.days === 1 ? '' : 's') + ' of access starts now.' : 'Welcome back!');
+        : j.lifetime
+          ? 'Unlocked — lifetime access on this device.'
+        : j.kind === 'bonus'
+          ? 'Bonus unlocked — ' + j.minutes + ' minutes starts now.'
+          : j.scheduled
+            ? 'Unlocked — your booth is open until ' + until() + '.'
+            : (j.days ? 'Unlocked — ' + j.days + ' day' + (j.days === 1 ? '' : 's') + ' of access starts now.' : 'Welcome back!');
+      // Lifetime codes land on their My Events page first (setup guide, past
+      // events, and an Open photo booth button). The saved token signs them in there.
+      if(j.lifetime){
+        show('Welcome! Taking you to your events page…', 'ok');
+        setTimeout(function(){ location.href = '/lifetime/?welcome=1'; }, 900);
+        return;
+      }
       show(note, 'ok');
       setTimeout(function(){ openApp(j.token).then(function(ok){ if(!ok) btn.disabled = false; }); }, 900);
     }catch(e){

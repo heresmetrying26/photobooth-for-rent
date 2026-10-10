@@ -55,6 +55,17 @@
   .size-chip:has(input:checked){border-color:var(--blue);background:var(--soft);}
   .b-print{background:#fff4e0;color:#a2620c;}
   .lic .printbox{margin:0 0 10px;}
+  input[type=date],input[type=time]{width:100%;padding:10px 12px;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:10px;background:#FAF7F2;color:var(--ink);outline:none;}
+  .b-scheduled{background:#FFF0D6;color:#9A5B00;} .b-lifetime{background:#1C1A1E;color:#fff;} .b-devices{background:#EEF0F4;color:#3D4656;}
+  .devlist{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 0;}
+  .devchip{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;border:1.5px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;color:var(--ink);background:#fff;}
+  .devchip button{padding:2px 8px;font-size:11px;border-radius:999px;}
+  #newDays:disabled{opacity:.45;} .b-bonus{background:#E6F4F1;color:#1F6F62;}
+  .lic.bonus{margin:-4px 0 12px 22px;border-style:dashed;background:#FBFDFC;}
+  .bonusrow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:8px;}
+  .bonusrow>div{width:150px;}
+  .bonusrow.off{display:none;}
+  .newbox .code small{font-family:'Manrope',sans-serif;font-weight:600;color:var(--dim);margin-left:6px;letter-spacing:0;}
 </style>
 </head>
 <body>
@@ -79,7 +90,27 @@
         <div style="flex:2;min-width:160px;"><label>Client / event</label><input id="newLabel" type="text" maxlength="80" placeholder="e.g. Sofia's Dedication"></div>
         <div style="flex:2;min-width:160px;"><label>Drive folder name</label><input id="newFolderName" type="text" maxlength="80" placeholder="Defaults to client / event"></div>
         <div><label>Days</label><input id="newDays" type="number" min="1" max="365" value="3"></div>
+        <div><label>Devices</label><input id="newDevices" type="number" min="1" max="50" value="1"></div>
         <div><label>How many</label><input id="newCount" type="number" min="1" max="20" value="1"></div>
+      </div>
+      <div class="modebox">
+        <label class="toggle"><input type="checkbox" id="newLifetime"> Lifetime (never expires)</label>
+        <div class="meta" style="margin:0;" id="lifetimeHint">For clients who buy the booth for good. Instead of one fixed Drive folder, the booth asks for an <b>event name</b> each time, and every event gets its own folder: <b>“Drive folder name · event name”</b>. Turning this on also turns on the Traditional (Pro) booth below; untick that if they use a tablet.</div>
+      </div>
+      <div class="modebox">
+        <label style="font-size:13px;color:var(--ink);">Event date <span style="font-weight:500;color:var(--dim);">(optional)</span></label>
+        <div class="row">
+          <div><label>Opens on</label><input id="newStartDate" type="date"></div>
+          <div><label>From time</label><input id="newStartTime" type="time" value="00:00"></div>
+        </div>
+        <div class="meta" style="margin:6px 0 0;" id="newStartHint">Leave blank and the days start when the renter first enters the code. With a date, the code can't be used before it opens and runs for the Days above from that time (e.g. 1 day = 24 hours).</div>
+      </div>
+      <div class="modebox">
+        <label class="toggle"><input type="checkbox" id="newBonus"> Include a bonus code</label>
+        <div class="bonusrow off" id="newBonusRow">
+          <div><label>Bonus length (minutes)</label><input id="newBonusMin" type="number" min="5" max="1440" value="60"></div>
+        </div>
+        <div class="meta" style="margin:6px 0 0;">A second code the renter can use any time before their booking ends (e.g. to test before the event). The time starts on first entry. Its photos go to a <b>Bonus</b> folder inside the event folder, named BONUS_1, BONUS_2…</div>
       </div>
       <div class="printbox" id="newPrint"></div>
       <div class="modebox">
@@ -88,7 +119,7 @@
       </div>
       <button class="primary" id="createBtn" style="margin-top:12px;">Generate</button>
       <div id="newBox" class="newbox hidden"></div>
-      <div class="meta" style="margin-bottom:0;">Each code works once. The days start counting when the renter first enters it.</div>
+      <div class="meta" style="margin-bottom:0;"><b>Devices</b> = how many tablets/laptops can use the same code at once (they share the event folder; each device's photos end in _cam1, _cam2…). Without an event date, the days start counting when the renter first enters it.</div>
     </div>
 
     <div class="card">
@@ -201,7 +232,7 @@
     });
     var j = await r.json().catch(function(){ return {}; });
     if(r.status === 401 && body.action !== 'login'){ logout(); toast('Session expired — please log in again.', true); throw new Error('auth'); }
-    if(!r.ok) throw new Error(j.error || 'Request failed');
+    if(!r.ok){ var err = new Error(j.error || 'Request failed'); err.status = r.status; err.data = j; throw err; }
     return j;
   }
 
@@ -227,9 +258,27 @@
   $('refreshBtn').addEventListener('click', function(){ load().then(function(){ toast('Refreshed'); }); });
 
   function statusOf(l, now){
+    if(l.lifetime && l.status === 'active') return 'active';
     if(l.status === 'active' && l.expiresAt <= now) return 'expired';
+    if(l.status === 'unused' && l.kind !== 'bonus' && l.startsAt && !l.lifetime){
+      if(l.startsAt + l.days * DAY <= now) return 'expired';
+      if(l.startsAt > now) return 'scheduled';
+    }
     return l.status;
   }
+  // Date + time pickers -> epoch ms in this browser's time zone (null if no date).
+  function readStartInputs(dateEl, timeEl){
+    if(!dateEl.value) return null;
+    var t = new Date(dateEl.value + 'T' + (timeEl.value || '00:00')).getTime();
+    return isNaN(t) ? null : t;
+  }
+  function pad2(n){ return n < 10 ? '0' + n : '' + n; }
+  function dateParts(ms){
+    var d = new Date(ms);
+    return { date: d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()), time: pad2(d.getHours()) + ':' + pad2(d.getMinutes()) };
+  }
+  function devicesOf(l){ return Array.isArray(l.devices) ? l.devices : (l.deviceId ? [{ id: l.deviceId, no: 1, at: l.redeemedAt }] : []); }
+  function fmtMinutes(m){ return m >= 60 ? (Math.floor(m / 60) + 'h' + (m % 60 ? ' ' + (m % 60) + 'm' : '')) : m + ' min'; }
   function fmtLeft(ms){
     if(ms <= 0) return '0m';
     var d = Math.floor(ms / DAY), h = Math.floor(ms % DAY / 3600000), m = Math.floor(ms % 3600000 / 60000);
@@ -259,27 +308,68 @@
     var el = $('list');
     if(!rows.length){ el.innerHTML = '<div class="empty">No codes yet. Generate one above.</div>'; return; }
     LIC = {}; rows.forEach(function(l){ LIC[l.code] = l; });
-    el.innerHTML = rows.map(function(l){
-      var st = statusOf(l, now), info = '';
-      if(st === 'unused') info = l.days + ' day' + (l.days === 1 ? '' : 's') + ' · not redeemed yet';
-      else if(st === 'active') info = 'Redeemed ' + fmtDate(l.redeemedAt) + ' · ends ' + fmtDate(l.expiresAt) + ' (' + fmtLeft(l.expiresAt - now) + ' left)' + (l.deviceId ? '' : ' · <b>waiting for a new device</b>');
-      else if(st === 'expired') info = 'Ended ' + fmtDate(l.expiresAt);
-      else info = 'Disabled';
-      var acts = '';
-      if(st === 'active') acts += '<button class="small" data-a="unbind" data-c="' + esc(l.code) + '">Allow new device</button>';
-      if(st !== 'revoked') acts += '<button class="small" data-a="extend" data-c="' + esc(l.code) + '">+ Add days</button>';
-      acts += '<button class="small" data-a="printedit" data-c="' + esc(l.code) + '">Print settings</button>';
-      acts += '<button class="small" data-a="mode" data-c="' + esc(l.code) + '">' + (l.traditional ? 'Switch to tablet' : 'Make traditional') + '</button>';
-      acts += st === 'revoked'
-        ? '<button class="small" data-a="restore" data-c="' + esc(l.code) + '">Restore</button>'
-        : '<button class="small danger" data-a="revoke" data-c="' + esc(l.code) + '">Disable</button>';
-      acts += '<button class="small danger" data-a="delete" data-c="' + esc(l.code) + '">Delete</button>';
-      var printOn = l.print && l.print.enabled;
-      return '<div class="lic" data-code="' + esc(l.code) + '"><div class="lic-head"><span class="code">' + esc(l.code) + '</span><span>' + (l.traditional ? '<span class="badge b-trad">traditional</span> ' : '') + (printOn ? '<span class="badge b-print">print</span> ' : '') + '<span class="badge b-' + st + '">' + st + '</span></span></div>' +
-        '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + 'Drive folder: <b>' + esc(l.folderName || l.label || l.code) + '</b><br>' + printSummary(l.print) + '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>' + info + '</div>' +
-        '<div class="printbox hidden" data-print-edit></div>' +
-        '<div class="actions"><button class="small" data-a="copy" data-c="' + esc(l.code) + '">Copy</button>' + acts + '</div></div>';
-    }).join('');
+    var byKey = {}; rows.forEach(function(l){ byKey[l.key] = l; });
+    // Each booking is followed by its bonus code (if any).
+    var ordered = [];
+    rows.forEach(function(l){
+      if(l.kind === 'bonus' && l.parent && byKey[l.parent]) return;
+      ordered.push(l);
+      if(l.bonusKey && byKey[l.bonusKey]) ordered.push(byKey[l.bonusKey]);
+    });
+    el.innerHTML = ordered.map(function(l){ return renderLic(l, now, byKey); }).join('');
+  }
+
+  function renderLic(l, now, byKey){
+    var bonus = l.kind === 'bonus';
+    var st = statusOf(l, now), info = '';
+    var len = bonus ? fmtMinutes(l.minutes) : (l.lifetime ? 'Lifetime' : l.days + ' day' + (l.days === 1 ? '' : 's'));
+    var devs = devicesOf(l), maxD = Math.max(1, l.maxDevices || 1);
+    if(l.lifetime && st === 'scheduled') st = 'unused';
+    if(st === 'scheduled') info = len + ' · opens <b>' + fmtDate(l.startsAt) + '</b> · ends ' + fmtDate(l.startsAt + l.days * DAY);
+    else if(st === 'unused') info = len + (l.startsAt && !l.lifetime ? ' · open now until ' + fmtDate(l.startsAt + l.days * DAY) : (l.startsAt ? ' · opens ' + fmtDate(l.startsAt) : '')) + ' · not redeemed yet';
+    else if(st === 'active' && l.lifetime) info = 'Lifetime · redeemed ' + fmtDate(l.redeemedAt);
+    else if(st === 'active') info = 'Redeemed ' + fmtDate(l.redeemedAt) + ' · ends ' + fmtDate(l.expiresAt) + ' (' + fmtLeft(l.expiresAt - now) + ' left)';
+    else if(st === 'expired') info = 'Ended ' + fmtDate(l.expiresAt || (l.startsAt + l.days * DAY)) + (l.redeemedAt ? '' : ' · never used');
+    else info = 'Disabled';
+    if(st === 'active' && devs.length < maxD) info += ' · <b>' + (devs.length ? (maxD - devs.length) + ' device slot' + (maxD - devs.length === 1 ? '' : 's') + ' free' : 'waiting for a new device') + '</b>';
+    if(bonus && st === 'unused'){
+      var p = byKey[l.parent], end = p && (p.expiresAt || (p.startsAt ? p.startsAt + p.days * DAY : 0));
+      info += end ? ' · usable until ' + fmtDate(end) : ' · usable any time before the booking ends';
+    }
+    var c = esc(l.code), acts = '';
+    var unusedish = st === 'unused' || st === 'scheduled';
+    if(st === 'active' && maxD === 1 && devs.length) acts += '<button class="small" data-a="unbind" data-c="' + c + '">Allow new device</button>';
+    if(!bonus && st !== 'revoked') acts += '<button class="small" data-a="devlimit" data-c="' + c + '">Devices: ' + maxD + '</button>';
+    if(bonus){
+      if(st !== 'revoked') acts += '<button class="small" data-a="bonuslen" data-c="' + c + '">Change length</button>';
+    }else{
+      if(st !== 'revoked' && !l.lifetime) acts += '<button class="small" data-a="extend" data-c="' + c + '">+ Add days</button>';
+      if(st !== 'revoked' && !l.lifetime) acts += '<button class="small" data-a="makelifetime" data-c="' + c + '">Make lifetime</button>';
+      if(unusedish || (st === 'expired' && !l.redeemedAt)) acts += '<button class="small" data-a="schedopen" data-c="' + c + '">' + (l.startsAt ? 'Change date' : 'Set date') + '</button>';
+      if(!(l.bonusKey && byKey[l.bonusKey])) acts += '<button class="small" data-a="addbonus" data-c="' + c + '">+ Bonus code</button>';
+    }
+    acts += '<button class="small" data-a="printedit" data-c="' + c + '">Print settings</button>';
+    acts += '<button class="small" data-a="mode" data-c="' + c + '">' + (l.traditional ? 'Switch to tablet' : 'Make traditional') + '</button>';
+    acts += st === 'revoked'
+      ? '<button class="small" data-a="restore" data-c="' + c + '">Restore</button>'
+      : '<button class="small danger" data-a="revoke" data-c="' + c + '">Disable</button>';
+    acts += '<button class="small danger" data-a="delete" data-c="' + c + '">Delete</button>';
+    var printOn = l.print && l.print.enabled;
+    var folder = l.lifetime
+      ? esc(l.folderName || l.label || l.code) + ' · <i>event name</i></b> <span style="font-weight:500;">(new folder per event)</span><b>'
+      : esc(l.folderName || l.label || l.code) + (bonus ? ' / ' + esc(l.subfolder || 'Bonus') + ' <span style="font-weight:500;">(files named BONUS_…)</span>' : '');
+    return '<div class="lic' + (bonus ? ' bonus' : '') + '" data-code="' + c + '"><div class="lic-head"><span class="code">' + c + '</span><span>' +
+      (bonus ? '<span class="badge b-bonus">bonus</span> ' : '') +
+      (l.lifetime ? '<span class="badge b-lifetime">lifetime</span> ' : '') +
+      (maxD > 1 ? '<span class="badge b-devices">' + devs.length + '/' + maxD + ' devices</span> ' : '') +
+      (l.traditional ? '<span class="badge b-trad">traditional</span> ' : '') + (printOn ? '<span class="badge b-print">print</span> ' : '') +
+      '<span class="badge b-' + st + '">' + st + '</span></span></div>' +
+      '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) + '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>' + info +
+      (maxD > 1 && devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="Remove this device">Remove</button></span>'; }).join('') + '</div>' : '') +
+      '</div>' +
+      '<div class="printbox hidden" data-print-edit></div>' +
+      '<div class="printbox hidden" data-sched-edit></div>' +
+      '<div class="actions"><button class="small" data-a="copy" data-c="' + c + '">Copy</button>' + (bonus ? '' : '<button class="small" data-a="portal" data-c="' + c + '" title="Link to the customer\'s My Events page (signs them in with this code)">Copy events page link</button>') + acts + '</div></div>';
   }
 
   $('list').addEventListener('click', async function(e){
@@ -287,6 +377,59 @@
     var a = b.dataset.a, code = b.dataset.c;
     try{
       if(a === 'copy'){ await navigator.clipboard.writeText(code); toast('Copied ' + code); return; }
+      if(a === 'portal'){ await navigator.clipboard.writeText(location.origin + '/lifetime/#' + code); toast('Copied the My Events link for ' + code); return; }
+      if(a === 'rmdev'){
+        var n = Number(b.dataset.n);
+        if(!confirm('Remove device ' + n + ' from ' + code + '? It is locked out within ~5 minutes, and a new device can then use the code.')) return;
+        await api({ action: 'unbind', code: code, deviceNo: n });
+        toast('Device ' + n + ' removed'); load(); return;
+      }
+      if(a === 'devlimit'){
+        var cur3 = (LIC[code] && LIC[code].maxDevices) || 1;
+        var dv = prompt('How many devices can use ' + code + '? (1–50)', String(cur3)); if(!dv) return;
+        await api({ action: 'devices', code: code, maxDevices: dv });
+        toast('Device limit set to ' + dv); load(); return;
+      }
+      if(a === 'makelifetime'){
+        if(!confirm('Make ' + code + ' lifetime? It will never expire, and the booth will ask for an event name so each event gets its own Drive folder.')) return;
+        await api({ action: 'makelifetime', code: code });
+        toast(code + ' is now lifetime'); load(); return;
+      }
+      if(a === 'schedopen'){
+        var sb = b.closest('.lic').querySelector('[data-sched-edit]');
+        if(!sb.classList.contains('hidden')){ sb.classList.add('hidden'); return; }
+        var cur = LIC[code] && LIC[code].startsAt ? dateParts(LIC[code].startsAt) : { date: '', time: '00:00' };
+        sb.innerHTML = '<div class="row"><div><label>Opens on</label><input type="date" class="sd" value="' + cur.date + '"></div>' +
+          '<div><label>From time</label><input type="time" class="stm" value="' + cur.time + '"></div></div>' +
+          '<div class="actions" style="margin-top:10px;"><button class="small primary" data-a="schedsave" data-c="' + esc(code) + '">Save date</button>' +
+          (LIC[code] && LIC[code].startsAt ? '<button class="small" data-a="schedclear" data-c="' + esc(code) + '">Remove date</button>' : '') + '</div>';
+        sb.classList.remove('hidden');
+        return;
+      }
+      if(a === 'schedsave' || a === 'schedclear'){
+        var box2 = b.closest('[data-sched-edit]');
+        var ms = a === 'schedclear' ? null : readStartInputs(box2.querySelector('.sd'), box2.querySelector('.stm'));
+        if(a === 'schedsave' && !ms){ toast('Pick a date first.', true); return; }
+        await api({ action: 'schedule', code: code, startsAt: ms });
+        toast(ms ? 'Opens ' + fmtDate(ms) : 'Date removed — days start on first entry');
+        load();
+        return;
+      }
+      if(a === 'addbonus'){
+        var mins = prompt('Bonus code length in minutes?', '60'); if(!mins) return;
+        var r = await api({ action: 'addbonus', code: code, minutes: mins });
+        toast('Bonus code ' + r.created[0].code + ' added');
+        load();
+        return;
+      }
+      if(a === 'bonuslen'){
+        var cur2 = LIC[code] && LIC[code].minutes;
+        var m2 = prompt('Total bonus length in minutes?' + (LIC[code] && LIC[code].redeemedAt ? ' (counted from when it was first used)' : ''), String(cur2 || 60)); if(!m2) return;
+        await api({ action: 'bonusminutes', code: code, minutes: m2 });
+        toast('Bonus length set to ' + fmtMinutes(Number(m2)));
+        load();
+        return;
+      }
       if(a === 'printedit'){
         var box = b.closest('.lic').querySelector('[data-print-edit]');
         if(!box.classList.contains('hidden')){ box.classList.add('hidden'); return; }
@@ -298,7 +441,7 @@
       if(a === 'printsave'){
         var pb = readPrint(b.closest('[data-print-edit]'));
         await api({ action: 'print', code: code, printEnabled: pb.enabled, printSizes: pb.sizes });
-        toast('Print settings saved — an open booth picks them up within ~5 minutes');
+        toast('Print settings saved' + (LIC[code] && LIC[code].bonusKey ? ' (bonus code too)' : '') + ' — an open booth picks them up within ~5 minutes');
         load();
         return;
       }
@@ -309,7 +452,7 @@
         load();
         return;
       }
-      if(a === 'delete' && !confirm('Delete ' + code + ' permanently? If it is active, the renter is locked out.')) return;
+      if(a === 'delete' && !confirm('Delete ' + code + ' permanently? If it is active, the renter is locked out.' + (LIC[code] && LIC[code].bonusKey ? ' Its bonus code is deleted too.' : ''))) return;
       if(a === 'revoke' && !confirm('Disable ' + code + '? The renter is locked out at their next check (within ~5 minutes).')) return;
       var body = { action: a, code: code };
       if(a === 'extend'){
@@ -325,12 +468,25 @@
     var btn = this; btn.disabled = true;
     try{
       var np = readPrint($('newPrint'));
-      var j = await api({ action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, printEnabled: np.enabled, printSizes: np.sizes, traditional: $('newTraditional').checked });
+      var startsAt = readStartInputs($('newStartDate'), $('newStartTime'));
+      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, bonus: $('newBonus').checked, bonusMinutes: $('newBonusMin').value, printEnabled: np.enabled, printSizes: np.sizes, traditional: $('newTraditional').checked };
+      var j;
+      try{ j = await api(createBody); }
+      catch(e1){
+        if(!(e1.data && e1.data.duplicate)) throw e1;
+        if(!confirm(e1.message + '\n\nOK = use the same folder anyway (e.g. a returning client)\nCancel = go back and change the Drive folder name')){ btn.disabled = false; return; }
+        createBody.sameFolderOk = true;
+        j = await api(createBody);
+      }
       var box = $('newBox');
       box.classList.remove('hidden');
       box.innerHTML = '<b style="font-size:12px;">New code' + (j.created.length > 1 ? 's' : '') + ' — copy and send to the renter</b>' +
-        j.created.map(function(l){ return '<div class="code"><span>' + esc(l.code) + '</span><button class="small" data-copy="' + esc(l.code) + '">Copy</button></div>'; }).join('');
+        j.created.map(function(l){
+          var tag = l.kind === 'bonus' ? 'bonus · ' + fmtMinutes(l.minutes) : l.lifetime ? 'lifetime' + (l.maxDevices > 1 ? ' · ' + l.maxDevices + ' devices' : '') : (l.startsAt ? 'opens ' + fmtDate(l.startsAt) : l.days + ' day' + (l.days === 1 ? '' : 's'));
+          return '<div class="code"><span>' + esc(l.code) + '<small>' + esc(tag) + '</small></span><button class="small" data-copy="' + esc(l.code) + '">Copy</button></div>';
+        }).join('');
       $('newLabel').value = '';
+      $('newStartDate').value = '';
       $('newFolderName').value = '';
       delete $('newFolderName').dataset.edited;
       load();
@@ -357,6 +513,11 @@
   });
 
   printPicker($('newPrint'), null, 'Allow printing for these codes');
+  $('newLifetime').addEventListener('change', function(){
+    $('newDays').disabled = this.checked;
+    if(this.checked) $('newTraditional').checked = true;
+  });
+  $('newBonus').addEventListener('change', function(){ $('newBonusRow').classList.toggle('off', !this.checked); });
   if(TOKEN){ showAdmin(true); load(); }
 })();
 </script>

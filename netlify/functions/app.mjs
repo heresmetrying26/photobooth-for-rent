@@ -23,7 +23,7 @@ const WATCHER = `
   function tick(){
     var left = L.exp - Date.now();
     if (left <= 0) {
-      if (!locking) { locking = true; tryLock(L.type === 'trial' ? 'trial-ended' : 'expired'); }
+      if (!locking) { locking = true; tryLock(L.type === 'trial' ? 'trial-ended' : (L.bonus ? 'bonus-ended' : 'expired')); }
       return;
     }
     var m = Math.floor(left / 60000), s = Math.floor(left / 1000) % 60;
@@ -32,7 +32,9 @@ const WATCHER = `
       chip.textContent = 'Trial \\u00b7 ' + pad(m) + ':' + pad(s) + ' left';
     } else if (left < 86400000) {
       chip.style.display = 'block';
-      chip.textContent = 'Rental ends in ' + Math.floor(m / 60) + 'h ' + pad(m % 60) + 'm';
+      chip.textContent = L.bonus
+        ? 'Bonus \\u00b7 ' + (m >= 60 ? Math.floor(m / 60) + 'h ' + pad(m % 60) + 'm' : pad(m) + ':' + pad(s)) + ' left'
+        : 'Rental ends in ' + Math.floor(m / 60) + 'h ' + pad(m % 60) + 'm';
     } else {
       chip.style.display = 'none';
     }
@@ -74,7 +76,7 @@ export default safe(async (req) => {
   // reads it once at startup to fill in the Drive folder and show its QR. So it
   // goes in <head>. The watcher needs document.body, so it stays before </body>.
   // '<' is escaped so a folder name can never close the script tag early.
-  const pb = JSON.stringify({ type: res.type, exp: res.exp, folderKey: res.folderKey || null, lockFolder: !!res.folderKey, print: res.print || { enabled: false, sizes: [] }, traditional: !!res.traditional }).replace(/</g, '\\u003c');
+  const pb = JSON.stringify({ type: res.type, exp: res.exp, folderKey: res.folderKey || null, lockFolder: !!res.folderKey, print: res.print || { enabled: false, sizes: [] }, traditional: !!res.traditional, bonus: !!res.bonus, subfolder: res.subfolder || null, filePrefix: res.filePrefix || '', folderPrefix: res.folderPrefix || null, lifetime: !!res.lifetime, deviceNo: res.deviceNo || 1, multiDevice: !!res.multiDevice }).replace(/</g, '\\u003c');
   const head = '<script>window.__PB=' + pb + ';</script>';
   const tail = '<script>' + WATCHER + '</script>';
   let html = booth;

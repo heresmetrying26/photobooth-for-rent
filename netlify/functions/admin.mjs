@@ -1,6 +1,7 @@
 import {
   safe, json, licenses, meta, getSettings, sign, verifyToken, sha,
-  newCode, displayCode, normCode, throttle, recordFail, clearFail, normPrint, DAY
+  newCode, displayCode, normCode, throttle, recordFail, clearFail, normPrint, DAY, MIN, BONUS_SUBFOLDER,
+  LIFETIME_EXP, MAX_DEVICES, devicesOf, setDevices
 } from '../lib/core.mjs';
 import { timingSafeEqual } from 'node:crypto';
 
@@ -21,6 +22,33 @@ const intIn = (v, min, max) => {
   const n = Math.floor(Number(v));
   return n >= min && n <= max ? n : null;
 };
+
+// Opening time sent by the admin page as epoch ms (the page converts the
+// date/time picker using the admin's own clock). null/blank = no date.
+function readStart(v) {
+  if (v === null || v === undefined || v === '') return { ok: true, value: null };
+  const n = Math.floor(Number(v));
+  const now = Date.now();
+  if (!Number.isFinite(n) || n < now - 30 * DAY || n > now + 3 * 365 * DAY) return { ok: false };
+  return { ok: true, value: n };
+}
+
+async function freshKey(store) {
+  let key;
+  do { key = newCode(); } while (await store.get(key));
+  return key;
+}
+
+// The bonus code that belongs to a booking: same folder (its photos go in a
+// subfolder), same print / laptop settings, N minutes from first entry.
+function bonusRecord(key, parent, minutes) {
+  return {
+    key, code: displayCode(key), kind: 'bonus', parent: parent.key,
+    label: (parent.label || parent.code) + ' · Bonus', folderName: parent.folderName, subfolder: BONUS_SUBFOLDER,
+    minutes, days: 0, startsAt: null, print: parent.print, traditional: !!parent.traditional,
+    status: 'unused', createdAt: Date.now() + 1, redeemedAt: null, expiresAt: null, deviceId: null
+  };
+}
 
 export default safe(async (req, context) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -43,6 +71,12 @@ export default safe(async (req, context) => {
   if (!p || p.t !== 'admin' || p.exp <= Date.now()) return json({ error: 'Session expired. Please log in again.' }, 401);
 
   const store = licenses();
+  // Print / laptop-mode changes on a booking also apply to its bonus code.
+  const syncBonus = async (rec, patch) => {
+    if (!rec.bonusKey) return;
+    const bonus = await store.get(rec.bonusKey, { type: 'json' });
+    if (bonus) await store.setJSON(rec.bonusKey, { ...bonus, ...patch });
+  };
   const getRec = async () => {
     const key = normCode(b.code);
     const rec = key ? await store.get(key, { type: 'json' }) : null;
@@ -54,25 +88,81 @@ export default safe(async (req, context) => {
       return json({ licenses: await allLicenses(), settings: await getSettings(), now: Date.now() });
 
     case 'create': {
-      const days = intIn(b.days, 1, 365);
+      const lifetime = !!b.lifetime;
+      const days = lifetime ? (intIn(b.days, 1, 365) || 1) : intIn(b.days, 1, 365);
       const count = intIn(b.count || 1, 1, 20);
+      const maxDevices = intIn(b.maxDevices || 1, 1, MAX_DEVICES);
       if (!days) return json({ error: 'Days must be between 1 and 365.' }, 400);
+      if (!maxDevices) return json({ error: 'Devices must be between 1 and ' + MAX_DEVICES + '.' }, 400);
       if (!count) return json({ error: 'Count must be between 1 and 20.' }, 400);
       const label = String(b.label || '').trim().slice(0, 80);
       const folderName = String(b.folderName || label).trim().slice(0, 80);
       const print = normPrint(b.printEnabled, b.printSizes);
       if (b.printEnabled && !print.enabled) return json({ error: 'Pick at least one paper size, or turn printing off.' }, 400);
+      const start = readStart(b.startsAt);
+      if (!start.ok) return json({ error: 'Pick a valid opening date.' }, 400);
+      const bonusMinutes = b.bonus ? intIn(b.bonusMinutes, 5, 1440) : null;
+      if (b.bonus && !bonusMinutes) return json({ error: 'Bonus length must be 5-1440 minutes.' }, 400);
+      // Drive folders are matched by name, so two bookings with the same
+      // folder name would share one folder (and see each other's photos).
+      if (!b.sameFolderOk) {
+        const want = (folderName || label).toLowerCase();
+        const clash = want && (await allLicenses()).find((l) => l.kind !== 'bonus' && String(l.folderName || '').trim().toLowerCase() === want);
+        if (clash) return json({ error: 'The Drive folder "' + (folderName || label) + '" is already used by ' + clash.code + '. Both bookings would share one folder.', duplicate: true, code: clash.code }, 409);
+      }
       const created = [];
       for (let i = 0; i < count; i++) {
-        let key;
-        do { key = newCode(); } while (await store.get(key));
+        const key = await freshKey(store);
         // Keep a dedicated Drive folder name. If neither field was supplied,
         // fall back to the code so the renter never has to configure Drive.
-        const rec = { key, code: displayCode(key), label: label || displayCode(key), folderName: folderName || displayCode(key), days, print, traditional: !!b.traditional, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null };
+        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, startsAt: start.value, print, traditional: !!b.traditional, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null };
+        let bonus = null;
+        if (bonusMinutes) {
+          bonus = bonusRecord(await freshKey(store), rec, bonusMinutes);
+          rec.bonusKey = bonus.key;
+          await store.setJSON(bonus.key, bonus);
+        }
         await store.setJSON(key, rec);
         created.push(rec);
+        if (bonus) created.push(bonus);
       }
       return json({ created });
+    }
+
+    case 'schedule': { // set, change or remove the opening date of a code that hasn't been used yet
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      if (rec.kind === 'bonus') return json({ error: 'Bonus codes have no opening date — change its length instead.' }, 400);
+      if (rec.status !== 'unused') return json({ error: 'Only a code that has not been used yet can be rescheduled. Use + Add days instead.' }, 400);
+      const start = readStart(b.startsAt);
+      if (!start.ok) return json({ error: 'Pick a valid opening date.' }, 400);
+      rec.startsAt = start.value;
+      await store.setJSON(key, rec);
+      return json({ ok: true, startsAt: rec.startsAt });
+    }
+
+    case 'addbonus': { // give an existing booking a bonus code
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      if (rec.bonusKey && await store.get(rec.bonusKey)) return json({ error: 'This booking already has a bonus code.' }, 400);
+      const minutes = intIn(b.minutes, 5, 1440);
+      if (!minutes) return json({ error: 'Bonus length must be 5-1440 minutes.' }, 400);
+      const bonus = bonusRecord(await freshKey(store), rec, minutes);
+      await store.setJSON(bonus.key, bonus);
+      rec.bonusKey = bonus.key;
+      await store.setJSON(key, rec);
+      return json({ ok: true, created: [bonus] });
+    }
+
+    case 'bonusminutes': { // change a bonus code's total length; applies to an open booth within ~5 minutes
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind !== 'bonus') return json({ error: 'Bonus code not found.' }, 404);
+      const minutes = intIn(b.minutes, 5, 1440);
+      if (!minutes) return json({ error: 'Bonus length must be 5-1440 minutes.' }, 400);
+      rec.minutes = minutes;
+      if (rec.redeemedAt) rec.expiresAt = rec.redeemedAt + minutes * MIN;
+      await store.setJSON(key, rec);
+      return json({ ok: true });
     }
 
     case 'revoke': {
@@ -91,10 +181,33 @@ export default safe(async (req, context) => {
       return json({ ok: true });
     }
 
-    case 'unbind': { // let the renter enter the code once more on a different device
+    case 'unbind': { // free one device (deviceNo) or all of them, so the code can be entered on another device
       const { key, rec } = await getRec();
       if (!rec || rec.status !== 'active') return json({ error: 'Only an active code can be moved to a new device.' }, 400);
-      rec.deviceId = null;
+      const no = b.deviceNo == null ? null : Number(b.deviceNo);
+      setDevices(rec, no == null ? [] : devicesOf(rec).filter((d) => d.no !== no));
+      await store.setJSON(key, rec);
+      return json({ ok: true });
+    }
+
+    case 'devices': { // change how many devices a code may be used on
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      const max = intIn(b.maxDevices, 1, MAX_DEVICES);
+      if (!max) return json({ error: 'Devices must be between 1 and ' + MAX_DEVICES + '.' }, 400);
+      const used = devicesOf(rec).length;
+      if (max < used) return json({ error: 'This code is in use on ' + used + ' devices. Remove some first.' }, 400);
+      rec.maxDevices = max;
+      await store.setJSON(key, rec);
+      return json({ ok: true });
+    }
+
+    case 'makelifetime': { // upgrade a booking to lifetime access
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      if (rec.lifetime) return json({ error: 'This code is already lifetime.' }, 400);
+      rec.lifetime = true;
+      if (rec.status === 'active') rec.expiresAt = LIFETIME_EXP;
       await store.setJSON(key, rec);
       return json({ ok: true });
     }
@@ -104,6 +217,8 @@ export default safe(async (req, context) => {
       if (!add) return json({ error: 'Days must be between 1 and 365.' }, 400);
       const { key, rec } = await getRec();
       if (!rec) return json({ error: 'Code not found.' }, 404);
+      if (rec.kind === 'bonus') return json({ error: 'For a bonus code, change its length in minutes instead.' }, 400);
+      if (rec.lifetime) return json({ error: 'Lifetime codes never expire.' }, 400);
       if (rec.status === 'active') rec.expiresAt = Math.max(rec.expiresAt, Date.now()) + add * DAY;
       else if (rec.status === 'unused') rec.days += add;
       else return json({ error: 'Restore this code before extending it.' }, 400);
@@ -118,6 +233,7 @@ export default safe(async (req, context) => {
       if (b.printEnabled && !print.enabled) return json({ error: 'Pick at least one paper size, or turn printing off.' }, 400);
       rec.print = print;
       await store.setJSON(key, rec);
+      await syncBonus(rec, { print });
       return json({ ok: true, print });
     }
 
@@ -126,13 +242,19 @@ export default safe(async (req, context) => {
       if (!rec) return json({ error: 'Code not found.' }, 404);
       rec.traditional = !!b.traditional;
       await store.setJSON(key, rec);
+      await syncBonus(rec, { traditional: rec.traditional });
       return json({ ok: true, traditional: rec.traditional });
     }
 
-    case 'delete': {
+    case 'delete': { // deleting a booking also deletes its bonus code
       const { key, rec } = await getRec();
       if (!rec) return json({ error: 'Code not found.' }, 404);
       await store.delete(key);
+      if (rec.bonusKey) await store.delete(rec.bonusKey);
+      if (rec.kind === 'bonus' && rec.parent) {
+        const parent = await store.get(rec.parent, { type: 'json' });
+        if (parent && parent.bonusKey === key) { delete parent.bonusKey; await store.setJSON(rec.parent, parent); }
+      }
       return json({ ok: true });
     }
 

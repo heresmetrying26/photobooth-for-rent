@@ -46,6 +46,38 @@
     .contact-note{margin-top:10px!important;font-size:14px}.contact-note a{color:#fff;text-decoration:underline;text-underline-offset:3px;font-weight:700}.contact-note a:hover,.contact-note a:focus-visible{color:#F2B8AC}
     .cta > a{flex:none;padding:14px 22px;border-radius:999px;background:var(--red);color:#fff;text-decoration:none;font-weight:800;letter-spacing:.04em;transition:.2s}
     .cta > a:hover,.cta > a:focus-visible{background:var(--red-dark);transform:translateY(-2px);outline:none}
+
+    .avail{margin:0 0 30px;padding:34px 32px;border-radius:22px;background:#fff;border:1px solid var(--line)}
+    .avail-head{max-width:640px;margin:0 auto 24px;text-align:center}
+    .avail-head h2{margin:0 0 10px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(26px,3.4vw,36px);line-height:1.1;letter-spacing:-.02em}
+    .avail-head p{margin:0;font-size:16px;line-height:1.6;color:var(--muted)}
+    .packages{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px}
+    .pkg{position:relative;padding:22px;border-radius:18px;border:1px solid var(--line);background:var(--paper)}
+    .pkg.pro{border:2px solid var(--red);background:var(--tint)}
+    .pkg-tag{display:inline-block;margin-bottom:10px;padding:3px 10px;border-radius:999px;background:var(--red);color:#fff;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+    .pkg h3{margin:0;font-size:19px}
+    .pkg .device{margin:4px 0 12px;font-size:14px;font-weight:700;color:var(--muted)}
+    .pkg .price{margin:0;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:38px;letter-spacing:-.02em;line-height:1}
+    .pkg .price small{font-family:'Manrope',Arial,sans-serif;font-size:13px;font-weight:700;color:var(--muted);letter-spacing:0}
+    .includes{margin:0 0 18px;text-align:center;font-size:15px;line-height:1.6;color:var(--muted)}
+    .includes b{color:var(--ink)}
+    .bonus{display:flex;gap:14px;align-items:flex-start;margin:0 0 24px;padding:16px 18px;border-radius:16px;background:#E6F4F1;color:#174F46;font-size:15px;line-height:1.55}
+    .bonus strong{flex:none;padding:3px 10px;border-radius:999px;background:#1F6F62;color:#fff;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+    .steps{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"intro form" "actions form";column-gap:22px;align-items:start}
+    .steps-intro{grid-area:intro}.form-card{grid-area:form}.avail-actions{grid-area:actions}
+    .steps h3{margin:0 0 6px;font-size:18px}
+    .steps p{margin:0 0 14px;font-size:15px;line-height:1.6;color:var(--muted)}
+    .form-card{margin:0;padding:18px 20px;border-radius:16px;border:1.5px dashed var(--line);background:var(--paper);font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:15px;line-height:1.9;white-space:pre-wrap;color:var(--ink)}
+    .avail-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 20px;border-radius:999px;font:inherit;font-size:15px;font-weight:800;text-decoration:none;cursor:pointer;transition:.2s;border:1.5px solid var(--line);background:#fff;color:var(--ink)}
+    .btn:hover,.btn:focus-visible{border-color:var(--red);color:var(--red);outline:none}
+    .btn.primary{background:#0866FF;border-color:#0866FF;color:#fff}
+    .btn.primary:hover,.btn.primary:focus-visible{background:#0653CC;border-color:#0653CC;color:#fff;transform:translateY(-2px)}
+    .btn svg{width:18px;height:18px;flex:none}
+    .copied{display:none;font-size:13px;font-weight:700;color:#1F6F62;align-self:center}
+    .copied.show{display:inline}
+    .signoff{margin:22px 0 0;text-align:center;font-family:'Fraunces',Georgia,serif;font-style:italic;font-size:20px;color:var(--red)}
+    @media (max-width:760px){.avail{padding:24px 18px}.packages{grid-template-columns:1fr}.steps{grid-template-columns:1fr;grid-template-areas:"intro" "form" "actions"}.form-card{margin-bottom:14px}.copied.show{display:block;width:100%;text-align:center}.bonus{flex-direction:column;gap:8px}.btn{width:100%;justify-content:center}}
     @media (min-width:901px){
       .slides{min-height:0;height:min(720px,62vw)}
       .slide{display:grid;grid-template-columns:min(720px,62vw) minmax(0,1fr);grid-template-rows:100%;align-items:center}
@@ -123,8 +155,48 @@
       <article class="detail"><span class="detail-number">03</span><h2>Easy for every guest</h2><p>One tap to start, a clear countdown, then prints and a QR code to take the photos home.</p></article>
     </section>
 
+    <section class="avail" id="avail" aria-labelledby="avail-title">
+      <div class="avail-head">
+        <h2 id="avail-title">Hi! Wanna avail of photobooth4u for your upcoming event?</h2>
+        <p>Enjoy our DIY photobooth and capture unlimited memories for 24 hours on your event day! No need to rent an expensive photobooth when you can use your own device!</p>
+      </div>
+
+      <div class="packages" aria-label="Available packages">
+        <article class="pkg pro">
+          <h3>Pro Booth</h3>
+          <p class="device">Laptop</p>
+          <p class="price">₱799 <small>/ event</small></p>
+        </article>
+        <article class="pkg">
+          <h3>Classic Booth</h3>
+          <p class="device">Android Tablet / iPad</p>
+          <p class="price">₱699 <small>/ event</small></p>
+        </article>
+      </div>
+      <p class="includes">Both packages include a <b>rental code valid for 24 hours on your event day</b>, with <b>unlimited snaps</b>! Perfect for birthdays, weddings, debuts, parties, and other special occasions.</p>
+
+      <p class="bonus"><strong>Bonus</strong><span>May extra code ka pang valid for <b>1 hour of practice</b> para ma-familiarize ka sa setup and ma-prepare mo na everything before your event day!</span></p>
+
+      <div class="steps">
+        <div class="steps-intro">
+          <h3>Ready to avail? Fill out the details below!</h3>
+          <p>Copy the form, then send it to us on Facebook Messenger. Once you send your details, we'll prepare your codes para ready ka na for your special day!</p>
+        </div>
+          <div class="avail-actions">
+            <a class="btn primary" id="messengerBtn" href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2C6.36 2 2 6.13 2 11.7c0 2.91 1.2 5.42 3.14 7.16.16.15.26.35.27.57l.05 1.78a.8.8 0 0 0 1.12.71l1.98-.87a.8.8 0 0 1 .53-.04c.91.25 1.88.39 2.91.39 5.64 0 10-4.13 10-9.7S17.64 2 12 2Zm6 7.46-2.94 4.66a1.5 1.5 0 0 1-2.17.4l-2.34-1.75a.6.6 0 0 0-.72 0l-3.16 2.4c-.42.32-.97-.18-.69-.63l2.94-4.66a1.5 1.5 0 0 1 2.17-.4l2.34 1.75a.6.6 0 0 0 .72 0l3.16-2.4c.42-.32.97.18.69.63Z"/></svg>Copy form &amp; message us</a>
+            <button class="btn" type="button" id="copyFormBtn">Copy form only</button>
+            <span class="copied" id="copiedNote" role="status">Copied! Paste it in Messenger.</span>
+          </div>
+        <pre class="form-card" id="availForm">Name:
+Setup Type: Pro Booth / Classic Booth
+Event Date:</pre>
+      </div>
+
+      <p class="signoff">Make memories, your way, with photobooth4u!</p>
+    </section>
+
     <section class="cta">
-      <div><h2>Ready to make some memories?</h2><p>Open photobooth4u and start creating your event setup.</p><p class="trial-note">Want to try it out? Use code <code>TRIALMODE</code>.</p><p class="contact-note">Wanna avail and rent it for your event? <a href="https://www.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer">Message us on Facebook</a> or <a href="mailto:roktetnachi28@gmail.com">email roktetnachi28@gmail.com</a>.</p></div>
+      <div><h2>Ready to make some memories?</h2><p>Open photobooth4u and start creating your event setup.</p><p class="trial-note">Want to try it out? Use code <code>TRIALMODE</code>.</p><p class="contact-note">Wanna avail? <a href="#avail">See packages</a> or <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">message us on Facebook Messenger</a>.</p></div>
       <a href="/">Try the photo booth</a>
     </section>
   </main>
@@ -152,6 +224,28 @@
       carousel.addEventListener('focusout', function(){ window.setTimeout(function(){ if(!carousel.contains(document.activeElement)) start(); }, 0); });
       document.addEventListener('visibilitychange', function(){ if(document.hidden) stop(); else start(); });
       start();
+    })();
+  </script>
+  <script>
+    (function(){
+      var form = document.getElementById('availForm');
+      var note = document.getElementById('copiedNote');
+      var t;
+      function copyForm(){
+        var text = 'Hi! I\'d like to avail of photobooth4u.\n\n' + form.textContent;
+        function done(){ note.classList.add('show'); clearTimeout(t); t = setTimeout(function(){ note.classList.remove('show'); }, 4000); }
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, function(){}); return; }
+        } catch (e) {}
+        try {
+          var ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+          if (document.execCommand('copy')) done(); document.body.removeChild(ta);
+        } catch (e) {}
+      }
+      document.getElementById('copyFormBtn').addEventListener('click', copyForm);
+      // Copy first, then let the link open Messenger as normal.
+      document.getElementById('messengerBtn').addEventListener('click', copyForm);
     })();
   </script>
 </body>

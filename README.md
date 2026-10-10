@@ -19,7 +19,8 @@ Edit `protected/booth.html` and redeploy. (The build step re-bundles it automati
 
 ## How it works
 - **Trial password** – reusable, unlocks for N minutes (default 15). Change/disable in Admin.
-- **Rental codes** – `PB-XXXX-XXXX-XXXX`, one-time use. Days start counting on first entry.
+- **Rental codes** – `PB-XXXX-XXXX-XXXX`, one-time use. Days start counting on first entry,
+  or from the event date if one is set (see *Event dates and bonus codes*).
   Bound to the first device; other devices are refused. Expiry is enforced on the server.
 - **Admin** – create codes (by days), see status/time left, add days, disable/restore, delete,
   "Allow new device" (if the renter switches tablets), and edit trial settings.
@@ -58,6 +59,108 @@ which sends every print straight to the **default printer**:
 
 Without kiosk mode the normal print dialog opens: pick the photo printer, set Margins to
 **None** and Scale to **Default/100%**, then print.
+
+## Event dates and bonus codes
+- **Event date (optional).** When creating a code, set *Opens on* + *From time*. The code is
+  refused before then ("This code opens on Oct 25, 2026, 12:00 AM"), and once open it runs for
+  the **Days** you set *from that opening time* (1 day = 24 hours), even if the renter enters it
+  later in the day. Leave it blank for the old behaviour (days start on first entry).
+  Unused codes have **Set date / Change date / Remove date** in the list. Dates are shown in
+  Philippine time; set the `BOOTH_TZ` env var (e.g. `Asia/Singapore`) to change it.
+- **Bonus code.** Tick *Include a bonus code* and set its length in minutes (5–1440, default 60),
+  or add one later with **+ Bonus code**. The bonus code:
+  - can be used any time until the booking's window ends (e.g. to test before the event);
+  - runs for its minutes from first entry; **Change length** sets a new total at any time
+    (an open booth picks it up within ~5 minutes);
+  - shares the booking's Drive folder, print and laptop-mode settings (changing those on the
+    booking updates the bonus too), and deleting the booking deletes its bonus code;
+  - uploads into a **Bonus** subfolder of the event folder, with file names starting
+    `BONUS_` (BONUS_1_strip.png, BONUS_2_strip.png…), numbered separately from event photos.
+
+  The subfolder needs the Google Apps Script to read the `subfolder` field the booth now sends
+  (see below). Until it does, bonus photos land in the main event folder, still named `BONUS_…`.
+
+### Apps Script: bonus subfolder
+In `doPost`, after the event folder is found/created from `folderKey`, add:
+
+```js
+if (data.subfolder) {
+  const name = String(data.subfolder).trim();
+  const it = folder.getFoldersByName(name);
+  folder = it.hasNext() ? it.next() : folder.createFolder(name);
+}
+```
+(`data` = the parsed request body, `folder` = the event folder.) Do this for both the
+`resolveOnly` call and uploads, so the QR, `folderUrl` and `nextSessionNumber` all use the
+subfolder. Then **Deploy → Manage deployments → Edit → New version** so the same URL updates.
+
+## Lifetime codes and several devices
+- **Devices** (1–50, when creating a code or later with the *Devices: N* button): how many
+  tablets/laptops can use the same code. Each new device takes a free slot and gets a number
+  (Device 1, 2, 3…). All devices on a code share its Drive folder and QR; when a code allows
+  more than one device, file names end in the device number (`3_strip_cam2.png`) so two devices
+  never write the same name. **Remove** a device in Admin to lock it out (within ~5 minutes)
+  and free its slot; numbers are never reused.
+- **Lifetime** (tick when creating, or *Make lifetime* on an existing code): never expires.
+  Instead of one fixed folder, the booth asks for an **event name** and each event gets its own
+  top-level Drive folder: `<Drive folder name> · <event name>` (e.g. `Juan Photobooth · Santos
+  Wedding`). Devices at the same event must type the same event name to share one folder/QR.
+  Only letters, numbers, spaces and basic punctuation are kept, so a renter can't point the
+  booth at any other Drive folder. Ticking Lifetime also ticks Traditional (Pro); untick it for
+  tablets.
+- Storage: everything still goes to your Google Drive. The hourly cleanup script
+  (`apps-script/cleanup.gs`) treats each `Client · Event` folder as an event, so it is deleted
+  7 days after that event's last photo. No Apps Script change is needed for this.
+
+## My Events page (`/lifetime/`)
+A page for customers to find every event's Drive folder again, from any phone or computer.
+- **Sign in** with their code, or open the link from Admin → **Copy events page link**
+  (`/lifetime/#PB-XXXX-XXXX-XXXX`, signs them in and is then remembered on that device). On a
+  device that already runs the booth, it signs in by itself. It never uses up a device slot.
+- **Shows** each event with its last-photo time, number of sessions, **Show QR / Copy link /
+  Open folder**, and the "download by" date (7 days after the last photo; 1 day for Bonus
+  folders). Deleted events stay listed, greyed out. Works for all rental codes; a bonus code
+  shows its booking.
+- **How it fills up:** the booth reports each Drive folder to `/api/events` when it's set up and
+  after every session (rentals only; the server checks the folder belongs to that code). Events
+  from before this update appear once the booth opens that folder again.
+- The booth's Google Drive panel also has **Open folder / Copy link / All my events** under the QR.
+- **Lifetime codes** entered on the lock screen go to `/lifetime/?welcome=1` first (welcome
+  message, **Download setup guide**, **Open photo booth**). Next visits to `/` open the booth
+  directly. The guide is `public/lifetime/photobooth4u-setup-guide.pdf` (6 pages); ask Claude to
+  regenerate it if the booth's steps change.
+- If you change EVENT_DAYS / BONUS_DAYS in `apps-script/cleanup.gs`, change EVENT_KEEP_DAYS /
+  BONUS_KEEP_DAYS in `netlify/lib/core.mjs` to match.
+
+## Security: signed Drive uploads (do this once)
+The booth never talks to Google Drive on its own authority any more. Before each Drive call it
+asks `/api/ticket` for a ticket signed with `UPLOAD_SECRET`; the ticket names the ONE folder
+(and optional Bonus subfolder) that code may use, and expires within 12 hours (trials: when the
+trial ends). The Apps Script (`apps-script/upload.gs`) rejects anything without a valid ticket
+and ignores whatever folder the browser sends. So a trial user can't reach other events'
+folders, and nobody can point the script at other Drive folders.
+
+**Deploy in this order (so nothing breaks in between):**
+1. Netlify → Site configuration → Environment variables → add `UPLOAD_SECRET` (32+ random
+   characters; e.g. run `crypto.randomUUID()+crypto.randomUUID()` in a browser console). Deploy.
+   The booth now sends tickets; your old script just ignores them, so it keeps working.
+2. Apps Script → replace the upload code with `apps-script/upload.gs` → Project Settings →
+   Script Properties → add `UPLOAD_SECRET` with the **same** value → Deploy → Manage
+   deployments → Edit → Version: **New version** → Deploy (the URL stays the same).
+3. Test with the trial password: the folder QR should appear and a session should upload.
+
+The new script also skips folders in the Trash (so a re-used event name gets a fresh folder),
+creates the Bonus subfolder, and locks while creating folders so two devices can't make two
+folders with the same name.
+
+## Other safeguards
+- **Safari / iPad:** a device not seen for 7 days gives up its slot when the code is entered on a
+  new device (Safari wipes a site's saved data after ~7 days unused). Devices that are used keep
+  their slot. Tip for iPad users: Share → Add to Home Screen (home-screen apps aren't wiped).
+- **Same folder name:** Admin warns if a new booking's Drive folder name is already used by
+  another code; OK = share it on purpose (returning client), Cancel = rename.
+- **QR codes** are made on the device (`scripts/vendor/qrcode.min.js`, MIT, inlined in the booth
+  and My Events), so no outside service sees the folder links and QRs work on weak internet.
 
 ## Layouts, countdown and date
 - **10 layouts** (Setup → 1 · Layout & timer): Classic strip (3), Strip 4, Polaroid 4, Grid 4,

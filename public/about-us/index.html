@@ -3,132 +3,129 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="photobooth4u — an easy, customizable DIY photo booth for your event. Runs on your tablet, phone or laptop.">
+  <meta name="description" content="photobooth4u — a DIY photobooth on your own laptop or tablet. Guests scan a QR code to get their photos.">
   <title>About Us | photobooth4u</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root{--ink:#1C1A1E;--muted:#6B666C;--red:#C93D27;--red-dark:#A9301D;--tint:#FBEDEA;--paper:#F5F1EA;--line:#E4DCCF;}
-    *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;color:var(--ink);font-family:'Manrope',Arial,sans-serif;background:var(--paper)}
+    :root{--ink:#1C1A1E;--muted:#6B666C;--red:#C93D27;--red-dark:#A9301D;--tint:#FBEDEA;--paper:#F5F1EA;--line:#E4DCCF;--blue:#0866FF;}
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;color:var(--ink);font-family:'Manrope',Arial,sans-serif;background:var(--paper);line-height:1.5}
     a{color:inherit}
-    .site-header{display:flex;align-items:center;justify-content:space-between;gap:16px;width:min(1160px,calc(100% - 40px));margin:0 auto;padding:22px 0}
-    .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
-    .mark{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:26px;height:26px;flex:none}.mark i{background:var(--ink);border-radius:4px}.mark i:nth-child(2){background:var(--red)}
-    .word{display:flex;align-items:flex-start}.word b{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(22px,3vw,28px);letter-spacing:-.035em;line-height:1}
-    .word em{font-style:normal;margin-left:3px;padding:2px 6px 4px;border-radius:7px;background:var(--red);color:#fff;font-weight:800;font-size:clamp(11px,1.4vw,13px);line-height:1;transform:rotate(-7deg)}
-    .back{font-size:14px;font-weight:700;text-decoration:none;padding:10px 16px;border:1px solid var(--line);border-radius:999px;background:#fff;transition:.2s ease}.back:hover,.back:focus-visible{border-color:var(--red);color:var(--red);outline:none}
-    main{width:min(1160px,calc(100% - 40px));margin:0 auto;padding:26px 0 70px}
-    .eyebrow{margin:0 0 12px;text-align:center;font-size:12px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;color:var(--red)}
-    h1{max-width:820px;margin:0 auto 14px;text-align:center;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(38px,6vw,72px);line-height:1.02;letter-spacing:-.04em}
+    .wrap{width:min(960px,calc(100% - 32px));margin:0 auto}
+
+    header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 0}
+    .brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+    .mark{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:24px;height:24px;flex:none}.mark i{background:var(--ink);border-radius:4px}.mark i:nth-child(2){background:var(--red)}
+    .word{display:flex;align-items:flex-start}.word b{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:24px;letter-spacing:-.035em;line-height:1}
+    .word em{font-style:normal;margin-left:3px;padding:2px 6px 4px;border-radius:7px;background:var(--red);color:#fff;font-weight:800;font-size:11px;line-height:1;transform:rotate(-7deg)}
+    .pill{font-size:14px;font-weight:700;text-decoration:none;padding:9px 16px;border:1px solid var(--line);border-radius:999px;background:#fff;transition:.2s}
+    .pill:hover,.pill:focus-visible{border-color:var(--red);color:var(--red);outline:none}
+
+    .hero{text-align:center;padding:36px 0 30px}
+    h1{margin:0 0 12px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(38px,6.4vw,68px);line-height:1.02;letter-spacing:-.04em}
     h1 em{font-style:italic;font-weight:500;color:var(--red)}
-    .intro{max-width:600px;margin:0 auto 32px;text-align:center;font-size:clamp(16px,2vw,18px);line-height:1.6;color:var(--muted)}
-    .slider{position:relative;isolation:isolate;margin:0 auto;border-radius:28px;background:#fff;border:1px solid var(--line);box-shadow:0 20px 60px rgba(60,40,20,.12);overflow:hidden}
-    .slides{position:relative;min-height:clamp(420px,68vw,720px);background:var(--paper)}
+    .hero p{margin:0 auto;max-width:460px;font-size:17px;color:var(--muted)}
+
+    /* slider: images only, centred */
+    .slider{position:relative;max-width:620px;margin:0 auto;border-radius:22px;background:#fff;border:1px solid var(--line);overflow:hidden}
+    .slides{position:relative;aspect-ratio:1/1;background:var(--paper)}
     .slide{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .5s ease}.slide.active{opacity:1;pointer-events:auto}
     .slide img{width:100%;height:100%;object-fit:contain;display:block}
-    .slide-caption{position:absolute;left:22px;bottom:22px;max-width:min(340px,calc(100% - 44px));padding:15px 18px;border-radius:16px;background:rgba(255,255,255,.94);box-shadow:0 6px 25px rgba(28,26,30,.12);backdrop-filter:blur(10px)}
-    .slide-caption strong{display:block;font-size:16px}.slide-caption span{display:block;margin-top:3px;font-size:13px;line-height:1.45;color:var(--muted)}
-    .arrow{position:absolute;z-index:2;top:50%;display:grid;place-items:center;width:46px;height:46px;border:0;border-radius:50%;background:rgba(255,255,255,.94);color:var(--ink);font-size:28px;line-height:1;cursor:pointer;box-shadow:0 4px 16px rgba(28,26,30,.15);transform:translateY(-50%);transition:.2s}
-    .arrow:hover,.arrow:focus-visible{background:var(--red);color:#fff;outline:none}.prev{left:18px}.next{right:18px}
-    .slider-footer{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 22px;background:#fff;border-top:1px solid var(--line)}
-    .dots{display:flex;align-items:center;gap:8px}.dot{width:10px;height:10px;padding:0;border:0;border-radius:50%;background:#DCD3C6;cursor:pointer;transition:.2s}
-    .dot[aria-current="true"]{width:28px;border-radius:9px;background:var(--red)}.dot:focus-visible{outline:3px solid #F2B8AC;outline-offset:3px}
-    .counter{margin:0;font-size:13px;font-weight:700;color:var(--muted)}
-    .details{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:30px 0}
-    .detail{padding:22px;border-radius:18px;background:#fff;border:1px solid var(--line)}
-    .detail-number{display:grid;place-items:center;width:30px;height:30px;margin-bottom:10px;border-radius:50%;background:var(--tint);font-size:13px;font-weight:800;color:var(--red)}
-    .detail h2{margin:0 0 6px;font-size:16px}.detail p{margin:0;font-size:14px;line-height:1.55;color:var(--muted)}
-    .cta{display:flex;align-items:center;justify-content:space-between;gap:25px;padding:30px 32px;border-radius:22px;background:var(--ink);color:#fff}
-    .cta h2{margin:0 0 6px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:30px;letter-spacing:-.02em}
-    .cta p{margin:0;color:#D9D3CB;line-height:1.55}
-    .trial-note{margin-top:10px!important;font-size:14px}.trial-note code{padding:3px 7px;border-radius:6px;background:rgba(255,255,255,.14);color:#fff;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em;font-weight:700;letter-spacing:.04em}
-    .contact-note{margin-top:10px!important;font-size:14px}.contact-note a{color:#fff;text-decoration:underline;text-underline-offset:3px;font-weight:700}.contact-note a:hover,.contact-note a:focus-visible{color:#F2B8AC}
-    .cta > a{flex:none;padding:14px 22px;border-radius:999px;background:var(--red);color:#fff;text-decoration:none;font-weight:800;letter-spacing:.04em;transition:.2s}
-    .cta > a:hover,.cta > a:focus-visible{background:var(--red-dark);transform:translateY(-2px);outline:none}
+    .slide-caption{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+    .arrow{position:absolute;z-index:2;top:50%;display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:50%;background:rgba(255,255,255,.92);color:var(--ink);font-size:24px;line-height:1;cursor:pointer;box-shadow:0 2px 10px rgba(28,26,30,.12);transform:translateY(-50%);transition:.2s}
+    .arrow:hover,.arrow:focus-visible{background:var(--red);color:#fff;outline:none}.prev{left:12px}.next{right:12px}
+    .slider-footer{display:flex;align-items:center;justify-content:center;gap:16px;padding:12px;border-top:1px solid var(--line)}
+    .dots{display:flex;gap:7px}.dot{width:8px;height:8px;padding:0;border:0;border-radius:50%;background:#DCD3C6;cursor:pointer;transition:.2s}
+    .dot[aria-current="true"]{width:22px;border-radius:8px;background:var(--red)}
+    .counter{display:none}
 
-    .avail{margin:0 0 30px;padding:34px 32px;border-radius:22px;background:#fff;border:1px solid var(--line)}
-    .avail-head{max-width:640px;margin:0 auto 24px;text-align:center}
-    .avail-head h2{margin:0 0 10px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(26px,3.4vw,36px);line-height:1.1;letter-spacing:-.02em}
-    .avail-head p{margin:0;font-size:16px;line-height:1.6;color:var(--muted)}
-    .packages{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px}
-    .pkg{position:relative;padding:22px;border-radius:18px;border:1px solid var(--line);background:var(--paper)}
-    .pkg.pro{border:2px solid var(--red);background:var(--tint)}
-    .pkg-tag{display:inline-block;margin-bottom:10px;padding:3px 10px;border-radius:999px;background:var(--red);color:#fff;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
-    .pkg h3{margin:0;font-size:19px}
-    .pkg .device{margin:4px 0 12px;font-size:14px;font-weight:700;color:var(--muted)}
-    .pkg .price{margin:0;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:38px;letter-spacing:-.02em;line-height:1}
-    .pkg .price small{font-family:'Manrope',Arial,sans-serif;font-size:13px;font-weight:700;color:var(--muted);letter-spacing:0}
-    .includes{margin:0 0 18px;text-align:center;font-size:15px;line-height:1.6;color:var(--muted)}
-    .includes b{color:var(--ink)}
-    .bonus{display:flex;gap:14px;align-items:flex-start;margin:0 0 24px;padding:16px 18px;border-radius:16px;background:#E6F4F1;color:#174F46;font-size:15px;line-height:1.55}
-    .bonus strong{flex:none;padding:3px 10px;border-radius:999px;background:#1F6F62;color:#fff;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
-    .steps{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"intro form" "actions form";column-gap:22px;align-items:start}
-    .steps-intro{grid-area:intro}.form-card{grid-area:form}.avail-actions{grid-area:actions}
-    .steps h3{margin:0 0 6px;font-size:18px}
-    .steps p{margin:0 0 14px;font-size:15px;line-height:1.6;color:var(--muted)}
-    .form-card{margin:0;padding:18px 20px;border-radius:16px;border:1.5px dashed var(--line);background:var(--paper);font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:15px;line-height:1.9;white-space:pre-wrap;color:var(--ink)}
-    .avail-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
-    .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 20px;border-radius:999px;font:inherit;font-size:15px;font-weight:800;text-decoration:none;cursor:pointer;transition:.2s;border:1.5px solid var(--line);background:#fff;color:var(--ink)}
+    section.block{padding:56px 0 0}
+    .label{margin:0 0 18px;text-align:center;font-size:12px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--red)}
+    h2{margin:0 0 6px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(26px,3.6vw,34px);letter-spacing:-.025em;line-height:1.1;text-align:center}
+    .sub{margin:0 auto 22px;text-align:center;color:var(--muted);max-width:480px}
+
+    .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .plan{display:flex;flex-direction:column;padding:22px;border-radius:18px;background:#fff;border:1px solid var(--line)}
+    .plan.pro{border:2px solid var(--red)}
+    .plan.life{background:var(--ink);border-color:var(--ink);color:#fff}
+    .plan h3{margin:0;font-size:18px}
+    .plan .for{margin:2px 0 18px;font-size:14px;font-weight:600;color:var(--muted)}
+    .plan.life .for{color:#BDB6AE}
+    .price{margin:auto 0 0;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:36px;letter-spacing:-.02em;line-height:1}
+    .price small{font-family:'Manrope',Arial,sans-serif;font-size:13px;font-weight:700;color:var(--muted);letter-spacing:0}
+    .plan.life .price{font-family:'Manrope',Arial,sans-serif;font-size:15px;font-weight:800;line-height:1.3}
+    .plan.life a{color:#fff;text-decoration:none;border-bottom:2px solid var(--red);padding-bottom:2px}
+    .plan.life a:hover{color:#F2B8AC}
+    .chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:16px 0 0;padding:0;list-style:none}
+    .chips li{padding:7px 13px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:13px;font-weight:700}
+
+    .book{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"intro form" "actions form";column-gap:22px;row-gap:4px;align-items:start;padding:26px;border-radius:20px;background:#fff;border:1px solid var(--line)}
+    .book-intro{grid-area:intro}.book .form-card{grid-area:form;align-self:center}.book .actions{grid-area:actions}
+    .book h2{text-align:left}
+    .book .sub{text-align:left;margin:0 0 16px}
+    .form-card{margin:0;padding:16px 18px;border-radius:14px;background:var(--paper);font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:14.5px;line-height:1.9;white-space:pre-wrap}
+    .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:999px;font:inherit;font-size:14.5px;font-weight:800;text-decoration:none;cursor:pointer;border:1.5px solid var(--line);background:#fff;color:var(--ink);transition:.2s}
     .btn:hover,.btn:focus-visible{border-color:var(--red);color:var(--red);outline:none}
-    .btn.primary{background:#0866FF;border-color:#0866FF;color:#fff}
-    .btn.primary:hover,.btn.primary:focus-visible{background:#0653CC;border-color:#0653CC;color:#fff;transform:translateY(-2px)}
+    .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+    .btn.primary:hover,.btn.primary:focus-visible{background:#0653CC;border-color:#0653CC;color:#fff}
     .btn svg{width:18px;height:18px;flex:none}
-    .copied{display:none;font-size:13px;font-weight:700;color:#1F6F62;align-self:center}
-    .copied.show{display:inline}
-    .signoff{margin:22px 0 0;text-align:center;font-family:'Fraunces',Georgia,serif;font-style:italic;font-size:20px;color:var(--red)}
-    @media (max-width:760px){.avail{padding:24px 18px}.packages{grid-template-columns:1fr}.steps{grid-template-columns:1fr;grid-template-areas:"intro" "form" "actions"}.form-card{margin-bottom:14px}.copied.show{display:block;width:100%;text-align:center}.bonus{flex-direction:column;gap:8px}.btn{width:100%;justify-content:center}}
-    @media (min-width:901px){
-      .slides{min-height:0;height:min(720px,62vw)}
-      .slide{display:grid;grid-template-columns:min(720px,62vw) minmax(0,1fr);grid-template-rows:100%;align-items:center}
-      .slide img{width:100%;height:100%;object-fit:contain}
-      .slide-caption{position:static;max-width:none;margin:0 56px 0 44px;padding:0;background:none;box-shadow:none;backdrop-filter:none}
-      .slide-caption strong{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:32px;letter-spacing:-.02em;line-height:1.1}
-      .slide-caption span{margin-top:12px;font-size:17px;line-height:1.6}
-      .arrow.prev{left:auto;right:84px;top:auto;bottom:86px;transform:none}.arrow.next{right:28px;top:auto;bottom:86px;transform:none}
+    .copied{display:none;font-size:13px;font-weight:700;color:#1F6F62}.copied.show{display:inline}
+
+    footer{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin:56px 0 0;padding:22px 0 40px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+    footer code{padding:2px 7px;border-radius:6px;background:#fff;border:1px solid var(--line);color:var(--ink);font-weight:700;font-family:ui-monospace,Consolas,monospace}
+    footer nav{display:flex;flex-wrap:wrap;gap:16px}
+    footer nav a{font-weight:700;color:var(--ink);text-decoration:none}
+    footer nav a:hover{color:var(--red)}
+
+    @media (max-width:760px){
+      .plans{grid-template-columns:1fr}
+      .book{grid-template-columns:1fr;grid-template-areas:"intro" "form" "actions";row-gap:14px;padding:20px}
+      .book .actions .btn{flex:1 1 100%}
+      .copied.show{display:block;width:100%;text-align:center}
+      .hero{padding:24px 0 22px}
+      section.block{padding-top:44px}
     }
-    @media (max-width:900px){.slide-caption{display:none}}
-    @media (max-width:650px){.site-header,main{width:min(100% - 28px,1160px)}.site-header{padding:16px 0}.back{padding:8px 12px;font-size:12px}.slider{border-radius:20px}.slides{min-height:0;aspect-ratio:1/1}.slide-caption{display:none}.arrow{width:38px;height:38px;font-size:24px}.prev{left:10px}.next{right:10px}.slider-footer{padding:13px 15px}.details{grid-template-columns:1fr;gap:10px;margin:22px 0}.detail{padding:16px}.cta{display:block;padding:24px}.cta > a{display:inline-block;margin-top:18px}h1{font-size:40px}.intro{margin-bottom:22px}}
     @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition-duration:.01ms!important}}
   </style>
 </head>
 <body>
-  <header class="site-header">
-    <a class="brand" href="/" aria-label="photobooth4u home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span></a>
-    <a class="back" href="/">Open photo booth</a>
-  </header>
-  <main>
-    <p class="eyebrow">Snap · Print · Share</p>
-    <h1>The photobooth, <em>without</em> the booth.</h1>
-    <p class="intro">photobooth4u turns your tablet, phone or laptop into a keepsake-making station — pick a layout, make it yours, and let guests tap, pose and take their photos home.</p>
+  <div class="wrap">
+    <header>
+      <a class="brand" href="/" aria-label="photobooth4u home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span></a>
+      <a class="pill" href="/">Open photo booth</a>
+    </header>
+
+    <section class="hero">
+      <h1>The photobooth, <em>without</em> the booth.</h1>
+      <p>Use your own laptop or tablet. Guests pose, scan a QR code, and take their photos home.</p>
+    </section>
 
     <section class="slider" aria-label="How photobooth4u works" aria-roledescription="carousel">
       <div class="slides">
-        <article class="slide active" id="slide-1" aria-label="Slide 1 of 7">
-          <img src="assets/pb4u-01-diy-photobooth.jpg" alt="photobooth4u start screen on a tablet, with sample photo strips beside it">
-          <div class="slide-caption"><strong>Set up in minutes</strong><span>Open photobooth4u on your own tablet or phone — it runs in the browser, nothing to install.</span></div>
-        </article>
-        <article class="slide" id="slide-2" aria-label="Slide 2 of 7">
+        <article class="slide active" id="slide-2" aria-label="Slide 1 of 6">
           <img src="assets/pb4u-02-layouts.jpg" alt="Sample prints in different layouts, with the ten layout names listed below">
           <div class="slide-caption"><strong>10 layouts to choose from</strong><span>Classic strips, grids, a big hero shot, solo, duo, film and more — all made for 4R prints.</span></div>
         </article>
-        <article class="slide" id="slide-3" aria-label="Slide 3 of 7">
+        <article class="slide" id="slide-3" aria-label="Slide 2 of 6">
           <img src="assets/pb4u-03-make-it-yours.jpg" alt="Event name settings with a calendar button for the date, next to a finished print">
           <div class="slide-caption"><strong>Make it yours</strong><span>Add your event name and date, pick fonts, backdrops and frames, and see it in the live preview.</span></div>
         </article>
-        <article class="slide" id="slide-4" aria-label="Slide 4 of 7">
+        <article class="slide" id="slide-4" aria-label="Slide 3 of 6">
           <img src="assets/pb4u-04-countdown.jpg" alt="Countdown ring over the live camera, with 3, 5, 7 and 10 second options">
           <div class="slide-caption"><strong>Countdown your way</strong><span>3, 5, 7 or 10 seconds, fine-tuned in half seconds, with a smooth ring guests can follow.</span></div>
         </article>
-        <article class="slide" id="slide-5" aria-label="Slide 5 of 7">
+        <article class="slide" id="slide-5" aria-label="Slide 4 of 6">
           <img src="assets/pb4u-05-all-you-need.jpg" alt="What you need: a tablet or phone, photobooth4u in the browser, and a tripod">
           <div class="slide-caption"><strong>Bring only the essentials</strong><span>An iPad or Android device, photobooth4u and a tripod. Add a photo printer for prints on the spot.</span></div>
         </article>
-        <article class="slide" id="slide-6" aria-label="Slide 6 of 7">
+        <article class="slide" id="slide-6" aria-label="Slide 5 of 6">
           <img src="assets/pb4u-06-traditional-booth.jpg" alt="Laptop running the setup and print controls, connected to a monitor showing guests the camera and countdown">
           <div class="slide-caption"><strong>Prefer a classic booth?</strong><span>Use a laptop with a second monitor for guests. After the first print, every session prints automatically.</span></div>
         </article>
-        <article class="slide" id="slide-7" aria-label="Slide 7 of 7">
+        <article class="slide" id="slide-7" aria-label="Slide 6 of 6">
           <img src="assets/pb4u-07-share-photos.jpg" alt="QR code to the event photo folder, sample prints, and calendar days one to seven">
           <div class="slide-caption"><strong>Your photos, ready to share</strong><span>Guests scan one QR code for the event's Google Drive folder. Photos stay up for seven days — download your favourites in time.</span></div>
         </article>
@@ -137,69 +134,72 @@
       <button class="arrow next" type="button" aria-label="Show next slide">›</button>
       <div class="slider-footer">
         <div class="dots" aria-label="Choose a slide">
-          <button class="dot" type="button" aria-label="Show slide 1" aria-controls="slide-1" aria-current="true"></button>
-          <button class="dot" type="button" aria-label="Show slide 2" aria-controls="slide-2" aria-current="false"></button>
-          <button class="dot" type="button" aria-label="Show slide 3" aria-controls="slide-3" aria-current="false"></button>
-          <button class="dot" type="button" aria-label="Show slide 4" aria-controls="slide-4" aria-current="false"></button>
-          <button class="dot" type="button" aria-label="Show slide 5" aria-controls="slide-5" aria-current="false"></button>
-          <button class="dot" type="button" aria-label="Show slide 6" aria-controls="slide-6" aria-current="false"></button>
-          <button class="dot" type="button" aria-label="Show slide 7" aria-controls="slide-7" aria-current="false"></button>
+          <button class="dot" type="button" aria-label="Show slide 1" aria-controls="slide-2" aria-current="true"></button>
+          <button class="dot" type="button" aria-label="Show slide 2" aria-controls="slide-3" aria-current="false"></button>
+          <button class="dot" type="button" aria-label="Show slide 3" aria-controls="slide-4" aria-current="false"></button>
+          <button class="dot" type="button" aria-label="Show slide 4" aria-controls="slide-5" aria-current="false"></button>
+          <button class="dot" type="button" aria-label="Show slide 5" aria-controls="slide-6" aria-current="false"></button>
+          <button class="dot" type="button" aria-label="Show slide 6" aria-controls="slide-7" aria-current="false"></button>
         </div>
-        <p class="counter" aria-live="polite"><span id="current">01</span> / 07</p>
+        <p class="counter" aria-live="polite"><span id="current">01</span> / 06</p>
       </div>
     </section>
 
-    <section class="details" aria-label="photobooth4u highlights">
-      <article class="detail"><span class="detail-number">01</span><h2>Runs in your browser</h2><p>Works on iPad, Android tablets, phones and laptops — no app download or bulky rental booth.</p></article>
-      <article class="detail"><span class="detail-number">02</span><h2>Made for your occasion</h2><p>Ten layouts, your event name and date, fonts, frames and backdrops that match your celebration.</p></article>
-      <article class="detail"><span class="detail-number">03</span><h2>Easy for every guest</h2><p>One tap to start, a clear countdown, then prints and a QR code to take the photos home.</p></article>
-    </section>
-
-    <section class="avail" id="avail" aria-labelledby="avail-title">
-      <div class="avail-head">
-        <h2 id="avail-title">Hi! Wanna avail of photobooth4u for your upcoming event?</h2>
-        <p>Enjoy our DIY photobooth and capture unlimited memories for 24 hours on your event day! No need to rent an expensive photobooth when you can use your own device!</p>
-      </div>
-
-      <div class="packages" aria-label="Available packages">
-        <article class="pkg pro">
-          <h3>Pro Booth</h3>
-          <p class="device">Laptop</p>
-          <p class="price">₱799 <small>/ event</small></p>
-        </article>
-        <article class="pkg">
+    <section class="block" id="packages" aria-labelledby="pk">
+      <p class="label">Packages</p>
+      <h2 id="pk" class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Packages</h2>
+      <div class="plans">
+        <article class="plan">
           <h3>Classic Booth</h3>
-          <p class="device">Android Tablet / iPad</p>
+          <p class="for">Tablet or iPad</p>
           <p class="price">₱699 <small>/ event</small></p>
         </article>
+        <article class="plan pro">
+          <h3>Pro Booth</h3>
+          <p class="for">Laptop + guest screen, auto-print</p>
+          <p class="price">₱799 <small>/ event</small></p>
+        </article>
+        <article class="plan life">
+          <h3>Lifetime</h3>
+          <p class="for">Never expires · every event · multiple devices</p>
+          <p class="price"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us for pricing →</a></p>
+        </article>
       </div>
-      <p class="includes">Both packages include a <b>rental code valid for 24 hours on your event day</b>, with <b>unlimited snaps</b>! Perfect for birthdays, weddings, debuts, parties, and other special occasions.</p>
+      <ul class="chips" aria-label="Included">
+        <li>24 hours on your event day</li>
+        <li>Unlimited snaps</li>
+        <li>Photos online for 7 days</li>
+        <li>+ 1-hour practice code</li>
+      </ul>
+    </section>
 
-      <p class="bonus"><strong>Bonus</strong><span>May extra code ka pang valid for <b>1 hour of practice</b> para ma-familiarize ka sa setup and ma-prepare mo na everything before your event day!</span></p>
-
-      <div class="steps">
-        <div class="steps-intro">
-          <h3>Ready to avail? Fill out the details below!</h3>
-          <p>Copy the form, then send it to us on Facebook Messenger. Once you send your details, we'll prepare your codes para ready ka na for your special day!</p>
+    <section class="block" id="avail" aria-labelledby="bk">
+      <div class="book">
+        <div class="book-intro">
+          <h2 id="bk">Hi! Wanna avail?</h2>
+          <p class="sub">Copy the form, send it on Messenger, and we'll send your codes.</p>
         </div>
-          <div class="avail-actions">
+          <div class="actions">
             <a class="btn primary" id="messengerBtn" href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2C6.36 2 2 6.13 2 11.7c0 2.91 1.2 5.42 3.14 7.16.16.15.26.35.27.57l.05 1.78a.8.8 0 0 0 1.12.71l1.98-.87a.8.8 0 0 1 .53-.04c.91.25 1.88.39 2.91.39 5.64 0 10-4.13 10-9.7S17.64 2 12 2Zm6 7.46-2.94 4.66a1.5 1.5 0 0 1-2.17.4l-2.34-1.75a.6.6 0 0 0-.72 0l-3.16 2.4c-.42.32-.97-.18-.69-.63l2.94-4.66a1.5 1.5 0 0 1 2.17-.4l2.34 1.75a.6.6 0 0 0 .72 0l3.16-2.4c.42-.32.97.18.69.63Z"/></svg>Copy form &amp; message us</a>
-            <button class="btn" type="button" id="copyFormBtn">Copy form only</button>
+            <button class="btn" type="button" id="copyFormBtn">Copy form</button>
             <span class="copied" id="copiedNote" role="status">Copied! Paste it in Messenger.</span>
           </div>
         <pre class="form-card" id="availForm">Name:
-Setup Type: Pro Booth / Classic Booth
+Setup Type: Classic / Pro / Lifetime
 Event Date:</pre>
       </div>
-
-      <p class="signoff">Make memories, your way, with photobooth4u!</p>
     </section>
 
-    <section class="cta">
-      <div><h2>Ready to make some memories?</h2><p>Open photobooth4u and start creating your event setup.</p><p class="trial-note">Want to try it out? Use code <code>TRIALMODE</code>.</p><p class="contact-note">Wanna avail? <a href="#avail">See packages</a> or <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">message us on Facebook Messenger</a>.</p></div>
-      <a href="/">Try the photo booth</a>
-    </section>
-  </main>
+    <footer>
+      <span>Try it free with code <code>TRIALMODE</code></span>
+      <nav>
+        <a href="/">Open photo booth</a>
+        <a href="/lifetime/">My Events</a>
+        <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Messenger</a>
+      </nav>
+    </footer>
+  </div>
+
   <script>
     (function(){
       var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
@@ -228,15 +228,11 @@ Event Date:</pre>
   </script>
   <script>
     (function(){
-      var form = document.getElementById('availForm');
-      var note = document.getElementById('copiedNote');
-      var t;
+      var form = document.getElementById('availForm'), note = document.getElementById('copiedNote'), t;
       function copyForm(){
         var text = 'Hi! I\'d like to avail of photobooth4u.\n\n' + form.textContent;
         function done(){ note.classList.add('show'); clearTimeout(t); t = setTimeout(function(){ note.classList.remove('show'); }, 4000); }
-        try {
-          if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, function(){}); return; }
-        } catch (e) {}
+        try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, function(){}); return; } } catch (e) {}
         try {
           var ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', '');
           ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
@@ -244,7 +240,6 @@ Event Date:</pre>
         } catch (e) {}
       }
       document.getElementById('copyFormBtn').addEventListener('click', copyForm);
-      // Copy first, then let the link open Messenger as normal.
       document.getElementById('messengerBtn').addEventListener('click', copyForm);
     })();
   </script>

@@ -246,7 +246,7 @@
   var DAY = 86400000;
   // Same keys as PAPER_SIZES in netlify/lib/core.mjs.
   var PAPER = [
-    ['2x6', '2×6 in strip'], ['3.5x5', '3.5×5 in (3R)'], ['4x6', '4×6 in (4R)'], ['5x7', '5×7 in (5R)'],
+    ['2x6', '2×6 in strip'], ['2.5x7.5', '2.5×7.5 in keychain'], ['3.5x5', '3.5×5 in (3R)'], ['4x6', '4×6 in (4R)'], ['5x7', '5×7 in (5R)'],
     ['6x8', '6×8 in (6R)'], ['8x10', '8×10 in (8R)'],
     ['A6', 'A6'], ['A5', 'A5'], ['A4', 'A4'], ['Letter', 'Letter']
   ];
@@ -364,6 +364,7 @@
   var ST_NAME = { active: 'running', scheduled: 'upcoming', unused: 'not used', expired: 'ended', revoked: 'disabled' };
   // Built-in booth themes (keep in sync with THEMES in protected/booth.html).
   var THEME_LIST = [
+    ['Templates', [['teddy-awning', 'Teddy Bear Party'], ['carnival', 'Carnival Fun'], ['burgundy-florals', 'Burgundy Line Florals'], ['sage-florals', 'Sage Line Florals'], ['ivory-monogram', 'Ivory Monogram'], ['blush-eighteen', 'Blush Roses 18'], ['gold-eighteen', 'Black & Gold 18'], ['pink-plush', 'Pink Plush Christening'], ['little-bear', 'Little Bear Christening'], ['boho-pampas', 'Boho Pampas']]],
     ['Wedding', [['gold-chevron', 'Gold Chevron'], ['art-deco', 'Art Deco Navy'], ['white-marble', 'White Marble'], ['rustic-lights', 'Rustic String Lights'], ['sage-laurel', 'Sage & Laurel'], ['classic-cream', 'Classic Cream']]],
     ['Birthday / Debut', [['gold-confetti', 'Gold Confetti'], ['black-gold-confetti', 'Black & Gold Confetti'], ['maroon-gold', 'Maroon & Gold'], ['blush-hearts', 'Blush Hearts'], ['gold-glitter', 'Gold Glitter'], ['balloon-party', 'Balloon Party (kids)']]],
     ['Graduation', [['grad-navy', 'Graduation Navy & Gold'], ['grad-maroon', 'Graduation Maroon'], ['grad-diploma', 'Diploma & Laurels']]],

@@ -6,7 +6,7 @@
 <title>photobooth4u</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&family=Dancing+Script:wght@600;700&family=Pacifico&family=Great+Vibes&family=Sacramento&family=Alex+Brush&family=Satisfy&family=Parisienne&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Cinzel:wght@600;700&family=Marck+Script&family=Tangerine:wght@700&family=Allura&family=Cookie&family=Italianno&family=Petit+Formal+Script&family=Lobster&family=Josefin+Sans:wght@600;700&family=Montserrat:wght@600;700&family=Poppins:wght@600;700&family=Raleway:wght@600;700&family=Merriweather:wght@700&family=Abril+Fatface&family=Bebas+Neue&family=Caveat:wght@600;700&family=Amatic+SC:wght@700&family=EB+Garamond:ital,wght@0,600;1,600&family=Quicksand:wght@600;700&family=Comfortaa:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&family=Dancing+Script:wght@600;700&family=Pacifico&family=Great+Vibes&family=Sacramento&family=Alex+Brush&family=Satisfy&family=Parisienne&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Cinzel:wght@600;700&family=Marck+Script&family=Tangerine:wght@700&family=Allura&family=Cookie&family=Italianno&family=Petit+Formal+Script&family=Lobster&family=Josefin+Sans:wght@600;700&family=Montserrat:wght@600;700&family=Poppins:wght@600;700&family=Raleway:wght@600;700&family=Merriweather:wght@700&family=Abril+Fatface&family=Bebas+Neue&family=Caveat:wght@600;700&family=Amatic+SC:wght@700&family=EB+Garamond:ital,wght@0,600;1,600&family=Quicksand:wght@600;700&family=Comfortaa:wght@600;700&family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg-page:#F5F1EA;
@@ -733,6 +733,9 @@
 
 
   /* ---- Frames with photo spots ---- */
+  .layout-btn.lt-empty{border-style:dashed;}
+  .layout-btn.lt-empty .lt{opacity:.45;}
+
   .frame-list{display:flex; flex-direction:column; gap:8px; margin-top:10px;}
   .frame-list:empty{display:none;}
   .frame-row{display:flex; align-items:center; gap:10px; padding:8px; border:1.5px solid var(--line); border-radius:12px; background:#fff;}
@@ -760,7 +763,7 @@
   .theme-cat.active{background:var(--ink); border-color:var(--ink); color:#fff;}
   .theme-grid{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px;}
   .theme-card{display:flex; flex-direction:column; gap:6px; padding:6px; border-radius:12px; border:1.5px solid var(--line); background:#fff; cursor:pointer; text-align:left; font:inherit;}
-  .theme-card canvas{width:100%; aspect-ratio:2/3; border-radius:8px; display:block; background:var(--panel-2);}
+  .theme-card canvas{width:100%; aspect-ratio:2/3; border-radius:8px; display:block; background:var(--panel-2); object-fit:contain;}
   .theme-card .tn{font-size:12px; font-weight:700; color:var(--ink); line-height:1.25;}
   .theme-card .tc{font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-dim);}
   .theme-card.active{border-color:#C93D27; box-shadow:0 0 0 2px #C93D27 inset;}
@@ -1072,6 +1075,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <button type="button" class="date-x" id="dateRemove">✕ Remove date</button>
         </div>
         <p class="panel-hint" id="dateHint" style="margin-top:8px;">Tap the calendar to add today’s date under the event name.</p>
+        <p class="panel-hint" style="margin:10px 0 6px;">Title style</p>
+        <select class="label-input" id="titleStyleSelect" style="font-family:'Manrope',sans-serif; font-size:13px;" aria-label="Title style"></select>
+        <div id="kickerRow" style="display:none; margin-top:8px;">
+          <input type="text" class="label-input" id="kickerInput" maxlength="40" style="font-family:'Manrope',sans-serif; font-size:13px;" aria-label="Small line">
+          <p class="panel-hint" style="margin-top:4px;">The small line that goes with the name.</p>
+        </div>
         <p class="panel-hint" style="margin:10px 0 6px;">Font</p>
         <div class="custom-dd" id="fontDropdown">
           <button type="button" class="custom-dd-btn label-input" id="fontDropdownBtn"></button>
@@ -1354,6 +1363,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <p class="panel-label">Print</p>
         <p class="sub-label" style="margin-bottom:4px;">Paper size</p>
         <div class="print-size-row" id="printSizeRow"></div>
+        <label class="switch-row hidden" id="keychainRow" style="margin:4px 0 10px;">
+          <span>Keychain strips at real size (2.5×7.5 in)</span>
+          <input type="checkbox" id="keychainToggle">
+        </label>
         <button class="action-btn primary" id="printBtn">&#128424; Print</button>
         <p class="panel-hint" id="printHint"></p>
         <label class="switch-row hidden" id="autoPrintRow">
@@ -1513,6 +1526,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     ["'Poppins', sans-serif", 'Poppins'],
     ["'Raleway', sans-serif", 'Raleway'],
     ["'Merriweather', serif", 'Merriweather'],
+    ["'Fredoka', sans-serif", 'Fredoka'],
     ["'Abril Fatface', cursive", 'Abril Fatface'],
     ["'Bebas Neue', cursive", 'Bebas Neue'],
     ["'Caveat', cursive", 'Caveat'],
@@ -1952,17 +1966,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     trio:    { name: 'Trio',          shots: 3, kind: 'sheet', hint: 'Three wide shots stacked.' },
     feature: { name: 'Feature 1+2',   shots: 3, kind: 'sheet', hint: 'One wide shot on top, two side by side underneath.' },
     film6:   { name: 'Film 6',        shots: 6, kind: 'sheet', hint: 'Six shots in a 2x3 contact-sheet grid.' },
+    land3:   { name: 'Landscape 3',   shots: 3, kind: 'landscape', hint: 'Landscape 4R: the event name in its own panel, with three shots.' },
+    land4:   { name: 'Landscape 4',   shots: 4, kind: 'landscape', hint: 'Landscape 4R: a big shot and the event name on top, three shots underneath.' },
     // Your own uploaded frames (see "Frames with photo spots" below). Shown once a frame is uploaded.
     myframe:    { name: 'My frame', kind: 'frame', get shots(){ var f = typeof activeFrame === 'function' ? activeFrame() : null; return f ? Math.max(1, f.spots.length) : 1; },
                   hint: 'Your own frame: the photos go into its white or see-through boxes, and the frame stays on top.' },
     framesheet: { name: 'My frames sheet', kind: 'frame', get shots(){ return typeof sheetShots === 'function' ? sheetShots() : 1; },
                   hint: 'Several of your frames on one 4R print. Each frame fills its boxes with shots 1, 2, 3… Pick a pattern below, then drag the frames in the preview.' }
   };
-  const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'trio', 'feature', 'film6'];
+  const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'trio', 'feature', 'film6', 'land3', 'land4'];
   // The built-in layouts, plus your frames once at least one is uploaded.
   function layoutOrder(){
     var has = typeof myFrames !== 'undefined' && myFrames && myFrames.length;
-    return has ? ['myframe', 'framesheet'].concat(LAYOUT_ORDER) : LAYOUT_ORDER;
+    return has ? ['myframe', 'framesheet'].concat(LAYOUT_ORDER) : LAYOUT_ORDER.concat(['myframe', 'framesheet']);
   }
   function layoutDef(key){ return LAYOUT_DEFS[key || currentLayout] || LAYOUT_DEFS.strip; }
   function isStripLayout(key){
@@ -3800,6 +3816,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(d.kind === 'polaroid'){
       return [pct(10, 7, 36, 30), pct(54, 7, 36, 30), pct(10, 44, 36, 30), pct(54, 44, 36, 30)];
     }
+    if(d.kind === 'landscape'){
+      // A sideways sheet drawn inside the portrait thumbnail.
+      var L = landscapeCells(key, 1800, 1200), bx = 6, by = 30, bw = 88, bh = 40;
+      return L.shots.map(function(c){ return pct(bx + c.x / 1800 * bw, by + c.y / 1200 * bh, c.w / 1800 * bw, c.h / 1200 * bh); });
+    }
     if(d.kind === 'frame'){
       if(key === 'myframe'){
         var f = activeFrame(); if(!f) return [];
@@ -3829,7 +3850,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         thumb.appendChild(i);
       });
       const n = document.createElement('span'); n.className = 'ln'; n.textContent = d.name;
-      const s = document.createElement('span'); s.className = 'ls'; s.textContent = d.shots + (d.shots === 1 ? ' SHOT' : ' SHOTS');
+      const noFrames = d.kind === 'frame' && !(typeof myFrames !== 'undefined' && myFrames && myFrames.length);
+      const s = document.createElement('span'); s.className = 'ls'; s.textContent = noFrames ? 'UPLOAD A FRAME' : d.shots + (d.shots === 1 ? ' SHOT' : ' SHOTS');
+      if(noFrames) b.classList.add('lt-empty');
       b.append(thumb, n, s);
       layoutGrid.appendChild(b);
     });
@@ -3838,6 +3861,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   layoutGrid.addEventListener('click', (e) => {
     const btn = e.target.closest('.layout-btn');
     if(!btn) return;
+    // Your own frames: nothing to show until one is uploaded, so open the upload.
+    if(layoutDef(btn.dataset.layout).kind === 'frame' && !(typeof myFrames !== 'undefined' && myFrames && myFrames.length)){
+      document.querySelectorAll('.panel-section.accordion.open').forEach(s => s.classList.remove('open'));
+      const sec = document.getElementById('decorSection'); sec.classList.add('open');
+      sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showToast('Upload your frame first: leave the photo spots white or see-through. Pick several to put them on one 4R sheet.', 6000);
+      document.getElementById('overlayInput').click();
+      return;
+    }
     setupLayout = btn.dataset.layout;   // the renter's default layout (saved with the setup)
     setLayout(btn.dataset.layout);
     if(typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
@@ -3928,6 +3960,20 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     for(let i = 0; i < (count || STRIP_SHOTS); i++){
       const cy = margin + photoSize / 2 + i * (photoSize + gap);
       drawPolaroid(ctx, shots[i], cx, cy, photoSize * 0.9, photoSize * 0.9, 0);
+    }
+  }
+
+  function renderTemplateStrip(ctx, shots, W, H, count){
+    const m = W * 0.06, gap = W * 0.035;
+    const ch = (H - m - m * 0.4 - gap * (count - 1)) / count, cw = W - 2 * m;
+    for(let i = 0; i < count; i++){
+      const y = m + i * (ch + gap);
+      ctx.save();
+      ctx.shadowColor = 'rgba(40,30,20,0.28)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
+      ctx.fillStyle = currentFrameColor; ctx.fillRect(m, y, cw, ch);
+      ctx.restore();
+      const pad = Math.max(6, cw * 0.025);
+      if(shots[i]) drawImageCover(ctx, shots[i], m + pad, y + pad, cw - 2 * pad, ch - 2 * pad);
     }
   }
 
@@ -4028,7 +4074,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var top = title ? titleY - th * 0.62 : dateY - dh * 0.7;
       var bottom = dateText ? dateY + dh * 0.7 : titleY + th * 0.62;
       var cx = xOffset + W / 2, half = Math.max(tw, dw) / 2;
-      // Is the backdrop busy right behind the words?
+      calmBox(ctx, cx, top, bottom, half, xOffset, contentH, W, bandH);
+    }catch(e){ /* a tainted canvas or similar: just draw the text */ }
+  }
+
+  // The wash itself: (cx, top..bottom, half width) is the text block; the band is the clip.
+  function calmBox(ctx, cx, top, bottom, half, xOffset, contentH, W, bandH){
+    try{
       var x0 = Math.max(xOffset, Math.floor(cx - half)), y0 = Math.max(0, Math.floor(top));
       var rw = Math.max(1, Math.min(xOffset + W, Math.ceil(cx + half)) - x0), rh = Math.max(1, Math.min(ctx.canvas.height, Math.ceil(bottom)) - y0);
       var px = ctx.getImageData(x0, y0, rw, rh).data;
@@ -4048,21 +4100,21 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var bx = cx - half - padX, by = top - padY, bw = 2 * (half + padX), bh = bottom - top + 2 * padY, rr = Math.min(bh / 2, bw / 2);
       var OFF = 20000;
       ctx.save();
-      ctx.beginPath(); ctx.rect(xOffset, contentH, W, ctx.canvas.height - contentH); ctx.clip();   // never over the photos
+      ctx.beginPath(); ctx.rect(xOffset, contentH, W, bandH); ctx.clip();   // never over the photos
       ctx.shadowColor = 'rgba(' + rgb + ',0.95)'; ctx.shadowBlur = blur; ctx.shadowOffsetX = OFF;
       ctx.fillStyle = '#000';
       ctx.beginPath();
       if(ctx.roundRect) ctx.roundRect(bx - OFF, by, bw, bh, rr); else ctx.rect(bx - OFF, by, bw, bh);
       ctx.fill();
       ctx.restore();
-    }catch(e){ /* a tainted canvas or similar: just draw the text */ }
+    }catch(e){}
   }
 
   function drawLabelBand(ctx, W, contentH, bandH, text, xOffset){
     xOffset = xOffset || 0;
     const trimmed = (text || '').trim();
     const dateText = currentDateLabel();
-    if(!trimmed && !dateText) return; // no band at all if nothing to show
+    if(!trimmed && !dateText && !(titleStyle !== 'classic' && kickerText.trim())) return; // no band at all if nothing to show
 
     if(titleBgEnabled){
       const rgb = hexToRgbTriplet(titleBgColor);
@@ -4073,6 +4125,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       ctx.fillStyle = grad;
       ctx.fillRect(xOffset, contentH, W, bandH);
     }
+    if(titleStyle !== 'classic'){ drawStyledTitle(ctx, xOffset, contentH, W, bandH, text || '', dateText); return; }
 
     ctx.save();
     ctx.textAlign = 'center';
@@ -4291,9 +4344,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Setup tab's live preview, so they never fall out of sync. ----
   function composeCanvas(layoutKey, targetCanvas, shots){
     if(layoutDef(layoutKey).kind === 'frame') return composeFrameCanvas(layoutKey, targetCanvas, shots);
+    if(layoutDef(layoutKey).kind === 'landscape') return composeLandscape(layoutKey, targetCanvas, shots);
     const trimmed = (labelInput.value || '').trim();
     const dateText = currentDateLabel();
-    const hasBand = !!trimmed || !!dateText;
+    const hasBand = !!trimmed || !!dateText || (titleStyle !== 'classic' && !!kickerText.trim());
     // Band grows a little as the title size slider goes up, so a bigger
     // event name gets more room instead of overflowing a fixed-height band.
     const growth = 1 + Math.max(0, titleSizeMultiplier - 1) * 0.6;
@@ -4307,15 +4361,23 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       layout = { w: SHEET_W, contentH: 0, render: (ctx, shots, W, H) => renderSheet(ctx, shots, W, H, layoutKey) };
     } else if(layoutKey === 'grid' && bandPlacement){
       layout = Object.assign({}, LAYOUTS.grid, { w: GRID_SIDE_W, contentH: GRID_SIDE_H });
+    } else if(isStripLayout(layoutKey) && titleStyle !== 'classic' && !bandPlacement){
+      // Template strips: full-width photos and a taller title area, still exactly 1:3 (2x6 / keychain).
+      layout = { w: STRIP_W, contentH: 0, templateStrip: true, render: (ctx, shots, W, H) => renderTemplateStrip(ctx, shots, W, H, shotsNeeded(layoutKey)) };
     } else {
       layout = LAYOUTS[layoutKey];
     }
     // Always reserve a little breathing room at the bottom, even with no
     // event name or date typed in yet, instead of shots running to the edge.
     const minBottomMargin = Math.round(layout.w * 0.05);
-    const bandH = hasBand ? Math.round(layout.w * (dateText ? LABEL_BAND_RATIO * 1.35 : LABEL_BAND_RATIO) * growth) : minBottomMargin;
+    const bandH = layout.templateStrip
+      ? Math.round(STRIP_W * 3 * ({ wedding: 0.2, turns: 0.19, blocks: 0.21, monogram: 0.25, bignum: 0.21 }[titleStyle] || 0.2) * Math.min(1.25, growth))
+      : hasBand ? Math.round(layout.w * (dateText ? LABEL_BAND_RATIO * 1.35 : LABEL_BAND_RATIO) * growth * styleBandFactor()) : minBottomMargin;
+    // Theme artwork across the top (an awning) gets its own room above the shots.
+    const artTop = bandPlacement ? 0 : themeArtTop(layout.w);
     // Sheets are always exactly 4R: the shots get whatever the label band leaves.
-    if(isSheet) layout.contentH = SHEET_H - bandH;
+    if(isSheet) layout.contentH = SHEET_H - bandH - artTop;
+    if(layout.templateStrip) layout.contentH = STRIP_W * 3 - bandH - artTop;
 
     // Strip + a custom uploaded photo (band placement): the photo becomes a
     // band above the shots, and the rest of the strip fills with a textured
@@ -4331,7 +4393,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const imgSideActive = layoutKey === 'grid' && bandPlacement;
     const imgSideW = imgSideActive ? Math.round(layout.w * 0.44) : 0;
 
-    const totalH = imgBandH + layout.contentH + bandH;
+    const totalH = artTop + imgBandH + layout.contentH + bandH;
     targetCanvas.width = layout.w;
     targetCanvas.height = totalH;
     const ctx = targetCanvas.getContext('2d');
@@ -4349,6 +4411,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       drawImageCover(ctx, backgroundImg, 0, 0, imgSideW, totalH, cropFocus);
     } else {
       drawBackdrop(ctx, layout.w, totalH);
+      photoOffsetY = artTop;
     }
 
     ctx.save();
@@ -4371,13 +4434,454 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       labelW = layout.w;
       labelX = 0;
     } else {
-      labelY = layout.contentH;
+      labelY = artTop + layout.contentH;
       labelW = layout.w;
       labelX = 0;
     }
     if(bandH) drawLabelBand(ctx, labelW, labelY, bandH, labelInput.value, labelX);
+    drawThemeArt(ctx, layout.w, totalH, { x: labelX, y: labelY, w: labelW, h: bandH });
     if(typeof drawDecorLayer === 'function') drawDecorLayer(ctx, layout.w, totalH);
     return targetCanvas;
+  }
+
+  // =====================================================================
+  // Templates: title styles, theme artwork and landscape layouts.
+  // Title styles lay out the event name with a small line ("THE WEDDING OF",
+  // "TURNS ONE", "18"...), letter blocks or a monogram. Artwork (awning,
+  // teddy bear, bunny, line florals, roses, pampas) is drawn in vector so it
+  // prints sharp at any size. All original drawings.
+  // =====================================================================
+  var titleStyle = 'classic';      // classic | wedding | turns | blocks | monogram | bignum
+  var kickerText = '';             // the small line
+  var titleUpper = false;          // event name in capitals (styled titles)
+  var themeArt = [];               // artwork keys
+  var artPal = {};                 // artwork colors
+  var TITLE_STYLES = [
+    ['classic', 'Classic (name + date)'],
+    ['wedding', 'Small line above — “The wedding of”'],
+    ['turns', 'Small line below — “Turns one”'],
+    ['blocks', 'Letter blocks + small line'],
+    ['monogram', 'Monogram (initials in a circle)'],
+    ['bignum', 'Big number behind the name (“18”)']
+  ];
+  var ART_KEYS = ['awning', 'teddy', 'bunny', 'linefloral', 'roses', 'pampas'];
+  var BLOCK_FONT = "'Fredoka', 'Poppins', sans-serif";
+  function styleBandFactor(){ return { classic: 1, wedding: 1.6, turns: 1.4, blocks: 1.65, monogram: 2, bignum: 1.6 }[titleStyle] || 1; }
+  function hasArt(k){ return themeArt.indexOf(k) >= 0; }
+  function themeArtTop(W){ return hasArt('awning') ? Math.round(W * 0.085) : 0; }
+  function apal(k, d){ return artPal && artPal[k] ? artPal[k] : d; }
+
+  // ---- text helpers ----
+  function spacedWidth(ctx, t, sp){ var w = 0; for(var i = 0; i < t.length; i++) w += ctx.measureText(t[i]).width; return w + sp * Math.max(0, t.length - 1); }
+  function drawSpaced(ctx, t, cx, y, sp, stroke){
+    if(!sp){ if(stroke) ctx.strokeText(t, cx, y); else ctx.fillText(t, cx, y); return; }
+    var x = cx - spacedWidth(ctx, t, sp) / 2, al = ctx.textAlign; ctx.textAlign = 'left';
+    for(var i = 0; i < t.length; i++){ if(stroke) ctx.strokeText(t[i], x, y); else ctx.fillText(t[i], x, y); x += ctx.measureText(t[i]).width + sp; }
+    ctx.textAlign = al;
+  }
+  function initialsOf(name){
+    var parts = name.split(/\s*(?:&|\+|\band\b|\/)\s*/i).filter(function(p){ return p.trim(); });
+    if(parts.length >= 2) return (parts[0].trim()[0] + parts[1].trim()[0]).toUpperCase();
+    var w = name.trim().split(/\s+/);
+    return (w[0] ? w[0][0] : '') + (w[1] ? w[1][0] : '');
+  }
+  function roundRect(ctx, x, y, w, h, r){
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  // ---- styled titles ----
+  // Lays the rows out top to bottom, centered in the box (x, y, w, h).
+  function drawStyledTitle(ctx, x, y, w, h, nameRaw, dateText){
+    var name = (titleUpper ? nameRaw.toUpperCase() : nameRaw).trim();
+    var k = (kickerText || '').trim(), kU = k.toUpperCase();
+    // Leave room for artwork sitting in a bottom corner.
+    var cx = x + w / 2, maxW = w * 0.86;
+    if(hasArt('teddy')){ cx = x + w * 0.62; maxW = w * 0.58; }
+    else if(hasArt('bunny')){ cx = x + w * 0.38; maxW = w * 0.58; }
+    else if(hasArt('linefloral') || hasArt('pampas')) maxW = w * 0.64;
+    else if(hasArt('roses')) maxW = w * 0.74;
+    var rows = [];
+    var fit = function(font, text, size, min, sp){
+      ctx.font = fontString(font, Math.round(size));
+      while(size > min && spacedWidth(ctx, text, sp ? sp * size : 0) > maxW){ size -= Math.max(1, size * 0.04); ctx.font = fontString(font, Math.round(size)); }
+      return size;
+    };
+    var kick = function(sz){ if(k) rows.push({ t: kU, f: currentDateFont, s: fit(currentDateFont, kU, sz, sz * 0.5, 0.3), sp: 0.3 }); };
+    var dateRow = function(sz){ if(dateText) rows.push({ t: dateText.toUpperCase(), f: currentDateFont, s: fit(currentDateFont, dateText.toUpperCase(), sz, sz * 0.6, 0.22), sp: 0.22, a: 0.85 }); };
+    var nameRow = function(sz, min){
+      if(!name) return;
+      sz *= titleSizeMultiplier;
+      ctx.font = fontString(currentFont, Math.round(sz));
+      var parts = name.split(/\s+(&|and)\s+/i);
+      if(parts.length === 3 && fit(currentFont, name, sz, min, 0) <= min * 1.02 && spacedWidth(ctx, name, 0) > maxW){
+        var s2 = fit(currentFont, parts[0].length > parts[2].length ? parts[0] : parts[2], sz * 0.86, min, 0);
+        rows.push({ t: parts[0], f: currentFont, s: s2, name: true });
+        rows.push({ t: '&', f: currentFont, s: s2 * 0.6, name: true });
+        rows.push({ t: parts[2], f: currentFont, s: s2, name: true });
+        return;
+      }
+      rows.push({ t: name, f: currentFont, s: fit(currentFont, name, sz, min, 0), name: true });
+    };
+    switch(titleStyle){
+      case 'wedding': kick(h * 0.085); nameRow(h * 0.3, h * 0.13); dateRow(h * 0.075); break;
+      case 'turns': nameRow(h * 0.36, h * 0.16); kick(h * 0.12); dateRow(h * 0.075); break;
+      case 'blocks': if(name) rows.push({ blocks: name.toUpperCase(), s: h * 0.36 }); kick(h * 0.11); dateRow(h * 0.07); break;
+      case 'monogram': rows.push({ mono: initialsOf(nameRaw || 'A B'), s: h * 0.4 }); nameRow(h * 0.2, h * 0.1); dateRow(h * 0.07); break;
+      case 'bignum': nameRow(h * 0.36, h * 0.16); dateRow(h * 0.08); break;
+      default: nameRow(h * 0.4, h * 0.16); dateRow(h * 0.08);
+    }
+    if(!rows.length) return;
+    // Letter blocks: tile size from the width available.
+    rows.forEach(function(r){
+      if(!r.blocks) return;
+      var n = r.blocks.replace(/\s/g, '').length, sp = r.blocks.split(' ').length - 1;
+      r.s = Math.min(r.s * titleSizeMultiplier, maxW / Math.max(1, n * 1.1 + sp * 0.5));
+    });
+    var gap = function(r, prev){ return r.s * 0.3 + (prev ? prev.s * (prev.blocks ? 0.2 : prev.mono ? 0.12 : 0.04) : 0); };
+    var total = rows.reduce(function(a, r, i){ return a + r.s + (i ? gap(r, rows[i - 1]) : 0); }, 0);
+    var scale = Math.min(1, (h * 0.9) / total);
+    if(scale < 1){ rows.forEach(function(r){ r.s *= scale; }); total *= scale; }
+    var yy = y + (h - total) / 2;
+    // Busy backdrop behind the block (confetti, lines)? Soften it, like the classic title.
+    var widest = 0;
+    rows.forEach(function(r){
+      if(r.blocks){ widest = Math.max(widest, r.blocks.length * r.s * 1.1); return; }
+      if(r.mono){ widest = Math.max(widest, r.s); return; }
+      ctx.font = fontString(r.f, Math.round(r.s)); widest = Math.max(widest, spacedWidth(ctx, r.t, r.sp ? r.sp * r.s : 0));
+    });
+    calmBox(ctx, cx, yy, yy + total, Math.min(maxW, widest) / 2, x, y, w, h);
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // Big number behind the name.
+    if(titleStyle === 'bignum'){
+      var num = (k.match(/\d+/) || nameRaw.match(/\d+/) || [k])[0];
+      if(num){
+        var ns = Math.min(h * 0.98, maxW / Math.max(1, num.length * 0.62));
+        ctx.font = fontString("'Playfair Display', serif", Math.round(ns));
+        ctx.globalAlpha = 0.16; ctx.fillStyle = textColor;
+        ctx.fillText(num, cx, y + h * (dateText ? 0.44 : 0.5));
+        ctx.globalAlpha = 1;
+      }
+    }
+    var tileCols = apal('blocks', [textColor, frameColorFor(), mixHex(textColor, '#ffffff', 0.4)]);
+    rows.forEach(function(r, i){
+      if(i) yy += gap(r, rows[i - 1]);
+      var my = yy + r.s / 2;
+      if(r.blocks){
+        var letters = r.blocks.split(''), t = r.s, step = t * 1.1, space = t * 0.5;
+        var tw = letters.reduce(function(a, c){ return a + (c === ' ' ? space : step); }, 0) - (t * 0.1);
+        var bx = cx - tw / 2, ci = 0;
+        letters.forEach(function(c){
+          if(c === ' '){ bx += space; return; }
+          var col = tileCols[ci % tileCols.length], rot = (ci % 2 ? 1 : -1) * 0.06;
+          ctx.save(); ctx.translate(bx + t / 2, my); ctx.rotate(rot);
+          ctx.shadowColor = 'rgba(0,0,0,0.25)'; ctx.shadowBlur = t * 0.12; ctx.shadowOffsetY = t * 0.05;
+          ctx.fillStyle = col; roundRect(ctx, -t / 2, -t / 2, t, t, t * 0.16); ctx.fill();
+          ctx.shadowColor = 'transparent';
+          ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = t * 0.04; roundRect(ctx, -t / 2 + t * 0.08, -t / 2 + t * 0.08, t * 0.84, t * 0.84, t * 0.1); ctx.stroke();
+          ctx.fillStyle = lumOf(col) > 0.6 ? apal('blockInk', '#3b2a1a') : '#ffffff';
+          ctx.font = '700 ' + Math.round(t * 0.66) + "px " + BLOCK_FONT;
+          ctx.fillText(c, 0, t * 0.03);
+          ctx.restore();
+          bx += step; ci++;
+        });
+      } else if(r.mono){
+        var rad = r.s / 2;
+        ctx.strokeStyle = textColor; ctx.lineWidth = Math.max(1.5, rad * 0.04);
+        ctx.beginPath(); ctx.arc(cx, my, rad, 0, Math.PI * 2); ctx.stroke();
+        ctx.lineWidth = Math.max(1, rad * 0.015);
+        ctx.beginPath(); ctx.arc(cx, my, rad * 0.9, 0, Math.PI * 2); ctx.stroke();
+        if(hasArt('roses') || hasArt('linefloral')) drawMonoSprigs(ctx, cx, my, rad);
+        ctx.fillStyle = textColor;
+        ctx.font = fontString(currentDateFont, Math.round(rad * 0.82));
+        var ini = r.mono.split('');
+        if(ini.length === 2){
+          ctx.fillText(ini[0], cx - rad * 0.3, my - rad * 0.06);
+          ctx.fillText(ini[1], cx + rad * 0.3, my + rad * 0.1);
+          ctx.lineWidth = Math.max(1, rad * 0.02);
+          ctx.beginPath(); ctx.moveTo(cx + rad * 0.18, my - rad * 0.55); ctx.lineTo(cx - rad * 0.18, my + rad * 0.55); ctx.stroke();
+        } else ctx.fillText(r.mono, cx, my);
+      } else {
+        ctx.font = fontString(r.f, Math.round(r.s));
+        var sp = r.sp ? r.sp * r.s : 0;
+        if(r.name && useOutline){
+          ctx.strokeStyle = outlineColor; ctx.lineWidth = r.s * 0.09; ctx.lineJoin = 'round';
+          drawSpaced(ctx, r.t, cx, my, sp, true);
+        }
+        if(r.name && useShadow){ ctx.shadowColor = 'rgba(40,30,20,0.3)'; ctx.shadowBlur = r.s * 0.08; ctx.shadowOffsetY = r.s * 0.03; }
+        ctx.globalAlpha = r.a || 1; ctx.fillStyle = textColor;
+        drawSpaced(ctx, r.t, cx, my, sp, false);
+        ctx.globalAlpha = 1; ctx.shadowColor = 'transparent';
+      }
+      yy += r.s;
+    });
+    ctx.restore();
+  }
+
+  // ---- artwork ----
+  function drawThemeArt(ctx, W, H, band){
+    if(!themeArt.length) return;
+    var u = Math.min(W, H);
+    ctx.save();
+    if(hasArt('awning')) drawAwning(ctx, W, themeArtTop(W));
+    if(hasArt('linefloral')){
+      var r = Math.min(band.h * 0.3, band.w * 0.11);
+      drawLineFloralCluster(ctx, band.x + r * 0.5, band.y + band.h - r * 0.35, r, false);
+      drawLineFloralCluster(ctx, band.x + band.w - r * 0.5, band.y + band.h - r * 0.35, r, true);
+    }
+    if(hasArt('roses')){
+      var rr = u * 0.068;
+      drawRoseCluster(ctx, rr * 0.9, rr * 0.7, rr, 0);
+      drawRoseCluster(ctx, W - rr * 0.9, H - rr * 0.6, rr, Math.PI);
+    }
+    if(hasArt('pampas')){
+      var ph = Math.min(band.h * 0.85, band.w * 0.5);
+      drawPampas(ctx, band.x + band.w * 0.07, band.y + band.h, ph, -0.14);
+      drawPampas(ctx, band.x + band.w * 0.93, band.y + band.h, ph, -0.02);
+    }
+    var bb = band.y + band.h;
+    if(hasArt('teddy')){ var ts = Math.min(band.h * 1.05, band.w * 0.4); drawTeddy(ctx, band.x + ts * 0.4, bb - ts * 0.03, ts); }
+    if(hasArt('bunny')){ var bs = Math.min(band.h * 1.0, band.w * 0.4); drawBunny(ctx, band.x + band.w - bs * 0.4, bb - bs * 0.03, bs); }
+    ctx.restore();
+  }
+  function drawAwning(ctx, W, ah){
+    if(!ah) return;
+    var n = 8, sw = W / n, body = ah * 0.62, a = apal('awningA', '#d8b27c'), b = apal('awningB', '#fbf4e6');
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.28)'; ctx.shadowBlur = ah * 0.25; ctx.shadowOffsetY = ah * 0.08;
+    for(var i = 0; i < n; i++){
+      ctx.fillStyle = i % 2 ? b : a;
+      ctx.beginPath(); ctx.moveTo(i * sw, 0); ctx.lineTo((i + 1) * sw, 0); ctx.lineTo((i + 1) * sw, body);
+      ctx.arc(i * sw + sw / 2, body, sw / 2, 0, Math.PI, false); ctx.closePath(); ctx.fill();
+    }
+    ctx.shadowColor = 'transparent';
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(0, 0, W, ah * 0.1);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    for(i = 0; i < n; i++){ ctx.beginPath(); ctx.ellipse(i * sw + sw * 0.32, body * 0.55, sw * 0.08, body * 0.3, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  }
+  function drawTeddy(ctx, cx, by, S){
+    var u = S / 100, fur = apal('fur', '#b98552'), light = apal('furLight', '#e8c9a0'), dark = apal('furDark', '#5b3b22'), top = apal('sweater', '#24345e'), bow = apal('bow', '#d8b27c');
+    var shade = function(x, y, r, c){ var g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x, y, r * 1.1); g.addColorStop(0, mixHex(c, '#ffffff', 0.18)); g.addColorStop(1, mixHex(c, '#000000', 0.18)); return g; };
+    var ell = function(x, y, rx, ry, rot, fill){ ctx.fillStyle = fill; ctx.beginPath(); ctx.ellipse(cx + x * u, by + y * u, rx * u, ry * u, rot || 0, 0, Math.PI * 2); ctx.fill(); };
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.25)'; ctx.shadowBlur = 8 * u; ctx.shadowOffsetY = 3 * u;
+    ell(-17, -12, 14, 12, 0, shade(cx - 17 * u, by - 12 * u, 14 * u, fur)); ell(17, -12, 14, 12, 0, shade(cx + 17 * u, by - 12 * u, 14 * u, fur));
+    ctx.shadowColor = 'transparent';
+    ell(-17, -9, 8, 7, 0, light); ell(17, -9, 8, 7, 0, light);
+    ell(0, -36, 25, 25, 0, shade(cx, by - 36 * u, 25 * u, top));
+    ell(-25, -40, 8.5, 16, 0.55, shade(cx - 25 * u, by - 40 * u, 12 * u, top)); ell(25, -40, 8.5, 16, -0.55, shade(cx + 25 * u, by - 40 * u, 12 * u, top));
+    ell(-31, -30, 6.5, 6, 0, fur); ell(31, -30, 6.5, 6, 0, fur);
+    ctx.strokeStyle = mixHex(top, '#ffffff', 0.35); ctx.lineWidth = 2 * u;
+    for(var s = -1; s <= 1; s++){ ctx.beginPath(); ctx.moveTo(cx - 20 * u, by + (-30 + s * 7) * u); ctx.quadraticCurveTo(cx, by + (-26 + s * 7) * u, cx + 20 * u, by + (-30 + s * 7) * u); ctx.stroke(); }
+    ell(-17, -88, 8.5, 8.5, 0, shade(cx - 17 * u, by - 88 * u, 8 * u, fur)); ell(17, -88, 8.5, 8.5, 0, shade(cx + 17 * u, by - 88 * u, 8 * u, fur));
+    ell(-17, -87, 4.6, 4.6, 0, light); ell(17, -87, 4.6, 4.6, 0, light);
+    ell(0, -69, 23, 21, 0, shade(cx, by - 69 * u, 23 * u, fur));
+    ell(0, -62, 10.5, 8, 0, light);
+    ell(0, -66, 4.2, 3, 0, dark);
+    ctx.strokeStyle = dark; ctx.lineWidth = 1.6 * u; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx, by - 63 * u); ctx.lineTo(cx, by - 60 * u); ctx.quadraticCurveTo(cx - 3 * u, by - 57.5 * u, cx - 5 * u, by - 59 * u); ctx.moveTo(cx, by - 60 * u); ctx.quadraticCurveTo(cx + 3 * u, by - 57.5 * u, cx + 5 * u, by - 59 * u); ctx.stroke();
+    ell(-8.5, -73, 2.7, 3, 0, dark); ell(8.5, -73, 2.7, 3, 0, dark);
+    ell(-7.6, -74, 0.9, 0.9, 0, '#ffffff'); ell(9.4, -74, 0.9, 0.9, 0, '#ffffff');
+    ell(-14, -64, 4, 2.4, 0, 'rgba(230,120,110,0.25)'); ell(14, -64, 4, 2.4, 0, 'rgba(230,120,110,0.25)');
+    // bow tie
+    ctx.fillStyle = bow;
+    ctx.beginPath(); ctx.moveTo(cx, by - 52 * u); ctx.lineTo(cx - 9 * u, by - 57 * u); ctx.lineTo(cx - 9 * u, by - 47 * u); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx, by - 52 * u); ctx.lineTo(cx + 9 * u, by - 57 * u); ctx.lineTo(cx + 9 * u, by - 47 * u); ctx.closePath(); ctx.fill();
+    ell(0, -52, 2.6, 2.6, 0, mixHex(bow, '#000000', 0.2));
+    ctx.restore();
+  }
+  function drawBunny(ctx, cx, by, S){
+    var u = S / 100, fur = apal('bunny', '#f6cdd8'), inner = apal('bunnyInner', '#fbe4ea'), dark = '#6b4350', dress = apal('dress', '#ffffff');
+    var shade = function(x, y, r, c){ var g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x, y, r * 1.1); g.addColorStop(0, mixHex(c, '#ffffff', 0.3)); g.addColorStop(1, mixHex(c, '#000000', 0.1)); return g; };
+    var ell = function(x, y, rx, ry, rot, fill){ ctx.fillStyle = fill; ctx.beginPath(); ctx.ellipse(cx + x * u, by + y * u, rx * u, ry * u, rot || 0, 0, Math.PI * 2); ctx.fill(); };
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 8 * u; ctx.shadowOffsetY = 3 * u;
+    ell(-15, -10, 13, 10, 0, shade(cx - 15 * u, by - 10 * u, 13 * u, fur)); ell(15, -10, 13, 10, 0, shade(cx + 15 * u, by - 10 * u, 13 * u, fur));
+    ctx.shadowColor = 'transparent';
+    // dress
+    ctx.fillStyle = dress; ctx.beginPath(); ctx.moveTo(cx - 16 * u, by - 52 * u); ctx.lineTo(cx + 16 * u, by - 52 * u); ctx.lineTo(cx + 30 * u, by - 14 * u); ctx.quadraticCurveTo(cx, by - 8 * u, cx - 30 * u, by - 14 * u); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = mixHex(fur, '#c0607e', 0.4); ctx.lineWidth = 1.4 * u; ctx.stroke();
+    ctx.fillStyle = mixHex(fur, '#c0607e', 0.35);
+    for(var d = -2; d <= 2; d++){ ctx.beginPath(); ctx.arc(cx + d * 9 * u, by - 22 * u, 1.6 * u, 0, Math.PI * 2); ctx.fill(); }
+    ell(-21, -40, 6.5, 13, 0.5, fur); ell(21, -40, 6.5, 13, -0.5, fur);
+    // ears
+    ell(-10, -100, 7.5, 22, -0.18, shade(cx - 10 * u, by - 100 * u, 12 * u, fur)); ell(10, -100, 7.5, 22, 0.18, shade(cx + 10 * u, by - 100 * u, 12 * u, fur));
+    ell(-10, -99, 3.8, 15, -0.18, inner); ell(10, -99, 3.8, 15, 0.18, inner);
+    ell(0, -68, 21, 19, 0, shade(cx, by - 68 * u, 21 * u, fur));
+    ell(-8, -71, 2.6, 2.9, 0, dark); ell(8, -71, 2.6, 2.9, 0, dark);
+    ell(-7.2, -72, 0.9, 0.9, 0, '#ffffff'); ell(8.8, -72, 0.9, 0.9, 0, '#ffffff');
+    ell(0, -64, 2.6, 2, 0, '#d9788f');
+    ell(-12.5, -63, 4, 2.4, 0, 'rgba(235,110,140,0.3)'); ell(12.5, -63, 4, 2.4, 0, 'rgba(235,110,140,0.3)');
+    // bow on the ear
+    ctx.fillStyle = apal('bow', '#e889a6');
+    ctx.beginPath(); ctx.ellipse(cx + 14 * u, by - 84 * u, 6 * u, 3.5 * u, 0.5, 0, Math.PI * 2); ctx.ellipse(cx + 21 * u, by - 79 * u, 6 * u, 3.5 * u, 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  function drawLineFlower(ctx, x, y, r, rot, col, lw){
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+    ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for(var i = 0; i < 6; i++){
+      var a = i * Math.PI / 3;
+      ctx.save(); ctx.rotate(a);
+      ctx.beginPath(); ctx.moveTo(0, -r * 0.12);
+      ctx.bezierCurveTo(-r * 0.42, -r * 0.5, -r * 0.2, -r * 0.98, 0, -r * 0.9);
+      ctx.bezierCurveTo(r * 0.2, -r * 0.98, r * 0.42, -r * 0.5, 0, -r * 0.12); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, -r * 0.22); ctx.lineTo(0, -r * 0.55); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.13, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+  function drawLineLeaf(ctx, x0, y0, x1, y1, w, col, lw){
+    var mx = (x0 + x1) / 2, my = (y0 + y1) / 2, dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy), nx = -dy / L * w, ny = dx / L * w;
+    ctx.strokeStyle = col; ctx.lineWidth = lw;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(mx + nx, my + ny, x1, y1); ctx.quadraticCurveTo(mx - nx, my - ny, x0, y0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + dx * 0.8, y0 + dy * 0.8); ctx.stroke();
+  }
+  function drawLineFloralCluster(ctx, x, y, r, flip){
+    var col = apal('line', textColor), lw = Math.max(1.5, r * 0.035), f = flip ? -1 : 1;
+    ctx.save(); ctx.globalAlpha = 0.85; ctx.lineCap = 'round';
+    ctx.strokeStyle = col; ctx.lineWidth = lw;
+    ctx.beginPath(); ctx.moveTo(x, y + r * 0.4); ctx.quadraticCurveTo(x + f * r * 0.3, y - r * 0.6, x + f * r * 0.15, y - r * 1.3); ctx.stroke();
+    drawLineFlower(ctx, x + f * r * 0.15, y - r * 1.35, r * 0.62, 0.2 * f, col, lw);
+    drawLineFlower(ctx, x + f * r * 0.85, y - r * 0.35, r * 0.48, -0.3 * f, col, lw);
+    drawLineLeaf(ctx, x + f * r * 0.1, y - r * 0.5, x - f * r * 0.65, y - r * 0.95, r * 0.18, col, lw);
+    drawLineLeaf(ctx, x + f * r * 0.2, y - r * 0.15, x + f * r * 0.75, y + r * 0.3, r * 0.16, col, lw);
+    drawLineLeaf(ctx, x + f * r * 0.22, y - r * 0.85, x + f * r * 0.9, y - r * 1.2, r * 0.15, col, lw);
+    ctx.restore();
+  }
+  function drawMonoSprigs(ctx, cx, cy, rad){
+    var col = apal('line', textColor), lw = Math.max(1, rad * 0.025);
+    if(hasArt('roses')){
+      drawRose(ctx, cx - rad * 0.92, cy + rad * 0.62, rad * 0.32, 0.3);
+      drawRose(ctx, cx + rad * 0.95, cy - rad * 0.6, rad * 0.24, -0.4);
+      drawLeaf(ctx, cx - rad * 0.55, cy + rad * 0.95, rad * 0.3, 0.9); drawLeaf(ctx, cx - rad * 1.22, cy + rad * 0.3, rad * 0.26, -2.2);
+      drawLeaf(ctx, cx + rad * 0.7, cy - rad * 0.95, rad * 0.24, -1.2);
+    } else {
+      drawLineLeaf(ctx, cx - rad * 1.05, cy + rad * 0.3, cx - rad * 0.55, cy + rad * 1.0, rad * 0.12, col, lw);
+      drawLineLeaf(ctx, cx + rad * 1.05, cy - rad * 0.3, cx + rad * 0.55, cy - rad * 1.0, rad * 0.12, col, lw);
+    }
+  }
+  function drawLeaf(ctx, x, y, L, rot){
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+    var g = ctx.createLinearGradient(0, -L * 0.3, 0, L * 0.3); g.addColorStop(0, apal('leaf', '#9db58f')); g.addColorStop(1, mixHex(apal('leaf', '#9db58f'), '#3d5a3a', 0.4));
+    ctx.fillStyle = g; ctx.globalAlpha = 0.9;
+    ctx.beginPath(); ctx.moveTo(-L / 2, 0); ctx.quadraticCurveTo(0, -L * 0.36, L / 2, 0); ctx.quadraticCurveTo(0, L * 0.36, -L / 2, 0); ctx.fill();
+    ctx.globalAlpha = 0.35; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1, L * 0.02);
+    ctx.beginPath(); ctx.moveTo(-L * 0.42, 0); ctx.lineTo(L * 0.42, 0); ctx.stroke();
+    ctx.restore();
+  }
+  function drawRose(ctx, x, y, r, rot){
+    var c1 = apal('rose', '#f2a7b8'), c2 = mixHex(c1, '#b8405e', 0.45), c0 = mixHex(c1, '#ffffff', 0.55);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0);
+    var g = ctx.createRadialGradient(-r * 0.2, -r * 0.2, r * 0.1, 0, 0, r);
+    g.addColorStop(0, c0); g.addColorStop(0.7, c1); g.addColorStop(1, mixHex(c1, '#ffffff', 0.2));
+    ctx.globalAlpha = 0.95; ctx.fillStyle = g;
+    // outer petals
+    for(var i = 0; i < 6; i++){
+      var a = i * Math.PI / 3 + 0.3;
+      ctx.beginPath(); ctx.ellipse(Math.cos(a) * r * 0.42, Math.sin(a) * r * 0.42, r * 0.58, r * 0.42, a, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = c1; ctx.beginPath(); ctx.arc(0, 0, r * 0.62, 0, Math.PI * 2); ctx.fill();
+    // swirl
+    ctx.strokeStyle = c2; ctx.lineCap = 'round';
+    for(var k = 0; k < 4; k++){
+      ctx.globalAlpha = 0.55; ctx.lineWidth = Math.max(1, r * (0.07 - k * 0.012));
+      ctx.beginPath(); ctx.arc(r * 0.04 * k, -r * 0.03 * k, r * (0.5 - k * 0.11), 0.3 + k * 1.3, 0.3 + k * 1.3 + Math.PI * 1.2); ctx.stroke();
+    }
+    ctx.globalAlpha = 0.5; ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.ellipse(-r * 0.32, -r * 0.38, r * 0.16, r * 0.07, -0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  function drawRoseCluster(ctx, x, y, r, rot){
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+    drawLeaf(ctx, r * 1.25, r * 0.15, r * 0.9, 0.25); drawLeaf(ctx, r * 0.35, r * 1.15, r * 0.85, 1.35);
+    drawLeaf(ctx, r * 1.6, -r * 0.45, r * 0.7, -0.3); drawLeaf(ctx, -r * 0.5, r * 1.3, r * 0.6, 1.9);
+    drawRose(ctx, 0, 0, r, 0.2);
+    drawRose(ctx, r * 1.05, r * 0.75, r * 0.62, -0.5);
+    drawRose(ctx, -r * 0.25, r * 0.95, r * 0.45, 0.9);
+    ctx.fillStyle = apal('rose', '#f2a7b8'); ctx.globalAlpha = 0.6;
+    [[1.9, 0.2, 0.08], [1.5, 1.2, 0.06], [0.6, 1.8, 0.07], [2.1, -0.6, 0.05]].forEach(function(d){ ctx.beginPath(); ctx.arc(d[0] * r, d[1] * r, d[2] * r, 0, Math.PI * 2); ctx.fill(); });
+    ctx.restore();
+  }
+  function drawPampas(ctx, x, by, H, lean){
+    var col = mixHex(apal('pampas', '#d9c3a3'), '#8a6a45', 0.25);
+    ctx.save(); ctx.lineCap = 'round';
+    var dir = lean < -0.05 ? 1 : -1;     // plumes fan toward the middle
+    [[-0.12, 1, 0], [0.1, 0.82, 0.25], [0.28, 0.66, 0.5]].forEach(function(p, j){
+      var ang = lean + p[0] * dir, h = H * p[1], tipX = x + Math.sin(ang) * h, tipY = by - Math.cos(ang) * h;
+      ctx.strokeStyle = mixHex(col, '#8a6a45', 0.45); ctx.lineWidth = Math.max(1.5, H * 0.008);
+      ctx.beginPath(); ctx.moveTo(x, by); ctx.quadraticCurveTo(x + Math.sin(ang) * h * 0.5 + lean * h * 0.1, by - Math.cos(ang) * h * 0.55, tipX, tipY); ctx.stroke();
+      var rand = seededRand(77 + j);
+      for(var i = 0; i < 60; i++){
+        var t = 0.45 + rand() * 0.55, px = x + (tipX - x) * t, py = by + (tipY - by) * t;
+        var fl = H * (0.05 + 0.08 * Math.sin(Math.PI * (t - 0.45) / 0.55)), a = ang + (rand() < 0.5 ? -1 : 1) * (0.5 + rand() * 0.6);
+        ctx.strokeStyle = mixHex(col, '#ffffff', rand() * 0.4); ctx.globalAlpha = 0.55 + rand() * 0.35; ctx.lineWidth = Math.max(1, H * (0.004 + rand() * 0.006));
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.quadraticCurveTo(px + Math.sin(a) * fl * 0.6, py - Math.cos(a) * fl * 0.4, px + Math.sin(a) * fl, py - Math.cos(a) * fl); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    });
+    ctx.restore();
+  }
+
+  // ---- Landscape 4R layouts (event name in its own panel) ----
+  function landscapeCells(key, W, H){
+    var m = H * 0.035, g = H * 0.025, iw = W - 2 * m, ih = H - 2 * m;
+    if(key === 'land4'){
+      var topH = (ih - g) * 0.55, botH = ih - g - topH, bw = (iw - 2 * g) / 3, lw = (iw - g) * 0.55;
+      return { title: { x: m + lw + g, y: m, w: iw - lw - g, h: topH },
+        shots: [{ x: m, y: m, w: lw, h: topH }].concat([0, 1, 2].map(function(i){ return { x: m + i * (bw + g), y: m + topH + g, w: bw, h: botH }; })) };
+    }
+    var cw = (iw - g) / 2, chh = (ih - g) / 2;
+    return { title: { x: m, y: m, w: cw, h: chh },
+      shots: [{ x: m + cw + g, y: m, w: cw, h: chh }, { x: m, y: m + chh + g, w: cw, h: chh }, { x: m + cw + g, y: m + chh + g, w: cw, h: chh }] };
+  }
+  function composeLandscape(layoutKey, targetCanvas, shots){
+    var W = SHEET_H, H = SHEET_W;      // 1800 x 1200 (4R turned sideways)
+    targetCanvas.width = W; targetCanvas.height = H;
+    var ctx = targetCanvas.getContext('2d');
+    currentFrameColor = frameColorFor();
+    drawBackdrop(ctx, W, H);
+    var L = landscapeCells(layoutKey, W, H);
+    L.shots.forEach(function(c, i){
+      ctx.save();
+      ctx.shadowColor = 'rgba(40,30,20,0.25)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 5;
+      ctx.fillStyle = currentFrameColor; ctx.fillRect(c.x, c.y, c.w, c.h);
+      ctx.restore();
+      var pad = Math.max(6, Math.min(c.w, c.h) * 0.03);
+      if(shots[i]) drawImageCover(ctx, shots[i], c.x + pad, c.y + pad, c.w - 2 * pad, c.h - 2 * pad);
+    });
+    var t = L.title;
+    drawLabelBand(ctx, t.w, t.y, t.h, labelInput.value, t.x);
+    drawThemeArt(ctx, W, H, t);
+    if(typeof drawDecorLayer === 'function') drawDecorLayer(ctx, W, H);
+    return targetCanvas;
+  }
+
+  // ---- Setup controls (Event name section) ----
+  var titleStyleSelect = document.getElementById('titleStyleSelect');
+  var kickerInput = document.getElementById('kickerInput');
+  TITLE_STYLES.forEach(function(s){ var o = document.createElement('option'); o.value = s[0]; o.textContent = s[1]; titleStyleSelect.appendChild(o); });
+  function refreshTitleUI(){
+    titleStyleSelect.value = titleStyle;
+    kickerInput.value = kickerText;
+    var needsKick = titleStyle === 'wedding' || titleStyle === 'turns' || titleStyle === 'blocks' || titleStyle === 'bignum';
+    document.getElementById('kickerRow').style.display = needsKick ? '' : 'none';
+    kickerInput.placeholder = { wedding: 'e.g. THE WEDDING OF', turns: 'e.g. TURNS ONE', blocks: 'e.g. TURNS ONE', bignum: 'e.g. 18' }[titleStyle] || '';
+  }
+  titleStyleSelect.addEventListener('change', function(){ titleStyle = titleStyleSelect.value; refreshTitleUI(); redrawAll(); });
+  kickerInput.addEventListener('input', function(){ kickerText = kickerInput.value.slice(0, 40); redrawAll(); });
+  function validArt(a){ return Array.isArray(a) ? a.filter(function(k){ return ART_KEYS.indexOf(k) >= 0; }).slice(0, 6) : []; }
+  function validArtPal(p){
+    var out = {};
+    if(p && typeof p === 'object') Object.keys(p).slice(0, 20).forEach(function(k){
+      var v = p[k];
+      if(typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)) out[k] = v;
+      else if(Array.isArray(v)) out[k] = v.filter(function(c){ return typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c); }).slice(0, 6);
+    });
+    return out;
   }
 
   function renderCompositeToCanvas(layoutKey, targetCanvas){
@@ -4546,6 +5050,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Each paper size is printed at its real physical size via @page, at 300 dpi.
   const PAPER = {
     '2x6':    { name: '2\u00d76 strip', w: 50.8,  h: 152.4 },
+    '2.5x7.5':{ name: 'Keychain 2.5\u00d77.5', w: 63.5, h: 190.5 },
     '3.5x5':  { name: '3R',             w: 88.9,  h: 127 },
     '4x6':    { name: '4R (4\u00d76)',  w: 101.6, h: 152.4 },
     '5x7':    { name: '5R (5\u00d77)',  w: 127,   h: 177.8 },
@@ -4559,6 +5064,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const PRINT_DPI = 300;
   const printSection = document.getElementById('printSection');
   const printSizeRow = document.getElementById('printSizeRow');
+  const keychainRow = document.getElementById('keychainRow');
+  const keychainToggle = document.getElementById('keychainToggle');
   const printBtn = document.getElementById('printBtn');
   const printHint = document.getElementById('printHint');
   const printArea = document.getElementById('printArea');
@@ -4584,7 +5091,65 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Very narrow sheets (like 2x6) only suit the tall strip; the grid would print tiny.
   function sizeFitsLayout(key){
     const p = paperFor(key);
+    if(currentLayout === 'framesheet' && p.w / p.h < 0.45) return sheetStripItems().length > 0;
     return isStripLayout() || p.w / p.h >= 0.45;
+  }
+  // ---- Keychain strips at real size on bigger paper (A4, Letter, 8R…) ----
+  // Each strip frame prints exactly 2.5 x 7.5 in, as many per page as fit
+  // (upright side by side, or turned sideways and stacked), with thin cut lines.
+  const KEY_W_IN = 2.5, KEY_H_IN = 7.5, KEY_GAP_MM = 2, KEY_MARGIN_MM = 4;
+  let keychainOn = false;
+  try{ keychainOn = localStorage.getItem('pb_keychain_print') === '1'; }catch(e){}
+  function keychainFrames(){
+    if(currentLayout === 'framesheet') return sheetStripItems().map(it => frameById(it.f));
+    if(currentLayout === 'myframe' && isStripFrame(activeFrame())) return [activeFrame()];
+    return [];
+  }
+  // How many real-size keychain strips fit on this paper, and which way round.
+  function keychainFit(key){
+    const p = paperFor(key), mm = 25.4;
+    const kw = KEY_W_IN * mm, kh = KEY_H_IN * mm, g = KEY_GAP_MM, m = KEY_MARGIN_MM;
+    const count = (bw, bh) => ({ cols: Math.max(0, Math.floor((p.w - 2 * m + g) / (bw + g))), rows: Math.max(0, Math.floor((p.h - 2 * m + g) / (bh + g))) });
+    const up = count(kw, kh), side = count(kh, kw);
+    const nUp = up.cols * up.rows, nSide = side.cols * side.rows;
+    if(!nUp && !nSide) return null;
+    // Upright unless turning them sideways saves a page.
+    const n = Math.max(1, keychainFrames().length);
+    const pagesUp = nUp ? Math.ceil(n / nUp) : Infinity, pagesSide = nSide ? Math.ceil(n / nSide) : Infinity;
+    return pagesUp <= pagesSide ? { rotate: false, cols: up.cols, rows: up.rows, per: nUp } : { rotate: true, cols: side.cols, rows: side.rows, per: nSide };
+  }
+  function keychainMode(key){
+    return keychainOn && !!key && paperFor(key).w / paperFor(key).h >= 0.45 && keychainFrames().length > 0 && !!keychainFit(key);
+  }
+  function buildKeychainSheets(key){
+    const p = paperFor(key), fit = keychainFit(key), px = mm => Math.round(mm / 25.4 * PRINT_DPI);
+    const kw = px(KEY_W_IN * 25.4), kh = px(KEY_H_IN * 25.4), g = px(KEY_GAP_MM);
+    const bw = fit.rotate ? kh : kw, bh = fit.rotate ? kw : kh;
+    const W = px(p.w), H = px(p.h);
+    const ox = Math.round((W - (fit.cols * bw + (fit.cols - 1) * g)) / 2), oy = Math.round((H - (fit.rows * bh + (fit.rows - 1) * g)) / 2);
+    const frames = keychainFrames(), pages = [];
+    for(let i = 0; i < frames.length; i += fit.per){
+      const c = document.createElement('canvas'); c.width = W; c.height = H;
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H); ctx.imageSmoothingQuality = 'high';
+      frames.slice(i, i + fit.per).forEach((f, j) => {
+        const col = j % fit.cols, row = Math.floor(j / fit.cols);
+        const x = ox + col * (bw + g), y = oy + row * (bh + g);
+        const strip = composeSingleFrame(f, shotCanvases);
+        ctx.save();
+        if(fit.rotate){ ctx.translate(x + bw, y); ctx.rotate(Math.PI / 2); }
+        else ctx.translate(x, y);
+        drawFitted(ctx, strip, 0, 0, kw, kh);
+        ctx.restore();
+        ctx.strokeStyle = '#b5b5b5'; ctx.lineWidth = 2; ctx.strokeRect(x - 1, y - 1, bw + 2, bh + 2);   // cut line
+      });
+      pages.push(c);
+    }
+    return pages;
+  }
+  // Frames sheet on strip / keychain paper: every strip frame prints on its own page.
+  function stripPagesMode(key){
+    const p = paperFor(key);
+    return currentLayout === 'framesheet' && p.w / p.h < 0.45 && sheetStripItems().length > 0;
   }
   // Wider sheets get two strips side by side, to cut down the middle.
   function stripTwoUp(key){
@@ -4596,6 +5161,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const sizes = printSettings();
     printSection.classList.toggle('hidden', !sizes);
     if(!sizes){ printSize = null; return; }
+    const kcOffer = keychainFrames().length > 0 && sizes.some(k => paperFor(k).w / paperFor(k).h >= 0.45 && keychainFit(k));
+    keychainRow.classList.toggle('hidden', !kcOffer);
+    keychainToggle.checked = keychainOn;
     const usable = sizes.filter(sizeFitsLayout);
     if(!usable.includes(printSize)) printSize = usable[0] || null;
     printSizeRow.innerHTML = '';
@@ -4615,6 +5183,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       printHint.textContent = 'The allowed paper is too narrow for this layout \u2014 pick a strip layout in Setup to print.';
     } else if(!ready){
       printHint.textContent = 'Finish a photo session to print it.';
+    } else if(keychainMode(printSize)){
+      const n = keychainFrames().length, fit = keychainFit(printSize), pg = Math.ceil(n / fit.per);
+      printHint.textContent = n + ' keychain strip' + (n === 1 ? '' : 's') + ' at exactly 2.5\u00d77.5 in, up to ' + fit.per + ' per ' + paperFor(printSize).name + ' page' + (fit.rotate ? ' (turned sideways)' : '') + ' \u2014 ' + pg + ' page' + (pg === 1 ? '' : 's') + ', with cut lines. Print at 100% / actual size.';
+    } else if(keychainOn && keychainFrames().length && paperFor(printSize).w / paperFor(printSize).h >= 0.45 && !keychainFit(printSize)){
+      printHint.textContent = paperFor(printSize).name + ' is too small for real-size keychains, so it prints the whole layout. For keychains pick A4, Letter or 8R, or the keychain paper.';
+    } else if(stripPagesMode(printSize)){
+      const n = sheetStripItems().length;
+      printHint.textContent = 'Prints each strip frame on its own ' + paperFor(printSize).name + ' page (' + n + ' page' + (n === 1 ? '' : 's') + ').';
     } else if(stripTwoUp(printSize)){
       printHint.textContent = 'Prints two strips side by side \u2014 cut down the middle to share.';
     } else {
@@ -4644,8 +5220,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   function buildPrintCanvas(key){
     const paper = paperFor(key);
-    const src = document.createElement('canvas');
+    let src = document.createElement('canvas');
     renderCompositeToCanvas(currentLayout, src);
+    // A sideways (landscape) layout on portrait paper prints turned 90°.
+    if(src.width > src.height !== paper.w > paper.h){
+      const r = document.createElement('canvas'); r.width = src.height; r.height = src.width;
+      const rx = r.getContext('2d'); rx.translate(r.width, 0); rx.rotate(Math.PI / 2); rx.drawImage(src, 0, 0);
+      src = r;
+    }
     const c = document.createElement('canvas');
     c.width = Math.round(paper.w / 25.4 * PRINT_DPI);
     c.height = Math.round(paper.h / 25.4 * PRINT_DPI);
@@ -4663,26 +5245,44 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }
     return c;
   }
+  function buildStripPages(key){
+    const paper = paperFor(key);
+    return sheetStripItems().map(function(it){
+      const src = composeSingleFrame(frameById(it.f), shotCanvases);
+      const c = document.createElement('canvas');
+      c.width = Math.round(paper.w / 25.4 * PRINT_DPI);
+      c.height = Math.round(paper.h / 25.4 * PRINT_DPI);
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.imageSmoothingQuality = 'high';
+      drawFitted(ctx, src, 0, 0, c.width, c.height);
+      return c;
+    });
+  }
   async function printCurrentPhoto(auto){
     if(printing || !printSize || !(state === 'result' && shotCanvases.every(Boolean))) return;
     printing = true;
     refreshPrintUI();
     try{
       const paper = paperFor(printSize);
-      const c = buildPrintCanvas(printSize);
-      const blob = await new Promise(res => c.toBlob(res, 'image/png'));
-      const url = URL.createObjectURL(blob);
-      const img = new Image();
-      img.src = url;
-      await img.decode();
-      img.style.width = paper.w + 'mm';
-      img.style.height = paper.h + 'mm';
+      const pages = keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)];
+      const urls = [];
       printArea.innerHTML = '';
-      printArea.appendChild(img);
+      for(let i = 0; i < pages.length; i++){
+        const blob = await new Promise(res => pages[i].toBlob(res, 'image/png'));
+        const url = URL.createObjectURL(blob); urls.push(url);
+        const img = new Image();
+        img.src = url;
+        await img.decode();
+        img.style.width = paper.w + 'mm';
+        img.style.height = paper.h + 'mm';
+        if(i < pages.length - 1) img.style.breakAfter = 'page';
+        printArea.appendChild(img);
+      }
       printPageStyle.textContent = '@page { size: ' + paper.w + 'mm ' + paper.h + 'mm; margin: 0; }';
       window.print();
       // Silent (kiosk) printing returns right away; clean up a moment later.
-      setTimeout(() => { printArea.innerHTML = ''; URL.revokeObjectURL(url); }, 2000);
+      setTimeout(() => { printArea.innerHTML = ''; urls.forEach(u => URL.revokeObjectURL(u)); }, 2000);
       showToast((auto === true ? 'Auto-printing (' : 'Sent to the printer (') + paper.name + ').');
       armAutoPrintAfterFirst(auto === true);
     }catch(err){
@@ -4694,6 +5294,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }
   }
   printBtn.addEventListener('click', () => printCurrentPhoto(false));
+  keychainToggle.addEventListener('change', () => {
+    keychainOn = keychainToggle.checked;
+    try{ localStorage.setItem('pb_keychain_print', keychainOn ? '1' : '0'); }catch(e){}
+    refreshPrintUI();
+  });
 
   // ---- Auto-print (traditional booth only) ----
   // The laptop is plugged into the printer, so after the operator's first
@@ -5237,7 +5842,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     guestLayoutsEl.style.display = guestPickOn ? 'flex' : 'none';
     guestPickHint.style.display = guestPickOn ? 'block' : 'none';
     guestLayoutsEl.innerHTML = '';
-    layoutOrder().forEach(function(k){
+    layoutOrder().filter(function(k){ return LAYOUT_DEFS[k].kind !== 'frame' || (myFrames && myFrames.length); }).forEach(function(k){
       var lab = document.createElement('label');
       var cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = k;
       var isDef = k === setupLayout;
@@ -5389,7 +5994,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       accent: accent, overlay: overlay ? Object.assign({}, overlay) : null, logo: logo ? Object.assign({}, logo) : null,
       decor: decor.map(function(d){ return { src: d.src, x: Math.round(d.x * 1000) / 1000, y: Math.round(d.y * 1000) / 1000, s: Math.round(d.s * 1000) / 1000, r: Math.round(d.r || 0) }; }),
       myProps: myProps.slice(),
-      frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet
+      frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet,
+      titleStyle: titleStyle, kicker: kickerText, upper: titleUpper, art: themeArt.slice(), artPal: Object.assign({}, artPal)
     };
   }
   function selectFont(which, value){
@@ -5496,6 +6102,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         .map(function(d){ return { src: d.src, x: +d.x || 0.5, y: +d.y || 0.5, s: Math.max(0.02, Math.min(1, +d.s || 0.2)), r: +d.r || 0 }; }) : [];
       myProps = Array.isArray(s.myProps) ? s.myProps.filter(assetOk).slice(0, 60) : [];
       selDecor = -1;
+      titleStyle = TITLE_STYLES.some(function(x){ return x[0] === s.titleStyle; }) ? s.titleStyle : 'classic';
+      kickerText = typeof s.kicker === 'string' ? s.kicker.slice(0, 40) : '';
+      titleUpper = !!s.upper; themeArt = validArt(s.art); artPal = validArtPal(s.artPal);
+      refreshTitleUI();
       applyFramesSetup(s);
       buildLayoutPicker();
       ensureAssets(designAssetIds().concat(myProps)).then(function(){ refreshDecorUI(); refreshFrameUI(); redrawAll(); });
@@ -5693,7 +6303,40 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     { id: 'little-angel', name: 'Little Angel', cats: ['Christening'], tags: 'baptism dedication doves sky blue boy', preset: 'angel', frame: '#ffffff', text: '#2f5f8f', font: "'Parisienne', cursive", dateFont: "'Quicksand', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
     { id: 'christening-blush', name: 'Blush Florals', cats: ['Christening', 'Debut'], tags: 'baptism dedication pink girl flowers', preset: 'blush', elements: 'florals', color: '#f9e3e8', frame: '#ffffff', text: '#b05a74', font: "'Allura', cursive", dateFont: "'Quicksand', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
     { id: 'sage-laurel', name: 'Sage & Laurel', cats: ['Christening', 'Wedding'], tags: 'baptism dedication green neutral cross', preset: 'sage', frame: '#fbf8f1', text: '#2f4a32', font: "'Cormorant Garamond', serif", dateFont: "'Cormorant Garamond', serif", titleBg: true, titleBgColor: '#fbf8f1', outline: false, shadow: false },
-    { id: 'classic-cream', name: 'Classic Cream', cats: ['Wedding', 'Christening'], tags: 'simple neutral beige', preset: 'cream', frame: '#ffffff', text: '#5c4a3a', font: "'Cormorant Garamond', serif", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: true, outlineColor: '#ffffff', shadow: false }
+    { id: 'classic-cream', name: 'Classic Cream', cats: ['Wedding', 'Christening'], tags: 'simple neutral beige', preset: 'cream', frame: '#ffffff', text: '#5c4a3a', font: "'Cormorant Garamond', serif", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: true, outlineColor: '#ffffff', shadow: false },
+    // ---- Templates (title style + artwork + layout) ----
+    { id: 'teddy-awning', name: 'Teddy Bear Party', cats: ['Kids Party', 'Birthday'], tags: 'first birthday 1st one teddy bear awning navy boy', sample: 'Atlas', layout: 'strip',
+      preset: 'none', color: '#22345c', elements: 'none', frame: '#f4e6cc', text: '#f4e6cc', font: "'Cinzel', serif", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false,
+      titleStyle: 'blocks', kicker: 'Turns One', art: ['awning', 'teddy'],
+      artPal: { awningA: '#d8b27c', awningB: '#fbf4e6', fur: '#b98552', sweater: '#1b2a4d', bow: '#d8b27c', blocks: ['#d8b27c', '#f4e6cc', '#b98552', '#e9cfa3'], blockInk: '#22345c' } },
+    { id: 'carnival', name: 'Carnival Fun', cats: ['Kids Party', 'Birthday'], tags: 'circus red stripes awning colorful letter blocks', sample: 'Mia', layout: 'grid4',
+      preset: 'none', color: '#fff4e2', elements: 'confetti', frame: '#ffffff', text: '#c7372f', font: "'Fredoka', sans-serif", dateFont: "'Fredoka', sans-serif", titleBg: false, outline: false, shadow: false,
+      titleStyle: 'blocks', kicker: 'Turns 7', art: ['awning'],
+      artPal: { awningA: '#d8433a', awningB: '#fff8ee', blocks: ['#d8433a', '#f2b632', '#2f7fc1', '#3aa76d'] } },
+    { id: 'burgundy-florals', name: 'Burgundy Line Florals', cats: ['Wedding', 'Debut'], tags: 'maroon wine minimalist line art flowers elegant the wedding of', sample: 'Gabriel & Nicole', layout: 'grid4',
+      preset: 'none', color: '#5c1424', elements: 'none', frame: '#f3e6d0', text: '#f6ead8', font: "'Cinzel', serif", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: false, shadow: false,
+      titleStyle: 'wedding', kicker: 'The wedding of', upper: true, art: ['linefloral'], artPal: { line: '#f3e6d0' } },
+    { id: 'sage-florals', name: 'Sage Line Florals', cats: ['Wedding', 'Christening'], tags: 'green olive minimalist line art flowers garden', sample: 'Paolo & Bea', layout: 'strip4',
+      preset: 'none', color: '#7c8d72', elements: 'none', frame: '#f6f2e8', text: '#fbf8f0', font: "'Italianno', cursive", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: false, shadow: false,
+      titleStyle: 'wedding', kicker: 'Together with their families', art: ['linefloral'], artPal: { line: '#f6f2e8' } },
+    { id: 'ivory-monogram', name: 'Ivory Monogram', cats: ['Wedding'], tags: 'white minimal monogram initials watercolor roses', sample: 'Jerrold & Cassandra', layout: 'strip',
+      preset: 'none', color: '#fbf9f5', elements: 'none', frame: '#efe6d8', text: '#6b5642', font: "'Great Vibes', cursive", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: false, shadow: false,
+      titleStyle: 'monogram', art: ['roses'], artPal: { rose: '#f1b6c0', leaf: '#a9bf9c' } },
+    { id: 'blush-eighteen', name: 'Blush Roses 18', cats: ['Debut'], tags: 'eighteenth debutante pink roses big number landscape', sample: "Jenicka's", layout: 'land3',
+      preset: 'none', color: '#ffffff', elements: 'none', frame: '#f3c7d1', text: '#c86d8a', font: "'Great Vibes', cursive", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: false, shadow: false,
+      titleStyle: 'bignum', kicker: '18', art: ['roses'], artPal: { rose: '#f3a9bb', leaf: '#a9bf9c' } },
+    { id: 'gold-eighteen', name: 'Black & Gold 18', cats: ['Debut', 'Birthday'], tags: 'eighteenth debutante gold glam big number line flowers', sample: 'Sophia', layout: 'grid4',
+      preset: 'none', color: '#151515', elements: 'none', frame: '#d9bd7a', text: '#e6c983', font: "'Great Vibes', cursive", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false,
+      titleStyle: 'bignum', kicker: '18', art: ['linefloral'], artPal: { line: '#d9bd7a' } },
+    { id: 'pink-plush', name: 'Pink Plush Christening', cats: ['Christening', 'Kids Party'], tags: 'baptism baptismal baby girl pink bunny hearts landscape', sample: 'Xavi Caleista', layout: 'land4',
+      preset: 'none', color: '#f9e3ea', elements: 'hearts', frame: '#ffffff', text: '#d95f86', font: "'Fredoka', sans-serif", dateFont: "'Fredoka', sans-serif", titleBg: false, outline: true, outlineColor: '#ffffff', shadow: true,
+      titleStyle: 'turns', kicker: 'Baptismal', upper: true, art: ['bunny'], artPal: { bunny: '#f6cdd8', dress: '#ffffff', bow: '#e889a6' } },
+    { id: 'little-bear', name: 'Little Bear Christening', cats: ['Christening', 'Kids Party'], tags: 'baptism baby boy blue teddy bear', sample: 'Lucas', layout: 'strip4',
+      preset: 'none', color: '#dfeaf5', elements: 'clouds', frame: '#ffffff', text: '#3d5a80', font: "'Fredoka', sans-serif", dateFont: "'Quicksand', sans-serif", titleBg: false, outline: true, outlineColor: '#ffffff', shadow: false,
+      titleStyle: 'turns', kicker: 'Christening', art: ['teddy'], artPal: { fur: '#c8955f', sweater: '#9cc0e4', bow: '#3d5a80' } },
+    { id: 'boho-pampas', name: 'Boho Pampas', cats: ['Wedding', 'Debut', 'Birthday'], tags: 'beige neutral pampas grass rustic modern', sample: 'Kyla & Marco', layout: 'strip',
+      preset: 'none', color: '#efe5d8', elements: 'none', frame: '#ffffff', text: '#7a5c43', font: "'Allura', cursive", dateFont: "'Josefin Sans', sans-serif", titleBg: false, outline: false, shadow: false,
+      titleStyle: 'wedding', kicker: 'Forever starts today', art: ['pampas'], artPal: { pampas: '#d9c3a3' } }
   ];
   var themeCat = 'All';
   var themeCatsEl = document.getElementById('themeCats');
@@ -5703,26 +6346,41 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Runs fn() as if theme t were applied, then puts every setting back.
   function withThemeState(t, fn){
     var saved = [backdropPreset, backdropColor, elementsChoice, frameColorChoice, textColor, currentFont, currentDateFont,
-      titleBgEnabled, titleBgColor, useOutline, outlineColor, useShadow, labelInput.value, accent, overlay, logo, decor];
+      titleBgEnabled, titleBgColor, useOutline, outlineColor, useShadow, labelInput.value, accent, overlay, logo, decor,
+      titleStyle, kickerText, titleUpper, themeArt, artPal];
+    titleStyle = t.titleStyle || 'classic'; kickerText = t.kicker || ''; titleUpper = !!t.upper; themeArt = t.art || []; artPal = t.artPal || {};
     backdropPreset = t.preset; backdropColor = t.color || null; elementsChoice = t.elements || 'auto';
     accent = t.accent || 'gold'; overlay = null; logo = null; decor = [];
     frameColorChoice = t.frame || 'auto'; textColor = t.text; currentFont = t.font; currentDateFont = t.dateFont || t.font;
     titleBgEnabled = !!t.titleBg; titleBgColor = t.titleBgColor || '#ffffff';
     useOutline = !!t.outline; outlineColor = t.outlineColor || '#ffffff'; useShadow = !!t.shadow;
-    if(!labelInput.value.trim()) labelInput.value = 'Your Event';
+    if(!labelInput.value.trim()) labelInput.value = t.sample || 'Your Event';
     try{ return fn(); }
     finally{
       backdropPreset = saved[0]; backdropColor = saved[1]; elementsChoice = saved[2]; frameColorChoice = saved[3];
       textColor = saved[4]; currentFont = saved[5]; currentDateFont = saved[6]; titleBgEnabled = saved[7];
       titleBgColor = saved[8]; useOutline = saved[9]; outlineColor = saved[10]; useShadow = saved[11]; labelInput.value = saved[12];
       accent = saved[13]; overlay = saved[14]; logo = saved[15]; decor = saved[16];
+      titleStyle = saved[17]; kickerText = saved[18]; titleUpper = saved[19]; themeArt = saved[20]; artPal = saved[21];
     }
   }
   function drawThemeThumb(canvas, t){
     var big = document.createElement('canvas');
-    withThemeState(t, function(){ composeCanvas('hero', big, buildPlaceholderShots(260, 4)); });
+    var lk = t.layout && LAYOUT_DEFS[t.layout] ? t.layout : 'hero';
+    withThemeState(t, function(){ composeCanvas(lk, big, buildPlaceholderShots(260, shotsNeeded(lk))); });
+    var x;
+    if(big.width > big.height){
+      // Landscape templates sit centered on a portrait card like the others.
+      canvas.width = 240; canvas.height = 360;
+      x = canvas.getContext('2d'); x.imageSmoothingQuality = 'high';
+      x.fillStyle = '#efe9df'; x.fillRect(0, 0, 240, 360);
+      var h = Math.round(240 * big.height / big.width);
+      x.shadowColor = 'rgba(0,0,0,0.2)'; x.shadowBlur = 8; x.shadowOffsetY = 2;
+      x.drawImage(big, 0, Math.round((360 - h) / 2), 240, h);
+      return;
+    }
     canvas.width = 240; canvas.height = Math.round(240 * big.height / big.width);
-    var x = canvas.getContext('2d'); x.imageSmoothingQuality = 'high';
+    x = canvas.getContext('2d'); x.imageSmoothingQuality = 'high';
     x.drawImage(big, 0, 0, canvas.width, canvas.height);
   }
   function buildThemeCats(){
@@ -5749,7 +6407,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function buildThemeGrid(){
     var q = (themeSearchEl.value || '').trim().toLowerCase();
     var mine = myThemes.map(function(t){ return Object.assign({ cats: ['My themes'], tags: 'mine saved custom' }, t); });
-    var list = mine.concat(THEMES).filter(function(t){
+    // Full templates (title style + artwork) first, then the classic themes.
+    var list = mine.concat(THEMES.filter(function(t){ return t.titleStyle; }), THEMES.filter(function(t){ return !t.titleStyle; })).filter(function(t){
       if(themeCat !== 'All' && t.cats.indexOf(themeCat) < 0) return false;
       if(!q) return true;
       return (t.name + ' ' + t.cats.join(' ') + ' ' + t.tags).toLowerCase().indexOf(q) >= 0;
@@ -5797,6 +6456,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     useOutline = !!t.outline; outlineToggle.checked = useOutline;
     outlineColor = t.outlineColor || '#ffffff'; outlineColorSelect.value = outlineColor;
     useShadow = !!t.shadow; shadowToggle.checked = useShadow;
+    titleStyle = t.titleStyle || 'classic'; kickerText = t.kicker || ''; titleUpper = !!t.upper;
+    themeArt = (t.art || []).slice(); artPal = Object.assign({}, t.artPal || {});
+    refreshTitleUI();
+    if(t.layout && LAYOUT_DEFS[t.layout] && t.layout !== currentLayout && state !== 'capturing'){
+      setupLayout = t.layout; setLayout(t.layout);
+      if(typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
+    }
     applyLabelInputFont();
     setActivePresetBtn();
     updateBandPositionVisibility();
@@ -6242,7 +6908,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // ---- My themes (save the current design and reuse it) ----
   var DESIGN_KEYS = ['backdropPreset', 'backdropColor', 'elementsChoice', 'accent', 'frameColorChoice', 'photoPlacement', 'cropFocus',
     'textColor', 'font', 'dateFont', 'titleSize', 'titleBg', 'titleBgColor', 'outline', 'outlineColor', 'shadow',
-    'filter', 'softSkin', 'overlay', 'logo', 'decor', 'myProps'];
+    'filter', 'softSkin', 'overlay', 'logo', 'decor', 'myProps', 'titleStyle', 'kicker', 'upper', 'art', 'artPal'];
   function myThemesKey(){ var pb = window.__PB || {}; return 'pb_mythemes:' + (pb.folderPrefix || pb.folderKey || 'local'); }
   async function loadMyThemes(){
     try{ myThemes = JSON.parse(localStorage.getItem(myThemesKey()) || '[]') || []; }catch(e){ myThemes = []; }
@@ -6329,6 +6995,27 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     { id: 'four',                name: '4 quarters',          cells: [[0, 0, .5, .5], [.5, 0, .5, .5], [0, .5, .5, .5], [.5, .5, .5, .5]] },
     { id: 'four-strips',         name: '4 strips',            cells: [[0, 0, .25, 1], [.25, 0, .25, 1], [.5, 0, .25, 1], [.75, 0, .25, 1]] }
   ];
+  // How a strip frame fits a 2.5 x 7.5 in keychain (and a 2 x 6 strip): both are 1:3.
+  function frameShapeLabel(f){
+    var r = f.w / f.h;
+    if(r >= 0.45) return f.w > f.h ? 'landscape' : 'portrait';
+    var off = Math.abs(r - 1 / 3) / (1 / 3);
+    if(off <= 0.02) return 'strip · <span style="color:#1e8449;font-weight:700;">fits 2.5×7.5 keychain ✓</span>';
+    if(off <= 0.08) return 'strip · <span style="color:#b9770e;font-weight:700;">keychain: edges trimmed a little</span>';
+    return 'strip · <span style="color:#c0392b;font-weight:700;">not keychain shape (needs 1:3)</span>';
+  }
+  function isStripFrame(f){ return f && f.w / f.h < 0.45; }
+  // One frame on its own canvas (for keychain prints): long side 2250 px = 7.5 in at 300 dpi.
+  function composeSingleFrame(f, shots){
+    var k = 2250 / Math.max(f.w, f.h), c = document.createElement('canvas');
+    c.width = Math.round(f.w * k); c.height = Math.round(f.h * k);
+    var x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height);
+    drawFrameInto(x, f, 0, 0, c.width, c.height, shots);
+    return c;
+  }
+  // The strips on the sheet, one per keychain (duplicates count: two copies = two keychains).
+  function sheetStripItems(){ return liveSheetItems().filter(function(it){ return isStripFrame(frameById(it.f)); }); }
+
   function frameById(id){ var a = myFrames || []; for(var i = 0; i < a.length; i++) if(a[i].id === id) return a[i]; return null; }
   function activeFrame(){ return frameById(activeFrameId) || (myFrames && myFrames[0]) || null; }
   function liveSheetItems(){ return (sheet && sheet.items || []).filter(function(it){ return frameById(it.f); }); }
@@ -6552,13 +7239,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var th = document.createElement('img'); th.className = 'frame-thumb'; th.alt = '';
       if(ASSETS[f.id]) th.src = ASSETS[f.id].url;
       var info = document.createElement('span'); info.className = 'frame-info';
-      info.innerHTML = '<b>' + f.spots.length + ' photo spot' + (f.spots.length === 1 ? '' : 's') + '</b><br>' + (f.w / f.h < 0.45 ? 'strip' : f.w > f.h ? 'landscape' : 'portrait');
+      info.innerHTML = '<b>' + f.spots.length + ' photo spot' + (f.spots.length === 1 ? '' : 's') + '</b><br>' + frameShapeLabel(f);
       var use = document.createElement('button'); use.type = 'button'; use.className = 'action-btn mini'; use.textContent = 'Use';
       use.title = 'Use this frame as the layout';
       use.addEventListener('click', function(){ activeFrameId = f.id; spotEdit = null; setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); });
       var ed = document.createElement('button'); ed.type = 'button'; ed.className = 'action-btn mini'; ed.textContent = 'Fix spots';
       ed.addEventListener('click', function(){ activeFrameId = f.id; spotEdit = { f: f.id, sel: -1 }; setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); showToast('Drag a box to move it, or its corner to resize. Changes save by themselves.'); });
-      var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'remove-link'; rm.textContent = 'Remove';
+      var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'remove-link'; rm.textContent = 'Remove'; rm.style.display = 'inline'; rm.style.margin = '0';
       rm.addEventListener('click', function(){
         if(!confirm('Remove this frame?')) return;
         myFrames = myFrames.filter(function(x){ return x.id !== f.id; });
@@ -6842,6 +7529,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   updateBandPositionVisibility();
   applyLabelInputFont();
   buildLayoutPicker();
+  refreshTitleUI();
   updateReadySub();
   refreshTraditionalUI();
   refreshStartScreen();

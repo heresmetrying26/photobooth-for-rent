@@ -193,6 +193,20 @@ filter; **Preview with my camera** uses one frame from the camera instead (never
   + bottom, Tall + 2, Tall + 1 + 2 strips, 3 strips, 4 quarters, 4 strips), then tap a frame in the
   preview to drag it, resize it, swap it for another frame, turn it 90° or duplicate it. The guest
   takes as many shots as the biggest frame needs; smaller frames use the first shots.
+- **Keychain prints (2.5×7.5 in)**: allow the **2.5×7.5 in keychain** paper in Admin → Print
+  settings. Design strip frames at **1:3** (e.g. 750 × 2250 px); the frame list shows "fits 2.5×7.5
+  keychain ✓". Printing a frames sheet on keychain (or 2×6) paper prints **each strip frame on its
+  own page**, copies included (two copies = two keychains); the 4R size still prints the whole sheet.
+  On bigger paper (A4, Letter, 8R…) tick **Keychain strips at real size** in the Print box: every
+  strip prints exactly 2.5×7.5 in, as many per page as fit (3 upright on A4/Letter, or 4 sideways
+  when that saves a page), with thin cut lines. Print at 100% / "actual size", not "fit to page".
+- **Templates** (shown first in the theme gallery): Teddy Bear Party, Carnival Fun, Burgundy Line
+  Florals, Sage Line Florals, Ivory Monogram, Blush Roses 18, Black & Gold 18, Pink Plush
+  Christening, Little Bear Christening, Boho Pampas. A template also sets the layout, a **title
+  style** (Event name → Title style: small line above "The wedding of", small line below "Turns
+  one", letter blocks, monogram, big number "18") with its **small line**, and original vector
+  artwork (awning, teddy bear, bunny, line florals, roses, pampas). Two landscape 4R layouts
+  (**Landscape 3 / Landscape 4**) put the event name in its own panel; they print turned on 4R.
 - **Stickers / props**: 19 built-in (hearts, stars, grad cap, crown, speech bubbles…) plus the
   renter's own PNGs. Tap to add, drag on the preview to place, then size / turn / duplicate /
   bring to front / remove. Up to 30 on one layout.

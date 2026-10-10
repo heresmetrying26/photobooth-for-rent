@@ -233,7 +233,7 @@ export const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/
 // ---------- printing ----------
 // Paper sizes the admin can allow per rental. Keys are stored in license data;
 // the booth has its own table with the physical dimensions.
-export const PAPER_SIZES = ['2x6', '3.5x5', '4x6', '5x7', '6x8', '8x10', 'A6', 'A5', 'A4', 'Letter'];
+export const PAPER_SIZES = ['2x6', '2.5x7.5', '3.5x5', '4x6', '5x7', '6x8', '8x10', 'A6', 'A5', 'A4', 'Letter'];
 // Custom sizes are stored as "<width>x<height><unit>", e.g. "4x4in" or "100x148mm".
 const CUSTOM_RE = /^(\d{1,3}(?:\.\d{1,2})?)x(\d{1,3}(?:\.\d{1,2})?)(in|mm)$/;
 export function customPaperOk(key) {

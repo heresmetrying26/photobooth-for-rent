@@ -163,7 +163,7 @@ folders with the same name.
   and My Events), so no outside service sees the folder links and QRs work on weak internet.
 
 ## Layouts, countdown and date
-- **10 layouts** (Setup → 1 · Layout & timer): Classic strip (3), Strip 4, Polaroid 4, Grid 4,
+- **10 layouts** (Setup → 2 · Layout & timer): Classic strip (3), Strip 4, Polaroid 4, Grid 4,
   Hero 1+3, Solo, Duo, Trio, Feature 1+2, Film 6. Strips print two side by side on 4R; every
   other layout is built as an exact 4R (4×6) sheet. New sheet layouts are one line each in
   `SHEET_ROWS` + `LAYOUT_DEFS` inside `protected/booth.html`.
@@ -172,6 +172,38 @@ folders with the same name.
   between shots.
 - **Date**: tap the calendar icon next to the event name to add today's date; tap the date to
   pick another day; Remove (or the icon again) takes it off. Works on iPad and Android.
+
+## Design: themes, saved setup, frame, logo and stickers
+Setup is in 7 steps: 1 Theme · 2 Layout & timer · 3 Backdrop · 4 Event name · 5 Frame, logo &
+stickers · 6 Effects & welcome · 7 Google Drive.
+
+- **Themes** (20 originals) by category: Wedding, Birthday, Debut, Kids Party, Graduation,
+  Christening, Christmas, New Year, Corporate. A theme only fills in the settings, so everything
+  can still be changed afterwards. Backdrop → **Pattern color** switches the gold of the
+  patterns to silver, rose gold, champagne, white or black.
+- **Frame overlay**: a transparent PNG drawn on top of the whole layout (the booth shows the best
+  pixel size for the chosen layout). **Logo**: PNG/JPG in a corner or centre, adjustable size.
+- **Stickers / props**: 19 built-in (hearts, stars, grad cap, crown, speech bubbles…) plus the
+  renter's own PNGs. Tap to add, drag on the preview to place, then size / turn / duplicate /
+  bring to front / remove. Up to 30 on one layout.
+- **My themes**: "★ Save my current design as a theme" keeps the whole design (frame, logo,
+  stickers included) under the customer's code; every device on that code sees it.
+- **Saved setup**: the design is saved to the server per booking (per event for lifetime codes)
+  and comes back after a refresh, a restart, or on another device. A bonus code uses its
+  booking's design. Trials keep it on the device only. Setup → **Reset setup** starts over.
+- **Starting theme** (Admin): a booking can open with a chosen theme (e.g. Graduation) until the
+  renter saves their own design.
+- **Guests' screen**: optional welcome card, layout choice each session, review after each shot,
+  filters, and an animated GIF (uploaded to Drive as `N_gif.gif` next to the photo, after it).
+- Uploaded images are kept in the `setups` Blobs store; nothing new to set up.
+
+## Admin with many codes
+The code list reads one small index (in the `meta` store) instead of every code, so it stays
+fast with thousands of bookings: search (client, Drive folder or code, including a bonus code),
+filters with counts, sorting, 25/50/100 per page, rows that open for the full details and
+actions, bulk disable / restore / delete (up to 200), **Export CSV** of the current view, and
+**Rebuild index** (only needed if the list ever looks out of date). The index builds itself the
+first time Admin opens after this update.
 
 ## Traditional booth (laptop + guest screen)
 Admin turns it on per rental code (**Make traditional**, or tick it when generating codes); the

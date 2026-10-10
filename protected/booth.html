@@ -696,11 +696,80 @@
   .guest-status.on i{background:#1e8449;}
   .switch-row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; font-size:13.5px; font-weight:700; cursor:pointer;}
   .switch-row input{width:20px; height:20px; accent-color:var(--blue-deep); cursor:pointer;}
+
+  /* ---- Saved setup ---- */
+  .setup-next-wrap{flex-direction:column; align-items:center; gap:4px;}
+  .setup-save-note{margin:6px 0 0; font-size:12px; font-weight:600; color:var(--ink-dim); min-height:16px; text-align:center;}
+  .setup-save-note.ok{color:#1e8449;} .setup-save-note.warn{color:#b9770e;}
+
+  /* ---- Themes ---- */
+  .theme-tools{margin-bottom:10px;}
+  .theme-cats{display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:10px; scrollbar-width:thin;}
+  .theme-cat{flex:none; padding:7px 12px; border-radius:999px; border:1.5px solid var(--line); background:#fff; color:var(--ink);
+    font:700 12.5px 'Manrope',sans-serif; cursor:pointer; white-space:nowrap;}
+  .theme-cat.active{background:var(--ink); border-color:var(--ink); color:#fff;}
+  .theme-grid{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px;}
+  .theme-card{display:flex; flex-direction:column; gap:6px; padding:6px; border-radius:12px; border:1.5px solid var(--line); background:#fff; cursor:pointer; text-align:left; font:inherit;}
+  .theme-card canvas{width:100%; aspect-ratio:2/3; border-radius:8px; display:block; background:var(--panel-2);}
+  .theme-card .tn{font-size:12px; font-weight:700; color:var(--ink); line-height:1.25;}
+  .theme-card .tc{font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-dim);}
+  .theme-card.active{border-color:#C93D27; box-shadow:0 0 0 2px #C93D27 inset;}
+  .theme-empty{grid-column:1/-1; padding:16px; text-align:center; color:var(--ink-dim); font-size:13px;}
+  @media (max-width:420px){ .theme-grid{grid-template-columns:repeat(2, minmax(0,1fr));} }
+
+  /* ---- Guests choose layout ---- */
+  .guest-layouts{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .guest-layouts label{display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; border:1.5px solid var(--line);
+    background:#fff; font-size:12.5px; font-weight:700; cursor:pointer;}
+  .guest-layouts label:has(input:checked){border-color:var(--ink); background:var(--panel-2);}
+  .guest-layouts input:disabled + span{opacity:.75;}
+
+  /* ---- Filters ---- */
+  #filterChips{grid-template-columns:repeat(5, minmax(0,1fr));}
+  #filterChips .chip{font-size:13px;}
+
+  /* ---- Welcome screen, photo review and layout picker (over the camera) ---- */
+  .welcome-overlay, .pick-overlay{position:absolute; inset:0; z-index:6; display:none; cursor:pointer;}
+  .welcome-overlay.on, .pick-overlay.on{display:block;}
+  .welcome-overlay img{width:100%; height:100%; object-fit:cover; display:block;}
+  .shot-review{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:3; display:none;}
+  .shot-review.on{display:block;}
+  .pick-overlay{cursor:default; background:rgba(20,18,22,.78); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); padding:4%;
+    display:none; flex-direction:column; align-items:center; justify-content:center; gap:3%;}
+  .pick-overlay.on{display:flex;}
+  .pick-title{margin:0; color:#fff; font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:clamp(20px,4.2vw,34px); text-align:center;}
+  .pick-grid{display:flex; flex-wrap:wrap; justify-content:center; gap:3%; width:100%;}
+  .pick-btn{flex:0 1 28%; min-width:110px; display:flex; flex-direction:column; align-items:center; gap:8px; padding:10px; border-radius:16px;
+    border:3px solid transparent; background:rgba(255,255,255,.1); color:#fff; font:700 clamp(12px,1.8vw,16px) 'Manrope',sans-serif; cursor:pointer;}
+  .pick-btn img{width:100%; border-radius:8px; background:#fff; display:block; box-shadow:0 8px 20px rgba(0,0,0,.25);}
+  .pick-btn.sel, .pick-btn:focus-visible{border-color:#C93D27; background:rgba(255,255,255,.18); outline:none;}
+
+  /* ---- Frame, logo, stickers, pattern color, my themes ---- */
+  .accent-row{display:flex; flex-wrap:wrap; gap:6px;}
+  .accent-chip{display:inline-flex; align-items:center; gap:6px; padding:6px 10px 6px 6px; border-radius:999px; border:1.5px solid var(--line); background:#fff;
+    font:700 12.5px 'Manrope',sans-serif; color:var(--ink); cursor:pointer;}
+  .accent-chip i{width:18px; height:18px; border-radius:50%; border:1px solid rgba(0,0,0,.15); display:block;}
+  .accent-chip.active{border-color:var(--ink); background:var(--panel-2);}
+  .prop-tray{display:grid; grid-template-columns:repeat(auto-fill, minmax(54px, 1fr)); gap:6px;}
+  .prop-btn{position:relative; aspect-ratio:1/1; border-radius:10px; border:1.5px solid var(--line); background:#fff; padding:4px; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .prop-btn canvas, .prop-btn img{width:100%; height:100%; object-fit:contain; display:block;}
+  .prop-btn.mine{border-style:dashed;}
+  .prop-x{position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%; background:#1C1A1E; color:#fff; font:800 12px/18px 'Manrope',sans-serif; text-align:center;}
+  .decor-sel{margin:10px 0 4px; padding:10px 12px; border-radius:12px; background:var(--panel-2); border:1px solid var(--line);}
+  .decor-btns{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .decor-btns .action-btn{width:auto; padding:8px 12px; font-size:13px;}
+  .theme-card{position:relative;}
+  .theme-card img{width:100%; aspect-ratio:2/3; object-fit:cover; border-radius:8px; display:block; background:var(--panel-2);}
+  .theme-del{position:absolute; top:-7px; right:-7px; width:22px; height:22px; border-radius:50%; background:#1C1A1E; color:#fff; font:800 14px/22px 'Manrope',sans-serif; text-align:center;}
+  #saveThemeBtn{width:100%;}
 </style>
 <script>/* qrcode-generator 1.4.4 (MIT) — QR codes are made on this device, no outside service. */
 // Copyright (c) 2009 Kazuhiko Arase
 // Licensed under the MIT license:
 var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],f={},c=function(t,r){o=function(t){for(var r=new Array(t),e=0;e<t;e+=1){r[e]=new Array(t);for(var n=0;n<t;n+=1)r[e][n]=null}return r}(i=4*e+17),l(0,0),l(i-7,0),l(0,i-7),s(),h(),d(t,r),e>=7&&v(t),null==a&&(a=p(e,n,u)),w(a,r)},l=function(t,r){for(var e=-1;e<=7;e+=1)if(!(t+e<=-1||i<=t+e))for(var n=-1;n<=7;n+=1)r+n<=-1||i<=r+n||(o[t+e][r+n]=0<=e&&e<=6&&(0==n||6==n)||0<=n&&n<=6&&(0==e||6==e)||2<=e&&e<=4&&2<=n&&n<=4)},h=function(){for(var t=8;t<i-8;t+=1)null==o[t][6]&&(o[t][6]=t%2==0);for(var r=8;r<i-8;r+=1)null==o[6][r]&&(o[6][r]=r%2==0)},s=function(){for(var t=B.getPatternPosition(e),r=0;r<t.length;r+=1)for(var n=0;n<t.length;n+=1){var i=t[r],a=t[n];if(null==o[i][a])for(var u=-2;u<=2;u+=1)for(var f=-2;f<=2;f+=1)o[i+u][a+f]=-2==u||2==u||-2==f||2==f||0==u&&0==f}},v=function(t){for(var r=B.getBCHTypeNumber(e),n=0;n<18;n+=1){var a=!t&&1==(r>>n&1);o[Math.floor(n/3)][n%3+i-8-3]=a}for(n=0;n<18;n+=1){a=!t&&1==(r>>n&1);o[n%3+i-8-3][Math.floor(n/3)]=a}},d=function(t,r){for(var e=n<<3|r,a=B.getBCHTypeInfo(e),u=0;u<15;u+=1){var f=!t&&1==(a>>u&1);u<6?o[u][8]=f:u<8?o[u+1][8]=f:o[i-15+u][8]=f}for(u=0;u<15;u+=1){f=!t&&1==(a>>u&1);u<8?o[8][i-u-1]=f:u<9?o[8][15-u-1+1]=f:o[8][15-u-1]=f}o[i-8][8]=!t},w=function(t,r){for(var e=-1,n=i-1,a=7,u=0,f=B.getMaskFunction(r),c=i-1;c>0;c-=2)for(6==c&&(c-=1);;){for(var g=0;g<2;g+=1)if(null==o[n][c-g]){var l=!1;u<t.length&&(l=1==(t[u]>>>a&1)),f(n,c-g)&&(l=!l),o[n][c-g]=l,-1==(a-=1)&&(u+=1,a=7)}if((n+=e)<0||i<=n){n-=e,e=-e;break}}},p=function(t,r,e){for(var n=A.getRSBlocks(t,r),o=b(),i=0;i<e.length;i+=1){var a=e[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var u=0;for(i=0;i<n.length;i+=1)u+=n[i].dataCount;if(o.getLengthInBits()>8*u)throw"code length overflow. ("+o.getLengthInBits()+">"+8*u+")";for(o.getLengthInBits()+4<=8*u&&o.put(0,4);o.getLengthInBits()%8!=0;)o.putBit(!1);for(;!(o.getLengthInBits()>=8*u||(o.put(236,8),o.getLengthInBits()>=8*u));)o.put(17,8);return function(t,r){for(var e=0,n=0,o=0,i=new Array(r.length),a=new Array(r.length),u=0;u<r.length;u+=1){var f=r[u].dataCount,c=r[u].totalCount-f;n=Math.max(n,f),o=Math.max(o,c),i[u]=new Array(f);for(var g=0;g<i[u].length;g+=1)i[u][g]=255&t.getBuffer()[g+e];e+=f;var l=B.getErrorCorrectPolynomial(c),h=k(i[u],l.getLength()-1).mod(l);for(a[u]=new Array(l.getLength()-1),g=0;g<a[u].length;g+=1){var s=g+h.getLength()-a[u].length;a[u][g]=s>=0?h.getAt(s):0}}var v=0;for(g=0;g<r.length;g+=1)v+=r[g].totalCount;var d=new Array(v),w=0;for(g=0;g<n;g+=1)for(u=0;u<r.length;u+=1)g<i[u].length&&(d[w]=i[u][g],w+=1);for(g=0;g<o;g+=1)for(u=0;u<r.length;u+=1)g<a[u].length&&(d[w]=a[u][g],w+=1);return d}(o,n)};f.addData=function(t,r){var e=null;switch(r=r||"Byte"){case"Numeric":e=M(t);break;case"Alphanumeric":e=x(t);break;case"Byte":e=m(t);break;case"Kanji":e=L(t);break;default:throw"mode:"+r}u.push(e),a=null},f.isDark=function(t,r){if(t<0||i<=t||r<0||i<=r)throw t+","+r;return o[t][r]},f.getModuleCount=function(){return i},f.make=function(){if(e<1){for(var t=1;t<40;t++){for(var r=A.getRSBlocks(t,n),o=b(),i=0;i<u.length;i++){var a=u[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var g=0;for(i=0;i<r.length;i++)g+=r[i].dataCount;if(o.getLengthInBits()<=8*g)break}e=t}c(!1,function(){for(var t=0,r=0,e=0;e<8;e+=1){c(!0,e);var n=B.getLostPoint(f);(0==e||t>n)&&(t=n,r=e)}return r}())},f.createTableTag=function(t,r){t=t||2;var e="";e+='<table style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: "+(r=void 0===r?4*t:r)+"px;",e+='">',e+="<tbody>";for(var n=0;n<f.getModuleCount();n+=1){e+="<tr>";for(var o=0;o<f.getModuleCount();o+=1)e+='<td style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: 0px;",e+=" width: "+t+"px;",e+=" height: "+t+"px;",e+=" background-color: ",e+=f.isDark(n,o)?"#000000":"#ffffff",e+=";",e+='"/>';e+="</tr>"}return e+="</tbody>",e+="</table>"},f.createSvgTag=function(t,r,e,n){var o={};"object"==typeof arguments[0]&&(t=(o=arguments[0]).cellSize,r=o.margin,e=o.alt,n=o.title),t=t||2,r=void 0===r?4*t:r,(e="string"==typeof e?{text:e}:e||{}).text=e.text||null,e.id=e.text?e.id||"qrcode-description":null,(n="string"==typeof n?{text:n}:n||{}).text=n.text||null,n.id=n.text?n.id||"qrcode-title":null;var i,a,u,c,g=f.getModuleCount()*t+2*r,l="";for(c="l"+t+",0 0,"+t+" -"+t+",0 0,-"+t+"z ",l+='<svg version="1.1" xmlns="http://www.w3.org/2000/svg"',l+=o.scalable?"":' width="'+g+'px" height="'+g+'px"',l+=' viewBox="0 0 '+g+" "+g+'" ',l+=' preserveAspectRatio="xMinYMin meet"',l+=n.text||e.text?' role="img" aria-labelledby="'+y([n.id,e.id].join(" ").trim())+'"':"",l+=">",l+=n.text?'<title id="'+y(n.id)+'">'+y(n.text)+"</title>":"",l+=e.text?'<description id="'+y(e.id)+'">'+y(e.text)+"</description>":"",l+='<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>',l+='<path d="',a=0;a<f.getModuleCount();a+=1)for(u=a*t+r,i=0;i<f.getModuleCount();i+=1)f.isDark(a,i)&&(l+="M"+(i*t+r)+","+u+c);return l+='" stroke="transparent" fill="black"/>',l+="</svg>"},f.createDataURL=function(t,r){t=t||2,r=void 0===r?4*t:r;var e=f.getModuleCount()*t+2*r,n=r,o=e-r;return I(e,e,(function(r,e){if(n<=r&&r<o&&n<=e&&e<o){var i=Math.floor((r-n)/t),a=Math.floor((e-n)/t);return f.isDark(a,i)?0:1}return 1}))},f.createImgTag=function(t,r,e){t=t||2,r=void 0===r?4*t:r;var n=f.getModuleCount()*t+2*r,o="";return o+="<img",o+=' src="',o+=f.createDataURL(t,r),o+='"',o+=' width="',o+=n,o+='"',o+=' height="',o+=n,o+='"',e&&(o+=' alt="',o+=y(e),o+='"'),o+="/>"};var y=function(t){for(var r="",e=0;e<t.length;e+=1){var n=t.charAt(e);switch(n){case"<":r+="&lt;";break;case">":r+="&gt;";break;case"&":r+="&amp;";break;case'"':r+="&quot;";break;default:r+=n}}return r};return f.createASCII=function(t,r){if((t=t||1)<2)return function(t){t=void 0===t?2:t;var r,e,n,o,i,a=1*f.getModuleCount()+2*t,u=t,c=a-t,g={"██":"█","█ ":"▀"," █":"▄","  ":" "},l={"██":"▀","█ ":"▀"," █":" ","  ":" "},h="";for(r=0;r<a;r+=2){for(n=Math.floor((r-u)/1),o=Math.floor((r+1-u)/1),e=0;e<a;e+=1)i="█",u<=e&&e<c&&u<=r&&r<c&&f.isDark(n,Math.floor((e-u)/1))&&(i=" "),u<=e&&e<c&&u<=r+1&&r+1<c&&f.isDark(o,Math.floor((e-u)/1))?i+=" ":i+="█",h+=t<1&&r+1>=c?l[i]:g[i];h+="\n"}return a%2&&t>0?h.substring(0,h.length-a-1)+Array(a+1).join("▀"):h.substring(0,h.length-1)}(r);t-=1,r=void 0===r?2*t:r;var e,n,o,i,a=f.getModuleCount()*t+2*r,u=r,c=a-r,g=Array(t+1).join("██"),l=Array(t+1).join("  "),h="",s="";for(e=0;e<a;e+=1){for(o=Math.floor((e-u)/t),s="",n=0;n<a;n+=1)i=1,u<=n&&n<c&&u<=e&&e<c&&f.isDark(o,Math.floor((n-u)/t))&&(i=0),s+=i?g:l;for(o=0;o<t;o+=1)h+=s+"\n"}return h.substring(0,h.length-1)},f.renderTo2dContext=function(t,r){r=r||2;for(var e=f.getModuleCount(),n=0;n<e;n++)for(var o=0;o<e;o++)t.fillStyle=f.isDark(n,o)?"black":"white",t.fillRect(n*r,o*r,r,r)},f};t.stringToBytes=(t.stringToBytesFuncs={default:function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);r.push(255&n)}return r}}).default,t.createStringToBytes=function(t,r){var e=function(){for(var e=S(t),n=function(){var t=e.read();if(-1==t)throw"eof";return t},o=0,i={};;){var a=e.read();if(-1==a)break;var u=n(),f=n()<<8|n();i[String.fromCharCode(a<<8|u)]=f,o+=1}if(o!=r)throw o+" != "+r;return i}(),n="?".charCodeAt(0);return function(t){for(var r=[],o=0;o<t.length;o+=1){var i=t.charCodeAt(o);if(i<128)r.push(i);else{var a=e[t.charAt(o)];"number"==typeof a?(255&a)==a?r.push(a):(r.push(a>>>8),r.push(255&a)):r.push(n)}}return r}};var r,e,n,o,i,a=1,u=2,f=4,c=8,g={L:1,M:0,Q:3,H:2},l=0,h=1,s=2,v=3,d=4,w=5,p=6,y=7,B=(r=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],e=1335,n=7973,i=function(t){for(var r=0;0!=t;)r+=1,t>>>=1;return r},(o={}).getBCHTypeInfo=function(t){for(var r=t<<10;i(r)-i(e)>=0;)r^=e<<i(r)-i(e);return 21522^(t<<10|r)},o.getBCHTypeNumber=function(t){for(var r=t<<12;i(r)-i(n)>=0;)r^=n<<i(r)-i(n);return t<<12|r},o.getPatternPosition=function(t){return r[t-1]},o.getMaskFunction=function(t){switch(t){case l:return function(t,r){return(t+r)%2==0};case h:return function(t,r){return t%2==0};case s:return function(t,r){return r%3==0};case v:return function(t,r){return(t+r)%3==0};case d:return function(t,r){return(Math.floor(t/2)+Math.floor(r/3))%2==0};case w:return function(t,r){return t*r%2+t*r%3==0};case p:return function(t,r){return(t*r%2+t*r%3)%2==0};case y:return function(t,r){return(t*r%3+(t+r)%2)%2==0};default:throw"bad maskPattern:"+t}},o.getErrorCorrectPolynomial=function(t){for(var r=k([1],0),e=0;e<t;e+=1)r=r.multiply(k([1,C.gexp(e)],0));return r},o.getLengthInBits=function(t,r){if(1<=r&&r<10)switch(t){case a:return 10;case u:return 9;case f:case c:return 8;default:throw"mode:"+t}else if(r<27)switch(t){case a:return 12;case u:return 11;case f:return 16;case c:return 10;default:throw"mode:"+t}else{if(!(r<41))throw"type:"+r;switch(t){case a:return 14;case u:return 13;case f:return 16;case c:return 12;default:throw"mode:"+t}}},o.getLostPoint=function(t){for(var r=t.getModuleCount(),e=0,n=0;n<r;n+=1)for(var o=0;o<r;o+=1){for(var i=0,a=t.isDark(n,o),u=-1;u<=1;u+=1)if(!(n+u<0||r<=n+u))for(var f=-1;f<=1;f+=1)o+f<0||r<=o+f||0==u&&0==f||a==t.isDark(n+u,o+f)&&(i+=1);i>5&&(e+=3+i-5)}for(n=0;n<r-1;n+=1)for(o=0;o<r-1;o+=1){var c=0;t.isDark(n,o)&&(c+=1),t.isDark(n+1,o)&&(c+=1),t.isDark(n,o+1)&&(c+=1),t.isDark(n+1,o+1)&&(c+=1),0!=c&&4!=c||(e+=3)}for(n=0;n<r;n+=1)for(o=0;o<r-6;o+=1)t.isDark(n,o)&&!t.isDark(n,o+1)&&t.isDark(n,o+2)&&t.isDark(n,o+3)&&t.isDark(n,o+4)&&!t.isDark(n,o+5)&&t.isDark(n,o+6)&&(e+=40);for(o=0;o<r;o+=1)for(n=0;n<r-6;n+=1)t.isDark(n,o)&&!t.isDark(n+1,o)&&t.isDark(n+2,o)&&t.isDark(n+3,o)&&t.isDark(n+4,o)&&!t.isDark(n+5,o)&&t.isDark(n+6,o)&&(e+=40);var g=0;for(o=0;o<r;o+=1)for(n=0;n<r;n+=1)t.isDark(n,o)&&(g+=1);return e+=Math.abs(100*g/r/r-50)/5*10},o),C=function(){for(var t=new Array(256),r=new Array(256),e=0;e<8;e+=1)t[e]=1<<e;for(e=8;e<256;e+=1)t[e]=t[e-4]^t[e-5]^t[e-6]^t[e-8];for(e=0;e<255;e+=1)r[t[e]]=e;var n={glog:function(t){if(t<1)throw"glog("+t+")";return r[t]},gexp:function(r){for(;r<0;)r+=255;for(;r>=256;)r-=255;return t[r]}};return n}();function k(t,r){if(void 0===t.length)throw t.length+"/"+r;var e=function(){for(var e=0;e<t.length&&0==t[e];)e+=1;for(var n=new Array(t.length-e+r),o=0;o<t.length-e;o+=1)n[o]=t[o+e];return n}(),n={getAt:function(t){return e[t]},getLength:function(){return e.length},multiply:function(t){for(var r=new Array(n.getLength()+t.getLength()-1),e=0;e<n.getLength();e+=1)for(var o=0;o<t.getLength();o+=1)r[e+o]^=C.gexp(C.glog(n.getAt(e))+C.glog(t.getAt(o)));return k(r,0)},mod:function(t){if(n.getLength()-t.getLength()<0)return n;for(var r=C.glog(n.getAt(0))-C.glog(t.getAt(0)),e=new Array(n.getLength()),o=0;o<n.getLength();o+=1)e[o]=n.getAt(o);for(o=0;o<t.getLength();o+=1)e[o]^=C.gexp(C.glog(t.getAt(o))+r);return k(e,0).mod(t)}};return n}var A=function(){var t=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],r=function(t,r){var e={};return e.totalCount=t,e.dataCount=r,e},e={};return e.getRSBlocks=function(e,n){var o=function(r,e){switch(e){case g.L:return t[4*(r-1)+0];case g.M:return t[4*(r-1)+1];case g.Q:return t[4*(r-1)+2];case g.H:return t[4*(r-1)+3];default:return}}(e,n);if(void 0===o)throw"bad rs block @ typeNumber:"+e+"/errorCorrectionLevel:"+n;for(var i=o.length/3,a=[],u=0;u<i;u+=1)for(var f=o[3*u+0],c=o[3*u+1],l=o[3*u+2],h=0;h<f;h+=1)a.push(r(c,l));return a},e}(),b=function(){var t=[],r=0,e={getBuffer:function(){return t},getAt:function(r){var e=Math.floor(r/8);return 1==(t[e]>>>7-r%8&1)},put:function(t,r){for(var n=0;n<r;n+=1)e.putBit(1==(t>>>r-n-1&1))},getLengthInBits:function(){return r},putBit:function(e){var n=Math.floor(r/8);t.length<=n&&t.push(0),e&&(t[n]|=128>>>r%8),r+=1}};return e},M=function(t){var r=a,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+2<r.length;)t.put(o(r.substring(n,n+3)),10),n+=3;n<r.length&&(r.length-n==1?t.put(o(r.substring(n,n+1)),4):r.length-n==2&&t.put(o(r.substring(n,n+2)),7))}},o=function(t){for(var r=0,e=0;e<t.length;e+=1)r=10*r+i(t.charAt(e));return r},i=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);throw"illegal char :"+t};return n},x=function(t){var r=u,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+1<r.length;)t.put(45*o(r.charAt(n))+o(r.charAt(n+1)),11),n+=2;n<r.length&&t.put(o(r.charAt(n)),6)}},o=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);if("A"<=t&&t<="Z")return t.charCodeAt(0)-"A".charCodeAt(0)+10;switch(t){case" ":return 36;case"$":return 37;case"%":return 38;case"*":return 39;case"+":return 40;case"-":return 41;case".":return 42;case"/":return 43;case":":return 44;default:throw"illegal char :"+t}};return n},m=function(r){var e=f,n=t.stringToBytes(r),o={getMode:function(){return e},getLength:function(t){return n.length},write:function(t){for(var r=0;r<n.length;r+=1)t.put(n[r],8)}};return o},L=function(r){var e=c,n=t.stringToBytesFuncs.SJIS;if(!n)throw"sjis not supported.";!function(t,r){var e=n("友");if(2!=e.length||38726!=(e[0]<<8|e[1]))throw"sjis not supported."}();var o=n(r),i={getMode:function(){return e},getLength:function(t){return~~(o.length/2)},write:function(t){for(var r=o,e=0;e+1<r.length;){var n=(255&r[e])<<8|255&r[e+1];if(33088<=n&&n<=40956)n-=33088;else{if(!(57408<=n&&n<=60351))throw"illegal char at "+(e+1)+"/"+n;n-=49472}n=192*(n>>>8&255)+(255&n),t.put(n,13),e+=2}if(e<r.length)throw"illegal char at "+(e+1)}};return i},D=function(){var t=[],r={writeByte:function(r){t.push(255&r)},writeShort:function(t){r.writeByte(t),r.writeByte(t>>>8)},writeBytes:function(t,e,n){e=e||0,n=n||t.length;for(var o=0;o<n;o+=1)r.writeByte(t[o+e])},writeString:function(t){for(var e=0;e<t.length;e+=1)r.writeByte(t.charCodeAt(e))},toByteArray:function(){return t},toString:function(){var r="";r+="[";for(var e=0;e<t.length;e+=1)e>0&&(r+=","),r+=t[e];return r+="]"}};return r},S=function(t){var r=t,e=0,n=0,o=0,i={read:function(){for(;o<8;){if(e>=r.length){if(0==o)return-1;throw"unexpected end of file./"+o}var t=r.charAt(e);if(e+=1,"="==t)return o=0,-1;t.match(/^\s$/)||(n=n<<6|a(t.charCodeAt(0)),o+=6)}var i=n>>>o-8&255;return o-=8,i}},a=function(t){if(65<=t&&t<=90)return t-65;if(97<=t&&t<=122)return t-97+26;if(48<=t&&t<=57)return t-48+52;if(43==t)return 62;if(47==t)return 63;throw"c:"+t};return i},I=function(t,r,e){for(var n=function(t,r){var e=t,n=r,o=new Array(t*r),i={setPixel:function(t,r,n){o[r*e+t]=n},write:function(t){t.writeString("GIF87a"),t.writeShort(e),t.writeShort(n),t.writeByte(128),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(255),t.writeByte(255),t.writeByte(255),t.writeString(","),t.writeShort(0),t.writeShort(0),t.writeShort(e),t.writeShort(n),t.writeByte(0);var r=a(2);t.writeByte(2);for(var o=0;r.length-o>255;)t.writeByte(255),t.writeBytes(r,o,255),o+=255;t.writeByte(r.length-o),t.writeBytes(r,o,r.length-o),t.writeByte(0),t.writeString(";")}},a=function(t){for(var r=1<<t,e=1+(1<<t),n=t+1,i=u(),a=0;a<r;a+=1)i.add(String.fromCharCode(a));i.add(String.fromCharCode(r)),i.add(String.fromCharCode(e));var f,c,g,l=D(),h=(f=l,c=0,g=0,{write:function(t,r){if(t>>>r!=0)throw"length over";for(;c+r>=8;)f.writeByte(255&(t<<c|g)),r-=8-c,t>>>=8-c,g=0,c=0;g|=t<<c,c+=r},flush:function(){c>0&&f.writeByte(g)}});h.write(r,n);var s=0,v=String.fromCharCode(o[s]);for(s+=1;s<o.length;){var d=String.fromCharCode(o[s]);s+=1,i.contains(v+d)?v+=d:(h.write(i.indexOf(v),n),i.size()<4095&&(i.size()==1<<n&&(n+=1),i.add(v+d)),v=d)}return h.write(i.indexOf(v),n),h.write(e,n),h.flush(),l.toByteArray()},u=function(){var t={},r=0,e={add:function(n){if(e.contains(n))throw"dup key:"+n;t[n]=r,r+=1},size:function(){return r},indexOf:function(r){return t[r]},contains:function(r){return void 0!==t[r]}};return e};return i}(t,r),o=0;o<r;o+=1)for(var i=0;i<t;i+=1)n.setPixel(i,o,e(i,o));var a=D();n.write(a);for(var u=function(){var t=0,r=0,e=0,n="",o={},i=function(t){n+=String.fromCharCode(a(63&t))},a=function(t){if(t<0);else{if(t<26)return 65+t;if(t<52)return t-26+97;if(t<62)return t-52+48;if(62==t)return 43;if(63==t)return 47}throw"n:"+t};return o.writeByte=function(n){for(t=t<<8|255&n,r+=8,e+=1;r>=6;)i(t>>>r-6),r-=6},o.flush=function(){if(r>0&&(i(t<<6-r),t=0,r=0),e%3!=0)for(var o=3-e%3,a=0;a<o;a+=1)n+="="},o.toString=function(){return n},o}(),f=a.toByteArray(),c=0;c<f.length;c+=1)u.writeByte(f[c]);return u.flush(),"data:image/gif;base64,"+u};return t}();qrcode.stringToBytesFuncs["UTF-8"]=function(t){return function(t){for(var r=[],e=0;e<t.length;e++){var n=t.charCodeAt(e);n<128?r.push(n):n<2048?r.push(192|n>>6,128|63&n):n<55296||n>=57344?r.push(224|n>>12,128|n>>6&63,128|63&n):(e++,n=65536+((1023&n)<<10|1023&t.charCodeAt(e)),r.push(240|n>>18,128|n>>12&63,128|n>>6&63,128|63&n))}return r}(t)},function(t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports&&(module.exports=t())}((function(){return qrcode}));
+</script>
+<script>/* gifenc 1.0.3 (MIT, Matt DesLauriers) — makes the session GIF on this device. */
+var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!0}),((t,r)=>{for(var n in r)e(t,n,{get:r[n],enumerable:!0})})(t,{GIFEncoder:()=>C,applyPalette:()=>p,default:()=>F,nearestColor:()=>k,nearestColorIndex:()=>M,nearestColorIndexWithDistance:()=>v,prequantize:()=>b,quantize:()=>w,snapColorsToPalette:()=>d});var r={signature:"GIF",version:"89a",trailer:59,extensionIntroducer:33,applicationExtensionLabel:255,graphicControlExtensionLabel:249,imageSeparator:44,signatureSize:3,versionSize:3,globalColorTableFlagMask:128,colorResolutionMask:112,sortFlagMask:8,globalColorTableSizeMask:7,applicationIdentifierSize:8,applicationAuthCodeSize:3,disposalMethodMask:28,userInputFlagMask:2,transparentColorFlagMask:1,localColorTableFlagMask:128,interlaceFlagMask:64,idSortFlagMask:32,localColorTableSizeMask:7};function n(t=256){let e=0,r=new Uint8Array(t);return{get buffer(){return r.buffer},reset(){e=0},bytesView:()=>r.subarray(0,e),bytes:()=>r.slice(0,e),writeByte(t){n(e+1),r[e]=t,e++},writeBytes(t,o=0,a=t.length){n(e+a);for(let n=0;n<a;n++)r[e++]=t[n+o]},writeBytesView(t,o=0,a=t.byteLength){n(e+a),r.set(t.subarray(o,o+a),e),e+=a}};function n(t){var n=r.length;if(n>=t)return;t=Math.max(t,n*(n<1048576?2:1.125)>>>0),0!=n&&(t=Math.max(t,256));const o=r;r=new Uint8Array(t),e>0&&r.set(o.subarray(0,e),0)}}var o=[0,1,3,7,15,31,63,127,255,511,1023,2047,4095,8191,16383,32767,65535];var a=function(t,e,r,a,i=n(512),c=new Uint8Array(256),l=new Int32Array(5003),f=new Int32Array(5003)){const s=l.length,u=Math.max(2,a);c.fill(0),f.fill(0),l.fill(-1);let w=0,y=0;const g=u+1,h=g;let b=!1,p=h,B=(1<<p)-1;const m=1<<g-1,d=m+1;let A=m+2,M=0,v=r[0],k=0;for(let t=s;t<65536;t*=2)++k;k=8-k,i.writeByte(u),U(m);const C=r.length;for(let t=1;t<C;t++)t:{const e=r[t],n=(e<<12)+v;let o=e<<k^v;if(l[o]===n){v=f[o];break t}const a=0===o?1:s-o;for(;l[o]>=0;)if(o-=a,o<0&&(o+=s),l[o]===n){v=f[o];break t}U(v),v=e,A<4096?(f[o]=A++,l[o]=n):(l.fill(-1),A=m+2,b=!0,U(m))}return U(v),U(d),i.writeByte(0),i.bytesView();function U(t){for(w&=o[y],y>0?w|=t<<y:w=t,y+=p;y>=8;)c[M++]=255&w,M>=254&&(i.writeByte(M),i.writeBytesView(c,0,M),M=0),w>>=8,y-=8;if((A>B||b)&&(b?(p=h,B=(1<<p)-1,b=!1):(++p,B=12===p?1<<p:(1<<p)-1)),t==d){for(;y>0;)c[M++]=255&w,M>=254&&(i.writeByte(M),i.writeBytesView(c,0,M),M=0),w>>=8,y-=8;M>0&&(i.writeByte(M),i.writeBytesView(c,0,M),M=0)}}};function i(t,e,r){return t<<8&63488|e<<2&992|r>>3}function c(t,e,r,n){return t>>4|240&e|(240&r)<<4|(240&n)<<8}function l(t,e,r){return t>>4<<8|240&e|r>>4}function f(t,e,r){return t<e?e:t>r?r:t}function s(t){return t*t}function u(t,e,r){var n=0,o=1e100;const a=t[e],i=a.cnt,c=a.ac,l=a.rc,f=a.gc,u=a.bc;for(var w=a.fw;0!=w;w=t[w].fw){const e=t[w],a=e.cnt,g=i*a/(i+a);if(!(g>=o)){var y=0;r&&(y+=g*s(e.ac-c))>=o||(y+=g*s(e.rc-l))>=o||(y+=g*s(e.gc-f))>=o||(y+=g*s(e.bc-u))>=o||(o=y,n=w)}}a.err=o,a.nn=n}function w(t,e,r={}){const{format:n="rgb565",clearAlpha:o=!0,clearAlphaColor:a=0,clearAlphaThreshold:w=0,oneBitAlpha:g=!1}=r;if(!t||!t.buffer)throw new Error("quantize() expected RGBA Uint8Array data");if(!(t instanceof Uint8Array||t instanceof Uint8ClampedArray))throw new Error("quantize() expected RGBA Uint8Array data");const h=new Uint32Array(t.buffer);let b=!1!==r.useSqrt;const p="rgba4444"===n,B=function(t,e){const r=new Array("rgb444"===e?4096:65536),n=t.length;if("rgba4444"===e)for(let e=0;e<n;++e){const n=t[e],o=n>>24&255,a=n>>16&255,i=n>>8&255,l=255&n,f=c(l,i,a,o);let s=f in r?r[f]:r[f]={ac:0,rc:0,gc:0,bc:0,cnt:0,nn:0,fw:0,bk:0,tm:0,mtm:0,err:0};s.rc+=l,s.gc+=i,s.bc+=a,s.ac+=o,s.cnt++}else if("rgb444"===e)for(let e=0;e<n;++e){const n=t[e],o=n>>16&255,a=n>>8&255,i=255&n,c=l(i,a,o);let f=c in r?r[c]:r[c]={ac:0,rc:0,gc:0,bc:0,cnt:0,nn:0,fw:0,bk:0,tm:0,mtm:0,err:0};f.rc+=i,f.gc+=a,f.bc+=o,f.cnt++}else for(let e=0;e<n;++e){const n=t[e],o=n>>16&255,a=n>>8&255,c=255&n,l=i(c,a,o);let f=l in r?r[l]:r[l]={ac:0,rc:0,gc:0,bc:0,cnt:0,nn:0,fw:0,bk:0,tm:0,mtm:0,err:0};f.rc+=c,f.gc+=a,f.bc+=o,f.cnt++}return r}(h,n),m=B.length,d=m-1,A=new Uint32Array(m+1);for(var M=0,v=0;v<m;++v){const t=B[v];if(null!=t){var k=1/t.cnt;p&&(t.ac*=k),t.rc*=k,t.gc*=k,t.bc*=k,B[M++]=t}}s(e)/M<.022&&(b=!1);var C,U,x;for(v=0;v<M-1;++v)B[v].fw=v+1,B[v+1].bk=v,b&&(B[v].cnt=Math.sqrt(B[v].cnt));for(b&&(B[v].cnt=Math.sqrt(B[v].cnt)),v=0;v<M;++v){u(B,v,!1);var I=B[v].err;for(U=++A[0];U>1&&!(B[C=A[x=U>>1]].err<=I);U=x)A[U]=C;A[U]=v}var z=M-e;for(v=0;v<z;){for(var F;;){var E=A[1];if((F=B[E]).tm>=F.mtm&&B[F.nn].mtm<=F.tm)break;F.mtm==d?E=A[1]=A[A[0]--]:(u(B,E,!1),F.tm=v);I=B[E].err;for(U=1;(x=U+U)<=A[0]&&(x<A[0]&&B[A[x]].err>B[A[x+1]].err&&x++,!(I<=B[C=A[x]].err));U=x)A[U]=C;A[U]=E}var S=B[F.nn],q=F.cnt,G=S.cnt;k=1/(q+G);p&&(F.ac=k*(q*F.ac+G*S.ac)),F.rc=k*(q*F.rc+G*S.rc),F.gc=k*(q*F.gc+G*S.gc),F.bc=k*(q*F.bc+G*S.bc),F.cnt+=S.cnt,F.mtm=++v,B[S.bk].fw=S.fw,B[S.fw].bk=S.bk,S.mtm=d}let V=[];var T=0;for(v=0;;++T){let t=f(Math.round(B[v].rc),0,255),e=f(Math.round(B[v].gc),0,255),r=f(Math.round(B[v].bc),0,255),n=255;if(p){if(n=f(Math.round(B[v].ac),0,255),g){n=n<=("number"==typeof g?g:127)?0:255}o&&n<=w&&(t=e=r=a,n=0)}const i=p?[t,e,r,n]:[t,e,r];if(y(V,i)||V.push(i),0==(v=B[v].fw))break}return V}function y(t,e){for(let r=0;r<t.length;r++){const n=t[r];let o=n[0]===e[0]&&n[1]===e[1]&&n[2]===e[2],a=!(n.length>=4&&e.length>=4)||n[3]===e[3];if(o&&a)return!0}return!1}function g(t,e){var r,n=0;for(r=0;r<t.length;r++){const o=t[r]-e[r];n+=o*o}return n}function h(t,e){return e>1?Math.round(t/e)*e:t}function b(t,{roundRGB:e=5,roundAlpha:r=10,oneBitAlpha:n=null}={}){const o=new Uint32Array(t.buffer);for(let t=0;t<o.length;t++){const a=o[t];let i=a>>24&255,c=a>>16&255,l=a>>8&255,f=255&a;if(i=h(i,r),n){i=i<=("number"==typeof n?n:127)?0:255}f=h(f,e),l=h(l,e),c=h(c,e),o[t]=i<<24|c<<16|l<<8|f}}function p(t,e,r="rgb565"){if(!t||!t.buffer)throw new Error("quantize() expected RGBA Uint8Array data");if(!(t instanceof Uint8Array||t instanceof Uint8ClampedArray))throw new Error("quantize() expected RGBA Uint8Array data");if(e.length>256)throw new Error("applyPalette() only works with 256 colors or less");const n=new Uint32Array(t.buffer),o=n.length,a="rgb444"===r?4096:65536,f=new Uint8Array(o),s=new Array(a);if("rgba4444"===r)for(let t=0;t<o;t++){const r=n[t],o=r>>24&255,a=r>>16&255,i=r>>8&255,l=255&r,u=c(l,i,a,o),w=u in s?s[u]:s[u]=B(l,i,a,o,e);f[t]=w}else{const t="rgb444"===r?l:i;for(let r=0;r<o;r++){const o=n[r],a=o>>16&255,i=o>>8&255,c=255&o,l=t(c,i,a),u=l in s?s[l]:s[l]=m(c,i,a,e);f[r]=u}}return f}function B(t,e,r,n,o){let a=0,i=1e100;for(let c=0;c<o.length;c++){const l=o[c];let f=A(l[3]-n);if(f>i)continue;if(f+=A(l[0]-t),f>i)continue;if(f+=A(l[1]-e),f>i)continue;f+=A(l[2]-r),f>i||(i=f,a=c)}return a}function m(t,e,r,n){let o=0,a=1e100;for(let i=0;i<n.length;i++){const c=n[i];let l=A(c[0]-t);if(l>a)continue;if(l+=A(c[1]-e),l>a)continue;l+=A(c[2]-r),l>a||(a=l,o=i)}return o}function d(t,e,r=5){if(!t.length||!e.length)return;const n=t.map((t=>t.slice(0,3))),o=r*r,a=t[0].length;for(let r=0;r<e.length;r++){let i=e[r];i=i.length<a?[i[0],i[1],i[2],255]:i.length>a?i.slice(0,3):i.slice();const c=v(n,i.slice(0,3),g),l=c[0],f=c[1];f>0&&f<=o&&(t[l]=i)}}function A(t){return t*t}function M(t,e,r=g){let n=1/0,o=-1;for(let a=0;a<t.length;a++){const i=r(e,t[a]);i<n&&(n=i,o=a)}return o}function v(t,e,r=g){let n=1/0,o=-1;for(let a=0;a<t.length;a++){const i=r(e,t[a]);i<n&&(n=i,o=a)}return[o,n]}function k(t,e,r=g){return t[M(t,e,r)]}function C(t={}){const{initialCapacity:e=4096,auto:o=!0}=t,i=n(e),c=new Uint8Array(256),l=new Int32Array(5003),f=new Int32Array(5003);let s=!1;return{reset(){i.reset(),s=!1},finish(){i.writeByte(r.trailer)},bytes:()=>i.bytes(),bytesView:()=>i.bytesView(),get buffer(){return i.buffer},get stream(){return i},writeHeader:u,writeFrame(t,e,r,n={}){const{transparent:w=!1,transparentIndex:y=0,delay:g=0,palette:h=null,repeat:b=0,colorDepth:p=8,dispose:B=-1}=n;let m=!1;if(o?s||(m=!0,u(),s=!0):m=Boolean(n.first),e=Math.max(0,Math.floor(e)),r=Math.max(0,Math.floor(r)),m){if(!h)throw new Error("First frame must include a { palette } option");!function(t,e,r,n,o=8){const a=1,i=0,c=z(n.length)-1,l=a<<7|o-1<<4|i<<3|c,f=0,s=0;x(t,e),x(t,r),t.writeBytes([l,f,s])}(i,e,r,h,p),U(i,h),b>=0&&function(t,e){t.writeByte(33),t.writeByte(255),t.writeByte(11),I(t,"NETSCAPE2.0"),t.writeByte(3),t.writeByte(1),x(t,e),t.writeByte(0)}(i,b)}const d=Math.round(g/10);!function(t,e,r,n,o){t.writeByte(33),t.writeByte(249),t.writeByte(4),o<0&&(o=0,n=!1);var a,i;n?(a=1,i=2):(a=0,i=0);e>=0&&(i=7&e);i<<=2;const c=0;t.writeByte(i|c|a),x(t,r),t.writeByte(o||0),t.writeByte(0)}(i,B,d,w,y);const A=Boolean(h)&&!m;!function(t,e,r,n){if(t.writeByte(44),x(t,0),x(t,0),x(t,e),x(t,r),n){const e=0,r=0,o=z(n.length)-1;t.writeByte(128|e|r|o)}else t.writeByte(0)}(i,e,r,A?h:null),A&&U(i,h),function(t,e,r,n,o=8,i,c,l){a(r,n,e,o,t,i,c,l)}(i,t,e,r,p,c,l,f)}};function u(){I(i,"GIF89a")}}function U(t,e){const r=1<<z(e.length);for(let n=0;n<r;n++){let r=[0,0,0];n<e.length&&(r=e[n]),t.writeByte(r[0]),t.writeByte(r[1]),t.writeByte(r[2])}}function x(t,e){t.writeByte(255&e),t.writeByte(e>>8&255)}function I(t,e){for(var r=0;r<e.length;r++)t.writeByte(e.charCodeAt(r))}function z(t){return Math.max(Math.ceil(Math.log2(t)),1)}var F=C;return t}();
 </script>
 </head>
 <body>
@@ -746,11 +815,28 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 <div class="tab-panel" id="tabSetup">
   <div class="setup-shell">
 
-    <div class="panel-section accordion open" id="formatSection">
-      <p class="panel-label accordion-toggle" data-target="formatSection">1 · Layout &amp; timer <span class="chev">⌄</span></p>
+    <div class="panel-section accordion open" id="themeSection">
+      <p class="panel-label accordion-toggle" data-target="themeSection">1 · Theme <span class="chev">⌄</span></p>
+      <p class="panel-hint" style="margin:0 0 10px;">Pick a ready-made design. It sets the backdrop, colors and fonts — you can still fine-tune everything below.</p>
+      <div class="theme-tools">
+        <input type="search" class="label-input" id="themeSearch" placeholder="Search themes…" aria-label="Search themes">
+      </div>
+      <div class="theme-cats" id="themeCats" role="tablist" aria-label="Theme categories"></div>
+      <div class="theme-grid" id="themeGrid"></div>
+      <button type="button" class="action-btn" id="saveThemeBtn" style="margin-top:12px;">★ Save my current design as a theme</button>
+      <p class="panel-hint" style="margin-top:6px;">Saves the backdrop, colors, fonts, frame, logo and stickers under <b>My themes</b>, on every device using this code.</p>
+    </div>
+
+    <div class="panel-section accordion" id="formatSection">
+      <p class="panel-label accordion-toggle" data-target="formatSection">2 · Layout &amp; timer <span class="chev">⌄</span></p>
       <p class="sub-label">Choose your layout</p>
       <div class="layout-grid lg-many" id="layoutGrid"></div>
       <p class="panel-hint" id="layoutHint"></p>
+      <div class="sub-group" style="margin-top:12px;">
+        <label class="toggle-row"><input type="checkbox" id="guestPickToggle"> Let guests choose the layout each session</label>
+        <div class="guest-layouts" id="guestLayouts" style="display:none;"></div>
+        <p class="panel-hint" id="guestPickHint" style="margin-top:6px; display:none;">Tick the layouts guests can pick from. The one selected above is always included. With only one ticked, guests aren’t asked.</p>
+      </div>
 
       <div class="sub-group" style="margin-top:14px;">
         <p class="sub-label">Countdown per shot</p>
@@ -787,12 +873,25 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
             <option value="3">3 s</option>
           </select>
         </div>
-        <p class="panel-hint" style="margin-top:10px;">The ring around the number drains smoothly, so half seconds feel natural — the numbers still tick down whole seconds, then “Pose”.</p>
+        <label class="toggle-row" style="margin-top:8px;"><input type="checkbox" id="reviewEachToggle" checked> Show each photo during the pause</label>
+        <div class="stepper">
+          <span class="lbl">Finished photo stays on screen</span>
+          <select class="mini-select" id="resultReviewSelect">
+            <option value="0" selected>Until the next tap</option>
+            <option value="10">10 s</option>
+            <option value="15">15 s</option>
+            <option value="20">20 s</option>
+            <option value="30">30 s</option>
+            <option value="45">45 s</option>
+            <option value="60">60 s</option>
+          </select>
+        </div>
+        <p class="panel-hint" style="margin-top:10px;">The ring around the number drains smoothly, so half seconds feel natural — the numbers still tick down whole seconds, then “Pose”. With a time set, the booth goes back to the start by itself so the next guests can go.</p>
       </div>
     </div>
 
     <div class="panel-section accordion" id="backdropSection">
-      <p class="panel-label accordion-toggle" data-target="backdropSection">2 · Backdrop <span class="chev">⌄</span></p>
+      <p class="panel-label accordion-toggle" data-target="backdropSection">3 · Backdrop <span class="chev">⌄</span></p>
       <p class="sub-label">Preset</p>
       <div class="preset-grid" id="presetGrid">
         <button class="preset-btn" data-preset="none" title="No preset">
@@ -844,6 +943,18 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         </div>
         <p class="panel-hint" style="margin-top:8px;" id="bdColorHint">Pick any color — the elements below are drawn on top of it. Choose Auto to go back to the style's own colors.</p>
       </div>
+      <div class="sub-group" style="margin-top:14px;">
+        <p class="sub-label">Pattern color</p>
+        <div class="accent-row" id="accentChips">
+          <button type="button" class="accent-chip active" data-accent="gold"><i style="background:linear-gradient(135deg,#a8792a,#fff1c4,#a8792a)"></i>Gold</button>
+          <button type="button" class="accent-chip" data-accent="silver"><i style="background:linear-gradient(135deg,#7d8288,#f7f9fb,#7d8288)"></i>Silver</button>
+          <button type="button" class="accent-chip" data-accent="rosegold"><i style="background:linear-gradient(135deg,#a5645a,#fde3dc,#a5645a)"></i>Rose gold</button>
+          <button type="button" class="accent-chip" data-accent="champagne"><i style="background:linear-gradient(135deg,#9e8a6a,#fff7e6,#9e8a6a)"></i>Champagne</button>
+          <button type="button" class="accent-chip" data-accent="white"><i style="background:#fff"></i>White</button>
+          <button type="button" class="accent-chip" data-accent="black"><i style="background:#222"></i>Black</button>
+        </div>
+        <p class="panel-hint" style="margin-top:6px;">Recolors the theme artwork: chevrons, art deco lines, marble veins, confetti, caps, laurels and borders.</p>
+      </div>
       <div class="sub-group" id="elementsGroup" style="margin-top:14px;">
         <p class="sub-label">Elements</p>
         <select id="elementsSelect" class="label-input" style="font-size:13px;"></select>
@@ -886,7 +997,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     </div>
 
     <div class="panel-section accordion" id="labelSection">
-      <p class="panel-label accordion-toggle" data-target="labelSection">3 · Event name <span class="chev">⌄</span></p>
+      <p class="panel-label accordion-toggle" data-target="labelSection">4 · Event name <span class="chev">⌄</span></p>
 
       <div class="sub-group">
         <p class="sub-label">Event name &amp; date</p>
@@ -970,6 +1081,79 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     </div>
 
 
+    <div class="panel-section accordion" id="decorSection">
+      <p class="panel-label accordion-toggle" data-target="decorSection">5 · Frame, logo &amp; stickers <span class="chev">⌄</span></p>
+      <p class="sub-label">Frame overlay</p>
+      <div class="bg-row">
+        <img class="bg-thumb" id="overlayThumb" alt="frame preview" style="display:none;">
+        <label class="upload-btn" for="overlayInput">Upload frame (PNG)</label>
+        <input type="file" id="overlayInput" accept="image/png,image/webp,image/*">
+        <select class="mini-select" id="overlayFit" style="display:none;"><option value="stretch">Fill the photo</option><option value="contain">Keep its shape</option></select>
+      </div>
+      <button class="remove-link" id="overlayRemove">Remove frame</button>
+      <p class="panel-hint" id="overlaySizeHint" style="margin-top:6px;"></p>
+      <p class="panel-hint" style="margin-top:4px;">Design it in Canva: export as <b>PNG with a transparent background</b>, leaving the photo spots see-through. It’s drawn on top of every photo.</p>
+
+      <div class="sub-group" style="margin-top:14px;">
+        <p class="sub-label">Logo or monogram</p>
+        <div class="bg-row">
+          <img class="bg-thumb" id="logoThumb" alt="logo preview" style="display:none;">
+          <label class="upload-btn" for="logoInput">Upload logo</label>
+          <input type="file" id="logoInput" accept="image/*">
+        </div>
+        <button class="remove-link" id="logoRemove">Remove logo</button>
+        <div id="logoControls" style="display:none; margin-top:10px;">
+          <div class="stepper" style="margin-top:0;">
+            <span class="lbl">Position</span>
+            <select class="mini-select" id="logoPos">
+              <option value="tl">Top left</option><option value="tc">Top center</option><option value="tr">Top right</option>
+              <option value="bl">Bottom left</option><option value="bc">Bottom center</option><option value="br">Bottom right</option>
+            </select>
+          </div>
+          <div class="stepper"><span class="lbl">Size</span><input type="range" id="logoSize" min="8" max="45" value="20" style="flex:1; max-width:220px;"></div>
+        </div>
+      </div>
+
+      <div class="sub-group" style="margin-top:14px;">
+        <p class="sub-label">Stickers &amp; your own props</p>
+        <div class="prop-tray" id="propTray"></div>
+        <div class="bg-row" style="margin-top:10px;">
+          <label class="upload-btn" for="propInput">+ Upload your own props (PNG)</label>
+          <input type="file" id="propInput" accept="image/*" multiple>
+        </div>
+        <p class="panel-hint" style="margin-top:6px;">Tap a sticker to add it, then <b>drag it on the preview</b> below. Tap one on the preview to resize, turn or remove it. Transparent PNGs look best for props.</p>
+        <button class="remove-link" id="decorClear" style="display:inline;">Remove all stickers</button>
+      </div>
+    </div>
+
+    <div class="panel-section accordion" id="effectsSection">
+      <p class="panel-label accordion-toggle" data-target="effectsSection">6 · Effects &amp; welcome <span class="chev">⌄</span></p>
+      <p class="sub-label">Filter</p>
+      <div class="chip-row" id="filterChips">
+        <button type="button" class="chip active" data-filter="none">None</button>
+        <button type="button" class="chip" data-filter="bw">B&amp;W</button>
+        <button type="button" class="chip" data-filter="sepia">Sepia</button>
+        <button type="button" class="chip" data-filter="warm">Warm</button>
+        <button type="button" class="chip" data-filter="cool">Cool</button>
+      </div>
+      <label class="toggle-row" style="margin-top:10px;"><input type="checkbox" id="softSkinToggle"> Soft skin (a gentle, flattering glow)</label>
+      <p class="panel-hint" style="margin-top:6px;">Guests see the filter live, and it’s applied to the photos, prints and Drive copies.</p>
+
+      <div class="sub-group" style="margin-top:14px;">
+        <p class="sub-label">Animated GIF</p>
+        <label class="toggle-row"><input type="checkbox" id="gifToggle" checked> Also make a GIF of each session</label>
+        <p class="panel-hint" style="margin-top:6px;">The shots play one after another in your theme, and the GIF uploads to the same Drive folder as the photo.</p>
+      </div>
+
+      <div class="sub-group" style="margin-top:14px;">
+        <p class="sub-label">Welcome screen</p>
+        <label class="toggle-row"><input type="checkbox" id="welcomeToggle" checked> Show a welcome screen between guests</label>
+        <input type="text" class="label-input" id="welcomeMsgInput" maxlength="60" placeholder="Welcome! Tap to start" style="margin-top:8px; font-size:13px;" aria-label="Welcome message">
+        <p class="panel-hint" style="margin-top:6px;">Shown in your theme with the event name and three easy steps. Guests tap it to begin.</p>
+        <img id="welcomePreview" alt="Welcome screen preview" style="display:block; width:150px; margin-top:10px; border-radius:10px; border:1px solid var(--line);">
+      </div>
+    </div>
+
     <div class="panel-section" id="previewSection">
       <p class="panel-label">Preview</p>
       <div class="setup-preview-wrap">
@@ -977,11 +1161,16 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
           <canvas id="setupPreviewCanvas"></canvas>
         </div>
       </div>
+      <div class="decor-sel" id="decorSelControls" style="display:none;">
+        <div class="stepper" style="margin-top:0;"><span class="lbl">Sticker size</span><input type="range" id="decorSize" min="4" max="90" value="20" style="flex:1; max-width:240px;"></div>
+        <div class="stepper"><span class="lbl">Turn</span><input type="range" id="decorRot" min="-180" max="180" value="0" style="flex:1; max-width:240px;"></div>
+        <div class="decor-btns"><button type="button" class="action-btn" id="decorDup">Duplicate</button><button type="button" class="action-btn" id="decorFront">Bring to front</button><button type="button" class="action-btn" id="decorDel" style="color:#c0392b;">Remove</button></div>
+      </div>
       <p class="panel-hint" style="text-align:center;">Live preview of your chosen format, backdrop, event name and date. Actual photos replace the placeholders during the session.</p>
     </div>
 
     <div class="panel-section accordion" id="driveSetupSection">
-      <p class="panel-label accordion-toggle" data-target="driveSetupSection">4 · Google Drive <span class="chev">⌄</span></p>
+      <p class="panel-label accordion-toggle" data-target="driveSetupSection">7 · Google Drive <span class="chev">⌄</span></p>
       <p class="panel-hint" id="driveStatusText">Type this booking's folder name or link below — it's required before you can start the photo session.</p>
       <p class="panel-hint" id="driveFolderAutoNote" style="display:none; color:#1e8449; font-weight:600;"></p>
       <input type="text" class="label-input" id="driveFolderKeyInput" placeholder="This booking's folder: paste a link, or type a new folder name" style="font-family:'Manrope',sans-serif; font-size:13px; margin:10px 0 0;">
@@ -1002,6 +1191,8 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
     <div class="setup-next-wrap">
       <button class="action-btn primary" id="goToSessionBtn" style="width:auto; padding:12px 26px;">Continue to Photo Session →</button>
+      <p class="setup-save-note" id="setupSaveNote" aria-live="polite"></p>
+      <button type="button" class="remove-link" id="resetSetupBtn" style="display:inline; margin-top:6px;">Reset setup</button>
     </div>
 
   </div>
@@ -1023,6 +1214,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
         <video id="video" autoplay playsinline muted></video>
         <canvas id="previewCanvas"></canvas>
+        <img class="shot-review" id="shotReview" alt="">
+        <div class="welcome-overlay" id="welcomeOverlay" role="button" tabindex="0" aria-label="Tap to start"><img id="welcomeImg" alt="Welcome — tap to start"></div>
+        <div class="pick-overlay" id="pickOverlay" aria-label="Choose your layout">
+          <p class="pick-title">Choose your layout</p>
+          <div class="pick-grid" id="pickGrid"></div>
+        </div>
 
         <div class="rec-dot" id="recDot"><i></i><span>LIVE</span></div>
 
@@ -2318,6 +2515,323 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     maroon: { fill: fillMaroon, elements: 'glitter',   base: '#6b1a2b', pal: MAROON_PAL }
   };
 
+  // ---- Theme backdrops (drawn in code, so they print sharp at any size).
+  // Each reads backdropColor first, so picking a Backdrop color recolors the
+  // base while keeping the pattern. ----
+  function themeBase(def){ return backdropColor || def; }
+  // Pattern / accent color used by the theme artwork (Setup -> Backdrop -> Pattern color).
+  var accent = 'gold';
+  var ACCENTS = {
+    gold:      ['#a8792a', '#e8c873', '#fff1c4', '#d9b25c', '#a8792a'],
+    silver:    ['#7d8288', '#c9ced3', '#f7f9fb', '#aeb4ba', '#7d8288'],
+    rosegold:  ['#a5645a', '#e3a99c', '#fde3dc', '#cf8d80', '#a5645a'],
+    champagne: ['#9e8a6a', '#dccbaa', '#fff7e6', '#c9b48e', '#9e8a6a'],
+    white:     ['#d6d6d6', '#ffffff', '#ffffff', '#f0f0f0', '#d6d6d6'],
+    black:     ['#000000', '#2b2b2b', '#4d4d4d', '#2b2b2b', '#000000']
+  };
+  function goldGrad(ctx, x0, y0, x1, y1){
+    var c = ACCENTS[accent] || ACCENTS.gold;
+    var g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, c[0]); g.addColorStop(0.3, c[1]); g.addColorStop(0.5, c[2]);
+    g.addColorStop(0.7, c[3]); g.addColorStop(1, c[4]);
+    return g;
+  }
+  function vGrad(ctx, h, a, b){ var g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, a); g.addColorStop(1, b); return g; }
+
+  // Gold chevron on ivory
+  function fillChevron(ctx, w, h){
+    var base = themeBase('#fbf7ef');
+    ctx.fillStyle = vGrad(ctx, h, mixHex(base, '#ffffff', 0.4), mixHex(base, '#e9dcc0', 0.35)); ctx.fillRect(0, 0, w, h);
+    var period = w / 7, amp = period * 0.32, gap = period * 0.62;
+    ctx.save(); ctx.lineJoin = 'miter'; ctx.lineCap = 'butt';
+    ctx.strokeStyle = goldGrad(ctx, 0, 0, w, h); ctx.globalAlpha = 0.5; ctx.lineWidth = Math.max(2, w * 0.011);
+    for(var y = -amp; y < h + amp; y += gap){
+      ctx.beginPath();
+      for(var x = -period, i = 0; x <= w + period; x += period / 2, i++){
+        var yy = y + (i % 2 ? amp : 0);
+        if(i === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Art deco: navy with gold sunburst corners and a double gold border
+  function fillDeco(ctx, w, h){
+    var base = themeBase('#13213f');
+    ctx.fillStyle = vGrad(ctx, h, mixHex(base, '#000000', 0.05), mixHex(base, '#000000', 0.35)); ctx.fillRect(0, 0, w, h);
+    var gold = goldGrad(ctx, 0, 0, w, h), u = Math.min(w, h);
+    ctx.save();
+    ctx.strokeStyle = gold; ctx.globalAlpha = 0.07; ctx.lineWidth = Math.max(1, u * 0.002);
+    for(var x = w / 28; x < w; x += w / 14){ ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    ctx.globalAlpha = 0.9;
+    var m1 = u * 0.03, m2 = u * 0.045;
+    ctx.lineWidth = Math.max(2, u * 0.006); ctx.strokeRect(m1, m1, w - 2 * m1, h - 2 * m1);
+    ctx.lineWidth = Math.max(1, u * 0.0025); ctx.strokeRect(m2, m2, w - 2 * m2, h - 2 * m2);
+    var R = u * 0.26;
+    [[m2, m2, 0], [w - m2, m2, Math.PI / 2], [w - m2, h - m2, Math.PI], [m2, h - m2, Math.PI * 1.5]].forEach(function(c){
+      ctx.save(); ctx.translate(c[0], c[1]); ctx.rotate(c[2]);
+      ctx.lineWidth = Math.max(1, u * 0.003);
+      for(var r = R * 0.35; r <= R; r += R * 0.16){ ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI / 2); ctx.stroke(); }
+      for(var k = 0; k <= 9; k++){
+        var a = (Math.PI / 2) * (k / 9);
+        ctx.beginPath(); ctx.moveTo(Math.cos(a) * R * 0.18, Math.sin(a) * R * 0.18); ctx.lineTo(Math.cos(a) * R, Math.sin(a) * R); ctx.stroke();
+      }
+      ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(0, 0, R * 0.12, 0, Math.PI / 2); ctx.lineTo(0, 0); ctx.fill();
+      ctx.restore();
+    });
+    ctx.restore();
+  }
+
+  // Confetti helper: dots and foil strips, thicker toward the top and bottom edges
+  function scatterConfetti(ctx, w, h, colors, count, seed, gold){
+    var rand = seededRand(seed), u = Math.min(w, h);
+    for(var i = 0; i < count; i++){
+      var top = rand() < 0.5, t = Math.pow(rand(), 1.8);
+      // top edge, or the area just above the event name (kept clear so it stays readable)
+      var x = rand() * w, y = top ? t * h * 0.42 : h * 0.86 - t * h * 0.34;
+      var r = u * (0.004 + rand() * 0.012);
+      ctx.globalAlpha = 0.65 + rand() * 0.35;
+      ctx.fillStyle = gold && rand() < 0.7 ? goldGrad(ctx, x - r, y - r, x + r, y + r) : colors[Math.floor(rand() * colors.length)];
+      if(rand() < 0.72){ ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+      else { ctx.save(); ctx.translate(x, y); ctx.rotate(rand() * Math.PI); ctx.fillRect(-r * 1.6, -r * 0.45, r * 3.2, r * 0.9); ctx.restore(); }
+    }
+    ctx.globalAlpha = 1;
+  }
+  function fillBlackGold(ctx, w, h){
+    var base = themeBase('#141414');
+    var g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.1, w / 2, h / 2, Math.max(w, h) * 0.75);
+    g.addColorStop(0, mixHex(base, '#ffffff', 0.06)); g.addColorStop(1, mixHex(base, '#000000', 0.6));
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    scatterConfetti(ctx, w, h, ['#f6e3a1', '#d4af37', '#fff6d6'], Math.round(w * h / 5200), 77, true);
+  }
+  function fillGoldConfetti(ctx, w, h){
+    var base = themeBase('#fffdf8');
+    ctx.fillStyle = vGrad(ctx, h, base, mixHex(base, '#f3e7d3', 0.5)); ctx.fillRect(0, 0, w, h);
+    scatterConfetti(ctx, w, h, ['#f2c4ce', '#e9d8b4', '#f7dfe4', '#e6c27a'], Math.round(w * h / 5600), 91, true);
+  }
+
+  // White marble with grey and gold veins
+  function fillMarble(ctx, w, h){
+    var base = themeBase('#f7f5f1');
+    ctx.fillStyle = vGrad(ctx, h, mixHex(base, '#ffffff', 0.5), mixHex(base, '#e7e3dc', 0.6)); ctx.fillRect(0, 0, w, h);
+    var rand = seededRand(1234), u = Math.min(w, h);
+    ctx.save(); ctx.lineCap = 'round';
+    for(var v = 0; v < 14; v++){
+      var goldVein = v % 5 === 0;
+      ctx.strokeStyle = goldVein ? goldGrad(ctx, 0, 0, w, h) : 'rgba(150,145,138,1)';
+      ctx.globalAlpha = goldVein ? 0.75 : 0.12 + rand() * 0.2;
+      ctx.lineWidth = u * (goldVein ? 0.004 : 0.002 + rand() * 0.006);
+      var x = rand() * w, y = -h * 0.1, steps = 9;
+      ctx.beginPath(); ctx.moveTo(x, y);
+      for(var s = 0; s < steps; s++){
+        var nx = x + (rand() - 0.35) * w * 0.35, ny = y + h * (0.1 + rand() * 0.16);
+        ctx.quadraticCurveTo(x + (rand() - 0.5) * w * 0.3, (y + ny) / 2, nx, ny);
+        x = nx; y = ny;
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Blush stripes (hearts by default)
+  function fillBlushStripes(ctx, w, h){
+    var base = themeBase('#fbe3e8');
+    var light = mixHex(base, '#ffffff', 0.6), sw = w / 14;
+    ctx.fillStyle = light; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = base;
+    for(var x = 0; x < w; x += sw * 2) ctx.fillRect(x, 0, sw, h);
+  }
+  // Pastel party (balloons by default)
+  function fillPartyPastel(ctx, w, h){
+    var base = themeBase('#e9dcff');
+    var g = ctx.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0, base); g.addColorStop(0.55, mixHex(base, '#ffe6d6', 0.7)); g.addColorStop(1, mixHex(base, '#d8f3e6', 0.6));
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  }
+  // Christmas pine (snowflakes by default)
+  function fillPine(ctx, w, h){
+    var base = themeBase('#174d39');
+    ctx.fillStyle = vGrad(ctx, h, mixHex(base, '#000000', 0.15), mixHex(base, '#000000', 0.45)); ctx.fillRect(0, 0, w, h);
+    var u = Math.min(w, h);
+    ctx.save(); ctx.strokeStyle = goldGrad(ctx, 0, 0, w, h); ctx.globalAlpha = 0.85;
+    var m = u * 0.035; ctx.lineWidth = Math.max(2, u * 0.005); ctx.strokeRect(m, m, w - 2 * m, h - 2 * m);
+    ctx.fillStyle = '#b3202b'; ctx.globalAlpha = 1;
+    var rand = seededRand(25);
+    for(var i = 0; i < 18; i++){
+      var edge = i % 4, t = rand();
+      var x = edge === 0 ? t * w : edge === 1 ? w - m : edge === 2 ? t * w : m;
+      var y = edge === 0 ? m : edge === 1 ? t * h : edge === 2 ? h - m : t * h;
+      ctx.beginPath(); ctx.arc(x, y, u * 0.012, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+  // Midnight with soft gold bokeh (gold stars by default)
+  function fillMidnight(ctx, w, h){
+    var base = themeBase('#141a3a');
+    ctx.fillStyle = vGrad(ctx, h, mixHex(base, '#000000', 0.25), mixHex(base, '#3a2a5a', 0.25)); ctx.fillRect(0, 0, w, h);
+    var rand = seededRand(808), u = Math.min(w, h);
+    for(var i = 0; i < 26; i++){
+      var x = rand() * w, y = rand() * h, r = u * (0.03 + rand() * 0.07);
+      var g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, 'rgba(255,214,130,' + (0.18 + rand() * 0.2) + ')'); g.addColorStop(1, 'rgba(255,214,130,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // Rustic wood planks with warm string lights
+  function fillRustic(ctx, w, h){
+    var base = themeBase('#8a5a2e');
+    var rand = seededRand(4242), plank = h / 9;
+    for(var i = 0; i * plank < h; i++){
+      var tone = mixHex(base, i % 2 ? '#5a3618' : '#a4723f', 0.25 + rand() * 0.2);
+      ctx.fillStyle = vGrad(ctx, plank, tone, mixHex(tone, '#000000', 0.12));
+      ctx.save(); ctx.translate(0, i * plank); ctx.fillRect(0, 0, w, plank);
+      ctx.strokeStyle = 'rgba(40,22,8,.18)'; ctx.lineWidth = 1.2;
+      for(var k = 0; k < 6; k++){
+        var yy = plank * (0.15 + rand() * 0.7);
+        ctx.beginPath(); ctx.moveTo(0, yy);
+        ctx.bezierCurveTo(w * 0.3, yy + (rand() - 0.5) * plank * 0.3, w * 0.7, yy + (rand() - 0.5) * plank * 0.3, w, yy);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(20,10,2,.45)'; ctx.fillRect(0, plank - 2, w, 2);
+      ctx.restore();
+    }
+    function lights(y0, sag){
+      var u = Math.min(w, h), n = 9;
+      ctx.save(); ctx.strokeStyle = 'rgba(30,24,18,.85)'; ctx.lineWidth = Math.max(1.5, u * 0.003);
+      ctx.beginPath(); ctx.moveTo(-w * 0.05, y0); ctx.quadraticCurveTo(w / 2, y0 + sag * 2, w * 1.05, y0); ctx.stroke();
+      for(var j = 1; j < n; j++){
+        var t = j / n, x = -w * 0.05 + t * w * 1.1;
+        var y = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * (y0 + sag * 2) + t * t * y0;
+        var r = u * 0.018;
+        var g = ctx.createRadialGradient(x, y + r, 0, x, y + r, r * 5);
+        g.addColorStop(0, 'rgba(255,214,120,.55)'); g.addColorStop(1, 'rgba(255,214,120,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y + r, r * 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff3c9'; ctx.beginPath(); ctx.ellipse(x, y + r * 1.2, r * 0.75, r, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(30,24,18,.9)'; ctx.fillRect(x - r * 0.45, y - r * 0.1, r * 0.9, r * 0.5);
+      }
+      ctx.restore();
+    }
+    lights(h * 0.03, h * 0.035);
+  }
+
+
+  // Graduation: caps and stars (navy by default; the maroon theme recolors it)
+  function drawCapIcon(ctx, x, y, r, rot, stroke){
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+    ctx.strokeStyle = stroke; ctx.lineWidth = Math.max(1.2, r * 0.09); ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(0, -r * 0.55); ctx.lineTo(r, -r * 0.1); ctx.lineTo(0, r * 0.3); ctx.lineTo(-r, -r * 0.1); ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-r * 0.5, r * 0.08); ctx.lineTo(-r * 0.5, r * 0.42); ctx.quadraticCurveTo(0, r * 0.62, r * 0.5, r * 0.42); ctx.lineTo(r * 0.5, r * 0.08); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -r * 0.1); ctx.lineTo(r * 0.72, r * 0.05); ctx.lineTo(r * 0.72, r * 0.55); ctx.stroke();
+    ctx.restore();
+  }
+  function fillGraduation(ctx, w, h){
+    var base = themeBase('#14254a');
+    ctx.fillStyle = vGrad(ctx, h, mixHex(base, '#000000', 0.05), mixHex(base, '#000000', 0.42)); ctx.fillRect(0, 0, w, h);
+    var rand = seededRand(2026), u = Math.min(w, h), gold = goldGrad(ctx, 0, 0, w, h);
+    for(var i = 0; i < 34; i++){
+      var top = rand() < 0.5, t = Math.pow(rand(), 1.5);
+      var x = rand() * w, y = top ? t * h * 0.4 : h * 0.86 - t * h * 0.32;
+      ctx.globalAlpha = 0.55 + rand() * 0.4;
+      if(rand() < 0.45) drawCapIcon(ctx, x, y, u * (0.03 + rand() * 0.035), (rand() - 0.5) * 0.8, gold);
+      else { ctx.fillStyle = gold; ctx.save(); ctx.translate(x, y); ctx.rotate(rand()); starPathAt(ctx, u * (0.008 + rand() * 0.014)); ctx.fill(); ctx.restore(); }
+    }
+    ctx.globalAlpha = 1;
+  }
+  function starPathAt(ctx, r){
+    ctx.beginPath();
+    for(var i = 0; i < 10; i++){ var rr = i % 2 ? r * 0.45 : r, a = -Math.PI / 2 + i * Math.PI / 5; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+    ctx.closePath();
+  }
+  // Laurel branch along a line (used by Diploma and Sage)
+  function laurel(ctx, x0, y0, x1, y1, leaf, color, flip){
+    var n = Math.max(4, Math.round(Math.hypot(x1 - x0, y1 - y0) / (leaf * 1.1)));
+    var ang = Math.atan2(y1 - y0, x1 - x0);
+    ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = Math.max(1, leaf * 0.12);
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    for(var i = 1; i < n; i++){
+      var t = i / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
+      [1, -1].forEach(function(side){
+        ctx.save(); ctx.translate(x, y); ctx.rotate(ang + side * (flip ? -0.75 : 0.75));
+        ctx.beginPath(); ctx.ellipse(leaf * 0.55, 0, leaf * 0.55, leaf * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      });
+    }
+    ctx.restore();
+  }
+  function fillDiploma(ctx, w, h){
+    var base = themeBase('#f6efdf');
+    ctx.fillStyle = vGrad(ctx, h, mixHex(base, '#ffffff', 0.35), mixHex(base, '#e2d3b0', 0.45)); ctx.fillRect(0, 0, w, h);
+    var u = Math.min(w, h), gold = goldGrad(ctx, 0, 0, w, h), m = u * 0.02;
+    ctx.save(); ctx.strokeStyle = gold; ctx.lineWidth = Math.max(2, u * 0.006); ctx.strokeRect(m, m, w - 2 * m, h - 2 * m);
+    ctx.lineWidth = Math.max(1, u * 0.002); ctx.strokeRect(m * 1.5, m * 1.5, w - 3 * m, h - 3 * m); ctx.restore();
+    var leaf = u * 0.045;
+    laurel(ctx, m * 4.4, h * 0.5, m * 4.4, m * 6, leaf, gold, false);
+    laurel(ctx, w - m * 4.4, h * 0.5, w - m * 4.4, m * 6, leaf, gold, true);
+    laurel(ctx, m * 4.4, h * 0.5, m * 4.4, h - m * 5, leaf, gold, true);
+    laurel(ctx, w - m * 4.4, h * 0.5, w - m * 4.4, h - m * 5, leaf, gold, false);
+    drawCapIcon(ctx, w / 2, m * 6.4, u * 0.05, 0, gold);
+  }
+  // Christening: sky with doves and soft rays
+  function drawDoveShape(ctx, x, y, r, flip){
+    ctx.save(); ctx.translate(x, y); if(flip) ctx.scale(-1, 1);
+    ctx.fillStyle = 'rgba(255,255,255,.92)';
+    ctx.beginPath(); ctx.ellipse(0, r * 0.15, r * 0.55, r * 0.24, -0.15, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-r * 0.15, r * 0.05); ctx.bezierCurveTo(-r * 0.5, -r * 0.6, -r * 0.1, -r * 0.95, r * 0.2, -r * 0.7); ctx.bezierCurveTo(r * 0.05, -r * 0.4, r * 0.15, -r * 0.1, r * 0.1, r * 0.05); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(r * 0.55, -r * 0.02, r * 0.16, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-r * 0.5, r * 0.2); ctx.lineTo(-r * 0.95, r * 0.05); ctx.lineTo(-r * 0.9, r * 0.35); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  function fillAngel(ctx, w, h){
+    var base = themeBase('#bcd9f2');
+    ctx.fillStyle = vGrad(ctx, h, base, mixHex(base, '#ffffff', 0.85)); ctx.fillRect(0, 0, w, h);
+    var u = Math.min(w, h);
+    ctx.save(); ctx.globalAlpha = 0.18; ctx.fillStyle = '#ffffff';
+    for(var i = 0; i < 9; i++){
+      var a = -Math.PI / 2 + (i - 4) * 0.2;
+      ctx.beginPath(); ctx.moveTo(w / 2, -h * 0.1);
+      ctx.lineTo(w / 2 + Math.cos(a - 0.04) * h * 1.4, -h * 0.1 + Math.sin(a - 0.04) * -h * 1.4);
+      ctx.lineTo(w / 2 + Math.cos(a + 0.04) * h * 1.4, -h * 0.1 + Math.sin(a + 0.04) * -h * 1.4); ctx.fill();
+    }
+    ctx.restore();
+    var rand = seededRand(316);
+    for(var d = 0; d < 7; d++){
+      var top = d % 2 === 0;
+      drawDoveShape(ctx, w * (0.1 + rand() * 0.8), top ? h * (0.04 + rand() * 0.12) : h * (0.7 + rand() * 0.14), u * (0.05 + rand() * 0.035), rand() < 0.5);
+    }
+    ctx.fillStyle = goldGrad(ctx, 0, 0, w, h);
+    var cx = w / 2, cy = h * 0.035, r = u * 0.03;
+    ctx.fillRect(cx - r * 0.12, cy - r * 0.6, r * 0.24, r * 1.6); ctx.fillRect(cx - r * 0.5, cy - r * 0.2, r, r * 0.24);
+  }
+  // Christening: sage with a laurel frame and a small gold cross
+  function fillSage(ctx, w, h){
+    var base = themeBase('#a9bfa3');
+    ctx.fillStyle = vGrad(ctx, h, mixHex(base, '#ffffff', 0.25), mixHex(base, '#5d7a5a', 0.25)); ctx.fillRect(0, 0, w, h);
+    var u = Math.min(w, h), m = u * 0.05, leaf = u * 0.05, green = 'rgba(255,255,255,.55)';
+    laurel(ctx, m, h - m, m, m * 1.5, leaf, green, false);
+    laurel(ctx, w - m, h - m, w - m, m * 1.5, leaf, green, true);
+    ctx.fillStyle = goldGrad(ctx, 0, 0, w, h);
+    var cx = w / 2, cy = m * 0.9, r = u * 0.04;
+    ctx.fillRect(cx - r * 0.12, cy - r * 0.6, r * 0.24, r * 1.6); ctx.fillRect(cx - r * 0.5, cy - r * 0.2, r, r * 0.24);
+  }
+  Object.assign(BACKDROP_PRESETS, {
+    grad:         { fill: fillGraduation,   elements: 'none',       base: '#14254a' },
+    diploma:      { fill: fillDiploma,      elements: 'none',       base: '#f6efdf' },
+    angel:        { fill: fillAngel,        elements: 'none',       base: '#bcd9f2' },
+    sage:         { fill: fillSage,         elements: 'none',       base: '#a9bfa3' },
+    chevron:      { fill: fillChevron,      elements: 'none',       base: '#fbf7ef' },
+    deco:         { fill: fillDeco,         elements: 'none',       base: '#13213f' },
+    blackgold:    { fill: fillBlackGold,    elements: 'none',       base: '#141414' },
+    goldconfetti: { fill: fillGoldConfetti, elements: 'none',       base: '#fffdf8' },
+    marble:       { fill: fillMarble,       elements: 'none',       base: '#f7f5f1' },
+    blush:        { fill: fillBlushStripes, elements: 'hearts',     base: '#fbe3e8', pal: Object.assign({}, buildPalette('#f4c3cf')) },
+    party:        { fill: fillPartyPastel,  elements: 'balloons',   base: '#e9dcff', pal: Object.assign({}, buildPalette('#efe5ff')) },
+    pine:         { fill: fillPine,         elements: 'snowflakes', base: '#174d39', pal: Object.assign({}, buildPalette('#174d39')) },
+    midnight:     { fill: fillMidnight,     elements: 'goldstars',  base: '#141a3a', pal: Object.assign({}, buildPalette('#141a3a'), { gold: '#f0c869' }) },
+    rustic:       { fill: fillRustic,       elements: 'none',       base: '#8a5a2e' }
+  });
+  palCache = { color: null, pal: null };
+
   // The color the backdrop "reads as" — picked Backdrop color, else the style's own.
   function backdropBaseColor(preset){
     if(backdropColor) return backdropColor;
@@ -2702,6 +3216,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       // un-mirrors it again so any text on props reads correctly in the
       // final photo.
       video.style.transform = isFrontCamera() ? 'scaleX(-1)' : 'scaleX(1)';
+      applyLiveFilter();
       guestCall('camera');
       cameraError.style.display = 'none';
       recDot.style.display = 'flex';
@@ -2757,6 +3272,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     qrSection.classList.toggle('hidden', !showQr);
     appShell.classList.toggle('has-qr', showQr);
     guestRender();
+    if(typeof refreshWelcome === 'function') refreshWelcome();
   }
 
   function updateFilmTrack(){
@@ -2816,6 +3332,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     // the true, non-mirrored feed. No extra flip needed: this is what
     // makes any text on props come out reading correctly.
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    applyFilterToCanvas(c);
     shotCanvases[index] = c;
     updateFilmTrack();
   }
@@ -2895,10 +3412,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     await wait(180);
     flashOverlay.classList.remove('flash-active');
     if(index < shotCanvases.length - 1 && betweenSec > 0){
+      if(reviewEach) showShotReview(index);
       popNum('Nice!', true);
       guestCall('tick', 'Nice!', true, 1, 'Next: shot ' + (index + 2) + ' of ' + shotsNeeded());
       cdBar.style.strokeDashoffset = '0';
       await wait(betweenSec * 1000);
+      hideShotReview();
     }
   }
 
@@ -2944,13 +3463,15 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     sessionNumber = nextSessionNumber();
     renderComposite();
     updateUI();
-    showQRForCurrentPhoto();
+    const gifShots = shotCanvases.slice(), gifSession = sessionNumber;
+    showQRForCurrentPhoto().then(() => uploadSessionGif(gifShots, gifSession)).catch(() => {});
+    scheduleResultReset();
     showMultipleDownloadsHint();
     saveToDevice();
     maybeAutoPrint();
   }
 
-  startBtn.addEventListener('click', () => startSession(false));
+  startBtn.addEventListener('click', () => beginGuestFlow(false));
 
   // ---- Backdrop presets ----
   function setActivePresetBtn(){
@@ -3208,10 +3729,20 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   layoutGrid.addEventListener('click', (e) => {
     const btn = e.target.closest('.layout-btn');
     if(!btn) return;
-    currentLayout = btn.dataset.layout;
+    setupLayout = btn.dataset.layout;   // the renter's default layout (saved with the setup)
+    setLayout(btn.dataset.layout);
+    if(typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
+  });
+  // Switches the layout everywhere (Setup grid, shot count, previews). Used by
+  // the Setup grid, a restored saved setup, and the guests' layout picker.
+  let setupLayout = 'strip';
+  function setLayout(key){
+    if(!LAYOUT_DEFS[key]) return;
+    currentLayout = key;
     [...layoutGrid.children].forEach(b => {
-      b.classList.toggle('active', b === btn);
-      b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+      const on = b.dataset.layout === key;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
     layoutHint.textContent = layoutDef().hint;
     // A finished session with a different shot count can't be re-laid out.
@@ -3228,7 +3759,8 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     renderComposite();
     renderSetupPreview();
     refreshPrintUI();
-  });
+    if(typeof refreshDecorUI === 'function' && typeof overlaySizeHint !== 'undefined' && overlaySizeHint) refreshDecorUI();
+  }
 
   // ---- Canvas compositing ----
   function drawImageCover(ctx, img, x, y, w, h, focus){
@@ -3673,6 +4205,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       labelX = 0;
     }
     if(bandH) drawLabelBand(ctx, labelW, labelY, bandH, labelInput.value, labelX);
+    if(typeof drawDecorLayer === 'function') drawDecorLayer(ctx, layout.w, totalH);
     return targetCanvas;
   }
 
@@ -3714,6 +4247,8 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     const haveRealShots = shotCanvases.length === needed && shotCanvases.every(Boolean);
     const shotsToUse = haveRealShots ? shotCanvases : buildPlaceholderShots(400, needed);
     composeCanvas(currentLayout, setupPreviewCanvas, shotsToUse);
+    if(typeof drawDecorSelection === 'function') drawDecorSelection();
+    if(typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
   }
 
 
@@ -3994,8 +4529,15 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     '.qr img{width:100%;height:100%;display:block;}' +
     '.fs{position:fixed;top:1.6vh;left:50%;transform:translateX(-50%);z-index:5;padding:10px 18px;border-radius:99px;border:1.5px solid #D6CEC1;background:#fff;color:var(--ink);font:700 13px Manrope,sans-serif;cursor:pointer;}' +
     '.hide{display:none !important;}' +
+    '.pk{position:fixed;inset:0;z-index:4;background:rgba(20,18,22,.86);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4vh;padding:4vh 4vw;}' +
+    '.pkt{margin:0;color:#fff;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(26px,3.6vw,64px);}' +
+    '.pkg{display:flex;gap:2.4vw;justify-content:center;align-items:flex-end;flex-wrap:wrap;}' +
+    '.pkb{display:flex;flex-direction:column;align-items:center;gap:1.4vh;padding:1.2vh;border-radius:18px;border:4px solid transparent;background:rgba(255,255,255,.08);color:#fff;font:700 clamp(14px,1.3vw,24px) Manrope,sans-serif;cursor:pointer;}' +
+    '.pkb img{height:52vh;max-width:28vw;object-fit:contain;border-radius:10px;background:#fff;}' +
+    '.pkb.sel{border-color:var(--red);background:rgba(255,255,255,.16);}' +
     '</style></head><body>' +
     '<button class="fs" id="fs" type="button">⛶ Click for full screen</button>' +
+    '<div class="pk hide" id="pk"><p class="pkt">Choose your layout</p><div class="pkg" id="pkg"></div></div>' +
     '<div class="g">' +
       '<div class="side">' +
         '<div class="logo"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span></div>' +
@@ -4017,7 +4559,8 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     d.open(); d.write(GUEST_HTML); d.close();
     const $g = id => d.getElementById(id);
     G = { d, v: $g('v'), res: $g('res'), cd: $g('cd'), bar: $g('bar'), num: $g('num'), flash: $g('flash'), film: $g('film'),
-          msg: $g('msg'), sub: $g('sub'), ev: $g('ev'), dt: $g('dt'), chip: $g('chip'), qrw: $g('qrw'), qr: $g('qr'), fs: $g('fs') };
+          msg: $g('msg'), sub: $g('sub'), ev: $g('ev'), dt: $g('dt'), chip: $g('chip'), qrw: $g('qrw'), qr: $g('qr'), fs: $g('fs'),
+          pk: $g('pk'), pkg: $g('pkg'), pkSig: '' };
     G.fs.addEventListener('click', (e) => {
       e.stopPropagation();
       const el = d.documentElement;
@@ -4066,6 +4609,11 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       if(what === 'camera'){
         if(currentStream && G.v.srcObject !== currentStream){ G.v.srcObject = currentStream; G.v.play().catch(() => {}); }
         G.v.style.transform = isFrontCamera() ? 'scaleX(-1)' : 'scaleX(1)';
+        G.v.style.filter = liveFilterCss();
+      } else if(what === 'review'){
+        G.res.src = a; G.res.style.display = 'block'; G.v.style.display = 'none';
+      } else if(what === 'reviewEnd'){
+        G.res.style.display = 'none'; G.v.style.display = 'block';
       } else if(what === 'tick'){
         G.cd.style.display = 'flex';
         if(G.num.textContent !== a) G.num.textContent = a;
@@ -4093,6 +4641,28 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       el.style.backgroundImage = shot ? 'url(' + shot.toDataURL('image/jpeg', 0.7) + ')' : '';
     });
   }
+  // The layout picker on the guest screen (same choices as on the laptop).
+  function guestPickRender(){
+    if(!guestOpen()) return;
+    try{
+      G.pk.classList.toggle('hide', !pickOpen);
+      if(!pickOpen){ G.pkSig = ''; return; }
+      const sig = pickKeys.join(',');
+      if(G.pkSig !== sig){
+        G.pkSig = sig;
+        G.pkg.innerHTML = '';
+        pickKeys.forEach((k) => {
+          const b = G.d.createElement('button'); b.type = 'button'; b.className = 'pkb';
+          const im = G.d.createElement('img'); im.src = layoutThumbUrl(k);
+          const sp = G.d.createElement('span'); sp.textContent = LAYOUT_DEFS[k].name;
+          b.append(im, sp);
+          b.addEventListener('click', (e) => { e.stopPropagation(); finishPick(k); });
+          G.pkg.appendChild(b);
+        });
+      }
+      [...G.pkg.children].forEach((b, i) => b.classList.toggle('sel', i === pickIdx));
+    }catch(e){}
+  }
   // Redraws the guest screen for the booth's current state.
   function guestRender(){
     if(!guestOpen()) return;
@@ -4110,7 +4680,17 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       if(showQr && G.qr.src !== qrImg.src) G.qr.src = qrImg.src;
       G.film.classList.toggle('hide', showQr);
       guestFilm();
-      if(result){
+      guestPickRender();
+      const welcome = welcomeOn && state === 'idle' && !pickOpen && !ready && !!welcomeDataUrl;
+      if(welcome){
+        if(G.res.src !== welcomeDataUrl) G.res.src = welcomeDataUrl;
+        G.res.style.display = 'block'; G.v.style.display = 'none';
+      }
+      if(pickOpen){
+        G.msg.textContent = 'Choose your layout';
+        G.sub.textContent = 'Tap one to start';
+        G.chip.textContent = 'Pick one';
+      } else if(result){
         G.res.src = previewCanvas.toDataURL('image/jpeg', 0.9);
         G.msg.textContent = 'Looking good!';
         G.sub.textContent = showQr ? 'Scan the code for your photos' : (autoPrint ? 'Printing…' : 'Your photo is ready');
@@ -4123,8 +4703,8 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         G.sub.textContent = 'Tap or press the button to start';
         G.chip.textContent = shotsNeeded() + (shotsNeeded() === 1 ? ' shot' : ' shots');
       } else {
-        G.msg.textContent = 'Tap or press the button to start';
-        G.sub.textContent = layoutDef().name + ' · ' + shotsNeeded() + (shotsNeeded() === 1 ? ' shot' : ' shots');
+        G.msg.textContent = welcome ? 'Welcome!' : 'Tap or press the button to start';
+        G.sub.textContent = welcome ? 'Tap the screen to start' : (layoutDef().name + ' · ' + shotsNeeded() + (shotsNeeded() === 1 ? ' shot' : ' shots'));
         G.chip.textContent = 'Ready';
       }
     }catch(e){ /* closed */ }
@@ -4133,22 +4713,28 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   // answers "Get ready", or starts a new session from the Photo Session tab.
   function boothTrigger(fromGuest){
     if(!startScreen.classList.contains('gone')) { leaveStartScreen(); return; }
+    if(pickOpen){ if(!fromGuest) finishPick(pickKeys[pickIdx]); return; }   // guests tap a layout; clickers pick the highlighted one
     if(readyOverlay.classList.contains('ready-active')){ readyStartBtn.click(); return; }
-    if(state === 'capturing' || printing) return;
+    if(state === 'capturing' || printing || flowBusy) return;
     if(tabSession.classList.contains('hidden')){
       if(fromGuest) showToast('Finish Setup and open the Photo Session tab first.');
       return;
     }
     if(!rawFolderKey()) return;
-    startSession(true);
+    beginGuestFlow(true);
   }
   // Space / Enter / presenter-clicker keys (they send PageDown, PageUp or arrows).
-  const TRIGGER_KEYS = new Set([' ', 'Enter', 'PageDown', 'PageUp', 'ArrowRight', 'ArrowDown', 'b', 'B']);
+  const TRIGGER_KEYS = new Set([' ', 'Enter', 'PageDown', 'PageUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'b', 'B']);
   function onTriggerKey(e){
     if(!TRIGGER_KEYS.has(e.key)) return;
     const t = e.target;
     const tag = t && t.tagName;
-    if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || (t && t.isContentEditable)) return;
+    if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+    // While guests are choosing a layout, arrows / clicker move the highlight.
+    if(pickOpen && (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown')){ e.preventDefault(); movePick(1); return; }
+    if(pickOpen && (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp')){ e.preventDefault(); movePick(-1); return; }
+    if(e.key === 'ArrowLeft' || e.key === 'ArrowUp') return;
+    if(tag === 'BUTTON' && !pickOpen) return;
     e.preventDefault();
     boothTrigger(false);
   }
@@ -4171,6 +4757,1290 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   startScreen.addEventListener('click', leaveStartScreen);
   startScreen.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.stopPropagation(); leaveStartScreen(); } });
   labelInput.addEventListener('input', () => { refreshStartScreen(); guestRender(); });
+
+  // =====================================================================
+  // Filters, photo review, welcome screen, guests choose the layout, GIF,
+  // themes and the saved setup. (Plain `var`s so earlier code can safely
+  // call these helpers during start-up.)
+  // =====================================================================
+  var filterKey = 'none';      // none | bw | sepia | warm | cool
+  var softSkin = false;
+  var gifOn = true;
+  var welcomeOn = true;
+  var welcomeMsg = '';
+  var reviewEach = true;       // show each photo during the pause between shots
+  var resultReviewSec = 0;     // 0 = finished photo stays until the next tap
+  var guestPickOn = false;
+  var guestLayoutSet = [];     // extra layouts guests may pick (besides setupLayout)
+  var themeId = null;
+
+  // ---- Filters ----
+  // Live view uses a CSS filter (instant, works everywhere); the photo itself
+  // is processed pixel by pixel, which also works on older iPads.
+  var FILTERS = {
+    none:  '',
+    bw:    'grayscale(1) contrast(1.08)',
+    sepia: 'sepia(.85) contrast(1.05) brightness(1.03)',
+    warm:  'sepia(.2) saturate(1.18) brightness(1.04)',
+    cool:  'saturate(.92) brightness(1.05) hue-rotate(10deg)'
+  };
+  function liveFilterCss(){
+    var f = FILTERS[filterKey] || '';
+    if(softSkin) f += ' brightness(1.04) contrast(.94)';
+    return f.trim();
+  }
+  function applyLiveFilter(){
+    video.style.filter = liveFilterCss();
+    if(guestOpen()){ try{ G.v.style.filter = liveFilterCss(); }catch(e){} }
+  }
+  function applyFilterToCanvas(c){
+    if(filterKey === 'none' && !softSkin) return;
+    var ctx = c.getContext('2d'), w = c.width, h = c.height;
+    if(softSkin){
+      // A softly blurred copy laid lightly on top smooths skin and evens tone.
+      var s = document.createElement('canvas');
+      s.width = Math.max(1, Math.round(w / 9)); s.height = Math.max(1, Math.round(h / 9));
+      var sx = s.getContext('2d'); sx.imageSmoothingEnabled = true; sx.imageSmoothingQuality = 'high';
+      sx.drawImage(c, 0, 0, s.width, s.height);
+      ctx.save(); ctx.globalAlpha = 0.26; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(s, 0, 0, w, h); ctx.restore();
+    }
+    if(filterKey === 'none' && !softSkin) return;
+    var img = ctx.getImageData(0, 0, w, h), d = img.data, i, r, g, b, y;
+    for(i = 0; i < d.length; i += 4){
+      r = d[i]; g = d[i + 1]; b = d[i + 2];
+      if(filterKey === 'bw'){ y = (0.299*r + 0.587*g + 0.114*b - 128) * 1.08 + 128; r = g = b = y; }
+      else if(filterKey === 'sepia'){
+        var tr = 0.393*r + 0.769*g + 0.189*b, tg = 0.349*r + 0.686*g + 0.168*b, tb = 0.272*r + 0.534*g + 0.131*b;
+        r = ((r*0.15 + tr*0.85) - 128) * 1.05 + 131; g = ((g*0.15 + tg*0.85) - 128) * 1.05 + 131; b = ((b*0.15 + tb*0.85) - 128) * 1.05 + 131;
+      }
+      else if(filterKey === 'warm'){ r = r*1.07 + 8; g = g*1.02 + 3; b = b*0.9; }
+      else if(filterKey === 'cool'){ r = r*0.92; g = g + 3; b = b*1.08 + 10; }
+      if(softSkin){ r = r*1.02 + 3; g = g*1.02 + 3; b = b*1.02 + 3; }
+      d[i] = r; d[i + 1] = g; d[i + 2] = b;   // Uint8ClampedArray clamps + rounds
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  var filterChips = document.getElementById('filterChips');
+  function markFilterChips(){
+    [...filterChips.children].forEach(function(c){ c.classList.toggle('active', c.dataset.filter === filterKey); });
+  }
+  filterChips.addEventListener('click', function(e){
+    var c = e.target.closest('.chip'); if(!c) return;
+    filterKey = c.dataset.filter; markFilterChips(); applyLiveFilter();
+  });
+  var softSkinToggle = document.getElementById('softSkinToggle');
+  softSkinToggle.addEventListener('change', function(){ softSkin = softSkinToggle.checked; applyLiveFilter(); });
+  var gifToggle = document.getElementById('gifToggle');
+  gifToggle.addEventListener('change', function(){ gifOn = gifToggle.checked; });
+
+  // ---- Photo review ----
+  var shotReview = document.getElementById('shotReview');
+  var reviewEachToggle = document.getElementById('reviewEachToggle');
+  reviewEachToggle.addEventListener('change', function(){ reviewEach = reviewEachToggle.checked; });
+  var resultReviewSelect = document.getElementById('resultReviewSelect');
+  resultReviewSelect.addEventListener('change', function(){ resultReviewSec = Number(resultReviewSelect.value) || 0; });
+  function showShotReview(i){
+    if(!shotCanvases[i]) return;
+    var url = shotCanvases[i].toDataURL('image/jpeg', 0.9);
+    shotReview.src = url; shotReview.classList.add('on');
+    guestCall('review', url);
+  }
+  function hideShotReview(){
+    shotReview.classList.remove('on');
+    guestCall('reviewEnd');
+  }
+  // After the finished photo has been on screen for the chosen time, go back
+  // to the start for the next guests (waiting for any print to finish).
+  var resultTimer = null;
+  function scheduleResultReset(){
+    clearTimeout(resultTimer);
+    if(!resultReviewSec) return;
+    resultTimer = setTimeout(function tryReset(){
+      if(state !== 'result') return;
+      if(printing){ resultTimer = setTimeout(tryReset, 1500); return; }
+      resetForNextGuest();
+    }, resultReviewSec * 1000);
+  }
+  function resetForNextGuest(){
+    clearTimeout(resultTimer);
+    state = 'idle';
+    if(currentLayout !== setupLayout) setLayout(setupLayout);
+    shotCanvases = new Array(shotsNeeded()).fill(null);
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    video.style.display = 'block';
+    previewCanvas.style.display = 'none';
+    updateFilmTrack();
+    updateUI();
+  }
+
+  // ---- Welcome screen (between guests) ----
+  var welcomeOverlay = document.getElementById('welcomeOverlay');
+  var welcomeImg = document.getElementById('welcomeImg');
+  var welcomeToggle = document.getElementById('welcomeToggle');
+  var welcomeMsgInput = document.getElementById('welcomeMsgInput');
+  var welcomeDataUrl = '';
+  var welcomeTimer = null;
+  welcomeToggle.addEventListener('change', function(){ welcomeOn = welcomeToggle.checked; refreshWelcome(); guestRender(); });
+  welcomeMsgInput.addEventListener('input', function(){ welcomeMsg = welcomeMsgInput.value.trim(); scheduleWelcomeRender(); });
+  function scheduleWelcomeRender(){ clearTimeout(welcomeTimer); welcomeTimer = setTimeout(renderWelcome, 250); }
+  function roundRectPath(ctx, x, y, w, h, r){
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function fitFont(ctx, text, font, start, maxW, min){
+    var size = start;
+    ctx.font = fontString(font, size);
+    while(size > min && ctx.measureText(text).width > maxW){ size -= 2; ctx.font = fontString(font, size); }
+    return size;
+  }
+  function renderWelcome(){
+    try{
+      var W = 1000, H = Math.round(W / SHOT_ASPECT);
+      var c = document.createElement('canvas'); c.width = W; c.height = H;
+      var ctx = c.getContext('2d');
+      if(backdropPreset === 'custom' && backgroundImg){
+        drawImageCover(ctx, backgroundImg, 0, 0, W, H, cropFocus);
+        ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(0, 0, W, H);
+      } else {
+        drawBackdrop(ctx, W, H);
+      }
+      var cardColor = titleBgEnabled ? titleBgColor : '#ffffff';
+      var ink = colorDist(textColor, cardColor) > 140 ? textColor : (lumOf(cardColor) > 0.5 ? '#1C1A1E' : '#ffffff');
+      var soft = lumOf(cardColor) > 0.5 ? 'rgba(28,26,30,.62)' : 'rgba(255,255,255,.75)';
+      // Card height follows its content: eyebrow, name, (date), divider, 3 steps, button.
+      var dtProbe = currentDateLabel();
+      var ch = 92 + 108 + (dtProbe ? 56 : 0) + 52 + 70 + 148 + 78 + 84 + 60;
+      var cw = W * 0.8, cx = (W - cw) / 2, cy = (H - ch) / 2;
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,.22)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 12;
+      roundRectPath(ctx, cx, cy, cw, ch, 36);
+      ctx.globalAlpha = 0.93; ctx.fillStyle = cardColor; ctx.fill();
+      ctx.restore();
+      ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      var mid = W / 2, yy = cy + 92;
+      ctx.fillStyle = '#C93D27'; ctx.font = '800 26px Manrope, sans-serif';
+      ctx.fillText('W E L C O M E', mid, yy);
+      var title = (labelInput.value || '').trim() || 'Photo Booth';
+      yy += 108;
+      ctx.fillStyle = ink;
+      var ts = fitFont(ctx, title, currentFont, 92, cw - 90, 40);
+      ctx.font = fontString(currentFont, ts);
+      ctx.fillText(title, mid, yy);
+      var dt = currentDateLabel();
+      if(dt){ yy += 56; ctx.fillStyle = soft; ctx.font = fontString(currentDateFont, 40); ctx.fillText(dt, mid, yy); }
+      yy += 52;
+      ctx.strokeStyle = soft; ctx.globalAlpha = 0.35; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(mid - 120, yy); ctx.lineTo(mid + 120, yy); ctx.stroke(); ctx.globalAlpha = 1;
+      var steps = ['Tap to start', 'Strike a pose', 'Scan the QR for your photos'];
+      ctx.textAlign = 'left';
+      var sx = cx + cw * 0.19;
+      steps.forEach(function(t, i){
+        var sy = yy + 70 + i * 74;
+        ctx.fillStyle = '#C93D27'; ctx.beginPath(); ctx.arc(sx, sy - 12, 24, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = '800 26px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx, sy - 3);
+        ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 32px Manrope, sans-serif'; ctx.fillText(t, sx + 46, sy);
+      });
+      var btnText = (welcomeMsg || 'Tap to start').toUpperCase();
+      ctx.font = '800 30px Manrope, sans-serif';
+      var bw = Math.min(cw - 80, ctx.measureText(btnText).width + 120), bh = 84, bx = mid - bw / 2, by = cy + ch - bh - 60;
+      roundRectPath(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+      var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', 30, bw - 50, 18);
+      ctx.font = '800 ' + bs + 'px Manrope, sans-serif';
+      ctx.fillText(btnText, mid, by + bh / 2 + bs * 0.36);
+      welcomeDataUrl = c.toDataURL('image/jpeg', 0.88);
+      welcomeImg.src = welcomeDataUrl;
+      var prev = document.getElementById('welcomePreview'); if(prev) prev.src = welcomeDataUrl;
+      guestRender();
+    }catch(e){ console.error('welcome', e); }
+  }
+  function refreshWelcome(){
+    var show = welcomeOn && state === 'idle' && !pickOpen && !readyOverlay.classList.contains('ready-active');
+    welcomeOverlay.classList.toggle('on', show);
+  }
+  welcomeOverlay.addEventListener('click', function(e){ e.stopPropagation(); beginGuestFlow(true); });
+  welcomeOverlay.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.stopPropagation(); beginGuestFlow(true); } });
+
+  // ---- Guests choose the layout ----
+  var guestPickToggle = document.getElementById('guestPickToggle');
+  var guestLayoutsEl = document.getElementById('guestLayouts');
+  var guestPickHint = document.getElementById('guestPickHint');
+  function refreshGuestLayoutChoices(){
+    guestLayoutsEl.style.display = guestPickOn ? 'flex' : 'none';
+    guestPickHint.style.display = guestPickOn ? 'block' : 'none';
+    guestLayoutsEl.innerHTML = '';
+    LAYOUT_ORDER.forEach(function(k){
+      var lab = document.createElement('label');
+      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = k;
+      var isDef = k === setupLayout;
+      cb.checked = isDef || guestLayoutSet.indexOf(k) >= 0; cb.disabled = isDef;
+      var sp = document.createElement('span'); sp.textContent = LAYOUT_DEFS[k].name + (isDef ? ' (selected above)' : '');
+      lab.append(cb, sp); guestLayoutsEl.appendChild(lab);
+    });
+  }
+  guestPickToggle.addEventListener('change', function(){ guestPickOn = guestPickToggle.checked; refreshGuestLayoutChoices(); });
+  guestLayoutsEl.addEventListener('change', function(){
+    guestLayoutSet = [...guestLayoutsEl.querySelectorAll('input:checked')].map(function(i){ return i.value; }).filter(function(k){ return k !== setupLayout; });
+  });
+  function guestChoiceKeys(){
+    if(!guestPickOn) return [setupLayout];
+    return LAYOUT_ORDER.filter(function(k){ return k === setupLayout || guestLayoutSet.indexOf(k) >= 0; });
+  }
+  var pickOverlay = document.getElementById('pickOverlay');
+  var pickGrid = document.getElementById('pickGrid');
+  var pickOpen = false, pickResolve = null, pickKeys = [], pickIdx = 0;
+  var pickThumbs = { sig: '', urls: {} };
+  function layoutThumbUrl(key){
+    var sig = JSON.stringify(snapshotSetup()) + (backgroundImg ? backgroundImg.src.length : 0);
+    if(pickThumbs.sig !== sig) pickThumbs = { sig: sig, urls: {} };
+    if(!pickThumbs.urls[key]){
+      var big = document.createElement('canvas');
+      composeCanvas(key, big, buildPlaceholderShots(300, shotsNeeded(key)));
+      var small = document.createElement('canvas'), sc = 420 / big.height;
+      small.width = Math.round(big.width * sc); small.height = 420;
+      var sctx = small.getContext('2d'); sctx.imageSmoothingQuality = 'high';
+      sctx.drawImage(big, 0, 0, small.width, small.height);
+      pickThumbs.urls[key] = small.toDataURL('image/jpeg', 0.85);
+    }
+    return pickThumbs.urls[key];
+  }
+  function pickLayout(keys){
+    return new Promise(function(resolve){
+      pickOpen = true; pickResolve = resolve; pickKeys = keys;
+      pickIdx = Math.max(0, keys.indexOf(setupLayout));
+      pickGrid.innerHTML = '';
+      keys.forEach(function(k, i){
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'pick-btn';
+        var im = document.createElement('img'); im.alt = ''; im.src = layoutThumbUrl(k);
+        var sp = document.createElement('span'); sp.textContent = LAYOUT_DEFS[k].name;
+        b.append(im, sp);
+        b.addEventListener('click', function(e){ e.stopPropagation(); finishPick(k); });
+        pickGrid.appendChild(b);
+      });
+      markPick();
+      pickOverlay.classList.add('on');
+      refreshWelcome();
+      guestRender();
+    });
+  }
+  function markPick(){
+    [...pickGrid.children].forEach(function(b, i){ b.classList.toggle('sel', i === pickIdx); });
+    guestPickRender();
+  }
+  function movePick(step){ if(!pickOpen) return; pickIdx = (pickIdx + step + pickKeys.length) % pickKeys.length; markPick(); }
+  function finishPick(k){
+    if(!pickOpen) return;
+    pickOpen = false;
+    pickOverlay.classList.remove('on');
+    var r = pickResolve; pickResolve = null;
+    guestRender();
+    if(r) r(k);
+  }
+  // Starts the next guest's turn: (layout picker) -> countdown.
+  var flowBusy = false;
+  async function beginGuestFlow(skipReady){
+    if(flowBusy || state === 'capturing') return;
+    if(!rawFolderKey()){
+      switchTab('setup');
+      showDriveFolderError('Please type a folder name for Google Drive before starting.');
+      return;
+    }
+    flowBusy = true;
+    try{
+      clearTimeout(resultTimer);
+      welcomeOverlay.classList.remove('on');
+      var keys = guestChoiceKeys();
+      var key = keys.length > 1 ? await pickLayout(keys) : setupLayout;
+      if(key !== currentLayout) setLayout(key);
+      await startSession(skipReady);
+    } finally {
+      flowBusy = false;
+      refreshWelcome();
+    }
+  }
+
+  // ---- GIF of each session (uploaded next to the photo) ----
+  async function makeSessionGif(shots){
+    if(!window.gifenc || !shots || shots.length < 2 || !shots.every(Boolean)) return null;
+    var frames = [], W = 480;
+    for(var i = 0; i < shots.length; i++){
+      var big = document.createElement('canvas');
+      composeCanvas('solo', big, [shots[i]]);   // each shot on its own, in the event's theme
+      var fc = document.createElement('canvas'), sc = W / big.width;
+      fc.width = W; fc.height = Math.round(big.height * sc);
+      var fx = fc.getContext('2d'); fx.imageSmoothingQuality = 'high';
+      fx.drawImage(big, 0, 0, fc.width, fc.height);
+      frames.push(fc);
+      await wait(0);
+    }
+    var enc = gifenc.GIFEncoder();
+    for(var j = 0; j < frames.length; j++){
+      var d = frames[j].getContext('2d').getImageData(0, 0, frames[j].width, frames[j].height).data;
+      var pal = gifenc.quantize(d, 256);
+      enc.writeFrame(gifenc.applyPalette(d, pal), frames[j].width, frames[j].height, { palette: pal, delay: 700 });
+      await wait(0);
+    }
+    enc.finish();
+    return new Blob([enc.bytes()], { type: 'image/gif' });
+  }
+  async function uploadSessionGif(shots, sn){
+    if(!gifOn || !driveReady()) return;
+    try{
+      var blob = await makeSessionGif(shots);
+      if(!blob) return;
+      await uploadToDrive(blob, filePrefix() + (sn || 1) + '_gif' + deviceTag() + '.gif');
+    }catch(e){ console.error('GIF upload failed:', e); }
+  }
+
+  // ---- Saved setup ----
+  // Saved on this device right away, and to the server for rental codes, so
+  // a refresh / restart / another device on the same code gets the same design.
+  var setupSaveNote = document.getElementById('setupSaveNote');
+  var setupApplying = false, setupReady = false, setupSaveTimer = null, lastSavedJson = null;
+  var imageDirty = false, bgImageDataUrl = null, setupUpdatedAt = 0, setupLoadedKey = null, pendingCustom = false;
+  var DEFAULT_SETUP = null;
+  function setSaveNote(text, kind){
+    setupSaveNote.textContent = text || '';
+    setupSaveNote.className = 'setup-save-note' + (kind ? ' ' + kind : '');
+  }
+  function isHex(v){ return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v); }
+  function snapshotSetup(){
+    return {
+      v: 1,
+      themeId: themeId,
+      layout: setupLayout,
+      guestPick: guestPickOn, guestLayouts: guestLayoutSet.slice(),
+      timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec,
+      reviewEach: reviewEach, resultReviewSec: resultReviewSec,
+      backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
+      frameColorChoice: frameColorChoice, photoPlacement: photoPlacement, cropFocus: cropFocus,
+      label: labelInput.value, font: currentFont, dateFont: currentDateFont, dateOn: dateOn, date: dateInput.value,
+      textColor: textColor, titleSize: titleSizeMultiplier, titleBg: titleBgEnabled, titleBgColor: titleBgColor,
+      outline: useOutline, outlineColor: outlineColor, shadow: useShadow,
+      filter: filterKey, softSkin: softSkin, gif: gifOn, welcome: welcomeOn, welcomeMsg: welcomeMsg,
+      accent: accent, overlay: overlay ? Object.assign({}, overlay) : null, logo: logo ? Object.assign({}, logo) : null,
+      decor: decor.map(function(d){ return { src: d.src, x: Math.round(d.x * 1000) / 1000, y: Math.round(d.y * 1000) / 1000, s: Math.round(d.s * 1000) / 1000, r: Math.round(d.r || 0) }; }),
+      myProps: myProps.slice()
+    };
+  }
+  function selectFont(which, value){
+    var opt = FONT_OPTIONS.find(function(o){ return o[0] === value; });
+    if(!opt) return;
+    var btn = which === 'date' ? document.getElementById('dateFontDropdownBtn') : fontDropdownBtn;
+    var list = document.getElementById(which === 'date' ? 'dateFontDropdownList' : 'fontDropdownList');
+    btn.textContent = opt[1]; btn.style.fontFamily = opt[0];
+    [...list.children].forEach(function(c){ c.classList.toggle('active', c.dataset.value === value); });
+    if(which === 'date') currentDateFont = value; else currentFont = value;
+  }
+  function setTextColorUI(color){
+    textColor = color; textColorInput.value = color;
+    [...colorSwatchRow.querySelectorAll('.color-swatch-btn')].forEach(function(b){ b.classList.toggle('active', b.dataset.color.toLowerCase() === color.toLowerCase()); });
+  }
+  function setFrameColorUI(choice){
+    frameColorChoice = choice;
+    var name = 'Custom';
+    [...frameSwatchRow.querySelectorAll('.frame-swatch')].forEach(function(b){
+      var on = b.dataset.color.toLowerCase() === String(choice).toLowerCase();
+      b.classList.toggle('active', on); if(on) name = b.dataset.name;
+    });
+    frameSwatchName.textContent = name;
+  }
+  function setBackdropColorUI(color){
+    backdropColor = isHex(color) ? color : null;
+    var match = null;
+    [...bdColorRow.querySelectorAll('.bd-swatch')].forEach(function(b){
+      if(b !== bdCustomSwatch && (b.dataset.color || '').toLowerCase() === (backdropColor || '').toLowerCase()) match = b;
+    });
+    if(!match && backdropColor){ match = bdCustomSwatch; bdColorInput.value = backdropColor; }
+    [...bdColorRow.querySelectorAll('.bd-swatch')].forEach(function(b){ b.classList.toggle('active', b === match); });
+    bdCustomSwatch.style.background = (match === bdCustomSwatch && backdropColor) ? backdropColor : '';
+  }
+  function setSelectValue(id, val){
+    var el = document.getElementById(id);
+    if(![...el.options].some(function(o){ return Number(o.value) === Number(val); })){
+      var o = document.createElement('option'); o.value = String(val); o.textContent = val + ' s'; el.appendChild(o);
+    }
+    [...el.options].forEach(function(o){ if(Number(o.value) === Number(val)) el.value = o.value; });
+  }
+  function clearCustomPhoto(){
+    backgroundImg = null; bgImageDataUrl = null;
+    bgThumb.style.display = 'none'; removeBgBtn.style.display = 'none'; bgInput.value = '';
+  }
+  // Applies a saved setup to every control and redraws. imageUrl = the saved
+  // custom backdrop photo (data URL) or null.
+  function applySetup(s, imageUrl){
+    if(!s || typeof s !== 'object') return;
+    setupApplying = true;
+    try{
+      themeId = typeof s.themeId === 'string' ? s.themeId : null;
+      if(typeof s.label === 'string') labelInput.value = s.label.slice(0, 60);
+      if(s.font) selectFont('name', s.font);
+      if(s.dateFont) selectFont('date', s.dateFont);
+      if(isHex(s.textColor)) setTextColorUI(s.textColor);
+      if(typeof s.titleSize === 'number'){ titleSizeMultiplier = Math.max(0.6, Math.min(1.7, s.titleSize)); titleSizeSlider.value = Math.round(titleSizeMultiplier * 100); }
+      if(typeof s.titleBg === 'boolean'){ titleBgEnabled = s.titleBg; titleBgToggle.checked = s.titleBg; titleBgColorWrap.style.display = s.titleBg ? 'flex' : 'none'; }
+      if(isHex(s.titleBgColor)){ titleBgColor = s.titleBgColor; titleBgColorInput.value = s.titleBgColor; }
+      if(typeof s.outline === 'boolean'){ useOutline = s.outline; outlineToggle.checked = s.outline; }
+      if(s.outlineColor === '#000000' || s.outlineColor === '#ffffff'){ outlineColor = s.outlineColor; outlineColorSelect.value = s.outlineColor; }
+      if(typeof s.shadow === 'boolean'){ useShadow = s.shadow; shadowToggle.checked = s.shadow; }
+      if(typeof s.timerSec === 'number') setTimer(s.timerSec);
+      if(typeof s.firstExtraSec === 'number'){ firstExtraSec = s.firstExtraSec; setSelectValue('firstExtraSelect', s.firstExtraSec); }
+      if(typeof s.betweenSec === 'number'){ betweenSec = s.betweenSec; setSelectValue('betweenSelect', s.betweenSec); }
+      if(typeof s.reviewEach === 'boolean'){ reviewEach = s.reviewEach; reviewEachToggle.checked = s.reviewEach; }
+      if(typeof s.resultReviewSec === 'number'){ resultReviewSec = s.resultReviewSec; setSelectValue('resultReviewSelect', s.resultReviewSec); }
+      filterKey = Object.prototype.hasOwnProperty.call(FILTERS, s.filter) ? s.filter : 'none';
+      markFilterChips();
+      softSkin = !!s.softSkin; softSkinToggle.checked = softSkin;
+      applyLiveFilter();
+      if(typeof s.gif === 'boolean'){ gifOn = s.gif; gifToggle.checked = gifOn; }
+      if(typeof s.welcome === 'boolean'){ welcomeOn = s.welcome; welcomeToggle.checked = welcomeOn; }
+      welcomeMsg = typeof s.welcomeMsg === 'string' ? s.welcomeMsg.slice(0, 60) : ''; welcomeMsgInput.value = welcomeMsg;
+      setFrameColorUI(s.frameColorChoice === 'auto' || isHex(s.frameColorChoice) ? s.frameColorChoice : 'auto');
+      photoPlacement = s.photoPlacement === 'background' ? 'background' : 'band';
+      photoPlacementSelect.value = photoPlacement;
+      if(typeof s.cropFocus === 'string') cropFocus = s.cropFocus;
+      elementsChoice = (s.elementsChoice === 'auto' || ELEMENT_SETS.hasOwnProperty(s.elementsChoice)) ? s.elementsChoice : 'auto';
+      setBackdropColorUI(s.backdropColor);
+      // Custom photo: only from the saved image; anything else clears it.
+      pendingCustom = false;
+      if(imageUrl){
+        pendingCustom = s.backdropPreset === 'custom';
+        backdropPreset = s.backdropPreset === 'custom' ? 'none' : (BACKDROP_PRESETS[s.backdropPreset] ? s.backdropPreset : 'none');
+        bgImageDataUrl = imageUrl;
+        var img = new Image();
+        img.onload = function(){
+          backgroundImg = img;
+          var dom = computeDominantColor(img); photoHue = dom.h; photoSat = dom.s;
+          if(pendingCustom) backdropPreset = 'custom';
+          pendingCustom = false;
+          bgThumb.src = img.src; bgThumb.style.display = 'block'; removeBgBtn.style.display = 'inline';
+          setActivePresetBtn(); updateBandPositionVisibility(); renderComposite(); renderSetupPreview();
+        };
+        img.onerror = function(){ pendingCustom = false; };
+        img.src = imageUrl;
+      } else {
+        clearCustomPhoto();
+        backdropPreset = BACKDROP_PRESETS[s.backdropPreset] ? s.backdropPreset : 'none';
+      }
+      accent = ACCENTS[s.accent] ? s.accent : 'gold'; markAccentChips();
+      var assetOk = function(id){ return typeof id === 'string' && /^a[A-Za-z0-9]{8,32}$/.test(id); };
+      overlay = s.overlay && assetOk(s.overlay.id) ? { id: s.overlay.id, fit: s.overlay.fit === 'contain' ? 'contain' : 'stretch' } : null;
+      logo = s.logo && assetOk(s.logo.id) ? { id: s.logo.id, pos: LOGO_POS[s.logo.pos] ? s.logo.pos : 'br', size: Math.max(0.05, Math.min(0.5, Number(s.logo.size) || 0.2)) } : null;
+      decor = Array.isArray(s.decor) ? s.decor.filter(function(d){ return d && typeof d.src === 'string' && (/^b:[a-z-]+$/.test(d.src) ? !!STICKER_NAMES[d.src.slice(2)] : assetOk(d.src.slice(2))); }).slice(0, 30)
+        .map(function(d){ return { src: d.src, x: +d.x || 0.5, y: +d.y || 0.5, s: Math.max(0.02, Math.min(1, +d.s || 0.2)), r: +d.r || 0 }; }) : [];
+      myProps = Array.isArray(s.myProps) ? s.myProps.filter(assetOk).slice(0, 60) : [];
+      selDecor = -1;
+      ensureAssets(designAssetIds().concat(myProps)).then(function(){ refreshDecorUI(); redrawAll(); });
+      if(LAYOUT_DEFS[s.layout]) setupLayout = s.layout;
+      guestPickOn = !!s.guestPick; guestPickToggle.checked = guestPickOn;
+      guestLayoutSet = Array.isArray(s.guestLayouts) ? s.guestLayouts.filter(function(k){ return LAYOUT_DEFS[k]; }) : [];
+      if(state !== 'capturing') setLayout(setupLayout);
+      refreshGuestLayoutChoices();
+      dateInput.value = /^\d{4}-\d{2}-\d{2}$/.test(s.date || '') ? s.date : '';
+      dateOn = false;
+      setDateOn(!!s.dateOn);
+      applyLabelInputFont();
+      setActivePresetBtn();
+      updateBandPositionVisibility();
+      if(typeof markThemeCards === 'function') markThemeCards();
+      refreshDecorUI();
+    } finally {
+      setupApplying = false;
+    }
+    renderComposite(); renderSetupPreview(); refreshStartScreen(); guestRender();
+  }
+
+  function setupScopeEvent(){
+    var pb = window.__PB;
+    return (pb && pb.folderPrefix) ? cleanEventName(driveFolderKeyInput.value) : '';
+  }
+  function localSetupKey(){
+    var pb = window.__PB || {};
+    var base = pb.folderPrefix || pb.folderKey || 'local';
+    var ev = setupScopeEvent();
+    return 'pb_setup:' + base + (ev ? '|' + ev.toLowerCase() : '');
+  }
+  function canSyncServer(){ var pb = window.__PB; return !!(pb && pb.type === 'rental'); }
+  function setupBody(extra){
+    var token = null, deviceId = null;
+    try{ token = localStorage.getItem('pb_token'); deviceId = localStorage.getItem('pb_device'); }catch(e){}
+    return JSON.stringify(Object.assign({ token: token, deviceId: deviceId, event: setupScopeEvent() }, extra));
+  }
+  function saveLocalCopy(key, settings, updatedAt, image, imageChanged){
+    try{ localStorage.setItem(key, JSON.stringify({ settings: settings, updatedAt: updatedAt })); }catch(e){}
+    if(imageChanged){
+      try{ if(image) localStorage.setItem(key + '#img', image); else localStorage.removeItem(key + '#img'); }catch(e){}
+    }
+  }
+  function scheduleSetupSave(){
+    if(setupApplying || !setupReady) return;
+    clearTimeout(setupSaveTimer);
+    setupSaveTimer = setTimeout(saveSetupNow, 1200);
+  }
+  async function saveSetupNow(){
+    clearTimeout(setupSaveTimer);
+    var settings = snapshotSetup(), json = JSON.stringify(settings);
+    if(json === lastSavedJson && !imageDirty) return;
+    var key = localSetupKey(), sendImage = imageDirty;
+    saveLocalCopy(key, settings, Date.now(), bgImageDataUrl, sendImage);
+    lastSavedJson = json;
+    imageDirty = false;
+    if(!canSyncServer()){ setSaveNote('Setup saved on this device ✓', 'ok'); return; }
+    var extra = { action: 'save', settings: settings };
+    if(sendImage) extra.image = bgImageDataUrl || null;
+    setSaveNote('Saving setup…', '');
+    try{
+      var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody(extra) });
+      var j = await r.json().catch(function(){ return {}; });
+      if(!r.ok) throw new Error(j.error || 'Save failed');
+      setupUpdatedAt = j.updatedAt;
+      saveLocalCopy(key, settings, j.updatedAt, null, false);
+      setSaveNote('Setup saved ✓ It stays after a refresh, and other devices on this code get it too.', 'ok');
+    }catch(e){
+      if(sendImage) imageDirty = true;
+      lastSavedJson = null;   // try again on the next change
+      setSaveNote('Saved on this device. Couldn’t reach the server — it will sync on your next change.', 'warn');
+    }
+  }
+  async function fetchServerSetup(){
+    var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'get' }) });
+    var j = await r.json().catch(function(){ return {}; });
+    if(!r.ok) throw new Error(j.error || 'Load failed');
+    return j;
+  }
+  // Loads the saved setup for the current scope (booking, or lifetime event).
+  // carryOver: a new lifetime event with nothing saved keeps the current design.
+  async function loadSetup(carryOver){
+    var key = localSetupKey();
+    setupLoadedKey = key;
+    var local = null, localImg = null;
+    try{ local = JSON.parse(localStorage.getItem(key) || 'null'); localImg = localStorage.getItem(key + '#img'); }catch(e){}
+    if(local && local.settings){
+      applySetup(local.settings, localImg);
+      lastSavedJson = JSON.stringify(local.settings);
+      setupUpdatedAt = local.updatedAt || 0;
+    }
+    if(canSyncServer()){
+      try{
+        var j = await fetchServerSetup();
+        if(setupLoadedKey !== key) return;
+        if(j.settings && (!local || (j.updatedAt || 0) > (local.updatedAt || 0))){
+          applySetup(j.settings, j.image || null);
+          lastSavedJson = JSON.stringify(j.settings);
+          setupUpdatedAt = j.updatedAt || 0;
+          saveLocalCopy(key, j.settings, j.updatedAt, j.image || null, true);
+          setSaveNote('Your saved setup is loaded ✓', 'ok');
+        } else if(!j.settings && !local && !carryOver && window.__PB && window.__PB.defaultTheme){
+          var dt = THEMES.find(function(t){ return t.id === window.__PB.defaultTheme; });
+          if(dt){ applyTheme(dt); setupReady = true; lastSavedJson = null; saveSetupNow(); }
+        } else if(!j.settings && (local || carryOver)){
+          imageDirty = !!(local ? localImg : bgImageDataUrl);
+          lastSavedJson = null;
+          setupReady = true;
+          saveSetupNow();   // first time on the server: upload what this device has
+        }
+      }catch(e){ /* offline: keep the device copy */ }
+    } else if(!local && carryOver){
+      lastSavedJson = null; setupReady = true; saveSetupNow();
+    }
+    setupReady = true;
+  }
+  // Any change in Setup saves (debounced). The Drive folder box is excluded:
+  // for lifetime codes it switches to that event's own saved setup instead.
+  ['input', 'change', 'click'].forEach(function(type){
+    tabSetup.addEventListener(type, function(e){
+      if(e.target === driveFolderKeyInput) return;
+      scheduleSetupSave();
+    }, true);
+  });
+  var scopeTimer = null;
+  driveFolderKeyInput.addEventListener('input', function(){
+    if(!(window.__PB && window.__PB.folderPrefix)) return;
+    clearTimeout(scopeTimer);
+    scopeTimer = setTimeout(function(){
+      if(localSetupKey() !== setupLoadedKey && cleanEventName(driveFolderKeyInput.value)){ saveSetupNow(); loadSetup(true); }
+    }, 900);
+  });
+  // Coming back to the booth (another device may have changed the design).
+  document.addEventListener('visibilitychange', async function(){
+    if(document.hidden || !setupReady || !canSyncServer() || state !== 'idle') return;
+    if(lastSavedJson !== JSON.stringify(snapshotSetup())) return;   // unsaved local edits win
+    try{
+      var key = localSetupKey(), j = await fetchServerSetup();
+      if(key === setupLoadedKey && j.settings && (j.updatedAt || 0) > setupUpdatedAt){
+        applySetup(j.settings, j.image || null);
+        lastSavedJson = JSON.stringify(j.settings); setupUpdatedAt = j.updatedAt;
+        saveLocalCopy(key, j.settings, j.updatedAt, j.image || null, true);
+        setSaveNote('Updated with the latest saved setup ✓', 'ok');
+      }
+    }catch(e){}
+  });
+  document.getElementById('resetSetupBtn').addEventListener('click', function(){
+    if(!confirm('Reset the whole setup to the defaults? Your event name, theme, backdrop and settings will be cleared on every device using this code.')) return;
+    clearCustomPhoto();
+    applySetup(DEFAULT_SETUP, null);
+    imageDirty = true; lastSavedJson = null;
+    saveSetupNow();
+    showToast('Setup reset');
+  });
+  // A smaller copy of an uploaded backdrop photo, for saving.
+  function downscaleToDataUrl(img, maxSide){
+    var sc = Math.min(1, maxSide / Math.max(img.width, img.height));
+    var c = document.createElement('canvas');
+    c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+    var x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
+    x.drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.85);
+  }
+  bgInput.addEventListener('change', function(){
+    var file = bgInput.files && bgInput.files[0];
+    if(!file) return;
+    var probe = new Image();
+    probe.onload = function(){ bgImageDataUrl = downscaleToDataUrl(probe, 2000); imageDirty = true; scheduleSetupSave(); };
+    probe.src = URL.createObjectURL(file);
+  });
+  removeBgBtn.addEventListener('click', function(){ bgImageDataUrl = null; imageDirty = true; });
+
+  // ---- Themes: ready-made designs (backdrop + colors + fonts) ----
+  // Picking one sets the backdrop, Polaroid color, text color, fonts and text
+  // style; everything can still be fine-tuned afterwards.
+  var THEME_CATS = ['All', 'Wedding', 'Birthday', 'Debut', 'Kids Party', 'Graduation', 'Christening', 'Christmas', 'New Year', 'Corporate'];
+  var THEMES = [
+    { id: 'gold-chevron', name: 'Gold Chevron', cats: ['Wedding', 'Debut'], tags: 'elegant ivory zigzag', preset: 'chevron', frame: '#ffffff', text: '#9c7a2e', font: "'Great Vibes', cursive", dateFont: "'Cinzel', serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
+    { id: 'art-deco', name: 'Art Deco Navy', cats: ['Wedding', 'Corporate', 'New Year'], tags: 'gatsby gala geometric gold blue', preset: 'deco', frame: '#e9cf8f', text: '#f0d48c', font: "'Cinzel', serif", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false },
+    { id: 'white-marble', name: 'White Marble', cats: ['Wedding', 'Christening', 'Corporate'], tags: 'minimal gold veins elegant', preset: 'marble', frame: '#ffffff', text: '#8a6d2f', font: "'Parisienne', cursive", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: true, outlineColor: '#ffffff', shadow: false },
+    { id: 'rustic-lights', name: 'Rustic String Lights', cats: ['Wedding', 'Birthday'], tags: 'wood barn warm fairy lights', preset: 'rustic', frame: '#f6efe3', text: '#fff4dc', font: "'Dancing Script', cursive", dateFont: "'Josefin Sans', sans-serif", titleBg: false, outline: false, shadow: false },
+    { id: 'gold-confetti', name: 'Gold Confetti', cats: ['Birthday', 'Debut', 'New Year', 'Wedding'], tags: 'celebration white champagne blush', preset: 'goldconfetti', frame: '#d4af37', text: '#b8892f', font: "'Playfair Display', serif", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: true, outlineColor: '#ffffff', shadow: false },
+    { id: 'black-gold-confetti', name: 'Black & Gold Confetti', cats: ['Birthday', 'New Year', 'Corporate', 'Debut'], tags: 'glam party vip gala', preset: 'blackgold', frame: '#d4af37', text: '#f1d68a', font: "'Great Vibes', cursive", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false },
+    { id: 'maroon-gold', name: 'Maroon & Gold', cats: ['Debut', 'Wedding'], tags: 'burgundy glitter elegant', preset: 'maroon', frame: '#f3ead6', text: '#f6e3a1', font: "'Great Vibes', cursive", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false },
+    { id: 'blush-hearts', name: 'Blush Hearts', cats: ['Debut', 'Birthday'], tags: 'pink stripes love valentine sweet 18', preset: 'blush', frame: '#ffffff', text: '#c2577a', font: "'Pacifico', cursive", dateFont: "'Quicksand', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
+    { id: 'balloon-party', name: 'Balloon Party', cats: ['Kids Party', 'Birthday'], tags: 'pastel colorful fun', preset: 'party', frame: '#ffffff', text: '#5b3fa0', font: "'Lobster', cursive", dateFont: "'Poppins', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
+    { id: 'gold-glitter', name: 'Gold Glitter', cats: ['Birthday', 'Debut', 'New Year'], tags: 'sparkle shiny', preset: 'gold', frame: '#ffffff', text: '#5a3d0e', font: "'Great Vibes', cursive", dateFont: "'Cinzel', serif", titleBg: true, titleBgColor: '#fffaf0', outline: false, shadow: false },
+    { id: 'christmas-pine', name: 'Christmas Pine', cats: ['Christmas', 'Corporate'], tags: 'holiday green red snow noel', preset: 'pine', frame: '#ffffff', text: '#f6e3a1', font: "'Cookie', cursive", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false },
+    { id: 'midnight-gold', name: 'Midnight Gold', cats: ['New Year', 'Corporate', 'Birthday'], tags: 'night stars bokeh countdown', preset: 'midnight', frame: '#ffffff', text: '#f1d68a', font: "'Cinzel', serif", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: false },
+    { id: 'pastel-sky', name: 'Pastel Sky', cats: ['Christening', 'Kids Party'], tags: 'clouds blue dedication baptism', preset: 'sky', frame: '#ffffff', text: '#1f4166', font: "'Dancing Script', cursive", dateFont: "'Quicksand', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
+    { id: 'grad-navy', name: 'Graduation Navy & Gold', cats: ['Graduation'], tags: 'grad cap class of commencement moving up', preset: 'grad', frame: '#ffffff', text: '#f1d68a', font: "'Cinzel', serif", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: false },
+    { id: 'grad-maroon', name: 'Graduation Maroon', cats: ['Graduation'], tags: 'grad cap class of commencement', preset: 'grad', color: '#5c1424', frame: '#f3ead6', text: '#f6e3a1', font: "'Great Vibes', cursive", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false },
+    { id: 'grad-diploma', name: 'Diploma & Laurels', cats: ['Graduation'], tags: 'grad cream laurel wreath scholar', preset: 'diploma', frame: '#ffffff', text: '#3b2a14', font: "'Playfair Display', serif", dateFont: "'Cinzel', serif", titleBg: false, outline: true, outlineColor: '#ffffff', shadow: false },
+    { id: 'little-angel', name: 'Little Angel', cats: ['Christening'], tags: 'baptism dedication doves sky blue boy', preset: 'angel', frame: '#ffffff', text: '#2f5f8f', font: "'Parisienne', cursive", dateFont: "'Quicksand', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
+    { id: 'christening-blush', name: 'Blush Florals', cats: ['Christening', 'Debut'], tags: 'baptism dedication pink girl flowers', preset: 'blush', elements: 'florals', color: '#f9e3e8', frame: '#ffffff', text: '#b05a74', font: "'Allura', cursive", dateFont: "'Quicksand', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
+    { id: 'sage-laurel', name: 'Sage & Laurel', cats: ['Christening', 'Wedding'], tags: 'baptism dedication green neutral cross', preset: 'sage', frame: '#fbf8f1', text: '#2f4a32', font: "'Cormorant Garamond', serif", dateFont: "'Cormorant Garamond', serif", titleBg: true, titleBgColor: '#fbf8f1', outline: false, shadow: false },
+    { id: 'classic-cream', name: 'Classic Cream', cats: ['Wedding', 'Christening'], tags: 'simple neutral beige', preset: 'cream', frame: '#ffffff', text: '#5c4a3a', font: "'Cormorant Garamond', serif", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: true, outlineColor: '#ffffff', shadow: false }
+  ];
+  var themeCat = 'All';
+  var themeCatsEl = document.getElementById('themeCats');
+  var themeGridEl = document.getElementById('themeGrid');
+  var themeSearchEl = document.getElementById('themeSearch');
+
+  // Runs fn() as if theme t were applied, then puts every setting back.
+  function withThemeState(t, fn){
+    var saved = [backdropPreset, backdropColor, elementsChoice, frameColorChoice, textColor, currentFont, currentDateFont,
+      titleBgEnabled, titleBgColor, useOutline, outlineColor, useShadow, labelInput.value, accent, overlay, logo, decor];
+    backdropPreset = t.preset; backdropColor = t.color || null; elementsChoice = t.elements || 'auto';
+    accent = t.accent || 'gold'; overlay = null; logo = null; decor = [];
+    frameColorChoice = t.frame || 'auto'; textColor = t.text; currentFont = t.font; currentDateFont = t.dateFont || t.font;
+    titleBgEnabled = !!t.titleBg; titleBgColor = t.titleBgColor || '#ffffff';
+    useOutline = !!t.outline; outlineColor = t.outlineColor || '#ffffff'; useShadow = !!t.shadow;
+    if(!labelInput.value.trim()) labelInput.value = 'Your Event';
+    try{ return fn(); }
+    finally{
+      backdropPreset = saved[0]; backdropColor = saved[1]; elementsChoice = saved[2]; frameColorChoice = saved[3];
+      textColor = saved[4]; currentFont = saved[5]; currentDateFont = saved[6]; titleBgEnabled = saved[7];
+      titleBgColor = saved[8]; useOutline = saved[9]; outlineColor = saved[10]; useShadow = saved[11]; labelInput.value = saved[12];
+      accent = saved[13]; overlay = saved[14]; logo = saved[15]; decor = saved[16];
+    }
+  }
+  function drawThemeThumb(canvas, t){
+    var big = document.createElement('canvas');
+    withThemeState(t, function(){ composeCanvas('hero', big, buildPlaceholderShots(260, 4)); });
+    canvas.width = 240; canvas.height = Math.round(240 * big.height / big.width);
+    var x = canvas.getContext('2d'); x.imageSmoothingQuality = 'high';
+    x.drawImage(big, 0, 0, canvas.width, canvas.height);
+  }
+  function buildThemeCats(){
+    themeCatsEl.innerHTML = '';
+    var cats = myThemes.length ? ['All', 'My themes'].concat(THEME_CATS.slice(1)) : THEME_CATS;
+    if(themeCat === 'My themes' && !myThemes.length) themeCat = 'All';
+    cats.forEach(function(c){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'theme-cat' + (c === themeCat ? ' active' : '');
+      b.textContent = c; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', c === themeCat ? 'true' : 'false');
+      b.addEventListener('click', function(){ themeCat = c; buildThemeCats(); buildThemeGrid(); });
+      themeCatsEl.appendChild(b);
+    });
+  }
+  var thumbQueue = [], thumbBusy = false;
+  function pumpThumbs(){
+    if(thumbBusy) return;
+    var job = thumbQueue.shift(); if(!job) return;
+    thumbBusy = true;
+    setTimeout(function(){
+      try{ drawThemeThumb(job.canvas, job.theme); }catch(e){ console.error('theme thumb', e); }
+      thumbBusy = false; pumpThumbs();
+    }, 16);
+  }
+  function buildThemeGrid(){
+    var q = (themeSearchEl.value || '').trim().toLowerCase();
+    var mine = myThemes.map(function(t){ return Object.assign({ cats: ['My themes'], tags: 'mine saved custom' }, t); });
+    var list = mine.concat(THEMES).filter(function(t){
+      if(themeCat !== 'All' && t.cats.indexOf(themeCat) < 0) return false;
+      if(!q) return true;
+      return (t.name + ' ' + t.cats.join(' ') + ' ' + t.tags).toLowerCase().indexOf(q) >= 0;
+    });
+    themeGridEl.innerHTML = '';
+    thumbQueue = [];
+    if(!list.length){ themeGridEl.innerHTML = '<p class="theme-empty">No themes match. Try another word or category.</p>'; return; }
+    list.forEach(function(t){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'theme-card' + (t.mine ? ' mine' : ''); b.dataset.theme = t.id;
+      var n = document.createElement('span'); n.className = 'tn'; n.textContent = t.name;
+      var c = document.createElement('span'); c.className = 'tc'; c.textContent = t.cats[0];
+      if(t.mine){
+        var im = document.createElement('img'); im.alt = ''; im.src = t.thumb || '';
+        var del = document.createElement('span'); del.className = 'theme-del'; del.textContent = '\u00d7'; del.title = 'Delete this theme';
+        del.addEventListener('click', function(e){ e.stopPropagation(); deleteMyTheme(t); });
+        b.append(im, n, c, del);
+        b.addEventListener('click', function(){ applyMyTheme(t); });
+      } else {
+        var cv = document.createElement('canvas'); cv.width = 240; cv.height = 360;
+        b.append(cv, n, c);
+        b.addEventListener('click', function(){ applyTheme(t); });
+        thumbQueue.push({ canvas: cv, theme: t });
+      }
+      themeGridEl.appendChild(b);
+    });
+    markThemeCards();
+    pumpThumbs();
+  }
+  function markThemeCards(){
+    [...themeGridEl.querySelectorAll('.theme-card')].forEach(function(b){ b.classList.toggle('active', b.dataset.theme === themeId); });
+  }
+  function applyTheme(t){
+    themeId = t.id;
+    if(backdropPreset === 'custom' && backgroundImg){ /* keep the uploaded photo available under Custom */ }
+    backdropPreset = t.preset;
+    setBackdropColorUI(t.color || null);
+    elementsChoice = t.elements || 'auto';
+    accent = t.accent || 'gold'; markAccentChips();
+    setFrameColorUI(t.frame || 'auto');
+    setTextColorUI(t.text);
+    selectFont('name', t.font);
+    selectFont('date', t.dateFont || t.font);
+    titleBgEnabled = !!t.titleBg; titleBgToggle.checked = titleBgEnabled; titleBgColorWrap.style.display = titleBgEnabled ? 'flex' : 'none';
+    titleBgColor = t.titleBgColor || '#ffffff'; titleBgColorInput.value = titleBgColor;
+    useOutline = !!t.outline; outlineToggle.checked = useOutline;
+    outlineColor = t.outlineColor || '#ffffff'; outlineColorSelect.value = outlineColor;
+    useShadow = !!t.shadow; shadowToggle.checked = useShadow;
+    applyLabelInputFont();
+    setActivePresetBtn();
+    updateBandPositionVisibility();
+    markThemeCards();
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    renderComposite();
+    renderSetupPreview();
+    refreshStartScreen();
+    showToast(t.name + ' applied — fine-tune it in the sections below.');
+  }
+  themeSearchEl.addEventListener('input', buildThemeGrid);
+  // Thumbnails show the event name; redraw them (gently) when it changes.
+  var themeRedrawTimer = null;
+  labelInput.addEventListener('input', function(){ clearTimeout(themeRedrawTimer); themeRedrawTimer = setTimeout(buildThemeGrid, 1500); });
+
+  // =====================================================================
+  // Frame overlay, logo, stickers & own props, pattern (accent) color and
+  // "My themes". Uploaded images are kept per customer on the server (and
+  // cached on the device) and referenced by id from the setup and themes.
+  // =====================================================================
+  var overlay = null;          // { id, fit: 'stretch' | 'contain' }
+  var logo = null;             // { id, pos: 'tl'|'tc'|'tr'|'bl'|'bc'|'br', size: 0.08-0.4 }
+  var decor = [];              // [{ src: 'b:<sticker>' | 'a:<assetId>', x, y, s, r }]  (x,y,s relative to the photo)
+  var selDecor = -1;           // selected sticker in the Setup preview
+  var ASSETS = {};             // id -> { url, img }
+  var myThemes = [];
+
+  // ---- Uploaded images ----
+  function newAssetId(){
+    var a = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789', s = 'a';
+    for(var i = 0; i < 18; i++) s += a[Math.floor(Math.random() * a.length)];
+    return s;
+  }
+  function cacheAssetLocal(id, url){ try{ localStorage.setItem('pb_asset:' + id, url); }catch(e){} }
+  function registerAsset(id, url){
+    if(ASSETS[id] && ASSETS[id].url === url) return ASSETS[id];
+    var rec = { url: url, img: null };
+    ASSETS[id] = rec;
+    var im = new Image();
+    im.onload = function(){ rec.img = im; redrawAll(); };
+    im.src = url;
+    return rec;
+  }
+  function assetImg(id){ return ASSETS[id] && ASSETS[id].img; }
+  // Upload once to the server (rental / lifetime codes) so other devices get it.
+  async function pushAsset(id, url){
+    if(!canSyncServer()) return true;
+    try{
+      var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'asset-put', id: id, data: url }) });
+      if(!r.ok){ var j = await r.json().catch(function(){ return {}; }); showToast(j.error || 'Couldn’t save that image to the server.', 4500); return false; }
+      return true;
+    }catch(e){ return false; }
+  }
+  async function addAsset(url){
+    var id = newAssetId();
+    registerAsset(id, url); cacheAssetLocal(id, url);
+    await pushAsset(id, url);
+    return id;
+  }
+  // Makes sure every image the current design needs is loaded.
+  async function ensureAssets(ids){
+    var missing = [];
+    ids.forEach(function(id){
+      if(!id || ASSETS[id]) return;
+      var local = null; try{ local = localStorage.getItem('pb_asset:' + id); }catch(e){}
+      if(local) registerAsset(id, local); else missing.push(id);
+    });
+    if(!missing.length || !canSyncServer()) return;
+    for(var i = 0; i < missing.length; i += 12){
+      try{
+        var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'asset-get', ids: missing.slice(i, i + 12) }) });
+        var j = await r.json();
+        Object.keys(j.assets || {}).forEach(function(id){ registerAsset(id, j.assets[id]); cacheAssetLocal(id, j.assets[id]); });
+      }catch(e){}
+    }
+  }
+  function designAssetIds(){
+    var ids = [];
+    if(overlay) ids.push(overlay.id);
+    if(logo) ids.push(logo.id);
+    decor.forEach(function(d){ if(d.src.indexOf('a:') === 0) ids.push(d.src.slice(2)); });
+    return ids;
+  }
+  // Reads a picked file, shrinks it (keeping transparency for PNG/WebP) and returns a data URL.
+  function readImageFile(file, maxSide){
+    return new Promise(function(resolve, reject){
+      if(!file || !/^image\//.test(file.type)) return reject(new Error('Please pick an image file (PNG or JPG).'));
+      var url = URL.createObjectURL(file), im = new Image();
+      im.onload = function(){
+        var sc = Math.min(1, maxSide / Math.max(im.width, im.height));
+        var c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(im.width * sc)); c.height = Math.max(1, Math.round(im.height * sc));
+        var x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(im, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        var keepAlpha = /png|webp|gif/.test(file.type);
+        var out = keepAlpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.88);
+        if(out.length > 3400000) out = keepAlpha ? (function(){ var c2 = document.createElement('canvas'); c2.width = Math.round(c.width * 0.7); c2.height = Math.round(c.height * 0.7); c2.getContext('2d').drawImage(c, 0, 0, c2.width, c2.height); return c2.toDataURL('image/png'); })() : c.toDataURL('image/jpeg', 0.75);
+        resolve(out);
+      };
+      im.onerror = function(){ URL.revokeObjectURL(url); reject(new Error('That image could not be opened.')); };
+      im.src = url;
+    });
+  }
+  function redrawAll(){
+    qrResults.innerHTML = ''; lastRenderedFolderUrl = null;
+    renderComposite(); renderSetupPreview();
+  }
+
+  // ---- Built-in stickers (vector, so they stay sharp in print) ----
+  var STICKERS = [
+    ['heart', 'Heart'], ['star', 'Star'], ['crown', 'Crown'], ['sparkle', 'Sparkle'], ['bow', 'Bow'],
+    ['balloon', 'Balloon'], ['partyhat', 'Party hat'], ['shades', 'Sunglasses'], ['mustache', 'Mustache'], ['lips', 'Lips'],
+    ['gradcap', 'Grad cap'], ['diploma', 'Diploma'], ['dove', 'Dove'], ['cross', 'Cross'],
+    ['b-cheers', 'Cheers!'], ['b-married', 'Just Married'], ['b-bday', 'Happy Birthday!'], ['b-class', 'Class of ' + new Date().getFullYear()], ['b-best', 'Best Day Ever']
+  ];
+  var STICKER_NAMES = {}; STICKERS.forEach(function(s){ STICKER_NAMES[s[0]] = s[1]; });
+  function starPath(ctx, r, n, inner){
+    ctx.beginPath();
+    for(var i = 0; i < n * 2; i++){
+      var rr = i % 2 ? r * inner : r, a = -Math.PI / 2 + i * Math.PI / n;
+      ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    ctx.closePath();
+  }
+  function heartPath(ctx, r){
+    ctx.beginPath(); ctx.moveTo(0, r * 0.85);
+    ctx.bezierCurveTo(-r * 1.3, -r * 0.05, -r * 0.6, -r * 1.05, 0, -r * 0.45);
+    ctx.bezierCurveTo(r * 0.6, -r * 1.05, r * 1.3, -r * 0.05, 0, r * 0.85);
+    ctx.closePath();
+  }
+  // Draws sticker `k` centered on (0,0), about `S` wide.
+  function drawSticker(ctx, k, S){
+    var r = S / 2, gold = goldGrad(ctx, -r, -r, r, r);
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    if(k.indexOf('b-') === 0){
+      var text = STICKER_NAMES[k];
+      ctx.font = '800 ' + Math.round(S * 0.16) + 'px Manrope, sans-serif';
+      var tw = ctx.measureText(text).width, bw = Math.max(S * 0.7, tw + S * 0.2), bh = S * 0.34;
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1c1a1e'; ctx.lineWidth = Math.max(2, S * 0.025);
+      roundRectPath(ctx, -bw / 2, -bh / 2, bw, bh, bh / 2);
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-bw * 0.18, bh / 2 - 1); ctx.lineTo(-bw * 0.3, bh / 2 + S * 0.13); ctx.lineTo(-bw * 0.04, bh / 2 - 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(-bw * 0.17, bh / 2 - ctx.lineWidth * 1.5, bw * 0.12, ctx.lineWidth * 2);
+      ctx.fillStyle = '#C93D27'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, 0, S * 0.005);
+      return;
+    }
+    switch(k){
+      case 'heart': ctx.fillStyle = '#e5485d'; heartPath(ctx, r * 0.95); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.ellipse(-r * 0.38, -r * 0.35, r * 0.16, r * 0.1, -0.6, 0, Math.PI * 2); ctx.fill(); break;
+      case 'star': ctx.fillStyle = gold; starPath(ctx, r * 0.98, 5, 0.45); ctx.fill(); ctx.strokeStyle = 'rgba(120,80,20,.5)'; ctx.lineWidth = S * 0.02; ctx.stroke(); break;
+      case 'sparkle': ctx.fillStyle = gold; starPath(ctx, r, 4, 0.22); ctx.fill(); ctx.fillStyle = '#fff7da'; starPath(ctx, r * 0.45, 4, 0.25); ctx.fill(); break;
+      case 'crown':
+        ctx.fillStyle = gold; ctx.beginPath();
+        ctx.moveTo(-r * 0.9, r * 0.45); ctx.lineTo(-r * 0.95, -r * 0.45); ctx.lineTo(-r * 0.45, -r * 0.05); ctx.lineTo(0, -r * 0.7);
+        ctx.lineTo(r * 0.45, -r * 0.05); ctx.lineTo(r * 0.95, -r * 0.45); ctx.lineTo(r * 0.9, r * 0.45); ctx.closePath(); ctx.fill();
+        ctx.fillRect(-r * 0.9, r * 0.45, r * 1.8, r * 0.22);
+        [['#e5485d', 0, r * 0.12], ['#4f9fd6', -r * 0.55, r * 0.2], ['#4fb98a', r * 0.55, r * 0.2]].forEach(function(g){ ctx.fillStyle = g[0]; ctx.beginPath(); ctx.arc(g[1], g[2], r * 0.1, 0, Math.PI * 2); ctx.fill(); });
+        ctx.fillStyle = '#fff3c4'; [-0.95, 0, 0.95].forEach(function(f, i){ ctx.beginPath(); ctx.arc(r * f, i === 1 ? -r * 0.72 : -r * 0.47, r * 0.09, 0, Math.PI * 2); ctx.fill(); });
+        break;
+      case 'bow':
+        ctx.fillStyle = '#f07aa0';
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.bezierCurveTo(-r * 0.4, -r * 0.7, -r * 1.05, -r * 0.55, -r * 0.95, 0); ctx.bezierCurveTo(-r * 1.05, r * 0.55, -r * 0.4, r * 0.7, 0, 0); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.bezierCurveTo(r * 0.4, -r * 0.7, r * 1.05, -r * 0.55, r * 0.95, 0); ctx.bezierCurveTo(r * 1.05, r * 0.55, r * 0.4, r * 0.7, 0, 0); ctx.fill();
+        ctx.fillStyle = '#d9577f'; ctx.beginPath(); ctx.ellipse(0, 0, r * 0.2, r * 0.26, 0, 0, Math.PI * 2); ctx.fill();
+        break;
+      case 'balloon':
+        ctx.strokeStyle = '#555'; ctx.lineWidth = S * 0.012; ctx.beginPath(); ctx.moveTo(0, r * 0.35); ctx.bezierCurveTo(-r * 0.15, r * 0.6, r * 0.15, r * 0.8, 0, r); ctx.stroke();
+        ctx.fillStyle = '#4f9fd6'; ctx.beginPath(); ctx.ellipse(0, -r * 0.25, r * 0.5, r * 0.62, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-r * 0.08, r * 0.38); ctx.lineTo(r * 0.08, r * 0.38); ctx.lineTo(0, r * 0.3); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.beginPath(); ctx.ellipse(-r * 0.2, -r * 0.5, r * 0.1, r * 0.18, -0.4, 0, Math.PI * 2); ctx.fill();
+        break;
+      case 'partyhat':
+        ctx.save(); ctx.beginPath(); ctx.moveTo(0, -r * 0.85); ctx.lineTo(r * 0.55, r * 0.7); ctx.lineTo(-r * 0.55, r * 0.7); ctx.closePath(); ctx.clip();
+        ctx.fillStyle = '#9a7ad6'; ctx.fillRect(-r, -r, S, S);
+        ctx.fillStyle = '#ffe08a'; for(var y = -r; y < r; y += r * 0.4){ ctx.beginPath(); ctx.moveTo(-r, y); ctx.lineTo(r, y - r * 0.5); ctx.lineTo(r, y - r * 0.3); ctx.lineTo(-r, y + r * 0.2); ctx.fill(); }
+        ctx.restore();
+        ctx.fillStyle = '#f7b6c8'; ctx.beginPath(); ctx.arc(0, -r * 0.85, r * 0.15, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(-r * 0.6, r * 0.66, r * 1.2, r * 0.12);
+        break;
+      case 'shades':
+        ctx.fillStyle = '#141414';
+        ctx.beginPath(); ctx.ellipse(-r * 0.45, 0, r * 0.4, r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(r * 0.45, 0, r * 0.4, r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#141414'; ctx.lineWidth = S * 0.05; ctx.beginPath(); ctx.moveTo(-r * 0.1, -r * 0.08); ctx.quadraticCurveTo(0, -r * 0.2, r * 0.1, -r * 0.08); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-r * 0.85, -r * 0.1); ctx.lineTo(-r, -r * 0.2); ctx.moveTo(r * 0.85, -r * 0.1); ctx.lineTo(r, -r * 0.2); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.ellipse(-r * 0.6, -r * 0.1, r * 0.1, r * 0.06, -0.5, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.ellipse(r * 0.3, -r * 0.1, r * 0.1, r * 0.06, -0.5, 0, Math.PI * 2); ctx.fill();
+        break;
+      case 'mustache':
+        ctx.fillStyle = '#3a2416'; ctx.beginPath(); ctx.moveTo(0, -r * 0.1);
+        ctx.bezierCurveTo(-r * 0.3, -r * 0.35, -r * 0.7, -r * 0.2, -r * 0.95, r * 0.05); ctx.bezierCurveTo(-r * 0.75, r * 0.1, -r * 0.5, r * 0.25, 0, r * 0.08);
+        ctx.bezierCurveTo(r * 0.5, r * 0.25, r * 0.75, r * 0.1, r * 0.95, r * 0.05); ctx.bezierCurveTo(r * 0.7, -r * 0.2, r * 0.3, -r * 0.35, 0, -r * 0.1);
+        ctx.fill(); break;
+      case 'lips':
+        ctx.fillStyle = '#d6223f'; ctx.beginPath(); ctx.moveTo(-r * 0.9, 0);
+        ctx.bezierCurveTo(-r * 0.5, -r * 0.45, -r * 0.15, -r * 0.4, 0, -r * 0.2); ctx.bezierCurveTo(r * 0.15, -r * 0.4, r * 0.5, -r * 0.45, r * 0.9, 0);
+        ctx.bezierCurveTo(r * 0.5, r * 0.55, -r * 0.5, r * 0.55, -r * 0.9, 0); ctx.fill();
+        ctx.strokeStyle = '#8f1027'; ctx.lineWidth = S * 0.02; ctx.beginPath(); ctx.moveTo(-r * 0.8, 0); ctx.quadraticCurveTo(0, r * 0.12, r * 0.8, 0); ctx.stroke();
+        break;
+      case 'gradcap':
+        ctx.fillStyle = '#1c1a1e';
+        ctx.beginPath(); ctx.moveTo(-r * 0.5, r * 0.05); ctx.lineTo(-r * 0.5, r * 0.4); ctx.quadraticCurveTo(0, r * 0.62, r * 0.5, r * 0.4); ctx.lineTo(r * 0.5, r * 0.05); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(0, -r * 0.55); ctx.lineTo(r, -r * 0.1); ctx.lineTo(0, r * 0.3); ctx.lineTo(-r, -r * 0.1); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = gold; ctx.lineWidth = S * 0.025; ctx.beginPath(); ctx.moveTo(0, -r * 0.1); ctx.lineTo(r * 0.7, r * 0.05); ctx.lineTo(r * 0.7, r * 0.55); ctx.stroke();
+        ctx.fillStyle = gold; ctx.beginPath(); ctx.ellipse(r * 0.7, r * 0.62, r * 0.08, r * 0.14, 0, 0, Math.PI * 2); ctx.fill();
+        break;
+      case 'diploma':
+        ctx.save(); ctx.rotate(-0.35);
+        ctx.fillStyle = '#f6efdf'; ctx.strokeStyle = '#b9a67c'; ctx.lineWidth = S * 0.02;
+        ctx.fillRect(-r * 0.9, -r * 0.22, r * 1.8, r * 0.44); ctx.strokeRect(-r * 0.9, -r * 0.22, r * 1.8, r * 0.44);
+        ctx.beginPath(); ctx.ellipse(-r * 0.9, 0, r * 0.1, r * 0.22, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#c0283c'; ctx.fillRect(-r * 0.1, -r * 0.24, r * 0.2, r * 0.48);
+        ctx.beginPath(); ctx.moveTo(-r * 0.05, r * 0.22); ctx.lineTo(-r * 0.2, r * 0.6); ctx.lineTo(-r * 0.02, r * 0.5); ctx.lineTo(r * 0.05, r * 0.65); ctx.lineTo(r * 0.12, r * 0.22); ctx.fill();
+        ctx.restore(); break;
+      case 'dove':
+        ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#9fb3c8'; ctx.lineWidth = S * 0.02;
+        ctx.beginPath(); ctx.ellipse(0, r * 0.15, r * 0.55, r * 0.26, -0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-r * 0.15, r * 0.05); ctx.bezierCurveTo(-r * 0.5, -r * 0.6, -r * 0.1, -r * 0.95, r * 0.2, -r * 0.7); ctx.bezierCurveTo(r * 0.05, -r * 0.4, r * 0.15, -r * 0.1, r * 0.1, r * 0.05); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(r * 0.55, -r * 0.02, r * 0.17, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#e2a92c'; ctx.beginPath(); ctx.moveTo(r * 0.7, -r * 0.02); ctx.lineTo(r * 0.88, r * 0.03); ctx.lineTo(r * 0.7, r * 0.07); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-r * 0.5, r * 0.2); ctx.lineTo(-r * 0.95, r * 0.05); ctx.lineTo(-r * 0.9, r * 0.35); ctx.closePath(); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#1c1a1e'; ctx.beginPath(); ctx.arc(r * 0.6, -r * 0.06, r * 0.03, 0, Math.PI * 2); ctx.fill();
+        break;
+      case 'cross':
+        ctx.fillStyle = gold; ctx.fillRect(-r * 0.12, -r * 0.9, r * 0.24, r * 1.8); ctx.fillRect(-r * 0.55, -r * 0.45, r * 1.1, r * 0.24);
+        ctx.strokeStyle = 'rgba(120,80,20,.45)'; ctx.lineWidth = S * 0.015; ctx.strokeRect(-r * 0.12, -r * 0.9, r * 0.24, r * 1.8); ctx.strokeRect(-r * 0.55, -r * 0.45, r * 1.1, r * 0.24);
+        break;
+    }
+  }
+
+  // ---- The decoration layer, drawn on top of every finished photo ----
+  // Order: frame overlay, then stickers/props, then the logo on top.
+  var LOGO_POS = { tl: [0, 0], tc: [0.5, 0], tr: [1, 0], bl: [0, 1], bc: [0.5, 1], br: [1, 1] };
+  function decorBox(d, W, H){
+    var size = d.s * W, img = d.src.indexOf('a:') === 0 ? assetImg(d.src.slice(2)) : null;
+    var aspect = img ? img.height / img.width : (d.src.indexOf('b:b-') === 0 ? 0.55 : 1);
+    return { cx: d.x * W, cy: d.y * H, w: size, h: size * aspect, img: img };
+  }
+  function drawDecorLayer(ctx, W, H){
+    if(overlay){
+      var oi = assetImg(overlay.id);
+      if(oi){
+        if(overlay.fit === 'contain'){
+          var sc = Math.min(W / oi.width, H / oi.height), ow = oi.width * sc, oh = oi.height * sc;
+          ctx.drawImage(oi, (W - ow) / 2, (H - oh) / 2, ow, oh);
+        } else ctx.drawImage(oi, 0, 0, W, H);
+      }
+    }
+    decor.forEach(function(d){
+      var b = decorBox(d, W, H);
+      ctx.save(); ctx.translate(b.cx, b.cy); ctx.rotate((d.r || 0) * Math.PI / 180);
+      if(d.src.indexOf('b:') === 0) drawSticker(ctx, d.src.slice(2), b.w);
+      else if(b.img) ctx.drawImage(b.img, -b.w / 2, -b.h / 2, b.w, b.h);
+      ctx.restore();
+    });
+    if(logo){
+      var li = assetImg(logo.id);
+      if(li){
+        var lw = W * logo.size, lh = lw * li.height / li.width, m = W * 0.035, p = LOGO_POS[logo.pos] || LOGO_POS.br;
+        var lx = m + p[0] * (W - 2 * m - lw), ly = m + p[1] * (H - 2 * m - lh);
+        ctx.drawImage(li, lx, ly, lw, lh);
+      }
+    }
+  }
+
+  // ---- Setup controls: frame overlay ----
+  var overlayInput = document.getElementById('overlayInput');
+  var overlayThumb = document.getElementById('overlayThumb');
+  var overlayRemove = document.getElementById('overlayRemove');
+  var overlayFit = document.getElementById('overlayFit');
+  var overlaySizeHint = document.getElementById('overlaySizeHint');
+  function refreshDecorUI(){
+    overlayThumb.style.display = overlay ? 'block' : 'none';
+    if(overlay && ASSETS[overlay.id]) overlayThumb.src = ASSETS[overlay.id].url;
+    overlayRemove.style.display = overlay ? 'inline' : 'none';
+    overlayFit.value = overlay ? overlay.fit : 'stretch';
+    overlayFit.style.display = overlay ? '' : 'none';
+    logoThumb.style.display = logo ? 'block' : 'none';
+    if(logo && ASSETS[logo.id]) logoThumb.src = ASSETS[logo.id].url;
+    logoRemove.style.display = logo ? 'inline' : 'none';
+    logoControls.style.display = logo ? 'block' : 'none';
+    if(logo){ logoPos.value = logo.pos; logoSize.value = Math.round(logo.size * 100); }
+    var c = document.createElement('canvas');
+    try{ composeCanvas(currentLayout, c, buildPlaceholderShots(60, shotsNeeded(currentLayout))); overlaySizeHint.textContent = 'Best size for this layout: ' + c.width + ' × ' + c.height + ' px PNG, transparent where the photos go.'; }catch(e){}
+    buildPropTray();
+    refreshSelControls();
+  }
+  overlayInput.addEventListener('change', async function(){
+    var f = overlayInput.files[0]; overlayInput.value = '';
+    try{
+      var url = await readImageFile(f, 2400);
+      var id = await addAsset(url);
+      overlay = { id: id, fit: overlayFit.value || 'stretch' };
+      refreshDecorUI(); redrawAll(); scheduleSetupSave();
+      showToast('Frame added — it’s drawn on top of every photo.');
+    }catch(e){ showToast(e.message, 4000); }
+  });
+  overlayRemove.addEventListener('click', function(){ overlay = null; refreshDecorUI(); redrawAll(); });
+  overlayFit.addEventListener('change', function(){ if(overlay){ overlay.fit = overlayFit.value; redrawAll(); } });
+
+  // ---- Logo ----
+  var logoInput = document.getElementById('logoInput');
+  var logoThumb = document.getElementById('logoThumb');
+  var logoRemove = document.getElementById('logoRemove');
+  var logoControls = document.getElementById('logoControls');
+  var logoPos = document.getElementById('logoPos');
+  var logoSize = document.getElementById('logoSize');
+  logoInput.addEventListener('change', async function(){
+    var f = logoInput.files[0]; logoInput.value = '';
+    try{
+      var url = await readImageFile(f, 900);
+      var id = await addAsset(url);
+      logo = { id: id, pos: logo ? logo.pos : 'br', size: logo ? logo.size : 0.2 };
+      refreshDecorUI(); redrawAll(); scheduleSetupSave();
+    }catch(e){ showToast(e.message, 4000); }
+  });
+  logoRemove.addEventListener('click', function(){ logo = null; refreshDecorUI(); redrawAll(); });
+  logoPos.addEventListener('change', function(){ if(logo){ logo.pos = logoPos.value; redrawAll(); } });
+  logoSize.addEventListener('input', function(){ if(logo){ logo.size = Number(logoSize.value) / 100; redrawAll(); } });
+
+  // ---- Stickers & own props ----
+  var propTray = document.getElementById('propTray');
+  var propInput = document.getElementById('propInput');
+  var myProps = [];   // asset ids of uploaded props (remembered in the setup)
+  function buildPropTray(){
+    propTray.innerHTML = '';
+    STICKERS.forEach(function(s){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'prop-btn'; b.title = s[1];
+      var c = document.createElement('canvas'); c.width = 72; c.height = 72;
+      var x = c.getContext('2d'); x.translate(36, 36); drawSticker(x, s[0], s[0].indexOf('b-') === 0 ? 70 : 60);
+      b.appendChild(c);
+      b.addEventListener('click', function(){ addDecor('b:' + s[0], s[0].indexOf('b-') === 0 ? 0.42 : 0.2); });
+      propTray.appendChild(b);
+    });
+    myProps.forEach(function(id){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'prop-btn mine'; b.title = 'Your prop';
+      var im = document.createElement('img'); im.alt = ''; if(ASSETS[id]) im.src = ASSETS[id].url;
+      var x = document.createElement('span'); x.className = 'prop-x'; x.textContent = '×'; x.title = 'Remove from your props';
+      x.addEventListener('click', function(e){ e.stopPropagation(); myProps = myProps.filter(function(p){ return p !== id; }); buildPropTray(); scheduleSetupSave(); });
+      b.append(im, x);
+      b.addEventListener('click', function(){ addDecor('a:' + id, 0.25); });
+      propTray.appendChild(b);
+    });
+  }
+  propInput.addEventListener('change', async function(){
+    var files = [...propInput.files]; propInput.value = '';
+    for(var i = 0; i < files.length && i < 8; i++){
+      try{
+        var url = await readImageFile(files[i], 900);
+        var id = await addAsset(url);
+        myProps.push(id);
+        addDecor('a:' + id, 0.25);
+      }catch(e){ showToast(e.message, 4000); }
+    }
+    buildPropTray(); scheduleSetupSave();
+  });
+  function addDecor(src, s){
+    if(decor.length >= 30){ showToast('That’s a lot of stickers! Remove some first (max 30).', 4000); return; }
+    var n = decor.length;
+    decor.push({ src: src, x: 0.5 + ((n % 3) - 1) * 0.12, y: 0.35 + (Math.floor(n / 3) % 3) * 0.12, s: s, r: 0 });
+    selDecor = decor.length - 1;
+    refreshSelControls(); redrawAll(); scheduleSetupSave();
+    showToast('Drag it on the preview to place it.');
+  }
+  // Selected sticker controls (under the preview)
+  var selControls = document.getElementById('decorSelControls');
+  var selSize = document.getElementById('decorSize');
+  var selRot = document.getElementById('decorRot');
+  function refreshSelControls(){
+    var d = decor[selDecor];
+    selControls.style.display = d ? 'block' : 'none';
+    setupPreviewCanvas.style.touchAction = decor.length ? 'none' : '';
+    setupPreviewCanvas.style.cursor = decor.length ? 'grab' : '';
+    if(!d) return;
+    selSize.value = Math.round(d.s * 100);
+    selRot.value = Math.round(d.r || 0);
+  }
+  selSize.addEventListener('input', function(){ var d = decor[selDecor]; if(d){ d.s = Number(selSize.value) / 100; redrawAll(); } });
+  selRot.addEventListener('input', function(){ var d = decor[selDecor]; if(d){ d.r = Number(selRot.value); redrawAll(); } });
+  document.getElementById('decorDup').addEventListener('click', function(){ var d = decor[selDecor]; if(d){ decor.push(Object.assign({}, d, { x: Math.min(0.95, d.x + 0.06), y: Math.min(0.95, d.y + 0.06) })); selDecor = decor.length - 1; refreshSelControls(); redrawAll(); } });
+  document.getElementById('decorFront').addEventListener('click', function(){ var d = decor[selDecor]; if(d){ decor.splice(selDecor, 1); decor.push(d); selDecor = decor.length - 1; redrawAll(); } });
+  document.getElementById('decorDel').addEventListener('click', function(){ if(decor[selDecor]){ decor.splice(selDecor, 1); selDecor = -1; refreshSelControls(); redrawAll(); } });
+  document.getElementById('decorClear').addEventListener('click', function(){ if(decor.length && confirm('Remove all stickers and props from the design?')){ decor = []; selDecor = -1; refreshSelControls(); redrawAll(); } });
+
+  // Drag stickers directly on the Setup preview.
+  var drag = null;
+  function previewPoint(e){
+    var rect = setupPreviewCanvas.getBoundingClientRect();
+    return { x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height };
+  }
+  function hitDecor(pt){
+    var W = setupPreviewCanvas.width, H = setupPreviewCanvas.height;
+    for(var i = decor.length - 1; i >= 0; i--){
+      var b = decorBox(decor[i], W, H), a = -(decor[i].r || 0) * Math.PI / 180;
+      var dx = pt.x * W - b.cx, dy = pt.y * H - b.cy;
+      var lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
+      if(Math.abs(lx) <= b.w / 2 + 6 && Math.abs(ly) <= b.h / 2 + 6) return i;
+    }
+    return -1;
+  }
+  setupPreviewCanvas.addEventListener('pointerdown', function(e){
+    if(!decor.length) return;
+    var pt = previewPoint(e), i = hitDecor(pt);
+    selDecor = i;
+    refreshSelControls();
+    if(i >= 0){
+      drag = { id: e.pointerId, dx: decor[i].x - pt.x, dy: decor[i].y - pt.y };
+      setupPreviewCanvas.setPointerCapture(e.pointerId);
+      setupPreviewCanvas.style.cursor = 'grabbing';
+      e.preventDefault();
+    }
+    renderSetupPreview();
+  });
+  var dragRaf = 0;
+  setupPreviewCanvas.addEventListener('pointermove', function(e){
+    if(!drag || e.pointerId !== drag.id || !decor[selDecor]) return;
+    var pt = previewPoint(e);
+    decor[selDecor].x = Math.max(0, Math.min(1, pt.x + drag.dx));
+    decor[selDecor].y = Math.max(0, Math.min(1, pt.y + drag.dy));
+    if(!dragRaf) dragRaf = requestAnimationFrame(function(){ dragRaf = 0; renderSetupPreview(); });
+  });
+  function endDrag(e){
+    if(!drag || (e && e.pointerId !== drag.id)) return;
+    drag = null; setupPreviewCanvas.style.cursor = 'grab';
+    redrawAll(); scheduleSetupSave();
+  }
+  setupPreviewCanvas.addEventListener('pointerup', endDrag);
+  setupPreviewCanvas.addEventListener('pointercancel', endDrag);
+  // Selection outline, on the Setup preview only (never on the real photo).
+  function drawDecorSelection(){
+    var d = decor[selDecor]; if(!d) return;
+    var ctx = setupPreviewCanvas.getContext('2d'), W = setupPreviewCanvas.width, H = setupPreviewCanvas.height, b = decorBox(d, W, H);
+    ctx.save(); ctx.translate(b.cx, b.cy); ctx.rotate((d.r || 0) * Math.PI / 180);
+    ctx.setLineDash([Math.max(4, W * 0.012), Math.max(3, W * 0.008)]); ctx.lineWidth = Math.max(2, W * 0.005);
+    ctx.strokeStyle = '#C93D27'; ctx.strokeRect(-b.w / 2 - 4, -b.h / 2 - 4, b.w + 8, b.h + 8);
+    ctx.restore();
+  }
+
+  // ---- Pattern (accent) color for the theme artwork ----
+  var accentChips = document.getElementById('accentChips');
+  function markAccentChips(){ [...accentChips.children].forEach(function(c){ c.classList.toggle('active', c.dataset.accent === accent); }); }
+  accentChips.addEventListener('click', function(e){
+    var c = e.target.closest('[data-accent]'); if(!c) return;
+    accent = c.dataset.accent; markAccentChips(); redrawAll();
+  });
+
+  // ---- My themes (save the current design and reuse it) ----
+  var DESIGN_KEYS = ['backdropPreset', 'backdropColor', 'elementsChoice', 'accent', 'frameColorChoice', 'photoPlacement', 'cropFocus',
+    'textColor', 'font', 'dateFont', 'titleSize', 'titleBg', 'titleBgColor', 'outline', 'outlineColor', 'shadow',
+    'filter', 'softSkin', 'overlay', 'logo', 'decor', 'myProps'];
+  function myThemesKey(){ var pb = window.__PB || {}; return 'pb_mythemes:' + (pb.folderPrefix || pb.folderKey || 'local'); }
+  async function loadMyThemes(){
+    try{ myThemes = JSON.parse(localStorage.getItem(myThemesKey()) || '[]') || []; }catch(e){ myThemes = []; }
+    if(canSyncServer()){
+      try{
+        var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'themes-get' }) });
+        var j = await r.json();
+        if(r.ok && Array.isArray(j.themes) && (j.themes.length || !myThemes.length)) myThemes = j.themes;
+      }catch(e){}
+    }
+    try{ localStorage.setItem(myThemesKey(), JSON.stringify(myThemes)); }catch(e){}
+    buildThemeCats(); buildThemeGrid();
+  }
+  async function saveMyThemes(){
+    try{ localStorage.setItem(myThemesKey(), JSON.stringify(myThemes)); }catch(e){}
+    if(!canSyncServer()) return;
+    try{
+      var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'themes-save', themes: myThemes }) });
+      if(!r.ok){ var j = await r.json().catch(function(){ return {}; }); showToast(j.error || 'Couldn’t save your themes to the server.', 4500); }
+    }catch(e){}
+  }
+  document.getElementById('saveThemeBtn').addEventListener('click', async function(){
+    var name = (prompt('Name this theme (e.g. "Santos Wedding — Sage")', '') || '').trim().slice(0, 40);
+    if(!name) return;
+    var s = snapshotSetup(), settings = {};
+    DESIGN_KEYS.forEach(function(k){ if(k in s) settings[k] = s[k]; });
+    if(s.backdropPreset === 'custom' && bgImageDataUrl){ settings.bgAssetId = await addAsset(bgImageDataUrl); }
+    var big = document.createElement('canvas');
+    composeCanvas('hero', big, buildPlaceholderShots(260, 4));
+    var th = document.createElement('canvas'); th.width = 240; th.height = Math.round(240 * big.height / big.width);
+    th.getContext('2d').drawImage(big, 0, 0, th.width, th.height);
+    var t = { id: 'my-' + newAssetId().slice(1, 11).toLowerCase(), name: name, mine: true, thumb: th.toDataURL('image/jpeg', 0.72), settings: settings, savedAt: Date.now() };
+    myThemes.unshift(t);
+    if(myThemes.length > 40) myThemes.length = 40;
+    themeId = t.id;
+    await saveMyThemes();
+    themeCat = 'My themes'; buildThemeCats(); buildThemeGrid();
+    scheduleSetupSave();
+    showToast('Saved to My themes ✓');
+  });
+  async function applyMyTheme(t){
+    var ids = [];
+    var st = t.settings || {};
+    if(st.overlay) ids.push(st.overlay.id);
+    if(st.logo) ids.push(st.logo.id);
+    (st.decor || []).forEach(function(d){ if(d.src.indexOf('a:') === 0) ids.push(d.src.slice(2)); });
+    (st.myProps || []).forEach(function(id){ ids.push(id); });
+    if(st.bgAssetId) ids.push(st.bgAssetId);
+    await ensureAssets(ids);
+    var bg = st.bgAssetId && ASSETS[st.bgAssetId] ? ASSETS[st.bgAssetId].url : null;
+    applySetup(Object.assign(snapshotSetup(), st, { themeId: t.id }), bg);
+    bgImageDataUrl = bg; imageDirty = true;
+    lastSavedJson = null; scheduleSetupSave();
+    showToast(t.name + ' applied');
+  }
+  function deleteMyTheme(t){
+    if(!confirm('Delete the theme “' + t.name + '”? Photos already taken are not affected.')) return;
+    myThemes = myThemes.filter(function(x){ return x.id !== t.id; });
+    if(themeId === t.id) themeId = null;
+    saveMyThemes(); buildThemeCats(); buildThemeGrid();
+  }
 
   // ---- Init ----
   // ---- Setup accordion: numbered sections (Format → Backdrop → Event name →
@@ -4248,6 +6118,16 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     note.style.display = 'block';
     resolveDriveFolder();
   })();
+  // ---- Start-up for the new features: defaults, then the saved setup ----
+  DEFAULT_SETUP = snapshotSetup();
+  buildThemeCats();
+  markAccentChips();
+  refreshDecorUI();
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function(){ buildThemeGrid(); loadMyThemes(); }, buildThemeGrid);
+  refreshGuestLayoutChoices();
+  markFilterChips();
+  scheduleWelcomeRender();
+  loadSetup(false);
 })();
 </script>
 </body>

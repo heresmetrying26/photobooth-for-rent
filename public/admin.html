@@ -10,7 +10,7 @@
   :root{--ink:#1C1A1E;--dim:#6B666C;--line:#E4DCCF;--blue:#C93D27;--soft:#FBEDEA;--panel:#fff;}
   *{box-sizing:border-box;}
   body{margin:0;padding:20px 14px 60px;font-family:'Manrope',system-ui,sans-serif;color:var(--ink);background:#F5F1EA;min-height:100vh;}
-  .wrap{max-width:820px;margin:0 auto;}
+  .wrap{max-width:900px;margin:0 auto;}
   h1{font-family:'Fraunces',Georgia,serif;font-weight:600;letter-spacing:-.02em;font-size:24px;margin:0;color:var(--ink);}
   h1 em{font-family:'Manrope',sans-serif;font-style:normal;font-weight:800;font-size:13px;color:#fff;background:var(--blue);padding:2px 6px 3px;border-radius:6px;margin-left:3px;display:inline-block;transform:rotate(-7deg);vertical-align:top;}
   h2{font-size:13px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);margin:0 0 12px;}
@@ -27,7 +27,7 @@
   button:disabled{opacity:.55;}
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1C1A1E;color:#fff;padding:10px 16px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;z-index:10;}
   .toast.show{opacity:1;} .toast.err{background:#c0392b;}
-  .lic{border:1.5px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#fff;}
+  .lic{border:1.5px solid var(--line);border-radius:12px;margin-bottom:8px;background:#fff;}
   .lic-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;}
   .code{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;font-size:15px;letter-spacing:.5px;}
   .badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px;}
@@ -54,18 +54,56 @@
   .size-chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink);padding:6px 10px;border:1.5px solid var(--line);border-radius:999px;background:#fff;cursor:pointer;margin:0;}
   .size-chip:has(input:checked){border-color:var(--blue);background:var(--soft);}
   .b-print{background:#fff4e0;color:#a2620c;}
-  .lic .printbox{margin:0 0 10px;}
+  .lic-detail .printbox{margin:0 0 10px;}
   input[type=date],input[type=time]{width:100%;padding:10px 12px;font:inherit;font-size:15px;border:1.5px solid var(--line);border-radius:10px;background:#FAF7F2;color:var(--ink);outline:none;}
   .b-scheduled{background:#FFF0D6;color:#9A5B00;} .b-lifetime{background:#1C1A1E;color:#fff;} .b-devices{background:#EEF0F4;color:#3D4656;}
   .devlist{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 0;}
   .devchip{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;border:1.5px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;color:var(--ink);background:#fff;}
   .devchip button{padding:2px 8px;font-size:11px;border-radius:999px;}
   #newDays:disabled{opacity:.45;} .b-bonus{background:#E6F4F1;color:#1F6F62;}
-  .lic.bonus{margin:-4px 0 12px 22px;border-style:dashed;background:#FBFDFC;}
   .bonusrow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:8px;}
   .bonusrow>div{width:150px;}
   .bonusrow.off{display:none;}
   .newbox .code small{font-family:'Manrope',sans-serif;font-weight:600;color:var(--dim);margin-left:6px;letter-spacing:0;}
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;}
+  .stat{background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;cursor:pointer;text-align:left;}
+  .stat b{display:block;font-size:22px;font-family:'Fraunces',Georgia,serif;font-weight:600;}
+  .stat span{font-size:11.5px;color:var(--dim);font-weight:600;}
+  @media (max-width:640px){ .stats{grid-template-columns:repeat(3,1fr);} .stat b{font-size:18px;} }
+  details.card>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;}
+  details.card>summary::-webkit-details-marker{display:none;}
+  details.card>summary h2{margin:0;}
+  details.card>summary::after{content:'▾';color:var(--dim);font-size:14px;transition:transform .15s;}
+  details.card:not([open])>summary::after{transform:rotate(-90deg);}
+  details.card[open]>summary{margin-bottom:12px;}
+  select.sel{font:inherit;font-size:14px;padding:10px 10px;border:1.5px solid var(--line);border-radius:10px;background:#FAF7F2;color:var(--ink);}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .toolbar .search{flex:1;min-width:200px;}
+  .fchips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;}
+  .fchip{padding:6px 11px;font-size:12.5px;border-radius:999px;}
+  .fchip.on{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .fchip i{font-style:normal;opacity:.65;margin-left:4px;}
+  .bulkbar.hidden{display:none;}
+  .bulkbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--soft);border:1.5px solid #f0c9c4;border-radius:12px;padding:8px 10px;margin-bottom:10px;font-size:13px;font-weight:600;}
+  .listhead{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);font-weight:600;padding:0 4px 6px;}
+  .lic{padding:0;overflow:hidden;}
+  .lic-row{display:flex;align-items:center;gap:10px;padding:10px 12px;}
+  .lic-row input[type=checkbox]{width:18px;height:18px;flex:none;}
+  .lic-main{flex:1;min-width:0;text-align:left;border:0;padding:0;background:none;font-weight:500;}
+  .lic-main .code{margin-right:6px;white-space:nowrap;}
+  @media (max-width:640px){ .lic-main .lbl{display:block;margin-top:2px;} .lic-row{align-items:flex-start;} .lic-row .badges{flex-direction:column;align-items:flex-end;} }
+  .lic-main .lbl{font-weight:700;font-size:14px;}
+  .lic-main .sub{display:block;font-size:12px;color:var(--dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .lic-row .badges{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:45%;}
+  .lic.open{border-color:var(--ink);}
+  .lic-detail{border-top:1.5px solid var(--line);padding:12px;background:#FFFDF9;}
+  .lic-detail .meta{margin-top:0;}
+  .subcode{margin-top:12px;padding:10px 12px;border:1.5px dashed var(--line);border-radius:12px;background:#FBFDFC;}
+  .pager{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:var(--dim);font-weight:600;}
+  .foot{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1.5px solid var(--line);font-size:12px;color:var(--dim);}
+  .themerow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px;font-size:12.5px;color:var(--dim);font-weight:600;}
+  .themerow select{font-size:13px;padding:6px 8px;}
+  .loading{opacity:.5;pointer-events:none;}
 </style>
 </head>
 <body>
@@ -84,8 +122,16 @@
       <button id="logoutBtn" class="small">Log out</button>
     </div>
 
-    <div class="card">
-      <h2>Create rental codes</h2>
+    <div class="stats" id="stats">
+      <button class="stat" data-f="all"><b id="stTotal">–</b><span>Bookings</span></button>
+      <button class="stat" data-f="active"><b id="stActive">–</b><span>Running now</span></button>
+      <button class="stat" data-f="scheduled"><b id="stUpcoming">–</b><span>Upcoming</span></button>
+      <button class="stat" data-f="scheduled" data-sort="event"><b id="stNext7">–</b><span>Next 7 days</span></button>
+      <button class="stat" data-f="lifetime"><b id="stLifetime">–</b><span>Lifetime</span></button>
+    </div>
+
+    <details class="card" id="createCard" open>
+      <summary><h2>Create rental codes</h2></summary>
       <div class="row">
         <div style="flex:2;min-width:160px;"><label>Client / event</label><input id="newLabel" type="text" maxlength="80" placeholder="e.g. Sofia's Dedication"></div>
         <div style="flex:2;min-width:160px;"><label>Drive folder name</label><input id="newFolderName" type="text" maxlength="80" placeholder="Defaults to client / event"></div>
@@ -112,6 +158,11 @@
         </div>
         <div class="meta" style="margin:6px 0 0;">A second code the renter can use any time before their booking ends (e.g. to test before the event). The time starts on first entry. Its photos go to a <b>Bonus</b> folder inside the event folder, named BONUS_1, BONUS_2…</div>
       </div>
+      <div class="modebox">
+        <label style="font-size:13px;color:var(--ink);">Starting theme <span style="font-weight:500;color:var(--dim);">(optional)</span></label>
+        <select class="sel theme-select" id="newTheme" style="width:100%;margin-top:4px;"></select>
+        <div class="meta" style="margin:6px 0 0;">The booth opens with this design (e.g. a graduation theme). The renter can still change everything; once they edit, their own design is kept.</div>
+      </div>
       <div class="printbox" id="newPrint"></div>
       <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newTraditional"> Traditional booth (laptop + guest screen)</label>
@@ -120,10 +171,10 @@
       <button class="primary" id="createBtn" style="margin-top:12px;">Generate</button>
       <div id="newBox" class="newbox hidden"></div>
       <div class="meta" style="margin-bottom:0;"><b>Devices</b> = how many tablets/laptops can use the same code at once (they share the event folder; each device's photos end in _cam1, _cam2…). Without an event date, the days start counting when the renter first enters it.</div>
-    </div>
+    </details>
 
-    <div class="card">
-      <h2>Trial password</h2>
+    <details class="card" id="trialCard">
+      <summary><h2>Trial password</h2></summary>
       <label class="toggle"><input type="checkbox" id="trialEnabled"> Trial enabled</label>
       <div class="row">
         <div style="flex:2;"><label>Trial password (reusable)</label><input id="trialPw" type="text"></div>
@@ -135,11 +186,41 @@
       <div class="printbox" id="trialPrint"></div>
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialTraditional"> Trials use the traditional booth (laptop + guest screen)</label></div>
       <button class="primary" id="saveTrialBtn" style="margin-top:12px;">Save trial settings</button>
-    </div>
+    </details>
 
-    <div class="card">
+    <div class="card" id="codesCard">
       <div class="top" style="margin-bottom:10px;"><h2 style="margin:0;">Rental codes</h2><button class="small" id="refreshBtn">Refresh</button></div>
+      <div class="toolbar">
+        <input id="q" class="search" type="text" placeholder="Search client, event, Drive folder or code…" autocomplete="off">
+        <select id="sort" class="sel" title="Sort">
+          <option value="newest">Newest first</option>
+          <option value="event">Event date (soonest)</option>
+          <option value="ending">Ending soonest</option>
+          <option value="name">Name A–Z</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+        <select id="size" class="sel" title="Per page">
+          <option value="25">25 / page</option><option value="50">50 / page</option><option value="100">100 / page</option>
+        </select>
+      </div>
+      <div class="fchips" id="fchips"></div>
+      <div class="bulkbar hidden" id="bulkbar">
+        <span id="bulkCount">0 selected</span>
+        <button class="small" data-bulk="revoke">Disable</button>
+        <button class="small" data-bulk="restore">Restore</button>
+        <button class="small danger" data-bulk="delete">Delete</button>
+        <button class="small" data-bulk="clear">Clear selection</button>
+      </div>
+      <div class="listhead"><input type="checkbox" id="selPage" title="Select everything on this page"> <span id="listInfo"></span></div>
       <div id="list"></div>
+      <div class="pager" id="pager"></div>
+      <div class="foot">
+        <span id="ixInfo"></span>
+        <span style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="small" id="exportBtn">Export CSV</button>
+          <button class="small" id="reindexBtn" title="Re-read every code. Only needed if the list ever looks out of date.">Rebuild index</button>
+        </span>
+      </div>
     </div>
   </div>
 </div>
@@ -257,15 +338,35 @@
   $('logoutBtn').addEventListener('click', logout);
   $('refreshBtn').addEventListener('click', function(){ load().then(function(){ toast('Refreshed'); }); });
 
+  // Same rules as statusOf() in netlify/functions/admin.mjs.
   function statusOf(l, now){
-    if(l.lifetime && l.status === 'active') return 'active';
-    if(l.status === 'active' && l.expiresAt <= now) return 'expired';
-    if(l.status === 'unused' && l.kind !== 'bonus' && l.startsAt && !l.lifetime){
+    if(l.status === 'revoked') return 'revoked';
+    if(l.status === 'active') return (!l.lifetime && l.expiresAt && l.expiresAt <= now) ? 'expired' : 'active';
+    if(l.kind !== 'bonus' && l.startsAt && !l.lifetime){
       if(l.startsAt + l.days * DAY <= now) return 'expired';
       if(l.startsAt > now) return 'scheduled';
     }
-    return l.status;
+    return 'unused';
   }
+  var ST_NAME = { active: 'running', scheduled: 'upcoming', unused: 'not used', expired: 'ended', revoked: 'disabled' };
+  // Built-in booth themes (keep in sync with THEMES in protected/booth.html).
+  var THEME_LIST = [
+    ['Wedding', [['gold-chevron', 'Gold Chevron'], ['art-deco', 'Art Deco Navy'], ['white-marble', 'White Marble'], ['rustic-lights', 'Rustic String Lights'], ['sage-laurel', 'Sage & Laurel'], ['classic-cream', 'Classic Cream']]],
+    ['Birthday / Debut', [['gold-confetti', 'Gold Confetti'], ['black-gold-confetti', 'Black & Gold Confetti'], ['maroon-gold', 'Maroon & Gold'], ['blush-hearts', 'Blush Hearts'], ['gold-glitter', 'Gold Glitter'], ['balloon-party', 'Balloon Party (kids)']]],
+    ['Graduation', [['grad-navy', 'Graduation Navy & Gold'], ['grad-maroon', 'Graduation Maroon'], ['grad-diploma', 'Diploma & Laurels']]],
+    ['Christening', [['little-angel', 'Little Angel'], ['christening-blush', 'Blush Florals'], ['pastel-sky', 'Pastel Sky']]],
+    ['Holidays / Corporate', [['christmas-pine', 'Christmas Pine'], ['midnight-gold', 'Midnight Gold']]]
+  ];
+  var THEME_NAME = {};
+  THEME_LIST.forEach(function(g){ g[1].forEach(function(t){ THEME_NAME[t[0]] = t[1]; }); });
+  function themeOptions(cur){
+    return '<option value="">Booth default (renter picks)</option>' + THEME_LIST.map(function(g){
+      return '<optgroup label="' + esc(g[0]) + '">' + g[1].map(function(t){
+        return '<option value="' + t[0] + '"' + (t[0] === cur ? ' selected' : '') + '>' + esc(t[1]) + '</option>';
+      }).join('') + '</optgroup>';
+    }).join('');
+  }
+
   // Date + time pickers -> epoch ms in this browser's time zone (null if no date).
   function readStartInputs(dateEl, timeEl){
     if(!dateEl.value) return null;
@@ -278,6 +379,7 @@
     return { date: d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()), time: pad2(d.getHours()) + ':' + pad2(d.getMinutes()) };
   }
   function devicesOf(l){ return Array.isArray(l.devices) ? l.devices : (l.deviceId ? [{ id: l.deviceId, no: 1, at: l.redeemedAt }] : []); }
+  function devCount(l){ return typeof l.devicesUsed === 'number' ? l.devicesUsed : devicesOf(l).length; }
   function fmtMinutes(m){ return m >= 60 ? (Math.floor(m / 60) + 'h' + (m % 60 ? ' ' + (m % 60) + 'm' : '')) : m + ' min'; }
   function fmtLeft(ms){
     if(ms <= 0) return '0m';
@@ -285,16 +387,39 @@
     return d ? d + 'd ' + h + 'h' : (h ? h + 'h ' + m + 'm' : m + 'm');
   }
   function fmtDate(t){ return new Date(t).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); }
+  function fmtShort(t){ return new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+
+  // ---- List state ----
+  var VIEW = { q: '', filter: 'all', sort: 'newest', page: 1, size: 25 };
+  try{ var savedView = JSON.parse(localStorage.getItem('pb_admin_view') || 'null'); if(savedView){ VIEW.sort = savedView.sort || VIEW.sort; VIEW.size = savedView.size || VIEW.size; } }catch(e){}
+  var ROWS = {};      // code -> index row on this page
+  var LIC = {};       // code -> full record (loaded when a row is opened)
+  var OPEN = {};      // code -> true while expanded
+  var SEL = {};       // code -> true (selected for bulk actions, kept across pages)
+  var NOW = Date.now();
+  var FILTERS = [['all', 'All'], ['active', 'Running'], ['scheduled', 'Upcoming'], ['unused', 'Not used'], ['lifetime', 'Lifetime'], ['expired', 'Ended'], ['revoked', 'Disabled'], ['bonus', 'Bonus codes']];
 
   async function load(){
+    var listEl = $('list');
+    listEl.classList.add('loading');
     try{
-      var j = await api({ action: 'list' });
+      var j = await api({ action: 'list', q: VIEW.q, filter: VIEW.filter, sort: VIEW.sort, page: VIEW.page, size: VIEW.size });
+      NOW = j.now; VIEW.page = j.page;
       renderSettings(j.settings);
-      renderList(j.licenses, j.now);
+      renderStats(j.stats);
+      renderChips(j.counts);
+      renderList(j.rows, j);
+      $('ixInfo').textContent = j.indexBuiltAt ? 'Index rebuilt ' + fmtDate(j.indexBuiltAt) : '';
+      // Re-open rows that were open before (fresh data).
+      await Promise.all(Object.keys(OPEN).map(function(c){ return ROWS[c] ? openRow(c, true) : (delete OPEN[c], null); }));
     }catch(e){ if(e.message !== 'auth') toast(e.message, true); }
+    listEl.classList.remove('loading');
   }
 
+  var settingsShown = false;
   function renderSettings(s){
+    if(settingsShown) return;   // don't overwrite what the admin is typing
+    settingsShown = true;
     $('trialEnabled').checked = !!s.trialEnabled;
     $('trialPw').value = s.trialPassword;
     $('trialMin').value = s.trialMinutes;
@@ -302,40 +427,105 @@
     printPicker($('trialPrint'), { enabled: s.trialPrintEnabled, sizes: s.trialPrintSizes }, 'Allow printing during trials');
     $('trialTraditional').checked = !!s.trialTraditional;
   }
-
-  var LIC = {};
-  function renderList(rows, now){
-    var el = $('list');
-    if(!rows.length){ el.innerHTML = '<div class="empty">No codes yet. Generate one above.</div>'; return; }
-    LIC = {}; rows.forEach(function(l){ LIC[l.code] = l; });
-    var byKey = {}; rows.forEach(function(l){ byKey[l.key] = l; });
-    // Each booking is followed by its bonus code (if any).
-    var ordered = [];
-    rows.forEach(function(l){
-      if(l.kind === 'bonus' && l.parent && byKey[l.parent]) return;
-      ordered.push(l);
-      if(l.bonusKey && byKey[l.bonusKey]) ordered.push(byKey[l.bonusKey]);
-    });
-    el.innerHTML = ordered.map(function(l){ return renderLic(l, now, byKey); }).join('');
+  function renderStats(st){
+    $('stTotal').textContent = st.total; $('stActive').textContent = st.activeNow; $('stUpcoming').textContent = st.upcoming;
+    $('stNext7').textContent = st.next7; $('stLifetime').textContent = st.lifetime;
+  }
+  function renderChips(counts){
+    $('fchips').innerHTML = FILTERS.map(function(f){
+      return '<button class="small fchip' + (VIEW.filter === f[0] ? ' on' : '') + '" data-f="' + f[0] + '">' + f[1] + '<i>' + (counts[f[0]] || 0) + '</i></button>';
+    }).join('');
   }
 
-  function renderLic(l, now, byKey){
+  // One-line summary used in the compact row.
+  function infoLine(l, st, parentEnd){
     var bonus = l.kind === 'bonus';
-    var st = statusOf(l, now), info = '';
     var len = bonus ? fmtMinutes(l.minutes) : (l.lifetime ? 'Lifetime' : l.days + ' day' + (l.days === 1 ? '' : 's'));
-    var devs = devicesOf(l), maxD = Math.max(1, l.maxDevices || 1);
-    if(l.lifetime && st === 'scheduled') st = 'unused';
+    var maxD = Math.max(1, l.maxDevices || 1), used = devCount(l), info;
     if(st === 'scheduled') info = len + ' · opens <b>' + fmtDate(l.startsAt) + '</b> · ends ' + fmtDate(l.startsAt + l.days * DAY);
     else if(st === 'unused') info = len + (l.startsAt && !l.lifetime ? ' · open now until ' + fmtDate(l.startsAt + l.days * DAY) : (l.startsAt ? ' · opens ' + fmtDate(l.startsAt) : '')) + ' · not redeemed yet';
     else if(st === 'active' && l.lifetime) info = 'Lifetime · redeemed ' + fmtDate(l.redeemedAt);
-    else if(st === 'active') info = 'Redeemed ' + fmtDate(l.redeemedAt) + ' · ends ' + fmtDate(l.expiresAt) + ' (' + fmtLeft(l.expiresAt - now) + ' left)';
+    else if(st === 'active') info = 'Redeemed ' + fmtDate(l.redeemedAt) + ' · ends ' + fmtDate(l.expiresAt) + ' (' + fmtLeft(l.expiresAt - NOW) + ' left)';
     else if(st === 'expired') info = 'Ended ' + fmtDate(l.expiresAt || (l.startsAt + l.days * DAY)) + (l.redeemedAt ? '' : ' · never used');
     else info = 'Disabled';
-    if(st === 'active' && devs.length < maxD) info += ' · <b>' + (devs.length ? (maxD - devs.length) + ' device slot' + (maxD - devs.length === 1 ? '' : 's') + ' free' : 'waiting for a new device') + '</b>';
-    if(bonus && st === 'unused'){
-      var p = byKey[l.parent], end = p && (p.expiresAt || (p.startsAt ? p.startsAt + p.days * DAY : 0));
-      info += end ? ' · usable until ' + fmtDate(end) : ' · usable any time before the booking ends';
+    if(st === 'active' && used < maxD) info += ' · <b>' + (used ? (maxD - used) + ' device slot' + (maxD - used === 1 ? '' : 's') + ' free' : 'waiting for a new device') + '</b>';
+    if(bonus && st === 'unused') info += parentEnd ? ' · usable until ' + fmtDate(parentEnd) : ' · usable any time before the booking ends';
+    return info;
+  }
+  function badges(l, st){
+    var maxD = Math.max(1, l.maxDevices || 1);
+    var printOn = l.print === true || (l.print && l.print.enabled);
+    return (l.kind === 'bonus' ? '<span class="badge b-bonus">bonus</span>' : '') +
+      (l.bonus ? '<span class="badge b-bonus" title="Has a bonus code: ' + esc(l.bonus.code) + '">+bonus</span>' : '') +
+      (l.lifetime ? '<span class="badge b-lifetime">lifetime</span>' : '') +
+      (maxD > 1 ? '<span class="badge b-devices">' + devCount(l) + '/' + maxD + ' dev</span>' : '') +
+      (l.traditional ? '<span class="badge b-trad">laptop</span>' : '') + (printOn ? '<span class="badge b-print">print</span>' : '') +
+      '<span class="badge b-' + st + '">' + (ST_NAME[st] || st) + '</span>';
+  }
+
+  function renderList(rows, j){
+    var el = $('list');
+    ROWS = {};
+    rows.forEach(function(r){ ROWS[r.code] = r; });
+    var from = j.total ? (j.page - 1) * VIEW.size + 1 : 0, to = Math.min(j.total, j.page * VIEW.size);
+    $('listInfo').textContent = j.total ? 'Showing ' + from + '–' + to + ' of ' + j.total : '';
+    if(!rows.length){
+      el.innerHTML = '<div class="empty">' + (VIEW.q || VIEW.filter !== 'all' ? 'No codes match. Try another search or filter.' : 'No codes yet. Generate one above.') + '</div>';
+    }else{
+      el.innerHTML = rows.map(function(r){
+        var st = r.st || statusOf(r, NOW), c = esc(r.code);
+        var title = r.label && r.label !== r.code ? esc(r.label) : '<span style="color:var(--dim);font-weight:500;">(no name)</span>';
+        return '<div class="lic" data-code="' + c + '">' +
+          '<div class="lic-row"><input type="checkbox" class="selc" data-c="' + c + '"' + (SEL[r.code] ? ' checked' : '') + ' aria-label="Select ' + c + '">' +
+          '<button class="lic-main" data-a="toggle" data-c="' + c + '"><span class="code">' + c + '</span><span class="lbl">' + title + '</span>' +
+          '<span class="sub">' + infoLine(r, st, 0) + '</span></button>' +
+          '<span class="badges">' + badges(r, st) + '</span></div>' +
+          '<div class="lic-detail hidden"></div></div>';
+      }).join('');
     }
+    $('pager').innerHTML = j.pages > 1
+      ? '<button class="small" data-pg="' + (j.page - 1) + '"' + (j.page <= 1 ? ' disabled' : '') + '>‹ Prev</button>' +
+        '<span>Page ' + j.page + ' of ' + j.pages + '</span>' +
+        '<button class="small" data-pg="' + (j.page + 1) + '"' + (j.page >= j.pages ? ' disabled' : '') + '>Next ›</button>'
+      : '';
+    syncSelUI();
+  }
+
+  function syncSelUI(){
+    var n = Object.keys(SEL).length;
+    $('bulkbar').classList.toggle('hidden', !n);
+    $('bulkCount').textContent = n + ' selected';
+    var boxes = [].slice.call(document.querySelectorAll('.selc'));
+    $('selPage').checked = boxes.length > 0 && boxes.every(function(b){ return b.checked; });
+  }
+
+  // Full details + actions for one booking (and its bonus code), loaded on demand.
+  async function openRow(code, quiet){
+    var el = document.querySelector('.lic[data-code="' + code + '"]'); if(!el) return;
+    var box = el.querySelector('.lic-detail');
+    try{
+      var j = await api({ action: 'get', code: code });
+      LIC[j.rec.code] = j.rec;
+      if(j.bonus) LIC[j.bonus.code] = j.bonus;
+      var parentEnd = j.rec.expiresAt || (j.rec.startsAt && !j.rec.lifetime ? j.rec.startsAt + j.rec.days * DAY : 0);
+      var html = detailHtml(j.rec, null, 0);
+      if(j.bonus) html += '<div class="subcode"><div class="lic-head" style="margin-bottom:6px;"><span class="code">' + esc(j.bonus.code) + '</span><span class="badges" style="display:flex;gap:4px;">' + badges(j.bonus, statusOf(j.bonus, NOW)) + '</span></div>' + detailHtml(j.bonus, j.rec, parentEnd) + '</div>';
+      box.innerHTML = html;
+      box.classList.remove('hidden'); el.classList.add('open'); OPEN[code] = true;
+    }catch(e){
+      if(e.status === 404){ delete OPEN[code]; if(!quiet) toast('That code no longer exists.', true); return; }
+      if(e.message !== 'auth') toast(e.message, true);
+    }
+  }
+  function closeRow(code){
+    var el = document.querySelector('.lic[data-code="' + code + '"]'); if(!el) return;
+    el.classList.remove('open'); el.querySelector('.lic-detail').classList.add('hidden'); delete OPEN[code];
+  }
+
+  function detailHtml(l, parent, parentEnd){
+    var bonus = l.kind === 'bonus';
+    var st = statusOf(l, NOW);
+    var devs = devicesOf(l), maxD = Math.max(1, l.maxDevices || 1);
     var c = esc(l.code), acts = '';
     var unusedish = st === 'unused' || st === 'scheduled';
     if(st === 'active' && maxD === 1 && devs.length) acts += '<button class="small" data-a="unbind" data-c="' + c + '">Allow new device</button>';
@@ -346,7 +536,7 @@
       if(st !== 'revoked' && !l.lifetime) acts += '<button class="small" data-a="extend" data-c="' + c + '">+ Add days</button>';
       if(st !== 'revoked' && !l.lifetime) acts += '<button class="small" data-a="makelifetime" data-c="' + c + '">Make lifetime</button>';
       if(unusedish || (st === 'expired' && !l.redeemedAt)) acts += '<button class="small" data-a="schedopen" data-c="' + c + '">' + (l.startsAt ? 'Change date' : 'Set date') + '</button>';
-      if(!(l.bonusKey && byKey[l.bonusKey])) acts += '<button class="small" data-a="addbonus" data-c="' + c + '">+ Bonus code</button>';
+      if(!l.bonusKey) acts += '<button class="small" data-a="addbonus" data-c="' + c + '">+ Bonus code</button>';
     }
     acts += '<button class="small" data-a="printedit" data-c="' + c + '">Print settings</button>';
     acts += '<button class="small" data-a="mode" data-c="' + c + '">' + (l.traditional ? 'Switch to tablet' : 'Make traditional') + '</button>';
@@ -354,49 +544,146 @@
       ? '<button class="small" data-a="restore" data-c="' + c + '">Restore</button>'
       : '<button class="small danger" data-a="revoke" data-c="' + c + '">Disable</button>';
     acts += '<button class="small danger" data-a="delete" data-c="' + c + '">Delete</button>';
-    var printOn = l.print && l.print.enabled;
     var folder = l.lifetime
       ? esc(l.folderName || l.label || l.code) + ' · <i>event name</i></b> <span style="font-weight:500;">(new folder per event)</span><b>'
       : esc(l.folderName || l.label || l.code) + (bonus ? ' / ' + esc(l.subfolder || 'Bonus') + ' <span style="font-weight:500;">(files named BONUS_…)</span>' : '');
-    return '<div class="lic' + (bonus ? ' bonus' : '') + '" data-code="' + c + '"><div class="lic-head"><span class="code">' + c + '</span><span>' +
-      (bonus ? '<span class="badge b-bonus">bonus</span> ' : '') +
-      (l.lifetime ? '<span class="badge b-lifetime">lifetime</span> ' : '') +
-      (maxD > 1 ? '<span class="badge b-devices">' + devs.length + '/' + maxD + ' devices</span> ' : '') +
-      (l.traditional ? '<span class="badge b-trad">traditional</span> ' : '') + (printOn ? '<span class="badge b-print">print</span> ' : '') +
-      '<span class="badge b-' + st + '">' + st + '</span></span></div>' +
-      '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) + '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>' + info +
+    return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
+      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>' + infoLine(l, st, parentEnd) +
+      '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
       (maxD > 1 && devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="Remove this device">Remove</button></span>'; }).join('') + '</div>' : '') +
       '</div>' +
+      (bonus ? '' : '<div class="themerow">Starting theme <select class="sel" data-theme-for="' + c + '">' + themeOptions(l.defaultTheme || '') + '</select></div>') +
       '<div class="printbox hidden" data-print-edit></div>' +
       '<div class="printbox hidden" data-sched-edit></div>' +
-      '<div class="actions"><button class="small" data-a="copy" data-c="' + c + '">Copy</button>' + (bonus ? '' : '<button class="small" data-a="portal" data-c="' + c + '" title="Link to the customer\'s My Events page (signs them in with this code)">Copy events page link</button>') + acts + '</div></div>';
+      '<div class="actions"><button class="small" data-a="copy" data-c="' + c + '">Copy code</button>' + (bonus ? '' : '<button class="small" data-a="portal" data-c="' + c + '" title="Link to the customer\'s My Events page (signs them in with this code)">Copy events page link</button>') + acts + '</div>';
   }
+
+  // ---- Toolbar, filters, paging, selection ----
+  var qTimer;
+  $('q').addEventListener('input', function(){
+    clearTimeout(qTimer);
+    var v = this.value;
+    qTimer = setTimeout(function(){ VIEW.q = v.trim(); VIEW.page = 1; load(); }, 300);
+  });
+  function saveView(){ try{ localStorage.setItem('pb_admin_view', JSON.stringify({ sort: VIEW.sort, size: VIEW.size })); }catch(e){} }
+  $('sort').value = VIEW.sort; $('size').value = String(VIEW.size);
+  $('sort').addEventListener('change', function(){ VIEW.sort = this.value; VIEW.page = 1; saveView(); load(); });
+  $('size').addEventListener('change', function(){ VIEW.size = Number(this.value); VIEW.page = 1; saveView(); load(); });
+  $('fchips').addEventListener('click', function(e){
+    var b = e.target.closest('[data-f]'); if(!b) return;
+    VIEW.filter = b.dataset.f; VIEW.page = 1; load();
+  });
+  $('stats').addEventListener('click', function(e){
+    var b = e.target.closest('[data-f]'); if(!b) return;
+    VIEW.filter = b.dataset.f; VIEW.page = 1;
+    if(b.dataset.sort){ VIEW.sort = b.dataset.sort; $('sort').value = VIEW.sort; }
+    load().then(function(){ $('codesCard').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  });
+  $('pager').addEventListener('click', function(e){
+    var b = e.target.closest('[data-pg]'); if(!b || b.disabled) return;
+    VIEW.page = Number(b.dataset.pg); load().then(function(){ $('codesCard').scrollIntoView({ block: 'start' }); });
+  });
+  $('selPage').addEventListener('change', function(){
+    var on = this.checked;
+    [].slice.call(document.querySelectorAll('.selc')).forEach(function(b){ b.checked = on; if(on) SEL[b.dataset.c] = true; else delete SEL[b.dataset.c]; });
+    syncSelUI();
+  });
+  $('bulkbar').addEventListener('click', async function(e){
+    var b = e.target.closest('[data-bulk]'); if(!b) return;
+    var op = b.dataset.bulk, codes = Object.keys(SEL);
+    if(op === 'clear'){ SEL = {}; [].slice.call(document.querySelectorAll('.selc')).forEach(function(x){ x.checked = false; }); syncSelUI(); return; }
+    if(!codes.length) return;
+    if(codes.length > 200){ toast('Up to 200 codes at a time.', true); return; }
+    var words = { revoke: 'Disable', restore: 'Restore', delete: 'Permanently delete' }[op];
+    if(!confirm(words + ' ' + codes.length + ' code' + (codes.length === 1 ? '' : 's') + '?' + (op === 'delete' ? ' Their bonus codes are deleted too. This cannot be undone.' : op === 'revoke' ? ' Renters are locked out within ~5 minutes.' : ''))) return;
+    b.disabled = true;
+    try{
+      var r = await api({ action: 'bulk', op: op, codes: codes });
+      SEL = {};
+      toast(words + ': ' + r.done + ' code' + (r.done === 1 ? '' : 's'));
+      await load();
+    }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+    b.disabled = false;
+  });
+
+  function csvCell(v){
+    var s = v == null ? '' : String(v);
+    if(/^[=+\-@\t\r]/.test(s)) s = "'" + s;          // keep spreadsheets from running it as a formula
+    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  function isoLocal(t){ if(!t) return ''; var d = new Date(t); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+  $('exportBtn').addEventListener('click', async function(){
+    var btn = this; btn.disabled = true;
+    try{
+      var j = await api({ action: 'export', q: VIEW.q, filter: VIEW.filter, sort: VIEW.sort });
+      var byKey = {}; j.rows.forEach(function(r){ byKey[r.key] = r.code; });
+      var head = ['Code', 'Client / event', 'Drive folder', 'Type', 'Status', 'Length', 'Opens', 'Redeemed', 'Ends', 'Devices used', 'Device limit', 'Mode', 'Printing', 'Starting theme', 'Booking (for bonus)', 'Created'];
+      var lines = [head.join(',')].concat(j.rows.map(function(r){
+        var st = r.st || statusOf(r, j.now);
+        var len = r.kind === 'bonus' ? (r.minutes || 0) + ' min' : r.lifetime ? 'lifetime' : r.days + ' days';
+        var ends = r.lifetime ? '' : (r.expiresAt || (r.startsAt ? r.startsAt + r.days * DAY : 0));
+        return [r.code, r.label, r.folderName, r.kind === 'bonus' ? 'bonus' : r.lifetime ? 'lifetime' : 'rental', ST_NAME[st] || st, len,
+          isoLocal(r.startsAt), isoLocal(r.redeemedAt), isoLocal(ends), r.devicesUsed, r.maxDevices, r.traditional ? 'laptop' : 'tablet', r.print ? 'yes' : 'no',
+          r.defaultTheme ? (THEME_NAME[r.defaultTheme] || r.defaultTheme) : '', r.parent ? (byKey[r.parent] || '') : '', isoLocal(r.createdAt)].map(csvCell).join(',');
+      }));
+      var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = 'photobooth4u-codes-' + isoLocal(Date.now()).slice(0, 10) + '.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 5000);
+      toast('Exported ' + j.rows.length + ' code' + (j.rows.length === 1 ? '' : 's'));
+    }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+    btn.disabled = false;
+  });
+  $('reindexBtn').addEventListener('click', async function(){
+    if(!confirm('Rebuild the code index? This re-reads every code (can take a little while with thousands). Only needed if the list looks out of date.')) return;
+    var btn = this; btn.disabled = true;
+    try{ var r = await api({ action: 'reindex' }); toast('Index rebuilt — ' + r.count + ' codes'); await load(); }
+    catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+    btn.disabled = false;
+  });
+
+  $('list').addEventListener('change', async function(e){
+    var cb = e.target.closest('.selc');
+    if(cb){ if(cb.checked) SEL[cb.dataset.c] = true; else delete SEL[cb.dataset.c]; syncSelUI(); return; }
+    var ts = e.target.closest('[data-theme-for]');
+    if(ts){
+      var code = ts.dataset.themeFor;
+      try{
+        await api({ action: 'theme', code: code, theme: ts.value || null });
+        toast(ts.value ? 'Starting theme: ' + (THEME_NAME[ts.value] || ts.value) : 'Starting theme cleared');
+      }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+    }
+  });
 
   $('list').addEventListener('click', async function(e){
     var b = e.target.closest('button[data-a]'); if(!b) return;
     var a = b.dataset.a, code = b.dataset.c;
+    var host = b.closest('.lic') ? b.closest('.lic').dataset.code : code;
+    var refresh = function(){ return load(); };
     try{
+      if(a === 'toggle'){ if(OPEN[code]) closeRow(code); else await openRow(code); return; }
       if(a === 'copy'){ await navigator.clipboard.writeText(code); toast('Copied ' + code); return; }
       if(a === 'portal'){ await navigator.clipboard.writeText(location.origin + '/lifetime/#' + code); toast('Copied the My Events link for ' + code); return; }
       if(a === 'rmdev'){
         var n = Number(b.dataset.n);
         if(!confirm('Remove device ' + n + ' from ' + code + '? It is locked out within ~5 minutes, and a new device can then use the code.')) return;
         await api({ action: 'unbind', code: code, deviceNo: n });
-        toast('Device ' + n + ' removed'); load(); return;
+        toast('Device ' + n + ' removed'); refresh(); return;
       }
       if(a === 'devlimit'){
         var cur3 = (LIC[code] && LIC[code].maxDevices) || 1;
         var dv = prompt('How many devices can use ' + code + '? (1–50)', String(cur3)); if(!dv) return;
         await api({ action: 'devices', code: code, maxDevices: dv });
-        toast('Device limit set to ' + dv); load(); return;
+        toast('Device limit set to ' + dv); refresh(); return;
       }
       if(a === 'makelifetime'){
         if(!confirm('Make ' + code + ' lifetime? It will never expire, and the booth will ask for an event name so each event gets its own Drive folder.')) return;
         await api({ action: 'makelifetime', code: code });
-        toast(code + ' is now lifetime'); load(); return;
+        toast(code + ' is now lifetime'); refresh(); return;
       }
       if(a === 'schedopen'){
-        var sb = b.closest('.lic').querySelector('[data-sched-edit]');
+        var sb = b.closest('.actions').parentNode.querySelector('[data-sched-edit]');
         if(!sb.classList.contains('hidden')){ sb.classList.add('hidden'); return; }
         var cur = LIC[code] && LIC[code].startsAt ? dateParts(LIC[code].startsAt) : { date: '', time: '00:00' };
         sb.innerHTML = '<div class="row"><div><label>Opens on</label><input type="date" class="sd" value="' + cur.date + '"></div>' +
@@ -412,14 +699,14 @@
         if(a === 'schedsave' && !ms){ toast('Pick a date first.', true); return; }
         await api({ action: 'schedule', code: code, startsAt: ms });
         toast(ms ? 'Opens ' + fmtDate(ms) : 'Date removed — days start on first entry');
-        load();
+        refresh();
         return;
       }
       if(a === 'addbonus'){
         var mins = prompt('Bonus code length in minutes?', '60'); if(!mins) return;
         var r = await api({ action: 'addbonus', code: code, minutes: mins });
         toast('Bonus code ' + r.created[0].code + ' added');
-        load();
+        OPEN[host] = true; refresh();
         return;
       }
       if(a === 'bonuslen'){
@@ -427,11 +714,11 @@
         var m2 = prompt('Total bonus length in minutes?' + (LIC[code] && LIC[code].redeemedAt ? ' (counted from when it was first used)' : ''), String(cur2 || 60)); if(!m2) return;
         await api({ action: 'bonusminutes', code: code, minutes: m2 });
         toast('Bonus length set to ' + fmtMinutes(Number(m2)));
-        load();
+        refresh();
         return;
       }
       if(a === 'printedit'){
-        var box = b.closest('.lic').querySelector('[data-print-edit]');
+        var box = b.closest('.actions').parentNode.querySelector('[data-print-edit]');
         if(!box.classList.contains('hidden')){ box.classList.add('hidden'); return; }
         printPicker(box, LIC[code] && LIC[code].print, 'Allow printing for this rental');
         box.insertAdjacentHTML('beforeend', '<div class="actions" style="margin-top:10px;"><button class="small primary" data-a="printsave" data-c="' + esc(code) + '">Save print settings</button></div>');
@@ -442,14 +729,14 @@
         var pb = readPrint(b.closest('[data-print-edit]'));
         await api({ action: 'print', code: code, printEnabled: pb.enabled, printSizes: pb.sizes });
         toast('Print settings saved' + (LIC[code] && LIC[code].bonusKey ? ' (bonus code too)' : '') + ' — an open booth picks them up within ~5 minutes');
-        load();
+        refresh();
         return;
       }
       if(a === 'mode'){
         var on = !(LIC[code] && LIC[code].traditional);
         await api({ action: 'traditional', code: code, traditional: on });
         toast((on ? 'Traditional mode on' : 'Tablet mode on') + ' — an open booth switches within ~5 minutes');
-        load();
+        refresh();
         return;
       }
       if(a === 'delete' && !confirm('Delete ' + code + ' permanently? If it is active, the renter is locked out.' + (LIC[code] && LIC[code].bonusKey ? ' Its bonus code is deleted too.' : ''))) return;
@@ -460,7 +747,8 @@
         body.days = d;
       }
       await api(body);
-      toast('Done'); load();
+      if(a === 'delete'){ delete SEL[code]; if(host === code) delete OPEN[code]; }
+      toast('Done'); refresh();
     }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
   });
 
@@ -469,7 +757,7 @@
     try{
       var np = readPrint($('newPrint'));
       var startsAt = readStartInputs($('newStartDate'), $('newStartTime'));
-      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, bonus: $('newBonus').checked, bonusMinutes: $('newBonusMin').value, printEnabled: np.enabled, printSizes: np.sizes, traditional: $('newTraditional').checked };
+      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, bonus: $('newBonus').checked, bonusMinutes: $('newBonusMin').value, printEnabled: np.enabled, printSizes: np.sizes, traditional: $('newTraditional').checked, defaultTheme: $('newTheme').value || null };
       var j;
       try{ j = await api(createBody); }
       catch(e1){
@@ -489,7 +777,7 @@
       $('newStartDate').value = '';
       $('newFolderName').value = '';
       delete $('newFolderName').dataset.edited;
-      load();
+      VIEW.page = 1; load();
     }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
     btn.disabled = false;
   });
@@ -513,6 +801,12 @@
   });
 
   printPicker($('newPrint'), null, 'Allow printing for these codes');
+  $('newTheme').innerHTML = themeOptions('');
+  // Remember whether the Create / Trial cards are open.
+  ['createCard', 'trialCard'].forEach(function(id){
+    try{ var v = localStorage.getItem('pb_admin_' + id); if(v) $(id).open = v === '1'; }catch(e){}
+    $(id).addEventListener('toggle', function(){ try{ localStorage.setItem('pb_admin_' + id, $(id).open ? '1' : '0'); }catch(e){} });
+  });
   $('newLifetime').addEventListener('change', function(){
     $('newDays').disabled = this.checked;
     if(this.checked) $('newTraditional').checked = true;

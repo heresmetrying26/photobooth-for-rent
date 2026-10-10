@@ -65,6 +65,9 @@ export function setDevices(rec, list) {
 // event links again later from any device. Stored per code:
 // { events: [{ folderKey, name, folderUrl, bonus, firstAt, lastAt, sessions }] }
 export const eventsStore = () => getStore({ name: 'events', consistency: 'strong' });
+// Saved booth setups (layout, backdrop, event name, fonts, filters, ...), one
+// per booking — and per event name for lifetime codes.
+export const setupsStore = () => getStore({ name: 'setups', consistency: 'strong' });
 export const EVENT_KEEP_DAYS = 7;   // must match EVENT_DAYS in apps-script/cleanup.gs
 export const BONUS_KEEP_DAYS = 1;   // must match BONUS_DAYS
 export const MAX_EVENTS = 300;
@@ -95,6 +98,59 @@ export function cleanEventName(v) {
 // A device not seen for this long can be replaced by a new device entering
 // the code (e.g. Safari cleared the iPad's saved data after a week unused).
 export const STALE_DEVICE_DAYS = 7;
+
+// ---------- admin index ----------
+// One small summary per code in a single blob, so Admin can search, filter,
+// sort and page through thousands of customers with ONE read instead of
+// opening every record. Every write to a license goes through putLicense()
+// (or delLicense()) which keeps the index in step. If it is ever missing or
+// out of date, Admin -> "Rebuild index" (or the first list) rebuilds it.
+const INDEX_KEY = 'index-v1';
+export function summaryOf(rec) {
+  return {
+    key: rec.key, code: rec.code, label: rec.label || '', folderName: rec.folderName || '',
+    kind: rec.kind || 'rental', parent: rec.parent || null, bonusKey: rec.bonusKey || null,
+    lifetime: !!rec.lifetime, days: rec.days || 0, minutes: rec.minutes || null, startsAt: rec.startsAt || null,
+    status: rec.status, redeemedAt: rec.redeemedAt || null, expiresAt: rec.expiresAt || null,
+    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional,
+    print: !!(rec.print && rec.print.enabled), createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null
+  };
+}
+export async function rebuildIndex() {
+  const store = licenses();
+  const { blobs } = await store.list();
+  const rows = {};
+  for (let i = 0; i < blobs.length; i += 50) {
+    const part = await Promise.all(blobs.slice(i, i + 50).map((b) => store.get(b.key, { type: 'json' })));
+    part.forEach((r) => { if (r && r.key) rows[r.key] = summaryOf(r); });
+  }
+  const ix = { rows, builtAt: Date.now() };
+  await meta().setJSON(INDEX_KEY, ix);
+  return ix;
+}
+export async function readIndex() {
+  return (await meta().get(INDEX_KEY, { type: 'json' })) || rebuildIndex();
+}
+async function indexPut(rec) {
+  const ix = await meta().get(INDEX_KEY, { type: 'json' });
+  if (!ix) return;                       // will be rebuilt on the next Admin list
+  ix.rows[rec.key] = summaryOf(rec);
+  await meta().setJSON(INDEX_KEY, ix);
+}
+async function indexDel(key) {
+  const ix = await meta().get(INDEX_KEY, { type: 'json' });
+  if (!ix || !ix.rows[key]) return;
+  delete ix.rows[key];
+  await meta().setJSON(INDEX_KEY, ix);
+}
+export async function putLicense(store, key, rec) {
+  await store.setJSON(key, rec);
+  await indexPut(rec);
+}
+export async function delLicense(store, key) {
+  await store.delete(key);
+  await indexDel(key);
+}
 
 // When an unused code's booking window ends (null = no fixed window yet).
 // Scheduled codes run from their opening time for `days` days, no matter
@@ -263,6 +319,7 @@ export async function checkLicense(token, deviceId) {
     folderPrefix: rec.lifetime ? ((rec.folderName || rec.label || rec.code || '').trim() || null) : null,
     lifetime: !!rec.lifetime,
     deviceNo: me.no || 1,
+    defaultTheme: rec.defaultTheme || null,
     multiDevice: maxDevicesOf(rec) > 1,
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes),
     traditional: !!rec.traditional,

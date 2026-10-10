@@ -243,5 +243,18 @@ Event Date:</pre>
       document.getElementById('messengerBtn').addEventListener('click', copyForm);
     })();
   </script>
+  <script>
+    // Messenger links: m.me opens the Messenger app on phones, but on a
+    // computer it often fails. There, use Facebook's web inbox instead.
+    // Change these two lines if the account name ever changes.
+    (function(){
+      var MOBILE = 'https://m.me/roktetnachi';
+      var DESKTOP = 'https://www.facebook.com/messages/t/roktetnachi';
+      var ua = navigator.userAgent || '';
+      var isPhoneOrTablet = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua));
+      if (isPhoneOrTablet) return;
+      Array.prototype.forEach.call(document.querySelectorAll('a[href^="' + MOBILE + '"]'), function(a){ a.href = DESKTOP; });
+    })();
+  </script>
 </body>
 </html>

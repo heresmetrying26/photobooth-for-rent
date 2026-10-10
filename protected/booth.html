@@ -697,6 +697,56 @@
   .switch-row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; font-size:13.5px; font-weight:700; cursor:pointer;}
   .switch-row input{width:20px; height:20px; accent-color:var(--blue-deep); cursor:pointer;}
 
+
+  /* ---- Setup: preview beside the sections (tablet landscape / laptop) ---- */
+  .sample-row{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:10px;}
+  .sample-row .action-btn{width:auto; padding:8px 14px; font-size:12.5px;}
+  .preview-dock-close{display:none;}
+  .preview-fab{display:none;}
+  @media (min-width:900px){
+    .setup-shell{
+      max-width:1040px; display:grid; grid-template-columns:minmax(0,600px) minmax(300px,380px);
+      justify-content:center; column-gap:22px; row-gap:0; align-items:start;
+    }
+    .setup-shell > *{grid-column:1; margin-bottom:16px;}
+    .setup-shell > #previewSection{
+      grid-column:2; grid-row:1 / span 40; position:sticky; top:12px; align-self:start;
+      max-height:calc(100vh - 24px); overflow:auto;
+    }
+    #previewSection .setup-preview-frame{max-width:100%;}
+    #setupPreviewCanvas{max-height:calc(100vh - 250px); width:auto; max-width:100%; margin:0 auto;}
+  }
+  /* Phones / tablet portrait: a floating button opens the preview over the sections. */
+  @media (max-width:899px){
+    .preview-fab{
+      display:block; position:fixed; right:14px; bottom:max(14px, env(safe-area-inset-bottom)); z-index:80;
+      padding:11px 16px; border-radius:999px; border:0; background:var(--ink, #1C1A1E); color:#fff;
+      font:800 13px 'Manrope',sans-serif; box-shadow:0 8px 24px rgba(0,0,0,.25); cursor:pointer;
+    }
+    #previewSection.docked{
+      position:fixed; left:10px; right:10px; bottom:68px; z-index:70; max-height:calc(100vh - 90px); overflow:auto;
+      box-shadow:0 18px 50px rgba(0,0,0,.35);
+    }
+    #previewSection.docked .preview-dock-close{display:inline-flex; float:right; cursor:pointer; font-style:normal; padding:0 4px;}
+    #previewSection.docked #setupPreviewCanvas{max-height:52vh; width:auto; max-width:100%; margin:0 auto;}
+  }
+
+
+  /* ---- Frames with photo spots ---- */
+  .frame-list{display:flex; flex-direction:column; gap:8px; margin-top:10px;}
+  .frame-list:empty{display:none;}
+  .frame-row{display:flex; align-items:center; gap:10px; padding:8px; border:1.5px solid var(--line); border-radius:12px; background:#fff;}
+  .frame-row.active{border-color:var(--blue-deep);}
+  .frame-thumb{width:44px; height:60px; object-fit:contain; background:#f3efe8; border-radius:6px; flex:none;}
+  .frame-info{flex:1; font-size:12px; color:var(--ink-dim); line-height:1.35;}
+  .frame-info b{color:var(--ink); font-size:12.5px;}
+  .action-btn.mini{width:auto; padding:7px 11px; font-size:12px; margin:0;}
+  .pattern-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .pattern-btn{display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px; border:1.5px solid var(--line); border-radius:10px; background:#fff; cursor:pointer; width:78px;}
+  .pattern-btn canvas{width:30px; height:45px; border:1px solid var(--line); border-radius:3px;}
+  .pattern-btn span{font:700 10.5px 'Manrope',sans-serif; color:var(--ink); text-align:center; line-height:1.2;}
+  .pattern-btn.active{border-color:var(--blue-deep); background:var(--tint);}
+
   /* ---- Saved setup ---- */
   .setup-next-wrap{flex-direction:column; align-items:center; gap:4px;}
   .setup-save-note{margin:6px 0 0; font-size:12px; font-weight:600; color:var(--ink-dim); min-height:16px; text-align:center;}
@@ -832,6 +882,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <p class="sub-label">Choose your layout</p>
       <div class="layout-grid lg-many" id="layoutGrid"></div>
       <p class="panel-hint" id="layoutHint"></p>
+      <div class="sub-group" id="sheetPanel" style="display:none; margin-top:12px;">
+        <p class="sub-label">Sheet pattern</p>
+        <div class="pattern-row" id="sheetPatterns"></div>
+        <button type="button" class="action-btn" id="sheetAddFrame" style="margin-top:10px; width:auto; padding:8px 14px; font-size:12.5px;">+ Add a frame</button>
+        <p class="panel-hint" style="margin-top:6px;">Tap a frame in the preview to select it, then drag it, resize it, swap it for another frame, turn it, or duplicate it.</p>
+      </div>
       <div class="sub-group" style="margin-top:12px;">
         <label class="toggle-row"><input type="checkbox" id="guestPickToggle"> Let guests choose the layout each session</label>
         <div class="guest-layouts" id="guestLayouts" style="display:none;"></div>
@@ -1083,16 +1139,22 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
     <div class="panel-section accordion" id="decorSection">
       <p class="panel-label accordion-toggle" data-target="decorSection">5 · Frame, logo &amp; stickers <span class="chev">⌄</span></p>
-      <p class="sub-label">Frame overlay</p>
+      <p class="sub-label">Frames</p>
       <div class="bg-row">
-        <img class="bg-thumb" id="overlayThumb" alt="frame preview" style="display:none;">
-        <label class="upload-btn" for="overlayInput">Upload frame (PNG)</label>
-        <input type="file" id="overlayInput" accept="image/png,image/webp,image/*">
-        <select class="mini-select" id="overlayFit" style="display:none;"><option value="stretch">Fill the photo</option><option value="contain">Keep its shape</option></select>
+        <label class="upload-btn" for="overlayInput">Upload frame(s)</label>
+        <input type="file" id="overlayInput" accept="image/png,image/webp,image/jpeg,image/*" multiple>
       </div>
-      <button class="remove-link" id="overlayRemove">Remove frame</button>
-      <p class="panel-hint" id="overlaySizeHint" style="margin-top:6px;"></p>
-      <p class="panel-hint" style="margin-top:4px;">Design it in Canva: export as <b>PNG with a transparent background</b>, leaving the photo spots see-through. It’s drawn on top of every photo.</p>
+      <div class="frame-list" id="frameList"></div>
+      <p class="panel-hint" style="margin-top:6px;">Make it in Canva and leave the photo spots <b>white or see-through</b>. The booth finds the boxes, puts the photos inside them in order (1, 2, 3…) and keeps your design on top. Upload two or more to combine them on one 4R print (<b>Layout → My frames sheet</b>).</p>
+      <p class="panel-hint" id="overlaySizeHint" style="margin-top:4px;"></p>
+      <div id="overlayOnTopBox" class="sub-group" style="margin-top:10px;">
+        <div class="bg-row">
+          <img class="bg-thumb" id="overlayThumb" alt="overlay preview" style="display:none;">
+          <select class="mini-select" id="overlayFit" style="display:none;"><option value="stretch">Fill the photo</option><option value="contain">Keep its shape</option></select>
+        </div>
+        <button class="remove-link" id="overlayRemove">Remove overlay</button>
+        <p class="panel-hint" id="overlayOnTopNote" style="margin-top:4px; display:none;">This image has no photo boxes, so it’s drawn on top of the whole layout as an overlay.</p>
+      </div>
 
       <div class="sub-group" style="margin-top:14px;">
         <p class="sub-label">Logo or monogram</p>
@@ -1127,7 +1189,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     </div>
 
     <div class="panel-section accordion" id="effectsSection">
-      <p class="panel-label accordion-toggle" data-target="effectsSection">6 · Effects &amp; welcome <span class="chev">⌄</span></p>
+      <p class="panel-label accordion-toggle" data-target="effectsSection">6 · Effects <span class="chev">⌄</span></p>
       <p class="sub-label">Filter</p>
       <div class="chip-row" id="filterChips">
         <button type="button" class="chip active" data-filter="none">None</button>
@@ -1139,23 +1201,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <label class="toggle-row" style="margin-top:10px;"><input type="checkbox" id="softSkinToggle"> Soft skin (a gentle, flattering glow)</label>
       <p class="panel-hint" style="margin-top:6px;">Guests see the filter live, and it’s applied to the photos, prints and Drive copies.</p>
 
-      <div class="sub-group" style="margin-top:14px;">
-        <p class="sub-label">Animated GIF</p>
-        <label class="toggle-row"><input type="checkbox" id="gifToggle" checked> Also make a GIF of each session</label>
-        <p class="panel-hint" style="margin-top:6px;">The shots play one after another in your theme, and the GIF uploads to the same Drive folder as the photo.</p>
-      </div>
-
-      <div class="sub-group" style="margin-top:14px;">
-        <p class="sub-label">Welcome screen</p>
-        <label class="toggle-row"><input type="checkbox" id="welcomeToggle" checked> Show a welcome screen between guests</label>
-        <input type="text" class="label-input" id="welcomeMsgInput" maxlength="60" placeholder="Welcome! Tap to start" style="margin-top:8px; font-size:13px;" aria-label="Welcome message">
-        <p class="panel-hint" style="margin-top:6px;">Shown in your theme with the event name and three easy steps. Guests tap it to begin.</p>
-        <img id="welcomePreview" alt="Welcome screen preview" style="display:block; width:150px; margin-top:10px; border-radius:10px; border:1px solid var(--line);">
+      <!-- GIF is switched on/off per booking in Admin; the welcome screen is always on. -->
+      <div hidden>
+        <input type="checkbox" id="gifToggle">
+        <input type="checkbox" id="welcomeToggle" checked>
+        <input type="text" id="welcomeMsgInput">
+        <img id="welcomePreview" alt="">
       </div>
     </div>
 
     <div class="panel-section" id="previewSection">
-      <p class="panel-label">Preview</p>
+      <p class="panel-label">Preview <span class="preview-dock-close" id="previewDockClose" role="button" tabindex="0" aria-label="Close preview">✕</span></p>
       <div class="setup-preview-wrap">
         <div class="setup-preview-frame">
           <canvas id="setupPreviewCanvas"></canvas>
@@ -1166,7 +1222,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <div class="stepper"><span class="lbl">Turn</span><input type="range" id="decorRot" min="-180" max="180" value="0" style="flex:1; max-width:240px;"></div>
         <div class="decor-btns"><button type="button" class="action-btn" id="decorDup">Duplicate</button><button type="button" class="action-btn" id="decorFront">Bring to front</button><button type="button" class="action-btn" id="decorDel" style="color:#c0392b;">Remove</button></div>
       </div>
-      <p class="panel-hint" style="text-align:center;">Live preview of your chosen format, backdrop, event name and date. Actual photos replace the placeholders during the session.</p>
+      <div class="decor-sel" id="sheetSelControls" style="display:none;">
+        <div class="stepper" style="margin-top:0;"><span class="lbl">Frame size</span><input type="range" id="sheetItemSize" min="8" max="110" value="50" style="flex:1; max-width:240px;"></div>
+        <div class="decor-btns"><button type="button" class="action-btn" id="sheetItemSwap">Swap frame</button><button type="button" class="action-btn" id="sheetItemRotate">Turn 90°</button><button type="button" class="action-btn" id="sheetItemDup">Duplicate</button><button type="button" class="action-btn" id="sheetItemDel" style="color:#c0392b;">Remove</button></div>
+      </div>
+      <div class="decor-sel" id="spotEditControls" style="display:none;">
+        <p class="panel-hint" style="margin:0 0 8px;">Drag a box to move it, or its corner square to resize. Numbers are the shot order.</p>
+        <div class="decor-btns"><button type="button" class="action-btn" id="spotAdd">+ Add spot</button><button type="button" class="action-btn" id="spotDel" style="color:#c0392b;">Remove spot</button><button type="button" class="action-btn" id="spotRedetect">Find again</button><button type="button" class="action-btn primary" id="spotDone">Done</button></div>
+      </div>
+      <div class="sample-row">
+        <button type="button" class="action-btn" id="sampleCamBtn">📷 Preview with my camera</button>
+        <button type="button" class="action-btn" id="sampleResetBtn" style="display:none;">Use the sample photo</button>
+      </div>
+      <p class="panel-hint" style="text-align:center;">Shows your layout, theme, filter, frame and stickers on a sample photo. Guests' real photos go in these spots.</p>
     </div>
 
     <div class="panel-section accordion" id="driveSetupSection">
@@ -1182,6 +1250,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <div class="folder-links" id="driveFolderLinks">
           <a id="driveFolderOpen" href="#" target="_blank" rel="noopener">Open folder</a>
           <button type="button" id="driveFolderCopy">Copy link</button>
+          <a id="driveFolderDrive" href="#" target="_blank" rel="noopener" style="display:none;">Drive folder</a>
           <a id="driveFolderAll" href="/lifetime/" target="_blank" rel="noopener" style="display:none;">All my events ↗</a>
         </div>
       </div>
@@ -1194,6 +1263,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <p class="setup-save-note" id="setupSaveNote" aria-live="polite"></p>
       <button type="button" class="remove-link" id="resetSetupBtn" style="display:inline; margin-top:6px;">Reset setup</button>
     </div>
+    <button type="button" class="preview-fab" id="previewFab" aria-controls="previewSection">👁 Preview</button>
 
   </div>
 </div>
@@ -1881,11 +1951,28 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     duo:     { name: 'Duo',           shots: 2, kind: 'sheet', hint: 'Two shots stacked.' },
     trio:    { name: 'Trio',          shots: 3, kind: 'sheet', hint: 'Three wide shots stacked.' },
     feature: { name: 'Feature 1+2',   shots: 3, kind: 'sheet', hint: 'One wide shot on top, two side by side underneath.' },
-    film6:   { name: 'Film 6',        shots: 6, kind: 'sheet', hint: 'Six shots in a 2x3 contact-sheet grid.' }
+    film6:   { name: 'Film 6',        shots: 6, kind: 'sheet', hint: 'Six shots in a 2x3 contact-sheet grid.' },
+    // Your own uploaded frames (see "Frames with photo spots" below). Shown once a frame is uploaded.
+    myframe:    { name: 'My frame', kind: 'frame', get shots(){ var f = typeof activeFrame === 'function' ? activeFrame() : null; return f ? Math.max(1, f.spots.length) : 1; },
+                  hint: 'Your own frame: the photos go into its white or see-through boxes, and the frame stays on top.' },
+    framesheet: { name: 'My frames sheet', kind: 'frame', get shots(){ return typeof sheetShots === 'function' ? sheetShots() : 1; },
+                  hint: 'Several of your frames on one 4R print. Each frame fills its boxes with shots 1, 2, 3… Pick a pattern below, then drag the frames in the preview.' }
   };
   const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'trio', 'feature', 'film6'];
+  // The built-in layouts, plus your frames once at least one is uploaded.
+  function layoutOrder(){
+    var has = typeof myFrames !== 'undefined' && myFrames && myFrames.length;
+    return has ? ['myframe', 'framesheet'].concat(LAYOUT_ORDER) : LAYOUT_ORDER;
+  }
   function layoutDef(key){ return LAYOUT_DEFS[key || currentLayout] || LAYOUT_DEFS.strip; }
-  function isStripLayout(key){ return layoutDef(key).kind === 'strip'; }
+  function isStripLayout(key){
+    var k = key || currentLayout, d = layoutDef(k);
+    if(d.kind === 'frame'){
+      var f = k === 'myframe' && typeof activeFrame === 'function' ? activeFrame() : null;
+      return !!f && f.w / f.h < 0.45;      // a 2x6-style frame prints two side by side
+    }
+    return d.kind === 'strip';
+  }
 
   const LAYOUTS = {
     strip:   { w: STRIP_W,  contentH: STRIP_CONTENT_H, render: (ctx, shots, W, H) => renderStrip(ctx, shots, W, H, 3, STRIP_PHOTO) },
@@ -2655,11 +2742,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     ctx.fillStyle = vGrad(ctx, h, mixHex(base, '#000000', 0.15), mixHex(base, '#000000', 0.45)); ctx.fillRect(0, 0, w, h);
     var u = Math.min(w, h);
     ctx.save(); ctx.strokeStyle = goldGrad(ctx, 0, 0, w, h); ctx.globalAlpha = 0.85;
-    var m = u * 0.035; ctx.lineWidth = Math.max(2, u * 0.005); ctx.strokeRect(m, m, w - 2 * m, h - 2 * m);
+    var m = u * 0.022; ctx.lineWidth = Math.max(2, u * 0.005); ctx.strokeRect(m, m, w - 2 * m, h - 2 * m);
     ctx.fillStyle = '#b3202b'; ctx.globalAlpha = 1;
     var rand = seededRand(25);
     for(var i = 0; i < 18; i++){
       var edge = i % 4, t = rand();
+      if(edge === 2) t = t < 0.5 ? t * 0.36 : 0.64 + (t - 0.5) * 0.72;   // bottom: keep the middle (under the event name) clear
       var x = edge === 0 ? t * w : edge === 1 ? w - m : edge === 2 ? t * w : m;
       var y = edge === 0 ? m : edge === 1 ? t * h : edge === 2 ? h - m : t * h;
       ctx.beginPath(); ctx.arc(x, y, u * 0.012, 0, Math.PI * 2); ctx.fill();
@@ -2995,9 +3083,22 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
 
   let currentFolderLink = '';
-  function showDriveFolderPreview(url, name){
+  // Guests' QR: the online gallery (/g/<folder id>) unless Admin chose the Drive folder.
+  function galleryUrlFor(folderUrl){
+    var m = /\/folders\/([A-Za-z0-9_-]{10,})/.exec(String(folderUrl || ''));
+    return m ? location.origin + '/g/' + m[1] : null;
+  }
+  function usesGallery(folderUrl){ return !(window.__PB && window.__PB.qrTarget === 'drive') && !!galleryUrlFor(folderUrl); }
+  function shareUrlFor(folderUrl){ return usesGallery(folderUrl) ? galleryUrlFor(folderUrl) : folderUrl; }
+
+  function showDriveFolderPreview(folderUrl, name){
+    var url = shareUrlFor(folderUrl), gallery = usesGallery(folderUrl);
     currentFolderLink = url;
     document.getElementById('driveFolderOpen').href = url;
+    document.getElementById('driveFolderOpen').textContent = gallery ? 'Open gallery' : 'Open folder';
+    var dl = document.getElementById('driveFolderDrive');
+    if(dl){ dl.href = folderUrl; dl.style.display = gallery ? '' : 'none'; }
+    document.getElementById('driveFolderQrCaption').textContent = gallery ? 'Scan to open the photo gallery' : 'Scan to open the folder';
     document.getElementById('driveFolderAll').style.display = (window.__PB && window.__PB.type === 'rental') ? '' : 'none';
     driveFolderStatus.style.display = 'block';
     driveFolderStatus.textContent = '✓ Folder ready' + (name ? (': ' + name) : '') + ' — every photo uploads to Google Drive automatically, and this same QR keeps showing after each session so guests can scan it to see all of tonight\u2019s photos.';
@@ -3052,7 +3153,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(lastRenderedFolderUrl === url) return; // same folder as last time — nothing to redraw
     qrResults.innerHTML = '';
     lastRenderedFolderUrl = url;
-    addQrResult('Shared Google Drive Folder', url);
+    addQrResult(usesGallery(url) ? 'Photo gallery' : 'Shared Google Drive Folder', shareUrlFor(url));
   }
 
   function renderSingleFileQR(url, label){
@@ -3413,8 +3514,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     flashOverlay.classList.remove('flash-active');
     if(index < shotCanvases.length - 1 && betweenSec > 0){
       if(reviewEach) showShotReview(index);
-      popNum('Nice!', true);
-      guestCall('tick', 'Nice!', true, 1, 'Next: shot ' + (index + 2) + ' of ' + shotsNeeded());
+      popNum('', true);
+      guestCall('tick', '', true, 1, 'Next: shot ' + (index + 2) + ' of ' + shotsNeeded());
       cdBar.style.strokeDashoffset = '0';
       await wait(betweenSec * 1000);
       hideShotReview();
@@ -3699,12 +3800,20 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(d.kind === 'polaroid'){
       return [pct(10, 7, 36, 30), pct(54, 7, 36, 30), pct(10, 44, 36, 30), pct(54, 44, 36, 30)];
     }
+    if(d.kind === 'frame'){
+      if(key === 'myframe'){
+        var f = activeFrame(); if(!f) return [];
+        var fit = Math.min(84 / (f.w / 40), 88 / (f.h / 60)), bw = f.w / 40 * fit, bh = f.h / 60 * fit, ox = (100 - bw) / 2, oy = (100 - bh) / 2;
+        return f.spots.map(function(sp){ return pct(ox + sp.x * bw, oy + sp.y * bh, sp.w * bw, sp.h * bh); });
+      }
+      return liveSheetItems().map(function(it){ var z = sheetItemSize(it); return pct((it.cx - z.bw / SHEET_W / 2) * 100, (it.cy - z.bh / SHEET_H / 2) * 100, z.bw / SHEET_W * 100, z.bh / SHEET_H * 100); });
+    }
     const W = 40, H = 60 * 0.86;
     return sheetCells(key, W, H).map(c => pct(c.x / W * 100, c.y / 60 * 100, c.w / W * 100, c.h / 60 * 100));
   }
   function buildLayoutPicker(){
     layoutGrid.innerHTML = '';
-    LAYOUT_ORDER.forEach(key => {
+    layoutOrder().forEach(key => {
       const d = LAYOUT_DEFS[key];
       const b = document.createElement('button');
       b.type = 'button';
@@ -3738,6 +3847,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   let setupLayout = 'strip';
   function setLayout(key){
     if(!LAYOUT_DEFS[key]) return;
+    if(layoutDef(key).kind === 'frame'){
+      if(typeof myFrames === 'undefined' || !myFrames || !myFrames.length) key = 'strip';
+      else if(key === 'framesheet' && !liveSheetItems().length) applyPattern(sheet.pattern);
+    }
     currentLayout = key;
     [...layoutGrid.children].forEach(b => {
       const on = b.dataset.layout === key;
@@ -3760,6 +3873,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     renderSetupPreview();
     refreshPrintUI();
     if(typeof refreshDecorUI === 'function' && typeof overlaySizeHint !== 'undefined' && overlaySizeHint) refreshDecorUI();
+    if(typeof frameListEl !== 'undefined' && frameListEl) refreshFrameUI();
   }
 
   // ---- Canvas compositing ----
@@ -3889,6 +4003,61 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return (BOLD_FONTS.has(family) ? 'bold ' : '') + size + 'px ' + family;
   }
 
+  // Busy backdrops (lines, borders, patterns, snow, confetti) shouldn't run
+  // through or right under the event name and date. If the area behind the
+  // words is busy, lay a soft wash of the backdrop's own color behind them,
+  // fading out at the edges, so the pattern melts away around the text.
+  function calmBehindText(ctx, xOffset, W, contentH, bandH, title, dateText, titleY, titleScale, maxTextWidth, noBackdrop){
+    try{
+      var tw = 0, th = 0, dw = 0, dh = 0;
+      ctx.save();
+      if(title){
+        var fs = Math.min(Math.round(bandH * titleScale * titleSizeMultiplier), Math.round(bandH * (dateText ? 0.62 : 0.86)));
+        ctx.font = fontString(currentFont, fs);
+        while(ctx.measureText(title).width > maxTextWidth && fs > 10){ fs -= 2; ctx.font = fontString(currentFont, fs); }
+        tw = ctx.measureText(title).width; th = fs;
+      }
+      if(dateText){
+        var ds = Math.round(bandH * (noBackdrop && !title ? 0.26 : 0.19));
+        ctx.font = fontString(currentDateFont, ds);
+        while(ctx.measureText(dateText).width > maxTextWidth && ds > 8){ ds -= 1; ctx.font = fontString(currentDateFont, ds); }
+        dw = ctx.measureText(dateText).width; dh = ds;
+      }
+      ctx.restore();
+      var dateY = title ? contentH + bandH * 0.74 : contentH + bandH * 0.54;
+      var top = title ? titleY - th * 0.62 : dateY - dh * 0.7;
+      var bottom = dateText ? dateY + dh * 0.7 : titleY + th * 0.62;
+      var cx = xOffset + W / 2, half = Math.max(tw, dw) / 2;
+      // Is the backdrop busy right behind the words?
+      var x0 = Math.max(xOffset, Math.floor(cx - half)), y0 = Math.max(0, Math.floor(top));
+      var rw = Math.max(1, Math.min(xOffset + W, Math.ceil(cx + half)) - x0), rh = Math.max(1, Math.min(ctx.canvas.height, Math.ceil(bottom)) - y0);
+      var px = ctx.getImageData(x0, y0, rw, rh).data;
+      var rs = [], gs = [], bs = [], sum = 0, sum2 = 0, n = 0;
+      var stepPx = Math.max(1, Math.floor(rw * rh / 6000));
+      for(var i = 0; i < px.length; i += 4 * stepPx){
+        var r = px[i], g = px[i + 1], b = px[i + 2], l = 0.299 * r + 0.587 * g + 0.114 * b;
+        rs.push(r); gs.push(g); bs.push(b); sum += l; sum2 += l * l; n++;
+      }
+      if(!n) return;
+      var mean = sum / n, sd = Math.sqrt(Math.max(0, sum2 / n - mean * mean));
+      if(sd < 4) return;                                   // calm already: leave it alone
+      var med = function(a){ a.sort(function(p, q){ return p - q; }); return a[a.length >> 1]; };
+      var rgb = med(rs) + ',' + med(gs) + ',' + med(bs);
+      // A soft-edged capsule (shadow blur works on every browser, iPad included).
+      var padX = bandH * 0.22, padY = bandH * 0.05, blur = bandH * 0.28;
+      var bx = cx - half - padX, by = top - padY, bw = 2 * (half + padX), bh = bottom - top + 2 * padY, rr = Math.min(bh / 2, bw / 2);
+      var OFF = 20000;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(xOffset, contentH, W, ctx.canvas.height - contentH); ctx.clip();   // never over the photos
+      ctx.shadowColor = 'rgba(' + rgb + ',0.95)'; ctx.shadowBlur = blur; ctx.shadowOffsetX = OFF;
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      if(ctx.roundRect) ctx.roundRect(bx - OFF, by, bw, bh, rr); else ctx.rect(bx - OFF, by, bw, bh);
+      ctx.fill();
+      ctx.restore();
+    }catch(e){ /* a tainted canvas or similar: just draw the text */ }
+  }
+
   function drawLabelBand(ctx, W, contentH, bandH, text, xOffset){
     xOffset = xOffset || 0;
     const trimmed = (text || '').trim();
@@ -3912,11 +4081,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const tx = xOffset + W / 2;
     const maxTextWidth = W * 0.92;
     // Title sits higher when a date subtitle follows it; centered alone otherwise.
-    const titleY = dateText ? contentH + bandH * 0.42 : contentH + bandH * 0.54;
+    const titleY = dateText ? contentH + bandH * 0.40 : contentH + bandH * 0.54;
     // No backdrop at all (plain gradient, nothing uploaded/chosen) leaves more
     // visual breathing room, so let the event name run noticeably bigger.
     const noBackdrop = backdropPreset === 'none';
     const titleScale = dateText ? 0.34 : (noBackdrop ? 0.52 : 0.42);
+    if(!titleBgEnabled) calmBehindText(ctx, xOffset, W, contentH, bandH, trimmed, dateText, titleY, titleScale, maxTextWidth, noBackdrop);
 
     if(trimmed){
       // Auto-shrink so long text still fits within the band width, and hard-cap
@@ -3959,7 +4129,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         dSize -= 1;
         ctx.font = fontString(currentDateFont, dSize);
       }
-      const dateY = trimmed ? contentH + bandH * 0.78 : contentH + bandH * 0.54;
+      const dateY = trimmed ? contentH + bandH * 0.74 : contentH + bandH * 0.54;
 
       if(useShadow){
         ctx.shadowColor = 'rgba(79,140,175,0.35)';
@@ -4120,6 +4290,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // ---- Shared composite builder, used for both the real result and the
   // Setup tab's live preview, so they never fall out of sync. ----
   function composeCanvas(layoutKey, targetCanvas, shots){
+    if(layoutDef(layoutKey).kind === 'frame') return composeFrameCanvas(layoutKey, targetCanvas, shots);
     const trimmed = (labelInput.value || '').trim();
     const dateText = currentDateLabel();
     const hasBand = !!trimmed || !!dateText;
@@ -4219,25 +4390,118 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
 
   // ---- Setup-tab live preview (uses placeholder shots before any photos exist) ----
+
+  // ---- Preview sample photo ----
+  // Placeholders in the preview show a sample photo (a drawn couple, or one
+  // frame from the camera) with the chosen filter, so the renter sees how the
+  // filter, frame and stickers look on real faces. Nothing here is uploaded.
+  var previewSample = null;          // a camera frame chosen by the renter (null = drawn sample)
+  var drawnSampleCache = {};
+  function drawSamplePerson(ctx, cx, cy, s, o){
+    ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
+    // shoulders / top
+    ctx.fillStyle = o.shirt;
+    ctx.beginPath(); ctx.moveTo(-120, 260); ctx.bezierCurveTo(-120, 150, -70, 118, 0, 118); ctx.bezierCurveTo(70, 118, 120, 150, 120, 260); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.10)';
+    ctx.beginPath(); ctx.moveTo(-26, 118); ctx.lineTo(0, 160); ctx.lineTo(26, 118); ctx.closePath(); ctx.fill();
+    // neck
+    var skinG = ctx.createLinearGradient(-60, -80, 60, 80); skinG.addColorStop(0, o.skinLight); skinG.addColorStop(1, o.skin);
+    ctx.fillStyle = o.skinShade; ctx.fillRect(-22, 60, 44, 66);
+    ctx.beginPath(); ctx.ellipse(0, 122, 24, 8, 0, 0, Math.PI * 2); ctx.fill();
+    // back hair
+    ctx.fillStyle = o.hair;
+    if(o.long){ ctx.beginPath(); ctx.ellipse(0, 10, 78, 112, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(-78, 10, 156, 120); }
+    // ears
+    ctx.fillStyle = o.skin;
+    ctx.beginPath(); ctx.ellipse(-60, 6, 11, 17, 0, 0, Math.PI * 2); ctx.ellipse(60, 6, 11, 17, 0, 0, Math.PI * 2); ctx.fill();
+    // face
+    ctx.fillStyle = skinG;
+    ctx.beginPath(); ctx.ellipse(0, 0, 60, 76, 0, 0, Math.PI * 2); ctx.fill();
+    // front hair
+    ctx.fillStyle = o.hair;
+    ctx.beginPath();
+    if(o.long){
+      ctx.moveTo(-64, 10); ctx.bezierCurveTo(-70, -70, -20, -92, 8, -88); ctx.bezierCurveTo(50, -84, 72, -50, 64, 12);
+      ctx.bezierCurveTo(48, -30, 20, -52, -8, -46); ctx.bezierCurveTo(-30, -40, -50, -20, -64, 10);
+    }else{
+      ctx.moveTo(-62, -4); ctx.bezierCurveTo(-68, -64, -30, -92, 6, -90); ctx.bezierCurveTo(46, -88, 70, -60, 62, -6);
+      ctx.bezierCurveTo(54, -40, 30, -50, 0, -50); ctx.bezierCurveTo(-28, -50, -50, -40, -62, -4);
+    }
+    ctx.fill();
+    // brows
+    ctx.strokeStyle = o.brow; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-36, -22); ctx.quadraticCurveTo(-24, -30, -12, -24); ctx.moveTo(12, -24); ctx.quadraticCurveTo(24, -30, 36, -22); ctx.stroke();
+    // eyes (happy, slightly closed)
+    ctx.fillStyle = '#2a1d17';
+    ctx.beginPath(); ctx.ellipse(-24, -6, 7, 8, 0, 0, Math.PI * 2); ctx.ellipse(24, -6, 7, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.9)';
+    ctx.beginPath(); ctx.arc(-21.5, -9, 2.2, 0, Math.PI * 2); ctx.arc(26.5, -9, 2.2, 0, Math.PI * 2); ctx.fill();
+    // nose
+    ctx.strokeStyle = o.skinShade; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.moveTo(-3, 2); ctx.quadraticCurveTo(-8, 18, 0, 22); ctx.stroke();
+    // cheeks
+    ctx.fillStyle = 'rgba(230,110,110,.22)';
+    ctx.beginPath(); ctx.ellipse(-36, 18, 13, 8, 0, 0, Math.PI * 2); ctx.ellipse(36, 18, 13, 8, 0, 0, Math.PI * 2); ctx.fill();
+    // smile
+    ctx.fillStyle = '#7a2b2b';
+    ctx.beginPath(); ctx.moveTo(-24, 34); ctx.quadraticCurveTo(0, 66, 24, 34); ctx.quadraticCurveTo(0, 42, -24, 34); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.moveTo(-19, 36.5); ctx.quadraticCurveTo(0, 44, 19, 36.5); ctx.quadraticCurveTo(0, 50, -19, 36.5); ctx.fill();
+    ctx.restore();
+  }
+  function drawnSample(w, h){
+    var key = w + 'x' + h;
+    if(drawnSampleCache[key]) return drawnSampleCache[key];
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var x = c.getContext('2d');
+    var g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#f3d9b8'); g.addColorStop(0.55, '#e7b98f'); g.addColorStop(1, '#b98a6b');
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+    // soft party lights behind them
+    var dots = [[0.12,0.14,'#fff4c9'],[0.32,0.08,'#ffd8a8'],[0.78,0.12,'#ffe9b0'],[0.92,0.3,'#ffc9a3'],[0.06,0.42,'#ffe1b8'],[0.6,0.05,'#fff1d6']];
+    dots.forEach(function(d){
+      var r = w * 0.09, rg = x.createRadialGradient(d[0]*w, d[1]*h, 0, d[0]*w, d[1]*h, r);
+      rg.addColorStop(0, d[2]); rg.addColorStop(1, 'rgba(255,255,255,0)');
+      x.globalAlpha = 0.75; x.fillStyle = rg; x.beginPath(); x.arc(d[0]*w, d[1]*h, r, 0, Math.PI*2); x.fill();
+    });
+    x.globalAlpha = 1;
+    var s = w / 460;
+    drawSamplePerson(x, w * 0.68, h * 0.5, s, { skin: '#c98d62', skinLight: '#dca47a', skinShade: '#a8704a', hair: '#2b1d16', brow: '#2b1d16', shirt: '#2f5d7c', long: false });
+    drawSamplePerson(x, w * 0.33, h * 0.53, s * 0.95, { skin: '#e2ab84', skinLight: '#f0c29f', skinShade: '#c48a63', hair: '#3a2418', brow: '#3a2418', shirt: '#c9506a', long: true });
+    // gentle vignette
+    var vg = x.createRadialGradient(w/2, h*0.45, Math.min(w,h)*0.35, w/2, h*0.45, Math.max(w,h)*0.75);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(40,20,10,.28)');
+    x.fillStyle = vg; x.fillRect(0, 0, w, h);
+    drawnSampleCache[key] = c;
+    return c;
+  }
+  // One sample frame with the chosen filter.
+  function sampleShot(w, h, n){
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var x = c.getContext('2d');
+    var src = previewSample || drawnSample(w, h);
+    // cover-crop the source into this frame
+    var sr = src.width / src.height, dr = w / h, sw, sh, sx, sy;
+    if(sr > dr){ sh = src.height; sw = sh * dr; sx = (src.width - sw) / 2; sy = 0; } else { sw = src.width; sh = sw / dr; sx = 0; sy = (src.height - sh) / 2; }
+    x.drawImage(src, sx, sy, sw, sh, 0, 0, w, h);
+    if(typeof applyFilterToCanvas === 'function') applyFilterToCanvas(c);
+    return c;
+  }
+  // A frame from the live camera, without the filter (the preview adds it).
+  function grabCameraSample(){
+    var vw = video.videoWidth, vh = video.videoHeight;
+    if(!vw || !vh) return null;
+    var c = document.createElement('canvas');
+    var scale = Math.min(1, 900 / Math.max(vw, vh));
+    c.width = Math.round(vw * scale); c.height = Math.round(vh * scale);
+    var x = c.getContext('2d');
+    x.drawImage(video, 0, 0, c.width, c.height);
+    return c;
+  }
+
   function buildPlaceholderShots(size, count){
     const shots = [];
-    for(let i = 0; i < count; i++){
-      const c = document.createElement('canvas');
-      const cw = Math.round(size * SHOT_ASPECT), ch = size;   // same 4:5 shape as real shots
-      c.width = cw; c.height = ch;
-      const pctx = c.getContext('2d');
-      pctx.fillStyle = '#dce9f0';
-      pctx.fillRect(0, 0, cw, ch);
-      pctx.strokeStyle = '#b7cfdc';
-      pctx.lineWidth = Math.max(1, size * 0.015);
-      pctx.strokeRect(pctx.lineWidth/2, pctx.lineWidth/2, cw - pctx.lineWidth, ch - pctx.lineWidth);
-      pctx.fillStyle = '#8ba8b8';
-      pctx.font = Math.round(size * 0.28) + 'px Inter, sans-serif';
-      pctx.textAlign = 'center';
-      pctx.textBaseline = 'middle';
-      pctx.fillText(String(i + 1), cw / 2, ch / 2);
-      shots.push(c);
-    }
+    const cw = Math.round(size * SHOT_ASPECT), ch = size;   // same 4:5 shape as real shots
+    for(let i = 0; i < count; i++) shots.push(sampleShot(cw, ch, count > 1 ? i + 1 : 0));
     return shots;
   }
 
@@ -4247,6 +4511,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const haveRealShots = shotCanvases.length === needed && shotCanvases.every(Boolean);
     const shotsToUse = haveRealShots ? shotCanvases : buildPlaceholderShots(400, needed);
     composeCanvas(currentLayout, setupPreviewCanvas, shotsToUse);
+    if(typeof drawFrameOverlays === 'function') drawFrameOverlays();
     if(typeof drawDecorSelection === 'function') drawDecorSelection();
     if(typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
   }
@@ -4765,7 +5030,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // =====================================================================
   var filterKey = 'none';      // none | bw | sepia | warm | cool
   var softSkin = false;
-  var gifOn = true;
+  var gifOn = !(window.__PB && window.__PB.gif === false);   // set per booking in Admin
   var welcomeOn = true;
   var welcomeMsg = '';
   var reviewEach = true;       // show each photo during the pause between shots
@@ -4827,12 +5092,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   filterChips.addEventListener('click', function(e){
     var c = e.target.closest('.chip'); if(!c) return;
-    filterKey = c.dataset.filter; markFilterChips(); applyLiveFilter();
+    filterKey = c.dataset.filter; markFilterChips(); applyLiveFilter(); renderSetupPreview();
   });
   var softSkinToggle = document.getElementById('softSkinToggle');
-  softSkinToggle.addEventListener('change', function(){ softSkin = softSkinToggle.checked; applyLiveFilter(); });
+  softSkinToggle.addEventListener('change', function(){ softSkin = softSkinToggle.checked; applyLiveFilter(); renderSetupPreview(); });
   var gifToggle = document.getElementById('gifToggle');
-  gifToggle.addEventListener('change', function(){ gifOn = gifToggle.checked; });
+  gifToggle.checked = gifOn;
+  window.addEventListener('pb-gif-change', function(){ gifOn = !(window.__PB && window.__PB.gif === false); gifToggle.checked = gifOn; });
 
   // ---- Photo review ----
   var shotReview = document.getElementById('shotReview');
@@ -4971,7 +5237,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     guestLayoutsEl.style.display = guestPickOn ? 'flex' : 'none';
     guestPickHint.style.display = guestPickOn ? 'block' : 'none';
     guestLayoutsEl.innerHTML = '';
-    LAYOUT_ORDER.forEach(function(k){
+    layoutOrder().forEach(function(k){
       var lab = document.createElement('label');
       var cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = k;
       var isDef = k === setupLayout;
@@ -4986,7 +5252,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   });
   function guestChoiceKeys(){
     if(!guestPickOn) return [setupLayout];
-    return LAYOUT_ORDER.filter(function(k){ return k === setupLayout || guestLayoutSet.indexOf(k) >= 0; });
+    return layoutOrder().filter(function(k){ return k === setupLayout || guestLayoutSet.indexOf(k) >= 0; });
   }
   var pickOverlay = document.getElementById('pickOverlay');
   var pickGrid = document.getElementById('pickGrid');
@@ -5119,10 +5385,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       label: labelInput.value, font: currentFont, dateFont: currentDateFont, dateOn: dateOn, date: dateInput.value,
       textColor: textColor, titleSize: titleSizeMultiplier, titleBg: titleBgEnabled, titleBgColor: titleBgColor,
       outline: useOutline, outlineColor: outlineColor, shadow: useShadow,
-      filter: filterKey, softSkin: softSkin, gif: gifOn, welcome: welcomeOn, welcomeMsg: welcomeMsg,
+      filter: filterKey, softSkin: softSkin,
       accent: accent, overlay: overlay ? Object.assign({}, overlay) : null, logo: logo ? Object.assign({}, logo) : null,
       decor: decor.map(function(d){ return { src: d.src, x: Math.round(d.x * 1000) / 1000, y: Math.round(d.y * 1000) / 1000, s: Math.round(d.s * 1000) / 1000, r: Math.round(d.r || 0) }; }),
-      myProps: myProps.slice()
+      myProps: myProps.slice(),
+      frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet
     };
   }
   function selectFont(which, value){
@@ -5194,9 +5461,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       markFilterChips();
       softSkin = !!s.softSkin; softSkinToggle.checked = softSkin;
       applyLiveFilter();
-      if(typeof s.gif === 'boolean'){ gifOn = s.gif; gifToggle.checked = gifOn; }
-      if(typeof s.welcome === 'boolean'){ welcomeOn = s.welcome; welcomeToggle.checked = welcomeOn; }
-      welcomeMsg = typeof s.welcomeMsg === 'string' ? s.welcomeMsg.slice(0, 60) : ''; welcomeMsgInput.value = welcomeMsg;
       setFrameColorUI(s.frameColorChoice === 'auto' || isHex(s.frameColorChoice) ? s.frameColorChoice : 'auto');
       photoPlacement = s.photoPlacement === 'background' ? 'background' : 'band';
       photoPlacementSelect.value = photoPlacement;
@@ -5232,7 +5496,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         .map(function(d){ return { src: d.src, x: +d.x || 0.5, y: +d.y || 0.5, s: Math.max(0.02, Math.min(1, +d.s || 0.2)), r: +d.r || 0 }; }) : [];
       myProps = Array.isArray(s.myProps) ? s.myProps.filter(assetOk).slice(0, 60) : [];
       selDecor = -1;
-      ensureAssets(designAssetIds().concat(myProps)).then(function(){ refreshDecorUI(); redrawAll(); });
+      applyFramesSetup(s);
+      buildLayoutPicker();
+      ensureAssets(designAssetIds().concat(myProps)).then(function(){ refreshDecorUI(); refreshFrameUI(); redrawAll(); });
       if(LAYOUT_DEFS[s.layout]) setupLayout = s.layout;
       guestPickOn = !!s.guestPick; guestPickToggle.checked = guestPickOn;
       guestLayoutSet = Array.isArray(s.guestLayouts) ? s.guestLayouts.filter(function(k){ return LAYOUT_DEFS[k]; }) : [];
@@ -5613,6 +5879,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(overlay) ids.push(overlay.id);
     if(logo) ids.push(logo.id);
     decor.forEach(function(d){ if(d.src.indexOf('a:') === 0) ids.push(d.src.slice(2)); });
+    (typeof myFrames !== 'undefined' && myFrames || []).forEach(function(f){ ids.push(f.id); });
     return ids;
   }
   // Reads a picked file, shrinks it (keeping transparency for PNG/WebP) and returns a data URL.
@@ -5807,25 +6074,21 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     overlayRemove.style.display = overlay ? 'inline' : 'none';
     overlayFit.value = overlay ? overlay.fit : 'stretch';
     overlayFit.style.display = overlay ? '' : 'none';
+    document.getElementById('overlayOnTopBox').style.display = overlay ? '' : 'none';
+    document.getElementById('overlayOnTopNote').style.display = overlay ? '' : 'none';
     logoThumb.style.display = logo ? 'block' : 'none';
     if(logo && ASSETS[logo.id]) logoThumb.src = ASSETS[logo.id].url;
     logoRemove.style.display = logo ? 'inline' : 'none';
     logoControls.style.display = logo ? 'block' : 'none';
     if(logo){ logoPos.value = logo.pos; logoSize.value = Math.round(logo.size * 100); }
     var c = document.createElement('canvas');
-    try{ composeCanvas(currentLayout, c, buildPlaceholderShots(60, shotsNeeded(currentLayout))); overlaySizeHint.textContent = 'Best size for this layout: ' + c.width + ' × ' + c.height + ' px PNG, transparent where the photos go.'; }catch(e){}
+    overlaySizeHint.textContent = 'Best size: 1200 × 1800 px for a 4R print, or 600 × 1800 px for a 2×6 strip.';
     buildPropTray();
     refreshSelControls();
   }
-  overlayInput.addEventListener('change', async function(){
-    var f = overlayInput.files[0]; overlayInput.value = '';
-    try{
-      var url = await readImageFile(f, 2400);
-      var id = await addAsset(url);
-      overlay = { id: id, fit: overlayFit.value || 'stretch' };
-      refreshDecorUI(); redrawAll(); scheduleSetupSave();
-      showToast('Frame added — it’s drawn on top of every photo.');
-    }catch(e){ showToast(e.message, 4000); }
+  overlayInput.addEventListener('change', function(){
+    var files = [].slice.call(overlayInput.files || []); overlayInput.value = '';
+    if(files.length) handleFrameFiles(files);
   });
   overlayRemove.addEventListener('click', function(){ overlay = null; refreshDecorUI(); redrawAll(); });
   overlayFit.addEventListener('change', function(){ if(overlay){ overlay.fit = overlayFit.value; redrawAll(); } });
@@ -6041,6 +6304,527 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(themeId === t.id) themeId = null;
     saveMyThemes(); buildThemeCats(); buildThemeGrid();
   }
+
+  // =====================================================================
+  // Frames with photo spots ("My frame") and a 4R sheet of several frames
+  // ("My frames sheet"). An uploaded frame is scanned for its photo spots:
+  // the white or see-through boxes. Photos go into those boxes and the
+  // frame's design is drawn over them, so a Canva frame with white boxes
+  // just works. A frame with no boxes stays a plain overlay on top.
+  // =====================================================================
+  var myFrames = [];            // [{ id, w, h, spots: [{ x, y, w, h }] }]  (spots as 0-1 of the frame)
+  var activeFrameId = null;     // the frame used by the "My frame" layout
+  var sheet = { pattern: 'tall-one-two-strips', items: [] };   // items: [{ f, cx, cy, s, r }] (0-1 of the 4R sheet; s = width share)
+  var selItem = -1;             // selected frame on the sheet (Setup preview)
+  var spotEdit = null;          // { f: frameId, sel: index } while fixing a frame's photo spots
+  var FRAME_CACHE = {};         // frameId -> { img, key, punched }
+  var MAX_FRAMES = 8, MAX_SPOTS = 8, MAX_SHEET_ITEMS = 10;
+  var SHEET_PATTERNS = [
+    { id: 'one',                 name: 'One',                 cells: [[0, 0, 1, 1]] },
+    { id: 'two-strips',          name: '2 side by side',      cells: [[0, 0, .5, 1], [.5, 0, .5, 1]] },
+    { id: 'top-bottom',          name: 'Top + bottom',        cells: [[0, 0, 1, .5], [0, .5, 1, .5]] },
+    { id: 'tall-two',            name: 'Tall + 2',            cells: [[0, 0, .5, 1], [.5, 0, .5, .5], [.5, .5, .5, .5]] },
+    { id: 'tall-one-two-strips', name: 'Tall + 1 + 2 strips', cells: [[0, 0, .5, 1], [.5, 0, .5, .5], [.5, .5, .25, .5], [.75, .5, .25, .5]] },
+    { id: 'three-strips',        name: '3 strips',            cells: [[0, 0, 1 / 3, 1], [1 / 3, 0, 1 / 3, 1], [2 / 3, 0, 1 / 3, 1]] },
+    { id: 'four',                name: '4 quarters',          cells: [[0, 0, .5, .5], [.5, 0, .5, .5], [0, .5, .5, .5], [.5, .5, .5, .5]] },
+    { id: 'four-strips',         name: '4 strips',            cells: [[0, 0, .25, 1], [.25, 0, .25, 1], [.5, 0, .25, 1], [.75, 0, .25, 1]] }
+  ];
+  function frameById(id){ var a = myFrames || []; for(var i = 0; i < a.length; i++) if(a[i].id === id) return a[i]; return null; }
+  function activeFrame(){ return frameById(activeFrameId) || (myFrames && myFrames[0]) || null; }
+  function liveSheetItems(){ return (sheet && sheet.items || []).filter(function(it){ return frameById(it.f); }); }
+  function sheetShots(){
+    var n = 1;
+    liveSheetItems().forEach(function(it){ n = Math.max(n, frameById(it.f).spots.length); });
+    return n;
+  }
+  function isFrameLayout(key){ var k = key || currentLayout; return k === 'myframe' || k === 'framesheet'; }
+
+  // ---- Finding the photo spots ----
+  function detectSpots(img){
+    var S = 520, sc = Math.min(1, S / Math.max(img.width, img.height));
+    var w = Math.max(8, Math.round(img.width * sc)), h = Math.max(8, Math.round(img.height * sc)), n = w * h;
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var x = c.getContext('2d'); x.drawImage(img, 0, 0, w, h);
+    var d = x.getImageData(0, 0, w, h).data;
+    var cls = new Uint8Array(n);   // 0 design, 1 see-through, 2 white
+    for(var i = 0; i < n; i++){
+      var r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2], a = d[i * 4 + 3];
+      var mn = Math.min(r, g, b), mx = Math.max(r, g, b);
+      if(a < 60) cls[i] = 1;
+      else if(a > 200 && mn > 228 && mx - mn < 24) cls[i] = 2;
+    }
+    var seen = new Uint8Array(n), q = new Int32Array(n), spots = [];
+    for(var s = 0; s < n; s++){
+      if(!cls[s] || seen[s]) continue;
+      var k = cls[s], head = 0, tail = 0, minX = w, minY = h, maxX = 0, maxY = 0, cnt = 0, edge = false;
+      q[tail++] = s; seen[s] = 1;
+      while(head < tail){
+        var p = q[head++], px = p % w, py = (p - px) / w;
+        cnt++;
+        if(px < minX) minX = px; if(px > maxX) maxX = px; if(py < minY) minY = py; if(py > maxY) maxY = py;
+        if(px === 0 || py === 0 || px === w - 1 || py === h - 1) edge = true;
+        if(px > 0 && !seen[p - 1] && cls[p - 1] === k){ seen[p - 1] = 1; q[tail++] = p - 1; }
+        if(px < w - 1 && !seen[p + 1] && cls[p + 1] === k){ seen[p + 1] = 1; q[tail++] = p + 1; }
+        if(py > 0 && !seen[p - w] && cls[p - w] === k){ seen[p - w] = 1; q[tail++] = p - w; }
+        if(py < h - 1 && !seen[p + w] && cls[p + w] === k){ seen[p + w] = 1; q[tail++] = p + w; }
+      }
+      if(edge) continue;                                  // the background around the frame, not a photo spot
+      var bw = maxX - minX + 1, bh = maxY - minY + 1;
+      if(bw < w * 0.08 || bh < h * 0.04 || bw * bh < n * 0.008) continue;   // text, specks
+      if(cnt / (bw * bh) < 0.7) continue;                  // not box-shaped
+      spots.push({ x: minX / w, y: minY / h, w: bw / w, h: bh / h });
+    }
+    return refineSpots(img, sortSpots(spots).slice(0, MAX_SPOTS));
+  }
+  // The scan runs on a small copy, so snap each box's edges to the real
+  // white/see-through edge at full size (no white hairlines around photos).
+  function refineSpots(img, spots){
+    try{
+      var W = img.width, H = img.height;
+      var c = document.createElement('canvas'); c.width = W; c.height = H;
+      var x = c.getContext('2d'); x.drawImage(img, 0, 0);
+      var d = x.getImageData(0, 0, W, H).data;
+      var open = function(px, py){
+        var i = (py * W + px) * 4, a = d[i + 3], mn = Math.min(d[i], d[i + 1], d[i + 2]), mx = Math.max(d[i], d[i + 1], d[i + 2]);
+        return a < 60 || (mn > 228 && mx - mn < 24);
+      };
+      var share = function(horiz, at, from, to){
+        var n = 0, t = 0;
+        for(var v = from; v <= to; v += 2){ t++; if(horiz ? open(v, at) : open(at, v)) n++; }
+        return t ? n / t : 0;
+      };
+      return spots.map(function(sp){
+        var x0 = Math.round(sp.x * W), y0 = Math.round(sp.y * H), x1 = Math.round((sp.x + sp.w) * W) - 1, y1 = Math.round((sp.y + sp.h) * H) - 1;
+        var lim = Math.ceil(Math.max(W, H) * 0.02);
+        for(var k = 0; k < lim && y0 > 0 && share(true, y0 - 1, x0, x1) > 0.6; k++) y0--;
+        for(k = 0; k < lim && y1 < H - 1 && share(true, y1 + 1, x0, x1) > 0.6; k++) y1++;
+        for(k = 0; k < lim && x0 > 0 && share(false, x0 - 1, y0, y1) > 0.6; k++) x0--;
+        for(k = 0; k < lim && x1 < W - 1 && share(false, x1 + 1, y0, y1) > 0.6; k++) x1++;
+        return { x: x0 / W, y: y0 / H, w: (x1 - x0 + 1) / W, h: (y1 - y0 + 1) / H };
+      });
+    }catch(e){ return spots; }
+  }
+  // Reading order: top to bottom, then left to right within a row.
+  function sortSpots(spots){
+    var a = spots.slice().sort(function(p, q){ return p.y - q.y; }), out = [];
+    while(a.length){
+      var first = a[0], row = a.filter(function(s){ return s.y < first.y + first.h * 0.5; });
+      row.sort(function(p, q){ return p.x - q.x; });
+      out = out.concat(row);
+      a = a.filter(function(s){ return row.indexOf(s) < 0; });
+    }
+    return out;
+  }
+  // The frame with its photo spots made see-through (white boxes included).
+  function punchFrame(img, spots){
+    var c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+    var x = c.getContext('2d'); x.drawImage(img, 0, 0);
+    try{
+      spots.forEach(function(sp){
+        var x0 = Math.max(0, Math.floor(sp.x * c.width) - 2), y0 = Math.max(0, Math.floor(sp.y * c.height) - 2);
+        var x1 = Math.min(c.width, Math.ceil((sp.x + sp.w) * c.width) + 2), y1 = Math.min(c.height, Math.ceil((sp.y + sp.h) * c.height) + 2);
+        if(x1 <= x0 || y1 <= y0) return;
+        var id = x.getImageData(x0, y0, x1 - x0, y1 - y0), d = id.data;
+        for(var i = 0; i < d.length; i += 4){
+          var mn = Math.min(d[i], d[i + 1], d[i + 2]), mx = Math.max(d[i], d[i + 1], d[i + 2]);
+          if(mx - mn > 34) continue;                       // colored design over the box edge stays
+          if(mn >= 236) d[i + 3] = 0;
+          else if(mn >= 205) d[i + 3] = Math.round(d[i + 3] * (236 - mn) / 31);
+        }
+        x.putImageData(id, x0, y0);
+      });
+    }catch(e){}
+    return c;
+  }
+  function spotsKey(f){ return f.spots.map(function(s){ return [s.x, s.y, s.w, s.h].map(function(v){ return v.toFixed(4); }).join(','); }).join(';'); }
+  function frameArt(f){
+    var img = assetImg(f.id); if(!img) return null;
+    var c = FRAME_CACHE[f.id], key = spotsKey(f);
+    if(c && c.img === img && c.key === key) return c;
+    c = FRAME_CACHE[f.id] = { img: img, key: key, punched: punchFrame(img, f.spots) };
+    return c;
+  }
+  // One frame in a box of its own shape: shots in the spots, frame on top.
+  function drawFrameInto(ctx, f, x, y, w, h, shots){
+    var art = frameArt(f);
+    f.spots.forEach(function(sp, i){
+      var shot = shots[i] || shots[i % Math.max(1, shots.length)];
+      var e = Math.max(1, w * 0.003), bx = x + sp.x * w - e, by = y + sp.y * h - e, bw = sp.w * w + 2 * e, bh = sp.h * h + 2 * e;
+      if(shot) drawImageCover(ctx, shot, bx, by, bw, bh);
+      else { ctx.fillStyle = '#e8e2d8'; ctx.fillRect(bx, by, bw, bh); }
+    });
+    if(art) ctx.drawImage(art.punched, x, y, w, h);
+    else { ctx.save(); ctx.strokeStyle = '#999'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2); ctx.restore(); }
+  }
+  function sheetItemSize(it){
+    var f = frameById(it.f), fw = it.s * SHEET_W, fh = fw * f.h / f.w, rot = Math.round((it.r || 0) / 90) % 2 !== 0;
+    return { fw: fw, fh: fh, bw: rot ? fh : fw, bh: rot ? fw : fh };
+  }
+  function composeFrameCanvas(layoutKey, targetCanvas, shots){
+    var W, H, ctx;
+    if(layoutKey === 'myframe'){
+      var f = activeFrame();
+      var k = f ? 1800 / Math.max(f.w, f.h) : 1;
+      W = f ? Math.round(f.w * k) : SHEET_W; H = f ? Math.round(f.h * k) : SHEET_H;
+      targetCanvas.width = W; targetCanvas.height = H;
+      ctx = targetCanvas.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+      if(f) drawFrameInto(ctx, f, 0, 0, W, H, shots);
+    } else {
+      W = SHEET_W; H = SHEET_H;
+      targetCanvas.width = W; targetCanvas.height = H;
+      ctx = targetCanvas.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+      liveSheetItems().forEach(function(it){
+        var f = frameById(it.f), z = sheetItemSize(it);
+        ctx.save(); ctx.translate(it.cx * W, it.cy * H); ctx.rotate((it.r || 0) * Math.PI / 180);
+        drawFrameInto(ctx, f, -z.fw / 2, -z.fh / 2, z.fw, z.fh, shots);
+        ctx.restore();
+      });
+    }
+    // Stickers and logo still go on top; a plain overlay frame doesn't.
+    var ov = overlay; overlay = null;
+    try{ drawDecorLayer(ctx, W, H); } finally { overlay = ov; }
+    return targetCanvas;
+  }
+
+  // ---- Arranging frames on the 4R sheet ----
+  function fitItem(f, r, cell){
+    var inset = 0.012;
+    var cw = (cell[2] - 2 * inset) * SHEET_W, ch = (cell[3] - 2 * inset) * SHEET_H;
+    var rot = Math.round(r / 90) % 2 !== 0, bw = rot ? f.h : f.w, bh = rot ? f.w : f.h;
+    var sc = Math.min(cw / bw, ch / bh);
+    return { f: f.id, cx: cell[0] + cell[2] / 2, cy: cell[1] + cell[3] / 2, s: f.w * sc / SHEET_W, r: r };
+  }
+  function applyPattern(pid){
+    var pat = SHEET_PATTERNS.filter(function(p){ return p.id === pid; })[0] || SHEET_PATTERNS[0];
+    sheet.pattern = pat.id;
+    if(!myFrames.length){ sheet.items = []; return; }
+    var uses = {};
+    sheet.items = pat.cells.map(function(cell){
+      var cw = cell[2] * SHEET_W, ch = cell[3] * SHEET_H, best = null;
+      myFrames.forEach(function(f){
+        [0, 90].forEach(function(r){
+          var fw = r ? f.h : f.w, fh = r ? f.w : f.h, k = Math.min(cw / fw, ch / fh);
+          var score = (fw * k * fh * k) / (cw * ch) - (r ? 0.04 : 0) - 0.03 * (uses[f.id] || 0);
+          if(!best || score > best.score) best = { f: f, r: r, score: score };
+        });
+      });
+      uses[best.f.id] = (uses[best.f.id] || 0) + 1;
+      return fitItem(best.f, best.r, cell);
+    });
+    selItem = -1;
+  }
+  function itemAt(pt){
+    var items = sheet.items;
+    for(var i = items.length - 1; i >= 0; i--){
+      if(!frameById(items[i].f)) continue;
+      var z = sheetItemSize(items[i]), a = -(items[i].r || 0) * Math.PI / 180;
+      var dx = pt.x * SHEET_W - items[i].cx * SHEET_W, dy = pt.y * SHEET_H - items[i].cy * SHEET_H;
+      var lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
+      if(Math.abs(lx) <= z.fw / 2 && Math.abs(ly) <= z.fh / 2) return i;
+    }
+    return -1;
+  }
+
+  // ---- Setup UI: frame list ----
+  var frameListEl = document.getElementById('frameList');
+  var sheetPanel = document.getElementById('sheetPanel');
+  var sheetPatternsEl = document.getElementById('sheetPatterns');
+  var sheetSelControls = document.getElementById('sheetSelControls');
+  var spotEditControls = document.getElementById('spotEditControls');
+  function framesChanged(opts){
+    opts = opts || {};
+    if(!myFrames.length){ activeFrameId = null; sheet.items = []; spotEdit = null; }
+    else if(!frameById(activeFrameId)) activeFrameId = myFrames[0].id;
+    sheet.items = sheet.items.filter(function(it){ return frameById(it.f); });
+    if(isFrameLayout() && !myFrames.length){ setupLayout = 'strip'; }
+    buildLayoutPicker();
+    if(typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
+    setLayout(opts.layout || (isFrameLayout() && !myFrames.length ? 'strip' : currentLayout));
+    refreshFrameUI();
+    if(!opts.quiet) scheduleSetupSave();
+  }
+  function refreshFrameUI(){
+    frameListEl.innerHTML = '';
+    myFrames.forEach(function(f){
+      var row = document.createElement('div'); row.className = 'frame-row' + (f.id === activeFrameId ? ' active' : '');
+      var th = document.createElement('img'); th.className = 'frame-thumb'; th.alt = '';
+      if(ASSETS[f.id]) th.src = ASSETS[f.id].url;
+      var info = document.createElement('span'); info.className = 'frame-info';
+      info.innerHTML = '<b>' + f.spots.length + ' photo spot' + (f.spots.length === 1 ? '' : 's') + '</b><br>' + (f.w / f.h < 0.45 ? 'strip' : f.w > f.h ? 'landscape' : 'portrait');
+      var use = document.createElement('button'); use.type = 'button'; use.className = 'action-btn mini'; use.textContent = 'Use';
+      use.title = 'Use this frame as the layout';
+      use.addEventListener('click', function(){ activeFrameId = f.id; spotEdit = null; setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); });
+      var ed = document.createElement('button'); ed.type = 'button'; ed.className = 'action-btn mini'; ed.textContent = 'Fix spots';
+      ed.addEventListener('click', function(){ activeFrameId = f.id; spotEdit = { f: f.id, sel: -1 }; setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); showToast('Drag a box to move it, or its corner to resize. Changes save by themselves.'); });
+      var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'remove-link'; rm.textContent = 'Remove';
+      rm.addEventListener('click', function(){
+        if(!confirm('Remove this frame?')) return;
+        myFrames = myFrames.filter(function(x){ return x.id !== f.id; });
+        if(spotEdit && spotEdit.f === f.id) spotEdit = null;
+        framesChanged();
+      });
+      row.append(th, info, use, ed, rm);
+      frameListEl.appendChild(row);
+    });
+    sheetPanel.style.display = currentLayout === 'framesheet' ? '' : 'none';
+    if(currentLayout === 'framesheet') buildSheetPatterns();
+    spotEditControls.style.display = spotEdit && currentLayout === 'myframe' ? '' : 'none';
+    var it = sheet.items[selItem];
+    sheetSelControls.style.display = currentLayout === 'framesheet' && it ? '' : 'none';
+    if(it) document.getElementById('sheetItemSize').value = Math.round(it.s * 100);
+  }
+  function buildSheetPatterns(){
+    sheetPatternsEl.innerHTML = '';
+    SHEET_PATTERNS.forEach(function(p){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'pattern-btn' + (sheet.pattern === p.id ? ' active' : ''); b.title = p.name;
+      var c = document.createElement('canvas'); c.width = 40; c.height = 60;
+      var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 40, 60);
+      p.cells.forEach(function(cell){ x.fillStyle = '#1C1A1E'; x.fillRect(cell[0] * 40 + 1.5, cell[1] * 60 + 1.5, cell[2] * 40 - 3, cell[3] * 60 - 3); });
+      var s = document.createElement('span'); s.textContent = p.name;
+      b.append(c, s);
+      b.addEventListener('click', function(){ applyPattern(p.id); framesChanged({ layout: 'framesheet' }); });
+      sheetPatternsEl.appendChild(b);
+    });
+  }
+  document.getElementById('sheetAddFrame').addEventListener('click', function(){
+    var f = activeFrame(); if(!f) return;
+    if(sheet.items.length >= MAX_SHEET_ITEMS){ showToast('Up to ' + MAX_SHEET_ITEMS + ' frames on one sheet.'); return; }
+    sheet.items.push(fitItem(f, 0, [0.25, 0.25, 0.5, 0.5])); selItem = sheet.items.length - 1;
+    framesChanged({ layout: 'framesheet' });
+  });
+  // Selected frame on the sheet
+  function selectedItem(){ return sheet.items[selItem]; }
+  document.getElementById('sheetItemSize').addEventListener('input', function(){
+    var it = selectedItem(); if(!it) return; it.s = Number(this.value) / 100; renderSetupPreview();
+  });
+  document.getElementById('sheetItemSize').addEventListener('change', function(){ redrawAll(); scheduleSetupSave(); });
+  document.getElementById('sheetItemSwap').addEventListener('click', function(){
+    var it = selectedItem(); if(!it || myFrames.length < 2) { showToast('Upload another frame to swap.'); return; }
+    var i = myFrames.findIndex(function(f){ return f.id === it.f; }), nf = myFrames[(i + 1) % myFrames.length];
+    var old = sheetItemSize(it), keepW = old.bw;
+    it.f = nf.id;
+    var nz = sheetItemSize(it); it.s = it.s * keepW / nz.bw;            // keep about the same width on the sheet
+    framesChanged({ layout: 'framesheet' });
+  });
+  document.getElementById('sheetItemRotate').addEventListener('click', function(){
+    var it = selectedItem(); if(!it) return; it.r = ((it.r || 0) + 90) % 360; framesChanged({ layout: 'framesheet' });
+  });
+  document.getElementById('sheetItemDup').addEventListener('click', function(){
+    var it = selectedItem(); if(!it) return;
+    if(sheet.items.length >= MAX_SHEET_ITEMS){ showToast('Up to ' + MAX_SHEET_ITEMS + ' frames on one sheet.'); return; }
+    var c = Object.assign({}, it, { cx: Math.min(0.95, it.cx + 0.05), cy: Math.min(0.95, it.cy + 0.04) });
+    sheet.items.push(c); selItem = sheet.items.length - 1; framesChanged({ layout: 'framesheet' });
+  });
+  document.getElementById('sheetItemDel').addEventListener('click', function(){
+    if(!selectedItem()) return; sheet.items.splice(selItem, 1); selItem = -1; framesChanged({ layout: 'framesheet' });
+  });
+  // Fixing a frame's photo spots
+  document.getElementById('spotAdd').addEventListener('click', function(){
+    var f = spotEdit && frameById(spotEdit.f); if(!f) return;
+    if(f.spots.length >= MAX_SPOTS){ showToast('Up to ' + MAX_SPOTS + ' photo spots.'); return; }
+    f.spots.push({ x: 0.3, y: 0.35, w: 0.4, h: 0.25 }); spotEdit.sel = f.spots.length - 1; framesChanged({ layout: 'myframe' });
+  });
+  document.getElementById('spotDel').addEventListener('click', function(){
+    var f = spotEdit && frameById(spotEdit.f); if(!f || spotEdit.sel < 0) { showToast('Tap a box first.'); return; }
+    if(f.spots.length <= 1){ showToast('A frame needs at least one photo spot.'); return; }
+    f.spots.splice(spotEdit.sel, 1); spotEdit.sel = -1; framesChanged({ layout: 'myframe' });
+  });
+  document.getElementById('spotRedetect').addEventListener('click', function(){
+    var f = spotEdit && frameById(spotEdit.f), img = f && assetImg(f.id); if(!img) return;
+    var s = detectSpots(img);
+    if(!s.length){ showToast('No white or see-through boxes found in this frame.'); return; }
+    f.spots = s; spotEdit.sel = -1; framesChanged({ layout: 'myframe' });
+  });
+  document.getElementById('spotDone').addEventListener('click', function(){ spotEdit = null; refreshFrameUI(); renderSetupPreview(); });
+
+  // ---- Upload: frames with boxes become "My frame"; anything else is an overlay ----
+  function loadImageUrl(url){
+    return new Promise(function(res, rej){ var im = new Image(); im.onload = function(){ res(im); }; im.onerror = function(){ rej(new Error('That image could not be opened.')); }; im.src = url; });
+  }
+  async function handleFrameFiles(files){
+    var added = [], overlayAdded = false;
+    for(var i = 0; i < files.length; i++){
+      try{
+        var url = await readImageFile(files[i], 2400);
+        var img = await loadImageUrl(url);
+        var spots = detectSpots(img);
+        // One see-through middle covering most of the image is a border overlay, not a photo frame.
+        if(spots.length === 1 && spots[0].w * spots[0].h > 0.75) spots = [];
+        if(spots.length){
+          if(myFrames.length >= MAX_FRAMES){ showToast('Up to ' + MAX_FRAMES + ' frames — remove one first.', 4000); break; }
+          var id = await addAsset(url);
+          myFrames.push({ id: id, w: img.width, h: img.height, spots: spots });
+          added.push(myFrames[myFrames.length - 1]);
+        } else {
+          var oid = await addAsset(url);
+          overlay = { id: oid, fit: overlayFit.value || 'stretch' };
+          overlayAdded = true;
+        }
+      }catch(e){ showToast(e.message, 4000); }
+    }
+    if(added.length){
+      activeFrameId = added[added.length - 1].id;
+      var useSheet = myFrames.length > 1;
+      if(useSheet){ applyPattern(myFrames.length >= 3 ? 'tall-one-two-strips' : (myFrames.length === 2 ? 'tall-two' : sheet.pattern)); }
+      setupLayout = useSheet ? 'framesheet' : 'myframe';
+      framesChanged({ layout: setupLayout });
+      showToast(added.length === 1
+        ? 'Found ' + added[0].spots.length + ' photo spot' + (added[0].spots.length === 1 ? '' : 's') + ' — photos now go inside your frame.' + (useSheet ? ' All your frames are on one 4R sheet.' : '')
+        : added.length + ' frames added and arranged on one 4R sheet. Pick another pattern or drag them.', 5000);
+    }
+    if(overlayAdded){
+      refreshDecorUI(); redrawAll(); scheduleSetupSave();
+      if(!added.length) showToast('No photo boxes found, so this frame goes on top of the whole layout. Leave the photo spots white or see-through to put photos inside it.', 6000);
+    }
+  }
+
+  // ---- Preview: drag frames on the sheet, or fix photo spots ----
+  var fdrag = null;
+  function spotAt(f, pt){
+    for(var i = f.spots.length - 1; i >= 0; i--){
+      var s = f.spots[i];
+      var corner = Math.abs(pt.x - (s.x + s.w)) < 0.04 && Math.abs(pt.y - (s.y + s.h)) < 0.03;
+      if(corner) return { i: i, corner: true };
+      if(pt.x >= s.x && pt.x <= s.x + s.w && pt.y >= s.y && pt.y <= s.y + s.h) return { i: i, corner: false };
+    }
+    return null;
+  }
+  setupPreviewCanvas.addEventListener('pointerdown', function(e){
+    if(drag) return;                                       // a sticker is being moved
+    var pt = previewPoint(e);
+    if(currentLayout === 'myframe' && spotEdit){
+      var f = frameById(spotEdit.f); if(!f) return;
+      var hit = spotAt(f, pt);
+      spotEdit.sel = hit ? hit.i : -1;
+      if(hit){
+        var s = f.spots[hit.i];
+        fdrag = { id: e.pointerId, kind: hit.corner ? 'resize' : 'move', dx: s.x - pt.x, dy: s.y - pt.y };
+        setupPreviewCanvas.setPointerCapture(e.pointerId); e.preventDefault();
+      }
+      renderSetupPreview(); return;
+    }
+    if(currentLayout === 'framesheet'){
+      if(selDecor >= 0) return;
+      var i = itemAt(pt);
+      selItem = i;
+      if(i >= 0){
+        fdrag = { id: e.pointerId, kind: 'item', dx: sheet.items[i].cx - pt.x, dy: sheet.items[i].cy - pt.y };
+        setupPreviewCanvas.setPointerCapture(e.pointerId); e.preventDefault();
+      }
+      refreshFrameUI(); renderSetupPreview();
+    }
+  });
+  var fRaf = 0;
+  setupPreviewCanvas.addEventListener('pointermove', function(e){
+    if(!fdrag || e.pointerId !== fdrag.id) return;
+    var pt = previewPoint(e);
+    if(fdrag.kind === 'item'){
+      var it = sheet.items[selItem]; if(!it) return;
+      it.cx = Math.max(0, Math.min(1, pt.x + fdrag.dx)); it.cy = Math.max(0, Math.min(1, pt.y + fdrag.dy));
+    } else {
+      var f = spotEdit && frameById(spotEdit.f), s = f && f.spots[spotEdit.sel]; if(!s) return;
+      if(fdrag.kind === 'move'){
+        s.x = Math.max(0, Math.min(1 - s.w, pt.x + fdrag.dx)); s.y = Math.max(0, Math.min(1 - s.h, pt.y + fdrag.dy));
+      } else {
+        s.w = Math.max(0.05, Math.min(1 - s.x, pt.x - s.x)); s.h = Math.max(0.03, Math.min(1 - s.y, pt.y - s.y));
+      }
+    }
+    if(!fRaf) fRaf = requestAnimationFrame(function(){ fRaf = 0; renderSetupPreview(); });
+  });
+  function endFDrag(e){
+    if(!fdrag || (e && e.pointerId !== fdrag.id)) return;
+    fdrag = null; redrawAll(); scheduleSetupSave();
+  }
+  setupPreviewCanvas.addEventListener('pointerup', endFDrag);
+  setupPreviewCanvas.addEventListener('pointercancel', endFDrag);
+  // Outlines on the Setup preview only (never on the real photo).
+  function drawFrameOverlays(){
+    var ctx = setupPreviewCanvas.getContext('2d'), W = setupPreviewCanvas.width, H = setupPreviewCanvas.height;
+    if(currentLayout === 'myframe' && spotEdit){
+      var f = frameById(spotEdit.f); if(!f) return;
+      ctx.save();
+      f.spots.forEach(function(s, i){
+        var on = i === spotEdit.sel, x = s.x * W, y = s.y * H, w = s.w * W, h = s.h * H, u = Math.max(W, H);
+        ctx.fillStyle = on ? 'rgba(201,61,39,.18)' : 'rgba(255,255,255,.12)'; ctx.fillRect(x, y, w, h);
+        ctx.lineWidth = Math.max(2, u * 0.004); ctx.setLineDash([u * 0.012, u * 0.008]);
+        ctx.strokeStyle = on ? '#C93D27' : '#ffffff'; ctx.strokeRect(x, y, w, h);
+        ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineDashOffset = u * 0.01; ctx.strokeRect(x, y, w, h); ctx.lineDashOffset = 0;
+        var r = u * 0.022;
+        ctx.setLineDash([]); ctx.fillStyle = on ? '#C93D27' : '#1C1A1E';
+        ctx.beginPath(); ctx.arc(x + r * 1.4, y + r * 1.4, r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = '700 ' + Math.round(r * 1.15) + 'px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(String(i + 1), x + r * 1.4, y + r * 1.45);
+        ctx.fillStyle = on ? '#C93D27' : '#1C1A1E'; ctx.fillRect(x + w - r * 0.9, y + h - r * 0.9, r * 0.9, r * 0.9);   // resize handle
+      });
+      ctx.restore();
+    } else if(currentLayout === 'framesheet'){
+      var it = sheet.items[selItem]; if(!it || !frameById(it.f)) return;
+      var z = sheetItemSize(it);
+      ctx.save(); ctx.translate(it.cx * W, it.cy * H); ctx.rotate((it.r || 0) * Math.PI / 180);
+      ctx.setLineDash([Math.max(4, W * 0.012), Math.max(3, W * 0.008)]); ctx.lineWidth = Math.max(2, W * 0.005);
+      ctx.strokeStyle = '#C93D27'; ctx.strokeRect(-z.fw / 2 - 3, -z.fh / 2 - 3, z.fw + 6, z.fh + 6);
+      ctx.restore();
+    }
+  }
+
+  // ---- Saved with the setup ----
+  function framesSnapshot(){
+    var r4 = function(v){ return Math.round(v * 10000) / 10000; };
+    return {
+      frames: myFrames.map(function(f){ return { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function(s){ return { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; }) }; }),
+      activeFrame: activeFrameId,
+      sheet: { pattern: sheet.pattern, items: sheet.items.map(function(it){ return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; }) }
+    };
+  }
+  function applyFramesSetup(s){
+    var okId = function(id){ return typeof id === 'string' && /^a[A-Za-z0-9]{8,32}$/.test(id); };
+    var num = function(v, lo, hi, d){ v = Number(v); return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
+    myFrames = (Array.isArray(s.frames) ? s.frames : []).filter(function(f){ return f && okId(f.id) && Array.isArray(f.spots) && f.spots.length; }).slice(0, MAX_FRAMES).map(function(f){
+      return { id: f.id, w: num(f.w, 1, 10000, 1200), h: num(f.h, 1, 10000, 1800), spots: f.spots.slice(0, MAX_SPOTS).map(function(p){
+        var x = num(p.x, 0, 1, 0), y = num(p.y, 0, 1, 0);
+        return { x: x, y: y, w: num(p.w, 0.01, 1 - x, 0.3), h: num(p.h, 0.01, 1 - y, 0.3) };
+      }) };
+    });
+    activeFrameId = okId(s.activeFrame) && frameById(s.activeFrame) ? s.activeFrame : (myFrames[0] ? myFrames[0].id : null);
+    var sh = s.sheet && typeof s.sheet === 'object' ? s.sheet : {};
+    sheet = {
+      pattern: SHEET_PATTERNS.some(function(p){ return p.id === sh.pattern; }) ? sh.pattern : 'tall-one-two-strips',
+      items: (Array.isArray(sh.items) ? sh.items : []).filter(function(it){ return it && frameById(it.f); }).slice(0, MAX_SHEET_ITEMS).map(function(it){
+        return { f: it.f, cx: num(it.cx, 0, 1, 0.5), cy: num(it.cy, 0, 1, 0.5), s: num(it.s, 0.05, 1.5, 0.5), r: [0, 90, 180, 270].indexOf(it.r) >= 0 ? it.r : 0 };
+      })
+    };
+    if(!sheet.items.length && myFrames.length) applyPattern(sheet.pattern);
+    selItem = -1; spotEdit = null;
+  }
+
+  // ---- Setup preview: sample photo + phone dock ----
+  (function(){
+    var camBtn = document.getElementById('sampleCamBtn'), resetBtn = document.getElementById('sampleResetBtn');
+    var sec = document.getElementById('previewSection'), fab = document.getElementById('previewFab');
+    camBtn.addEventListener('click', async function(){
+      camBtn.disabled = true;
+      try{
+        if(!streamActive || !video.videoWidth) await initCamera(cameraSelect.value || null);
+        await new Promise(function(r){ setTimeout(r, video.videoWidth ? 150 : 900); });
+        var c = grabCameraSample();
+        if(!c){ showToast('Camera not ready — allow camera access and try again.'); return; }
+        previewSample = c;
+        resetBtn.style.display = '';
+        camBtn.textContent = '📷 Take another';
+        renderSetupPreview();
+      }finally{ camBtn.disabled = false; }
+    });
+    resetBtn.addEventListener('click', function(){
+      previewSample = null; resetBtn.style.display = 'none'; camBtn.textContent = '📷 Preview with my camera'; renderSetupPreview();
+    });
+    function dock(on){ sec.classList.toggle('docked', on); fab.textContent = on ? '✕ Close preview' : '👁 Preview'; if(on) renderSetupPreview(); }
+    fab.addEventListener('click', function(){ dock(!sec.classList.contains('docked')); });
+    var closeX = document.getElementById('previewDockClose');
+    closeX.addEventListener('click', function(){ dock(false); });
+    closeX.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); dock(false); } });
+  })();
 
   // ---- Init ----
   // ---- Setup accordion: numbered sections (Format → Backdrop → Event name →

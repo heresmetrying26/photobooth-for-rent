@@ -1,6 +1,6 @@
 import {
   safe, json, licenses, verifyToken, normCode, throttle, recordFail, clearFail,
-  devicesOf, maxDevicesOf, eventsStore, isDriveUrl, DAY, EVENT_KEEP_DAYS, BONUS_KEEP_DAYS
+  devicesOf, maxDevicesOf, eventsStore, isDriveUrl, DAY, EVENT_KEEP_DAYS, BONUS_KEEP_DAYS, getSettings
 } from '../lib/core.mjs';
 
 // Backs the /lifetime customer page: sign in with the rental code (or, on a
@@ -58,6 +58,7 @@ export default safe(async (req, context) => {
     folderPrefix: rec.lifetime ? (rec.folderName || rec.label || rec.code) : null,
     devices: { used: devicesOf(rec).length, max: maxDevicesOf(rec) },
     keepDays: EVENT_KEEP_DAYS,
+    qrTarget: (await getSettings()).qrTarget === 'drive' ? 'drive' : 'gallery',
     events,
     now
   });

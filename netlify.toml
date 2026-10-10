@@ -25,3 +25,21 @@
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-store"
+
+# Online gallery: /g/<Drive folder id> shows that folder's photos and GIFs.
+[[redirects]]
+  from = "/g/*"
+  to = "/gallery/index.html"
+  status = 200
+
+[[headers]]
+  for = "/g/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/gallery/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-cache"

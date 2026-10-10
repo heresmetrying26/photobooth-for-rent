@@ -153,7 +153,64 @@ function jsonOut(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
+// ---------- online gallery (read-only) ----------
+// GET ?action=list&folder=<id> lists the photos and GIFs in ONE event folder,
+// for the photobooth4u gallery page (/g/<id>). Only folders inside
+// ROOT_FOLDER_ID can be listed, and they are already "anyone with the link".
+var GALLERY_EVENT_DAYS = 7;          // keep in sync with EVENT_DAYS in cleanup.gs
+var GALLERY_SHORT_DAYS = 1;          // trial and Bonus folders (TRIAL_DAYS / BONUS_DAYS)
+var GALLERY_TRIAL_RE = /^Trial test shots [A-Z0-9]{6}$/;   // TRIAL_PREFIX in cleanup.gs
+
+function isInsideRoot_(folder) {
+  var cur = folder;
+  for (var depth = 0; depth < 6; depth++) {
+    var parents = cur.getParents();
+    if (!parents.hasNext()) return false;
+    cur = parents.next();
+    if (cur.getId() === ROOT_FOLDER_ID) return true;
+  }
+  return false;
+}
+
+function listGallery_(id) {
+  id = String(id || '');
+  if (!/^[A-Za-z0-9_-]{10,80}$/.test(id) || id === ROOT_FOLDER_ID) return { ok: false, error: 'not-found' };
+  var folder;
+  try { folder = DriveApp.getFolderById(id); } catch (err) { return { ok: false, error: 'not-found' }; }
+  if (folder.isTrashed() || !isInsideRoot_(folder)) return { ok: false, error: 'not-found' };
+
+  var files = [], newest = 0, it = folder.getFiles();
+  while (it.hasNext()) {
+    var f = it.next();
+    if (f.isTrashed()) continue;
+    var mime = f.getMimeType();
+    if (!/^image\/(png|jpeg|gif|webp)$/.test(mime)) continue;
+    var t = f.getDateCreated().getTime();
+    if (t > newest) newest = t;
+    files.push({ id: f.getId(), name: f.getName(), mime: mime, size: f.getSize(), t: t });
+  }
+  files.sort(function (a, b) { return b.t - a.t; });
+
+  var name = folder.getName(), title = name, until = null, day = 24 * 60 * 60 * 1000;
+  if (name === 'Bonus') {
+    var p = folder.getParents();
+    title = (p.hasNext() ? p.next().getName() + ' · ' : '') + 'Bonus';
+    until = folder.getDateCreated().getTime() + GALLERY_SHORT_DAYS * day;
+  } else if (GALLERY_TRIAL_RE.test(name)) {
+    until = folder.getDateCreated().getTime() + GALLERY_SHORT_DAYS * day;
+  } else if (newest) {
+    until = newest + GALLERY_EVENT_DAYS * day;
+  }
+  return { ok: true, name: title, folderUrl: folder.getUrl(), until: until, files: files };
+}
+
 function doGet(e) {
+  var p = (e && e.parameter) || {};
+  try {
+    if (p.action === 'list') return jsonOut(listGallery_(p.folder));
+  } catch (err) {
+    return jsonOut({ ok: false, error: String(err) });
+  }
   return ContentService.createTextOutput(JSON.stringify({ ok: true, message: 'Photo booth relay is live.' }))
     .setMimeType(ContentService.MimeType.JSON);
 }

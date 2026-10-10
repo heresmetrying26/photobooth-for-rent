@@ -150,6 +150,10 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     function read(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
     function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
     function safeUrl(u){ return /^https:\/\/drive\.google\.com\//.test(String(u || '')) ? u : '#'; }
+    // Online gallery for a Drive folder (/g/<folder id>), or null.
+    function galleryUrl(u){ var m = /\/folders\/([A-Za-z0-9_-]{10,})/.exec(String(u || '')); return m ? location.origin + '/g/' + m[1] : null; }
+    // What guests get: the gallery, unless Admin set QR codes to open the Drive folder.
+    function shareUrl(u){ var g = data && data.qrTarget === 'drive' ? null : galleryUrl(safeUrl(u)); return g || safeUrl(u); }
     function fmt(ms, withTime){ try{ return new Date(ms).toLocaleString([], withTime ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' }); }catch(e){ return ''; } }
     var tt;
     function toast(t){ var el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(tt); tt = setTimeout(function(){ el.classList.remove('show'); }, 2400); }
@@ -212,7 +216,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         return;
       }
       el.innerHTML = d.events.map(function(e, i){
-        var url = safeUrl(e.folderUrl);
+        var url = safeUrl(e.folderUrl), gal = galleryUrl(url);
         var soon = !e.deleted && e.deleteAfter - d.now < 2 * 86400000;
         var when = e.lastAt ? 'Last photo ' + fmt(e.lastAt, true) : 'Set up ' + fmt(e.firstAt, true) + ' · no photos yet';
         var del = e.deleted
@@ -224,7 +228,9 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
           '<div class="ev-actions">' + (e.deleted ? '' :
             '<button class="btn" type="button" data-a="qr" data-i="' + i + '">Show QR</button>' +
             '<button class="btn" type="button" data-a="copy" data-i="' + i + '">Copy link</button>' +
-            '<a class="btn primary" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">Open folder</a>') +
+            (gal ? '<a class="btn" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">Drive folder</a>' +
+                   '<a class="btn primary" href="' + esc(gal) + '" target="_blank" rel="noopener">Open gallery</a>'
+                 : '<a class="btn primary" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">Open folder</a>')) +
           '</div>' +
           '<div class="qrbox hidden" data-qr="' + i + '"></div>' +
           '</article>';
@@ -234,7 +240,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     $('events').addEventListener('click', function(ev){
       var b = ev.target.closest('button[data-a]'); if(!b || !data) return;
       var e = data.events[Number(b.dataset.i)]; if(!e) return;
-      var url = safeUrl(e.folderUrl);
+      var url = shareUrl(e.folderUrl);
       if(b.dataset.a === 'copy'){
         var done = function(){ toast('Link copied'); };
         try{

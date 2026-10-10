@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Photo gallery | photobooth4u</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#1C1A1E; --muted:#6B666C; --red:#C93D27; --red-dark:#A9301D; --paper:#F5F1EA; --card:#fff; --line:#E4DCCF; --tile:#EAE3D8;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{ --ink:#F3EEE6; --muted:#A9A2A8; --paper:#151317; --card:#1F1C21; --line:#332E35; --tile:#262228; }
+    }
+    *{box-sizing:border-box}
+    html{-webkit-text-size-adjust:100%}
+    body{margin:0;background:var(--paper);color:var(--ink);font-family:'Manrope',system-ui,-apple-system,Arial,sans-serif;min-height:100vh}
+    a{color:inherit}
+    .wrap{width:min(1180px,calc(100% - 32px));margin:0 auto}
+    header{padding:22px 0 8px}
+    .brand{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink)}
+    .mark{display:grid;grid-template-columns:1fr 1fr;gap:2px;width:20px;height:20px}.mark i{background:var(--ink);border-radius:3px}.mark i:nth-child(2){background:var(--red)}
+    .word b{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:19px;letter-spacing:-.03em}
+    .word em{font-style:normal;margin-left:2px;padding:1px 5px 3px;border-radius:6px;background:var(--red);color:#fff;font-weight:800;font-size:10px;display:inline-block;transform:rotate(-7deg);vertical-align:top}
+    .hero{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px 20px;padding:18px 0 6px}
+    h1{margin:0;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(28px,5.2vw,46px);line-height:1.08;letter-spacing:-.03em;overflow-wrap:anywhere}
+    .sub{margin:8px 0 0;color:var(--muted);font-size:14.5px;font-weight:600;line-height:1.5}
+    .sub b{color:var(--ink)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:10px 18px;border-radius:999px;font:inherit;font-size:14px;font-weight:800;text-decoration:none;cursor:pointer;border:1.5px solid var(--line);background:var(--card);color:var(--ink);transition:border-color .15s,color .15s,background .15s}
+    .btn:hover,.btn:focus-visible{border-color:var(--red);color:var(--red);outline:none}
+    .btn.primary{background:var(--red);border-color:var(--red);color:#fff}
+    .btn.primary:hover,.btn.primary:focus-visible{background:var(--red-dark);border-color:var(--red-dark);color:#fff}
+    .btn svg{width:17px;height:17px;flex:none}
+    .tabs{position:sticky;top:0;z-index:5;display:flex;gap:6px;padding:12px 0;margin-top:8px;background:var(--paper)}
+    .tab{display:inline-flex;align-items:center;gap:7px;min-height:42px;padding:9px 18px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:14.5px;font-weight:800;cursor:pointer}
+    .tab i{font-style:normal;font-weight:700;color:var(--muted);font-size:13px}
+    .tab[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+    .tab[aria-selected="true"] i{color:inherit;opacity:.7}
+    .live{margin-left:auto;align-self:center;display:none;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--muted)}
+    .live.on{display:inline-flex}
+    .live::before{content:'';width:8px;height:8px;border-radius:50%;background:#2E9E6A;box-shadow:0 0 0 0 rgba(46,158,106,.5);animation:pulse 2s infinite}
+    @keyframes pulse{70%{box-shadow:0 0 0 8px rgba(46,158,106,0)}100%{box-shadow:0 0 0 0 rgba(46,158,106,0)}}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;padding:4px 0 30px}
+    @media (max-width:560px){ .grid{grid-template-columns:1fr 1fr;gap:8px} }
+    .tile{display:block;width:100%;aspect-ratio:2/3;margin:0;padding:0;border:0;border-radius:14px;overflow:hidden;background:var(--tile);cursor:zoom-in;position:relative}
+    .tile img{display:block;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .35s}
+    .tile img.ok{opacity:1}
+    .tile:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+    .tile.new{animation:pop .6s ease}
+    @keyframes pop{from{transform:scale(.96);opacity:.3}to{transform:none;opacity:1}}
+    .tile .tag{position:absolute;left:8px;top:8px;padding:3px 8px;border-radius:999px;background:rgba(20,18,22,.7);color:#fff;font-size:11px;font-weight:800;letter-spacing:.06em}
+    .empty,.state{padding:56px 20px;text-align:center;color:var(--muted);font-size:15px;line-height:1.6}
+    .state h2{margin:0 0 8px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:26px;color:var(--ink)}
+    .state .btn{margin-top:14px}
+    .skel{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+    @media (max-width:560px){ .skel{grid-template-columns:1fr 1fr;gap:8px} }
+    .skel div{border-radius:14px;background:var(--tile);aspect-ratio:2/3;animation:shimmer 1.4s ease-in-out infinite}
+    @keyframes shimmer{50%{opacity:.55}}
+    footer{padding:10px 0 40px;text-align:center;font-size:12.5px;color:var(--muted)}
+    footer a{font-weight:700;text-decoration:none;color:var(--ink)}
+    .hidden{display:none!important}
+
+    /* viewer */
+    .viewer{position:fixed;inset:0;z-index:50;background:rgba(12,11,13,.96);display:flex;flex-direction:column;color:#fff}
+    .v-top,.v-bottom{display:flex;align-items:center;gap:10px;padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top))}
+    .v-bottom{justify-content:center;flex-wrap:wrap;padding-bottom:max(16px,env(safe-area-inset-bottom))}
+    .v-count{font-size:13.5px;font-weight:700;opacity:.8}
+    .v-close{margin-left:auto}
+    .v-stage{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;padding:0 56px}
+    @media (max-width:560px){ .v-stage{padding:0 8px} }
+    .v-stage img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;user-select:none;-webkit-user-drag:none}
+    .v-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    .v-nav:hover{background:rgba(255,255,255,.22)} .v-prev{left:8px} .v-next{right:8px}
+    @media (max-width:560px){ .v-nav{display:none} }
+    .viewer .btn{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18);color:#fff}
+    .viewer .btn:hover{border-color:#fff;color:#fff;background:rgba(255,255,255,.18)}
+    .viewer .btn.primary{background:var(--red);border-color:var(--red)}
+    .v-spin{position:absolute;width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:999px;font-size:13.5px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .2s;z-index:60;max-width:90vw}
+    .toast.show{opacity:1}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <a class="brand" href="/about-us/" aria-label="photobooth4u"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span></a>
+    </header>
+
+    <section class="hero">
+      <div>
+        <h1 id="title">Photo gallery</h1>
+        <p class="sub" id="sub">Loading photos…</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn hidden" id="shareBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v13"/><path d="m7 8 5-5 5 5"/></svg>Share</button>
+        <a class="btn hidden" id="driveBtn" href="#" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Download all (Google Drive)</a>
+      </div>
+    </section>
+
+    <nav class="tabs hidden" id="tabs" role="tablist" aria-label="Gallery">
+      <button class="tab" role="tab" id="tabPhotos" data-tab="photos" aria-selected="true">Photos <i id="nPhotos">0</i></button>
+      <button class="tab" role="tab" id="tabGifs" data-tab="gifs" aria-selected="false">GIFs <i id="nGifs">0</i></button>
+      <span class="live" id="live">Live</span>
+    </nav>
+
+    <main>
+      <div class="skel" id="skel" aria-hidden="true"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+      <div class="grid hidden" id="grid" role="tabpanel" aria-labelledby="tabPhotos"></div>
+      <div class="empty hidden" id="empty"></div>
+      <div class="state hidden" id="state"></div>
+    </main>
+
+    <footer>Photos by <a href="/about-us/">photobooth4u</a> · Cebu</footer>
+  </div>
+
+  <div class="viewer hidden" id="viewer" role="dialog" aria-modal="true" aria-label="Photo viewer">
+    <div class="v-top">
+      <span class="v-count" id="vCount"></span>
+      <button class="btn v-close" id="vClose" type="button" aria-label="Close">✕ Close</button>
+    </div>
+    <div class="v-stage" id="vStage">
+      <span class="v-spin" id="vSpin"></span>
+      <img id="vImg" alt="">
+      <button class="v-nav v-prev" id="vPrev" type="button" aria-label="Previous">‹</button>
+      <button class="v-nav v-next" id="vNext" type="button" aria-label="Next">›</button>
+    </div>
+    <div class="v-bottom">
+      <a class="btn primary" id="vDownload" href="#" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>Download</a>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var m = /^\/g\/([A-Za-z0-9_-]{10,80})\/?$/.exec(location.pathname) || /[?&]f=([A-Za-z0-9_-]{10,80})/.exec(location.search);
+  var FOLDER = m ? m[1] : null;
+  var DRIVE = FOLDER ? 'https://drive.google.com/drive/folders/' + FOLDER : null;
+  var files = [], tab = 'photos', view = [], cur = -1, tiles = {}, firstLoad = true, timer = null;
+
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function fmtDay(ms){ try{ return new Date(ms).toLocaleDateString([], { month: 'long', day: 'numeric' }); }catch(e){ return ''; } }
+  var tt; function toast(t){ var el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(tt); tt = setTimeout(function(){ el.classList.remove('show'); }, 2200); }
+
+  // Drive serves a resized still for photos (fast, and Google's bandwidth).
+  // GIFs come through our own server so they keep moving.
+  function thumbUrl(f, w){ return f.gif ? f.src : 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w' + w; }
+  function downloadUrl(f){ return 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(f.id); }
+  function withFallbacks(img, f, w){
+    var tries = f.gif ? [f.src] : [thumbUrl(f, w), 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(f.id) + '=w' + w, f.src];
+    var i = 0;
+    img.onerror = function(){ i++; if(i < tries.length) img.src = tries[i]; else img.onerror = null; };
+    img.onload = function(){ img.classList.add('ok'); };
+    img.src = tries[0];
+  }
+
+  function showState(title, html, withDrive){
+    $('skel').classList.add('hidden'); $('grid').classList.add('hidden'); $('empty').classList.add('hidden'); $('tabs').classList.add('hidden');
+    $('state').innerHTML = '<h2>' + esc(title) + '</h2><p>' + html + '</p>' +
+      (withDrive && DRIVE ? '<a class="btn primary" href="' + DRIVE + '" target="_blank" rel="noopener noreferrer">Open the Google Drive folder</a>' : '');
+    $('state').classList.remove('hidden');
+  }
+
+  async function load(){
+    if(!FOLDER){ showState('Gallery not found', 'Check the link or scan the QR code again.', false); $('sub').textContent = ''; return; }
+    var r, j;
+    try{
+      r = await fetch('/api/gallery?f=' + encodeURIComponent(FOLDER), { cache: 'no-store' });
+      j = await r.json();
+    }catch(e){
+      if(firstLoad){ showState('Can’t load the photos', 'Check your internet and try again, or open the photos in Google Drive.', true); $('sub').textContent = ''; }
+      return;
+    }
+    if(!j || !j.ok){
+      if(!firstLoad) return;
+      $('sub').textContent = '';
+      if(j && j.error === 'not-found') showState('This gallery isn’t available', 'The link may be wrong, or the photos were removed after the event.', false);
+      else showState('Photos are in Google Drive', 'The gallery is taking a break. You can still see and download every photo in the Drive folder.', true);
+      return;
+    }
+    $('state').classList.add('hidden');
+    DRIVE = j.folderUrl || DRIVE;
+    document.title = j.name + ' | photobooth4u';
+    $('title').textContent = j.name;
+    $('driveBtn').href = DRIVE; $('driveBtn').classList.remove('hidden');
+    if(navigator.share) $('shareBtn').classList.remove('hidden');
+    var nP = j.files.filter(function(f){ return !f.gif; }).length, nG = j.files.length - nP;
+    var bits = ['<b>' + nP + '</b> photo' + (nP === 1 ? '' : 's')];
+    if(nG) bits.push('<b>' + nG + '</b> GIF' + (nG === 1 ? '' : 's'));
+    if(j.until) bits.push(j.until < Date.now() + 2 * 86400000 ? '<b style="color:var(--red)">Download by ' + esc(fmtDay(j.until)) + '</b>' : 'Download by ' + esc(fmtDay(j.until)));
+    $('sub').innerHTML = bits.join(' · ');
+    $('nPhotos').textContent = nP; $('nGifs').textContent = nG;
+    $('tabGifs').classList.toggle('hidden', !nG);
+    if(!nG && tab === 'gifs') tab = 'photos';
+    $('tabs').classList.remove('hidden');
+    // "Live" while the event is still going (a photo in the last 3 hours).
+    var newest = j.files.length ? j.files[0].t : 0;
+    $('live').classList.toggle('on', newest > Date.now() - 3 * 3600000);
+    var known = {}; files.forEach(function(f){ known[f.id] = true; });
+    var fresh = firstLoad ? 0 : j.files.filter(function(f){ return !known[f.id]; }).length;
+    files = j.files;
+    render(!firstLoad);
+    if(fresh) toast(fresh + ' new ' + (fresh === 1 ? 'photo' : 'photos'));
+    firstLoad = false;
+  }
+
+  function render(animateNew){
+    $('skel').classList.add('hidden');
+    view = files.filter(function(f){ return tab === 'gifs' ? f.gif : !f.gif; });
+    $('tabPhotos').setAttribute('aria-selected', tab === 'photos' ? 'true' : 'false');
+    $('tabGifs').setAttribute('aria-selected', tab === 'gifs' ? 'true' : 'false');
+    var grid = $('grid');
+    if(!view.length){
+      grid.classList.add('hidden');
+      $('empty').innerHTML = tab === 'gifs' ? 'No GIFs yet.' : 'No photos yet. They show up here a few seconds after each photo session.';
+      $('empty').classList.remove('hidden');
+      return;
+    }
+    $('empty').classList.add('hidden'); grid.classList.remove('hidden');
+    // Reuse tiles that already exist so images don't reload on each refresh.
+    var frag = document.createDocumentFragment();
+    view.forEach(function(f, i){
+      var t = tiles[f.id];
+      if(!t){
+        t = document.createElement('button'); t.type = 'button'; t.className = 'tile' + (animateNew ? ' new' : '');
+        t.setAttribute('aria-label', (f.gif ? 'GIF ' : 'Photo ') + f.name);
+        var img = document.createElement('img'); img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
+        t.appendChild(img);
+        if(f.gif){ var tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = 'GIF'; t.appendChild(tag); }
+        withFallbacks(img, f, 640);
+        t.dataset.id = f.id;
+        tiles[f.id] = t;
+      }
+      frag.appendChild(t);
+    });
+    grid.innerHTML = ''; grid.appendChild(frag);
+  }
+
+  $('grid').addEventListener('click', function(e){
+    var t = e.target.closest('.tile'); if(!t) return;
+    for(var i = 0; i < view.length; i++) if(view[i].id === t.dataset.id){ openViewer(i); break; }
+  });
+  $('tabs').addEventListener('click', function(e){
+    var b = e.target.closest('[data-tab]'); if(!b) return;
+    tab = b.dataset.tab; render(false);
+  });
+
+  // ---- viewer ----
+  function openViewer(i){ cur = i; $('viewer').classList.remove('hidden'); document.body.style.overflow = 'hidden'; show(); }
+  function closeViewer(){ $('viewer').classList.add('hidden'); document.body.style.overflow = ''; $('vImg').removeAttribute('src'); cur = -1; }
+  function show(){
+    var f = view[cur]; if(!f) return closeViewer();
+    var img = $('vImg');
+    $('vSpin').classList.remove('hidden'); img.style.opacity = '0';
+    img.onload = function(){ $('vSpin').classList.add('hidden'); img.style.opacity = '1'; };
+    var tries = f.gif ? [f.src] : [thumbUrl(f, 2000), 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(f.id) + '=w2000', f.src], k = 0;
+    img.onerror = function(){ k++; if(k < tries.length) img.src = tries[k]; else $('vSpin').classList.add('hidden'); };
+    img.src = tries[0];
+    img.alt = f.name;
+    $('vCount').textContent = (cur + 1) + ' of ' + view.length;
+    $('vDownload').href = downloadUrl(f);
+    $('vPrev').style.visibility = cur > 0 ? '' : 'hidden';
+    $('vNext').style.visibility = cur < view.length - 1 ? '' : 'hidden';
+    // Warm up the next one.
+    var nx = view[cur + 1]; if(nx && !nx.gif){ var pre = new Image(); pre.referrerPolicy = 'no-referrer'; pre.src = thumbUrl(nx, 2000); }
+  }
+  function step(d){ var n = cur + d; if(n >= 0 && n < view.length){ cur = n; show(); } }
+  $('vClose').addEventListener('click', closeViewer);
+  $('vPrev').addEventListener('click', function(){ step(-1); });
+  $('vNext').addEventListener('click', function(){ step(1); });
+  $('vStage').addEventListener('click', function(e){ if(e.target === this) closeViewer(); });
+  document.addEventListener('keydown', function(e){
+    if(cur < 0) return;
+    if(e.key === 'Escape') closeViewer(); else if(e.key === 'ArrowLeft') step(-1); else if(e.key === 'ArrowRight') step(1);
+  });
+  var sx = null, sy = null;
+  $('vStage').addEventListener('touchstart', function(e){ var t = e.touches[0]; sx = t.clientX; sy = t.clientY; }, { passive: true });
+  $('vStage').addEventListener('touchend', function(e){
+    if(sx == null) return;
+    var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null;
+    if(Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) step(dx < 0 ? 1 : -1);
+    else if(dy > 90 && Math.abs(dy) > Math.abs(dx)) closeViewer();
+  });
+
+  function share(url, title){
+    if(navigator.share){ navigator.share({ title: title, url: url }).catch(function(){}); return; }
+    try{ navigator.clipboard.writeText(url).then(function(){ toast('Link copied'); }); }catch(e){}
+  }
+  $('shareBtn').addEventListener('click', function(){ share(location.href, document.title); });
+
+  // New photos appear while the page is open (checks every 30 s while visible).
+  function schedule(){ clearTimeout(timer); timer = setTimeout(function(){ if(!document.hidden) load().then(schedule); else schedule(); }, 30000); }
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden && !firstLoad){ load(); } });
+  load().then(schedule);
+})();
+</script>
+</body>
+</html>

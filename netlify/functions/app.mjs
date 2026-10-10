@@ -1,5 +1,5 @@
 import booth from '../lib/booth.mjs';
-import { safe, json, checkLicense } from '../lib/core.mjs';
+import { safe, json, checkLicense, getSettings } from '../lib/core.mjs';
 
 // Runs inside the unlocked app: shows the countdown chip, re-checks the license
 // every few minutes, and sends the person back to the lock screen when time is up
@@ -59,6 +59,11 @@ const WATCHER = `
           L.traditional = j.traditional;
           window.dispatchEvent(new Event('pb-mode-change'));
         }
+        // ...and the animated GIF.
+        if (typeof j.gif === 'boolean' && j.gif !== (L.gif !== false)) {
+          L.gif = j.gif;
+          window.dispatchEvent(new Event('pb-gif-change'));
+        }
       }
     }).catch(function(){ /* offline: keep running until the known expiry */ });
   }
@@ -71,12 +76,13 @@ export default safe(async (req) => {
   const device = req.headers.get('x-device-id') || '';
   const res = await checkLicense(token, device);
   if (!res.valid) return json({ error: 'locked', reason: res.reason }, 401);
+  const settings = await getSettings();
 
   // window.__PB must exist BEFORE the booth's own script runs, because the booth
   // reads it once at startup to fill in the Drive folder and show its QR. So it
   // goes in <head>. The watcher needs document.body, so it stays before </body>.
   // '<' is escaped so a folder name can never close the script tag early.
-  const pb = JSON.stringify({ type: res.type, exp: res.exp, folderKey: res.folderKey || null, lockFolder: !!res.folderKey, print: res.print || { enabled: false, sizes: [] }, traditional: !!res.traditional, bonus: !!res.bonus, subfolder: res.subfolder || null, filePrefix: res.filePrefix || '', folderPrefix: res.folderPrefix || null, lifetime: !!res.lifetime, deviceNo: res.deviceNo || 1, multiDevice: !!res.multiDevice, defaultTheme: res.defaultTheme || null }).replace(/</g, '\\u003c');
+  const pb = JSON.stringify({ type: res.type, exp: res.exp, folderKey: res.folderKey || null, lockFolder: !!res.folderKey, print: res.print || { enabled: false, sizes: [] }, traditional: !!res.traditional, bonus: !!res.bonus, subfolder: res.subfolder || null, filePrefix: res.filePrefix || '', folderPrefix: res.folderPrefix || null, lifetime: !!res.lifetime, deviceNo: res.deviceNo || 1, multiDevice: !!res.multiDevice, defaultTheme: res.defaultTheme || null, gif: res.gif !== false, qrTarget: settings.qrTarget === 'drive' ? 'drive' : 'gallery' }).replace(/</g, '\\u003c');
   const head = '<script>window.__PB=' + pb + ';</script>';
   const tail = '<script>' + WATCHER + '</script>';
   let html = booth;

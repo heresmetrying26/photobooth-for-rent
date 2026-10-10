@@ -175,14 +175,24 @@ folders with the same name.
 
 ## Design: themes, saved setup, frame, logo and stickers
 Setup is in 7 steps: 1 Theme · 2 Layout & timer · 3 Backdrop · 4 Event name · 5 Frame, logo &
-stickers · 6 Effects & welcome · 7 Google Drive.
+stickers · 6 Effects · 7 Google Drive. On a laptop or tablet in landscape the **preview stays beside
+the sections** (on phones a **Preview** button opens it). It shows a sample photo with the chosen
+filter; **Preview with my camera** uses one frame from the camera instead (never uploaded).
 
 - **Themes** (20 originals) by category: Wedding, Birthday, Debut, Kids Party, Graduation,
   Christening, Christmas, New Year, Corporate. A theme only fills in the settings, so everything
   can still be changed afterwards. Backdrop → **Pattern color** switches the gold of the
   patterns to silver, rose gold, champagne, white or black.
-- **Frame overlay**: a transparent PNG drawn on top of the whole layout (the booth shows the best
-  pixel size for the chosen layout). **Logo**: PNG/JPG in a corner or centre, adjustable size.
+- **Your own frames** (Setup → 5): upload a frame made in Canva with the photo spots left **white
+  or see-through**. The booth finds the boxes (numbered in reading order), puts shot 1, 2, 3… in
+  them and keeps the design on top; **Fix spots** lets you move, resize, add or remove a box. The
+  layout becomes **My frame** (a 2×6-shaped frame prints two side by side on 4R). An image with no
+  boxes (or one see-through middle) is a plain overlay drawn on top of any layout. **Logo**: PNG/JPG
+  in a corner or centre, adjustable size.
+- **My frames sheet**: two or more frames on one 4R print. Pick a pattern (One, 2 side by side, Top
+  + bottom, Tall + 2, Tall + 1 + 2 strips, 3 strips, 4 quarters, 4 strips), then tap a frame in the
+  preview to drag it, resize it, swap it for another frame, turn it 90° or duplicate it. The guest
+  takes as many shots as the biggest frame needs; smaller frames use the first shots.
 - **Stickers / props**: 19 built-in (hearts, stars, grad cap, crown, speech bubbles…) plus the
   renter's own PNGs. Tap to add, drag on the preview to place, then size / turn / duplicate /
   bring to front / remove. Up to 30 on one layout.
@@ -193,9 +203,27 @@ stickers · 6 Effects & welcome · 7 Google Drive.
   booking's design. Trials keep it on the device only. Setup → **Reset setup** starts over.
 - **Starting theme** (Admin): a booking can open with a chosen theme (e.g. Graduation) until the
   renter saves their own design.
-- **Guests' screen**: optional welcome card, layout choice each session, review after each shot,
-  filters, and an animated GIF (uploaded to Drive as `N_gif.gif` next to the photo, after it).
+- **Guests' screen**: welcome card between guests (always on), layout choice each session, review
+  after each shot, and filters.
+- **Animated GIF**: switched on/off per booking in Admin (**GIF: on/off**, or when generating
+  codes; trials have their own switch). Uploaded to Drive as `N_gif.gif` next to the photo, after it.
+- **Event name over busy backdrops**: when lines, borders or confetti sit behind the event name and
+  date, the booth softly fades them out right behind the words so the text stays clear.
 - Uploaded images are kept in the `setups` Blobs store; nothing new to set up.
+
+## Online gallery (`/g/<folder id>`)
+Guests' QR codes open a photobooth4u gallery page instead of Google Drive: **Photos** and **GIFs**
+tabs, full-screen viewer with swipe, a Download button per photo, "Download all (Google Drive)",
+the "download by" date, and new photos appear by themselves during the event. Admin → **Guest QR
+codes** switches every booth back to the plain Drive folder if ever needed. My Events shows both.
+
+How it works: `netlify/functions/gallery.mjs` asks the Apps Script relay for the folder's file
+list (only folders inside the photobooth4u Drive folder can be listed) and caches it for a few
+seconds; photos load from Google's own thumbnails, GIFs through `/api/gallery` so they keep moving.
+
+**One-time step:** paste the new `apps-script/upload.gs` into the Apps Script project, then
+Deploy → Manage deployments → Edit → Version: **New version** → Deploy (same URL). Until then the
+gallery shows a button to the Drive folder instead.
 
 ## Admin with many codes
 The code list reads one small index (in the `meta` store) instead of every code, so it stays

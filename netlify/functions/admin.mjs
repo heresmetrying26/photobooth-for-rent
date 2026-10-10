@@ -94,7 +94,7 @@ function bonusRecord(key, parent, minutes) {
   return {
     key, code: displayCode(key), kind: 'bonus', parent: parent.key,
     label: (parent.label || parent.code) + ' · Bonus', folderName: parent.folderName, subfolder: BONUS_SUBFOLDER,
-    minutes, days: 0, startsAt: null, print: parent.print, traditional: !!parent.traditional, defaultTheme: parent.defaultTheme || null,
+    minutes, days: 0, startsAt: null, print: parent.print, traditional: !!parent.traditional, gif: parent.gif !== false, defaultTheme: parent.defaultTheme || null,
     status: 'unused', createdAt: Date.now() + 1, redeemedAt: null, expiresAt: null, deviceId: null
   };
 }
@@ -232,7 +232,7 @@ export default safe(async (req, context) => {
         const key = await freshKey(store);
         // Keep a dedicated Drive folder name. If neither field was supplied,
         // fall back to the code so the renter never has to configure Drive.
-        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null };
+        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, gif: b.gif !== false, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null };
         let bonus = null;
         if (bonusMinutes) {
           bonus = bonusRecord(await freshKey(store), rec, bonusMinutes);
@@ -363,6 +363,21 @@ export default safe(async (req, context) => {
       return json({ ok: true, traditional: rec.traditional });
     }
 
+    case 'gif': { // animated GIF on/off; applies to an open booth within ~5 minutes
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      rec.gif = !!b.gif;
+      await putLicense(store, key, rec);
+      await syncBonus(rec, { gif: rec.gif });
+      return json({ ok: true, gif: rec.gif });
+    }
+
+    case 'qrtarget': { // where every booth QR code points: the online gallery or the Drive folder
+      const settings = { ...(await getSettings()), qrTarget: b.qrTarget === 'drive' ? 'drive' : 'gallery' };
+      await meta().setJSON('settings', settings);
+      return json({ settings });
+    }
+
     case 'delete': { // deleting a booking also deletes its bonus code
       const { key, rec } = await getRec();
       if (!rec) return json({ error: 'Code not found.' }, 404);
@@ -386,7 +401,8 @@ export default safe(async (req, context) => {
       if (b.trialPrintEnabled && !trialPrint.enabled) return json({ error: 'Pick at least one trial paper size, or turn trial printing off.' }, 400);
       const settings = { trialEnabled: !!b.trialEnabled, trialPassword: pw, trialMinutes: minutes, trialFolderPrefix: prefix,
         trialPrintEnabled: trialPrint.enabled, trialPrintSizes: trialPrint.sizes.length ? trialPrint.sizes : ['4x6'],
-        trialTraditional: !!b.trialTraditional };
+        trialTraditional: !!b.trialTraditional, trialGif: b.trialGif !== false,
+        qrTarget: (await getSettings()).qrTarget };
       await meta().setJSON('settings', settings);
       return json({ settings });
     }

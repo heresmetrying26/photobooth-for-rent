@@ -71,6 +71,8 @@ export const setupsStore = () => getStore({ name: 'setups', consistency: 'strong
 export const EVENT_KEEP_DAYS = 7;   // must match EVENT_DAYS in apps-script/cleanup.gs
 export const BONUS_KEEP_DAYS = 1;   // must match BONUS_DAYS
 export const MAX_EVENTS = 300;
+// The Drive upload relay (apps-script/upload.gs). Same URL as DRIVE_SCRIPT_URL in protected/booth.html.
+export const DRIVE_SCRIPT_URL = process.env.DRIVE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbxIsebY2jRqYvPXWn-ytIvWCT-x6N91Ay8lvmnCSWj6IaWWohXCxry4r2VzUxJZP9P3IA/exec';
 export const isDriveUrl = (u) => typeof u === 'string' && u.length < 300 && /^https:\/\/drive\.google\.com\/[A-Za-z0-9_\-\/?=&.%]+$/.test(u);
 
 // ---------- signed Drive upload tickets ----------
@@ -113,7 +115,7 @@ export function summaryOf(rec) {
     lifetime: !!rec.lifetime, days: rec.days || 0, minutes: rec.minutes || null, startsAt: rec.startsAt || null,
     status: rec.status, redeemedAt: rec.redeemedAt || null, expiresAt: rec.expiresAt || null,
     maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional,
-    print: !!(rec.print && rec.print.enabled), createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null
+    print: !!(rec.print && rec.print.enabled), gif: rec.gif !== false, createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null
   };
 }
 export async function rebuildIndex() {
@@ -188,7 +190,7 @@ function secret() {
   if (!s || s.length < 16) throw new Error('TOKEN_SECRET env var is missing or too short (use 32+ random characters).');
   return s;
 }
-const hmac = (body) => createHmac('sha256', secret()).update(body).digest('base64url');
+export const hmac = (body) => createHmac('sha256', secret()).update(body).digest('base64url');
 
 export function sign(payload) {
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -262,6 +264,8 @@ export async function getSettings() {
     trialPrintEnabled: false,
     trialPrintSizes: ['4x6'],
     trialTraditional: false,
+    trialGif: true,
+    qrTarget: 'gallery',
     ...(saved || {})
   };
 }
@@ -292,7 +296,7 @@ export async function checkLicense(token, deviceId) {
     if (p.exp <= now) return { valid: false, reason: 'trial-ended' };
     const s = await getSettings();
     if (!s.trialEnabled) return { valid: false, reason: 'trial-disabled' };
-    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes), traditional: !!s.trialTraditional };
+    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes), traditional: !!s.trialTraditional, gif: s.trialGif !== false };
   }
 
   const rec = await licenses().get(p.k, { type: 'json' });
@@ -323,6 +327,7 @@ export async function checkLicense(token, deviceId) {
     multiDevice: maxDevicesOf(rec) > 1,
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes),
     traditional: !!rec.traditional,
+    gif: rec.gif !== false,
     bonus,
     subfolder: bonus ? (rec.subfolder || BONUS_SUBFOLDER) : null,
     filePrefix: bonus ? BONUS_PREFIX : ''

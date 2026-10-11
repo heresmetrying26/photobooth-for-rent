@@ -72,7 +72,7 @@ export default safe(async (req) => {
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-store',
       'netlify-cdn-cache-control': 'public, max-age=15, stale-while-revalidate=45',
-      'netlify-vary': 'query=f'
+      'netlify-vary': 'query=f|v'
     }
   });
 });

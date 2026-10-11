@@ -145,6 +145,9 @@
   var FOLDER = m ? m[1] : null;
   var DRIVE = FOLDER ? 'https://drive.google.com/drive/folders/' + FOLDER : null;
   var files = [], tab = 'photos', view = [], cur = -1, tiles = {}, firstLoad = true, timer = null;
+  // A guest's own QR opens straight to their photo or GIF: /g/<folder>#<file id> or #gif-<file id>.
+  var hm = /^#(gif-)?([A-Za-z0-9_-]{10,80})$/.exec(location.hash || '');
+  var WANT = hm ? { id: hm[2], gif: !!hm[1] } : null, wantTries = 0;
 
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function fmtDay(ms){ try{ return new Date(ms).toLocaleDateString([], { month: 'long', day: 'numeric' }); }catch(e){ return ''; } }
@@ -173,7 +176,8 @@
     if(!FOLDER){ showState('Gallery not found', 'Check the link or scan the QR code again.', false); $('sub').textContent = ''; return; }
     var r, j;
     try{
-      r = await fetch('/api/gallery?f=' + encodeURIComponent(FOLDER), { cache: 'no-store' });
+      // A just-taken photo may be newer than the cached list: ask for a fresh one.
+      r = await fetch('/api/gallery?f=' + encodeURIComponent(FOLDER) + (WANT ? '&v=' + encodeURIComponent(WANT.id) + (wantTries ? '-' + wantTries : '') : ''), { cache: 'no-store' });
       j = await r.json();
     }catch(e){
       if(firstLoad){ showState('Can’t load the photos', 'Check your internet and try again, or open the photos in Google Drive.', true); $('sub').textContent = ''; }
@@ -210,6 +214,7 @@
     render(!firstLoad);
     if(fresh) toast(fresh + ' new ' + (fresh === 1 ? 'photo' : 'photos'));
     firstLoad = false;
+    if(WANT) openWanted();
   }
 
   function render(animateNew){
@@ -253,8 +258,23 @@
     tab = b.dataset.tab; render(false);
   });
 
+  // Open the guest's own photo/GIF from the QR link (retry a few times while it finishes saving).
+  function openWanted(){
+    var f = null;
+    for(var i = 0; i < files.length; i++) if(files[i].id === WANT.id) f = files[i];
+    if(!f){
+      if(wantTries < 4){ wantTries++; setTimeout(load, 2500); }
+      else { toast('Still saving — pull down to refresh in a moment'); WANT = null; }
+      return;
+    }
+    tab = f.gif ? 'gifs' : 'photos'; render(false);
+    for(var j = 0; j < view.length; j++) if(view[j].id === f.id){ openViewer(j, f.gif ? 'Your GIF' : 'Your photo'); break; }
+    WANT = null;
+  }
+
   // ---- viewer ----
-  function openViewer(i){ cur = i; $('viewer').classList.remove('hidden'); document.body.style.overflow = 'hidden'; show(); }
+  var viewerLabel = '';
+  function openViewer(i, label){ cur = i; viewerLabel = label || ''; $('viewer').classList.remove('hidden'); document.body.style.overflow = 'hidden'; show(); }
   function closeViewer(){ $('viewer').classList.add('hidden'); document.body.style.overflow = ''; $('vImg').removeAttribute('src'); cur = -1; }
   function show(){
     var f = view[cur]; if(!f) return closeViewer();
@@ -265,14 +285,14 @@
     img.onerror = function(){ k++; if(k < tries.length) img.src = tries[k]; else $('vSpin').classList.add('hidden'); };
     img.src = tries[0];
     img.alt = f.name;
-    $('vCount').textContent = (cur + 1) + ' of ' + view.length;
+    $('vCount').textContent = viewerLabel ? viewerLabel + ' · ' + (cur + 1) + ' of ' + view.length : (cur + 1) + ' of ' + view.length;
     $('vDownload').href = downloadUrl(f);
     $('vPrev').style.visibility = cur > 0 ? '' : 'hidden';
     $('vNext').style.visibility = cur < view.length - 1 ? '' : 'hidden';
     // Warm up the next one.
     var nx = view[cur + 1]; if(nx && !nx.gif){ var pre = new Image(); pre.referrerPolicy = 'no-referrer'; pre.src = thumbUrl(nx, 2000); }
   }
-  function step(d){ var n = cur + d; if(n >= 0 && n < view.length){ cur = n; show(); } }
+  function step(d){ var n = cur + d; if(n >= 0 && n < view.length){ cur = n; viewerLabel = ''; show(); } }
   $('vClose').addEventListener('click', closeViewer);
   $('vPrev').addEventListener('click', function(){ step(-1); });
   $('vNext').addEventListener('click', function(){ step(1); });

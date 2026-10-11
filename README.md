@@ -163,7 +163,7 @@ folders with the same name.
   and My Events), so no outside service sees the folder links and QRs work on weak internet.
 
 ## Layouts, countdown and date
-- **10 layouts** (Setup → 2 · Layout & timer): Classic strip (3), Strip 4, Polaroid 4, Grid 4,
+- **Layouts** (Setup → 3 · Layout; each card shows the current design): Classic strip (3), Strip 4, Polaroid 4, Grid 4,
   Hero 1+3, Solo, Duo, Trio, Feature 1+2, Film 6. Strips print two side by side on 4R; every
   other layout is built as an exact 4R (4×6) sheet. New sheet layouts are one line each in
   `SHEET_ROWS` + `LAYOUT_DEFS` inside `protected/booth.html`.
@@ -174,16 +174,23 @@ folders with the same name.
   pick another day; Remove (or the icon again) takes it off. Works on iPad and Android.
 
 ## Design: themes, saved setup, frame, logo and stickers
-Setup is in 7 steps: 1 Theme · 2 Layout & timer · 3 Backdrop · 4 Event name · 5 Frame, logo &
-stickers · 6 Effects · 7 Google Drive. On a laptop or tablet in landscape the **preview stays beside
-the sections** (on phones a **Preview** button opens it). It shows a sample photo with the chosen
-filter; **Preview with my camera** uses one frame from the camera instead (never uploaded).
+Setup is in 5 steps, one at a time: **1 Design** (templates + Backdrop & colours) · **2 Text** (name,
+date, small line, title style, fonts, colour) · **3 Layout** (layout, guests' choice, countdown) ·
+**4 Extras** (Frame / Logo / Stickers / Filter tabs) · **5 Share** (Drive folder, all-photos QR to print
+ahead, printing). The step bar stays at the top with a one-line summary of each step (red = still
+needed), and a bar at the bottom always shows the save status and **Start photo session**. On a
+laptop or tablet in landscape the **preview stays beside the steps**; on phones a small preview sits in
+the bottom bar, tap it to open it big. **Try with my camera** uses one frame from the camera (never
+uploaded). Tapping a template shows it big first (**Use this design / Cancel**); after using it the
+booth goes to step 2 with the name box ready. Fonts are shown as cards with the event's own name,
+in Script / Elegant / Modern / Fun (plus **Recent**), with ready-made **pairs** for the name and the
+small line; a template's own colours come first under Text colour.
 
 - **Themes** (20 originals) by category: Wedding, Birthday, Debut, Kids Party, Graduation,
   Christening, Christmas, New Year, Corporate. A theme only fills in the settings, so everything
   can still be changed afterwards. Backdrop → **Pattern color** switches the gold of the
   patterns to silver, rose gold, champagne, white or black.
-- **Your own frames** (Setup → 5): upload a frame made in Canva with the photo spots left **white
+- **Your own frames** (Setup → 4 Extras → Frame): upload a frame made in Canva with the photo spots left **white
   or see-through**. The booth finds the boxes (numbered in reading order), puts shot 1, 2, 3… in
   them and keeps the design on top; **Fix spots** lets you move, resize, add or remove a box. The
   layout becomes **My frame** (a 2×6-shaped frame prints two side by side on 4R). An image with no
@@ -203,18 +210,18 @@ filter; **Preview with my camera** uses one frame from the camera instead (never
 - **Templates** (shown first in the theme gallery): Teddy Bear Party, Carnival Fun, Burgundy Line
   Florals, Sage Line Florals, Ivory Monogram, Blush Roses 18, Black & Gold 18, Pink Plush
   Christening, Little Bear Christening, Boho Pampas. A template also sets the layout, a **title
-  style** (Event name → Title style: small line above "The wedding of", small line below "Turns
+  style** (2 Text → Title style: small line above "The wedding of", small line below "Turns
   one", letter blocks, monogram, big number "18") with its **small line**, and original vector
   artwork (awning, teddy bear, bunny, line florals, roses, pampas). Two landscape 4R layouts
   (**Landscape 3 / Landscape 4**) put the event name in its own panel; they print turned on 4R.
-- **Stickers / props**: 19 built-in (hearts, stars, grad cap, crown, speech bubbles…) plus the
+- **Stickers / props**: 19 built-in (8 shown, the rest under **More stickers**) plus the
   renter's own PNGs. Tap to add, drag on the preview to place, then size / turn / duplicate /
   bring to front / remove. Up to 30 on one layout.
 - **My themes**: "★ Save my current design as a theme" keeps the whole design (frame, logo,
   stickers included) under the customer's code; every device on that code sees it.
 - **Saved setup**: the design is saved to the server per booking (per event for lifetime codes)
   and comes back after a refresh, a restart, or on another device. A bonus code uses its
-  booking's design. Trials keep it on the device only. Setup → **Reset setup** starts over.
+  booking's design. Trials keep it on the device only. Bottom bar **⋯ → Reset setup** starts over.
 - **Starting theme** (Admin): a booking can open with a chosen theme (e.g. Graduation) until the
   renter saves their own design.
 - **Guests' screen**: welcome card between guests (always on), layout choice each session, review
@@ -230,6 +237,12 @@ Guests' QR codes open a photobooth4u gallery page instead of Google Drive: **Pho
 tabs, full-screen viewer with swipe, a Download button per photo, "Download all (Google Drive)",
 the "download by" date, and new photos appear by themselves during the event. Admin → **Guest QR
 codes** switches every booth back to the plain Drive folder if ever needed. My Events shows both.
+
+**After each session** the booth (and the guest screen) shows two labelled QR codes: **Your photo**
+and **Your GIF**. Each opens the gallery straight on that file (`/g/<folder>#<file id>`, or
+`#gif-<file id>`); with Admin set to Drive they open the file in Google Drive. The **All photos** QR
+for the whole event is only in Setup → 5 Share, to print or share ahead. Between shots the pause
+shows the photo just taken and "Next: photo 2 of 3", with no countdown circle.
 
 How it works: `netlify/functions/gallery.mjs` asks the Apps Script relay for the folder's file
 list (only folders inside the photobooth4u Drive folder can be listed) and caches it for a few

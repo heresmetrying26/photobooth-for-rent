@@ -79,7 +79,7 @@
     transition: grid-template-columns 0.3s ease;
   }
   .app-shell.has-qr{
-    grid-template-columns:1.05fr 0.75fr 0.75fr;
+    grid-template-columns:1.15fr 0.85fr;
   }
   .app-shell.capturing{
     grid-template-columns:1fr;
@@ -235,6 +235,8 @@
   }
   .camera-error p{color:#b9c7d1; font-size:14px; line-height:1.5; max-width:320px; margin:0;}
 
+  .countdown-overlay.pausing{background:transparent;}
+  .countdown-overlay.pausing .cd-wrap{display:none;}
   .countdown-overlay{
     position:absolute; inset:0; z-index:4;
     display:none;
@@ -313,13 +315,12 @@
     background:var(--blue-deep);
     color:#ffffff;
     border:none;
-    padding:14px 26px;
+    padding:15px 30px;
     border-radius:40px;
-    font-family:'Fraunces', Georgia, serif;
-    font-weight:700;
-    font-style:italic;
-    font-size:17px;
-    letter-spacing:0.5px;
+    font-family:'Manrope', sans-serif;
+    font-weight:800;
+    font-size:16px;
+    letter-spacing:0.02em;
     cursor:pointer;
     box-shadow:0 8px 20px rgba(70,45,25,0.35);
     transition:transform 0.15s ease;
@@ -579,8 +580,11 @@
     width:150px; height:150px; border-radius:8px; background:#ffffff;
     padding:6px; border:1px solid var(--line);
   }
+  .qr-box{width:150px; height:150px; display:flex; align-items:center; justify-content:center;}
+  .qr-box .qr-img{width:100%; height:100%;}
+  .qr-wait{font-size:12.5px; font-weight:700; color:var(--ink-dim); text-align:center; padding:10px; border:1.5px dashed var(--line); border-radius:10px; width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#fff;}
   .qr-caption{
-    font-size:12.5px; font-weight:600; color:var(--ink); margin:0; text-align:center;
+    font-size:12px; font-weight:800; color:var(--blue-deep); margin:0; text-align:center; letter-spacing:.14em; text-transform:uppercase;
   }
   .qr-link{
     font-size:11.5px; color:var(--blue-deep); text-decoration:underline;
@@ -750,6 +754,21 @@
   .pattern-btn span{font:700 10.5px 'Manrope',sans-serif; color:var(--ink); text-align:center; line-height:1.2;}
   .pattern-btn.active{border-color:var(--blue-deep); background:var(--tint);}
 
+
+  /* ---- Photo Session: compact header so the camera gets the room ---- */
+  body.in-session .brandbar{flex-direction:row; justify-content:center; gap:14px; margin-bottom:12px;}
+  body.in-session .brand-word b{font-size:24px;}
+  body.in-session .brandbar .subtitle{display:none;}
+  body.in-session .tab-bar{margin-bottom:14px;}
+  /* The whole camera box, film track and Start button fit on one screen. */
+  body.in-session .stage-frame{width:min(100%, max(300px, calc((100vh - 250px) * 0.8))); margin:0 auto;}
+  /* Brand red for every checkbox, radio and slider */
+  input[type=checkbox], input[type=radio], input[type=range]{accent-color:var(--blue-deep);}
+  @media (max-width:640px){
+    .toast{top:14px; bottom:auto; transform:translate(-50%, -20px);}
+    .toast.toast-visible{transform:translate(-50%, 0);}
+  }
+
   /* ---- Saved setup ---- */
   .setup-next-wrap{flex-direction:column; align-items:center; gap:4px;}
   .setup-save-note{margin:6px 0 0; font-size:12px; font-weight:600; color:var(--ink-dim); min-height:16px; text-align:center;}
@@ -815,6 +834,181 @@
   .theme-card img{width:100%; aspect-ratio:2/3; object-fit:cover; border-radius:8px; display:block; background:var(--panel-2);}
   .theme-del{position:absolute; top:-7px; right:-7px; width:22px; height:22px; border-radius:50%; background:#1C1A1E; color:#fff; font:800 14px/22px 'Manrope',sans-serif; text-align:center;}
   #saveThemeBtn{width:100%;}
+
+  /* =====================================================================
+     Setup in 5 steps: step bar, one step at a time, start bar at the bottom
+     ===================================================================== */
+  #tabSetup{padding-bottom:84px;}
+  .setup-next-wrap[hidden]{display:none;}
+  @media (min-width:900px){
+    .setup-shell > #previewSection{top:8px; max-height:calc(100vh - 100px);}
+    #setupPreviewCanvas{max-height:calc(100vh - 360px);}
+  }
+  @media (max-width:420px){ .hide-sm{display:none;} }
+  .step-bar{
+    position:sticky; top:0; z-index:50; display:flex; gap:6px;
+    margin:0 -4px; padding:8px 4px; background:var(--bg-page);
+  }
+  .step-tab{
+    flex:1 1 0; min-width:0; min-height:52px; display:flex; align-items:center; gap:8px;
+    padding:6px 8px; border-radius:12px; border:1.5px solid var(--line); background:#fff;
+    color:var(--ink); cursor:pointer; text-align:left; font:inherit; gap:7px;
+  }
+  .step-tab .sn{
+    flex:none; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:var(--panel-2); border:1.5px solid var(--line); font:800 12px 'Manrope',sans-serif; color:var(--ink-dim);
+  }
+  .step-tab .st{display:flex; flex-direction:column; min-width:0; line-height:1.2;}
+  .step-tab b{font-size:13px; font-weight:800;}
+  .step-tab small{font-size:11px; font-weight:600; color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .step-tab small.warn{color:var(--blue-deep);}
+  .step-tab.on{border-color:var(--blue-deep); background:var(--tint); box-shadow:0 4px 14px rgba(70,45,25,.12);}
+  .step-tab.on .sn{background:var(--blue-deep); border-color:var(--blue-deep); color:#fff;}
+  .step-tab.done:not(.on) .sn{background:var(--ink); border-color:var(--ink); color:#fff;}
+  @media (max-width:640px){
+    .step-bar{gap:4px;}
+    .step-tab{flex-direction:column; justify-content:center; gap:3px; padding:6px 2px; text-align:center;}
+    .step-tab .st{align-items:center;}
+    .step-tab b{font-size:11.5px;}
+    .step-tab small{display:none;}
+  }
+  .step{display:none;}
+  .step.on{display:flex; flex-direction:column; gap:16px;}
+  .step-head{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .step-head .panel-label{margin:0;}
+  .step-lead{margin:2px 0 12px;}
+  .step-nav{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .step-nav .action-btn{width:auto; min-height:48px; padding:12px 22px; font-weight:800;}
+  .link-btn{background:none; border:0; padding:8px 0; min-height:40px; color:var(--blue-deep); font:700 13px 'Manrope',sans-serif; cursor:pointer;}
+  .link-btn:hover{text-decoration:underline;}
+  #saveThemeBtn.link-btn{width:auto;}
+
+  /* Bottom bar: save status + Start, always in reach */
+  .start-bar{
+    position:fixed; left:0; right:0; bottom:0; z-index:60;
+    background:rgba(255,255,255,.96); border-top:1px solid var(--line);
+    box-shadow:0 -6px 20px rgba(70,45,25,.08); padding:10px 16px max(10px, env(safe-area-inset-bottom));
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  }
+  .start-bar-in{max-width:1040px; margin:0 auto; display:flex; align-items:center; gap:12px;}
+  .start-thumb{display:none; flex:none; height:52px; width:auto; border-radius:4px; box-shadow:0 2px 8px rgba(0,0,0,.18); cursor:pointer; background:#fff;}
+  .start-info{flex:1; min-width:0; display:flex; flex-direction:column; line-height:1.3;}
+  .start-status{font-size:13px; font-weight:800; color:var(--ink);}
+  .start-status.warn{color:var(--blue-deep);}
+  .start-save{font-size:11.5px; font-weight:600; color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .start-save.warn{color:#b9770e;}
+  .start-actions{display:flex; align-items:center; gap:8px; flex:none;}
+  .start-actions .action-btn{width:auto; min-height:48px; padding:12px 20px; font-weight:800;}
+  .menu-wrap{position:relative;}
+  .menu-btn{width:44px; height:44px; border-radius:12px; border:1.5px solid var(--line); background:#fff; font:800 18px 'Manrope',sans-serif; color:var(--ink); cursor:pointer;}
+  .menu{position:absolute; right:0; bottom:52px; min-width:190px; background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,.16); padding:6px; z-index:5;}
+  .menu button{display:block; width:100%; text-align:left; min-height:44px; padding:10px 12px; border:0; background:none; border-radius:8px; font:700 13.5px 'Manrope',sans-serif; color:var(--ink); cursor:pointer;}
+  .menu button:hover{background:var(--panel-2);}
+  .menu button.danger{color:#c0392b;}
+  @media (max-width:520px){
+    .start-actions .action-btn{padding:12px 14px; font-size:13.5px;}
+    .start-save{display:none;}
+  }
+
+  /* Phones / tablet portrait: the preview lives in the bottom bar; tap it to open. */
+  @media (max-width:899px){
+    .start-thumb{display:block;}
+    .setup-shell > #previewSection:not(.docked){display:none;}
+    #previewSection.docked{bottom:84px; z-index:75;}
+    .preview-fab{display:none !important;}
+  }
+
+  /* "More options" fold-outs */
+  details.more{margin-top:14px; border-top:1px dashed var(--line); padding-top:4px;}
+  details.more > summary{
+    list-style:none; cursor:pointer; min-height:44px; display:flex; align-items:center; gap:6px;
+    font:700 13px 'Manrope',sans-serif; color:var(--ink-dim);
+  }
+  details.more > summary::-webkit-details-marker, details.more-card > summary::-webkit-details-marker{display:none;}
+  details.more > summary::after{content:'⌄'; font-size:14px; transition:transform .15s ease;}
+  details.more[open] > summary::after{transform:rotate(180deg);}
+  details.more[open] > summary{color:var(--ink);}
+  details.more-card > summary{list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:28px;}
+  details.more-card > summary .panel-label{margin:0;}
+  .more-sum{font:700 12.5px 'Manrope',sans-serif; color:var(--ink-dim); display:flex; align-items:center; gap:6px; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .more-sum::after{content:'⌄'; font-size:14px; transition:transform .15s ease;}
+  details.more-card[open] .more-sum::after{transform:rotate(180deg);}
+  details.more-card[open] > summary{margin-bottom:12px;}
+  .sub-group{margin-top:14px;}
+
+  /* Segmented tabs (Extras) */
+  .seg-tabs{display:flex; gap:4px; padding:4px; background:var(--panel-2); border:1px solid var(--line); border-radius:12px; margin-bottom:14px;}
+  .seg-tabs button{flex:1; min-height:42px; border:0; border-radius:9px; background:transparent; font:700 13px 'Manrope',sans-serif; color:var(--ink-dim); cursor:pointer; position:relative;}
+  .seg-tabs button.on{background:#fff; color:var(--ink); box-shadow:0 2px 8px rgba(70,45,25,.12);}
+  .seg-tabs button.has::after{content:''; position:absolute; top:7px; right:9px; width:7px; height:7px; border-radius:50%; background:var(--blue-deep);}
+  .pane{display:none;}
+  .pane.on{display:block;}
+  .prop-tray:not(.all) .prop-btn.extra{display:none;}
+
+  /* Title style tiles */
+  .style-tiles{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px;}
+  .style-tile{display:flex; flex-direction:column; align-items:center; gap:6px; padding:8px 6px; border-radius:12px; border:1.5px solid var(--line); background:#fff; cursor:pointer; font:inherit; color:var(--ink);}
+  .style-tile .mock{height:54px; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:var(--panel-2); border-radius:8px; position:relative; overflow:hidden;}
+  .style-tile .mock b{font:italic 600 17px 'Fraunces',Georgia,serif; line-height:1; position:relative;}
+  .style-tile .mock i{font:800 7px 'Manrope',sans-serif; letter-spacing:.14em; color:var(--ink-dim); font-style:normal;}
+  .style-tile .mock .blk{display:flex; gap:2px;}
+  .style-tile .mock .blk u{text-decoration:none; width:15px; height:16px; border-radius:3px; background:#E7B9AE; color:#fff; font:800 10px/16px 'Manrope',sans-serif; text-align:center;}
+  .style-tile .mock .blk u:nth-child(2){background:#9db89a;} .style-tile .mock .blk u:nth-child(3){background:#a9d4f5;}
+  .style-tile .mock .mono{width:36px; height:36px; border-radius:50%; border:1.5px solid var(--ink); display:flex; align-items:center; justify-content:center; font:italic 600 13px 'Fraunces',Georgia,serif;}
+  .style-tile .mock .bn{position:absolute; font:800 46px/1 'Manrope',sans-serif; color:#E4DCCF;}
+  .style-tile .tl{font-size:11.5px; font-weight:700;}
+  .style-tile.on{border-color:var(--blue-deep); background:var(--tint);}
+  .style-tile.on .mock{background:#fff;}
+
+  /* Fonts: pairs, name/small-line switch, categories, cards */
+  .font-pairs{display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin-bottom:10px; scrollbar-width:thin;}
+  .font-pair{flex:none; min-width:92px; min-height:64px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:6px 10px; border-radius:12px; border:1.5px solid var(--line); background:#fff; cursor:pointer; color:var(--ink);}
+  .font-pair .a{font-size:20px; line-height:1.1;}
+  .font-pair .b{font-size:11px; line-height:1.1; letter-spacing:.06em;}
+  .font-pair small{font:700 10px 'Manrope',sans-serif; color:var(--ink-dim); letter-spacing:.06em; text-transform:uppercase; margin-top:2px;}
+  .font-pair.on{border-color:var(--blue-deep); background:var(--tint);}
+  .font-mode{display:flex; gap:4px; padding:4px; background:var(--panel-2); border:1px solid var(--line); border-radius:12px; margin-bottom:10px;}
+  .font-mode button{flex:1; min-height:40px; border:0; border-radius:9px; background:transparent; font:700 12.5px 'Manrope',sans-serif; color:var(--ink-dim); cursor:pointer;}
+  .font-mode button.on{background:#fff; color:var(--ink); box-shadow:0 2px 8px rgba(70,45,25,.12);}
+  .font-cats{display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:8px; scrollbar-width:thin;}
+  .font-cards{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; max-height:300px; overflow-y:auto; padding:2px;}
+  .font-card{min-height:64px; display:flex; flex-direction:column; justify-content:center; gap:3px; padding:8px 10px; border-radius:12px; border:1.5px solid var(--line); background:#fff; cursor:pointer; text-align:left; color:var(--ink); min-width:0;}
+  .font-card .fs{font-size:21px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .font-card .fl{font:700 10px 'Manrope',sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-dim);}
+  .font-card.on{border-color:var(--blue-deep); background:var(--tint);}
+  @media (min-width:900px){ .font-cards{grid-template-columns:repeat(3, minmax(0,1fr));} }
+
+  /* Text colour: the design's own colours first */
+  #colorSwatchRow .color-swatch-btn{width:32px; height:32px;}
+  .theme-pal{display:inline-flex; gap:8px; align-items:center;}
+  .theme-pal:not(:empty){padding-right:10px; margin-right:2px; border-right:1.5px solid var(--line);}
+  .color-any{width:32px; height:32px; border:1.5px solid var(--line); border-radius:50%; padding:0; cursor:pointer; background:conic-gradient(red,yellow,lime,aqua,blue,magenta,red); overflow:hidden;}
+  .color-any::-webkit-color-swatch-wrapper{padding:0;} .color-any::-webkit-color-swatch{border:0; border-radius:50%;}
+  .date-btn{width:auto; padding:0 12px; gap:6px; display:inline-flex; align-items:center; font:700 13px 'Manrope',sans-serif;}
+
+  /* Option rows + pill pickers (instead of drop-downs) */
+  .opt-row{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin-top:12px;}
+  .opt-row .lbl{font-size:13px; font-weight:600; color:var(--ink-dim);}
+  .pills{display:flex; flex-wrap:wrap; gap:6px;}
+  .pill{min-height:40px; min-width:44px; padding:0 12px; border-radius:999px; border:1.5px solid var(--line); background:#fff; color:var(--ink); font:700 12.5px 'Manrope',sans-serif; cursor:pointer;}
+  .pill.on{background:var(--ink); border-color:var(--ink); color:#fff;}
+  details.more .toggle-row, .pane .toggle-row, #formatSection .toggle-row{min-height:40px;}
+  .toggle-row input{width:20px; height:20px;}
+
+  /* Layout cards with a live picture of your design */
+  .layout-btn img.lt-img{height:72px; width:auto; max-width:100%; border-radius:3px; box-shadow:0 3px 8px rgba(60,40,20,.18); display:block; background:#fff;}
+  .guest-layouts label{min-height:40px;}
+  .guest-layouts label::before{content:''; display:none;}
+
+  /* Template preview */
+  .tpl-modal{position:fixed; inset:0; z-index:120; background:rgba(28,26,30,.62); display:flex; align-items:center; justify-content:center; padding:16px;}
+  .tpl-modal[hidden]{display:none;}
+  .tpl-card{background:var(--panel); border-radius:18px; padding:16px; width:min(440px, 100%); max-height:calc(100vh - 32px); overflow:auto; display:flex; flex-direction:column; gap:10px; box-shadow:0 24px 60px rgba(0,0,0,.35);}
+  .tpl-card canvas{display:block; max-width:100%; max-height:calc(100vh - 230px); width:auto; height:auto; margin:0 auto; border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,.18); background:#fff;}
+  .tpl-name{margin:4px 0 0; font:italic 600 20px 'Fraunces',Georgia,serif; color:var(--blue-deep); text-align:center;}
+  .tpl-cats{margin:0; font:700 10.5px 'Manrope',sans-serif; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-dim); text-align:center;}
+  .tpl-btns{display:flex; gap:10px;}
+  .tpl-btns .action-btn{flex:1; min-height:48px; font-weight:800;}
 </style>
 <script>/* qrcode-generator 1.4.4 (MIT) — QR codes are made on this device, no outside service. */
 // Copyright (c) 2009 Kazuhiko Arase
@@ -868,202 +1062,141 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 <div class="tab-panel" id="tabSetup">
   <div class="setup-shell">
 
-    <div class="panel-section accordion open" id="themeSection">
-      <p class="panel-label accordion-toggle" data-target="themeSection">1 · Theme <span class="chev">⌄</span></p>
-      <p class="panel-hint" style="margin:0 0 10px;">Pick a ready-made design. It sets the backdrop, colors and fonts — you can still fine-tune everything below.</p>
-      <div class="theme-tools">
-        <input type="search" class="label-input" id="themeSearch" placeholder="Search themes…" aria-label="Search themes">
-      </div>
-      <div class="theme-cats" id="themeCats" role="tablist" aria-label="Theme categories"></div>
-      <div class="theme-grid" id="themeGrid"></div>
-      <button type="button" class="action-btn" id="saveThemeBtn" style="margin-top:12px;">★ Save my current design as a theme</button>
-      <p class="panel-hint" style="margin-top:6px;">Saves the backdrop, colors, fonts, frame, logo and stickers under <b>My themes</b>, on every device using this code.</p>
-    </div>
+    <nav class="step-bar" id="stepBar" aria-label="Setup steps">
+      <button type="button" class="step-tab" data-step="1"><span class="sn">1</span><span class="st"><b>Design</b><small id="stepSum1"></small></span></button>
+      <button type="button" class="step-tab" data-step="2"><span class="sn">2</span><span class="st"><b>Text</b><small id="stepSum2"></small></span></button>
+      <button type="button" class="step-tab" data-step="3"><span class="sn">3</span><span class="st"><b>Layout</b><small id="stepSum3"></small></span></button>
+      <button type="button" class="step-tab" data-step="4"><span class="sn">4</span><span class="st"><b>Extras</b><small id="stepSum4"></small></span></button>
+      <button type="button" class="step-tab" data-step="5"><span class="sn">5</span><span class="st"><b>Share</b><small id="stepSum5"></small></span></button>
+    </nav>
 
-    <div class="panel-section accordion" id="formatSection">
-      <p class="panel-label accordion-toggle" data-target="formatSection">2 · Layout &amp; timer <span class="chev">⌄</span></p>
-      <p class="sub-label">Choose your layout</p>
-      <div class="layout-grid lg-many" id="layoutGrid"></div>
-      <p class="panel-hint" id="layoutHint"></p>
-      <div class="sub-group" id="sheetPanel" style="display:none; margin-top:12px;">
-        <p class="sub-label">Sheet pattern</p>
-        <div class="pattern-row" id="sheetPatterns"></div>
-        <button type="button" class="action-btn" id="sheetAddFrame" style="margin-top:10px; width:auto; padding:8px 14px; font-size:12.5px;">+ Add a frame</button>
-        <p class="panel-hint" style="margin-top:6px;">Tap a frame in the preview to select it, then drag it, resize it, swap it for another frame, turn it, or duplicate it.</p>
-      </div>
-      <div class="sub-group" style="margin-top:12px;">
-        <label class="toggle-row"><input type="checkbox" id="guestPickToggle"> Let guests choose the layout each session</label>
-        <div class="guest-layouts" id="guestLayouts" style="display:none;"></div>
-        <p class="panel-hint" id="guestPickHint" style="margin-top:6px; display:none;">Tick the layouts guests can pick from. The one selected above is always included. With only one ticked, guests aren’t asked.</p>
+    <!-- STEP 1 · DESIGN -->
+    <section class="step" id="step1" data-step="1">
+      <div class="panel-section" id="themeSection">
+        <div class="step-head">
+          <p class="panel-label">Pick a design</p>
+          <button type="button" class="link-btn" id="saveThemeBtn">★ Save my design</button>
+        </div>
+        <p class="panel-hint step-lead">You can change anything after.</p>
+        <div class="theme-tools">
+          <input type="search" class="label-input" id="themeSearch" placeholder="Search designs…" aria-label="Search designs">
+        </div>
+        <div class="theme-cats" id="themeCats" role="tablist" aria-label="Design categories"></div>
+        <div class="theme-grid" id="themeGrid"></div>
       </div>
 
-      <div class="sub-group" style="margin-top:14px;">
-        <p class="sub-label">Countdown per shot</p>
-        <div class="chip-row" id="timerChips">
-          <button type="button" class="chip" data-sec="3">3s</button>
-          <button type="button" class="chip active" data-sec="5">5s</button>
-          <button type="button" class="chip" data-sec="7">7s</button>
-          <button type="button" class="chip" data-sec="10">10s</button>
+      <details class="panel-section more-card" id="backdropSection">
+        <summary><span class="panel-label">Backdrop &amp; colours</span><span class="more-sum" id="backdropSum">Change</span></summary>
+        <p class="sub-label">Backdrop</p>
+        <div class="preset-grid" id="presetGrid">
+          <button class="preset-btn" data-preset="none" title="Plain colour">
+            <span class="preset-swatch"></span>
+            <span>Plain</span>
+          </button>
+          <button class="preset-btn" data-preset="gold" title="Gold glitter">
+            <span class="preset-swatch swatch-gold" id="swatchGold"></span>
+            <span>Gold Glitter</span>
+          </button>
+          <button class="preset-btn" data-preset="sky" title="Pastel sky">
+            <span class="preset-swatch swatch-sky" id="swatchSky"></span>
+            <span>Pastel Sky</span>
+          </button>
+          <button class="preset-btn" data-preset="stars" title="Black and gold">
+            <span class="preset-swatch swatch-stars" id="swatchStars"></span>
+            <span>Black &amp; Gold</span>
+          </button>
+          <button class="preset-btn" data-preset="cream" title="Cream">
+            <span class="preset-swatch swatch-cream" id="swatchCream"></span>
+            <span>Cream</span>
+          </button>
+          <button class="preset-btn" data-preset="maroon" title="Maroon and gold">
+            <span class="preset-swatch swatch-maroon" id="swatchMaroon"></span>
+            <span>Maroon &amp; Gold</span>
+          </button>
+          <button class="preset-btn" data-preset="custom" title="Your photo" id="customPresetBtn">
+            <span class="preset-swatch" id="customSwatch" style="background:var(--panel-2); display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--ink-dim);">Photo</span>
+            <span>Your photo</span>
+          </button>
         </div>
-        <div class="stepper">
-          <span class="lbl">Fine-tune (½ s steps)</span>
-          <span class="ctl">
-            <button type="button" class="step-btn" id="timerMinus" aria-label="Half a second less">−</button>
-            <span class="step-val" id="timerVal">5 s</span>
-            <button type="button" class="step-btn" id="timerPlus" aria-label="Half a second more">+</button>
-          </span>
+        <div class="sub-group" id="bdColorGroup">
+          <p class="sub-label">Colour</p>
+          <div class="bd-color-row" id="bdColorRow">
+            <button type="button" class="bd-swatch bd-auto active" data-color="" title="The design's own colours">Auto</button>
+            <button type="button" class="bd-swatch" data-color="#f8c8d4" title="Blush" style="background:#f8c8d4;"></button>
+            <button type="button" class="bd-swatch" data-color="#e58ba3" title="Rose" style="background:#e58ba3;"></button>
+            <button type="button" class="bd-swatch" data-color="#f9c9a8" title="Peach" style="background:#f9c9a8;"></button>
+            <button type="button" class="bd-swatch" data-color="#cdb8ee" title="Lavender" style="background:#cdb8ee;"></button>
+            <button type="button" class="bd-swatch" data-color="#a9d4f5" title="Sky blue" style="background:#a9d4f5;"></button>
+            <button type="button" class="bd-swatch" data-color="#2f8f8f" title="Teal" style="background:#2f8f8f;"></button>
+            <button type="button" class="bd-swatch" data-color="#bfe8d2" title="Mint" style="background:#bfe8d2;"></button>
+            <button type="button" class="bd-swatch" data-color="#9db89a" title="Sage" style="background:#9db89a;"></button>
+            <button type="button" class="bd-swatch" data-color="#1f3a68" title="Navy" style="background:#1f3a68;"></button>
+            <button type="button" class="bd-swatch" data-color="#7a1f3d" title="Burgundy" style="background:#7a1f3d;"></button>
+            <button type="button" class="bd-swatch" data-color="#161616" title="Black" style="background:#161616;"></button>
+            <button type="button" class="bd-swatch" data-color="#ffffff" title="White" style="background:#ffffff;"></button>
+            <label class="bd-swatch bd-custom" id="bdCustomSwatch" title="Any colour"><input type="color" id="bdColorInput" value="#f4b6c2"></label>
+          </div>
+          <p class="panel-hint" id="bdColorHint" hidden></p>
         </div>
-        <div class="stepper">
-          <span class="lbl">Extra time before the first shot</span>
-          <select class="mini-select" id="firstExtraSelect">
-            <option value="0" selected>None</option>
-            <option value="2">+2 s</option>
-            <option value="3">+3 s</option>
-            <option value="5">+5 s</option>
-          </select>
+        <div class="sub-group" id="accentGroup">
+          <p class="sub-label">Pattern colour</p>
+          <div class="accent-row" id="accentChips">
+            <button type="button" class="accent-chip active" data-accent="gold"><i style="background:linear-gradient(135deg,#a8792a,#fff1c4,#a8792a)"></i>Gold</button>
+            <button type="button" class="accent-chip" data-accent="silver"><i style="background:linear-gradient(135deg,#7d8288,#f7f9fb,#7d8288)"></i>Silver</button>
+            <button type="button" class="accent-chip" data-accent="rosegold"><i style="background:linear-gradient(135deg,#a5645a,#fde3dc,#a5645a)"></i>Rose gold</button>
+            <button type="button" class="accent-chip" data-accent="champagne"><i style="background:linear-gradient(135deg,#9e8a6a,#fff7e6,#9e8a6a)"></i>Champagne</button>
+            <button type="button" class="accent-chip" data-accent="white"><i style="background:#fff"></i>White</button>
+            <button type="button" class="accent-chip" data-accent="black"><i style="background:#222"></i>Black</button>
+          </div>
         </div>
-        <div class="stepper">
-          <span class="lbl">Pause between shots</span>
-          <select class="mini-select" id="betweenSelect">
-            <option value="0.5">½ s</option>
-            <option value="1">1 s</option>
-            <option value="1.5" selected>1½ s</option>
-            <option value="2">2 s</option>
-            <option value="3">3 s</option>
-          </select>
+        <div class="sub-group" id="elementsGroup">
+          <p class="sub-label">Decorations</p>
+          <select id="elementsSelect" class="label-input" style="font-size:13px;"></select>
         </div>
-        <label class="toggle-row" style="margin-top:8px;"><input type="checkbox" id="reviewEachToggle" checked> Show each photo during the pause</label>
-        <div class="stepper">
-          <span class="lbl">Finished photo stays on screen</span>
-          <select class="mini-select" id="resultReviewSelect">
-            <option value="0" selected>Until the next tap</option>
-            <option value="10">10 s</option>
-            <option value="15">15 s</option>
-            <option value="20">20 s</option>
-            <option value="30">30 s</option>
-            <option value="45">45 s</option>
-            <option value="60">60 s</option>
-          </select>
+        <div class="sub-group">
+          <p class="sub-label">Photo border</p>
+          <div id="frameSwatchRow" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <button type="button" class="frame-swatch frame-auto active" data-color="auto" data-name="Auto" title="White or black, whichever stands out">Auto</button>
+            <button type="button" class="frame-swatch" data-color="#ffffff" data-name="White" title="White" style="background:#ffffff;"></button>
+            <button type="button" class="frame-swatch" data-color="#f3ead6" data-name="Cream" title="Cream" style="background:#f3ead6;"></button>
+            <button type="button" class="frame-swatch" data-color="#d9d9d9" data-name="Light grey" title="Light grey" style="background:#d9d9d9;"></button>
+            <button type="button" class="frame-swatch" data-color="#111111" data-name="Black" title="Black" style="background:#111111;"></button>
+            <button type="button" class="frame-swatch" data-color="#6b1a2b" data-name="Maroon" title="Maroon" style="background:#6b1a2b;"></button>
+            <span class="panel-hint" id="frameSwatchName" style="display:none;">Auto</span>
+          </div>
         </div>
-        <p class="panel-hint" style="margin-top:10px;">The ring around the number drains smoothly, so half seconds feel natural — the numbers still tick down whole seconds, then “Pose”. With a time set, the booth goes back to the start by itself so the next guests can go.</p>
-      </div>
-    </div>
+        <div class="sub-group">
+          <p class="sub-label">Your own photo</p>
+          <div class="bg-row">
+            <img class="bg-thumb" id="bgThumb" alt="Backdrop photo">
+            <label class="upload-btn" for="bgInput">Upload photo</label>
+            <input type="file" id="bgInput" accept="image/*">
+          </div>
+          <button class="remove-link" id="removeBgBtn">Remove photo</button>
+          <div id="bandPositionWrap" style="display:none; margin-top:10px;">
+            <p class="sub-label">Placement</p>
+            <select id="photoPlacementSelect" class="label-input" style="font-size:13px;">
+              <option value="band" selected>Beside the photos</option>
+              <option value="background">Full background</option>
+            </select>
+            <p class="panel-hint" id="bandPositionHint" style="margin-top:6px;"></p>
+            <p class="sub-label" style="margin-top:10px;">Crop</p>
+            <select id="cropFocusSelect" class="label-input" style="font-size:13px;"></select>
+          </div>
+        </div>
+      </details>
+      <div class="step-nav"><span></span><button type="button" class="action-btn primary next-btn" data-go="2">Next: Text →</button></div>
+    </section>
 
-    <div class="panel-section accordion" id="backdropSection">
-      <p class="panel-label accordion-toggle" data-target="backdropSection">3 · Backdrop <span class="chev">⌄</span></p>
-      <p class="sub-label">Preset</p>
-      <div class="preset-grid" id="presetGrid">
-        <button class="preset-btn" data-preset="none" title="No preset">
-          <span class="preset-swatch"></span>
-          <span>Plain</span>
-        </button>
-        <button class="preset-btn" data-preset="gold" title="Gold with glitter">
-          <span class="preset-swatch swatch-gold" id="swatchGold"></span>
-          <span>Gold Glitter</span>
-        </button>
-        <button class="preset-btn" data-preset="sky" title="Pastel blue with skies">
-          <span class="preset-swatch swatch-sky" id="swatchSky"></span>
-          <span>Pastel Sky</span>
-        </button>
-        <button class="preset-btn" data-preset="stars" title="Black with gold stars">
-          <span class="preset-swatch swatch-stars" id="swatchStars"></span>
-          <span>Black &amp; Gold</span>
-        </button>
-        <button class="preset-btn" data-preset="cream" title="Cream with aesthetic elements">
-          <span class="preset-swatch swatch-cream" id="swatchCream"></span>
-          <span>Cream</span>
-        </button>
-        <button class="preset-btn" data-preset="maroon" title="Maroon with gold glitter">
-          <span class="preset-swatch swatch-maroon" id="swatchMaroon"></span>
-          <span>Maroon &amp; Gold</span>
-        </button>
-        <button class="preset-btn" data-preset="custom" title="Your own photo" id="customPresetBtn">
-          <span class="preset-swatch" id="customSwatch" style="background:var(--panel-2); display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--ink-dim);">Upload</span>
-          <span>Custom</span>
-        </button>
-      </div>
-      <div class="sub-group" id="bdColorGroup" style="margin-top:14px;">
-        <p class="sub-label">Backdrop color</p>
-        <div class="bd-color-row" id="bdColorRow">
-          <button type="button" class="bd-swatch bd-auto active" data-color="" title="Use the style's own colors">Auto</button>
-          <button type="button" class="bd-swatch" data-color="#f8c8d4" title="Blush" style="background:#f8c8d4;"></button>
-          <button type="button" class="bd-swatch" data-color="#e58ba3" title="Rose" style="background:#e58ba3;"></button>
-          <button type="button" class="bd-swatch" data-color="#f9c9a8" title="Peach" style="background:#f9c9a8;"></button>
-          <button type="button" class="bd-swatch" data-color="#cdb8ee" title="Lavender" style="background:#cdb8ee;"></button>
-          <button type="button" class="bd-swatch" data-color="#a9d4f5" title="Sky blue" style="background:#a9d4f5;"></button>
-          <button type="button" class="bd-swatch" data-color="#2f8f8f" title="Teal" style="background:#2f8f8f;"></button>
-          <button type="button" class="bd-swatch" data-color="#bfe8d2" title="Mint" style="background:#bfe8d2;"></button>
-          <button type="button" class="bd-swatch" data-color="#9db89a" title="Sage" style="background:#9db89a;"></button>
-          <button type="button" class="bd-swatch" data-color="#1f3a68" title="Navy" style="background:#1f3a68;"></button>
-          <button type="button" class="bd-swatch" data-color="#7a1f3d" title="Burgundy" style="background:#7a1f3d;"></button>
-          <button type="button" class="bd-swatch" data-color="#161616" title="Black" style="background:#161616;"></button>
-          <button type="button" class="bd-swatch" data-color="#ffffff" title="White" style="background:#ffffff;"></button>
-          <label class="bd-swatch bd-custom" id="bdCustomSwatch" title="Pick any color"><input type="color" id="bdColorInput" value="#f4b6c2"></label>
-        </div>
-        <p class="panel-hint" style="margin-top:8px;" id="bdColorHint">Pick any color — the elements below are drawn on top of it. Choose Auto to go back to the style's own colors.</p>
-      </div>
-      <div class="sub-group" style="margin-top:14px;">
-        <p class="sub-label">Pattern color</p>
-        <div class="accent-row" id="accentChips">
-          <button type="button" class="accent-chip active" data-accent="gold"><i style="background:linear-gradient(135deg,#a8792a,#fff1c4,#a8792a)"></i>Gold</button>
-          <button type="button" class="accent-chip" data-accent="silver"><i style="background:linear-gradient(135deg,#7d8288,#f7f9fb,#7d8288)"></i>Silver</button>
-          <button type="button" class="accent-chip" data-accent="rosegold"><i style="background:linear-gradient(135deg,#a5645a,#fde3dc,#a5645a)"></i>Rose gold</button>
-          <button type="button" class="accent-chip" data-accent="champagne"><i style="background:linear-gradient(135deg,#9e8a6a,#fff7e6,#9e8a6a)"></i>Champagne</button>
-          <button type="button" class="accent-chip" data-accent="white"><i style="background:#fff"></i>White</button>
-          <button type="button" class="accent-chip" data-accent="black"><i style="background:#222"></i>Black</button>
-        </div>
-        <p class="panel-hint" style="margin-top:6px;">Recolors the theme artwork: chevrons, art deco lines, marble veins, confetti, caps, laurels and borders.</p>
-      </div>
-      <div class="sub-group" id="elementsGroup" style="margin-top:14px;">
-        <p class="sub-label">Elements</p>
-        <select id="elementsSelect" class="label-input" style="font-size:13px;"></select>
-        <p class="panel-hint" style="margin-top:8px;">Auto uses the preset's own decorations (or, with an uploaded photo, the sparkle texture matched to it). Pick any other set to draw it on top of the backdrop instead.</p>
-      </div>
-      <div class="sub-group" style="margin-top:14px;">
-        <p class="sub-label">Polaroid color</p>
-        <div id="frameSwatchRow" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-          <button type="button" class="frame-swatch frame-auto active" data-color="auto" data-name="Auto" title="Picks white or black to stand out">Auto</button>
-          <button type="button" class="frame-swatch" data-color="#ffffff" data-name="White" title="White" style="background:#ffffff;"></button>
-          <button type="button" class="frame-swatch" data-color="#f3ead6" data-name="Cream" title="Cream" style="background:#f3ead6;"></button>
-          <button type="button" class="frame-swatch" data-color="#d9d9d9" data-name="Light grey" title="Light grey" style="background:#d9d9d9;"></button>
-          <button type="button" class="frame-swatch" data-color="#111111" data-name="Black" title="Black" style="background:#111111;"></button>
-          <button type="button" class="frame-swatch" data-color="#6b1a2b" data-name="Maroon" title="Maroon" style="background:#6b1a2b;"></button>
-          <span class="panel-hint" id="frameSwatchName" style="margin:0;">Auto</span>
-        </div>
-        <p class="panel-hint" style="margin-top:8px;">The border around each shot. Auto picks white or black to stand out against the backdrop.</p>
-      </div>
-      <div class="sub-group" style="margin-top:14px;">
-        <p class="sub-label">Custom photo</p>
-        <div class="bg-row">
-          <img class="bg-thumb" id="bgThumb" alt="background preview">
-          <label class="upload-btn" for="bgInput">Choose photo</label>
-          <input type="file" id="bgInput" accept="image/*">
-        </div>
-        <button class="remove-link" id="removeBgBtn">Remove backdrop</button>
-        <div id="bandPositionWrap" style="display:none; margin-top:10px;">
-          <p class="panel-hint" style="margin-bottom:6px;">Photo placement</p>
-          <select id="photoPlacementSelect" class="label-input" style="font-size:13px;">
-            <option value="band" selected>On its own strip/side, next to the shots</option>
-            <option value="background">Full background, behind everything</option>
-          </select>
-          <p class="panel-hint" id="bandPositionHint" style="margin-top:6px;">Your photo sits above the shots.</p>
-          <p class="panel-hint" style="margin-top:8px;">On Auto, the background color is picked from your photo's main color, with a soft sparkle texture, and adjusts itself to contrast with the Polaroid color. Pick a Backdrop color or Elements above to change it.</p>
-          <p class="panel-hint" style="margin:10px 0 6px;">Photo crop focus</p>
-          <select id="cropFocusSelect" class="label-input" style="font-size:13px;"></select>
-        </div>
-      </div>
-      <p class="panel-hint">Pick a preset, or upload your own photo to use as the Custom backdrop. Plain is a flat background — white, or the Backdrop color you pick — with no elements unless you choose some.</p>
-    </div>
-
-    <div class="panel-section accordion" id="labelSection">
-      <p class="panel-label accordion-toggle" data-target="labelSection">4 · Event name <span class="chev">⌄</span></p>
-
-      <div class="sub-group">
-        <p class="sub-label">Event name &amp; date</p>
+    <!-- STEP 2 · TEXT -->
+    <section class="step" id="step2" data-step="2">
+      <div class="panel-section" id="labelSection">
+        <p class="panel-label">Make it yours</p>
+        <p class="sub-label">Name on the photo</p>
         <div class="name-row">
-          <input type="text" class="label-input" id="labelInput" placeholder="e.g. Baby Sofia's Dedication" maxlength="60" aria-label="Event name">
-          <button type="button" class="cal-btn" id="dateToggle" aria-pressed="false" aria-label="Add the date under the event name" title="Add the date">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
+          <input type="text" class="label-input" id="labelInput" placeholder="e.g. Sofia's 7th Birthday" maxlength="60" aria-label="Name on the photo">
+          <button type="button" class="cal-btn date-btn" id="dateToggle" aria-pressed="false" aria-label="Add the date" title="Add the date">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg><span class="date-btn-t">Date</span>
           </button>
         </div>
         <div class="date-chip-row" id="dateRow" style="display:none;">
@@ -1072,208 +1205,308 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <span style="font-weight:600; opacity:.75;">· change</span>
             <input type="date" id="dateInput" aria-label="Pick the date">
           </label>
-          <button type="button" class="date-x" id="dateRemove">✕ Remove date</button>
+          <button type="button" class="date-x" id="dateRemove">✕ Remove</button>
         </div>
-        <p class="panel-hint" id="dateHint" style="margin-top:8px;">Tap the calendar to add today’s date under the event name.</p>
-        <p class="panel-hint" style="margin:10px 0 6px;">Title style</p>
-        <select class="label-input" id="titleStyleSelect" style="font-family:'Manrope',sans-serif; font-size:13px;" aria-label="Title style"></select>
-        <div id="kickerRow" style="display:none; margin-top:8px;">
-          <input type="text" class="label-input" id="kickerInput" maxlength="40" style="font-family:'Manrope',sans-serif; font-size:13px;" aria-label="Small line">
-          <p class="panel-hint" style="margin-top:4px;">The small line that goes with the name.</p>
-        </div>
-        <p class="panel-hint" style="margin:10px 0 6px;">Font</p>
-        <div class="custom-dd" id="fontDropdown">
-          <button type="button" class="custom-dd-btn label-input" id="fontDropdownBtn"></button>
-          <div class="custom-dd-list" id="fontDropdownList"></div>
-        </div>
-      </div>
+        <p class="panel-hint" id="dateHint" hidden></p>
 
-      <div class="sub-group" id="dateFontGroup" style="display:none;">
-        <div id="dateFontWrap" style="display:none;">
-          <p class="panel-hint" style="margin-bottom:6px;">Date font</p>
-          <div class="custom-dd" id="dateFontDropdown">
-            <button type="button" class="custom-dd-btn label-input" id="dateFontDropdownBtn"></button>
-            <div class="custom-dd-list" id="dateFontDropdownList"></div>
+        <div id="kickerRow" style="display:none; margin-top:12px;">
+          <p class="sub-label">Small line</p>
+          <input type="text" class="label-input" id="kickerInput" maxlength="40" style="font-family:'Manrope',sans-serif; font-size:14px;" aria-label="Small line">
+        </div>
+
+        <p class="sub-label" style="margin-top:16px;">Title style</p>
+        <div class="style-tiles" id="titleStyleTiles"></div>
+        <select class="label-input" id="titleStyleSelect" aria-label="Title style" hidden></select>
+
+        <p class="sub-label" style="margin-top:16px;">Font</p>
+        <div class="font-pairs" id="fontPairs"></div>
+        <div class="font-mode" id="fontMode">
+          <button type="button" class="on" data-mode="name">Name font</button>
+          <button type="button" data-mode="date">Small line &amp; date font</button>
+        </div>
+        <div class="font-cats" id="fontCats"></div>
+        <div class="font-cards" id="fontCards"></div>
+        <div hidden>
+          <div class="custom-dd" id="fontDropdown">
+            <button type="button" class="custom-dd-btn label-input" id="fontDropdownBtn"></button>
+            <div class="custom-dd-list" id="fontDropdownList"></div>
+          </div>
+          <div class="sub-group" id="dateFontGroup">
+            <div id="dateFontWrap">
+              <div class="custom-dd" id="dateFontDropdown">
+                <button type="button" class="custom-dd-btn label-input" id="dateFontDropdownBtn"></button>
+                <div class="custom-dd-list" id="dateFontDropdownList"></div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="sub-group">
-        <p class="sub-label">Color</p>
+        <p class="sub-label" style="margin-top:16px;">Text colour</p>
         <div id="colorSwatchRow" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span class="theme-pal" id="themePalette"></span>
           <button type="button" class="color-swatch-btn active" data-color="#1f4166" style="background:#1f4166;"></button>
           <button type="button" class="color-swatch-btn" data-color="#2b2b2b" style="background:#2b2b2b;"></button>
-          <button type="button" class="color-swatch-btn" data-color="#4a4a4a" style="background:#4a4a4a;"></button>
           <button type="button" class="color-swatch-btn" data-color="#5c4a3a" style="background:#5c4a3a;"></button>
-          <button type="button" class="color-swatch-btn" data-color="#7a6a58" style="background:#7a6a58;"></button>
+          <button type="button" class="color-swatch-btn" data-color="#c93d27" style="background:#c93d27;"></button>
           <button type="button" class="color-swatch-btn" data-color="#f5f0e8" style="background:#f5f0e8; border:1.5px solid var(--line);"></button>
           <button type="button" class="color-swatch-btn" data-color="#ffffff" style="background:#ffffff; border:1.5px solid var(--line);"></button>
-          <input type="color" id="textColorInput" value="#1f4166" title="Custom color" style="width:30px; height:30px; border:1px solid var(--line); border-radius:8px; padding:0; cursor:pointer; margin-left:2px;">
+          <input type="color" id="textColorInput" value="#1f4166" title="Any colour" class="color-any">
         </div>
-      </div>
 
-      <div class="sub-group">
-        <p class="sub-label">Event name size</p>
-        <input type="range" id="titleSizeSlider" min="60" max="170" value="100" style="width:100%;">
+        <details class="more">
+          <summary>More options</summary>
+          <p class="sub-label">Text size</p>
+          <input type="range" id="titleSizeSlider" min="60" max="170" value="100" style="width:100%;">
+          <label class="toggle-row" style="margin-top:12px;">
+            <input type="checkbox" id="titleBgToggle" checked>
+            Text background
+          </label>
+          <div id="titleBgColorWrap" style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+            <span class="panel-hint" style="margin:0;">Colour</span>
+            <input type="color" id="titleBgColorInput" value="#ffffff" class="color-any">
+          </div>
+          <label class="toggle-row" style="margin-top:12px;">
+            <input type="checkbox" id="outlineToggle" checked> Outline
+          </label>
+          <select id="outlineColorSelect" class="label-input pillify" style="font-size:13px;">
+            <option value="#ffffff">White</option>
+            <option value="#000000">Black</option>
+          </select>
+          <label class="toggle-row" style="margin-top:12px;"><input type="checkbox" id="shadowToggle" checked> Soft shadow</label>
+        </details>
       </div>
+      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="1">← Back</button><button type="button" class="action-btn primary next-btn" data-go="3">Next: Layout →</button></div>
+    </section>
 
-      <div class="sub-group">
-        <p class="sub-label">Background panel</p>
-        <label class="toggle-row">
-          <input type="checkbox" id="titleBgToggle" checked>
-          Show a background panel behind the text
-        </label>
-        <div id="titleBgColorWrap" style="display:flex; align-items:center; gap:8px; margin-top:8px;">
-          <span class="panel-hint" style="margin:0;">Panel color</span>
-          <input type="color" id="titleBgColorInput" value="#ffffff" style="width:30px; height:30px; border:1px solid var(--line); border-radius:8px; padding:0; cursor:pointer;">
+    <!-- STEP 3 · LAYOUT & TIMER -->
+    <section class="step" id="step3" data-step="3">
+      <div class="panel-section" id="formatSection">
+        <p class="panel-label">Layout &amp; timer</p>
+        <div class="layout-grid lg-many" id="layoutGrid"></div>
+        <p class="panel-hint" id="layoutHint"></p>
+        <div class="sub-group" id="sheetPanel" style="display:none;">
+          <p class="sub-label">Sheet pattern</p>
+          <div class="pattern-row" id="sheetPatterns"></div>
+          <button type="button" class="action-btn" id="sheetAddFrame" style="margin-top:10px; width:auto; padding:9px 14px; font-size:13px;">+ Add a frame</button>
+          <p class="panel-hint" style="margin-top:6px;">Tap a frame in the preview to move, resize, swap, turn or copy it.</p>
         </div>
-      </div>
-
-      <div class="sub-group">
-        <p class="sub-label">Outline &amp; shadow</p>
-        <p class="panel-hint" style="margin:0 0 10px;">Applies to both the event name and the date below it.</p>
-        <label class="toggle-row" style="margin-bottom:8px;">
-          <input type="checkbox" id="outlineToggle" checked> Outline
-        </label>
-        <select id="outlineColorSelect" class="label-input" style="font-size:13px; padding:8px 10px; margin-bottom:12px;">
-          <option value="#ffffff">White outline</option>
-          <option value="#000000">Black outline</option>
-        </select>
-        <label class="toggle-row"><input type="checkbox" id="shadowToggle" checked> Soft drop shadow</label>
-      </div>
-
-      <p class="panel-hint">Space is always reserved at the bottom for the event name, even before you type one. Leave it blank to keep that space plain — and blank, the event name shows larger. The size slider is capped so text never overflows the frame.</p>
-    </div>
-
-
-    <div class="panel-section accordion" id="decorSection">
-      <p class="panel-label accordion-toggle" data-target="decorSection">5 · Frame, logo &amp; stickers <span class="chev">⌄</span></p>
-      <p class="sub-label">Frames</p>
-      <div class="bg-row">
-        <label class="upload-btn" for="overlayInput">Upload frame(s)</label>
-        <input type="file" id="overlayInput" accept="image/png,image/webp,image/jpeg,image/*" multiple>
-      </div>
-      <div class="frame-list" id="frameList"></div>
-      <p class="panel-hint" style="margin-top:6px;">Make it in Canva and leave the photo spots <b>white or see-through</b>. The booth finds the boxes, puts the photos inside them in order (1, 2, 3…) and keeps your design on top. Upload two or more to combine them on one 4R print (<b>Layout → My frames sheet</b>).</p>
-      <p class="panel-hint" id="overlaySizeHint" style="margin-top:4px;"></p>
-      <div id="overlayOnTopBox" class="sub-group" style="margin-top:10px;">
-        <div class="bg-row">
-          <img class="bg-thumb" id="overlayThumb" alt="overlay preview" style="display:none;">
-          <select class="mini-select" id="overlayFit" style="display:none;"><option value="stretch">Fill the photo</option><option value="contain">Keep its shape</option></select>
+        <div class="sub-group">
+          <label class="toggle-row"><input type="checkbox" id="guestPickToggle"> Guests choose the layout</label>
+          <div class="guest-layouts" id="guestLayouts" style="display:none;"></div>
+          <p class="panel-hint" id="guestPickHint" style="margin-top:6px; display:none;">Tick the ones guests can pick.</p>
         </div>
-        <button class="remove-link" id="overlayRemove">Remove overlay</button>
-        <p class="panel-hint" id="overlayOnTopNote" style="margin-top:4px; display:none;">This image has no photo boxes, so it’s drawn on top of the whole layout as an overlay.</p>
-      </div>
 
-      <div class="sub-group" style="margin-top:14px;">
-        <p class="sub-label">Logo or monogram</p>
-        <div class="bg-row">
-          <img class="bg-thumb" id="logoThumb" alt="logo preview" style="display:none;">
-          <label class="upload-btn" for="logoInput">Upload logo</label>
-          <input type="file" id="logoInput" accept="image/*">
+        <p class="sub-label" style="margin-top:16px;">Countdown</p>
+        <div class="chip-row" id="timerChips">
+          <button type="button" class="chip" data-sec="3">3s</button>
+          <button type="button" class="chip active" data-sec="5">5s</button>
+          <button type="button" class="chip" data-sec="7">7s</button>
+          <button type="button" class="chip" data-sec="10">10s</button>
         </div>
-        <button class="remove-link" id="logoRemove">Remove logo</button>
-        <div id="logoControls" style="display:none; margin-top:10px;">
-          <div class="stepper" style="margin-top:0;">
-            <span class="lbl">Position</span>
-            <select class="mini-select" id="logoPos">
-              <option value="tl">Top left</option><option value="tc">Top center</option><option value="tr">Top right</option>
-              <option value="bl">Bottom left</option><option value="bc">Bottom center</option><option value="br">Bottom right</option>
+        <details class="more">
+          <summary>More timer options</summary>
+          <div class="stepper">
+            <span class="lbl">Fine-tune</span>
+            <span class="ctl">
+              <button type="button" class="step-btn" id="timerMinus" aria-label="Half a second less">−</button>
+              <span class="step-val" id="timerVal">5 s</span>
+              <button type="button" class="step-btn" id="timerPlus" aria-label="Half a second more">+</button>
+            </span>
+          </div>
+          <div class="opt-row">
+            <span class="lbl">Extra time before photo 1</span>
+            <select class="mini-select pillify" id="firstExtraSelect">
+              <option value="0" selected>None</option>
+              <option value="2">+2s</option>
+              <option value="3">+3s</option>
+              <option value="5">+5s</option>
             </select>
           </div>
-          <div class="stepper"><span class="lbl">Size</span><input type="range" id="logoSize" min="8" max="45" value="20" style="flex:1; max-width:220px;"></div>
+          <div class="opt-row">
+            <span class="lbl">Pause between photos</span>
+            <select class="mini-select pillify" id="betweenSelect">
+              <option value="0.5">½s</option>
+              <option value="1">1s</option>
+              <option value="1.5" selected>1½s</option>
+              <option value="2">2s</option>
+              <option value="3">3s</option>
+            </select>
+          </div>
+          <label class="toggle-row" style="margin-top:10px;"><input type="checkbox" id="reviewEachToggle" checked> Show each photo in the pause</label>
+          <div class="opt-row">
+            <span class="lbl">Finished photo stays</span>
+            <select class="mini-select pillify" id="resultReviewSelect">
+              <option value="0" selected>Until tap</option>
+              <option value="10">10s</option>
+              <option value="15">15s</option>
+              <option value="20">20s</option>
+              <option value="30">30s</option>
+              <option value="45">45s</option>
+              <option value="60">60s</option>
+            </select>
+          </div>
+        </details>
+      </div>
+      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="2">← Back</button><button type="button" class="action-btn primary next-btn" data-go="4">Next: Extras →</button></div>
+    </section>
+
+    <!-- STEP 4 · EXTRAS -->
+    <section class="step" id="step4" data-step="4">
+      <div class="panel-section" id="decorSection">
+        <p class="panel-label">Extras</p>
+        <p class="panel-hint step-lead">All optional.</p>
+        <div class="seg-tabs" id="extrasTabs" role="tablist">
+          <button type="button" class="on" data-pane="frame">Frame</button>
+          <button type="button" data-pane="logo">Logo</button>
+          <button type="button" data-pane="stickers">Stickers</button>
+          <button type="button" data-pane="filter">Filter</button>
+        </div>
+
+        <div class="pane on" data-pane="frame">
+          <div class="bg-row">
+            <label class="upload-btn" for="overlayInput">Upload frame(s)</label>
+            <input type="file" id="overlayInput" accept="image/png,image/webp,image/jpeg,image/*" multiple>
+          </div>
+          <div class="frame-list" id="frameList"></div>
+          <p class="panel-hint" style="margin-top:8px;">Made in Canva? Leave the photo spots <b>white or see-through</b>. Photos go inside them. Two or more frames share one 4R print.</p>
+          <p class="panel-hint" id="overlaySizeHint"></p>
+          <div id="overlayOnTopBox" class="sub-group">
+            <div class="bg-row">
+              <img class="bg-thumb" id="overlayThumb" alt="Overlay" style="display:none;">
+              <select class="mini-select" id="overlayFit" style="display:none;"><option value="stretch">Stretch</option><option value="contain">Keep shape</option></select>
+            </div>
+            <button class="remove-link" id="overlayRemove">Remove overlay</button>
+            <p class="panel-hint" id="overlayOnTopNote" style="margin-top:4px; display:none;">No photo spots found, so it sits on top as an overlay.</p>
+          </div>
+        </div>
+
+        <div class="pane" data-pane="logo">
+          <div class="bg-row">
+            <img class="bg-thumb" id="logoThumb" alt="Logo" style="display:none;">
+            <label class="upload-btn" for="logoInput">Upload logo</label>
+            <input type="file" id="logoInput" accept="image/*">
+          </div>
+          <button class="remove-link" id="logoRemove">Remove logo</button>
+          <div id="logoControls" style="display:none; margin-top:10px;">
+            <div class="opt-row">
+              <span class="lbl">Position</span>
+              <select class="mini-select" id="logoPos">
+                <option value="tl">Top left</option><option value="tc">Top center</option><option value="tr">Top right</option>
+                <option value="bl">Bottom left</option><option value="bc">Bottom center</option><option value="br">Bottom right</option>
+              </select>
+            </div>
+            <div class="stepper"><span class="lbl">Size</span><input type="range" id="logoSize" min="8" max="45" value="20" style="flex:1; max-width:220px;"></div>
+          </div>
+        </div>
+
+        <div class="pane" data-pane="stickers">
+          <div class="prop-tray" id="propTray"></div>
+          <button type="button" class="link-btn" id="propMore" style="margin-top:8px;">More stickers</button>
+          <div class="bg-row" style="margin-top:10px;">
+            <label class="upload-btn" for="propInput">+ Upload your own (PNG)</label>
+            <input type="file" id="propInput" accept="image/*" multiple>
+          </div>
+          <p class="panel-hint" style="margin-top:6px;">Tap to add, then drag it on the preview.</p>
+          <button class="remove-link" id="decorClear" style="display:inline;">Remove all stickers</button>
+        </div>
+
+        <div class="pane" data-pane="filter" id="effectsSection">
+          <div class="chip-row" id="filterChips">
+            <button type="button" class="chip active" data-filter="none">None</button>
+            <button type="button" class="chip" data-filter="bw">B&amp;W</button>
+            <button type="button" class="chip" data-filter="sepia">Sepia</button>
+            <button type="button" class="chip" data-filter="warm">Warm</button>
+            <button type="button" class="chip" data-filter="cool">Cool</button>
+          </div>
+          <label class="toggle-row" style="margin-top:12px;"><input type="checkbox" id="softSkinToggle"> Soft skin</label>
+          <!-- GIF is switched on/off per booking in Admin; the welcome screen is always on. -->
+          <div hidden>
+            <input type="checkbox" id="gifToggle">
+            <input type="checkbox" id="welcomeToggle" checked>
+            <input type="text" id="welcomeMsgInput">
+            <img id="welcomePreview" alt="">
+          </div>
         </div>
       </div>
+      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="3">← Back</button><button type="button" class="action-btn primary next-btn" data-go="5">Next: Share →</button></div>
+    </section>
 
-      <div class="sub-group" style="margin-top:14px;">
-        <p class="sub-label">Stickers &amp; your own props</p>
-        <div class="prop-tray" id="propTray"></div>
-        <div class="bg-row" style="margin-top:10px;">
-          <label class="upload-btn" for="propInput">+ Upload your own props (PNG)</label>
-          <input type="file" id="propInput" accept="image/*" multiple>
+    <!-- STEP 5 · SHARE & START -->
+    <section class="step" id="step5" data-step="5">
+      <div class="panel-section" id="driveSetupSection">
+        <p class="panel-label">Share &amp; start</p>
+        <p class="panel-hint step-lead" id="driveStatusText">Type a folder name to save the photos.</p>
+        <p class="panel-hint" id="driveFolderAutoNote" style="display:none; color:#1e8449; font-weight:700;"></p>
+        <input type="text" class="label-input" id="driveFolderKeyInput" placeholder="Folder name or Drive link" style="font-family:'Manrope',sans-serif; font-size:14px; margin:10px 0 0;">
+        <p class="panel-hint" id="driveFolderError" style="display:none; color:#c0392b; font-weight:700;"></p>
+        <p class="panel-hint" id="driveFolderStatus" style="display:none;"></p>
+        <div id="driveFolderQrPreview" style="display:none; margin-top:12px; text-align:center;">
+          <img id="driveFolderQrImg" class="qr-img" style="width:140px;height:140px;" alt="All photos QR code">
+          <p class="qr-caption" id="driveFolderQrCaption">All photos</p>
+          <div class="folder-links" id="driveFolderLinks">
+            <a id="driveFolderOpen" href="#" target="_blank" rel="noopener">Open gallery</a>
+            <button type="button" id="driveFolderCopy">Copy link</button>
+            <a id="driveFolderDrive" href="#" target="_blank" rel="noopener" style="display:none;">Drive folder</a>
+            <a id="driveFolderAll" href="/lifetime/" target="_blank" rel="noopener" style="display:none;">All my events ↗</a>
+          </div>
+          <p class="panel-hint" style="margin-top:8px;">Print or share this link ahead. Guests get their own QR after each session.</p>
         </div>
-        <p class="panel-hint" style="margin-top:6px;">Tap a sticker to add it, then <b>drag it on the preview</b> below. Tap one on the preview to resize, turn or remove it. Transparent PNGs look best for props.</p>
-        <button class="remove-link" id="decorClear" style="display:inline;">Remove all stickers</button>
+        <p class="panel-hint" id="driveFolderHelp"></p>
+        <div class="sub-group" id="printSummaryBox" style="display:none;">
+          <p class="sub-label">Printing</p>
+          <p class="panel-hint" id="printSummary" style="margin:0;"></p>
+        </div>
       </div>
-    </div>
-
-    <div class="panel-section accordion" id="effectsSection">
-      <p class="panel-label accordion-toggle" data-target="effectsSection">6 · Effects <span class="chev">⌄</span></p>
-      <p class="sub-label">Filter</p>
-      <div class="chip-row" id="filterChips">
-        <button type="button" class="chip active" data-filter="none">None</button>
-        <button type="button" class="chip" data-filter="bw">B&amp;W</button>
-        <button type="button" class="chip" data-filter="sepia">Sepia</button>
-        <button type="button" class="chip" data-filter="warm">Warm</button>
-        <button type="button" class="chip" data-filter="cool">Cool</button>
-      </div>
-      <label class="toggle-row" style="margin-top:10px;"><input type="checkbox" id="softSkinToggle"> Soft skin (a gentle, flattering glow)</label>
-      <p class="panel-hint" style="margin-top:6px;">Guests see the filter live, and it’s applied to the photos, prints and Drive copies.</p>
-
-      <!-- GIF is switched on/off per booking in Admin; the welcome screen is always on. -->
-      <div hidden>
-        <input type="checkbox" id="gifToggle">
-        <input type="checkbox" id="welcomeToggle" checked>
-        <input type="text" id="welcomeMsgInput">
-        <img id="welcomePreview" alt="">
-      </div>
-    </div>
+      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="4">← Back</button><button class="action-btn primary" id="goToSessionBtn">Start photo session →</button></div>
+    </section>
 
     <div class="panel-section" id="previewSection">
       <p class="panel-label">Preview <span class="preview-dock-close" id="previewDockClose" role="button" tabindex="0" aria-label="Close preview">✕</span></p>
       <div class="setup-preview-wrap">
-        <div class="setup-preview-frame">
+        <div class="setup-preview-frame" id="previewFrameBox">
           <canvas id="setupPreviewCanvas"></canvas>
         </div>
       </div>
       <div class="decor-sel" id="decorSelControls" style="display:none;">
-        <div class="stepper" style="margin-top:0;"><span class="lbl">Sticker size</span><input type="range" id="decorSize" min="4" max="90" value="20" style="flex:1; max-width:240px;"></div>
+        <div class="stepper" style="margin-top:0;"><span class="lbl">Size</span><input type="range" id="decorSize" min="4" max="90" value="20" style="flex:1; max-width:240px;"></div>
         <div class="stepper"><span class="lbl">Turn</span><input type="range" id="decorRot" min="-180" max="180" value="0" style="flex:1; max-width:240px;"></div>
-        <div class="decor-btns"><button type="button" class="action-btn" id="decorDup">Duplicate</button><button type="button" class="action-btn" id="decorFront">Bring to front</button><button type="button" class="action-btn" id="decorDel" style="color:#c0392b;">Remove</button></div>
+        <div class="decor-btns"><button type="button" class="action-btn" id="decorDup">Copy</button><button type="button" class="action-btn" id="decorFront">To front</button><button type="button" class="action-btn" id="decorDel" style="color:#c0392b;">Remove</button></div>
       </div>
       <div class="decor-sel" id="sheetSelControls" style="display:none;">
-        <div class="stepper" style="margin-top:0;"><span class="lbl">Frame size</span><input type="range" id="sheetItemSize" min="8" max="110" value="50" style="flex:1; max-width:240px;"></div>
-        <div class="decor-btns"><button type="button" class="action-btn" id="sheetItemSwap">Swap frame</button><button type="button" class="action-btn" id="sheetItemRotate">Turn 90°</button><button type="button" class="action-btn" id="sheetItemDup">Duplicate</button><button type="button" class="action-btn" id="sheetItemDel" style="color:#c0392b;">Remove</button></div>
+        <div class="stepper" style="margin-top:0;"><span class="lbl">Size</span><input type="range" id="sheetItemSize" min="8" max="110" value="50" style="flex:1; max-width:240px;"></div>
+        <div class="decor-btns"><button type="button" class="action-btn" id="sheetItemSwap">Swap frame</button><button type="button" class="action-btn" id="sheetItemRotate">Turn 90°</button><button type="button" class="action-btn" id="sheetItemDup">Copy</button><button type="button" class="action-btn" id="sheetItemDel" style="color:#c0392b;">Remove</button></div>
       </div>
       <div class="decor-sel" id="spotEditControls" style="display:none;">
-        <p class="panel-hint" style="margin:0 0 8px;">Drag a box to move it, or its corner square to resize. Numbers are the shot order.</p>
+        <p class="panel-hint" style="margin:0 0 8px;">Drag a box to move it. Drag its corner to resize. Numbers = photo order.</p>
         <div class="decor-btns"><button type="button" class="action-btn" id="spotAdd">+ Add spot</button><button type="button" class="action-btn" id="spotDel" style="color:#c0392b;">Remove spot</button><button type="button" class="action-btn" id="spotRedetect">Find again</button><button type="button" class="action-btn primary" id="spotDone">Done</button></div>
       </div>
       <div class="sample-row">
-        <button type="button" class="action-btn" id="sampleCamBtn">📷 Preview with my camera</button>
-        <button type="button" class="action-btn" id="sampleResetBtn" style="display:none;">Use the sample photo</button>
+        <button type="button" class="action-btn" id="sampleCamBtn">📷 Try with my camera</button>
+        <button type="button" class="action-btn" id="sampleResetBtn" style="display:none;">Use the sample</button>
       </div>
-      <p class="panel-hint" style="text-align:center;">Shows your layout, theme, filter, frame and stickers on a sample photo. Guests' real photos go in these spots.</p>
     </div>
 
-    <div class="panel-section accordion" id="driveSetupSection">
-      <p class="panel-label accordion-toggle" data-target="driveSetupSection">7 · Google Drive <span class="chev">⌄</span></p>
-      <p class="panel-hint" id="driveStatusText">Type this booking's folder name or link below — it's required before you can start the photo session.</p>
-      <p class="panel-hint" id="driveFolderAutoNote" style="display:none; color:#1e8449; font-weight:600;"></p>
-      <input type="text" class="label-input" id="driveFolderKeyInput" placeholder="This booking's folder: paste a link, or type a new folder name" style="font-family:'Manrope',sans-serif; font-size:13px; margin:10px 0 0;">
-      <p class="panel-hint" id="driveFolderError" style="display:none; color:#c0392b; font-weight:600;"></p>
-      <p class="panel-hint" id="driveFolderStatus" style="display:none;"></p>
-      <div id="driveFolderQrPreview" style="display:none; margin-top:10px; text-align:center;">
-        <img id="driveFolderQrImg" class="qr-img" style="width:120px;height:120px;" alt="Folder QR preview">
-        <p class="qr-caption" id="driveFolderQrCaption">Scan to open the folder</p>
-        <div class="folder-links" id="driveFolderLinks">
-          <a id="driveFolderOpen" href="#" target="_blank" rel="noopener">Open folder</a>
-          <button type="button" id="driveFolderCopy">Copy link</button>
-          <a id="driveFolderDrive" href="#" target="_blank" rel="noopener" style="display:none;">Drive folder</a>
-          <a id="driveFolderAll" href="/lifetime/" target="_blank" rel="noopener" style="display:none;">All my events ↗</a>
-        </div>
-      </div>
-      <p class="panel-hint" id="driveFolderHelp">A folder name or link is required — type one above and its QR code will appear here right away, then keep showing after every photo session.</p>
-      <p class="panel-hint" style="margin-top:12px;">Every finished session is saved to this device's Downloads folder as well as Google Drive. Your browser may ask once to allow multiple downloads — choose Allow so each session can save automatically.</p>
-    </div>
-
-    <div class="setup-next-wrap">
-      <button class="action-btn primary" id="goToSessionBtn" style="width:auto; padding:12px 26px;">Continue to Photo Session →</button>
+    <div class="setup-next-wrap" hidden>
       <p class="setup-save-note" id="setupSaveNote" aria-live="polite"></p>
-      <button type="button" class="remove-link" id="resetSetupBtn" style="display:inline; margin-top:6px;">Reset setup</button>
     </div>
-    <button type="button" class="preview-fab" id="previewFab" aria-controls="previewSection">👁 Preview</button>
+    <button type="button" class="preview-fab" id="previewFab" aria-controls="previewSection" style="display:none;">Preview</button>
 
+  </div>
+
+  <div class="start-bar" id="startBar">
+    <div class="start-bar-in">
+      <canvas class="start-thumb" id="startThumb" width="40" height="60" role="button" tabindex="0" title="Show the preview" aria-label="Show the preview"></canvas>
+      <div class="start-info"><span class="start-status" id="startStatus"></span><span class="start-save" id="startSave"></span></div>
+      <div class="start-actions">
+        <div class="menu-wrap">
+          <button type="button" class="menu-btn" id="setupMenuBtn" aria-label="More" aria-haspopup="true">⋯</button>
+          <div class="menu" id="setupMenu" hidden>
+            <button type="button" id="resetSetupBtn" class="danger">Reset setup</button>
+          </div>
+        </div>
+        <button type="button" class="action-btn primary" id="startBarBtn"><span>Start <span class="hide-sm">photo </span>session →</span></button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1312,7 +1545,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <div class="ready-overlay" id="readyOverlay">
           <p class="ready-title">Get ready!</p>
           <p class="ready-sub" id="readySub">4 shots · 5,4,3,2,1,Pose</p>
-          <button class="shutter-btn" id="readyStartBtn"><span class="ring"></span>Start Session</button>
+          <button class="shutter-btn" id="readyStartBtn"><span class="ring"></span>Start</button>
         </div>
         <div class="flash-overlay" id="flashOverlay"></div>
 
@@ -1330,26 +1563,20 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       </div>
 
       <div class="start-btn-wrap">
-        <button class="shutter-btn" id="startBtn"><span class="ring"></span>Start Session</button>
+        <button class="shutter-btn" id="startBtn"><span class="ring"></span>Start</button>
       </div>
     </div>
 
     <!-- PANEL -->
     <div class="panel">
 
-      <div class="panel-section" id="cameraSection">
-        <p class="panel-label">Camera</p>
-        <select class="cam-select" id="cameraSelect">
-          <option value="">Loading cameras…</option>
-        </select>
-        <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
+      <div class="panel-section hidden" id="qrSection">
+        <p class="panel-label">Get your photos</p>
+        <div class="qr-results" id="qrResults"></div>
+        <p class="panel-hint" id="qrHint">Scan with your phone camera.</p>
+        <div class="actions" id="shareSlot" style="margin-top:10px;"></div>
       </div>
 
-      <div class="panel-section" id="actionsSection">
-        <div class="actions">
-          <button class="action-btn hidden" id="shareBtn">↗ Share</button>
-        </div>
-      </div>
 
       <div class="panel-section hidden" id="guestSection">
         <p class="panel-label">Guest screen</p>
@@ -1376,15 +1603,21 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <p class="panel-hint hidden" id="autoPrintHint">Turns on after your first print: every session after that prints by itself on the same paper. With Chrome started with <b>--kiosk-printing</b> it prints with no dialog at all.</p>
       </div>
 
-    </div>
-
-    <!-- QR PANEL (beside camera/result, visible without scrolling) -->
-    <div class="panel qr-panel hidden" id="qrSection">
-      <div class="panel-section">
-        <p class="panel-label">Scan &amp; Download</p>
-        <div class="qr-results" id="qrResults"></div>
-        <p class="panel-hint" id="qrHint">Your chosen layout uploads automatically as soon as the last shot is taken, named so sessions sort in order (e.g. 1_strip, 2_strip). The booking folder set up in the Setup tab gets one QR code that takes guests straight to that shared folder — the same code all event long.</p>
+      <div class="panel-section" id="actionsSection">
+        <div class="actions">
+          <button class="action-btn hidden" id="shareBtn">↗ Share</button>
+        </div>
       </div>
+
+      <div class="panel-section" id="cameraSection">
+        <p class="panel-label">Camera</p>
+        <select class="cam-select" id="cameraSelect">
+          <option value="">Loading cameras…</option>
+        </select>
+        <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
+      </div>
+
+
     </div>
 
   </div>
@@ -1471,6 +1704,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     tabBtnSession.classList.toggle('active', toSession);
     tabSetup.classList.toggle('hidden', toSession);
     tabSession.classList.toggle('hidden', !toSession);
+    document.body.classList.toggle('in-session', toSession);   // smaller header: the camera gets the room
+    window.scrollTo(0, 0);
   }
   tabBtnSetup.addEventListener('click', () => switchTab('setup'));
   tabBtnSession.addEventListener('click', () => switchTab('session'));
@@ -1488,7 +1723,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   goToSessionBtn.addEventListener('click', () => {
     if(!rawFolderKey()){
-      showDriveFolderError('Please type a folder name (or paste a folder link) for Google Drive before continuing.');
+      if(typeof goStep === 'function') goStep(5);
+      showDriveFolderError('Type a folder name first.');
       driveFolderKeyInput.focus();
       return;
     }
@@ -1758,12 +1994,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const hintEl = document.getElementById('bandPositionHint');
     if(hintEl){
       if(!layoutDef().bandOk){
-        hintEl.textContent = 'With this layout your photo fills the whole background, behind the shots.';
+        hintEl.textContent = 'With this layout, your photo fills the background.';
       } else if(photoPlacement === 'background'){
-        hintEl.textContent = 'Your photo fills the whole background, edge to edge, behind the shots.';
+        hintEl.textContent = 'Your photo fills the background.';
       } else {
         hintEl.textContent = currentLayout === 'grid'
-          ? 'Your photo sits on the left, full height. On the right: 1 shot up top, 3 shots in a row below, with the event name and date underneath — never under the photo.'
+          ? 'Your photo on the left, the shots and name on the right.'
           : 'Your photo sits above the shots.';
       }
     }
@@ -1956,23 +2192,23 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // its own band/side next to the shots (otherwise a custom photo is used as
   // the full background).
   const LAYOUT_DEFS = {
-    strip:   { name: 'Classic strip', shots: 3, kind: 'strip', bandOk: true,  hint: 'Tall photo-booth strip of 3 shots. On 4R paper it prints two strips side by side, to cut down the middle.' },
-    strip4:  { name: 'Strip 4',       shots: 4, kind: 'strip', bandOk: true,  hint: 'Tall strip of 4 shots. On 4R paper it prints two strips side by side, to cut down the middle.' },
-    grid:    { name: 'Polaroid 4',    shots: 4, kind: 'polaroid', bandOk: true, hint: '2x2 polaroids — every shot shown in full, nothing cropped, with your backdrop showing through.' },
-    grid4:   { name: 'Grid 4',        shots: 4, kind: 'sheet', hint: 'Four even shots on one 4R sheet.' },
-    hero:    { name: 'Hero 1+3',      shots: 4, kind: 'sheet', hint: 'One big shot on top, three small ones underneath.' },
-    solo:    { name: 'Solo',          shots: 1, kind: 'sheet', hint: 'One big shot filling the sheet.' },
-    duo:     { name: 'Duo',           shots: 2, kind: 'sheet', hint: 'Two shots stacked.' },
-    trio:    { name: 'Trio',          shots: 3, kind: 'sheet', hint: 'Three wide shots stacked.' },
-    feature: { name: 'Feature 1+2',   shots: 3, kind: 'sheet', hint: 'One wide shot on top, two side by side underneath.' },
-    film6:   { name: 'Film 6',        shots: 6, kind: 'sheet', hint: 'Six shots in a 2x3 contact-sheet grid.' },
-    land3:   { name: 'Landscape 3',   shots: 3, kind: 'landscape', hint: 'Landscape 4R: the event name in its own panel, with three shots.' },
-    land4:   { name: 'Landscape 4',   shots: 4, kind: 'landscape', hint: 'Landscape 4R: a big shot and the event name on top, three shots underneath.' },
+    strip:   { name: 'Classic strip', shots: 3, kind: 'strip', bandOk: true,  hint: '3 shots in a tall strip. Prints 2 strips on 4R, cut down the middle.' },
+    strip4:  { name: 'Strip 4',       shots: 4, kind: 'strip', bandOk: true,  hint: '4 shots in a tall strip. Prints 2 strips on 4R, cut down the middle.' },
+    grid:    { name: 'Polaroid 4',    shots: 4, kind: 'polaroid', bandOk: true, hint: '4 polaroids. Every shot in full, nothing cropped.' },
+    grid4:   { name: 'Grid 4',        shots: 4, kind: 'sheet', hint: '4 even shots on one 4R sheet.' },
+    hero:    { name: 'Hero 1+3',      shots: 4, kind: 'sheet', hint: '1 big shot on top, 3 small below.' },
+    solo:    { name: 'Solo',          shots: 1, kind: 'sheet', hint: '1 big shot.' },
+    duo:     { name: 'Duo',           shots: 2, kind: 'sheet', hint: '2 shots, stacked.' },
+    trio:    { name: 'Trio',          shots: 3, kind: 'sheet', hint: '3 wide shots, stacked.' },
+    feature: { name: 'Feature 1+2',   shots: 3, kind: 'sheet', hint: '1 wide shot on top, 2 below.' },
+    film6:   { name: 'Film 6',        shots: 6, kind: 'sheet', hint: '6 shots in a 2×3 grid.' },
+    land3:   { name: 'Landscape 3',   shots: 3, kind: 'landscape', hint: 'Landscape 4R: the name in its own panel, 3 shots.' },
+    land4:   { name: 'Landscape 4',   shots: 4, kind: 'landscape', hint: 'Landscape 4R: 1 big shot and the name on top, 3 below.' },
     // Your own uploaded frames (see "Frames with photo spots" below). Shown once a frame is uploaded.
     myframe:    { name: 'My frame', kind: 'frame', get shots(){ var f = typeof activeFrame === 'function' ? activeFrame() : null; return f ? Math.max(1, f.spots.length) : 1; },
-                  hint: 'Your own frame: the photos go into its white or see-through boxes, and the frame stays on top.' },
+                  hint: 'Your frame. Photos fill its white or see-through spots.' },
     framesheet: { name: 'My frames sheet', kind: 'frame', get shots(){ return typeof sheetShots === 'function' ? sheetShots() : 1; },
-                  hint: 'Several of your frames on one 4R print. Each frame fills its boxes with shots 1, 2, 3… Pick a pattern below, then drag the frames in the preview.' }
+                  hint: 'Several of your frames on one 4R print. Pick a pattern, then drag frames in the preview.' }
   };
   const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'trio', 'feature', 'film6', 'land3', 'land4'];
   // The built-in layouts, plus your frames once at least one is uploaded.
@@ -3114,10 +3350,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     document.getElementById('driveFolderOpen').textContent = gallery ? 'Open gallery' : 'Open folder';
     var dl = document.getElementById('driveFolderDrive');
     if(dl){ dl.href = folderUrl; dl.style.display = gallery ? '' : 'none'; }
-    document.getElementById('driveFolderQrCaption').textContent = gallery ? 'Scan to open the photo gallery' : 'Scan to open the folder';
+    document.getElementById('driveFolderQrCaption').textContent = 'All photos';
     document.getElementById('driveFolderAll').style.display = (window.__PB && window.__PB.type === 'rental') ? '' : 'none';
     driveFolderStatus.style.display = 'block';
-    driveFolderStatus.textContent = '✓ Folder ready' + (name ? (': ' + name) : '') + ' — every photo uploads to Google Drive automatically, and this same QR keeps showing after each session so guests can scan it to see all of tonight\u2019s photos.';
+    driveFolderStatus.textContent = '✓ Folder ready' + (name ? (': ' + name) : '') + '. Every photo saves here.';
+    if(typeof refreshSetupNav === 'function') refreshSetupNav();
     driveFolderQrImg.src = qrImageUrl(url);
     driveFolderQrPreview.style.display = 'block';
   }
@@ -3140,7 +3377,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       return;
     }
     driveFolderStatus.style.display = 'block';
-    driveFolderStatus.textContent = 'Setting up this folder\u2026';
+    driveFolderStatus.textContent = 'Setting up the folder\u2026';
     driveFolderQrPreview.style.display = 'none';
     try{
       const ticket = await getUploadTicket();
@@ -3155,9 +3392,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       registerEvent(data.folderUrl, false);
       syncSessionNumberFromServer(data.nextSessionNumber);
       showDriveFolderPreview(data.folderUrl, data.folderName);
-      if(shotCanvases.every(Boolean)) renderFolderQR(data.folderUrl);
     }catch(err){
-      driveFolderStatus.textContent = "Couldn't set up that folder — check the name/link and your connection, then try again.";
+      driveFolderStatus.textContent = "Couldn't set up the folder. Check the name and your internet, then try again.";
       driveFolderQrPreview.style.display = 'none';
     }
   }
@@ -3194,60 +3430,73 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const drive = await uploadToDrive(blob, filename);
       if(drive.folderUrl) rememberFolderUrl(drive.folderUrl);
       registerEvent(drive.folderUrl || getCachedFolderUrl(), true);
-      return { label: label + ' (Google Drive)', url: drive.downloadUrl };
+      return { label: label + ' (Google Drive)', url: drive.downloadUrl, fileId: drive.fileId };
     } else {
       const url = await uploadToLitterbox(blob, filename, '1h');
       return { label: label, url: url };
     }
   }
 
-  let qrGeneration = 0;
 
+  // ---- The guest's own QR codes, shown after each session ----
+  // "Your photo" (and "Your GIF" when GIFs are on) open that one file in the
+  // online gallery, ready to download. The all-photos QR stays in Setup.
+  function fileShareUrl(fileId, gif){
+    const folderUrl = getCachedFolderUrl();
+    const g = folderUrl && usesGallery(folderUrl) ? galleryUrlFor(folderUrl) : null;
+    if(g) return g + '#' + (gif ? 'gif-' : '') + fileId;
+    return 'https://drive.google.com/file/d/' + encodeURIComponent(fileId) + '/view';
+  }
+  function qrSlot(kind, label, waitText){
+    const wrap = document.createElement('div');
+    wrap.className = 'qr-result'; wrap.dataset.kind = kind;
+    const box = document.createElement('div'); box.className = 'qr-box';
+    const w = document.createElement('span'); w.className = 'qr-wait'; w.textContent = waitText;
+    box.appendChild(w);
+    const cap = document.createElement('p'); cap.className = 'qr-caption'; cap.textContent = label;
+    wrap.append(box, cap);
+    qrResults.appendChild(wrap);
+    return wrap;
+  }
+  function fillQrSlot(kind, url){
+    const wrap = qrResults.querySelector('.qr-result[data-kind="' + kind + '"]'); if(!wrap) return;
+    const box = wrap.querySelector('.qr-box'); box.innerHTML = '';
+    const img = document.createElement('img'); img.className = 'qr-img'; img.src = qrImageUrl(url); img.alt = wrap.querySelector('.qr-caption').textContent + ' QR code';
+    box.appendChild(img);
+    let link = wrap.querySelector('.qr-link');
+    if(!link){ link = document.createElement('a'); link.className = 'qr-link'; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Open'; wrap.appendChild(link); }
+    link.href = url;
+    guestRender();
+  }
+  function failQrSlot(kind, text){
+    const wrap = qrResults.querySelector('.qr-result[data-kind="' + kind + '"]'); if(!wrap) return;
+    const w = wrap.querySelector('.qr-wait'); if(w) w.textContent = text;
+    guestRender();
+  }
+
+  let qrGeneration = 0;
   async function showQRForCurrentPhoto(){
     if(!shotCanvases.every(Boolean)) return;
     const myGeneration = ++qrGeneration;
-
-    // If we already know this booking's folder link, show its QR right away —
-    // guests don't need to wait on the upload to scan it, and it's the same
-    // code every session so there's nothing new to generate.
-    const cachedFolderUrl = driveReady() ? getCachedFolderUrl() : null;
-    if(cachedFolderUrl){
-      renderFolderQR(cachedFolderUrl);
-    } else {
-      qrResults.innerHTML = '<p class="panel-hint" id="qrLoading">Preparing QR code\u2026</p>';
-    }
-
-    // Only the format chosen in Setup is rendered and uploaded — the Drive
-    // folder ends up containing just that one layout's files.
-    let result = null;
-    let lastError = null;
-    try {
-      result = await uploadLayoutForQR(currentLayout);
-    } catch(err){
-      lastError = err;
-      console.error('Photo upload failed:', err);
-    }
-
-    if(myGeneration !== qrGeneration) return;
-
+    qrResults.innerHTML = '';
+    lastRenderedFolderUrl = null;
+    qrSlot('photo', 'Your photo', 'Saving your photo…');
+    if(gifOn && driveReady()) qrSlot('gif', 'Your GIF', 'Making your GIF…');
+    guestRender();
+    let result = null, lastError = null;
+    try { result = await uploadLayoutForQR(currentLayout); }
+    catch(err){ lastError = err; console.error('Photo upload failed:', err); }
+    if(myGeneration !== qrGeneration) return null;
     if(!result){
-      if(!getCachedFolderUrl()) qrResults.innerHTML = '';
+      failQrSlot('photo', 'Couldn’t save. Check the internet.');
+      failQrSlot('gif', 'Not saved');
       const detail = lastError && lastError.message ? (': ' + lastError.message) : '';
-      showToast('Couldn\'t upload the photo' + detail, 5000);
-      return;
+      showToast('Photo not saved' + detail, 5000);
+      return null;
     }
-
-    if(driveReady()){
-      const folderUrl = getCachedFolderUrl();
-      if(folderUrl){
-        renderFolderQR(folderUrl);
-      } else {
-        qrResults.innerHTML = '<p class="panel-hint">Saved to Google Drive, but no shareable folder link was returned — add folderUrl to your Apps Script response to enable the folder QR.</p>';
-      }
-      showToast('Saved to Google Drive!');
-    } else {
-      renderSingleFileQR(result.url, result.label);
-    }
+    fillQrSlot('photo', result.fileId ? fileShareUrl(result.fileId, false) : result.url);
+    showToast('Photo saved');
+    return myGeneration;
   }
 
   function saveToDevice(){
@@ -3261,7 +3510,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function showMultipleDownloadsHint(){
     const storageKey = 'photoBoothMultipleDownloadsHintShown';
     if(localStorage.getItem(storageKey)) return;
-    showToast('Your browser may ask to allow multiple downloads. Choose Allow so every finished session saves automatically.', 6500);
+    showToast('If the browser asks about multiple downloads, choose Allow.', 6500);
     localStorage.setItem(storageKey, '1');
   }
 
@@ -3354,6 +3603,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   retryCameraBtn.addEventListener('click', () => initCamera(cameraSelect.value || null));
 
   const actionsSection = document.getElementById('actionsSection');
+  // Share lives with the QR codes; its old card stays hidden.
+  document.getElementById('shareSlot').appendChild(document.getElementById('shareBtn'));
+  actionsSection.style.display = 'none';
   const appShell = document.querySelector('.app-shell');
 
   function updateUI(){
@@ -3371,7 +3623,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     startBtn.textContent = '';
     const ring = document.createElement('span'); ring.className = 'ring';
     startBtn.appendChild(ring);
-    startBtn.appendChild(document.createTextNode(state === 'result' ? ' New Session' : ' Start Session'));
+    startBtn.appendChild(document.createTextNode(state === 'result' ? ' Next guest' : ' Start'));
     startBtn.disabled = isCapturing;
     refreshPrintUI();
 
@@ -3531,9 +3783,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(index < shotCanvases.length - 1 && betweenSec > 0){
       if(reviewEach) showShotReview(index);
       popNum('', true);
-      guestCall('tick', '', true, 1, 'Next: shot ' + (index + 2) + ' of ' + shotsNeeded());
+      countdownOverlay.classList.add('pausing');        // no countdown circle between shots
+      cdShot.textContent = 'Next: photo ' + (index + 2) + ' of ' + shotsNeeded();
+      guestCall('tick', '', true, 1, 'Next: photo ' + (index + 2) + ' of ' + shotsNeeded());
       cdBar.style.strokeDashoffset = '0';
       await wait(betweenSec * 1000);
+      countdownOverlay.classList.remove('pausing');
       hideShotReview();
     }
   }
@@ -3581,7 +3836,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     renderComposite();
     updateUI();
     const gifShots = shotCanvases.slice(), gifSession = sessionNumber;
-    showQRForCurrentPhoto().then(() => uploadSessionGif(gifShots, gifSession)).catch(() => {});
+    showQRForCurrentPhoto().then((gen) => { if(gen) return uploadSessionGif(gifShots, gifSession, gen); }).catch(() => {});
     scheduleResultReset();
     showMultipleDownloadsHint();
     saveToDevice();
@@ -3769,11 +4024,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   driveFolderKeyInput.addEventListener('input', () => {
     if(rawFolderKey()) clearDriveFolderError();
     lastRenderedFolderUrl = null;
-    if(shotCanvases.every(Boolean)){
-      const cached = driveReady() ? getCachedFolderUrl() : null;
-      if(cached) renderFolderQR(cached);
-      else qrResults.innerHTML = '';
-    }
     clearTimeout(resolveTimer);
     resolveTimer = setTimeout(resolveDriveFolder, 700);
   });
@@ -3857,16 +4107,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       layoutGrid.appendChild(b);
     });
     layoutHint.textContent = layoutDef().hint;
+    if(typeof ltCache !== 'undefined' && ltCache){ applyCachedLayoutThumbs(); markLayoutThumbsDirty(); }
   }
   layoutGrid.addEventListener('click', (e) => {
     const btn = e.target.closest('.layout-btn');
     if(!btn) return;
     // Your own frames: nothing to show until one is uploaded, so open the upload.
     if(layoutDef(btn.dataset.layout).kind === 'frame' && !(typeof myFrames !== 'undefined' && myFrames && myFrames.length)){
-      document.querySelectorAll('.panel-section.accordion.open').forEach(s => s.classList.remove('open'));
-      const sec = document.getElementById('decorSection'); sec.classList.add('open');
-      sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      showToast('Upload your frame first: leave the photo spots white or see-through. Pick several to put them on one 4R sheet.', 6000);
+      if(typeof goStep === 'function'){ goStep(4); setExtrasPane('frame'); }
+      showToast('Upload your frame first. Leave the photo spots white or see-through.', 6000);
       document.getElementById('overlayInput').click();
       return;
     }
@@ -4870,6 +5119,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var needsKick = titleStyle === 'wedding' || titleStyle === 'turns' || titleStyle === 'blocks' || titleStyle === 'bignum';
     document.getElementById('kickerRow').style.display = needsKick ? '' : 'none';
     kickerInput.placeholder = { wedding: 'e.g. THE WEDDING OF', turns: 'e.g. TURNS ONE', blocks: 'e.g. TURNS ONE', bignum: 'e.g. 18' }[titleStyle] || '';
+    markStyleTiles();
   }
   titleStyleSelect.addEventListener('change', function(){ titleStyle = titleStyleSelect.value; refreshTitleUI(); redrawAll(); });
   kickerInput.addEventListener('input', function(){ kickerText = kickerInput.value.slice(0, 40); redrawAll(); });
@@ -5018,6 +5268,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(typeof drawFrameOverlays === 'function') drawFrameOverlays();
     if(typeof drawDecorSelection === 'function') drawDecorSelection();
     if(typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
+    afterSetupPreview();
   }
 
 
@@ -5038,7 +5289,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         link.download = 'photo-booth-' + Date.now() + '.png';
         link.href = previewCanvas.toDataURL('image/png');
         link.click();
-        showToast('Direct sharing isn\'t supported on this browser, so we saved the photo instead \u2014 attach it in Messenger manually.', 4200);
+        showToast('Sharing isn\'t supported here, so the photo was saved instead.', 4200);
       }
     }, 'image/png');
   });
@@ -5180,21 +5431,21 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const ready = state === 'result' && shotCanvases.every(Boolean);
     printBtn.disabled = !ready || !printSize || printing;
     if(!printSize){
-      printHint.textContent = 'The allowed paper is too narrow for this layout \u2014 pick a strip layout in Setup to print.';
+      printHint.textContent = 'This paper is too narrow for this layout. Pick a strip layout to print.';
     } else if(!ready){
       printHint.textContent = 'Finish a photo session to print it.';
     } else if(keychainMode(printSize)){
       const n = keychainFrames().length, fit = keychainFit(printSize), pg = Math.ceil(n / fit.per);
-      printHint.textContent = n + ' keychain strip' + (n === 1 ? '' : 's') + ' at exactly 2.5\u00d77.5 in, up to ' + fit.per + ' per ' + paperFor(printSize).name + ' page' + (fit.rotate ? ' (turned sideways)' : '') + ' \u2014 ' + pg + ' page' + (pg === 1 ? '' : 's') + ', with cut lines. Print at 100% / actual size.';
+      printHint.textContent = n + ' keychain' + (n === 1 ? '' : 's') + ' at 2.5\u00d77.5 in, ' + fit.per + ' per ' + paperFor(printSize).name + ' page' + (fit.rotate ? ' (sideways)' : '') + ' (' + pg + ' page' + (pg === 1 ? '' : 's') + '). Print at 100%.';
     } else if(keychainOn && keychainFrames().length && paperFor(printSize).w / paperFor(printSize).h >= 0.45 && !keychainFit(printSize)){
-      printHint.textContent = paperFor(printSize).name + ' is too small for real-size keychains, so it prints the whole layout. For keychains pick A4, Letter or 8R, or the keychain paper.';
+      printHint.textContent = paperFor(printSize).name + ' is too small for keychains, so it prints the whole layout. For keychains, pick A4, Letter, 8R or keychain paper.';
     } else if(stripPagesMode(printSize)){
       const n = sheetStripItems().length;
-      printHint.textContent = 'Prints each strip frame on its own ' + paperFor(printSize).name + ' page (' + n + ' page' + (n === 1 ? '' : 's') + ').';
+      printHint.textContent = 'Each strip on its own ' + paperFor(printSize).name + ' page (' + n + ' page' + (n === 1 ? '' : 's') + ').';
     } else if(stripTwoUp(printSize)){
-      printHint.textContent = 'Prints two strips side by side \u2014 cut down the middle to share.';
+      printHint.textContent = 'Two strips side by side. Cut down the middle.';
     } else {
-      printHint.textContent = 'Prints at the exact ' + paperFor(printSize).name + ' size.';
+      printHint.textContent = 'Prints at ' + paperFor(printSize).name + ' size.';
     }
   }
   printSizeRow.addEventListener('click', (e) => {
@@ -5287,7 +5538,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       armAutoPrintAfterFirst(auto === true);
     }catch(err){
       console.error('Print failed:', err);
-      showToast('Couldn\u2019t prepare the print \u2014 please try again.', 4500);
+      showToast('Couldn\u2019t print. Try again.', 4500);
     }finally{
       printing = false;
       refreshPrintUI();
@@ -5318,13 +5569,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   autoPrintToggle.addEventListener('change', () => {
     autoPrint = autoPrintToggle.checked;
     autoPrintDecided = true;
-    showToast(autoPrint ? 'Auto-print on — every session prints by itself.' : 'Auto-print off.');
+    showToast(autoPrint ? 'Auto-print on.' : 'Auto-print off.');
   });
   function armAutoPrintAfterFirst(wasAuto){
     if(wasAuto || autoPrint || autoPrintDecided || !isTraditional()) return;
     autoPrint = true;
     autoPrintToggle.checked = true;
-    setTimeout(() => showToast('Auto-print is on — the next sessions print by themselves on ' + paperFor(printSize).name + '.', 4500), 1600);
+    setTimeout(() => showToast('Auto-print is on (' + paperFor(printSize).name + ').', 4500), 1600);
   }
   function maybeAutoPrint(){
     if(!isTraditional() || !autoPrint || !printSize || !printSettings()) return;
@@ -5390,13 +5641,18 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     '.cdw .trk{fill:rgba(20,18,22,.5);stroke:rgba(255,255,255,.25);stroke-width:4;}.cdw .bar{fill:none;stroke:var(--red);stroke-width:4;stroke-linecap:round;}' +
     '.num{position:relative;color:#fff;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:min(16vh,9vw);line-height:1;text-shadow:0 0 30px rgba(0,0,0,.4);}' +
     '.num.word{font-size:min(7vh,4vw);letter-spacing:.04em;text-transform:uppercase;}' +
+    '.cd.pausing .cdw{display:none;}' +
     '.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity 120ms ease-out;}.flash.on{opacity:.92;transition:opacity 20ms;}' +
     '.film{display:flex;flex-direction:column;gap:1.2vh;align-items:center;}' +
     '.film div{width:9vh;aspect-ratio:4/5;border-radius:8px;border:2px dashed #D6CEC1;background-size:cover;background-position:center;}' +
     '.film div.f{border:2px solid var(--red);}' +
     '.chip{padding:.8vh 1.2vw;border-radius:99px;background:var(--ink);color:#fff;font-weight:800;font-size:clamp(10px,.85vw,15px);letter-spacing:.18em;text-transform:uppercase;}' +
-    '.qr{width:min(26vh,15vw);aspect-ratio:1/1;background:#fff;border-radius:14px;padding:1vh;box-shadow:0 10px 30px rgba(60,40,20,.12);}' +
+    '.qrs{display:flex;flex-direction:column;gap:2.4vh;align-items:center;}' +
+    '.qrb{display:flex;flex-direction:column;align-items:center;gap:.8vh;}' +
+    '.qr{width:min(24vh,14vw);aspect-ratio:1/1;background:#fff;border-radius:14px;padding:1vh;box-shadow:0 10px 30px rgba(60,40,20,.12);display:flex;align-items:center;justify-content:center;}' +
     '.qr img{width:100%;height:100%;display:block;}' +
+    '.qr span{font-weight:700;color:var(--dim);font-size:clamp(10px,.85vw,15px);text-align:center;padding:1vh;}' +
+    '.qrl{font-weight:800;letter-spacing:.18em;text-transform:uppercase;font-size:clamp(10px,.9vw,16px);color:var(--red);}' +
     '.fs{position:fixed;top:1.6vh;left:50%;transform:translateX(-50%);z-index:5;padding:10px 18px;border-radius:99px;border:1.5px solid #D6CEC1;background:#fff;color:var(--ink);font:700 13px Manrope,sans-serif;cursor:pointer;}' +
     '.hide{display:none !important;}' +
     '.pk{position:fixed;inset:0;z-index:4;background:rgba(20,18,22,.86);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4vh;padding:4vh 4vw;}' +
@@ -5420,7 +5676,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       '<div class="side">' +
         '<span class="chip" id="chip">Ready</span>' +
         '<div class="film" id="film"></div>' +
-        '<div class="qr hide" id="qrw"><img id="qr" alt="QR code to get your photos"></div>' +
+        '<div class="qrs hide" id="qrw"></div>' +
       '</div>' +
     '</div></body></html>';
 
@@ -5429,7 +5685,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     d.open(); d.write(GUEST_HTML); d.close();
     const $g = id => d.getElementById(id);
     G = { d, v: $g('v'), res: $g('res'), cd: $g('cd'), bar: $g('bar'), num: $g('num'), flash: $g('flash'), film: $g('film'),
-          msg: $g('msg'), sub: $g('sub'), ev: $g('ev'), dt: $g('dt'), chip: $g('chip'), qrw: $g('qrw'), qr: $g('qr'), fs: $g('fs'),
+          msg: $g('msg'), sub: $g('sub'), ev: $g('ev'), dt: $g('dt'), chip: $g('chip'), qrw: $g('qrw'), qrSig: '', fs: $g('fs'),
           pk: $g('pk'), pkg: $g('pkg'), pkSig: '' };
     G.fs.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -5447,7 +5703,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // Open first, while the click still counts as a user gesture (pop-up blockers).
     guestWin = window.open('', 'pb4uGuest', 'popup=yes,width=1280,height=720,left=40,top=40');
     if(!guestWin){
-      showToast('The guest screen was blocked — allow pop-ups for this site (icon in the address bar), then try again.', 6000);
+      showToast('Guest screen blocked. Allow pop-ups for this site, then try again.', 6000);
       return;
     }
     buildGuestDoc();
@@ -5486,6 +5742,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         G.res.style.display = 'none'; G.v.style.display = 'block';
       } else if(what === 'tick'){
         G.cd.style.display = 'flex';
+        G.cd.classList.toggle('pausing', a === '');
         if(G.num.textContent !== a) G.num.textContent = a;
         G.num.classList.toggle('word', !!b);
         G.bar.style.strokeDashoffset = String(100 * (1 - c));
@@ -5544,10 +5801,26 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       G.res.style.display = result ? 'block' : 'none';
       G.v.style.display = result ? 'none' : 'block';
       if(!(state === 'capturing' && countingDown)) G.cd.style.display = 'none';
-      const qrImg = qrResults.querySelector('.qr-img');
-      const showQr = result && !!qrImg;
+      // The guest's own QR codes ("Your photo", "Your GIF"), copied from the result panel.
+      const slots = [...qrResults.querySelectorAll('.qr-result')];
+      const showQr = result && slots.length > 0;
       G.qrw.classList.toggle('hide', !showQr);
-      if(showQr && G.qr.src !== qrImg.src) G.qr.src = qrImg.src;
+      if(showQr){
+        const sig = slots.map(sl => sl.dataset.kind + '|' + ((sl.querySelector('.qr-img') || {}).src || 'wait')).join(',');
+        if(G.qrSig !== sig){
+          G.qrSig = sig;
+          G.qrw.innerHTML = '';
+          slots.forEach(sl => {
+            const box = G.d.createElement('div'); box.className = 'qrb';
+            const q = G.d.createElement('div'); q.className = 'qr';
+            const im = sl.querySelector('.qr-img');
+            if(im){ const i2 = G.d.createElement('img'); i2.src = im.src; i2.alt = 'QR code'; q.appendChild(i2); }
+            else { const w = G.d.createElement('span'); w.textContent = (sl.querySelector('.qr-wait') || {}).textContent || 'One moment…'; q.appendChild(w); }
+            const l = G.d.createElement('span'); l.className = 'qrl'; l.textContent = (sl.querySelector('.qr-caption') || {}).textContent || '';
+            box.append(q, l); G.qrw.appendChild(box);
+          });
+        }
+      }
       G.film.classList.toggle('hide', showQr);
       guestFilm();
       guestPickRender();
@@ -5563,7 +5836,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       } else if(result){
         G.res.src = previewCanvas.toDataURL('image/jpeg', 0.9);
         G.msg.textContent = 'Looking good!';
-        G.sub.textContent = showQr ? 'Scan the code for your photos' : (autoPrint ? 'Printing…' : 'Your photo is ready');
+        G.sub.textContent = showQr ? 'Scan to get your photo' : (autoPrint ? 'Printing…' : 'Your photo is ready');
         G.chip.textContent = 'Done';
       } else if(state === 'capturing' && countingDown){
         G.msg.textContent = 'Look at the camera';
@@ -5915,7 +6188,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(flowBusy || state === 'capturing') return;
     if(!rawFolderKey()){
       switchTab('setup');
-      showDriveFolderError('Please type a folder name for Google Drive before starting.');
+      if(typeof goStep === 'function') goStep(5);
+      showDriveFolderError('Type a folder name first.');
       return;
     }
     flowBusy = true;
@@ -5956,13 +6230,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     enc.finish();
     return new Blob([enc.bytes()], { type: 'image/gif' });
   }
-  async function uploadSessionGif(shots, sn){
+  async function uploadSessionGif(shots, sn, gen){
     if(!gifOn || !driveReady()) return;
     try{
       var blob = await makeSessionGif(shots);
-      if(!blob) return;
-      await uploadToDrive(blob, filePrefix() + (sn || 1) + '_gif' + deviceTag() + '.gif');
-    }catch(e){ console.error('GIF upload failed:', e); }
+      if(!blob){ if(gen === qrGeneration) failQrSlot('gif', 'No GIF this time'); return; }
+      var r = await uploadToDrive(blob, filePrefix() + (sn || 1) + '_gif' + deviceTag() + '.gif');
+      if(gen === qrGeneration && r && r.fileId) fillQrSlot('gif', fileShareUrl(r.fileId, true));
+    }catch(e){
+      console.error('GIF upload failed:', e);
+      if(gen === qrGeneration) failQrSlot('gif', 'GIF not saved');
+    }
   }
 
   // ---- Saved setup ----
@@ -5975,6 +6253,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function setSaveNote(text, kind){
     setupSaveNote.textContent = text || '';
     setupSaveNote.className = 'setup-save-note' + (kind ? ' ' + kind : '');
+    var ss = document.getElementById('startSave');
+    if(ss){ ss.textContent = text || ''; ss.className = 'start-save' + (kind ? ' ' + kind : ''); }
   }
   function isHex(v){ return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v); }
   function snapshotSetup(){
@@ -6163,21 +6443,21 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     saveLocalCopy(key, settings, Date.now(), bgImageDataUrl, sendImage);
     lastSavedJson = json;
     imageDirty = false;
-    if(!canSyncServer()){ setSaveNote('Setup saved on this device ✓', 'ok'); return; }
+    if(!canSyncServer()){ setSaveNote('Saved on this device ✓', 'ok'); return; }
     var extra = { action: 'save', settings: settings };
     if(sendImage) extra.image = bgImageDataUrl || null;
-    setSaveNote('Saving setup…', '');
+    setSaveNote('Saving…', '');
     try{
       var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody(extra) });
       var j = await r.json().catch(function(){ return {}; });
       if(!r.ok) throw new Error(j.error || 'Save failed');
       setupUpdatedAt = j.updatedAt;
       saveLocalCopy(key, settings, j.updatedAt, null, false);
-      setSaveNote('Setup saved ✓ It stays after a refresh, and other devices on this code get it too.', 'ok');
+      setSaveNote('Saved ✓ Other devices on this code get it too.', 'ok');
     }catch(e){
       if(sendImage) imageDirty = true;
       lastSavedJson = null;   // try again on the next change
-      setSaveNote('Saved on this device. Couldn’t reach the server — it will sync on your next change.', 'warn');
+      setSaveNote('Saved on this device. It syncs when you’re back online.', 'warn');
     }
   }
   async function fetchServerSetup(){
@@ -6207,7 +6487,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           lastSavedJson = JSON.stringify(j.settings);
           setupUpdatedAt = j.updatedAt || 0;
           saveLocalCopy(key, j.settings, j.updatedAt, j.image || null, true);
-          setSaveNote('Your saved setup is loaded ✓', 'ok');
+          setSaveNote('Saved setup loaded ✓', 'ok');
         } else if(!j.settings && !local && !carryOver && window.__PB && window.__PB.defaultTheme){
           var dt = THEMES.find(function(t){ return t.id === window.__PB.defaultTheme; });
           if(dt){ applyTheme(dt); setupReady = true; lastSavedJson = null; saveSetupNow(); }
@@ -6249,7 +6529,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         applySetup(j.settings, j.image || null);
         lastSavedJson = JSON.stringify(j.settings); setupUpdatedAt = j.updatedAt;
         saveLocalCopy(key, j.settings, j.updatedAt, j.image || null, true);
-        setSaveNote('Updated with the latest saved setup ✓', 'ok');
+        setSaveNote('Latest setup loaded ✓', 'ok');
       }
     }catch(e){}
   });
@@ -6429,7 +6709,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       } else {
         var cv = document.createElement('canvas'); cv.width = 240; cv.height = 360;
         b.append(cv, n, c);
-        b.addEventListener('click', function(){ applyTheme(t); });
+        b.addEventListener('click', function(){ openTemplatePreview(t); });
         thumbQueue.push({ canvas: cv, theme: t });
       }
       themeGridEl.appendChild(b);
@@ -6440,7 +6720,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function markThemeCards(){
     [...themeGridEl.querySelectorAll('.theme-card')].forEach(function(b){ b.classList.toggle('active', b.dataset.theme === themeId); });
   }
-  function applyTheme(t){
+  function applyTheme(t, opts){
     themeId = t.id;
     if(backdropPreset === 'custom' && backgroundImg){ /* keep the uploaded photo available under Custom */ }
     backdropPreset = t.preset;
@@ -6472,7 +6752,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     renderComposite();
     renderSetupPreview();
     refreshStartScreen();
-    showToast(t.name + ' applied — fine-tune it in the sections below.');
+    if(!opts || !opts.quiet) showToast(t.name + ' applied.');
   }
   themeSearchEl.addEventListener('input', buildThemeGrid);
   // Thumbnails show the event name; redraw them (gently) when it changes.
@@ -6569,7 +6849,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     });
   }
   function redrawAll(){
-    qrResults.innerHTML = ''; lastRenderedFolderUrl = null;
+    if(state !== 'result'){ qrResults.innerHTML = ''; lastRenderedFolderUrl = null; }
     renderComposite(); renderSetupPreview();
   }
 
@@ -6748,7 +7028,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     logoControls.style.display = logo ? 'block' : 'none';
     if(logo){ logoPos.value = logo.pos; logoSize.value = Math.round(logo.size * 100); }
     var c = document.createElement('canvas');
-    overlaySizeHint.textContent = 'Best size: 1200 × 1800 px for a 4R print, or 600 × 1800 px for a 2×6 strip.';
+    overlaySizeHint.textContent = 'Best size: 1200 × 1800 px (4R) or 600 × 1800 px (2×6 strip).';
     buildPropTray();
     refreshSelControls();
   }
@@ -6783,12 +7063,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var propTray = document.getElementById('propTray');
   var propInput = document.getElementById('propInput');
   var myProps = [];   // asset ids of uploaded props (remembered in the setup)
+  var STICKER_SHOWN = 8;   // the rest sit behind "More stickers"
   function buildPropTray(){
     propTray.innerHTML = '';
-    STICKERS.forEach(function(s){
-      var b = document.createElement('button'); b.type = 'button'; b.className = 'prop-btn'; b.title = s[1];
+    STICKERS.forEach(function(s, i){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'prop-btn' + (i >= STICKER_SHOWN ? ' extra' : ''); b.title = s[1];
       var c = document.createElement('canvas'); c.width = 72; c.height = 72;
-      var x = c.getContext('2d'); x.translate(36, 36); drawSticker(x, s[0], s[0].indexOf('b-') === 0 ? 70 : 60);
+      var x = c.getContext('2d'); x.translate(36, 36); drawSticker(x, s[0], s[0].indexOf('b-') === 0 ? 54 : 60);
       b.appendChild(c);
       b.addEventListener('click', function(){ addDecor('b:' + s[0], s[0].indexOf('b-') === 0 ? 0.42 : 0.2); });
       propTray.appendChild(b);
@@ -6816,7 +7097,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     buildPropTray(); scheduleSetupSave();
   });
   function addDecor(src, s){
-    if(decor.length >= 30){ showToast('That’s a lot of stickers! Remove some first (max 30).', 4000); return; }
+    if(decor.length >= 30){ showToast('Max 30 stickers. Remove some first.', 4000); return; }
     var n = decor.length;
     decor.push({ src: src, x: 0.5 + ((n % 3) - 1) * 0.12, y: 0.35 + (Math.floor(n / 3) % 3) * 0.12, s: s, r: 0 });
     selDecor = decor.length - 1;
@@ -7363,7 +7644,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }
     if(overlayAdded){
       refreshDecorUI(); redrawAll(); scheduleSetupSave();
-      if(!added.length) showToast('No photo boxes found, so this frame goes on top of the whole layout. Leave the photo spots white or see-through to put photos inside it.', 6000);
+      if(!added.length) showToast('No photo spots found, so it sits on top. Leave the spots white or see-through.', 6000);
     }
   }
 
@@ -7496,7 +7777,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         if(!streamActive || !video.videoWidth) await initCamera(cameraSelect.value || null);
         await new Promise(function(r){ setTimeout(r, video.videoWidth ? 150 : 900); });
         var c = grabCameraSample();
-        if(!c){ showToast('Camera not ready — allow camera access and try again.'); return; }
+        if(!c){ showToast('Camera not ready. Allow camera access and try again.'); return; }
         previewSample = c;
         resetBtn.style.display = '';
         camBtn.textContent = '📷 Take another';
@@ -7514,17 +7795,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   })();
 
   // ---- Init ----
-  // ---- Setup accordion: numbered sections (Format → Backdrop → Event name →
-  // Google Drive) so the panel isn't one long scroll — expand one at a time. ----
-  document.querySelectorAll('.panel-label.accordion-toggle').forEach((label) => {
-    label.addEventListener('click', () => {
-      const section = document.getElementById(label.dataset.target);
-      const willOpen = !section.classList.contains('open');
-      document.querySelectorAll('.panel-section.accordion.open').forEach(s => s.classList.remove('open'));
-      if(willOpen) section.classList.add('open');
-    });
-  });
-
   setActivePresetBtn();
   updateBandPositionVisibility();
   applyLabelInputFont();
@@ -7555,9 +7825,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var noteL = document.getElementById('driveFolderAutoNote');
       try { driveFolderKeyInput.value = localStorage.getItem(LAST) || ''; } catch (e) {}
       driveFolderKeyInput.placeholder = 'Event name, e.g. Sofia\u2019s Dedication';
-      driveStatusText.textContent = 'Type the name of this event \u2014 it\u2019s required before you can start the photo session.';
-      document.getElementById('driveFolderHelp').textContent = 'Each event gets its own Google Drive folder named \u201c' + pb.folderPrefix + ' \u00b7 your event name\u201d. Using more than one device? Type the exact same event name on each, so they share one folder and one QR.';
-      noteL.textContent = 'Lifetime code' + (pb.multiDevice ? ' \u00b7 device ' + (pb.deviceNo || 1) : '') + ' \u2014 a new Drive folder for every event.';
+      driveStatusText.textContent = 'Name this event. Its photos get their own folder.';
+      document.getElementById('driveFolderHelp').textContent = 'Folder: \u201c' + pb.folderPrefix + ' \u00b7 event name\u201d. Two devices? Type the same name on both.';
+      noteL.textContent = 'Lifetime code' + (pb.multiDevice ? ' \u00b7 device ' + (pb.deviceNo || 1) : '') + '. A new folder for every event.';
       noteL.style.display = 'block';
       [noteL, driveStatusText, driveFolderKeyInput, driveFolderError, document.getElementById('driveFolderHelp'), driveFolderStatus, driveFolderQrPreview].forEach(function (el) { el.classList.add('always-show'); });
       driveFolderKeyInput.addEventListener('input', function () {
@@ -7575,19 +7845,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       driveFolderKeyInput.style.display = 'none';
       driveFolderError.style.display = 'none';
       document.getElementById('driveFolderHelp').style.display = 'none';
-      driveStatusText.textContent = 'This booth is connected to its event folder automatically.';
+      driveStatusText.textContent = 'Set from your rental code. Nothing to type.';
       [note, driveFolderStatus, driveFolderQrPreview].forEach(function (el) { el.classList.add('always-show'); });
       if (pb.type === 'trial') {
-        note.textContent = 'Trial mode — using a temporary test folder, separate from real bookings.';
+        note.textContent = 'Trial: photos go to a test folder.';
       } else if (pb.bonus) {
-        note.textContent = 'Bonus session — photos go to the \u201c' + (pb.subfolder || 'Bonus') + '\u201d folder inside your event folder, named BONUS_1, BONUS_2\u2026 Scan the QR below to open it.';
+        note.textContent = 'Bonus session: photos go to the \u201c' + (pb.subfolder || 'Bonus') + '\u201d folder inside your event folder.';
       } else {
-        note.textContent = 'Drive folder set from this rental code. Scan the QR below to open the shared event folder.' + (pb.multiDevice ? ' (Device ' + (pb.deviceNo || 1) + ' \u2014 its photos end in _cam' + (pb.deviceNo || 1) + '.)' : '');
+        note.textContent = pb.multiDevice ? 'Device ' + (pb.deviceNo || 1) + ': its photos end in _cam' + (pb.deviceNo || 1) + '.' : '';
       }
     } else {
-      note.textContent = 'Folder set automatically from this booking\u2019s rental code.';
+      note.textContent = 'Folder set from your rental code.';
     }
-    note.style.display = 'block';
+    note.style.display = note.textContent ? 'block' : 'none';
     resolveDriveFolder();
   })();
   // ---- Start-up for the new features: defaults, then the saved setup ----
@@ -7599,7 +7869,432 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   refreshGuestLayoutChoices();
   markFilterChips();
   scheduleWelcomeRender();
-  loadSetup(false);
+  var setupLoadPromise = loadSetup(false);
+
+  // =====================================================================
+  // Setup in 5 steps: 1 Design · 2 Text · 3 Layout · 4 Extras · 5 Share.
+  // One step shows at a time; the step bar (with a one-line summary of
+  // each step) and the bottom Start bar stay in reach.
+  // =====================================================================
+  var curStep = 1;
+  var setupShellEl = document.querySelector('#tabSetup .setup-shell');
+  var stepTabs = [].slice.call(document.querySelectorAll('#stepBar .step-tab'));
+  function goStep(n, opts){
+    n = Math.max(1, Math.min(5, Number(n) || 1));
+    curStep = n;
+    for(var i = 1; i <= 5; i++) document.getElementById('step' + i).classList.toggle('on', i === n);
+    stepTabs.forEach(function(t){
+      var on = Number(t.dataset.step) === n;
+      t.classList.toggle('on', on);
+      if(on) t.setAttribute('aria-current', 'step'); else t.removeAttribute('aria-current');
+    });
+    try{ sessionStorage.setItem('pb_step', String(n)); }catch(e){}
+    if(n === 2){ renderFontUI(); refreshThemePalette(); }
+    if(n === 3) queueLayoutThumbs();
+    if(n === 5) refreshPrintSummary();
+    refreshSetupNav();
+    if(!(opts && opts.noScroll)){
+      var top = setupShellEl.getBoundingClientRect().top + window.scrollY - 4;
+      if(window.scrollY > top) window.scrollTo(0, top);
+    }
+  }
+  stepTabs.forEach(function(t){ t.addEventListener('click', function(){ goStep(t.dataset.step); }); });
+  tabSetup.addEventListener('click', function(e){
+    var b = e.target.closest('[data-go]');
+    if(b && tabSetup.contains(b)) goStep(b.dataset.go);
+  });
+
+  function setStepSum(n, text, warn){
+    var el = document.getElementById('stepSum' + n);
+    el.textContent = text; el.classList.toggle('warn', !!warn);
+    el.parentNode.parentNode.title = text;
+  }
+  function currentThemeObj(){
+    var all = (myThemes || []).concat(THEMES);
+    for(var i = 0; i < all.length; i++) if(all[i].id === themeId) return all[i];
+    return null;
+  }
+  var PRESET_NAMES = { none: 'Plain', gold: 'Gold Glitter', sky: 'Pastel Sky', stars: 'Black & Gold', cream: 'Cream', maroon: 'Maroon & Gold', custom: 'Your photo' };
+  function extrasList(){
+    var ex = [];
+    if((myFrames && myFrames.length) || overlay) ex.push('Frame');
+    if(logo) ex.push('Logo');
+    if(decor.length) ex.push(decor.length + (decor.length === 1 ? ' sticker' : ' stickers'));
+    if(filterKey && filterKey !== 'none') ex.push('Filter');
+    if(softSkin) ex.push('Soft skin');
+    return ex;
+  }
+  var navTimer = null;
+  function scheduleSetupNav(){ clearTimeout(navTimer); navTimer = setTimeout(refreshSetupNav, 120); }
+  function refreshSetupNav(){
+    if(!stepTabs) return;
+    var t = currentThemeObj();
+    setStepSum(1, t ? t.name : 'Your design');
+    var nm = labelInput.value.trim();
+    setStepSum(2, nm || 'Add a name', !nm);
+    var d = LAYOUT_DEFS[setupLayout] || layoutDef();
+    setStepSum(3, d.name);
+    var ex = extrasList();
+    setStepSum(4, ex.length ? ex.join(', ') : 'None');
+    var folderOk = !!rawFolderKey();
+    setStepSum(5, folderOk ? 'Ready' : 'Folder needed', !folderOk);
+    stepTabs[1].classList.toggle('done', !!nm);
+    stepTabs[4].classList.toggle('done', folderOk);
+    var st = document.getElementById('startStatus');
+    st.textContent = folderOk ? 'Ready to start' : 'Add a folder name (step 5)';
+    st.classList.toggle('warn', !folderOk);
+    // Backdrop & colours summary
+    var bs = PRESET_NAMES[backdropPreset] || 'Backdrop';
+    document.getElementById('backdropSum').textContent = bs;
+    // Extras: dots on the tabs that are in use
+    var has = { frame: !!((myFrames && myFrames.length) || overlay), logo: !!logo, stickers: decor.length > 0, filter: (filterKey && filterKey !== 'none') || softSkin };
+    [].forEach.call(document.querySelectorAll('#extrasTabs button'), function(b){ b.classList.toggle('has', !!has[b.dataset.pane]); });
+    pillSyncAll();
+    markStyleTiles();
+    if(curStep === 2){ markFontUI(); refreshThemePalette(); }
+  }
+  ['input', 'change', 'click'].forEach(function(type){ tabSetup.addEventListener(type, scheduleSetupNav); });
+
+  // ---- Start bar ----
+  document.getElementById('startBarBtn').addEventListener('click', function(){ goToSessionBtn.click(); });
+  var setupMenuBtn = document.getElementById('setupMenuBtn'), setupMenu = document.getElementById('setupMenu');
+  setupMenuBtn.addEventListener('click', function(e){ e.stopPropagation(); setupMenu.hidden = !setupMenu.hidden; });
+  document.addEventListener('click', function(e){ if(!setupMenu.hidden && !setupMenu.contains(e.target)) setupMenu.hidden = true; });
+  setupMenu.addEventListener('click', function(){ setTimeout(function(){ setupMenu.hidden = true; }, 0); });
+  var startThumb = document.getElementById('startThumb');
+  function toggleDockedPreview(){ document.getElementById('previewFab').click(); }
+  startThumb.addEventListener('click', toggleDockedPreview);
+  startThumb.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggleDockedPreview(); } });
+  // Called after every Setup preview redraw.
+  function afterSetupPreview(){
+    if(!startThumb || !setupPreviewCanvas.width) return;
+    var h = 104, w = Math.max(20, Math.round(h * setupPreviewCanvas.width / setupPreviewCanvas.height));
+    if(w > 140){ w = 140; h = Math.round(w * setupPreviewCanvas.height / setupPreviewCanvas.width); }
+    if(startThumb.width !== w || startThumb.height !== h){ startThumb.width = w; startThumb.height = h; }
+    var x = startThumb.getContext('2d'); x.imageSmoothingQuality = 'high';
+    x.clearRect(0, 0, w, h); x.drawImage(setupPreviewCanvas, 0, 0, w, h);
+    markLayoutThumbsDirty();
+  }
+
+  // ---- Step 1: tap a design to see it big first ----
+  var tplModal = document.createElement('div');
+  tplModal.className = 'tpl-modal'; tplModal.hidden = true;
+  tplModal.setAttribute('role', 'dialog'); tplModal.setAttribute('aria-modal', 'true'); tplModal.setAttribute('aria-label', 'Design preview');
+  tplModal.innerHTML = '<div class="tpl-card"><canvas id="tplCanvas"></canvas><p class="tpl-name" id="tplName"></p><p class="tpl-cats" id="tplCats"></p>' +
+    '<div class="tpl-btns"><button type="button" class="action-btn" id="tplCancel">Cancel</button><button type="button" class="action-btn primary" id="tplUse">Use this design</button></div></div>';
+  document.body.appendChild(tplModal);
+  var tplPending = null;
+  function openTemplatePreview(t){
+    tplPending = t;
+    var lk = t.layout && LAYOUT_DEFS[t.layout] ? t.layout : currentLayout;
+    var big = document.createElement('canvas');
+    withThemeState(t, function(){ composeCanvas(lk, big, buildPlaceholderShots(360, shotsNeeded(lk))); });
+    var cv = document.getElementById('tplCanvas'), sc = Math.min(1, 900 / Math.max(big.width, big.height));
+    cv.width = Math.round(big.width * sc); cv.height = Math.round(big.height * sc);
+    var x = cv.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(big, 0, 0, cv.width, cv.height);
+    document.getElementById('tplName').textContent = t.name;
+    document.getElementById('tplCats').textContent = (t.cats || []).join(' · ');
+    tplModal.hidden = false;
+    document.getElementById('tplUse').focus();
+  }
+  function closeTemplatePreview(){ tplModal.hidden = true; tplPending = null; }
+  document.getElementById('tplCancel').addEventListener('click', closeTemplatePreview);
+  tplModal.addEventListener('click', function(e){ if(e.target === tplModal) closeTemplatePreview(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !tplModal.hidden) closeTemplatePreview(); });
+  document.getElementById('tplUse').addEventListener('click', function(){
+    var t = tplPending; closeTemplatePreview();
+    if(!t) return;
+    applyTheme(t, { quiet: true });
+    scheduleSetupSave();
+    if(!labelInput.value.trim()){
+      labelInput.placeholder = 'e.g. ' + (t.sample || 'Sofia’s 7th Birthday');
+      goStep(2);
+      showToast(t.name + ' applied. Now type the name.');
+      setTimeout(function(){ try{ labelInput.focus({ preventScroll: true }); }catch(e){ labelInput.focus(); } }, 60);
+    } else {
+      showToast(t.name + ' applied.');
+      refreshSetupNav();
+    }
+  });
+
+  // ---- Step 2: title style tiles ----
+  var STYLE_NAMES = { classic: 'Classic', wedding: 'Line above', turns: 'Line below', blocks: 'Letter blocks', monogram: 'Monogram', bignum: 'Big number' };
+  var STYLE_MOCKS = {
+    classic: '<b>Name</b><i>10/11/26</i>',
+    wedding: '<i>THE WEDDING OF</i><b>Name</b>',
+    turns: '<b>Name</b><i>TURNS ONE</i>',
+    blocks: '<span class="blk"><u>M</u><u>I</u><u>A</u></span><i>TURNS ONE</i>',
+    monogram: '<span class="mono">A&amp;B</span>',
+    bignum: '<span class="bn">18</span><b>Name</b>'
+  };
+  var styleTilesEl = document.getElementById('titleStyleTiles');
+  TITLE_STYLES.forEach(function(s){
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'style-tile'; b.dataset.style = s[0]; b.title = s[1];
+    b.innerHTML = '<span class="mock">' + (STYLE_MOCKS[s[0]] || '<b>Name</b>') + '</span><span class="tl"></span>';
+    b.querySelector('.tl').textContent = STYLE_NAMES[s[0]] || s[1];
+    b.addEventListener('click', function(){
+      titleStyleSelect.value = s[0];
+      titleStyleSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      if(['wedding', 'turns', 'blocks', 'bignum'].indexOf(s[0]) >= 0 && !kickerInput.value.trim()) setTimeout(function(){ kickerInput.focus(); }, 30);
+    });
+    styleTilesEl.appendChild(b);
+  });
+  function markStyleTiles(){
+    if(!styleTilesEl) return;
+    [].forEach.call(styleTilesEl.children, function(b){ var on = b.dataset.style === titleStyle; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  }
+
+  // ---- Step 2: fonts (pairs, then cards that show your own text) ----
+  var FONT_GROUPS = {
+    Script: ['Great Vibes', 'Dancing Script', 'Sacramento', 'Alex Brush', 'Satisfy', 'Parisienne', 'Allura', 'Italianno', 'Tangerine', 'Petit Formal Script', 'Marck Script', 'Cookie'],
+    Elegant: ['Playfair Display', 'Cormorant Garamond', 'Cinzel', 'EB Garamond', 'Merriweather', 'Abril Fatface', 'Times New Roman'],
+    Modern: ['Montserrat', 'Poppins', 'Josefin Sans', 'Raleway', 'Inter', 'Bebas Neue', 'Quicksand', 'Arial'],
+    Fun: ['Pacifico', 'Lobster', 'Fredoka', 'Caveat', 'Amatic SC', 'Comfortaa']
+  };
+  function fontVal(label){ var o = FONT_OPTIONS.find(function(f){ return f[1] === label; }); return o ? o[0] : null; }
+  function fontLabel(v){ var o = FONT_OPTIONS.find(function(f){ return f[0] === v; }); return o ? o[1] : ''; }
+  var FONT_PAIRS = [
+    ['Romantic', 'Great Vibes', 'Cormorant Garamond'],
+    ['Classic', 'Playfair Display', 'Josefin Sans'],
+    ['Royal', 'Parisienne', 'Cinzel'],
+    ['Bold', 'Abril Fatface', 'Montserrat'],
+    ['Modern', 'Bebas Neue', 'Raleway'],
+    ['Playful', 'Fredoka', 'Quicksand'],
+    ['Party', 'Pacifico', 'Poppins'],
+    ['Handmade', 'Caveat', 'Amatic SC']
+  ].map(function(p){ return [p[0], fontVal(p[1]), fontVal(p[2])]; }).filter(function(p){ return p[1] && p[2]; });
+  var fontMode = 'name', fontCat = null;
+  var fontPairsEl = document.getElementById('fontPairs'), fontCatsEl = document.getElementById('fontCats'), fontCardsEl = document.getElementById('fontCards');
+  function recentFonts(){
+    try{ return (JSON.parse(localStorage.getItem('pb_recentFonts') || '[]') || []).filter(function(v){ return !!fontLabel(v); }); }catch(e){ return []; }
+  }
+  function pushRecentFont(v){
+    var r = recentFonts().filter(function(x){ return x !== v; }); r.unshift(v);
+    try{ localStorage.setItem('pb_recentFonts', JSON.stringify(r.slice(0, 6))); }catch(e){}
+  }
+  function catOfFont(v){
+    var l = fontLabel(v);
+    for(var k in FONT_GROUPS) if(FONT_GROUPS[k].indexOf(l) >= 0) return k;
+    return 'Script';
+  }
+  FONT_PAIRS.forEach(function(p){
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'font-pair'; b.title = fontLabel(p[1]) + ' + ' + fontLabel(p[2]);
+    var a = document.createElement('span'); a.className = 'a'; a.textContent = 'Name'; a.style.fontFamily = p[1]; a.style.fontWeight = BOLD_FONTS.has(p[1]) ? '700' : '400';
+    var c = document.createElement('span'); c.className = 'b'; c.textContent = 'SMALL LINE'; c.style.fontFamily = p[2];
+    var l = document.createElement('small'); l.textContent = p[0];
+    b.append(a, c, l);
+    b.addEventListener('click', function(){
+      selectFont('name', p[1]); selectFont('date', p[2]);
+      applyLabelInputFont(); pushRecentFont(p[1]);
+      fontCat = catOfFont(fontMode === 'name' ? p[1] : p[2]);
+      redrawAll(); renderFontUI();
+    });
+    b._pair = p;
+    fontPairsEl.appendChild(b);
+  });
+  document.getElementById('fontMode').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    fontMode = b.dataset.mode; fontCat = null;
+    renderFontUI();
+  });
+  function fontSampleText(){
+    if(fontMode === 'name') return labelInput.value.trim() || (labelInput.placeholder || '').replace(/^e\.g\.\s*/, '') || 'Your Event';
+    return (kickerInput.value.trim() || currentDateLabel() || 'THE WEDDING OF');
+  }
+  function renderFontUI(){
+    var cur = fontMode === 'name' ? currentFont : currentDateFont;
+    var rec = recentFonts();
+    var cats = (rec.length ? ['Recent'] : []).concat(Object.keys(FONT_GROUPS));
+    if(!fontCat || cats.indexOf(fontCat) < 0) fontCat = catOfFont(cur);
+    fontCatsEl.innerHTML = '';
+    cats.forEach(function(c){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'theme-cat' + (c === fontCat ? ' active' : ''); b.textContent = c;
+      b.addEventListener('click', function(){ fontCat = c; renderFontUI(); });
+      fontCatsEl.appendChild(b);
+    });
+    var vals = fontCat === 'Recent' ? rec : FONT_GROUPS[fontCat].map(fontVal).filter(Boolean);
+    var sample = fontSampleText();
+    fontCardsEl.innerHTML = '';
+    vals.forEach(function(v){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'font-card'; b.dataset.value = v;
+      var s = document.createElement('span'); s.className = 'fs'; s.textContent = sample; s.style.fontFamily = v; s.style.fontWeight = BOLD_FONTS.has(v) ? '700' : '400';
+      var l = document.createElement('span'); l.className = 'fl'; l.textContent = fontLabel(v);
+      b.append(s, l);
+      b.addEventListener('click', function(){
+        selectFont(fontMode, v);
+        if(fontMode === 'name') applyLabelInputFont();
+        pushRecentFont(v);
+        redrawAll(); markFontUI();
+      });
+      fontCardsEl.appendChild(b);
+    });
+    markFontUI();
+  }
+  function markFontUI(){
+    [].forEach.call(document.querySelectorAll('#fontMode button'), function(b){ b.classList.toggle('on', b.dataset.mode === fontMode); });
+    var cur = fontMode === 'name' ? currentFont : currentDateFont;
+    [].forEach.call(fontCardsEl.children, function(b){ b.classList.toggle('on', b.dataset.value === cur); });
+    [].forEach.call(fontPairsEl.children, function(b){ b.classList.toggle('on', b._pair[1] === currentFont && b._pair[2] === currentDateFont); });
+  }
+  var fontSampleTimer = null;
+  function refreshFontSamples(){
+    clearTimeout(fontSampleTimer);
+    fontSampleTimer = setTimeout(function(){
+      var s = fontSampleText();
+      [].forEach.call(fontCardsEl.querySelectorAll('.fs'), function(el){ el.textContent = s; });
+    }, 250);
+  }
+  labelInput.addEventListener('input', refreshFontSamples);
+  kickerInput.addEventListener('input', refreshFontSamples);
+
+  // ---- Step 2: the design's own colours first in Text colour ----
+  var themePaletteEl = document.getElementById('themePalette');
+  var paletteSig = '';
+  function refreshThemePalette(){
+    var t = currentThemeObj(), cols = [];
+    if(t){
+      [t.text, t.titleBg ? t.titleBgColor : null, t.color, t.outline ? t.outlineColor : null].forEach(function(c){ if(c) cols.push(c); });
+      Object.keys(t.artPal || {}).forEach(function(k){ var v = t.artPal[k]; (Array.isArray(v) ? v : [v]).forEach(function(c){ cols.push(c); }); });
+    }
+    var fixed = [].map.call(colorSwatchRow.querySelectorAll(':scope > .color-swatch-btn'), function(b){ return b.dataset.color.toLowerCase(); });
+    var seen = {};
+    cols = cols.filter(function(c){
+      if(typeof c !== 'string' || !/^#[0-9a-f]{6}$/i.test(c)) return false;
+      c = c.toLowerCase(); if(seen[c] || fixed.indexOf(c) >= 0) return false;
+      return (seen[c] = true);
+    }).slice(0, 5);
+    var sig = cols.join(',');
+    if(sig !== paletteSig){
+      paletteSig = sig;
+      themePaletteEl.innerHTML = '';
+      cols.forEach(function(c){
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'color-swatch-btn'; b.dataset.color = c; b.title = 'From this design';
+        b.style.background = c;
+        var lum = 0.299 * parseInt(c.substr(1, 2), 16) + 0.587 * parseInt(c.substr(3, 2), 16) + 0.114 * parseInt(c.substr(5, 2), 16);
+        if(lum > 225) b.style.border = '1.5px solid var(--line)';
+        themePaletteEl.appendChild(b);
+      });
+    }
+    [].forEach.call(colorSwatchRow.querySelectorAll('.color-swatch-btn'), function(b){ b.classList.toggle('active', b.dataset.color.toLowerCase() === String(textColor).toLowerCase()); });
+  }
+
+  // ---- Pill pickers instead of drop-downs ----
+  var pillSyncs = [];
+  function pillify(sel){
+    var row = document.createElement('div'); row.className = 'pills'; row.setAttribute('role', 'group');
+    [].forEach.call(sel.options, function(o){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'pill'; b.textContent = o.textContent; b.dataset.v = o.value;
+      row.appendChild(b);
+    });
+    function sync(){ [].forEach.call(row.children, function(b){ var on = b.dataset.v === sel.value; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); }); }
+    row.addEventListener('click', function(e){
+      var b = e.target.closest('.pill'); if(!b) return;
+      sel.value = b.dataset.v; sel.dispatchEvent(new Event('change', { bubbles: true })); sync();
+    });
+    sel.style.display = 'none';
+    sel.parentNode.insertBefore(row, sel.nextSibling);
+    pillSyncs.push(sync); sync();
+  }
+  function pillSyncAll(){ pillSyncs.forEach(function(f){ f(); }); }
+  [].forEach.call(document.querySelectorAll('#tabSetup select.pillify'), pillify);
+
+  // ---- Step 3: layout cards show your design ----
+  var ltCache = { sig: '', urls: {} }, ltQueue = [], ltDirty = true, ltTimer = null, ltBusy = false;
+  function layoutDesignSig(){
+    var s = snapshotSetup();
+    ['layout', 'guestPick', 'guestLayouts', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview'].forEach(function(k){ delete s[k]; });
+    return JSON.stringify(s) + '|' + (backgroundImg ? backgroundImg.src.length : 0) + '|' + labelInput.value;
+  }
+  function setLayoutThumb(btn, url){
+    var im = btn.querySelector('img.lt-img');
+    if(!im){
+      im = document.createElement('img'); im.className = 'lt-img'; im.alt = '';
+      var lt = btn.querySelector('.lt'); if(lt) lt.replaceWith(im); else btn.prepend(im);
+    }
+    if(im.src !== url) im.src = url;
+  }
+  function markLayoutThumbsDirty(){
+    ltDirty = true;
+    if(curStep !== 3 || tabSetup.classList.contains('hidden')) return;
+    clearTimeout(ltTimer); ltTimer = setTimeout(queueLayoutThumbs, 700);
+  }
+  function applyCachedLayoutThumbs(){
+    var sig = layoutDesignSig();
+    if(ltCache.sig !== sig) return;
+    [].forEach.call(layoutGrid.querySelectorAll('.layout-btn'), function(b){ if(ltCache.urls[b.dataset.layout]) setLayoutThumb(b, ltCache.urls[b.dataset.layout]); });
+  }
+  function queueLayoutThumbs(){
+    if(!ltDirty && ltCache.sig === layoutDesignSig()){ applyCachedLayoutThumbs(); return; }
+    ltDirty = false;
+    var sig = layoutDesignSig();
+    if(ltCache.sig !== sig) ltCache = { sig: sig, urls: {} };
+    ltQueue = [].slice.call(layoutGrid.querySelectorAll('.layout-btn')).filter(function(b){ return !b.classList.contains('lt-empty'); });
+    // The selected layout first.
+    ltQueue.sort(function(a, b){ return (b.dataset.layout === currentLayout) - (a.dataset.layout === currentLayout); });
+    pumpLayoutThumbs();
+  }
+  function pumpLayoutThumbs(){
+    if(ltBusy) return;
+    var b = ltQueue.shift(); if(!b) return;
+    ltBusy = true;
+    setTimeout(function(){
+      try{
+        var key = b.dataset.layout;
+        if(state !== 'capturing' && LAYOUT_DEFS[key]){
+          var url = ltCache.urls[key];
+          if(!url){
+            var big = document.createElement('canvas');
+            composeCanvas(key, big, buildPlaceholderShots(220, shotsNeeded(key)));
+            var small = document.createElement('canvas'), sc = 150 / big.height;
+            small.width = Math.max(1, Math.round(big.width * sc)); small.height = 150;
+            var sx = small.getContext('2d'); sx.imageSmoothingQuality = 'high'; sx.drawImage(big, 0, 0, small.width, small.height);
+            url = ltCache.urls[key] = small.toDataURL('image/jpeg', 0.8);
+          }
+          var live = layoutGrid.querySelector('.layout-btn[data-layout="' + key + '"]');
+          if(live) setLayoutThumb(live, url);
+        }
+      }catch(e){ console.error('layout thumb', e); }
+      ltBusy = false; pumpLayoutThumbs();
+    }, 30);
+  }
+
+  // ---- Step 4: Extras tabs + a shorter sticker tray ----
+  function setExtrasPane(p){
+    [].forEach.call(document.querySelectorAll('#extrasTabs button'), function(b){ var on = b.dataset.pane === p; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+    [].forEach.call(document.querySelectorAll('#decorSection .pane'), function(x){ x.classList.toggle('on', x.dataset.pane === p); });
+  }
+  document.getElementById('extrasTabs').addEventListener('click', function(e){ var b = e.target.closest('button'); if(b) setExtrasPane(b.dataset.pane); });
+  var propMoreBtn = document.getElementById('propMore');
+  propMoreBtn.style.display = STICKERS.length > STICKER_SHOWN ? '' : 'none';
+  propMoreBtn.addEventListener('click', function(){
+    var all = propTray.classList.toggle('all');
+    propMoreBtn.textContent = all ? 'Fewer stickers' : 'More stickers';
+  });
+
+  // ---- Step 5: printing summary + folder help ----
+  function refreshPrintSummary(){
+    var sizes = printSettings(), box = document.getElementById('printSummaryBox');
+    box.style.display = sizes ? '' : 'none';
+    if(!sizes) return;
+    document.getElementById('printSummary').textContent = 'Printing is on: ' + sizes.map(function(k){ var p = paperFor(k); return p ? p.name : k; }).join(', ') +
+      '. Pick the paper after each session.' + (autoPrint ? ' Auto-print is on.' : '');
+  }
+  window.addEventListener('pb-print-change', function(){ if(curStep === 5) refreshPrintSummary(); });
+  var dfHelp = document.getElementById('driveFolderHelp');
+  if(!dfHelp.textContent) dfHelp.textContent = 'Each event gets its own folder. Two devices? Type the same name on both.';
+  driveFolderKeyInput.addEventListener('input', scheduleSetupNav);
+
+  // ---- First step to show ----
+  (function(){
+    var saved = 0; try{ saved = Number(sessionStorage.getItem('pb_step')) || 0; }catch(e){}
+    goStep(saved >= 1 && saved <= 5 ? saved : 1, { noScroll: true });
+    afterSetupPreview();
+    setupLoadPromise.then(function(){
+      // A returning renter with the design done but no folder yet: go straight to Share.
+      if(!saved && labelInput.value.trim() && !rawFolderKey()) goStep(5, { noScroll: true });
+      refreshSetupNav();
+    });
+  })();
 })();
 </script>
 </body>

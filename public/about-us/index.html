@@ -191,7 +191,7 @@ Event Date:</pre>
     </section>
 
     <footer>
-      <span>Try it free with code <code>TRIALMODE</code></span>
+      <span id="trialNote" hidden>Try it free with code <code id="trialCode"></code></span>
       <nav>
         <a href="/">Open photo booth</a>
         <a href="/lifetime/">My Events</a>
@@ -255,6 +255,13 @@ Event Date:</pre>
       if (isPhoneOrTablet) return;
       Array.prototype.forEach.call(document.querySelectorAll('a[href^="' + MOBILE + '"]'), function(a){ a.href = DESKTOP; });
     })();
+  </script>
+  <script>
+    fetch('/api/trial').then(function(r){ return r.json(); }).then(function(d){
+      if (!d || !d.enabled || !d.code) return;
+      document.getElementById('trialCode').textContent = d.code;
+      document.getElementById('trialNote').hidden = false;
+    }).catch(function(){});
   </script>
 </body>
 </html>

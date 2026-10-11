@@ -5,6 +5,11 @@
   publish = "public"
   functions = "netlify/functions"
 
+[build.environment]
+  # The trial code is intentionally public (advertised on /about-us), so don't
+  # treat it as a leaked secret. ADMIN_PASSWORD and TOKEN_SECRET stay scanned.
+  SECRETS_SCAN_OMIT_KEYS = "TRIAL_PASSWORD"
+
 [functions]
   node_bundler = "esbuild"
 

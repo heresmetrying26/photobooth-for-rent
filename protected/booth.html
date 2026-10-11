@@ -238,20 +238,20 @@
   .countdown-overlay.pausing{background:transparent;}
   .countdown-overlay.pausing .cd-wrap{display:none;}
   .countdown-overlay{
-    position:absolute; inset:0; z-index:4;
+    position:relative; z-index:4; width:100%; min-height:132px; margin-top:10px; padding:10px;
     display:none;
-    align-items:center; justify-content:center;
-    background:rgba(0,0,0,0.15);
+    flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:14px;
   }
   .countdown-num{
     font-family:'Fraunces', Georgia, serif;
     font-weight:700;
-    font-size:120px;
+    font-size:clamp(56px,14vw,88px);
     color:#ffffff;
     text-shadow:0 0 30px rgba(0,0,0,0.6);
   }
   .countdown-num.pulse{animation:pulse-pop 1s ease-out;}
-  .countdown-num.word{font-size:56px; letter-spacing:2px; text-transform:uppercase;}
+  .countdown-num.word{font-size:clamp(28px,7vw,42px); letter-spacing:2px; text-transform:uppercase;}
   @keyframes pulse-pop{
     0%{transform:scale(1.6); opacity:0;}
     30%{transform:scale(1); opacity:1;}
@@ -680,19 +680,26 @@
     display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;}
   .cal-btn.on{background:var(--blue-deep); border-color:var(--blue-deep); color:#fff;}
   .date-chip-row{display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;}
-  .date-chip{position:relative; display:inline-flex; align-items:center; gap:8px; height:40px; padding:0 14px; border-radius:20px;
-    border:1.5px solid var(--blue-deep); background:var(--tint); color:var(--blue-deep); font:700 14px 'Manrope',sans-serif; overflow:hidden;}
-  .date-chip input[type=date]{position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; border:0; padding:0; margin:0; font-size:16px;}
+  .date-chip{position:relative; display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:0 14px; border-radius:20px;
+    border:1.5px solid var(--blue-deep); background:var(--tint); color:var(--blue-deep); font:700 14px 'Manrope',sans-serif; cursor:pointer;}
+  .date-chip span{pointer-events:none;}
+  .date-chip input[type=date]{position:absolute; inset:0; z-index:2; width:100%; height:100%; opacity:0; cursor:pointer; border:0; padding:0; margin:0; font-size:16px;}
   .date-x{height:40px; padding:0 12px; border-radius:20px; border:1px solid var(--line); background:#fff; color:var(--ink-dim); font:600 12.5px 'Manrope',sans-serif; cursor:pointer;}
 
-  /* Countdown ring on the stage */
-  .cd-wrap{position:relative; width:min(62%, 260px); aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;}
+  /* Compact countdown badge in the upper-right corner of the live view. */
+  .countdown-overlay.pausing{background:transparent; border:0;}
+  .countdown-overlay.pausing .cd-wrap{display:none;}
+  .countdown-overlay{position:absolute; inset:12px 12px auto auto; z-index:9; display:none; flex-direction:row; align-items:center; justify-content:center;
+    gap:6px; width:auto; min-height:0; margin:0; padding:6px 9px; border-radius:999px; background:rgba(20,18,22,.68); color:#fff;
+    border:1px solid rgba(255,255,255,.45); pointer-events:none;}
+  .cd-wrap{position:relative; flex:none; width:40px; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;}
   .cd-ring{position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg);}
   .cd-ring .trk{fill:rgba(20,18,22,0.45); stroke:rgba(255,255,255,0.25); stroke-width:4;}
   .cd-ring .bar{fill:none; stroke:var(--blue-deep); stroke-width:4; stroke-linecap:round;}
   .cd-wrap .countdown-num{position:relative;}
-  .cd-shot{position:absolute; top:14px; right:16px; z-index:5; padding:6px 12px; border-radius:16px; background:rgba(20,18,22,.6);
-    color:#fff; font:800 11px 'Manrope',sans-serif; letter-spacing:.18em; text-transform:uppercase;}
+  .cd-wrap .countdown-num{font-size:26px;}
+  .cd-wrap .countdown-num.word{font-size:11px; letter-spacing:.3px;}
+  .cd-shot{position:static; z-index:5; padding:0; background:transparent; color:#fff; font:800 9px 'Manrope',sans-serif; letter-spacing:.04em; text-transform:uppercase;}
 
   /* Guest screen (traditional mode) */
   .guest-status{display:flex; align-items:center; gap:8px; margin:0 0 10px; font-size:13px; font-weight:600;}
@@ -807,10 +814,10 @@
   .shot-review{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:3; display:none;}
   .shot-review.on{display:block;}
   .pick-overlay{cursor:default; background:rgba(20,18,22,.78); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); padding:4%;
-    display:none; flex-direction:column; align-items:center; justify-content:center; gap:3%;}
+    display:none; flex-direction:column; align-items:center; justify-content:flex-start; gap:3%; overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y;}
   .pick-overlay.on{display:flex;}
   .pick-title{margin:0; color:#fff; font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:clamp(20px,4.2vw,34px); text-align:center;}
-  .pick-grid{display:flex; flex-wrap:wrap; justify-content:center; gap:3%; width:100%;}
+  .pick-grid{display:flex; flex-wrap:wrap; justify-content:center; align-content:flex-start; gap:3%; width:100%; padding-bottom:4%;}
   .pick-btn{flex:0 1 28%; min-width:110px; display:flex; flex-direction:column; align-items:center; gap:8px; padding:10px; border-radius:16px;
     border:3px solid transparent; background:rgba(255,255,255,.1); color:#fff; font:700 clamp(12px,1.8vw,16px) 'Manrope',sans-serif; cursor:pointer;}
   .pick-btn img{width:100%; border-radius:8px; background:#fff; display:block; box-shadow:0 8px 20px rgba(0,0,0,.25);}
@@ -1535,13 +1542,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
         <div class="rec-dot" id="recDot"><i></i><span>LIVE</span></div>
 
-        <div class="countdown-overlay" id="countdownOverlay">
+        <div class="countdown-overlay" id="countdownOverlay" aria-live="polite">
           <div class="cd-wrap">
             <svg class="cd-ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="trk" cx="50" cy="50" r="46"/><circle class="bar" id="cdBar" cx="50" cy="50" r="46" pathLength="100" stroke-dasharray="100" stroke-dashoffset="0"/></svg>
             <div class="countdown-num" id="countdownNum">3</div>
           </div>
           <div class="cd-shot" id="cdShot"></div>
         </div>
+
         <div class="ready-overlay" id="readyOverlay">
           <p class="ready-title">Get ready!</p>
           <p class="ready-sub" id="readySub">4 shots · 5,4,3,2,1,Pose</p>
@@ -1866,6 +1874,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   dateToggle.addEventListener('click', () => setDateOn(!dateOn));
   document.getElementById('dateRemove').addEventListener('click', () => setDateOn(false));
+  dateRow.querySelector('.date-chip').addEventListener('click', (e) => {
+    if(e.target === dateInput) return;
+    e.preventDefault();
+    try{
+      if(typeof dateInput.showPicker === 'function') dateInput.showPicker();
+      else { dateInput.focus(); dateInput.click(); }
+    }catch(err){ dateInput.focus(); dateInput.click(); }
+  });
   dateInput.addEventListener('input', () => {
     if(!dateInput.value) dateInput.value = todayISO();
     setDateOn(true);
@@ -3481,7 +3497,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     qrResults.innerHTML = '';
     lastRenderedFolderUrl = null;
     qrSlot('photo', 'Your photo', 'Saving your photo…');
-    if(gifOn && driveReady()) qrSlot('gif', 'Your GIF', 'Making your GIF…');
+    if(gifOn) qrSlot('gif', 'Your GIF', 'Making your GIF…');
     guestRender();
     let result = null, lastError = null;
     try { result = await uploadLayoutForQR(currentLayout); }
@@ -3489,7 +3505,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(myGeneration !== qrGeneration) return null;
     if(!result){
       failQrSlot('photo', 'Couldn’t save. Check the internet.');
-      failQrSlot('gif', 'Not saved');
       const detail = lastError && lastError.message ? (': ' + lastError.message) : '';
       showToast('Photo not saved' + detail, 5000);
       return null;
@@ -3706,6 +3721,46 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     updateFilmTrack();
   }
 
+  const MOTION_SAMPLE_MS = 333, MOTION_MAX_FRAMES = 120, MOTION_FRAME_HEIGHT = 1080;
+  var motionFrames = [], motionFrameCursor = 0, motionCaptureTimer = null, motionCaptureBusy = false;
+  async function captureMotionFrame(){
+    if(motionCaptureBusy || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
+    motionCaptureBusy = true;
+    try{
+      var vw = video.videoWidth, vh = video.videoHeight, ratio = STAGE_ASPECT;
+      var sw = vw, sh = vh, sx = 0, sy = 0;
+      if(vw / vh > ratio){ sw = vh * ratio; sx = (vw - sw) / 2; }
+      else { sh = vw / ratio; sy = (vh - sh) / 2; }
+      var h = Math.min(MOTION_FRAME_HEIGHT, Math.round(sh));
+      var w = Math.max(1, Math.round(h * ratio));
+      var c = document.createElement('canvas'); c.width = w; c.height = h;
+      var ctx = c.getContext('2d', { alpha: false });
+      ctx.filter = liveFilterCss() || 'none';
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, w, h);
+      // Keep compressed source frames in memory; full-size canvas buffers for
+      // a whole session can consume hundreds of megabytes.
+      var blob = await new Promise(function(resolve){ c.toBlob(resolve, 'image/jpeg', 0.96); });
+      if(!blob) return;
+      if(motionFrames.length < MOTION_MAX_FRAMES) motionFrames.push(blob);
+      else { motionFrames[motionFrameCursor] = blob; motionFrameCursor = (motionFrameCursor + 1) % MOTION_MAX_FRAMES; }
+    } finally { motionCaptureBusy = false; }
+  }
+  async function startMotionCapture(){
+    if(motionCaptureTimer){ clearInterval(motionCaptureTimer); motionCaptureTimer = null; }
+    motionFrames = []; motionFrameCursor = 0;
+    await captureMotionFrame();
+    motionCaptureTimer = setInterval(captureMotionFrame, MOTION_SAMPLE_MS);
+  }
+  async function stopMotionCapture(){
+    if(motionCaptureTimer){ clearInterval(motionCaptureTimer); motionCaptureTimer = null; }
+    while(motionCaptureBusy) await wait(10);
+    if(motionFrames.length === MOTION_MAX_FRAMES && motionFrameCursor){
+      motionFrames = motionFrames.slice(motionFrameCursor).concat(motionFrames.slice(0, motionFrameCursor));
+    }
+    motionFrameCursor = 0;
+    return motionFrames;
+  }
+
   // ---- Countdown settings (Setup → Layout & timer) ----
   let timerSec = 5;        // per shot, in ½-second steps
   let firstExtraSec = 0;   // added to the first shot only
@@ -3823,20 +3878,28 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     updateUI();
 
     if(skipReady !== true) await waitForReadyTap();
+    await startMotionCapture();
     countingDown = true;
     guestRender();
 
     for(let i = 0; i < shotCanvases.length; i++){
       await countdownThenCapture(i);
     }
+    const gifMotionFrames = await stopMotionCapture();
     countingDown = false;
 
     state = 'result';
     sessionNumber = nextSessionNumber();
     renderComposite();
     updateUI();
-    const gifShots = shotCanvases.slice(), gifSession = sessionNumber;
-    showQRForCurrentPhoto().then((gen) => { if(gen) return uploadSessionGif(gifShots, gifSession, gen); }).catch(() => {});
+    const gifSession = sessionNumber;
+    showQRForCurrentPhoto();
+    const gifGeneration = qrGeneration;
+    if(gifOn){
+      makeSessionGif(gifMotionFrames)
+        .then((blob) => uploadSessionGif(blob, gifSession, gifGeneration))
+        .catch((err) => { console.error('GIF generation failed:', err); if(gifGeneration === qrGeneration) failQrSlot('gif', 'GIF not saved'); });
+    }
     scheduleResultReset();
     showMultipleDownloadsHint();
     saveToDevice();
@@ -5655,9 +5718,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     '.qrl{font-weight:800;letter-spacing:.18em;text-transform:uppercase;font-size:clamp(10px,.9vw,16px);color:var(--red);}' +
     '.fs{position:fixed;top:1.6vh;left:50%;transform:translateX(-50%);z-index:5;padding:10px 18px;border-radius:99px;border:1.5px solid #D6CEC1;background:#fff;color:var(--ink);font:700 13px Manrope,sans-serif;cursor:pointer;}' +
     '.hide{display:none !important;}' +
-    '.pk{position:fixed;inset:0;z-index:4;background:rgba(20,18,22,.86);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4vh;padding:4vh 4vw;}' +
-    '.pkt{margin:0;color:#fff;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(26px,3.6vw,64px);}' +
-    '.pkg{display:flex;gap:2.4vw;justify-content:center;align-items:flex-end;flex-wrap:wrap;}' +
+    '.pk{position:fixed;inset:0;z-index:4;background:rgba(20,18,22,.86);display:flex;flex-direction:column;align-items:center;gap:clamp(16px,4vh,40px);padding:4vh 4vw;overflow:hidden;box-sizing:border-box;}' +
+    '.pkt{flex:none;margin:0;color:#fff;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(26px,3.6vw,64px);}' +
+    '.pkg{flex:1 1 auto;width:100%;min-height:0;overflow-y:auto;display:flex;gap:2.4vw;justify-content:center;align-items:flex-start;align-content:flex-start;flex-wrap:wrap;padding:0 1vw 3vh;box-sizing:border-box;overscroll-behavior:contain;}' +
     '.pkb{display:flex;flex-direction:column;align-items:center;gap:1.4vh;padding:1.2vh;border-radius:18px;border:4px solid transparent;background:rgba(255,255,255,.08);color:#fff;font:700 clamp(14px,1.3vw,24px) Manrope,sans-serif;cursor:pointer;}' +
     '.pkb img{height:52vh;max-width:28vw;object-fit:contain;border-radius:10px;background:#fff;}' +
     '.pkb.sel{border-color:var(--red);background:rgba(255,255,255,.16);}' +
@@ -6206,37 +6269,78 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }
   }
 
-  // ---- GIF of each session (uploaded next to the photo) ----
-  async function makeSessionGif(shots){
-    if(!window.gifenc || !shots || shots.length < 2 || !shots.every(Boolean)) return null;
-    var frames = [], W = 480;
-    for(var i = 0; i < shots.length; i++){
-      var big = document.createElement('canvas');
-      composeCanvas('solo', big, [shots[i]]);   // each shot on its own, in the event's theme
-      var fc = document.createElement('canvas'), sc = W / big.width;
-      fc.width = W; fc.height = Math.round(big.height * sc);
-      var fx = fc.getContext('2d'); fx.imageSmoothingQuality = 'high';
-      fx.drawImage(big, 0, 0, fc.width, fc.height);
-      frames.push(fc);
+  // ---- Motion GIF of the live camera throughout the session ----
+  async function makeSessionGif(frames){
+    if(!window.gifenc || !frames || frames.length < 2) return null;
+    var layoutKey = currentLayout || setupLayout || 'polaroid';
+    var copies = Math.max(1, shotsNeeded(layoutKey));
+    var work = document.createElement('canvas'), output = document.createElement('canvas');
+    var workCtx = work.getContext('2d'), outputCtx = output.getContext('2d', { willReadFrequently: true });
+    var renderedFrames = [], paletteSample = null, sampleOffset = 0;
+
+    async function renderDecoratedFrame(sourceBlob){
+      var bitmap = await createImageBitmap(sourceBlob);
+      var source = document.createElement('canvas');
+      source.width = bitmap.width; source.height = bitmap.height;
+      source.getContext('2d', { alpha: false }).drawImage(bitmap, 0, 0);
+      bitmap.close();
+      composeCanvas(layoutKey, work, Array.from({ length: copies }, function(){ return source; }));
+      var scale = Math.min(1, 1080 / Math.max(work.width, work.height));
+      var width = Math.max(1, Math.round(work.width * scale));
+      var height = Math.max(1, Math.round(work.height * scale));
+      if(output.width !== width || output.height !== height){ output.width = width; output.height = height; }
+      outputCtx.drawImage(work, 0, 0, width, height);
+      source.width = 1; source.height = 1;
+      return outputCtx.getImageData(0, 0, width, height);
+    }
+
+    // Compose the live filtered frames into the chosen decorative print
+    // layout, then build a single palette from the actual finished artwork.
+    for(var i = 0; i < frames.length; i++){
+      var image = await renderDecoratedFrame(frames[i]);
+      if(!paletteSample){
+        var samplesPerFrame = Math.ceil((image.width * image.height) / 16);
+        paletteSample = new Uint8Array(frames.length * samplesPerFrame * 4);
+      }
+      for(var p = 0; p < image.data.length; p += 64){
+        paletteSample.set(image.data.subarray(p, p + 4), sampleOffset);
+        sampleOffset += 4;
+      }
+      var renderedBlob = await new Promise(function(resolve){ output.toBlob(resolve, 'image/jpeg', 0.98); });
+      if(!renderedBlob) throw new Error('Could not prepare GIF frame');
+      renderedFrames.push(renderedBlob);
       await wait(0);
     }
+    var palette = gifenc.quantize(paletteSample.subarray(0, sampleOffset), 256);
+    paletteSample = null;
     var enc = gifenc.GIFEncoder();
-    for(var j = 0; j < frames.length; j++){
-      var d = frames[j].getContext('2d').getImageData(0, 0, frames[j].width, frames[j].height).data;
-      var pal = gifenc.quantize(d, 256);
-      enc.writeFrame(gifenc.applyPalette(d, pal), frames[j].width, frames[j].height, { palette: pal, delay: 700 });
+    for(var j = 0; j < renderedFrames.length; j++){
+      var bitmap = await createImageBitmap(renderedFrames[j]);
+      if(output.width !== bitmap.width || output.height !== bitmap.height){ output.width = bitmap.width; output.height = bitmap.height; }
+      outputCtx.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      var pixels = outputCtx.getImageData(0, 0, output.width, output.height).data;
+      enc.writeFrame(gifenc.applyPalette(pixels, palette), output.width, output.height, {
+        palette: j === 0 ? palette : null, delay: MOTION_SAMPLE_MS
+      });
       await wait(0);
     }
     enc.finish();
     return new Blob([enc.bytes()], { type: 'image/gif' });
   }
-  async function uploadSessionGif(shots, sn, gen){
-    if(!gifOn || !driveReady()) return;
+  async function uploadSessionGif(blob, sn, gen){
+    if(!gifOn) return;
     try{
-      var blob = await makeSessionGif(shots);
       if(!blob){ if(gen === qrGeneration) failQrSlot('gif', 'No GIF this time'); return; }
-      var r = await uploadToDrive(blob, filePrefix() + (sn || 1) + '_gif' + deviceTag() + '.gif');
-      if(gen === qrGeneration && r && r.fileId) fillQrSlot('gif', fileShareUrl(r.fileId, true));
+      var filename = filePrefix() + (sn || 1) + '_gif' + deviceTag() + '.gif';
+      var url;
+      try{ url = await uploadToLitterbox(blob, filename, '1h'); }
+      catch(litterboxError){
+        if(!driveReady()) throw litterboxError;
+        var drive = await uploadToDrive(blob, filename);
+        url = fileShareUrl(drive.fileId, true);
+      }
+      if(gen === qrGeneration && url) fillQrSlot('gif', url);
     }catch(e){
       console.error('GIF upload failed:', e);
       if(gen === qrGeneration) failQrSlot('gif', 'GIF not saved');

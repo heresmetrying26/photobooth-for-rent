@@ -131,7 +131,7 @@ function doPost(e) {
     if (!b64) return jsonOut({ ok: false, error: 'No image data was received.' });
     if (b64.length > MAX_IMAGE_BASE64) return jsonOut({ ok: false, error: 'Image is too large.' });
 
-    var mime = /^image\/(png|jpeg|gif|webp)$/.test(data.mimeType || '') ? data.mimeType : 'image/png';
+    var mime = /^image\/(png|jpeg|webp)$/.test(data.mimeType || '') ? data.mimeType : 'image/png';
     var name = String(data.filename || ('photo-' + Date.now() + '.png')).replace(/[\/\\]/g, '_').slice(0, 120);
     var file = folder.createFile(Utilities.newBlob(Utilities.base64Decode(b64), mime, name));
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -154,7 +154,7 @@ function jsonOut(obj) {
 }
 
 // ---------- online gallery (read-only) ----------
-// GET ?action=list&folder=<id> lists the photos and GIFs in ONE event folder,
+// GET ?action=list&folder=<id> lists the photos in ONE event folder,
 // for the photobooth4u gallery page (/g/<id>). Only folders inside
 // ROOT_FOLDER_ID can be listed, and they are already "anyone with the link".
 var GALLERY_EVENT_DAYS = 7;          // keep in sync with EVENT_DAYS in cleanup.gs
@@ -172,6 +172,21 @@ function isInsideRoot_(folder) {
   return false;
 }
 
+function appendGalleryPhotos_(folder, files, depth) {
+  var it = folder.getFiles();
+  while (it.hasNext()) {
+    var f = it.next();
+    if (f.isTrashed() || !/^image\/(png|jpeg|webp)$/.test(f.getMimeType())) continue;
+    files.push({ id: f.getId(), name: f.getName(), mime: f.getMimeType(), size: f.getSize(), t: f.getDateCreated().getTime() });
+  }
+  if (depth >= 4) return;
+  var folders = folder.getFolders();
+  while (folders.hasNext()) {
+    var child = folders.next();
+    if (!child.isTrashed()) appendGalleryPhotos_(child, files, depth + 1);
+  }
+}
+
 function listGallery_(id) {
   id = String(id || '');
   if (!/^[A-Za-z0-9_-]{10,80}$/.test(id) || id === ROOT_FOLDER_ID) return { ok: false, error: 'not-found' };
@@ -179,17 +194,11 @@ function listGallery_(id) {
   try { folder = DriveApp.getFolderById(id); } catch (err) { return { ok: false, error: 'not-found' }; }
   if (folder.isTrashed() || !isInsideRoot_(folder)) return { ok: false, error: 'not-found' };
 
-  var files = [], newest = 0, it = folder.getFiles();
-  while (it.hasNext()) {
-    var f = it.next();
-    if (f.isTrashed()) continue;
-    var mime = f.getMimeType();
-    if (!/^image\/(png|jpeg|gif|webp)$/.test(mime)) continue;
-    var t = f.getDateCreated().getTime();
-    if (t > newest) newest = t;
-    files.push({ id: f.getId(), name: f.getName(), mime: mime, size: f.getSize(), t: t });
-  }
+  // Include photos in event subfolders (such as Bonus), not just the root.
+  var files = [];
+  appendGalleryPhotos_(folder, files, 0);
   files.sort(function (a, b) { return b.t - a.t; });
+  var newest = files.length ? files[0].t : 0;
 
   var name = folder.getName(), title = name, until = null, day = 24 * 60 * 60 * 1000;
   if (name === 'Bonus') {

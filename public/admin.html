@@ -163,10 +163,6 @@
         <select class="sel theme-select" id="newTheme" style="width:100%;margin-top:4px;"></select>
         <div class="meta" style="margin:6px 0 0;">The booth opens with this design (e.g. a graduation theme). The renter can still change everything; once they edit, their own design is kept.</div>
       </div>
-      <div class="modebox">
-        <label class="toggle"><input type="checkbox" id="newGif" checked> Animated GIF of each session</label>
-        <div class="meta" style="margin:0;">The shots play one after another in the theme; the GIF goes to the same Drive folder and the online gallery.</div>
-      </div>
       <div class="printbox" id="newPrint"></div>
       <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newTraditional"> Traditional booth (laptop + guest screen)</label>
@@ -189,14 +185,13 @@
       <div class="meta" style="margin-bottom:0;">Each trial gets its own folder like "Prefix ABC123", so simultaneous trials never share photos.</div>
       <div class="printbox" id="trialPrint"></div>
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialTraditional"> Trials use the traditional booth (laptop + guest screen)</label></div>
-      <div class="modebox"><label class="toggle"><input type="checkbox" id="trialGif"> Trials make an animated GIF</label></div>
       <button class="primary" id="saveTrialBtn" style="margin-top:12px;">Save trial settings</button>
     </details>
 
     <details class="card" id="qrCard">
       <summary><h2>Guest QR codes</h2></summary>
       <label class="toggle"><input type="radio" name="qrTarget" value="gallery"> Online gallery <span style="color:var(--dim);font-weight:500;">&nbsp;(recommended)</span></label>
-      <div class="meta" style="margin:-8px 0 12px 26px;">A photobooth4u page with Photos and GIFs tabs, full-screen view and downloads. It also has a button to the Google Drive folder.</div>
+      <div class="meta" style="margin:-8px 0 12px 26px;">A photobooth4u page with all event photos, full-screen viewing and downloads. It also has a button to the Google Drive folder.</div>
       <label class="toggle"><input type="radio" name="qrTarget" value="drive"> Google Drive folder</label>
       <div class="meta" style="margin:-8px 0 0 26px;">Applies to every booth the next time it is opened or refreshed.</div>
     </details>
@@ -440,7 +435,6 @@
     $('trialFolderPrefix').value = s.trialFolderPrefix;
     printPicker($('trialPrint'), { enabled: s.trialPrintEnabled, sizes: s.trialPrintSizes }, 'Allow printing during trials');
     $('trialTraditional').checked = !!s.trialTraditional;
-    $('trialGif').checked = s.trialGif !== false;
     var qr = document.querySelector('input[name=qrTarget][value="' + (s.qrTarget === 'drive' ? 'drive' : 'gallery') + '"]'); if(qr) qr.checked = true;
   }
   function renderStats(st){
@@ -556,7 +550,6 @@
     }
     acts += '<button class="small" data-a="printedit" data-c="' + c + '">Print settings</button>';
     acts += '<button class="small" data-a="mode" data-c="' + c + '">' + (l.traditional ? 'Switch to tablet' : 'Make traditional') + '</button>';
-    if(!bonus) acts += '<button class="small" data-a="gif" data-c="' + c + '">GIF: ' + (l.gif === false ? 'off' : 'on') + '</button>';
     acts += st === 'revoked'
       ? '<button class="small" data-a="restore" data-c="' + c + '">Restore</button>'
       : '<button class="small danger" data-a="revoke" data-c="' + c + '">Disable</button>';
@@ -565,7 +558,7 @@
       ? esc(l.folderName || l.label || l.code) + ' · <i>event name</i></b> <span style="font-weight:500;">(new folder per event)</span><b>'
       : esc(l.folderName || l.label || l.code) + (bonus ? ' / ' + esc(l.subfolder || 'Bonus') + ' <span style="font-weight:500;">(files named BONUS_…)</span>' : '');
     return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
-      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b> · Animated GIF: <b>' + (l.gif === false ? 'off' : 'on') + '</b><br>' + infoLine(l, st, parentEnd) +
+      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>' + infoLine(l, st, parentEnd) +
       '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
       (maxD > 1 && devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="Remove this device">Remove</button></span>'; }).join('') + '</div>' : '') +
       '</div>' +
@@ -634,13 +627,13 @@
     try{
       var j = await api({ action: 'export', q: VIEW.q, filter: VIEW.filter, sort: VIEW.sort });
       var byKey = {}; j.rows.forEach(function(r){ byKey[r.key] = r.code; });
-      var head = ['Code', 'Client / event', 'Drive folder', 'Type', 'Status', 'Length', 'Opens', 'Redeemed', 'Ends', 'Devices used', 'Device limit', 'Mode', 'Printing', 'GIF', 'Starting theme', 'Booking (for bonus)', 'Created'];
+      var head = ['Code', 'Client / event', 'Drive folder', 'Type', 'Status', 'Length', 'Opens', 'Redeemed', 'Ends', 'Devices used', 'Device limit', 'Mode', 'Printing', 'Starting theme', 'Booking (for bonus)', 'Created'];
       var lines = [head.join(',')].concat(j.rows.map(function(r){
         var st = r.st || statusOf(r, j.now);
         var len = r.kind === 'bonus' ? (r.minutes || 0) + ' min' : r.lifetime ? 'lifetime' : r.days + ' days';
         var ends = r.lifetime ? '' : (r.expiresAt || (r.startsAt ? r.startsAt + r.days * DAY : 0));
         return [r.code, r.label, r.folderName, r.kind === 'bonus' ? 'bonus' : r.lifetime ? 'lifetime' : 'rental', ST_NAME[st] || st, len,
-          isoLocal(r.startsAt), isoLocal(r.redeemedAt), isoLocal(ends), r.devicesUsed, r.maxDevices, r.traditional ? 'laptop' : 'tablet', r.print ? 'yes' : 'no', r.gif === false ? 'no' : 'yes',
+          isoLocal(r.startsAt), isoLocal(r.redeemedAt), isoLocal(ends), r.devicesUsed, r.maxDevices, r.traditional ? 'laptop' : 'tablet', r.print ? 'yes' : 'no',
           r.defaultTheme ? (THEME_NAME[r.defaultTheme] || r.defaultTheme) : '', r.parent ? (byKey[r.parent] || '') : '', isoLocal(r.createdAt)].map(csvCell).join(',');
       }));
       var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
@@ -749,13 +742,6 @@
         refresh();
         return;
       }
-      if(a === 'gif'){
-        var gon = LIC[code] && LIC[code].gif === false;
-        await api({ action: 'gif', code: code, gif: gon });
-        toast('Animated GIF ' + (gon ? 'on' : 'off') + (LIC[code] && LIC[code].bonusKey ? ' (bonus code too)' : '') + ' — an open booth switches within ~5 minutes');
-        refresh();
-        return;
-      }
       if(a === 'mode'){
         var on = !(LIC[code] && LIC[code].traditional);
         await api({ action: 'traditional', code: code, traditional: on });
@@ -781,7 +767,7 @@
     try{
       var np = readPrint($('newPrint'));
       var startsAt = readStartInputs($('newStartDate'), $('newStartTime'));
-      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, bonus: $('newBonus').checked, bonusMinutes: $('newBonusMin').value, printEnabled: np.enabled, printSizes: np.sizes, traditional: $('newTraditional').checked, gif: $('newGif').checked, defaultTheme: $('newTheme').value || null };
+      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, bonus: $('newBonus').checked, bonusMinutes: $('newBonusMin').value, printEnabled: np.enabled, printSizes: np.sizes, traditional: $('newTraditional').checked, defaultTheme: $('newTheme').value || null };
       var j;
       try{ j = await api(createBody); }
       catch(e1){
@@ -819,7 +805,7 @@
   $('saveTrialBtn').addEventListener('click', async function(){
     try{
       var tp = readPrint($('trialPrint'));
-      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes, trialTraditional: $('trialTraditional').checked, trialGif: $('trialGif').checked });
+      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes, trialTraditional: $('trialTraditional').checked });
       toast('Trial settings saved');
     }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
   });

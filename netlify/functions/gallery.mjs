@@ -1,9 +1,8 @@
 import { safe, json, hmac, DRIVE_SCRIPT_URL } from '../lib/core.mjs';
 
 // Backs the online gallery (/g/<Drive folder id>).
-//   GET /api/gallery?f=<folder id>        -> the folder's photos and GIFs (via the Apps Script relay)
-//   GET /api/gallery?img=<file id>&s=<sig> -> one image's bytes (used for animated GIFs, which
-//                                            Drive's thumbnails would freeze, and as a fallback)
+//   GET /api/gallery?f=<folder id>        -> the folder's photos (via the Apps Script relay)
+//   GET /api/gallery?img=<file id>&s=<sig> -> one listed photo's bytes as a fallback
 // Only files listed by the relay get a signature, so this can't be used to fetch any other
 // Drive file. Listings are cached on Netlify's CDN for a few seconds, so a crowd scanning the
 // same QR at once costs one Drive lookup.
@@ -19,7 +18,7 @@ async function serveImage(id, sig) {
   try { r = await fetch('https://drive.google.com/uc?export=download&id=' + encodeURIComponent(id), { redirect: 'follow' }); }
   catch { return notFound(); }
   const type = (r.headers.get('content-type') || '').split(';')[0].trim();
-  if (!r.ok || !/^image\/(png|jpeg|gif|webp)$/.test(type)) return notFound();
+  if (!r.ok || !/^image\/(png|jpeg|webp)$/.test(type)) return notFound();
   const buf = await r.arrayBuffer();
   if (buf.byteLength > MAX_BYTES) return notFound();
   return new Response(buf, {
@@ -53,10 +52,9 @@ export default safe(async (req) => {
   if (!data || !data.ok || !Array.isArray(data.files)) {
     return json({ ok: false, error: data && data.ok ? 'not-ready' : 'not-found' }, data && data.ok ? 503 : 404);
   }
-  const files = data.files.filter((x) => x && ID_RE.test(x.id)).slice(0, 2000).map((x) => ({
+  const files = data.files.filter((x) => x && ID_RE.test(x.id) && /^image\/(png|jpeg|webp)$/.test(x.mime || '')).slice(0, 2000).map((x) => ({
     id: x.id,
     name: String(x.name || '').slice(0, 120),
-    gif: x.mime === 'image/gif',
     t: Number(x.t) || 0,
     src: '/api/gallery?img=' + x.id + '&s=' + sigOf(x.id)
   }));

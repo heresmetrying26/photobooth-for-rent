@@ -115,7 +115,7 @@ export function summaryOf(rec) {
     lifetime: !!rec.lifetime, days: rec.days || 0, minutes: rec.minutes || null, startsAt: rec.startsAt || null,
     status: rec.status, redeemedAt: rec.redeemedAt || null, expiresAt: rec.expiresAt || null,
     maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional,
-    print: !!(rec.print && rec.print.enabled), gif: rec.gif !== false, createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null
+    print: !!(rec.print && rec.print.enabled), createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null
   };
 }
 export async function rebuildIndex() {
@@ -256,7 +256,7 @@ export function normPrint(enabled, sizes) {
 // ---------- settings ----------
 export async function getSettings() {
   const saved = await meta().get('settings', { type: 'json' });
-  return {
+  const settings = {
     trialEnabled: true,
     trialPassword: process.env.TRIAL_PASSWORD || 'TRIAL',
     trialMinutes: 15,
@@ -264,10 +264,11 @@ export async function getSettings() {
     trialPrintEnabled: false,
     trialPrintSizes: ['4x6'],
     trialTraditional: false,
-    trialGif: true,
     qrTarget: 'gallery',
     ...(saved || {})
   };
+  delete settings.trialGif; // Ignore legacy settings after removing GIF support.
+  return settings;
 }
 
 // ---------- brute-force throttle (per IP) ----------
@@ -296,7 +297,7 @@ export async function checkLicense(token, deviceId) {
     if (p.exp <= now) return { valid: false, reason: 'trial-ended' };
     const s = await getSettings();
     if (!s.trialEnabled) return { valid: false, reason: 'trial-disabled' };
-    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes), traditional: !!s.trialTraditional, gif: s.trialGif !== false };
+    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes), traditional: !!s.trialTraditional };
   }
 
   const rec = await licenses().get(p.k, { type: 'json' });
@@ -327,7 +328,6 @@ export async function checkLicense(token, deviceId) {
     multiDevice: maxDevicesOf(rec) > 1,
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes),
     traditional: !!rec.traditional,
-    gif: rec.gif !== false,
     bonus,
     subfolder: bonus ? (rec.subfolder || BONUS_SUBFOLDER) : null,
     filePrefix: bonus ? BONUS_PREFIX : ''

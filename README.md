@@ -174,13 +174,14 @@ folders with the same name.
   pick another day; Remove (or the icon again) takes it off. Works on iPad and Android.
 
 ## Design: themes, saved setup, frame, logo and stickers
-Setup is in 5 steps, one at a time: **1 Design** (templates + Backdrop & colours) · **2 Text** (name,
+Setup is in 5 steps, one at a time: **1 Design** (two tabs: **Ready designs** and **🎨 Colours & background**) · **2 Text** (name,
 date, small line, title style, fonts, colour) · **3 Layout** (layout, guests' choice, countdown) ·
 **4 Extras** (Frame / Logo / Stickers / Filter tabs) · **5 Share** (Drive folder, all-photos QR to print
 ahead, printing). The step bar stays at the top with a one-line summary of each step (red = still
 needed), and a bar at the bottom always shows the save status and **Start photo session**. On a
-laptop or tablet in landscape the **preview stays beside the steps**; on phones a small preview sits in
-the bottom bar, tap it to open it big. **Try with my camera** uses one frame from the camera (never
+laptop or tablet in landscape the **preview stays beside the steps**; on phones the **👁 Preview** button
+in the bottom bar (it pulses on the first visit) opens the preview just above the bar, and the steps still
+scroll above it, so you can change colours or arrange frames and watch the result. **✕ Hide** closes it. **Try with my camera** uses one frame from the camera (never
 uploaded). Tapping a template shows it big first (**Use this design / Cancel**); after using it the
 booth goes to step 2 with the name box ready. Fonts are shown as cards with the event's own name,
 in Script / Elegant / Modern / Fun (plus **Recent**), with ready-made **pairs** for the name and the
@@ -188,17 +189,26 @@ small line; a template's own colours come first under Text colour.
 
 - **Themes** (20 originals) by category: Wedding, Birthday, Debut, Kids Party, Graduation,
   Christening, Christmas, New Year, Corporate. A theme only fills in the settings, so everything
-  can still be changed afterwards. Backdrop → **Pattern color** switches the gold of the
-  patterns to silver, rose gold, champagne, white or black.
+  can still be changed afterwards. **Colours & background** has six numbered parts, each with a
+  one-line explanation: 1 Background style, 2 Background colour, 3 **Gold details colour** (switches
+  the gold lines/confetti/artwork to silver, rose gold, champagne, white or black), 4 Sprinkles,
+  5 Photo border, 6 Your own background photo. Only some designs draw gold details (e.g. Gold
+  Chevron, Art Deco Navy, White Marble, plus gold stickers); for the others the booth checks the
+  preview and says there is nothing to change instead of showing buttons that do nothing.
 - **Your own frames** (Setup → 4 Extras → Frame): upload a frame made in Canva with the photo spots left **white
   or see-through**. The booth finds the boxes (numbered in reading order), puts shot 1, 2, 3… in
   them and keeps the design on top; **Fix spots** lets you move, resize, add or remove a box. The
   layout becomes **My frame** (a 2×6-shaped frame prints two side by side on 4R). An image with no
   boxes (or one see-through middle) is a plain overlay drawn on top of any layout. **Logo**: PNG/JPG
   in a corner or centre, adjustable size.
-- **My frames sheet**: two or more frames on one 4R print. Pick a pattern (One, 2 side by side, Top
-  + bottom, Tall + 2, Tall + 1 + 2 strips, 3 strips, 4 quarters, 4 strips), then tap a frame in the
-  preview to drag it, resize it, swap it for another frame, turn it 90° or duplicate it. The guest
+- **Frame collage** (was "My frames sheet"): two or more frames on one 4R print. In **3 · Layout →
+  Your frames** tick the frames to use (1 ticked = **My frame**, 2+ = **Frame collage**; **+ Upload
+  more** is right there). The booth picks the arrangement that fits them best; change it under
+  *Arrange them on the 4R sheet* (One, 2 side by side, Top + bottom, Tall + 2, Tall + 1 + 2 strips,
+  3 strips, 4 quarters, 4 strips; 5+ frames get a grid), **⇄ Swap places** moves every frame to the
+  next spot, **+ Add a copy** repeats a frame. Then tap a frame in the preview to drag it, resize it,
+  swap it for another frame, turn it 90° or duplicate it. With no frames uploaded, the Layout list
+  shows a single **My frame · Upload a frame** card that opens the upload. The guest
   takes as many shots as the biggest frame needs; smaller frames use the first shots.
 - **Keychain prints (2.5×7.5 in)**: allow the **2.5×7.5 in keychain** paper in Admin → Print
   settings. Design strip frames at **1:3** (e.g. 750 × 2250 px); the frame list shows "fits 2.5×7.5

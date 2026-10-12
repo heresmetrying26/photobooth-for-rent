@@ -756,6 +756,17 @@
   .frame-info b{color:var(--ink); font-size:12.5px;}
   .action-btn.mini{width:auto; padding:7px 11px; font-size:12px; margin:0;}
   .pattern-row{display:flex; gap:8px; flex-wrap:wrap;}
+  @media (max-width:640px){ #sheetPatterns{flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px;} #sheetPatterns .pattern-btn{flex:none;} }
+  .frames-box{padding:12px; border-radius:14px; background:var(--panel-2); border:1px solid var(--line);}
+  .frame-pick{display:grid; grid-template-columns:repeat(auto-fill, minmax(78px, 1fr)); gap:8px;}
+  .fp-tile{position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px; border-radius:12px; border:2px solid var(--line); background:#fff; cursor:pointer; font:inherit; color:var(--ink);}
+  .fp-tile img{width:100%; height:84px; object-fit:contain; border-radius:6px; background:#f3efe8;}
+  .fp-tile span{font:700 11px 'Manrope',sans-serif; color:var(--ink-dim);}
+  .fp-tile .fp-check{position:absolute; top:-7px; right:-7px; width:24px; height:24px; border-radius:50%; border:2px solid var(--line); background:#fff; font:800 13px/20px 'Manrope',sans-serif; text-align:center; color:#fff;}
+  .fp-tile.on{border-color:var(--blue-deep); background:var(--tint);}
+  .fp-tile.on .fp-check{background:var(--blue-deep); border-color:var(--blue-deep);}
+  .fp-tile.fp-add{border-style:dashed; justify-content:center; min-height:120px; color:var(--blue-deep);}
+  .fp-tile.fp-add b{font-size:24px; line-height:1;}
   .pattern-btn{display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px; border:1.5px solid var(--line); border-radius:10px; background:#fff; cursor:pointer; width:78px;}
   .pattern-btn canvas{width:30px; height:45px; border:1px solid var(--line); border-radius:3px;}
   .pattern-btn span{font:700 10.5px 'Manrope',sans-serif; color:var(--ink); text-align:center; line-height:1.2;}
@@ -917,13 +928,32 @@
     .start-save{display:none;}
   }
 
-  /* Phones / tablet portrait: the preview lives in the bottom bar; tap it to open. */
+  /* Phones / tablet portrait: the preview lives in the bottom bar; tap it to open.
+     Open, it sits just above the bottom bar and the steps scroll above it, so
+     you can keep changing colours and watch the result. */
+  .start-prev{display:none;}
   @media (max-width:899px){
-    .start-thumb{display:block;}
+    .start-prev{display:flex; align-items:center; gap:8px; flex:none; padding:4px 10px 4px 4px; min-height:56px; border-radius:12px;
+      border:1.5px solid var(--blue-deep); background:var(--tint); color:var(--ink); cursor:pointer; font:inherit; position:relative;}
+    .start-prev .start-thumb{display:block; height:46px; box-shadow:0 1px 4px rgba(0,0,0,.18);}
+    .sp-t{display:flex; flex-direction:column; align-items:flex-start; line-height:1.15; text-align:left;}
+    .sp-t b{font:800 13px 'Manrope',sans-serif; white-space:nowrap;}
+    .sp-t small{font:600 10.5px 'Manrope',sans-serif; color:var(--ink-dim); white-space:nowrap;}
+    .start-prev.hint::after{content:''; position:absolute; inset:-5px; border-radius:15px; border:2px solid var(--blue-deep); animation:spPulse 1.6s ease-out infinite; pointer-events:none;}
+    @keyframes spPulse{0%{opacity:.9; transform:scale(.97);} 100%{opacity:0; transform:scale(1.08);}}
+    .start-prev[aria-expanded="true"]{background:var(--ink); border-color:var(--ink); color:#fff;}
+    .start-prev[aria-expanded="true"] .sp-t small{color:rgba(255,255,255,.75);}
     .setup-shell > #previewSection:not(.docked){display:none;}
-    #previewSection.docked{bottom:84px; z-index:75;}
+    #previewSection.docked{left:8px; right:8px; bottom:calc(78px + env(safe-area-inset-bottom)); z-index:75; max-height:56vh; padding:10px 12px;
+      box-shadow:0 -10px 34px rgba(0,0,0,.22);}
+    #previewSection.docked > .panel-label{margin:0 0 6px;}
+    #previewSection.docked #setupPreviewCanvas{max-height:30vh;}
+    #previewSection.docked .sample-row{margin-top:6px;}
+    #previewSection.docked .sample-row .action-btn{padding:6px 10px; font-size:12px;}
+    body.prev-open #tabSetup{padding-bottom:calc(var(--dock-h, 300px) + 96px);}
     .preview-fab{display:none !important;}
   }
+  @media (max-width:380px){ .sp-t small{display:none;} }
 
   /* "More options" fold-outs */
   details.more{margin-top:14px; border-top:1px dashed var(--line); padding-top:4px;}
@@ -950,6 +980,22 @@
   .seg-tabs button.has::after{content:''; position:absolute; top:7px; right:9px; width:7px; height:7px; border-radius:50%; background:var(--blue-deep);}
   .pane{display:none;}
   .pane.on{display:block;}
+
+  /* Step 1: Ready designs | Colours & background */
+  .d1-tabs{margin-bottom:0; position:sticky; top:68px; z-index:40;}
+  .d1-tabs small{display:none;}
+  .d1-pane{display:none;}
+  .d1-pane.on{display:block;}
+  .cz{margin-top:18px; padding-top:14px; border-top:1px dashed var(--line);}
+  .cz:first-of-type{margin-top:12px;}
+  .cz-t{display:flex; align-items:center; gap:8px; margin:0 0 2px; font:800 14px 'Manrope',sans-serif; color:var(--ink);}
+  .cz-t small{font-weight:600; color:var(--ink-dim); font-size:12px;}
+  .cz-n{flex:none; width:22px; height:22px; border-radius:50%; background:var(--ink); color:#fff; font:800 11.5px/22px 'Manrope',sans-serif; text-align:center;}
+  .cz-h{margin:0 0 10px 30px; font-size:12.5px; line-height:1.4; color:var(--ink-dim);}
+  .cz-none{margin:-4px 0 10px 30px; padding:8px 10px; border-radius:10px; background:var(--panel-2); font-size:12px; line-height:1.4; color:var(--ink-dim);}
+  #accentGroup.no-effect .accent-row{display:none;}
+  .see-prev-btn{display:none; width:auto; padding:9px 14px; font-size:13px; margin:0 0 4px;}
+  @media (max-width:899px){ .see-prev-btn{display:inline-flex;} }
   .prop-tray:not(.all) .prop-btn.extra{display:none;}
 
   /* Title style tiles */
@@ -1079,12 +1125,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
     <!-- STEP 1 · DESIGN -->
     <section class="step" id="step1" data-step="1">
-      <div class="panel-section" id="themeSection">
+      <div class="seg-tabs d1-tabs" id="designTabs" role="tablist" aria-label="Design">
+        <button type="button" class="on" data-pane="designs" role="tab" aria-selected="true">Ready designs</button>
+        <button type="button" data-pane="colours" role="tab" aria-selected="false">🎨 Colours &amp; background<small id="backdropSum"></small></button>
+      </div>
+      <div class="panel-section d1-pane on" id="themeSection" data-d1="designs">
         <div class="step-head">
           <p class="panel-label">Pick a design</p>
           <button type="button" class="link-btn" id="saveThemeBtn">★ Save my design</button>
         </div>
-        <p class="panel-hint step-lead">You can change anything after.</p>
+        <p class="panel-hint step-lead">Tap one to start from it. You can change the colours after in <a href="#" class="d1-jump" data-pane="colours">🎨 Colours &amp; background</a>.</p>
         <div class="theme-tools">
           <input type="search" class="label-input" id="themeSearch" placeholder="Search designs…" aria-label="Search designs">
         </div>
@@ -1092,9 +1142,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <div class="theme-grid" id="themeGrid"></div>
       </div>
 
-      <details class="panel-section more-card" id="backdropSection">
-        <summary><span class="panel-label">Backdrop &amp; colours</span><span class="more-sum" id="backdropSum">Change</span></summary>
-        <p class="sub-label">Backdrop</p>
+      <div class="panel-section d1-pane" id="backdropSection" data-d1="colours">
+        <p class="panel-label">Colours &amp; background</p>
+        <p class="panel-hint step-lead">These change everything <b>around</b> the photos. Each one shows in the preview straight away.</p>
+        <button type="button" class="action-btn see-prev-btn" data-see-preview>👁 Show the preview while I pick</button>
+        <div class="cz">
+        <p class="cz-t"><span class="cz-n">1</span>Background style</p>
+        <p class="cz-h">The pattern behind your photos.</p>
         <div class="preset-grid" id="presetGrid">
           <button class="preset-btn" data-preset="none" title="Plain colour">
             <span class="preset-swatch"></span>
@@ -1125,8 +1179,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <span>Your photo</span>
           </button>
         </div>
-        <div class="sub-group" id="bdColorGroup">
-          <p class="sub-label">Colour</p>
+        </div>
+        <div class="cz" id="bdColorGroup">
+          <p class="cz-t"><span class="cz-n">2</span>Background colour</p>
+          <p class="cz-h">Changes the main colour of the background. <b>Auto</b> keeps the style&rsquo;s own colours.</p>
           <div class="bd-color-row" id="bdColorRow">
             <button type="button" class="bd-swatch bd-auto active" data-color="" title="The design's own colours">Auto</button>
             <button type="button" class="bd-swatch" data-color="#f8c8d4" title="Blush" style="background:#f8c8d4;"></button>
@@ -1145,8 +1201,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
           <p class="panel-hint" id="bdColorHint" hidden></p>
         </div>
-        <div class="sub-group" id="accentGroup">
-          <p class="sub-label">Pattern colour</p>
+        <div class="cz" id="accentGroup">
+          <p class="cz-t"><span class="cz-n">3</span>Gold details colour</p>
+          <p class="cz-h" id="accentHelp">Recolours the shiny <b>gold</b> lines, glitter, stars and drawings &mdash; e.g. make them silver or rose gold.</p>
+          <p class="cz-none" id="accentNone" hidden>Nothing to change here: this design has no gold details. Only some ready designs have them, e.g. <b>Gold Chevron</b>, <b>Art Deco Navy</b>, <b>White Marble</b>, plus some stickers.</p>
           <div class="accent-row" id="accentChips">
             <button type="button" class="accent-chip active" data-accent="gold"><i style="background:linear-gradient(135deg,#a8792a,#fff1c4,#a8792a)"></i>Gold</button>
             <button type="button" class="accent-chip" data-accent="silver"><i style="background:linear-gradient(135deg,#7d8288,#f7f9fb,#7d8288)"></i>Silver</button>
@@ -1156,12 +1214,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <button type="button" class="accent-chip" data-accent="black"><i style="background:#222"></i>Black</button>
           </div>
         </div>
-        <div class="sub-group" id="elementsGroup">
-          <p class="sub-label">Decorations</p>
+        <div class="cz" id="elementsGroup">
+          <p class="cz-t"><span class="cz-n">4</span>Sprinkles</p>
+          <p class="cz-h">Small things scattered on the background: confetti, stars, sparkles&hellip;</p>
           <select id="elementsSelect" class="label-input" style="font-size:13px;"></select>
         </div>
-        <div class="sub-group">
-          <p class="sub-label">Photo border</p>
+        <div class="cz">
+          <p class="cz-t"><span class="cz-n">5</span>Photo border</p>
+          <p class="cz-h">The thin edge around each photo. <b>Auto</b> picks white or black, whichever stands out.</p>
           <div id="frameSwatchRow" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
             <button type="button" class="frame-swatch frame-auto active" data-color="auto" data-name="Auto" title="White or black, whichever stands out">Auto</button>
             <button type="button" class="frame-swatch" data-color="#ffffff" data-name="White" title="White" style="background:#ffffff;"></button>
@@ -1172,8 +1232,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <span class="panel-hint" id="frameSwatchName" style="display:none;">Auto</span>
           </div>
         </div>
-        <div class="sub-group">
-          <p class="sub-label">Your own photo</p>
+        <div class="cz">
+          <p class="cz-t"><span class="cz-n">6</span>Your own background photo <small>(optional)</small></p>
+          <p class="cz-h">Use a photo (e.g. the couple or the celebrant) as the background.</p>
           <div class="bg-row">
             <img class="bg-thumb" id="bgThumb" alt="Backdrop photo">
             <label class="upload-btn" for="bgInput">Upload photo</label>
@@ -1191,7 +1252,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <select id="cropFocusSelect" class="label-input" style="font-size:13px;"></select>
           </div>
         </div>
-      </details>
+      </div>
       <div class="step-nav"><span></span><button type="button" class="action-btn primary next-btn" data-go="2">Next: Text →</button></div>
     </section>
 
@@ -1289,14 +1350,23 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     <section class="step" id="step3" data-step="3">
       <div class="panel-section" id="formatSection">
         <p class="panel-label">Layout &amp; timer</p>
+        <div class="frames-box" id="myFramesPanel" style="display:none; margin-bottom:14px;">
+          <p class="sub-label" style="margin-top:0;">Your frames</p>
+          <p class="panel-hint" style="margin:0 0 10px;">Tap to tick. <b>1 ticked</b> = that frame on its own. <b>2 or more</b> = all of them on one 4R print.</p>
+          <div class="frame-pick" id="framePick"></div>
+          <div id="sheetPanel" style="display:none;">
+            <p class="sub-label" style="margin-top:14px;">Arrange them on the 4R sheet</p>
+            <div class="pattern-row" id="sheetPatterns"></div>
+            <div class="decor-btns">
+              <button type="button" class="action-btn" id="sheetShuffle">⇄ Swap places</button>
+              <button type="button" class="action-btn" id="sheetAddFrame">+ Add a copy</button>
+              <button type="button" class="action-btn see-prev-btn" data-see-preview style="margin:0;">👁 Open preview</button>
+            </div>
+            <p class="panel-hint" style="margin-top:8px;">Fine-tune in the preview: <b>drag</b> a frame to move it, or <b>tap</b> it to resize, swap, turn or copy it.</p>
+          </div>
+        </div>
         <div class="layout-grid lg-many" id="layoutGrid"></div>
         <p class="panel-hint" id="layoutHint"></p>
-        <div class="sub-group" id="sheetPanel" style="display:none;">
-          <p class="sub-label">Sheet pattern</p>
-          <div class="pattern-row" id="sheetPatterns"></div>
-          <button type="button" class="action-btn" id="sheetAddFrame" style="margin-top:10px; width:auto; padding:9px 14px; font-size:13px;">+ Add a frame</button>
-          <p class="panel-hint" style="margin-top:6px;">Tap a frame in the preview to move, resize, swap, turn or copy it.</p>
-        </div>
         <div class="sub-group">
           <label class="toggle-row"><input type="checkbox" id="guestPickToggle"> Guests choose the layout</label>
           <div class="guest-layouts" id="guestLayouts" style="display:none;"></div>
@@ -1375,7 +1445,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <input type="file" id="overlayInput" accept="image/png,image/webp,image/jpeg,image/*" multiple>
           </div>
           <div class="frame-list" id="frameList"></div>
-          <p class="panel-hint" style="margin-top:8px;">Made in Canva? Leave the photo spots <b>white or see-through</b>. Photos go inside them. Two or more frames share one 4R print.</p>
+          <p class="panel-hint" style="margin-top:8px;">Made in Canva? Leave the photo spots <b>white or see-through</b>. Photos go inside them. Upload several, then pick which to use (and arrange them) in <a href="#" class="go-step" data-go-step="3">3 · Layout</a>.</p>
           <p class="panel-hint" id="overlaySizeHint"></p>
           <div id="overlayOnTopBox" class="sub-group">
             <div class="bg-row">
@@ -1500,7 +1570,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   <div class="start-bar" id="startBar">
     <div class="start-bar-in">
-      <canvas class="start-thumb" id="startThumb" width="40" height="60" role="button" tabindex="0" title="Show the preview" aria-label="Show the preview"></canvas>
+      <button type="button" class="start-prev" id="startPrevBtn" aria-controls="previewSection" aria-expanded="false" title="Show the preview">
+        <canvas class="start-thumb" id="startThumb" width="40" height="60" aria-hidden="true"></canvas>
+        <span class="sp-t" id="startPrevLabel"><b>👁 Preview</b><small>Tap to see it</small></span>
+      </button>
       <div class="start-info"><span class="start-status" id="startStatus"></span><span class="start-save" id="startSave"></span></div>
       <div class="start-actions">
         <div class="menu-wrap">
@@ -2220,15 +2293,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     land4:   { name: 'Landscape 4',   shots: 4, kind: 'landscape', hint: 'Landscape 4R: 1 big shot and the name on top, 3 below.' },
     // Your own uploaded frames (see "Frames with photo spots" below). Shown once a frame is uploaded.
     myframe:    { name: 'My frame', kind: 'frame', get shots(){ var f = typeof activeFrame === 'function' ? activeFrame() : null; return f ? Math.max(1, f.spots.length) : 1; },
-                  hint: 'Your frame. Photos fill its white or see-through spots.' },
-    framesheet: { name: 'My frames sheet', kind: 'frame', get shots(){ return typeof sheetShots === 'function' ? sheetShots() : 1; },
-                  hint: 'Several of your frames on one 4R print. Pick a pattern, then drag frames in the preview.' }
+                  hint: 'One of your frames on its own. Photos fill its white or see-through spots.' },
+    framesheet: { name: 'Frame collage', kind: 'frame', get shots(){ return typeof sheetShots === 'function' ? sheetShots() : 1; },
+                  hint: 'Two or more of your frames together on one 4R print. Tick them below, pick an arrangement, then drag them in the preview.' }
   };
   const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'trio', 'feature', 'film6', 'land3', 'land4'];
   // The built-in layouts, plus your frames once at least one is uploaded.
   function layoutOrder(){
     var has = typeof myFrames !== 'undefined' && myFrames && myFrames.length;
-    return has ? ['myframe', 'framesheet'].concat(LAYOUT_ORDER) : LAYOUT_ORDER.concat(['myframe', 'framesheet']);
+    // No frames yet: one "My frame" card that opens the upload (not two look-alike cards).
+    return has ? ['myframe', 'framesheet'].concat(LAYOUT_ORDER) : LAYOUT_ORDER.concat(['myframe']);
   }
   function layoutDef(key){ return LAYOUT_DEFS[key || currentLayout] || LAYOUT_DEFS.strip; }
   function isStripLayout(key){
@@ -2882,7 +2956,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     white:     ['#d6d6d6', '#ffffff', '#ffffff', '#f0f0f0', '#d6d6d6'],
     black:     ['#000000', '#2b2b2b', '#4d4d4d', '#2b2b2b', '#000000']
   };
+  var accentUsed = false, previewUsesAccent = true;   // did the last Setup preview draw any gold details?
   function goldGrad(ctx, x0, y0, x1, y1){
+    accentUsed = true;
     var c = ACCENTS[accent] || ACCENTS.gold;
     var g = ctx.createLinearGradient(x0, y0, x1, y1);
     g.addColorStop(0, c[0]); g.addColorStop(0.3, c[1]); g.addColorStop(0.5, c[2]);
@@ -3407,9 +3483,29 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       syncSessionNumberFromServer(data.nextSessionNumber);
       showDriveFolderPreview(data.folderUrl, data.folderName);
     }catch(err){
-      driveFolderStatus.textContent = "Couldn't set up the folder. Check the name and your internet, then try again.";
+      console.error('Drive folder setup failed:', err);
+      driveFolderStatus.innerHTML = '';
+      var msg = document.createElement('span');
+      msg.style.color = '#c0392b'; msg.style.fontWeight = '700';
+      msg.textContent = "Couldn't set up the folder, so there's no QR yet. " + driveErrorText(err);
+      var again = document.createElement('button');
+      again.type = 'button'; again.className = 'link-btn'; again.textContent = 'Try again';
+      again.style.display = 'block';
+      again.addEventListener('click', function(){ ticketCache = null; resolveDriveFolder(); });
+      driveFolderStatus.append(msg, again);
       driveFolderQrPreview.style.display = 'none';
     }
+  }
+  // Turns a Drive/ticket error into a plain reason the operator (or owner) can act on.
+  function driveErrorText(err){
+    var m = String((err && err.message) || err || '');
+    if(/UPLOAD_SECRET env var/i.test(m)) return 'Owner: UPLOAD_SECRET is missing in Netlify (Environment variables). Add it and redeploy.';
+    if(/UPLOAD_SECRET is not set/i.test(m)) return 'Owner: the Apps Script has no UPLOAD_SECRET. Add it in Project Settings → Script Properties, then Deploy → New version.';
+    if(/missing or expired ticket/i.test(m)) return 'Owner: the UPLOAD_SECRET in the Apps Script and in Netlify are not exactly the same.';
+    if(/only use its own event folder|locked|trial-ended|expired/i.test(m)) return 'The code or trial has changed. Reload the page.';
+    if(/Unexpected token|JSON|not valid json/i.test(m)) return 'Owner: the Apps Script did not answer. Re-deploy it as a New version with access "Anyone".';
+    if(/Failed to fetch|NetworkError|Load failed/i.test(m)) return 'Check the internet, then try again.';
+    return m ? '(' + m.slice(0, 160) + ')' : 'Check the internet, then try again.';
   }
 
   let sessionNumber = null; // set once per completed session, reused across its retakes
@@ -3501,8 +3597,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(myGeneration !== qrGeneration) return null;
     if(!result){
       failQrSlot('photo', 'Couldn’t save. Check the internet.');
-      const detail = lastError && lastError.message ? (': ' + lastError.message) : '';
-      showToast('Photo not saved' + detail, 5000);
+      showToast('Photo not saved. ' + driveErrorText(lastError), 7000);
       return null;
     }
     fillQrSlot('photo', result.fileId ? fileShareUrl(result.fileId, false) : result.url);
@@ -4124,8 +4219,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!btn) return;
     // Your own frames: nothing to show until one is uploaded, so open the upload.
     if(layoutDef(btn.dataset.layout).kind === 'frame' && !(typeof myFrames !== 'undefined' && myFrames && myFrames.length)){
-      if(typeof goStep === 'function'){ goStep(4); setExtrasPane('frame'); }
-      showToast('Upload your frame first. Leave the photo spots white or see-through.', 6000);
+      showToast('Pick your frame image. Leave the photo spots white or see-through.', 6000);
       document.getElementById('overlayInput').click();
       return;
     }
@@ -5274,7 +5368,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const needed = shotsNeeded(currentLayout);
     const haveRealShots = shotCanvases.length === needed && shotCanvases.every(Boolean);
     const shotsToUse = haveRealShots ? shotCanvases : buildPlaceholderShots(400, needed);
+    accentUsed = false;
     composeCanvas(currentLayout, setupPreviewCanvas, shotsToUse);
+    previewUsesAccent = accentUsed;
+    if(typeof refreshAccentHelp === 'function') refreshAccentHelp();
     if(typeof drawFrameOverlays === 'function') drawFrameOverlays();
     if(typeof drawDecorSelection === 'function') drawDecorSelection();
     if(typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
@@ -7150,6 +7247,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // ---- Pattern (accent) color for the theme artwork ----
   var accentChips = document.getElementById('accentChips');
   function markAccentChips(){ [...accentChips.children].forEach(function(c){ c.classList.toggle('active', c.dataset.accent === accent); }); }
+  function refreshAccentHelp(){
+    var g = document.getElementById('accentGroup'); if(!g) return;
+    var none = !previewUsesAccent;
+    g.classList.toggle('no-effect', none);
+    document.getElementById('accentNone').hidden = !none;
+    document.getElementById('accentHelp').hidden = none;
+  }
   accentChips.addEventListener('click', function(e){
     var c = e.target.closest('[data-accent]'); if(!c) return;
     accent = c.dataset.accent; markAccentChips(); redrawAll();
@@ -7433,24 +7537,87 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var sc = Math.min(cw / bw, ch / bh);
     return { f: f.id, cx: cell[0] + cell[2] / 2, cy: cell[1] + cell[3] / 2, s: f.w * sc / SHEET_W, r: r };
   }
-  function applyPattern(pid){
-    var pat = SHEET_PATTERNS.filter(function(p){ return p.id === pid; })[0] || SHEET_PATTERNS[0];
-    sheet.pattern = pat.id;
-    if(!myFrames.length){ sheet.items = []; return; }
-    var uses = {};
-    sheet.items = pat.cells.map(function(cell){
+  // Frames currently ticked for the sheet / "My frame" (Setup -> 3 Layout -> Your frames).
+  function sheetFrameIds(){
+    var ids = [];
+    liveSheetItems().forEach(function(it){ if(ids.indexOf(it.f) < 0) ids.push(it.f); });
+    return ids;
+  }
+  function pickedFrameIds(){
+    if(currentLayout === 'framesheet') return sheetFrameIds();
+    if(currentLayout === 'myframe' && activeFrame()) return [activeFrame().id];
+    return [];
+  }
+  // 5+ frames: a simple grid on the 4R sheet.
+  function gridCells(n){
+    var cols = n <= 6 ? 3 : 4, rows = Math.ceil(n / cols), out = [];
+    for(var i = 0; i < n; i++) out.push([(i % cols) / cols, Math.floor(i / cols) / rows, 1 / cols, 1 / rows]);
+    return out;
+  }
+  // Puts the frames into a pattern's cells: best fit per cell, and (with an
+  // explicit pick) every picked frame at least once before any repeats.
+  function assignCells(cells, frames, strict){
+    var uses = {}, total = 0;
+    var items = cells.map(function(cell){
       var cw = cell[2] * SHEET_W, ch = cell[3] * SHEET_H, best = null;
-      myFrames.forEach(function(f){
+      frames.forEach(function(f){
         [0, 90].forEach(function(r){
           var fw = r ? f.h : f.w, fh = r ? f.w : f.h, k = Math.min(cw / fw, ch / fh);
-          var score = (fw * k * fh * k) / (cw * ch) - (r ? 0.04 : 0) - 0.03 * (uses[f.id] || 0);
-          if(!best || score > best.score) best = { f: f, r: r, score: score };
+          var fill = (fw * k * fh * k) / (cw * ch);
+          var score = fill - (r ? 0.04 : 0) - (strict ? 0.6 : 0.03) * (uses[f.id] || 0);
+          if(!best || score > best.score) best = { f: f, r: r, score: score, fill: fill };
         });
       });
       uses[best.f.id] = (uses[best.f.id] || 0) + 1;
+      total += best.fill;
       return fitItem(best.f, best.r, cell);
     });
+    return { items: items, fill: total / Math.max(1, cells.length) };
+  }
+  function framesFromIds(ids){ return (ids || []).map(frameById).filter(Boolean); }
+  function applyPattern(pid, ids){
+    var pat = SHEET_PATTERNS.filter(function(p){ return p.id === pid; })[0] || SHEET_PATTERNS[0];
+    sheet.pattern = pat.id;
+    if(!myFrames.length){ sheet.items = []; return; }
+    var picked = framesFromIds(ids || sheetFrameIds());
+    var frames = picked.length ? picked : myFrames;
+    // A pattern tapped by hand is used as is; an automatic pick with more frames than spots gets a grid.
+    var cells = (!ids || pat.cells.length >= frames.length || !picked.length) ? pat.cells : gridCells(frames.length);
+    sheet.items = assignCells(cells, frames, !!picked.length).items;
     selItem = -1;
+  }
+  // The arrangement that fits these frames best (enough spots for all, little empty space).
+  function bestPatternFor(ids){
+    var frames = framesFromIds(ids), n = frames.length, best = null;
+    SHEET_PATTERNS.forEach(function(p){
+      if(p.cells.length < n) return;
+      var score = assignCells(p.cells, frames, true).fill - 0.3 * (p.cells.length - n);
+      if(!best || score > best.score) best = { id: p.id, score: score };
+    });
+    return best ? best.id : 'four';
+  }
+  // Tick / untick a frame in "Your frames".
+  function useFrames(ids){
+    ids = ids.filter(function(id){ return frameById(id); });
+    if(!ids.length) return;
+    spotEdit = null;
+    if(ids.length === 1){
+      activeFrameId = ids[0]; setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); return;
+    }
+    applyPattern(bestPatternFor(ids), ids);
+    setupLayout = 'framesheet';
+    framesChanged({ layout: 'framesheet' });
+  }
+  function toggleFramePick(id){
+    var cur = pickedFrameIds(), i = cur.indexOf(id);
+    if(i >= 0){
+      if(cur.length === 1){ showToast('Tick another frame first, then untick this one.'); return; }
+      cur.splice(i, 1);
+    } else {
+      if(cur.length >= MAX_SHEET_ITEMS){ showToast('Up to ' + MAX_SHEET_ITEMS + ' frames on one sheet.'); return; }
+      cur.push(id);
+    }
+    useFrames(cur);
   }
   function itemAt(pt){
     var items = sheet.items;
@@ -7480,6 +7647,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
     setLayout(opts.layout || (isFrameLayout() && !myFrames.length ? 'strip' : currentLayout));
     refreshFrameUI();
+    if(typeof scheduleSetupNav === 'function') scheduleSetupNav();
     if(!opts.quiet) scheduleSetupSave();
   }
   function refreshFrameUI(){
@@ -7505,12 +7673,39 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       row.append(th, info, use, ed, rm);
       frameListEl.appendChild(row);
     });
+    buildFramePick();
     sheetPanel.style.display = currentLayout === 'framesheet' ? '' : 'none';
     if(currentLayout === 'framesheet') buildSheetPatterns();
     spotEditControls.style.display = spotEdit && currentLayout === 'myframe' ? '' : 'none';
     var it = sheet.items[selItem];
     sheetSelControls.style.display = currentLayout === 'framesheet' && it ? '' : 'none';
     if(it) document.getElementById('sheetItemSize').value = Math.round(it.s * 100);
+  }
+  var framePickEl = document.getElementById('framePick'), myFramesPanel = document.getElementById('myFramesPanel');
+  function buildFramePick(){
+    myFramesPanel.style.display = myFrames.length ? '' : 'none';
+    framePickEl.innerHTML = '';
+    if(!myFrames.length) return;
+    var picked = pickedFrameIds(), counts = {};
+    if(currentLayout === 'framesheet') liveSheetItems().forEach(function(it){ counts[it.f] = (counts[it.f] || 0) + 1; });
+    myFrames.forEach(function(f, n){
+      var on = picked.indexOf(f.id) >= 0;
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'fp-tile' + (on ? ' on' : '');
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.title = on ? 'Ticked. Tap to take it off.' : 'Tap to use this frame';
+      var im = document.createElement('img'); im.alt = ''; if(ASSETS[f.id]) im.src = ASSETS[f.id].url;
+      var lb = document.createElement('span');
+      lb.textContent = 'Frame ' + (n + 1) + (counts[f.id] > 1 ? ' ×' + counts[f.id] : '');
+      var ck = document.createElement('i'); ck.className = 'fp-check'; ck.textContent = on ? '✓' : '';
+      b.append(im, lb, ck);
+      b.addEventListener('click', function(){ toggleFramePick(f.id); });
+      framePickEl.appendChild(b);
+    });
+    if(myFrames.length < MAX_FRAMES){
+      var add = document.createElement('label'); add.className = 'fp-tile fp-add'; add.htmlFor = 'overlayInput';
+      add.innerHTML = '<b>+</b><span>Upload more</span>';
+      framePickEl.appendChild(add);
+    }
   }
   function buildSheetPatterns(){
     sheetPatternsEl.innerHTML = '';
@@ -7526,9 +7721,28 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     });
   }
   document.getElementById('sheetAddFrame').addEventListener('click', function(){
-    var f = activeFrame(); if(!f) return;
+    var sel = sheet.items[selItem], f = (sel && frameById(sel.f)) || frameById(sheetFrameIds()[0]) || activeFrame(); if(!f) return;
     if(sheet.items.length >= MAX_SHEET_ITEMS){ showToast('Up to ' + MAX_SHEET_ITEMS + ' frames on one sheet.'); return; }
     sheet.items.push(fitItem(f, 0, [0.25, 0.25, 0.5, 0.5])); selItem = sheet.items.length - 1;
+    framesChanged({ layout: 'framesheet' });
+  });
+  // Swap places: every frame moves to the next frame's spot (resized to fit it).
+  document.getElementById('sheetShuffle').addEventListener('click', function(){
+    var items = liveSheetItems();
+    if(items.length < 2){ showToast('Tick two or more frames first.'); return; }
+    if(sheetFrameIds().length < 2){ showToast('All spots use the same frame. Tick another frame to swap.'); return; }
+    var boxes = items.map(function(it){ var z = sheetItemSize(it); return { cx: it.cx, cy: it.cy, bw: z.bw, bh: z.bh, r: it.r || 0 }; });
+    var fids = items.map(function(it){ return it.f; });
+    items.forEach(function(it, i){
+      var f = frameById(fids[(i + fids.length - 1) % fids.length]), b = boxes[i];
+      var best = null;
+      [0, 90].forEach(function(r){
+        var fw = r ? f.h : f.w, fh = r ? f.w : f.h, k = Math.min(b.bw / fw, b.bh / fh);
+        if(!best || k * fw * k * fh > best.a) best = { r: r, a: k * fw * k * fh, s: f.w * k / SHEET_W };
+      });
+      it.f = f.id; it.r = best.r; it.s = best.s; it.cx = b.cx; it.cy = b.cy;
+    });
+    selItem = -1;
     framesChanged({ layout: 'framesheet' });
   });
   // Selected frame on the sheet
@@ -7539,7 +7753,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   document.getElementById('sheetItemSize').addEventListener('change', function(){ redrawAll(); scheduleSetupSave(); });
   document.getElementById('sheetItemSwap').addEventListener('click', function(){
     var it = selectedItem(); if(!it || myFrames.length < 2) { showToast('Upload another frame to swap.'); return; }
-    var i = myFrames.findIndex(function(f){ return f.id === it.f; }), nf = myFrames[(i + 1) % myFrames.length];
+    var pool = sheetFrameIds().length > 1 ? framesFromIds(sheetFrameIds()) : myFrames;
+    var i = pool.findIndex(function(f){ return f.id === it.f; }), nf = pool[(i + 1) % pool.length];
     var old = sheetItemSize(it), keepW = old.bw;
     it.f = nf.id;
     var nz = sheetItemSize(it); it.s = it.s * keepW / nz.bw;            // keep about the same width on the sheet
@@ -7602,14 +7817,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       }catch(e){ showToast(e.message, 4000); }
     }
     if(added.length){
-      activeFrameId = added[added.length - 1].id;
-      var useSheet = myFrames.length > 1;
-      if(useSheet){ applyPattern(myFrames.length >= 3 ? 'tall-one-two-strips' : (myFrames.length === 2 ? 'tall-two' : sheet.pattern)); }
-      setupLayout = useSheet ? 'framesheet' : 'myframe';
-      framesChanged({ layout: setupLayout });
-      showToast(added.length === 1
-        ? 'Found ' + added[0].spots.length + ' photo spot' + (added[0].spots.length === 1 ? '' : 's') + ' — photos now go inside your frame.' + (useSheet ? ' All your frames are on one 4R sheet.' : '')
-        : added.length + ' frames added and arranged on one 4R sheet. Pick another pattern or drag them.', 5000);
+      var ids = pickedFrameIds().filter(function(id){ return !added.some(function(a){ return a.id === id; }); })
+        .concat(added.map(function(a){ return a.id; })).slice(0, MAX_SHEET_ITEMS);
+      useFrames(ids);
+      showToast(ids.length === 1
+        ? 'Found ' + added[0].spots.length + ' photo spot' + (added[0].spots.length === 1 ? '' : 's') + '. Photos now go inside your frame.'
+        : ids.length + ' frames on one 4R print. Untick any in 3 · Layout, or pick another arrangement.', 5500);
     }
     if(overlayAdded){
       refreshDecorUI(); redrawAll(); scheduleSetupSave();
@@ -7756,8 +7969,24 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     resetBtn.addEventListener('click', function(){
       previewSample = null; resetBtn.style.display = 'none'; camBtn.textContent = '📷 Preview with my camera'; renderSetupPreview();
     });
-    function dock(on){ sec.classList.toggle('docked', on); fab.textContent = on ? '✕ Close preview' : '👁 Preview'; if(on) renderSetupPreview(); }
+    var spBtn = document.getElementById('startPrevBtn'), spLabel = document.getElementById('startPrevLabel');
+    function syncDockHeight(){ if(sec.classList.contains('docked')) document.body.style.setProperty('--dock-h', sec.offsetHeight + 'px'); }
+    function dock(on){
+      sec.classList.toggle('docked', on);
+      document.body.classList.toggle('prev-open', on);
+      fab.textContent = on ? '✕ Close preview' : '👁 Preview';
+      spBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
+      spLabel.innerHTML = on ? '<b>✕ Hide</b><small>preview</small>' : '<b>👁 Preview</b><small>Tap to see it</small>';
+      spBtn.classList.remove('hint');
+      try{ localStorage.setItem('pb_prevSeen', '1'); }catch(e){}
+      if(on){ renderSetupPreview(); syncDockHeight(); }
+    }
+    window.pbDockPreview = dock;
+    if(window.ResizeObserver) new ResizeObserver(syncDockHeight).observe(sec);
+    // First visit on a phone: a soft pulse shows the preview button is tappable.
+    try{ if(!localStorage.getItem('pb_prevSeen')) spBtn.classList.add('hint'); }catch(e){}
     fab.addEventListener('click', function(){ dock(!sec.classList.contains('docked')); });
+    [].forEach.call(document.querySelectorAll('[data-see-preview]'), function(b){ b.addEventListener('click', function(){ dock(true); }); });
     var closeX = document.getElementById('previewDockClose');
     closeX.addEventListener('click', function(){ dock(false); });
     closeX.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); dock(false); } });
@@ -7932,12 +8161,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   setupMenu.addEventListener('click', function(){ setTimeout(function(){ setupMenu.hidden = true; }, 0); });
   var startThumb = document.getElementById('startThumb');
   function toggleDockedPreview(){ document.getElementById('previewFab').click(); }
-  startThumb.addEventListener('click', toggleDockedPreview);
-  startThumb.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggleDockedPreview(); } });
+  document.getElementById('startPrevBtn').addEventListener('click', toggleDockedPreview);
   // Called after every Setup preview redraw.
   function afterSetupPreview(){
     if(!startThumb || !setupPreviewCanvas.width) return;
-    var h = 104, w = Math.max(20, Math.round(h * setupPreviewCanvas.width / setupPreviewCanvas.height));
+    var h = 92, w = Math.max(20, Math.round(h * setupPreviewCanvas.width / setupPreviewCanvas.height));
     if(w > 140){ w = 140; h = Math.round(w * setupPreviewCanvas.height / setupPreviewCanvas.width); }
     if(startThumb.width !== w || startThumb.height !== h){ startThumb.width = w; startThumb.height = h; }
     var x = startThumb.getContext('2d'); x.imageSmoothingQuality = 'high';
@@ -8233,6 +8461,21 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     [].forEach.call(document.querySelectorAll('#decorSection .pane'), function(x){ x.classList.toggle('on', x.dataset.pane === p); });
   }
   document.getElementById('extrasTabs').addEventListener('click', function(e){ var b = e.target.closest('button'); if(b) setExtrasPane(b.dataset.pane); });
+
+  [].forEach.call(document.querySelectorAll('.go-step'), function(a){ a.addEventListener('click', function(e){ e.preventDefault(); goStep(Number(a.dataset.goStep)); }); });
+
+  // ---- Step 1: Ready designs | Colours & background ----
+  function setDesignPane(p){
+    [].forEach.call(document.querySelectorAll('#designTabs button'), function(b){ var on = b.dataset.pane === p; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+    [].forEach.call(document.querySelectorAll('#step1 .d1-pane'), function(x){ x.classList.toggle('on', x.dataset.d1 === p); });
+    try{ sessionStorage.setItem('pb_d1', p); }catch(e){}
+    if(p === 'colours') refreshAccentHelp();
+    var bar = document.getElementById('designTabs'), top = bar.getBoundingClientRect().top;
+    if(top < 0 || top > 140) window.scrollTo({ top: Math.max(0, window.scrollY + top - 76), behavior: 'smooth' });
+  }
+  document.getElementById('designTabs').addEventListener('click', function(e){ var b = e.target.closest('button'); if(b) setDesignPane(b.dataset.pane); });
+  [].forEach.call(document.querySelectorAll('.d1-jump'), function(a){ a.addEventListener('click', function(e){ e.preventDefault(); setDesignPane(a.dataset.pane); }); });
+  try{ if(sessionStorage.getItem('pb_d1') === 'colours') setDesignPane('colours'); }catch(e){}
   var propMoreBtn = document.getElementById('propMore');
   propMoreBtn.style.display = STICKERS.length > STICKER_SHOWN ? '' : 'none';
   propMoreBtn.addEventListener('click', function(){

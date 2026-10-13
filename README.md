@@ -12,7 +12,7 @@ public; a Netlify Function only sends it to someone with a valid trial or rental
    - `TOKEN_SECRET`    – 32+ random characters (e.g. from a password generator)
    - `TRIAL_PASSWORD`  – optional; default is `TRIAL` (you can change it later in Admin)
 3. Redeploy once after saving the variables.
-4. Open `https://YOUR-SITE.netlify.app/admin.html` to create rental codes.
+4. Open `https://photobooth4u.netlify.app/admin.html` to create rental codes.
 
 ## Updating the booth
 Edit `protected/booth.html` and redeploy. (The build step re-bundles it automatically.)
@@ -50,9 +50,9 @@ which sends every print straight to the **default printer**:
    preferences choose the paper size you'll use (e.g. 4×6) and **borderless** if offered.
 2. Close all Chrome windows, then start Chrome with:
    - Windows (shortcut target):
-     `"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk --kiosk-printing https://YOUR-SITE.netlify.app/`
-   - macOS: `open -a "Google Chrome" --args --kiosk --kiosk-printing https://YOUR-SITE.netlify.app/`
-   - Edge works the same with `msedge.exe --kiosk https://YOUR-SITE.netlify.app/ --kiosk-printing`.
+     `"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk --kiosk-printing https://photobooth4u.netlify.app/`
+   - macOS: `open -a "Google Chrome" --args --kiosk --kiosk-printing https://photobooth4u.netlify.app/`
+   - Edge works the same with `msedge.exe --kiosk https://photobooth4u.netlify.app/ --kiosk-printing`.
    Leave out `--kiosk` if you want a normal window but still silent printing.
 3. Do one test print first. If the size or margins are off, fix them in the printer's own
    preferences — silent mode uses the printer defaults for anything the page doesn't set.
@@ -236,27 +236,25 @@ small line; a template's own colours come first under Text colour.
   renter saves their own design.
 - **Guests' screen**: welcome card between guests (always on), layout choice each session, review
   after each shot, and filters.
-- **Animated GIF**: switched on/off per booking in Admin (**GIF: on/off**, or when generating
-  codes; trials have their own switch). Uploaded to Drive as `N_gif.gif` next to the photo, after it.
 - **Event name over busy backdrops**: when lines, borders or confetti sit behind the event name and
   date, the booth softly fades them out right behind the words so the text stays clear.
 - Uploaded images are kept in the `setups` Blobs store; nothing new to set up.
 
 ## Online gallery (`/g/<folder id>`)
-Guests' QR codes open a photobooth4u gallery page instead of Google Drive: **Photos** and **GIFs**
-tabs, full-screen viewer with swipe, a Download button per photo, "Download all (Google Drive)",
+Guests' QR codes open a photobooth4u gallery page instead of Google Drive: a photo grid,
+full-screen viewer with swipe, a Download button per photo, "Download all (Google Drive)",
 the "download by" date, and new photos appear by themselves during the event. Admin → **Guest QR
 codes** switches every booth back to the plain Drive folder if ever needed. My Events shows both.
 
-**After each session** the booth (and the guest screen) shows two labelled QR codes: **Your photo**
-and **Your GIF**. Each opens the gallery straight on that file (`/g/<folder>#<file id>`, or
-`#gif-<file id>`); with Admin set to Drive they open the file in Google Drive. The **All photos** QR
+**After each session** the booth (and the guest screen) shows a **Your photo** QR code. It opens the
+gallery straight on that photo (`/g/<folder>#<file id>`); with Admin set to Drive it opens the file in
+Google Drive. The **All photos** QR
 for the whole event is only in Setup → 5 Share, to print or share ahead. Between shots the pause
 shows the photo just taken and "Next: photo 2 of 3", with no countdown circle.
 
 How it works: `netlify/functions/gallery.mjs` asks the Apps Script relay for the folder's file
 list (only folders inside the photobooth4u Drive folder can be listed) and caches it for a few
-seconds; photos load from Google's own thumbnails, GIFs through `/api/gallery` so they keep moving.
+seconds; photos load from Google's own thumbnails.
 
 **One-time step:** paste the new `apps-script/upload.gs` into the Apps Script project, then
 Deploy → Manage deployments → Edit → Version: **New version** → Deploy (same URL). Until then the
@@ -277,7 +275,7 @@ stay in the normal tablet mode.
 
 1. Connect the second monitor and set Windows/macOS display to **Extend**.
 2. Start Chrome or Edge **without `--kiosk`** but with silent printing, e.g.
-   `"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing https://YOUR-SITE.netlify.app/`
+   `"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing https://photobooth4u.netlify.app/`
    (`--kiosk` forces one full-screen window, which blocks the guest screen.)
 3. Unlock, finish Setup, go to **Photo Session → Open guest screen**. Allow pop-ups and
    "window management" if Chrome asks; it then moves the guest screen to the second monitor.

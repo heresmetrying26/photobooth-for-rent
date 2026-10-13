@@ -3,8 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="photobooth4u — a DIY photobooth on your own laptop or tablet. Guests scan a QR code to get their photos.">
+  <meta name="description" content="photobooth4u — a DIY photobooth on your own laptop or tablet. Ready-made designs, your own Canva frames, prints on the spot, and an online gallery guests open with one QR scan.">
   <title>About Us | photobooth4u</title>
+  <link rel="canonical" href="https://photobooth4u.netlify.app/about-us/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="photobooth4u">
+  <meta property="og:title" content="photobooth4u — the photobooth, without the booth">
+  <meta property="og:description" content="Use your own laptop or tablet. Guests pose, scan a QR code, and take their photos home.">
+  <meta property="og:url" content="https://photobooth4u.netlify.app/about-us/">
+  <meta property="og:image" content="https://photobooth4u.netlify.app/about-us/assets/pb4u-02-layouts-v2.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13,20 +20,29 @@
     *{box-sizing:border-box} html{scroll-behavior:smooth}
     body{margin:0;color:var(--ink);font-family:'Manrope',Arial,sans-serif;background:var(--paper);line-height:1.5}
     a{color:inherit}
-    .wrap{width:min(960px,calc(100% - 32px));margin:0 auto}
+    .wrap{width:min(980px,calc(100% - 32px));margin:0 auto}
+    .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-    header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 0}
-    .brand{display:flex;align-items:center;gap:10px;text-decoration:none}
-    .mark{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:24px;height:24px;flex:none}.mark i{background:var(--ink);border-radius:4px}.mark i:nth-child(2){background:var(--red)}
-    .word{display:flex;align-items:flex-start}.word b{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:24px;letter-spacing:-.035em;line-height:1}
-    .word em{font-style:normal;margin-left:3px;padding:2px 6px 4px;border-radius:7px;background:var(--red);color:#fff;font-weight:800;font-size:11px;line-height:1;transform:rotate(-7deg)}
-    .pill{font-size:14px;font-weight:700;text-decoration:none;padding:9px 16px;border:1px solid var(--line);border-radius:999px;background:#fff;transition:.2s}
-    .pill:hover,.pill:focus-visible{border-color:var(--red);color:var(--red);outline:none}
+    /* top navigation (same on the lock screen, About us and My events) */
+    .topnav{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;padding:18px 0}
+    .nbrand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink)}
+    .nmark{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:24px;height:24px;flex:none}
+    .nmark i{background:var(--ink);border-radius:4px}.nmark i:nth-child(2){background:var(--red)}
+    .nword{display:flex;align-items:flex-start}
+    .nword b{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:23px;letter-spacing:-.035em;line-height:1}
+    .nword em{font-style:normal;margin-left:3px;padding:2px 6px 4px;border-radius:7px;background:var(--red);color:#fff;font-weight:800;font-size:11px;line-height:1;transform:rotate(-7deg)}
+    .navlinks{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+    .navlinks a{font-size:14px;font-weight:700;color:var(--muted);text-decoration:none;padding:9px 13px;border-radius:999px;white-space:nowrap;transition:background .2s,color .2s}
+    .navlinks a:hover,.navlinks a:focus-visible{color:var(--ink);background:#fff;outline:none}
+    .navlinks a[aria-current="page"]{color:var(--ink);background:#fff}
+    .navlinks a.cta{margin-left:4px;color:#fff;background:var(--red)}
+    .navlinks a.cta:hover,.navlinks a.cta:focus-visible{background:var(--red-dark);color:#fff}
 
-    .hero{text-align:center;padding:36px 0 30px}
+    .hero{text-align:center;padding:30px 0 30px}
     h1{margin:0 0 12px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(38px,6.4vw,68px);line-height:1.02;letter-spacing:-.04em}
     h1 em{font-style:italic;font-weight:500;color:var(--red)}
-    .hero p{margin:0 auto;max-width:460px;font-size:17px;color:var(--muted)}
+    .hero p{margin:0 auto;max-width:480px;font-size:17px;color:var(--muted)}
+    .hero-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:22px}
 
     /* slider: images only, centred */
     .slider{position:relative;max-width:620px;margin:0 auto;border-radius:22px;background:#fff;border:1px solid var(--line);overflow:hidden}
@@ -41,10 +57,25 @@
     .dot[aria-current="true"]{width:22px;border-radius:8px;background:var(--red)}
     .counter{display:none}
 
-    section.block{padding:56px 0 0}
-    .label{margin:0 0 18px;text-align:center;font-size:12px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--red)}
+    section.block{padding:56px 0 0;scroll-margin-top:12px}
+    .label{margin:0 0 10px;text-align:center;font-size:12px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--red)}
     h2{margin:0 0 6px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(26px,3.6vw,34px);letter-spacing:-.025em;line-height:1.1;text-align:center}
-    .sub{margin:0 auto 22px;text-align:center;color:var(--muted);max-width:480px}
+    .sub{margin:0 auto 22px;text-align:center;color:var(--muted);max-width:520px}
+
+    /* features */
+    .features{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .feat{padding:20px;border-radius:18px;background:#fff;border:1px solid var(--line)}
+    .feat .ic{display:grid;place-items:center;width:40px;height:40px;margin-bottom:12px;border-radius:12px;background:var(--tint);color:var(--red)}
+    .feat .ic svg{width:22px;height:22px}
+    .feat h3{margin:0 0 4px;font-size:16.5px;line-height:1.3}
+    .feat p{margin:0;font-size:14.5px;color:var(--muted)}
+
+    /* how it works */
+    .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0;padding:0;list-style:none;counter-reset:s}
+    .steps li{position:relative;padding:20px 18px 18px;border-radius:18px;background:#fff;border:1px solid var(--line);counter-increment:s}
+    .steps li::before{content:counter(s);display:grid;place-items:center;width:30px;height:30px;margin-bottom:10px;border-radius:50%;background:var(--ink);color:#fff;font-weight:800;font-size:14px}
+    .steps b{display:block;font-size:15.5px;margin-bottom:2px}
+    .steps span{font-size:14px;color:var(--muted)}
 
     .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
     .plan{display:flex;flex-direction:column;padding:22px;border-radius:18px;background:#fff;border:1px solid var(--line)}
@@ -61,6 +92,14 @@
     .chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:16px 0 0;padding:0;list-style:none}
     .chips li{padding:7px 13px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:13px;font-weight:700}
 
+    /* my events */
+    .events{display:grid;grid-template-columns:1.3fr 1fr;gap:22px;align-items:center;padding:26px;border-radius:20px;background:var(--ink);color:#fff}
+    .events h2{text-align:left;color:#fff}
+    .events p{margin:0 0 16px;color:#CFC8C0}
+    .events ul{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+    .events li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:#EDE7E0}
+    .events li::before{content:"";flex:none;width:8px;height:8px;margin-top:7px;border-radius:2px;background:var(--red)}
+
     .book{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"intro form" "actions form";column-gap:22px;row-gap:4px;align-items:start;padding:26px;border-radius:20px;background:#fff;border:1px solid var(--line)}
     .book-intro{grid-area:intro}.book .form-card{grid-area:form;align-self:center}.book .actions{grid-area:actions}
     .book h2{text-align:left}
@@ -71,6 +110,11 @@
     .btn:hover,.btn:focus-visible{border-color:var(--red);color:var(--red);outline:none}
     .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
     .btn.primary:hover,.btn.primary:focus-visible{background:#0653CC;border-color:#0653CC;color:#fff}
+    .btn.red{background:var(--red);border-color:var(--red);color:#fff}
+    .btn.red:hover,.btn.red:focus-visible{background:var(--red-dark);border-color:var(--red-dark);color:#fff}
+    .events .btn{background:transparent;border-color:#57525A;color:#fff}
+    .events .btn:hover,.events .btn:focus-visible{border-color:#fff;color:#fff}
+    .events .btn.red{background:var(--red);border-color:var(--red)}
     .btn svg{width:18px;height:18px;flex:none}
     .copied{display:none;font-size:13px;font-weight:700;color:#1F6F62}.copied.show{display:inline}
 
@@ -79,23 +123,44 @@
     footer nav{display:flex;flex-wrap:wrap;gap:16px}
     footer nav a{font-weight:700;color:var(--ink);text-decoration:none}
     footer nav a:hover{color:var(--red)}
+    .fmeta{display:flex;flex-direction:column;gap:4px}
 
+    @media (max-width:860px){
+      .features{grid-template-columns:1fr 1fr}
+      .steps{grid-template-columns:1fr 1fr}
+    }
     @media (max-width:760px){
       .plans{grid-template-columns:1fr}
+      .events{grid-template-columns:1fr;padding:22px}
       .book{grid-template-columns:1fr;grid-template-areas:"intro" "form" "actions";row-gap:14px;padding:20px}
       .book .actions .btn{flex:1 1 100%}
       .copied.show{display:block;width:100%;text-align:center}
-      .hero{padding:24px 0 22px}
+      .hero{padding:22px 0 22px}
       section.block{padding-top:44px}
+    }
+    @media (max-width:640px){
+      .topnav{justify-content:center;padding:16px 0 4px}
+      .navlinks{width:100%;justify-content:center;gap:2px}
+      .navlinks a{font-size:13.5px;padding:8px 10px}
+      .navlinks a.cta{margin-left:2px}
+    }
+    @media (max-width:520px){
+      .features,.steps{grid-template-columns:1fr}
     }
     @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition-duration:.01ms!important}}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <a class="brand" href="/" aria-label="photobooth4u home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span></a>
-      <a class="pill" href="/">Open photo booth</a>
+    <header class="topnav">
+      <a class="nbrand" href="/about-us/" aria-label="photobooth4u home"><span class="nmark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="nword"><b>photobooth</b><em>4u</em></span></a>
+      <nav class="navlinks" aria-label="Main">
+        <a href="/about-us/" aria-current="page">About us</a>
+        <a href="/about-us/#packages">Pricing</a>
+        <a href="/lifetime/">My events</a>
+        <a href="/">Open booth</a>
+        <a class="cta" href="/about-us/#avail">Book now</a>
+      </nav>
     </header>
 
     <section class="hero">
@@ -106,12 +171,12 @@
     <section class="slider" aria-label="How photobooth4u works" aria-roledescription="carousel">
       <div class="slides">
         <article class="slide active" id="slide-2" aria-label="Slide 1 of 6">
-          <img src="assets/pb4u-02-layouts.jpg" alt="Sample prints in different layouts, with the ten layout names listed below">
-          <div class="slide-caption"><strong>10 layouts to choose from</strong><span>Classic strips, grids, a big hero shot, solo, duo, film and more — all made for 4R prints.</span></div>
+          <img src="assets/pb4u-02-layouts-v2.jpg" alt="Sample prints in different layouts, with the twelve layout names plus My frame and Frame collage listed below">
+          <div class="slide-caption"><strong>12 layouts, plus your own</strong><span>Strips, grids, polaroids, a big hero shot, film and landscape layouts — or upload your own Canva frames.</span></div>
         </article>
         <article class="slide" id="slide-3" aria-label="Slide 2 of 6">
           <img src="assets/pb4u-03-make-it-yours.jpg" alt="Event name settings with a calendar button for the date, next to a finished print">
-          <div class="slide-caption"><strong>Make it yours</strong><span>Add your event name and date, pick fonts, backdrops and frames, and see it in the live preview.</span></div>
+          <div class="slide-caption"><strong>Your event, your style</strong><span>Add your event name and date, pick fonts, backdrops and frames, and see it in the live preview.</span></div>
         </article>
         <article class="slide" id="slide-4" aria-label="Slide 3 of 6">
           <img src="assets/pb4u-04-countdown.jpg" alt="Countdown ring over the live camera, with 3, 5, 7 and 10 second options">
@@ -126,8 +191,8 @@
           <div class="slide-caption"><strong>Prefer a classic booth?</strong><span>Use a laptop with a second monitor for guests. After the first print, every session prints automatically.</span></div>
         </article>
         <article class="slide" id="slide-7" aria-label="Slide 6 of 6">
-          <img src="assets/pb4u-07-share-photos.jpg" alt="QR code to the event photo folder, sample prints, and calendar days one to seven">
-          <div class="slide-caption"><strong>Your photos, ready to share</strong><span>Guests scan one QR code for the event's Google Drive folder. Photos stay up for seven days — download your favourites in time.</span></div>
+          <img src="assets/pb4u-07-share-photos-v3.jpg" alt="An all-photos QR code, sample prints, calendar days one to seven, and a Your photo QR code shown after every session">
+          <div class="slide-caption"><strong>Your photos, ready to share</strong><span>Every photo goes to your event's online gallery. Each guest gets a QR for their own photo. Photos stay up for seven days.</span></div>
         </article>
       </div>
       <button class="arrow prev" type="button" aria-label="Show previous slide">‹</button>
@@ -145,19 +210,69 @@
       </div>
     </section>
 
+    <section class="block" id="features" aria-labelledby="ft">
+      <p class="label">What you get</p>
+      <h2 id="ft">Everything in one booth</h2>
+      <p class="sub">Set it up in minutes on the device you already have. Your design is saved, so it's ready again on the day.</p>
+      <div class="features">
+        <article class="feat">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+          <h3>Ready-made designs</h3>
+          <p>20 themes and 10 templates for weddings, birthdays, debuts, kids' parties, christenings, graduations, Christmas and more.</p>
+        </article>
+        <article class="feat">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><rect x="7.5" y="6.5" width="9" height="6" rx="1"/><path d="M8 16h8"/></svg></span>
+          <h3>Your own Canva frames</h3>
+          <p>Upload a frame with white or see-through spots and the photos drop right in. Put two or more on one print as a frame collage.</p>
+        </article>
+        <article class="feat">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8L3.5 9.2l5.9-.9z"/></svg></span>
+          <h3>Logo, stickers &amp; filters</h3>
+          <p>Add your logo, drag on props and stickers (or your own PNGs), pick fonts and colours, and watch it all in the live preview.</p>
+        </article>
+        <article class="feat">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg></span>
+          <h3>Online photo gallery</h3>
+          <p>After every session, guests scan a QR for their own photo. The event gallery fills up live, ready to view, download and share.</p>
+        </article>
+        <article class="feat">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8V3h10v5"/><rect x="3" y="8" width="18" height="9" rx="2"/><path d="M7 14h10v7H7z"/></svg></span>
+          <h3>Prints on the spot</h3>
+          <p>Bring a photo printer: 2×6 strips, 4R, A4 and more, plus 2.5×7.5 keychain prints. Strips print two side by side.</p>
+        </article>
+        <article class="feat">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="13" height="9" rx="1.5"/><path d="M5 17h7"/><rect x="17" y="7" width="5" height="12" rx="1.5"/></svg></span>
+          <h3>Tablet or laptop booth</h3>
+          <p>Run it on an iPad or Android tablet, or a laptop with a second screen for guests and automatic printing after every session.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="block" id="how" aria-labelledby="hw">
+      <p class="label">How it works</p>
+      <h2 id="hw">From booking to photos</h2>
+      <p class="sub">No booth to rent, no one to send. Just your code and your device.</p>
+      <ol class="steps">
+        <li><b>Book</b><span>Message us with your event date. You get your booth code plus a 1-hour practice code.</span></li>
+        <li><b>Set up</b><span>Open the booth, enter your code, and pick a design, layout and countdown.</span></li>
+        <li><b>Snap</b><span>Guests tap, pose and get their photo — printed on the spot if you have a printer.</span></li>
+        <li><b>Share</b><span>Everyone scans for the gallery. Download your favourites within 7 days.</span></li>
+      </ol>
+    </section>
+
     <section class="block" id="packages" aria-labelledby="pk">
       <p class="label">Packages</p>
-      <h2 id="pk" class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Packages</h2>
+      <h2 id="pk" class="sr-only">Packages</h2>
       <div class="plans">
         <article class="plan">
           <h3>Classic Booth</h3>
           <p class="for">Tablet or iPad</p>
-          <p class="price">₱699 <small>/ event</small></p>
+          <p class="price">₱499 <small>/ event</small></p>
         </article>
         <article class="plan pro">
           <h3>Pro Booth</h3>
           <p class="for">Laptop + guest screen, auto-print</p>
-          <p class="price">₱799 <small>/ event</small></p>
+          <p class="price">₱599 <small>/ event</small></p>
         </article>
         <article class="plan life">
           <h3>Lifetime</h3>
@@ -168,9 +283,27 @@
       <ul class="chips" aria-label="Included">
         <li>24 hours on your event day</li>
         <li>Unlimited snaps</li>
-        <li>Photos online for 7 days</li>
+        <li>Online gallery for 7 days</li>
         <li>+ 1-hour practice code</li>
       </ul>
+    </section>
+
+    <section class="block" id="my-events" aria-labelledby="me">
+      <div class="events">
+        <div>
+          <h2 id="me">My events</h2>
+          <p>Every event you've run, in one place — on any phone or computer.</p>
+          <ul>
+            <li>Find each event's photos, QR code and gallery link again</li>
+            <li>See how many sessions were taken and the "download by" date</li>
+            <li>Lifetime customers: a separate folder for every event, plus the setup guide</li>
+          </ul>
+        </div>
+        <div class="actions">
+          <a class="btn red" href="/lifetime/">Open My events</a>
+          <a class="btn" href="/">Open photo booth</a>
+        </div>
+      </div>
     </section>
 
     <section class="block" id="avail" aria-labelledby="bk">
@@ -191,10 +324,14 @@ Event Date:</pre>
     </section>
 
     <footer>
-      <span id="trialNote" hidden>Try it free with code <code id="trialCode"></code></span>
-      <nav>
+      <div class="fmeta">
+        <span><b style="color:var(--ink)">photobooth4u.netlify.app</b> · Cebu</span>
+        <span id="trialNote" hidden>Try it free with code <code id="trialCode"></code></span>
+      </div>
+      <nav aria-label="Footer">
         <a href="/">Open photo booth</a>
-        <a href="/lifetime/">My Events</a>
+        <a href="/lifetime/">My events</a>
+        <a href="/about-us/#packages">Pricing</a>
         <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Messenger</a>
       </nav>
     </footer>

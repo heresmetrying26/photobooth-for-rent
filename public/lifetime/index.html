@@ -12,7 +12,13 @@
     :root{--ink:#1C1A1E;--muted:#6B666C;--red:#C93D27;--red-dark:#A9301D;--tint:#FBEDEA;--paper:#F5F1EA;--line:#E4DCCF;--ok:#1F6F62;--ok-bg:#E6F4F1;}
     *{box-sizing:border-box} body{margin:0;color:var(--ink);font-family:'Manrope',Arial,sans-serif;background:var(--paper);min-height:100vh}
     a{color:inherit}
-    .site-header{display:flex;align-items:center;justify-content:space-between;gap:16px;width:min(980px,calc(100% - 32px));margin:0 auto;padding:22px 0}
+    .site-header{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;width:min(980px,calc(100% - 32px));margin:0 auto;padding:18px 0}
+    .navlinks{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+    .navlinks a{font-size:14px;font-weight:700;color:var(--muted);text-decoration:none;padding:9px 13px;border-radius:999px;white-space:nowrap;transition:background .2s,color .2s}
+    .navlinks a:hover,.navlinks a:focus-visible,.navlinks a[aria-current="page"]{color:var(--ink);background:#fff;outline:none}
+    .navlinks a.cta{margin-left:4px;color:#fff;background:var(--red)}
+    .navlinks a.cta:hover,.navlinks a.cta:focus-visible{background:#A9301D;color:#fff}
+    @media (max-width:640px){.site-header{justify-content:center;padding:16px 0 4px}.navlinks{width:100%;justify-content:center;gap:2px}.navlinks a{font-size:13.5px;padding:8px 10px}.navlinks a.cta{margin-left:2px}}
     .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
     .mark{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:26px;height:26px;flex:none}.mark i{background:var(--ink);border-radius:4px}.mark i:nth-child(2){background:var(--red)}
     .word{display:flex;align-items:flex-start}.word b{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:26px;letter-spacing:-.035em;line-height:1}
@@ -95,7 +101,13 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 <body>
   <header class="site-header">
     <a class="brand" href="/about-us/" aria-label="photobooth4u"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span></a>
-    <a class="pill" href="/">Open photo booth</a>
+    <nav class="navlinks" aria-label="Main">
+      <a href="/about-us/">About us</a>
+      <a href="/about-us/#packages">Pricing</a>
+      <a href="/lifetime/" aria-current="page">My events</a>
+      <a href="/">Open booth</a>
+      <a class="cta" href="/about-us/#avail">Book now</a>
+    </nav>
   </header>
 
   <main>

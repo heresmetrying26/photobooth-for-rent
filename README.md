@@ -26,6 +26,31 @@ Edit `protected/booth.html` and redeploy. (The build step re-bundles it automati
   "Allow new device" (if the renter switches tablets), and edit trial settings.
 - When time is up, the app returns to the lock screen (after any photo session in progress).
 
+## Camera
+- Any camera the computer sees as a webcam works: built-in webcams, USB webcams, Sony/Canon
+  cameras in USB-streaming / webcam mode (Sony Imaging Edge Webcam, Canon EOS Webcam Utility),
+  or any camera through an HDMI-to-USB capture card. The booth asks for 1920×1080.
+- The camera picked in the **Camera** menu is remembered on that device and chosen again
+  the next time the booth opens (matched by name if the camera was re-plugged).
+- If the camera drops out (cable bumped, camera powered off, HDMI lost) the booth shows
+  "Reconnecting…" and keeps retrying by itself; a camera plugged in mid-event is picked up.
+- **Mirror the live view** (Camera section of the Photo Session panel): on/off, remembered per
+  device. Only the preview is mirrored; saved and printed photos never are.
+- The screen is kept awake while the booth is open (browser wake lock).
+- Guest photos are uploaded to Drive as high-quality JPEGs (smaller, faster QR codes).
+
+## Weak internet & backup folder
+- **Upload retry + waiting list:** each Drive upload is tried 3 times. If it still fails, the
+  photo is kept on the device (IndexedDB) and the Photo Session panel shows **Waiting to
+  upload** with **Retry now** / **Save to this computer**. Waiting photos upload by themselves
+  every 30 s and when the browser comes back online, also after a reload. The guest gets the
+  event's All photos QR meanwhile. Photos the code can no longer upload (expired/locked) stay
+  listed until saved to the computer.
+- **Backup folder (Chrome / Edge on a computer):** Setup → 5 Share → **Choose backup folder**.
+  Every session's photo (full-quality PNG) is then written to `<folder>/<event name>/` instead
+  of Downloads. After a browser restart Chrome asks again: tap **Allow saving** (Setup or the
+  Photo Session panel). Tablets and other browsers keep saving to Downloads.
+
 ## Printing (per rental)
 Printing is **off** unless you turn it on in Admin — when creating codes, or later with
 **Print settings** on any code (an open booth picks the change up within ~5 minutes).
@@ -75,7 +100,7 @@ Without kiosk mode the normal print dialog opens: pick the photo printer, set Ma
   - shares the booking's Drive folder, print and laptop-mode settings (changing those on the
     booking updates the bonus too), and deleting the booking deletes its bonus code;
   - uploads into a **Bonus** subfolder of the event folder, with file names starting
-    `BONUS_` (BONUS_1_strip.png, BONUS_2_strip.png…), numbered separately from event photos.
+    `BONUS_` (BONUS_1_strip.jpg, BONUS_2_strip.jpg…), numbered separately from event photos.
 
   The subfolder needs the Google Apps Script to read the `subfolder` field the booth now sends
   (see below). Until it does, bonus photos land in the main event folder, still named `BONUS_…`.
@@ -98,7 +123,7 @@ subfolder. Then **Deploy → Manage deployments → Edit → New version** so th
 - **Devices** (1–50, when creating a code or later with the *Devices: N* button): how many
   tablets/laptops can use the same code. Each new device takes a free slot and gets a number
   (Device 1, 2, 3…). All devices on a code share its Drive folder and QR; when a code allows
-  more than one device, file names end in the device number (`3_strip_cam2.png`) so two devices
+  more than one device, file names end in the device number (`3_strip_cam2.jpg`) so two devices
   never write the same name. **Remove** a device in Admin to lock it out (within ~5 minutes)
   and free its slot; numbers are never reused.
 - **Lifetime** (tick when creating, or *Make lifetime* on an existing code): never expires.
@@ -127,8 +152,9 @@ A page for customers to find every event's Drive folder again, from any phone or
 - The booth's Google Drive panel also has **Open folder / Copy link / All my events** under the QR.
 - **Lifetime codes** entered on the lock screen go to `/lifetime/?welcome=1` first (welcome
   message, **Download setup guide**, **Open photo booth**). Next visits to `/` open the booth
-  directly. The guide is `public/lifetime/photobooth4u-setup-guide.pdf` (6 pages); ask Claude to
-  regenerate it if the booth's steps change.
+  directly. The guide is `public/lifetime/photobooth4u-setup-guide.pdf` (7 pages). Its source is
+  `docs/setup-guide/guide.html` (fonts and images alongside); edit it and run
+  `node docs/setup-guide/build-guide.mjs` to print a new PDF with Chrome.
 - If you change EVENT_DAYS / BONUS_DAYS in `apps-script/cleanup.gs`, change EVENT_KEEP_DAYS /
   BONUS_KEEP_DAYS in `netlify/lib/core.mjs` to match.
 

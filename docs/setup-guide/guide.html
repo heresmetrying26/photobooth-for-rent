@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>photobooth4u setup guide</title>
+<!--
+  Source of public/lifetime/photobooth4u-setup-guide.pdf.
+  Rebuild: node build-guide.mjs  (prints this page to PDF with headless Chrome/Chromium)
+-->
+<style>
+@font-face{font-family:'Fraunces';src:url(fonts/fraunces-latin-600-normal.woff2) format('woff2');font-weight:600;font-style:normal}
+@font-face{font-family:'Fraunces';src:url(fonts/fraunces-latin-500-italic.woff2) format('woff2');font-weight:500;font-style:italic}
+@font-face{font-family:'Fraunces';src:url(fonts/fraunces-latin-600-italic.woff2) format('woff2');font-weight:600;font-style:italic}
+@font-face{font-family:'Manrope';src:url(fonts/manrope-latin-400-normal.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Manrope';src:url(fonts/manrope-latin-500-normal.woff2) format('woff2');font-weight:500}
+@font-face{font-family:'Manrope';src:url(fonts/manrope-latin-600-normal.woff2) format('woff2');font-weight:600}
+@font-face{font-family:'Manrope';src:url(fonts/manrope-latin-700-normal.woff2) format('woff2');font-weight:700}
+@font-face{font-family:'Manrope';src:url(fonts/manrope-latin-800-normal.woff2) format('woff2');font-weight:800}
+
+:root{
+  --cream:#f5f1ea; --ink:#1c1a1e; --body:#4a4548; --dim:#7a7376; --red:#c93d27;
+  --line:#e4dccf; --purple:#5b3fa0; --purple-bg:#ede7f7; --green:#1f6f62; --green-bg:#e6f4f1;
+  --pink-bg:#fbedea; --mono:'DejaVu Sans Mono', monospace;
+}
+@page{size:A4; margin:0}
+*{box-sizing:border-box}
+html,body{margin:0; padding:0; background:#fff}
+body{font-family:'Manrope',sans-serif; color:var(--body); font-size:12.4px; line-height:1.62;
+  -webkit-print-color-adjust:exact; print-color-adjust:exact}
+b,strong{color:var(--ink); font-weight:700}
+.page{width:210mm; height:297mm; position:relative; overflow:hidden; padding:66px 64px 0; background:#fff; page-break-after:always; break-after:page}
+.page:last-child{page-break-after:auto; break-after:auto}
+.foot{position:absolute; left:64px; right:64px; bottom:40px; display:flex; justify-content:space-between;
+  font-size:8.6px; font-weight:700; letter-spacing:.2em; color:var(--dim); text-transform:uppercase}
+
+/* section heads */
+.kicker{font-size:9.4px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:var(--red); margin:0 0 2px}
+h2{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:31px; line-height:1.15; letter-spacing:-.01em; color:var(--ink); margin:0 0 14px}
+.lead{font-size:14px; line-height:1.6; color:var(--body); margin:-4px 0 18px}
+.sec + .sec{margin-top:40px}
+
+/* numbered steps with a thin rail */
+.steps{position:relative; margin:0; padding:0; list-style:none}
+.steps li{position:relative; padding:0 0 12px 38px}
+.steps li::before{content:''; position:absolute; left:12px; top:22px; bottom:-2px; width:1px; background:#e0d7cb}
+.steps li:last-child::before{display:none}
+.steps .n{position:absolute; left:0; top:2px; width:24px; height:24px; border-radius:50%; background:var(--red); color:#fff;
+  font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center}
+.steps h4{margin:0 0 5px; font-size:14.4px; font-weight:700; color:var(--ink); line-height:1.4}
+.steps p{margin:0}
+
+.cols{display:grid; grid-template-columns:1fr 290px; gap:28px; align-items:start}
+.cols.even{grid-template-columns:1fr 1fr; gap:18px}
+
+.card{border-radius:12px; padding:16px 18px}
+.card.cream{background:var(--cream)} .card.purple{background:var(--purple-bg)} .card.green{background:var(--green-bg); color:var(--green)}
+.card.pink{background:var(--pink-bg)} .card.line{border:1.5px solid var(--line); background:#fff}
+.card h5{margin:0 0 10px; font-size:13px; font-weight:700; color:var(--ink)}
+.card.green h5{color:var(--green)}
+.pill{display:inline-block; font-size:8.2px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:#fff;
+  border-radius:999px; padding:4px 10px; margin:0 0 12px; background:var(--ink)}
+.pill.purple{background:var(--purple)} .pill.green{background:var(--green)} .pill.red{background:var(--red)}
+.dots{list-style:none; margin:0; padding:0}
+.dots li{position:relative; padding-left:18px; margin:0 0 8px}
+.dots li::before{content:''; position:absolute; left:0; top:.58em; width:7px; height:7px; border-radius:50%; background:var(--red)}
+.card.green .dots li{color:var(--green)}
+.card.green b{color:var(--green)}
+.checks{display:grid; grid-template-columns:1fr 1fr; gap:4px 24px; list-style:none; margin:0; padding:0; color:var(--green)}
+.checks li{position:relative; padding-left:20px}
+.checks li::before{content:''; position:absolute; left:0; top:.32em; width:11px; height:11px; border:1.5px solid var(--green); border-radius:3px}
+.note{border-radius:12px; padding:13px 18px; font-size:12px}
+code,.kbd{font-family:var(--mono); font-size:10.6px; background:#f1ede6; border:1px solid #e1d9cc; border-radius:4px; padding:1px 5px; color:var(--ink)}
+.codeblock{font-family:var(--mono); font-size:10.6px; line-height:1.7; background:var(--ink); color:#f3eee6; border-radius:8px; padding:12px 14px; margin:8px 0 14px; white-space:pre-wrap}
+.label{font-size:11px; color:var(--body); margin:0}
+.label b{color:var(--ink)}
+figure{margin:0}
+figure img{width:100%; border-radius:12px; display:block; border:1px solid var(--line)}
+figcaption{font-size:11.4px; color:var(--body); margin-top:8px; line-height:1.5}
+
+/* cover */
+.cover{background:var(--cream); padding:0}
+.logo{display:flex; align-items:center; gap:8px}
+.logo .mark{display:grid; grid-template-columns:9px 9px; gap:3px}
+.logo .mark i{width:9px; height:9px; border-radius:2.5px; background:var(--ink)}
+.logo .mark i:nth-child(2){background:var(--red)}
+.logo .word{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:24px; letter-spacing:-.035em; color:var(--ink); line-height:1}
+.logo .badge{font-weight:800; font-size:10px; color:#fff; background:var(--red); border-radius:4px; padding:1px 4px; transform:rotate(-7deg) translate(-4px,-9px); line-height:1.2}
+.cover .top{padding:62px 64px 0}
+.cover h1{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:67px; line-height:1.02; letter-spacing:-.025em; color:var(--ink); margin:62px 0 26px}
+.cover h1 em{font-style:italic; font-weight:500; color:var(--red)}
+.cover .intro{font-size:14.6px; line-height:1.62; max-width:560px; margin:0}
+.hero{margin:34px 0 0; border-top:1px solid #e3d9cb; border-bottom:1px solid #e3d9cb; background:var(--cream)}
+.hero{padding:10px 0} .hero img{display:block; width:79%; margin:0 auto}
+.toc{display:grid; grid-template-columns:1fr 1fr; column-gap:30px; padding:22px 64px 0; margin:0; list-style:none}
+.toc li{display:flex; gap:20px; border-bottom:1px solid #e0d6c8; padding:9px 0; font-size:13.6px; font-weight:600; color:var(--ink)}
+.toc li span{color:var(--red); font-weight:700; width:16px}
+.cover .foot{left:64px; right:64px}
+
+/* troubleshooting */
+table.fix{width:100%; border-collapse:collapse; font-size:11.6px; line-height:1.5}
+table.fix th{text-align:left; font-size:8.4px; font-weight:700; letter-spacing:.2em; color:var(--dim); text-transform:uppercase; padding:0 0 8px; border-bottom:1.5px solid var(--ink)}
+table.fix td{padding:6.5px 0; border-bottom:1px solid #e6dfd4; vertical-align:top}
+table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color:var(--ink)}
+.help{margin-top:18px; background:var(--ink); border-radius:12px; padding:18px 24px; display:flex; align-items:center; justify-content:space-between; color:#d7d1ca}
+.help h3{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:20px; color:#fff; margin:0 0 2px}
+.help p{margin:0; font-size:12px} .help b{color:#fff}
+.help .btn{background:var(--red); color:#fff; font-weight:700; font-size:12.4px; border-radius:999px; padding:9px 18px}
+
+.three{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+.three .card{padding:16px 16px 18px; font-size:12.2px}
+</style>
+</head>
+<body>
+
+<!-- ============ 1 · COVER ============ -->
+<section class="page cover">
+  <div class="top">
+    <div class="logo"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word">photobooth</span><span class="badge">4u</span></div>
+    <h1>Your booth,<br><em>ready</em> for any event.</h1>
+    <p class="intro">The step-by-step setup guide for photobooth4u: unlocking your devices, setting up each event, running the Pro Booth with a guest screen and your own camera, printing, and sending photos to your clients.</p>
+  </div>
+  <div class="hero"><img src="img/hero.jpg" alt=""></div>
+  <ol class="toc">
+    <li><span>01</span>What you need</li>
+    <li><span>06</span>Backup folder &amp; weak internet</li>
+    <li><span>02</span>Unlock your devices</li>
+    <li><span>07</span>Printing</li>
+    <li><span>03</span>Set up each event</li>
+    <li><span>08</span>During the event</li>
+    <li><span>04</span>Pro Booth: laptop + guest screen</li>
+    <li><span>09</span>After the event: send the photos</li>
+    <li><span>05</span>Use a Sony or Canon camera</li>
+    <li><span>10</span>Troubleshooting &amp; help</li>
+  </ol>
+  <div class="foot"><span>photobooth4u.netlify.app</span><span>Setup guide</span></div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">01 · Before you start</p>
+    <h2>What you need</h2>
+    <div class="cols even">
+      <div class="card cream" style="min-height:214px">
+        <span class="pill">Classic booth</span>
+        <ul class="dots">
+          <li><b>iPad or Android tablet</b> (a phone works too)</li>
+          <li><b>Tripod or stand</b> at the guests' eye level</li>
+          <li><b>Internet</b>: venue Wi-Fi or a phone hotspot</li>
+          <li><i>Optional:</i> photo printer, if your package includes printing</li>
+        </ul>
+      </div>
+      <div class="card purple" style="min-height:214px">
+        <span class="pill purple">Pro booth</span>
+        <ul class="dots">
+          <li><b>Laptop</b> with <b>Chrome or Edge</b>, and a camera: built-in, USB webcam, or a <b>Sony / Canon</b> camera (page 5)</li>
+          <li><b>Second monitor or TV</b> + HDMI cable, facing the guests</li>
+          <li><i>Optional:</i> presenter clicker, so guests can start a shot</li>
+          <li><i>Optional:</i> photo printer (4R / 4×6 recommended)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card green" style="margin-top:14px">
+      <h5>Day-before checklist</h5>
+      <ul class="checks">
+        <li>Device charged, charger packed</li>
+        <li>Event name decided (you type it in Setup)</li>
+        <li>Booth opens and the camera works</li>
+        <li>Printer + paper loaded, one test print done</li>
+        <li>Internet tested at (or near) the venue</li>
+        <li>Pro Booth: HDMI cable and guest screen tested</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec">
+    <p class="kicker">02 · First time on each device</p>
+    <h2>Unlock your devices</h2>
+    <ol class="steps">
+      <li><span class="n">1</span><h4>Open the booth</h4><p>Go to <b>photobooth4u.netlify.app</b> in Chrome, Edge or Safari.</p></li>
+      <li><span class="n">2</span><h4>Enter your code</h4><p>Type your <code>PB-XXXX-XXXX-XXXX</code> code and tap <b>Unlock</b>. Lifetime codes open your <b>My Events</b> page first, so tap <b>Open photo booth</b> from there.</p></li>
+      <li><span class="n">3</span><h4>That device is now yours</h4><p>It stays unlocked, so next time just open the website. Each new device uses one of your <b>device slots</b>. To replace a device (new laptop, lost tablet), message us and we'll free its slot.</p></li>
+    </ol>
+    <div class="note card pink" style="margin-top:12px"><b>Keep your code private.</b> Anyone with it can use your device slots and see your event links.</div>
+  </div>
+  <div class="foot"><span>photobooth4u setup guide</span><span>2</span></div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section class="page">
+  <p class="kicker">03 · Every event</p>
+  <h2>Set up each event</h2>
+  <p class="lead">In the booth, open <b>Setup</b> and go through the 5 steps with <b>Next</b>. The bar at the bottom shows what's still needed and has <b>Start photo session</b>.</p>
+  <div class="cols">
+    <ol class="steps">
+      <li><span class="n">1</span><h4>Design</h4><p>Under <b>Ready designs</b>, tap a template to see it big, then <b>Use this design</b>. <b>Colours &amp; background</b> changes the background, gold details colour or adds your own photo. <b>★ Save my design</b> keeps yours for next time.</p></li>
+      <li><span class="n">2</span><h4>Text</h4><p>Type the <b>name on the photo</b> and tap the <b>calendar icon</b> to add the date. Pick a title style, then a font: the cards show your own name. <b>Pairs</b> set the name and small-line fonts together.</p></li>
+      <li><span class="n">3</span><h4>Layout</h4><p>Pick one of <b>12 layouts</b> (each card shows your design) and the countdown. Optional: <b>guests choose the layout</b> each session.</p></li>
+      <li><span class="n">4</span><h4>Extras</h4><p>All optional, in tabs. <b>Frame</b>: upload your Canva frame with the photo spots left white or see-through. It becomes <b>My frame</b>, and two or more make a <b>Frame collage</b> on one 4R print. <b>Logo</b>, <b>Stickers</b>, and <b>Filter</b> (B&amp;W, Sepia, Warm, Cool, soft skin).</p></li>
+      <li><span class="n">5</span><h4>Share</h4><p><b>Lifetime codes:</b> type the <b>event name</b> for a new folder. <b>Rental codes</b> connect by themselves. The <b>All photos</b> QR is here to print or share ahead. On a laptop, choose a <b>backup folder</b> here too (page 5).</p></li>
+    </ol>
+    <div>
+      <figure><img src="img/layouts.jpg" alt=""><figcaption>12 layouts, plus your own frames.</figcaption></figure>
+      <div class="card green" style="margin-top:22px">
+        <span class="pill green">Saves by itself</span>
+        <p style="margin:0">Your setup saves automatically. It comes back after a refresh or restart, and <b>every device on your code gets the same design</b>. Lifetime codes keep a separate design for each event name. <b>⋯ → Reset setup</b> starts fresh.</p>
+      </div>
+    </div>
+  </div>
+  <div class="card purple" style="margin-top:26px">
+    <span class="pill purple">Using more than one device?</span>
+    <p style="margin:0">Type the <b>exact same event name</b> on every device at that event. They share one folder, one QR code and one design. Each device's photos end in its number (<code>…_cam1.jpg</code>, <code>…_cam2.jpg</code>).</p>
+  </div>
+  <div class="foot"><span>photobooth4u setup guide</span><span>3</span></div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section class="page">
+  <p class="kicker">04 · Pro booth</p>
+  <h2>Laptop + guest screen</h2>
+  <p class="lead">Guests see the camera, countdown and their photos on the big screen. You run setup, printing and the QR code on the laptop.</p>
+  <div class="cols">
+    <ol class="steps">
+      <li><span class="n">1</span><h4>Connect the second screen</h4><p>Plug in the monitor or TV. Set the display to <b>Extend</b>, not Duplicate. Windows: press <span class="kbd">Win + P</span> → <b>Extend</b>. Mac: System Settings → Displays → turn off mirroring.</p></li>
+      <li><span class="n">2</span><h4>Start Chrome with silent printing</h4><p>Use the shortcut below so prints go straight to the printer without a pop-up. Close every Chrome window first.</p></li>
+      <li><span class="n">3</span><h4>Open the guest screen</h4><p>Finish Setup, go to <b>Photo Session</b> and tap <b>Open guest screen</b>. Allow pop-ups and "window management" if Chrome asks. It moves to the second screen. Click it once to go full screen.</p></li>
+      <li><span class="n">4</span><h4>Let guests start</h4><p>Guests tap the guest screen, or press <span class="kbd">Space</span> / <span class="kbd">Enter</span> or a presenter clicker.</p></li>
+    </ol>
+    <figure><img src="img/pro-booth.jpg" alt=""><figcaption>You: setup and printing. Guests: camera and countdown.</figcaption></figure>
+  </div>
+  <h4 style="margin:22px 0 8px; font-size:14.4px; color:var(--ink)">Silent-printing shortcut</h4>
+  <p class="label"><b>Windows:</b> right-click the desktop → New → Shortcut, and paste this as the location:</p>
+  <div class="codeblock">"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing https://photobooth4u.netlify.app/</div>
+  <p class="label"><b>Mac:</b> open Terminal and run:</p>
+  <div class="codeblock">open -a "Google Chrome" --args --kiosk-printing https://photobooth4u.netlify.app/</div>
+  <div class="note card pink"><b>Don't add <code>--kiosk</code></b> for the Pro Booth. It forces a single full-screen window and blocks the guest screen. Edge works the same way with <code>msedge.exe</code>.</div>
+  <div class="foot"><span>photobooth4u setup guide</span><span>4</span></div>
+</section>
+
+<!-- ============ 5 · NEW: CAMERA + BACKUP ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">05 · Pro booth camera</p>
+    <h2>Use a Sony or Canon camera</h2>
+    <p class="lead">A real camera gives sharper photos and a softer background than a webcam. The booth works with any camera your laptop sees as a webcam.</p>
+    <div class="cols">
+      <ol class="steps">
+        <li><span class="n">1</span><h4>Turn on webcam mode</h4><p><b>Sony:</b> newer models (ZV-E10, ZV-1, A7 IV, A6700…) have <b>USB Streaming</b> in the menu; older ones need Sony's free <b>Imaging Edge Webcam</b>. <b>Canon:</b> install the free <b>EOS Webcam Utility</b> and check your model is listed. <b>Any brand:</b> clean HDMI out + an <b>HDMI-to-USB capture card</b>.</p></li>
+        <li><span class="n">2</span><h4>Power it for the whole event</h4><p>Use a <b>dummy battery</b> or USB power, and turn off the camera's <b>auto power off</b>. Set focus to continuous face / eye AF.</p></li>
+        <li><span class="n">3</span><h4>Pick it in the booth</h4><p>In <b>Photo Session → Camera</b>, choose the camera. The booth <b>remembers it</b> on this laptop and picks it again next time.</p></li>
+        <li><span class="n">4</span><h4>Mirror or not</h4><p><b>Mirror the live view</b> (Camera section) shows guests a mirror image. Saved and printed photos are never mirrored.</p></li>
+      </ol>
+      <div class="card cream">
+        <h5>Good to know</h5>
+        <ul class="dots">
+          <li><b>"Camera disconnected. Reconnecting…"</b> means the cable or power slipped. Fix it and the booth carries on by itself.</li>
+          <li>The booth uses the camera's <b>1080p video</b>; it doesn't press the shutter, so a <b>flash won't fire</b>. Use a continuous light.</li>
+          <li>Tablets (Classic Booth) use their own front camera.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" style="margin-top:30px">
+    <p class="kicker">06 · Pro booth backup</p>
+    <h2>Backup folder &amp; weak internet</h2>
+    <div class="cols">
+      <ol class="steps">
+        <li><span class="n">1</span><h4>Choose a backup folder</h4><p>In <b>Setup → 5 Share</b>, tap <b>Choose backup folder</b> and pick one, e.g. <b>Pictures › photobooth4u</b>. Every photo is saved there in a subfolder named after the event. Chrome or Edge on a computer.</p></li>
+        <li><span class="n">2</span><h4>Allow saving after a restart</h4><p>After Chrome restarts, tap <b>Allow saving</b> (in Setup or the Photo Session panel), then allow Chrome to edit files.</p></li>
+        <li><span class="n">3</span><h4>Check it's on</h4><p>The Photo Session panel shows <b>Backup folder: Saving to …</b> ✓. Without one, each photo goes to <b>Downloads</b>.</p></li>
+      </ol>
+      <div class="card green">
+        <span class="pill green">Internet drops?</span>
+        <p style="margin:0">The booth tries again, then <b>keeps the photo on the device</b>. The panel shows <b>Waiting to upload</b>, and the photos upload by themselves when the internet is back. Guests get the <b>All photos</b> QR meanwhile. Keep the booth open until the list is empty.</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>photobooth4u setup guide</span><span>5</span></div>
+</section>
+
+<!-- ============ 6 ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">07 · If your package includes printing</p>
+    <h2>Printing</h2>
+    <div class="cols">
+      <ol class="steps">
+        <li><span class="n">1</span><h4>Prepare the printer</h4><p>Make the photo printer your computer's <b>default printer</b>. In its preferences, choose the paper size you'll use (e.g. <b>4×6</b>) and <b>borderless</b> if offered.</p></li>
+        <li><span class="n">2</span><h4>Do one test print</h4><p>After a session, open the <b>Print</b> box, pick the paper size and tap <b>Print</b>. If the size or margins are off, fix them in the printer's own settings.</p></li>
+        <li><span class="n">3</span><h4>Turn on auto-print</h4><p>Pro Booth only: after your first print, tick <b>Auto-print every session</b>. Every session after that prints by itself on the same paper.</p></li>
+      </ol>
+      <div class="card cream">
+        <h5>Good to know</h5>
+        <ul class="dots">
+          <li><b>Strips print two side by side</b> on 4R paper. Cut down the middle and you get two strips.</li>
+          <li>No silent-printing shortcut? A print dialog opens. Choose the photo printer, set <b>Margins: None</b> and <b>Scale: 100%</b>.</li>
+          <li>Only the paper sizes included in your package appear in the Print box.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <p class="kicker">08 · Showtime</p>
+    <h2>During the event</h2>
+    <div class="three">
+      <div class="card line"><span class="pill red">Guests</span><p style="margin:0">Tap the <b>welcome screen</b>, pick a layout if offered, follow the countdown and pose. The photo appears with a <b>Your photo</b> QR code that opens it in the online gallery.</p></div>
+      <div class="card line"><span class="pill green">Photos</span><p style="margin:0">Each session uploads to the event's <b>online gallery</b>, and a copy saves on the device: <b>Downloads</b>, or your <b>backup folder</b>. Allow multiple downloads if asked.</p></div>
+      <div class="card line"><span class="pill">You</span><p style="margin:0">Print the <b>All photos</b> QR from Setup → Share ahead and put it near the booth. Guests can scan it any time to see every photo.</p></div>
+    </div>
+    <div class="card green" style="margin-top:14px">
+      <h5>Pro tips</h5>
+      <ul class="dots">
+        <li>Put the camera at eye level, with light facing the guests (not behind them).</li>
+        <li>Keep the device plugged in. The booth keeps the screen awake while it's open; on tablets, also turn off auto-lock.</li>
+        <li>Weak venue internet? Use a phone hotspot. Photos that can't upload wait on the device and upload by themselves later.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>photobooth4u setup guide</span><span>6</span></div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">09 · After the event</p>
+    <h2>Send the photos to your client</h2>
+    <div class="cols">
+      <ol class="steps">
+        <li><span class="n">1</span><h4>Open My Events</h4><p>Go to <b>photobooth4u.netlify.app/lifetime/</b> on any phone or computer and sign in with your code. Every event is listed, newest first.</p></li>
+        <li><span class="n">2</span><h4>Copy or show the link</h4><p>Use <b>Copy link</b> to send the <b>online gallery</b> by Messenger, or <b>Show QR</b> to let your client scan it. <b>Drive folder</b> opens the same photos in Google Drive for downloading them all.</p></li>
+        <li><span class="n">3</span><h4>Remind them to download</h4><p>Photos are deleted <b>7 days after the event's last photo</b>. Each event shows its "Download by" date.</p></li>
+      </ol>
+      <div class="card pink">
+        <span class="pill red">7-day rule</span>
+        <p style="margin:0">Send the link the same day, and tell your client to save their favourites within the week. After deletion the link stops working.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" style="margin-top:24px">
+    <p class="kicker">10 · Quick fixes</p>
+    <h2>Troubleshooting</h2>
+    <table class="fix">
+      <tr><th>Problem</th><th>Fix</th></tr>
+      <tr><td>"We need access to your camera"</td><td>Allow camera access in the browser (the icon in the address bar), then tap <b>Try Again</b>. Close other apps using the camera.</td></tr>
+      <tr><td>"Camera disconnected. Reconnecting…"</td><td>Check the camera is on and its USB cable is in. The booth carries on by itself.</td></tr>
+      <tr><td>Sony / Canon not in the Camera menu</td><td>Turn on USB Streaming or the webcam app, re-plug the cable, then reload the booth.</td></tr>
+      <tr><td>"Photos waiting to upload"</td><td>The internet dropped. They upload by themselves, or tap <b>Retry now</b> / <b>Save to this computer</b>.</td></tr>
+      <tr><td>"Already used on another device"</td><td>All your device slots are taken. Message us to free one.</td></tr>
+      <tr><td>The QR code doesn't appear</td><td>Check the internet, and make sure the event name is typed in Setup → 5 Share.</td></tr>
+      <tr><td>A print dialog pops up every time</td><td>Chrome wasn't started with the silent-printing shortcut. Close all Chrome windows and use the shortcut (page 4).</td></tr>
+      <tr><td>Guest screen is on the wrong monitor</td><td>Check the display is set to <b>Extend</b>, then tap <b>Move / reopen guest screen</b>.</td></tr>
+      <tr><td>Two events' photos in one folder</td><td>The same event name was used twice. Use a new, unique name for each event.</td></tr>
+    </table>
+    <div class="help">
+      <div><h3>Need help? Message us.</h3><p>We're on Facebook Messenger: <b>m.me/roktetnachi</b></p></div>
+      <a class="btn" href="https://m.me/roktetnachi" style="text-decoration:none">Message us</a>
+    </div>
+  </div>
+  <div class="foot"><span>photobooth4u setup guide</span><span>7</span></div>
+</section>
+
+</body>
+</html>

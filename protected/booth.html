@@ -1527,6 +1527,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p class="panel-hint" style="margin-top:8px;">Print or share this link ahead. Guests get their own QR after each session.</p>
         </div>
         <p class="panel-hint" id="driveFolderHelp"></p>
+        <div class="sub-group" id="backupBox">
+          <p class="sub-label">Backup on this computer</p>
+          <p class="panel-hint" id="backupStatus" style="margin:0;"></p>
+          <div id="backupBtns" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+            <button type="button" class="action-btn" id="backupChooseBtn" style="width:auto; margin:0;">Choose backup folder</button>
+            <button type="button" class="action-btn primary" id="backupAllowBtn" style="width:auto; margin:0; display:none;">Allow saving</button>
+            <button type="button" class="action-btn" id="backupStopBtn" style="width:auto; margin:0; display:none;">Stop backup</button>
+          </div>
+        </div>
         <div class="sub-group" id="printSummaryBox" style="display:none;">
           <p class="sub-label">Printing</p>
           <p class="panel-hint" id="printSummary" style="margin:0;"></p>
@@ -1649,6 +1658,22 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     <!-- PANEL -->
     <div class="panel">
 
+      <div class="panel-section hidden" id="uploadQueueSection">
+        <p class="panel-label">Waiting to upload</p>
+        <p class="panel-hint" id="uploadQueueText" style="margin:0; color:var(--ink); font-weight:700;"></p>
+        <p class="panel-hint" id="uploadQueueHint"></p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+          <button type="button" class="action-btn" id="uploadRetryBtn" style="width:auto; margin:0;">Retry now</button>
+          <button type="button" class="action-btn" id="uploadSaveBtn" style="width:auto; margin:0;">Save to this computer</button>
+        </div>
+      </div>
+
+      <div class="panel-section hidden" id="backupSection">
+        <p class="panel-label">Backup folder</p>
+        <p class="panel-hint" id="backupSessionStatus" style="margin:0;"></p>
+        <button type="button" class="action-btn" id="backupSessionAllowBtn" style="display:none; width:auto; margin:8px 0 0;">Allow saving</button>
+      </div>
+
       <div class="panel-section hidden" id="qrSection">
         <p class="panel-label">Get your photos</p>
         <div class="qr-results" id="qrResults"></div>
@@ -1694,6 +1719,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <option value="">Loading cameras…</option>
         </select>
         <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
+        <label class="switch-row" id="mirrorRow">
+          <span>Mirror the live view</span>
+          <input type="checkbox" id="mirrorToggle">
+        </label>
+        <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos are never mirrored.</p>
       </div>
 
 
@@ -2121,7 +2151,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return ev ? pre + ' \u00b7 ' + ev : '';
   }
   // Codes shared by several devices add "_cam2" etc. to file names, so two
-  // devices at the same event never write "5_strip.png" twice.
+  // devices at the same event never write "5_strip.jpg" twice.
   function deviceTag(){
     const pb = window.__PB;
     return (pb && pb.multiDevice) ? '_cam' + (pb.deviceNo || 1) : '';
@@ -2163,8 +2193,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // and the ticket names the one folder this booth may use. Cached per folder
   // and refreshed a few minutes before it expires.
   let ticketCache = null;
-  async function getUploadTicket(){
-    const key = rawFolderKey();
+  async function getUploadTicket(folderKey){
+    const key = folderKey !== undefined ? folderKey : rawFolderKey();
     if(ticketCache && ticketCache.key === key && ticketCache.exp - Date.now() > 5 * 60000) return ticketCache.ticket;
     let token = null, deviceId = null;
     try{ token = localStorage.getItem('pb_token'); deviceId = localStorage.getItem('pb_device'); }catch(e){}
@@ -2179,13 +2209,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return data.ticket;
   }
 
-  async function uploadToDrive(blob, filename){
+  // dest = { folderKey, subfolder } for photos queued earlier (they keep the
+  // folder they were taken for); left out = the folder set up right now.
+  async function uploadToDrive(blob, filename, dest){
+    const folderKey = dest ? dest.folderKey : rawFolderKey();
+    const subfolder = dest ? dest.subfolder : driveSubfolder();
     // Sent as text/plain (not application/json) on purpose: it keeps this a
     // CORS "simple request" so the browser skips a preflight OPTIONS call,
     // which Apps Script Web Apps don't handle — this is what makes the
     // request work cross-origin at all.
     const base64Data = await blobToBase64(blob);
-    const ticket = await getUploadTicket();
+    const ticket = await getUploadTicket(folderKey);
     const res = await fetch(driveScriptUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -2193,8 +2227,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         filename: filename,
         mimeType: blob.type || 'image/png',
         imageBase64: base64Data,
-        folderKey: rawFolderKey(),
-        subfolder: driveSubfolder() || undefined,
+        folderKey: folderKey,
+        subfolder: subfolder || undefined,
         ticket
       })
     });
@@ -3508,6 +3542,252 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return m ? '(' + m.slice(0, 160) + ')' : 'Check the internet, then try again.';
   }
 
+  // ---- Small on-device store: photos waiting to upload + the backup folder ----
+  var dbPromise = null;
+  function boothDb(){
+    if(!dbPromise){
+      dbPromise = new Promise((resolve, reject) => {
+        if(!('indexedDB' in window)) return reject(new Error('No IndexedDB'));
+        const req = indexedDB.open('pb4u-booth', 1);
+        req.onupgradeneeded = () => {
+          const d = req.result;
+          if(!d.objectStoreNames.contains('uploads')) d.createObjectStore('uploads', { keyPath: 'id' });
+          if(!d.objectStoreNames.contains('kv')) d.createObjectStore('kv');
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      dbPromise.catch(() => { dbPromise = null; });
+    }
+    return dbPromise;
+  }
+  async function dbDo(store, mode, fn){
+    const d = await boothDb();
+    return new Promise((resolve, reject) => {
+      const tx = d.transaction(store, mode);
+      const req = fn(tx.objectStore(store));
+      tx.oncomplete = () => resolve(req ? req.result : undefined);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  }
+
+  // ---- Photos waiting to upload ----
+  var queueCount = 0, queueBusy = false, queueTimer = null;
+  function isPermanentUploadError(err){
+    const m = String((err && err.message) || err || '');
+    return /only use its own event folder|locked|trial-ended|expired|Could not get permission|ticket/i.test(m);
+  }
+  async function queueUpload(blob, filename, dest){
+    const item = {
+      id: dest.folderKey + '|' + (dest.subfolder || '') + '|' + filename,
+      blob: blob, filename: filename, folderKey: dest.folderKey, subfolder: dest.subfolder || '',
+      t: Date.now(), error: ''
+    };
+    await dbDo('uploads', 'readwrite', st => st.put(item));
+    await refreshQueueUI();
+    scheduleQueue(30000);
+    return true;
+  }
+  async function queuedItems(){
+    try{ return (await dbDo('uploads', 'readonly', st => st.getAll())) || []; }catch(e){ return []; }
+  }
+  async function refreshQueueUI(){
+    const items = await queuedItems();
+    queueCount = items.length;
+    const sec = document.getElementById('uploadQueueSection');
+    if(!sec) return items;
+    sec.classList.toggle('hidden', !items.length || state === 'capturing');
+    if(!items.length) return items;
+    const stuck = items.filter(i => i.error);
+    document.getElementById('uploadQueueText').textContent =
+      (items.length === 1 ? '1 photo' : items.length + ' photos') + ' waiting to upload';
+    document.getElementById('uploadQueueHint').textContent = stuck.length
+      ? (stuck.length === 1 ? '1 photo' : stuck.length + ' photos') + ' can’t upload with this code: ' + stuck[0].error + ' Tap Save to this computer so they aren’t lost.'
+      : 'Kept safely on this device. They upload by themselves when the internet is back.';
+    return items;
+  }
+  function scheduleQueue(ms){
+    clearTimeout(queueTimer);
+    queueTimer = setTimeout(() => processQueue(false), ms);
+  }
+  async function processQueue(manual){
+    if(queueBusy) return;
+    queueBusy = true;
+    const before = queueCount;
+    let uploaded = 0;
+    try{
+      const items = (await queuedItems()).sort((a, b) => a.t - b.t);
+      for(const it of items){
+        if(it.error && !manual) continue;          // needs the operator's attention
+        if(!navigator.onLine && !manual) break;
+        try{
+          const r = await uploadToDrive(it.blob, it.filename, { folderKey: it.folderKey, subfolder: it.subfolder });
+          await dbDo('uploads', 'readwrite', st => st.delete(it.id));
+          uploaded++;
+          if(r.folderUrl && it.folderKey === rawFolderKey()) rememberFolderUrl(r.folderUrl);
+        }catch(e){
+          if(isPermanentUploadError(e)){
+            it.error = driveErrorText(e);
+            try{ await dbDo('uploads', 'readwrite', st => st.put(it)); }catch(e2){}
+            continue;
+          }
+          break;                                    // still offline: try again later
+        }
+      }
+    }catch(e){ console.error('Upload queue:', e); }
+    queueBusy = false;
+    const left = await refreshQueueUI();
+    if(left.some(i => !i.error)) scheduleQueue(30000);
+    if(uploaded && !left.length) showToast(before > 1 ? 'All waiting photos uploaded ✓' : 'Waiting photo uploaded ✓');
+    else if(manual && left.length) showToast(left.length === 1 ? 'Still 1 photo waiting. Check the internet.' : 'Still ' + left.length + ' photos waiting. Check the internet.', 5000);
+  }
+  async function saveQueuedToComputer(){
+    const items = await queuedItems();
+    if(!items.length) return;
+    let saved = 0;
+    for(const it of items){
+      let ok = false;
+      if(backupDir && backupOk) ok = await saveToBackupFolder(it.blob, it.filename);
+      if(!ok){
+        const url = URL.createObjectURL(it.blob);
+        const a = document.createElement('a'); a.href = url; a.download = it.filename; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        ok = true;
+        await wait(350);
+      }
+      // Photos that can never upload with this code are done once saved;
+      // the rest stay in line for Drive.
+      if(ok && it.error){ try{ await dbDo('uploads', 'readwrite', st => st.delete(it.id)); }catch(e){} }
+      if(ok) saved++;
+    }
+    await refreshQueueUI();
+    showToast(saved === 1 ? '1 photo saved to this computer.' : saved + ' photos saved to this computer.');
+  }
+  (function(){
+    const r = document.getElementById('uploadRetryBtn');
+    if(r) r.addEventListener('click', () => processQueue(true));
+    const sv = document.getElementById('uploadSaveBtn');
+    if(sv) sv.addEventListener('click', saveQueuedToComputer);
+    window.addEventListener('online', () => scheduleQueue(1000));
+    window.addEventListener('beforeunload', e => {
+      if(queueCount && !queueBusy){ e.preventDefault(); e.returnValue = ''; }
+    });
+    refreshQueueUI().then(items => { if(items.length) scheduleQueue(4000); });
+  })();
+
+  // ---- Backup folder on this computer (Chrome / Edge on a computer) ----
+  // Pick a folder once; every session is also saved there, in a subfolder
+  // named after the event, instead of going to Downloads.
+  var canBackupFolder = typeof window.showDirectoryPicker === 'function';
+  var backupDir = null, backupOk = false;
+  function safeFileName(v){
+    return String(v || '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().replace(/[. ]+$/, '').slice(0, 80);
+  }
+  function backupEventFolderName(){
+    const raw = (driveFolderKeyInput.value || '').trim();
+    const ev = /^https?:/i.test(raw) ? '' : safeFileName(cleanEventName(raw));
+    const d = new Date(), pad = n => String(n).padStart(2, '0');
+    return ev || ('Photobooth ' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()));
+  }
+  async function checkBackupPermission(ask){
+    backupOk = false;
+    if(!backupDir) return false;
+    try{
+      const opts = { mode: 'readwrite' };
+      let p = await backupDir.queryPermission(opts);
+      if(p !== 'granted' && ask) p = await backupDir.requestPermission(opts);
+      backupOk = p === 'granted';
+    }catch(e){ backupOk = false; }
+    return backupOk;
+  }
+  function refreshBackupUI(){
+    const status = document.getElementById('backupStatus');
+    if(!status) return;
+    const choose = document.getElementById('backupChooseBtn');
+    const allow = document.getElementById('backupAllowBtn');
+    const stop = document.getElementById('backupStopBtn');
+    const sStatus = document.getElementById('backupSessionStatus');
+    const sAllow = document.getElementById('backupSessionAllowBtn');
+    const sec = document.getElementById('backupSection');
+    if(!canBackupFolder){
+      status.textContent = 'Works in Chrome or Edge on a computer. On this device each photo is saved to Downloads instead.';
+      document.getElementById('backupBtns').style.display = 'none';
+      if(sec) sec.classList.add('hidden');
+      return;
+    }
+    document.getElementById('backupBtns').style.display = 'flex';
+    let text, sText;
+    if(!backupDir){
+      text = 'Every photo is saved to Downloads. Choose a folder to keep them organised by event instead, as a second copy if Drive has problems.';
+    } else if(backupOk){
+      text = 'Saving every photo to “' + backupDir.name + ' / ' + backupEventFolderName() + '” ✓';
+      sText = 'Saving to “' + backupDir.name + ' / ' + backupEventFolderName() + '” ✓';
+    } else {
+      text = 'Backup folder “' + backupDir.name + '” needs permission again. Tap Allow saving.';
+      sText = 'Paused: tap Allow saving so photos are copied to “' + backupDir.name + '”.';
+    }
+    status.textContent = text;
+    choose.textContent = backupDir ? 'Change folder' : 'Choose backup folder';
+    allow.style.display = backupDir && !backupOk ? '' : 'none';
+    stop.style.display = backupDir ? '' : 'none';
+    if(sStatus) sStatus.textContent = sText || '';
+    if(sAllow) sAllow.style.display = backupDir && !backupOk ? '' : 'none';
+    if(sec) sec.classList.toggle('hidden', !backupDir || state === 'capturing');
+  }
+  async function saveToBackupFolder(blob, filename){
+    if(!backupDir || !backupOk) return false;
+    try{
+      let dir = await backupDir.getDirectoryHandle(backupEventFolderName(), { create: true });
+      const sub = safeFileName(driveSubfolder());
+      if(sub) dir = await dir.getDirectoryHandle(sub, { create: true });
+      const fh = await dir.getFileHandle(filename, { create: true });
+      const w = await fh.createWritable();
+      await w.write(blob);
+      await w.close();
+      return true;
+    }catch(e){
+      console.error('Backup folder save failed:', e);
+      if(e && e.name === 'NotAllowedError') backupOk = false;
+      refreshBackupUI();
+      return false;
+    }
+  }
+  async function allowBackup(){ await checkBackupPermission(true); refreshBackupUI(); }
+  (function(){
+    if(!document.getElementById('backupStatus')) return;
+    document.getElementById('backupChooseBtn').addEventListener('click', async () => {
+      try{
+        const dir = await window.showDirectoryPicker({ id: 'pb4u-backup', mode: 'readwrite', startIn: 'pictures' });
+        backupDir = dir; backupOk = true;
+        try{ await dbDo('kv', 'readwrite', st => st.put(dir, 'backupDir')); }catch(e){}
+        showToast('Backup folder set ✓');
+      }catch(e){
+        if(!e || e.name !== 'AbortError') showToast('Couldn’t use that folder. Try another one (not a system folder).', 5000);
+      }
+      refreshBackupUI(); updateUI();
+    });
+    document.getElementById('backupAllowBtn').addEventListener('click', allowBackup);
+    document.getElementById('backupSessionAllowBtn').addEventListener('click', allowBackup);
+    document.getElementById('backupStopBtn').addEventListener('click', async () => {
+      backupDir = null; backupOk = false;
+      try{ await dbDo('kv', 'readwrite', st => st.delete('backupDir')); }catch(e){}
+      refreshBackupUI(); updateUI();
+    });
+    // Opening the photo session is a good moment to ask again (operator tap).
+    goToSessionBtn.addEventListener('click', () => { if(backupDir && !backupOk) allowBackup(); });
+    driveFolderKeyInput.addEventListener('input', refreshBackupUI);
+    refreshBackupUI();
+    if(canBackupFolder){
+      dbDo('kv', 'readonly', st => st.get('backupDir')).then(async h => {
+        if(!h) return;
+        backupDir = h;
+        await checkBackupPermission(false);
+        refreshBackupUI(); updateUI();
+      }).catch(() => {});
+    }
+  })();
+
   let sessionNumber = null; // set once per completed session, reused across its retakes
   let lastRenderedFolderUrl = null;
 
@@ -3524,20 +3804,44 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     addQrResult(label || 'Download', url);
   }
 
-  async function uploadLayoutForQR(layoutKey){
+  async function uploadLayoutForQR(layoutKey, onRetry){
     const tempCanvas = document.createElement('canvas');
     renderCompositeToCanvas(layoutKey, tempCanvas);
-    const blob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/png'));
+    // High-quality JPEG: looks the same as PNG but about a fifth of the size,
+    // so QR codes appear faster on venue Wi-Fi. Flattened onto white first so
+    // any transparent edges don't turn black.
+    const flat = document.createElement('canvas');
+    flat.width = tempCanvas.width; flat.height = tempCanvas.height;
+    const fctx = flat.getContext('2d');
+    fctx.fillStyle = '#ffffff'; fctx.fillRect(0, 0, flat.width, flat.height);
+    fctx.drawImage(tempCanvas, 0, 0);
+    const blob = await new Promise(resolve => flat.toBlob(resolve, 'image/jpeg', 0.92));
     const label = layoutDef(layoutKey).name + ' Layout';
-    // e.g. "1_strip.png" / "2_grid.png" so files sort cleanly in the folder —
+    // e.g. "1_strip.jpg" / "2_grid.jpg" so files sort cleanly in the folder —
     // only the chosen format is ever uploaded, so the folder only ever
     // fills up with that one kind of file.
-    // Bonus sessions: "BONUS_1_strip.png", so they stand apart from event-day files.
-    // Multi-device codes: "3_strip_cam2.png".
-    const filename = filePrefix() + (sessionNumber || 1) + '_' + layoutKey + deviceTag() + '.png';
+    // Bonus sessions: "BONUS_1_strip.jpg", so they stand apart from event-day files.
+    // Multi-device codes: "3_strip_cam2.jpg".
+    const filename = filePrefix() + (sessionNumber || 1) + '_' + layoutKey + deviceTag() + '.jpg';
 
     if(driveReady()){
-      const drive = await uploadToDrive(blob, filename);
+      // Weak venue internet: try 3 times, then keep the photo on this device
+      // and upload it by itself once the connection is back.
+      const dest = { folderKey: rawFolderKey(), subfolder: driveSubfolder() };
+      let drive = null, lastErr = null;
+      for(let attempt = 0; attempt < 3 && !drive; attempt++){
+        if(attempt){ if(onRetry) onRetry(attempt); await wait(attempt === 1 ? 1500 : 4000); }
+        try{ drive = await uploadToDrive(blob, filename, dest); }
+        catch(e){ lastErr = e; if(isPermanentUploadError(e)) break; }
+      }
+      if(!drive){
+        let queued = false;
+        try{ queued = await queueUpload(blob, filename, dest); }catch(e){ console.error('Could not keep photo for later:', e); }
+        const err = lastErr || new Error('Upload failed');
+        err.queued = queued;
+        throw err;
+      }
+      if(queueCount) scheduleQueue(1500);
       if(drive.folderUrl) rememberFolderUrl(drive.folderUrl);
       registerEvent(drive.folderUrl || getCachedFolderUrl(), true);
       return { label: label + ' (Google Drive)', url: drive.downloadUrl, fileId: drive.fileId };
@@ -3592,11 +3896,26 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     qrSlot('photo', 'Your photo', 'Saving your photo…');
     guestRender();
     let result = null, lastError = null;
-    try { result = await uploadLayoutForQR(currentLayout); }
+    const onRetry = () => { if(myGeneration === qrGeneration) failQrSlot('photo', 'Weak internet. Trying again…'); };
+    try { result = await uploadLayoutForQR(currentLayout, onRetry); }
     catch(err){ lastError = err; console.error('Photo upload failed:', err); }
     if(myGeneration !== qrGeneration) return null;
+    if(!result && lastError && lastError.queued && !isPermanentUploadError(lastError)){
+      // Kept on this device; it uploads later. Give the guest the event's
+      // All photos QR instead, where their photo will appear.
+      const folderUrl = getCachedFolderUrl();
+      const wrap = qrResults.querySelector('.qr-result[data-kind="photo"]');
+      if(folderUrl && wrap){
+        wrap.querySelector('.qr-caption').textContent = 'All photos (yours appears when the internet is back)';
+        fillQrSlot('photo', shareUrlFor(folderUrl));
+      } else {
+        failQrSlot('photo', 'Saved on this device. It uploads by itself when the internet is back.');
+      }
+      showToast('No internet right now. The photo is kept on this device and will upload by itself.', 7000);
+      return null;
+    }
     if(!result){
-      failQrSlot('photo', 'Couldn’t save. Check the internet.');
+      failQrSlot('photo', lastError && lastError.queued ? 'Not uploaded. Kept on this device.' : 'Couldn’t save. Check the internet.');
       showToast('Photo not saved. ' + driveErrorText(lastError), 7000);
       return null;
     }
@@ -3605,7 +3924,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return myGeneration;
   }
 
-  function saveToDevice(){
+  async function saveToDevice(){
+    if(backupDir && backupOk){
+      const name = filePrefix() + (sessionNumber || 1) + '_' + currentLayout + deviceTag() + '.png';
+      const blob = await new Promise(res => previewCanvas.toBlob(res, 'image/png'));
+      if(blob && await saveToBackupFolder(blob, name)){
+        showToast(driveReady() ? 'Saved to the backup folder (and uploading to Drive).' : 'Saved to the backup folder.');
+        return;
+      }
+      showToast('Backup folder not available. Saved to Downloads instead.', 5000);
+    }
     const link = document.createElement('a');
     link.download = 'photo-booth-' + currentLayout + '-' + Date.now() + '.png';
     link.href = previewCanvas.toDataURL('image/png');
@@ -3614,6 +3942,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
 
   function showMultipleDownloadsHint(){
+    if(backupDir && backupOk) return;               // nothing goes to Downloads
     const storageKey = 'photoBoothMultipleDownloadsHintShown';
     if(localStorage.getItem(storageKey)) return;
     showToast('If the browser asks about multiple downloads, choose Allow.', 6500);
@@ -3634,15 +3963,39 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   let currentDeviceId = null;
   let currentStream = null;
 
-  async function enumerateCameras(){
-    try{
-      // Need permission first to get labels
-      const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      tempStream.getTracks().forEach(t => t.stop());
-    }catch(e){ /* permission denied — labels won't show */ }
+  // The camera the operator last picked (e.g. a Sony/Canon over the laptop's
+  // own webcam) is remembered on this device and chosen again on reload.
+  const CAM_PREF_KEY = 'pb4u.camera';
+  function savedCamera(){
+    try{ return JSON.parse(localStorage.getItem(CAM_PREF_KEY) || 'null'); }catch(e){ return null; }
+  }
+  function saveCamera(){
+    const opt = cameraSelect.options[cameraSelect.selectedIndex];
+    if(!opt || !opt.value) return;
+    try{ localStorage.setItem(CAM_PREF_KEY, JSON.stringify({ id: opt.value, label: opt.textContent })); }catch(e){}
+  }
 
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+  // The camera menu only matters with two or more cameras.
+  function refreshCameraMenu(){
+    const many = cameraSelect.options.length > 1;
+    cameraSelect.style.display = many ? '' : 'none';
+    const h = document.getElementById('cameraHint');
+    if(h) h.style.display = many ? '' : 'none';
+  }
+
+  async function enumerateCameras(){
+    const previous = cameraSelect.value;
+    let devices = await navigator.mediaDevices.enumerateDevices();
+    let videoDevices = devices.filter(d => d.kind === 'videoinput');
+    if(!videoDevices.length || videoDevices.some(d => !d.label)){
+      try{
+        // Need permission first to get labels
+        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        tempStream.getTracks().forEach(t => t.stop());
+      }catch(e){ /* permission denied — labels won't show */ }
+      devices = await navigator.mediaDevices.enumerateDevices();
+      videoDevices = devices.filter(d => d.kind === 'videoinput');
+    }
 
     cameraSelect.innerHTML = '';
     videoDevices.forEach((d, i) => {
@@ -3652,17 +4005,79 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       cameraSelect.appendChild(opt);
     });
 
-    if(videoDevices.length <= 1){
-      cameraSection.style.display = 'none';
-    } else {
-      cameraSection.style.display = '';
-    }
+    refreshCameraMenu();
 
-    // Default: prefer front-facing (user) camera
-    const frontCam = videoDevices.find(d => d.label.toLowerCase().includes('front') || d.label.toLowerCase().includes('facetime'));
-    if(frontCam) cameraSelect.value = frontCam.deviceId;
+    // Pick, in order: the camera already in use, the one the operator chose
+    // last time (same id, or same name if the id changed after re-plugging),
+    // then a front-facing camera.
+    const saved = savedCamera();
+    const byId = id => id && videoDevices.find(d => d.deviceId === id);
+    const pick = byId(previous)
+      || (saved && (byId(saved.id) || (saved.label && videoDevices.find(d => d.label === saved.label))))
+      || videoDevices.find(d => d.label.toLowerCase().includes('front') || d.label.toLowerCase().includes('facetime'));
+    if(pick) cameraSelect.value = pick.deviceId;
 
     return videoDevices;
+  }
+
+  // ---- Camera drop-outs: unplugged cable, camera powered off, HDMI lost ----
+  // The booth notices, shows "Reconnecting…" and keeps retrying by itself.
+  let reconnectTimer = null;
+  let muteTimer = null;
+  function showReconnecting(){
+    cameraErrorText.textContent = 'Camera disconnected. Reconnecting… Check the camera is on and its USB cable is plugged in.';
+    cameraError.style.display = 'flex';
+    recDot.style.display = 'none';
+  }
+  function cameraLost(){
+    if(reconnectTimer) return;
+    streamActive = false;
+    showReconnecting();
+    const tryAgain = async () => {
+      reconnectTimer = null;
+      try{ await enumerateCameras(); }catch(e){}
+      if(cameraSelect.options.length && cameraSelect.options[0].value){
+        if(await initCamera(cameraSelect.value || null)) return;
+      }
+      showReconnecting();
+      reconnectTimer = setTimeout(tryAgain, 2500);
+    };
+    reconnectTimer = setTimeout(tryAgain, 800);
+  }
+  function watchTrack(stream){
+    const track = stream.getVideoTracks()[0];
+    if(!track) return;
+    track.addEventListener('ended', () => { if(currentStream === stream) cameraLost(); });
+    // A muted track has stopped sending frames (e.g. capture card lost HDMI).
+    track.addEventListener('mute', () => {
+      clearTimeout(muteTimer);
+      muteTimer = setTimeout(() => {
+        if(currentStream === stream && track.muted && !document.hidden) cameraLost();
+      }, 4000);
+    });
+    track.addEventListener('unmute', () => clearTimeout(muteTimer));
+  }
+  // A camera plugged in mid-event: pick it up if the booth has none, or if
+  // it is the camera the operator chose before (not while photos are being taken).
+  let deviceChangeTimer = null;
+  if(navigator.mediaDevices && navigator.mediaDevices.addEventListener){
+    navigator.mediaDevices.addEventListener('devicechange', () => {
+      clearTimeout(deviceChangeTimer);
+      deviceChangeTimer = setTimeout(async () => {
+        const before = currentDeviceId;
+        try{ await enumerateCameras(); }catch(e){ return; }
+        if(reconnectTimer) return;                         // the retry loop handles it
+        if(!streamActive){ if(cameraSelect.value) initCamera(cameraSelect.value); return; }
+        const saved = savedCamera();
+        const preferred = saved && Array.from(cameraSelect.options).find(o => o.value === saved.id || o.textContent === saved.label);
+        if(preferred && preferred.value !== before && state !== 'capturing'){
+          cameraSelect.value = preferred.value;
+          initCamera(preferred.value);
+        }else if(before && cameraSelect.value !== before && Array.from(cameraSelect.options).some(o => o.value === before)){
+          cameraSelect.value = before;                     // keep showing the camera in use
+        }
+      }, 700);
+    });
   }
 
   async function initCamera(deviceId){
@@ -3674,12 +4089,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{
       const constraints = {
         video: deviceId
-          ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 1280 } }
-          : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 1280 } },
+          ? { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+          : { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       currentStream = stream;
+      watchTrack(stream);
+      if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer = null; }
       video.srcObject = stream;
       await video.play();
       streamActive = true;
@@ -3687,7 +4104,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       // Mirror the live preview for a natural selfie feel; captureFrame()
       // un-mirrors it again so any text on props reads correctly in the
       // final photo.
-      video.style.transform = isFrontCamera() ? 'scaleX(-1)' : 'scaleX(1)';
+      applyMirror();
       applyLiveFilter();
       guestCall('camera');
       cameraError.style.display = 'none';
@@ -3703,6 +4120,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
 
   cameraSelect.addEventListener('change', () => {
+    saveCamera();
     initCamera(cameraSelect.value);
   });
 
@@ -3735,11 +4153,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
     // Hide all panel sections during capture, show after
     // Camera section: only show if multiple cameras available
-    if(!isCapturing){
-      cameraSection.classList.toggle('hidden', cameraSelect.options.length <= 1);
-    } else {
-      cameraSection.classList.add('hidden');
-    }
+    cameraSection.classList.toggle('hidden', isCapturing);
+    refreshCameraMenu();
+    const uq = document.getElementById('uploadQueueSection');
+    if(uq) uq.classList.toggle('hidden', isCapturing || !queueCount);
+    const bs = document.getElementById('backupSection');
+    if(bs) bs.classList.toggle('hidden', isCapturing || !backupDir);
+    if(canBackupFolder !== undefined && !isCapturing) refreshBackupUI();
     actionsSection.classList.toggle('hidden', isCapturing);
     shareBtn.classList.toggle('hidden', !hasAllShots);
 
@@ -3775,6 +4195,28 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     });
   }
 
+  // Mirror switch (Camera section): Auto mirrors every camera except ones
+  // labelled back/rear; On/Off is the operator's choice, kept on this device.
+  var MIRROR_KEY = 'pb4u.mirror';
+  function mirrorPref(){ try{ return localStorage.getItem(MIRROR_KEY) || 'auto'; }catch(e){ return 'auto'; } }
+  function mirrorPreview(){
+    const p = mirrorPref();
+    return p === 'on' ? true : p === 'off' ? false : isFrontCamera();
+  }
+  function applyMirror(){
+    video.style.transform = mirrorPreview() ? 'scaleX(-1)' : 'scaleX(1)';
+    const t = document.getElementById('mirrorToggle');
+    if(t) t.checked = mirrorPreview();
+  }
+  (function(){
+    const t = document.getElementById('mirrorToggle');
+    if(!t) return;
+    t.addEventListener('change', () => {
+      try{ localStorage.setItem(MIRROR_KEY, t.checked ? 'on' : 'off'); }catch(e){}
+      applyMirror();
+      guestCall('camera');
+    });
+  })();
   function isFrontCamera(){
     const label = (cameraSelect.options[cameraSelect.selectedIndex]?.text || '').toLowerCase();
     // If label contains back/rear, don't mirror; otherwise default to mirroring
@@ -5841,7 +6283,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{
       if(what === 'camera'){
         if(currentStream && G.v.srcObject !== currentStream){ G.v.srcObject = currentStream; G.v.play().catch(() => {}); }
-        G.v.style.transform = isFrontCamera() ? 'scaleX(-1)' : 'scaleX(1)';
+        G.v.style.transform = mirrorPreview() ? 'scaleX(-1)' : 'scaleX(1)';
         G.v.style.filter = liveFilterCss();
       } else if(what === 'review'){
         G.res.src = a; G.res.style.display = 'block'; G.v.style.display = 'none';
@@ -8007,6 +8449,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     await initCamera(cameraSelect.value || null);
     updateUI();
   })();
+  // Keep the screen from dimming or sleeping while the booth is open.
+  // Browsers drop the lock when the tab is hidden, so take it again on return.
+  let wakeLock = null;
+  async function keepAwake(){
+    if(!('wakeLock' in navigator) || document.hidden || wakeLock) return;
+    try{
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }catch(e){ wakeLock = null; }
+  }
+  keepAwake();
+  document.addEventListener('visibilitychange', keepAwake);
+  ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, keepAwake, { passive: true }));
   // ---- Rental/trial auto folder ----
   // When this booth was opened through the rental lock screen, window.__PB
   // carries the folder to use: the Drive folder name set in Admin for a rental

@@ -276,7 +276,7 @@
   .stage-frame.is-ready .countdown-overlay{display:none !important;}
   .ready-below{display:none; flex-direction:column; align-items:center; gap:8px;}
   body.in-session.shooting .brandbar, body.in-session.shooting .tab-bar{display:none !important;}
-  body.in-session.shooting{padding-top:10px;}
+  body.in-session.shooting{padding-top:10px; padding-bottom:0; min-height:0;}
   body.in-session.shooting .app-shell.capturing{max-width:min(1500px, 98vw);}
   #readyFilters, #readySub{display:none !important;}   /* summary + filters live under the frame now */
   .app-shell.getting-ready .ready-below{display:flex;}
@@ -825,12 +825,20 @@
   .sc-filter.on i{border-color:var(--blue-deep);}
   /* While shooting: big live view, taken photos large at the side */
   .app-shell.capturing{max-width:1260px;}
-  body.in-session .app-shell.capturing .stage-wrap{display:grid; grid-template-columns:auto auto; justify-content:center; gap:16px; align-items:start;}
-  body.in-session .app-shell.capturing .stage-frame{grid-column:1; grid-row:1; width:min(100%, calc((100vh - 290px) * var(--cam-aspect, 0.8))); justify-self:center;}
+  body.in-session .app-shell.capturing .stage-wrap{display:grid; grid-template-columns:auto auto auto; justify-content:center; gap:16px; row-gap:0; align-items:start;}
+  body.in-session .app-shell.capturing .stage-frame{grid-column:2; grid-row:1; width:min(100%, calc((100vh - 290px) * var(--cam-aspect, 0.8))); justify-self:center;}
   .app-shell.capturing .session-controls .sc-filters{display:none;}
-  body.in-session .app-shell.capturing .film-track{grid-column:2; grid-row:1 / span 3; flex-direction:column; align-items:stretch; justify-content:flex-start; margin-top:0;}
+  body.in-session .app-shell.capturing .film-track{grid-column:3; grid-row:1; align-self:start; flex-direction:column; align-items:stretch; justify-content:flex-start; margin-top:0;}
   body.in-session .app-shell.capturing .film-frame{width:100%; height:auto; font-size:20px; font-weight:800;}
-  body.in-session .app-shell.capturing .session-controls, body.in-session .app-shell.capturing .start-btn-wrap{grid-column:1;}
+  body.in-session .app-shell.capturing .session-controls, body.in-session .app-shell.capturing .start-btn-wrap{grid-column:2;}
+  /* Compact controls under the live view so the picture gets the room */
+  body.in-session .app-shell.capturing .session-controls{margin-top:10px; gap:6px;}
+  body.in-session .app-shell.capturing .sc-btn{min-height:32px; padding:5px 14px; font-size:12px;}
+  body.in-session .app-shell.capturing .sc-hint-big{font-size:13px; padding:6px 12px;}
+  body.in-session .app-shell.capturing .sc-filter{font-size:10px; gap:2px;}
+  body.in-session .app-shell.capturing .sc-filter i{width:36px; height:36px; border-width:2px;}
+  body.in-session .app-shell.capturing .ready-summary{font-size:clamp(14px, 1.5vw, 18px);}
+  .app-shell.result .film-track{display:none;}   /* the finished photo already shows them */
   .film-frame{aspect-ratio:var(--box-aspect, 1); height:auto;}
   .film-track .film-frame{height:56px; width:auto;}
   body.in-session .app-shell.capturing .film-track .film-frame{height:auto; width:100%;}
@@ -839,6 +847,9 @@
     background:rgba(20,16,22,.62); color:#fff; font:800 12px 'Manrope',sans-serif; text-align:center; letter-spacing:.02em;}
   .film-frame.picked::after{content:'\2713  Will retake this one'; background:var(--blue-deep);}
   .film-frame.picked{outline:4px solid var(--blue-deep); outline-offset:2px;}
+  body.in-session .app-shell.capturing.film-below .stage-wrap{display:block;}
+  body.in-session .app-shell.capturing.film-below .film-track{flex-direction:row; justify-content:center; margin-top:10px;}
+  body.in-session .app-shell.capturing.film-below .film-track .film-frame{width:auto; height:70px;}
   @media (max-width:760px){
     body.in-session .app-shell.capturing .stage-wrap{display:block;}
     body.in-session .app-shell.capturing .film-track{flex-direction:row; margin-top:12px;}
@@ -1611,6 +1622,26 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p class="panel-hint" id="printSummary" style="margin:0;"></p>
         </div>
       </div>
+      <div class="panel-section" id="cameraSection">
+        <p class="panel-label">Camera</p>
+        <select class="cam-select" id="cameraSelect">
+          <option value="">Loading cameras…</option>
+        </select>
+        <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
+        <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
+        <label class="switch-row" id="mirrorRow">
+          <span>Mirror the live view</span>
+          <input type="checkbox" id="mirrorToggle">
+        </label>
+        <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos look the same as the preview (mirrored when this is on).</p>
+      </div>
+      <div class="panel-section hidden" id="guestSection">
+        <p class="panel-label">Guest screen</p>
+        <p class="guest-status" id="guestStatus"><i></i><span>Not open yet</span></p>
+        <button class="action-btn primary" id="guestOpenBtn">&#128250; Open guest screen</button>
+        <p class="panel-hint" id="guestHint">Connect the second monitor (set to <b>Extend</b>), then open the guest screen. Chrome or Edge can move it onto that monitor for you — allow “window management” if asked. Click the guest screen once to make it full screen.</p>
+        <p class="panel-hint">Guests start a session by tapping the guest screen, or pressing <b>Space</b> / a presenter clicker. Setup, printing and the QR code stay on this screen.</p>
+      </div>
       <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="4">← Back</button><button class="action-btn primary" id="goToSessionBtn">Start photo session →</button></div>
     </section>
 
@@ -1766,13 +1797,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       </div>
 
 
-      <div class="panel-section hidden" id="guestSection">
-        <p class="panel-label">Guest screen</p>
-        <p class="guest-status" id="guestStatus"><i></i><span>Not open yet</span></p>
-        <button class="action-btn primary" id="guestOpenBtn">&#128250; Open guest screen</button>
-        <p class="panel-hint" id="guestHint">Connect the second monitor (set to <b>Extend</b>), then open the guest screen. Chrome or Edge can move it onto that monitor for you — allow “window management” if asked. Click the guest screen once to make it full screen.</p>
-        <p class="panel-hint">Guests start a session by tapping the guest screen, or pressing <b>Space</b> / a presenter clicker. Setup, printing and the QR code stay on this screen.</p>
-      </div>
+      
 
       <div class="panel-section hidden" id="printSection">
         <p class="panel-label">Print</p>
@@ -1807,19 +1832,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         </div>
       </div>
 
-      <div class="panel-section" id="cameraSection">
-        <p class="panel-label">Camera</p>
-        <select class="cam-select" id="cameraSelect">
-          <option value="">Loading cameras…</option>
-        </select>
-        <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
-        <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
-        <label class="switch-row" id="mirrorRow">
-          <span>Mirror the live view</span>
-          <input type="checkbox" id="mirrorToggle">
-        </label>
-        <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos look the same as the preview (mirrored when this is on).</p>
-      </div>
+      
 
 
     </div>
@@ -1910,6 +1923,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     tabSession.classList.toggle('hidden', !toSession);
     document.body.classList.toggle('in-session', toSession);   // smaller header: the camera gets the room
     window.scrollTo(0, 0);
+    if(toSession && typeof applyStageAspect === 'function') requestAnimationFrame(function(){ applyStageAspect(); });
   }
   tabBtnSetup.addEventListener('click', () => switchTab('setup'));
   tabBtnSession.addEventListener('click', () => switchTab('session'));
@@ -4545,14 +4559,21 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{
       var n = Math.max(1, shotsNeeded(currentLayout)), shots = [], set = new Set();
       for(var i = 0; i < n; i++){ var c = document.createElement('canvas'); c.width = 30; c.height = 20; shots.push(c); set.add(c); }
-      BOX_PROBE = { set: set, aspect: 0 };
+      BOX_PROBE = { set: set, aspect: 0, per: new Map() };
       composeCanvas(currentLayout, document.createElement('canvas'), shots);
       if(BOX_PROBE.aspect > 0) a = Math.max(0.3, Math.min(3.5, BOX_PROBE.aspect));
-    }catch(e){}
+      var per = shots.map(function(c){ var v = BOX_PROBE.per.get(c); return v > 0 ? Math.max(0.3, Math.min(3.5, v)) : a; });
+    }catch(e){ per = null; }
     BOX_PROBE = null;
-    boxAspectCache = { key: key, a: a };
+    boxAspectCache = { key: key, a: a, per: per || [a] };
     return a;
   }
+  // The box shape of one shot (Feature 1+2: the big first box, then the small ones).
+  function shotBoxAspect(i){
+    var a = currentBoxAspect(), per = boxAspectCache.per || [];
+    return per[i] || a;
+  }
+  var stageShot = 0;   // which shot the live view is framing right now
   function camAspect(){
     var w = video.videoWidth, h = video.videoHeight;
     return (w && h) ? w / h : 4 / 3;
@@ -4572,7 +4593,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // see precisely what will be in the photo (the camera picture is cropped
   // live, centred, the same way the shot is cropped).
   function applyStageAspect(){
-    var cam = camAspect(), box = currentBoxAspect();
+    var cam = camAspect(), filmBox = currentBoxAspect(), box = filmBox;
+    try{ if(state === 'capturing') box = shotBoxAspect(stageShot); }catch(e){}
     var sf = document.getElementById('stageFrame');
     var sa = photoFit === 'whole' ? cam : box;                 // whole photo: the camera's full picture
     // Between guests (idle, welcome, layout picker) the preview is always the
@@ -4586,8 +4608,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(sf.style.aspectRatio !== a){ sf.style.aspectRatio = a; sf.style.setProperty('--cam-aspect', a); }
     }
     var ft = document.getElementById('filmTrack');
-    if(ft) ft.style.setProperty('--box-aspect', box.toFixed(4));
-    layoutSessionStage(box, sa);
+    if(ft) ft.style.setProperty('--box-aspect', filmBox.toFixed(4));
+    layoutSessionStage(filmBox, sa);
     var live = true;
     try{ live = state !== 'result' && !(sess && sess.reviewing); }catch(e){}
     placeGuide(document.getElementById('boxGuide'), cam, box, false);
@@ -4597,40 +4619,61 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         var ga = state === 'capturing' ? box : cam;   // standard camera shape between guests
         if(gf){ gf.style.aspectRatio = ga.toFixed(4); gf.style.height = 'min(94vh, ' + (60 / ga).toFixed(2) + 'vw)'; }
         placeGuide(G.d.getElementById('guide'), cam, box, false);
-        G.film.style.setProperty('--box-aspect', box.toFixed(4));
+        G.film.style.setProperty('--box-aspect', filmBox.toFixed(4));
       }
     }catch(e){}
   }
-  // While shooting (wide screens): live view on the left, the photos stacked
-  // on the right, together exactly as tall as the live view.
+  // The live view / finished photo is as big as the screen allows (keeping the
+  // layout's shape), centred. While shooting on wide screens the taken photos
+  // stack on the right and an equal empty column on the left keeps it centred.
   function layoutSessionStage(box, sa){
     sa = sa || box;
     var sf = document.getElementById('stageFrame'), ft = document.getElementById('filmTrack');
-    var shell = document.querySelector('.app-shell');
+    var shell = document.querySelector('.app-shell'), sc = document.getElementById('sessionControls');
     if(!sf || !ft || !shell) return;
-    var side = shell.classList.contains('capturing') && window.innerWidth > 760;
+    var sw = sf.parentElement;
+    if(!sw || sw.offsetParent === null) return;               // Photo Session tab hidden: size it when shown
+    var capturing = shell.classList.contains('capturing');
+    var side = capturing && window.innerWidth > 760 && window.innerWidth > window.innerHeight * 1.05;
+    shell.classList.toggle('film-below', capturing && !side);
     var frames = ft.querySelectorAll('.film-frame');
+    var vh = window.innerHeight;
+    var top = Math.max(0, sw.getBoundingClientRect().top + window.scrollY);
+    var ctrlH = sc && sc.offsetParent !== null ? sc.offsetHeight + 12 : 0;
+    var sb = document.querySelector('.start-btn-wrap');
+    var btnH = sb && sb.offsetParent !== null && getComputedStyle(sb).position !== 'absolute' ? sb.offsetHeight + 8 : 0;
     if(!side){
-      sf.style.width = ''; ft.style.width = '';
+      sw.style.gridTemplateColumns = ''; sw.style.columnGap = '';
+      ft.style.width = '';
       frames.forEach(function(f){ f.style.height = ''; f.style.width = ''; });
-      sf.style.setProperty('--stage-h', (sf.getBoundingClientRect().height || 500) + 'px');
+      var filmH = ft.offsetParent !== null && getComputedStyle(ft).display !== 'none' ? ft.offsetHeight + 12 : 0;
+      var Wn = sw.clientWidth || shell.clientWidth;
+      var Hn = Math.max(220, vh - top - ctrlH - filmH - btnH - 14);
+      var wn = Math.max(200, Math.min(Wn, Hn * sa));
+      sf.style.width = Math.round(wn) + 'px';
+      sf.style.setProperty('--stage-h', Math.round(wn / sa) + 'px');
       return;
     }
-    // Thumbnails are sized as if there were at least 3, so 1 or 2 photos
-    // don't turn into giant tiles next to a small live view.
     var n = Math.max(5, frames.length), g = 10, gap = 16;
-    var top = document.body.classList.contains('shooting') ? 0 : 140;    // header hidden while shooting
-    var W = shell.clientWidth - 4, Hmax = Math.max(260, window.innerHeight - top - (shell.classList.contains('getting-ready') ? 250 : 120));
-    // stage h*sa + gap + film ((h - g(n-1))/n)*box <= W
-    var hFit = (W - gap + (g * (n - 1) / n) * box) / (sa + box / n);
+    var W = shell.clientWidth - 4;
+    var Hmax = Math.max(260, Math.min(vh * 0.94, vh - top - ctrlH - 12));
+    // centred: stage + 2 x (gap + film column) must fit the width
+    var hFit = (W - 2 * gap + 2 * box * g * (n - 1) / n) / (sa + 2 * box / n);
     var h = Math.max(200, Math.min(Hmax, hFit));
-    var fh = (h - g * (n - 1)) / n, fw = fh * box;
-    sf.style.width = Math.round(h * sa) + 'px';
-    ft.style.width = Math.round(fw) + 'px';
+    var fh = (h - g * (n - 1)) / n, fw = Math.round(fh * box), stw = Math.round(h * sa);
+    sw.style.gridTemplateColumns = fw + 'px ' + stw + 'px ' + fw + 'px';
+    sw.style.columnGap = gap + 'px';
+    sf.style.width = stw + 'px';
+    ft.style.width = fw + 'px';
     ft.style.gap = g + 'px';
-    frames.forEach(function(f){ f.style.height = Math.floor(fh) + 'px'; f.style.width = Math.round(fw) + 'px'; });
+    frames.forEach(function(f){ f.style.height = Math.floor(fh) + 'px'; f.style.width = fw + 'px'; });
     sf.style.setProperty('--stage-h', Math.round(h) + 'px');
   }
+  // Re-fit when the buttons under the live view change (Retake / Done / hints).
+  try{
+    var stageRO = new ResizeObserver(function(){ requestAnimationFrame(function(){ applyStageAspect(); }); });
+    ['sessionControls', 'tabSession'].forEach(function(id){ var el = document.getElementById(id); if(el) stageRO.observe(el); });
+  }catch(e){}
   window.addEventListener('resize', function(){ applyStageAspect(); });
   video.addEventListener('loadedmetadata', function(){ applyStageAspect(); });
   video.addEventListener('resize', function(){ applyStageAspect(); });
@@ -4661,6 +4704,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
     // Center camera during capture
     appShell.classList.toggle('capturing', isCapturing);
+    appShell.classList.toggle('result', state === 'result');
     document.body.classList.toggle('shooting', isCapturing || (typeof pickOpen !== 'undefined' && pickOpen));
     applyStageAspect();      // re-size now that the shooting layout is on/off
 
@@ -4891,6 +4935,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
 
   async function countdownThenCapture(index, noPause){
+    if(stageShot !== index){ stageShot = index; applyStageAspect(); }   // frame this shot's box
     const extra = index === 0 && !noPause ? firstExtraSec : 0;
     await runCountdown(timerSec + extra, index);
     if(sess && sess.cancelled) return;
@@ -5075,6 +5120,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     video.style.display = 'block';
     previewCanvas.style.display = 'none';
     state = 'capturing';
+    stageShot = 0;
     sess = { cancelled: false, retake: false, pick: null };
     shotCanvases = new Array(shotsNeeded()).fill(null);
     qrResults.innerHTML = '';
@@ -5433,7 +5479,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   // ---- Canvas compositing ----
   function drawImageCover(ctx, img, x, y, w, h, focus){
-    if(BOX_PROBE && BOX_PROBE.set.has(img) && !BOX_PROBE.aspect) BOX_PROBE.aspect = w / h;
+    if(BOX_PROBE && BOX_PROBE.set.has(img)){ if(!BOX_PROBE.aspect) BOX_PROBE.aspect = w / h; if(BOX_PROBE.per && !BOX_PROBE.per.has(img)) BOX_PROBE.per.set(img, w / h); }
     if(img && img._isShot && photoFit === 'whole' && !BOX_PROBE){ drawImageWhole(ctx, img, x, y, w, h); return; }
     const iw = img.width, ih = img.height;
     const imgRatio = iw / ih;

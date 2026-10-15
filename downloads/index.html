@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Print Helper · photobooth4u</title>
+<style>
+  :root{ --bg:#f7f3ee; --card:#fff; --ink:#1c1a1e; --dim:#6b6470; --line:#e4ddd3; --red:#c8402a; }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  main{max-width:760px; margin:0 auto; padding:32px 16px 56px;}
+  h1{font-size:28px; margin:0 0 6px;}
+  h2{font-size:18px; margin:28px 0 10px;}
+  .lead{color:var(--dim); margin:0 0 22px;}
+  .dl{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px;}
+  .dl a{display:block; background:var(--card); border:1.5px solid var(--line); border-radius:14px; padding:14px 16px; color:var(--ink); text-decoration:none;}
+  .dl a:hover{border-color:var(--red);}
+  .dl b{display:block; font-size:16px;} .dl span{color:var(--dim); font-size:13px;}
+  ol{padding-left:20px;} li{margin:6px 0;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:4px 18px 10px;}
+  code{background:#efe9e1; padding:1px 6px; border-radius:6px; font-size:14px;}
+  .note{color:var(--dim); font-size:14px;}
+</style>
+</head>
+<body>
+<main>
+  <h1>photobooth4u Print Helper</h1>
+  <p class="lead">Optional. Lets the booth print straight to the right printer for each paper size (for example 2×6 strips on one printer, 4R on another), with no print dialog. Without it, the booth still prints through the normal print dialog.</p>
+
+  <div class="dl">
+    <a href="photobooth4u-print-helper-mac-apple-silicon.zip"><b>Mac · Apple Silicon</b><span>M1, M2, M3, M4 · 22 MB</span></a>
+    <a href="photobooth4u-print-helper-mac-intel.zip"><b>Mac · Intel</b><span>Older Macs · 25 MB</span></a>
+    <a href="photobooth4u-print-helper-windows.zip"><b>Windows</b><span>Windows 10 / 11 · 41 MB</span></a>
+  </div>
+  <p class="note">Not sure which Mac? Apple menu → About This Mac: "Chip: Apple M…" is Apple Silicon, "Processor: Intel" is Intel.</p>
+
+  <h2>1 · Set up the printers (once)</h2>
+  <div class="card"><ol>
+    <li>Install each printer's driver and do one test print from the computer.</li>
+    <li>In each printer's own preferences, set the <b>paper size</b>, <b>borderless</b>, and for 2×6 strips the <b>cut</b> option. The helper prints with these defaults.</li>
+    <li>Same printer for two sizes (e.g. 4×6 and 2×6 cut)? Add the printer to the computer <b>twice</b> and give each copy its own defaults and a clear name, like <code>HiTi 4x6</code> and <code>HiTi 2x6 cut</code>.</li>
+  </ol></div>
+
+  <h2>2 · Start the helper</h2>
+  <div class="card"><ol>
+    <li><b>Mac:</b> unzip, then <b>right-click → Open</b> the first time (macOS warns about apps from the internet; if it still refuses, go to System Settings → Privacy &amp; Security and click <b>Open Anyway</b>). A Terminal window opens and lists your printers.</li>
+    <li><b>Windows:</b> unzip and double-click. If Windows shows "Windows protected your PC", click <b>More info → Run anyway</b>. A window opens and lists your printers.</li>
+    <li>Keep that window open while the booth is running. Closing it stops the helper.</li>
+  </ol></div>
+
+  <h2>3 · Turn it on in the booth</h2>
+  <div class="card"><ol>
+    <li>In the booth's <b>Print</b> box, switch on <b>Print Helper on this computer</b>. If Chrome asks to let the site access devices on your network, click <b>Allow</b>.</li>
+    <li>For each paper size, pick its printer from the list under <b>Printer for …</b> (the booth remembers it on this computer).</li>
+    <li>Print once to test. From then on prints, including Auto-print, go straight to the right printer.</li>
+  </ol></div>
+  <p class="note">The helper only accepts prints from photobooth4u and only from this computer. Chrome or Edge recommended.</p>
+
+  <h2>Using a DSLR / mirrorless camera over USB?</h2>
+  <div class="card"><p>The booth's <b>USB remote camera</b> mode (real shutter, the camera's own settings and flash) works with <b>no setup on a Mac or an Android tablet/phone</b>, in Chrome or Edge. On <b>Windows</b> it needs a one-time driver switch with Zadig &mdash; the steps are on the <a href="/camera-test/">camera test page</a>. Test your camera there first.</p></div>
+</main>
+</body>
+</html>

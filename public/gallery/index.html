@@ -99,8 +99,8 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn hidden" id="shareBtn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v13"/><path d="m7 8 5-5 5 5"/></svg>Share</button>
-        <a class="btn hidden" id="driveBtn" href="#" target="_blank" rel="noopener noreferrer">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Download all (Google Drive)</a>
+        <button class="btn primary hidden" id="dlAllBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span id="dlAllLabel">Download all</span></button>
       </div>
     </section>
 
@@ -191,7 +191,7 @@
     DRIVE = j.folderUrl || DRIVE;
     document.title = j.name + ' | photobooth4u';
     $('title').textContent = j.name;
-    $('driveBtn').href = DRIVE; $('driveBtn').classList.remove('hidden');
+    $('dlAllBtn').classList.toggle('hidden', !j.files.length);
     if(navigator.share) $('shareBtn').classList.remove('hidden');
     var bits = ['<b>' + j.files.length + '</b> photo' + (j.files.length === 1 ? '' : 's')];
     if(j.until) bits.push(j.until < Date.now() + 2 * 86400000 ? '<b style="color:var(--red)">Download by ' + esc(fmtDay(j.until)) + '</b>' : 'Download by ' + esc(fmtDay(j.until)));
@@ -299,6 +299,89 @@
     try{ navigator.clipboard.writeText(url).then(function(){ toast('Link copied'); }); }catch(e){}
   }
   $('shareBtn').addEventListener('click', function(){ share(location.href, document.title); });
+
+  // ---- Downloads straight from this page (no Google Drive screens) ----
+  // Photos come through our own signed relay (/api/gallery?img=…), so the
+  // browser may read them; "Download all" packs them into a .zip here.
+  function saveBlob(blob, name){
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 60000);
+  }
+  function fileName(f, i){
+    var n = String(f.name || ('photo-' + (i + 1))).replace(/[\\\/:*?"<>|]+/g, '_');
+    return /\.(jpe?g|png|webp)$/i.test(n) ? n : n + '.jpg';
+  }
+  async function fetchPhoto(f){
+    var r = await fetch(f.src, { cache: 'force-cache' });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return r.blob();
+  }
+  var CRC = (function(){ var t = new Uint32Array(256); for(var n = 0; n < 256; n++){ var c = n; for(var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc32(u8){ var c = 0xFFFFFFFF; for(var i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  // Minimal "stored" zip (photos are already compressed). Blob parts keep memory low.
+  function buildZip(entries){
+    var parts = [], central = [], offset = 0, enc = new TextEncoder();
+    var d = new Date(), dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    entries.forEach(function(e){
+      var name = enc.encode(e.name), h = new DataView(new ArrayBuffer(30));
+      h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+      h.setUint16(10, dosTime, true); h.setUint16(12, dosDate, true); h.setUint32(14, e.crc, true);
+      h.setUint32(18, e.size, true); h.setUint32(22, e.size, true); h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+      parts.push(h.buffer, name, e.blob);
+      var c = new DataView(new ArrayBuffer(46));
+      c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+      c.setUint16(12, dosTime, true); c.setUint16(14, dosDate, true); c.setUint32(16, e.crc, true); c.setUint32(20, e.size, true); c.setUint32(24, e.size, true);
+      c.setUint16(28, name.length, true); c.setUint32(42, offset, true);
+      central.push(c.buffer, name);
+      offset += 30 + name.length + e.size;
+    });
+    var cdSize = central.reduce(function(n, b){ return n + (b.byteLength || b.length); }, 0);
+    var end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true);
+    end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+    return new Blob(parts.concat(central, [end.buffer]), { type: 'application/zip' });
+  }
+  var zipping = false;
+  var ZIP_CHUNK = 80;   // photos per zip, so phones don't run out of memory
+  $('dlAllBtn').addEventListener('click', async function(){
+    if(zipping || !files.length) return;
+    zipping = true;
+    var btn = $('dlAllBtn'), label = $('dlAllLabel'), list = files.slice(), failed = 0;
+    var base = (document.title.split(' | ')[0] || 'photos').replace(/[\\\/:*?"<>|]+/g, '_').trim() || 'photos';
+    var parts = Math.ceil(list.length / ZIP_CHUNK), used = {};
+    btn.disabled = true;
+    try{
+      for(var p = 0; p < parts; p++){
+        var chunk = list.slice(p * ZIP_CHUNK, (p + 1) * ZIP_CHUNK), entries = [];
+        for(var i = 0; i < chunk.length; i++){
+          var n = p * ZIP_CHUNK + i;
+          label.textContent = 'Preparing ' + (n + 1) + ' of ' + list.length + '…';
+          try{
+            var blob = await fetchPhoto(chunk[i]);
+            var u8 = new Uint8Array(await blob.arrayBuffer());
+            var nm = fileName(chunk[i], n);
+            while(used[nm]) nm = nm.replace(/(\.\w+)$/, '-' + n + '$1');
+            used[nm] = true;
+            entries.push({ name: nm, blob: blob, size: u8.length, crc: crc32(u8) });
+          }catch(e){ failed++; }
+        }
+        if(entries.length) saveBlob(buildZip(entries), base + (parts > 1 ? ' (part ' + (p + 1) + ' of ' + parts + ')' : '') + '.zip');
+        if(p < parts - 1) await new Promise(function(r){ setTimeout(r, 800); });
+      }
+      toast(failed ? 'Downloaded ' + (list.length - failed) + ' photos (' + failed + ' couldn’t load — try again)' : 'Downloaded ' + list.length + ' photo' + (list.length === 1 ? '' : 's'));
+    }finally{
+      label.textContent = 'Download all'; btn.disabled = false; zipping = false;
+    }
+  });
+  // Single photo: save it directly; fall back to Google's download link.
+  $('vDownload').addEventListener('click', async function(e){
+    var f = view[cur]; if(!f) return;
+    e.preventDefault();
+    try{ saveBlob(await fetchPhoto(f), fileName(f, cur)); }
+    catch(err){ location.href = downloadUrl(f); }
+  });
 
   // New photos appear while the page is open (checks every 30 s while visible).
   function schedule(){ clearTimeout(timer); timer = setTimeout(function(){ if(!document.hidden) load().then(schedule); else schedule(); }, 30000); }

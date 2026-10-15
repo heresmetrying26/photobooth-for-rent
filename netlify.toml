@@ -19,6 +19,12 @@
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-store"
+    # The booth runs here (the lock screen writes the app into this page).
+    # These two make the page cross-origin isolated, which the USB camera
+    # (remote control) mode needs. "credentialless" keeps Google Fonts and
+    # other outside files loading normally. Safari ignores it (no USB there).
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "credentialless"
 
 [[headers]]
   for = "/lifetime*"

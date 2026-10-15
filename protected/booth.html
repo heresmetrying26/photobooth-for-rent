@@ -4005,6 +4005,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       opt.textContent = d.label || 'Camera ' + (i + 1);
       cameraSelect.appendChild(opt);
     });
+    if(usbCam.supported){
+      const opt = document.createElement('option');
+      opt.value = USB_CAM_ID;
+      opt.textContent = usbCam.name ? usbCam.name + ' (USB remote)' : 'DSLR / mirrorless over USB (remote control)';
+      cameraSelect.appendChild(opt);
+    }
 
     refreshCameraMenu();
 
@@ -4019,7 +4025,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const lbl = d => (d.label || '').toLowerCase();
     const BUILTIN = /front|facetime|macbook|imac|built-in|integrated|isight/;
     const AVOID = /virtual|\bobs\b|teams|zoom|snap camera|mmhmm|manycam|xsplit|\bndi\b|desk view|iphone|ipad/;
-    const pick = byId(previous)
+    const usbPick = usbCam.supported && (previous === USB_CAM_ID || (!previous && saved && saved.id === USB_CAM_ID)) ? { deviceId: USB_CAM_ID } : null;
+    const pick = usbPick || byId(previous)
       || (saved && (byId(saved.id) || (saved.label && videoDevices.find(d => d.label === saved.label))))
       || videoDevices.find(d => BUILTIN.test(lbl(d)))
       || videoDevices.find(d => d.label && !AVOID.test(lbl(d)));
@@ -4138,10 +4145,134 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     throw lastErr;
   }
 
+  // ---- USB camera: DSLR / mirrorless remote control over USB ----
+  // For cameras in "Photo Import / Remote Control" (Canon) or PTP (Nikon) USB
+  // mode, which aren't webcams. gPhoto2 (web-gphoto2, LGPL) runs in the page
+  // and talks to the camera over WebUSB: live view comes from the camera's
+  // preview frames (drawn to a canvas and turned into a normal video stream,
+  // so the preview, guest screen and sample photo all work unchanged), and
+  // every shot fires the real shutter, so the camera's own photo settings and
+  // flash apply. Chrome / Edge on Mac or Android only; the page must be
+  // cross-origin isolated (COOP/COEP headers on "/" in netlify.toml).
+  const USB_CAM_ID = 'usb-remote';
+  const USB_LIB = '/camera-test/build/camera.js';
+  const usbCam = {
+    supported: ('usb' in navigator) && !!window.crossOriginIsolated,
+    camera: null, name: '', active: false, gen: 0, libGen: 0,
+    canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null
+  };
+  // A crash inside the library (anything but a plain Error) leaves that copy
+  // unusable, so the next connect loads a fresh copy.
+  function usbIsCritical(err){ return !err || err.constructor !== Error; }
+  function usbErrorMessage(err){
+    const s = String((err && (err.message || err.name)) || err);
+    const win = /Win/i.test(navigator.platform || '');
+    if(err && err.name === 'NotFoundError') return 'No USB camera picked. Set the camera’s USB mode to Photo Import / Remote Control (Canon) or PTP/MTP (Nikon), plug it in and switch it on, then tap Try Again and pick it.';
+    if(err && err.name === 'SecurityError') return 'Tap Try Again to pick the USB camera.';
+    if(err && err.name === 'UsbNoLiveView') return 'The camera connected but live view didn’t start. Put the mode dial on M, P, A or S (not AUTO or a scene), take the lens cap off, check the battery, then tap Try Again.';
+    if(/claim|access denied|busy|Unable to open|LIBUSB_ERROR_ACCESS|LIBUSB_ERROR_BUSY/i.test(s)) return 'Another app is using the camera. Quit Photos, Image Capture, EOS Utility / Nikon apps and other tabs, unplug and replug the camera, then tap Try Again.' + (win ? ' On Windows the camera’s driver blocks browser access — use a Mac or Android device, or the camera’s webcam mode.' : '');
+    return 'USB camera problem (' + s + '). Unplug and replug the camera, then tap Try Again. If it keeps failing, reload the page.';
+  }
+  async function usbConnect(){
+    if(usbCam.camera) return usbCam.camera;
+    let devices = await navigator.usb.getDevices();
+    if(!devices.length){
+      // Needs a tap (the USB picker); after that the camera stays allowed.
+      await navigator.usb.requestDevice({ filters: [{ classCode: 6, subclassCode: 1 }] });
+      devices = await navigator.usb.getDevices();
+    }
+    for(const d of devices){ try{ if(d.opened) await d.close(); }catch(e){} }
+    const mod = await import(USB_LIB + (usbCam.libGen ? '?r=' + usbCam.libGen : ''));
+    usbCam.libGen++;
+    const cam = new mod.Camera();
+    await cam.connect();
+    usbCam.camera = cam;
+    usbCam.name = (devices[0] && devices[0].productName) || '';
+    const opt = Array.from(cameraSelect.options).find(o => o.value === USB_CAM_ID);
+    if(opt && usbCam.name) opt.textContent = usbCam.name + ' (USB remote)';
+    return cam;
+  }
+  async function usbLiveLoop(gen){
+    let fails = 0;
+    while(usbCam.active && usbCam.gen === gen && usbCam.camera){
+      try{
+        const blob = await usbCam.camera.capturePreviewAsBlob();
+        const bmp = await createImageBitmap(blob);
+        if(usbCam.gen !== gen){ bmp.close(); return; }
+        if(usbCam.canvas.width !== bmp.width || usbCam.canvas.height !== bmp.height){
+          usbCam.canvas.width = bmp.width; usbCam.canvas.height = bmp.height;
+        }
+        usbCam.ctx.drawImage(bmp, 0, 0); bmp.close();
+        usbCam.hasFrame = true; fails = 0;
+        await new Promise(r => setTimeout(r, 30));
+      }catch(err){
+        usbCam.lastErr = err;
+        if(usbIsCritical(err) || ++fails >= 30){ usbDead(err); return; }
+        await new Promise(r => setTimeout(r, 400));
+      }
+    }
+  }
+  function usbStopLive(){ usbCam.active = false; usbCam.gen++; }
+  function usbDead(err){
+    console.error('USB camera lost:', err);
+    usbCam.camera = null;
+    const wasLive = usbCam.active && currentDeviceId === USB_CAM_ID && streamActive;
+    usbStopLive();
+    if(wasLive) cameraLost();      // shows "Reconnecting…" and keeps retrying
+  }
+  async function initUsbCamera(){
+    if(currentStream && currentStream !== usbCam.stream) currentStream.getTracks().forEach(t => t.stop());
+    currentStream = null;
+    usbStopLive();
+    try{
+      if(!usbCam.supported) throw new Error('USB cameras need Chrome or Edge on a Mac or Android device');
+      await usbConnect();
+      if(!usbCam.canvas){
+        usbCam.canvas = document.createElement('canvas');
+        usbCam.canvas.width = 640; usbCam.canvas.height = 424;
+        usbCam.ctx = usbCam.canvas.getContext('2d');
+      }
+      usbCam.active = true; usbCam.hasFrame = false; usbCam.lastErr = null;
+      const gen = ++usbCam.gen;
+      usbLiveLoop(gen);
+      const t0 = Date.now();
+      while(!usbCam.hasFrame){
+        if(usbCam.gen !== gen || !usbCam.camera) throw usbCam.lastErr || new Error('Live view stopped');
+        if(Date.now() - t0 > 12000){ usbStopLive(); const e = new Error('no live view'); e.name = 'UsbNoLiveView'; throw e; }
+        await new Promise(r => setTimeout(r, 100));
+      }
+      const tr = usbCam.stream && usbCam.stream.getVideoTracks()[0];
+      if(!tr || tr.readyState === 'ended') usbCam.stream = usbCam.canvas.captureStream(30);
+      currentStream = usbCam.stream;
+      if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer = null; }
+      video.srcObject = usbCam.stream;
+      await video.play();
+      streamActive = true;
+      currentDeviceId = USB_CAM_ID;
+      if(Array.from(cameraSelect.options).some(o => o.value === USB_CAM_ID)) cameraSelect.value = USB_CAM_ID;
+      applyMirror();
+      applyLiveFilter();
+      guestCall('camera');
+      cameraError.style.display = 'none';
+      recDot.style.display = 'flex';
+      return true;
+    }catch(err){
+      console.error('USB camera failed:', err);
+      if(usbIsCritical(err)) usbCam.camera = null;
+      streamActive = false;
+      cameraErrorText.textContent = usbErrorMessage(err);
+      cameraError.style.display = 'flex';
+      recDot.style.display = 'none';
+      return false;
+    }
+  }
+
   async function initCamera(deviceId){
+    if(deviceId === USB_CAM_ID) return initUsbCamera();
+    usbStopLive();
     // Stop any existing stream
     if(currentStream){
-      currentStream.getTracks().forEach(t => t.stop());
+      if(currentStream !== usbCam.stream) currentStream.getTracks().forEach(t => t.stop());
       currentStream = null;
     }
     try{
@@ -4341,6 +4472,37 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     updateFilmTrack();
   }
 
+  // Webcam: the frame above is the photo. USB camera: that live-view frame
+  // goes in first (so a failed shot never leaves a gap), then the camera's
+  // real photo replaces it, cropped like the live view and sized for print.
+  const USB_SHOT_MAX = 2000;   // longest side in px: plenty for 4R at 300 dpi
+  async function captureShot(index){
+    captureFrame(index);
+    if(!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
+    const shots = shotCanvases;
+    try{
+      const file = await usbCam.camera.captureImageAsFile();
+      const bmp = await createImageBitmap(file);
+      const vw = bmp.width, vh = bmp.height;
+      let sx, sy, sw, sh;
+      if(vw / vh > STAGE_ASPECT){ sh = vh; sw = sh * STAGE_ASPECT; sx = (vw - sw) / 2; sy = 0; }
+      else { sw = vw; sh = sw / STAGE_ASPECT; sx = 0; sy = (vh - sh) / 2; }
+      const k = Math.min(1, USB_SHOT_MAX / Math.max(sw, sh));
+      const c = document.createElement('canvas');
+      c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+      const ctx = c.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, c.width, c.height);
+      bmp.close();
+      applyFilterToCanvas(c);
+      if(shotCanvases === shots){ shotCanvases[index] = c; updateFilmTrack(); }
+    }catch(err){
+      console.error('USB shot failed:', err);
+      showToast('The camera photo didn\u2019t come through (check focus, and that the camera saves JPEG), so the live view frame was used.', 5000);
+      if(usbIsCritical(err)) usbDead(err);
+    }
+  }
+
   // ---- Countdown settings (Setup → Layout & timer) ----
   let timerSec = 5;        // per shot, in ½-second steps
   let firstExtraSec = 0;   // added to the first shot only
@@ -4411,10 +4573,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     await wait(600);
     flashOverlay.classList.add('flash-active');
     guestCall('flash');
-    captureFrame(index);
-    guestCall('shots');
+    const shot = captureShot(index);   // webcam: instant; USB camera: fires the real shutter
     await wait(180);
     flashOverlay.classList.remove('flash-active');
+    if(usbCam.active && currentDeviceId === USB_CAM_ID){
+      popNum('Saving', true);
+      guestCall('tick', 'Saving', true, 0, cdShot.textContent);
+    }
+    await shot;
+    guestCall('shots');
     if(index < shotCanvases.length - 1 && betweenSec > 0){
       if(reviewEach) showShotReview(index);
       popNum('', true);

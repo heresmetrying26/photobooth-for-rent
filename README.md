@@ -67,6 +67,21 @@ sizes. Prints come out at the real paper size (300 dpi, zero margins):
 - When the photo and paper shapes are close, the print fills edge to edge (trimming a
   sliver of backdrop); otherwise it fits the whole image with white borders.
 
+## USB camera (remote control) mode
+For DSLR / mirrorless cameras in their **Photo Import / Remote Control** (Canon) or **PTP/MTP**
+(Nikon) USB mode, so the camera's own photo settings and flash apply. Pick
+**"DSLR / mirrorless over USB (remote control)"** in the Camera menu and choose the camera in
+Chrome's USB picker (only the first time; it stays allowed). Live view comes from the camera;
+each shot fires the real shutter (about 2.5–3 s per shot incl. transfer, shown as "Saving").
+- Chrome or Edge on a **Mac or Android** only. Windows blocks it (camera driver); Safari has no USB.
+- Quit Photos, Image Capture, EOS Utility / Nikon apps first. Mode dial on M/P/A/S, JPEG (not RAW).
+  A smaller JPEG size (e.g. Medium/Normal) makes each shot faster. Use a mains adapter: live view drains batteries.
+- Live view is low-res (e.g. 640×424 on a D5600); the photos are full quality (cropped, max 2000 px).
+- If a shot fails (focus, RAW), the live-view frame is used and a note shows.
+- Needs the COOP/COEP headers on `/` in `netlify.toml`. Uses web-gphoto2 (LGPL-2.1) from
+  `public/camera-test/build/`; `/camera-test/` is a stand-alone test page for any camera.
+- Tested: Nikon D5600 on macOS Chrome (shutter, live view, settings). Canon not yet tested.
+
 ### Kiosk / silent printing (no print dialog)
 Browsers always show a print dialog unless Chrome/Edge is started in kiosk-printing mode,
 which sends every print straight to the **default printer**:

@@ -3985,6 +3985,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   async function enumerateCameras(){
     const previous = cameraSelect.value;
+    if(!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return [];
     let devices = await navigator.mediaDevices.enumerateDevices();
     let videoDevices = devices.filter(d => d.kind === 'videoinput');
     if(!videoDevices.length || videoDevices.some(d => !d.label)){
@@ -4012,9 +4013,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // then a front-facing camera.
     const saved = savedCamera();
     const byId = id => id && videoDevices.find(d => d.deviceId === id);
+    // Built-in names: "FaceTime HD Camera", "MacBook Air Camera", "Integrated Webcam"...
+    // Virtual cameras (OBS, Teams, Zoom…), Continuity iPhone and Desk View often
+    // show a black or cropped picture, so they're only used when picked.
+    const lbl = d => (d.label || '').toLowerCase();
+    const BUILTIN = /front|facetime|macbook|imac|built-in|integrated|isight/;
+    const AVOID = /virtual|\bobs\b|teams|zoom|snap camera|mmhmm|manycam|xsplit|\bndi\b|desk view|iphone|ipad/;
     const pick = byId(previous)
       || (saved && (byId(saved.id) || (saved.label && videoDevices.find(d => d.label === saved.label))))
-      || videoDevices.find(d => d.label.toLowerCase().includes('front') || d.label.toLowerCase().includes('facetime'));
+      || videoDevices.find(d => BUILTIN.test(lbl(d)))
+      || videoDevices.find(d => d.label && !AVOID.test(lbl(d)));
     if(pick) cameraSelect.value = pick.deviceId;
 
     return videoDevices;
@@ -4080,6 +4088,56 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     });
   }
 
+  // Plain-language reason the camera didn't start, with Mac-specific steps.
+  function cameraErrorMessage(err){
+    const name = (err && err.name) || '';
+    const isMac = /Mac/i.test(navigator.platform || navigator.userAgent) && !(navigator.maxTouchPoints > 1);
+    if(name === 'NotAllowedError' || name === 'PermissionDeniedError' || name === 'SecurityError'){
+      return isMac
+        ? 'The camera is blocked. 1) Allow the camera for this site (camera icon in the address bar; in Safari: Safari \u203a Settings for This Website \u203a Camera \u203a Allow). 2) Open System Settings \u203a Privacy & Security \u203a Camera and switch on your browser. 3) Quit the browser fully (\u2318Q), reopen it and tap Try Again.'
+        : 'The camera is blocked. Allow the camera for this site (camera icon in the address bar), then tap Try Again.';
+    }
+    if(name === 'NotReadableError' || name === 'TrackStartError' || name === 'AbortError'){
+      return 'The camera is busy in another app. Close Zoom, FaceTime, Teams, Photo Booth or any other tab using the camera, then tap Try Again.';
+    }
+    if(name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError'){
+      return 'No camera found. Plug in or switch on the camera, then tap Try Again.';
+    }
+    if(name === 'NoPicture'){
+      return 'The camera opened but isn\u2019t sending a picture. Pick another camera in the Camera menu, or unplug and replug it, then tap Try Again.';
+    }
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      return 'This browser can\u2019t use the camera here. Open the booth in Chrome or Safari (not inside another app), then tap Try Again.';
+    }
+    return 'Couldn\u2019t start the camera (' + (name || 'unknown error') + '). Reload the page and allow camera access when asked.';
+  }
+  function showCameraError(err){
+    cameraErrorText.textContent = cameraErrorMessage(err);
+    cameraError.style.display = 'flex';
+    recDot.style.display = 'none';
+  }
+
+  // Asks for the camera with progressively looser settings. Safari and some
+  // Mac cameras reject the 1080p request or a remembered camera id, so it
+  // drops the size first, then the id if that camera no longer exists.
+  // A busy or blocked camera is never swapped for a different one.
+  async function openCameraStream(deviceId){
+    const size = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+    const gum = video => navigator.mediaDevices.getUserMedia({ video, audio: false });
+    const stop = e => e && (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e.name === 'SecurityError' || e.name === 'NotReadableError' || e.name === 'TrackStartError');
+    let lastErr = null;
+    const tries = deviceId
+      ? [Object.assign({ deviceId: { exact: deviceId } }, size), { deviceId: { exact: deviceId } }]
+      : [Object.assign({ facingMode: 'user' }, size), size];
+    for(const v of tries){
+      try{ return await gum(v); }catch(e){ lastErr = e; if(stop(e)) throw e; }
+    }
+    for(const v of [size, true]){
+      try{ return await gum(v); }catch(e){ lastErr = e; if(stop(e)) throw e; }
+    }
+    throw lastErr;
+  }
+
   async function initCamera(deviceId){
     // Stop any existing stream
     if(currentStream){
@@ -4087,44 +4145,73 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       currentStream = null;
     }
     try{
-      const constraints = {
-        video: deviceId
-          ? { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
-          : { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('no mediaDevices');
+      const stream = await openCameraStream(deviceId);
       currentStream = stream;
       watchTrack(stream);
       if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer = null; }
       video.srcObject = stream;
       await video.play();
+      // Safari can resolve play() before the first frame; give it a moment.
+      if(!video.videoWidth){
+        await new Promise(r => {
+          const t = setTimeout(r, 3000);
+          video.addEventListener('loadeddata', () => { clearTimeout(t); r(); }, { once: true });
+        });
+      }
+      if(currentStream !== stream) return false;   // another camera was picked meanwhile
       streamActive = true;
-      currentDeviceId = deviceId || null;
+      // The camera actually opened (may differ if the remembered one was gone).
+      // Before camera access is allowed (Safari on Mac especially) the camera
+      // list comes back blank or unnamed, so the menu stays hidden. Now that
+      // access works, list the cameras again so the menu appears.
+      if(!cameraSelect.options.length || Array.from(cameraSelect.options).some(o => !o.value || /^Camera \d+$/.test(o.textContent))){
+        try{ await enumerateCameras(); }catch(e){}
+      }
+      const opened = (stream.getVideoTracks()[0] && stream.getVideoTracks()[0].getSettings().deviceId) || deviceId || null;
+      currentDeviceId = opened;
+      if(opened && Array.from(cameraSelect.options).some(o => o.value === opened)) cameraSelect.value = opened;
       // Mirror the live preview for a natural selfie feel; captureFrame()
       // un-mirrors it again so any text on props reads correctly in the
       // final photo.
       applyMirror();
       applyLiveFilter();
       guestCall('camera');
+      if(!video.videoWidth){
+        showCameraError({ name: 'NoPicture' });
+        cameraSection.classList.remove('hidden');
+        cameraSelect.style.display = cameraSelect.options.length > 1 ? '' : 'none';
+        return true;
+      }
       cameraError.style.display = 'none';
       recDot.style.display = 'flex';
       return true;
     }catch(err){
+      console.error('Camera failed:', err);
       streamActive = false;
-      cameraErrorText.textContent = 'Camera access was blocked or unavailable. If you are viewing this inside an embedded preview, download the file and open it directly in your browser, then allow camera access when prompted.';
-      cameraError.style.display = 'flex';
-      recDot.style.display = 'none';
+      showCameraError(err);
       return false;
     }
   }
+  // A slow camera that starts sending frames later clears the "no picture" note.
+  video.addEventListener('resize', () => {
+    if(streamActive && video.videoWidth && !reconnectTimer){
+      cameraError.style.display = 'none';
+      recDot.style.display = 'flex';
+    }
+  });
 
   cameraSelect.addEventListener('change', () => {
     saveCamera();
     initCamera(cameraSelect.value);
   });
 
-  retryCameraBtn.addEventListener('click', () => initCamera(cameraSelect.value || null));
+  // Try Again re-lists the cameras first: after the operator allows access
+  // (browser prompt or macOS System Settings) the names and the menu show up.
+  retryCameraBtn.addEventListener('click', async () => {
+    try{ await enumerateCameras(); }catch(e){}
+    initCamera(cameraSelect.value || null);
+  });
 
   const actionsSection = document.getElementById('actionsSection');
   // Share lives with the QR codes; its old card stays hidden.
@@ -8445,7 +8532,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   refreshStartScreen();
   renderSetupPreview();
   (async () => {
-    await enumerateCameras();
+    try{ await enumerateCameras(); }catch(e){ console.error('Listing cameras failed:', e); }
     await initCamera(cameraSelect.value || null);
     updateUI();
   })();

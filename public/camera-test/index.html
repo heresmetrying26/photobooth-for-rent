@@ -145,6 +145,19 @@
   // ---- Camera ----
   let Camera = null, camera = null, live = false, liveLoop = null;
 
+  // A crash inside the library (anything that isn't a plain Error) leaves it
+  // unusable until the page reloads, so stop and offer Reconnect.
+  function isCritical(err){ return !err || err.constructor !== Error; }
+  function cameraDead(err){
+    live = false;
+    camera = null;
+    $('liveBtn').disabled = true; $('shotBtn').disabled = true;
+    $('liveBtn').textContent = 'Start live view'; $('fpsBadge').style.display = 'none';
+    $('connectBtn').textContent = 'Reconnect camera';
+    log('Connection lost: ' + (err && (err.message || err.name) || err));
+    showMsg('The connection to the camera was lost. Tap "Reconnect camera".', 'err');
+  }
+
   // Finds a setting by name anywhere in gPhoto2's config tree.
   function findCfg(node, names){
     if(!node) return null;
@@ -190,7 +203,8 @@
     else showMsg('Connected. Now try live view, then take a photo.', 'info');
   }
 
-  $('connectBtn').addEventListener('click', async () => {
+  let triedOnce = false;
+  async function connect(){
     hideMsg();
     $('connectBtn').disabled = true;
     try{
@@ -198,9 +212,13 @@
         log('Loading camera library…');
         ({ Camera } = await import('./build/camera.js'));
       }
-      log('Opening USB picker…');
-      await Camera.showPicker();
-      if(camera){ try{ await camera.disconnect(); }catch(e){} }
+      const allowed = await navigator.usb.getDevices();
+      if(allowed.length){
+        log('Using the camera already allowed: ' + (allowed[0].productName || 'camera'));
+      } else {
+        log('Opening USB picker…');
+        await Camera.showPicker();
+      }
       camera = new Camera();
       log('Connecting…');
       const t0 = performance.now();
@@ -213,17 +231,49 @@
       console.error(err);
       log('Connect failed: ' + (err && (err.message || err.name) || err));
       report.connectError = String(err && (err.message || err.name) || err);
+      camera = null;
+      $('liveBtn').disabled = true; $('shotBtn').disabled = true;
       showMsg(explain(err), 'err');
     }finally{
+      triedOnce = true;
       $('connectBtn').disabled = false;
     }
+  }
+  $('connectBtn').addEventListener('click', () => {
+    // The library can only connect once per page, so a reconnect reloads
+    // the page and connects again by itself (the camera stays allowed).
+    if(triedOnce){
+      try{ sessionStorage.setItem('pbAutoConnect', '1'); }catch(e){}
+      location.reload();
+      return;
+    }
+    connect();
   });
+  (async () => {
+    let auto = false;
+    try{ auto = sessionStorage.getItem('pbAutoConnect') === '1'; sessionStorage.removeItem('pbAutoConnect'); }catch(e){}
+    if(auto && 'usb' in navigator && window.crossOriginIsolated && (await navigator.usb.getDevices()).length) connect();
+  })();
 
   // ---- Live view ----
   const canvas = $('live'), ctx = canvas.getContext('2d');
+  let viewfinderOn = false;
   async function runLive(){
-    let frames = 0, since = performance.now(), fails = 0;
-    while(live){
+    let frames = 0, since = performance.now(), fails = 0, firstFrame = !canvas.width;
+    // Nikon (and some Canon) need live view switched on first; the mirror
+    // takes a moment to flip up, so wait before asking for frames.
+    if(!viewfinderOn){
+      try{
+        await camera.setConfigValue('viewfinder', 1);
+        viewfinderOn = true;
+        log('Live view switched on (viewfinder = 1)');
+        await new Promise(r => setTimeout(r, 1200));
+      }catch(err){
+        if(isCritical(err)){ cameraDead(err); return; }
+        log('No viewfinder switch on this camera (' + (err.message || err) + '), trying frames anyway');
+      }
+    }
+    while(live && camera){
       try{
         const blob = await camera.capturePreviewAsBlob();
         const bmp = await createImageBitmap(blob);
@@ -243,15 +293,25 @@
           frames = 0; since = now;
         }
       }catch(err){
+        if(isCritical(err)){ cameraDead(err); return; }
         fails++;
-        log('Live view frame failed: ' + (err && (err.message || err.name) || err));
-        if(fails >= 5){ stopLive(); showMsg(explain(err), 'err'); return; }
-        await new Promise(r => setTimeout(r, 300));
+        if(fails <= 3 || fails % 10 === 0) log('Live view frame failed (' + fails + '): ' + (err && (err.message || err.name) || err));
+        if(fails >= 30){
+          stopLive();
+          report.liveError = String(err && (err.message || err.name) || err);
+          showMsg('Live view would not start. On the camera: charge the battery, put the mode dial on M, P, A or S (not AUTO or a scene), remove the lens cap, then try again.', 'err');
+          return;
+        }
+        await new Promise(r => setTimeout(r, 400));
       }
     }
   }
   function stopLive(){
     live = false;
+    if(viewfinderOn && camera){
+      viewfinderOn = false;
+      camera.setConfigValue('viewfinder', 0).catch(() => {});   // mirror down, saves battery
+    }
     $('liveBtn').textContent = 'Start live view';
     $('fpsBadge').style.display = 'none';
   }
@@ -292,12 +352,13 @@
       else showMsg('It works: real shutter, full-resolution photo in ' + secs + ' s. Tap "Copy test report" and send it over.', 'info');
     }catch(err){
       console.error(err);
+      if(isCritical(err)){ cameraDead(err); return; }
       log('Photo failed: ' + (err && (err.message || err.name) || err));
       report.photoError = String(err && (err.message || err.name) || err);
       showMsg(explain(err) + ' (If autofocus could not lock, point at something with detail or switch the lens to MF.)', 'err');
     }finally{
-      $('shotBtn').disabled = false;
-      if(wasLive){ live = true; $('liveBtn').textContent = 'Stop live view'; liveLoop = runLive(); }
+      $('shotBtn').disabled = !camera;
+      if(wasLive && camera){ live = true; $('liveBtn').textContent = 'Stop live view'; liveLoop = runLive(); }
     }
   });
 

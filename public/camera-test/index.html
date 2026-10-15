@@ -60,6 +60,20 @@
         <p class="help">Close Photos, Image Capture, EOS Utility, Nikon apps and any other tab using the camera. Use Chrome or Edge on a Mac.</p>
       </div>
 
+      <div class="card" id="winCard" style="margin-top:16px; display:none; border-color:#e9c46a;">
+        <h2>Windows: one-time driver switch</h2>
+        <p class="help" style="margin-top:0;">On Windows the camera won't appear in the list until its driver is switched to <b>WinUSB</b> with the free tool Zadig. While switched, Windows Photos / File Explorer / Nikon &amp; Canon apps can't see this camera (you can switch back any time).</p>
+        <ol class="help" style="padding-left:18px;">
+          <li>Plug in the camera (USB mode PTP/MTP or Photo Import / Remote Control) and switch it on.</li>
+          <li>Download and run Zadig: <a href="https://zadig.akeo.ie/" target="_blank" rel="noopener">zadig.akeo.ie</a></li>
+          <li>Options &rarr; <b>List All Devices</b>, pick your camera (e.g. "D5600", "Canon EOS R50").</li>
+          <li>Set the driver to <b>WinUSB</b> and click <b>Replace Driver</b> (takes a minute).</li>
+          <li>Unplug and replug the camera, reload this page, then Connect.</li>
+        </ol>
+        <p class="help"><b>Early test, no Zadig:</b> try <a href="/downloads/pb4u-windows-camera-test.zip">pb4u-windows-camera-test.zip</a> (unzip, double-click "Run camera test", send us the text it shows). It uses Windows' own camera driver; if this works, Windows won't need the driver switch.</p>
+        <p class="help"><b>To switch back:</b> Device Manager &rarr; find the camera (under "Universal Serial Bus devices") &rarr; right-click &rarr; <b>Uninstall device</b>, tick "Delete the driver", then unplug and replug.</p>
+      </div>
+
       <div class="card" style="margin-top:16px;">
         <h2>Test</h2>
         <div class="step"><span class="num">1</span><button id="connectBtn">Connect camera</button></div>
@@ -118,6 +132,7 @@
   // Plain-language reasons for common failures.
   function explain(err){
     const s = String((err && (err.message || err.name)) || err);
+    if(/No device selected|NotFoundError/i.test(s) && /Win/i.test(navigator.platform || '')) return 'No camera picked. On Windows the camera only shows in the list after the one-time driver switch (see "Windows: one-time driver switch" on the left).';
     if(/No device selected|NotFoundError/i.test(s)) return 'No camera picked. If it was missing from the list, check the cable, switch the camera on, and set USB mode to Photo Import / Remote Control (Canon) or MTP/PTP (Nikon).';
     if(/claim|access denied|busy|Unable to open|SecurityError|LIBUSB_ERROR_ACCESS|LIBUSB_ERROR_BUSY/i.test(s)) return 'Another app is holding the camera. Quit Photos, Image Capture, EOS Utility / Nikon apps and other tabs, unplug and replug the camera, then try again.' + (/Win/i.test(navigator.platform) ? ' On Windows, the camera driver blocks browser access (needs a WinUSB driver).' : '');
     if(/disconnected|LIBUSB_ERROR_NO_DEVICE|transfer/i.test(s)) return 'The camera disconnected. Check the cable and that the camera did not go to sleep, then connect again.';
@@ -131,6 +146,7 @@
     ['Secure, isolated page (required)', !!window.crossOriginIsolated],
     ['Mac or Android', /Mac|Android/i.test(navigator.userAgent)]
   ];
+  if(/Win/i.test(navigator.platform || navigator.userAgent)) $('winCard').style.display = '';
   $('checks').innerHTML = checks.map(([label, ok]) =>
     '<li><span class="pill ' + (ok ? 'ok' : 'bad') + '">' + (ok ? 'OK' : 'NO') + '</span>' + label + '</li>').join('');
   checks.forEach(([l, ok]) => log('Check: ' + l + ' = ' + (ok ? 'yes' : 'no')));
@@ -268,6 +284,14 @@
         viewfinderOn = true;
         log('Live view switched on (viewfinder = 1)');
         await new Promise(r => setTimeout(r, 1200));
+        // Canon sends live view only to the computer by default; ask for the
+        // camera's own screen too (choice is named like "TFT + PC").
+        try{
+          const out = findCfg(await camera.getConfig(), ['output']);
+          const both = out && Array.isArray(out.choices) ? out.choices.find(c => /tft/i.test(c) && /pc/i.test(c)) : null;
+          if(both && out.value !== both){ await camera.setConfigValue('output', both); log('Camera screen on too (output = ' + both + ')'); report.screen = both; }
+          else log('Camera screen option: ' + (out ? JSON.stringify(out.choices) + ' now ' + out.value : 'not available'));
+        }catch(e){ if(isCritical(e)){ cameraDead(e); return; } log('Could not switch camera screen on: ' + (e.message || e)); }
       }catch(err){
         if(isCritical(err)){ cameraDead(err); return; }
         log('No viewfinder switch on this camera (' + (err.message || err) + '), trying frames anyway');

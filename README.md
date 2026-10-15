@@ -82,6 +82,19 @@ each shot fires the real shutter (about 2.5–3 s per shot incl. transfer, shown
   `public/camera-test/build/`; `/camera-test/` is a stand-alone test page for any camera.
 - Tested: Nikon D5600 on macOS Chrome (shutter, live view, settings). Canon not yet tested.
 
+### Printer per paper size + Print Helper
+In the Print box, **Printer for <size>** remembers which printer each paper size uses (saved on that
+computer). Without the helper it's a reminder of what to pick in the print dialog. With the
+**photobooth4u Print Helper** running and **Print Helper on this computer** switched on, prints go
+straight to that printer with no dialog (Auto-print included), so 2×6 and 4R can use different printers.
+- Downloads + renter steps: `/downloads/` (Mac Apple Silicon / Intel, Windows). Source and build:
+  `tools/print-helper/`. Listens on 127.0.0.1:17321, only accepts the photobooth4u origin.
+- Paper size / borderless / cut come from each printer's own defaults. One printer, two sizes:
+  add it twice with different defaults (e.g. "HiTi 4x6", "HiTi 2x6 cut").
+- The booth only contacts the helper when the switch is on (Chrome asks once to allow local access).
+- Tested: macOS/Linux path (CUPS `lp`) end to end with stand-in printers. Windows printing (PowerShell
+  .NET) not yet tested on a real printer.
+
 ### Kiosk / silent printing (no print dialog)
 Browsers always show a print dialog unless Chrome/Edge is started in kiosk-printing mode,
 which sends every print straight to the **default printer**:

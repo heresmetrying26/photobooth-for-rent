@@ -530,6 +530,8 @@
   }
   .print-size-btn.active{border-color:var(--blue-deep); color:var(--blue-deep); background:var(--tint);}
   .print-size-btn:disabled{opacity:0.4; cursor:not-allowed;}
+  .printer-input{width:100%; box-sizing:border-box; padding:8px 10px; border:1.5px solid #d9d2c8; border-radius:10px; font:inherit; font-size:14px; background:#fff; color:inherit;}
+  .printer-input:focus{outline:none; border-color:var(--blue-deep);}
   #printArea{display:none;}
   @media print{
     html, body{margin:0 !important; padding:0 !important; background:#ffffff !important;}
@@ -1698,6 +1700,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <span>Keychain strips at real size (2.5×7.5 in)</span>
           <input type="checkbox" id="keychainToggle">
         </label>
+        <div class="printer-pick" id="printerPick">
+          <label class="sub-label" for="printerNameInput" style="display:block; margin:2px 0 4px;">Printer for <span id="printerPickSize">this size</span></label>
+          <input type="text" id="printerNameInput" class="printer-input" list="printerList" placeholder="e.g. HiTi P525L 2x6" autocomplete="off" maxlength="120">
+          <datalist id="printerList"></datalist>
+          <label class="switch-row" style="margin:8px 0 2px;">
+            <span>Print Helper on this computer (no dialog)</span>
+            <input type="checkbox" id="helperToggle">
+          </label>
+          <p class="panel-hint" id="printerHelperHint" style="margin:2px 0 10px;"></p>
+        </div>
         <button class="action-btn primary" id="printBtn">&#128424; Print</button>
         <p class="panel-hint" id="printHint"></p>
         <label class="switch-row hidden" id="autoPrintRow">
@@ -1719,6 +1731,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <option value="">Loading cameras…</option>
         </select>
         <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
+        <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
         <label class="switch-row" id="mirrorRow">
           <span>Mirror the live view</span>
           <input type="checkbox" id="mirrorToggle">
@@ -4008,7 +4021,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(usbCam.supported){
       const opt = document.createElement('option');
       opt.value = USB_CAM_ID;
-      opt.textContent = usbCam.name ? usbCam.name + ' (USB remote)' : 'DSLR / mirrorless over USB (remote control)';
+      opt.textContent = usbCam.name ? usbCam.name + ' (USB remote)' : 'DSLR / mirrorless over USB (remote control)' + (/Win/i.test(navigator.platform || '') ? ' \u2014 Windows needs setup' : '');
       cameraSelect.appendChild(opt);
     }
 
@@ -4158,7 +4171,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const USB_LIB = '/camera-test/build/camera.js';
   const usbCam = {
     supported: ('usb' in navigator) && !!window.crossOriginIsolated,
-    camera: null, name: '', active: false, gen: 0, libGen: 0,
+    camera: null, name: '', active: false, gen: 0, libGen: 0, vfOn: false, initing: null,
     canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null
   };
   // A crash inside the library (anything but a plain Error) leaves that copy
@@ -4167,6 +4180,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function usbErrorMessage(err){
     const s = String((err && (err.message || err.name)) || err);
     const win = /Win/i.test(navigator.platform || '');
+    if(err && err.name === 'NotFoundError' && win) return 'No USB camera picked. On Windows the camera only appears after a one-time driver switch (Zadig). Steps: open /camera-test/ on this site. Or use a Mac or Android device, where it works with no setup.';
     if(err && err.name === 'NotFoundError') return 'No USB camera picked. Set the camera’s USB mode to Photo Import / Remote Control (Canon) or PTP/MTP (Nikon), plug it in and switch it on, then tap Try Again and pick it.';
     if(err && err.name === 'SecurityError') return 'Tap Try Again to pick the USB camera.';
     if(err && err.name === 'UsbNoLiveView') return 'The camera connected but live view didn’t start. Put the mode dial on M, P, A or S (not AUTO or a scene), take the lens cap off, check the battery, then tap Try Again.';
@@ -4187,10 +4201,39 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const cam = new mod.Camera();
     await cam.connect();
     usbCam.camera = cam;
+    usbCam.vfOn = false;
     usbCam.name = (devices[0] && devices[0].productName) || '';
     const opt = Array.from(cameraSelect.options).find(o => o.value === USB_CAM_ID);
     if(opt && usbCam.name) opt.textContent = usbCam.name + ' (USB remote)';
     return cam;
+  }
+  async function usbViewfinderOn(){
+    try{
+      await usbCam.camera.setConfigValue('viewfinder', 1);
+    }catch(err){
+      if(usbIsCritical(err)) throw err;
+      // Some cameras report an error here but still start live view.
+    }
+    usbCam.vfOn = true;
+    await new Promise(r => setTimeout(r, 1500));
+    await usbCameraScreenToo();
+  }
+  // Canon sends live view only to the computer by default, leaving the
+  // camera's own screen blank. Ask for both (choice named like "TFT + PC").
+  function usbFindCfg(node, name){
+    if(!node) return null;
+    if(node.name === name && 'value' in node) return node;
+    for(const k in (node.children || {})){ const r = usbFindCfg(node.children[k], name); if(r) return r; }
+    return null;
+  }
+  async function usbCameraScreenToo(){
+    try{
+      const out = usbFindCfg(await usbCam.camera.getConfig(), 'output');
+      const both = out && Array.isArray(out.choices) ? out.choices.find(c => /tft/i.test(c) && /pc/i.test(c)) : null;
+      if(both && out.value !== both) await usbCam.camera.setConfigValue('output', both);
+    }catch(err){
+      if(usbIsCritical(err)) throw err;   // otherwise not supported on this camera: fine
+    }
   }
   async function usbLiveLoop(gen){
     let fails = 0;
@@ -4207,12 +4250,54 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         await new Promise(r => setTimeout(r, 30));
       }catch(err){
         usbCam.lastErr = err;
-        if(usbIsCritical(err) || ++fails >= 30){ usbDead(err); return; }
-        await new Promise(r => setTimeout(r, 400));
+        if(usbIsCritical(err) || ++fails >= 20){ usbDead(err); return; }
+        if(fails === 4 || fails === 12){
+          try{ await usbViewfinderOn(); }catch(e){ usbDead(e); return; }
+        } else {
+          await new Promise(r => setTimeout(r, 1000));
+        }
       }
     }
   }
   function usbStopLive(){ usbCam.active = false; usbCam.gen++; }
+
+  // ---- USB camera battery: checked every 3 minutes while it's in use ----
+  // Shown under the Camera menu; a warning pops up below 25% (or "Low"),
+  // repeated every 10 minutes, so the battery is swapped before it dies.
+  const USB_BATT_LOW = 25;
+  let usbBattTimer = null, usbBattWarnedAt = 0;
+  function usbCamNote(text, warn){
+    const el = document.getElementById('usbCamNote');
+    if(!el) return;
+    el.style.display = text ? '' : 'none';
+    el.textContent = text || '';
+    el.style.color = warn ? '#c23b3b' : '';
+    el.style.fontWeight = warn ? '700' : '';
+  }
+  async function usbCheckBattery(){
+    if(!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)){ usbCamNote(''); return; }
+    if(state === 'capturing') return;                        // never slow a session down
+    try{
+      const node = usbFindCfg(await usbCam.camera.getConfig(), 'batterylevel');
+      const v = node ? String(node.value) : '';
+      if(!v) return;
+      const m = /(\d+)\s*%/.exec(v);
+      const pct = m ? Number(m[1]) : null;
+      const low = pct !== null ? pct < USB_BATT_LOW : /low|empty|exhaust/i.test(v);
+      usbCamNote('\u{1F50B} Camera battery: ' + v + (low ? ' — swap it or plug in mains power soon.' : ''), low);
+      if(low && Date.now() - usbBattWarnedAt > 10 * 60 * 1000){
+        usbBattWarnedAt = Date.now();
+        showToast('Camera battery low (' + v + '). Swap the battery or plug in mains power before the next guests.', 8000);
+      }
+    }catch(err){
+      if(usbIsCritical(err)) usbDead(err);
+    }
+  }
+  function usbStartBatteryChecks(){
+    clearInterval(usbBattTimer);
+    setTimeout(usbCheckBattery, 4000);
+    usbBattTimer = setInterval(usbCheckBattery, 3 * 60 * 1000);
+  }
   function usbDead(err){
     console.error('USB camera lost:', err);
     usbCam.camera = null;
@@ -4220,7 +4305,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     usbStopLive();
     if(wasLive) cameraLost();      // shows "Reconnecting…" and keeps retrying
   }
-  async function initUsbCamera(){
+  function initUsbCamera(){
+    if(usbCam.initing) return usbCam.initing;
+    usbCam.initing = initUsbCameraNow().finally(() => { usbCam.initing = null; });
+    return usbCam.initing;
+  }
+  async function initUsbCameraNow(){
+    if(streamActive && currentDeviceId === USB_CAM_ID && usbCam.active && usbCam.camera) return true;   // already running
     if(currentStream && currentStream !== usbCam.stream) currentStream.getTracks().forEach(t => t.stop());
     currentStream = null;
     usbStopLive();
@@ -4232,13 +4323,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         usbCam.canvas.width = 640; usbCam.canvas.height = 424;
         usbCam.ctx = usbCam.canvas.getContext('2d');
       }
+      if(!usbCam.vfOn) await usbViewfinderOn();
       usbCam.active = true; usbCam.hasFrame = false; usbCam.lastErr = null;
       const gen = ++usbCam.gen;
       usbLiveLoop(gen);
       const t0 = Date.now();
       while(!usbCam.hasFrame){
         if(usbCam.gen !== gen || !usbCam.camera) throw usbCam.lastErr || new Error('Live view stopped');
-        if(Date.now() - t0 > 12000){ usbStopLive(); const e = new Error('no live view'); e.name = 'UsbNoLiveView'; throw e; }
+        if(Date.now() - t0 > 25000){ usbStopLive(); const e = new Error('no live view'); e.name = 'UsbNoLiveView'; throw e; }
         await new Promise(r => setTimeout(r, 100));
       }
       const tr = usbCam.stream && usbCam.stream.getVideoTracks()[0];
@@ -4250,6 +4342,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       streamActive = true;
       currentDeviceId = USB_CAM_ID;
       if(Array.from(cameraSelect.options).some(o => o.value === USB_CAM_ID)) cameraSelect.value = USB_CAM_ID;
+      usbStartBatteryChecks();
       applyMirror();
       applyLiveFilter();
       guestCall('camera');
@@ -4270,6 +4363,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   async function initCamera(deviceId){
     if(deviceId === USB_CAM_ID) return initUsbCamera();
     usbStopLive();
+    clearInterval(usbBattTimer); usbCamNote('');
     // Stop any existing stream
     if(currentStream){
       if(currentStream !== usbCam.stream) currentStream.getTracks().forEach(t => t.stop());
@@ -6127,6 +6221,89 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   let printSize = null;
   let printing = false;
 
+  // ---- Printer per paper size (saved on this computer) ----
+  // A web page can't choose a printer by itself. With the photobooth4u Print
+  // Helper running on this computer (opt-in switch), each print goes straight
+  // to the printer set for its paper size, with no dialog — like a native
+  // booth app. Without it, the booth says which printer to pick in the dialog.
+  // The helper is only contacted when the switch is on, because Chrome asks
+  // permission the first time a site talks to the computer itself.
+  const PRINTER_MAP_KEY = 'pb_printer_map', HELPER_KEY = 'pb_print_helper';
+  const HELPER_URL = 'http://127.0.0.1:17321';
+  let printerMap = {};
+  try{ printerMap = JSON.parse(localStorage.getItem(PRINTER_MAP_KEY) || '{}') || {}; }catch(e){ printerMap = {}; }
+  let helperOn = false;
+  try{ helperOn = localStorage.getItem(HELPER_KEY) === '1'; }catch(e){}
+  let helper = { ok: false, printers: [], checked: 0 };
+  const printerNameInput = document.getElementById('printerNameInput');
+  const printerList = document.getElementById('printerList');
+  const printerPickSize = document.getElementById('printerPickSize');
+  const printerHelperHint = document.getElementById('printerHelperHint');
+  const helperToggle = document.getElementById('helperToggle');
+  helperToggle.checked = helperOn;
+  function printerFor(key){ return (key && printerMap[key]) || ''; }
+  function savePrinterMap(){ try{ localStorage.setItem(PRINTER_MAP_KEY, JSON.stringify(printerMap)); }catch(e){} }
+  async function checkHelper(force){
+    if(!helperOn){ helper = { ok: false, printers: [], checked: 0 }; refreshPrinterHint(); return helper; }
+    if(!force && helper.checked && Date.now() - helper.checked < 15000) return helper;
+    helper.checked = Date.now();
+    try{
+      const ctl = new AbortController();
+      const t = setTimeout(() => ctl.abort(), 1500);
+      const r = await fetch(HELPER_URL + '/status', { signal: ctl.signal, cache: 'no-store' });
+      clearTimeout(t);
+      const j = await r.json();
+      helper = { ok: !!j.ok, printers: Array.isArray(j.printers) ? j.printers.slice(0, 60).map(String) : [], checked: Date.now() };
+    }catch(e){
+      helper = { ok: false, printers: [], checked: Date.now() };
+    }
+    printerList.innerHTML = '';
+    helper.printers.forEach(n => { const o = document.createElement('option'); o.value = n; printerList.appendChild(o); });
+    refreshPrinterHint();
+    return helper;
+  }
+  function refreshPrinterHint(){
+    const name = printerFor(printSize);
+    if(printSize) printerPickSize.textContent = paperFor(printSize).name;
+    if(helperOn && helper.ok){
+      if(!name) printerHelperHint.textContent = 'Print Helper connected. Pick the printer for this paper size.';
+      else if(helper.printers.length && !helper.printers.includes(name)) printerHelperHint.textContent = 'No printer on this computer is called “' + name + '”. Pick one from the list.';
+      else printerHelperHint.textContent = 'Prints go straight to “' + name + '” — no dialog.';
+    } else if(helperOn && helper.checked){
+      printerHelperHint.innerHTML = 'Print Helper not found. Open the photobooth4u Print Helper on this computer (and allow access if Chrome asks). Until then the print dialog opens. <a href="/downloads/" target="_blank" rel="noopener">Download it</a>';
+    } else {
+      printerHelperHint.textContent = name ? 'In the print dialog, pick “' + name + '”.' : 'Optional: name the printer this paper size uses.';
+    }
+  }
+  printerNameInput.addEventListener('input', () => {
+    if(!printSize) return;
+    const v = printerNameInput.value.trim();
+    if(v) printerMap[printSize] = v; else delete printerMap[printSize];
+    savePrinterMap();
+    refreshPrinterHint();
+  });
+  helperToggle.addEventListener('change', () => {
+    helperOn = helperToggle.checked;
+    try{ localStorage.setItem(HELPER_KEY, helperOn ? '1' : '0'); }catch(e){}
+    helper = { ok: false, printers: [], checked: 0 };
+    checkHelper(true);
+  });
+  // Sends the pages to the Print Helper. Returns true if it printed.
+  async function printViaHelper(pages, paper, name){
+    const h = await checkHelper(true);
+    if(!h.ok) return false;
+    try{
+      const body = JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, pages: pages.map(c => c.toDataURL('image/png')) });
+      const r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+      const j = await r.json().catch(() => ({}));
+      if(r.ok && j.ok) return true;
+      showToast('Print Helper couldn’t print (' + (j.error || ('error ' + r.status)) + '). Opening the print dialog instead.', 5500);
+    }catch(e){
+      showToast('Lost the Print Helper. Opening the print dialog instead.', 4500);
+    }
+    return false;
+  }
+
   // Custom sizes set in Admin look like "4x4in" / "100x148mm"; always printed portrait.
   function paperFor(key){
     if(PAPER[key]) return PAPER[key];
@@ -6250,6 +6427,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     } else {
       printHint.textContent = 'Prints at ' + paperFor(printSize).name + ' size.';
     }
+    if(printSize && document.activeElement !== printerNameInput) printerNameInput.value = printerFor(printSize);
+    document.getElementById('printerPick').style.display = printSize ? '' : 'none';
+    refreshPrinterHint();
+    if(helperOn) checkHelper(false);
   }
   printSizeRow.addEventListener('click', (e) => {
     const b = e.target.closest('.print-size-btn');
@@ -6320,6 +6501,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{
       const paper = paperFor(printSize);
       const pages = keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)];
+      const pname = printerFor(printSize);
+      if(helperOn && pname && await printViaHelper(pages, paper, pname)){
+        showToast((auto === true ? 'Auto-printing on ' : 'Printing on ') + pname + ' (' + paper.name + ').');
+        armAutoPrintAfterFirst(auto === true);
+        return;
+      }
       const urls = [];
       printArea.innerHTML = '';
       for(let i = 0; i < pages.length; i++){
@@ -6337,7 +6524,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       window.print();
       // Silent (kiosk) printing returns right away; clean up a moment later.
       setTimeout(() => { printArea.innerHTML = ''; urls.forEach(u => URL.revokeObjectURL(u)); }, 2000);
-      showToast((auto === true ? 'Auto-printing (' : 'Sent to the printer (') + paper.name + ').');
+      showToast((auto === true ? 'Auto-printing (' : 'Sent to the printer (') + paper.name + ').' + (pname ? ' Printer: ' + pname + '.' : ''));
       armAutoPrintAfterFirst(auto === true);
     }catch(err){
       console.error('Print failed:', err);

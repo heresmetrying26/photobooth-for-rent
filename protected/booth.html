@@ -266,11 +266,24 @@
   .ready-overlay{
     position:absolute; inset:0; z-index:8;
     display:none;
-    flex-direction:column; align-items:center; justify-content:flex-end; gap:8px;
-    background:linear-gradient(rgba(14,18,22,0) 35%, rgba(14,18,22,0.62));
-    text-align:center; padding:18px;
+    flex-direction:column; align-items:center; justify-content:space-between; gap:8px;
+    background:none; pointer-events:none;
+    text-align:center; padding:16px 16px 22px;
   }
   .ready-overlay.ready-active{display:flex;}
+  .ready-overlay .ready-title{opacity:.72; font-size:clamp(22px, 3.2vw, 34px); margin:4px 0 0;}
+  .ready-overlay .shutter-btn{pointer-events:auto; opacity:.95;}
+  .stage-frame.is-ready .countdown-overlay{display:none !important;}
+  .ready-below{display:none; flex-direction:column; align-items:center; gap:8px;}
+  body.in-session.shooting .brandbar, body.in-session.shooting .tab-bar{display:none !important;}
+  body.in-session.shooting{padding-top:10px;}
+  body.in-session.shooting .app-shell.capturing{max-width:min(1500px, 98vw);}
+  #readyFilters, #readySub{display:none !important;}   /* summary + filters live under the frame now */
+  .app-shell.getting-ready .ready-below{display:flex;}
+  .session-controls .sc-filters, #mirrorQuickBtn{display:none !important;}   /* only on the Get ready screen */
+  .app-shell.getting-ready .session-controls .sc-filters{display:flex !important;}
+  .app-shell.getting-ready #mirrorQuickBtn{display:inline-flex !important;}
+  .ready-summary{margin:0; font-size:clamp(18px, 2.2vw, 24px); font-weight:800; color:var(--ink); text-align:center; max-width:640px; letter-spacing:.01em;}
   .ready-overlay .ready-title, .ready-overlay .ready-sub{text-shadow:0 2px 10px rgba(0,0,0,.6);}
   .ready-filters{justify-content:center; margin:2px 0 6px;}
   .ready-filters .sc-filter{color:#f3e9e4;}
@@ -885,6 +898,11 @@
     border:3px solid transparent; background:rgba(255,255,255,.1); color:#fff; font:700 clamp(12px,1.8vw,16px) 'Manrope',sans-serif; cursor:pointer;}
   .pick-btn img{width:auto; max-width:100%; max-height:calc(var(--stage-h, 600px) * 0.5); border-radius:8px; background:#fff; display:block; box-shadow:0 8px 20px rgba(0,0,0,.25);}
   .pick-btn.sel, .pick-btn:focus-visible{border-color:#C93D27; background:rgba(255,255,255,.18); outline:none;}
+  #pickOverlay{background:rgba(20,18,22,.5); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); padding:2.5% 3%; justify-content:flex-end;}
+  #pickOverlay .pick-title{font-size:clamp(16px, 2.2vw, 24px);}
+  #pickOverlay .pick-grid{gap:10px; padding-bottom:6px; flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start; scrollbar-width:thin;}
+  #pickOverlay .pick-btn{flex:0 0 auto; min-width:0; padding:6px; gap:4px; font-size:13px;}
+  #pickOverlay .pick-btn img{max-height:min(22vh, calc(var(--stage-h, 600px) * 0.32));}
 
   /* ---- Frame, logo, stickers, pattern color, my themes ---- */
   .accent-row{display:flex; flex-wrap:wrap; gap:6px;}
@@ -1419,13 +1437,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         </div>
         <div class="layout-grid lg-many" id="layoutGrid"></div>
         <p class="panel-hint" id="layoutHint"></p>
-        <div class="opt-row" style="margin-top:8px;">
-          <span class="lbl">Photos in the boxes</span>
-          <select class="mini-select pillify" id="photoFitSelect">
-            <option value="fill" selected>Fill the box (trims edges)</option>
-            <option value="whole">Whole photo (nothing trimmed)</option>
-          </select>
-        </div>
+        <select id="photoFitSelect" hidden><option value="fill" selected>Fill the box</option></select>
         <div class="sub-group">
           <label class="toggle-row"><input type="checkbox" id="guestPickToggle"> Guests choose the layout</label>
           <div class="guest-layouts" id="guestLayouts" style="display:none;"></div>
@@ -1473,24 +1485,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
               <option value="1.5">1½s</option>
               <option value="2">2s</option>
               <option value="3">3s</option>
-              <option value="4">4s</option>
-              <option value="5" selected>5s</option>
+              <option value="4" selected>4s</option>
+              <option value="5">5s</option>
               <option value="6">6s</option>
             </select>
           </div>
           <label class="toggle-row" style="margin-top:10px;"><input type="checkbox" id="reviewEachToggle" checked> Show each photo in the pause</label>
-          <div class="opt-row">
-            <span class="lbl">Finished photo stays</span>
-            <select class="mini-select pillify" id="resultReviewSelect">
-              <option value="0" selected>Until tap</option>
-              <option value="10">10s</option>
-              <option value="15">15s</option>
-              <option value="20">20s</option>
-              <option value="30">30s</option>
-              <option value="45">45s</option>
-              <option value="60">60s</option>
-            </select>
-          </div>
+          <select id="resultReviewSelect" hidden><option value="0" selected>Until tap</option></select>
         </details>
       </div>
       <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="2">← Back</button><button type="button" class="action-btn primary next-btn" data-go="4">Next: Extras →</button></div>
@@ -1702,8 +1703,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
         <div class="ready-overlay" id="readyOverlay">
           <p class="ready-title">Get ready!</p>
-          <p class="ready-sub" id="readySub">4 shots · 5,4,3,2,1,Pose</p>
-          <div class="sc-filters ready-filters" id="readyFilters" aria-label="Pick a filter"></div>
+          <p class="ready-sub" id="readySub" hidden>4 shots · 5,4,3,2,1,Pose</p>
+          <div class="sc-filters ready-filters" id="readyFilters" aria-label="Pick a filter" hidden></div>
           <button class="shutter-btn" id="readyStartBtn"><span class="ring"></span>Start</button>
         </div>
         <div class="flash-overlay" id="flashOverlay"></div>
@@ -1722,6 +1723,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       </div>
 
       <div class="session-controls" id="sessionControls">
+        <div class="ready-below"><p class="ready-summary" id="readySummary"></p></div>
         <div class="sc-row">
           <button type="button" class="sc-btn sc-danger" id="cancelSessionBtn" hidden>&#10005; Cancel</button>
           <button type="button" class="sc-btn sc-strong" id="retakeBtn" hidden>&#8634; Retake</button>
@@ -1816,7 +1818,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <span>Mirror the live view</span>
           <input type="checkbox" id="mirrorToggle">
         </label>
-        <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos are never mirrored.</p>
+        <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos look the same as the preview (mirrored when this is on).</p>
       </div>
 
 
@@ -2424,7 +2426,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     framesheet: { name: 'Frame collage', kind: 'frame', get shots(){ return typeof sheetShots === 'function' ? sheetShots() : 1; },
                   hint: 'Two or more of your frames together on one 4R print. Tick them below, pick an arrangement, then drag them in the preview.' }
   };
-  const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'trio', 'feature', 'film6', 'land3', 'land4'];
+  const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'feature', 'film6', 'land3', 'land4'];
   // The built-in layouts, plus your frames once at least one is uploaded.
   function layoutOrder(){
     var has = typeof myFrames !== 'undefined' && myFrames && myFrames.length;
@@ -4572,20 +4574,28 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function applyStageAspect(){
     var cam = camAspect(), box = currentBoxAspect();
     var sf = document.getElementById('stageFrame');
+    var sa = photoFit === 'whole' ? cam : box;                 // whole photo: the camera's full picture
+    // Between guests (idle, welcome, layout picker) the preview is always the
+    // standard camera shape, never the last layout's box.
+    try{ if(state !== 'capturing') sa = cam; }catch(e){}
+    var showingStrip = false;
+    try{ showingStrip = (state === 'result' || !!(sess && sess.reviewing)) && previewCanvas.width > 0 && previewCanvas.style.display !== 'none'; }catch(e){}
+    if(showingStrip) sa = previewCanvas.width / previewCanvas.height;   // the finished strip fills the stage
     if(sf){
-      var a = (photoFit === 'whole' ? cam : box).toFixed(4);     // whole photo: the camera's full picture
+      var a = sa.toFixed(4);
       if(sf.style.aspectRatio !== a){ sf.style.aspectRatio = a; sf.style.setProperty('--cam-aspect', a); }
     }
     var ft = document.getElementById('filmTrack');
     if(ft) ft.style.setProperty('--box-aspect', box.toFixed(4));
-    layoutSessionStage(box);
+    layoutSessionStage(box, sa);
     var live = true;
     try{ live = state !== 'result' && !(sess && sess.reviewing); }catch(e){}
     placeGuide(document.getElementById('boxGuide'), cam, box, false);
     try{
       if(typeof G !== 'undefined' && G && G.d){
         var gf = G.d.getElementById('frame');
-        if(gf){ gf.style.aspectRatio = box.toFixed(4); gf.style.height = 'min(94vh, ' + (60 / box).toFixed(2) + 'vw)'; }
+        var ga = state === 'capturing' ? box : cam;   // standard camera shape between guests
+        if(gf){ gf.style.aspectRatio = ga.toFixed(4); gf.style.height = 'min(94vh, ' + (60 / ga).toFixed(2) + 'vw)'; }
         placeGuide(G.d.getElementById('guide'), cam, box, false);
         G.film.style.setProperty('--box-aspect', box.toFixed(4));
       }
@@ -4593,7 +4603,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   // While shooting (wide screens): live view on the left, the photos stacked
   // on the right, together exactly as tall as the live view.
-  function layoutSessionStage(box){
+  function layoutSessionStage(box, sa){
+    sa = sa || box;
     var sf = document.getElementById('stageFrame'), ft = document.getElementById('filmTrack');
     var shell = document.querySelector('.app-shell');
     if(!sf || !ft || !shell) return;
@@ -4605,13 +4616,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       sf.style.setProperty('--stage-h', (sf.getBoundingClientRect().height || 500) + 'px');
       return;
     }
-    var n = Math.max(1, frames.length), g = 10, gap = 16;
-    var W = shell.clientWidth - 4, Hmax = Math.max(260, window.innerHeight - 290);
-    // stage h*box + gap + film ((h - g(n-1))/n)*box <= W
-    var hFit = (W - gap + (g * (n - 1) / n) * box) / (box * (1 + 1 / n));
+    // Thumbnails are sized as if there were at least 3, so 1 or 2 photos
+    // don't turn into giant tiles next to a small live view.
+    var n = Math.max(5, frames.length), g = 10, gap = 16;
+    var top = document.body.classList.contains('shooting') ? 0 : 140;    // header hidden while shooting
+    var W = shell.clientWidth - 4, Hmax = Math.max(260, window.innerHeight - top - (shell.classList.contains('getting-ready') ? 250 : 120));
+    // stage h*sa + gap + film ((h - g(n-1))/n)*box <= W
+    var hFit = (W - gap + (g * (n - 1) / n) * box) / (sa + box / n);
     var h = Math.max(200, Math.min(Hmax, hFit));
     var fh = (h - g * (n - 1)) / n, fw = fh * box;
-    sf.style.width = Math.round(h * box) + 'px';
+    sf.style.width = Math.round(h * sa) + 'px';
     ft.style.width = Math.round(fw) + 'px';
     ft.style.gap = g + 'px';
     frames.forEach(function(f){ f.style.height = Math.floor(fh) + 'px'; f.style.width = Math.round(fw) + 'px'; });
@@ -4647,6 +4661,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
     // Center camera during capture
     appShell.classList.toggle('capturing', isCapturing);
+    document.body.classList.toggle('shooting', isCapturing || (typeof pickOpen !== 'undefined' && pickOpen));
     applyStageAspect();      // re-size now that the shooting layout is on/off
 
     video.style.display = state === 'result' ? 'none' : 'block';
@@ -4699,6 +4714,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       frame.classList.toggle('pickable', !!(sess && sess.reviewing && shot));
       frame.classList.toggle('picked', !!(sess && sess.reviewing && sess.pick === i));
       frame.dataset.i = i;
+      frame.style.display = shot ? '' : 'none';     // only taken photos show, one by one
       if (shot){
         let img = frame.querySelector('img');
         if(!img){ frame.textContent = ''; img = document.createElement('img'); frame.appendChild(img); }
@@ -4756,10 +4772,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     c.width = sw;
     c.height = sh;
     const ctx = c.getContext('2d');
-    // The CSS mirror on <video> is purely a display effect — it doesn't
-    // touch the underlying frame data, so drawImage() here already reads
-    // the true, non-mirrored feed. No extra flip needed: this is what
-    // makes any text on props come out reading correctly.
+    // The CSS mirror on <video> is display only, so flip here when Mirror is
+    // on: the saved / printed photo looks exactly like the live view.
+    if(mirrorPreview()){ ctx.translate(c.width, 0); ctx.scale(-1, 1); }
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
     applyFilterToCanvas(c);
     c._isShot = true;
@@ -4784,6 +4799,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       c.width = Math.round(sw * k); c.height = Math.round(sh * k);
       const ctx = c.getContext('2d');
       ctx.imageSmoothingQuality = 'high';
+      if(mirrorPreview()){ ctx.translate(c.width, 0); ctx.scale(-1, 1); }   // match the live view
       ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, c.width, c.height);
       bmp.close();
       applyFilterToCanvas(c);
@@ -4799,7 +4815,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // ---- Countdown settings (Setup → Layout & timer) ----
   let timerSec = 5;        // per shot, in ½-second steps
   let firstExtraSec = 0;   // added to the first shot only
-  let betweenSec = 5;      // pause after each shot (not after the last)
+  let betweenSec = 4;      // pause after each shot (not after the last)
   let advanceMode = 'auto'; // 'auto' = next photo after the pause; 'tap' = waits for a tap / clicker
   const timerChips = document.getElementById('timerChips');
   const timerVal = document.getElementById('timerVal');
@@ -4808,10 +4824,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function fmtSec(v){ return (v % 1 === 0 ? String(v) : v.toFixed(1)); }
   function updateReadySub(){
     if(!readySub) return;
-    var n = shotsNeeded(), parts = [n + (n === 1 ? ' photo' : ' photos') + ' \u00b7 ' + (typeof layoutDef === 'function' ? layoutDef().name : '')];
-    parts.push(fmtSec(timerSec) + ' s countdown each' + (firstExtraSec ? ' (+' + fmtSec(firstExtraSec) + ' s before the first)' : ''));
-    if(n > 1) parts.push(typeof advanceMode !== 'undefined' && advanceMode === 'tap' ? 'tap for each next photo' : Math.max(reviewEach ? 5 : 0, betweenSec) + ' s to check each photo');
-    parts.push('review & retake at the end');
+    var n = shotsNeeded(), parts = [n + (n === 1 ? ' photo' : ' photos')];
+    if(n > 1) parts.push(typeof advanceMode !== 'undefined' && advanceMode === 'tap' ? 'tap for each next photo' : fmtSec(betweenSec) + ' s between photos');
     readySub.textContent = parts.join(' \u00b7 ');
   }
   function setTimer(v){
@@ -4827,7 +4841,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   document.getElementById('timerMinus').addEventListener('click', () => setTimer(timerSec - 0.5));
   document.getElementById('timerPlus').addEventListener('click', () => setTimer(timerSec + 0.5));
   document.getElementById('firstExtraSelect').addEventListener('change', (e) => { firstExtraSec = Number(e.target.value) || 0; });
-  document.getElementById('betweenSelect').addEventListener('change', (e) => { betweenSec = Number(e.target.value) || 0; });
+  document.getElementById('betweenSelect').addEventListener('change', (e) => { betweenSec = Number(e.target.value) || 0; updateReadySub(); });
   document.getElementById('photoFitSelect').addEventListener('change', (e) => {
     photoFit = e.target.value === 'whole' ? 'whole' : 'fill';
     pickThumbs = { sig: '', urls: {} };
@@ -4837,7 +4851,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   });
   function refreshAdvanceUI(){ document.getElementById('betweenRow').style.display = advanceMode === 'tap' ? 'none' : ''; }
   document.getElementById('advanceSelect').addEventListener('change', (e) => {
-    advanceMode = e.target.value === 'tap' ? 'tap' : 'auto'; refreshAdvanceUI();
+    advanceMode = e.target.value === 'tap' ? 'tap' : 'auto'; refreshAdvanceUI(); updateReadySub();
     if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
   });
 
@@ -4910,8 +4924,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       retakeBtn.hidden = false;
       if(tapMode){ doneBtn.textContent = 'Next photo \u25B6'; doneBtn.hidden = false; }
       // Tap mode: waits for Next / Space / clicker / a tap on the guest screen.
-      // Auto: at least 5 s to look at the photo (and press Retake) before the next one.
-      await sessPause(tapMode ? 0 : Math.max(reviewEach ? 5 : 0, betweenSec) * 1000);   // at least 5 s to look / retake    // ends early on Retake, Next or Cancel
+      // Auto: at least 4 s to look at the photo (and press Retake) before the next one; Space / clicker skips ahead.
+      await sessPause(tapMode ? 0 : betweenSec * 1000);   // the pause set in Setup; Space skips    // ends early on Retake, Next or Cancel
       retakeBtn.hidden = true; doneBtn.hidden = true;
       countdownOverlay.classList.remove('pausing');
       hideShotReview();
@@ -4970,7 +4984,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       renderComposite();
       video.style.display = 'none'; previewCanvas.style.display = 'block';
       countdownOverlay.style.display = 'none'; recDot.style.display = 'none';
-      applyStageAspect();
+      setTimeout(applyStageAspect, 0);
       try{ guestCall('review', previewCanvas.toDataURL('image/jpeg', 0.85)); }catch(e){}
       retakeBtn.textContent = '\u21BA Retake photo ' + (sess.pick + 1);
       retakeBtn.hidden = false; doneBtn.hidden = false; reviewHint.hidden = shotCanvases.length < 2;
@@ -5007,6 +5021,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     flashOverlay.classList.remove('flash-active');
     countdownOverlay.classList.remove('pausing');
     readyOverlay.classList.remove('ready-active');
+    setGettingReady(false);
     retakeBtn.hidden = true; doneBtn.hidden = true; reviewHint.hidden = true;
     video.style.display = 'block'; previewCanvas.style.display = 'none';
     state = 'idle';
@@ -5020,13 +5035,27 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     showToast('Session cancelled \u2014 nothing was saved.');
   }
 
+  // "Get ready": the live view stays clear (only a soft title and Start on it);
+  // the summary and the filter choices sit under the frame.
+  function setGettingReady(on){
+    var shell = document.querySelector('.app-shell');
+    if(shell) shell.classList.toggle('getting-ready', !!on);
+    var sf = document.getElementById('stageFrame');
+    if(sf) sf.classList.toggle('is-ready', !!on);
+    var rs = document.getElementById('readySummary');
+    if(rs && readySub) rs.textContent = readySub.textContent;
+    if(on){ popNum('', true); cdShot.textContent = ''; }
+    if(typeof applyStageAspect === 'function') applyStageAspect();   // room for the summary + filters below
+  }
   function waitForReadyTap(){
     return new Promise((resolve) => {
       readyOverlay.classList.add('ready-active');
       updateReadySub();
+      setGettingReady(true);
       guestRender();
       const onClick = () => {
         readyOverlay.classList.remove('ready-active');
+        setGettingReady(false);
         readyStartBtn.removeEventListener('click', onClick);
         if(sess) sess.readyEnd = null;
         resolve();
@@ -5431,7 +5460,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   // "Whole photo": the entire shot fits inside the box (nothing trimmed); the
   // space around it is a soft, blurred copy of the same photo.
-  var photoFit = 'fill';
+  var photoFit = 'fill';   // photos always fill their box ("Whole photo" option removed)
   function drawImageWhole(ctx, img, x, y, w, h){
     var iw = img.width, ih = img.height;
     var t = document.createElement('canvas'), tw = 24, th = Math.max(1, Math.round(24 * h / w));
@@ -7224,7 +7253,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // answers "Get ready", or starts a new session from the Photo Session tab.
   function boothTrigger(fromGuest){
     if(sess && sess.reviewEnd){ sess.reviewEnd('done'); return; }
-    if(sess && sess.pauseEnd && advanceMode === 'tap'){ sess.pauseEnd(); return; }   // next photo
+    if(sess && sess.pauseEnd){ sess.pauseEnd(); return; }   // Space / clicker: next photo now (skips the wait)
     if(!startScreen.classList.contains('gone')) { leaveStartScreen(); return; }
     if(pickOpen){ if(!fromGuest) finishPick(pickKeys[pickIdx]); return; }   // guests tap a layout; clickers pick the highlighted one
     if(readyOverlay.classList.contains('ready-active')){ readyStartBtn.click(); return; }
@@ -7596,6 +7625,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       });
       markPick();
       pickOverlay.classList.add('on');
+      document.body.classList.add('shooting');
       refreshWelcome();
       guestRender();
     });
@@ -7609,6 +7639,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!pickOpen) return;
     pickOpen = false;
     pickOverlay.classList.remove('on');
+    if(state !== 'capturing') document.body.classList.remove('shooting');
     var r = pickResolve; pickResolve = null;
     guestRender();
     if(r) r(k);
@@ -7627,6 +7658,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{
       clearTimeout(resultTimer);
       welcomeOverlay.classList.remove('on');
+      if(state === 'result') resetForNextGuest();   // don't show the last guest's photos behind the picker
       var keys = guestChoiceKeys();
       var key = keys.length > 1 ? await pickLayout(keys) : setupLayout;
       if(key !== currentLayout) setLayout(key);
@@ -7708,10 +7740,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   function setSelectValue(id, val){
     var el = document.getElementById(id);
-    if(![...el.options].some(function(o){ return Number(o.value) === Number(val); })){
+    var same = function(o){ return o.value === String(val) || (typeof val === 'number' && Number(o.value) === val); };
+    if(![...el.options].some(same)){
+      if(typeof val !== 'number') return;
       var o = document.createElement('option'); o.value = String(val); o.textContent = val + ' s'; el.appendChild(o);
     }
-    [...el.options].forEach(function(o){ if(Number(o.value) === Number(val)) el.value = o.value; });
+    [...el.options].forEach(function(o){ if(same(o)) el.value = o.value; });
+    if(typeof pillSyncAll === 'function') try{ pillSyncAll(); }catch(e){}
   }
   function clearCustomPhoto(){
     backgroundImg = null; bgImageDataUrl = null;
@@ -7737,10 +7772,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(typeof s.timerSec === 'number') setTimer(s.timerSec);
       if(typeof s.firstExtraSec === 'number'){ firstExtraSec = s.firstExtraSec; setSelectValue('firstExtraSelect', s.firstExtraSec); }
       if(typeof s.betweenSec === 'number'){ betweenSec = s.betweenSec; setSelectValue('betweenSelect', s.betweenSec); }
-      if(s.photoFit === 'whole' || s.photoFit === 'fill'){ photoFit = s.photoFit; setSelectValue('photoFitSelect', s.photoFit); }
       if(s.advanceMode === 'tap' || s.advanceMode === 'auto'){ advanceMode = s.advanceMode; setSelectValue('advanceSelect', s.advanceMode); refreshAdvanceUI(); }
       if(typeof s.reviewEach === 'boolean'){ reviewEach = s.reviewEach; reviewEachToggle.checked = s.reviewEach; }
-      if(typeof s.resultReviewSec === 'number'){ resultReviewSec = s.resultReviewSec; setSelectValue('resultReviewSelect', s.resultReviewSec); }
       filterKey = Object.prototype.hasOwnProperty.call(FILTERS, s.filter) ? s.filter : 'none';
       markFilterChips();
       softSkin = !!s.softSkin; softSkinToggle.checked = softSkin;
@@ -7787,7 +7820,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       applyFramesSetup(s);
       buildLayoutPicker();
       ensureAssets(designAssetIds().concat(myProps)).then(function(){ refreshDecorUI(); refreshFrameUI(); redrawAll(); });
-      if(LAYOUT_DEFS[s.layout]) setupLayout = s.layout;
+      if(LAYOUT_DEFS[s.layout]) setupLayout = (s.layout === 'trio' ? 'strip' : s.layout);   // Trio was removed
       guestPickOn = !!s.guestPick; guestPickToggle.checked = guestPickOn;
       guestLayoutSet = Array.isArray(s.guestLayouts) ? s.guestLayouts.filter(function(k){ return LAYOUT_DEFS[k]; }) : [];
       if(state !== 'capturing') setLayout(setupLayout);

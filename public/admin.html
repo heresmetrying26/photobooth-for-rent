@@ -185,6 +185,8 @@
       <div class="meta" style="margin-bottom:0;">Each trial gets its own folder like "Prefix ABC123", so simultaneous trials never share photos.</div>
       <div class="printbox" id="trialPrint"></div>
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialTraditional"> Trials use the traditional booth (laptop + guest screen)</label></div>
+      <div class="modebox"><label class="toggle"><input type="checkbox" id="trialRetakeOpt"> Trials get the retake switch (“Allow retakes” in Setup)</label></div>
+      <div class="modebox"><label class="toggle"><input type="checkbox" id="trialLockOpt"> Trials get Lock booth (guest-only screen with a PIN)</label></div>
       <button class="primary" id="saveTrialBtn" style="margin-top:12px;">Save trial settings</button>
     </details>
 
@@ -435,6 +437,8 @@
     $('trialFolderPrefix').value = s.trialFolderPrefix;
     printPicker($('trialPrint'), { enabled: s.trialPrintEnabled, sizes: s.trialPrintSizes }, 'Allow printing during trials');
     $('trialTraditional').checked = !!s.trialTraditional;
+    $('trialRetakeOpt').checked = !!s.trialRetakeOpt;
+    $('trialLockOpt').checked = !!s.trialLockOpt;
     var qr = document.querySelector('input[name=qrTarget][value="' + (s.qrTarget === 'drive' ? 'drive' : 'gallery') + '"]'); if(qr) qr.checked = true;
   }
   function renderStats(st){
@@ -829,7 +833,7 @@
   $('saveTrialBtn').addEventListener('click', async function(){
     try{
       var tp = readPrint($('trialPrint'));
-      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes, trialTraditional: $('trialTraditional').checked });
+      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes, trialTraditional: $('trialTraditional').checked, trialRetakeOpt: $('trialRetakeOpt').checked, trialLockOpt: $('trialLockOpt').checked });
       toast('Trial settings saved');
     }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
   });

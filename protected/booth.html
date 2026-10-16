@@ -2108,13 +2108,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   dateToggle.addEventListener('click', () => setDateOn(!dateOn));
   document.getElementById('dateRemove').addEventListener('click', () => setDateOn(false));
-  dateRow.querySelector('.date-chip').addEventListener('click', (e) => {
-    if(e.target === dateInput) return;
-    e.preventDefault();
+  // Clicking the (invisible) date input on a computer only focuses it — Chrome
+  // opens the calendar from its own icon, which is hidden here — so the
+  // calendar is opened by hand on every click of the chip.
+  function openDatePicker(){
     try{
-      if(typeof dateInput.showPicker === 'function') dateInput.showPicker();
-      else { dateInput.focus(); dateInput.click(); }
-    }catch(err){ dateInput.focus(); dateInput.click(); }
+      if(typeof dateInput.showPicker === 'function'){ dateInput.showPicker(); return true; }
+    }catch(err){}
+    try{ dateInput.focus(); }catch(err){}
+    return false;
+  }
+  dateRow.querySelector('.date-chip').addEventListener('click', (e) => {
+    if(e.target !== dateInput) e.preventDefault();
+    openDatePicker();
   });
   dateInput.addEventListener('input', () => {
     if(!dateInput.value) dateInput.value = todayISO();

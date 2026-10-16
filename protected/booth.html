@@ -93,6 +93,8 @@
   .pm-close{position:absolute; top:10px; right:10px; z-index:2; width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:14px;}
   .print-fab{position:fixed; left:20px; bottom:20px; z-index:50; min-height:46px; padding:10px 20px; border-radius:999px; border:0; background:var(--blue-deep); color:#fff; font:800 14px 'Manrope',sans-serif; box-shadow:0 10px 26px rgba(160,50,30,.35); cursor:pointer;}
   .print-fab[hidden]{display:none;}
+  .print-fab.cam-fab{bottom:76px; background:#fff; color:var(--ink); border:1.5px solid var(--line); box-shadow:0 8px 20px rgba(70,45,25,.15); max-width:min(360px, 70vw); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .panel-section.flash-hl{box-shadow:0 0 0 3px var(--blue-deep); transition:box-shadow .3s;}
   .print-steps{list-style:none; margin:4px 0 14px; padding:12px 14px; background:var(--panel-2, #faf6f0); border:1px solid var(--line); border-radius:14px; display:flex; flex-direction:column; gap:8px;}
   .print-steps li{display:grid; grid-template-columns:24px 1fr; gap:10px; align-items:start; font-size:13.5px; line-height:1.45; color:var(--ink);}
   .print-steps li i{width:24px; height:24px; border-radius:50%; border:2px solid var(--line); display:flex; align-items:center; justify-content:center; font-style:normal; font-weight:800; font-size:12px; color:var(--ink-dim); background:#fff;}
@@ -1777,7 +1779,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
         <div class="camera-error" id="cameraError">
           <p id="cameraErrorText">We need access to your camera to start the booth.</p>
-          <button class="action-btn primary" id="retryCameraBtn" style="width:auto; padding:10px 20px;">Try Again</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+            <button class="action-btn primary" id="retryCameraBtn" style="width:auto; padding:10px 20px;">Try Again</button>
+            <button class="action-btn" id="chooseCameraBtn" type="button" style="width:auto; padding:10px 20px;">&#128247; Choose camera</button>
+          </div>
         </div>
       </div>
 
@@ -1884,7 +1889,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     <div id="printModalBody"></div>
   </div>
 </div>
+<div class="print-modal" id="camModal" hidden>
+  <div class="pm-card" role="dialog" aria-label="Camera">
+    <button type="button" class="pm-close" id="camModalClose" aria-label="Close">&#10005;</button>
+    <div id="camModalBody"></div>
+  </div>
+</div>
 <button type="button" class="print-fab" id="printFab" hidden>&#128424; Print settings</button>
+<button type="button" class="print-fab cam-fab" id="camFab" hidden>&#128247; Camera</button>
 <div class="toast" id="toast"></div>
 <div id="printArea"></div>
 <style id="printPageStyle"></style>
@@ -4174,6 +4186,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }
     // Say why the USB camera option is missing instead of silently hiding it.
     usbUnsupportedNote();
+    setTimeout(() => { try{ refreshCamFab(); }catch(e){} }, 0);
 
     refreshCameraMenu();
 
@@ -4588,6 +4601,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   });
 
   cameraSelect.addEventListener('change', () => {
+    setTimeout(() => { try{ refreshCamFab(); }catch(e){} }, 0);
     saveCamera();
     initCamera(cameraSelect.value);
   });
@@ -7035,17 +7049,51 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Print settings live in a pop-up (floating button) so the live view keeps the room.
   const printModal = document.getElementById('printModal'), printFab = document.getElementById('printFab');
   document.getElementById('printModalBody').appendChild(printSection);
-  function openPrintModal(){ printModal.hidden = false; checkHelper(true); }
+  function openPrintModal(){ try{ closeCamModal(); }catch(e){} printModal.hidden = false; checkHelper(true); }
   function closePrintModal(){ printModal.hidden = true; }
   printFab.addEventListener('click', openPrintModal);
   document.getElementById('printQuickBtn').addEventListener('click', (e) => { e.stopPropagation(); printCurrentPhoto(false); });
   document.getElementById('printModalClose').addEventListener('click', closePrintModal);
   printModal.addEventListener('click', (e) => { if(e.target === printModal) closePrintModal(); });
   document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !printModal.hidden){ e.stopPropagation(); closePrintModal(); } }, true);
+  // "Camera" shortcut in Photo Session: the camera menu lives in Setup → 5.
+  const camFab = document.getElementById('camFab');
+  // The Camera card lives in Setup → 5; in Photo Session it opens in a pop-up
+  // (moved in while open, put back on close), like Print settings.
+  const camModal = document.getElementById('camModal'), camModalBody = document.getElementById('camModalBody');
+  const camHome = document.createComment('camera-section-home');
+  cameraSection.parentNode.insertBefore(camHome, cameraSection);
+  function openCamModal(){
+    closePrintModal();
+    camModalBody.appendChild(cameraSection);
+    cameraSection.classList.remove('hidden');
+    camModal.hidden = false;
+  }
+  function closeCamModal(){
+    if(camModal.hidden) return;
+    camModal.hidden = true;
+    camHome.parentNode.insertBefore(cameraSection, camHome.nextSibling);
+    try{ refreshCamFab(); }catch(e){}
+  }
+  camFab.addEventListener('click', openCamModal);
+  document.getElementById('chooseCameraBtn').addEventListener('click', (e) => { e.stopPropagation(); if(document.body.classList.contains('in-session')) openCamModal(); else { switchTab('setup'); if(typeof goStep === 'function') goStep(5); } });
+  document.getElementById('camModalClose').addEventListener('click', closeCamModal);
+  camModal.addEventListener('click', (e) => { if(e.target === camModal) closeCamModal(); });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !camModal.hidden){ e.stopPropagation(); closeCamModal(); } }, true);
+  function refreshCamFab(){
+    const free = document.body.classList.contains('in-session') && state !== 'capturing' && !(typeof pickOpen !== 'undefined' && pickOpen);
+    camFab.hidden = !free;
+    if(!free) closeCamModal();
+    const opt = cameraSelect.options[cameraSelect.selectedIndex];
+    camFab.textContent = '\u{1F4F7} ' + (opt && opt.textContent ? 'Camera: ' + opt.textContent : 'Choose camera');
+    camFab.style.bottom = printFab.hidden ? '20px' : '';
+  }
   function refreshPrintFab(){
+    try{ refreshCamFab(); }catch(e){}
     const show = !printSection.classList.contains('hidden') && document.body.classList.contains('in-session') && state !== 'capturing' && !(typeof pickOpen !== 'undefined' && pickOpen);
     printFab.hidden = !show;
     printFab.innerHTML = '&#128424; Print settings';
+    camFab.style.bottom = printFab.hidden ? '20px' : '';
     const pq = document.getElementById('printQuickBtn');
     if(pq) pq.hidden = !(state === 'result' && !printSection.classList.contains('hidden'));
     if(!show && state === 'capturing') closePrintModal();

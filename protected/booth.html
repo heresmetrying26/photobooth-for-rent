@@ -81,6 +81,21 @@
   .app-shell.has-qr{
     grid-template-columns:1.15fr 0.85fr;
   }
+  body.in-session .app-shell:not(.capturing){grid-template-columns:minmax(0, 1fr) 360px; max-width:min(1400px, 96vw);}
+  body.in-session .app-shell.solo:not(.capturing){grid-template-columns:minmax(0, 1fr);}
+  body.in-session .app-shell.solo .panel{display:none;}
+  body.in-session:not(.shooting){padding-top:26px;}
+  .print-modal{position:fixed; inset:0; z-index:60; background:rgba(20,16,22,.45); display:flex; align-items:center; justify-content:center; padding:16px;}
+  .print-modal[hidden]{display:none;}
+  .pm-card{position:relative; width:min(520px, 100%); max-height:calc(100vh - 32px); overflow:auto; background:var(--white, #fff); border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.25);}
+  .pm-card .panel-section{margin:0; border:0; box-shadow:none;}
+  .pm-card #printSection.hidden{display:block;}
+  .pm-close{position:absolute; top:10px; right:10px; z-index:2; width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:14px;}
+  .print-fab{position:fixed; right:20px; bottom:20px; z-index:50; min-height:46px; padding:10px 20px; border-radius:999px; border:0; background:var(--blue-deep); color:#fff; font:800 14px 'Manrope',sans-serif; box-shadow:0 10px 26px rgba(160,50,30,.35); cursor:pointer;}
+  .print-fab[hidden]{display:none;}
+  select.printer-input{width:100%; min-height:42px; padding:8px 12px; border-radius:12px; border:1.5px solid var(--line); background:#fff; font:600 14px 'Manrope',sans-serif; color:var(--ink);}
+  select.printer-input:disabled{color:var(--ink-dim); background:#f5f1ec;}
+  @media (max-width:860px){ body.in-session .app-shell:not(.capturing){grid-template-columns:1fr;} }
   .app-shell.capturing{
     grid-template-columns:1fr;
     max-width:560px;
@@ -1808,14 +1823,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <input type="checkbox" id="keychainToggle">
         </label>
         <div class="printer-pick" id="printerPick">
-          <label class="sub-label" for="printerNameInput" style="display:block; margin:2px 0 4px;">Printer for <span id="printerPickSize">this size</span></label>
-          <input type="text" id="printerNameInput" class="printer-input" list="printerList" placeholder="e.g. HiTi P525L 2x6" autocomplete="off" maxlength="120">
-          <datalist id="printerList"></datalist>
-          <label class="switch-row" style="margin:8px 0 2px;">
+          <label class="switch-row" style="margin:6px 0 2px;">
             <span>Print Helper on this computer (no dialog)</span>
             <input type="checkbox" id="helperToggle">
           </label>
-          <p class="panel-hint" id="printerHelperHint" style="margin:2px 0 10px;"></p>
+          <label class="sub-label" for="printerSelect" style="display:block; margin:8px 0 4px;">Printer for <span id="printerPickSize">this size</span></label>
+          <select id="printerSelect" class="printer-input"></select>
+          <input type="text" id="printerNameInput" hidden>
+          <datalist id="printerList"></datalist>
+          <p class="panel-hint" id="printerHelperHint" style="margin:4px 0 10px;"></p>
         </div>
         <button class="action-btn primary" id="printBtn">&#128424; Print</button>
         <p class="panel-hint" id="printHint"></p>
@@ -1840,6 +1856,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   </div>
 </div>
 
+<div class="print-modal" id="printModal" hidden>
+  <div class="pm-card" role="dialog" aria-label="Print settings">
+    <button type="button" class="pm-close" id="printModalClose" aria-label="Close">&#10005;</button>
+    <div id="printModalBody"></div>
+  </div>
+</div>
+<button type="button" class="print-fab" id="printFab" hidden>&#128424; Print settings</button>
 <div class="toast" id="toast"></div>
 <div id="printArea"></div>
 <style id="printPageStyle"></style>
@@ -1924,6 +1947,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     document.body.classList.toggle('in-session', toSession);   // smaller header: the camera gets the room
     window.scrollTo(0, 0);
     if(toSession && typeof applyStageAspect === 'function') requestAnimationFrame(function(){ applyStageAspect(); });
+    try{ refreshPrintFab(); refreshPanelSolo(); }catch(e){}
   }
   tabBtnSetup.addEventListener('click', () => switchTab('setup'));
   tabBtnSession.addEventListener('click', () => switchTab('session'));
@@ -4669,6 +4693,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     frames.forEach(function(f){ f.style.height = Math.floor(fh) + 'px'; f.style.width = fw + 'px'; });
     sf.style.setProperty('--stage-h', Math.round(h) + 'px');
   }
+  function refreshPanelSolo(){
+    var shell = document.querySelector('.app-shell'), p = shell && shell.querySelector('.panel');
+    if(!p) return;
+    var was = shell.classList.contains('solo');
+    shell.classList.remove('solo');
+    var any = [].some.call(p.children, function(sec){ return !sec.classList.contains('hidden') && sec.getBoundingClientRect().height > 44; });
+    shell.classList.toggle('solo', !any);
+    if(was !== !any) requestAnimationFrame(function(){ applyStageAspect(); });
+  }
   // Re-fit when the buttons under the live view change (Retake / Done / hints).
   try{
     var stageRO = new ResizeObserver(function(){ requestAnimationFrame(function(){ applyStageAspect(); }); });
@@ -4705,6 +4738,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // Center camera during capture
     appShell.classList.toggle('capturing', isCapturing);
     appShell.classList.toggle('result', state === 'result');
+    try{ refreshPanelSolo(); }catch(e){}
     document.body.classList.toggle('shooting', isCapturing || (typeof pickOpen !== 'undefined' && pickOpen));
     applyStageAspect();      // re-size now that the shooting layout is on/off
 
@@ -6711,20 +6745,48 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }
     printerList.innerHTML = '';
     helper.printers.forEach(n => { const o = document.createElement('option'); o.value = n; printerList.appendChild(o); });
+    fillPrinterSelect();
     refreshPrinterHint();
     return helper;
   }
+  // The printers come from the Print Helper, so they're picked, not typed.
+  const printerSelect = document.getElementById('printerSelect');
+  function fillPrinterSelect(){
+    if(!printerSelect) return;
+    const cur = printSize ? (printerMap[printerKey(printSize)] || '') : '';
+    const live = helperOn && helper.ok;
+    printerSelect.innerHTML = '';
+    const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; printerSelect.appendChild(o); return o; };
+    if(!helperOn) add('', 'Turn on the Print Helper to choose a printer');
+    else if(!helper.ok) add('', helper.checked ? 'Print Helper not found' : 'Looking for the Print Helper\u2026');
+    else {
+      add('', '\u2014 Choose a printer \u2014');
+      helper.printers.forEach(n => add(n, n));
+      if(cur && !helper.printers.includes(cur)) add(cur, cur + ' (not found)');
+    }
+    if(!live && cur) add(cur, cur);
+    printerSelect.value = cur && [...printerSelect.options].some(o => o.value === cur) ? cur : '';
+    printerSelect.disabled = !live;
+  }
+  if(printerSelect) printerSelect.addEventListener('change', () => {
+    if(!printSize) return;
+    const v = printerSelect.value, k = printerKey(printSize);
+    if(v) printerMap[k] = v; else delete printerMap[k];
+    printerNameInput.value = v;
+    savePrinterMap();
+    refreshPrinterHint();
+  });
   function refreshPrinterHint(){
     const name = printerFor(printSize);
     if(printSize) printerPickSize.textContent = paperFor(printSize).name + (printerKey(printSize) !== printSize ? ' \u00b7 strip layouts (2 strips, cut)' : '');
     if(helperOn && helper.ok){
-      if(!name) printerHelperHint.textContent = 'Print Helper connected. Pick the printer for this paper size.';
+      if(!name) printerHelperHint.textContent = 'Print Helper connected. Choose the printer for this paper size.';
       else if(helper.printers.length && !helper.printers.includes(name)) printerHelperHint.textContent = 'No printer on this computer is called “' + name + '”. Pick one from the list.';
       else printerHelperHint.textContent = 'Prints go straight to “' + name + '” — no dialog.';
     } else if(helperOn && helper.checked){
-      printerHelperHint.innerHTML = 'Print Helper not found. Open the photobooth4u Print Helper on this computer (and allow access if Chrome asks). Until then the print dialog opens. <a href="/downloads/" target="_blank" rel="noopener">Download it</a>';
+      printerHelperHint.innerHTML = 'Print Helper not found. Open the photobooth4u Print Helper on this computer (and allow access if Chrome asks). Until then the print dialog opens. <a href="/downloads/" target="_blank" rel="noopener">Download it</a> · <a href="/how-to-print-hiti/" target="_blank" rel="noopener">HiTi guide</a>';
     } else {
-      printerHelperHint.textContent = name ? 'In the print dialog, pick “' + name + '”.' : 'Optional: name the printer this paper size uses.';
+      printerHelperHint.innerHTML = name ? 'In the print dialog, pick “' + name + '”.' : 'Without the helper, prints go through Chrome’s print dialog. To pick a printer for each size, open the Print Helper and switch it on. <a href="/downloads/" target="_blank" rel="noopener">Download it</a>';
     }
   }
   printerNameInput.addEventListener('input', () => {
@@ -6738,6 +6800,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     helperOn = helperToggle.checked;
     try{ localStorage.setItem(HELPER_KEY, helperOn ? '1' : '0'); }catch(e){}
     helper = { ok: false, printers: [], checked: 0 };
+    fillPrinterSelect();
     checkHelper(true);
   });
   // Sends the pages to the Print Helper. Returns true if it printed.
@@ -6839,10 +6902,26 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const p = paperFor(key);
     return isStripLayout() && p.w / p.h >= 0.5;
   }
+  // Print settings live in a pop-up (floating button) so the live view keeps the room.
+  const printModal = document.getElementById('printModal'), printFab = document.getElementById('printFab');
+  document.getElementById('printModalBody').appendChild(printSection);
+  function openPrintModal(){ printModal.hidden = false; checkHelper(true); }
+  function closePrintModal(){ printModal.hidden = true; }
+  printFab.addEventListener('click', openPrintModal);
+  document.getElementById('printModalClose').addEventListener('click', closePrintModal);
+  printModal.addEventListener('click', (e) => { if(e.target === printModal) closePrintModal(); });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !printModal.hidden){ e.stopPropagation(); closePrintModal(); } }, true);
+  function refreshPrintFab(){
+    const show = !printSection.classList.contains('hidden') && document.body.classList.contains('in-session') && state !== 'capturing' && !(typeof pickOpen !== 'undefined' && pickOpen);
+    printFab.hidden = !show;
+    printFab.innerHTML = state === 'result' ? '&#128424; Print' : '&#128424; Print settings';
+    if(!show && state === 'capturing') closePrintModal();
+  }
   function refreshPrintUI(){
     updateAutoPrintUI();
     const sizes = printSettings();
     printSection.classList.toggle('hidden', !sizes);
+    try{ refreshPrintFab(); }catch(e){}
     if(!sizes){ printSize = null; return; }
     const kcOffer = keychainFrames().length > 0 && sizes.some(k => paperFor(k).w / paperFor(k).h >= 0.45 && keychainFit(k));
     keychainRow.classList.toggle('hidden', !kcOffer);
@@ -6880,6 +6959,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       printHint.textContent = 'Prints at ' + paperFor(printSize).name + ' size.';
     }
     if(printSize && document.activeElement !== printerNameInput) printerNameInput.value = printerMap[printerKey(printSize)] || '';
+    fillPrinterSelect();
     document.getElementById('printerPick').style.display = printSize ? '' : 'none';
     refreshPrinterHint();
     if(helperOn) checkHelper(false);
@@ -7077,12 +7157,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     '.sub{font-weight:700;letter-spacing:.24em;text-transform:uppercase;font-size:clamp(10px,.85vw,15px);color:var(--red);margin:1.4vh 0 0;}' +
     '.frame{position:relative;height:94vh;aspect-ratio:4/5;border-radius:18px;overflow:hidden;background:#141216;box-shadow:0 20px 50px rgba(60,40,20,.22);}' +
     '.frame video,.frame img.res{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}.frame img.res{object-fit:contain;background:var(--bg);display:none;}' +
-    '.cd{position:absolute;inset:0;display:none;align-items:center;justify-content:center;}' +
-    '.cdw{position:relative;width:46%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;}' +
+    '.cd{position:absolute;top:2.5%;right:2%;display:none;align-items:center;justify-content:center;z-index:4;}' +
+    '.cdw{position:relative;width:min(18vh,11vw);aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;}' +
     '.cdw svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);}' +
     '.cdw .trk{fill:rgba(20,18,22,.5);stroke:rgba(255,255,255,.25);stroke-width:4;}.cdw .bar{fill:none;stroke:var(--red);stroke-width:4;stroke-linecap:round;}' +
-    '.num{position:relative;color:#fff;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:min(16vh,9vw);line-height:1;text-shadow:0 0 30px rgba(0,0,0,.4);}' +
-    '.num.word{font-size:min(7vh,4vw);letter-spacing:.04em;text-transform:uppercase;}' +
+    '.num{position:relative;color:#fff;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:min(8vh,5vw);line-height:1;text-shadow:0 0 20px rgba(0,0,0,.4);}' +
+    '.num.word{font-size:min(3vh,1.8vw);letter-spacing:.04em;text-transform:uppercase;}' +
     '.cd.pausing .cdw{display:none;}' +
     '.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity 120ms ease-out;}.flash.on{opacity:.92;transition:opacity 20ms;}' +
     '.film{display:flex;flex-direction:column;gap:1.2vh;align-items:center;}' +
@@ -7180,6 +7260,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         G.v.style.transform = mirrorPreview() ? 'scaleX(-1)' : 'scaleX(1)';
         G.v.style.filter = liveFilterCss();
       } else if(what === 'review'){
+        G.cd.style.display = 'none';
         G.res.src = a; G.res.style.display = 'block'; G.v.style.display = 'none';
       } else if(what === 'reviewEnd'){
         G.res.style.display = 'none'; G.v.style.display = 'block';
@@ -7192,6 +7273,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         G.chip.textContent = d || 'Smile!';
       } else if(what === 'flash'){
         G.flash.classList.add('on');
+        G.cd.style.display = 'none';   // no "Pose" circle over the photo after the shot
         setTimeout(() => G && G.flash.classList.remove('on'), 180);
       } else if(what === 'shots'){
         guestFilm();
@@ -7672,6 +7754,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       markPick();
       pickOverlay.classList.add('on');
       document.body.classList.add('shooting');
+      try{ refreshPrintFab(); }catch(e){}
       refreshWelcome();
       guestRender();
     });
@@ -7686,6 +7769,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     pickOpen = false;
     pickOverlay.classList.remove('on');
     if(state !== 'capturing') document.body.classList.remove('shooting');
+    try{ refreshPrintFab(); }catch(e){}
     var r = pickResolve; pickResolve = null;
     guestRender();
     if(r) r(k);

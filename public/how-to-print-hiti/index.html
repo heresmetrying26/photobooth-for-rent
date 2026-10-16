@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>How to print on the HiTi · photobooth4u</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500..700;1,500..700&family=Manrope:wght@400..800&display=swap">
+<style>
+  :root{ --bg:#f6f1ea; --card:#fffdf9; --ink:#1f1a1d; --dim:#5d555b; --line:#e4ddd3; --red:#c8402a; --red-soft:#fbeee9; --dark:#1f1a1d; }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;}
+  a{color:var(--red);}
+  .wrap{max-width:860px; margin:0 auto; padding:0 16px;}
+  header.hero{background:var(--dark); color:#f6f1ea; padding:44px 0 40px;}
+  .brand{display:flex; align-items:center; gap:10px; font:600 22px 'Fraunces',Georgia,serif; color:#f6f1ea; text-decoration:none;}
+  .brand .mark{display:grid; grid-template-columns:repeat(2,9px); gap:3px;}
+  .brand .mark i{width:9px; height:9px; border-radius:2px; background:#f6f1ea;} .brand .mark i:nth-child(2){background:var(--red);}
+  .brand .badge{background:var(--red); color:#fff; font:800 12px 'Manrope',sans-serif; padding:2px 6px; border-radius:6px; transform:translateY(-6px);}
+  .eyebrow{font-size:13px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:#e8715a; margin:28px 0 8px;}
+  h1{font:600 clamp(36px,7vw,60px)/1.05 'Fraunces',Georgia,serif; margin:0 0 14px;}
+  h1 em{color:#e8715a;}
+  .lead{color:#d9cfc6; font-size:18px; max-width:620px; margin:0 0 22px;}
+  .hero-btns{display:flex; flex-wrap:wrap; gap:10px;}
+  .btn{display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:10px 18px; border-radius:999px; font-weight:800; font-size:15px; text-decoration:none;}
+  .btn.primary{background:var(--red); color:#fff;} .btn.ghost{border:1.5px solid #5a5056; color:#f6f1ea;}
+  nav.toc{display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:-22px 0 8px; position:relative;}
+  nav.toc a{display:block; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; text-decoration:none; color:var(--ink); box-shadow:0 8px 20px rgba(70,45,25,.08);}
+  nav.toc b{display:block; color:var(--red); font-size:12px; letter-spacing:.14em; text-transform:uppercase;} nav.toc span{font-weight:700; font-size:15px;}
+  section.part{padding:34px 0 6px; scroll-margin-top:12px;}
+  section.part h2{font:600 clamp(26px,4.5vw,34px)/1.15 'Fraunces',Georgia,serif; margin:0 0 6px;}
+  .part .kicker{font-size:12px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:var(--red); margin:0 0 4px;}
+  .part .why{color:var(--dim); margin:0 0 14px;}
+  ol.steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
+  ol.steps li{display:grid; grid-template-columns:40px 1fr; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  ol.steps .n{width:40px; height:40px; border-radius:50%; background:var(--red); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center;}
+  ol.steps h3{margin:6px 0 2px; font-size:17px;}
+  ol.steps p{margin:0; color:var(--dim);}
+  code, .kbd{font:600 14px ui-monospace,'SF Mono',Menlo,Consolas,monospace; background:#efe7dd; border-radius:6px; padding:1px 6px; color:var(--ink); white-space:nowrap;}
+  .codeblock{display:flex; align-items:center; gap:10px; background:var(--dark); color:#f6f1ea; border-radius:12px; padding:12px 14px; margin:8px 0 0; font:600 14px ui-monospace,Menlo,Consolas,monospace; overflow-x:auto;}
+  .codeblock span{flex:1; white-space:nowrap;}
+  .copy{flex:none; border:1px solid #5a5056; background:transparent; color:#f6f1ea; border-radius:999px; padding:4px 12px; font:700 12px 'Manrope',sans-serif; cursor:pointer;}
+  .term{background:var(--dark); color:#d9cfc6; border-radius:14px; padding:16px 18px; font:14px/1.7 ui-monospace,Menlo,Consolas,monospace; margin-top:12px;}
+  .term .hl{color:#e8715a;} .term .w{color:#f6f1ea;}
+  .sheet{display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-top:12px;}
+  .sheet .paper{display:flex; gap:6px; width:150px; height:100px; flex:none;}
+  .sheet .paper i{flex:1; background:#e9ded3; border-radius:6px;}
+  .sheet .paper b{width:3px; background:repeating-linear-gradient(180deg,var(--red) 0 7px,transparent 7px 12px);}
+  .sheet p{margin:0; color:var(--dim);}
+  table{width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; font-size:15px;}
+  th, td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); background:#f3ece3;}
+  tr:last-child td{border-bottom:0;}
+  td:first-child{font-weight:700; width:38%;}
+  .callout{background:var(--red-soft); border:1px solid #f1cfc5; border-radius:16px; padding:16px 18px; margin-top:14px;}
+  .callout h3{margin:0 0 4px; font-size:17px;} .callout p{margin:0; color:var(--dim);}
+  .check{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px;}
+  .check div{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  .check b{display:block; font:600 30px 'Fraunces',Georgia,serif; color:var(--red); line-height:1;}
+  .check h3{margin:8px 0 2px; font-size:17px;} .check p{margin:0; color:var(--dim);}
+  footer{margin:40px 0 0; padding:26px 0 40px; border-top:1px solid var(--line); color:var(--dim); font-size:14px;}
+  footer .help{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; background:var(--dark); color:#f6f1ea; border-radius:16px; padding:18px 20px; margin-bottom:16px;}
+  footer .help h3{margin:0; font:600 20px 'Fraunces',Georgia,serif;} footer .help p{margin:2px 0 0; color:#d9cfc6;}
+  td code{white-space:normal; word-break:break-all;}
+  @media (max-width:760px){ nav.toc{grid-template-columns:1fr 1fr;} }
+  @media (max-width:560px){ ol.steps li{grid-template-columns:32px 1fr; padding:14px;} ol.steps .n{width:32px; height:32px; font-size:14px;} td:first-child{width:auto;} }
+  @media print{ header.hero{background:none; color:var(--ink);} .lead{color:var(--dim);} .hero-btns, nav.toc, .copy{display:none;} section.part{break-inside:avoid;} }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <a class="brand" href="/"><span class="mark"><i></i><i></i><i></i><i></i></span>photobooth<span class="badge">4u</span></a>
+    <p class="eyebrow">Printing guide · Mac</p>
+    <h1>How to print<br>on the <em>HiTi</em></h1>
+    <p class="lead">Set up once, about 20 minutes. After that every session prints by itself: 4×6 photos on one setting, and 2×6 strips cut in two on the other. Do the test in Part 5 before the event.</p>
+    <div class="hero-btns">
+      <a class="btn primary" href="/lifetime/photobooth4u-hiti-printing-guide.pdf" download>&#8681; Download the PDF</a>
+      <a class="btn ghost" href="/downloads/">Get the Print Helper</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="toc" aria-label="Parts">
+    <a href="#install"><b>Part 1</b><span>Install the HiTi</span></a>
+    <a href="#strips"><b>Part 2</b><span>Add it again for strips</span></a>
+    <a href="#helper"><b>Part 3</b><span>Open the Print Helper</span></a>
+    <a href="#booth"><b>Part 4</b><span>Choose the printers</span></a>
+    <a href="#test"><b>Part 5</b><span>Test &amp; Auto-print</span></a>
+  </nav>
+
+  <section class="part" id="install">
+    <p class="kicker">Part 1 · Once</p>
+    <h2>Install the HiTi on the Mac</h2>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Install the driver</h3><p>Download the <b>macOS driver for your HiTi model</b> from HiTi’s website, install it, then restart the Mac.</p></div></li>
+      <li><span class="n">2</span><div><h3>Connect it</h3><p>Turn the HiTi on, load the ribbon and paper, and plug its USB cable into the Mac.</p></div></li>
+      <li><span class="n">3</span><div><h3>Add it to the Mac</h3><p><b>System Settings → Printers &amp; Scanners → Add Printer</b>. Select the HiTi and check that <b>Use</b> shows the HiTi driver, not “Generic”. Name it <code>HiTi 4x6</code> → <b>Add</b>.</p></div></li>
+      <li><span class="n">4</span><div><h3>Test it</h3><p>Print any photo from the <b>Preview</b> app at <b>6×4, borderless</b> to check the printer works.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="part" id="strips">
+    <p class="kicker">Part 2 · Only if you print strips</p>
+    <h2>Add the same HiTi a second time</h2>
+    <div class="sheet"><div class="paper" aria-hidden="true"><i></i><b></b><i></i></div><p>The booth puts <b>two 2×6 strips side by side</b> on one 4×6 sheet, and the HiTi cuts the sheet in half. So the Mac needs a second copy of the printer with the cut switched on.</p></div>
+    <ol class="steps" style="margin-top:10px">
+      <li><span class="n">1</span><div><h3>Add it again</h3><p><b>Add Printer</b> again, choose the same HiTi, name it <code>HiTi 2x6 cut</code> → <b>Add</b>. Now you have two printers that are really one machine.</p></div></li>
+      <li><span class="n">2</span><div><h3>Open the printer settings page</h3><p>Open <b>Terminal</b> and run this, then open <b>localhost:631/printers</b> in Chrome. If it asks for a username and password, use your Mac’s login.</p>
+        <div class="codeblock"><span>cupsctl WebInterface=yes</span><button class="copy" type="button">Copy</button></div></div></li>
+      <li><span class="n">3</span><div><h3>Set each printer’s paper</h3><p>Click <b>HiTi 4x6</b> → <b>Administration</b> → <b>Set Default Options</b>: Media Size <b>6x4</b>, borderless if listed → save.<br>Click <b>HiTi 2x6 cut</b> → <b>Set Default Options</b>: the <b>2-inch cut</b> paper option (named like “6x4 (2x6 ×2)” or “6x4 Split”, depending on the model) → save.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="part" id="helper">
+    <p class="kicker">Part 3 · Every event</p>
+    <h2>Open the Print Helper</h2>
+    <p class="why">The small app that lets the booth print straight to the right printer, with no pop-up.</p>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Download it once</h3><p>From <a href="/downloads/">photobooth4u.netlify.app/downloads/</a>: Mac · Apple Silicon or Intel. Unzip it.</p></div></li>
+      <li><span class="n">2</span><div><h3>Open it</h3><p>The first time, <b>right-click → Open</b>. If macOS blocks it: <b>System Settings → Privacy &amp; Security → Open Anyway</b>.</p></div></li>
+      <li><span class="n">3</span><div><h3>Keep its window open</h3><p>A Terminal window opens and lists your printers. Leave it open during the whole event; closing it stops printing.</p></div></li>
+    </ol>
+    <div class="term" aria-label="Example of the Print Helper window">photobooth4u Print Helper 1.0.0<br>Running. Keep this window open while the booth is printing.<br><span class="hl">Printers on this computer:</span><br><span class="w">&nbsp;- HiTi_4x6<br>&nbsp;- HiTi_2x6_cut</span></div>
+  </section>
+
+  <section class="part" id="booth">
+    <p class="kicker">Part 4 · In the booth</p>
+    <h2>Choose the printers</h2>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Open Print settings</h3><p>In <b>Photo Session</b>, tap <b>&#128424; Print settings</b> at the bottom right.</p></div></li>
+      <li><span class="n">2</span><div><h3>Turn on the Print Helper</h3><p>Switch on <b>Print Helper on this computer</b>. If Chrome asks to access devices on your network, click <b>Allow</b>.</p></div></li>
+      <li><span class="n">3</span><div><h3>Pick a printer for each size</h3><p>Tap a paper size, then choose its printer from the list. The booth remembers it on this Mac.</p></div></li>
+    </ol>
+    <table style="margin-top:12px">
+      <tr><th>Paper size</th><th>Choose</th></tr>
+      <tr><td>4R (4×6)</td><td><code>HiTi_4x6</code></td></tr>
+      <tr><td>4R · strip layouts (2 strips, cut)</td><td><code>HiTi_2x6_cut</code></td></tr>
+    </table>
+  </section>
+
+  <section class="part" id="test">
+    <p class="kicker">Part 5 · Before the event</p>
+    <h2>Test both, then Auto-print</h2>
+    <div class="check">
+      <div><b>1</b><h3>A 4R layout</h3><p>Take a session → <b>Print</b>. Expect a full 4×6 with no white border.</p></div>
+      <div><b>2</b><h3>A strip layout</h3><p>Take a session → <b>Print</b>. Expect two 2×6 strips, already cut.</p></div>
+      <div><b>3</b><h3>Auto-print on</h3><p>Both right? Tick <b>Auto-print every session</b>. Every session now prints by itself.</p></div>
+    </div>
+  </section>
+
+  <section class="part" id="fixes">
+    <p class="kicker">If something’s wrong</p>
+    <h2>Quick fixes</h2>
+    <table>
+      <tr><th>Problem</th><th>Fix</th></tr>
+      <tr><td>“Print Helper not found”</td><td>Open the Print Helper and keep its window open. Click <b>Allow</b> if Chrome asks.</td></tr>
+      <tr><td>HiTi isn’t in the printer list</td><td>Check it’s on and plugged in, then close and reopen the Print Helper.</td></tr>
+      <tr><td>Strips print but aren’t cut</td><td>The cut option isn’t saved as the default for <b>HiTi 2x6 cut</b>. Redo Part 2, step 3.</td></tr>
+      <tr><td>White border or wrong size</td><td>Fix the paper size and borderless setting in that printer’s <b>Set Default Options</b> (Part 2).</td></tr>
+      <tr><td>Printer shows “Paused”</td><td><b>System Settings → Printers &amp; Scanners</b> → the HiTi → <b>Resume</b>. Check the ribbon and paper.</td></tr>
+      <tr><td>No cut option in the list</td><td>Run <code>lpoptions -p HiTi_2x6_cut -l</code> in Terminal and send us the result. We’ll reply with the one line that sets it.</td></tr>
+    </table>
+    <div class="callout">
+      <h3>Only printing 4×6? The simple way</h3>
+      <p>Skip Parts 2 and 3. Make the HiTi the Mac’s <b>default printer</b>, do one normal print, then start Chrome with this command in Terminal so prints go out with no pop-up:</p>
+      <div class="codeblock"><span>open -a "Google Chrome" --args --kiosk-printing https://photobooth4u.netlify.app/</span><button class="copy" type="button">Copy</button></div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="help"><div><h3>Need help? Message us.</h3><p>Facebook Messenger: m.me/roktetnachi</p></div><a class="btn primary" href="https://m.me/roktetnachi" target="_blank" rel="noopener">Message us</a></div>
+    photobooth4u · How to print on the HiTi
+  </footer>
+</main>
+<script>
+  document.querySelectorAll('.copy').forEach(function(b){
+    b.addEventListener('click', function(){
+      var t = b.previousElementSibling.textContent;
+      try{ navigator.clipboard.writeText(t).then(function(){ b.textContent = 'Copied'; setTimeout(function(){ b.textContent = 'Copy'; }, 1500); }); }catch(e){}
+    });
+  });
+</script>
+</body>
+</html>

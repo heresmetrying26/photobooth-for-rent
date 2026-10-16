@@ -264,6 +264,8 @@ export async function getSettings() {
     trialPrintEnabled: false,
     trialPrintSizes: ['4x6'],
     trialTraditional: false,
+    trialRetakeOpt: false,
+    trialLockOpt: false,
     qrTarget: 'gallery',
     ...(saved || {})
   };
@@ -297,7 +299,7 @@ export async function checkLicense(token, deviceId) {
     if (p.exp <= now) return { valid: false, reason: 'trial-ended' };
     const s = await getSettings();
     if (!s.trialEnabled) return { valid: false, reason: 'trial-disabled' };
-    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes), traditional: !!s.trialTraditional };
+    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes), traditional: !!s.trialTraditional, retakeOpt: !!s.trialRetakeOpt, lockOpt: !!s.trialLockOpt, pinResetAt: 0 };
   }
 
   const rec = await licenses().get(p.k, { type: 'json' });

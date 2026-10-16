@@ -3,7 +3,8 @@ import {
   newCode, displayCode, normCode, throttle, recordFail, clearFail, normPrint, DAY, MIN, BONUS_SUBFOLDER,
   LIFETIME_EXP, MAX_DEVICES, devicesOf, setDevices
 , putLicense, delLicense, readIndex, rebuildIndex, windowEnd } from '../lib/core.mjs';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, createHash } from 'node:crypto';
+import { setupsStore } from '../lib/core.mjs';
 
 function passwordOk(input) {
   const real = process.env.ADMIN_PASSWORD;
@@ -368,6 +369,10 @@ export default safe(async (req, context) => {
       if (!rec) return json({ error: 'Code not found.' }, 404);
       rec.pinResetAt = Date.now();
       await putLicense(store, key, rec);
+      // The code's shared PIN (kept with the setups, per booking / lifetime code) is removed too.
+      const owner = rec.kind === 'bonus' && rec.parent ? rec.parent : (rec.key || key);
+      const pinId = 'k' + createHash('sha256').update('own|' + owner).digest('hex').slice(0, 40) + '_pin';
+      try { await setupsStore().delete(pinId); } catch (e) { /* nothing saved yet */ }
       await syncBonus(rec, { pinResetAt: rec.pinResetAt });
       return json({ ok: true, pinResetAt: rec.pinResetAt });
     }
@@ -420,6 +425,8 @@ export default safe(async (req, context) => {
       const settings = { trialEnabled: !!b.trialEnabled, trialPassword: pw, trialMinutes: minutes, trialFolderPrefix: prefix,
         trialPrintEnabled: trialPrint.enabled, trialPrintSizes: trialPrint.sizes.length ? trialPrint.sizes : ['4x6'],
         trialTraditional: !!b.trialTraditional,
+        trialRetakeOpt: !!b.trialRetakeOpt,
+        trialLockOpt: !!b.trialLockOpt,
         qrTarget: (await getSettings()).qrTarget };
       await meta().setJSON('settings', settings);
       return json({ settings });

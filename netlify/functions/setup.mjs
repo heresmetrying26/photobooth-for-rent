@@ -86,6 +86,19 @@ export default safe(async (req) => {
       return json({ ok: true, assets });
     }
 
+    // ---- Lock booth PIN: one per code (bonus codes share their booking's) ----
+    case 'pin-get': {
+      const doc = await store.get(ownerId + '_pin', { type: 'json' });
+      return json({ ok: true, pin: doc && doc.h ? { h: doc.h, at: doc.at || 0 } : null });
+    }
+    case 'pin-set': {
+      const h = String(b.h || '');
+      if (!/^[0-9a-f]{64}$/.test(h)) return json({ error: 'Bad PIN' }, 400);
+      const at = Date.now();
+      await store.setJSON(ownerId + '_pin', { h, at });
+      return json({ ok: true, at });
+    }
+
     // ---- "My themes" ----
     case 'themes-get': {
       const doc = await store.get(ownerId + '_themes', { type: 'json' });

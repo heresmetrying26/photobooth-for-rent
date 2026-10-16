@@ -94,11 +94,11 @@
   .print-fab{position:fixed; left:20px; bottom:20px; z-index:50; min-height:46px; padding:10px 20px; border-radius:999px; border:0; background:var(--blue-deep); color:#fff; font:800 14px 'Manrope',sans-serif; box-shadow:0 10px 26px rgba(160,50,30,.35); cursor:pointer;}
   .print-fab[hidden]{display:none;}
   /* ---- Lock booth: guest-only screen ---- */
-  .lock-icon{position:fixed; top:8px; right:8px; z-index:70; width:30px; height:30px; border:0; border-radius:50%; background:rgba(255,255,255,.35); font-size:14px; line-height:30px; padding:0; opacity:.35; cursor:pointer;}
+  .lock-icon{position:fixed; top:8px; right:8px; z-index:260;   /* above the start screen too */ width:30px; height:30px; border:0; border-radius:50%; background:rgba(255,255,255,.35); font-size:14px; line-height:30px; padding:0; opacity:.35; cursor:pointer;}
   .lock-icon[hidden]{display:none;}
   body.booth-locked .brandbar, body.booth-locked .tab-bar, body.booth-locked #camFab, body.booth-locked #printFab, body.booth-locked #printQuickBtn,
   body.booth-locked #uploadQueueSection, body.booth-locked #backupSection, body.booth-locked #actionsSection, body.booth-locked #guestSection{display:none !important;}
-  .pin-modal{position:fixed; inset:0; z-index:90; background:rgba(20,16,22,.6); display:flex; align-items:center; justify-content:center; padding:16px;}
+  .pin-modal{position:fixed; inset:0; z-index:270; background:rgba(20,16,22,.6); display:flex; align-items:center; justify-content:center; padding:16px;}
   .pin-modal[hidden]{display:none;}
   .pin-card{width:min(340px, 100%); background:var(--white, #fff); border-radius:22px; padding:22px 20px 18px; text-align:center; box-shadow:0 24px 60px rgba(0,0,0,.3);}
   .pin-title{margin:0 0 12px; font:800 17px 'Manrope',sans-serif; color:var(--ink);}
@@ -1674,7 +1674,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <input type="password" inputmode="numeric" maxlength="4" pattern="[0-9]*" id="lockPin2" class="label-input" placeholder="Again" style="width:110px; letter-spacing:6px; font-family:'Manrope',sans-serif; font-size:16px;">
           <button type="button" class="action-btn" id="lockPinSave" style="width:auto; margin:0;">Save PIN</button>
         </div>
-        <p class="panel-hint" id="lockPinNote" style="margin:6px 0 10px;"></p>
+        <p class="panel-hint" id="lockPinNote" style="margin:6px 0 4px;"></p>
+        <p class="panel-hint" id="lockTestNote" style="margin:0 0 10px; padding:6px 10px; border-radius:10px; background:#fff6db; border:1px solid #f0d98a; color:#6b5300; font-weight:700;">For testing: the PIN is <b>1234</b> until you set your own.</p>
         <button type="button" class="action-btn primary" id="lockNowBtn" style="width:auto; margin:0;">&#128274; Lock booth now</button>
       </div>
       <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="4">← Back</button><button type="button" class="action-btn primary next-btn" data-go="6">Next: Share →</button></div>
@@ -8053,15 +8054,46 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var buf = await crypto.subtle.digest('SHA-256', data);
     return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2, '0'); }).join('');
   }
-  function savedPin(){
-    var p = lockRead(PIN_KEY);
-    // An admin reset newer than the PIN wipes it (and unlocks below).
-    if(p && window.__PB && (window.__PB.pinResetAt || 0) > (p.at || 0)){ lockWrite(PIN_KEY, null); return null; }
-    return p;
+  var DEFAULT_PIN = '1234';   // for testing: used until the renter sets their own PIN
+  // Paid codes: one PIN per code, kept on the server (same on every device of
+  // the code; cached here so a locked booth still unlocks offline).
+  // Trials: the PIN and the lock belong to that trial only (its expiry time).
+  var PIN_CACHE_KEY = 'pb4u.lockPin.code';
+  function isTrialLock(){ return !!(window.__PB && window.__PB.type === 'trial'); }
+  function trialTag(){ return window.__PB ? String(window.__PB.exp || '') : ''; }
+  var codePin = isTrialLock() ? null : lockRead(PIN_CACHE_KEY);
+  if(codePin && !codePin.h) codePin = null;
+  var seenReset = ((lockRead(PIN_CACHE_KEY) || {}).reset) || 0;
+  function ownPin(){
+    if(isTrialLock()){
+      var p = lockRead(PIN_KEY);
+      if(p && p.trial !== trialTag()){ lockWrite(PIN_KEY, null); p = null; }   // an old trial's PIN
+      return p;
+    }
+    // An admin reset newer than what this device has seen clears it and unlocks.
+    var r = (window.__PB && window.__PB.pinResetAt) || 0;
+    if(r > seenReset){
+      seenReset = r; codePin = null; lockWrite(PIN_CACHE_KEY, null);
+      lockWrite(LOCK_KEY, null); lockState.locked = false;
+    }
+    return codePin;
+  }
+  function savedPin(){ return ownPin() || { def: true }; }
+  async function fetchCodePin(){
+    if(isTrialLock() || typeof canSyncServer !== 'function' || !canSyncServer()) return;
+    try{
+      var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'pin-get' }) });
+      var j = await r.json();
+      if(!r.ok || !j.ok) return;
+      ownPin();
+      codePin = j.pin && j.pin.h ? { h: j.pin.h, at: j.pin.at || 0, reset: seenReset } : null;
+      lockWrite(PIN_CACHE_KEY, codePin || (seenReset ? { reset: seenReset } : null));
+      refreshLockSetup();
+    }catch(e){ /* offline: keep the cached PIN */ }
   }
   function applyLock(){
-    var on = lockState.locked && lockAllowed() && !!savedPin();
-    if(lockState.locked && !savedPin()){ lockState.locked = false; lockWrite(LOCK_KEY, null); }   // no PIN (e.g. admin reset): unlock for good
+    ownPin();   // applies an admin PIN reset (clears the PIN and unlocks)
+    var on = lockState.locked && lockAllowed();
     document.body.classList.toggle('booth-locked', on);
     document.getElementById('lockIcon').hidden = !on;
     if(on){
@@ -8074,11 +8106,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function refreshLockSetup(){
     var sec = document.getElementById('lockSection'); if(!sec) return;
     sec.style.display = lockAllowed() ? '' : 'none';
-    var has = !!savedPin();
-    document.getElementById('lockPinLabel').textContent = has ? 'Change the 4-digit PIN' : 'Set a 4-digit PIN';
-    document.getElementById('lockNowBtn').disabled = !has;
+    var has = !!ownPin();
+    document.getElementById('lockPinLabel').textContent = has ? 'Change the 4-digit PIN' : 'Set your own 4-digit PIN';
+    document.getElementById('lockNowBtn').disabled = false;
     var note = document.getElementById('lockPinNote');
-    if(!note.dataset.msg) note.textContent = has ? 'PIN saved on this computer.' : 'Set a PIN first, then lock.';
+    if(!note.dataset.msg) note.textContent = has ? (isTrialLock() ? 'Your PIN is set for this trial.' : 'Your PIN is set for this code (every device using it).') : '';
+    document.getElementById('lockTestNote').style.display = has ? 'none' : '';
   }
   document.getElementById('lockPinSave').addEventListener('click', async function(){
     var a = document.getElementById('lockPin1'), b = document.getElementById('lockPin2'), note = document.getElementById('lockPinNote');
@@ -8086,15 +8119,27 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     note.dataset.msg = '1';
     if(!/^\d{4}$/.test(v)){ note.textContent = 'The PIN must be exactly 4 digits.'; return; }
     if(v !== b.value.trim()){ note.textContent = 'The two PINs don’t match.'; return; }
-    lockWrite(PIN_KEY, { h: await pinHash(v), at: Date.now() });
+    var h = await pinHash(v);
+    if(isTrialLock()){
+      lockWrite(PIN_KEY, { h: h, at: Date.now(), trial: trialTag() });
+    } else {
+      note.textContent = 'Saving…';
+      try{
+        var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'pin-set', h: h }) });
+        var j = await r.json().catch(function(){ return {}; });
+        if(!r.ok || !j.ok) throw new Error(j.error || 'Save failed');
+        codePin = { h: h, at: j.at || Date.now(), reset: seenReset };
+        lockWrite(PIN_CACHE_KEY, codePin);
+      }catch(err){ note.textContent = 'Couldn’t save the PIN. Check the internet and try again.'; setTimeout(function(){ delete note.dataset.msg; }, 5000); return; }
+    }
     a.value = ''; b.value = '';
-    note.textContent = 'PIN saved. Tap “Lock booth now” when you’re ready.';
+    note.textContent = isTrialLock() ? 'PIN saved for this trial.' : 'PIN saved. It works on every device using this code.';
     setTimeout(function(){ delete note.dataset.msg; }, 4000);
     refreshLockSetup();
   });
   document.getElementById('lockNowBtn').addEventListener('click', function(){
     if(!savedPin()) return;
-    lockState.locked = true; lockWrite(LOCK_KEY, { at: Date.now() });
+    lockState.locked = true; lockWrite(LOCK_KEY, { at: Date.now(), trial: isTrialLock() ? trialTag() : null });
     applyLock();
     showToast('Booth locked. Tap the small 🔒 in the top-right corner and enter the PIN to unlock.', 5000);
   });
@@ -8112,7 +8157,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     pinBuf += k; pinDraw();
     if(pinBuf.length < 4) return;
     var p = savedPin();
-    var ok = !p || (await pinHash(pinBuf)) === p.h;
+    var ok = p.def ? pinBuf === DEFAULT_PIN : (await pinHash(pinBuf)) === p.h;
     if(ok){
       pinFails = 0; pinHide();
       lockState.locked = false; lockWrite(LOCK_KEY, null); applyLock();
@@ -8134,9 +8179,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(/^\d$/.test(e.key)) pinKey(e.key); else if(e.key === 'Backspace') pinKey('b'); else if(e.key === 'Escape') pinKey('x');
   }, true);
   document.getElementById('lockIcon').addEventListener('click', function(e){ e.stopPropagation(); pinShow(); });
-  window.addEventListener('pb-lock-change', function(){ var wasLocked = document.body.classList.contains('booth-locked'); applyLock(); if(wasLocked && !document.body.classList.contains('booth-locked')) showToast('The lock PIN was reset. Set a new PIN in Setup → 5.', 6000); });
-  lockState.locked = !!lockRead(LOCK_KEY);
-  setTimeout(applyLock, 0);
+  window.addEventListener('pb-lock-change', function(){ var wasLocked = document.body.classList.contains('booth-locked'); ownPin(); applyLock(); fetchCodePin(); if(wasLocked && !document.body.classList.contains('booth-locked')) showToast('The lock PIN was reset. Set a new PIN in Setup → 5.', 6000); });
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) fetchCodePin(); });
+  (function(){
+    var lk = lockRead(LOCK_KEY);
+    // A trial's lock ends with that trial; a code's lock stays until unlocked.
+    if(lk && isTrialLock() && lk.trial !== trialTag()){ lockWrite(LOCK_KEY, null); lk = null; }
+    if(lk && !isTrialLock() && lk.trial){ lockWrite(LOCK_KEY, null); lk = null; }
+    lockState.locked = !!lk;
+  })();
+  setTimeout(function(){ applyLock(); fetchCodePin(); }, 0);
 
   // ---- Saved setup ----
   // Saved on this device right away, and to the server for rental codes, so

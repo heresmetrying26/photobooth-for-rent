@@ -91,8 +91,18 @@
   .pm-card .panel-section{margin:0; border:0; box-shadow:none;}
   .pm-card #printSection.hidden{display:block;}
   .pm-close{position:absolute; top:10px; right:10px; z-index:2; width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:14px;}
-  .print-fab{position:fixed; right:20px; bottom:20px; z-index:50; min-height:46px; padding:10px 20px; border-radius:999px; border:0; background:var(--blue-deep); color:#fff; font:800 14px 'Manrope',sans-serif; box-shadow:0 10px 26px rgba(160,50,30,.35); cursor:pointer;}
+  .print-fab{position:fixed; left:20px; bottom:20px; z-index:50; min-height:46px; padding:10px 20px; border-radius:999px; border:0; background:var(--blue-deep); color:#fff; font:800 14px 'Manrope',sans-serif; box-shadow:0 10px 26px rgba(160,50,30,.35); cursor:pointer;}
   .print-fab[hidden]{display:none;}
+  .print-steps{list-style:none; margin:4px 0 14px; padding:12px 14px; background:var(--panel-2, #faf6f0); border:1px solid var(--line); border-radius:14px; display:flex; flex-direction:column; gap:8px;}
+  .print-steps li{display:grid; grid-template-columns:24px 1fr; gap:10px; align-items:start; font-size:13.5px; line-height:1.45; color:var(--ink);}
+  .print-steps li i{width:24px; height:24px; border-radius:50%; border:2px solid var(--line); display:flex; align-items:center; justify-content:center; font-style:normal; font-weight:800; font-size:12px; color:var(--ink-dim); background:#fff;}
+  .print-steps li.done i{background:#1e8449; border-color:#1e8449; color:#fff;}
+  .print-steps li.now i{border-color:var(--blue-deep); color:var(--blue-deep);}
+  .print-steps li small{display:block; color:var(--ink-dim); font-size:12.5px;}
+  .print-steps li.done span{color:var(--ink-dim);}
+  .helper-help{margin:6px 0 0; padding:10px 12px; border-radius:12px; background:#fdf1ec; border:1px solid #f1cfc5; font-size:13px; line-height:1.5; color:var(--ink);}
+  .helper-help ol{margin:4px 0 6px; padding-left:18px;} .helper-help li{margin:2px 0;}
+  .link-btn{border:0; background:none; padding:0; color:var(--blue-deep); font:700 13px 'Manrope',sans-serif; text-decoration:underline; cursor:pointer;}
   select.printer-input{width:100%; min-height:42px; padding:8px 12px; border-radius:12px; border:1.5px solid var(--line); background:#fff; font:600 14px 'Manrope',sans-serif; color:var(--ink);}
   select.printer-input:disabled{color:var(--ink-dim); background:#f5f1ec;}
   @media (max-width:860px){ body.in-session .app-shell:not(.capturing){grid-template-columns:1fr;} }
@@ -342,8 +352,10 @@
   .film-frame.filled{border-style:solid; border-color:var(--blue-deep);}
 
   .start-btn-wrap{
-    display:flex; justify-content:center; margin-top:16px;
+    display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap; margin-top:16px;
   }
+  .shutter-btn.print-quick{background:#fff; color:var(--blue-deep); border:2px solid var(--blue-deep); box-shadow:none;}
+  .shutter-btn.print-quick[hidden]{display:none;}
   .shutter-btn{
     display:flex; align-items:center; gap:10px;
     background:var(--blue-deep);
@@ -1782,6 +1794,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
       <div class="start-btn-wrap">
         <button class="shutter-btn" id="startBtn"><span class="ring"></span>Start</button>
+        <button type="button" class="shutter-btn print-quick" id="printQuickBtn" hidden>&#128424; Print</button>
       </div>
     </div>
 
@@ -1816,6 +1829,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
       <div class="panel-section hidden" id="printSection">
         <p class="panel-label">Print</p>
+        <ol class="print-steps" id="printSteps"></ol>
         <p class="sub-label" style="margin-bottom:4px;">Paper size</p>
         <div class="print-size-row" id="printSizeRow"></div>
         <label class="switch-row hidden" id="keychainRow" style="margin:4px 0 10px;">
@@ -1839,7 +1853,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <span>Auto-print every session</span>
           <input type="checkbox" id="autoPrintToggle">
         </label>
-        <p class="panel-hint hidden" id="autoPrintHint">Turns on after your first print: every session after that prints by itself on the same paper. With Chrome started with <b>--kiosk-printing</b> it prints with no dialog at all.</p>
+        <p class="panel-hint hidden" id="autoPrintHint">Prints every session by itself, with no need to press Print. Turns on after your first print, on the same paper. With the <b>Print Helper</b> on, it goes straight to the chosen printer with no dialog.</p>
       </div>
 
       <div class="panel-section" id="actionsSection">
@@ -4671,7 +4685,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var top = Math.max(0, sw.getBoundingClientRect().top + window.scrollY);
     var ctrlH = sc && sc.offsetParent !== null ? sc.offsetHeight + 12 : 0;
     var sb = document.querySelector('.start-btn-wrap');
-    var btnH = sb && sb.offsetParent !== null && getComputedStyle(sb).position !== 'absolute' ? sb.offsetHeight + 8 : 0;
+    var btnH = sb && sb.offsetParent !== null && getComputedStyle(sb).position !== 'absolute' ? sb.offsetHeight + 28 : 0;
     if(!side){
       sw.style.gridTemplateColumns = ''; sw.style.columnGap = '';
       ft.style.width = '';
@@ -4708,6 +4722,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     shell.classList.toggle('solo', !any);
     if(was !== !any) requestAnimationFrame(function(){ applyStageAspect(); });
   }
+  try{
+    var panelEl = document.querySelector('.app-shell .panel');
+    if(panelEl) new MutationObserver(function(){ requestAnimationFrame(refreshPanelSolo); }).observe(panelEl, { subtree: true, attributes: true, attributeFilter: ['class', 'hidden', 'style'] });
+  }catch(e){}
   // Re-fit when the buttons under the live view change (Retake / Done / hints).
   try{
     var stageRO = new ResizeObserver(function(){ requestAnimationFrame(function(){ applyStageAspect(); }); });
@@ -4770,11 +4788,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(bs) bs.classList.toggle('hidden', isCapturing || !backupDir);
     if(canBackupFolder !== undefined && !isCapturing) refreshBackupUI();
     actionsSection.classList.toggle('hidden', isCapturing);
-    shareBtn.classList.toggle('hidden', !hasAllShots);
+    shareBtn.classList.add('hidden');   // Share removed: guests use the QR
 
     const showQr = hasAllShots && !isCapturing;
     qrSection.classList.toggle('hidden', !showQr);
     appShell.classList.toggle('has-qr', showQr);
+    try{ refreshPanelSolo(); refreshPrintFab(); }catch(e){}
     guestRender();
     if(typeof refreshWelcome === 'function') refreshWelcome();
   }
@@ -6747,7 +6766,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const j = await r.json();
       helper = { ok: !!j.ok, printers: Array.isArray(j.printers) ? j.printers.slice(0, 60).map(String) : [], checked: Date.now() };
     }catch(e){
-      helper = { ok: false, printers: [], checked: Date.now() };
+      helper = { ok: false, printers: [], checked: Date.now(), err: e && e.name === 'AbortError' ? 'timeout' : 'blocked' };
     }
     printerList.innerHTML = '';
     helper.printers.forEach(n => { const o = document.createElement('option'); o.value = n; printerList.appendChild(o); });
@@ -6790,10 +6809,50 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       else if(helper.printers.length && !helper.printers.includes(name)) printerHelperHint.textContent = 'No printer on this computer is called “' + name + '”. Pick one from the list.';
       else printerHelperHint.textContent = 'Prints go straight to “' + name + '” — no dialog.';
     } else if(helperOn && helper.checked){
-      printerHelperHint.innerHTML = 'Print Helper not found. Open the photobooth4u Print Helper on this computer (and allow access if Chrome asks). Until then the print dialog opens. <a href="/downloads/" target="_blank" rel="noopener">Download it</a> · <a href="/how-to-print-hiti/" target="_blank" rel="noopener">HiTi guide</a>';
+      printerHelperHint.innerHTML = helperTroubleHtml();
     } else {
       printerHelperHint.innerHTML = name ? 'In the print dialog, pick “' + name + '”.' : 'Without the helper, prints go through Chrome’s print dialog. To pick a printer for each size, open the Print Helper and switch it on. <a href="/downloads/" target="_blank" rel="noopener">Download it</a>';
     }
+    renderPrintSteps();
+  }
+  // Why the booth can't reach the Print Helper, and what to do, for this browser.
+  function helperTroubleHtml(){
+    const okOrigin = location.origin === 'https://photobooth4u.netlify.app' || location.origin === 'http://localhost:8888';
+    const links = '<a href="/downloads/" target="_blank" rel="noopener">Download it</a> · <a href="/how-to-print-hiti/#helper-trouble" target="_blank" rel="noopener">Printing guide</a>';
+    if(!okOrigin){
+      return '<div class="helper-help"><b>The Print Helper only works on photobooth4u.netlify.app.</b> This page is open from <b>' + (location.protocol === 'file:' ? 'a file on this computer' : location.host) + '</b>, so the helper refuses it. Open the booth from <b>photobooth4u.netlify.app</b>. Until then the print dialog opens.</div>';
+    }
+    const brave = !!navigator.brave;
+    const browserStep = brave
+      ? 'Brave: click the <b>lion icon</b> at the right of the address bar and turn <b>Shields off</b> for this site. If Brave asks to let the site access <b>localhost</b> or devices on your network, click <b>Allow</b>.'
+      : 'Click the icon at the left of the address bar (<b>Site settings</b>) and set <b>Local network access</b> to <b>Allow</b>. If Chrome asks to look for devices on your network, click <b>Allow</b>.';
+    return '<div class="helper-help"><b>Can’t reach the Print Helper.</b> Until it connects, the print dialog opens.<ol>' +
+      '<li>Check the <b>photobooth4u Print Helper</b> window is open on this computer (it lists your printers).</li>' +
+      '<li>' + browserStep + '</li>' +
+      '<li>Reload this page, or tap <button type="button" class="link-btn" data-act="recheck">Check again</button>.</li></ol>' + links + '</div>';
+  }
+  printerHelperHint.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act="recheck"]');
+    if(!b) return;
+    b.textContent = 'Checking\u2026';
+    helper = { ok: false, printers: [], checked: 0 };
+    checkHelper(true);
+  });
+  // A 3-step checklist at the top of the Print pop-up.
+  function renderPrintSteps(){
+    const el = document.getElementById('printSteps');
+    if(!el) return;
+    let auto = false; try{ auto = !!autoPrint; }catch(e){}
+    const name = printSize ? printerFor(printSize) : '';
+    const connected = helperOn && helper.ok;
+    const sizeName = printSize ? paperFor(printSize).name : 'this size';
+    const steps = [
+      { done: connected, t: 'Connect the Print Helper', s: connected ? 'Connected \u2014 ' + helper.printers.length + ' printers found.' : 'Open the Print Helper app on this computer, then switch on <b>Print Helper on this computer</b> below. <a href="/downloads/" target="_blank" rel="noopener">Download</a>' },
+      { done: connected && !!name && helper.printers.includes(name), t: 'Choose the printer for each paper size', s: name ? sizeName + ' \u2192 ' + name : 'Tap a paper size, then pick its printer from the list.' },
+      { done: auto, t: 'Print once, then turn on Auto-print', s: auto ? 'Every session prints by itself.' : 'Press <b>Print</b> to test, then tick <b>Auto-print every session</b>.' }
+    ];
+    let first = steps.findIndex(x => !x.done);
+    el.innerHTML = steps.map((x, i) => '<li class="' + (x.done ? 'done' : (i === first ? 'now' : '')) + '"><i>' + (x.done ? '\u2713' : (i + 1)) + '</i><span><b>' + x.t + '</b><small>' + x.s + '</small></span></li>').join('');
   }
   printerNameInput.addEventListener('input', () => {
     if(!printSize) return;
@@ -6914,13 +6973,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function openPrintModal(){ printModal.hidden = false; checkHelper(true); }
   function closePrintModal(){ printModal.hidden = true; }
   printFab.addEventListener('click', openPrintModal);
+  document.getElementById('printQuickBtn').addEventListener('click', (e) => { e.stopPropagation(); printCurrentPhoto(false); });
   document.getElementById('printModalClose').addEventListener('click', closePrintModal);
   printModal.addEventListener('click', (e) => { if(e.target === printModal) closePrintModal(); });
   document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !printModal.hidden){ e.stopPropagation(); closePrintModal(); } }, true);
   function refreshPrintFab(){
     const show = !printSection.classList.contains('hidden') && document.body.classList.contains('in-session') && state !== 'capturing' && !(typeof pickOpen !== 'undefined' && pickOpen);
     printFab.hidden = !show;
-    printFab.innerHTML = state === 'result' ? '&#128424; Print' : '&#128424; Print settings';
+    printFab.innerHTML = '&#128424; Print settings';
+    const pq = document.getElementById('printQuickBtn');
+    if(pq) pq.hidden = !(state === 'result' && !printSection.classList.contains('hidden'));
     if(!show && state === 'capturing') closePrintModal();
   }
   function refreshPrintUI(){
@@ -7089,6 +7151,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   let autoPrint = false;
   let autoPrintDecided = false; // the operator switched it themselves: don't override
   function updateAutoPrintUI(){
+    setTimeout(function(){ try{ renderPrintSteps(); }catch(e){} }, 0);
     const show = isTraditional() && !!printSettings();
     autoPrintRow.classList.toggle('hidden', !show);
     autoPrintHint.classList.toggle('hidden', !show);

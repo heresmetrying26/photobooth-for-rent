@@ -26,7 +26,7 @@
   .hero-btns{display:flex; flex-wrap:wrap; gap:10px;}
   .btn{display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:10px 18px; border-radius:999px; font-weight:800; font-size:15px; text-decoration:none;}
   .btn.primary{background:var(--red); color:#fff;} .btn.ghost{border:1.5px solid #5a5056; color:#f6f1ea;}
-  nav.toc{display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:-22px 0 8px; position:relative;}
+  nav.toc{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:-22px 0 8px; position:relative;}
   nav.toc a{display:block; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; text-decoration:none; color:var(--ink); box-shadow:0 8px 20px rgba(70,45,25,.08);}
   nav.toc b{display:block; color:var(--red); font-size:12px; letter-spacing:.14em; text-transform:uppercase;} nav.toc span{font-weight:700; font-size:15px;}
   section.part{padding:34px 0 6px; scroll-margin-top:12px;}
@@ -54,6 +54,8 @@
   th{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); background:#f3ece3;}
   tr:last-child td{border-bottom:0;}
   td:first-child{font-weight:700; width:38%;}
+  .win{background:#eef3fb; border:1px solid #cfdcf2; border-radius:16px; padding:14px 18px; margin-top:12px;}
+  .win h3{margin:0 0 4px; font-size:16px;} .win ol{margin:4px 0 0; padding-left:20px; color:var(--dim);} .win li{margin:3px 0;}
   .callout{background:var(--red-soft); border:1px solid #f1cfc5; border-radius:16px; padding:16px 18px; margin-top:14px;}
   .callout h3{margin:0 0 4px; font-size:17px;} .callout p{margin:0; color:var(--dim);}
   .check{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px;}
@@ -73,7 +75,7 @@
 <header class="hero">
   <div class="wrap">
     <a class="brand" href="/"><span class="mark"><i></i><i></i><i></i><i></i></span>photobooth<span class="badge">4u</span></a>
-    <p class="eyebrow">Printing guide · Mac</p>
+    <p class="eyebrow">Printing guide · Mac &amp; Windows</p>
     <h1>How to print<br>on the <em>HiTi</em></h1>
     <p class="lead">Set up once, about 20 minutes. After that every session prints by itself: 4×6 photos on one setting, and 2×6 strips cut in two on the other. Do the test in Part 5 before the event.</p>
     <div class="hero-btns">
@@ -90,6 +92,7 @@
     <a href="#helper"><b>Part 3</b><span>Open the Print Helper</span></a>
     <a href="#booth"><b>Part 4</b><span>Choose the printers</span></a>
     <a href="#test"><b>Part 5</b><span>Test &amp; Auto-print</span></a>
+    <a href="#helper-trouble"><b>Help</b><span>Can’t reach the helper</span></a>
   </nav>
 
   <section class="part" id="install">
@@ -101,6 +104,10 @@
       <li><span class="n">3</span><div><h3>Add it to the Mac</h3><p><b>System Settings → Printers &amp; Scanners → Add Printer</b>. Select the HiTi and check that <b>Use</b> shows the HiTi driver, not “Generic”. Name it <code>HiTi 4x6</code> → <b>Add</b>.</p></div></li>
       <li><span class="n">4</span><div><h3>Test it</h3><p>Print any photo from the <b>Preview</b> app at <b>6×4, borderless</b> to check the printer works.</p></div></li>
     </ol>
+    <div class="win"><h3>On Windows</h3><ol>
+      <li>Install the <b>Windows driver</b> for your HiTi model from HiTi’s website, then plug in the printer.</li>
+      <li><b>Settings → Bluetooth &amp; devices → Printers &amp; scanners</b>: the HiTi appears. Open it → <b>Printing preferences</b> → paper <b>6×4</b>, borderless → OK. Rename it <code>HiTi 4x6</code> under <b>Printer properties</b>.</li>
+      <li>Print one photo from the <b>Photos</b> app to test.</li></ol></div>
   </section>
 
   <section class="part" id="strips">
@@ -113,15 +120,19 @@
         <div class="codeblock"><span>cupsctl WebInterface=yes</span><button class="copy" type="button">Copy</button></div></div></li>
       <li><span class="n">3</span><div><h3>Set each printer’s paper</h3><p>Click <b>HiTi 4x6</b> → <b>Administration</b> → <b>Set Default Options</b>: Media Size <b>6x4</b>, borderless if listed → save.<br>Click <b>HiTi 2x6 cut</b> → <b>Set Default Options</b>: the <b>2-inch cut</b> paper option (named like “6x4 (2x6 ×2)” or “6x4 Split”, depending on the model) → save.</p></div></li>
     </ol>
+    <div class="win"><h3>On Windows</h3><ol>
+      <li><b>Control Panel → Devices and Printers → Add a printer</b> → <b>The printer that I want isn’t listed</b> → <b>Add a local printer… with manual settings</b>.</li>
+      <li><b>Use an existing port</b>: pick the HiTi’s USB port (the same one the first HiTi uses, e.g. <code>USB001</code>) → choose the HiTi driver → <b>Use the driver that is currently installed</b> → name it <code>HiTi 2x6 cut</code>.</li>
+      <li>Right-click <b>HiTi 2x6 cut</b> → <b>Printing preferences</b> → choose the <b>2-inch cut</b> paper option → OK.</li></ol></div>
   </section>
 
   <section class="part" id="helper">
     <p class="kicker">Part 3 · Every event</p>
     <h2>Open the Print Helper</h2>
-    <p class="why">The small app that lets the booth print straight to the right printer, with no pop-up.</p>
+    <p class="why">The small app that lets the booth print straight to the right printer, with no pop-up. Always open the booth from <b>photobooth4u.netlify.app</b> (not a saved copy of the page): the helper only answers that address.</p>
     <ol class="steps">
       <li><span class="n">1</span><div><h3>Download it once</h3><p>From <a href="/downloads/">photobooth4u.netlify.app/downloads/</a>: Mac · Apple Silicon or Intel. Unzip it.</p></div></li>
-      <li><span class="n">2</span><div><h3>Open it</h3><p>The first time, <b>right-click → Open</b>. If macOS blocks it: <b>System Settings → Privacy &amp; Security → Open Anyway</b>.</p></div></li>
+      <li><span class="n">2</span><div><h3>Open it</h3><p><b>Mac:</b> the first time, <b>right-click → Open</b>. If macOS blocks it: <b>System Settings → Privacy &amp; Security → Open Anyway</b>.<br><b>Windows:</b> double-click it. If you see “Windows protected your PC”: <b>More info → Run anyway</b>.</p></div></li>
       <li><span class="n">3</span><div><h3>Keep its window open</h3><p>A Terminal window opens and lists your printers. Leave it open during the whole event; closing it stops printing.</p></div></li>
     </ol>
     <div class="term" aria-label="Example of the Print Helper window">photobooth4u Print Helper 1.0.0<br>Running. Keep this window open while the booth is printing.<br><span class="hl">Printers on this computer:</span><br><span class="w">&nbsp;- HiTi_4x6<br>&nbsp;- HiTi_2x6_cut</span></div>
@@ -131,7 +142,7 @@
     <p class="kicker">Part 4 · In the booth</p>
     <h2>Choose the printers</h2>
     <ol class="steps">
-      <li><span class="n">1</span><div><h3>Open Print settings</h3><p>In <b>Photo Session</b>, tap <b>&#128424; Print settings</b> at the bottom right.</p></div></li>
+      <li><span class="n">1</span><div><h3>Open Print settings</h3><p>In <b>Photo Session</b>, tap <b>&#128424; Print settings</b> at the bottom left.</p></div></li>
       <li><span class="n">2</span><div><h3>Turn on the Print Helper</h3><p>Switch on <b>Print Helper on this computer</b>. If Chrome asks to access devices on your network, click <b>Allow</b>.</p></div></li>
       <li><span class="n">3</span><div><h3>Pick a printer for each size</h3><p>Tap a paper size, then choose its printer from the list. The booth remembers it on this Mac.</p></div></li>
     </ol>
@@ -157,13 +168,25 @@
     <h2>Quick fixes</h2>
     <table>
       <tr><th>Problem</th><th>Fix</th></tr>
-      <tr><td>“Print Helper not found”</td><td>Open the Print Helper and keep its window open. Click <b>Allow</b> if Chrome asks.</td></tr>
+      <tr><td>“Can’t reach the Print Helper”</td><td>See <a href="#helper-trouble">the steps below</a>.</td></tr>
       <tr><td>HiTi isn’t in the printer list</td><td>Check it’s on and plugged in, then close and reopen the Print Helper.</td></tr>
       <tr><td>Strips print but aren’t cut</td><td>The cut option isn’t saved as the default for <b>HiTi 2x6 cut</b>. Redo Part 2, step 3.</td></tr>
       <tr><td>White border or wrong size</td><td>Fix the paper size and borderless setting in that printer’s <b>Set Default Options</b> (Part 2).</td></tr>
       <tr><td>Printer shows “Paused”</td><td><b>System Settings → Printers &amp; Scanners</b> → the HiTi → <b>Resume</b>. Check the ribbon and paper.</td></tr>
       <tr><td>No cut option in the list</td><td>Run <code>lpoptions -p HiTi_2x6_cut -l</code> in Terminal and send us the result. We’ll reply with the one line that sets it.</td></tr>
     </table>
+  </section>
+
+  <section class="part" id="helper-trouble">
+    <p class="kicker">Print Helper</p>
+    <h2>If the booth can’t reach the Print Helper</h2>
+    <p class="why">The helper window lists your printers, but the booth says “Can’t reach the Print Helper”. Go through these in order:</p>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Use the real booth address</h3><p>Open the booth from <b>photobooth4u.netlify.app</b>. A saved copy of the page (an address starting with <code>file://</code>) or another address won’t connect.</p></div></li>
+      <li><span class="n">2</span><div><h3>Chrome or Edge: allow local network access</h3><p>Click the icon at the left of the address bar → <b>Site settings</b> → <b>Local network access</b> → <b>Allow</b>. If a pop-up asks to “look for and connect to devices on your local network”, click <b>Allow</b>.</p></div></li>
+      <li><span class="n">3</span><div><h3>Brave: lower the Shields</h3><p>Click the <b>lion icon</b> at the right of the address bar and turn <b>Shields off</b> for photobooth4u. If Brave asks to let the site access <b>localhost</b>, click <b>Allow</b>.</p></div></li>
+      <li><span class="n">4</span><div><h3>Check again</h3><p>Reload the booth, open <b>Print settings</b>, and switch <b>Print Helper on this computer</b> off and on (or tap <b>Check again</b>). The checklist at the top turns green when it’s connected.</p></div></li>
+    </ol>
     <div class="callout">
       <h3>Only printing 4×6? The simple way</h3>
       <p>Skip Parts 2 and 3. Make the HiTi the Mac’s <b>default printer</b>, do one normal print, then start Chrome with this command in Terminal so prints go out with no pop-up:</p>

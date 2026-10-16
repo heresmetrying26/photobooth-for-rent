@@ -1689,8 +1689,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <div class="decor-btns"><button type="button" class="action-btn" id="sheetItemSwap">Swap frame</button><button type="button" class="action-btn" id="sheetItemRotate">Turn 90°</button><button type="button" class="action-btn" id="sheetItemDup">Copy</button><button type="button" class="action-btn" id="sheetItemDel" style="color:#c0392b;">Remove</button></div>
       </div>
       <div class="decor-sel" id="spotEditControls" style="display:none;">
-        <p class="panel-hint" style="margin:0 0 8px;">Drag a box to move it. Drag its corner to resize. Numbers = photo order.</p>
+        <p class="panel-hint" style="margin:0 0 8px;">Tap a box to select it, then drag to move or drag its corner to resize. The numbers are the photo order (1 = first shot).</p>
         <div class="decor-btns"><button type="button" class="action-btn" id="spotAdd">+ Add spot</button><button type="button" class="action-btn" id="spotDel" style="color:#c0392b;">Remove spot</button><button type="button" class="action-btn" id="spotRedetect">Find again</button><button type="button" class="action-btn primary" id="spotDone">Done</button></div>
+        <p class="sub-label" style="margin:10px 0 4px;">Selected box</p>
+        <div class="decor-btns"><button type="button" class="action-btn" id="spotEarlier">&#9664; Earlier shot</button><button type="button" class="action-btn" id="spotLater">Later shot &#9654;</button><button type="button" class="action-btn" id="spotSplitX">Split in 2 &#8596;</button><button type="button" class="action-btn" id="spotSplitY">Split in 2 &#8597;</button><button type="button" class="action-btn" id="spotSplit4">Split in 4</button></div>
+        <div class="spot-size" id="spotSize" style="display:none; margin-top:8px; gap:8px; flex-wrap:wrap; align-items:center; font-size:12.5px; font-weight:700;">
+          <label>Left % <input type="number" id="spotX" min="0" max="100" step="0.5" style="width:64px;"></label>
+          <label>Top % <input type="number" id="spotY" min="0" max="100" step="0.5" style="width:64px;"></label>
+          <label>Width % <input type="number" id="spotW" min="2" max="100" step="0.5" style="width:64px;"></label>
+          <label>Height % <input type="number" id="spotH" min="2" max="100" step="0.5" style="width:64px;"></label>
+        </div>
       </div>
       <div class="sample-row">
         <button type="button" class="action-btn" id="sampleCamBtn">📷 Try with my camera</button>
@@ -4164,6 +4172,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       opt.textContent = usbCam.name ? usbCam.name + ' (USB remote)' : 'DSLR / mirrorless over USB (remote control)' + (/Win/i.test(navigator.platform || '') ? ' \u2014 Windows needs setup' : '');
       cameraSelect.appendChild(opt);
     }
+    // Say why the USB camera option is missing instead of silently hiding it.
+    usbUnsupportedNote();
 
     refreshCameraMenu();
 
@@ -4342,6 +4352,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     await cam.connect();
     usbCam.camera = cam;
     usbCam.vfOn = false;
+    usbCam.noScreen = false; usbCam.shotVfOff = false;   // shutter fallbacks are learned per connection
     usbCam.name = (devices[0] && devices[0].productName) || '';
     const opt = Array.from(cameraSelect.options).find(o => o.value === USB_CAM_ID);
     if(opt && usbCam.name) opt.textContent = usbCam.name + ' (USB remote)';
@@ -4367,6 +4378,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return null;
   }
   async function usbCameraScreenToo(){
+    if(usbCam.noScreen) return;   // this camera only shoots with live view on the computer alone
     try{
       const out = usbFindCfg(await usbCam.camera.getConfig(), 'output');
       const both = out && Array.isArray(out.choices) ? out.choices.find(c => /tft/i.test(c) && /pc/i.test(c)) : null;
@@ -4437,6 +4449,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     clearInterval(usbBattTimer);
     setTimeout(usbCheckBattery, 4000);
     usbBattTimer = setInterval(usbCheckBattery, 3 * 60 * 1000);
+  }
+  function usbUnsupportedNote(){
+    if(usbCam.supported) return;
+    let why = '';
+    if(!('usb' in navigator)) why = 'USB remote camera: open the booth in Chrome or Edge on a Mac (this browser can’t reach USB cameras).';
+    else if(!window.crossOriginIsolated) why = location.protocol === 'file:' || location.origin !== 'https://photobooth4u.netlify.app'
+      ? 'USB remote camera: open the booth from photobooth4u.netlify.app (not a saved copy of the page) to use a camera over USB.'
+      : 'USB remote camera isn’t available on this page load. Reload the page; if it stays missing, close other photobooth4u tabs and reload.';
+    if(why){ usbCamNote(why, false); const h = document.getElementById('cameraHint'); if(h) h.style.display = ''; }
   }
   function usbDead(err){
     console.error('USB camera lost:', err);
@@ -4894,7 +4915,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
     const shots = shotCanvases;
     try{
-      const file = await usbCam.camera.captureImageAsFile();
+      const file = await usbCaptureFile();
       const bmp = await createImageBitmap(file);
       const sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;   // whole photo; the layout box crops it once
       const k = Math.min(1, USB_SHOT_MAX / Math.max(sw, sh));
@@ -4912,6 +4933,50 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       console.error('USB shot failed:', err);
       showToast('The camera photo didn\u2019t come through (check focus, and that the camera saves JPEG), so the live view frame was used.', 5000);
       if(usbIsCritical(err)) usbDead(err);
+    }
+  }
+
+  // The real shutter, with fallbacks. Some Canons (e.g. the R50 in AUTO)
+  // refuse the shot while live view also shows on the camera's own screen,
+  // or while live view runs at all. Whatever works is remembered for the
+  // rest of this connection, so only the first shot pays for the retries.
+  async function usbCaptureFile(){
+    const cam = usbCam.camera;
+    if(usbCam.shotVfOff) return usbCaptureVfOff();
+    try{ return await cam.captureImageAsFile(); }
+    catch(e1){
+      if(usbIsCritical(e1)) throw e1;
+      console.warn('USB shot failed, retrying with the camera screen off:', e1);
+      try{
+        const out = usbFindCfg(await cam.getConfig(), 'output');
+        const pc = out && Array.isArray(out.choices) ? out.choices.find(c => /pc/i.test(c) && !/tft/i.test(c)) : null;
+        if(pc && out.value !== pc) await cam.setConfigValue('output', pc);
+      }catch(e){ if(usbIsCritical(e)) throw e; }
+      usbCam.noScreen = true;
+      await wait(900);
+      try{ return await cam.captureImageAsFile(); }
+      catch(e2){
+        if(usbIsCritical(e2)) throw e2;
+        console.warn('USB shot failed again, retrying with live view off:', e2);
+        const f = await usbCaptureVfOff();
+        usbCam.shotVfOff = true;
+        return f;
+      }
+    }
+  }
+  async function usbCaptureVfOff(){
+    const cam = usbCam.camera, wasActive = usbCam.active;
+    usbStopLive();
+    await wait(250);
+    try{ await cam.setConfigValue('viewfinder', 0); }catch(e){ if(usbIsCritical(e)) throw e; }
+    usbCam.vfOn = false;
+    await wait(1300);
+    try{ return await cam.captureImageAsFile(); }
+    finally{
+      if(wasActive && usbCam.camera === cam){
+        try{ await usbViewfinderOn(); }catch(e){ if(usbIsCritical(e)) usbDead(e); }
+        if(usbCam.camera === cam){ usbCam.active = true; usbLiveLoop(++usbCam.gen); }
+      }
     }
   }
 
@@ -9005,6 +9070,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         if(py < h - 1 && !seen[p + w] && cls[p + w] === k){ seen[p + w] = 1; q[tail++] = p + w; }
       }
       var bw = maxX - minX + 1, bh = maxY - minY + 1;
+      // A white area split by very faint lines (light grey dividers between
+      // borderless boxes) is several photo spots, not one.
+      var cells = k === 2 && cnt / (bw * bh) >= 0.9 ? splitFaint(minX, minY, maxX, maxY) : null;   // solid white areas only
+      if(cells && cells.length > 1){
+        cells.forEach(function(cr){
+          var cw = cr[2] - cr[0] + 1, ch = cr[3] - cr[1] + 1;
+          var csides = (cr[0] === 0) + (cr[2] >= w - 1) + (cr[1] === 0) + (cr[3] >= h - 1);
+          if(csides > 3 || cw * ch > n * 0.45) return;
+          if(cw < w * 0.08 || ch < h * 0.04 || cw * ch < n * 0.008) return;
+          spots.push({ x: cr[0] / w, y: cr[1] / h, w: cw / w, h: ch / h, _exact: true });
+        });
+        continue;
+      }
       // Touching the image edge usually means background around the design.
       // Borderless designs run their photo boxes to the edge, though: keep
       // those when they're a solid rectangle and not most of the image.
@@ -9015,6 +9093,34 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       spots.push({ x: minX / w, y: minY / h, w: bw / w, h: bh / h });
     }
     return refineSpots(img, sortSpots(spots).slice(0, MAX_SPOTS));
+    // Finds rows/columns of faint grey (not pure white) running across the
+    // area and cuts it into the cells between them, keeping pure-white cells.
+    function splitFaint(x0, y0, x1, y1){
+      var bw2 = x1 - x0 + 1, bh2 = y1 - y0 + 1;
+      if(bw2 < w * 0.15 && bh2 < h * 0.15) return null;
+      var lo = function(px, py){ var i = (py * w + px) * 4; return Math.min(d[i], d[i + 1], d[i + 2]) <= 249; };
+      var colLine = [], rowLine = [], t, c, xx, yy;
+      for(xx = x0; xx <= x1; xx++){ t = 0; c = 0; for(yy = y0; yy <= y1; yy += 2){ t++; if(lo(xx, yy)) c++; } colLine.push(c / t > 0.8); }
+      for(yy = y0; yy <= y1; yy++){ t = 0; c = 0; for(xx = x0; xx <= x1; xx += 2){ t++; if(lo(xx, yy)) c++; } rowLine.push(c / t > 0.8); }
+      var runs = function(lines, from, minLen){
+        var out = [], st = -1;
+        for(var j = 0; j <= lines.length; j++){
+          var on = j < lines.length && !lines[j];
+          if(on && st < 0) st = j;
+          if(!on && st >= 0){ if(j - st >= minLen) out.push([from + st, from + j - 1]); st = -1; }
+        }
+        return out;
+      };
+      var xs = runs(colLine, x0, Math.max(6, bw2 * 0.08)), ys = runs(rowLine, y0, Math.max(6, bh2 * 0.08));
+      if(xs.length * ys.length < 2) return null;
+      var cellsOut = [];
+      ys.forEach(function(yr){ xs.forEach(function(xr){
+        var tt = 0, white = 0;
+        for(var py = yr[0]; py <= yr[1]; py += 3) for(var px = xr[0]; px <= xr[1]; px += 3){ tt++; if(!lo(px, py)) white++; }
+        if(tt && white / tt > 0.85) cellsOut.push([xr[0], yr[0], xr[1], yr[1]]);
+      }); });
+      return cellsOut;
+    }
   }
   // The scan runs on a small copy, so snap each box's edges to the real
   // white/see-through edge at full size (no white hairlines around photos).
@@ -9034,6 +9140,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         return t ? n / t : 0;
       };
       return spots.map(function(sp){
+        if(sp._exact) return { x: sp.x, y: sp.y, w: sp.w, h: sp.h };
         var x0 = Math.round(sp.x * W), y0 = Math.round(sp.y * H), x1 = Math.round((sp.x + sp.w) * W) - 1, y1 = Math.round((sp.y + sp.h) * H) - 1;
         var lim = Math.ceil(Math.max(W, H) * 0.02);
         for(var k = 0; k < lim && y0 > 0 && share(true, y0 - 1, x0, x1) > 0.6; k++) y0--;
@@ -9261,8 +9368,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var use = document.createElement('button'); use.type = 'button'; use.className = 'action-btn mini'; use.textContent = 'Use';
       use.title = 'Use this frame as the layout';
       use.addEventListener('click', function(){ activeFrameId = f.id; spotEdit = null; setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); });
-      var ed = document.createElement('button'); ed.type = 'button'; ed.className = 'action-btn mini'; ed.textContent = 'Fix spots';
-      ed.addEventListener('click', function(){ activeFrameId = f.id; spotEdit = { f: f.id, sel: -1 }; setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); showToast('Drag a box to move it, or its corner to resize. Changes save by themselves.'); });
+      var ed = document.createElement('button'); ed.type = 'button'; ed.className = 'action-btn mini'; ed.textContent = 'Edit photo spots';
+      ed.addEventListener('click', function(){ activeFrameId = f.id; spotEdit = { f: f.id, sel: -1 }; setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); showToast('Tap a box, then drag, resize, split or change its order. Changes save by themselves.'); });
       var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'remove-link'; rm.textContent = 'Remove'; rm.style.display = 'inline'; rm.style.margin = '0';
       rm.addEventListener('click', function(){
         if(!confirm('Remove this frame?')) return;
@@ -9290,6 +9397,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     sheetPanel.style.display = currentLayout === 'framesheet' ? '' : 'none';
     if(currentLayout === 'framesheet') buildSheetPatterns();
     spotEditControls.style.display = spotEdit && currentLayout === 'myframe' ? '' : 'none';
+    if(typeof refreshSpotSize === 'function') refreshSpotSize();
     var it = sheet.items[selItem];
     sheetSelControls.style.display = currentLayout === 'framesheet' && it ? '' : 'none';
     if(it) document.getElementById('sheetItemSize').value = Math.round(it.s * 100);
@@ -9403,6 +9511,46 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     f.spots = s; spotEdit.sel = -1; framesChanged({ layout: 'myframe' });
   });
   document.getElementById('spotDone').addEventListener('click', function(){ spotEdit = null; refreshFrameUI(); renderSetupPreview(); });
+  // Order and split the selected spot; exact position/size in % of the frame.
+  function selSpot(){ var f = spotEdit && frameById(spotEdit.f); if(!f || spotEdit.sel < 0 || !f.spots[spotEdit.sel]){ showToast('Tap a box first.'); return null; } return f; }
+  function moveSpot(step){
+    var f = selSpot(); if(!f) return;
+    var i = spotEdit.sel, j = i + step; if(j < 0 || j >= f.spots.length) return;
+    var t = f.spots[i]; f.spots[i] = f.spots[j]; f.spots[j] = t; spotEdit.sel = j;
+    framesChanged({ layout: 'myframe' });
+  }
+  function splitSpot(nx, ny){
+    var f = selSpot(); if(!f) return;
+    if(f.spots.length - 1 + nx * ny > MAX_SPOTS){ showToast('Up to ' + MAX_SPOTS + ' photo spots.'); return; }
+    var sp = f.spots[spotEdit.sel], parts = [];
+    for(var r = 0; r < ny; r++) for(var c = 0; c < nx; c++) parts.push({ x: sp.x + sp.w * c / nx, y: sp.y + sp.h * r / ny, w: sp.w / nx, h: sp.h / ny });
+    f.spots.splice.apply(f.spots, [spotEdit.sel, 1].concat(parts));
+    framesChanged({ layout: 'myframe' });
+  }
+  document.getElementById('spotEarlier').addEventListener('click', function(){ moveSpot(-1); });
+  document.getElementById('spotLater').addEventListener('click', function(){ moveSpot(1); });
+  document.getElementById('spotSplitX').addEventListener('click', function(){ splitSpot(2, 1); });
+  document.getElementById('spotSplitY').addEventListener('click', function(){ splitSpot(1, 2); });
+  document.getElementById('spotSplit4').addEventListener('click', function(){ splitSpot(2, 2); });
+  var spotSizeEl = document.getElementById('spotSize'), spotNum = { x: 'spotX', y: 'spotY', w: 'spotW', h: 'spotH' };
+  function refreshSpotSize(){
+    if(!spotSizeEl) return;
+    var f = spotEdit && frameById(spotEdit.f), sp = f && f.spots[spotEdit.sel];
+    spotSizeEl.style.display = sp ? 'flex' : 'none';
+    if(!sp) return;
+    Object.keys(spotNum).forEach(function(k){ var el = document.getElementById(spotNum[k]); if(document.activeElement !== el) el.value = Math.round(sp[k] * 1000) / 10; });
+  }
+  Object.keys(spotNum).forEach(function(k){
+    document.getElementById(spotNum[k]).addEventListener('change', function(e){
+      var f = spotEdit && frameById(spotEdit.f), sp = f && f.spots[spotEdit.sel]; if(!sp) return;
+      var v = Math.max(0, Math.min(100, Number(e.target.value) || 0)) / 100;
+      if(k === 'w' || k === 'h') v = Math.max(0.02, v);
+      sp[k] = v;
+      sp.x = Math.min(sp.x, 1 - Math.min(sp.w, 1)); sp.y = Math.min(sp.y, 1 - Math.min(sp.h, 1));
+      sp.w = Math.min(sp.w, 1 - sp.x); sp.h = Math.min(sp.h, 1 - sp.y);
+      framesChanged({ layout: 'myframe' });
+    });
+  });
 
   // ---- Upload: frames with boxes become "My frame"; anything else is an overlay ----
   function loadImageUrl(url){
@@ -9434,7 +9582,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         .concat(added.map(function(a){ return a.id; })).slice(0, MAX_SHEET_ITEMS);
       useFrames(ids);
       showToast(ids.length === 1
-        ? 'Found ' + added[0].spots.length + ' photo spot' + (added[0].spots.length === 1 ? '' : 's') + (framePairs(added[0]) ? ' (two matching strips: ' + frameShotCount(added[0]) + ' shots, copied to both)' : '') + '. Photos now go inside your frame.'
+        ? 'Found ' + added[0].spots.length + ' photo spot' + (added[0].spots.length === 1 ? '' : 's') + (framePairs(added[0]) ? ' (two matching strips: ' + frameShotCount(added[0]) + ' shots, copied to both)' : '') + '. Wrong number? Tap \u201cEdit photo spots\u201d to add, split or reorder them.'
         : ids.length + ' frames on one 4R print. Untick any in 3 · Layout, or pick another arrangement.', 5500);
     }
     if(overlayAdded){
@@ -9507,6 +9655,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var ctx = setupPreviewCanvas.getContext('2d'), W = setupPreviewCanvas.width, H = setupPreviewCanvas.height;
     if(currentLayout === 'myframe' && spotEdit){
       var f = frameById(spotEdit.f); if(!f) return;
+      try{ refreshSpotSize(); }catch(e){}
       ctx.save();
       f.spots.forEach(function(s, i){
         var on = i === spotEdit.sel, x = s.x * W, y = s.y * H, w = s.w * W, h = s.h * H, u = Math.max(W, H);

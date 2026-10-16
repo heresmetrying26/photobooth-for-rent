@@ -325,12 +325,53 @@
   }
   function stopLive(){
     live = false;
+    let p = Promise.resolve();
     if(viewfinderOn && camera){
       viewfinderOn = false;
-      camera.setConfigValue('viewfinder', 0).catch(() => {});   // mirror down, saves battery
+      p = camera.setConfigValue('viewfinder', 0).catch(() => {});   // mirror down, saves battery
     }
     $('liveBtn').textContent = 'Start live view';
     $('fpsBadge').style.display = 'none';
+    return p;
+  }
+  // Shutter with fallbacks: some Canons (e.g. R50 in AUTO) refuse the shot
+  // while live view also runs on the camera's screen, or while live view is
+  // starting/stopping. Try again with the screen on the computer only, then
+  // with live view fully off. The report says which one worked.
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  async function cfgValue(names){ try{ const n = findCfg(await camera.getConfig(), names); return n ? n.value : undefined; }catch(e){ return undefined; } }
+  async function captureWithFallbacks(){
+    try{ const f = await camera.captureImageAsFile(); report.shotMethod = 'normal'; return f; }
+    catch(e1){
+      if(isCritical(e1)) throw e1;
+      log('Photo failed (' + (e1.message || e1) + '). Retry 1: camera screen off, computer only…');
+      try{
+        const out = findCfg(await camera.getConfig(), ['output']);
+        const pc = out && Array.isArray(out.choices) ? out.choices.find(c => /pc/i.test(c) && !/tft/i.test(c)) : null;
+        if(pc && out.value !== pc){ await camera.setConfigValue('output', pc); log('output = ' + pc); }
+      }catch(e){ if(isCritical(e)) throw e; }
+      await wait(1000);
+      try{ const f = await camera.captureImageAsFile(); report.shotMethod = 'screen off (output = PC)'; return f; }
+      catch(e2){
+        if(isCritical(e2)) throw e2;
+        log('Still failed (' + (e2.message || e2) + '). Retry 2: live view fully off…');
+        try{ await camera.setConfigValue('viewfinder', 0); }catch(e){ if(isCritical(e)) throw e; }
+        await wait(1500);
+        try{ const f = await camera.captureImageAsFile(); report.shotMethod = 'live view off'; return f; }
+        catch(e3){
+          if(isCritical(e3)) throw e3;
+          report.shotCfg = {
+            mode: await cfgValue(['autoexposuremodedial', 'autoexposuremode', 'expprogram']),
+            focus: await cfgValue(['focusmode', 'afmethod']),
+            drive: await cfgValue(['drivemode']),
+            target: await cfgValue(['capturetarget']),
+            release: await cfgValue(['eosremoterelease'])
+          };
+          log('Camera settings at failure: ' + JSON.stringify(report.shotCfg));
+          throw e3;
+        }
+      }
+    }
   }
   $('liveBtn').addEventListener('click', () => {
     if(!camera) return;
@@ -348,11 +389,11 @@
     hideMsg();
     $('shotBtn').disabled = true;
     const wasLive = live;
-    if(live){ stopLive(); await liveLoop; }
+    if(live){ await stopLive(); await liveLoop; await wait(500); }
     log('Firing shutter…');
     const t0 = performance.now();
     try{
-      const file = await camera.captureImageAsFile();
+      const file = await captureWithFallbacks();
       const secs = ((performance.now() - t0) / 1000).toFixed(1);
       const url = URL.createObjectURL(file);
       let dims = '—';
@@ -363,6 +404,7 @@
       $('shotTable').innerHTML = row('File', file.name) + row('Size', (file.size / 1048576).toFixed(1) + ' MB') +
         row('Resolution', dims) + row('Shutter to photo', secs + ' s');
       $('shot').style.display = 'block';
+      log('Photo OK via: ' + report.shotMethod);
       log('Photo: ' + file.name + ', ' + dims + ', ' + (file.size / 1048576).toFixed(1) + ' MB, ' + secs + ' s');
       report.photo = { name: file.name, dims, mb: +(file.size / 1048576).toFixed(1), secs: +secs };
       if(/RAW/.test(dims)) showMsg('The camera saved RAW. Set image quality to JPEG on the camera for the booth.', 'info');

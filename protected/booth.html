@@ -93,6 +93,25 @@
   .pm-close{position:absolute; top:10px; right:10px; z-index:2; width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:14px;}
   .print-fab{position:fixed; left:20px; bottom:20px; z-index:50; min-height:46px; padding:10px 20px; border-radius:999px; border:0; background:var(--blue-deep); color:#fff; font:800 14px 'Manrope',sans-serif; box-shadow:0 10px 26px rgba(160,50,30,.35); cursor:pointer;}
   .print-fab[hidden]{display:none;}
+  /* ---- Lock booth: guest-only screen ---- */
+  .lock-icon{position:fixed; top:8px; right:8px; z-index:70; width:30px; height:30px; border:0; border-radius:50%; background:rgba(255,255,255,.35); font-size:14px; line-height:30px; padding:0; opacity:.35; cursor:pointer;}
+  .lock-icon[hidden]{display:none;}
+  body.booth-locked .brandbar, body.booth-locked .tab-bar, body.booth-locked #camFab, body.booth-locked #printFab, body.booth-locked #printQuickBtn,
+  body.booth-locked #uploadQueueSection, body.booth-locked #backupSection, body.booth-locked #actionsSection, body.booth-locked #guestSection{display:none !important;}
+  .pin-modal{position:fixed; inset:0; z-index:90; background:rgba(20,16,22,.6); display:flex; align-items:center; justify-content:center; padding:16px;}
+  .pin-modal[hidden]{display:none;}
+  .pin-card{width:min(340px, 100%); background:var(--white, #fff); border-radius:22px; padding:22px 20px 18px; text-align:center; box-shadow:0 24px 60px rgba(0,0,0,.3);}
+  .pin-title{margin:0 0 12px; font:800 17px 'Manrope',sans-serif; color:var(--ink);}
+  .pin-dots{display:flex; justify-content:center; gap:14px; margin-bottom:8px;}
+  .pin-dots i{width:14px; height:14px; border-radius:50%; border:2px solid var(--ink-dim);}
+  .pin-dots i.on{background:var(--ink); border-color:var(--ink);}
+  .pin-dots.bad{animation:pinshake .35s;}
+  @keyframes pinshake{25%{transform:translateX(-8px)} 75%{transform:translateX(8px)}}
+  .pin-msg{min-height:18px; margin:0 0 8px; font-size:13px; color:#c23b3b; font-weight:700;}
+  .pin-pad{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+  .pin-pad button{height:58px; border-radius:14px; border:1.5px solid var(--line); background:#fff; font:800 22px 'Manrope',sans-serif; color:var(--ink); cursor:pointer;}
+  .pin-pad button.pin-fn{font-size:14px; color:var(--ink-dim);}
+  .pin-pad button:active{background:var(--tint, #fbeee9);}
   .print-fab.cam-fab{bottom:76px; background:#fff; color:var(--ink); border:1.5px solid var(--line); box-shadow:0 8px 20px rgba(70,45,25,.15); max-width:min(360px, 70vw); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .panel-section.flash-hl{box-shadow:0 0 0 3px var(--blue-deep); transition:box-shadow .3s;}
   .print-steps{list-style:none; margin:4px 0 14px; padding:12px 14px; background:var(--panel-2, #faf6f0); border:1px solid var(--line); border-radius:14px; display:flex; flex-direction:column; gap:8px;}
@@ -589,7 +608,7 @@
   }
 
   .toast{
-    position:fixed; left:50%; bottom:26px; transform:translate(-50%, 20px);
+    position:fixed; left:50%; top:16px; bottom:auto; transform:translate(-50%, -20px);   /* top: never covers the session buttons */
     background:var(--panel); border:1px solid var(--line);
     color:var(--ink); padding:12px 20px; border-radius:30px;
     font-size:13px; opacity:0; pointer-events:none;
@@ -1230,7 +1249,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <button type="button" class="step-tab" data-step="2"><span class="sn">2</span><span class="st"><b>Text</b><small id="stepSum2"></small></span></button>
       <button type="button" class="step-tab" data-step="3"><span class="sn">3</span><span class="st"><b>Layout</b><small id="stepSum3"></small></span></button>
       <button type="button" class="step-tab" data-step="4"><span class="sn">4</span><span class="st"><b>Extras</b><small id="stepSum4"></small></span></button>
-      <button type="button" class="step-tab" data-step="5"><span class="sn">5</span><span class="st"><b>Share</b><small id="stepSum5"></small></span></button>
+      <button type="button" class="step-tab" data-step="5"><span class="sn">5</span><span class="st"><b>Session</b><small id="stepSum5"></small></span></button>
+      <button type="button" class="step-tab" data-step="6"><span class="sn">6</span><span class="st"><b>Share</b><small id="stepSum6"></small></span></button>
     </nav>
 
     <!-- STEP 1 · DESIGN -->
@@ -1459,7 +1479,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     <!-- STEP 3 · LAYOUT & TIMER -->
     <section class="step" id="step3" data-step="3">
       <div class="panel-section" id="formatSection">
-        <p class="panel-label">Layout &amp; timer</p>
+        <p class="panel-label">Layout</p>
         <div class="frames-box" id="myFramesPanel" style="display:none; margin-bottom:14px;">
           <p class="sub-label" style="margin-top:0;">Your frames</p>
           <p class="panel-hint" style="margin:0 0 10px;">Tap to tick. <b>1 ticked</b> = that frame on its own. <b>2 or more</b> = all of them on one 4R print.</p>
@@ -1477,6 +1497,24 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         </div>
         <div class="layout-grid lg-many" id="layoutGrid"></div>
         <p class="panel-hint" id="layoutHint"></p>
+        <div class="sub-group" id="ownFrameBox">
+          <p class="sub-label" style="margin-top:0;">Your own frame</p>
+          <div class="bg-row">
+            <label class="upload-btn" for="overlayInput">Upload frame(s)</label>
+            <input type="file" id="overlayInput" accept="image/png,image/webp,image/jpeg,image/*" multiple>
+          </div>
+          <div class="frame-list" id="frameList"></div>
+          <p class="panel-hint" style="margin-top:8px;">Made in Canva? Leave the photo spots <b>white or see-through</b>. Photos go inside them. Upload several, then tick which to use (and arrange them) under <b>Your frames</b> above.</p>
+          <p class="panel-hint" id="overlaySizeHint"></p>
+          <div id="overlayOnTopBox" class="sub-group">
+            <div class="bg-row">
+              <img class="bg-thumb" id="overlayThumb" alt="Overlay" style="display:none;">
+              <select class="mini-select" id="overlayFit" style="display:none;"><option value="stretch">Stretch</option><option value="contain">Keep shape</option></select>
+            </div>
+            <button class="remove-link" id="overlayRemove">Remove overlay</button>
+            <p class="panel-hint" id="overlayOnTopNote" style="margin-top:4px; display:none;">No photo spots found, so it sits on top as an overlay.</p>
+          </div>
+                </div>
         <select id="photoFitSelect" hidden><option value="fill" selected>Fill the box</option></select>
         <div class="sub-group">
           <label class="toggle-row"><input type="checkbox" id="guestPickToggle"> Guests choose the layout</label>
@@ -1484,55 +1522,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p class="panel-hint" id="guestPickHint" style="margin-top:6px; display:none;">Tick the ones guests can pick.</p>
         </div>
 
-        <p class="sub-label" style="margin-top:16px;">Countdown</p>
-        <div class="chip-row" id="timerChips">
-          <button type="button" class="chip" data-sec="3">3s</button>
-          <button type="button" class="chip active" data-sec="5">5s</button>
-          <button type="button" class="chip" data-sec="7">7s</button>
-          <button type="button" class="chip" data-sec="10">10s</button>
-        </div>
-        <details class="more">
-          <summary>More timer options</summary>
-          <div class="stepper">
-            <span class="lbl">Fine-tune</span>
-            <span class="ctl">
-              <button type="button" class="step-btn" id="timerMinus" aria-label="Half a second less">−</button>
-              <span class="step-val" id="timerVal">5 s</span>
-              <button type="button" class="step-btn" id="timerPlus" aria-label="Half a second more">+</button>
-            </span>
-          </div>
-          <div class="opt-row">
-            <span class="lbl">Extra time before photo 1</span>
-            <select class="mini-select pillify" id="firstExtraSelect">
-              <option value="0" selected>None</option>
-              <option value="2">+2s</option>
-              <option value="3">+3s</option>
-              <option value="5">+5s</option>
-            </select>
-          </div>
-          <div class="opt-row">
-            <span class="lbl">Between photos</span>
-            <select class="mini-select pillify" id="advanceSelect">
-              <option value="auto" selected>Continue by itself</option>
-              <option value="tap">Wait for a tap</option>
-            </select>
-          </div>
-          <div class="opt-row" id="betweenRow">
-            <span class="lbl">Pause between photos</span>
-            <select class="mini-select pillify" id="betweenSelect">
-              <option value="0.5">½s</option>
-              <option value="1">1s</option>
-              <option value="1.5">1½s</option>
-              <option value="2">2s</option>
-              <option value="3">3s</option>
-              <option value="4" selected>4s</option>
-              <option value="5">5s</option>
-              <option value="6">6s</option>
-            </select>
-          </div>
-          <label class="toggle-row" style="margin-top:10px;"><input type="checkbox" id="reviewEachToggle" checked> Show each photo in the pause</label>
-          <select id="resultReviewSelect" hidden><option value="0" selected>Until tap</option></select>
-        </details>
       </div>
       <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="2">← Back</button><button type="button" class="action-btn primary next-btn" data-go="4">Next: Extras →</button></div>
     </section>
@@ -1543,31 +1532,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <p class="panel-label">Extras</p>
         <p class="panel-hint step-lead">All optional.</p>
         <div class="seg-tabs" id="extrasTabs" role="tablist">
-          <button type="button" class="on" data-pane="frame">Frame</button>
-          <button type="button" data-pane="logo">Logo</button>
+          <button type="button" class="on" data-pane="logo">Logo</button>
           <button type="button" data-pane="stickers">Stickers</button>
           <button type="button" data-pane="filter">Filter</button>
         </div>
 
-        <div class="pane on" data-pane="frame">
-          <div class="bg-row">
-            <label class="upload-btn" for="overlayInput">Upload frame(s)</label>
-            <input type="file" id="overlayInput" accept="image/png,image/webp,image/jpeg,image/*" multiple>
-          </div>
-          <div class="frame-list" id="frameList"></div>
-          <p class="panel-hint" style="margin-top:8px;">Made in Canva? Leave the photo spots <b>white or see-through</b>. Photos go inside them. Upload several, then pick which to use (and arrange them) in <a href="#" class="go-step" data-go-step="3">3 · Layout</a>.</p>
-          <p class="panel-hint" id="overlaySizeHint"></p>
-          <div id="overlayOnTopBox" class="sub-group">
-            <div class="bg-row">
-              <img class="bg-thumb" id="overlayThumb" alt="Overlay" style="display:none;">
-              <select class="mini-select" id="overlayFit" style="display:none;"><option value="stretch">Stretch</option><option value="contain">Keep shape</option></select>
-            </div>
-            <button class="remove-link" id="overlayRemove">Remove overlay</button>
-            <p class="panel-hint" id="overlayOnTopNote" style="margin-top:4px; display:none;">No photo spots found, so it sits on top as an overlay.</p>
-          </div>
-        </div>
+        
 
-        <div class="pane" data-pane="logo">
+        <div class="pane on" data-pane="logo">
           <div class="bg-row">
             <img class="bg-thumb" id="logoThumb" alt="Logo" style="display:none;">
             <label class="upload-btn" for="logoInput">Upload logo</label>
@@ -1613,11 +1585,102 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
         </div>
       </div>
-      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="3">← Back</button><button type="button" class="action-btn primary next-btn" data-go="5">Next: Share →</button></div>
+      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="3">← Back</button><button type="button" class="action-btn primary next-btn" data-go="5">Next: Session →</button></div>
     </section>
 
-    <!-- STEP 5 · SHARE & START -->
+    <!-- STEP 5 · SESSION -->
     <section class="step" id="step5" data-step="5">
+      <div class="panel-section" id="sessionSection">
+        <p class="panel-label">Session</p>
+        <p class="panel-hint step-lead">How each guest's turn runs: countdown, time between photos and retakes.</p>
+        <p class="sub-label" style="margin-top:16px;">Countdown</p>
+        <div class="chip-row" id="timerChips">
+          <button type="button" class="chip" data-sec="3">3s</button>
+          <button type="button" class="chip active" data-sec="5">5s</button>
+          <button type="button" class="chip" data-sec="7">7s</button>
+          <button type="button" class="chip" data-sec="10">10s</button>
+        </div>
+        <details class="more" open>
+          <summary>Timer &amp; retake options</summary>
+          <div class="stepper">
+            <span class="lbl">Fine-tune</span>
+            <span class="ctl">
+              <button type="button" class="step-btn" id="timerMinus" aria-label="Half a second less">−</button>
+              <span class="step-val" id="timerVal">5 s</span>
+              <button type="button" class="step-btn" id="timerPlus" aria-label="Half a second more">+</button>
+            </span>
+          </div>
+          <div class="opt-row">
+            <span class="lbl">Extra time before photo 1</span>
+            <select class="mini-select pillify" id="firstExtraSelect">
+              <option value="0" selected>None</option>
+              <option value="2">+2s</option>
+              <option value="3">+3s</option>
+              <option value="5">+5s</option>
+            </select>
+          </div>
+          <div class="opt-row">
+            <span class="lbl">Between photos</span>
+            <select class="mini-select pillify" id="advanceSelect">
+              <option value="auto" selected>Continue by itself</option>
+              <option value="tap">Wait for a tap</option>
+            </select>
+          </div>
+          <div class="opt-row" id="betweenRow">
+            <span class="lbl">Pause between photos</span>
+            <select class="mini-select pillify" id="betweenSelect">
+              <option value="0.5">½s</option>
+              <option value="1">1s</option>
+              <option value="1.5">1½s</option>
+              <option value="2">2s</option>
+              <option value="3">3s</option>
+              <option value="4" selected>4s</option>
+              <option value="5">5s</option>
+              <option value="6">6s</option>
+            </select>
+          </div>
+          <label class="toggle-row" style="margin-top:10px;"><input type="checkbox" id="reviewEachToggle" checked> Show each photo in the pause</label>
+          <label class="toggle-row" id="allowRetakeRow" style="margin-top:6px; display:none;"><input type="checkbox" id="allowRetakeToggle" checked> Allow retakes</label>
+          <p class="panel-hint" id="allowRetakeHint" style="display:none; margin:2px 0 0;">On: guests can redo any photo (events). Off: guests can only Cancel and start over (bazaars, pay per print).</p>
+          <select id="resultReviewSelect" hidden><option value="0" selected>Until tap</option></select>
+        </details>
+      </div>
+      <div class="panel-section" id="cameraSection">
+        <p class="panel-label">Camera</p>
+        <select class="cam-select" id="cameraSelect">
+          <option value="">Loading cameras…</option>
+        </select>
+        <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
+        <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
+        <label class="switch-row" id="mirrorRow">
+          <span>Mirror the live view</span>
+          <input type="checkbox" id="mirrorToggle">
+        </label>
+        <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos look the same as the preview (mirrored when this is on).</p>
+      </div>
+      <div class="panel-section hidden" id="guestSection">
+        <p class="panel-label">Guest screen</p>
+        <p class="guest-status" id="guestStatus"><i></i><span>Not open yet</span></p>
+        <button class="action-btn primary" id="guestOpenBtn">&#128250; Open guest screen</button>
+        <p class="panel-hint" id="guestHint">Connect the second monitor (set to <b>Extend</b>), then open the guest screen. Chrome or Edge can move it onto that monitor for you — allow “window management” if asked. Click the guest screen once to make it full screen.</p>
+        <p class="panel-hint">Guests start a session by tapping the guest screen, or pressing <b>Space</b> / a presenter clicker. Setup, printing and the QR code stay on this screen.</p>
+      </div>
+      <div class="panel-section" id="lockSection" style="display:none;">
+        <p class="panel-label">Lock booth</p>
+        <p class="panel-hint" style="margin:0 0 10px;">For a self-service booth: guests only see tap to start → layout → photos → filter → QR / print. Setup and settings are hidden until someone enters the PIN (tap the small &#128274; in the top-right corner).</p>
+        <p class="sub-label" id="lockPinLabel">Set a 4-digit PIN</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <input type="password" inputmode="numeric" maxlength="4" pattern="[0-9]*" id="lockPin1" class="label-input" placeholder="PIN" style="width:110px; letter-spacing:6px; font-family:'Manrope',sans-serif; font-size:16px;">
+          <input type="password" inputmode="numeric" maxlength="4" pattern="[0-9]*" id="lockPin2" class="label-input" placeholder="Again" style="width:110px; letter-spacing:6px; font-family:'Manrope',sans-serif; font-size:16px;">
+          <button type="button" class="action-btn" id="lockPinSave" style="width:auto; margin:0;">Save PIN</button>
+        </div>
+        <p class="panel-hint" id="lockPinNote" style="margin:6px 0 10px;"></p>
+        <button type="button" class="action-btn primary" id="lockNowBtn" style="width:auto; margin:0;">&#128274; Lock booth now</button>
+      </div>
+      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="4">← Back</button><button type="button" class="action-btn primary next-btn" data-go="6">Next: Share →</button></div>
+    </section>
+    <!-- STEP 6 · SHARE & START -->
+    <section class="step" id="step6" data-step="6">
       <div class="panel-section" id="driveSetupSection">
         <p class="panel-label">Share &amp; start</p>
         <p class="panel-hint step-lead" id="driveStatusText">Type a folder name to save the photos.</p>
@@ -1651,27 +1714,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p class="panel-hint" id="printSummary" style="margin:0;"></p>
         </div>
       </div>
-      <div class="panel-section" id="cameraSection">
-        <p class="panel-label">Camera</p>
-        <select class="cam-select" id="cameraSelect">
-          <option value="">Loading cameras…</option>
-        </select>
-        <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
-        <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
-        <label class="switch-row" id="mirrorRow">
-          <span>Mirror the live view</span>
-          <input type="checkbox" id="mirrorToggle">
-        </label>
-        <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos look the same as the preview (mirrored when this is on).</p>
-      </div>
-      <div class="panel-section hidden" id="guestSection">
-        <p class="panel-label">Guest screen</p>
-        <p class="guest-status" id="guestStatus"><i></i><span>Not open yet</span></p>
-        <button class="action-btn primary" id="guestOpenBtn">&#128250; Open guest screen</button>
-        <p class="panel-hint" id="guestHint">Connect the second monitor (set to <b>Extend</b>), then open the guest screen. Chrome or Edge can move it onto that monitor for you — allow “window management” if asked. Click the guest screen once to make it full screen.</p>
-        <p class="panel-hint">Guests start a session by tapping the guest screen, or pressing <b>Space</b> / a presenter clicker. Setup, printing and the QR code stay on this screen.</p>
-      </div>
-      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="4">← Back</button><button class="action-btn primary" id="goToSessionBtn">Start photo session →</button></div>
+      
+      
+      
+      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="5">← Back</button><button class="action-btn primary" id="goToSessionBtn">Start photo session →</button></div>
     </section>
 
     <div class="panel-section" id="previewSection">
@@ -1897,6 +1943,20 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 </div>
 <button type="button" class="print-fab" id="printFab" hidden>&#128424; Print settings</button>
 <button type="button" class="print-fab cam-fab" id="camFab" hidden>&#128247; Camera</button>
+<button type="button" class="lock-icon" id="lockIcon" aria-label="Unlock" title="Unlock" hidden>&#128274;</button>
+<div class="pin-modal" id="pinModal" hidden>
+  <div class="pin-card" role="dialog" aria-label="Enter PIN">
+    <p class="pin-title">Enter PIN to unlock</p>
+    <div class="pin-dots" id="pinDots"><i></i><i></i><i></i><i></i></div>
+    <p class="pin-msg" id="pinMsg"></p>
+    <div class="pin-pad" id="pinPad">
+      <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+      <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+      <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+      <button type="button" data-k="x" class="pin-fn">Cancel</button><button type="button" data-k="0">0</button><button type="button" data-k="b" class="pin-fn">&#9003;</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <div id="printArea"></div>
 <style id="printPageStyle"></style>
@@ -1973,6 +2033,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   // ---- Tab switching ----
   function switchTab(tab){
+    if(tab !== 'session' && document.body.classList.contains('booth-locked')) return;
     const toSession = tab === 'session';
     tabBtnSetup.classList.toggle('active', !toSession);
     tabBtnSession.classList.toggle('active', toSession);
@@ -1999,7 +2060,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   goToSessionBtn.addEventListener('click', () => {
     if(!rawFolderKey()){
-      if(typeof goStep === 'function') goStep(5);
+      if(typeof goStep === 'function') goStep(6);
       showDriveFolderError('Type a folder name first.');
       driveFolderKeyInput.focus();
       return;
@@ -4067,11 +4128,22 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     qrResults.innerHTML = '';
     lastRenderedFolderUrl = null;
     qrSlot('photo', 'Your photo', 'Saving your photo…');
+    // Guests get a working QR straight away: the event's All photos page,
+    // swapped for their own photo's QR as soon as the upload finishes.
+    const evFolder = getCachedFolderUrl();
+    let slowTimer = null;
+    const setCap = (t) => { const w = qrResults.querySelector('.qr-result[data-kind="photo"] .qr-caption'); if(w) w.textContent = t; };
+    if(evFolder){
+      setCap('All photos \u00b7 your photo is uploading\u2026');
+      fillQrSlot('photo', shareUrlFor(evFolder));
+      slowTimer = setTimeout(() => { if(myGeneration === qrGeneration) setCap('All photos \u00b7 your photo will appear here shortly'); }, 60000);
+    }
     guestRender();
     let result = null, lastError = null;
-    const onRetry = () => { if(myGeneration === qrGeneration) failQrSlot('photo', 'Weak internet. Trying again…'); };
+    const onRetry = () => { if(myGeneration !== qrGeneration) return; if(evFolder) setCap('All photos \u00b7 weak internet, still uploading\u2026'); else failQrSlot('photo', 'Weak internet. Trying again…'); };
     try { result = await uploadLayoutForQR(currentLayout, onRetry); }
     catch(err){ lastError = err; console.error('Photo upload failed:', err); }
+    clearTimeout(slowTimer);
     if(myGeneration !== qrGeneration) return null;
     if(!result && lastError && lastError.queued && !isPermanentUploadError(lastError)){
       // Kept on this device; it uploads later. Give the guest the event's
@@ -4087,11 +4159,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       showToast('No internet right now. The photo is kept on this device and will upload by itself.', 7000);
       return null;
     }
+    if(!result && evFolder){
+      setCap('All photos \u00b7 your photo appears here once it uploads');
+      showToast('Photo not saved yet. ' + driveErrorText(lastError), 7000);
+      return null;
+    }
     if(!result){
       failQrSlot('photo', lastError && lastError.queued ? 'Not uploaded. Kept on this device.' : 'Couldn’t save. Check the internet.');
       showToast('Photo not saved. ' + driveErrorText(lastError), 7000);
       return null;
     }
+    setCap('Your photo');
     fillQrSlot('photo', result.fileId ? fileShareUrl(result.fileId, false) : result.url);
     showToast('Photo saved');
     return myGeneration;
@@ -4365,7 +4443,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     await cam.connect();
     usbCam.camera = cam;
     usbCam.vfOn = false;
-    usbCam.noScreen = false; usbCam.shotVfOff = false;   // shutter fallbacks are learned per connection
     usbCam.name = (devices[0] && devices[0].productName) || '';
     const opt = Array.from(cameraSelect.options).find(o => o.value === USB_CAM_ID);
     if(opt && usbCam.name) opt.textContent = usbCam.name + ' (USB remote)';
@@ -4382,6 +4459,18 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     await new Promise(r => setTimeout(r, 1500));
     await usbCameraScreenToo();
   }
+  // Large JPEGs (and RAW) don't come through over USB on some cameras (the
+  // R50 shot fine at "Medium Normal JPEG" and failed at "Large Fine JPEG").
+  // A medium JPEG (about 4000 x 2600 px) is still far more than a print needs.
+  const USB_MEDIUM_JPEG = [/^medium\s*normal\s*jpeg$/i, /^medium\s*fine\s*jpeg$/i, /medium.*jpeg/i, /^m\b.*jpe?g/i];
+  async function usbSetPhotoSize(){
+    try{
+      const node = usbFindCfg(await usbCam.camera.getConfig(), 'imageformat') || usbFindCfg(await usbCam.camera.getConfig(), 'imagequality');
+      if(!node || !Array.isArray(node.choices)) return;
+      const pick = USB_MEDIUM_JPEG.map(re => node.choices.find(c => re.test(c))).find(Boolean);
+      if(pick && node.value !== pick) await usbCam.camera.setConfigValue(node.name, pick);
+    }catch(err){ if(usbIsCritical(err)) throw err; }
+  }
   // Canon sends live view only to the computer by default, leaving the
   // camera's own screen blank. Ask for both (choice named like "TFT + PC").
   function usbFindCfg(node, name){
@@ -4391,7 +4480,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return null;
   }
   async function usbCameraScreenToo(){
-    if(usbCam.noScreen) return;   // this camera only shoots with live view on the computer alone
     try{
       const out = usbFindCfg(await usbCam.camera.getConfig(), 'output');
       const both = out && Array.isArray(out.choices) ? out.choices.find(c => /tft/i.test(c) && /pc/i.test(c)) : null;
@@ -4497,7 +4585,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         usbCam.canvas.width = 640; usbCam.canvas.height = 424;
         usbCam.ctx = usbCam.canvas.getContext('2d');
       }
-      if(!usbCam.vfOn) await usbViewfinderOn();
+      if(!usbCam.vfOn){ await usbSetPhotoSize(); await usbViewfinderOn(); }
       usbCam.active = true; usbCam.hasFrame = false; usbCam.lastErr = null;
       const gen = ++usbCam.gen;
       usbLiveLoop(gen);
@@ -4849,8 +4937,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     frames.forEach((frame, i) => {
       const shot = shotCanvases[i];
       frame.classList.toggle('filled', !!shot);
-      frame.classList.toggle('pickable', !!(sess && sess.reviewing && shot));
-      frame.classList.toggle('picked', !!(sess && sess.reviewing && sess.pick === i));
+      frame.classList.toggle('pickable', !!(sess && sess.reviewing && shot && retakesAllowed()));
+      frame.classList.toggle('picked', !!(sess && sess.reviewing && sess.pick === i && retakesAllowed()));
       frame.dataset.i = i;
       frame.style.display = shot ? '' : 'none';     // only taken photos show, one by one
       if (shot){
@@ -4929,7 +5017,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
     const shots = shotCanvases;
     try{
-      const file = await usbCaptureFile();
+      const file = await usbCam.camera.captureImageAsFile();
       const bmp = await createImageBitmap(file);
       const sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;   // whole photo; the layout box crops it once
       const k = Math.min(1, USB_SHOT_MAX / Math.max(sw, sh));
@@ -4947,50 +5035,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       console.error('USB shot failed:', err);
       showToast('The camera photo didn\u2019t come through (check focus, and that the camera saves JPEG), so the live view frame was used.', 5000);
       if(usbIsCritical(err)) usbDead(err);
-    }
-  }
-
-  // The real shutter, with fallbacks. Some Canons (e.g. the R50 in AUTO)
-  // refuse the shot while live view also shows on the camera's own screen,
-  // or while live view runs at all. Whatever works is remembered for the
-  // rest of this connection, so only the first shot pays for the retries.
-  async function usbCaptureFile(){
-    const cam = usbCam.camera;
-    if(usbCam.shotVfOff) return usbCaptureVfOff();
-    try{ return await cam.captureImageAsFile(); }
-    catch(e1){
-      if(usbIsCritical(e1)) throw e1;
-      console.warn('USB shot failed, retrying with the camera screen off:', e1);
-      try{
-        const out = usbFindCfg(await cam.getConfig(), 'output');
-        const pc = out && Array.isArray(out.choices) ? out.choices.find(c => /pc/i.test(c) && !/tft/i.test(c)) : null;
-        if(pc && out.value !== pc) await cam.setConfigValue('output', pc);
-      }catch(e){ if(usbIsCritical(e)) throw e; }
-      usbCam.noScreen = true;
-      await wait(900);
-      try{ return await cam.captureImageAsFile(); }
-      catch(e2){
-        if(usbIsCritical(e2)) throw e2;
-        console.warn('USB shot failed again, retrying with live view off:', e2);
-        const f = await usbCaptureVfOff();
-        usbCam.shotVfOff = true;
-        return f;
-      }
-    }
-  }
-  async function usbCaptureVfOff(){
-    const cam = usbCam.camera, wasActive = usbCam.active;
-    usbStopLive();
-    await wait(250);
-    try{ await cam.setConfigValue('viewfinder', 0); }catch(e){ if(usbIsCritical(e)) throw e; }
-    usbCam.vfOn = false;
-    await wait(1300);
-    try{ return await cam.captureImageAsFile(); }
-    finally{
-      if(wasActive && usbCam.camera === cam){
-        try{ await usbViewfinderOn(); }catch(e){ if(usbIsCritical(e)) usbDead(e); }
-        if(usbCam.camera === cam){ usbCam.active = true; usbLiveLoop(++usbCam.gen); }
-      }
     }
   }
 
@@ -5104,7 +5148,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       guestCall('tick', '', true, 1, nextText);
       cdBar.style.strokeDashoffset = '0';
       retakeBtn.textContent = '\u21BA Retake this photo';
-      retakeBtn.hidden = false;
+      retakeBtn.hidden = !retakesAllowed();
       if(tapMode){ doneBtn.textContent = 'Next photo \u25B6'; doneBtn.hidden = false; }
       // Tap mode: waits for Next / Space / clicker / a tap on the guest screen.
       // Auto: at least 4 s to look at the photo (and press Retake) before the next one; Space / clicker skips ahead.
@@ -5120,6 +5164,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // redoes a photo; after the last photo the guests review the strip and can
   // retake any one photo before it's saved, uploaded and printed.
   var sess = null;
+  // Retake can be switched off per event, when the admin has enabled that option for this code.
+  let allowRetake = true;
+  function retakesAllowed(){ return !(window.__PB && window.__PB.retakeOpt) || allowRetake; }
+  function refreshRetakeUI(){
+    const on = !!(window.__PB && window.__PB.retakeOpt);
+    const row = document.getElementById('allowRetakeRow'), hint = document.getElementById('allowRetakeHint'), t = document.getElementById('allowRetakeToggle');
+    if(row) row.style.display = on ? '' : 'none';
+    if(hint) hint.style.display = on ? '' : 'none';
+    if(t) t.checked = allowRetake;
+  }
+  document.getElementById('allowRetakeToggle').addEventListener('change', function(e){ allowRetake = !!e.target.checked; });
+  window.addEventListener('pb-retake-change', refreshRetakeUI);
+  setTimeout(refreshRetakeUI, 0);
   const REVIEW_SEC = 12;     // the strip saves by itself after this (keeps queues moving)
   const cancelSessionBtn = document.getElementById('cancelSessionBtn');
   const retakeBtn = document.getElementById('retakeBtn');
@@ -5153,7 +5210,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   });
   filmTrack.addEventListener('click', function(e){
     var fr = e.target.closest('.film-frame');
-    if(!fr || !sess || !sess.reviewing) return;
+    if(!fr || !sess || !sess.reviewing || !retakesAllowed()) return;
     var i = Number(fr.dataset.i);
     if(!shotCanvases[i]) return;
     sess.pick = i;
@@ -5170,7 +5227,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       setTimeout(applyStageAspect, 0);
       try{ guestCall('review', previewCanvas.toDataURL('image/jpeg', 0.85)); }catch(e){}
       retakeBtn.textContent = '\u21BA Retake photo ' + (sess.pick + 1);
-      retakeBtn.hidden = false; doneBtn.hidden = false; reviewHint.hidden = shotCanvases.length < 2;
+      retakeBtn.hidden = !retakesAllowed(); doneBtn.hidden = false; reviewHint.hidden = shotCanvases.length < 2 || !retakesAllowed();
       doneBtn.textContent = '\u2713 Done \u2014 save my photo';
       updateFilmTrack();
       var tick = null;        // no auto-save: waits for Done (or Space / clicker)
@@ -7962,7 +8019,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(flowBusy || state === 'capturing') return;
     if(!rawFolderKey()){
       switchTab('setup');
-      if(typeof goStep === 'function') goStep(5);
+      if(typeof goStep === 'function') goStep(6);
       showDriveFolderError('Type a folder name first.');
       return;
     }
@@ -7982,6 +8039,104 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       refreshWelcome();
     }
   }
+
+  // ---- Lock booth: guest-only screen behind a 4-digit PIN ----
+  // Only for codes the admin gave the option to. The PIN is kept (hashed) on
+  // this computer; the admin can reset it, which unlocks the booth.
+  var LOCK_KEY = 'pb4u.lock', PIN_KEY = 'pb4u.lockPin';
+  var lockState = { locked: false };
+  function lockAllowed(){ return !!(window.__PB && window.__PB.lockOpt); }
+  function lockRead(k){ try{ return JSON.parse(localStorage.getItem(k) || 'null'); }catch(e){ return null; } }
+  function lockWrite(k, v){ try{ if(v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  async function pinHash(pin){
+    var data = new TextEncoder().encode('pb4u-lock:' + pin);
+    var buf = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+  }
+  function savedPin(){
+    var p = lockRead(PIN_KEY);
+    // An admin reset newer than the PIN wipes it (and unlocks below).
+    if(p && window.__PB && (window.__PB.pinResetAt || 0) > (p.at || 0)){ lockWrite(PIN_KEY, null); return null; }
+    return p;
+  }
+  function applyLock(){
+    var on = lockState.locked && lockAllowed() && !!savedPin();
+    if(lockState.locked && !savedPin()){ lockState.locked = false; lockWrite(LOCK_KEY, null); }   // no PIN (e.g. admin reset): unlock for good
+    document.body.classList.toggle('booth-locked', on);
+    document.getElementById('lockIcon').hidden = !on;
+    if(on){
+      if(tabSession.classList.contains('hidden')) switchTab('session');
+      try{ closePrintModal(); closeCamModal(); }catch(e){}
+      try{ var el = document.documentElement; if(el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen().catch(function(){}); }catch(e){}
+    }
+    refreshLockSetup();
+  }
+  function refreshLockSetup(){
+    var sec = document.getElementById('lockSection'); if(!sec) return;
+    sec.style.display = lockAllowed() ? '' : 'none';
+    var has = !!savedPin();
+    document.getElementById('lockPinLabel').textContent = has ? 'Change the 4-digit PIN' : 'Set a 4-digit PIN';
+    document.getElementById('lockNowBtn').disabled = !has;
+    var note = document.getElementById('lockPinNote');
+    if(!note.dataset.msg) note.textContent = has ? 'PIN saved on this computer.' : 'Set a PIN first, then lock.';
+  }
+  document.getElementById('lockPinSave').addEventListener('click', async function(){
+    var a = document.getElementById('lockPin1'), b = document.getElementById('lockPin2'), note = document.getElementById('lockPinNote');
+    var v = a.value.trim();
+    note.dataset.msg = '1';
+    if(!/^\d{4}$/.test(v)){ note.textContent = 'The PIN must be exactly 4 digits.'; return; }
+    if(v !== b.value.trim()){ note.textContent = 'The two PINs don’t match.'; return; }
+    lockWrite(PIN_KEY, { h: await pinHash(v), at: Date.now() });
+    a.value = ''; b.value = '';
+    note.textContent = 'PIN saved. Tap “Lock booth now” when you’re ready.';
+    setTimeout(function(){ delete note.dataset.msg; }, 4000);
+    refreshLockSetup();
+  });
+  document.getElementById('lockNowBtn').addEventListener('click', function(){
+    if(!savedPin()) return;
+    lockState.locked = true; lockWrite(LOCK_KEY, { at: Date.now() });
+    applyLock();
+    showToast('Booth locked. Tap the small 🔒 in the top-right corner and enter the PIN to unlock.', 5000);
+  });
+  // PIN pad
+  var pinBuf = '', pinFails = 0, pinWaitUntil = 0;
+  var pinModal = document.getElementById('pinModal'), pinDots = document.getElementById('pinDots'), pinMsg = document.getElementById('pinMsg');
+  function pinShow(){ pinBuf = ''; pinMsg.textContent = ''; pinDraw(); pinModal.hidden = false; }
+  function pinHide(){ pinModal.hidden = true; pinBuf = ''; }
+  function pinDraw(){ [].forEach.call(pinDots.children, function(d, i){ d.classList.toggle('on', i < pinBuf.length); }); }
+  async function pinKey(k){
+    if(k === 'x'){ pinHide(); return; }
+    if(k === 'b'){ pinBuf = pinBuf.slice(0, -1); pinDraw(); return; }
+    if(Date.now() < pinWaitUntil){ pinMsg.textContent = 'Too many tries. Wait ' + Math.ceil((pinWaitUntil - Date.now()) / 1000) + ' s.'; return; }
+    if(pinBuf.length >= 4) return;
+    pinBuf += k; pinDraw();
+    if(pinBuf.length < 4) return;
+    var p = savedPin();
+    var ok = !p || (await pinHash(pinBuf)) === p.h;
+    if(ok){
+      pinFails = 0; pinHide();
+      lockState.locked = false; lockWrite(LOCK_KEY, null); applyLock();
+      try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
+      showToast('Unlocked. Setup and settings are back.', 3000);
+    } else {
+      pinFails++;
+      if(pinFails >= 5){ pinWaitUntil = Date.now() + 30000; pinFails = 0; }
+      pinMsg.textContent = Date.now() < pinWaitUntil ? 'Too many tries. Wait 30 s.' : 'Wrong PIN. Try again.';
+      pinDots.classList.remove('bad'); void pinDots.offsetWidth; pinDots.classList.add('bad');
+      pinBuf = ''; setTimeout(pinDraw, 250);
+    }
+  }
+  document.getElementById('pinPad').addEventListener('click', function(e){ var b = e.target.closest('button'); if(b){ e.stopPropagation(); pinKey(b.dataset.k); } });
+  pinModal.addEventListener('click', function(e){ e.stopPropagation(); if(e.target === pinModal) pinHide(); });
+  document.addEventListener('keydown', function(e){
+    if(pinModal.hidden) return;
+    e.stopPropagation(); e.preventDefault();
+    if(/^\d$/.test(e.key)) pinKey(e.key); else if(e.key === 'Backspace') pinKey('b'); else if(e.key === 'Escape') pinKey('x');
+  }, true);
+  document.getElementById('lockIcon').addEventListener('click', function(e){ e.stopPropagation(); pinShow(); });
+  window.addEventListener('pb-lock-change', function(){ var wasLocked = document.body.classList.contains('booth-locked'); applyLock(); if(wasLocked && !document.body.classList.contains('booth-locked')) showToast('The lock PIN was reset. Set a new PIN in Setup → 5.', 6000); });
+  lockState.locked = !!lockRead(LOCK_KEY);
+  setTimeout(applyLock, 0);
 
   // ---- Saved setup ----
   // Saved on this device right away, and to the server for rental codes, so
@@ -8004,7 +8159,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       layout: setupLayout,
       guestPick: guestPickOn, guestLayouts: guestLayoutSet.slice(),
       timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
-      reviewEach: reviewEach, resultReviewSec: resultReviewSec,
+      reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake,
       backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
       frameColorChoice: frameColorChoice, photoPlacement: photoPlacement, cropFocus: cropFocus,
       label: labelInput.value, font: currentFont, dateFont: currentDateFont, dateOn: dateOn, date: dateInput.value,
@@ -8086,6 +8241,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(typeof s.betweenSec === 'number'){ betweenSec = s.betweenSec; setSelectValue('betweenSelect', s.betweenSec); }
       if(s.advanceMode === 'tap' || s.advanceMode === 'auto'){ advanceMode = s.advanceMode; setSelectValue('advanceSelect', s.advanceMode); refreshAdvanceUI(); }
       if(typeof s.reviewEach === 'boolean'){ reviewEach = s.reviewEach; reviewEachToggle.checked = s.reviewEach; }
+      if(typeof s.allowRetake === 'boolean'){ allowRetake = s.allowRetake; try{ refreshRetakeUI(); }catch(e){} }
       filterKey = Object.prototype.hasOwnProperty.call(FILTERS, s.filter) ? s.filter : 'none';
       markFilterChips();
       softSkin = !!s.softSkin; softSkinToggle.checked = softSkin;
@@ -9893,7 +10049,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var setupLoadPromise = loadSetup(false);
 
   // =====================================================================
-  // Setup in 5 steps: 1 Design · 2 Text · 3 Layout · 4 Extras · 5 Share.
+  // Setup in 6 steps: 1 Design · 2 Text · 3 Layout · 4 Extras · 5 Session · 6 Share.
   // One step shows at a time; the step bar (with a one-line summary of
   // each step) and the bottom Start bar stay in reach.
   // =====================================================================
@@ -9901,9 +10057,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var setupShellEl = document.querySelector('#tabSetup .setup-shell');
   var stepTabs = [].slice.call(document.querySelectorAll('#stepBar .step-tab'));
   function goStep(n, opts){
-    n = Math.max(1, Math.min(5, Number(n) || 1));
+    n = Math.max(1, Math.min(6, Number(n) || 1));
     curStep = n;
-    for(var i = 1; i <= 5; i++) document.getElementById('step' + i).classList.toggle('on', i === n);
+    for(var i = 1; i <= 6; i++) document.getElementById('step' + i).classList.toggle('on', i === n);
     stepTabs.forEach(function(t){
       var on = Number(t.dataset.step) === n;
       t.classList.toggle('on', on);
@@ -9912,7 +10068,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{ sessionStorage.setItem('pb_step', String(n)); }catch(e){}
     if(n === 2){ renderFontUI(); refreshThemePalette(); }
     if(n === 3) queueLayoutThumbs();
-    if(n === 5) refreshPrintSummary();
+    if(n === 6) refreshPrintSummary();
     refreshSetupNav();
     if(!(opts && opts.noScroll)){
       var top = setupShellEl.getBoundingClientRect().top + window.scrollY - 4;
@@ -9938,7 +10094,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var PRESET_NAMES = { none: 'Plain', gold: 'Gold Glitter', sky: 'Pastel Sky', stars: 'Black & Gold', cream: 'Cream', maroon: 'Maroon & Gold', custom: 'Your photo' };
   function extrasList(){
     var ex = [];
-    if((myFrames && myFrames.length) || overlay) ex.push('Frame');
     if(logo) ex.push('Logo');
     if(decor.length) ex.push(decor.length + (decor.length === 1 ? ' sticker' : ' stickers'));
     if(filterKey && filterKey !== 'none') ex.push('Filter');
@@ -9958,11 +10113,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var ex = extrasList();
     setStepSum(4, ex.length ? ex.join(', ') : 'None');
     var folderOk = !!rawFolderKey();
-    setStepSum(5, folderOk ? 'Ready' : 'Folder needed', !folderOk);
+    setStepSum(5, fmtSec(timerSec) + ' s countdown' + (advanceMode === 'tap' ? ', tap for next' : ''));
+    setStepSum(6, folderOk ? 'Ready' : 'Folder needed', !folderOk);
     stepTabs[1].classList.toggle('done', !!nm);
-    stepTabs[4].classList.toggle('done', folderOk);
+    stepTabs[5].classList.toggle('done', folderOk);
     var st = document.getElementById('startStatus');
-    st.textContent = folderOk ? 'Ready to start' : 'Add a folder name (step 5)';
+    st.textContent = folderOk ? 'Ready to start' : 'Add a folder name (step 6)';
     st.classList.toggle('warn', !folderOk);
     // Backdrop & colours summary
     var bs = PRESET_NAMES[backdropPreset] || 'Backdrop';
@@ -10222,7 +10378,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var ltCache = { sig: '', urls: {} }, ltQueue = [], ltDirty = true, ltTimer = null, ltBusy = false;
   function layoutDesignSig(){
     var s = snapshotSetup();
-    ['layout', 'guestPick', 'guestLayouts', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview'].forEach(function(k){ delete s[k]; });
+    ['layout', 'guestPick', 'guestLayouts', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview', 'allowRetake'].forEach(function(k){ delete s[k]; });
     return JSON.stringify(s) + '|' + (backgroundImg ? backgroundImg.src.length : 0) + '|' + labelInput.value;
   }
   function setLayoutThumb(btn, url){
@@ -10322,11 +10478,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // ---- First step to show ----
   (function(){
     var saved = 0; try{ saved = Number(sessionStorage.getItem('pb_step')) || 0; }catch(e){}
-    goStep(saved >= 1 && saved <= 5 ? saved : 1, { noScroll: true });
+    goStep(saved >= 1 && saved <= 6 ? saved : 1, { noScroll: true });
     afterSetupPreview();
     setupLoadPromise.then(function(){
       // A returning renter with the design done but no folder yet: go straight to Share.
-      if(!saved && labelInput.value.trim() && !rawFolderKey()) goStep(5, { noScroll: true });
+      if(!saved && labelInput.value.trim() && !rawFolderKey()) goStep(6, { noScroll: true });
       refreshSetupNav();
     });
   })();

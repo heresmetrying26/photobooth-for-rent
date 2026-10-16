@@ -550,6 +550,9 @@
     }
     acts += '<button class="small" data-a="printedit" data-c="' + c + '">Print settings</button>';
     acts += '<button class="small" data-a="mode" data-c="' + c + '">' + (l.traditional ? 'Switch to tablet' : 'Make traditional') + '</button>';
+    acts += '<button class="small" data-a="retakeopt" data-c="' + c + '">' + (l.retakeOpt ? 'Hide retake switch' : 'Give retake switch') + '</button>';
+    acts += '<button class="small" data-a="lockopt" data-c="' + c + '">' + (l.lockOpt ? 'Hide lock booth' : 'Give lock booth') + '</button>';
+    if(l.lockOpt) acts += '<button class="small" data-a="pinreset" data-c="' + c + '">Reset lock PIN</button>';
     acts += st === 'revoked'
       ? '<button class="small" data-a="restore" data-c="' + c + '">Restore</button>'
       : '<button class="small danger" data-a="revoke" data-c="' + c + '">Disable</button>';
@@ -558,7 +561,7 @@
       ? esc(l.folderName || l.label || l.code) + ' · <i>event name</i></b> <span style="font-weight:500;">(new folder per event)</span><b>'
       : esc(l.folderName || l.label || l.code) + (bonus ? ' / ' + esc(l.subfolder || 'Bonus') + ' <span style="font-weight:500;">(files named BONUS_…)</span>' : '');
     return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
-      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>' + infoLine(l, st, parentEnd) +
+      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>' + infoLine(l, st, parentEnd) +
       '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
       (maxD > 1 && devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="Remove this device">Remove</button></span>'; }).join('') + '</div>' : '') +
       '</div>' +
@@ -739,6 +742,27 @@
         var pb = readPrint(b.closest('[data-print-edit]'));
         await api({ action: 'print', code: code, printEnabled: pb.enabled, printSizes: pb.sizes });
         toast('Print settings saved' + (LIC[code] && LIC[code].bonusKey ? ' (bonus code too)' : '') + ' — an open booth picks them up within ~5 minutes');
+        refresh();
+        return;
+      }
+      if(a === 'lockopt'){
+        var lo = !(LIC[code] && LIC[code].lockOpt);
+        await api({ action: 'lockopt', code: code, lockOpt: lo });
+        toast((lo ? 'Lock booth given' : 'Lock booth hidden') + ' — an open booth updates within ~5 minutes');
+        refresh();
+        return;
+      }
+      if(a === 'pinreset'){
+        if(!confirm('Reset the lock PIN for ' + code + '? A locked booth unlocks within ~5 minutes and they set a new PIN.')) return;
+        await api({ action: 'pinreset', code: code });
+        toast('PIN reset — the booth unlocks within ~5 minutes');
+        refresh();
+        return;
+      }
+      if(a === 'retakeopt'){
+        var ro = !(LIC[code] && LIC[code].retakeOpt);
+        await api({ action: 'retakeopt', code: code, retakeOpt: ro });
+        toast((ro ? 'Retake switch given' : 'Retake switch hidden') + ' — an open booth updates within ~5 minutes');
         refresh();
         return;
       }

@@ -59,6 +59,16 @@ const WATCHER = `
           L.traditional = j.traditional;
           window.dispatchEvent(new Event('pb-mode-change'));
         }
+        // ...and the per-event "Allow retakes" option.
+        if (typeof j.retakeOpt === 'boolean' && j.retakeOpt !== !!L.retakeOpt) {
+          L.retakeOpt = j.retakeOpt;
+          window.dispatchEvent(new Event('pb-retake-change'));
+        }
+        // ...the "Lock booth" option, and a PIN reset from the admin.
+        if ((typeof j.lockOpt === 'boolean' && j.lockOpt !== !!L.lockOpt) || (j.pinResetAt || 0) !== (L.pinResetAt || 0)) {
+          L.lockOpt = !!j.lockOpt; L.pinResetAt = j.pinResetAt || 0;
+          window.dispatchEvent(new Event('pb-lock-change'));
+        }
       }
     }).catch(function(){ /* offline: keep running until the known expiry */ });
   }
@@ -77,7 +87,7 @@ export default safe(async (req) => {
   // reads it once at startup to fill in the Drive folder and show its QR. So it
   // goes in <head>. The watcher needs document.body, so it stays before </body>.
   // '<' is escaped so a folder name can never close the script tag early.
-  const pb = JSON.stringify({ type: res.type, exp: res.exp, folderKey: res.folderKey || null, lockFolder: !!res.folderKey, print: res.print || { enabled: false, sizes: [] }, traditional: !!res.traditional, bonus: !!res.bonus, subfolder: res.subfolder || null, filePrefix: res.filePrefix || '', folderPrefix: res.folderPrefix || null, lifetime: !!res.lifetime, deviceNo: res.deviceNo || 1, multiDevice: !!res.multiDevice, defaultTheme: res.defaultTheme || null, qrTarget: settings.qrTarget === 'drive' ? 'drive' : 'gallery' }).replace(/</g, '\\u003c');
+  const pb = JSON.stringify({ type: res.type, exp: res.exp, folderKey: res.folderKey || null, lockFolder: !!res.folderKey, print: res.print || { enabled: false, sizes: [] }, traditional: !!res.traditional, retakeOpt: !!res.retakeOpt, lockOpt: !!res.lockOpt, pinResetAt: res.pinResetAt || 0, bonus: !!res.bonus, subfolder: res.subfolder || null, filePrefix: res.filePrefix || '', folderPrefix: res.folderPrefix || null, lifetime: !!res.lifetime, deviceNo: res.deviceNo || 1, multiDevice: !!res.multiDevice, defaultTheme: res.defaultTheme || null, qrTarget: settings.qrTarget === 'drive' ? 'drive' : 'gallery' }).replace(/</g, '\\u003c');
   const head = '<script>window.__PB=' + pb + ';</script>';
   const tail = '<script>' + WATCHER + '</script>';
   let html = booth;

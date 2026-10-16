@@ -114,7 +114,7 @@ export function summaryOf(rec) {
     kind: rec.kind || 'rental', parent: rec.parent || null, bonusKey: rec.bonusKey || null,
     lifetime: !!rec.lifetime, days: rec.days || 0, minutes: rec.minutes || null, startsAt: rec.startsAt || null,
     status: rec.status, redeemedAt: rec.redeemedAt || null, expiresAt: rec.expiresAt || null,
-    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional,
+    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional, retakeOpt: !!rec.retakeOpt, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0,
     print: !!(rec.print && rec.print.enabled), createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null
   };
 }
@@ -328,6 +328,9 @@ export async function checkLicense(token, deviceId) {
     multiDevice: maxDevicesOf(rec) > 1,
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes),
     traditional: !!rec.traditional,
+    retakeOpt: !!rec.retakeOpt,
+    lockOpt: !!rec.lockOpt,
+    pinResetAt: rec.pinResetAt || 0,
     bonus,
     subfolder: bonus ? (rec.subfolder || BONUS_SUBFOLDER) : null,
     filePrefix: bonus ? BONUS_PREFIX : ''

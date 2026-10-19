@@ -439,6 +439,7 @@
     $('trialTraditional').checked = !!s.trialTraditional;
     $('trialRetakeOpt').checked = !!s.trialRetakeOpt;
     $('trialLockOpt').checked = !!s.trialLockOpt;
+
     var qr = document.querySelector('input[name=qrTarget][value="' + (s.qrTarget === 'drive' ? 'drive' : 'gallery') + '"]'); if(qr) qr.checked = true;
   }
   function renderStats(st){

@@ -17,6 +17,15 @@ bun build --compile --minify --target=bun-darwin-arm64 print-helper.js --outfile
 bun build --compile --minify --target=bun-darwin-x64   print-helper.js --outfile photobooth4u-print-helper-mac-intel
 bun build --compile --minify --target=bun-windows-x64  print-helper.js --outfile photobooth4u-print-helper-windows.exe
 ```
+**Mac builds made on Windows/Linux must be re-signed before zipping.** Bun's cross-compiled Mac
+binaries carry a broken ad-hoc signature (code digest mismatch), and macOS then says the file
+"is damaged and can't be opened". Re-sign them with `rcodesign` (apple-codesign, runs on any OS):
+```
+rcodesign sign --binary-identifier com.photobooth4u.printhelper photobooth4u-print-helper-mac-apple-silicon
+rcodesign sign --binary-identifier com.photobooth4u.printhelper photobooth4u-print-helper-mac-intel
+```
+(On a Mac, `codesign --force --sign - <file>` does the same.)
+
 Zip each (keep the Mac files executable) and put the zips in `public/downloads/`.
 Run from source for testing: `bun print-helper.js`.
 

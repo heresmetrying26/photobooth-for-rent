@@ -887,6 +887,13 @@
   body.in-session .app-shell.capturing .sc-filter i{width:36px; height:36px; border-width:2px;}
   body.in-session .app-shell.capturing .ready-summary{font-size:clamp(14px, 1.5vw, 18px);}
   .app-shell.result .film-track{display:none;}   /* the finished photo already shows them */
+  .app-shell.result .rec-dot{display:none !important;}   /* the finished photo isn't live */
+  /* Tall strip on a wide screen (tablet landscape, laptop): review buttons on one
+     row across the whole width instead of wrapping under the narrow strip... */
+  body.in-session .app-shell.capturing.tall-stage:not(.film-below) .session-controls{grid-column:1 / -1; justify-self:center; width:max-content; max-width:calc(100vw - 32px);}
+  /* ...and on the finished strip, Next guest / Print sit beside it, bottom right. */
+  body.in-session .app-shell.btn-beside .stage-wrap{position:relative;}
+  body.in-session .app-shell.btn-beside .start-btn-wrap{position:absolute; margin:0; bottom:12px; left:calc(50% + var(--stage-w, 0px) / 2 + 24px); flex-direction:column; align-items:flex-start;}
   .film-frame{aspect-ratio:var(--box-aspect, 1); height:auto;}
   .film-track .film-frame{height:56px; width:auto;}
   body.in-session .app-shell.capturing .film-track .film-frame{height:auto; width:100%;}
@@ -4784,7 +4791,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{
       if(typeof G !== 'undefined' && G && G.d){
         var gf = G.d.getElementById('frame');
-        var ga = state === 'capturing' ? box : cam;   // standard camera shape between guests
+        var ga = showingStrip ? sa : state === 'capturing' ? box : cam;   // the finished strip's shape / standard camera shape between guests
         if(gf){ gf.style.aspectRatio = ga.toFixed(4); gf.style.height = 'min(94vh, ' + (60 / ga).toFixed(2) + 'vw)'; }
         placeGuide(G.d.getElementById('guide'), cam, box, false);
         G.film.style.setProperty('--box-aspect', filmBox.toFixed(4));
@@ -4804,6 +4811,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var capturing = shell.classList.contains('capturing');
     var side = capturing && window.innerWidth > 760 && window.innerWidth > window.innerHeight * 1.05;
     shell.classList.toggle('film-below', capturing && !side);
+    // Tall pictures (2x6 strips) on wide screens: the buttons under them spread
+    // out instead of wrapping into the strip's narrow width (see CSS).
+    shell.classList.toggle('tall-stage', side && sa < 0.6);
     var frames = ft.querySelectorAll('.film-frame');
     var vh = window.innerHeight;
     var top = Math.max(0, sw.getBoundingClientRect().top + window.scrollY);
@@ -4816,12 +4826,27 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       frames.forEach(function(f){ f.style.height = ''; f.style.width = ''; });
       var filmH = ft.offsetParent !== null && getComputedStyle(ft).display !== 'none' ? ft.offsetHeight + 12 : 0;
       var Wn = sw.clientWidth || shell.clientWidth;
+      // A finished tall strip on a wide screen: put Next guest / Print beside it
+      // (bottom right) when there's room, so the strip gets the full height.
+      var beside = false;
+      if(!capturing && sa < 0.6 && sb){
+        var bw = 0;
+        [].forEach.call(sb.children, function(b){ if(b.offsetParent !== null) bw = Math.max(bw, b.offsetWidth); });
+        var wTall = Math.min(Wn, Math.max(220, vh - top - ctrlH - filmH - 14) * sa);
+        beside = bw > 0 && (Wn - wTall) / 2 >= bw + 32;
+      }
+      if(shell.classList.contains('btn-beside') !== beside){
+        shell.classList.toggle('btn-beside', beside);
+        btnH = sb && sb.offsetParent !== null && getComputedStyle(sb).position !== 'absolute' ? sb.offsetHeight + 28 : 0;
+      }
       var Hn = Math.max(220, vh - top - ctrlH - filmH - btnH - 14);
       var wn = Math.max(200, Math.min(Wn, Hn * sa));
       sf.style.width = Math.round(wn) + 'px';
       sf.style.setProperty('--stage-h', Math.round(wn / sa) + 'px');
+      sw.style.setProperty('--stage-w', Math.round(wn) + 'px');
       return;
     }
+    shell.classList.remove('btn-beside');
     var n = Math.max(5, frames.length), g = 10, gap = 16;
     var W = shell.clientWidth - 4;
     var Hmax = Math.max(260, Math.min(vh * 0.94, vh - top - ctrlH - 12));
@@ -7406,7 +7431,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     '.cd.pausing .cdw{display:none;}' +
     '.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity 120ms ease-out;}.flash.on{opacity:.92;transition:opacity 20ms;}' +
     '.film{display:flex;flex-direction:column;gap:1.2vh;align-items:center;}' +
-    '.film div{width:15vh;aspect-ratio:var(--box-aspect,0.8);border-radius:8px;border:2px dashed #D6CEC1;background-size:cover;background-position:center;}' +
+    '.film div{position:relative;height:min(15vh, calc(62vh / var(--n,3) - 1.2vh));aspect-ratio:var(--box-aspect,0.8);border-radius:8px;border:2px dashed #D6CEC1;background-size:cover;background-position:center;}' +
+    // Review on a touch guest screen: tap a photo to pick it, then Retake / Done.
+    '.film div.pick{cursor:pointer;}' +
+    '.film div.pick::after{content:"↺ Tap to retake";position:absolute;left:0;right:0;bottom:0;padding:.5vh .3vw;border-radius:0 0 6px 6px;background:rgba(20,16,22,.62);color:#fff;font:800 clamp(10px,.85vw,15px) Manrope,sans-serif;text-align:center;}' +
+    '.film div.sel{outline:5px solid var(--red);outline-offset:3px;}.film div.sel::after{content:"✓ Will retake";background:var(--red);}' +
+    '.gb{display:flex;flex-direction:column;gap:1.4vh;width:min(100%,22vw);min-width:180px;}' +
+    '.gbtn{min-height:max(56px,7vh);padding:1vh 1.2vw;border-radius:99px;border:2px solid var(--ink);background:#fff;color:var(--ink);font:800 clamp(15px,1.3vw,26px) Manrope,sans-serif;cursor:pointer;touch-action:manipulation;}' +
+    '.gbtn.strong{background:var(--red);border-color:var(--red);color:#fff;}' +
     '.guide{position:absolute;z-index:2;display:none;pointer-events:none;border:3px dashed rgba(255,255,255,.9);border-radius:8px;box-shadow:0 0 0 9999px rgba(10,8,12,.45);}.guide.on{display:block;}' +
     '.film div.f{border:2px solid var(--red);}' +
     '.chip{padding:.8vh 1.2vw;border-radius:99px;background:var(--ink);color:#fff;font-weight:800;font-size:clamp(10px,.85vw,15px);letter-spacing:.18em;text-transform:uppercase;}' +
@@ -7439,6 +7471,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       '<div class="side">' +
         '<span class="chip" id="chip">Ready</span>' +
         '<div class="film" id="film"></div>' +
+        '<div class="gb hide" id="gb"><button class="gbtn strong hide" id="gRetake" type="button"></button><button class="gbtn hide" id="gDone" type="button"></button></div>' +
         '<div class="qrs hide" id="qrw"></div>' +
       '</div>' +
     '</div></body></html>';
@@ -7449,14 +7482,26 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const $g = id => d.getElementById(id);
     G = { d, v: $g('v'), res: $g('res'), cd: $g('cd'), bar: $g('bar'), num: $g('num'), flash: $g('flash'), film: $g('film'),
           msg: $g('msg'), sub: $g('sub'), ev: $g('ev'), dt: $g('dt'), chip: $g('chip'), qrw: $g('qrw'), qrSig: '', fs: $g('fs'),
-          pk: $g('pk'), pkg: $g('pkg'), pkSig: '' };
+          pk: $g('pk'), pkg: $g('pkg'), pkSig: '', gb: $g('gb'), gRetake: $g('gRetake'), gDone: $g('gDone'), wasRev: false };
+    // The guest's Retake / Done and photo taps press the booth's own buttons,
+    // so they follow the same rules (Allow retakes, tap mode, …).
+    G.gRetake.addEventListener('click', (e) => { e.stopPropagation(); retakeBtn.click(); });
+    G.gDone.addEventListener('click', (e) => { e.stopPropagation(); doneBtn.click(); });
+    G.film.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-i]');
+      if(!el || !el.classList.contains('pick')) return;
+      e.stopPropagation();
+      const fr = filmTrack.querySelector('.film-frame[data-i="' + el.dataset.i + '"]');
+      if(fr) fr.click();
+    });
     G.fs.addEventListener('click', (e) => {
       e.stopPropagation();
       const el = d.documentElement;
       (el.requestFullscreen ? el.requestFullscreen() : Promise.reject()).catch(() => {});
     });
     d.addEventListener('fullscreenchange', () => G && G.fs.classList.toggle('hide', !!d.fullscreenElement));
-    d.addEventListener('click', () => boothTrigger(true));
+    // A tap on the background while reviewing doesn't save: guests use Done.
+    d.addEventListener('click', () => { if(sess && sess.reviewing) return; boothTrigger(true); });
     d.addEventListener('keydown', onTriggerKey);
     guestCall('camera');
     guestRender();
@@ -7527,12 +7572,38 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       G.film.innerHTML = '';
       for(let i = 0; i < n; i++) G.film.appendChild(G.d.createElement('div'));
     }
+    G.film.style.setProperty('--n', String(Math.max(3, n)));
     [...G.film.children].forEach((el, i) => {
-      const shot = shotCanvases[i];
+      const shot = shotCanvases[i], mf = filmTrack.children[i];
       el.classList.toggle('f', !!shot);
       el.style.backgroundImage = shot ? 'url(' + shotThumb(shot) + ')' : '';
+      el.dataset.i = String(i);
+      el.classList.toggle('pick', !!mf && mf.classList.contains('pickable'));
+      el.classList.toggle('sel', !!mf && mf.classList.contains('picked'));
     });
   }
+  // Retake / Done on the guest screen copy the booth's buttons (shown, wording).
+  function guestButtons(){
+    if(!guestOpen()) return;
+    try{
+      const r = !!sess && !retakeBtn.hidden, dn = !!sess && !doneBtn.hidden;
+      G.gRetake.textContent = retakeBtn.textContent; G.gRetake.classList.toggle('hide', !r);
+      G.gDone.textContent = doneBtn.textContent;     G.gDone.classList.toggle('hide', !dn);
+      G.gb.classList.toggle('hide', !r && !dn);
+      const rev = !!(sess && sess.reviewing);
+      if(rev){
+        G.msg.textContent = 'Check your photos';
+        G.sub.textContent = !retakesAllowed() ? 'Tap Done to save' : shotCanvases.length > 1 ? 'Tap a photo to retake it' : 'Retake it, or tap Done';
+        G.chip.textContent = 'Review';
+        G.wasRev = true;
+      } else if(G.wasRev){ G.wasRev = false; guestRender(); }
+    }catch(e){ /* guest window closed */ }
+  }
+  try{
+    const guestSync = new MutationObserver(() => { guestFilm(); guestButtons(); });
+    [retakeBtn, doneBtn].forEach(b => guestSync.observe(b, { attributes: true, attributeFilter: ['hidden'], childList: true, characterData: true, subtree: true }));
+    guestSync.observe(filmTrack, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  }catch(e){}
   // The layout picker on the guest screen (same choices as on the laptop).
   function guestPickRender(){
     if(!guestOpen()) return;
@@ -7561,10 +7632,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{
       const ready = readyOverlay.classList.contains('ready-active');
       const result = state === 'result' && shotCanvases.every(Boolean);
+      const reviewing = !!(sess && sess.reviewing);    // the strip is on screen until Retake / Done
       G.ev.textContent = (labelInput.value || '').trim();
       G.dt.textContent = currentDateLabel();
-      G.res.style.display = result ? 'block' : 'none';
-      G.v.style.display = result ? 'none' : 'block';
+      G.res.style.display = result || reviewing ? 'block' : 'none';
+      G.v.style.display = result || reviewing ? 'none' : 'block';
       if(!(state === 'capturing' && countingDown)) G.cd.style.display = 'none';
       // The guest's photo QR, copied from the result panel.
       const slots = [...qrResults.querySelectorAll('.qr-result')];
@@ -7615,6 +7687,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         G.sub.textContent = welcome ? 'Tap the screen to start' : (layoutDef().name + ' · ' + shotsNeeded() + (shotsNeeded() === 1 ? ' shot' : ' shots'));
         G.chip.textContent = 'Ready';
       }
+      G.wasRev = G.wasRev && reviewing;
+      guestButtons();
     }catch(e){ /* closed */ }
   }
   // One trigger for the guest screen, the keyboard and presenter clickers:

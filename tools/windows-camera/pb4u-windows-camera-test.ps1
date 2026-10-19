@@ -136,20 +136,45 @@ namespace Pb4u
         static void Check(int hr, string what) { if (hr != 0) throw new Exception(what + " failed (0x" + hr.ToString("X8") + ")"); }
         IPortableDeviceValues NewValues() { return Create<IPortableDeviceValues>("0c15d503-d017-47ce-9016-7b3f978721cc"); }
 
+        [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode)]
+        static extern int CM_Get_Device_Interface_List_SizeW(out uint len, ref Guid cls, string devId, uint flags);
+        [DllImport("cfgmgr32.dll", CharSet = CharSet.Unicode)]
+        static extern int CM_Get_Device_Interface_ListW(ref Guid cls, string devId, char[] buffer, uint len, uint flags);
+
         public static List<KeyValuePair<string, string>> ListDevices()
         {
             var list = new List<KeyValuePair<string, string>>();
             var mgr = Create<IPortableDeviceManager>("0af10cec-2ecd-4b92-9581-34f6ae0637f3");
-            mgr.RefreshDeviceList();
+            int rh = mgr.RefreshDeviceList();
             uint n = 0;
-            Check(mgr.GetDevices(null, ref n), "List devices");
-            if (n == 0) return list;
-            var ids = new IntPtr[n];
-            Check(mgr.GetDevices(ids, ref n), "List devices");
-            for (int i = 0; i < n; i++)
+            int hr = mgr.GetDevices(null, ref n);
+            Console.WriteLine("   [diag] RefreshDeviceList 0x" + rh.ToString("X8") + ", GetDevices 0x" + hr.ToString("X8") + ", count " + n);
+            var ids = new List<string>();
+            if (hr == 0 && n > 0)
             {
-                string id = Marshal.PtrToStringUni(ids[i]);
-                Marshal.FreeCoTaskMem(ids[i]);
+                var arr = new IntPtr[n];
+                hr = mgr.GetDevices(arr, ref n);
+                Console.WriteLine("   [diag] GetDevices (2) 0x" + hr.ToString("X8") + ", count " + n);
+                for (int i = 0; i < n && hr == 0; i++) { ids.Add(Marshal.PtrToStringUni(arr[i])); Marshal.FreeCoTaskMem(arr[i]); }
+            }
+            // Second way: ask Windows directly for portable-device interfaces.
+            if (ids.Count == 0)
+            {
+                Guid wpd = new Guid("6AC27878-A6FA-4155-BA85-F98F491D4F33");
+                uint len;
+                int cr = CM_Get_Device_Interface_List_SizeW(out len, ref wpd, null, 0);
+                Console.WriteLine("   [diag] Windows device list: code " + cr + ", size " + len);
+                if (cr == 0 && len > 1)
+                {
+                    var buf = new char[len];
+                    cr = CM_Get_Device_Interface_ListW(ref wpd, null, buf, len, 0);
+                    if (cr == 0)
+                        foreach (string id in new string(buf).Split(new char[] { '\0' }, StringSplitOptions.RemoveEmptyEntries)) ids.Add(id);
+                }
+            }
+            foreach (string id in ids)
+            {
+                Console.WriteLine("   [diag] device id: " + id);
                 list.Add(new KeyValuePair<string, string>(id, Name(mgr, id, 0) + " / " + Name(mgr, id, 1)));
             }
             return list;
@@ -297,6 +322,11 @@ namespace Pb4u
                 string n = d.Value.ToLowerInvariant();
                 if (pick == null && (n.Contains("nikon") || n.Contains("canon") || n.Contains("sony") || n.Contains("fuji") || n.Contains("d5") || n.Contains("eos"))) pick = d.Key;
             }
+            if (pick == null && devs.Count > 0)
+            {
+                pick = devs[0].Key;
+                Log("No camera name matched; testing the first device instead (e.g. a phone): " + devs[0].Value);
+            }
             if (pick == null)
             {
                 Log("No camera found. Check: camera on, USB mode PTP/MTP, cable connected, and NOT switched to WinUSB with Zadig.");
@@ -324,7 +354,7 @@ namespace Pb4u
                     Log("Battery: " + (r == Ptp.OK && bat.Length > 0 ? bat[0] + "%" : "unknown (" + H(r) + ")"));
                 }
 
-                if (vendor != 0x0A) { Log("Not a Nikon: live view / capture tests for this brand come in stage 2. Send this text over."); return; }
+                if (vendor != 0x0A) { Log("RESULT: Windows driver access WORKS (no Zadig). Not a Nikon, so live view / capture are skipped (phones can't do them; Canon comes in stage 2). Send this text over."); return; }
 
                 if (ops.Contains(0x9201) && ops.Contains(0x9203))
                 {

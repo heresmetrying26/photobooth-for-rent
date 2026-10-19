@@ -32,6 +32,17 @@
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-store"
 
+# Printing guide: short links to /how-to-print-hiti/
+[[redirects]]
+  from = "/how-to-print"
+  to = "/how-to-print-hiti/"
+  status = 301
+
+[[redirects]]
+  from = "/how-to-print/*"
+  to = "/how-to-print-hiti/"
+  status = 301
+
 # Online gallery: /g/<Drive folder id> shows that folder's photos and GIFs.
 [[redirects]]
   from = "/g/*"

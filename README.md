@@ -67,6 +67,20 @@ sizes. Prints come out at the real paper size (300 dpi, zero margins):
 - When the photo and paper shapes are close, the print fills edge to edge (trimming a
   sliver of backdrop); otherwise it fits the whole image with white borders.
 
+## Photo session screen
+- **Live view = the camera's whole picture** (its own shape, e.g. 3:2 for a DSLR), with a dashed
+  **guide box** showing exactly what each layout's photo box keeps (strip, duo, trio, grid, My frame…).
+  Shots are stored whole and cropped once into the box, so the guide matches the print.
+- While shooting: bigger live view, taken photos large on the right, **Cancel** (or Esc: nothing is
+  saved) and **Retake this photo** during the pause between shots.
+- After the last shot: **review** — tap a photo to retake just that one, or **Done** (auto after 12 s;
+  Space/clicker = Done). Only the finished strip is saved, uploaded and printed.
+- **Mirror** toggle and **filter** chips sit under the live view (same settings as Setup).
+- My frame: two matching strips on one sheet (e.g. 4x6 with 2×3 boxes) take half the shots and copy
+  them across (switch per frame); borderless boxes touching the edges are detected.
+- Print box: on 4R with a strip layout, "Printer for 4R · strip layouts (2 strips, cut)" is its own
+  setting, so strips can go to e.g. "HiTi 2x6 cut" and other layouts to "HiTi 4x6".
+
 ## USB camera (remote control) mode
 For DSLR / mirrorless cameras in their **Photo Import / Remote Control** (Canon) or **PTP/MTP**
 (Nikon) USB mode, so the camera's own photo settings and flash apply. Pick

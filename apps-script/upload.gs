@@ -158,7 +158,8 @@ function jsonOut(obj) {
 // for the photobooth4u gallery page (/g/<id>). Only folders inside
 // ROOT_FOLDER_ID can be listed, and they are already "anyone with the link".
 var GALLERY_EVENT_DAYS = 7;          // keep in sync with EVENT_DAYS in cleanup.gs
-var GALLERY_SHORT_DAYS = 1;          // trial and Bonus folders (TRIAL_DAYS / BONUS_DAYS)
+var GALLERY_SHORT_DAYS = 1;          // Bonus folders (BONUS_DAYS in cleanup.gs)
+var GALLERY_TRIAL_DAYS = 1 / 24;     // trial folders: 1 hour after the last photo (TRIAL_DAYS in cleanup.gs)
 var GALLERY_TRIAL_RE = /^Trial test shots [A-Z0-9]{6}$/;   // TRIAL_PREFIX in cleanup.gs
 
 function isInsideRoot_(folder) {
@@ -206,7 +207,7 @@ function listGallery_(id) {
     title = (p.hasNext() ? p.next().getName() + ' · ' : '') + 'Bonus';
     until = folder.getDateCreated().getTime() + GALLERY_SHORT_DAYS * day;
   } else if (GALLERY_TRIAL_RE.test(name)) {
-    until = folder.getDateCreated().getTime() + GALLERY_SHORT_DAYS * day;
+    until = (newest || folder.getDateCreated().getTime()) + GALLERY_TRIAL_DAYS * day;   // from the last trial photo
   } else if (newest) {
     until = newest + GALLERY_EVENT_DAYS * day;
   }

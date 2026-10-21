@@ -16,8 +16,15 @@ const WATCHER = `
     if (document.querySelector('.app-shell.capturing')) { setTimeout(function(){ tryLock(reason); }, 4000); return; }
     lock(reason);
   }
+  // Time-left chip. The booth moves it (by id) into its Setup bar or Photo
+  // Session dock so it never covers a button; this is its stand-alone look.
+  var chipCss = document.createElement('style');
+  chipCss.textContent = '#pbTimeChip{position:fixed;right:10px;bottom:10px;z-index:99999;background:rgba(28,26,30,.9);color:#fff;font:600 12px Manrope,system-ui,sans-serif;padding:6px 12px;border-radius:999px;pointer-events:none;}';
+  document.head.appendChild(chipCss);
   var chip = document.createElement('div');
-  chip.style.cssText = 'position:fixed;right:10px;bottom:10px;z-index:99999;background:rgba(28,26,30,.9);color:#fff;font:600 12px Manrope,system-ui,sans-serif;padding:6px 12px;border-radius:999px;pointer-events:none;display:none;';
+  chip.id = 'pbTimeChip';
+  chip.setAttribute('role', 'status');
+  chip.style.display = 'none';
   document.body.appendChild(chip);
   var locking = false;
   function tick(){
@@ -34,7 +41,7 @@ const WATCHER = `
       chip.style.display = 'block';
       chip.textContent = L.bonus
         ? 'Bonus \\u00b7 ' + (m >= 60 ? Math.floor(m / 60) + 'h ' + pad(m % 60) + 'm' : pad(m) + ':' + pad(s)) + ' left'
-        : 'Rental ends in ' + Math.floor(m / 60) + 'h ' + pad(m % 60) + 'm';
+        : Math.floor(m / 60) + 'h ' + pad(m % 60) + 'm left';
     } else {
       chip.style.display = 'none';
     }

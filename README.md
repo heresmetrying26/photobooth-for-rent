@@ -54,7 +54,8 @@ Edit `protected/booth.html` and redeploy. (The build step re-bundles it automati
 ## Printing (per rental)
 Printing is **off** unless you turn it on in Admin — when creating codes, or later with
 **Print settings** on any code (an open booth picks the change up within ~5 minutes).
-Pick which paper sizes that renter may use: 2×6 strip, 3R (3.5×5), 4R (4×6), 5R (5×7),
+Pick which paper sizes that renter may use: 2×6 strip, 3R (3.5×5), 4R (4×6), Canon Selphy postcard
+(100×148 mm) and card (54×86 mm), 5R (5×7),
 6R (6×8), 8R (8×10), A6, A5, A4, Letter — or add up to 6 **custom sizes** (width × height in
 inches or mm, e.g. 4×4 in square or 100×148 mm). Custom sizes always print portrait.
 Trials have their own print switch in the Trial card (off by default).
@@ -68,6 +69,14 @@ sizes. Prints come out at the real paper size (300 dpi, zero margins):
   sliver of backdrop); otherwise it fits the whole image with white borders.
 
 ## Photo session screen
+- **Look:** Photo Session is a dark full-screen "darkroom" (Setup stays light). The camera fills the screen; Camera /
+  Printer / time left sit in a small dock (bottom-left, or a bottom bar on narrow screens) and are hidden when locked.
+- **Welcome screen** (between guests) is drawn from the event's design: their background, a sample print of their
+  layout and the event name, with a pulsing "Tap to start". It is the start button (no separate Start under it).
+- **Result:** one card with the QR, **Print** (guest button, if on) and **Done**, all on one screen on phones and
+  portrait tablets too. A thin bar under Done shows when the booth returns to the welcome screen. Done goes straight
+  back to the welcome screen.
+- **Countdown:** a large ring at the top of the live view with "Shot 1 of 4" under it.
 - **Live view = the camera's whole picture** (its own shape, e.g. 3:2 for a DSLR), with a dashed
   **guide box** showing exactly what each layout's photo box keeps (strip, duo, trio, grid, My frame…).
   Shots are stored whole and cropped once into the box, so the guide matches the print.
@@ -95,6 +104,44 @@ each shot fires the real shutter (about 2.5–3 s per shot incl. transfer, shown
 - Needs the COOP/COEP headers on `/` in `netlify.toml`. Uses web-gphoto2 (LGPL-2.1) from
   `public/camera-test/build/`; `/camera-test/` is a stand-alone test page for any camera.
 - Tested: Nikon D5600 on macOS Chrome (shutter, live view, settings). Canon not yet tested.
+
+### Canon SELPHY (CP1300 / CP1500)
+Works as is: iPad over AirPrint, Android over Mopria (or Canon Print Service), laptops over USB/Wi-Fi with
+the Print Helper or the print station. Allow the **Canon Selphy postcard (100×148 mm)** size for the renter
+(true 4R is 101.6×152.4, so it would trim a sliver). No 2×6 paper: strip layouts print two strips on the
+postcard to cut. About 41 s per print, so plan 1 print per session for busy events.
+
+### Print limits, copies and the guest Print button
+- **Limits (Admin → Print settings, also when creating codes and for the trial):** *per event* (sheets for the
+  whole event, all devices together) and *per session* (sheets one guest session may print). Empty = no limit.
+  Copies count (2 copies = 2 sheets; keychain/strip pages count each page). The event count lives on the server
+  (`/api/prints`, Blobs store `prints`; lifetime codes count per event name), so reloads and extra devices share it.
+  Admin → Print settings shows **Prints so far** per event with **Reset count** (e.g. the renter bought more prints).
+  If the booth is offline when it prints, the guest still gets the print and the sheets are added once it's back online.
+  A cancelled AirPrint/print dialog still counts (a web page can't tell it was cancelled).
+- **Setup → 6 Share → Printing** (saved with the setup, so every device on the code gets it):
+  **Print button for guests** (shows after each session, also when the booth is locked), **Print automatically
+  after each session**, **Copies each time**, **Let guests choose how many copies** (a big “How many copies?”
+  sheet, never more than the limits allow) and **Change the wording guests see** (Print button, “Printing, please
+  hold…”, the copies question, the limit-reached message).
+- **Print automatically** now works on tablets too: on an iPad the AirPrint sheet opens by itself after each session
+  and the guest only taps Print (a web page can't skip that sheet). Traditional booths keep the old behaviour (turns
+  on after the first print; with the Print Helper or `--kiosk-printing` there's no dialog). If a Home Screen iPad app
+  doesn't open the AirPrint sheet, run the booth in a Safari tab or use the laptop print station.
+
+### Laptop print station (`/print-station/`) — iPad printing with no pop-up
+For DNP / HiTi printers (not AirPrint) or when guests shouldn't see the AirPrint sheet:
+1. On the laptop connected to the printer, start the **Print Helper**, open
+   `https://photobooth4u.netlify.app/print-station/` and sign in with the booking code (doesn't use a device slot;
+   rental codes only, not trials). Pick a printer per paper size, **Print a test page**.
+2. On the iPad: **Print settings → Send prints to → Laptop print station** (or Setup → 6 Share). The booth shows
+   whether the station is on.
+3. Prints (and auto-prints) go iPad → `/api/printjobs` (Blobs store `printjobs`, max 60 waiting, dropped after 30
+   minutes) → the station page → Print Helper → printer, with no dialog. Without the helper the station uses Chrome's
+   print dialog (or none with `--kiosk-printing`).
+- The station polls every 2.5 s (5 s when quiet) from a worker, so it keeps going in a background tab; keep the
+  laptop plugged in and awake. Each poll is one function call, so leave it closed when no event is running.
+- No Print Helper rebuild was needed: the station page talks to the helper you already ship.
 
 ### Printer per paper size + Print Helper
 In the Print box, **Printer for <size>** remembers which printer each paper size uses (saved on that
@@ -126,6 +173,21 @@ which sends every print straight to the **default printer**:
 
 Without kiosk mode the normal print dialog opens: pick the photo printer, set Margins to
 **None** and Scale to **Default/100%**, then print.
+
+## Background swap / green screen (Setup → 4 Extras → Green screen)
+- **No cloth (AI):** cuts guests out with Google MediaPipe's selfie segmentation and puts them on a new background.
+  Runs entirely on the device (no photo leaves it, no fees). Files are in `public/bg/` (MediaPipe Tasks Vision 1.0.1
+  runtime ~12 MB + a 250 KB model, Apache 2.0, see `public/bg/NOTICE.txt`); they load only when this mode is on and are
+  cached for a week. Best with guests close to the camera; hats and props held away from the body may be cut off.
+- **Green screen:** classic chroma key (green, blue, or **Pick from camera** = the colour at the top of the picture)
+  with a **Strength** slider and colour-spill removal. Cleanest edges; needs an evenly lit cloth.
+- 9 built-in backgrounds (drawn in the browser, nothing to license) or **Upload your own picture** (saved with the
+  customer's images like logos, so every device gets it).
+- Applied to every shot (so uploads, QR photos and prints have it), to **Preview with my camera**, and (switch) to the
+  live view, including the traditional booth's guest screen. Slower tablets get fewer live frames automatically; the
+  photos themselves are always processed at full quality.
+- The model file is MediaPipe's `selfie_segmentation.tflite` with TFLite metadata added so MediaPipe Tasks accepts it
+  (normalisation mean 0 / std 255, label "person").
 
 ## Event dates and bonus codes
 - **Event date (optional).** When creating a code, set *Opens on* + *From time*. The code is

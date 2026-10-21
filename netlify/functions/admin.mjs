@@ -1,7 +1,7 @@
 import {
   safe, json, licenses, meta, getSettings, sign, verifyToken, sha,
   newCode, displayCode, normCode, throttle, recordFail, clearFail, normPrint, DAY, MIN, BONUS_SUBFOLDER,
-  LIFETIME_EXP, MAX_DEVICES, devicesOf, setDevices
+  LIFETIME_EXP, MAX_DEVICES, devicesOf, setDevices, printsStore
 , putLicense, delLicense, readIndex, rebuildIndex, windowEnd } from '../lib/core.mjs';
 import { timingSafeEqual, createHash } from 'node:crypto';
 import { setupsStore } from '../lib/core.mjs';
@@ -215,7 +215,7 @@ export default safe(async (req, context) => {
       if (!count) return json({ error: 'Count must be between 1 and 20.' }, 400);
       const label = String(b.label || '').trim().slice(0, 80);
       const folderName = String(b.folderName || label).trim().slice(0, 80);
-      const print = normPrint(b.printEnabled, b.printSizes);
+      const print = normPrint(b.printEnabled, b.printSizes, { eventLimit: b.printEventLimit, sessionLimit: b.printSessionLimit });
       if (b.printEnabled && !print.enabled) return json({ error: 'Pick at least one paper size, or turn printing off.' }, 400);
       const start = readStart(b.startsAt);
       if (!start.ok) return json({ error: 'Pick a valid opening date.' }, 400);
@@ -347,12 +347,39 @@ export default safe(async (req, context) => {
     case 'print': { // change printing for one code; applies to an active booth within ~5 minutes
       const { key, rec } = await getRec();
       if (!rec) return json({ error: 'Code not found.' }, 404);
-      const print = normPrint(b.printEnabled, b.printSizes);
+      const print = normPrint(b.printEnabled, b.printSizes, { eventLimit: b.printEventLimit, sessionLimit: b.printSessionLimit });
       if (b.printEnabled && !print.enabled) return json({ error: 'Pick at least one paper size, or turn printing off.' }, 400);
       rec.print = print;
       await putLicense(store, key, rec);
       await syncBonus(rec, { print });
       return json({ ok: true, print });
+    }
+
+    case 'printusage': { // sheets printed so far: one count per event (lifetime codes have one per event name)
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      const ps = printsStore();
+      const events = [];
+      const one = await ps.get(key, { type: 'json' });
+      if (one) events.push({ id: key, name: rec.lifetime ? '(no event name)' : (rec.folderName || rec.label || rec.code), used: one.used || 0, at: one.updatedAt || 0 });
+      if (rec.lifetime) {
+        const { blobs } = await ps.list({ prefix: key + '|' });
+        for (const bl of blobs.slice(0, 200)) {
+          const d = await ps.get(bl.key, { type: 'json' });
+          if (d) events.push({ id: bl.key, name: d.event || bl.key.slice(key.length + 1), used: d.used || 0, at: d.updatedAt || 0 });
+        }
+      }
+      events.sort((x, y) => (y.at || 0) - (x.at || 0));
+      return json({ ok: true, events, total: events.reduce((n, e) => n + e.used, 0), limit: (rec.print && rec.print.eventLimit) || 0 });
+    }
+
+    case 'printreset': { // start an event's print count again from 0 (e.g. the renter bought more prints)
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      const id = String(b.id || key);
+      if (id !== key && !id.startsWith(key + '|')) return json({ error: 'Not this code\'s count.' }, 400);
+      await printsStore().delete(id);
+      return json({ ok: true });
     }
 
     case 'lockopt': { // "Lock booth" (guest-only screen with a PIN) for this code
@@ -420,10 +447,11 @@ export default safe(async (req, context) => {
       if (pw.length < 3 || pw.length > 40) return json({ error: 'Trial password must be 3-40 characters.' }, 400);
       if (!minutes) return json({ error: 'Trial length must be 1-240 minutes.' }, 400);
       if (!prefix) return json({ error: 'Trial folder name cannot be empty.' }, 400);
-      const trialPrint = normPrint(b.trialPrintEnabled, b.trialPrintSizes);
+      const trialPrint = normPrint(b.trialPrintEnabled, b.trialPrintSizes, { eventLimit: b.trialPrintEventLimit, sessionLimit: b.trialPrintSessionLimit });
       if (b.trialPrintEnabled && !trialPrint.enabled) return json({ error: 'Pick at least one trial paper size, or turn trial printing off.' }, 400);
       const settings = { trialEnabled: !!b.trialEnabled, trialPassword: pw, trialMinutes: minutes, trialFolderPrefix: prefix,
         trialPrintEnabled: trialPrint.enabled, trialPrintSizes: trialPrint.sizes.length ? trialPrint.sizes : ['4x6'],
+        trialPrintEventLimit: trialPrint.eventLimit, trialPrintSessionLimit: trialPrint.sessionLimit,
         trialTraditional: !!b.trialTraditional,
         trialRetakeOpt: !!b.trialRetakeOpt,
         trialLockOpt: !!b.trialLockOpt,

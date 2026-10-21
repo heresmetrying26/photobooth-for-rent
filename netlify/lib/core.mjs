@@ -233,7 +233,8 @@ export const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/
 // ---------- printing ----------
 // Paper sizes the admin can allow per rental. Keys are stored in license data;
 // the booth has its own table with the physical dimensions.
-export const PAPER_SIZES = ['2x6', '2.5x7.5', '3.5x5', '4x6', '5x7', '6x8', '8x10', 'A6', 'A5', 'A4', 'Letter'];
+// 'selphy' / 'selphycard': Canon SELPHY postcard (100 x 148 mm) and card (54 x 86 mm) paper, borderless.
+export const PAPER_SIZES = ['2x6', '2.5x7.5', '3.5x5', '4x6', 'selphy', 'selphycard', '5x7', '6x8', '8x10', 'A6', 'A5', 'A4', 'Letter'];
 // Custom sizes are stored as "<width>x<height><unit>", e.g. "4x4in" or "100x148mm".
 const CUSTOM_RE = /^(\d{1,3}(?:\.\d{1,2})?)x(\d{1,3}(?:\.\d{1,2})?)(in|mm)$/;
 export function customPaperOk(key) {
@@ -246,12 +247,39 @@ export function customPaperOk(key) {
 // Cleans whatever was stored/sent into { enabled, sizes }: built-in sizes in a
 // fixed order, then up to 6 valid custom sizes. Printing counts as on only when
 // at least one size is allowed. Older codes have no print data -> printing off.
-export function normPrint(enabled, sizes) {
+// Print limits (0 = no limit): eventLimit = sheets for the whole event
+// (counted on the server, see /api/prints), sessionLimit = sheets per guest
+// session (counted in the booth).
+export const PRINT_EVENT_MAX = 100000;
+export const PRINT_SESSION_MAX = 50;
+const limitNum = (v, max) => Math.max(0, Math.min(max, Math.floor(Number(v) || 0)));
+export function normPrint(enabled, sizes, limits) {
   const given = Array.isArray(sizes) ? sizes.map(String) : [];
   const custom = [...new Set(given.filter((s) => !PAPER_SIZES.includes(s) && customPaperOk(s)))].slice(0, 6);
   const list = PAPER_SIZES.filter((s) => given.includes(s)).concat(custom);
-  return { enabled: !!enabled && list.length > 0, sizes: list };
+  const lim = limits || {};
+  return {
+    enabled: !!enabled && list.length > 0, sizes: list,
+    eventLimit: limitNum(lim.eventLimit, PRINT_EVENT_MAX),
+    sessionLimit: limitNum(lim.sessionLimit, PRINT_SESSION_MAX)
+  };
 }
+
+// ---------- print counts + laptop print station ----------
+// prints:    one counter per event { used, updatedAt } (see printScope)
+// printjobs: pages an iPad sends to the laptop "print station" page
+export const printsStore = () => getStore({ name: 'prints', consistency: 'strong' });
+export const printJobsStore = () => getStore({ name: 'printjobs', consistency: 'strong' });
+// Which counter a booth adds to: the booking (its fixed event), one per event
+// name for lifetime codes, and the trial's own throwaway folder for trials.
+// A bonus code counts on its own (it's for testing before the event).
+export function printScope(lic, p, eventName) {
+  if (lic.type === 'trial') return 'trial|' + String(lic.folderKey || p.d || '').slice(0, 80);
+  if (lic.folderPrefix) return p.k + '|' + (cleanEventName(eventName || '').toLowerCase() || '_');
+  return p.k;
+}
+// The booking that owns a code's print jobs (a bonus code prints with its booking).
+export const jobOwner = (rec) => (rec && rec.kind === 'bonus' && rec.parent ? rec.parent : rec.key);
 
 // ---------- settings ----------
 export async function getSettings() {
@@ -263,6 +291,8 @@ export async function getSettings() {
     trialFolderPrefix: 'Trial test shots',
     trialPrintEnabled: false,
     trialPrintSizes: ['4x6'],
+    trialPrintEventLimit: 0,
+    trialPrintSessionLimit: 0,
     trialTraditional: false,
     trialRetakeOpt: false,
     trialLockOpt: false,
@@ -299,7 +329,7 @@ export async function checkLicense(token, deviceId) {
     if (p.exp <= now) return { valid: false, reason: 'trial-ended' };
     const s = await getSettings();
     if (!s.trialEnabled) return { valid: false, reason: 'trial-disabled' };
-    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes), traditional: !!s.trialTraditional, retakeOpt: !!s.trialRetakeOpt, lockOpt: !!s.trialLockOpt, pinResetAt: 0 };
+    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes, { eventLimit: s.trialPrintEventLimit, sessionLimit: s.trialPrintSessionLimit }), traditional: !!s.trialTraditional, retakeOpt: !!s.trialRetakeOpt, lockOpt: !!s.trialLockOpt, pinResetAt: 0 };
   }
 
   const rec = await licenses().get(p.k, { type: 'json' });
@@ -328,7 +358,7 @@ export async function checkLicense(token, deviceId) {
     deviceNo: me.no || 1,
     defaultTheme: rec.defaultTheme || null,
     multiDevice: maxDevicesOf(rec) > 1,
-    print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes),
+    print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes, rec.print),
     traditional: !!rec.traditional,
     retakeOpt: !!rec.retakeOpt,
     lockOpt: !!rec.lockOpt,

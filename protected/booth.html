@@ -91,12 +91,33 @@
   .pm-card .panel-section{margin:0; border:0; box-shadow:none;}
   .pm-card #printSection.hidden{display:block;}
   .pm-close{position:absolute; top:10px; right:10px; z-index:2; width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:14px;}
-  .print-fab{position:fixed; left:20px; bottom:20px; z-index:50; min-height:46px; padding:10px 20px; border-radius:999px; border:0; background:var(--blue-deep); color:#fff; font:800 14px 'Manrope',sans-serif; box-shadow:0 10px 26px rgba(160,50,30,.35); cursor:pointer;}
-  .print-fab[hidden]{display:none;}
+  /* Operator dock (Photo Session): Camera, Print and time left. It sits in the
+     bottom-left corner when that corner is free, otherwise it becomes a slim
+     bar along the bottom and the session layout makes room for it, so it never
+     covers Start / Next guest / Print or the picture. */
+  .op-dock{position:fixed; left:max(16px, env(safe-area-inset-left)); bottom:max(16px, env(safe-area-inset-bottom)); z-index:50; display:flex; flex-direction:column; align-items:flex-start; gap:8px; pointer-events:none;}
+  .op-dock > *{pointer-events:auto;}
+  .op-dock[hidden]{display:none;}
+  .dock-btn{display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:8px 16px 8px 12px; border-radius:999px; border:1.5px solid var(--line); background:#fff; color:var(--ink); font:800 14px 'Manrope',sans-serif; box-shadow:0 8px 20px rgba(70,45,25,.14); cursor:pointer; white-space:nowrap;}
+  .dock-btn svg{width:20px; height:20px; flex:none;}
+  .dock-btn.primary{background:var(--blue-deep); border-color:var(--blue-deep); color:#fff; box-shadow:0 10px 24px rgba(160,50,30,.3);}
+  .dock-btn[hidden]{display:none;}
+  .dock-chip-slot:empty{display:none;}
+  .op-dock.bar{left:0; right:0; bottom:0; flex-direction:row; align-items:center; gap:8px; padding:8px max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    background:rgba(255,255,255,.95); border-top:1px solid var(--line); box-shadow:0 -6px 20px rgba(70,45,25,.08); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);}
+  .op-dock.bar .dock-btn{box-shadow:none; min-height:42px;}
+  .op-dock.bar .dock-chip-slot{order:3; margin-left:auto;}
+  body.in-session{padding-bottom:var(--dock-reserve, 0px);}
+  /* Rental / trial time left: moved by the booth into the Setup bar or the dock */
+  .start-info{overflow:hidden;}
+  #pbTimeChip.slotted{max-width:100%; overflow:hidden; text-overflow:ellipsis;}
+  #pbTimeChip.slotted{position:static; display:inline-block; z-index:auto; padding:3px 10px; font:700 11.5px 'Manrope',sans-serif; background:var(--ink); color:#fff; border-radius:999px; white-space:nowrap; box-shadow:none;}
+  #pbTimeChip.chip-hidden{display:none !important;}
+  .start-row{display:flex; align-items:center; flex-wrap:wrap; gap:4px 8px; min-width:0;}
   /* ---- Lock booth: guest-only screen ---- */
   .lock-icon{position:fixed; top:8px; right:8px; z-index:260;   /* above the start screen too */ width:30px; height:30px; border:0; border-radius:50%; background:rgba(255,255,255,.35); font-size:14px; line-height:30px; padding:0; opacity:.35; cursor:pointer;}
   .lock-icon[hidden]{display:none;}
-  body.booth-locked .brandbar, body.booth-locked .tab-bar, body.booth-locked #camFab, body.booth-locked #printFab, body.booth-locked #printQuickBtn,
+  body.booth-locked .brandbar, body.booth-locked .tab-bar, body.booth-locked #camFab, body.booth-locked #printFab, body.booth-locked #opDock,
   body.booth-locked #uploadQueueSection, body.booth-locked #backupSection, body.booth-locked #actionsSection, body.booth-locked #guestSection{display:none !important;}
   .pin-modal{position:fixed; inset:0; z-index:270; background:rgba(20,16,22,.6); display:flex; align-items:center; justify-content:center; padding:16px;}
   .pin-modal[hidden]{display:none;}
@@ -112,8 +133,36 @@
   .pin-pad button{height:58px; border-radius:14px; border:1.5px solid var(--line); background:#fff; font:800 22px 'Manrope',sans-serif; color:var(--ink); cursor:pointer;}
   .pin-pad button.pin-fn{font-size:14px; color:var(--ink-dim);}
   .pin-pad button:active{background:var(--tint, #fbeee9);}
-  .print-fab.cam-fab{bottom:76px; background:#fff; color:var(--ink); border:1.5px solid var(--line); box-shadow:0 8px 20px rgba(70,45,25,.15); max-width:min(360px, 70vw); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .panel-section.flash-hl{box-shadow:0 0 0 3px var(--blue-deep); transition:box-shadow .3s;}
+  /* Copies stepper, limits, guest copies sheet, printing note */
+  .copies-row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:10px 0 4px; font-size:13.5px; font-weight:700;}
+  .stepper{display:inline-flex; align-items:center; gap:6px;}
+  .stepper button{width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:#fff; font:800 18px 'Manrope',sans-serif; color:var(--ink); cursor:pointer; line-height:1;}
+  .stepper button:disabled{opacity:.35; cursor:default;}
+  .stepper b{min-width:28px; text-align:center; font-size:16px;}
+  .print-limit-hint{margin:4px 0 8px; padding:8px 10px; border-radius:10px; background:var(--panel-2, #faf6f0); border:1px solid var(--line);}
+  .print-limit-hint.out{background:#fdecea; border-color:#f3b8b0; color:#9b2c1f;}
+  .print-route{width:100%; min-height:40px; border-radius:10px; border:1px solid var(--line); padding:6px 10px; font:600 14px 'Manrope',sans-serif; background:#fff;}
+  .station-dot{display:inline-block; width:9px; height:9px; border-radius:50%; background:#c9c2b8; margin-right:6px; vertical-align:1px;}
+  .station-dot.on{background:#2e9d5b;}
+  .copies-sheet{position:fixed; inset:0; z-index:280; background:rgba(20,16,22,.55); display:flex; align-items:center; justify-content:center; padding:16px;}
+  .copies-sheet[hidden]{display:none;}
+  .copies-sheet .cs-card{width:min(380px, 100%); background:#fff; border-radius:24px; padding:26px 22px 20px; text-align:center; box-shadow:0 24px 60px rgba(0,0,0,.3);}
+  .copies-sheet .cs-title{margin:0 0 16px; font:800 22px 'Manrope',sans-serif; color:var(--ink);}
+  .copies-sheet .stepper{gap:18px;}
+  .copies-sheet .stepper button{width:58px; height:58px; font-size:28px;}
+  .copies-sheet .stepper b{font-size:40px; min-width:56px;}
+  .copies-sheet .cs-left{min-height:18px; margin:12px 0 0; font-size:13px; color:var(--ink-dim);}
+  .copies-sheet .cs-btns{display:flex; gap:10px; margin-top:18px;}
+  .copies-sheet .cs-btns button{flex:1; min-height:52px; border-radius:999px; font:800 16px 'Manrope',sans-serif; cursor:pointer; border:1px solid var(--line); background:#fff; color:var(--ink);}
+  .copies-sheet .cs-btns .go{background:var(--blue-deep); border-color:var(--blue-deep); color:#fff;}
+  .printing-note{position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:275; max-width:min(520px, calc(100vw - 32px)); padding:22px 30px; border-radius:22px; background:rgba(28,26,30,.92); color:#fff; font:800 22px 'Manrope',sans-serif; text-align:center; box-shadow:0 24px 60px rgba(0,0,0,.35); pointer-events:none;}
+  .printing-note[hidden]{display:none;}
+  .print-quick small{display:block; font-size:11px; font-weight:700; opacity:.75; margin-top:1px;}
+  .pp-words{margin-top:12px; font-size:13px;}
+  .pp-words summary{cursor:pointer; font-weight:700;}
+  .pp-words label{display:block; margin-top:8px; font-size:12.5px; font-weight:700; color:var(--ink-dim);}
+  .pp-words input{display:block; width:100%; margin-top:4px; min-height:38px; border-radius:10px; border:1px solid var(--line); padding:6px 10px; font:600 14px 'Manrope',sans-serif;}
   .print-steps{list-style:none; margin:4px 0 14px; padding:12px 14px; background:var(--panel-2, #faf6f0); border:1px solid var(--line); border-radius:14px; display:flex; flex-direction:column; gap:8px;}
   .print-steps li{display:grid; grid-template-columns:24px 1fr; gap:10px; align-items:start; font-size:13.5px; line-height:1.45; color:var(--ink);}
   .print-steps li i{width:24px; height:24px; border-radius:50%; border:2px solid var(--line); display:flex; align-items:center; justify-content:center; font-style:normal; font-weight:800; font-size:12px; color:var(--ink-dim); background:#fff;}
@@ -1013,7 +1062,13 @@
     background:var(--panel-2); border:1.5px solid var(--line); font:800 12px 'Manrope',sans-serif; color:var(--ink-dim);
   }
   .step-tab .st{display:flex; flex-direction:column; min-width:0; line-height:1.2;}
-  .step-tab b{font-size:13px; font-weight:800;}
+  .step-tab b{font-size:13px; font-weight:800; white-space:nowrap;}
+  /* The one-line summary only shows when the tab is wide enough to show it whole;
+     otherwise a dot on the number says the step still needs something. */
+  .step-tab{container-type:inline-size;}
+  @container (max-width:150px){ .step-tab small{display:none;} }
+  .step-tab .sn{position:relative;}
+  .step-tab.needs .sn::after{content:''; position:absolute; top:-4px; right:-4px; width:10px; height:10px; border-radius:50%; background:var(--blue-deep); border:2px solid #fff;}
   .step-tab small{font-size:11px; font-weight:600; color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .step-tab small.warn{color:var(--blue-deep);}
   .step-tab.on{border-color:var(--blue-deep); background:var(--tint); box-shadow:0 4px 14px rgba(70,45,25,.12);}
@@ -1079,6 +1134,16 @@
     @keyframes spPulse{0%{opacity:.9; transform:scale(.97);} 100%{opacity:0; transform:scale(1.08);}}
     .start-prev[aria-expanded="true"]{background:var(--ink); border-color:var(--ink); color:#fff;}
     .start-prev[aria-expanded="true"] .sp-t small{color:rgba(255,255,255,.75);}
+    /* Small phones: the preview button keeps only its picture + "Preview", so the
+       status and time left get room and nothing touches the buttons. */
+    @media (max-width:480px){
+      .sp-t{display:none;}
+      .start-prev{padding:4px;}
+      .start-bar-in{gap:8px;}
+      .start-actions .action-btn{padding:12px 14px;}
+      /* time left sits on the bar's top edge instead of squeezing the status */
+      .start-bar #pbTimeChip.slotted{position:absolute; right:14px; top:-12px; bottom:auto; left:auto; box-shadow:0 3px 10px rgba(0,0,0,.2);}
+    }
     .setup-shell > #previewSection:not(.docked){display:none;}
     #previewSection.docked{left:8px; right:8px; bottom:calc(78px + env(safe-area-inset-bottom)); z-index:75; max-height:56vh; padding:10px 12px;
       box-shadow:0 -10px 34px rgba(0,0,0,.22);}
@@ -1110,6 +1175,20 @@
   .sub-group{margin-top:14px;}
 
   /* Segmented tabs (Extras) */
+  .bgr-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:8px;}
+  .bgr-tile{position:relative; padding:0; border:2px solid var(--line); border-radius:12px; overflow:hidden; background:#fff; cursor:pointer; text-align:left;}
+  .bgr-tile img{display:block; width:100%; aspect-ratio:3/2; object-fit:cover;}
+  .bgr-tile span{display:block; padding:4px 6px 5px; font:700 11.5px 'Manrope',sans-serif; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .bgr-tile.active{border-color:var(--blue-deep); box-shadow:0 0 0 2px rgba(201,61,39,.18);}
+  .bgr-tile i{position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,.6); color:#fff; font-style:normal; font-weight:800; line-height:22px; text-align:center;}
+  .bd-key-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .bd-key{display:inline-flex; align-items:center; gap:8px; min-height:38px; padding:6px 12px; border-radius:999px; border:1.5px solid var(--line); background:#fff; font:700 13px 'Manrope',sans-serif; cursor:pointer; color:var(--ink);}
+  .bd-key::before{content:''; width:16px; height:16px; border-radius:50%; background:var(--sw, conic-gradient(red, yellow, lime, cyan, blue, magenta, red)); border:1px solid rgba(0,0,0,.15);}
+  .bd-key.active{border-color:var(--blue-deep); background:var(--panel-2, #faf6f0);}
+  .bg-status{margin:10px 0 0; padding:8px 10px; border-radius:10px; background:var(--panel-2, #faf6f0); border:1px solid var(--line);}
+  .bg-status:empty{display:none;}
+  .bg-status.ok{background:#e6f4f1; border-color:#bfe3da; color:#174f46;}
+  .bg-status.bad{background:#fdecea; border-color:#f3b8b0; color:#9b2c1f;}
   .seg-tabs{display:flex; gap:4px; padding:4px; background:var(--panel-2); border:1px solid var(--line); border-radius:12px; margin-bottom:14px;}
   .seg-tabs button{flex:1; min-height:42px; border:0; border-radius:9px; background:transparent; font:700 13px 'Manrope',sans-serif; color:var(--ink-dim); cursor:pointer; position:relative;}
   .seg-tabs button.on{background:#fff; color:var(--ink); box-shadow:0 2px 8px rgba(70,45,25,.12);}
@@ -1185,7 +1264,15 @@
   .toggle-row input{width:20px; height:20px;}
 
   /* Layout cards with a live picture of your design */
-  .layout-btn img.lt-img{height:72px; width:auto; max-width:100%; border-radius:3px; box-shadow:0 3px 8px rgba(60,40,20,.18); display:block; background:#fff;}
+  /* Every card gets the same picture area; the thumbnail fits inside it whole. */
+  .layout-btn .lt-box{width:100%; height:84px; display:flex; align-items:center; justify-content:center;}
+  .layout-btn img.lt-img{max-height:100%; max-width:calc(100% - 8px); width:auto; height:auto; border-radius:3px; box-shadow:0 3px 8px rgba(60,40,20,.18); display:block; background:#fff;}
+  .layout-btn .lt-box .lt{max-height:100%;}
+  .layout-btn .lt.lt-wait{background:linear-gradient(100deg, #f1ece4 30%, #fbf8f3 50%, #f1ece4 70%); background-size:300% 100%; animation:ltshine 1.2s linear infinite;}
+  .layout-btn .lt.lt-wait i{opacity:.55;}
+  @keyframes ltshine{from{background-position:100% 0} to{background-position:0 0}}
+  .layout-btn .lpaper{font-size:10px; font-weight:700; color:var(--ink-dim); letter-spacing:0; margin-top:-3px;}
+  .layout-btn.lt-empty .lt-plus{width:44px; height:62px; border:2px dashed var(--line); border-radius:6px; display:flex; align-items:center; justify-content:center; font:800 22px 'Manrope',sans-serif; color:var(--blue-deep); background:#fff;}
   .guest-layouts label{min-height:40px;}
   .guest-layouts label::before{content:''; display:none;}
 
@@ -1198,6 +1285,197 @@
   .tpl-cats{margin:0; font:700 10.5px 'Manrope',sans-serif; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-dim); text-align:center;}
   .tpl-btns{display:flex; gap:10px;}
   .tpl-btns .action-btn{flex:1; min-height:48px; font-weight:800;}
+
+  /* =====================================================================
+     Design system v2 — same brand (cream, ink, photobooth red, Fraunces +
+     Manrope), one set of controls everywhere. Setup is "paper"; Photo
+     Session is the "darkroom" the guests see. These rules come last on
+     purpose so they win over the older, scattered ones above.
+     ===================================================================== */
+  :root{
+    --brand:#C93D27; --brand-press:#A9301D;
+    --line:#E8E0D4; --ink-dim:#615C63;
+    --r-card:18px; --r-ctl:12px;
+    --shadow-1:0 1px 2px rgba(28,26,30,.05), 0 6px 20px rgba(28,26,30,.05);
+    --shadow-2:0 2px 6px rgba(28,26,30,.06), 0 18px 44px rgba(28,26,30,.12);
+    --dark:#1C1A1E; --dark-2:#27242B; --dark-3:#34303A; --dark-line:rgba(255,255,255,.12);
+    --on-dark:#F5F1EA; --on-dark-dim:#B8B1BA;
+  }
+  body{padding-top:0;}
+  body.in-session:not(.shooting){padding-top:0;}
+  .ic{width:1.15em; height:1.15em; flex:none; vertical-align:-.2em; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;}
+  button:focus-visible, a:focus-visible, [role="button"]:focus-visible, select:focus-visible, input:focus-visible{outline:3px solid rgba(201,61,39,.45); outline-offset:2px;}
+
+  /* ---- Top bar: logo left, Setup / Photo Session switch in the middle ---- */
+  .brandbar.topbar{flex-direction:row; justify-content:space-between; align-items:center; gap:12px; max-width:1040px; margin:0 auto 4px; padding:10px 0;}
+  body.in-session .brandbar.topbar{max-width:min(1400px, 96vw); margin-bottom:10px;}
+  .topbar .brand-logo{flex:1 1 0; gap:9px; min-width:0;}
+  .topbar-end{flex:1 1 0;}
+  .topbar .brand-mark{width:26px; height:26px; gap:3px;}
+  .topbar .brand-mark i{border-radius:3.5px;}
+  .topbar .brand-word b{font-size:22px;}
+  .topbar .brand-word em{font-size:11px; padding:2px 5px 3px; border-radius:6px; margin-left:3px;}
+  .topbar .subtitle{display:none;}
+  .topbar .tab-bar{margin:0; max-width:none; flex:none; gap:2px; padding:3px; background:#ECE5DA; border-radius:999px;}
+  .topbar .tab-btn{border:0; background:transparent; padding:7px 16px 7px 8px; min-height:38px; font:700 13.5px 'Manrope',sans-serif; color:var(--ink-dim); box-shadow:none; border-radius:999px;}
+  .topbar .tab-btn:hover{color:var(--ink); border:0;}
+  .topbar .tab-btn.active{background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(28,26,30,.14); border:0;}
+  .topbar .tab-btn .tab-num{background:transparent; border:1.5px solid currentColor; color:inherit; width:20px; height:20px;}
+  .topbar .tab-btn.active .tab-num{background:var(--brand); border-color:var(--brand); color:#fff;}
+  @media (max-width:560px){
+    .topbar .brand-word, .topbar-end{display:none;}
+    .topbar .brand-logo{flex:0 0 auto;}
+    .topbar .tab-bar{margin-left:auto;}
+    .topbar .tab-btn{padding:7px 12px 7px 7px; font-size:13px;}
+  }
+
+  /* ---- Type ---- */
+  .panel-label{font-style:normal; font-weight:600; font-size:19px; letter-spacing:-.01em; color:var(--ink);}
+  .sub-label{text-transform:none; letter-spacing:0; font-size:12.5px; font-weight:700; color:var(--ink-dim);}
+  .panel-hint{font-size:12.5px; line-height:1.55; color:var(--ink-dim);}
+  .theme-card .tc, .font-pair small, .font-card .fl, .tpl-cats{text-transform:none; letter-spacing:0;}
+  .layout-btn .ls{letter-spacing:0; font-size:11px;}
+
+  /* ---- Cards ---- */
+  .panel-section{border-color:var(--line); border-radius:var(--r-card); box-shadow:var(--shadow-1);}
+  .pm-card{border-radius:22px; box-shadow:var(--shadow-2);}
+
+  /* ---- Buttons: one primary, one secondary ---- */
+  .action-btn, .upload-btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; border-radius:var(--r-ctl);
+    border:1.5px solid var(--line); background:#fff; color:var(--ink); font-family:'Manrope',sans-serif; font-weight:700; transition:background .15s, border-color .15s, color .15s;}
+  .action-btn:hover, .upload-btn:hover{border-color:var(--ink-dim);}
+  .action-btn.primary{background:var(--brand); border-color:var(--brand); color:#fff; box-shadow:0 6px 16px rgba(201,61,39,.22);}
+  .action-btn.primary:hover{background:var(--brand-press); border-color:var(--brand-press); filter:none;}
+  .action-btn:disabled{opacity:.5; cursor:default; box-shadow:none;}
+  .link-btn{color:var(--brand-press);}
+  .step-btn{border-width:1.5px; border-color:var(--line);}
+
+  /* ---- Inputs ---- */
+  .label-input, .mini-select, .cam-select, .print-route, select.printer-input{border-radius:var(--r-ctl); border:1.5px solid var(--line); background:#fff;}
+  .label-input:focus, .mini-select:focus, .cam-select:focus, .print-route:focus{outline:none; border-color:var(--brand); box-shadow:0 0 0 3px rgba(201,61,39,.14);}
+
+  /* ---- One "selected" look for every choice ---- */
+  .chip, .pill{border-radius:var(--r-ctl); border-width:1.5px; font-weight:700;}
+  .pill{border-radius:999px;}
+  .chip.active, .pill.on, .layout-btn.active, .print-size-btn.active, .bgr-tile.active, .bd-key.active, .theme-card.active,
+  .fp-tile.on, .pattern-btn.active, .style-tile.on, .font-card.on, .step-tab.on, .copies-sheet .stepper b{
+    background:var(--tint); border-color:var(--brand); color:var(--brand-press); box-shadow:inset 0 0 0 1px var(--brand);}
+  .copies-sheet .stepper b{background:none; box-shadow:none; color:var(--ink);}
+  .layout-btn.active .ln, .step-tab.on b{color:var(--ink);}
+  .seg-tabs{border-radius:14px;}
+  .seg-tabs button.on{box-shadow:0 1px 3px rgba(28,26,30,.14);}
+
+  /* ---- Bottom bar (Setup) ---- */
+  .start-bar{background:rgba(255,255,255,.94); border-top-color:var(--line); box-shadow:0 -8px 24px rgba(28,26,30,.06);}
+
+  /* ===================== Photo Session = the darkroom ===================== */
+  body.in-session{background:var(--dark); color:var(--on-dark);}
+  body.in-session .brand-logo{color:var(--on-dark);}
+  body.in-session .brand-mark i{background:var(--on-dark);}
+  body.in-session .brand-mark i:nth-child(2){background:var(--brand);}
+  body.in-session .topbar .tab-bar{background:var(--dark-2);}
+  body.in-session .topbar .tab-btn{color:var(--on-dark-dim);}
+  body.in-session .topbar .tab-btn:hover{color:#fff;}
+  body.in-session .topbar .tab-btn.active{background:var(--dark-3); color:#fff; box-shadow:none;}
+  body.in-session .stage-frame{border:0; border-radius:22px; background:#0d0c0e; box-shadow:0 0 0 1px var(--dark-line), 0 30px 80px rgba(0,0,0,.45);}
+  body.in-session .sprockets i{background:rgba(245,241,234,.5);}
+  body.in-session .welcome-overlay{background:var(--dark-2);}
+  /* Photo slots only appear once a photo is in them */
+  .film-frame:not(.filled){display:none !important;}
+  body.in-session .film-frame{background:var(--dark-2); border:2px solid var(--dark-line); border-radius:10px; color:var(--on-dark-dim);}
+  body.in-session .film-frame.filled{border-color:rgba(255,255,255,.85);}
+  body.in-session .film-frame.picked{outline-color:var(--brand); border-color:var(--brand);}
+  body.in-session .sc-btn{background:var(--dark-2); border-color:var(--dark-line); color:var(--on-dark);}
+  body.in-session .sc-btn.sc-strong{background:var(--brand); border-color:var(--brand); color:#fff;}
+  body.in-session .sc-btn.sc-done{background:#fff; border-color:#fff; color:var(--ink);}
+  body.in-session .sc-btn.sc-danger{background:transparent; border-color:rgba(255,140,128,.55); color:#ffb7ad;}
+  body.in-session .sc-hint{color:var(--on-dark-dim);}
+  body.in-session .sc-hint-big{background:var(--dark-2); color:var(--on-dark);}
+  body.in-session .ready-summary{color:var(--on-dark);}
+  body.in-session .sc-filter{color:var(--on-dark-dim);}
+  body.in-session .sc-filter.on{color:#fff;}
+  body.in-session .sc-filter.on i{border-color:#fff;}
+  body.in-session .shutter-btn{min-height:58px; padding:0 38px; font-size:18px; border-radius:999px; box-shadow:0 14px 34px rgba(201,61,39,.38);}
+  body.in-session .shutter-btn .ring{width:18px; height:18px; border-width:3px;}
+  body.in-session .shutter-btn.print-quick{background:transparent; color:#fff; border:2px solid rgba(255,255,255,.75); box-shadow:none;}
+  body.in-session .camera-error{color:var(--on-dark);}
+  body.in-session .dock-btn{background:var(--dark-2); color:var(--on-dark); border-color:var(--dark-line); box-shadow:none;}
+  body.in-session .dock-btn:hover{background:var(--dark-3);}
+  body.in-session .op-dock.bar{background:rgba(28,26,30,.94); border-top-color:var(--dark-line); box-shadow:none;}
+  body.in-session #pbTimeChip.slotted{background:var(--dark-3); color:var(--on-dark);}
+
+  /* Countdown: a branded ring at the top of the live view, readable from a distance */
+  .countdown-overlay{inset:18px auto auto 50%; transform:translateX(-50%); flex-direction:column; gap:8px; padding:0; background:none; border:0; border-radius:0;}
+  .cd-wrap{width:clamp(76px, 12vmin, 116px);}
+  .cd-ring .trk{fill:rgba(28,26,30,.55); stroke:rgba(255,255,255,.2); stroke-width:5;}
+  .cd-ring .bar{stroke-width:5;}
+  .cd-wrap .countdown-num{font-size:clamp(40px, 7vmin, 66px); font-weight:600; text-shadow:none; line-height:1;}
+  .cd-wrap .countdown-num.word{font-size:clamp(13px, 2vmin, 19px); letter-spacing:0; text-transform:none;}
+  .cd-shot{padding:4px 11px; border-radius:999px; background:rgba(28,26,30,.62); font:700 12px 'Manrope',sans-serif; letter-spacing:0; text-transform:none;}
+  .cd-shot:empty{display:none;}
+  .welcome-overlay img{object-fit:cover;}
+  .welcome-pulse{position:absolute; border-radius:999px; pointer-events:none; box-shadow:0 0 0 0 rgba(201,61,39,.55); animation:wlPulse 2.4s ease-out infinite;}
+  @keyframes wlPulse{0%{box-shadow:0 0 0 0 rgba(201,61,39,.5);} 70%{box-shadow:0 0 0 22px rgba(201,61,39,0);} 100%{box-shadow:0 0 0 0 rgba(201,61,39,0);}}
+  @media (prefers-reduced-motion:reduce){ .welcome-pulse{animation:none;} }
+  .d1-jump{color:var(--brand-press); font-weight:700;}
+  body.welcome-on .app-shell:not(.result) .start-btn-wrap{display:none !important;}
+  /* Light cards on the darkroom keep dark text */
+  body.in-session .pm-card, body.in-session .app-shell .panel .panel-section, body.in-session .copies-sheet .cs-card, body.in-session .pin-card{color:var(--ink);}
+  #qrSection #printQuickBtn{flex-wrap:wrap; row-gap:0; line-height:1.15; padding-top:6px; padding-bottom:6px;}
+  #qrSection #printQuickBtn small{flex-basis:100%; text-align:center; margin:0;}
+  @media (max-width:560px){
+    .film-frame.pickable::after{content:'\21BA'; font-size:16px; padding:3px 0;}
+    .film-frame.picked::after{content:'\2713'; font-size:16px;}
+  }
+  /* ---- Print settings pop-up: grouped ---- */
+  .pm-card .panel-section{padding:22px 22px 18px;}
+  .ps-group{padding:14px 0; border-top:1px solid var(--line);}
+  .ps-group:first-of-type{border-top:0; padding-top:4px;}
+  .ps-group:empty, .ps-group:has(> .hidden:only-child){display:none;}
+  .ps-title{margin:0 0 10px; font:800 14.5px 'Manrope',sans-serif; color:var(--ink);}
+  .ps-print{width:100%; margin-top:12px; min-height:50px; font-size:15px;}
+  .ps-steps{margin-top:10px;}
+  .ps-steps summary{cursor:pointer; font:700 13px 'Manrope',sans-serif; color:var(--ink-dim); padding:6px 0;}
+  .ps-steps .print-steps{margin-top:8px;}
+  /* ---- Result card: QR, Print and Done together ---- */
+  .app-shell .panel #qrSection{order:-1; text-align:center;}
+  .app-shell.result.has-qr .start-btn-wrap{display:none !important;}
+  #qrSection .panel-label{font-size:22px; margin-bottom:4px;}
+  #qrSection .qr-results{justify-content:center; margin-top:8px;}
+  #qrSection .qr-result{align-items:center; background:none; border:0; padding:0; box-shadow:none;}
+  #qrSection .qr-box{width:200px; height:200px;}
+  #qrSection .qr-caption{text-transform:none; letter-spacing:0; font-size:13px; font-weight:700; color:var(--ink-dim);}
+  #qrSection .qr-wait{border-radius:14px; font-size:13px;}
+  #qrSection .qr-link{font-size:12px;}
+  body.booth-locked #qrSection .qr-link{display:none;}
+  .result-actions{display:flex; gap:10px; margin-top:16px;}
+  .result-actions > button{flex:1; min-height:56px; border-radius:999px; justify-content:center; font:800 17px 'Manrope',sans-serif; cursor:pointer;}
+  #qrSection #printQuickBtn{display:flex; align-items:center; gap:8px; padding:0 18px; background:var(--brand); color:#fff; border:0; box-shadow:0 10px 24px rgba(201,61,39,.3); transform:none;}
+  #qrSection #printQuickBtn[hidden]{display:none;}
+  #qrSection #printQuickBtn:disabled{opacity:.5; box-shadow:none;}
+  #qrSection #printQuickBtn small{opacity:.85;}
+  .result-done{border:1.5px solid var(--line); background:#fff; color:var(--ink);}
+  .result-done:hover{border-color:var(--ink-dim);}
+  .result-timer{height:4px; margin:12px 6px 0; border-radius:4px; background:var(--panel-2); overflow:hidden;}
+  .result-timer i{display:block; height:100%; width:100%; background:var(--line);}
+  @media (max-width:860px){
+    .app-shell .panel #qrSection{text-align:left;}
+    #qrSection{display:grid; grid-template-columns:auto 1fr; grid-template-areas:'qr title' 'qr hint' 'qr acts' 'qr timer'; column-gap:16px; text-align:left; align-items:center;}
+    #qrSection.hidden{display:none;}
+    #qrSection .panel-label{grid-area:title; font-size:20px; align-self:end;}
+    #qrSection .qr-results{grid-area:qr; margin:0;}
+    #qrSection .qr-box{width:150px; height:150px;}
+    #qrSection #qrHint{grid-area:hint; margin:2px 0 0; align-self:start;}
+    #qrSection #shareSlot{display:none;}
+    #qrSection .result-actions{grid-area:acts; margin-top:10px;}
+    #qrSection .result-timer{grid-area:timer; margin:10px 0 0;}
+    .result-actions > button{min-height:50px; font-size:15.5px;}
+  }
+  @media (max-width:430px){
+    #qrSection{grid-template-areas:'title title' 'qr hint' 'acts acts' 'timer timer';}
+    #qrSection .qr-box{width:118px; height:118px;}
+  }
+  @media (prefers-reduced-motion:reduce){ .countdown-num.pulse{animation:none;} .layout-btn .lt.lt-wait{animation:none;} }
 </style>
 <script>/* qrcode-generator 1.4.4 (MIT) — QR codes are made on this device, no outside service. */
 // Copyright (c) 2009 Kazuhiko Arase
@@ -1209,6 +1487,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 </script>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-printer" viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.4-.5-.8-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8.1-9-8.1z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-tap" viewBox="0 0 24 24"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11m0-1.5a1.5 1.5 0 0 1 3 0V11m0-.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-2.7L3.6 15a1.5 1.5 0 0 1 2.4-1.8L9 16"/></symbol>
+  <symbol id="i-battery" viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 11v2M6 10v4"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></symbol>
+</svg>
 
 <!-- START SCREEN: shown once, before Setup. Tap anywhere to begin. -->
 <div class="start-screen" id="startScreen" role="button" tabindex="0" aria-label="Tap to start">
@@ -1230,22 +1521,22 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   </div>
 </div>
 
-<header class="brandbar">
+<header class="brandbar topbar">
   <div class="brand-logo">
     <span class="brand-mark"><i></i><i></i><i></i><i></i></span>
     <span class="brand-word"><b>photobooth</b><em>4u</em></span>
   </div>
   <div class="subtitle" id="brandSubtitle">Snap · Print · Share</div>
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-btn active" id="tabBtnSetup" data-tab="setup">
+      <span class="tab-num">1</span> Setup
+    </button>
+    <button class="tab-btn" id="tabBtnSession" data-tab="session">
+      <span class="tab-num">2</span> Photo Session
+    </button>
+  </div>
+  <div class="topbar-end" aria-hidden="true"></div>
 </header>
-
-<div class="tab-bar" id="tabBar">
-  <button class="tab-btn active" id="tabBtnSetup" data-tab="setup">
-    <span class="tab-num">1</span> Setup
-  </button>
-  <button class="tab-btn" id="tabBtnSession" data-tab="session">
-    <span class="tab-num">2</span> Photo Session
-  </button>
-</div>
 
 <!-- TAB 1: SETUP -->
 <div class="tab-panel" id="tabSetup">
@@ -1264,14 +1555,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     <section class="step" id="step1" data-step="1">
       <div class="seg-tabs d1-tabs" id="designTabs" role="tablist" aria-label="Design">
         <button type="button" class="on" data-pane="designs" role="tab" aria-selected="true">Ready designs</button>
-        <button type="button" data-pane="colours" role="tab" aria-selected="false">🎨 Colours &amp; background<small id="backdropSum"></small></button>
+        <button type="button" data-pane="colours" role="tab" aria-selected="false"><svg class="ic" aria-hidden="true"><use href="#i-palette"/></svg> Colours &amp; background<small id="backdropSum"></small></button>
       </div>
       <div class="panel-section d1-pane on" id="themeSection" data-d1="designs">
         <div class="step-head">
           <p class="panel-label">Pick a design</p>
-          <button type="button" class="link-btn" id="saveThemeBtn">★ Save my design</button>
+          <button type="button" class="link-btn" id="saveThemeBtn"><svg class="ic" aria-hidden="true"><use href="#i-bookmark"/></svg> Save my design</button>
         </div>
-        <p class="panel-hint step-lead">Tap one to start from it. You can change the colours after in <a href="#" class="d1-jump" data-pane="colours">🎨 Colours &amp; background</a>.</p>
+        <p class="panel-hint step-lead">Tap one to start from it. You can change the colours after in <a href="#" class="d1-jump" data-pane="colours">Colours &amp; background</a>.</p>
         <div class="theme-tools">
           <input type="search" class="label-input" id="themeSearch" placeholder="Search designs…" aria-label="Search designs">
         </div>
@@ -1282,7 +1573,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <div class="panel-section d1-pane" id="backdropSection" data-d1="colours">
         <p class="panel-label">Colours &amp; background</p>
         <p class="panel-hint step-lead">These change everything <b>around</b> the photos. Each one shows in the preview straight away.</p>
-        <button type="button" class="action-btn see-prev-btn" data-see-preview>👁 Show the preview while I pick</button>
+        <button type="button" class="action-btn see-prev-btn" data-see-preview><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> Show the preview while I pick</button>
         <div class="cz">
         <p class="cz-t"><span class="cz-n">1</span>Background style</p>
         <p class="cz-h">The pattern behind your photos.</p>
@@ -1497,7 +1788,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <div class="decor-btns">
               <button type="button" class="action-btn" id="sheetShuffle">⇄ Swap places</button>
               <button type="button" class="action-btn" id="sheetAddFrame">+ Add a copy</button>
-              <button type="button" class="action-btn see-prev-btn" data-see-preview style="margin:0;">👁 Open preview</button>
+              <button type="button" class="action-btn see-prev-btn" data-see-preview style="margin:0;"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> Open preview</button>
             </div>
             <p class="panel-hint" style="margin-top:8px;">Fine-tune in the preview: <b>drag</b> a frame to move it, or <b>tap</b> it to resize, swap, turn or copy it.</p>
           </div>
@@ -1542,6 +1833,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <button type="button" class="on" data-pane="logo">Logo</button>
           <button type="button" data-pane="stickers">Stickers</button>
           <button type="button" data-pane="filter">Filter</button>
+          <button type="button" data-pane="greenscreen">Green screen</button>
         </div>
 
         
@@ -1574,6 +1866,36 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
           <p class="panel-hint" style="margin-top:6px;">Tap to add, then drag it on the preview.</p>
           <button class="remove-link" id="decorClear" style="display:inline;">Remove all stickers</button>
+        </div>
+
+        <div class="pane" data-pane="greenscreen" id="greenSection">
+          <div class="chip-row" id="bgModeChips">
+            <button type="button" class="chip active" data-mode="off">Off</button>
+            <button type="button" class="chip" data-mode="ai">No cloth (AI)</button>
+            <button type="button" class="chip" data-mode="green">Green screen</button>
+          </div>
+          <p class="panel-hint" id="bgModeHint" style="margin-top:8px;"></p>
+          <div id="bgOpts" style="display:none;">
+            <p class="panel-hint bg-status" id="bgStatus"></p>
+            <p class="sub-label" style="margin-top:12px;">Picture behind the guests</p>
+            <div class="bgr-grid" id="bgrGrid"></div>
+            <div class="bg-row" style="margin-top:10px;">
+              <label class="upload-btn" for="bgrInput">+ Upload your own picture</label>
+              <input type="file" id="bgrInput" accept="image/*">
+            </div>
+            <div id="greenOpts" style="display:none;">
+              <p class="sub-label" style="margin-top:14px;">Screen colour</p>
+              <div class="bd-key-row" id="bgKeyRow">
+                <button type="button" class="bd-key" data-key="green" style="--sw:#00b140;">Green</button>
+                <button type="button" class="bd-key" data-key="blue" style="--sw:#0047bb;">Blue</button>
+                <button type="button" class="bd-key" data-key="pick">Pick from camera</button>
+              </div>
+              <div class="stepper" style="margin-top:10px;"><span class="lbl">Strength</span><input type="range" id="keyTol" min="15" max="95" value="48" style="flex:1; max-width:220px;"></div>
+              <p class="panel-hint" style="margin-top:4px;">Raise it if bits of the cloth show; lower it if parts of guests disappear.</p>
+            </div>
+            <label class="toggle-row" style="margin-top:12px;"><input type="checkbox" id="bgLiveToggle" checked> Show it in the live view</label>
+            <p class="panel-hint" style="margin-top:6px;">Check it with <b>Preview with my camera</b> under the preview.</p>
+          </div>
         </div>
 
         <div class="pane" data-pane="filter" id="effectsSection">
@@ -1668,13 +1990,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <div class="panel-section hidden" id="guestSection">
         <p class="panel-label">Guest screen</p>
         <p class="guest-status" id="guestStatus"><i></i><span>Not open yet</span></p>
-        <button class="action-btn primary" id="guestOpenBtn">&#128250; Open guest screen</button>
+        <button class="action-btn primary" id="guestOpenBtn"><svg class="ic" aria-hidden="true"><use href="#i-monitor"/></svg> Open guest screen</button>
         <p class="panel-hint" id="guestHint">Connect the second monitor (set to <b>Extend</b>), then open the guest screen. Chrome or Edge can move it onto that monitor for you — allow “window management” if asked. Click the guest screen once to make it full screen.</p>
         <p class="panel-hint">Guests start a session by tapping the guest screen, or pressing <b>Space</b> / a presenter clicker. Setup, printing and the QR code stay on this screen.</p>
       </div>
       <div class="panel-section" id="lockSection" style="display:none;">
         <p class="panel-label">Lock booth</p>
-        <p class="panel-hint" style="margin:0 0 10px;">For a self-service booth: guests only see tap to start → layout → photos → filter → QR / print. Setup and settings are hidden until someone enters the PIN (tap the small &#128274; in the top-right corner).</p>
+        <p class="panel-hint" style="margin:0 0 10px;">For a self-service booth: guests only see tap to start → layout → photos → filter → QR / print. Setup and settings are hidden until someone enters the PIN (tap the small lock in the top-right corner).</p>
         <p class="sub-label" id="lockPinLabel">Set a 4-digit PIN</p>
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
           <input type="password" inputmode="numeric" maxlength="4" pattern="[0-9]*" id="lockPin1" class="label-input" placeholder="PIN" style="width:110px; letter-spacing:6px; font-family:'Manrope',sans-serif; font-size:16px;">
@@ -1683,7 +2005,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         </div>
         <p class="panel-hint" id="lockPinNote" style="margin:6px 0 4px;"></p>
         <p class="panel-hint" id="lockTestNote" style="margin:0 0 10px; padding:6px 10px; border-radius:10px; background:#fff6db; border:1px solid #f0d98a; color:#6b5300; font-weight:700;">For testing: the PIN is <b>1234</b> until you set your own.</p>
-        <button type="button" class="action-btn primary" id="lockNowBtn" style="width:auto; margin:0;">&#128274; Lock booth now</button>
+        <button type="button" class="action-btn primary" id="lockNowBtn" style="width:auto; margin:0;"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Lock booth now</button>
       </div>
       <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="4">← Back</button><button type="button" class="action-btn primary next-btn" data-go="6">Next: Share →</button></div>
     </section>
@@ -1720,6 +2042,26 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <div class="sub-group" id="printSummaryBox" style="display:none;">
           <p class="sub-label">Printing</p>
           <p class="panel-hint" id="printSummary" style="margin:0;"></p>
+          <label class="switch-row"><span>Print button for guests</span><input type="checkbox" id="ppGuestBtn"></label>
+          <label class="switch-row"><span>Print automatically after each session</span><input type="checkbox" id="ppAuto"></label>
+          <p class="panel-hint" id="ppAutoHint" style="margin:4px 0 0;"></p>
+          <div class="copies-row"><span>Copies each time</span>
+            <span class="stepper"><button type="button" id="ppCopiesMinus" aria-label="Fewer copies">&minus;</button><b id="ppCopiesVal">1</b><button type="button" id="ppCopiesPlus" aria-label="More copies">+</button></span>
+          </div>
+          <label class="switch-row" style="margin-top:6px;"><span>Let guests choose how many copies</span><input type="checkbox" id="ppGuestCopies"></label>
+          <details class="pp-words">
+            <summary>Change the wording guests see</summary>
+            <label>Print button<input type="text" id="ppTxtPrint" maxlength="24" placeholder="Print"></label>
+            <label>While printing<input type="text" id="ppTxtPrinting" maxlength="60" placeholder="Printing, please hold…"></label>
+            <label>Copies question<input type="text" id="ppTxtCopies" maxlength="40" placeholder="How many copies?"></label>
+            <label>When the print limit is reached<input type="text" id="ppTxtLimit" maxlength="70" placeholder="That’s all the prints for this session"></label>
+          </details>
+          <label class="sub-label" for="ppRoute" style="display:block; margin:12px 0 4px;">Send prints to (this device)</label>
+          <select id="ppRoute" class="print-route">
+            <option value="here">This device</option>
+            <option value="station">Laptop print station (no pop-up)</option>
+          </select>
+          <p class="panel-hint" id="ppRouteHint" style="margin:4px 0 0;"></p>
         </div>
       </div>
       
@@ -1757,7 +2099,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         </div>
       </div>
       <div class="sample-row">
-        <button type="button" class="action-btn" id="sampleCamBtn">📷 Try with my camera</button>
+        <button type="button" class="action-btn" id="sampleCamBtn"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> Preview with my camera</button>
         <button type="button" class="action-btn" id="sampleResetBtn" style="display:none;">Use the sample</button>
       </div>
     </div>
@@ -1773,9 +2115,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     <div class="start-bar-in">
       <button type="button" class="start-prev" id="startPrevBtn" aria-controls="previewSection" aria-expanded="false" title="Show the preview">
         <canvas class="start-thumb" id="startThumb" width="40" height="60" aria-hidden="true"></canvas>
-        <span class="sp-t" id="startPrevLabel"><b>👁 Preview</b><small>Tap to see it</small></span>
+        <span class="sp-t" id="startPrevLabel"><b><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> Preview</b><small>Tap to see it</small></span>
       </button>
-      <div class="start-info"><span class="start-status" id="startStatus"></span><span class="start-save" id="startSave"></span></div>
+      <div class="start-info"><div class="start-row"><span class="start-status" id="startStatus"></span><span id="setupChipSlot"></span></div><span class="start-save" id="startSave"></span></div>
       <div class="start-actions">
         <div class="menu-wrap">
           <button type="button" class="menu-btn" id="setupMenuBtn" aria-label="More" aria-haspopup="true">⋯</button>
@@ -1807,7 +2149,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <canvas id="previewCanvas"></canvas>
         <div class="box-guide" id="boxGuide" aria-hidden="true"><span>Photo area</span></div>
         <img class="shot-review" id="shotReview" alt="">
-        <div class="welcome-overlay" id="welcomeOverlay" role="button" tabindex="0" aria-label="Tap to start"><img id="welcomeImg" alt="Welcome — tap to start"></div>
+        <div class="welcome-overlay" id="welcomeOverlay" role="button" tabindex="0" aria-label="Tap to start"><img id="welcomeImg" alt="Welcome — tap to start"><span class="welcome-pulse" id="welcomePulse" aria-hidden="true"></span></div>
         <div class="pick-overlay" id="pickOverlay" aria-label="Choose your layout">
           <p class="pick-title">Choose your layout</p>
           <div class="pick-grid" id="pickGrid"></div>
@@ -1835,17 +2177,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p id="cameraErrorText">We need access to your camera to start the booth.</p>
           <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
             <button class="action-btn primary" id="retryCameraBtn" style="width:auto; padding:10px 20px;">Try Again</button>
-            <button class="action-btn" id="chooseCameraBtn" type="button" style="width:auto; padding:10px 20px;">&#128247; Choose camera</button>
+            <button class="action-btn" id="chooseCameraBtn" type="button" style="width:auto; padding:10px 20px;"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> Choose camera</button>
           </div>
         </div>
       </div>
 
-      <div class="film-track" id="filmTrack">
-        <div class="film-frame">1</div>
-        <div class="film-frame">2</div>
-        <div class="film-frame">3</div>
-        <div class="film-frame">4</div>
-      </div>
+      <div class="film-track" id="filmTrack"></div>
 
       <div class="session-controls" id="sessionControls">
         <div class="ready-below"><p class="ready-summary" id="readySummary"></p></div>
@@ -1855,13 +2192,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <button type="button" class="sc-btn sc-done" id="doneBtn" hidden>Done</button>
           <button type="button" class="sc-btn" id="mirrorQuickBtn">Mirror: On</button>
         </div>
-        <p class="sc-hint sc-hint-big" id="reviewHint" hidden>&#128073; Not happy with one? <b>Tap that photo</b> on the right, then press Retake.</p>
+        <p class="sc-hint sc-hint-big" id="reviewHint" hidden><svg class="ic" aria-hidden="true"><use href="#i-tap"/></svg> Not happy with one? <b>Tap that photo</b> on the right, then press Retake.</p>
         <div class="sc-filters" id="quickFilters" aria-label="Filter"></div>
       </div>
 
       <div class="start-btn-wrap">
         <button class="shutter-btn" id="startBtn"><span class="ring"></span>Start</button>
-        <button type="button" class="shutter-btn print-quick" id="printQuickBtn" hidden>&#128424; Print</button>
+        <button type="button" class="shutter-btn print-quick" id="printQuickBtn" hidden><svg class="ic" aria-hidden="true"><use href="#i-printer"/></svg> Print</button>
       </div>
     </div>
 
@@ -1885,42 +2222,67 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       </div>
 
       <div class="panel-section hidden" id="qrSection">
-        <p class="panel-label">Get your photos</p>
+        <p class="panel-label">Your photo is ready</p>
         <div class="qr-results" id="qrResults"></div>
-        <p class="panel-hint" id="qrHint">Scan with your phone camera.</p>
+        <p class="panel-hint" id="qrHint">Scan with your phone camera to save it.</p>
         <div class="actions" id="shareSlot" style="margin-top:10px;"></div>
+        <div class="result-actions" id="resultActions">
+          <button type="button" class="result-done" id="resultDoneBtn">Done</button>
+        </div>
+        <div class="result-timer" id="resultTimer" aria-hidden="true"><i id="resultTimerBar"></i></div>
       </div>
 
 
       
 
       <div class="panel-section hidden" id="printSection">
-        <p class="panel-label">Print</p>
-        <ol class="print-steps" id="printSteps"></ol>
-        <p class="sub-label" style="margin-bottom:4px;">Paper size</p>
-        <div class="print-size-row" id="printSizeRow"></div>
-        <label class="switch-row hidden" id="keychainRow" style="margin:4px 0 10px;">
-          <span>Keychain strips at real size (2.5×7.5 in)</span>
-          <input type="checkbox" id="keychainToggle">
-        </label>
-        <div class="printer-pick" id="printerPick">
-          <label class="switch-row" style="margin:6px 0 2px;">
-            <span>Print Helper on this computer (no dialog)</span>
-            <input type="checkbox" id="helperToggle">
+        <p class="panel-label">Print settings</p>
+        <div class="ps-group">
+          <p class="ps-title">This photo</p>
+          <p class="sub-label" style="margin-bottom:6px;">Paper size</p>
+          <div class="print-size-row" id="printSizeRow"></div>
+          <label class="switch-row hidden" id="keychainRow" style="margin:4px 0 10px;">
+            <span>Keychain strips at real size (2.5×7.5 in)</span>
+            <input type="checkbox" id="keychainToggle">
           </label>
-          <label class="sub-label" for="printerSelect" style="display:block; margin:8px 0 4px;">Printer for <span id="printerPickSize">this size</span></label>
-          <select id="printerSelect" class="printer-input"></select>
-          <input type="text" id="printerNameInput" hidden>
-          <datalist id="printerList"></datalist>
-          <p class="panel-hint" id="printerHelperHint" style="margin:4px 0 10px;"></p>
+          <div class="copies-row"><span>Copies</span>
+            <span class="stepper"><button type="button" id="copiesMinus" aria-label="Fewer copies">&minus;</button><b id="copiesVal">1</b><button type="button" id="copiesPlus" aria-label="More copies">+</button></span>
+          </div>
+          <p class="panel-hint print-limit-hint" id="printLimitHint" hidden></p>
+          <button class="action-btn primary ps-print" id="printBtn"><svg class="ic" aria-hidden="true"><use href="#i-printer"/></svg> Print</button>
+          <p class="panel-hint" id="printHint"></p>
         </div>
-        <button class="action-btn primary" id="printBtn">&#128424; Print</button>
-        <p class="panel-hint" id="printHint"></p>
-        <label class="switch-row hidden" id="autoPrintRow">
-          <span>Auto-print every session</span>
-          <input type="checkbox" id="autoPrintToggle">
-        </label>
-        <p class="panel-hint hidden" id="autoPrintHint">Prints every session by itself, with no need to press Print. Turns on after your first print, on the same paper. With the <b>Print Helper</b> on, it goes straight to the chosen printer with no dialog.</p>
+        <div class="ps-group">
+          <label class="switch-row hidden" id="autoPrintRow" style="margin-top:0;">
+            <span>Print automatically after each session</span>
+            <input type="checkbox" id="autoPrintToggle">
+          </label>
+          <p class="panel-hint hidden" id="autoPrintHint"></p>
+        </div>
+        <div class="ps-group">
+          <p class="ps-title">Printer</p>
+          <label class="sub-label" for="printRouteSelect" style="display:block; margin:0 0 6px;">Send prints to</label>
+          <select id="printRouteSelect" class="print-route">
+            <option value="here">This device</option>
+            <option value="station">Laptop print station (no pop-up)</option>
+          </select>
+          <p class="panel-hint" id="stationHint" style="margin:6px 0 8px;"></p>
+          <div class="printer-pick" id="printerPick">
+            <label class="switch-row" style="margin:6px 0 2px;">
+              <span>Print Helper on this computer (no dialog)</span>
+              <input type="checkbox" id="helperToggle">
+            </label>
+            <label class="sub-label" for="printerSelect" style="display:block; margin:8px 0 4px;">Printer for <span id="printerPickSize">this size</span></label>
+            <select id="printerSelect" class="printer-input"></select>
+            <input type="text" id="printerNameInput" hidden>
+            <datalist id="printerList"></datalist>
+            <p class="panel-hint" id="printerHelperHint" style="margin:4px 0 10px;"></p>
+          </div>
+          <details class="ps-steps" id="printStepsWrap">
+            <summary>Printer setup checklist</summary>
+            <ol class="print-steps" id="printSteps"></ol>
+          </details>
+        </div>
       </div>
 
       <div class="panel-section" id="actionsSection">
@@ -1949,9 +2311,21 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     <div id="camModalBody"></div>
   </div>
 </div>
-<button type="button" class="print-fab" id="printFab" hidden>&#128424; Print settings</button>
-<button type="button" class="print-fab cam-fab" id="camFab" hidden>&#128247; Camera</button>
-<button type="button" class="lock-icon" id="lockIcon" aria-label="Unlock" title="Unlock" hidden>&#128274;</button>
+<div class="copies-sheet" id="copiesSheet" hidden>
+  <div class="cs-card" role="dialog" aria-labelledby="copiesSheetTitle">
+    <p class="cs-title" id="copiesSheetTitle">How many copies?</p>
+    <span class="stepper"><button type="button" data-d="-1" aria-label="Fewer">&minus;</button><b id="copiesSheetVal">1</b><button type="button" data-d="1" aria-label="More">+</button></span>
+    <p class="cs-left" id="copiesSheetLeft"></p>
+    <div class="cs-btns"><button type="button" id="copiesSheetCancel">Cancel</button><button type="button" class="go" id="copiesSheetGo">Print</button></div>
+  </div>
+</div>
+<div class="printing-note" id="printingNote" role="status" aria-live="polite" hidden></div>
+<div class="op-dock" id="opDock" hidden>
+  <span class="dock-chip-slot" id="dockChipSlot"></span>
+  <button type="button" class="dock-btn" id="camFab" hidden aria-label="Camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Camera</span></button>
+  <button type="button" class="dock-btn" id="printFab" hidden aria-label="Printer settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg><span>Printer</span></button>
+</div>
+<button type="button" class="lock-icon" id="lockIcon" aria-label="Unlock" title="Unlock" hidden><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></button>
 <div class="pin-modal" id="pinModal" hidden>
   <div class="pin-card" role="dialog" aria-label="Enter PIN">
     <p class="pin-title">Enter PIN to unlock</p>
@@ -1971,6 +2345,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
 <script>
 (function(){
+  // Line icons from the SVG sprite at the top of the page.
+  function ICON(name){ return '<svg class="ic" aria-hidden="true"><use href="#i-' + name + '"/></svg>'; }
   const video = document.getElementById('video');
   const previewCanvas = document.getElementById('previewCanvas');
   const cameraError = document.getElementById('cameraError');
@@ -2051,6 +2427,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     window.scrollTo(0, 0);
     if(toSession && typeof applyStageAspect === 'function') requestAnimationFrame(function(){ applyStageAspect(); });
     try{ refreshPrintFab(); refreshPanelSolo(); }catch(e){}
+    try{ placeTimeChip(); scheduleDock(); }catch(e){}
   }
   tabBtnSetup.addEventListener('click', () => switchTab('setup'));
   tabBtnSession.addEventListener('click', () => switchTab('session'));
@@ -4545,7 +4922,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const m = /(\d+)\s*%/.exec(v);
       const pct = m ? Number(m[1]) : null;
       const low = pct !== null ? pct < USB_BATT_LOW : /low|empty|exhaust/i.test(v);
-      usbCamNote('\u{1F50B} Camera battery: ' + v + (low ? ' — swap it or plug in mains power soon.' : ''), low);
+      usbCamNote('Camera battery: ' + v + (low ? ' — swap it or plug in mains power soon.' : ''), low);
       if(low && Date.now() - usbBattWarnedAt > 10 * 60 * 1000){
         usbBattWarnedAt = Date.now();
         showToast('Camera battery low (' + v + '). Swap the battery or plug in mains power before the next guests.', 8000);
@@ -4785,6 +5162,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var ft = document.getElementById('filmTrack');
     if(ft) ft.style.setProperty('--box-aspect', filmBox.toFixed(4));
     layoutSessionStage(filmBox, sa);
+    try{ layoutDock(filmBox, sa); }catch(e){}
     var live = true;
     try{ live = state !== 'result' && !(sess && sess.reviewing); }catch(e){}
     placeGuide(document.getElementById('boxGuide'), cam, box, false);
@@ -4798,6 +5176,60 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       }
     }catch(e){}
   }
+  // ---- Operator dock: corner when free, otherwise a bottom bar with room made for it ----
+  var dockReserve = 0, dockTimer = 0;
+  function scheduleDock(){ if(dockTimer) return; dockTimer = requestAnimationFrame(function(){ dockTimer = 0; try{ applyStageAspect(); }catch(e){} }); }
+  function dockWanted(){
+    var d = document.getElementById('opDock'); if(!d) return false;
+    if(!document.body.classList.contains('in-session') || document.body.classList.contains('booth-locked')) return false;
+    var chip = document.getElementById('pbTimeChip');
+    var chipOn = !!(chip && chip.parentNode && chip.parentNode.id === 'dockChipSlot' && chip.style.display !== 'none');
+    return !document.getElementById('camFab').hidden || !document.getElementById('printFab').hidden || chipOn;
+  }
+  // Everything guests and the operator need to see or tap in Photo Session.
+  function sessionContentRects(){
+    var out = [];
+    var add = function(el){ if(!el || el.offsetParent === null) return; var r = el.getBoundingClientRect(); if(r.width > 2 && r.height > 2) out.push(r); };
+    ['stageFrame', 'startBtn', 'printQuickBtn', 'readyStartBtn'].forEach(function(id){ add(document.getElementById(id)); });
+    [].forEach.call(document.querySelectorAll('#sessionControls .sc-btn, #sessionControls .sc-hint, #sessionControls .ready-summary, #sessionControls .sc-filter, #filmTrack .film-frame, .app-shell .panel > .panel-section:not(.hidden)'), add);
+    return out;
+  }
+  function layoutDock(box, sa){
+    var d = document.getElementById('opDock'); if(!d) return;
+    var want = dockWanted();
+    d.hidden = !want;
+    var prev = dockReserve;
+    if(!want){
+      dockReserve = 0;
+    } else {
+      d.classList.remove('bar');
+      dockReserve = 0;
+      if(prev) layoutSessionStage(box, sa);          // lay out as if the corner were free
+      var cs = getComputedStyle(d), L = parseFloat(cs.left) || 16, B = parseFloat(cs.bottom) || 16;
+      var dr = { left: L, right: L + d.offsetWidth, bottom: window.innerHeight - B, top: window.innerHeight - B - d.offsetHeight };
+      var m = 12;
+      var hit = sessionContentRects().some(function(r){ return r.left < dr.right + m && r.right > dr.left - m && r.top < dr.bottom + m && r.bottom > dr.top - m; });
+      if(hit){ d.classList.add('bar'); dockReserve = d.offsetHeight; }
+    }
+    document.body.style.setProperty('--dock-reserve', dockReserve + 'px');
+    if(dockReserve !== 0 || prev !== 0) layoutSessionStage(box, sa);
+  }
+  // The rental / trial time-left chip (made by the server's watcher script) goes
+  // into the Setup bar or the dock instead of floating over buttons.
+  function placeTimeChip(){
+    var chip = document.getElementById('pbTimeChip'); if(!chip) return;
+    var ss = document.getElementById('startScreen');
+    var startGone = !ss || ss.classList.contains('gone');
+    var locked = document.body.classList.contains('booth-locked');
+    var slot = startGone && !locked ? document.getElementById(document.body.classList.contains('in-session') ? 'dockChipSlot' : 'setupChipSlot') : null;
+    if(slot){ if(chip.parentNode !== slot){ slot.appendChild(chip); chip.classList.add('slotted'); scheduleDock(); } }
+    else if(chip.parentNode !== document.body){ document.body.appendChild(chip); chip.classList.remove('slotted'); scheduleDock(); }
+    chip.classList.toggle('chip-hidden', locked);
+    var vis = chip.style.display !== 'none';
+    if(vis !== placeTimeChip.vis){ placeTimeChip.vis = vis; scheduleDock(); }
+  }
+  setInterval(placeTimeChip, 1000);
+
   // The live view / finished photo is as big as the screen allows (keeping the
   // layout's shape), centred. While shooting on wide screens the taken photos
   // stack on the right and an equal empty column on the left keeps it centred.
@@ -4815,7 +5247,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // out instead of wrapping into the strip's narrow width (see CSS).
     shell.classList.toggle('tall-stage', side && sa < 0.6);
     var frames = ft.querySelectorAll('.film-frame');
-    var vh = window.innerHeight;
+    var vh = window.innerHeight - (dockReserve || 0);
     var top = Math.max(0, sw.getBoundingClientRect().top + window.scrollY);
     var ctrlH = sc && sc.offsetParent !== null ? sc.offsetHeight + 12 : 0;
     var sb = document.querySelector('.start-btn-wrap');
@@ -4839,7 +5271,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         shell.classList.toggle('btn-beside', beside);
         btnH = sb && sb.offsetParent !== null && getComputedStyle(sb).position !== 'absolute' ? sb.offsetHeight + 28 : 0;
       }
-      var Hn = Math.max(220, vh - top - ctrlH - filmH - btnH - 14);
+      // Result on a narrow screen: the card (QR, Print, Done) sits under the photo; keep both on screen.
+      var cardH = 0;
+      try{
+        var qs = document.getElementById('qrSection');
+        if(state === 'result' && qs && qs.offsetParent !== null && qs.parentElement.getBoundingClientRect().top > sw.getBoundingClientRect().top + 20) cardH = qs.offsetHeight + 18;
+      }catch(e){}
+      var Hn = Math.max(220, vh - top - ctrlH - filmH - btnH - cardH - 14);
       var wn = Math.max(200, Math.min(Wn, Hn * sa));
       sf.style.width = Math.round(wn) + 'px';
       sf.style.setProperty('--stage-h', Math.round(wn / sa) + 'px');
@@ -5028,6 +5466,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // on: the saved / printed photo looks exactly like the live view.
     if(mirrorPreview()){ ctx.translate(c.width, 0); ctx.scale(-1, 1); }
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    applyBgReplace(c);
     applyFilterToCanvas(c);
     c._isShot = true;
     shotCanvases[index] = c;
@@ -5054,6 +5494,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(mirrorPreview()){ ctx.translate(c.width, 0); ctx.scale(-1, 1); }   // match the live view
       ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, c.width, c.height);
       bmp.close();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      applyBgReplace(c);
       applyFilterToCanvas(c);
       c._isShot = true;
       if(shotCanvases === shots){ shotCanvases[index] = c; updateFilmTrack(); }
@@ -5341,6 +5783,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     video.style.display = 'block';
     previewCanvas.style.display = 'none';
     state = 'capturing';
+    resetSessionPrints();
     stageShot = 0;
     sess = { cancelled: false, retake: false, pick: null };
     shotCanvases = new Array(shotsNeeded()).fill(null);
@@ -5385,6 +5828,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
 
   startBtn.addEventListener('click', () => beginGuestFlow(false));
+  // Result card: the guest's Print button lives next to Done, under the QR.
+  (function(){
+    var acts = document.getElementById('resultActions'), pq = document.getElementById('printQuickBtn');
+    if(acts && pq) acts.insertBefore(pq, acts.firstChild);
+    document.getElementById('resultDoneBtn').addEventListener('click', function(e){
+      e.stopPropagation();
+      if(state === 'result' && typeof resetForNextGuest === 'function') resetForNextGuest();
+    });
+  })();
 
   // ---- Backdrop presets ----
   function setActivePresetBtn(){
@@ -5623,6 +6075,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const W = 40, H = 60 * 0.86;
     return sheetCells(key, W, H).map(c => pct(c.x / W * 100, c.y / 60 * 100, c.w / W * 100, c.h / 60 * 100));
   }
+  // What each layout prints on.
+  function layoutPaperText(key){
+    const d = LAYOUT_DEFS[key];
+    if(!d) return '';
+    if(d.kind === 'landscape') return '4R, sideways';
+    if(d.kind === 'frame') return key === 'framesheet' ? '4R' : (isStripLayout(key) ? '2\u00d76 or 2 on 4R' : '4R');
+    if(d.kind === 'strip') return '2\u00d76 or 2 on 4R';
+    return '4R (4\u00d76)';
+  }
   function buildLayoutPicker(){
     layoutGrid.innerHTML = '';
     layoutOrder().forEach(key => {
@@ -5632,19 +6093,28 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       b.className = 'layout-btn' + (key === currentLayout ? ' active' : '');
       b.dataset.layout = key;
       b.setAttribute('aria-pressed', key === currentLayout ? 'true' : 'false');
-      const thumb = document.createElement('span');
-      thumb.className = 'lt' + (d.kind === 'strip' ? ' lt-strip' : '');
-      layoutThumbCells(key).forEach(c => {
-        const i = document.createElement('i');
-        i.style.left = c.l + '%'; i.style.top = c.t + '%';
-        i.style.width = c.w + '%'; i.style.height = c.h + '%';
-        thumb.appendChild(i);
-      });
-      const n = document.createElement('span'); n.className = 'ln'; n.textContent = d.name;
       const noFrames = d.kind === 'frame' && !(typeof myFrames !== 'undefined' && myFrames && myFrames.length);
-      const s = document.createElement('span'); s.className = 'ls'; s.textContent = noFrames ? 'UPLOAD A FRAME' : d.shots + (d.shots === 1 ? ' SHOT' : ' SHOTS');
+      const box = document.createElement('span'); box.className = 'lt-box';
+      if(noFrames){
+        const plus = document.createElement('span'); plus.className = 'lt-plus'; plus.textContent = '+';
+        box.appendChild(plus);
+      } else {
+        // Wireframe with a shimmer until the picture of your design is ready.
+        const thumb = document.createElement('span');
+        thumb.className = 'lt lt-wait' + (d.kind === 'strip' ? ' lt-strip' : '');
+        layoutThumbCells(key).forEach(c => {
+          const i = document.createElement('i');
+          i.style.left = c.l + '%'; i.style.top = c.t + '%';
+          i.style.width = c.w + '%'; i.style.height = c.h + '%';
+          thumb.appendChild(i);
+        });
+        box.appendChild(thumb);
+      }
+      const n = document.createElement('span'); n.className = 'ln'; n.textContent = d.name;
+      const s = document.createElement('span'); s.className = 'ls'; s.textContent = noFrames ? 'Upload a frame' : d.shots + (d.shots === 1 ? ' shot' : ' shots');
+      const pp = document.createElement('span'); pp.className = 'lpaper'; pp.textContent = noFrames ? 'Made in Canva' : layoutPaperText(key);
       if(noFrames) b.classList.add('lt-empty');
-      b.append(thumb, n, s);
+      b.append(box, n, s, pp);
       layoutGrid.appendChild(b);
     });
     layoutHint.textContent = layoutDef().hint;
@@ -6871,6 +7341,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     '2.5x7.5':{ name: 'Keychain 2.5\u00d77.5', w: 63.5, h: 190.5 },
     '3.5x5':  { name: '3R',             w: 88.9,  h: 127 },
     '4x6':    { name: '4R (4\u00d76)',  w: 101.6, h: 152.4 },
+    'selphy': { name: 'Selphy postcard', w: 100, h: 148 },
+    'selphycard': { name: 'Selphy card', w: 54, h: 86 },
     '5x7':    { name: '5R (5\u00d77)',  w: 127,   h: 177.8 },
     '6x8':    { name: '6R (6\u00d78)',  w: 152.4, h: 203.2 },
     '8x10':   { name: '8R (8\u00d710)', w: 203.2, h: 254 },
@@ -7008,12 +7480,25 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const name = printSize ? printerFor(printSize) : '';
     const connected = helperOn && helper.ok;
     const sizeName = printSize ? paperFor(printSize).name : 'this size';
-    const steps = [
+    let steps;
+    if(useStation()) steps = [
+      { done: station.online, t: 'Open the print station on the laptop', s: station.online ? 'The laptop is ready.' : 'On the laptop next to the printer, open <a href="/print-station/" target="_blank" rel="noopener">photobooth4u.netlify.app/print-station</a> and sign in with your code.' },
+      { done: station.online, t: 'Choose the printers there', s: 'Pick a printer for each paper size on the laptop (with the Print Helper running).' },
+      { done: auto, t: 'Turn on Print automatically (optional)', s: auto ? 'Every session goes to the laptop by itself.' : 'Or let guests tap <b>' + escHtml(printTxt('txtPrint')) + '</b> after their photo.' }
+    ];
+    else if(isMobileOS()) steps = [
+      { done: false, t: 'Turn on the printer and join the same Wi-Fi', s: 'AirPrint printers (Canon Selphy, Epson, HP…) show up by themselves. For DNP / HiTi, use a laptop print station.' },
+      { done: false, t: 'Print once and pick the printer', s: 'Press <b>Print</b>, choose the printer in the AirPrint sheet. The iPad remembers it.' + (navigator.standalone ? ' <b>Home Screen app:</b> if no sheet appears, open the booth in a Safari tab instead, or use a laptop print station.' : '') },
+      { done: auto, t: 'Turn on Print automatically (optional)', s: auto ? 'The AirPrint sheet opens after every session; guests just tap Print.' : 'Then the AirPrint sheet opens by itself after each session.' }
+    ];
+    else steps = [
       { done: connected, t: 'Connect the Print Helper', s: connected ? 'Connected \u2014 ' + helper.printers.length + ' printers found.' : 'Open the Print Helper app on this computer, then switch on <b>Print Helper on this computer</b> below. <a href="/downloads/" target="_blank" rel="noopener">Download</a>' },
       { done: connected && !!name && helper.printers.includes(name), t: 'Choose the printer for each paper size', s: name ? sizeName + ' \u2192 ' + name : 'Tap a paper size, then pick its printer from the list.' },
-      { done: auto, t: 'Print once, then turn on Auto-print', s: auto ? 'Every session prints by itself.' : 'Press <b>Print</b> to test, then tick <b>Auto-print every session</b>.' }
+      { done: auto, t: 'Print once, then turn on Print automatically', s: auto ? 'Every session prints by itself.' : 'Press <b>Print</b> to test, then tick <b>Print automatically after each session</b>.' }
     ];
     let first = steps.findIndex(x => !x.done);
+    const sw = document.getElementById('printStepsWrap');
+    if(sw){ const n = steps.filter(x => x.done).length; sw.querySelector('summary').textContent = 'Printer setup checklist (' + n + ' of ' + steps.length + ' done)'; }
     el.innerHTML = steps.map((x, i) => '<li class="' + (x.done ? 'done' : (i === first ? 'now' : '')) + '"><i>' + (x.done ? '\u2713' : (i + 1)) + '</i><span><b>' + x.t + '</b><small>' + x.s + '</small></span></li>').join('');
   }
   printerNameInput.addEventListener('input', () => {
@@ -7135,7 +7620,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function openPrintModal(){ try{ closeCamModal(); }catch(e){} printModal.hidden = false; checkHelper(true); }
   function closePrintModal(){ printModal.hidden = true; }
   printFab.addEventListener('click', openPrintModal);
-  document.getElementById('printQuickBtn').addEventListener('click', (e) => { e.stopPropagation(); printCurrentPhoto(false); });
+  document.getElementById('printQuickBtn').addEventListener('click', (e) => { e.stopPropagation(); guestPrintTap(); });
   document.getElementById('printModalClose').addEventListener('click', closePrintModal);
   printModal.addEventListener('click', (e) => { if(e.target === printModal) closePrintModal(); });
   document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !printModal.hidden){ e.stopPropagation(); closePrintModal(); } }, true);
@@ -7168,17 +7653,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     camFab.hidden = !free;
     if(!free) closeCamModal();
     const opt = cameraSelect.options[cameraSelect.selectedIndex];
-    camFab.textContent = '\u{1F4F7} ' + (opt && opt.textContent ? 'Camera: ' + opt.textContent : 'Choose camera');
-    camFab.style.bottom = printFab.hidden ? '20px' : '';
+    // Short label; the camera's (often long) name is in the tooltip and the pop-up.
+    camFab.title = opt && opt.textContent ? 'Camera: ' + opt.textContent : 'Choose camera';
+    camFab.setAttribute('aria-label', camFab.title);
+    scheduleDock();
   }
   function refreshPrintFab(){
     try{ refreshCamFab(); }catch(e){}
     const show = !printSection.classList.contains('hidden') && document.body.classList.contains('in-session') && state !== 'capturing' && !(typeof pickOpen !== 'undefined' && pickOpen);
     printFab.hidden = !show;
-    printFab.innerHTML = '&#128424; Print settings';
-    camFab.style.bottom = printFab.hidden ? '20px' : '';
-    const pq = document.getElementById('printQuickBtn');
-    if(pq) pq.hidden = !(state === 'result' && !printSection.classList.contains('hidden'));
+    scheduleDock();
+    try{ refreshGuestPrintBtn(); }catch(e){}
     if(!show && state === 'capturing') closePrintModal();
   }
   function refreshPrintUI(){
@@ -7227,6 +7712,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     document.getElementById('printerPick').style.display = printSize ? '' : 'none';
     refreshPrinterHint();
     if(helperOn) checkHelper(false);
+    if(ready && printSize && printsLeft() < sheetsPerCopy(printSize)) printBtn.disabled = true;
+    refreshPrintExtras();
+    try{ refreshGuestPrintBtn(); }catch(e){}
   }
   printSizeRow.addEventListener('click', (e) => {
     const b = e.target.closest('.print-size-btn');
@@ -7290,85 +7778,375 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       return c;
     });
   }
-  async function printCurrentPhoto(auto){
-    if(printing || !printSize || !(state === 'result' && shotCanvases.every(Boolean))) return;
+  // ---- Printing: copies, limits, guest Print button, auto-print, laptop print station ----
+  // Limits come from Admin (window.__PB.print): eventLimit = sheets for the
+  // whole event, counted on the server (/api/prints) so every device and
+  // reload shares one count; sessionLimit = sheets per guest session, counted
+  // here. Both count sheets of paper, copies included. 0 = no limit.
+  const MAX_COPIES = 10;
+  const PRINT_TXT = { txtPrint: 'Print', txtPrinting: 'Printing, please hold…', txtCopies: 'How many copies?', txtLimit: 'That’s all the prints for this session' };
+  // Saved with the setup (every device on the code gets them).
+  let printPrefs = { guestBtn: true, auto: false, copies: 1, guestCopies: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
+  function printTxt(k){ return (printPrefs[k] || '').trim() || PRINT_TXT[k]; }
+  function cleanPrintPrefs(p){
+    p = p && typeof p === 'object' ? p : {};
+    const txt = (v, n) => typeof v === 'string' ? v.replace(/[<>]/g, '').slice(0, n) : '';
+    return {
+      guestBtn: p.guestBtn !== false, auto: !!p.auto,
+      copies: Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(p.copies) || 1))), guestCopies: !!p.guestCopies,
+      txtPrint: txt(p.txtPrint, 24), txtPrinting: txt(p.txtPrinting, 60), txtCopies: txt(p.txtCopies, 40), txtLimit: txt(p.txtLimit, 70)
+    };
+  }
+  let sessPrinted = 0;                 // sheets printed for the guest session on screen
+  function resetSessionPrints(){ sessPrinted = 0; }
+  let printCount = null;               // { used, left (null = no limit), at } from the server
+  let opCopies = 1;                    // copies for the Print button in the Print pop-up
+  function printLimits(){ const p = (window.__PB && window.__PB.print) || {}; return { ev: p.eventLimit || 0, se: p.sessionLimit || 0 }; }
+  function isRentalBooth(){ return !!(window.__PB && window.__PB.type === 'rental'); }
+  function isMobileOS(){
+    const ua = navigator.userAgent || '';
+    return /iPad|iPhone|iPod|Android/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  }
+  function apiAuth(extra){
+    let token = null, deviceId = null, ev = '';
+    try{ token = localStorage.getItem('pb_token'); deviceId = localStorage.getItem('pb_device'); }catch(e){}
+    try{ ev = setupScopeEvent(); }catch(e){}
+    return JSON.stringify(Object.assign({ token: token, deviceId: deviceId, event: ev }, extra));
+  }
+  async function postApi(path, extra, ms){
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), ms || 8000);
+    try{
+      const r = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: apiAuth(extra), signal: ctl.signal, cache: 'no-store' });
+      const j = await r.json().catch(() => ({}));
+      return { status: r.status, j: j };
+    } finally { clearTimeout(t); }
+  }
+  // Sheets one copy of the current print takes (keychains / frame strips can be several pages).
+  function sheetsPerCopy(key){
+    if(!key) return 1;
+    if(keychainMode(key)){ const fit = keychainFit(key); return Math.max(1, Math.ceil(keychainFrames().length / fit.per)); }
+    if(stripPagesMode(key)) return Math.max(1, sheetStripItems().length);
+    return 1;
+  }
+  function printsLeft(){
+    const lim = printLimits();
+    let left = Infinity;
+    if(lim.se) left = Math.min(left, lim.se - sessPrinted);
+    if(lim.ev && printCount && printCount.left != null) left = Math.min(left, printCount.left);
+    return Math.max(0, left);
+  }
+  function maxCopies(key){ return Math.max(0, Math.min(MAX_COPIES, Math.floor(printsLeft() / sheetsPerCopy(key || printSize)))); }
+
+  // ---- Event count on the server ----
+  const PENDING_KEY = 'pb_print_pending';
+  function pendingPrints(){ try{ return Math.max(0, Number(localStorage.getItem(PENDING_KEY)) || 0); }catch(e){ return 0; } }
+  function setPendingPrints(n){ try{ if(n > 0) localStorage.setItem(PENDING_KEY, String(n)); else localStorage.removeItem(PENDING_KEY); }catch(e){} }
+  function takeCount(j){ if(j && typeof j.used === 'number') printCount = { used: j.used, left: j.left == null ? null : j.left, at: Date.now() }; }
+  async function refreshPrintCount(){
+    if(!printSettings() || (!isRentalBooth() && !printLimits().ev)) return;
+    try{
+      const pend = pendingPrints();
+      if(pend){ const r = await postApi('/api/prints', { action: 'use', n: pend }); if(r.status === 200) setPendingPrints(0); takeCount(r.j); }
+      else { const r = await postApi('/api/prints', { action: 'status' }); if(r.status === 200) takeCount(r.j); }
+    }catch(e){}
+    try{ refreshPrintUI(); }catch(e){}
+  }
+  // Adds n sheets to the event's count. All or nothing: { ok:false, left } when
+  // the limit doesn't allow n. No connection: the guest still gets the print,
+  // and the sheets are added once the booth is back online.
+  async function reservePrints(n){
+    const lim = printLimits();
+    if(!isRentalBooth() && !lim.ev) return { ok: true };
+    if(!lim.ev){                       // no limit: just keep count, never wait for it
+      postApi('/api/prints', { action: 'use', n: n }).then(r => { if(r.status === 200) takeCount(r.j); else setPendingPrints(pendingPrints() + n); }).catch(() => setPendingPrints(pendingPrints() + n));
+      return { ok: true };
+    }
+    try{
+      const r = await postApi('/api/prints', { action: 'use', n: n }, 6000);
+      if(r.status === 200){ takeCount(r.j); return r.j.ok ? { ok: true } : { ok: false, left: r.j.left || 0 }; }
+      if(r.status === 401 || r.status === 403) return { ok: false, left: 0 };
+    }catch(e){}
+    setPendingPrints(pendingPrints() + n);
+    if(printCount && printCount.left != null) printCount.left = Math.max(0, printCount.left - n);
+    return { ok: true, offline: true };
+  }
+
+  // ---- Guest-facing messages ----
+  const printingNote = document.getElementById('printingNote');
+  let printingNoteTimer = null;
+  function showPrintingNote(text, ms){
+    printingNote.textContent = text;
+    printingNote.hidden = false;
+    clearTimeout(printingNoteTimer);
+    printingNoteTimer = setTimeout(() => { printingNote.hidden = true; }, ms || 3500);
+  }
+  function limitReached(){
+    showPrintingNote(printTxt('txtLimit'), 3500);
+    try{ refreshPrintUI(); }catch(e){}
+  }
+
+  // ---- Where prints go (this device only) ----
+  const ROUTE_KEY = 'pb_print_route';
+  let printRoute = 'here';
+  try{ printRoute = localStorage.getItem(ROUTE_KEY) === 'station' ? 'station' : 'here'; }catch(e){}
+  let station = { online: false, lastSeen: 0, checked: 0 };
+  function useStation(){ return printRoute === 'station' && isRentalBooth(); }
+  function setPrintRoute(v){
+    printRoute = v === 'station' ? 'station' : 'here';
+    try{ localStorage.setItem(ROUTE_KEY, printRoute); }catch(e){}
+    if(printRoute === 'station' && !isRentalBooth()) showToast('The laptop print station works with rental codes, not trials.', 4500);
+    station.checked = 0;
+    checkStation();
+    try{ refreshPrintUI(); refreshPrintSummary(); }catch(e){}
+  }
+  async function checkStation(){
+    if(!useStation()) return station;
+    try{
+      const r = await postApi('/api/printjobs', { action: 'station' }, 6000);
+      if(r.status === 200) station = { online: !!r.j.online, lastSeen: r.j.lastSeen || 0, checked: Date.now() };
+    }catch(e){ station.checked = Date.now(); }
+    refreshStationHints();
+    return station;
+  }
+  setInterval(() => { if(useStation() && printSettings()) checkStation(); }, 30000);
+  function stationHtml(){
+    if(!isRentalBooth()) return 'The laptop print station works with rental codes, not trials.';
+    const link = '<a href="/print-station/" target="_blank" rel="noopener">photobooth4u.netlify.app/print-station</a>';
+    const dot = '<span class="station-dot' + (station.online ? ' on' : '') + '"></span>';
+    return dot + (station.online ? '<b>Print station is on.</b> Prints go to the laptop with no pop-up here.' : (station.checked ? '<b>No print station open yet.</b> ' : 'Checking… ')) +
+      ' On the laptop next to the printer, open ' + link + ' and sign in with your code.';
+  }
+  function refreshStationHints(){
+    const a = document.getElementById('stationHint'), b = document.getElementById('ppRouteHint');
+    const html = useStation() ? stationHtml() : (isMobileOS()
+      ? 'Prints open the AirPrint sheet on this device. Add the printer once in the sheet; it’s remembered.'
+      : 'Prints use this computer’s print dialog, or the Print Helper below for no dialog.');
+    if(a) a.innerHTML = html;
+    if(b) b.innerHTML = html;
+  }
+  async function sendToStation(pages, paper, copies){
+    const group = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    for(let i = 0; i < pages.length; i++){
+      let q = 0.92, url = pages[i].toDataURL('image/jpeg', q);
+      while(url.length > 4400000 && q > 0.5){ q -= 0.12; url = pages[i].toDataURL('image/jpeg', q); }
+      const r = await postApi('/api/printjobs', { action: 'add', page: url, copies: copies, group: group, index: i, total: pages.length,
+        paper: { key: printSize, name: paper.name, w: paper.w, h: paper.h } }, 30000);
+      if(r.status !== 200) throw new Error(r.j.error || ('error ' + r.status));
+      if(typeof r.j.online === 'boolean') station.online = r.j.online;
+    }
+    refreshStationHints();
+  }
+
+  async function printCurrentPhoto(auto, copies){
+    if(printing || !printSize || !(state === 'result' && shotCanvases.every(Boolean))) return false;
+    const per = sheetsPerCopy(printSize);
+    let n = Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(copies) || printPrefs.copies || 1)));
+    const room = maxCopies(printSize);
+    if(room < 1){ limitReached(); return false; }
+    n = Math.min(n, room);
     printing = true;
     refreshPrintUI();
     try{
+      let res = await reservePrints(per * n);
+      if(!res.ok){
+        const fit = Math.floor((res.left || 0) / per);
+        if(fit < 1){ limitReached(); return false; }
+        n = Math.min(n, fit);
+        res = await reservePrints(per * n);
+        if(!res.ok){ limitReached(); return false; }
+      }
+      sessPrinted += per * n;
+      showPrintingNote(printTxt('txtPrinting'), 4000);
       const paper = paperFor(printSize);
       const pages = keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)];
-      const pname = printerFor(printSize);
-      if(helperOn && pname && await printViaHelper(pages, paper, pname)){
-        showToast((auto === true ? 'Auto-printing on ' : 'Printing on ') + pname + ' (' + paper.name + ').');
+      const label = (n > 1 ? n + ' copies, ' : '') + paper.name;
+      if(useStation()){
+        try{
+          await sendToStation(pages, paper, n);
+          showToast((auto === true ? 'Auto-print: sent to the print station (' : 'Sent to the print station (') + label + ').' + (station.online ? '' : ' It prints once the laptop’s print station is open.'), 4500);
+        }catch(e){
+          showToast('Couldn’t reach the print station (' + (e.message || e) + '). Try again.', 5500);
+          setPendingPrints(0);
+        }
         armAutoPrintAfterFirst(auto === true);
-        return;
+        return true;
+      }
+      const all = [];
+      for(let c = 0; c < n; c++) all.push(...pages);
+      const pname = printerFor(printSize);
+      if(helperOn && pname){
+        let sent = true;
+        for(let i = 0; i < all.length && sent; i += 20) sent = await printViaHelper(all.slice(i, i + 20), paper, pname);
+        if(sent){
+          showToast((auto === true ? 'Auto-printing on ' : 'Printing on ') + pname + ' (' + label + ').');
+          armAutoPrintAfterFirst(auto === true);
+          return true;
+        }
       }
       const urls = [];
       printArea.innerHTML = '';
-      for(let i = 0; i < pages.length; i++){
-        const blob = await new Promise(res => pages[i].toBlob(res, 'image/png'));
+      for(let i = 0; i < all.length; i++){
+        const blob = await new Promise(res2 => all[i].toBlob(res2, 'image/png'));
         const url = URL.createObjectURL(blob); urls.push(url);
         const img = new Image();
         img.src = url;
         await img.decode();
         img.style.width = paper.w + 'mm';
         img.style.height = paper.h + 'mm';
-        if(i < pages.length - 1) img.style.breakAfter = 'page';
+        if(i < all.length - 1) img.style.breakAfter = 'page';
         printArea.appendChild(img);
       }
       printPageStyle.textContent = '@page { size: ' + paper.w + 'mm ' + paper.h + 'mm; margin: 0; }';
       window.print();
       // Silent (kiosk) printing returns right away; clean up a moment later.
       setTimeout(() => { printArea.innerHTML = ''; urls.forEach(u => URL.revokeObjectURL(u)); }, 2000);
-      showToast((auto === true ? 'Auto-printing (' : 'Sent to the printer (') + paper.name + ').' + (pname ? ' Printer: ' + pname + '.' : ''));
+      showToast((auto === true ? 'Auto-printing (' : 'Sent to the printer (') + label + ').' + (pname ? ' Printer: ' + pname + '.' : ''));
       armAutoPrintAfterFirst(auto === true);
+      return true;
     }catch(err){
       console.error('Print failed:', err);
-      showToast('Couldn\u2019t print. Try again.', 4500);
+      showToast('Couldn’t print. Try again.', 4500);
+      return false;
     }finally{
       printing = false;
       refreshPrintUI();
+      if(printLimits().ev) setTimeout(refreshPrintCount, 1500);
     }
   }
-  printBtn.addEventListener('click', () => printCurrentPhoto(false));
+  printBtn.addEventListener('click', () => printCurrentPhoto(false, opCopies));
   keychainToggle.addEventListener('change', () => {
     keychainOn = keychainToggle.checked;
     try{ localStorage.setItem('pb_keychain_print', keychainOn ? '1' : '0'); }catch(e){}
     refreshPrintUI();
   });
 
-  // ---- Auto-print (traditional booth only) ----
-  // The laptop is plugged into the printer, so after the operator's first
-  // print every later session prints by itself on the same paper. Chrome/Edge
-  // started with --kiosk-printing skips the dialog, so it's fully hands-free.
+  // ---- Copies in the Print pop-up ----
+  document.getElementById('copiesMinus').addEventListener('click', () => { opCopies = Math.max(1, opCopies - 1); refreshPrintUI(); });
+  document.getElementById('copiesPlus').addEventListener('click', () => { opCopies = Math.min(Math.max(1, maxCopies(printSize)), opCopies + 1); refreshPrintUI(); });
+  const printRouteSelect = document.getElementById('printRouteSelect');
+  printRouteSelect.value = printRoute;
+  printRouteSelect.addEventListener('change', () => setPrintRoute(printRouteSelect.value));
+  // Limits + copies + route, refreshed with the rest of the Print pop-up.
+  function refreshPrintExtras(){
+    const max = maxCopies(printSize);
+    opCopies = Math.max(1, Math.min(opCopies, Math.max(1, max)));
+    document.getElementById('copiesVal').textContent = String(opCopies);
+    document.getElementById('copiesMinus').disabled = opCopies <= 1;
+    document.getElementById('copiesPlus').disabled = opCopies >= max;
+    const lim = printLimits(), el = document.getElementById('printLimitHint');
+    const parts = [];
+    if(lim.ev) parts.push(printCount ? '<b>' + Math.max(0, printCount.left == null ? lim.ev : printCount.left) + ' of ' + lim.ev + '</b> prints left for this event' : 'Up to <b>' + lim.ev + '</b> prints for this event');
+    if(lim.se) parts.push('up to <b>' + lim.se + '</b> per session (' + Math.max(0, lim.se - sessPrinted) + ' left now)');
+    el.hidden = !parts.length;
+    el.innerHTML = parts.join(' · ') + (parts.length ? '. Copies count too.' : '');
+    el.classList.toggle('out', !!parts.length && printsLeft() < sheetsPerCopy(printSize));
+    printRouteSelect.value = printRoute;
+    printRouteSelect.querySelector('option[value="station"]').disabled = !isRentalBooth();
+    // The Print Helper is a computer app: never offered on iPad / Android.
+    document.getElementById('printerPick').style.display = printSize && !useStation() && !isMobileOS() ? '' : 'none';
+    if(printSize && printsLeft() < sheetsPerCopy(printSize) && state === 'result') printHint.textContent = 'Print limit reached' + (lim.se && sessPrinted >= lim.se ? ' for this session.' : ' for this event.');
+    refreshStationHints();
+  }
+
+  // ---- Guest Print button + copies sheet ----
+  const copiesSheet = document.getElementById('copiesSheet');
+  let sheetCopies = 1, sheetMax = 1;
+  function openCopiesSheet(max){
+    sheetMax = max; sheetCopies = Math.max(1, Math.min(max, printPrefs.copies || 1));
+    document.getElementById('copiesSheetTitle').textContent = printTxt('txtCopies');
+    document.getElementById('copiesSheetGo').textContent = printTxt('txtPrint');
+    renderCopiesSheet();
+    copiesSheet.hidden = false;
+  }
+  function renderCopiesSheet(){
+    document.getElementById('copiesSheetVal').textContent = String(sheetCopies);
+    const [minus, plus] = copiesSheet.querySelectorAll('.stepper button');
+    minus.disabled = sheetCopies <= 1; plus.disabled = sheetCopies >= sheetMax;
+    const lim = printLimits();
+    document.getElementById('copiesSheetLeft').textContent = (lim.se || lim.ev) ? 'Up to ' + sheetMax + (sheetMax === 1 ? ' copy' : ' copies') + ' left' : '';
+  }
+  copiesSheet.querySelector('.stepper').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-d]'); if(!b) return;
+    sheetCopies = Math.max(1, Math.min(sheetMax, sheetCopies + Number(b.dataset.d)));
+    renderCopiesSheet();
+  });
+  document.getElementById('copiesSheetCancel').addEventListener('click', () => { copiesSheet.hidden = true; });
+  copiesSheet.addEventListener('click', (e) => { if(e.target === copiesSheet) copiesSheet.hidden = true; });
+  document.getElementById('copiesSheetGo').addEventListener('click', () => { copiesSheet.hidden = true; printCurrentPhoto(false, sheetCopies); });
+  function guestPrintTap(){
+    if(printing) return;
+    const max = maxCopies(printSize);
+    if(max < 1){ limitReached(); return; }
+    if(printPrefs.guestCopies && max > 1) openCopiesSheet(max);
+    else printCurrentPhoto(false, Math.min(printPrefs.copies || 1, max));
+  }
+  function refreshGuestPrintBtn(){
+    const pq = document.getElementById('printQuickBtn');
+    if(!pq) return;
+    const on = state === 'result' && !printSection.classList.contains('hidden') && printPrefs.guestBtn && !!printSize;
+    pq.hidden = !on;
+    if(!on){ copiesSheet.hidden = true; return; }
+    const lim = printLimits(), left = maxCopies(printSize), out = left < 1;
+    pq.disabled = printing || out;
+    let small = '';
+    if(out) small = 'limit reached';
+    else if(lim.se || lim.ev) small = (left >= MAX_COPIES ? MAX_COPIES + '+' : left) + (left === 1 ? ' print left' : ' prints left');
+    pq.innerHTML = ICON('printer') + ' ' + escHtml(printing ? printTxt('txtPrinting') : printTxt('txtPrint')) + (small && !printing ? '<small>' + small + '</small>' : '');
+  }
+  function escHtml(v){ return String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+  // ---- Auto-print ----
+  // Tablets: the AirPrint / print sheet opens by itself after each session, so
+  // the guest only taps Print (a web page can't skip that sheet; the laptop
+  // print station can). Traditional booth: after the operator's first print,
+  // every later session prints by itself on the same paper; with the Print
+  // Helper or --kiosk-printing there's no dialog at all.
   const autoPrintRow = document.getElementById('autoPrintRow');
   const autoPrintHint = document.getElementById('autoPrintHint');
   const autoPrintToggle = document.getElementById('autoPrintToggle');
   let autoPrint = false;
   let autoPrintDecided = false; // the operator switched it themselves: don't override
+  function autoPrintHintText(){
+    if(useStation()) return 'Each session goes to the laptop print station by itself.';
+    if(helperOn && helper.ok) return 'Each session prints by itself, straight to the chosen printer with no dialog.';
+    if(isMobileOS()) return 'After each session the AirPrint sheet opens by itself, so the guest just taps Print. A web page can’t skip that sheet; for no pop-up at all, send prints to a laptop print station.';
+    return 'Each session opens the print dialog by itself. To skip the dialog, use the Print Helper or start Chrome with --kiosk-printing.' + (isTraditional() ? ' Turns on after your first print, on the same paper.' : '');
+  }
   function updateAutoPrintUI(){
     setTimeout(function(){ try{ renderPrintSteps(); }catch(e){} }, 0);
-    const show = isTraditional() && !!printSettings();
+    const show = !!printSettings();
     autoPrintRow.classList.toggle('hidden', !show);
     autoPrintHint.classList.toggle('hidden', !show);
     autoPrintToggle.checked = autoPrint;
+    autoPrintHint.textContent = autoPrintHintText();
+    const pa = document.getElementById('ppAuto'); if(pa) pa.checked = autoPrint;
+    const ph = document.getElementById('ppAutoHint'); if(ph) ph.textContent = autoPrint ? autoPrintHintText() : '';
+  }
+  function setAutoPrint(on, byUser){
+    autoPrint = !!on;
+    printPrefs.auto = autoPrint;
+    if(byUser) autoPrintDecided = true;
+    updateAutoPrintUI();
+    if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
   }
   autoPrintToggle.addEventListener('change', () => {
-    autoPrint = autoPrintToggle.checked;
-    autoPrintDecided = true;
+    setAutoPrint(autoPrintToggle.checked, true);
     showToast(autoPrint ? 'Auto-print on.' : 'Auto-print off.');
   });
   function armAutoPrintAfterFirst(wasAuto){
     if(wasAuto || autoPrint || autoPrintDecided || !isTraditional()) return;
-    autoPrint = true;
-    autoPrintToggle.checked = true;
+    setAutoPrint(true, false);
     setTimeout(() => showToast('Auto-print is on (' + paperFor(printSize).name + ').', 4500), 1600);
   }
   function maybeAutoPrint(){
-    if(!isTraditional() || !autoPrint || !printSize || !printSettings()) return;
+    if(!autoPrint || !printSize || !printSettings()) return;
     if(!printSettings().includes(printSize) || !sizeFitsLayout(printSize)) return;
-    setTimeout(() => printCurrentPhoto(true), 500);
+    setTimeout(() => printCurrentPhoto(true, printPrefs.copies), 500);
   }
+  window.addEventListener('pb-print-change', () => { printCount = null; refreshPrintCount(); });
+  setTimeout(refreshPrintCount, 1200);
+  setTimeout(() => { if(useStation()) checkStation(); else refreshStationHints(); }, 1500);
 
   // ---- Traditional booth: laptop + guest screen on an extended monitor ----
   // Turned on per rental code in Admin. The operator keeps Setup, printing
@@ -7400,7 +8178,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const open = guestOpen();
     guestStatus.classList.toggle('on', open);
     guestStatus.querySelector('span').textContent = open ? 'Guest screen is open' : 'Not open yet';
-    guestOpenBtn.textContent = open ? '↻ Move / reopen guest screen' : '📺 Open guest screen';
+    guestOpenBtn.innerHTML = open ? '↻ Move / reopen guest screen' : ICON('monitor') + ' Open guest screen';
   }
   setInterval(() => { if(guestWin && guestWin.closed){ guestWin = null; G = null; updateGuestStatus(); } }, 1500);
   window.addEventListener('beforeunload', () => { try{ if(guestWin) guestWin.close(); }catch(e){} });
@@ -7541,8 +8319,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!guestOpen()) return;
     try{
       if(what === 'camera'){
-        if(currentStream && G.v.srcObject !== currentStream){ G.v.srcObject = currentStream; G.v.play().catch(() => {}); }
-        G.v.style.transform = mirrorPreview() ? 'scaleX(-1)' : 'scaleX(1)';
+        const gsrc = (typeof bgGuestStream === 'function' && bgGuestStream()) || currentStream;
+        if(gsrc && G.v.srcObject !== gsrc){ G.v.srcObject = gsrc; G.v.play().catch(() => {}); }
+        G.v.style.transform = mirrorPreview() && gsrc === currentStream ? 'scaleX(-1)' : 'scaleX(1)';
         G.v.style.filter = liveFilterCss();
       } else if(what === 'review'){
         G.cd.style.display = 'none';
@@ -7738,6 +8517,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(startScreen.classList.contains('gone')) return;
     startScreen.classList.add('leaving', 'gone');
     setTimeout(() => { startScreen.style.display = 'none'; }, 380);
+    try{ placeTimeChip(); }catch(e){}
   }
   startScreen.addEventListener('click', leaveStartScreen);
   startScreen.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.stopPropagation(); leaveStartScreen(); } });
@@ -7895,8 +8675,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // After the finished photo has been on screen for the chosen time, go back
   // to the start for the next guests (waiting for any print to finish).
   var resultTimer = null;
+  // The thin bar under Done empties until the booth goes back to the welcome screen.
+  function runResultTimerBar(sec){
+    var wrap = document.getElementById('resultTimer'), bar = document.getElementById('resultTimerBar');
+    if(!wrap || !bar) return;
+    wrap.style.visibility = sec ? '' : 'hidden';
+    bar.style.transition = 'none'; bar.style.width = '100%';
+    if(!sec) return;
+    void bar.offsetWidth;
+    bar.style.transition = 'width ' + sec + 's linear'; bar.style.width = '0%';
+  }
   function scheduleResultReset(){
     clearTimeout(resultTimer);
+    runResultTimerBar(resultReviewSec || 0);
     if(!resultReviewSec) return;
     resultTimer = setTimeout(function tryReset(){
       if(state !== 'result') return;
@@ -7937,72 +8728,113 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     while(size > min && ctx.measureText(text).width > maxW){ size -= 2; ctx.font = fontString(font, size); }
     return size;
   }
+  // Welcome screen between guests: the event's own background, a sample print
+  // of their layout, and the event name with "Tap to start". Drawn at the
+  // camera's shape so it fills the live view exactly.
+  var welcomeCta = null;
   function renderWelcome(){
     try{
-      var wa = 0.8;
-      try{ wa = Math.max(0.8, Math.min(2.2, currentBoxAspect())); }catch(e){}
-      var H = 1250, W = Math.round(H * wa);
+      var wa = 4 / 3;
+      try{ wa = Math.max(0.5, Math.min(2.4, camAspect())); }catch(e){}
+      var H = 1200, W = Math.round(H * wa), land = wa >= 1.15;
       var c = document.createElement('canvas'); c.width = W; c.height = H;
       var ctx = c.getContext('2d');
       if(backdropPreset === 'custom' && backgroundImg){
         drawImageCover(ctx, backgroundImg, 0, 0, W, H, cropFocus);
-        ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(0, 0, W, H);
       } else {
         drawBackdrop(ctx, W, H);
       }
+      // a soft darkroom vignette so the print and the card stand out
+      var vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
+      vg.addColorStop(0, 'rgba(28,26,30,0)'); vg.addColorStop(1, 'rgba(28,26,30,.42)');
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+
+      // Sample print of their layout (drawn people, never a real guest's photo)
+      var sample = document.createElement('canvas');
+      try{ composeCanvas(currentLayout, sample, buildPlaceholderShots(300, shotsNeeded(currentLayout))); }catch(e){ sample = null; }
+      var area = land ? { x: W * 0.05, y: H * 0.08, w: W * 0.42, h: H * 0.84 } : { x: W * 0.1, y: H * 0.05, w: W * 0.8, h: H * 0.44 };
+      if(sample && sample.width){
+        var k = Math.min(area.w / sample.width, area.h / sample.height), pw = sample.width * k, ph = sample.height * k;
+        ctx.save();
+        ctx.translate(area.x + area.w / 2, area.y + area.h / 2);
+        ctx.rotate(-3 * Math.PI / 180);
+        ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 18;
+        ctx.fillStyle = '#fff'; ctx.fillRect(-pw / 2, -ph / 2, pw, ph);
+        ctx.shadowColor = 'transparent';
+        ctx.drawImage(sample, -pw / 2, -ph / 2, pw, ph);
+        ctx.restore();
+      }
+
+      // Card with the event name and how it works
       var cardColor = titleBgEnabled ? titleBgColor : '#ffffff';
       var ink = colorDist(textColor, cardColor) > 140 ? textColor : (lumOf(cardColor) > 0.5 ? '#1C1A1E' : '#ffffff');
       var soft = lumOf(cardColor) > 0.5 ? 'rgba(28,26,30,.62)' : 'rgba(255,255,255,.75)';
-      // Card height follows its content: eyebrow, name, (date), divider, 3 steps, button.
-      var dtProbe = currentDateLabel();
-      var ch = 92 + 108 + (dtProbe ? 56 : 0) + 52 + 70 + 148 + 78 + 84 + 60;
-      var cw = Math.min(W * 0.8, 800), cx = (W - cw) / 2, cy = (H - ch) / 2;
+      var dt = currentDateLabel();
+      var ch = 64 + 40 + 110 + (dt ? 54 : 0) + 40 + 3 * 64 + 40 + 92 + 56;
+      var cw = land ? Math.min(W * 0.42, 720) : Math.min(W * 0.82, 760);
+      var cx = land ? W * 0.53 : (W - cw) / 2;
+      var cy = land ? (H - ch) / 2 : Math.max(area.y + area.h + 30, H - ch - H * 0.05);
+      if(!land && cy + ch > H - 20){ var sc = (H - 20 - cy) / ch; ch *= Math.max(0.6, sc); }
       ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,.22)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 12;
-      roundRectPath(ctx, cx, cy, cw, ch, 36);
-      ctx.globalAlpha = 0.93; ctx.fillStyle = cardColor; ctx.fill();
+      ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = 44; ctx.shadowOffsetY = 14;
+      roundRectPath(ctx, cx, cy, cw, ch, 34);
+      ctx.globalAlpha = 0.95; ctx.fillStyle = cardColor; ctx.fill();
       ctx.restore();
       ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-      var mid = W / 2, yy = cy + 92;
-      ctx.fillStyle = '#C93D27'; ctx.font = '800 26px Manrope, sans-serif';
-      ctx.fillText('W E L C O M E', mid, yy);
-      var title = (labelInput.value || '').trim() || 'Photo Booth';
-      yy += 108;
+      var mid = cx + cw / 2, yy = cy + 64 + 26;
+      ctx.fillStyle = soft; ctx.font = '700 30px Manrope, sans-serif';
+      var name = (labelInput.value || '').trim();
+      ctx.fillText(name ? 'Welcome to' : 'Welcome to our', mid, yy);
+      yy += 110;
       ctx.fillStyle = ink;
-      var ts = fitFont(ctx, title, currentFont, 92, cw - 90, 40);
+      var title = name || 'photo booth';
+      var ts = fitFont(ctx, title, currentFont, 96, cw - 80, 40);
       ctx.font = fontString(currentFont, ts);
       ctx.fillText(title, mid, yy);
-      var dt = currentDateLabel();
-      if(dt){ yy += 56; ctx.fillStyle = soft; ctx.font = fontString(currentDateFont, 40); ctx.fillText(dt, mid, yy); }
-      yy += 52;
-      ctx.strokeStyle = soft; ctx.globalAlpha = 0.35; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(mid - 120, yy); ctx.lineTo(mid + 120, yy); ctx.stroke(); ctx.globalAlpha = 1;
-      var steps = ['Tap to start', 'Strike a pose', 'Scan the QR for your photos'];
-      ctx.textAlign = 'left';
-      var sx = cx + cw * 0.19;
+      if(dt){ yy += 54; ctx.fillStyle = soft; ctx.font = fontString(currentDateFont, 38); ctx.fillText(dt, mid, yy); }
+      yy += 40;
+      var steps = ['Tap the screen', 'Strike a pose', 'Scan the QR for your photos'];
+      ctx.font = '700 31px Manrope, sans-serif';
+      var widest = Math.max.apply(null, steps.map(function(t){ return ctx.measureText(t).width; }));
+      var sx = mid - (widest + 62) / 2;
       steps.forEach(function(t, i){
-        var sy = yy + 70 + i * 74;
-        ctx.fillStyle = '#C93D27'; ctx.beginPath(); ctx.arc(sx, sy - 12, 24, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.font = '800 26px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx, sy - 3);
-        ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 32px Manrope, sans-serif'; ctx.fillText(t, sx + 46, sy);
+        var sy = yy + 50 + i * 64;
+        ctx.fillStyle = '#C93D27'; ctx.beginPath(); ctx.arc(sx + 22, sy - 11, 22, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = '800 24px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + 22, sy - 3);
+        ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 31px Manrope, sans-serif'; ctx.fillText(t, sx + 62, sy);
       });
-      var btnText = (welcomeMsg || 'Tap to start').toUpperCase();
-      ctx.font = '800 30px Manrope, sans-serif';
-      var bw = Math.min(cw - 80, ctx.measureText(btnText).width + 120), bh = 84, bx = mid - bw / 2, by = cy + ch - bh - 60;
+      var btnText = welcomeMsg || 'Tap to start';
+      ctx.font = '800 34px Manrope, sans-serif';
+      var bw = Math.min(cw - 80, ctx.measureText(btnText).width + 130), bh = 92, bx = mid - bw / 2, by = cy + ch - bh - 48;
       roundRectPath(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
       ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
-      var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', 30, bw - 50, 18);
+      var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', 34, bw - 50, 18);
       ctx.font = '800 ' + bs + 'px Manrope, sans-serif';
       ctx.fillText(btnText, mid, by + bh / 2 + bs * 0.36);
+      welcomeCta = { l: bx / W * 100, t: by / H * 100, w: bw / W * 100, h: bh / H * 100 };
+      placeWelcomePulse();
       welcomeDataUrl = c.toDataURL('image/jpeg', 0.88);
       welcomeImg.src = welcomeDataUrl;
       var prev = document.getElementById('welcomePreview'); if(prev) prev.src = welcomeDataUrl;
       guestRender();
     }catch(e){ console.error('welcome', e); }
   }
+  // A soft pulse around "Tap to start" (the only motion on the guest screen while idle).
+  function placeWelcomePulse(){
+    var p = document.getElementById('welcomePulse');
+    if(!p || !welcomeCta) return;
+    p.style.left = welcomeCta.l + '%'; p.style.top = welcomeCta.t + '%';
+    p.style.width = welcomeCta.w + '%'; p.style.height = welcomeCta.h + '%';
+  }
+  video.addEventListener('loadedmetadata', function(){ scheduleWelcomeRender(); });
   function refreshWelcome(){
     var show = welcomeOn && state === 'idle' && !pickOpen && !readyOverlay.classList.contains('ready-active');
     welcomeOverlay.classList.toggle('on', show);
+    // The welcome screen is the button: no separate Start under it, so the picture gets the room.
+    if(document.body.classList.contains('welcome-on') !== show){
+      document.body.classList.toggle('welcome-on', show);
+      try{ scheduleDock(); }catch(e){}
+    }
   }
   welcomeOverlay.addEventListener('click', function(e){ e.stopPropagation(); beginGuestFlow(true); });
   welcomeOverlay.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.stopPropagation(); beginGuestFlow(true); } });
@@ -8170,6 +9002,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var on = lockState.locked && lockAllowed();
     document.body.classList.toggle('booth-locked', on);
     document.getElementById('lockIcon').hidden = !on;
+    try{ placeTimeChip(); scheduleDock(); }catch(e){}
     if(on){
       if(tabSession.classList.contains('hidden')) switchTab('session');
       try{ closePrintModal(); closeCamModal(); }catch(e){}
@@ -8215,7 +9048,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!savedPin()) return;
     lockState.locked = true; lockWrite(LOCK_KEY, { at: Date.now(), trial: isTrialLock() ? trialTag() : null });
     applyLock();
-    showToast('Booth locked. Tap the small 🔒 in the top-right corner and enter the PIN to unlock.', 5000);
+    showToast('Booth locked. Tap the small lock in the top-right corner and enter the PIN to unlock.', 5000);
   });
   // PIN pad
   var pinBuf = '', pinFails = 0, pinWaitUntil = 0;
@@ -8264,6 +9097,396 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   })();
   setTimeout(function(){ applyLock(); fetchCodePin(); }, 0);
 
+  // =====================================================================
+  // Background swap (Setup → 4 Extras → Green screen)
+  //   ai    : no green cloth needed. Google MediaPipe's selfie segmentation
+  //           model runs on this device (files in /bg/, loaded only when
+  //           this is switched on). Nothing is uploaded anywhere.
+  //   green : classic chroma key against a green (or blue) cloth.
+  // Applied to every shot (so the photo, upload and print all have it), the
+  // "Try with my camera" preview, and optionally the live view.
+  // =====================================================================
+  const BG_BASE = '/bg/';
+  let bgRep = { mode: 'off', bg: 'b:bokeh', key: 'green', tol: 48, live: true };
+  const BG_KEYS = { green: '#00b140', blue: '#0047bb' };
+  function bgKeyHex(){ return BG_KEYS[bgRep.key] || (/^#[0-9a-f]{6}$/i.test(bgRep.key) ? bgRep.key : BG_KEYS.green); }
+  function cleanBgRep(p){
+    p = p && typeof p === 'object' ? p : {};
+    const okBg = typeof p.bg === 'string' && (/^b:[a-z]+$/.test(p.bg) ? !!BG_BUILTIN[p.bg.slice(2)] : /^a:a[A-Za-z0-9]{8,32}$/.test(p.bg));
+    return {
+      mode: p.mode === 'ai' || p.mode === 'green' ? p.mode : 'off',
+      bg: okBg ? p.bg : 'b:bokeh',
+      key: p.key === 'blue' || p.key === 'green' || /^#[0-9a-f]{6}$/i.test(p.key || '') ? p.key : 'green',
+      tol: Math.max(15, Math.min(95, Math.round(Number(p.tol) || 48))),
+      live: p.live !== false
+    };
+  }
+
+  // ---- Built-in backgrounds (drawn here, so there's nothing to download) ----
+  function rng(seed){ return function(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function radial(x, cx, cy, r0, r1, stops){ const g = x.createRadialGradient(cx, cy, r0, cx, cy, r1); stops.forEach(s => g.addColorStop(s[0], s[1])); return g; }
+  function linear(x, x0, y0, x1, y1, stops){ const g = x.createLinearGradient(x0, y0, x1, y1); stops.forEach(s => g.addColorStop(s[0], s[1])); return g; }
+  function bokeh(x, w, h, seed, n, cols, maxR){
+    const r = rng(seed), m = Math.max(w, h);
+    for(let i = 0; i < n; i++){
+      const cx = r() * w, cy = r() * h, rad = (0.15 + r() * 0.85) * maxR * m, c = cols[Math.floor(r() * cols.length)];
+      x.fillStyle = radial(x, cx, cy, 0, rad, [[0, c + 'aa'], [0.55, c + '55'], [1, c + '00']]);
+      x.beginPath(); x.arc(cx, cy, rad, 0, Math.PI * 2); x.fill();
+    }
+  }
+  const BG_BUILTIN = {
+    bokeh: { name: 'Gold lights', draw(x, w, h){
+      x.fillStyle = linear(x, 0, 0, 0, h, [[0, '#2a1a10'], [1, '#120a06']]); x.fillRect(0, 0, w, h);
+      x.globalCompositeOperation = 'lighter'; bokeh(x, w, h, 7, 70, ['#ffcf73', '#ffb347', '#fff1c9', '#e8a33c'], 0.07); x.globalCompositeOperation = 'source-over';
+    } },
+    studio: { name: 'Studio grey', draw(x, w, h){
+      x.fillStyle = radial(x, w * 0.5, h * 0.42, 0, Math.max(w, h) * 0.75, [[0, '#d9d6d2'], [0.6, '#a8a49f'], [1, '#6f6b67']]); x.fillRect(0, 0, w, h);
+    } },
+    white: { name: 'White studio', draw(x, w, h){
+      x.fillStyle = radial(x, w * 0.5, h * 0.45, 0, Math.max(w, h) * 0.8, [[0, '#ffffff'], [0.7, '#f3f1ee'], [1, '#dedad5']]); x.fillRect(0, 0, w, h);
+    } },
+    pastel: { name: 'Pastel sky', draw(x, w, h){
+      x.fillStyle = linear(x, 0, 0, w, h, [[0, '#ffd6e5'], [0.5, '#e4d7ff'], [1, '#cfe8ff']]); x.fillRect(0, 0, w, h);
+      const r = rng(11), m = Math.max(w, h);
+      for(let i = 0; i < 14; i++){ const cx = r() * w, cy = r() * h * 0.9, rad = (0.06 + r() * 0.1) * m; x.fillStyle = radial(x, cx, cy, 0, rad, [[0, 'rgba(255,255,255,.75)'], [1, 'rgba(255,255,255,0)']]); x.beginPath(); x.ellipse(cx, cy, rad * 1.8, rad, 0, 0, Math.PI * 2); x.fill(); }
+    } },
+    night: { name: 'Starry night', draw(x, w, h){
+      x.fillStyle = linear(x, 0, 0, 0, h, [[0, '#060b22'], [0.6, '#131a46'], [1, '#2b2160']]); x.fillRect(0, 0, w, h);
+      const r = rng(5), m = Math.max(w, h);
+      for(let i = 0; i < 420; i++){ const s = r() * r() * 0.0022 * m + 0.4; x.fillStyle = 'rgba(255,255,255,' + (0.35 + r() * 0.65).toFixed(2) + ')'; x.beginPath(); x.arc(r() * w, r() * h, s, 0, Math.PI * 2); x.fill(); }
+      x.fillStyle = radial(x, w * 0.82, h * 0.18, 0, m * 0.16, [[0, 'rgba(255,248,220,.95)'], [0.18, 'rgba(255,240,200,.9)'], [0.22, 'rgba(255,240,200,.25)'], [1, 'rgba(255,240,200,0)']]); x.fillRect(0, 0, w, h);
+    } },
+    sunset: { name: 'Beach sunset', draw(x, w, h){
+      x.fillStyle = linear(x, 0, 0, 0, h * 0.62, [[0, '#3b2a6b'], [0.45, '#e2577a'], [0.85, '#ff9e5e'], [1, '#ffd28a']]); x.fillRect(0, 0, w, h * 0.62);
+      x.fillStyle = radial(x, w * 0.5, h * 0.62, 0, Math.max(w, h) * 0.12, [[0, '#fff3c4'], [0.5, '#ffd27a'], [1, 'rgba(255,190,110,0)']]); x.fillRect(0, 0, w, h * 0.62);
+      x.fillStyle = linear(x, 0, h * 0.62, 0, h, [[0, '#f2a46f'], [0.15, '#3e6a8c'], [1, '#1d3550']]); x.fillRect(0, h * 0.62, w, h * 0.38);
+      x.fillStyle = 'rgba(255,220,160,.35)'; for(let i = 0; i < 9; i++){ const y = h * (0.64 + i * 0.03), ww = w * (0.18 - i * 0.015); x.fillRect(w / 2 - ww / 2, y, ww, Math.max(2, h * 0.006)); }
+    } },
+    party: { name: 'Confetti', draw(x, w, h){
+      x.fillStyle = '#fbf6ef'; x.fillRect(0, 0, w, h);
+      const r = rng(23), m = Math.max(w, h), cols = ['#e2577a', '#f2b544', '#4fb0c6', '#7d6bd6', '#54b07a', '#ff8a5b'];
+      for(let i = 0; i < 260; i++){ x.save(); x.translate(r() * w, r() * h); x.rotate(r() * Math.PI); x.fillStyle = cols[Math.floor(r() * cols.length)]; const s = (0.004 + r() * 0.008) * m; if(r() < 0.5) x.fillRect(-s, -s * 0.4, s * 2, s * 0.8); else { x.beginPath(); x.arc(0, 0, s * 0.7, 0, Math.PI * 2); x.fill(); } x.restore(); }
+    } },
+    garden: { name: 'Garden lights', draw(x, w, h){
+      x.fillStyle = linear(x, 0, 0, 0, h, [[0, '#0f2a1d'], [1, '#09170f']]); x.fillRect(0, 0, w, h);
+      bokeh(x, w, h, 31, 40, ['#3f7d4f', '#5c9a5e', '#2f5e3c'], 0.12);
+      x.globalCompositeOperation = 'lighter'; bokeh(x, w, h, 41, 55, ['#fff0b3', '#ffd77a', '#fff7dc'], 0.035); x.globalCompositeOperation = 'source-over';
+    } },
+    marble: { name: 'Blush marble', draw(x, w, h){
+      x.fillStyle = linear(x, 0, 0, w, h, [[0, '#f7e9e4'], [1, '#efd9d2']]); x.fillRect(0, 0, w, h);
+      const r = rng(77); x.lineCap = 'round';
+      for(let i = 0; i < 26; i++){ x.strokeStyle = 'rgba(' + (180 + Math.floor(r() * 40)) + ',150,140,' + (0.12 + r() * 0.2).toFixed(2) + ')'; x.lineWidth = 1 + r() * Math.max(w, h) * 0.003; x.beginPath(); let px = r() * w, py = r() * h; x.moveTo(px, py); for(let k = 0; k < 6; k++){ px += (r() - 0.4) * w * 0.25; py += (r() - 0.5) * h * 0.2; x.lineTo(px, py); } x.stroke(); }
+      x.strokeStyle = 'rgba(196,160,92,.5)'; x.lineWidth = Math.max(w, h) * 0.0025; x.beginPath(); x.moveTo(w * 0.05, h * 0.9); x.bezierCurveTo(w * 0.3, h * 0.6, w * 0.55, h * 0.75, w * 0.95, h * 0.2); x.stroke();
+    } }
+  };
+  const bgCache = {};
+  // The chosen background, drawn to cover w x h.
+  function bgImageFor(w, h){
+    const id = bgRep.bg;
+    if(id.indexOf('a:') === 0){
+      const img = assetImg(id.slice(2));
+      if(img) return img;
+    }
+    const key = (BG_BUILTIN[id.slice(2)] ? id.slice(2) : 'bokeh');
+    // built-ins are drawn at the photo's shape (longest side max 2400 px)
+    const k = Math.min(1, 2400 / Math.max(w, h)), cw = Math.max(2, Math.round(w * k)), ch = Math.max(2, Math.round(h * k));
+    const ck = key + ':' + cw + 'x' + ch;
+    if(!bgCache[ck]){
+      Object.keys(bgCache).forEach(k2 => { if(k2.indexOf(key + ':') !== 0 && Object.keys(bgCache).length > 6) delete bgCache[k2]; });
+      const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+      BG_BUILTIN[key].draw(c.getContext('2d'), cw, ch);
+      bgCache[ck] = c;
+    }
+    return bgCache[ck];
+  }
+  function drawCoverImg(x, img, w, h){
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    const s = Math.max(w / iw, h / ih), dw = iw * s, dh = ih * s;
+    x.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+  }
+
+  // ---- AI person cut-out ----
+  const seg = { task: null, loading: null, failed: '', lastTs: 0 };
+  function segReady(){ return !!seg.task; }
+  function loadSegmenter(){
+    if(seg.task) return Promise.resolve(seg.task);
+    if(seg.loading) return seg.loading;
+    seg.failed = '';
+    refreshBgStatus();
+    seg.loading = (async () => {
+      const mod = await import(BG_BASE + 'vision_bundle.mjs');
+      const simd = await mod.FilesetResolver.isSimdSupported();
+      const name = BG_BASE + 'wasm/vision_wasm_' + (simd ? '' : 'nosimd_') + 'internal';
+      seg.task = await mod.ImageSegmenter.createFromOptions({ wasmLoaderPath: name + '.js', wasmBinaryPath: name + '.wasm' }, {
+        baseOptions: { modelAssetPath: BG_BASE + 'selfie_segmenter.tflite', delegate: 'CPU' },
+        runningMode: 'VIDEO', outputCategoryMask: false, outputConfidenceMasks: true
+      });
+      return seg.task;
+    })();
+    seg.loading.then(() => { refreshBgStatus(); startBgLive(); previewSampleRefresh(); }, (e) => { console.error('Background AI failed to load', e); seg.failed = (e && e.message) || String(e); seg.loading = null; refreshBgStatus(); });
+    return seg.loading;
+  }
+  const segIn = document.createElement('canvas');
+  // Person mask (alpha = person) for src, as a small canvas to be scaled up
+  // (scaling it up with smoothing gives soft, natural edges).
+  function personMask(src, sw, sh, maxSide){
+    const k = Math.min(1, (maxSide || 512) / Math.max(sw, sh));
+    segIn.width = Math.max(2, Math.round(sw * k)); segIn.height = Math.max(2, Math.round(sh * k));
+    const ix = segIn.getContext('2d', { willReadFrequently: false });
+    ix.drawImage(src, 0, 0, segIn.width, segIn.height);
+    let ts = performance.now(); if(ts <= seg.lastTs) ts = seg.lastTs + 1; seg.lastTs = ts;
+    const res = seg.task.segmentForVideo(segIn, ts);
+    try{
+      const m = res.confidenceMasks[0], arr = m.getAsFloat32Array(), mw = m.width, mh = m.height;
+      const out = document.createElement('canvas'); out.width = mw; out.height = mh;
+      const ox = out.getContext('2d'), id = ox.createImageData(mw, mh), d = id.data;
+      for(let i = 0, j = 3; i < arr.length; i++, j += 4){
+        let v = (arr[i] - 0.3) / 0.4;                 // soft threshold 0.3 .. 0.7
+        v = v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v);
+        d[j] = v * 255;
+      }
+      ox.putImageData(id, 0, 0);
+      return out;
+    } finally { try{ res.close(); }catch(e){} }
+  }
+
+  // ---- Green screen (chroma key) ----
+  function keyCbCr(){
+    const h = bgKeyHex(), r = parseInt(h.slice(1, 3), 16), g = parseInt(h.slice(3, 5), 16), b = parseInt(h.slice(5, 7), 16);
+    return [128 - 0.168736 * r - 0.331264 * g + 0.5 * b, 128 + 0.5 * r - 0.418688 * g - 0.081312 * b, g >= b];
+  }
+  // Keys the pixels of x (w x h) in place over the background.
+  function chromaKey(x, w, h){
+    const fg = x.getImageData(0, 0, w, h), d = fg.data;
+    const bd = bgPixels(w, h);
+    const [kcb, kcr, isGreen] = keyCbCr();
+    const tol = bgRep.tol, soft = 26 + tol * 0.25;
+    for(let i = 0; i < d.length; i += 4){
+      let r = d[i], g = d[i + 1], b = d[i + 2];
+      const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b, cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+      const dist = Math.sqrt((cb - kcb) * (cb - kcb) + (cr - kcr) * (cr - kcr));
+      let a = (dist - tol) / soft; a = a <= 0 ? 0 : a >= 1 ? 1 : a;
+      if(a === 0){ d[i] = bd[i]; d[i + 1] = bd[i + 1]; d[i + 2] = bd[i + 2]; continue; }
+      // remove the screen's colour cast from edges and hair
+      if(isGreen){ const lim = r > b ? r : b; if(g > lim) g = lim; }
+      else { const lim = r > g ? r : g; if(b > lim) b = lim; }
+      d[i] = r * a + bd[i] * (1 - a); d[i + 1] = g * a + bd[i + 1] * (1 - a); d[i + 2] = b * a + bd[i + 2] * (1 - a);
+    }
+    x.putImageData(fg, 0, 0);
+  }
+  // The background's pixels at w x h, kept for the live view (same size every frame).
+  let bgPix = { key: '', data: null };
+  function bgPixels(w, h){
+    const im = bgImageFor(w, h), key = bgRep.bg + '|' + w + 'x' + h + '|' + (im.naturalWidth || im.width);
+    if(bgPix.key === key) return bgPix.data;
+    const bc = document.createElement('canvas'); bc.width = w; bc.height = h;
+    const bx = bc.getContext('2d'); drawCoverImg(bx, im, w, h);
+    bgPix = { key: key, data: bx.getImageData(0, 0, w, h).data };
+    return bgPix.data;
+  }
+  const aiTmp = document.createElement('canvas');
+  function aiComposite(x, w, h, mask){
+    const t = aiTmp; if(t.width !== w || t.height !== h){ t.width = w; t.height = h; }
+    const tx = t.getContext('2d');
+    tx.clearRect(0, 0, w, h);
+    tx.imageSmoothingEnabled = true; tx.imageSmoothingQuality = 'high';
+    tx.drawImage(mask, 0, 0, w, h);
+    tx.globalCompositeOperation = 'source-in';
+    tx.drawImage(x.canvas, 0, 0);
+    tx.globalCompositeOperation = 'source-over';
+    drawCoverImg(x, bgImageFor(w, h), w, h);
+    x.drawImage(t, 0, 0);
+  }
+  let bgWarned = false;
+  // Swaps the background of a finished shot (canvas c) in place.
+  function applyBgReplace(c){
+    if(bgRep.mode === 'off' || !c || !c.width) return false;
+    const x = c.getContext('2d');
+    try{
+      if(bgRep.mode === 'green'){ chromaKey(x, c.width, c.height); return true; }
+      if(!segReady()){
+        loadSegmenter().catch(() => {});
+        if(!bgWarned){ bgWarned = true; showToast('Background swap is still getting ready, so this photo kept its real background.', 4500); }
+        return false;
+      }
+      aiComposite(x, c.width, c.height, personMask(c, c.width, c.height, 512));
+      return true;
+    }catch(e){ console.error('Background swap failed', e); return false; }
+  }
+
+  // ---- Live view ----
+  const bgLive = { canvas: null, raf: 0, last: 0, gap: 40, stream: null, work: document.createElement('canvas') };
+  (function(){
+    const c = document.createElement('canvas');
+    c.id = 'bgLiveCanvas';
+    c.setAttribute('aria-hidden', 'true');
+    c.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none; pointer-events:none;';
+    video.insertAdjacentElement('afterend', c);
+    bgLive.canvas = c;
+  })();
+  function bgLiveWanted(){
+    return bgRep.mode !== 'off' && bgRep.live && streamActive && state !== 'result' && video.style.display !== 'none' &&
+      !!video.videoWidth && (bgRep.mode === 'green' || segReady()) && !document.hidden;
+  }
+  function startBgLive(){
+    if(bgLive.raf || !bgLiveWanted()) { if(!bgLiveWanted()) stopBgLive(); return; }
+    bgLive.raf = requestAnimationFrame(bgLiveTick);
+  }
+  function stopBgLive(){
+    if(bgLive.raf) cancelAnimationFrame(bgLive.raf);
+    bgLive.raf = 0;
+    if(bgLive.canvas.style.display !== 'none'){ bgLive.canvas.style.display = 'none'; try{ guestCall('camera'); }catch(e){} }
+  }
+  function bgLiveTick(now){
+    bgLive.raf = 0;
+    if(!bgLiveWanted()){ stopBgLive(); return; }
+    bgLive.raf = requestAnimationFrame(bgLiveTick);
+    if(now - bgLive.last < bgLive.gap) return;
+    bgLive.last = now;
+    const t0 = performance.now();
+    const vw = video.videoWidth, vh = video.videoHeight, k = Math.min(1, 800 / Math.max(vw, vh));
+    const w = Math.round(vw * k), h = Math.round(vh * k), c = bgLive.canvas;
+    if(c.width !== w || c.height !== h){ c.width = w; c.height = h; }
+    const x = c.getContext('2d', { willReadFrequently: bgRep.mode === 'green' });
+    x.save();
+    if(mirrorPreview()){ x.translate(w, 0); x.scale(-1, 1); }
+    x.drawImage(video, 0, 0, w, h);
+    x.restore();
+    try{
+      if(bgRep.mode === 'green') chromaKey(x, w, h);
+      else aiComposite(x, w, h, personMask(c, w, h, 256));
+    }catch(e){ console.error('live background', e); stopBgLive(); return; }
+    if(c.style.display === 'none'){
+      c.style.display = 'block';
+      try{ guestCall('camera'); }catch(e){}
+    }
+    c.style.filter = liveFilterCss();
+    // Slower devices: fewer frames, so the countdown and buttons stay smooth.
+    const took = performance.now() - t0;
+    bgLive.gap = Math.max(33, Math.min(160, took * 2.2));
+  }
+  // Traditional booth: the guest screen shows the swapped background too.
+  function bgGuestStream(){
+    if(bgLive.canvas.style.display === 'none' || !bgLive.canvas.captureStream) return null;
+    if(!bgLive.stream) try{ bgLive.stream = bgLive.canvas.captureStream(30); }catch(e){ return null; }
+    return bgLive.stream;
+  }
+  setInterval(() => { if(bgLiveWanted()) startBgLive(); else if(bgLive.raf || bgLive.canvas.style.display !== 'none') stopBgLive(); }, 700);
+  document.addEventListener('visibilitychange', () => { if(document.hidden) stopBgLive(); });
+
+  // ---- Setup UI (Extras → Green screen) ----
+  const bgModeChips = document.getElementById('bgModeChips');
+  const bgrGrid = document.getElementById('bgrGrid');
+  function refreshBgStatus(){
+    const el = document.getElementById('bgStatus'); if(!el) return;
+    if(bgRep.mode !== 'ai'){ el.textContent = ''; return; }
+    el.className = 'panel-hint bg-status' + (seg.failed ? ' bad' : segReady() ? ' ok' : '');
+    el.textContent = seg.failed ? 'Couldn’t start the background AI on this device (' + seg.failed + '). Try Green screen instead.'
+      : segReady() ? 'Ready ✓ It runs on this device; photos aren’t sent anywhere.'
+      : 'Getting the background AI ready… (about 13 MB, the first time only)';
+  }
+  function bgTileThumb(id){
+    const c = document.createElement('canvas'); c.width = 132; c.height = 88;
+    const x = c.getContext('2d');
+    if(id.indexOf('a:') === 0){ const im = assetImg(id.slice(2)); if(im) drawCoverImg(x, im, 132, 88); else { x.fillStyle = '#ddd'; x.fillRect(0, 0, 132, 88); } }
+    else BG_BUILTIN[id.slice(2)].draw(x, 132, 88);
+    return c.toDataURL('image/jpeg', 0.8);
+  }
+  let bgMine = [];        // uploaded background asset ids (this customer)
+  function refreshBgUI(){
+    [...bgModeChips.children].forEach(b => b.classList.toggle('active', b.dataset.mode === bgRep.mode));
+    document.getElementById('bgOpts').style.display = bgRep.mode === 'off' ? 'none' : '';
+    document.getElementById('greenOpts').style.display = bgRep.mode === 'green' ? '' : 'none';
+    document.getElementById('bgModeHint').textContent = bgRep.mode === 'ai'
+      ? 'Works without a green cloth. Best with guests close to the camera and a plain, uncluttered wall behind them.'
+      : bgRep.mode === 'green' ? 'Hang a smooth green (or blue) cloth behind the guests and light it evenly. Guests shouldn’t wear that colour.'
+      : 'Replace the real background behind your guests with a picture, on the photos, the prints and the live view.';
+    const ids = Object.keys(BG_BUILTIN).map(k => 'b:' + k).concat(bgMine.map(a => 'a:' + a));
+    bgrGrid.innerHTML = '';
+    ids.forEach(id => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'bgr-tile' + (id === bgRep.bg ? ' active' : ''); b.dataset.bg = id;
+      b.title = id.indexOf('b:') === 0 ? BG_BUILTIN[id.slice(2)].name : 'Your picture';
+      b.innerHTML = '<img alt="" src="' + bgTileThumb(id) + '"><span>' + escHtml(b.title) + '</span>' + (id.indexOf('a:') === 0 ? '<i data-rm="' + id + '" title="Remove">×</i>' : '');
+      bgrGrid.appendChild(b);
+    });
+    [...document.querySelectorAll('#bgKeyRow .bd-key')].forEach(b => b.classList.toggle('active', b.dataset.key === bgRep.key || (b.dataset.key === 'pick' && /^#/.test(bgRep.key))));
+    const pk = document.querySelector('#bgKeyRow .bd-key[data-key="pick"]');
+    if(pk){ if(/^#/.test(bgRep.key)) pk.style.setProperty('--sw', bgRep.key); else pk.style.removeProperty('--sw'); }
+    document.getElementById('keyTol').value = String(bgRep.tol);
+    document.getElementById('bgLiveToggle').checked = bgRep.live;
+    refreshBgStatus();
+    const tab = document.querySelector('#extrasTabs button[data-pane="greenscreen"]');
+    if(tab) tab.classList.toggle('has', bgRep.mode !== 'off');
+  }
+  function bgChanged(){
+    refreshBgUI();
+    if(bgRep.mode === 'ai') loadSegmenter().catch(() => {});
+    if(typeof previewSampleRefresh === 'function') try{ previewSampleRefresh(); }catch(e){}
+    startBgLive();
+    if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+    try{ scheduleSetupNav(); }catch(e){}
+  }
+  bgModeChips.addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if(!b) return; bgRep.mode = b.dataset.mode; bgChanged(); });
+  bgrGrid.addEventListener('click', (e) => {
+    const rm = e.target.closest('[data-rm]');
+    if(rm){ e.stopPropagation(); const id = rm.dataset.rm; bgMine = bgMine.filter(a => 'a:' + a !== id); if(bgRep.bg === id) bgRep.bg = 'b:bokeh'; bgChanged(); return; }
+    const b = e.target.closest('[data-bg]'); if(!b) return;
+    bgRep.bg = b.dataset.bg; bgChanged();
+  });
+  document.getElementById('bgrInput').addEventListener('change', async function(){
+    const f = this.files && this.files[0]; this.value = '';
+    if(!f) return;
+    try{
+      const url = await readImageFile(f, 2000);
+      const id = await addAsset(url);
+      bgMine = bgMine.concat([id]).slice(-12);
+      bgRep.bg = 'a:' + id;
+      setTimeout(bgChanged, 150);
+    }catch(err){ showToast(err.message || 'Couldn’t use that picture.', 4500); }
+  });
+  document.getElementById('bgKeyRow').addEventListener('click', (e) => {
+    const b = e.target.closest('.bd-key'); if(!b) return;
+    if(b.dataset.key !== 'pick'){ bgRep.key = b.dataset.key; bgChanged(); return; }
+    // Pick the screen colour from the camera: the median colour of the top strip of the picture.
+    if(!video.videoWidth){ showToast('Open the camera first (Photo Session), then pick the colour.', 4000); return; }
+    const c = document.createElement('canvas'); c.width = 160; c.height = Math.round(160 * video.videoHeight / video.videoWidth);
+    const x = c.getContext('2d'); x.drawImage(video, 0, 0, c.width, c.height);
+    const d = x.getImageData(0, 0, c.width, Math.max(4, Math.round(c.height * 0.18))).data, rs = [], gs = [], bs = [];
+    for(let i = 0; i < d.length; i += 4){ rs.push(d[i]); gs.push(d[i + 1]); bs.push(d[i + 2]); }
+    const med = (a) => a.sort((p, q) => p - q)[a.length >> 1];
+    const hex = '#' + [med(rs), med(gs), med(bs)].map(v => v.toString(16).padStart(2, '0')).join('');
+    bgRep.key = hex; bgChanged();
+    showToast('Screen colour set from the top of the camera picture.', 3500);
+  });
+  document.getElementById('keyTol').addEventListener('input', function(){ bgRep.tol = Number(this.value) || 48; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); if(typeof previewSampleRefresh === 'function') try{ previewSampleRefresh(); }catch(e){} });
+  document.getElementById('bgLiveToggle').addEventListener('change', function(){ bgRep.live = this.checked; bgChanged(); });
+  function applyBgRepSetup(p, mine){
+    bgRep = cleanBgRep(p);
+    bgMine = Array.isArray(mine) ? mine.filter(a => /^a[A-Za-z0-9]{8,32}$/.test(a)).slice(-12) : bgMine;
+    if(bgRep.bg.indexOf('a:') === 0 && bgMine.indexOf(bgRep.bg.slice(2)) < 0) bgMine.push(bgRep.bg.slice(2));
+    ensureAssets(bgMine).then(refreshBgUI);
+    refreshBgUI();
+    if(bgRep.mode === 'ai') setTimeout(() => loadSegmenter().catch(() => {}), 1500);
+    startBgLive();
+  }
+  setTimeout(refreshBgUI, 0);
+
+  // "Try with my camera" in the Setup preview shows the swap too.
+  let previewSampleRaw = null;
+  function bgProcessedSample(c){
+    if(bgRep.mode === 'off' || !c) return c;
+    const k = document.createElement('canvas'); k.width = c.width; k.height = c.height;
+    k.getContext('2d').drawImage(c, 0, 0);
+    applyBgReplace(k);
+    return k;
+  }
+  function previewSampleRefresh(){
+    if(!previewSampleRaw || previewSample == null) return;
+    previewSample = bgProcessedSample(previewSampleRaw);
+    renderSetupPreview();
+  }
+
   // ---- Saved setup ----
   // Saved on this device right away, and to the server for rental codes, so
   // a refresh / restart / another device on the same code gets the same design.
@@ -8296,7 +9519,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       decor: decor.map(function(d){ return { src: d.src, x: Math.round(d.x * 1000) / 1000, y: Math.round(d.y * 1000) / 1000, s: Math.round(d.s * 1000) / 1000, r: Math.round(d.r || 0) }; }),
       myProps: myProps.slice(),
       frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet,
-      titleStyle: titleStyle, kicker: kickerText, upper: titleUpper, art: themeArt.slice(), artPal: Object.assign({}, artPal)
+      titleStyle: titleStyle, kicker: kickerText, upper: titleUpper, art: themeArt.slice(), artPal: Object.assign({}, artPal),
+      printPrefs: Object.assign({}, printPrefs),
+      bgRep: Object.assign({}, bgRep), bgMine: bgMine.slice()
     };
   }
   function selectFont(which, value){
@@ -8411,6 +9636,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       kickerText = typeof s.kicker === 'string' ? s.kicker.slice(0, 40) : '';
       titleUpper = !!s.upper; themeArt = validArt(s.art); artPal = validArtPal(s.artPal);
       refreshTitleUI();
+      if(s.printPrefs) applyPrintPrefs(s.printPrefs);
+      applyBgRepSetup(s.bgRep, s.bgMine);
       applyFramesSetup(s);
       buildLayoutPicker();
       ensureAssets(designAssetIds().concat(myProps)).then(function(){ refreshDecorUI(); refreshFrameUI(); redrawAll(); });
@@ -8559,7 +9786,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }catch(e){}
   });
   document.getElementById('resetSetupBtn').addEventListener('click', function(){
-    if(!confirm('Reset the whole setup to the defaults? Your event name, theme, backdrop and settings will be cleared on every device using this code.')) return;
+    if(!confirm('Reset the whole setup to the defaults? Your event name, theme, background and settings will be cleared on every device using this code.')) return;
     clearCustomPhoto();
     applySetup(DEFAULT_SETUP, null);
     imageDirty = true; lastSavedJson = null;
@@ -8851,6 +10078,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(logo) ids.push(logo.id);
     decor.forEach(function(d){ if(d.src.indexOf('a:') === 0) ids.push(d.src.slice(2)); });
     (typeof myFrames !== 'undefined' && myFrames || []).forEach(function(f){ ids.push(f.id); });
+    if(typeof bgMine !== 'undefined') bgMine.forEach(function(a){ ids.push(a); });
     return ids;
   }
   // Reads a picked file, shrinks it (keeping transparency for PNG/WebP) and returns a data URL.
@@ -10052,23 +11280,24 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         await new Promise(function(r){ setTimeout(r, video.videoWidth ? 150 : 900); });
         var c = grabCameraSample();
         if(!c){ showToast('Camera not ready. Allow camera access and try again.'); return; }
-        previewSample = c;
+        previewSampleRaw = c;
+        previewSample = bgProcessedSample(c);
         resetBtn.style.display = '';
-        camBtn.textContent = '📷 Take another';
+        camBtn.innerHTML = ICON('camera') + ' Take another';
         renderSetupPreview();
       }finally{ camBtn.disabled = false; }
     });
     resetBtn.addEventListener('click', function(){
-      previewSample = null; resetBtn.style.display = 'none'; camBtn.textContent = '📷 Preview with my camera'; renderSetupPreview();
+      previewSample = null; previewSampleRaw = null; resetBtn.style.display = 'none'; camBtn.innerHTML = ICON('camera') + ' Preview with my camera'; renderSetupPreview();
     });
     var spBtn = document.getElementById('startPrevBtn'), spLabel = document.getElementById('startPrevLabel');
     function syncDockHeight(){ if(sec.classList.contains('docked')) document.body.style.setProperty('--dock-h', sec.offsetHeight + 'px'); }
     function dock(on){
       sec.classList.toggle('docked', on);
       document.body.classList.toggle('prev-open', on);
-      fab.textContent = on ? '✕ Close preview' : '👁 Preview';
+      fab.innerHTML = on ? ICON('x') + ' Close preview' : ICON('eye') + ' Preview';
       spBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
-      spLabel.innerHTML = on ? '<b>✕ Hide</b><small>preview</small>' : '<b>👁 Preview</b><small>Tap to see it</small>';
+      spLabel.innerHTML = on ? '<b>' + ICON('x') + ' Hide</b><small>preview</small>' : '<b>' + ICON('eye') + ' Preview</b><small>Tap to see it</small>';
       spBtn.classList.remove('hint');
       try{ localStorage.setItem('pb_prevSeen', '1'); }catch(e){}
       if(on){ renderSetupPreview(); syncDockHeight(); }
@@ -10194,6 +11423,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{ sessionStorage.setItem('pb_step', String(n)); }catch(e){}
     if(n === 2){ renderFontUI(); refreshThemePalette(); }
     if(n === 3) queueLayoutThumbs();
+    else prewarmLayoutThumbs();
     if(n === 6) refreshPrintSummary();
     refreshSetupNav();
     if(!(opts && opts.noScroll)){
@@ -10211,6 +11441,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var el = document.getElementById('stepSum' + n);
     el.textContent = text; el.classList.toggle('warn', !!warn);
     el.parentNode.parentNode.title = text;
+    el.parentNode.parentNode.classList.toggle('needs', !!warn);
   }
   function currentThemeObj(){
     var all = (myThemes || []).concat(THEMES);
@@ -10224,6 +11455,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(decor.length) ex.push(decor.length + (decor.length === 1 ? ' sticker' : ' stickers'));
     if(filterKey && filterKey !== 'none') ex.push('Filter');
     if(softSkin) ex.push('Soft skin');
+    if(bgRep.mode !== 'off') ex.push(bgRep.mode === 'ai' ? 'Background swap' : 'Green screen');
     return ex;
   }
   var navTimer = null;
@@ -10247,10 +11479,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     st.textContent = folderOk ? 'Ready to start' : 'Add a folder name (step 6)';
     st.classList.toggle('warn', !folderOk);
     // Backdrop & colours summary
-    var bs = PRESET_NAMES[backdropPreset] || 'Backdrop';
+    var bs = PRESET_NAMES[backdropPreset] || 'Background';
     document.getElementById('backdropSum').textContent = bs;
     // Extras: dots on the tabs that are in use
-    var has = { frame: !!((myFrames && myFrames.length) || overlay), logo: !!logo, stickers: decor.length > 0, filter: (filterKey && filterKey !== 'none') || softSkin };
+    var has = { frame: !!((myFrames && myFrames.length) || overlay), logo: !!logo, stickers: decor.length > 0, filter: (filterKey && filterKey !== 'none') || softSkin, greenscreen: bgRep.mode !== 'off' };
     [].forEach.call(document.querySelectorAll('#extrasTabs button'), function(b){ b.classList.toggle('has', !!has[b.dataset.pane]); });
     pillSyncAll();
     markStyleTiles();
@@ -10511,17 +11743,36 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var im = btn.querySelector('img.lt-img');
     if(!im){
       im = document.createElement('img'); im.className = 'lt-img'; im.alt = '';
-      var lt = btn.querySelector('.lt'); if(lt) lt.replaceWith(im); else btn.prepend(im);
+      var lt = btn.querySelector('.lt'); if(lt) lt.replaceWith(im); else (btn.querySelector('.lt-box') || btn).prepend(im);
     }
     if(im.src !== url) im.src = url;
+  }
+  // Thumbnails are remembered on this device for the current design, so the
+  // Layout step shows them at once next time.
+  var LT_STORE = 'pb_layout_thumbs';
+  function sigHash(str){ var h = 2166136261; for(var i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + str.length.toString(36); }
+  function loadStoredThumbs(sig){
+    try{
+      var j = JSON.parse(localStorage.getItem(LT_STORE) || 'null');
+      if(j && j.h === sigHash(sig) && j.urls) return j.urls;
+    }catch(e){}
+    return null;
+  }
+  var ltStoreTimer = null;
+  function storeThumbs(){
+    clearTimeout(ltStoreTimer);
+    ltStoreTimer = setTimeout(function(){ try{ localStorage.setItem(LT_STORE, JSON.stringify({ h: sigHash(ltCache.sig), urls: ltCache.urls })); }catch(e){} }, 400);
   }
   function markLayoutThumbsDirty(){
     ltDirty = true;
     if(curStep !== 3 || tabSetup.classList.contains('hidden')) return;
-    clearTimeout(ltTimer); ltTimer = setTimeout(queueLayoutThumbs, 700);
+    clearTimeout(ltTimer);
+    var empty = !Object.keys(ltCache.urls).length;
+    ltTimer = setTimeout(queueLayoutThumbs, empty ? 30 : 600);
   }
   function applyCachedLayoutThumbs(){
     var sig = layoutDesignSig();
+    if(ltCache.sig !== sig){ var st = loadStoredThumbs(sig); if(st) ltCache = { sig: sig, urls: st }; }
     if(ltCache.sig !== sig) return;
     [].forEach.call(layoutGrid.querySelectorAll('.layout-btn'), function(b){ if(ltCache.urls[b.dataset.layout]) setLayoutThumb(b, ltCache.urls[b.dataset.layout]); });
   }
@@ -10529,11 +11780,23 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!ltDirty && ltCache.sig === layoutDesignSig()){ applyCachedLayoutThumbs(); return; }
     ltDirty = false;
     var sig = layoutDesignSig();
-    if(ltCache.sig !== sig) ltCache = { sig: sig, urls: {} };
-    ltQueue = [].slice.call(layoutGrid.querySelectorAll('.layout-btn')).filter(function(b){ return !b.classList.contains('lt-empty'); });
+    if(ltCache.sig !== sig) ltCache = { sig: sig, urls: loadStoredThumbs(sig) || {} };
+    applyCachedLayoutThumbs();
+    ltQueue = [].slice.call(layoutGrid.querySelectorAll('.layout-btn')).filter(function(b){ return !b.classList.contains('lt-empty') && !ltCache.urls[b.dataset.layout]; });
     // The selected layout first.
     ltQueue.sort(function(a, b){ return (b.dataset.layout === currentLayout) - (a.dataset.layout === currentLayout); });
     pumpLayoutThumbs();
+  }
+  // Draw the Layout step's pictures in the background while the renter is on
+  // the other steps, so they're ready when step 3 opens.
+  var ltPrewarm = null;
+  function prewarmLayoutThumbs(){
+    clearTimeout(ltPrewarm);
+    ltPrewarm = setTimeout(function(){
+      if(state === 'capturing' || tabSetup.classList.contains('hidden')) return;
+      if(ltCache.sig === layoutDesignSig() && !ltQueue.length) return;
+      queueLayoutThumbs();
+    }, 1500);
   }
   function pumpLayoutThumbs(){
     if(ltBusy) return;
@@ -10551,13 +11814,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             small.width = Math.max(1, Math.round(big.width * sc)); small.height = 150;
             var sx = small.getContext('2d'); sx.imageSmoothingQuality = 'high'; sx.drawImage(big, 0, 0, small.width, small.height);
             url = ltCache.urls[key] = small.toDataURL('image/jpeg', 0.8);
+            storeThumbs();
           }
           var live = layoutGrid.querySelector('.layout-btn[data-layout="' + key + '"]');
           if(live) setLayoutThumb(live, url);
         }
       }catch(e){ console.error('layout thumb', e); }
       ltBusy = false; pumpLayoutThumbs();
-    }, 30);
+    }, 0);
   }
 
   // ---- Step 4: Extras tabs + a shorter sticker tray ----
@@ -10588,15 +11852,53 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     propMoreBtn.textContent = all ? 'Fewer stickers' : 'More stickers';
   });
 
-  // ---- Step 5: printing summary + folder help ----
+  // ---- Step 5: printing summary, guest Print button, auto-print, copies, wording ----
   function refreshPrintSummary(){
     var sizes = printSettings(), box = document.getElementById('printSummaryBox');
     box.style.display = sizes ? '' : 'none';
     if(!sizes) return;
+    var lim = printLimits(), limTxt = [];
+    if(lim.ev) limTxt.push(printCount && printCount.left != null ? printCount.left + ' of ' + lim.ev + ' prints left for the event' : lim.ev + ' prints for the event');
+    if(lim.se) limTxt.push(lim.se + ' per session');
     document.getElementById('printSummary').textContent = 'Printing is on: ' + sizes.map(function(k){ var p = paperFor(k); return p ? p.name : k; }).join(', ') +
-      '. Pick the paper after each session.' + (autoPrint ? ' Auto-print is on.' : '');
+      '.' + (limTxt.length ? ' Limit: ' + limTxt.join(', ') + ' (copies count too).' : '');
+    document.getElementById('ppGuestBtn').checked = printPrefs.guestBtn;
+    document.getElementById('ppAuto').checked = autoPrint;
+    document.getElementById('ppGuestCopies').checked = printPrefs.guestCopies;
+    document.getElementById('ppCopiesVal').textContent = String(printPrefs.copies);
+    document.getElementById('ppCopiesMinus').disabled = printPrefs.copies <= 1;
+    document.getElementById('ppCopiesPlus').disabled = printPrefs.copies >= (lim.se ? Math.min(MAX_COPIES, lim.se) : MAX_COPIES);
+    ['txtPrint', 'txtPrinting', 'txtCopies', 'txtLimit'].forEach(function(k){
+      var el = document.getElementById('pp' + k.charAt(0).toUpperCase() + k.slice(1));
+      if(document.activeElement !== el) el.value = printPrefs[k] || '';
+    });
+    document.getElementById('ppRoute').value = printRoute;
+    document.getElementById('ppRoute').querySelector('option[value="station"]').disabled = !isRentalBooth();
+    updateAutoPrintUI();
+    refreshStationHints();
   }
-  window.addEventListener('pb-print-change', function(){ if(curStep === 5) refreshPrintSummary(); });
+  function applyPrintPrefs(p){
+    printPrefs = cleanPrintPrefs(p);
+    autoPrint = printPrefs.auto;
+    opCopies = printPrefs.copies;
+    try{ refreshPrintSummary(); refreshPrintUI(); }catch(e){}
+  }
+  function printPrefsChanged(){
+    try{ refreshPrintSummary(); refreshPrintUI(); }catch(e){}
+    if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+  }
+  document.getElementById('ppGuestBtn').addEventListener('change', function(){ printPrefs.guestBtn = this.checked; printPrefsChanged(); });
+  document.getElementById('ppAuto').addEventListener('change', function(){ setAutoPrint(this.checked, true); printPrefsChanged(); });
+  document.getElementById('ppGuestCopies').addEventListener('change', function(){ printPrefs.guestCopies = this.checked; printPrefsChanged(); });
+  document.getElementById('ppCopiesMinus').addEventListener('click', function(){ printPrefs.copies = Math.max(1, printPrefs.copies - 1); opCopies = printPrefs.copies; printPrefsChanged(); });
+  document.getElementById('ppCopiesPlus').addEventListener('click', function(){ printPrefs.copies = Math.min(MAX_COPIES, printPrefs.copies + 1); opCopies = printPrefs.copies; printPrefsChanged(); });
+  ['txtPrint', 'txtPrinting', 'txtCopies', 'txtLimit'].forEach(function(k){
+    var el = document.getElementById('pp' + k.charAt(0).toUpperCase() + k.slice(1));
+    el.placeholder = PRINT_TXT[k];
+    el.addEventListener('input', function(){ printPrefs[k] = el.value.replace(/[<>]/g, '').slice(0, Number(el.maxLength) || 60); printPrefsChanged(); });
+  });
+  document.getElementById('ppRoute').addEventListener('change', function(){ setPrintRoute(this.value); });
+  window.addEventListener("pb-print-change", function(){ refreshPrintSummary(); });
   var dfHelp = document.getElementById('driveFolderHelp');
   if(!dfHelp.textContent) dfHelp.textContent = 'Each event gets its own folder. Two devices? Type the same name on both.';
   driveFolderKeyInput.addEventListener('input', scheduleSetupNav);

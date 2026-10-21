@@ -32,6 +32,21 @@
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-store"
 
+# Background swap files (MediaPipe runtime + model). Big, rarely changed:
+# let browsers keep them for a week so events don't download them again.
+[[headers]]
+  for = "/bg/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+    Cross-Origin-Resource-Policy = "same-origin"
+
+# Laptop print station page
+[[headers]]
+  for = "/print-station/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-cache"
+
 # Printing guide: short links to /how-to-print-hiti/
 [[redirects]]
   from = "/how-to-print"

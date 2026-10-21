@@ -243,7 +243,7 @@
   var DAY = 86400000;
   // Same keys as PAPER_SIZES in netlify/lib/core.mjs.
   var PAPER = [
-    ['2x6', '2×6 in strip'], ['2.5x7.5', '2.5×7.5 in keychain'], ['3.5x5', '3.5×5 in (3R)'], ['4x6', '4×6 in (4R)'], ['5x7', '5×7 in (5R)'],
+    ['2x6', '2×6 in strip'], ['2.5x7.5', '2.5×7.5 in keychain'], ['3.5x5', '3.5×5 in (3R)'], ['4x6', '4×6 in (4R)'], ['selphy', 'Canon Selphy postcard (100×148 mm)'], ['selphycard', 'Canon Selphy card (54×86 mm)'], ['5x7', '5×7 in (5R)'],
     ['6x8', '6×8 in (6R)'], ['8x10', '8×10 in (8R)'],
     ['A6', 'A6'], ['A5', 'A5'], ['A4', 'A4'], ['Letter', 'Letter']
   ];
@@ -278,6 +278,14 @@
           '<select class="cs-u"><option value="in">in</option><option value="mm">mm</option></select>' +
           '<button type="button" class="small cs-add">Add size</button>' +
         '</div>' +
+        '<div class="custom-size pp-limits">' +
+          '<span>Print limit</span>' +
+          '<input type="number" class="pp-ev" min="0" max="100000" step="1" placeholder="No limit" value="' + (print.eventLimit || '') + '" title="Sheets for the whole event (all devices). Empty = no limit.">' +
+          '<span>per event ·</span>' +
+          '<input type="number" class="pp-se" min="0" max="50" step="1" placeholder="No limit" value="' + (print.sessionLimit || '') + '" title="Sheets one guest session may print (copies included). Empty = no limit.">' +
+          '<span>per session</span>' +
+        '</div>' +
+        '<div class="meta" style="margin:4px 0 0;font-size:11.5px;">Counts sheets of paper (copies included). Leave empty for no limit. The booth shows guests how many are left.</div>' +
       '</div>';
     box.querySelector('.pp-on').addEventListener('change', function(){
       box.querySelector('.sizes').classList.toggle('off', !this.checked);
@@ -298,14 +306,35 @@
     });
   }
   function readPrint(box){
+    var num = function(sel){ var v = Math.floor(Number(box.querySelector(sel).value) || 0); return v > 0 ? v : 0; };
     return {
       enabled: box.querySelector('.pp-on').checked,
-      sizes: [].slice.call(box.querySelectorAll('.pp-size:checked')).map(function(i){ return i.value; })
+      sizes: [].slice.call(box.querySelectorAll('.pp-size:checked')).map(function(i){ return i.value; }),
+      eventLimit: num('.pp-ev'), sessionLimit: num('.pp-se')
     };
+  }
+  function printLimitsText(p){
+    var parts = [];
+    if(p && p.eventLimit) parts.push(p.eventLimit + ' per event');
+    if(p && p.sessionLimit) parts.push(p.sessionLimit + ' per session');
+    return parts.length ? ' · limit ' + parts.join(', ') : '';
   }
   function printSummary(p){
     if(!p || !p.enabled || !p.sizes || !p.sizes.length) return 'Printing: off';
-    return 'Printing: <b>' + p.sizes.map(function(k){ return esc(paperName(k)); }).join(', ') + '</b>';
+    return 'Printing: <b>' + p.sizes.map(function(k){ return esc(paperName(k)); }).join(', ') + '</b>' + esc(printLimitsText(p));
+  }
+
+  // Sheets printed so far for a code (one line per event for lifetime codes), with a reset.
+  async function loadPrintUsage(el, code){
+    if(!el) return;
+    try{
+      var u = await api({ action: 'printusage', code: code });
+      if(!u.events.length){ el.innerHTML = 'Prints so far: <b>0</b>' + (u.limit ? ' of ' + u.limit : ''); return; }
+      el.innerHTML = 'Prints so far:' + u.events.map(function(e){
+        return '<div style="display:flex;gap:8px;align-items:center;margin-top:4px;"><span>' + esc(e.name) + ': <b>' + e.used + '</b>' + (u.limit ? ' of ' + u.limit : '') + '</span>' +
+          '<button class="small" data-a="printreset" data-c="' + esc(code) + '" data-id="' + esc(e.id) + '">Reset count</button></div>';
+      }).join('');
+    }catch(e){ el.textContent = 'Prints so far: couldn\u2019t load (' + (e.message || e) + ')'; }
   }
 
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -435,7 +464,7 @@
     $('trialPw').value = s.trialPassword;
     $('trialMin').value = s.trialMinutes;
     $('trialFolderPrefix').value = s.trialFolderPrefix;
-    printPicker($('trialPrint'), { enabled: s.trialPrintEnabled, sizes: s.trialPrintSizes }, 'Allow printing during trials');
+    printPicker($('trialPrint'), { enabled: s.trialPrintEnabled, sizes: s.trialPrintSizes, eventLimit: s.trialPrintEventLimit, sessionLimit: s.trialPrintSessionLimit }, 'Allow printing during trials');
     $('trialTraditional').checked = !!s.trialTraditional;
     $('trialRetakeOpt').checked = !!s.trialRetakeOpt;
     $('trialLockOpt').checked = !!s.trialLockOpt;
@@ -739,13 +768,22 @@
         var box = b.closest('.actions').parentNode.querySelector('[data-print-edit]');
         if(!box.classList.contains('hidden')){ box.classList.add('hidden'); return; }
         printPicker(box, LIC[code] && LIC[code].print, 'Allow printing for this rental');
-        box.insertAdjacentHTML('beforeend', '<div class="actions" style="margin-top:10px;"><button class="small primary" data-a="printsave" data-c="' + esc(code) + '">Save print settings</button></div>');
+        box.insertAdjacentHTML('beforeend', '<div class="pp-usage meta" style="margin:10px 0 0;">Prints so far: loading…</div>' +
+          '<div class="actions" style="margin-top:10px;"><button class="small primary" data-a="printsave" data-c="' + esc(code) + '">Save print settings</button></div>');
         box.classList.remove('hidden');
+        loadPrintUsage(box.querySelector('.pp-usage'), code);
+        return;
+      }
+      if(a === 'printreset'){
+        if(!confirm('Start this event\'s print count again from 0?')) return;
+        await api({ action: 'printreset', code: code, id: b.dataset.id });
+        toast('Print count reset');
+        loadPrintUsage(b.closest('.pp-usage'), code);
         return;
       }
       if(a === 'printsave'){
         var pb = readPrint(b.closest('[data-print-edit]'));
-        await api({ action: 'print', code: code, printEnabled: pb.enabled, printSizes: pb.sizes });
+        await api({ action: 'print', code: code, printEnabled: pb.enabled, printSizes: pb.sizes, printEventLimit: pb.eventLimit, printSessionLimit: pb.sessionLimit });
         toast('Print settings saved' + (LIC[code] && LIC[code].bonusKey ? ' (bonus code too)' : '') + ' — an open booth picks them up within ~5 minutes');
         refresh();
         return;
@@ -796,7 +834,7 @@
     try{
       var np = readPrint($('newPrint'));
       var startsAt = readStartInputs($('newStartDate'), $('newStartTime'));
-      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, bonus: $('newBonus').checked, bonusMinutes: $('newBonusMin').value, printEnabled: np.enabled, printSizes: np.sizes, traditional: $('newTraditional').checked, defaultTheme: $('newTheme').value || null };
+      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, bonus: $('newBonus').checked, bonusMinutes: $('newBonusMin').value, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, defaultTheme: $('newTheme').value || null };
       var j;
       try{ j = await api(createBody); }
       catch(e1){
@@ -834,7 +872,7 @@
   $('saveTrialBtn').addEventListener('click', async function(){
     try{
       var tp = readPrint($('trialPrint'));
-      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes, trialTraditional: $('trialTraditional').checked, trialRetakeOpt: $('trialRetakeOpt').checked, trialLockOpt: $('trialLockOpt').checked });
+      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes, trialPrintEventLimit: tp.eventLimit, trialPrintSessionLimit: tp.sessionLimit, trialTraditional: $('trialTraditional').checked, trialRetakeOpt: $('trialRetakeOpt').checked, trialLockOpt: $('trialLockOpt').checked });
       toast('Trial settings saved');
     }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
   });

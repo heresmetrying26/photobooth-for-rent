@@ -80,7 +80,10 @@ sizes. Prints come out at the real paper size (300 dpi, zero margins):
   shape, as big as it fits; leftover space is black. Countdown ("2 · Shot 1 of 3") floats top centre, taken
   photos top right, Cancel / Retake / Done as see-through buttons at the bottom. On the welcome screen the
   Setup / Photo Session tabs and the Camera / Printer dock float on top for the operator; while shooting they
-  are hidden. The finished-photo screen (QR, Print, Done) is unchanged. Not used in traditional mode
+  are hidden. When the camera sees more than the photo (e.g. a square photo on a portrait tablet), the black
+  around it shows the rest of the live picture, dimmed, with a thin white line at the photo's edge; areas the
+  camera can't see stay black (also black with green screen / background swap). The finished-photo screen
+  (QR, Print, Done) is unchanged. Not used in traditional mode
   (laptop + guest screen), which has its own guest window.
 - **Countdown:** a large ring with "Shot 1 of 4" beside it, top centre.
 - **Live view = the camera's whole picture** (its own shape, e.g. 3:2 for a DSLR), with a dashed
@@ -135,13 +138,17 @@ postcard to cut. About 41 s per print, so plan 1 print per session for busy even
   on after the first print; with the Print Helper or `--kiosk-printing` there's no dialog). If a Home Screen iPad app
   doesn't open the AirPrint sheet, run the booth in a Safari tab or use the laptop print station.
 
-### Laptop print station (`/print-station/`) — iPad printing with no pop-up
+### Laptop print station (`/print-station/`) — tablet printing with no pop-up
 For DNP / HiTi printers (not AirPrint) or when guests shouldn't see the AirPrint sheet:
 1. On the laptop connected to the printer, start the **Print Helper**, open
-   `https://photobooth4u.netlify.app/print-station/` and sign in with the booking code (doesn't use a device slot;
-   rental codes only, not trials). Pick a printer per paper size, **Print a test page**.
-2. On the iPad: **Print settings → Send prints to → Laptop print station** (or Setup → 6 Share). The booth shows
-   whether the station is on.
+   `https://photobooth4u.netlify.app/print-station/` and sign in with the booking code (doesn't use a device slot).
+   Pick a printer per paper size, **Print a test page**.
+2. On the iPad or Android tablet: **Printer → Send prints to → Laptop print station** (or Setup → 6 Share). The booth
+   shows whether the station is on.
+- **Trials** pair instead (the trial password is shared, so it can't sign a laptop in): with Laptop print station
+  picked, the trial tablet shows a 6-digit **pairing code**. Type it on the laptop's print-station page. It works
+  once, within 10 minutes ("New code" makes another); the laptop then gets only that tablet's prints until the
+  trial ends.
 3. Prints (and auto-prints) go iPad → `/api/printjobs` (Blobs store `printjobs`, max 60 waiting, dropped after 30
    minutes) → the station page → Print Helper → printer, with no dialog. Without the helper the station uses Chrome's
    print dialog (or none with `--kiosk-printing`).
@@ -408,15 +415,9 @@ Google Drive. The **All photos** QR
 for the whole event is only in Setup → 5 Share, to print or share ahead. Between shots the pause
 shows the photo just taken and "Next: photo 2 of 3", with no countdown circle.
 
-**Gallery QR on prints and on the gallery page (Admin → Guest QR codes, two switches, both on by default):**
-- *QR code on printed photos*: a small "Scan for all photos" QR in the bottom-right corner of every
-  print (2-up strips get one each; keychains don't). It opens the event gallery (or the Drive folder,
-  if Admin is set to Drive), so guests can download again after the event. Only the print has it;
-  the uploaded photo stays clean. It needs the event folder link, which the booth gets in Setup.
-- *QR code on the gallery page*: an "Open on your phone" QR card at the top of the gallery on
-  laptops/TVs, and a **QR** button on phones (so a guest can let a friend scan it).
-Booths pick up the printed-QR switch the next time they open or refresh; the gallery page applies
-its switch straight away.
+**Gallery page QR (Admin → Guest QR codes → "QR code on the gallery page", on by default):** an
+"Open on your phone" QR card at the top of the gallery on laptops/TVs, and a **QR** button on phones (so
+a guest can let a friend scan it). Photos and prints never carry a QR code.
 
 **Trial watermark (Admin → Trial password → "Watermark trial photos", on by default):** trial
 photos get a faint photobooth4u logo in the bottom-left corner on screen, in the saved/uploaded

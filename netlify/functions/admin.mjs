@@ -422,9 +422,8 @@ export default safe(async (req, context) => {
       return json({ ok: true, traditional: rec.traditional });
     }
 
-    case 'qrprefs': { // QR on printed photos / on the gallery page (every booth, next time it opens)
+    case 'qrprefs': { // "Open on your phone" QR on the gallery page
       const settings = { ...(await getSettings()) };
-      if (typeof b.printQr === 'boolean') settings.printQr = b.printQr;
       if (typeof b.galleryQr === 'boolean') settings.galleryQr = b.galleryQr;
       await meta().setJSON('settings', settings);
       return json({ ok: true, settings });
@@ -465,7 +464,7 @@ export default safe(async (req, context) => {
         trialLockOpt: !!b.trialLockOpt,
         trialWatermark: b.trialWatermark !== false };
       const prev = await getSettings();
-      settings.qrTarget = prev.qrTarget; settings.printQr = prev.printQr !== false; settings.galleryQr = prev.galleryQr !== false;
+      settings.qrTarget = prev.qrTarget; settings.galleryQr = prev.galleryQr !== false;
       await meta().setJSON('settings', settings);
       return json({ settings });
     }

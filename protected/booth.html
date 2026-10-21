@@ -145,6 +145,9 @@
   .print-route{width:100%; min-height:40px; border-radius:10px; border:1px solid var(--line); padding:6px 10px; font:600 14px 'Manrope',sans-serif; background:#fff;}
   .station-dot{display:inline-block; width:9px; height:9px; border-radius:50%; background:#c9c2b8; margin-right:6px; vertical-align:1px;}
   .station-dot.on{background:#2e9d5b;}
+  .pair-code{display:block; margin:8px 0 2px; font:800 30px/1.1 'Manrope',system-ui,sans-serif; letter-spacing:.12em; color:var(--ink); font-variant-numeric:tabular-nums;}
+  .pair-code.muted{font-size:15px; letter-spacing:0; font-weight:700; color:var(--ink-dim);}
+  .pair-sub{display:block; font-size:12.5px; color:var(--ink-dim);}
   .copies-sheet{position:fixed; inset:0; z-index:280; background:rgba(20,16,22,.55); display:flex; align-items:center; justify-content:center; padding:16px;}
   .copies-sheet[hidden]{display:none;}
   .copies-sheet .cs-card{width:min(380px, 100%); background:#fff; border-radius:24px; padding:26px 22px 20px; text-align:center; box-shadow:0 24px 60px rgba(0,0,0,.3);}
@@ -1471,6 +1474,15 @@
   body.stage-review .app-shell .stage-wrap{align-items:flex-start !important; padding-top:max(16px, env(safe-area-inset-top)) !important;}
   body.stage-review .app-shell .stage-frame{width:min(calc(100vw - 2 * clamp(96px, calc(9vmin + 40px), 152px)), calc((100vh - 150px) * var(--cam-aspect, .8))) !important;}
 
+  /* Full screen: the rest of the camera picture fills the black around the photo, dimmed,
+     lined up with the live view, so the screen looks full but guests still see the photo's edges. */
+  .stage-surround{display:none;}
+  body.stage-full .app-shell .stage-surround.on{display:block; position:absolute; inset:0; overflow:hidden; z-index:0; pointer-events:none; background:#000;}
+  .stage-surround video{position:absolute; left:0; top:0; object-fit:fill; background:transparent;}
+  .stage-surround::after{content:''; position:absolute; inset:0; background:rgba(0,0,0,.6);}
+  body.stage-full .app-shell .stage-frame{z-index:1;}
+  body.surround-on .app-shell .stage-frame{box-shadow:0 0 0 2px rgba(255,255,255,.92), 0 0 0 6px rgba(0,0,0,.25) !important;}
+
   /* ---- Print settings pop-up: grouped ---- */
   .pm-card .panel-section{padding:22px 22px 18px;}
   .ps-group{padding:14px 0; border-top:1px solid var(--line);}
@@ -2203,6 +2215,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
     <!-- STAGE -->
     <div class="stage-wrap">
+      <div class="stage-surround" id="stageSurround" aria-hidden="true"><video id="surroundVideo" autoplay playsinline muted></video></div>
       <div class="stage-frame" id="stageFrame">
         <div class="sprockets left">
           <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
@@ -5212,6 +5225,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // live, centred, the same way the shot is cropped).
   function applyStageAspect(){
     try{ updateFullStage(); }catch(e){}
+    try{ requestAnimationFrame(layoutSurround); }catch(e){}
     var cam = camAspect(), filmBox = currentBoxAspect(), box = filmBox;
     try{ if(state === 'capturing') box = shotBoxAspect(stageShot); }catch(e){}
     var sf = document.getElementById('stageFrame');
@@ -5258,6 +5272,42 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     b.classList.toggle('stage-shoot', shoot);
     b.classList.toggle('stage-review', shoot && reviewing);
   }
+  // The dimmed camera picture around the photo (full screen, live view only).
+  // A second <video> on the same stream, same scale and centre as the live view
+  // (object-fit: cover, centred), so the two line up exactly.
+  function layoutSurround(){
+    var box = document.getElementById('stageSurround'), sv = document.getElementById('surroundVideo');
+    if(!box || !sv) return;
+    var b = document.body, on = false;
+    try{
+      var sh = document.querySelector('.app-shell'), picking = false;
+      try{ picking = !!pickOpen; }catch(e){}
+      on = b.classList.contains('stage-full') && !b.classList.contains('stage-review') && !b.classList.contains('welcome-on') && !picking &&
+        (state === 'capturing' || !!(sh && sh.classList.contains('getting-ready'))) &&
+        streamActive && !!video.srcObject && !!video.videoWidth && video.style.display !== 'none' &&
+        !(typeof bgRep !== 'undefined' && bgRep && bgRep.mode && bgRep.mode !== 'off');
+    }catch(e){ on = false; }
+    if(on){
+      var F = document.getElementById('stageFrame').getBoundingClientRect();
+      var vw = video.videoWidth, vh = video.videoHeight, k = Math.max(F.width / vw, F.height / vh);
+      var dw = vw * k, dh = vh * k;
+      // Only when the camera sees past the photo's edges and there's black to fill.
+      var fills = (dw - F.width > 12 && window.innerWidth - F.width > 12) || (dh - F.height > 12 && window.innerHeight - F.height > 12);
+      if(!fills || !F.width) on = false;
+      else {
+        if(sv.srcObject !== video.srcObject){ sv.srcObject = video.srcObject; }
+        if(sv.paused){ try{ var pr = sv.play(); if(pr && pr.catch) pr.catch(function(){}); }catch(e){} }
+        sv.style.width = dw + 'px'; sv.style.height = dh + 'px';
+        sv.style.left = (F.left + F.width / 2 - dw / 2) + 'px'; sv.style.top = (F.top + F.height / 2 - dh / 2) + 'px';
+        sv.style.transform = video.style.transform || '';
+        sv.style.filter = video.style.filter || '';
+      }
+    }
+    box.classList.toggle('on', on);
+    b.classList.toggle('surround-on', on);
+    if(!on && sv.srcObject && !b.classList.contains('stage-full')){ try{ sv.pause(); }catch(e){} sv.srcObject = null; }
+  }
+  window.addEventListener('resize', function(){ try{ requestAnimationFrame(layoutSurround); }catch(e){} });
   // ---- Operator dock: corner when free, otherwise a bottom bar with room made for it ----
   var dockReserve = 0, dockTimer = 0;
   function scheduleDock(){ if(dockTimer) return; dockTimer = requestAnimationFrame(function(){ dockTimer = 0; try{ applyStageAspect(); }catch(e){} }); }
@@ -5512,6 +5562,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   function applyMirror(){
     video.style.transform = mirrorPreview() ? 'scaleX(-1)' : 'scaleX(1)';
+    try{ document.getElementById('surroundVideo').style.transform = video.style.transform; }catch(e){}
     const t = document.getElementById('mirrorToggle');
     if(t) t.checked = mirrorPreview();
   }
@@ -7312,43 +7363,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return canvas;
   }
 
-  // ---- Gallery QR on prints (Admin → QR → "On printed photos") ----
-  // A small "Scan for all photos" QR in the bottom-right corner of every print,
-  // pointing at the event gallery, so guests can download again later.
-  // Prints only; the uploaded photo stays clean.
-  function printQrUrl(){
-    if(!(window.__PB && window.__PB.printQr)) return '';
-    let f = '';
-    try{ f = getCachedFolderUrl() || ''; }catch(e){}
-    return f ? (shareUrlFor(f) || '') : '';
-  }
-  function stampPrintQr(src, url){
-    if(!url || !src || !src.width) return src;
-    let q;
-    try{ q = qrcode(0, 'M'); q.addData(String(url)); q.make(); }catch(e){ return src; }
-    const out = document.createElement('canvas'); out.width = src.width; out.height = src.height;
-    const x = out.getContext('2d'); x.drawImage(src, 0, 0);
-    const ms = Math.min(src.width, src.height), narrow = Math.max(src.width, src.height) / ms > 2;
-    const n = q.getModuleCount(), quiet = 2;
-    const cell = Math.max(2, Math.floor(ms * (narrow ? 0.27 : 0.15) / (n + quiet * 2)));
-    const qs = cell * (n + quiet * 2), pad = Math.round(qs * 0.05), cap = Math.round(qs * 0.2);
-    const bw = qs + pad * 2, bh = qs + cap + pad * 2, margin = Math.round(ms * 0.03);
-    const bx = src.width - bw - margin, by = src.height - bh - margin, r = Math.round(qs * 0.08);
-    x.save();
-    x.shadowColor = 'rgba(0,0,0,0.18)'; x.shadowBlur = Math.round(qs * 0.06); x.shadowOffsetY = Math.round(qs * 0.015);
-    x.fillStyle = '#ffffff';
-    x.beginPath(); x.moveTo(bx + r, by); x.arcTo(bx + bw, by, bx + bw, by + bh, r); x.arcTo(bx + bw, by + bh, bx, by + bh, r); x.arcTo(bx, by + bh, bx, by, r); x.arcTo(bx, by, bx + bw, by, r); x.closePath(); x.fill();
-    x.restore();
-    x.fillStyle = '#000000';
-    const ox = bx + pad + quiet * cell, oy = by + pad + quiet * cell;
-    for(let rI = 0; rI < n; rI++) for(let cI = 0; cI < n; cI++) if(q.isDark(rI, cI)) x.fillRect(ox + cI * cell, oy + rI * cell, cell, cell);
-    let fs = Math.round(cap * 0.62);
-    const label = 'Scan for all photos';
-    x.fillStyle = '#1C1A1E'; x.textAlign = 'center'; x.textBaseline = 'middle';
-    do { x.font = '700 ' + fs + "px 'Manrope', system-ui, sans-serif"; fs--; } while(fs > 6 && x.measureText(label).width > qs * 0.96);
-    x.fillText(label, bx + bw / 2, by + pad + qs + cap * 0.38);
-    return out;
-  }
 
   function renderComposite(){
     if(!shotCanvases.every(Boolean)) return;
@@ -7935,7 +7949,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const paper = paperFor(key);
     let src = document.createElement('canvas');
     renderCompositeToCanvas(currentLayout, src);
-    src = stampPrintQr(src, printQrUrl());
     // A sideways (landscape) layout on portrait paper prints turned 90°.
     if(src.width > src.height !== paper.w > paper.h){
       const r = document.createElement('canvas'); r.width = src.height; r.height = src.width;
@@ -7962,7 +7975,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function buildStripPages(key){
     const paper = paperFor(key);
     return sheetStripItems().map(function(it){
-      const src = stampPrintQr(stampTrialMark(composeSingleFrame(frameById(it.f), shotCanvases)), printQrUrl());
+      const src = stampTrialMark(composeSingleFrame(frameById(it.f), shotCanvases));
       const c = document.createElement('canvas');
       c.width = Math.round(paper.w / 25.4 * PRINT_DPI);
       c.height = Math.round(paper.h / 25.4 * PRINT_DPI);
@@ -8086,11 +8099,31 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   let printRoute = 'here';
   try{ printRoute = localStorage.getItem(ROUTE_KEY) === 'station' ? 'station' : 'here'; }catch(e){}
   let station = { online: false, lastSeen: 0, checked: 0 };
-  function useStation(){ return printRoute === 'station' && isRentalBooth(); }
+  function isTrialBooth(){ return !!(window.__PB && window.__PB.type === 'trial'); }
+  function useStation(){ return printRoute === 'station' && (isRentalBooth() || isTrialBooth()); }
+  // Trials pair with the laptop by a 6-digit code (the trial password is shared,
+  // so it can't be used to sign the laptop in). One code, once, for 10 minutes.
+  let pair = { code: '', exp: 0, busy: false, err: '' };
+  async function newPairCode(force){
+    if(!isTrialBooth() || pair.busy) return;
+    if(!force && pair.code && pair.exp - Date.now() > 60000) return;
+    pair.busy = true; pair.err = '';
+    try{
+      const r = await postApi('/api/printjobs', { action: 'pair' }, 8000);
+      if(r.status === 200 && r.j.code){ pair.code = r.j.code; pair.exp = r.j.exp; station.online = !!r.j.online; }
+      else pair.err = r.j.error || 'Couldn’t get a pairing code. Check the internet and try again.';
+    }catch(e){ pair.err = 'Couldn’t get a pairing code. Check the internet and try again.'; }
+    pair.busy = false;
+    refreshStationHints();
+  }
+  document.addEventListener('click', function(e){
+    const b = e.target && e.target.closest && e.target.closest('[data-pair-new]');
+    if(!b) return;
+    e.preventDefault(); newPairCode(true);
+  });
   function setPrintRoute(v){
     printRoute = v === 'station' ? 'station' : 'here';
     try{ localStorage.setItem(ROUTE_KEY, printRoute); }catch(e){}
-    if(printRoute === 'station' && !isRentalBooth()) showToast('The laptop print station works with rental codes, not trials.', 4500);
     station.checked = 0;
     checkStation();
     try{ refreshPrintUI(); refreshPrintSummary(); }catch(e){}
@@ -8101,13 +8134,22 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const r = await postApi('/api/printjobs', { action: 'station' }, 6000);
       if(r.status === 200) station = { online: !!r.j.online, lastSeen: r.j.lastSeen || 0, checked: Date.now() };
     }catch(e){ station.checked = Date.now(); }
+    if(isTrialBooth() && !station.online) newPairCode(false);
     refreshStationHints();
     return station;
   }
   setInterval(() => { if(useStation() && printSettings()) checkStation(); }, 30000);
   function stationHtml(){
-    if(!isRentalBooth()) return 'The laptop print station works with rental codes, not trials.';
     const link = '<a href="/print-station/" target="_blank" rel="noopener">photobooth4u.netlify.app/print-station</a>';
+    if(isTrialBooth()){
+      const dot0 = '<span class="station-dot' + (station.online ? ' on' : '') + '"></span>';
+      if(station.online) return dot0 + '<b>Print station is on.</b> Prints go to the paired laptop with no pop-up here. <a href="#" data-pair-new>Pair another laptop</a>';
+      const live = pair.code && pair.exp > Date.now();
+      const code = live ? '<span class="pair-code">' + pair.code.slice(0, 3) + ' ' + pair.code.slice(3) + '</span>' : '';
+      return dot0 + 'On the laptop next to the printer, open ' + link + ' and type this pairing code:' +
+        (code || '<span class="pair-code muted">' + (pair.busy ? '…' : (pair.err ? String(pair.err).replace(/[<>&]/g, '') : '— — —')) + '</span>') +
+        '<span class="pair-sub">' + (live ? 'Works once, for ' + Math.max(1, Math.round((pair.exp - Date.now()) / 60000)) + ' min. ' : '') + '<a href="#" data-pair-new>New code</a></span>';
+    }
     const dot = '<span class="station-dot' + (station.online ? ' on' : '') + '"></span>';
     return dot + (station.online ? '<b>Print station is on.</b> Prints go to the laptop with no pop-up here.' : (station.checked ? '<b>No print station open yet.</b> ' : 'Checking… ')) +
       ' On the laptop next to the printer, open ' + link + ' and sign in with your code.';
@@ -8240,7 +8282,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     el.innerHTML = parts.join(' · ') + (parts.length ? '. Copies count too.' : '');
     el.classList.toggle('out', !!parts.length && printsLeft() < sheetsPerCopy(printSize));
     printRouteSelect.value = printRoute;
-    printRouteSelect.querySelector('option[value="station"]').disabled = !isRentalBooth();
+    printRouteSelect.querySelector('option[value="station"]').disabled = !(isRentalBooth() || isTrialBooth());
     // The Print Helper is a computer app: never offered on iPad / Android.
     document.getElementById('printerPick').style.display = printSize && !useStation() && !isMobileOS() ? '' : 'none';
     if(printSize && printsLeft() < sheetsPerCopy(printSize) && state === 'result') printHint.textContent = 'Print limit reached' + (lim.se && sessPrinted >= lim.se ? ' for this session.' : ' for this event.');
@@ -8755,6 +8797,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   function applyLiveFilter(){
     video.style.filter = liveFilterCss();
+    try{ document.getElementById('surroundVideo').style.filter = video.style.filter; }catch(e){}
     if(guestOpen()){ try{ G.v.style.filter = liveFilterCss(); }catch(e){} }
   }
   function applyFilterToCanvas(c){
@@ -12310,7 +12353,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(document.activeElement !== el) el.value = printPrefs[k] || '';
     });
     document.getElementById('ppRoute').value = printRoute;
-    document.getElementById('ppRoute').querySelector('option[value="station"]').disabled = !isRentalBooth();
+    document.getElementById('ppRoute').querySelector('option[value="station"]').disabled = !(isRentalBooth() || isTrialBooth());
     updateAutoPrintUI();
     refreshStationHints();
   }

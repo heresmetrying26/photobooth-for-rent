@@ -197,8 +197,6 @@
       <div class="meta" style="margin:-8px 0 12px 26px;">A photobooth4u page with all event photos, full-screen viewing and downloads. It also has a button to the Google Drive folder.</div>
       <label class="toggle"><input type="radio" name="qrTarget" value="drive"> Google Drive folder</label>
       <div class="meta" style="margin:-8px 0 14px 26px;">Applies to every booth the next time it is opened or refreshed.</div>
-      <label class="toggle"><input type="checkbox" id="printQr"> QR code on printed photos</label>
-      <div class="meta" style="margin:-8px 0 12px 26px;">A small QR in the bottom-right corner of every print, so guests can open the event's photos again later.</div>
       <label class="toggle"><input type="checkbox" id="galleryQr"> QR code on the gallery page</label>
       <div class="meta" style="margin:-8px 0 0 26px;">“Open on your phone” QR at the top of the online gallery, e.g. for a laptop or TV showing the photos.</div>
     </details>
@@ -474,7 +472,6 @@
     $('trialRetakeOpt').checked = !!s.trialRetakeOpt;
     $('trialLockOpt').checked = !!s.trialLockOpt;
     $('trialWatermark').checked = s.trialWatermark !== false;
-    $('printQr').checked = s.printQr !== false;
     $('galleryQr').checked = s.galleryQr !== false;
 
     var qr = document.querySelector('input[name=qrTarget][value="' + (s.qrTarget === 'drive' ? 'drive' : 'gallery') + '"]'); if(qr) qr.checked = true;
@@ -891,10 +888,10 @@
       catch(err){ if(err.message !== 'auth') toast(err.message, true); }
     });
   });
-  ['printQr', 'galleryQr'].forEach(function(id){
+  ['galleryQr'].forEach(function(id){
     $(id).addEventListener('change', async function(){
       var body = { action: 'qrprefs' }; body[id] = this.checked;
-      try{ await api(body); toast((id === 'printQr' ? 'QR on printed photos ' : 'QR on the gallery page ') + (this.checked ? 'on' : 'off') + ' — booths pick it up when reopened'); }
+      try{ await api(body); toast('QR on the gallery page ' + (this.checked ? 'on' : 'off')); }
       catch(err){ if(err.message !== 'auth') toast(err.message, true); }
     });
   });

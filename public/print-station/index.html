@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Print Station | photobooth4u</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--ink:#1C1A1E;--muted:#6B666C;--red:#C93D27;--red-dark:#A9301D;--paper:#F5F1EA;--line:#E4DCCF;--ok:#1F6F62;--ok-bg:#E6F4F1;--warn-bg:#FDECEA;--warn:#9B2C1F;}
+    *{box-sizing:border-box}
+    body{margin:0;color:var(--ink);font-family:'Manrope',Arial,sans-serif;background:var(--paper);min-height:100vh}
+    a{color:inherit}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;width:min(860px,calc(100% - 32px));margin:0 auto;padding:18px 0}
+    .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+    .mark{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:26px;height:26px}.mark i{background:var(--ink);border-radius:4px}.mark i:nth-child(2){background:var(--red)}
+    .word{display:flex;align-items:flex-start}.word b{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:26px;letter-spacing:-.035em;line-height:1}
+    .word em{font-style:normal;margin-left:3px;padding:2px 6px 4px;border-radius:7px;background:var(--red);color:#fff;font-weight:800;font-size:12px;line-height:1;transform:rotate(-7deg)}
+    main{width:min(860px,calc(100% - 32px));margin:0 auto;padding:6px 0 60px}
+    .eyebrow{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;color:var(--red)}
+    h1{margin:0 0 10px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(30px,5vw,44px);line-height:1.05;letter-spacing:-.03em}
+    h2{margin:0 0 12px;font-size:16px}
+    .lead{margin:0 0 22px;font-size:15.5px;line-height:1.6;color:var(--muted);max-width:640px}
+    .card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:16px}
+    .hidden{display:none!important}
+    .signin{max-width:440px;margin:5vh auto 0;text-align:center}
+    .signin form{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+    .signin input{width:100%;padding:14px 16px;font:inherit;font-size:17px;font-weight:700;letter-spacing:.06em;text-align:center;text-transform:uppercase;border:1.5px solid var(--line);border-radius:14px;background:#FAF8F4;outline:none}
+    .signin input:focus{border-color:var(--red);background:#fff}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 18px;border-radius:999px;font:inherit;font-size:14px;font-weight:800;cursor:pointer;border:1.5px solid var(--line);background:#fff;color:var(--ink)}
+    .btn:hover,.btn:focus-visible{border-color:var(--red);color:var(--red);outline:none}
+    .btn.primary{background:var(--red);border-color:var(--red);color:#fff}
+    .btn.primary:hover{background:var(--red-dark);border-color:var(--red-dark);color:#fff}
+    .btn:disabled{opacity:.6;cursor:default}
+    .msg{min-height:20px;margin:4px 0 0;font-size:14px;font-weight:600;color:var(--red)}
+    .hint{margin:12px 0 0;font-size:13px;line-height:1.55;color:var(--muted)}
+    .status{display:flex;align-items:center;gap:14px;padding:18px 20px;border-radius:18px;background:var(--ink);color:#fff;margin-bottom:16px}
+    .status .dot{width:14px;height:14px;border-radius:50%;background:#7a7480;flex:none}
+    .status.on .dot{background:#3ccf7f;box-shadow:0 0 0 0 rgba(60,207,127,.6);animation:pulse 2s infinite}
+    .status.bad{background:var(--warn)}
+    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(60,207,127,.55)}70%{box-shadow:0 0 0 12px rgba(60,207,127,0)}100%{box-shadow:0 0 0 0 rgba(60,207,127,0)}}
+    .status b{display:block;font-size:17px}
+    .status span{font-size:13.5px;opacity:.8}
+    .status .grow{flex:1}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+    .row:first-of-type{border-top:0}
+    .row label{font-weight:700;font-size:14px}
+    select{min-height:40px;min-width:240px;max-width:100%;border-radius:10px;border:1px solid var(--line);padding:6px 10px;font:600 14px 'Manrope',sans-serif;background:#fff}
+    .switch{display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:700;font-size:14px;cursor:pointer}
+    .switch input{width:20px;height:20px;accent-color:var(--red)}
+    .note{margin:10px 0 0;padding:10px 12px;border-radius:12px;background:#FAF7F2;border:1px solid var(--line);font-size:13px;line-height:1.55}
+    .note.warn{background:var(--warn-bg);border-color:#f3b8b0;color:var(--warn)}
+    .note.ok{background:var(--ok-bg);border-color:#bfe3da;color:#174F46}
+    ol{margin:6px 0 0;padding-left:20px;font-size:13.5px;line-height:1.7}
+    table{width:100%;border-collapse:collapse;font-size:13.5px}
+    td,th{text-align:left;padding:8px 6px;border-top:1px solid var(--line)}
+    th{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-top:0}
+    .tag{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:800}
+    .tag.ok{background:var(--ok-bg);color:var(--ok)}.tag.err{background:var(--warn-bg);color:var(--warn)}.tag.wait{background:#EEF0F4;color:#3D4656}
+    #printArea{display:none}
+    @media print{
+      html,body{margin:0!important;padding:0!important;background:#fff!important}
+      body > *:not(#printArea){display:none!important}
+      #printArea{display:block!important}
+      #printArea img{display:block;margin:0;padding:0;break-inside:avoid}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <a class="brand" href="/about-us/"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span></a>
+  <button class="btn hidden" id="signOut" type="button">Sign out</button>
+</header>
+<main>
+  <section class="signin" id="signinView">
+    <p class="eyebrow">Print station</p>
+    <h1>Print from the tablet, with no pop-up</h1>
+    <p class="lead" style="margin:0 auto;">Open this page on the laptop that's connected to the printer, and sign in with your booth code (on a trial, the 6-digit pairing code the tablet shows). Prints sent from the booth come out here by themselves.</p>
+    <form id="signinForm">
+      <input id="codeInput" autocomplete="off" spellcheck="false" placeholder="PB-XXXX-XXXX-XXXX or 123 456" aria-label="Your booth code or pairing code">
+      <button class="btn primary" type="submit" id="signinBtn">Start print station</button>
+      <p class="msg" id="signinMsg"></p>
+    </form>
+    <p class="hint">Signing in here doesn't use up a device on your code. On the iPad or Android tablet, go to <b>Printer → Send prints to → Laptop print station</b>. Trials show a pairing code there.</p>
+  </section>
+
+  <section class="hidden" id="stationView">
+    <p class="eyebrow">Print station</p>
+    <h1 id="stationTitle">Print station</h1>
+    <div class="status" id="statusBar">
+      <span class="dot"></span>
+      <div class="grow"><b id="statusMain">Starting…</b><span id="statusSub">Keep this page open while the event runs.</span></div>
+      <button class="btn" id="pauseBtn" type="button">Pause</button>
+    </div>
+
+    <div class="card">
+      <h2>How to print</h2>
+      <label class="switch"><span>Use the Print Helper (prints with no dialog)</span><input type="checkbox" id="helperToggle"></label>
+      <div class="note" id="helperNote"></div>
+      <div id="printerRows" style="margin-top:12px;"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+        <button class="btn" type="button" id="testBtn">Print a test page</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Prints</h2>
+      <table><thead><tr><th>Time</th><th>Paper</th><th>Copies</th><th>Printer</th><th>Status</th></tr></thead><tbody id="logBody"><tr><td colspan="5" style="color:var(--muted);">Nothing printed yet. Prints from the booth appear here.</td></tr></tbody></table>
+    </div>
+    <p class="hint">Tips: plug the laptop in, keep this tab open (it can be behind other windows), and turn off sleep. Pages waiting more than 30 minutes are dropped.</p>
+  </section>
+</main>
+<div id="printArea"></div>
+<style id="printPageStyle"></style>
+<script>
+(function(){
+  var KEY = 'pb_station', MAP_KEY = 'pb_station_printers', HELPER_KEY = 'pb_station_helper';
+  var HELPER_URL = 'http://127.0.0.1:17321';
+  var PAPER = { '2x6': ['2×6 strip', 50.8, 152.4], '2.5x7.5': ['Keychain 2.5×7.5', 63.5, 190.5], '3.5x5': ['3R', 88.9, 127], '4x6': ['4R (4×6)', 101.6, 152.4], 'selphy': ['Selphy postcard', 100, 148], 'selphycard': ['Selphy card', 54, 86], '5x7': ['5R (5×7)', 127, 177.8], '6x8': ['6R (6×8)', 152.4, 203.2], '8x10': ['8R (8×10)', 203.2, 254], 'A6': ['A6', 105, 148], 'A5': ['A5', 148, 210], 'A4': ['A4', 210, 297], 'Letter': ['Letter', 215.9, 279.4] };
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function load(k, d){ try{ var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; }catch(e){ return d; } }
+  function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  function paperOf(key){
+    if(PAPER[key]) return { key: key, name: PAPER[key][0], w: PAPER[key][1], h: PAPER[key][2] };
+    var m = /^(\d{1,3}(?:\.\d{1,2})?)x(\d{1,3}(?:\.\d{1,2})?)(in|mm)$/.exec(key || '');
+    if(!m) return null;
+    var k = m[3] === 'in' ? 25.4 : 1, a = Number(m[1]) * k, b = Number(m[2]) * k;
+    return { key: key, name: m[1] + '×' + m[2] + ' ' + m[3], w: Math.min(a, b), h: Math.max(a, b) };
+  }
+
+  var S = load(KEY, null);          // { stationToken, label, code, sizes }
+  var printers = load(MAP_KEY, {}); // paper key -> printer name
+  var useHelper = load(HELPER_KEY, true) !== false;
+  var helper = { ok: false, printers: [], checked: 0 };
+  var paused = false, busy = false, lastJobAt = 0, lastOkAt = 0, failures = 0;
+  var stationId = Math.random().toString(36).slice(2, 10);
+  var log = [];
+
+  // ---- sign in ----
+  $('signinForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var code = $('codeInput').value.trim();
+    if(!code){ $('signinMsg').textContent = 'Type your booth code or pairing code.'; return; }
+    $('signinBtn').disabled = true; $('signinMsg').textContent = '';
+    try{
+      var r = await fetch('/api/printjobs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'signin', code: code }) });
+      var j = await r.json().catch(function(){ return {}; });
+      if(!r.ok) throw new Error(j.error || 'Could not sign in.');
+      S = { stationToken: j.stationToken, label: j.label, code: j.code, sizes: j.sizes || [] };
+      save(KEY, S);
+      showStation();
+    }catch(err){ $('signinMsg').textContent = err.message; }
+    finally{ $('signinBtn').disabled = false; }
+  });
+  $('signOut').addEventListener('click', function(){
+    if(!confirm('Stop the print station on this laptop?')) return;
+    try{ localStorage.removeItem(KEY); }catch(e){}
+    S = null; location.reload();
+  });
+
+  function showStation(){
+    $('signinView').classList.add('hidden');
+    $('stationView').classList.remove('hidden');
+    $('signOut').classList.remove('hidden');
+    $('stationTitle').textContent = S.label || 'Print station';
+    $('helperToggle').checked = useHelper;
+    checkHelper().then(renderPrinters);
+    renderPrinters();
+    keepAwake();
+    tick();
+  }
+
+  // ---- Print Helper ----
+  async function checkHelper(){
+    if(!useHelper){ helper = { ok: false, printers: [], checked: Date.now() }; renderHelperNote(); return helper; }
+    try{
+      var ctl = new AbortController(), t = setTimeout(function(){ ctl.abort(); }, 1500);
+      var r = await fetch(HELPER_URL + '/status', { signal: ctl.signal, cache: 'no-store' });
+      clearTimeout(t);
+      var j = await r.json();
+      helper = { ok: !!j.ok, printers: Array.isArray(j.printers) ? j.printers.map(String) : [], checked: Date.now(), version: String(j.version || '') };
+    }catch(e){ helper = { ok: false, printers: [], checked: Date.now() }; }
+    renderHelperNote();
+    return helper;
+  }
+  function renderHelperNote(){
+    var n = $('helperNote');
+    if(!useHelper){
+      n.className = 'note';
+      n.innerHTML = 'Prints open Chrome’s print dialog. For no dialog, start Chrome with <b>--kiosk-printing</b> (prints go to the default printer), or switch on the Print Helper above.';
+    } else if(helper.ok){
+      n.className = 'note ok';
+      n.innerHTML = '<b>Print Helper connected</b> — ' + helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' found. Pick one for each paper size below.';
+      if(/Windows/i.test(navigator.userAgent) && helper.version === '1.0.0'){
+        n.className = 'note warn';
+        n.innerHTML = '<b>Please update the Print Helper.</b> This Windows version (1.0.0) can\u2019t print. Close it, <a href="/downloads/" target="_blank" rel="noopener">download the new one</a>, and open it again.';
+      }
+    } else {
+      n.className = 'note warn';
+      n.innerHTML = '<b>Can’t reach the Print Helper.</b><ol><li>Open the <b>photobooth4u Print Helper</b> app on this laptop (<a href="/downloads/" target="_blank" rel="noopener">download</a>).</li><li>If Chrome asks to look for devices on your network, click <b>Allow</b> (or Site settings → Local network access → Allow).</li><li><button class="btn" type="button" id="recheckBtn" style="min-height:32px;padding:4px 12px;">Check again</button></li></ol>Until then, prints open the print dialog.';
+      var rb = $('recheckBtn'); if(rb) rb.onclick = function(){ checkHelper().then(renderPrinters); };
+    }
+  }
+  $('helperToggle').addEventListener('change', function(){
+    useHelper = this.checked; save(HELPER_KEY, useHelper);
+    checkHelper().then(renderPrinters);
+  });
+  function sizesShown(){
+    var keys = (S && S.sizes && S.sizes.length ? S.sizes.slice() : ['4x6']);
+    Object.keys(printers).forEach(function(k){ if(keys.indexOf(k) < 0 && paperOf(k)) keys.push(k); });
+    return keys;
+  }
+  function renderPrinters(){
+    var box = $('printerRows');
+    if(!useHelper){ box.innerHTML = ''; return; }
+    box.innerHTML = sizesShown().map(function(k){
+      var p = paperOf(k); if(!p) return '';
+      var cur = printers[k] || '';
+      var opts = '<option value="">' + (helper.ok ? '— Choose a printer —' : 'Print Helper not connected') + '</option>' +
+        helper.printers.map(function(n){ return '<option' + (n === cur ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') +
+        (cur && helper.printers.indexOf(cur) < 0 ? '<option selected value="' + esc(cur) + '">' + esc(cur) + ' (not found)</option>' : '');
+      return '<div class="row"><label>' + esc(p.name) + '</label><select data-size="' + esc(k) + '"' + (helper.ok ? '' : ' disabled') + '>' + opts + '</select></div>';
+    }).join('');
+  }
+  $('printerRows').addEventListener('change', function(e){
+    var sel = e.target.closest('select[data-size]'); if(!sel) return;
+    if(sel.value) printers[sel.dataset.size] = sel.value; else delete printers[sel.dataset.size];
+    save(MAP_KEY, printers);
+  });
+
+  // ---- printing ----
+  function toPng(dataUrl){
+    return new Promise(function(resolve, reject){
+      var img = new Image();
+      img.onload = function(){
+        var c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        resolve(c.toDataURL('image/png'));
+      };
+      img.onerror = function(){ reject(new Error('Bad page image')); };
+      img.src = dataUrl;
+    });
+  }
+  async function printWithHelper(pages, paper, name){
+    var png = [];
+    for(var i = 0; i < pages.length; i++) png.push(/^data:image\/png/.test(pages[i]) ? pages[i] : await toPng(pages[i]));
+    for(var s = 0; s < png.length; s += 20){
+      var r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, pages: png.slice(s, s + 20) }) });
+      var j = await r.json().catch(function(){ return {}; });
+      if(!r.ok || !j.ok) throw new Error(j.error || ('Print Helper error ' + r.status));
+    }
+  }
+  async function printWithDialog(pages, paper){
+    var area = $('printArea'); area.innerHTML = '';
+    for(var i = 0; i < pages.length; i++){
+      var img = new Image(); img.src = pages[i];
+      await img.decode();
+      img.style.width = paper.w + 'mm'; img.style.height = paper.h + 'mm';
+      if(i < pages.length - 1) img.style.breakAfter = 'page';
+      area.appendChild(img);
+    }
+    $('printPageStyle').textContent = '@page { size: ' + paper.w + 'mm ' + paper.h + 'mm; margin: 0; }';
+    window.print();
+    setTimeout(function(){ area.innerHTML = ''; }, 3000);
+  }
+  // Returns the printer used ('' = print dialog).
+  async function printPages(pages, paper){
+    var name = paper.key ? printers[paper.key] || '' : '';
+    if(useHelper && name){
+      if(!helper.ok || Date.now() - helper.checked > 20000) await checkHelper();
+      if(helper.ok){ await printWithHelper(pages, paper, name); return name; }
+    }
+    await printWithDialog(pages, paper);
+    return '';
+  }
+
+  // ---- jobs ----
+  function addLog(entry){
+    log.unshift(entry); log = log.slice(0, 40);
+    $('logBody').innerHTML = log.map(function(x){
+      return '<tr><td>' + new Date(x.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }) + '</td><td>' + esc(x.paper) + '</td><td>' + x.copies + '</td><td>' + esc(x.printer || 'Print dialog') + '</td><td><span class="tag ' + (x.ok ? 'ok' : 'err') + '">' + (x.ok ? 'Printed' : esc(x.error || 'Failed')) + '</span></td></tr>';
+    }).join('');
+  }
+  async function api(body){
+    var r = await fetch('/api/printjobs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ stationToken: S.stationToken, station: stationId }, body)), cache: 'no-store' });
+    var j = await r.json().catch(function(){ return {}; });
+    if(r.status === 401){ try{ localStorage.removeItem(KEY); }catch(e){} alert('Please sign in to the print station again.'); location.reload(); throw new Error('signin'); }
+    if(!r.ok) throw new Error(j.error || ('error ' + r.status));
+    return j;
+  }
+  async function poll(){
+    if(busy || paused || !S) return;
+    busy = true;
+    try{
+      var j = await api({ action: 'take' });
+      lastOkAt = Date.now(); failures = 0;
+      if(j.job){
+        var job = j.job;
+        lastJobAt = Date.now();
+        var paper = { key: job.paper.key, name: job.paper.name || job.paper.key, w: job.paper.w, h: job.paper.h };
+        var pages = []; for(var c = 0; c < (job.copies || 1); c++) pages.push(job.page);
+        setStatus('on', 'Printing…', paper.name + (job.copies > 1 ? ' × ' + job.copies : '') + (j.waiting > 1 ? ' · ' + (j.waiting - 1) + ' more waiting' : ''));
+        var used = '', ok = true, error = '';
+        try{ used = await printPages(pages, paper); }catch(e){ ok = false; error = e.message || String(e); }
+        addLog({ at: Date.now(), paper: paper.name, copies: job.copies || 1, printer: used, ok: ok, error: error });
+        await api({ action: 'done', id: job.id }).catch(function(){});
+        if(j.waiting > 1){ busy = false; return poll(); }
+      }
+      setStatus('on', 'Waiting for prints', 'Keep this page open while the event runs.' + (log.length ? ' Last print ' + new Date(log[0].at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '.' : ''));
+    }catch(e){
+      if(e.message === 'signin') return;
+      failures++;
+      setStatus(failures > 2 ? 'bad' : 'on', failures > 2 ? 'Can’t reach photobooth4u' : 'Waiting for prints', failures > 2 ? 'Check this laptop’s internet. It keeps trying.' : 'Reconnecting…');
+    }finally{ busy = false; }
+  }
+  function setStatus(kind, main, sub){
+    var bar = $('statusBar');
+    bar.classList.toggle('on', kind === 'on' && !paused);
+    bar.classList.toggle('bad', kind === 'bad');
+    $('statusMain').textContent = paused ? 'Paused' : main;
+    $('statusSub').textContent = paused ? 'Prints wait (up to 30 minutes) until you press Resume.' : sub;
+  }
+  $('pauseBtn').addEventListener('click', function(){
+    paused = !paused;
+    this.textContent = paused ? 'Resume' : 'Pause';
+    setStatus('on', 'Waiting for prints', '');
+    if(!paused) poll();
+  });
+
+  // A worker keeps time even when this tab is in the background (Chrome slows
+  // down timers in background tabs to once a minute).
+  var nextAt = 0;
+  function interval(){ return Date.now() - lastJobAt < 10 * 60000 ? 2500 : 5000; }
+  function tick(){
+    var src = 'setInterval(function(){ postMessage(1); }, 1000);';
+    try{
+      var w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      w.onmessage = onBeat;
+    }catch(e){ setInterval(onBeat, 1000); }
+    poll();
+  }
+  function onBeat(){
+    if(Date.now() < nextAt) return;
+    nextAt = Date.now() + interval();
+    poll();
+  }
+  async function keepAwake(){
+    try{
+      if(navigator.wakeLock){
+        var lock = await navigator.wakeLock.request('screen');
+        document.addEventListener('visibilitychange', function again(){ if(document.visibilityState === 'visible'){ navigator.wakeLock.request('screen').catch(function(){}); } });
+        return lock;
+      }
+    }catch(e){}
+  }
+
+  // ---- test page ----
+  $('testBtn').addEventListener('click', async function(){
+    var key = sizesShown()[0], paper = paperOf(key);
+    var c = document.createElement('canvas'); c.width = Math.round(paper.w / 25.4 * 300); c.height = Math.round(paper.h / 25.4 * 300);
+    var x = c.getContext('2d');
+    x.fillStyle = '#F5F1EA'; x.fillRect(0, 0, c.width, c.height);
+    x.strokeStyle = '#C93D27'; x.lineWidth = 12; x.strokeRect(30, 30, c.width - 60, c.height - 60);
+    x.fillStyle = '#1C1A1E'; x.textAlign = 'center';
+    x.font = 'bold ' + Math.round(c.width / 9) + 'px Georgia, serif'; x.fillText('photobooth4u', c.width / 2, c.height / 2 - c.width / 12);
+    x.font = Math.round(c.width / 18) + 'px Arial, sans-serif'; x.fillText('Print station test · ' + paper.name, c.width / 2, c.height / 2 + c.width / 20);
+    x.fillText(new Date().toLocaleString(), c.width / 2, c.height / 2 + c.width / 8);
+    try{
+      var used = await printPages([c.toDataURL('image/png')], paper);
+      addLog({ at: Date.now(), paper: paper.name + ' (test)', copies: 1, printer: used, ok: true });
+    }catch(e){ addLog({ at: Date.now(), paper: paper.name + ' (test)', copies: 1, printer: printers[key], ok: false, error: e.message }); }
+  });
+
+  window.addEventListener('beforeunload', function(e){ if(S && !paused){ e.preventDefault(); e.returnValue = ''; } });
+
+  if(S && S.stationToken) showStation();
+  else { var h = (location.hash || '').replace(/^#/, ''); if(h) $('codeInput').value = decodeURIComponent(h); }
+})();
+</script>
+</body>
+</html>

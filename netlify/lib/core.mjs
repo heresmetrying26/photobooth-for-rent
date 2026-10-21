@@ -297,7 +297,6 @@ export async function getSettings() {
     trialRetakeOpt: false,
     trialLockOpt: false,
     qrTarget: 'gallery',
-    printQr: true,          // small QR to the event gallery on every print
     galleryQr: true,        // "open on your phone" QR on the gallery page
     trialWatermark: true,   // photobooth4u logo on trial photos
     ...(saved || {})

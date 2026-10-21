@@ -1,0 +1,10 @@
+Background swap files (loaded by the booth only when "Green screen → No green screen (AI)" is on).
+
+- vision_bundle.mjs, wasm/*: MediaPipe Tasks Vision 1.0.1 (@mediapipe/tasks-vision on npm),
+  Copyright Google LLC, Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
+- selfie_segmenter.tflite: MediaPipe Selfie Segmentation model (from @mediapipe/selfie_segmentation
+  0.1.1675465747 on npm, Apache License 2.0), with TFLite image-segmenter metadata added
+  (input normalisation mean 0 / std 255, one output label "person") so MediaPipe Tasks can load it.
+  Model card: https://storage.googleapis.com/mediapipe-assets/Model%20Card%20MediaPipe%20Selfie%20Segmentation.pdf
+
+Everything runs on the device; no photo is sent anywhere for the background swap.

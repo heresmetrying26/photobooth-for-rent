@@ -1,4 +1,4 @@
-import { safe, json, hmac, DRIVE_SCRIPT_URL } from '../lib/core.mjs';
+import { safe, json, hmac, DRIVE_SCRIPT_URL, getSettings } from '../lib/core.mjs';
 
 // Backs the online gallery (/g/<Drive folder id>).
 //   GET /api/gallery?f=<folder id>        -> the folder's photos (via the Apps Script relay)
@@ -63,6 +63,7 @@ export default safe(async (req) => {
     name: String(data.name || 'Photos').slice(0, 120),
     folderUrl: /^https:\/\/drive\.google\.com\//.test(data.folderUrl || '') ? data.folderUrl : 'https://drive.google.com/drive/folders/' + f,
     until: Number(data.until) || null,
+    qr: (await getSettings().catch(() => ({}))).galleryQr !== false,   // Admin → Guest QR codes
     files
   }), {
     status: 200,

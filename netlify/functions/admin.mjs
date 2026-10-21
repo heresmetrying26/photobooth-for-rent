@@ -422,6 +422,14 @@ export default safe(async (req, context) => {
       return json({ ok: true, traditional: rec.traditional });
     }
 
+    case 'qrprefs': { // QR on printed photos / on the gallery page (every booth, next time it opens)
+      const settings = { ...(await getSettings()) };
+      if (typeof b.printQr === 'boolean') settings.printQr = b.printQr;
+      if (typeof b.galleryQr === 'boolean') settings.galleryQr = b.galleryQr;
+      await meta().setJSON('settings', settings);
+      return json({ ok: true, settings });
+    }
+
     case 'qrtarget': { // where every booth QR code points: the online gallery or the Drive folder
       const settings = { ...(await getSettings()), qrTarget: b.qrTarget === 'drive' ? 'drive' : 'gallery' };
       await meta().setJSON('settings', settings);
@@ -455,7 +463,9 @@ export default safe(async (req, context) => {
         trialTraditional: !!b.trialTraditional,
         trialRetakeOpt: !!b.trialRetakeOpt,
         trialLockOpt: !!b.trialLockOpt,
-        qrTarget: (await getSettings()).qrTarget };
+        trialWatermark: b.trialWatermark !== false };
+      const prev = await getSettings();
+      settings.qrTarget = prev.qrTarget; settings.printQr = prev.printQr !== false; settings.galleryQr = prev.galleryQr !== false;
       await meta().setJSON('settings', settings);
       return json({ settings });
     }

@@ -654,6 +654,8 @@
     body > *:not(#printArea){display:none !important;}
     #printArea{display:block !important;}
     #printArea img{display:block; margin:0; padding:0; break-inside:avoid;}
+    #printArea .print-page{overflow:hidden; break-inside:avoid; page-break-inside:avoid; display:flex; align-items:center; justify-content:center;}
+    #printArea .print-page img{width:100%; height:100%; object-fit:contain;}
   }
 
   .toast{
@@ -1427,6 +1429,14 @@
     .film-frame.pickable::after{content:'\21BA'; font-size:16px; padding:3px 0;}
     .film-frame.picked::after{content:'\2713'; font-size:16px;}
   }
+  /* Screen flash + start-without-touching meter */
+  #screenFlash{position:fixed; inset:0; z-index:9998; background:#fff; opacity:0; pointer-events:none; transition:opacity .15s ease-out;}
+  #screenFlash.on{opacity:1; transition:none;}
+  .fx-meter{margin-top:12px;}
+  .fx-track{position:relative; height:12px; border-radius:999px; background:var(--panel-2); border:1px solid var(--line); overflow:visible;}
+  .fx-track b{display:block; height:100%; width:0; border-radius:999px; background:var(--ink-dim); transition:width .12s linear;}
+  .fx-track i{position:absolute; top:-4px; bottom:-4px; width:2px; margin-left:-1px; background:var(--brand); border-radius:2px;}
+  .fx-meter.hit .fx-track b{background:#2e9d5b;}
   /* ---- Print settings pop-up: grouped ---- */
   .pm-card .panel-section{padding:22px 22px 18px;}
   .ps-group{padding:14px 0; border-top:1px solid var(--line);}
@@ -1973,6 +1983,28 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p class="panel-hint" id="allowRetakeHint" style="display:none; margin:2px 0 0;">On: guests can redo any photo (events). Off: guests can only Cancel and start over (bazaars, pay per print).</p>
           <select id="resultReviewSelect" hidden><option value="0" selected>Until tap</option></select>
         </details>
+      </div>
+      <div class="panel-section" id="fxSection">
+        <p class="panel-label">Light, sound and start</p>
+        <label class="switch-row" style="margin-top:0;"><span>Screen flash</span><input type="checkbox" id="fxFlash"></label>
+        <p class="panel-hint" style="margin-top:4px;">The screen turns white as each photo is taken, lighting up faces in dim rooms. Turn the tablet's brightness all the way up.</p>
+        <label class="switch-row"><span>Countdown beeps and shutter click</span><input type="checkbox" id="fxSound" checked></label>
+        <div class="opt-row" id="fxVolRow">
+          <span class="lbl">Volume</span>
+          <select class="mini-select pillify" id="fxVol"><option value="0.35">Soft</option><option value="0.7" selected>Normal</option><option value="1">Loud</option></select>
+        </div>
+        <button type="button" class="action-btn" id="fxTestSound" style="width:auto; margin:8px 0 0;">Play a test sound</button>
+        <p class="sub-label" style="margin:16px 0 6px;">Start without touching</p>
+        <select class="mini-select pillify" id="fxHands"><option value="off" selected>Off (tap)</option><option value="wave">Wave</option><option value="smile">Smile</option></select>
+        <p class="panel-hint" id="fxHandsHint" style="margin-top:6px;"></p>
+        <div class="opt-row" id="fxSensRow" style="display:none;">
+          <span class="lbl">Sensitivity</span>
+          <select class="mini-select pillify" id="fxSens"><option value="less">Less</option><option value="normal" selected>Normal</option><option value="more">More</option></select>
+        </div>
+        <div class="fx-meter" id="fxMeter" hidden>
+          <div class="fx-track"><b id="fxMeterBar"></b><i id="fxMeterMark"></i></div>
+          <p class="panel-hint" id="fxMeterTxt" style="margin:6px 0 0;"></p>
+        </div>
       </div>
       <div class="panel-section" id="cameraSection">
         <p class="panel-label">Camera</p>
@@ -5575,7 +5607,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         cdBar.style.strokeDashoffset = String(100 * (1 - frac));
         const n = Math.min(cap, Math.max(1, Math.ceil(left / 1000)));
         if(sess && sess.cancelled){ clearInterval(timer); resolve(); return; }
-        if(n !== shown){ shown = n; popNum(n, false); }
+        if(n !== shown){ shown = n; popNum(n, false); try{ fxTick(n); }catch(e){} }
         guestCall('tick', String(n), false, frac, cdShot.textContent);
         if(left <= 0){ clearInterval(timer); resolve(); }
       };
@@ -5592,13 +5624,20 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     popNum('Pose', true);
     cdBar.style.strokeDashoffset = '100';
     guestCall('tick', 'Pose', true, 0, cdShot.textContent);
-    await wait(600);
-    if(sess && sess.cancelled) return;
+    try{ fxPose(); }catch(e){}
+    // Screen flash: the screen goes white ~0.35 s before the photo, so the
+    // camera has time to adjust to the extra light on the faces.
+    const lit = fx.flash;
+    if(lit){ await wait(250); if(sess && sess.cancelled) return; screenFlashOn(); await wait(350); }
+    else await wait(600);
+    if(sess && sess.cancelled){ if(lit) screenFlashOff(); return; }
+    try{ fxShutter(); }catch(e){}
     flashOverlay.classList.add('flash-active');
     guestCall('flash');
     const shot = captureShot(index);   // webcam: instant; USB camera: fires the real shutter
     await wait(180);
     flashOverlay.classList.remove('flash-active');
+    if(lit) setTimeout(screenFlashOff, 120);
     if(usbCam.active && currentDeviceId === USB_CAM_ID){
       popNum('Saving', true);
       guestCall('tick', 'Saving', true, 0, cdShot.textContent);
@@ -7167,7 +7206,94 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
 
   function renderCompositeToCanvas(layoutKey, targetCanvas){
-    return composeCanvas(layoutKey, targetCanvas, shotCanvases);
+    const r = composeCanvas(layoutKey, targetCanvas, shotCanvases);
+    stampTrialMark(targetCanvas);
+    return r;
+  }
+
+  // ---- Trial watermark: a faint photobooth4u logo in the bottom-left corner ----
+  // On for trial codes (Admin → Trial → "Watermark trial photos"). Drawn on every
+  // guest photo: screen, saved/uploaded copy and prints. Rentals never get it.
+  function trialMarkOn(){ return !!(window.__PB && window.__PB.watermark); }
+  let brandMarkCache = null;
+  function brandMarkCanvas(){
+    if(brandMarkCache) return brandMarkCache;
+    const f = 120, serif = "600 " + f + "px 'Fraunces', Georgia, serif";
+    const m = document.createElement('canvas').getContext('2d');
+    m.font = serif; const tw = m.measureText('photobooth').width;
+    m.font = "700 " + Math.round(f * 0.78) + "px 'Manrope', system-ui, sans-serif"; const uw = m.measureText('4u').width;
+    const pad = f * 0.42, sq = f * 0.92, gap = f * 0.3, bw = uw + f * 0.44, bh = f * 0.98;
+    const W = Math.ceil(pad + sq + gap + tw + f * 0.12 + bw + pad), H = Math.ceil(f * 1.5);
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d');
+    const rr = (X, Y, w, h, r) => { x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + w, Y, X + w, Y + h, r); x.arcTo(X + w, Y + h, X, Y + h, r); x.arcTo(X, Y + h, X, Y, r); x.arcTo(X, Y, X + w, Y, r); x.closePath(); };
+    x.fillStyle = 'rgba(255,255,255,0.92)'; rr(0, 0, W, H, H / 2); x.fill();
+    // 2×2 mark, one square in brand red
+    const cy = H / 2, s = (sq - f * 0.1) / 2, mx = pad, my = cy - sq / 2;
+    [[0,0,'#1C1A1E'],[1,0,'#C93D27'],[0,1,'#1C1A1E'],[1,1,'#1C1A1E']].forEach(function(q){
+      x.fillStyle = q[2]; rr(mx + q[0] * (s + f * 0.1), my + q[1] * (s + f * 0.1), s, s, s * 0.22); x.fill();
+    });
+    x.fillStyle = '#1C1A1E'; x.font = serif; x.textBaseline = 'alphabetic';
+    const tx = pad + sq + gap, base = cy + f * 0.3;
+    x.fillText('photobooth', tx, base);
+    const bx = tx + tw + f * 0.12;
+    x.fillStyle = '#C93D27'; rr(bx, cy - bh / 2 - f * 0.06, bw, bh, f * 0.18); x.fill();
+    x.fillStyle = '#ffffff'; x.font = "700 " + Math.round(f * 0.78) + "px 'Manrope', system-ui, sans-serif"; x.textAlign = 'center';
+    x.fillText('4u', bx + bw / 2, cy + f * 0.22);
+    // Only cache once the web fonts are in, so the logo keeps its real typeface.
+    try{ if(document.fonts && document.fonts.check(serif)) brandMarkCache = c; }catch(e){ brandMarkCache = c; }
+    return c;
+  }
+  function stampTrialMark(canvas){
+    if(!trialMarkOn() || !canvas || !canvas.width || !canvas.height) return canvas;
+    try{
+      const ctx = canvas.getContext('2d'), mk = brandMarkCanvas();
+      const ms = Math.min(canvas.width, canvas.height), narrow = Math.max(canvas.width, canvas.height) / ms > 2;
+      const w = Math.round(ms * (narrow ? 0.62 : 0.34)), h = Math.round(w * mk.height / mk.width);
+      const margin = Math.round(ms * 0.03);
+      ctx.save(); ctx.globalAlpha = 0.42; ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(mk, margin, canvas.height - h - margin, w, h);
+      ctx.restore();
+    }catch(e){}
+    return canvas;
+  }
+
+  // ---- Gallery QR on prints (Admin → QR → "On printed photos") ----
+  // A small "Scan for all photos" QR in the bottom-right corner of every print,
+  // pointing at the event gallery, so guests can download again later.
+  // Prints only; the uploaded photo stays clean.
+  function printQrUrl(){
+    if(!(window.__PB && window.__PB.printQr)) return '';
+    let f = '';
+    try{ f = getCachedFolderUrl() || ''; }catch(e){}
+    return f ? (shareUrlFor(f) || '') : '';
+  }
+  function stampPrintQr(src, url){
+    if(!url || !src || !src.width) return src;
+    let q;
+    try{ q = qrcode(0, 'M'); q.addData(String(url)); q.make(); }catch(e){ return src; }
+    const out = document.createElement('canvas'); out.width = src.width; out.height = src.height;
+    const x = out.getContext('2d'); x.drawImage(src, 0, 0);
+    const ms = Math.min(src.width, src.height), narrow = Math.max(src.width, src.height) / ms > 2;
+    const n = q.getModuleCount(), quiet = 2;
+    const cell = Math.max(2, Math.floor(ms * (narrow ? 0.27 : 0.15) / (n + quiet * 2)));
+    const qs = cell * (n + quiet * 2), pad = Math.round(qs * 0.05), cap = Math.round(qs * 0.2);
+    const bw = qs + pad * 2, bh = qs + cap + pad * 2, margin = Math.round(ms * 0.03);
+    const bx = src.width - bw - margin, by = src.height - bh - margin, r = Math.round(qs * 0.08);
+    x.save();
+    x.shadowColor = 'rgba(0,0,0,0.18)'; x.shadowBlur = Math.round(qs * 0.06); x.shadowOffsetY = Math.round(qs * 0.015);
+    x.fillStyle = '#ffffff';
+    x.beginPath(); x.moveTo(bx + r, by); x.arcTo(bx + bw, by, bx + bw, by + bh, r); x.arcTo(bx + bw, by + bh, bx, by + bh, r); x.arcTo(bx, by + bh, bx, by, r); x.arcTo(bx, by, bx + bw, by, r); x.closePath(); x.fill();
+    x.restore();
+    x.fillStyle = '#000000';
+    const ox = bx + pad + quiet * cell, oy = by + pad + quiet * cell;
+    for(let rI = 0; rI < n; rI++) for(let cI = 0; cI < n; cI++) if(q.isDark(rI, cI)) x.fillRect(ox + cI * cell, oy + rI * cell, cell, cell);
+    let fs = Math.round(cap * 0.62);
+    const label = 'Scan for all photos';
+    x.fillStyle = '#1C1A1E'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    do { x.font = '700 ' + fs + "px 'Manrope', system-ui, sans-serif"; fs--; } while(fs > 6 && x.measureText(label).width > qs * 0.96);
+    x.fillText(label, bx + bw / 2, by + pad + qs + cap * 0.38);
+    return out;
   }
 
   function renderComposite(){
@@ -7398,7 +7524,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const r = await fetch(HELPER_URL + '/status', { signal: ctl.signal, cache: 'no-store' });
       clearTimeout(t);
       const j = await r.json();
-      helper = { ok: !!j.ok, printers: Array.isArray(j.printers) ? j.printers.slice(0, 60).map(String) : [], checked: Date.now() };
+      helper = { ok: !!j.ok, printers: Array.isArray(j.printers) ? j.printers.slice(0, 60).map(String) : [], checked: Date.now(), version: String(j.version || '') };
     }catch(e){
       helper = { ok: false, printers: [], checked: Date.now(), err: e && e.name === 'AbortError' ? 'timeout' : 'blocked' };
     }
@@ -7442,6 +7568,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(!name) printerHelperHint.textContent = 'Print Helper connected. Choose the printer for this paper size.';
       else if(helper.printers.length && !helper.printers.includes(name)) printerHelperHint.textContent = 'No printer on this computer is called “' + name + '”. Pick one from the list.';
       else printerHelperHint.textContent = 'Prints go straight to “' + name + '” — no dialog.';
+      // Print Helper 1.0.0 for Windows couldn't print one-page jobs (fixed in 1.0.1).
+      if(/Windows/i.test(navigator.userAgent) && helper.version === '1.0.0')
+        printerHelperHint.innerHTML = '<div class="helper-help"><b>Please update the Print Helper.</b> This Windows version (1.0.0) can\u2019t print. Close it, <a href="/downloads/" target="_blank" rel="noopener">download the new one</a>, and open it again.</div>';
     } else if(helperOn && helper.checked){
       printerHelperHint.innerHTML = helperTroubleHtml();
     } else {
@@ -7592,7 +7721,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       frames.slice(i, i + fit.per).forEach((f, j) => {
         const col = j % fit.cols, row = Math.floor(j / fit.cols);
         const x = ox + col * (bw + g), y = oy + row * (bh + g);
-        const strip = composeSingleFrame(f, shotCanvases);
+        const strip = stampTrialMark(composeSingleFrame(f, shotCanvases));
         ctx.save();
         if(fit.rotate){ ctx.translate(x + bw, y); ctx.rotate(Math.PI / 2); }
         else ctx.translate(x, y);
@@ -7676,7 +7805,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     keychainRow.classList.toggle('hidden', !kcOffer);
     keychainToggle.checked = keychainOn;
     const usable = sizes.filter(sizeFitsLayout);
-    if(!usable.includes(printSize)) printSize = usable[0] || null;
+    if(!usable.includes(printSize)){
+      let saved = null; try{ saved = localStorage.getItem('pb_print_paper'); }catch(e){}
+      const tabletPick = isMobileOS() && isStripLayout() && usable.includes('4x6') ? '4x6' : null;   // 2 strips on one 4x6 sheet
+      printSize = (saved && usable.includes(saved) ? saved : null) || tabletPick || usable[0] || null;
+    }
     printSizeRow.innerHTML = '';
     sizes.forEach(key => {
       const b = document.createElement('button');
@@ -7703,9 +7836,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const n = sheetStripItems().length;
       printHint.textContent = 'Each strip on its own ' + paperFor(printSize).name + ' page (' + n + ' page' + (n === 1 ? '' : 's') + ').';
     } else if(stripTwoUp(printSize)){
-      printHint.textContent = 'Two strips side by side. Cut down the middle.';
+      printHint.textContent = 'Two strips side by side. Cut down the middle.' + paperMatchTip();
     } else {
-      printHint.textContent = 'Prints at ' + paperFor(printSize).name + ' size.';
+      printHint.textContent = 'Prints at ' + paperFor(printSize).name + ' size.' + paperMatchTip();
     }
     if(printSize && document.activeElement !== printerNameInput) printerNameInput.value = printerMap[printerKey(printSize)] || '';
     fillPrinterSelect();
@@ -7716,10 +7849,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     refreshPrintExtras();
     try{ refreshGuestPrintBtn(); }catch(e){}
   }
+  // iPad / Android pick the paper in their own print screen: it must match.
+  function paperMatchTip(){
+    if(!isMobileOS() || !printSize || useStation()) return '';
+    const p = paperFor(printSize);
+    return ' In the print screen, choose ' + p.name + ' paper' + (printSize === '4x6' ? ' (may be called 4×6, Index card 4×6 or 10×15 cm)' : printSize === 'selphy' ? ' (Postcard / 100×148 mm)' : '') + ', 1 copy, portrait.';
+  }
   printSizeRow.addEventListener('click', (e) => {
     const b = e.target.closest('.print-size-btn');
     if(!b || b.disabled) return;
     printSize = b.dataset.size;
+    try{ localStorage.setItem('pb_print_paper', printSize); }catch(e){}
     refreshPrintUI();
   });
   window.addEventListener('pb-print-change', refreshPrintUI);
@@ -7741,6 +7881,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const paper = paperFor(key);
     let src = document.createElement('canvas');
     renderCompositeToCanvas(currentLayout, src);
+    src = stampPrintQr(src, printQrUrl());
     // A sideways (landscape) layout on portrait paper prints turned 90°.
     if(src.width > src.height !== paper.w > paper.h){
       const r = document.createElement('canvas'); r.width = src.height; r.height = src.width;
@@ -7767,7 +7908,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function buildStripPages(key){
     const paper = paperFor(key);
     return sheetStripItems().map(function(it){
-      const src = composeSingleFrame(frameById(it.f), shotCanvases);
+      const src = stampPrintQr(stampTrialMark(composeSingleFrame(frameById(it.f), shotCanvases)), printQrUrl());
       const c = document.createElement('canvas');
       c.width = Math.round(paper.w / 25.4 * PRINT_DPI);
       c.height = Math.round(paper.h / 25.4 * PRINT_DPI);
@@ -7992,10 +8133,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         const img = new Image();
         img.src = url;
         await img.decode();
-        img.style.width = paper.w + 'mm';
-        img.style.height = paper.h + 'mm';
-        if(i < all.length - 1) img.style.breakAfter = 'page';
-        printArea.appendChild(img);
+        const pg = document.createElement('div');
+        pg.className = 'print-page';
+        pg.style.width = paper.w + 'mm';
+        pg.style.height = (paper.h - 0.4) + 'mm';      // a hair under the sheet: no blank extra page from rounding
+        if(i < all.length - 1) pg.style.breakAfter = 'page';
+        pg.appendChild(img);
+        printArea.appendChild(pg);
       }
       printPageStyle.textContent = '@page { size: ' + paper.w + 'mm ' + paper.h + 'mm; margin: 0; }';
       window.print();
@@ -8339,6 +8483,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         G.flash.classList.add('on');
         G.cd.style.display = 'none';   // no "Pose" circle over the photo after the shot
         setTimeout(() => G && G.flash.classList.remove('on'), 180);
+      } else if(what === 'screenflash'){
+        G.flash.style.cssText = a ? 'position:fixed;inset:0;background:#fff;opacity:1;z-index:99999;transition:none;' : '';
       } else if(what === 'shots'){
         guestFilm();
       }
@@ -8793,7 +8939,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       ctx.fillText(title, mid, yy);
       if(dt){ yy += 54; ctx.fillStyle = soft; ctx.font = fontString(currentDateFont, 38); ctx.fillText(dt, mid, yy); }
       yy += 40;
-      var steps = ['Tap the screen', 'Strike a pose', 'Scan the QR for your photos'];
+      var hfMode = typeof fx !== 'undefined' ? fx.hands : 'off';
+      var steps = [hfMode === 'wave' ? 'Wave at the camera' : hfMode === 'smile' ? 'Smile at the camera' : 'Tap the screen', 'Strike a pose', 'Scan the QR for your photos'];
       ctx.font = '700 31px Manrope, sans-serif';
       var widest = Math.max.apply(null, steps.map(function(t){ return ctx.measureText(t).width; }));
       var sx = mid - (widest + 62) / 2;
@@ -8803,7 +8950,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         ctx.fillStyle = '#fff'; ctx.font = '800 24px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + 22, sy - 3);
         ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 31px Manrope, sans-serif'; ctx.fillText(t, sx + 62, sy);
       });
-      var btnText = welcomeMsg || 'Tap to start';
+      var btnText = welcomeMsg || (hfMode === 'wave' ? 'Wave to start' : hfMode === 'smile' ? 'Smile to start' : 'Tap to start');
       ctx.font = '800 34px Manrope, sans-serif';
       var bw = Math.min(cw - 80, ctx.measureText(btnText).width + 130), bh = 92, bx = mid - bw / 2, by = cy + ch - bh - 48;
       roundRectPath(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
@@ -9487,6 +9634,240 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     renderSetupPreview();
   }
 
+  // =====================================================================
+  // Light, sound and start (Setup → 5 Session)
+  //   flash : the whole screen turns white as each photo is taken (a fill
+  //           light for the front camera in dim rooms)
+  //   sound : countdown beeps + a shutter click (made here, no sound files)
+  //   hands : start without touching — 'wave' (movement in front of the
+  //           camera) or 'smile' (MediaPipe Face Mesh, runs on the device)
+  // =====================================================================
+  let fx = { flash: false, sound: true, vol: 0.7, hands: 'off', sens: 'normal' };
+  function cleanFx(p){
+    p = p && typeof p === 'object' ? p : {};
+    const v = Number(p.vol);
+    return {
+      flash: !!p.flash, sound: p.sound !== false,
+      vol: v === 0.35 || v === 0.7 || v === 1 ? v : 0.7,
+      hands: p.hands === 'wave' || p.hands === 'smile' ? p.hands : 'off',
+      sens: p.sens === 'less' || p.sens === 'more' ? p.sens : 'normal'
+    };
+  }
+
+  // ---- Sound ----
+  let actx = null;
+  function audioCtx(){
+    if(actx) return actx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return null;
+    try{ actx = new AC(); }catch(e){ actx = null; }
+    return actx;
+  }
+  // iPad / Android only allow sound after a tap: every tap makes sure it's on.
+  function unlockAudio(){
+    const c = audioCtx(); if(!c) return;
+    if(c.state === 'suspended') c.resume().catch(function(){});
+    if(!unlockAudio.done){
+      unlockAudio.done = true;
+      try{ const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); }catch(e){}
+    }
+  }
+  document.addEventListener('pointerdown', unlockAudio, true);
+  document.addEventListener('keydown', unlockAudio, true);
+  function soundOk(){ const c = audioCtx(); return fx.sound && c && c.state === 'running' ? c : null; }
+  function tone(freq, dur, type, level, when){
+    const c = soundOk(); if(!c) return;
+    const t = c.currentTime + (when || 0), o = c.createOscillator(), g = c.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.45 * fx.vol * (level || 1)), t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t + dur + 0.03);
+  }
+  function fxTick(n){ tone(n === 1 ? 988 : 740, n === 1 ? 0.16 : 0.1, 'sine', 0.9); }
+  function fxPose(){ tone(1175, 0.09, 'triangle', 0.7); tone(1568, 0.14, 'triangle', 0.6, 0.08); }
+  function fxShutter(){
+    const c = soundOk(); if(!c) return;
+    const t = c.currentTime, len = Math.floor(c.sampleRate * 0.11), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for(let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
+    [0, 0.075].forEach(function(at, k){
+      const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+      s.buffer = buf; f.type = 'bandpass'; f.frequency.value = k ? 1800 : 3200; f.Q.value = 0.9;
+      g.gain.value = (k ? 0.5 : 0.9) * fx.vol;
+      s.connect(f); f.connect(g); g.connect(c.destination);
+      s.start(t + at);
+    });
+    tone(140, 0.07, 'sine', 0.8);
+  }
+  function fxStartChime(){ tone(880, 0.1, 'sine', 0.7); tone(1320, 0.16, 'sine', 0.6, 0.09); }
+
+  // ---- Screen flash ----
+  const screenFlash = document.createElement('div');
+  screenFlash.id = 'screenFlash'; screenFlash.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(screenFlash);
+  function screenFlashOn(){
+    screenFlash.classList.add('on');
+    guestCall('screenflash', true);
+  }
+  function screenFlashOff(){
+    screenFlash.classList.remove('on');
+    guestCall('screenflash', false);
+  }
+
+  // ---- Start without touching ----
+  const hf = { timer: null, prev: null, hist: [], fm: null, fmLoading: null, fmBusy: false, lastFire: 0, smileRun: 0, score: 0, faceSeen: 0, failed: '' };
+  const hfCanvas = document.createElement('canvas');
+  const HF_WAVE = { less: 0.12, normal: 0.07, more: 0.04 };      // share of the picture that must move
+  // mouth width / face width. Measured on real photos: neutral faces ~0.36-0.37,
+  // small smiles ~0.39-0.42, clear smiles 0.44-0.49.
+  const HF_SMILE = { less: 0.46, normal: 0.43, more: 0.40 };
+  function hfMeterOn(){
+    // Setup → Session open: show the live meter so the renter can try it.
+    return fx.hands !== 'off' && !tabSetup.classList.contains('hidden') && curStep === 5;
+  }
+  function hfWanted(){
+    if(fx.hands === 'off' || document.hidden || !streamActive || !video.videoWidth) return false;
+    if(hfMeterOn()) return true;
+    return document.body.classList.contains('in-session') && state === 'idle' && !flowBusy && !(typeof pickOpen !== 'undefined' && pickOpen) &&
+      !readyOverlay.classList.contains('ready-active') && Date.now() - hf.lastFire > 4000;
+  }
+  function hfFire(){
+    hf.lastFire = Date.now(); hf.hist = []; hf.smileRun = 0;
+    if(hfMeterOn()){ hfMeter(true); return; }       // only testing in Setup
+    fxStartChime();
+    beginGuestFlow(true);
+  }
+  function hfMeter(fired){
+    const box = document.getElementById('fxMeter'); if(!box) return;
+    box.hidden = !hfMeterOn();
+    if(box.hidden) return;
+    const bar = document.getElementById('fxMeterBar'), txt = document.getElementById('fxMeterTxt'), mark = document.getElementById('fxMeterMark');
+    let pct = 0, thr = 0;
+    if(fx.hands === 'wave'){ pct = Math.min(1, hf.score / 0.2); thr = HF_WAVE[fx.sens] / 0.2; }
+    else { pct = Math.max(0, Math.min(1, (hf.score - 0.34) / 0.2)); thr = (HF_SMILE[fx.sens] - 0.34) / 0.2; }
+    bar.style.width = Math.round(pct * 100) + '%';
+    mark.style.left = Math.round(thr * 100) + '%';
+    if(fired){ txt.textContent = fx.hands === 'wave' ? 'Wave seen ✓ This would start a session.' : 'Smile seen ✓ This would start a session.'; box.classList.add('hit'); setTimeout(function(){ box.classList.remove('hit'); }, 1500); return; }
+    if(hf.failed) txt.textContent = 'Couldn’t start face detection on this device (' + hf.failed + '). Use Wave instead.';
+    else if(fx.hands === 'smile' && !hf.fm) txt.textContent = 'Getting face detection ready… (about 10 MB, the first time only)';
+    else if(fx.hands === 'smile') txt.textContent = Date.now() - hf.faceSeen < 1500 ? 'Smile at the camera to test it.' : 'No face seen. Stand closer to the camera.';
+    else txt.textContent = 'Wave at the camera to test it.';
+  }
+  function hfLoop(){
+    clearTimeout(hf.timer);
+    const want = hfWanted();
+    hf.timer = setTimeout(hfLoop, fx.hands === 'smile' ? 250 : 120);
+    hfMeter(false);
+    if(!want){ hf.prev = null; hf.hist = []; hf.smileRun = 0; return; }
+    try{ fx.hands === 'wave' ? hfWave() : hfSmile(); }catch(e){ console.error('hands-free', e); }
+  }
+  // Wave: how much of the middle of the picture changed since the last look.
+  function hfWave(){
+    const W = 64, H = 48;
+    hfCanvas.width = W; hfCanvas.height = H;
+    const x = hfCanvas.getContext('2d', { willReadFrequently: true });
+    x.drawImage(video, 0, 0, W, H);
+    const d = x.getImageData(0, 0, W, H).data, g = new Uint8Array(W * H);
+    for(let i = 0, j = 0; j < g.length; i += 4, j++) g[j] = (d[i] * 3 + d[i + 1] * 4 + d[i + 2]) >> 3;
+    if(hf.prev){
+      let moved = 0, n = 0;
+      for(let yy = 4; yy < H - 4; yy++) for(let xx = Math.round(W * 0.15); xx < Math.round(W * 0.85); xx++){
+        n++; if(Math.abs(g[yy * W + xx] - hf.prev[yy * W + xx]) > 28) moved++;
+      }
+      const share = moved / n;
+      hf.score = share;
+      hf.hist.push(share > HF_WAVE[fx.sens]); if(hf.hist.length > 9) hf.hist.shift();
+      // moving for most of the last second (a wave), not a single bump
+      if(hf.hist.length >= 7 && hf.hist.filter(Boolean).length >= 6) hfFire();
+    }
+    hf.prev = g;
+  }
+  // Smile: mouth width compared with face width, with the mouth corners lifted.
+  function loadFaceMesh(){
+    if(hf.fm) return Promise.resolve(hf.fm);
+    if(hf.fmLoading) return hf.fmLoading;
+    hf.fmLoading = new Promise(function(resolve, reject){
+      const go = function(){
+        try{
+          const fm = new window.FaceMesh({ locateFile: function(f){ return BG_BASE + 'facemesh/' + f; } });
+          fm.setOptions({ maxNumFaces: 3, refineLandmarks: false, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5, selfieMode: false });
+          fm.onResults(hfOnFaces);
+          fm.initialize().then(function(){ hf.fm = fm; resolve(fm); }, reject);
+        }catch(e){ reject(e); }
+      };
+      if(window.FaceMesh) return go();
+      const s = document.createElement('script');
+      s.src = BG_BASE + 'facemesh/face_mesh.js'; s.async = true;
+      s.onload = go; s.onerror = function(){ reject(new Error('could not load')); };
+      document.head.appendChild(s);
+    });
+    hf.fmLoading.catch(function(e){ hf.failed = (e && e.message) || 'error'; hf.fmLoading = null; });
+    return hf.fmLoading;
+  }
+  function hfSmile(){
+    if(!hf.fm){ loadFaceMesh().catch(function(){}); return; }
+    if(hf.fmBusy) return;
+    const k = Math.min(1, 480 / Math.max(video.videoWidth, video.videoHeight));
+    hfCanvas.width = Math.round(video.videoWidth * k); hfCanvas.height = Math.round(video.videoHeight * k);
+    hfCanvas.getContext('2d').drawImage(video, 0, 0, hfCanvas.width, hfCanvas.height);
+    hf.fmBusy = true;
+    hf.fm.send({ image: hfCanvas }).catch(function(){}).then(function(){ hf.fmBusy = false; });
+  }
+  function smileScore(lm, aspect){
+    const px = function(p){ return { x: p.x * aspect, y: p.y }; };
+    const L = px(lm[61]), R = px(lm[291]), cl = px(lm[234]), cr = px(lm[454]), up = px(lm[13]), lo = px(lm[14]);
+    const faceW = Math.hypot(cr.x - cl.x, cr.y - cl.y), mouthW = Math.hypot(R.x - L.x, R.y - L.y);
+    if(faceW < 0.12 * aspect) return null;           // too far away: ignore people walking past at the back
+    const lift = ((up.y + lo.y) / 2 - (L.y + R.y) / 2) / faceW;
+    return { width: mouthW / faceW, lift: lift };
+  }
+  function hfOnFaces(res){
+    const faces = (res && res.multiFaceLandmarks) || [];
+    const aspect = hfCanvas.width / Math.max(1, hfCanvas.height);
+    let best = 0, smiling = false;
+    faces.forEach(function(lm){
+      const s = smileScore(lm, aspect); if(!s) return;
+      hf.faceSeen = Date.now();
+      best = Math.max(best, s.width);
+      if(s.width >= HF_SMILE[fx.sens] && s.lift > -0.02) smiling = true;
+    });
+    hf.score = best;
+    hf.smileRun = smiling ? hf.smileRun + 1 : 0;
+    if(hf.smileRun >= 3 && hfWanted()) hfFire();      // about ¾ of a second of smiling
+  }
+  hfLoop();
+
+  // ---- Setup UI ----
+  function refreshFxUI(){
+    const f = document.getElementById('fxFlash'); if(!f) return;
+    f.checked = fx.flash;
+    document.getElementById('fxSound').checked = fx.sound;
+    document.getElementById('fxVolRow').style.display = fx.sound ? '' : 'none';
+    setSelectValue('fxVol', String(fx.vol));
+    setSelectValue('fxHands', fx.hands);
+    setSelectValue('fxSens', fx.sens);
+    document.getElementById('fxSensRow').style.display = fx.hands === 'off' ? 'none' : '';
+    document.getElementById('fxHandsHint').textContent = fx.hands === 'wave'
+      ? 'Guests wave at the camera to start (tapping still works). Someone walking past close to the camera can start it too.'
+      : fx.hands === 'smile' ? 'Guests smile at the camera to start (tapping still works). Works best with faces close to the camera and good light.'
+      : 'Guests tap the screen to start.';
+  }
+  function fxChanged(){
+    refreshFxUI();
+    if(fx.hands === 'smile') loadFaceMesh().catch(function(){});
+    if(typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
+    if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+  }
+  function applyFxSetup(p){ fx = cleanFx(p); refreshFxUI(); if(fx.hands === 'smile') setTimeout(function(){ loadFaceMesh().catch(function(){}); }, 2000); if(typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender(); }
+  document.getElementById('fxFlash').addEventListener('change', function(){ fx.flash = this.checked; fxChanged(); });
+  document.getElementById('fxSound').addEventListener('change', function(){ fx.sound = this.checked; fxChanged(); if(fx.sound){ unlockAudio(); setTimeout(function(){ fxTick(3); }, 60); } });
+  document.getElementById('fxVol').addEventListener('change', function(){ fx.vol = Number(this.value) || 0.7; fxChanged(); unlockAudio(); setTimeout(fxShutter, 60); });
+  document.getElementById('fxHands').addEventListener('change', function(){ fx.hands = this.value; fxChanged(); });
+  document.getElementById('fxSens').addEventListener('change', function(){ fx.sens = this.value; fxChanged(); });
+  document.getElementById('fxTestSound').addEventListener('click', function(){ unlockAudio(); setTimeout(function(){ fxTick(2); setTimeout(function(){ fxTick(1); }, 400); setTimeout(fxShutter, 800); }, 60); });
+  setTimeout(refreshFxUI, 0);
+
   // ---- Saved setup ----
   // Saved on this device right away, and to the server for rental codes, so
   // a refresh / restart / another device on the same code gets the same design.
@@ -9521,7 +9902,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet,
       titleStyle: titleStyle, kicker: kickerText, upper: titleUpper, art: themeArt.slice(), artPal: Object.assign({}, artPal),
       printPrefs: Object.assign({}, printPrefs),
-      bgRep: Object.assign({}, bgRep), bgMine: bgMine.slice()
+      bgRep: Object.assign({}, bgRep), bgMine: bgMine.slice(),
+      fx: Object.assign({}, fx)
     };
   }
   function selectFont(which, value){
@@ -9638,6 +10020,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       refreshTitleUI();
       if(s.printPrefs) applyPrintPrefs(s.printPrefs);
       applyBgRepSetup(s.bgRep, s.bgMine);
+      if(s.fx) applyFxSetup(s.fx);
       applyFramesSetup(s);
       buildLayoutPicker();
       ensureAssets(designAssetIds().concat(myProps)).then(function(){ refreshDecorUI(); refreshFrameUI(); redrawAll(); });

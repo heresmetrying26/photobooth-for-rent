@@ -8,3 +8,6 @@ Background swap files (loaded by the booth only when "Green screen → No green 
   Model card: https://storage.googleapis.com/mediapipe-assets/Model%20Card%20MediaPipe%20Selfie%20Segmentation.pdf
 
 Everything runs on the device; no photo is sent anywhere for the background swap.
+
+- facemesh/*: MediaPipe Face Mesh 0.4.1633559619 (@mediapipe/face_mesh on npm), Copyright Google LLC,
+  Apache License 2.0. Used for "Smile to start" (and face props). Runs on the device.

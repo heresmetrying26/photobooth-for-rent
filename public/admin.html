@@ -187,6 +187,7 @@
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialTraditional"> Trials use the traditional booth (laptop + guest screen)</label></div>
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialRetakeOpt"> Trials get the retake switch (“Allow retakes” in Setup)</label></div>
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialLockOpt"> Trials get Lock booth (guest-only screen with a PIN)</label></div>
+      <div class="modebox"><label class="toggle"><input type="checkbox" id="trialWatermark" checked> Watermark trial photos (the photobooth4u logo, faint, in a corner)</label></div>
       <button class="primary" id="saveTrialBtn" style="margin-top:12px;">Save trial settings</button>
     </details>
 
@@ -195,7 +196,11 @@
       <label class="toggle"><input type="radio" name="qrTarget" value="gallery"> Online gallery <span style="color:var(--dim);font-weight:500;">&nbsp;(recommended)</span></label>
       <div class="meta" style="margin:-8px 0 12px 26px;">A photobooth4u page with all event photos, full-screen viewing and downloads. It also has a button to the Google Drive folder.</div>
       <label class="toggle"><input type="radio" name="qrTarget" value="drive"> Google Drive folder</label>
-      <div class="meta" style="margin:-8px 0 0 26px;">Applies to every booth the next time it is opened or refreshed.</div>
+      <div class="meta" style="margin:-8px 0 14px 26px;">Applies to every booth the next time it is opened or refreshed.</div>
+      <label class="toggle"><input type="checkbox" id="printQr"> QR code on printed photos</label>
+      <div class="meta" style="margin:-8px 0 12px 26px;">A small QR in the bottom-right corner of every print, so guests can open the event's photos again later.</div>
+      <label class="toggle"><input type="checkbox" id="galleryQr"> QR code on the gallery page</label>
+      <div class="meta" style="margin:-8px 0 0 26px;">“Open on your phone” QR at the top of the online gallery, e.g. for a laptop or TV showing the photos.</div>
     </details>
 
     <div class="card" id="codesCard">
@@ -468,6 +473,9 @@
     $('trialTraditional').checked = !!s.trialTraditional;
     $('trialRetakeOpt').checked = !!s.trialRetakeOpt;
     $('trialLockOpt').checked = !!s.trialLockOpt;
+    $('trialWatermark').checked = s.trialWatermark !== false;
+    $('printQr').checked = s.printQr !== false;
+    $('galleryQr').checked = s.galleryQr !== false;
 
     var qr = document.querySelector('input[name=qrTarget][value="' + (s.qrTarget === 'drive' ? 'drive' : 'gallery') + '"]'); if(qr) qr.checked = true;
   }
@@ -872,7 +880,7 @@
   $('saveTrialBtn').addEventListener('click', async function(){
     try{
       var tp = readPrint($('trialPrint'));
-      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes, trialPrintEventLimit: tp.eventLimit, trialPrintSessionLimit: tp.sessionLimit, trialTraditional: $('trialTraditional').checked, trialRetakeOpt: $('trialRetakeOpt').checked, trialLockOpt: $('trialLockOpt').checked });
+      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes, trialPrintEventLimit: tp.eventLimit, trialPrintSessionLimit: tp.sessionLimit, trialTraditional: $('trialTraditional').checked, trialRetakeOpt: $('trialRetakeOpt').checked, trialLockOpt: $('trialLockOpt').checked, trialWatermark: $('trialWatermark').checked });
       toast('Trial settings saved');
     }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
   });
@@ -880,6 +888,13 @@
   [].slice.call(document.querySelectorAll('input[name=qrTarget]')).forEach(function(r){
     r.addEventListener('change', async function(){
       try{ await api({ action: 'qrtarget', qrTarget: r.value }); toast(r.value === 'drive' ? 'QR codes now open the Google Drive folder' : 'QR codes now open the online gallery'); }
+      catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+    });
+  });
+  ['printQr', 'galleryQr'].forEach(function(id){
+    $(id).addEventListener('change', async function(){
+      var body = { action: 'qrprefs' }; body[id] = this.checked;
+      try{ await api(body); toast((id === 'printQr' ? 'QR on printed photos ' : 'QR on the gallery page ') + (this.checked ? 'on' : 'off') + ' — booths pick it up when reopened'); }
       catch(err){ if(err.message !== 'auth') toast(err.message, true); }
     });
   });

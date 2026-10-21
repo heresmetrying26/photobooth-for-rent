@@ -83,6 +83,22 @@
     @keyframes spin{to{transform:rotate(360deg)}}
     .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:999px;font-size:13.5px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .2s;z-index:60;max-width:90vw}
     .toast.show{opacity:1}
+    /* "Open on your phone" QR (Admin → QR → On the gallery page) */
+    .qrcard{display:none;align-items:center;gap:12px;padding:8px 16px 8px 8px;border:1.5px solid var(--line);border-radius:18px;background:var(--card);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+    .qrcard:hover,.qrcard:focus-visible{border-color:var(--red);outline:none}
+    .qrcard .qrbox{width:84px;height:84px;flex:none;background:#fff;border-radius:10px;padding:4px}
+    .qrcard b{display:block;font-size:14px;font-weight:800;color:var(--ink)}
+    .qrcard span{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-top:2px}
+    .qrbox{display:block;box-sizing:border-box}.qrbox svg{display:block;width:100%;height:100%}
+    #qrBtn{display:none}
+    body.has-qr .qrcard{display:flex}
+    @media (max-width:899px), (pointer:coarse){ body.has-qr .qrcard{display:none} body.has-qr #qrBtn{display:inline-flex} }
+    .qrmodal{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(12,10,14,.72)}
+    .qrsheet{width:min(400px,100%);background:var(--card);color:var(--ink);border-radius:24px;padding:22px 22px 18px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+    .qrsheet .qrbox{width:min(300px,72vw);height:min(300px,72vw);margin:4px auto 14px;background:#fff;border-radius:16px;padding:10px}
+    .qrsheet h2{margin:0 0 4px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:24px;letter-spacing:-.02em}
+    .qrsheet p{margin:0 0 14px;color:var(--muted);font-size:14px;font-weight:600;line-height:1.45}
+    .qrsheet .btn{width:100%}
   </style>
 </head>
 <body>
@@ -96,7 +112,13 @@
         <h1 id="title">Photo gallery</h1>
         <p class="sub" id="sub">Loading photos…</p>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="qrcard" id="qrCard" type="button" aria-label="Show a QR code to open this gallery on a phone">
+          <span class="qrbox" id="qrSmall"></span>
+          <span><b>Open on your phone</b><span>Scan to download anytime</span></span>
+        </button>
+        <button class="btn" id="qrBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>QR</button>
         <button class="btn hidden" id="shareBtn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v13"/><path d="m7 8 5-5 5 5"/></svg>Share</button>
         <button class="btn primary hidden" id="dlAllBtn" type="button">
@@ -134,7 +156,16 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>Download</a>
     </div>
   </div>
+  <div class="qrmodal hidden" id="qrModal" role="dialog" aria-modal="true" aria-labelledby="qrTitle">
+    <div class="qrsheet">
+      <span class="qrbox" id="qrBig"></span>
+      <h2 id="qrTitle">Scan for your photos</h2>
+      <p>Point a phone camera here to open this gallery and download the photos again, anytime.</p>
+      <button class="btn primary" id="qrClose" type="button">Done</button>
+    </div>
+  </div>
   <div class="toast" id="toast"></div>
+<script src="/gallery/qrcode.min.js"></script>
 
 <script>
 (function(){
@@ -189,6 +220,7 @@
     }
     $('state').classList.add('hidden');
     DRIVE = j.folderUrl || DRIVE;
+    setupQr(j.qr !== false);
     document.title = j.name + ' | photobooth4u';
     $('title').textContent = j.name;
     $('dlAllBtn').classList.toggle('hidden', !j.files.length);
@@ -299,6 +331,27 @@
     try{ navigator.clipboard.writeText(url).then(function(){ toast('Link copied'); }); }catch(e){}
   }
   $('shareBtn').addEventListener('click', function(){ share(location.href, document.title); });
+
+  // "Open on your phone" QR, switched on/off in Admin (QR → On the gallery page).
+  var qrDone = false;
+  function galleryLink(){ return location.origin + location.pathname.replace(/\/+$/, ''); }
+  function qrSvg(){
+    try{ var q = qrcode(0, 'M'); q.addData(galleryLink()); q.make(); return q.createSvgTag({ cellSize: 4, margin: 0, scalable: true, title: 'QR code for this gallery' }); }
+    catch(e){ return ''; }
+  }
+  function setupQr(on){
+    document.body.classList.toggle('has-qr', !!on && typeof qrcode === 'function');
+    if(!on || qrDone || typeof qrcode !== 'function') return;
+    var svg = qrSvg(); if(!svg){ document.body.classList.remove('has-qr'); return; }
+    $('qrSmall').innerHTML = svg; $('qrBig').innerHTML = svg; qrDone = true;
+  }
+  function openQr(){ $('qrModal').classList.remove('hidden'); $('qrClose').focus(); }
+  function closeQr(){ $('qrModal').classList.add('hidden'); }
+  $('qrCard').addEventListener('click', openQr);
+  $('qrBtn').addEventListener('click', openQr);
+  $('qrClose').addEventListener('click', closeQr);
+  $('qrModal').addEventListener('click', function(e){ if(e.target === this) closeQr(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !$('qrModal').classList.contains('hidden')) closeQr(); });
 
   // ---- Downloads straight from this page (no Google Drive screens) ----
   // Photos come through our own signed relay (/api/gallery?img=…), so the

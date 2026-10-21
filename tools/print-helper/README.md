@@ -32,3 +32,9 @@ Run from source for testing: `bun print-helper.js`.
 The apps are unsigned: Mac needs right-click → Open the first time; Windows SmartScreen needs
 More info → Run anyway. Signing (Apple Developer ID + notarization, Windows code-signing cert)
 removes those warnings.
+
+## Versions
+- 1.0.1: Windows fix: one-page prints failed (PowerShell turned a one-line file list into a string, so `$files[0]`
+  was the letter "C"). Windows now prints silently with `StandardPrintController`. The Mac builds behave the same
+  as before, so Mac users can stay on 1.0.0.
+- 1.0.0: first release.

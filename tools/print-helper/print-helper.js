@@ -20,7 +20,7 @@ import { join } from 'node:path';
 import { writeFile, rm, mkdtemp } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',
@@ -64,11 +64,15 @@ const WIN_PRINT_PS = String.raw`
 param([string]$Printer, [string]$ListFile)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
-$files = Get-Content -LiteralPath $ListFile -Encoding UTF8 | Where-Object { $_ }
+# @( ) keeps a one-page list an array (otherwise $files[0] is just the first letter of the path)
+$files = @(Get-Content -LiteralPath $ListFile -Encoding UTF8 | Where-Object { $_ })
+if ($files.Count -eq 0) { throw "No pages to print" }
 $doc = New-Object System.Drawing.Printing.PrintDocument
 $doc.PrinterSettings.PrinterName = $Printer
 if (-not $doc.PrinterSettings.IsValid) { throw "Printer not found: $Printer" }
 $doc.DocumentName = 'photobooth4u'
+# Print silently (no "Printing page 1 of 1" window popping over the booth)
+$doc.PrintController = New-Object System.Drawing.Printing.StandardPrintController
 $doc.OriginAtMargins = $false
 $doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0,0,0,0)
 $script:i = 0

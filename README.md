@@ -153,8 +153,13 @@ straight to that printer with no dialog (Auto-print included), so 2×6 and 4R ca
 - Paper size / borderless / cut come from each printer's own defaults. One printer, two sizes:
   add it twice with different defaults (e.g. "HiTi 4x6", "HiTi 2x6 cut").
 - The booth only contacts the helper when the switch is on (Chrome asks once to allow local access).
-- Tested: macOS/Linux path (CUPS `lp`) end to end with stand-in printers. Windows printing (PowerShell
-  .NET) not yet tested on a real printer.
+- Tested: macOS/Linux path (CUPS `lp`) end to end with stand-in printers (re-checked Oct 2026).
+- **Windows 1.0.0 could not print** (a one-page job made PowerShell read the file list as a single string, so it
+  tried to open a file called "C"). Fixed in **1.0.1**, which also prints silently (no "Printing page 1 of 1"
+  window). The booth and the print station tell Windows users still on 1.0.0 to update. 1.0.1 has not been tried
+  on a real Windows printer yet.
+- Tablets (iPad / Android) can't run the Print Helper: they print with AirPrint / Mopria, or through the laptop
+  print station (which uses the helper on the laptop).
 
 ### Kiosk / silent printing (no print dialog)
 Browsers always show a print dialog unless Chrome/Edge is started in kiosk-printing mode,
@@ -173,6 +178,21 @@ which sends every print straight to the **default printer**:
 
 Without kiosk mode the normal print dialog opens: pick the photo printer, set Margins to
 **None** and Scale to **Default/100%**, then print.
+
+## Light, sound and start (Setup → 5 Session → Light, sound and start)
+- **Screen flash:** the whole screen turns white ~0.35 s before each photo and stays on through the shot, so the
+  front camera gets a fill light in dim rooms (the traditional booth's guest screen flashes too). A web page can't
+  raise the brightness: set the tablet's brightness to max. Off by default.
+- **Countdown beeps and shutter click:** made in the browser (Web Audio), no sound files. Soft / Normal / Loud and a
+  test button. iPad and Android only allow sound after a tap, so the first tap (start screen / welcome) turns it on.
+- **Start without touching:** Off (tap) / **Wave** / **Smile**, with Less / Normal / More sensitivity. Tapping still
+  works. While Setup → Session is open a live meter shows what the booth sees, so you can try it.
+  - Wave: watches for movement in the middle of the picture for most of a second (no download).
+  - Smile: MediaPipe Face Mesh (`public/bg/facemesh/`, ~17 MB in the repo, ~10 MB download the first time, then
+    cached) measures mouth width against face width with the corners lifted; faces far from the camera are ignored.
+    Thresholds come from real photos (neutral ~0.36-0.37, clear smiles 0.44-0.49).
+  - After a session the booth waits 4 s before it can start again by itself. The welcome screen says "Wave to start"
+    / "Smile to start".
 
 ## Background swap / green screen (Setup → 4 Extras → Green screen)
 - **No cloth (AI):** cuts guests out with Google MediaPipe's selfie segmentation and puts them on a new background.
@@ -381,6 +401,20 @@ gallery straight on that photo (`/g/<folder>#<file id>`); with Admin set to Driv
 Google Drive. The **All photos** QR
 for the whole event is only in Setup → 5 Share, to print or share ahead. Between shots the pause
 shows the photo just taken and "Next: photo 2 of 3", with no countdown circle.
+
+**Gallery QR on prints and on the gallery page (Admin → Guest QR codes, two switches, both on by default):**
+- *QR code on printed photos*: a small "Scan for all photos" QR in the bottom-right corner of every
+  print (2-up strips get one each; keychains don't). It opens the event gallery (or the Drive folder,
+  if Admin is set to Drive), so guests can download again after the event. Only the print has it;
+  the uploaded photo stays clean. It needs the event folder link, which the booth gets in Setup.
+- *QR code on the gallery page*: an "Open on your phone" QR card at the top of the gallery on
+  laptops/TVs, and a **QR** button on phones (so a guest can let a friend scan it).
+Booths pick up the printed-QR switch the next time they open or refresh; the gallery page applies
+its switch straight away.
+
+**Trial watermark (Admin → Trial password → "Watermark trial photos", on by default):** trial
+photos get a faint photobooth4u logo in the bottom-left corner on screen, in the saved/uploaded
+photo and on prints. Rental codes never get it.
 
 How it works: `netlify/functions/gallery.mjs` asks the Apps Script relay for the folder's file
 list (only folders inside the photobooth4u Drive folder can be listed) and caches it for a few

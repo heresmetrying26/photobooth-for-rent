@@ -76,7 +76,13 @@ sizes. Prints come out at the real paper size (300 dpi, zero margins):
 - **Result:** one card with the QR, **Print** (guest button, if on) and **Done**, all on one screen on phones and
   portrait tablets too. A thin bar under Done shows when the booth returns to the welcome screen. Done goes straight
   back to the welcome screen.
-- **Countdown:** a large ring at the top of the live view with "Shot 1 of 4" under it.
+- **Full screen (welcome → countdown → review):** the live view fills the screen, in the photo's exact
+  shape, as big as it fits; leftover space is black. Countdown ("2 · Shot 1 of 3") floats top centre, taken
+  photos top right, Cancel / Retake / Done as see-through buttons at the bottom. On the welcome screen the
+  Setup / Photo Session tabs and the Camera / Printer dock float on top for the operator; while shooting they
+  are hidden. The finished-photo screen (QR, Print, Done) is unchanged. Not used in traditional mode
+  (laptop + guest screen), which has its own guest window.
+- **Countdown:** a large ring with "Shot 1 of 4" beside it, top centre.
 - **Live view = the camera's whole picture** (its own shape, e.g. 3:2 for a DSLR), with a dashed
   **guide box** showing exactly what each layout's photo box keeps (strip, duo, trio, grid, My frame…).
   Shots are stored whole and cropped once into the box, so the guide matches the print.

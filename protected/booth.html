@@ -1437,6 +1437,40 @@
   .fx-track b{display:block; height:100%; width:0; border-radius:999px; background:var(--ink-dim); transition:width .12s linear;}
   .fx-track i{position:absolute; top:-4px; bottom:-4px; width:2px; margin-left:-1px; background:var(--brand); border-radius:2px;}
   .fx-meter.hit .fx-track b{background:#2e9d5b;}
+  /* ---- Full-screen photo session (welcome → countdown → review) ----
+     The live view keeps the photo's exact shape, as big as the screen allows;
+     the rest is black. Countdown, thumbnails and buttons float on top.
+     body.stage-full = welcome / get ready / shooting / review; body.stage-shoot = shooting / review. */
+  body.stage-full{overflow:hidden; background:#000;}
+  body.stage-full .app-shell .stage-wrap{position:fixed !important; inset:0 !important; z-index:40; background:#000; display:flex !important; align-items:center !important; justify-content:center !important; padding:0 !important; margin:0 !important; grid-template-columns:none !important; column-gap:0 !important;}
+  body.stage-full .app-shell .stage-frame{width:min(100vw, calc(100vh * var(--cam-aspect, .8))) !important; width:min(100vw, calc(100dvh * var(--cam-aspect, .8))) !important; max-width:100vw; max-height:100vh; max-height:100dvh; border-radius:0 !important; border:0 !important; box-shadow:none !important; margin:0 !important; background:#000 !important;}
+  body.stage-full .sprockets, body.stage-full .rec-dot{display:none !important;}
+  /* welcome / get ready: the operator's top bar and dock float over the black */
+  body.stage-full:not(.stage-shoot) .brandbar.topbar{position:relative; z-index:41;}
+  body.stage-full:not(.stage-shoot) .tab-bar{background:rgba(0,0,0,.55); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);}
+  /* shooting: guests only — no operator buttons, time chip or tabs */
+  body.stage-shoot .brandbar.topbar{visibility:hidden;}
+  body.stage-shoot #opDock, body.stage-shoot #pbTimeChip{display:none !important;}
+  /* thumbnails: a floating column in the top-right corner of the screen */
+  body.stage-full .app-shell .film-track{position:fixed !important; top:max(16px, env(safe-area-inset-top)); right:max(16px, env(safe-area-inset-right)); left:auto; bottom:auto; z-index:45; width:auto !important; display:flex !important; flex-direction:column !important; align-items:stretch !important; gap:8px !important; margin:0 !important; padding:8px; border-radius:16px; background:rgba(0,0,0,.45); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); max-height:calc(100vh - 120px); overflow:auto;}
+  body.stage-full .app-shell .film-track:empty{display:none !important;}
+  body.stage-full .app-shell .film-track .film-frame{width:clamp(64px, 9vmin, 120px) !important; height:auto !important; aspect-ratio:var(--box-aspect, .8);}
+  /* buttons: see-through pills, bottom centre */
+  body.stage-full .app-shell .session-controls{position:fixed !important; left:50% !important; right:auto !important; bottom:max(18px, env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:45; margin:0 !important; width:max-content !important; max-width:calc(100vw - 32px); grid-column:auto !important;}
+  body.stage-full .app-shell .session-controls .sc-btn{background:rgba(0,0,0,.5) !important; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border-color:rgba(255,255,255,.28) !important; color:#fff !important; min-height:44px; padding:10px 20px; font-size:15px;}
+  body.stage-full .app-shell .session-controls .sc-btn.sc-strong, body.stage-full .app-shell .session-controls .sc-btn.sc-done{background:rgba(201,61,39,.92) !important; border-color:transparent !important;}
+  body.stage-full .app-shell .session-controls .sc-hint{color:rgba(255,255,255,.85) !important; background:rgba(0,0,0,.45); padding:4px 12px; border-radius:999px;}
+  /* countdown: top centre, sized for a full screen */
+  body.stage-full .countdown-overlay{position:fixed !important; top:max(20px, env(safe-area-inset-top)) !important; left:50% !important; right:auto !important; bottom:auto !important; transform:translateX(-50%); z-index:46; flex-direction:row !important; flex-wrap:nowrap !important; white-space:nowrap; gap:12px !important; padding:10px 22px 10px 10px !important; border-radius:999px !important; background:rgba(0,0,0,.5) !important; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.22) !important;}
+  body.stage-full .countdown-overlay.pausing{padding:10px 22px !important;}
+  body.stage-full .cd-wrap{width:clamp(56px, 8vmin, 84px) !important;}
+  body.stage-full .cd-wrap .countdown-num{font-size:clamp(30px, 4.6vmin, 48px) !important;}
+  body.stage-full .cd-wrap .countdown-num.word{font-size:clamp(13px, 1.8vmin, 18px) !important;}
+  body.stage-full .cd-shot{background:transparent !important; padding:0 !important; font:800 clamp(15px, 2vmin, 20px) 'Manrope',sans-serif !important;}
+  /* review (Retake / Done): the finished photo sits higher, clear of the buttons and the thumbnails */
+  body.stage-review .app-shell .stage-wrap{align-items:flex-start !important; padding-top:max(16px, env(safe-area-inset-top)) !important;}
+  body.stage-review .app-shell .stage-frame{width:min(calc(100vw - 2 * clamp(96px, calc(9vmin + 40px), 152px)), calc((100vh - 150px) * var(--cam-aspect, .8))) !important;}
+
   /* ---- Print settings pop-up: grouped ---- */
   .pm-card .panel-section{padding:22px 22px 18px;}
   .ps-group{padding:14px 0; border-top:1px solid var(--line);}
@@ -5177,6 +5211,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // see precisely what will be in the photo (the camera picture is cropped
   // live, centred, the same way the shot is cropped).
   function applyStageAspect(){
+    try{ updateFullStage(); }catch(e){}
     var cam = camAspect(), filmBox = currentBoxAspect(), box = filmBox;
     try{ if(state === 'capturing') box = shotBoxAspect(stageShot); }catch(e){}
     var sf = document.getElementById('stageFrame');
@@ -5208,6 +5243,21 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       }
     }catch(e){}
   }
+  // ---- Full-screen photo session (see the CSS "Full-screen photo session") ----
+  // On from the welcome screen until the finished-photo screen, on every booth
+  // except the traditional laptop + guest-screen setup (that has its own guest window).
+  function updateFullStage(){
+    var b = document.body, sh = document.querySelector('.app-shell');
+    var picking = false; try{ picking = !!pickOpen; }catch(e){}
+    var reviewing = false; try{ reviewing = !!(sess && sess.reviewing); }catch(e){}
+    var trad = false; try{ trad = isTraditional(); }catch(e){}
+    var on = b.classList.contains('in-session') && !trad && state !== 'result' &&
+      (state === 'capturing' || b.classList.contains('welcome-on') || picking || !!(sh && sh.classList.contains('getting-ready')));
+    var shoot = on && state === 'capturing';
+    b.classList.toggle('stage-full', on);
+    b.classList.toggle('stage-shoot', shoot);
+    b.classList.toggle('stage-review', shoot && reviewing);
+  }
   // ---- Operator dock: corner when free, otherwise a bottom bar with room made for it ----
   var dockReserve = 0, dockTimer = 0;
   function scheduleDock(){ if(dockTimer) return; dockTimer = requestAnimationFrame(function(){ dockTimer = 0; try{ applyStageAspect(); }catch(e){} }); }
@@ -5232,6 +5282,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     d.hidden = !want;
     var prev = dockReserve;
     if(!want){
+      dockReserve = 0;
+    } else if(document.body.classList.contains('stage-full')){
+      d.classList.remove('bar');                     // full screen: floats in its corner over the black
       dockReserve = 0;
     } else {
       d.classList.remove('bar');
@@ -5742,6 +5795,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         clearInterval(tick);
         sess.reviewEnd = null; sess.reviewing = false;
         retakeBtn.hidden = true; doneBtn.hidden = true; reviewHint.hidden = true;
+        try{ applyStageAspect(); }catch(e){}
         video.style.display = 'block'; previewCanvas.style.display = 'none';
         if(streamActive) recDot.style.display = 'flex';
         guestCall('reviewEnd');

@@ -25,7 +25,7 @@ export const SERVER = (process.env.PB4U_SERVER || 'https://photobooth4u.netlify.
 const PREFIX = 'PB4U-LIC1';
 const HOUR = 3600000, DAY = 24 * HOUR;
 const CLOCK_SLACK = 6 * HOUR;          // time zones / small clock fixes are fine
-const CHECK_EVERY = 12 * HOUR;         // check in at most this often when online
+const CHECK_EVERY = 10 * 60000;        // while online, check in every 10 minutes (Admin changes / removal apply quickly)
 
 let PUB = null, DIR = null, SECRET = null, state = null, ver = '0';
 const stateFile = () => join(DIR, 'licence.json');

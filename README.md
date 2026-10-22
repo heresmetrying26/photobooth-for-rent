@@ -143,6 +143,18 @@ the Print Helper or the print station. Allow the **Canon Selphy postcard (100×1
 (true 4R is 101.6×152.4, so it would trim a sliver). No 2×6 paper: strip layouts print two strips on the
 postcard to cut. About 41 s per print, so plan 1 print per session for busy events.
 
+### Receipt photo booth (layouts Receipt / Receipt colour)
+Looks like a shop receipt: event name, order number and time, 3 square photos, a few joke line items
+("TOTAL … PRICELESS"), a barcode and "THANK YOU!". Made 576 px wide = 80 mm thermal paper at 203 dpi.
+- **Receipt** (black & white): photos are dithered (tiny dots) so a thermal receipt printer (Epson TM-T20/T82,
+  Xprinter, Rongta…) prints them sharp. Allow **Receipt 80 mm** and/or **Receipt 58 mm** in Admin → Printing.
+  Receipt paper only prints the Receipt layouts; with a receipt roll allowed, the B&W receipt picks it by default.
+- **Receipt colour**: same look with colour photos, for photo printers (2 receipts side by side on 4R, or 2×6).
+- Printing: the page is as long as the receipt (~28 cm on 80 mm, ~18 cm on 58 mm). In the receipt printer's
+  Windows settings choose **roll paper** (e.g. "Roll Paper 80 × 297 mm" or longer) and cut at the end of the document.
+  Through the Print Helper **1.1.4+** (Windows) it prints at the roll's full width without stretching (`fit: "width"`);
+  older Windows helpers fall back to the print dialog. The print station, desktop app and Mac (CUPS) do the same.
+
 ### Print limits, copies and the guest Print button
 - **Limits (Admin → Print settings, also when creating codes and for the trial):** *per event* (sheets for the
   whole event, all devices together) and *per session* (sheets one guest session may print). Empty = no limit.

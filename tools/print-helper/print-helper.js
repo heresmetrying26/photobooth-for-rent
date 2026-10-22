@@ -23,7 +23,7 @@ import { writeFile, rm, mkdtemp, mkdir } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.3';
+const VERSION = '1.1.4';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',
@@ -64,7 +64,7 @@ async function listPrinters(){
 // Windows: draw each PNG onto the full page of the named printer, turning it
 // 90° when the printer's page is the other way round (e.g. a 6x4 driver page).
 const WIN_PRINT_PS = String.raw`
-param([string]$Printer, [string]$ListFile)
+param([string]$Printer, [string]$ListFile, [switch]$FitWidth)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 # @( ) keeps a one-page list an array (otherwise $files[0] is just the first letter of the path)
@@ -83,6 +83,17 @@ $doc.add_PrintPage({
   param($sender, $e)
   $img = [System.Drawing.Image]::FromFile($files[$script:i])
   try {
+    if ($FitWidth) {
+      # Receipt roll: fill the printable width, keep the picture's shape (no stretching).
+      $pa = $e.PageSettings.PrintableArea
+      $w = [single]$pa.Width; $h = [single]($w * $img.Height / $img.Width)
+      if ($pa.Height -gt 0 -and $h -gt $pa.Height) { $h = [single]$pa.Height; $w = [single]($h * $img.Width / $img.Height) }
+      $e.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
+      $e.Graphics.DrawImage($img, [single](($pa.Width - $w) / 2), [single]0, $w, $h)
+      $script:i++
+      $e.HasMorePages = ($script:i -lt $files.Count)
+      return
+    }
     $page = $e.PageBounds
     $pageLandscape = $page.Width -gt $page.Height
     $imgLandscape = $img.Width -gt $img.Height
@@ -99,7 +110,8 @@ $doc.Print()
 'ok'
 `;
 
-async function printPages(printer, pngBuffers){
+// fit: 'width' = receipt roll (fill the width, length follows the picture).
+async function printPages(printer, pngBuffers, fit, widthMm, heightMm){
   const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
   try{
     const files = [];
@@ -113,11 +125,12 @@ async function printPages(printer, pngBuffers){
       const ps1 = join(dir, 'print.ps1'), list = join(dir, 'pages.txt');
       await writeFile(ps1, '﻿' + WIN_PRINT_PS, 'utf8');
       await writeFile(list, files.join('\r\n'), 'utf8');
-      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list]);
+      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(fit === 'width' ? ['-FitWidth'] : [])]);
     } else {
       // Pages are already exactly paper-sized at 300 dpi; fit-to-page keeps
       // them filling the sheet the printer's default paper size defines.
-      r = await run('lp', ['-d', printer, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
+      const media = fit === 'width' && widthMm > 0 && heightMm > 0 ? ['-o', 'media=Custom.' + Math.round(widthMm) + 'x' + Math.round(heightMm) + 'mm'] : [];
+      r = await run('lp', ['-d', printer, ...media, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
     }
     if(r.code !== 0) throw new Error((r.err || r.out || ('exit ' + r.code)).trim().slice(0, 300));
   } finally {
@@ -248,11 +261,21 @@ function json(obj, status, origin){
   return new Response(JSON.stringify(obj), { status: status || 200, headers: { 'content-type': 'application/json', ...cors(origin) } });
 }
 
-let printersCache = { at: 0, list: [] };
+// Windows takes a few seconds to list printers, so the list is kept and
+// refreshed in the background; /status answers straight away.
+let printersCache = { at: 0, list: [], loading: null };
+function refreshPrinters(){
+  if(printersCache.loading) return printersCache.loading;
+  printersCache.loading = listPrinters()
+    .then(list => { printersCache.list = list; printersCache.at = Date.now(); return list; })
+    .catch(() => printersCache.list)
+    .finally(() => { printersCache.loading = null; });
+  return printersCache.loading;
+}
 async function printers(force){
-  if(force || Date.now() - printersCache.at > 10000){
-    printersCache = { at: Date.now(), list: await listPrinters() };
-  }
+  if(force) return refreshPrinters();
+  if(!printersCache.at) return refreshPrinters();               // first time: wait for the list
+  if(Date.now() - printersCache.at > 10000) refreshPrinters();  // old: refresh for next time
   return printersCache.list;
 }
 
@@ -331,7 +354,8 @@ const server = Bun.serve({
       const pages = Array.isArray(body.pages) ? body.pages : [];
       if(!name) return json({ ok: false, error: 'No printer chosen' }, 400, origin);
       if(!pages.length || pages.length > 20) return json({ ok: false, error: 'No pages' }, 400, origin);
-      const list = await printers(true);
+      let list = await printers(false);
+      if(!list.includes(name)) list = await printers(true);       // a printer added just now
       if(!list.includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404, origin);
       const buffers = [];
       for(const p of pages){
@@ -339,7 +363,8 @@ const server = Bun.serve({
         if(!m) return json({ ok: false, error: 'Pages must be PNG images' }, 400, origin);
         buffers.push(Buffer.from(m[1], 'base64'));
       }
-      const job = queue.then(() => printPages(name, buffers));
+      const fit = body.fit === 'width' ? 'width' : '';
+      const job = queue.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0));
       queue = job.catch(() => {});
       try{
         await job;

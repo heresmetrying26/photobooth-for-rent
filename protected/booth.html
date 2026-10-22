@@ -3256,13 +3256,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     film6:   { name: 'Film 6',        shots: 6, kind: 'sheet', hint: '6 shots in a 2×3 grid.' },
     land3:   { name: 'Landscape 3',   shots: 3, kind: 'landscape', hint: 'Landscape 4R: the name in its own panel, 3 shots.' },
     land4:   { name: 'Landscape 4',   shots: 4, kind: 'landscape', hint: 'Landscape 4R: 1 big shot and the name on top, 3 below.' },
+    // Receipt photo booth: looks like a shop receipt. Black & white is made for
+    // 80 mm / 58 mm thermal receipt printers; the colour one suits photo printers.
+    receipt:  { name: 'Receipt',        shots: 3, kind: 'receipt', hint: 'Like a shop receipt, in black & white. Made for 80 mm or 58 mm thermal receipt printers (Epson TM, Xprinter…).' },
+    receiptc: { name: 'Receipt colour', shots: 3, kind: 'receipt', color: true, hint: 'The receipt look with colour photos. Prints on photo paper (2 side by side on 4R) or a receipt printer.' },
     // Your own uploaded frames (see "Frames with photo spots" below). Shown once a frame is uploaded.
     myframe:    { name: 'My frame', kind: 'frame', get shots(){ var f = typeof activeFrame === 'function' ? activeFrame() : null; return f ? Math.max(1, frameShotCount(f)) : 1; },
                   hint: 'One of your frames on its own. Photos fill its white or see-through spots.' },
     framesheet: { name: 'Frame collage', kind: 'frame', get shots(){ return typeof sheetShots === 'function' ? sheetShots() : 1; },
                   hint: 'Two or more of your frames together on one sheet. Tick them below, choose the sheet size and an arrangement, then drag them in the preview.' }
   };
-  const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'feature', 'film6', 'land3', 'land4'];
+  const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'feature', 'film6', 'land3', 'land4', 'receipt', 'receiptc'];
   // The built-in layouts, plus your frames once at least one is uploaded.
   function layoutOrder(){
     var has = typeof myFrames !== 'undefined' && myFrames && myFrames.length;
@@ -6742,6 +6746,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(d.kind === 'polaroid'){
       return [pct(10, 7, 36, 30), pct(54, 7, 36, 30), pct(10, 44, 36, 30), pct(54, 44, 36, 30)];
     }
+    if(d.kind === 'receipt'){
+      // Narrow receipt: a header line, 3 square photos, the totals.
+      return [pct(20, 5, 60, 4), pct(14, 17, 72, 21), pct(14, 40, 72, 21), pct(14, 63, 72, 21), pct(20, 88, 60, 5)];
+    }
     if(d.kind === 'landscape'){
       // A sideways sheet drawn inside the portrait thumbnail.
       var L = landscapeCells(key, 1800, 1200), bx = 6, by = 30, bw = 88, bh = 40;
@@ -6763,6 +6771,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const d = LAYOUT_DEFS[key];
     if(!d) return '';
     if(d.kind === 'landscape') return '4R, sideways';
+    if(d.kind === 'receipt') return d.color ? 'Photo paper or receipt' : 'Receipt printer';
     if(d.kind === 'frame') return key === 'framesheet' ? ((typeof sheetPaper === 'function' && sheetPaper().name) || '4R') : (isStripLayout(key) ? '2\u00d76 or 2 on 4R' : '4R');
     if(d.kind === 'strip') return '2\u00d76 or 2 on 4R';
     return '4R (4\u00d76)';
@@ -6784,7 +6793,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       } else {
         // Wireframe with a shimmer until the picture of your design is ready.
         const thumb = document.createElement('span');
-        thumb.className = 'lt lt-wait' + (d.kind === 'strip' ? ' lt-strip' : '');
+        thumb.className = 'lt lt-wait' + (d.kind === 'strip' || d.kind === 'receipt' ? ' lt-strip' : '');
         layoutThumbCells(key).forEach(c => {
           const i = document.createElement('i');
           i.style.left = c.l + '%'; i.style.top = c.t + '%';
@@ -7309,6 +7318,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function composeCanvas(layoutKey, targetCanvas, shots){
     if(layoutDef(layoutKey).kind === 'frame') return composeFrameCanvas(layoutKey, targetCanvas, shots);
     if(layoutDef(layoutKey).kind === 'landscape') return composeLandscape(layoutKey, targetCanvas, shots);
+    if(layoutDef(layoutKey).kind === 'receipt') return composeReceipt(layoutKey, targetCanvas, shots);
     const trimmed = (labelInput.value || '').trim();
     const dateText = currentDateLabel();
     const hasBand = !!trimmed || !!dateText || (titleStyle !== 'classic' && !!kickerText.trim());
@@ -7824,6 +7834,107 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return targetCanvas;
   }
 
+  // ---- Receipt layouts ----
+  // 576 px wide = 80 mm thermal paper at 203 dpi (the printer's own dots), so the
+  // black & white version prints sharp. Photos are dithered (tiny black dots, like
+  // a newspaper) because thermal printers can only print black.
+  const RECEIPT_W = 576, RECEIPT_DPI = 203;
+  const receiptTimes = {};
+  function receiptTime(n){
+    if(!receiptTimes[n]) receiptTimes[n] = new Date();
+    return receiptTimes[n];
+  }
+  function ditherRegion(ctx, x, y, w, h){
+    x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
+    const im = ctx.getImageData(x, y, w, h), d = im.data, g = new Float32Array(w * h);
+    for(let i = 0, j = 0; i < d.length; i += 4, j++){
+      let v = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      v = (v - 128) * 1.18 + 136;                       // a little more contrast + lift: faces stay readable
+      g[j] = v;
+    }
+    for(let yy = 0; yy < h; yy++){
+      for(let xx = 0; xx < w; xx++){
+        const j = yy * w + xx, old = g[j], nv = old < 128 ? 0 : 255, err = old - nv;
+        g[j] = nv;
+        if(xx + 1 < w) g[j + 1] += err * 7 / 16;
+        if(yy + 1 < h){
+          if(xx > 0) g[j + w - 1] += err * 3 / 16;
+          g[j + w] += err * 5 / 16;
+          if(xx + 1 < w) g[j + w + 1] += err * 1 / 16;
+        }
+      }
+    }
+    for(let i = 0, j = 0; i < d.length; i += 4, j++){ d[i] = d[i + 1] = d[i + 2] = g[j]; d[i + 3] = 255; }
+    ctx.putImageData(im, x, y);
+  }
+  function composeReceipt(layoutKey, targetCanvas, shots){
+    const W = RECEIPT_W, M = 34, inner = W - 2 * M, color = !!layoutDef(layoutKey).color;
+    const mono = "'Courier New', Courier, 'Liberation Mono', monospace";
+    const n = Math.max(1, layoutDef(layoutKey).shots), ph = Math.round(inner * 0.92), gap = 14;
+    const name = ((labelInput.value || '').trim() || 'PHOTO BOOTH').toUpperCase();
+    const kick = (kickerText || '').trim().toUpperCase();
+    const when = receiptTime(sessionNumber || 0);
+    const pad2 = v => String(v).padStart(2, '0');
+    const dateTxt = currentDateLabel() || (pad2(when.getMonth() + 1) + '/' + pad2(when.getDate()) + '/' + when.getFullYear());
+    const timeTxt = when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toUpperCase();
+    const order = '#' + String(sessionNumber || 1).padStart(4, '0');
+    // Measure the event name (wrapped to 2 lines at most, as big as fits).
+    const mx = document.createElement('canvas').getContext('2d');
+    let fs = 54, lines = [name];
+    for(; fs >= 26; fs -= 2){
+      mx.font = '700 ' + fs + 'px ' + mono;
+      if(mx.measureText(name).width <= inner){ lines = [name]; break; }
+      const words = name.split(' '); let a = '', b = '';
+      for(const w of words){ if(!b && mx.measureText((a ? a + ' ' : '') + w).width <= inner) a = (a ? a + ' ' : '') + w; else b = (b ? b + ' ' : '') + w; }
+      if(a && b && mx.measureText(b).width <= inner){ lines = [a, b]; break; }
+    }
+    const headH = 40 + lines.length * fs * 1.1 + (kick ? 34 : 0) + 40 + 34;
+    const H = Math.round(headH + 30 + 40 + 30 + n * ph + (n - 1) * gap + 30 + 3 * 36 + 30 + 50 + 30 + 76 + 34 + 30 + 46 + 32 + 44);
+    targetCanvas.width = W; targetCanvas.height = H;
+    const ctx = targetCanvas.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#000000'; ctx.textBaseline = 'alphabetic';
+    let y = 40;
+    const text = (t, size, weight, align, yy, x2) => { ctx.font = (weight || 400) + ' ' + size + 'px ' + mono; ctx.textAlign = align || 'center'; ctx.fillText(t, align === 'left' ? M : align === 'right' ? W - M : (x2 || W / 2), yy); };
+    const lr = (l, r, size, weight, yy) => { text(l, size, weight, 'left', yy); text(r, size, weight, 'right', yy); };
+    const dash = (yy) => { ctx.font = '400 22px ' + mono; ctx.textAlign = 'left'; let t = ''; while(ctx.measureText(t + '- ').width <= inner) t += '- '; ctx.fillText(t.trim(), M + (inner - ctx.measureText(t.trim()).width) / 2, yy); };
+    lines.forEach(l => { y += fs; text(l, fs, 700, 'center', y); y += fs * 0.1; });
+    if(kick){ y += 34; text(kick, 22, 700, 'center', y); }
+    y += 40; text('* * *  PHOTO BOOTH  * * *', 22, 700, 'center', y);
+    y += 34; text(dateTxt, 22, 400, 'center', y);
+    y += 30; dash(y);
+    y += 40; lr('ORDER ' + order, timeTxt, 24, 700, y);
+    y += 30; dash(y);
+    y += 18;
+    for(let i = 0; i < n; i++){
+      const py = y + i * (ph + gap);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(M, py, inner, ph);
+      if(shots[i]) drawImageCover(ctx, shots[i], M, py, inner, ph);
+      if(!color) ditherRegion(ctx, M, py, inner, ph);
+    }
+    ctx.fillStyle = '#000000';
+    y += n * ph + (n - 1) * gap + 12;
+    y += 30; dash(y);
+    [['1x SMILES', 'FREE'], ['1x GOOD VIBES', 'FREE'], ['1x MEMORIES', 'KEEP']].forEach(r => { y += 36; lr(r[0], r[1], 24, 400, y); });
+    y += 30; dash(y);
+    y += 50; lr('TOTAL', 'PRICELESS', 34, 700, y);
+    y += 30; dash(y);
+    // A barcode made from the order number (just for the look).
+    y += 18;
+    let seed = Math.imul(sessionNumber || 1, 2654435761) >>> 0, bx = M + 40;
+    const bend = W - M - 40;
+    while(bx < bend){
+      seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+      const bw = 2 + (seed >>> 28) % 4;
+      if((seed >>> 8) & 1) ctx.fillRect(bx, y, Math.min(bw, bend - bx), 76);
+      bx += bw + 1 + ((seed >>> 16) % 3);
+    }
+    y += 76 + 34; text(order.replace('#', '') + ' ' + dateTxt.replace(/\D/g, ''), 20, 400, 'center', y);
+    y += 46; text('THANK YOU!', 34, 700, 'center', y);
+    y += 32; text('PLEASE COME AGAIN', 20, 400, 'center', y);
+    return targetCanvas;
+  }
+
   // ---- Setup controls (Event name section) ----
   var titleStyleSelect = document.getElementById('titleStyleSelect');
   var kickerInput = document.getElementById('kickerInput');
@@ -8082,8 +8193,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     'A6':     { name: 'A6',             w: 105,   h: 148 },
     'A5':     { name: 'A5',             w: 148,   h: 210 },
     'A4':     { name: 'A4',             w: 210,   h: 297 },
-    'Letter': { name: 'Letter',         w: 215.9, h: 279.4 }
+    'Letter': { name: 'Letter',         w: 215.9, h: 279.4 },
+    // Thermal receipt rolls: w = the printable width; the length follows the picture.
+    'receipt80': { name: 'Receipt 80 mm', w: 72, h: 290, receipt: true },
+    'receipt58': { name: 'Receipt 58 mm', w: 48, h: 195, receipt: true }
   };
+  function isReceiptPaper(key){ return !!(PAPER[key] && PAPER[key].receipt); }
   const PRINT_DPI = 300;
   const printSection = document.getElementById('printSection');
   const printSizeRow = document.getElementById('printSizeRow');
@@ -8128,7 +8243,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     helper.checked = Date.now();
     try{
       const ctl = new AbortController();
-      const t = setTimeout(() => ctl.abort(), 1500);
+      const t = setTimeout(() => ctl.abort(), 8000);      // Windows can take a few seconds to list printers
       const r = await fetch(HELPER_URL + '/status', { signal: ctl.signal, cache: 'no-store' });
       clearTimeout(t);
       const j = await r.json();
@@ -8255,11 +8370,21 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     checkHelper(true);
   });
   // Sends the pages to the Print Helper. Returns true if it printed.
+  function helperAtLeast(v){
+    const a = String(helper.version || '0').split(/[.-]/).map(Number), b = v.split('.').map(Number);
+    for(let i = 0; i < 3; i++){ if((a[i] || 0) !== b[i]) return (a[i] || 0) > b[i]; }
+    return true;
+  }
   async function printViaHelper(pages, paper, name){
     const h = await checkHelper(true);
     if(!h.ok) return false;
+    // Older Windows helpers stretch the picture to the driver's page; Mac (CUPS) already keeps its shape.
+    if(paper.receipt && /Win/i.test(navigator.platform || '') && !helperAtLeast('1.1.4')){
+      showToast('Receipts need Print Helper 1.1.4 or newer (download it again from photobooth4u.netlify.app/downloads). Opening the print dialog instead.', 7000);
+      return false;
+    }
     try{
-      const body = JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, pages: pages.map(c => c.toDataURL('image/png')) });
+      const body = JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, fit: paper.receipt ? 'width' : undefined, pages: pages.map(c => c.toDataURL('image/png')) });
       const r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
       const j = await r.json().catch(() => ({}));
       if(r.ok && j.ok) return true;
@@ -8288,6 +8413,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Very narrow sheets (like 2x6) only suit the tall strip; the grid would print tiny.
   function sizeFitsLayout(key){
     const p = paperFor(key);
+    if(isReceiptPaper(key)) return layoutDef().kind === 'receipt';       // receipt rolls: receipt layouts only
+    if(layoutDef().kind === 'receipt') return true;
     if(currentLayout === 'framesheet' && p.w / p.h < 0.45) return sheetStripItems().length > 0;
     return isStripLayout() || p.w / p.h >= 0.45;
   }
@@ -8351,7 +8478,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Wider sheets get two strips side by side, to cut down the middle.
   function stripTwoUp(key){
     const p = paperFor(key);
-    return isStripLayout() && p.w / p.h >= 0.5;
+    return (isStripLayout() || layoutDef().kind === 'receipt') && !isReceiptPaper(key) && p.w / p.h >= 0.5;
   }
   // Print settings live in a pop-up (floating button) so the live view keeps the room.
   const printModal = document.getElementById('printModal'), printFab = document.getElementById('printFab');
@@ -8418,7 +8545,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!usable.includes(printSize)){
       let saved = null; try{ saved = localStorage.getItem('pb_print_paper'); }catch(e){}
       const tabletPick = isMobileOS() && isStripLayout() && usable.includes('4x6') ? '4x6' : null;   // 2 strips on one 4x6 sheet
-      printSize = (saved && usable.includes(saved) ? saved : null) || tabletPick || usable[0] || null;
+      // Black & white receipt: the receipt roll first; colour receipt: a receipt roll if that's what was used last.
+      const rollPick = layoutDef().kind === 'receipt' ? (usable.includes(saved) && (layoutDef().color || isReceiptPaper(saved)) ? saved : (layoutDef().color ? null : usable.find(isReceiptPaper))) : null;
+      printSize = rollPick || (saved && usable.includes(saved) ? saved : null) || tabletPick || usable[0] || null;
     }
     printSizeRow.innerHTML = '';
     sizes.forEach(key => {
@@ -8428,13 +8557,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       b.dataset.size = key;
       b.textContent = paperFor(key).name;
       b.disabled = !sizeFitsLayout(key);
-      if(b.disabled) b.title = 'Too narrow for this layout \u2014 strips only';
+      if(b.disabled) b.title = isReceiptPaper(key) ? 'Receipt paper: pick a Receipt layout' : 'Too narrow for this layout \u2014 strips only';
       printSizeRow.appendChild(b);
     });
     const ready = state === 'result' && shotCanvases.every(Boolean);
     printBtn.disabled = !ready || !printSize || printing;
     if(!printSize){
-      printHint.textContent = 'This paper is too narrow for this layout. Pick a strip layout to print.';
+      printHint.textContent = sizes.every(isReceiptPaper) ? 'Receipt paper only prints the Receipt layouts. Pick Receipt in Setup \u2192 Layout.' : 'This paper is too narrow for this layout. Pick a strip layout to print.';
     } else if(!ready){
       printHint.textContent = 'Finish a photo session to print it.';
     } else if(keychainMode(printSize)){
@@ -8445,8 +8574,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     } else if(stripPagesMode(printSize)){
       const n = sheetStripItems().length;
       printHint.textContent = 'Each strip on its own ' + paperFor(printSize).name + ' page (' + n + ' page' + (n === 1 ? '' : 's') + ').';
+    } else if(isReceiptPaper(printSize)){
+      printHint.textContent = 'Prints on the ' + paperFor(printSize).name + ' roll at full width; the printer cuts it at the end. Set the printer to roll paper (no fixed page size).';
     } else if(stripTwoUp(printSize)){
-      printHint.textContent = 'Two strips side by side. Cut down the middle.' + paperMatchTip();
+      printHint.textContent = (layoutDef().kind === 'receipt' ? 'Two receipts side by side.' : 'Two strips side by side.') + ' Cut down the middle.' + paperMatchTip();
     } else {
       printHint.textContent = 'Prints at ' + paperFor(printSize).name + ' size.' + paperMatchTip();
     }
@@ -8491,6 +8622,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const paper = paperFor(key);
     let src = document.createElement('canvas');
     renderCompositeToCanvas(currentLayout, src);
+    if(paper.receipt){
+      // Full roll width at the thermal printer's own 203 dpi; as long as the receipt is.
+      const rc = document.createElement('canvas');
+      rc.width = Math.round(paper.w / 25.4 * RECEIPT_DPI);
+      rc.height = Math.round(src.height * rc.width / src.width);
+      const rx = rc.getContext('2d');
+      rx.fillStyle = '#ffffff'; rx.fillRect(0, 0, rc.width, rc.height);
+      rx.imageSmoothingEnabled = rc.width !== src.width;
+      rx.drawImage(src, 0, 0, rc.width, rc.height);
+      return rc;
+    }
     // A sideways (landscape) layout on portrait paper prints turned 90°.
     if(src.width > src.height !== paper.w > paper.h){
       const r = document.createElement('canvas'); r.width = src.height; r.height = src.width;
@@ -8738,8 +8880,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       }
       sessPrinted += per * n;
       showPrintingNote(printTxt('txtPrinting'), 4000);
-      const paper = paperFor(printSize);
+      let paper = paperFor(printSize);
       const pages = keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)];
+      // Receipt rolls: the "page" is as long as the receipt.
+      if(paper.receipt) paper = Object.assign({}, paper, { h: Math.round(pages[0].height / RECEIPT_DPI * 254) / 10 });
       const label = (n > 1 ? n + ' copies, ' : '') + paper.name;
       if(useStation()){
         try{

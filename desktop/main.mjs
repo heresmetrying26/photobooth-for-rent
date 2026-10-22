@@ -257,7 +257,7 @@ app.whenReady().then(async () => {
   createWindow();
   blocker = powerSaveBlocker.start('prevent-display-sleep');
   // Renew / pick up Admin changes in the background, and keep the clock check fresh.
-  checkinNow(false).catch(() => {});
+  checkinNow(true).catch(() => {});                      // every start-up, when online
   setInterval(() => { L.touchClock(); refreshRecord().catch(() => {}); }, 5 * 60000);
-  setInterval(() => { checkinNow(false).catch(() => {}); }, 30 * 60000);
+  setInterval(() => { checkinNow(false).catch(() => {}); }, 2 * 60000);   // checks in every 10 min (see licence.mjs)
 });

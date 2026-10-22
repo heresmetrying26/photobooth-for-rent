@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 
-export const HELPER_VERSION = '1.1.3-app';
+export const HELPER_VERSION = '1.1.4-app';
 const IS_WIN = platform() === 'win32';
 const PS = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass'];
 let WORKER_PS = '';
@@ -60,7 +60,7 @@ async function printers(force) {
 }
 
 const WIN_PRINT_PS = String.raw`
-param([string]$Printer, [string]$ListFile)
+param([string]$Printer, [string]$ListFile, [switch]$FitWidth)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $files = @(Get-Content -LiteralPath $ListFile -Encoding UTF8 | Where-Object { $_ })
@@ -77,6 +77,16 @@ $doc.add_PrintPage({
   param($sender, $e)
   $img = [System.Drawing.Image]::FromFile($files[$script:i])
   try {
+    if ($FitWidth) {
+      $pa = $e.PageSettings.PrintableArea
+      $w = [single]$pa.Width; $h = [single]($w * $img.Height / $img.Width)
+      if ($pa.Height -gt 0 -and $h -gt $pa.Height) { $h = [single]$pa.Height; $w = [single]($h * $img.Width / $img.Height) }
+      $e.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
+      $e.Graphics.DrawImage($img, [single](($pa.Width - $w) / 2), [single]0, $w, $h)
+      $script:i++
+      $e.HasMorePages = ($script:i -lt $files.Count)
+      return
+    }
     $page = $e.PageBounds
     $pageLandscape = $page.Width -gt $page.Height
     $imgLandscape = $img.Width -gt $img.Height
@@ -91,7 +101,7 @@ $doc.add_PrintPage({
 $doc.Print()
 'ok'
 `;
-async function printPages(printer, pngBuffers) {
+async function printPages(printer, pngBuffers, fit, widthMm, heightMm) {
   const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
   try {
     const files = [];
@@ -101,9 +111,10 @@ async function printPages(printer, pngBuffers) {
       const ps1 = join(dir, 'print.ps1'), list = join(dir, 'pages.txt');
       await writeFile(ps1, '﻿' + WIN_PRINT_PS, 'utf8');
       await writeFile(list, files.join('\r\n'), 'utf8');
-      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list]);
+      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(fit === 'width' ? ['-FitWidth'] : [])]);
     } else {
-      r = await run('lp', ['-d', printer, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
+      const media = fit === 'width' && widthMm > 0 && heightMm > 0 ? ['-o', 'media=Custom.' + Math.round(widthMm) + 'x' + Math.round(heightMm) + 'mm'] : [];
+      r = await run('lp', ['-d', printer, ...media, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
     }
     if (r.code !== 0) throw new Error((r.err || r.out || ('exit ' + r.code)).trim().slice(0, 300));
   } finally {
@@ -260,7 +271,8 @@ export async function handleHelper(req, path, search) {
       if (!m) return json({ ok: false, error: 'Pages must be PNG images' }, 400);
       buffers.push(Buffer.from(m[1], 'base64'));
     }
-    const job = printQueue.then(() => printPages(name, buffers));
+    const fit = body.fit === 'width' ? 'width' : '';
+    const job = printQueue.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0));
     printQueue = job.catch(() => {});
     try { await job; log('Printed ' + buffers.length + ' page(s) on ' + name); return json({ ok: true }); }
     catch (e) { log('Print failed on ' + name + ': ' + (e && e.message || e)); return json({ ok: false, error: String(e && e.message || e) }, 500); }

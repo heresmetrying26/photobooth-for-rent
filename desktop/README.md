@@ -30,8 +30,9 @@ Google Drive, My Events, the laptop print station for iPads, and trial codes.
 - **Rental codes** stop at the code's end date. **Lifetime codes** renew by themselves whenever the
   laptop has internet; without internet they keep working for 75 days + 30 days' grace, then ask to connect once.
 - Admin changes (print sizes, vouchers, retakes, lock, removing the laptop, disabling the code, taking the
-  add-on away) reach the laptop at its next check-in (when online, at most every 12 hours; renters can
-  also tap **Check for changes**).
+  add-on away) reach the laptop at its next check-in: at start-up and every 10 minutes while it has internet
+  (renters can also tap **Check for changes**). The booth locks after the session in progress. A laptop with
+  no internet can't hear about it until it's online again (at most ~105 days for lifetime, the end date for rentals).
 - Turning the computer clock back locks the booth until the clock is right, and when online the app
   compares its clock with the internet's.
 - **No internet at all?** On the activation screen: *Activate without internet* shows the Machine ID.

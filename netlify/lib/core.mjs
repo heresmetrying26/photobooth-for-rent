@@ -278,7 +278,8 @@ export const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/
 // Paper sizes the admin can allow per rental. Keys are stored in license data;
 // the booth has its own table with the physical dimensions.
 // 'selphy' / 'selphycard': Canon SELPHY postcard (100 x 148 mm) and card (54 x 86 mm) paper, borderless.
-export const PAPER_SIZES = ['2x6', '2.5x7.5', '3.5x5', '4x6', 'selphy', 'selphycard', '5x7', '6x8', '8x10', 'A6', 'A5', 'A4', 'Letter'];
+// 'receipt80' / 'receipt58': thermal receipt rolls (the Receipt layouts; length follows the picture).
+export const PAPER_SIZES = ['2x6', '2.5x7.5', '3.5x5', '4x6', 'selphy', 'selphycard', '5x7', '6x8', '8x10', 'A6', 'A5', 'A4', 'Letter', 'receipt80', 'receipt58'];
 // Custom sizes are stored as "<width>x<height><unit>", e.g. "4x4in" or "100x148mm".
 const CUSTOM_RE = /^(\d{1,3}(?:\.\d{1,2})?)x(\d{1,3}(?:\.\d{1,2})?)(in|mm)$/;
 export function customPaperOk(key) {

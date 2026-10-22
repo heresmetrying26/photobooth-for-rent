@@ -118,7 +118,7 @@
 (function(){
   var KEY = 'pb_station', MAP_KEY = 'pb_station_printers', HELPER_KEY = 'pb_station_helper';
   var HELPER_URL = 'http://127.0.0.1:17321';
-  var PAPER = { '2x6': ['2×6 strip', 50.8, 152.4], '2.5x7.5': ['Keychain 2.5×7.5', 63.5, 190.5], '3.5x5': ['3R', 88.9, 127], '4x6': ['4R (4×6)', 101.6, 152.4], 'selphy': ['Selphy postcard', 100, 148], 'selphycard': ['Selphy card', 54, 86], '5x7': ['5R (5×7)', 127, 177.8], '6x8': ['6R (6×8)', 152.4, 203.2], '8x10': ['8R (8×10)', 203.2, 254], 'A6': ['A6', 105, 148], 'A5': ['A5', 148, 210], 'A4': ['A4', 210, 297], 'Letter': ['Letter', 215.9, 279.4] };
+  var PAPER = { '2x6': ['2×6 strip', 50.8, 152.4], '2.5x7.5': ['Keychain 2.5×7.5', 63.5, 190.5], '3.5x5': ['3R', 88.9, 127], '4x6': ['4R (4×6)', 101.6, 152.4], 'selphy': ['Selphy postcard', 100, 148], 'selphycard': ['Selphy card', 54, 86], '5x7': ['5R (5×7)', 127, 177.8], '6x8': ['6R (6×8)', 152.4, 203.2], '8x10': ['8R (8×10)', 203.2, 254], 'A6': ['A6', 105, 148], 'A5': ['A5', 148, 210], 'A4': ['A4', 210, 297], 'Letter': ['Letter', 215.9, 279.4], 'receipt80': ['Receipt 80 mm', 72, 290], 'receipt58': ['Receipt 58 mm', 48, 195] };
   function $(id){ return document.getElementById(id); }
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function load(k, d){ try{ var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; }catch(e){ return d; } }
@@ -177,7 +177,7 @@
   async function checkHelper(){
     if(!useHelper){ helper = { ok: false, printers: [], checked: Date.now() }; renderHelperNote(); return helper; }
     try{
-      var ctl = new AbortController(), t = setTimeout(function(){ ctl.abort(); }, 1500);
+      var ctl = new AbortController(), t = setTimeout(function(){ ctl.abort(); }, 8000);   // Windows can take a few seconds to list printers
       var r = await fetch(HELPER_URL + '/status', { signal: ctl.signal, cache: 'no-store' });
       clearTimeout(t);
       var j = await r.json();
@@ -248,7 +248,8 @@
     var png = [];
     for(var i = 0; i < pages.length; i++) png.push(/^data:image\/png/.test(pages[i]) ? pages[i] : await toPng(pages[i]));
     for(var s = 0; s < png.length; s += 20){
-      var r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, pages: png.slice(s, s + 20) }) });
+      // Receipt rolls: full width, length follows the picture (Print Helper 1.1.4+).
+      var r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, fit: /^receipt/.test(paper.key || '') ? 'width' : undefined, pages: png.slice(s, s + 20) }) });
       var j = await r.json().catch(function(){ return {}; });
       if(!r.ok || !j.ok) throw new Error(j.error || ('Print Helper error ' + r.status));
     }

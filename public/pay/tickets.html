@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Voucher tickets | photobooth4u</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#1C1A1E; --muted:#6B666C; --red:#C93D27; --paper:#F5F1EA; --line:#E4DCCF; }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:'Manrope',system-ui,sans-serif;}
+  .bar{position:sticky; top:0; z-index:2; display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:14px 18px; background:#fff; border-bottom:1px solid var(--line);}
+  .bar h1{margin:0; font:600 20px 'Fraunces',Georgia,serif; flex:1 1 220px;}
+  .bar p{margin:2px 0 0; font-size:13px; color:var(--muted); font-weight:600;}
+  .btn{min-height:44px; padding:10px 20px; border-radius:999px; border:0; background:var(--red); color:#fff; font:800 15px 'Manrope',sans-serif; cursor:pointer;}
+  .sheet{width:210mm; min-height:297mm; margin:18px auto; background:#fff; padding:10mm 10mm; display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:53.4mm; gap:0; box-shadow:0 8px 30px rgba(0,0,0,.08);}
+  .t{position:relative; border:1px dashed #b9b0a3; margin:-0.5px; padding:5mm 6mm; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;}
+  .t .top{display:flex; justify-content:space-between; align-items:flex-start; gap:4mm;}
+  .t .ev{font:600 13pt/1.15 'Fraunces',Georgia,serif; max-width:58mm; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .t .kick{font:800 6.5pt 'Manrope',sans-serif; letter-spacing:.16em; text-transform:uppercase; color:var(--muted);}
+  .t .price{font:800 15pt 'Manrope',sans-serif; color:var(--red); white-space:nowrap;}
+  .t .code{font:800 24pt 'Manrope',sans-serif; letter-spacing:.08em; font-variant-numeric:tabular-nums; text-align:center; padding:1.5mm 0; border-radius:3mm; background:#f6f1ea;}
+  .t .inc{font:700 8pt 'Manrope',sans-serif; text-align:center; margin-top:1mm;}
+  .t .how{font:600 6.8pt/1.35 'Manrope',sans-serif; color:var(--muted); text-align:center;}
+  .t .brand{position:absolute; right:4mm; bottom:2.6mm; font:600 6.5pt 'Fraunces',Georgia,serif; color:#9a938c;}
+  .empty{max-width:520px; margin:60px auto; text-align:center; font-weight:700; color:var(--muted);}
+  @page{ size:A4; margin:0; }
+  @media print{
+    body{background:#fff;}
+    .bar{display:none;}
+    .sheet{margin:0; box-shadow:none; break-after:page;}
+    .sheet:last-child{break-after:auto;}
+  }
+</style>
+</head>
+<body>
+<div class="bar">
+  <div style="flex:1 1 220px;"><h1 id="ttl">Voucher tickets</h1><p id="meta"></p></div>
+  <button class="btn" id="printBtn" type="button">Print tickets</button>
+</div>
+<main id="out"></main>
+<script>
+(function(){
+  var d = null;
+  try{ d = JSON.parse(localStorage.getItem('pb_ticket_print') || 'null'); }catch(e){}
+  var out = document.getElementById('out');
+  var esc = function(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  if(!d || !d.codes || !d.codes.length){
+    out.innerHTML = '<p class="empty">No vouchers to print. Go back to the booth (Setup → 5 Session → Guest payment) and tap “Print tickets”.</p>';
+    document.getElementById('printBtn').disabled = true;
+    return;
+  }
+  var peso = function(n){ return '₱' + Number(n || 0).toLocaleString('en-PH'); };
+  var inc = '1 photo session' + (d.prints ? ' · ' + d.prints + ' print' + (d.prints > 1 ? 's' : '') : '');
+  document.getElementById('ttl').textContent = d.event + ' · ' + d.codes.length + ' vouchers';
+  document.getElementById('meta').textContent = '10 per A4 page. Print at 100% (no scaling), cut along the dashed lines.';
+  var per = 10, html = '';
+  for(var i = 0; i < d.codes.length; i += per){
+    html += '<section class="sheet">' + d.codes.slice(i, i + per).map(function(c){
+      return '<div class="t"><div class="top"><div><div class="kick">photobooth4u \u00b7 voucher</div><div class="ev">' + esc(d.event) + '</div></div>' +
+        (d.price ? '<div class="price">' + esc(peso(d.price)) + '</div>' : '') + '</div>' +
+        '<div><div class="code">' + esc(c.slice(0, 4) + ' ' + c.slice(4)) + '</div><div class="inc">' + esc(inc) + '</div></div>' +
+        '<div class="how">Tap the booth screen → <b>I have a voucher</b> → type the 8 digits. Works once.</div>' +
+        '</div>';
+    }).join('') + '</section>';
+  }
+  out.innerHTML = html;
+  document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });
+  var go = function(){ setTimeout(function(){ try{ window.print(); }catch(e){} }, 400); };
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(go); else window.addEventListener('load', go);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+# Builds the photobooth4u Windows + Mac app (desktop/) on GitHub's computers.
+# Run it from the repo's Actions tab ("Desktop app" -> Run workflow), or push a
+# tag like desktop-v1.0.0 to also attach the installers to a GitHub release.
+# The website (Netlify) is not affected: it never builds desktop/.
+name: Desktop app
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['desktop-v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: --win
+            files: desktop/dist/*.exe
+          - os: macos-latest
+            target: --mac
+            files: desktop/dist/*.dmg
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      # Gathers the booth, its server code, fonts and the licence PUBLIC key
+      # (from photobooth4u.netlify.app/api/license?pub=1, or the optional
+      # PB4U_LICENSE_PUB repository secret).
+      - run: node scripts/prepare.mjs
+        env:
+          PB4U_LICENSE_PUB: ${{ secrets.PB4U_LICENSE_PUB }}
+      - run: npx electron-builder ${{ matrix.target }} --publish never
+        env:
+          # Not code-signed yet (see desktop/README.md). The Mac app is ad-hoc signed.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: photobooth4u-${{ matrix.os }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+      - if: startsWith(github.ref, 'refs/tags/desktop-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.files }}

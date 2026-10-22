@@ -111,7 +111,8 @@ For DSLR / mirrorless cameras in their **Photo Import / Remote Control** (Canon)
 **"DSLR / mirrorless over USB (remote control)"** in the Camera menu and choose the camera in
 Chrome's USB picker (only the first time; it stays allowed). Live view comes from the camera;
 each shot fires the real shutter (about 2.5–3 s per shot incl. transfer, shown as "Saving").
-- Chrome or Edge on a **Mac or Android** only. Windows blocks it (camera driver); Safari has no USB.
+- Chrome or Edge on a **Mac or Android** with web-gphoto2 (below). Safari has no USB.
+- **Windows: Nikon through the photobooth4u Helper 1.1** (see the next section). No Zadig.
 - Quit Photos, Image Capture, EOS Utility / Nikon apps first. Mode dial on M/P/A/S, JPEG (not RAW).
   A smaller JPEG size (e.g. Medium/Normal) makes each shot faster. Use a mains adapter: live view drains batteries.
 - Live view is low-res (e.g. 640×424 on a D5600); the photos are full quality (cropped, max 2000 px).
@@ -119,6 +120,22 @@ each shot fires the real shutter (about 2.5–3 s per shot incl. transfer, shown
 - Needs the COOP/COEP headers on `/` in `netlify.toml`. Uses web-gphoto2 (LGPL-2.1) from
   `public/camera-test/build/`; `/camera-test/` is a stand-alone test page for any camera.
 - Tested: Nikon D5600 on macOS Chrome (shutter, live view, settings). Canon not yet tested.
+
+### Windows: Nikon over USB through the photobooth4u Helper (1.1)
+Chrome can't open the camera on Windows (Windows' own camera driver holds it), so the helper does it:
+- `tools/print-helper/camera-worker.ps1` (built into the helper exe) runs in PowerShell and talks to the camera
+  through Windows' WPD/MTP driver ("MTP extension" commands: Nikon live view 0x9201/0x9203, shutter 0x90C0,
+  events 0x90C7, GetObject). The helper starts it at launch and keeps it running; it connects back on a private
+  127.0.0.1 socket. Endpoints: `GET /camera` (devices), `POST /camera/open`, `POST /camera/live?on=0|1`,
+  `GET /camera/frame` (JPEG), `POST /camera/capture` (JPEG), `GET /camera/battery`, `POST /camera/close`.
+- On open it sets the camera to JPEG (if it was RAW) and the smallest photo size at least ~2900 px wide
+  (D5600: 2992×2000), because the booth uses at most 3000 px and smaller files come over USB faster.
+- Booth (Windows): the Camera menu has **Nikon camera over USB (photobooth4u Helper)**. Picking it once (Chrome asks
+  to allow local access) remembers it (`pb_cam_helper`); after that the booth checks the helper on start and every
+  6 s, picks a plugged-in camera by itself, switches from the built-in webcam when one is plugged in between guests,
+  and keeps retrying when the helper is closed or the camera is unplugged (no Try Again needed).
+- Nikon only for now (Canon/Sony say so). Tested with a stand-in worker (booth + helper end to end) and the real
+  worker's PowerShell/C# + socket on Linux; the WPD camera calls themselves still need a real Windows + Nikon test.
 
 ### Canon SELPHY (CP1300 / CP1500)
 Works as is: iPad over AirPrint, Android over Mopria (or Canon Print Service), laptops over USB/Wi-Fi with

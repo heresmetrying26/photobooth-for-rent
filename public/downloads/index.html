@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Print Helper · photobooth4u</title>
+<title>photobooth4u Helper</title>
 <style>
   :root{ --bg:#f7f3ee; --card:#fff; --ink:#1c1a1e; --dim:#6b6470; --line:#e4ddd3; --red:#c8402a; }
   *{box-sizing:border-box;}
@@ -25,13 +25,13 @@
 </head>
 <body>
 <main>
-  <h1>photobooth4u Print Helper</h1>
-  <p class="lead">Optional. Lets the booth print straight to the right printer for each paper size (for example 2×6 strips on one printer, 4R on another), with no print dialog. Without it, the booth still prints through the normal print dialog.</p>
+  <h1>photobooth4u Helper</h1>
+  <p class="lead">Optional. Lets the booth print straight to the right printer for each paper size (for example 2×6 strips on one printer, 4R on another), with no print dialog. Without it, the booth still prints through the normal print dialog.<br><b>Windows:</b> the helper also connects a <b>Nikon camera over USB</b> (live view + the real shutter), see below.</p>
 
   <div class="dl">
     <a href="photobooth4u-print-helper-mac-apple-silicon.zip"><b>Mac · Apple Silicon</b><span>M1, M2, M3, M4 · 22 MB</span></a>
     <a href="photobooth4u-print-helper-mac-intel.zip"><b>Mac · Intel</b><span>Older Macs · 25 MB</span></a>
-    <a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/print-helper-v1.0.0/photobooth4u-print-helper-windows.zip"><b>Windows</b><span>Windows 10 / 11 · 41 MB</span></a>
+    <a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/latest/download/photobooth4u-print-helper-windows.zip"><b>Windows</b><span>Windows 10 / 11 · version 1.1 · printing + Nikon camera</span></a>
   </div>
   <p class="note">Not sure which Mac? Apple menu → About This Mac: "Chip: Apple M…" is Apple Silicon, "Processor: Intel" is Intel.</p>
 
@@ -60,7 +60,13 @@
   <p class="note">The helper only accepts prints from photobooth4u and only from this computer. Chrome or Edge recommended.</p>
 
   <h2>Using a DSLR / mirrorless camera over USB?</h2>
-  <div class="card"><p>The booth's <b>USB remote camera</b> mode (real shutter, the camera's own settings and flash) works with <b>no setup on a Mac or an Android tablet/phone</b>, in Chrome or Edge. On <b>Windows</b> it needs a one-time driver switch with Zadig &mdash; the steps are on the <a href="/camera-test/">camera test page</a>. Test your camera there first.</p></div>
+  <div class="card"><p>The booth's <b>USB camera</b> mode uses the camera's real shutter, its own settings and flash.</p>
+  <ol>
+    <li><b>Mac or Android tablet/phone</b> (Chrome or Edge): nothing to install. Plug the camera in and pick it in the booth's Camera menu.</li>
+    <li><b>Windows laptop, Nikon camera:</b> open this helper (version 1.1 or newer), plug the camera in with a <b>data</b> USB cable and switch it on. In the booth, pick <b>Nikon camera over USB</b> in the Camera menu once (allow Chrome's prompt). After that the booth picks the camera by itself whenever it's plugged in. No Zadig or driver change.</li>
+    <li><b>Windows with Canon or Sony:</b> not yet. Use a Mac / Android tablet, an HDMI-to-USB capture card, or the camera's webcam mode.</li>
+  </ol>
+  <p>Test your camera first on the <a href="/camera-test/">camera test page</a>.</p></div>
 </main>
 </body>
 </html>

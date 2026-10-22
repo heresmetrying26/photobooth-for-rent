@@ -50,35 +50,20 @@
 <body>
 <main>
   <h1>USB camera test · Windows</h1>
-  <p class="lead">Checks whether your camera can be remote-controlled from the browser: live view, real shutter (flash works), full-resolution photo. Set the camera's USB mode to <b>Photo Import / Remote Control</b> (Canon) or <b>MTP/PTP</b> (Nikon).</p>
+  <p class="lead">Checks that the booth can control your Nikon from this laptop: live view, the real shutter (flash works) and the full photo. Uses the <b>photobooth4u Helper</b> and Windows' own camera driver, so there's nothing to install for the camera itself.</p>
 
   <div class="grid">
     <div>
       <div class="card">
         <h2>Before you start</h2>
-        <ul class="checks" id="checks"></ul>
-        <ol class="help" style="padding-left:18px; margin-top:4px;">
-          <li><b>Windows must see the camera first.</b> Plug it straight into the laptop with a <b>data</b> cable (many micro-USB cables only charge), then switch it on. It should appear in <b>File Explorer &rarr; This PC</b>. If it doesn't, try another cable or port &mdash; nothing below can work until it does.</li>
-          <li>Camera USB mode: <b>Photo Import / Remote Control</b> (Canon) or <b>PTP/MTP</b> (Nikon). Nikon: turn on <b>Airplane mode</b> (SnapBridge can block USB).</li>
-          <li><b>Unplug phones</b> and other cameras, so the test picks the right device.</li>
-          <li>Do the one-time driver switch below, then open this page in <b>Chrome</b> or <b>Edge</b>.</li>
+        <ol class="help" style="padding-left:18px; margin-top:0;">
+          <li><b>Open the photobooth4u Helper</b> (version 1.1 or newer) on this laptop. <a href="/downloads/">Download it</a>, unzip, double-click. Keep its window open.</li>
+          <li><b>Plug the camera straight into the laptop</b> with a <b>data</b> USB cable (many micro-USB cables only charge) and switch it on. Windows lists it under <b>This PC</b> and in Device Manager under <b>Portable Devices</b> (not under "Cameras").</li>
+          <li>Close Nikon apps (NX Studio, Webcam Utility) and any "Import photos" window that popped up.</li>
+          <li>Camera: mode dial on <b>P, S, A or M</b>, lens cap off, battery charged (or a mains adapter). Nikon with SnapBridge: turn on <b>Airplane mode</b>.</li>
+          <li>If you ever used Zadig on this camera, undo it: Device Manager &rarr; the camera (under "Universal Serial Bus devices") &rarr; <b>Uninstall device</b>, tick "Delete the driver", unplug and replug.</li>
         </ol>
-      </div>
-
-
-      <div class="card" id="winCard" style="margin-top:16px; border-color:#e9c46a;">
-        <h2>Windows: one-time driver switch</h2>
-        <p class="help" style="margin-top:0;">On Windows the camera won't appear in the list until its driver is switched to <b>WinUSB</b> with the free tool Zadig. While switched, Windows Photos / File Explorer / Nikon &amp; Canon apps can't see this camera (you can switch back any time).</p>
-        <ol class="help" style="padding-left:18px;">
-          <li>Plug in the camera (USB mode PTP/MTP or Photo Import / Remote Control) and switch it on.</li>
-          <li>Download and run Zadig: <a href="https://zadig.akeo.ie/" target="_blank" rel="noopener">zadig.akeo.ie</a></li>
-          <li>Options &rarr; <b>List All Devices</b>, pick your camera (e.g. "D5600", "Canon EOS R50").</li>
-          <li>Set the driver to <b>WinUSB</b> and click <b>Replace Driver</b> (takes a minute).</li>
-          <li>Unplug and replug the camera, reload this page, then Connect.</li>
-        </ol>
-        <p class="help"><b>No download instead of Zadig:</b> Device Manager &rarr; right-click the camera &rarr; <b>Update driver</b> &rarr; Browse my computer &rarr; Let me pick &rarr; <b>Universal Serial Bus devices</b> &rarr; <b>WinUsb Device</b> &rarr; Next.</p>
-        <p class="help"><b>Early test, no Zadig:</b> try <a href="/downloads/pb4u-windows-camera-test.zip">pb4u-windows-camera-test.zip</a> (unzip, double-click "Run camera test", send us the text it shows). It uses Windows' own camera driver; if this works, Windows won't need the driver switch.</p>
-        <p class="help"><b>To switch back:</b> Device Manager &rarr; find the camera (under "Universal Serial Bus devices") &rarr; right-click &rarr; <b>Uninstall device</b>, tick "Delete the driver", then unplug and replug.</p>
+        <ul class="checks" id="checks" style="margin-top:8px;"></ul>
       </div>
 
       <div class="card" style="margin-top:16px;">
@@ -107,7 +92,7 @@
           <h2 style="font-size:14px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin:0 0 8px;">Last photo</h2>
           <img id="shotImg" alt="Captured photo">
           <table id="shotTable" style="margin-top:8px;"></table>
-          <a id="shotLink" download>Download full photo</a>
+          <a id="shotLink" download="photobooth4u-test.jpg">Download full photo</a>
         </div>
       </div>
 
@@ -117,13 +102,14 @@
       </div>
     </div>
   </div>
-  <p class="help" style="margin-top:20px;"><a href="../mac/">On a Mac or Android? Use that tester</a> · Uses web-gphoto2 (LGPL-2.1), licence in <a href="../build/LICENSE">build/LICENSE</a>.</p>
+  <p class="help" style="margin-top:20px;"><a href="../mac/">On a Mac or Android? Use that tester</a> (no helper needed there). Canon and Sony on Windows aren't supported yet: use a Mac / Android tablet, or an HDMI capture card.</p>
 </main>
 
-<script type="module">
+<script>
   const $ = id => document.getElementById(id);
+  const HELPER = 'http://127.0.0.1:17321';
   const logEl = $('log'), msgEl = $('msg');
-  const report = { tester: 'windows', started: new Date().toISOString(), ua: navigator.userAgent, steps: [] };
+  const report = { tester: 'windows-helper', started: new Date().toISOString(), ua: navigator.userAgent, steps: [] };
 
   function log(line){
     const t = new Date().toLocaleTimeString();
@@ -131,272 +117,134 @@
     logEl.scrollTop = logEl.scrollHeight;
     report.steps.push(t + ' ' + line);
   }
-  function showMsg(text, kind){
-    msgEl.textContent = text; msgEl.className = 'msg show ' + (kind || 'info');
-  }
+  function showMsg(text, kind){ msgEl.textContent = text; msgEl.className = 'msg show ' + (kind || 'info'); }
   function hideMsg(){ msgEl.className = 'msg'; }
-
-  // Plain-language reasons for common failures.
-  function explain(err){
-    const s = String((err && (err.message || err.name)) || err);
-    if(/No device selected|NotFoundError/i.test(s) && /Win/i.test(navigator.platform || '')) return 'No camera picked. On Windows the camera only shows in the list after the one-time driver switch (see "Windows: one-time driver switch" on the left).';
-    if(/No device selected|NotFoundError/i.test(s)) return 'No camera picked. If it was missing from the list, check the cable, switch the camera on, and set USB mode to Photo Import / Remote Control (Canon) or MTP/PTP (Nikon).';
-    if(/claim|access denied|busy|Unable to open|SecurityError|LIBUSB_ERROR_ACCESS|LIBUSB_ERROR_BUSY/i.test(s)) return 'Another app is holding the camera. Quit Photos, Image Capture, EOS Utility / Nikon apps and other tabs, unplug and replug the camera, then try again.' + (/Win/i.test(navigator.platform) ? ' On Windows, the camera driver blocks browser access (needs a WinUSB driver).' : '');
-    if(/disconnected|LIBUSB_ERROR_NO_DEVICE|transfer/i.test(s)) return 'The camera disconnected. Check the cable and that the camera did not go to sleep, then connect again.';
-    if(/Could not find|Unknown model|not supported/i.test(s)) return 'This camera model may not support remote control through gPhoto2.';
-    return 'Something went wrong: ' + s;
-  }
-
-  // ---- Environment checks ----
-  const checks = [
-    ['Chrome / Edge with USB access', 'usb' in navigator],
-    ['Secure, isolated page (required)', !!window.crossOriginIsolated],
-    ['Windows', /Windows/i.test(navigator.userAgent)]
-  ];
-  $('checks').innerHTML = checks.map(([label, ok]) =>
-    '<li><span class="pill ' + (ok ? 'ok' : 'bad') + '">' + (ok ? 'OK' : 'NO') + '</span>' + label + '</li>').join('');
-  checks.forEach(([l, ok]) => log('Check: ' + l + ' = ' + (ok ? 'yes' : 'no')));
-  if(!('usb' in navigator)){
-    showMsg('This browser cannot talk to USB devices. Open this page in Chrome or Edge.', 'err');
-    $('connectBtn').disabled = true;
-  } else if(!window.crossOriginIsolated){
-    showMsg('The page is missing the security headers it needs. Check the /camera-test/* headers in netlify.toml were deployed.', 'err');
-    $('connectBtn').disabled = true;
-  }
-
-  // ---- Camera ----
-  let Camera = null, camera = null, live = false, liveLoop = null;
-
-  // A crash inside the library (anything that isn't a plain Error) leaves it
-  // unusable until the page reloads, so stop and offer Reconnect.
-  function isCritical(err){ return !err || err.constructor !== Error; }
-  function cameraDead(err){
-    live = false;
-    camera = null;
-    $('liveBtn').disabled = true; $('shotBtn').disabled = true;
-    $('liveBtn').textContent = 'Start live view'; $('fpsBadge').style.display = 'none';
-    $('connectBtn').textContent = 'Reconnect camera';
-    log('Connection lost: ' + (err && (err.message || err.name) || err));
-    showMsg('The connection to the camera was lost. Tap "Reconnect camera".', 'err');
-  }
-
-  // Finds a setting by name anywhere in gPhoto2's config tree.
-  function findCfg(node, names){
-    if(!node) return null;
-    if(names.includes(node.name) && 'value' in node) return node;
-    if(node.children){
-      for(const k in node.children){
-        const r = findCfg(node.children[k], names);
-        if(r) return r;
-      }
-    }
-    return null;
-  }
   function row(label, value){ return '<tr><td>' + label + '</td><td>' + (value === undefined || value === null || value === '' ? '—' : String(value).replace(/</g, '&lt;')) + '</td></tr>'; }
 
-  async function readInfo(){
-    const ops = await camera.getSupportedOps();
-    report.ops = ops;
-    log('Supported: ' + JSON.stringify(ops));
-    let cfg = null;
-    try{ cfg = await camera.getConfig(); }catch(e){ log('Could not read settings: ' + (e.message || e)); }
-    const v = names => { const c = findCfg(cfg, names); return c ? c.value : null; };
-    const info = {
-      Model: v(['cameramodel', 'model']),
-      Maker: v(['manufacturer']),
-      Battery: v(['batterylevel']),
-      ISO: v(['iso']),
-      'White balance': v(['whitebalance']),
-      Aperture: v(['f-number', 'aperture']),
-      Shutter: v(['shutterspeed', 'shutterspeed2']),
-      'Image format': v(['imageformat', 'imagequality']),
-      'Picture style': v(['picturestyle', 'nikon-picturecontrol', 'picturecontrol'])
-    };
-    report.info = info;
-    log('Camera: ' + JSON.stringify(info));
-    $('infoTable').innerHTML = row('Status', 'Connected') +
-      Object.entries(info).map(([k, val]) => row(k, val)).join('') +
-      row('Live view', ops.capturePreview ? 'Supported' : 'Not supported') +
-      row('Remote shutter', ops.captureImage ? 'Supported' : 'Not supported');
-    $('liveBtn').disabled = !ops.capturePreview;
-    $('shotBtn').disabled = !ops.captureImage;
-    if(!ops.capturePreview && !ops.captureImage) showMsg('Connected, but this camera reports no remote live view or shutter. It will not work for the booth.', 'err');
-    else if(!ops.capturePreview) showMsg('Connected. This camera can fire the shutter remotely but has no live view.', 'info');
-    else showMsg('Connected. Now try live view, then take a photo.', 'info');
+  async function call(path, opts, ms){
+    let r;
+    try{ r = await fetch(HELPER + path, Object.assign({ cache: 'no-store', signal: AbortSignal.timeout(ms || 15000) }, opts || {})); }
+    catch(e){
+      const err = new Error(e && e.name === 'TimeoutError' ? 'The helper took too long to answer.' : 'Can’t reach the photobooth4u Helper. Check its window is open on this laptop (download it from the Downloads page). If Chrome asked to let this site reach apps on this device, choose Allow, then try again.');
+      err.code = 'NOHELPER'; throw err;
+    }
+    if(r.ok) return r;
+    let j = {}; try{ j = await r.json(); }catch(e){}
+    const err = new Error(j.error || ('Helper error ' + r.status)); err.code = j.code || String(r.status); throw err;
   }
 
-  let triedOnce = false;
+  // ---- Checks ----
+  const checks = [
+    ['Windows', /Windows/i.test(navigator.userAgent)],
+    ['Chrome or Edge', /Chrome|Edg\//.test(navigator.userAgent)]
+  ];
+  function drawChecks(extra){
+    $('checks').innerHTML = checks.concat(extra || []).map(([label, ok]) =>
+      '<li><span class="pill ' + (ok ? 'ok' : 'bad') + '">' + (ok ? 'OK' : 'NO') + '</span>' + label + '</li>').join('');
+  }
+  drawChecks();
+  checks.forEach(([l, ok]) => log('Check: ' + l + ' = ' + (ok ? 'yes' : 'no')));
+
+  // ---- Camera ----
+  let info = null, live = false, gen = 0;
   async function connect(){
     hideMsg();
     $('connectBtn').disabled = true;
+    stopLive();
     try{
-      if(!Camera){
-        log('Loading camera library…');
-        ({ Camera } = await import('../build/camera.js'));
-      }
-      const allowed = await navigator.usb.getDevices();
-      if(allowed.length){
-        log('Using the camera already allowed: ' + (allowed[0].productName || 'camera'));
-      } else {
-        log('Opening USB picker…');
-        await Camera.showPicker();
-      }
-      camera = new Camera();
-      log('Connecting…');
+      log('Looking for the helper…');
+      const st = await (await call('/status', null, 5000)).json();
+      report.helper = st.version;
+      log('Helper ' + st.version + ' found');
+      const camOk = st.camera && st.camera.supported;
+      drawChecks([['photobooth4u Helper ' + st.version + ' running', true], ['Helper can control cameras (1.1 or newer)', !!camOk]]);
+      if(!camOk){ showMsg('This helper is too old to control cameras. Close it, download the new one from the Downloads page, and open it again.', 'err'); return; }
+      const list = await (await call('/camera', null, 30000)).json();
+      report.devices = list.devices;
+      log('Windows sees: ' + (list.devices.length ? list.devices.map(d => (d.maker + ' ' + d.name).trim() + (d.camera ? ' (camera)' : '')).join(', ') : 'no portable devices'));
+      log('Connecting (first time can take ~10 s)…');
       const t0 = performance.now();
-      await camera.connect();
-      log('Connected in ' + Math.round(performance.now() - t0) + ' ms');
-      report.connected = true;
+      info = await (await call('/camera/open', { method: 'POST' }, 70000)).json();
+      report.camera = info;
+      log('Connected to ' + info.name + ' in ' + Math.round(performance.now() - t0) + ' ms' + (info.note ? ' — ' + info.note : ''));
+      $('infoTable').innerHTML = row('Status', 'Connected') + row('Camera', info.name) + row('Maker', info.maker) + row('Battery', info.battery >= 0 ? info.battery + '%' : '') + row('Booth settings', info.note || 'unchanged');
+      $('liveBtn').disabled = false; $('shotBtn').disabled = false;
       $('connectBtn').textContent = 'Reconnect camera';
-      await readInfo();
+      showMsg('Connected. Now try live view, then take a photo.', 'info');
+      startLive();
     }catch(err){
-      console.error(err);
-      log('Connect failed: ' + (err && (err.message || err.name) || err));
-      report.connectError = String(err && (err.message || err.name) || err);
-      camera = null;
+      log('Connect failed: ' + err.message);
+      report.connectError = err.message;
+      showMsg(err.message, 'err');
       $('liveBtn').disabled = true; $('shotBtn').disabled = true;
-      showMsg(explain(err), 'err');
     }finally{
-      triedOnce = true;
       $('connectBtn').disabled = false;
     }
   }
-  $('connectBtn').addEventListener('click', () => {
-    // The library can only connect once per page, so a reconnect reloads
-    // the page and connects again by itself (the camera stays allowed).
-    if(triedOnce){
-      try{ sessionStorage.setItem('pbAutoConnect', '1'); }catch(e){}
-      location.reload();
-      return;
-    }
-    connect();
-  });
-  (async () => {
-    let auto = false;
-    try{ auto = sessionStorage.getItem('pbAutoConnect') === '1'; sessionStorage.removeItem('pbAutoConnect'); }catch(e){}
-    if(auto && 'usb' in navigator && window.crossOriginIsolated && (await navigator.usb.getDevices()).length) connect();
-  })();
 
-  // ---- Live view ----
   const canvas = $('live'), ctx = canvas.getContext('2d');
-  let viewfinderOn = false;
-  async function runLive(){
-    let frames = 0, since = performance.now(), fails = 0, firstFrame = !canvas.width;
-    // Nikon (and some Canon) need live view switched on first; the mirror
-    // takes a moment to flip up, so wait before asking for frames.
-    if(!viewfinderOn){
+  async function liveLoop(g){
+    let n = 0, t0 = performance.now(), fails = 0;
+    while(live && g === gen){
       try{
-        await camera.setConfigValue('viewfinder', 1);
-        viewfinderOn = true;
-        log('Live view switched on (viewfinder = 1)');
-        await new Promise(r => setTimeout(r, 1200));
-        // Canon sends live view only to the computer by default; ask for the
-        // camera's own screen too (choice is named like "TFT + PC").
-        try{
-          const out = findCfg(await camera.getConfig(), ['output']);
-          const both = out && Array.isArray(out.choices) ? out.choices.find(c => /tft/i.test(c) && /pc/i.test(c)) : null;
-          if(both && out.value !== both){ await camera.setConfigValue('output', both); log('Camera screen on too (output = ' + both + ')'); report.screen = both; }
-          else log('Camera screen option: ' + (out ? JSON.stringify(out.choices) + ' now ' + out.value : 'not available'));
-        }catch(e){ if(isCritical(e)){ cameraDead(e); return; } log('Could not switch camera screen on: ' + (e.message || e)); }
-      }catch(err){
-        if(isCritical(err)){ cameraDead(err); return; }
-        log('No viewfinder switch on this camera (' + (err.message || err) + '), trying frames anyway');
-      }
-    }
-    while(live && camera){
-      try{
-        const blob = await camera.capturePreviewAsBlob();
-        const bmp = await createImageBitmap(blob);
-        if(canvas.width !== bmp.width || canvas.height !== bmp.height){
-          canvas.width = bmp.width; canvas.height = bmp.height;
-          log('Live view size: ' + bmp.width + '×' + bmp.height);
-          report.liveSize = bmp.width + 'x' + bmp.height;
-        }
+        const r = await call('/camera/frame', null, 12000);
+        if(r.status === 204){ await new Promise(r => setTimeout(r, 200)); continue; }
+        const bmp = await createImageBitmap(await r.blob());
+        if(g !== gen){ bmp.close(); return; }
+        if(canvas.width !== bmp.width || canvas.height !== bmp.height){ canvas.width = bmp.width; canvas.height = bmp.height; log('Live view ' + bmp.width + ' x ' + bmp.height); report.liveSize = bmp.width + 'x' + bmp.height; }
         ctx.drawImage(bmp, 0, 0); bmp.close();
-        $('ph').style.display = 'none'; canvas.style.display = 'block';
-        frames++; fails = 0;
-        const now = performance.now();
-        if(now - since >= 1000){
-          const fps = (frames * 1000 / (now - since)).toFixed(1);
-          $('fpsBadge').textContent = 'LIVE · ' + fps + ' fps'; $('fpsBadge').style.display = 'block';
-          report.liveFps = fps;
-          frames = 0; since = now;
-        }
+        canvas.style.display = ''; $('ph').style.display = 'none';
+        n++; fails = 0;
+        const dt = (performance.now() - t0) / 1000;
+        if(dt > 1){ const fps = n / dt; report.fps = Math.round(fps * 10) / 10; $('fpsBadge').textContent = fps.toFixed(1) + ' fps'; $('fpsBadge').style.display = 'block'; n = 0; t0 = performance.now(); }
       }catch(err){
-        if(isCritical(err)){ cameraDead(err); return; }
-        fails++;
-        if(fails <= 3 || fails % 10 === 0) log('Live view frame failed (' + fails + '): ' + (err && (err.message || err.name) || err));
-        if(fails >= 30){
-          stopLive();
-          report.liveError = String(err && (err.message || err.name) || err);
-          showMsg('Live view would not start. On the camera: charge the battery, put the mode dial on M, P, A or S (not AUTO or a scene), remove the lens cap, then try again.', 'err');
-          return;
-        }
-        await new Promise(r => setTimeout(r, 400));
+        if(++fails >= 5){ log('Live view stopped: ' + err.message); showMsg(err.message, 'err'); stopLive(); return; }
+        await new Promise(r => setTimeout(r, 500));
       }
     }
   }
+  function startLive(){ live = true; const g = ++gen; $('liveBtn').textContent = 'Stop live view'; log('Live view on'); liveLoop(g); }
   function stopLive(){
-    live = false;
-    if(viewfinderOn && camera){
-      viewfinderOn = false;
-      camera.setConfigValue('viewfinder', 0).catch(() => {});   // mirror down, saves battery
-    }
-    $('liveBtn').textContent = 'Start live view';
-    $('fpsBadge').style.display = 'none';
+    if(!live) return;
+    live = false; gen++;
+    $('liveBtn').textContent = 'Start live view'; $('fpsBadge').style.display = 'none';
+    call('/camera/live?on=0', { method: 'POST' }).catch(() => {});
+    log('Live view off');
   }
-  $('liveBtn').addEventListener('click', () => {
-    if(!camera) return;
-    if(live){ stopLive(); log('Live view stopped'); return; }
-    hideMsg();
-    live = true;
-    $('liveBtn').textContent = 'Stop live view';
-    log('Live view started');
-    liveLoop = runLive();
-  });
 
-  // ---- Real shutter ----
-  $('shotBtn').addEventListener('click', async () => {
-    if(!camera) return;
-    hideMsg();
+  async function shoot(){
     $('shotBtn').disabled = true;
-    const wasLive = live;
-    if(live){ stopLive(); await liveLoop; }
-    log('Firing shutter…');
-    const t0 = performance.now();
+    hideMsg();
     try{
-      const file = await camera.captureImageAsFile();
-      const secs = ((performance.now() - t0) / 1000).toFixed(1);
-      const url = URL.createObjectURL(file);
-      let dims = '—';
-      try{ const b = await createImageBitmap(file); dims = b.width + ' × ' + b.height + ' px'; b.close(); }
-      catch(e){ dims = 'Not viewable in browser (RAW?)'; }
-      $('shotImg').src = url;
-      $('shotLink').href = url; $('shotLink').download = file.name || 'photo.jpg';
-      $('shotTable').innerHTML = row('File', file.name) + row('Size', (file.size / 1048576).toFixed(1) + ' MB') +
-        row('Resolution', dims) + row('Shutter to photo', secs + ' s');
+      log('Firing the shutter…');
+      const t0 = performance.now();
+      const blob = await (await call('/camera/capture', { method: 'POST' }, 50000)).blob();
+      const ms = Math.round(performance.now() - t0);
+      const bmp = await createImageBitmap(blob);
+      const size = bmp.width + ' x ' + bmp.height; bmp.close();
+      log('Photo ' + size + ', ' + Math.round(blob.size / 1024) + ' KB, ' + ms + ' ms');
+      report.shot = { size, kb: Math.round(blob.size / 1024), ms };
+      const url = URL.createObjectURL(blob);
+      $('shotImg').src = url; $('shotLink').href = url;
+      $('shotTable').innerHTML = row('Size', size) + row('File', Math.round(blob.size / 1024) + ' KB') + row('Time after tap', (ms / 1000).toFixed(1) + ' s');
       $('shot').style.display = 'block';
-      log('Photo: ' + file.name + ', ' + dims + ', ' + (file.size / 1048576).toFixed(1) + ' MB, ' + secs + ' s');
-      report.photo = { name: file.name, dims, mb: +(file.size / 1048576).toFixed(1), secs: +secs };
-      if(/RAW/.test(dims)) showMsg('The camera saved RAW. Set image quality to JPEG on the camera for the booth.', 'info');
-      else showMsg('It works: real shutter, full-resolution photo in ' + secs + ' s. Tap "Copy test report" and send it over.', 'info');
+      showMsg('It works. The booth can use this camera on this laptop.', 'info');
     }catch(err){
-      console.error(err);
-      if(isCritical(err)){ cameraDead(err); return; }
-      log('Photo failed: ' + (err && (err.message || err.name) || err));
-      report.photoError = String(err && (err.message || err.name) || err);
-      showMsg(explain(err) + ' (If autofocus could not lock, point at something with detail or switch the lens to MF.)', 'err');
+      log('Photo failed: ' + err.message);
+      report.shotError = err.message;
+      showMsg(err.message, 'err');
     }finally{
-      $('shotBtn').disabled = !camera;
-      if(wasLive && camera){ live = true; $('liveBtn').textContent = 'Stop live view'; liveLoop = runLive(); }
+      $('shotBtn').disabled = false;
     }
-  });
+  }
 
-  // ---- Report ----
+  $('connectBtn').addEventListener('click', connect);
+  $('liveBtn').addEventListener('click', () => { if(live) stopLive(); else startLive(); });
+  $('shotBtn').addEventListener('click', shoot);
   $('copyBtn').addEventListener('click', async () => {
-    const text = 'photobooth4u USB camera test\n' + JSON.stringify(report, null, 2);
-    try{ await navigator.clipboard.writeText(text); showMsg('Test report copied. Paste it in a message.', 'info'); }
-    catch(e){ showMsg('Could not copy automatically; select the log and copy it.', 'err'); }
+    const text = 'photobooth4u USB camera test (Windows)\n' + JSON.stringify(report, null, 2);
+    try{ await navigator.clipboard.writeText(text); showMsg('Report copied. Paste it in a message to us.', 'info'); }
+    catch(e){ showMsg('Copy didn’t work; select the log and copy it by hand.', 'err'); }
   });
 </script>
 </body>

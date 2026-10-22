@@ -4926,6 +4926,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       videoDevices = devices.filter(d => d.kind === 'videoinput');
     }
 
+    // Windows: is a camera plugged in through the photobooth4u Helper?
+    if(usbCam.viaHelper && !(usbCam.active && usbCam.camera)) await camHelperProbe();
     cameraSelect.innerHTML = '';
     videoDevices.forEach((d, i) => {
       const opt = document.createElement('option');
@@ -4936,7 +4938,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(usbCam.supported){
       const opt = document.createElement('option');
       opt.value = USB_CAM_ID;
-      opt.textContent = usbCam.name ? usbCam.name + ' (USB remote)' : 'DSLR / mirrorless over USB (remote control)' + (/Win/i.test(navigator.platform || '') ? ' \u2014 Windows needs setup' : '');
+      opt.textContent = usbOptionLabel();
       cameraSelect.appendChild(opt);
     }
     // Say why the USB camera option is missing instead of silently hiding it.
@@ -4956,7 +4958,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const lbl = d => (d.label || '').toLowerCase();
     const BUILTIN = /front|facetime|macbook|imac|built-in|integrated|isight/;
     const AVOID = /virtual|\bobs\b|teams|zoom|snap camera|mmhmm|manycam|xsplit|\bndi\b|desk view|iphone|ipad/;
-    const usbPick = usbCam.supported && (previous === USB_CAM_ID || (!previous && saved && saved.id === USB_CAM_ID)) ? { deviceId: USB_CAM_ID } : null;
+    // A camera plugged in through the Windows helper is picked when nothing
+    // else was chosen in this visit (it's plugged in, so it's meant to be used).
+    const usbPick = usbCam.supported && (previous === USB_CAM_ID || (!previous && saved && saved.id === USB_CAM_ID) || (!previous && usbCam.viaHelper && usbCam.helperSees)) ? { deviceId: USB_CAM_ID } : null;
     const pick = usbPick || byId(previous)
       || (saved && (byId(saved.id) || (saved.label && videoDevices.find(d => d.label === saved.label))))
       || videoDevices.find(d => BUILTIN.test(lbl(d)))
@@ -4972,6 +4976,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   let muteTimer = null;
   function showReconnecting(){
     cameraErrorText.textContent = 'Camera disconnected. Reconnecting… Check the camera is on and its USB cable is plugged in.';
+    // Windows camera through the helper: say what's missing (helper closed, no camera).
+    if(usbCam.viaHelper && usbCam.lastMsg && cameraSelect.value === USB_CAM_ID) cameraErrorText.textContent = usbCam.lastMsg;
     cameraError.style.display = 'flex';
     recDot.style.display = 'none';
   }
@@ -5087,26 +5093,149 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // cross-origin isolated (COOP/COEP headers on "/" in netlify.toml).
   const USB_CAM_ID = 'usb-remote';
   const USB_LIB = '/camera-test/build/camera.js';
+  // Windows: the camera's own Windows driver blocks the browser, so the
+  // photobooth4u Helper (the same app that prints) controls the camera and
+  // the booth talks to it on this computer (127.0.0.1). No driver switch.
+  const USB_WIN = /Win/i.test(navigator.platform || '') || /Windows NT/i.test(navigator.userAgent || '');
+  const CAM_HELPER = 'http://127.0.0.1:17321';
+  const CAM_HELPER_SEEN_KEY = 'pb_cam_helper';
   const usbCam = {
-    supported: ('usb' in navigator) && !!window.crossOriginIsolated,
+    supported: USB_WIN ? !!window.fetch : (('usb' in navigator) && !!window.crossOriginIsolated),
+    viaHelper: USB_WIN,
+    helperSees: false, helperName: '', helperUp: false,
     camera: null, name: '', active: false, gen: 0, libGen: 0, vfOn: false, initing: null,
     canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null
   };
+
+  // ---- Windows: camera through the photobooth4u Helper ----
+  // Same calls as the web-gphoto2 camera below, so live view, battery and the
+  // real shutter all run through the same booth code.
+  class HelperGone extends Error {}            // helper closed / camera unplugged: reconnect
+  class HelperCamera {
+    constructor(){ this.name = ''; this.info = null; }
+    async req(path, opts, ms){
+      let r;
+      try{ r = await fetch(CAM_HELPER + path, Object.assign({ cache: 'no-store', signal: AbortSignal.timeout(ms || 15000) }, opts || {})); }
+      catch(e){ const g = new HelperGone('helper unreachable'); g.code = e && e.name === 'TimeoutError' ? 'TIMEOUT' : 'NOHELPER'; throw g; }
+      if(r.ok) return r;
+      let j = {};
+      try{ j = await r.json(); }catch(e){}
+      const err = (r.status === 410 || r.status === 503) ? new HelperGone(j.error || 'camera lost') : new Error(j.error || ('Helper error ' + r.status));
+      err.code = j.code || ''; err.helperMsg = j.error || '';
+      throw err;
+    }
+    async connect(){
+      const r = await this.req('/camera/open', { method: 'POST' }, 70000);
+      this.info = await r.json();
+      this.name = this.info.name || 'USB camera';
+      try{ localStorage.setItem(CAM_HELPER_SEEN_KEY, '1'); }catch(e){}
+    }
+    async setConfigValue(name, value){
+      if(name === 'viewfinder') await this.req('/camera/live?on=' + (value ? 1 : 0), { method: 'POST' }, 25000);
+    }
+    async getConfig(){
+      const j = await (await this.req('/camera/battery', null, 12000)).json();
+      const b = Number(j.battery);
+      return { name: 'main', children: b >= 0 ? { batterylevel: { name: 'batterylevel', value: b + '%' } } : {} };
+    }
+    async capturePreviewAsBlob(){
+      const r = await this.req('/camera/frame', null, 12000);
+      if(r.status === 204) throw new Error('no live view frame yet');
+      return await r.blob();
+    }
+    async captureImageAsFile(){
+      const r = await this.req('/camera/capture', { method: 'POST' }, 50000);
+      return new File([await r.blob()], 'photo.jpg', { type: 'image/jpeg' });
+    }
+  }
+  // Only asks the helper when it can be there (Chrome asks once before a page
+  // may talk to apps on this computer): print helper switched on, the camera
+  // was picked before, or it connected before.
+  function camHelperProbeOk(){
+    if(!usbCam.viaHelper) return false;
+    try{
+      if(localStorage.getItem(CAM_HELPER_SEEN_KEY) === '1' || localStorage.getItem('pb_print_helper') === '1') return true;
+      const sv = JSON.parse(localStorage.getItem(CAM_PREF_KEY) || 'null');
+      return !!(sv && sv.id === USB_CAM_ID);
+    }catch(e){ return false; }
+  }
+  // Is a camera plugged in? Sets usbCam.helperSees / helperName.
+  async function camHelperProbe(ms){
+    if(!camHelperProbeOk()) return false;
+    try{
+      const r = await fetch(CAM_HELPER + '/camera', { cache: 'no-store', signal: AbortSignal.timeout(ms || 4000) });
+      const j = await r.json();
+      usbCam.helperUp = true;
+      const dev = (j.devices || []).find(d => d.camera);
+      usbCam.helperSees = !!(j.open || dev);
+      const brand = dev ? String(dev.maker || '').split(/\s+/)[0] : '';
+      usbCam.helperName = j.open && j.name ? j.name : dev ? (brand && !new RegExp('^' + brand, 'i').test(dev.name || '') ? brand + ' ' : '') + (dev.name || '') : '';
+    }catch(e){
+      usbCam.helperUp = false; usbCam.helperSees = false;
+    }
+    return usbCam.helperSees;
+  }
+  function usbOptionLabel(){
+    if(usbCam.name) return usbCam.name + (usbCam.viaHelper ? ' (USB)' : ' (USB remote)');
+    if(usbCam.viaHelper) return usbCam.helperName ? usbCam.helperName + ' (USB)' : 'Nikon camera over USB (photobooth4u Helper)';
+    return 'DSLR / mirrorless over USB (remote control)';
+  }
+
+  // Windows doesn't tell the page about a camera plugged in through the
+  // helper, so ask every few seconds; a newly plugged-in camera takes over
+  // from the laptop's own webcam between guests.
+  if(usbCam.viaHelper){
+    setInterval(async () => {
+      if(document.hidden || state === 'capturing' || reconnectTimer || usbCam.initing) return;
+      if(currentDeviceId === USB_CAM_ID && streamActive) return;
+      if(!camHelperProbeOk()) return;
+      const was = usbCam.helperSees;
+      if(!(await camHelperProbe(3000)) || was) return;          // only when it newly appears
+      if(state === 'capturing' || reconnectTimer) return;
+      const cur = cameraSelect.options[cameraSelect.selectedIndex];
+      const saved = savedCamera();
+      const builtin = /front|facetime|macbook|built-in|integrated|isight|webcam|hd camera|user facing/i.test(cur ? cur.textContent : '');
+      if(streamActive && cur && cur.value !== USB_CAM_ID && !builtin && saved && saved.id !== USB_CAM_ID) return;   // a camera the operator chose
+      try{ await enumerateCameras(); }catch(e){}
+      if(!Array.from(cameraSelect.options).some(o => o.value === USB_CAM_ID)) return;
+      cameraSelect.value = USB_CAM_ID;
+      if(await initCamera(USB_CAM_ID)) showToast((usbCam.name || 'Camera') + ' connected.', 4000);
+    }, 6000);
+  }
   // A crash inside the library (anything but a plain Error) leaves that copy
   // unusable, so the next connect loads a fresh copy.
   function usbIsCritical(err){ return !err || err.constructor !== Error; }
-  function usbErrorMessage(err){
+  // auto: the booth keeps retrying by itself (Windows helper), so no "tap Try Again".
+  function usbErrorMessage(err, auto){
     const s = String((err && (err.message || err.name)) || err);
     const win = /Win/i.test(navigator.platform || '');
+    if(usbCam.viaHelper){
+      const code = err && err.code;
+      if(code === 'NOHELPER' || code === 'TIMEOUT') return 'Can\u2019t reach the photobooth4u Helper. Open it on this laptop (download it from photobooth4u.netlify.app/downloads). If Chrome asks to let this site reach apps on this device, choose Allow.' + (auto ? ' The camera connects by itself once the helper is open.' : ' Then tap Try Again.');
+      if(err && err.name === 'UsbNoLiveView') return 'The camera connected but live view didn\u2019t start. Close the camera\u2019s menu, take the lens cap off and check the battery.' + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');
+      if(err && err.helperMsg) return err.helperMsg + (code === 'NOCAMERA' || code === 'GONE' ? (auto ? ' It connects by itself once it\u2019s plugged in and on.' : ' Then tap Try Again.') : '');
+      return 'Camera problem (' + s + '). Unplug and replug the camera' + (auto ? '; the booth keeps trying.' : ', then tap Try Again.');
+    }
     if(err && err.name === 'NotFoundError' && win) return 'No USB camera picked. On Windows the camera only appears after a one-time driver switch (Zadig). Steps: open /camera-test/ on this site. Or use a Mac or Android device, where it works with no setup.';
     if(err && err.name === 'NotFoundError') return 'No USB camera picked. Set the camera’s USB mode to Photo Import / Remote Control (Canon) or PTP/MTP (Nikon), plug it in and switch it on, then tap Try Again and pick it.';
     if(err && err.name === 'SecurityError') return 'Tap Try Again to pick the USB camera.';
-    if(err && err.name === 'UsbNoLiveView') return 'The camera connected but live view didn’t start. Put the mode dial on M, P, A or S (not AUTO or a scene), take the lens cap off, check the battery, then tap Try Again.';
+    if(err && err.name === 'UsbNoLiveView') return (usbLvBlockedText() || 'The camera connected but live view didn’t start. Close the camera’s menu, put the mode dial on M, P, A or S, take the lens cap off and check there’s a memory card in it.') + ' Then tap Try Again.';
     if(/claim|access denied|busy|Unable to open|LIBUSB_ERROR_ACCESS|LIBUSB_ERROR_BUSY/i.test(s)) return 'Another app is using the camera. Quit Photos, Image Capture, EOS Utility / Nikon apps and other tabs, unplug and replug the camera, then tap Try Again.' + (win ? ' On Windows the camera’s driver blocks browser access — use a Mac or Android device, or the camera’s webcam mode.' : '');
     return 'USB camera problem (' + s + '). Unplug and replug the camera, then tap Try Again. If it keeps failing, reload the page.';
   }
   async function usbConnect(){
     if(usbCam.camera) return usbCam.camera;
+    if(usbCam.viaHelper){
+      const hc = new HelperCamera();
+      await hc.connect();
+      usbCam.camera = hc;
+      usbCam.vfOn = false;
+      usbCam.name = hc.name;
+      usbCam.helperSees = true; usbCam.helperUp = true;
+      const hopt = Array.from(cameraSelect.options).find(o => o.value === USB_CAM_ID);
+      if(hopt) hopt.textContent = usbOptionLabel();
+      return hc;
+    }
     let devices = await navigator.usb.getDevices();
     if(!devices.length){
       // Needs a tap (the USB picker); after that the camera stays allowed.
@@ -5122,17 +5251,57 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     usbCam.vfOn = false;
     usbCam.name = (devices[0] && devices[0].productName) || '';
     const opt = Array.from(cameraSelect.options).find(o => o.value === USB_CAM_ID);
-    if(opt && usbCam.name) opt.textContent = usbCam.name + ' (USB remote)';
+    if(opt && usbCam.name) opt.textContent = usbOptionLabel();
     return cam;
+  }
+  // Nikon says why live view is blocked ("liveviewprohibit"). The common one,
+  // "Recording destination card, but no card", goes away when the camera
+  // records to its own memory (RAM), which is what the booth uses anyway.
+  const USB_LV_HINTS = [
+    [/no card|card protected|destination card/i, 'Put an SD card in the camera (lock switch off).'],
+    [/unformatted/i, 'Format the memory card in the camera.'],
+    [/battery/i, 'Charge the camera battery or use a mains adapter.'],
+    [/sequence/i, 'Close the camera\u2019s menu or photo playback and half-press the shutter button once.'],
+    [/ttl/i, 'Switch off or remove the external flash.'],
+    [/retract/i, 'Turn the lens zoom ring to extend the lens.'],
+    [/mirror/i, 'Change the release mode from Mirror up to Single frame.'],
+    [/temperature|hot/i, 'The camera is too hot; let it cool down.'],
+    [/aperture/i, 'Set the lens aperture ring to its smallest aperture.']
+  ];
+  async function usbLiveViewFix(){
+    try{
+      const cfg = await usbCam.camera.getConfig();
+      const why = usbFindCfg(cfg, 'liveviewprohibit');
+      usbCam.lvReason = why ? String(why.value) : '';
+      if(usbCam.lvReason) console.warn('Live view blocked:', usbCam.lvReason);
+      for(const n of ['recordingmedia', 'capturetarget']){
+        const c = usbFindCfg(cfg, n);
+        const ram = c && Array.isArray(c.choices) ? c.choices.find(x => /sdram|internal ram|\bram\b/i.test(x)) : null;
+        if(ram && c.value !== ram){ try{ await usbCam.camera.setConfigValue(n, ram); }catch(e){ if(usbIsCritical(e)) throw e; } }
+      }
+    }catch(e){ if(usbIsCritical(e)) throw e; }
+  }
+  function usbLvBlockedText(){
+    const r = usbCam.lvReason || '';
+    if(!r || /should not be prohibited/i.test(r)) return '';
+    const h = USB_LV_HINTS.find(([re]) => re.test(r));
+    return 'The camera is blocking live view (' + r + ').' + (h ? ' ' + h[1] : '');
   }
   async function usbViewfinderOn(){
     try{
       await usbCam.camera.setConfigValue('viewfinder', 1);
     }catch(err){
       if(usbIsCritical(err)) throw err;
-      // Some cameras report an error here but still start live view.
+      // Ask the camera why, fix what can be fixed from here, and try once more.
+      // (Some cameras report an error here but still start live view.)
+      if(!usbCam.viaHelper){
+        await usbLiveViewFix();
+        try{ await usbCam.camera.setConfigValue('viewfinder', 1); usbCam.lvReason = ''; }
+        catch(e2){ if(usbIsCritical(e2)) throw e2; }
+      }
     }
     usbCam.vfOn = true;
+    if(usbCam.viaHelper) return;             // the helper waits for the camera itself
     await new Promise(r => setTimeout(r, 1500));
     await usbCameraScreenToo();
   }
@@ -5282,6 +5451,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       currentDeviceId = USB_CAM_ID;
       if(Array.from(cameraSelect.options).some(o => o.value === USB_CAM_ID)) cameraSelect.value = USB_CAM_ID;
       usbStartBatteryChecks();
+      usbCam.lastMsg = '';
       applyMirror();
       applyLiveFilter();
       guestCall('camera');
@@ -5292,9 +5462,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       console.error('USB camera failed:', err);
       if(usbIsCritical(err)) usbCam.camera = null;
       streamActive = false;
-      cameraErrorText.textContent = usbErrorMessage(err);
+      // Windows helper: keep trying, so opening the helper or plugging the
+      // camera in is enough (no Try Again needed).
+      const auto = usbCam.viaHelper && !!err && err.code !== 'UNSUPPORTED';
+      cameraErrorText.textContent = usbErrorMessage(err, auto);
       cameraError.style.display = 'flex';
       recDot.style.display = 'none';
+      if(auto){
+        usbCam.lastMsg = usbErrorMessage(err, true);
+        setTimeout(() => { if(!reconnectTimer && !streamActive && cameraSelect.value === USB_CAM_ID) cameraLost(); }, 0);
+      }
       return false;
     }
   }
@@ -5850,7 +6027,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(shotCanvases === shots){ shotCanvases[index] = c; updateFilmTrack(); }
     }catch(err){
       console.error('USB shot failed:', err);
-      showToast('The camera photo didn\u2019t come through (check focus, and that the camera saves JPEG), so the live view frame was used.', 5000);
+      showToast(err && err.helperMsg ? err.helperMsg + ' The live view frame was used.' : 'The camera photo didn\u2019t come through (check focus, and that the camera saves JPEG), so the live view frame was used.', 6000);
       if(usbIsCritical(err)) usbDead(err);
     }
   }

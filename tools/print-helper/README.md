@@ -1,4 +1,4 @@
-# photobooth4u Print Helper
+# photobooth4u Helper (Print Helper)
 
 Small local app that lets the booth print straight to a named printer (no dialog), so each paper
 size can use its own printer. Renter instructions live on `/downloads/` (public/downloads/index.html).
@@ -7,6 +7,11 @@ size can use its own printer. Renter instructions live on `/downloads/` (public/
   (and `http://localhost:8888` for `netlify dev`). Extra origins: env `PB_ALLOWED_ORIGINS=a,b`.
 - `GET /status` → `{ ok, version, printers: [...] }`
 - `POST /print` `{ printer, widthMm, heightMm, pages: ["data:image/png;base64,..."] }` → `{ ok }`
+- Windows (1.1+): `GET /camera`, `POST /camera/open`, `GET /camera/frame`, `POST /camera/capture`,
+  `GET /camera/battery`, `POST /camera/live?on=0|1`, `POST /camera/close` control a Nikon over USB through
+  Windows' own camera driver (`camera-worker.ps1`, embedded in the exe and run with PowerShell). `/status`
+  includes `camera: { supported, open, name }`. Test with a stand-in worker on any OS:
+  `PB_CAMERA_WORKER="node mock-worker.mjs" bun print-helper.js` (the port is added as the last argument).
 - macOS/Linux print with CUPS `lp -d <printer> -o fit-to-page`; Windows with .NET `PrintDocument`
   via PowerShell (rotates the image to match the driver's page orientation, fills the full sheet).
 - Paper size / borderless / cut come from each printer's default settings.
@@ -34,6 +39,9 @@ More info → Run anyway. Signing (Apple Developer ID + notarization, Windows co
 removes those warnings.
 
 ## Versions
+- 1.1.0: Windows: Nikon camera over USB (live view + real shutter) for the booth, no Zadig. The helper window is
+  now titled "photobooth4u Helper". Printing unchanged. Mac builds don't need updating (camera on a Mac works in
+  the browser).
 - 1.0.1: Windows fix: one-page prints failed (PowerShell turned a one-line file list into a string, so `$files[0]`
   was the letter "C"). Windows now prints silently with `StandardPrintController`. The Mac builds behave the same
   as before, so Mac users can stay on 1.0.0.

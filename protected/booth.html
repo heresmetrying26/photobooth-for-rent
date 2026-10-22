@@ -5212,6 +5212,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(usbCam.viaHelper){
       const code = err && err.code;
       if(code === 'NOHELPER' || code === 'TIMEOUT') return 'Can\u2019t reach the photobooth4u Helper. Open it on this laptop (download it from photobooth4u.netlify.app/downloads). If Chrome asks to let this site reach apps on this device, choose Allow.' + (auto ? ' The camera connects by itself once the helper is open.' : ' Then tap Try Again.');
+      if(err && err.name === 'UsbNoLiveView' && usbCam.lastErr && usbCam.lastErr.helperMsg) return usbCam.lastErr.helperMsg + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');
       if(err && err.name === 'UsbNoLiveView') return 'The camera connected but live view didn\u2019t start. Close the camera\u2019s menu, take the lens cap off and check the battery.' + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');
       if(err && err.helperMsg) return err.helperMsg + (code === 'NOCAMERA' || code === 'GONE' ? (auto ? ' It connects by itself once it\u2019s plugged in and on.' : ' Then tap Try Again.') : '');
       return 'Camera problem (' + s + '). Unplug and replug the camera' + (auto ? '; the booth keeps trying.' : ', then tap Try Again.');
@@ -10214,7 +10215,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     seg.failed = '';
     refreshBgStatus();
     seg.loading = (async () => {
-      const mod = await import(BG_BASE + 'vision_bundle.mjs');
+      // A failed first load (weak signal, or an old failed copy kept by the
+      // browser) gets one fresh try that skips the cache.
+      let mod;
+      try{ mod = await import(BG_BASE + 'vision_bundle.mjs'); }
+      catch(e){ await new Promise(r => setTimeout(r, 800)); mod = await import(BG_BASE + 'vision_bundle.mjs?r=' + Date.now()); }
       const simd = await mod.FilesetResolver.isSimdSupported();
       const name = BG_BASE + 'wasm/vision_wasm_' + (simd ? '' : 'nosimd_') + 'internal';
       seg.task = await mod.ImageSegmenter.createFromOptions({ wasmLoaderPath: name + '.js', wasmBinaryPath: name + '.wasm' }, {

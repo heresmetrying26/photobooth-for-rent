@@ -153,7 +153,7 @@
     stopLive();
     try{
       log('Looking for the helper…');
-      const st = await (await call('/status', null, 5000)).json();
+      const st = await (await call('/status', null, 20000)).json();
       report.helper = st.version;
       log('Helper ' + st.version + ' found');
       const camOk = st.camera && st.camera.supported;
@@ -167,7 +167,8 @@
       info = await (await call('/camera/open', { method: 'POST' }, 70000)).json();
       report.camera = info;
       log('Connected to ' + info.name + ' in ' + Math.round(performance.now() - t0) + ' ms' + (info.note ? ' — ' + info.note : ''));
-      $('infoTable').innerHTML = row('Status', 'Connected') + row('Camera', info.name) + row('Maker', info.maker) + row('Battery', info.battery >= 0 ? info.battery + '%' : '') + row('Booth settings', info.note || 'unchanged');
+      if(info.diag) log('Details: ' + info.diag);
+      $('infoTable').innerHTML = row('Status', 'Connected') + row('Camera', info.name) + row('Maker', info.maker) + row('Battery', info.battery >= 0 ? info.battery + '%' : '') + row('Booth settings', info.note || 'unchanged') + row('Details', info.diag || '');
       $('liveBtn').disabled = false; $('shotBtn').disabled = false;
       $('connectBtn').textContent = 'Reconnect camera';
       showMsg('Connected. Now try live view, then take a photo.', 'info');

@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>photobooth4u tablet guide</title>
+<!--
+  Source of public/lifetime/photobooth4u-tablet-guide.pdf.
+  Rebuild: node build-tablet-guide.mjs  (prints this page to PDF with headless Chrome/Chromium)
+  Fonts come from ../setup-guide/fonts. Screenshots in img/ are from the booth at iPad size.
+-->
+<style>
+@font-face{font-family:'Fraunces';src:url(../setup-guide/fonts/fraunces-latin-600-normal.woff2) format('woff2');font-weight:600;font-style:normal}
+@font-face{font-family:'Fraunces';src:url(../setup-guide/fonts/fraunces-latin-500-italic.woff2) format('woff2');font-weight:500;font-style:italic}
+@font-face{font-family:'Fraunces';src:url(../setup-guide/fonts/fraunces-latin-600-italic.woff2) format('woff2');font-weight:600;font-style:italic}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-400-normal.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-500-normal.woff2) format('woff2');font-weight:500}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-600-normal.woff2) format('woff2');font-weight:600}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-700-normal.woff2) format('woff2');font-weight:700}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-800-normal.woff2) format('woff2');font-weight:800}
+
+:root{
+  --cream:#f5f1ea; --ink:#1c1a1e; --body:#4a4548; --dim:#7a7376; --red:#c93d27;
+  --line:#e4dccf; --purple:#5b3fa0; --purple-bg:#ede7f7; --green:#1f6f62; --green-bg:#e6f4f1;
+  --pink-bg:#fbedea; --mono:'DejaVu Sans Mono', monospace;
+}
+@page{size:A4; margin:0}
+*{box-sizing:border-box}
+html,body{margin:0; padding:0; background:#fff}
+body{font-family:'Manrope',sans-serif; color:var(--body); font-size:12.4px; line-height:1.62;
+  -webkit-print-color-adjust:exact; print-color-adjust:exact}
+b,strong{color:var(--ink); font-weight:700}
+.page{width:210mm; height:297mm; position:relative; overflow:hidden; padding:66px 64px 0; background:#fff; page-break-after:always; break-after:page}
+.page:last-child{page-break-after:auto; break-after:auto}
+.foot{position:absolute; left:64px; right:64px; bottom:40px; display:flex; justify-content:space-between;
+  font-size:8.6px; font-weight:700; letter-spacing:.2em; color:var(--dim); text-transform:uppercase}
+
+/* section heads */
+.kicker{font-size:9.4px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:var(--red); margin:0 0 2px}
+h2{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:31px; line-height:1.15; letter-spacing:-.01em; color:var(--ink); margin:0 0 14px}
+.lead{font-size:14px; line-height:1.6; color:var(--body); margin:-4px 0 18px}
+.sec + .sec{margin-top:40px}
+
+/* numbered steps with a thin rail */
+.steps{position:relative; margin:0; padding:0; list-style:none}
+.steps li{position:relative; padding:0 0 12px 38px}
+.steps li::before{content:''; position:absolute; left:12px; top:22px; bottom:-2px; width:1px; background:#e0d7cb}
+.steps li:last-child::before{display:none}
+.steps .n{position:absolute; left:0; top:2px; width:24px; height:24px; border-radius:50%; background:var(--red); color:#fff;
+  font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center}
+.steps h4{margin:0 0 5px; font-size:14.4px; font-weight:700; color:var(--ink); line-height:1.4}
+.steps p{margin:0}
+
+.cols{display:grid; grid-template-columns:1fr 290px; gap:28px; align-items:start}
+.cols.even{grid-template-columns:1fr 1fr; gap:18px}
+
+.card{border-radius:12px; padding:16px 18px}
+.card.cream{background:var(--cream)} .card.purple{background:var(--purple-bg)} .card.green{background:var(--green-bg); color:var(--green)}
+.card.pink{background:var(--pink-bg)} .card.line{border:1.5px solid var(--line); background:#fff}
+.card h5{margin:0 0 10px; font-size:13px; font-weight:700; color:var(--ink)}
+.card.green h5{color:var(--green)}
+.pill{display:inline-block; font-size:8.2px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:#fff;
+  border-radius:999px; padding:4px 10px; margin:0 0 12px; background:var(--ink)}
+.pill.purple{background:var(--purple)} .pill.green{background:var(--green)} .pill.red{background:var(--red)}
+.dots{list-style:none; margin:0; padding:0}
+.dots li{position:relative; padding-left:18px; margin:0 0 8px}
+.dots li::before{content:''; position:absolute; left:0; top:.58em; width:7px; height:7px; border-radius:50%; background:var(--red)}
+.card.green .dots li{color:var(--green)}
+.card.green b{color:var(--green)}
+.checks{display:grid; grid-template-columns:1fr 1fr; gap:4px 24px; list-style:none; margin:0; padding:0; color:var(--green)}
+.checks li{position:relative; padding-left:20px}
+.checks li::before{content:''; position:absolute; left:0; top:.32em; width:11px; height:11px; border:1.5px solid var(--green); border-radius:3px}
+.note{border-radius:12px; padding:13px 18px; font-size:12px}
+code,.kbd{font-family:var(--mono); font-size:10.6px; background:#f1ede6; border:1px solid #e1d9cc; border-radius:4px; padding:1px 5px; color:var(--ink)}
+.codeblock{font-family:var(--mono); font-size:10.6px; line-height:1.7; background:var(--ink); color:#f3eee6; border-radius:8px; padding:12px 14px; margin:8px 0 14px; white-space:pre-wrap}
+.label{font-size:11px; color:var(--body); margin:0}
+.label b{color:var(--ink)}
+figure{margin:0}
+figure img{width:100%; border-radius:12px; display:block; border:1px solid var(--line)}
+figcaption{font-size:11.4px; color:var(--body); margin-top:8px; line-height:1.5}
+
+/* cover */
+.cover{background:var(--cream); padding:0}
+.logo{display:flex; align-items:center; gap:8px}
+.logo .mark{display:grid; grid-template-columns:9px 9px; gap:3px}
+.logo .mark i{width:9px; height:9px; border-radius:2.5px; background:var(--ink)}
+.logo .mark i:nth-child(2){background:var(--red)}
+.logo .word{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:24px; letter-spacing:-.035em; color:var(--ink); line-height:1}
+.logo .badge{font-weight:800; font-size:10px; color:#fff; background:var(--red); border-radius:4px; padding:1px 4px; transform:rotate(-7deg) translate(-4px,-9px); line-height:1.2}
+.cover .top{padding:62px 64px 0}
+.cover h1{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:67px; line-height:1.02; letter-spacing:-.025em; color:var(--ink); margin:62px 0 26px}
+.cover h1 em{font-style:italic; font-weight:500; color:var(--red)}
+.cover .intro{font-size:14.6px; line-height:1.62; max-width:560px; margin:0}
+.hero{margin:34px 0 0; border-top:1px solid #e3d9cb; border-bottom:1px solid #e3d9cb; background:var(--cream)}
+.hero{padding:10px 0} .hero img{display:block; width:79%; margin:0 auto}
+.toc{display:grid; grid-template-columns:1fr 1fr; column-gap:30px; padding:22px 64px 0; margin:0; list-style:none}
+.toc li{display:flex; gap:20px; border-bottom:1px solid #e0d6c8; padding:9px 0; font-size:13.6px; font-weight:600; color:var(--ink)}
+.toc li span{color:var(--red); font-weight:700; width:16px}
+.cover .foot{left:64px; right:64px}
+
+/* guest payments */
+.mode h5{display:flex; align-items:center; gap:8px}
+.mode .ic{flex:none; width:26px; height:26px; border-radius:8px; background:#fff; color:var(--red); font-size:10.5px; font-weight:800; display:flex; align-items:center; justify-content:center}
+.mode p{margin:0}
+.h3{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:21px; line-height:1.2; color:var(--ink); margin:0 0 12px}
+table.fix.pay td:first-child{width:200px}
+
+/* troubleshooting */
+table.fix{width:100%; border-collapse:collapse; font-size:11.6px; line-height:1.5}
+table.fix th{text-align:left; font-size:8.4px; font-weight:700; letter-spacing:.2em; color:var(--dim); text-transform:uppercase; padding:0 0 8px; border-bottom:1.5px solid var(--ink)}
+table.fix td{padding:5px 0; border-bottom:1px solid #e6dfd4; vertical-align:top}
+table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color:var(--ink)}
+.help{margin-top:18px; background:var(--ink); border-radius:12px; padding:18px 24px; display:flex; align-items:center; justify-content:space-between; color:#d7d1ca}
+.help h3{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:20px; color:#fff; margin:0 0 2px}
+.help p{margin:0; font-size:12px} .help b{color:#fff}
+.help .btn{background:var(--red); color:#fff; font-weight:700; font-size:12.4px; border-radius:999px; padding:9px 18px}
+
+.three{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+.three .card{padding:16px 16px 18px; font-size:12.2px}
+
+/* tablet guide */
+.tab{border:9px solid #1c1a1e; border-radius:20px; overflow:hidden; background:#1c1a1e; box-shadow:0 10px 26px rgba(28,26,30,.16)}
+.tab img{display:block; width:100%; border:0; border-radius:0}
+.cover .hero.tabhero{padding:22px 0 24px}
+.cover .hero.tabhero .tab{width:66%; margin:0 auto}
+.os{display:flex; align-items:center; gap:8px; margin:0 0 10px}
+.os .pill{margin:0}
+.path{font-size:11.6px; color:var(--ink); font-weight:700}
+.dots li .path{font-weight:700}
+.small{font-size:11.4px}
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<section class="page cover">
+  <div class="top">
+    <div class="logo"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word">photobooth</span><span class="badge">4u</span></div>
+    <h1>Your tablet,<br><em>ready</em> to be a booth.</h1>
+    <p class="intro">How to run photobooth4u on an <b>iPad or Android tablet</b>: settings, camera, printing and keeping guests in the booth. In a hurry? <b>Page 2 is a one-page quick start</b> for event day.</p>
+  </div>
+  <div class="hero tabhero"><div class="tab"><img src="img/welcome.jpg" alt=""></div></div>
+  <ol class="toc">
+    <li><span>&#9733;</span>Quick start (page 2)</li>
+    <li><span>05</span>Guest-only mode</li>
+    <li><span>01</span>What you need</li>
+    <li><span>06</span>Printing from a tablet</li>
+    <li><span>02</span>Prepare the tablet</li>
+    <li><span>07</span>Weak or no internet</li>
+    <li><span>03</span>Open &amp; unlock the booth</li>
+    <li><span>08</span>After the event</li>
+    <li><span>04</span>Camera &amp; position</li>
+    <li><span>09</span>Troubleshooting &amp; help</li>
+  </ol>
+  <div class="foot"><span>photobooth4u.netlify.app</span><span>Tablet guide</span></div>
+</section>
+
+<!-- ============ QUICK START ============ -->
+<section class="page">
+  <p class="kicker">&#9733; Event day</p>
+  <h2>Quick start</h2>
+  <p class="lead">Do these in order. Each step has its own page if you need more detail.</p>
+  <ol class="steps">
+    <li><span class="n">1</span><h4>Charge and mount the tablet</h4><p>Tablet on its charger, on a stand at the guests' eye level, <b>screen and front camera facing the guests</b>. Landscape works best. <i>(Page 5)</i></p></li>
+    <li><span class="n">2</span><h4>Check the tablet settings</h4><p>Screen never locks, <b>Do Not Disturb</b> on, Low Power / Battery Saver off, volume up for the countdown beeps. <i>(Page 3)</i></p></li>
+    <li><span class="n">3</span><h4>Connect to the internet</h4><p>Venue Wi-Fi, a pocket Wi-Fi or a phone hotspot. If you print over Wi-Fi, put the <b>printer on the same network</b>. <i>(Pages 7–8)</i></p></li>
+    <li><span class="n">4</span><h4>Open the booth</h4><p><b>iPad:</b> Safari. <b>Android:</b> Chrome. Go to <b>photobooth4u.netlify.app</b>. The tablet is already unlocked from last time. Tap <b>Allow</b> if it asks for the camera. <i>(Page 4)</i></p></li>
+    <li><span class="n">5</span><h4>Check Setup</h4><p>Design, name and date, layout. Lifetime codes: type the <b>event name</b> in <b>6 Share</b>. Your last setup is saved, so usually you only change the name.</p></li>
+    <li><span class="n">6</span><h4>Printer (if your package has printing)</h4><p>Tap <b>Printer</b> (bottom left), pick the paper size, then do one test print and choose your printer in the print sheet. Optional: <b>Print automatically after each session</b>. <i>(Page 7)</i></p></li>
+    <li><span class="n">7</span><h4>Do one test session</h4><p>Take a session yourself, <b>scan the QR with your phone</b>, and check the print.</p></li>
+    <li><span class="n">8</span><h4>Lock it for guests</h4><p>Turn on <b>Lock booth</b> (if included) and <b>Guided Access</b> (iPad) or <b>App pinning</b> (Android) so guests stay in the booth. Open <b>Photo Session</b>. You're ready. <i>(Page 6)</i></p></li>
+  </ol>
+  <div class="cols even" style="margin-top:16px">
+    <div class="card green">
+      <h5>Good habits</h5>
+      <ul class="dots">
+        <li>Keep the booth open in <b>one tab</b>. Don't close it while photos are uploading.</li>
+        <li>Wipe the front camera lens before guests arrive.</li>
+      </ul>
+    </div>
+    <div class="card pink">
+      <h5>If something goes wrong</h5>
+      <ul class="dots">
+        <li>Camera black or frozen: <b>reload the page</b>. Your setup is saved.</li>
+        <li>Still stuck: page 9, or message us.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>photobooth4u tablet guide</span><span>2</span></div>
+</section>
+
+<!-- ============ NEED + PREPARE ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">01 · Before you start</p>
+    <h2>What you need</h2>
+    <div class="cols even">
+      <div class="card cream">
+        <span class="pill">Must have</span>
+        <ul class="dots">
+          <li><b>iPad</b> or <b>Android tablet</b>, kept up to date. A phone works too.</li>
+          <li><b>Tablet stand or tripod mount</b> at eye level</li>
+          <li><b>Charger</b> and a long cable or extension cord</li>
+          <li><b>Internet</b>: venue Wi-Fi, pocket Wi-Fi or a phone hotspot</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <span class="pill purple">Nice to have</span>
+        <ul class="dots">
+          <li><b>Ring light</b> or soft light facing the guests</li>
+          <li><b>Photo printer</b> on Wi-Fi (e.g. Canon Selphy), if your package has printing</li>
+          <li>A printed <b>QR sign</b> for the table (page 8)</li>
+          <li>A backdrop and props</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" style="margin-top:30px">
+    <p class="kicker">02 · Once per tablet</p>
+    <h2>Prepare the tablet</h2>
+    <p class="lead">So the screen never sleeps and no pop-ups land on top of the booth during the event.</p>
+    <div class="cols even">
+      <div class="card line">
+        <div class="os"><span class="pill">iPad</span></div>
+        <ul class="dots">
+          <li><span class="path">Settings → Display &amp; Brightness → Auto-Lock → Never</span></li>
+          <li><span class="path">Control Centre → Focus → Do Not Disturb</span> (no message pop-ups)</li>
+          <li><span class="path">Settings → Battery → Low Power Mode</span>: off</li>
+          <li><span class="path">Settings → Apps → Safari → Camera → Allow</span> (on older iPadOS: Settings → Safari → Camera)</li>
+          <li><span class="path">Control Centre → Rotation Lock</span>: on, once the iPad is the right way round</li>
+          <li>Brightness and volume up</li>
+        </ul>
+      </div>
+      <div class="card line">
+        <div class="os"><span class="pill green">Android</span></div>
+        <ul class="dots">
+          <li><span class="path">Settings → Display → Screen timeout</span>: the longest</li>
+          <li><span class="path">Quick settings → Do Not Disturb</span>: on</li>
+          <li><span class="path">Settings → Battery → Battery saver / Power saving</span>: off</li>
+          <li><span class="path">Play Store → Chrome → Update</span></li>
+          <li><span class="path">Quick settings → Auto-rotate</span>: off, once the tablet is the right way round</li>
+          <li>Brightness and volume up</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note card green" style="margin-top:14px">While the booth is open it keeps the screen awake by itself. The settings above are the backup, for example after you switch apps.</div>
+  </div>
+  <div class="foot"><span>photobooth4u tablet guide</span><span>3</span></div>
+</section>
+
+<!-- ============ UNLOCK ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">03 · First time on each tablet</p>
+    <h2>Open &amp; unlock the booth</h2>
+    <div class="cols">
+      <ol class="steps">
+        <li><span class="n">1</span><h4>Open the website</h4><p><b>iPad:</b> Safari. <b>Android:</b> Chrome. Go to <b>photobooth4u.netlify.app</b>.</p></li>
+        <li><span class="n">2</span><h4>Enter your code</h4><p>Type your <code>PB-XXXX-XXXX-XXXX</code> code and tap <b>Unlock</b>. Lifetime codes open <b>My Events</b> first: tap <b>Open photo booth</b>.</p></li>
+        <li><span class="n">3</span><h4>Allow the camera</h4><p>Tap <b>Allow</b> when the tablet asks. The live view appears in Setup.</p></li>
+        <li><span class="n">4</span><h4>Next time, just open the website</h4><p>The tablet stays unlocked. Each tablet uses one of your <b>device slots</b>. Lifetime codes can see and <b>remove</b> devices in <b>My Events → Your details &amp; devices</b>.</p></li>
+      </ol>
+      <div class="card cream">
+        <h5>Keep it in a normal tab</h5>
+        <p style="margin:0 0 8px">On an iPad, run the booth in a <b>Safari tab</b>. If you added it to the Home Screen, the AirPrint sheet may not open from there.</p>
+        <p style="margin:0">Don't use <b>Private browsing</b> or <b>Clear History and Website Data</b>: they sign the tablet out and remove photos still waiting to upload.</p>
+      </div>
+    </div>
+  </div>
+  <div class="sec" style="margin-top:26px">
+    <p class="kicker">Every event</p>
+    <p class="h3">Set up the event</p>
+    <div class="cols">
+      <div>
+        <p style="margin:0 0 10px">In <b>Setup</b>, go through the 6 steps with <b>Next</b>: <b>Design</b>, <b>Text</b> (name and date), <b>Layout</b>, <b>Extras</b>, <b>Session</b> (countdown, camera, light, lock) and <b>Share</b> (event name for lifetime codes, the All photos QR). Then tap <b>Start photo session</b>.</p>
+        <p style="margin:0">Everything saves by itself, and every device on your code gets the same design. More detail: the <b>Setup guide</b>, page 4.</p>
+        <div class="card purple" style="margin-top:14px"><span class="pill purple">Two tablets at one event?</span><p style="margin:0">Type the <b>exact same event name</b> on both. They share one gallery, one QR and one design.</p></div>
+      </div>
+      <figure><div class="tab"><img src="img/setup.jpg" alt=""></div><figcaption>Setup on an iPad: the 6 steps across the top, preview on the right.</figcaption></figure>
+    </div>
+  </div>
+  <div class="foot"><span>photobooth4u tablet guide</span><span>4</span></div>
+</section>
+
+<!-- ============ CAMERA ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">04 · Looking good</p>
+    <h2>Camera &amp; position</h2>
+    <p class="lead">The booth uses the tablet's <b>front camera</b>, so guests see themselves on the screen while they pose. On tablets the session fills the whole screen.</p>
+    <div class="cols">
+      <ol class="steps">
+        <li><span class="n">1</span><h4>Height and distance</h4><p>Camera at <b>eye level</b>, about <b>1.5–2 m</b> from the guests. For groups, step the stand back rather than zooming.</p></li>
+        <li><span class="n">2</span><h4>Light in front, not behind</h4><p>Light should face the guests. Avoid a bright window behind them. A <b>ring light</b> next to the tablet helps a lot.</p></li>
+        <li><span class="n">3</span><h4>Dim room? Use Screen flash</h4><p><b>Setup → 5 Session → Light, sound and start → Screen flash</b>: the screen turns white for each photo and lights up faces.</p></li>
+        <li><span class="n">4</span><h4>Mirror</h4><p><b>Mirror</b> flips the preview like a mirror. The final photo looks exactly like the preview.</p></li>
+        <li><span class="n">5</span><h4>Choose another camera</h4><p>Tap <b>Camera</b> (bottom left) to switch. The back camera is sharper but faces away from the screen, so guests can't see themselves.</p></li>
+      </ol>
+      <figure><div class="tab"><img src="img/countdown.jpg" alt=""></div><figcaption>The countdown fills the screen on a tablet.</figcaption></figure>
+    </div>
+  </div>
+  <div class="sec" style="margin-top:22px">
+    <p class="h3">Using your DSLR or a capture card</p>
+    <div class="cols even">
+      <div class="card cream">
+        <div class="os"><span class="pill green">Android</span></div>
+        <p style="margin:0">Many Canon and Nikon cameras work over USB with <b>live view and the real shutter</b>: a <b>USB-C to camera cable</b> (OTG, data), Chrome, then <b>Camera → DSLR / mirrorless over USB</b>. Test first at <b>photobooth4u.netlify.app/camera-test/</b>.</p>
+      </div>
+      <div class="card cream">
+        <div class="os"><span class="pill">iPad</span></div>
+        <p style="margin:0">A DSLR can't be controlled from an iPad. On an <b>iPad with USB-C</b> (iPadOS 17 or newer), a <b>USB webcam or HDMI capture card</b> can show up in the Camera menu. Test it at home before the event.</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>photobooth4u tablet guide</span><span>5</span></div>
+</section>
+
+<!-- ============ GUEST-ONLY ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">05 · Self-service booth</p>
+    <h2>Guest-only mode</h2>
+    <p class="lead">Two locks work together: <b>Lock booth</b> hides Setup inside photobooth4u, and the tablet's own lock keeps guests from leaving the browser.</p>
+    <div class="cols">
+      <ol class="steps">
+        <li><span class="n">1</span><h4>Lock booth (if your package has it)</h4><p><b>Setup → 5 Session → Lock booth</b>: set a 4-digit <b>PIN</b>, then <b>Lock booth now</b>. Guests only see start, photos, QR and print. To get back in, tap the <b>small lock</b> in the top-right corner and enter the PIN.</p></li>
+        <li><span class="n">2</span><h4>iPad: Guided Access</h4><p><b>Settings → Accessibility → Guided Access</b>: on, and set a passcode. Open the booth in Safari, <b>triple-click the top button</b> (or the Home button) → <b>Start</b>. To end it, triple-click again and enter the passcode.</p></li>
+        <li><span class="n">3</span><h4>Android: App pinning</h4><p><b>Settings → Security</b> (or Security &amp; privacy → More security settings) → <b>App pinning</b>: on, with "Ask for PIN before unpinning". Open <b>Recent apps</b>, tap Chrome's icon → <b>Pin</b>. To unpin, hold <b>Back + Recents</b> (or swipe up and hold) and enter your PIN.</p></li>
+      </ol>
+      <figure><div class="tab"><img src="img/welcome.jpg" alt=""></div><figcaption>The welcome screen guests see. Your event name comes from Setup.</figcaption></figure>
+    </div>
+  </div>
+  <div class="sec" style="margin-top:24px">
+    <p class="h3">Start without touching</p>
+    <div class="three">
+      <div class="card line"><span class="pill red">Tap</span><p style="margin:0">The default. Guests tap the screen to start, and tap again for each photo if you chose <b>Wait for a tap</b>.</p></div>
+      <div class="card line"><span class="pill green">Wave</span><p style="margin:0">Guests wave at the camera to start. <b>Setup → 5 Session → Light, sound and start → Start</b>.</p></div>
+      <div class="card line"><span class="pill purple">Smile</span><p style="margin:0">Starts when someone smiles at the camera. Works best with good light on faces.</p></div>
+    </div>
+    <div class="note card cream" style="margin-top:14px"><b>Countdown beeps and shutter click</b> are on by default (same section). Keep the tablet's volume up and the side switch off silent.</div>
+  </div>
+  <div class="foot"><span>photobooth4u tablet guide</span><span>6</span></div>
+</section>
+
+<!-- ============ PRINTING ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">06 · If your package includes printing</p>
+    <h2>Printing from a tablet</h2>
+    <p class="lead">Two ways. Pick the one that matches your printer.</p>
+    <div class="cols even">
+      <div class="card cream">
+        <span class="pill red">A · Wi-Fi printer</span>
+        <p style="margin:0 0 8px"><b>Canon Selphy CP1300 / CP1500</b>, Epson, HP and other <b>AirPrint</b> (iPad) or <b>Mopria</b> (Android) printers.</p>
+        <ol class="steps small" style="margin-top:6px">
+          <li><span class="n">1</span><p>Put the printer and the tablet on the <b>same Wi-Fi</b>.</p></li>
+          <li><span class="n">2</span><p>In the booth tap <b>Printer</b>, pick the paper size, and print one test.</p></li>
+          <li><span class="n">3</span><p>Choose your printer in the print sheet. The tablet remembers it.</p></li>
+          <li><span class="n">4</span><p>Optional: <b>Print automatically after each session</b>. The print sheet then opens by itself and the guest just taps <b>Print</b>.</p></li>
+        </ol>
+        <p class="small" style="margin:6px 0 0"><b>Android:</b> if no printer shows, install <b>Mopria Print Service</b> or <b>Canon Print Service</b> from the Play Store and turn it on.</p>
+      </div>
+      <div class="card purple">
+        <span class="pill purple">B · Laptop print station</span>
+        <p style="margin:0 0 8px">For <b>DNP / HiTi</b> printers (not AirPrint), or when guests shouldn't see a print sheet.</p>
+        <ol class="steps small" style="margin-top:6px">
+          <li><span class="n">1</span><p>On the laptop next to the printer, open the <b>Print Helper</b> and <b>photobooth4u.netlify.app/print-station/</b>, sign in with your code, and pick a printer for each size.</p></li>
+          <li><span class="n">2</span><p>On the tablet: <b>Printer → Send prints to → Laptop print station</b>. The booth shows when the station is on.</p></li>
+          <li><span class="n">3</span><p>Prints go to the laptop and print with <b>no pop-up</b>, including Print automatically.</p></li>
+        </ol>
+        <p class="small" style="margin:6px 0 0"><b>Free trial:</b> the tablet shows a 6-digit <b>pairing code</b>; type it on the print-station page.</p>
+      </div>
+    </div>
+    <div class="cols" style="margin-top:20px">
+      <div class="card green">
+        <span class="pill green">Selphy tips</span>
+        <ul class="dots">
+          <li><b>No venue Wi-Fi?</b> Connect the Selphy and the tablet to the <b>same pocket Wi-Fi or phone hotspot</b>. The Selphy's own direct Wi-Fi has no internet, so photos would only upload later.</li>
+          <li>Choose the <b>Canon Selphy postcard (100×148 mm)</b> size. Strip layouts print two strips on one postcard to cut.</li>
+          <li>About <b>40 seconds per print</b>: plan 1 print per session at busy events.</li>
+          <li>Lifetime codes choose their paper sizes and print limits in <b>My Events → Printing</b>.</li>
+        </ul>
+      </div>
+      <figure><div class="tab"><img src="img/printer.jpg" alt=""></div><figcaption>Printer: paper size, Print automatically, and where prints go.</figcaption></figure>
+    </div>
+  </div>
+  <div class="foot"><span>photobooth4u tablet guide</span><span>7</span></div>
+</section>
+
+<!-- ============ INTERNET + AFTER ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">07 · When the venue's internet is bad</p>
+    <h2>Weak or no internet</h2>
+    <div class="cols">
+      <ol class="steps">
+        <li><span class="n">1</span><h4>Open the booth while you're online</h4><p>Load the booth and check Setup before the event starts, while the internet works.</p></li>
+        <li><span class="n">2</span><h4>Keep going if it drops</h4><p>Sessions carry on. Each photo is <b>kept on the tablet</b> and uploads by itself when the internet is back. Guests still get their QR: <i>"Scan now · your photo arrives once the booth is back online."</i></p></li>
+        <li><span class="n">3</span><h4>Put out the QR sign</h4><p><b>Setup → 6 Share → Download QR sign</b>, then print it for the table. Guests can scan it any time to see every photo of the event.</p></li>
+        <li><span class="n">4</span><h4>Keep the tab open until it's empty</h4><p>The Photo Session panel shows <b>Waiting to upload</b>. Leave the booth open on internet until that list is gone.</p></li>
+      </ol>
+      <figure><div class="tab"><img src="img/result.jpg" alt=""></div><figcaption>After each session: the guest's own QR, Print and Done.</figcaption></figure>
+    </div>
+    <div class="note card cream" style="margin-top:8px"><b>Guest payments:</b> QR payment needs internet; <b>vouchers work offline</b>. With "QR + vouchers" the booth switches to vouchers by itself when the internet drops. Setup guide pages 9–10.</div>
+  </div>
+
+  <div class="sec" style="margin-top:28px">
+    <p class="kicker">08 · After the event</p>
+    <h2>Send the photos to your client</h2>
+    <div class="cols">
+      <ol class="steps">
+        <li><span class="n">1</span><h4>Open My Events</h4><p>In Setup, tap <b>My Events ↗</b> (top right): it opens already signed in. Or use <b>photobooth4u.netlify.app/lifetime/</b> on any phone.</p></li>
+        <li><span class="n">2</span><h4>Copy the link or show the QR</h4><p>Send the <b>online gallery</b> by Messenger. Your client can <b>Download all</b> there.</p></li>
+      </ol>
+      <div class="card pink"><span class="pill red">7-day rule</span><p style="margin:0">Photos are deleted <b>7 days after the event's last photo</b>. Send the link the same day.</p></div>
+    </div>
+  </div>
+  <div class="foot"><span>photobooth4u tablet guide</span><span>8</span></div>
+</section>
+
+<!-- ============ TROUBLESHOOTING ============ -->
+<section class="page">
+  <p class="kicker">09 · Quick fixes</p>
+  <h2>Troubleshooting</h2>
+  <table class="fix">
+    <tr><th>Problem</th><th>Fix</th></tr>
+    <tr><td>"We need access to your camera"</td><td><b>iPad:</b> Settings → Apps → Safari → Camera → Allow, then reload. <b>Android:</b> tap the icon left of the address → Permissions → Camera → Allow, then reload.</td></tr>
+    <tr><td>Camera black or frozen</td><td>Usually after switching apps or a call. <b>Reload the page</b>. Close other apps that use the camera.</td></tr>
+    <tr><td>The screen dims or locks</td><td>iPad: Auto-Lock → Never. Android: Screen timeout to the longest. Keep the tablet charging.</td></tr>
+    <tr><td>Messages or calls pop up</td><td>Turn on <b>Do Not Disturb</b> before the event.</td></tr>
+    <tr><td>Guests leave the booth or open other apps</td><td>Use <b>Guided Access</b> (iPad) or <b>App pinning</b> (Android), plus <b>Lock booth</b>. Page 6.</td></tr>
+    <tr><td>No print sheet appears (iPad)</td><td>Open the booth in a <b>Safari tab</b>, not from a Home Screen icon. Or use a laptop print station.</td></tr>
+    <tr><td>Printer isn't in the list</td><td>Same Wi-Fi as the tablet? Restart the printer. Android: install <b>Mopria</b> or <b>Canon Print Service</b>.</td></tr>
+    <tr><td>"Already used on another device"</td><td>All device slots are taken. Lifetime: <b>My Events → Your details &amp; devices → Remove</b> an old one. Otherwise message us.</td></tr>
+    <tr><td>"Photos waiting to upload"</td><td>The internet dropped. Keep the booth open: they upload by themselves, or tap <b>Retry now</b>.</td></tr>
+    <tr><td>The QR code doesn't appear</td><td>Check the internet, and that the event name is set in <b>Setup → 6 Share</b>.</td></tr>
+    <tr><td>Forgot your code</td><td><b>My Events → Forgot your code?</b> It's emailed to the address on your account.</td></tr>
+    <tr><td>Countdown is silent</td><td>Volume up, side switch off silent, and <b>Countdown beeps</b> on in Setup → 5 Session.</td></tr>
+  </table>
+  <div class="card green" style="margin-top:20px">
+    <h5>Before every event</h5>
+    <ul class="checks">
+      <li>Tablet charged, charger packed</li>
+      <li>Do Not Disturb on, Auto-Lock: Never</li>
+      <li>Booth opens and the camera works</li>
+      <li>Event name set in Setup → 6 Share</li>
+      <li>Printer on the same Wi-Fi, test print done</li>
+      <li>QR sign printed for the table</li>
+    </ul>
+  </div>
+  <div class="help">
+    <div><h3>Need help? Message us.</h3><p>We're on Facebook Messenger: <b>m.me/roktetnachi</b></p></div>
+    <a class="btn" href="https://m.me/roktetnachi" style="text-decoration:none">Message us</a>
+  </div>
+  <div class="foot"><span>photobooth4u tablet guide</span><span>9</span></div>
+</section>
+
+</body>
+</html>

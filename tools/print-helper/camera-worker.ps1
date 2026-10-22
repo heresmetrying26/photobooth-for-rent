@@ -241,6 +241,18 @@ namespace Pb4uCam
             foreach (uint p in ps) { var pv = new PropVariant(); pv.vt = 19; pv.uintVal = p; Check(c.Add(ref pv), "Add param"); }
             Check(v.SetIPortableDevicePropVariantCollectionValue(ref kParams, c), "Set params");
         }
+        // Vendor operations Windows' MTP driver will pass to the camera.
+        public List<uint> DriverVendorOps()
+        {
+            var l = new List<uint>();
+            var r = Send(11, NewValues());
+            var key = new PropertyKey(MTPX, 1005);
+            IPortableDevicePropVariantCollection c;
+            if (r.GetIPortableDevicePropVariantCollectionValue(ref key, out c) != 0 || c == null) return l;
+            uint n; c.GetCount(out n);
+            for (uint k = 0; k < n; k++) { var pv = new PropVariant(); if (c.GetAt(k, ref pv) == 0) l.Add(pv.uintVal); }
+            return l;
+        }
         public uint Op(ushort code, params uint[] ps)
         {
             var v = NewValues();
@@ -353,6 +365,12 @@ namespace Pb4uCam
         static Ptp ptp;
         static string camName = "", camModel = "", camMaker = "", devId = null;
         static uint vendor;
+        static bool nikon;
+        static string diag = "";
+        // Nikons in MTP mode (D3400, D5600...) call themselves a Microsoft/MTP device
+        // and may not list their own commands, but they still answer them.
+        static readonly ushort[] NIKON_OPS = { 0x90C0, 0x90C1, 0x90C7, 0x90C8, 0x9201, 0x9202, 0x9203, 0x9207 };
+        static bool Has(ushort op) { return ops.Contains(op) || (nikon && Array.IndexOf(NIKON_OPS, op) >= 0); }
         static List<ushort> ops = new List<ushort>(), props = new List<ushort>();
         static bool live;
         static string setupNote = "";
@@ -406,6 +424,19 @@ namespace Pb4uCam
             rd.U16(); vendor = rd.U32(); rd.U16(); rd.Str(); rd.U16();
             ops = rd.U16Array(); rd.U16Array(); props = rd.U16Array(); rd.U16Array(); rd.U16Array();
             camMaker = rd.Str(); camModel = rd.Str();
+            nikon = vendor == 0x0A || camMaker.IndexOf("nikon", StringComparison.OrdinalIgnoreCase) >= 0;
+            string driverOps = "?";
+            try
+            {
+                var dv = ptp.DriverVendorOps();
+                var allowed = new List<string>();
+                foreach (ushort op in new ushort[] { 0x9201, 0x9203, 0x90C0, 0x90C7, 0x90C8 }) if (dv.Contains(op)) allowed.Add(op.ToString("X4"));
+                driverOps = dv.Count + " vendor ops, of ours: " + (allowed.Count > 0 ? string.Join(" ", allowed.ToArray()) : "none");
+            }
+            catch (GoneException) { throw; }
+            catch (Exception e) { driverOps = "n/a (" + e.Message + ")"; }
+            diag = "vendor " + vendor + ", " + ops.Count + " ops, lists 9201: " + (ops.Contains(0x9201) ? "yes" : "no") + ", 90C0: " + (ops.Contains(0x90C0) ? "yes" : "no") + "; driver: " + driverOps;
+            Log("DeviceInfo " + camMaker + " " + camModel + ": " + diag);
             return true;
         }
 
@@ -442,7 +473,7 @@ namespace Pb4uCam
                     ptp = p;
                     if (!ReadInfo()) { CloseCamera(); continue; }
                     seen += (seen == "" ? "" : ", ") + (camMaker + " " + camModel).Trim();
-                    if (vendor == 0x0A && ops.Contains(0x9201))   // Nikon with live view
+                    if (nikon)   // Nikon (live view is tried when the booth asks for it)
                     {
                         devId = d.Id;
                         camName = (camMaker.StartsWith("Nikon", StringComparison.OrdinalIgnoreCase) ? "Nikon " : camMaker + " ") + camModel.Replace("NIKON", "").Replace("Nikon", "").Trim();
@@ -467,7 +498,7 @@ namespace Pb4uCam
         static string InfoJson()
         {
             return "{\"name\":" + Js(camName) + ",\"model\":" + Js(camModel) + ",\"maker\":" + Js(camMaker) + ",\"vendor\":" + vendor
-                + ",\"liveview\":" + (live ? "true" : "false") + ",\"battery\":" + Battery() + ",\"note\":" + Js(setupNote) + "}";
+                + ",\"liveview\":" + (live ? "true" : "false") + ",\"battery\":" + Battery() + ",\"note\":" + Js(setupNote) + ",\"diag\":" + Js(diag) + "}";
         }
 
         static int Battery()
@@ -500,6 +531,18 @@ namespace Pb4uCam
         static void Prepare()
         {
             setupNote = "";
+            // Record to the camera's own memory (RAM), like the Mac booth does, so
+            // live view and photos work without an SD card (Nikon RecordingMedia 0xD10B).
+            if (nikon)
+            {
+                try
+                {
+                    var rm = PropDesc(0xD10B);
+                    if (rm != null && rm.Current != "1" && SetProp(0xD10B, rm.Type, "1")) { setupNote += "Records to camera memory. "; Log("Recording media -> camera memory (SDRAM)"); }
+                }
+                catch (GoneException) { throw; }
+                catch (Exception e) { Log("Recording media not changed: " + e.Message); }
+            }
             try
             {
                 if (props.Contains(0x5004))
@@ -572,11 +615,9 @@ namespace Pb4uCam
         static void StartLive()
         {
             uint r = ptp.Op(0x9201);
+            Log("StartLiveView: " + H(r));
             if (r != Ptp.OK && r != 0xA00B && r != Ptp.BUSY)
-            {
-                // 0xA00C-ish codes: live view prohibited (mirror up, card, sensor too hot...)
-                if (r == 0xA004 || r == 0xA00C || r == 0xA01C || r == 0xA020) throw new CamException("LIVEVIEW The camera refused live view (" + H(r) + "). Close the camera's own menu, check the lens is attached and the battery isn't low, then try again.");
-            }
+                throw new CamException("LIVEVIEW The camera refused live view (" + H(r) + "). Put an SD card in the camera, close its menu, turn the mode dial to P and extend the kit lens, then try again.");
             WaitReady(6000);
             live = true;
         }
@@ -593,9 +634,11 @@ namespace Pb4uCam
             if (!live) StartLive();
             var sw = Stopwatch.StartNew();
             int restarts = 0;
+            uint last = 0;
             while (sw.ElapsedMilliseconds < 2500)
             {
                 byte[] lv; uint r = ptp.OpRead(0x9203, out lv);
+                last = r;
                 if (r == Ptp.OK)
                 {
                     int s = JpegStart(lv);
@@ -614,6 +657,8 @@ namespace Pb4uCam
                 }
                 Thread.Sleep(40);
             }
+            if (last != Ptp.OK && last != Ptp.BUSY && last != 0)
+                throw new CamException("LIVEVIEW The camera sends no live view (" + H(last) + "). Put an SD card in the camera, close its menu and turn the mode dial to P.");
             return null;
         }
 
@@ -623,14 +668,14 @@ namespace Pb4uCam
             var sw = Stopwatch.StartNew();
             uint r;
             // Focus first while in live view (contrast AF); a miss is fine, the shot decides.
-            if (live && ops.Contains(0x90C1))
+            if (live && Has(0x90C1))
             {
                 try { r = ptp.Op(0x90C1); if (r == Ptp.OK) WaitReady(3000); } catch (GoneException) { throw; } catch { }
             }
             DrainEvents();
-            if (ops.Contains(0x90C0)) r = ptp.Op(0x90C0, 0xFFFFFFFF);    // InitiateCaptureRecInSdram
+            if (Has(0x90C0)) r = ptp.Op(0x90C0, 0xFFFFFFFF);    // InitiateCaptureRecInSdram
             else r = ptp.Op(0x100E, 0, 0);
-            if (r == 0xA002 && ops.Contains(0x9207))
+            if (r == 0xA002 && Has(0x9207))
             {
                 Log("Out of focus; shooting without autofocus");
                 r = ptp.Op(0x9207, 0xFFFFFFFF, 1);    // InitiateCaptureRecInMedia, no AF, to SDRAM
@@ -680,7 +725,7 @@ namespace Pb4uCam
         static List<uint> Events()
         {
             var l = new List<uint>();
-            if (!ops.Contains(0x90C7)) return l;
+            if (!Has(0x90C7)) return l;
             byte[] evd; uint r = ptp.OpRead(0x90C7, out evd);
             if (r == Ptp.OK && evd.Length >= 2)
             {

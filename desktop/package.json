@@ -1,0 +1,93 @@
+{
+  "name": "photobooth4u-desktop",
+  "productName": "photobooth4u",
+  "version": "1.0.0",
+  "private": true,
+  "description": "photobooth4u offline booth for Windows and Mac",
+  "author": "photobooth4u",
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": {
+    "prepare-app": "node scripts/prepare.mjs",
+    "start": "node scripts/prepare.mjs && electron .",
+    "dist:win": "node scripts/prepare.mjs && electron-builder --win --publish never",
+    "dist:mac": "node scripts/prepare.mjs && electron-builder --mac --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.9.3",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "app.photobooth4u.desktop",
+    "productName": "photobooth4u",
+    "artifactName": "photobooth4u-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "dist",
+      "buildResources": "resources"
+    },
+    "files": [
+      "main.mjs",
+      "preload.cjs",
+      "lib/**",
+      "pages/**",
+      "build/**",
+      "resources/icon.png",
+      "package.json",
+      "!build/**/*.map"
+    ],
+    "asar": true,
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "photobooth4u",
+      "include": "resources/installer.nsh"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.photography",
+      "icon": "resources/icon.png",
+      "hardenedRuntime": false,
+      "entitlements": "resources/entitlements.mac.plist",
+      "entitlementsInherit": "resources/entitlements.mac.plist",
+      "extendInfo": {
+        "NSCameraUsageDescription": "photobooth4u uses the camera to take guests' photos.",
+        "NSLocalNetworkUsageDescription": "photobooth4u shows guests a QR code to download their photos from this laptop over the booth Wi-Fi."
+      },
+      "identity": "-"
+    },
+    "dmg": {
+      "artifactName": "photobooth4u-${version}-mac-${arch}.${ext}"
+    },
+    "executableName": "photobooth4u"
+  }
+}

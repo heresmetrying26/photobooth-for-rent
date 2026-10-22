@@ -572,6 +572,7 @@
     el.classList.remove('open'); el.querySelector('.lic-detail').classList.add('hidden'); delete OPEN[code];
   }
 
+  function appCount(devs){ return devs.filter(function(d){ return d.app; }).length; }
   function detailHtml(l, parent, parentEnd){
     var bonus = l.kind === 'bonus';
     var st = statusOf(l, NOW);
@@ -597,6 +598,8 @@
       if(l.email) acts += '<button class="small" data-a="sendcode" data-c="' + c + '">Email code to renter</button>';
       acts += '<button class="small" data-a="payopt" data-c="' + c + '">' + (l.payOpt ? 'Hide guest payments' : 'Give guest payments') + '</button>';
       if(l.payOpt) acts += '<button class="small" data-a="paymgr" data-c="' + c + '">Payments &amp; vouchers</button>';
+      acts += '<button class="small" data-a="offlineopt" data-c="' + c + '">' + (l.offlineOpt ? 'Hide offline app' : 'Give offline app') + '</button>';
+      if(l.offlineOpt && st !== 'revoked') acts += '<button class="small" data-a="offkey" data-c="' + c + '" title="For a laptop with no internet: paste its Machine ID, get a licence key">Offline activation key</button>';
     }
     if(l.lockOpt) acts += '<button class="small" data-a="pinreset" data-c="' + c + '">Reset lock PIN</button>';
     acts += st === 'revoked'
@@ -607,13 +610,14 @@
       ? esc(l.folderName || l.label || l.code) + ' · <i>event name</i></b> <span style="font-weight:500;">(new folder per event)</span><b>'
       : esc(l.folderName || l.label || l.code) + (bonus ? ' / ' + esc(l.subfolder || 'Bonus') + ' <span style="font-weight:500;">(files named BONUS_…)</span>' : '');
     return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + (l.email ? 'Email: <b>' + esc(l.email) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
-      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b><br>' + infoLine(l, st, parentEnd) +
+      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? 'Yes' + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
       '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
-      (devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.kind ? ' · ' + esc(d.kind) : '') + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="Remove this device">Remove</button></span>'; }).join('') + '</div>' : '') +
+      (devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.kind ? ' · ' + esc(d.kind) : '') + (d.app && d.app.name ? ' · ' + esc(d.app.name) : '') + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + (d.app && d.app.seen ? ' · checked in ' + new Date(d.app.seen).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="' + (d.app ? 'Deactivate this laptop (stops at its next check-in)' : 'Remove this device') + '">' + (d.app ? 'Deactivate' : 'Remove') + '</button></span>'; }).join('') + '</div>' : '') +
       '</div>' +
       (bonus ? '' : '<div class="themerow">Starting theme <select class="sel" data-theme-for="' + c + '">' + themeOptions(l.defaultTheme || '') + '</select></div>') +
       '<div class="printbox hidden" data-print-edit></div>' +
       '<div class="printbox hidden" data-pay-box></div>' +
+      '<div class="printbox hidden" data-offkey-box></div>' +
       '<div class="printbox hidden" data-sched-edit></div>' +
       '<div class="actions"><button class="small" data-a="copy" data-c="' + c + '">Copy code</button>' + (bonus ? '' : '<button class="small" data-a="portal" data-c="' + c + '" title="Link to the customer\'s My Events page (signs them in with this code)">Copy events page link</button>') + acts + '</div>';
   }
@@ -825,6 +829,35 @@
         toast((po ? 'Guest payments given' : 'Guest payments hidden') + ' — an open booth updates within ~5 minutes');
         refresh();
         return;
+      }
+      if(a === 'offlineopt'){
+        var oo = !(LIC[code] && LIC[code].offlineOpt);
+        var ro = await api({ action: 'offlineopt', code: code, offlineOpt: oo });
+        toast(oo ? (ro.keyReady ? 'Offline app given: the renter can now activate their Windows / Mac app with this code' : 'Offline app given, but PB_LICENSE_KEY isn\u2019t set in Netlify yet, so activations will fail') : 'Offline app hidden: activated laptops stop at their next check-in');
+        refresh();
+        return;
+      }
+      if(a === 'offkey'){
+        var kbox = b.closest('.actions').parentNode.querySelector('[data-offkey-box]');
+        kbox.classList.remove('hidden');
+        kbox.innerHTML = '<b>Offline activation key</b><p style="margin:4px 0 8px; font-size:12.5px;">For a laptop with no internet. In the app, tap <b>No internet? Activate offline</b> and send us the <b>Machine ID</b> it shows. Paste it here; the laptop takes one device slot.</p>' +
+          '<input type="text" data-offkey-mid placeholder="Machine ID, e.g. WIN-7KQ2-9XPA-4HT3-B8ZD" style="width:100%; max-width:380px;"> ' +
+          '<input type="text" data-offkey-name placeholder="Laptop name (optional)" style="width:200px;"> ' +
+          '<button class="small" data-a="offkeygo" data-c="' + esc(code) + '">Make key</button><div data-offkey-out style="margin-top:10px;"></div>';
+        kbox.querySelector('[data-offkey-mid]').focus();
+        return;
+      }
+      if(a === 'offkeygo'){
+        var kb = b.closest('[data-offkey-box]');
+        var mid = kb.querySelector('[data-offkey-mid]').value.trim(), nm = kb.querySelector('[data-offkey-name]').value.trim();
+        if(!mid){ toast('Paste the Machine ID first'); return; }
+        var rk = await api({ action: 'offlinekey', code: code, mid: mid, name: nm });
+        kb.querySelector('[data-offkey-out]').innerHTML = '<textarea readonly style="width:100%; height:110px; border:1.5px solid var(--line); border-radius:10px; padding:8px; font-family:monospace; font-size:11px;">' + esc(rk.licence) + '</textarea><button class="small" data-a="offkeycopy">Copy key</button> <span style="font-size:12.5px;">Send this to the renter: in the app, paste it under <b>Activate offline</b>. It\u2019s for that laptop only (Device ' + rk.deviceNo + ').</span>';
+        toast('Key made for device ' + rk.deviceNo);
+        return;
+      }
+      if(a === 'offkeycopy'){
+        var ta = b.parentNode.querySelector('textarea'); await navigator.clipboard.writeText(ta.value); toast('Licence key copied'); return;
       }
       if(a === 'paymgr'){
         var pbox = b.closest('.actions').parentNode.querySelector('[data-pay-box]');

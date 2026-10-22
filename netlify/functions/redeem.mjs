@@ -32,7 +32,7 @@ export default safe(async (req, context) => {
       // so the same iPad now looks like a new device).
       if (!mine && devs.length >= maxDevicesOf(rec)) {
         const stale = devs
-          .filter((d) => now - (d.seen || d.at || 0) > STALE_DEVICE_DAYS * DAY)
+          .filter((d) => !d.app && now - (d.seen || d.at || 0) > STALE_DEVICE_DAYS * DAY)   // offline-app laptops check in rarely: never replaced
           .sort((a, b) => (a.seen || a.at || 0) - (b.seen || b.at || 0))[0];
         if (stale) setDevices(rec, devs.filter((d) => d !== stale));
       }

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>photobooth4u</title>
+<link href="/fonts/fonts.css" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 16px;
+    font-family:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif; color:#1C1A1E; background:#F5F1EA;}
+  .card{width:100%; max-width:440px; background:#fff; border:1px solid #E4DCCF; border-radius:20px; padding:32px 26px 24px; text-align:center; box-shadow:0 18px 40px rgba(60,40,20,.10);}
+  .mark{display:grid; grid-template-columns:1fr 1fr; gap:4px; width:36px; height:36px; margin:0 auto 16px;}
+  .mark i{background:#1C1A1E; border-radius:4px;} .mark i:nth-child(2){background:#C93D27;}
+  h1{display:flex; justify-content:center; align-items:flex-start; margin:0;}
+  h1 b{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:38px; letter-spacing:-.035em; line-height:1;}
+  h1 em{font-style:normal; margin-left:5px; padding:3px 8px 5px; border-radius:9px; background:#C93D27; color:#fff; font-weight:800; font-size:17px; line-height:1; transform:rotate(-7deg);}
+  .sub{font-size:11px; font-weight:700; letter-spacing:.24em; text-transform:uppercase; color:#6B666C; margin:12px 0 20px;}
+  h2{font-size:18px; margin:0 0 6px;}
+  p.lead{font-size:14px; line-height:1.5; color:#6B666C; margin:0 0 16px;}
+  input, textarea{width:100%; padding:14px; font-size:16px; border:1.5px solid #E4DCCF; border-radius:12px; background:#FAF7F2; color:#1C1A1E; outline:none; font-family:inherit;}
+  input{text-align:center; letter-spacing:1px; text-transform:uppercase;}
+  textarea{font-size:12px; font-family:ui-monospace,Consolas,monospace; min-height:110px; resize:vertical; word-break:break-all;}
+  input:focus, textarea:focus{border-color:#C93D27; background:#fff;}
+  button{width:100%; margin-top:12px; padding:14px; font-size:15px; font-weight:800; font-family:inherit; background:#C93D27; color:#fff; border:none; border-radius:12px; cursor:pointer; letter-spacing:.04em;}
+  button.alt{background:#fff; color:#1C1A1E; border:1.5px solid #E4DCCF;}
+  button:disabled{opacity:.6; cursor:default;}
+  .link{background:none; border:none; color:#C93D27; font-weight:700; font-size:13.5px; width:auto; padding:6px; margin-top:14px; cursor:pointer; text-decoration:underline; letter-spacing:0;}
+  .msg{margin-top:14px; font-size:13.5px; line-height:1.45; min-height:20px;}
+  .msg.error{color:#c0392b;} .msg.warn{color:#b9770e;} .msg.ok{color:#1e8449;}
+  .notice{background:#FBEDEA; color:#8a2a1b; border-radius:12px; padding:12px 14px; font-size:13.5px; line-height:1.45; margin:0 0 16px; text-align:left;}
+  .mid{display:flex; align-items:center; gap:8px; background:#FAF7F2; border:1.5px dashed #E4DCCF; border-radius:12px; padding:10px 12px; margin:6px 0 14px;}
+  .mid code{flex:1; font-size:17px; font-weight:800; letter-spacing:.06em; text-align:left;}
+  .mid button{width:auto; margin:0; padding:8px 12px; font-size:13px;}
+  ol{text-align:left; font-size:13.5px; line-height:1.5; color:#3d393f; padding-left:20px; margin:0 0 14px;}
+  .hint{margin-top:18px; font-size:12px; color:#6B666C; line-height:1.5;}
+  .hidden{display:none !important;}
+  .who{font-size:13px; color:#6B666C; margin:-4px 0 14px;}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <h1><b>photobooth</b><em>4u</em></h1>
+    <p class="sub">Booth app for this laptop</p>
+
+    <div id="notice" class="notice hidden" role="alert"></div>
+
+    <section id="online">
+      <h2 id="title">Activate this laptop</h2>
+      <p class="lead" id="lead">Type your photobooth4u code. You need the internet just this once; after that the booth works offline.</p>
+      <p class="who hidden" id="who"></p>
+      <form id="form" autocomplete="off">
+        <input id="code" placeholder="PB-XXXX-XXXX-XXXX" maxlength="24" autocapitalize="characters" spellcheck="false" aria-label="Your code">
+        <button id="go" type="submit">Activate</button>
+      </form>
+      <button id="retry" class="alt hidden" type="button">Try again</button>
+      <div id="msg" class="msg" role="status"></div>
+      <button class="link" id="toOffline" type="button">No internet? Activate without internet</button>
+    </section>
+
+    <section id="offline" class="hidden">
+      <h2>Activate without internet</h2>
+      <ol>
+        <li>Send us this laptop’s ID (or message it to us from your phone).</li>
+        <li>We send back a licence text for this laptop.</li>
+        <li>Paste it below and tap Activate.</li>
+      </ol>
+      <div class="mid"><code id="mid">…</code><button class="alt" id="copyMid" type="button">Copy</button></div>
+      <textarea id="lic" placeholder="Paste the licence here (starts with PB4U-LIC1)" spellcheck="false" aria-label="Licence"></textarea>
+      <button id="goOffline" type="button">Activate</button>
+      <div id="msg2" class="msg" role="status"></div>
+      <button class="link" id="toOnline" type="button">Back to activating with a code</button>
+    </section>
+
+    <p class="hint" id="foot">The offline app is an add-on to your code. Each laptop uses one of your code’s device slots.</p>
+  </div>
+<script>
+(function(){
+  var api = window.pb4u;
+  var $ = function(id){ return document.getElementById(id); };
+  var NOTICES = {
+    'expired': 'Your booking has ended. Thank you for using photobooth4u!',
+    'revoked': 'This laptop’s licence was cancelled.',
+    'invalid': 'Please activate this laptop again.',
+    'device-removed': 'This laptop was removed from your code.',
+    'deactivated': 'This laptop was deactivated. Its slot on your code is free again.'
+  };
+  function show(el, on){ el.classList.toggle('hidden', !on); }
+  function say(el, text, kind){ el.textContent = text || ''; el.className = 'msg' + (kind ? ' ' + kind : ''); }
+  // Guard against a reload loop if the booth refuses to open right after activating.
+  function openBooth(){
+    var n = 0; try{ n = Number(sessionStorage.getItem('pb_open_tries')) || 0; sessionStorage.setItem('pb_open_tries', String(n + 1)); }catch(e){}
+    if(n >= 3){ try{ sessionStorage.removeItem('pb_open_tries'); }catch(e){} say($('msg'), 'The booth couldn’t open. Close the app and open it again.', 'error'); return; }
+    if(location.pathname === '/') location.reload(); else location.replace('/');
+  }
+  if(!api){ say($('msg'), 'Open this from the photobooth4u app.', 'error'); return; }
+
+  var notice = '';
+  try{ notice = sessionStorage.getItem('pb_notice') || ''; sessionStorage.removeItem('pb_notice'); }catch(e){}
+
+  api.info().then(function(info){
+    var L = info.licence || {};
+    $('mid').textContent = L.mid || '—';
+    if(L.ok){ openBooth(); return; }
+    var text = L.message || NOTICES[notice] || '';
+    if(text){ $('notice').textContent = text; show($('notice'), true); }
+    if(L.renter || L.code){ $('who').textContent = (L.renter ? L.renter + ' · ' : '') + (L.code || ''); show($('who'), true); }
+    if(L.reason === 'checkin' || L.reason === 'clock' || L.reason === 'revoked'){
+      $('title').textContent = L.reason === 'revoked' ? 'Activate this laptop again' : 'Renew this laptop’s licence';
+      $('lead').textContent = L.reason === 'revoked' ? 'Type your code to activate again, or contact us.' : 'Connect to the internet, then tap Try again. Or type your code.';
+      show($('retry'), L.reason !== 'revoked');
+    }
+    if(L.reason === 'nokey'){ show($('online'), false); }
+  });
+
+  $('form').addEventListener('submit', function(e){
+    e.preventDefault();
+    var code = $('code').value.trim();
+    if(!code){ say($('msg'), 'Type your code first.', 'error'); return; }
+    $('go').disabled = true; say($('msg'), 'Activating…');
+    api.activate(code).then(function(r){
+      $('go').disabled = false;
+      if(r.ok){ say($('msg'), 'Activated ✓ Opening the booth…', 'ok'); setTimeout(openBooth, 600); return; }
+      say($('msg'), r.error || 'Activation failed.', r.code === 'no-addon' ? 'warn' : 'error');
+      if(r.offline) show($('toOffline'), true);
+    }).catch(function(){ $('go').disabled = false; say($('msg'), 'Something went wrong. Try again.', 'error'); });
+  });
+  $('retry').addEventListener('click', function(){
+    $('retry').disabled = true; say($('msg'), 'Checking…');
+    api.checkin().then(function(r){
+      $('retry').disabled = false;
+      if(r.licence && r.licence.ok){ say($('msg'), 'Renewed ✓ Opening the booth…', 'ok'); setTimeout(openBooth, 600); return; }
+      if(r.result === 'offline') say($('msg'), 'Still can’t reach photobooth4u. Check the Wi-Fi has internet.', 'error');
+      else say($('msg'), (r.licence && r.licence.message) || 'Not renewed.', 'error');
+    });
+  });
+  $('toOffline').addEventListener('click', function(){ show($('online'), false); show($('offline'), true); $('lic').focus(); });
+  $('toOnline').addEventListener('click', function(){ show($('offline'), false); show($('online'), true); });
+  $('copyMid').addEventListener('click', function(){ api.copy($('mid').textContent).then(function(){ $('copyMid').textContent = 'Copied ✓'; setTimeout(function(){ $('copyMid').textContent = 'Copy'; }, 1800); }); });
+  $('goOffline').addEventListener('click', function(){
+    var t = $('lic').value.trim();
+    if(!t){ say($('msg2'), 'Paste the licence first.', 'error'); return; }
+    api.activateOffline(t).then(function(r){
+      if(r.ok){ say($('msg2'), 'Activated ✓ Opening the booth…', 'ok'); setTimeout(openBooth, 600); return; }
+      say($('msg2'), r.error || 'That licence didn’t work.', 'error');
+    });
+  });
+  setTimeout(function(){ try{ $('code').focus(); }catch(e){} }, 50);
+})();
+</script>
+</body>
+</html>

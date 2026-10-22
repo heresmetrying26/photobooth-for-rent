@@ -7,6 +7,7 @@ import { timingSafeEqual, createHash } from 'node:crypto';
 import { setupsStore } from '../lib/core.mjs';
 import { ownerId, eventKeyOf, getAcct, acctPublic, acctKey, payStore, unseal, pm, listJSON, usedMap, batchView, createBatch, batchKey } from '../lib/pay.mjs';
 import { cleanEventName, sendMail, codeEmail, EMAIL_RE } from '../lib/core.mjs';
+import { licenceFor, activateOn, saveMap, dropMap, licenceReady, MID_RE } from '../lib/license.mjs';
 
 function passwordOk(input) {
   const real = process.env.ADMIN_PASSWORD;
@@ -311,6 +312,7 @@ export default safe(async (req, context) => {
       const { key, rec } = await getRec();
       if (!rec || rec.status !== 'active') return json({ error: 'Only an active code can be moved to a new device.' }, 400);
       const no = b.deviceNo == null ? null : Number(b.deviceNo);
+      for (const d of devicesOf(rec)) if (d.app && (no == null || d.no === no)) await dropMap(d.app.lid);   // offline app: cancelled at its next check-in
       setDevices(rec, no == null ? [] : devicesOf(rec).filter((d) => d.no !== no));
       await putLicense(store, key, rec);
       return json({ ok: true });
@@ -450,6 +452,35 @@ export default safe(async (req, context) => {
       await putLicense(store, key, rec);
       await syncBonus(rec, { payOpt: rec.payOpt });
       return json({ ok: true, payOpt: rec.payOpt });
+    }
+
+    case 'offlineopt': { // the Windows / Mac offline app add-on for this code
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      rec.offlineOpt = !!b.offlineOpt;
+      await putLicense(store, key, rec);
+      return json({ ok: true, offlineOpt: rec.offlineOpt, keyReady: licenceReady() });
+    }
+
+    case 'offlinekey': { // activate a laptop with no internet: its Machine ID in, a licence key out
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      if (!rec.offlineOpt) return json({ error: 'Give this code the offline app first.' }, 400);
+      if (rec.status === 'revoked') return json({ error: 'This code is disabled.' }, 400);
+      const mid = String(b.mid || '').trim().toUpperCase();
+      if (!MID_RE.test(mid)) return json({ error: 'That Machine ID doesn\u2019t look right. Copy it exactly from the app (e.g. M-ABCD-EFGH-JKLM-NPQR).' }, 400);
+      const now = Date.now();
+      if (rec.status !== 'active') {             // first use starts the code, like the booth does
+        if (rec.startsAt && now < rec.startsAt) return json({ error: 'This code only opens on its booked date.' }, 400);
+        rec.status = 'active'; rec.redeemedAt = now;
+        rec.expiresAt = rec.lifetime ? LIFETIME_EXP : (rec.startsAt ? rec.startsAt + rec.days * DAY : now + rec.days * DAY);
+      }
+      if (rec.expiresAt <= now) return json({ error: 'This code has expired.' }, 400);
+      const r = activateOn(rec, { mid, name: b.name || 'Offline activation', os: b.os || (/^MAC-/.test(mid) ? 'mac' : 'win'), ver: '' }, now);
+      if (r.error) return json({ error: r.error }, r.status || 400);
+      await putLicense(store, key, rec);
+      if (r.isNew) await saveMap(r.dev.app.lid, key, mid);
+      return json({ ok: true, licence: licenceFor(key, rec, r.dev, now), deviceNo: r.dev.no });
     }
 
     case 'payinfo': { // PayMongo connection (never the key), money taken and voucher batches for one booking

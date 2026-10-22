@@ -307,6 +307,42 @@ subfolder. Then **Deploy → Manage deployments → Edit → New version** so th
   full screen on every tap. ⋯ → Full screen switches it on/off (remembered per device). Not on iPhone / Home Screen apps.
 - Background **No cloth (AI)** is labelled Beta, "we keep improving it".
 
+## Photo windows: colour picker, highlight, cut to the window, tilted spots
+- **Edit photo spots → Photo windows:** *Pick window colour*, then tap a window in the preview: that colour (± *Match*)
+  counts as a photo window like white / see-through, and the spots are found again (`f.key = { c:[r,g,b], t }`).
+  *White / see-through only* clears it. Uploading a flat frame with no white or see-through windows (and almost no
+  transparency) keeps it as a frame and opens the picker straight away.
+- **Highlight:** while editing, the windows (see-through areas of the punched frame) are tinted blue.
+- **Cut to the window:** each photo is drawn ~4% bigger and cut to its own window (`frameMasks`: see-through areas
+  split into windows; a window two spots share is split between them), so photos never spill into a neighbour and
+  tilted corners are filled. Spots over solid art (no window) are drawn as before.
+- **Tilted spots:** detection fits the smallest box turned up to ±25° (`minAreaBox`) and stores `a` (degrees) on the
+  spot. Edit photo spots: drag/resize work turned, *Tilt °* field and ↺/↻ 1° buttons; split keeps the tilt.
+- **Snap to window** (Edit photo spots → Selected box): put a box roughly over one window and tap Snap. For tilts
+  within ±10° of the box it finds the strongest straight window edge near each side (edge pixels of white /
+  see-through / picked colour; a side may show only a corner piece when windows overlap) and fits position, size
+  and tilt (`snapSpot`). Sides with no edge found stay where they were (the toast says how many of 4 were found).
+
+## Offline app licences (Windows / Mac desktop app)
+- **Add-on per code:** Admin → *Give offline app* (`offlineOpt`). Without it the app says the offline app isn't in
+  their plan. Same code as the web booth; each activated laptop takes one device slot (kind *Windows app* / *Mac app*)
+  and is never replaced as a "stale" device by /api/redeem.
+- **`/api/license`:** `activate { code, mid, name, os, ver }` (first use starts the code like /api/redeem; throttled),
+  `checkin { licence, mid, ver }` (fresh licence, or `revoked` with reason removed / disabled / no-addon / expired),
+  `deactivate { licence, mid }` (frees the slot), `GET ?pub=1` (public key).
+- **Licence** = `PB4U-LIC1.<payload>.<Ed25519 signature>`, signed with `PB_LICENSE_KEY` (private, Netlify env only;
+  make it once with `node scripts/make-license-key.mjs` and never change it). The app holds only the public key, so
+  licences can't be made or edited without the server. Payload: activation id, machine id, lifetime / `exp`, `chk`
+  (check in after 75 days when online), `hard` (stops 30 days after that without a check-in; rentals stop at `exp`),
+  and the same add-ons as the web booth (printing, vouchers, retakes, lock, mode, folder name).
+- **Admin:** device chips show the laptop name and last check-in; *Deactivate* removes it (cancelled at its next
+  check-in). *Offline activation key*: paste a laptop's Machine ID (`WIN-…` / `MAC-…`) and send the renter the key.
+  Removing the device in My Events works the same way.
+- **The app itself** lives in `desktop/` (Electron, Windows + Mac): the full booth offline, photos saved on the laptop,
+  guests' QR over the booth Wi-Fi, built-in printing and Windows camera, vouchers. Built by GitHub Actions
+  (*Actions → Desktop app*); Netlify ignores it. See [desktop/README.md](desktop/README.md). In `protected/booth.html`
+  the app-only parts are behind `DESKTOP`, so the website is unchanged.
+
 ## My Events page (`/lifetime/`)
 - **Your details & devices:** renters change their **name** (the Drive folder name is frozen first, so photos
   stay in the same folder) and **email**, see each device (type, added, last used, "This device") and **Remove**

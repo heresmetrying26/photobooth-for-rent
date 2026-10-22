@@ -879,6 +879,10 @@
   .frame-info b{color:var(--ink); font-size:12.5px;}
   .action-btn.mini{width:auto; padding:7px 11px; font-size:12px; margin:0;}
   .pattern-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .key-row{align-items:center;}
+  .key-swatch{display:inline-block; width:30px; height:30px; border-radius:8px; border:1.5px solid var(--line, #e4ddd3); background:repeating-conic-gradient(#ddd 0 25%, #fff 0 50%) 0 0/10px 10px; flex:none;}
+  .key-tol{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700;}
+  .key-tol input{width:110px;}
   .beta-tag{display:inline-block; margin-left:4px; padding:1px 6px; border-radius:99px; background:#5b3fa0; color:#fff; font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; vertical-align:1px;}
   .frame-mode{margin:0 0 12px;}
   .frame-mode .chip-row{display:flex; gap:8px; flex-wrap:wrap;}
@@ -1625,6 +1629,11 @@
     #qrSection .qr-box{width:118px; height:118px;}
   }
   @media (prefers-reduced-motion:reduce){ .countdown-num.pulse{animation:none;} .layout-btn .lt.lt-wait{animation:none;} }
+  /* Windows / Mac app: hide what only the website does */
+  .pb-desktop .web-only{display:none !important;}
+  .desk-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;}
+  #deskBox .label-input{font-family:'Manrope',sans-serif; font-size:14px; margin:0;}
+  #deskLan.bad{color:#b9770e; font-weight:700;}
 </style>
 <script>/* qrcode-generator 1.4.4 (MIT) — QR codes are made on this device, no outside service. */
 // Copyright (c) 2009 Kazuhiko Arase
@@ -1684,7 +1693,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <span class="tab-num">2</span> Photo Session
     </button>
   </div>
-  <div class="topbar-end"><a class="my-events-link" id="myEventsLink" href="/lifetime/?booth=1" target="_blank" rel="noopener" hidden><svg class="ic" aria-hidden="true"><use href="#i-bookmark"/></svg><span>My Events</span><span aria-hidden="true">↗</span></a></div>
+  <div class="topbar-end"><a class="my-events-link web-only" id="myEventsLink" href="/lifetime/?booth=1" target="_blank" rel="noopener" hidden><svg class="ic" aria-hidden="true"><use href="#i-bookmark"/></svg><span>My Events</span><span aria-hidden="true">↗</span></a></div>
 </header>
 
 <!-- TAB 1: SETUP -->
@@ -2141,9 +2150,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <p class="panel-hint step-lead">Guests pay before each session: scan a QR with GCash, Maya or any bank app, or type a voucher you sell at the booth. <a href="/lifetime/photobooth4u-setup-guide.pdf#page=9" target="_blank" rel="noopener">How it works (guide, page 9)</a></p>
         <div class="pay-modes" id="payModes" role="radiogroup" aria-label="How guests pay">
           <button type="button" class="chip" data-mode="off">Free</button>
-          <button type="button" class="chip" data-mode="qr">QR payment</button>
+          <button type="button" class="chip web-only" data-mode="qr">QR payment</button>
           <button type="button" class="chip" data-mode="voucher">Vouchers</button>
-          <button type="button" class="chip" data-mode="both">QR + vouchers</button>
+          <button type="button" class="chip web-only" data-mode="both">QR + vouchers</button>
         </div>
         <div id="payMore">
           <div class="pay-row">
@@ -2244,19 +2253,39 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <a id="driveFolderOpen" href="#" target="_blank" rel="noopener">Open gallery</a>
             <button type="button" id="driveFolderCopy">Copy link</button>
             <a id="driveFolderDrive" href="#" target="_blank" rel="noopener" style="display:none;">Drive folder</a>
-            <a id="driveFolderAll" href="/lifetime/?booth=1" target="_blank" rel="noopener" style="display:none;">All my events ↗</a>
+            <a id="driveFolderAll" class="web-only" href="/lifetime/?booth=1" target="_blank" rel="noopener" style="display:none;">All my events ↗</a>
           </div>
           <button type="button" class="action-btn" id="qrSignBtn" style="width:auto; margin:10px auto 0; padding:9px 16px;">Download QR sign</button>
-          <p class="panel-hint" style="margin-top:8px;">Print the sign and put it by the booth. Guests get their own QR after each session; if the booth is offline, their photo still arrives in this gallery once it's back online.</p>
+          <p class="panel-hint" id="driveFolderSignHint" style="margin-top:8px;">Print the sign and put it by the booth. Guests get their own QR after each session; if the booth is offline, their photo still arrives in this gallery once it's back online.</p>
         </div>
         <p class="panel-hint" id="driveFolderHelp"></p>
-        <div class="sub-group" id="backupBox">
+        <div class="sub-group web-only" id="backupBox">
           <p class="sub-label">Backup on this computer</p>
           <p class="panel-hint" id="backupStatus" style="margin:0;"></p>
           <div id="backupBtns" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
             <button type="button" class="action-btn" id="backupChooseBtn" style="width:auto; margin:0;">Choose backup folder</button>
             <button type="button" class="action-btn primary" id="backupAllowBtn" style="width:auto; margin:0; display:none;">Allow saving</button>
             <button type="button" class="action-btn" id="backupStopBtn" style="width:auto; margin:0; display:none;">Stop backup</button>
+          </div>
+        </div>
+        <div class="sub-group" id="deskBox" hidden>
+          <p class="sub-label">Photos on this laptop</p>
+          <p class="panel-hint" id="deskPhotos" style="margin:0; word-break:break-all;"></p>
+          <div class="desk-row">
+            <button type="button" class="action-btn" id="deskOpenBtn" style="width:auto; margin:0;">Open photos folder</button>
+            <button type="button" class="action-btn" id="deskChangeBtn" style="width:auto; margin:0;">Change folder</button>
+          </div>
+          <p class="sub-label" style="margin-top:14px;">Guests&rsquo; phones</p>
+          <p class="panel-hint" id="deskLan" style="margin:0;"></p>
+          <p class="sub-label" style="margin-top:14px;">Booth Wi-Fi for guests (optional)</p>
+          <p class="panel-hint" style="margin:0 0 6px;">Guests scan a Wi-Fi QR to join, then their photo QR. Leave empty if they already know the Wi-Fi.</p>
+          <input type="text" class="label-input" id="deskWifiName" placeholder="Wi-Fi name" maxlength="32" autocomplete="off" spellcheck="false">
+          <input type="text" class="label-input" id="deskWifiPass" placeholder="Wi-Fi password (empty if none)" maxlength="63" autocomplete="off" spellcheck="false" style="margin-top:8px;">
+          <p class="sub-label" style="margin-top:14px;">This laptop&rsquo;s licence</p>
+          <p class="panel-hint" id="deskLic" style="margin:0;"></p>
+          <div class="desk-row">
+            <button type="button" class="action-btn" id="deskCheckBtn" style="width:auto; margin:0;">Check for changes</button>
+            <button type="button" class="action-btn" id="deskDeactBtn" style="width:auto; margin:0;">Deactivate this laptop</button>
           </div>
         </div>
         <div class="sub-group" id="printSummaryBox" style="display:none;">
@@ -2276,12 +2305,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <label>Copies question<input type="text" id="ppTxtCopies" maxlength="40" placeholder="How many copies?"></label>
             <label>When the print limit is reached<input type="text" id="ppTxtLimit" maxlength="70" placeholder="That’s all the prints for this session"></label>
           </details>
-          <label class="sub-label" for="ppRoute" style="display:block; margin:12px 0 4px;">Send prints to (this device)</label>
-          <select id="ppRoute" class="print-route">
+          <label class="sub-label web-only" for="ppRoute" style="display:block; margin:12px 0 4px;">Send prints to (this device)</label>
+          <select id="ppRoute" class="print-route web-only">
             <option value="here">This device</option>
             <option value="station">Laptop print station (no pop-up)</option>
           </select>
-          <p class="panel-hint" id="ppRouteHint" style="margin:4px 0 0;"></p>
+          <p class="panel-hint web-only" id="ppRouteHint" style="margin:4px 0 0;"></p>
         </div>
       </div>
       
@@ -2309,13 +2338,27 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <div class="decor-sel" id="spotEditControls" style="display:none;">
         <p class="panel-hint" style="margin:0 0 8px;">Tap a box to select it, then drag to move or drag its corner to resize. The numbers are the photo order (1 = first shot).</p>
         <div class="decor-btns"><button type="button" class="action-btn" id="spotAdd">+ Add spot</button><button type="button" class="action-btn" id="spotDel" style="color:#c0392b;">Remove spot</button><button type="button" class="action-btn" id="spotRedetect">Find again</button><button type="button" class="action-btn primary" id="spotDone">Done</button></div>
+        <p class="sub-label" style="margin:10px 0 4px;">Photo windows</p>
+        <div class="decor-btns key-row">
+          <button type="button" class="action-btn" id="spotPickColor">&#127919; Pick window colour</button>
+          <span class="key-swatch" id="spotKeySwatch" title="Photo window colour"></span>
+          <label class="key-tol" id="spotKeyTolWrap" style="display:none;">Match <input type="range" id="spotKeyTol" min="6" max="90" step="2"></label>
+          <button type="button" class="action-btn" id="spotKeyClear" style="display:none;">White / see-through only</button>
+        </div>
+        <p class="panel-hint" id="spotPickHint" style="display:none; margin:6px 0 0; color:#C93D27; font-weight:700;">Tap a photo window in the preview to pick its colour.</p>
+        <label class="toggle-row" style="margin-top:6px;"><input type="checkbox" id="spotShowWin" checked> Highlight the photo windows (blue)</label>
         <p class="sub-label" style="margin:10px 0 4px;">Selected box</p>
+        <div class="decor-btns"><button type="button" class="action-btn primary" id="spotSnap" title="Fit this box to the photo window under it: edges, size and tilt">&#129522; Snap to window</button></div>
+        <p class="panel-hint" style="margin:6px 0 8px;">Put the box roughly over one photo window (it can overlap others), then tap <b>Snap to window</b>.</p>
         <div class="decor-btns"><button type="button" class="action-btn" id="spotEarlier">&#9664; Earlier shot</button><button type="button" class="action-btn" id="spotLater">Later shot &#9654;</button><button type="button" class="action-btn" id="spotSplitX">Split in 2 &#8596;</button><button type="button" class="action-btn" id="spotSplitY">Split in 2 &#8597;</button><button type="button" class="action-btn" id="spotSplit4">Split in 4</button></div>
         <div class="spot-size" id="spotSize" style="display:none; margin-top:8px; gap:8px; flex-wrap:wrap; align-items:center; font-size:12.5px; font-weight:700;">
           <label>Left % <input type="number" id="spotX" min="0" max="100" step="0.5" style="width:64px;"></label>
           <label>Top % <input type="number" id="spotY" min="0" max="100" step="0.5" style="width:64px;"></label>
           <label>Width % <input type="number" id="spotW" min="2" max="100" step="0.5" style="width:64px;"></label>
           <label>Height % <input type="number" id="spotH" min="2" max="100" step="0.5" style="width:64px;"></label>
+          <label>Tilt ° <input type="number" id="spotA" min="-45" max="45" step="0.5" style="width:64px;"></label>
+          <button type="button" class="action-btn" id="spotTurnL" style="width:auto; margin:0;" title="Tilt 1° left">&#8634; 1°</button>
+          <button type="button" class="action-btn" id="spotTurnR" style="width:auto; margin:0;" title="Tilt 1° right">1° &#8635;</button>
         </div>
       </div>
       <div class="sample-row">
@@ -2484,14 +2527,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         </div>
         <div class="ps-group">
           <p class="ps-title">Printer</p>
-          <label class="sub-label" for="printRouteSelect" style="display:block; margin:0 0 6px;">Send prints to</label>
-          <select id="printRouteSelect" class="print-route">
+          <label class="sub-label web-only" for="printRouteSelect" style="display:block; margin:0 0 6px;">Send prints to</label>
+          <select id="printRouteSelect" class="print-route web-only">
             <option value="here">This device</option>
             <option value="station">Laptop print station (no pop-up)</option>
           </select>
-          <p class="panel-hint" id="stationHint" style="margin:6px 0 8px;"></p>
+          <p class="panel-hint web-only" id="stationHint" style="margin:6px 0 8px;"></p>
           <div class="printer-pick" id="printerPick">
-            <label class="switch-row" style="margin:6px 0 2px;">
+            <label class="switch-row web-only" style="margin:6px 0 2px;">
               <span>Print Helper on this computer (no dialog)</span>
               <input type="checkbox" id="helperToggle">
             </label>
@@ -2609,6 +2652,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
 <script>
 (function(){
+  // Windows / Mac app (desktop/): photos save on this laptop, guests get them
+  // over the booth Wi-Fi, and printing + the Windows camera are built in.
+  const DESKTOP = !!(window.pb4u && window.pb4u.desktop && window.__PB && window.__PB.desktop);
+  if(DESKTOP) document.documentElement.classList.add('pb-desktop');
   // Line icons from the SVG sprite at the top of the page.
   function ICON(name){ return '<svg class="ic" aria-hidden="true"><use href="#i-' + name + '"/></svg>'; }
   const video = document.getElementById('video');
@@ -3013,7 +3060,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const DRIVE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIsebY2jRqYvPXWn-ytIvWCT-x6N91Ay8lvmnCSWj6IaWWohXCxry4r2VzUxJZP9P3IA/exec';
 
   function driveScriptUrl(){
-    return DRIVE_SCRIPT_URL;
+    return DESKTOP ? '/local/drive' : DRIVE_SCRIPT_URL;
   }
 
   // Lifetime codes: the renter types only the event name; the folder is always
@@ -3077,6 +3124,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // and refreshed a few minutes before it expires.
   let ticketCache = null;
   async function getUploadTicket(folderKey){
+    if(DESKTOP) return 'local';
     const key = folderKey !== undefined ? folderKey : rawFolderKey();
     if(ticketCache && ticketCache.key === key && ticketCache.exp - Date.now() > 5 * 60000) return ticketCache.ticket;
     let token = null, deviceId = null;
@@ -4328,7 +4376,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Rentals only; trials and the no-code booth skip it. Never blocks the booth.
   function registerEvent(folderUrl, session){
     const pb = window.__PB;
-    if(!pb || pb.type !== 'rental' || !folderUrl) return;
+    if(DESKTOP || !pb || pb.type !== 'rental' || !folderUrl) return;
     let token = null, deviceId = null;
     try{ token = localStorage.getItem('pb_token'); deviceId = localStorage.getItem('pb_device'); }catch(e){}
     if(!token || !deviceId) return;
@@ -4343,14 +4391,57 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   let currentFolderLink = '';
   // Guests' QR: the online gallery (/g/<folder id>) unless Admin chose the Drive folder.
+  // Windows / Mac app: photos live on this laptop ("pb4u-local:<id>"); guests'
+  // phones on the same Wi-Fi open http://<laptop address>:<port>/e/<id>/.
+  function localShareUrl(folderUrl, file){
+    var m = /^pb4u-local:([A-Za-z0-9]+)/.exec(String(folderUrl || ''));
+    if(!m) return null;
+    var base = null; try{ base = window.pb4u.lanBase(); }catch(e){}
+    return base ? base + '/e/' + m[1] + '/' + (file ? 'p/' + encodeURIComponent(file) : '') : null;
+  }
+  const NO_LAN_TEXT = 'Saved on this laptop. Connect the laptop to the booth Wi-Fi to show the QR.';
+  // Optional booth Wi-Fi the guests join first (app only; set in Share & start).
+  const WIFI_KEY = 'pb_wifi';
+  function wifiInfo(){
+    if(!DESKTOP) return null;
+    try{ var w = JSON.parse(localStorage.getItem(WIFI_KEY) || 'null'); return w && w.ssid ? { ssid: String(w.ssid), pass: String(w.pass || '') } : null; }catch(e){ return null; }
+  }
+  function wifiQrText(w){
+    var e = function(t){ return String(t).replace(/([\\;,":])/g, '\\$1'); };
+    return 'WIFI:T:' + (w.pass ? 'WPA' : 'nopass') + ';S:' + e(w.ssid) + ';' + (w.pass ? 'P:' + e(w.pass) + ';' : '') + ';';
+  }
   function galleryUrlFor(folderUrl){
+    if(DESKTOP) return localShareUrl(folderUrl);
     var m = /\/folders\/([A-Za-z0-9_-]{10,})/.exec(String(folderUrl || ''));
     return m ? location.origin + '/g/' + m[1] : null;
   }
-  function usesGallery(folderUrl){ return !(window.__PB && window.__PB.qrTarget === 'drive') && !!galleryUrlFor(folderUrl); }
-  function shareUrlFor(folderUrl){ return usesGallery(folderUrl) ? galleryUrlFor(folderUrl) : folderUrl; }
+  function usesGallery(folderUrl){ return DESKTOP || (!(window.__PB && window.__PB.qrTarget === 'drive') && !!galleryUrlFor(folderUrl)); }
+  function shareUrlFor(folderUrl){ return DESKTOP ? localShareUrl(folderUrl) : (usesGallery(folderUrl) ? galleryUrlFor(folderUrl) : folderUrl); }
 
+  // App: the event folder on this laptop, its guests' QR (when on Wi-Fi) and an Open folder link.
+  let localFolderUrl = '', localFolderName = '';
+  function showLocalFolderPreview(folderUrl, name){
+    localFolderUrl = folderUrl; if(name) localFolderName = name;
+    var url = shareUrlFor(folderUrl);
+    currentFolderLink = url || '';
+    var open = document.getElementById('driveFolderOpen');
+    open.style.display = url ? '' : 'none';
+    if(url){ open.href = url; open.textContent = 'Open gallery'; }
+    document.getElementById('driveFolderCopy').style.display = url ? '' : 'none';
+    var dl = document.getElementById('driveFolderDrive');
+    if(dl){ dl.href = '#'; dl.textContent = 'Open folder'; dl.style.display = ''; }
+    document.getElementById('driveFolderAll').style.display = 'none';
+    document.getElementById('driveFolderQrCaption').textContent = url ? 'All photos (same Wi-Fi)' : 'No Wi-Fi yet: connect this laptop to the booth Wi-Fi (or turn on its hotspot) to show the guests\u2019 QR.';
+    driveFolderStatus.style.display = 'block';
+    driveFolderStatus.textContent = '\u2713 Folder ready' + (localFolderName ? ': ' + localFolderName : '') + '. Every photo saves on this laptop.';
+    if(typeof refreshSetupNav === 'function') refreshSetupNav();
+    driveFolderQrImg.style.display = url ? '' : 'none';
+    if(url) driveFolderQrImg.src = qrImageUrl(url);
+    document.getElementById('qrSignBtn').style.display = url ? '' : 'none';
+    driveFolderQrPreview.style.display = 'block';
+  }
   function showDriveFolderPreview(folderUrl, name){
+    if(DESKTOP) return showLocalFolderPreview(folderUrl, name);
     var url = shareUrlFor(folderUrl), gallery = usesGallery(folderUrl);
     currentFolderLink = url;
     document.getElementById('driveFolderOpen').href = url;
@@ -4381,7 +4472,27 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     x.fillText('SCAN FOR YOUR PHOTOS', W / 2, 330);
     x.fillStyle = '#1C1A1E'; fit(name || 'Photo booth', "600 #px 'Fraunces', Georgia, serif", 150, W - 360);
     x.fillText(name || 'Photo booth', W / 2, 500);
-    let q = null; try{ q = qrcode(0, 'M'); q.addData(String(url)); q.make(); }catch(e){}
+    const wifi = wifiInfo();
+    const drawQr = (text, ox, oy, size) => {
+      let qq = null; try{ qq = qrcode(0, 'M'); qq.addData(String(text)); qq.make(); }catch(e){ return; }
+      const n = qq.getModuleCount(), cell = Math.floor(size / (n + 4)), qs = cell * (n + 4);
+      ox = Math.round(ox + (size - qs) / 2);
+      x.fillStyle = '#ffffff'; x.fillRect(ox, oy, qs, qs);
+      x.fillStyle = '#000000';
+      for(let r = 0; r < n; r++) for(let k = 0; k < n; k++) if(qq.isDark(r, k)) x.fillRect(ox + (k + 2) * cell, oy + (r + 2) * cell, cell, cell);
+      x.strokeStyle = '#E4DCCF'; x.lineWidth = 6; x.strokeRect(ox - 3, oy - 3, qs + 6, qs + 6);
+    };
+    let q = null;
+    if(wifi){
+      // 1. join the booth Wi-Fi  2. open the photos (guests' phones must be on the laptop's Wi-Fi)
+      drawQr(wifiQrText(wifi), 170, 640, 640); drawQr(url, 938, 640, 640);
+      x.textAlign = 'center';
+      x.fillStyle = '#1C1A1E'; x.font = "800 52px 'Manrope', system-ui, sans-serif";
+      x.fillText('1. Join the Wi-Fi', 490, 1390); x.fillText('2. Open your photos', 1258, 1390);
+      x.fillStyle = '#6B666C'; fit(wifi.ssid, "700 #px 'Manrope', system-ui, sans-serif", 44, 640);
+      x.fillText(wifi.ssid, 490, 1460);
+      if(wifi.pass){ fit('Password: ' + wifi.pass, "600 #px 'Manrope', system-ui, sans-serif", 38, 640); x.fillText('Password: ' + wifi.pass, 490, 1520); }
+    } else { try{ q = qrcode(0, 'M'); q.addData(String(url)); q.make(); }catch(e){} }
     if(q){
       const n = q.getModuleCount(), size = 1100, cell = Math.floor(size / (n + 4)), qs = cell * (n + 4);
       const ox = Math.round((W - qs) / 2), oy = 620;
@@ -4394,7 +4505,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     x.fillText('Open your phone camera and point it here.', W / 2, 1880);
     x.fillStyle = '#6B666C'; x.font = "600 46px 'Manrope', system-ui, sans-serif";
     x.fillText('Every photo from the booth lands in this gallery.', W / 2, 1960);
-    x.fillText('No signal at the booth? Your photo still arrives later.', W / 2, 2030);
+    x.fillText(DESKTOP ? 'Your phone must be on the booth Wi-Fi' + (wifi ? '.' : ' (ask us for it).') : 'No signal at the booth? Your photo still arrives later.', W / 2, 2030);
     try{ const mk = brandMarkCanvas(), mw = 520, mh = Math.round(mw * mk.height / mk.width); x.drawImage(mk, (W - mw) / 2, 2180, mw, mh); }catch(e){}
     const blob = await new Promise(r => c.toBlob(r, 'image/png'));
     const file = 'qr-sign' + (name ? '-' + name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() : '') + '.png';
@@ -4420,7 +4531,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       return;
     }
     const cached = getCachedFolderUrl();
-    if(cached){
+    if(cached && !DESKTOP){               // the app always asks (it's instant, and gives the folder's name)
       showDriveFolderPreview(cached);
       registerEvent(cached, false);
       return;
@@ -4604,7 +4715,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // ---- Backup folder on this computer (Chrome / Edge on a computer) ----
   // Pick a folder once; every session is also saved there, in a subfolder
   // named after the event, instead of going to Downloads.
-  var canBackupFolder = typeof window.showDirectoryPicker === 'function';
+  var canBackupFolder = typeof window.showDirectoryPicker === 'function' && !DESKTOP;
   var backupDir = null, backupOk = false;
   function safeFileName(v){
     return String(v || '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().replace(/[. ]+$/, '').slice(0, 80);
@@ -4749,7 +4860,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // Multi-device codes: "3_strip_cam2.jpg".
     const filename = filePrefix() + (sessionNumber || 1) + '_' + layoutKey + deviceTag() + '.jpg';
 
-    if(driveReady()){
+    if(driveReady() || DESKTOP){
       // Weak venue internet: try 3 times, then keep the photo on this device
       // and upload it by itself once the connection is back.
       const dest = { folderKey: rawFolderKey(), subfolder: driveSubfolder() };
@@ -4782,6 +4893,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // ---- The guest's own QR codes, shown after each session ----
   // The session QR opens the saved photo in the online gallery.
   function fileShareUrl(fileId){
+    if(DESKTOP){ const i = String(fileId).indexOf('/'); return i > 0 ? localShareUrl('pb4u-local:' + fileId.slice(0, i), fileId.slice(i + 1)) : null; }
     const folderUrl = getCachedFolderUrl();
     const g = folderUrl && usesGallery(folderUrl) ? galleryUrlFor(folderUrl) : null;
     if(g) return g + '#' + fileId;
@@ -4801,12 +4913,26 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function fillQrSlot(kind, url){
     const wrap = qrResults.querySelector('.qr-result[data-kind="' + kind + '"]'); if(!wrap) return;
     const box = wrap.querySelector('.qr-box'); box.innerHTML = '';
+    if(!url){
+      // App with no Wi-Fi: the photo is safe on the laptop, there's just no link for phones.
+      const w0 = document.createElement('span'); w0.className = 'qr-wait'; w0.textContent = DESKTOP ? NO_LAN_TEXT : 'No link yet';
+      box.appendChild(w0);
+      const l0 = wrap.querySelector('.qr-link'); if(l0) l0.remove();
+      guestRender(); return;
+    }
     const img = document.createElement('img'); img.className = 'qr-img'; img.src = qrImageUrl(url); img.alt = wrap.querySelector('.qr-caption').textContent + ' QR code';
     box.appendChild(img);
     let link = wrap.querySelector('.qr-link');
     if(!link){ link = document.createElement('a'); link.className = 'qr-link'; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Open'; wrap.appendChild(link); }
     link.href = url;
     guestRender();
+  }
+  function addWifiSlot(){
+    const w = wifiInfo(); if(!w || !localShareUrl(getCachedFolderUrl() || 'pb4u-local:x')) return;
+    const wrap = qrSlot('wifi', '1 \u00b7 Join \u201c' + w.ssid + '\u201d', '');
+    const box = wrap.querySelector('.qr-box'); box.innerHTML = '';
+    const img = document.createElement('img'); img.className = 'qr-img'; img.src = qrImageUrl(wifiQrText(w)); img.alt = 'Wi-Fi QR code';
+    box.appendChild(img);
   }
   function failQrSlot(kind, text){
     const wrap = qrResults.querySelector('.qr-result[data-kind="' + kind + '"]'); if(!wrap) return;
@@ -4820,6 +4946,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const myGeneration = ++qrGeneration;
     qrResults.innerHTML = '';
     lastRenderedFolderUrl = null;
+    if(DESKTOP) addWifiSlot();
     qrSlot('photo', 'Your photo', 'Saving your photo…');
     // Guests get a working QR straight away: the event's All photos page,
     // swapped for their own photo's QR as soon as the upload finishes.
@@ -4828,7 +4955,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const setCap = (t) => { const w = qrResults.querySelector('.qr-result[data-kind="photo"] .qr-caption'); if(w) w.textContent = t; };
     const OFFLINE_CAP = 'Scan now \u00b7 your photo arrives here once the booth is back online';
     if(evFolder){
-      setCap(navigator.onLine === false ? OFFLINE_CAP : 'All photos \u00b7 your photo is uploading\u2026');
+      setCap(DESKTOP ? 'All photos \u00b7 saving your photo\u2026' : navigator.onLine === false ? OFFLINE_CAP : 'All photos \u00b7 your photo is uploading\u2026');
       fillQrSlot('photo', shareUrlFor(evFolder));
       slowTimer = setTimeout(() => { if(myGeneration === qrGeneration) setCap('All photos \u00b7 your photo will appear here shortly'); }, 60000);
     }
@@ -4864,7 +4991,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       showToast('Photo not saved. ' + driveErrorText(lastError), 7000);
       return null;
     }
-    setCap('Your photo');
+    setCap(qrResults.querySelector('.qr-result[data-kind="wifi"]') ? '2 \u00b7 Your photo' : 'Your photo');
     fillQrSlot('photo', result.fileId ? fileShareUrl(result.fileId, false) : result.url);
     showToast('Photo saved');
     return myGeneration;
@@ -5115,7 +5242,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // photobooth4u Helper (the same app that prints) controls the camera and
   // the booth talks to it on this computer (127.0.0.1). No driver switch.
   const USB_WIN = /Win/i.test(navigator.platform || '') || /Windows NT/i.test(navigator.userAgent || '');
-  const CAM_HELPER = 'http://127.0.0.1:17321';
+  const CAM_HELPER = DESKTOP ? '/helper' : 'http://127.0.0.1:17321';
   const CAM_HELPER_SEEN_KEY = 'pb_cam_helper';
   const usbCam = {
     supported: USB_WIN ? !!window.fetch : (('usb' in navigator) && !!window.crossOriginIsolated),
@@ -5171,6 +5298,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // was picked before, or it connected before.
   function camHelperProbeOk(){
     if(!usbCam.viaHelper) return false;
+    if(DESKTOP) return true;                       // built into the app
     try{
       if(localStorage.getItem(CAM_HELPER_SEEN_KEY) === '1' || localStorage.getItem('pb_print_helper') === '1') return true;
       const sv = JSON.parse(localStorage.getItem(CAM_PREF_KEY) || 'null');
@@ -5229,6 +5357,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const win = /Win/i.test(navigator.platform || '');
     if(usbCam.viaHelper){
       const code = err && err.code;
+      if(DESKTOP && (code === 'NOHELPER' || code === 'TIMEOUT')) return 'The camera part of the app isn\u2019t answering.' + (auto ? ' It keeps trying.' : ' Tap Try Again, or close and reopen the app.');
       if(code === 'NOHELPER' || code === 'TIMEOUT') return 'Can\u2019t reach the photobooth4u Helper. Open it on this laptop (download it from photobooth4u.netlify.app/downloads). If Chrome asks to let this site reach apps on this device, choose Allow.' + (auto ? ' The camera connects by itself once the helper is open.' : ' Then tap Try Again.');
       if(err && err.name === 'UsbNoLiveView' && usbCam.lastErr && usbCam.lastErr.helperMsg) return usbCam.lastErr.helperMsg + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');
       if(err && err.name === 'UsbNoLiveView') return 'The camera connected but live view didn\u2019t start. Close the camera\u2019s menu, take the lens cap off and check the battery.' + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');
@@ -5420,7 +5549,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(usbCam.supported) return;
     let why = '';
     if(!('usb' in navigator)) why = 'USB remote camera: open the booth in Chrome or Edge on a Mac (this browser can’t reach USB cameras).';
-    else if(!window.crossOriginIsolated) why = location.protocol === 'file:' || location.origin !== 'https://photobooth4u.netlify.app'
+    else if(!window.crossOriginIsolated) why = DESKTOP ? 'USB remote camera isn\u2019t available right now. Close and reopen the app.' : location.protocol === 'file:' || location.origin !== 'https://photobooth4u.netlify.app'
       ? 'USB remote camera: open the booth from photobooth4u.netlify.app (not a saved copy of the page) to use a camera over USB.'
       : 'USB remote camera isn’t available on this page load. Reload the page; if it stays missing, close other photobooth4u tabs and reload.';
     if(why){ usbCamNote(why, false); const h = document.getElementById('cameraHint'); if(h) h.style.display = ''; }
@@ -6377,8 +6506,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     updateUI();
     showQRForCurrentPhoto();
     scheduleResultReset();
-    showMultipleDownloadsHint();
-    saveToDevice();
+    if(!DESKTOP){ showMultipleDownloadsHint(); saveToDevice(); }
     maybeAutoPrint();
   }
 
@@ -7976,11 +8104,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // The helper is only contacted when the switch is on, because Chrome asks
   // permission the first time a site talks to the computer itself.
   const PRINTER_MAP_KEY = 'pb_printer_map', HELPER_KEY = 'pb_print_helper';
-  const HELPER_URL = 'http://127.0.0.1:17321';
+  const HELPER_URL = DESKTOP ? '/helper' : 'http://127.0.0.1:17321';
   let printerMap = {};
   try{ printerMap = JSON.parse(localStorage.getItem(PRINTER_MAP_KEY) || '{}') || {}; }catch(e){ printerMap = {}; }
   let helperOn = false;
   try{ helperOn = localStorage.getItem(HELPER_KEY) === '1'; }catch(e){}
+  if(DESKTOP) helperOn = true;                     // built into the app
   let helper = { ok: false, printers: [], checked: 0 };
   const printerNameInput = document.getElementById('printerNameInput');
   const printerList = document.getElementById('printerList');
@@ -8044,14 +8173,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const name = printerFor(printSize);
     if(printSize) printerPickSize.textContent = paperFor(printSize).name + (printerKey(printSize) !== printSize ? ' \u00b7 strip layouts (2 strips, cut)' : '');
     if(helperOn && helper.ok){
-      if(!name) printerHelperHint.textContent = 'Print Helper connected. Choose the printer for this paper size.';
+      if(DESKTOP && !helper.printers.length) printerHelperHint.textContent = 'No printers found on this laptop. Plug in the printer and install its driver (' + (/Mac/i.test(navigator.platform || '') ? 'System Settings \u2192 Printers & Scanners' : 'Windows Settings \u2192 Printers & scanners') + '), then reopen Print settings.';
+      else if(!name) printerHelperHint.textContent = 'Print Helper connected. Choose the printer for this paper size.';
       else if(helper.printers.length && !helper.printers.includes(name)) printerHelperHint.textContent = 'No printer on this computer is called “' + name + '”. Pick one from the list.';
       else printerHelperHint.textContent = 'Prints go straight to “' + name + '” — no dialog.';
       // Print Helper 1.0.0 for Windows couldn't print one-page jobs (fixed in 1.0.1).
       if(/Windows/i.test(navigator.userAgent) && helper.version === '1.0.0')
         printerHelperHint.innerHTML = '<div class="helper-help"><b>Please update the Print Helper.</b> This Windows version (1.0.0) can\u2019t print. Close it, <a href="/downloads/" target="_blank" rel="noopener">download the new one</a>, and open it again.</div>';
     } else if(helperOn && helper.checked){
-      printerHelperHint.innerHTML = helperTroubleHtml();
+      printerHelperHint.innerHTML = DESKTOP ? 'Printing isn\u2019t ready yet. Close and reopen the app.' : helperTroubleHtml();
     } else {
       printerHelperHint.innerHTML = name ? 'In the print dialog, pick “' + name + '”.' : 'Without the helper, prints go through Chrome’s print dialog. To pick a printer for each size, open the Print Helper and switch it on. <a href="/downloads/" target="_blank" rel="noopener">Download it</a>';
     }
@@ -8100,6 +8230,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       { done: auto, t: 'Turn on Print automatically (optional)', s: auto ? 'The AirPrint sheet opens after every session; guests just tap Print.' : 'Then the AirPrint sheet opens by itself after each session.' }
     ];
     else steps = [
+      DESKTOP ? { done: connected && helper.printers.length > 0, t: 'Plug in and turn on the printer', s: connected && helper.printers.length ? helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' found on this laptop.' : 'Install its driver first, then reopen Print settings.' } :
       { done: connected, t: 'Connect the Print Helper', s: connected ? 'Connected \u2014 ' + helper.printers.length + ' printers found.' : 'Open the Print Helper app on this computer, then switch on <b>Print Helper on this computer</b> below. <a href="/downloads/" target="_blank" rel="noopener">Download</a>' },
       { done: connected && !!name && helper.printers.includes(name), t: 'Choose the printer for each paper size', s: name ? sizeName + ' \u2192 ' + name : 'Tap a paper size, then pick its printer from the list.' },
       { done: auto, t: 'Print once, then turn on Print automatically', s: auto ? 'Every session prints by itself.' : 'Press <b>Print</b> to test, then tick <b>Print automatically after each session</b>.' }
@@ -8509,6 +8640,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const ROUTE_KEY = 'pb_print_route';
   let printRoute = 'here';
   try{ printRoute = localStorage.getItem(ROUTE_KEY) === 'station' ? 'station' : 'here'; }catch(e){}
+  if(DESKTOP) printRoute = 'here';                 // the printer is on this laptop
   let station = { online: false, lastSeen: 0, checked: 0 };
   function isTrialBooth(){ return !!(window.__PB && window.__PB.type === 'trial'); }
   function useStation(){ return printRoute === 'station' && (isRentalBooth() || isTrialBooth()); }
@@ -9632,7 +9764,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function cleanPay(p){
     p = p && typeof p === 'object' ? p : {};
     var price = Math.floor(Number(p.price));
-    return { mode: PAY_MODES.indexOf(p.mode) >= 0 ? p.mode : 'off', price: price >= 20 && price <= 20000 ? price : 100, prints: Math.max(0, Math.min(5, Math.floor(Number(p.prints) || 0))) };
+    var mode = PAY_MODES.indexOf(p.mode) >= 0 ? p.mode : 'off';
+    if(DESKTOP && mode === 'qr') mode = 'off';          // QR payments need the internet version
+    if(DESKTOP && mode === 'both') mode = 'voucher';
+    return { mode: mode, price: price >= 20 && price <= 20000 ? price : 100, prints: Math.max(0, Math.min(5, Math.floor(Number(p.prints) || 0))) };
   }
   function payActive(){ return payOn() && payCfg.mode !== 'off'; }
   function payQrOn(){ return payCfg.mode === 'qr' || payCfg.mode === 'both'; }
@@ -10981,7 +11116,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(!r.ok) throw new Error(j.error || 'Save failed');
       setupUpdatedAt = j.updatedAt;
       saveLocalCopy(key, settings, j.updatedAt, null, false);
-      setSaveNote('Saved ✓ Other devices on this code get it too.', 'ok');
+      setSaveNote(DESKTOP ? 'Saved on this laptop ✓' : 'Saved ✓ Other devices on this code get it too.', 'ok');
     }catch(e){
       if(sendImage) imageDirty = true;
       lastSavedJson = null;   // try again on the next change
@@ -11882,7 +12017,39 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function isFrameLayout(key){ var k = key || currentLayout; return k === 'myframe' || k === 'framesheet'; }
 
   // ---- Finding the photo spots ----
-  function detectSpots(img){
+  // Is this pixel part of a photo window? See-through, white, or the frame's
+  // picked window colour (f.key = { c: [r, g, b], t: how close it must be }).
+  function keyDist(r, g, b, key){ return Math.max(Math.abs(r - key.c[0]), Math.abs(g - key.c[1]), Math.abs(b - key.c[2])); }
+  function slotPixel(r, g, b, a, key){
+    if(a < 60) return true;
+    if(a <= 200) return false;
+    var mn = Math.min(r, g, b), mx = Math.max(r, g, b);
+    if(mn > 228 && mx - mn < 24) return true;
+    return !!key && keyDist(r, g, b, key) <= key.t;
+  }
+  // The smallest box around a set of points, turned up to 25° either way.
+  // Returns { cx, cy, w, h, a } (a in degrees, 0 = straight).
+  function minAreaBox(pts){
+    // convex hull (monotone chain)
+    pts.sort(function(p, q){ return p[0] - q[0] || p[1] - q[1]; });
+    var cross = function(o, a, b){ return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); };
+    var lo = [], up = [], i;
+    for(i = 0; i < pts.length; i++){ while(lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], pts[i]) <= 0) lo.pop(); lo.push(pts[i]); }
+    for(i = pts.length - 1; i >= 0; i--){ while(up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], pts[i]) <= 0) up.pop(); up.push(pts[i]); }
+    var hull = lo.slice(0, -1).concat(up.slice(0, -1));
+    var fit = function(deg){
+      var t = deg * Math.PI / 180, c = Math.cos(t), sn = Math.sin(t), u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+      hull.forEach(function(p){ var u = p[0] * c + p[1] * sn, v = -p[0] * sn + p[1] * c; if(u < u0) u0 = u; if(u > u1) u1 = u; if(v < v0) v0 = v; if(v > v1) v1 = v; });
+      var uc = (u0 + u1) / 2, vc = (v0 + v1) / 2;
+      return { a: deg, w: u1 - u0, h: v1 - v0, area: (u1 - u0) * (v1 - v0) * (1 + 0.0004 * Math.abs(deg)), cx: uc * c - vc * sn, cy: uc * sn + vc * c };
+    };
+    var best = fit(0), d;
+    for(d = -25; d <= 25; d += 0.5){ var f1 = fit(d); if(f1.area < best.area) best = f1; }
+    var mid = best.a;
+    for(d = mid - 0.5; d <= mid + 0.5; d += 0.05){ var f2 = fit(d); if(f2.area < best.area) best = f2; }
+    return best;
+  }
+  function detectSpots(img, key){
     // Scanned at up to 1600 px: thin dividers between photo boxes (a few px
     // in the original) blur into white on a smaller copy and boxes merge.
     var S = 1600, sc = Math.min(1, S / Math.max(img.width, img.height));
@@ -11890,12 +12057,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var c = document.createElement('canvas'); c.width = w; c.height = h;
     var x = c.getContext('2d'); x.drawImage(img, 0, 0, w, h);
     var d = x.getImageData(0, 0, w, h).data;
-    var cls = new Uint8Array(n);   // 0 design, 1 see-through, 2 white
+    var cls = new Uint8Array(n);   // 0 design, 1 see-through, 2 white (or the picked window colour)
     for(var i = 0; i < n; i++){
       var r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2], a = d[i * 4 + 3];
-      var mn = Math.min(r, g, b), mx = Math.max(r, g, b);
       if(a < 60) cls[i] = 1;
-      else if(a > 200 && mn > 228 && mx - mn < 24) cls[i] = 2;
+      else if(slotPixel(r, g, b, a, key)) cls[i] = 2;
     }
     var seen = new Uint8Array(n), q = new Int32Array(n), spots = [];
     for(var s = 0; s < n; s++){
@@ -11915,7 +12081,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var bw = maxX - minX + 1, bh = maxY - minY + 1;
       // A white area split by very faint lines (light grey dividers between
       // borderless boxes) is several photo spots, not one.
-      var cells = k === 2 && cnt / (bw * bh) >= 0.9 ? splitFaint(minX, minY, maxX, maxY) : null;   // solid white areas only
+      var cells = k === 2 && !key && cnt / (bw * bh) >= 0.9 ? splitFaint(minX, minY, maxX, maxY) : null;   // solid white areas only
       if(cells && cells.length > 1){
         cells.forEach(function(cr){
           var cw = cr[2] - cr[0] + 1, ch = cr[3] - cr[1] + 1;
@@ -11932,10 +12098,23 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var sides = (minX === 0) + (maxX === w - 1) + (minY === 0) + (maxY === h - 1);
       if(edge && !(cnt / (bw * bh) >= 0.9 && bw * bh < n * 0.45 && sides <= 3)) continue;
       if(bw < w * 0.08 || bh < h * 0.04 || bw * bh < n * 0.008) continue;   // text, specks
+      // A tilted photo window: the smallest turned box around it.
+      var tb = null;
+      if(cnt > 60 && cnt / (bw * bh) < 0.97){             // a straight box fills its outline: skip
+        var rmin = new Int32Array(bh).fill(w), rmax = new Int32Array(bh).fill(-1), pts = [];
+        for(var qi = 0; qi < tail; qi++){ var pp = q[qi], ppx = pp % w, ry0 = (pp - ppx) / w - minY; if(ppx < rmin[ry0]) rmin[ry0] = ppx; if(ppx > rmax[ry0]) rmax[ry0] = ppx; }
+        for(var ry = 0; ry < bh; ry++){ if(rmax[ry] < 0) continue; var yy = ry + minY; pts.push([rmin[ry], yy], [rmax[ry] + 1, yy], [rmin[ry], yy + 1], [rmax[ry] + 1, yy + 1]); }
+        tb = minAreaBox(pts);
+      }
+      if(tb && Math.abs(tb.a) >= 0.8 && cnt / (tb.w * tb.h) >= 0.8){
+        var sw = tb.w / w, sh = tb.h / h;
+        spots.push({ x: tb.cx / w - sw / 2, y: tb.cy / h - sh / 2, w: sw, h: sh, a: Math.round(tb.a * 10) / 10, _exact: true });
+        continue;
+      }
       if(cnt / (bw * bh) < 0.7) continue;                  // not box-shaped
       spots.push({ x: minX / w, y: minY / h, w: bw / w, h: bh / h });
     }
-    return refineSpots(img, sortSpots(spots).slice(0, MAX_SPOTS));
+    return refineSpots(img, sortSpots(spots).slice(0, MAX_SPOTS), key);
     // Finds rows/columns of faint grey (not pure white) running across the
     // area and cuts it into the cells between them, keeping pure-white cells.
     function splitFaint(x0, y0, x1, y1){
@@ -11967,15 +12146,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   // The scan runs on a small copy, so snap each box's edges to the real
   // white/see-through edge at full size (no white hairlines around photos).
-  function refineSpots(img, spots){
+  function refineSpots(img, spots, key){
     try{
       var W = img.width, H = img.height;
       var c = document.createElement('canvas'); c.width = W; c.height = H;
       var x = c.getContext('2d'); x.drawImage(img, 0, 0);
       var d = x.getImageData(0, 0, W, H).data;
       var open = function(px, py){
-        var i = (py * W + px) * 4, a = d[i + 3], mn = Math.min(d[i], d[i + 1], d[i + 2]), mx = Math.max(d[i], d[i + 1], d[i + 2]);
-        return a < 60 || (mn > 228 && mx - mn < 24);
+        var i = (py * W + px) * 4;
+        return slotPixel(d[i], d[i + 1], d[i + 2], d[i + 3], key);
       };
       var share = function(horiz, at, from, to){
         var n = 0, t = 0;
@@ -11983,7 +12162,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         return t ? n / t : 0;
       };
       return spots.map(function(sp){
-        if(sp._exact) return { x: sp.x, y: sp.y, w: sp.w, h: sp.h };
+        if(sp._exact){ var o = { x: sp.x, y: sp.y, w: sp.w, h: sp.h }; if(sp.a) o.a = sp.a; return o; }
         var x0 = Math.round(sp.x * W), y0 = Math.round(sp.y * H), x1 = Math.round((sp.x + sp.w) * W) - 1, y1 = Math.round((sp.y + sp.h) * H) - 1;
         var lim = Math.ceil(Math.max(W, H) * 0.02);
         for(var k = 0; k < lim && y0 > 0 && share(true, y0 - 1, x0, x1) > 0.6; k++) y0--;
@@ -12005,17 +12184,38 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }
     return out;
   }
-  // The frame with its photo spots made see-through (white boxes included).
-  function punchFrame(img, spots){
+  // A spot in pixels of a W x H frame: centre, size, angle (radians).
+  function spotPx(sp, W, H){
+    return { cx: (sp.x + sp.w / 2) * W, cy: (sp.y + sp.h / 2) * H, w: sp.w * W, h: sp.h * H, a: (sp.a || 0) * Math.PI / 180 };
+  }
+  // Point (px, py) in the spot's own straight coordinates (0, 0 = its centre).
+  function spotLocal(g, px, py){
+    var dx = px - g.cx, dy = py - g.cy, c = Math.cos(g.a), sn = Math.sin(g.a);
+    return { x: dx * c + dy * sn, y: -dx * sn + dy * c };
+  }
+  // The frame with its photo spots made see-through (white boxes, or the
+  // picked window colour, included). Turned spots punch only inside the turned box.
+  function punchFrame(img, spots, key){
     var c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
     var x = c.getContext('2d'); x.drawImage(img, 0, 0);
     try{
       spots.forEach(function(sp){
-        var x0 = Math.max(0, Math.floor(sp.x * c.width) - 2), y0 = Math.max(0, Math.floor(sp.y * c.height) - 2);
-        var x1 = Math.min(c.width, Math.ceil((sp.x + sp.w) * c.width) + 2), y1 = Math.min(c.height, Math.ceil((sp.y + sp.h) * c.height) + 2);
+        var g = spotPx(sp, c.width, c.height), ca = Math.abs(Math.cos(g.a)), sa = Math.abs(Math.sin(g.a));
+        var hw = (g.w * ca + g.h * sa) / 2, hh = (g.w * sa + g.h * ca) / 2;
+        var x0 = Math.max(0, Math.floor(g.cx - hw) - 2), y0 = Math.max(0, Math.floor(g.cy - hh) - 2);
+        var x1 = Math.min(c.width, Math.ceil(g.cx + hw) + 2), y1 = Math.min(c.height, Math.ceil(g.cy + hh) + 2);
         if(x1 <= x0 || y1 <= y0) return;
-        var id = x.getImageData(x0, y0, x1 - x0, y1 - y0), d = id.data;
-        for(var i = 0; i < d.length; i += 4){
+        var id = x.getImageData(x0, y0, x1 - x0, y1 - y0), d = id.data, rw = x1 - x0, turned = g.a !== 0;
+        for(var i = 0, p = 0; i < d.length; i += 4, p++){
+          if(turned){
+            var L = spotLocal(g, x0 + (p % rw) + 0.5, y0 + Math.floor(p / rw) + 0.5);
+            if(Math.abs(L.x) > g.w / 2 + 2 || Math.abs(L.y) > g.h / 2 + 2) continue;
+          }
+          if(key){
+            var kd = keyDist(d[i], d[i + 1], d[i + 2], key);
+            if(kd <= key.t){ d[i + 3] = 0; continue; }
+            if(kd <= key.t * 1.35){ d[i + 3] = Math.round(d[i + 3] * (kd - key.t) / (key.t * 0.35)); continue; }
+          }
           var mn = Math.min(d[i], d[i + 1], d[i + 2]), mx = Math.max(d[i], d[i + 1], d[i + 2]);
           if(mx - mn > 34) continue;                       // colored design over the box edge stays
           if(mn >= 236) d[i + 3] = 0;
@@ -12026,23 +12226,116 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }catch(e){}
     return c;
   }
-  function spotsKey(f){ return f.spots.map(function(s){ return [s.x, s.y, s.w, s.h].map(function(v){ return v.toFixed(4); }).join(','); }).join(';'); }
+  function spotsKey(f){ return f.spots.map(function(s){ return [s.x, s.y, s.w, s.h].map(function(v){ return v.toFixed(4); }).join(',') + (s.a ? '@' + s.a : ''); }).join(';') + (f.key ? '#' + f.key.c.join('.') + ':' + f.key.t : ''); }
   function frameArt(f){
     var img = assetImg(f.id); if(!img) return null;
     var c = FRAME_CACHE[f.id], key = spotsKey(f);
     if(c && c.img === img && c.key === key) return c;
-    c = FRAME_CACHE[f.id] = { img: img, key: key, punched: punchFrame(img, f.spots) };
+    c = FRAME_CACHE[f.id] = { img: img, key: key, punched: punchFrame(img, f.spots, f.key), masks: null };
     return c;
   }
+  // Each photo stays inside its own window: the see-through areas of the
+  // punched frame are split into windows, and each spot gets the window it
+  // covers most (a window two spots share is split between them). Also makes
+  // the blue "photo windows" highlight for Edit photo spots.
+  function frameMasks(f, art){
+    if(art.masks) return art.masks;
+    var P = art.punched, sc = Math.min(1, 1000 / Math.max(P.width, P.height));
+    var mw = Math.max(4, Math.round(P.width * sc)), mh = Math.max(4, Math.round(P.height * sc)), n = mw * mh;
+    var out = { list: f.spots.map(function(){ return null; }), tint: null };
+    try{
+      var tc = document.createElement('canvas'); tc.width = mw; tc.height = mh;
+      var tx = tc.getContext('2d'); tx.drawImage(P, 0, 0, mw, mh);
+      var al = tx.getImageData(0, 0, mw, mh).data, hole = new Uint8Array(n), i;
+      for(i = 0; i < n; i++) hole[i] = al[i * 4 + 3] < 128 ? 1 : 0;
+      // windows = connected see-through areas
+      var lab = new Int32Array(n), q = new Int32Array(n), L = 0;
+      for(i = 0; i < n; i++){
+        if(!hole[i] || lab[i]) continue;
+        L++; var head = 0, tail = 0; q[tail++] = i; lab[i] = L;
+        while(head < tail){
+          var p = q[head++], px = p % mw;
+          if(px > 0 && hole[p - 1] && !lab[p - 1]){ lab[p - 1] = L; q[tail++] = p - 1; }
+          if(px < mw - 1 && hole[p + 1] && !lab[p + 1]){ lab[p + 1] = L; q[tail++] = p + 1; }
+          if(p >= mw && hole[p - mw] && !lab[p - mw]){ lab[p - mw] = L; q[tail++] = p - mw; }
+          if(p < n - mw && hole[p + mw] && !lab[p + mw]){ lab[p + mw] = L; q[tail++] = p + mw; }
+        }
+      }
+      var geo = f.spots.map(function(sp){ return spotPx(sp, mw, mh); });
+      var own = geo.map(function(g){
+        var cnt = {}, best = 0, bestN = 0, r = Math.ceil(Math.hypot(g.w, g.h) / 2) + 1;
+        for(var yy = Math.max(0, Math.floor(g.cy - r)); yy < Math.min(mh, Math.ceil(g.cy + r)); yy++)
+          for(var xx = Math.max(0, Math.floor(g.cx - r)); xx < Math.min(mw, Math.ceil(g.cx + r)); xx++){
+            var k = lab[yy * mw + xx]; if(!k) continue;
+            var lp = spotLocal(g, xx + 0.5, yy + 0.5);
+            if(Math.abs(lp.x) <= g.w / 2 && Math.abs(lp.y) <= g.h / 2){ cnt[k] = (cnt[k] || 0) + 1; if(cnt[k] > bestN){ bestN = cnt[k]; best = k; } }
+          }
+        return bestN >= 0.25 * g.w * g.h ? best : 0;
+      });
+      var byLab = {};
+      own.forEach(function(k, si){ if(k) (byLab[k] = byLab[k] || []).push(si); });
+      var md = own.map(function(k){ return k ? new Uint8ClampedArray(n * 4) : null; });
+      for(i = 0; i < n; i++){
+        var who = byLab[lab[i]]; if(!who) continue;
+        var pick = who[0];
+        if(who.length > 1){
+          var bestD = -Infinity, ix = (i % mw) + 0.5, iy = Math.floor(i / mw) + 0.5;
+          who.forEach(function(si){ var g = geo[si], lp = spotLocal(g, ix, iy), dd = Math.min(g.w / 2 - Math.abs(lp.x), g.h / 2 - Math.abs(lp.y)) / Math.max(1, Math.min(g.w, g.h)); if(dd > bestD){ bestD = dd; pick = si; } });
+        }
+        md[pick][i * 4 + 3] = 255;
+      }
+      out.list = md.map(function(arr){
+        if(!arr) return null;
+        var c1 = document.createElement('canvas'); c1.width = mw; c1.height = mh;
+        c1.getContext('2d').putImageData(new ImageData(arr, mw, mh), 0, 0);
+        var c2 = document.createElement('canvas'); c2.width = mw; c2.height = mh;
+        var x2 = c2.getContext('2d');
+        for(var oy = -1; oy <= 1; oy++) for(var ox = -1; ox <= 1; ox++) x2.drawImage(c1, ox, oy);   // grow 1 px: no hairlines at the frame's soft edges
+        return c2;
+      });
+      var tintD = new Uint8ClampedArray(n * 4);
+      for(i = 0; i < n; i++) if(hole[i]){ tintD[i * 4] = 40; tintD[i * 4 + 1] = 140; tintD[i * 4 + 2] = 255; tintD[i * 4 + 3] = 115; }
+      var tc2 = document.createElement('canvas'); tc2.width = mw; tc2.height = mh; tc2.getContext('2d').putImageData(new ImageData(tintD, mw, mh), 0, 0);
+      out.tint = tc2;
+    }catch(e){}
+    art.masks = out;
+    return out;
+  }
+  var SPOT_TMP = null;
   // One frame in a box of its own shape: shots in the spots, frame on top.
   function drawFrameInto(ctx, f, x, y, w, h, shots){
-    var art = frameArt(f), pairs = framePairs(f);
+    var art = frameArt(f), pairs = framePairs(f), masks = art ? frameMasks(f, art) : null;
     f.spots.forEach(function(sp, i){
       var si = pairs ? pairs[i] : i;
       var shot = shots[si] || shots[si % Math.max(1, shots.length)];
-      var e = Math.max(1, w * 0.003), bx = x + sp.x * w - e, by = y + sp.y * h - e, bw = sp.w * w + 2 * e, bh = sp.h * h + 2 * e;
-      if(shot) drawImageCover(ctx, shot, bx, by, bw, bh);
-      else { ctx.fillStyle = '#e8e2d8'; ctx.fillRect(bx, by, bw, bh); }
+      var g = spotPx(sp, w, h), mask = masks && masks.list[i];
+      // With its window known, the photo is drawn a little bigger (covers the
+      // window's corners) and then cut to the window, so it never spills over.
+      var e = mask ? Math.max(g.w, g.h) * 0.04 : Math.max(1, w * 0.003);
+      var paint = function(c2, ox, oy){
+        c2.save(); c2.translate(ox + g.cx, oy + g.cy); if(g.a) c2.rotate(g.a);
+        if(shot) drawImageCover(c2, shot, -g.w / 2 - e, -g.h / 2 - e, g.w + 2 * e, g.h + 2 * e);
+        else { c2.fillStyle = '#e8e2d8'; c2.fillRect(-g.w / 2 - e, -g.h / 2 - e, g.w + 2 * e, g.h + 2 * e); }
+        c2.restore();
+      };
+      if(!mask){ paint(ctx, x, y); return; }
+      // Work only in the area around this spot (its turned box plus the bleed).
+      var ca = Math.abs(Math.cos(g.a)), sa = Math.abs(Math.sin(g.a));
+      var hw = ((g.w + 2 * e) * ca + (g.h + 2 * e) * sa) / 2 + 2, hh = ((g.w + 2 * e) * sa + (g.h + 2 * e) * ca) / 2 + 2;
+      var rx0 = Math.max(0, Math.floor(g.cx - hw)), ry0 = Math.max(0, Math.floor(g.cy - hh));
+      var rx1 = Math.min(Math.ceil(w), Math.ceil(g.cx + hw)), ry1 = Math.min(Math.ceil(h), Math.ceil(g.cy + hh));
+      var tw = rx1 - rx0, th = ry1 - ry0;
+      if(tw < 1 || th < 1) return;
+      if(!SPOT_TMP) SPOT_TMP = document.createElement('canvas');
+      if(SPOT_TMP.width < tw || SPOT_TMP.height < th){ SPOT_TMP.width = Math.max(SPOT_TMP.width, tw); SPOT_TMP.height = Math.max(SPOT_TMP.height, th); }
+      var t = SPOT_TMP.getContext('2d');
+      t.setTransform(1, 0, 0, 1, 0, 0); t.globalCompositeOperation = 'source-over'; t.clearRect(0, 0, tw, th);
+      paint(t, -rx0, -ry0);
+      t.globalCompositeOperation = 'destination-in'; t.imageSmoothingEnabled = true;
+      var mx = mask.width / w, my = mask.height / h;
+      t.drawImage(mask, rx0 * mx, ry0 * my, tw * mx, th * my, 0, 0, tw, th);
+      t.globalCompositeOperation = 'source-over';
+      ctx.drawImage(SPOT_TMP, 0, 0, tw, th, x + rx0, y + ry0, tw, th);
     });
     if(art) ctx.drawImage(art.punched, x, y, w, h);
     else { ctx.save(); ctx.strokeStyle = '#999'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2); ctx.restore(); }
@@ -12223,7 +12516,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       use.title = 'Use this frame as the layout';
       use.addEventListener('click', function(){ activeFrameId = f.id; spotEdit = null; setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); });
       var ed = document.createElement('button'); ed.type = 'button'; ed.className = 'action-btn mini'; ed.textContent = 'Edit photo spots';
-      ed.addEventListener('click', function(){ activeFrameId = f.id; spotEdit = { f: f.id, sel: -1 }; setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); showToast('Tap a box, then drag, resize, split or change its order. Changes save by themselves.'); });
+      ed.addEventListener('click', function(){ activeFrameId = f.id; spotEdit = { f: f.id, sel: -1 }; setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); showToast('Tap a box, then drag, resize, tilt, split or change its order. Blue shows where photos go. Changes save by themselves.'); });
       var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'remove-link'; rm.textContent = 'Remove'; rm.style.display = 'inline'; rm.style.margin = '0';
       rm.addEventListener('click', function(){
         if(!confirm('Remove this frame?')) return;
@@ -12385,9 +12678,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   });
   document.getElementById('spotRedetect').addEventListener('click', function(){
     var f = spotEdit && frameById(spotEdit.f), img = f && assetImg(f.id); if(!img) return;
-    var s = detectSpots(img);
-    if(!s.length){ showToast('No white or see-through boxes found in this frame.'); return; }
+    var s = detectSpots(img, f.key);
+    if(!s.length){ showToast(f.key ? 'No areas of the picked colour found. Raise \u201cMatch\u201d, or pick the colour again.' : 'No white or see-through boxes found in this frame. Tap \u201cPick window colour\u201d, then tap a photo window.'); return; }
     f.spots = s; spotEdit.sel = -1; framesChanged({ layout: 'myframe' });
+    var turned = s.filter(function(p){ return p.a; }).length;
+    showToast('Found ' + s.length + ' photo spot' + (s.length === 1 ? '' : 's') + (turned ? ' (' + turned + ' tilted, turned to match)' : '') + '.', 3500);
   });
   document.getElementById('spotDone').addEventListener('click', function(){ spotEdit = null; refreshFrameUI(); renderSetupPreview(); });
   // Order and split the selected spot; exact position/size in % of the frame.
@@ -12401,8 +12696,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function splitSpot(nx, ny){
     var f = selSpot(); if(!f) return;
     if(f.spots.length - 1 + nx * ny > MAX_SPOTS){ showToast('Up to ' + MAX_SPOTS + ' photo spots.'); return; }
-    var sp = f.spots[spotEdit.sel], parts = [];
-    for(var r = 0; r < ny; r++) for(var c = 0; c < nx; c++) parts.push({ x: sp.x + sp.w * c / nx, y: sp.y + sp.h * r / ny, w: sp.w / nx, h: sp.h / ny });
+    var sp = f.spots[spotEdit.sel], parts = [], g = spotPx(sp, f.w, f.h), ca = Math.cos(g.a), sa = Math.sin(g.a);
+    for(var r = 0; r < ny; r++) for(var c = 0; c < nx; c++){
+      var lx = -g.w / 2 + g.w * (c + 0.5) / nx, ly = -g.h / 2 + g.h * (r + 0.5) / ny, part = { a: sp.a || 0 };
+      setSpotPx(part, f, g.cx + lx * ca - ly * sa, g.cy + lx * sa + ly * ca, g.w / nx, g.h / ny);
+      if(!part.a) delete part.a;
+      parts.push(part);
+    }
     f.spots.splice.apply(f.spots, [spotEdit.sel, 1].concat(parts));
     framesChanged({ layout: 'myframe' });
   }
@@ -12416,8 +12716,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!spotSizeEl) return;
     var f = spotEdit && frameById(spotEdit.f), sp = f && f.spots[spotEdit.sel];
     spotSizeEl.style.display = sp ? 'flex' : 'none';
+    try{ refreshKeyUI(); }catch(e){}
     if(!sp) return;
     Object.keys(spotNum).forEach(function(k){ var el = document.getElementById(spotNum[k]); if(document.activeElement !== el) el.value = Math.round(sp[k] * 1000) / 10; });
+    var ae = document.getElementById('spotA'); if(ae && document.activeElement !== ae) ae.value = sp.a || 0;
   }
   Object.keys(spotNum).forEach(function(k){
     document.getElementById(spotNum[k]).addEventListener('change', function(e){
@@ -12425,15 +12727,170 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var v = Math.max(0, Math.min(100, Number(e.target.value) || 0)) / 100;
       if(k === 'w' || k === 'h') v = Math.max(0.02, v);
       sp[k] = v;
-      sp.x = Math.min(sp.x, 1 - Math.min(sp.w, 1)); sp.y = Math.min(sp.y, 1 - Math.min(sp.h, 1));
-      sp.w = Math.min(sp.w, 1 - sp.x); sp.h = Math.min(sp.h, 1 - sp.y);
+      if(!sp.a){
+        sp.x = Math.min(sp.x, 1 - Math.min(sp.w, 1)); sp.y = Math.min(sp.y, 1 - Math.min(sp.h, 1));
+        sp.w = Math.min(sp.w, 1 - sp.x); sp.h = Math.min(sp.h, 1 - sp.y);
+      }
       framesChanged({ layout: 'myframe' });
     });
   });
 
+  // ---- Snap to window ----
+  // Fits the selected box to the straight edges of the photo window under it
+  // (even when windows run into each other): for tilts near the box's own,
+  // finds the strongest window edge close to each of its four sides.
+  var SNAP_CACHE = { id: '', key: '', w: 0, h: 0, cls: null };
+  function snapClasses(f){
+    var img = assetImg(f.id); if(!img) return null;
+    var kk = f.key ? f.key.c.join('.') + ':' + f.key.t : '';
+    if(SNAP_CACHE.id === f.id && SNAP_CACHE.key === kk && SNAP_CACHE.img === img) return SNAP_CACHE;
+    var sc = Math.min(1, 1200 / Math.max(img.width, img.height));
+    var w = Math.max(8, Math.round(img.width * sc)), h = Math.max(8, Math.round(img.height * sc));
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var x = c.getContext('2d'); x.drawImage(img, 0, 0, w, h);
+    var d = x.getImageData(0, 0, w, h).data, cls = new Uint8Array(w * h);
+    for(var i = 0; i < w * h; i++) cls[i] = slotPixel(d[i * 4], d[i * 4 + 1], d[i * 4 + 2], d[i * 4 + 3], f.key) ? 1 : 0;
+    SNAP_CACHE = { id: f.id, key: kk, img: img, w: w, h: h, cls: cls };
+    return SNAP_CACHE;
+  }
+  function snapSpot(f, sp){
+    var S = snapClasses(f); if(!S) return null;
+    var w = S.w, h = S.h, cls = S.cls, g = spotPx(sp, w, h);
+    var reach = Math.max(g.w, g.h) * 0.75 + 4;
+    var x0 = Math.max(1, Math.floor(g.cx - reach)), x1 = Math.min(w - 2, Math.ceil(g.cx + reach));
+    var y0 = Math.max(1, Math.floor(g.cy - reach)), y1 = Math.min(h - 2, Math.ceil(g.cy + reach));
+    // edge points: window pixels next to a non-window pixel
+    var pts = [];
+    for(var y = y0; y <= y1; y++) for(var x = x0; x <= x1; x++){
+      var i = y * w + x;
+      if(cls[i] && (!cls[i - 1] || !cls[i + 1] || !cls[i - w] || !cls[i + w])) pts.push(x + 0.5 - g.cx, y + 0.5 - g.cy);
+    }
+    if(pts.length < 40) return null;
+    var hw = g.w / 2, hh = g.h / 2, bandU = Math.max(6, g.w * 0.28), bandV = Math.max(6, g.h * 0.28);
+    var a0 = sp.a || 0, best = null;
+    var peak = function(arr, lo, hi){
+      var n = Math.ceil(hi - lo) + 1, hist = new Float32Array(n), k, bestK = -1, bestV = 0;
+      for(k = 0; k < arr.length; k++){ var b = Math.round(arr[k] - lo); if(b >= 0 && b < n) hist[b]++; }
+      for(k = 1; k < n - 1; k++){ var v = hist[k - 1] * 0.5 + hist[k] + hist[k + 1] * 0.5; if(v > bestV){ bestV = v; bestK = k; } }
+      return bestK < 0 ? null : { at: lo + bestK, n: bestV };
+    };
+    for(var deg = a0 - 10; deg <= a0 + 10.001; deg += 0.25){
+      var t = deg * Math.PI / 180, c = Math.cos(t), sn = Math.sin(t);
+      var L = [], R = [], T = [], B = [];
+      for(var p = 0; p < pts.length; p += 2){
+        var u = pts[p] * c + pts[p + 1] * sn, v = -pts[p] * sn + pts[p + 1] * c;
+        // a little past the rough box too: an overlapped window may show only a corner piece of a side
+        if(Math.abs(v) < hh * 1.2){ if(Math.abs(u + hw) < bandU) L.push(u); else if(Math.abs(u - hw) < bandU) R.push(u); }
+        if(Math.abs(u) < hw * 1.2){ if(Math.abs(v + hh) < bandV) T.push(v); else if(Math.abs(v - hh) < bandV) B.push(v); }
+      }
+      var pl = peak(L, -hw - bandU, -hw + bandU), pr = peak(R, hw - bandU, hw + bandU), pt = peak(T, -hh - bandV, -hh + bandV), pb = peak(B, hh - bandV, hh + bandV);
+      var score = (pl ? pl.n : 0) + (pr ? pr.n : 0) + (pt ? pt.n : 0) + (pb ? pb.n : 0);
+      if(!best || score > best.score) best = { score: score, deg: deg, pl: pl, pr: pr, pt: pt, pb: pb };
+    }
+    if(!best) return null;
+    // a side counts when enough of its length lines up; otherwise it stays where it was
+    var okU = function(pk){ return pk && pk.n >= Math.max(8, g.h * 0.12); }, okV = function(pk){ return pk && pk.n >= Math.max(8, g.w * 0.12); };
+    var found = (okU(best.pl) ? 1 : 0) + (okU(best.pr) ? 1 : 0) + (okV(best.pt) ? 1 : 0) + (okV(best.pb) ? 1 : 0);
+    if(found < 2) return null;
+    var uL = okU(best.pl) ? best.pl.at : -hw, uR = okU(best.pr) ? best.pr.at : hw;
+    var vT = okV(best.pt) ? best.pt.at : -hh, vB = okV(best.pb) ? best.pb.at : hh;
+    if(uR - uL < 8 || vB - vT < 8) return null;
+    var tt = best.deg * Math.PI / 180, cc = Math.cos(tt), ss = Math.sin(tt), mu = (uL + uR) / 2, mv = (vT + vB) / 2;
+    var cx = g.cx + mu * cc - mv * ss, cy = g.cy + mu * ss + mv * cc, ww = uR - uL + 1, hh2 = vB - vT + 1;
+    var a = Math.round(best.deg * 10) / 10; if(Math.abs(a) < 0.3) a = 0;
+    var out = { w: ww / w, h: hh2 / h, x: cx / w - ww / w / 2, y: cy / h - hh2 / h / 2 };
+    if(a) out.a = a;
+    out.sides = found;
+    return out;
+  }
+  document.getElementById('spotSnap').addEventListener('click', function(){
+    var f = selSpot(); if(!f) return;
+    var sp = f.spots[spotEdit.sel], r = snapSpot(f, sp);
+    if(!r){ showToast('No clear window edges near this box. Move it over a photo window (white, see-through or the picked colour), then try again.', 5000); return; }
+    sp.x = r.x; sp.y = r.y; sp.w = r.w; sp.h = r.h;
+    if(r.a) sp.a = r.a; else delete sp.a;
+    framesChanged({ layout: 'myframe' });
+    showToast('Snapped' + (r.a ? ', tilted ' + r.a + '\u00b0' : '') + (r.sides < 4 ? ' (' + r.sides + ' of 4 edges found; check the box)' : '') + '.', 3000);
+  });
+
+  // Tilt of the selected box (turns around its centre).
+  var spotAEl = document.getElementById('spotA');
+  function turnSpot(deg, abs){
+    var f = selSpot(); if(!f) return;
+    var sp = f.spots[spotEdit.sel], a = abs ? deg : (sp.a || 0) + deg;
+    a = Math.max(-45, Math.min(45, Math.round(a * 10) / 10));
+    if(a) sp.a = a; else delete sp.a;
+    framesChanged({ layout: 'myframe' });
+  }
+  spotAEl.addEventListener('change', function(){ turnSpot(Number(spotAEl.value) || 0, true); });
+  document.getElementById('spotTurnL').addEventListener('click', function(){ turnSpot(-1); });
+  document.getElementById('spotTurnR').addEventListener('click', function(){ turnSpot(1); });
+  // Photo window colour: tap a window in the preview; that colour (and close
+  // shades, "Match") counts as photo window, like white or see-through.
+  var spotShowWin = true;
+  var spotKeySw = document.getElementById('spotKeySwatch'), spotKeyTol = document.getElementById('spotKeyTol');
+  function refreshKeyUI(){
+    var f = spotEdit && frameById(spotEdit.f), k = f && f.key;
+    spotKeySw.style.background = k ? 'rgb(' + k.c.join(',') + ')' : '';
+    spotKeySw.title = k ? 'Photo window colour' : 'White or see-through (no colour picked)';
+    document.getElementById('spotKeyTolWrap').style.display = k ? '' : 'none';
+    document.getElementById('spotKeyClear').style.display = k ? '' : 'none';
+    if(k && document.activeElement !== spotKeyTol) spotKeyTol.value = k.t;
+    document.getElementById('spotPickHint').style.display = spotEdit && spotEdit.pick ? '' : 'none';
+    document.getElementById('spotPickColor').classList.toggle('primary', !!(spotEdit && spotEdit.pick));
+  }
+  function redetectWithKey(f, quiet){
+    var img = assetImg(f.id); if(!img) return;
+    var found = detectSpots(img, f.key);
+    if(found.length){ f.spots = found; spotEdit.sel = -1; }
+    framesChanged({ layout: 'myframe' });
+    if(!quiet){
+      var turned = found.filter(function(p){ return p.a; }).length;
+      showToast(found.length ? 'Found ' + found.length + ' photo window' + (found.length === 1 ? '' : 's') + (turned ? ' (' + turned + ' tilted, turned to match)' : '') + '. Check the blue areas.' : 'No windows of that colour found. Raise \u201cMatch\u201d or pick again. Your boxes were kept.', 4500);
+    }
+  }
+  function pickKeyAt(f, pt){
+    var img = assetImg(f.id); if(!img) return false;
+    var c = document.createElement('canvas'); c.width = 9; c.height = 9;
+    var x = c.getContext('2d'), px = pt.x * img.width, py = pt.y * img.height;
+    x.drawImage(img, px - 4, py - 4, 9, 9, 0, 0, 9, 9);
+    var d = x.getImageData(0, 0, 9, 9).data, r = 0, g = 0, b = 0, n = 0;
+    for(var i = 0; i < d.length; i += 4){ if(d[i + 3] < 128) continue; r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+    if(!n){ showToast('That spot is already see-through, so it\u2019s a photo window already.'); return true; }
+    f.key = { c: [Math.round(r / n), Math.round(g / n), Math.round(b / n)], t: f.key ? f.key.t : 30 };
+    return true;
+  }
+  document.getElementById('spotPickColor').addEventListener('click', function(){
+    if(!spotEdit) return;
+    spotEdit.pick = !spotEdit.pick; refreshKeyUI();
+    if(spotEdit.pick) showToast('Tap one photo window in the preview.', 3000);
+  });
+  var keyTolTimer = 0;
+  spotKeyTol.addEventListener('input', function(){
+    var f = spotEdit && frameById(spotEdit.f); if(!f || !f.key) return;
+    f.key.t = Number(spotKeyTol.value) || 30;
+    clearTimeout(keyTolTimer); keyTolTimer = setTimeout(function(){ redetectWithKey(f, true); }, 250);
+  });
+  document.getElementById('spotKeyClear').addEventListener('click', function(){
+    var f = spotEdit && frameById(spotEdit.f); if(!f) return;
+    delete f.key; redetectWithKey(f, true);
+  });
+  document.getElementById('spotShowWin').addEventListener('change', function(e){ spotShowWin = e.target.checked; renderSetupPreview(); });
+
   // ---- Upload: frames with boxes become "My frame"; anything else is an overlay ----
   function loadImageUrl(url){
     return new Promise(function(res, rej){ var im = new Image(); im.onload = function(){ res(im); }; im.onerror = function(){ rej(new Error('That image could not be opened.')); }; im.src = url; });
+  }
+  // Share of see-through pixels (overlays have lots; a flat Canva frame has none).
+  function seeThroughShare(img){
+    try{
+      var c = document.createElement('canvas'), k = Math.min(1, 300 / Math.max(img.width, img.height));
+      c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+      var x = c.getContext('2d'); x.drawImage(img, 0, 0, c.width, c.height);
+      var d = x.getImageData(0, 0, c.width, c.height).data, t = 0;
+      for(var i = 3; i < d.length; i += 4) if(d[i] < 60) t++;
+      return t / (d.length / 4);
+    }catch(e){ return 1; }
   }
   async function handleFrameFiles(files){
     var added = [], overlayAdded = false;
@@ -12441,14 +12898,18 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       try{
         var url = await readImageFile(files[i], 2400);
         var img = await loadImageUrl(url);
-        var spots = detectSpots(img);
+        var spots = detectSpots(img), needPick = false;
         // One see-through middle covering most of the image is a border overlay, not a photo frame.
         if(spots.length === 1 && spots[0].w * spots[0].h > 0.75) spots = [];
+        // No white or see-through windows, and nothing see-through at all: a frame
+        // with coloured photo windows. Keep it as a frame and ask for the colour.
+        if(!spots.length && seeThroughShare(img) < 0.03){ spots = [{ x: 0.3, y: 0.3, w: 0.4, h: 0.4 }]; needPick = true; }
         if(spots.length){
           if(myFrames.length >= MAX_FRAMES){ showToast('Up to ' + MAX_FRAMES + ' frames — remove one first.', 4000); break; }
           var id = await addAsset(url);
           myFrames.push({ id: id, w: img.width, h: img.height, spots: spots });
           added.push(myFrames[myFrames.length - 1]);
+          if(needPick) added[added.length - 1]._pick = true;
         } else {
           var oid = await addAsset(url);
           overlay = { id: oid, fit: overlayFit.value || 'stretch' };
@@ -12456,12 +12917,22 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         }
       }catch(e){ showToast(e.message, 4000); }
     }
+    var toPick = added.filter(function(a){ return a._pick; });
+    added.forEach(function(a){ delete a._pick; });
+    if(toPick.length){
+      // Straight to Edit photo spots with the colour picker on.
+      activeFrameId = toPick[0].id; chooseIds = []; setupLayout = 'myframe';
+      spotEdit = { f: toPick[0].id, sel: -1, pick: true };
+      framesChanged({ layout: 'myframe' });
+      showToast('No white or see-through photo windows found. Tap one photo window in the preview to pick its colour.', 8000);
+      return;
+    }
     if(added.length){
       var ids = pickedFrameIds().filter(function(id){ return !added.some(function(a){ return a.id === id; }); })
         .concat(added.map(function(a){ return a.id; })).slice(0, MAX_SHEET_ITEMS);
       useFrames(ids);
       showToast(ids.length === 1
-        ? 'Found ' + added[0].spots.length + ' photo spot' + (added[0].spots.length === 1 ? '' : 's') + (framePairs(added[0]) ? ' (two matching strips: ' + frameShotCount(added[0]) + ' shots, copied to both)' : '') + '. Wrong number? Tap \u201cEdit photo spots\u201d to add, split or reorder them.'
+        ? 'Found ' + added[0].spots.length + ' photo spot' + (added[0].spots.length === 1 ? '' : 's') + (added[0].spots.some(function(p){ return p.a; }) ? ' (tilted ones turned to match)' : '') + (framePairs(added[0]) ? ' (two matching strips: ' + frameShotCount(added[0]) + ' shots, copied to both)' : '') + '. Wrong number? Tap \u201cEdit photo spots\u201d to add, split, turn or reorder them.'
         : (frameMode === 'choose' ? ids.length + ' frames ticked: guests choose one before each session. Prefer them all on one print? Tap \u201cAll on one sheet\u201d.' : ids.length + ' frames on one sheet. Untick any in 3 · Layout, or pick another arrangement.'), 5500);
     }
     if(overlayAdded){
@@ -12473,24 +12944,39 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // ---- Preview: drag frames on the sheet, or fix photo spots ----
   var fdrag = null;
   function spotAt(f, pt){
+    var W = f.w, H = f.h, u = Math.max(W, H);
     for(var i = f.spots.length - 1; i >= 0; i--){
-      var s = f.spots[i];
-      var corner = Math.abs(pt.x - (s.x + s.w)) < 0.04 && Math.abs(pt.y - (s.y + s.h)) < 0.03;
+      var g = spotPx(f.spots[i], W, H), L = spotLocal(g, pt.x * W, pt.y * H);
+      var corner = Math.abs(L.x - g.w / 2) < u * 0.03 && Math.abs(L.y - g.h / 2) < u * 0.03;
       if(corner) return { i: i, corner: true };
-      if(pt.x >= s.x && pt.x <= s.x + s.w && pt.y >= s.y && pt.y <= s.y + s.h) return { i: i, corner: false };
+      if(Math.abs(L.x) <= g.w / 2 && Math.abs(L.y) <= g.h / 2) return { i: i, corner: false };
     }
     return null;
+  }
+  // Sets a spot from its centre / size in frame pixels (keeps its angle).
+  function setSpotPx(s, f, cx, cy, wpx, hpx){
+    s.w = Math.max(0.03, Math.min(1, wpx / f.w)); s.h = Math.max(0.02, Math.min(1, hpx / f.h));
+    s.x = cx / f.w - s.w / 2; s.y = cy / f.h - s.h / 2;
   }
   setupPreviewCanvas.addEventListener('pointerdown', function(e){
     if(drag) return;                                       // a sticker is being moved
     var pt = previewPoint(e);
     if(currentLayout === 'myframe' && spotEdit){
       var f = frameById(spotEdit.f); if(!f) return;
+      if(spotEdit.pick){
+        e.preventDefault();
+        spotEdit.pick = false;
+        if(pickKeyAt(f, pt)) redetectWithKey(f);
+        refreshKeyUI();
+        return;
+      }
       var hit = spotAt(f, pt);
       spotEdit.sel = hit ? hit.i : -1;
       if(hit){
-        var s = f.spots[hit.i];
-        fdrag = { id: e.pointerId, kind: hit.corner ? 'resize' : 'move', dx: s.x - pt.x, dy: s.y - pt.y };
+        var s = f.spots[hit.i], g = spotPx(s, f.w, f.h), c0 = Math.cos(g.a), s0 = Math.sin(g.a);
+        // resize keeps the opposite (top-left) corner where it is
+        var fx = g.cx + (-g.w / 2) * c0 - (-g.h / 2) * s0, fy = g.cy + (-g.w / 2) * s0 + (-g.h / 2) * c0;
+        fdrag = { id: e.pointerId, kind: hit.corner ? 'resize' : 'move', dx: s.x - pt.x, dy: s.y - pt.y, fx: fx, fy: fy };
         setupPreviewCanvas.setPointerCapture(e.pointerId); e.preventDefault();
       }
       renderSetupPreview(); return;
@@ -12516,9 +13002,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     } else {
       var f = spotEdit && frameById(spotEdit.f), s = f && f.spots[spotEdit.sel]; if(!s) return;
       if(fdrag.kind === 'move'){
-        s.x = Math.max(0, Math.min(1 - s.w, pt.x + fdrag.dx)); s.y = Math.max(0, Math.min(1 - s.h, pt.y + fdrag.dy));
-      } else {
+        s.x = Math.max(-s.w / 2, Math.min(1 - s.w / 2, pt.x + fdrag.dx)); s.y = Math.max(-s.h / 2, Math.min(1 - s.h / 2, pt.y + fdrag.dy));
+      } else if(!s.a){
         s.w = Math.max(0.05, Math.min(1 - s.x, pt.x - s.x)); s.h = Math.max(0.03, Math.min(1 - s.y, pt.y - s.y));
+      } else {
+        var ga = s.a * Math.PI / 180, ca = Math.cos(ga), sa = Math.sin(ga);
+        var vx = pt.x * f.w - fdrag.fx, vy = pt.y * f.h - fdrag.fy;
+        var lw = Math.max(f.w * 0.05, vx * ca + vy * sa), lh = Math.max(f.h * 0.03, -vx * sa + vy * ca);
+        setSpotPx(s, f, fdrag.fx + (lw / 2) * ca - (lh / 2) * sa, fdrag.fy + (lw / 2) * sa + (lh / 2) * ca, lw, lh);
       }
     }
     if(!fRaf) fRaf = requestAnimationFrame(function(){ fRaf = 0; renderSetupPreview(); });
@@ -12535,9 +13026,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(currentLayout === 'myframe' && spotEdit){
       var f = frameById(spotEdit.f); if(!f) return;
       try{ refreshSpotSize(); }catch(e){}
+      // Blue = where photos will show (the frame's photo windows).
+      var art0 = spotShowWin && frameArt(f), mk = art0 && frameMasks(f, art0);
+      if(mk && mk.tint){ ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(mk.tint, 0, 0, W, H); ctx.restore(); }
       ctx.save();
       f.spots.forEach(function(s, i){
-        var on = i === spotEdit.sel, x = s.x * W, y = s.y * H, w = s.w * W, h = s.h * H, u = Math.max(W, H);
+        var on = i === spotEdit.sel, g = spotPx(s, W, H), x = -g.w / 2, y = -g.h / 2, w = g.w, h = g.h, u = Math.max(W, H);
+        ctx.save(); ctx.translate(g.cx, g.cy); if(g.a) ctx.rotate(g.a);
         ctx.fillStyle = on ? 'rgba(201,61,39,.18)' : 'rgba(255,255,255,.12)'; ctx.fillRect(x, y, w, h);
         ctx.lineWidth = Math.max(2, u * 0.004); ctx.setLineDash([u * 0.012, u * 0.008]);
         ctx.strokeStyle = on ? '#C93D27' : '#ffffff'; ctx.strokeRect(x, y, w, h);
@@ -12548,6 +13043,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         ctx.fillStyle = '#fff'; ctx.font = '700 ' + Math.round(r * 1.15) + 'px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(String(i + 1), x + r * 1.4, y + r * 1.45);
         ctx.fillStyle = on ? '#C93D27' : '#1C1A1E'; ctx.fillRect(x + w - r * 0.9, y + h - r * 0.9, r * 0.9, r * 0.9);   // resize handle
+        ctx.restore();
       });
       ctx.restore();
     } else if(currentLayout === 'framesheet'){
@@ -12564,7 +13060,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function framesSnapshot(){
     var r4 = function(v){ return Math.round(v * 10000) / 10000; };
     return {
-      frames: myFrames.map(function(f){ var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function(s){ return { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; }) }; if(typeof f.copy === 'boolean') o.copy = f.copy; return o; }),
+      frames: myFrames.map(function(f){ var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function(s){ var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; if(s.a) q.a = Math.round(s.a * 10) / 10; return q; }) }; if(typeof f.copy === 'boolean') o.copy = f.copy; if(f.key) o.key = { c: f.key.c.slice(), t: f.key.t }; return o; }),
       activeFrame: activeFrameId,
       frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
       sheet: { pattern: sheet.pattern, items: sheet.items.map(function(it){ return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; }) }
@@ -12574,7 +13070,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var okId = function(id){ return typeof id === 'string' && /^a[A-Za-z0-9]{8,32}$/.test(id); };
     var num = function(v, lo, hi, d){ v = Number(v); return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
     myFrames = (Array.isArray(s.frames) ? s.frames : []).filter(function(f){ return f && okId(f.id) && Array.isArray(f.spots) && f.spots.length; }).slice(0, MAX_FRAMES).map(function(f){
-      return { id: f.id, w: num(f.w, 1, 10000, 1200), h: num(f.h, 1, 10000, 1800), spots: f.spots.slice(0, MAX_SPOTS).map(function(p){
+      var key = f.key && Array.isArray(f.key.c) && f.key.c.length === 3 ? { c: f.key.c.map(function(v){ return Math.round(num(v, 0, 255, 0)); }), t: Math.round(num(f.key.t, 4, 100, 36)) } : null;
+      return { id: f.id, w: num(f.w, 1, 10000, 1200), h: num(f.h, 1, 10000, 1800), key: key, spots: f.spots.slice(0, MAX_SPOTS).map(function(p){
+        var a = num(p.a, -45, 45, 0);
+        if(a){ var tw = num(p.w, 0.01, 1, 0.3), th = num(p.h, 0.01, 1, 0.3); return { x: num(p.x, -0.5, 1, 0), y: num(p.y, -0.5, 1, 0), w: tw, h: th, a: a }; }
         var x = num(p.x, 0, 1, 0), y = num(p.y, 0, 1, 0);
         return { x: x, y: y, w: num(p.w, 0.01, 1 - x, 0.3), h: num(p.h, 0.01, 1 - y, 0.3) };
       }), copy: typeof f.copy === 'boolean' ? f.copy : undefined };
@@ -12823,7 +13322,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var rental = !!(window.__PB && window.__PB.type === 'rental');
     var a = document.getElementById('myEventsLink'), m = document.getElementById('menuMyEvents');
     if(a) a.hidden = !rental;
-    if(m){ m.hidden = !rental; m.addEventListener('click', function(){ window.open('/lifetime/?booth=1', '_blank', 'noopener'); }); }
+    if(m){ m.hidden = !rental || DESKTOP; m.addEventListener('click', function(){ window.open('/lifetime/?booth=1', '_blank', 'noopener'); }); }
   })();
   // ---- Full screen: hides the browser's tabs and address bar ----
   // Browsers only allow full screen after a tap, so the booth goes full screen
@@ -13265,6 +13764,96 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var dfHelp = document.getElementById('driveFolderHelp');
   if(!dfHelp.textContent) dfHelp.textContent = 'Each event gets its own folder. Two devices? Type the same name on both.';
   driveFolderKeyInput.addEventListener('input', scheduleSetupNav);
+
+  // ---- Windows / Mac app: this laptop (photos folder, guests' Wi-Fi, licence) ----
+  (function(){
+    if(!DESKTOP) return;
+    var api = window.pb4u, box = document.getElementById('deskBox');
+    if(!box) return;
+    box.hidden = false;
+    var lead = document.querySelector('#paySection .step-lead');
+    if(lead) lead.textContent = 'Guests type a voucher you sell at the booth before each session. (QR payments with GCash / Maya need the internet version of the booth.)';
+    var signHint = document.getElementById('driveFolderSignHint');
+    if(signHint) signHint.textContent = 'Print the sign and put it by the booth. Guests\u2019 phones must be on the same Wi-Fi as this laptop to open the photos; add the Wi-Fi below so the sign and each guest\u2019s QR show how to join.';
+    if(!(window.__PB && window.__PB.folderPrefix)) driveFolderKeyInput.placeholder = 'Event name';
+    var fmt = function(t){ try{ return new Date(t).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }catch(e){ return ''; } };
+    var lanNow = null;
+    function render(info){
+      document.getElementById('deskPhotos').textContent = info.photos || '';
+      var lan = document.getElementById('deskLan');
+      lanNow = info.share || null;
+      lan.className = 'panel-hint' + (info.share ? '' : ' bad');
+      lan.textContent = info.share
+        ? 'Guests open their photos at ' + info.share + ' \u2713 Their phones must be on the same Wi-Fi as this laptop.'
+        : 'This laptop isn\u2019t on a Wi-Fi network, so guests can\u2019t open their photos yet. Connect it to the booth Wi-Fi router, or turn on its hotspot (Windows: Settings \u2192 Network \u2192 Mobile hotspot).';
+      var L = info.licence || {}, parts = [];
+      if(L.renter) parts.push(L.renter);
+      if(L.code) parts.push(L.code);
+      parts.push(L.lifetime ? 'Lifetime' : (L.exp ? 'until ' + fmt(L.exp) : ''));
+      var txt = parts.filter(Boolean).join(' \u00b7 ') + '. ' + (L.os === 'mac' ? 'Mac' : 'Windows') + ' app ' + (info.version || '') + ', ID ' + L.mid + '.';
+      if(L.lifetime && L.hard) txt += ' Works offline until ' + fmt(L.hard) + '; it renews by itself whenever this laptop has internet.';
+      if(L.warn) txt += ' ' + L.warn;
+      document.getElementById('deskLic').textContent = txt;
+    }
+    function refresh(){ return api.info().then(render).catch(function(){}); }
+    refresh();
+    // The laptop's Wi-Fi address can change (joined a network, hotspot on): keep the QR right.
+    setInterval(function(){
+      var b = null; try{ b = api.lanBase(); }catch(e){}
+      if(b !== lanNow){ lanNow = b; refresh(); if(localFolderUrl) showLocalFolderPreview(localFolderUrl); }
+    }, 8000);
+    document.getElementById('deskOpenBtn').addEventListener('click', function(){ api.openPhotos(localFolderUrl || ''); });
+    var dl = document.getElementById('driveFolderDrive');
+    if(dl) dl.addEventListener('click', function(e){ e.preventDefault(); api.openPhotos(localFolderUrl || ''); });
+    document.getElementById('deskChangeBtn').addEventListener('click', function(){
+      api.choosePhotos().then(function(dir){
+        if(!dir) return;
+        // Folder links point at the old place: forget them and set this event up again.
+        try{ Object.keys(localStorage).forEach(function(k){ if(/^photoBoothDrive:.*:folderUrl$/.test(k)) localStorage.removeItem(k); }); }catch(e){}
+        refresh();
+        if(rawFolderKey()) resolveDriveFolder();
+        showToast('New photos save in ' + dir);
+      });
+    });
+    var wn = document.getElementById('deskWifiName'), wp = document.getElementById('deskWifiPass');
+    var w0 = wifiInfo(); if(w0){ wn.value = w0.ssid; wp.value = w0.pass; }
+    function saveWifi(){
+      var ssid = wn.value.trim(), pass = wp.value;
+      try{ if(ssid) localStorage.setItem(WIFI_KEY, JSON.stringify({ ssid: ssid, pass: pass })); else localStorage.removeItem(WIFI_KEY); }catch(e){}
+    }
+    wn.addEventListener('input', saveWifi); wp.addEventListener('input', saveWifi);
+    document.getElementById('deskCheckBtn').addEventListener('click', function(){
+      var b = this; b.disabled = true; b.textContent = 'Checking\u2026';
+      api.checkin().then(function(r){
+        b.disabled = false; b.textContent = 'Check for changes';
+        if(r.licence && !r.licence.ok){ location.reload(); return; }
+        render({ licence: r.licence, photos: document.getElementById('deskPhotos').textContent, share: lanNow, version: (window.__PB.desktop || {}).v });
+        showToast(r.result === 'ok' ? 'Up to date \u2713 Changes from photobooth4u apply within a few minutes.' : 'Can\u2019t reach photobooth4u right now. The booth keeps working offline.', 5000);
+      });
+    });
+    document.getElementById('deskDeactBtn').addEventListener('click', function(){
+      var b = this;
+      if(!b.classList.contains('confirm')){
+        b.classList.add('confirm'); b.textContent = 'Tap again: remove this laptop';
+        setTimeout(function(){ if(b.isConnected){ b.classList.remove('confirm'); b.textContent = 'Deactivate this laptop'; } }, 4000);
+        return;
+      }
+      b.disabled = true; b.textContent = 'Deactivating\u2026';
+      api.deactivate().then(function(r){
+        if(r.ok){ try{ sessionStorage.setItem('pb_notice', 'deactivated'); }catch(e){} location.reload(); return; }
+        b.disabled = false; b.classList.remove('confirm'); b.textContent = 'Deactivate this laptop';
+        showToast(r.error || 'Couldn\u2019t deactivate.', 6000);
+      });
+    });
+    // A check-in found this laptop removed / the code disabled: lock (after any session in progress).
+    api.onLicence(function(info){
+      if(info && info.ok) return;
+      (function lockWhenFree(){
+        if(document.querySelector('.app-shell.capturing')){ setTimeout(lockWhenFree, 4000); return; }
+        location.reload();
+      })();
+    });
+  })();
 
   // ---- First step to show ----
   (function(){

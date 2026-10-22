@@ -47,6 +47,7 @@ export function maxDevicesOf(rec) {
 // (its photos already in Drive keep a unique name).
 // What kind of device it is, for the renter's device list ("iPad", "Windows computer"…).
 export const DEVICE_KINDS = ['iPad', 'iPhone', 'Android tablet', 'Android phone', 'Mac', 'Windows computer', 'Chromebook', 'Linux computer'];
+// The Windows / Mac offline app takes a slot as "Windows app" / "Mac app" (set by /api/license, never by a hint).
 export function deviceKindOf(hint, ua) {
   if (DEVICE_KINDS.includes(hint)) return hint;
   const u = String(ua || '');
@@ -157,7 +158,7 @@ export function summaryOf(rec) {
     kind: rec.kind || 'rental', parent: rec.parent || null, bonusKey: rec.bonusKey || null,
     lifetime: !!rec.lifetime, days: rec.days || 0, minutes: rec.minutes || null, startsAt: rec.startsAt || null,
     status: rec.status, redeemedAt: rec.redeemedAt || null, expiresAt: rec.expiresAt || null,
-    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional, retakeOpt: !!rec.retakeOpt, payOpt: !!rec.payOpt, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0,
+    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional, retakeOpt: !!rec.retakeOpt, payOpt: !!rec.payOpt, offlineOpt: !!rec.offlineOpt, appsUsed: devicesOf(rec).filter((d) => d.app).length, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0,
     print: !!(rec.print && rec.print.enabled), createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null
   };
 }

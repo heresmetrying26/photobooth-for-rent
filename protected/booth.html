@@ -879,6 +879,10 @@
   .frame-info b{color:var(--ink); font-size:12.5px;}
   .action-btn.mini{width:auto; padding:7px 11px; font-size:12px; margin:0;}
   .pattern-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .beta-tag{display:inline-block; margin-left:4px; padding:1px 6px; border-radius:99px; background:#5b3fa0; color:#fff; font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; vertical-align:1px;}
+  .frame-mode{margin:0 0 12px;}
+  .frame-mode .chip-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .sheet-size-row{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 10px;}
   @media (max-width:640px){ #sheetPatterns{flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px;} #sheetPatterns .pattern-btn{flex:none;} }
   .frames-box{padding:12px; border-radius:14px; background:var(--panel-2); border:1px solid var(--line);}
   .frame-pick{display:grid; grid-template-columns:repeat(auto-fill, minmax(78px, 1fr)); gap:8px;}
@@ -1925,10 +1929,23 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <p class="panel-label">Layout</p>
         <div class="frames-box" id="myFramesPanel" style="display:none; margin-bottom:14px;">
           <p class="sub-label" style="margin-top:0;">Your frames</p>
-          <p class="panel-hint" style="margin:0 0 10px;">Tap to tick. <b>1 ticked</b> = that frame on its own. <b>2 or more</b> = all of them on one 4R print.</p>
+          <p class="panel-hint" style="margin:0 0 10px;" id="framePickHint">Tap to tick. <b>1 ticked</b> = that frame on its own.</p>
+          <div class="frame-mode" id="frameModeBox" style="display:none;">
+            <p class="sub-label" style="margin-top:0;">With 2 or more ticked</p>
+            <div class="chip-row" id="frameModeChips">
+              <button type="button" class="chip" data-fmode="choose">Guests choose one</button>
+              <button type="button" class="chip" data-fmode="sheet">All on one sheet</button>
+            </div>
+          </div>
           <div class="frame-pick" id="framePick"></div>
+          <p class="panel-hint" id="frameChooseHint" style="display:none; margin-top:10px;"></p>
           <div id="sheetPanel" style="display:none;">
-            <p class="sub-label" style="margin-top:14px;">Arrange them on the 4R sheet</p>
+            <p class="sub-label" style="margin-top:14px;">Sheet size</p>
+            <div class="sheet-size-row">
+              <select class="mini-select" id="sheetSizeSelect" aria-label="Sheet size"></select>
+              <span class="panel-hint" style="margin:0;">Choose the same paper size when you print.</span>
+            </div>
+            <p class="sub-label" style="margin-top:6px;">Arrange them on the sheet</p>
             <div class="pattern-row" id="sheetPatterns"></div>
             <div class="decor-btns">
               <button type="button" class="action-btn" id="sheetShuffle">⇄ Swap places</button>
@@ -2016,7 +2033,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <div class="pane" data-pane="greenscreen" id="greenSection">
           <div class="chip-row" id="bgModeChips">
             <button type="button" class="chip active" data-mode="off">Off</button>
-            <button type="button" class="chip" data-mode="ai">No cloth (AI)</button>
+            <button type="button" class="chip" data-mode="ai">No cloth (AI) <span class="beta-tag">Beta</span></button>
             <button type="button" class="chip" data-mode="green">Green screen</button>
           </div>
           <p class="panel-hint" id="bgModeHint" style="margin-top:8px;"></p>
@@ -2326,6 +2343,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <button type="button" class="menu-btn" id="setupMenuBtn" aria-label="More" aria-haspopup="true">⋯</button>
           <div class="menu" id="setupMenu" hidden>
             <button type="button" id="menuMyEvents" hidden>My Events ↗ (links, payments, printing)</button>
+            <button type="button" id="menuFullscreen">Full screen (hide tabs)</button>
             <button type="button" id="resetSetupBtn" class="danger">Reset setup</button>
           </div>
         </div>
@@ -2356,7 +2374,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <img class="shot-review" id="shotReview" alt="">
         <div class="welcome-overlay" id="welcomeOverlay" role="button" tabindex="0" aria-label="Tap to start"><img id="welcomeImg" alt="Welcome — tap to start"><span class="welcome-pulse" id="welcomePulse" aria-hidden="true"></span></div>
         <div class="pick-overlay" id="pickOverlay" aria-label="Choose your layout">
-          <p class="pick-title">Choose your layout</p>
+          <p class="pick-title" id="pickTitle">Choose your layout</p>
           <div class="pick-grid" id="pickGrid"></div>
         </div>
 
@@ -3194,7 +3212,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     myframe:    { name: 'My frame', kind: 'frame', get shots(){ var f = typeof activeFrame === 'function' ? activeFrame() : null; return f ? Math.max(1, frameShotCount(f)) : 1; },
                   hint: 'One of your frames on its own. Photos fill its white or see-through spots.' },
     framesheet: { name: 'Frame collage', kind: 'frame', get shots(){ return typeof sheetShots === 'function' ? sheetShots() : 1; },
-                  hint: 'Two or more of your frames together on one 4R print. Tick them below, pick an arrangement, then drag them in the preview.' }
+                  hint: 'Two or more of your frames together on one sheet. Tick them below, choose the sheet size and an arrangement, then drag them in the preview.' }
   };
   const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'feature', 'film6', 'land3', 'land4'];
   // The built-in layouts, plus your frames once at least one is uploaded.
@@ -6607,7 +6625,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         var fit = Math.min(84 / (f.w / 40), 88 / (f.h / 60)), bw = f.w / 40 * fit, bh = f.h / 60 * fit, ox = (100 - bw) / 2, oy = (100 - bh) / 2;
         return f.spots.map(function(sp){ return pct(ox + sp.x * bw, oy + sp.y * bh, sp.w * bw, sp.h * bh); });
       }
-      return liveSheetItems().map(function(it){ var z = sheetItemSize(it); return pct((it.cx - z.bw / SHEET_W / 2) * 100, (it.cy - z.bh / SHEET_H / 2) * 100, z.bw / SHEET_W * 100, z.bh / SHEET_H * 100); });
+      return liveSheetItems().map(function(it){ var z = sheetItemSize(it); return pct((it.cx - z.bw / SW() / 2) * 100, (it.cy - z.bh / SH() / 2) * 100, z.bw / SW() * 100, z.bh / SH() * 100); });
     }
     const W = 40, H = 60 * 0.86;
     return sheetCells(key, W, H).map(c => pct(c.x / W * 100, c.y / 60 * 100, c.w / W * 100, c.h / 60 * 100));
@@ -6617,7 +6635,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const d = LAYOUT_DEFS[key];
     if(!d) return '';
     if(d.kind === 'landscape') return '4R, sideways';
-    if(d.kind === 'frame') return key === 'framesheet' ? '4R' : (isStripLayout(key) ? '2\u00d76 or 2 on 4R' : '4R');
+    if(d.kind === 'frame') return key === 'framesheet' ? ((typeof sheetPaper === 'function' && sheetPaper().name) || '4R') : (isStripLayout(key) ? '2\u00d76 or 2 on 4R' : '4R');
     if(d.kind === 'strip') return '2\u00d76 or 2 on 4R';
     return '4R (4\u00d76)';
   }
@@ -9024,6 +9042,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{
       G.pk.classList.toggle('hide', !pickOpen);
       if(!pickOpen){ G.pkSig = ''; return; }
+      const pkt = G.pk.querySelector('.pkt'); if(pkt) pkt.textContent = pickTitleText();
       const sig = pickKeys.join(',');
       if(G.pkSig !== sig){
         G.pkSig = sig;
@@ -9031,7 +9050,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         pickKeys.forEach((k) => {
           const b = G.d.createElement('button'); b.type = 'button'; b.className = 'pkb';
           const im = G.d.createElement('img'); im.src = layoutThumbUrl(k);
-          const sp = G.d.createElement('span'); sp.textContent = LAYOUT_DEFS[k].name;
+          const sp = G.d.createElement('span'); sp.textContent = pickName(k);
           b.append(im, sp);
           b.addEventListener('click', (e) => { e.stopPropagation(); finishPick(k); });
           G.pkg.appendChild(b);
@@ -9081,7 +9100,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         G.res.style.display = 'block'; G.v.style.display = 'none';
       }
       if(pickOpen){
-        G.msg.textContent = 'Choose your layout';
+        G.msg.textContent = pickTitleText();
         G.sub.textContent = 'Tap one to start';
         G.chip.textContent = 'Pick one';
       } else if(result){
@@ -9499,21 +9518,32 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     guestLayoutSet = [...guestLayoutsEl.querySelectorAll('input:checked')].map(function(i){ return i.value; }).filter(function(k){ return k !== setupLayout; });
   });
   function guestChoiceKeys(){
-    if(!guestPickOn) return [setupLayout];
-    return layoutOrder().filter(function(k){ return k === setupLayout || guestLayoutSet.indexOf(k) >= 0; });
+    var keys = !guestPickOn ? [setupLayout] : layoutOrder().filter(function(k){ return k === setupLayout || guestLayoutSet.indexOf(k) >= 0; });
+    // Several frames ticked with "Guests choose one": each frame is its own choice.
+    var fc = setupLayout === 'myframe' && typeof chooseList === 'function' ? chooseList() : [];
+    if(fc.length > 1) keys = fc.map(function(id){ return 'frame:' + id; }).concat(keys.filter(function(k){ return k !== 'myframe'; }));
+    return keys;
+  }
+  // "Choose your frame" when every choice is one of your frames.
+  function pickTitleText(){ return pickKeys.length && pickKeys.every(function(k){ return /^frame:/.test(k); }) ? 'Choose your frame' : 'Choose your layout'; }
+  function pickName(k){
+    if(/^frame:/.test(k)){ var i = myFrames.findIndex(function(f){ return f.id === k.slice(6); }); return 'Frame ' + (i + 1); }
+    return LAYOUT_DEFS[k].name;
   }
   var pickOverlay = document.getElementById('pickOverlay');
   var pickGrid = document.getElementById('pickGrid');
   var pickOpen = false, pickResolve = null, pickKeys = [], pickIdx = 0;
   var pickThumbs = { sig: '', urls: {} };
   function layoutThumbUrl(key){
-    var sig = JSON.stringify(snapshotSetup()) + (backgroundImg ? backgroundImg.src.length : 0);
+    var sig = JSON.stringify(Object.assign({}, snapshotSetup(), { activeFrame: null })) + (backgroundImg ? backgroundImg.src.length : 0);
     if(pickThumbs.sig !== sig) pickThumbs = { sig: sig, urls: {} };
     if(!pickThumbs.urls[key]){
       var big = document.createElement('canvas');
       var keepSample = previewSample; previewSample = null;      // drawn sample couple, not a camera frame
-      try{ composeCanvas(key, big, buildPlaceholderShots(300, shotsNeeded(key))); }
-      finally{ previewSample = keepSample; }
+      var keepFrame = activeFrameId, lk = key;
+      if(/^frame:/.test(key)){ activeFrameId = key.slice(6); lk = 'myframe'; }
+      try{ composeCanvas(lk, big, buildPlaceholderShots(300, shotsNeeded(lk))); }
+      finally{ previewSample = keepSample; activeFrameId = keepFrame; }
       var small = document.createElement('canvas'), sc = 420 / big.height;
       small.width = Math.round(big.width * sc); small.height = 420;
       var sctx = small.getContext('2d'); sctx.imageSmoothingQuality = 'high';
@@ -9525,12 +9555,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function pickLayout(keys){
     return new Promise(function(resolve){
       pickOpen = true; pickResolve = resolve; pickKeys = keys;
-      pickIdx = Math.max(0, keys.indexOf(setupLayout));
+      var pt = document.getElementById('pickTitle'); if(pt) pt.textContent = pickTitleText();
+      pickIdx = Math.max(0, keys.indexOf(setupLayout), keys.indexOf('frame:' + activeFrameId));
       pickGrid.innerHTML = '';
       keys.forEach(function(k, i){
         var b = document.createElement('button'); b.type = 'button'; b.className = 'pick-btn';
         var im = document.createElement('img'); im.alt = ''; im.src = layoutThumbUrl(k);
-        var sp = document.createElement('span'); sp.textContent = LAYOUT_DEFS[k].name;
+        var sp = document.createElement('span'); sp.textContent = pickName(k);
         b.append(im, sp);
         b.addEventListener('click', function(e){ e.stopPropagation(); finishPick(k); });
         pickGrid.appendChild(b);
@@ -9577,7 +9608,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(!(await payGate())) return;
       var keys = guestChoiceKeys();
       var key = keys.length > 1 ? await pickLayout(keys) : setupLayout;
-      if(key !== currentLayout) setLayout(key);
+      if(/^frame:/.test(key)){ activeFrameId = key.slice(6); key = 'myframe'; setLayout(key); }   // the guest's frame, this session
+      else if(key !== currentLayout) setLayout(key);
       // After picking a layout there's always a "Get ready" screen (summary,
       // filters, Start) — the countdown never starts straight from the picker.
       await startSession(keys.length > 1 ? false : skipReady);
@@ -10403,7 +10435,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     document.getElementById('bgOpts').style.display = bgRep.mode === 'off' ? 'none' : '';
     document.getElementById('greenOpts').style.display = bgRep.mode === 'green' ? '' : 'none';
     document.getElementById('bgModeHint').textContent = bgRep.mode === 'ai'
-      ? 'Works without a green cloth. Best with guests close to the camera and a plain, uncluttered wall behind them.'
+      ? 'Beta, and we keep improving it with every update. Works without a green cloth. Best with guests close to the camera and a plain, uncluttered wall behind them. For the cleanest edges every time, use Green screen.'
       : bgRep.mode === 'green' ? 'Hang a smooth green (or blue) cloth behind the guests and light it evenly. Guests shouldn’t wear that colour.'
       : 'Replace the real background behind your guests with a picture, on the photos, the prints and the live view.';
     const ids = Object.keys(BG_BUILTIN).map(k => 'b:' + k).concat(bgMine.map(a => 'a:' + a));
@@ -10758,6 +10790,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       decor: decor.map(function(d){ return { src: d.src, x: Math.round(d.x * 1000) / 1000, y: Math.round(d.y * 1000) / 1000, s: Math.round(d.s * 1000) / 1000, r: Math.round(d.r || 0) }; }),
       myProps: myProps.slice(),
       frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet,
+      frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
       titleStyle: titleStyle, kicker: kickerText, upper: titleUpper, art: themeArt.slice(), artPal: Object.assign({}, artPal),
       printPrefs: Object.assign({}, printPrefs),
       bgRep: Object.assign({}, bgRep), bgMine: bgMine.slice(),
@@ -11764,7 +11797,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // =====================================================================
   var myFrames = [];            // [{ id, w, h, spots: [{ x, y, w, h }] }]  (spots as 0-1 of the frame)
   var activeFrameId = null;     // the frame used by the "My frame" layout
-  var sheet = { pattern: 'tall-one-two-strips', items: [] };   // items: [{ f, cx, cy, s, r }] (0-1 of the 4R sheet; s = width share)
+  var sheet = { pattern: 'tall-one-two-strips', items: [] };   // items: [{ f, cx, cy, s, r }] (0-1 of the sheet; s = width share)
+  // 2 or more frames ticked: 'choose' = guests pick one before each session,
+  // 'sheet' = all of them together on one sheet of sheetSize paper.
+  var frameMode = 'choose', chooseIds = [], sheetSize = '4x6';
+  var SHEET_SIZES = ['4x6', 'selphy', '5x7', '6x8', '8x10', 'A5', 'A4', 'Letter'];
+  function sheetPaper(){ return paperFor(sheetSize) || paperFor('4x6'); }
+  // The sheet in pixels at 300 dpi, portrait (4R = 1200 x 1800).
+  function SW(){ return Math.round(sheetPaper().w / 25.4 * 300); }
+  function SH(){ return Math.round(sheetPaper().h / 25.4 * 300); }
+  function chooseList(){ return frameMode === 'choose' ? chooseIds.filter(function(id){ return frameById(id); }) : []; }
   var selItem = -1;             // selected frame on the sheet (Setup preview)
   var spotEdit = null;          // { f: frameId, sel: index } while fixing a frame's photo spots
   var FRAME_CACHE = {};         // frameId -> { img, key, punched }
@@ -12006,7 +12048,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     else { ctx.save(); ctx.strokeStyle = '#999'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2); ctx.restore(); }
   }
   function sheetItemSize(it){
-    var f = frameById(it.f), fw = it.s * SHEET_W, fh = fw * f.h / f.w, rot = Math.round((it.r || 0) / 90) % 2 !== 0;
+    var f = frameById(it.f), fw = it.s * SW(), fh = fw * f.h / f.w, rot = Math.round((it.r || 0) / 90) % 2 !== 0;
     return { fw: fw, fh: fh, bw: rot ? fh : fw, bh: rot ? fw : fh };
   }
   function composeFrameCanvas(layoutKey, targetCanvas, shots){
@@ -12020,7 +12062,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
       if(f) drawFrameInto(ctx, f, 0, 0, W, H, shots);
     } else {
-      W = SHEET_W; H = SHEET_H;
+      W = SW(); H = SH();
       targetCanvas.width = W; targetCanvas.height = H;
       ctx = targetCanvas.getContext('2d');
       ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
@@ -12040,10 +12082,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // ---- Arranging frames on the 4R sheet ----
   function fitItem(f, r, cell){
     var inset = 0.012;
-    var cw = (cell[2] - 2 * inset) * SHEET_W, ch = (cell[3] - 2 * inset) * SHEET_H;
+    var cw = (cell[2] - 2 * inset) * SW(), ch = (cell[3] - 2 * inset) * SH();
     var rot = Math.round(r / 90) % 2 !== 0, bw = rot ? f.h : f.w, bh = rot ? f.w : f.h;
     var sc = Math.min(cw / bw, ch / bh);
-    return { f: f.id, cx: cell[0] + cell[2] / 2, cy: cell[1] + cell[3] / 2, s: f.w * sc / SHEET_W, r: r };
+    return { f: f.id, cx: cell[0] + cell[2] / 2, cy: cell[1] + cell[3] / 2, s: f.w * sc / SW(), r: r };
   }
   // Frames currently ticked for the sheet / "My frame" (Setup -> 3 Layout -> Your frames).
   function sheetFrameIds(){
@@ -12053,7 +12095,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   function pickedFrameIds(){
     if(currentLayout === 'framesheet') return sheetFrameIds();
-    if(currentLayout === 'myframe' && activeFrame()) return [activeFrame().id];
+    if(currentLayout === 'myframe'){
+      var c = chooseList();
+      if(c.length > 1) return c;
+      if(activeFrame()) return [activeFrame().id];
+    }
     return [];
   }
   // 5+ frames: a simple grid on the 4R sheet.
@@ -12067,7 +12113,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function assignCells(cells, frames, strict){
     var uses = {}, total = 0;
     var items = cells.map(function(cell){
-      var cw = cell[2] * SHEET_W, ch = cell[3] * SHEET_H, best = null;
+      var cw = cell[2] * SW(), ch = cell[3] * SH(), best = null;
       frames.forEach(function(f){
         [0, 90].forEach(function(r){
           var fw = r ? f.h : f.w, fh = r ? f.w : f.h, k = Math.min(cw / fw, ch / fh);
@@ -12110,7 +12156,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!ids.length) return;
     spotEdit = null;
     if(ids.length === 1){
+      chooseIds = [];
       activeFrameId = ids[0]; setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); return;
+    }
+    if(frameMode === 'choose'){
+      // Guests pick one of these before each session; Setup shows the first.
+      chooseIds = ids.slice();
+      if(ids.indexOf(activeFrameId) < 0) activeFrameId = ids[0];
+      setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); return;
     }
     applyPattern(bestPatternFor(ids), ids);
     setupLayout = 'framesheet';
@@ -12132,7 +12185,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     for(var i = items.length - 1; i >= 0; i--){
       if(!frameById(items[i].f)) continue;
       var z = sheetItemSize(items[i]), a = -(items[i].r || 0) * Math.PI / 180;
-      var dx = pt.x * SHEET_W - items[i].cx * SHEET_W, dy = pt.y * SHEET_H - items[i].cy * SHEET_H;
+      var dx = (pt.x - items[i].cx) * SW(), dy = (pt.y - items[i].cy) * SH();
       var lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
       if(Math.abs(lx) <= z.fw / 2 && Math.abs(ly) <= z.fh / 2) return i;
     }
@@ -12209,6 +12262,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     framePickEl.innerHTML = '';
     if(!myFrames.length) return;
     var picked = pickedFrameIds(), counts = {};
+    var fmBox = document.getElementById('frameModeBox');
+    fmBox.style.display = myFrames.length > 1 ? '' : 'none';
+    [...document.querySelectorAll('#frameModeChips [data-fmode]')].forEach(function(b){ b.classList.toggle('active', b.dataset.fmode === frameMode); });
+    document.getElementById('framePickHint').innerHTML = 'Tap to tick. <b>1 ticked</b> = that frame on its own.' + (myFrames.length > 1 ? ' <b>2 or more</b> = ' + (frameMode === 'choose' ? 'guests choose one.' : 'all of them on one sheet.') : '');
+    var ch = document.getElementById('frameChooseHint'), nc = chooseList().length;
+    ch.style.display = currentLayout === 'myframe' && nc > 1 ? '' : 'none';
+    ch.innerHTML = 'Before each session, guests tap the frame they want (' + nc + ' to choose from). Their photos print in that frame. The preview shows the first one.';
     if(currentLayout === 'framesheet') liveSheetItems().forEach(function(it){ counts[it.f] = (counts[it.f] || 0) + 1; });
     myFrames.forEach(function(f, n){
       var on = picked.indexOf(f.id) >= 0;
@@ -12229,13 +12289,31 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       framePickEl.appendChild(add);
     }
   }
+  document.getElementById('frameModeChips').addEventListener('click', function(e){
+    var b = e.target.closest('[data-fmode]'); if(!b || b.dataset.fmode === frameMode) return;
+    var cur = pickedFrameIds();
+    frameMode = b.dataset.fmode;
+    if(cur.length > 1) useFrames(cur);
+    else { buildFramePick(); scheduleSetupSave(); }
+  });
+  var sheetSizeSel = document.getElementById('sheetSizeSelect');
+  SHEET_SIZES.forEach(function(k){ var o = document.createElement('option'); o.value = k; o.textContent = paperFor(k).name; sheetSizeSel.appendChild(o); });
+  sheetSizeSel.addEventListener('change', function(){
+    if(!paperFor(sheetSizeSel.value)) return;
+    var ids = sheetFrameIds();
+    sheetSize = sheetSizeSel.value;
+    applyPattern(sheet.pattern, ids.length ? ids : null);
+    framesChanged({ layout: 'framesheet' });
+  });
   function buildSheetPatterns(){
+    sheetSizeSel.value = sheetSize;
     sheetPatternsEl.innerHTML = '';
     SHEET_PATTERNS.forEach(function(p){
       var b = document.createElement('button'); b.type = 'button'; b.className = 'pattern-btn' + (sheet.pattern === p.id ? ' active' : ''); b.title = p.name;
-      var c = document.createElement('canvas'); c.width = 40; c.height = 60;
-      var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 40, 60);
-      p.cells.forEach(function(cell){ x.fillStyle = '#1C1A1E'; x.fillRect(cell[0] * 40 + 1.5, cell[1] * 60 + 1.5, cell[2] * 40 - 3, cell[3] * 60 - 3); });
+      var th = Math.round(40 * SH() / SW());
+      var c = document.createElement('canvas'); c.width = 40; c.height = th;
+      var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 40, th);
+      p.cells.forEach(function(cell){ x.fillStyle = '#1C1A1E'; x.fillRect(cell[0] * 40 + 1.5, cell[1] * th + 1.5, cell[2] * 40 - 3, cell[3] * th - 3); });
       var s = document.createElement('span'); s.textContent = p.name;
       b.append(c, s);
       b.addEventListener('click', function(){ applyPattern(p.id); framesChanged({ layout: 'framesheet' }); });
@@ -12260,7 +12338,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var best = null;
       [0, 90].forEach(function(r){
         var fw = r ? f.h : f.w, fh = r ? f.w : f.h, k = Math.min(b.bw / fw, b.bh / fh);
-        if(!best || k * fw * k * fh > best.a) best = { r: r, a: k * fw * k * fh, s: f.w * k / SHEET_W };
+        if(!best || k * fw * k * fh > best.a) best = { r: r, a: k * fw * k * fh, s: f.w * k / SW() };
       });
       it.f = f.id; it.r = best.r; it.s = best.s; it.cx = b.cx; it.cy = b.cy;
     });
@@ -12384,7 +12462,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       useFrames(ids);
       showToast(ids.length === 1
         ? 'Found ' + added[0].spots.length + ' photo spot' + (added[0].spots.length === 1 ? '' : 's') + (framePairs(added[0]) ? ' (two matching strips: ' + frameShotCount(added[0]) + ' shots, copied to both)' : '') + '. Wrong number? Tap \u201cEdit photo spots\u201d to add, split or reorder them.'
-        : ids.length + ' frames on one 4R print. Untick any in 3 · Layout, or pick another arrangement.', 5500);
+        : (frameMode === 'choose' ? ids.length + ' frames ticked: guests choose one before each session. Prefer them all on one print? Tap \u201cAll on one sheet\u201d.' : ids.length + ' frames on one sheet. Untick any in 3 · Layout, or pick another arrangement.'), 5500);
     }
     if(overlayAdded){
       refreshDecorUI(); redrawAll(); scheduleSetupSave();
@@ -12488,6 +12566,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return {
       frames: myFrames.map(function(f){ var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function(s){ return { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; }) }; if(typeof f.copy === 'boolean') o.copy = f.copy; return o; }),
       activeFrame: activeFrameId,
+      frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
       sheet: { pattern: sheet.pattern, items: sheet.items.map(function(it){ return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; }) }
     };
   }
@@ -12501,6 +12580,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       }), copy: typeof f.copy === 'boolean' ? f.copy : undefined };
     });
     activeFrameId = okId(s.activeFrame) && frameById(s.activeFrame) ? s.activeFrame : (myFrames[0] ? myFrames[0].id : null);
+    // Older setups with several frames were always "all on one sheet".
+    frameMode = s.frameMode === 'sheet' || s.frameMode === 'choose' ? s.frameMode : (myFrames.length > 1 ? 'sheet' : 'choose');
+    chooseIds = (Array.isArray(s.chooseIds) ? s.chooseIds : []).filter(function(id){ return okId(id) && frameById(id); }).slice(0, MAX_FRAMES);
+    sheetSize = SHEET_SIZES.indexOf(s.sheetSize) >= 0 ? s.sheetSize : '4x6';
     var sh = s.sheet && typeof s.sheet === 'object' ? s.sheet : {};
     sheet = {
       pattern: SHEET_PATTERNS.some(function(p){ return p.id === sh.pattern; }) ? sh.pattern : 'tall-one-two-strips',
@@ -12741,6 +12824,36 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var a = document.getElementById('myEventsLink'), m = document.getElementById('menuMyEvents');
     if(a) a.hidden = !rental;
     if(m){ m.hidden = !rental; m.addEventListener('click', function(){ window.open('/lifetime/?booth=1', '_blank', 'noopener'); }); }
+  })();
+  // ---- Full screen: hides the browser's tabs and address bar ----
+  // Browsers only allow full screen after a tap, so the booth goes full screen
+  // with the first tap after it opens. A locked booth goes back to full screen
+  // on every tap, so guests never reach the tabs. ⋯ → Full screen switches it
+  // on or off (remembered on this device).
+  (function(){
+    var root = document.documentElement;
+    var req = root.requestFullscreen || root.webkitRequestFullscreen;
+    var exit = document.exitFullscreen || document.webkitExitFullscreen;
+    var fsEl = function(){ return document.fullscreenElement || document.webkitFullscreenElement; };
+    var item = document.getElementById('menuFullscreen');
+    if(!req || navigator.standalone){ if(item) item.hidden = true; return; }   // iPhone, or a Home Screen app (already full screen)
+    var FS_KEY = 'pb_fullscreen', wanted = true, autoDone = false;
+    try{ wanted = localStorage.getItem(FS_KEY) !== '0'; }catch(e){}
+    function enter(){ try{ var p = req.call(root, { navigationUI: 'hide' }); if(p && p.catch) p.catch(function(){}); }catch(e){} }
+    function label(){ if(item) item.textContent = fsEl() ? 'Exit full screen' : 'Full screen (hide tabs)'; }
+    document.addEventListener('pointerup', function(e){
+      if(fsEl() || (e.target && e.target.closest && e.target.closest('#menuFullscreen'))) return;
+      var locked = document.body.classList.contains('booth-locked');
+      if(locked || (wanted && !autoDone)){ autoDone = true; enter(); }
+    }, true);
+    ['fullscreenchange', 'webkitfullscreenchange'].forEach(function(ev){ document.addEventListener(ev, label); });
+    if(item) item.addEventListener('click', function(){
+      wanted = !fsEl();
+      try{ localStorage.setItem(FS_KEY, wanted ? '1' : '0'); }catch(e){}
+      if(wanted) enter(); else { try{ exit.call(document); }catch(e){} }
+      setTimeout(label, 300);
+    });
+    label();
   })();
   var setupMenuBtn = document.getElementById('setupMenuBtn'), setupMenu = document.getElementById('setupMenu');
   setupMenuBtn.addEventListener('click', function(e){ e.stopPropagation(); setupMenu.hidden = !setupMenu.hidden; });

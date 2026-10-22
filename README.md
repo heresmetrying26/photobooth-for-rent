@@ -297,6 +297,16 @@ subfolder. Then **Deploy → Manage deployments → Edit → New version** so th
   (`apps-script/cleanup.gs`) treats each `Client · Event` folder as an event, so it is deleted
   7 days after that event's last photo. No Apps Script change is needed for this.
 
+## Your frames: guests choose, or all on one sheet
+- Setup → 3 Layout → **Your frames**: tick frames. 1 ticked = that frame on its own. With 2 or more ticked, choose
+  **Guests choose one** (each guest taps the frame they want before the countdown; works when the booth is locked;
+  combines with "Guests choose the layout") or **All on one sheet** (the old collage) with a **Sheet size**
+  (4R, Selphy postcard, 5R, 6R, 8R, A5, A4, Letter; the arrangement re-fits to the size). Saved as `frameMode`,
+  `chooseIds`, `sheetSize`. Older setups with 2+ frames keep "All on one sheet".
+- **Full screen:** the booth goes full screen with the first tap (browsers need a tap); a locked booth goes back to
+  full screen on every tap. ⋯ → Full screen switches it on/off (remembered per device). Not on iPhone / Home Screen apps.
+- Background **No cloth (AI)** is labelled Beta, "we keep improving it".
+
 ## My Events page (`/lifetime/`)
 - **Your details & devices:** renters change their **name** (the Drive folder name is frozen first, so photos
   stay in the same folder) and **email**, see each device (type, added, last used, "This device") and **Remove**

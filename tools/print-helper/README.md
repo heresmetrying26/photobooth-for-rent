@@ -39,6 +39,7 @@ More info → Run anyway. Signing (Apple Developer ID + notarization, Windows co
 removes those warnings.
 
 ## Versions
+- 1.1.3: Windows camera: photo download reads the photo's size first and falls back to 1 MB pieces when Windows' driver returns nothing; download details in errors.
 - 1.1.2: Windows camera: Nikon records to its own memory (no SD card needed for live view and photos), like the Mac booth.
 - 1.1.1: Windows camera: accepts Nikons that report themselves as MTP devices (D3400, D5600), clearer live-view errors, and a "Details" diagnostic line on the camera test page.
 - 1.1.0: Windows: Nikon camera over USB (live view + real shutter) for the booth, no Zadig. The helper window is

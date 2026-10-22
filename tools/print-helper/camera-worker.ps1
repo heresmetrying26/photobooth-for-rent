@@ -270,16 +270,22 @@ namespace Pb4uCam
             ulong total = 0; r.GetUnsignedLargeIntegerValue(ref kTotal, out total);
             var ms = new MemoryStream((int)Math.Min(total, 64UL * 1024 * 1024));
             ulong got = 0;
+            bool unknown = total == 0;   // size not reported: read until the camera has nothing more
+            int reads = 0;
             try
             {
-                while (got < total)
+                while (unknown ? reads < 200 : got < total)
                 {
-                    uint chunk = (uint)Math.Min(1048576UL, total - got);
+                    reads++;
+                    uint chunk = unknown ? 1048576U : (uint)Math.Min(1048576UL, total - got);
                     var rv = NewValues();
                     rv.SetStringValue(ref kCtx, ctx);
                     rv.SetUnsignedIntegerValue(ref kToRead, chunk);
                     rv.SetBufferValue(ref kData, new byte[chunk], chunk);
-                    var rr = Send(15, rv);
+                    IPortableDeviceValues rr;
+                    try { rr = Send(15, rv); }
+                    catch (GoneException) { throw; }
+                    catch { if (unknown && got > 0) break; throw; }
                     IntPtr p; uint cb;
                     Check(rr.GetBufferValue(ref kData, out p, out cb), "Read data");
                     uint n = 0; rr.GetUnsignedIntegerValue(ref kRead, out n);
@@ -292,7 +298,7 @@ namespace Pb4uCam
                     }
                     Marshal.FreeCoTaskMem(p);
                     got += n;
-                    if (n == 0) break;
+                    if (n == 0 || (unknown && n < chunk)) break;
                 }
             }
             finally
@@ -713,8 +719,36 @@ namespace Pb4uCam
                     catch { }
                 }
             }
-            byte[] img; r = ptp.OpRead(0x1009, out img, pick);
-            if (r != Ptp.OK || img.Length < 4) throw new CamException("CAPTURE The photo didn't come through from the camera (" + H(r) + ").");
+            string cd = "handles " + string.Join(",", handles.ConvertAll(h => h.ToString("X")).ToArray());
+            uint size = 0;
+            try
+            {
+                byte[] oi; uint ro = ptp.OpRead(0x1008, out oi, pick);
+                if (ro == Ptp.OK && oi.Length >= 12) size = (uint)(oi[8] | (oi[9] << 8) | (oi[10] << 16) | (oi[11] << 24));
+                cd += "; info " + H(ro) + " " + size + " B";
+            }
+            catch (GoneException) { throw; }
+            catch (Exception e) { cd += "; info failed " + e.Message; }
+            byte[] img = new byte[0];
+            try { r = ptp.OpRead(0x1009, out img, pick); cd += "; get " + H(r) + " " + img.Length + " B"; }
+            catch (GoneException) { throw; }
+            catch (Exception e) { r = 0; cd += "; get failed " + e.Message; }
+            // Windows' driver sometimes hands back nothing for a big photo: fetch it in 1 MB pieces.
+            if ((r != Ptp.OK || img.Length < 4 || (size > 0 && img.Length < size)) && size > 0)
+            {
+                var ms = new MemoryStream((int)size);
+                uint off = 0; uint pr = 0;
+                while (off < size)
+                {
+                    byte[] part; pr = ptp.OpRead(0x101B, out part, pick, off, Math.Min(1048576U, size - off));
+                    if (pr != Ptp.OK || part.Length == 0) break;
+                    ms.Write(part, 0, part.Length); off += (uint)part.Length;
+                }
+                cd += "; pieces " + H(pr) + " " + off + " B";
+                if (off >= size) { img = ms.ToArray(); r = Ptp.OK; }
+            }
+            Log("Photo download: " + cd);
+            if (r != Ptp.OK || img.Length < 4) throw new CamException("CAPTURE The photo didn't come through from the camera (" + H(r) + "; " + cd + ").");
             if (!(img[0] == 0xFF && img[1] == 0xD8)) throw new CamException("CAPTURE The camera saved a RAW photo. Set Image quality to JPEG on the camera.");
             Log("Photo " + (img.Length / 1024) + " KB in " + sw.ElapsedMilliseconds + " ms");
             // Live view resumes by itself on most models; Frame() restarts it if not.

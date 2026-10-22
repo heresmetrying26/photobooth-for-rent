@@ -53,7 +53,9 @@ async function localFonts(cssUrl, outName) {
 }
 
 // ---------- the booth page ----------
-let booth = readFileSync(join(ROOT, 'protected', 'booth.html'), 'utf8')
+// GitHub's Windows computers check files out with Windows line endings (\r\n); use plain \n everywhere.
+const readText = (f) => readFileSync(f, 'utf8').replace(/\r\n/g, '\n');
+let booth = readText(join(ROOT, 'protected', 'booth.html'))
   .replace(/<script type="text\/plain" data-removed-feature="gifenc">[\s\S]*?<\/script>/, '');
 const headLink = /<link href="(https:\/\/fonts\.googleapis\.com\/css2\?[^"]+)" rel="stylesheet">/.exec(booth);
 must(headLink, 'booth.html: Google Fonts <link> not found');
@@ -79,7 +81,7 @@ log('booth page: ' + booth.length + ' chars');
 // ---------- the web app's server code, storing on this laptop ----------
 const BLOBS = /from '@netlify\/blobs';/;
 function copyServer(rel, outRel, edits) {
-  let s = readFileSync(join(ROOT, 'netlify', rel), 'utf8');
+  let s = readText(join(ROOT, 'netlify', rel));
   for (const [a, b] of edits) {
     const before = s;
     s = typeof a === 'string' ? s.split(a).join(b) : s.replace(a, b);
@@ -104,7 +106,7 @@ for (const p of ['bg', 'camera-test/build', 'pay']) {
 // Voucher tickets page: same local fonts as the booth.
 const tickets = join(OUT, 'public', 'pay', 'tickets.html');
 if (nHead && existsSync(tickets)) {
-  writeFileSync(tickets, readFileSync(tickets, 'utf8')
+  writeFileSync(tickets, readText(tickets)
     .replace(/<link href="https:\/\/fonts\.googleapis\.com\/css2\?[^"]+" rel="stylesheet">/, '<link href="/fonts/fonts.css" rel="stylesheet">')
     .replace(/<link rel="preconnect" href="https:\/\/fonts\.(googleapis|gstatic)\.com"( crossorigin)?>\n?/g, ''));
 }

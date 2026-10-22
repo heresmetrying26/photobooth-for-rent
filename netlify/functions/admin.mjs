@@ -5,6 +5,8 @@ import {
 , putLicense, delLicense, readIndex, rebuildIndex, windowEnd } from '../lib/core.mjs';
 import { timingSafeEqual, createHash } from 'node:crypto';
 import { setupsStore } from '../lib/core.mjs';
+import { ownerId, eventKeyOf, getAcct, acctPublic, acctKey, payStore, unseal, pm, listJSON, usedMap, batchView, createBatch, batchKey } from '../lib/pay.mjs';
+import { cleanEventName } from '../lib/core.mjs';
 
 function passwordOk(input) {
   const real = process.env.ADMIN_PASSWORD;
@@ -95,7 +97,7 @@ function bonusRecord(key, parent, minutes) {
   return {
     key, code: displayCode(key), kind: 'bonus', parent: parent.key,
     label: (parent.label || parent.code) + ' · Bonus', folderName: parent.folderName, subfolder: BONUS_SUBFOLDER,
-    minutes, days: 0, startsAt: null, print: parent.print, traditional: !!parent.traditional, retakeOpt: !!parent.retakeOpt, lockOpt: !!parent.lockOpt, defaultTheme: parent.defaultTheme || null,
+    minutes, days: 0, startsAt: null, print: parent.print, traditional: !!parent.traditional, retakeOpt: !!parent.retakeOpt, payOpt: !!parent.payOpt, lockOpt: !!parent.lockOpt, defaultTheme: parent.defaultTheme || null,
     status: 'unused', createdAt: Date.now() + 1, redeemedAt: null, expiresAt: null, deviceId: null
   };
 }
@@ -411,6 +413,60 @@ export default safe(async (req, context) => {
       await putLicense(store, key, rec);
       await syncBonus(rec, { retakeOpt: rec.retakeOpt });
       return json({ ok: true, retakeOpt: rec.retakeOpt });
+    }
+
+    case 'payopt': { // guest payments add-on (vouchers + the renter's own PayMongo); an open booth picks it up within ~5 minutes
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      rec.payOpt = !!b.payOpt;
+      await putLicense(store, key, rec);
+      await syncBonus(rec, { payOpt: rec.payOpt });
+      return json({ ok: true, payOpt: rec.payOpt });
+    }
+
+    case 'payinfo': { // PayMongo connection (never the key), money taken and voucher batches for one booking
+      const { rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      const bk = rec.kind === 'bonus' && rec.parent ? rec.parent : rec.key;
+      const oid = ownerId(bk);
+      const paid = (await listJSON('pp/' + oid + '/', 1000)).filter((x) => x.status === 'paid');
+      const used = await usedMap(oid);
+      const batches = (await listJSON('vb/' + oid + '/', 200)).sort((x, y) => y.at - x.at).map((bt) => batchView(bt, used));
+      return json({ ok: true, payOpt: !!rec.payOpt, lifetime: !!rec.lifetime, acct: acctPublic(await getAcct(oid)),
+        paid: { count: paid.length, total: paid.reduce((s, x) => s + x.amount, 0), live: paid.filter((x) => x.live).reduce((s, x) => s + x.amount, 0) }, batches });
+    }
+
+    case 'payreset': { // forgotten payments PIN: removes the PIN AND disconnects PayMongo (the renter connects again)
+      const { rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      const oid = ownerId(rec.kind === 'bonus' && rec.parent ? rec.parent : rec.key);
+      const acct = await getAcct(oid);
+      if (acct && acct.enc && acct.whId) { try { await pm(unseal(acct.enc, oid), 'POST', '/webhooks/' + acct.whId + '/disable'); } catch (e) {} }
+      await payStore().delete(acctKey(oid));
+      return json({ ok: true });
+    }
+
+    case 'vbatch': { // make vouchers for a booking (event name needed for lifetime codes)
+      const { rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      const bk = rec.kind === 'bonus' && rec.parent ? rec.parent : rec.key;
+      const life = !!rec.lifetime;
+      const evName = life ? cleanEventName(b.event || '') : (rec.folderName || rec.label || '');
+      if (life && !evName) return json({ error: 'Type the event name exactly as the renter uses it in the booth.' }, 400);
+      const bt = await createBatch(ownerId(bk), { ev: eventKeyOf(life, evName), evName, count: b.count, prints: b.prints, price: b.price, label: b.label, by: 'admin' });
+      return json({ ok: true, batch: batchView(bt, {}) });
+    }
+
+    case 'vvoid': { // void the unused vouchers of a batch
+      const { rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      const oid = ownerId(rec.kind === 'bonus' && rec.parent ? rec.parent : rec.key);
+      const bt = await payStore().get(batchKey(oid, String(b.id || '')), { type: 'json' });
+      if (!bt) return json({ error: 'Batch not found.' }, 404);
+      const used = await usedMap(oid);
+      bt.voided = bt.codes.filter((c) => !used[c]);
+      await payStore().setJSON(batchKey(oid, bt.id), bt);
+      return json({ ok: true, batch: batchView(bt, used) });
     }
 
     case 'traditional': { // laptop + guest screen mode; applies to an open booth within ~5 minutes

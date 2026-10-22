@@ -1483,6 +1483,91 @@
   body.stage-full .app-shell .stage-frame{z-index:1;}
   body.surround-on .app-shell .stage-frame{box-shadow:0 0 0 2px rgba(255,255,255,.92), 0 0 0 6px rgba(0,0,0,.25) !important;}
 
+  /* ---- Guest payments: Setup card ---- */
+  .pay-modes{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px; margin-top:10px;}
+  .pay-modes .chip{height:auto; min-height:44px; padding:8px 6px; font-size:13px; line-height:1.2; white-space:normal;}
+  .pay-row{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; flex-wrap:wrap;}
+  .pay-row .lbl{font-weight:700; font-size:14px;}
+  .pay-price{display:flex; align-items:center; border:1.5px solid var(--line); border-radius:12px; background:#fff; overflow:hidden; height:44px;}
+  .pay-price span{padding:0 10px; font-weight:800; color:var(--ink-dim); background:var(--panel-2,#f4efe7); height:100%; display:flex; align-items:center;}
+  .pay-price input{border:0; outline:0; width:92px; font:800 17px 'Manrope',sans-serif; padding:0 10px; color:var(--ink); background:transparent;}
+  .pay-status{margin-top:14px; padding:12px 14px; border-radius:14px; font-size:13.5px; line-height:1.45; border:1.5px solid var(--line); background:#fff;}
+  .pay-status.ok{border-color:#bfe3cc; background:#f1faf4;}
+  .pay-status.warn{border-color:#f0d98a; background:#fff8e1;}
+  .pay-status b{font-weight:800;}
+  .pay-status .tag{display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:800; background:#fff2c7; color:#7a5a00;}
+  .pay-status .tag.live{background:#dff3e6; color:#1d6b3c;}
+  .pay-vbox{margin-top:16px; border-top:1px solid var(--line); padding-top:14px;}
+  .pay-make{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;}
+  .pay-batch{display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 12px; border:1.5px solid var(--line); border-radius:12px; background:#fff; margin-top:8px;}
+  .pay-batch .bi{flex:1 1 160px; min-width:0; font-size:13.5px; line-height:1.35;}
+  .pay-batch .bi b{display:block; font-size:14.5px;}
+  .pay-batch .bi small{color:var(--ink-dim); font-weight:600;}
+  .pay-batch .meter{height:6px; border-radius:6px; background:#eee6da; overflow:hidden; margin-top:6px;}
+  .pay-batch .meter i{display:block; height:100%; background:var(--blue-deep);}
+  .pay-batch .action-btn{width:auto; margin:0; padding:8px 12px; min-height:38px; font-size:13px;}
+  .pay-batch .action-btn.confirm{background:#C93D27; border-color:#C93D27; color:#fff;}
+
+  /* ---- Guest payments: welcome pill + pay sheet ---- */
+  .pay-badge{position:fixed; left:50%; bottom:max(22px, env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:47; display:none; align-items:center; gap:10px;
+    padding:12px 22px; border-radius:999px; background:rgba(20,18,22,.82); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); color:#fff;
+    font:800 clamp(15px, 2.1vmin, 20px) 'Manrope',sans-serif; box-shadow:0 10px 30px rgba(0,0,0,.3); pointer-events:none; white-space:nowrap;}
+  .pay-badge b{color:#ffd9cf;}
+  .pay-badge.credit{background:rgba(29,107,60,.92);}
+  body.welcome-on.pay-badge-on:not(.pay-open) .pay-badge{display:inline-flex;}
+  @media (max-width:700px){ .pay-badge{bottom:auto; top:max(70px, calc(env(safe-area-inset-top) + 62px)); padding:10px 16px; font-size:14px;} }
+  .pay-sheet{position:fixed; inset:0; z-index:95; display:flex; align-items:center; justify-content:center; padding:max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+    background:rgba(12,10,14,.86); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); overflow:auto;}
+  .pay-sheet[hidden], .pay-sheet [hidden], .pay-badge[hidden]{display:none !important;}
+  .pay-card{position:relative; width:min(clamp(360px, 58vmin, 560px), 100%); background:#fff; color:#1C1A1E; border-radius:28px; padding:26px 24px 22px; box-shadow:0 30px 80px rgba(0,0,0,.45); text-align:center; margin:auto;}
+  .pay-x, .pay-back{position:absolute; top:14px; width:44px; height:44px; border-radius:50%; border:0; background:#f2ece3; color:#1C1A1E; font:800 18px 'Manrope',sans-serif; cursor:pointer;}
+  .pay-x{right:14px;} .pay-back{left:14px;}
+  .pay-kicker{margin:0; font:800 12px 'Manrope',sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#8a8389;}
+  .pay-title{margin:4px 0 0; font:600 clamp(40px, 7vmin, 56px)/1 'Fraunces',Georgia,serif; letter-spacing:-.02em;}
+  .pay-sub{margin:8px 0 0; font:700 15px 'Manrope',sans-serif; color:#5f5960;}
+  .pay-view{margin-top:20px;}
+  .pay-view[hidden]{display:none;}
+  .pay-opt{display:flex; align-items:center; gap:14px; width:100%; text-align:left; padding:clamp(16px, 2.6vmin, 24px) 18px; margin-top:10px; border-radius:18px; border:2px solid #e8e0d4; background:#fff; cursor:pointer; font:inherit; color:inherit;}
+  .pay-opt:first-child{margin-top:0;}
+  .pay-opt:hover, .pay-opt:focus-visible{border-color:#C93D27; outline:none;}
+  .pay-opt .ico{flex:none; width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center; background:#fdeee9; color:#C93D27; font:900 18px 'Manrope',sans-serif;}
+  .pay-opt b{display:block; font:800 clamp(17px, 2.4vmin, 21px) 'Manrope',sans-serif;}
+  .pay-opt small{display:block; margin-top:2px; font:600 13.5px 'Manrope',sans-serif; color:#6b666c;}
+  .pay-qr-box{position:relative; width:min(340px, 70vw, 44vh); aspect-ratio:1/1; margin:0 auto; border-radius:20px; border:2px solid #eee6da; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden;}
+  .pay-qr-box img{width:94%; height:94%; object-fit:contain; image-rendering:pixelated;}
+  .pay-qr-wait{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font:700 15px 'Manrope',sans-serif; color:#6b666c; background:#fff;}
+  .pay-steps{margin:14px 0 0; font:600 15px/1.45 'Manrope',sans-serif; color:#3a353b;}
+  .pay-steps b{color:#1C1A1E;}
+  .pay-timer{height:6px; border-radius:6px; background:#eee6da; overflow:hidden; margin:14px 0 0;}
+  .pay-timer i{display:block; height:100%; width:100%; background:#C93D27; transition:width 1s linear;}
+  .pay-state{margin:10px 0 0; font:700 14px 'Manrope',sans-serif; color:#6b666c;}
+  .pay-state .dot{display:inline-block; width:8px; height:8px; border-radius:50%; background:#e0a400; margin-right:7px; vertical-align:1px; animation:payBlink 1.2s ease-in-out infinite;}
+  @keyframes payBlink{50%{opacity:.25;}}
+  .pay-link{margin-top:10px; border:0; background:none; color:#C93D27; font:800 14px 'Manrope',sans-serif; text-decoration:underline; cursor:pointer; padding:6px;}
+  .pay-code{display:flex; justify-content:center; gap:6px; margin:0 auto;}
+  .pay-code span{width:clamp(30px, 5.4vmin, 50px); height:clamp(46px, 7.5vmin, 66px); border-radius:12px; border:2px solid #e8e0d4; display:flex; align-items:center; justify-content:center; font:800 26px 'Manrope',sans-serif; color:#1C1A1E; background:#faf7f2;}
+  .pay-code span.on{border-color:#1C1A1E; background:#fff;}
+  .pay-code span.gap{margin-left:12px;}
+  .pay-code.shake{animation:payShake .4s;}
+  @keyframes payShake{20%,60%{transform:translateX(-8px);}40%,80%{transform:translateX(8px);}}
+  .pay-err{min-height:22px; margin:10px 0 0; font:700 14px/1.4 'Manrope',sans-serif; color:#b3261e;}
+  .pay-err.note{color:#6b5300;}
+  .pay-pad{display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-top:12px;}
+  .pay-pad button{height:clamp(52px, 7.5vmin, 80px); border-radius:16px; border:0; background:#f4efe7; color:#1C1A1E; font:800 24px 'Manrope',sans-serif; cursor:pointer; touch-action:manipulation;}
+  .pay-pad button:active{background:#e8dfd2; transform:scale(.97);}
+  .pay-pad button.fn{font-size:15px; color:#5f5960;}
+  .pay-check{width:92px; height:92px; margin:6px auto 0; border-radius:50%; background:#1d8a4b; color:#fff; display:flex; align-items:center; justify-content:center; font:900 48px 'Manrope',sans-serif; animation:payPop .45s cubic-bezier(.2,1.4,.4,1);}
+  @keyframes payPop{from{transform:scale(.4); opacity:0;}to{transform:scale(1); opacity:1;}}
+  .pay-done-t{margin:16px 0 0; font:600 30px 'Fraunces',Georgia,serif;}
+  .pay-done-s{margin:6px 0 0; font:700 16px 'Manrope',sans-serif; color:#5f5960;}
+  .pay-problem{margin:4px 0 0; font:700 16px/1.5 'Manrope',sans-serif; color:#3a353b;}
+  .pay-btn{display:inline-flex; align-items:center; justify-content:center; min-height:52px; padding:12px 24px; margin-top:16px; border-radius:999px; border:0; background:#C93D27; color:#fff; font:800 16px 'Manrope',sans-serif; cursor:pointer;}
+  .pay-btn.ghost{background:#f2ece3; color:#1C1A1E; margin-left:8px;}
+  .pay-test{display:inline-block; margin-top:8px; padding:2px 10px; border-radius:999px; background:#fff2c7; color:#7a5a00; font:800 12px 'Manrope',sans-serif;}
+  @media (orientation:portrait) and (min-width:700px){ .pay-card{width:min(620px, 84vw); padding:34px 34px 30px;} .pay-pad button{height:clamp(64px, 8vh, 92px); font-size:30px;} .pay-code span{width:clamp(40px, 7vw, 60px); height:clamp(60px, 9vw, 80px); font-size:32px;} .pay-title{font-size:64px;} .pay-sub{font-size:18px;} .pay-qr-box{width:min(420px, 60vw);} }
+  @media (max-height:640px){ .pay-card{padding:18px 18px 16px;} .pay-view{margin-top:12px;} .pay-pad button{min-height:44px;} .pay-title{font-size:38px;} }
+  @media (prefers-reduced-motion:reduce){ .pay-state .dot, .pay-code.shake, .pay-check{animation:none;} }
+
   /* ---- Print settings pop-up: grouped ---- */
   .pm-card .panel-section{padding:22px 22px 18px;}
   .ps-group{padding:14px 0; border-top:1px solid var(--line);}
@@ -2030,6 +2115,41 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <select id="resultReviewSelect" hidden><option value="0" selected>Until tap</option></select>
         </details>
       </div>
+      <div class="panel-section" id="paySection" style="display:none;">
+        <p class="panel-label">Guest payment</p>
+        <p class="panel-hint step-lead">Guests pay before each session: scan a QR with GCash, Maya or any bank app, or type a voucher you sell at the booth. <a href="/lifetime/photobooth4u-setup-guide.pdf#page=9" target="_blank" rel="noopener">How it works (guide, page 9)</a></p>
+        <div class="pay-modes" id="payModes" role="radiogroup" aria-label="How guests pay">
+          <button type="button" class="chip" data-mode="off">Free</button>
+          <button type="button" class="chip" data-mode="qr">QR payment</button>
+          <button type="button" class="chip" data-mode="voucher">Vouchers</button>
+          <button type="button" class="chip" data-mode="both">QR + vouchers</button>
+        </div>
+        <div id="payMore">
+          <div class="pay-row">
+            <span class="lbl">Price per session</span>
+            <label class="pay-price"><span>₱</span><input type="number" inputmode="numeric" min="20" max="20000" step="10" id="payPrice" value="100" aria-label="Price per session in pesos"></label>
+          </div>
+          <div class="stepper" style="margin-top:12px;">
+            <span class="lbl">Prints included</span>
+            <span class="ctl">
+              <button type="button" class="step-btn" id="payPrintsMinus" aria-label="One print less">−</button>
+              <span class="step-val" id="payPrintsVal">Use print settings</span>
+              <button type="button" class="step-btn" id="payPrintsPlus" aria-label="One print more">+</button>
+            </span>
+          </div>
+          <div class="pay-status" id="payQrStatus"></div>
+          <div class="pay-vbox" id="payVoucherBox">
+            <p class="sub-label" style="margin:0;">Vouchers for this event</p>
+            <p class="panel-hint" style="margin:4px 0 0;">Each voucher works once. Print, cut and sell them at the booth table; guests type the 8 digits on the screen.</p>
+            <div class="pay-make">
+              <select class="mini-select pillify" id="payMakeCount" aria-label="How many vouchers"><option value="10">10 vouchers</option><option value="20" selected>20 vouchers</option><option value="50">50 vouchers</option><option value="100">100 vouchers</option></select>
+              <button type="button" class="action-btn primary" id="payMakeBtn" style="width:auto; margin:0;">Make vouchers</button>
+            </div>
+            <div id="payBatches"></div>
+          </div>
+          <p class="panel-hint" id="payLockHint" style="margin-top:12px;"></p>
+        </div>
+      </div>
       <div class="panel-section" id="fxSection">
         <p class="panel-label">Light, sound and start</p>
         <label class="switch-row" style="margin-top:0;"><span>Screen flash</span><input type="checkbox" id="fxFlash"></label>
@@ -2105,7 +2225,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <a id="driveFolderDrive" href="#" target="_blank" rel="noopener" style="display:none;">Drive folder</a>
             <a id="driveFolderAll" href="/lifetime/" target="_blank" rel="noopener" style="display:none;">All my events ↗</a>
           </div>
-          <p class="panel-hint" style="margin-top:8px;">Print or share this link ahead. Guests get their own QR after each session.</p>
+          <button type="button" class="action-btn" id="qrSignBtn" style="width:auto; margin:10px auto 0; padding:9px 16px;">Download QR sign</button>
+          <p class="panel-hint" style="margin-top:8px;">Print the sign and put it by the booth. Guests get their own QR after each session; if the booth is offline, their photo still arrives in this gallery once it's back online.</p>
         </div>
         <p class="panel-hint" id="driveFolderHelp"></p>
         <div class="sub-group" id="backupBox">
@@ -2399,6 +2520,47 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   </div>
 </div>
 <div class="printing-note" id="printingNote" role="status" aria-live="polite" hidden></div>
+<div class="pay-badge" id="payBadge" aria-hidden="true"></div>
+<div class="pay-sheet" id="paySheet" role="dialog" aria-modal="true" aria-labelledby="payTitle" hidden>
+  <div class="pay-card">
+    <button type="button" class="pay-back" id="payBack" aria-label="Other ways to pay" hidden>←</button>
+    <button type="button" class="pay-x" id="payClose" aria-label="Close">✕</button>
+    <p class="pay-kicker">Photo session</p>
+    <h2 class="pay-title" id="payTitle">₱100</h2>
+    <p class="pay-sub" id="paySub">1 photo session</p>
+    <div class="pay-view" id="payChoose">
+      <button type="button" class="pay-opt" id="payOptQr"><span class="ico">QR</span><span><b>Pay with QR</b><small>GCash · Maya · any bank app</small></span></button>
+      <button type="button" class="pay-opt" id="payOptVoucher"><span class="ico">#</span><span><b>I have a voucher</b><small>Bought at the booth table</small></span></button>
+    </div>
+    <div class="pay-view" id="payQr" hidden>
+      <div class="pay-qr-box"><img id="payQrImg" alt="Payment QR code"><div class="pay-qr-wait" id="payQrWait">Making your QR…</div></div>
+      <p class="pay-steps">Open <b>GCash</b>, <b>Maya</b> or your bank app → <b>Scan QR</b> → pay</p>
+      <div class="pay-timer"><i id="payTimerBar"></i></div>
+      <p class="pay-state" id="payQrState"><span class="dot"></span>Waiting for payment</p>
+      <span class="pay-test" id="payTestTag" hidden>Test mode</span><br>
+      <button type="button" class="pay-link" id="paySim" hidden>Simulate payment</button>
+    </div>
+    <div class="pay-view" id="payVoucher" hidden>
+      <div class="pay-code" id="payCode" aria-live="polite"></div>
+      <p class="pay-err" id="payErr"></p>
+      <div class="pay-pad" id="payPad">
+        <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+        <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+        <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+        <button type="button" class="fn" data-k="c">Clear</button><button type="button" data-k="0">0</button><button type="button" class="fn" data-k="b" aria-label="Delete">⌫</button>
+      </div>
+    </div>
+    <div class="pay-view" id="payDone" hidden>
+      <div class="pay-check">✓</div>
+      <p class="pay-done-t" id="payDoneT">Payment received</p>
+      <p class="pay-done-s">Get ready for your photos!</p>
+    </div>
+    <div class="pay-view" id="payProblem" hidden>
+      <p class="pay-problem" id="payProblemT"></p>
+      <button type="button" class="pay-btn" id="payRetry">Try again</button>
+    </div>
+  </div>
+</div>
 <div class="op-dock" id="opDock" hidden>
   <span class="dock-chip-slot" id="dockChipSlot"></span>
   <button type="button" class="dock-btn" id="camFab" hidden aria-label="Camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Camera</span></button>
@@ -4181,6 +4343,48 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     driveFolderQrPreview.style.display = 'block';
   }
 
+  // A printable "Scan for your photos" sign with the event gallery QR (A5, 300 dpi PNG).
+  async function downloadQrSign(){
+    const url = currentFolderLink; if(!url){ showToast('Set up the event folder first.'); return; }
+    try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
+    const W = 1748, H = 2480, c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d');
+    x.fillStyle = '#F5F1EA'; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#ffffff'; x.fillRect(110, 110, W - 220, H - 220);
+    x.textAlign = 'center'; x.fillStyle = '#1C1A1E';
+    const name = ((labelInput && labelInput.value) || '').trim();
+    const fit = (t, font, size, maxW) => { let f = size; do { x.font = font.replace('#', f); f -= 4; } while(f > 40 && x.measureText(t).width > maxW); };
+    x.fillStyle = '#6B666C'; fit('SCAN FOR YOUR PHOTOS', "800 #px 'Manrope', system-ui, sans-serif", 64, W - 400);
+    x.fillText('SCAN FOR YOUR PHOTOS', W / 2, 330);
+    x.fillStyle = '#1C1A1E'; fit(name || 'Photo booth', "600 #px 'Fraunces', Georgia, serif", 150, W - 360);
+    x.fillText(name || 'Photo booth', W / 2, 500);
+    let q = null; try{ q = qrcode(0, 'M'); q.addData(String(url)); q.make(); }catch(e){}
+    if(q){
+      const n = q.getModuleCount(), size = 1100, cell = Math.floor(size / (n + 4)), qs = cell * (n + 4);
+      const ox = Math.round((W - qs) / 2), oy = 620;
+      x.fillStyle = '#ffffff'; x.fillRect(ox, oy, qs, qs);
+      x.fillStyle = '#000000';
+      for(let r = 0; r < n; r++) for(let k = 0; k < n; k++) if(q.isDark(r, k)) x.fillRect(ox + (k + 2) * cell, oy + (r + 2) * cell, cell, cell);
+      x.strokeStyle = '#E4DCCF'; x.lineWidth = 6; x.strokeRect(ox - 3, oy - 3, qs + 6, qs + 6);
+    }
+    x.fillStyle = '#1C1A1E'; x.font = "700 58px 'Manrope', system-ui, sans-serif";
+    x.fillText('Open your phone camera and point it here.', W / 2, 1880);
+    x.fillStyle = '#6B666C'; x.font = "600 46px 'Manrope', system-ui, sans-serif";
+    x.fillText('Every photo from the booth lands in this gallery.', W / 2, 1960);
+    x.fillText('No signal at the booth? Your photo still arrives later.', W / 2, 2030);
+    try{ const mk = brandMarkCanvas(), mw = 520, mh = Math.round(mw * mk.height / mk.width); x.drawImage(mk, (W - mw) / 2, 2180, mw, mh); }catch(e){}
+    const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+    const file = 'qr-sign' + (name ? '-' + name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() : '') + '.png';
+    try{
+      const f = new File([blob], file, { type: 'image/png' });
+      if(isMobileOS() && navigator.canShare && navigator.canShare({ files: [f] })){ await navigator.share({ files: [f], title: 'QR sign' }); return; }
+    }catch(e){ if(e && e.name === 'AbortError') return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 3000);
+    showToast('QR sign saved. Print it on A5 or bigger.');
+  }
+  document.getElementById('qrSignBtn').addEventListener('click', downloadQrSign);
+
   let resolveTimer = null;
 
   // Resolves (or creates) the Drive folder for whatever's currently typed,
@@ -4527,7 +4731,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       // and upload it by itself once the connection is back.
       const dest = { folderKey: rawFolderKey(), subfolder: driveSubfolder() };
       let drive = null, lastErr = null;
-      for(let attempt = 0; attempt < 3 && !drive; attempt++){
+      // Clearly offline: keep it for later straight away (no 5 s of retries).
+      if(navigator.onLine === false) lastErr = new Error('offline');
+      for(let attempt = 0; attempt < 3 && !drive && navigator.onLine !== false; attempt++){
         if(attempt){ if(onRetry) onRetry(attempt); await wait(attempt === 1 ? 1500 : 4000); }
         try{ drive = await uploadToDrive(blob, filename, dest); }
         catch(e){ lastErr = e; if(isPermanentUploadError(e)) break; }
@@ -4597,14 +4803,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const evFolder = getCachedFolderUrl();
     let slowTimer = null;
     const setCap = (t) => { const w = qrResults.querySelector('.qr-result[data-kind="photo"] .qr-caption'); if(w) w.textContent = t; };
+    const OFFLINE_CAP = 'Scan now \u00b7 your photo arrives here once the booth is back online';
     if(evFolder){
-      setCap('All photos \u00b7 your photo is uploading\u2026');
+      setCap(navigator.onLine === false ? OFFLINE_CAP : 'All photos \u00b7 your photo is uploading\u2026');
       fillQrSlot('photo', shareUrlFor(evFolder));
       slowTimer = setTimeout(() => { if(myGeneration === qrGeneration) setCap('All photos \u00b7 your photo will appear here shortly'); }, 60000);
     }
     guestRender();
     let result = null, lastError = null;
-    const onRetry = () => { if(myGeneration !== qrGeneration) return; if(evFolder) setCap('All photos \u00b7 weak internet, still uploading\u2026'); else failQrSlot('photo', 'Weak internet. Trying again…'); };
+    const onRetry = () => { if(myGeneration !== qrGeneration) return; if(evFolder) setCap('All photos \u00b7 weak internet, still uploading\u2026'); else failQrSlot('photo', 'Weak internet. Trying again\u2026'); };
     try { result = await uploadLayoutForQR(currentLayout, onRetry); }
     catch(err){ lastError = err; console.error('Photo upload failed:', err); }
     clearTimeout(slowTimer);
@@ -4615,12 +4822,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const folderUrl = getCachedFolderUrl();
       const wrap = qrResults.querySelector('.qr-result[data-kind="photo"]');
       if(folderUrl && wrap){
-        wrap.querySelector('.qr-caption').textContent = 'All photos (yours appears when the internet is back)';
+        wrap.querySelector('.qr-caption').textContent = OFFLINE_CAP;
         fillQrSlot('photo', shareUrlFor(folderUrl));
+        wrap.classList.add('qr-offline');
       } else {
-        failQrSlot('photo', 'Saved on this device. It uploads by itself when the internet is back.');
+        failQrSlot('photo', 'No internet right now. Your photo is saved on this booth and goes online by itself later.');
       }
-      showToast('No internet right now. The photo is kept on this device and will upload by itself.', 7000);
+      showToast('Offline: photo kept on this device. It uploads by itself when the internet is back.', 7000);
       return null;
     }
     if(!result && evFolder){
@@ -5937,8 +6145,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     updateFilmTrack();
     updateUI();
 
+    payPrintAllow = 0;
     if(skipReady !== true) await waitForReadyTap();
     if(sess.cancelled){ endCancelledSession(); return; }
+    consumePayCredit();          // the paid session is used once the countdown starts (Cancel at Get ready keeps it)
     countingDown = true;
     guestRender();
 
@@ -8009,7 +8219,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function resetSessionPrints(){ sessPrinted = 0; }
   let printCount = null;               // { used, left (null = no limit), at } from the server
   let opCopies = 1;                    // copies for the Print button in the Print pop-up
-  function printLimits(){ const p = (window.__PB && window.__PB.print) || {}; return { ev: p.eventLimit || 0, se: p.sessionLimit || 0 }; }
+  function printLimits(){ const p = (window.__PB && window.__PB.print) || {}; return { ev: p.eventLimit || 0, se: payPrintAllow > 0 ? payPrintAllow : (p.sessionLimit || 0) }; }
   function isRentalBooth(){ return !!(window.__PB && window.__PB.type === 'rental'); }
   function isMobileOS(){
     const ua = navigator.userAgent || '';
@@ -9079,6 +9289,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       document.body.classList.toggle('welcome-on', show);
       try{ scheduleDock(); }catch(e){}
     }
+    try{ refreshPayBadge(); }catch(e){}
   }
   welcomeOverlay.addEventListener('click', function(e){ e.stopPropagation(); beginGuestFlow(true); });
   welcomeOverlay.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.stopPropagation(); beginGuestFlow(true); } });
@@ -9179,6 +9390,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       clearTimeout(resultTimer);
       welcomeOverlay.classList.remove('on');
       if(state === 'result') resetForNextGuest();   // don't show the last guest's photos behind the picker
+      // Guest payment (QR or voucher) before anything else; a paid session waits here if the tablet restarted.
+      if(!(await payGate())) return;
       var keys = guestChoiceKeys();
       var key = keys.length > 1 ? await pickLayout(keys) : setupLayout;
       if(key !== currentLayout) setLayout(key);
@@ -9190,6 +9403,367 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       refreshWelcome();
     }
   }
+
+  // ---- Guest payments: vouchers + the renter's own PayMongo (QR Ph) ----
+  // An add-on Admin switches on per code (window.__PB.payOpt). Mode, price and
+  // prints included are saved per event with the setup. The renter's PayMongo
+  // key never reaches this page: the server makes the QR and checks payment.
+  var PAY_MODES = ['off', 'qr', 'voucher', 'both'];
+  var payCfg = { mode: 'off', price: 100, prints: 0 };
+  var payAcct = (function(){ try{ return JSON.parse(localStorage.getItem('pb_pay_acct') || 'null'); }catch(e){ return null; } })();
+  var payPrintAllow = 0;
+  var payState = { resolve: null, view: '', qrId: null, exp: 0, timer: null, poll: null, idle: null, code: '', busy: false, test: false };
+  function payOn(){ return !!(window.__PB && window.__PB.payOpt); }
+  function cleanPay(p){
+    p = p && typeof p === 'object' ? p : {};
+    var price = Math.floor(Number(p.price));
+    return { mode: PAY_MODES.indexOf(p.mode) >= 0 ? p.mode : 'off', price: price >= 20 && price <= 20000 ? price : 100, prints: Math.max(0, Math.min(5, Math.floor(Number(p.prints) || 0))) };
+  }
+  function payActive(){ return payOn() && payCfg.mode !== 'off'; }
+  function payQrOn(){ return payCfg.mode === 'qr' || payCfg.mode === 'both'; }
+  function payVoucherOn(){ return payCfg.mode === 'voucher' || payCfg.mode === 'both'; }
+  function peso(n){ return '₱' + Number(n || 0).toLocaleString('en-PH'); }
+  function payIncludes(){ return '1 photo session' + (payCfg.prints ? ' · ' + payCfg.prints + ' print' + (payCfg.prints > 1 ? 's' : '') + ' included' : ''); }
+  function payEsc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // A paid session waiting on this tablet (survives a reload; used once the countdown starts).
+  var CREDIT_KEY = 'pb_pay_credit';
+  function payCredit(){ try{ return JSON.parse(localStorage.getItem(CREDIT_KEY) || 'null'); }catch(e){ return null; } }
+  function setPayCredit(c){ try{ if(c) localStorage.setItem(CREDIT_KEY, JSON.stringify(c)); else localStorage.removeItem(CREDIT_KEY); }catch(e){} refreshPayBadge(); }
+  function consumePayCredit(){ var c = payCredit(); if(!c) return; payPrintAllow = c.prints || 0; setPayCredit(null); }
+
+  // ---- welcome pill ----
+  function refreshPayBadge(){
+    var el = document.getElementById('payBadge'); if(!el) return;
+    var on = payActive() && state !== 'capturing';
+    document.body.classList.toggle('pay-badge-on', on);
+    if(!on) return;
+    var c = payCredit();
+    el.classList.toggle('credit', !!c);
+    el.innerHTML = c ? '✓ Paid session ready · <b>Tap to start</b>' : payEsc(peso(payCfg.price)) + ' per session · <b>Tap to start</b>';
+  }
+
+  // ---- vouchers: online check, with an offline copy of this event's unused vouchers ----
+  var VQ_KEY = 'pb_voucher_queue';
+  function vCacheKey(){ var pb = window.__PB || {}; return 'pb_vcache:' + (pb.folderPrefix || pb.folderKey || '') + '|' + (setupScopeEvent() || '_').toLowerCase(); }
+  function vQueue(){ try{ return JSON.parse(localStorage.getItem(VQ_KEY) || '[]'); }catch(e){ return []; } }
+  function vQueueSet(q){ try{ localStorage.setItem(VQ_KEY, JSON.stringify(q)); }catch(e){} }
+  async function vHash(oid, code){
+    var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('v|' + oid + '|' + code));
+    return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2, '0'); }).join('').slice(0, 20);
+  }
+  async function refreshVoucherCache(){
+    if(!payOn() || !payVoucherOn() || navigator.onLine === false) return;
+    try{
+      var r = await postApi('/api/pay', { action: 'offline' }, 10000);
+      if(r.status === 200 && r.j && r.j.list){
+        var used = vQueue().map(function(x){ return x.code; });
+        var list = r.j.list;
+        if(used.length){ var hs = await Promise.all(used.map(function(c){ return vHash(r.j.oid, c); })); list = list.filter(function(x){ return hs.indexOf(x[0]) < 0; }); }
+        localStorage.setItem(vCacheKey(), JSON.stringify({ oid: r.j.oid, at: Date.now(), list: list }));
+      }
+    }catch(e){}
+  }
+  async function syncVouchers(){
+    var q = vQueue(); if(!q.length || navigator.onLine === false) return;
+    var byEv = {};
+    q.forEach(function(x){ (byEv[x.ev || ''] = byEv[x.ev || ''] || []).push(x); });
+    var left = [];
+    for(var ev in byEv){
+      try{
+        var r = await postApi('/api/pay', { action: 'sync', event: ev, used: byEv[ev].map(function(x){ return { code: x.code, at: x.at }; }) }, 15000);
+        if(r.status !== 200) left = left.concat(byEv[ev]);
+      }catch(e){ left = left.concat(byEv[ev]); }
+    }
+    vQueueSet(left);
+  }
+  async function payRedeem(code){
+    if(navigator.onLine !== false){
+      try{
+        var r = await postApi('/api/pay', { action: 'redeem', code: code }, 7000);
+        if(r.status === 200 && r.j.ok){
+          try{ var c0 = JSON.parse(localStorage.getItem(vCacheKey()) || 'null'); if(c0 && c0.oid){ var h0 = await vHash(c0.oid, code); c0.list = c0.list.filter(function(x){ return x[0] !== h0; }); localStorage.setItem(vCacheKey(), JSON.stringify(c0)); } }catch(e){}
+          return { ok: true, prints: r.j.prints || 0 };
+        }
+        if(r.status === 200 && r.j.error) return { error: r.j.error };
+        if(r.status === 429) return { error: 'wait' };
+        if(r.status === 403 && r.j.off) return { error: 'off' };
+        if(r.status < 500) return { error: 'bad' };
+      }catch(e){ /* no connection: check the offline copy */ }
+    }
+    var c = null; try{ c = JSON.parse(localStorage.getItem(vCacheKey()) || 'null'); }catch(e){}
+    if(vQueue().some(function(x){ return x.code === code; })) return { error: 'used' };
+    if(!c || !c.oid) return { error: 'offline' };
+    var h = await vHash(c.oid, code);
+    var i = c.list.findIndex(function(x){ return x[0] === h; });
+    if(i < 0) return { error: 'bad-offline' };
+    var prints = c.list[i][1] || 0;
+    c.list.splice(i, 1);
+    try{ localStorage.setItem(vCacheKey(), JSON.stringify(c)); }catch(e){}
+    var q = vQueue(); q.push({ code: code, at: Date.now(), ev: setupScopeEvent() }); vQueueSet(q);
+    return { ok: true, prints: prints, offline: true };
+  }
+  var V_ERR = {
+    bad: 'That isn’t a valid voucher. Check the numbers and try again.',
+    'bad-offline': 'The booth is offline and doesn’t recognise this code. Check the numbers, or ask the attendant.',
+    used: 'This voucher has already been used.',
+    'void': 'This voucher was cancelled. Please ask the attendant.',
+    'other-event': 'This voucher is for a different event.',
+    wait: 'Too many tries. Please wait a few minutes or ask the attendant.',
+    offline: 'The booth is offline and can’t check vouchers yet. Please ask the attendant.',
+    off: 'Payments are switched off for this booth.'
+  };
+
+  // ---- the pay sheet ----
+  var paySheet = document.getElementById('paySheet');
+  function payStopTimers(){ clearInterval(payState.timer); clearInterval(payState.poll); clearTimeout(payState.idle); payState.timer = payState.poll = payState.idle = null; }
+  function payIdle(){ clearTimeout(payState.idle); if(payState.view === 'payQr' || payState.view === 'payDone') return; payState.idle = setTimeout(function(){ payFinish(false); }, 90000); }
+  function payShow(view){
+    payState.view = view;
+    ['payChoose', 'payQr', 'payVoucher', 'payDone', 'payProblem'].forEach(function(id){ document.getElementById(id).hidden = id !== view; });
+    document.getElementById('payBack').hidden = !(payCfg.mode === 'both' && view !== 'payChoose' && view !== 'payDone');
+    document.getElementById('payClose').hidden = view === 'payDone';
+    payIdle();
+  }
+  function payGate(){
+    if(!payActive() || payCredit()) return Promise.resolve(true);
+    return new Promise(function(resolve){
+      payState.resolve = resolve;
+      document.getElementById('payTitle').textContent = peso(payCfg.price);
+      document.getElementById('paySub').textContent = payIncludes();
+      paySheet.hidden = false;
+      document.body.classList.add('pay-open');
+      if(payCfg.mode === 'both') payShow('payChoose');
+      else if(payCfg.mode === 'qr') payStartQr();
+      else payStartVoucher();
+    });
+  }
+  function payFinish(ok){
+    payStopTimers();
+    paySheet.hidden = true;
+    document.body.classList.remove('pay-open');
+    payState.qrId = null; payState.busy = false;
+    var r = payState.resolve; payState.resolve = null;
+    refreshPayBadge();
+    if(r) r(!!ok);
+  }
+  function payProblem(text, retry, retryLabel){
+    payStopTimers();
+    document.getElementById('payProblemT').textContent = text;
+    var b = document.getElementById('payRetry');
+    b.hidden = !retry; b.textContent = retryLabel || 'Try again';
+    b.onclick = retry || null;
+    payShow('payProblem');
+  }
+  function payPaid(prints){
+    payStopTimers();
+    setPayCredit({ prints: prints || 0, at: Date.now() });
+    try{ if(fx && fx.sound){ unlockAudio(); fxPose(); } }catch(e){}
+    payShow('payDone');
+    setTimeout(function(){ payFinish(true); }, 1500);
+  }
+
+  async function payStartQr(){
+    payStopTimers();
+    payShow('payQr');
+    var img = document.getElementById('payQrImg'), wait = document.getElementById('payQrWait'), st = document.getElementById('payQrState');
+    img.removeAttribute('src'); wait.hidden = false; wait.textContent = 'Making your QR…';
+    document.getElementById('payTimerBar').style.width = '100%';
+    document.getElementById('paySim').hidden = true; document.getElementById('payTestTag').hidden = true;
+    st.innerHTML = '<span class="dot"></span>Waiting for payment';
+    if(!(payAcct && payAcct.connected)){
+      return payVoucherOn() ? payStartVoucher('QR payment isn’t ready. Use a voucher, or ask the attendant.') : payProblem('QR payment isn’t set up on this booth yet. Please ask the attendant.');
+    }
+    if(navigator.onLine === false){
+      return payVoucherOn() ? payStartVoucher('No internet for QR payment right now — enter a voucher instead.') : payProblem('No internet for QR payment right now. Please ask the attendant.', payStartQr);
+    }
+    var r;
+    try{ r = await postApi('/api/pay', { action: 'qr', amount: payCfg.price, prints: payCfg.prints, label: (labelInput.value || '').trim() }, 25000); }
+    catch(e){ r = { status: 0, j: {} }; }
+    if(!payState.resolve || payState.view !== 'payQr') return;            // closed while it was loading
+    if(r.status !== 200 || !r.j.image){
+      return payProblem((r.j && r.j.error) || 'Couldn’t make the payment QR. Check the internet and try again.', payStartQr);
+    }
+    payState.qrId = r.j.id; payState.test = !!r.j.test;
+    payState.exp = Date.now() + 295000;
+    img.onload = function(){ wait.hidden = true; }; img.onerror = function(){ wait.textContent = 'QR didn\u2019t load. Tap \u2190 or \u2715 and try again.'; };
+    img.src = r.j.image; if(img.complete && img.naturalWidth) wait.hidden = true;
+    document.getElementById('paySim').hidden = !r.j.test; document.getElementById('payTestTag').hidden = !r.j.test;
+    var total = payState.exp - Date.now();
+    var tick = function(){
+      var left = Math.max(0, payState.exp - Date.now());
+      document.getElementById('payTimerBar').style.width = (left / total * 100).toFixed(1) + '%';
+      var m = Math.floor(left / 60000), s2 = Math.floor(left / 1000) % 60;
+      st.innerHTML = '<span class="dot"></span>Waiting for payment · ' + m + ':' + String(s2).padStart(2, '0');
+      if(left <= 0) payProblem('This QR has expired. Make a new one to pay.', payStartQr, 'New QR');
+    };
+    tick(); payState.timer = setInterval(tick, 1000);
+    var id = r.j.id;
+    payState.poll = setInterval(async function(){
+      if(payState.qrId !== id || payState.busy) return;
+      payState.busy = true;
+      try{
+        var s3 = await postApi('/api/pay', { action: 'status', id: id }, 8000);
+        if(payState.qrId === id && s3.status === 200 && s3.j.status === 'paid') payPaid(s3.j.prints);
+      }catch(e){}
+      payState.busy = false;
+    }, 2500);
+  }
+  document.getElementById('paySim').addEventListener('click', async function(){
+    if(!payState.qrId) return;
+    try{ var r = await postApi('/api/pay', { action: 'simulate', id: payState.qrId }, 8000); if(r.status === 200 && r.j.status === 'paid') payPaid(r.j.prints); else showToast(r.j.error || 'Couldn’t simulate.', 4000); }catch(e){}
+  });
+
+  function payRenderCode(){
+    var el = document.getElementById('payCode'), h = '';
+    for(var i = 0; i < 8; i++) h += '<span class="' + (i < payState.code.length ? 'on' : '') + (i === 4 ? ' gap' : '') + '">' + (payState.code[i] || '') + '</span>';
+    el.innerHTML = h;
+  }
+  function payStartVoucher(note){
+    payStopTimers();
+    payState.code = ''; payState.busy = false;
+    payShow('payVoucher');
+    var err = document.getElementById('payErr');
+    err.textContent = note || ''; err.classList.toggle('note', !!note);
+    payRenderCode();
+  }
+  async function payCheckVoucher(){
+    if(payState.busy || payState.code.length !== 8) return;
+    payState.busy = true;
+    var err = document.getElementById('payErr');
+    err.classList.add('note'); err.textContent = 'Checking…';
+    var r = await payRedeem(payState.code);
+    payState.busy = false;
+    if(!payState.resolve) return;
+    if(r.ok){ document.getElementById('payDoneT').textContent = 'Voucher accepted'; payPaid(r.prints); return; }
+    err.classList.remove('note'); err.textContent = V_ERR[r.error] || V_ERR.bad;
+    var el = document.getElementById('payCode'); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+  }
+  function payKey(k){
+    if(payState.view !== 'payVoucher' || payState.busy) return;
+    payIdle();
+    var err = document.getElementById('payErr');
+    if(err.textContent && !err.classList.contains('note')) err.textContent = '';
+    if(k === 'b') payState.code = payState.code.slice(0, -1);
+    else if(k === 'c') payState.code = '';
+    else if(/^\d$/.test(k) && payState.code.length < 8) payState.code += k;
+    payRenderCode();
+    if(payState.code.length === 8) payCheckVoucher();
+  }
+  document.getElementById('payPad').addEventListener('click', function(e){ var b = e.target.closest('button[data-k]'); if(b) payKey(b.dataset.k); });
+  document.addEventListener('keydown', function(e){
+    if(paySheet.hidden) return;
+    if(e.key === 'Escape'){ if(payState.view !== 'payDone') payFinish(false); return; }
+    if(/^\d$/.test(e.key)) payKey(e.key); else if(e.key === 'Backspace') payKey('b');
+  });
+  document.getElementById('payOptQr').addEventListener('click', function(){ document.getElementById('payDoneT').textContent = 'Payment received'; payStartQr(); });
+  document.getElementById('payOptVoucher').addEventListener('click', function(){ payStartVoucher(); });
+  document.getElementById('payBack').addEventListener('click', function(){ payStopTimers(); payState.qrId = null; payShow('payChoose'); });
+  document.getElementById('payClose').addEventListener('click', function(){ payFinish(false); });
+  paySheet.addEventListener('pointerdown', function(){ payIdle(); });
+
+  // ---- Setup card ----
+  function payLockHint(){
+    var lk = !!(window.__PB && window.__PB.lockOpt);
+    return lk ? 'Tip: use <b>Lock booth</b> below so guests can’t change the price or switch payments off.' : '';
+  }
+  function refreshPayUI(){
+    var sec = document.getElementById('paySection'); if(!sec) return;
+    sec.style.display = payOn() ? '' : 'none';
+    if(!payOn()) return;
+    [].forEach.call(document.querySelectorAll('#payModes .chip'), function(b){ b.classList.toggle('active', b.dataset.mode === payCfg.mode); b.setAttribute('aria-checked', b.dataset.mode === payCfg.mode ? 'true' : 'false'); });
+    document.getElementById('payMore').style.display = payCfg.mode === 'off' ? 'none' : '';
+    var pr = document.getElementById('payPrice'); if(document.activeElement !== pr) pr.value = payCfg.price;
+    document.getElementById('payPrintsVal').textContent = payCfg.prints ? payCfg.prints + ' print' + (payCfg.prints > 1 ? 's' : '') : 'Use print settings';
+    document.getElementById('payPrintsMinus').disabled = payCfg.prints <= 0;
+    document.getElementById('payPrintsPlus').disabled = payCfg.prints >= 5;
+    var qs = document.getElementById('payQrStatus');
+    qs.style.display = payQrOn() ? '' : 'none';
+    var link = '<a href="/lifetime/" target="_blank" rel="noopener">My Events</a>';
+    if(payAcct && payAcct.connected){
+      qs.className = 'pay-status ok';
+      qs.innerHTML = '<b>PayMongo connected</b>' + (payAcct.mode === 'live' ? '<span class="tag live">Live</span>' : '<span class="tag">Test mode</span>') +
+        '<br>Guests pay by QR Ph (GCash, Maya, bank apps). Money goes straight to your PayMongo account; PayMongo’s fee is 1.5%.' +
+        (payAcct.mode === 'live' ? '' : '<br><b>Test mode:</b> guests see a “Simulate payment” button. Connect your live key on ' + link + ' before the event.');
+    } else {
+      qs.className = 'pay-status warn';
+      qs.innerHTML = '<b>PayMongo isn’t connected yet.</b> Open ' + link + ', sign in with your code and tap <b>Connect PayMongo</b>. Until then guests can’t pay by QR' + (payVoucherOn() ? ' (vouchers still work).' : '.');
+    }
+    document.getElementById('payVoucherBox').style.display = payVoucherOn() ? '' : 'none';
+    document.getElementById('payLockHint').innerHTML = payLockHint();
+    refreshPayBadge();
+  }
+  function payChanged(){ refreshPayUI(); if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); if(payVoucherOn()){ refreshVoucherCache(); payLoadBatches(); } }
+  function applyPaySetup(p){ payCfg = cleanPay(p); refreshPayUI(); if(payVoucherOn()) setTimeout(function(){ refreshVoucherCache(); payLoadBatches(); }, 800); }
+  document.getElementById('payModes').addEventListener('click', function(e){
+    var b = e.target.closest('.chip[data-mode]'); if(!b) return;
+    payCfg.mode = b.dataset.mode; payChanged();
+  });
+  document.getElementById('payPrice').addEventListener('change', function(){
+    var v = Math.floor(Number(this.value));
+    if(!(v >= 20 && v <= 20000)){ showToast('Price must be between ₱20 and ₱20,000.', 3500); this.value = payCfg.price; return; }
+    payCfg.price = v; payChanged();
+  });
+  document.getElementById('payPrintsMinus').addEventListener('click', function(){ payCfg.prints = Math.max(0, payCfg.prints - 1); payChanged(); });
+  document.getElementById('payPrintsPlus').addEventListener('click', function(){ payCfg.prints = Math.min(5, payCfg.prints + 1); payChanged(); });
+
+  async function payLoadConfig(){
+    if(!payOn()){ refreshPayUI(); return; }
+    try{
+      var r = await postApi('/api/pay', { action: 'config' }, 8000);
+      if(r.status === 200 && r.j){ payAcct = r.j.acct || null; try{ localStorage.setItem('pb_pay_acct', JSON.stringify(payAcct)); }catch(e){} }
+    }catch(e){}
+    refreshPayUI();
+  }
+  var payBatches = [];
+  function fmtShortDate(t){ try{ return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }catch(e){ return ''; } }
+  function renderPayBatches(){
+    var box = document.getElementById('payBatches'); if(!box) return;
+    if(!payBatches.length){ box.innerHTML = '<p class="panel-hint" style="margin:10px 0 0;">No vouchers yet for this event.</p>'; return; }
+    box.innerHTML = payBatches.map(function(bt){
+      var left = bt.total - bt.usedCount - bt.voidCount;
+      return '<div class="pay-batch" data-id="' + payEsc(bt.id) + '"><div class="bi"><b>' + bt.total + ' vouchers · ' + bt.usedCount + ' used</b><small>' +
+        (bt.price ? payEsc(peso(bt.price)) + ' · ' : '') + 'made ' + fmtShortDate(bt.at) + (bt.by === 'admin' ? ' by photobooth4u' : '') + (bt.voidCount ? ' · ' + bt.voidCount + ' cancelled' : '') + '</small>' +
+        '<div class="meter"><i style="width:' + Math.round(bt.usedCount / bt.total * 100) + '%"></i></div></div>' +
+        (left > 0 ? '<button type="button" class="action-btn" data-act="print">Print tickets</button><button type="button" class="action-btn" data-act="void">Cancel unused</button>' : '') + '</div>';
+    }).join('');
+  }
+  async function payLoadBatches(){
+    if(!payOn() || !payVoucherOn()) return;
+    try{ var r = await postApi('/api/pay', { action: 'batches' }, 10000); if(r.status === 200 && r.j.batches){ payBatches = r.j.batches; renderPayBatches(); } }catch(e){}
+  }
+  document.getElementById('payMakeBtn').addEventListener('click', async function(){
+    var btn = this, n = Number(document.getElementById('payMakeCount').value) || 20;
+    btn.disabled = true; btn.textContent = 'Making…';
+    try{
+      var r = await postApi('/api/pay', { action: 'batch.create', count: n, prints: payCfg.prints, price: payCfg.price, label: '1 photo session' }, 15000);
+      if(r.status === 200 && r.j.batch){ payBatches.unshift(r.j.batch); renderPayBatches(); refreshVoucherCache(); showToast(n + ' vouchers ready. Tap “Print tickets”.', 4000); }
+      else showToast((r.j && r.j.error) || 'Couldn’t make vouchers.', 4500);
+    }catch(e){ showToast('No internet. Vouchers need internet to make.', 4500); }
+    btn.disabled = false; btn.textContent = 'Make vouchers';
+  });
+  document.getElementById('payBatches').addEventListener('click', async function(e){
+    var b = e.target.closest('button[data-act]'); if(!b) return;
+    var id = b.closest('.pay-batch').dataset.id, bt = payBatches.find(function(x){ return x.id === id; }); if(!bt) return;
+    if(b.dataset.act === 'print'){
+      var codes = bt.codes.filter(function(x){ return !x.used && !x.voided; }).map(function(x){ return x.c; });
+      try{ localStorage.setItem('pb_ticket_print', JSON.stringify({ event: (labelInput.value || '').trim() || setupScopeEvent() || bt.evName || 'Photo booth', price: bt.price, prints: bt.prints, codes: codes, at: Date.now() })); }catch(err){}
+      var w = window.open('/pay/tickets.html', '_blank');
+      if(!w) showToast('Allow pop-ups to print the tickets.', 4000);
+      return;
+    }
+    if(b.dataset.act === 'void'){
+      if(!b.classList.contains('confirm')){ b.classList.add('confirm'); b.textContent = 'Tap again to cancel'; setTimeout(function(){ if(b.isConnected){ b.classList.remove('confirm'); b.textContent = 'Cancel unused'; } }, 4000); return; }
+      try{ var r = await postApi('/api/pay', { action: 'batch.void', id: id }, 10000); if(r.status === 200 && r.j.batch){ Object.assign(bt, r.j.batch); renderPayBatches(); refreshVoucherCache(); showToast('Unused vouchers cancelled.'); } }catch(err){ showToast('No internet. Try again.', 4000); }
+    }
+  });
+  window.addEventListener('pb-pay-change', function(){ payLoadConfig(); if(payOn() && payVoucherOn()){ payLoadBatches(); refreshVoucherCache(); } });
+  window.addEventListener('online', function(){ syncVouchers().then(refreshVoucherCache); });
+  setInterval(function(){ if(payOn()) syncVouchers(); }, 60000);
+  setInterval(function(){ if(payOn() && payVoucherOn()) refreshVoucherCache(); }, 10 * 60000);
+  setInterval(function(){ if(payOn() && document.body.classList.contains('in-session') === false) payLoadConfig(); }, 5 * 60000);
+  setTimeout(function(){ payLoadConfig(); syncVouchers(); }, 1500);
+  (function(){ var s5 = document.querySelector('#stepBar .step-tab[data-step="5"]'); if(s5) s5.addEventListener('click', function(){ if(payOn()){ payLoadConfig(); payLoadBatches(); } }); })();
 
   // ---- Lock booth: guest-only screen behind a 4-digit PIN ----
   // Only for codes the admin gave the option to. The PIN is kept (hashed) on
@@ -10000,7 +10574,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       titleStyle: titleStyle, kicker: kickerText, upper: titleUpper, art: themeArt.slice(), artPal: Object.assign({}, artPal),
       printPrefs: Object.assign({}, printPrefs),
       bgRep: Object.assign({}, bgRep), bgMine: bgMine.slice(),
-      fx: Object.assign({}, fx)
+      fx: Object.assign({}, fx),
+      pay: Object.assign({}, payCfg)
     };
   }
   function selectFont(which, value){
@@ -10118,6 +10693,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(s.printPrefs) applyPrintPrefs(s.printPrefs);
       applyBgRepSetup(s.bgRep, s.bgMine);
       if(s.fx) applyFxSetup(s.fx);
+      applyPaySetup(s.pay);
       applyFramesSetup(s);
       buildLayoutPicker();
       ensureAssets(designAssetIds().concat(myProps)).then(function(){ refreshDecorUI(); refreshFrameUI(); redrawAll(); });

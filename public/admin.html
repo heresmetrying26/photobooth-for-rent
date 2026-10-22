@@ -591,6 +591,10 @@
     acts += '<button class="small" data-a="mode" data-c="' + c + '">' + (l.traditional ? 'Switch to tablet' : 'Make traditional') + '</button>';
     acts += '<button class="small" data-a="retakeopt" data-c="' + c + '">' + (l.retakeOpt ? 'Hide retake switch' : 'Give retake switch') + '</button>';
     acts += '<button class="small" data-a="lockopt" data-c="' + c + '">' + (l.lockOpt ? 'Hide lock booth' : 'Give lock booth') + '</button>';
+    if(!bonus){
+      acts += '<button class="small" data-a="payopt" data-c="' + c + '">' + (l.payOpt ? 'Hide guest payments' : 'Give guest payments') + '</button>';
+      if(l.payOpt) acts += '<button class="small" data-a="paymgr" data-c="' + c + '">Payments &amp; vouchers</button>';
+    }
     if(l.lockOpt) acts += '<button class="small" data-a="pinreset" data-c="' + c + '">Reset lock PIN</button>';
     acts += st === 'revoked'
       ? '<button class="small" data-a="restore" data-c="' + c + '">Restore</button>'
@@ -600,14 +604,43 @@
       ? esc(l.folderName || l.label || l.code) + ' · <i>event name</i></b> <span style="font-weight:500;">(new folder per event)</span><b>'
       : esc(l.folderName || l.label || l.code) + (bonus ? ' / ' + esc(l.subfolder || 'Bonus') + ' <span style="font-weight:500;">(files named BONUS_…)</span>' : '');
     return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
-      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>' + infoLine(l, st, parentEnd) +
+      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b><br>' + infoLine(l, st, parentEnd) +
       '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
       (maxD > 1 && devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="Remove this device">Remove</button></span>'; }).join('') + '</div>' : '') +
       '</div>' +
       (bonus ? '' : '<div class="themerow">Starting theme <select class="sel" data-theme-for="' + c + '">' + themeOptions(l.defaultTheme || '') + '</select></div>') +
       '<div class="printbox hidden" data-print-edit></div>' +
+      '<div class="printbox hidden" data-pay-box></div>' +
       '<div class="printbox hidden" data-sched-edit></div>' +
       '<div class="actions"><button class="small" data-a="copy" data-c="' + c + '">Copy code</button>' + (bonus ? '' : '<button class="small" data-a="portal" data-c="' + c + '" title="Link to the customer\'s My Events page (signs them in with this code)">Copy events page link</button>') + acts + '</div>';
+  }
+
+  // ---- Guest payments box (one booking): PayMongo status — never the key — money taken, vouchers ----
+  var PAYBOX = {};
+  function peso(n){ return '\u20B1' + Number(n || 0).toLocaleString('en-PH'); }
+  async function renderPayBox(box, code){
+    box.innerHTML = '<div class="meta">Loading…</div>';
+    var j;
+    try{ j = await api({ action: 'payinfo', code: code }); }catch(e){ box.innerHTML = '<div class="meta">' + esc(e.message) + '</div>'; return; }
+    PAYBOX[code] = j.batches || [];
+    var a = j.acct || {}, c = esc(code);
+    var conn = a.connected
+      ? 'PayMongo: <b>connected · ' + (a.mode === 'live' ? 'Live' : 'Test mode') + '</b> · key ending …' + esc(a.last4) + (a.webhook ? '' : ' · <span style="color:#a15c00">no webhook (booth checks PayMongo directly)</span>')
+      : 'PayMongo: <b>not connected</b>' + (a.pinSet ? ' (PIN set)' : '') + ' — the renter connects it on My Events.';
+    var html = '<div class="meta" style="margin:0 0 8px;">' + conn + '<br>Paid by QR: <b>' + esc(peso(j.paid.total)) + '</b> in ' + j.paid.count + ' payment' + (j.paid.count === 1 ? '' : 's') +
+      (j.paid.total !== j.paid.live ? ' (live: ' + esc(peso(j.paid.live)) + ')' : '') + '<br><span style="font-size:11.5px;">The renter’s key is encrypted and can’t be viewed here.</span></div>';
+    html += '<div class="meta" style="margin:10px 0 4px;"><b>Vouchers</b></div>' + (PAYBOX[code].length ? PAYBOX[code].map(function(bt){
+      var left = bt.total - bt.usedCount - bt.voidCount;
+      return '<div class="meta" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--line);">' +
+        '<span><b>' + esc(bt.evName || '—') + '</b> · ' + bt.total + ' vouchers · ' + bt.usedCount + ' used' + (bt.voidCount ? ' · ' + bt.voidCount + ' cancelled' : '') + (bt.price ? ' · ' + esc(peso(bt.price)) : '') + (bt.by === 'admin' ? ' · by you' : '') + '</span>' +
+        (left > 0 ? '<span><button class="small" data-a="vprint" data-id="' + esc(bt.id) + '" data-c="' + c + '">Print ' + left + '</button> <button class="small danger" data-a="vvoid" data-id="' + esc(bt.id) + '" data-c="' + c + '">Cancel unused</button></span>' : '') + '</div>';
+    }).join('') : '<div class="meta">None yet.</div>');
+    html += '<div class="meta" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px;">Make ' +
+      '<input class="v-count" type="number" min="1" max="200" value="20" style="width:70px;"> vouchers at ₱<input class="v-price" type="number" min="0" max="20000" value="100" style="width:80px;"> · prints <input class="v-prints" type="number" min="0" max="5" value="0" style="width:56px;">' +
+      (j.lifetime ? ' for event <input class="v-event" type="text" placeholder="Event name in the booth" style="width:190px;">' : '') +
+      ' <button class="small primary" data-a="vmake" data-c="' + c + '">Make</button></div>' +
+      '<div class="actions" style="margin-top:10px;"><button class="small danger" data-a="payreset" data-c="' + c + '">Reset payments PIN (disconnects PayMongo)</button></div>';
+    box.innerHTML = html;
   }
 
   // ---- Toolbar, filters, paging, selection ----
@@ -767,6 +800,48 @@
         await api({ action: 'bonusminutes', code: code, minutes: m2 });
         toast('Bonus length set to ' + fmtMinutes(Number(m2)));
         refresh();
+        return;
+      }
+      if(a === 'payopt'){
+        var po = !(LIC[code] && LIC[code].payOpt);
+        await api({ action: 'payopt', code: code, payOpt: po });
+        toast((po ? 'Guest payments given' : 'Guest payments hidden') + ' — an open booth updates within ~5 minutes');
+        refresh();
+        return;
+      }
+      if(a === 'paymgr'){
+        var pbox = b.closest('.actions').parentNode.querySelector('[data-pay-box]');
+        if(!pbox.classList.contains('hidden')){ pbox.classList.add('hidden'); return; }
+        pbox.classList.remove('hidden');
+        renderPayBox(pbox, code);
+        return;
+      }
+      if(a === 'vmake'){
+        var vb = b.closest('[data-pay-box]');
+        var body2 = { action: 'vbatch', code: code, count: vb.querySelector('.v-count').value, price: vb.querySelector('.v-price').value, prints: vb.querySelector('.v-prints').value, event: (vb.querySelector('.v-event') || {}).value || '' };
+        var rb = await api(body2);
+        toast(rb.batch.total + ' vouchers made');
+        renderPayBox(vb, code);
+        return;
+      }
+      if(a === 'vprint'){
+        var bt = (PAYBOX[code] || []).find(function(x){ return x.id === b.dataset.id; }); if(!bt) return;
+        try{ localStorage.setItem('pb_ticket_print', JSON.stringify({ event: bt.evName || (LIC[code] && LIC[code].label) || 'Photo booth', price: bt.price, prints: bt.prints, codes: bt.codes.filter(function(x){ return !x.used && !x.voided; }).map(function(x){ return x.c; }), at: Date.now() })); }catch(e){}
+        window.open('/pay/tickets.html', '_blank');
+        return;
+      }
+      if(a === 'vvoid'){
+        if(!confirm('Cancel the unused vouchers of this batch? Guests can no longer use them.')) return;
+        await api({ action: 'vvoid', code: code, id: b.dataset.id });
+        toast('Unused vouchers cancelled');
+        renderPayBox(b.closest('[data-pay-box]'), code);
+        return;
+      }
+      if(a === 'payreset'){
+        if(!confirm('Reset the payments PIN for ' + code + '? This also DISCONNECTS their PayMongo, so QR payments stop until they connect again with a new PIN.')) return;
+        await api({ action: 'payreset', code: code });
+        toast('Payments PIN reset and PayMongo disconnected');
+        renderPayBox(b.closest('[data-pay-box]'), code);
         return;
       }
       if(a === 'printedit'){

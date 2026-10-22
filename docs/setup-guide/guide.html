@@ -96,6 +96,13 @@ figcaption{font-size:11.4px; color:var(--body); margin-top:8px; line-height:1.5}
 .toc li span{color:var(--red); font-weight:700; width:16px}
 .cover .foot{left:64px; right:64px}
 
+/* guest payments */
+.mode h5{display:flex; align-items:center; gap:8px}
+.mode .ic{flex:none; width:26px; height:26px; border-radius:8px; background:#fff; color:var(--red); font-size:10.5px; font-weight:800; display:flex; align-items:center; justify-content:center}
+.mode p{margin:0}
+.h3{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:21px; line-height:1.2; color:var(--ink); margin:0 0 12px}
+table.fix.pay td:first-child{width:200px}
+
 /* troubleshooting */
 table.fix{width:100%; border-collapse:collapse; font-size:11.6px; line-height:1.5}
 table.fix th{text-align:left; font-size:8.4px; font-weight:700; letter-spacing:.2em; color:var(--dim); text-transform:uppercase; padding:0 0 8px; border-bottom:1.5px solid var(--ink)}
@@ -126,12 +133,13 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
     <li><span>01</span>What you need</li>
     <li><span>07</span>Printing (one or two printers)</li>
     <li><span>02</span>Unlock your devices</li>
-    <li><span>08</span>Backup folder &amp; pro tips</li>
+    <li><span>08</span>Guest payments: QR &amp; vouchers</li>
     <li><span>03</span>Set up each event</li>
-    <li><span>09</span>After the event: send the photos</li>
+    <li><span>09</span>Backup folder &amp; pro tips</li>
     <li><span>04</span>Pro Booth: laptop + guest screen</li>
-    <li><span>10</span>Troubleshooting &amp; help</li>
+    <li><span>10</span>After the event: send the photos</li>
     <li><span>05</span>Use your DSLR / mirrorless camera</li>
+    <li><span>11</span>Troubleshooting &amp; help</li>
   </ol>
   <div class="foot"><span>photobooth4u.netlify.app</span><span>Setup guide</span></div>
 </section>
@@ -164,7 +172,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
       <ul class="dots">
         <li>Camera stuck: unplug and replug the USB, tap <b>Try Again</b>.</li>
         <li>Anything else: reload the page. Your setup is saved.</li>
-        <li>Still stuck: page 10, or message us.</li>
+        <li>Still stuck: page 12, or message us.</li>
       </ul>
     </div>
   </div>
@@ -233,8 +241,8 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
       <li><span class="n">2</span><h4>Text</h4><p>Type the <b>name on the photo</b> and tap the <b>calendar icon</b> to add the date. Pick a title style, then a font: the cards show your own name. <b>Pairs</b> set the name and small-line fonts together.</p></li>
       <li><span class="n">3</span><h4>Layout</h4><p>Pick one of the <b>layouts</b>, or upload <b>your own frame</b> (Canva, photo spots left white or see-through). Wrong spots? <b>Edit photo spots</b> to add, split, resize or reorder them. Optional: <b>guests choose the layout</b>.</p></li>
       <li><span class="n">4</span><h4>Extras</h4><p>All optional: <b>Logo</b>, <b>Stickers</b> and <b>Filter</b> (B&amp;W, Sepia, Warm, Cool, soft skin).</p></li>
-      <li><span class="n">5</span><h4>Session</h4><p>The <b>countdown</b>, time between photos, <b>camera</b>, guest screen and (if included) <b>Allow retakes</b> and <b>Lock booth</b>.</p></li>
-      <li><span class="n">6</span><h4>Share</h4><p><b>Lifetime codes:</b> type the <b>event name</b> for a new folder. <b>Rental codes</b> connect by themselves. The <b>All photos</b> QR is here to print or share ahead. On a laptop, choose a <b>backup folder</b> here too (page 9).</p></li>
+      <li><span class="n">5</span><h4>Session</h4><p>The <b>countdown</b>, time between photos, <b>camera</b>, guest screen and (if included) <b>Allow retakes</b>, <b>Lock booth</b> and <b>Guest payment</b> (page 9).</p></li>
+      <li><span class="n">6</span><h4>Share</h4><p><b>Lifetime codes:</b> type the <b>event name</b> for a new folder. <b>Rental codes</b> connect by themselves. The <b>All photos</b> QR is here to print or share ahead. On a laptop, choose a <b>backup folder</b> here too (page 11).</p></li>
     </ol>
     <div>
       <figure><img src="img/layouts.jpg" alt=""><figcaption>Built-in layouts, plus your own frames.</figcaption></figure>
@@ -363,10 +371,82 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
   <div class="foot"><span>photobooth4u setup guide</span><span>8</span></div>
 </section>
 
+<!-- ============ GUEST PAYMENTS (1/2) ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">08 · If your package includes guest payments</p>
+    <h2>Guest payments</h2>
+    <p class="lead">Charge guests for each photo session. Choose per event: guests <b>scan a QR</b> and pay with GCash, Maya or any bank app, or type a <b>voucher</b> you sold them at the booth table, or both.</p>
+    <div class="three">
+      <div class="card cream mode"><h5><span class="ic">QR</span>QR payment</h5><p>Fully automatic. The money goes <b>straight to your PayMongo</b> and the session starts by itself once the guest pays. Needs internet. PayMongo's fee is 1.5%.</p></div>
+      <div class="card cream mode"><h5><span class="ic">#</span>Vouchers</h5><p>You print tickets and sell them for cash or GCash. Each 8-digit code works <b>once</b>, for that event only. <b>Works offline.</b> No fees.</p></div>
+      <div class="card cream mode"><h5><span class="ic">+</span>QR + vouchers</h5><p>Guests choose. If the internet drops, the booth switches to vouchers so the event keeps going. <b>Best for most events.</b></p></div>
+    </div>
+    <figure style="margin-top:18px"><img src="img/pay-guest.jpg" alt=""><figcaption>What guests see after tapping the welcome screen: choose how to pay, scan the QR, or type the voucher.</figcaption></figure>
+  </div>
+  <div class="sec" style="margin-top:28px">
+    <p class="h3">Connect PayMongo (once, for QR payment)</p>
+    <div class="cols">
+      <ol class="steps">
+        <li><span class="n">1</span><h4>Get your PayMongo account ready</h4><p>Sign up at <b>paymongo.com</b> and finish the account activation. Ask PayMongo support to <b>switch on QR Ph</b> for your account.</p></li>
+        <li><span class="n">2</span><h4>Copy your secret key</h4><p>In <b>dashboard.paymongo.com → Developers → API keys</b>, copy the <b>Secret key</b> (<code>sk_live_…</code>). To practise first, use the test key (<code>sk_test_…</code>).</p></li>
+        <li><span class="n">3</span><h4>Paste it in My Events</h4><p>Open <b>photobooth4u.netlify.app/lifetime/</b>, sign in with your code, and under <b>Guest payments</b> paste the key, choose a <b>payments PIN</b> (4–8 digits) and tap <b>Connect PayMongo</b>. It shows <b>Connected · Live</b>.</p></li>
+      </ol>
+      <div class="card green">
+        <span class="pill green">Your key stays private</span>
+        <ul class="dots">
+          <li>It's <b>encrypted</b> on our server and never shown again: not on any page, not on the booth, not to photobooth4u staff.</li>
+          <li>Guests' money goes <b>straight to your PayMongo</b>. It never passes through us.</li>
+          <li>Disconnect any time with your PIN, or make a new key in PayMongo to cut access at once.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>photobooth4u setup guide</span><span>9</span></div>
+</section>
+
+<!-- ============ GUEST PAYMENTS (2/2) ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">08 · Guest payments, every event</p>
+    <h2>Set up payments for an event</h2>
+    <div class="cols">
+      <ol class="steps">
+        <li><span class="n">1</span><h4>Choose how guests pay</h4><p>In the booth: <b>Setup → 5 Session → Guest payment</b>. Pick <b>QR payment</b>, <b>Vouchers</b> or <b>QR + vouchers</b> (<b>Free</b> turns it off). Lifetime codes save this per event name.</p></li>
+        <li><span class="n">2</span><h4>Set the price</h4><p>Type the <b>price per session</b> (₱20 or more). <b>Prints included</b> sets how many prints a paying guest gets; leave it on <b>Use print settings</b> otherwise.</p></li>
+        <li><span class="n">3</span><h4>Make and print vouchers</h4><p>Choose how many, tap <b>Make vouchers</b>, then <b>Print tickets</b>: 10 per A4 page. Print at <b>100% (no scaling)</b> and cut along the dashed lines.</p></li>
+        <li><span class="n">4</span><h4>Test it</h4><p>Tap the welcome screen and pay. With a <b>test key</b> a <b>Simulate payment</b> button appears. Connect your <b>live key</b> before the event and try one small real payment.</p></li>
+      </ol>
+      <figure><img src="img/pay-setup.jpg" alt=""><figcaption>Setup → 5 Session → Guest payment.</figcaption></figure>
+    </div>
+    <div class="card cream" style="margin-top:10px">
+      <h5>Good to know</h5>
+      <ul class="dots">
+        <li>The welcome screen shows the price. A paid session <b>isn't lost</b> if the tablet restarts or the guest taps Cancel at "Get ready".</li>
+        <li><b>Several tablets offline at one event?</b> Give each tablet its own vouchers. They can't see each other's used codes until they're back online.</li>
+        <li>If your package has <b>Lock booth</b>, turn it on so guests can't change the price or switch payments off.</li>
+        <li>Every payment and voucher batch is listed in <b>My Events</b>. Test payments are marked and don't count as real money.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="sec" style="margin-top:22px">
+    <p class="h3">Payment problems</p>
+    <table class="fix pay">
+      <tr><th>Problem</th><th>Fix</th></tr>
+      <tr><td>"QR payment isn't set up"</td><td>Connect PayMongo in <b>My Events → Guest payments</b>, then reload the booth.</td></tr>
+      <tr><td>"PayMongo did not return a QR code"</td><td>QR Ph isn't switched on for your PayMongo account. Ask PayMongo support to enable it.</td></tr>
+      <tr><td>"PayMongo rejected the saved key"</td><td>The key was changed in PayMongo. In My Events tap <b>Replace key</b> and paste the new one.</td></tr>
+      <tr><td>Guest paid but the booth keeps waiting</td><td>Check the booth's internet; it notices within seconds once it's back. Check the payment in My Events, and keep a few <b>spare vouchers</b> at the table for cases like this.</td></tr>
+      <tr><td>Forgot your payments PIN</td><td>Message us. Resetting it also disconnects PayMongo; connect again with a new PIN.</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span>photobooth4u setup guide</span><span>10</span></div>
+</section>
+
 <!-- ============ BACKUP + TIPS ============ -->
 <section class="page">
   <div class="sec" >
-    <p class="kicker">08 · Pro booth backup</p>
+    <p class="kicker">09 · Pro booth backup</p>
     <h2>Backup folder &amp; weak internet</h2>
     <div class="cols">
       <ol class="steps">
@@ -392,13 +472,13 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
       </ul>
     </div>
   </div>
-  <div class="foot"><span>photobooth4u setup guide</span><span>9</span></div>
+  <div class="foot"><span>photobooth4u setup guide</span><span>11</span></div>
 </section>
 
 <!-- ============ 7 ============ -->
 <section class="page">
   <div class="sec">
-    <p class="kicker">09 · After the event</p>
+    <p class="kicker">10 · After the event</p>
     <h2>Send the photos to your client</h2>
     <div class="cols">
       <ol class="steps">
@@ -414,7 +494,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
   </div>
 
   <div class="sec" style="margin-top:8px">
-    <p class="kicker">10 · Quick fixes</p>
+    <p class="kicker">11 · Quick fixes</p>
     <h2>Troubleshooting</h2>
     <table class="fix">
       <tr><th>Problem</th><th>Fix</th></tr>
@@ -434,7 +514,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
       <a class="btn" href="https://m.me/roktetnachi" style="text-decoration:none">Message us</a>
     </div>
   </div>
-  <div class="foot"><span>photobooth4u setup guide</span><span>10</span></div>
+  <div class="foot"><span>photobooth4u setup guide</span><span>12</span></div>
 </section>
 
 </body>

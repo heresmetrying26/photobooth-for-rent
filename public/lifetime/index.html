@@ -83,7 +83,50 @@
     .empty h2{margin:0 0 6px;color:var(--ink);font-size:18px}
     .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;z-index:10}
     .toast.show{opacity:1}
+    /* guest payments */
+    .pay{margin:0 0 18px;padding:22px}
+    .pay-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px 18px;flex-wrap:wrap}
+    .pay h2{margin:0 0 4px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:24px;letter-spacing:-.02em}
+    .pay .sub{margin:0;font-size:14px;color:var(--muted);line-height:1.55;max-width:560px}
+    .pchip{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:800;background:#EEF0F4;color:#3D4656;white-space:nowrap}
+    .pchip i{width:8px;height:8px;border-radius:50%;background:#9aa1ad}
+    .pchip.on{background:var(--ok-bg);color:#174F46}.pchip.on i{background:#1d8a4b}
+    .pchip.test{background:#FFF4D6;color:#6b5300}.pchip.test i{background:#e0a400}
+    .steps{margin:16px 0 0;padding:0;list-style:none;display:grid;gap:8px;counter-reset:s}
+    .steps li{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.5}
+    .steps li::before{counter-increment:s;content:counter(s);flex:none;width:24px;height:24px;border-radius:50%;background:var(--tint);color:var(--red);font-weight:800;font-size:12.5px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+    .pform{display:grid;gap:12px;margin-top:16px;max-width:520px}
+    .pform label{display:grid;gap:6px;font-size:13.5px;font-weight:800}
+    .pform input{width:100%;padding:13px 14px;font:inherit;font-size:16px;font-weight:700;border:1.5px solid var(--line);border-radius:12px;background:#FAF7F2;color:var(--ink);outline:none}
+    .pform input:focus{border-color:var(--red);background:#fff}
+    .pform .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .pform .keyrow{display:flex;gap:8px}.pform .keyrow input{flex:1;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;letter-spacing:0}
+    .pform .bad{border-color:var(--red)!important;background:#fff6f4!important}
+    .secure{display:flex;gap:12px;margin-top:16px;padding:14px 16px;border-radius:14px;background:var(--paper);font-size:13.5px;line-height:1.55;color:#3D3A40;max-width:620px}
+    .secure svg{flex:none;width:20px;height:20px;margin-top:1px;color:var(--ok)}
+    .conn{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px;padding:14px 16px;border-radius:14px;border:1.5px solid var(--line)}
+    .conn p{margin:0;font-size:14px;line-height:1.5}
+    .conn .acts{display:flex;gap:8px;flex-wrap:wrap}.conn .btn{padding:9px 14px;font-size:13px}
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:14px}
+    .stat{padding:14px 16px;border-radius:14px;background:var(--paper)}
+    .stat b{display:block;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:26px;letter-spacing:-.02em}
+    .stat span{font-size:12.5px;font-weight:700;color:var(--muted)}
+    .ptable{width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px}
+    .ptable th{text-align:left;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 6px;border-bottom:1px solid var(--line)}
+    .ptable td{padding:9px 6px;border-bottom:1px solid #F0EAE0;vertical-align:top}
+    .ptable td.amt{font-weight:800;white-space:nowrap;text-align:right}
+    .ptable .ref{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--muted)}
+    .mini{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:#FFF4D6;color:#6b5300;font-size:11px;font-weight:800}
+    .psec{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+    .psec h3{margin:0 0 4px;font-size:16px}
+    .vb{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border:1.5px solid var(--line);border-radius:14px;margin-top:8px}
+    .vb p{margin:0;font-size:14px;line-height:1.45}.vb small{color:var(--muted);font-weight:600}
+    .pinbox{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+    .pinbox input{width:130px;padding:10px 12px;font:inherit;font-size:16px;font-weight:700;letter-spacing:4px;border:1.5px solid var(--line);border-radius:12px;background:#FAF7F2;outline:none}
+    .pinbox input:focus{border-color:var(--red)}
     @media (max-width:640px){
+      .pform .row2{grid-template-columns:1fr}
+      .ptable .hide-sm{display:none}
       .ev{grid-template-columns:1fr}
       .ev-actions{justify-content:stretch}.ev-actions .btn{flex:1 1 auto}
       .qrbox{flex-direction:column;text-align:center}
@@ -148,6 +191,47 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
           <a class="btn primary" href="/">Open photo booth</a>
         </div>
       </div>
+      <section class="card pay hidden" id="payCard" aria-labelledby="payH">
+        <div class="pay-top">
+          <div><h2 id="payH">Guest payments</h2><p class="sub">Guests pay before each session — by scanning a QR with GCash, Maya or any bank app, or with vouchers you sell at the booth. Turn it on per event in the booth: Setup → 5 Session → Guest payment. <a href="/lifetime/photobooth4u-setup-guide.pdf#page=9" target="_blank" rel="noopener"><b>Step-by-step guide (PDF)</b></a></p></div>
+          <span class="pchip" id="payChip"><i></i><span>Not connected</span></span>
+        </div>
+        <div id="payConnect" class="hidden">
+          <ol class="steps">
+            <li><span>Log in at <a href="https://dashboard.paymongo.com" target="_blank" rel="noopener">dashboard.paymongo.com</a> → <b>Developers</b> → <b>API keys</b>. (QR Ph must be switched on for your account; PayMongo support does this.)</span></li>
+            <li><span>Copy your <b>Secret key</b>. It starts with <code>sk_live_</code> (or <code>sk_test_</code> to try it first).</span></li>
+            <li><span>Paste it below and choose a payments PIN. You’ll need the PIN to replace or disconnect the key.</span></li>
+          </ol>
+          <form class="pform" id="payForm" autocomplete="off">
+            <label>PayMongo secret key
+              <span class="keyrow"><input type="password" id="payKey" placeholder="sk_live_…" spellcheck="false" autocomplete="off"><button type="button" class="btn" id="payKeyShow">Show</button></span>
+            </label>
+            <div class="row2" id="payNewPinRow">
+              <label>Choose a payments PIN<input type="password" inputmode="numeric" maxlength="8" id="payNewPin" placeholder="4–8 digits"></label>
+              <label>PIN again<input type="password" inputmode="numeric" maxlength="8" id="payNewPin2" placeholder="Same PIN"></label>
+            </div>
+            <label id="payPinRow" class="hidden">Your payments PIN<input type="password" inputmode="numeric" maxlength="8" id="payPin" placeholder="PIN"></label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn primary" type="submit" id="payConnectBtn">Connect PayMongo</button><button class="btn hidden" type="button" id="payCancelBtn">Cancel</button></div>
+            <p class="msg" id="payMsg"></p>
+          </form>
+          <div class="secure"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5Zm0 2a3 3 0 0 0-3 3v3h6V7a3 3 0 0 0-3-3Z"/></svg>
+            <span><b>Your key stays private.</b> It’s encrypted on our server and never shown again — not on this page, not to photobooth4u staff, not on the booth. Money goes straight to your PayMongo account. You can disconnect anytime, or make a new key in PayMongo to cut access instantly.</span></div>
+        </div>
+        <div id="payConnected" class="hidden">
+          <div class="conn">
+            <p id="payConnText"></p>
+            <div class="acts"><button class="btn" type="button" id="payReplaceBtn">Replace key</button><button class="btn" type="button" id="payDisconnectBtn">Disconnect</button></div>
+          </div>
+          <div class="pinbox hidden" id="payDiscBox"><input type="password" inputmode="numeric" maxlength="8" id="payDiscPin" placeholder="PIN" aria-label="Payments PIN"><button class="btn primary" type="button" id="payDiscGo">Disconnect PayMongo</button><span class="msg" id="payDiscMsg" style="margin:0"></span></div>
+          <div class="stats" id="payStats"></div>
+          <div id="payList"></div>
+        </div>
+        <div class="psec hidden" id="payVouchers">
+          <h3>Vouchers</h3>
+          <p class="sub">Make vouchers in the booth (Setup → 5 Session → Guest payment). Every batch shows here so you can reprint tickets.</p>
+          <div id="payBatchList"></div>
+        </div>
+      </section>
       <p class="notice" id="keepNotice"><b>Heads up</b><span id="keepText"></span></p>
       <div class="events" id="events"></div>
     </section>
@@ -193,6 +277,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       auth = a; data = j;
       if(a.code) store(CODE_KEY, a.code);
       render(j); show('accountView');
+      loadPay();
       if(/[?&]welcome=1/.test(location.search)){
         $('startTitle').textContent = 'Welcome, ' + j.label + '!';
         $('startText').textContent = 'Your lifetime code is active on this device. Download the setup guide first, then open the photo booth when you\u2019re ready. You can come back here any time for your event links.';
@@ -272,6 +357,115 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
             '<p><b style="color:var(--ink);">Scan to open the photos</b><br>' + esc(url) + '</p>';
         }
       }
+    });
+
+    // ---- Guest payments (PayMongo + vouchers) ----
+    var pay = null;
+    function peso(n){ return '\u20B1' + Number(n || 0).toLocaleString('en-PH'); }
+    async function payApi(action, extra){
+      var body = Object.assign({ action: action }, auth || {}, extra || {});
+      var r = await fetch('/api/pay', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), cache: 'no-store' });
+      var j = await r.json().catch(function(){ return {}; });
+      return { ok: r.ok, status: r.status, j: j };
+    }
+    async function loadPay(){
+      if(!auth) return;
+      var r; try{ r = await payApi('my.status'); }catch(e){ return; }
+      if(!r.ok || !r.j.payOpt){ $('payCard').classList.add('hidden'); return; }
+      pay = r.j; $('payCard').classList.remove('hidden');
+      renderPay();
+      if(pay.acct.connected) loadPayments();
+      loadBatches();
+    }
+    function renderPay(replacing){
+      var a = pay.acct || {};
+      var chip = $('payChip');
+      chip.className = 'pchip' + (a.connected ? (a.mode === 'live' ? ' on' : ' test') : '');
+      chip.querySelector('span').textContent = a.connected ? (a.mode === 'live' ? 'Connected · Live' : 'Connected · Test mode') : 'Not connected';
+      var showForm = !a.connected || replacing;
+      $('payConnect').classList.toggle('hidden', !showForm);
+      $('payConnected').classList.toggle('hidden', !a.connected || !!replacing);
+      $('payNewPinRow').classList.toggle('hidden', !!a.pinSet);
+      $('payPinRow').classList.toggle('hidden', !a.pinSet);
+      $('payCancelBtn').classList.toggle('hidden', !replacing);
+      $('payConnectBtn').textContent = replacing ? 'Replace key' : 'Connect PayMongo';
+      $('payMsg').textContent = pay.vault === false ? 'Payments aren’t set up on the server yet. Please contact photobooth4u.' : '';
+      if(a.connected){
+        $('payConnText').innerHTML = '<b>' + (a.mode === 'live' ? 'Live' : 'Test mode') + '</b> · key ending <b>…' + esc(a.last4) + '</b> · connected ' + esc(fmt(a.connectedAt)) +
+          (a.webhook ? '' : '<br><small style="color:var(--muted)">Payment notifications couldn’t be set up, so the booth checks with PayMongo directly. Payments still work.</small>') +
+          (a.mode === 'live' ? '' : '<br><small style="color:#6b5300">Test mode: guests see a “Simulate payment” button. Replace with your <b>sk_live_</b> key before a real event.</small>');
+      }
+    }
+    async function loadPayments(){
+      var r; try{ r = await payApi('my.payments'); }catch(e){ return; }
+      if(!r.ok) return;
+      var d = r.j, live = d.payments.filter(function(p){ return p.live; }), test = d.payments.filter(function(p){ return !p.live; });
+      var sum = function(list){ return list.reduce(function(t, p){ return t + p.amount; }, 0); };
+      $('payStats').innerHTML =
+        '<div class="stat"><b>' + esc(peso(sum(live))) + '</b><span>collected · ' + live.length + ' payment' + (live.length === 1 ? '' : 's') + '</span></div>' +
+        (test.length ? '<div class="stat"><b>' + esc(peso(sum(test))) + '</b><span>test mode · ' + test.length + ' (not real money)</span></div>' : '') +
+        (d.events.length > 1 ? d.events.slice(0, 3).map(function(e){ return '<div class="stat"><b>' + esc(peso(e.total)) + '</b><span>' + esc(e.name) + ' · ' + e.count + '</span></div>'; }).join('') : '');
+      $('payList').innerHTML = d.payments.length ? '<table class="ptable"><thead><tr><th>When</th><th>Event</th><th class="hide-sm">Reference</th><th style="text-align:right">Amount</th></tr></thead><tbody>' +
+        d.payments.slice(0, 50).map(function(p){
+          return '<tr><td>' + esc(fmt(p.at, true)) + '</td><td>' + esc(p.ev || '—') + (p.live ? '' : '<span class="mini">' + (p.sim ? 'Simulated' : 'Test') + '</span>') + '</td><td class="hide-sm ref">' + esc(p.ref || '') + '</td><td class="amt">' + esc(peso(p.amount)) + '</td></tr>';
+        }).join('') + '</tbody></table>' : '<p class="sub" style="margin-top:12px">No payments yet. They show up here as guests pay at the booth.</p>';
+    }
+    var batches = [];
+    async function loadBatches(){
+      var r; try{ r = await payApi('my.batches'); }catch(e){ return; }
+      if(!r.ok) return;
+      batches = r.j.batches || [];
+      $('payVouchers').classList.toggle('hidden', !batches.length);
+      $('payBatchList').innerHTML = batches.map(function(b, i){
+        var left = b.total - b.usedCount - b.voidCount;
+        return '<div class="vb"><p><b>' + esc(b.evName || 'Event') + '</b> · ' + b.total + ' vouchers<br><small>' + b.usedCount + ' used' + (b.voidCount ? ' · ' + b.voidCount + ' cancelled' : '') +
+          (b.price ? ' · ' + esc(peso(b.price)) + ' each' : '') + ' · made ' + esc(fmt(b.at)) + '</small></p>' +
+          (left > 0 ? '<button class="btn" type="button" data-vb="' + i + '">Print ' + left + ' unused</button>' : '') + '</div>';
+      }).join('');
+    }
+    $('payBatchList').addEventListener('click', function(e){
+      var b = e.target.closest('button[data-vb]'); if(!b) return;
+      var bt = batches[Number(b.dataset.vb)]; if(!bt) return;
+      try{ localStorage.setItem('pb_ticket_print', JSON.stringify({ event: bt.evName || data.label, price: bt.price, prints: bt.prints, codes: bt.codes.filter(function(x){ return !x.used && !x.voided; }).map(function(x){ return x.c; }), at: Date.now() })); }catch(err){}
+      window.open('/pay/tickets.html', '_blank');
+    });
+    $('payKeyShow').addEventListener('click', function(){ var k = $('payKey'); k.type = k.type === 'password' ? 'text' : 'password'; this.textContent = k.type === 'password' ? 'Show' : 'Hide'; });
+    $('payReplaceBtn').addEventListener('click', function(){ renderPay(true); $('payKey').focus(); });
+    $('payCancelBtn').addEventListener('click', function(){ $('payKey').value = ''; renderPay(false); });
+    $('payForm').addEventListener('submit', async function(e){
+      e.preventDefault();
+      ['payKey', 'payNewPin', 'payNewPin2', 'payPin'].forEach(function(id){ $(id).classList.remove('bad'); });
+      var key = $('payKey').value.trim(), msg = $('payMsg');
+      var extra = { key: key };
+      if(!/^sk_(live|test)_/.test(key)){ msg.textContent = 'Paste the Secret key. It starts with sk_live_ or sk_test_ (not pk_).'; $('payKey').classList.add('bad'); return; }
+      if(pay.acct.pinSet){ extra.pin = $('payPin').value.trim(); }
+      else {
+        var p1 = $('payNewPin').value.trim(), p2 = $('payNewPin2').value.trim();
+        if(!/^\d{4,8}$/.test(p1)){ msg.textContent = 'Choose a PIN of 4 to 8 digits.'; $('payNewPin').classList.add('bad'); return; }
+        if(p1 !== p2){ msg.textContent = 'The two PINs don’t match.'; $('payNewPin2').classList.add('bad'); return; }
+        extra.newPin = p1;
+      }
+      var btn = $('payConnectBtn'); btn.disabled = true; msg.style.color = 'var(--muted)'; msg.textContent = 'Checking the key with PayMongo…';
+      var r; try{ r = await payApi('my.connect', extra); }catch(err){ r = { ok: false, j: { error: 'Can’t reach the server. Check your internet.' } }; }
+      btn.disabled = false; msg.style.color = '';
+      if(!r.ok){
+        msg.textContent = r.j.error || 'Couldn’t connect.';
+        var f = { key: 'payKey', pin: 'payPin', newPin: 'payNewPin' }[r.j.field]; if(f) $(f).classList.add('bad');
+        return;
+      }
+      ['payKey', 'payNewPin', 'payNewPin2', 'payPin'].forEach(function(id){ $(id).value = ''; });
+      pay.acct = r.j.acct; msg.textContent = '';
+      renderPay(false); loadPayments();
+      toast(r.j.acct.mode === 'live' ? 'PayMongo connected. Guests can pay by QR.' : 'Connected in test mode.');
+    });
+    $('payDisconnectBtn').addEventListener('click', function(){ $('payDiscBox').classList.toggle('hidden'); $('payDiscPin').focus(); });
+    $('payDiscGo').addEventListener('click', async function(){
+      var pin = $('payDiscPin').value.trim(), m = $('payDiscMsg');
+      if(!/^\d{4,8}$/.test(pin)){ m.textContent = 'Type your payments PIN.'; return; }
+      var r; try{ r = await payApi('my.disconnect', { pin: pin }); }catch(err){ m.textContent = 'Can’t reach the server.'; return; }
+      if(!r.ok){ m.textContent = r.j.error || 'Couldn’t disconnect.'; return; }
+      $('payDiscPin').value = ''; m.textContent = ''; $('payDiscBox').classList.add('hidden');
+      pay.acct = r.j.acct; renderPay(false); toast('PayMongo disconnected. QR payments are off until you connect again.');
     });
 
     $('signinForm').addEventListener('submit', function(e){

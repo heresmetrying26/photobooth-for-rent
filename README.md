@@ -40,6 +40,12 @@ Edit `protected/booth.html` and redeploy. (The build step re-bundles it automati
 - Guest photos are uploaded to Drive as high-quality JPEGs (smaller, faster QR codes).
 
 ## Weak internet & backup folder
+- **Offline at the venue ("scan now, photos arrive later"):** if the booth has no internet when a session ends,
+  the result card shows the event's **All photos** QR with "Scan now · your photo arrives here once the booth is
+  back online", and the photo waits on the tablet until the connection returns (no retry delay when clearly
+  offline). The event folder must have been set up online once (Setup), so the booth knows the gallery link.
+- **QR sign:** Setup → 6 Share → **Download QR sign** makes an A5 "Scan for your photos" sign (300 dpi PNG) with the
+  event name and gallery QR, to print and stand by the booth.
 - **Upload retry + waiting list:** each Drive upload is tried 3 times. If it still fails, the
   photo is kept on the device (IndexedDB) and the Photo Session panel shows **Waiting to
   upload** with **Retry now** / **Save to this computer**. Waiting photos upload by themselves
@@ -402,6 +408,48 @@ small line; a template's own colours come first under Text colour.
 - **Event name over busy backdrops**: when lines, borders or confetti sit behind the event name and
   date, the booth softly fades them out right behind the words so the text stays clear.
 - Uploaded images are kept in the `setups` Blobs store; nothing new to set up.
+
+## Guest payments: vouchers + the renter's own PayMongo (add-on)
+An add-on you switch on per code in Admin (**Give guest payments**). Then, per event, the renter picks in the booth:
+**Setup → 5 Session → Guest payment → Free / QR payment / Vouchers / QR + vouchers**, the price per session
+(₱20–₱20,000) and optional "prints included" (overrides the per-session print limit for paid sessions).
+
+**Guests:** the welcome screen shows "₱120 per session · Tap to start". Tapping opens the pay sheet:
+- *QR payment* — a one-time QR Ph from the **renter's** PayMongo (GCash, Maya, any bank app), 5-minute timer;
+  the session starts by itself when PayMongo confirms (webhook, with a direct check every few seconds as backup).
+- *Voucher* — a big number pad; 8-digit codes like `6041 0839`, each works once, only for its event.
+- A paid session is kept on the tablet until the countdown starts (a reload or Cancel at "Get ready" doesn't lose it).
+- Offline: vouchers still work (the tablet keeps a hashed list of the event's unused codes and syncs "used" later;
+  give each tablet its own batch if several run offline). QR payment needs internet; with "QR + vouchers" the
+  booth falls back to vouchers.
+
+**Vouchers:** made in the booth (Setup → Guest payment → Make vouchers) or by you in Admin (**Payments & vouchers**).
+**Print tickets** opens `/pay/tickets.html`: 10 cut-out tickets per A4 (event, code, price, what's included).
+Cancel unused vouchers per batch. My Events lists every batch for reprinting.
+
+**PayMongo connect (My Events → Guest payments):** the renter pastes their **secret key** once and sets a 4–8 digit
+payments PIN (needed to replace or disconnect). The server checks the key with PayMongo and sets up the payment
+webhook on their account by itself. Money goes straight to the renter's PayMongo; nothing passes through you.
+My Events shows payments (live vs test) per event. Test keys (`sk_test_`) show a "Simulate payment" button on the
+booth. QR Ph must be enabled on their PayMongo account (PayMongo support). PayMongo's QR Ph fee is 1.5%.
+
+**Security of the renter's key:**
+- Encrypted with AES-256-GCM using `PB_VAULT_KEY` (Netlify environment variable, never in code or the database),
+  bound to that booking, stored in the Blobs store `pay`. The webhook signing secret is encrypted the same way.
+- Write-only: no endpoint ever returns it (Admin, My Events and the booth only see "test/live · …last4").
+- Only decrypted in memory for the PayMongo call that needs it; never sent to the tablet, never logged.
+- Webhooks are verified with PayMongo's HMAC-SHA256 signature; forged "paid" messages are rejected.
+- Admin **Reset payments PIN** also disconnects PayMongo (so nobody can swap in another key with a reset).
+- Limit: whoever controls the Netlify account could change the code, so state in your terms that keys are only
+  used to create the renter's own payments.
+
+**One-time setup (you):** in Netlify → Site configuration → Environment variables add
+`PB_VAULT_KEY` = 32+ random characters, then redeploy. Generate one with
+`node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"` or in PowerShell
+`$b=New-Object byte[] 48;[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b);[Convert]::ToBase64String($b)`.
+Keep it secret and **never change it**: a new value makes every saved key unreadable (renters would reconnect).
+Files: `netlify/lib/pay.mjs`, `netlify/functions/pay.mjs` (`/api/pay`), `netlify/functions/payhook.mjs`
+(`/api/pay/hook`), `public/pay/tickets.html`.
 
 ## Online gallery (`/g/<folder id>`)
 Guests' QR codes open a photobooth4u gallery page instead of Google Drive: a photo grid,

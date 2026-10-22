@@ -85,3 +85,10 @@
     Cross-Origin-Embedder-Policy = "require-corp"
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-cache"
+
+# Voucher ticket sheet (printed from the booth / My Events / Admin)
+[[headers]]
+  for = "/pay/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-cache"

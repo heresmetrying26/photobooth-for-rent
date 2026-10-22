@@ -1315,7 +1315,11 @@
   .brandbar.topbar{flex-direction:row; justify-content:space-between; align-items:center; gap:12px; max-width:1040px; margin:0 auto 4px; padding:10px 0;}
   body.in-session .brandbar.topbar{max-width:min(1400px, 96vw); margin-bottom:10px;}
   .topbar .brand-logo{flex:1 1 0; gap:9px; min-width:0;}
-  .topbar-end{flex:1 1 0;}
+  .topbar-end{flex:1 1 0; display:flex; justify-content:flex-end;}
+  .my-events-link{display:inline-flex; align-items:center; gap:7px; min-height:40px; padding:8px 16px; border-radius:999px; border:1.5px solid var(--line); background:#fff;
+    color:var(--ink); font:800 13.5px 'Manrope',sans-serif; text-decoration:none; white-space:nowrap; transition:border-color .15s, color .15s;}
+  .my-events-link:hover, .my-events-link:focus-visible{border-color:var(--brand); color:var(--brand);}
+  .my-events-link[hidden], body.in-session .my-events-link, body.booth-locked .my-events-link{display:none !important;}
   .topbar .brand-mark{width:26px; height:26px; gap:3px;}
   .topbar .brand-mark i{border-radius:3.5px;}
   .topbar .brand-word b{font-size:22px;}
@@ -1676,7 +1680,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <span class="tab-num">2</span> Photo Session
     </button>
   </div>
-  <div class="topbar-end" aria-hidden="true"></div>
+  <div class="topbar-end"><a class="my-events-link" id="myEventsLink" href="/lifetime/?booth=1" target="_blank" rel="noopener" hidden><svg class="ic" aria-hidden="true"><use href="#i-bookmark"/></svg><span>My Events</span><span aria-hidden="true">↗</span></a></div>
 </header>
 
 <!-- TAB 1: SETUP -->
@@ -2223,7 +2227,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <a id="driveFolderOpen" href="#" target="_blank" rel="noopener">Open gallery</a>
             <button type="button" id="driveFolderCopy">Copy link</button>
             <a id="driveFolderDrive" href="#" target="_blank" rel="noopener" style="display:none;">Drive folder</a>
-            <a id="driveFolderAll" href="/lifetime/" target="_blank" rel="noopener" style="display:none;">All my events ↗</a>
+            <a id="driveFolderAll" href="/lifetime/?booth=1" target="_blank" rel="noopener" style="display:none;">All my events ↗</a>
           </div>
           <button type="button" class="action-btn" id="qrSignBtn" style="width:auto; margin:10px auto 0; padding:9px 16px;">Download QR sign</button>
           <p class="panel-hint" style="margin-top:8px;">Print the sign and put it by the booth. Guests get their own QR after each session; if the booth is offline, their photo still arrives in this gallery once it's back online.</p>
@@ -2321,6 +2325,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <div class="menu-wrap">
           <button type="button" class="menu-btn" id="setupMenuBtn" aria-label="More" aria-haspopup="true">⋯</button>
           <div class="menu" id="setupMenu" hidden>
+            <button type="button" id="menuMyEvents" hidden>My Events ↗ (links, payments, printing)</button>
             <button type="button" id="resetSetupBtn" class="danger">Reset setup</button>
           </div>
         </div>
@@ -9679,7 +9684,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     document.getElementById('payPrintsPlus').disabled = payCfg.prints >= 5;
     var qs = document.getElementById('payQrStatus');
     qs.style.display = payQrOn() ? '' : 'none';
-    var link = '<a href="/lifetime/" target="_blank" rel="noopener">My Events</a>';
+    var link = '<a href="/lifetime/?booth=1" target="_blank" rel="noopener">My Events</a>';
     if(payAcct && payAcct.connected){
       qs.className = 'pay-status ok';
       qs.innerHTML = '<b>PayMongo connected</b>' + (payAcct.mode === 'live' ? '<span class="tag live">Live</span>' : '<span class="tag">Test mode</span>') +
@@ -12548,6 +12553,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   // ---- Start bar ----
   document.getElementById('startBarBtn').addEventListener('click', function(){ goToSessionBtn.click(); });
+  // My Events (event links, guest payments, printing) opens signed in with this booth's own login: nothing to type.
+  (function(){
+    var rental = !!(window.__PB && window.__PB.type === 'rental');
+    var a = document.getElementById('myEventsLink'), m = document.getElementById('menuMyEvents');
+    if(a) a.hidden = !rental;
+    if(m){ m.hidden = !rental; m.addEventListener('click', function(){ window.open('/lifetime/?booth=1', '_blank', 'noopener'); }); }
+  })();
   var setupMenuBtn = document.getElementById('setupMenuBtn'), setupMenu = document.getElementById('setupMenu');
   setupMenuBtn.addEventListener('click', function(e){ e.stopPropagation(); setupMenu.hidden = !setupMenu.hidden; });
   document.addEventListener('click', function(e){ if(!setupMenu.hidden && !setupMenu.contains(e.target)) setupMenu.hidden = true; });

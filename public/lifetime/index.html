@@ -124,6 +124,21 @@
     .pinbox{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
     .pinbox input{width:130px;padding:10px 12px;font:inherit;font-size:16px;font-weight:700;letter-spacing:4px;border:1.5px solid var(--line);border-radius:12px;background:#FAF7F2;outline:none}
     .pinbox input:focus{border-color:var(--red)}
+    /* printing (lifetime) */
+    .sizes{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+    .sz{position:relative;display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1.5px solid var(--line);border-radius:999px;background:#fff;font-size:13.5px;font-weight:700;cursor:pointer;user-select:none}
+    .sz input{position:absolute;opacity:0;pointer-events:none}
+    .sz i{width:16px;height:16px;border-radius:5px;border:1.5px solid #c9c0b3;flex:none;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;color:#fff}
+    .sz.on{border-color:var(--red);background:var(--tint);color:var(--ink)}
+    .sz.on i{background:var(--red);border-color:var(--red)}
+    .sz.on i::after{content:'\2713'}
+    .sz .x{margin-left:2px;color:var(--muted);font-weight:800}
+    .prow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:16px;font-size:14px;font-weight:700}
+    .prow input,.prow select{padding:10px 12px;font:inherit;font-size:15px;font-weight:700;border:1.5px solid var(--line);border-radius:12px;background:#FAF7F2;color:var(--ink);outline:none}
+    .prow input:focus,.prow select:focus{border-color:var(--red);background:#fff}
+    .prow input[type=number]{width:96px}
+    .psave{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px}
+    .psave .msg{margin:0}
     @media (max-width:640px){
       .pform .row2{grid-template-columns:1fr}
       .ptable .hide-sm{display:none}
@@ -232,6 +247,33 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
           <div id="payBatchList"></div>
         </div>
       </section>
+      <section class="card pay hidden" id="printCard" aria-labelledby="printH">
+        <div class="pay-top">
+          <div><h2 id="printH">Printing</h2><p class="sub" id="printSub">Choose the paper sizes your booth offers and how many prints guests can make. Booths pick up changes within about 5 minutes, or straight away after you reload the booth.</p></div>
+          <span class="pchip on" id="printChip"><i></i><span>Printing on</span></span>
+        </div>
+        <div id="printBody">
+          <p class="sub" style="margin-top:14px"><b style="color:var(--ink)">Paper sizes</b> · tick every size your printer can use</p>
+          <div class="sizes" id="printSizes"></div>
+          <div class="prow">
+            <span>Add a custom size</span>
+            <input type="number" id="csW" min="1" step="0.1" placeholder="Width" aria-label="Width">
+            <span>×</span>
+            <input type="number" id="csH" min="1" step="0.1" placeholder="Height" aria-label="Height">
+            <select id="csU" aria-label="Unit"><option value="in">in</option><option value="mm">mm</option></select>
+            <button class="btn" type="button" id="csAdd">Add</button>
+          </div>
+          <div class="prow">
+            <span>Print limit</span>
+            <input type="number" id="limEv" min="0" max="100000" placeholder="No limit" aria-label="Sheets per event">
+            <span>per event ·</span>
+            <input type="number" id="limSe" min="0" max="50" placeholder="No limit" aria-label="Sheets per guest session">
+            <span>per guest session</span>
+          </div>
+          <p class="sub" style="margin-top:8px;font-size:13px">Counts sheets of paper (copies included). Leave empty for no limit.</p>
+          <div class="psave"><button class="btn primary" type="button" id="printSave">Save print settings</button><p class="msg" id="printMsg"></p></div>
+        </div>
+      </section>
       <p class="notice" id="keepNotice"><b>Heads up</b><span id="keepText"></span></p>
       <div class="events" id="events"></div>
     </section>
@@ -277,6 +319,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       auth = a; data = j;
       if(a.code) store(CODE_KEY, a.code);
       render(j); show('accountView');
+      renderPrint();
       loadPay();
       if(/[?&]welcome=1/.test(location.search)){
         $('startTitle').textContent = 'Welcome, ' + j.label + '!';
@@ -357,6 +400,76 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
             '<p><b style="color:var(--ink);">Scan to open the photos</b><br>' + esc(url) + '</p>';
         }
       }
+    });
+
+    // ---- Printing (lifetime codes set their own paper sizes and limits) ----
+    var PAPER = [
+      ['2x6', '2×6 in strip'], ['2.5x7.5', '2.5×7.5 in keychain'], ['3.5x5', '3.5×5 in (3R)'], ['4x6', '4×6 in (4R)'],
+      ['selphy', 'Canon Selphy postcard'], ['selphycard', 'Canon Selphy card'], ['5x7', '5×7 in (5R)'], ['6x8', '6×8 in (6R)'],
+      ['8x10', '8×10 in (8R)'], ['A6', 'A6'], ['A5', 'A5'], ['A4', 'A4'], ['Letter', 'Letter']
+    ];
+    var CUSTOM_RE = /^(\d{1,3}(?:\.\d{1,2})?)x(\d{1,3}(?:\.\d{1,2})?)(in|mm)$/;
+    var psel = [], pcustom = [];
+    function renderPrint(){
+      var card = $('printCard');
+      if(!data || !data.lifetime){ card.classList.add('hidden'); return; }
+      card.classList.remove('hidden');
+      var on = !!(data.print && data.print.enabled);
+      $('printChip').className = 'pchip' + (on ? ' on' : '');
+      $('printChip').querySelector('span').textContent = on ? 'Printing on' : 'Not in your package';
+      $('printBody').classList.toggle('hidden', !on);
+      $('printSub').textContent = on
+        ? 'Choose the paper sizes your booth offers and how many prints guests can make. Booths pick up changes within about 5 minutes, or straight away after you reload the booth.'
+        : 'Printing isn’t part of your package yet. Message us to add it, then choose your paper sizes here.';
+      if(!on) return;
+      psel = data.print.sizes.slice();
+      pcustom = psel.filter(function(k){ return !PAPER.some(function(p){ return p[0] === k; }); });
+      $('limEv').value = data.print.eventLimit || '';
+      $('limSe').value = data.print.sessionLimit || '';
+      drawSizes();
+    }
+    function sizeName(k){ var m = CUSTOM_RE.exec(k); return m ? m[1] + '×' + m[2] + ' ' + m[3] : k; }
+    function drawSizes(){
+      $('printSizes').innerHTML = PAPER.map(function(p){ return [p[0], p[1], false]; }).concat(pcustom.map(function(k){ return [k, sizeName(k) + ' (custom)', true]; })).map(function(x){
+        var on = psel.indexOf(x[0]) >= 0;
+        return '<label class="sz' + (on ? ' on' : '') + '"><input type="checkbox" value="' + esc(x[0]) + '"' + (on ? ' checked' : '') + '><i></i>' + esc(x[1]) +
+          (x[2] ? '<span class="x" data-rm="' + esc(x[0]) + '" title="Remove">×</span>' : '') + '</label>';
+      }).join('');
+    }
+    $('printSizes').addEventListener('click', function(e){
+      var rm = e.target.closest('[data-rm]');
+      if(rm){ e.preventDefault(); var k = rm.dataset.rm; pcustom = pcustom.filter(function(x){ return x !== k; }); psel = psel.filter(function(x){ return x !== k; }); drawSizes(); return; }
+    });
+    $('printSizes').addEventListener('change', function(e){
+      var k = e.target.value; if(!k) return;
+      if(e.target.checked){ if(psel.indexOf(k) < 0) psel.push(k); } else psel = psel.filter(function(x){ return x !== k; });
+      e.target.closest('.sz').classList.toggle('on', e.target.checked);
+    });
+    $('csAdd').addEventListener('click', function(){
+      var w = Number($('csW').value), h = Number($('csH').value), u = $('csU').value;
+      var lo = u === 'in' ? 1 : 25, hi = u === 'in' ? 20 : 500;
+      if(!(w >= lo && w <= hi && h >= lo && h <= hi)){ $('printMsg').textContent = u === 'in' ? 'Use 1 to 20 inches.' : 'Use 25 to 500 mm.'; return; }
+      var k = (+w.toFixed(2)) + 'x' + (+h.toFixed(2)) + u;
+      if(pcustom.length >= 6 && pcustom.indexOf(k) < 0){ $('printMsg').textContent = 'Up to 6 custom sizes.'; return; }
+      if(pcustom.indexOf(k) < 0) pcustom.push(k);
+      if(psel.indexOf(k) < 0) psel.push(k);
+      $('csW').value = ''; $('csH').value = ''; $('printMsg').textContent = '';
+      drawSizes();
+    });
+    $('printSave').addEventListener('click', async function(){
+      var m = $('printMsg');
+      if(!psel.length){ m.textContent = 'Pick at least one paper size.'; return; }
+      var btn = this; btn.disabled = true; m.style.color = 'var(--muted)'; m.textContent = 'Saving…';
+      var r, j = {};
+      try{
+        r = await fetch('/api/portal', { method: 'POST', headers: { 'content-type': 'application/json' }, cache: 'no-store',
+          body: JSON.stringify(Object.assign({ action: 'print.save', sizes: psel, eventLimit: $('limEv').value, sessionLimit: $('limSe').value }, auth || {})) });
+        j = await r.json().catch(function(){ return {}; });
+      }catch(e){ r = { ok: false }; j = { error: 'Can’t reach the server. Check your internet.' }; }
+      btn.disabled = false; m.style.color = '';
+      if(!r.ok){ m.textContent = j.error || 'Couldn’t save.'; return; }
+      data.print = j.print; renderPrint(); m.textContent = '';
+      toast('Print settings saved. Reload the booth to use them now.');
     });
 
     // ---- Guest payments (PayMongo + vouchers) ----
@@ -482,6 +595,9 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     // Sign-in order: a code in the link (#PB-...), a remembered code, then the
     // booth's own unlock on this device. Otherwise ask for the code.
     (async function boot(){
+      var fromBooth = /[?&]booth=1/.test(location.search);
+      var token0 = read('pb_token'), device0 = read('pb_device');
+      if(fromBooth){ try{ history.replaceState(null, '', location.pathname); }catch(e){} if(token0 && device0 && await load({ token: token0, deviceId: device0 })) return; }
       var fromLink = decodeURIComponent((location.hash || '').replace(/^#/, '')).trim();
       if(fromLink){ try{ history.replaceState(null, '', location.pathname); }catch(e){} if(await load({ code: fromLink })) return; }
       var saved = read(CODE_KEY);

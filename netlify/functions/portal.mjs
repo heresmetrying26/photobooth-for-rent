@@ -1,6 +1,7 @@
 import {
   safe, json, licenses, verifyToken, normCode, throttle, recordFail, clearFail,
-  devicesOf, maxDevicesOf, eventsStore, isDriveUrl, DAY, EVENT_KEEP_DAYS, BONUS_KEEP_DAYS, getSettings
+  devicesOf, maxDevicesOf, eventsStore, isDriveUrl, DAY, EVENT_KEEP_DAYS, BONUS_KEEP_DAYS, getSettings,
+  normPrint, putLicense
 } from '../lib/core.mjs';
 
 // Backs the /lifetime customer page: sign in with the rental code (or, on a
@@ -35,6 +36,23 @@ export default safe(async (req, context) => {
   if (rec.status === 'revoked') return json({ error: 'This code has been disabled. Please contact the owner.' }, 403);
 
   const now = Date.now();
+
+  // Lifetime codes manage their own paper sizes and print limits (once Admin
+  // has switched printing on for them). Booths pick it up within ~5 minutes.
+  if (b.action === 'print.save') {
+    if (!rec.lifetime) return json({ error: 'Only lifetime codes can change their print settings here. Please message us.' }, 403);
+    if (!(rec.print && rec.print.enabled)) return json({ error: 'Printing isn’t part of your package yet. Please message us to add it.' }, 403);
+    const next = normPrint(true, b.sizes, { eventLimit: b.eventLimit, sessionLimit: b.sessionLimit });
+    if (!next.enabled) return json({ error: 'Pick at least one paper size.' }, 400);
+    rec.print = next;
+    await putLicense(store, rec.key, rec);
+    if (rec.bonusKey) {
+      const bonus = await store.get(rec.bonusKey, { type: 'json' });
+      if (bonus) await putLicense(store, rec.bonusKey, { ...bonus, print: next });
+    }
+    return json({ ok: true, print: next });
+  }
+
   const doc = (await eventsStore().get(rec.key, { type: 'json' })) || { events: [] };
   const events = doc.events
     .filter((e) => isDriveUrl(e.folderUrl))
@@ -55,6 +73,7 @@ export default safe(async (req, context) => {
     expiresAt: rec.lifetime ? null : rec.expiresAt,
     startsAt: rec.startsAt || null,
     traditional: !!rec.traditional,
+    print: rec.print && rec.print.enabled ? normPrint(true, rec.print.sizes, rec.print) : { enabled: false, sizes: [] },
     folderPrefix: rec.lifetime ? (rec.folderName || rec.label || rec.code) : null,
     devices: { used: devicesOf(rec).length, max: maxDevicesOf(rec) },
     keepDays: EVENT_KEEP_DAYS,

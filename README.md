@@ -281,6 +281,12 @@ subfolder. Then **Deploy → Manage deployments → Edit → New version** so th
   7 days after that event's last photo. No Apps Script change is needed for this.
 
 ## My Events page (`/lifetime/`)
+- **From the booth:** Setup has a **My Events ↗** button (top bar; on phones in the ⋯ menu). It opens
+  `/lifetime/?booth=1`, which signs in with that booth's own login, so nothing to type. Hidden during the
+  session, when locked, and for trials.
+- **Printing (lifetime codes):** once Admin has switched printing on for the code, the renter picks the paper sizes
+  (any built-in size incl. Canon Selphy, plus up to 6 custom sizes) and the limits per event / per session in
+  **My Events → Printing** (`/api/portal` action `print.save`). Booths pick it up within ~5 minutes or on reload.
 A page for customers to find every event's Drive folder again, from any phone or computer.
 - **Sign in** with their code, or open the link from Admin → **Copy events page link**
   (`/lifetime/#PB-XXXX-XXXX-XXXX`, signs them in and is then remembered on that device). On a

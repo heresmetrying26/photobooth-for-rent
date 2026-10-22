@@ -172,13 +172,19 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     <section id="signinView" class="signin hidden">
       <p class="eyebrow">My events</p>
       <h1>Find your event photos</h1>
-      <p class="lead" style="margin:0 auto;">Enter your photobooth4u code to see every event's Google Drive folder, QR code and link.</p>
+      <p class="lead" style="margin:0 auto;">Enter your photobooth4u code to see every event's photo gallery, QR code and link.</p>
       <form id="signinForm" autocomplete="off">
         <input id="codeInput" type="text" inputmode="text" placeholder="PB-XXXX-XXXX-XXXX" aria-label="Your code" spellcheck="false">
         <button class="btn primary" id="signinBtn" type="submit">See my events</button>
         <p class="msg" id="signinMsg" role="alert"></p>
       </form>
-      <p class="hint">Opening this page doesn't use up any of your devices. Keep your code private — anyone with it can see your event folders.</p>
+      <p class="hint"><a href="#" id="forgotLink" style="font-weight:800;color:var(--red)">Forgot your code?</a></p>
+      <form id="forgotForm" class="hidden" autocomplete="on" style="margin-top:6px">
+        <input id="forgotEmail" type="email" inputmode="email" placeholder="Your email address" aria-label="Your email address" style="text-transform:none;letter-spacing:0">
+        <button class="btn" id="forgotBtn" type="submit">Email me my code</button>
+        <p class="msg" id="forgotMsg" role="status"></p>
+      </form>
+      <p class="hint">Opening this page doesn't use up any of your devices. Keep your code private — anyone with it can see your event photos.</p>
     </section>
 
     <section id="loadingView" class="signin"><p class="lead" style="margin:0 auto;">Loading your events…</p></section>
@@ -245,6 +251,23 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
           <h3>Vouchers</h3>
           <p class="sub">Make vouchers in the booth (Setup → 5 Session → Guest payment). Every batch shows here so you can reprint tickets.</p>
           <div id="payBatchList"></div>
+        </div>
+      </section>
+      <section class="card pay" id="acctCard" aria-labelledby="acctH">
+        <div class="pay-top">
+          <div><h2 id="acctH">Your details &amp; devices</h2><p class="sub">Your name and email for photobooth4u. If you ever forget your code, we email it to this address.</p></div>
+        </div>
+        <div class="pform" style="max-width:none">
+          <div class="row2">
+            <label>Name<input type="text" id="accName" maxlength="60" autocomplete="name" style="font-size:15px"></label>
+            <label>Email<input type="email" id="accEmail" maxlength="200" autocomplete="email" inputmode="email" placeholder="you@example.com" style="font-size:15px"></label>
+          </div>
+          <div class="psave" style="margin-top:0"><button class="btn primary" type="button" id="accSave">Save details</button><p class="msg" id="accMsg"></p></div>
+        </div>
+        <div class="psec">
+          <h3 id="devH">Devices</h3>
+          <p class="sub" id="devSub"></p>
+          <div id="devList"></div>
         </div>
       </section>
       <section class="card pay hidden" id="printCard" aria-labelledby="printH">
@@ -319,6 +342,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       auth = a; data = j;
       if(a.code) store(CODE_KEY, a.code);
       render(j); show('accountView');
+      renderAccount();
       renderPrint();
       loadPay();
       if(/[?&]welcome=1/.test(location.search)){
@@ -351,7 +375,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         el.innerHTML = '<div class="card empty"><h2>No events yet</h2>' +
           (d.lifetime
             ? 'Open the photo booth and type your event name in <b>Setup → Google Drive</b>. The event shows up here with its link and QR code.'
-            : 'Once you set up the photo booth on your event day, your Google Drive folder shows up here with its link and QR code.') +
+            : 'Once you set up the photo booth on your event day, your event gallery shows up here with its link and QR code.') +
           '</div>';
         return;
       }
@@ -368,9 +392,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
           '<div class="ev-actions">' + (e.deleted ? '' :
             '<button class="btn" type="button" data-a="qr" data-i="' + i + '">Show QR</button>' +
             '<button class="btn" type="button" data-a="copy" data-i="' + i + '">Copy link</button>' +
-            (gal ? '<a class="btn" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">Drive folder</a>' +
-                   '<a class="btn primary" href="' + esc(gal) + '" target="_blank" rel="noopener">Open gallery</a>'
-                 : '<a class="btn primary" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">Open folder</a>')) +
+            (gal ? '<a class="btn primary" href="' + esc(gal) + '" target="_blank" rel="noopener">Open gallery</a>' : '')) +
           '</div>' +
           '<div class="qrbox hidden" data-qr="' + i + '"></div>' +
           '</article>';
@@ -400,6 +422,65 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
             '<p><b style="color:var(--ink);">Scan to open the photos</b><br>' + esc(url) + '</p>';
         }
       }
+    });
+
+    // ---- Your details & devices ----
+    function ago(t){ if(!t) return ''; var d = Math.round((Date.now() - t) / 86400000); return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago'; }
+    function renderAccount(){
+      if(!data) return;
+      if(document.activeElement !== $('accName')) $('accName').value = data.label || '';
+      if(document.activeElement !== $('accEmail')) $('accEmail').value = data.email || '';
+      var dv = data.devices || { used: 0, max: 1, list: [] };
+      $('devSub').innerHTML = '<b style="color:var(--ink)">' + dv.used + ' of ' + dv.max + '</b> device' + (dv.max === 1 ? '' : 's') + ' in use. Changed tablets or phones? Remove the old one here, then enter your code on the new device.';
+      $('devList').innerHTML = (dv.list || []).map(function(d){
+        return '<div class="vb"><p><b>Device ' + d.no + (d.kind ? ' · ' + esc(d.kind) : '') + '</b>' + (d.me ? ' <span class="mini" style="background:var(--ok-bg);color:#174F46">This device</span>' : '') +
+          '<br><small>Added ' + esc(fmt(d.at)) + (d.seen ? ' · last used ' + esc(ago(d.seen)) : '') + '</small></p>' +
+          '<button class="btn" type="button" data-rmdev="' + d.no + '">Remove</button></div>';
+      }).join('') || '<p class="sub" style="margin-top:8px">No devices yet. Enter your code in the booth on each tablet or computer you use.</p>';
+    }
+    $('accSave').addEventListener('click', async function(){
+      var m = $('accMsg'), name = $('accName').value.trim(), email = $('accEmail').value.trim();
+      $('accName').classList.remove('bad'); $('accEmail').classList.remove('bad');
+      if(!name){ m.textContent = 'Please type a name.'; $('accName').classList.add('bad'); return; }
+      if(email && !/^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(email)){ m.textContent = 'That email address doesn’t look right.'; $('accEmail').classList.add('bad'); return; }
+      var btn = this; btn.disabled = true; m.style.color = 'var(--muted)'; m.textContent = 'Saving…';
+      var r, j = {};
+      try{ r = await fetch('/api/portal', { method: 'POST', headers: { 'content-type': 'application/json' }, cache: 'no-store', body: JSON.stringify(Object.assign({ action: 'account.save', name: name, email: email }, auth || {})) }); j = await r.json().catch(function(){ return {}; }); }
+      catch(e){ r = { ok: false }; j = { error: 'Can’t reach the server. Check your internet.' }; }
+      btn.disabled = false; m.style.color = '';
+      if(!r.ok){ m.textContent = j.error || 'Couldn’t save.'; if(j.field === 'email') $('accEmail').classList.add('bad'); return; }
+      data.label = j.label; data.email = j.email; m.textContent = '';
+      $('acctName').textContent = j.label;
+      toast('Details saved');
+    });
+    $('devList').addEventListener('click', async function(e){
+      var b = e.target.closest('button[data-rmdev]'); if(!b) return;
+      var no = Number(b.dataset.rmdev), d = (data.devices.list || []).find(function(x){ return x.no === no; }) || {};
+      if(!b.classList.contains('primary')){
+        b.classList.add('primary'); b.textContent = d.me ? 'Tap again: sign out this device' : 'Tap again to remove';
+        setTimeout(function(){ if(b.isConnected){ b.classList.remove('primary'); b.textContent = 'Remove'; } }, 4000);
+        return;
+      }
+      b.disabled = true;
+      var r, j = {};
+      try{ r = await fetch('/api/portal', { method: 'POST', headers: { 'content-type': 'application/json' }, cache: 'no-store', body: JSON.stringify(Object.assign({ action: 'device.remove', no: no }, auth || {})) }); j = await r.json().catch(function(){ return {}; }); }
+      catch(err){ r = { ok: false }; j = { error: 'Can’t reach the server.' }; }
+      if(!r.ok){ b.disabled = false; toast(j.error || 'Couldn’t remove it.'); return; }
+      toast('Device ' + no + ' removed. It locks within about 5 minutes.');
+      if(d.me && auth && auth.token){ auth = null; show('signinView'); return; }
+      load(auth, true);
+    });
+    $('forgotLink').addEventListener('click', function(e){ e.preventDefault(); $('forgotForm').classList.toggle('hidden'); $('forgotEmail').focus(); });
+    $('forgotForm').addEventListener('submit', async function(e){
+      e.preventDefault();
+      var email = $('forgotEmail').value.trim(), m = $('forgotMsg');
+      if(!/^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(email)){ m.textContent = 'Please type your email address.'; return; }
+      $('forgotBtn').disabled = true; m.style.color = 'var(--muted)'; m.textContent = 'Sending…';
+      var r, j = {};
+      try{ r = await fetch('/api/portal', { method: 'POST', headers: { 'content-type': 'application/json' }, cache: 'no-store', body: JSON.stringify({ action: 'recover', email: email }) }); j = await r.json().catch(function(){ return {}; }); }
+      catch(err){ r = { ok: false }; j = { error: 'Can’t reach the server. Check your internet.' }; }
+      $('forgotBtn').disabled = false;
+      m.style.color = r.ok ? 'var(--ok)' : ''; m.textContent = r.ok ? j.message : (j.error || 'Couldn’t send. Please message us.');
     });
 
     // ---- Printing (lifetime codes set their own paper sizes and limits) ----

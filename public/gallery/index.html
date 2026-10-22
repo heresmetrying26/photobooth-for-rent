@@ -196,7 +196,7 @@
   function showState(title, html, withDrive){
     $('skel').classList.add('hidden'); $('grid').classList.add('hidden'); $('empty').classList.add('hidden'); $('tabs').classList.add('hidden');
     $('state').innerHTML = '<h2>' + esc(title) + '</h2><p>' + html + '</p>' +
-      (withDrive && DRIVE ? '<a class="btn primary" href="' + DRIVE + '" target="_blank" rel="noopener noreferrer">Open the Google Drive folder</a>' : '');
+      (withDrive ? '<button class="btn primary" type="button" onclick="location.reload()">Try again</button>' : '');
     $('state').classList.remove('hidden');
   }
 
@@ -208,14 +208,14 @@
       r = await fetch('/api/gallery?f=' + encodeURIComponent(FOLDER) + (WANT ? '&v=' + encodeURIComponent(WANT.id) + (wantTries ? '-' + wantTries : '') : ''), { cache: 'no-store' });
       j = await r.json();
     }catch(e){
-      if(firstLoad){ showState('Can’t load the photos', 'Check your internet and try again, or open the photos in Google Drive.', true); $('sub').textContent = ''; }
+      if(firstLoad){ showState('Can’t load the photos', 'Check your internet and try again.', true); $('sub').textContent = ''; }
       return;
     }
     if(!j || !j.ok){
       if(!firstLoad) return;
       $('sub').textContent = '';
       if(j && j.error === 'not-found') showState('This gallery isn’t available', 'The link may be wrong, or the photos were removed after the event.', false);
-      else showState('Photos are in Google Drive', 'The gallery is taking a break. You can still see and download every photo in the Drive folder.', true);
+      else showState('The gallery is taking a short break', 'Your photos are safe. Please try again in a few minutes.', true);
       return;
     }
     $('state').classList.add('hidden');

@@ -8,12 +8,15 @@
 // Setup: Project Settings (gear icon) → Script Properties → add
 //   UPLOAD_SECRET = <the exact same value as UPLOAD_SECRET in Netlify>
 // then Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy.
+// The first deploy after adding email asks for the "Send email as you" permission: allow it.
+// Emails ("Forgot your code?") are sent from this Google account (about 100 a day on a free account).
 
 var ROOT_FOLDER_ID = '1gwMiPTDJzqYKevAZmscPvCzpM5937a8y';
 var MAX_IMAGE_BASE64 = 20 * 1024 * 1024; // ~15 MB image
 
 // ---------- ticket check ----------
-function verifyTicket_(ticket) {
+// Any signed ticket (upload or mail), or null.
+function verifySigned_(ticket) {
   var secret = PropertiesService.getScriptProperties().getProperty('UPLOAD_SECRET');
   if (!secret) throw new Error('UPLOAD_SECRET is not set in Script Properties.');
   var parts = String(ticket || '').split('.');
@@ -25,8 +28,28 @@ function verifyTicket_(ticket) {
   var body = parts[0];
   while (body.length % 4) body += '=';
   var t = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(body)).getDataAsString('UTF-8'));
-  if (!t || !t.f || !t.exp || t.exp < Date.now()) return null;
+  if (!t || !t.exp || t.exp < Date.now()) return null;
   return t;
+}
+// Upload ticket: must name a folder.
+function verifyTicket_(ticket) {
+  var t = verifySigned_(ticket);
+  return t && t.f && !t.m ? t : null;
+}
+// Mail ticket ("Forgot your code?", Admin "Email code"): signed by the server,
+// valid 2 minutes, and each ticket sends only once.
+function verifyMailTicket_(ticket) {
+  var t = verifySigned_(ticket);
+  if (!t || t.m !== 'mail' || !t.to || t.f) return null;
+  var cache = CacheService.getScriptCache(), key = 'mail_' + String(ticket).split('.')[1].slice(0, 60);
+  if (cache.get(key)) return null;
+  cache.put(key, '1', 600);
+  return t;
+}
+function sendMail_(t) {
+  if (MailApp.getRemainingDailyQuota() < 1) return { ok: false, error: 'Daily email limit reached. Try again tomorrow.' };
+  MailApp.sendEmail({ to: String(t.to), subject: String(t.s || 'photobooth4u'), body: String(t.b || ''), htmlBody: t.h ? String(t.h) : undefined, name: 'photobooth4u' });
+  return { ok: true };
 }
 
 function safeEqual_(a, b) {
@@ -115,6 +138,11 @@ function getNextSessionNumber(folder) {
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
+    if (data.mail) {
+      var mt = verifyMailTicket_(data.mail);
+      if (!mt) return jsonOut({ ok: false, error: 'Email not allowed (missing, used or expired ticket).' });
+      return jsonOut(sendMail_(mt));
+    }
     var t = verifyTicket_(data.ticket);
     if (!t) return jsonOut({ ok: false, error: 'Upload not allowed (missing or expired ticket). Reload the booth and try again.' });
 

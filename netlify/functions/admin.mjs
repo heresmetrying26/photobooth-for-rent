@@ -6,7 +6,7 @@ import {
 import { timingSafeEqual, createHash } from 'node:crypto';
 import { setupsStore } from '../lib/core.mjs';
 import { ownerId, eventKeyOf, getAcct, acctPublic, acctKey, payStore, unseal, pm, listJSON, usedMap, batchView, createBatch, batchKey } from '../lib/pay.mjs';
-import { cleanEventName } from '../lib/core.mjs';
+import { cleanEventName, sendMail, codeEmail, EMAIL_RE } from '../lib/core.mjs';
 
 function passwordOk(input) {
   const real = process.env.ADMIN_PASSWORD;
@@ -32,7 +32,7 @@ function queryIndex(ix, b, now) {
   const all = Object.values(ix.rows);
   const q = String(b.q || '').trim().toLowerCase();
   const qCode = normCode(q);
-  const match = (r) => !q || (r.label || '').toLowerCase().includes(q) || (r.folderName || '').toLowerCase().includes(q)
+  const match = (r) => !q || (r.label || '').toLowerCase().includes(q) || (r.folderName || '').toLowerCase().includes(q) || (r.email || '').toLowerCase().includes(q)
     || (qCode.length >= 3 && normCode(r.code).includes(qCode));
   // Searching a bonus code also finds its booking.
   const hitParents = new Set(q ? all.filter((r) => r.kind === 'bonus' && r.parent && match(r)).map((r) => r.parent) : []);
@@ -223,6 +223,12 @@ export default safe(async (req, context) => {
       if (!start.ok) return json({ error: 'Pick a valid opening date.' }, 400);
       const bonusMinutes = b.bonus ? intIn(b.bonusMinutes, 5, 1440) : null;
       if (b.bonus && !bonusMinutes) return json({ error: 'Bonus length must be 5-1440 minutes.' }, 400);
+      const email = String(b.email || '').trim().toLowerCase();
+      if (email && !EMAIL_RE.test(email)) return json({ error: 'That email address doesn’t look right.' }, 400);
+      if (email && count > 1) return json({ error: 'An email can be on one code only. Make one code at a time when adding an email.' }, 400);
+      if (email && lifetime && Object.values((await readIndex()).rows).some((r) => r.lifetime && r.kind !== 'bonus' && String(r.email || '').toLowerCase() === email)) {
+        return json({ error: 'That email is already on another lifetime code (one email per lifetime code).' }, 409);
+      }
       // Drive folders are matched by name, so two bookings with the same
       // folder name would share one folder (and see each other's photos).
       if (!b.sameFolderOk) {
@@ -235,7 +241,7 @@ export default safe(async (req, context) => {
         const key = await freshKey(store);
         // Keep a dedicated Drive folder name. If neither field was supplied,
         // fall back to the code so the renter never has to configure Drive.
-        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null };
+        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
         let bonus = null;
         if (bonusMinutes) {
           bonus = bonusRecord(await freshKey(store), rec, bonusMinutes);
@@ -413,6 +419,28 @@ export default safe(async (req, context) => {
       await putLicense(store, key, rec);
       await syncBonus(rec, { retakeOpt: rec.retakeOpt });
       return json({ ok: true, retakeOpt: rec.retakeOpt });
+    }
+
+    case 'setemail': { // the renter's email (for "Forgot your code?" and "Email code")
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      const email = String(b.email || '').trim().toLowerCase();
+      if (email && !EMAIL_RE.test(email)) return json({ error: 'That email address doesn’t look right.' }, 400);
+      if (email && rec.lifetime && Object.values((await readIndex()).rows).some((r) => r.lifetime && r.kind !== 'bonus' && r.key !== key && String(r.email || '').toLowerCase() === email)) {
+        return json({ error: 'That email is already on another lifetime code (one email per lifetime code).' }, 409);
+      }
+      rec.email = email || null;
+      await putLicense(store, key, rec);
+      return json({ ok: true, email: rec.email || '' });
+    }
+
+    case 'sendcode': { // email the code to the renter's saved address
+      const { rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      if (!rec.email) return json({ error: 'Add the renter’s email first.' }, 400);
+      try { await sendMail(Object.assign({ to: rec.email }, codeEmail([rec], process.env.URL || new URL(req.url).origin))); }
+      catch (e) { return json({ error: 'Couldn’t send: ' + e.message }, 502); }
+      return json({ ok: true, to: rec.email });
     }
 
     case 'payopt': { // guest payments add-on (vouchers + the renter's own PayMongo); an open booth picks it up within ~5 minutes

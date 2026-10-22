@@ -45,11 +45,25 @@ export function maxDevicesOf(rec) {
 }
 // Numbers only ever go up, so a replaced device never reuses an old number
 // (its photos already in Drive keep a unique name).
-export function addDevice(rec, id, now) {
+// What kind of device it is, for the renter's device list ("iPad", "Windows computer"…).
+export const DEVICE_KINDS = ['iPad', 'iPhone', 'Android tablet', 'Android phone', 'Mac', 'Windows computer', 'Chromebook', 'Linux computer'];
+export function deviceKindOf(hint, ua) {
+  if (DEVICE_KINDS.includes(hint)) return hint;
+  const u = String(ua || '');
+  if (/iPad/.test(u)) return 'iPad';
+  if (/iPhone/.test(u)) return 'iPhone';
+  if (/Android/.test(u)) return /Mobile/.test(u) ? 'Android phone' : 'Android tablet';
+  if (/CrOS/.test(u)) return 'Chromebook';
+  if (/Windows/.test(u)) return 'Windows computer';
+  if (/Macintosh/.test(u)) return 'Mac';
+  if (/Linux/.test(u)) return 'Linux computer';
+  return null;
+}
+export function addDevice(rec, id, now, kind) {
   const list = devicesOf(rec).slice();
   const used = list.reduce((m, d) => Math.max(m, d.no || 0), 0);
   const no = Math.max(rec.nextDeviceNo || 1, used + 1);
-  list.push({ id, no, at: now });
+  list.push(kind ? { id, no, at: now, kind } : { id, no, at: now });
   rec.devices = list;
   rec.nextDeviceNo = no + 1;
   rec.deviceId = list[0].id; // kept for older code paths / display
@@ -91,6 +105,35 @@ export function signTicket(payload) {
 }
 export const TICKET_MS = 12 * 3600000;
 
+// ---------- email (sent by the Apps Script relay with MailApp, from the photobooth4u Google account) ----------
+export const EMAIL_RE = /^[^\s@<>"']{1,64}@[^\s@<>"']{1,190}\.[A-Za-z]{2,24}$/;
+export async function sendMail({ to, subject, text, html }) {
+  if (!EMAIL_RE.test(String(to || ''))) throw new Error('Bad email address');
+  const ticket = signTicket({ m: 'mail', to: String(to), s: String(subject).slice(0, 150), b: String(text).slice(0, 5000), h: String(html || '').slice(0, 20000), exp: Date.now() + 2 * 60000 });
+  const r = await fetch(DRIVE_SCRIPT_URL, { method: 'POST', headers: { 'content-type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ mail: ticket }), redirect: 'follow', signal: AbortSignal.timeout(20000) });
+  const j = await r.json().catch(() => ({}));
+  if (!j.ok) throw new Error(j.error || 'The email could not be sent (update the Apps Script relay?)');
+  return true;
+}
+const escHtml = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// "Your photobooth4u code" email; recs = the bookings registered to that address.
+export function codeEmail(recs, origin) {
+  const site = String(origin || 'https://photobooth4u.netlify.app').replace(/\/+$/, '');
+  const name = (recs[0] && recs[0].label) || '';
+  const lines = recs.map((r) => (r.label ? r.label + ': ' : '') + r.code + (r.lifetime ? ' (lifetime)' : ''));
+  const text = 'Hi' + (name ? ' ' + name : '') + ',\n\nHere ' + (recs.length > 1 ? 'are your photobooth4u codes' : 'is your photobooth4u code') + ':\n\n' + lines.join('\n') +
+    '\n\nOpen the booth: ' + site + '\nMy Events (links, payments, printing): ' + site + '/lifetime/\nSetup guide (PDF): ' + site + '/lifetime/photobooth4u-setup-guide.pdf' +
+    '\n\nKeep your code private. If you didn\u2019t ask for this email, you can ignore it.\n\nphotobooth4u';
+  const html = '<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#1c1a1e;max-width:520px">' +
+    '<p style="font-size:20px;font-weight:bold;margin:0 0 12px">photobooth<span style="background:#c93d27;color:#fff;border-radius:4px;padding:0 4px;font-size:12px;vertical-align:top">4u</span></p>' +
+    '<p>Hi' + (name ? ' ' + escHtml(name) : '') + ',</p><p>Here ' + (recs.length > 1 ? 'are your codes' : 'is your code') + ':</p>' +
+    recs.map((r) => '<p style="margin:8px 0;padding:12px 14px;background:#f5f1ea;border-radius:10px">' + (r.label ? escHtml(r.label) + '<br>' : '') +
+      '<b style="font-size:20px;letter-spacing:1px">' + escHtml(r.code) + '</b>' + (r.lifetime ? ' &nbsp;<span style="font-size:12px;color:#6b666c">lifetime</span>' : '') + '</p>').join('') +
+    '<p><a href="' + site + '" style="color:#c93d27;font-weight:bold">Open the booth</a> &nbsp;·&nbsp; <a href="' + site + '/lifetime/" style="color:#c93d27;font-weight:bold">My Events</a> &nbsp;·&nbsp; <a href="' + site + '/lifetime/photobooth4u-setup-guide.pdf" style="color:#c93d27;font-weight:bold">Setup guide (PDF)</a></p>' +
+    '<p style="font-size:13px;color:#6b666c">Keep your code private. If you didn\u2019t ask for this email, you can ignore it.</p></div>';
+  return { subject: 'Your photobooth4u code', text, html };
+}
+
 // Same rule as the booth: letters, numbers, spaces and basic punctuation only,
 // and no long unbroken runs (so a Drive folder ID can't sneak through).
 export function cleanEventName(v) {
@@ -110,7 +153,7 @@ export const STALE_DEVICE_DAYS = 7;
 const INDEX_KEY = 'index-v1';
 export function summaryOf(rec) {
   return {
-    key: rec.key, code: rec.code, label: rec.label || '', folderName: rec.folderName || '',
+    key: rec.key, code: rec.code, label: rec.label || '', folderName: rec.folderName || '', email: rec.email || '',
     kind: rec.kind || 'rental', parent: rec.parent || null, bonusKey: rec.bonusKey || null,
     lifetime: !!rec.lifetime, days: rec.days || 0, minutes: rec.minutes || null, startsAt: rec.startsAt || null,
     status: rec.status, redeemedAt: rec.redeemedAt || null, expiresAt: rec.expiresAt || null,

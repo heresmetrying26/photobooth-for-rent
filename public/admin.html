@@ -137,6 +137,7 @@
         <div style="flex:2;min-width:160px;"><label>Drive folder name</label><input id="newFolderName" type="text" maxlength="80" placeholder="Defaults to client / event"></div>
         <div><label>Days</label><input id="newDays" type="number" min="1" max="365" value="3"></div>
         <div><label>Devices</label><input id="newDevices" type="number" min="1" max="50" value="1"></div>
+        <div style="flex:2;min-width:180px;"><label>Renter’s email <span style="font-weight:500;color:var(--dim);">(optional)</span></label><input id="newEmail" type="email" maxlength="200" placeholder="For “Forgot your code?”"></div>
         <div><label>How many</label><input id="newCount" type="number" min="1" max="20" value="1"></div>
       </div>
       <div class="modebox">
@@ -204,7 +205,7 @@
     <div class="card" id="codesCard">
       <div class="top" style="margin-bottom:10px;"><h2 style="margin:0;">Rental codes</h2><button class="small" id="refreshBtn">Refresh</button></div>
       <div class="toolbar">
-        <input id="q" class="search" type="text" placeholder="Search client, event, Drive folder or code…" autocomplete="off">
+        <input id="q" class="search" type="text" placeholder="Search client, email, event, Drive folder or code…" autocomplete="off">
         <select id="sort" class="sel" title="Sort">
           <option value="newest">Newest first</option>
           <option value="event">Event date (soonest)</option>
@@ -592,6 +593,8 @@
     acts += '<button class="small" data-a="retakeopt" data-c="' + c + '">' + (l.retakeOpt ? 'Hide retake switch' : 'Give retake switch') + '</button>';
     acts += '<button class="small" data-a="lockopt" data-c="' + c + '">' + (l.lockOpt ? 'Hide lock booth' : 'Give lock booth') + '</button>';
     if(!bonus){
+      acts += '<button class="small" data-a="setemail" data-c="' + c + '">' + (l.email ? 'Change email' : 'Add email') + '</button>';
+      if(l.email) acts += '<button class="small" data-a="sendcode" data-c="' + c + '">Email code to renter</button>';
       acts += '<button class="small" data-a="payopt" data-c="' + c + '">' + (l.payOpt ? 'Hide guest payments' : 'Give guest payments') + '</button>';
       if(l.payOpt) acts += '<button class="small" data-a="paymgr" data-c="' + c + '">Payments &amp; vouchers</button>';
     }
@@ -603,10 +606,10 @@
     var folder = l.lifetime
       ? esc(l.folderName || l.label || l.code) + ' · <i>event name</i></b> <span style="font-weight:500;">(new folder per event)</span><b>'
       : esc(l.folderName || l.label || l.code) + (bonus ? ' / ' + esc(l.subfolder || 'Bonus') + ' <span style="font-weight:500;">(files named BONUS_…)</span>' : '');
-    return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
+    return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + (l.email ? 'Email: <b>' + esc(l.email) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
       '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b><br>' + infoLine(l, st, parentEnd) +
       '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
-      (maxD > 1 && devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="Remove this device">Remove</button></span>'; }).join('') + '</div>' : '') +
+      (devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.kind ? ' · ' + esc(d.kind) : '') + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="Remove this device">Remove</button></span>'; }).join('') + '</div>' : '') +
       '</div>' +
       (bonus ? '' : '<div class="themerow">Starting theme <select class="sel" data-theme-for="' + c + '">' + themeOptions(l.defaultTheme || '') + '</select></div>') +
       '<div class="printbox hidden" data-print-edit></div>' +
@@ -802,6 +805,20 @@
         refresh();
         return;
       }
+      if(a === 'setemail'){
+        var em = prompt('Renter\u2019s email (used for \u201cForgot your code?\u201d). Leave empty to remove.', (LIC[code] && LIC[code].email) || '');
+        if(em === null) return;
+        var re = await api({ action: 'setemail', code: code, email: em.trim() });
+        toast(re.email ? 'Email saved' : 'Email removed');
+        refresh();
+        return;
+      }
+      if(a === 'sendcode'){
+        if(!confirm('Email the code ' + code + ' to ' + ((LIC[code] && LIC[code].email) || 'the renter') + '?')) return;
+        var rs = await api({ action: 'sendcode', code: code });
+        toast('Code emailed to ' + rs.to);
+        return;
+      }
       if(a === 'payopt'){
         var po = !(LIC[code] && LIC[code].payOpt);
         await api({ action: 'payopt', code: code, payOpt: po });
@@ -914,7 +931,7 @@
     try{
       var np = readPrint($('newPrint'));
       var startsAt = readStartInputs($('newStartDate'), $('newStartTime'));
-      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, bonus: $('newBonus').checked, bonusMinutes: $('newBonusMin').value, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, defaultTheme: $('newTheme').value || null };
+      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), bonus: $('newBonus').checked, bonusMinutes: $('newBonusMin').value, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, defaultTheme: $('newTheme').value || null };
       var j;
       try{ j = await api(createBody); }
       catch(e1){
@@ -930,7 +947,7 @@
           var tag = l.kind === 'bonus' ? 'bonus · ' + fmtMinutes(l.minutes) : l.lifetime ? 'lifetime' + (l.maxDevices > 1 ? ' · ' + l.maxDevices + ' devices' : '') : (l.startsAt ? 'opens ' + fmtDate(l.startsAt) : l.days + ' day' + (l.days === 1 ? '' : 's'));
           return '<div class="code"><span>' + esc(l.code) + '<small>' + esc(tag) + '</small></span><button class="small" data-copy="' + esc(l.code) + '">Copy</button></div>';
         }).join('');
-      $('newLabel').value = '';
+      $('newLabel').value = ''; $('newEmail').value = '';
       $('newStartDate').value = '';
       $('newFolderName').value = '';
       delete $('newFolderName').dataset.edited;
@@ -980,6 +997,9 @@
   $('newLifetime').addEventListener('change', function(){
     $('newDays').disabled = this.checked;
     if(this.checked) $('newTraditional').checked = true;
+    // Lifetime codes: up to 5 devices at once by default.
+    if(this.checked && $('newDevices').value === '1') $('newDevices').value = '5';
+    else if(!this.checked && $('newDevices').value === '5') $('newDevices').value = '1';
   });
   $('newBonus').addEventListener('change', function(){ $('newBonusRow').classList.toggle('off', !this.checked); });
   if(TOKEN){ showAdmin(true); load(); }

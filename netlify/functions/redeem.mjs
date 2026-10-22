@@ -1,4 +1,4 @@
-import { safe, json, licenses, getSettings, sign, normCode, throttle, recordFail, clearFail, shortId, DAY, MIN, fmtWhen, windowEnd, LIFETIME_EXP, devicesOf, maxDevicesOf, addDevice, setDevices, STALE_DEVICE_DAYS , putLicense, delLicense } from '../lib/core.mjs';
+import { safe, json, licenses, getSettings, sign, normCode, throttle, recordFail, clearFail, shortId, DAY, MIN, fmtWhen, windowEnd, LIFETIME_EXP, devicesOf, maxDevicesOf, addDevice, setDevices, STALE_DEVICE_DAYS , putLicense, delLicense, deviceKindOf } from '../lib/core.mjs';
 
 export default safe(async (req, context) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -37,9 +37,13 @@ export default safe(async (req, context) => {
         if (stale) setDevices(rec, devs.filter((d) => d !== stale));
       }
       if (!mine && devicesOf(rec).length < maxDevicesOf(rec)) {
-        addDevice(rec, deviceId, now);
+        addDevice(rec, deviceId, now, deviceKindOf(body.dk, req.headers.get('user-agent')));
         await putLicense(store, key, rec);
         mine = true;
+      }
+      if (mine && mine !== true && !mine.kind) {          // older devices: learn their type once
+        const k = deviceKindOf(body.dk, req.headers.get('user-agent'));
+        if (k) { setDevices(rec, devicesOf(rec).map((d) => (d.id === deviceId ? { ...d, kind: k } : d))); await putLicense(store, key, rec); }
       }
       if (mine) {
         await clearFail(t);
@@ -70,7 +74,7 @@ export default safe(async (req, context) => {
     rec.status = 'active';
     rec.redeemedAt = now;
     rec.expiresAt = exp;
-    addDevice(rec, deviceId, now);
+    addDevice(rec, deviceId, now, deviceKindOf(body.dk, req.headers.get('user-agent')));
     await putLicense(store, key, rec);
     await clearFail(t);
     return json({ ok: true, type: 'rental', kind: rec.kind || 'rental', lifetime: !!rec.lifetime, exp, days: rec.days, minutes: rec.minutes || null, scheduled: !!rec.startsAt, token: sign({ t: 'rental', k: key, d: deviceId, exp }) });

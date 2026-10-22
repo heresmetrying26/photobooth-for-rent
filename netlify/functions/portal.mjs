@@ -1,19 +1,44 @@
 import {
   safe, json, licenses, verifyToken, normCode, throttle, recordFail, clearFail,
   devicesOf, maxDevicesOf, eventsStore, isDriveUrl, DAY, EVENT_KEEP_DAYS, BONUS_KEEP_DAYS, getSettings,
-  normPrint, putLicense
+  normPrint, putLicense, readIndex, sendMail, codeEmail, EMAIL_RE, setDevices
 } from '../lib/core.mjs';
 
 // Backs the /lifetime customer page: sign in with the rental code (or, on a
 // booth device, the booth's own saved token) and get every event folder this
 // code has used, with links and roughly when Drive cleanup removes them.
 // Opening this page never uses up a device slot.
+// One email per lifetime code: an address can belong to only one lifetime booking.
+async function emailTaken(email, ownKey) {
+  return Object.values((await readIndex()).rows).some((r) => r.lifetime && r.kind !== 'bonus' && r.key !== ownKey && String(r.email || '').toLowerCase() === email);
+}
+
 export default safe(async (req, context) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   const b = await req.json().catch(() => null);
   if (!b) return json({ error: 'Bad request' }, 400);
   const store = licenses();
   let rec = null;
+
+  // "Forgot your code?": emails the codes registered to that address. The answer
+  // is the same whether or not the address is known, so it can't be used to find accounts.
+  if (b.action === 'recover') {
+    const email = String(b.email || '').trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) return json({ error: 'Please type a valid email address.' }, 400);
+    const t = await throttle('recover', context.ip, 5, 60 * 60000);
+    if (t.blocked) return json({ error: 'Too many requests. Please try again in an hour, or message us.' }, 429);
+    await recordFail(t);                      // counts requests, not just misses
+    const te = await throttle('recover-mail', email, 3, 60 * 60000);
+    if (!te.blocked) {
+      const rows = Object.values((await readIndex()).rows).filter((r) => r.kind !== 'bonus' && r.status !== 'revoked' && String(r.email || '').toLowerCase() === email);
+      if (rows.length) {
+        await recordFail(te);
+        try { await sendMail(Object.assign({ to: email }, codeEmail(rows.slice(0, 10), process.env.URL || new URL(req.url).origin))); }
+        catch (e) { console.error('recover mail', e.message); }
+      }
+    }
+    return json({ ok: true, message: 'If that email is registered, your code is on its way. Check your inbox (and spam) in a few minutes.' });
+  }
 
   if (b.code) {
     const t = await throttle('portal', context.ip, 10);
@@ -31,11 +56,38 @@ export default safe(async (req, context) => {
     return json({ error: 'signin' }, 401);
   }
 
+  const meDevice = b.token ? String(b.deviceId || '') : '';
   // A bonus code shows the booking it belongs to.
   if (rec.kind === 'bonus' && rec.parent) rec = (await store.get(rec.parent, { type: 'json' })) || rec;
   if (rec.status === 'revoked') return json({ error: 'This code has been disabled. Please contact the owner.' }, 403);
 
   const now = Date.now();
+
+  // Name + email on My Events. The Drive folder name is frozen first, so a new
+  // name never moves the photos to a new folder.
+  if (b.action === 'account.save') {
+    const name = String(b.name || '').replace(/[<>]/g, '').trim().slice(0, 60);
+    const email = String(b.email || '').trim().toLowerCase();
+    if (!name) return json({ error: 'Please type a name.', field: 'name' }, 400);
+    if (email && !EMAIL_RE.test(email)) return json({ error: 'That email address doesn’t look right.', field: 'email' }, 400);
+    if (email && rec.lifetime && await emailTaken(email, rec.key)) return json({ error: 'That email is already used by another lifetime code. Please use a different email, or message us.', field: 'email' }, 409);
+    if (!rec.folderName) rec.folderName = rec.label || rec.code;
+    rec.label = name;
+    rec.email = email || null;
+    await putLicense(store, rec.key, rec);
+    return json({ ok: true, label: rec.label, email: rec.email || '' });
+  }
+
+  // Remove one device (by its number) so its slot is free for a new one. That
+  // booth locks at its next check (within ~5 minutes).
+  if (b.action === 'device.remove') {
+    const no = Math.floor(Number(b.no) || 0);
+    const list = devicesOf(rec);
+    if (!list.some((d) => d.no === no)) return json({ error: 'That device isn’t on your code any more.' }, 404);
+    setDevices(rec, list.filter((d) => d.no !== no));
+    await putLicense(store, rec.key, rec);
+    return json({ ok: true });
+  }
 
   // Lifetime codes manage their own paper sizes and print limits (once Admin
   // has switched printing on for them). Booths pick it up within ~5 minutes.
@@ -75,7 +127,9 @@ export default safe(async (req, context) => {
     traditional: !!rec.traditional,
     print: rec.print && rec.print.enabled ? normPrint(true, rec.print.sizes, rec.print) : { enabled: false, sizes: [] },
     folderPrefix: rec.lifetime ? (rec.folderName || rec.label || rec.code) : null,
-    devices: { used: devicesOf(rec).length, max: maxDevicesOf(rec) },
+    devices: { used: devicesOf(rec).length, max: maxDevicesOf(rec),
+      list: devicesOf(rec).map((d) => ({ no: d.no || 1, kind: d.kind || null, at: d.at || null, seen: d.seen || null, me: !!(meDevice && d.id === meDevice) })) },
+    email: rec.email || '',
     keepDays: EVENT_KEEP_DAYS,
     qrTarget: (await getSettings()).qrTarget === 'drive' ? 'drive' : 'gallery',
     events,

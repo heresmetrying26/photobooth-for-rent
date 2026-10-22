@@ -159,7 +159,10 @@
       var r = await fetch('/api/redeem', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ code: code, deviceId: deviceId() })
+        body: JSON.stringify({ code: code, deviceId: deviceId(), dk: (function(){ var ua = navigator.userAgent || '', touch = navigator.maxTouchPoints > 1;
+          if(/iPad/.test(ua) || (/Macintosh/.test(ua) && touch)) return 'iPad'; if(/iPhone/.test(ua)) return 'iPhone';
+          if(/Android/.test(ua)) return /Mobile/.test(ua) ? 'Android phone' : 'Android tablet'; if(/CrOS/.test(ua)) return 'Chromebook';
+          if(/Windows/.test(ua)) return 'Windows computer'; if(/Macintosh/.test(ua)) return 'Mac'; return ''; })() })
       });
       var j = await r.json();
       if(!r.ok){ show(j.error || 'Something went wrong. Please try again.', 'error'); btn.disabled = false; return; }

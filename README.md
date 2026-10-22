@@ -281,6 +281,17 @@ subfolder. Then **Deploy → Manage deployments → Edit → New version** so th
   7 days after that event's last photo. No Apps Script change is needed for this.
 
 ## My Events page (`/lifetime/`)
+- **Your details & devices:** renters change their **name** (the Drive folder name is frozen first, so photos
+  stay in the same folder) and **email**, see each device (type, added, last used, "This device") and **Remove**
+  one to free its slot (that booth locks within ~5 minutes). Device type comes from the unlock page.
+- **Forgot your code?** (sign-in screen): emails every code registered to that address (same answer for unknown
+  addresses; 5 requests/hour per IP, 3 emails/hour per address). Admin has **Add/Change email** and
+  **Email code to renter**; Admin search also matches email.
+- **Email is sent by the Apps Script relay** (`apps-script/upload.gs`, MailApp, from the Google account that owns
+  the script, ~100/day free). One-time step: paste the new `upload.gs`, **Deploy → Manage deployments → Edit →
+  New version → Deploy**, and approve the new "Send email as you" permission.
+- **No Drive folder links for renters or guests:** My Events, the booth's Setup and the gallery only offer the
+  online gallery (with Download all). Admin still has the Drive links.
 - **From the booth:** Setup has a **My Events ↗** button (top bar; on phones in the ⋯ menu). It opens
   `/lifetime/?booth=1`, which signs in with that booth's own login, so nothing to type. Hidden during the
   session, when locked, and for trials.

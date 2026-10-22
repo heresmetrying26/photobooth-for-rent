@@ -4338,7 +4338,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     document.getElementById('driveFolderOpen').href = url;
     document.getElementById('driveFolderOpen').textContent = gallery ? 'Open gallery' : 'Open folder';
     var dl = document.getElementById('driveFolderDrive');
-    if(dl){ dl.href = folderUrl; dl.style.display = gallery ? '' : 'none'; }
+    if(dl){ dl.href = folderUrl; dl.style.display = 'none'; }   // renters use the gallery; the Drive folder stays private
     document.getElementById('driveFolderQrCaption').textContent = 'All photos';
     document.getElementById('driveFolderAll').style.display = (window.__PB && window.__PB.type === 'rental') ? '' : 'none';
     driveFolderStatus.style.display = 'block';

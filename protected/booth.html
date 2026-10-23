@@ -1020,6 +1020,11 @@
     font:700 12.5px 'Manrope',sans-serif; cursor:pointer; white-space:nowrap;}
   .theme-cat.active{background:var(--ink); border-color:var(--ink); color:#fff;}
   .theme-grid{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px;}
+  .snd-row{display:flex; align-items:center; gap:8px; margin:6px 0;}
+  .snd-row .lbl{flex:none; width:112px; font-size:13px; font-weight:700; color:var(--ink);}
+  .snd-row .snd-name{flex:1; min-width:0; font-size:12.5px; color:var(--ink-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .snd-row .action-btn{width:auto; margin:0; padding:6px 12px; font-size:12.5px;}
+  .snd-row .link-btn{flex:none;}
   .theme-card{display:flex; flex-direction:column; gap:6px; padding:6px; border-radius:12px; border:1.5px solid var(--line); background:#fff; cursor:pointer; text-align:left; font:inherit;}
   .theme-card canvas{width:100%; aspect-ratio:2/3; border-radius:8px; display:block; background:var(--panel-2); object-fit:contain;}
   .theme-card .tn{font-size:12px; font-weight:700; color:var(--ink); line-height:1.25;}
@@ -2210,6 +2215,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <span class="lbl">Volume</span>
           <select class="mini-select pillify" id="fxVol"><option value="0.35">Soft</option><option value="0.7" selected>Normal</option><option value="1">Loud</option></select>
         </div>
+        <div id="fxOwnRow">
+          <p class="sub-label" style="margin:12px 0 4px;">Your own sounds (optional)</p>
+          <div class="snd-row"><span class="lbl">Shutter</span><span class="snd-name" id="sndShutName">Built-in click</span><button type="button" class="action-btn" id="sndShutUp">Upload</button><button type="button" class="link-btn" id="sndShutX" hidden>Use built-in</button></div>
+          <div class="snd-row"><span class="lbl">Countdown beep</span><span class="snd-name" id="sndTickName">Built-in beeps</span><button type="button" class="action-btn" id="sndTickUp">Upload</button><button type="button" class="link-btn" id="sndTickX" hidden>Use built-in</button></div>
+          <p class="panel-hint" style="margin-top:4px;">MP3, WAV or M4A. The shutter keeps its first 2 seconds, the beep its first second, and silence at the start is cut so it plays right on time.</p>
+          <input type="file" id="sndFile" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" hidden>
+        </div>
         <button type="button" class="action-btn" id="fxTestSound" style="width:auto; margin:8px 0 0;">Play a test sound</button>
         <p class="sub-label" style="margin:16px 0 6px;">Start without touching</p>
         <select class="mini-select pillify" id="fxHands"><option value="off" selected>Off (tap)</option><option value="wave">Wave</option><option value="smile">Smile</option></select>
@@ -2372,6 +2384,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <div class="decor-btns"><button type="button" class="action-btn primary" id="spotSnap" title="Fit this box to the photo window under it: edges, size and tilt">&#129522; Snap to window</button></div>
         <p class="panel-hint" style="margin:6px 0 8px;">Put the box roughly over one photo window (it can overlap others), then tap <b>Snap to window</b>.</p>
         <div class="decor-btns"><button type="button" class="action-btn" id="spotEarlier">&#9664; Earlier shot</button><button type="button" class="action-btn" id="spotLater">Later shot &#9654;</button><button type="button" class="action-btn" id="spotSplitX">Split in 2 &#8596;</button><button type="button" class="action-btn" id="spotSplitY">Split in 2 &#8597;</button><button type="button" class="action-btn" id="spotSplit4">Split in 4</button></div>
+        <div class="decor-btns" style="margin-top:6px;"><button type="button" class="action-btn" id="spotFront" title="This photo shows on top where boxes overlap">&#11014; Bring to front</button><button type="button" class="action-btn" id="spotBack" title="This photo goes under the others where boxes overlap">&#11015; Send to back</button></div>
+        <p class="panel-hint" style="margin:6px 0 0;">Drag the round <b>&#8635;</b> at the bottom of a box to tilt it. <b>Bring to front</b> / <b>Send to back</b> decide which photo is on top where two boxes overlap.</p>
         <div class="spot-size" id="spotSize" style="display:none; margin-top:8px; gap:8px; flex-wrap:wrap; align-items:center; font-size:12.5px; font-weight:700;">
           <label>Left % <input type="number" id="spotX" min="0" max="100" step="0.5" style="width:64px;"></label>
           <label>Top % <input type="number" id="spotY" min="0" max="100" step="0.5" style="width:64px;"></label>
@@ -10905,12 +10919,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   //   hands : start without touching — 'wave' (movement in front of the
   //           camera) or 'smile' (MediaPipe Face Mesh, runs on the device)
   // =====================================================================
-  let fx = { flash: false, sound: true, vol: 0.7, hands: 'off', sens: 'normal' };
+  let fx = { flash: false, sound: true, vol: 0.7, hands: 'off', sens: 'normal', sShut: null, sTick: null };
+  // Own sound: { id: uploaded asset, name: the file's name }
+  function cleanSnd(o){
+    return o && typeof o === 'object' && typeof o.id === 'string' && /^a[A-Za-z0-9]{8,32}$/.test(o.id) ? { id: o.id, name: String(o.name || 'My sound').slice(0, 60) } : null;
+  }
   function cleanFx(p){
     p = p && typeof p === 'object' ? p : {};
     const v = Number(p.vol);
     return {
       flash: !!p.flash, sound: p.sound !== false,
+      sShut: cleanSnd(p.sShut), sTick: cleanSnd(p.sTick),
       vol: v === 0.35 || v === 0.7 || v === 1 ? v : 0.7,
       hands: p.hands === 'wave' || p.hands === 'smile' ? p.hands : 'off',
       sens: p.sens === 'less' || p.sens === 'more' ? p.sens : 'normal'
@@ -10948,9 +10967,72 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     o.connect(g); g.connect(c.destination);
     o.start(t); o.stop(t + dur + 0.03);
   }
-  function fxTick(n){ tone(n === 1 ? 988 : 740, n === 1 ? 0.16 : 0.1, 'sine', 0.9); }
+  // ---- Own sounds (uploaded in Setup → 5 Session) ----
+  const sndBufs = {};            // asset id -> decoded AudioBuffer
+  function dataUrlBytes(url){
+    const b = atob(String(url).split(',')[1] || ''), a = new Uint8Array(b.length);
+    for(let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i);
+    return a.buffer;
+  }
+  function decodeAudio(c, ab){
+    return new Promise(function(res, rej){ try{ const pr = c.decodeAudioData(ab, res, rej); if(pr && pr.then) pr.then(res, rej); }catch(e){ rej(e); } });
+  }
+  // Decodes the chosen sounds once their files are here (they may still be loading from the server).
+  function prepSounds(tries){
+    const c = audioCtx(); if(!c) return;
+    let waiting = false;
+    [fx.sShut, fx.sTick].forEach(function(o){
+      if(!o || sndBufs[o.id]) return;
+      const rec = typeof ASSETS !== 'undefined' && ASSETS[o.id];
+      if(!rec){ waiting = true; return; }
+      sndBufs[o.id] = 'loading';
+      decodeAudio(c, dataUrlBytes(rec.url)).then(function(b){ sndBufs[o.id] = b; }, function(){ delete sndBufs[o.id]; });
+    });
+    if(waiting && (tries || 0) < 15) setTimeout(function(){ prepSounds((tries || 0) + 1); }, 2000);
+  }
+  function playOwn(o){
+    const c = soundOk(), b = o && sndBufs[o.id];
+    if(!c || !b || b === 'loading') return false;
+    const s = c.createBufferSource(), g = c.createGain();
+    s.buffer = b; g.gain.value = fx.vol * 1.1;
+    s.connect(g); g.connect(c.destination); s.start(c.currentTime);
+    return true;
+  }
+  // A picked sound file -> mono 22 kHz WAV, leading silence cut, at most maxSec long (small enough to sync).
+  async function soundFileToWav(file, maxSec){
+    if(!file) throw new Error('No file picked.');
+    if(file.size > 20000000) throw new Error('That file is too big. Use a short sound (a few seconds).');
+    const c = audioCtx(); if(!c) throw new Error('This browser can\u2019t play sounds.');
+    let ab;
+    try{ ab = await decodeAudio(c, await file.arrayBuffer()); }
+    catch(e){ throw new Error('That file isn\u2019t a sound this device can play. Try an MP3 or WAV.'); }
+    const len = ab.length, sr = ab.sampleRate, nch = ab.numberOfChannels, mono = new Float32Array(len);
+    for(let k = 0; k < nch; k++){ const d = ab.getChannelData(k); for(let i = 0; i < len; i++) mono[i] += d[i] / nch; }
+    let start = 0; while(start < len && Math.abs(mono[start]) < 0.02) start++;
+    if(start >= len) throw new Error('That sound is silent.');
+    start = Math.max(0, start - Math.round(sr * 0.004));
+    const R = 22050, n = Math.max(1, Math.min(Math.round((len - start) / sr * R), Math.round(maxSec * R)));
+    const pcm = new Int16Array(n), step = sr / R, fade = Math.round(R * 0.03);
+    for(let i = 0; i < n; i++){
+      const t = start + i * step, i0 = Math.floor(t), fr = t - i0;
+      let v = (mono[i0] || 0) * (1 - fr) + (mono[i0 + 1] || 0) * fr;
+      if(i > n - fade) v *= (n - i) / fade;
+      pcm[i] = Math.max(-32768, Math.min(32767, Math.round(v * 32767)));
+    }
+    const buf = new ArrayBuffer(44 + n * 2), dv = new DataView(buf);
+    const str = function(o, t){ for(let i = 0; i < t.length; i++) dv.setUint8(o + i, t.charCodeAt(i)); };
+    str(0, 'RIFF'); dv.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt '); dv.setUint32(16, 16, true);
+    dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, R, true); dv.setUint32(28, R * 2, true);
+    dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); str(36, 'data'); dv.setUint32(40, n * 2, true);
+    new Int16Array(buf, 44).set(pcm);
+    const u8 = new Uint8Array(buf); let bin = '';
+    for(let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+    return 'data:audio/wav;base64,' + btoa(bin);
+  }
+  function fxTick(n){ if(playOwn(fx.sTick)) return; tone(n === 1 ? 988 : 740, n === 1 ? 0.16 : 0.1, 'sine', 0.9); }
   function fxPose(){ tone(1175, 0.09, 'triangle', 0.7); tone(1568, 0.14, 'triangle', 0.6, 0.08); }
   function fxShutter(){
+    if(playOwn(fx.sShut)) return;
     const c = soundOk(); if(!c) return;
     const t = c.currentTime, len = Math.floor(c.sampleRate * 0.11), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
     for(let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
@@ -11107,6 +11189,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     f.checked = fx.flash;
     document.getElementById('fxSound').checked = fx.sound;
     document.getElementById('fxVolRow').style.display = fx.sound ? '' : 'none';
+    document.getElementById('fxOwnRow').style.display = fx.sound ? '' : 'none';
+    document.getElementById('sndShutName').textContent = fx.sShut ? fx.sShut.name : 'Built-in click';
+    document.getElementById('sndTickName').textContent = fx.sTick ? fx.sTick.name : 'Built-in beeps';
+    document.getElementById('sndShutX').hidden = !fx.sShut;
+    document.getElementById('sndTickX').hidden = !fx.sTick;
     setSelectValue('fxVol', String(fx.vol));
     setSelectValue('fxHands', fx.hands);
     setSelectValue('fxSens', fx.sens);
@@ -11122,12 +11209,33 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
     if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
   }
-  function applyFxSetup(p){ fx = cleanFx(p); refreshFxUI(); if(fx.hands === 'smile') setTimeout(function(){ loadFaceMesh().catch(function(){}); }, 2000); if(typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender(); }
+  function applyFxSetup(p){ fx = cleanFx(p); refreshFxUI(); prepSounds(); if(fx.hands === 'smile') setTimeout(function(){ loadFaceMesh().catch(function(){}); }, 2000); if(typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender(); }
   document.getElementById('fxFlash').addEventListener('change', function(){ fx.flash = this.checked; fxChanged(); });
   document.getElementById('fxSound').addEventListener('change', function(){ fx.sound = this.checked; fxChanged(); if(fx.sound){ unlockAudio(); setTimeout(function(){ fxTick(3); }, 60); } });
   document.getElementById('fxVol').addEventListener('change', function(){ fx.vol = Number(this.value) || 0.7; fxChanged(); unlockAudio(); setTimeout(fxShutter, 60); });
   document.getElementById('fxHands').addEventListener('change', function(){ fx.hands = this.value; fxChanged(); });
   document.getElementById('fxSens').addEventListener('change', function(){ fx.sens = this.value; fxChanged(); });
+  // Upload / remove own sounds
+  let sndTarget = null;
+  const sndFile = document.getElementById('sndFile');
+  document.getElementById('sndShutUp').addEventListener('click', function(){ unlockAudio(); sndTarget = 'sShut'; sndFile.click(); });
+  document.getElementById('sndTickUp').addEventListener('click', function(){ unlockAudio(); sndTarget = 'sTick'; sndFile.click(); });
+  document.getElementById('sndShutX').addEventListener('click', function(){ fx.sShut = null; fxChanged(); unlockAudio(); setTimeout(fxShutter, 60); });
+  document.getElementById('sndTickX').addEventListener('click', function(){ fx.sTick = null; fxChanged(); unlockAudio(); setTimeout(function(){ fxTick(2); }, 60); });
+  sndFile.addEventListener('change', async function(){
+    const file = sndFile.files && sndFile.files[0], which = sndTarget; sndFile.value = '';
+    if(!file || !which) return;
+    try{
+      const wav = await soundFileToWav(file, which === 'sShut' ? 2 : 1);
+      const id = await addAsset(wav);
+      fx[which] = { id: id, name: file.name.replace(/\.[a-z0-9]+$/i, '').slice(0, 60) || 'My sound' };
+      sndBufs[id] = await decodeAudio(audioCtx(), dataUrlBytes(wav));
+      fxChanged();
+      if(!fx.sound){ fx.sound = true; fxChanged(); }
+      setTimeout(function(){ if(which === 'sShut') fxShutter(); else fxTick(2); }, 80);
+      showToast(which === 'sShut' ? 'Your shutter sound is on.' : 'Your countdown beep is on.', 2500);
+    }catch(e){ showToast(e && e.message || 'That sound could not be used.', 5000); }
+  });
   document.getElementById('fxTestSound').addEventListener('click', function(){ unlockAudio(); setTimeout(function(){ fxTick(2); setTimeout(function(){ fxTick(1); }, 400); setTimeout(fxShutter, 800); }, 60); });
   setTimeout(refreshFxUI, 0);
 
@@ -11689,6 +11797,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(ASSETS[id] && ASSETS[id].url === url) return ASSETS[id];
     var rec = { url: url, img: null };
     ASSETS[id] = rec;
+    if(/^data:audio\//.test(url)) return rec;          // own shutter / countdown sound
     var im = new Image();
     im.onload = function(){ rec.img = im; redrawAll(); };
     im.src = url;
@@ -11734,6 +11843,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     decor.forEach(function(d){ if(d.src.indexOf('a:') === 0) ids.push(d.src.slice(2)); });
     (typeof myFrames !== 'undefined' && myFrames || []).forEach(function(f){ ids.push(f.id); });
     if(typeof bgMine !== 'undefined') bgMine.forEach(function(a){ ids.push(a); });
+    if(typeof fx !== 'undefined' && fx){ if(fx.sShut) ids.push(fx.sShut.id); if(fx.sTick) ids.push(fx.sTick.id); }
     return ids;
   }
   // Reads a picked file, shrinks it (keeping transparency for PNG/WebP) and returns a data URL.
@@ -12430,6 +12540,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return out;
   }
   // A spot in pixels of a W x H frame: centre, size, angle (radians).
+  // Drawing order of a frame's spots: lowest layer first (layer = spot.z, then its number).
+  function spotOrder(f){
+    return f.spots.map(function(s, i){ return i; }).sort(function(a, b){ return ((f.spots[a].z || 0) - (f.spots[b].z || 0)) || (a - b); });
+  }
   function spotPx(sp, W, H){
     return { cx: (sp.x + sp.w / 2) * W, cy: (sp.y + sp.h / 2) * H, w: sp.w * W, h: sp.h * H, a: (sp.a || 0) * Math.PI / 180 };
   }
@@ -12471,7 +12585,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }catch(e){}
     return c;
   }
-  function spotsKey(f){ return f.spots.map(function(s){ return [s.x, s.y, s.w, s.h].map(function(v){ return v.toFixed(4); }).join(',') + (s.a ? '@' + s.a : ''); }).join(';') + (f.key ? '#' + f.key.c.join('.') + ':' + f.key.t : ''); }
+  function spotsKey(f){ return f.spots.map(function(s){ return [s.x, s.y, s.w, s.h].map(function(v){ return v.toFixed(4); }).join(',') + (s.a ? '@' + s.a : '') + (s.z ? '^' + s.z : ''); }).join(';') + (f.key ? '#' + f.key.c.join('.') + ':' + f.key.t : ''); }
   function frameArt(f){
     var img = assetImg(f.id); if(!img) return null;
     var c = FRAME_CACHE[f.id], key = spotsKey(f);
@@ -12524,8 +12638,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         var who = byLab[lab[i]]; if(!who) continue;
         var pick = who[0];
         if(who.length > 1){
-          var bestD = -Infinity, ix = (i % mw) + 0.5, iy = Math.floor(i / mw) + 0.5;
-          who.forEach(function(si){ var g = geo[si], lp = spotLocal(g, ix, iy), dd = Math.min(g.w / 2 - Math.abs(lp.x), g.h / 2 - Math.abs(lp.y)) / Math.max(1, Math.min(g.w, g.h)); if(dd > bestD){ bestD = dd; pick = si; } });
+          var bestD = -Infinity, bestZ = -Infinity, ix = (i % mw) + 0.5, iy = Math.floor(i / mw) + 0.5;
+          who.forEach(function(si){
+            var g = geo[si], lp = spotLocal(g, ix, iy), dd = Math.min(g.w / 2 - Math.abs(lp.x), g.h / 2 - Math.abs(lp.y)) / Math.max(1, Math.min(g.w, g.h));
+            // Inside two boxes: the one brought to front wins (same layer: the one it's more inside).
+            var z = dd >= 0 ? (f.spots[si].z || 0) : -Infinity;
+            if(z > bestZ || (z === bestZ && dd > bestD)){ bestZ = z; bestD = dd; pick = si; }
+          });
         }
         md[pick][i * 4 + 3] = 255;
       }
@@ -12550,7 +12669,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // One frame in a box of its own shape: shots in the spots, frame on top.
   function drawFrameInto(ctx, f, x, y, w, h, shots){
     var art = frameArt(f), pairs = framePairs(f), masks = art ? frameMasks(f, art) : null;
-    f.spots.forEach(function(sp, i){
+    spotOrder(f).forEach(function(i){
+      var sp = f.spots[i];
       var si = pairs ? pairs[i] : i;
       var shot = shots[si] || shots[si % Math.max(1, shots.length)];
       var g = spotPx(sp, w, h), mask = masks && masks.list[i];
@@ -12767,7 +12887,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       ed.addEventListener('click', function(){
         if(spotEdit && spotEdit.f === f.id){ spotEdit = null; refreshFrameUI(); renderSetupPreview(); return; }
         spotEdit = { f: f.id, sel: -1 }; framesChanged({ layout: 'myframe' });
-        showToast('Tap a box, then drag, resize, tilt, split or change its order. Boxes are where the photos go.', 6000);
+        showToast('Tap a box, then drag it, resize it (corner square), tilt it (round button at the bottom), split it or change its order. Boxes are where the photos go.', 6500);
       });
       var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'remove-link'; rm.textContent = 'Remove frame'; rm.style.cssText = 'display:inline;margin:0 0 0 auto;';
       rm.addEventListener('click', function(){
@@ -12955,6 +13075,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var sp = f.spots[spotEdit.sel], parts = [], g = spotPx(sp, f.w, f.h), ca = Math.cos(g.a), sa = Math.sin(g.a);
     for(var r = 0; r < ny; r++) for(var c = 0; c < nx; c++){
       var lx = -g.w / 2 + g.w * (c + 0.5) / nx, ly = -g.h / 2 + g.h * (r + 0.5) / ny, part = { a: sp.a || 0 };
+      if(sp.z) part.z = sp.z;
       setSpotPx(part, f, g.cx + lx * ca - ly * sa, g.cy + lx * sa + ly * ca, g.w / nx, g.h / ny);
       if(!part.a) delete part.a;
       parts.push(part);
@@ -12962,6 +13083,20 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     f.spots.splice.apply(f.spots, [spotEdit.sel, 1].concat(parts));
     framesChanged({ layout: 'myframe' });
   }
+  // Layer: which photo shows on top where boxes overlap (doesn't change the shot order).
+  function layerSpot(front){
+    var f = selSpot(); if(!f) return;
+    var sp = f.spots[spotEdit.sel], others = f.spots.filter(function(o){ return o !== sp; }).map(function(o){ return o.z || 0; });
+    if(!others.length) return;
+    var z = front ? Math.max.apply(null, others) + 1 : Math.min.apply(null, others) - 1;
+    // keep the numbers small: shift everyone so the lowest layer is 0
+    var all = f.spots.map(function(o){ return o === sp ? z : (o.z || 0); }), lo = Math.min.apply(null, all);
+    f.spots.forEach(function(o, k){ var v = all[k] - lo; if(v) o.z = v; else delete o.z; });
+    framesChanged({ layout: 'myframe' });
+    showToast(front ? 'Photo ' + (spotEdit.sel + 1) + ' is on top.' : 'Photo ' + (spotEdit.sel + 1) + ' is underneath.', 2200);
+  }
+  document.getElementById('spotFront').addEventListener('click', function(){ layerSpot(true); });
+  document.getElementById('spotBack').addEventListener('click', function(){ layerSpot(false); });
   document.getElementById('spotEarlier').addEventListener('click', function(){ moveSpot(-1); });
   document.getElementById('spotLater').addEventListener('click', function(){ moveSpot(1); });
   document.getElementById('spotSplitX').addEventListener('click', function(){ splitSpot(2, 1); });
@@ -13204,10 +13339,22 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   // ---- Preview: drag frames on the sheet, or fix photo spots ----
   var fdrag = null;
+  // The round tilt handle: just below the middle of the box's bottom edge (a longer lever,
+  // finer turning), or inside the box when the box sits at the bottom of the frame.
+  function spotTiltHandle(g, u, H){
+    var r = u * 0.024, out = g.h / 2 + r * 1.5;
+    if(H && g.cy + Math.cos(g.a) * out + r * 1.1 <= H) return { x: 0, y: out, r: r, outside: true };
+    return { x: 0, y: g.h / 2 - Math.min(r * 1.55, g.h * 0.3), r: r };
+  }
   function spotAt(f, pt){
-    var W = f.w, H = f.h, u = Math.max(W, H);
-    for(var i = f.spots.length - 1; i >= 0; i--){
-      var g = spotPx(f.spots[i], W, H), L = spotLocal(g, pt.x * W, pt.y * H);
+    var W = f.w, H = f.h, u = Math.max(W, H), ord = spotOrder(f).reverse(), k, i, g, L;
+    for(k = 0; k < ord.length; k++){
+      i = ord[k]; g = spotPx(f.spots[i], W, H); L = spotLocal(g, pt.x * W, pt.y * H);
+      var th = spotTiltHandle(g, u, H);
+      if(Math.hypot(L.x - th.x, L.y - th.y) <= th.r * 1.35) return { i: i, tilt: true };
+    }
+    for(k = 0; k < ord.length; k++){
+      i = ord[k]; g = spotPx(f.spots[i], W, H); L = spotLocal(g, pt.x * W, pt.y * H);
       var corner = Math.abs(L.x - g.w / 2) < u * 0.03 && Math.abs(L.y - g.h / 2) < u * 0.03;
       if(corner) return { i: i, corner: true };
       if(Math.abs(L.x) <= g.w / 2 && Math.abs(L.y) <= g.h / 2) return { i: i, corner: false };
@@ -13237,7 +13384,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         var s = f.spots[hit.i], g = spotPx(s, f.w, f.h), c0 = Math.cos(g.a), s0 = Math.sin(g.a);
         // resize keeps the opposite (top-left) corner where it is
         var fx = g.cx + (-g.w / 2) * c0 - (-g.h / 2) * s0, fy = g.cy + (-g.w / 2) * s0 + (-g.h / 2) * c0;
-        fdrag = { id: e.pointerId, kind: hit.corner ? 'resize' : 'move', dx: s.x - pt.x, dy: s.y - pt.y, fx: fx, fy: fy };
+        fdrag = { id: e.pointerId, kind: hit.tilt ? 'tilt' : hit.corner ? 'resize' : 'move', dx: s.x - pt.x, dy: s.y - pt.y, fx: fx, fy: fy,
+          cx: g.cx, cy: g.cy, a0: s.a || 0, ang0: Math.atan2(pt.y * f.h - g.cy, pt.x * f.w - g.cx) };
         setupPreviewCanvas.setPointerCapture(e.pointerId); e.preventDefault();
       }
       renderSetupPreview(); return;
@@ -13262,7 +13410,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       it.cx = Math.max(0, Math.min(1, pt.x + fdrag.dx)); it.cy = Math.max(0, Math.min(1, pt.y + fdrag.dy));
     } else {
       var f = spotEdit && frameById(spotEdit.f), s = f && f.spots[spotEdit.sel]; if(!s) return;
-      if(fdrag.kind === 'move'){
+      if(fdrag.kind === 'tilt'){
+        // Turns around the box's centre; snaps to straight near 0°, whole and half degrees.
+        var d = fdrag.a0 + (Math.atan2(pt.y * f.h - fdrag.cy, pt.x * f.w - fdrag.cx) - fdrag.ang0) * 180 / Math.PI;
+        while(d > 180) d -= 360; while(d < -180) d += 360;
+        d = Math.max(-45, Math.min(45, Math.round(d * 2) / 2));
+        if(Math.abs(d) < 1.5) d = 0;
+        if(d) s.a = d; else delete s.a;
+      } else if(fdrag.kind === 'move'){
         s.x = Math.max(-s.w / 2, Math.min(1 - s.w / 2, pt.x + fdrag.dx)); s.y = Math.max(-s.h / 2, Math.min(1 - s.h / 2, pt.y + fdrag.dy));
       } else if(!s.a){
         s.w = Math.max(0.05, Math.min(1 - s.x, pt.x - s.x)); s.h = Math.max(0.03, Math.min(1 - s.y, pt.y - s.y));
@@ -13277,7 +13432,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   });
   function endFDrag(e){
     if(!fdrag || (e && e.pointerId !== fdrag.id)) return;
+    var wasTilt = fdrag.kind === 'tilt';
     fdrag = null; redrawAll(); scheduleSetupSave();
+    if(wasTilt) try{ refreshSpotSize(); }catch(err){}
   }
   setupPreviewCanvas.addEventListener('pointerup', endFDrag);
   setupPreviewCanvas.addEventListener('pointercancel', endFDrag);
@@ -13291,7 +13448,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var art0 = spotShowWin && frameArt(f), mk = art0 && frameMasks(f, art0);
       if(mk && mk.tint){ ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(mk.tint, 0, 0, W, H); ctx.restore(); }
       ctx.save();
-      f.spots.forEach(function(s, i){
+      spotOrder(f).forEach(function(i){
+        var s = f.spots[i];
         var on = i === spotEdit.sel, g = spotPx(s, W, H), x = -g.w / 2, y = -g.h / 2, w = g.w, h = g.h, u = Math.max(W, H);
         ctx.save(); ctx.translate(g.cx, g.cy); if(g.a) ctx.rotate(g.a);
         ctx.fillStyle = on ? 'rgba(201,61,39,.18)' : 'rgba(255,255,255,.12)'; ctx.fillRect(x, y, w, h);
@@ -13304,6 +13462,23 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         ctx.fillStyle = '#fff'; ctx.font = '700 ' + Math.round(r * 1.15) + 'px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(String(i + 1), x + r * 1.4, y + r * 1.45);
         ctx.fillStyle = on ? '#C93D27' : '#1C1A1E'; ctx.fillRect(x + w - r * 0.9, y + h - r * 0.9, r * 0.9, r * 0.9);   // resize handle
+        // tilt handle: a round "turn" button at the bottom middle
+        var th = spotTiltHandle(g, u, H);
+        if(th.outside){ ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(0, th.y - th.r); ctx.lineWidth = Math.max(1.5, u * 0.003); ctx.strokeStyle = on ? '#C93D27' : 'rgba(28,26,30,.82)'; ctx.stroke(); }
+        ctx.beginPath(); ctx.arc(th.x, th.y, th.r, 0, Math.PI * 2);
+        ctx.fillStyle = on ? '#C93D27' : 'rgba(28,26,30,.82)'; ctx.fill();
+        ctx.lineWidth = Math.max(1.5, th.r * 0.16); ctx.strokeStyle = '#fff'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(th.x, th.y, th.r * 0.5, -Math.PI * 0.85, Math.PI * 0.55);
+        ctx.lineWidth = Math.max(1.5, th.r * 0.17); ctx.lineCap = 'round'; ctx.stroke();
+        var ax = th.x + th.r * 0.5 * Math.cos(Math.PI * 0.55), ay = th.y + th.r * 0.5 * Math.sin(Math.PI * 0.55);
+        ctx.beginPath(); ctx.moveTo(ax - th.r * 0.34, ay - th.r * 0.02); ctx.lineTo(ax, ay); ctx.lineTo(ax + th.r * 0.06, ay - th.r * 0.36);
+        ctx.lineJoin = 'round'; ctx.stroke(); ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
+        if(on && fdrag && fdrag.kind === 'tilt'){
+          ctx.font = '800 ' + Math.round(r * 1.1) + 'px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+          var lab = (s.a || 0) + '\u00b0', tw = ctx.measureText(lab).width + r;
+          ctx.fillStyle = 'rgba(28,26,30,.85)'; ctx.fillRect(th.x - tw / 2, th.y - th.r * 1.3 - r * 1.4, tw, r * 1.35);
+          ctx.fillStyle = '#fff'; ctx.fillText(lab, th.x, th.y - th.r * 1.3 - r * 0.08);
+        }
         ctx.restore();
       });
       ctx.restore();
@@ -13321,7 +13496,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function framesSnapshot(){
     var r4 = function(v){ return Math.round(v * 10000) / 10000; };
     return {
-      frames: myFrames.map(function(f){ var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function(s){ var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; if(s.a) q.a = Math.round(s.a * 10) / 10; return q; }) }; if(typeof f.copy === 'boolean') o.copy = f.copy; if(f.key) o.key = { c: f.key.c.slice(), t: f.key.t }; return o; }),
+      frames: myFrames.map(function(f){ var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function(s){ var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; if(s.a) q.a = Math.round(s.a * 10) / 10; if(s.z) q.z = s.z; return q; }) }; if(typeof f.copy === 'boolean') o.copy = f.copy; if(f.key) o.key = { c: f.key.c.slice(), t: f.key.t }; return o; }),
       activeFrame: activeFrameId,
       frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
       sheet: { pattern: sheet.pattern, items: sheet.items.map(function(it){ return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; }) }
@@ -13333,10 +13508,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     myFrames = (Array.isArray(s.frames) ? s.frames : []).filter(function(f){ return f && okId(f.id) && Array.isArray(f.spots) && f.spots.length; }).slice(0, MAX_FRAMES).map(function(f){
       var key = f.key && Array.isArray(f.key.c) && f.key.c.length === 3 ? { c: f.key.c.map(function(v){ return Math.round(num(v, 0, 255, 0)); }), t: Math.round(num(f.key.t, 4, 100, 36)) } : null;
       return { id: f.id, w: num(f.w, 1, 10000, 1200), h: num(f.h, 1, 10000, 1800), key: key, spots: f.spots.slice(0, MAX_SPOTS).map(function(p){
-        var a = num(p.a, -45, 45, 0);
-        if(a){ var tw = num(p.w, 0.01, 1, 0.3), th = num(p.h, 0.01, 1, 0.3); return { x: num(p.x, -0.5, 1, 0), y: num(p.y, -0.5, 1, 0), w: tw, h: th, a: a }; }
-        var x = num(p.x, 0, 1, 0), y = num(p.y, 0, 1, 0);
-        return { x: x, y: y, w: num(p.w, 0.01, 1 - x, 0.3), h: num(p.h, 0.01, 1 - y, 0.3) };
+        var a = num(p.a, -45, 45, 0), z = Math.round(num(p.z, 0, 50, 0)), o;
+        if(a){ var tw = num(p.w, 0.01, 1, 0.3), th = num(p.h, 0.01, 1, 0.3); o = { x: num(p.x, -0.5, 1, 0), y: num(p.y, -0.5, 1, 0), w: tw, h: th, a: a }; }
+        else { var x = num(p.x, 0, 1, 0), y = num(p.y, 0, 1, 0); o = { x: x, y: y, w: num(p.w, 0.01, 1 - x, 0.3), h: num(p.h, 0.01, 1 - y, 0.3) }; }
+        if(z) o.z = z;
+        return o;
       }), copy: typeof f.copy === 'boolean' ? f.copy : undefined };
     });
     activeFrameId = okId(s.activeFrame) && frameById(s.activeFrame) ? s.activeFrame : (myFrames[0] ? myFrames[0].id : null);

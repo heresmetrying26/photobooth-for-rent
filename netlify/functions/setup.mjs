@@ -8,7 +8,7 @@ import { safe, json, checkLicense, verifyToken, licenses, setupsStore, cleanEven
 //   rental / bonus code -> one setup per booking (a bonus code shares its booking's)
 //   lifetime code       -> one setup per event name
 // Also keeps, per customer (booking / lifetime code):
-//   assets  -> uploaded frame overlays, logos and props (images)
+//   assets  -> uploaded frame overlays, logos and props (images), and own shutter / countdown sounds (short WAV)
 //   themes  -> "My themes" saved from the booth
 // Trials keep everything on the device only.
 const MAX_SETTINGS = 40000;          // bytes of setup JSON
@@ -16,6 +16,9 @@ const MAX_IMAGE = 3500000;           // characters of one image (data URL)
 const MAX_THEMES_JSON = 400000;      // all of a customer's saved themes (incl. small thumbnails)
 const MAX_THEMES = 40;
 const IMAGE_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+// Own shutter / countdown sounds: the booth trims them to a short WAV before uploading.
+const MAX_SOUND = 600000;
+const SOUND_RE = /^data:audio\/wav;base64,[A-Za-z0-9+/=]+$/;
 const ASSET_ID_RE = /^a[A-Za-z0-9]{8,32}$/;
 
 const keyFor = (scope) => 'k' + createHash('sha256').update(scope).digest('hex').slice(0, 40);
@@ -72,7 +75,8 @@ export default safe(async (req) => {
       const aid = String(b.id || '');
       const data = String(b.data || '');
       if (!ASSET_ID_RE.test(aid)) return json({ error: 'Bad image id' }, 400);
-      if (data.length > MAX_IMAGE || !IMAGE_RE.test(data)) return json({ error: 'That image is too large or not a PNG/JPEG.' }, 413);
+      const isSound = SOUND_RE.test(data);
+      if (isSound ? data.length > MAX_SOUND : (data.length > MAX_IMAGE || !IMAGE_RE.test(data))) return json({ error: isSound ? 'That sound is too long.' : 'That image is too large or not a PNG/JPEG.' }, 413);
       await store.set(ownerId + '_a_' + aid, data);
       return json({ ok: true, id: aid });
     }

@@ -146,7 +146,8 @@
           <button type="button" class="small" data-pkg="tablet">Tablet Booth · ₱499</button>
           <button type="button" class="small" data-pkg="laptop">Laptop Booth · ₱599</button>
           <button type="button" class="small" data-pkg="pass6">Laptop 6-Month Pass · ₱1,499</button>
-          <button type="button" class="small" data-pkg="lifetime">Lifetime · ₱4,999</button>
+          <button type="button" class="small" data-pkg="lifeonline">Lifetime Online · ₱2,999</button>
+          <button type="button" class="small" data-pkg="lifetime">Lifetime Online + Offline · ₱4,999</button>
         </div>
         <div class="meta" style="margin:6px 0 0;">Fills in the settings below for that package; you can still change any of them.</div>
       </div>
@@ -1049,11 +1050,13 @@
     try{ var v = localStorage.getItem('pb_admin_' + id); if(v) $(id).open = v === '1'; }catch(e){}
     $(id).addEventListener('toggle', function(){ try{ localStorage.setItem('pb_admin_' + id, $(id).open ? '1' : '0'); }catch(e){} });
   });
-  // Package presets (Tablet Booth / Laptop Booth / Laptop 6-Month Pass / Lifetime).
+  // Package presets (Tablet Booth / Laptop Booth / Laptop 6-Month Pass / Lifetime Online / Lifetime Online + Offline).
+  // Lifetime Online buying the offline app later (₱2,499; founders ₱999): open the code → Give offline app.
   var PKG = {
     tablet:   { days: 1,   devices: 1, lifetime: false, traditional: false, offline: false, only: false },
     laptop:   { days: 1,   devices: 1, lifetime: false, traditional: true,  offline: true,  only: false },
     pass6:    { days: 183, devices: 1, lifetime: false, traditional: true,  offline: true,  only: true },
+    lifeonline: { days: 1, devices: 5, lifetime: true,  traditional: true,  offline: false, only: false },
     lifetime: { days: 1,   devices: 5, lifetime: true,  traditional: true,  offline: true,  only: false }
   };
   $('newPackages').addEventListener('click', function(e){
@@ -1068,7 +1071,7 @@
   $('newOffline').addEventListener('change', function(){ if(!this.checked) $('newOfflineOnly').checked = false; });
   $('newLifetime').addEventListener('change', function(){
     $('newDays').disabled = this.checked;
-    if(this.checked){ $('newTraditional').checked = true; $('newOffline').checked = true; }   // Lifetime includes the offline app
+    if(this.checked){ $('newTraditional').checked = true; $('newOffline').checked = true; }   // Lifetime includes the offline app (untick for Lifetime Online)
     // Lifetime codes: up to 5 devices at once by default.
     if(this.checked && $('newDevices').value === '1') $('newDevices').value = '5';
     else if(!this.checked && $('newDevices').value === '5') $('newDevices').value = '1';

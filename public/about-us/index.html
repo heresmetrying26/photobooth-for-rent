@@ -77,7 +77,9 @@
     .steps b{display:block;font-size:15.5px;margin-bottom:2px}
     .steps span{font-size:14px;color:var(--muted)}
 
-    .plans{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .plans{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+    .plans .plan{grid-column:span 2}
+    .plans .plan.wide{grid-column:span 3}
     .plan{display:flex;flex-direction:column;padding:22px;border-radius:18px;background:#fff;border:1px solid var(--line)}
     .plan.pro{border:2px solid var(--red)}
     .plan.life{background:var(--ink);border-color:var(--ink);color:#fff}
@@ -147,6 +149,8 @@
     @media (max-width:860px){
       .features{grid-template-columns:1fr 1fr}
       .plans{grid-template-columns:1fr 1fr}
+      .plans .plan,.plans .plan.wide{grid-column:auto}
+      .plans .plan.life{grid-column:1 / -1}
       .guides{grid-template-columns:1fr}
       .steps{grid-template-columns:1fr 1fr}
     }
@@ -303,10 +307,16 @@
           <p class="for">Windows / Mac app, works offline · every event for 6 months</p>
           <p class="price">₱1,499 <small>/ 6 months</small></p>
         </article>
-        <article class="plan life">
+        <article class="plan wide">
+          <span class="tag">Lifetime</span>
+          <h3>Lifetime Online</h3>
+          <p class="for">Tablet or laptop in the browser · every event · never expires · multiple devices</p>
+          <p class="price">₱2,999 <small>one-time</small></p>
+        </article>
+        <article class="plan life wide">
           <span class="tag">Best value</span>
-          <h3>Lifetime</h3>
-          <p class="for">Online + offline app · every event · never expires · multiple devices</p>
+          <h3>Lifetime Online + Offline</h3>
+          <p class="for">Everything in Lifetime Online, plus the Windows / Mac app that works with no internet</p>
           <p class="price">₱4,999 <small>one-time</small></p>
           <p class="life-link"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us to get it →</a></p>
         </article>
@@ -379,7 +389,7 @@
             <span class="copied" id="copiedNote" role="status">Copied! Paste it in Messenger.</span>
           </div>
         <pre class="form-card" id="availForm">Name:
-Setup Type: Tablet / Laptop / 6-Month Pass / Lifetime
+Setup Type: Tablet / Laptop / 6-Month Pass / Lifetime Online / Lifetime Online + Offline
 Event Date:</pre>
       </div>
     </section>

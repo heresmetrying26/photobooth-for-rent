@@ -53,7 +53,8 @@
           ]
         }
       ],
-      "icon": "resources/icon.png"
+      "icon": "resources/icon.png",
+      "artifactName": "photobooth4u-${version}-windows-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,

@@ -185,6 +185,8 @@ export async function activate(fetchFn, code) {
   if (r.status !== 200 || !r.j.ok || !readLicence(r.j.licence)) return { ok: false, error: r.j.error || ('Activation failed (' + r.status + ').'), code: r.j.code };
   clockFrom(r.date);
   store(r.j.licence);
+  noteLatest(r.j.app);
+  save();
   return { ok: true };
 }
 // Pasted licence from Admin ("Offline activation key").
@@ -210,12 +212,16 @@ export async function checkin(fetchFn, force) {
   try { r = await post(fetchFn, { action: 'checkin', licence: state.lic, mid: machineId(), ver }, 15000); }
   catch { return 'offline'; }
   clockFrom(r.date);
-  if (r.status === 200 && r.j.ok && readLicence(r.j.licence)) { store(r.j.licence); return 'ok'; }
+  if (r.status === 200 && r.j.ok && readLicence(r.j.licence)) { store(r.j.licence); noteLatest(r.j.app); return 'ok'; }
   if (r.j && r.j.revoked) { state.revoked = { reason: r.j.reason || 'removed', error: r.j.error || '' }; state.lastCheck = Date.now(); save(); return 'revoked'; }
   save();
   return 'offline';
 }
 
+// The newest app version photobooth4u offers (sent with every check-in): the booth shows "Update available".
+function noteLatest(a) {
+  if (a && typeof a.version === 'string' && /^\d+\.\d+\.\d+$/.test(a.version)) { state.latest = a.version; save(); }
+}
 export async function deactivate(fetchFn) {
   if (!state.lic) return { ok: true };
   try {
@@ -233,6 +239,7 @@ export function info() {
     ok: s.ok, reason: s.reason || '', message: s.message || '', warn: s.warn || '',
     mid: machineId(), name: computerName(), os: osKey(),
     renter: p ? p.renter : '', code: p ? p.code : '', lifetime: p ? !!p.lifetime : false,
-    exp: p ? p.exp : null, hard: p ? p.hard : null, chk: p ? p.chk : null, lastCheck: state.lastCheck || 0, feat: p ? p.feat : null
+    exp: p ? p.exp : null, hard: p ? p.hard : null, chk: p ? p.chk : null, lastCheck: state.lastCheck || 0, feat: p ? p.feat : null,
+    latest: state.latest || ''
   };
 }

@@ -125,6 +125,8 @@ export default safe(async (req, context) => {
     expiresAt: rec.lifetime ? null : rec.expiresAt,
     startsAt: rec.startsAt || null,
     traditional: !!rec.traditional,
+    offlineOpt: !!rec.offlineOpt,
+    offlineOnly: !!rec.offlineOnly,
     print: rec.print && rec.print.enabled ? normPrint(true, rec.print.sizes, rec.print) : { enabled: false, sizes: [] },
     folderPrefix: rec.lifetime ? (rec.folderName || rec.label || rec.code) : null,
     devices: { used: devicesOf(rec).length, max: maxDevicesOf(rec),

@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="New features and fixes in photobooth4u: the website booth, the laptop app and the Print Helper.">
+  <title>What’s new | photobooth4u</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--ink:#1C1A1E;--muted:#6B666C;--red:#C93D27;--red-dark:#A9301D;--tint:#FBEDEA;--paper:#F5F1EA;--line:#E4DCCF;--blue:#0866FF;}
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;color:var(--ink);font-family:'Manrope',Arial,sans-serif;background:var(--paper);line-height:1.5}
+    a{color:inherit}
+    .wrap{width:min(980px,calc(100% - 32px));margin:0 auto}
+    .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+    /* top navigation (same on the lock screen, About us and My events) */
+    .topnav{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;padding:18px 0}
+    .nbrand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink)}
+    .nmark{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:24px;height:24px;flex:none}
+    .nmark i{background:var(--ink);border-radius:4px}.nmark i:nth-child(2){background:var(--red)}
+    .nword{display:flex;align-items:flex-start}
+    .nword b{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:23px;letter-spacing:-.035em;line-height:1}
+    .nword em{font-style:normal;margin-left:3px;padding:2px 6px 4px;border-radius:7px;background:var(--red);color:#fff;font-weight:800;font-size:11px;line-height:1;transform:rotate(-7deg)}
+    .navlinks{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+    .navlinks a{font-size:14px;font-weight:700;color:var(--muted);text-decoration:none;padding:9px 13px;border-radius:999px;white-space:nowrap;transition:background .2s,color .2s}
+    .navlinks a:hover,.navlinks a:focus-visible{color:var(--ink);background:#fff;outline:none}
+    .navlinks a[aria-current="page"]{color:var(--ink);background:#fff}
+    .navlinks a.cta{margin-left:4px;color:#fff;background:var(--red)}
+    .navlinks a.cta:hover,.navlinks a.cta:focus-visible{background:var(--red-dark);color:#fff}
+
+    .hero{text-align:center;padding:30px 0 30px}
+    h1{margin:0 0 12px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(38px,6.4vw,68px);line-height:1.02;letter-spacing:-.04em}
+    h1 em{font-style:italic;font-weight:500;color:var(--red)}
+    .hero p{margin:0 auto;max-width:480px;font-size:17px;color:var(--muted)}
+    .hero-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:22px}
+
+    
+    .hero{text-align:center;padding:26px 0 8px}
+    h1{margin:0 0 10px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(34px,5.6vw,56px);line-height:1.04;letter-spacing:-.035em}
+    h1 em{font-style:italic;font-weight:500;color:var(--red)}
+    .lead{margin:0 auto;max-width:540px;font-size:17px;color:var(--muted)}
+    h2{margin:0 0 6px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(23px,3vw,28px);letter-spacing:-.02em;line-height:1.15}
+    .card{padding:24px;border-radius:20px;background:#fff;border:1px solid var(--line)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:999px;font:inherit;font-size:14.5px;font-weight:800;text-decoration:none;cursor:pointer;border:1.5px solid var(--line);background:#fff;color:var(--ink);transition:.2s}
+    .btn:hover,.btn:focus-visible{border-color:var(--red);color:var(--red);outline:none}
+    .btn.red{background:var(--red);border-color:var(--red);color:#fff}.btn.red:hover,.btn.red:focus-visible{background:var(--red-dark);border-color:var(--red-dark);color:#fff}
+    .btn svg{width:18px;height:18px;flex:none}
+    .muted{color:var(--muted)}
+    footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;margin:56px 0 0;padding:22px 0 40px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+    footer nav{display:flex;flex-wrap:wrap;gap:16px}footer nav a{font-weight:700;color:var(--ink);text-decoration:none}footer nav a:hover{color:var(--red)}
+    @media (max-width:640px){.topnav{justify-content:center;padding:16px 0 4px}.navlinks{width:100%;justify-content:center;gap:2px}.navlinks a{font-size:13.5px;padding:8px 10px}}
+    @media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important}}
+
+    .note{padding:20px 22px;border-radius:18px;background:#fff;border:1px solid var(--line)}
+    .note + .note{margin-top:12px}
+    .nh{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:6px}
+    .nh time{font-size:13px;font-weight:800;color:var(--muted);margin-right:4px}
+    .tag,.ver{padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:800;letter-spacing:.04em}
+    .tag{background:#F0EBE3;color:var(--ink)}.tag.t-app{background:var(--ink);color:#fff}.tag.t-helper{background:#E6F4F1;color:#1F6F62}.tag.t-website{background:var(--tint);color:var(--red)}
+    .ver{border:1.5px solid var(--line);color:var(--muted)}
+    .note h3{margin:0 0 6px;font-size:18px;line-height:1.3}
+    .note ul{margin:0;padding-left:20px;color:#3d393f;font-size:15px}.note li{margin:4px 0}
+
+    .wrapn{max-width:760px;margin:0 auto}
+    .latest{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:22px 0 0}
+    .latest a{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 18px;border-radius:16px;background:#fff;border:1px solid var(--line);text-decoration:none;color:var(--ink);transition:.2s}
+    .latest a:hover{border-color:var(--red)}
+    .latest b{display:block;font-size:15.5px;color:var(--ink)}.latest span{font-size:13px;color:var(--muted);font-weight:600}
+    .latest i{font-style:normal;font-weight:800;color:var(--red);white-space:nowrap}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin:26px 0 14px}
+    .chips button{padding:8px 15px;border-radius:999px;border:1.5px solid var(--line);background:#fff;font:inherit;font-size:14px;font-weight:800;cursor:pointer;color:var(--ink)}
+    .chips button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+    @media (max-width:640px){.latest{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topnav">
+      <a class="nbrand" href="/about-us/" aria-label="photobooth4u home"><span class="nmark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="nword"><b>photobooth</b><em>4u</em></span></a>
+      <nav class="navlinks" aria-label="Main">
+        <a href="/about-us/">About us</a>
+        <a href="/lifetime/">My events</a>
+        <a href="/app/">Laptop app</a>
+        <a href="/updates/" aria-current="page">What’s new</a>
+        <a class="cta" href="/about-us/#avail">Book now</a>
+      </nav>
+    </header>
+    <div class="wrapn">
+      <section class="hero">
+        <h1>What’s <em>new</em></h1>
+        <p class="lead">New features and fixes for the website booth, the laptop app and the Print Helper. The website updates by itself; the laptop app and the Print Helper you download again.</p>
+      </section>
+      <div class="latest">
+        <a href="/app/"><div><b>Laptop app</b><span id="appVer">Windows &amp; Mac</span></div><i>Get it →</i></a>
+        <a href="/downloads/"><div><b>Print Helper</b><span id="helperVer">Windows &amp; Mac</span></div><i>Download →</i></a>
+      </div>
+      <div class="chips" role="group" aria-label="Show">
+        <button type="button" data-f="" aria-pressed="true">All</button>
+        <button type="button" data-f="website" aria-pressed="false">Website</button>
+        <button type="button" data-f="app" aria-pressed="false">Laptop app</button>
+        <button type="button" data-f="helper" aria-pressed="false">Print Helper</button>
+      </div>
+      <div id="notes"><p class="muted">Loading…</p></div>
+    </div>
+    <footer>
+      <span><b style="color:var(--ink)">photobooth4u.netlify.app</b> · Cebu</span>
+      <nav aria-label="Footer">
+        <a href="/about-us/">About us</a>
+        <a href="/lifetime/">My events</a>
+        <a href="/app/">Laptop app</a>
+        <a href="/updates/">What’s new</a>
+        <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Messenger</a>
+      </nav>
+    </footer>
+  </div>
+  <script>
+
+    function fmtDate(d){ try{ return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }catch(e){ return d; } }
+    function esc(t){ return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    var FOR = { website: 'Website', app: 'Laptop app', helper: 'Print Helper' };
+    function noteHtml(n){
+      var tags = (n.for || []).map(function(f){ return '<span class="tag t-' + esc(f) + '">' + esc(FOR[f] || f) + '</span>'; }).join('');
+      var vers = (n.app ? '<span class="ver">App ' + esc(n.app) + '</span>' : '') + (n.helper ? '<span class="ver">Helper ' + esc(n.helper) + '</span>' : '');
+      return '<article class="note"><div class="nh"><time>' + esc(fmtDate(n.date)) + '</time>' + tags + vers + '</div><h3>' + esc(n.title) + '</h3><ul>' +
+        (n.items || []).map(function(i){ return '<li>' + esc(i) + '</li>'; }).join('') + '</ul></article>';
+    }
+
+    var notes = [], filt = '';
+    function draw(){
+      var list = notes.filter(function(n){ return !filt || (n.for || []).indexOf(filt) >= 0; });
+      document.getElementById('notes').innerHTML = list.length ? list.map(noteHtml).join('') : '<p class="muted">Nothing here yet.</p>';
+    }
+    document.querySelectorAll('.chips button').forEach(function(b){
+      b.addEventListener('click', function(){
+        filt = b.dataset.f;
+        document.querySelectorAll('.chips button').forEach(function(x){ x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        draw();
+      });
+    });
+    var m = /[?&]for=(website|app|helper)/.exec(location.search);
+    if(m){ var btn = document.querySelector('.chips button[data-f="' + m[1] + '"]'); if(btn) btn.click(); }
+    fetch('/api/updates').then(function(r){ return r.json(); }).then(function(j){
+      notes = j.notes || [];
+      if(j.app) document.getElementById('appVer').textContent = 'Version ' + j.app.version + ' · Windows & Mac';
+      if(j.helper) document.getElementById('helperVer').textContent = 'Version ' + j.helper.version + ' · Windows & Mac';
+      draw();
+    }).catch(function(){ document.getElementById('notes').innerHTML = '<p class="muted">Can’t load the updates right now. Check your internet connection.</p>'; });
+  </script>
+</body>
+</html>

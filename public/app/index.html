@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Download the photobooth4u laptop app for Windows and Mac, and its updates.">
+  <title>Laptop app | photobooth4u</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--ink:#1C1A1E;--muted:#6B666C;--red:#C93D27;--red-dark:#A9301D;--tint:#FBEDEA;--paper:#F5F1EA;--line:#E4DCCF;--blue:#0866FF;}
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;color:var(--ink);font-family:'Manrope',Arial,sans-serif;background:var(--paper);line-height:1.5}
+    a{color:inherit}
+    .wrap{width:min(980px,calc(100% - 32px));margin:0 auto}
+    .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+    /* top navigation (same on the lock screen, About us and My events) */
+    .topnav{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;padding:18px 0}
+    .nbrand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink)}
+    .nmark{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:24px;height:24px;flex:none}
+    .nmark i{background:var(--ink);border-radius:4px}.nmark i:nth-child(2){background:var(--red)}
+    .nword{display:flex;align-items:flex-start}
+    .nword b{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:23px;letter-spacing:-.035em;line-height:1}
+    .nword em{font-style:normal;margin-left:3px;padding:2px 6px 4px;border-radius:7px;background:var(--red);color:#fff;font-weight:800;font-size:11px;line-height:1;transform:rotate(-7deg)}
+    .navlinks{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+    .navlinks a{font-size:14px;font-weight:700;color:var(--muted);text-decoration:none;padding:9px 13px;border-radius:999px;white-space:nowrap;transition:background .2s,color .2s}
+    .navlinks a:hover,.navlinks a:focus-visible{color:var(--ink);background:#fff;outline:none}
+    .navlinks a[aria-current="page"]{color:var(--ink);background:#fff}
+    .navlinks a.cta{margin-left:4px;color:#fff;background:var(--red)}
+    .navlinks a.cta:hover,.navlinks a.cta:focus-visible{background:var(--red-dark);color:#fff}
+
+    .hero{text-align:center;padding:30px 0 30px}
+    h1{margin:0 0 12px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(38px,6.4vw,68px);line-height:1.02;letter-spacing:-.04em}
+    h1 em{font-style:italic;font-weight:500;color:var(--red)}
+    .hero p{margin:0 auto;max-width:480px;font-size:17px;color:var(--muted)}
+    .hero-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:22px}
+
+    
+    .hero{text-align:center;padding:26px 0 8px}
+    h1{margin:0 0 10px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(34px,5.6vw,56px);line-height:1.04;letter-spacing:-.035em}
+    h1 em{font-style:italic;font-weight:500;color:var(--red)}
+    .lead{margin:0 auto;max-width:540px;font-size:17px;color:var(--muted)}
+    h2{margin:0 0 6px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(23px,3vw,28px);letter-spacing:-.02em;line-height:1.15}
+    .card{padding:24px;border-radius:20px;background:#fff;border:1px solid var(--line)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:999px;font:inherit;font-size:14.5px;font-weight:800;text-decoration:none;cursor:pointer;border:1.5px solid var(--line);background:#fff;color:var(--ink);transition:.2s}
+    .btn:hover,.btn:focus-visible{border-color:var(--red);color:var(--red);outline:none}
+    .btn.red{background:var(--red);border-color:var(--red);color:#fff}.btn.red:hover,.btn.red:focus-visible{background:var(--red-dark);border-color:var(--red-dark);color:#fff}
+    .btn svg{width:18px;height:18px;flex:none}
+    .muted{color:var(--muted)}
+    footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;margin:56px 0 0;padding:22px 0 40px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+    footer nav{display:flex;flex-wrap:wrap;gap:16px}footer nav a{font-weight:700;color:var(--ink);text-decoration:none}footer nav a:hover{color:var(--red)}
+    @media (max-width:640px){.topnav{justify-content:center;padding:16px 0 4px}.navlinks{width:100%;justify-content:center;gap:2px}.navlinks a{font-size:13.5px;padding:8px 10px}}
+    @media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important}}
+
+    .note{padding:20px 22px;border-radius:18px;background:#fff;border:1px solid var(--line)}
+    .note + .note{margin-top:12px}
+    .nh{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:6px}
+    .nh time{font-size:13px;font-weight:800;color:var(--muted);margin-right:4px}
+    .tag,.ver{padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:800;letter-spacing:.04em}
+    .tag{background:#F0EBE3;color:var(--ink)}.tag.t-app{background:var(--ink);color:#fff}.tag.t-helper{background:#E6F4F1;color:#1F6F62}.tag.t-website{background:var(--tint);color:var(--red)}
+    .ver{border:1.5px solid var(--line);color:var(--muted)}
+    .note h3{margin:0 0 6px;font-size:18px;line-height:1.3}
+    .note ul{margin:0;padding-left:20px;color:#3d393f;font-size:15px}.note li{margin:4px 0}
+
+    .wrapn{max-width:720px;margin:0 auto}
+    form.codef{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+    .codef input{flex:1 1 240px;min-width:0;padding:13px 16px;border-radius:14px;border:1.5px solid var(--line);font:inherit;font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:#fff}
+    .codef input:focus{outline:none;border-color:var(--red)}
+    .msg{flex-basis:100%;margin:2px 0 0;font-size:14px;font-weight:700;color:var(--red);min-height:1em}
+    .dl{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+    .dl a{display:flex;flex-direction:column;gap:2px;padding:16px;border-radius:16px;border:1.5px solid var(--line);text-decoration:none;color:var(--ink);background:#fff;transition:.2s}
+    .dl a:hover,.dl a:focus-visible{border-color:var(--red);outline:none}
+    .dl a b{font-size:16px}.dl a span{font-size:13px;color:var(--muted);font-weight:600}
+    .dl a.mine{border-color:var(--red);box-shadow:0 0 0 2px var(--red) inset}
+    .dl a.mine::after{content:"For this computer";align-self:flex-start;margin-top:6px;padding:2px 9px;border-radius:999px;background:var(--red);color:#fff;font-size:11px;font-weight:800}
+    .plan{display:flex;flex-wrap:wrap;gap:6px 14px;margin:6px 0 0;font-size:14.5px;color:var(--muted)}.plan b{color:var(--ink)}
+    .tips{margin:16px 0 0;padding:14px 16px;border-radius:14px;background:var(--paper);font-size:14.5px}
+    .tips p{margin:0}.tips p + p{margin-top:6px}
+    .tips a{color:var(--red);font-weight:800}
+    .hidden{display:none!important}
+    .sec{margin-top:16px}
+    .sechead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:30px 0 12px}
+    .sechead a{font-weight:800;color:var(--red);text-decoration:none;font-size:14.5px}
+    @media (max-width:640px){.dl{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topnav">
+      <a class="nbrand" href="/about-us/" aria-label="photobooth4u home"><span class="nmark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="nword"><b>photobooth</b><em>4u</em></span></a>
+      <nav class="navlinks" aria-label="Main">
+        <a href="/about-us/">About us</a>
+        <a href="/lifetime/">My events</a>
+        <a href="/app/" aria-current="page">Laptop app</a>
+        <a href="/updates/">What’s new</a>
+        <a class="cta" href="/about-us/#avail">Book now</a>
+      </nav>
+    </header>
+    <div class="wrapn">
+      <section class="hero">
+        <h1>The <em>laptop</em> app</h1>
+        <p class="lead">photobooth4u for Windows and Mac: the full booth, working with no internet at the venue. Download it, or its newest version, with your code.</p>
+      </section>
+
+      <section class="card sec" id="codeCard">
+        <h2>Your code</h2>
+        <p class="muted" style="margin:0">The code you activate the app with (PB-XXXX-XXXX-XXXX).</p>
+        <form class="codef" id="codeForm" autocomplete="off">
+          <input id="codeIn" type="text" placeholder="PB-XXXX-XXXX-XXXX" aria-label="Your code" spellcheck="false">
+          <button class="btn red" type="submit" id="codeBtn">Show my downloads</button>
+          <p class="msg" id="codeMsg" role="alert"></p>
+        </form>
+      </section>
+
+      <section class="card sec hidden" id="resCard" aria-live="polite">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
+          <div><h2 id="resName"></h2><p class="plan" id="resPlan"></p></div>
+          <button class="btn" type="button" id="otherBtn">Use another code</button>
+        </div>
+        <div id="resBody"></div>
+      </section>
+
+      <div class="sechead"><h2 style="margin:0">What’s new in the app</h2><a href="/updates/">All updates →</a></div>
+      <div id="appNotes"><p class="muted">Loading…</p></div>
+    </div>
+    <footer>
+      <span><b style="color:var(--ink)">photobooth4u.netlify.app</b> · Cebu</span>
+      <nav aria-label="Footer">
+        <a href="/about-us/">About us</a>
+        <a href="/lifetime/">My events</a>
+        <a href="/app/">Laptop app</a>
+        <a href="/updates/">What’s new</a>
+        <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Messenger</a>
+      </nav>
+    </footer>
+  </div>
+  <script>
+
+    function fmtDate(d){ try{ return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }catch(e){ return d; } }
+    function esc(t){ return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    var FOR = { website: 'Website', app: 'Laptop app', helper: 'Print Helper' };
+    function noteHtml(n){
+      var tags = (n.for || []).map(function(f){ return '<span class="tag t-' + esc(f) + '">' + esc(FOR[f] || f) + '</span>'; }).join('');
+      var vers = (n.app ? '<span class="ver">App ' + esc(n.app) + '</span>' : '') + (n.helper ? '<span class="ver">Helper ' + esc(n.helper) + '</span>' : '');
+      return '<article class="note"><div class="nh"><time>' + esc(fmtDate(n.date)) + '</time>' + tags + vers + '</div><h3>' + esc(n.title) + '</h3><ul>' +
+        (n.items || []).map(function(i){ return '<li>' + esc(i) + '</li>'; }).join('') + '</ul></article>';
+    }
+
+    var $ = function(id){ return document.getElementById(id); };
+    var KEY = 'pb_app_code', latest = null;
+    var ua = navigator.userAgent || '', isMac = /Macintosh|Mac OS X/.test(ua) && !(navigator.maxTouchPoints > 1), isWin = /Windows/.test(ua);
+    function store(v){ try{ if(v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); }catch(e){} }
+    fetch('/api/updates').then(function(r){ return r.json(); }).then(function(j){
+      latest = j.app;
+      var n = (j.notes || []).filter(function(x){ return (x.for || []).indexOf('app') >= 0; }).slice(0, 3);
+      $('appNotes').innerHTML = n.length ? n.map(noteHtml).join('') : '<p class="muted">No app updates yet.</p>';
+    }).catch(function(){ $('appNotes').innerHTML = '<p class="muted">Can’t load the updates right now.</p>'; });
+    function fmt(t){ try{ return new Date(t).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }catch(e){ return ''; } }
+    function render(d){
+      $('resName').textContent = d.label;
+      var plan = [];
+      plan.push(d.lifetime ? '<b>Lifetime</b>' : d.expired ? 'Ended <b>' + esc(fmt(d.expiresAt)) + '</b>' : d.expiresAt ? 'Until <b>' + esc(fmt(d.expiresAt)) + '</b>' : '');
+      if(d.hasApp) plan.push('Laptops with the app: <b>' + d.devices.apps + '</b> · devices in use <b>' + d.devices.used + ' of ' + d.devices.max + '</b>');
+      $('resPlan').innerHTML = plan.filter(Boolean).join('<span aria-hidden="true">·</span>');
+      if(!d.hasApp){
+        $('resBody').innerHTML = '<div class="tips"><p><b>This code doesn’t include the laptop app.</b> It works in the online booth: open <a href="/">photobooth4u.netlify.app</a> on your tablet or laptop, and see your events in <a href="/lifetime/">My events</a>.</p><p>Want the app too, for events with no internet? <a href="https://m.me/roktetnachi" target="_blank" rel="noopener">Message us</a>.</p></div>';
+        return;
+      }
+      var dl = d.downloads, v = esc(dl.version), when = d.app && d.app.date ? ' · ' + esc(fmtDate(d.app.date)) : '';
+      var macPick = isMac ? 'mine' : '';
+      $('resBody').innerHTML =
+        '<p style="margin:16px 0 0;font-weight:800">Latest version: ' + v + when + '</p>' +
+        '<div class="dl">' +
+          '<a class="' + (isWin ? 'mine' : '') + '" href="' + esc(dl.windows) + '"><b>Windows</b><span>Windows 10 / 11 · 64-bit</span></a>' +
+          '<a class="' + macPick + '" href="' + esc(dl.macArm) + '"><b>Mac · Apple Silicon</b><span>M1, M2, M3, M4</span></a>' +
+          '<a href="' + esc(dl.macIntel) + '"><b>Mac · Intel</b><span>Older Macs</span></a>' +
+        '</div>' +
+        '<div class="tips">' +
+          '<p><b>Already have the app?</b> Download and install the new version over the old one. Your activation, designs and photos stay.</p>' +
+          '<p><b>First time?</b> Follow the <a href="/lifetime/photobooth4u-offline-app-guide.pdf" target="_blank" rel="noopener">Offline app guide (PDF)</a>: install, activate with this code, then set up your event.</p>' +
+          (isMac ? '<p>Not sure which Mac? Apple menu → About This Mac: “Chip: Apple M…” is Apple Silicon, “Processor: Intel” is Intel.</p>' : '') +
+          (d.offlineOnly ? '' : '<p>Your code also works on the website: <a href="/lifetime/">My events</a> (events, payments, printing) and the <a href="/">online booth</a>.</p>') +
+        '</div>';
+    }
+    async function lookup(code){
+      $('codeMsg').textContent = ''; $('codeBtn').disabled = true; $('codeBtn').textContent = 'Checking…';
+      try{
+        var r = await fetch('/api/updates', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: code }) });
+        var j = await r.json().catch(function(){ return {}; });
+        if(!r.ok || !j.ok){ $('codeMsg').textContent = j.error || 'Something went wrong. Try again.'; store(null); return; }
+        store(code); render(j);
+        $('codeCard').classList.add('hidden'); $('resCard').classList.remove('hidden');
+      }catch(e){ $('codeMsg').textContent = 'Can’t reach photobooth4u. Check your internet connection.'; }
+      finally{ $('codeBtn').disabled = false; $('codeBtn').textContent = 'Show my downloads'; }
+    }
+    $('codeForm').addEventListener('submit', function(e){ e.preventDefault(); var c = $('codeIn').value.trim(); if(c) lookup(c); else $('codeMsg').textContent = 'Type your code first.'; });
+    $('otherBtn').addEventListener('click', function(){ store(null); $('resCard').classList.add('hidden'); $('codeCard').classList.remove('hidden'); $('codeIn').value = ''; $('codeIn').focus(); });
+    var fromHash = decodeURIComponent((location.hash || '').slice(1)).trim(), saved = null;
+    try{ saved = localStorage.getItem(KEY); }catch(e){}
+    if(/^PB-/i.test(fromHash)){ $('codeIn').value = fromHash; try{ history.replaceState(null, '', location.pathname); }catch(e){} lookup(fromHash); }
+    else if(saved){ $('codeIn').value = saved; lookup(saved); }
+  </script>
+</body>
+</html>

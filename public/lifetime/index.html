@@ -164,6 +164,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       <a href="/about-us/#packages">Pricing</a>
       <a href="/lifetime/" aria-current="page">My events</a>
       <a href="/">Open booth</a>
+      <a href="/updates/">What’s new</a>
       <a class="cta" href="/about-us/#avail">Book now</a>
     </nav>
   </header>
@@ -208,10 +209,21 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
           <p id="startText">Open the photo booth on this device, or download the setup guide for step-by-step instructions.</p>
         </div>
         <div class="start-actions">
-          <a class="btn" href="/lifetime/photobooth4u-setup-guide.pdf" download><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a1 1 0 0 1 1 1v9.59l3.3-3.3a1 1 0 1 1 1.4 1.42l-5 5a1 1 0 0 1-1.4 0l-5-5a1 1 0 1 1 1.4-1.42l3.3 3.3V4a1 1 0 0 1 1-1Zm-8 15a1 1 0 0 1 1 1v1h14v-1a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z"/></svg>Download setup guide</a>
-          <a class="btn primary" href="/">Open photo booth</a>
+          <a class="btn" href="/lifetime/photobooth4u-setup-guide.pdf" download id="guideBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a1 1 0 0 1 1 1v9.59l3.3-3.3a1 1 0 1 1 1.4 1.42l-5 5a1 1 0 0 1-1.4 0l-5-5a1 1 0 1 1 1.4-1.42l3.3 3.3V4a1 1 0 0 1 1-1Zm-8 15a1 1 0 0 1 1 1v1h14v-1a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z"/></svg>Download setup guide</a>
+          <a class="btn primary" href="/" id="openBoothBtn">Open photo booth</a>
         </div>
       </div>
+      <section class="card pay hidden" id="appCard" aria-labelledby="appH">
+        <div class="pay-top">
+          <div><h2 id="appH">Laptop app</h2><p class="sub" id="appSub">The photobooth4u app for Windows and Mac works with no internet at the venue.</p></div>
+          <span class="pchip on"><i></i><span id="appChip">Included</span></span>
+        </div>
+        <div class="start-actions" style="margin-top:14px;justify-content:flex-start">
+          <a class="btn primary" href="/app/" id="appDlBtn">Download or update the app</a>
+          <a class="btn" href="/updates/?for=app">What’s new</a>
+          <a class="btn" href="/lifetime/photobooth4u-offline-app-guide.pdf" target="_blank" rel="noopener">Offline app guide (PDF)</a>
+        </div>
+      </section>
       <section class="card pay hidden" id="payCard" aria-labelledby="payH">
         <div class="pay-top">
           <div><h2 id="payH">Guest payments</h2><p class="sub">Guests pay before each session — by scanning a QR with GCash, Maya or any bank app, or with vouchers you sell at the booth. Turn it on per event in the booth: Setup → 5 Session → Guest payment. <a href="/lifetime/photobooth4u-setup-guide.pdf#page=9" target="_blank" rel="noopener"><b>Step-by-step guide (PDF)</b></a></p></div>
@@ -357,7 +369,9 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       $('acctName').textContent = d.label;
       var badges = [];
       if(d.lifetime) badges.push('<span class="badge life">Lifetime</span>');
-      if(d.traditional) badges.push('<span class="badge pro">Pro Booth</span>');
+      if(d.traditional) badges.push('<span class="badge pro">Laptop Booth</span>');
+      if(d.offlineOnly) badges.push('<span class="badge pro">Laptop app only</span>');
+      else if(d.offlineOpt) badges.push('<span class="badge">+ Laptop app</span>');
       if(d.status === 'expired') badges.push('<span class="badge warn">Rental ended</span>');
       if(d.status === 'revoked') badges.push('<span class="badge warn">Disabled</span>');
       badges.push('<span class="badge">' + esc(d.code) + '</span>');
@@ -366,11 +380,19 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       meta.push('Devices: <b>' + d.devices.used + ' of ' + d.devices.max + '</b> in use');
       if(!d.lifetime && d.expiresAt) meta.push((d.status === 'expired' ? 'Ended ' : 'Booth open until ') + '<b>' + esc(fmt(d.expiresAt, true)) + '</b>');
       else if(!d.lifetime && d.startsAt) meta.push('Opens <b>' + esc(fmt(d.startsAt, true)) + '</b>');
-      if(d.lifetime) meta.push('New event? In the booth, go to Setup → Google Drive and type the event name.');
+      if(d.lifetime && !d.offlineOnly) meta.push('New event? In the booth, go to Setup → Google Drive and type the event name.');
+      if(d.offlineOnly) meta.push('New event? Open the photobooth4u app on your laptop and set it up there.');
       $('acctMeta').innerHTML = meta.join(' · ');
-      $('keepText').textContent = 'Photos stay in Google Drive for ' + d.keepDays + ' days after the last photo of each event, then they are deleted. Send the link to your client right after the event so they can download their favourites in time.';
+      renderApp(d);
+      if(d.offlineOnly){
+        $('keepText').textContent = 'Your code works in the photobooth4u app on your laptop. Photos stay on that laptop (the app shows the folder in Setup \u2192 6 Share), and guests download them from the booth\u2019s QR code over the booth Wi-Fi. Copy the event folder to a USB drive or Google Drive to share it after the event.';
+      } else $('keepText').textContent = 'Photos stay in Google Drive for ' + d.keepDays + ' days after the last photo of each event, then they are deleted. Send the link to your client right after the event so they can download their favourites in time.';
 
       var el = $('events');
+      if(!d.events.length && d.offlineOnly){
+        el.innerHTML = '<div class="card empty"><h2>Your events are on your laptop</h2>Open the photobooth4u app on your laptop to set up an event. Online galleries are only for codes with online access. Want online too? <a href="https://m.me/roktetnachi" target="_blank" rel="noopener" style="color:var(--red);font-weight:800">Message us</a>.</div>';
+        return;
+      }
       if(!d.events.length){
         el.innerHTML = '<div class="card empty"><h2>No events yet</h2>' +
           (d.lifetime
@@ -397,6 +419,25 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
           '<div class="qrbox hidden" data-qr="' + i + '"></div>' +
           '</article>';
       }).join('');
+    }
+
+    function renderApp(d){
+      var card = $('appCard');
+      if(!d.offlineOpt){ card.classList.add('hidden'); }
+      else {
+        card.classList.remove('hidden');
+        $('appDlBtn').href = '/app/#' + encodeURIComponent(d.code);
+        $('appSub').textContent = d.offlineOnly
+          ? 'Your code is for the photobooth4u app on Windows and Mac. Download it, or get the newest version, here. Install the new version over the old one; your activation and designs stay.'
+          : 'Your code also works in the photobooth4u app for Windows and Mac, for venues with no internet. Download it, or get the newest version, here.';
+      }
+      var only = !!d.offlineOnly;
+      $('openBoothBtn').classList.toggle('hidden', only);
+      if(only){
+        $('startTitle').textContent = 'Ready for your next event?';
+        $('startText').textContent = 'Open the photobooth4u app on your laptop. New here? Download the app and the offline guide below.';
+        $('guideBtn').href = '/lifetime/photobooth4u-offline-app-guide.pdf';
+      }
     }
 
     $('events').addEventListener('click', function(ev){
@@ -565,6 +606,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     }
     async function loadPay(){
       if(!auth) return;
+      if(data && data.offlineOnly){ $('payCard').classList.add('hidden'); return; }
       var r; try{ r = await payApi('my.status'); }catch(e){ return; }
       if(!r.ok || !r.j.payOpt){ $('payCard').classList.add('hidden'); return; }
       pay = r.j; $('payCard').classList.remove('hidden');

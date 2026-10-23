@@ -2316,8 +2316,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <input type="text" class="label-input" id="deskWifiPass" placeholder="Wi-Fi password (empty if none)" maxlength="63" autocomplete="off" spellcheck="false" style="margin-top:8px;">
           <p class="sub-label" style="margin-top:14px;">This laptop&rsquo;s licence</p>
           <p class="panel-hint" id="deskLic" style="margin:0;"></p>
+          <p class="panel-hint" id="deskUpd" hidden style="margin:8px 0 0; padding:10px 12px; border-radius:10px; background:#FBEDEA; color:#A9301D; font-weight:700;"></p>
           <div class="desk-row">
             <button type="button" class="action-btn" id="deskCheckBtn" style="width:auto; margin:0;">Check for changes</button>
+            <button type="button" class="action-btn" id="deskNewsBtn" style="width:auto; margin:0;">What’s new</button>
             <button type="button" class="action-btn" id="deskDeactBtn" style="width:auto; margin:0;">Deactivate this laptop</button>
           </div>
         </div>
@@ -2421,6 +2423,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <button type="button" class="menu-btn" id="setupMenuBtn" aria-label="More" aria-haspopup="true">⋯</button>
           <div class="menu" id="setupMenu" hidden>
             <button type="button" id="menuMyEvents" hidden>My Events ↗ (links, payments, printing)</button>
+            <button type="button" id="menuWhatsNew">What’s new ↗</button>
             <button type="button" id="menuFullscreen">Full screen (hide tabs)</button>
             <button type="button" id="resetSetupBtn" class="danger">Reset setup</button>
           </div>
@@ -13760,6 +13763,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var a = document.getElementById('myEventsLink'), m = document.getElementById('menuMyEvents');
     if(a) a.hidden = !rental;
     if(m){ m.hidden = !rental || DESKTOP; m.addEventListener('click', function(){ window.open('/lifetime/?booth=1', '_blank', 'noopener'); }); }
+    // What's new: the website's updates page (the app opens it in the laptop's browser).
+    var wn = document.getElementById('menuWhatsNew');
+    if(wn) wn.addEventListener('click', function(){
+      if(DESKTOP && window.pb4u && window.pb4u.openUrl) window.pb4u.openUrl('app://booth/updates/');
+      else window.open('/updates/', '_blank', 'noopener');
+    });
   })();
   // ---- Full screen: hides the browser's tabs and address bar ----
   // Browsers only allow full screen after a tap, so the booth goes full screen
@@ -14273,7 +14282,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(L.lifetime && L.hard) txt += ' Works offline until ' + fmt(L.hard) + '; it renews by itself whenever this laptop has internet.';
       if(L.warn) txt += ' ' + L.warn;
       document.getElementById('deskLic').textContent = txt;
+      // A newer app version is out (photobooth4u says so at each check-in).
+      var newer = function(a, b){ a = String(a || '').split('.').map(Number); b = String(b || '').split('.').map(Number); for(var i = 0; i < 3; i++){ if((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0); } return false; };
+      var up = document.getElementById('deskUpd');
+      if(L.latest && newer(L.latest, info.version)){
+        up.hidden = false;
+        var escT = function(t){ return String(t).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+        up.innerHTML = 'Update available: version ' + escT(L.latest) + ' (this laptop has ' + escT(info.version || '?') + '). <button type="button" class="link-btn" id="deskGetUpd" style="min-height:0;padding:0;color:#A9301D;">Get the update</button>';
+        document.getElementById('deskGetUpd').addEventListener('click', function(){ api.openUrl('app://booth/app/'); });
+      } else up.hidden = true;
     }
+    document.getElementById('deskNewsBtn').addEventListener('click', function(){ api.openUrl('app://booth/updates/'); });
     function refresh(){ return api.info().then(render).catch(function(){}); }
     refresh();
     // The laptop's Wi-Fi address can change (joined a network, hotspot on): keep the QR right.

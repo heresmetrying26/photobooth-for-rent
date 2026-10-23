@@ -5,6 +5,7 @@
 //   GET  /api/license?pub=1                                              -> the public key the app checks licences with
 import { safe, json, licenses, normCode, throttle, recordFail, clearFail, DAY, MIN, fmtWhen, LIFETIME_EXP, devicesOf, setDevices, putLicense, windowEnd } from '../lib/core.mjs';
 import { readLicence, licenceFor, activateOn, saveMap, readMap, dropMap, appDevice, publicKeyInfo, MID_RE } from '../lib/license.mjs';
+import { APP } from '../lib/updates.mjs';
 
 const NO_ADDON = 'The offline app isn’t included in your plan yet. Message us to add it to your code.';
 
@@ -51,7 +52,7 @@ export default safe(async (req, context) => {
     if (r.error) return json({ error: r.error }, r.status || 400);
     await putLicense(store, key, rec);
     if (r.isNew) await saveMap(r.dev.app.lid, key, mid);
-    return json({ ok: true, licence: licenceFor(key, rec, r.dev, now), deviceNo: r.dev.no });
+    return json({ ok: true, licence: licenceFor(key, rec, r.dev, now), deviceNo: r.dev.no, app: { version: APP.version, date: APP.date } });
   }
 
   if (b.action === 'checkin' || b.action === 'deactivate') {
@@ -74,7 +75,7 @@ export default safe(async (req, context) => {
     if (b.ver) dev.app.ver = String(b.ver).slice(0, 20);
     setDevices(rec, devicesOf(rec).map((d) => (d.id === dev.id ? dev : d)));
     await putLicense(store, map.key, rec);
-    return json({ ok: true, licence: licenceFor(map.key, rec, dev, now) });
+    return json({ ok: true, licence: licenceFor(map.key, rec, dev, now), app: { version: APP.version, date: APP.date } });
   }
 
   return json({ error: 'Unknown action' }, 400);

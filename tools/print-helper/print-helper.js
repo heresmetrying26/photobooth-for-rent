@@ -2,7 +2,7 @@
 // Runs on the booth laptop and lets the booth (a web page) print straight to a
 // named printer with no print dialog — so each paper size can go to its own
 // printer (e.g. 2x6 strips to one, 4R to another), like a native booth app.
-// Windows: also controls a Nikon camera over USB through Windows' own camera
+// Windows: also controls a Nikon or Canon EOS camera over USB through Windows' own camera
 // driver (live view + the real shutter), so no driver switch (Zadig) is needed.
 //
 // - Listens on 127.0.0.1:17321 only (never reachable from other computers).
@@ -23,7 +23,7 @@ import { writeFile, rm, mkdtemp, mkdir } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.4';
+const VERSION = '1.1.5';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',
@@ -383,7 +383,7 @@ const server = Bun.serve({
 function log(msg){ console.log('[' + new Date().toLocaleTimeString() + '] ' + msg); }
 
 console.log('');
-console.log('  photobooth4u Helper ' + VERSION + ' (printing' + (CAMERA_OK ? ' + Nikon camera over USB' : '') + ')');
+console.log('  photobooth4u Helper ' + VERSION + ' (printing' + (CAMERA_OK ? ' + Nikon / Canon camera over USB' : '') + ')');
 console.log('  Running. Keep this window open while the booth is in use.');
 console.log('  (Close it to stop. Listening on 127.0.0.1:' + server.port + ' for ' + [...ALLOWED_ORIGINS][0] + ')');
 console.log('');
@@ -391,7 +391,7 @@ printers(true).then(list => {
   console.log('  Printers on this computer:');
   (list.length ? list : ['(none found)']).forEach(n => console.log('   - ' + n));
   console.log('');
-  if(CAMERA_OK) console.log('  Camera: plug in a Nikon camera, switch it on, and pick it in the booth.\n');
+  if(CAMERA_OK) console.log('  Camera: plug in a Nikon or Canon EOS camera, switch it on, and pick it in the booth.\n');
 }).catch(() => {});
 process.on('exit', () => { try{ cam.proc && cam.proc.kill(); }catch(e){} });
 // Windows: get the camera part ready now, so the booth finds the camera quickly.

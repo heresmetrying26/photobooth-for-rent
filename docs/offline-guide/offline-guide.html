@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>photobooth4u offline app guide</title>
+<!--
+  Source of public/lifetime/photobooth4u-offline-app-guide.pdf.
+  Rebuild: node build-offline-guide.mjs  (prints this page to PDF with headless Chrome/Chromium)
+-->
+<style>
+@font-face{font-family:'Fraunces';src:url(../setup-guide/fonts/fraunces-latin-600-normal.woff2) format('woff2');font-weight:600;font-style:normal}
+@font-face{font-family:'Fraunces';src:url(../setup-guide/fonts/fraunces-latin-500-italic.woff2) format('woff2');font-weight:500;font-style:italic}
+@font-face{font-family:'Fraunces';src:url(../setup-guide/fonts/fraunces-latin-600-italic.woff2) format('woff2');font-weight:600;font-style:italic}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-400-normal.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-500-normal.woff2) format('woff2');font-weight:500}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-600-normal.woff2) format('woff2');font-weight:600}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-700-normal.woff2) format('woff2');font-weight:700}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-800-normal.woff2) format('woff2');font-weight:800}
+
+:root{
+  --cream:#f5f1ea; --ink:#1c1a1e; --body:#4a4548; --dim:#7a7376; --red:#c93d27;
+  --line:#e4dccf; --purple:#5b3fa0; --purple-bg:#ede7f7; --green:#1f6f62; --green-bg:#e6f4f1;
+  --pink-bg:#fbedea; --mono:'DejaVu Sans Mono', monospace;
+}
+@page{size:A4; margin:0}
+*{box-sizing:border-box}
+html,body{margin:0; padding:0; background:#fff}
+body{font-family:'Manrope',sans-serif; color:var(--body); font-size:12.4px; line-height:1.62;
+  -webkit-print-color-adjust:exact; print-color-adjust:exact}
+b,strong{color:var(--ink); font-weight:700}
+.page{width:210mm; height:297mm; position:relative; overflow:hidden; padding:66px 64px 0; background:#fff; page-break-after:always; break-after:page}
+.page:last-child{page-break-after:auto; break-after:auto}
+.foot{position:absolute; left:64px; right:64px; bottom:40px; display:flex; justify-content:space-between;
+  font-size:8.6px; font-weight:700; letter-spacing:.2em; color:var(--dim); text-transform:uppercase}
+
+/* section heads */
+.kicker{font-size:9.4px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:var(--red); margin:0 0 2px}
+h2{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:31px; line-height:1.15; letter-spacing:-.01em; color:var(--ink); margin:0 0 14px}
+.lead{font-size:14px; line-height:1.6; color:var(--body); margin:-4px 0 18px}
+.sec + .sec{margin-top:40px}
+
+/* numbered steps with a thin rail */
+.steps{position:relative; margin:0; padding:0; list-style:none}
+.steps li{position:relative; padding:0 0 12px 38px}
+.steps li::before{content:''; position:absolute; left:12px; top:22px; bottom:-2px; width:1px; background:#e0d7cb}
+.steps li:last-child::before{display:none}
+.steps .n{position:absolute; left:0; top:2px; width:24px; height:24px; border-radius:50%; background:var(--red); color:#fff;
+  font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center}
+.steps h4{margin:0 0 5px; font-size:14.4px; font-weight:700; color:var(--ink); line-height:1.4}
+.steps p{margin:0}
+
+.cols{display:grid; grid-template-columns:1fr 290px; gap:28px; align-items:start}
+.cols.even{grid-template-columns:1fr 1fr; gap:18px}
+
+.card{border-radius:12px; padding:16px 18px}
+.card.cream{background:var(--cream)} .card.purple{background:var(--purple-bg)} .card.green{background:var(--green-bg); color:var(--green)}
+.card.pink{background:var(--pink-bg)} .card.line{border:1.5px solid var(--line); background:#fff}
+.card h5{margin:0 0 10px; font-size:13px; font-weight:700; color:var(--ink)}
+.card.green h5{color:var(--green)}
+.pill{display:inline-block; font-size:8.2px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:#fff;
+  border-radius:999px; padding:4px 10px; margin:0 0 12px; background:var(--ink)}
+.pill.purple{background:var(--purple)} .pill.green{background:var(--green)} .pill.red{background:var(--red)}
+.dots{list-style:none; margin:0; padding:0}
+.dots li{position:relative; padding-left:18px; margin:0 0 8px}
+.dots li::before{content:''; position:absolute; left:0; top:.58em; width:7px; height:7px; border-radius:50%; background:var(--red)}
+.card.green .dots li{color:var(--green)}
+.card.green b{color:var(--green)}
+.checks{display:grid; grid-template-columns:1fr 1fr; gap:4px 24px; list-style:none; margin:0; padding:0; color:var(--green)}
+.checks li{position:relative; padding-left:20px}
+.checks li::before{content:''; position:absolute; left:0; top:.32em; width:11px; height:11px; border:1.5px solid var(--green); border-radius:3px}
+.note{border-radius:12px; padding:13px 18px; font-size:12px}
+code,.kbd{font-family:var(--mono); font-size:10.6px; background:#f1ede6; border:1px solid #e1d9cc; border-radius:4px; padding:1px 5px; color:var(--ink)}
+.codeblock{font-family:var(--mono); font-size:10.6px; line-height:1.7; background:var(--ink); color:#f3eee6; border-radius:8px; padding:12px 14px; margin:8px 0 14px; white-space:pre-wrap}
+.label{font-size:11px; color:var(--body); margin:0}
+.label b{color:var(--ink)}
+figure{margin:0}
+figure img{width:100%; border-radius:12px; display:block; border:1px solid var(--line)}
+figcaption{font-size:11.4px; color:var(--body); margin-top:8px; line-height:1.5}
+
+/* cover */
+.cover{background:var(--cream); padding:0}
+.logo{display:flex; align-items:center; gap:8px}
+.logo .mark{display:grid; grid-template-columns:9px 9px; gap:3px}
+.logo .mark i{width:9px; height:9px; border-radius:2.5px; background:var(--ink)}
+.logo .mark i:nth-child(2){background:var(--red)}
+.logo .word{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:24px; letter-spacing:-.035em; color:var(--ink); line-height:1}
+.logo .badge{font-weight:800; font-size:10px; color:#fff; background:var(--red); border-radius:4px; padding:1px 4px; transform:rotate(-7deg) translate(-4px,-9px); line-height:1.2}
+.cover .top{padding:62px 64px 0}
+.cover h1{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:67px; line-height:1.02; letter-spacing:-.025em; color:var(--ink); margin:62px 0 26px}
+.cover h1 em{font-style:italic; font-weight:500; color:var(--red)}
+.cover .intro{font-size:14.6px; line-height:1.62; max-width:560px; margin:0}
+.hero{margin:34px 0 0; border-top:1px solid #e3d9cb; border-bottom:1px solid #e3d9cb; background:var(--cream)}
+.hero{padding:10px 0} .hero img{display:block; width:79%; margin:0 auto}
+.toc{display:grid; grid-template-columns:1fr 1fr; column-gap:30px; padding:22px 64px 0; margin:0; list-style:none}
+.toc li{display:flex; gap:20px; border-bottom:1px solid #e0d6c8; padding:9px 0; font-size:13.6px; font-weight:600; color:var(--ink)}
+.toc li span{color:var(--red); font-weight:700; width:16px}
+.cover .foot{left:64px; right:64px}
+
+/* guest payments */
+.mode h5{display:flex; align-items:center; gap:8px}
+.mode .ic{flex:none; width:26px; height:26px; border-radius:8px; background:#fff; color:var(--red); font-size:10.5px; font-weight:800; display:flex; align-items:center; justify-content:center}
+.mode p{margin:0}
+.h3{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:21px; line-height:1.2; color:var(--ink); margin:0 0 12px}
+table.fix.pay td:first-child{width:200px}
+
+/* troubleshooting */
+table.fix{width:100%; border-collapse:collapse; font-size:11.6px; line-height:1.5}
+table.fix th{text-align:left; font-size:8.4px; font-weight:700; letter-spacing:.2em; color:var(--dim); text-transform:uppercase; padding:0 0 8px; border-bottom:1.5px solid var(--ink)}
+table.fix td{padding:5px 0; border-bottom:1px solid #e6dfd4; vertical-align:top}
+table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color:var(--ink)}
+.help{margin-top:18px; background:var(--ink); border-radius:12px; padding:18px 24px; display:flex; align-items:center; justify-content:space-between; color:#d7d1ca}
+.help h3{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:20px; color:#fff; margin:0 0 2px}
+.help p{margin:0; font-size:12px} .help b{color:#fff}
+.help .btn{background:var(--red); color:#fff; font-weight:700; font-size:12.4px; border-radius:999px; padding:9px 18px}
+
+.three{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+.three .card{padding:16px 16px 18px; font-size:12.2px}
+
+.two{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+.os{font-size:8.2px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:#fff; border-radius:999px; padding:4px 10px; display:inline-block; margin:0 0 10px; background:var(--ink)}
+.os.mac{background:var(--purple)}
+.split{display:grid; grid-template-columns:1fr 1fr; gap:10px 26px}
+.mini{font-size:11.6px}
+.flow{display:flex; align-items:center; gap:10px; margin:6px 0 4px; flex-wrap:wrap}
+.flow span{background:#fff; border:1.5px solid var(--line); border-radius:10px; padding:8px 12px; font-weight:700; color:var(--ink); font-size:11.6px}
+.flow i{font-style:normal; color:var(--red); font-weight:800}
+.cover .bigpanel{margin:34px 64px 0; border-radius:16px; background:var(--ink); color:#d7d1ca; padding:26px 28px; display:grid; grid-template-columns:repeat(3,1fr); gap:18px}
+.cover .bigpanel b{display:block; color:#fff; font-size:14px; margin:0 0 4px}
+.cover .bigpanel p{margin:0; font-size:12px; line-height:1.55}
+.cover .bigpanel .ic{width:30px; height:30px; border-radius:9px; background:var(--red); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; margin-bottom:10px}
+</style>
+</head>
+<body>
+<!-- ============ COVER ============ -->
+<section class="page cover">
+  <div class="top">
+    <div class="logo"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word">photobooth</span><span class="badge">4u</span></div>
+    <h1>Your booth,<br><em>no internet</em> needed.</h1>
+    <p class="intro">The photobooth4u app for <b>Windows</b> and <b>Mac</b>. The same booth as the website, installed on your laptop: it takes, saves and prints photos with <b>no internet</b>, and guests get their photo by scanning a QR over the booth Wi-Fi. <b>Page 2 is a one-page quick start</b> for event day.</p>
+  </div>
+  <div class="bigpanel">
+    <div><span class="ic">1</span><b>Install once</b><p>Windows 10 / 11 or macOS. Activate with your code (internet needed once).</p></div>
+    <div><span class="ic">2</span><b>Shoot offline</b><p>Designs, layouts, frames, guest screen, USB camera, silent printing and vouchers all work offline.</p></div>
+    <div><span class="ic">3</span><b>Share on Wi-Fi</b><p>Photos save on the laptop. Guests on the booth Wi-Fi scan the QR and save their photo.</p></div>
+  </div>
+  <ol class="toc" style="margin-top:22px">
+    <li><span>&#9733;</span>Quick start (page 2)</li>
+    <li><span>04</span>Printing</li>
+    <li><span>01</span>Install the app</li>
+    <li><span>05</span>Guests' photos over Wi-Fi</li>
+    <li><span>02</span>Activate this laptop</li>
+    <li><span>06</span>Your licence &amp; updates</li>
+    <li><span>03</span>Camera</li>
+    <li><span>07</span>Troubleshooting &amp; help</li>
+  </ol>
+  <div class="card cream" style="margin:26px 64px 0">
+    <h5>Which packages include the app?</h5>
+    <ul class="dots" style="margin:0">
+      <li><b>Lifetime</b> (online + offline), <b>Laptop 6-Month Pass</b>, and the <b>Laptop Booth</b> per event when you ask for the offline app.</li>
+      <li>One code can activate more than one laptop: each laptop uses one of the code's <b>device slots</b>.</li>
+    </ul>
+  </div>
+  <div class="foot"><span>photobooth4u.netlify.app</span><span>Offline app guide</span></div>
+</section>
+
+<!-- ============ QUICK START ============ -->
+<section class="page">
+  <p class="kicker">&#9733; Event day</p>
+  <h2>Quick start</h2>
+  <p class="lead">Do these in order. The app must be installed and activated already (pages 3 and 4).</p>
+  <ol class="steps">
+    <li><span class="n">1</span><h4>Plug everything in</h4><p>Laptop on its charger. Guest screen by HDMI, set to <b>Extend</b> (Windows: <span class="kbd">Win + P</span> → Extend). Camera on a full or dummy battery. Printer on, paper loaded.</p></li>
+    <li><span class="n">2</span><h4>Start the booth Wi-Fi</h4><p>Connect the laptop to the <b>booth Wi-Fi router</b>, or turn on the laptop's own <b>hotspot</b> (Windows: Settings → Network → Mobile hotspot; Mac: a pocket router is easier). It doesn't need internet; guests only need to reach the laptop.</p></li>
+    <li><span class="n">3</span><h4>Open photobooth4u</h4><p>From the Start menu (Windows) or Applications (Mac). It opens straight into the booth.</p></li>
+    <li><span class="n">4</span><h4>Choose the camera</h4><p><b>Setup → 5 Session → Camera</b>. Windows: <b>Nikon / Canon camera over USB</b>. Mac: <b>DSLR / mirrorless over USB</b>, then pick the camera. Or a webcam / HDMI capture card.</p></li>
+    <li><span class="n">5</span><h4>Check Setup and Share &amp; start</h4><p>Design, name, layout as usual. In <b>Share &amp; start</b>, check the <b>event name</b>, <b>Photos on this laptop</b> and <b>Guests' phones</b> (it shows the address guests use). Type the <b>booth Wi-Fi name and password</b> if guests don't know it.</p></li>
+    <li><span class="n">6</span><h4>Choose the printers</h4><p>In <b>Photo Session</b> tap <b>&#128424; Print settings</b>, pick each paper size and its printer. Printing is built in: no Print Helper, no pop-up.</p></li>
+    <li><span class="n">7</span><h4>Test with your phone</h4><p>Take one session. Join the booth Wi-Fi on your phone, scan the photo QR, tap <b>Save photo</b>. Print once.</p></li>
+    <li><span class="n">8</span><h4>Open the guest screen</h4><p>In <b>Setup → 5 Session</b>, tap <b>Open guest screen</b>. You're ready.</p></li>
+  </ol>
+  <div class="cols even" style="margin-top:14px">
+    <div class="card green">
+      <h5>Works with no internet</h5>
+      <ul class="dots">
+        <li>All designs, layouts, your frames, stickers, filters, retakes, Lock booth</li>
+        <li>Guest screen, USB camera, silent printing, <b>vouchers</b></li>
+      </ul>
+    </div>
+    <div class="card pink">
+      <h5>Needs the website (internet)</h5>
+      <ul class="dots">
+        <li>GCash / Maya QR payments (vouchers work offline)</li>
+        <li>Online gallery &amp; Google Drive, My Events, tablet booths, the print station</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>photobooth4u offline app guide</span><span>2</span></div>
+</section>
+
+<!-- ============ INSTALL ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">01 · Once per laptop</p>
+    <h2>Install the app</h2>
+    <p class="lead">We send you the installer link. Pick the one for your laptop.</p>
+    <div class="two">
+      <div class="card cream">
+        <span class="os">Windows 10 / 11</span>
+        <ol class="steps mini">
+          <li><span class="n">1</span><h4>Run the installer</h4><p>Double-click <b>photobooth4u Setup….exe</b>.</p></li>
+          <li><span class="n">2</span><h4>"Windows protected your PC"</h4><p>Click <b>More info → Run anyway</b>. (The app isn't signed with a paid certificate yet; this is normal.)</p></li>
+          <li><span class="n">3</span><h4>Allow admin once</h4><p>Click <b>Yes</b>. It lets guests' phones reach the laptop on the booth Wi-Fi.</p></li>
+        </ol>
+      </div>
+      <div class="card purple">
+        <span class="os mac">macOS</span>
+        <ol class="steps mini">
+          <li><span class="n">1</span><h4>Open the .dmg</h4><p>Use the <b>arm64</b> file for Apple Silicon (M1–M4), <b>x64</b> for Intel. Drag <b>photobooth4u</b> into <b>Applications</b>.</p></li>
+          <li><span class="n">2</span><h4>First open: right-click → Open</h4><p>If macOS still refuses: System Settings → Privacy &amp; Security → <b>Open Anyway</b>.</p></li>
+          <li><span class="n">3</span><h4>Allow connections</h4><p>When macOS asks to accept incoming network connections, click <b>Allow</b>. That's the guests' QR.</p></li>
+        </ol>
+      </div>
+    </div>
+    <div class="note card green" style="margin-top:12px"><b>New version?</b> Install it over the old one. Your activation, designs and photos stay.</div>
+  </div>
+  <div class="sec">
+    <p class="kicker">02 · Once per laptop</p>
+    <h2>Activate this laptop</h2>
+    <div class="cols">
+      <ol class="steps">
+        <li><span class="n">1</span><h4>Connect to the internet (just this once)</h4><p>Any Wi-Fi or phone hotspot.</p></li>
+        <li><span class="n">2</span><h4>Type your code</h4><p>The app opens on <b>Activate this laptop</b>. Type your <code>PB-XXXX-XXXX-XXXX</code> code and tap <b>Activate</b>.</p></li>
+        <li><span class="n">3</span><h4>Done</h4><p>The booth opens. From now on it works with no internet. The licence is tied to <b>this laptop</b>, so copying the app to another one doesn't work: activate each laptop with your code.</p></li>
+      </ol>
+      <div class="card line">
+        <h5>No internet at all?</h5>
+        <p style="margin:0 0 8px">Tap <b>No internet? Activate without internet</b>. The app shows a <b>Machine ID</b> (<code>WIN-…</code> / <code>MAC-…</code>).</p>
+        <p style="margin:0 0 8px">Send us your code and that Machine ID (e.g. by text from your phone). We send back an <b>activation key</b>.</p>
+        <p style="margin:0">Paste it in the box and tap <b>Activate</b>.</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>photobooth4u offline app guide</span><span>3</span></div>
+</section>
+
+<!-- ============ CAMERA + PRINT ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">03 · Camera</p>
+    <h2>Use your DSLR / mirrorless camera</h2>
+    <p class="lead">Over USB the app presses the <b>real shutter</b>, so your camera's settings, focus and flash all work. Nothing extra to install.</p>
+    <div class="two">
+      <div class="card cream">
+        <span class="os">Windows</span>
+        <ul class="dots">
+          <li><b>Nikon</b> and <b>Canon EOS</b> (DSLR, M and R). Built into the app.</li>
+          <li>Plug the camera straight into the laptop with a <b>data</b> USB cable, switch it on, and pick <b>Nikon / Canon camera over USB</b>. After that it reconnects by itself.</li>
+          <li><b>Canon:</b> close <b>EOS Utility</b>. Older models (60D, 70D, 600D, 7D…): Menu → <b>Live View shoot: Enable</b>. Newer: <b>Choose USB connection app → Photo Import / Remote Control</b>. Wi-Fi off.</li>
+          <li><b>Sony</b> on Windows: not yet. Use its webcam mode or an HDMI capture card.</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <span class="os mac">Mac</span>
+        <ul class="dots">
+          <li><b>Canon, Nikon, Sony, Fujifilm</b> and most others.</li>
+          <li>Canon: <b>Photo Import / Remote Control</b> USB mode. Nikon: nothing to set.</li>
+          <li>Quit <b>Photos</b>, <b>Image Capture</b> and <b>EOS Utility</b> if they open.</li>
+          <li>Pick <b>DSLR / mirrorless over USB</b>, choose the camera, <b>Connect</b>.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card line" style="margin-top:12px">
+      <h5>For every camera</h5>
+      <div class="split mini">
+        <span>&bull; Mode dial on <b>P, A/Av, S/Tv or M</b>; save as <b>JPEG</b> (or RAW + JPEG).</span>
+        <span>&bull; <b>Auto power off</b>: disable. Use a <b>dummy battery</b> for long events.</span>
+        <span>&bull; SD card in the camera.</span>
+        <span>&bull; Webcams and HDMI capture cards work too (no flash).</span>
+      </div>
+    </div>
+  </div>
+  <div class="sec">
+    <p class="kicker">04 · Printing</p>
+    <h2>Printing</h2>
+    <div class="cols">
+      <ol class="steps">
+        <li><span class="n">1</span><h4>Set up the printer once</h4><p>Install its driver and do one test print from the laptop. In the printer's own preferences set the <b>paper size</b>, <b>borderless</b> and, for 2×6 strips, <b>cut</b>.</p></li>
+        <li><span class="n">2</span><h4>Choose a printer per paper size</h4><p>In <b>Photo Session → &#128424; Print settings</b>, pick a printer for each size (e.g. 4R on one, 2×6 strips on another). The app remembers it.</p></li>
+        <li><span class="n">3</span><h4>Auto-print</h4><p>Print once to test, then tick <b>Auto-print every session</b>. Prints go straight to the printer, no pop-up.</p></li>
+      </ol>
+      <div class="card green">
+        <h5>Good to know</h5>
+        <ul class="dots">
+          <li>The <b>Print Helper</b> isn't needed: it's built into the app.</li>
+          <li>Same printer for two sizes? Add it to the laptop <b>twice</b>, each with its own defaults and name.</li>
+          <li>The paper sizes in your package appear in Print settings.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>photobooth4u offline app guide</span><span>4</span></div>
+</section>
+
+<!-- ============ WIFI ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">05 · Sharing without internet</p>
+    <h2>Guests' photos over Wi-Fi</h2>
+    <p class="lead">Every photo is saved on the laptop. The laptop also serves a small photo page on the booth Wi-Fi, so guests save their photo straight to their phone. Nothing is uploaded.</p>
+    <div class="flow"><span>Guest joins the booth Wi-Fi</span><i>→</i><span>Scans their photo QR</span><i>→</i><span>Taps Save photo</span></div>
+    <div class="cols" style="margin-top:14px">
+      <ol class="steps">
+        <li><span class="n">1</span><h4>One Wi-Fi for laptop and guests</h4><p>A small router at the booth (no SIM or internet needed), or the laptop's hotspot. Venue Wi-Fi works too, if guests' phones can join it.</p></li>
+        <li><span class="n">2</span><h4>Check Share &amp; start</h4><p><b>Guests' phones</b> shows the address guests open, with a ✓. If it says the laptop isn't on a Wi-Fi network, connect it first.</p></li>
+        <li><span class="n">3</span><h4>Optional: Join Wi-Fi QR</h4><p>Type the <b>Wi-Fi name and password</b> under <b>Booth Wi-Fi for guests</b>. Guests then see a <b>Join Wi-Fi</b> QR next to their photo QR: scan it first, then the photo QR.</p></li>
+        <li><span class="n">4</span><h4>Print the QR sign</h4><p>Under <b>QR sign</b>, save the sign with the Wi-Fi and <b>All photos</b> QR codes and print it (A5 or bigger) for the booth table.</p></li>
+      </ol>
+      <div>
+        <div class="card cream">
+          <h5>Photos on this laptop</h5>
+          <p style="margin:0 0 8px">Saved in <code>Pictures/photobooth4u/&lt;event name&gt;/</code>, one file per session.</p>
+          <p style="margin:0"><b>Open photos folder</b> and <b>Change folder</b> are in <b>Share &amp; start</b>. Copy the folder to a USB drive or upload it for your client after the event.</p>
+        </div>
+        <div class="card pink" style="margin-top:12px">
+          <h5>Guests can't open the photo?</h5>
+          <p style="margin:0">Their phone must be on the <b>same Wi-Fi</b> as the laptop (phones sometimes switch back to mobile data: turn data off, or join the Wi-Fi again). The guests' page works until the app is closed.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="sec">
+    <p class="kicker">Guest payments offline</p>
+    <h3 class="h3">Vouchers</h3>
+    <p style="margin:0">QR payments (GCash, Maya) need the internet. <b>Vouchers</b> work offline: set <b>Guest payment</b> to <b>Vouchers</b> in <b>Setup → 5 Session</b>, sell the printed codes at the table, and each code works once.</p>
+  </div>
+  <div class="foot"><span>photobooth4u offline app guide</span><span>5</span></div>
+</section>
+
+<!-- ============ LICENCE + TROUBLESHOOTING ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">06 · Your licence</p>
+    <h2>Your licence &amp; updates</h2>
+    <div class="cols even">
+      <div class="card cream">
+        <h5>How long it works</h5>
+        <ul class="dots">
+          <li><b>Lifetime:</b> renews by itself whenever the laptop has internet. With no internet it keeps working for <b>75 days + 30 days' grace</b>, then asks to connect once.</li>
+          <li><b>6-Month Pass / per-event:</b> works until the code's end date, with or without internet.</li>
+          <li>Changes we make for your code (print sizes, vouchers, retakes…) arrive when the app starts with internet, or tap <b>Check for changes</b> in Share &amp; start.</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <h5>New laptop or reinstalling?</h5>
+        <ul class="dots">
+          <li>On the old laptop: <b>Share &amp; start → Deactivate this laptop</b>. That frees its device slot.</li>
+          <li>Activate the new laptop with the same code.</li>
+          <li>Old laptop lost or broken? Message us and we free its slot.</li>
+          <li><b>Don't set the laptop's clock back:</b> the booth locks until the clock is right again.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="sec" style="margin-top:28px">
+    <p class="kicker">07 · Troubleshooting</p>
+    <h2>If something goes wrong</h2>
+    <table class="fix">
+      <tr><th>Problem</th><th>Try this</th></tr>
+      <tr><td>"Windows protected your PC" / Mac won't open it</td><td>Windows: <b>More info → Run anyway</b>. Mac: right-click the app → <b>Open</b>, or Privacy &amp; Security → <b>Open Anyway</b>.</td></tr>
+      <tr><td>Activation says no free device slot</td><td>Deactivate an old laptop (Share &amp; start), or message us to free one.</td></tr>
+      <tr><td>Camera not found (Windows)</td><td>Data USB cable straight into the laptop, camera on. Close EOS Utility / NX Studio and any "Import photos" window. Unplug, replug.</td></tr>
+      <tr><td>Canon: no live view</td><td>Menu → <b>Live View shoot: Enable</b>, close the menu, mode dial on P, Tv, Av or M.</td></tr>
+      <tr><td>Camera "couldn't focus"</td><td>Point it at something with detail, add light, or set the lens to <b>MF</b>.</td></tr>
+      <tr><td>Guests' QR doesn't open</td><td>Phone and laptop on the same Wi-Fi; phone's mobile data off. Mac: allow incoming connections (System Settings → Network → Firewall).</td></tr>
+      <tr><td>Prints show a pop-up or go to the wrong printer</td><td>Print settings → choose the printer for that size again.</td></tr>
+      <tr><td>"Connect to the internet to continue"</td><td>Lifetime check-in is due: connect once to any internet and reopen the app.</td></tr>
+      <tr><td>The booth is locked</td><td>The code ended, the laptop was removed, or the clock was changed. Check the date and time, then message us.</td></tr>
+    </table>
+    <div class="help">
+      <div><h3>Need help? Message us.</h3><p>We're on Facebook Messenger: <b>m.me/roktetnachi</b></p></div>
+      <a class="btn" href="https://m.me/roktetnachi" style="text-decoration:none">Message us</a>
+    </div>
+  </div>
+  <div class="foot"><span>photobooth4u offline app guide</span><span>6</span></div>
+</section>
+
+</body>
+</html>

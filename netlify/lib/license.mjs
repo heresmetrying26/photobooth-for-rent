@@ -75,8 +75,9 @@ const maskCode = (key) => { const c = displayCode(key); return c.slice(0, 3) + '
 export function licenceFor(key, rec, dev, now) {
   const exp = rec.lifetime || rec.expiresAt >= LIFETIME_EXP ? null : rec.expiresAt;
   const chk = now + CHECK_DAYS * DAY;
-  let hard = chk + GRACE_DAYS * DAY;
-  if (exp) hard = Math.min(hard, exp);
+  // Lifetime: must check in now and then. A code with an end date (event, 6-Month
+  // Pass) works offline right up to that date; Admin changes reach it if it goes online.
+  const hard = exp || chk + GRACE_DAYS * DAY;
   return signLicence({
     v: 1, typ: 'pb4u-desktop', lid: dev.app.lid, mid: dev.app.mid, os: dev.app.os, name: dev.app.name || '',
     renter: rec.label || rec.folderName || '', code: maskCode(key), lifetime: !!rec.lifetime,

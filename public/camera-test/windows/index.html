@@ -45,22 +45,32 @@
   .shot a{display:inline-block; margin-top:8px; color:var(--blue); font-weight:600;}
   pre{background:#1c1a1e; color:#d8d3dc; border-radius:10px; padding:12px; font-size:12px; max-height:220px; overflow:auto; white-space:pre-wrap; margin:0;}
   .help{font-size:13px; color:var(--dim); margin:8px 0 0;}
+  .steps{list-style:none; padding:0; margin:0;}
+  .steps li{display:flex; gap:10px; align-items:flex-start; padding:7px 0; border-bottom:1px solid var(--line);}
+  .steps li:last-child{border-bottom:0;}
+  .steps .pill{flex:none; min-width:46px; text-align:center; margin-top:1px;}
+  .pill.wait{background:#eee; color:#888;} .pill.run{background:var(--blue-soft); color:var(--blue);}
+  .steps b{display:block; font-weight:600;}
+  .steps small{display:block; color:var(--dim); font-size:13px;}
+  .steps li.bad small{color:var(--bad);}
 </style>
 </head>
 <body>
 <main>
   <h1>USB camera test · Windows</h1>
-  <p class="lead">Checks that the booth can control your Nikon from this laptop: live view, the real shutter (flash works) and the full photo. Uses the <b>photobooth4u Helper</b> and Windows' own camera driver, so there's nothing to install for the camera itself.</p>
+  <p class="lead">Checks that the booth can control your <b>Nikon</b> or <b>Canon EOS</b> from this laptop: live view, the real shutter (flash works) and the full photo. Uses the <b>photobooth4u Helper</b> and Windows' own camera driver, so there's nothing to install for the camera itself.</p>
 
   <div class="grid">
     <div>
       <div class="card">
         <h2>Before you start</h2>
         <ol class="help" style="padding-left:18px; margin-top:0;">
-          <li><b>Open the photobooth4u Helper</b> (version 1.1 or newer) on this laptop. <a href="/downloads/">Download it</a>, unzip, double-click. Keep its window open.</li>
+          <li><b>Open the photobooth4u Helper</b> (Canon: version <b>1.1.5</b> or newer) on this laptop. <a href="/downloads/">Download it</a>, unzip, double-click. Keep its window open.</li>
           <li><b>Plug the camera straight into the laptop</b> with a <b>data</b> USB cable (many micro-USB cables only charge) and switch it on. Windows lists it under <b>This PC</b> and in Device Manager under <b>Portable Devices</b> (not under "Cameras").</li>
-          <li>Close Nikon apps (NX Studio, Webcam Utility) and any "Import photos" window that popped up.</li>
-          <li>Camera: mode dial on <b>P, S, A or M</b>, lens cap off, battery charged (or a mains adapter). Nikon with SnapBridge: turn on <b>Airplane mode</b>.</li>
+          <li>Close camera apps (<b>EOS Utility</b>, EOS Webcam Utility, NX Studio, Nikon Webcam Utility) and any "Import photos" window that popped up.</li>
+          <li>Camera: mode dial on <b>P, S, A or M</b> (Canon: <b>P, Tv, Av or M</b>), lens cap off, SD card in, battery charged (or a mains adapter), <b>Auto power off</b> disabled.</li>
+          <li><b>Canon:</b> on older models (60D, 70D, 600D, 7D…) turn on <b>Live View shoot</b> in the camera's menu. Models with Wi-Fi: turn Wi-Fi off. Newer models with a "Choose USB connection app" menu: <b>Photo Import / Remote Control</b>.</li>
+          <li><b>Nikon</b> with SnapBridge: turn on <b>Airplane mode</b>.</li>
           <li>If you ever used Zadig on this camera, undo it: Device Manager &rarr; the camera (under "Universal Serial Bus devices") &rarr; <b>Uninstall device</b>, tick "Delete the driver", unplug and replug.</li>
         </ol>
         <ul class="checks" id="checks" style="margin-top:8px;"></ul>
@@ -72,6 +82,12 @@
         <div class="step"><span class="num">2</span><button id="liveBtn" class="secondary" disabled>Start live view</button></div>
         <div class="step"><span class="num">3</span><button id="shotBtn" disabled>Take photo</button></div>
         <div class="step" style="margin-bottom:0;"><span class="num">4</span><button id="copyBtn" class="secondary">Copy test report</button></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h2>Results</h2>
+        <ul class="steps" id="steps"></ul>
+        <p class="help">Something red? Tap <b>Copy test report</b> and send it to us with the camera model.</p>
       </div>
 
       <div class="card" style="margin-top:16px;">
@@ -102,7 +118,7 @@
       </div>
     </div>
   </div>
-  <p class="help" style="margin-top:20px;"><a href="../mac/">On a Mac or Android? Use that tester</a> (no helper needed there). Canon and Sony on Windows aren't supported yet: use a Mac / Android tablet, or an HDMI capture card.</p>
+  <p class="help" style="margin-top:20px;"><a href="../mac/">On a Mac or Android? Use that tester</a> (no helper needed there). Sony on Windows isn't supported yet: use a Mac / Android tablet, or an HDMI capture card.</p>
 </main>
 
 <script>
@@ -133,6 +149,40 @@
     const err = new Error(j.error || ('Helper error ' + r.status)); err.code = j.code || String(r.status); throw err;
   }
 
+  // ---- Results: one line per step, so a screenshot shows exactly where it stops ----
+  const STEPS = [
+    ['helper', 'photobooth4u Helper open'],
+    ['seen', 'Windows sees the camera'],
+    ['remote', 'Remote control connected'],
+    ['live', 'Live view picture'],
+    ['shot', 'Shutter fired + photo downloaded']
+  ];
+  const stepState = {};
+  function drawSteps(){
+    $('steps').innerHTML = STEPS.map(([k, label]) => {
+      const st = stepState[k] || { s: 'wait' };
+      const pill = st.s === 'ok' ? '<span class="pill ok">OK</span>' : st.s === 'bad' ? '<span class="pill bad">NO</span>' : st.s === 'run' ? '<span class="pill run">…</span>' : '<span class="pill wait">—</span>';
+      return '<li class="' + (st.s === 'bad' ? 'bad' : '') + '">' + pill + '<div><b>' + label + '</b>' + (st.note ? '<small>' + String(st.note).replace(/</g, '&lt;') + '</small>' : '') + '</div></li>';
+    }).join('');
+  }
+  function step(k, s, note){
+    stepState[k] = { s, note: note || '' };
+    report.results = report.results || {};
+    report.results[k] = s + (note ? ': ' + note : '');
+    drawSteps();
+  }
+  function resetSteps(from){
+    const i = STEPS.findIndex(x => x[0] === from);
+    STEPS.slice(i).forEach(([k]) => { delete stepState[k]; if(report.results) delete report.results[k]; });
+    drawSteps();
+  }
+  function versionAtLeast(v, want){
+    const a = String(v || '0').split(/[.-]/).map(Number), b = want.split('.').map(Number);
+    for(let i = 0; i < b.length; i++){ if((a[i] || 0) !== b[i]) return (a[i] || 0) > b[i]; }
+    return true;
+  }
+  drawSteps();
+
   // ---- Checks ----
   const checks = [
     ['Windows', /Windows/i.test(navigator.userAgent)],
@@ -151,21 +201,43 @@
     hideMsg();
     $('connectBtn').disabled = true;
     stopLive();
+    resetSteps('helper');
+    let at = 'helper';
     try{
       log('Looking for the helper…');
+      step('helper', 'run');
       const st = await (await call('/status', null, 20000)).json();
       report.helper = st.version;
       log('Helper ' + st.version + ' found');
       const camOk = st.camera && st.camera.supported;
       drawChecks([['photobooth4u Helper ' + st.version + ' running', true], ['Helper can control cameras (1.1 or newer)', !!camOk]]);
-      if(!camOk){ showMsg('This helper is too old to control cameras. Close it, download the new one from the Downloads page, and open it again.', 'err'); return; }
+      if(!camOk){
+        const m = 'This helper (' + st.version + ') is too old to control cameras. Close it, download the new one from the Downloads page, and open it again.';
+        step('helper', 'bad', m); showMsg(m, 'err'); return;
+      }
+      step('helper', 'ok', 'Version ' + st.version);
+      at = 'seen'; step('seen', 'run');
       const list = await (await call('/camera', null, 30000)).json();
       report.devices = list.devices;
       log('Windows sees: ' + (list.devices.length ? list.devices.map(d => (d.maker + ' ' + d.name).trim() + (d.camera ? ' (camera)' : '')).join(', ') : 'no portable devices'));
+      const cams = list.devices.filter(d => d.camera);
+      const camText = cams.map(d => (d.name || d.maker || '').trim()).join(', ');
+      if(!list.devices.length){
+        step('seen', 'bad', 'Windows sees no camera. Check the cable is a data cable, plug straight into the laptop (no hub), switch the camera on. Close EOS Utility / camera apps.');
+      } else {
+        step('seen', 'ok', camText || list.devices.map(d => (d.name || '').trim()).join(', '));
+      }
+      if(cams.some(d => /canon|eos/i.test(d.name + ' ' + d.maker)) && !versionAtLeast(st.version, '1.1.5')){
+        const m = 'Canon cameras need Helper 1.1.5 or newer (this one is ' + st.version + '). Close it, download it again from the Downloads page, and open the new one.';
+        step('helper', 'bad', m); showMsg(m, 'err'); return;
+      }
       log('Connecting (first time can take ~10 s)…');
+      at = 'remote'; step('remote', 'run');
       const t0 = performance.now();
       info = await (await call('/camera/open', { method: 'POST' }, 70000)).json();
       report.camera = info;
+      if(stepState.seen && stepState.seen.s === 'bad') step('seen', 'ok', info.name);
+      step('remote', 'ok', info.name + ' in ' + (Math.round((performance.now() - t0) / 100) / 10) + ' s');
       log('Connected to ' + info.name + ' in ' + Math.round(performance.now() - t0) + ' ms' + (info.note ? ' — ' + info.note : ''));
       if(info.diag) log('Details: ' + info.diag);
       $('infoTable').innerHTML = row('Status', 'Connected') + row('Camera', info.name) + row('Maker', info.maker) + row('Battery', info.battery >= 0 ? info.battery + '%' : '') + row('Booth settings', info.note || 'unchanged') + row('Details', info.diag || '');
@@ -176,6 +248,7 @@
     }catch(err){
       log('Connect failed: ' + err.message);
       report.connectError = err.message;
+      step(at, 'bad', err.message);
       showMsg(err.message, 'err');
       $('liveBtn').disabled = true; $('shotBtn').disabled = true;
     }finally{
@@ -193,18 +266,19 @@
         const bmp = await createImageBitmap(await r.blob());
         if(g !== gen){ bmp.close(); return; }
         if(canvas.width !== bmp.width || canvas.height !== bmp.height){ canvas.width = bmp.width; canvas.height = bmp.height; log('Live view ' + bmp.width + ' x ' + bmp.height); report.liveSize = bmp.width + 'x' + bmp.height; }
+        if(!stepState.live || stepState.live.s !== 'ok') step('live', 'ok', bmp.width + ' x ' + bmp.height);
         ctx.drawImage(bmp, 0, 0); bmp.close();
         canvas.style.display = ''; $('ph').style.display = 'none';
         n++; fails = 0;
         const dt = (performance.now() - t0) / 1000;
         if(dt > 1){ const fps = n / dt; report.fps = Math.round(fps * 10) / 10; $('fpsBadge').textContent = fps.toFixed(1) + ' fps'; $('fpsBadge').style.display = 'block'; n = 0; t0 = performance.now(); }
       }catch(err){
-        if(++fails >= 5){ log('Live view stopped: ' + err.message); showMsg(err.message, 'err'); stopLive(); return; }
+        if(++fails >= 5 || err.code === 'LIVEVIEW'){ log('Live view stopped: ' + err.message); showMsg(err.message, 'err'); if(!stepState.live || stepState.live.s !== 'ok') step('live', 'bad', err.message); stopLive(); return; }
         await new Promise(r => setTimeout(r, 500));
       }
     }
   }
-  function startLive(){ live = true; const g = ++gen; $('liveBtn').textContent = 'Stop live view'; log('Live view on'); liveLoop(g); }
+  function startLive(){ live = true; const g = ++gen; if(!stepState.live || stepState.live.s !== 'ok') step('live', 'run'); $('liveBtn').textContent = 'Stop live view'; log('Live view on'); liveLoop(g); }
   function stopLive(){
     if(!live) return;
     live = false; gen++;
@@ -218,6 +292,7 @@
     hideMsg();
     try{
       log('Firing the shutter…');
+      step('shot', 'run');
       const t0 = performance.now();
       const blob = await (await call('/camera/capture', { method: 'POST' }, 50000)).blob();
       const ms = Math.round(performance.now() - t0);
@@ -229,10 +304,12 @@
       $('shotImg').src = url; $('shotLink').href = url;
       $('shotTable').innerHTML = row('Size', size) + row('File', Math.round(blob.size / 1024) + ' KB') + row('Time after tap', (ms / 1000).toFixed(1) + ' s');
       $('shot').style.display = 'block';
+      step('shot', 'ok', size + ', ' + (ms / 1000).toFixed(1) + ' s');
       showMsg('It works. The booth can use this camera on this laptop.', 'info');
     }catch(err){
       log('Photo failed: ' + err.message);
       report.shotError = err.message;
+      step('shot', 'bad', err.message);
       showMsg(err.message, 'err');
     }finally{
       $('shotBtn').disabled = false;

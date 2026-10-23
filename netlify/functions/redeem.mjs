@@ -20,6 +20,8 @@ export default safe(async (req, context) => {
   // ---- Rental code ----
   if (rec) {
     if (rec.status === 'revoked') return json({ error: 'This code has been disabled. Please contact the owner.' }, 403);
+    // Laptop 6-Month Pass and other laptop-app-only codes: only the Windows / Mac app takes them.
+    if (rec.offlineOnly) { await clearFail(t); return json({ error: 'This code is for the photobooth4u laptop app (Windows / Mac). Install the app on your laptop and enter the code there.', code: 'offline-only' }, 403); }
 
     if (rec.status === 'active') {
       if (rec.expiresAt <= now) return json({ error: rec.kind === 'bonus' ? 'This bonus code has been used up.' : 'This code has expired.' }, 403);

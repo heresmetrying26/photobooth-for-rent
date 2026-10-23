@@ -7,7 +7,7 @@ anything in this folder, and Netlify never builds it.
 ## What renters get
 - The full booth: designs, frames, layouts, guest options, background AI, retakes, Lock booth, traditional
   mode with the guest screen, vouchers.
-- **USB camera**: Windows Nikon through the built-in helper (same as Print Helper 1.1.3, no Zadig);
+- **USB camera**: Windows Nikon and Canon EOS through the built-in helper (same as Print Helper 1.1.5, no Zadig);
   Mac over USB, the same way as in Chrome. Webcams and HDMI capture as before.
 - **Silent printing** to a named printer per paper size (built in; no Print Helper to install).
 - **Photos on the laptop**: `Pictures/photobooth4u/<event>/1_strip.jpg …` (Share & start → *Open photos folder*

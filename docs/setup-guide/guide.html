@@ -136,7 +136,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
     <li><span>08</span>Guest payments: QR &amp; vouchers</li>
     <li><span>03</span>Set up each event</li>
     <li><span>09</span>Backup folder &amp; pro tips</li>
-    <li><span>04</span>Pro Booth: laptop + guest screen</li>
+    <li><span>04</span>Laptop Booth: laptop + guest screen</li>
     <li><span>10</span>After the event: send the photos</li>
     <li><span>05</span>Use your DSLR / mirrorless camera</li>
     <li><span>11</span>Troubleshooting &amp; help</li>
@@ -151,9 +151,9 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
   <p class="lead">Do these in order. Each step has its own page if you need more detail.</p>
   <ol class="steps">
     <li><span class="n">1</span><h4>Plug everything in</h4><p>Laptop on its charger. Guest screen by HDMI, set to <b>Extend</b>. Camera on a full battery (or dummy battery), lens cap off. Printer on, paper and ribbon loaded.</p></li>
-    <li><span class="n">2</span><h4>Camera: set the USB mode</h4><p><b>Canon:</b> camera Menu → <b>Choose USB connection app</b> → <b>Photo Import / Remote Control</b>, and turn the camera's Wi-Fi / Bluetooth off. <b>Nikon:</b> nothing to set. Then connect the USB cable to the laptop. <i>(Page 6)</i></p></li>
+    <li><span class="n">2</span><h4>Camera: set the USB mode</h4><p><b>Canon:</b> camera Menu → <b>Choose USB connection app</b> → <b>Photo Import / Remote Control</b> (older models: turn on <b>Live View shoot</b>), and turn the camera's Wi-Fi / Bluetooth off. <b>Nikon:</b> nothing to set. Then connect the USB cable to the laptop. <i>(Page 6)</i></p></li>
     <li><span class="n">3</span><h4>Open the booth in Chrome</h4><p>Start Chrome with the <b>silent-printing shortcut</b> (page 5) and open <b>photobooth4u.netlify.app</b>.</p></li>
-    <li><span class="n">4</span><h4>Choose the camera</h4><p><b>Setup → 5 Session → Camera</b> (or the <b>📷 Camera</b> button in Photo Session) → <b>DSLR / mirrorless over USB (remote control)</b>. Chrome shows a list: pick your camera → <b>Connect</b>. The live view appears.</p></li>
+    <li><span class="n">4</span><h4>Choose the camera</h4><p><b>Setup → 5 Session → Camera</b> (or the <b>📷 Camera</b> button in Photo Session) → <b>DSLR / mirrorless over USB (remote control)</b>. Chrome shows a list: pick your camera → <b>Connect</b>. The live view appears. <b>Windows:</b> open the photobooth4u Helper first, then pick <b>Nikon / Canon camera over USB</b>.</p></li>
     <li><span class="n">5</span><h4>Check Setup</h4><p>Design, name and date, layout, frame, and the <b>event name</b> in step 6 Share. It's saved from last time, so usually you only change the name.</p></li>
     <li><span class="n">6</span><h4>Choose the printers</h4><p>In <b>Photo Session</b> tap <b>&#128424; Print settings</b> (bottom left), pick each paper size and choose its printer from the list. Two printers or HiTi strips: open the <b>Print Helper</b> first (page 8).</p></li>
     <li><span class="n">7</span><h4>Do one test session and print</h4><p>Take a session yourself. Check the photo, the QR code and the print. Then tick <b>Auto-print every session</b> if you want it.</p></li>
@@ -186,7 +186,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
     <h2>What you need</h2>
     <div class="cols even">
       <div class="card cream" style="min-height:214px">
-        <span class="pill">Classic booth</span>
+        <span class="pill">Tablet Booth</span>
         <ul class="dots">
           <li><b>iPad or Android tablet</b> (a phone works too)</li>
           <li><b>Tripod or stand</b> at the guests' eye level</li>
@@ -195,7 +195,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
         </ul>
       </div>
       <div class="card purple" style="min-height:214px">
-        <span class="pill purple">Pro booth</span>
+        <span class="pill purple">Laptop Booth</span>
         <ul class="dots">
           <li><b>Laptop</b> with <b>Chrome or Edge</b>, and a camera: built-in, USB webcam, or your <b>DSLR / mirrorless</b> camera (page 6)</li>
           <li><b>Second monitor or TV</b> + HDMI cable, facing the guests</li>
@@ -212,7 +212,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
         <li>Booth opens and the camera works</li>
         <li>Printer + paper loaded, one test print done</li>
         <li>Internet tested at (or near) the venue</li>
-        <li>Pro Booth: HDMI cable and guest screen tested</li>
+        <li>Laptop Booth: HDMI cable and guest screen tested</li>
       </ul>
     </div>
   </div>
@@ -261,7 +261,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
 
 <!-- ============ 4 ============ -->
 <section class="page">
-  <p class="kicker">04 · Pro booth</p>
+  <p class="kicker">04 · Laptop Booth</p>
   <h2>Laptop + guest screen</h2>
   <p class="lead">Guests see the camera, countdown and their photos on the big screen. You run setup, printing and the QR code on the laptop.</p>
   <div class="cols">
@@ -278,16 +278,16 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
   <div class="codeblock">"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing https://photobooth4u.netlify.app/</div>
   <p class="label"><b>Mac:</b> open Terminal and run:</p>
   <div class="codeblock">open -a "Google Chrome" --args --kiosk-printing https://photobooth4u.netlify.app/</div>
-  <div class="note card pink"><b>Don't add <code>--kiosk</code></b> for the Pro Booth. It forces a single full-screen window and blocks the guest screen. Edge works the same way with <code>msedge.exe</code>.</div>
+  <div class="note card pink"><b>Don't add <code>--kiosk</code></b> for the Laptop Booth. It forces a single full-screen window and blocks the guest screen. Edge works the same way with <code>msedge.exe</code>.</div>
   <div class="foot"><span>photobooth4u setup guide</span><span>5</span></div>
 </section>
 
 <!-- ============ 5 · NEW: CAMERA + BACKUP ============ -->
 <section class="page">
   <div class="sec">
-    <p class="kicker">05 · Pro booth camera</p>
+    <p class="kicker">05 · Laptop Booth camera</p>
     <h2>Use your DSLR / mirrorless camera</h2>
-    <p class="lead"><b>USB remote control</b> is the best way: the booth presses the real shutter, so your <b>camera settings, focus and flash all work</b>. Works on a <b>Mac</b> in <b>Chrome or Edge</b> (Canon, Nikon, Sony, Fujifilm and most others).</p>
+    <p class="lead"><b>USB remote control</b> is the best way: the booth presses the real shutter, so your <b>camera settings, focus and flash all work</b>. Works on a <b>Mac</b> in <b>Chrome or Edge</b> (Canon, Nikon, Sony, Fujifilm and most others), and on <b>Windows</b> with <b>Nikon</b> and <b>Canon EOS</b> through the photobooth4u Helper.</p>
     <div class="cols">
       <ol class="steps">
         <li><span class="n">1</span><h4>Set the camera</h4><p><b>Canon:</b> Menu → <b>Choose USB connection app</b> → <b>Photo Import / Remote Control</b> (not "Video calls / streaming"). Turn off Wi-Fi / Bluetooth. <b>Nikon / others:</b> nothing to set. Save photos as <b>JPEG</b> (or RAW + JPEG), and turn off <b>auto power off</b>.</p></li>
@@ -300,7 +300,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
         <ul class="dots">
           <li><b>Test it first:</b> open <b>photobooth4u.netlify.app/camera-test/</b>. If it shows a live view and takes a photo, the booth will too.</li>
           <li>Keep the battery charged, or use a <b>dummy battery</b>. A low battery can stop the live view.</li>
-          <li><b>Windows</b> needs a one-time driver switch: follow the Windows camera test page.</li>
+          <li><b>Windows:</b> open the <b>photobooth4u Helper</b> (Downloads page; Canon needs version 1.1.5 or newer) and pick <b>Nikon / Canon camera over USB</b>. No driver switch. Test at <b>/camera-test/windows/</b>. Older Canons (60D, 70D…): turn on <b>Live View shoot</b>.</li>
           <li><b>No USB remote?</b> Webcam mode still works (Canon EOS Webcam Utility, Sony USB Streaming, or an HDMI capture card), but the flash won't fire and camera settings don't apply.</li>
         </ul>
       </div>
@@ -446,7 +446,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
 <!-- ============ BACKUP + TIPS ============ -->
 <section class="page">
   <div class="sec" >
-    <p class="kicker">09 · Pro booth backup</p>
+    <p class="kicker">09 · Laptop Booth backup</p>
     <h2>Backup folder &amp; weak internet</h2>
     <div class="cols">
       <ol class="steps">

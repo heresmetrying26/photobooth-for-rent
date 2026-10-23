@@ -112,7 +112,7 @@ For DSLR / mirrorless cameras in their **Photo Import / Remote Control** (Canon)
 Chrome's USB picker (only the first time; it stays allowed). Live view comes from the camera;
 each shot fires the real shutter (about 2.5–3 s per shot incl. transfer, shown as "Saving").
 - Chrome or Edge on a **Mac or Android** with web-gphoto2 (below). Safari has no USB.
-- **Windows: Nikon through the photobooth4u Helper 1.1** (see the next section). No Zadig.
+- **Windows: Nikon (Helper 1.1+) and Canon EOS (Helper 1.1.5+) through the photobooth4u Helper** (see the next section). No Zadig.
 - Quit Photos, Image Capture, EOS Utility / Nikon apps first. Mode dial on M/P/A/S, JPEG (not RAW).
   A smaller JPEG size (e.g. Medium/Normal) makes each shot faster. Use a mains adapter: live view drains batteries.
 - Live view is low-res (e.g. 640×424 on a D5600); the photos are full quality (cropped, max 2000 px).
@@ -121,21 +121,29 @@ each shot fires the real shutter (about 2.5–3 s per shot incl. transfer, shown
   `public/camera-test/build/`; `/camera-test/` is a stand-alone test page for any camera.
 - Tested: Nikon D5600 on macOS Chrome (shutter, live view, settings). Canon not yet tested.
 
-### Windows: Nikon over USB through the photobooth4u Helper (1.1)
+### Windows: Nikon / Canon EOS over USB through the photobooth4u Helper (1.1 / 1.1.5)
 Chrome can't open the camera on Windows (Windows' own camera driver holds it), so the helper does it:
 - `tools/print-helper/camera-worker.ps1` (built into the helper exe) runs in PowerShell and talks to the camera
   through Windows' WPD/MTP driver ("MTP extension" commands: Nikon live view 0x9201/0x9203, shutter 0x90C0,
-  events 0x90C7, GetObject). The helper starts it at launch and keeps it running; it connects back on a private
+  events 0x90C7, GetObject; Canon EOS: remote mode 0x9114, event mode 0x9115, events 0x9116, live view by setting
+  0xD1B0 = 2 through 0x9110 and reading 0x9153, shutter 0x910F (older EOS, e.g. 60D) or 0x9128/0x9129 (newer),
+  the photo from the ObjectAddedEx / RequestObjectTransfer event, GetObject or 0x9107 in pieces, then 0x9117).
+  The helper starts it at launch and keeps it running; it connects back on a private
   127.0.0.1 socket. Endpoints: `GET /camera` (devices), `POST /camera/open`, `POST /camera/live?on=0|1`,
   `GET /camera/frame` (JPEG), `POST /camera/capture` (JPEG), `GET /camera/battery`, `POST /camera/close`.
-- On open it sets the camera to JPEG (if it was RAW) and the smallest photo size at least ~2900 px wide
+- On open (Nikon) it sets the camera to JPEG (if it was RAW) and the smallest photo size at least ~2900 px wide
   (D5600: 2992×2000), because the booth uses at most 3000 px and smaller files come over USB faster.
-- Booth (Windows): the Camera menu has **Nikon camera over USB (photobooth4u Helper)**. Picking it once (Chrome asks
+  Canon settings are left as they are (RAW + JPEG: the JPEG is used; RAW only: the booth says to switch to JPEG).
+- Canon EOS needs EOS Utility closed, and on older bodies "Live View shoot: Enable" in the camera menu
+  (otherwise the camera never sends live view; the helper says so after ~9 s).
+- Booth (Windows): the Camera menu has **Nikon / Canon camera over USB (photobooth4u Helper)**. Picking it once (Chrome asks
   to allow local access) remembers it (`pb_cam_helper`); after that the booth checks the helper on start and every
   6 s, picks a plugged-in camera by itself, switches from the built-in webcam when one is plugged in between guests,
   and keeps retrying when the helper is closed or the camera is unplugged (no Try Again needed).
-- Nikon only for now (Canon/Sony say so). Tested with a stand-in worker (booth + helper end to end) and the real
-  worker's PowerShell/C# + socket on Linux; the WPD camera calls themselves still need a real Windows + Nikon test.
+- Nikon and Canon EOS (Sony says not yet). Tested with a stand-in worker (booth + helper end to end), and the real
+  worker's C# compiled as C# 5 (like Windows PowerShell's Add-Type) against simulated Nikon, Canon 60D-style and
+  Canon R-style cameras (live view, RAW + JPEG, RAW only, focus failure, download in pieces, live view disabled).
+  The WPD camera calls themselves still need a real Windows test with each brand (use /camera-test/windows/).
 
 ### Canon SELPHY (CP1300 / CP1500)
 Works as is: iPad over AirPrint, Android over Mopria (or Canon Print Service), laptops over USB/Wi-Fi with
@@ -350,6 +358,11 @@ subfolder. Then **Deploy → Manage deployments → Edit → New version** so th
 - **Admin:** device chips show the laptop name and last check-in; *Deactivate* removes it (cancelled at its next
   check-in). *Offline activation key*: paste a laptop's Machine ID (`WIN-…` / `MAC-…`) and send the renter the key.
   Removing the device in My Events works the same way.
+- **Packages (Admin → Create → Package):** Tablet Booth (1 day), Laptop Booth (1 day, offline app allowed), Laptop
+  6-Month Pass (183 days, `offlineOnly`: /api/redeem and checkLicense refuse it on the website, the app takes it), and
+  Lifetime (offline app included). Codes with an end date get licences with `hard = exp`, so a pass works offline for
+  its whole period with no check-ins; lifetime laptops still renew every 75 (+30) days. Admin row: *Laptop app only* /
+  *Allow website too* (action `offlineonly`).
 - **The app itself** lives in `desktop/` (Electron, Windows + Mac): the full booth offline, photos saved on the laptop,
   guests' QR over the booth Wi-Fi, built-in printing and Windows camera, vouchers. Built by GitHub Actions
   (*Actions → Desktop app*); Netlify ignores it. See [desktop/README.md](desktop/README.md). In `protected/booth.html`

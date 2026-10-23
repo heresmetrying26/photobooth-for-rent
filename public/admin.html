@@ -141,6 +141,16 @@
         <div><label>How many</label><input id="newCount" type="number" min="1" max="20" value="1"></div>
       </div>
       <div class="modebox">
+        <label style="font-size:13px;color:var(--ink);">Package</label>
+        <div class="row" id="newPackages" style="gap:6px;margin-top:4px;">
+          <button type="button" class="small" data-pkg="tablet">Tablet Booth · ₱499</button>
+          <button type="button" class="small" data-pkg="laptop">Laptop Booth · ₱599</button>
+          <button type="button" class="small" data-pkg="pass6">Laptop 6-Month Pass · ₱1,499</button>
+          <button type="button" class="small" data-pkg="lifetime">Lifetime · ₱4,999</button>
+        </div>
+        <div class="meta" style="margin:6px 0 0;">Fills in the settings below for that package; you can still change any of them.</div>
+      </div>
+      <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newLifetime"> Lifetime (never expires)</label>
         <div class="meta" style="margin:0;" id="lifetimeHint">For clients who buy the booth for good. Instead of one fixed Drive folder, the booth asks for an <b>event name</b> each time, and every event gets its own folder: <b>“Drive folder name · event name”</b>. Turning this on also turns on the Traditional (Pro) booth below; untick that if they use a tablet.</div>
       </div>
@@ -168,6 +178,11 @@
       <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newTraditional"> Traditional booth (laptop + guest screen)</label>
         <div class="meta" style="margin:0;">For a laptop with a second monitor: guests see the camera and countdown on the extended screen, the renter runs setup and printing on the laptop, and prints can run automatically. Leave off for tablets (iPad / Android).</div>
+      </div>
+      <div class="modebox">
+        <label class="toggle"><input type="checkbox" id="newOffline"> Offline app (Windows / Mac laptop app)</label>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newOfflineOnly"> Laptop app only (the website booth refuses this code)</label>
+        <div class="meta" style="margin:6px 0 0;">Laptop Booth and Lifetime include the offline app. The Laptop 6-Month Pass is laptop app only: it works offline for its whole period with no check-ins.</div>
       </div>
       <button class="primary" id="createBtn" style="margin-top:12px;">Generate</button>
       <div id="newBox" class="newbox hidden"></div>
@@ -600,6 +615,7 @@
       acts += '<button class="small" data-a="payopt" data-c="' + c + '">' + (l.payOpt ? 'Hide guest payments' : 'Give guest payments') + '</button>';
       if(l.payOpt) acts += '<button class="small" data-a="paymgr" data-c="' + c + '">Payments &amp; vouchers</button>';
       acts += '<button class="small" data-a="offlineopt" data-c="' + c + '">' + (l.offlineOpt ? 'Hide offline app' : 'Give offline app') + '</button>';
+      if(l.offlineOpt) acts += '<button class="small" data-a="offlineonly" data-c="' + c + '" title="Laptop app only: the website booth refuses this code (Laptop 6-Month Pass)">' + (l.offlineOnly ? 'Allow website too' : 'Laptop app only') + '</button>';
       if(l.offlineOpt && st !== 'revoked') acts += '<button class="small" data-a="offkey" data-c="' + c + '" title="For a laptop with no internet: paste its Machine ID, get a licence key">Offline activation key</button>';
     }
     if(l.lockOpt) acts += '<button class="small" data-a="pinreset" data-c="' + c + '">Reset lock PIN</button>';
@@ -611,7 +627,7 @@
       ? esc(l.folderName || l.label || l.code) + ' · <i>event name</i></b> <span style="font-weight:500;">(new folder per event)</span><b>'
       : esc(l.folderName || l.label || l.code) + (bonus ? ' / ' + esc(l.subfolder || 'Bonus') + ' <span style="font-weight:500;">(files named BONUS_…)</span>' : '');
     return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + (l.email ? 'Email: <b>' + esc(l.email) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
-      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? 'Yes' + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
+      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? (l.offlineOnly ? 'Laptop app only' : 'Yes') + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
       '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
       (devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.kind ? ' · ' + esc(d.kind) : '') + (d.app && d.app.name ? ' · ' + esc(d.app.name) : '') + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + (d.app && d.app.seen ? ' · checked in ' + new Date(d.app.seen).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="' + (d.app ? 'Deactivate this laptop (stops at its next check-in)' : 'Remove this device') + '">' + (d.app ? 'Deactivate' : 'Remove') + '</button></span>'; }).join('') + '</div>' : '') +
       '</div>' +
@@ -831,6 +847,11 @@
         refresh();
         return;
       }
+      if(a === 'offlineonly'){
+        var on = !(LIC[code] && LIC[code].offlineOnly);
+        await api({ action: 'offlineonly', code: code, offlineOnly: on });
+        toast(on ? code + ' now works in the laptop app only' : code + ' works on the website again'); refresh(); return;
+      }
       if(a === 'offlineopt'){
         var oo = !(LIC[code] && LIC[code].offlineOpt);
         var ro = await api({ action: 'offlineopt', code: code, offlineOpt: oo });
@@ -965,7 +986,7 @@
     try{
       var np = readPrint($('newPrint'));
       var startsAt = readStartInputs($('newStartDate'), $('newStartTime'));
-      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), bonus: $('newBonus').checked, bonusMinutes: $('newBonusMin').value, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, defaultTheme: $('newTheme').value || null };
+      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), bonus: $('newBonus').checked, bonusMinutes: $('newBonusMin').value, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null };
       var j;
       try{ j = await api(createBody); }
       catch(e1){
@@ -1028,9 +1049,26 @@
     try{ var v = localStorage.getItem('pb_admin_' + id); if(v) $(id).open = v === '1'; }catch(e){}
     $(id).addEventListener('toggle', function(){ try{ localStorage.setItem('pb_admin_' + id, $(id).open ? '1' : '0'); }catch(e){} });
   });
+  // Package presets (Tablet Booth / Laptop Booth / Laptop 6-Month Pass / Lifetime).
+  var PKG = {
+    tablet:   { days: 1,   devices: 1, lifetime: false, traditional: false, offline: false, only: false },
+    laptop:   { days: 1,   devices: 1, lifetime: false, traditional: true,  offline: true,  only: false },
+    pass6:    { days: 183, devices: 1, lifetime: false, traditional: true,  offline: true,  only: true },
+    lifetime: { days: 1,   devices: 5, lifetime: true,  traditional: true,  offline: true,  only: false }
+  };
+  $('newPackages').addEventListener('click', function(e){
+    var b = e.target.closest('[data-pkg]'); if(!b) return;
+    var p = PKG[b.dataset.pkg];
+    $('newDays').value = p.days; $('newDevices').value = p.devices;
+    $('newLifetime').checked = p.lifetime; $('newDays').disabled = p.lifetime;
+    $('newTraditional').checked = p.traditional; $('newOffline').checked = p.offline; $('newOfflineOnly').checked = p.only;
+    [].forEach.call(this.querySelectorAll('[data-pkg]'), function(x){ x.classList.toggle('primary', x === b); });
+  });
+  $('newOfflineOnly').addEventListener('change', function(){ if(this.checked) $('newOffline').checked = true; });
+  $('newOffline').addEventListener('change', function(){ if(!this.checked) $('newOfflineOnly').checked = false; });
   $('newLifetime').addEventListener('change', function(){
     $('newDays').disabled = this.checked;
-    if(this.checked) $('newTraditional').checked = true;
+    if(this.checked){ $('newTraditional').checked = true; $('newOffline').checked = true; }   // Lifetime includes the offline app
     // Lifetime codes: up to 5 devices at once by default.
     if(this.checked && $('newDevices').value === '1') $('newDevices').value = '5';
     else if(!this.checked && $('newDevices').value === '5') $('newDevices').value = '1';

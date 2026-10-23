@@ -1,6 +1,6 @@
 // The Print Helper, built into the app: silent printing to a named printer
 // (Windows: .NET printing in PowerShell; Mac: CUPS `lp`) and, on Windows, the
-// Nikon camera over USB through Windows' own camera driver (camera-worker.ps1).
+// Nikon / Canon EOS camera over USB through Windows' own camera driver (camera-worker.ps1).
 // Same endpoints as tools/print-helper/print-helper.js, served to the booth at
 // app://booth/helper/... (same origin, so no CORS or permission prompts).
 import { tmpdir, platform } from 'node:os';
@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 
-export const HELPER_VERSION = '1.1.4-app';
+export const HELPER_VERSION = '1.1.5-app';
 const IS_WIN = platform() === 'win32';
 const PS = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass'];
 let WORKER_PS = '';

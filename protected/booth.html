@@ -868,6 +868,35 @@
 
   /* ---- Frames with photo spots ---- */
   .layout-btn.lt-empty{border-style:dashed;}
+  /* Layout step: grouped cards; guests' choices ticked on the cards */
+  .lay-head{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:6px;}
+  .lay-guest-toggle{display:inline-flex; align-items:center; gap:8px; padding:7px 13px; border-radius:999px; border:1.5px solid var(--line); background:#fff; font:700 13px 'Manrope',sans-serif; color:var(--ink); cursor:pointer;}
+  .lay-guest-toggle:has(input:checked){border-color:var(--blue-deep); background:var(--tint);}
+  .lay-guest-toggle input{margin:0;}
+  .lay-groups{display:flex; flex-direction:column; gap:16px; margin-top:4px;}
+  .lay-group-h{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin:0 0 7px;}
+  .lay-group-h b{font:800 11.5px 'Manrope',sans-serif; letter-spacing:.09em; text-transform:uppercase; color:var(--ink);}
+  .lay-group-h span{font:600 11.5px 'Manrope',sans-serif; color:var(--ink-dim);}
+  .lay-group .layout-grid{grid-template-columns:repeat(auto-fill, minmax(96px, 1fr));}
+  .layout-btn{position:relative;}
+  .layout-btn .lt-tick{display:none; position:absolute; top:5px; right:5px; width:26px; height:26px; border-radius:50%; border:2px solid #CFC6B8; background:#fff; color:transparent; font:800 14px/22px 'Manrope',sans-serif; text-align:center; z-index:2; cursor:pointer;}
+  .guest-on .layout-btn .lt-tick{display:block;}
+  .layout-btn .lt-tick.on{background:var(--blue-deep); border-color:var(--blue-deep); color:#fff;}
+  .layout-btn .lt-tick.locked{opacity:.6; cursor:default;}
+  .layout-btn.lt-add{border-style:dashed; color:var(--blue-deep); justify-content:center; min-height:150px;}
+  .layout-btn.lt-add .lt-plus{width:44px; height:62px; border:2px dashed var(--line); border-radius:6px; display:flex; align-items:center; justify-content:center; font:800 22px 'Manrope',sans-serif; color:var(--blue-deep); background:#fff;}
+  .lay-ctx{margin-top:14px; padding-top:12px; border-top:1px solid var(--line);}
+  .frame-ctx{margin-top:10px; padding:12px; border-radius:14px; background:var(--panel-2); border:1px solid var(--line);}
+  .frame-ctx-top{display:flex; align-items:center; gap:10px;}
+  .frame-ctx-top img{width:44px; height:60px; object-fit:contain; background:#f3efe8; border-radius:6px; flex:none;}
+  .frame-ctx-top div{font-size:12.5px; color:var(--ink-dim); line-height:1.4;}
+  .frame-ctx-top b{color:var(--ink);}
+  .frame-ctx-btns{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; align-items:center;}
+  .theme-lay-note{margin:0 0 10px; padding:9px 12px; border-radius:10px; background:#FFF6DB; border:1px solid #F0D98A; color:#6B5300; font-weight:700;}
+  .tpl-lay{display:flex; flex-direction:column; gap:6px;}
+  .tpl-lay p{margin:0; font-size:12.5px; color:var(--ink-dim); text-align:center; line-height:1.4;}
+  .tpl-lay .chip-row{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
+  .tpl-lay .chip{height:auto; min-height:40px; padding:6px 8px; font-size:12.5px; line-height:1.25;}
   .layout-btn.lt-empty .lt{opacity:.45;}
 
   .frame-list{display:flex; flex-direction:column; gap:8px; margin-top:10px;}
@@ -1725,6 +1754,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <input type="search" class="label-input" id="themeSearch" placeholder="Search designs…" aria-label="Search designs">
         </div>
         <div class="theme-cats" id="themeCats" role="tablist" aria-label="Design categories"></div>
+        <p class="panel-hint theme-lay-note" id="themeLayoutNote" hidden></p>
         <div class="theme-grid" id="themeGrid"></div>
       </div>
 
@@ -1935,19 +1965,21 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     <!-- STEP 3 · LAYOUT & TIMER -->
     <section class="step" id="step3" data-step="3">
       <div class="panel-section" id="formatSection">
-        <p class="panel-label">Layout</p>
-        <div class="frames-box" id="myFramesPanel" style="display:none; margin-bottom:14px;">
-          <p class="sub-label" style="margin-top:0;">Your frames</p>
-          <p class="panel-hint" style="margin:0 0 10px;" id="framePickHint">Tap to tick. <b>1 ticked</b> = that frame on its own.</p>
-          <div class="frame-mode" id="frameModeBox" style="display:none;">
-            <p class="sub-label" style="margin-top:0;">With 2 or more ticked</p>
-            <div class="chip-row" id="frameModeChips">
-              <button type="button" class="chip" data-fmode="choose">Guests choose one</button>
-              <button type="button" class="chip" data-fmode="sheet">All on one sheet</button>
-            </div>
-          </div>
-          <div class="frame-pick" id="framePick"></div>
-          <p class="panel-hint" id="frameChooseHint" style="display:none; margin-top:10px;"></p>
+        <div class="lay-head">
+          <p class="panel-label" style="margin:0;">Layout</p>
+          <label class="lay-guest-toggle"><input type="checkbox" id="guestPickToggle"> <span>Let guests choose</span></label>
+        </div>
+        <p class="panel-hint step-lead" id="guestPickHint">Tap a layout to use it.</p>
+        <div class="lay-groups" id="layoutGrid"></div>
+        <div class="lay-ctx" id="layoutCtx">
+          <p class="panel-hint" id="layoutHint" style="margin:0;"></p>
+          <div class="frame-ctx" id="frameCtx" style="display:none;"></div>
+          <div class="frames-box" id="myFramesPanel" style="display:none; margin-top:12px;">
+            <p class="sub-label" style="margin-top:0;">Frames on this sheet</p>
+            <p class="panel-hint" style="margin:0 0 10px;" id="framePickHint">Tap a frame to put it on the sheet or take it off.</p>
+            <div class="frame-mode" id="frameModeBox" hidden><div class="chip-row" id="frameModeChips"></div></div>
+            <div class="frame-pick" id="framePick"></div>
+            <p class="panel-hint" id="frameChooseHint" style="display:none; margin-top:10px;"></p>
           <div id="sheetPanel" style="display:none;">
             <p class="sub-label" style="margin-top:14px;">Sheet size</p>
             <div class="sheet-size-row">
@@ -1963,18 +1995,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             </div>
             <p class="panel-hint" style="margin-top:8px;">Fine-tune in the preview: <b>drag</b> a frame to move it, or <b>tap</b> it to resize, swap, turn or copy it.</p>
           </div>
-        </div>
-        <div class="layout-grid lg-many" id="layoutGrid"></div>
-        <p class="panel-hint" id="layoutHint"></p>
-        <div class="sub-group" id="ownFrameBox">
-          <p class="sub-label" style="margin-top:0;">Your own frame</p>
-          <div class="bg-row">
-            <label class="upload-btn" for="overlayInput">Upload frame(s)</label>
-            <input type="file" id="overlayInput" accept="image/png,image/webp,image/jpeg,image/*" multiple>
           </div>
-          <div class="frame-list" id="frameList"></div>
-          <p class="panel-hint" style="margin-top:8px;">Made in Canva? Leave the photo spots <b>white or see-through</b>. Photos go inside them. Upload several, then tick which to use (and arrange them) under <b>Your frames</b> above.</p>
-          <p class="panel-hint" id="overlaySizeHint"></p>
+        </div>
+        <div class="sub-group" id="ownFrameBox">
+          <input type="file" id="overlayInput" accept="image/png,image/webp,image/jpeg,image/*" multiple hidden>
+          <p class="panel-hint" id="overlaySizeHint" hidden></p>
           <div id="overlayOnTopBox" class="sub-group">
             <div class="bg-row">
               <img class="bg-thumb" id="overlayThumb" alt="Overlay" style="display:none;">
@@ -1983,14 +2008,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <button class="remove-link" id="overlayRemove">Remove overlay</button>
             <p class="panel-hint" id="overlayOnTopNote" style="margin-top:4px; display:none;">No photo spots found, so it sits on top as an overlay.</p>
           </div>
-                </div>
-        <select id="photoFitSelect" hidden><option value="fill" selected>Fill the box</option></select>
-        <div class="sub-group">
-          <label class="toggle-row"><input type="checkbox" id="guestPickToggle"> Guests choose the layout</label>
-          <div class="guest-layouts" id="guestLayouts" style="display:none;"></div>
-          <p class="panel-hint" id="guestPickHint" style="margin-top:6px; display:none;">Tick the ones guests can pick.</p>
+          <div class="frame-list" id="frameList" hidden></div>
         </div>
-
+        <select id="photoFitSelect" hidden><option value="fill" selected>Fill the box</option></select>
+        <div class="guest-layouts" id="guestLayouts" hidden></div>
       </div>
       <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="2">← Back</button><button type="button" class="action-btn primary next-btn" data-go="4">Next: Extras →</button></div>
     </section>
@@ -5327,7 +5348,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   function usbOptionLabel(){
     if(usbCam.name) return usbCam.name + (usbCam.viaHelper ? ' (USB)' : ' (USB remote)');
-    if(usbCam.viaHelper) return usbCam.helperName ? usbCam.helperName + ' (USB)' : 'Nikon camera over USB (photobooth4u Helper)';
+    if(usbCam.viaHelper) return usbCam.helperName ? usbCam.helperName + ' (USB)' : 'Nikon / Canon camera over USB (photobooth4u Helper)';
     return 'DSLR / mirrorless over USB (remote control)';
   }
 
@@ -5365,6 +5386,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(code === 'NOHELPER' || code === 'TIMEOUT') return 'Can\u2019t reach the photobooth4u Helper. Open it on this laptop (download it from photobooth4u.netlify.app/downloads). If Chrome asks to let this site reach apps on this device, choose Allow.' + (auto ? ' The camera connects by itself once the helper is open.' : ' Then tap Try Again.');
       if(err && err.name === 'UsbNoLiveView' && usbCam.lastErr && usbCam.lastErr.helperMsg) return usbCam.lastErr.helperMsg + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');
       if(err && err.name === 'UsbNoLiveView') return 'The camera connected but live view didn\u2019t start. Close the camera\u2019s menu, take the lens cap off and check the battery.' + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');
+      // Helpers before 1.1.5 turn Canon away: point to the new one.
+      if(!DESKTOP && code === 'UNSUPPORTED' && /canon/i.test(err && err.helperMsg || '') && /not supported|aren\u2019t supported|aren't supported/i.test(err.helperMsg)) return 'Canon cameras need the newer photobooth4u Helper (1.1.5 or later). Close the helper, download it again from photobooth4u.netlify.app/downloads, open it, then tap Try Again.';
       if(err && err.helperMsg) return err.helperMsg + (code === 'NOCAMERA' || code === 'GONE' ? (auto ? ' It connects by itself once it\u2019s plugged in and on.' : ' Then tap Try Again.') : '');
       return 'Camera problem (' + s + '). Unplug and replug the camera' + (auto ? '; the booth keeps trying.' : ', then tap Try Again.');
     }
@@ -6776,54 +6799,99 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(d.kind === 'strip') return '2\u00d76 or 2 on 4R';
     return '4R (4\u00d76)';
   }
+  // Groups of cards, each titled with what it prints on. "Your frames" holds one
+  // card per uploaded frame (+ Frame collage, + Add frame); it comes first once
+  // there are frames. With "Let guests choose" on, every card shows a tick.
+  const LAYOUT_GROUPS = [
+    { t: 'Strips', s: '2×6, or 2 strips on 4R', keys: ['strip', 'strip4'] },
+    { t: '4R sheet', s: '4×6 photo paper', keys: ['grid', 'grid4', 'hero', 'solo', 'duo', 'feature', 'film6'] },
+    { t: 'Landscape', s: '4R turned sideways', keys: ['land3', 'land4'] },
+    { t: 'Receipt', s: 'Thermal receipt printer, or photo paper', keys: ['receipt', 'receiptc'] }
+  ];
+  let layoutPicked = false;            // the renter tapped a layout (ready designs then ask before changing it)
+  function frameThumbCells(f){
+    if(!f) return [];
+    var fit = Math.min(84 / (f.w / 40), 88 / (f.h / 60)), bw = f.w / 40 * fit, bh = f.h / 60 * fit, ox = (100 - bw) / 2, oy = (100 - bh) / 2;
+    return f.spots.map(function(sp){ return { l: ox + sp.x * bw, t: oy + sp.y * bh, w: sp.w * bw, h: sp.h * bh }; });
+  }
+  function layoutCardKey(){ return currentLayout === 'myframe' && typeof activeFrameId !== 'undefined' && activeFrameId ? 'frame:' + activeFrameId : currentLayout; }
+  function layoutCard(key){
+    const isFrame = /^frame:/.test(key), f = isFrame ? frameById(key.slice(6)) : null;
+    const d = isFrame ? null : LAYOUT_DEFS[key];
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'layout-btn'; b.dataset.layout = key;
+    const box = document.createElement('span'); box.className = 'lt-box';
+    const thumb = document.createElement('span');
+    thumb.className = 'lt lt-wait' + (!isFrame && (d.kind === 'strip' || d.kind === 'receipt') ? ' lt-strip' : '');
+    (isFrame ? frameThumbCells(f) : layoutThumbCells(key)).forEach(c => {
+      const i = document.createElement('i');
+      i.style.left = c.l + '%'; i.style.top = c.t + '%'; i.style.width = c.w + '%'; i.style.height = c.h + '%';
+      thumb.appendChild(i);
+    });
+    box.appendChild(thumb);
+    const n = document.createElement('span'); n.className = 'ln';
+    n.textContent = isFrame ? 'Frame ' + (myFrames.indexOf(f) + 1) : d.name;
+    const shots = isFrame ? frameShotCount(f) : d.shots;
+    const sh = document.createElement('span'); sh.className = 'ls'; sh.textContent = shots + (shots === 1 ? ' shot' : ' shots');
+    const pp = document.createElement('span'); pp.className = 'lpaper';
+    pp.textContent = isFrame ? frameShapeLabel(f).replace(/<[^>]*>/g, '') : layoutPaperText(key);
+    const tk = document.createElement('span'); tk.className = 'lt-tick'; tk.dataset.tick = key; tk.textContent = '✓';
+    tk.setAttribute('role', 'checkbox'); tk.setAttribute('aria-label', 'Guests can pick ' + n.textContent);
+    b.append(tk, box, n, sh, pp);
+    return b;
+  }
+  function addFrameCard(){
+    const l = document.createElement('label');
+    l.className = 'layout-btn lt-add lt-empty'; l.htmlFor = 'overlayInput'; l.dataset.layout = 'add';
+    l.innerHTML = '<span class="lt-box"><span class="lt-plus">+</span></span><span class="ln">Add frame</span><span class="ls">Upload</span><span class="lpaper">PNG or JPG from Canva</span>';
+    return l;
+  }
   function buildLayoutPicker(){
     layoutGrid.innerHTML = '';
-    layoutOrder().forEach(key => {
-      const d = LAYOUT_DEFS[key];
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'layout-btn' + (key === currentLayout ? ' active' : '');
-      b.dataset.layout = key;
-      b.setAttribute('aria-pressed', key === currentLayout ? 'true' : 'false');
-      const noFrames = d.kind === 'frame' && !(typeof myFrames !== 'undefined' && myFrames && myFrames.length);
-      const box = document.createElement('span'); box.className = 'lt-box';
-      if(noFrames){
-        const plus = document.createElement('span'); plus.className = 'lt-plus'; plus.textContent = '+';
-        box.appendChild(plus);
-      } else {
-        // Wireframe with a shimmer until the picture of your design is ready.
-        const thumb = document.createElement('span');
-        thumb.className = 'lt lt-wait' + (d.kind === 'strip' || d.kind === 'receipt' ? ' lt-strip' : '');
-        layoutThumbCells(key).forEach(c => {
-          const i = document.createElement('i');
-          i.style.left = c.l + '%'; i.style.top = c.t + '%';
-          i.style.width = c.w + '%'; i.style.height = c.h + '%';
-          thumb.appendChild(i);
-        });
-        box.appendChild(thumb);
-      }
-      const n = document.createElement('span'); n.className = 'ln'; n.textContent = d.name;
-      const s = document.createElement('span'); s.className = 'ls'; s.textContent = noFrames ? 'Upload a frame' : d.shots + (d.shots === 1 ? ' shot' : ' shots');
-      const pp = document.createElement('span'); pp.className = 'lpaper'; pp.textContent = noFrames ? 'Made in Canva' : layoutPaperText(key);
-      if(noFrames) b.classList.add('lt-empty');
-      b.append(box, n, s, pp);
-      layoutGrid.appendChild(b);
+    const hasFrames = typeof myFrames !== 'undefined' && myFrames && myFrames.length;
+    const groups = LAYOUT_GROUPS.slice();
+    const frameGroup = { t: 'Your frames', s: hasFrames ? 'Made in Canva · tap one to use it' : 'Made in Canva: leave the photo spots white or see-through. Best size 1200 × 1800 px (4R) or 600 × 1800 px (2×6).', frames: true };
+    if(hasFrames) groups.unshift(frameGroup); else groups.push(frameGroup);
+    groups.forEach(g => {
+      const wrap = document.createElement('div'); wrap.className = 'lay-group';
+      const h = document.createElement('p'); h.className = 'lay-group-h';
+      const hb = document.createElement('b'); hb.textContent = g.t;
+      const hs = document.createElement('span'); hs.textContent = g.s;
+      h.append(hb, hs);
+      const grid = document.createElement('div'); grid.className = 'layout-grid lg-many';
+      if(g.frames){
+        if(hasFrames){
+          myFrames.forEach(f => grid.appendChild(layoutCard('frame:' + f.id)));
+          grid.appendChild(layoutCard('framesheet'));
+        }
+        if(!hasFrames || myFrames.length < MAX_FRAMES) grid.appendChild(addFrameCard());
+      } else g.keys.forEach(k => grid.appendChild(layoutCard(k)));
+      wrap.append(h, grid);
+      layoutGrid.appendChild(wrap);
     });
+    const ak = layoutCardKey();
+    [...layoutGrid.querySelectorAll('.layout-btn')].forEach(b => { const on = b.dataset.layout === ak; b.classList.toggle('active', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
     layoutHint.textContent = layoutDef().hint;
+    if(typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
     if(typeof ltCache !== 'undefined' && ltCache){ applyCachedLayoutThumbs(); markLayoutThumbsDirty(); }
   }
   layoutGrid.addEventListener('click', (e) => {
+    const tk = e.target.closest('[data-tick]');
+    if(tk && layoutGrid.classList.contains('guest-on')){ e.preventDefault(); e.stopPropagation(); toggleGuestKey(tk.dataset.tick); return; }
     const btn = e.target.closest('.layout-btn');
-    if(!btn) return;
-    // Your own frames: nothing to show until one is uploaded, so open the upload.
-    if(layoutDef(btn.dataset.layout).kind === 'frame' && !(typeof myFrames !== 'undefined' && myFrames && myFrames.length)){
-      showToast('Pick your frame image. Leave the photo spots white or see-through.', 6000);
-      document.getElementById('overlayInput').click();
+    if(!btn || btn.dataset.layout === 'add') return;           // "Add frame" opens the file picker by itself
+    const key = btn.dataset.layout;
+    layoutPicked = true;
+    if(/^frame:/.test(key)){
+      activeFrameId = key.slice(6); spotEdit = null; setupLayout = 'myframe';
+      if(guestPickOn && chooseIds.indexOf(activeFrameId) < 0) chooseIds.push(activeFrameId);
+      framesChanged({ layout: 'myframe' });
       return;
     }
-    setupLayout = btn.dataset.layout;   // the renter's default layout (saved with the setup)
-    setLayout(btn.dataset.layout);
+    setupLayout = key;   // the renter's default layout (saved with the setup)
+    setLayout(key);
     if(typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
+    if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
   });
   // Switches the layout everywhere (Setup grid, shot count, previews). Used by
   // the Setup grid, a restored saved setup, and the guests' layout picker.
@@ -6835,11 +6903,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       else if(key === 'framesheet' && !liveSheetItems().length) applyPattern(sheet.pattern);
     }
     currentLayout = key;
-    [...layoutGrid.children].forEach(b => {
-      const on = b.dataset.layout === key;
+    const activeKey = layoutCardKey();
+    [...layoutGrid.querySelectorAll('.layout-btn')].forEach(b => {
+      const on = b.dataset.layout === activeKey;
       b.classList.toggle('active', on);
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
+    if(typeof refreshThemeLayoutNote === 'function') refreshThemeLayoutNote();
     layoutHint.textContent = layoutDef().hint;
     applyStageAspect();
     // A finished session with a different shot count can't be re-laid out.
@@ -9776,29 +9846,53 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var guestPickToggle = document.getElementById('guestPickToggle');
   var guestLayoutsEl = document.getElementById('guestLayouts');
   var guestPickHint = document.getElementById('guestPickHint');
-  function refreshGuestLayoutChoices(){
-    guestLayoutsEl.style.display = guestPickOn ? 'flex' : 'none';
-    guestPickHint.style.display = guestPickOn ? 'block' : 'none';
-    guestLayoutsEl.innerHTML = '';
-    layoutOrder().filter(function(k){ return LAYOUT_DEFS[k].kind !== 'frame' || (myFrames && myFrames.length); }).forEach(function(k){
-      var lab = document.createElement('label');
-      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = k;
-      var isDef = k === setupLayout;
-      cb.checked = isDef || guestLayoutSet.indexOf(k) >= 0; cb.disabled = isDef;
-      var sp = document.createElement('span'); sp.textContent = LAYOUT_DEFS[k].name + (isDef ? ' (selected above)' : '');
-      lab.append(cb, sp); guestLayoutsEl.appendChild(lab);
-    });
+  // The renter's main layout as a card key ("frame:<id>" for one of their frames).
+  function mainLayoutKey(){ return setupLayout === 'myframe' && activeFrameId ? 'frame:' + activeFrameId : setupLayout; }
+  function isGuestKey(k){
+    if(k === mainLayoutKey()) return true;
+    if(/^frame:/.test(k)) return chooseIds.indexOf(k.slice(6)) >= 0;
+    return guestLayoutSet.indexOf(k) >= 0;
   }
-  guestPickToggle.addEventListener('change', function(){ guestPickOn = guestPickToggle.checked; refreshGuestLayoutChoices(); });
-  guestLayoutsEl.addEventListener('change', function(){
-    guestLayoutSet = [...guestLayoutsEl.querySelectorAll('input:checked')].map(function(i){ return i.value; }).filter(function(k){ return k !== setupLayout; });
+  function toggleGuestKey(k){
+    if(k === mainLayoutKey()){ showToast('That’s your main layout, so guests always have it. Tap another card to change the main one.', 4500); return; }
+    if(/^frame:/.test(k)){
+      var id = k.slice(6), i = chooseIds.indexOf(id);
+      if(i >= 0) chooseIds.splice(i, 1); else chooseIds.push(id);
+    } else {
+      var j = guestLayoutSet.indexOf(k);
+      if(j >= 0) guestLayoutSet.splice(j, 1); else guestLayoutSet.push(k);
+    }
+    refreshGuestLayoutChoices();
+    if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+  }
+  function refreshGuestLayoutChoices(){
+    layoutGrid.classList.toggle('guest-on', guestPickOn);
+    var main = mainLayoutKey();
+    [].forEach.call(layoutGrid.querySelectorAll('[data-tick]'), function(t){
+      var on = isGuestKey(t.dataset.tick);
+      t.classList.toggle('on', on); t.classList.toggle('locked', t.dataset.tick === main);
+      t.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+    if(!guestPickOn){ guestPickHint.innerHTML = 'Tap a layout to use it. Want guests to pick their own? Switch on <b>Let guests choose</b>.'; return; }
+    var n = guestChoiceKeys().length;
+    guestPickHint.innerHTML = 'Tap a card to make it the main layout. Tick ✓ the others guests can pick: <b>' + n + ' to choose from</b>' + (n < 2 ? ' (tick at least one more)' : '') + '.';
+  }
+  guestPickToggle.addEventListener('change', function(){
+    guestPickOn = guestPickToggle.checked;
+    if(guestPickOn && setupLayout === 'myframe' && activeFrameId && chooseIds.indexOf(activeFrameId) < 0) chooseIds.push(activeFrameId);
+    refreshGuestLayoutChoices();
+    if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
   });
   function guestChoiceKeys(){
-    var keys = !guestPickOn ? [setupLayout] : layoutOrder().filter(function(k){ return k === setupLayout || guestLayoutSet.indexOf(k) >= 0; });
-    // Several frames ticked with "Guests choose one": each frame is its own choice.
-    var fc = setupLayout === 'myframe' && typeof chooseList === 'function' ? chooseList() : [];
-    if(fc.length > 1) keys = fc.map(function(id){ return 'frame:' + id; }).concat(keys.filter(function(k){ return k !== 'myframe'; }));
-    return keys;
+    if(!guestPickOn) return [setupLayout];
+    var main = mainLayoutKey(), keys = [];
+    (myFrames || []).forEach(function(f){ var k = 'frame:' + f.id; if(k === main || chooseIds.indexOf(f.id) >= 0) keys.push(k); });
+    LAYOUT_ORDER.concat(['framesheet']).forEach(function(k){
+      if(!LAYOUT_DEFS[k] || (k === 'framesheet' && !(myFrames && myFrames.length))) return;
+      if(k === main || guestLayoutSet.indexOf(k) >= 0) keys.push(k);
+    });
+    if(keys.length === 1 && /^frame:/.test(keys[0])) return ['myframe'];
+    return keys.length ? keys : [setupLayout];
   }
   // "Choose your frame" when every choice is one of your frames.
   function pickTitleText(){ return pickKeys.length && pickKeys.every(function(k){ return /^frame:/.test(k); }) ? 'Choose your frame' : 'Choose your layout'; }
@@ -11199,6 +11293,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(LAYOUT_DEFS[s.layout]) setupLayout = (s.layout === 'trio' ? 'strip' : s.layout);   // Trio was removed
       guestPickOn = !!s.guestPick; guestPickToggle.checked = guestPickOn;
       guestLayoutSet = Array.isArray(s.guestLayouts) ? s.guestLayouts.filter(function(k){ return LAYOUT_DEFS[k]; }) : [];
+      // Older setups: several frames ticked with "Guests choose one" = guests choose, now with the cards ticked.
+      if(setupLayout === 'myframe' && frameMode === 'choose' && chooseIds.length > 1 && !guestPickOn){ guestPickOn = true; guestPickToggle.checked = true; guestLayoutSet = []; }
+      frameMode = 'choose';
+      if(s.layout && s.layout !== 'strip') layoutPicked = true;
       if(state !== 'capturing') setLayout(setupLayout);
       refreshGuestLayoutChoices();
       dateInput.value = /^\d{4}-\d{2}-\d{2}$/.test(s.date || '') ? s.date : '';
@@ -11546,8 +11644,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     titleStyle = t.titleStyle || 'classic'; kickerText = t.kicker || ''; titleUpper = !!t.upper;
     themeArt = (t.art || []).slice(); artPal = Object.assign({}, t.artPal || {});
     refreshTitleUI();
-    if(t.layout && LAYOUT_DEFS[t.layout] && t.layout !== currentLayout && state !== 'capturing'){
-      setupLayout = t.layout; setLayout(t.layout);
+    // opts.layout: the layout picked in the design preview (keep mine / the design's); else the design's own.
+    var tl = opts && opts.layout !== undefined ? opts.layout : (t.layout && LAYOUT_DEFS[t.layout] ? t.layout : null);
+    if(tl && LAYOUT_DEFS[tl] && tl !== currentLayout && state !== 'capturing'){
+      setupLayout = tl; setLayout(tl);
       if(typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
     }
     applyLabelInputFont();
@@ -11829,6 +11929,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     overlayFit.value = overlay ? overlay.fit : 'stretch';
     overlayFit.style.display = overlay ? '' : 'none';
     document.getElementById('overlayOnTopBox').style.display = overlay ? '' : 'none';
+    document.getElementById('ownFrameBox').style.display = overlay ? '' : 'none';   // only for a frame with no photo spots (overlay)
     document.getElementById('overlayOnTopNote').style.display = overlay ? '' : 'none';
     logoThumb.style.display = logo ? 'block' : 'none';
     if(logo && ASSETS[logo.id]) logoThumb.src = ASSETS[logo.id].url;
@@ -12085,7 +12186,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // The sheet in pixels at 300 dpi, portrait (4R = 1200 x 1800).
   function SW(){ return Math.round(sheetPaper().w / 25.4 * 300); }
   function SH(){ return Math.round(sheetPaper().h / 25.4 * 300); }
-  function chooseList(){ return frameMode === 'choose' ? chooseIds.filter(function(id){ return frameById(id); }) : []; }
+  function chooseList(){ return chooseIds.filter(function(id){ return frameById(id); }); }   // frames guests can pick (with Let guests choose)
   var selItem = -1;             // selected frame on the sheet (Setup preview)
   var spotEdit = null;          // { f: frameId, sel: index } while fixing a frame's photo spots
   var FRAME_CACHE = {};         // frameId -> { img, key, punched }
@@ -12640,6 +12741,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!myFrames.length){ activeFrameId = null; sheet.items = []; spotEdit = null; }
     else if(!frameById(activeFrameId)) activeFrameId = myFrames[0].id;
     sheet.items = sheet.items.filter(function(it){ return frameById(it.f); });
+    chooseIds = chooseIds.filter(function(id){ return frameById(id); });
+    if(myFrames.length && !liveSheetItems().length) applyPattern(sheet.pattern);   // Frame collage card shows a real sheet
     if(isFrameLayout() && !myFrames.length){ setupLayout = 'strip'; }
     buildLayoutPicker();
     if(typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
@@ -12650,40 +12753,41 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   function refreshFrameUI(){
     frameListEl.innerHTML = '';
-    myFrames.forEach(function(f){
-      var row = document.createElement('div'); row.className = 'frame-row' + (f.id === activeFrameId ? ' active' : '');
-      var th = document.createElement('img'); th.className = 'frame-thumb'; th.alt = '';
-      if(ASSETS[f.id]) th.src = ASSETS[f.id].url;
-      var info = document.createElement('span'); info.className = 'frame-info';
-      info.innerHTML = '<b>' + f.spots.length + ' photo spot' + (f.spots.length === 1 ? '' : 's') + '</b>' + (framePairs(f) ? ' \u00b7 ' + frameShotCount(f) + ' shots, copied to both strips' : '') + '<br>' + frameShapeLabel(f);
-      var use = document.createElement('button'); use.type = 'button'; use.className = 'action-btn mini'; use.textContent = 'Use';
-      use.title = 'Use this frame as the layout';
-      use.addEventListener('click', function(){ activeFrameId = f.id; spotEdit = null; setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); });
-      var ed = document.createElement('button'); ed.type = 'button'; ed.className = 'action-btn mini'; ed.textContent = 'Edit photo spots';
-      ed.addEventListener('click', function(){ activeFrameId = f.id; spotEdit = { f: f.id, sel: -1 }; setupLayout = 'myframe'; framesChanged({ layout: 'myframe' }); showToast('Tap a box, then drag, resize, tilt, split or change its order. Blue shows where photos go. Changes save by themselves.'); });
-      var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'remove-link'; rm.textContent = 'Remove'; rm.style.display = 'inline'; rm.style.margin = '0';
+    // The selected frame: its spots, Edit photo spots, Remove, and "same photos on both strips".
+    var ctx = document.getElementById('frameCtx'), f = currentLayout === 'myframe' ? activeFrame() : null;
+    ctx.innerHTML = ''; ctx.style.display = f ? '' : 'none';
+    if(f){
+      var top = document.createElement('div'); top.className = 'frame-ctx-top';
+      var th = document.createElement('img'); th.alt = ''; if(ASSETS[f.id]) th.src = ASSETS[f.id].url;
+      var info = document.createElement('div');
+      info.innerHTML = '<b>Frame ' + (myFrames.indexOf(f) + 1) + '</b> · ' + f.spots.length + ' photo spot' + (f.spots.length === 1 ? '' : 's') + (framePairs(f) ? ' · ' + frameShotCount(f) + ' shots, copied to both strips' : '') + '<br>' + frameShapeLabel(f);
+      top.append(th, info);
+      var btns = document.createElement('div'); btns.className = 'frame-ctx-btns';
+      var ed = document.createElement('button'); ed.type = 'button'; ed.className = 'action-btn mini'; ed.textContent = spotEdit && spotEdit.f === f.id ? 'Done editing spots' : 'Edit photo spots';
+      ed.addEventListener('click', function(){
+        if(spotEdit && spotEdit.f === f.id){ spotEdit = null; refreshFrameUI(); renderSetupPreview(); return; }
+        spotEdit = { f: f.id, sel: -1 }; framesChanged({ layout: 'myframe' });
+        showToast('Tap a box, then drag, resize, tilt, split or change its order. Boxes are where the photos go.', 6000);
+      });
+      var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'remove-link'; rm.textContent = 'Remove frame'; rm.style.cssText = 'display:inline;margin:0 0 0 auto;';
       rm.addEventListener('click', function(){
         if(!confirm('Remove this frame?')) return;
         myFrames = myFrames.filter(function(x){ return x.id !== f.id; });
+        chooseIds = chooseIds.filter(function(id){ return id !== f.id; });
         if(spotEdit && spotEdit.f === f.id) spotEdit = null;
         framesChanged();
       });
-      row.append(th, info, use, ed, rm);
+      btns.append(ed, rm);
+      ctx.append(top, btns);
       if(framePairsGeom(f)){
         var cp = document.createElement('label');
-        cp.style.cssText = 'display:flex;align-items:center;gap:6px;flex-basis:100%;font-size:12.5px;font-weight:600;margin-top:4px;cursor:pointer;';
+        cp.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;margin-top:8px;cursor:pointer;';
         var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!framePairs(f);
-        cb.addEventListener('change', function(){
-          f.copy = cb.checked;
-          framesChanged();
-          if(isFrameLayout()) setLayout(currentLayout);
-        });
+        cb.addEventListener('change', function(){ f.copy = cb.checked; framesChanged(); if(isFrameLayout()) setLayout(currentLayout); });
         cp.append(cb, document.createTextNode('Same photos on both strips (' + (f.spots.length / 2) + ' shots instead of ' + f.spots.length + ')'));
-        row.appendChild(cp);
-        row.style.flexWrap = 'wrap';
+        ctx.appendChild(cp);
       }
-      frameListEl.appendChild(row);
-    });
+    }
     buildFramePick();
     sheetPanel.style.display = currentLayout === 'framesheet' ? '' : 'none';
     if(currentLayout === 'framesheet') buildSheetPatterns();
@@ -12693,31 +12797,39 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     sheetSelControls.style.display = currentLayout === 'framesheet' && it ? '' : 'none';
     if(it) document.getElementById('sheetItemSize').value = Math.round(it.s * 100);
   }
+  // Frame collage: tap a frame to put it on the sheet or take it off.
+  function toggleSheetFrame(id){
+    var cur = sheetFrameIds(), i = cur.indexOf(id);
+    if(i >= 0){
+      if(cur.length === 1){ showToast('Keep at least one frame on the sheet.'); return; }
+      cur.splice(i, 1);
+    } else {
+      if(cur.length >= MAX_SHEET_ITEMS){ showToast('Up to ' + MAX_SHEET_ITEMS + ' frames on one sheet.'); return; }
+      cur.push(id);
+    }
+    applyPattern(bestPatternFor(cur), cur);
+    setupLayout = 'framesheet';
+    framesChanged({ layout: 'framesheet' });
+  }
   var framePickEl = document.getElementById('framePick'), myFramesPanel = document.getElementById('myFramesPanel');
   function buildFramePick(){
-    myFramesPanel.style.display = myFrames.length ? '' : 'none';
+    var on = currentLayout === 'framesheet' && myFrames.length;
+    myFramesPanel.style.display = on ? '' : 'none';
     framePickEl.innerHTML = '';
-    if(!myFrames.length) return;
-    var picked = pickedFrameIds(), counts = {};
-    var fmBox = document.getElementById('frameModeBox');
-    fmBox.style.display = myFrames.length > 1 ? '' : 'none';
-    [...document.querySelectorAll('#frameModeChips [data-fmode]')].forEach(function(b){ b.classList.toggle('active', b.dataset.fmode === frameMode); });
-    document.getElementById('framePickHint').innerHTML = 'Tap to tick. <b>1 ticked</b> = that frame on its own.' + (myFrames.length > 1 ? ' <b>2 or more</b> = ' + (frameMode === 'choose' ? 'guests choose one.' : 'all of them on one sheet.') : '');
-    var ch = document.getElementById('frameChooseHint'), nc = chooseList().length;
-    ch.style.display = currentLayout === 'myframe' && nc > 1 ? '' : 'none';
-    ch.innerHTML = 'Before each session, guests tap the frame they want (' + nc + ' to choose from). Their photos print in that frame. The preview shows the first one.';
-    if(currentLayout === 'framesheet') liveSheetItems().forEach(function(it){ counts[it.f] = (counts[it.f] || 0) + 1; });
+    document.getElementById('frameChooseHint').style.display = 'none';
+    if(!on) return;
+    var picked = sheetFrameIds(), counts = {};
+    liveSheetItems().forEach(function(it){ counts[it.f] = (counts[it.f] || 0) + 1; });
     myFrames.forEach(function(f, n){
-      var on = picked.indexOf(f.id) >= 0;
-      var b = document.createElement('button'); b.type = 'button'; b.className = 'fp-tile' + (on ? ' on' : '');
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
-      b.title = on ? 'Ticked. Tap to take it off.' : 'Tap to use this frame';
+      var isOn = picked.indexOf(f.id) >= 0;
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'fp-tile' + (isOn ? ' on' : '');
+      b.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+      b.title = isOn ? 'On the sheet. Tap to take it off.' : 'Tap to put it on the sheet';
       var im = document.createElement('img'); im.alt = ''; if(ASSETS[f.id]) im.src = ASSETS[f.id].url;
-      var lb = document.createElement('span');
-      lb.textContent = 'Frame ' + (n + 1) + (counts[f.id] > 1 ? ' ×' + counts[f.id] : '');
-      var ck = document.createElement('i'); ck.className = 'fp-check'; ck.textContent = on ? '✓' : '';
+      var lb = document.createElement('span'); lb.textContent = 'Frame ' + (n + 1) + (counts[f.id] > 1 ? ' ×' + counts[f.id] : '');
+      var ck = document.createElement('i'); ck.className = 'fp-check'; ck.textContent = isOn ? '✓' : '';
       b.append(im, lb, ck);
-      b.addEventListener('click', function(){ toggleFramePick(f.id); });
+      b.addEventListener('click', function(){ toggleSheetFrame(f.id); });
       framePickEl.appendChild(b);
     });
     if(myFrames.length < MAX_FRAMES){
@@ -13072,12 +13184,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       return;
     }
     if(added.length){
-      var ids = pickedFrameIds().filter(function(id){ return !added.some(function(a){ return a.id === id; }); })
-        .concat(added.map(function(a){ return a.id; })).slice(0, MAX_SHEET_ITEMS);
-      useFrames(ids);
+      // One new frame: it becomes the layout. Several: the first is the layout and guests choose between them.
+      var ids = added.map(function(a){ return a.id; });
+      activeFrameId = ids[0]; spotEdit = null; setupLayout = 'myframe'; layoutPicked = true;
+      if(ids.length > 1){
+        guestPickOn = true; guestPickToggle.checked = true;
+        ids.forEach(function(id){ if(chooseIds.indexOf(id) < 0) chooseIds.push(id); });
+      } else if(guestPickOn && chooseIds.indexOf(ids[0]) < 0) chooseIds.push(ids[0]);
+      framesChanged({ layout: 'myframe' });
       showToast(ids.length === 1
         ? 'Found ' + added[0].spots.length + ' photo spot' + (added[0].spots.length === 1 ? '' : 's') + (added[0].spots.some(function(p){ return p.a; }) ? ' (tilted ones turned to match)' : '') + (framePairs(added[0]) ? ' (two matching strips: ' + frameShotCount(added[0]) + ' shots, copied to both)' : '') + '. Wrong number? Tap \u201cEdit photo spots\u201d to add, split, turn or reorder them.'
-        : (frameMode === 'choose' ? ids.length + ' frames ticked: guests choose one before each session. Prefer them all on one print? Tap \u201cAll on one sheet\u201d.' : ids.length + ' frames on one sheet. Untick any in 3 · Layout, or pick another arrangement.'), 5500);
+        : (ids.length + ' frames added: guests choose one before each session (untick any in 3 \u00b7 Layout). Want them all on one print? Tap \u201cFrame collage\u201d.'), 6500);
     }
     if(overlayAdded){
       refreshDecorUI(); redrawAll(); scheduleSetupSave();
@@ -13225,7 +13342,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     activeFrameId = okId(s.activeFrame) && frameById(s.activeFrame) ? s.activeFrame : (myFrames[0] ? myFrames[0].id : null);
     // Older setups with several frames were always "all on one sheet".
     frameMode = s.frameMode === 'sheet' || s.frameMode === 'choose' ? s.frameMode : (myFrames.length > 1 ? 'sheet' : 'choose');
-    chooseIds = (Array.isArray(s.chooseIds) ? s.chooseIds : []).filter(function(id){ return okId(id) && frameById(id); }).slice(0, MAX_FRAMES);
+    chooseIds = frameMode === 'sheet' ? [] : (Array.isArray(s.chooseIds) ? s.chooseIds : []).filter(function(id){ return okId(id) && frameById(id); }).slice(0, MAX_FRAMES);
     sheetSize = SHEET_SIZES.indexOf(s.sheetSize) >= 0 ? s.sheetSize : '4x6';
     var sh = s.sheet && typeof s.sheet === 'object' ? s.sheet : {};
     sheet = {
@@ -13521,30 +13638,69 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   tplModal.className = 'tpl-modal'; tplModal.hidden = true;
   tplModal.setAttribute('role', 'dialog'); tplModal.setAttribute('aria-modal', 'true'); tplModal.setAttribute('aria-label', 'Design preview');
   tplModal.innerHTML = '<div class="tpl-card"><canvas id="tplCanvas"></canvas><p class="tpl-name" id="tplName"></p><p class="tpl-cats" id="tplCats"></p>' +
+    '<div class="tpl-lay" id="tplLay" hidden><p id="tplLayText"></p><div class="chip-row" id="tplLayChips"></div></div>' +
     '<div class="tpl-btns"><button type="button" class="action-btn" id="tplCancel">Cancel</button><button type="button" class="action-btn primary" id="tplUse">Use this design</button></div></div>';
   document.body.appendChild(tplModal);
-  var tplPending = null;
-  function openTemplatePreview(t){
-    tplPending = t;
-    var lk = t.layout && LAYOUT_DEFS[t.layout] ? t.layout : currentLayout;
+  var tplPending = null, tplLayKey = null;
+  // Ready designs don't show on your own frames or the receipt (they keep their own look).
+  function layoutKeepsOwnLook(k){ return isFrameLayout(k) || (LAYOUT_DEFS[k] && LAYOUT_DEFS[k].kind === 'receipt'); }
+  function layoutName(k){ return k === 'myframe' ? 'My frame' : (LAYOUT_DEFS[k] ? LAYOUT_DEFS[k].name : k); }
+  function refreshThemeLayoutNote(){
+    var el = document.getElementById('themeLayoutNote'); if(!el) return;
+    var keeps = layoutKeepsOwnLook(setupLayout);
+    el.hidden = !keeps;
+    if(keeps) el.textContent = 'Your layout is ' + layoutName(setupLayout) + ', which keeps its own look, so ready designs don\u2019t change it. Pick a design and it offers to switch to a built-in layout.';
+  }
+  function drawTemplatePreview(t){
+    var lk = tplLayKey || currentLayout;
     var big = document.createElement('canvas');
     withThemeState(t, function(){ composeCanvas(lk, big, buildPlaceholderShots(360, shotsNeeded(lk))); });
     var cv = document.getElementById('tplCanvas'), sc = Math.min(1, 900 / Math.max(big.width, big.height));
     cv.width = Math.round(big.width * sc); cv.height = Math.round(big.height * sc);
     var x = cv.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(big, 0, 0, cv.width, cv.height);
+  }
+  function openTemplatePreview(t){
+    tplPending = t;
+    var mine = setupLayout, design = t.layout && LAYOUT_DEFS[t.layout] ? t.layout : null;
+    var row = document.getElementById('tplLay'), chips = document.getElementById('tplLayChips'), txt = document.getElementById('tplLayText');
+    var opts = null;
+    if(layoutKeepsOwnLook(mine)){
+      var target = design && !layoutKeepsOwnLook(design) ? design : 'strip';
+      txt.textContent = 'Your layout (' + layoutName(mine) + ') keeps its own look, so this design only shows on a built-in layout.';
+      opts = [[target, 'Switch to ' + layoutName(target)], [mine, 'Keep ' + layoutName(mine)]];
+      tplLayKey = target;
+    } else if(design && design !== mine){
+      txt.textContent = 'This design comes with the ' + layoutName(design) + ' layout.';
+      opts = [[design, 'Use ' + layoutName(design)], [mine, 'Keep my ' + layoutName(mine)]];
+      tplLayKey = layoutPicked ? mine : design;
+    } else tplLayKey = null;
+    row.hidden = !opts;
+    chips.innerHTML = '';
+    (opts || []).forEach(function(o){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (o[0] === tplLayKey ? ' active' : ''); b.dataset.k = o[0]; b.textContent = o[1];
+      chips.appendChild(b);
+    });
+    drawTemplatePreview(t);
     document.getElementById('tplName').textContent = t.name;
     document.getElementById('tplCats').textContent = (t.cats || []).join(' · ');
     tplModal.hidden = false;
     document.getElementById('tplUse').focus();
   }
   function closeTemplatePreview(){ tplModal.hidden = true; tplPending = null; }
+  document.getElementById('tplLayChips').addEventListener('click', function(e){
+    var b = e.target.closest('[data-k]'); if(!b || !tplPending) return;
+    tplLayKey = b.dataset.k;
+    [].forEach.call(this.children, function(c){ c.classList.toggle('active', c === b); });
+    drawTemplatePreview(tplPending);
+  });
   document.getElementById('tplCancel').addEventListener('click', closeTemplatePreview);
   tplModal.addEventListener('click', function(e){ if(e.target === tplModal) closeTemplatePreview(); });
   document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !tplModal.hidden) closeTemplatePreview(); });
   document.getElementById('tplUse').addEventListener('click', function(){
-    var t = tplPending; closeTemplatePreview();
+    var t = tplPending, lay = tplLayKey; closeTemplatePreview();
     if(!t) return;
-    applyTheme(t, { quiet: true });
+    applyTheme(t, { quiet: true, layout: lay || null });
+    if(lay && layoutKeepsOwnLook(lay)) setTimeout(function(){ showToast(t.name + ' saved: it shows when you pick a built-in layout in 3 \u00b7 Layout.', 5500); }, 3400);
     scheduleSetupSave();
     if(!labelInput.value.trim()){
       labelInput.placeholder = 'e.g. ' + (t.sample || 'Sofia’s 7th Birthday');
@@ -13742,7 +13898,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var ltCache = { sig: '', urls: {} }, ltQueue = [], ltDirty = true, ltTimer = null, ltBusy = false;
   function layoutDesignSig(){
     var s = snapshotSetup();
-    ['layout', 'guestPick', 'guestLayouts', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview', 'allowRetake'].forEach(function(k){ delete s[k]; });
+    ['layout', 'activeFrame', 'chooseIds', 'frameMode', 'guestPick', 'guestLayouts', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview', 'allowRetake'].forEach(function(k){ delete s[k]; });
     return JSON.stringify(s) + '|' + (backgroundImg ? backgroundImg.src.length : 0) + '|' + labelInput.value;
   }
   function setLayoutThumb(btn, url){
@@ -13810,12 +13966,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     ltBusy = true;
     setTimeout(function(){
       try{
-        var key = b.dataset.layout;
-        if(state !== 'capturing' && LAYOUT_DEFS[key]){
+        var key = b.dataset.layout, fk = /^frame:/.test(key) && frameById(key.slice(6)) ? key.slice(6) : null;
+        if(state !== 'capturing' && (LAYOUT_DEFS[key] || fk)){
           var url = ltCache.urls[key];
           if(!url){
             var big = document.createElement('canvas');
-            composeCanvas(key, big, buildPlaceholderShots(220, shotsNeeded(key)));
+            var keepAf = activeFrameId, lk = fk ? 'myframe' : key;
+            if(fk) activeFrameId = fk;
+            try{ composeCanvas(lk, big, buildPlaceholderShots(220, shotsNeeded(lk))); }
+            finally{ activeFrameId = keepAf; }
             var small = document.createElement('canvas'), sc = 150 / big.height;
             small.width = Math.max(1, Math.round(big.width * sc)); small.height = 150;
             var sx = small.getContext('2d'); sx.imageSmoothingQuality = 'high'; sx.drawImage(big, 0, 0, small.width, small.height);

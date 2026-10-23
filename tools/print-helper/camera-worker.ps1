@@ -6,7 +6,7 @@
 #   request : "<id> <command> [argument]\n"
 #   reply   : "<id> <OK|ERR|GONE> <J|B|N> <byte length>\n" + that many bytes
 #             (J = JSON text, B = JPEG bytes, N = nothing; ERR/GONE carry a message)
-# Nikon DSLRs / mirrorless (D-series, Z-series). Canon / Sony: not yet.
+# Nikon DSLRs / mirrorless (D-series, Z-series) and Canon EOS (DSLRs, M, R). Sony: not yet.
 param([int]$Port)
 $ErrorActionPreference = 'Stop'
 
@@ -131,7 +131,7 @@ namespace Pb4uCam
         static readonly Guid MTPX = new Guid("4d545058-1a2e-4106-a357-771e0819fc56");
         static readonly Guid CLIENT = new Guid("204D9F0C-2292-4080-9F42-40664E70F859");
         PropertyKey kCat = new PropertyKey(CMD, 1001), kId = new PropertyKey(CMD, 1002), kHr = new PropertyKey(CMD, 1003);
-        PropertyKey kOp = new PropertyKey(MTPX, 1001), kParams = new PropertyKey(MTPX, 1002), kResp = new PropertyKey(MTPX, 1003);
+        PropertyKey kOp = new PropertyKey(MTPX, 1001), kParams = new PropertyKey(MTPX, 1002), kResp = new PropertyKey(MTPX, 1003), kRespParams = new PropertyKey(MTPX, 1004);
         PropertyKey kCtx = new PropertyKey(MTPX, 1006), kTotal = new PropertyKey(MTPX, 1007), kToRead = new PropertyKey(MTPX, 1008);
         PropertyKey kRead = new PropertyKey(MTPX, 1009), kToWrite = new PropertyKey(MTPX, 1010), kData = new PropertyKey(MTPX, 1012);
         IPortableDevice dev;
@@ -207,7 +207,7 @@ namespace Pb4uCam
             catch { return ""; }
         }
 
-        public void Open(string id)
+        public virtual void Open(string id)
         {
             dev = Create<IPortableDevice>("f7c0039a-4762-488a-b4b3-760ef9a1ba9b");
             var info = NewValues();
@@ -221,7 +221,7 @@ namespace Pb4uCam
             info.SetUnsignedIntegerValue(ref kRev, 0);
             Check(dev.Open(id, info), "Open camera");
         }
-        public void Close() { try { if (dev != null) dev.Close(); } catch { } dev = null; }
+        public virtual void Close() { try { if (dev != null) dev.Close(); } catch { } dev = null; }
 
         IPortableDeviceValues Send(uint cmdPid, IPortableDeviceValues v)
         {
@@ -242,7 +242,7 @@ namespace Pb4uCam
             Check(v.SetIPortableDevicePropVariantCollectionValue(ref kParams, c), "Set params");
         }
         // Vendor operations Windows' MTP driver will pass to the camera.
-        public List<uint> DriverVendorOps()
+        public virtual List<uint> DriverVendorOps()
         {
             var l = new List<uint>();
             var r = Send(11, NewValues());
@@ -253,7 +253,7 @@ namespace Pb4uCam
             for (uint k = 0; k < n; k++) { var pv = new PropVariant(); if (c.GetAt(k, ref pv) == 0) l.Add(pv.uintVal); }
             return l;
         }
-        public uint Op(ushort code, params uint[] ps)
+        public virtual uint Op(ushort code, params uint[] ps)
         {
             var v = NewValues();
             SetOp(v, code, ps);
@@ -261,7 +261,24 @@ namespace Pb4uCam
             uint resp = 0; r.GetUnsignedIntegerValue(ref kResp, out resp);
             return resp;
         }
-        public uint OpRead(ushort code, out byte[] data, params uint[] ps)
+        // Same, and also hands back the camera's answer numbers (Canon RemoteRelease says why it didn't shoot).
+        public virtual uint OpP(ushort code, out uint[] answer, params uint[] ps)
+        {
+            var v = NewValues();
+            SetOp(v, code, ps);
+            var r = Send(12, v);
+            uint resp = 0; r.GetUnsignedIntegerValue(ref kResp, out resp);
+            answer = new uint[0];
+            IPortableDevicePropVariantCollection c;
+            if (r.GetIPortableDevicePropVariantCollectionValue(ref kRespParams, out c) == 0 && c != null)
+            {
+                uint n; c.GetCount(out n);
+                answer = new uint[n];
+                for (uint k = 0; k < n; k++) { var pv = new PropVariant(); if (c.GetAt(k, ref pv) == 0) answer[k] = pv.uintVal; }
+            }
+            return resp;
+        }
+        public virtual uint OpRead(ushort code, out byte[] data, params uint[] ps)
         {
             var v = NewValues();
             SetOp(v, code, ps);
@@ -272,6 +289,7 @@ namespace Pb4uCam
             ulong got = 0;
             bool unknown = total == 0;   // size not reported: read until the camera has nothing more
             int reads = 0;
+            Exception readErr = null;   // the camera answered with an error code and no data
             try
             {
                 while (unknown ? reads < 200 : got < total)
@@ -285,7 +303,7 @@ namespace Pb4uCam
                     IPortableDeviceValues rr;
                     try { rr = Send(15, rv); }
                     catch (GoneException) { throw; }
-                    catch { if (unknown && got > 0) break; throw; }
+                    catch (Exception e) { if (unknown && got > 0) break; readErr = e; break; }
                     IntPtr p; uint cb;
                     Check(rr.GetBufferValue(ref kData, out p, out cb), "Read data");
                     uint n = 0; rr.GetUnsignedIntegerValue(ref kRead, out n);
@@ -307,11 +325,15 @@ namespace Pb4uCam
             }
             var ev = NewValues();
             ev.SetStringValue(ref kCtx, ctx);
-            var er = Send(17, ev);
-            uint resp = 0; er.GetUnsignedIntegerValue(ref kResp, out resp);
+            uint resp = 0;
+            try { var er = Send(17, ev); er.GetUnsignedIntegerValue(ref kResp, out resp); }
+            catch (GoneException) { throw; }
+            catch { if (readErr == null) throw; throw readErr; }
+            // An error code (e.g. "not ready yet") is the answer; a failed read with "OK" is a real problem.
+            if (readErr != null && (resp == OK || resp == 0)) throw readErr;
             return resp;
         }
-        public uint OpWrite(ushort code, byte[] data, params uint[] ps)
+        public virtual uint OpWrite(ushort code, byte[] data, params uint[] ps)
         {
             var v = NewValues();
             SetOp(v, code, ps);
@@ -371,7 +393,10 @@ namespace Pb4uCam
         static Ptp ptp;
         static string camName = "", camModel = "", camMaker = "", devId = null;
         static uint vendor;
-        static bool nikon;
+        static bool nikon, canon;
+        // Stand-ins for tests; the real thing talks to Windows' camera driver.
+        public static Func<Ptp> NewPtp = delegate { return new Ptp(); };
+        public static Func<List<DevInfo>> ListDevs = Ptp.ListDevices;
         static string diag = "";
         // Nikons in MTP mode (D3400, D5600...) call themselves a Microsoft/MTP device
         // and may not list their own commands, but they still answer them.
@@ -408,10 +433,10 @@ namespace Pb4uCam
         static string ListJson()
         {
             // An open camera that was unplugged meanwhile: notice it now.
-            if (ptp != null) { try { ptp.Op(0x90C8); } catch { Log("Camera lost"); CloseCamera(); } }
+            if (ptp != null) { try { Alive(); } catch { Log("Camera lost"); CloseCamera(); } }
             var sb = new StringBuilder("{\"devices\":[");
             bool first = true;
-            foreach (var d in Ptp.ListDevices())
+            foreach (var d in ListDevs())
             {
                 if (!first) sb.Append(',');
                 first = false;
@@ -431,17 +456,22 @@ namespace Pb4uCam
             ops = rd.U16Array(); rd.U16Array(); props = rd.U16Array(); rd.U16Array(); rd.U16Array();
             camMaker = rd.Str(); camModel = rd.Str();
             nikon = vendor == 0x0A || camMaker.IndexOf("nikon", StringComparison.OrdinalIgnoreCase) >= 0;
+            canon = !nikon && (vendor == 0x0B || camMaker.IndexOf("canon", StringComparison.OrdinalIgnoreCase) >= 0);
+            // The commands that matter for this brand: which ones the camera lists, which ones Windows passes on.
+            ushort[] mine = canon ? new ushort[] { 0x9114, 0x9115, 0x9116, 0x9153, 0x9110, 0x910F, 0x9128 } : new ushort[] { 0x9201, 0x9203, 0x90C0, 0x90C7, 0x90C8 };
+            var listed = new List<string>();
+            foreach (ushort op in mine) if (ops.Contains(op)) listed.Add(op.ToString("X4"));
             string driverOps = "?";
             try
             {
                 var dv = ptp.DriverVendorOps();
                 var allowed = new List<string>();
-                foreach (ushort op in new ushort[] { 0x9201, 0x9203, 0x90C0, 0x90C7, 0x90C8 }) if (dv.Contains(op)) allowed.Add(op.ToString("X4"));
+                foreach (ushort op in mine) if (dv.Contains(op)) allowed.Add(op.ToString("X4"));
                 driverOps = dv.Count + " vendor ops, of ours: " + (allowed.Count > 0 ? string.Join(" ", allowed.ToArray()) : "none");
             }
             catch (GoneException) { throw; }
             catch (Exception e) { driverOps = "n/a (" + e.Message + ")"; }
-            diag = "vendor " + vendor + ", " + ops.Count + " ops, lists 9201: " + (ops.Contains(0x9201) ? "yes" : "no") + ", 90C0: " + (ops.Contains(0x90C0) ? "yes" : "no") + "; driver: " + driverOps;
+            diag = "vendor " + vendor + ", " + ops.Count + " ops, lists: " + (listed.Count > 0 ? string.Join(" ", listed.ToArray()) : "none of ours") + "; driver: " + driverOps;
             Log("DeviceInfo " + camMaker + " " + camModel + ": " + diag);
             return true;
         }
@@ -450,29 +480,35 @@ namespace Pb4uCam
         {
             if (ptp != null)
             {
-                if (live) { try { ptp.Op(0x9202); } catch { } }
+                if (nikon && live) { try { ptp.Op(0x9202); } catch { } }
+                if (canon)
+                {
+                    // Hand the camera back: live view off, out of remote mode.
+                    try { if (live) SetEos(0xD1B0, 0); ptp.Op(0x9115, 0); ptp.Op(0x9114, 0); } catch { }
+                }
                 ptp.Close();
             }
-            ptp = null; live = false; devId = null;
+            ptp = null; live = false; devId = null; nikon = false; canon = false;
         }
 
         static string Open()
         {
             if (ptp != null)
             {
-                try { if (ptp.Op(0x90C8) != 0) return InfoJson(); } catch { }
+                try { Alive(); return InfoJson(); } catch { }
                 CloseCamera();
             }
-            var all = Ptp.ListDevices();
+            var all = ListDevs();
             if (all.Count == 0) throw new CamException("NOCAMERA No camera found. Plug the camera into this laptop with a data USB cable and switch it on.");
             // Cameras by name first, then anything else (some cameras show only a model number).
             var order = new List<DevInfo>();
             foreach (var d in all) if (LooksLikeCamera(d)) order.Add(d);
             foreach (var d in all) if (!LooksLikeCamera(d)) order.Add(d);
             string seen = "";
+            CamException canonErr = null;
             foreach (var d in order)
             {
-                var p = new Ptp();
+                var p = NewPtp();
                 try
                 {
                     p.Open(d.Id);
@@ -487,29 +523,40 @@ namespace Pb4uCam
                         Prepare();
                         return InfoJson();
                     }
+                    if (canon)   // Canon EOS: remote mode now, live view when the booth asks
+                    {
+                        devId = d.Id;
+                        camName = "Canon " + camModel.Replace("Canon", "").Trim();
+                        Log("Opened " + camName + " (" + d.Name + ")");
+                        PrepareCanon();
+                        return InfoJson();
+                    }
                     CloseCamera();
                 }
                 catch (Exception e)
                 {
                     Log("Skipped " + d.Name + ": " + e.Message);
+                    if (canon && e is CamException) canonErr = (CamException)e;
+                    else if (canon && e is GoneException) canonErr = new CamException("NOCAMERA The camera disconnected while connecting. Check the USB cable, switch the camera off and on, and try again.");
+                    else if (canon) canonErr = new CamException("DRIVER Windows' camera driver didn't pass the remote-control command to the " + (camMaker + " " + camModel).Trim() + " (" + e.Message + "). Close EOS Utility and any photo-import window, unplug the camera, switch it off and on, plug it in again and try again.");
                     if (ptp == p) CloseCamera(); else p.Close();
                 }
             }
-            if (seen.ToLowerInvariant().Contains("canon")) throw new CamException("UNSUPPORTED Canon cameras aren't supported on Windows yet (Nikon only for now). Use a Mac or Android tablet for Canon, or an HDMI capture card.");
-            if (seen.ToLowerInvariant().Contains("sony")) throw new CamException("UNSUPPORTED Sony cameras aren't supported on Windows yet (Nikon only for now). Use an HDMI capture card, or the camera's webcam mode.");
-            if (seen != "") throw new CamException("NOCAMERA Found " + seen + ", but no Nikon camera with live view. Switch the camera on and check its cable.");
+            if (canonErr != null) throw canonErr;
+            if (seen.ToLowerInvariant().Contains("sony")) throw new CamException("UNSUPPORTED Sony cameras aren't supported on Windows yet (Nikon and Canon EOS for now). Use an HDMI capture card, or the camera's webcam mode.");
+            if (seen != "") throw new CamException("NOCAMERA Found " + seen + ", but no Nikon or Canon EOS camera with live view. Switch the camera on and check its cable.");
             throw new CamException("NOCAMERA No camera found. Plug the camera into this laptop with a data USB cable (not charge-only) and switch it on.");
         }
 
         static string InfoJson()
         {
-            return "{\"name\":" + Js(camName) + ",\"model\":" + Js(camModel) + ",\"maker\":" + Js(camMaker) + ",\"vendor\":" + vendor
+            return "{\"name\":" + Js(camName) + ",\"model\":" + Js(camModel) + ",\"maker\":" + Js(camMaker) + ",\"brand\":" + Js(nikon ? "nikon" : canon ? "canon" : "") + ",\"vendor\":" + vendor
                 + ",\"liveview\":" + (live ? "true" : "false") + ",\"battery\":" + Battery() + ",\"note\":" + Js(setupNote) + ",\"diag\":" + Js(diag) + "}";
         }
 
         static int Battery()
         {
-            if (!props.Contains(0x5001)) return -1;
+            if (canon || !props.Contains(0x5001)) return -1;
             try { byte[] b; uint r = ptp.OpRead(0x1015, out b, 0x5001); return r == Ptp.OK && b.Length > 0 ? b[0] : -1; }
             catch (GoneException) { throw; }
             catch { return -1; }
@@ -773,6 +820,293 @@ namespace Pb4uCam
             return l;
         }
 
+        // Is the open camera still answering? (Throws when it's gone.)
+        static void Alive()
+        {
+            if (nikon) { ptp.Op(0x90C8); return; }
+            if (canon && Has(0x911D)) { ptp.Op(0x911D); return; }   // KeepDeviceOn: also stops it sleeping
+            byte[] d; ptp.OpRead(0x1001, out d);
+        }
+
+        // ================= Canon EOS =================
+        // Canon's own PTP commands (the same ones EOS Utility and gphoto2 use):
+        // 0x9114 remote mode, 0x9115 event mode, 0x9116 events, 0x9110 set a setting,
+        // 0x9153 live view picture, 0x910F / 0x9128-0x9129 shutter, 0x9107 photo in pieces, 0x9117 transfer done.
+        const uint NOTREADY = 0xA102;   // Canon: "not ready yet, ask again"
+        static Dictionary<ushort, uint> eosVals = new Dictionary<ushort, uint>();
+        static List<uint[]> canonNew = new List<uint[]>();   // new files: { handle, event, format, size }
+        static Stopwatch liveSw = new Stopwatch(), keepSw = new Stopwatch(), pollSw = new Stopwatch();
+        static bool gotFrame;
+
+        static uint U32(byte[] b, int i) { return (uint)(b[i] | (b[i + 1] << 8) | (b[i + 2] << 16) | (b[i + 3] << 24)); }
+        static uint U16(byte[] b, int i) { return (uint)(b[i] | (b[i + 1] << 8)); }
+
+        static uint OpRetry(ushort code, params uint[] ps)
+        {
+            var sw = Stopwatch.StartNew();
+            while (true)
+            {
+                uint r = ptp.Op(code, ps);
+                if ((r != Ptp.BUSY && r != NOTREADY) || sw.ElapsedMilliseconds > 3000) return r;
+                Thread.Sleep(60);
+            }
+        }
+
+        // SetDevicePropValueEx: { size 12, setting, value }
+        static uint SetEos(ushort prop, uint val)
+        {
+            var b = new byte[12];
+            uint[] w = { 12, prop, val };
+            for (int k = 0; k < 12; k++) b[k] = (byte)((w[k / 4] >> (8 * (k % 4))) & 0xFF);
+            var sw = Stopwatch.StartNew();
+            uint r;
+            while (true)
+            {
+                r = ptp.OpWrite(0x9110, b);
+                if ((r != Ptp.BUSY && r != NOTREADY) || sw.ElapsedMilliseconds > 3000) break;
+                Thread.Sleep(60);
+            }
+            Log("Set " + H(prop) + " = " + val + ": " + H(r));
+            if (r == Ptp.OK) eosVals[prop] = val;
+            return r;
+        }
+
+        // Reads the camera's news: changed settings, and new photos.
+        static void CanonPoll()
+        {
+            pollSw.Restart();
+            byte[] d; uint r = ptp.OpRead(0x9116, out d);
+            if (r != Ptp.OK || d == null) return;
+            int off = 0;
+            while (off + 8 <= d.Length)
+            {
+                uint size = U32(d, off), type = U32(d, off + 4);
+                if (size < 8 || off + size > d.Length || type == 0) break;
+                int end = off + (int)size;
+                if (type == 0xC189 && size >= 16) eosVals[(ushort)U32(d, off + 8)] = U32(d, off + 12);   // a setting changed
+                else if ((type == 0xC181 || type == 0xC1A7) && size >= 12)   // a photo was saved on the card
+                    canonNew.Add(new uint[] { U32(d, off + 8), type, off + 0x12 <= end ? U16(d, off + 0x10) : 0, off + 0x20 <= end ? U32(d, off + 0x1C) : 0 });
+                else if (type == 0xC186 && size >= 12)   // a photo waits in the camera's memory for us
+                    canonNew.Add(new uint[] { U32(d, off + 8), type, off + 0x0E <= end ? U16(d, off + 0x0C) : 0, off + 0x18 <= end ? U32(d, off + 0x14) : 0 });
+                off = end;
+            }
+        }
+
+        static void PrepareCanon()
+        {
+            setupNote = "";
+            eosVals.Clear(); canonNew.Clear(); gotFrame = false;
+            uint r = OpRetry(0x9114, 1);   // remote mode on
+            Log("SetRemoteMode: " + H(r));
+            uint r2 = OpRetry(0x9115, 1);  // send events when asked
+            Log("SetEventMode: " + H(r2));
+            if (r != Ptp.OK && r2 != Ptp.OK)
+                throw new CamException("UNSUPPORTED The " + camName + " didn't accept remote control (" + H(r) + "). Canon EOS cameras work; most PowerShot / compact cameras don't. On an EOS: close EOS Utility, switch the camera off and on, and try again.");
+            CanonPoll();   // the first batch lists all settings
+            ReadInfo();    // in remote mode the camera lists more commands
+            CanonPoll();
+            if (!Has(0x9153))
+                throw new CamException("UNSUPPORTED The " + camName + " doesn't send live view over USB.");
+            if (!Has(0x910F) && !Has(0x9128))
+                throw new CamException("UNSUPPORTED The " + camName + " doesn't take photos over USB.");
+            keepSw.Restart();
+        }
+
+        // Every few seconds: read news (keeps the camera's list short) and keep it awake.
+        static void CanonKeep()
+        {
+            if (!pollSw.IsRunning || pollSw.ElapsedMilliseconds > 2000) CanonPoll();
+            if (keepSw.ElapsedMilliseconds > 20000 && Has(0x911D)) { ptp.Op(0x911D); keepSw.Restart(); }
+        }
+
+        static void CanonLiveOn()
+        {
+            bool started = false;
+            if (Has(0x9151)) { uint ri = OpRetry(0x9151); Log("InitiateViewfinder: " + H(ri)); started = ri == Ptp.OK; }
+            if (eosVals.ContainsKey(0xD1B1) && eosVals[0xD1B1] != 1) SetEos(0xD1B1, 1);   // live view mode
+            uint r = SetEos(0xD1B0, 2);   // live view to the computer (mirror up)
+            if (r != Ptp.OK && !started)
+                throw new CamException("LIVEVIEW The camera refused live view (" + H(r) + "). On the camera: Menu, Live View shoot: Enable; close the menu; mode dial on P, Tv, Av or M. Then try again.");
+            live = true; gotFrame = false; liveSw.Restart();
+        }
+        static void CanonLiveOff()
+        {
+            if (!live) return;
+            try { SetEos(0xD1B0, 0); if (Has(0x9152)) ptp.Op(0x9152); }
+            catch (GoneException) { throw; }
+            catch { }
+            live = false;
+        }
+
+        // The live view data is a list of blocks { length, type, data }; one of them is the JPEG.
+        static byte[] EosJpeg(byte[] d)
+        {
+            if (d == null || d.Length < 12) return null;
+            int off = 0;
+            while (off + 8 <= d.Length)
+            {
+                int len = (int)U32(d, off);
+                if (len < 8 || off + len > d.Length) break;
+                if (len > 12 && d[off + 8] == 0xFF && d[off + 9] == 0xD8)
+                {
+                    var o = new byte[len - 8];
+                    Array.Copy(d, off + 8, o, 0, o.Length);
+                    return o;
+                }
+                off += len;
+            }
+            int s = JpegStart(d);
+            if (s < 0) return null;
+            int e = d.Length;
+            for (int k = d.Length - 2; k > s; k--) if (d[k] == 0xFF && d[k + 1] == 0xD9) { e = k + 2; break; }
+            var o2 = new byte[e - s];
+            Array.Copy(d, s, o2, 0, o2.Length);
+            return o2;
+        }
+
+        static byte[] CanonFrame()
+        {
+            if (!live) CanonLiveOn();
+            var sw = Stopwatch.StartNew();
+            uint last = 0;
+            bool kicked = false;
+            while (sw.ElapsedMilliseconds < 3000)
+            {
+                CanonKeep();
+                byte[] d; uint r = ptp.OpRead(0x9153, out d, 0x00100000);
+                last = r;
+                if (r == Ptp.OK)
+                {
+                    var j = EosJpeg(d);
+                    if (j != null) { gotFrame = true; return j; }
+                }
+                else if (r != Ptp.BUSY && r != NOTREADY) break;
+                // Some models leave live view after a photo: switch it back on once.
+                if (!kicked && sw.ElapsedMilliseconds > 1200 && liveSw.ElapsedMilliseconds > 4000) { kicked = true; SetEos(0xD1B0, 2); }
+                Thread.Sleep(50);
+            }
+            if (last != Ptp.OK && last != Ptp.BUSY && last != NOTREADY && last != 0)
+                throw new CamException("LIVEVIEW The camera sends no live view (" + H(last) + "). On the camera: Menu, Live View shoot: Enable; close the menu; mode dial on P, Tv, Av or M.");
+            if (!gotFrame && liveSw.ElapsedMilliseconds > 9000)
+                throw new CamException("LIVEVIEW The camera isn't sending live view. On the camera: Menu, Live View shoot: Enable (on the 60D / 70D it's in the red camera menu); close the menu; mode dial on P, Tv, Av or M. Then try again.");
+            return null;
+        }
+
+        static CamException CanonShotError(uint r, uint res)
+        {
+            if (res == 1) return new CamException("FOCUS The camera couldn't focus, so it didn't take the photo. Point it at something with detail, or set the lens to MF (manual focus).");
+            if (res == 7 || res == 3) return new CamException("CAPTURE The camera can't save the photo (result " + res + "). Check there's an SD card in the camera and it isn't full or locked.");
+            if (r == Ptp.BUSY || r == NOTREADY) return new CamException("CAPTURE The camera is busy (still saving the last photo?). Try again in a moment.");
+            return new CamException("CAPTURE The camera refused the photo (" + H(r) + (res != 0 ? ", result " + res : "") + "). Close the camera's menu, set the mode dial to P, Tv, Av or M (not video), and check the SD card.");
+        }
+
+        static byte[] CanonCapture()
+        {
+            var sw = Stopwatch.StartNew();
+            CanonPoll();
+            canonNew.Clear();
+            uint r;
+            if (ops.Contains(0x9128))
+            {
+                // Newer EOS: press the shutter all the way (it focuses, then shoots), then let go.
+                r = OpRetry(0x9128, 3, 0);
+                Log("RemoteReleaseOn: " + H(r));
+                if (r == Ptp.OK) { try { OpRetry(0x9129, 3); } catch (GoneException) { throw; } catch { } }
+                else
+                {
+                    uint h = OpRetry(0x9128, 1, 0);   // half press (focus)
+                    uint f = h == Ptp.OK ? OpRetry(0x9128, 2, 0) : h;   // full press
+                    try { OpRetry(0x9129, 2); OpRetry(0x9129, 1); } catch (GoneException) { throw; } catch { }
+                    Log("Half / full press: " + H(h) + " / " + H(f));
+                    r = f;
+                }
+                if (r != Ptp.OK) throw CanonShotError(r, 0);
+            }
+            else
+            {
+                // Older EOS (60D, 7D, 550D...): one command; its answer says if it fired.
+                uint[] ans;
+                r = ptp.OpP(0x910F, out ans);
+                if (r == Ptp.BUSY || r == NOTREADY) { Thread.Sleep(400); r = ptp.OpP(0x910F, out ans); }
+                uint res = ans.Length > 0 ? ans[0] : 0;
+                Log("RemoteRelease: " + H(r) + ", result " + res);
+                if (r != Ptp.OK || res != 0) throw CanonShotError(r, res);
+            }
+            // Wait for the camera to say where the photo is (RAW + JPEG: two files).
+            var files = new List<uint[]>();
+            var ew = Stopwatch.StartNew();
+            long firstAt = -1;
+            while (ew.ElapsedMilliseconds < 15000)
+            {
+                CanonPoll();
+                foreach (var o in canonNew) if (o[2] != 0x3001) files.Add(o);   // not folders
+                canonNew.Clear();
+                if (files.Count > 0 && firstAt < 0) firstAt = ew.ElapsedMilliseconds;
+                if (firstAt >= 0 && ew.ElapsedMilliseconds - firstAt > 350) break;
+                Thread.Sleep(80);
+            }
+            if (files.Count == 0)
+                throw new CamException("FOCUS The camera didn't take a photo. It may not have focused: point it at something with detail, or set the lens to MF (manual focus). Also check there's an SD card in the camera and it isn't full or locked.");
+            string cd = "files " + string.Join(",", files.ConvertAll(o => o[0].ToString("X") + "/" + o[2].ToString("X")).ToArray());
+            // JPEG first, then anything else that isn't RAW (CRW / CR2 / CR3).
+            var order = new List<uint[]>();
+            foreach (var o in files) if (o[2] == 0x3801) order.Add(o);
+            foreach (var o in files) if (o[2] != 0x3801 && o[2] != 0xB101 && o[2] != 0xB103 && o[2] != 0xB108) order.Add(o);
+            byte[] img = null;
+            try
+            {
+                foreach (var o in order)
+                {
+                    var b = CanonDownload(o[0], o[3], ref cd);
+                    if (b.Length > 4 && b[0] == 0xFF && b[1] == 0xD8) { img = b; break; }
+                }
+            }
+            finally
+            {
+                // Photos waiting in the camera's memory: tell it we're done so it frees them.
+                foreach (var o in files) if (o[1] == 0xC186) { try { ptp.Op(0x9117, o[0]); } catch (GoneException) { throw; } catch { } }
+            }
+            Log("Photo download: " + cd);
+            if (img == null)
+            {
+                if (order.Count == 0) throw new CamException("CAPTURE The camera saved a RAW photo. Set Image quality to JPEG on the camera (L, M or S; RAW + JPEG also works).");
+                throw new CamException("CAPTURE The photo didn't come through from the camera (" + cd + ").");
+            }
+            Log("Photo " + (img.Length / 1024) + " KB in " + sw.ElapsedMilliseconds + " ms");
+            return img;
+        }
+
+        static byte[] CanonDownload(uint h, uint size, ref string cd)
+        {
+            if (size == 0)
+            {
+                try { byte[] oi; uint ro = ptp.OpRead(0x1008, out oi, h); if (ro == Ptp.OK && oi.Length >= 12) size = U32(oi, 8); cd += "; info " + H(ro) + " " + size + " B"; }
+                catch (GoneException) { throw; }
+                catch (Exception e) { cd += "; info failed " + e.Message; }
+            }
+            byte[] img = new byte[0];
+            uint r;
+            try { r = ptp.OpRead(0x1009, out img, h); cd += "; get " + H(r) + " " + img.Length + " B"; }
+            catch (GoneException) { throw; }
+            catch (Exception e) { r = 0; cd += "; get failed " + e.Message; }
+            if ((r != Ptp.OK || img.Length < 4 || (size > 0 && img.Length < size)) && size > 0)
+            {
+                // In 1 MB pieces (Canon's own command, then the standard one).
+                ushort piece = Has(0x9107) ? (ushort)0x9107 : (ushort)0x101B;
+                var ms = new MemoryStream((int)size);
+                uint off = 0, pr = 0;
+                while (off < size)
+                {
+                    byte[] part; pr = ptp.OpRead(piece, out part, h, off, Math.Min(1048576U, size - off));
+                    if (pr != Ptp.OK || part.Length == 0) break;
+                    ms.Write(part, 0, part.Length); off += (uint)part.Length;
+                }
+                cd += "; pieces " + H(piece) + " " + H(pr) + " " + off + " B";
+                if (off >= size) { img = ms.ToArray(); r = Ptp.OK; }
+            }
+            return r == Ptp.OK ? img : new byte[0];
+        }
+
         // ---------- command loop ----------
         public static void Run(int port)
         {
@@ -802,16 +1136,17 @@ namespace Pb4uCam
                         case "battery": Need(); kind = "J"; body = Encoding.UTF8.GetBytes("{\"battery\":" + Battery() + "}"); break;
                         case "live":
                             Need();
-                            if (arg == "off") StopLive(); else if (!live) StartLive();
+                            if (arg == "off") { if (canon) CanonLiveOff(); else StopLive(); }
+                            else if (!live) { if (canon) CanonLiveOn(); else StartLive(); }
                             break;
                         case "frame":
                             {
                                 Need();
-                                var f = Frame();
+                                var f = canon ? CanonFrame() : Frame();
                                 if (f != null) { kind = "B"; body = f; }
                                 break;
                             }
-                        case "capture": Need(); kind = "B"; body = Capture(); break;
+                        case "capture": Need(); kind = "B"; body = canon ? CanonCapture() : Capture(); break;
                         case "close": CloseCamera(); break;
                         case "quit": CloseCamera(); return;
                         default: throw new CamException("BAD Unknown command " + cmd);
@@ -825,7 +1160,7 @@ namespace Pb4uCam
                     {
                         // Is the camera still there?
                         bool alive = false;
-                        if (!(e is GoneException) && ptp != null) { try { ptp.Op(0x90C8); alive = true; } catch { } }
+                        if (!(e is GoneException) && ptp != null) { try { Alive(); alive = true; } catch { } }
                         if (!alive) { Log("Camera lost: " + e.Message); CloseCamera(); status = "GONE"; }
                         else status = "ERR";
                     }

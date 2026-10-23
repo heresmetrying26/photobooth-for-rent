@@ -77,7 +77,7 @@
     .steps b{display:block;font-size:15.5px;margin-bottom:2px}
     .steps span{font-size:14px;color:var(--muted)}
 
-    .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .plans{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
     .plan{display:flex;flex-direction:column;padding:22px;border-radius:18px;background:#fff;border:1px solid var(--line)}
     .plan.pro{border:2px solid var(--red)}
     .plan.life{background:var(--ink);border-color:var(--ink);color:#fff}
@@ -86,9 +86,28 @@
     .plan.life .for{color:#BDB6AE}
     .price{margin:auto 0 0;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:36px;letter-spacing:-.02em;line-height:1}
     .price small{font-family:'Manrope',Arial,sans-serif;font-size:13px;font-weight:700;color:var(--muted);letter-spacing:0}
-    .plan.life .price{font-family:'Manrope',Arial,sans-serif;font-size:15px;font-weight:800;line-height:1.3}
+    .plan.life .price small{color:#BDB6AE}
     .plan.life a{color:#fff;text-decoration:none;border-bottom:2px solid var(--red);padding-bottom:2px}
     .plan.life a:hover{color:#F2B8AC}
+    .plan .tag{align-self:flex-start;margin:0 0 10px;padding:3px 9px;border-radius:999px;background:var(--tint);color:var(--red);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+    .plan.life .tag{background:var(--red);color:#fff}
+    .plan .life-link{margin:10px 0 0;font-size:13.5px;font-weight:800}
+    .offline-note{margin:14px auto 0;max-width:640px;text-align:center;font-size:14px;color:var(--muted)}
+    .offline-note b{color:var(--ink)}
+
+    /* guides */
+    .guides{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .guide{display:flex;flex-direction:column;gap:6px;padding:20px;border-radius:18px;background:#fff;border:1px solid var(--line);text-decoration:none;color:var(--ink);transition:border-color .2s,transform .2s}
+    .guide:hover,.guide:focus-visible{border-color:var(--red);transform:translateY(-2px);outline:none}
+    .guide .ic{display:grid;place-items:center;width:40px;height:40px;margin-bottom:6px;border-radius:12px;background:var(--tint);color:var(--red)}
+    .guide .ic svg{width:22px;height:22px}
+    .guide.off .ic{background:var(--ink);color:#fff}
+    .guide h3{margin:0;font-size:16.5px;line-height:1.3}
+    .guide .for{margin:0;font-size:13px;font-weight:700;color:var(--red)}
+    .guide p{margin:0;font-size:14px;color:var(--muted)}
+    .guide .open{margin-top:auto;padding-top:10px;display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:800;color:var(--ink)}
+    .guide .open svg{width:16px;height:16px}
+    .guide:hover .open{color:var(--red)}
     .chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:16px 0 0;padding:0;list-style:none}
     .chips li{padding:7px 13px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:13px;font-weight:700}
 
@@ -127,9 +146,11 @@
 
     @media (max-width:860px){
       .features{grid-template-columns:1fr 1fr}
+      .plans{grid-template-columns:1fr 1fr}
+      .guides{grid-template-columns:1fr}
       .steps{grid-template-columns:1fr 1fr}
     }
-    @media (max-width:760px){
+    @media (max-width:520px){
       .plans{grid-template-columns:1fr}
       .events{grid-template-columns:1fr;padding:22px}
       .book{grid-template-columns:1fr;grid-template-areas:"intro" "form" "actions";row-gap:14px;padding:20px}
@@ -243,7 +264,7 @@
         <article class="feat">
           <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="13" height="9" rx="1.5"/><path d="M5 17h7"/><rect x="17" y="7" width="5" height="12" rx="1.5"/></svg></span>
           <h3>Tablet or laptop booth</h3>
-          <p>Run it on an iPad or Android tablet, or a laptop with a second screen for guests and automatic printing after every session.</p>
+          <p>Run it on an iPad or Android tablet, or a laptop with a second screen for guests and automatic printing. No internet at the venue? Use the Windows / Mac app.</p>
         </article>
       </div>
     </section>
@@ -265,27 +286,67 @@
       <h2 id="pk" class="sr-only">Packages</h2>
       <div class="plans">
         <article class="plan">
-          <h3>Classic Booth</h3>
-          <p class="for">Tablet or iPad</p>
+          <span class="tag">Per event</span>
+          <h3>Tablet Booth</h3>
+          <p class="for">iPad or Android tablet · online</p>
           <p class="price">₱499 <small>/ event</small></p>
         </article>
         <article class="plan pro">
-          <h3>Pro Booth</h3>
-          <p class="for">Laptop + guest screen, auto-print</p>
+          <span class="tag">Per event</span>
+          <h3>Laptop Booth</h3>
+          <p class="for">Laptop + guest screen, auto-print · online or offline app</p>
           <p class="price">₱599 <small>/ event</small></p>
         </article>
+        <article class="plan">
+          <span class="tag">6 months</span>
+          <h3>Laptop 6-Month Pass</h3>
+          <p class="for">Windows / Mac app, works offline · every event for 6 months</p>
+          <p class="price">₱1,499 <small>/ 6 months</small></p>
+        </article>
         <article class="plan life">
+          <span class="tag">Best value</span>
           <h3>Lifetime</h3>
-          <p class="for">Never expires · every event · multiple devices</p>
-          <p class="price"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us for pricing →</a></p>
+          <p class="for">Online + offline app · every event · never expires · multiple devices</p>
+          <p class="price">₱4,999 <small>one-time</small></p>
+          <p class="life-link"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us to get it →</a></p>
         </article>
       </div>
-      <ul class="chips" aria-label="Included">
-        <li>24 hours on your event day</li>
+      <ul class="chips" aria-label="Included with every package">
+        <li>Per event: 24 hours on your event day</li>
         <li>Unlimited snaps</li>
         <li>Online gallery for 7 days</li>
         <li>+ 1-hour practice code</li>
       </ul>
+      <p class="offline-note"><b>Offline app</b> for Windows and Mac: no internet needed at the venue. Photos save on the laptop and guests get theirs by scanning a QR over the booth Wi-Fi.</p>
+    </section>
+
+    <section class="block" id="guides" aria-labelledby="gd">
+      <p class="label">Guides</p>
+      <h2 id="gd">Step-by-step setup guides</h2>
+      <p class="sub">Pick the guide for your setup. Each one opens as a PDF you can save or print.</p>
+      <div class="guides">
+        <a class="guide" href="/lifetime/photobooth4u-setup-guide.pdf" target="_blank" rel="noopener">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M2 20h20"/></svg></span>
+          <p class="for">Online · Chrome on Windows or Mac</p>
+          <h3>Laptop guide</h3>
+          <p>Laptop Booth with a guest screen, DSLR over USB, silent printing, guest payments and the backup folder.</p>
+          <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span>
+        </a>
+        <a class="guide" href="/lifetime/photobooth4u-tablet-guide.pdf" target="_blank" rel="noopener">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M11 18h2"/></svg></span>
+          <p class="for">Online · iPad &amp; Android</p>
+          <h3>Tablet guide</h3>
+          <p>Prepare the tablet, camera and position, guest-only mode, printing over AirPrint or Mopria, and weak internet.</p>
+          <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span>
+        </a>
+        <a class="guide off" href="/lifetime/photobooth4u-offline-app-guide.pdf" target="_blank" rel="noopener">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8A15 15 0 0 0 10.5 5.1M5.2 12.4a10 10 0 0 1 3.2-1.9M18.8 12.4a10 10 0 0 0-2.4-1.6M8.8 15.9a5 5 0 0 1 6.4 0M12 19.5h.01M3 3l18 18"/></svg></span>
+          <p class="for">Offline · Windows &amp; Mac app</p>
+          <h3>Offline app guide</h3>
+          <p>Install and activate, camera and printing, and sharing guests' photos over the booth Wi-Fi with no internet.</p>
+          <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span>
+        </a>
+      </div>
     </section>
 
     <section class="block" id="my-events" aria-labelledby="me">
@@ -318,7 +379,7 @@
             <span class="copied" id="copiedNote" role="status">Copied! Paste it in Messenger.</span>
           </div>
         <pre class="form-card" id="availForm">Name:
-Setup Type: Classic / Pro / Lifetime
+Setup Type: Tablet / Laptop / 6-Month Pass / Lifetime
 Event Date:</pre>
       </div>
     </section>
@@ -332,6 +393,7 @@ Event Date:</pre>
         <a href="/">Open photo booth</a>
         <a href="/lifetime/">My events</a>
         <a href="/about-us/#packages">Pricing</a>
+        <a href="/about-us/#guides">Guides</a>
         <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Messenger</a>
       </nav>
     </footer>

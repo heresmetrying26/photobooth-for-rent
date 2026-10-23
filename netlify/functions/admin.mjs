@@ -242,7 +242,7 @@ export default safe(async (req, context) => {
         const key = await freshKey(store);
         // Keep a dedicated Drive folder name. If neither field was supplied,
         // fall back to the code so the renter never has to configure Drive.
-        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
+        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
         let bonus = null;
         if (bonusMinutes) {
           bonus = bonusRecord(await freshKey(store), rec, bonusMinutes);
@@ -458,8 +458,18 @@ export default safe(async (req, context) => {
       const { key, rec } = await getRec();
       if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
       rec.offlineOpt = !!b.offlineOpt;
+      if (!rec.offlineOpt) rec.offlineOnly = false;
       await putLicense(store, key, rec);
       return json({ ok: true, offlineOpt: rec.offlineOpt, keyReady: licenceReady() });
+    }
+
+    case 'offlineonly': { // laptop app only (e.g. Laptop 6-Month Pass): the website booth refuses the code
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      rec.offlineOnly = !!b.offlineOnly;
+      if (rec.offlineOnly) rec.offlineOpt = true;
+      await putLicense(store, key, rec);
+      return json({ ok: true, offlineOnly: rec.offlineOnly, offlineOpt: !!rec.offlineOpt });
     }
 
     case 'offlinekey': { // activate a laptop with no internet: its Machine ID in, a licence key out

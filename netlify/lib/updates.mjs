@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.3', date: '2026-10-24' },
   { version: '1.0.2', date: '2026-10-24' },
   { version: '1.0.1', date: '2026-10-23' }
 ];
@@ -48,6 +49,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-24', title: 'Easier start for guests', for: ['website', 'app'], app: '1.0.3',
+    items: [
+      'Choose your layout: no layout is picked until the guest taps one, and there’s no Start button on that screen.',
+      'Smile or Wave to start: the Get ready screen says “Smile to start” or “Wave to start” instead of showing a Start button. Tapping the screen still works.'
+    ]
+  },
   {
     date: '2026-10-24', title: 'Your logo on the guest screen', for: ['website', 'app'], app: '1.0.2',
     items: [
@@ -92,7 +100,7 @@ export const NOTES = [
   {
     date: '2026-10-23', title: 'New packages and step-by-step guides', for: ['website'],
     items: [
-      'Packages: Tablet Booth, Laptop Booth, Laptop 6-Month Pass, Lifetime Online, and Lifetime Online + Offline.',
+      'Packages: Tablet Booth, Laptop Booth, Lifetime Online, Lifetime Offline, and Lifetime Online + Offline.',
       'Laptop, Tablet and Offline app guides (PDF) on the About Us page.'
     ]
   },

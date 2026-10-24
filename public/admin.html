@@ -145,8 +145,8 @@
         <div class="row" id="newPackages" style="gap:6px;margin-top:4px;">
           <button type="button" class="small" data-pkg="tablet">Tablet Booth · ₱499</button>
           <button type="button" class="small" data-pkg="laptop">Laptop Booth · ₱599</button>
-          <button type="button" class="small" data-pkg="pass6">Laptop 6-Month Pass · ₱1,499</button>
           <button type="button" class="small" data-pkg="lifeonline">Lifetime Online · ₱2,999</button>
+          <button type="button" class="small" data-pkg="lifeoffline">Lifetime Offline · ₱3,499</button>
           <button type="button" class="small" data-pkg="lifetime">Lifetime Online + Offline · ₱4,999</button>
         </div>
         <div class="meta" style="margin:6px 0 0;">Fills in the settings below for that package; you can still change any of them.</div>
@@ -183,7 +183,7 @@
       <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newOffline"> Offline app (Windows / Mac laptop app)</label>
         <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newOfflineOnly"> Laptop app only (the website booth refuses this code)</label>
-        <div class="meta" style="margin:6px 0 0;">Laptop Booth and Lifetime include the offline app. The Laptop 6-Month Pass is laptop app only: it works offline for its whole period with no check-ins.</div>
+        <div class="meta" style="margin:6px 0 0;">Laptop Booth, Lifetime Offline and Lifetime Online + Offline include the offline app. Lifetime Offline is laptop app only (the website booth refuses it).</div>
       </div>
       <button class="primary" id="createBtn" style="margin-top:12px;">Generate</button>
       <div id="newBox" class="newbox hidden"></div>
@@ -616,7 +616,7 @@
       acts += '<button class="small" data-a="payopt" data-c="' + c + '">' + (l.payOpt ? 'Hide guest payments' : 'Give guest payments') + '</button>';
       if(l.payOpt) acts += '<button class="small" data-a="paymgr" data-c="' + c + '">Payments &amp; vouchers</button>';
       acts += '<button class="small" data-a="offlineopt" data-c="' + c + '">' + (l.offlineOpt ? 'Hide offline app' : 'Give offline app') + '</button>';
-      if(l.offlineOpt) acts += '<button class="small" data-a="offlineonly" data-c="' + c + '" title="Laptop app only: the website booth refuses this code (Laptop 6-Month Pass)">' + (l.offlineOnly ? 'Allow website too' : 'Laptop app only') + '</button>';
+      if(l.offlineOpt) acts += '<button class="small" data-a="offlineonly" data-c="' + c + '" title="Laptop app only: the website booth refuses this code (Lifetime Offline)">' + (l.offlineOnly ? 'Allow website too' : 'Laptop app only') + '</button>';
       if(l.offlineOpt && st !== 'revoked') acts += '<button class="small" data-a="offkey" data-c="' + c + '" title="For a laptop with no internet: paste its Machine ID, get a licence key">Offline activation key</button>';
     }
     if(l.lockOpt) acts += '<button class="small" data-a="pinreset" data-c="' + c + '">Reset lock PIN</button>';
@@ -1050,13 +1050,14 @@
     try{ var v = localStorage.getItem('pb_admin_' + id); if(v) $(id).open = v === '1'; }catch(e){}
     $(id).addEventListener('toggle', function(){ try{ localStorage.setItem('pb_admin_' + id, $(id).open ? '1' : '0'); }catch(e){} });
   });
-  // Package presets (Tablet Booth / Laptop Booth / Laptop 6-Month Pass / Lifetime Online / Lifetime Online + Offline).
-  // Lifetime Online buying the offline app later (₱2,499; founders ₱999): open the code → Give offline app.
+  // Package presets (Tablet Booth / Laptop Booth / Lifetime Online / Lifetime Offline / Lifetime Online + Offline).
+  // Lifetime Online adding the offline app later (₱2,499; founders ₱999): open the code → Give offline app.
+  // Lifetime Offline adding the online booth later (₱1,999): open the code → Allow website too.
   var PKG = {
     tablet:   { days: 1,   devices: 1, lifetime: false, traditional: false, offline: false, only: false },
     laptop:   { days: 1,   devices: 1, lifetime: false, traditional: true,  offline: true,  only: false },
-    pass6:    { days: 183, devices: 1, lifetime: false, traditional: true,  offline: true,  only: true },
     lifeonline: { days: 1, devices: 5, lifetime: true,  traditional: true,  offline: false, only: false },
+    lifeoffline: { days: 1, devices: 5, lifetime: true, traditional: true,  offline: true,  only: true },
     lifetime: { days: 1,   devices: 5, lifetime: true,  traditional: true,  offline: true,  only: false }
   };
   $('newPackages').addEventListener('click', function(e){

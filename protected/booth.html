@@ -373,6 +373,19 @@
   .ready-overlay.ready-active{display:flex;}
   .ready-overlay .ready-title{opacity:.72; font-size:clamp(22px, 3.2vw, 34px); margin:4px 0 0;}
   .ready-overlay .shutter-btn{pointer-events:auto; opacity:.95;}
+  /* Smile / wave to start: no button, a cue instead; a tap on the picture still starts. */
+  .ready-overlay .ready-cue{display:none; align-items:center; gap:12px; margin:0; padding:12px 24px 12px 18px; border-radius:999px; background:rgba(20,18,22,.66); color:#fff; text-align:left; pointer-events:none; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);}
+  .ready-overlay .ready-cue i{flex:none; width:14px; height:14px; border-radius:50%; background:var(--blue-deep); box-shadow:0 0 0 0 rgba(201,61,39,.6); animation:cuePulse 1.6s ease-out infinite;}
+  .ready-overlay .ready-cue b{display:block; font:800 clamp(18px, 2.4vw, 26px) 'Manrope',sans-serif; line-height:1.15;}
+  .ready-overlay .ready-cue small{display:block; font:700 13px 'Manrope',sans-serif; opacity:.78; margin-top:2px;}
+  @keyframes cuePulse{0%{box-shadow:0 0 0 0 rgba(201,61,39,.6);}100%{box-shadow:0 0 0 14px rgba(201,61,39,0);}}
+  @media (prefers-reduced-motion:reduce){ .ready-overlay .ready-cue i{animation:none;} }
+  .ready-overlay.hands{pointer-events:auto; cursor:pointer; justify-content:flex-start;}   /* the cue sits up by the camera, clear of the controls */
+  .ready-overlay.hands .ready-cue{margin-top:6px;}
+  .ready-overlay.hands .shutter-btn{display:none;}
+  .ready-overlay.hands .ready-cue{display:flex;}
+  /* Choosing a layout: guests tap a card; no Start button under it. */
+  body.picking #startBtn{display:none !important;}
   .stage-frame.is-ready .countdown-overlay{display:none !important;}
   .ready-below{display:none; flex-direction:column; align-items:center; gap:8px;}
   body.in-session.shooting .brandbar, body.in-session.shooting .tab-bar{display:none !important;}
@@ -2562,6 +2575,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p class="ready-sub" id="readySub" hidden>4 shots · 5,4,3,2,1,Pose</p>
           <div class="sc-filters ready-filters" id="readyFilters" aria-label="Pick a filter" hidden></div>
           <button class="shutter-btn" id="readyStartBtn"><span class="ring"></span>Start</button>
+          <p class="ready-cue" id="readyCue" aria-live="polite"><i aria-hidden="true"></i><span><b id="readyCueTxt">Smile to start</b><small>or tap the screen</small></span></p>
         </div>
         <div class="flash-overlay" id="flashOverlay"></div>
 
@@ -6569,8 +6583,21 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(on){ popNum('', true); cdShot.textContent = ''; }
     if(typeof applyStageAspect === 'function') applyStageAspect();   // room for the summary + filters below
   }
+  // Smile / wave to start: the Get ready screen waits for the same gesture (or a tap) instead of a Start button.
+  function readyHandsMode(){ return fx.hands === 'smile' && !hf.failed ? 'smile' : fx.hands === 'wave' ? 'wave' : ''; }
+  readyOverlay.addEventListener('click', function(e){
+    if(!readyOverlay.classList.contains('ready-active') || !readyOverlay.classList.contains('hands')) return;
+    e.stopPropagation();
+    readyStartBtn.click();
+  });
   function waitForReadyTap(){
     return new Promise((resolve) => {
+      const hm = readyHandsMode();
+      readyOverlay.classList.toggle('hands', !!hm);
+      if(hm){
+        document.getElementById('readyCueTxt').textContent = hm === 'smile' ? 'Smile to start' : 'Wave to start';
+        hf.readyAt = Date.now(); hf.hist = []; hf.smileRun = 0; hf.prev = null;   // a fresh smile / wave, not the one that opened the booth
+      }
       readyOverlay.classList.add('ready-active');
       updateReadySub();
       setGettingReady(true);
@@ -9630,7 +9657,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         G.sub.textContent = shotsNeeded() + (shotsNeeded() === 1 ? ' shot' : ' shots');
       } else if(ready){
         G.msg.textContent = 'Get ready!';
-        G.sub.textContent = 'Tap or press the button to start';
+        G.sub.textContent = readyOverlay.classList.contains('hands') ? (fx.hands === 'smile' ? 'Smile to start' : 'Wave to start') + ' \u00b7 or tap the screen' : 'Tap or press the button to start';
         G.chip.textContent = shotsNeeded() + (shotsNeeded() === 1 ? ' shot' : ' shots');
       } else {
         G.msg.textContent = welcome ? 'Welcome!' : 'Tap or press the button to start';
@@ -9647,7 +9674,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(sess && sess.reviewEnd){ sess.reviewEnd('done'); return; }
     if(sess && sess.pauseEnd){ sess.pauseEnd(); return; }   // Space / clicker: next photo now (skips the wait)
     if(!startScreen.classList.contains('gone')) { leaveStartScreen(); return; }
-    if(pickOpen){ if(!fromGuest) finishPick(pickKeys[pickIdx]); return; }   // guests tap a layout; clickers pick the highlighted one
+    if(pickOpen){   // guests tap a layout; a clicker first shows the highlight, then picks it
+      if(!fromGuest){ if(pickIdx < 0){ pickIdx = pickStart(); markPick(); } else finishPick(pickKeys[pickIdx]); }
+      return;
+    }
     if(readyOverlay.classList.contains('ready-active')){ readyStartBtn.click(); return; }
     if(state === 'capturing' || printing || flowBusy) return;
     if(tabSession.classList.contains('hidden')){
@@ -10134,7 +10164,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return new Promise(function(resolve){
       pickOpen = true; pickResolve = resolve; pickKeys = keys;
       var pt = document.getElementById('pickTitle'); if(pt) pt.textContent = pickTitleText();
-      pickIdx = Math.max(0, keys.indexOf(setupLayout), keys.indexOf('frame:' + activeFrameId));
+      pickIdx = -1;      // nothing chosen yet: guests tap a card (a clicker / arrow key shows the highlight)
       pickGrid.innerHTML = '';
       keys.forEach(function(k, i){
         var b = document.createElement('button'); b.type = 'button'; b.className = 'pick-btn';
@@ -10146,7 +10176,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       });
       markPick();
       pickOverlay.classList.add('on');
-      document.body.classList.add('shooting');
+      document.body.classList.add('shooting', 'picking');
       try{ refreshPrintFab(); }catch(e){}
       refreshWelcome();
       guestRender();
@@ -10156,11 +10186,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     [...pickGrid.children].forEach(function(b, i){ b.classList.toggle('sel', i === pickIdx); });
     guestPickRender();
   }
-  function movePick(step){ if(!pickOpen) return; pickIdx = (pickIdx + step + pickKeys.length) % pickKeys.length; markPick(); }
+  function pickStart(){ return Math.max(0, pickKeys.indexOf(setupLayout), pickKeys.indexOf('frame:' + activeFrameId)); }
+  function movePick(step){
+    if(!pickOpen) return;
+    pickIdx = pickIdx < 0 ? pickStart() : (pickIdx + step + pickKeys.length) % pickKeys.length;   // first press: show the highlight
+    markPick();
+  }
   function finishPick(k){
     if(!pickOpen) return;
     pickOpen = false;
     pickOverlay.classList.remove('on');
+    document.body.classList.remove('picking');
     if(state !== 'capturing') document.body.classList.remove('shooting');
     try{ refreshPrintFab(); }catch(e){}
     var r = pickResolve; pickResolve = null;
@@ -11268,12 +11304,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function hfWanted(){
     if(fx.hands === 'off' || document.hidden || !streamActive || !video.videoWidth) return false;
     if(hfMeterOn()) return true;
+    if(document.body.classList.contains('in-session') && readyOverlay.classList.contains('ready-active') && readyOverlay.classList.contains('hands'))
+      return Date.now() - (hf.readyAt || 0) > 1200 && Date.now() - hf.lastFire > 2500;
     return document.body.classList.contains('in-session') && state === 'idle' && !flowBusy && !(typeof pickOpen !== 'undefined' && pickOpen) &&
       !readyOverlay.classList.contains('ready-active') && Date.now() - hf.lastFire > 4000;
   }
   function hfFire(){
     hf.lastFire = Date.now(); hf.hist = []; hf.smileRun = 0;
     if(hfMeterOn()){ hfMeter(true); return; }       // only testing in Setup
+    if(readyOverlay.classList.contains('ready-active')){ if(readyOverlay.classList.contains('hands')) readyStartBtn.click(); return; }   // Get ready: start the countdown
     fxStartChime();
     beginGuestFlow(true);
   }

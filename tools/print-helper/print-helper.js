@@ -9,8 +9,8 @@
 // - Only accepts requests from the photobooth4u site (ALLOWED_ORIGINS).
 // - macOS / Linux: prints through CUPS (`lp`). Windows: through .NET printing
 //   in PowerShell (built in). Nothing else to install.
-// - Paper size, borderless and cutting come from each printer's own default
-//   settings, so set those in the printer's preferences once.
+// - Paper size: the printer's own paper size that matches the booth's paper
+//   (borderless when the printer has it). Cutting comes from the printer's settings.
 //
 // Build (from any OS, needs Bun):
 //   bun build --compile --target=bun-darwin-arm64 print-helper.js --outfile photobooth4u-print-helper-mac-apple-silicon
@@ -19,11 +19,11 @@
 
 import { tmpdir, platform } from 'node:os';
 import { join } from 'node:path';
-import { writeFile, rm, mkdtemp, mkdir } from 'node:fs/promises';
+import { writeFile, rm, mkdtemp, mkdir, readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.5';
+const VERSION = '1.1.6';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',
@@ -63,8 +63,121 @@ async function listPrinters(){
 
 // Windows: draw each PNG onto the full page of the named printer, turning it
 // 90° when the printer's page is the other way round (e.g. a 6x4 driver page).
+// ---------- paper sizes: tell the printer which paper to use ----------
+// Without this, the printer uses its own default paper (often A4 or Letter),
+// so a 4R photo came out on A4. We look up the paper sizes the printer offers
+// and pick the one that matches the booth's paper size (borderless if it has it).
+const PAPER_CACHE = new Map();
+const PAPER_NAMES = { a3: [297, 420], a4: [210, 297], a5: [148, 210], a6: [105, 148], letter: [215.9, 279.4], legal: [215.9, 355.6],
+  postcard: [100, 148], hagaki: [100, 148], l: [89, 127], '2l': [127, 178], kg: [102, 152], '4r': [102, 152], '5r': [127, 178], '6r': [152, 203], '8r': [203, 254], '3r': [89, 127] };
+function sizeFromName(key) {
+  const k = String(key).toLowerCase();
+  let m = /^w(\d+(?:\.\d+)?)h(\d+(?:\.\d+)?)/.exec(k);           // CUPS style: width and height in points
+  if (m) return [Number(m[1]) * 25.4 / 72, Number(m[2]) * 25.4 / 72];
+  m = /(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*(mm|cm|in(?:ch(?:es)?)?)?/.exec(k.replace(/_/g, ' '));
+  if (m) {
+    const a = Number(m[1]), b = Number(m[2]), u = m[3] || (a < 30 && b < 30 ? 'in' : 'mm');
+    const f = u === 'mm' ? 1 : u === 'cm' ? 10 : 25.4;
+    return [a * f, b * f];
+  }
+  const base = k.replace(/\.(?:fullbleed|borderless|fb|bl).*$/, '').replace(/[^a-z0-9]/g, '');
+  return PAPER_NAMES[base] || null;
+}
+const isBorderlessName = (s) => /borderless|full.?bleed|\.fb\b|\bfb\b|\.bl\b|randlos|sans.?marge|sin.?bordes/i.test(String(s));
+async function cupsPaperSizes(printer) {
+  const sizes = [];
+  // The printer's current default paper (marked * by lpoptions; it may carry cutting, e.g. DNP "w288h432-div2").
+  const lo = await run('lpoptions', ['-p', printer, '-l']);
+  let def = null;
+  for (const line of lo.out.split(/\r?\n/)) {
+    const m = /^(PageSize|media)\/[^:]*:.*?\*(\S+)/.exec(line);
+    if (m) { def = m[2]; break; }
+  }
+  // 1) The printer's PPD lists every paper size with its exact dimensions (points).
+  let ppd = '';
+  try { ppd = await readFile('/etc/cups/ppd/' + printer + '.ppd', 'latin1'); } catch { ppd = ''; }
+  if (ppd) {
+    if (!def) { const d = /^\*DefaultPageSize:\s*(\S+)/m.exec(ppd); if (d) def = d[1]; }
+    const area = {};
+    for (const m of ppd.matchAll(/^\*ImageableArea\s+([^\s/:]+)(?:\/[^:]*)?:\s*"([\d.\s-]+)"/gm)) area[m[1]] = m[2].trim().split(/\s+/).map(Number);
+    for (const m of ppd.matchAll(/^\*PaperDimension\s+([^\s/:]+)(?:\/([^:]*))?:\s*"([\d.]+)\s+([\d.]+)"/gm)) {
+      const key = m[1], name = (m[2] || key).trim(), w = Number(m[3]), h = Number(m[4]), a = area[key];
+      const full = a && a.length === 4 && a[0] <= 1 && a[1] <= 1 && a[2] >= w - 1 && a[3] >= h - 1;
+      sizes.push({ key, name, w: w * 25.4 / 72, h: h * 25.4 / 72, borderless: full || isBorderlessName(key + ' ' + name) });
+    }
+  }
+  if (sizes.length) return { sizes, def };
+  // 2) No PPD (driverless printers): the PageSize / media choices, sized from their names.
+  for (const line of lo.out.split(/\r?\n/)) {
+    const m = /^(PageSize|media)\/[^:]*:\s*(.*)$/.exec(line);
+    if (!m) continue;
+    for (let key of m[2].trim().split(/\s+/)) {
+      key = key.replace(/^\*/, '');
+      const d = sizeFromName(key);
+      if (d) sizes.push({ key, name: key, w: d[0], h: d[1], borderless: isBorderlessName(key), opt: m[1] });
+    }
+    if (sizes.length) break;
+  }
+  return { sizes, def };
+}
+const WIN_PAPER_PS = String.raw`
+param([string]$Printer)
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+Add-Type -AssemblyName System.Drawing
+$ps = New-Object System.Drawing.Printing.PrinterSettings
+$ps.PrinterName = $Printer
+if (-not $ps.IsValid) { throw "Printer not found: $Printer" }
+'DEFAULT|' + $ps.DefaultPageSettings.PaperSize.PaperName
+foreach ($p in $ps.PaperSizes) { '{0}|{1}|{2}' -f $p.PaperName, $p.Width, $p.Height }
+`;
+async function winPaperSizes(printer) {
+  const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
+  try {
+    const ps1 = join(dir, 'paper.ps1');
+    await writeFile(ps1, '﻿' + WIN_PAPER_PS, 'utf8');
+    const r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer]);
+    const sizes = [];
+    let def = null;
+    for (const line of r.out.split(/\r?\n/)) {
+      if (line.startsWith('DEFAULT|')) { def = line.slice(8).trim() || null; continue; }
+      const m = /^(.*)\|(\d+)\|(\d+)\s*$/.exec(line);
+      if (!m || !Number(m[2]) || !Number(m[3])) continue;
+      sizes.push({ key: m[1], name: m[1], w: Number(m[2]) * 0.254, h: Number(m[3]) * 0.254, borderless: isBorderlessName(m[1]) });
+    }
+    return { sizes, def };
+  } finally { rm(dir, { recursive: true, force: true }).catch(() => {}); }
+}
+async function paperSizes(printer) {
+  const c = PAPER_CACHE.get(printer);
+  if (c && Date.now() - c.at < 120000) return { sizes: c.sizes, def: c.def };
+  let info = { sizes: [], def: null };
+  try { info = IS_WIN ? await winPaperSizes(printer) : await cupsPaperSizes(printer); } catch { info = { sizes: [], def: null }; }
+  PAPER_CACHE.set(printer, { at: Date.now(), sizes: info.sizes, def: info.def });
+  return { sizes: info.sizes, def: info.def };
+}
+// The printer's paper size for the booth's paper (mm), or null. Within 3 mm a side; borderless preferred.
+// When the printer's default paper already is that size it's kept (keep: true), so its own
+// settings (borderless, cutting) stay. A strip on a sheet twice as wide (cut in two) counts too.
+const near = (s, a, b) => { const sa = Math.min(s.w, s.h), sb = Math.max(s.w, s.h); return Math.abs(sa - a) <= 3 && Math.abs(sb - b) <= 3; };
+async function pickPaper(printer, widthMm, heightMm) {
+  if (!(widthMm > 0 && heightMm > 0)) return null;
+  const a = Math.min(widthMm, heightMm), b = Math.max(widthMm, heightMm);
+  const { sizes, def } = await paperSizes(printer);
+  const d = def && sizes.find((s) => s.key === def);
+  if (d && (near(d, a, b) || (a / b < 0.45 && near(d, a * 2, b)))) return { ...d, keep: true };
+  let best = null;
+  for (const s of sizes) {
+    const sa = Math.min(s.w, s.h), sb = Math.max(s.w, s.h);
+    if (Math.abs(sa - a) > 3 || Math.abs(sb - b) > 3) continue;
+    const score = Math.abs(sa - a) + Math.abs(sb - b) - (s.borderless ? 2.5 : 0);
+    if (!best || score < best.score) best = { ...s, score };
+  }
+  return best;
+}
+
 const WIN_PRINT_PS = String.raw`
-param([string]$Printer, [string]$ListFile, [switch]$FitWidth)
+param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 # @( ) keeps a one-page list an array (otherwise $files[0] is just the first letter of the path)
@@ -73,6 +186,10 @@ if ($files.Count -eq 0) { throw "No pages to print" }
 $doc = New-Object System.Drawing.Printing.PrintDocument
 $doc.PrinterSettings.PrinterName = $Printer
 if (-not $doc.PrinterSettings.IsValid) { throw "Printer not found: $Printer" }
+if ($PaperName) {
+  $p = $doc.PrinterSettings.PaperSizes | Where-Object { $_.PaperName -eq $PaperName } | Select-Object -First 1
+  if ($p) { $doc.DefaultPageSettings.PaperSize = $p }
+}
 $doc.DocumentName = 'photobooth4u'
 # Print silently (no "Printing page 1 of 1" window popping over the booth)
 $doc.PrintController = New-Object System.Drawing.Printing.StandardPrintController
@@ -125,11 +242,16 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm){
       const ps1 = join(dir, 'print.ps1'), list = join(dir, 'pages.txt');
       await writeFile(ps1, '﻿' + WIN_PRINT_PS, 'utf8');
       await writeFile(list, files.join('\r\n'), 'utf8');
-      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(fit === 'width' ? ['-FitWidth'] : [])]);
+      const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
+      if(pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
+      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && !pick.keep ? ['-PaperName', pick.key] : [])]);
     } else {
-      // Pages are already exactly paper-sized at 300 dpi; fit-to-page keeps
-      // them filling the sheet the printer's default paper size defines.
-      const media = fit === 'width' && widthMm > 0 && heightMm > 0 ? ['-o', 'media=Custom.' + Math.round(widthMm) + 'x' + Math.round(heightMm) + 'mm'] : [];
+      // Pages are already exactly paper-sized at 300 dpi; fit-to-page fills the
+      // sheet. The paper size is the printer's own one that matches the booth's.
+      const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
+      if(pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
+      const media = fit === 'width' && widthMm > 0 && heightMm > 0 ? ['-o', 'media=Custom.' + Math.round(widthMm) + 'x' + Math.round(heightMm) + 'mm']
+        : pick && !pick.keep ? ['-o', (pick.opt === 'media' ? 'media=' : 'PageSize=') + pick.key] : [];
       r = await run('lp', ['-d', printer, ...media, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
     }
     if(r.code !== 0) throw new Error((r.err || r.out || ('exit ' + r.code)).trim().slice(0, 300));
@@ -346,6 +468,13 @@ const server = Bun.serve({
       return json({ ok: false, error: 'Not found' }, 404, origin);
     }
 
+    if(req.method === 'GET' && url.pathname === '/paper'){
+      const name = String(url.searchParams.get('printer') || '').trim();
+      if(!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404, origin);
+      const info = await paperSizes(name), pick = await pickPaper(name, Number(url.searchParams.get('w')) || 0, Number(url.searchParams.get('h')) || 0);
+      const def = info.def && info.sizes.find((x) => x.key === info.def);
+      return json({ ok: true, known: info.sizes.length > 0, match: pick ? { name: pick.name, borderless: !!pick.borderless, isDefault: !!pick.keep } : null, def: def ? def.name : (info.def || ''), sizes: info.sizes.slice(0, 40).map((x) => x.name) }, 200, origin);
+    }
     if(req.method === 'POST' && url.pathname === '/print'){
       if(!origin) return json({ ok: false, error: 'Missing origin' }, 403);
       let body;

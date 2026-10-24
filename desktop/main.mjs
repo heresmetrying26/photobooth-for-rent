@@ -16,6 +16,7 @@ import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
 import { initPhotos, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
+import * as U from './lib/updater.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BUILD = join(HERE, 'build');
@@ -196,7 +197,7 @@ function buildMenu() {
 function wireIpc() {
   ipcMain.on('pb4u:lan', (e) => { e.returnValue = shareBase(); });
   ipcMain.handle('pb4u:info', async () => ({
-    licence: L.info(), version: VERSION, photos: photosRoot(), share: shareBase(), lanIp: lanAddress(), port: sharePortNow(), server: L.SERVER
+    licence: L.info(), version: VERSION, update: U.info(), photos: photosRoot(), share: shareBase(), lanIp: lanAddress(), port: sharePortNow(), server: L.SERVER
   }));
   ipcMain.handle('pb4u:activate', async (e, code) => {
     const r = await L.activate(net.fetch.bind(net), code);
@@ -229,11 +230,17 @@ function wireIpc() {
   ipcMain.handle('pb4u:copy', (e, t) => { clipboard.writeText(String(t || '')); return true; });
   ipcMain.handle('pb4u:openUrl', (e, u) => { openOutside(String(u || '')); return true; });
   ipcMain.handle('pb4u:quit', () => { app.quit(); return true; });
+  // Updates (see lib/updater.mjs)
+  ipcMain.handle('pb4u:update', () => U.info());
+  ipcMain.handle('pb4u:updateCheck', () => U.check());
+  ipcMain.handle('pb4u:updateDownload', () => U.download());
+  ipcMain.handle('pb4u:updateOpen', () => U.openDownloaded());
+  ipcMain.handle('pb4u:updateInstall', () => U.installNow());
 }
 
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
 app.on('window-all-closed', () => app.quit());
-app.on('before-quit', () => { stopHelper(); stopShareServer(); try { L.touchClock(); } catch { /* ignore */ } });
+app.on('before-quit', () => { try { U.installOnQuit(); } catch { /* ignore */ } stopHelper(); stopShareServer(); try { L.touchClock(); } catch { /* ignore */ } });
 
 app.whenReady().then(async () => {
   loadSettings();
@@ -258,6 +265,8 @@ app.whenReady().then(async () => {
   blocker = powerSaveBlocker.start('prevent-display-sleep');
   // Renew / pick up Admin changes in the background, and keep the clock check fresh.
   checkinNow(true).catch(() => {});                      // every start-up, when online
+  U.initUpdater({ server: L.SERVER, version: VERSION, log: (m) => console.log('[update] ' + m),
+    notify: (i) => { if (win && !win.isDestroyed()) win.webContents.send('pb4u:update', i); } });
   setInterval(() => { L.touchClock(); refreshRecord().catch(() => {}); }, 5 * 60000);
   setInterval(() => { checkinNow(false).catch(() => {}); }, 2 * 60000);   // checks in every 10 min (see licence.mjs)
 });

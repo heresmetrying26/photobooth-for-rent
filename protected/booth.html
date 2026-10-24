@@ -171,6 +171,8 @@
   .print-steps li i{width:24px; height:24px; border-radius:50%; border:2px solid var(--line); display:flex; align-items:center; justify-content:center; font-style:normal; font-weight:800; font-size:12px; color:var(--ink-dim); background:#fff;}
   .print-steps li.done i{background:#1e8449; border-color:#1e8449; color:#fff;}
   .print-steps li.now i{border-color:var(--blue-deep); color:var(--blue-deep);}
+  .print-steps .paper-ok{display:block; margin-top:2px; color:#1e8449; font-weight:700;}
+  .print-steps .paper-bad{display:block; margin-top:4px; padding:6px 9px; border-radius:9px; background:#fdecea; border:1px solid #f3b8b0; color:#9b2c1f; font-weight:700;}
   .print-steps li small{display:block; color:var(--ink-dim); font-size:12.5px;}
   .print-steps li.done span{color:var(--ink-dim);}
   .helper-help{margin:6px 0 0; padding:10px 12px; border-radius:12px; background:#fdf1ec; border:1px solid #f1cfc5; font-size:13px; line-height:1.5; color:var(--ink);}
@@ -1668,6 +1670,58 @@
   .desk-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;}
   #deskBox .label-input{font-family:'Manrope',sans-serif; font-size:14px; margin:0;}
   #deskLan.bad{color:#b9770e; font-weight:700;}
+
+  /* ---- Laptop app: a new version (Setup only, never during a session) ---- */
+  .desk-upd{display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; max-width:1180px; margin:0 auto 14px; padding:10px 14px; border-radius:14px; background:#1C1A1E; color:#fff; font-size:13.5px; line-height:1.4;}
+  .desk-upd[hidden]{display:none;}
+  .desk-upd b{font-weight:800;}
+  .desk-upd .du-txt{flex:1 1 260px; min-width:0;}
+  .desk-upd .du-txt small{display:block; color:#D9D3CB; font-size:12.5px;}
+  .desk-upd button{min-height:40px; padding:0 16px; border-radius:999px; border:1.5px solid rgba(255,255,255,.35); background:transparent; color:#fff; font:700 13.5px 'Manrope',sans-serif; cursor:pointer;}
+  .desk-upd button.go{background:var(--blue-deep); border-color:var(--blue-deep);}
+  .desk-upd .du-bar{flex-basis:100%; height:4px; border-radius:4px; background:rgba(255,255,255,.18); overflow:hidden;}
+  .desk-upd .du-bar i{display:block; height:100%; background:#fff; width:0;}
+  body.booth-locked .desk-upd{display:none !important;}
+  /* ---- Your logo on the guest screen (Setup 5) ---- */
+  .brand-row{display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; background:var(--panel-2); border:1px solid var(--line); margin-top:10px;}
+  .brand-row input[type=checkbox]{width:20px; height:20px; flex:none; accent-color:var(--blue-deep); margin:0;}
+  .brand-thumb{width:62px; height:48px; flex:none; border-radius:10px; background:#fff; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; overflow:hidden;}
+  .brand-thumb img{max-width:54px; max-height:40px; object-fit:contain; display:block;}
+  .brand-thumb span{font-size:10.5px; font-weight:700; color:var(--ink-dim); text-align:center; line-height:1.2; padding:0 4px;}
+  .brand-txt{flex:1 1 auto; min-width:0;}
+  .brand-txt b{display:block; font-size:14px;}
+  .brand-txt small{display:block; font-size:12.5px; color:var(--ink-dim); line-height:1.35; margin-top:1px;}
+  .brand-row .upload-btn{flex:none; min-height:40px; padding:0 14px; font-size:13px;}
+  .brand-tip{margin:10px 0 0; font-size:12.5px; font-weight:700; color:var(--blue-deep);}
+  .bpv{position:relative; width:100%; margin-top:10px; border-radius:12px; border:1px solid var(--line); background:#F5F1EA; overflow:hidden; touch-action:none; user-select:none; -webkit-user-select:none;}
+  .bpv *{-webkit-user-select:none; user-select:none;}
+  .bpv-col{position:absolute; display:flex; flex-direction:column; justify-content:space-between; align-items:center; text-align:center; pointer-events:none;}
+  .bpv-col .bpv-brand{display:flex; align-items:center; gap:.35em; font-family:'Fraunces',Georgia,serif; font-weight:600; letter-spacing:-.03em; white-space:nowrap;}
+  .bpv-col .bpv-brand i{display:grid; grid-template-columns:1fr 1fr; gap:1px; width:.9em; height:.9em;}
+  .bpv-col .bpv-brand i b{background:var(--ink); border-radius:1px;}.bpv-col .bpv-brand i b:nth-child(2){background:var(--blue-deep);}
+  .bpv-col .bpv-brand em{font-style:normal; color:var(--blue-deep);}
+  .bpv-msg{display:block; font-family:'Fraunces',Georgia,serif; font-weight:600; line-height:1.1;}
+  .bpv-sub{display:block; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:var(--blue-deep); margin-top:.6em;}
+  .bpv-ev{display:block; font-family:'Fraunces',Georgia,serif; font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .bpv-dt{display:block; font-weight:700; letter-spacing:.18em; color:var(--ink-dim); margin-top:.3em;}
+  .bpv-pwr{display:flex; align-items:center; justify-content:center; gap:.35em; margin-top:.7em; color:var(--ink-dim); font-weight:700; white-space:nowrap;}
+  .bpv-pwr b{font-family:'Fraunces',Georgia,serif; font-weight:600; color:var(--ink); letter-spacing:-.03em;}.bpv-pwr b em{font-style:normal; color:var(--blue-deep);}
+  .bpv-frame{position:absolute; overflow:hidden; border-radius:6px; background:#141216; box-shadow:0 6px 16px rgba(60,40,20,.2);}
+  .bpv-frame > img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; pointer-events:none;}
+  .bpv-chip{position:absolute; padding:.35em .9em; border-radius:99px; background:var(--ink); color:#fff; font-weight:800; letter-spacing:.16em; pointer-events:none;}
+  .bpv-logo{position:absolute; cursor:move; touch-action:none;}
+  .bpv-logo > img{display:block; width:100%; height:100%; object-fit:contain; pointer-events:none;}
+  .bpv-logo.sel{outline:2px dashed var(--blue-deep); outline-offset:3px;}
+  .bpv-logo::after{content:""; position:absolute; inset:-8px;}
+  .bpv-logo .bpv-h{display:none; position:absolute; z-index:2; right:-22px; bottom:-22px; width:18px; height:18px; border-radius:50%; background:#fff; border:3px solid var(--blue-deep); box-sizing:border-box; cursor:nwse-resize; touch-action:none;}
+  .bpv-logo .bpv-h::before{content:""; position:absolute; inset:-7px;}
+  .bpv-logo.sel .bpv-h{display:block;}
+  .bpv-guide{position:absolute; top:0; bottom:0; width:2px; margin-left:-1px; background:#E0408A; pointer-events:none; display:none;}
+  .bpv-guide.on{display:block;}
+  #brandSection [hidden]{display:none !important;}
+  .brand-tools{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:10px;}
+  .brand-tools .bt-sel{font-size:13px; font-weight:800; margin-right:auto;}
+  .brand-tools .action-btn{width:auto; margin:0; min-height:40px; padding:0 14px; font-size:13px;}
 </style>
 <script>/* qrcode-generator 1.4.4 (MIT) — QR codes are made on this device, no outside service. */
 // Copyright (c) 2009 Kazuhiko Arase
@@ -1732,6 +1786,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
 <!-- TAB 1: SETUP -->
 <div class="tab-panel" id="tabSetup">
+  <div class="desk-upd" id="deskUpdBar" role="status" hidden></div>
   <div class="setup-shell">
 
     <nav class="step-bar" id="stepBar" aria-label="Setup steps">
@@ -2248,6 +2303,40 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         </label>
         <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos look the same as the preview (mirrored when this is on).</p>
       </div>
+      <div class="panel-section" id="brandSection">
+        <p class="panel-label">Your logo</p>
+        <p class="panel-hint step-lead" id="brandLead">Show your business logo to guests. The start screen on this device keeps the photobooth4u logo.</p>
+        <div class="brand-row" id="brandRowC">
+          <input type="checkbox" id="brandCOn" aria-label="Show the corner logo">
+          <div class="brand-thumb" id="brandCThumb"></div>
+          <div class="brand-txt"><b>Corner logo</b><small>On the guest screen the whole session, in place of the photobooth4u logo.</small></div>
+          <label class="upload-btn" for="brandCFile" id="brandCBtn">Change</label>
+          <input type="file" id="brandCFile" accept="image/*">
+        </div>
+        <div class="brand-row" id="brandRowW">
+          <input type="checkbox" id="brandWOn" aria-label="Show the welcome logo">
+          <div class="brand-thumb" id="brandWThumb"></div>
+          <div class="brand-txt"><b>Welcome logo</b><small>On the welcome picture guests see between sessions.</small></div>
+          <label class="upload-btn" for="brandWFile" id="brandWBtn">Change</label>
+          <input type="file" id="brandWFile" accept="image/*">
+        </div>
+        <p class="brand-tip" id="brandTip">Tap a logo in the preview to move or resize it.</p>
+        <div class="bpv" id="brandPv" aria-label="Preview of what guests see">
+          <div class="bpv-col" id="bpvCol">
+            <span class="bpv-brand" id="bpvBrand"><i><b></b><b></b><b></b><b></b></i>photobooth<em>4u</em></span>
+            <span><span class="bpv-msg">Welcome!</span><span class="bpv-sub">Tap the screen to start</span></span>
+            <span><span class="bpv-ev" id="bpvEv"></span><span class="bpv-dt" id="bpvDt"></span><span class="bpv-pwr" id="bpvPwr">Powered by <b>photobooth<em>4u</em></b></span></span>
+          </div>
+          <div class="bpv-frame" id="bpvFrame"><img id="bpvImg" alt=""></div>
+          <span class="bpv-chip" id="bpvChip">Ready</span>
+          <i class="bpv-guide" id="bpvGuide"></i>
+        </div>
+        <div class="brand-tools">
+          <span class="bt-sel" id="brandSelTxt">Tap a logo to adjust it</span>
+          <button type="button" class="action-btn" id="brandCenter">Center</button>
+          <button type="button" class="action-btn" id="brandReset">Reset</button>
+        </div>
+      </div>
       <div class="panel-section hidden" id="guestSection">
         <p class="panel-label">Guest screen</p>
         <p class="guest-status" id="guestStatus"><i></i><span>Not open yet</span></p>
@@ -2316,7 +2405,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <input type="text" class="label-input" id="deskWifiPass" placeholder="Wi-Fi password (empty if none)" maxlength="63" autocomplete="off" spellcheck="false" style="margin-top:8px;">
           <p class="sub-label" style="margin-top:14px;">This laptop&rsquo;s licence</p>
           <p class="panel-hint" id="deskLic" style="margin:0;"></p>
-          <p class="panel-hint" id="deskUpd" hidden style="margin:8px 0 0; padding:10px 12px; border-radius:10px; background:#FBEDEA; color:#A9301D; font-weight:700;"></p>
           <div class="desk-row">
             <button type="button" class="action-btn" id="deskCheckBtn" style="width:auto; margin:0;">Check for changes</button>
             <button type="button" class="action-btn" id="deskNewsBtn" style="width:auto; margin:0;">What’s new</button>
@@ -8412,6 +8500,31 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     helper = { ok: false, printers: [], checked: 0 };
     checkHelper(true);
   });
+  // Which of the printer's own paper sizes the helper will use for this booth size
+  // (Print Helper 1.1.6+ / the app). Without one the printer falls back to its default paper.
+  const paperChecks = {};
+  function paperCheckKey(name, paper){ return name + '|' + Math.round(paper.w) + 'x' + Math.round(paper.h); }
+  async function checkPaper(name, paper){
+    const k = paperCheckKey(name, paper);
+    if(paperChecks[k]) return;
+    paperChecks[k] = { state: 'loading' };
+    try{
+      const r = await fetch(HELPER_URL + '/paper?printer=' + encodeURIComponent(name) + '&w=' + paper.w.toFixed(1) + '&h=' + paper.h.toFixed(1), { cache: 'no-store' });
+      const j = r.ok ? await r.json() : null;
+      if(!j || !j.ok || !j.known) paperChecks[k] = { state: 'unknown' };
+      else if(j.match) paperChecks[k] = { state: 'ok', name: j.match.name, borderless: j.match.borderless, isDefault: j.match.isDefault };
+      else paperChecks[k] = { state: 'none', def: j.def || '' };
+    }catch(e){ paperChecks[k] = { state: 'unknown' }; }
+    renderPrintSteps();
+  }
+  function paperLine(name, paper, sizeName){
+    if(!name || !paper || paper.receipt) return '';
+    const c = paperChecks[paperCheckKey(name, paper)];
+    if(!c){ checkPaper(name, paper); return ''; }
+    if(c.state === 'ok') return '<span class="paper-ok">Paper: ' + escHtml(c.name) + ' \u2713</span>';
+    if(c.state === 'none' && paper.w / paper.h >= 0.45) return '<span class="paper-bad">This printer has no ' + escHtml(sizeName) + ' paper size, so it would print on ' + (c.def ? '\u201c' + escHtml(c.def) + '\u201d' : 'its default paper') + '. Add the size in the printer\u2019s settings (or install its full driver), or choose another printer.</span>';
+    return '';
+  }
   // A 3-step checklist at the top of the Print pop-up.
   function renderPrintSteps(){
     const el = document.getElementById('printSteps');
@@ -8434,7 +8547,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     else steps = [
       DESKTOP ? { done: connected && helper.printers.length > 0, t: 'Plug in and turn on the printer', s: connected && helper.printers.length ? helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' found on this laptop.' : 'Install its driver first, then reopen Print settings.' } :
       { done: connected, t: 'Connect the Print Helper', s: connected ? 'Connected \u2014 ' + helper.printers.length + ' printers found.' : 'Open the Print Helper app on this computer, then switch on <b>Print Helper on this computer</b> below. <a href="/downloads/" target="_blank" rel="noopener">Download</a>' },
-      { done: connected && !!name && helper.printers.includes(name), t: 'Choose the printer for each paper size', s: name ? sizeName + ' \u2192 ' + name : 'Tap a paper size, then pick its printer from the list.' },
+      (function(){
+        const ok = connected && !!name && helper.printers.includes(name);
+        const pl = ok && printSize && (DESKTOP || helperAtLeast('1.1.6')) ? paperLine(name, paperFor(printSize), sizeName) : '';
+        return { done: ok && pl.indexOf('paper-bad') < 0, t: 'Choose the printer for each paper size', s: (name ? sizeName + ' \u2192 ' + escHtml(name) : 'Tap a paper size, then pick its printer from the list.') + pl };
+      })(),
       { done: auto, t: 'Print once, then turn on Print automatically', s: auto ? 'Every session prints by itself.' : 'Press <b>Print</b> to test, then tick <b>Print automatically after each session</b>.' }
     ];
     let first = steps.findIndex(x => !x.done);
@@ -9242,6 +9359,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     '.qrl{font-weight:800;letter-spacing:.18em;text-transform:uppercase;font-size:clamp(10px,.9vw,16px);color:var(--red);}' +
     '.fs{position:fixed;top:1.6vh;left:50%;transform:translateX(-50%);z-index:5;padding:10px 18px;border-radius:99px;border:1.5px solid #D6CEC1;background:#fff;color:var(--ink);font:700 13px Manrope,sans-serif;cursor:pointer;}' +
     '.hide{display:none !important;}' +
+    '.logo .lg{display:block;object-fit:contain;}.logo.off{visibility:hidden;}' +
+    '.clogo{position:fixed;z-index:3;object-fit:contain;pointer-events:none;transform:translate(-50%,-50%);}' +
+    '.pwr{display:flex;align-items:center;justify-content:center;gap:.4em;margin-top:1.4vh;color:var(--dim);font-weight:700;font-size:clamp(9px,.72vw,14px);letter-spacing:.06em;}' +
+    '.pwr .mk{display:grid;grid-template-columns:1fr 1fr;gap:1px;width:1.1em;height:1.1em;}.pwr .mk i{background:var(--ink);border-radius:2px;}.pwr .mk i:nth-child(2){background:var(--red);}' +
+    '.pwr b{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:1.4em;letter-spacing:-.03em;color:var(--ink);}.pwr b em{font-style:normal;color:var(--red);}' +
     '.pk{position:fixed;inset:0;z-index:4;background:rgba(20,18,22,.86);display:flex;flex-direction:column;align-items:center;gap:clamp(16px,4vh,40px);padding:4vh 4vw;overflow:hidden;box-sizing:border-box;}' +
     '.pkt{flex:none;margin:0;color:#fff;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(26px,3.6vw,64px);}' +
     '.pkg{flex:1 1 auto;width:100%;min-height:0;overflow-y:auto;display:flex;gap:2.4vw;justify-content:center;align-items:flex-start;align-content:flex-start;flex-wrap:wrap;padding:0 1vw 3vh;box-sizing:border-box;overscroll-behavior:contain;}' +
@@ -9253,9 +9375,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     '<div class="pk hide" id="pk"><p class="pkt">Choose your layout</p><div class="pkg" id="pkg"></div></div>' +
     '<div class="g">' +
       '<div class="side">' +
-        '<div class="logo"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span></div>' +
+        '<div class="logo" id="glogo"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span><img class="lg hide" id="lgImg" alt=""></div>' +
         '<div><p class="msg" id="msg">Tap or press the button to start</p><p class="sub" id="sub"></p></div>' +
-        '<div><p class="ev" id="ev"></p><p class="dt" id="dt"></p></div>' +
+        '<div><p class="ev" id="ev"></p><p class="dt" id="dt"></p><div class="pwr hide" id="pwr">Powered by <span class="mk"><i></i><i></i><i></i><i></i></span><b>photobooth<em>4u</em></b></div></div>' +
       '</div>' +
       '<div class="frame" id="frame"><video id="v" autoplay playsinline muted></video><div class="guide" id="guide"></div><img class="res" id="res" alt="Your photo">' +
         '<div class="cd" id="cd"><div class="cdw"><svg viewBox="0 0 100 100"><circle class="trk" cx="50" cy="50" r="46"/><circle class="bar" id="bar" cx="50" cy="50" r="46" pathLength="100" stroke-dasharray="100" stroke-dashoffset="0"/></svg><div class="num" id="num">5</div></div></div>' +
@@ -9266,7 +9388,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         '<div class="gb hide" id="gb"><button class="gbtn strong hide" id="gRetake" type="button"></button><button class="gbtn hide" id="gDone" type="button"></button></div>' +
         '<div class="qrs hide" id="qrw"></div>' +
       '</div>' +
-    '</div></body></html>';
+    '</div><img class="clogo hide" id="clogo" alt=""></body></html>';
 
   function buildGuestDoc(){
     const d = guestWin.document;
@@ -9274,7 +9396,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const $g = id => d.getElementById(id);
     G = { d, v: $g('v'), res: $g('res'), cd: $g('cd'), bar: $g('bar'), num: $g('num'), flash: $g('flash'), film: $g('film'),
           msg: $g('msg'), sub: $g('sub'), ev: $g('ev'), dt: $g('dt'), chip: $g('chip'), qrw: $g('qrw'), qrSig: '', fs: $g('fs'),
-          pk: $g('pk'), pkg: $g('pkg'), pkSig: '', gb: $g('gb'), gRetake: $g('gRetake'), gDone: $g('gDone'), wasRev: false };
+          pk: $g('pk'), pkg: $g('pkg'), pkSig: '', gb: $g('gb'), gRetake: $g('gRetake'), gDone: $g('gDone'), wasRev: false,
+          glogo: $g('glogo'), lgImg: $g('lgImg'), clogo: $g('clogo'), pwr: $g('pwr'), brandSig: '' };
     // The guest's Retake / Done and photo taps press the booth's own buttons,
     // so they follow the same rules (Allow retakes, tap mode, …).
     G.gRetake.addEventListener('click', (e) => { e.stopPropagation(); retakeBtn.click(); });
@@ -9359,6 +9482,36 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         guestFilm();
       }
     }catch(e){ /* guest window closed mid-call */ }
+  }
+  // The renter's corner logo on the guest screen (in place of the photobooth4u logo),
+  // with a small "Powered by photobooth4u" under the event date.
+  function guestBrand(){
+    if(!guestOpen()) return;
+    try{
+      const b = brand.c, im = brandImgFor('c'), id = brandId('c');
+      const sig = im ? [id, b.x, b.y, b.s, im.naturalWidth, im.naturalHeight].join('|') : 'off';
+      if(G.brandSig === sig) return;
+      G.brandSig = sig;
+      const mark = G.glogo.querySelector('.mark'), word = G.glogo.querySelector('.word');
+      if(!im){
+        G.glogo.classList.remove('off'); mark.classList.remove('hide'); word.classList.remove('hide');
+        G.lgImg.classList.add('hide'); G.clogo.classList.add('hide'); G.pwr.classList.add('hide');
+        return;
+      }
+      const url = ASSETS[id].url, f = brandFit(im.naturalWidth / im.naturalHeight, (b.s || BRAND_DEF_S.c) * 100, (b.s || BRAND_DEF_S.c) * 100 * BRAND_MAXR);
+      G.pwr.classList.remove('hide');
+      if(b.x == null){
+        mark.classList.add('hide'); word.classList.add('hide'); G.glogo.classList.remove('off');
+        if(G.lgImg.src !== url) G.lgImg.src = url;
+        G.lgImg.style.cssText = 'width:' + f.w.toFixed(2) + 'vh;height:' + f.h.toFixed(2) + 'vh;max-width:100%;';
+        G.lgImg.classList.remove('hide'); G.clogo.classList.add('hide');
+      } else {
+        mark.classList.remove('hide'); word.classList.remove('hide'); G.glogo.classList.add('off');   // keeps its space
+        if(G.clogo.src !== url) G.clogo.src = url;
+        G.clogo.style.cssText = 'left:' + (b.x * 100).toFixed(2) + 'vw;top:' + (b.y * 100).toFixed(2) + 'vh;width:' + f.w.toFixed(2) + 'vh;height:' + f.h.toFixed(2) + 'vh;';
+        G.clogo.classList.remove('hide'); G.lgImg.classList.add('hide');
+      }
+    }catch(e){ /* guest window closed */ }
   }
   function guestFilm(){
     if(!guestOpen()) return;
@@ -9457,6 +9610,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       G.film.classList.toggle('hide', showQr);
       guestFilm();
       guestPickRender();
+      guestBrand();
       const welcome = welcomeOn && state === 'idle' && !pickOpen && !ready && !!welcomeDataUrl;
       if(welcome){
         if(G.res.src !== welcomeDataUrl) G.res.src = welcomeDataUrl;
@@ -9548,6 +9702,21 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var filterKey = 'none';      // none | bw | sepia | warm | cool
   var softSkin = false;
   var welcomeOn = true;
+  // Renter's own logos (Setup 5): c = corner of the guest screen, w = on the welcome picture.
+  // x, y = centre as a share of the screen (c) or of the welcome picture (w); s = logo height as a
+  // share of that height. null = the default place (c: where the photobooth4u logo sits;
+  // w: inside the welcome card, above "Welcome to"). id null = the logo from the frame (Extras).
+  var BRAND_DEF_S = { c: 0.10, w: 110 / 1200 }, BRAND_MAXR = 2.8;
+  function brandBlank(){ return { c: { on: false, id: null, x: null, y: null, s: null }, w: { on: false, id: null, x: null, y: null, s: null } }; }
+  var brand = brandBlank();
+  var welcomeBaseUrl = '', welcomeLogoRect = null, welcomeGeo = null;
+  function brandId(k){ var b = brand && brand[k]; return b ? (b.id || (typeof logo !== 'undefined' && logo && logo.id) || null) : null; }
+  function brandImgFor(k){
+    var b = brand && brand[k]; if(!b || !b.on) return null;
+    var id = brandId(k), im = id && typeof assetImg === 'function' ? assetImg(id) : null;
+    return im && im.naturalWidth ? im : null;
+  }
+  function brandFit(asp, h, maxW){ var w = h * asp; if(maxW && w > maxW){ w = maxW; h = w / asp; } return { w: w, h: h }; }
   var welcomeMsg = '';
   var reviewEach = true;       // show each photo during the pause between shots
   var resultReviewSec = 0;     // 0 = finished photo stays until the next tap
@@ -9788,18 +9957,29 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var ink = colorDist(textColor, cardColor) > 140 ? textColor : (lumOf(cardColor) > 0.5 ? '#1C1A1E' : '#ffffff');
       var soft = lumOf(cardColor) > 0.5 ? 'rgba(28,26,30,.62)' : 'rgba(255,255,255,.75)';
       var dt = currentDateLabel();
-      var ch = 64 + 40 + 110 + (dt ? 54 : 0) + 40 + 3 * 64 + 40 + 92 + 56;
-      var cw = land ? Math.min(W * 0.42, 720) : Math.min(W * 0.82, 760);
-      var cx = land ? W * 0.53 : (W - cw) / 2;
-      var cy = land ? (H - ch) / 2 : Math.max(area.y + area.h + 30, H - ch - H * 0.05);
-      if(!land && cy + ch > H - 20){ var sc = (H - 20 - cy) / ch; ch *= Math.max(0.6, sc); }
+      var cardBox = function(slotH){
+        var ch = 64 + 40 + 110 + (dt ? 54 : 0) + 40 + 3 * 64 + 40 + 92 + 56 + slotH;
+        var cw = land ? Math.min(W * 0.42, 720) : Math.min(W * 0.82, 760);
+        var cx = land ? W * 0.53 : (W - cw) / 2;
+        var cy = land ? (H - ch) / 2 : Math.max(area.y + area.h + 30, H - ch - H * 0.05);
+        if(!land && cy + ch > H - 20){ var sc = (H - 20 - cy) / ch; ch *= Math.max(0.6, sc); }
+        return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH };
+      };
+      // The renter's welcome logo gets a space at the top of the card while it sits on the card.
+      var wl = brandImgFor('w'), wb = brand.w;
+      var box = cardBox(wl ? 130 : 0);
+      if(wl && wb.x != null){
+        var lx0 = wb.x * W, ly0 = wb.y * H;
+        if(!(lx0 >= box.cx && lx0 <= box.cx + box.cw && ly0 >= box.cy && ly0 <= box.cy + box.ch)) box = cardBox(0);
+      }
+      var ch = box.ch, cw = box.cw, cx = box.cx, cy = box.cy;
       ctx.save();
       ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = 44; ctx.shadowOffsetY = 14;
       roundRectPath(ctx, cx, cy, cw, ch, 34);
       ctx.globalAlpha = 0.95; ctx.fillStyle = cardColor; ctx.fill();
       ctx.restore();
       ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-      var mid = cx + cw / 2, yy = cy + 64 + 26;
+      var mid = cx + cw / 2, yy = cy + 64 + 26 + box.slot;
       ctx.fillStyle = soft; ctx.font = '700 30px Manrope, sans-serif';
       var name = (labelInput.value || '').trim();
       ctx.fillText(name ? 'Welcome to' : 'Welcome to our', mid, yy);
@@ -9831,8 +10011,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       ctx.font = '800 ' + bs + 'px Manrope, sans-serif';
       ctx.fillText(btnText, mid, by + bh / 2 + bs * 0.36);
       welcomeCta = { l: bx / W * 100, t: by / H * 100, w: bw / W * 100, h: bh / H * 100 };
+      welcomeGeo = { W: W, H: H, mid: mid / W };
+      welcomeBaseUrl = ''; welcomeLogoRect = null;
+      if(wl){
+        welcomeBaseUrl = c.toDataURL('image/jpeg', 0.8);   // the preview in Setup drags the logo over this
+        var lAuto = wb.x == null, lbh = (wb.s || BRAND_DEF_S.w) * H, lasp = wl.naturalWidth / wl.naturalHeight;
+        var lf = brandFit(lasp, lbh, lAuto ? Math.min(lbh * BRAND_MAXR, cw - 80) : lbh * BRAND_MAXR);
+        var lcx = lAuto ? mid : wb.x * W, lcy = lAuto ? cy + 48 + 55 : wb.y * H;
+        ctx.drawImage(wl, lcx - lf.w / 2, lcy - lf.h / 2, lf.w, lf.h);
+        welcomeLogoRect = { x: lcx / W, y: lcy / H, w: lf.w / W, h: lf.h / H, s: lbh / H };
+      }
       placeWelcomePulse();
       welcomeDataUrl = c.toDataURL('image/jpeg', 0.88);
+      if(typeof brandPvLayout === 'function') brandPvLayout();
       welcomeImg.src = welcomeDataUrl;
       var prev = document.getElementById('welcomePreview'); if(prev) prev.src = welcomeDataUrl;
       guestRender();
@@ -11279,6 +11470,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       printPrefs: Object.assign({}, printPrefs),
       bgRep: Object.assign({}, bgRep), bgMine: bgMine.slice(),
       fx: Object.assign({}, fx),
+      brand: JSON.parse(JSON.stringify(brand)),
       pay: Object.assign({}, payCfg)
     };
   }
@@ -11397,10 +11589,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(s.printPrefs) applyPrintPrefs(s.printPrefs);
       applyBgRepSetup(s.bgRep, s.bgMine);
       if(s.fx) applyFxSetup(s.fx);
+      brand = cleanBrand(s.brand);
       applyPaySetup(s.pay);
       applyFramesSetup(s);
       buildLayoutPicker();
-      ensureAssets(designAssetIds().concat(myProps)).then(function(){ refreshDecorUI(); refreshFrameUI(); redrawAll(); });
+      ensureAssets(designAssetIds().concat(myProps)).then(function(){ refreshDecorUI(); refreshFrameUI(); redrawAll(); refreshBrandUI(); guestRender(); });
       if(LAYOUT_DEFS[s.layout]) setupLayout = (s.layout === 'trio' ? 'strip' : s.layout);   // Trio was removed
       guestPickOn = !!s.guestPick; guestPickToggle.checked = guestPickOn;
       guestLayoutSet = Array.isArray(s.guestLayouts) ? s.guestLayouts.filter(function(k){ return LAYOUT_DEFS[k]; }) : [];
@@ -11847,6 +12040,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     (typeof myFrames !== 'undefined' && myFrames || []).forEach(function(f){ ids.push(f.id); });
     if(typeof bgMine !== 'undefined') bgMine.forEach(function(a){ ids.push(a); });
     if(typeof fx !== 'undefined' && fx){ if(fx.sShut) ids.push(fx.sShut.id); if(fx.sTick) ids.push(fx.sTick.id); }
+    if(brand){ if(brand.c.id) ids.push(brand.c.id); if(brand.w.id) ids.push(brand.w.id); }
     return ids;
   }
   // Reads a picked file, shrinks it (keeping transparency for PNG/WebP) and returns a data URL.
@@ -12074,12 +12268,234 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var url = await readImageFile(f, 900);
       var id = await addAsset(url);
       logo = { id: id, pos: logo ? logo.pos : 'br', size: logo ? logo.size : 0.2 };
-      refreshDecorUI(); redrawAll(); scheduleSetupSave();
+      refreshDecorUI(); redrawAll(); scheduleSetupSave(); refreshBrandUI();
     }catch(e){ showToast(e.message, 4000); }
   });
-  logoRemove.addEventListener('click', function(){ logo = null; refreshDecorUI(); redrawAll(); });
+  logoRemove.addEventListener('click', function(){ logo = null; refreshDecorUI(); redrawAll(); refreshBrandUI(); });
   logoPos.addEventListener('change', function(){ if(logo){ logo.pos = logoPos.value; redrawAll(); } });
   logoSize.addEventListener('input', function(){ if(logo){ logo.size = Number(logoSize.value) / 100; redrawAll(); } });
+
+  // ---- Your logo on the guest screen (Setup 5) ----
+  // Two logos: the corner one replaces the photobooth4u logo on the guest screen,
+  // the welcome one sits on the welcome picture. Both are placed by dragging them
+  // in a small preview of what guests see.
+  var brandEls = {
+    sec: document.getElementById('brandSection'), lead: document.getElementById('brandLead'),
+    rowC: document.getElementById('brandRowC'), rowW: document.getElementById('brandRowW'),
+    tip: document.getElementById('brandTip'), pv: document.getElementById('brandPv'),
+    col: document.getElementById('bpvCol'), bName: document.getElementById('bpvBrand'), ev: document.getElementById('bpvEv'), dt: document.getElementById('bpvDt'),
+    pwr: document.getElementById('bpvPwr'), frame: document.getElementById('bpvFrame'), img: document.getElementById('bpvImg'),
+    chip: document.getElementById('bpvChip'), guide: document.getElementById('bpvGuide'), selTxt: document.getElementById('brandSelTxt')
+  };
+  var brandSel = null, brandDrag = null, brandPvGeo = null, brandTipKeep = false;
+  var BRAND_NAME = { c: 'Corner logo', w: 'Welcome logo' };
+  function brandTipSeen(){ try{ return localStorage.getItem('pb_brand_tip') === '1'; }catch(e){ return false; } }
+  function brandOv(k){
+    var el = brandEls.pv.querySelector('.bpv-logo[data-k="' + k + '"]');
+    if(el) return el;
+    el = document.createElement('div'); el.className = 'bpv-logo'; el.dataset.k = k; el.hidden = true;
+    el.setAttribute('role', 'button'); el.setAttribute('aria-label', BRAND_NAME[k] + ': drag to move');
+    el.innerHTML = '<img alt=""><i class="bpv-h" aria-hidden="true"></i>';
+    el.addEventListener('pointerdown', function(e){ brandGrab(k, e); });
+    brandEls.pv.appendChild(el);
+    return el;
+  }
+  function brandThumb(k){
+    var K = k.toUpperCase(), el = document.getElementById('brand' + K + 'Thumb'), btn = document.getElementById('brand' + K + 'Btn');
+    var id = brandId(k), a = id && ASSETS[id];
+    el.innerHTML = '';
+    if(a){ var im = document.createElement('img'); im.alt = ''; im.src = a.url; el.appendChild(im); }
+    else { var sp = document.createElement('span'); sp.textContent = 'No logo yet'; el.appendChild(sp); }
+    btn.textContent = brand[k].id ? 'Change' : (a ? 'Use another' : 'Upload');
+    document.getElementById('brand' + K + 'On').checked = !!brand[k].on;
+  }
+  function refreshBrandUI(){
+    if(!brandEls) return;
+    var trad = isTraditional();
+    brandEls.rowC.hidden = !trad;
+    if(!trad && brandSel === 'c') brandSel = null;
+    brandEls.lead.textContent = trad
+      ? 'Show your business logo to guests. The start screen on this device keeps the photobooth4u logo.'
+      : 'Show your business logo on the welcome picture guests see between sessions. The start screen keeps the photobooth4u logo.';
+    brandThumb('c'); brandThumb('w');
+    brandEls.tip.hidden = (brandTipSeen() && !brandTipKeep) || !(brand.w.on || (trad && brand.c.on));
+    brandPvLayout();
+  }
+  // Lays out the preview the same way the guest screen is laid out (or just the welcome picture on a tablet).
+  function brandPvLayout(){
+    if(!brandEls) return;
+    var pv = brandEls.pv;
+    if(!pv) return;
+    var W = pv.clientWidth;
+    if(!W) return;
+    var trad = isTraditional();
+    var ga = welcomeGeo ? welcomeGeo.W / welcomeGeo.H : (function(){ try{ return Math.max(0.5, Math.min(2.4, camAspect())); }catch(e){ return 4 / 3; } })();
+    var H, fx, fy, fw, fh;
+    if(trad){
+      H = W * 9 / 16;
+      fh = Math.min(0.94 * H, 0.60 * W / ga); fw = fh * ga; fx = (W - fw) / 2; fy = (H - fh) / 2;
+    } else {
+      H = Math.min(W / ga, W * 1.2); fh = H; fw = H * ga; fx = (W - fw) / 2; fy = 0;
+    }
+    pv.style.height = H + 'px';
+    var colW = Math.max(10, fx - 0.048 * W), padY = 0.03 * H;
+    brandPvGeo = { W: W, H: H, fx: fx, fy: fy, fw: fw, fh: fh, colL: 0.024 * W + colW / 2, colR: W - 0.024 * W - colW / 2, padY: padY, colW: colW, trad: trad };
+    var col = brandEls.col;
+    col.hidden = !trad; brandEls.chip.hidden = !trad;
+    brandEls.frame.style.cssText = 'left:' + fx + 'px;top:' + fy + 'px;width:' + fw + 'px;height:' + fh + 'px;' + (trad ? '' : 'border-radius:0;box-shadow:none;');
+    var src = welcomeBaseUrl || welcomeDataUrl;
+    if(src && brandEls.img.getAttribute('src') !== src) brandEls.img.src = src;
+    var cImg = trad ? brandImgFor('c') : null;
+    if(trad){
+      col.style.cssText = 'left:' + (0.024 * W) + 'px;top:' + padY + 'px;width:' + colW + 'px;height:' + (H - 2 * padY) + 'px;';
+      var px = function(p){ return (p * W / 100) + 'px'; };
+      brandEls.bName.style.fontSize = px(2.2);
+      brandEls.bName.style.visibility = cImg ? 'hidden' : '';
+      col.querySelector('.bpv-msg').style.fontSize = px(2.6);
+      col.querySelector('.bpv-sub').style.fontSize = px(0.85);
+      brandEls.ev.style.fontSize = px(2); brandEls.ev.style.maxWidth = colW + 'px';
+      brandEls.dt.style.fontSize = px(0.9);
+      brandEls.pwr.style.fontSize = px(0.72);
+      brandEls.pwr.hidden = !cImg;
+      brandEls.ev.textContent = (labelInput.value || '').trim() || 'Your event';
+      brandEls.dt.textContent = (typeof currentDateLabel === 'function' && currentDateLabel()) || '';
+      brandEls.chip.style.cssText = 'font-size:' + px(0.85) + ';left:' + (brandPvGeo.colR) + 'px;top:' + padY + 'px;transform:translateX(-50%);';
+    }
+    // Corner logo
+    var oc = brandOv('c');
+    if(cImg){
+      var b = brand.c, sH = (b.s || BRAND_DEF_S.c) * H;
+      var f = brandFit(cImg.naturalWidth / cImg.naturalHeight, sH, sH * BRAND_MAXR);
+      if(b.x == null && f.w > colW){ f = brandFit(cImg.naturalWidth / cImg.naturalHeight, colW / (cImg.naturalWidth / cImg.naturalHeight), colW); }
+      var ccx = b.x == null ? brandPvGeo.colL : b.x * W, ccy = b.x == null ? padY + f.h / 2 : b.y * H;
+      brandPlace(oc, cImg, ccx, ccy, f.w, f.h);
+    } else oc.hidden = true;
+    // Welcome logo (its spot comes from the last drawing of the welcome picture)
+    var ow = brandOv('w'), wImg = brandImgFor('w'), r = welcomeLogoRect;
+    if(wImg && r){
+      brandPlace(ow, wImg, fx + r.x * fw, fy + r.y * fh, r.w * fw, r.h * fh);
+    } else ow.hidden = true;
+    ['c', 'w'].forEach(function(k){ brandOv(k).classList.toggle('sel', brandSel === k && !brandOv(k).hidden); });
+    brandEls.selTxt.textContent = brandSel && !brandOv(brandSel).hidden ? BRAND_NAME[brandSel] + ' selected' : 'Tap a logo to adjust it';
+    document.getElementById('brandCenter').disabled = !brandSel || brandOv(brandSel).hidden;
+    document.getElementById('brandReset').disabled = !brandSel || brandOv(brandSel).hidden;
+  }
+  function brandPlace(el, im, cx, cy, w, h){
+    el.hidden = false;
+    var i = el.firstChild; if(i.getAttribute('src') !== im.src) i.src = im.src;
+    el.style.left = (cx - w / 2) + 'px'; el.style.top = (cy - h / 2) + 'px';
+    el.style.width = w + 'px'; el.style.height = h + 'px';
+    el.dataset.cx = cx; el.dataset.cy = cy; el.dataset.w = w; el.dataset.h = h;
+  }
+  // Turns a default spot into a fixed one before the first drag.
+  function brandPin(k){
+    var b = brand[k], el = brandOv(k), g = brandPvGeo;
+    if(b.x != null || !g) return;
+    if(k === 'c'){ b.x = +el.dataset.cx / g.W; b.y = +el.dataset.cy / g.H; b.s = b.s || BRAND_DEF_S.c; }
+    else if(welcomeLogoRect){ b.x = welcomeLogoRect.x; b.y = welcomeLogoRect.y; b.s = welcomeLogoRect.s; }
+  }
+  function brandGrab(k, e){
+    if(e.button > 0) return;
+    e.preventDefault(); e.stopPropagation();
+    var el = brandOv(k), g = brandPvGeo; if(!g) return;
+    brandSel = k; brandPin(k);
+    var r = brandEls.pv.getBoundingClientRect();
+    var px = e.clientX - r.left, py = e.clientY - r.top, cx = +el.dataset.cx, cy = +el.dataset.cy;
+    brandDrag = { k: k, id: e.pointerId, mode: e.target.classList.contains('bpv-h') ? 'size' : 'move', px: px, py: py, cx: cx, cy: cy,
+                  d0: Math.max(8, Math.hypot(px - cx, py - cy)), s0: brand[k].s || BRAND_DEF_S[k], moved: false };
+    try{ el.setPointerCapture(e.pointerId); }catch(err){}
+    brandPvLayout();
+  }
+  function brandMove(e){
+    var d = brandDrag; if(!d || e.pointerId !== d.id) return;
+    var g = brandPvGeo, b = brand[d.k], r = brandEls.pv.getBoundingClientRect();
+    var px = e.clientX - r.left, py = e.clientY - r.top, guide = null;
+    if(Math.abs(px - d.px) + Math.abs(py - d.py) > 3) d.moved = true;
+    if(d.mode === 'size'){
+      b.s = Math.max(0.03, Math.min(d.k === 'c' ? 0.45 : 0.6, d.s0 * Math.hypot(px - d.cx, py - d.cy) / d.d0));
+    } else {
+      var cx = d.cx + px - d.px, cy = d.cy + py - d.py;
+      var snaps = d.k === 'c' ? [g.colL, g.W / 2, g.colR] : [g.fx + (welcomeGeo ? welcomeGeo.mid : 0.5) * g.fw, g.fx + g.fw / 2];
+      snaps.forEach(function(sx){ if(guide == null && Math.abs(cx - sx) < 0.015 * g.W){ cx = sx; guide = sx; } });
+      if(d.k === 'c'){ b.x = Math.max(0, Math.min(1, cx / g.W)); b.y = Math.max(0, Math.min(1, cy / g.H)); }
+      else { b.x = Math.max(0, Math.min(1, (cx - g.fx) / g.fw)); b.y = Math.max(0, Math.min(1, (cy - g.fy) / g.fh)); }
+    }
+    brandEls.guide.classList.toggle('on', guide != null);
+    if(guide != null) brandEls.guide.style.left = guide + 'px';
+    if(d.k === 'w') brandWLive(); else brandPvLayout();
+  }
+  // While dragging the welcome logo, move it over the picture without redrawing the picture each time.
+  function brandWLive(){
+    var g = brandPvGeo, b = brand.w, im = brandImgFor('w'), el = brandOv('w');
+    if(!g || !im) return;
+    var sH = b.s * g.fh, f = brandFit(im.naturalWidth / im.naturalHeight, sH, sH * BRAND_MAXR);
+    brandPlace(el, im, g.fx + b.x * g.fw, g.fy + b.y * g.fh, f.w, f.h);
+  }
+  function brandDrop(e){
+    var d = brandDrag; if(!d || (e && e.pointerId !== d.id)) return;
+    brandDrag = null;
+    brandEls.guide.classList.remove('on');
+    if(d.moved){ try{ localStorage.setItem('pb_brand_tip', '1'); }catch(err){} brandTipKeep = true; }   // gone next time (not now: the preview would jump)
+    brandChanged(d.k);
+  }
+  brandEls.pv.addEventListener('pointermove', brandMove);
+  brandEls.pv.addEventListener('pointerup', brandDrop);
+  brandEls.pv.addEventListener('pointercancel', brandDrop);
+  brandEls.pv.addEventListener('lostpointercapture', brandDrop);
+  brandEls.pv.addEventListener('pointerdown', function(e){ if(!e.target.closest('.bpv-logo')){ brandSel = null; brandPvLayout(); } });
+  function brandChanged(k){
+    scheduleSetupSave();
+    if(k === 'w' || k === 'both') scheduleWelcomeRender();
+    guestRender();
+    refreshBrandUI();
+  }
+  ['c', 'w'].forEach(function(k){
+    var K = k.toUpperCase(), on = document.getElementById('brand' + K + 'On'), file = document.getElementById('brand' + K + 'File');
+    on.addEventListener('change', function(){
+      if(on.checked && !brandId(k)){ on.checked = false; file.click(); return; }
+      brand[k].on = on.checked;
+      if(on.checked) brandSel = k;
+      brandChanged(k);
+    });
+    file.addEventListener('change', async function(){
+      var f = file.files[0]; file.value = '';
+      if(!f) return;
+      try{
+        var url = await readImageFile(f, 900);
+        brand[k].id = await addAsset(url);
+        brand[k].on = true; brandSel = k;
+        brandChanged(k);
+      }catch(err){ showToast(err.message, 4000); }
+    });
+  });
+  document.getElementById('brandCenter').addEventListener('click', function(){
+    var k = brandSel; if(!k) return;
+    brandPin(k);
+    var g = brandPvGeo, b = brand[k];
+    if(!g) return;
+    b.x = k === 'c' ? g.colL / g.W : (welcomeGeo ? welcomeGeo.mid : 0.5);
+    brandChanged(k);
+  });
+  document.getElementById('brandReset').addEventListener('click', function(){
+    var k = brandSel; if(!k) return;
+    brand[k].x = brand[k].y = brand[k].s = null;
+    brandChanged(k);
+  });
+  function cleanBrand(v){
+    var out = brandBlank();
+    var num = function(n, lo, hi){ n = Number(n); return isFinite(n) && n !== null ? Math.max(lo, Math.min(hi, n)) : null; };
+    ['c', 'w'].forEach(function(k){
+      var o = v && typeof v === 'object' && v[k] && typeof v[k] === 'object' ? v[k] : {};
+      var hasPos = o.x != null && o.y != null && isFinite(Number(o.x)) && isFinite(Number(o.y));
+      out[k] = { on: !!o.on, id: typeof o.id === 'string' && /^a[A-Za-z0-9]{8,32}$/.test(o.id) ? o.id : null,
+                 x: hasPos ? num(o.x, 0, 1) : null, y: hasPos ? num(o.y, 0, 1) : null, s: o.s != null ? num(o.s, 0.03, 0.6) : null };
+    });
+    return out;
+  }
+  try{ new ResizeObserver(function(){ brandPvLayout(); }).observe(brandEls.pv); }catch(e){ window.addEventListener('resize', brandPvLayout); }
+  window.addEventListener('pb-mode-change', refreshBrandUI);
+  labelInput.addEventListener('input', function(){ brandPvLayout(); });
+  refreshBrandUI();
 
   // ---- Stickers & own props ----
   var propTray = document.getElementById('propTray');
@@ -12264,6 +12680,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var st = t.settings || {};
     if(st.overlay) ids.push(st.overlay.id);
     if(st.logo) ids.push(st.logo.id);
+    if(st.brand){ ['c', 'w'].forEach(function(k){ if(st.brand[k] && st.brand[k].id) ids.push(st.brand[k].id); }); }
     (st.decor || []).forEach(function(d){ if(d.src.indexOf('a:') === 0) ids.push(d.src.slice(2)); });
     (st.myProps || []).forEach(function(id){ ids.push(id); });
     if(st.bgAssetId) ids.push(st.bgAssetId);
@@ -14282,17 +14699,43 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(L.lifetime && L.hard) txt += ' Works offline until ' + fmt(L.hard) + '; it renews by itself whenever this laptop has internet.';
       if(L.warn) txt += ' ' + L.warn;
       document.getElementById('deskLic').textContent = txt;
-      // A newer app version is out (photobooth4u says so at each check-in).
-      var newer = function(a, b){ a = String(a || '').split('.').map(Number); b = String(b || '').split('.').map(Number); for(var i = 0; i < 3; i++){ if((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0); } return false; };
-      var up = document.getElementById('deskUpd');
-      if(L.latest && newer(L.latest, info.version)){
-        up.hidden = false;
-        var escT = function(t){ return String(t).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
-        up.innerHTML = 'Update available: version ' + escT(L.latest) + ' (this laptop has ' + escT(info.version || '?') + '). <button type="button" class="link-btn" id="deskGetUpd" style="min-height:0;padding:0;color:#A9301D;">Get the update</button>';
-        document.getElementById('deskGetUpd').addEventListener('click', function(){ api.openUrl('app://booth/app/'); });
-      } else up.hidden = true;
     }
     document.getElementById('deskNewsBtn').addEventListener('click', function(){ api.openUrl('app://booth/updates/'); });
+    // A new version of the app: a bar at the top of Setup (never on the guest's screens).
+    var updBar = document.getElementById('deskUpdBar'), updLater = false, updSig = '';
+    function updRender(u){
+      if(!updBar || !u) return;
+      var show = !!u.latest && !(updLater && u.state === 'ready') && u.state !== 'idle' && !(u.os === 'win' && u.state === 'error');
+      updBar.hidden = !show;
+      if(!show){ updSig = ''; return; }
+      var sig = [u.state, u.latest, u.os, u.state === 'downloading' ? '' : u.progress].join('|');
+      var v = 'version ' + escT(u.latest);
+      if(sig === updSig){ var bi = updBar.querySelector('.du-bar i'); if(bi) bi.style.width = (u.progress || 0) + '%'; var pc = updBar.querySelector('.du-pc'); if(pc) pc.textContent = (u.progress || 0) + '%'; return; }
+      updSig = sig;
+      var news = '<button type="button" data-u="news">What\u2019s new</button>';
+      var h;
+      if(u.state === 'downloading') h = '<span class="du-txt">Downloading ' + v + ' of the app\u2026 <span class="du-pc">' + (u.progress || 0) + '%</span><small>You can keep using the booth.</small></span>' + news + '<span class="du-bar"><i style="width:' + (u.progress || 0) + '%"></i></span>';
+      else if(u.os === 'win' && u.state === 'ready') h = '<span class="du-txt"><b>Version ' + escT(u.latest) + ' is ready.</b><small>Restart now to install it (Windows asks once for permission), or later: it installs when you close the app.</small></span>' + news + '<button type="button" data-u="later">Later</button><button type="button" class="go" data-u="install">Restart now</button>';
+      else if(u.os === 'mac' && u.state === 'ready') h = '<span class="du-txt"><b>Version ' + escT(u.latest) + ' is downloaded.</b><small>In the window that opened, drag photobooth4u into Applications and choose Replace. Then quit this app and open it again.</small></span><button type="button" data-u="open">Show it again</button>';
+      else if(u.os === 'mac' && u.state === 'error') h = '<span class="du-txt"><b>Couldn\u2019t download ' + v + '.</b><small>' + escT(u.error || '') + '</small></span><button type="button" class="go" data-u="download">Try again</button>';
+      else h = '<span class="du-txt"><b>Version ' + escT(u.latest) + ' of the app is out.</b><small>This laptop has ' + escT(u.current || info0.version || '') + '. Your activation, designs and photos stay.</small></span>' + news + (u.os === 'mac' ? '<button type="button" class="go" data-u="download">Download</button>' : '');
+      updBar.innerHTML = h;
+    }
+    var escT = function(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+    var info0 = {};
+    if(updBar) updBar.addEventListener('click', function(e){
+      var b = e.target.closest('[data-u]'); if(!b || !api.update) return;
+      var a = b.dataset.u;
+      if(a === 'news') api.openUrl('app://booth/updates/?for=app');
+      else if(a === 'later'){ updLater = true; updBar.hidden = true; }
+      else if(a === 'install'){ b.disabled = true; b.textContent = 'Restarting\u2026'; api.update.install(); }
+      else if(a === 'download'){ b.disabled = true; api.update.download().then(updRender); }
+      else if(a === 'open') api.update.open();
+    });
+    if(api.update){
+      api.update.on(updRender);
+      api.info().then(function(i){ info0 = i || {}; updRender(i && i.update); }).catch(function(){});
+    }
     function refresh(){ return api.info().then(render).catch(function(){}); }
     refresh();
     // The laptop's Wi-Fi address can change (joined a network, hotspot on): keep the QR right.

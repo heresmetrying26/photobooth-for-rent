@@ -15,5 +15,13 @@ contextBridge.exposeInMainWorld('pb4u', {
   copy: (t) => ipcRenderer.invoke('pb4u:copy', String(t || '')),
   openUrl: (u) => ipcRenderer.invoke('pb4u:openUrl', String(u || '')),
   quit: () => ipcRenderer.invoke('pb4u:quit'),
+  update: {
+    info: () => ipcRenderer.invoke('pb4u:update'),
+    check: () => ipcRenderer.invoke('pb4u:updateCheck'),
+    download: () => ipcRenderer.invoke('pb4u:updateDownload'),
+    open: () => ipcRenderer.invoke('pb4u:updateOpen'),
+    install: () => ipcRenderer.invoke('pb4u:updateInstall'),
+    on: (fn) => { ipcRenderer.on('pb4u:update', (e, info) => { try { fn(info); } catch (err) { /* ignore */ } }); }
+  },
   onLicence: (fn) => { ipcRenderer.on('pb4u:licence', (e, info) => { try { fn(info); } catch (err) { /* ignore */ } }); }
 });

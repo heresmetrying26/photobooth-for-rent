@@ -1,10 +1,10 @@
 import { safe, json, licenses, normCode, throttle, recordFail, clearFail, devicesOf, maxDevicesOf } from '../lib/core.mjs';
-import { APP, HELPER, NOTES, appDownloads } from '../lib/updates.mjs';
+import { HELPER, NOTES, appDownloads, liveApp } from '../lib/updates.mjs';
 
 // GET  /api/updates            -> { ok, app, helper, notes }   (public: the What's new page)
 // POST /api/updates { code }   -> the laptop app downloads for that code (if it includes the app)
 export default safe(async (req, context) => {
-  if (req.method === 'GET') return json({ ok: true, app: APP, helper: HELPER, notes: NOTES });
+  if (req.method === 'GET') return json({ ok: true, app: await liveApp(), helper: HELPER, notes: NOTES });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   const b = await req.json().catch(() => null);
   if (!b || !b.code) return json({ error: 'Type your code.' }, 400);
@@ -24,9 +24,9 @@ export default safe(async (req, context) => {
     expiresAt: rec.lifetime ? null : rec.expiresAt || null, expired: !!expired,
     hasApp: !!rec.offlineOpt, offlineOnly: !!rec.offlineOnly,
     devices: { used: devicesOf(rec).length, max: maxDevicesOf(rec), apps: devicesOf(rec).filter((d) => /app$/.test(d.kind || '')).length },
-    app: APP
+    app: await liveApp()
   };
-  if (rec.offlineOpt) out.downloads = appDownloads();
+  if (rec.offlineOpt) out.downloads = appDownloads(out.app.version);
   return json(out);
 });
 

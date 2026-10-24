@@ -54,6 +54,19 @@ Google Drive, My Events, the laptop print station for iPads, and trial codes.
 Change `version` in `desktop/package.json` for each new release. The app always contains the booth as it
 is in `protected/booth.html` when it is built, so rebuild after booth changes.
 
+### Updates (1.0.2 and newer)
+The app asks `photobooth4u.netlify.app/api/updates` which version is out (at start-up and every 4 hours,
+when online). That only changes once the release `desktop-vX.Y.Z` has all 3 installers on GitHub (see
+`netlify/lib/updates.mjs`), and the installer always comes from that GitHub release. To release:
+bump `version` here, add it at the top of `APP_RELEASES` in `netlify/lib/updates.mjs` with a note, push,
+then push the tag `desktop-vX.Y.Z`.
+- **Windows**: downloads the new installer in the background, then Setup shows **Restart now / Later**
+  (Later = it installs, silently, when the app is closed). Windows asks once for permission.
+- **Mac**: Setup shows **Download**; the app saves the right `.dmg` in Downloads and opens it, and the
+  renter drags the app into Applications (Replace). Fully automatic Mac updates need an Apple Developer
+  ID (code signing).
+The bar only shows in Setup, never during a guest session.
+
 ### Not code-signed yet
 - **Windows**: SmartScreen says "Windows protected your PC" → **More info → Run anyway**. The installer asks
   for admin once (it adds a firewall rule so guests' phones can reach the laptop on private networks).

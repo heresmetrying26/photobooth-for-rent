@@ -107,6 +107,34 @@
     background:rgba(255,255,255,.95); border-top:1px solid var(--line); box-shadow:0 -6px 20px rgba(70,45,25,.08); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);}
   .op-dock.bar .dock-btn{box-shadow:none; min-height:42px;}
   .op-dock.bar .dock-chip-slot{order:3; margin-left:auto;}
+  .dock-row{display:flex; flex-wrap:wrap; align-items:center; gap:8px; pointer-events:none;}
+  .dock-row > *{pointer-events:auto;}
+  .op-dock.bar{flex-wrap:wrap; row-gap:4px;}
+  .op-dock.bar .dock-row{order:1;}
+  .op-dock.bar .dock-pwr{order:4; flex-basis:100%;}
+  .dock-pwr{display:flex; align-items:center; gap:6px; margin:0 0 0 4px; font:700 12px 'Manrope',sans-serif; letter-spacing:.04em; color:var(--ink-dim); white-space:nowrap;}
+  .dock-pwr[hidden]{display:none;}
+  .dock-pwr .pm{display:grid; grid-template-columns:1fr 1fr; gap:1.5px; width:12px; height:12px;}
+  .dock-pwr .pm i{background:var(--ink); border-radius:2px;}.dock-pwr .pm i:nth-child(2){background:var(--blue-deep);}
+  .dock-pwr b{font:600 14px 'Fraunces',Georgia,serif; letter-spacing:-.02em; color:var(--ink);}.dock-pwr b em{font-style:normal; color:var(--blue-deep);}
+  body.in-session .dock-pwr{color:#B9B1AA;}
+  body.in-session .dock-pwr b, body.in-session .dock-pwr .pm i{color:#EDE6DD;}
+  body.in-session .dock-pwr .pm i{background:#EDE6DD;}body.in-session .dock-pwr .pm i:nth-child(2){background:#E2614B;}
+  body.in-session .dock-pwr b em{color:#E2614B;}
+  body.stage-full .dock-pwr{margin-left:0; padding:4px 10px; border-radius:999px; background:rgba(0,0,0,.5); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);}   /* readable over the picture */
+  .dock-btn .bk-dot{width:9px; height:9px; border-radius:50%; background:#2EA66B; flex:none; margin-left:-2px;}
+  .dock-btn .bk-dot.bad{background:#D93A2B; box-shadow:0 0 0 3px rgba(217,58,43,.2);}
+  .backup-pop{position:fixed; z-index:60; width:min(380px, calc(100vw - 24px)); padding:16px 18px; border-radius:16px; background:#fff; color:var(--ink); box-shadow:0 18px 44px rgba(0,0,0,.32); border:1px solid var(--line);}
+  .backup-pop[hidden]{display:none;}
+  .backup-pop .bp-title{margin:0 0 4px; font:600 19px 'Fraunces',Georgia,serif;}
+  .backup-pop .bp-text{margin:0; font-size:14px; line-height:1.5; color:var(--ink-dim); overflow-wrap:anywhere;}
+  .backup-pop .bp-btns{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
+  .backup-pop .bp-btns .action-btn{width:auto; margin:0; min-height:40px; padding:0 16px; font-size:13.5px;}
+  #backupSection{display:none !important;}   /* lives in the Backup folder button now */
+  /* The renter's logo in Photo Session (Setup keeps the photobooth4u logo) */
+  .brand-client{display:none; height:46px; width:auto; max-width:220px; object-fit:contain;}
+  body.in-session.has-client .brand-logo .brand-mark, body.in-session.has-client .brand-logo .brand-word{display:none;}
+  body.in-session.has-client .brand-client{display:block;}
   body.in-session{padding-bottom:var(--dock-reserve, 0px);}
   /* Rental / trial time left: moved by the booth into the Setup bar or the dock */
   .start-info{overflow:hidden;}
@@ -159,6 +187,9 @@
   .copies-sheet .cs-btns{display:flex; gap:10px; margin-top:18px;}
   .copies-sheet .cs-btns button{flex:1; min-height:52px; border-radius:999px; font:800 16px 'Manrope',sans-serif; cursor:pointer; border:1px solid var(--line); background:#fff; color:var(--ink);}
   .copies-sheet .cs-btns .go{background:var(--blue-deep); border-color:var(--blue-deep); color:#fff;}
+  .ask-card{width:min(440px, 100%) !important; text-align:left !important;}
+  .ask-card .cs-title{font-size:20px; text-align:left;}
+  .ask-card .label-input{width:100%; min-height:48px; font:600 16px 'Manrope',sans-serif; padding:0 14px; box-sizing:border-box;}
   .printing-note{position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:275; max-width:min(520px, calc(100vw - 32px)); padding:22px 30px; border-radius:22px; background:rgba(28,26,30,.92); color:#fff; font:800 22px 'Manrope',sans-serif; text-align:center; box-shadow:0 24px 60px rgba(0,0,0,.35); pointer-events:none;}
   .printing-note[hidden]{display:none;}
   .print-quick small{display:block; font-size:11px; font-weight:700; opacity:.75; margin-top:1px;}
@@ -1784,6 +1815,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   <div class="brand-logo">
     <span class="brand-mark"><i></i><i></i><i></i><i></i></span>
     <span class="brand-word"><b>photobooth</b><em>4u</em></span>
+    <img class="brand-client" id="brandClient" alt="">
   </div>
   <div class="subtitle" id="brandSubtitle">Snap · Print · Share</div>
   <div class="tab-bar" id="tabBar">
@@ -2320,9 +2352,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <p class="panel-label">Your logo</p>
         <p class="panel-hint step-lead" id="brandLead">Show your business logo to guests. The start screen on this device keeps the photobooth4u logo.</p>
         <div class="brand-row" id="brandRowC">
-          <input type="checkbox" id="brandCOn" aria-label="Show the corner logo">
+          <input type="checkbox" id="brandCOn" aria-label="Show the top-left logo">
           <div class="brand-thumb" id="brandCThumb"></div>
-          <div class="brand-txt"><b>Corner logo</b><small>On the guest screen the whole session, in place of the photobooth4u logo.</small></div>
+          <div class="brand-txt"><b>Top-left logo</b><small>Top-left of Photo Session and the guest screen, in place of the photobooth4u logo.</small></div>
           <label class="upload-btn" for="brandCFile" id="brandCBtn">Change</label>
           <input type="file" id="brandCFile" accept="image/*">
         </div>
@@ -2725,6 +2757,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     <div class="cs-btns"><button type="button" id="copiesSheetCancel">Cancel</button><button type="button" class="go" id="copiesSheetGo">Print</button></div>
   </div>
 </div>
+<div class="copies-sheet" id="askSheet" hidden>
+  <form class="cs-card ask-card" role="dialog" aria-modal="true" aria-labelledby="askTitle" id="askForm">
+    <p class="cs-title" id="askTitle"></p>
+    <input type="text" class="label-input" id="askInput" maxlength="60" autocomplete="off" spellcheck="false" aria-labelledby="askTitle">
+    <p class="cs-left" id="askHint"></p>
+    <div class="cs-btns"><button type="button" id="askCancel">Cancel</button><button type="submit" class="go" id="askGo">Save</button></div>
+  </form>
+</div>
 <div class="printing-note" id="printingNote" role="status" aria-live="polite" hidden></div>
 <div class="pay-badge" id="payBadge" aria-hidden="true"></div>
 <div class="pay-sheet" id="paySheet" role="dialog" aria-modal="true" aria-labelledby="payTitle" hidden>
@@ -2769,8 +2809,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 </div>
 <div class="op-dock" id="opDock" hidden>
   <span class="dock-chip-slot" id="dockChipSlot"></span>
+  <div class="dock-row">
   <button type="button" class="dock-btn" id="camFab" hidden aria-label="Camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Camera</span></button>
   <button type="button" class="dock-btn" id="printFab" hidden aria-label="Printer settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg><span>Printer</span></button>
+  <button type="button" class="dock-btn" id="backupFab" hidden aria-label="Backup folder" aria-expanded="false" aria-controls="backupPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Backup folder</span><i class="bk-dot" aria-hidden="true"></i></button>
+  </div>
+  <div class="dock-pwr" id="dockPwr" hidden>Powered by <span class="pm" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>photobooth<em>4u</em></b></div>
+</div>
+<div class="backup-pop" id="backupPop" role="dialog" aria-label="Backup folder" hidden>
+  <p class="bp-title">Backup folder</p>
+  <p class="bp-text" id="backupPopText"></p>
+  <div class="bp-btns"><button type="button" class="action-btn primary" id="backupPopAllow">Allow saving</button><button type="button" class="action-btn" id="backupPopChange">Change folder</button></div>
 </div>
 <button type="button" class="lock-icon" id="lockIcon" aria-label="Unlock" title="Unlock" hidden><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></button>
 <div class="pin-modal" id="pinModal" hidden>
@@ -4914,6 +4963,31 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(sStatus) sStatus.textContent = sText || '';
     if(sAllow) sAllow.style.display = backupDir && !backupOk ? '' : 'none';
     if(sec) sec.classList.toggle('hidden', !backupDir || state === 'capturing');
+    // Photo Session: a "Backup folder" button in the bottom-left bar (green dot = saving, red = needs a tap).
+    const fab = document.getElementById('backupFab');
+    if(fab){
+      const was = fab.hidden;
+      fab.hidden = !backupDir;
+      fab.querySelector('.bk-dot').classList.toggle('bad', !!backupDir && !backupOk);
+      fab.title = sText || '';
+      document.getElementById('backupPopText').textContent = sText || '';
+      document.getElementById('backupPopAllow').style.display = backupDir && !backupOk ? '' : 'none';
+      if(!backupDir) closeBackupPop();
+      if(was !== fab.hidden && typeof scheduleDock === 'function') scheduleDock();
+    }
+  }
+  function closeBackupPop(){
+    const pop = document.getElementById('backupPop'); if(!pop || pop.hidden) return;
+    pop.hidden = true;
+    const fab = document.getElementById('backupFab'); if(fab) fab.setAttribute('aria-expanded', 'false');
+  }
+  function openBackupPop(){
+    const pop = document.getElementById('backupPop'), fab = document.getElementById('backupFab');
+    if(!pop || !fab) return;
+    pop.hidden = false; fab.setAttribute('aria-expanded', 'true');
+    const r = fab.getBoundingClientRect();
+    pop.style.left = Math.max(12, Math.min(r.left, window.innerWidth - pop.offsetWidth - 12)) + 'px';
+    pop.style.bottom = (window.innerHeight - r.top + 10) + 'px';
   }
   async function saveToBackupFolder(blob, filename){
     if(!backupDir || !backupOk) return false;
@@ -4949,6 +5023,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     });
     document.getElementById('backupAllowBtn').addEventListener('click', allowBackup);
     document.getElementById('backupSessionAllowBtn').addEventListener('click', allowBackup);
+    document.getElementById('backupFab').addEventListener('click', (e) => { e.stopPropagation(); const pop = document.getElementById('backupPop'); if(pop.hidden) openBackupPop(); else closeBackupPop(); });
+    document.getElementById('backupPopAllow').addEventListener('click', (e) => { e.stopPropagation(); allowBackup(); });
+    document.getElementById('backupPopChange').addEventListener('click', (e) => { e.stopPropagation(); closeBackupPop(); document.getElementById('backupChooseBtn').click(); });
+    document.getElementById('backupPop').addEventListener('click', (e) => e.stopPropagation());
+    document.addEventListener('click', closeBackupPop);
+    document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeBackupPop(); });
+    window.addEventListener('resize', closeBackupPop);
     document.getElementById('backupStopBtn').addEventListener('click', async () => {
       backupDir = null; backupOk = false;
       try{ await dbDo('kv', 'readwrite', st => st.delete('backupDir')); }catch(e){}
@@ -6000,7 +6081,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!document.body.classList.contains('in-session') || document.body.classList.contains('booth-locked')) return false;
     var chip = document.getElementById('pbTimeChip');
     var chipOn = !!(chip && chip.parentNode && chip.parentNode.id === 'dockChipSlot' && chip.style.display !== 'none');
-    return !document.getElementById('camFab').hidden || !document.getElementById('printFab').hidden || chipOn;
+    return !document.getElementById('camFab').hidden || !document.getElementById('printFab').hidden || !document.getElementById('backupFab').hidden ||
+      !document.getElementById('dockPwr').hidden || chipOn;
   }
   // Everything guests and the operator need to see or tap in Photo Session.
   function sessionContentRects(){
@@ -6867,9 +6949,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!url) return;
     const done = () => { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy link'; }, 1800); };
     try{
-      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(done, () => prompt('Copy this link:', url)); return; }
+      if(DESKTOP && window.pb4u && window.pb4u.copy){ window.pb4u.copy(url).then(done); return; }
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(done, () => askText({ title: 'Copy this link', value: url, readOnly: true, ok: 'Done', max: 500 })); return; }
     }catch(err){}
-    prompt('Copy this link:', url);
+    askText({ title: 'Copy this link', value: url, readOnly: true, ok: 'Done', max: 500 });
   });
   driveFolderKeyInput.addEventListener('blur', () => {
     clearTimeout(resolveTimer);
@@ -9639,6 +9722,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       guestPickRender();
       guestBrand();
       const welcome = welcomeOn && state === 'idle' && !pickOpen && !ready && !!welcomeDataUrl;
+      if(welcome && welcomeGeo){
+        // Between guests the box takes the welcome picture's shape (so it fills it, like the Setup preview).
+        const gf = G.d.getElementById('frame'), wa = (welcomeGeo.W / welcomeGeo.H).toFixed(4);
+        if(gf && gf.style.aspectRatio !== wa){ gf.style.aspectRatio = wa; gf.style.height = 'min(94vh, ' + (60 / Number(wa)).toFixed(2) + 'vw)'; }
+      }
       if(welcome){
         if(G.res.src !== welcomeDataUrl) G.res.src = welcomeDataUrl;
         G.res.style.display = 'block'; G.v.style.display = 'none';
@@ -12327,7 +12415,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     chip: document.getElementById('bpvChip'), guide: document.getElementById('bpvGuide'), selTxt: document.getElementById('brandSelTxt')
   };
   var brandSel = null, brandDrag = null, brandPvGeo = null, brandTipKeep = false;
-  var BRAND_NAME = { c: 'Corner logo', w: 'Welcome logo' };
+  var BRAND_NAME = { c: 'Top-left logo', w: 'Welcome logo' };
   function brandTipSeen(){ try{ return localStorage.getItem('pb_brand_tip') === '1'; }catch(e){ return false; } }
   function brandOv(k){
     var el = brandEls.pv.querySelector('.bpv-logo[data-k="' + k + '"]');
@@ -12348,14 +12436,23 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     btn.textContent = brand[k].id ? 'Change' : (a ? 'Use another' : 'Upload');
     document.getElementById('brand' + K + 'On').checked = !!brand[k].on;
   }
+  // The top-left logo also replaces photobooth4u at the top of Photo Session, with
+  // "Powered by photobooth4u" under the buttons in the bottom-left bar.
+  function refreshClientBrand(){
+    var im = brandImgFor('c'), el = document.getElementById('brandClient'), pw = document.getElementById('dockPwr');
+    if(!el) return;
+    if(im){ var url = ASSETS[brandId('c')].url; if(el.getAttribute('src') !== url) el.src = url; }
+    document.body.classList.toggle('has-client', !!im);
+    if(pw && pw.hidden !== !im){ pw.hidden = !im; if(typeof scheduleDock === 'function') scheduleDock(); }
+  }
   function refreshBrandUI(){
     if(!brandEls) return;
     var trad = isTraditional();
-    brandEls.rowC.hidden = !trad;
+    refreshClientBrand();
     if(!trad && brandSel === 'c') brandSel = null;
     brandEls.lead.textContent = trad
-      ? 'Show your business logo to guests. The start screen on this device keeps the photobooth4u logo.'
-      : 'Show your business logo on the welcome picture guests see between sessions. The start screen keeps the photobooth4u logo.';
+      ? 'Show your business logo to guests. Setup and the start screen keep the photobooth4u logo.'
+      : 'Show your business logo to guests: at the top of Photo Session, and on the welcome picture between sessions. Setup and the start screen keep the photobooth4u logo.';
     brandThumb('c'); brandThumb('w');
     brandEls.tip.hidden = (brandTipSeen() && !brandTipKeep) || !(brand.w.on || (trad && brand.c.on));
     brandPvLayout();
@@ -12670,6 +12767,30 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     accent = c.dataset.accent; markAccentChips(); redrawAll();
   });
 
+  // A small "type a name" box (the laptop app has no prompt(), and this looks better anyway).
+  function askText(o){
+    return new Promise(function(resolve){
+      var sh = document.getElementById('askSheet'), inp = document.getElementById('askInput'), form = document.getElementById('askForm');
+      document.getElementById('askTitle').textContent = o.title || '';
+      document.getElementById('askHint').textContent = o.hint || '';
+      document.getElementById('askGo').textContent = o.ok || 'Save';
+      inp.value = o.value || ''; inp.placeholder = o.placeholder || ''; inp.maxLength = o.max || 60; inp.readOnly = !!o.readOnly;
+      sh.hidden = false;
+      setTimeout(function(){ try{ inp.focus(); inp.select(); }catch(e){} }, 30);
+      var done = function(v){
+        sh.hidden = true;
+        form.removeEventListener('submit', onSubmit); document.getElementById('askCancel').removeEventListener('click', onCancel);
+        sh.removeEventListener('click', onBack); document.removeEventListener('keydown', onKey, true);
+        resolve(v);
+      };
+      var onSubmit = function(e){ e.preventDefault(); done(inp.value.trim()); };
+      var onCancel = function(){ done(null); };
+      var onBack = function(e){ if(e.target === sh) done(null); };
+      var onKey = function(e){ if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); done(null); } };
+      form.addEventListener('submit', onSubmit); document.getElementById('askCancel').addEventListener('click', onCancel);
+      sh.addEventListener('click', onBack); document.addEventListener('keydown', onKey, true);
+    });
+  }
   // ---- My themes (save the current design and reuse it) ----
   var DESIGN_KEYS = ['backdropPreset', 'backdropColor', 'elementsChoice', 'accent', 'frameColorChoice', 'photoPlacement', 'cropFocus',
     'textColor', 'font', 'dateFont', 'titleSize', 'titleBg', 'titleBgColor', 'outline', 'outlineColor', 'shadow',
@@ -12696,7 +12817,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }catch(e){}
   }
   document.getElementById('saveThemeBtn').addEventListener('click', async function(){
-    var name = (prompt('Name this theme (e.g. "Santos Wedding — Sage")', '') || '').trim().slice(0, 40);
+    var name = ((await askText({ title: 'Name this design', placeholder: 'e.g. Santos Wedding \u2014 Sage', hint: 'It\u2019s saved in My themes, ready for your next event.', ok: 'Save design', max: 40 })) || '').trim().slice(0, 40);
     if(!name) return;
     var s = snapshotSetup(), settings = {};
     DESIGN_KEYS.forEach(function(k){ if(k in s) settings[k] = s[k]; });

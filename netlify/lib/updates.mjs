@@ -10,6 +10,8 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.5', date: '2026-10-24' },
+  { version: '1.0.4', date: '2026-10-24' },
   { version: '1.0.3', date: '2026-10-24' },
   { version: '1.0.2', date: '2026-10-24' },
   { version: '1.0.1', date: '2026-10-23' }
@@ -49,6 +51,21 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-24', title: 'Your logo in Photo Session, and a wider camera view', for: ['website', 'app'], app: '1.0.5',
+    items: [
+      'The top-left logo (Setup → 5 Session → Your logo) now also shows at the top of Photo Session, on laptops and tablets. Setup keeps the photobooth4u logo.',
+      'The bottom-left bar has Camera, Printer and Backup folder, with a small “Powered by photobooth4u” under them. Tap Backup folder to see where photos save, allow saving again, or change the folder.',
+      'The camera view now uses the full width (the Backup folder card is gone from the right).',
+      'Guest screen: between guests the welcome picture fills its box, matching the preview in Setup.'
+    ]
+  },
+  {
+    date: '2026-10-24', title: 'Save my design works in the laptop app', for: ['app', 'website'], app: '1.0.4',
+    items: [
+      'Save my design (Setup → 1 Design) now opens a box to name your design, in the laptop app too, where it didn’t open before.'
+    ]
+  },
   {
     date: '2026-10-24', title: 'Easier start for guests', for: ['website', 'app'], app: '1.0.3',
     items: [

@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.6', date: '2026-10-24' },
   { version: '1.0.5', date: '2026-10-24' },
   { version: '1.0.4', date: '2026-10-24' },
   { version: '1.0.3', date: '2026-10-24' },
@@ -51,6 +52,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-24', title: 'Frame settings and photo spots right under your frame', for: ['website', 'app'], app: '1.0.6',
+    items: [
+      'Adding your own frame: the frame settings, Edit photo spots tools and collage sheet options now appear directly below your frame card instead of far down in the preview area.',
+      '"Your frames" moves to the top of the Layout step when you upload a frame, so you see your frame and its editing tools first — no scrolling past preset layouts.',
+      'Mobile: tapping "Edit photo spots" on small screens now docks the live canvas preview so you can see spot changes in real time.',
+      'A "Preview" quick-toggle button on the frame toolbar lets you show or hide the live preview with one tap.',
+      'Clicks inside the editing controls no longer accidentally re-select a layout card.'
+    ]
+  },
   {
     date: '2026-10-24', title: 'Your logo in Photo Session, and a wider camera view', for: ['website', 'app'], app: '1.0.5',
     items: [

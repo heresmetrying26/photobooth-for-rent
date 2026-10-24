@@ -932,7 +932,8 @@
   .layout-btn.lt-add{border-style:dashed; color:var(--blue-deep); justify-content:center; min-height:150px;}
   .layout-btn.lt-add .lt-plus{width:44px; height:62px; border:2px dashed var(--line); border-radius:6px; display:flex; align-items:center; justify-content:center; font:800 22px 'Manrope',sans-serif; color:var(--blue-deep); background:#fff;}
   .lay-ctx{margin-top:14px; padding-top:12px; border-top:1px solid var(--line);}
-  .frame-ctx{margin-top:10px; padding:12px; border-radius:14px; background:var(--panel-2); border:1px solid var(--line);}
+  .frame-details-wrap{display:flex; flex-direction:column; gap:10px; width:100%; margin-top:10px;}
+  .frame-ctx{margin-top:0; padding:12px; border-radius:14px; background:var(--panel-2); border:1px solid var(--line);}
   .frame-ctx-top{display:flex; align-items:center; gap:10px;}
   .frame-ctx-top img{width:44px; height:60px; object-fit:contain; background:#f3efe8; border-radius:6px; flex:none;}
   .frame-ctx-top div{font-size:12.5px; color:var(--ink-dim); line-height:1.4;}
@@ -2076,31 +2077,61 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         </div>
         <p class="panel-hint step-lead" id="guestPickHint">Tap a layout to use it.</p>
         <div class="lay-groups" id="layoutGrid"></div>
-        <div class="lay-ctx" id="layoutCtx">
-          <p class="panel-hint" id="layoutHint" style="margin:0;"></p>
+        <div class="frame-details-wrap" id="frameDetailsWrap" style="display:none;">
           <div class="frame-ctx" id="frameCtx" style="display:none;"></div>
+          <div class="decor-sel" id="spotEditControls" style="display:none;">
+            <p class="panel-hint" style="margin:0 0 8px;">Tap a box to select it, then drag to move or drag its corner to resize. The numbers are the photo order (1 = first shot).</p>
+            <div class="decor-btns"><button type="button" class="action-btn" id="spotAdd">+ Add spot</button><button type="button" class="action-btn" id="spotDel" style="color:#c0392b;">Remove spot</button><button type="button" class="action-btn" id="spotRedetect">Find again</button><button type="button" class="action-btn primary" id="spotDone">Done</button></div>
+            <p class="sub-label" style="margin:10px 0 4px;">Photo windows</p>
+            <div class="decor-btns key-row">
+              <button type="button" class="action-btn" id="spotPickColor">&#127919; Pick window colour</button>
+              <span class="key-swatch" id="spotKeySwatch" title="Photo window colour"></span>
+              <label class="key-tol" id="spotKeyTolWrap" style="display:none;">Match <input type="range" id="spotKeyTol" min="6" max="90" step="2"></label>
+              <button type="button" class="action-btn" id="spotKeyClear" style="display:none;">White / see-through only</button>
+            </div>
+            <p class="panel-hint" id="spotPickHint" style="display:none; margin:6px 0 0; color:#C93D27; font-weight:700;">Tap a photo window in the preview to pick its colour.</p>
+            <label class="toggle-row" style="margin-top:6px;"><input type="checkbox" id="spotShowWin" checked> Highlight the photo windows (blue)</label>
+            <p class="sub-label" style="margin:10px 0 4px;">Selected box</p>
+            <div class="decor-btns"><button type="button" class="action-btn primary" id="spotSnap" title="Fit this box to the photo window under it: edges, size and tilt">&#129522; Snap to window</button></div>
+            <p class="panel-hint" style="margin:6px 0 8px;">Put the box roughly over one photo window (it can overlap others), then tap <b>Snap to window</b>.</p>
+            <div class="decor-btns"><button type="button" class="action-btn" id="spotEarlier">&#9664; Earlier shot</button><button type="button" class="action-btn" id="spotLater">Later shot &#9654;</button><button type="button" class="action-btn" id="spotSplitX">Split in 2 &#8596;</button><button type="button" class="action-btn" id="spotSplitY">Split in 2 &#8597;</button><button type="button" class="action-btn" id="spotSplit4">Split in 4</button></div>
+            <div class="decor-btns" style="margin-top:6px;"><button type="button" class="action-btn" id="spotFront" title="This photo shows on top where boxes overlap">&#11014; Bring to front</button><button type="button" class="action-btn" id="spotBack" title="This photo goes under the others where boxes overlap">&#11015; Send to back</button></div>
+            <p class="panel-hint" style="margin:6px 0 0;">Drag the round <b>&#8635;</b> at the bottom of a box to tilt it. <b>Bring to front</b> / <b>Send to back</b> decide which photo is on top where two boxes overlap.</p>
+            <div class="spot-size" id="spotSize" style="display:none; margin-top:8px; gap:8px; flex-wrap:wrap; align-items:center; font-size:12.5px; font-weight:700;">
+              <label>Left % <input type="number" id="spotX" min="0" max="100" step="0.5" style="width:64px;"></label>
+              <label>Top % <input type="number" id="spotY" min="0" max="100" step="0.5" style="width:64px;"></label>
+              <label>Width % <input type="number" id="spotW" min="2" max="100" step="0.5" style="width:64px;"></label>
+              <label>Height % <input type="number" id="spotH" min="2" max="100" step="0.5" style="width:64px;"></label>
+              <label>Tilt ° <input type="number" id="spotA" min="-45" max="45" step="0.5" style="width:64px;"></label>
+              <button type="button" class="action-btn" id="spotTurnL" style="width:auto; margin:0;" title="Tilt 1° left">&#8634; 1°</button>
+              <button type="button" class="action-btn" id="spotTurnR" style="width:auto; margin:0;" title="Tilt 1° right">1° &#8635;</button>
+            </div>
+          </div>
           <div class="frames-box" id="myFramesPanel" style="display:none; margin-top:12px;">
             <p class="sub-label" style="margin-top:0;">Frames on this sheet</p>
             <p class="panel-hint" style="margin:0 0 10px;" id="framePickHint">Tap a frame to put it on the sheet or take it off.</p>
             <div class="frame-mode" id="frameModeBox" hidden><div class="chip-row" id="frameModeChips"></div></div>
             <div class="frame-pick" id="framePick"></div>
             <p class="panel-hint" id="frameChooseHint" style="display:none; margin-top:10px;"></p>
-          <div id="sheetPanel" style="display:none;">
-            <p class="sub-label" style="margin-top:14px;">Sheet size</p>
-            <div class="sheet-size-row">
-              <select class="mini-select" id="sheetSizeSelect" aria-label="Sheet size"></select>
-              <span class="panel-hint" style="margin:0;">Choose the same paper size when you print.</span>
+            <div id="sheetPanel" style="display:none;">
+              <p class="sub-label" style="margin-top:14px;">Sheet size</p>
+              <div class="sheet-size-row">
+                <select class="mini-select" id="sheetSizeSelect" aria-label="Sheet size"></select>
+                <span class="panel-hint" style="margin:0;">Choose the same paper size when you print.</span>
+              </div>
+              <p class="sub-label" style="margin-top:6px;">Arrange them on the sheet</p>
+              <div class="pattern-row" id="sheetPatterns"></div>
+              <div class="decor-btns">
+                <button type="button" class="action-btn" id="sheetShuffle">⇄ Swap places</button>
+                <button type="button" class="action-btn" id="sheetAddFrame">+ Add a copy</button>
+                <button type="button" class="action-btn see-prev-btn" data-see-preview style="margin:0;"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> Open preview</button>
+              </div>
+              <p class="panel-hint" style="margin-top:8px;">Fine-tune in the preview: <b>drag</b> a frame to move it, or <b>tap</b> it to resize, swap, turn or copy it.</p>
             </div>
-            <p class="sub-label" style="margin-top:6px;">Arrange them on the sheet</p>
-            <div class="pattern-row" id="sheetPatterns"></div>
-            <div class="decor-btns">
-              <button type="button" class="action-btn" id="sheetShuffle">⇄ Swap places</button>
-              <button type="button" class="action-btn" id="sheetAddFrame">+ Add a copy</button>
-              <button type="button" class="action-btn see-prev-btn" data-see-preview style="margin:0;"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> Open preview</button>
-            </div>
-            <p class="panel-hint" style="margin-top:8px;">Fine-tune in the preview: <b>drag</b> a frame to move it, or <b>tap</b> it to resize, swap, turn or copy it.</p>
           </div>
-          </div>
+        </div>
+        <div class="lay-ctx" id="layoutCtx">
+          <p class="panel-hint" id="layoutHint" style="margin:0;"></p>
         </div>
         <div class="sub-group" id="ownFrameBox">
           <input type="file" id="overlayInput" accept="image/png,image/webp,image/jpeg,image/*" multiple hidden>
@@ -2502,34 +2533,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <div class="decor-sel" id="sheetSelControls" style="display:none;">
         <div class="stepper" style="margin-top:0;"><span class="lbl">Size</span><input type="range" id="sheetItemSize" min="8" max="110" value="50" style="flex:1; max-width:240px;"></div>
         <div class="decor-btns"><button type="button" class="action-btn" id="sheetItemSwap">Swap frame</button><button type="button" class="action-btn" id="sheetItemRotate">Turn 90°</button><button type="button" class="action-btn" id="sheetItemDup">Copy</button><button type="button" class="action-btn" id="sheetItemDel" style="color:#c0392b;">Remove</button></div>
-      </div>
-      <div class="decor-sel" id="spotEditControls" style="display:none;">
-        <p class="panel-hint" style="margin:0 0 8px;">Tap a box to select it, then drag to move or drag its corner to resize. The numbers are the photo order (1 = first shot).</p>
-        <div class="decor-btns"><button type="button" class="action-btn" id="spotAdd">+ Add spot</button><button type="button" class="action-btn" id="spotDel" style="color:#c0392b;">Remove spot</button><button type="button" class="action-btn" id="spotRedetect">Find again</button><button type="button" class="action-btn primary" id="spotDone">Done</button></div>
-        <p class="sub-label" style="margin:10px 0 4px;">Photo windows</p>
-        <div class="decor-btns key-row">
-          <button type="button" class="action-btn" id="spotPickColor">&#127919; Pick window colour</button>
-          <span class="key-swatch" id="spotKeySwatch" title="Photo window colour"></span>
-          <label class="key-tol" id="spotKeyTolWrap" style="display:none;">Match <input type="range" id="spotKeyTol" min="6" max="90" step="2"></label>
-          <button type="button" class="action-btn" id="spotKeyClear" style="display:none;">White / see-through only</button>
-        </div>
-        <p class="panel-hint" id="spotPickHint" style="display:none; margin:6px 0 0; color:#C93D27; font-weight:700;">Tap a photo window in the preview to pick its colour.</p>
-        <label class="toggle-row" style="margin-top:6px;"><input type="checkbox" id="spotShowWin" checked> Highlight the photo windows (blue)</label>
-        <p class="sub-label" style="margin:10px 0 4px;">Selected box</p>
-        <div class="decor-btns"><button type="button" class="action-btn primary" id="spotSnap" title="Fit this box to the photo window under it: edges, size and tilt">&#129522; Snap to window</button></div>
-        <p class="panel-hint" style="margin:6px 0 8px;">Put the box roughly over one photo window (it can overlap others), then tap <b>Snap to window</b>.</p>
-        <div class="decor-btns"><button type="button" class="action-btn" id="spotEarlier">&#9664; Earlier shot</button><button type="button" class="action-btn" id="spotLater">Later shot &#9654;</button><button type="button" class="action-btn" id="spotSplitX">Split in 2 &#8596;</button><button type="button" class="action-btn" id="spotSplitY">Split in 2 &#8597;</button><button type="button" class="action-btn" id="spotSplit4">Split in 4</button></div>
-        <div class="decor-btns" style="margin-top:6px;"><button type="button" class="action-btn" id="spotFront" title="This photo shows on top where boxes overlap">&#11014; Bring to front</button><button type="button" class="action-btn" id="spotBack" title="This photo goes under the others where boxes overlap">&#11015; Send to back</button></div>
-        <p class="panel-hint" style="margin:6px 0 0;">Drag the round <b>&#8635;</b> at the bottom of a box to tilt it. <b>Bring to front</b> / <b>Send to back</b> decide which photo is on top where two boxes overlap.</p>
-        <div class="spot-size" id="spotSize" style="display:none; margin-top:8px; gap:8px; flex-wrap:wrap; align-items:center; font-size:12.5px; font-weight:700;">
-          <label>Left % <input type="number" id="spotX" min="0" max="100" step="0.5" style="width:64px;"></label>
-          <label>Top % <input type="number" id="spotY" min="0" max="100" step="0.5" style="width:64px;"></label>
-          <label>Width % <input type="number" id="spotW" min="2" max="100" step="0.5" style="width:64px;"></label>
-          <label>Height % <input type="number" id="spotH" min="2" max="100" step="0.5" style="width:64px;"></label>
-          <label>Tilt ° <input type="number" id="spotA" min="-45" max="45" step="0.5" style="width:64px;"></label>
-          <button type="button" class="action-btn" id="spotTurnL" style="width:auto; margin:0;" title="Tilt 1° left">&#8634; 1°</button>
-          <button type="button" class="action-btn" id="spotTurnR" style="width:auto; margin:0;" title="Tilt 1° right">1° &#8635;</button>
-        </div>
       </div>
       <div class="sample-row">
         <button type="button" class="action-btn" id="sampleCamBtn"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg> Preview with my camera</button>
@@ -7062,6 +7065,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return l;
   }
   function buildLayoutPicker(){
+    const fdw = document.getElementById('frameDetailsWrap');
+    if(fdw && fdw.parentNode) fdw.parentNode.removeChild(fdw);
     layoutGrid.innerHTML = '';
     const hasFrames = typeof myFrames !== 'undefined' && myFrames && myFrames.length;
     const groups = LAYOUT_GROUPS.slice();
@@ -7075,21 +7080,29 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       h.append(hb, hs);
       const grid = document.createElement('div'); grid.className = 'layout-grid lg-many';
       if(g.frames){
+        wrap.classList.add('lay-group-frames');
         if(hasFrames){
           myFrames.forEach(f => grid.appendChild(layoutCard('frame:' + f.id)));
           grid.appendChild(layoutCard('framesheet'));
         }
         if(!hasFrames || myFrames.length < MAX_FRAMES) grid.appendChild(addFrameCard());
-      } else g.keys.forEach(k => grid.appendChild(layoutCard(k)));
-      wrap.append(h, grid);
+        wrap.append(h, grid);
+        if(fdw) wrap.appendChild(fdw);
+      } else {
+        g.keys.forEach(k => grid.appendChild(layoutCard(k)));
+        wrap.append(h, grid);
+      }
       layoutGrid.appendChild(wrap);
     });
+    if(fdw && !fdw.parentNode) layoutGrid.appendChild(fdw);
     const ak = layoutCardKey();
     [...layoutGrid.querySelectorAll('.layout-btn')].forEach(b => { const on = b.dataset.layout === ak; b.classList.toggle('active', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
     layoutHint.textContent = layoutDef().hint;
     if(typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
     if(typeof ltCache !== 'undefined' && ltCache){ applyCachedLayoutThumbs(); markLayoutThumbsDirty(); }
   }
+  const fdwInit = document.getElementById('frameDetailsWrap');
+  if(fdwInit) fdwInit.addEventListener('click', (e) => e.stopPropagation());
   layoutGrid.addEventListener('click', (e) => {
     const tk = e.target.closest('[data-tick]');
     if(tk && layoutGrid.classList.contains('guest-on')){ e.preventDefault(); e.stopPropagation(); toggleGuestKey(tk.dataset.tick); return; }
@@ -13467,8 +13480,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       ed.addEventListener('click', function(){
         if(spotEdit && spotEdit.f === f.id){ spotEdit = null; refreshFrameUI(); renderSetupPreview(); return; }
         spotEdit = { f: f.id, sel: -1 }; framesChanged({ layout: 'myframe' });
+        if(window.innerWidth < 900 && window.pbDockPreview) window.pbDockPreview(true);
         showToast('Tap a box, then drag it, resize it (corner square), tilt it (round button at the bottom), split it or change its order. Boxes are where the photos go.', 6500);
       });
+      var prevBtn = document.createElement('button'); prevBtn.type = 'button'; prevBtn.className = 'action-btn mini see-prev-btn';
+      prevBtn.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> Preview';
+      prevBtn.addEventListener('click', function(){ if(window.pbDockPreview) window.pbDockPreview(true); });
       var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'remove-link'; rm.textContent = 'Remove frame'; rm.style.cssText = 'display:inline;margin:0 0 0 auto;';
       rm.addEventListener('click', function(){
         if(!confirm('Remove this frame?')) return;
@@ -13477,7 +13494,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         if(spotEdit && spotEdit.f === f.id) spotEdit = null;
         framesChanged();
       });
-      btns.append(ed, rm);
+      btns.append(ed, prevBtn, rm);
       ctx.append(top, btns);
       if(framePairsGeom(f)){
         var cp = document.createElement('label');
@@ -13496,6 +13513,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var it = sheet.items[selItem];
     sheetSelControls.style.display = currentLayout === 'framesheet' && it ? '' : 'none';
     if(it) document.getElementById('sheetItemSize').value = Math.round(it.s * 100);
+    var fdw = document.getElementById('frameDetailsWrap');
+    if(fdw){
+      var anyOn = (currentLayout === 'myframe' && !!f) || (currentLayout === 'framesheet' && myFrames.length > 0) || (spotEdit && currentLayout === 'myframe');
+      fdw.style.display = anyOn ? '' : 'none';
+    }
   }
   // Frame collage: tap a frame to put it on the sheet or take it off.
   function toggleSheetFrame(id){
@@ -13895,6 +13917,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       activeFrameId = toPick[0].id; chooseIds = []; setupLayout = 'myframe';
       spotEdit = { f: toPick[0].id, sel: -1, pick: true };
       framesChanged({ layout: 'myframe' });
+      var fdwEl = document.getElementById('frameDetailsWrap') || document.getElementById('frameCtx');
+      if(fdwEl && fdwEl.scrollIntoView) setTimeout(function(){ fdwEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
       showToast('No white or see-through photo windows found. Tap one photo window in the preview to pick its colour.', 8000);
       return;
     }
@@ -13907,6 +13931,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         ids.forEach(function(id){ if(chooseIds.indexOf(id) < 0) chooseIds.push(id); });
       } else if(guestPickOn && chooseIds.indexOf(ids[0]) < 0) chooseIds.push(ids[0]);
       framesChanged({ layout: 'myframe' });
+      var ctxEl = document.getElementById('frameCtx');
+      if(ctxEl && ctxEl.scrollIntoView) setTimeout(function(){ ctxEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
       showToast(ids.length === 1
         ? 'Found ' + added[0].spots.length + ' photo spot' + (added[0].spots.length === 1 ? '' : 's') + (added[0].spots.some(function(p){ return p.a; }) ? ' (tilted ones turned to match)' : '') + (framePairs(added[0]) ? ' (two matching strips: ' + frameShotCount(added[0]) + ' shots, copied to both)' : '') + '. Wrong number? Tap \u201cEdit photo spots\u201d to add, split, turn or reorder them.'
         : (ids.length + ' frames added: guests choose one before each session (untick any in 3 \u00b7 Layout). Want them all on one print? Tap \u201cFrame collage\u201d.'), 6500);

@@ -1,3 +1,5 @@
 # Helper builds go on GitHub Releases, not in the website
 public/downloads/photobooth4u-print-helper-windows/
 public/downloads/*.exe
+.collaborator
+.dual-graph/

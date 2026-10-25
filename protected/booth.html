@@ -1840,8 +1840,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <button type="button" class="step-tab" data-step="2"><span class="sn">2</span><span class="st"><b>Text</b><small id="stepSum2"></small></span></button>
       <button type="button" class="step-tab" data-step="3"><span class="sn">3</span><span class="st"><b>Layout</b><small id="stepSum3"></small></span></button>
       <button type="button" class="step-tab" data-step="4"><span class="sn">4</span><span class="st"><b>Extras</b><small id="stepSum4"></small></span></button>
-      <button type="button" class="step-tab" data-step="5"><span class="sn">5</span><span class="st"><b>Session</b><small id="stepSum5"></small></span></button>
-      <button type="button" class="step-tab" data-step="6"><span class="sn">6</span><span class="st"><b>Share</b><small id="stepSum6"></small></span></button>
+      <button type="button" class="step-tab" data-step="5"><span class="sn">5</span><span class="st"><b>Share</b><small id="stepSum5"></small></span></button>
+      <button type="button" class="step-tab" data-step="6"><span class="sn">6</span><span class="st"><b>Session</b><small id="stepSum6"></small></span></button>
     </nav>
 
     <!-- STEP 1 · DESIGN -->
@@ -2242,11 +2242,91 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
         </div>
       </div>
-      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="3">← Back</button><button type="button" class="action-btn primary next-btn" data-go="5">Next: Session →</button></div>
+      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="3">← Back</button><button type="button" class="action-btn primary next-btn" data-go="5">Next: Share →</button></div>
     </section>
 
-    <!-- STEP 5 · SESSION -->
+    <!-- STEP 5 · SHARE -->
     <section class="step" id="step5" data-step="5">
+      <div class="panel-section" id="driveSetupSection">
+        <p class="panel-label">Share</p>
+        <p class="panel-hint step-lead" id="driveStatusText">Type a folder name to save the photos.</p>
+        <p class="panel-hint" id="driveFolderAutoNote" style="display:none; color:#1e8449; font-weight:700;"></p>
+        <input type="text" class="label-input" id="driveFolderKeyInput" placeholder="Folder name or Drive link" style="font-family:'Manrope',sans-serif; font-size:14px; margin:10px 0 0;">
+        <p class="panel-hint" id="driveFolderError" style="display:none; color:#c0392b; font-weight:700;"></p>
+        <p class="panel-hint" id="driveFolderStatus" style="display:none;"></p>
+        <div id="driveFolderQrPreview" style="display:none; margin-top:12px; text-align:center;">
+          <img id="driveFolderQrImg" class="qr-img" style="width:140px;height:140px;" alt="All photos QR code">
+          <p class="qr-caption" id="driveFolderQrCaption">All photos</p>
+          <div class="folder-links" id="driveFolderLinks">
+            <a id="driveFolderOpen" href="#" target="_blank" rel="noopener">Open gallery</a>
+            <button type="button" id="driveFolderCopy">Copy link</button>
+            <a id="driveFolderDrive" href="#" target="_blank" rel="noopener" style="display:none;">Drive folder</a>
+            <a id="driveFolderAll" class="web-only" href="/lifetime/?booth=1" target="_blank" rel="noopener" style="display:none;">All my events ↗</a>
+          </div>
+          <button type="button" class="action-btn" id="qrSignBtn" style="width:auto; margin:10px auto 0; padding:9px 16px;">Download QR sign</button>
+          <p class="panel-hint" id="driveFolderSignHint" style="margin-top:8px;">Print the sign and put it by the booth. Guests get their own QR after each session; if the booth is offline, their photo still arrives in this gallery once it's back online.</p>
+        </div>
+        <p class="panel-hint" id="driveFolderHelp"></p>
+        <div class="sub-group web-only" id="backupBox">
+          <p class="sub-label">Backup on this computer</p>
+          <p class="panel-hint" id="backupStatus" style="margin:0;"></p>
+          <div id="backupBtns" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+            <button type="button" class="action-btn" id="backupChooseBtn" style="width:auto; margin:0;">Choose backup folder</button>
+            <button type="button" class="action-btn primary" id="backupAllowBtn" style="width:auto; margin:0; display:none;">Allow saving</button>
+            <button type="button" class="action-btn" id="backupStopBtn" style="width:auto; margin:0; display:none;">Stop backup</button>
+          </div>
+        </div>
+        <div class="sub-group" id="deskBox" hidden>
+          <p class="sub-label">Photos on this laptop</p>
+          <p class="panel-hint" id="deskPhotos" style="margin:0; word-break:break-all;"></p>
+          <div class="desk-row">
+            <button type="button" class="action-btn" id="deskOpenBtn" style="width:auto; margin:0;">Open photos folder</button>
+            <button type="button" class="action-btn" id="deskChangeBtn" style="width:auto; margin:0;">Change folder</button>
+          </div>
+          <p class="sub-label" style="margin-top:14px;">Guests&rsquo; phones</p>
+          <p class="panel-hint" id="deskLan" style="margin:0;"></p>
+          <p class="sub-label" style="margin-top:14px;">Booth Wi-Fi for guests (optional)</p>
+          <p class="panel-hint" style="margin:0 0 6px;">Guests scan a Wi-Fi QR to join, then their photo QR. Leave empty if they already know the Wi-Fi.</p>
+          <input type="text" class="label-input" id="deskWifiName" placeholder="Wi-Fi name" maxlength="32" autocomplete="off" spellcheck="false">
+          <input type="text" class="label-input" id="deskWifiPass" placeholder="Wi-Fi password (empty if none)" maxlength="63" autocomplete="off" spellcheck="false" style="margin-top:8px;">
+          <p class="sub-label" style="margin-top:14px;">This laptop&rsquo;s licence</p>
+          <p class="panel-hint" id="deskLic" style="margin:0;"></p>
+          <div class="desk-row">
+            <button type="button" class="action-btn" id="deskCheckBtn" style="width:auto; margin:0;">Check for changes</button>
+            <button type="button" class="action-btn" id="deskNewsBtn" style="width:auto; margin:0;">What's new</button>
+            <button type="button" class="action-btn" id="deskDeactBtn" style="width:auto; margin:0;">Deactivate this laptop</button>
+          </div>
+        </div>
+        <div class="sub-group" id="printSummaryBox" style="display:none;">
+          <p class="sub-label">Printing</p>
+          <p class="panel-hint" id="printSummary" style="margin:0;"></p>
+          <label class="switch-row"><span>Print button for guests</span><input type="checkbox" id="ppGuestBtn"></label>
+          <label class="switch-row"><span>Print automatically after each session</span><input type="checkbox" id="ppAuto"></label>
+          <p class="panel-hint" id="ppAutoHint" style="margin:4px 0 0;"></p>
+          <div class="copies-row"><span>Copies each time</span>
+            <span class="stepper"><button type="button" id="ppCopiesMinus" aria-label="Fewer copies">&minus;</button><b id="ppCopiesVal">1</b><button type="button" id="ppCopiesPlus" aria-label="More copies">+</button></span>
+          </div>
+          <label class="switch-row" style="margin-top:6px;"><span>Let guests choose how many copies</span><input type="checkbox" id="ppGuestCopies"></label>
+          <details class="pp-words">
+            <summary>Change the wording guests see</summary>
+            <label>Print button<input type="text" id="ppTxtPrint" maxlength="24" placeholder="Print"></label>
+            <label>While printing<input type="text" id="ppTxtPrinting" maxlength="60" placeholder="Printing, please hold…"></label>
+            <label>Copies question<input type="text" id="ppTxtCopies" maxlength="40" placeholder="How many copies?"></label>
+            <label>When the print limit is reached<input type="text" id="ppTxtLimit" maxlength="70" placeholder="That's all the prints for this session"></label>
+          </details>
+          <label class="sub-label web-only" for="ppRoute" style="display:block; margin:12px 0 4px;">Send prints to (this device)</label>
+          <select id="ppRoute" class="print-route web-only">
+            <option value="here">This device</option>
+            <option value="station">Laptop print station (no pop-up)</option>
+          </select>
+          <p class="panel-hint web-only" id="ppRouteHint" style="margin:4px 0 0;"></p>
+        </div>
+      </div>
+      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="4">← Back</button><button type="button" class="action-btn primary next-btn" data-go="6">Next: Session →</button></div>
+    </section>
+
+    <!-- STEP 6 · SESSION -->
+    <section class="step" id="step6" data-step="6">
       <div class="panel-section" id="sessionSection">
         <p class="panel-label">Session</p>
         <p class="panel-hint step-lead">How each guest's turn runs: countdown, time between photos and retakes.</p>
@@ -2433,88 +2513,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <p class="panel-hint" id="lockTestNote" style="margin:0 0 10px; padding:6px 10px; border-radius:10px; background:#fff6db; border:1px solid #f0d98a; color:#6b5300; font-weight:700;">For testing: the PIN is <b>1234</b> until you set your own.</p>
         <button type="button" class="action-btn primary" id="lockNowBtn" style="width:auto; margin:0;"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Lock booth now</button>
       </div>
-      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="4">← Back</button><button type="button" class="action-btn primary next-btn" data-go="6">Next: Share →</button></div>
-    </section>
-    <!-- STEP 6 · SHARE & START -->
-    <section class="step" id="step6" data-step="6">
-      <div class="panel-section" id="driveSetupSection">
-        <p class="panel-label">Share &amp; start</p>
-        <p class="panel-hint step-lead" id="driveStatusText">Type a folder name to save the photos.</p>
-        <p class="panel-hint" id="driveFolderAutoNote" style="display:none; color:#1e8449; font-weight:700;"></p>
-        <input type="text" class="label-input" id="driveFolderKeyInput" placeholder="Folder name or Drive link" style="font-family:'Manrope',sans-serif; font-size:14px; margin:10px 0 0;">
-        <p class="panel-hint" id="driveFolderError" style="display:none; color:#c0392b; font-weight:700;"></p>
-        <p class="panel-hint" id="driveFolderStatus" style="display:none;"></p>
-        <div id="driveFolderQrPreview" style="display:none; margin-top:12px; text-align:center;">
-          <img id="driveFolderQrImg" class="qr-img" style="width:140px;height:140px;" alt="All photos QR code">
-          <p class="qr-caption" id="driveFolderQrCaption">All photos</p>
-          <div class="folder-links" id="driveFolderLinks">
-            <a id="driveFolderOpen" href="#" target="_blank" rel="noopener">Open gallery</a>
-            <button type="button" id="driveFolderCopy">Copy link</button>
-            <a id="driveFolderDrive" href="#" target="_blank" rel="noopener" style="display:none;">Drive folder</a>
-            <a id="driveFolderAll" class="web-only" href="/lifetime/?booth=1" target="_blank" rel="noopener" style="display:none;">All my events ↗</a>
-          </div>
-          <button type="button" class="action-btn" id="qrSignBtn" style="width:auto; margin:10px auto 0; padding:9px 16px;">Download QR sign</button>
-          <p class="panel-hint" id="driveFolderSignHint" style="margin-top:8px;">Print the sign and put it by the booth. Guests get their own QR after each session; if the booth is offline, their photo still arrives in this gallery once it's back online.</p>
-        </div>
-        <p class="panel-hint" id="driveFolderHelp"></p>
-        <div class="sub-group web-only" id="backupBox">
-          <p class="sub-label">Backup on this computer</p>
-          <p class="panel-hint" id="backupStatus" style="margin:0;"></p>
-          <div id="backupBtns" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-            <button type="button" class="action-btn" id="backupChooseBtn" style="width:auto; margin:0;">Choose backup folder</button>
-            <button type="button" class="action-btn primary" id="backupAllowBtn" style="width:auto; margin:0; display:none;">Allow saving</button>
-            <button type="button" class="action-btn" id="backupStopBtn" style="width:auto; margin:0; display:none;">Stop backup</button>
-          </div>
-        </div>
-        <div class="sub-group" id="deskBox" hidden>
-          <p class="sub-label">Photos on this laptop</p>
-          <p class="panel-hint" id="deskPhotos" style="margin:0; word-break:break-all;"></p>
-          <div class="desk-row">
-            <button type="button" class="action-btn" id="deskOpenBtn" style="width:auto; margin:0;">Open photos folder</button>
-            <button type="button" class="action-btn" id="deskChangeBtn" style="width:auto; margin:0;">Change folder</button>
-          </div>
-          <p class="sub-label" style="margin-top:14px;">Guests&rsquo; phones</p>
-          <p class="panel-hint" id="deskLan" style="margin:0;"></p>
-          <p class="sub-label" style="margin-top:14px;">Booth Wi-Fi for guests (optional)</p>
-          <p class="panel-hint" style="margin:0 0 6px;">Guests scan a Wi-Fi QR to join, then their photo QR. Leave empty if they already know the Wi-Fi.</p>
-          <input type="text" class="label-input" id="deskWifiName" placeholder="Wi-Fi name" maxlength="32" autocomplete="off" spellcheck="false">
-          <input type="text" class="label-input" id="deskWifiPass" placeholder="Wi-Fi password (empty if none)" maxlength="63" autocomplete="off" spellcheck="false" style="margin-top:8px;">
-          <p class="sub-label" style="margin-top:14px;">This laptop&rsquo;s licence</p>
-          <p class="panel-hint" id="deskLic" style="margin:0;"></p>
-          <div class="desk-row">
-            <button type="button" class="action-btn" id="deskCheckBtn" style="width:auto; margin:0;">Check for changes</button>
-            <button type="button" class="action-btn" id="deskNewsBtn" style="width:auto; margin:0;">What’s new</button>
-            <button type="button" class="action-btn" id="deskDeactBtn" style="width:auto; margin:0;">Deactivate this laptop</button>
-          </div>
-        </div>
-        <div class="sub-group" id="printSummaryBox" style="display:none;">
-          <p class="sub-label">Printing</p>
-          <p class="panel-hint" id="printSummary" style="margin:0;"></p>
-          <label class="switch-row"><span>Print button for guests</span><input type="checkbox" id="ppGuestBtn"></label>
-          <label class="switch-row"><span>Print automatically after each session</span><input type="checkbox" id="ppAuto"></label>
-          <p class="panel-hint" id="ppAutoHint" style="margin:4px 0 0;"></p>
-          <div class="copies-row"><span>Copies each time</span>
-            <span class="stepper"><button type="button" id="ppCopiesMinus" aria-label="Fewer copies">&minus;</button><b id="ppCopiesVal">1</b><button type="button" id="ppCopiesPlus" aria-label="More copies">+</button></span>
-          </div>
-          <label class="switch-row" style="margin-top:6px;"><span>Let guests choose how many copies</span><input type="checkbox" id="ppGuestCopies"></label>
-          <details class="pp-words">
-            <summary>Change the wording guests see</summary>
-            <label>Print button<input type="text" id="ppTxtPrint" maxlength="24" placeholder="Print"></label>
-            <label>While printing<input type="text" id="ppTxtPrinting" maxlength="60" placeholder="Printing, please hold…"></label>
-            <label>Copies question<input type="text" id="ppTxtCopies" maxlength="40" placeholder="How many copies?"></label>
-            <label>When the print limit is reached<input type="text" id="ppTxtLimit" maxlength="70" placeholder="That’s all the prints for this session"></label>
-          </details>
-          <label class="sub-label web-only" for="ppRoute" style="display:block; margin:12px 0 4px;">Send prints to (this device)</label>
-          <select id="ppRoute" class="print-route web-only">
-            <option value="here">This device</option>
-            <option value="station">Laptop print station (no pop-up)</option>
-          </select>
-          <p class="panel-hint web-only" id="ppRouteHint" style="margin:4px 0 0;"></p>
-        </div>
-      </div>
-      
-      
-      
       <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="5">← Back</button><button class="action-btn primary" id="goToSessionBtn">Start photo session →</button></div>
     </section>
 
@@ -2948,7 +2946,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   goToSessionBtn.addEventListener('click', () => {
     if(!rawFolderKey()){
-      if(typeof goStep === 'function') goStep(6);
+      if(typeof goStep === 'function') goStep(5);
       showDriveFolderError('Type a folder name first.');
       driveFolderKeyInput.focus();
       return;
@@ -8837,7 +8835,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{ refreshCamFab(); }catch(e){}
   }
   camFab.addEventListener('click', openCamModal);
-  document.getElementById('chooseCameraBtn').addEventListener('click', (e) => { e.stopPropagation(); if(document.body.classList.contains('in-session')) openCamModal(); else { switchTab('setup'); if(typeof goStep === 'function') goStep(5); } });
+  document.getElementById('chooseCameraBtn').addEventListener('click', (e) => { e.stopPropagation(); if(document.body.classList.contains('in-session')) openCamModal(); else { switchTab('setup'); if(typeof goStep === 'function') goStep(6); } });
   document.getElementById('camModalClose').addEventListener('click', closeCamModal);
   camModal.addEventListener('click', (e) => { if(e.target === camModal) closeCamModal(); });
   document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !camModal.hidden){ e.stopPropagation(); closeCamModal(); } }, true);
@@ -10310,7 +10308,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(flowBusy || state === 'capturing') return;
     if(!rawFolderKey()){
       switchTab('setup');
-      if(typeof goStep === 'function') goStep(6);
+      if(typeof goStep === 'function') goStep(5);
       showDriveFolderError('Type a folder name first.');
       return;
     }
@@ -10696,7 +10694,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   setInterval(function(){ if(payOn() && payVoucherOn()) refreshVoucherCache(); }, 10 * 60000);
   setInterval(function(){ if(payOn() && document.body.classList.contains('in-session') === false) payLoadConfig(); }, 5 * 60000);
   setTimeout(function(){ payLoadConfig(); syncVouchers(); }, 1500);
-  (function(){ var s5 = document.querySelector('#stepBar .step-tab[data-step="5"]'); if(s5) s5.addEventListener('click', function(){ if(payOn()){ payLoadConfig(); payLoadBatches(); } }); })();
+  (function(){ var s6 = document.querySelector('#stepBar .step-tab[data-step="6"]'); if(s6) s6.addEventListener('click', function(){ if(payOn()){ payLoadConfig(); payLoadBatches(); } }); })();
 
   // ---- Lock booth: guest-only screen behind a 4-digit PIN ----
   // Only for codes the admin gave the option to. The PIN is kept (hashed) on
@@ -11400,7 +11398,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const HF_SMILE = { less: 0.46, normal: 0.43, more: 0.40 };
   function hfMeterOn(){
     // Setup → Session open: show the live meter so the renter can try it.
-    return fx.hands !== 'off' && !tabSetup.classList.contains('hidden') && curStep === 5;
+    return fx.hands !== 'off' && !tabSetup.classList.contains('hidden') && curStep === 6;
   }
   function hfWanted(){
     if(fx.hands === 'off' || document.hidden || !streamActive || !video.videoWidth) return false;
@@ -14292,7 +14290,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(n === 2){ renderFontUI(); refreshThemePalette(); }
     if(n === 3) queueLayoutThumbs();
     else prewarmLayoutThumbs();
-    if(n === 6) refreshPrintSummary();
+    if(n === 5) refreshPrintSummary();
     refreshSetupNav();
     if(!(opts && opts.noScroll)){
       var top = setupShellEl.getBoundingClientRect().top + window.scrollY - 4;
@@ -14339,12 +14337,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var ex = extrasList();
     setStepSum(4, ex.length ? ex.join(', ') : 'None');
     var folderOk = !!rawFolderKey();
-    setStepSum(5, fmtSec(timerSec) + ' s countdown' + (advanceMode === 'tap' ? ', tap for next' : ''));
-    setStepSum(6, folderOk ? 'Ready' : 'Folder needed', !folderOk);
+    setStepSum(5, folderOk ? 'Ready' : 'Folder needed', !folderOk);
+    setStepSum(6, fmtSec(timerSec) + ' s countdown' + (advanceMode === 'tap' ? ', tap for next' : ''));
     stepTabs[1].classList.toggle('done', !!nm);
-    stepTabs[5].classList.toggle('done', folderOk);
+    stepTabs[4].classList.toggle('done', folderOk);
+    stepTabs[5].classList.remove('done');
     var st = document.getElementById('startStatus');
-    st.textContent = folderOk ? 'Ready to start' : 'Add a folder name (step 6)';
+    st.textContent = folderOk ? 'Ready to start' : 'Add a folder name (step 5)';
     st.classList.toggle('warn', !folderOk);
     // Backdrop & colours summary
     var bs = PRESET_NAMES[backdropPreset] || 'Background';
@@ -14989,7 +14988,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     afterSetupPreview();
     setupLoadPromise.then(function(){
       // A returning renter with the design done but no folder yet: go straight to Share.
-      if(!saved && labelInput.value.trim() && !rawFolderKey()) goStep(6, { noScroll: true });
+      if(!saved && labelInput.value.trim() && !rawFolderKey()) goStep(5, { noScroll: true });
       refreshSetupNav();
     });
   })();

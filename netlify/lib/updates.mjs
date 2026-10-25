@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.7', date: '2026-10-25' },
   { version: '1.0.6', date: '2026-10-24' },
   { version: '1.0.5', date: '2026-10-24' },
   { version: '1.0.4', date: '2026-10-24' },
@@ -52,6 +53,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-25', title: 'Step reorder: Share before Session', for: ['website', 'app'], app: '1.0.7',
+    items: [
+      'Setup steps reordered: Share is now Step 5 and Session is Step 6, so you set up your photo folder and sharing options before starting the booth session.',
+      'Updated Step 5 and Step 6 summaries, folder validation, and navigation shortcuts.',
+      'Updated About Us slides showcase.'
+    ]
+  },
   {
     date: '2026-10-24', title: 'Frame settings and photo spots right under your frame', for: ['website', 'app'], app: '1.0.6',
     items: [

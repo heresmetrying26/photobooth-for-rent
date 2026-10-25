@@ -422,54 +422,87 @@
   body.in-session.shooting .brandbar, body.in-session.shooting .tab-bar{display:none !important;}
   body.in-session.shooting{padding-top:6px; padding-bottom:0; min-height:0;}
   body.in-session.shooting .app-shell.capturing{max-width:calc(100vw - 16px) !important; width:100%;}
-  body.in-session.shooting .stage-frame,
-  body.in-session.shooting .app-shell.capturing .stage-frame{
+  body.in-session.shooting:not(.stage-full) .stage-frame,
+  body.in-session.shooting:not(.stage-full) .app-shell.capturing .stage-frame{
     width:min(calc(100vw - 20px), calc((100vh - 54px) * var(--cam-aspect, 0.8))) !important;
     width:min(calc(100vw - 20px), calc((100dvh - 54px) * var(--cam-aspect, 0.8))) !important;
     max-height:calc(100vh - 54px) !important;
     max-height:calc(100dvh - 54px) !important;
     margin:0 auto !important;
   }
-  #readyFilters, #readySub{display:none !important;}   /* summary + filters live under the frame now */
-  .app-shell.getting-ready .ready-below{display:flex;}
-  .session-controls .sc-filters, #mirrorQuickBtn{display:none !important;}   /* only on the Get ready screen */
-  .app-shell.getting-ready .session-controls .sc-filters{
-    display:flex !important;
-    flex-direction:column;
-    align-items:center;
-    gap:8px;
+  #readyFilters{display:none !important;}
+  .ready-head{display:flex; flex-direction:column; align-items:center; gap:2px; pointer-events:none; text-align:center;}
+  .ready-overlay .ready-title{opacity:.95; font-size:clamp(26px, 3.8vw, 38px); margin:4px 0 0; text-shadow:0 2px 14px rgba(0,0,0,.85);}
+  .ready-overlay .ready-sub{
+    display:block !important;
+    margin:2px 0 0;
+    font-size:clamp(14px, 1.8vmin, 18px);
+    font-weight:700;
+    color:rgba(255,255,255,.92);
+    text-shadow:0 2px 10px rgba(0,0,0,.8);
+    letter-spacing:.02em;
+  }
+  .ready-below{display:none !important;}   /* summary now lives inside the viewfinder frame */
+  .app-shell:not(.getting-ready) .session-controls .sc-filters,
+  .app-shell:not(.getting-ready) #mirrorQuickBtn{display:none !important;}   /* hidden during shooting capture */
+
+  /* Get Ready Screen: Floating controls dock on the LEFT side */
+  .app-shell.getting-ready .session-controls,
+  body.stage-full .app-shell.getting-ready .session-controls{
     position:fixed !important;
-    right:max(16px, env(safe-area-inset-right)) !important;
+    left:max(16px, env(safe-area-inset-left)) !important;
     bottom:max(18px, env(safe-area-inset-bottom)) !important;
-    left:auto !important;
+    right:auto !important;
     top:auto !important;
+    transform:none !important;
     z-index:60 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    gap:8px !important;
     width:auto !important;
-    max-width:none !important;
+    max-width:115px !important;
     margin:0 !important;
     padding:10px 8px !important;
-    background:rgba(20, 16, 22, 0.72) !important;
-    -webkit-backdrop-filter:blur(12px);
-    backdrop-filter:blur(12px);
+    background:rgba(18, 14, 22, 0.78) !important;
+    -webkit-backdrop-filter:blur(14px);
+    backdrop-filter:blur(14px);
     border:1px solid rgba(255, 255, 255, 0.22);
-    border-radius:28px;
-    box-shadow:0 12px 32px rgba(0,0,0,.45);
+    border-radius:26px;
+    box-shadow:0 14px 34px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.15);
     max-height:calc(100vh - 36px);
     max-height:calc(100dvh - 36px);
     overflow-y:auto;
     scrollbar-width:none;
   }
-  .app-shell.getting-ready .session-controls .sc-filters::-webkit-scrollbar{display:none;}
+  .app-shell.getting-ready .session-controls::-webkit-scrollbar{display:none;}
+  .app-shell.getting-ready .session-controls .sc-filters{
+    order:1 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    gap:7px !important;
+    position:static !important;
+    width:auto !important;
+    max-width:none !important;
+    margin:0 !important;
+    padding:0 !important;
+    background:none !important;
+    border:none !important;
+    box-shadow:none !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
   .app-shell.getting-ready .session-controls .sc-filter{
     flex:none;
     display:flex;
     flex-direction:column;
     align-items:center;
-    gap:3px;
+    gap:2px;
     color:rgba(255, 255, 255, 0.85);
-    font:700 10.5px 'Manrope',sans-serif;
+    font:700 10px 'Manrope',sans-serif;
     cursor:pointer;
-    padding:2px 0;
+    padding:1px 0;
     transition:transform 0.15s ease, color 0.15s ease;
   }
   .app-shell.getting-ready .session-controls .sc-filter:hover{
@@ -477,15 +510,15 @@
     color:#fff;
   }
   .app-shell.getting-ready .session-controls .sc-filter i{
-    width:46px;
-    height:46px;
+    width:42px;
+    height:42px;
     border-radius:50%;
-    border:2.5px solid rgba(255, 255, 255, 0.45);
+    border:2px solid rgba(255, 255, 255, 0.4);
     background:linear-gradient(135deg,#f4c6a5,#c98a6a 55%,#7a4f3a);
     display:block;
     overflow:hidden;
     position:relative;
-    box-shadow:0 3px 8px rgba(0,0,0,.3);
+    box-shadow:0 2px 7px rgba(0,0,0,.35);
     transition:border-color 0.15s ease, box-shadow 0.15s ease;
   }
   .app-shell.getting-ready .session-controls .sc-filter.on{
@@ -494,17 +527,61 @@
   }
   .app-shell.getting-ready .session-controls .sc-filter.on i{
     border-color:#fff;
-    box-shadow:0 0 0 2.5px var(--blue-deep, #c93d27), 0 4px 12px rgba(201,61,39,.5);
+    box-shadow:0 0 0 2.5px var(--blue-deep, #c93d27), 0 3px 10px rgba(201,61,39,.55);
   }
+  .app-shell.getting-ready .session-controls .sc-row{
+    order:2 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:stretch !important;
+    gap:5px !important;
+    width:100% !important;
+    margin:0 !important;
+  }
+  .app-shell.getting-ready .session-controls .sc-row::before{
+    content:'';
+    display:block;
+    width:36px;
+    height:1px;
+    background:rgba(255,255,255,0.22);
+    margin:2px auto 4px;
+  }
+  .app-shell.getting-ready .session-controls .sc-btn{
+    min-height:30px !important;
+    padding:5px 10px !important;
+    border-radius:999px !important;
+    font-size:11px !important;
+    font-weight:700 !important;
+    background:rgba(255,255,255,.12) !important;
+    border:1px solid rgba(255,255,255,.22) !important;
+    color:rgba(255,255,255,.9) !important;
+    text-align:center !important;
+    justify-content:center !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    white-space:nowrap !important;
+    cursor:pointer !important;
+    transition:all .15s ease !important;
+  }
+  .app-shell.getting-ready .session-controls .sc-btn:hover{
+    background:rgba(255,255,255,.24) !important;
+    border-color:rgba(255,255,255,.45) !important;
+    color:#fff !important;
+    transform:scale(1.02) !important;
+  }
+  .app-shell.getting-ready .session-controls #mirrorQuickBtn{display:inline-flex !important;}
+  .app-shell.getting-ready .session-controls #cancelSessionBtn{
+    display:inline-flex !important;
+    color:#ff7878 !important;
+    border-color:rgba(255,120,120,.35) !important;
+  }
+  .app-shell.getting-ready .session-controls #cancelSessionBtn:hover{
+    background:rgba(255,60,60,.25) !important;
+    border-color:#ff7878 !important;
+  }
+  .app-shell.getting-ready .session-controls #retakeBtn,
+  .app-shell.getting-ready .session-controls #doneBtn{display:none !important;}
   .app-shell.capturing:not(.getting-ready) .session-controls .sc-filters{display:none !important;}
-  .app-shell.getting-ready #mirrorQuickBtn{display:inline-flex !important;}
-  .ready-summary{margin:0; font-size:clamp(18px, 2.2vw, 24px); font-weight:800; color:var(--ink); text-align:center; max-width:640px; letter-spacing:.01em;}
-  .ready-overlay .ready-title, .ready-overlay .ready-sub{text-shadow:0 2px 10px rgba(0,0,0,.6);}
-  .ready-filters{justify-content:center; margin:2px 0 6px;}
-  .ready-filters .sc-filter{color:#f3e9e4;}
-  .ready-filters .sc-filter.on{color:#fff;}
-  .ready-filters .sc-filter i{width:64px; height:64px; border-color:rgba(255,255,255,.5);}
-  .ready-filters .sc-filter.on i{border-color:#fff; box-shadow:0 0 0 2px var(--blue-deep);}
   .ready-title{
     font-family:'Fraunces', Georgia, serif;
     font-style:italic;
@@ -779,12 +856,14 @@
   }
 
   .toast{
-    position:fixed; left:50%; top:16px; bottom:auto; transform:translate(-50%, -20px);   /* top: never covers the session buttons */
-    background:var(--panel); border:1px solid var(--line);
-    color:var(--ink); padding:12px 20px; border-radius:30px;
-    font-size:13px; opacity:0; pointer-events:none;
-    box-shadow:0 8px 24px rgba(70,45,25,0.2);
-    transition:all 0.25s ease; z-index:50; max-width:88vw; text-align:center;
+    position:fixed; left:50%; top:max(80px, 9vh); bottom:auto; transform:translate(-50%, -15px);   /* top: sits below step tabs, never covers 1 and 2 */
+    background:var(--panel); border:1.5px solid var(--line);
+    color:var(--ink); padding:13px 26px; border-radius:999px;
+    font-size:15px; font-weight:600; line-height:1.35; opacity:0; pointer-events:none;
+    box-shadow:0 12px 32px rgba(28,26,30,0.22);
+    -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+    transition:opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index:75; max-width:88vw; text-align:center;
   }
   .toast.toast-visible{opacity:1; transform:translate(-50%, 0);}
 
@@ -986,10 +1065,10 @@
   /* ---- Frames with photo spots ---- */
   .layout-btn.lt-empty{border-style:dashed;}
   /* Layout step: grouped cards; guests' choices ticked on the cards */
-  .lay-head{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:6px;}
-  .lay-guest-toggle{display:inline-flex; align-items:center; gap:8px; padding:7px 13px; border-radius:999px; border:1.5px solid var(--line); background:#fff; font:700 13px 'Manrope',sans-serif; color:var(--ink); cursor:pointer;}
-  .lay-guest-toggle:has(input:checked){border-color:var(--blue-deep); background:var(--tint);}
-  .lay-guest-toggle input{margin:0;}
+  .lay-guest-toggle{display:inline-flex; align-items:center; gap:8px; padding:7px 15px; border-radius:999px; border:1.5px solid var(--line); background:#fff; font:700 13px 'Manrope',sans-serif; color:var(--ink); cursor:pointer; transition:all .15s ease; user-select:none;}
+  .lay-guest-toggle:hover{border-color:var(--ink-dim);}
+  .lay-guest-toggle:has(input:checked){border-color:var(--blue-deep); background:var(--tint); color:var(--blue-deep); font-weight:800;}
+  .lay-guest-toggle input{margin:0; width:16px; height:16px; accent-color:var(--blue-deep); cursor:pointer;}
   .lay-groups{display:flex; flex-direction:column; gap:16px; margin-top:4px;}
   .lay-group-h{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin:0 0 7px;}
   .lay-group-h b{font:800 11.5px 'Manrope',sans-serif; letter-spacing:.09em; text-transform:uppercase; color:var(--ink);}
@@ -1066,7 +1145,7 @@
   /* Session controls under the live view */
   .session-controls{margin-top:12px; display:flex; flex-direction:column; align-items:center; gap:8px;}
   .sc-row{display:flex; flex-wrap:wrap; gap:8px; justify-content:center;}
-  .sc-btn{min-height:42px; padding:9px 18px; border-radius:999px; border:1.5px solid var(--line); background:#fff; color:var(--ink); font:800 13.5px 'Manrope',sans-serif; cursor:pointer;}
+  .sc-btn{min-height:42px; padding:9px 18px; border-radius:999px; border:1.5px solid var(--line); background:#fff; color:var(--ink); font:800 13.5px 'Manrope',sans-serif; cursor:pointer; white-space:nowrap; flex-shrink:0;}
   .sc-btn[hidden]{display:none;}
   .sc-btn.sc-strong{background:var(--blue-deep); border-color:var(--blue-deep); color:#fff;}
   .sc-btn.sc-done{border-color:var(--blue-deep); color:var(--blue-deep);}
@@ -1084,7 +1163,7 @@
   .app-shell.capturing{max-width:calc(100vw - 16px);}
   body.in-session .app-shell.capturing .stage-wrap{display:grid; grid-template-columns:auto auto auto; justify-content:center; gap:16px; row-gap:0; align-items:start;}
   body.in-session .app-shell.capturing .stage-frame{grid-column:2; grid-row:1; width:min(calc(100vw - 20px), calc((100vh - 54px) * var(--cam-aspect, 0.8))); max-height:calc(100vh - 54px); justify-self:center;}
-  .app-shell.capturing .session-controls .sc-filters{display:none !important;}
+  .app-shell.capturing:not(.getting-ready) .session-controls .sc-filters{display:none !important;}
   body.in-session .app-shell.capturing .film-track{grid-column:3; grid-row:1; align-self:start; flex-direction:column; align-items:stretch; justify-content:flex-start; margin-top:0;}
   body.in-session .app-shell.capturing .film-frame{width:100%; height:auto; font-size:20px; font-weight:800;}
   body.in-session .app-shell.capturing .session-controls, body.in-session .app-shell.capturing .start-btn-wrap{grid-column:2;}
@@ -1122,7 +1201,7 @@
   /* Brand red for every checkbox, radio and slider */
   input[type=checkbox], input[type=radio], input[type=range]{accent-color:var(--blue-deep);}
   @media (max-width:640px){
-    .toast{top:14px; bottom:auto; transform:translate(-50%, -20px);}
+    .toast{top:max(74px, 8.5vh); font-size:14px; padding:11px 20px; transform:translate(-50%, -15px);}
     .toast.toast-visible{transform:translate(-50%, 0);}
   }
 
@@ -1167,22 +1246,116 @@
   .welcome-overlay.on, .pick-overlay.on{display:block;}
   .welcome-overlay img{width:100%; height:100%; object-fit:contain; display:block;}
   .welcome-overlay{background:#f6f1ea;}
+  body.attract-camera .welcome-overlay{background:transparent !important;}
+  body.attract-camera .welcome-overlay img{object-fit:cover;}
   .shot-review{position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:#0e1216; z-index:3; display:none;}
   .shot-review.on{display:block;}
-  .pick-overlay{cursor:default; background:rgba(20,18,22,.78); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); padding:4%;
-    display:none; flex-direction:column; align-items:center; justify-content:flex-start; gap:3%; overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y;}
+  .pick-overlay{
+    cursor:default;
+    background:rgba(12, 10, 16, 0.86);
+    -webkit-backdrop-filter:blur(14px);
+    backdrop-filter:blur(14px);
+    padding:clamp(14px, 2.8vw, 30px);
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    touch-action:pan-y;
+    z-index:70;
+  }
   .pick-overlay.on{display:flex;}
-  .pick-title{margin:0; color:#fff; font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:clamp(20px,4.2vw,34px); text-align:center;}
-  .pick-grid{display:flex; flex-wrap:wrap; justify-content:center; align-content:flex-start; gap:3%; width:100%; padding-bottom:4%;}
-  .pick-btn{flex:0 1 28%; min-width:110px; display:flex; flex-direction:column; align-items:center; gap:8px; padding:10px; border-radius:16px;
-    border:3px solid transparent; background:rgba(255,255,255,.1); color:#fff; font:700 clamp(12px,1.8vw,16px) 'Manrope',sans-serif; cursor:pointer;}
-  .pick-btn img{width:auto; max-width:100%; max-height:calc(var(--stage-h, 600px) * 0.5); border-radius:8px; background:#fff; display:block; box-shadow:0 8px 20px rgba(0,0,0,.25);}
-  .pick-btn.sel, .pick-btn:focus-visible{border-color:#C93D27; background:rgba(255,255,255,.18); outline:none;}
-  #pickOverlay{background:rgba(20,18,22,.5); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); padding:2.5% 3%; justify-content:flex-end;}
-  #pickOverlay .pick-title{font-size:clamp(16px, 2.2vw, 24px);}
-  #pickOverlay .pick-grid{gap:10px; padding-bottom:6px; flex-wrap:nowrap; overflow-x:auto; justify-content:flex-start; scrollbar-width:thin;}
-  #pickOverlay .pick-btn{flex:0 0 auto; min-width:0; padding:6px; gap:4px; font-size:13px;}
-  #pickOverlay .pick-btn img{max-height:min(22vh, calc(var(--stage-h, 600px) * 0.32));}
+  .pick-head{display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center;}
+  .pick-title{
+    margin:0;
+    color:#fff;
+    font-family:'Fraunces',Georgia,serif;
+    font-style:italic;
+    font-weight:700;
+    font-size:clamp(22px, 3.8vmin, 36px);
+    text-align:center;
+    text-shadow:0 3px 14px rgba(0,0,0,.8);
+    letter-spacing:.01em;
+  }
+  .pick-sub{
+    margin:0;
+    font-size:clamp(12px, 1.6vmin, 15px);
+    font-weight:600;
+    color:rgba(255,255,255,.8);
+    letter-spacing:.02em;
+    text-shadow:0 2px 8px rgba(0,0,0,.6);
+  }
+  .pick-grid{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    align-items:stretch;
+    gap:clamp(12px, 2.2vmin, 22px);
+    width:100%;
+    max-width:960px;
+    padding:6px 4px 14px;
+    max-height:calc(100vh - 140px);
+    max-height:calc(100dvh - 140px);
+    overflow-y:auto;
+    scrollbar-width:thin;
+  }
+  .pick-btn{
+    flex:0 1 clamp(140px, 20vw, 220px);
+    min-width:110px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+    padding:clamp(10px, 1.6vmin, 16px);
+    border-radius:18px;
+    border:2.5px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    cursor:pointer;
+    box-shadow:0 10px 26px rgba(0,0,0,.45);
+    transition:all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select:none;
+  }
+  .pick-btn:hover{
+    transform:translateY(-5px) scale(1.03);
+    border-color:rgba(255,255,255,.55);
+    background:rgba(255,255,255,.16);
+    box-shadow:0 18px 36px rgba(0,0,0,.6);
+  }
+  .pick-btn.sel, .pick-btn:focus-visible{
+    border-color:var(--blue-deep, #c93d27);
+    background:rgba(201,61,39,.2);
+    box-shadow:0 0 0 3px rgba(201,61,39,.45), 0 18px 36px rgba(0,0,0,.6);
+    outline:none;
+    transform:translateY(-5px) scale(1.03);
+  }
+  .pick-btn img{
+    width:auto;
+    max-width:100%;
+    max-height:min(30vh, calc(var(--stage-h, 600px) * 0.42));
+    border-radius:10px;
+    background:#fff;
+    display:block;
+    box-shadow:0 6px 18px rgba(0,0,0,.35);
+    object-fit:contain;
+  }
+  .pick-name{
+    font:800 clamp(13px, 1.8vmin, 16px) 'Manrope', sans-serif;
+    color:#fff;
+    text-align:center;
+    line-height:1.2;
+    letter-spacing:.01em;
+  }
+  .pick-shots{
+    font:700 clamp(10.5px, 1.4vmin, 12.5px) 'Manrope', sans-serif;
+    color:rgba(255,255,255,.8);
+    background:rgba(255,255,255,.14);
+    padding:2px 9px;
+    border-radius:999px;
+    letter-spacing:.03em;
+  }
 
   /* ---- Frame, logo, stickers, pattern color, my themes ---- */
   .accent-row{display:flex; flex-wrap:wrap; gap:6px;}
@@ -1610,7 +1783,10 @@
      body.stage-full = welcome / get ready / shooting / review; body.stage-shoot = shooting / review. */
   body.stage-full{overflow:hidden; background:#000;}
   body.stage-full .app-shell .stage-wrap{position:fixed !important; inset:0 !important; z-index:40; background:#000; display:flex !important; align-items:center !important; justify-content:center !important; padding:0 !important; margin:0 !important; grid-template-columns:none !important; column-gap:0 !important;}
-  body.stage-full .app-shell .stage-frame{width:min(100vw, calc(100vh * var(--cam-aspect, .8))) !important; width:min(100vw, calc(100dvh * var(--cam-aspect, .8))) !important; max-width:100vw; max-height:100vh; max-height:100dvh; border-radius:0 !important; border:0 !important; box-shadow:none !important; margin:0 !important; background:#000 !important;}
+  body.stage-full .app-shell .stage-frame,
+  body.stage-full.in-session.shooting .app-shell.capturing .stage-frame{width:min(100vw, calc(100vh * var(--cam-aspect, .8))) !important; width:min(100vw, calc(100dvh * var(--cam-aspect, .8))) !important; max-width:100vw; max-height:100vh; max-height:100dvh; border-radius:0 !important; border:0 !important; box-shadow:none !important; margin:0 !important; background:#000 !important;}
+  body.stage-full.has-film-shots .app-shell .stage-frame,
+  body.stage-full.has-film-shots.in-session.shooting .app-shell.capturing .stage-frame{width:min(calc(100vw - 2 * (clamp(64px, 9vmin, 120px) + 28px)), calc(100vh * var(--cam-aspect, .8))) !important; width:min(calc(100vw - 2 * (clamp(64px, 9vmin, 120px) + 28px)), calc(100dvh * var(--cam-aspect, .8))) !important;}
   body.stage-full .sprockets, body.stage-full .rec-dot{display:none !important;}
   /* welcome / get ready: the operator's top bar and dock float over the black */
   body.stage-full:not(.stage-shoot) .brandbar.topbar{position:relative; z-index:41;}
@@ -1618,13 +1794,13 @@
   /* shooting: guests only — no operator buttons, time chip or tabs */
   body.stage-shoot .brandbar.topbar{visibility:hidden;}
   body.stage-shoot #opDock, body.stage-shoot #pbTimeChip{display:none !important;}
-  /* thumbnails: a floating column in the top-right corner of the screen */
-  body.stage-full .app-shell .film-track{position:fixed !important; top:max(16px, env(safe-area-inset-top)); right:max(16px, env(safe-area-inset-right)); left:auto; bottom:auto; z-index:45; width:auto !important; display:flex !important; flex-direction:column !important; align-items:stretch !important; gap:8px !important; margin:0 !important; padding:8px; border-radius:16px; background:rgba(0,0,0,.45); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); max-height:calc(100vh - 120px); overflow:auto;}
+  /* thumbnails: a floating column in the top-right corner of the screen, always on top and never covered */
+  body.stage-full .app-shell .film-track{position:fixed !important; top:max(16px, env(safe-area-inset-top)); right:max(16px, env(safe-area-inset-right)); left:auto; bottom:auto; z-index:50 !important; width:auto !important; display:flex !important; flex-direction:column !important; align-items:stretch !important; gap:8px !important; margin:0 !important; padding:8px; border-radius:16px; background:rgba(0,0,0,.55); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); max-height:calc(100vh - 120px); overflow:auto;}
   body.stage-full .app-shell .film-track:empty{display:none !important;}
   body.stage-full .app-shell .film-track .film-frame{width:clamp(64px, 9vmin, 120px) !important; height:auto !important; aspect-ratio:var(--box-aspect, .8);}
   /* buttons: see-through pills, bottom centre */
   body.stage-full .app-shell .session-controls{position:fixed !important; left:50% !important; right:auto !important; bottom:max(18px, env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:45; margin:0 !important; width:max-content !important; max-width:calc(100vw - 32px); grid-column:auto !important;}
-  body.stage-full .app-shell .session-controls .sc-btn{background:rgba(0,0,0,.5) !important; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border-color:rgba(255,255,255,.28) !important; color:#fff !important; min-height:44px; padding:10px 20px; font-size:15px;}
+  body.stage-full .app-shell .session-controls .sc-btn{background:rgba(0,0,0,.5) !important; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border-color:rgba(255,255,255,.28) !important; color:#fff !important; min-height:44px; padding:10px 22px; font-size:15px; white-space:nowrap !important; flex-shrink:0 !important;}
   body.stage-full .app-shell .session-controls .sc-btn.sc-strong, body.stage-full .app-shell .session-controls .sc-btn.sc-done{background:rgba(201,61,39,.92) !important; border-color:transparent !important;}
   body.stage-full .app-shell .session-controls .sc-hint{color:rgba(255,255,255,.85) !important; background:rgba(0,0,0,.45); padding:4px 12px; border-radius:999px;}
   /* countdown: top centre, sized for a full screen */
@@ -1637,6 +1813,10 @@
   /* review (Retake / Done): the finished photo sits higher, clear of the buttons and the thumbnails */
   body.stage-review .app-shell .stage-wrap{align-items:flex-start !important; padding-top:max(16px, env(safe-area-inset-top)) !important;}
   body.stage-review .app-shell .stage-frame{width:min(calc(100vw - 2 * clamp(96px, calc(9vmin + 40px), 152px)), calc((100vh - 150px) * var(--cam-aspect, .8))) !important;}
+  /* Review: hide the wordy hint pill — the buttons speak for themselves */
+  body.stage-review #reviewHint{display:none !important;}
+  /* Review: enlarge the side thumbnails so guests can clearly see their photos */
+  body.stage-review .app-shell .film-track .film-frame{width:clamp(80px, 12vmin, 160px) !important;}
 
   /* Full screen: the rest of the camera picture fills the black around the photo, dimmed,
      lined up with the live view, so the screen looks full but guests still see the photo's edges. */
@@ -1646,6 +1826,8 @@
   .stage-surround::after{content:''; position:absolute; inset:0; background:rgba(0,0,0,.6);}
   body.stage-full .app-shell .stage-frame{z-index:1;}
   body.surround-on .app-shell .stage-frame{box-shadow:0 0 0 2px rgba(255,255,255,.92), 0 0 0 6px rgba(0,0,0,.25) !important;}
+  body.stage-shoot .stage-surround video, body.stage-shoot .stage-surround::after{display:none !important;}
+  body.stage-shoot.surround-on .app-shell .stage-frame{box-shadow:none !important;}
 
   /* ---- Guest payments: Setup card ---- */
   .pay-modes{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px; margin-top:10px;}
@@ -2144,7 +2326,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <div class="panel-section" id="formatSection">
         <div class="lay-head">
           <p class="panel-label" style="margin:0;">Layout</p>
-          <label class="lay-guest-toggle"><input type="checkbox" id="guestPickToggle"> <span>Let guests choose</span></label>
+          <label class="lay-guest-toggle"><input type="checkbox" id="guestPickToggle"> <span>Let guests choose layout</span></label>
         </div>
         <p class="panel-hint step-lead" id="guestPickHint">Tap a layout to use it.</p>
         <div class="lay-groups" id="layoutGrid"></div>
@@ -2306,11 +2488,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <button type="button" class="chip" data-filter="cool">Cool</button>
           </div>
           <label class="toggle-row" style="margin-top:12px;"><input type="checkbox" id="softSkinToggle"> Soft skin</label>
-          <div hidden>
-            <input type="checkbox" id="welcomeToggle" checked>
-            <input type="text" id="welcomeMsgInput">
-            <img id="welcomePreview" alt="">
-          </div>
         </div>
       </div>
       <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="3">← Back</button><button type="button" class="action-btn primary next-btn" data-go="5">Next: Share →</button></div>
@@ -2531,15 +2708,43 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos look the same as the preview (mirrored when this is on).</p>
       </div>
       <div class="panel-section" id="brandSection">
-        <p class="panel-label">Your logo</p>
-        <p class="panel-hint step-lead" id="brandLead">Show your business logo to guests. The start screen on this device keeps the photobooth4u logo.</p>
-        <div class="brand-row" id="brandRowC">
-          <input type="checkbox" id="brandCOn" aria-label="Show the top-left logo">
-          <div class="brand-thumb" id="brandCThumb"></div>
-          <div class="brand-txt"><b>Top-left logo</b><small>Top-left of Photo Session and the guest screen, in place of the photobooth4u logo.</small></div>
-          <label class="upload-btn" for="brandCFile" id="brandCBtn">Change</label>
-          <input type="file" id="brandCFile" accept="image/*">
+        <p class="panel-label">Welcome screen &amp; branding</p>
+        <p class="panel-hint step-lead" id="brandLead">Customize the screen guests see between sessions, and display your logo.</p>
+        <label class="switch-row" style="margin-top:0;"><span>Show welcome screen between guests</span><input type="checkbox" id="welcomeToggle" checked></label>
+        <div id="welcomeOpts" style="margin-top:10px;">
+          <p class="sub-label" style="margin:0 0 6px;">Attract mode</p>
+          <div class="chip-row" id="attractModeChips">
+            <button type="button" class="chip active" data-attract="card">Event card</button>
+            <button type="button" class="chip" data-attract="camera">Live camera</button>
+            <button type="button" class="chip" data-attract="poster">Custom poster</button>
+          </div>
+          <p class="panel-hint" id="attractHint" style="margin:6px 0 0;">Shows a branded card with event name, date and sample photo.</p>
+          <div id="attractPosterRow" style="display:none; margin-top:10px;">
+            <div class="bg-row">
+              <img class="bg-thumb" id="attractPosterThumb" alt="Poster" style="display:none;">
+              <label class="upload-btn" for="attractPosterInput">Upload poster image</label>
+              <input type="file" id="attractPosterInput" accept="image/*">
+            </div>
+            <button class="remove-link" id="attractPosterRemove" style="display:none;">Remove poster</button>
+            <p class="panel-hint" style="margin:4px 0 0;">Full-screen image — design it in Canva at your camera's aspect ratio (e.g. 3:4 portrait).</p>
+          </div>
+          <div style="margin-top:10px;">
+            <p class="sub-label" style="margin:0 0 4px;">Button text</p>
+            <input type="text" class="label-input" id="welcomeMsgInput" placeholder="Tap to start" style="font-family:'Manrope',sans-serif; font-size:14px;">
+            <p class="panel-hint" style="margin:4px 0 0;">Leave empty for the default "Tap to start" (or "Wave" / "Smile" when hands-free is on).</p>
+          </div>
         </div>
+        <img id="welcomePreview" alt="" style="display:none;">
+
+        <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line);">
+          <p class="sub-label" style="margin:0 0 8px;">Logos on screen</p>
+          <div class="brand-row" id="brandRowC">
+            <input type="checkbox" id="brandCOn" aria-label="Show the top-left logo">
+            <div class="brand-thumb" id="brandCThumb"></div>
+            <div class="brand-txt"><b>Top-left logo</b><small>Top-left of Photo Session and the guest screen, in place of the photobooth4u logo.</small></div>
+            <label class="upload-btn" for="brandCFile" id="brandCBtn">Change</label>
+            <input type="file" id="brandCFile" accept="image/*">
+          </div>
         <div class="brand-row" id="brandRowW">
           <input type="checkbox" id="brandWOn" aria-label="Show the welcome logo">
           <div class="brand-thumb" id="brandWThumb"></div>
@@ -2660,7 +2865,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <img class="shot-review" id="shotReview" alt="">
         <div class="welcome-overlay" id="welcomeOverlay" role="button" tabindex="0" aria-label="Tap to start"><img id="welcomeImg" alt="Welcome — tap to start"><span class="welcome-pulse" id="welcomePulse" aria-hidden="true"></span></div>
         <div class="pick-overlay" id="pickOverlay" aria-label="Choose your layout">
-          <p class="pick-title" id="pickTitle">Choose your layout</p>
+          <div class="pick-head">
+            <p class="pick-title" id="pickTitle">Choose your layout</p>
+            <p class="pick-sub" id="pickSub">Tap a design to start your session</p>
+          </div>
           <div class="pick-grid" id="pickGrid"></div>
         </div>
 
@@ -2675,8 +2883,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         </div>
 
         <div class="ready-overlay" id="readyOverlay">
-          <p class="ready-title">Get ready!</p>
-          <p class="ready-sub" id="readySub" hidden>4 shots · 5,4,3,2,1,Pose</p>
+          <div class="ready-head">
+            <p class="ready-title">Get ready!</p>
+            <p class="ready-sub" id="readySub">4 shots · 5,4,3,2,1,Pose</p>
+          </div>
           <div class="sc-filters ready-filters" id="readyFilters" aria-label="Pick a filter" hidden></div>
           <button class="shutter-btn" id="readyStartBtn"><span class="ring"></span>Start</button>
           <p class="ready-cue" id="readyCue" aria-live="polite"><i aria-hidden="true"></i><span><b id="readyCueTxt">Smile to start</b><small>or tap the screen</small></span></p>
@@ -6066,7 +6276,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var cam = camAspect(), filmBox = currentBoxAspect(), box = filmBox;
     try{ if(state === 'capturing') box = shotBoxAspect(stageShot); }catch(e){}
     var sf = document.getElementById('stageFrame');
-    var sa = photoFit === 'whole' ? cam : box;                 // whole photo: the camera's full picture
+    var sa = state === 'capturing' ? box : (photoFit === 'whole' ? cam : box);                 // whole photo: camera picture between sessions; per-shot box during capture
     // Between guests (idle, welcome, layout picker) the preview is always the
     // standard camera shape, never the last layout's box.
     try{ if(state !== 'capturing') sa = cam; }catch(e){}
@@ -6101,7 +6311,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var b = document.body, sh = document.querySelector('.app-shell');
     var picking = false; try{ picking = !!pickOpen; }catch(e){}
     var reviewing = false; try{ reviewing = !!(sess && sess.reviewing); }catch(e){}
-    var trad = false; try{ trad = isTraditional(); }catch(e){}
+    var trad = false; try{ trad = isTraditional() && (typeof guestOpen === 'function' && guestOpen()); }catch(e){}
     var on = b.classList.contains('in-session') && !trad && state !== 'result' &&
       (state === 'capturing' || b.classList.contains('welcome-on') || picking || !!(sh && sh.classList.contains('getting-ready')));
     var shoot = on && state === 'capturing';
@@ -6120,6 +6330,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var sh = document.querySelector('.app-shell'), picking = false;
       try{ picking = !!pickOpen; }catch(e){}
       on = b.classList.contains('stage-full') && !b.classList.contains('stage-review') && !b.classList.contains('welcome-on') && !picking &&
+        !b.classList.contains('stage-shoot') &&
         (state === 'capturing' || !!(sh && sh.classList.contains('getting-ready'))) &&
         streamActive && !!video.srcObject && !!video.videoWidth && video.style.display !== 'none' &&
         !(typeof bgRep !== 'undefined' && bgRep && bgRep.mode && bgRep.mode !== 'off');
@@ -6222,7 +6433,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var frames = ft.querySelectorAll('.film-frame');
     var vh = window.innerHeight - (dockReserve || 0);
     var top = Math.max(0, sw.getBoundingClientRect().top + window.scrollY);
-    var ctrlH = sc && sc.offsetParent !== null ? sc.offsetHeight + 12 : 0;
+    var ctrlH = sc && sc.offsetParent !== null && getComputedStyle(sc).position !== 'fixed' ? sc.offsetHeight + 12 : 0;
     var sb = document.querySelector('.start-btn-wrap');
     var btnH = sb && sb.offsetParent !== null && getComputedStyle(sb).position !== 'absolute' ? sb.offsetHeight + 28 : 0;
     if(!side){
@@ -6268,6 +6479,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var h = Math.max(200, Math.min(Hmax, hFit));
     var fh = (h - g * (n - 1)) / n, fw = Math.round(fh * box), stw = Math.round(h * sa);
     if(hasShots){
+      var maxTotalW = window.innerWidth - 32;
+      if(2 * fw + 2 * gap + stw > maxTotalW){
+        stw = Math.max(200, maxTotalW - 2 * fw - 2 * gap);
+        h = Math.round(stw / sa);
+        fh = (h - g * (n - 1)) / n;
+        fw = Math.round(fh * box);
+      }
       sw.style.gridTemplateColumns = fw + 'px ' + stw + 'px ' + fw + 'px';
       sw.style.columnGap = gap + 'px';
       ft.style.width = fw + 'px';
@@ -6395,6 +6613,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         frame.textContent = String(i + 1);
       }
     });
+    const hasShots = Array.isArray(shotCanvases) && shotCanvases.some(Boolean);
+    document.body.classList.toggle('has-film-shots', hasShots);
     applyStageAspect();
   }
 
@@ -6567,7 +6787,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
 
   async function countdownThenCapture(index, noPause){
-    if(stageShot !== index){ stageShot = index; applyStageAspect(); }   // frame this shot's box
+    stageShot = index;
+    applyStageAspect();   // frame this shot's box
     const extra = index === 0 && !noPause ? firstExtraSec : 0;
     await runCountdown(timerSec + extra, index);
     if(sess && sess.cancelled) return;
@@ -6613,6 +6834,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       retakeBtn.hidden = true; doneBtn.hidden = true;
       countdownOverlay.classList.remove('pausing');
       hideShotReview();
+      stageShot = index + 1;
+      applyStageAspect();
     }
   }
 
@@ -6792,6 +7015,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     shotCanvases = new Array(shotsNeeded()).fill(null);
     qrResults.innerHTML = '';
     lastRenderedFolderUrl = null;
+    retakeBtn.hidden = true;
+    doneBtn.hidden = true;
+    reviewHint.hidden = true;
     cancelSessionBtn.hidden = false;
     updateFilmTrack();
     updateUI();
@@ -6801,6 +7027,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(sess.cancelled){ endCancelledSession(); return; }
     consumePayCredit();          // the paid session is used once the countdown starts (Cancel at Get ready keeps it)
     countingDown = true;
+    stageShot = 0;
+    try{ applyStageAspect(); }catch(e){}
     guestRender();
 
     let i = 0;
@@ -7125,7 +7353,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     });
     box.appendChild(thumb);
     const n = document.createElement('span'); n.className = 'ln';
-    n.textContent = isFrame ? 'Frame ' + (myFrames.indexOf(f) + 1) : d.name;
+    n.textContent = isFrame ? (f && f.name ? f.name : 'Frame ' + (myFrames.indexOf(f) + 1)) : d.name;
     const shots = isFrame ? frameShotCount(f) : d.shots;
     const sh = document.createElement('span'); sh.className = 'ls'; sh.textContent = shots + (shots === 1 ? ' shot' : ' shots');
     const pp = document.createElement('span'); pp.className = 'lpaper';
@@ -7188,7 +7416,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const key = btn.dataset.layout;
     layoutPicked = true;
     if(/^frame:/.test(key)){
-      activeFrameId = key.slice(6); spotEdit = null; setupLayout = 'myframe';
+      activeFrameId = key.slice(6); setupActiveFrameId = activeFrameId; spotEdit = null; setupLayout = 'myframe';
       if(guestPickOn && chooseIds.indexOf(activeFrameId) < 0) chooseIds.push(activeFrameId);
       framesChanged({ layout: 'myframe' });
       return;
@@ -7200,7 +7428,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   });
   // Switches the layout everywhere (Setup grid, shot count, previews). Used by
   // the Setup grid, a restored saved setup, and the guests' layout picker.
-  let setupLayout = 'strip';
+  let setupLayout = 'strip', setupActiveFrameId = null;
   function setLayout(key){
     if(!LAYOUT_DEFS[key]) return;
     if(layoutDef(key).kind === 'frame'){
@@ -7844,6 +8072,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function drawStyledTitle(ctx, x, y, w, h, nameRaw, dateText){
     var name = (titleUpper ? nameRaw.toUpperCase() : nameRaw).trim();
     var k = (kickerText || '').trim(), kU = k.toUpperCase();
+    if(hasArt('awning')){
+      var ah = themeArtTop(w > 1000 ? w : 1800);
+      if(y < ah){ var padTop = ah - y + 12; y += padTop; h = Math.max(h * 0.45, h - padTop); }
+    }
     // Leave room for artwork sitting in a bottom corner.
     var cx = x + w / 2, maxW = w * 0.86;
     if(hasArt('teddy')){ cx = x + w * 0.62; maxW = w * 0.58; }
@@ -7854,6 +8086,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var fit = function(font, text, size, min, sp){
       ctx.font = fontString(font, Math.round(size));
       while(size > min && spacedWidth(ctx, text, sp ? sp * size : 0) > maxW){ size -= Math.max(1, size * 0.04); ctx.font = fontString(font, Math.round(size)); }
+      while(size > 10 && spacedWidth(ctx, text, sp ? sp * size : 0) > maxW){ size -= Math.max(0.5, size * 0.03); ctx.font = fontString(font, Math.round(size)); }
       return size;
     };
     var kick = function(sz){ if(k) rows.push({ t: kU, f: currentDateFont, s: fit(currentDateFont, kU, sz, sz * 0.5, 0.3), sp: 0.3 }); };
@@ -7868,6 +8101,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         rows.push({ t: parts[0], f: currentFont, s: s2, name: true });
         rows.push({ t: '&', f: currentFont, s: s2 * 0.6, name: true });
         rows.push({ t: parts[2], f: currentFont, s: s2, name: true });
+        return;
+      }
+      var words = name.split(/\s+/);
+      if(words.length >= 2 && spacedWidth(ctx, name, 0) > maxW && fit(currentFont, name, sz, min, 0) <= min * 1.15){
+        var mid = Math.ceil(words.length / 2);
+        var line1 = words.slice(0, mid).join(' ');
+        var line2 = words.slice(mid).join(' ');
+        var longer = line1.length > line2.length ? line1 : line2;
+        var s2 = fit(currentFont, longer, sz * 0.82, Math.max(12, min * 0.65), 0);
+        rows.push({ t: line1, f: currentFont, s: s2, name: true });
+        rows.push({ t: line2, f: currentFont, s: s2, name: true });
         return;
       }
       rows.push({ t: name, f: currentFont, s: fit(currentFont, name, sz, min, 0), name: true });
@@ -7954,13 +8198,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       } else {
         ctx.font = fontString(r.f, Math.round(r.s));
         var sp = r.sp ? r.sp * r.s : 0;
+        var rowW = spacedWidth(ctx, r.t, sp);
+        var rowCx = cx;
+        if(rowCx - rowW / 2 < x + 10) rowCx = x + 10 + rowW / 2;
+        if(rowCx + rowW / 2 > x + w - 10) rowCx = x + w - 10 - rowW / 2;
         if(r.name && useOutline){
           ctx.strokeStyle = outlineColor; ctx.lineWidth = r.s * 0.09; ctx.lineJoin = 'round';
-          drawSpaced(ctx, r.t, cx, my, sp, true);
+          drawSpaced(ctx, r.t, rowCx, my, sp, true);
         }
         if(r.name && useShadow){ ctx.shadowColor = 'rgba(40,30,20,0.3)'; ctx.shadowBlur = r.s * 0.08; ctx.shadowOffsetY = r.s * 0.03; }
         ctx.globalAlpha = r.a || 1; ctx.fillStyle = textColor;
-        drawSpaced(ctx, r.t, cx, my, sp, false);
+        drawSpaced(ctx, r.t, rowCx, my, sp, false);
         ctx.globalAlpha = 1; ctx.shadowColor = 'transparent';
       }
       yy += r.s;
@@ -9564,15 +9812,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     '.pwr{display:flex;align-items:center;justify-content:center;gap:.4em;margin-top:1.4vh;color:var(--dim);font-weight:700;font-size:clamp(9px,.72vw,14px);letter-spacing:.06em;}' +
     '.pwr .mk{display:grid;grid-template-columns:1fr 1fr;gap:1px;width:1.1em;height:1.1em;}.pwr .mk i{background:var(--ink);border-radius:2px;}.pwr .mk i:nth-child(2){background:var(--red);}' +
     '.pwr b{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:1.4em;letter-spacing:-.03em;color:var(--ink);}.pwr b em{font-style:normal;color:var(--red);}' +
-    '.pk{position:fixed;inset:0;z-index:4;background:rgba(20,18,22,.86);display:flex;flex-direction:column;align-items:center;gap:clamp(16px,4vh,40px);padding:4vh 4vw;overflow:hidden;box-sizing:border-box;}' +
+    '.pk{position:fixed;inset:0;z-index:4;background:rgba(20,18,22,.86);display:flex;flex-direction:column;align-items:center;gap:clamp(14px,3vh,34px);padding:4vh 4vw;overflow:hidden;box-sizing:border-box;}' +
     '.pkt{flex:none;margin:0;color:#fff;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(26px,3.6vw,64px);}' +
+    '.pksb{flex:none;margin:-1.8vh 0 0;font:600 clamp(13px,1.2vw,20px) Manrope,sans-serif;color:rgba(255,255,255,.7);}' +
     '.pkg{flex:1 1 auto;width:100%;min-height:0;overflow-y:auto;display:flex;gap:2.4vw;justify-content:center;align-items:flex-start;align-content:flex-start;flex-wrap:wrap;padding:0 1vw 3vh;box-sizing:border-box;overscroll-behavior:contain;}' +
-    '.pkb{display:flex;flex-direction:column;align-items:center;gap:1.4vh;padding:1.2vh;border-radius:18px;border:4px solid transparent;background:rgba(255,255,255,.08);color:#fff;font:700 clamp(14px,1.3vw,24px) Manrope,sans-serif;cursor:pointer;}' +
+    '.pkb{display:flex;flex-direction:column;align-items:center;gap:1.2vh;padding:1.2vh;border-radius:18px;border:4px solid transparent;background:rgba(255,255,255,.08);color:#fff;font:700 clamp(14px,1.3vw,24px) Manrope,sans-serif;cursor:pointer;}' +
     '.pkb img{height:52vh;max-width:28vw;object-fit:contain;border-radius:10px;background:#fff;}' +
+    '.pkb .pks{font-size:clamp(10px,.8vw,14px);font-weight:700;color:rgba(255,255,255,.8);background:rgba(255,255,255,.14);padding:2px 10px;border-radius:99px;margin-top:-0.3vh;}' +
     '.pkb.sel{border-color:var(--red);background:rgba(255,255,255,.16);}' +
     '</style></head><body>' +
     '<button class="fs" id="fs" type="button">⛶ Click for full screen</button>' +
-    '<div class="pk hide" id="pk"><p class="pkt">Choose your layout</p><div class="pkg" id="pkg"></div></div>' +
+    '<div class="pk hide" id="pk"><p class="pkt">Choose your layout</p><p class="pksb">Tap a design to start your session</p><div class="pkg" id="pkg"></div></div>' +
     '<div class="g">' +
       '<div class="side">' +
         '<div class="logo" id="glogo"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word"><b>photobooth</b><em>4u</em></span><img class="lg hide" id="lgImg" alt=""></div>' +
@@ -9759,6 +10009,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       G.pk.classList.toggle('hide', !pickOpen);
       if(!pickOpen){ G.pkSig = ''; return; }
       const pkt = G.pk.querySelector('.pkt'); if(pkt) pkt.textContent = pickTitleText();
+      const pksb = G.pk.querySelector('.pksb'); if(pksb) pksb.textContent = 'Tap a design to start your session';
       const sig = pickKeys.join(',');
       if(G.pkSig !== sig){
         G.pkSig = sig;
@@ -9766,8 +10017,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         pickKeys.forEach((k) => {
           const b = G.d.createElement('button'); b.type = 'button'; b.className = 'pkb';
           const im = G.d.createElement('img'); im.src = layoutThumbUrl(k);
-          const sp = G.d.createElement('span'); sp.textContent = pickName(k);
-          b.append(im, sp);
+          const sp = G.d.createElement('span'); sp.className = 'pkn'; sp.textContent = pickName(k);
+          const isFr = /^frame:/.test(k);
+          const fObj = isFr && typeof frameById === 'function' ? frameById(k.slice(6)) : null;
+          const shots = isFr ? frameShotCount(fObj) : (LAYOUT_DEFS[k] ? LAYOUT_DEFS[k].shots : 4);
+          const sh = G.d.createElement('span'); sh.className = 'pks'; sh.textContent = shots + (shots === 1 ? ' shot' : ' shots');
+          b.append(im, sp, sh);
           b.addEventListener('click', (e) => { e.stopPropagation(); finishPick(k); });
           G.pkg.appendChild(b);
         });
@@ -9819,7 +10074,35 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       }
       if(welcome){
         if(G.res.src !== welcomeDataUrl) G.res.src = welcomeDataUrl;
-        G.res.style.display = 'block'; G.v.style.display = 'none';
+        if(attractMode === 'camera'){
+          G.res.style.position = 'absolute';
+          G.res.style.top = '0';
+          G.res.style.left = '0';
+          G.res.style.width = '100%';
+          G.res.style.height = '100%';
+          G.res.style.objectFit = 'cover';
+          G.res.style.pointerEvents = 'none';
+          G.res.style.display = 'block';
+          G.v.style.display = 'block';
+        } else {
+          G.res.style.position = '';
+          G.res.style.top = '';
+          G.res.style.left = '';
+          G.res.style.width = '';
+          G.res.style.height = '';
+          G.res.style.objectFit = '';
+          G.res.style.pointerEvents = '';
+          G.res.style.display = 'block';
+          G.v.style.display = 'none';
+        }
+      } else {
+        G.res.style.position = '';
+        G.res.style.top = '';
+        G.res.style.left = '';
+        G.res.style.width = '';
+        G.res.style.height = '';
+        G.res.style.objectFit = '';
+        G.res.style.pointerEvents = '';
       }
       if(pickOpen){
         G.msg.textContent = pickTitleText();
@@ -9910,6 +10193,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var filterKey = 'none';      // none | bw | sepia | warm | cool
   var softSkin = false;
   var welcomeOn = true;
+  var attractMode = 'card';    // card | camera | poster
+  var attractPosterImg = null;
+  var attractPosterUrl = '';
+  var attractPosterId = '';
   // Renter's own logos (Setup 5): c = corner of the guest screen, w = on the welcome picture.
   // x, y = centre as a share of the screen (c) or of the welcome picture (w); s = logo height as a
   // share of that height. null = the default place (c: where the photobooth4u logo sits;
@@ -10094,9 +10381,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     clearTimeout(resultTimer);
     state = 'idle';
     if(currentLayout !== setupLayout) setLayout(setupLayout);
+    if(setupLayout === 'myframe' && typeof setupActiveFrameId !== 'undefined' && setupActiveFrameId) activeFrameId = setupActiveFrameId;
     shotCanvases = new Array(shotsNeeded()).fill(null);
     qrResults.innerHTML = '';
     lastRenderedFolderUrl = null;
+    retakeBtn.hidden = true;
+    doneBtn.hidden = true;
+    reviewHint.hidden = true;
+    cancelSessionBtn.hidden = true;
     video.style.display = 'block';
     previewCanvas.style.display = 'none';
     updateFilmTrack();
@@ -10110,8 +10402,74 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var welcomeMsgInput = document.getElementById('welcomeMsgInput');
   var welcomeDataUrl = '';
   var welcomeTimer = null;
-  welcomeToggle.addEventListener('change', function(){ welcomeOn = welcomeToggle.checked; refreshWelcome(); guestRender(); });
-  welcomeMsgInput.addEventListener('input', function(){ welcomeMsg = welcomeMsgInput.value.trim(); scheduleWelcomeRender(); });
+  welcomeToggle.addEventListener('change', function(){
+    welcomeOn = welcomeToggle.checked;
+    var opts = document.getElementById('welcomeOpts'); if(opts) opts.style.display = welcomeOn ? '' : 'none';
+    refreshWelcome(); guestRender();
+    if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+  });
+  welcomeMsgInput.addEventListener('input', function(){
+    welcomeMsg = welcomeMsgInput.value.trim();
+    scheduleWelcomeRender();
+    if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+  });
+
+  // ---- Attract mode switching ----
+  var attractHints = { card: 'Shows a branded card with event name, date and sample photo.',
+    camera: 'Guests see themselves on the live camera \u2014 a mirror attract mode. Tap to start appears over the video.',
+    poster: 'Full-screen custom image (e.g. a Canva poster). Design it at your camera\u2019s aspect ratio.' };
+  function setAttractModeUI(mode){
+    attractMode = (mode === 'camera' || mode === 'poster') ? mode : 'card';
+    var chips = document.getElementById('attractModeChips');
+    if(chips){
+      [].forEach.call(chips.querySelectorAll('.chip'), function(c){
+        c.classList.toggle('active', c.dataset.attract === attractMode);
+      });
+    }
+    var hint = document.getElementById('attractHint');
+    if(hint) hint.textContent = attractHints[attractMode] || '';
+    var posterRow = document.getElementById('attractPosterRow');
+    if(posterRow) posterRow.style.display = attractMode === 'poster' ? '' : 'none';
+  }
+  (function(){
+    var chips = document.getElementById('attractModeChips'); if(!chips) return;
+    chips.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-attract]'); if(!btn) return;
+      setAttractModeUI(btn.dataset.attract);
+      renderWelcome(); refreshWelcome(); guestRender();
+      if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+    });
+    // Poster upload
+    var posterInput = document.getElementById('attractPosterInput');
+    var posterThumb = document.getElementById('attractPosterThumb');
+    var posterRemove = document.getElementById('attractPosterRemove');
+    if(posterInput) posterInput.addEventListener('change', async function(){
+      var f = posterInput.files[0]; if(!f) return;
+      try{
+        var url = typeof readImageFile === 'function' ? await readImageFile(f, 1800) : await (new Promise(function(res){ var r = new FileReader(); r.onload = function(){ res(r.result); }; r.readAsDataURL(f); }));
+        var id = typeof addAsset === 'function' ? await addAsset(url) : '';
+        attractPosterId = id;
+        attractPosterUrl = url;
+        var img = new Image();
+        img.onload = function(){
+          attractPosterImg = img;
+          if(posterThumb){ posterThumb.src = attractPosterUrl; posterThumb.style.display = ''; }
+          if(posterRemove) posterRemove.style.display = '';
+          renderWelcome(); refreshWelcome(); guestRender();
+          if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        };
+        img.src = attractPosterUrl;
+      }catch(err){ if(typeof showToast === 'function') showToast(err.message || 'Could not load poster', 4000); }
+      posterInput.value = '';
+    });
+    if(posterRemove) posterRemove.addEventListener('click', function(){
+      attractPosterImg = null; attractPosterUrl = ''; attractPosterId = '';
+      if(posterThumb){ posterThumb.src = ''; posterThumb.style.display = 'none'; }
+      posterRemove.style.display = 'none';
+      renderWelcome(); refreshWelcome(); guestRender();
+      if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+    });
+  })();
   function scheduleWelcomeRender(){ clearTimeout(welcomeTimer); welcomeTimer = setTimeout(renderWelcome, 250); }
   function roundRectPath(ctx, x, y, w, h, r){
     ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
@@ -10134,6 +10492,83 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var H = 1200, W = Math.round(H * wa), land = wa >= 1.15;
       var c = document.createElement('canvas'); c.width = W; c.height = H;
       var ctx = c.getContext('2d');
+      var hfMode = typeof fx !== 'undefined' ? fx.hands : 'off';
+      var btnText = welcomeMsg || (hfMode === 'wave' ? 'Wave to start' : hfMode === 'smile' ? 'Smile to start' : 'Tap to start');
+
+      // ---- Camera mode: transparent canvas with just a floating CTA button ----
+      if(attractMode === 'camera'){
+        // Almost fully transparent — the live video shows through the welcome overlay
+        ctx.clearRect(0, 0, W, H);
+        // Soft bottom gradient so the CTA reads well over any camera feed
+        var grad = ctx.createLinearGradient(0, H * 0.7, 0, H);
+        grad.addColorStop(0, 'rgba(28,26,30,0)'); grad.addColorStop(1, 'rgba(28,26,30,.55)');
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+        // Draw the CTA button
+        ctx.font = '800 34px Manrope, sans-serif';
+        var bw = Math.min(W * 0.7, ctx.measureText(btnText).width + 130), bh = 92;
+        var bx = W / 2 - bw / 2, by = H - bh - 80;
+        roundRectPath(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', 34, bw - 50, 18);
+        ctx.font = '800 ' + bs + 'px Manrope, sans-serif';
+        ctx.fillText(btnText, W / 2, by + bh / 2 + bs * 0.36);
+        welcomeCta = { l: bx / W * 100, t: by / H * 100, w: bw / W * 100, h: bh / H * 100 };
+        welcomeGeo = { W: W, H: H, mid: 0.5 };
+        welcomeBaseUrl = ''; welcomeLogoRect = null;
+        placeWelcomePulse();
+        welcomeDataUrl = c.toDataURL('image/png');   // PNG for transparency
+        welcomeImg.src = welcomeDataUrl;
+        var prev = document.getElementById('welcomePreview'); if(prev) prev.src = welcomeDataUrl;
+        guestRender();
+        return;
+      }
+
+      // ---- Poster mode: full-bleed uploaded image + CTA ----
+      if(attractMode === 'poster'){
+        if(attractPosterImg){
+          drawImageCover(ctx, attractPosterImg, 0, 0, W, H, cropFocus);
+        } else {
+          ctx.fillStyle = '#1C1A1E'; ctx.fillRect(0, 0, W, H);
+          ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.font = '600 32px Manrope, sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('Upload a poster image in Setup', W / 2, H / 2);
+        }
+        // Soft bottom gradient for button readability
+        var grad2 = ctx.createLinearGradient(0, H * 0.75, 0, H);
+        grad2.addColorStop(0, 'rgba(28,26,30,0)'); grad2.addColorStop(1, 'rgba(28,26,30,.5)');
+        ctx.fillStyle = grad2; ctx.fillRect(0, 0, W, H);
+        // Draw the CTA button
+        ctx.font = '800 34px Manrope, sans-serif';
+        var bw2 = Math.min(W * 0.7, ctx.measureText(btnText).width + 130), bh2 = 92;
+        var bx2 = W / 2 - bw2 / 2, by2 = H - bh2 - 80;
+        roundRectPath(ctx, bx2, by2, bw2, bh2, bh2 / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        var bs2 = fitFont(ctx, btnText, 'Manrope, sans-serif', 34, bw2 - 50, 18);
+        ctx.font = '800 ' + bs2 + 'px Manrope, sans-serif';
+        ctx.fillText(btnText, W / 2, by2 + bh2 / 2 + bs2 * 0.36);
+        welcomeCta = { l: bx2 / W * 100, t: by2 / H * 100, w: bw2 / W * 100, h: bh2 / H * 100 };
+        welcomeGeo = { W: W, H: H, mid: 0.5 };
+        welcomeBaseUrl = ''; welcomeLogoRect = null;
+        // Draw brand logo if set
+        var wl2 = brandImgFor('w'), wb2 = brand.w;
+        if(wl2){
+          welcomeBaseUrl = c.toDataURL('image/jpeg', 0.8);
+          var lAuto2 = wb2.x == null, lbh2 = (wb2.s || BRAND_DEF_S.w) * H, lasp2 = wl2.naturalWidth / wl2.naturalHeight;
+          var lf2 = brandFit(lasp2, lbh2, lAuto2 ? Math.min(lbh2 * BRAND_MAXR, W * 0.6) : lbh2 * BRAND_MAXR);
+          var lcx2 = lAuto2 ? W / 2 : wb2.x * W, lcy2 = lAuto2 ? 80 + lf2.h / 2 : wb2.y * H;
+          ctx.drawImage(wl2, lcx2 - lf2.w / 2, lcy2 - lf2.h / 2, lf2.w, lf2.h);
+          welcomeLogoRect = { x: lcx2 / W, y: lcy2 / H, w: lf2.w / W, h: lf2.h / H, s: lbh2 / H };
+        }
+        placeWelcomePulse();
+        welcomeDataUrl = c.toDataURL('image/jpeg', 0.88);
+        if(typeof brandPvLayout === 'function') brandPvLayout();
+        welcomeImg.src = welcomeDataUrl;
+        var prev2 = document.getElementById('welcomePreview'); if(prev2) prev2.src = welcomeDataUrl;
+        guestRender();
+        return;
+      }
+
+      // ---- Card mode (default): branded event card with sample print ----
       if(backdropPreset === 'custom' && backgroundImg){
         drawImageCover(ctx, backgroundImg, 0, 0, W, H, cropFocus);
       } else {
@@ -10199,7 +10634,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       ctx.fillText(title, mid, yy);
       if(dt){ yy += 54; ctx.fillStyle = soft; ctx.font = fontString(currentDateFont, 38); ctx.fillText(dt, mid, yy); }
       yy += 40;
-      var hfMode = typeof fx !== 'undefined' ? fx.hands : 'off';
       var steps = [hfMode === 'wave' ? 'Wave at the camera' : hfMode === 'smile' ? 'Smile at the camera' : 'Tap the screen', 'Strike a pose', 'Scan the QR for your photos'];
       ctx.font = '700 31px Manrope, sans-serif';
       var widest = Math.max.apply(null, steps.map(function(t){ return ctx.measureText(t).width; }));
@@ -10210,7 +10644,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         ctx.fillStyle = '#fff'; ctx.font = '800 24px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + 22, sy - 3);
         ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 31px Manrope, sans-serif'; ctx.fillText(t, sx + 62, sy);
       });
-      var btnText = welcomeMsg || (hfMode === 'wave' ? 'Wave to start' : hfMode === 'smile' ? 'Smile to start' : 'Tap to start');
       ctx.font = '800 34px Manrope, sans-serif';
       var bw = Math.min(cw - 80, ctx.measureText(btnText).width + 130), bh = 92, bx = mid - bw / 2, by = cy + ch - bh - 48;
       roundRectPath(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
@@ -10248,6 +10681,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function refreshWelcome(){
     var show = welcomeOn && state === 'idle' && !pickOpen && !readyOverlay.classList.contains('ready-active');
     welcomeOverlay.classList.toggle('on', show);
+    document.body.classList.toggle('attract-camera', attractMode === 'camera' && show);
     // The welcome screen is the button: no separate Start under it, so the picture gets the room.
     if(document.body.classList.contains('welcome-on') !== show){
       document.body.classList.toggle('welcome-on', show);
@@ -10289,9 +10723,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       t.classList.toggle('on', on); t.classList.toggle('locked', t.dataset.tick === main);
       t.setAttribute('aria-checked', on ? 'true' : 'false');
     });
-    if(!guestPickOn){ guestPickHint.innerHTML = 'Tap a layout to use it. Want guests to pick their own? Switch on <b>Let guests choose</b>.'; return; }
+    if(!guestPickOn){
+      var selName = (setupLayout === 'myframe' && activeFrameId)
+        ? (function(){ var f = (myFrames || []).find(function(fr){ return fr.id === activeFrameId; }); return f ? 'Frame ' + ((myFrames.indexOf(f)) + 1) : 'Your frame'; })()
+        : (LAYOUT_DEFS[setupLayout] ? LAYOUT_DEFS[setupLayout].name : setupLayout);
+      guestPickHint.innerHTML = '<b>Single layout locked (' + selName + ')</b>. Guests start directly with this layout without a choice screen. Turn on <b>Let guests choose layout</b> to offer multiple options.';
+      return;
+    }
     var n = guestChoiceKeys().length;
-    guestPickHint.innerHTML = 'Tap a card to make it the main layout. Tick ✓ the others guests can pick: <b>' + n + ' to choose from</b>' + (n < 2 ? ' (tick at least one more)' : '') + '.';
+    guestPickHint.innerHTML = 'Tap a card to make it default. Tick ✓ other cards to let guests pick: <b>' + n + ' to choose from</b>' + (n < 2 ? ' (tick at least one more)' : '') + '.';
   }
   guestPickToggle.addEventListener('change', function(){
     guestPickOn = guestPickToggle.checked;
@@ -10300,21 +10740,30 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
   });
   function guestChoiceKeys(){
-    if(!guestPickOn) return [setupLayout];
+    if(!guestPickOn) return [mainLayoutKey()];
     var main = mainLayoutKey(), keys = [];
     (myFrames || []).forEach(function(f){ var k = 'frame:' + f.id; if(k === main || chooseIds.indexOf(f.id) >= 0) keys.push(k); });
     LAYOUT_ORDER.concat(['framesheet']).forEach(function(k){
       if(!LAYOUT_DEFS[k] || (k === 'framesheet' && !(myFrames && myFrames.length))) return;
       if(k === main || guestLayoutSet.indexOf(k) >= 0) keys.push(k);
     });
-    if(keys.length === 1 && /^frame:/.test(keys[0])) return ['myframe'];
-    return keys.length ? keys : [setupLayout];
+    if(keys.length === 1 && /^frame:/.test(keys[0])){
+      activeFrameId = keys[0].slice(6);
+      return [keys[0]];
+    }
+    return keys.length ? keys : [mainLayoutKey()];
   }
   // "Choose your frame" when every choice is one of your frames.
   function pickTitleText(){ return pickKeys.length && pickKeys.every(function(k){ return /^frame:/.test(k); }) ? 'Choose your frame' : 'Choose your layout'; }
   function pickName(k){
-    if(/^frame:/.test(k)){ var i = myFrames.findIndex(function(f){ return f.id === k.slice(6); }); return 'Frame ' + (i + 1); }
-    return LAYOUT_DEFS[k].name;
+    if(/^frame:/.test(k)){
+      var fid = k.slice(6);
+      var f = (typeof frameById === 'function') ? frameById(fid) : null;
+      if(f && f.name) return f.name;
+      var i = (myFrames || []).findIndex(function(x){ return x.id === fid; });
+      return 'Frame ' + (i >= 0 ? i + 1 : 1);
+    }
+    return LAYOUT_DEFS[k] ? LAYOUT_DEFS[k].name : k;
   }
   var pickOverlay = document.getElementById('pickOverlay');
   var pickGrid = document.getElementById('pickGrid');
@@ -10347,8 +10796,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       keys.forEach(function(k, i){
         var b = document.createElement('button'); b.type = 'button'; b.className = 'pick-btn';
         var im = document.createElement('img'); im.alt = ''; im.src = layoutThumbUrl(k);
-        var sp = document.createElement('span'); sp.textContent = pickName(k);
-        b.append(im, sp);
+        var sp = document.createElement('span'); sp.className = 'pick-name'; sp.textContent = pickName(k);
+        var shBadge = document.createElement('span'); shBadge.className = 'pick-shots';
+        var isFr = /^frame:/.test(k);
+        var fObj = isFr && typeof frameById === 'function' ? frameById(k.slice(6)) : null;
+        var shots = isFr ? frameShotCount(fObj) : (LAYOUT_DEFS[k] ? LAYOUT_DEFS[k].shots : 4);
+        shBadge.textContent = shots + (shots === 1 ? ' shot' : ' shots');
+        b.append(im, sp, shBadge);
         b.addEventListener('click', function(e){ e.stopPropagation(); finishPick(k); });
         pickGrid.appendChild(b);
       });
@@ -10395,11 +10849,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{
       clearTimeout(resultTimer);
       welcomeOverlay.classList.remove('on');
-      if(state === 'result') resetForNextGuest();   // don't show the last guest's photos behind the picker
+      resetForNextGuest();   // always clean state before picking/session
       // Guest payment (QR or voucher) before anything else; a paid session waits here if the tablet restarted.
       if(!(await payGate())) return;
       var keys = guestChoiceKeys();
-      var key = keys.length > 1 ? await pickLayout(keys) : setupLayout;
+      var key = keys.length > 1 ? await pickLayout(keys) : (keys[0] || setupLayout);
       if(/^frame:/.test(key)){ activeFrameId = key.slice(6); key = 'myframe'; setLayout(key); }   // the guest's frame, this session
       else if(key !== currentLayout) setLayout(key);
       // After picking a layout there's always a "Get ready" screen (summary,
@@ -11678,6 +12132,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       textColor: textColor, titleSize: titleSizeMultiplier, titleBg: titleBgEnabled, titleBgColor: titleBgColor,
       outline: useOutline, outlineColor: outlineColor, shadow: useShadow,
       filter: filterKey, softSkin: softSkin,
+      welcomeOn: welcomeOn,
+      welcomeMsg: welcomeMsg,
+      attractMode: attractMode,
+      attractPosterId: attractPosterId || '',
+      attractPosterUrl: attractPosterUrl && !attractPosterId ? attractPosterUrl : '',
       accent: accent, overlay: overlay ? Object.assign({}, overlay) : null, logo: logo ? Object.assign({}, logo) : null,
       decor: decor.map(function(d){ return { src: d.src, x: Math.round(d.x * 1000) / 1000, y: Math.round(d.y * 1000) / 1000, s: Math.round(d.s * 1000) / 1000, r: Math.round(d.r || 0) }; }),
       myProps: myProps.slice(),
@@ -11764,6 +12223,38 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       markFilterChips();
       softSkin = !!s.softSkin; softSkinToggle.checked = softSkin;
       applyLiveFilter();
+      if(typeof s.welcomeOn === 'boolean'){
+        welcomeOn = s.welcomeOn;
+        if(welcomeToggle) welcomeToggle.checked = welcomeOn;
+        var wOpts = document.getElementById('welcomeOpts'); if(wOpts) wOpts.style.display = welcomeOn ? '' : 'none';
+      }
+      if(typeof s.welcomeMsg === 'string'){
+        welcomeMsg = s.welcomeMsg;
+        if(welcomeMsgInput) welcomeMsgInput.value = welcomeMsg;
+      }
+      if(typeof setAttractModeUI === 'function'){
+        setAttractModeUI(s.attractMode || 'card');
+      } else {
+        attractMode = (s.attractMode === 'camera' || s.attractMode === 'poster') ? s.attractMode : 'card';
+      }
+      var pId = (typeof s.attractPosterId === 'string' && /^a[A-Za-z0-9]{8,32}$/.test(s.attractPosterId)) ? s.attractPosterId : null;
+      var pUrl = pId ? ((typeof ASSETS !== 'undefined' && ASSETS[pId]) ? ASSETS[pId].url : '') : (typeof s.attractPosterUrl === 'string' ? s.attractPosterUrl : '');
+      attractPosterId = pId || '';
+      if(pUrl){
+        attractPosterUrl = pUrl;
+        var pImg = new Image();
+        pImg.onload = function(){
+          attractPosterImg = pImg;
+          var pt = document.getElementById('attractPosterThumb'); if(pt){ pt.src = pUrl; pt.style.display = ''; }
+          var pr = document.getElementById('attractPosterRemove'); if(pr) pr.style.display = '';
+          renderWelcome(); refreshWelcome(); guestRender();
+        };
+        pImg.src = pUrl;
+      } else if(!pId){
+        attractPosterImg = null; attractPosterUrl = '';
+        var pt = document.getElementById('attractPosterThumb'); if(pt){ pt.src = ''; pt.style.display = 'none'; }
+        var pr = document.getElementById('attractPosterRemove'); if(pr) pr.style.display = 'none';
+      }
       setFrameColorUI(s.frameColorChoice === 'auto' || isHex(s.frameColorChoice) ? s.frameColorChoice : 'auto');
       photoPlacement = s.photoPlacement === 'background' ? 'background' : 'band';
       photoPlacementSelect.value = photoPlacement;
@@ -11810,12 +12301,25 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       applyPaySetup(s.pay);
       applyFramesSetup(s);
       buildLayoutPicker();
-      ensureAssets(designAssetIds().concat(myProps)).then(function(){ refreshDecorUI(); refreshFrameUI(); redrawAll(); refreshBrandUI(); guestRender(); });
+      ensureAssets(designAssetIds().concat(myProps)).then(function(){
+        if(attractPosterId && typeof ASSETS !== 'undefined' && ASSETS[attractPosterId] && (!attractPosterImg || attractPosterUrl !== ASSETS[attractPosterId].url)){
+          attractPosterUrl = ASSETS[attractPosterId].url;
+          var im = new Image();
+          im.onload = function(){
+            attractPosterImg = im;
+            var pt = document.getElementById('attractPosterThumb'); if(pt){ pt.src = attractPosterUrl; pt.style.display = ''; }
+            var pr = document.getElementById('attractPosterRemove'); if(pr) pr.style.display = '';
+            renderWelcome(); refreshWelcome(); guestRender();
+          };
+          im.src = attractPosterUrl;
+        }
+        refreshDecorUI(); refreshFrameUI(); redrawAll(); refreshBrandUI(); guestRender();
+      });
       if(LAYOUT_DEFS[s.layout]) setupLayout = (s.layout === 'trio' ? 'strip' : s.layout);   // Trio was removed
       guestPickOn = !!s.guestPick; guestPickToggle.checked = guestPickOn;
       guestLayoutSet = Array.isArray(s.guestLayouts) ? s.guestLayouts.filter(function(k){ return LAYOUT_DEFS[k]; }) : [];
       // Older setups: several frames ticked with "Guests choose one" = guests choose, now with the cards ticked.
-      if(setupLayout === 'myframe' && frameMode === 'choose' && chooseIds.length > 1 && !guestPickOn){ guestPickOn = true; guestPickToggle.checked = true; guestLayoutSet = []; }
+      if(s.guestPick === undefined && setupLayout === 'myframe' && frameMode === 'choose' && chooseIds.length > 1){ guestPickOn = true; guestPickToggle.checked = true; guestLayoutSet = []; }
       frameMode = 'choose';
       if(s.layout && s.layout !== 'strip') layoutPicked = true;
       if(state !== 'capturing') setLayout(setupLayout);
@@ -11831,7 +12335,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     } finally {
       setupApplying = false;
     }
-    renderComposite(); renderSetupPreview(); refreshStartScreen(); guestRender();
+    renderComposite(); renderSetupPreview(); refreshStartScreen(); guestRender(); scheduleWelcomeRender(); refreshWelcome();
   }
 
   function setupScopeEvent(){
@@ -12258,6 +12762,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(typeof bgMine !== 'undefined') bgMine.forEach(function(a){ ids.push(a); });
     if(typeof fx !== 'undefined' && fx){ if(fx.sShut) ids.push(fx.sShut.id); if(fx.sTick) ids.push(fx.sTick.id); }
     if(brand){ if(brand.c.id) ids.push(brand.c.id); if(brand.w.id) ids.push(brand.w.id); }
+    if(typeof attractPosterId !== 'undefined' && attractPosterId) ids.push(attractPosterId);
     return ids;
   }
   // Reads a picked file, shrinks it (keeping transparency for PNG/WebP) and returns a data URL.
@@ -13550,7 +14055,30 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var top = document.createElement('div'); top.className = 'frame-ctx-top';
       var th = document.createElement('img'); th.alt = ''; if(ASSETS[f.id]) th.src = ASSETS[f.id].url;
       var info = document.createElement('div');
-      info.innerHTML = '<b>Frame ' + (myFrames.indexOf(f) + 1) + '</b> · ' + f.spots.length + ' photo spot' + (f.spots.length === 1 ? '' : 's') + (framePairs(f) ? ' · ' + frameShotCount(f) + ' shots, copied to both strips' : '') + '<br>' + frameShapeLabel(f);
+      info.style.cssText = 'flex:1;min-width:0;';
+      var nameRow = document.createElement('div');
+      nameRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;';
+      var nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'frame-name-input';
+      nameInput.placeholder = 'Frame name (e.g. Blue Teddy)';
+      nameInput.value = f.name || ('Frame ' + (myFrames.indexOf(f) + 1));
+      nameInput.style.cssText = 'font:800 13px/1.3 Manrope,sans-serif;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:4px 9px;width:190px;max-width:100%;transition:border-color .15s ease;';
+      nameInput.addEventListener('focus', function(){ nameInput.style.borderColor = 'var(--accent, #6366f1)'; });
+      nameInput.addEventListener('blur', function(){ nameInput.style.borderColor = 'var(--line)'; });
+      nameInput.addEventListener('change', function(){
+        f.name = nameInput.value.trim() || ('Frame ' + (myFrames.indexOf(f) + 1));
+        buildLayoutPicker();
+        scheduleSetupSave();
+      });
+      nameInput.addEventListener('keydown', function(e){
+        if(e.key === 'Enter'){ nameInput.blur(); }
+      });
+      var subText = document.createElement('span');
+      subText.style.cssText = 'font-size:12px;color:var(--muted);';
+      subText.innerHTML = f.spots.length + ' photo spot' + (f.spots.length === 1 ? '' : 's') + (framePairs(f) ? ' · ' + frameShotCount(f) + ' shots, copied' : '') + ' · ' + frameShapeLabel(f);
+      nameRow.appendChild(nameInput);
+      info.append(nameRow, subText);
       top.append(th, info);
       var btns = document.createElement('div'); btns.className = 'frame-ctx-btns';
       var ed = document.createElement('button'); ed.type = 'button'; ed.className = 'action-btn mini'; ed.textContent = spotEdit && spotEdit.f === f.id ? 'Done editing spots' : 'Edit photo spots';
@@ -13625,7 +14153,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       b.setAttribute('aria-pressed', isOn ? 'true' : 'false');
       b.title = isOn ? 'On the sheet. Tap to take it off.' : 'Tap to put it on the sheet';
       var im = document.createElement('img'); im.alt = ''; if(ASSETS[f.id]) im.src = ASSETS[f.id].url;
-      var lb = document.createElement('span'); lb.textContent = 'Frame ' + (n + 1) + (counts[f.id] > 1 ? ' ×' + counts[f.id] : '');
+      var lb = document.createElement('span'); lb.textContent = (f.name || ('Frame ' + (n + 1))) + (counts[f.id] > 1 ? ' ×' + counts[f.id] : '');
       var ck = document.createElement('i'); ck.className = 'fp-check'; ck.textContent = isOn ? '✓' : '';
       b.append(im, lb, ck);
       b.addEventListener('click', function(){ toggleSheetFrame(f.id); });
@@ -13977,7 +14505,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         if(spots.length){
           if(myFrames.length >= MAX_FRAMES){ showToast('Up to ' + MAX_FRAMES + ' frames — remove one first.', 4000); break; }
           var id = await addAsset(url);
-          myFrames.push({ id: id, w: img.width, h: img.height, spots: spots });
+          var initName = (files[i].name || '').replace(/\.[^/.]+$/, '').trim().slice(0, 40) || ('Frame ' + (myFrames.length + 1));
+          myFrames.push({ id: id, name: initName, w: img.width, h: img.height, spots: spots });
           added.push(myFrames[myFrames.length - 1]);
           if(needPick) added[added.length - 1]._pick = true;
         } else {
@@ -14004,9 +14533,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var ids = added.map(function(a){ return a.id; });
       activeFrameId = ids[0]; spotEdit = null; setupLayout = 'myframe'; layoutPicked = true;
       if(ids.length > 1){
-        guestPickOn = true; guestPickToggle.checked = true;
         ids.forEach(function(id){ if(chooseIds.indexOf(id) < 0) chooseIds.push(id); });
-      } else if(guestPickOn && chooseIds.indexOf(ids[0]) < 0) chooseIds.push(ids[0]);
+      } else if(chooseIds.indexOf(ids[0]) < 0) chooseIds.push(ids[0]);
       framesChanged({ layout: 'myframe' });
       var ctxEl = document.getElementById('frameCtx');
       if(ctxEl && ctxEl.scrollIntoView) setTimeout(function(){ ctxEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
@@ -14179,7 +14707,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function framesSnapshot(){
     var r4 = function(v){ return Math.round(v * 10000) / 10000; };
     return {
-      frames: myFrames.map(function(f){ var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function(s){ var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; if(s.a) q.a = Math.round(s.a * 10) / 10; if(s.z) q.z = s.z; return q; }) }; if(typeof f.copy === 'boolean') o.copy = f.copy; if(f.key) o.key = { c: f.key.c.slice(), t: f.key.t }; return o; }),
+      frames: myFrames.map(function(f){ var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function(s){ var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; if(s.a) q.a = Math.round(s.a * 10) / 10; if(s.z) q.z = s.z; return q; }) }; if(typeof f.name === 'string' && f.name.trim()) o.name = f.name.trim().slice(0, 40); if(typeof f.copy === 'boolean') o.copy = f.copy; if(f.key) o.key = { c: f.key.c.slice(), t: f.key.t }; return o; }),
       activeFrame: activeFrameId,
       frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
       sheet: { pattern: sheet.pattern, items: sheet.items.map(function(it){ return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; }) }
@@ -14190,7 +14718,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var num = function(v, lo, hi, d){ v = Number(v); return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
     myFrames = (Array.isArray(s.frames) ? s.frames : []).filter(function(f){ return f && okId(f.id) && Array.isArray(f.spots) && f.spots.length; }).slice(0, MAX_FRAMES).map(function(f){
       var key = f.key && Array.isArray(f.key.c) && f.key.c.length === 3 ? { c: f.key.c.map(function(v){ return Math.round(num(v, 0, 255, 0)); }), t: Math.round(num(f.key.t, 4, 100, 36)) } : null;
-      return { id: f.id, w: num(f.w, 1, 10000, 1200), h: num(f.h, 1, 10000, 1800), key: key, spots: f.spots.slice(0, MAX_SPOTS).map(function(p){
+      var name = typeof f.name === 'string' && f.name.trim() ? f.name.trim().slice(0, 40) : undefined;
+      return { id: f.id, name: name, w: num(f.w, 1, 10000, 1200), h: num(f.h, 1, 10000, 1800), key: key, spots: f.spots.slice(0, MAX_SPOTS).map(function(p){
         var a = num(p.a, -45, 45, 0), z = Math.round(num(p.z, 0, 50, 0)), o;
         if(a){ var tw = num(p.w, 0.01, 1, 0.3), th = num(p.h, 0.01, 1, 0.3); o = { x: num(p.x, -0.5, 1, 0), y: num(p.y, -0.5, 1, 0), w: tw, h: th, a: a }; }
         else { var x = num(p.x, 0, 1, 0), y = num(p.y, 0, 1, 0); o = { x: x, y: y, w: num(p.w, 0.01, 1 - x, 0.3), h: num(p.h, 0.01, 1 - y, 0.3) }; }
@@ -14199,6 +14728,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       }), copy: typeof f.copy === 'boolean' ? f.copy : undefined };
     });
     activeFrameId = okId(s.activeFrame) && frameById(s.activeFrame) ? s.activeFrame : (myFrames[0] ? myFrames[0].id : null);
+    setupActiveFrameId = activeFrameId;
     // Older setups with several frames were always "all on one sheet".
     frameMode = s.frameMode === 'sheet' || s.frameMode === 'choose' ? s.frameMode : (myFrames.length > 1 ? 'sheet' : 'choose');
     chooseIds = frameMode === 'sheet' ? [] : (Array.isArray(s.chooseIds) ? s.chooseIds : []).filter(function(id){ return okId(id) && frameById(id); }).slice(0, MAX_FRAMES);

@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.9', date: '2026-10-26' },
   { version: '1.0.8', date: '2026-10-25' },
   { version: '1.0.7', date: '2026-10-25' },
   { version: '1.0.6', date: '2026-10-24' },
@@ -54,6 +55,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-26', title: 'Custom frame naming and layout improvements', for: ['website', 'app'], app: '1.0.9',
+    items: [
+      'Custom frame names: give any uploaded frame a custom name (e.g. "Blue Teddy") directly from the frame settings panel, making it easy to identify frames in multi-frame layouts.',
+      'Saved layout persistence: frame names are automatically saved with your layout snapshots, restored when loading designs, and preserved across export and import.',
+      'UI enhancements: frame labels throughout the editor and sheet view now reflect your custom frame names.'
+    ]
+  },
   {
     date: '2026-10-25', title: 'Full-screen camera viewfinder & vertical filter options', for: ['website', 'app'], app: '1.0.8',
     items: [

@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.8', date: '2026-10-25' },
   { version: '1.0.7', date: '2026-10-25' },
   { version: '1.0.6', date: '2026-10-24' },
   { version: '1.0.5', date: '2026-10-24' },
@@ -53,6 +54,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-25', title: 'Full-screen camera viewfinder & vertical filter options', for: ['website', 'app'], app: '1.0.8',
+    items: [
+      'Full-screen viewfinder: the live camera now fills the screen from top to bottom on the web as well as desktop, eliminating wide letterboxing during photo sessions.',
+      'Vertical filters: filter options on the Get ready screen are now docked vertically in the bottom-right corner, keeping the Start button clean, centered, and completely unobstructed.'
+    ]
+  },
   {
     date: '2026-10-25', title: 'Step reorder: Share before Session', for: ['website', 'app'], app: '1.0.7',
     items: [

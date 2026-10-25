@@ -420,12 +420,83 @@
   .stage-frame.is-ready .countdown-overlay{display:none !important;}
   .ready-below{display:none; flex-direction:column; align-items:center; gap:8px;}
   body.in-session.shooting .brandbar, body.in-session.shooting .tab-bar{display:none !important;}
-  body.in-session.shooting{padding-top:10px; padding-bottom:0; min-height:0;}
-  body.in-session.shooting .app-shell.capturing{max-width:min(1500px, 98vw);}
+  body.in-session.shooting{padding-top:6px; padding-bottom:0; min-height:0;}
+  body.in-session.shooting .app-shell.capturing{max-width:calc(100vw - 16px) !important; width:100%;}
+  body.in-session.shooting .stage-frame,
+  body.in-session.shooting .app-shell.capturing .stage-frame{
+    width:min(calc(100vw - 20px), calc((100vh - 54px) * var(--cam-aspect, 0.8))) !important;
+    width:min(calc(100vw - 20px), calc((100dvh - 54px) * var(--cam-aspect, 0.8))) !important;
+    max-height:calc(100vh - 54px) !important;
+    max-height:calc(100dvh - 54px) !important;
+    margin:0 auto !important;
+  }
   #readyFilters, #readySub{display:none !important;}   /* summary + filters live under the frame now */
   .app-shell.getting-ready .ready-below{display:flex;}
   .session-controls .sc-filters, #mirrorQuickBtn{display:none !important;}   /* only on the Get ready screen */
-  .app-shell.getting-ready .session-controls .sc-filters{display:flex !important;}
+  .app-shell.getting-ready .session-controls .sc-filters{
+    display:flex !important;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+    position:fixed !important;
+    right:max(16px, env(safe-area-inset-right)) !important;
+    bottom:max(18px, env(safe-area-inset-bottom)) !important;
+    left:auto !important;
+    top:auto !important;
+    z-index:60 !important;
+    width:auto !important;
+    max-width:none !important;
+    margin:0 !important;
+    padding:10px 8px !important;
+    background:rgba(20, 16, 22, 0.72) !important;
+    -webkit-backdrop-filter:blur(12px);
+    backdrop-filter:blur(12px);
+    border:1px solid rgba(255, 255, 255, 0.22);
+    border-radius:28px;
+    box-shadow:0 12px 32px rgba(0,0,0,.45);
+    max-height:calc(100vh - 36px);
+    max-height:calc(100dvh - 36px);
+    overflow-y:auto;
+    scrollbar-width:none;
+  }
+  .app-shell.getting-ready .session-controls .sc-filters::-webkit-scrollbar{display:none;}
+  .app-shell.getting-ready .session-controls .sc-filter{
+    flex:none;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:3px;
+    color:rgba(255, 255, 255, 0.85);
+    font:700 10.5px 'Manrope',sans-serif;
+    cursor:pointer;
+    padding:2px 0;
+    transition:transform 0.15s ease, color 0.15s ease;
+  }
+  .app-shell.getting-ready .session-controls .sc-filter:hover{
+    transform:scale(1.06);
+    color:#fff;
+  }
+  .app-shell.getting-ready .session-controls .sc-filter i{
+    width:46px;
+    height:46px;
+    border-radius:50%;
+    border:2.5px solid rgba(255, 255, 255, 0.45);
+    background:linear-gradient(135deg,#f4c6a5,#c98a6a 55%,#7a4f3a);
+    display:block;
+    overflow:hidden;
+    position:relative;
+    box-shadow:0 3px 8px rgba(0,0,0,.3);
+    transition:border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .app-shell.getting-ready .session-controls .sc-filter.on{
+    color:#fff;
+    font-weight:800;
+  }
+  .app-shell.getting-ready .session-controls .sc-filter.on i{
+    border-color:#fff;
+    box-shadow:0 0 0 2.5px var(--blue-deep, #c93d27), 0 4px 12px rgba(201,61,39,.5);
+  }
+  .app-shell.capturing:not(.getting-ready) .session-controls .sc-filters{display:none !important;}
   .app-shell.getting-ready #mirrorQuickBtn{display:inline-flex !important;}
   .ready-summary{margin:0; font-size:clamp(18px, 2.2vw, 24px); font-weight:800; color:var(--ink); text-align:center; max-width:640px; letter-spacing:.01em;}
   .ready-overlay .ready-title, .ready-overlay .ready-sub{text-shadow:0 2px 10px rgba(0,0,0,.6);}
@@ -1010,10 +1081,10 @@
   .sc-filter.on{color:var(--ink);}
   .sc-filter.on i{border-color:var(--blue-deep);}
   /* While shooting: big live view, taken photos large at the side */
-  .app-shell.capturing{max-width:1260px;}
+  .app-shell.capturing{max-width:calc(100vw - 16px);}
   body.in-session .app-shell.capturing .stage-wrap{display:grid; grid-template-columns:auto auto auto; justify-content:center; gap:16px; row-gap:0; align-items:start;}
-  body.in-session .app-shell.capturing .stage-frame{grid-column:2; grid-row:1; width:min(100%, calc((100vh - 290px) * var(--cam-aspect, 0.8))); justify-self:center;}
-  .app-shell.capturing .session-controls .sc-filters{display:none;}
+  body.in-session .app-shell.capturing .stage-frame{grid-column:2; grid-row:1; width:min(calc(100vw - 20px), calc((100vh - 54px) * var(--cam-aspect, 0.8))); max-height:calc(100vh - 54px); justify-self:center;}
+  .app-shell.capturing .session-controls .sc-filters{display:none !important;}
   body.in-session .app-shell.capturing .film-track{grid-column:3; grid-row:1; align-self:start; flex-direction:column; align-items:stretch; justify-content:flex-start; margin-top:0;}
   body.in-session .app-shell.capturing .film-frame{width:100%; height:auto; font-size:20px; font-weight:800;}
   body.in-session .app-shell.capturing .session-controls, body.in-session .app-shell.capturing .start-btn-wrap{grid-column:2;}
@@ -6179,7 +6250,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         var qs = document.getElementById('qrSection');
         if(state === 'result' && qs && qs.offsetParent !== null && qs.parentElement.getBoundingClientRect().top > sw.getBoundingClientRect().top + 20) cardH = qs.offsetHeight + 18;
       }catch(e){}
-      var Hn = Math.max(220, vh - top - ctrlH - filmH - btnH - cardH - 14);
+      var isShoot = document.body.classList.contains('shooting');
+      var Hn = isShoot ? Math.max(220, vh - (ctrlH ? ctrlH + 8 : 46)) : Math.max(220, vh - top - ctrlH - filmH - btnH - cardH - 14);
       var wn = Math.max(200, Math.min(Wn, Hn * sa));
       sf.style.width = Math.round(wn) + 'px';
       sf.style.setProperty('--stage-h', Math.round(wn / sa) + 'px');
@@ -6187,19 +6259,26 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       return;
     }
     shell.classList.remove('btn-beside');
+    var isShoot = document.body.classList.contains('shooting');
+    var hasShots = Array.isArray(shotCanvases) && shotCanvases.some(Boolean);
     var n = Math.max(5, frames.length), g = 10, gap = 16;
-    var W = shell.clientWidth - 4;
-    var Hmax = Math.max(260, Math.min(vh * 0.94, vh - top - ctrlH - 12));
-    // centred: stage + 2 x (gap + film column) must fit the width
-    var hFit = (W - 2 * gap + 2 * box * g * (n - 1) / n) / (sa + 2 * box / n);
+    var W = Math.max(shell.clientWidth - 4, window.innerWidth - 32);
+    var Hmax = isShoot ? Math.max(260, vh - (ctrlH ? ctrlH + 8 : 46)) : Math.max(260, Math.min(vh * 0.94, vh - top - ctrlH - 12));
+    var hFit = hasShots ? ((W - 2 * gap + 2 * box * g * (n - 1) / n) / (sa + 2 * box / n)) : (W / sa);
     var h = Math.max(200, Math.min(Hmax, hFit));
     var fh = (h - g * (n - 1)) / n, fw = Math.round(fh * box), stw = Math.round(h * sa);
-    sw.style.gridTemplateColumns = fw + 'px ' + stw + 'px ' + fw + 'px';
-    sw.style.columnGap = gap + 'px';
+    if(hasShots){
+      sw.style.gridTemplateColumns = fw + 'px ' + stw + 'px ' + fw + 'px';
+      sw.style.columnGap = gap + 'px';
+      ft.style.width = fw + 'px';
+      ft.style.gap = g + 'px';
+      frames.forEach(function(f){ f.style.height = Math.floor(fh) + 'px'; f.style.width = fw + 'px'; });
+    } else {
+      sw.style.gridTemplateColumns = 'auto';
+      sw.style.columnGap = '0px';
+      ft.style.width = '0px';
+    }
     sf.style.width = stw + 'px';
-    ft.style.width = fw + 'px';
-    ft.style.gap = g + 'px';
-    frames.forEach(function(f){ f.style.height = Math.floor(fh) + 'px'; f.style.width = fw + 'px'; });
     sf.style.setProperty('--stage-h', Math.round(h) + 'px');
   }
   function refreshPanelSolo(){

@@ -254,6 +254,10 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
         if (planCfg.offlineOnly) existing.offlineOnly = true;
         if (!planCfg.offlineOnly) existing.offlineOnly = false;
       }
+      // Always ensure the three booth feature switches are on after any renewal/upgrade
+      existing.retakeOpt = true;
+      existing.payOpt = true;
+      existing.lockOpt = true;
       try {
         await putLicense(store, existing.key, existing);
       } catch {
@@ -287,6 +291,10 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
       traditional: planCfg.traditional !== false,
       offlineOpt: !!planCfg.offlineOpt,
       offlineOnly: !!planCfg.offlineOnly,
+      // Automatically enable all three booth feature switches for every paid plan:
+      retakeOpt: true,   // Give retake switch
+      payOpt: true,      // Guest payment (vouchers / PayMongo)
+      lockOpt: true,     // Lock booth with PIN
       status: 'unused',
       createdAt: now,
       redeemedAt: null,

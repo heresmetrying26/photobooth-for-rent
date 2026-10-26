@@ -2422,7 +2422,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
           <p class="panel-hint" id="gifModeHint" style="margin:8px 0 0; color:var(--ink-dim);">Guests get a photo strip + QR code.</p>
           <div id="gifOptions" style="display:none; margin-top:10px;">
-            <p class="panel-hint" style="margin:0 0 8px;">GIF follows the session from the first countdown through the last shot, including the selected timers and pauses.</p>
+            <p class="panel-hint" style="margin:0 0 8px;">GIF follows the session through the last shot, including timers and pauses. Resolution is up to 1280 x 720 when the camera feed supports it.</p>
             <div class="opt-row">
               <span class="lbl">GIF speed</span>
               <select class="mini-select pillify" id="gifSpeedSelect">
@@ -5580,11 +5580,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     refreshOutputModeUI();
   })();
 
-  // Sample the live camera throughout the session, retaining a bounded set of frames.
+  // Capture compressed HD source frames while keeping memory bounded for long sessions.
   function captureGifFrame(capture, timeMs){
+    if(capture.busy) return;
     var videoWidth = video.videoWidth || 640;
     var videoHeight = video.videoHeight || 480;
-    var scale = Math.min(1, 320 / videoWidth);
+    var scale = Math.min(1, 1280 / videoWidth, 720 / videoHeight);
     var width = Math.max(1, Math.round(videoWidth * scale));
     var height = Math.max(1, Math.round(videoHeight * scale));
     if(!capture.canvas){
@@ -5597,60 +5598,60 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(typeof mirrorPreview === 'function' && mirrorPreview()){ ctx.translate(capture.canvas.width, 0); ctx.scale(-1, 1); }
     try{ ctx.drawImage(video, 0, 0, capture.canvas.width, capture.canvas.height); }catch(e){}
     ctx.restore();
-    if(capture.frames.length >= 240) capture.frames = capture.frames.filter(function(frame, index){ return index % 2 === 0; });
-    capture.frames.push({ imageData: ctx.getImageData(0, 0, capture.canvas.width, capture.canvas.height), time: timeMs });
+    capture.busy = true;
+    capture.pending = new Promise(function(resolve){
+      capture.canvas.toBlob(function(blob){
+        if(blob){
+          if(capture.frames.length >= 90) capture.frames = capture.frames.filter(function(frame, index){ return index % 2 === 0; });
+          capture.frames.push({ blob: blob, time: timeMs });
+        }
+        capture.busy = false; resolve();
+      }, 'image/jpeg', 0.88);
+    });
   }
   function startGifSessionCapture(){
     completedGifCapture = null;
-    gifSessionCapture = { startedAt: performance.now(), frames: [], canvas: null, context: null, timer: null };
+    gifSessionCapture = { startedAt: performance.now(), frames: [], canvas: null, context: null, timer: null, busy: false, pending: Promise.resolve() };
     captureGifFrame(gifSessionCapture, 0);
     gifSessionCapture.timer = setInterval(function(){
       if(gifSessionCapture) captureGifFrame(gifSessionCapture, performance.now() - gifSessionCapture.startedAt);
-    }, 200);
+    }, 250);
   }
-  function stopGifSessionCapture(keepFrames){
+  async function stopGifSessionCapture(keepFrames){
     var capture = gifSessionCapture; gifSessionCapture = null;
     if(!capture) return null;
     clearInterval(capture.timer);
+    await capture.pending;
     var durationMs = Math.max(1, performance.now() - capture.startedAt);
-    if(keepFrames) captureGifFrame(capture, durationMs);
+    if(keepFrames){ captureGifFrame(capture, durationMs); await capture.pending; }
     if(!keepFrames || !capture.frames.length) return null;
     var speed = (gifSpeed === 2 || gifSpeed === 3) ? gifSpeed : (durationMs > 24000 ? 3 : 2);
     return { frames: capture.frames, width: capture.canvas.width, height: capture.canvas.height, durationMs: durationMs, speed: speed };
   }
 
-  // Encode frames array into a GIF Blob using the local in-memory gifenc encoder (zero workers, zero CDN).
-  function encodeGif(framesObj){
-    return new Promise(function(resolve, reject){
-      try{
-        var encoderLib = (typeof gifenc !== 'undefined') ? gifenc : window.gifenc;
-        if(!encoderLib || !encoderLib.GIFEncoder){
-          reject(new Error('gifenc library not loaded')); return;
-        }
-        var GIFEncoder = encoderLib.GIFEncoder;
-        var quantize = encoderLib.quantize;
-        var applyPalette = encoderLib.applyPalette;
-
-        var gif = GIFEncoder();
-        var speedMul = framesObj.speed || 2;
-        var width = framesObj.width;
-        var height = framesObj.height;
-        for(var i = 0; i < framesObj.frames.length; i++){
-          var frame = framesObj.frames[i];
-          var imgData = frame.imageData;
-          var nextTime = i + 1 < framesObj.frames.length ? framesObj.frames[i + 1].time : framesObj.durationMs;
-          var delay = Math.max(20, Math.round((nextTime - frame.time) / speedMul));
-          var palette = quantize(imgData.data, 256);
-          var index = applyPalette(imgData.data, palette);
-          gif.writeFrame(index, width, height, { palette: palette, delay: delay });
-        }
-        gif.finish();
-        var blob = new Blob([gif.bytes()], { type: 'image/gif' });
-        resolve(blob);
-      } catch(e){
-        reject(e);
-      }
-    });
+  // Decode and quantize one frame at a time so HD capture does not retain every RGBA frame in memory.
+  async function encodeGif(framesObj){
+    var encoderLib = (typeof gifenc !== 'undefined') ? gifenc : window.gifenc;
+    if(!encoderLib || !encoderLib.GIFEncoder) throw new Error('gifenc library not loaded');
+    var gif = encoderLib.GIFEncoder();
+    var canvas = document.createElement('canvas'); canvas.width = framesObj.width; canvas.height = framesObj.height;
+    var ctx = canvas.getContext('2d', { willReadFrequently: true });
+    for(var i = 0; i < framesObj.frames.length; i++){
+      var frame = framesObj.frames[i];
+      var bitmap = await createImageBitmap(frame.blob);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+      var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var palette = encoderLib.quantize(imgData.data, 256);
+      var index = encoderLib.applyPalette(imgData.data, palette);
+      var nextTime = i + 1 < framesObj.frames.length ? framesObj.frames[i + 1].time : framesObj.durationMs;
+      var delay = Math.max(20, Math.round((nextTime - frame.time) / framesObj.speed));
+      gif.writeFrame(index, canvas.width, canvas.height, { palette: palette, delay: delay });
+      if(i % 3 === 2) await new Promise(function(resolve){ setTimeout(resolve, 0); });
+    }
+    gif.finish();
+    return new Blob([gif.bytes()], { type: 'image/gif' });
   }
 
   var gifGeneration = 0;
@@ -5718,18 +5719,25 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var gifBox = gifSlot.querySelector('.qr-box');
     gifBox.innerHTML = '';
 
-    if(gifResult && (gifResult.fileId || gifResult.downloadUrl)){
-      var gifUrl = gifResult.fileId
-        ? 'https://drive.google.com/file/d/' + encodeURIComponent(gifResult.fileId) + '/view'
-        : gifResult.downloadUrl;
-      var img = document.createElement('img');
-      img.className = 'qr-img';
-      img.src = (typeof qrImageUrl === 'function') ? qrImageUrl(gifUrl) : 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(gifUrl);
-      img.alt = 'GIF QR code';
-      gifBox.appendChild(img);
-      var link = document.createElement('a'); link.className = 'qr-link'; link.href = gifUrl; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Open GIF';
-      gifSlot.appendChild(link);
-      showToast('GIF saved ✓');
+    if(gifResult && gifResult.fileId){
+      var folderUrl = gifResult.folderUrl || getCachedFolderUrl();
+      var eventGallery = !DESKTOP && folderUrl ? galleryUrlFor(folderUrl) : null;
+      var galleryLinked = !!eventGallery;
+      var gifUrl = galleryLinked ? eventGallery + '#' + encodeURIComponent(gifResult.fileId)
+        : DESKTOP ? fileShareUrl(gifResult.fileId) : null;
+      if(gifUrl){
+        var img = document.createElement('img');
+        img.className = 'qr-img';
+        img.src = (typeof qrImageUrl === 'function') ? qrImageUrl(gifUrl) : 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(gifUrl);
+        img.alt = 'GIF QR code';
+        gifBox.appendChild(img);
+        var link = document.createElement('a'); link.className = 'qr-link'; link.href = gifUrl; link.target = '_blank'; link.rel = 'noopener'; link.textContent = galleryLinked ? 'Open GIF in event gallery' : 'Open GIF';
+        gifSlot.appendChild(link);
+        showToast('GIF saved');
+      } else {
+        var w3 = document.createElement('span'); w3.className = 'qr-wait'; w3.textContent = 'GIF saved, but the event gallery link is unavailable.';
+        gifBox.appendChild(w3);
+      }
     } else {
       var w3 = document.createElement('span'); w3.className = 'qr-wait'; w3.textContent = 'GIF upload failed. Check internet.';
       gifBox.appendChild(w3);
@@ -7278,7 +7286,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       }
       i++;
     }
-    completedGifCapture = stopGifSessionCapture(!sess.cancelled);
+    completedGifCapture = await stopGifSessionCapture(!sess.cancelled);
     if(!sess.cancelled) await reviewPhase();
     if(sess.cancelled){ endCancelledSession(); return; }
     countingDown = false;

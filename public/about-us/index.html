@@ -2165,35 +2165,37 @@ Event Date:</pre>
             showSuccess(data);
           }
         } catch (e) { }
-        function showSuccess(data) {
-          clearInterval(pollTimer);
-          clearInterval(countdownTimer);
-          qrView.style.display = 'none';
-          formView.style.display = 'none';
-          successView.style.display = 'block';
+      }
 
-          var code = data.code || 'PB-XXXX-XXXX-XXXX';
-          document.getElementById('subFinalCode').textContent = code;
+      function showSuccess(data) {
+        clearInterval(pollTimer);
+        clearInterval(countdownTimer);
+        qrView.style.display = 'none';
+        formView.style.display = 'none';
+        successView.style.display = 'block';
 
-          if (data.renewed) {
-            document.getElementById('subSuccessSubtitle').textContent = 'Your existing access code has been extended for +30 days!';
-          } else {
-            document.getElementById('subSuccessSubtitle').textContent = 'Your new 30-day access code is active and recorded in Admin.';
-          }
+        var code = data.code || 'PB-XXXX-XXXX-XXXX';
+        document.getElementById('subFinalCode').textContent = code;
 
-          // Set up launch link to auto-fill code if opened
-          goBoothBtn.href = '/?code=' + encodeURIComponent(code);
-
-          copyCodeBtn.onclick = function () {
-            navigator.clipboard.writeText(code).then(function () {
-              copyCodeBtn.textContent = 'Copied!';
-              setTimeout(function () { copyCodeBtn.textContent = 'Copy code'; }, 2000);
-            }).catch(function () {
-              copyCodeBtn.textContent = 'Copied!';
-            });
-          };
+        if (data.renewed) {
+          document.getElementById('subSuccessSubtitle').textContent = 'Your existing access code has been extended for +30 days!';
+        } else {
+          document.getElementById('subSuccessSubtitle').textContent = 'Your new 30-day access code is active and recorded in Admin.';
         }
-      }) ();
+
+        // Set up launch link to auto-fill code if opened
+        goBoothBtn.href = '/?code=' + encodeURIComponent(code);
+
+        copyCodeBtn.onclick = function () {
+          navigator.clipboard.writeText(code).then(function () {
+            copyCodeBtn.textContent = 'Copied!';
+            setTimeout(function () { copyCodeBtn.textContent = 'Copy code'; }, 2000);
+          }).catch(function () {
+            copyCodeBtn.textContent = 'Copied!';
+          });
+        };
+      }
+    })();
   </script>
   <script>
       fetch('/api/trial').then(function (r) { return r.json(); }).then(function (d) {

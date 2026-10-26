@@ -5590,29 +5590,29 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   })();
 
   // Capture burst frames from the live video into an array of ImageData objects.
-  async function captureGifFrames(){
+  // Build a GIF from every completed shot, holding each shot for an even part of the selected duration.
+  async function captureGifFrames(shots){
     var frames = [];
-    var fps = 10;                               // capture 10 frames per second for smooth, lightweight GIF
-    var total = Math.max(10, Math.round((gifDurationSec || 3) * fps));
-    var interval = 1000 / fps;
-    var vw = video.videoWidth  || video.clientWidth  || 640;
-    var vh = video.videoHeight || video.clientHeight || 480;
-    // Scale down for fast in-browser encoding and compact GIF file size (~400px wide)
+    var fps = 10;
+    var sources = (Array.isArray(shots) ? shots : []).filter(function(shot){
+      return shot && shot.width && shot.height;
+    });
+    if(!sources.length) throw new Error('No completed shots available for GIF');
+    var total = Math.max(sources.length, Math.round((gifDurationSec || 3) * fps));
+    var vw = Math.max.apply(null, sources.map(function(shot){ return shot.width; }));
+    var vh = Math.max.apply(null, sources.map(function(shot){ return shot.height; }));
     var scale = Math.min(1, 400 / vw);
-    var cw = Math.round(vw * scale);
-    var ch = Math.round(vh * scale);
+    var cw = Math.max(1, Math.round(vw * scale));
+    var ch = Math.max(1, Math.round(vh * scale));
     var cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
     var cx = cv.getContext('2d');
-    var mir = (typeof mirrorPreview === 'function') ? mirrorPreview() : false;
     var gifStatus = document.getElementById('gifStatusMsg');
-    if(gifStatus) gifStatus.textContent = 'Preparing your GIF, please wait…';
+    if(gifStatus) gifStatus.textContent = 'Preparing your GIF, please wait\u2026';
     for(var i = 0; i < total; i++){
-      cx.save();
-      if(mir){ cx.translate(cw, 0); cx.scale(-1, 1); }
-      try{ cx.drawImage(video, 0, 0, cw, ch); }catch(e){}
-      cx.restore();
+      var shotIndex = Math.min(sources.length - 1, Math.floor(i * sources.length / total));
+      cx.clearRect(0, 0, cw, ch);
+      cx.drawImage(sources[shotIndex], 0, 0, cw, ch);
       frames.push(cx.getImageData(0, 0, cw, ch));
-      if(i < total - 1) await wait(interval);
     }
     return { frames: frames, width: cw, height: ch };
   }
@@ -5671,7 +5671,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
     var framesObj;
     try{
-      framesObj = await captureGifFrames();
+      framesObj = await captureGifFrames(shotCanvases);
     } catch(e){
       console.error('GIF capture failed:', e);
       var w = qrResults.querySelector('.qr-result[data-kind="gif"] .qr-wait');
@@ -7075,7 +7075,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var sess = null;
   // Retake can be switched off per event, when the admin has enabled that option for this code.
   let allowRetake = true;
-  function retakesAllowed(){ return !(window.__PB && window.__PB.retakeOpt) || allowRetake; }
+  function retakesAllowed(){ var gifChosen = isGifAllowed() && (outputMode === 'gif' || outputMode === 'both'); return !gifChosen && (!(window.__PB && window.__PB.retakeOpt) || allowRetake); }
   function refreshRetakeUI(){
     const on = !!(window.__PB && window.__PB.retakeOpt);
     const row = document.getElementById('allowRetakeRow'), hint = document.getElementById('allowRetakeHint'), t = document.getElementById('allowRetakeToggle');

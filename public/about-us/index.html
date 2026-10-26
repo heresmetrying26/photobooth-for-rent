@@ -2093,13 +2093,27 @@ Event Date:</pre>
         submitBtn.disabled = false;
         submitBtn.textContent = 'Generate PayMongo QR · ₱' + priceStr;
 
-        if (isRenew) {
+        var isAddon = currentPlan.startsWith('addon');
+        var toggleSpan = renewToggle.parentElement.querySelector('span');
+        var codeLabel = document.querySelector('label[for="subExistingCode"]');
+
+        if (isAddon) {
           renewToggle.checked = true;
           renewBox.style.display = 'block';
+          if (toggleSpan) toggleSpan.textContent = 'Apply this add-on to my existing Lifetime code';
+          if (codeLabel) codeLabel.textContent = 'Your Existing Lifetime Code (PB-XXXX-XXXX-XXXX)';
+          setTimeout(function () { renewInput.focus(); }, 100);
+        } else if (isRenew) {
+          renewToggle.checked = true;
+          renewBox.style.display = 'block';
+          if (toggleSpan) toggleSpan.textContent = "I'm renewing or extending an existing code (+30 days)";
+          if (codeLabel) codeLabel.textContent = 'Your Existing Access Code';
           setTimeout(function () { renewInput.focus(); }, 100);
         } else {
           renewToggle.checked = false;
           renewBox.style.display = 'none';
+          if (toggleSpan) toggleSpan.textContent = "I'm renewing or extending an existing code (+30 days)";
+          if (codeLabel) codeLabel.textContent = 'Your Existing Access Code';
         }
 
         formView.style.display = 'block';
@@ -2154,6 +2168,7 @@ Event Date:</pre>
         var name = document.getElementById('subCustName').value.trim();
         var email = document.getElementById('subCustEmail').value.trim();
         var renewCode = renewToggle.checked ? renewInput.value.trim() : '';
+        var isAddon = currentPlan.startsWith('addon');
 
         if (!name) {
           formMsg.textContent = 'Please enter your name.';
@@ -2166,8 +2181,11 @@ Event Date:</pre>
           return;
         }
         if (renewToggle.checked && !renewCode) {
-          formMsg.textContent = 'Please enter the existing code you wish to renew.';
+          formMsg.textContent = isAddon
+            ? 'Please enter your existing Lifetime code to apply this add-on.'
+            : 'Please enter the existing code you wish to renew.';
           formMsg.className = 'sd-msg err';
+          renewInput.focus();
           return;
         }
 

@@ -6,6 +6,8 @@
 <title>photobooth4u</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- gif.js: in-browser animated GIF encoder (MIT) -->
+<script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&family=Dancing+Script:wght@600;700&family=Pacifico&family=Great+Vibes&family=Sacramento&family=Alex+Brush&family=Satisfy&family=Parisienne&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Cinzel:wght@600;700&family=Marck+Script&family=Tangerine:wght@700&family=Allura&family=Cookie&family=Italianno&family=Petit+Formal+Script&family=Lobster&family=Josefin+Sans:wght@600;700&family=Montserrat:wght@600;700&family=Poppins:wght@600;700&family=Raleway:wght@600;700&family=Merriweather:wght@700&family=Abril+Fatface&family=Bebas+Neue&family=Caveat:wght@600;700&family=Amatic+SC:wght@700&family=EB+Garamond:ital,wght@0,600;1,600&family=Quicksand:wght@600;700&family=Comfortaa:wght@600;700&family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -2410,6 +2412,39 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <div class="panel-section" id="decorSection">
         <p class="panel-label">Extras</p>
         <p class="panel-hint step-lead">All optional.</p>
+
+        <!-- ── GIF / Output mode ── -->
+        <div class="panel-section" id="gifModeSection" style="margin-bottom:14px; padding:14px 16px; background:var(--panel-2); border-radius:12px; border:1.5px solid var(--line);">
+          <p class="sub-label" style="margin:0 0 6px;">🎞️ Output mode</p>
+          <p class="panel-hint" style="margin:0 0 10px;">Choose what guests receive after each session.</p>
+          <div class="chip-row" id="outputModeChips" role="group" aria-label="Output mode">
+            <button type="button" class="chip active" data-outmode="photo">📷 Photo only</button>
+            <button type="button" class="chip" data-outmode="gif">🎞️ GIF only</button>
+            <button type="button" class="chip" data-outmode="both">📷 + 🎞️ Both</button>
+          </div>
+          <p class="panel-hint" id="gifModeHint" style="margin:8px 0 0; color:var(--ink-dim);">Guests get a photo strip + QR code.</p>
+          <div id="gifOptions" style="display:none; margin-top:10px;">
+            <div class="opt-row">
+              <span class="lbl">GIF duration</span>
+              <select class="mini-select pillify" id="gifDurationSelect">
+                <option value="2">2 seconds</option>
+                <option value="3" selected>3 seconds</option>
+                <option value="4">4 seconds</option>
+                <option value="5">5 seconds</option>
+              </select>
+            </div>
+            <div class="opt-row" style="margin-top:8px;">
+              <span class="lbl">GIF speed</span>
+              <select class="mini-select pillify" id="gifSpeedSelect">
+                <option value="1">Normal</option>
+                <option value="1.5" selected>1.5× faster</option>
+                <option value="2">2× faster</option>
+              </select>
+            </div>
+            <p class="panel-hint" style="margin:6px 0 0;">GIF encodes in the browser — takes 2–5 sec after the session ends.</p>
+          </div>
+        </div>
+
         <div class="seg-tabs" id="extrasTabs" role="tablist">
           <button type="button" class="on" data-pane="logo">Logo</button>
           <button type="button" data-pane="stickers">Stickers</button>
@@ -5504,6 +5539,176 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return myGeneration;
   }
 
+  // ──────────────────────────────────────────────────────────────────
+  // GIF MODE — burst capture + encode + upload
+  // ──────────────────────────────────────────────────────────────────
+
+  var outputMode = 'photo';    // 'photo' | 'gif' | 'both'
+  var gifDurationSec = 3;      // seconds of burst frames to capture
+  var gifSpeed = 1.5;          // playback multiplier (> 1 = faster/boomerang feel)
+
+  function refreshOutputModeUI(){
+    var chips = document.querySelectorAll('#outputModeChips .chip');
+    chips.forEach(function(c){ c.classList.toggle('active', c.dataset.outmode === outputMode); });
+    var hints = {
+      photo: 'Guests get a photo strip + QR code.',
+      gif:   'Guests get an animated GIF + QR code (no still photo).',
+      both:  'Guests get both a photo strip AND an animated GIF — two QR codes appear.'
+    };
+    var hintEl = document.getElementById('gifModeHint');
+    if(hintEl) hintEl.textContent = hints[outputMode] || '';
+    var gifOpts = document.getElementById('gifOptions');
+    if(gifOpts) gifOpts.style.display = (outputMode === 'gif' || outputMode === 'both') ? '' : 'none';
+  }
+
+  (function(){
+    var chips = document.getElementById('outputModeChips');
+    if(!chips) return;
+    chips.addEventListener('click', function(e){
+      var c = e.target.closest('.chip'); if(!c || !c.dataset.outmode) return;
+      outputMode = c.dataset.outmode;
+      refreshOutputModeUI();
+      if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+    });
+    var gd = document.getElementById('gifDurationSelect');
+    if(gd) gd.addEventListener('change', function(){ gifDurationSec = Number(gd.value) || 3; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+    var gs = document.getElementById('gifSpeedSelect');
+    if(gs) gs.addEventListener('change', function(){ gifSpeed = Number(gs.value) || 1.5; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+    refreshOutputModeUI();
+  })();
+
+  // Capture burst frames from the live video into an array of ImageData objects.
+  async function captureGifFrames(){
+    var frames = [];
+    var fps = 12;                               // capture frames per second
+    var total = Math.round(gifDurationSec * fps);
+    var interval = 1000 / fps;
+    var vw = video.videoWidth  || video.clientWidth  || 640;
+    var vh = video.videoHeight || video.clientHeight || 480;
+    // Scale down for reasonable GIF file size (~480px wide)
+    var scale = Math.min(1, 480 / vw);
+    var cw = Math.round(vw * scale);
+    var ch = Math.round(vh * scale);
+    var cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+    var cx = cv.getContext('2d');
+    var mir = (typeof mirrorPreview === 'function') ? mirrorPreview() : false;
+    var gifStatus = document.getElementById('gifStatusMsg');
+    for(var i = 0; i < total; i++){
+      if(gifStatus) gifStatus.textContent = 'Recording GIF… ' + (i + 1) + '/' + total;
+      cx.save();
+      if(mir){ cx.translate(cw, 0); cx.scale(-1, 1); }
+      try{ cx.drawImage(video, 0, 0, cw, ch); }catch(e){}
+      cx.restore();
+      frames.push(cx.getImageData(0, 0, cw, ch));
+      if(i < total - 1) await wait(interval);
+    }
+    if(gifStatus) gifStatus.textContent = '';
+    return { frames: frames, width: cw, height: ch };
+  }
+
+  // Encode frames array into a GIF Blob using gif.js.
+  function encodeGif(framesObj){
+    return new Promise(function(resolve, reject){
+      if(typeof GIF === 'undefined'){
+        reject(new Error('gif.js not loaded')); return;
+      }
+      var delay = Math.round((1000 / 12) / gifSpeed);   // ms per frame
+      var g = new GIF({
+        workers: 2,
+        quality: 8,
+        width: framesObj.width,
+        height: framesObj.height,
+        workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js'
+      });
+      framesObj.frames.forEach(function(f){ g.addFrame(f, { delay: delay }); });
+      g.on('finished', function(blob){ resolve(blob); });
+      g.on('error',    function(err){  reject(err);   });
+      g.render();
+    });
+  }
+
+  var gifGeneration = 0;
+  async function showQRForCurrentGIF(){
+    var myGen = ++gifGeneration;
+    // Add a GIF QR slot next to any existing photo slot.
+    var existing = qrResults.querySelector('.qr-result[data-kind="gif"]');
+    if(!existing){
+      var slot = document.createElement('div');
+      slot.className = 'qr-result'; slot.dataset.kind = 'gif';
+      var box = document.createElement('div'); box.className = 'qr-box';
+      var wait0 = document.createElement('span'); wait0.className = 'qr-wait';
+      wait0.id = 'gifStatusMsg'; wait0.textContent = 'Capturing GIF…';
+      box.appendChild(wait0);
+      var cap = document.createElement('p'); cap.className = 'qr-caption'; cap.textContent = 'Your GIF';
+      slot.append(box, cap);
+      qrResults.appendChild(slot);
+    }
+    if(typeof guestRender === 'function') guestRender();
+
+    var framesObj;
+    try{
+      framesObj = await captureGifFrames();
+    } catch(e){
+      console.error('GIF capture failed:', e);
+      var w = qrResults.querySelector('.qr-result[data-kind="gif"] .qr-wait');
+      if(w) w.textContent = 'GIF capture failed.';
+      return;
+    }
+    if(myGen !== gifGeneration) return;
+
+    var statusEl = document.getElementById('gifStatusMsg');
+    if(statusEl) statusEl.textContent = 'Creating GIF…';
+
+    var blob;
+    try{
+      blob = await encodeGif(framesObj);
+    } catch(e){
+      console.error('GIF encode failed:', e);
+      var w2 = qrResults.querySelector('.qr-result[data-kind="gif"] .qr-wait');
+      if(w2) w2.textContent = 'GIF encoding failed. Check internet connection.';
+      return;
+    }
+    if(myGen !== gifGeneration) return;
+
+    if(statusEl) statusEl.textContent = 'Uploading GIF…';
+
+    var gifFilename = (typeof filePrefix === 'function' ? filePrefix() : '') +
+                      (sessionNumber || 1) + '_gif' +
+                      (typeof deviceTag === 'function' ? deviceTag() : '') + '.gif';
+    var dest = { folderKey: (typeof rawFolderKey === 'function' ? rawFolderKey() : ''), subfolder: (typeof driveSubfolder === 'function' ? driveSubfolder() : '') };
+
+    var gifResult = null;
+    try{
+      gifResult = await uploadToDrive(blob, gifFilename, dest);
+    } catch(e){
+      console.error('GIF upload failed:', e);
+    }
+    if(myGen !== gifGeneration) return;
+
+    var gifSlot = qrResults.querySelector('.qr-result[data-kind="gif"]');
+    if(!gifSlot) return;
+    var gifBox = gifSlot.querySelector('.qr-box');
+    gifBox.innerHTML = '';
+
+    if(gifResult && (gifResult.fileId || gifResult.downloadUrl)){
+      var gifUrl = gifResult.fileId
+        ? 'https://drive.google.com/file/d/' + encodeURIComponent(gifResult.fileId) + '/view'
+        : gifResult.downloadUrl;
+      var img = document.createElement('img');
+      img.className = 'qr-img';
+      img.src = (typeof qrImageUrl === 'function') ? qrImageUrl(gifUrl) : 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(gifUrl);
+      img.alt = 'GIF QR code';
+      gifBox.appendChild(img);
+      var link = document.createElement('a'); link.className = 'qr-link'; link.href = gifUrl; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Open GIF';
+      gifSlot.appendChild(link);
+      showToast('GIF saved ✓');
+    } else {
+      var w3 = document.createElement('span'); w3.className = 'qr-wait'; w3.textContent = 'GIF upload failed. Check internet.';
+      gifBox.appendChild(w3);
+    }
+    if(typeof guestRender === 'function') guestRender();
+  }
+
   async function saveToDevice(){
     if(backupDir && backupOk){
       const name = filePrefix() + (sessionNumber || 1) + '_' + currentLayout + deviceTag() + '.png';
@@ -7053,9 +7258,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     sessionNumber = nextSessionNumber();
     renderComposite();
     updateUI();
-    showQRForCurrentPhoto();
+    // ── Output mode: photo / gif / both ──
+    if(outputMode === 'gif'){
+      // GIF only — no photo QR
+      showQRForCurrentGIF();
+    } else if(outputMode === 'both'){
+      // Photo strip + GIF
+      showQRForCurrentPhoto();
+      showQRForCurrentGIF();
+    } else {
+      showQRForCurrentPhoto();
+    }
     scheduleResultReset();
-    if(!DESKTOP){ showMultipleDownloadsHint(); saveToDevice(); }
+    if(!DESKTOP){ showMultipleDownloadsHint(); if(outputMode !== 'gif') saveToDevice(); }
     maybeAutoPrint();
   }
 
@@ -12126,6 +12341,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       guestPick: guestPickOn, guestLayouts: guestLayoutSet.slice(),
       timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
       reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake,
+      outputMode: outputMode, gifDurationSec: gifDurationSec, gifSpeed: gifSpeed,
       backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
       frameColorChoice: frameColorChoice, photoPlacement: photoPlacement, cropFocus: cropFocus,
       label: labelInput.value, font: currentFont, dateFont: currentDateFont, dateOn: dateOn, date: dateInput.value,
@@ -12219,6 +12435,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(s.advanceMode === 'tap' || s.advanceMode === 'auto'){ advanceMode = s.advanceMode; setSelectValue('advanceSelect', s.advanceMode); refreshAdvanceUI(); }
       if(typeof s.reviewEach === 'boolean'){ reviewEach = s.reviewEach; reviewEachToggle.checked = s.reviewEach; }
       if(typeof s.allowRetake === 'boolean'){ allowRetake = s.allowRetake; try{ refreshRetakeUI(); }catch(e){} }
+      if(s.outputMode === 'gif' || s.outputMode === 'both' || s.outputMode === 'photo'){ outputMode = s.outputMode; refreshOutputModeUI(); }
+      if(typeof s.gifDurationSec === 'number'){ gifDurationSec = s.gifDurationSec; var gd = document.getElementById('gifDurationSelect'); if(gd) gd.value = String(gifDurationSec); }
+      if(typeof s.gifSpeed === 'number'){ gifSpeed = s.gifSpeed; var gs = document.getElementById('gifSpeedSelect'); if(gs) gs.value = String(gifSpeed); }
       filterKey = Object.prototype.hasOwnProperty.call(FILTERS, s.filter) ? s.filter : 'none';
       markFilterChips();
       softSkin = !!s.softSkin; softSkinToggle.checked = softSkin;

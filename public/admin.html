@@ -218,6 +218,31 @@
       <div class="meta" style="margin:-8px 0 0 26px;">“Open on your phone” QR at the top of the online gallery, e.g. for a laptop or TV showing the photos.</div>
     </details>
 
+    <details class="card" id="paymongoCard">
+      <summary><h2>PayMongo API Key (Monthly Subscriptions)</h2></summary>
+      <div id="pmStatusBadge" style="margin-bottom:12px;font-size:13px;font-weight:600;">
+        Status: <span id="pmStatusText" style="color:var(--dim);">Checking…</span>
+      </div>
+      <label for="pmSecretKey">PayMongo Secret Key (<code>sk_test_...</code> or <code>sk_live_...</code>)</label>
+      <div class="row" style="align-items:center;">
+        <div style="flex:3;min-width:240px;">
+          <input id="pmSecretKey" type="password" placeholder="Paste sk_test_... or sk_live_..." autocomplete="off">
+        </div>
+        <div style="flex:1;min-width:140px;display:flex;gap:6px;">
+          <button type="button" id="pmToggleShow" class="small">Show</button>
+          <button type="button" class="primary small" id="savePmBtn">Save Key</button>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
+        <button type="button" class="small danger" id="clearPmBtn" style="display:none;">Remove Key from Admin</button>
+        <span class="meta" style="margin:0;">Without a key, checkout runs in instant Test Simulation Mode.</span>
+      </div>
+      <div class="meta" style="margin:10px 0 0;line-height:1.6;">
+        <b>Quick Testing:</b> Paste your test secret key (<code>sk_test_...</code>) above to generate test PayMongo QR Ph codes immediately.<br>
+        <b>Live Production:</b> For maximum security, save your live secret key (<code>sk_live_...</code>) in Netlify Dashboard &rarr; <i>Site configuration</i> &rarr; <i>Environment variables</i> as <code>PAYMONGO_SECRET_KEY</code>.
+      </div>
+    </details>
+
     <div class="card" id="codesCard">
       <div class="top" style="margin-bottom:10px;"><h2 style="margin:0;">Rental codes</h2><button class="small" id="refreshBtn">Refresh</button></div>
       <div class="toolbar">
@@ -478,7 +503,22 @@
   }
 
   var settingsShown = false;
+  function updatePaymongoUI(s){
+    var txt = $('pmStatusText');
+    if(!txt || !s) return;
+    if(s.paymongoSet){
+      var modeBadge = s.paymongoMode === 'live' ? '<span class="badge b-active" style="margin-left:4px;">LIVE</span>' : '<span class="badge b-unused" style="margin-left:4px;">TEST MODE</span>';
+      var sourceBadge = s.paymongoSource === 'netlify' ? '<span class="badge b-scheduled" style="margin-left:4px;">Netlify Env</span>' : '<span class="badge" style="margin-left:4px;background:#EAE8E4;color:#4A464C;">Admin Key</span>';
+      txt.innerHTML = '<span style="color:#1e8449;font-weight:700;">Connected</span> ' + modeBadge + ' ' + sourceBadge + (s.paymongoLast4 ? ' <span style="color:var(--dim);margin-left:6px;font-size:12px;">(ending in •••• ' + esc(s.paymongoLast4) + ')</span>' : '');
+      if($('clearPmBtn')) $('clearPmBtn').style.display = s.paymongoSource === 'admin' ? 'inline-block' : 'none';
+    } else {
+      txt.innerHTML = '<span style="color:var(--dim);">Not configured (Instant simulation active)</span>';
+      if($('clearPmBtn')) $('clearPmBtn').style.display = 'none';
+    }
+  }
+
   function renderSettings(s){
+    if(s) updatePaymongoUI(s);
     if(settingsShown) return;   // don't overwrite what the admin is typing
     settingsShown = true;
     $('trialEnabled').checked = !!s.trialEnabled;
@@ -1043,10 +1083,41 @@
       catch(err){ if(err.message !== 'auth') toast(err.message, true); }
     });
   });
+
+  $('pmToggleShow').addEventListener('click', function(){
+    var inp = $('pmSecretKey');
+    var isPw = inp.type === 'password';
+    inp.type = isPw ? 'text' : 'password';
+    this.textContent = isPw ? 'Hide' : 'Show';
+  });
+
+  $('savePmBtn').addEventListener('click', async function(){
+    var k = $('pmSecretKey').value.trim();
+    if(!k){ toast('Please enter a PayMongo secret key.', true); return; }
+    try{
+      var res = await api({ action: 'savepaymongo', key: k });
+      updatePaymongoUI(res);
+      $('pmSecretKey').value = '';
+      $('pmSecretKey').type = 'password';
+      $('pmToggleShow').textContent = 'Show';
+      toast('PayMongo secret key saved');
+    }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+  });
+
+  $('clearPmBtn').addEventListener('click', async function(){
+    if(!confirm('Remove the PayMongo secret key? Monthly subscriptions will revert to instant Test Simulation Mode.')) return;
+    try{
+      var res = await api({ action: 'savepaymongo', key: '' });
+      updatePaymongoUI(res);
+      $('pmSecretKey').value = '';
+      toast('PayMongo secret key removed');
+    }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+  });
+
   printPicker($('newPrint'), null, 'Allow printing for these codes');
   $('newTheme').innerHTML = themeOptions('');
-  // Remember whether the Create / Trial cards are open.
-  ['createCard', 'trialCard', 'qrCard'].forEach(function(id){
+  // Remember whether the Create / Trial / QR / PayMongo cards are open.
+  ['createCard', 'trialCard', 'qrCard', 'paymongoCard'].forEach(function(id){
     try{ var v = localStorage.getItem('pb_admin_' + id); if(v) $(id).open = v === '1'; }catch(e){}
     $(id).addEventListener('toggle', function(){ try{ localStorage.setItem('pb_admin_' + id, $(id).open ? '1' : '0'); }catch(e){} });
   });

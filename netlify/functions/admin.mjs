@@ -5,7 +5,7 @@ import {
 , putLicense, delLicense, readIndex, rebuildIndex, windowEnd } from '../lib/core.mjs';
 import { timingSafeEqual, createHash } from 'node:crypto';
 import { setupsStore } from '../lib/core.mjs';
-import { ownerId, eventKeyOf, getAcct, acctPublic, acctKey, payStore, unseal, pm, listJSON, usedMap, batchView, createBatch, batchKey } from '../lib/pay.mjs';
+import { ownerId, eventKeyOf, getAcct, acctPublic, acctKey, payStore, unseal, pm, listJSON, usedMap, batchView, createBatch, batchKey, KEY_RE } from '../lib/pay.mjs';
 import { cleanEventName, sendMail, codeEmail, EMAIL_RE } from '../lib/core.mjs';
 import { licenceFor, activateOn, saveMap, dropMap, licenceReady, MID_RE } from '../lib/license.mjs';
 
@@ -157,7 +157,17 @@ export default safe(async (req, context) => {
         lifetime: all.filter((r) => r.lifetime && r.status !== 'revoked').length,
         next7: all.filter((r) => r.startsAt && r.startsAt > now && r.startsAt < now + 7 * DAY).length
       };
-      return json({ rows, counts, stats, page, pages, total: list.length, settings: await getSettings(), now, indexBuiltAt: ix.builtAt || null });
+      const rawSettings = await getSettings();
+      const pmKey = rawSettings.paymongoSecretKey || process.env.PAYMONGO_SECRET_KEY || '';
+      const safeSettings = {
+        ...rawSettings,
+        paymongoSet: !!pmKey,
+        paymongoSource: rawSettings.paymongoSecretKey ? 'admin' : (process.env.PAYMONGO_SECRET_KEY ? 'netlify' : 'none'),
+        paymongoMode: pmKey.startsWith('sk_live_') ? 'live' : (pmKey.startsWith('sk_test_') ? 'test' : 'none'),
+        paymongoLast4: pmKey.length > 4 ? pmKey.slice(-4) : ''
+      };
+      delete safeSettings.paymongoSecretKey;
+      return json({ rows, counts, stats, page, pages, total: list.length, settings: safeSettings, now, indexBuiltAt: ix.builtAt || null });
     }
 
     case 'get': { // one booking in full (+ its bonus code), for the expanded row
@@ -558,6 +568,23 @@ export default safe(async (req, context) => {
       const settings = { ...(await getSettings()), qrTarget: b.qrTarget === 'drive' ? 'drive' : 'gallery' };
       await meta().setJSON('settings', settings);
       return json({ settings });
+    }
+
+    case 'savepaymongo': { // save or clear the subscription PayMongo secret key
+      const key = String(b.key || '').trim();
+      if (key && !KEY_RE.test(key)) return json({ error: 'That doesn’t look like a PayMongo secret key. It must start with sk_live_ or sk_test_.' }, 400);
+      const settings = { ...(await getSettings()) };
+      if (key) settings.paymongoSecretKey = key;
+      else delete settings.paymongoSecretKey;
+      await meta().setJSON('settings', settings);
+      const active = key || process.env.PAYMONGO_SECRET_KEY || '';
+      return json({
+        ok: true,
+        paymongoSet: !!active,
+        paymongoSource: key ? 'admin' : (process.env.PAYMONGO_SECRET_KEY ? 'netlify' : 'none'),
+        paymongoMode: active.startsWith('sk_live_') ? 'live' : (active.startsWith('sk_test_') ? 'test' : 'none'),
+        paymongoLast4: active.length > 4 ? active.slice(-4) : ''
+      });
     }
 
     case 'delete': { // deleting a booking also deletes its bonus code

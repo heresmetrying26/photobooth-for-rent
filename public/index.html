@@ -206,6 +206,13 @@
       localStorage.removeItem(TOKEN_KEY);
       return;
     }
+    var qCode = (new URLSearchParams(location.search)).get('code');
+    if(qCode){
+      busy(false);
+      codeEl.value = qCode;
+      unlock();
+      return;
+    }
     if(token){ busy(true, 'Checking access…'); await openApp(token); }
     else busy(false);
   })();

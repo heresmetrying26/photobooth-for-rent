@@ -3,3 +3,4 @@ public/downloads/photobooth4u-print-helper-windows/
 public/downloads/*.exe
 .collaborator
 .dual-graph/
+.vscode/

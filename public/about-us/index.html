@@ -1,242 +1,1418 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="photobooth4u — a DIY photobooth on your own laptop or tablet. Ready-made designs, your own Canva frames, prints on the spot, and an online gallery guests open with one QR scan.">
+  <meta name="description"
+    content="photobooth4u — a DIY photobooth on your own laptop or tablet. Ready-made designs, your own Canva frames, prints on the spot, and an online gallery guests open with one QR scan.">
   <title>About Us | photobooth4u</title>
   <link rel="canonical" href="https://photobooth4u.netlify.app/about-us/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="photobooth4u">
   <meta property="og:title" content="photobooth4u — the photobooth, without the booth">
-  <meta property="og:description" content="Use your own laptop or tablet. Guests pose, scan a QR code, and take their photos home.">
+  <meta property="og:description"
+    content="Use your own laptop or tablet. Guests pose, scan a QR code, and take their photos home.">
   <meta property="og:url" content="https://photobooth4u.netlify.app/about-us/">
   <meta property="og:image" content="https://photobooth4u.netlify.app/about-us/assets/pb4u-02-layouts-v2.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
   <style>
-    :root{--ink:#1C1A1E;--muted:#6B666C;--red:#C93D27;--red-dark:#A9301D;--tint:#FBEDEA;--paper:#F5F1EA;--line:#E4DCCF;--blue:#0866FF;}
-    *{box-sizing:border-box} html{scroll-behavior:smooth}
-    body{margin:0;color:var(--ink);font-family:'Manrope',Arial,sans-serif;background:var(--paper);line-height:1.5}
-    a{color:inherit}
-    .wrap{width:min(980px,calc(100% - 32px));margin:0 auto}
-    .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+    :root {
+      --ink: #1C1A1E;
+      --muted: #6B666C;
+      --red: #C93D27;
+      --red-dark: #A9301D;
+      --tint: #FBEDEA;
+      --paper: #F5F1EA;
+      --line: #E4DCCF;
+      --blue: #0866FF;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    html {
+      scroll-behavior: smooth
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: 'Manrope', Arial, sans-serif;
+      background: var(--paper);
+      line-height: 1.5
+    }
+
+    a {
+      color: inherit
+    }
+
+    .wrap {
+      width: min(980px, calc(100% - 32px));
+      margin: 0 auto
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap
+    }
 
     /* top navigation (same on the lock screen, About us and My events) */
-    .topnav{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;padding:18px 0}
-    .nbrand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink)}
-    .nmark{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:24px;height:24px;flex:none}
-    .nmark i{background:var(--ink);border-radius:4px}.nmark i:nth-child(2){background:var(--red)}
-    .nword{display:flex;align-items:flex-start}
-    .nword b{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:23px;letter-spacing:-.035em;line-height:1}
-    .nword em{font-style:normal;margin-left:3px;padding:2px 6px 4px;border-radius:7px;background:var(--red);color:#fff;font-weight:800;font-size:11px;line-height:1;transform:rotate(-7deg)}
-    .navlinks{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
-    .navlinks a{font-size:14px;font-weight:700;color:var(--muted);text-decoration:none;padding:9px 13px;border-radius:999px;white-space:nowrap;transition:background .2s,color .2s}
-    .navlinks a:hover,.navlinks a:focus-visible{color:var(--ink);background:#fff;outline:none}
-    .navlinks a[aria-current="page"]{color:var(--ink);background:#fff}
-    .navlinks a.cta{margin-left:4px;color:#fff;background:var(--red)}
-    .navlinks a.cta:hover,.navlinks a.cta:focus-visible{background:var(--red-dark);color:#fff}
+    .topnav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 16px;
+      flex-wrap: wrap;
+      padding: 18px 0
+    }
 
-    .hero{text-align:center;padding:30px 0 30px}
-    h1{margin:0 0 12px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(38px,6.4vw,68px);line-height:1.02;letter-spacing:-.04em}
-    h1 em{font-style:italic;font-weight:500;color:var(--red)}
-    .hero p{margin:0 auto;max-width:480px;font-size:17px;color:var(--muted)}
-    .hero-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:22px}
+    .nbrand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      text-decoration: none;
+      color: var(--ink)
+    }
+
+    .nmark {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px;
+      width: 24px;
+      height: 24px;
+      flex: none
+    }
+
+    .nmark i {
+      background: var(--ink);
+      border-radius: 4px
+    }
+
+    .nmark i:nth-child(2) {
+      background: var(--red)
+    }
+
+    .nword {
+      display: flex;
+      align-items: flex-start
+    }
+
+    .nword b {
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: 23px;
+      letter-spacing: -.035em;
+      line-height: 1
+    }
+
+    .nword em {
+      font-style: normal;
+      margin-left: 3px;
+      padding: 2px 6px 4px;
+      border-radius: 7px;
+      background: var(--red);
+      color: #fff;
+      font-weight: 800;
+      font-size: 11px;
+      line-height: 1;
+      transform: rotate(-7deg)
+    }
+
+    .navlinks {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px
+    }
+
+    .navlinks a {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 9px 13px;
+      border-radius: 999px;
+      white-space: nowrap;
+      transition: background .2s, color .2s
+    }
+
+    .navlinks a:hover,
+    .navlinks a:focus-visible {
+      color: var(--ink);
+      background: #fff;
+      outline: none
+    }
+
+    .navlinks a[aria-current="page"] {
+      color: var(--ink);
+      background: #fff
+    }
+
+    .navlinks a.cta {
+      margin-left: 4px;
+      color: #fff;
+      background: var(--red)
+    }
+
+    .navlinks a.cta:hover,
+    .navlinks a.cta:focus-visible {
+      background: var(--red-dark);
+      color: #fff
+    }
+
+    .hero {
+      text-align: center;
+      padding: 30px 0 30px
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(38px, 6.4vw, 68px);
+      line-height: 1.02;
+      letter-spacing: -.04em
+    }
+
+    h1 em {
+      font-style: italic;
+      font-weight: 500;
+      color: var(--red)
+    }
+
+    .hero p {
+      margin: 0 auto;
+      max-width: 480px;
+      font-size: 17px;
+      color: var(--muted)
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 22px
+    }
 
     /* slider: images only, centred */
-    .slider{position:relative;max-width:620px;margin:0 auto;border-radius:22px;background:#fff;border:1px solid var(--line);overflow:hidden}
-    .slides{position:relative;aspect-ratio:1/1;background:var(--paper)}
-    .slide{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .5s ease}.slide.active{opacity:1;pointer-events:auto}
-    .slide img{width:100%;height:100%;object-fit:contain;display:block}
-    .slide-caption{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-    .arrow{position:absolute;z-index:2;top:50%;display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:50%;background:rgba(255,255,255,.92);color:var(--ink);font-size:24px;line-height:1;cursor:pointer;box-shadow:0 2px 10px rgba(28,26,30,.12);transform:translateY(-50%);transition:.2s}
-    .arrow:hover,.arrow:focus-visible{background:var(--red);color:#fff;outline:none}.prev{left:12px}.next{right:12px}
-    .slider-footer{display:flex;align-items:center;justify-content:center;gap:16px;padding:12px;border-top:1px solid var(--line)}
-    .dots{display:flex;gap:7px}.dot{width:8px;height:8px;padding:0;border:0;border-radius:50%;background:#DCD3C6;cursor:pointer;transition:.2s}
-    .dot[aria-current="true"]{width:22px;border-radius:8px;background:var(--red)}
-    .counter{display:none}
+    .slider {
+      position: relative;
+      max-width: 620px;
+      margin: 0 auto;
+      border-radius: 22px;
+      background: #fff;
+      border: 1px solid var(--line);
+      overflow: hidden
+    }
 
-    section.block{padding:56px 0 0;scroll-margin-top:12px}
-    .label{margin:0 0 10px;text-align:center;font-size:12px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--red)}
-    h2{margin:0 0 6px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(26px,3.6vw,34px);letter-spacing:-.025em;line-height:1.1;text-align:center}
-    .sub{margin:0 auto 22px;text-align:center;color:var(--muted);max-width:520px}
+    .slides {
+      position: relative;
+      aspect-ratio: 1/1;
+      background: var(--paper)
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .5s ease
+    }
+
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto
+    }
+
+    .slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block
+    }
+
+    .slide-caption {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0)
+    }
+
+    .arrow {
+      position: absolute;
+      z-index: 2;
+      top: 50%;
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .92);
+      color: var(--ink);
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(28, 26, 30, .12);
+      transform: translateY(-50%);
+      transition: .2s
+    }
+
+    .arrow:hover,
+    .arrow:focus-visible {
+      background: var(--red);
+      color: #fff;
+      outline: none
+    }
+
+    .prev {
+      left: 12px
+    }
+
+    .next {
+      right: 12px
+    }
+
+    .slider-footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 12px;
+      border-top: 1px solid var(--line)
+    }
+
+    .dots {
+      display: flex;
+      gap: 7px
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: #DCD3C6;
+      cursor: pointer;
+      transition: .2s
+    }
+
+    .dot[aria-current="true"] {
+      width: 22px;
+      border-radius: 8px;
+      background: var(--red)
+    }
+
+    .counter {
+      display: none
+    }
+
+    section.block {
+      padding: 56px 0 0;
+      scroll-margin-top: 12px
+    }
+
+    .label {
+      margin: 0 0 10px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--red)
+    }
+
+    h2 {
+      margin: 0 0 6px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(26px, 3.6vw, 34px);
+      letter-spacing: -.025em;
+      line-height: 1.1;
+      text-align: center
+    }
+
+    .sub {
+      margin: 0 auto 22px;
+      text-align: center;
+      color: var(--muted);
+      max-width: 520px
+    }
 
     /* features */
-    .features{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-    .feat{padding:20px;border-radius:18px;background:#fff;border:1px solid var(--line)}
-    .feat .ic{display:grid;place-items:center;width:40px;height:40px;margin-bottom:12px;border-radius:12px;background:var(--tint);color:var(--red)}
-    .feat .ic svg{width:22px;height:22px}
-    .feat h3{margin:0 0 4px;font-size:16.5px;line-height:1.3}
-    .feat p{margin:0;font-size:14.5px;color:var(--muted)}
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px
+    }
+
+    .feat {
+      padding: 20px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--line)
+    }
+
+    .feat .ic {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      margin-bottom: 12px;
+      border-radius: 12px;
+      background: var(--tint);
+      color: var(--red)
+    }
+
+    .feat .ic svg {
+      width: 22px;
+      height: 22px
+    }
+
+    .feat h3 {
+      margin: 0 0 4px;
+      font-size: 16.5px;
+      line-height: 1.3
+    }
+
+    .feat p {
+      margin: 0;
+      font-size: 14.5px;
+      color: var(--muted)
+    }
 
     /* how it works */
-    .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0;padding:0;list-style:none;counter-reset:s}
-    .steps li{position:relative;padding:20px 18px 18px;border-radius:18px;background:#fff;border:1px solid var(--line);counter-increment:s}
-    .steps li::before{content:counter(s);display:grid;place-items:center;width:30px;height:30px;margin-bottom:10px;border-radius:50%;background:var(--ink);color:#fff;font-weight:800;font-size:14px}
-    .steps b{display:block;font-size:15.5px;margin-bottom:2px}
-    .steps span{font-size:14px;color:var(--muted)}
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: s
+    }
 
-    .plans{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
-    .plans .plan{grid-column:span 2}
-    .plans .plan.wide{grid-column:span 3}
-    .plans .plan.event{grid-column:span 3}
-    .plan{display:flex;flex-direction:column;padding:22px;border-radius:18px;background:#fff;border:1px solid var(--line)}
-    .plan.pro{border:2px solid var(--red)}
-    .plan.life{background:var(--ink);border-color:var(--ink);color:#fff}
-    .plan h3{margin:0;font-size:18px}
-    .plan .for{margin:2px 0 18px;font-size:14px;font-weight:600;color:var(--muted)}
-    .plan.life .for{color:#BDB6AE}
-    .price{margin:auto 0 0;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:36px;letter-spacing:-.02em;line-height:1}
-    .price small{font-family:'Manrope',Arial,sans-serif;font-size:13px;font-weight:700;color:var(--muted);letter-spacing:0}
-    .plan.life .price small{color:#BDB6AE}
-    .plan.life a{color:#fff;text-decoration:none;border-bottom:2px solid var(--red);padding-bottom:2px}
-    .plan.life a:hover{color:#F2B8AC}
-    .plan .tag{align-self:flex-start;margin:0 0 10px;padding:3px 9px;border-radius:999px;background:var(--tint);color:var(--red);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-    .plan.life .tag{background:var(--red);color:#fff}
-    .plan .life-link{margin:10px 0 0;font-size:13.5px;font-weight:800}
-    .addons{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
-    .addon{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:14px;background:transparent;border:1.5px dashed var(--line)}
-    .addon .ad-ic{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:50%;background:var(--tint);color:var(--red);font-weight:800;font-size:17px;line-height:1}
-    .addon .ad-txt{flex:1 1 auto;min-width:0}
-    .addon b{display:block;font-size:14.5px}
-    .addon small{display:block;font-size:12.5px;font-weight:600;color:var(--muted);line-height:1.35}
-    .addon .ad-price{flex:none;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;letter-spacing:-.01em}
-    .offline-note{margin:14px auto 0;max-width:640px;text-align:center;font-size:14px;color:var(--muted)}
-    .offline-note b{color:var(--ink)}
+    .steps li {
+      position: relative;
+      padding: 20px 18px 18px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--line);
+      counter-increment: s
+    }
+
+    .steps li::before {
+      content: counter(s);
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      margin-bottom: 10px;
+      border-radius: 50%;
+      background: var(--ink);
+      color: #fff;
+      font-weight: 800;
+      font-size: 14px
+    }
+
+    .steps b {
+      display: block;
+      font-size: 15.5px;
+      margin-bottom: 2px
+    }
+
+    .steps span {
+      font-size: 14px;
+      color: var(--muted)
+    }
+
+    .plans {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px
+    }
+
+    .plans .plan {
+      grid-column: span 2
+    }
+
+    .plans .plan.wide {
+      grid-column: span 3
+    }
+
+    .plans .plan.event {
+      grid-column: span 3
+    }
+
+    .plan {
+      display: flex;
+      flex-direction: column;
+      padding: 22px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--line)
+    }
+
+    .plan.pro {
+      border: 2px solid var(--red)
+    }
+
+    .plan.life {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: #fff
+    }
+
+    .plan h3 {
+      margin: 0;
+      font-size: 18px
+    }
+
+    .plan .for {
+      margin: 2px 0 18px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted)
+    }
+
+    .plan.life .for {
+      color: #BDB6AE
+    }
+
+    .price {
+      margin: auto 0 0;
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: 36px;
+      letter-spacing: -.02em;
+      line-height: 1
+    }
+
+    .price small {
+      font-family: 'Manrope', Arial, sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0
+    }
+
+    .plan.life .price small {
+      color: #BDB6AE
+    }
+
+    .plan.life a {
+      color: #fff;
+      text-decoration: none;
+      border-bottom: 2px solid var(--red);
+      padding-bottom: 2px
+    }
+
+    .plan.life a:hover {
+      color: #F2B8AC
+    }
+
+    .plan .tag {
+      align-self: flex-start;
+      margin: 0 0 10px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--tint);
+      color: var(--red);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase
+    }
+
+    .plan.life .tag {
+      background: var(--red);
+      color: #fff
+    }
+
+    .plan .life-link {
+      margin: 10px 0 0;
+      font-size: 13.5px;
+      font-weight: 800
+    }
+
+    .addons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px
+    }
+
+    .addon {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: transparent;
+      border: 1.5px dashed var(--line)
+    }
+
+    .addon .ad-ic {
+      display: grid;
+      place-items: center;
+      flex: none;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--tint);
+      color: var(--red);
+      font-weight: 800;
+      font-size: 17px;
+      line-height: 1
+    }
+
+    .addon .ad-txt {
+      flex: 1 1 auto;
+      min-width: 0
+    }
+
+    .addon b {
+      display: block;
+      font-size: 14.5px
+    }
+
+    .addon small {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--muted);
+      line-height: 1.35
+    }
+
+    .addon .ad-price {
+      flex: none;
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: 20px;
+      letter-spacing: -.01em
+    }
+
+    .offline-note {
+      margin: 14px auto 0;
+      max-width: 640px;
+      text-align: center;
+      font-size: 14px;
+      color: var(--muted)
+    }
+
+    .offline-note b {
+      color: var(--ink)
+    }
 
     /* monthly subscription plans */
-    .plans-monthly{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0;}
-    .plan.monthly{border:1.5px solid var(--line);transition:transform .2s,box-shadow .2s;}
-    .plan.monthly:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(60,40,20,.08);}
-    .plan.monthly.best{border:2.5px solid var(--red);box-shadow:0 12px 36px rgba(201,61,39,.12);position:relative;}
-    .plan-list{margin:14px 0 20px;padding:0;list-style:none;display:grid;gap:9px;font-size:13.5px;}
-    .plan-list li{display:flex;align-items:flex-start;gap:8px;line-height:1.35;color:var(--ink);}
-    .plan-list li::before{content:"✓";color:var(--red);font-weight:800;flex:none;}
-    .plan-btn{width:100%;margin-top:auto;}
-    .renew-banner{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;padding:12px 18px;border-radius:14px;background:#fff;border:1.5px dashed var(--line);margin:12px 0 32px;font-size:14px;color:var(--muted);}
-    .renew-link{background:none;border:none;color:var(--red);font:inherit;font-weight:800;cursor:pointer;padding:0;text-decoration:underline;}
-    .renew-link:hover{color:var(--red-dark);}
-    .pkg-divider{margin:36px 0 20px;text-align:center;}
-    .pkg-divider h3{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:22px;margin:0 0 4px;}
-    .pkg-divider p{margin:0;font-size:14px;color:var(--muted);}
+    .plans-monthly {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin: 20px 0;
+    }
+
+    .plan.monthly {
+      border: 1.5px solid var(--line);
+      transition: transform .2s, box-shadow .2s;
+    }
+
+    .plan.monthly:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(60, 40, 20, .08);
+    }
+
+    .plan.monthly.best {
+      border: 2.5px solid var(--red);
+      box-shadow: 0 12px 36px rgba(201, 61, 39, .12);
+      position: relative;
+    }
+
+    .plan-list {
+      margin: 14px 0 20px;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 9px;
+      font-size: 13.5px;
+    }
+
+    .plan-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.35;
+      color: var(--ink);
+    }
+
+    .plan-list li::before {
+      content: "✓";
+      color: var(--red);
+      font-weight: 800;
+      flex: none;
+    }
+
+    .plan-btn {
+      width: 100%;
+      margin-top: auto;
+    }
+
+    .renew-banner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 12px 18px;
+      border-radius: 14px;
+      background: #fff;
+      border: 1.5px dashed var(--line);
+      margin: 12px 0 32px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .renew-link {
+      background: none;
+      border: none;
+      color: var(--red);
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+    }
+
+    .renew-link:hover {
+      color: var(--red-dark);
+    }
+
+    .pkg-divider {
+      margin: 36px 0 20px;
+      text-align: center;
+    }
+
+    .pkg-divider h3 {
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: 22px;
+      margin: 0 0 4px;
+    }
+
+    .pkg-divider p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--muted);
+    }
 
     /* PayMongo QR subscription dialog */
-    .sub-dialog{border:none;padding:0;border-radius:24px;background:#fff;color:var(--ink);width:min(460px,calc(100vw - 32px));box-shadow:0 24px 60px rgba(28,26,30,.25);overflow:hidden;margin:auto;}
-    .sub-dialog:not([open]){display:none;}
-    .sub-dialog[open]{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);margin:0;z-index:99999;display:block;}
-    .sub-dialog::backdrop{background:rgba(28,26,30,.65);backdrop-filter:blur(6px);}
-    .sd-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;background:var(--paper);border-bottom:1px solid var(--line);}
-    .sd-head h3{margin:0;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:18px;}
-    .sd-close{background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted);padding:4px 8px;border-radius:8px;}
-    .sd-close:hover{color:var(--ink);background:rgba(0,0,0,.06);}
-    .sd-body{padding:22px;}
-    .sd-plan-tag{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;background:var(--tint);color:var(--red);font-weight:800;font-size:13px;margin-bottom:16px;}
-    .sd-group{margin-bottom:14px;text-align:left;}
-    .sd-group label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:5px;}
-    .sd-group input{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;font:inherit;font-size:14.5px;background:#FAF7F2;color:var(--ink);outline:none;}
-    .sd-group input:focus{border-color:var(--red);background:#fff;}
-    .sd-toggle{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--muted);margin:8px 0 14px;cursor:pointer;}
-    .sd-qr-box{display:flex;flex-direction:column;align-items:center;text-align:center;}
-    .sd-qr-frame{padding:12px;border-radius:18px;border:2px solid var(--line);background:#fff;box-shadow:0 6px 20px rgba(0,0,0,.06);margin-bottom:10px;}
-    .sd-qr-frame img{width:220px;height:220px;display:block;border-radius:8px;object-fit:contain;}
-    .sd-qr-amount{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:28px;color:var(--ink);margin:4px 0;}
-    .sd-qr-timer{font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:6px;}
-    .sd-qr-status{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#1e8449;}
-    .sd-spin{width:14px;height:14px;border:2px solid #b7dfca;border-top-color:#1e8449;border-radius:50%;animation:spin .8s linear infinite;}
-    .sd-code-box{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:14px;background:var(--paper);border:2px dashed var(--red);margin:14px 0 12px;}
-    .sd-code-box .code-val{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:20px;font-weight:800;letter-spacing:1px;color:var(--ink);}
-    .sd-guides{margin:14px 0;display:grid;gap:8px;text-align:left;}
-    .sd-guides a{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:12px;background:#FAF7F2;border:1.5px solid var(--line);text-decoration:none;font-size:13px;font-weight:700;color:var(--ink);transition:.2s;}
-    .sd-guides a:hover{border-color:var(--red);color:var(--red);background:#fff;}
-    .sd-msg{font-size:13px;margin:8px 0;min-height:18px;}
-    .sd-msg.err{color:#c0392b;} .sd-msg.ok{color:#1e8449;}
+    .sub-dialog {
+      border: none;
+      padding: 0;
+      border-radius: 24px;
+      background: #fff;
+      color: var(--ink);
+      width: min(460px, calc(100vw - 32px));
+      box-shadow: 0 24px 60px rgba(28, 26, 30, .25);
+      overflow: hidden;
+      margin: auto;
+    }
+
+    .sub-dialog:not([open]) {
+      display: none;
+    }
+
+    .sub-dialog[open] {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      margin: 0;
+      z-index: 99999;
+      display: block;
+    }
+
+    .sub-dialog::backdrop {
+      background: rgba(28, 26, 30, .65);
+      backdrop-filter: blur(6px);
+    }
+
+    .sd-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      background: var(--paper);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .sd-head h3 {
+      margin: 0;
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: 18px;
+    }
+
+    .sd-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 4px 8px;
+      border-radius: 8px;
+    }
+
+    .sd-close:hover {
+      color: var(--ink);
+      background: rgba(0, 0, 0, .06);
+    }
+
+    .sd-body {
+      padding: 22px;
+    }
+
+    .sd-plan-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: var(--tint);
+      color: var(--red);
+      font-weight: 800;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    .sd-group {
+      margin-bottom: 14px;
+      text-align: left;
+    }
+
+    .sd-group label {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .sd-group input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      font: inherit;
+      font-size: 14.5px;
+      background: #FAF7F2;
+      color: var(--ink);
+      outline: none;
+    }
+
+    .sd-group input:focus {
+      border-color: var(--red);
+      background: #fff;
+    }
+
+    .sd-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      margin: 8px 0 14px;
+      cursor: pointer;
+    }
+
+    .sd-qr-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .sd-qr-frame {
+      padding: 12px;
+      border-radius: 18px;
+      border: 2px solid var(--line);
+      background: #fff;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .06);
+      margin-bottom: 10px;
+    }
+
+    .sd-qr-frame img {
+      width: 220px;
+      height: 220px;
+      display: block;
+      border-radius: 8px;
+      object-fit: contain;
+    }
+
+    .sd-qr-amount {
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: 28px;
+      color: var(--ink);
+      margin: 4px 0;
+    }
+
+    .sd-qr-timer {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .sd-qr-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #1e8449;
+    }
+
+    .sd-spin {
+      width: 14px;
+      height: 14px;
+      border: 2px solid #b7dfca;
+      border-top-color: #1e8449;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    .sd-code-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: var(--paper);
+      border: 2px dashed var(--red);
+      margin: 14px 0 12px;
+    }
+
+    .sd-code-box .code-val {
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--ink);
+    }
+
+    .sd-guides {
+      margin: 14px 0;
+      display: grid;
+      gap: 8px;
+      text-align: left;
+    }
+
+    .sd-guides a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: #FAF7F2;
+      border: 1.5px solid var(--line);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      transition: .2s;
+    }
+
+    .sd-guides a:hover {
+      border-color: var(--red);
+      color: var(--red);
+      background: #fff;
+    }
+
+    .sd-msg {
+      font-size: 13px;
+      margin: 8px 0;
+      min-height: 18px;
+    }
+
+    .sd-msg.err {
+      color: #c0392b;
+    }
+
+    .sd-msg.ok {
+      color: #1e8449;
+    }
 
 
     /* guides */
-    .guides{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-    .guide{display:flex;flex-direction:column;gap:6px;padding:20px;border-radius:18px;background:#fff;border:1px solid var(--line);text-decoration:none;color:var(--ink);transition:border-color .2s,transform .2s}
-    .guide:hover,.guide:focus-visible{border-color:var(--red);transform:translateY(-2px);outline:none}
-    .guide .ic{display:grid;place-items:center;width:40px;height:40px;margin-bottom:6px;border-radius:12px;background:var(--tint);color:var(--red)}
-    .guide .ic svg{width:22px;height:22px}
-    .guide.off .ic{background:var(--ink);color:#fff}
-    .guide h3{margin:0;font-size:16.5px;line-height:1.3}
-    .guide .for{margin:0;font-size:13px;font-weight:700;color:var(--red)}
-    .guide p{margin:0;font-size:14px;color:var(--muted)}
-    .guide .open{margin-top:auto;padding-top:10px;display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:800;color:var(--ink)}
-    .guide .open svg{width:16px;height:16px}
-    .guide:hover .open{color:var(--red)}
-    .chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:16px 0 0;padding:0;list-style:none}
-    .chips li{padding:7px 13px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:13px;font-weight:700}
+    .guides {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px
+    }
+
+    .guide {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 20px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--line);
+      text-decoration: none;
+      color: var(--ink);
+      transition: border-color .2s, transform .2s
+    }
+
+    .guide:hover,
+    .guide:focus-visible {
+      border-color: var(--red);
+      transform: translateY(-2px);
+      outline: none
+    }
+
+    .guide .ic {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      margin-bottom: 6px;
+      border-radius: 12px;
+      background: var(--tint);
+      color: var(--red)
+    }
+
+    .guide .ic svg {
+      width: 22px;
+      height: 22px
+    }
+
+    .guide.off .ic {
+      background: var(--ink);
+      color: #fff
+    }
+
+    .guide h3 {
+      margin: 0;
+      font-size: 16.5px;
+      line-height: 1.3
+    }
+
+    .guide .for {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--red)
+    }
+
+    .guide p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--muted)
+    }
+
+    .guide .open {
+      margin-top: auto;
+      padding-top: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--ink)
+    }
+
+    .guide .open svg {
+      width: 16px;
+      height: 16px
+    }
+
+    .guide:hover .open {
+      color: var(--red)
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin: 16px 0 0;
+      padding: 0;
+      list-style: none
+    }
+
+    .chips li {
+      padding: 7px 13px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--line);
+      font-size: 13px;
+      font-weight: 700
+    }
 
     /* my events */
-    .events{display:grid;grid-template-columns:1.3fr 1fr;gap:22px;align-items:center;padding:26px;border-radius:20px;background:var(--ink);color:#fff}
-    .events h2{text-align:left;color:#fff}
-    .events p{margin:0 0 16px;color:#CFC8C0}
-    .events ul{margin:0;padding:0;list-style:none;display:grid;gap:8px}
-    .events li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:#EDE7E0}
-    .events li::before{content:"";flex:none;width:8px;height:8px;margin-top:7px;border-radius:2px;background:var(--red)}
+    .events {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 22px;
+      align-items: center;
+      padding: 26px;
+      border-radius: 20px;
+      background: var(--ink);
+      color: #fff
+    }
 
-    .book{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"intro form" "actions form";column-gap:22px;row-gap:4px;align-items:start;padding:26px;border-radius:20px;background:#fff;border:1px solid var(--line)}
-    .book-intro{grid-area:intro}.book .form-card{grid-area:form;align-self:center}.book .actions{grid-area:actions}
-    .book h2{text-align:left}
-    .book .sub{text-align:left;margin:0 0 16px}
-    .form-card{margin:0;padding:16px 18px;border-radius:14px;background:var(--paper);font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:14.5px;line-height:1.9;white-space:pre-wrap}
-    .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:999px;font:inherit;font-size:14.5px;font-weight:800;text-decoration:none;cursor:pointer;border:1.5px solid var(--line);background:#fff;color:var(--ink);transition:.2s}
-    .btn:hover,.btn:focus-visible{border-color:var(--red);color:var(--red);outline:none}
-    .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
-    .btn.primary:hover,.btn.primary:focus-visible{background:#0653CC;border-color:#0653CC;color:#fff}
-    .btn.red{background:var(--red);border-color:var(--red);color:#fff}
-    .btn.red:hover,.btn.red:focus-visible{background:var(--red-dark);border-color:var(--red-dark);color:#fff}
-    .events .btn{background:transparent;border-color:#57525A;color:#fff}
-    .events .btn:hover,.events .btn:focus-visible{border-color:#fff;color:#fff}
-    .events .btn.red{background:var(--red);border-color:var(--red)}
-    .btn svg{width:18px;height:18px;flex:none}
-    .copied{display:none;font-size:13px;font-weight:700;color:#1F6F62}.copied.show{display:inline}
+    .events h2 {
+      text-align: left;
+      color: #fff
+    }
 
-    footer{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin:56px 0 0;padding:22px 0 40px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
-    footer code{padding:2px 7px;border-radius:6px;background:#fff;border:1px solid var(--line);color:var(--ink);font-weight:700;font-family:ui-monospace,Consolas,monospace}
-    footer nav{display:flex;flex-wrap:wrap;gap:16px}
-    footer nav a{font-weight:700;color:var(--ink);text-decoration:none}
-    footer nav a:hover{color:var(--red)}
-    .fmeta{display:flex;flex-direction:column;gap:4px}
+    .events p {
+      margin: 0 0 16px;
+      color: #CFC8C0
+    }
 
-    @media (max-width:860px){
-      .features{grid-template-columns:1fr 1fr}
-      .plans{grid-template-columns:1fr 1fr}
-      .plans-monthly{grid-template-columns:1fr}
-      .plans .plan,.plans .plan.wide,.plans .plan.event{grid-column:auto}
-      .plans .plan.life{grid-column:1 / -1}
-      .guides{grid-template-columns:1fr}
-      .steps{grid-template-columns:1fr 1fr}
+    .events ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px
     }
-    @media (max-width:520px){
-      .plans{grid-template-columns:1fr}
-      .addons{grid-template-columns:1fr}
-      .events{grid-template-columns:1fr;padding:22px}
-      .book{grid-template-columns:1fr;grid-template-areas:"intro" "form" "actions";row-gap:14px;padding:20px}
-      .book .actions .btn{flex:1 1 100%}
-      .copied.show{display:block;width:100%;text-align:center}
-      .hero{padding:22px 0 22px}
-      section.block{padding-top:44px}
+
+    .events li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      font-size: 14.5px;
+      color: #EDE7E0
     }
-    @media (max-width:640px){
-      .topnav{justify-content:center;padding:16px 0 4px}
-      .navlinks{width:100%;justify-content:center;gap:2px}
-      .navlinks a{font-size:13.5px;padding:8px 10px}
-      .navlinks a.cta{margin-left:2px}
+
+    .events li::before {
+      content: "";
+      flex: none;
+      width: 8px;
+      height: 8px;
+      margin-top: 7px;
+      border-radius: 2px;
+      background: var(--red)
     }
-    @media (max-width:520px){
-      .features,.steps{grid-template-columns:1fr}
+
+    .book {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-areas: "intro form" "actions form";
+      column-gap: 22px;
+      row-gap: 4px;
+      align-items: start;
+      padding: 26px;
+      border-radius: 20px;
+      background: #fff;
+      border: 1px solid var(--line)
     }
-    @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
+    .book-intro {
+      grid-area: intro
+    }
+
+    .book .form-card {
+      grid-area: form;
+      align-self: center
+    }
+
+    .book .actions {
+      grid-area: actions
+    }
+
+    .book h2 {
+      text-align: left
+    }
+
+    .book .sub {
+      text-align: left;
+      margin: 0 0 16px
+    }
+
+    .form-card {
+      margin: 0;
+      padding: 16px 18px;
+      border-radius: 14px;
+      background: var(--paper);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 14.5px;
+      line-height: 1.9;
+      white-space: pre-wrap
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border-radius: 999px;
+      font: inherit;
+      font-size: 14.5px;
+      font-weight: 800;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1.5px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      transition: .2s
+    }
+
+    .btn:hover,
+    .btn:focus-visible {
+      border-color: var(--red);
+      color: var(--red);
+      outline: none
+    }
+
+    .btn.primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff
+    }
+
+    .btn.primary:hover,
+    .btn.primary:focus-visible {
+      background: #0653CC;
+      border-color: #0653CC;
+      color: #fff
+    }
+
+    .btn.red {
+      background: var(--red);
+      border-color: var(--red);
+      color: #fff
+    }
+
+    .btn.red:hover,
+    .btn.red:focus-visible {
+      background: var(--red-dark);
+      border-color: var(--red-dark);
+      color: #fff
+    }
+
+    .events .btn {
+      background: transparent;
+      border-color: #57525A;
+      color: #fff
+    }
+
+    .events .btn:hover,
+    .events .btn:focus-visible {
+      border-color: #fff;
+      color: #fff
+    }
+
+    .events .btn.red {
+      background: var(--red);
+      border-color: var(--red)
+    }
+
+    .btn svg {
+      width: 18px;
+      height: 18px;
+      flex: none
+    }
+
+    .copied {
+      display: none;
+      font-size: 13px;
+      font-weight: 700;
+      color: #1F6F62
+    }
+
+    .copied.show {
+      display: inline
+    }
+
+    footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin: 56px 0 0;
+      padding: 22px 0 40px;
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+      color: var(--muted)
+    }
+
+    footer code {
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      font-weight: 700;
+      font-family: ui-monospace, Consolas, monospace
+    }
+
+    footer nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px
+    }
+
+    footer nav a {
+      font-weight: 700;
+      color: var(--ink);
+      text-decoration: none
+    }
+
+    footer nav a:hover {
+      color: var(--red)
+    }
+
+    .fmeta {
+      display: flex;
+      flex-direction: column;
+      gap: 4px
+    }
+
+    @media (max-width:860px) {
+      .features {
+        grid-template-columns: 1fr 1fr
+      }
+
+      .plans {
+        grid-template-columns: 1fr 1fr
+      }
+
+      .plans-monthly {
+        grid-template-columns: 1fr
+      }
+
+      .plans .plan,
+      .plans .plan.wide,
+      .plans .plan.event {
+        grid-column: auto
+      }
+
+      .plans .plan.life {
+        grid-column: 1 / -1
+      }
+
+      .guides {
+        grid-template-columns: 1fr
+      }
+
+      .steps {
+        grid-template-columns: 1fr 1fr
+      }
+    }
+
+    @media (max-width:520px) {
+      .plans {
+        grid-template-columns: 1fr
+      }
+
+      .addons {
+        grid-template-columns: 1fr
+      }
+
+      .events {
+        grid-template-columns: 1fr;
+        padding: 22px
+      }
+
+      .book {
+        grid-template-columns: 1fr;
+        grid-template-areas: "intro" "form" "actions";
+        row-gap: 14px;
+        padding: 20px
+      }
+
+      .book .actions .btn {
+        flex: 1 1 100%
+      }
+
+      .copied.show {
+        display: block;
+        width: 100%;
+        text-align: center
+      }
+
+      .hero {
+        padding: 22px 0 22px
+      }
+
+      section.block {
+        padding-top: 44px
+      }
+    }
+
+    @media (max-width:640px) {
+      .topnav {
+        justify-content: center;
+        padding: 16px 0 4px
+      }
+
+      .navlinks {
+        width: 100%;
+        justify-content: center;
+        gap: 2px
+      }
+
+      .navlinks a {
+        font-size: 13.5px;
+        padding: 8px 10px
+      }
+
+      .navlinks a.cta {
+        margin-left: 2px
+      }
+    }
+
+    @media (max-width:520px) {
+
+      .features,
+      .steps {
+        grid-template-columns: 1fr
+      }
+    }
+
+    @media (prefers-reduced-motion:reduce) {
+      * {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important
+      }
+    }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <header class="topnav">
-      <a class="nbrand" href="/about-us/" aria-label="photobooth4u home"><span class="nmark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="nword"><b>photobooth</b><em>4u</em></span></a>
+      <a class="nbrand" href="/about-us/" aria-label="photobooth4u home"><span class="nmark"
+          aria-hidden="true"><i></i><i></i><i></i><i></i></span><span
+          class="nword"><b>photobooth</b><em>4u</em></span></a>
       <nav class="navlinks" aria-label="Main">
         <a href="/about-us/" aria-current="page">About us</a>
         <a href="/about-us/#packages">Pricing</a>
@@ -254,40 +1430,58 @@
     <section class="slider" aria-label="How photobooth4u works" aria-roledescription="carousel">
       <div class="slides">
         <article class="slide active" id="slide-2" aria-label="Slide 1 of 6">
-          <img src="assets/pb4u-02-layouts-v2.jpg" alt="Sample prints in different layouts, with the twelve layout names plus My frame and Frame collage listed below">
-          <div class="slide-caption"><strong>12 layouts, plus your own</strong><span>Strips, grids, polaroids, a big hero shot, film and landscape layouts — or upload your own Canva frames.</span></div>
+          <img src="assets/pb4u-02-layouts-v2.jpg"
+            alt="Sample prints in different layouts, with the twelve layout names plus My frame and Frame collage listed below">
+          <div class="slide-caption"><strong>12 layouts, plus your own</strong><span>Strips, grids, polaroids, a big
+              hero shot, film and landscape layouts — or upload your own Canva frames.</span></div>
         </article>
         <article class="slide" id="slide-3" aria-label="Slide 2 of 6">
-          <img src="assets/pb4u-03-make-it-yours.jpg" alt="Event name settings with a calendar button for the date, next to a finished print">
-          <div class="slide-caption"><strong>Your event, your style</strong><span>Add your event name and date, pick fonts, backdrops and frames, and see it in the live preview.</span></div>
+          <img src="assets/pb4u-03-make-it-yours.jpg"
+            alt="Event name settings with a calendar button for the date, next to a finished print">
+          <div class="slide-caption"><strong>Your event, your style</strong><span>Add your event name and date, pick
+              fonts, backdrops and frames, and see it in the live preview.</span></div>
         </article>
         <article class="slide" id="slide-4" aria-label="Slide 3 of 6">
-          <img src="assets/pb4u-04-countdown.jpg" alt="Countdown ring over the live camera, with 3, 5, 7 and 10 second options">
-          <div class="slide-caption"><strong>Countdown your way</strong><span>3, 5, 7 or 10 seconds, fine-tuned in half seconds, with a smooth ring guests can follow.</span></div>
+          <img src="assets/pb4u-04-countdown.jpg"
+            alt="Countdown ring over the live camera, with 3, 5, 7 and 10 second options">
+          <div class="slide-caption"><strong>Countdown your way</strong><span>3, 5, 7 or 10 seconds, fine-tuned in half
+              seconds, with a smooth ring guests can follow.</span></div>
         </article>
         <article class="slide" id="slide-5" aria-label="Slide 4 of 6">
-          <img src="assets/pb4u-05-all-you-need.jpg" alt="What you need: a tablet or phone, photobooth4u in the browser, and a tripod">
-          <div class="slide-caption"><strong>Bring only the essentials</strong><span>An iPad or Android device, photobooth4u and a tripod. Add a photo printer for prints on the spot.</span></div>
+          <img src="assets/pb4u-05-all-you-need.jpg"
+            alt="What you need: a tablet or phone, photobooth4u in the browser, and a tripod">
+          <div class="slide-caption"><strong>Bring only the essentials</strong><span>An iPad or Android device,
+              photobooth4u and a tripod. Add a photo printer for prints on the spot.</span></div>
         </article>
         <article class="slide" id="slide-6" aria-label="Slide 5 of 6">
-          <img src="assets/pb4u-07-share-photos-v3.jpg" alt="An all-photos QR code, sample prints, calendar days one to seven, and a Your photo QR code shown after every session">
-          <div class="slide-caption"><strong>Your photos, ready to share</strong><span>Every photo goes to your event's online gallery. Each guest gets a QR for their own photo. Photos stay up for seven days.</span></div>
+          <img src="assets/pb4u-07-share-photos-v3.jpg"
+            alt="An all-photos QR code, sample prints, calendar days one to seven, and a Your photo QR code shown after every session">
+          <div class="slide-caption"><strong>Your photos, ready to share</strong><span>Every photo goes to your event's
+              online gallery. Each guest gets a QR for their own photo. Photos stay up for seven days.</span></div>
         </article>
         <article class="slide" id="slide-7" aria-label="Slide 6 of 6">
-          <img src="assets/pb4u-06-traditional-booth.jpg" alt="Laptop running the setup and print controls, connected to a monitor showing guests the camera and countdown">
-          <div class="slide-caption"><strong>Prefer a classic booth?</strong><span>Use a laptop with a second monitor for guests. After the first print, every session prints automatically.</span></div>
+          <img src="assets/pb4u-06-traditional-booth.jpg"
+            alt="Laptop running the setup and print controls, connected to a monitor showing guests the camera and countdown">
+          <div class="slide-caption"><strong>Prefer a classic booth?</strong><span>Use a laptop with a second monitor
+              for guests. After the first print, every session prints automatically.</span></div>
         </article>
       </div>
       <button class="arrow prev" type="button" aria-label="Show previous slide">‹</button>
       <button class="arrow next" type="button" aria-label="Show next slide">›</button>
       <div class="slider-footer">
         <div class="dots" aria-label="Choose a slide">
-          <button class="dot" type="button" aria-label="Show slide 1" aria-controls="slide-2" aria-current="true"></button>
-          <button class="dot" type="button" aria-label="Show slide 2" aria-controls="slide-3" aria-current="false"></button>
-          <button class="dot" type="button" aria-label="Show slide 3" aria-controls="slide-4" aria-current="false"></button>
-          <button class="dot" type="button" aria-label="Show slide 4" aria-controls="slide-5" aria-current="false"></button>
-          <button class="dot" type="button" aria-label="Show slide 5" aria-controls="slide-6" aria-current="false"></button>
-          <button class="dot" type="button" aria-label="Show slide 6" aria-controls="slide-7" aria-current="false"></button>
+          <button class="dot" type="button" aria-label="Show slide 1" aria-controls="slide-2"
+            aria-current="true"></button>
+          <button class="dot" type="button" aria-label="Show slide 2" aria-controls="slide-3"
+            aria-current="false"></button>
+          <button class="dot" type="button" aria-label="Show slide 3" aria-controls="slide-4"
+            aria-current="false"></button>
+          <button class="dot" type="button" aria-label="Show slide 4" aria-controls="slide-5"
+            aria-current="false"></button>
+          <button class="dot" type="button" aria-label="Show slide 5" aria-controls="slide-6"
+            aria-current="false"></button>
+          <button class="dot" type="button" aria-label="Show slide 6" aria-controls="slide-7"
+            aria-current="false"></button>
         </div>
         <p class="counter" aria-live="polite"><span id="current">01</span> / 06</p>
       </div>
@@ -296,37 +1490,74 @@
     <section class="block" id="features" aria-labelledby="ft">
       <p class="label">What you get</p>
       <h2 id="ft">Everything in one booth</h2>
-      <p class="sub">Set it up in minutes on the device you already have. Your design is saved, so it's ready again on the day.</p>
+      <p class="sub">Set it up in minutes on the device you already have. Your design is saved, so it's ready again on
+        the day.</p>
       <div class="features">
         <article class="feat">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="3" width="7" height="7" rx="1.5" />
+              <rect x="3" y="14" width="7" height="7" rx="1.5" />
+              <rect x="14" y="14" width="7" height="7" rx="1.5" />
+            </svg></span>
           <h3>Ready-made designs</h3>
-          <p>20 themes and 10 templates for weddings, birthdays, debuts, kids' parties, christenings, graduations, Christmas and more.</p>
+          <p>20 themes and 10 templates for weddings, birthdays, debuts, kids' parties, christenings, graduations,
+            Christmas and more.</p>
         </article>
         <article class="feat">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><rect x="7.5" y="6.5" width="9" height="6" rx="1"/><path d="M8 16h8"/></svg></span>
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="3" width="16" height="18" rx="2" />
+              <rect x="7.5" y="6.5" width="9" height="6" rx="1" />
+              <path d="M8 16h8" />
+            </svg></span>
           <h3>Your own Canva frames</h3>
-          <p>Upload a frame with white or see-through spots and the photos drop right in. Put two or more on one print as a frame collage.</p>
+          <p>Upload a frame with white or see-through spots and the photos drop right in. Put two or more on one print
+            as a frame collage.</p>
         </article>
         <article class="feat">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8L3.5 9.2l5.9-.9z"/></svg></span>
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8L3.5 9.2l5.9-.9z" />
+            </svg></span>
           <h3>Logo, stickers &amp; filters</h3>
-          <p>Add your logo, drag on props and stickers (or your own PNGs), pick fonts and colours, and watch it all in the live preview.</p>
+          <p>Add your logo, drag on props and stickers (or your own PNGs), pick fonts and colours, and watch it all in
+            the live preview.</p>
         </article>
         <article class="feat">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg></span>
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3" />
+            </svg></span>
           <h3>Online photo gallery</h3>
-          <p>After every session, guests scan a QR for their own photo. The event gallery fills up live, ready to view, download and share.</p>
+          <p>After every session, guests scan a QR for their own photo. The event gallery fills up live, ready to view,
+            download and share.</p>
         </article>
         <article class="feat">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8V3h10v5"/><rect x="3" y="8" width="18" height="9" rx="2"/><path d="M7 14h10v7H7z"/></svg></span>
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 8V3h10v5" />
+              <rect x="3" y="8" width="18" height="9" rx="2" />
+              <path d="M7 14h10v7H7z" />
+            </svg></span>
           <h3>Prints on the spot</h3>
-          <p>Bring a photo printer: 2×6 strips, 4R, A4 and more, plus 2.5×7.5 keychain prints. Strips print two side by side.</p>
+          <p>Bring a photo printer: 2×6 strips, 4R, A4 and more, plus 2.5×7.5 keychain prints. Strips print two side by
+            side.</p>
         </article>
         <article class="feat">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="13" height="9" rx="1.5"/><path d="M5 17h7"/><rect x="17" y="7" width="5" height="12" rx="1.5"/></svg></span>
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="4" width="13" height="9" rx="1.5" />
+              <path d="M5 17h7" />
+              <rect x="17" y="7" width="5" height="12" rx="1.5" />
+            </svg></span>
           <h3>Tablet or laptop booth</h3>
-          <p>Run it on an iPad or Android tablet, or a laptop with a second screen for guests and automatic printing. No internet at the venue? Use the Windows / Mac app.</p>
+          <p>Run it on an iPad or Android tablet, or a laptop with a second screen for guests and automatic printing. No
+            internet at the venue? Use the Windows / Mac app.</p>
         </article>
       </div>
     </section>
@@ -336,9 +1567,11 @@
       <h2 id="hw">From booking to photos</h2>
       <p class="sub">No booth to rent, no one to send. Just your code and your device.</p>
       <ol class="steps">
-        <li><b>Book</b><span>Message us with your event date. You get your booth code plus a 1-hour practice code.</span></li>
+        <li><b>Book</b><span>Message us with your event date. You get your booth code plus a 1-hour practice
+            code.</span></li>
         <li><b>Set up</b><span>Open the booth, enter your code, and pick a design, layout and countdown.</span></li>
-        <li><b>Snap</b><span>Guests tap, pose and get their photo — printed on the spot if you have a printer.</span></li>
+        <li><b>Snap</b><span>Guests tap, pose and get their photo — printed on the spot if you have a printer.</span>
+        </li>
         <li><b>Share</b><span>Everyone scans for the gallery. Download your favourites within 7 days.</span></li>
       </ol>
     </section>
@@ -346,7 +1579,8 @@
     <section class="block" id="packages" aria-labelledby="pk">
       <p class="label">Monthly Subscriptions</p>
       <h2 id="pk">Here’s what I’d charge per month</h2>
-      <p class="sub">Pick your monthly plan, scan the PayMongo QR to pay, and your access code + setup guide are unlocked immediately.</p>
+      <p class="sub">Pick your monthly plan, scan the PayMongo QR to pay, and your access code + setup guide are
+        unlocked immediately.</p>
 
       <div class="plans-monthly" aria-label="Monthly Subscriptions">
         <article class="plan monthly">
@@ -360,7 +1594,8 @@
             <li>Print wirelessly with AirPrint or Mopria</li>
           </ul>
           <p class="price">₱799 <small>/ month</small></p>
-          <button class="btn red plan-btn" type="button" data-sub="online" data-price="799" data-name="Online" style="margin-top:16px;">Subscribe with QR · ₱799</button>
+          <button class="btn red plan-btn" type="button" data-sub="online" data-price="799" data-name="Online"
+            style="margin-top:16px;">Subscribe with QR · ₱799</button>
         </article>
 
         <article class="plan monthly">
@@ -374,7 +1609,8 @@
             <li>Windows &amp; Mac desktop app activated for 30 days</li>
           </ul>
           <p class="price">₱999 <small>/ month</small></p>
-          <button class="btn red plan-btn" type="button" data-sub="offline" data-price="999" data-name="Offline (laptop app only)" style="margin-top:16px;">Subscribe with QR · ₱999</button>
+          <button class="btn red plan-btn" type="button" data-sub="offline" data-price="999"
+            data-name="Offline (laptop app only)" style="margin-top:16px;">Subscribe with QR · ₱999</button>
         </article>
 
         <article class="plan monthly best">
@@ -388,13 +1624,15 @@
             <li>Comprehensive PDF setup &amp; printing guides included</li>
           </ul>
           <p class="price">₱1,299 <small>/ month</small></p>
-          <button class="btn red plan-btn" type="button" data-sub="both" data-price="1299" data-name="Online + Offline" style="margin-top:16px;">Subscribe with QR · ₱1,299</button>
+          <button class="btn red plan-btn" type="button" data-sub="both" data-price="1299" data-name="Online + Offline"
+            style="margin-top:16px;">Subscribe with QR · ₱1,299</button>
         </article>
       </div>
 
       <div class="renew-banner">
         <span>Already have an active monthly code?</span>
-        <button type="button" class="renew-link" id="renewModalBtn">Renew or extend your existing code (+30 days) →</button>
+        <button type="button" class="renew-link" id="renewModalBtn">Renew or extend your existing code (+30 days)
+          →</button>
       </div>
 
       <div class="pkg-divider">
@@ -432,18 +1670,21 @@
           <h3>Lifetime Online + Offline</h3>
           <p class="for">Both: the online booth and the Windows / Mac app that works with no internet</p>
           <p class="price">₱4,999 <small>one-time</small></p>
-          <p class="life-link"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us to get it →</a></p>
+          <p class="life-link"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us
+              to get it →</a></p>
         </article>
       </div>
       <div class="addons" aria-label="Add-ons for Lifetime owners">
         <div class="addon">
           <span class="ad-ic" aria-hidden="true">+</span>
-          <span class="ad-txt"><b>Add Offline later</b><small>For Lifetime Online owners: the Windows / Mac app</small></span>
+          <span class="ad-txt"><b>Add Offline later</b><small>For Lifetime Online owners: the Windows / Mac
+              app</small></span>
           <span class="ad-price">₱2,499</span>
         </div>
         <div class="addon">
           <span class="ad-ic" aria-hidden="true">+</span>
-          <span class="ad-txt"><b>Add Online later</b><small>For Lifetime Offline owners: the online booth</small></span>
+          <span class="ad-txt"><b>Add Online later</b><small>For Lifetime Offline owners: the online
+              booth</small></span>
           <span class="ad-price">₱1,999</span>
         </div>
       </div>
@@ -453,7 +1694,8 @@
         <li>Online gallery for 7 days</li>
         <li>+ 1-hour practice code</li>
       </ul>
-      <p class="offline-note"><b>Offline app</b> for Windows and Mac: no internet needed at the venue. Photos save on the laptop and guests get theirs by scanning a QR over the booth Wi-Fi.</p>
+      <p class="offline-note"><b>Offline app</b> for Windows and Mac: no internet needed at the venue. Photos save on
+        the laptop and guests get theirs by scanning a QR over the booth Wi-Fi.</p>
     </section>
 
     <section class="block" id="guides" aria-labelledby="gd">
@@ -462,25 +1704,48 @@
       <p class="sub">Pick the guide for your setup. Each one opens as a PDF you can save or print.</p>
       <div class="guides">
         <a class="guide" href="/lifetime/photobooth4u-setup-guide.pdf" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M2 20h20"/></svg></span>
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="12" rx="1.5" />
+              <path d="M2 20h20" />
+            </svg></span>
           <p class="for">Online · Chrome on Windows or Mac</p>
           <h3>Laptop guide</h3>
           <p>Laptop Booth with a guest screen, DSLR over USB, silent printing, guest payments and the backup folder.</p>
-          <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span>
+          <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M7 17 17 7M8 7h9v9" />
+            </svg></span>
         </a>
         <a class="guide" href="/lifetime/photobooth4u-tablet-guide.pdf" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M11 18h2"/></svg></span>
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="2.5" width="14" height="19" rx="2" />
+              <path d="M11 18h2" />
+            </svg></span>
           <p class="for">Online · iPad &amp; Android</p>
           <h3>Tablet guide</h3>
-          <p>Prepare the tablet, camera and position, guest-only mode, printing over AirPrint or Mopria, and weak internet.</p>
-          <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span>
+          <p>Prepare the tablet, camera and position, guest-only mode, printing over AirPrint or Mopria, and weak
+            internet.</p>
+          <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M7 17 17 7M8 7h9v9" />
+            </svg></span>
         </a>
         <a class="guide off" href="/lifetime/photobooth4u-offline-app-guide.pdf" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8A15 15 0 0 0 10.5 5.1M5.2 12.4a10 10 0 0 1 3.2-1.9M18.8 12.4a10 10 0 0 0-2.4-1.6M8.8 15.9a5 5 0 0 1 6.4 0M12 19.5h.01M3 3l18 18"/></svg></span>
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path
+                d="M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8A15 15 0 0 0 10.5 5.1M5.2 12.4a10 10 0 0 1 3.2-1.9M18.8 12.4a10 10 0 0 0-2.4-1.6M8.8 15.9a5 5 0 0 1 6.4 0M12 19.5h.01M3 3l18 18" />
+            </svg></span>
           <p class="for">Offline · Windows &amp; Mac app</p>
           <h3>Offline app guide</h3>
-          <p>Install and activate, camera and printing, and sharing guests' photos over the booth Wi-Fi with no internet.</p>
-          <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span>
+          <p>Install and activate, camera and printing, and sharing guests' photos over the booth Wi-Fi with no
+            internet.</p>
+          <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M7 17 17 7M8 7h9v9" />
+            </svg></span>
         </a>
       </div>
     </section>
@@ -509,11 +1774,15 @@
           <h2 id="bk">Hi! Wanna avail?</h2>
           <p class="sub">Copy the form, send it on Messenger, and we'll send your codes.</p>
         </div>
-          <div class="actions">
-            <a class="btn primary" id="messengerBtn" href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2C6.36 2 2 6.13 2 11.7c0 2.91 1.2 5.42 3.14 7.16.16.15.26.35.27.57l.05 1.78a.8.8 0 0 0 1.12.71l1.98-.87a.8.8 0 0 1 .53-.04c.91.25 1.88.39 2.91.39 5.64 0 10-4.13 10-9.7S17.64 2 12 2Zm6 7.46-2.94 4.66a1.5 1.5 0 0 1-2.17.4l-2.34-1.75a.6.6 0 0 0-.72 0l-3.16 2.4c-.42.32-.97-.18-.69-.63l2.94-4.66a1.5 1.5 0 0 1 2.17-.4l2.34 1.75a.6.6 0 0 0 .72 0l3.16-2.4c.42-.32.97.18.69.63Z"/></svg>Copy form &amp; message us</a>
-            <button class="btn" type="button" id="copyFormBtn">Copy form</button>
-            <span class="copied" id="copiedNote" role="status">Copied! Paste it in Messenger.</span>
-          </div>
+        <div class="actions">
+          <a class="btn primary" id="messengerBtn" href="https://m.me/roktetnachi" target="_blank"
+            rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor"
+                d="M12 2C6.36 2 2 6.13 2 11.7c0 2.91 1.2 5.42 3.14 7.16.16.15.26.35.27.57l.05 1.78a.8.8 0 0 0 1.12.71l1.98-.87a.8.8 0 0 1 .53-.04c.91.25 1.88.39 2.91.39 5.64 0 10-4.13 10-9.7S17.64 2 12 2Zm6 7.46-2.94 4.66a1.5 1.5 0 0 1-2.17.4l-2.34-1.75a.6.6 0 0 0-.72 0l-3.16 2.4c-.42.32-.97-.18-.69-.63l2.94-4.66a1.5 1.5 0 0 1 2.17-.4l2.34 1.75a.6.6 0 0 0 .72 0l3.16-2.4c.42-.32.97.18.69.63Z" />
+            </svg>Copy form &amp; message us</a>
+          <button class="btn" type="button" id="copyFormBtn">Copy form</button>
+          <span class="copied" id="copiedNote" role="status">Copied! Paste it in Messenger.</span>
+        </div>
         <pre class="form-card" id="availForm">Name:
 Setup Type: Tablet / Laptop / Lifetime Online / Lifetime Offline / Lifetime Online + Offline
 Event Date:</pre>
@@ -538,43 +1807,43 @@ Event Date:</pre>
   </div>
 
   <script>
-    (function(){
+    (function () {
       var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
       var dots = Array.prototype.slice.call(document.querySelectorAll('.dot'));
       var current = document.getElementById('current');
       var carousel = document.querySelector('.slider');
       var index = 0, timer, pause = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      function show(next){
+      function show(next) {
         index = (next + slides.length) % slides.length;
-        slides.forEach(function(slide, i){ slide.classList.toggle('active', i === index); });
-        dots.forEach(function(dot, i){ dot.setAttribute('aria-current', i === index ? 'true' : 'false'); });
+        slides.forEach(function (slide, i) { slide.classList.toggle('active', i === index); });
+        dots.forEach(function (dot, i) { dot.setAttribute('aria-current', i === index ? 'true' : 'false'); });
         current.textContent = String(index + 1).padStart(2, '0');
       }
-      function stop(){ window.clearInterval(timer); }
-      function start(){ stop(); if(!pause) timer = window.setInterval(function(){ show(index + 1); }, 6000); }
-      document.querySelector('.prev').addEventListener('click', function(){ show(index - 1); start(); });
-      document.querySelector('.next').addEventListener('click', function(){ show(index + 1); start(); });
-      dots.forEach(function(dot, i){ dot.addEventListener('click', function(){ show(i); start(); }); });
+      function stop() { window.clearInterval(timer); }
+      function start() { stop(); if (!pause) timer = window.setInterval(function () { show(index + 1); }, 6000); }
+      document.querySelector('.prev').addEventListener('click', function () { show(index - 1); start(); });
+      document.querySelector('.next').addEventListener('click', function () { show(index + 1); start(); });
+      dots.forEach(function (dot, i) { dot.addEventListener('click', function () { show(i); start(); }); });
       carousel.addEventListener('mouseenter', stop);
       carousel.addEventListener('mouseleave', start);
       carousel.addEventListener('focusin', stop);
-      carousel.addEventListener('focusout', function(){ window.setTimeout(function(){ if(!carousel.contains(document.activeElement)) start(); }, 0); });
-      document.addEventListener('visibilitychange', function(){ if(document.hidden) stop(); else start(); });
+      carousel.addEventListener('focusout', function () { window.setTimeout(function () { if (!carousel.contains(document.activeElement)) start(); }, 0); });
+      document.addEventListener('visibilitychange', function () { if (document.hidden) stop(); else start(); });
       start();
     })();
   </script>
   <script>
-    (function(){
+    (function () {
       var form = document.getElementById('availForm'), note = document.getElementById('copiedNote'), t;
-      function copyForm(){
+      function copyForm() {
         var text = 'Hi! I\'d like to avail of photobooth4u.\n\n' + form.textContent;
-        function done(){ note.classList.add('show'); clearTimeout(t); t = setTimeout(function(){ note.classList.remove('show'); }, 4000); }
-        try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, function(){}); return; } } catch (e) {}
+        function done() { note.classList.add('show'); clearTimeout(t); t = setTimeout(function () { note.classList.remove('show'); }, 4000); }
+        try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, function () { }); return; } } catch (e) { }
         try {
           var ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', '');
           ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
           if (document.execCommand('copy')) done(); document.body.removeChild(ta);
-        } catch (e) {}
+        } catch (e) { }
       }
       document.getElementById('copyFormBtn').addEventListener('click', copyForm);
       document.getElementById('messengerBtn').addEventListener('click', copyForm);
@@ -584,13 +1853,13 @@ Event Date:</pre>
     // Messenger links: m.me opens the Messenger app on phones, but on a
     // computer it often fails. There, use Facebook's web inbox instead.
     // Change these two lines if the account name ever changes.
-    (function(){
+    (function () {
       var MOBILE = 'https://m.me/roktetnachi';
       var DESKTOP = 'https://www.facebook.com/messages/t/roktetnachi';
       var ua = navigator.userAgent || '';
       var isPhoneOrTablet = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua));
       if (isPhoneOrTablet) return;
-      Array.prototype.forEach.call(document.querySelectorAll('a[href^="' + MOBILE + '"]'), function(a){ a.href = DESKTOP; });
+      Array.prototype.forEach.call(document.querySelectorAll('a[href^="' + MOBILE + '"]'), function (a) { a.href = DESKTOP; });
     })();
   </script>
 
@@ -600,17 +1869,18 @@ Event Date:</pre>
       <h3 id="subModalTitle">Monthly Subscription</h3>
       <button class="sd-close" id="subModalClose" type="button" aria-label="Close dialog">×</button>
     </div>
-    
+
     <div class="sd-body">
       <!-- Step 1: Customer Details -->
       <div id="subStepForm">
         <div class="sd-plan-tag" id="subPlanBadge">Online · ₱799 / month</div>
-        
+
         <div class="sd-group">
           <label for="subCustName">Full Name or Event Business</label>
-          <input type="text" id="subCustName" autocomplete="name" placeholder="e.g. Maria Santos / Stellar Photobooth" required>
+          <input type="text" id="subCustName" autocomplete="name" placeholder="e.g. Maria Santos / Stellar Photobooth"
+            required>
         </div>
-        
+
         <div class="sd-group">
           <label for="subCustEmail">Email address (for code &amp; receipts)</label>
           <input type="email" id="subCustEmail" autocomplete="email" placeholder="e.g. maria@gmail.com" required>
@@ -628,9 +1898,11 @@ Event Date:</pre>
 
         <div class="sd-msg" id="subFormMsg"></div>
 
-        <button type="button" class="btn red" id="subSubmitBtn" style="width:100%;margin-top:6px;">Generate PayMongo QR →</button>
+        <button type="button" class="btn red" id="subSubmitBtn" style="width:100%;margin-top:6px;">Generate PayMongo QR
+          →</button>
         <p style="text-align:center;margin:12px 0 0;font-size:13px;color:var(--muted);">
-          Questions first? <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer" style="color:var(--ink);font-weight:700;">Chat with us on Messenger →</a>
+          Questions first? <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer"
+            style="color:var(--ink);font-weight:700;">Chat with us on Messenger →</a>
         </p>
       </div>
 
@@ -643,7 +1915,8 @@ Event Date:</pre>
             <img id="subQrImg" src="" alt="PayMongo QR Ph Code">
           </div>
           <div class="sd-qr-timer" id="subQrTimer">QR expires in 10:00</div>
-          <p style="font-size:13px;color:var(--muted);margin:0 0 10px;">Scan with <b>GCash, Maya, ShopeePay</b> or any banking app.</p>
+          <p style="font-size:13px;color:var(--muted);margin:0 0 10px;">Scan with <b>GCash, Maya, ShopeePay</b> or any
+            banking app.</p>
           <div class="sd-qr-status">
             <span class="sd-spin"></span>
             <span id="subQrStatusText">Checking payment automatically…</span>
@@ -651,22 +1924,27 @@ Event Date:</pre>
 
           <div style="margin-top:16px;display:flex;gap:8px;width:100%;justify-content:center;">
             <button type="button" class="btn" id="subQrBackBtn" style="font-size:13px;padding:8px 16px;">Back</button>
-            <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer" class="btn" style="font-size:13px;padding:8px 16px;">Need help? Messenger</a>
+            <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer" class="btn"
+              style="font-size:13px;padding:8px 16px;">Need help? Messenger</a>
           </div>
         </div>
       </div>
 
       <!-- Step 3: Success & Onboarding -->
       <div id="subStepSuccess" style="display:none;text-align:center;">
-        <div style="width:48px;height:48px;border-radius:50%;background:#e3f6ea;color:#1e8449;display:grid;place-items:center;margin:0 auto 12px;font-size:24px;">✓</div>
+        <div
+          style="width:48px;height:48px;border-radius:50%;background:#e3f6ea;color:#1e8449;display:grid;place-items:center;margin:0 auto 12px;font-size:24px;">
+          ✓</div>
         <h3 style="margin:0 0 4px;font-family:'Fraunces',Georgia,serif;font-size:22px;">Payment Successful!</h3>
-        <p id="subSuccessSubtitle" style="font-size:14px;color:var(--muted);margin:0 0 14px;">Your 30-day access is unlocked and recorded in the system.</p>
+        <p id="subSuccessSubtitle" style="font-size:14px;color:var(--muted);margin:0 0 14px;">Your 30-day access is
+          unlocked and recorded in the system.</p>
 
         <div class="sd-code-box">
           <span class="code-val" id="subFinalCode">PB-XXXX-XXXX-XXXX</span>
           <button type="button" class="btn small" id="subCopyCodeBtn">Copy code</button>
         </div>
-        <p style="font-size:12.5px;color:var(--muted);margin:0 0 16px;">Save this code. Once entered on your device, it stays unlocked. Timer counts down from your first event use.</p>
+        <p style="font-size:12.5px;color:var(--muted);margin:0 0 16px;">Save this code. Once entered on your device, it
+          stays unlocked. Timer counts down from your first event use.</p>
 
         <div class="sd-guides">
           <p style="font-size:13px;font-weight:800;margin:0 0 4px;">Download Your Comprehensive Setup Guides:</p>
@@ -687,14 +1965,15 @@ Event Date:</pre>
         <a class="btn red" id="subGoBoothBtn" href="/" style="width:100%;margin-top:12px;">Open Photo Booth Now →</a>
         <a class="btn" href="/lifetime/" style="width:100%;margin-top:8px;">My Events (Links &amp; Photos)</a>
         <p style="margin:12px 0 0;font-size:13px;color:var(--muted);">
-          Questions or assistance? <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer" style="color:var(--ink);font-weight:700;">Message us on Messenger →</a>
+          Questions or assistance? <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer"
+            style="color:var(--ink);font-weight:700;">Message us on Messenger →</a>
         </p>
       </div>
     </div>
   </dialog>
 
   <script>
-    (function(){
+    (function () {
       var modal = document.getElementById('subModal');
       var closeBtn = document.getElementById('subModalClose');
       var formView = document.getElementById('subStepForm');
@@ -713,7 +1992,7 @@ Event Date:</pre>
       var currentPlan = 'online', currentPrice = 799, currentOrderId = null;
       var pollTimer = null, countdownTimer = null;
 
-      function openModal(planKey, price, planName, isRenew){
+      function openModal(planKey, price, planName, isRenew) {
         currentPlan = planKey || 'online';
         currentPrice = price || 799;
         currentOrderId = null;
@@ -729,7 +2008,7 @@ Event Date:</pre>
         if (isRenew) {
           renewToggle.checked = true;
           renewBox.style.display = 'block';
-          setTimeout(function(){ renewInput.focus(); }, 100);
+          setTimeout(function () { renewInput.focus(); }, 100);
         } else {
           renewToggle.checked = false;
           renewBox.style.display = 'none';
@@ -746,7 +2025,7 @@ Event Date:</pre>
         }
       }
 
-      function closeModal(){
+      function closeModal() {
         clearInterval(pollTimer);
         clearInterval(countdownTimer);
         if (typeof modal.close === 'function') {
@@ -757,18 +2036,18 @@ Event Date:</pre>
       }
 
       closeBtn.addEventListener('click', closeModal);
-      modal.addEventListener('click', function(e){
+      modal.addEventListener('click', function (e) {
         if (e.target === modal) closeModal();
       });
 
-      renewToggle.addEventListener('change', function(){
+      renewToggle.addEventListener('change', function () {
         renewBox.style.display = renewToggle.checked ? 'block' : 'none';
         if (renewToggle.checked) renewInput.focus();
       });
 
       // Bind all "Subscribe with QR" buttons
-      Array.prototype.forEach.call(document.querySelectorAll('button[data-sub]'), function(btn){
-        btn.addEventListener('click', function(e){
+      Array.prototype.forEach.call(document.querySelectorAll('button[data-sub]'), function (btn) {
+        btn.addEventListener('click', function (e) {
           if (e) e.preventDefault();
           openModal(btn.getAttribute('data-sub'), Number(btn.getAttribute('data-price')), btn.getAttribute('data-name'), false);
         });
@@ -776,14 +2055,14 @@ Event Date:</pre>
 
       var renewModalBtn = document.getElementById('renewModalBtn');
       if (renewModalBtn) {
-        renewModalBtn.addEventListener('click', function(e){
+        renewModalBtn.addEventListener('click', function (e) {
           if (e) e.preventDefault();
           openModal('online', 799, 'Renew Monthly Subscription', true);
         });
       }
 
       // Step 1: Submit Form & Generate PayMongo QR
-      submitBtn.addEventListener('click', async function(){
+      submitBtn.addEventListener('click', async function () {
         var name = document.getElementById('subCustName').value.trim();
         var email = document.getElementById('subCustEmail').value.trim();
         var renewCode = renewToggle.checked ? renewInput.value.trim() : '';
@@ -840,7 +2119,7 @@ Event Date:</pre>
           // Countdown Timer
           var expiresAt = data.expiresAt || (Date.now() + 600000);
           var timerEl = document.getElementById('subQrTimer');
-          function updateTimer(){
+          function updateTimer() {
             var diff = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
             var m = Math.floor(diff / 60), s = diff % 60;
             timerEl.textContent = 'QR expires in ' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
@@ -863,7 +2142,7 @@ Event Date:</pre>
         }
       });
 
-      qrBackBtn.addEventListener('click', function(){
+      qrBackBtn.addEventListener('click', function () {
         clearInterval(pollTimer);
         clearInterval(countdownTimer);
         qrView.style.display = 'none';
@@ -873,7 +2152,7 @@ Event Date:</pre>
       });
 
       // Poll server for payment completion
-      async function checkStatus(){
+      async function checkStatus() {
         if (!currentOrderId) return;
         try {
           var resp = await fetch('/api/subscribe', {
@@ -885,43 +2164,44 @@ Event Date:</pre>
           if (data.ok && data.status === 'paid') {
             showSuccess(data);
           }
-        } catch (e) {}
-      function showSuccess(data){
-        clearInterval(pollTimer);
-        clearInterval(countdownTimer);
-        qrView.style.display = 'none';
-        formView.style.display = 'none';
-        successView.style.display = 'block';
+        } catch (e) { }
+        function showSuccess(data) {
+          clearInterval(pollTimer);
+          clearInterval(countdownTimer);
+          qrView.style.display = 'none';
+          formView.style.display = 'none';
+          successView.style.display = 'block';
 
-        var code = data.code || 'PB-XXXX-XXXX-XXXX';
-        document.getElementById('subFinalCode').textContent = code;
-        
-        if (data.renewed) {
-          document.getElementById('subSuccessSubtitle').textContent = 'Your existing access code has been extended for +30 days!';
-        } else {
-          document.getElementById('subSuccessSubtitle').textContent = 'Your new 30-day access code is active and recorded in Admin.';
+          var code = data.code || 'PB-XXXX-XXXX-XXXX';
+          document.getElementById('subFinalCode').textContent = code;
+
+          if (data.renewed) {
+            document.getElementById('subSuccessSubtitle').textContent = 'Your existing access code has been extended for +30 days!';
+          } else {
+            document.getElementById('subSuccessSubtitle').textContent = 'Your new 30-day access code is active and recorded in Admin.';
+          }
+
+          // Set up launch link to auto-fill code if opened
+          goBoothBtn.href = '/?code=' + encodeURIComponent(code);
+
+          copyCodeBtn.onclick = function () {
+            navigator.clipboard.writeText(code).then(function () {
+              copyCodeBtn.textContent = 'Copied!';
+              setTimeout(function () { copyCodeBtn.textContent = 'Copy code'; }, 2000);
+            }).catch(function () {
+              copyCodeBtn.textContent = 'Copied!';
+            });
+          };
         }
-
-        // Set up launch link to auto-fill code if opened
-        goBoothBtn.href = '/?code=' + encodeURIComponent(code);
-
-        copyCodeBtn.onclick = function(){
-          navigator.clipboard.writeText(code).then(function(){
-            copyCodeBtn.textContent = 'Copied!';
-            setTimeout(function(){ copyCodeBtn.textContent = 'Copy code'; }, 2000);
-          }).catch(function(){
-            copyCodeBtn.textContent = 'Copied!';
-          });
-        };
-      }
-    })();
+      }) ();
   </script>
   <script>
-    fetch('/api/trial').then(function(r){ return r.json(); }).then(function(d){
-      if (!d || !d.enabled || !d.code) return;
-      document.getElementById('trialCode').textContent = d.code;
-      document.getElementById('trialNote').hidden = false;
-    }).catch(function(){});
+      fetch('/api/trial').then(function (r) { return r.json(); }).then(function (d) {
+        if (!d || !d.enabled || !d.code) return;
+        document.getElementById('trialCode').textContent = d.code;
+        document.getElementById('trialNote').hidden = false;
+      }).catch(function () { });
   </script>
 </body>
+
 </html>

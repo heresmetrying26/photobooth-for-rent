@@ -5,6 +5,6 @@ import { readFileSync, writeFileSync } from 'node:fs';
 
 const src = new URL('../protected/booth.html', import.meta.url);
 const out = new URL('../netlify/lib/booth.mjs', import.meta.url);
-const html = readFileSync(src, 'utf8').replace(/<script type="text\/plain" data-removed-feature="gifenc">[\s\S]*?<\/script>/, '');
+const html = readFileSync(src, 'utf8');
 writeFileSync(out, 'export default ' + JSON.stringify(html) + ';\n');
 console.log('Bundled protected/booth.html (' + html.length + ' chars) -> netlify/lib/booth.mjs');

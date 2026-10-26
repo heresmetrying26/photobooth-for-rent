@@ -243,6 +243,98 @@
       </div>
     </details>
 
+    <details class="card" id="paySimCard" style="margin-bottom:14px;">
+      <summary style="cursor:pointer;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:space-between;">
+        <span>🧪 Payment Simulator &amp; Customer Fulfillment Tester (Admin Only)</span>
+        <span class="sub" style="font-size:12px;font-weight:400;color:var(--muted);">Test post-payment delivery &amp; guides</span>
+      </summary>
+      <div style="margin-top:14px;">
+        <p class="meta" style="margin-top:0;">
+          Simulate a completed payment for any package (Monthly, Per Event, or Lifetime) without spending real money. Automatically creates real codes, provisions the database, and displays the exact post-payment fulfillment screen, download guides, and apps delivered to customers.
+        </p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:12px;margin:14px 0;">
+          <div>
+            <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;" for="simPlanSelect">Package to simulate</label>
+            <select id="simPlanSelect" class="sel" style="width:100%;">
+              <optgroup label="Monthly Subscriptions (30 days)">
+                <option value="online">Online · ₱799 / mo</option>
+                <option value="offline">Offline Laptop App · ₱999 / mo</option>
+                <option value="both">Online + Offline · ₱1,299 / mo</option>
+              </optgroup>
+              <optgroup label="Per Event Packages (24 hrs + 1-hr practice code)">
+                <option value="tablet">Tablet Booth · ₱499 / event</option>
+                <option value="laptop">Laptop Booth · ₱599 / event</option>
+              </optgroup>
+              <optgroup label="Lifetime Packages (Never expires, 5 devices)">
+                <option value="lifeonline">Lifetime Online · ₱2,999</option>
+                <option value="lifeoffline">Lifetime Offline · ₱3,499</option>
+                <option value="lifetime">Lifetime Online + Offline · ₱4,999</option>
+              </optgroup>
+              <optgroup label="Lifetime Add-ons">
+                <option value="addon_offline">Add-on: Offline App · ₱2,499</option>
+                <option value="addon_online">Add-on: Online Booth · ₱1,999</option>
+              </optgroup>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;" for="simCustName">Customer name (optional)</label>
+            <input type="text" id="simCustName" placeholder="e.g. Maria Santos" class="search" style="width:100%;">
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:700;margin-bottom:4px;" for="simCustEmail">Customer email (optional)</label>
+            <input type="email" id="simCustEmail" placeholder="e.g. maria@example.com" class="search" style="width:100%;">
+          </div>
+        </div>
+
+        <div style="margin:8px 0 14px;">
+          <label style="font-size:13px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="checkbox" id="simRenewToggle"> Test renew or upgrade of existing code
+          </label>
+          <div id="simRenewBox" style="display:none;margin-top:8px;">
+            <input type="text" id="simRenewCode" placeholder="Enter existing PB-XXXX-XXXX-XXXX code" class="search" style="max-width:320px;">
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <button type="button" class="btn primary" id="simSubmitBtn" style="padding:8px 18px;font-weight:700;">Simulate Instant Payment &amp; View Delivery</button>
+          <span id="simStatusMsg" style="font-size:13px;color:var(--muted);"></span>
+        </div>
+
+        <!-- Simulation Delivery Results Card -->
+        <div id="simResultBox" style="display:none;margin-top:16px;padding:16px;background:rgba(235,94,85,0.06);border:1.5px solid var(--red);border-radius:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+            <h3 style="margin:0;font-size:16px;color:var(--red);" id="simResTitle">Payment Simulated Successfully!</h3>
+            <span id="simResBadge" style="padding:4px 8px;border-radius:6px;background:var(--red);color:#fff;font-size:12px;font-weight:700;"></span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:12px;margin-bottom:14px;">
+            <div style="background:#fff;padding:12px;border-radius:8px;border:1px solid #e0e0e0;">
+              <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:0.5px;">Issued Access Code</span>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                <code id="simResCode" style="font-size:18px;font-weight:800;color:var(--ink);"></code>
+                <button type="button" class="small" id="simCopyCodeBtn">Copy</button>
+              </div>
+              <small id="simResCodeNote" style="display:block;margin-top:4px;color:var(--muted);font-size:11px;"></small>
+            </div>
+
+            <div id="simPracticeBox" style="display:none;background:#fff;padding:12px;border-radius:8px;border:1px solid #e0e0e0;">
+              <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:0.5px;">1-Hour Practice Code</span>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                <code id="simResPractice" style="font-size:18px;font-weight:800;color:var(--ink);"></code>
+                <button type="button" class="small" id="simCopyPracticeBtn">Copy</button>
+              </div>
+              <small style="display:block;margin-top:4px;color:var(--muted);font-size:11px;">Free test shots before real event</small>
+            </div>
+          </div>
+
+          <div>
+            <h4 style="margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink);">Files &amp; Guides Provided to Customer:</h4>
+            <div id="simDeliverables" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:8px;"></div>
+          </div>
+        </div>
+      </div>
+    </details>
+
     <div class="card" id="codesCard">
       <div class="top" style="margin-bottom:10px;"><h2 style="margin:0;">Rental codes</h2><button class="small" id="refreshBtn">Refresh</button></div>
       <div class="toolbar">
@@ -1114,10 +1206,108 @@
     }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
   });
 
+  // ---- Payment Simulator & Fulfillment Tester (Admin Only) ----
+  $('simRenewToggle').addEventListener('change', function(){
+    $('simRenewBox').style.display = this.checked ? 'block' : 'none';
+    if(this.checked) $('simRenewCode').focus();
+  });
+
+  $('simSubmitBtn').addEventListener('click', async function(){
+    var plan = $('simPlanSelect').value;
+    var name = $('simCustName').value.trim();
+    var email = $('simCustEmail').value.trim();
+    var isRenew = $('simRenewToggle').checked;
+    var renewCode = isRenew ? $('simRenewCode').value.trim() : '';
+
+    if(isRenew && !renewCode){
+      toast('Enter the existing code to renew or upgrade', true);
+      $('simRenewCode').focus();
+      return;
+    }
+
+    $('simSubmitBtn').disabled = true;
+    $('simStatusMsg').textContent = 'Simulating payment & provisioning code…';
+    $('simResultBox').style.display = 'none';
+
+    try {
+      var res = await api({
+        action: 'simulatenewpayment',
+        plan: plan,
+        name: name,
+        email: email,
+        renewCode: renewCode
+      });
+
+      $('simStatusMsg').textContent = '';
+      $('simResultBox').style.display = 'block';
+
+      $('simResBadge').textContent = (res.plan.title || plan) + ' · ' + (res.plan.priceStr || '₱' + res.plan.price);
+      $('simResCode').textContent = res.code;
+      $('simResCodeNote').textContent = res.renewed
+        ? 'Existing code successfully extended / upgraded (+30 days or lifetime).'
+        : (res.plan.lifetime ? 'Lifetime access · never expires · up to 5 devices.' : (res.plan.days || 30) + ' days access · starts on first redemption.');
+
+      if(res.practiceCode){
+        $('simPracticeBox').style.display = 'block';
+        $('simResPractice').textContent = res.practiceCode;
+      } else {
+        $('simPracticeBox').style.display = 'none';
+      }
+
+      // Render deliverables (PDFs & Links)
+      var dBox = $('simDeliverables');
+      dBox.innerHTML = '';
+
+      (res.files || []).forEach(function(f){
+        var card = document.createElement('a');
+        card.href = f.url;
+        card.target = '_blank';
+        card.style.cssText = 'display:flex;flex-direction:column;gap:3px;padding:10px;background:#fff;border:1px solid #ddd;border-radius:8px;text-decoration:none;color:inherit;';
+        card.innerHTML = '<span style="font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:space-between;">' + esc(f.name) + '<small style="color:var(--red);font-weight:700;">' + esc(f.badge || 'Download') + ' &darr;</small></span><span style="font-size:11px;color:var(--muted);line-height:1.3;">' + esc(f.desc || '') + '</span>';
+        dBox.appendChild(card);
+      });
+
+      (res.links || []).forEach(function(l){
+        var card = document.createElement('a');
+        card.href = l.url;
+        card.target = '_blank';
+        card.style.cssText = 'display:flex;flex-direction:column;gap:3px;padding:10px;background:#fff;border:1px solid #ddd;border-radius:8px;text-decoration:none;color:inherit;';
+        card.innerHTML = '<span style="font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:space-between;">' + esc(l.name) + '<small style="color:var(--ink);font-weight:700;">Open &rarr;</small></span><span style="font-size:11px;color:var(--muted);line-height:1.3;">' + esc(l.desc || '') + '</span>';
+        dBox.appendChild(card);
+      });
+
+      toast('Simulated payment for ' + (res.plan.title || 'package') + ' completed!');
+      refresh();
+    } catch(err){
+      $('simStatusMsg').textContent = err.message || 'Simulation error';
+      if(err.message !== 'auth') toast(err.message, true);
+    } finally {
+      $('simSubmitBtn').disabled = false;
+    }
+  });
+
+  $('simCopyCodeBtn').addEventListener('click', function(){
+    var code = $('simResCode').textContent;
+    if(!code) return;
+    navigator.clipboard.writeText(code).then(function(){
+      $('simCopyCodeBtn').textContent = 'Copied!';
+      setTimeout(function(){ $('simCopyCodeBtn').textContent = 'Copy'; }, 1800);
+    }).catch(function(){ toast('Code: ' + code); });
+  });
+
+  $('simCopyPracticeBtn').addEventListener('click', function(){
+    var code = $('simResPractice').textContent;
+    if(!code) return;
+    navigator.clipboard.writeText(code).then(function(){
+      $('simCopyPracticeBtn').textContent = 'Copied!';
+      setTimeout(function(){ $('simCopyPracticeBtn').textContent = 'Copy'; }, 1800);
+    }).catch(function(){ toast('Code: ' + code); });
+  });
+
   printPicker($('newPrint'), null, 'Allow printing for these codes');
   $('newTheme').innerHTML = themeOptions('');
-  // Remember whether the Create / Trial / QR / PayMongo cards are open.
-  ['createCard', 'trialCard', 'qrCard', 'paymongoCard'].forEach(function(id){
+  // Remember whether the Create / Trial / QR / PayMongo / Simulator cards are open.
+  ['createCard', 'trialCard', 'qrCard', 'paymongoCard', 'paySimCard'].forEach(function(id){
     try{ var v = localStorage.getItem('pb_admin_' + id); if(v) $(id).open = v === '1'; }catch(e){}
     $(id).addEventListener('toggle', function(){ try{ localStorage.setItem('pb_admin_' + id, $(id).open ? '1' : '0'); }catch(e){} });
   });

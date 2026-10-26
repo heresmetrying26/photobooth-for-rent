@@ -2,33 +2,9 @@ import {
   safe, json, licenses, newCode, displayCode, normCode, DAY, putLicense, sendMail, codeEmail, EMAIL_RE, getSettings
 } from '../lib/core.mjs';
 import { payStore, pm } from '../lib/pay.mjs';
+import { ALL_PLANS, fulfillPlanPayment, getPlanDeliverables } from '../lib/plans.mjs';
 
-const PLANS = {
-  online: {
-    id: 'online',
-    title: 'Monthly Online',
-    price: 799,
-    description: 'iPad, tablet or laptop browser · online · unlimited events',
-    offlineOpt: false,
-    offlineOnly: false
-  },
-  offline: {
-    id: 'offline',
-    title: 'Monthly Offline (Laptop app only)',
-    price: 999,
-    description: 'Windows / Mac offline desktop app · zero internet needed',
-    offlineOpt: true,
-    offlineOnly: true
-  },
-  both: {
-    id: 'both',
-    title: 'Monthly Online + Offline',
-    price: 1299,
-    description: 'Both: online booth & offline desktop app',
-    offlineOpt: true,
-    offlineOnly: false
-  }
-};
+const PLANS = ALL_PLANS;
 
 const memOrders = new Map();
 function getPayStore() {
@@ -62,92 +38,29 @@ function getLicensesStore() {
   };
 }
 
-async function freshKey(store) {
-  let key;
-  do { key = newCode(); } while (await store.get(key));
-  return key;
-}
-
-
-
-// Fulfill the subscription: activates or extends license in Netlify Blobs Admin
+// Fulfill the order: activates or extends license in Netlify Blobs Admin
 async function fulfillOrder(order, origin) {
   const store = getLicensesStore();
-  const now = Date.now();
-  let code = null;
-  let renewed = false;
-
-  if (order.renewCode) {
-    const key = normCode(order.renewCode);
-    const existing = key ? await store.get(key, { type: 'json' }) : null;
-    if (existing && !existing.lifetime && existing.kind !== 'bonus') {
-      existing.expiresAt = Math.max(existing.expiresAt || 0, now) + 30 * DAY;
-      existing.status = 'active';
-      if (order.plan === 'offline' || order.plan === 'both') existing.offlineOpt = true;
-      if (order.plan === 'offline') existing.offlineOnly = true;
-      if (order.plan === 'both') existing.offlineOnly = false;
-      try {
-        await putLicense(store, existing.key, existing);
-      } catch {
-        await store.setJSON(existing.key, existing);
-      }
-      code = existing.code;
-      renewed = true;
-    }
-  }
-
-  if (!code) {
-    const key = await freshKey(store);
-    const cleanLabel = (order.name || '').trim().slice(0, 80);
-    const planCfg = PLANS[order.plan] || PLANS.online;
-    const rec = {
-      key,
-      code: displayCode(key),
-      kind: 'rental',
-      label: cleanLabel ? `${cleanLabel} · ${planCfg.title}` : `Monthly · ${displayCode(key)}`,
-      folderName: cleanLabel ? `${cleanLabel} · ${displayCode(key)}` : displayCode(key),
-      days: 30,
-      lifetime: false,
-      maxDevices: 1,
-      defaultTheme: null,
-      startsAt: null, // Starts counting upon first unlock on device
-      print: { enabled: true, sizes: ['2x6', '4x6'], eventLimit: 0, sessionLimit: 0 },
-      traditional: true,
-      offlineOpt: planCfg.offlineOpt,
-      offlineOnly: planCfg.offlineOnly,
-      status: 'unused',
-      createdAt: now,
-      redeemedAt: null,
-      expiresAt: null,
-      deviceId: null,
-      email: order.email || null
-    };
-    try {
-      await putLicense(store, key, rec);
-    } catch {
-      await store.setJSON(key, rec);
-    }
-    code = rec.code;
-    renewed = false;
-
-    // Send code by email if email relay is active
-    if (order.email) {
-      try {
-        const mail = codeEmail([rec], origin);
-        await sendMail({ to: order.email, ...mail });
-      } catch (err) {
-        console.warn('Subscription email notice error (non-fatal):', err.message);
-      }
-    }
-  }
+  const res = await fulfillPlanPayment({
+    store,
+    planKey: order.plan,
+    name: order.name,
+    email: order.email,
+    renewCode: order.renewCode,
+    now: Date.now(),
+    origin
+  });
 
   order.status = 'paid';
-  order.paidAt = now;
-  order.code = code;
-  order.renewed = renewed;
+  order.paidAt = Date.now();
+  order.code = res.code;
+  order.practiceCode = res.practiceCode || null;
+  order.renewed = res.renewed;
+  order.files = res.files;
+  order.links = res.links;
   await getPayStore().setJSON('sub/' + order.id, order);
 
-  return { code, renewed };
+  return res;
 }
 
 export default safe(async (req, context) => {
@@ -284,12 +197,18 @@ export default safe(async (req, context) => {
     if (!order) return json({ error: 'Order not found or expired.' }, 404);
 
     if (order.status === 'paid') {
+      const del = getPlanDeliverables(order.plan, order.code, order.practiceCode);
+      const planCfg = ALL_PLANS[order.plan] || ALL_PLANS.online;
       return json({
         ok: true,
         status: 'paid',
         code: order.code,
+        practiceCode: order.practiceCode || null,
         renewed: !!order.renewed,
         plan: order.plan,
+        planTitle: planCfg.title,
+        files: order.files || del.files,
+        links: order.links || del.links,
         guideUrl: '/lifetime/photobooth4u-setup-guide.pdf',
         tabletGuideUrl: '/lifetime/photobooth4u-tablet-guide.pdf',
         offlineGuideUrl: '/lifetime/photobooth4u-offline-app-guide.pdf',
@@ -308,8 +227,12 @@ export default safe(async (req, context) => {
             ok: true,
             status: 'paid',
             code: res.code,
+            practiceCode: res.practiceCode || null,
             renewed: res.renewed,
             plan: order.plan,
+            planTitle: res.plan.title,
+            files: res.files,
+            links: res.links,
             guideUrl: '/lifetime/photobooth4u-setup-guide.pdf',
             tabletGuideUrl: '/lifetime/photobooth4u-tablet-guide.pdf',
             offlineGuideUrl: '/lifetime/photobooth4u-offline-app-guide.pdf',

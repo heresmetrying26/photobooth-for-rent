@@ -8,6 +8,7 @@ import { setupsStore } from '../lib/core.mjs';
 import { ownerId, eventKeyOf, getAcct, acctPublic, acctKey, payStore, unseal, pm, listJSON, usedMap, batchView, createBatch, batchKey, KEY_RE } from '../lib/pay.mjs';
 import { cleanEventName, sendMail, codeEmail, EMAIL_RE } from '../lib/core.mjs';
 import { licenceFor, activateOn, saveMap, dropMap, licenceReady, MID_RE } from '../lib/license.mjs';
+import { ALL_PLANS, fulfillPlanPayment, getPlanDeliverables } from '../lib/plans.mjs';
 
 function passwordOk(input) {
   const real = process.env.ADMIN_PASSWORD;
@@ -584,6 +585,39 @@ export default safe(async (req, context) => {
         paymongoSource: key ? 'admin' : (process.env.PAYMONGO_SECRET_KEY ? 'netlify' : 'none'),
         paymongoMode: active.startsWith('sk_live_') ? 'live' : (active.startsWith('sk_test_') ? 'test' : 'none'),
         paymongoLast4: active.length > 4 ? active.slice(-4) : ''
+      });
+    }
+
+    case 'simulatenewpayment': { // Admin testing: simulate payment fulfillment for any package
+      const planKey = String(b.plan || 'online').toLowerCase();
+      const planCfg = ALL_PLANS[planKey];
+      if (!planCfg) return json({ error: 'Please choose a valid plan to simulate.' }, 400);
+
+      const name = String(b.name || 'Admin Test Booking').trim().slice(0, 80);
+      const email = String(b.email || '').trim().toLowerCase();
+      const renewCode = b.renewCode ? normCode(b.renewCode) : null;
+      if (email && !EMAIL_RE.test(email)) return json({ error: 'That email address doesn’t look right.' }, 400);
+
+      const origin = process.env.URL || 'https://photobooth4u.netlify.app';
+      const res = await fulfillPlanPayment({
+        store,
+        planKey,
+        name,
+        email,
+        renewCode,
+        now: Date.now(),
+        origin
+      });
+
+      return json({
+        ok: true,
+        simulated: true,
+        code: res.code,
+        practiceCode: res.practiceCode || null,
+        renewed: res.renewed,
+        plan: res.plan,
+        files: res.files,
+        links: res.links
       });
     }
 

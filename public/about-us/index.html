@@ -1646,46 +1646,59 @@
           <h3>Tablet Booth</h3>
           <p class="for">iPad or Android tablet · online</p>
           <p class="price">₱499 <small>/ event</small></p>
+          <button class="btn red plan-btn" type="button" data-sub="tablet" data-price="499" data-name="Tablet Booth"
+            style="margin-top:14px;width:100%;">Pay with QR · ₱499</button>
         </article>
         <article class="plan pro event">
           <span class="tag">Per event</span>
           <h3>Laptop Booth</h3>
           <p class="for">Laptop + guest screen, auto-print · online or offline app</p>
           <p class="price">₱599 <small>/ event</small></p>
+          <button class="btn red plan-btn" type="button" data-sub="laptop" data-price="599" data-name="Laptop Booth"
+            style="margin-top:14px;width:100%;">Pay with QR · ₱599</button>
         </article>
         <article class="plan">
           <span class="tag">Lifetime</span>
           <h3>Lifetime Online</h3>
           <p class="for">Tablet or laptop in the browser · every event · never expires · multiple devices</p>
           <p class="price">₱2,999 <small>one-time</small></p>
+          <button class="btn red plan-btn" type="button" data-sub="lifeonline" data-price="2999" data-name="Lifetime Online"
+            style="margin-top:14px;width:100%;">Pay with QR · ₱2,999</button>
         </article>
         <article class="plan">
           <span class="tag">Lifetime</span>
           <h3>Lifetime Offline</h3>
           <p class="for">The Windows / Mac app, works with no internet · every event · never expires</p>
           <p class="price">₱3,499 <small>one-time</small></p>
+          <button class="btn red plan-btn" type="button" data-sub="lifeoffline" data-price="3499" data-name="Lifetime Offline"
+            style="margin-top:14px;width:100%;">Pay with QR · ₱3,499</button>
         </article>
         <article class="plan life">
           <span class="tag">Best value</span>
           <h3>Lifetime Online + Offline</h3>
           <p class="for">Both: the online booth and the Windows / Mac app that works with no internet</p>
           <p class="price">₱4,999 <small>one-time</small></p>
-          <p class="life-link"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us
-              to get it →</a></p>
+          <button class="btn red plan-btn" type="button" data-sub="lifetime" data-price="4999" data-name="Lifetime Online + Offline"
+            style="margin-top:14px;width:100%;">Pay with QR · ₱4,999</button>
+          <p class="life-link" style="margin-top:8px;"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us on Messenger →</a></p>
         </article>
       </div>
       <div class="addons" aria-label="Add-ons for Lifetime owners">
-        <div class="addon">
+        <div class="addon" style="flex-wrap:wrap;align-items:center;">
           <span class="ad-ic" aria-hidden="true">+</span>
           <span class="ad-txt"><b>Add Offline later</b><small>For Lifetime Online owners: the Windows / Mac
               app</small></span>
           <span class="ad-price">₱2,499</span>
+          <button class="btn plan-btn" type="button" data-sub="addon_offline" data-price="2499" data-name="Add Offline App later"
+            style="font-size:12px;padding:6px 12px;margin-left:auto;cursor:pointer;">Pay with QR · ₱2,499</button>
         </div>
-        <div class="addon">
+        <div class="addon" style="flex-wrap:wrap;align-items:center;">
           <span class="ad-ic" aria-hidden="true">+</span>
           <span class="ad-txt"><b>Add Online later</b><small>For Lifetime Offline owners: the online
               booth</small></span>
           <span class="ad-price">₱1,999</span>
+          <button class="btn plan-btn" type="button" data-sub="addon_online" data-price="1999" data-name="Add Online Booth later"
+            style="font-size:12px;padding:6px 12px;margin-left:auto;cursor:pointer;">Pay with QR · ₱1,999</button>
         </div>
       </div>
       <ul class="chips" aria-label="Included with every package">
@@ -1936,30 +1949,32 @@ Event Date:</pre>
           style="width:48px;height:48px;border-radius:50%;background:#e3f6ea;color:#1e8449;display:grid;place-items:center;margin:0 auto 12px;font-size:24px;">
           ✓</div>
         <h3 style="margin:0 0 4px;font-family:'Fraunces',Georgia,serif;font-size:22px;">Payment Successful!</h3>
-        <p id="subSuccessSubtitle" style="font-size:14px;color:var(--muted);margin:0 0 14px;">Your 30-day access is
+        <p id="subSuccessSubtitle" style="font-size:14px;color:var(--muted);margin:0 0 14px;">Your access is
           unlocked and recorded in the system.</p>
 
         <div class="sd-code-box">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:4px;width:100%;">Your Access Code:</div>
           <span class="code-val" id="subFinalCode">PB-XXXX-XXXX-XXXX</span>
           <button type="button" class="btn small" id="subCopyCodeBtn">Copy code</button>
         </div>
-        <p style="font-size:12.5px;color:var(--muted);margin:0 0 16px;">Save this code. Once entered on your device, it
+
+        <div id="subPracticeBox" style="display:none;margin-top:10px;" class="sd-code-box">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:4px;width:100%;">1-Hour Practice Code:</div>
+          <span class="code-val" id="subPracticeCode">PB-XXXX-XXXX-XXXX</span>
+          <button type="button" class="btn small" id="subCopyPracticeBtn">Copy practice</button>
+        </div>
+
+        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 16px;" id="subCodeTip">Save this code. Once entered on your device, it
           stays unlocked. Timer counts down from your first event use.</p>
 
-        <div class="sd-guides">
-          <p style="font-size:13px;font-weight:800;margin:0 0 4px;">Download Your Comprehensive Setup Guides:</p>
-          <a id="guideLinkMain" href="/lifetime/photobooth4u-setup-guide.pdf" target="_blank" download>
-            <span>📄 Complete Setup Guide (PDF)</span>
-            <span style="color:var(--red);">Download ↓</span>
-          </a>
-          <a id="guideLinkTablet" href="/lifetime/photobooth4u-tablet-guide.pdf" target="_blank" download>
-            <span>📱 Tablet Guide — iPad &amp; Android (PDF)</span>
-            <span style="color:var(--red);">Download ↓</span>
-          </a>
-          <a id="guideLinkOffline" href="/lifetime/photobooth4u-offline-app-guide.pdf" target="_blank" download>
-            <span>💻 Laptop App Guide — Windows &amp; Mac (PDF)</span>
-            <span style="color:var(--red);">Download ↓</span>
-          </a>
+        <div class="sd-guides" id="subDynamicGuides">
+          <p style="font-size:13px;font-weight:800;margin:0 0 8px;">Your Setup Guides &amp; Downloads:</p>
+          <div id="subDeliverablesList" style="display:flex;flex-direction:column;gap:6px;">
+            <a href="/lifetime/photobooth4u-setup-guide.pdf" target="_blank" download>
+              <span>📄 Complete Setup Guide (PDF)</span>
+              <span style="color:var(--red);">Download ↓</span>
+            </a>
+          </div>
         </div>
 
         <a class="btn red" id="subGoBoothBtn" href="/" style="width:100%;margin-top:12px;">Open Photo Booth Now →</a>
@@ -1987,6 +2002,7 @@ Event Date:</pre>
       var renewInput = document.getElementById('subExistingCode');
       var qrBackBtn = document.getElementById('subQrBackBtn');
       var copyCodeBtn = document.getElementById('subCopyCodeBtn');
+      var copyPracticeBtn = document.getElementById('subCopyPracticeBtn');
       var goBoothBtn = document.getElementById('subGoBoothBtn');
 
       var currentPlan = 'online', currentPrice = 799, currentOrderId = null;
@@ -1999,11 +2015,21 @@ Event Date:</pre>
         clearInterval(pollTimer);
         clearInterval(countdownTimer);
 
-        planBadge.textContent = (planName || 'Monthly') + ' · ₱' + currentPrice.toLocaleString('en-PH') + ' / month';
+        var titleEl = document.getElementById('subModalTitle');
+        if (titleEl) {
+          if (currentPlan.startsWith('life')) titleEl.textContent = 'Lifetime Access';
+          else if (currentPlan.startsWith('addon')) titleEl.textContent = 'Lifetime Add-on';
+          else if (currentPlan === 'tablet' || currentPlan === 'laptop') titleEl.textContent = 'Per Event Booking';
+          else titleEl.textContent = 'Monthly Subscription';
+        }
+
+        var priceStr = currentPrice.toLocaleString('en-PH');
+        var suffix = (currentPlan.startsWith('life') || currentPlan.startsWith('addon')) ? ' one-time' : (currentPlan === 'tablet' || currentPlan === 'laptop') ? ' / event' : ' / month';
+        planBadge.textContent = (planName || 'Plan') + ' · ₱' + priceStr + suffix;
         formMsg.textContent = '';
         formMsg.className = 'sd-msg';
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Generate PayMongo QR · ₱' + currentPrice;
+        submitBtn.textContent = 'Generate PayMongo QR · ₱' + priceStr;
 
         if (isRenew) {
           renewToggle.checked = true;
@@ -2045,7 +2071,7 @@ Event Date:</pre>
         if (renewToggle.checked) renewInput.focus();
       });
 
-      // Bind all "Subscribe with QR" buttons
+      // Bind all "Pay with QR" and "Subscribe with QR" buttons
       Array.prototype.forEach.call(document.querySelectorAll('button[data-sub]'), function (btn) {
         btn.addEventListener('click', function (e) {
           if (e) e.preventDefault();
@@ -2110,7 +2136,7 @@ Event Date:</pre>
 
           // Show QR View
           currentOrderId = data.id;
-          document.getElementById('subQrPlanTag').textContent = data.planTitle || 'Monthly Subscription';
+          document.getElementById('subQrPlanTag').textContent = data.planTitle || 'Order Checkout';
           document.getElementById('subQrAmount').textContent = '₱' + Number(data.amount || currentPrice).toLocaleString('en-PH') + '.00';
           document.getElementById('subQrImg').src = data.qrImage;
           formView.style.display = 'none';
@@ -2148,7 +2174,7 @@ Event Date:</pre>
         qrView.style.display = 'none';
         formView.style.display = 'block';
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Generate PayMongo QR · ₱' + currentPrice;
+        submitBtn.textContent = 'Generate PayMongo QR · ₱' + currentPrice.toLocaleString('en-PH');
       });
 
       // Poll server for payment completion
@@ -2177,10 +2203,45 @@ Event Date:</pre>
         var code = data.code || 'PB-XXXX-XXXX-XXXX';
         document.getElementById('subFinalCode').textContent = code;
 
+        var practiceBox = document.getElementById('subPracticeBox');
+        if (data.practiceCode && practiceBox) {
+          practiceBox.style.display = 'block';
+          document.getElementById('subPracticeCode').textContent = data.practiceCode;
+        } else if (practiceBox) {
+          practiceBox.style.display = 'none';
+        }
+
+        var subTitle = document.getElementById('subSuccessSubtitle');
+        var tipEl = document.getElementById('subCodeTip');
         if (data.renewed) {
-          document.getElementById('subSuccessSubtitle').textContent = 'Your existing access code has been extended for +30 days!';
+          subTitle.textContent = 'Your existing access code has been updated / extended!';
+          tipEl.textContent = 'Your code stays active. Check your My Events portal for updated validity.';
+        } else if (data.practiceCode) {
+          subTitle.textContent = 'Your 24-hr event code + 1-hour practice code are active and ready.';
+          tipEl.textContent = 'Use the practice code to test your gear ahead of time. On your event day, enter your main code.';
+        } else if (data.plan && (data.plan.startsWith('life') || data.plan.startsWith('addon'))) {
+          subTitle.textContent = 'Your lifetime access is unlocked for up to 5 devices!';
+          tipEl.textContent = 'This code never expires and unlocks up to 5 devices simultaneously.';
         } else {
-          document.getElementById('subSuccessSubtitle').textContent = 'Your new 30-day access code is active and recorded in Admin.';
+          subTitle.textContent = 'Your 30-day access code is active and recorded in Admin.';
+          tipEl.textContent = 'Save this code. Once entered on your device, it stays unlocked for 30 days from first event use.';
+        }
+
+        // Render tailored deliverables (guides & app downloads)
+        var filesBox = document.getElementById('subDeliverablesList');
+        if (filesBox) {
+          filesBox.innerHTML = '';
+          var filesToRender = Array.isArray(data.files) && data.files.length ? data.files : [
+            { name: 'Complete Setup Guide (PDF)', url: '/lifetime/photobooth4u-setup-guide.pdf' }
+          ];
+          filesToRender.forEach(function (f) {
+            var a = document.createElement('a');
+            a.href = f.url;
+            a.target = '_blank';
+            a.download = '';
+            a.innerHTML = '<span>📄 ' + f.name + '</span><span style="color:var(--red);font-weight:700;">Download ↓</span>';
+            filesBox.appendChild(a);
+          });
         }
 
         // Set up launch link to auto-fill code if opened
@@ -2194,6 +2255,17 @@ Event Date:</pre>
             copyCodeBtn.textContent = 'Copied!';
           });
         };
+
+        if (copyPracticeBtn && data.practiceCode) {
+          copyPracticeBtn.onclick = function () {
+            navigator.clipboard.writeText(data.practiceCode).then(function () {
+              copyPracticeBtn.textContent = 'Copied!';
+              setTimeout(function () { copyPracticeBtn.textContent = 'Copy practice'; }, 2000);
+            }).catch(function () {
+              copyPracticeBtn.textContent = 'Copied!';
+            });
+          };
+        }
       }
     })();
   </script>

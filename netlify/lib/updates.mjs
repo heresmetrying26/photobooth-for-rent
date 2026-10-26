@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.11', date: '2026-10-27' },
   { version: '1.0.10', date: '2026-10-26' },
   { version: '1.0.9', date: '2026-10-26' },
   { version: '1.0.8', date: '2026-10-25' },
@@ -56,6 +57,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-27', title: 'Printer setup and sharing improvements', for: ['website', 'app'], app: '1.0.11',
+    items: [
+      'Laptop app: configure paper type and print quality from the selected printer’s installed driver. Save the settings once and later booth prints reuse them; Windows opens the printer preferences, while Mac shows the available driver options.',
+      'Laptop app: the All photos QR is available during offline sessions and opens the event gallery over the booth Wi-Fi; each photo QR appears when that photo is ready.',
+      'Website: clearer guest QR sharing and improved GIF capture quality and gallery browsing.'
+    ]
+  },
   {
     date: '2026-10-26', title: 'Expanded macOS support (Big Sur 11+ & Monterey 12.7+)', for: ['app'], app: '1.0.10',
     items: [

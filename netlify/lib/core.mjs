@@ -87,7 +87,7 @@ export const EVENT_KEEP_DAYS = 7;   // must match EVENT_DAYS in apps-script/clea
 export const BONUS_KEEP_DAYS = 1;   // must match BONUS_DAYS
 export const MAX_EVENTS = 300;
 // The Drive upload relay (apps-script/upload.gs). Same URL as DRIVE_SCRIPT_URL in protected/booth.html.
-export const DRIVE_SCRIPT_URL = process.env.DRIVE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbxIsebY2jRqYvPXWn-ytIvWCT-x6N91Ay8lvmnCSWj6IaWWohXCxry4r2VzUxJZP9P3IA/exec';
+export const DRIVE_SCRIPT_URL = process.env.DRIVE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbxv0WfF9rxFY9QlseCoSjrA7vePwHE-Uc8QTURZYyN6yIzcTj4SIlktEWT6Xnaw6Pv9OA/exec';
 export const isDriveUrl = (u) => typeof u === 'string' && u.length < 300 && /^https:\/\/drive\.google\.com\/[A-Za-z0-9_\-\/?=&.%]+$/.test(u);
 
 // ---------- signed Drive upload tickets ----------

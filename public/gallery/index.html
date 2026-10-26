@@ -35,7 +35,7 @@
     .btn.primary{background:var(--red);border-color:var(--red);color:#fff}
     .btn.primary:hover,.btn.primary:focus-visible{background:var(--red-dark);border-color:var(--red-dark);color:#fff}
     .btn svg{width:17px;height:17px;flex:none}
-    .tabs{position:sticky;top:0;z-index:5;display:flex;gap:6px;padding:12px 0;margin-top:8px;background:var(--paper)}
+    .tabs{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:6px;padding:12px 0;margin-top:8px;background:var(--paper)}
     .tab{display:inline-flex;align-items:center;gap:7px;min-height:42px;padding:9px 18px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:14.5px;font-weight:800;cursor:pointer}
     .tab i{font-style:normal;font-weight:700;color:var(--muted);font-size:13px}
     .tab[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
@@ -121,12 +121,14 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>QR</button>
         <button class="btn hidden" id="shareBtn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v13"/><path d="m7 8 5-5 5 5"/></svg>Share</button>
-        <button class="btn primary hidden" id="dlAllBtn" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span id="dlAllLabel">Download all</span></button>
+        <button class="btn primary hidden" id="dlPhotosBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span id="dlPhotosLabel">Download all photos</span></button>
+        <button class="btn primary hidden" id="dlGifsBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span id="dlGifsLabel">Download all GIFs</span></button>
       </div>
     </section>
 
     <nav class="tabs hidden" id="tabs" aria-label="Photo gallery">
+      <button class="tab" id="photosTab" type="button" aria-selected="true">All photos <i id="photoTabCount">0</i></button>
+      <button class="tab" id="gifsTab" type="button" aria-selected="false">All GIFs <i id="gifTabCount">0</i></button>
       <span class="live" id="live">Live</span>
     </nav>
 
@@ -173,7 +175,7 @@
   var m = /^\/g\/([A-Za-z0-9_-]{10,80})\/?$/.exec(location.pathname) || /[?&]f=([A-Za-z0-9_-]{10,80})/.exec(location.search);
   var FOLDER = m ? m[1] : null;
   var DRIVE = FOLDER ? 'https://drive.google.com/drive/folders/' + FOLDER : null;
-  var files = [], view = [], cur = -1, tiles = {}, firstLoad = true, timer = null;
+  var files = [], view = [], cur = -1, tiles = {}, firstLoad = true, timer = null, activeCategory = 'photos';
   // A guest's own QR opens straight to their saved photo: /g/<folder>#<file id>.
   var hm = /^#([A-Za-z0-9_-]{10,80})$/.exec(location.hash || '');
   var WANT = hm ? { id: hm[1] } : null, wantTries = 0;
@@ -182,10 +184,22 @@
   function fmtDay(ms){ try{ return new Date(ms).toLocaleDateString([], { month: 'long', day: 'numeric' }); }catch(e){ return ''; } }
   var tt; function toast(t){ var el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(tt); tt = setTimeout(function(){ el.classList.remove('show'); }, 2200); }
 
-  // Drive serves resized photo previews quickly; the original remains one click away.
+  // Drive serves resized photo previews quickly; GIFs use the signed relay so they animate.
+  function isGif(f){ return f.mime === 'image/gif' || /\.gif$/i.test(f.name || ''); }
+  function categoryFiles(category){ return files.filter(function(f){ return isGif(f) === (category === 'gifs'); }); }
+  function refreshCategoryUI(){
+    var photos = categoryFiles('photos'), gifs = categoryFiles('gifs');
+    $('photoTabCount').textContent = photos.length; $('gifTabCount').textContent = gifs.length;
+    $('photosTab').setAttribute('aria-selected', activeCategory === 'photos' ? 'true' : 'false');
+    $('gifsTab').setAttribute('aria-selected', activeCategory === 'gifs' ? 'true' : 'false');
+    $('dlPhotosBtn').classList.toggle('hidden', !photos.length); $('dlGifsBtn').classList.toggle('hidden', !gifs.length);
+  }
+  $('photosTab').addEventListener('click', function(){ activeCategory = 'photos'; refreshCategoryUI(); render(false); });
+  $('gifsTab').addEventListener('click', function(){ activeCategory = 'gifs'; refreshCategoryUI(); render(false); });
   function thumbUrl(f, w){ return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w' + w; }
   function downloadUrl(f){ return 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(f.id); }
   function withFallbacks(img, f, w){
+    if(isGif(f)){ img.onload = function(){ img.classList.add('ok'); }; img.src = f.src; return; }
     var tries = [thumbUrl(f, w), 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(f.id) + '=w' + w, f.src];
     var i = 0;
     img.onerror = function(){ i++; if(i < tries.length) img.src = tries[i]; else img.onerror = null; };
@@ -223,9 +237,10 @@
     setupQr(j.qr !== false);
     document.title = j.name + ' | photobooth4u';
     $('title').textContent = j.name;
-    $('dlAllBtn').classList.toggle('hidden', !j.files.length);
     if(navigator.share) $('shareBtn').classList.remove('hidden');
-    var bits = ['<b>' + j.files.length + '</b> photo' + (j.files.length === 1 ? '' : 's')];
+    var photoCount = j.files.filter(function(f){ return !isGif(f); }).length;
+    var gifCount = j.files.length - photoCount;
+    var bits = ['<b>' + photoCount + '</b> photo' + (photoCount === 1 ? '' : 's'), '<b>' + gifCount + '</b> GIF' + (gifCount === 1 ? '' : 's')];
     if(j.until) bits.push(j.until < Date.now() + 2 * 86400000 ? '<b style="color:var(--red)">Download by ' + esc(fmtDay(j.until)) + '</b>' : 'Download by ' + esc(fmtDay(j.until)));
     $('sub').innerHTML = bits.join(' · ');
     $('tabs').classList.remove('hidden');
@@ -233,21 +248,22 @@
     var newest = j.files.length ? j.files[0].t : 0;
     $('live').classList.toggle('on', newest > Date.now() - 3 * 3600000);
     var known = {}; files.forEach(function(f){ known[f.id] = true; });
-    var fresh = firstLoad ? 0 : j.files.filter(function(f){ return !known[f.id]; }).length;
+    var freshFiles = firstLoad ? [] : j.files.filter(function(f){ return !known[f.id]; });
     files = j.files;
+    refreshCategoryUI();
     render(!firstLoad);
-    if(fresh) toast(fresh + ' new ' + (fresh === 1 ? 'photo' : 'photos'));
+    if(freshFiles.length){ var freshPhotos = freshFiles.filter(function(f){ return !isGif(f); }).length, freshGifs = freshFiles.length - freshPhotos; toast(freshPhotos + ' new photos, ' + freshGifs + ' new GIFs'); }
     firstLoad = false;
     if(WANT) openWanted();
   }
 
   function render(animateNew){
     $('skel').classList.add('hidden');
-    view = files;
+    view = categoryFiles(activeCategory);
     var grid = $('grid');
     if(!view.length){
       grid.classList.add('hidden');
-      $('empty').textContent = 'No photos yet. They show up here a few seconds after each photo session.';
+      $('empty').textContent = activeCategory === 'gifs' ? 'No GIFs yet. They show up here after a GIF session.' : 'No photos yet. They show up here a few seconds after each photo session.';
       $('empty').classList.remove('hidden');
       return;
     }
@@ -258,7 +274,7 @@
       var t = tiles[f.id];
       if(!t){
         t = document.createElement('button'); t.type = 'button'; t.className = 'tile' + (animateNew ? ' new' : '');
-        t.setAttribute('aria-label', 'Photo ' + f.name);
+        t.setAttribute('aria-label', (isGif(f) ? 'GIF ' : 'Photo ') + f.name);
         var img = document.createElement('img'); img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
         t.appendChild(img);
         withFallbacks(img, f, 640);
@@ -283,8 +299,10 @@
       else { toast('Still saving — pull down to refresh in a moment'); WANT = null; }
       return;
     }
+    activeCategory = isGif(f) ? 'gifs' : 'photos';
+    refreshCategoryUI();
     render(false);
-    for(var j = 0; j < view.length; j++) if(view[j].id === f.id){ openViewer(j, 'Your photo'); break; }
+    for(var j = 0; j < view.length; j++) if(view[j].id === f.id){ openViewer(j, isGif(f) ? 'Your GIF' : 'Your photo'); break; }
     WANT = null;
   }
 
@@ -363,8 +381,9 @@
     setTimeout(function(){ URL.revokeObjectURL(a.href); }, 60000);
   }
   function fileName(f, i){
-    var n = String(f.name || ('photo-' + (i + 1))).replace(/[\\\/:*?"<>|]+/g, '_');
-    return /\.(jpe?g|png|webp)$/i.test(n) ? n : n + '.jpg';
+    var n = String(f.name || ((isGif(f) ? 'gif-' : 'photo-') + (i + 1))).replace(/[\\\/:*?"<>|]+/g, '_');
+    if(/\.(jpe?g|png|webp|gif)$/i.test(n)) return n;
+    return n + (isGif(f) ? '.gif' : f.mime === 'image/png' ? '.png' : f.mime === 'image/webp' ? '.webp' : '.jpg');
   }
   async function fetchPhoto(f){
     var r = await fetch(f.src, { cache: 'force-cache' });
@@ -397,20 +416,23 @@
     return new Blob(parts.concat(central, [end.buffer]), { type: 'application/zip' });
   }
   var zipping = false;
-  var ZIP_CHUNK = 80;   // photos per zip, so phones don't run out of memory
-  $('dlAllBtn').addEventListener('click', async function(){
-    if(zipping || !files.length) return;
+  async function downloadCategory(category){
+    var list = categoryFiles(category);
+    if(zipping || !list.length) return;
     zipping = true;
-    var btn = $('dlAllBtn'), label = $('dlAllLabel'), list = files.slice(), failed = 0;
-    var base = (document.title.split(' | ')[0] || 'photos').replace(/[\\\/:*?"<>|]+/g, '_').trim() || 'photos';
-    var parts = Math.ceil(list.length / ZIP_CHUNK), used = {};
+    var isGifs = category === 'gifs';
+    var btn = $(isGifs ? 'dlGifsBtn' : 'dlPhotosBtn');
+    var label = $(isGifs ? 'dlGifsLabel' : 'dlPhotosLabel');
+    var base = (document.title.split(' | ')[0] || 'gallery').replace(/[\\\/:*?"<>|]+/g, '_').trim() || 'gallery';
+    var chunkSize = isGifs ? 10 : 80;
+    var parts = Math.ceil(list.length / chunkSize), failed = 0, used = {};
     btn.disabled = true;
     try{
       for(var p = 0; p < parts; p++){
-        var chunk = list.slice(p * ZIP_CHUNK, (p + 1) * ZIP_CHUNK), entries = [];
+        var chunk = list.slice(p * chunkSize, (p + 1) * chunkSize), entries = [];
         for(var i = 0; i < chunk.length; i++){
-          var n = p * ZIP_CHUNK + i;
-          label.textContent = 'Preparing ' + (n + 1) + ' of ' + list.length + '…';
+          var n = p * chunkSize + i;
+          label.textContent = 'Preparing ' + (n + 1) + ' of ' + list.length + '...';
           try{
             var blob = await fetchPhoto(chunk[i]);
             var u8 = new Uint8Array(await blob.arrayBuffer());
@@ -420,14 +442,21 @@
             entries.push({ name: nm, blob: blob, size: u8.length, crc: crc32(u8) });
           }catch(e){ failed++; }
         }
-        if(entries.length) saveBlob(buildZip(entries), base + (parts > 1 ? ' (part ' + (p + 1) + ' of ' + parts + ')' : '') + '.zip');
+        if(entries.length){
+          var categoryName = isGifs ? 'GIFs' : 'Photos';
+          saveBlob(buildZip(entries), base + ' - ' + categoryName + (parts > 1 ? ' (part ' + (p + 1) + ' of ' + parts + ')' : '') + '.zip');
+        }
         if(p < parts - 1) await new Promise(function(r){ setTimeout(r, 800); });
       }
-      toast(failed ? 'Downloaded ' + (list.length - failed) + ' photos (' + failed + ' couldn’t load — try again)' : 'Downloaded ' + list.length + ' photo' + (list.length === 1 ? '' : 's'));
+      var categoryLabel = isGifs ? 'GIF' : 'photo';
+      toast(failed ? 'Downloaded ' + (list.length - failed) + ' ' + categoryLabel + 's (' + failed + ' could not load)' : 'Downloaded ' + list.length + ' ' + categoryLabel + (list.length === 1 ? '' : 's'));
     }finally{
-      label.textContent = 'Download all'; btn.disabled = false; zipping = false;
+      label.textContent = isGifs ? 'Download all GIFs' : 'Download all photos';
+      btn.disabled = false; zipping = false;
     }
-  });
+  }
+  $('dlPhotosBtn').addEventListener('click', function(){ downloadCategory('photos'); });
+  $('dlGifsBtn').addEventListener('click', function(){ downloadCategory('gifs'); });
   // Single photo: save it directly; fall back to Google's download link.
   $('vDownload').addEventListener('click', async function(e){
     var f = view[cur]; if(!f) return;

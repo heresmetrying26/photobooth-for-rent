@@ -12,7 +12,7 @@
 // Emails ("Forgot your code?") are sent from this Google account (about 100 a day on a free account).
 
 var ROOT_FOLDER_ID = '1gwMiPTDJzqYKevAZmscPvCzpM5937a8y';
-var MAX_IMAGE_BASE64 = 20 * 1024 * 1024; // ~15 MB image
+var MAX_IMAGE_BASE64 = 40 * 1024 * 1024; // larger GIF sessions; gallery relay caps downloads at 30 MB
 
 // ---------- ticket check ----------
 // Any signed ticket (upload or mail), or null.
@@ -159,7 +159,7 @@ function doPost(e) {
     if (!b64) return jsonOut({ ok: false, error: 'No image data was received.' });
     if (b64.length > MAX_IMAGE_BASE64) return jsonOut({ ok: false, error: 'Image is too large.' });
 
-    var mime = /^image\/(png|jpeg|webp)$/.test(data.mimeType || '') ? data.mimeType : 'image/png';
+    var mime = /^image\/(png|jpeg|webp|gif)$/.test(data.mimeType || '') ? data.mimeType : 'image/png';
     var name = String(data.filename || ('photo-' + Date.now() + '.png')).replace(/[\/\\]/g, '_').slice(0, 120);
     var file = folder.createFile(Utilities.newBlob(Utilities.base64Decode(b64), mime, name));
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -205,7 +205,7 @@ function appendGalleryPhotos_(folder, files, depth) {
   var it = folder.getFiles();
   while (it.hasNext()) {
     var f = it.next();
-    if (f.isTrashed() || !/^image\/(png|jpeg|webp)$/.test(f.getMimeType())) continue;
+    if (f.isTrashed() || !/^image\/(png|jpeg|webp|gif)$/.test(f.getMimeType())) continue;
     files.push({ id: f.getId(), name: f.getName(), mime: f.getMimeType(), size: f.getSize(), t: f.getDateCreated().getTime() });
   }
   if (depth >= 4) return;

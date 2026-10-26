@@ -7,7 +7,7 @@ import { safe, json, hmac, DRIVE_SCRIPT_URL, getSettings } from '../lib/core.mjs
 // Drive file. Listings are cached on Netlify's CDN for a few seconds, so a crowd scanning the
 // same QR at once costs one Drive lookup.
 const ID_RE = /^[A-Za-z0-9_-]{10,80}$/;
-const MAX_BYTES = 15 * 1024 * 1024;
+const MAX_BYTES = 30 * 1024 * 1024;
 const sigOf = (id) => hmac('gallery|' + id).slice(0, 22);
 
 const notFound = () => new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
@@ -18,7 +18,7 @@ async function serveImage(id, sig) {
   try { r = await fetch('https://drive.google.com/uc?export=download&id=' + encodeURIComponent(id), { redirect: 'follow' }); }
   catch { return notFound(); }
   const type = (r.headers.get('content-type') || '').split(';')[0].trim();
-  if (!r.ok || !/^image\/(png|jpeg|webp)$/.test(type)) return notFound();
+  if (!r.ok || !/^image\/(png|jpeg|webp|gif)$/.test(type)) return notFound();
   const buf = await r.arrayBuffer();
   if (buf.byteLength > MAX_BYTES) return notFound();
   return new Response(buf, {
@@ -52,9 +52,10 @@ export default safe(async (req) => {
   if (!data || !data.ok || !Array.isArray(data.files)) {
     return json({ ok: false, error: data && data.ok ? 'not-ready' : 'not-found' }, data && data.ok ? 503 : 404);
   }
-  const files = data.files.filter((x) => x && ID_RE.test(x.id) && /^image\/(png|jpeg|webp)$/.test(x.mime || '')).slice(0, 2000).map((x) => ({
+  const files = data.files.filter((x) => x && ID_RE.test(x.id) && /^image\/(png|jpeg|webp|gif)$/.test(x.mime || '')).slice(0, 2000).map((x) => ({
     id: x.id,
     name: String(x.name || '').slice(0, 120),
+    mime: x.mime,
     t: Number(x.t) || 0,
     src: '/api/gallery?img=' + x.id + '&s=' + sigOf(x.id)
   }));

@@ -122,7 +122,9 @@
     .pkg-divider p{margin:0;font-size:14px;color:var(--muted);}
 
     /* PayMongo QR subscription dialog */
-    .sub-dialog{border:none;padding:0;border-radius:24px;background:#fff;color:var(--ink);width:min(460px,calc(100vw - 32px));box-shadow:0 24px 60px rgba(28,26,30,.25);overflow:hidden;}
+    .sub-dialog{border:none;padding:0;border-radius:24px;background:#fff;color:var(--ink);width:min(460px,calc(100vw - 32px));box-shadow:0 24px 60px rgba(28,26,30,.25);overflow:hidden;margin:auto;}
+    .sub-dialog:not([open]){display:none;}
+    .sub-dialog[open]{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);margin:0;z-index:99999;display:block;}
     .sub-dialog::backdrop{background:rgba(28,26,30,.65);backdrop-filter:blur(6px);}
     .sd-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;background:var(--paper);border-bottom:1px solid var(--line);}
     .sd-head h3{margin:0;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:18px;}
@@ -645,6 +647,8 @@ Event Date:</pre>
           <div class="sd-qr-status">
             <span class="sd-spin"></span>
             <span id="subQrStatusText">Checking payment automatically…</span>
+          </div>
+
           <div style="margin-top:16px;display:flex;gap:8px;width:100%;justify-content:center;">
             <button type="button" class="btn" id="subQrBackBtn" style="font-size:13px;padding:8px 16px;">Back</button>
             <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer" class="btn" style="font-size:13px;padding:8px 16px;">Need help? Messenger</a>
@@ -736,7 +740,7 @@ Event Date:</pre>
         successView.style.display = 'none';
 
         if (typeof modal.showModal === 'function') {
-          modal.showModal();
+          try { modal.showModal(); } catch (e) { modal.setAttribute('open', ''); }
         } else {
           modal.setAttribute('open', '');
         }
@@ -746,7 +750,7 @@ Event Date:</pre>
         clearInterval(pollTimer);
         clearInterval(countdownTimer);
         if (typeof modal.close === 'function') {
-          modal.close();
+          try { modal.close(); } catch (e) { modal.removeAttribute('open'); }
         } else {
           modal.removeAttribute('open');
         }
@@ -764,14 +768,16 @@ Event Date:</pre>
 
       // Bind all "Subscribe with QR" buttons
       Array.prototype.forEach.call(document.querySelectorAll('button[data-sub]'), function(btn){
-        btn.addEventListener('click', function(){
+        btn.addEventListener('click', function(e){
+          if (e) e.preventDefault();
           openModal(btn.getAttribute('data-sub'), Number(btn.getAttribute('data-price')), btn.getAttribute('data-name'), false);
         });
       });
 
       var renewModalBtn = document.getElementById('renewModalBtn');
       if (renewModalBtn) {
-        renewModalBtn.addEventListener('click', function(){
+        renewModalBtn.addEventListener('click', function(e){
+          if (e) e.preventDefault();
           openModal('online', 799, 'Renew Monthly Subscription', true);
         });
       }

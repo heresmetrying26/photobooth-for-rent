@@ -142,7 +142,6 @@
     .sd-qr-timer{font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:6px;}
     .sd-qr-status{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#1e8449;}
     .sd-spin{width:14px;height:14px;border:2px solid #b7dfca;border-top-color:#1e8449;border-radius:50%;animation:spin .8s linear infinite;}
-    .sd-test-box{margin-top:14px;padding:12px 14px;border-radius:12px;background:#FAF7F2;border:1.5px dashed #C93D27;text-align:center;font-size:12px;color:var(--muted);width:100%;}
     .sd-code-box{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:14px;background:var(--paper);border:2px dashed var(--red);margin:14px 0 12px;}
     .sd-code-box .code-val{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:20px;font-weight:800;letter-spacing:1px;color:var(--ink);}
     .sd-guides{margin:14px 0;display:grid;gap:8px;text-align:left;}
@@ -646,14 +645,6 @@ Event Date:</pre>
           <div class="sd-qr-status">
             <span class="sd-spin"></span>
             <span id="subQrStatusText">Checking payment automatically…</span>
-          </div>
-
-          <div class="sd-test-box" id="subTestBox" style="display:none;">
-            <b>🧪 Test Mode Active (PayMongo Test Keys)</b>
-            <p style="margin:4px 0 8px;">Simulate a paid QR transaction to test the automatic setup and guides unlock:</p>
-            <button class="btn small primary" type="button" id="subSimulateBtn">Simulate Test Payment (Success)</button>
-          </div>
-
           <div style="margin-top:16px;display:flex;gap:8px;width:100%;justify-content:center;">
             <button type="button" class="btn" id="subQrBackBtn" style="font-size:13px;padding:8px 16px;">Back</button>
             <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer" class="btn" style="font-size:13px;padding:8px 16px;">Need help? Messenger</a>
@@ -712,8 +703,6 @@ Event Date:</pre>
       var renewBox = document.getElementById('subRenewBox');
       var renewInput = document.getElementById('subExistingCode');
       var qrBackBtn = document.getElementById('subQrBackBtn');
-      var simulateBtn = document.getElementById('subSimulateBtn');
-      var testBox = document.getElementById('subTestBox');
       var copyCodeBtn = document.getElementById('subCopyCodeBtn');
       var goBoothBtn = document.getElementById('subGoBoothBtn');
 
@@ -839,13 +828,6 @@ Event Date:</pre>
           document.getElementById('subQrPlanTag').textContent = data.planTitle || 'Monthly Subscription';
           document.getElementById('subQrAmount').textContent = '₱' + Number(data.amount || currentPrice).toLocaleString('en-PH') + '.00';
           document.getElementById('subQrImg').src = data.qrImage;
-
-          if (data.isTest) {
-            testBox.style.display = 'block';
-          } else {
-            testBox.style.display = 'none';
-          }
-
           formView.style.display = 'none';
           qrView.style.display = 'block';
 
@@ -898,34 +880,6 @@ Event Date:</pre>
             showSuccess(data);
           }
         } catch (e) {}
-      }
-
-      // Simulate payment (for test keys)
-      simulateBtn.addEventListener('click', async function(){
-        if (!currentOrderId) return;
-        simulateBtn.disabled = true;
-        simulateBtn.textContent = 'Simulating payment confirmation…';
-        try {
-          var resp = await fetch('/api/subscribe', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ action: 'simulate', id: currentOrderId })
-          });
-          var data = await resp.json();
-          if (data.ok && data.status === 'paid') {
-            showSuccess(data);
-          } else {
-            alert(data.error || 'Simulation failed');
-            simulateBtn.disabled = false;
-            simulateBtn.textContent = 'Simulate Test Payment (Success)';
-          }
-        } catch (e) {
-          alert('Could not simulate payment: ' + e.message);
-          simulateBtn.disabled = false;
-          simulateBtn.textContent = 'Simulate Test Payment (Success)';
-        }
-      });
-
       function showSuccess(data){
         clearInterval(pollTimer);
         clearInterval(countdownTimer);

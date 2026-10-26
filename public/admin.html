@@ -235,7 +235,7 @@
       </div>
       <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
         <button type="button" class="small danger" id="clearPmBtn" style="display:none;">Remove Key from Admin</button>
-        <span class="meta" style="margin:0;">Without a key, checkout runs in instant Test Simulation Mode.</span>
+        <span class="meta" style="margin:0;">Without a key, customers will be prompted to contact you on Messenger.</span>
       </div>
       <div class="meta" style="margin:10px 0 0;line-height:1.6;">
         <b>Quick Testing:</b> Paste your test secret key (<code>sk_test_...</code>) above to generate test PayMongo QR Ph codes immediately.<br>
@@ -512,7 +512,7 @@
       txt.innerHTML = '<span style="color:#1e8449;font-weight:700;">Connected</span> ' + modeBadge + ' ' + sourceBadge + (s.paymongoLast4 ? ' <span style="color:var(--dim);margin-left:6px;font-size:12px;">(ending in •••• ' + esc(s.paymongoLast4) + ')</span>' : '');
       if($('clearPmBtn')) $('clearPmBtn').style.display = s.paymongoSource === 'admin' ? 'inline-block' : 'none';
     } else {
-      txt.innerHTML = '<span style="color:var(--dim);">Not configured (Instant simulation active)</span>';
+      txt.innerHTML = '<span style="color:var(--dim);">Not configured (Customers directed to Messenger)</span>';
       if($('clearPmBtn')) $('clearPmBtn').style.display = 'none';
     }
   }
@@ -1105,7 +1105,7 @@
   });
 
   $('clearPmBtn').addEventListener('click', async function(){
-    if(!confirm('Remove the PayMongo secret key? Monthly subscriptions will revert to instant Test Simulation Mode.')) return;
+    if(!confirm('Remove the PayMongo secret key? Monthly subscriptions will prompt customers to message you on Messenger.')) return;
     try{
       var res = await api({ action: 'savepaymongo', key: '' });
       updatePaymongoUI(res);

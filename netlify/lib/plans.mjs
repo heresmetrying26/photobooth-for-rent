@@ -209,6 +209,12 @@ export function getPlanDeliverables(planKey, code, practiceCode) {
       url: code ? `/app/#${encodeURIComponent(code)}` : '/app/',
       desc: 'Download desktop app for Windows 10/11 (.exe), Mac Apple Silicon (.dmg) or Mac Intel (.dmg)'
     });
+    links.push({
+      id: 'dnp-guide',
+      name: 'DNP Photo Printer Guide',
+      url: '/how-to-print-dnp/',
+      desc: 'Step-by-step setup for DNP RX1HS, DS620, DS40 with 2×6 strip auto-cut'
+    });
   }
 
   return { files, links };

@@ -47,7 +47,12 @@
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-cache"
 
-# Printing guide: short links to /how-to-print-hiti/
+# Printing guide: short links to /how-to-print-hiti/ and /how-to-print-dnp/
+[[redirects]]
+  from = "/dnp"
+  to = "/how-to-print-dnp/"
+  status = 301
+
 [[redirects]]
   from = "/how-to-print"
   to = "/how-to-print-hiti/"

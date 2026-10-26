@@ -59,6 +59,25 @@ async function printers(force) {
   return printersCache.list;
 }
 
+async function cupsPrinterOptions(printer) {
+  const r = await run('lpoptions', ['-p', printer, '-l']);
+  if (r.code !== 0) throw new Error((r.err || r.out || 'Could not read printer options').trim());
+  return r.out.split(/\r?\n/).flatMap((line) => {
+    const m = /^([^/:]+)\/([^:]*):\s*(.*)$/.exec(line);
+    if (!m) return [];
+    const choices = m[3].trim().split(/\s+/).filter(Boolean).map((v) => ({ value: v.replace(/^\*/, ''), selected: v.startsWith('*') }));
+    return choices.length ? [{ key: m[1], label: m[2].trim() || m[1], choices }] : [];
+  });
+}
+
+function openWindowsPrinterPrefs(printer) {
+  return new Promise((resolve) => {
+    const p = spawn('rundll32.exe', ['printui.dll,PrintUIEntry', '/e', '/n', printer], { windowsHide: true, detached: true, stdio: 'ignore' });
+    p.once('error', (e) => resolve({ ok: false, error: String(e.message || e) }));
+    p.once('spawn', () => { p.unref(); resolve({ ok: true }); });
+  });
+}
+
 // ---------- paper sizes: tell the printer which paper to use ----------
 // Without this, the printer uses its own default paper (often A4 or Letter),
 // so a 4R photo came out on A4. We look up the paper sizes the printer offers
@@ -347,6 +366,34 @@ export async function handleHelper(req, path, search) {
   if (method === 'GET' && path === '/status') {
     return json({ ok: true, app: 'photobooth4u-print-helper', builtIn: true, version: HELPER_VERSION, printers: await printers(false),
       camera: { supported: camOk(), open: !!cam.open, name: cam.open ? cam.open.name : '' } });
+  }
+  if (path === '/printer/options' && method === 'GET') {
+    const name = String(search.get('printer') || '').trim();
+    if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);
+    if (IS_WIN) return json({ ok: true, platformDialog: true, options: [] });
+    try { return json({ ok: true, options: await cupsPrinterOptions(name) }); }
+    catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
+  }
+  if (path === '/printer/options' && method === 'POST') {
+    let body;
+    try { body = await req.json(); } catch { return json({ ok: false, error: 'Bad request' }, 400); }
+    const name = String(body.printer || '').trim();
+    if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);
+    if (IS_WIN) return json(await openWindowsPrinterPrefs(name));
+    const selected = body.options && typeof body.options === 'object' ? body.options : {};
+    try {
+      const available = await cupsPrinterOptions(name), args = ['-p', name];
+      for (const [key, value] of Object.entries(selected)) {
+        const option = available.find((x) => x.key === key);
+        if (!option || !option.choices.some((x) => x.value === value)) continue;
+        args.push('-o', key + '=' + value);
+      }
+      if (args.length > 2) {
+        const r = await run('lpoptions', args);
+        if (r.code !== 0) throw new Error((r.err || r.out || 'Could not save printer options').trim());
+      }
+      return json({ ok: true });
+    } catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
   }
   if (path.startsWith('/camera')) {
     if (!camOk()) return json({ ok: false, code: 'UNSUPPORTED', error: 'On a Mac the booth connects to the camera by itself.' }, 501);

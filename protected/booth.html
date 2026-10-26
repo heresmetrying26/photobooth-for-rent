@@ -2422,24 +2422,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
           <p class="panel-hint" id="gifModeHint" style="margin:8px 0 0; color:var(--ink-dim);">Guests get a photo strip + QR code.</p>
           <div id="gifOptions" style="display:none; margin-top:10px;">
+            <p class="panel-hint" style="margin:0 0 8px;">GIF follows the session from the first countdown through the last shot, including the selected timers and pauses.</p>
             <div class="opt-row">
-              <span class="lbl">GIF duration</span>
-              <select class="mini-select pillify" id="gifDurationSelect">
-                <option value="2">2 seconds</option>
-                <option value="3" selected>3 seconds</option>
-                <option value="4">4 seconds</option>
-                <option value="5">5 seconds</option>
-              </select>
-            </div>
-            <div class="opt-row" style="margin-top:8px;">
               <span class="lbl">GIF speed</span>
               <select class="mini-select pillify" id="gifSpeedSelect">
-                <option value="1">Normal</option>
-                <option value="1.5" selected>1.5× faster</option>
-                <option value="2">2× faster</option>
+                <option value="0" selected>Auto (2x or 3x)</option>
+                <option value="2">2x faster</option>
+                <option value="3">3x faster</option>
               </select>
             </div>
-            <p class="panel-hint" style="margin:6px 0 0;">GIF encodes in the browser — takes 2–5 sec after the session ends.</p>
+            <p class="panel-hint" style="margin:6px 0 0;">Auto uses 2x for sessions up to 24 seconds and 3x for longer sessions.</p>
           </div>
         </div>
 
@@ -5538,12 +5530,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
 
   // ──────────────────────────────────────────────────────────────────
-  // GIF MODE — burst capture + encode + upload
+  // GIF MODE — session capture + encode + upload
   // ──────────────────────────────────────────────────────────────────
 
   var outputMode = 'photo';    // 'photo' | 'gif' | 'both'
-  var gifDurationSec = 3;      // seconds of burst frames to capture
-  var gifSpeed = 1.5;          // playback multiplier (> 1 = faster/boomerang feel)
+  var gifSpeed = 0;            // 0 chooses 2x or 3x automatically from the recorded session length
+  var gifSessionCapture = null;
+  var completedGifCapture = null;
 
   function isGifAllowed(){ return !(window.__PB) || !!(window.__PB.gifOpt); }
 
@@ -5581,40 +5574,49 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       refreshOutputModeUI();
       if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
     });
-    var gd = document.getElementById('gifDurationSelect');
-    if(gd) gd.addEventListener('change', function(){ gifDurationSec = Number(gd.value) || 3; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
     var gs = document.getElementById('gifSpeedSelect');
-    if(gs) gs.addEventListener('change', function(){ gifSpeed = Number(gs.value) || 1.5; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+    if(gs) gs.addEventListener('change', function(){ gifSpeed = Number(gs.value) || 0; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
     refreshGifUI();
     refreshOutputModeUI();
   })();
 
-  // Capture burst frames from the live video into an array of ImageData objects.
-  // Build a GIF from every completed shot, holding each shot for an even part of the selected duration.
-  async function captureGifFrames(shots){
-    var frames = [];
-    var fps = 10;
-    var sources = (Array.isArray(shots) ? shots : []).filter(function(shot){
-      return shot && shot.width && shot.height;
-    });
-    if(!sources.length) throw new Error('No completed shots available for GIF');
-    var total = Math.max(sources.length, Math.round((gifDurationSec || 3) * fps));
-    var vw = Math.max.apply(null, sources.map(function(shot){ return shot.width; }));
-    var vh = Math.max.apply(null, sources.map(function(shot){ return shot.height; }));
-    var scale = Math.min(1, 400 / vw);
-    var cw = Math.max(1, Math.round(vw * scale));
-    var ch = Math.max(1, Math.round(vh * scale));
-    var cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
-    var cx = cv.getContext('2d');
-    var gifStatus = document.getElementById('gifStatusMsg');
-    if(gifStatus) gifStatus.textContent = 'Preparing your GIF, please wait\u2026';
-    for(var i = 0; i < total; i++){
-      var shotIndex = Math.min(sources.length - 1, Math.floor(i * sources.length / total));
-      cx.clearRect(0, 0, cw, ch);
-      cx.drawImage(sources[shotIndex], 0, 0, cw, ch);
-      frames.push(cx.getImageData(0, 0, cw, ch));
+  // Sample the live camera throughout the session, retaining a bounded set of frames.
+  function captureGifFrame(capture, timeMs){
+    var videoWidth = video.videoWidth || 640;
+    var videoHeight = video.videoHeight || 480;
+    var scale = Math.min(1, 320 / videoWidth);
+    var width = Math.max(1, Math.round(videoWidth * scale));
+    var height = Math.max(1, Math.round(videoHeight * scale));
+    if(!capture.canvas){
+      capture.canvas = document.createElement('canvas');
+      capture.canvas.width = width; capture.canvas.height = height;
+      capture.context = capture.canvas.getContext('2d');
     }
-    return { frames: frames, width: cw, height: ch };
+    var ctx = capture.context;
+    ctx.save();
+    if(typeof mirrorPreview === 'function' && mirrorPreview()){ ctx.translate(capture.canvas.width, 0); ctx.scale(-1, 1); }
+    try{ ctx.drawImage(video, 0, 0, capture.canvas.width, capture.canvas.height); }catch(e){}
+    ctx.restore();
+    if(capture.frames.length >= 240) capture.frames = capture.frames.filter(function(frame, index){ return index % 2 === 0; });
+    capture.frames.push({ imageData: ctx.getImageData(0, 0, capture.canvas.width, capture.canvas.height), time: timeMs });
+  }
+  function startGifSessionCapture(){
+    completedGifCapture = null;
+    gifSessionCapture = { startedAt: performance.now(), frames: [], canvas: null, context: null, timer: null };
+    captureGifFrame(gifSessionCapture, 0);
+    gifSessionCapture.timer = setInterval(function(){
+      if(gifSessionCapture) captureGifFrame(gifSessionCapture, performance.now() - gifSessionCapture.startedAt);
+    }, 200);
+  }
+  function stopGifSessionCapture(keepFrames){
+    var capture = gifSessionCapture; gifSessionCapture = null;
+    if(!capture) return null;
+    clearInterval(capture.timer);
+    var durationMs = Math.max(1, performance.now() - capture.startedAt);
+    if(keepFrames) captureGifFrame(capture, durationMs);
+    if(!keepFrames || !capture.frames.length) return null;
+    var speed = (gifSpeed === 2 || gifSpeed === 3) ? gifSpeed : (durationMs > 24000 ? 3 : 2);
+    return { frames: capture.frames, width: capture.canvas.width, height: capture.canvas.height, durationMs: durationMs, speed: speed };
   }
 
   // Encode frames array into a GIF Blob using the local in-memory gifenc encoder (zero workers, zero CDN).
@@ -5630,14 +5632,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         var applyPalette = encoderLib.applyPalette;
 
         var gif = GIFEncoder();
-        var fps = 10;
-        var speedMul = (typeof gifSpeed === 'number' && gifSpeed > 0) ? gifSpeed : 1;
-        var delay = Math.round((1000 / fps) / speedMul);
+        var speedMul = framesObj.speed || 2;
         var width = framesObj.width;
         var height = framesObj.height;
-
         for(var i = 0; i < framesObj.frames.length; i++){
-          var imgData = framesObj.frames[i];
+          var frame = framesObj.frames[i];
+          var imgData = frame.imageData;
+          var nextTime = i + 1 < framesObj.frames.length ? framesObj.frames[i + 1].time : framesObj.durationMs;
+          var delay = Math.max(20, Math.round((nextTime - frame.time) / speedMul));
           var palette = quantize(imgData.data, 256);
           var index = applyPalette(imgData.data, palette);
           gif.writeFrame(index, width, height, { palette: palette, delay: delay });
@@ -5671,7 +5673,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
     var framesObj;
     try{
-      framesObj = await captureGifFrames(shotCanvases);
+      framesObj = completedGifCapture;
+      completedGifCapture = null;
+      if(!framesObj) throw new Error('No session GIF was recorded');
     } catch(e){
       console.error('GIF capture failed:', e);
       var w = qrResults.querySelector('.qr-result[data-kind="gif"] .qr-wait');
@@ -7166,6 +7170,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }
   }
   function endCancelledSession(){
+    stopGifSessionCapture(false); completedGifCapture = null;
     countingDown = false;
     hideShotReview();
     flashOverlay.classList.remove('flash-active');
@@ -7256,6 +7261,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(sess.cancelled){ endCancelledSession(); return; }
     consumePayCredit();          // the paid session is used once the countdown starts (Cancel at Get ready keeps it)
     countingDown = true;
+    if(isGifAllowed() && (outputMode === 'gif' || outputMode === 'both')) startGifSessionCapture();
     stageShot = 0;
     try{ applyStageAspect(); }catch(e){}
     guestRender();
@@ -7272,6 +7278,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       }
       i++;
     }
+    completedGifCapture = stopGifSessionCapture(!sess.cancelled);
     if(!sess.cancelled) await reviewPhase();
     if(sess.cancelled){ endCancelledSession(); return; }
     countingDown = false;
@@ -12366,7 +12373,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       guestPick: guestPickOn, guestLayouts: guestLayoutSet.slice(),
       timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
       reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake,
-      outputMode: outputMode, gifDurationSec: gifDurationSec, gifSpeed: gifSpeed,
+      outputMode: outputMode, gifSpeed: gifSpeed,
       backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
       frameColorChoice: frameColorChoice, photoPlacement: photoPlacement, cropFocus: cropFocus,
       label: labelInput.value, font: currentFont, dateFont: currentDateFont, dateOn: dateOn, date: dateInput.value,
@@ -12461,8 +12468,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(typeof s.reviewEach === 'boolean'){ reviewEach = s.reviewEach; reviewEachToggle.checked = s.reviewEach; }
       if(typeof s.allowRetake === 'boolean'){ allowRetake = s.allowRetake; try{ refreshRetakeUI(); }catch(e){} }
       if(s.outputMode === 'gif' || s.outputMode === 'both' || s.outputMode === 'photo'){ outputMode = isGifAllowed() ? s.outputMode : 'photo'; refreshOutputModeUI(); }
-      if(typeof s.gifDurationSec === 'number'){ gifDurationSec = s.gifDurationSec; var gd = document.getElementById('gifDurationSelect'); if(gd) gd.value = String(gifDurationSec); }
-      if(typeof s.gifSpeed === 'number'){ gifSpeed = s.gifSpeed; var gs = document.getElementById('gifSpeedSelect'); if(gs) gs.value = String(gifSpeed); }
+      if(typeof s.gifSpeed === 'number'){ gifSpeed = s.gifSpeed === 2 || s.gifSpeed === 3 ? s.gifSpeed : 0; var gs = document.getElementById('gifSpeedSelect'); if(gs) gs.value = String(gifSpeed); }
       filterKey = Object.prototype.hasOwnProperty.call(FILTERS, s.filter) ? s.filter : 'none';
       markFilterChips();
       softSkin = !!s.softSkin; softSkinToggle.checked = softSkin;

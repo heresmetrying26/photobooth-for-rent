@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.10', date: '2026-10-26' },
   { version: '1.0.9', date: '2026-10-26' },
   { version: '1.0.8', date: '2026-10-25' },
   { version: '1.0.7', date: '2026-10-25' },
@@ -55,6 +56,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-26', title: 'Expanded macOS support (Big Sur 11+ & Monterey 12.7+)', for: ['app'], app: '1.0.10',
+    items: [
+      'Expanded macOS compatibility: the offline app now supports macOS 11 (Big Sur) and macOS 12 (Monterey 12.7+) in addition to Ventura, Sonoma, and Sequoia.',
+      'Universal Mac compatibility: packages both Apple Silicon (M1/M2/M3/M4) and Intel x64 architectures.'
+    ]
+  },
   {
     date: '2026-10-26', title: 'Custom frame naming and layout improvements', for: ['website', 'app'], app: '1.0.9',
     items: [

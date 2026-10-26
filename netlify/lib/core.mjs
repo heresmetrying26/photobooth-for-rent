@@ -158,7 +158,7 @@ export function summaryOf(rec) {
     kind: rec.kind || 'rental', parent: rec.parent || null, bonusKey: rec.bonusKey || null,
     lifetime: !!rec.lifetime, days: rec.days || 0, minutes: rec.minutes || null, startsAt: rec.startsAt || null,
     status: rec.status, redeemedAt: rec.redeemedAt || null, expiresAt: rec.expiresAt || null,
-    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional, retakeOpt: !!rec.retakeOpt, payOpt: !!rec.payOpt, offlineOpt: !!rec.offlineOpt, offlineOnly: !!rec.offlineOnly, appsUsed: devicesOf(rec).filter((d) => d.app).length, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0,
+    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional, gifOpt: !!rec.gifOpt, retakeOpt: !!rec.retakeOpt, payOpt: !!rec.payOpt, offlineOpt: !!rec.offlineOpt, offlineOnly: !!rec.offlineOnly, appsUsed: devicesOf(rec).filter((d) => d.app).length, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0,
     print: !!(rec.print && rec.print.enabled), createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null
   };
 }
@@ -339,6 +339,7 @@ export async function getSettings() {
     trialPrintEventLimit: 0,
     trialPrintSessionLimit: 0,
     trialTraditional: false,
+    trialGifOpt: true,
     trialRetakeOpt: false,
     trialLockOpt: false,
     qrTarget: 'gallery',
@@ -376,7 +377,7 @@ export async function checkLicense(token, deviceId) {
     if (p.exp <= now) return { valid: false, reason: 'trial-ended' };
     const s = await getSettings();
     if (!s.trialEnabled) return { valid: false, reason: 'trial-disabled' };
-    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes, { eventLimit: s.trialPrintEventLimit, sessionLimit: s.trialPrintSessionLimit }), traditional: !!s.trialTraditional, retakeOpt: !!s.trialRetakeOpt, lockOpt: !!s.trialLockOpt, pinResetAt: 0 };
+    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes, { eventLimit: s.trialPrintEventLimit, sessionLimit: s.trialPrintSessionLimit }), traditional: !!s.trialTraditional, gifOpt: s.trialGifOpt !== false, retakeOpt: !!s.trialRetakeOpt, lockOpt: !!s.trialLockOpt, pinResetAt: 0 };
   }
 
   const rec = await licenses().get(p.k, { type: 'json' });
@@ -408,6 +409,7 @@ export async function checkLicense(token, deviceId) {
     multiDevice: maxDevicesOf(rec) > 1,
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes, rec.print),
     traditional: !!rec.traditional,
+    gifOpt: !!rec.gifOpt,
     retakeOpt: !!rec.retakeOpt,
     payOpt: !!rec.payOpt,
     lockOpt: !!rec.lockOpt,

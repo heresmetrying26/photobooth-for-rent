@@ -5547,6 +5547,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var gifDurationSec = 3;      // seconds of burst frames to capture
   var gifSpeed = 1.5;          // playback multiplier (> 1 = faster/boomerang feel)
 
+  function isGifAllowed(){ return !(window.__PB) || !!(window.__PB.gifOpt); }
+
+  function refreshGifUI(){
+    var on = isGifAllowed();
+    var s = document.getElementById('gifModeSection');
+    if(s) s.style.display = on ? '' : 'none';
+    if(!on && outputMode !== 'photo'){
+      outputMode = 'photo';
+      refreshOutputModeUI();
+    }
+  }
+  window.addEventListener('pb-gif-change', refreshGifUI);
+
   function refreshOutputModeUI(){
     var chips = document.querySelectorAll('#outputModeChips .chip');
     chips.forEach(function(c){ c.classList.toggle('active', c.dataset.outmode === outputMode); });
@@ -5574,6 +5587,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(gd) gd.addEventListener('change', function(){ gifDurationSec = Number(gd.value) || 3; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
     var gs = document.getElementById('gifSpeedSelect');
     if(gs) gs.addEventListener('change', function(){ gifSpeed = Number(gs.value) || 1.5; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+    refreshGifUI();
     refreshOutputModeUI();
   })();
 
@@ -7259,10 +7273,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     renderComposite();
     updateUI();
     // ── Output mode: photo / gif / both ──
-    if(outputMode === 'gif'){
+    var curMode = isGifAllowed() ? outputMode : 'photo';
+    if(curMode === 'gif'){
       // GIF only — no photo QR
       showQRForCurrentGIF();
-    } else if(outputMode === 'both'){
+    } else if(curMode === 'both'){
       // Photo strip + GIF
       showQRForCurrentPhoto();
       showQRForCurrentGIF();
@@ -7270,7 +7285,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       showQRForCurrentPhoto();
     }
     scheduleResultReset();
-    if(!DESKTOP){ showMultipleDownloadsHint(); if(outputMode !== 'gif') saveToDevice(); }
+    if(!DESKTOP){ showMultipleDownloadsHint(); if(curMode !== 'gif') saveToDevice(); }
     maybeAutoPrint();
   }
 
@@ -12435,7 +12450,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(s.advanceMode === 'tap' || s.advanceMode === 'auto'){ advanceMode = s.advanceMode; setSelectValue('advanceSelect', s.advanceMode); refreshAdvanceUI(); }
       if(typeof s.reviewEach === 'boolean'){ reviewEach = s.reviewEach; reviewEachToggle.checked = s.reviewEach; }
       if(typeof s.allowRetake === 'boolean'){ allowRetake = s.allowRetake; try{ refreshRetakeUI(); }catch(e){} }
-      if(s.outputMode === 'gif' || s.outputMode === 'both' || s.outputMode === 'photo'){ outputMode = s.outputMode; refreshOutputModeUI(); }
+      if(s.outputMode === 'gif' || s.outputMode === 'both' || s.outputMode === 'photo'){ outputMode = isGifAllowed() ? s.outputMode : 'photo'; refreshOutputModeUI(); }
       if(typeof s.gifDurationSec === 'number'){ gifDurationSec = s.gifDurationSec; var gd = document.getElementById('gifDurationSelect'); if(gd) gd.value = String(gifDurationSec); }
       if(typeof s.gifSpeed === 'number'){ gifSpeed = s.gifSpeed; var gs = document.getElementById('gifSpeedSelect'); if(gs) gs.value = String(gifSpeed); }
       filterKey = Object.prototype.hasOwnProperty.call(FILTERS, s.filter) ? s.filter : 'none';

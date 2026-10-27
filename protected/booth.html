@@ -10117,8 +10117,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const guestSection = document.getElementById('guestSection');
   const guestStatus = document.getElementById('guestStatus');
   const guestOpenBtn = document.getElementById('guestOpenBtn');
-  let guestWin = null;
-  let G = null;            // the guest window's elements
+  // `refreshGalleryUI()` can trigger `guestRender()` during early startup,
+  // before this section has run. `var` is intentional: `let` would be in the
+  // temporal dead zone and abort initialization before the start screen binds.
+  var guestWin = null;
+  var G = null;            // the guest window's elements
   let countingDown = false;
   function isTraditional(){ return !!(window.__PB && window.__PB.traditional); }
   function guestOpen(){ return !!(guestWin && !guestWin.closed && G); }

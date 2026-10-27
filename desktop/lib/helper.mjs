@@ -3,14 +3,14 @@
 // Nikon / Canon EOS camera over USB through Windows' own camera driver (camera-worker.ps1).
 // Same endpoints as tools/print-helper/print-helper.js, served to the booth at
 // app://booth/helper/... (same origin, so no CORS or permission prompts).
-import { tmpdir, platform } from 'node:os';
+import { tmpdir, platform, release as osRelease } from 'node:os';
 import { join } from 'node:path';
 import { writeFile, rm, mkdtemp, mkdir, readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 
-export const HELPER_VERSION = '1.1.6-app';
+export const HELPER_VERSION = '1.1.7-app';
 const IS_WIN = platform() === 'win32';
 const PS = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass'];
 let WORKER_PS = '';
@@ -70,12 +70,28 @@ async function cupsPrinterOptions(printer) {
   });
 }
 
-function openWindowsPrinterPrefs(printer) {
+function launchDetached(cmd, args) {
   return new Promise((resolve) => {
-    const p = spawn('rundll32.exe', ['printui.dll,PrintUIEntry', '/e', '/n', printer], { windowsHide: true, detached: true, stdio: 'ignore' });
+    const p = spawn(cmd, args, { windowsHide: true, detached: true, stdio: 'ignore' });
     p.once('error', (e) => resolve({ ok: false, error: String(e.message || e) }));
     p.once('spawn', () => { p.unref(); resolve({ ok: true }); });
   });
+}
+
+async function openPrinterSettings(printer) {
+  if (IS_WIN) {
+    const r = await launchDetached('rundll32.exe', ['printui.dll,PrintUIEntry', '/e', '/n', printer]);
+    return r.ok ? { ok: true, message: 'Printer preferences opened. Set the loaded paper and print quality, then save or apply the changes.' } : r;
+  }
+  if (platform() === 'darwin') {
+    const modern = Number(osRelease().split('.')[0]) >= 22;
+    const app = modern ? 'System Settings' : 'System Preferences';
+    const pane = modern ? 'x-apple.systempreferences:com.apple.Print-Scan-Settings.extension' : '/System/Library/PreferencePanes/PrintAndFax.prefPane';
+    let r = await launchDetached('open', ['-a', app, pane]);
+    if (!r.ok) r = await launchDetached('open', ['-a', app]);
+    return r.ok ? { ok: true, message: app + ' opened. Select “Printers & Scanners”, then choose “' + printer + '” to review its available settings.' } : r;
+  }
+  return { ok: false, error: 'Opening printer settings is supported on Windows and Mac.' };
 }
 
 // ---------- paper sizes: tell the printer which paper to use ----------
@@ -366,6 +382,13 @@ export async function handleHelper(req, path, search) {
   if (method === 'GET' && path === '/status') {
     return json({ ok: true, app: 'photobooth4u-print-helper', builtIn: true, version: HELPER_VERSION, printers: await printers(false),
       camera: { supported: camOk(), open: !!cam.open, name: cam.open ? cam.open.name : '' } });
+  }
+  if (path === '/printer/configure' && method === 'POST') {
+    let body;
+    try { body = await req.json(); } catch { return json({ ok: false, error: 'Bad request' }, 400); }
+    const name = String(body.printer || '').trim();
+    if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);
+    return json(await openPrinterSettings(name));
   }
   if (path === '/printer/options' && method === 'GET') {
     const name = String(search.get('printer') || '').trim();

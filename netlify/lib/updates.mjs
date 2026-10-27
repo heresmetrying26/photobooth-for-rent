@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.13', date: '2026-10-27' },
   { version: '1.0.12', date: '2026-10-27' },
   { version: '1.0.11', date: '2026-10-27' },
   { version: '1.0.10', date: '2026-10-26' },
@@ -58,6 +59,12 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-27', title: 'Open Mac printer settings', for: ['app'], app: '1.0.13',
+    items: [
+      'The desktop app now opens macOS Printers & Scanners for the selected printer instead of showing raw numeric driver option values.'
+    ]
+  },
   {
     date: '2026-10-27', title: 'Open printer settings from the web booth', for: ['website', 'helper'], helper: '1.1.7',
     items: [

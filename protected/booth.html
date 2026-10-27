@@ -9159,26 +9159,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const name=printerFor(printSize); if(!name) return showToast('Choose a printer first.',3000);
       printerSetupBtn.disabled=true; printerOptionsBox.style.display='block'; printerOptionsBox.textContent='Loading printer settings?';
       try{
-        if(!DESKTOP){
-          const rr=await fetch(HELPER_URL+'/printer/configure',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({printer:name})}); const jj=await rr.json();
-          if(!rr.ok||!jj.ok) throw new Error(jj.error||'Could not open printer settings.');
-          printerOptionsBox.textContent=jj.message||'Printer settings opened. Choose the loaded paper and desired print quality, then save or apply.';
-          return;
-        }
-        const r=await fetch(HELPER_URL+'/printer/options?printer='+encodeURIComponent(name),{cache:'no-store'}); const j=await r.json();
-        if(!r.ok||!j.ok) throw new Error(j.error||'Could not load printer settings.');
-        if(j.platformDialog){
-          const rr=await fetch(HELPER_URL+'/printer/options',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({printer:name})}); const jj=await rr.json();
-          if(!rr.ok||!jj.ok) throw new Error(jj.error||'Could not open printer settings.');
-          printerOptionsBox.textContent='Printer settings opened. Choose the loaded paper type and desired print quality, save/apply, then return here. The driver will use these defaults for later booth prints.'; return;
-        }
-        printerOptionsBox.innerHTML='';
-        const intro=document.createElement('p'); intro.className='panel-hint'; intro.textContent='Match Media Type to the paper loaded, then choose the desired quality. Options come from this printer?s driver.'; printerOptionsBox.appendChild(intro);
-        const fields=[];
-        (j.options||[]).forEach(function(option){const row=document.createElement('label');row.style.cssText='display:block;margin:8px 0;font-size:13px;font-weight:700';row.textContent=option.label+' ';const select=document.createElement('select');select.className='printer-input';select.dataset.option=option.key;(option.choices||[]).forEach(function(choice){const o=document.createElement('option');o.value=choice.value;o.textContent=choice.value;if(choice.selected)o.selected=true;select.appendChild(o);});row.appendChild(select);printerOptionsBox.appendChild(row);fields.push(select);});
-        if(!fields.length){printerOptionsBox.textContent='This driver exposes no settings here.';return;}
-        const save=document.createElement('button');save.type='button';save.className='action-btn';save.textContent='Save settings for this printer';save.style.cssText='width:auto;margin-top:8px';
-        save.addEventListener('click',async function(){save.disabled=true;try{const options={};fields.forEach(x=>options[x.dataset.option]=x.value);const rr=await fetch(HELPER_URL+'/printer/options',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({printer:name,options})});const jj=await rr.json();if(!rr.ok||!jj.ok)throw new Error(jj.error||'Could not save settings.');showToast('Printer settings saved. Later prints will use these options.',4500);}catch(e){showToast(e.message||'Could not save printer settings.',5000);}finally{save.disabled=false;}});printerOptionsBox.appendChild(save);
+        const rr=await fetch(HELPER_URL+'/printer/configure',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({printer:name})}); const jj=await rr.json();
+        if(!rr.ok||!jj.ok) throw new Error(jj.error||'Could not open printer settings.');
+        printerOptionsBox.textContent=jj.message||'Printer settings opened. Choose the loaded paper and desired print quality, then save or apply.';
       }catch(e){printerOptionsBox.textContent=e.message||'Could not open printer settings.';}
       finally{printerSetupBtn.disabled=false;}
     });

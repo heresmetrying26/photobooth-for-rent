@@ -9995,7 +9995,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Very narrow sheets (like 2x6) only suit the tall strip; the grid would print tiny.
   function sizeFitsLayout(key){
     const p = paperFor(key);
-    if(isReceiptPaper(key)) return layoutDef().kind === 'receipt';       // receipt rolls: receipt layouts only
+    if(isReceiptPaper(key)) return true;       // thermal rolls: scale receipts, strips, and any layout to roll width
     if(layoutDef().kind === 'receipt') return true;
     if(currentLayout === 'framesheet' && p.w / p.h < 0.45) return sheetStripItems().length > 0;
     return isStripLayout() || p.w / p.h >= 0.45;
@@ -10139,13 +10139,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       b.dataset.size = key;
       b.textContent = paperFor(key).name;
       b.disabled = !sizeFitsLayout(key);
-      if(b.disabled) b.title = isReceiptPaper(key) ? 'Receipt paper: pick a Receipt layout' : 'Too narrow for this layout \u2014 strips only';
+      if(b.disabled) b.title = 'Too narrow for this layout \u2014 strips only';
       printSizeRow.appendChild(b);
     });
     const ready = state === 'result' && shotCanvases.every(Boolean);
     printBtn.disabled = !ready || !printSize || printing;
     if(!printSize){
-      printHint.textContent = sizes.every(isReceiptPaper) ? 'Receipt paper only prints the Receipt layouts. Pick Receipt in Setup \u2192 Layout.' : 'This paper is too narrow for this layout. Pick a strip layout to print.';
+      printHint.textContent = 'Pick a paper size above to print.';
     } else if(!ready){
       printHint.textContent = 'Finish a photo session to print it.';
     } else if(keychainMode(printSize)){

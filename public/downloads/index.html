@@ -62,10 +62,31 @@
       <article class="platform"><span class="tag">Windows 10 / 11</span><h3>Windows</h3><p>Direct printing and supported camera connection · version 1.1.7</p><a class="download" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/print-helper-v1.1.7/photobooth4u-print-helper-windows.zip">Download helper</a></article>
     </div>
     <div class="guide-grid" style="margin-top:14px">
-      <article class="guide"><h3>Set up printing</h3><ol><li>Install the printer’s manufacturer driver and make a test print from the computer.</li><li>Open the booth’s printer settings action to configure that printer’s own paper, quality, and media options.</li><li>In the booth, select a printer for each paper size and test a print. Enable automatic printing only when the test looks right.</li><li>For two sizes on one printer, add it twice in your computer’s printer settings and save separate defaults with clear names.</li></ol><p style="margin:14px 0 0"><a href="/how-to-print-dnp/">DNP printer guide →</a> &nbsp; <a href="/how-to-print-hiti/">HiTi printer guide →</a></p></article>
+      <article class="guide"><h3>Set up printing</h3><ol><li>Install the printer’s manufacturer driver and make a test print from the computer.</li><li>Open the booth’s printer settings action to configure that printer’s own paper, quality, and media options.</li><li>In the booth, select a printer for each paper size and test a print. Enable automatic printing only when the test looks right.</li><li>For 80 mm Bluetooth thermal printers (Xprinter XP-80C, Epson TM-T82X), pair via Bluetooth and add as a system printer. On tablets, connect directly over Bluetooth or use the Android kiosk wrapper.</li><li>For two sizes on one printer, add it twice in your computer’s printer settings and save separate defaults with clear names.</li></ol><p style="margin:14px 0 0"><a href="/how-to-print-dnp/">DNP printer guide →</a> &nbsp; <a href="/how-to-print-hiti/">HiTi printer guide →</a></p></article>
       <article class="guide"><h3>Start the helper</h3><ol><li>Download and unzip the matching helper build.</li><li>On Mac, right-click the app and choose <b>Open</b> the first time; approve it in Privacy &amp; Security if prompted.</li><li>On Windows, choose <b>More info → Run anyway</b> if SmartScreen appears.</li><li>Keep its window open. In the booth, enable <b>Print Helper on this computer</b> and allow local network access if your browser asks.</li></ol></article>
     </div>
     <article class="camera"><h3>Using a camera over USB?</h3><p>USB camera support depends on the computer, camera model, and browser.</p><ul><li>On Mac and Android, connect the camera and choose it in the booth’s Camera menu when the browser supports it.</li><li>On Windows, the helper supports Nikon and Canon EOS cameras. Close EOS Utility before using a Canon camera; older Canon models may need Live View enabled.</li><li><a href="/camera-test/">Test your camera</a> before the event. For Windows cameras, use the <a href="/camera-test/windows/">Windows camera test</a>.</li></ul></article>
+  </section>
+  <section id="android-builds">
+    <div class="section-head"><h2>Android tablet app (Kiosk &amp; Offline)</h2><p>Dedicated tablet app with Bluetooth thermal receipt printing.</p></div>
+    <div class="helper" style="background:#f4fbf7;border-color:#d4eedd;">
+      <div>
+        <span class="tag" style="background:#e0f5e8;color:#21764d;">Android 7.0+ · Tablet APK</span>
+        <h3>Full-screen booth &amp; direct Bluetooth thermal printing</h3>
+        <p>Locked-down event kiosk mode: keeps the tablet screen awake, hides navigation bars, auto-grants camera access, and connects directly to 80 mm and 58 mm Bluetooth thermal receipt printers (Xprinter, Epson, Star, POS-80) without a print dialog. Unlocks with your normal access code and keeps running offline at the venue.</p>
+      </div>
+      <a class="download" style="background:#21764d;" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/android-v1.0.0/photobooth4u-kiosk-android.apk">Download APK</a>
+    </div>
+    <div class="install">
+      <div class="callout">
+        <b>Using with your access code</b>
+        <p>The Android app works with your standard photobooth4u rental code, password, or lifetime code. Unlock once (with Wi-Fi or phone hotspot) before the event; after that, the booth and Bluetooth thermal printing continue working completely offline.</p>
+      </div>
+      <div class="callout">
+        <b>Installing on Android</b>
+        <p>Download the APK on your tablet, tap it in your notifications or Files app, and choose <b>Install</b>. If prompted, allow "Install unknown apps" for your browser or file manager.</p>
+      </div>
+    </div>
   </section>
   <footer><span>photobooth4u · Operator &amp; companion tools</span><span><a href="/">Back to photobooth4u</a></span></footer>
 </main>
@@ -79,6 +100,7 @@
     const platform = navigator.userAgentData && navigator.userAgentData.platform || navigator.platform || '';
     const isMac = /mac/i.test(platform) || /Macintosh|Mac OS X/i.test(ua);
     const isWindows = /win/i.test(platform) || /Windows/i.test(ua);
+    const isAndroid = /android/i.test(platform) || /Android/i.test(ua);
     function setMac(arch){
       if(!arch){ hero.href = '#desktop-builds'; title.textContent = 'Choose your Mac build'; text.textContent = 'Choose Apple Silicon or Intel'; detected.textContent = 'Mac detected · choose the processor build below'; return; }
       const arm = /arm|aarch64/i.test(arch || '');
@@ -87,18 +109,24 @@
       text.textContent = arm ? 'Download for Apple Silicon' : 'Download for Mac Intel';
       detected.textContent = arm ? 'Detected Apple Silicon Mac' : 'For an Intel Mac · check About This Mac if unsure';
     }
-    if(isMac){
+    if(isAndroid){
+      hero.href = 'https://github.com/heresmetrying26/photobooth-for-rent/releases/download/android-v1.0.0/photobooth4u-kiosk-v1.0.0.apk';
+      title.textContent = 'Android tablet app';
+      text.textContent = 'Download APK for Android';
+      detected.textContent = 'Detected Android device · Bluetooth thermal printing ready';
+    } else if(isMac){
       const uaArch = navigator.userAgentData && navigator.userAgentData.getHighEntropyValues;
       if(uaArch) uaArch.call(navigator.userAgentData,['architecture']).then(v => setMac(v.architecture)).catch(() => setMac(null));
       else setMac(null);
     } else if(isWindows){
       hero.href = 'https://github.com/heresmetrying26/photobooth-for-rent/releases/download/desktop-v1.0.13/photobooth4u-1.0.13-windows-x64.exe';
       title.textContent = 'Windows desktop app'; text.textContent = 'Download for Windows'; detected.textContent = 'Detected Windows computer';
-    } else { detected.textContent = 'Choose a desktop installer below'; }
+    } else { detected.textContent = 'Choose a desktop or tablet installer below'; }
     document.querySelector('details.checks').addEventListener('toggle', async function(){
       if(!this.open || this.dataset.loaded) return; this.dataset.loaded = '1';
       const list = document.getElementById('checksumList');
       const releases = [
+        {tag:'android-v1.0.0', label:'Android Tablet Kiosk v1.0.0'},
         {tag:'desktop-v1.0.13', label:'Desktop app v1.0.13'},
         {tag:'print-helper-v1.1.7', label:'Print Helper v1.1.7'}
       ];

@@ -23,7 +23,7 @@ import { writeFile, rm, mkdtemp, mkdir, readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.7';
+const VERSION = '1.1.8';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',
@@ -62,6 +62,18 @@ async function listPrinters(){
   return r.out.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
 }
 
+async function openBluetoothSettings(){
+  if(IS_WIN){
+    const r = await launchDetached('cmd.exe', ['/c', 'start', '', 'ms-settings:bluetooth']);
+    return r.ok ? { ok: true, message: 'Bluetooth settings opened. Pair the printer, then add it in Printers & scanners so it appears in the printer list.' } : r;
+  }
+  if(IS_MAC){
+    const r = await launchDetached('open', ['x-apple.systempreferences:com.apple.BluetoothSettings']);
+    return r.ok ? { ok: true, message: 'Bluetooth settings opened. Pair the printer, then add it in Printers & Scanners so it appears in the printer list.' } : r;
+  }
+  return { ok: false, error: 'Opening Bluetooth settings is supported on Windows and Mac.' };
+}
+
 // Windows: draw each PNG onto the full page of the named printer, turning it
 // 90° when the printer's page is the other way round (e.g. a 6x4 driver page).
 // ---------- paper sizes: tell the printer which paper to use ----------
@@ -70,7 +82,8 @@ async function listPrinters(){
 // and pick the one that matches the booth's paper size (borderless if it has it).
 const PAPER_CACHE = new Map();
 const PAPER_NAMES = { a3: [297, 420], a4: [210, 297], a5: [148, 210], a6: [105, 148], letter: [215.9, 279.4], legal: [215.9, 355.6],
-  postcard: [100, 148], hagaki: [100, 148], l: [89, 127], '2l': [127, 178], kg: [102, 152], '4r': [102, 152], '5r': [127, 178], '6r': [152, 203], '8r': [203, 254], '3r': [89, 127] };
+  postcard: [100, 148], hagaki: [100, 148], l: [89, 127], '2l': [127, 178], kg: [102, 152], '4r': [102, 152], '5r': [127, 178], '6r': [152, 203], '8r': [203, 254], '3r': [89, 127],
+  '80mm': [80, 297], '58mm': [58, 210], roll80: [80, 297], roll58: [58, 210], receipt80: [80, 297], receipt58: [58, 210] };
 function sizeFromName(key) {
   const k = String(key).toLowerCase();
   let m = /^w(\d+(?:\.\d+)?)h(\d+(?:\.\d+)?)/.exec(k);           // CUPS style: width and height in points
@@ -442,7 +455,7 @@ const server = Bun.serve({
     if(req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(origin) });
 
     if(req.method === 'GET' && url.pathname === '/status'){
-      return json({ ok: true, app: 'photobooth4u-print-helper', version: VERSION, printers: await printers(false),
+      return json({ ok: true, app: 'photobooth4u-print-helper', version: VERSION, printers: await printers(url.searchParams.get('refresh') === '1'),
         camera: { supported: CAMERA_OK, open: !!cam.open, name: cam.open ? cam.open.name : '' } }, 200, origin);
     }
 
@@ -512,6 +525,11 @@ const server = Bun.serve({
       if(!list.includes(name)) list = await printers(true);
       if(!list.includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404, origin);
       const result = await openPrinterSettings(name);
+      return json(result, result.ok ? 200 : 500, origin);
+    }
+    if(req.method === 'POST' && url.pathname === '/printer/bluetooth'){
+      if(!origin) return json({ ok: false, error: 'Missing origin' }, 403);
+      const result = await openBluetoothSettings();
       return json(result, result.ok ? 200 : 500, origin);
     }
     if(req.method === 'POST' && url.pathname === '/print'){

@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 
-export const HELPER_VERSION = '1.1.7-app';
+export const HELPER_VERSION = '1.1.8-app';
 const IS_WIN = platform() === 'win32';
 const PS = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass'];
 let WORKER_PS = '';
@@ -94,13 +94,26 @@ async function openPrinterSettings(printer) {
   return { ok: false, error: 'Opening printer settings is supported on Windows and Mac.' };
 }
 
+async function openBluetoothSettings() {
+  if (IS_WIN) {
+    const r = await launchDetached('cmd.exe', ['/c', 'start', '', 'ms-settings:bluetooth']);
+    return r.ok ? { ok: true, message: 'Bluetooth settings opened. Pair the printer, then add it in Printers & scanners so it appears in the printer list.' } : r;
+  }
+  if (platform() === 'darwin') {
+    const r = await launchDetached('open', ['x-apple.systempreferences:com.apple.BluetoothSettings']);
+    return r.ok ? { ok: true, message: 'Bluetooth settings opened. Pair the printer, then add it in Printers & Scanners so it appears in the printer list.' } : r;
+  }
+  return { ok: false, error: 'Opening Bluetooth settings is supported on Windows and Mac.' };
+}
+
 // ---------- paper sizes: tell the printer which paper to use ----------
 // Without this, the printer uses its own default paper (often A4 or Letter),
 // so a 4R photo came out on A4. We look up the paper sizes the printer offers
 // and pick the one that matches the booth's paper size (borderless if it has it).
 const PAPER_CACHE = new Map();
 const PAPER_NAMES = { a3: [297, 420], a4: [210, 297], a5: [148, 210], a6: [105, 148], letter: [215.9, 279.4], legal: [215.9, 355.6],
-  postcard: [100, 148], hagaki: [100, 148], l: [89, 127], '2l': [127, 178], kg: [102, 152], '4r': [102, 152], '5r': [127, 178], '6r': [152, 203], '8r': [203, 254], '3r': [89, 127] };
+  postcard: [100, 148], hagaki: [100, 148], l: [89, 127], '2l': [127, 178], kg: [102, 152], '4r': [102, 152], '5r': [127, 178], '6r': [152, 203], '8r': [203, 254], '3r': [89, 127],
+  '80mm': [80, 297], '58mm': [58, 210], roll80: [80, 297], roll58: [58, 210], receipt80: [80, 297], receipt58: [58, 210] };
 function sizeFromName(key) {
   const k = String(key).toLowerCase();
   let m = /^w(\d+(?:\.\d+)?)h(\d+(?:\.\d+)?)/.exec(k);           // CUPS style: width and height in points
@@ -380,7 +393,7 @@ let printQueue = Promise.resolve();
 export async function handleHelper(req, path, search) {
   const method = req.method;
   if (method === 'GET' && path === '/status') {
-    return json({ ok: true, app: 'photobooth4u-print-helper', builtIn: true, version: HELPER_VERSION, printers: await printers(false),
+    return json({ ok: true, app: 'photobooth4u-print-helper', builtIn: true, version: HELPER_VERSION, printers: await printers(search.get('refresh') === '1'),
       camera: { supported: camOk(), open: !!cam.open, name: cam.open ? cam.open.name : '' } });
   }
   if (path === '/printer/configure' && method === 'POST') {
@@ -390,6 +403,7 @@ export async function handleHelper(req, path, search) {
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);
     return json(await openPrinterSettings(name));
   }
+  if (path === '/printer/bluetooth' && method === 'POST') return json(await openBluetoothSettings());
   if (path === '/printer/options' && method === 'GET') {
     const name = String(search.get('printer') || '').trim();
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);

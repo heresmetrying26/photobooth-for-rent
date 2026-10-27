@@ -2043,6 +2043,400 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 <script>/* gifenc 1.0.3 (MIT, Matt DesLauriers) — makes the session GIF on this device. */
 var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!0}),((t,r)=>{for(var n in r)e(t,n,{get:r[n],enumerable:!0})})(t,{GIFEncoder:()=>C,applyPalette:()=>p,default:()=>F,nearestColor:()=>k,nearestColorIndex:()=>M,nearestColorIndexWithDistance:()=>v,prequantize:()=>b,quantize:()=>w,snapColorsToPalette:()=>d});var r={signature:"GIF",version:"89a",trailer:59,extensionIntroducer:33,applicationExtensionLabel:255,graphicControlExtensionLabel:249,imageSeparator:44,signatureSize:3,versionSize:3,globalColorTableFlagMask:128,colorResolutionMask:112,sortFlagMask:8,globalColorTableSizeMask:7,applicationIdentifierSize:8,applicationAuthCodeSize:3,disposalMethodMask:28,userInputFlagMask:2,transparentColorFlagMask:1,localColorTableFlagMask:128,interlaceFlagMask:64,idSortFlagMask:32,localColorTableSizeMask:7};function n(t=256){let e=0,r=new Uint8Array(t);return{get buffer(){return r.buffer},reset(){e=0},bytesView:()=>r.subarray(0,e),bytes:()=>r.slice(0,e),writeByte(t){n(e+1),r[e]=t,e++},writeBytes(t,o=0,a=t.length){n(e+a);for(let n=0;n<a;n++)r[e++]=t[n+o]},writeBytesView(t,o=0,a=t.byteLength){n(e+a),r.set(t.subarray(o,o+a),e),e+=a}};function n(t){var n=r.length;if(n>=t)return;t=Math.max(t,n*(n<1048576?2:1.125)>>>0),0!=n&&(t=Math.max(t,256));const o=r;r=new Uint8Array(t),e>0&&r.set(o.subarray(0,e),0)}}var o=[0,1,3,7,15,31,63,127,255,511,1023,2047,4095,8191,16383,32767,65535];var a=function(t,e,r,a,i=n(512),c=new Uint8Array(256),l=new Int32Array(5003),f=new Int32Array(5003)){const s=l.length,u=Math.max(2,a);c.fill(0),f.fill(0),l.fill(-1);let w=0,y=0;const g=u+1,h=g;let b=!1,p=h,B=(1<<p)-1;const m=1<<g-1,d=m+1;let A=m+2,M=0,v=r[0],k=0;for(let t=s;t<65536;t*=2)++k;k=8-k,i.writeByte(u),U(m);const C=r.length;for(let t=1;t<C;t++)t:{const e=r[t],n=(e<<12)+v;let o=e<<k^v;if(l[o]===n){v=f[o];break t}const a=0===o?1:s-o;for(;l[o]>=0;)if(o-=a,o<0&&(o+=s),l[o]===n){v=f[o];break t}U(v),v=e,A<4096?(f[o]=A++,l[o]=n):(l.fill(-1),A=m+2,b=!0,U(m))}return U(v),U(d),i.writeByte(0),i.bytesView();function U(t){for(w&=o[y],y>0?w|=t<<y:w=t,y+=p;y>=8;)c[M++]=255&w,M>=254&&(i.writeByte(M),i.writeBytesView(c,0,M),M=0),w>>=8,y-=8;if((A>B||b)&&(b?(p=h,B=(1<<p)-1,b=!1):(++p,B=12===p?1<<p:(1<<p)-1)),t==d){for(;y>0;)c[M++]=255&w,M>=254&&(i.writeByte(M),i.writeBytesView(c,0,M),M=0),w>>=8,y-=8;M>0&&(i.writeByte(M),i.writeBytesView(c,0,M),M=0)}}};function i(t,e,r){return t<<8&63488|e<<2&992|r>>3}function c(t,e,r,n){return t>>4|240&e|(240&r)<<4|(240&n)<<8}function l(t,e,r){return t>>4<<8|240&e|r>>4}function f(t,e,r){return t<e?e:t>r?r:t}function s(t){return t*t}function u(t,e,r){var n=0,o=1e100;const a=t[e],i=a.cnt,c=a.ac,l=a.rc,f=a.gc,u=a.bc;for(var w=a.fw;0!=w;w=t[w].fw){const e=t[w],a=e.cnt,g=i*a/(i+a);if(!(g>=o)){var y=0;r&&(y+=g*s(e.ac-c))>=o||(y+=g*s(e.rc-l))>=o||(y+=g*s(e.gc-f))>=o||(y+=g*s(e.bc-u))>=o||(o=y,n=w)}}a.err=o,a.nn=n}function w(t,e,r={}){const{format:n="rgb565",clearAlpha:o=!0,clearAlphaColor:a=0,clearAlphaThreshold:w=0,oneBitAlpha:g=!1}=r;if(!t||!t.buffer)throw new Error("quantize() expected RGBA Uint8Array data");if(!(t instanceof Uint8Array||t instanceof Uint8ClampedArray))throw new Error("quantize() expected RGBA Uint8Array data");const h=new Uint32Array(t.buffer);let b=!1!==r.useSqrt;const p="rgba4444"===n,B=function(t,e){const r=new Array("rgb444"===e?4096:65536),n=t.length;if("rgba4444"===e)for(let e=0;e<n;++e){const n=t[e],o=n>>24&255,a=n>>16&255,i=n>>8&255,l=255&n,f=c(l,i,a,o);let s=f in r?r[f]:r[f]={ac:0,rc:0,gc:0,bc:0,cnt:0,nn:0,fw:0,bk:0,tm:0,mtm:0,err:0};s.rc+=l,s.gc+=i,s.bc+=a,s.ac+=o,s.cnt++}else if("rgb444"===e)for(let e=0;e<n;++e){const n=t[e],o=n>>16&255,a=n>>8&255,i=255&n,c=l(i,a,o);let f=c in r?r[c]:r[c]={ac:0,rc:0,gc:0,bc:0,cnt:0,nn:0,fw:0,bk:0,tm:0,mtm:0,err:0};f.rc+=i,f.gc+=a,f.bc+=o,f.cnt++}else for(let e=0;e<n;++e){const n=t[e],o=n>>16&255,a=n>>8&255,c=255&n,l=i(c,a,o);let f=l in r?r[l]:r[l]={ac:0,rc:0,gc:0,bc:0,cnt:0,nn:0,fw:0,bk:0,tm:0,mtm:0,err:0};f.rc+=c,f.gc+=a,f.bc+=o,f.cnt++}return r}(h,n),m=B.length,d=m-1,A=new Uint32Array(m+1);for(var M=0,v=0;v<m;++v){const t=B[v];if(null!=t){var k=1/t.cnt;p&&(t.ac*=k),t.rc*=k,t.gc*=k,t.bc*=k,B[M++]=t}}s(e)/M<.022&&(b=!1);var C,U,x;for(v=0;v<M-1;++v)B[v].fw=v+1,B[v+1].bk=v,b&&(B[v].cnt=Math.sqrt(B[v].cnt));for(b&&(B[v].cnt=Math.sqrt(B[v].cnt)),v=0;v<M;++v){u(B,v,!1);var I=B[v].err;for(U=++A[0];U>1&&!(B[C=A[x=U>>1]].err<=I);U=x)A[U]=C;A[U]=v}var z=M-e;for(v=0;v<z;){for(var F;;){var E=A[1];if((F=B[E]).tm>=F.mtm&&B[F.nn].mtm<=F.tm)break;F.mtm==d?E=A[1]=A[A[0]--]:(u(B,E,!1),F.tm=v);I=B[E].err;for(U=1;(x=U+U)<=A[0]&&(x<A[0]&&B[A[x]].err>B[A[x+1]].err&&x++,!(I<=B[C=A[x]].err));U=x)A[U]=C;A[U]=E}var S=B[F.nn],q=F.cnt,G=S.cnt;k=1/(q+G);p&&(F.ac=k*(q*F.ac+G*S.ac)),F.rc=k*(q*F.rc+G*S.rc),F.gc=k*(q*F.gc+G*S.gc),F.bc=k*(q*F.bc+G*S.bc),F.cnt+=S.cnt,F.mtm=++v,B[S.bk].fw=S.fw,B[S.fw].bk=S.bk,S.mtm=d}let V=[];var T=0;for(v=0;;++T){let t=f(Math.round(B[v].rc),0,255),e=f(Math.round(B[v].gc),0,255),r=f(Math.round(B[v].bc),0,255),n=255;if(p){if(n=f(Math.round(B[v].ac),0,255),g){n=n<=("number"==typeof g?g:127)?0:255}o&&n<=w&&(t=e=r=a,n=0)}const i=p?[t,e,r,n]:[t,e,r];if(y(V,i)||V.push(i),0==(v=B[v].fw))break}return V}function y(t,e){for(let r=0;r<t.length;r++){const n=t[r];let o=n[0]===e[0]&&n[1]===e[1]&&n[2]===e[2],a=!(n.length>=4&&e.length>=4)||n[3]===e[3];if(o&&a)return!0}return!1}function g(t,e){var r,n=0;for(r=0;r<t.length;r++){const o=t[r]-e[r];n+=o*o}return n}function h(t,e){return e>1?Math.round(t/e)*e:t}function b(t,{roundRGB:e=5,roundAlpha:r=10,oneBitAlpha:n=null}={}){const o=new Uint32Array(t.buffer);for(let t=0;t<o.length;t++){const a=o[t];let i=a>>24&255,c=a>>16&255,l=a>>8&255,f=255&a;if(i=h(i,r),n){i=i<=("number"==typeof n?n:127)?0:255}f=h(f,e),l=h(l,e),c=h(c,e),o[t]=i<<24|c<<16|l<<8|f}}function p(t,e,r="rgb565"){if(!t||!t.buffer)throw new Error("quantize() expected RGBA Uint8Array data");if(!(t instanceof Uint8Array||t instanceof Uint8ClampedArray))throw new Error("quantize() expected RGBA Uint8Array data");if(e.length>256)throw new Error("applyPalette() only works with 256 colors or less");const n=new Uint32Array(t.buffer),o=n.length,a="rgb444"===r?4096:65536,f=new Uint8Array(o),s=new Array(a);if("rgba4444"===r)for(let t=0;t<o;t++){const r=n[t],o=r>>24&255,a=r>>16&255,i=r>>8&255,l=255&r,u=c(l,i,a,o),w=u in s?s[u]:s[u]=B(l,i,a,o,e);f[t]=w}else{const t="rgb444"===r?l:i;for(let r=0;r<o;r++){const o=n[r],a=o>>16&255,i=o>>8&255,c=255&o,l=t(c,i,a),u=l in s?s[l]:s[l]=m(c,i,a,e);f[r]=u}}return f}function B(t,e,r,n,o){let a=0,i=1e100;for(let c=0;c<o.length;c++){const l=o[c];let f=A(l[3]-n);if(f>i)continue;if(f+=A(l[0]-t),f>i)continue;if(f+=A(l[1]-e),f>i)continue;f+=A(l[2]-r),f>i||(i=f,a=c)}return a}function m(t,e,r,n){let o=0,a=1e100;for(let i=0;i<n.length;i++){const c=n[i];let l=A(c[0]-t);if(l>a)continue;if(l+=A(c[1]-e),l>a)continue;l+=A(c[2]-r),l>a||(a=l,o=i)}return o}function d(t,e,r=5){if(!t.length||!e.length)return;const n=t.map((t=>t.slice(0,3))),o=r*r,a=t[0].length;for(let r=0;r<e.length;r++){let i=e[r];i=i.length<a?[i[0],i[1],i[2],255]:i.length>a?i.slice(0,3):i.slice();const c=v(n,i.slice(0,3),g),l=c[0],f=c[1];f>0&&f<=o&&(t[l]=i)}}function A(t){return t*t}function M(t,e,r=g){let n=1/0,o=-1;for(let a=0;a<t.length;a++){const i=r(e,t[a]);i<n&&(n=i,o=a)}return o}function v(t,e,r=g){let n=1/0,o=-1;for(let a=0;a<t.length;a++){const i=r(e,t[a]);i<n&&(n=i,o=a)}return[o,n]}function k(t,e,r=g){return t[M(t,e,r)]}function C(t={}){const{initialCapacity:e=4096,auto:o=!0}=t,i=n(e),c=new Uint8Array(256),l=new Int32Array(5003),f=new Int32Array(5003);let s=!1;return{reset(){i.reset(),s=!1},finish(){i.writeByte(r.trailer)},bytes:()=>i.bytes(),bytesView:()=>i.bytesView(),get buffer(){return i.buffer},get stream(){return i},writeHeader:u,writeFrame(t,e,r,n={}){const{transparent:w=!1,transparentIndex:y=0,delay:g=0,palette:h=null,repeat:b=0,colorDepth:p=8,dispose:B=-1}=n;let m=!1;if(o?s||(m=!0,u(),s=!0):m=Boolean(n.first),e=Math.max(0,Math.floor(e)),r=Math.max(0,Math.floor(r)),m){if(!h)throw new Error("First frame must include a { palette } option");!function(t,e,r,n,o=8){const a=1,i=0,c=z(n.length)-1,l=a<<7|o-1<<4|i<<3|c,f=0,s=0;x(t,e),x(t,r),t.writeBytes([l,f,s])}(i,e,r,h,p),U(i,h),b>=0&&function(t,e){t.writeByte(33),t.writeByte(255),t.writeByte(11),I(t,"NETSCAPE2.0"),t.writeByte(3),t.writeByte(1),x(t,e),t.writeByte(0)}(i,b)}const d=Math.round(g/10);!function(t,e,r,n,o){t.writeByte(33),t.writeByte(249),t.writeByte(4),o<0&&(o=0,n=!1);var a,i;n?(a=1,i=2):(a=0,i=0);e>=0&&(i=7&e);i<<=2;const c=0;t.writeByte(i|c|a),x(t,r),t.writeByte(o||0),t.writeByte(0)}(i,B,d,w,y);const A=Boolean(h)&&!m;!function(t,e,r,n){if(t.writeByte(44),x(t,0),x(t,0),x(t,e),x(t,r),n){const e=0,r=0,o=z(n.length)-1;t.writeByte(128|e|r|o)}else t.writeByte(0)}(i,e,r,A?h:null),A&&U(i,h),function(t,e,r,n,o=8,i,c,l){a(r,n,e,o,t,i,c,l)}(i,t,e,r,p,c,l,f)}};function u(){I(i,"GIF89a")}}function U(t,e){const r=1<<z(e.length);for(let n=0;n<r;n++){let r=[0,0,0];n<e.length&&(r=e[n]),t.writeByte(r[0]),t.writeByte(r[1]),t.writeByte(r[2])}}function x(t,e){t.writeByte(255&e),t.writeByte(e>>8&255)}function I(t,e){for(var r=0;r<e.length;r++)t.writeByte(e.charCodeAt(r))}function z(t){return Math.max(Math.ceil(Math.log2(t)),1)}var F=C;return t}();
 </script>
+<!-- Bluetooth thermal receipt printer (tablet path) -->
+<script>
+/**
+ * bt-thermal.mjs — Bluetooth thermal receipt printer for tablet / mobile.
+ *
+ * Supports:
+ *   • Android native bridge: window.__BTBridge injected by the Android wrapper (RFCOMM SPP)
+ *   • Android Chrome (Web Bluetooth): BLE serial / SPP GATT services
+ *   • iOS 16+ (Safari / Bluefy / WebBLE): Web Bluetooth LE (Epson TM-m30III, Star, Nordic UART, ISSC)
+ *   • Laptop browser direct Web Bluetooth (when available)
+ */
+(function(global) {
+  'use strict';
+
+  var ESC = 0x1B, GS = 0x1D, LF = 0x0A;
+  var PAPER_WIDTHS = { '80mm': 576, '58mm': 384 };
+
+  function EscPosEncoder(paperWidth) {
+    this._w   = paperWidth || 576;
+    this._buf = [];
+  }
+  EscPosEncoder.prototype._byte = function() {
+    for (var i = 0; i < arguments.length; i++) this._buf.push(arguments[i] & 0xFF);
+    return this;
+  };
+  EscPosEncoder.prototype.initialize = function() {
+    return this._byte(ESC, 0x40);
+  };
+  EscPosEncoder.prototype.feed = function(n) {
+    n = n || 1;
+    for (var i = 0; i < n; i++) this._buf.push(LF);
+    return this;
+  };
+  EscPosEncoder.prototype.cut = function(partial) {
+    this.feed(3);
+    return this._byte(GS, 0x56, partial ? 0x42 : 0x41, 0x00);
+  };
+
+  EscPosEncoder.prototype.image = function(canvas, maxBandHeight) {
+    var ctx  = canvas.getContext('2d');
+    var W    = canvas.width, H = canvas.height;
+    var byteW = Math.ceil(W / 8);
+    maxBandHeight = maxBandHeight || 256;
+
+    var imgData = ctx.getImageData(0, 0, W, H).data;
+
+    for (var startY = 0; startY < H; startY += maxBandHeight) {
+      var bandH = Math.min(maxBandHeight, H - startY);
+      this._byte(GS, 0x76, 0x30, 0x00);
+      this._byte(byteW & 0xFF, (byteW >> 8) & 0xFF);
+      this._byte(bandH & 0xFF, (bandH >> 8) & 0xFF);
+
+      for (var y = 0; y < bandH; y++) {
+        var srcY = startY + y;
+        for (var bx = 0; bx < byteW; bx++) {
+          var byte = 0;
+          for (var bit = 0; bit < 8; bit++) {
+            var x = bx * 8 + bit;
+            if (x < W) {
+              var idx = (srcY * W + x) * 4;
+              var lum = 0.299 * imgData[idx] + 0.587 * imgData[idx + 1] + 0.114 * imgData[idx + 2];
+              if (lum < 128) byte |= (0x80 >> bit);
+            }
+          }
+          this._buf.push(byte);
+        }
+      }
+    }
+    return this;
+  };
+
+  EscPosEncoder.prototype.getBuffer = function() {
+    return new Uint8Array(this._buf);
+  };
+
+  function toReceiptCanvas(src, dotW) {
+    dotW = dotW || 576;
+    var scale = dotW / src.width;
+    var dotH  = Math.max(1, Math.round(src.height * scale));
+    var dst   = document.createElement('canvas');
+    dst.width = dotW; dst.height = dotH;
+    var ctx = dst.getContext('2d');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, dotW, dotH);
+    ctx.drawImage(src, 0, 0, dotW, dotH);
+
+    var id = ctx.getImageData(0, 0, dotW, dotH), d = id.data;
+    var curErr  = new Float32Array(dotW);
+    var nextErr = new Float32Array(dotW);
+
+    for (var y = 0; y < dotH; y++) {
+      nextErr.fill(0);
+      for (var x = 0; x < dotW; x++) {
+        var i4 = (y * dotW + x) * 4;
+        var lum = 0.299 * d[i4] + 0.587 * d[i4 + 1] + 0.114 * d[i4 + 2] + curErr[x];
+        var v = lum < 128 ? 0 : 255;
+        var e = lum - v;
+        d[i4] = d[i4 + 1] = d[i4 + 2] = v;
+        d[i4 + 3] = 255;
+
+        if (x + 1 < dotW) curErr[x + 1] += e * 7 / 16;
+        if (x > 0)        nextErr[x - 1] += e * 3 / 16;
+        nextErr[x]     += e * 5 / 16;
+        if (x + 1 < dotW) nextErr[x + 1] += e * 1 / 16;
+      }
+      var tmp = curErr;
+      curErr = nextErr;
+      nextErr = tmp;
+    }
+    ctx.putImageData(id, 0, 0);
+    return dst;
+  }
+
+  function uint8ToBase64(bytes) {
+    var bin = '';
+    var len = bytes.length;
+    var CHUNK_SIZE = 8192;
+    for (var i = 0; i < len; i += CHUNK_SIZE) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + CHUNK_SIZE, len)));
+    }
+    return btoa(bin);
+  }
+
+  var WELL_KNOWN_SERVICES = [
+    '000018f0-0000-1000-8000-00805f9b34fb',
+    '0000e781-0000-1000-8000-00805f9b34fb',
+    '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+    '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+    '0000ff00-0000-1000-8000-00805f9b34fb',
+    '0000fff0-0000-1000-8000-00805f9b34fb',
+    'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+    '00001101-0000-1000-8000-00805f9b34fb'
+  ];
+
+  var PRINTER_FILTERS = [
+    { namePrefix: 'XP' }, { namePrefix: 'Xprinter' },
+    { namePrefix: 'TM' }, { namePrefix: 'Epson' }, { namePrefix: 'EPSON' },
+    { namePrefix: 'POS' }, { namePrefix: 'Receipt' }, { namePrefix: 'Thermal' },
+    { namePrefix: 'RPP' }, { namePrefix: 'Bixolon' }, { namePrefix: 'BIXOLON' },
+    { namePrefix: 'Star' }, { namePrefix: 'MP' }, { namePrefix: 'BP' },
+    { namePrefix: 'Printer' }, { namePrefix: 'MTP' }, { namePrefix: 'BlueTooth' },
+    { namePrefix: 'Inner' }, { namePrefix: 'Qsprinter' }
+  ];
+
+  function BtThermal(opts) {
+    opts = opts || {};
+    this._paperWidth = opts.paperWidth || 576;
+    this._device  = null;
+    this._server  = null;
+    this._char    = null;
+    this._mode    = null;
+    this._name    = '';
+    this.onDisconnect = null;
+  }
+
+  Object.defineProperty(BtThermal.prototype, 'connected', { get: function() { return this._mode !== null; } });
+  Object.defineProperty(BtThermal.prototype, 'name',      { get: function() { return this._name; } });
+  Object.defineProperty(BtThermal.prototype, 'mode',      { get: function() { return this._mode; } });
+
+  BtThermal.available = function() {
+    if (global.__BTBridge && typeof global.__BTBridge.connect === 'function') return 'bridge';
+    if (typeof navigator !== 'undefined' && navigator.bluetooth) return 'web';
+    return null;
+  };
+
+  BtThermal.prototype.connect = function(mode) {
+    var resolved = mode || BtThermal.available();
+    if (!resolved) {
+      return Promise.reject(new Error('Bluetooth is not available. Use Chrome on Android, the Android Wrapper app, or Safari on iOS 16+.'));
+    }
+    if (resolved === 'bridge') return this._connectBridge();
+    return this._connectWebBt();
+  };
+
+  BtThermal.prototype._connectBridge = function() {
+    var self = this;
+    return Promise.resolve(global.__BTBridge.connect())
+      .then(function(res) {
+        var r = res;
+        if (typeof r === 'string') {
+          try { r = JSON.parse(r); } catch(_) { r = { ok: true, name: r }; }
+        }
+        if (!r || r.ok === false) {
+          throw new Error((r && r.error) || 'Android Bluetooth connection failed');
+        }
+        self._mode = 'bridge';
+        self._name = (r && r.name) || 'Bluetooth Printer';
+        return self._name;
+      });
+  };
+
+  BtThermal.prototype._connectWebBt = function() {
+    var self = this;
+    if (!navigator.bluetooth) {
+      return Promise.reject(new Error('Web Bluetooth not supported on this browser.'));
+    }
+    var reqOpts = {
+      filters: PRINTER_FILTERS,
+      optionalServices: WELL_KNOWN_SERVICES
+    };
+    return navigator.bluetooth.requestDevice(reqOpts)
+      .catch(function(e) {
+        if (e && e.name === 'NotFoundError') {
+          return navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: WELL_KNOWN_SERVICES
+          });
+        }
+        throw e;
+      })
+      .then(function(device) {
+        self._device = device;
+        self._name   = device.name || 'Bluetooth Printer';
+        device.addEventListener('gattserverdisconnected', function() { self._onDisconnect(); });
+        return device.gatt.connect();
+      })
+      .then(function(server) {
+        self._server = server;
+        return self._findWritableChar(server);
+      })
+      .then(function(c) {
+        self._char = c;
+        self._mode = 'le';
+        return self._name;
+      });
+  };
+
+  BtThermal.prototype._findWritableChar = function(server) {
+    var self = this;
+    function searchService(svc) {
+      return svc.getCharacteristics().then(function(chars) {
+        for (var i = 0; i < chars.length; i++) {
+          var c = chars[i];
+          if (c.properties.writeWithoutResponse || c.properties.write) return c;
+        }
+        return null;
+      }).catch(function() { return null; });
+    }
+
+    var p = Promise.resolve(null);
+    WELL_KNOWN_SERVICES.forEach(function(uuid) {
+      p = p.then(function(found) {
+        if (found) return found;
+        return server.getPrimaryService(uuid)
+          .then(searchService)
+          .catch(function() { return null; });
+      });
+    });
+
+    return p.then(function(found) {
+      if (found) return found;
+      if (typeof server.getPrimaryServices === 'function') {
+        return server.getPrimaryServices().then(function(services) {
+          var chain = Promise.resolve(null);
+          services.forEach(function(svc) {
+            chain = chain.then(function(f) {
+              if (f) return f;
+              return searchService(svc);
+            });
+          });
+          return chain;
+        });
+      }
+      return null;
+    }).then(function(char) {
+      if (!char) {
+        throw new Error('No writable characteristic found on ' + self._name + '. Ensure Bluetooth is enabled and the printer supports BLE/SPP.');
+      }
+      return char;
+    });
+  };
+
+  BtThermal.prototype.disconnect = function() {
+    this._mode = null; this._char = null;
+    try { if (this._server && this._server.connected) this._server.disconnect(); } catch(_) {}
+    try { if (global.__BTBridge && typeof global.__BTBridge.disconnect === 'function') global.__BTBridge.disconnect(); } catch(_) {}
+    this._server = null; this._device = null;
+    if (typeof this.onDisconnect === 'function') this.onDisconnect();
+  };
+
+  BtThermal.prototype._onDisconnect = function() {
+    this._mode = null; this._char = null; this._server = null;
+    if (typeof this.onDisconnect === 'function') this.onDisconnect();
+  };
+
+  BtThermal.prototype.write = function(data) {
+    if (!this._mode) return Promise.reject(new Error('Printer not connected'));
+
+    if (this._mode === 'bridge') {
+      var b64 = uint8ToBase64(data);
+      return Promise.resolve(global.__BTBridge.write(b64))
+        .then(function(res) {
+          var r = res;
+          if (typeof r === 'string') {
+            try { r = JSON.parse(r); } catch(_) {}
+          }
+          if (r && r.ok === false) throw new Error(r.error || 'Write failed');
+        });
+    }
+
+    var self = this;
+    var CHUNK = this._mode === 'le' ? 100 : 512;
+    var off = 0;
+
+    function next() {
+      if (off >= data.length) return Promise.resolve();
+      var chunk = data.subarray(off, off + CHUNK);
+      off += CHUNK;
+      var p = self._char.properties.writeWithoutResponse
+        ? self._char.writeValueWithoutResponse(chunk)
+        : self._char.writeValue(chunk);
+      return p.then(function() {
+        if (off < data.length) {
+          return new Promise(function(r) { setTimeout(r, 12); }).then(next);
+        }
+      });
+    }
+    return next();
+  };
+
+  BtThermal.prototype.printCanvas = function(canvas, opts) {
+    opts = opts || {};
+    var cut  = opts.cut  !== false;
+    var feed = opts.feed != null ? opts.feed : 3;
+    if (!this._mode) return Promise.reject(new Error('Printer not connected'));
+
+    var mono = toReceiptCanvas(canvas, this._paperWidth);
+    var enc  = new EscPosEncoder(this._paperWidth);
+    enc.initialize().image(mono).feed(feed);
+    if (cut) enc.cut();
+    return this.write(enc.getBuffer());
+  };
+
+  BtThermal.prototype.testPrint = function(paper) {
+    var dotW = PAPER_WIDTHS[paper || '80mm'] || 576;
+    var cvs = document.createElement('canvas');
+    cvs.width = dotW;
+    cvs.height = 360;
+    var ctx = cvs.getContext('2d');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, cvs.width, cvs.height);
+    ctx.fillStyle = '#000000';
+    ctx.textAlign = 'center';
+
+    ctx.font = 'bold 30px sans-serif';
+    ctx.fillText('*** PHOTOBOOTH4U ***', dotW / 2, 50);
+
+    ctx.font = 'bold 22px sans-serif';
+    ctx.fillText('THERMAL RECEIPT TEST', dotW / 2, 95);
+
+    ctx.font = '16px sans-serif';
+    ctx.fillText(new Date().toLocaleString(), dotW / 2, 130);
+    ctx.fillText('Printer: ' + (this._name || 'Bluetooth Printer'), dotW / 2, 160);
+    ctx.fillText('Paper: ' + (paper || '80mm') + ' (' + dotW + ' printable dots)', dotW / 2, 190);
+
+    ctx.fillRect(30, 220, dotW - 60, 3);
+
+    ctx.font = 'italic 20px sans-serif';
+    ctx.fillText('Bluetooth thermal printing is working!', dotW / 2, 260);
+
+    ctx.font = '15px monospace';
+    ctx.fillText('--------------------------------', dotW / 2, 300);
+
+    return this.printCanvas(cvs, { feed: 4, cut: true });
+  };
+
+  var btPrinter = new BtThermal({ paperWidth: 576 });
+
+  function isBtAvailable()   { return BtThermal.available() !== null; }
+  function isNativeAndroid() { return !!(global.__BTBridge && global.__BTBridge.connect); }
+
+  function printViaBluetooth(canvas, paper) {
+    btPrinter._paperWidth = PAPER_WIDTHS[paper || '80mm'] || 576;
+    var p = btPrinter.connected
+      ? Promise.resolve()
+      : btPrinter.connect();
+    return p.then(function() { return btPrinter.printCanvas(canvas); });
+  }
+
+  global._btThermal = {
+    BtThermal        : BtThermal,
+    EscPosEncoder    : EscPosEncoder,
+    PAPER_WIDTHS     : PAPER_WIDTHS,
+    toReceiptCanvas  : toReceiptCanvas,
+    btPrinter        : btPrinter,
+    isBtAvailable    : isBtAvailable,
+    isNativeAndroid  : isNativeAndroid,
+    printViaBluetooth: printViaBluetooth,
+  };
+
+}(typeof globalThis !== 'undefined' ? globalThis : window));
+</script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -3043,11 +3437,27 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <p class="panel-hint web-only" style="margin:2px 0 8px;">When connected, sends prints to the selected printer without a dialog.</p>
             <label class="sub-label" for="printerSelect" style="display:block; margin:8px 0 4px;">Printer for <span id="printerPickSize">this size</span></label>
             <select id="printerSelect" class="printer-input"></select>
+            <button type="button" class="action-btn" id="bluetoothPrinterBtn" style="display:none;width:auto;margin:8px 8px 0 0;">Set up Bluetooth printer</button>
+            <button type="button" class="action-btn" id="refreshPrintersBtn" style="display:none;width:auto;margin:8px 0 0;">Refresh printer list</button>
+            <p class="panel-hint" style="margin:6px 0 0;">For Bluetooth 80 mm Xprinter or Epson models: pair the printer, add it in Windows or Mac printer settings, then refresh and select it here.</p>
             <button type="button" class="action-btn" id="printerSetupBtn" style="display:none;width:auto;margin:8px 0 0;">Configure printer</button>
             <div id="printerOptionsBox" style="display:none;margin-top:8px;"></div>
             <input type="text" id="printerNameInput" hidden>
             <datalist id="printerList"></datalist>
             <p class="panel-hint" id="printerHelperHint" style="margin:4px 0 10px;"></p>
+          </div>
+          <div class="printer-pick" id="btThermalRow" style="display:none;margin-top:10px;">
+            <label class="switch-row" style="margin:6px 0 2px;">
+              <span>Bluetooth thermal receipt printer</span>
+              <input type="checkbox" id="btThermalToggle">
+            </label>
+            <p class="panel-hint" style="margin:2px 0 8px;">Directly print receipts over Bluetooth to 80 mm or 58 mm thermal printers (Xprinter, Epson, etc.) without a print dialog.</p>
+            <div id="btThermalControls" style="margin-top:8px;">
+              <button type="button" class="action-btn" id="btThermalConnectBtn" style="width:auto;margin:0 8px 8px 0;">Connect Bluetooth Printer</button>
+              <button type="button" class="action-btn" id="btThermalTestBtn" style="display:none;width:auto;margin:0 8px 8px 0;">Test print</button>
+              <button type="button" class="action-btn" id="btThermalDisconnectBtn" style="display:none;width:auto;margin:0 8px 8px 0;">Disconnect</button>
+              <p class="panel-hint" id="btThermalStatusHint" style="margin:4px 0 6px;"></p>
+            </div>
           </div>
           <details class="ps-steps" id="printStepsWrap">
             <summary>Printer setup checklist</summary>
@@ -9213,6 +9623,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   let printSize = null;
   let printing = false;
 
+  // ---- Bluetooth thermal printer state (tablet/mobile direct path) ----
+  const BT_THERMAL_KEY = 'pb_bt_thermal_on';
+  let btThermalOn = false;
+  try { btThermalOn = localStorage.getItem(BT_THERMAL_KEY) === '1'; } catch(e) {}
+  // btThermalOn is only meaningful on mobile and when a receipt paper is selected.
+  function isBtThermalAvailable() {
+    return typeof window._btThermal !== 'undefined' && window._btThermal.isBtAvailable();
+  }
+  function setBtThermalOn(v) {
+    btThermalOn = !!v;
+    try { localStorage.setItem(BT_THERMAL_KEY, btThermalOn ? '1' : '0'); } catch(e) {}
+  }
+
   // ---- Printer per paper size (saved on this computer) ----
   // A web page can't choose a printer by itself. With the photobooth4u Print
   // Helper running on this computer (opt-in switch), each print goes straight
@@ -9246,7 +9669,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{
       const ctl = new AbortController();
       const t = setTimeout(() => ctl.abort(), 8000);      // Windows can take a few seconds to list printers
-      const r = await fetch(HELPER_URL + '/status', { signal: ctl.signal, cache: 'no-store' });
+      const r = await fetch(HELPER_URL + '/status' + (force ? '?refresh=1' : ''), { signal: ctl.signal, cache: 'no-store' });
       clearTimeout(t);
       const j = await r.json();
       helper = { ok: !!j.ok, printers: Array.isArray(j.printers) ? j.printers.slice(0, 60).map(String) : [], checked: Date.now(), version: String(j.version || '') };
@@ -9262,7 +9685,30 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // The printers come from the Print Helper, so they're picked, not typed.
   const printerSelect = document.getElementById('printerSelect');
   const printerSetupBtn = document.getElementById('printerSetupBtn');
+  const bluetoothPrinterBtn = document.getElementById('bluetoothPrinterBtn');
+  const refreshPrintersBtn = document.getElementById('refreshPrintersBtn');
   const printerOptionsBox = document.getElementById('printerOptionsBox');
+  if(bluetoothPrinterBtn){
+    bluetoothPrinterBtn.style.display = DESKTOP || (!isMobileOS() && helperOn) ? '' : 'none';
+    bluetoothPrinterBtn.addEventListener('click', async function(){
+      bluetoothPrinterBtn.disabled=true; printerOptionsBox.style.display='block';
+      printerOptionsBox.textContent='Opening Bluetooth settings…';
+      try{
+        const rr=await fetch(HELPER_URL+'/printer/bluetooth',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}); const jj=await rr.json();
+        if(!rr.ok||!jj.ok) throw new Error(jj.error||'Could not open Bluetooth settings.');
+        printerOptionsBox.textContent=(jj.message||'Pair the printer in Bluetooth settings, then add it in Printers & scanners.')+' When it appears in the system printer list, return here and choose Refresh printer list.';
+      }catch(e){printerOptionsBox.textContent=e.message||'Could not open Bluetooth settings.';}
+      finally{bluetoothPrinterBtn.disabled=false;}
+    });
+  }
+  if(refreshPrintersBtn){
+    refreshPrintersBtn.style.display = DESKTOP || (!isMobileOS() && helperOn) ? '' : 'none';
+    refreshPrintersBtn.addEventListener('click', async function(){
+      refreshPrintersBtn.disabled=true; refreshPrintersBtn.textContent='Refreshing…';
+      try{ await checkHelper(true); printerOptionsBox.style.display='block'; printerOptionsBox.textContent=helper.ok ? (helper.printers.length ? 'Printer list refreshed. Choose the Bluetooth printer from the list above.' : 'No system printers found yet. Finish adding the printer and install its driver, then refresh again.') : 'Print Helper is unavailable. Open it, then refresh the printer list.'; }
+      finally{refreshPrintersBtn.disabled=false; refreshPrintersBtn.textContent='Refresh printer list';}
+    });
+  }
   if(printerSetupBtn){
     printerSetupBtn.style.display = DESKTOP ? '' : 'none';
     printerSetupBtn.addEventListener('click', async function(){
@@ -9275,6 +9721,69 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       }catch(e){printerOptionsBox.textContent=e.message||'Could not open printer settings.';}
       finally{printerSetupBtn.disabled=false;}
     });
+  }
+  const btThermalToggle = document.getElementById('btThermalToggle');
+  const btThermalConnectBtn = document.getElementById('btThermalConnectBtn');
+  const btThermalTestBtn = document.getElementById('btThermalTestBtn');
+  const btThermalDisconnectBtn = document.getElementById('btThermalDisconnectBtn');
+
+  if(btThermalToggle){
+    btThermalToggle.addEventListener('change', function(){
+      setBtThermalOn(btThermalToggle.checked);
+      refreshPrintUI();
+    });
+  }
+  if(btThermalConnectBtn){
+    btThermalConnectBtn.addEventListener('click', async function(){
+      if(!window._btThermal || !window._btThermal.isBtAvailable()){
+        return showToast('Bluetooth is not supported in this browser. Use Chrome on Android, the Android wrapper, or Safari on iOS 16+.', 4500);
+      }
+      btThermalConnectBtn.disabled = true;
+      btThermalConnectBtn.textContent = 'Connecting…';
+      try{
+        const name = await window._btThermal.btPrinter.connect();
+        showToast('Connected to ' + (name || 'Bluetooth printer') + '!');
+      }catch(err){
+        showToast('Bluetooth connection failed: ' + (err.message || err), 5000);
+      }finally{
+        btThermalConnectBtn.disabled = false;
+        refreshPrintUI();
+      }
+    });
+  }
+  if(btThermalTestBtn){
+    btThermalTestBtn.addEventListener('click', async function(){
+      if(!window._btThermal || !window._btThermal.btPrinter.connected){
+        return showToast('Connect the Bluetooth printer first.', 3500);
+      }
+      btThermalTestBtn.disabled = true;
+      btThermalTestBtn.textContent = 'Printing…';
+      try{
+        const paper = paperFor(printSize);
+        await window._btThermal.btPrinter.testPrint(paper.w <= 55 ? '58mm' : '80mm');
+        showToast('Test receipt printed on ' + (window._btThermal.btPrinter.name || 'Bluetooth printer') + '!');
+      }catch(err){
+        showToast('Test print failed: ' + (err.message || err), 5000);
+      }finally{
+        btThermalTestBtn.disabled = false;
+        btThermalTestBtn.textContent = 'Test print';
+        refreshPrintUI();
+      }
+    });
+  }
+  if(btThermalDisconnectBtn){
+    btThermalDisconnectBtn.addEventListener('click', function(){
+      if(window._btThermal && window._btThermal.btPrinter){
+        window._btThermal.btPrinter.disconnect();
+        showToast('Bluetooth printer disconnected.');
+        refreshPrintUI();
+      }
+    });
+  }
+  if(window._btThermal && window._btThermal.btPrinter){
+    window._btThermal.btPrinter.onDisconnect = function(){
+      try{ refreshPrintUI(); }catch(_){}
+    };
   }
   function fillPrinterSelect(){
     if(!printerSelect) return;
@@ -9312,8 +9821,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       printerSetupBtn.style.display = canOpen ? '' : 'none';
       printerSetupBtn.textContent = 'Configure printer';
     }
+    if(bluetoothPrinterBtn) bluetoothPrinterBtn.style.display = (DESKTOP || (!isMobileOS() && helperOn && helper.ok && helperAtLeast('1.1.8'))) ? '' : 'none';
+    if(refreshPrintersBtn) refreshPrintersBtn.style.display = (DESKTOP || (!isMobileOS() && helperOn && helper.ok && helperAtLeast('1.1.8'))) ? '' : 'none';
     if(helperOn && helper.ok){
-      if(DESKTOP && !helper.printers.length) printerHelperHint.textContent = 'No printers found on this laptop. Plug in the printer and install its driver (' + (/Mac/i.test(navigator.platform || '') ? 'System Settings \u2192 Printers & Scanners' : 'Windows Settings \u2192 Printers & scanners') + '), then reopen Print settings.';
+      if(DESKTOP && !helper.printers.length) printerHelperHint.textContent = 'No printers found on this laptop. For Bluetooth, pair the printer, add it in Printers & Scanners, and install its driver. 80 mm Bluetooth Xprinter and Epson receipt printers are the target.';
       else if(!name) printerHelperHint.textContent = 'Print Helper connected. Choose the printer for this paper size.';
       else if(helper.printers.length && !helper.printers.includes(name)) printerHelperHint.textContent = 'No printer on this computer is called “' + name + '”. Pick one from the list.';
       else printerHelperHint.textContent = 'Prints go straight to “' + name + '” — no dialog.';
@@ -9391,8 +9902,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       { done: station.online, t: 'Choose the printers there', s: 'Pick a printer for each paper size on the laptop (with the Print Helper running).' },
       { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> after a photo session.' }
     ];
+    else if(isMobileOS() && btThermalOn && printSize && isReceiptPaper(printSize)) steps = [
+      { done: !!(window._btThermal && window._btThermal.btPrinter.connected), t: 'Connect the Bluetooth thermal printer', s: (window._btThermal && window._btThermal.btPrinter.connected) ? '\u2713 Connected: ' + window._btThermal.btPrinter.name : 'Tap <b>Connect Bluetooth Printer</b> below. Make sure it is on and paired to this tablet in Bluetooth settings.' },
+      { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> — the receipt prints directly without a dialog.' }
+    ];
     else if(isMobileOS()) steps = [
-      { done: false, t: 'Turn on the printer and join the same Wi-Fi', s: 'AirPrint printers (Canon Selphy, Epson, HP…) show up by themselves. For DNP / HiTi, use a laptop print station.' },
+      { done: false, t: 'Turn on the printer and join the same Wi-Fi', s: 'AirPrint printers (Canon Selphy, Epson, HP\u2026) show up by themselves. For DNP / HiTi, use a laptop print station.' + (isBtThermalAvailable() && printSize && isReceiptPaper(printSize) ? ' For 80 mm Bluetooth thermal printers, enable <b>Bluetooth Receipt Printer</b> below.' : '') },
       { done: false, t: 'Print once and pick the printer', s: 'Press <b>Print</b>, choose the printer in the AirPrint sheet. The iPad remembers it.' + (navigator.standalone ? ' <b>Home Screen app:</b> if no sheet appears, open the booth in a Safari tab instead, or use a laptop print station.' : '') },
       { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> and choose the printer in the AirPrint sheet.' }
     ];
@@ -9959,6 +10474,26 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       }
       const all = [];
       for(let c = 0; c < n; c++) all.push(...pages);
+
+      // ---- Bluetooth thermal printer path (tablet / Android / iOS) ----
+      if((isMobileOS() || !helperOn) && btThermalOn && paper.receipt && isBtThermalAvailable()){
+        try{
+          showPrintingNote(printTxt('txtPrinting'), 8000);
+          await window._btThermal.printViaBluetooth(pages[0], paper.w <= 55 ? '58mm' : '80mm');
+          // If n > 1 copies, print the rest
+          for(let ci = 1; ci < all.length; ci++) await window._btThermal.printViaBluetooth(all[ci], paper.w <= 55 ? '58mm' : '80mm');
+          showToast((auto === true ? 'Auto-printed via Bluetooth (' : 'Printed via Bluetooth (') + label + ').');
+          armAutoPrintAfterFirst(auto === true);
+          return true;
+        }catch(btErr){
+          showToast('Bluetooth print failed: ' + (btErr.message || btErr) + '. Opening print dialog instead.', 6000);
+          // Disconnect so next attempt triggers a fresh connect picker
+          try{ window._btThermal.btPrinter.disconnect(); }catch(_){}
+          try{ refreshPrintUI(); }catch(_){}
+          // fall through to AirPrint / window.print()
+        }
+      }
+
       const pname = printerFor(printSize);
       if(helperOn && pname){
         let sent = true;
@@ -10033,6 +10568,34 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     printRouteSelect.querySelector('option[value="station"]').disabled = !(isRentalBooth() || isTrialBooth());
     // The Print Helper is a computer app: never offered on iPad / Android.
     document.getElementById('printerPick').style.display = printSize && !useStation() && !isMobileOS() ? '' : 'none';
+    // Bluetooth thermal UI elements (tablet only)
+    const btRow = document.getElementById('btThermalRow');
+    const btConnBtn = document.getElementById('btThermalConnectBtn');
+    const btToggle = document.getElementById('btThermalToggle');
+    const btTestBtn = document.getElementById('btThermalTestBtn');
+    const btDiscBtn = document.getElementById('btThermalDisconnectBtn');
+    const btStatus = document.getElementById('btThermalStatusHint');
+    if(btRow){
+      const showBt = (isMobileOS() || !helperOn) && isBtThermalAvailable() && !useStation() && printSize && isReceiptPaper(printSize);
+      btRow.style.display = showBt ? '' : 'none';
+      if(btToggle) btToggle.checked = btThermalOn;
+      const conn = !!(window._btThermal && window._btThermal.btPrinter.connected);
+      if(btConnBtn){
+        btConnBtn.textContent = conn ? '\u2713 ' + (window._btThermal.btPrinter.name || 'Printer connected') : 'Connect Bluetooth Printer';
+        btConnBtn.style.display = btThermalOn ? '' : 'none';
+      }
+      if(btTestBtn) btTestBtn.style.display = btThermalOn && conn ? '' : 'none';
+      if(btDiscBtn) btDiscBtn.style.display = btThermalOn && conn ? '' : 'none';
+      if(btStatus){
+        btStatus.textContent = !btThermalOn
+          ? ''
+          : conn
+            ? 'Connected: ' + (window._btThermal.btPrinter.name || 'Bluetooth Printer') + '. Prints will be sent directly via ESC/POS.'
+            : (window._btThermal && window._btThermal.isNativeAndroid()
+              ? 'Android wrapper active. Tap Connect to select a paired printer.'
+              : 'Make sure the printer is turned on and paired with this device in Bluetooth settings.');
+      }
+    }
     if(printSize && printsLeft() < sheetsPerCopy(printSize) && state === 'result') printHint.textContent = 'Print limit reached' + (lim.se && sessPrinted >= lim.se ? ' for this session.' : ' for this event.');
     refreshStationHints();
   }

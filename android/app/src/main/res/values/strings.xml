@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">photobooth4u</string>
+    <string name="default_url">https://photobooth4u.netlify.app/</string>
+    <string name="bt_perm_needed">Bluetooth permissions are required to connect to receipt printers.</string>
+    <string name="camera_perm_needed">Camera permission is required for taking photos.</string>
+    <string name="select_printer">Select Bluetooth Thermal Printer</string>
+    <string name="no_paired_printers">No paired Bluetooth printers found. Please pair your printer in Android Settings first.</string>
+    <string name="cancel">Cancel</string>
+</resources>

@@ -3008,26 +3008,27 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         </div>
         <div class="ps-group">
           <p class="ps-title">Printer</p>
+          <p class="panel-hint">Choose a printer and configure its driver settings here. Direct printing controls whether a print dialog appears; automatic printing controls when prints are sent.</p>
           <label class="sub-label web-only" for="printRouteSelect" style="display:block; margin:0 0 6px;">Send prints to</label>
           <select id="printRouteSelect" class="print-route web-only">
-            <option value="here">This device</option>
-            <option value="station">Laptop print station (no pop-up)</option>
+            <option value="here">Print from this device</option>
+            <option value="station">Send to a laptop print station</option>
           </select>
           <p class="panel-hint web-only" id="stationHint" style="margin:6px 0 8px;"></p>
           <div class="printer-pick" id="printerPick">
             <label class="switch-row web-only" style="margin:6px 0 2px;">
-              <span>Print Helper on this computer (no dialog)</span>
+              <span>Use Print Helper for direct printing (skip print dialog)</span>
               <input type="checkbox" id="helperToggle">
             </label>
             <label class="sub-label" for="printerSelect" style="display:block; margin:8px 0 4px;">Printer for <span id="printerPickSize">this size</span></label>
             <select id="printerSelect" class="printer-input"></select>
-            <button type="button" class="action-btn" id="printerSetupBtn" style="display:none;width:auto;margin:8px 0 0;">Set paper and print quality</button>
+            <button type="button" class="action-btn" id="printerSetupBtn" style="display:none;width:auto;margin:8px 0 0;">Configure printer</button>
             <div id="printerOptionsBox" style="display:none;margin-top:8px;"></div>
             <input type="text" id="printerNameInput" hidden>
             <datalist id="printerList"></datalist>
             <p class="panel-hint" id="printerHelperHint" style="margin:4px 0 10px;"></p>
           </div>
-          <details class="ps-steps" id="printStepsWrap">
+          <details class="ps-steps" id="printStepsWrap" open>
             <summary>Printer setup checklist</summary>
             <ol class="print-steps" id="printSteps"></ol>
           </details>
@@ -9192,6 +9193,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     printerNameInput.value = v;
     savePrinterMap();
     refreshPrinterHint();
+    // In the desktop app, selecting a printer is also the setup step: open its
+    // driver preferences (Windows) or the helper's available driver options (Mac).
+    if(DESKTOP && v && printerSetupBtn) printerSetupBtn.click();
   });
   function refreshPrinterHint(){
     const name = printerFor(printSize);
@@ -9278,15 +9282,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       { done: false, t: 'Print once and pick the printer', s: 'Press <b>Print</b>, choose the printer in the AirPrint sheet. The iPad remembers it.' + (navigator.standalone ? ' <b>Home Screen app:</b> if no sheet appears, open the booth in a Safari tab instead, or use a laptop print station.' : '') },
       { done: auto, t: 'Turn on Print automatically (optional)', s: auto ? 'The AirPrint sheet opens after every session; guests just tap Print.' : 'Then the AirPrint sheet opens by itself after each session.' }
     ];
+    else if(!DESKTOP && !helperOn) steps = [
+      { done: false, t: 'Test the browser print dialog', s: 'Press <b>Print</b>, then choose the printer and paper settings in your browser or system dialog.' },
+      { done: auto, t: 'Choose whether to print automatically', s: auto ? 'The print dialog opens after each session; someone must confirm each print.' : 'Optional: turn on <b>Print automatically after each session</b>. The dialog will still need confirmation.' }
+    ];
     else steps = [
       DESKTOP ? { done: connected && helper.printers.length > 0, t: 'Plug in and turn on the printer', s: connected && helper.printers.length ? helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' found on this laptop.' : 'Install its driver first, then reopen Print settings.' } :
-      { done: connected, t: 'Connect the Print Helper', s: connected ? 'Connected \u2014 ' + helper.printers.length + ' printers found.' : 'Open the Print Helper app on this computer, then switch on <b>Print Helper on this computer</b> below. <a href="/downloads/" target="_blank" rel="noopener">Download</a>' },
+      { done: connected, t: 'Connect direct printing', s: connected ? 'Print Helper connected; ' + helper.printers.length + ' printers found.' : 'Open the photobooth4u Print Helper on this computer, enable <b>Use Print Helper for direct printing</b>, and allow local network access if asked. <a href="/downloads/" target="_blank" rel="noopener">Download</a>' },
       (function(){
         const ok = connected && !!name && helper.printers.includes(name);
         const pl = ok && printSize && (DESKTOP || helperAtLeast('1.1.6')) ? paperLine(name, paperFor(printSize), sizeName) : '';
         return { done: ok && pl.indexOf('paper-bad') < 0, t: 'Choose the printer for each paper size', s: (name ? sizeName + ' \u2192 ' + escHtml(name) : 'Tap a paper size, then pick its printer from the list.') + pl };
       })(),
-      { done: auto, t: 'Print once, then turn on Print automatically', s: auto ? 'Every session prints by itself.' : 'Press <b>Print</b> to test, then tick <b>Print automatically after each session</b>.' }
+      { done: auto, t: 'Test a print, then choose whether to automate', s: auto ? 'Every session sends a job to the selected printer with no dialog.' : 'Press <b>Print</b> to test. When it looks right, turn on <b>Print automatically after each session</b> to send future jobs with no dialog.' }
     ];
     let first = steps.findIndex(x => !x.done);
     const sw = document.getElementById('printStepsWrap');
@@ -9781,7 +9789,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const a = document.getElementById('stationHint'), b = document.getElementById('ppRouteHint');
     const html = useStation() ? stationHtml() : (isMobileOS()
       ? 'Prints open the AirPrint sheet on this device. Add the printer once in the sheet; it’s remembered.'
-      : 'Prints use this computer’s print dialog, or the Print Helper below for no dialog.');
+      : (DESKTOP ? 'The app sends jobs to the selected printer without a print dialog.' : helperOn
+        ? (helper.ok ? 'Print Helper sends jobs to the selected printer without a dialog. If it becomes unavailable, printing falls back to the browser dialog.' : 'Direct printing is selected. Connect the Print Helper below; until it connects, prints use the browser dialog.')
+        : 'Prints open your browser or system print dialog. Enable Print Helper below to send jobs directly without that dialog.'));
     if(a) a.innerHTML = html;
     if(b) b.innerHTML = html;
   }
@@ -9974,7 +9984,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   let autoPrintDecided = false; // the operator switched it themselves: don't override
   function autoPrintHintText(){
     if(useStation()) return 'Each session goes to the laptop print station by itself.';
-    if(helperOn && helper.ok) return 'Each session prints by itself, straight to the chosen printer with no dialog.';
+    if(helperOn && helper.ok && printSize && helper.printers.includes(printerFor(printSize))) return 'Each session sends a job to the selected printer with no dialog.';
     if(isMobileOS()) return 'After each session the AirPrint sheet opens by itself, so the guest just taps Print. A web page can’t skip that sheet; for no pop-up at all, send prints to a laptop print station.';
     return 'Each session opens the print dialog by itself. To skip the dialog, use the Print Helper or start Chrome with --kiosk-printing.' + (isTraditional() ? ' Turns on after your first print, on the same paper.' : '');
   }

@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.12', date: '2026-10-27' },
   { version: '1.0.11', date: '2026-10-27' },
   { version: '1.0.10', date: '2026-10-26' },
   { version: '1.0.9', date: '2026-10-26' },
@@ -57,6 +58,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-27', title: 'A clearer printer setup', for: ['website', 'app'], app: '1.0.12',
+    items: [
+      'Choose a printer and open its settings before printing in the laptop app.',
+      'The web booth now explains the difference between choosing a print route and turning on automatic printing, with a checklist for browser printing, Print Helper, and the laptop print station.'
+    ]
+  },
   {
     date: '2026-10-27', title: 'Printer setup and sharing improvements', for: ['website', 'app'], app: '1.0.11',
     items: [

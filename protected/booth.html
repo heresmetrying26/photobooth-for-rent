@@ -2436,16 +2436,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
           <p class="panel-hint" id="gifModeHint" style="margin:8px 0 0; color:var(--ink-dim);">Guests get a photo strip + QR code.</p>
           <div id="gifOptions" style="display:none; margin-top:10px;">
-            <p class="panel-hint" style="margin:0 0 8px;">GIF follows the session through the last shot, including timers and pauses. Resolution is up to 1280 x 720 when the camera feed supports it.</p>
-            <div class="opt-row">
-              <span class="lbl">GIF speed</span>
-              <select class="mini-select pillify" id="gifSpeedSelect">
-                <option value="0" selected>Auto (2x or 3x)</option>
-                <option value="2">2x faster</option>
-                <option value="3">3x faster</option>
-              </select>
-            </div>
-            <p class="panel-hint" style="margin:6px 0 0;">Auto uses 2x for sessions up to 24 seconds and 3x for longer sessions.</p>
+            <p class="panel-hint" style="margin:0;">GIF follows the session through the last shot, including timers and pauses. Speed is set automatically — 2× for sessions up to 24 s, 3× for longer ones. Resolution is up to 1280 × 720 when the camera feed supports it.</p>
           </div>
         </div>
 
@@ -5660,8 +5651,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       refreshOutputModeUI();
       if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
     });
-    var gs = document.getElementById('gifSpeedSelect');
-    if(gs) gs.addEventListener('change', function(){ gifSpeed = Number(gs.value) || 0; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+    // gifSpeed stays 0 (auto) always — no manual selector exposed to the operator.
     refreshGifUI();
     refreshOutputModeUI();
   })();
@@ -5806,22 +5796,20 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     gifBox.innerHTML = '';
 
     if(gifResult && gifResult.fileId){
-      var folderUrl = gifResult.folderUrl || getCachedFolderUrl();
-      var eventGallery = !DESKTOP && folderUrl ? galleryUrlFor(folderUrl) : null;
-      var galleryLinked = !!eventGallery;
-      var gifUrl = galleryLinked ? eventGallery + '#' + encodeURIComponent(gifResult.fileId)
-        : DESKTOP ? fileShareUrl(gifResult.fileId) : null;
+      // Use fileShareUrl() — the same path the photo QR uses — so the gallery
+      // hash fragment is consistent and the gallery can locate the GIF.
+      var gifUrl = fileShareUrl(gifResult.fileId);
       if(gifUrl){
         var img = document.createElement('img');
         img.className = 'qr-img';
-        img.src = (typeof qrImageUrl === 'function') ? qrImageUrl(gifUrl) : 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(gifUrl);
+        img.src = qrImageUrl(gifUrl);
         img.alt = 'GIF QR code';
         gifBox.appendChild(img);
-        var link = document.createElement('a'); link.className = 'qr-link'; link.href = gifUrl; link.target = '_blank'; link.rel = 'noopener'; link.textContent = galleryLinked ? 'Open GIF in event gallery' : 'Open GIF';
+        var link = document.createElement('a'); link.className = 'qr-link'; link.href = gifUrl; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Open GIF';
         gifSlot.appendChild(link);
         showToast('GIF saved');
       } else {
-        var w3 = document.createElement('span'); w3.className = 'qr-wait'; w3.textContent = 'GIF saved, but the event gallery link is unavailable.';
+        var w3 = document.createElement('span'); w3.className = 'qr-wait'; w3.textContent = 'GIF saved, but no shareable link is available right now.';
         gifBox.appendChild(w3);
       }
     } else {
@@ -12667,7 +12655,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(typeof s.reviewEach === 'boolean'){ reviewEach = s.reviewEach; reviewEachToggle.checked = s.reviewEach; }
       if(typeof s.allowRetake === 'boolean'){ allowRetake = s.allowRetake; try{ refreshRetakeUI(); }catch(e){} }
       if(s.outputMode === 'gif' || s.outputMode === 'both' || s.outputMode === 'photo'){ outputMode = isGifAllowed() ? s.outputMode : 'photo'; refreshOutputModeUI(); }
-      if(typeof s.gifSpeed === 'number'){ gifSpeed = s.gifSpeed === 2 || s.gifSpeed === 3 ? s.gifSpeed : 0; var gs = document.getElementById('gifSpeedSelect'); if(gs) gs.value = String(gifSpeed); }
+      // gifSpeed is always auto (0); any previously saved manual value is ignored.
       filterKey = Object.prototype.hasOwnProperty.call(FILTERS, s.filter) ? s.filter : 'none';
       markFilterChips();
       softSkin = !!s.softSkin; softSkinToggle.checked = softSkin;

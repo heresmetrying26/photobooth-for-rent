@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.16', date: '2026-10-27' },
   { version: '1.0.15', date: '2026-10-27' },
   { version: '1.0.14', date: '2026-10-27' },
   { version: '1.0.13', date: '2026-10-27' },
@@ -61,6 +62,23 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-27', title: 'GIF mode in the offline laptop app', for: ['app'], app: '1.0.16',
+    items: [
+      'When GIF mode is switched on in the admin panel for a code, the offline laptop app now shows a "Take GIF" chip in Photo Session alongside the regular photo mode.',
+      'The app captures a short burst of frames and stitches them into an animated GIF, saved next to the regular photos in your backup folder.',
+      'A GIF gallery tab appears in My Events so guests can browse and download their GIFs, just like photos.'
+    ]
+  },
+  {
+    date: '2026-10-27', title: 'Admin: generate a customer handout PDF', for: ['website'],
+    items: [
+      'After simulating a booking in the admin panel, tap "Voucher PDF" to open a print-ready single-page handout you can save as PDF and send to the customer.',
+      'The handout includes a QR code pointing to the booth login, the customer\'s access code and 1-hour practice code, a step-by-step quick-start guide, and links to the app downloads and setup guides.',
+      '"Copy message" builds a formatted WhatsApp/Messenger text with all the same info — paste it straight into a chat.',
+      'For any existing booking in the admin list, open the ⋮ menu and choose "Voucher PDF" or "Copy message" to generate a handout for that code.'
+    ]
+  },
   {
     date: '2026-10-27', title: 'Reprint a photo and safer app updates', for: ['website', 'app'], app: '1.0.15',
     items: [

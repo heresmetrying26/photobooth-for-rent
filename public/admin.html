@@ -6,6 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>photobooth4u · Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="/gallery/qrcode.min.js"></script>
 <style>
   :root{--ink:#1C1A1E;--dim:#6B666C;--line:#E4DCCF;--blue:#C93D27;--soft:#FBEDEA;--panel:#fff;}
   *{box-sizing:border-box;}
@@ -330,6 +331,15 @@
               </div>
               <small style="display:block;margin-top:4px;color:var(--muted);font-size:11px;">Free test shots before real event</small>
             </div>
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(0,0,0,0.08);">
+            <button type="button" class="primary" id="simVoucherPdfBtn" style="padding:9px 16px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
+              <span>📄</span> Save / Print Customer Handout (PDF)
+            </button>
+            <button type="button" class="small" id="simCopyMessageBtn" style="padding:9px 14px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
+              <span>📋</span> Copy Message (WhatsApp / Chat)
+            </button>
           </div>
 
           <div>
@@ -750,6 +760,8 @@
     acts += '<button class="small" data-a="gifopt" data-c="' + c + '">' + (l.gifOpt ? 'Hide GIF mode' : 'Give GIF mode') + '</button>';
     acts += '<button class="small" data-a="lockopt" data-c="' + c + '">' + (l.lockOpt ? 'Hide lock booth' : 'Give lock booth') + '</button>';
     if(!bonus){
+      acts += '<button class="small" data-a="voucherpdf" data-c="' + c + '" title="Open / print 1-page Customer Voucher PDF with access codes, QR code &amp; all guides">📄 Customer Handout (PDF)</button>';
+      acts += '<button class="small" data-a="vouchermsg" data-c="' + c + '" title="Copy formatted text message for Messenger / WhatsApp">📋 Copy Message</button>';
       acts += '<button class="small" data-a="setemail" data-c="' + c + '">' + (l.email ? 'Change email' : 'Add email') + '</button>';
       if(l.email) acts += '<button class="small" data-a="sendcode" data-c="' + c + '">Email code to renter</button>';
       acts += '<button class="small" data-a="payopt" data-c="' + c + '">' + (l.payOpt ? 'Hide guest payments' : 'Give guest payments') + '</button>';
@@ -1108,6 +1120,35 @@
         refresh();
         return;
       }
+      if(a === 'voucherpdf'){
+        var rec = LIC[code];
+        if(!rec){ toast('Open the code row first so it loads', true); return; }
+        var bKey = rec.bonusKey;
+        var practiceC = bKey && LIC[bKey] ? LIC[bKey].code : null;
+        openCustomerHandout({
+          code: rec.code,
+          practiceCode: practiceC,
+          name: rec.label || rec.code,
+          email: rec.email || null,
+          plan: { title: (rec.lifetime ? 'Lifetime' : rec.days + '-Day') + ' ' + (rec.traditional ? 'Laptop Booth' : 'Tablet Booth'), lifetime: !!rec.lifetime, offlineOpt: !!rec.offlineOpt },
+          files: [], links: []
+        });
+        return;
+      }
+      if(a === 'vouchermsg'){
+        var rec3 = LIC[code];
+        if(!rec3){ toast('Open the code row first so it loads', true); return; }
+        var bKey3 = rec3.bonusKey;
+        var practiceC3 = bKey3 && LIC[bKey3] ? LIC[bKey3].code : null;
+        copyCustomerMessage({
+          code: rec3.code,
+          practiceCode: practiceC3,
+          name: rec3.label || rec3.code,
+          plan: { title: (rec3.lifetime ? 'Lifetime' : rec3.days + '-Day') + ' ' + (rec3.traditional ? 'Laptop Booth' : 'Tablet Booth'), lifetime: !!rec3.lifetime, offlineOpt: !!rec3.offlineOpt },
+          files: [], links: []
+        });
+        return;
+      }
       if(a === 'mode'){
         var on = !(LIC[code] && LIC[code].traditional);
         await api({ action: 'traditional', code: code, traditional: on });
@@ -1226,6 +1267,7 @@
     if(this.checked) $('simRenewCode').focus();
   });
 
+  var SIM_RES = null;
   $('simSubmitBtn').addEventListener('click', async function(){
     var plan = $('simPlanSelect').value;
     var name = $('simCustName').value.trim();
@@ -1290,6 +1332,7 @@
         dBox.appendChild(card);
       });
 
+      SIM_RES = { code: res.code, practiceCode: res.practiceCode, plan: res.plan, name: name, email: email, files: res.files, links: res.links };
       toast('Simulated payment for ' + (res.plan.title || 'package') + ' completed!');
       refresh();
     } catch(err){
@@ -1316,6 +1359,16 @@
       $('simCopyPracticeBtn').textContent = 'Copied!';
       setTimeout(function(){ $('simCopyPracticeBtn').textContent = 'Copy'; }, 1800);
     }).catch(function(){ toast('Code: ' + code); });
+  });
+
+  $('simVoucherPdfBtn').addEventListener('click', function(){
+    if(!SIM_RES){ toast('Simulate a payment first', true); return; }
+    openCustomerHandout(SIM_RES);
+  });
+
+  $('simCopyMessageBtn').addEventListener('click', function(){
+    if(!SIM_RES){ toast('Simulate a payment first', true); return; }
+    copyCustomerMessage(SIM_RES);
   });
 
   printPicker($('newPrint'), null, 'Allow printing for these codes');
@@ -1353,6 +1406,158 @@
     else if(!this.checked && $('newDevices').value === '5') $('newDevices').value = '1';
   });
   $('newBonus').addEventListener('change', function(){ $('newBonusRow').classList.toggle('off', !this.checked); });
+
+  // ---- Customer Handout PDF Generator ----
+  function makeQrDataUrl(url) {
+    try {
+      var qr = qrcode(0, 'M');
+      qr.addData(url);
+      qr.make();
+      return qr.createDataURL(4, 8);
+    } catch(e) { return ''; }
+  }
+
+  function openCustomerHandout(info) {
+    var origin = location.origin;
+    var code = info.code || '';
+    var practiceCode = info.practiceCode || '';
+    var customerName = (info.name || '').split(' \u00b7 ')[0].trim();
+    var planTitle = (info.plan && info.plan.title) || 'Photobooth Package';
+    var isOffline = !!(info.plan && info.plan.offlineOpt);
+    var launchUrl = origin + '/?code=' + encodeURIComponent(code);
+    var qrDataUrl = makeQrDataUrl(launchUrl);
+    var today = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    var colsCss = practiceCode ? '1fr 1fr' : '1fr';
+    var practiceHtml = practiceCode
+      ? '<div class="code-box practice"><div class="code-label">\uD83C\uDFAF 1-Hr Practice Code</div>'
+        + '<div class="code-value">' + practiceCode + '</div>'
+        + '<div class="code-hint">Use before the event &mdash; separate folder</div></div>'
+      : '';
+    var offlineStep = isOffline
+      ? '<div class="step"><div class="step-num">5</div><div class="step-body"><b>Offline Laptop App</b> &mdash; Download the Windows / Mac app from the App Downloads link below. Activate with your Access Code. Works with no internet!</div></div>'
+      : '';
+    var appLink = isOffline
+      ? '<div class="link-card"><div class="lname">\uD83D\uDCBB App Downloads</div><div class="lurl">' + origin + '/app/#' + code + '</div><div class="ldesc">Windows &amp; Mac desktop app</div></div>'
+      : '';
+    var printerLink = isOffline
+      ? '<div class="link-card"><div class="lname">\uD83D\uDDA8\uFE0F Printer Guide</div><div class="lurl">' + origin + '/lifetime/photobooth4u-hiti-printing-guide.pdf</div><div class="ldesc">Hiti, DNP, Canon Selphy &amp; thermal</div></div>'
+      : '';
+    var guideFile = isOffline ? 'offline-app' : 'tablet';
+
+    var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>photobooth4u \u2013 Customer Handout</title>'
+      + '<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">'
+      + '<style>'
+      + '*{box-sizing:border-box;margin:0;padding:0;}'
+      + 'body{font-family:Manrope,system-ui,sans-serif;color:#1C1A1E;background:#fff;padding:28px 32px;max-width:680px;margin:0 auto;font-size:13.5px;line-height:1.6;}'
+      + 'h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:26px;letter-spacing:-.02em;}'
+      + 'h1 em{font-family:Manrope,sans-serif;font-style:normal;font-weight:800;font-size:11px;color:#fff;background:#C93D27;padding:2px 7px 3px;border-radius:5px;margin-left:4px;display:inline-block;transform:rotate(-7deg);vertical-align:top;}'
+      + '.header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid #E4DCCF;}'
+      + '.qr-wrap{flex:none;text-align:center;}'
+      + '.qr-wrap img{width:90px;height:90px;border:1.5px solid #E4DCCF;border-radius:8px;display:block;}'
+      + '.qr-label{font-size:10px;font-weight:700;color:#6B666C;text-transform:uppercase;letter-spacing:.5px;margin-top:3px;}'
+      + '.subtitle{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#6B666C;margin-top:4px;}'
+      + '.cust{font-size:15px;font-weight:800;margin-top:5px;}'
+      + '.issued{font-size:11px;color:#6B666C;margin-top:2px;}'
+      + '.codes-grid{display:grid;grid-template-columns:' + colsCss + ';gap:12px;margin-bottom:18px;}'
+      + '.code-box{background:#FBEDEA;border:1.5px solid #f0c9c4;border-radius:11px;padding:12px 14px;}'
+      + '.code-box.practice{background:#F0F4FF;border-color:#C7D4F5;}'
+      + '.code-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#C93D27;margin-bottom:4px;}'
+      + '.code-box.practice .code-label{color:#2f5fa8;}'
+      + '.code-value{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:800;font-size:20px;letter-spacing:.5px;color:#1C1A1E;word-break:break-all;}'
+      + '.code-hint{font-size:11px;color:#6B666C;margin-top:4px;}'
+      + '.section{margin-bottom:16px;}'
+      + '.section-title{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#6B666C;margin-bottom:9px;padding-bottom:4px;border-bottom:1px solid #E4DCCF;}'
+      + '.step{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start;}'
+      + '.step-num{flex:none;width:21px;height:21px;background:#C93D27;color:#fff;border-radius:50%;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}'
+      + '.step-body{flex:1;font-size:13px;}'
+      + '.links-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}'
+      + '.link-card{border:1.5px solid #E4DCCF;border-radius:9px;padding:8px 11px;}'
+      + '.link-card .lname{font-weight:700;font-size:12px;}'
+      + '.link-card .lurl{font-size:10px;color:#C93D27;word-break:break-all;margin-top:2px;font-family:ui-monospace,Menlo,Consolas,monospace;}'
+      + '.link-card .ldesc{font-size:10px;color:#6B666C;margin-top:2px;}'
+      + '.footer{margin-top:18px;padding-top:12px;border-top:1px solid #E4DCCF;font-size:10.5px;color:#6B666C;text-align:center;}'
+      + '.no-print-btn{margin-top:14px;text-align:center;}'
+      + 'button.print-btn{font-family:inherit;font-size:13.5px;font-weight:700;padding:10px 26px;background:#C93D27;color:#fff;border:none;border-radius:9px;cursor:pointer;}'
+      + '@media print{.no-print-btn{display:none!important;}body{padding:10px 14px;}@page{margin:8mm 10mm;}}'
+      + '</style></head><body>'
+
+      + '<div class="header">'
+        + '<div>'
+          + '<h1>photobooth<em>4u</em></h1>'
+          + '<div class="subtitle">' + planTitle + ' &middot; Customer Voucher</div>'
+          + (customerName ? '<div class="cust">' + customerName + '</div>' : '')
+          + '<div class="issued">Issued: ' + today + '</div>'
+        + '</div>'
+        + (qrDataUrl ? '<div class="qr-wrap"><img src="' + qrDataUrl + '" alt="QR Code to launch booth"><div class="qr-label">Scan to launch</div></div>' : '')
+      + '</div>'
+
+      + '<div class="codes-grid">'
+        + '<div class="code-box">'
+          + '<div class="code-label">\uD83D\uDD11 Access Code</div>'
+          + '<div class="code-value">' + code + '</div>'
+          + '<div class="code-hint">Enter at photobooth4u.netlify.app</div>'
+        + '</div>'
+        + practiceHtml
+      + '</div>'
+
+      + '<div class="section">'
+        + '<div class="section-title">Quick Setup Guide</div>'
+        + '<div class="step"><div class="step-num">1</div><div class="step-body"><b>Open the Booth</b> &mdash; Scan the QR above or go to <b>photobooth4u.netlify.app</b>. Click <b>"Enter code"</b> and type your Access Code.</div></div>'
+        + '<div class="step"><div class="step-num">2</div><div class="step-body"><b>Connect your Camera</b> &mdash; Allow browser camera access. In the laptop app, plug in your DSLR / mirrorless via USB and choose it in <b>Setup &rarr; Camera</b>.</div></div>'
+        + '<div class="step"><div class="step-num">3</div><div class="step-body"><b>Customize</b> &mdash; Change overlay, countdown &amp; print layout in <b>Setup &rarr; Design</b>. Set your Google Drive folder in <b>Setup &rarr; Drive</b> to auto-save all photos.</div></div>'
+        + '<div class="step"><div class="step-num">4</div><div class="step-body"><b>Guest Gallery &amp; Sharing</b> &mdash; Guests scan the QR on their photo to view &amp; download. Visit <b>My Events</b> to manage galleries and guest access.</div></div>'
+        + offlineStep
+      + '</div>'
+
+      + '<div class="section">'
+        + '<div class="section-title">Your Links &amp; Downloads</div>'
+        + '<div class="links-grid">'
+          + '<div class="link-card"><div class="lname">\uD83D\uDE80 Launch Booth</div><div class="lurl">' + origin + '/?code=' + code + '</div><div class="ldesc">Open the booth in your browser</div></div>'
+          + '<div class="link-card"><div class="lname">\uD83D\uDCC1 My Events Portal</div><div class="lurl">' + origin + '/lifetime/#' + code + '</div><div class="ldesc">Galleries, Drive photos &amp; settings</div></div>'
+          + appLink
+          + '<div class="link-card"><div class="lname">\uD83D\uDCD6 Setup Guide PDF</div><div class="lurl">' + origin + '/lifetime/photobooth4u-' + guideFile + '-guide.pdf</div><div class="ldesc">Full step-by-step instructions</div></div>'
+          + printerLink
+        + '</div>'
+      + '</div>'
+
+      + '<div class="footer">Questions? Message us on Facebook &middot; photobooth4u.netlify.app &middot; Non-transferable.</div>'
+      + '<div class="no-print-btn"><button class="print-btn" onclick="window.print()">\uD83D\uDDA8\uFE0F Print / Save as PDF</button></div>'
+      + '</body></html>';
+
+    var w = window.open('', '_blank', 'width=760,height=940');
+    if(!w){ toast('Allow pop-ups to open the handout', true); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+  }
+
+  function copyCustomerMessage(info) {
+    var origin = location.origin;
+    var code = info.code || '';
+    var practiceCode = info.practiceCode || '';
+    var customerName = (info.name || '').split(' \u00b7 ')[0].trim();
+    var planTitle = (info.plan && info.plan.title) || 'Photobooth Package';
+    var isOffline = !!(info.plan && info.plan.offlineOpt);
+    var guideFile = isOffline ? 'offline-app' : 'tablet';
+    var lines = [
+      '\uD83D\uDCF8 *photobooth4u* \u2014 ' + planTitle + (customerName ? ' \u2014 ' + customerName : ''),
+      '',
+      '\uD83D\uDD11 *Access Code:* ' + code,
+      practiceCode ? '\uD83C\uDFAF *Practice Code (1 hr):* ' + practiceCode : '',
+      '',
+      '\uD83D\uDE80 *Launch Booth:* ' + origin + '/?code=' + code,
+      '\uD83D\uDCC1 *My Events Portal:* ' + origin + '/lifetime/#' + code,
+      isOffline ? '\uD83D\uDCBB *App Downloads (Win/Mac):* ' + origin + '/app/#' + code : '',
+      '',
+      '\uD83D\uDCD6 *Setup Guide PDF:* ' + origin + '/lifetime/photobooth4u-' + guideFile + '-guide.pdf',
+      isOffline ? '\uD83D\uDDA8\uFE0F *Printer Guide PDF:* ' + origin + '/lifetime/photobooth4u-hiti-printing-guide.pdf' : '',
+      '',
+      'Message us anytime if you need help. Enjoy your event! \uD83C\uDF89'
+    ].filter(function(l){ return l !== ''; }).join('\n');
+    navigator.clipboard.writeText(lines).then(function(){
+      toast('Customer message copied \u2014 paste into Messenger or WhatsApp');
+    }).catch(function(){ toast('Could not copy. Code: ' + code, true); });
+  }
+
   if(TOKEN){ showAdmin(true); load(); }
 })();
 </script>

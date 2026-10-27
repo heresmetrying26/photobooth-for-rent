@@ -62,6 +62,7 @@ export function featuresOf(rec, deviceNo) {
   return {
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes, rec.print),
     traditional: !!rec.traditional, retakeOpt: !!rec.retakeOpt, lockOpt: !!rec.lockOpt,
+    gifOpt: rec.gifOpt !== false,
     vouchers: !!rec.payOpt,                       // offline: vouchers only (QR payments need internet)
     folderKey: rec.lifetime ? null : ((rec.folderName || rec.label || '').trim() || null),
     folderPrefix: rec.lifetime ? ((rec.folderName || rec.label || rec.code || '').trim() || null) : null,

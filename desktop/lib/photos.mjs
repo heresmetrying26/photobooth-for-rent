@@ -127,7 +127,14 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
 .one{max-width:560px;margin:0 auto;padding:6px 16px 40px;text-align:center}.one img,.one video{max-width:100%;max-height:72vh;border-radius:12px;background:#fff;box-shadow:0 10px 30px rgba(60,40,20,.15)}
 @media print{@page{margin:0}html,body{width:100%;height:100%;margin:0!important;background:#fff!important}body *{visibility:hidden!important}.one{position:absolute!important;inset:0!important;display:flex!important;align-items:center!important;justify-content:center!important;max-width:none!important;margin:0!important;padding:0!important}.one img{position:absolute!important;visibility:visible!important;display:block!important;max-width:100vw!important;max-height:100vh!important;width:auto!important;height:auto!important;object-fit:contain!important;border:0!important;border-radius:0!important;box-shadow:none!important}.one h1,.one .sub,.one video,.one div,.one .tip{display:none!important}}
 .btn{display:inline-block;margin:16px 6px 0;padding:14px 22px;border-radius:12px;background:#C93D27;color:#fff;font-weight:800;text-decoration:none;font-size:15px}
-.btn.alt{background:#fff;color:#1C1A1E;border:1.5px solid #E4DCCF}.tip{color:#6B666C;font-size:13px;line-height:1.5;margin:14px auto 0;max-width:420px}.empty{text-align:center;color:#6B666C;padding:40px 16px}`;
+.btn.alt{background:#fff;color:#1C1A1E;border:1.5px solid #E4DCCF}.tip{color:#6B666C;font-size:13px;line-height:1.5;margin:14px auto 0;max-width:420px}.empty{text-align:center;color:#6B666C;padding:40px 16px}
+.tabs{display:inline-flex;background:#EAE4D9;border-radius:24px;padding:3px;margin:0 auto 16px;gap:2px}
+.tab{background:transparent;border:0;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;color:#6B666C;cursor:pointer}
+.tab.active{background:#fff;color:#1C1A1E;box-shadow:0 1px 4px rgba(60,40,20,.1)}
+.grid.filter-photo [data-kind="gif"]{display:none!important}
+.grid.filter-gif [data-kind="photo"]{display:none!important}
+.grid a{position:relative}
+.grid [data-kind="gif"]::after{content:'GIF';position:absolute;bottom:6px;right:6px;background:rgba(28,26,30,.8);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}`;
 function page(title, body) {
   return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>' + esc(title) + '</title><style>' + CSS + '</style></head><body><header><span class="brand"><span class="mk"><i></i><i></i><i></i><i></i></span>photobooth4u</span></header>' + body + '</body></html>';
@@ -150,9 +157,27 @@ async function handleShare(req, res) {
   const evName = ev.sub ? ev.name + ' · ' + ev.sub : ev.name;
   if (!m[2]) {
     const list = photosIn(dir);
-    const body = '<div style="text-align:center;padding:0 16px"><h1>' + esc(evName) + '</h1><p class="sub">' + list.length + ' photo' + (list.length === 1 ? '' : 's') + ' · tap one to save it</p></div>' +
-      (list.length ? '<div class="grid">' + list.map(({ n }) => '<a href="/e/' + m[1] + '/p/' + encodeURIComponent(n) + '"><img loading="lazy" alt="" src="/e/' + m[1] + '/t/' + encodeURIComponent(n) + '"></a>').join('') + '</div>'
-        : '<p class="empty">No photos yet. Pull down to refresh after your session.</p>');
+    const photoCount = list.filter(({ n }) => !/\.gif$/i.test(n)).length;
+    const gifCount = list.length - photoCount;
+    let tabsHtml = '';
+    if (photoCount > 0 && gifCount > 0) {
+      tabsHtml = '<div style="text-align:center"><div class="tabs">' +
+        '<button type="button" class="tab active" onclick="setTab(\'all\',this)">All (' + list.length + ')</button>' +
+        '<button type="button" class="tab" onclick="setTab(\'photo\',this)">Photos (' + photoCount + ')</button>' +
+        '<button type="button" class="tab" onclick="setTab(\'gif\',this)">GIFs (' + gifCount + ')</button>' +
+        '</div></div>';
+    }
+    const countSub = (photoCount > 0 && gifCount > 0)
+      ? photoCount + ' photo' + (photoCount === 1 ? '' : 's') + ' · ' + gifCount + ' GIF' + (gifCount === 1 ? '' : 's')
+      : list.length + ' photo' + (list.length === 1 ? '' : 's');
+    const tabScript = '<script>function setTab(k,b){document.querySelectorAll(".tab").forEach(function(t){t.classList.remove("active")});b.classList.add("active");var g=document.querySelector(".grid");if(g)g.className="grid"+(k==="all"?"":" filter-"+k);}</script>';
+    const body = '<div style="text-align:center;padding:0 16px"><h1>' + esc(evName) + '</h1><p class="sub">' + countSub + ' · tap one to save it</p></div>' +
+      tabsHtml +
+      (list.length ? '<div class="grid">' + list.map(({ n }) => {
+        const k = /\.gif$/i.test(n) ? 'gif' : 'photo';
+        return '<a href="/e/' + m[1] + '/p/' + encodeURIComponent(n) + '" data-kind="' + k + '"><img loading="lazy" alt="" src="/e/' + m[1] + '/t/' + encodeURIComponent(n) + '"></a>';
+      }).join('') + '</div>'
+        : '<p class="empty">No photos yet. Pull down to refresh after your session.</p>') + tabScript;
     return send(res, 200, 'text/html; charset=utf-8', page(evName + ' photos', body));
   }
   let file;
@@ -165,11 +190,14 @@ async function handleShare(req, res) {
   }
   const type = TYPES[extname(file).toLowerCase()] || 'application/octet-stream';
   if (m[2] === 'p') {
+    const isGif = /\.gif$/i.test(file);
     const src = '/e/' + m[1] + '/f/' + encodeURIComponent(file);
-    const media = /^video\//.test(type) ? '<video src="' + src + '" controls playsinline autoplay muted loop></video>' : '<img src="' + src + '" alt="Your photo">';
-    const body = '<div class="one"><h1>Your photo</h1><p class="sub">' + esc(evName) + '</p>' + media +
-      '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">Save photo</a>' + (!/^video\//.test(type) ? '<button class="btn alt" type="button" onclick="window.print()">Print photo</button>' : '') + '<a class="btn alt" href="/e/' + m[1] + '/">All photos</a></div>' + savingTip + '</div>';
-    return send(res, 200, 'text/html; charset=utf-8', page('Your photo', body));
+    const media = /^video\//.test(type) ? '<video src="' + src + '" controls playsinline autoplay muted loop></video>' : '<img src="' + src + '" alt="' + (isGif ? 'Your GIF' : 'Your photo') + '">';
+    const itemTitle = isGif ? 'Your GIF' : 'Your photo';
+    const dlText = isGif ? 'Save GIF' : 'Save photo';
+    const body = '<div class="one"><h1>' + itemTitle + '</h1><p class="sub">' + esc(evName) + '</p>' + media +
+      '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">' + dlText + '</a>' + (!/^video\//.test(type) && !isGif ? '<button class="btn alt" type="button" onclick="window.print()">Print photo</button>' : '') + '<a class="btn alt" href="/e/' + m[1] + '/">All photos</a></div>' + savingTip + '</div>';
+    return send(res, 200, 'text/html; charset=utf-8', page(itemTitle, body));
   }
   if (m[2] === 't' && thumbFn && /^image\/(jpeg|png|webp)$/.test(type)) {
     try {

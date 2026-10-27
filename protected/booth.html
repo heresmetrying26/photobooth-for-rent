@@ -2751,13 +2751,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <p class="panel-hint step-lead" id="brandLead">Customize the screen guests see between sessions, and display your logo.</p>
         <label class="switch-row" style="margin-top:0;"><span>Show welcome screen between guests</span><input type="checkbox" id="welcomeToggle" checked></label>
         <div id="welcomeOpts" style="margin-top:10px;">
-          <p class="sub-label" style="margin:0 0 6px;">Attract mode</p>
+          <p class="sub-label" style="margin:0 0 6px;">Welcome screen style</p>
           <div class="chip-row" id="attractModeChips">
-            <button type="button" class="chip active" data-attract="card">Event card</button>
+            <button type="button" class="chip active" data-attract="card">Branded card</button>
             <button type="button" class="chip" data-attract="camera">Live camera</button>
             <button type="button" class="chip" data-attract="poster">Custom poster</button>
           </div>
-          <p class="panel-hint" id="attractHint" style="margin:6px 0 0;">Shows a branded card with event name, date and sample photo.</p>
+          <p class="panel-hint" id="attractHint" style="margin:6px 0 0;">Auto-generates a branded welcome card with your event title, date, 3-step guest instructions, and a sample photo print.</p>
           <div id="attractPosterRow" style="display:none; margin-top:10px;">
             <div class="bg-row">
               <img class="bg-thumb" id="attractPosterThumb" alt="Poster" style="display:none;">
@@ -2767,13 +2767,29 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <button class="remove-link" id="attractPosterRemove" style="display:none;">Remove poster</button>
             <p class="panel-hint" style="margin:4px 0 0;">Full-screen image — design it in Canva at your camera's aspect ratio (e.g. 3:4 portrait).</p>
           </div>
-          <div style="margin-top:10px;">
-            <p class="sub-label" style="margin:0 0 4px;">Button text</p>
-            <input type="text" class="label-input" id="welcomeMsgInput" placeholder="Tap to start" style="font-family:'Manrope',sans-serif; font-size:14px;">
-            <p class="panel-hint" style="margin:4px 0 0;">Leave empty for the default "Tap to start" (or "Wave" / "Smile" when hands-free is on).</p>
+          <div id="welcomeBtnBlock" style="margin-top:12px;">
+            <label class="switch-row" style="margin-top:0;"><span>Show "Tap to start" button</span><input type="checkbox" id="welcomeBtnToggle" checked></label>
+            <p class="panel-hint" id="welcomeBtnHint" style="margin:4px 0 0;">Turn off if your custom poster or graphic already has a start button or instructions designed in.</p>
+            <div id="welcomeMsgRow" style="margin-top:8px;">
+              <p class="sub-label" style="margin:0 0 4px;">Button text</p>
+              <input type="text" class="label-input" id="welcomeMsgInput" placeholder="Tap to start" style="font-family:'Manrope',sans-serif; font-size:14px;">
+              <p class="panel-hint" style="margin:4px 0 0;">Leave empty for the default "Tap to start" (or "Wave" / "Smile" when hands-free is on).</p>
+            </div>
+          </div>
+          <div class="welcome-pv-card" id="welcomePvCard" style="margin-top:14px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+              <span class="sub-label" style="margin:0;">Preview</span>
+              <span class="panel-hint" style="margin:0; font-size:11px;">Screen between guests</span>
+            </div>
+            <div class="welcome-pv-frame" style="position:relative; width:100%; aspect-ratio:4/3; max-height:220px; border-radius:12px; overflow:hidden; border:1px solid var(--line); background:#1c1a1e; display:flex; align-items:center; justify-content:center;">
+              <div class="welcome-pv-cam-hint" id="welcomePvCamHint" style="display:none; position:absolute; inset:0; align-items:center; justify-content:center; flex-direction:column; color:rgba(255,255,255,.5); font-size:12px; gap:4px; pointer-events:none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px;opacity:.7;"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2"/></svg>
+                <span>Live camera mirror</span>
+              </div>
+              <img id="welcomePreview" alt="Welcome screen preview" style="position:relative; z-index:1; width:100%; height:100%; object-fit:contain; display:block;">
+            </div>
           </div>
         </div>
-        <img id="welcomePreview" alt="" style="display:none;">
 
         <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line);">
           <p class="sub-label" style="margin:0 0 8px;">Logos on screen</p>
@@ -10590,6 +10606,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var attractPosterImg = null;
   var attractPosterUrl = '';
   var attractPosterId = '';
+  var welcomeBtnOn = true;
   // Renter's own logos (Setup 5): c = corner of the guest screen, w = on the welcome picture.
   // x, y = centre as a share of the screen (c) or of the welcome picture (w); s = logo height as a
   // share of that height. null = the default place (c: where the photobooth4u logo sits;
@@ -10793,6 +10810,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var welcomeImg = document.getElementById('welcomeImg');
   var welcomeToggle = document.getElementById('welcomeToggle');
   var welcomeMsgInput = document.getElementById('welcomeMsgInput');
+  var welcomeBtnToggle = document.getElementById('welcomeBtnToggle');
+  var welcomeMsgRow = document.getElementById('welcomeMsgRow');
+  var welcomePvCamHint = document.getElementById('welcomePvCamHint');
   var welcomeDataUrl = '';
   var welcomeTimer = null;
   welcomeToggle.addEventListener('change', function(){
@@ -10806,11 +10826,21 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     scheduleWelcomeRender();
     if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
   });
+  if(welcomeBtnToggle){
+    welcomeBtnToggle.addEventListener('change', function(){
+      welcomeBtnOn = welcomeBtnToggle.checked;
+      if(welcomeMsgRow) welcomeMsgRow.style.display = welcomeBtnOn ? '' : 'none';
+      scheduleWelcomeRender();
+      if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+    });
+  }
 
   // ---- Attract mode switching ----
-  var attractHints = { card: 'Shows a branded card with event name, date and sample photo.',
-    camera: 'Guests see themselves on the live camera \u2014 a mirror attract mode. Tap to start appears over the video.',
-    poster: 'Full-screen custom image (e.g. a Canva poster). Design it at your camera\u2019s aspect ratio.' };
+  var attractHints = {
+    card: 'Auto-generates a branded welcome card with your event title, date, 3-step guest instructions, and a sample photo print.',
+    camera: 'Guests see themselves on the live camera like a mirror. Tap to start appears over the video.',
+    poster: 'Shows a full-screen custom graphic (e.g. designed in Canva at your camera’s aspect ratio).'
+  };
   function setAttractModeUI(mode){
     attractMode = (mode === 'camera' || mode === 'poster') ? mode : 'card';
     var chips = document.getElementById('attractModeChips');
@@ -10823,6 +10853,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(hint) hint.textContent = attractHints[attractMode] || '';
     var posterRow = document.getElementById('attractPosterRow');
     if(posterRow) posterRow.style.display = attractMode === 'poster' ? '' : 'none';
+    var camHint = document.getElementById('welcomePvCamHint');
+    if(camHint) camHint.style.display = attractMode === 'camera' ? 'flex' : 'none';
   }
   (function(){
     var chips = document.getElementById('attractModeChips'); if(!chips) return;
@@ -10885,6 +10917,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var H = 1200, W = Math.round(H * wa), land = wa >= 1.15;
       var c = document.createElement('canvas'); c.width = W; c.height = H;
       var ctx = c.getContext('2d');
+      var pvFrame = document.querySelector('.welcome-pv-frame');
+      if(pvFrame) pvFrame.style.aspectRatio = (W / H).toFixed(3);
       var hfMode = typeof fx !== 'undefined' ? fx.hands : 'off';
       var btnText = welcomeMsg || (hfMode === 'wave' ? 'Wave to start' : hfMode === 'smile' ? 'Smile to start' : 'Tap to start');
 
@@ -10892,20 +10926,24 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(attractMode === 'camera'){
         // Almost fully transparent — the live video shows through the welcome overlay
         ctx.clearRect(0, 0, W, H);
-        // Soft bottom gradient so the CTA reads well over any camera feed
-        var grad = ctx.createLinearGradient(0, H * 0.7, 0, H);
-        grad.addColorStop(0, 'rgba(28,26,30,0)'); grad.addColorStop(1, 'rgba(28,26,30,.55)');
-        ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
-        // Draw the CTA button
-        ctx.font = '800 34px Manrope, sans-serif';
-        var bw = Math.min(W * 0.7, ctx.measureText(btnText).width + 130), bh = 92;
-        var bx = W / 2 - bw / 2, by = H - bh - 80;
-        roundRectPath(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-        var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', 34, bw - 50, 18);
-        ctx.font = '800 ' + bs + 'px Manrope, sans-serif';
-        ctx.fillText(btnText, W / 2, by + bh / 2 + bs * 0.36);
-        welcomeCta = { l: bx / W * 100, t: by / H * 100, w: bw / W * 100, h: bh / H * 100 };
+        if(welcomeBtnOn){
+          // Soft bottom gradient so the CTA reads well over any camera feed
+          var grad = ctx.createLinearGradient(0, H * 0.7, 0, H);
+          grad.addColorStop(0, 'rgba(28,26,30,0)'); grad.addColorStop(1, 'rgba(28,26,30,.55)');
+          ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+          // Draw the CTA button
+          ctx.font = '800 34px Manrope, sans-serif';
+          var bw = Math.min(W * 0.7, ctx.measureText(btnText).width + 130), bh = 92;
+          var bx = W / 2 - bw / 2, by = H - bh - 80;
+          roundRectPath(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+          var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', 34, bw - 50, 18);
+          ctx.font = '800 ' + bs + 'px Manrope, sans-serif';
+          ctx.fillText(btnText, W / 2, by + bh / 2 + bs * 0.36);
+          welcomeCta = { l: bx / W * 100, t: by / H * 100, w: bw / W * 100, h: bh / H * 100 };
+        } else {
+          welcomeCta = null;
+        }
         welcomeGeo = { W: W, H: H, mid: 0.5 };
         welcomeBaseUrl = ''; welcomeLogoRect = null;
         placeWelcomePulse();
@@ -10926,20 +10964,24 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText('Upload a poster image in Setup', W / 2, H / 2);
         }
-        // Soft bottom gradient for button readability
-        var grad2 = ctx.createLinearGradient(0, H * 0.75, 0, H);
-        grad2.addColorStop(0, 'rgba(28,26,30,0)'); grad2.addColorStop(1, 'rgba(28,26,30,.5)');
-        ctx.fillStyle = grad2; ctx.fillRect(0, 0, W, H);
-        // Draw the CTA button
-        ctx.font = '800 34px Manrope, sans-serif';
-        var bw2 = Math.min(W * 0.7, ctx.measureText(btnText).width + 130), bh2 = 92;
-        var bx2 = W / 2 - bw2 / 2, by2 = H - bh2 - 80;
-        roundRectPath(ctx, bx2, by2, bw2, bh2, bh2 / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-        var bs2 = fitFont(ctx, btnText, 'Manrope, sans-serif', 34, bw2 - 50, 18);
-        ctx.font = '800 ' + bs2 + 'px Manrope, sans-serif';
-        ctx.fillText(btnText, W / 2, by2 + bh2 / 2 + bs2 * 0.36);
-        welcomeCta = { l: bx2 / W * 100, t: by2 / H * 100, w: bw2 / W * 100, h: bh2 / H * 100 };
+        if(welcomeBtnOn){
+          // Soft bottom gradient for button readability
+          var grad2 = ctx.createLinearGradient(0, H * 0.75, 0, H);
+          grad2.addColorStop(0, 'rgba(28,26,30,0)'); grad2.addColorStop(1, 'rgba(28,26,30,.5)');
+          ctx.fillStyle = grad2; ctx.fillRect(0, 0, W, H);
+          // Draw the CTA button
+          ctx.font = '800 34px Manrope, sans-serif';
+          var bw2 = Math.min(W * 0.7, ctx.measureText(btnText).width + 130), bh2 = 92;
+          var bx2 = W / 2 - bw2 / 2, by2 = H - bh2 - 80;
+          roundRectPath(ctx, bx2, by2, bw2, bh2, bh2 / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+          var bs2 = fitFont(ctx, btnText, 'Manrope, sans-serif', 34, bw2 - 50, 18);
+          ctx.font = '800 ' + bs2 + 'px Manrope, sans-serif';
+          ctx.fillText(btnText, W / 2, by2 + bh2 / 2 + bs2 * 0.36);
+          welcomeCta = { l: bx2 / W * 100, t: by2 / H * 100, w: bw2 / W * 100, h: bh2 / H * 100 };
+        } else {
+          welcomeCta = null;
+        }
         welcomeGeo = { W: W, H: H, mid: 0.5 };
         welcomeBaseUrl = ''; welcomeLogoRect = null;
         // Draw brand logo if set
@@ -10994,7 +11036,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var soft = lumOf(cardColor) > 0.5 ? 'rgba(28,26,30,.62)' : 'rgba(255,255,255,.75)';
       var dt = currentDateLabel();
       var cardBox = function(slotH){
-        var ch = 64 + 40 + 110 + (dt ? 54 : 0) + 40 + 3 * 64 + 40 + 92 + 56 + slotH;
+        var ch = 64 + 40 + 110 + (dt ? 54 : 0) + 40 + 3 * 64 + (welcomeBtnOn ? (40 + 92) : 0) + 56 + slotH;
         var cw = land ? Math.min(W * 0.42, 720) : Math.min(W * 0.82, 760);
         var cx = land ? W * 0.53 : (W - cw) / 2;
         var cy = land ? (H - ch) / 2 : Math.max(area.y + area.h + 30, H - ch - H * 0.05);
@@ -11037,14 +11079,18 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         ctx.fillStyle = '#fff'; ctx.font = '800 24px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + 22, sy - 3);
         ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 31px Manrope, sans-serif'; ctx.fillText(t, sx + 62, sy);
       });
-      ctx.font = '800 34px Manrope, sans-serif';
-      var bw = Math.min(cw - 80, ctx.measureText(btnText).width + 130), bh = 92, bx = mid - bw / 2, by = cy + ch - bh - 48;
-      roundRectPath(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
-      var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', 34, bw - 50, 18);
-      ctx.font = '800 ' + bs + 'px Manrope, sans-serif';
-      ctx.fillText(btnText, mid, by + bh / 2 + bs * 0.36);
-      welcomeCta = { l: bx / W * 100, t: by / H * 100, w: bw / W * 100, h: bh / H * 100 };
+      if(welcomeBtnOn){
+        ctx.font = '800 34px Manrope, sans-serif';
+        var bw = Math.min(cw - 80, ctx.measureText(btnText).width + 130), bh = 92, bx = mid - bw / 2, by = cy + ch - bh - 48;
+        roundRectPath(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+        var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', 34, bw - 50, 18);
+        ctx.font = '800 ' + bs + 'px Manrope, sans-serif';
+        ctx.fillText(btnText, mid, by + bh / 2 + bs * 0.36);
+        welcomeCta = { l: bx / W * 100, t: by / H * 100, w: bw / W * 100, h: bh / H * 100 };
+      } else {
+        welcomeCta = null;
+      }
       welcomeGeo = { W: W, H: H, mid: mid / W };
       welcomeBaseUrl = ''; welcomeLogoRect = null;
       if(wl){
@@ -11066,7 +11112,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // A soft pulse around "Tap to start" (the only motion on the guest screen while idle).
   function placeWelcomePulse(){
     var p = document.getElementById('welcomePulse');
-    if(!p || !welcomeCta) return;
+    if(!p) return;
+    if(!welcomeCta || !welcomeBtnOn){
+      p.style.display = 'none';
+      return;
+    }
+    p.style.display = '';
     p.style.left = welcomeCta.l + '%'; p.style.top = welcomeCta.t + '%';
     p.style.width = welcomeCta.w + '%'; p.style.height = welcomeCta.h + '%';
   }
@@ -12529,6 +12580,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       filter: filterKey, softSkin: softSkin,
       welcomeOn: welcomeOn,
       welcomeMsg: welcomeMsg,
+      welcomeBtnOn: welcomeBtnOn,
       attractMode: attractMode,
       attractPosterId: attractPosterId || '',
       attractPosterUrl: attractPosterUrl && !attractPosterId ? attractPosterUrl : '',
@@ -12628,6 +12680,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(typeof s.welcomeMsg === 'string'){
         welcomeMsg = s.welcomeMsg;
         if(welcomeMsgInput) welcomeMsgInput.value = welcomeMsg;
+      }
+      if(typeof s.welcomeBtnOn === 'boolean'){
+        welcomeBtnOn = s.welcomeBtnOn;
+        if(welcomeBtnToggle) welcomeBtnToggle.checked = welcomeBtnOn;
+        var wmRow = document.getElementById('welcomeMsgRow');
+        if(wmRow) wmRow.style.display = welcomeBtnOn ? '' : 'none';
       }
       if(typeof setAttractModeUI === 'function'){
         setAttractModeUI(s.attractMode || 'card');

@@ -17,13 +17,13 @@
 //   bun build --compile --target=bun-darwin-x64   print-helper.js --outfile photobooth4u-print-helper-mac-intel
 //   bun build --compile --target=bun-windows-x64  print-helper.js --outfile photobooth4u-print-helper-windows.exe
 
-import { tmpdir, platform } from 'node:os';
+import { tmpdir, platform, release as osRelease } from 'node:os';
 import { join } from 'node:path';
 import { writeFile, rm, mkdtemp, mkdir, readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.6';
+const VERSION = '1.1.7';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',
@@ -31,6 +31,7 @@ const ALLOWED_ORIGINS = new Set([
   ...(process.env.PB_ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
 ]);
 const IS_WIN = platform() === 'win32';
+const IS_MAC = platform() === 'darwin';
 const MAX_BODY = 80 * 1024 * 1024;     // 80 MB of page images per job
 
 function run(cmd, args, input){
@@ -401,6 +402,32 @@ async function printers(force){
   return printersCache.list;
 }
 
+function launchDetached(cmd, args){
+  return new Promise((resolve) => {
+    let p;
+    try{ p = spawn(cmd, args, { windowsHide: true, detached: true, stdio: 'ignore' }); }
+    catch(e){ resolve({ ok: false, error: String(e && e.message || e) }); return; }
+    p.once('error', e => resolve({ ok: false, error: String(e && e.message || e) }));
+    p.once('spawn', () => { p.unref(); resolve({ ok: true }); });
+  });
+}
+
+async function openPrinterSettings(printer){
+  if(IS_WIN){
+    const r = await launchDetached('rundll32.exe', ['printui.dll,PrintUIEntry', '/e', '/n', printer]);
+    return r.ok ? { ok: true, message: 'Printer preferences opened. Set the loaded paper and print quality, then save or apply the changes.' } : r;
+  }
+  if(IS_MAC){
+    const modern = Number(osRelease().split('.')[0]) >= 22;
+    const app = modern ? 'System Settings' : 'System Preferences';
+    const pane = modern ? 'x-apple.systempreferences:com.apple.Print-Scan-Settings.extension' : '/System/Library/PreferencePanes/PrintAndFax.prefPane';
+    let r = await launchDetached('open', ['-a', app, pane]);
+    if(!r.ok) r = await launchDetached('open', ['-a', app]);
+    return r.ok ? { ok: true, message: app + ' opened. Select “Printers & Scanners”, then choose “' + printer + '” to review its available settings.' } : r;
+  }
+  return { ok: false, error: 'Opening printer settings is supported on Windows and Mac.' };
+}
+
 let queue = Promise.resolve();   // one job at a time
 
 const server = Bun.serve({
@@ -474,6 +501,18 @@ const server = Bun.serve({
       const info = await paperSizes(name), pick = await pickPaper(name, Number(url.searchParams.get('w')) || 0, Number(url.searchParams.get('h')) || 0);
       const def = info.def && info.sizes.find((x) => x.key === info.def);
       return json({ ok: true, known: info.sizes.length > 0, match: pick ? { name: pick.name, borderless: !!pick.borderless, isDefault: !!pick.keep } : null, def: def ? def.name : (info.def || ''), sizes: info.sizes.slice(0, 40).map((x) => x.name) }, 200, origin);
+    }
+    if(req.method === 'POST' && url.pathname === '/printer/configure'){
+      if(!origin) return json({ ok: false, error: 'Missing origin' }, 403);
+      let body;
+      try{ body = await req.json(); }catch(e){ return json({ ok: false, error: 'Bad request' }, 400, origin); }
+      const name = String(body.printer || '').trim();
+      if(!name) return json({ ok: false, error: 'Choose a printer first.' }, 400, origin);
+      let list = await printers(false);
+      if(!list.includes(name)) list = await printers(true);
+      if(!list.includes(name)) return json({ ok: false, error: 'No printer called "' + name + '"' }, 404, origin);
+      const result = await openPrinterSettings(name);
+      return json(result, result.ok ? 200 : 500, origin);
     }
     if(req.method === 'POST' && url.pathname === '/print'){
       if(!origin) return json({ ok: false, error: 'Missing origin' }, 403);

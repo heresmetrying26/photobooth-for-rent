@@ -6,6 +6,7 @@ size can use its own printer. Renter instructions live on `/downloads/` (public/
 - Listens on `127.0.0.1:17321` only; accepts requests only from `https://photobooth4u.netlify.app`
   (and `http://localhost:8888` for `netlify dev`). Extra origins: env `PB_ALLOWED_ORIGINS=a,b`.
 - `GET /status` → `{ ok, version, printers: [...] }`
+- `POST /printer/configure` `{ printer }` opens that printer's operating-system settings.
 - `POST /print` `{ printer, widthMm, heightMm, pages: ["data:image/png;base64,..."] }` → `{ ok }`
 - Windows (1.1+): `GET /camera`, `POST /camera/open`, `GET /camera/frame`, `POST /camera/capture`,
   `GET /camera/battery`, `POST /camera/live?on=0|1`, `POST /camera/close` control a Nikon over USB through
@@ -39,6 +40,7 @@ More info → Run anyway. Signing (Apple Developer ID + notarization, Windows co
 removes those warnings.
 
 ## Versions
+- 1.1.7: the web booth can open the selected printer's Windows preferences or Mac Printers & Scanners settings.
 - 1.1.4: answers the booth at once (the printer list is kept and refreshed in the background, so Windows no longer times out with "Can't reach the Print Helper"); receipt printers: `fit: "width"` prints at the roll's full width without stretching (Receipt layouts).
 - 1.1.3: Windows camera: photo download reads the photo's size first and falls back to 1 MB pieces when Windows' driver returns nothing; download details in errors.
 - 1.1.2: Windows camera: Nikon records to its own memory (no SD card needed for live view and photos), like the Mac booth.

@@ -1,0 +1,67 @@
+name: Print Helper
+
+on:
+  push:
+    tags: ['print-helper-v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: tools/print-helper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Build and package
+        shell: pwsh
+        run: |
+          bun build --compile --minify --target=bun-windows-x64 print-helper.js --outfile photobooth4u-print-helper-windows.exe
+          Compress-Archive -Path photobooth4u-print-helper-windows.exe -DestinationPath photobooth4u-print-helper-windows.zip -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: print-helper-windows
+          path: tools/print-helper/photobooth4u-print-helper-windows.zip
+          if-no-files-found: error
+
+  build-mac:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: tools/print-helper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Build and package Mac helpers
+        shell: bash
+        run: |
+          bun build --compile --minify --target=bun-darwin-arm64 print-helper.js --outfile photobooth4u-print-helper-mac-apple-silicon
+          codesign --force --sign - --identifier com.photobooth4u.printhelper photobooth4u-print-helper-mac-apple-silicon
+          zip -j -X photobooth4u-print-helper-mac-apple-silicon.zip photobooth4u-print-helper-mac-apple-silicon
+          bun build --compile --minify --target=bun-darwin-x64 print-helper.js --outfile photobooth4u-print-helper-mac-intel
+          codesign --force --sign - --identifier com.photobooth4u.printhelper photobooth4u-print-helper-mac-intel
+          zip -j -X photobooth4u-print-helper-mac-intel.zip photobooth4u-print-helper-mac-intel
+      - uses: actions/upload-artifact@v4
+        with:
+          name: print-helper-mac
+          path: |
+            tools/print-helper/photobooth4u-print-helper-mac-apple-silicon.zip
+            tools/print-helper/photobooth4u-print-helper-mac-intel.zip
+          if-no-files-found: error
+
+  release:
+    needs: [build-windows, build-mac]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Print Helper ${{ github.ref_name }}
+          files: release-assets/*.zip
+          make_latest: false

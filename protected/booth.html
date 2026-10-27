@@ -9159,6 +9159,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const name=printerFor(printSize); if(!name) return showToast('Choose a printer first.',3000);
       printerSetupBtn.disabled=true; printerOptionsBox.style.display='block'; printerOptionsBox.textContent='Loading printer settings?';
       try{
+        if(!DESKTOP){
+          const rr=await fetch(HELPER_URL+'/printer/configure',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({printer:name})}); const jj=await rr.json();
+          if(!rr.ok||!jj.ok) throw new Error(jj.error||'Could not open printer settings.');
+          printerOptionsBox.textContent=jj.message||'Printer settings opened. Choose the loaded paper and desired print quality, then save or apply.';
+          return;
+        }
         const r=await fetch(HELPER_URL+'/printer/options?printer='+encodeURIComponent(name),{cache:'no-store'}); const j=await r.json();
         if(!r.ok||!j.ok) throw new Error(j.error||'Could not load printer settings.');
         if(j.platformDialog){
@@ -9208,6 +9214,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function refreshPrinterHint(){
     const name = printerFor(printSize);
     if(printSize) printerPickSize.textContent = paperFor(printSize).name + (printerKey(printSize) !== printSize ? ' \u00b7 strip layouts (2 strips, cut)' : '');
+    if(printerSetupBtn){
+      const canOpen = DESKTOP || (helperOn && helper.ok && helperAtLeast('1.1.7') && !!name && helper.printers.includes(name));
+      printerSetupBtn.style.display = canOpen ? '' : 'none';
+      printerSetupBtn.textContent = 'Configure printer';
+    }
     if(helperOn && helper.ok){
       if(DESKTOP && !helper.printers.length) printerHelperHint.textContent = 'No printers found on this laptop. Plug in the printer and install its driver (' + (/Mac/i.test(navigator.platform || '') ? 'System Settings \u2192 Printers & Scanners' : 'Windows Settings \u2192 Printers & scanners') + '), then reopen Print settings.';
       else if(!name) printerHelperHint.textContent = 'Print Helper connected. Choose the printer for this paper size.';
@@ -9216,6 +9227,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       // Print Helper 1.0.0 for Windows couldn't print one-page jobs (fixed in 1.0.1).
       if(/Windows/i.test(navigator.userAgent) && helper.version === '1.0.0')
         printerHelperHint.innerHTML = '<div class="helper-help"><b>Please update the Print Helper.</b> This Windows version (1.0.0) can\u2019t print. Close it, <a href="/downloads/" target="_blank" rel="noopener">download the new one</a>, and open it again.</div>';
+      else if(!DESKTOP && name && !helperAtLeast('1.1.7'))
+        printerHelperHint.innerHTML = 'Update the Print Helper to open printer settings here. <a href="/downloads/" target="_blank" rel="noopener">Download the latest helper</a>.';
     } else if(helperOn && helper.checked){
       printerHelperHint.innerHTML = DESKTOP ? 'Printing isn\u2019t ready yet. Close and reopen the app.' : helperTroubleHtml();
     } else {

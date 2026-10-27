@@ -24,7 +24,7 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.6', date: '2026-10-24' };
+export const HELPER = { version: '1.1.7', date: '2026-10-27' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -58,6 +58,12 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-27', title: 'Open printer settings from the web booth', for: ['website', 'helper'], helper: '1.1.7',
+    items: [
+      'Choose a printer in the web booth and open its Windows printer preferences or Mac Printers & Scanners settings through the Print Helper.'
+    ]
+  },
   {
     date: '2026-10-27', title: 'A clearer printer setup', for: ['website', 'app'], app: '1.0.12',
     items: [

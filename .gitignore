@@ -4,3 +4,6 @@ public/downloads/*.exe
 .collaborator
 .dual-graph/
 .vscode/
+
+# Local Netlify folder
+.netlify

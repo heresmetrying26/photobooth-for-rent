@@ -329,9 +329,13 @@ export const jobOwner = (rec) => (rec && rec.kind === 'bonus' && rec.parent ? re
 // ---------- settings ----------
 export async function getSettings() {
   const saved = await meta().get('settings', { type: 'json' });
+  // Netlify environment variables conventionally use TRIAL_PASSWORD. Accept
+  // the lowercase spelling too, and let an explicitly configured environment
+  // value override an older Admin/Blobs value (especially for local dev).
+  const envTrialPassword = String(process.env.TRIAL_PASSWORD || process.env.trial_password || '').trim();
   const settings = {
     trialEnabled: true,
-    trialPassword: process.env.TRIAL_PASSWORD || 'TRIAL',
+    trialPassword: 'TRIAL',
     trialMinutes: 15,
     trialFolderPrefix: 'Trial test shots',
     trialPrintEnabled: false,
@@ -345,7 +349,8 @@ export async function getSettings() {
     qrTarget: 'gallery',
     galleryQr: true,        // "open on your phone" QR on the gallery page
     trialWatermark: true,   // photobooth4u logo on trial photos
-    ...(saved || {})
+    ...(saved || {}),
+    ...(envTrialPassword ? { trialPassword: envTrialPassword } : {})
   };
   delete settings.trialGif; // Ignore legacy settings after removing GIF support.
   return settings;

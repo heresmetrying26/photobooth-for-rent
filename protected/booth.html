@@ -130,6 +130,12 @@
   .backup-pop .bp-text{margin:0; font-size:14px; line-height:1.5; color:var(--ink-dim); overflow-wrap:anywhere;}
   .backup-pop .bp-btns{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
   .backup-pop .bp-btns .action-btn{width:auto; margin:0; min-height:40px; padding:0 16px; font-size:13.5px;}
+  .gallery-pop{position:fixed; z-index:60; width:min(310px,calc(100vw - 24px)); padding:16px; border-radius:16px; background:#fff; color:var(--ink); box-shadow:0 18px 44px rgba(0,0,0,.32); border:1px solid var(--line); text-align:center;}
+  .gallery-pop[hidden]{display:none;}.gallery-pop img{display:block;width:190px;height:190px;max-width:100%;object-fit:contain;margin:8px auto;border-radius:10px;background:#fff;}
+  .gallery-pop .bp-title{margin:0 28px 4px 0;text-align:left;font:600 19px 'Fraunces',Georgia,serif;}
+  .gallery-pop .gallery-close{position:absolute;right:10px;top:9px;width:34px;height:34px;border:1px solid var(--line);border-radius:50%;background:#fff;font-size:18px;cursor:pointer;}
+  .gallery-pop .gallery-link{display:block;overflow-wrap:anywhere;color:var(--ink-dim);font-size:12px;margin:4px 0 10px;}
+  .gallery-pop .bp-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}.gallery-pop .bp-btns .action-btn{width:auto;margin:0;min-height:40px;padding:0 14px;font-size:13px;}
   #backupSection{display:none !important;}   /* lives in the Backup folder button now */
   /* The renter's logo in Photo Session (Setup keeps the photobooth4u logo) */
   .brand-client{display:none; height:46px; width:auto; max-width:220px; object-fit:contain;}
@@ -402,6 +408,10 @@
     text-align:center; padding:16px 16px 22px;
   }
   .ready-overlay.ready-active{display:flex;}
+  .ready-actions{display:flex;align-items:center;justify-content:center;gap:12px;pointer-events:auto;}
+  .ready-cancel{min-height:52px;padding:0 24px;border:2px solid rgba(255,255,255,.8);border-radius:999px;background:rgba(28,26,30,.78);color:#fff;font:800 15px 'Manrope',sans-serif;cursor:pointer;pointer-events:auto;touch-action:manipulation;}
+  .ready-cancel:hover{background:var(--brand);border-color:var(--brand);}
+  .ready-hands-cancel{display:none;}
   .ready-overlay .ready-title{opacity:.72; font-size:clamp(22px, 3.2vw, 34px); margin:4px 0 0;}
   .ready-overlay .shutter-btn{pointer-events:auto; opacity:.95;}
   /* Smile / wave to start: no button, a cue instead; a tap on the picture still starts. */
@@ -415,6 +425,8 @@
   .ready-overlay.hands .ready-cue{margin-top:6px;}
   .ready-overlay.hands .shutter-btn{display:none;}
   .ready-overlay.hands .ready-cue{display:flex;}
+  .ready-overlay.hands .ready-actions{display:none;}
+  .ready-overlay.hands .ready-hands-cancel{display:inline-flex;align-items:center;justify-content:center;margin-top:8px;}
   /* Choosing a layout: guests tap a card; no Start button under it. */
   body.picking #startBtn{display:none !important;}
   .stage-frame.is-ready .countdown-overlay{display:none !important;}
@@ -2814,7 +2826,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         </div>
         <p class="panel-hint" id="lockPinNote" style="margin:6px 0 4px;"></p>
         <p class="panel-hint" id="lockTestNote" style="margin:0 0 10px; padding:6px 10px; border-radius:10px; background:#fff6db; border:1px solid #f0d98a; color:#6b5300; font-weight:700;">For testing: the PIN is <b>1234</b> until you set your own.</p>
-        <button type="button" class="action-btn primary" id="lockNowBtn" style="width:auto; margin:0;"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Lock booth now</button>
+        <p class="panel-hint" style="margin:0;">Set or change the PIN here. When you are ready to leave the booth in guest mode, use <b>Lock booth</b> in the Photo Session dock.</p>
       </div>
       <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="5">← Back</button><button class="action-btn primary" id="goToSessionBtn">Start photo session →</button></div>
     </section>
@@ -2915,8 +2927,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <p class="ready-sub" id="readySub">4 shots · 5,4,3,2,1,Pose</p>
           </div>
           <div class="sc-filters ready-filters" id="readyFilters" aria-label="Pick a filter" hidden></div>
-          <button class="shutter-btn" id="readyStartBtn"><span class="ring"></span>Start</button>
+          <div class="ready-actions"><button type="button" class="ready-cancel" id="readyCancelBtn">&#10005; Cancel</button><button class="shutter-btn" id="readyStartBtn"><span class="ring"></span>Start</button></div>
           <p class="ready-cue" id="readyCue" aria-live="polite"><i aria-hidden="true"></i><span><b id="readyCueTxt">Smile to start</b><small>or tap the screen</small></span></p>
+          <button type="button" class="ready-cancel ready-hands-cancel" id="readyHandsCancelBtn">&#10005; Cancel</button>
         </div>
         <div class="flash-overlay" id="flashOverlay"></div>
 
@@ -3133,6 +3146,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   <button type="button" class="dock-btn" id="camFab" hidden aria-label="Camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Camera</span></button>
   <button type="button" class="dock-btn" id="printFab" hidden aria-label="Printer settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg><span>Printer</span></button>
   <button type="button" class="dock-btn" id="backupFab" hidden aria-label="Backup folder" aria-expanded="false" aria-controls="backupPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Backup folder</span><i class="bk-dot" aria-hidden="true"></i></button>
+  <button type="button" class="dock-btn" id="galleryFab" hidden aria-label="All photos gallery" aria-expanded="false" aria-controls="galleryPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zm0 6h3m3-6v3m0 3h.01"/></svg><span>All photos</span></button>
+  <button type="button" class="dock-btn" id="lockFab" hidden aria-label="Lock booth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Lock booth</span></button>
   </div>
   <div class="dock-pwr" id="dockPwr" hidden>Powered by <span class="pm" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>photobooth<em>4u</em></b></div>
 </div>
@@ -3140,6 +3155,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   <p class="bp-title">Backup folder</p>
   <p class="bp-text" id="backupPopText"></p>
   <div class="bp-btns"><button type="button" class="action-btn primary" id="backupPopAllow">Allow saving</button><button type="button" class="action-btn" id="backupPopChange">Change folder</button></div>
+</div>
+<div class="gallery-pop" id="galleryPop" role="dialog" aria-label="All photos gallery" hidden>
+  <button type="button" class="gallery-close" id="galleryPopClose" aria-label="Close">&#215;</button>
+  <p class="bp-title">All photos</p><img id="galleryPopQr" alt="All photos gallery QR code"><a class="gallery-link" id="galleryPopLink" href="#" target="_blank" rel="noopener">Open event gallery</a>
+  <div class="bp-btns"><button type="button" class="action-btn" id="galleryPopCopy">Copy link</button></div>
 </div>
 <button type="button" class="lock-icon" id="lockIcon" aria-label="Unlock" title="Unlock" hidden><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></button>
 <div class="pin-modal" id="pinModal" hidden>
@@ -4937,6 +4957,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     localFolderUrl = folderUrl; if(name) localFolderName = name;
     var url = shareUrlFor(folderUrl);
     currentFolderLink = url || '';
+    refreshGalleryUI();
     var open = document.getElementById('driveFolderOpen');
     open.style.display = url ? '' : 'none';
     if(url){ open.href = url; open.textContent = 'Open gallery'; }
@@ -4957,6 +4978,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(DESKTOP) return showLocalFolderPreview(folderUrl, name);
     var url = shareUrlFor(folderUrl), gallery = usesGallery(folderUrl);
     currentFolderLink = url;
+    refreshGalleryUI();
     document.getElementById('driveFolderOpen').href = url;
     document.getElementById('driveFolderOpen').textContent = gallery ? 'Open gallery' : 'Open folder';
     var dl = document.getElementById('driveFolderDrive');
@@ -5301,6 +5323,31 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     pop.hidden = true;
     const fab = document.getElementById('backupFab'); if(fab) fab.setAttribute('aria-expanded', 'false');
   }
+  function refreshGalleryUI(){
+    const fab = document.getElementById('galleryFab');
+    const link = document.getElementById('galleryPopLink');
+    const qr = document.getElementById('galleryPopQr');
+    if(!fab || !link || !qr) return;
+    const url = currentFolderLink || '';
+    fab.hidden = !url;
+    if(url){ link.href = url; link.textContent = url; qr.src = qrImageUrl(url); }
+    else { link.href = '#'; qr.removeAttribute('src'); closeGalleryPop(); }
+    if(typeof scheduleDock === 'function') scheduleDock();
+    if(typeof guestRender === 'function') guestRender();
+  }
+  function closeGalleryPop(){
+    const pop = document.getElementById('galleryPop'); if(!pop || pop.hidden) return;
+    pop.hidden = true;
+    const fab = document.getElementById('galleryFab'); if(fab) fab.setAttribute('aria-expanded','false');
+  }
+  function openGalleryPop(){
+    const pop = document.getElementById('galleryPop'), fab = document.getElementById('galleryFab');
+    if(!pop || !fab || !currentFolderLink) return;
+    pop.hidden = false; fab.setAttribute('aria-expanded','true');
+    const r = fab.getBoundingClientRect();
+    pop.style.left = Math.max(12, Math.min(r.left, window.innerWidth - pop.offsetWidth - 12)) + 'px';
+    pop.style.bottom = (window.innerHeight - r.top + 10) + 'px';
+  }
   function openBackupPop(){
     const pop = document.getElementById('backupPop'), fab = document.getElementById('backupFab');
     if(!pop || !fab) return;
@@ -5347,9 +5394,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     document.getElementById('backupPopAllow').addEventListener('click', (e) => { e.stopPropagation(); allowBackup(); });
     document.getElementById('backupPopChange').addEventListener('click', (e) => { e.stopPropagation(); closeBackupPop(); document.getElementById('backupChooseBtn').click(); });
     document.getElementById('backupPop').addEventListener('click', (e) => e.stopPropagation());
+    document.getElementById('galleryFab').addEventListener('click', (e) => { e.stopPropagation(); const pop = document.getElementById('galleryPop'); if(pop.hidden) openGalleryPop(); else closeGalleryPop(); });
+    document.getElementById('galleryPopClose').addEventListener('click', closeGalleryPop);
+    document.getElementById('galleryPop').addEventListener('click', (e) => e.stopPropagation());
+    document.getElementById('galleryPopCopy').addEventListener('click', async () => {
+      try{ await navigator.clipboard.writeText(currentFolderLink); showToast('Gallery link copied.'); }
+      catch(e){ showToast('Could not copy the gallery link.'); }
+    });
     document.addEventListener('click', closeBackupPop);
-    document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeBackupPop(); });
-    window.addEventListener('resize', closeBackupPop);
+    document.addEventListener('click', closeGalleryPop);
+    document.addEventListener('keydown', (e) => { if(e.key === 'Escape'){ closeBackupPop(); closeGalleryPop(); } });
+    window.addEventListener('resize', () => { closeBackupPop(); closeGalleryPop(); });
     document.getElementById('backupStopBtn').addEventListener('click', async () => {
       backupDir = null; backupOk = false;
       try{ await dbDo('kv', 'readwrite', st => st.delete('backupDir')); }catch(e){}
@@ -5359,6 +5414,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     goToSessionBtn.addEventListener('click', () => { if(backupDir && !backupOk) allowBackup(); });
     driveFolderKeyInput.addEventListener('input', refreshBackupUI);
     refreshBackupUI();
+    refreshGalleryUI();
     if(canBackupFolder){
       dbDo('kv', 'readonly', st => st.get('backupDir')).then(async h => {
         if(!h) return;
@@ -6620,6 +6676,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var chip = document.getElementById('pbTimeChip');
     var chipOn = !!(chip && chip.parentNode && chip.parentNode.id === 'dockChipSlot' && chip.style.display !== 'none');
     return !document.getElementById('camFab').hidden || !document.getElementById('printFab').hidden || !document.getElementById('backupFab').hidden ||
+      !document.getElementById('galleryFab').hidden || !document.getElementById('lockFab').hidden ||
       !document.getElementById('dockPwr').hidden || chipOn;
   }
   // Everything guests and the operator need to see or tap in Photo Session.
@@ -7132,6 +7189,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(sess.reviewEnd) sess.reviewEnd('cancel');
   }
   cancelSessionBtn.addEventListener('click', cancelSession);
+  function cancelReady(e){ e.preventDefault(); e.stopPropagation(); cancelSession(); }
+  document.getElementById('readyCancelBtn').addEventListener('click', cancelReady);
+  document.getElementById('readyHandsCancelBtn').addEventListener('click', cancelReady);
   retakeBtn.addEventListener('click', function(){
     if(!sess) return;
     if(sess.reviewing){ if(sess.reviewEnd) sess.reviewEnd(sess.pick); return; }
@@ -7257,6 +7317,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   async function startSession(skipReady){
     if(state === 'capturing') return;
+    closeGalleryPop();
     if(!streamActive){
       const ok = await initCamera(cameraSelect.value || null);
       if(!ok) return;
@@ -9157,7 +9218,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     printerSetupBtn.style.display = DESKTOP ? '' : 'none';
     printerSetupBtn.addEventListener('click', async function(){
       const name=printerFor(printSize); if(!name) return showToast('Choose a printer first.',3000);
-      printerSetupBtn.disabled=true; printerOptionsBox.style.display='block'; printerOptionsBox.textContent='Loading printer settings?';
+      printerSetupBtn.disabled=true; printerOptionsBox.style.display='block'; printerOptionsBox.textContent='Loading printer settings\u2026';
       try{
         const rr=await fetch(HELPER_URL+'/printer/configure',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({printer:name})}); const jj=await rr.json();
         if(!rr.ok||!jj.ok) throw new Error(jj.error||'Could not open printer settings.');
@@ -10126,6 +10187,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     '.qr span{font-weight:700;color:var(--dim);font-size:clamp(10px,.85vw,15px);text-align:center;padding:1vh;}' +
     '.qrl{font-weight:800;letter-spacing:.18em;text-transform:uppercase;font-size:clamp(10px,.9vw,16px);color:var(--red);}' +
     '.fs{position:fixed;top:1.6vh;left:50%;transform:translateX(-50%);z-index:5;padding:10px 18px;border-radius:99px;border:1.5px solid #D6CEC1;background:#fff;color:var(--ink);font:700 13px Manrope,sans-serif;cursor:pointer;}' +
+    '.gallery-pill{position:fixed;right:2vw;bottom:2vh;z-index:7;padding:12px 18px;border:0;border-radius:99px;background:var(--red);color:#fff;font:800 clamp(12px,1vw,17px) Manrope,sans-serif;box-shadow:0 8px 24px rgba(28,26,30,.22);cursor:pointer;}.gallery-card{position:fixed;right:2vw;bottom:calc(2vh + 58px);z-index:8;width:min(300px,90vw);padding:18px;border-radius:18px;background:#fff;box-shadow:0 18px 44px rgba(28,26,30,.28);text-align:center;}.gallery-card.hide{display:none !important;}.gallery-card h2{margin:0;font:600 22px Fraunces,Georgia,serif;}.gallery-card img{width:min(210px,60vw);aspect-ratio:1;object-fit:contain;margin:8px auto;display:block;}.gallery-card a{display:block;overflow-wrap:anywhere;color:var(--red);font-weight:700;font-size:12px;}.gallery-card button{margin-top:10px;min-height:42px;padding:0 20px;border:1px solid #D6CEC1;border-radius:99px;background:#fff;font:800 13px Manrope,sans-serif;cursor:pointer;}' +
     '.hide{display:none !important;}' +
     '.logo .lg{display:block;object-fit:contain;}.logo.off{visibility:hidden;}' +
     '.clogo{position:fixed;z-index:3;object-fit:contain;pointer-events:none;transform:translate(-50%,-50%);}' +
@@ -10158,7 +10220,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         '<div class="gb hide" id="gb"><button class="gbtn strong hide" id="gRetake" type="button"></button><button class="gbtn hide" id="gDone" type="button"></button></div>' +
         '<div class="qrs hide" id="qrw"></div>' +
       '</div>' +
-    '</div><img class="clogo hide" id="clogo" alt=""></body></html>';
+    '</div><button class="gallery-pill hide" id="galleryPill" type="button">▦ Event gallery</button><section class="gallery-card hide" id="guestGallery" aria-label="Event gallery QR"><h2>All event photos</h2><img id="guestGalleryQr" alt="Scan to open all event photos"><a id="guestGalleryLink" href="#" target="_blank" rel="noopener">Open gallery</a><button id="guestGalleryClose" type="button">Close</button></section><img class="clogo hide" id="clogo" alt=""></body></html>';
 
   function buildGuestDoc(){
     const d = guestWin.document;
@@ -10167,7 +10229,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     G = { d, v: $g('v'), res: $g('res'), cd: $g('cd'), bar: $g('bar'), num: $g('num'), flash: $g('flash'), film: $g('film'),
           msg: $g('msg'), sub: $g('sub'), ev: $g('ev'), dt: $g('dt'), chip: $g('chip'), qrw: $g('qrw'), qrSig: '', fs: $g('fs'),
           pk: $g('pk'), pkg: $g('pkg'), pkSig: '', gb: $g('gb'), gRetake: $g('gRetake'), gDone: $g('gDone'), wasRev: false,
-          glogo: $g('glogo'), lgImg: $g('lgImg'), clogo: $g('clogo'), pwr: $g('pwr'), brandSig: '' };
+          glogo: $g('glogo'), lgImg: $g('lgImg'), clogo: $g('clogo'), pwr: $g('pwr'), brandSig: '',
+          galleryPill: $g('galleryPill'), galleryCard: $g('guestGallery'), galleryQr: $g('guestGalleryQr'), galleryLink: $g('guestGalleryLink') };
+    G.galleryPill.addEventListener('click', (e) => { e.stopPropagation(); G.galleryQr.src = document.getElementById('galleryPopQr').src; G.galleryLink.href = currentFolderLink; G.galleryCard.classList.remove('hide'); });
+    G.galleryCard.addEventListener('click', (e) => e.stopPropagation());
+    G.galleryCard.querySelector('#guestGalleryClose').addEventListener('click', (e) => { e.stopPropagation(); G.galleryCard.classList.add('hide'); });
     // The guest's Retake / Done and photo taps press the booth's own buttons,
     // so they follow the same rules (Allow retakes, tap mode, …).
     G.gRetake.addEventListener('click', (e) => { e.stopPropagation(); retakeBtn.click(); });
@@ -10356,6 +10422,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{
       const ready = readyOverlay.classList.contains('ready-active');
       const result = state === 'result' && shotCanvases.every(Boolean);
+      const galleryIdle = state === 'idle' && !pickOpen && !ready && !!currentFolderLink;
+      G.galleryPill.classList.toggle('hide', !galleryIdle);
+      if(!galleryIdle) G.galleryCard.classList.add('hide');
+      if(galleryIdle){ G.galleryQr.src = document.getElementById('galleryPopQr').src; G.galleryLink.href = currentFolderLink; }
       const reviewing = !!(sess && sess.reviewing);    // the strip is on screen until Retake / Done
       G.ev.textContent = (labelInput.value || '').trim();
       G.dt.textContent = currentDateLabel();
@@ -11617,7 +11687,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     sec.style.display = lockAllowed() ? '' : 'none';
     var has = !!ownPin();
     document.getElementById('lockPinLabel').textContent = has ? 'Change the 4-digit PIN' : 'Set your own 4-digit PIN';
-    document.getElementById('lockNowBtn').disabled = false;
+    document.getElementById('lockFab').hidden = !lockAllowed();
     var note = document.getElementById('lockPinNote');
     if(!note.dataset.msg) note.textContent = has ? (isTrialLock() ? 'Your PIN is set for this trial.' : 'Your PIN is set for this code (every device using it).') : '';
     document.getElementById('lockTestNote').style.display = has ? 'none' : '';
@@ -11646,12 +11716,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     setTimeout(function(){ delete note.dataset.msg; }, 4000);
     refreshLockSetup();
   });
-  document.getElementById('lockNowBtn').addEventListener('click', function(){
+  function lockBoothNow(){
     if(!savedPin()) return;
     lockState.locked = true; lockWrite(LOCK_KEY, { at: Date.now(), trial: isTrialLock() ? trialTag() : null });
     applyLock();
     showToast('Booth locked. Tap the small lock in the top-right corner and enter the PIN to unlock.', 5000);
-  });
+  }
+  document.getElementById('lockFab').addEventListener('click', lockBoothNow);
   // PIN pad
   var pinBuf = '', pinFails = 0, pinWaitUntil = 0;
   var pinModal = document.getElementById('pinModal'), pinDots = document.getElementById('pinDots'), pinMsg = document.getElementById('pinMsg');

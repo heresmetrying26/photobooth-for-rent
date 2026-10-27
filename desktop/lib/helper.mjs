@@ -87,9 +87,9 @@ async function openPrinterSettings(printer) {
     const modern = Number(osRelease().split('.')[0]) >= 22;
     const app = modern ? 'System Settings' : 'System Preferences';
     const pane = modern ? 'x-apple.systempreferences:com.apple.Print-Scan-Settings.extension' : '/System/Library/PreferencePanes/PrintAndFax.prefPane';
-    let r = await launchDetached('open', ['-a', app, pane]);
-    if (!r.ok) r = await launchDetached('open', ['-a', app]);
-    return r.ok ? { ok: true, message: app + ' opened. Select “Printers & Scanners”, then choose “' + printer + '” to review its available settings.' } : r;
+    let r = await run('open', [pane]);
+    if (r.code !== 0) r = await run('open', ['-a', app]);
+    return r.code === 0 ? { ok: true, message: app + ' opened. Select “Printers & Scanners”, then choose “' + printer + '” to review its available settings.' } : { ok: false, error: 'Could not open ' + app + '.' };
   }
   return { ok: false, error: 'Opening printer settings is supported on Windows and Mac.' };
 }
@@ -402,7 +402,7 @@ export async function handleHelper(req, path, search) {
     try { body = await req.json(); } catch { return json({ ok: false, error: 'Bad request' }, 400); }
     const name = String(body.printer || '').trim();
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);
-    if (IS_WIN) return json(await openWindowsPrinterPrefs(name));
+    if (IS_WIN) return json(await openPrinterSettings(name));
     const selected = body.options && typeof body.options === 'object' ? body.options : {};
     try {
       const available = await cupsPrinterOptions(name), args = ['-p', name];

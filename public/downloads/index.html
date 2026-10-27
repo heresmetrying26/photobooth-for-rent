@@ -4,76 +4,118 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>photobooth4u Helper</title>
+<meta name="theme-color" content="#F5F1EA">
+<title>Downloads · photobooth4u</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root{ --bg:#f7f3ee; --card:#fff; --ink:#1c1a1e; --dim:#6b6470; --line:#e4ddd3; --red:#c8402a; }
-  *{box-sizing:border-box;}
-  body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
-  main{max-width:760px; margin:0 auto; padding:32px 16px 56px;}
-  h1{font-size:28px; margin:0 0 6px;}
-  h2{font-size:18px; margin:28px 0 10px;}
-  .lead{color:var(--dim); margin:0 0 22px;}
-  .dl{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px;}
-  .dl a{display:block; background:var(--card); border:1.5px solid var(--line); border-radius:14px; padding:14px 16px; color:var(--ink); text-decoration:none;}
-  .dl a:hover{border-color:var(--red);}
-  .dl b{display:block; font-size:16px;} .dl span{color:var(--dim); font-size:13px;}
-  ol{padding-left:20px;} li{margin:6px 0;}
-  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:4px 18px 10px;}
-  code{background:#efe9e1; padding:1px 6px; border-radius:6px; font-size:14px;}
-  .note{color:var(--dim); font-size:14px;}
+  :root{--paper:#F5F1EA;--ink:#1C1A1E;--muted:#6B666C;--line:#E4DDD3;--red:#C93D27;--card:#FFFEFC;--soft:#F0E8DD;--green:#21764D}
+  *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.6 Manrope,system-ui,sans-serif}
+  a{color:inherit}button{font:inherit}main{width:min(1040px,calc(100% - 36px));margin:auto;padding:28px 0 64px}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:44px}.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+  .mark{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:30px;height:30px}.mark i{background:var(--ink);border-radius:4px}.mark i:nth-child(2){background:var(--red)}
+  .word{font:700 22px/1 Fraunces,Georgia,serif;letter-spacing:-.04em}.word em{display:inline-block;margin-left:3px;padding:4px 6px 5px;border-radius:6px;background:var(--red);color:#fff;font:800 11px/1 Manrope,sans-serif;transform:rotate(-6deg)}
+  .top-note{color:var(--muted);font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+  .hero{position:relative;overflow:hidden;display:grid;grid-template-columns:1.2fr .8fr;gap:30px;align-items:center;padding:clamp(28px,6vw,64px);border:1px solid var(--line);border-radius:28px;background:var(--card);box-shadow:0 12px 34px #1c1a1e0d}
+  .hero:after{content:"";position:absolute;width:260px;height:260px;border:1px solid #c93d2720;border-radius:50%;right:-90px;top:-120px;box-shadow:0 0 0 22px #c93d2708,0 0 0 48px #c93d2706;pointer-events:none}
+  .eyebrow{display:flex;align-items:center;gap:8px;margin:0 0 12px;color:var(--red);font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}.eyebrow:before{content:"";width:22px;height:2px;background:currentColor}
+  h1,h2,h3{font-family:Fraunces,Georgia,serif;letter-spacing:-.035em}h1{max-width:600px;margin:0;font-size:clamp(38px,6vw,66px);line-height:1.03} .lead{max-width:560px;margin:17px 0 0;color:var(--muted);font-size:16px}
+  .primary-card{position:relative;z-index:1;padding:22px;border-radius:20px;background:var(--ink);color:#fff;box-shadow:0 16px 34px #1c1a1e26}.primary-card .label{margin:0 0 6px;color:#d5cfcf;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.primary-card h2{margin:0;font-size:28px}.primary-card p{margin:5px 0 16px;color:#d5cfcf;font-size:13px}
+  .download{display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:10px 18px;border:0;border-radius:12px;background:var(--red);color:#fff;text-align:center;text-decoration:none;font-weight:800;transition:transform .15s,background .15s}.download:hover{background:#ac301e;transform:translateY(-1px)}.download svg{width:19px;height:19px;flex:none}.secondary-link{display:block;margin-top:12px;text-align:center;color:#ddd6d6;font-size:12px;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+  .detected{display:flex;align-items:center;gap:8px;margin-top:12px;color:var(--muted);font-size:12px}.dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+  .section-head{display:flex;align-items:end;justify-content:space-between;gap:20px;margin:54px 0 18px}.section-head h2{margin:0;font-size:32px}.section-head p{margin:0;color:var(--muted);font-size:13px}
+  .platforms{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.platform{padding:20px;border:1px solid var(--line);border-radius:18px;background:var(--card)}.platform h3{margin:0;font-size:21px}.platform p{min-height:42px;margin:5px 0 14px;color:var(--muted);font-size:13px}.platform .download{min-height:44px;font-size:13px}.tag{display:inline-block;padding:3px 8px;border-radius:999px;background:var(--soft);color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+  .helper{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;padding:24px;border:1px solid var(--line);border-radius:20px;background:#fffaf4}.helper h3{margin:8px 0 4px;font-size:25px}.helper p{max-width:660px;margin:0;color:var(--muted);font-size:14px}.helper .download{min-width:190px}
+  .guide-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.guide{padding:22px;border:1px solid var(--line);border-radius:18px;background:var(--card)}.guide h3{margin:0 0 12px;font-size:22px}.guide ol{padding-left:20px;margin:0}.guide li{margin:7px 0;color:#48434a;font-size:13px}.guide a{color:var(--red);font-weight:800;text-decoration-thickness:1px;text-underline-offset:3px}
+  .install{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.callout{padding:18px;border-radius:16px;background:var(--soft)}.callout b{display:block;margin-bottom:4px}.callout p{margin:0;color:var(--muted);font-size:13px}
+  details.checks{margin-top:14px;border:1px solid var(--line);border-radius:16px;background:var(--card)}details.checks summary{cursor:pointer;padding:16px 18px;font-weight:800} .checks-content{padding:0 18px 18px;color:var(--muted);font-size:13px}.checks-content p{margin:0 0 8px}.checks-content ul{padding-left:20px;margin:0}.digest{display:block;overflow-wrap:anywhere;margin:7px 0;padding:8px 10px;border-radius:8px;background:#f1ede7;color:var(--ink);font:11px/1.5 ui-monospace,Consolas,monospace}.digest.wait{color:var(--muted);font-family:Manrope,sans-serif}
+  .camera{margin-top:14px;padding:22px;border:1px solid var(--line);border-radius:18px;background:var(--card)}.camera h3{margin:0 0 6px;font-size:22px}.camera p{margin:0 0 8px;color:var(--muted);font-size:13px}.camera ul{padding-left:20px;margin:0}.camera li{margin:5px 0;font-size:13px}
+  footer{display:flex;justify-content:space-between;gap:14px;margin-top:42px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}footer a{font-weight:800;color:var(--ink)}
+  @media(max-width:760px){.hero{grid-template-columns:1fr}.primary-card{max-width:460px}.platforms{grid-template-columns:1fr}.platform p{min-height:0}.section-head{display:block}.section-head p{margin-top:5px}.helper{grid-template-columns:1fr}.helper .download{width:100%}}
+  @media(max-width:520px){main{width:min(100% - 24px,1040px);padding-top:18px}.top{margin-bottom:25px}.top-note{display:none}.hero{padding:25px 20px;border-radius:21px}h1{font-size:43px}.lead{font-size:14px}.guide-grid,.install{grid-template-columns:1fr}.section-head{margin-top:40px}.section-head h2{font-size:28px}footer{display:block}footer span{display:block;margin-top:5px}}
 </style>
 </head>
 <body>
 <main>
-  <h1>photobooth4u Helper</h1>
-  <p class="lead">Optional. Lets the booth print straight to the right printer for each paper size (for example 2×6 strips on one printer, 4R on another), with no print dialog. Without it, the booth still prints through the normal print dialog.<br><b>Windows:</b> the helper also connects a <b>Nikon camera over USB</b> (live view + the real shutter), see below.</p>
-
-  <div class="dl">
-    <a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/print-helper-v1.1.7/photobooth4u-print-helper-mac-apple-silicon.zip"><b>Mac · Apple Silicon</b><span>M1, M2, M3, M4 · version 1.1.7</span></a>
-    <a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/print-helper-v1.1.7/photobooth4u-print-helper-mac-intel.zip"><b>Mac · Intel</b><span>Older Macs · version 1.1.7</span></a>
-    <a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/print-helper-v1.1.7/photobooth4u-print-helper-windows.zip"><b>Windows</b><span>Windows 10 / 11 · version 1.1.7 · printing + Nikon / Canon camera</span></a>
-  </div>
-  <p class="note">Not sure which Mac? Apple menu → About This Mac: "Chip: Apple M…" is Apple Silicon, "Processor: Intel" is Intel.</p>
-
-  <div style="margin:20px 0; background:var(--card); border:1.5px solid var(--line); border-radius:14px; padding:16px 18px;">
-    <b style="display:block; font-size:15px; margin-bottom:8px;">Step-by-step printer guides:</b>
-    <div style="display:flex; flex-wrap:wrap; gap:10px;">
-      <a href="/how-to-print-dnp/" style="display:inline-flex; align-items:center; gap:6px; background:#f4eee7; border:1px solid var(--line); padding:8px 14px; border-radius:999px; text-decoration:none; color:var(--ink); font-weight:700; font-size:14px;">🖨️ How to print on DNP →</a>
-      <a href="/how-to-print-hiti/" style="display:inline-flex; align-items:center; gap:6px; background:#f4eee7; border:1px solid var(--line); padding:8px 14px; border-radius:999px; text-decoration:none; color:var(--ink); font-weight:700; font-size:14px;">🖨️ How to print on HiTi →</a>
+  <header class="top"><a class="brand" href="/" aria-label="photobooth4u home"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="word">photobooth<em>4u</em></span></a><span class="top-note">Operator &amp; companion tools</span></header>
+  <section class="hero" aria-labelledby="page-title">
+    <div><p class="eyebrow">Downloads · Desktop booth</p><h1 id="page-title">Your booth, ready for the event.</h1><p class="lead">Get the desktop app for your computer, or add the optional Print Helper for direct printing and supported USB cameras.</p></div>
+    <div class="primary-card"><p class="label">Recommended for this device</p><h2 id="heroTitle">Photobooth4U Desktop</h2><p id="heroVersion">Version 1.0.13 · Windows and macOS</p><a class="download" id="heroDownload" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/desktop-v1.0.13/photobooth4u-1.0.13-windows-x64.exe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/></svg><span id="heroButtonText">Download for Windows</span></a><a class="secondary-link" href="#desktop-builds">See all desktop versions</a><div class="detected"><i class="dot"></i><span id="detectedText">Choose the installer for your computer</span></div></div>
+  </section>
+  <section id="desktop-builds">
+    <div class="section-head"><h2>Desktop app</h2><p>Choose the build that matches your computer.</p></div>
+    <div class="platforms">
+      <article class="platform"><span class="tag">Windows 10 / 11</span><h3>Windows</h3><p>64-bit installer · version 1.0.13</p><a class="download" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/desktop-v1.0.13/photobooth4u-1.0.13-windows-x64.exe">Download Windows app</a></article>
+      <article class="platform"><span class="tag">M1, M2, M3, M4</span><h3>Mac · Apple Silicon</h3><p>For Macs with an Apple M-series chip · version 1.0.13</p><a class="download" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/desktop-v1.0.13/photobooth4u-1.0.13-mac-arm64.dmg">Download Apple Silicon</a></article>
+      <article class="platform"><span class="tag">Intel processor</span><h3>Mac · Intel</h3><p>For Intel-based Macs · version 1.0.13</p><a class="download" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/desktop-v1.0.13/photobooth4u-1.0.13-mac-x64.dmg">Download Mac Intel</a></article>
     </div>
-  </div>
-
-  <h2>1 · Set up the printers (once)</h2>
-  <div class="card"><ol>
-    <li>Install each printer's driver and do one test print from the computer.</li>
-    <li>The helper (1.1.7 or newer) tells the printer the <b>paper size</b> you pick in the booth, borderless when the printer has it. In the web booth, choose a printer and tap <b>Configure printer</b> to open its settings. Set options like paper type, quality and <b>cut</b> there.</li>
-    <li>Same printer for two sizes (e.g. 4×6 and 2×6 cut)? Add the printer to the computer <b>twice</b> and give each copy its own defaults and a clear name, like <code>HiTi 4x6</code> and <code>HiTi 2x6 cut</code>.</li>
-  </ol></div>
-
-  <h2>2 · Start the helper</h2>
-  <div class="card"><ol>
-    <li><b>Mac:</b> unzip, then <b>right-click → Open</b> the first time (macOS warns about apps from the internet; if it still refuses, go to System Settings → Privacy &amp; Security and click <b>Open Anyway</b>). A Terminal window opens and lists your printers.</li>
-    <li><b>Windows:</b> unzip and double-click. If Windows shows "Windows protected your PC", click <b>More info → Run anyway</b>. A window opens and lists your printers.</li>
-    <li>Keep that window open while the booth is running. Closing it stops the helper.</li>
-  </ol></div>
-
-  <h2>3 · Turn it on in the booth</h2>
-  <div class="card"><ol>
-    <li>In the booth's <b>Print</b> box, switch on <b>Print Helper on this computer</b>. If Chrome asks to let the site access devices on your network, click <b>Allow</b>.</li>
-    <li>For each paper size, pick its printer from the list under <b>Printer for …</b> (the booth remembers it on this computer).</li>
-    <li>Print once to test. From then on prints, including Auto-print, go straight to the right printer.</li>
-  </ol></div>
-  <p class="note">The helper only accepts prints from photobooth4u and only from this computer. Chrome or Edge recommended.</p>
-
-  <h2>Using a DSLR / mirrorless camera over USB?</h2>
-  <div class="card"><p>The booth's <b>USB camera</b> mode uses the camera's real shutter, its own settings and flash.</p>
-  <ol>
-    <li><b>Mac or Android tablet/phone</b> (Chrome or Edge): nothing to install. Plug the camera in and pick it in the booth's Camera menu.</li>
-    <li><b>Windows laptop, Nikon or Canon EOS camera:</b> open this helper (Canon needs version <b>1.1.5</b> or newer), plug the camera in with a <b>data</b> USB cable and switch it on. In the booth, pick <b>Nikon / Canon camera over USB</b> in the Camera menu once (allow Chrome's prompt). After that the booth picks the camera by itself whenever it's plugged in. No Zadig or driver change.</li>
-    <li><b>Canon EOS:</b> close EOS Utility first. On older models (60D, 70D, 600D…) turn on <b>Live View shoot</b> in the camera's menu. Canon on Windows is new: run the <a href="/camera-test/windows/">Windows camera test</a> before an event.</li>
-    <li><b>Windows with Sony:</b> not yet. Use a Mac / Android tablet, an HDMI-to-USB capture card, or the camera's webcam mode.</li>
-  </ol>
-  <p>Test your camera first on the <a href="/camera-test/">camera test page</a>.</p></div>
+    <div class="install"><div class="callout"><b>Opening on macOS</b><p>If macOS blocks the app, Control-click (or right-click) it and choose <b>Open</b>. If needed, go to System Settings → Privacy &amp; Security → Open Anyway.</p></div><div class="callout"><b>Opening on Windows</b><p>If SmartScreen appears, choose <b>More info → Run anyway</b> after confirming you downloaded the installer from this photobooth4u page.</p></div></div>
+    <details class="checks"><summary>Checksums and release details</summary><div class="checks-content"><p>SHA-256 values are shown when GitHub publishes them for these release assets. If no digest is available, use the linked GitHub release page to confirm the asset and version.</p><ul id="checksumList"><li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/desktop-v1.0.13">Desktop app release v1.0.13</a><span class="digest wait">Loading published asset digests…</span></li><li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/print-helper-v1.1.7">Print Helper release v1.1.7</a><span class="digest wait">Loading published asset digests…</span></li></ul></div></details>
+  </section>
+  <section>
+    <div class="section-head"><h2>Print Helper</h2><p>Optional companion for this computer.</p></div>
+    <div class="helper"><div><span class="tag">Version 1.1.7</span><h3>Print directly to the right printer</h3><p>The helper lets the booth send prints to a selected installed printer without a print dialog. Configure paper, quality, media type, and cutting in the printer’s own driver settings. Windows also supports Nikon and Canon EOS cameras over USB.</p></div><a class="download" href="#helper-builds">Choose your helper</a></div>
+    <div class="platforms" id="helper-builds" style="margin-top:14px">
+      <article class="platform"><span class="tag">M1, M2, M3, M4</span><h3>Mac · Apple Silicon</h3><p>For Macs with an Apple M-series chip · version 1.1.7</p><a class="download" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/print-helper-v1.1.7/photobooth4u-print-helper-mac-apple-silicon.zip">Download helper</a></article>
+      <article class="platform"><span class="tag">Intel processor</span><h3>Mac · Intel</h3><p>For Intel-based Macs · version 1.1.7</p><a class="download" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/print-helper-v1.1.7/photobooth4u-print-helper-mac-intel.zip">Download helper</a></article>
+      <article class="platform"><span class="tag">Windows 10 / 11</span><h3>Windows</h3><p>Direct printing and supported camera connection · version 1.1.7</p><a class="download" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/print-helper-v1.1.7/photobooth4u-print-helper-windows.zip">Download helper</a></article>
+    </div>
+    <div class="guide-grid" style="margin-top:14px">
+      <article class="guide"><h3>Set up printing</h3><ol><li>Install the printer’s manufacturer driver and make a test print from the computer.</li><li>Open the booth’s printer settings action to configure that printer’s own paper, quality, and media options.</li><li>In the booth, select a printer for each paper size and test a print. Enable automatic printing only when the test looks right.</li><li>For two sizes on one printer, add it twice in your computer’s printer settings and save separate defaults with clear names.</li></ol><p style="margin:14px 0 0"><a href="/how-to-print-dnp/">DNP printer guide →</a> &nbsp; <a href="/how-to-print-hiti/">HiTi printer guide →</a></p></article>
+      <article class="guide"><h3>Start the helper</h3><ol><li>Download and unzip the matching helper build.</li><li>On Mac, right-click the app and choose <b>Open</b> the first time; approve it in Privacy &amp; Security if prompted.</li><li>On Windows, choose <b>More info → Run anyway</b> if SmartScreen appears.</li><li>Keep its window open. In the booth, enable <b>Print Helper on this computer</b> and allow local network access if your browser asks.</li></ol></article>
+    </div>
+    <article class="camera"><h3>Using a camera over USB?</h3><p>USB camera support depends on the computer, camera model, and browser.</p><ul><li>On Mac and Android, connect the camera and choose it in the booth’s Camera menu when the browser supports it.</li><li>On Windows, the helper supports Nikon and Canon EOS cameras. Close EOS Utility before using a Canon camera; older Canon models may need Live View enabled.</li><li><a href="/camera-test/">Test your camera</a> before the event. For Windows cameras, use the <a href="/camera-test/windows/">Windows camera test</a>.</li></ul></article>
+  </section>
+  <footer><span>photobooth4u · Operator &amp; companion tools</span><span><a href="/">Back to photobooth4u</a></span></footer>
 </main>
+<script>
+  (function(){
+    const hero = document.getElementById('heroDownload');
+    const title = document.getElementById('heroTitle');
+    const text = document.getElementById('heroButtonText');
+    const detected = document.getElementById('detectedText');
+    const ua = navigator.userAgent || '';
+    const platform = navigator.userAgentData && navigator.userAgentData.platform || navigator.platform || '';
+    const isMac = /mac/i.test(platform) || /Macintosh|Mac OS X/i.test(ua);
+    const isWindows = /win/i.test(platform) || /Windows/i.test(ua);
+    function setMac(arch){
+      if(!arch){ hero.href = '#desktop-builds'; title.textContent = 'Choose your Mac build'; text.textContent = 'Choose Apple Silicon or Intel'; detected.textContent = 'Mac detected · choose the processor build below'; return; }
+      const arm = /arm|aarch64/i.test(arch || '');
+      hero.href = arm ? 'https://github.com/heresmetrying26/photobooth-for-rent/releases/download/desktop-v1.0.13/photobooth4u-1.0.13-mac-arm64.dmg' : 'https://github.com/heresmetrying26/photobooth-for-rent/releases/download/desktop-v1.0.13/photobooth4u-1.0.13-mac-x64.dmg';
+      title.textContent = arm ? 'Mac · Apple Silicon' : 'Mac · Intel';
+      text.textContent = arm ? 'Download for Apple Silicon' : 'Download for Mac Intel';
+      detected.textContent = arm ? 'Detected Apple Silicon Mac' : 'For an Intel Mac · check About This Mac if unsure';
+    }
+    if(isMac){
+      const uaArch = navigator.userAgentData && navigator.userAgentData.getHighEntropyValues;
+      if(uaArch) uaArch.call(navigator.userAgentData,['architecture']).then(v => setMac(v.architecture)).catch(() => setMac(null));
+      else setMac(null);
+    } else if(isWindows){
+      hero.href = 'https://github.com/heresmetrying26/photobooth-for-rent/releases/download/desktop-v1.0.13/photobooth4u-1.0.13-windows-x64.exe';
+      title.textContent = 'Windows desktop app'; text.textContent = 'Download for Windows'; detected.textContent = 'Detected Windows computer';
+    } else { detected.textContent = 'Choose a desktop installer below'; }
+    document.querySelector('details.checks').addEventListener('toggle', async function(){
+      if(!this.open || this.dataset.loaded) return; this.dataset.loaded = '1';
+      const list = document.getElementById('checksumList');
+      const releases = [
+        {tag:'desktop-v1.0.13', label:'Desktop app v1.0.13'},
+        {tag:'print-helper-v1.1.7', label:'Print Helper v1.1.7'}
+      ];
+      list.innerHTML = '';
+      for(const rel of releases){
+        const li = document.createElement('li');
+        const a = document.createElement('a'); a.href = 'https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/' + rel.tag; a.textContent = rel.label; a.target = '_blank'; a.rel = 'noopener'; li.appendChild(a);
+        const span = document.createElement('span'); span.className = 'digest wait'; span.textContent = 'Checking published SHA-256 digests…'; li.appendChild(span); list.appendChild(li);
+        try{
+          const res = await fetch('https://api.github.com/repos/heresmetrying26/photobooth-for-rent/releases/tags/' + rel.tag, {headers:{Accept:'application/vnd.github+json'}});
+          if(!res.ok) throw new Error(); const data = await res.json();
+          const rows = (data.assets || []).map(asset => asset.digest ? asset.name + ' · ' + asset.digest : null).filter(Boolean);
+          span.textContent = rows.length ? rows.join('  |  ') : 'GitHub has not published SHA-256 digests for these assets.';
+        }catch(e){ span.textContent = 'Could not load published digests. Open the GitHub release to review its assets.'; }
+      }
+    });
+  })();
+</script>
 </body>
 </html>

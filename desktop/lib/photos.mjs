@@ -125,6 +125,7 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
 .grid a{display:block;background:#fff;border-radius:10px;overflow:hidden;aspect-ratio:3/4;box-shadow:0 2px 8px rgba(60,40,20,.08)}
 .grid img{width:100%;height:100%;object-fit:cover;display:block}
 .one{max-width:560px;margin:0 auto;padding:6px 16px 40px;text-align:center}.one img,.one video{max-width:100%;max-height:72vh;border-radius:12px;background:#fff;box-shadow:0 10px 30px rgba(60,40,20,.15)}
+@media print{@page{margin:0}html,body{width:100%;height:100%;margin:0!important;background:#fff!important}body *{visibility:hidden!important}.one{position:absolute!important;inset:0!important;display:flex!important;align-items:center!important;justify-content:center!important;max-width:none!important;margin:0!important;padding:0!important}.one img{position:absolute!important;visibility:visible!important;display:block!important;max-width:100vw!important;max-height:100vh!important;width:auto!important;height:auto!important;object-fit:contain!important;border:0!important;border-radius:0!important;box-shadow:none!important}.one h1,.one .sub,.one video,.one div,.one .tip{display:none!important}}
 .btn{display:inline-block;margin:16px 6px 0;padding:14px 22px;border-radius:12px;background:#C93D27;color:#fff;font-weight:800;text-decoration:none;font-size:15px}
 .btn.alt{background:#fff;color:#1C1A1E;border:1.5px solid #E4DCCF}.tip{color:#6B666C;font-size:13px;line-height:1.5;margin:14px auto 0;max-width:420px}.empty{text-align:center;color:#6B666C;padding:40px 16px}`;
 function page(title, body) {
@@ -167,7 +168,7 @@ async function handleShare(req, res) {
     const src = '/e/' + m[1] + '/f/' + encodeURIComponent(file);
     const media = /^video\//.test(type) ? '<video src="' + src + '" controls playsinline autoplay muted loop></video>' : '<img src="' + src + '" alt="Your photo">';
     const body = '<div class="one"><h1>Your photo</h1><p class="sub">' + esc(evName) + '</p>' + media +
-      '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">Save photo</a><a class="btn alt" href="/e/' + m[1] + '/">All photos</a></div>' + savingTip + '</div>';
+      '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">Save photo</a>' + (!/^video\//.test(type) ? '<button class="btn alt" type="button" onclick="window.print()">Print photo</button>' : '') + '<a class="btn alt" href="/e/' + m[1] + '/">All photos</a></div>' + savingTip + '</div>';
     return send(res, 200, 'text/html; charset=utf-8', page('Your photo', body));
   }
   if (m[2] === 't' && thumbFn && /^image\/(jpeg|png|webp)$/.test(type)) {

@@ -11,6 +11,8 @@ import { app, net, shell } from 'electron';
 import { createWriteStream, existsSync, mkdirSync, renameSync, statSync, unlinkSync, readdirSync, openSync, readSync, closeSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
+import { Readable, Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 
 const REPO = 'heresmetrying26/photobooth-for-rent';
 const IS_WIN = process.platform === 'win32';
@@ -87,20 +89,20 @@ export async function download() {
     const r = await net.fetch(assetUrl(st.latest), { cache: 'no-store' });
     if (!r.ok || !r.body) throw new Error('The download isn’t ready yet (' + r.status + ').');
     const total = Number(r.headers.get('content-length')) || 0;
-    const out = createWriteStream(part);
-    const reader = r.body.getReader();
     let got = 0, lastTell = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      got += value.length;
-      if (!out.write(Buffer.from(value))) await new Promise((res) => out.once('drain', res));
-      if (total) {
-        st.progress = Math.min(99, Math.floor(got / total * 100));
-        if (Date.now() - lastTell > 1000) { lastTell = Date.now(); tell(); }
+    const progress = new Transform({
+      transform(chunk, encoding, callback) {
+        got += chunk.length;
+        if (total) {
+          st.progress = Math.min(99, Math.floor(got / total * 100));
+          if (Date.now() - lastTell > 1000) { lastTell = Date.now(); tell(); }
+        }
+        callback(null, chunk);
       }
-    }
-    await new Promise((res, rej) => out.end((err) => (err ? rej(err) : res())));
+    });
+    // pipeline forwards both network and disk errors into this try/catch. A raw
+    // write stream can emit an unhandled 'error' and crash Electron's main process.
+    await pipeline(Readable.fromWeb(r.body), progress, createWriteStream(part));
     if (total && got !== total) throw new Error('The download stopped early.');
     if (!looksOk(part)) throw new Error('The download isn’t an installer.');
     try { unlinkSync(file); } catch { /* none */ }
@@ -108,7 +110,10 @@ export async function download() {
     st.state = 'ready'; st.file = file; st.progress = 100;
     cfg.log('Update ' + st.latest + ': downloaded');
     tell();
-    if (IS_MAC) shell.openPath(file);
+    if (IS_MAC) {
+      const openError = await shell.openPath(file);
+      if (openError) { st.error = openError; cfg.log('Update ' + st.latest + ': downloaded, but could not open installer: ' + openError); tell(); }
+    }
   } catch (e) {
     try { unlinkSync(part); } catch { /* none */ }
     st.state = 'error'; st.error = String(e && e.message || e);

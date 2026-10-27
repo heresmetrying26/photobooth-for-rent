@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.15', date: '2026-10-27' },
   { version: '1.0.14', date: '2026-10-27' },
   { version: '1.0.13', date: '2026-10-27' },
   { version: '1.0.12', date: '2026-10-27' },
@@ -60,6 +61,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-27', title: 'Reprint a photo and safer app updates', for: ['website', 'app'], app: '1.0.15',
+    items: [
+      'Open a photo in either gallery and choose Print photo to print that single image again.',
+      'The laptop app now handles installer download and file errors without an uncaught main-process stream error.'
+    ]
+  },
   {
     date: '2026-10-27', title: 'Quicker event sharing and booth controls', for: ['website', 'app'], app: '1.0.14',
     items: [

@@ -9980,6 +9980,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   function printSettings(){
     const p = window.__PB && window.__PB.print;
+    if(isTrialBooth()){
+      if(p && p.enabled && Array.isArray(p.sizes) && p.sizes.length){
+        const merged = Array.from(new Set([...p.sizes, 'receipt80', 'receipt58']));
+        const sizes = merged.filter(k => paperFor(k));
+        if(sizes.length) return sizes;
+      }
+      return ['receipt80', 'receipt58', '4x6', '2x6'];
+    }
     if(!p || !p.enabled || !Array.isArray(p.sizes)) return null;
     const sizes = p.sizes.filter(k => paperFor(k));
     return sizes.length ? sizes : null;

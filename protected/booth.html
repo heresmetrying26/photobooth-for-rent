@@ -2576,7 +2576,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p class="sub-label">Printing</p>
           <p class="panel-hint" id="printSummary" style="margin:0;"></p>
           <label class="switch-row"><span>Print button for guests</span><input type="checkbox" id="ppGuestBtn"></label>
-          <label class="switch-row"><span>Print automatically after each session</span><input type="checkbox" id="ppAuto"></label>
+          <label class="switch-row"><span>Send a print automatically after each session</span><input type="checkbox" id="ppAuto"></label>
           <p class="panel-hint" id="ppAutoHint" style="margin:4px 0 0;"></p>
           <div class="copies-row"><span>Copies each time</span>
             <span class="stepper"><button type="button" id="ppCopiesMinus" aria-label="Fewer copies">&minus;</button><b id="ppCopiesVal">1</b><button type="button" id="ppCopiesPlus" aria-label="More copies">+</button></span>
@@ -3001,14 +3001,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         </div>
         <div class="ps-group">
           <label class="switch-row hidden" id="autoPrintRow" style="margin-top:0;">
-            <span>Print automatically after each session</span>
+            <span>Send a print automatically after each session</span>
             <input type="checkbox" id="autoPrintToggle">
           </label>
           <p class="panel-hint hidden" id="autoPrintHint"></p>
         </div>
         <div class="ps-group">
           <p class="ps-title">Printer</p>
-          <p class="panel-hint">Choose a printer and configure its driver settings here. Direct printing controls whether a print dialog appears; automatic printing controls when prints are sent.</p>
+          <p class="panel-hint">Choose how prints reach the printer.</p>
           <label class="sub-label web-only" for="printRouteSelect" style="display:block; margin:0 0 6px;">Send prints to</label>
           <select id="printRouteSelect" class="print-route web-only">
             <option value="here">Print from this device</option>
@@ -3017,9 +3017,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p class="panel-hint web-only" id="stationHint" style="margin:6px 0 8px;"></p>
           <div class="printer-pick" id="printerPick">
             <label class="switch-row web-only" style="margin:6px 0 2px;">
-              <span>Use Print Helper for direct printing (skip print dialog)</span>
+              <span>Print directly with Print Helper (skip dialog)</span>
               <input type="checkbox" id="helperToggle">
             </label>
+            <p class="panel-hint web-only" style="margin:2px 0 8px;">When connected, sends prints to the selected printer without a dialog.</p>
             <label class="sub-label" for="printerSelect" style="display:block; margin:8px 0 4px;">Printer for <span id="printerPickSize">this size</span></label>
             <select id="printerSelect" class="printer-input"></select>
             <button type="button" class="action-btn" id="printerSetupBtn" style="display:none;width:auto;margin:8px 0 0;">Configure printer</button>
@@ -3028,7 +3029,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <datalist id="printerList"></datalist>
             <p class="panel-hint" id="printerHelperHint" style="margin:4px 0 10px;"></p>
           </div>
-          <details class="ps-steps" id="printStepsWrap" open>
+          <details class="ps-steps" id="printStepsWrap">
             <summary>Printer setup checklist</summary>
             <ol class="print-steps" id="printSteps"></ol>
           </details>
@@ -3067,6 +3068,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     <span class="stepper"><button type="button" data-d="-1" aria-label="Fewer">&minus;</button><b id="copiesSheetVal">1</b><button type="button" data-d="1" aria-label="More">+</button></span>
     <p class="cs-left" id="copiesSheetLeft"></p>
     <div class="cs-btns"><button type="button" id="copiesSheetCancel">Cancel</button><button type="button" class="go" id="copiesSheetGo">Print</button></div>
+  </div>
+</div>
+<div class="copies-sheet" id="autoPrintPrompt" hidden>
+  <div class="cs-card" role="dialog" aria-modal="true" aria-labelledby="autoPrintPromptTitle">
+    <p class="cs-title" id="autoPrintPromptTitle">Print automatically?</p>
+    <p class="cs-left">Send a print after each session. You can change this later in Setup.</p>
+    <div class="cs-btns"><button type="button" id="autoPrintPromptLater">Not now</button><button type="button" class="go" id="autoPrintPromptEnable">Turn on</button></div>
   </div>
 </div>
 <div class="copies-sheet" id="askSheet" hidden>
@@ -9275,16 +9283,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(useStation()) steps = [
       { done: station.online, t: 'Open the print station on the laptop', s: station.online ? 'The laptop is ready.' : 'On the laptop next to the printer, open <a href="/print-station/" target="_blank" rel="noopener">photobooth4u.netlify.app/print-station</a> and sign in with your code.' },
       { done: station.online, t: 'Choose the printers there', s: 'Pick a printer for each paper size on the laptop (with the Print Helper running).' },
-      { done: auto, t: 'Turn on Print automatically (optional)', s: auto ? 'Every session goes to the laptop by itself.' : 'Or let guests tap <b>' + escHtml(printTxt('txtPrint')) + '</b> after their photo.' }
+      { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> after a photo session.' }
     ];
     else if(isMobileOS()) steps = [
       { done: false, t: 'Turn on the printer and join the same Wi-Fi', s: 'AirPrint printers (Canon Selphy, Epson, HP…) show up by themselves. For DNP / HiTi, use a laptop print station.' },
       { done: false, t: 'Print once and pick the printer', s: 'Press <b>Print</b>, choose the printer in the AirPrint sheet. The iPad remembers it.' + (navigator.standalone ? ' <b>Home Screen app:</b> if no sheet appears, open the booth in a Safari tab instead, or use a laptop print station.' : '') },
-      { done: auto, t: 'Turn on Print automatically (optional)', s: auto ? 'The AirPrint sheet opens after every session; guests just tap Print.' : 'Then the AirPrint sheet opens by itself after each session.' }
+      { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> and choose the printer in the AirPrint sheet.' }
     ];
     else if(!DESKTOP && !helperOn) steps = [
-      { done: false, t: 'Test the browser print dialog', s: 'Press <b>Print</b>, then choose the printer and paper settings in your browser or system dialog.' },
-      { done: auto, t: 'Choose whether to print automatically', s: auto ? 'The print dialog opens after each session; someone must confirm each print.' : 'Optional: turn on <b>Print automatically after each session</b>. The dialog will still need confirmation.' }
+      { done: false, t: 'Test a print', s: 'Tap <b>Print</b>, then choose the printer in your browser or system dialog.' }
     ];
     else steps = [
       DESKTOP ? { done: connected && helper.printers.length > 0, t: 'Plug in and turn on the printer', s: connected && helper.printers.length ? helper.printers.length + ' printer' + (helper.printers.length === 1 ? '' : 's') + ' found on this laptop.' : 'Install its driver first, then reopen Print settings.' } :
@@ -9294,7 +9301,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         const pl = ok && printSize && (DESKTOP || helperAtLeast('1.1.6')) ? paperLine(name, paperFor(printSize), sizeName) : '';
         return { done: ok && pl.indexOf('paper-bad') < 0, t: 'Choose the printer for each paper size', s: (name ? sizeName + ' \u2192 ' + escHtml(name) : 'Tap a paper size, then pick its printer from the list.') + pl };
       })(),
-      { done: auto, t: 'Test a print, then choose whether to automate', s: auto ? 'Every session sends a job to the selected printer with no dialog.' : 'Press <b>Print</b> to test. When it looks right, turn on <b>Print automatically after each session</b> to send future jobs with no dialog.' }
+      { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> once to check the printer and paper.' }
     ];
     let first = steps.findIndex(x => !x.done);
     const sw = document.getElementById('printStepsWrap');
@@ -9982,6 +9989,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const autoPrintToggle = document.getElementById('autoPrintToggle');
   let autoPrint = false;
   let autoPrintDecided = false; // the operator switched it themselves: don't override
+  const AUTO_PRINT_PROMPT_KEY = 'pb_auto_print_prompted_v1';
+  const autoPrintPrompt = document.getElementById('autoPrintPrompt');
+  let autoPrintPrompted = false;
+  try{ autoPrintPrompted = localStorage.getItem(AUTO_PRINT_PROMPT_KEY) === '1'; }catch(e){}
   function autoPrintHintText(){
     if(useStation()) return 'Each session goes to the laptop print station by itself.';
     if(helperOn && helper.ok && printSize && helper.printers.includes(printerFor(printSize))) return 'Each session sends a job to the selected printer with no dialog.';
@@ -9991,8 +10002,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function updateAutoPrintUI(){
     setTimeout(function(){ try{ renderPrintSteps(); }catch(e){} }, 0);
     const show = !!printSettings();
-    autoPrintRow.classList.toggle('hidden', !show);
-    autoPrintHint.classList.toggle('hidden', !show);
+    autoPrintRow.classList.toggle('hidden', !show || !DESKTOP);
+    autoPrintHint.classList.toggle('hidden', !show || !DESKTOP);
     autoPrintToggle.checked = autoPrint;
     autoPrintHint.textContent = autoPrintHintText();
     const pa = document.getElementById('ppAuto'); if(pa) pa.checked = autoPrint;
@@ -10009,8 +10020,25 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     setAutoPrint(autoPrintToggle.checked, true);
     showToast(autoPrint ? 'Auto-print on.' : 'Auto-print off.');
   });
+  document.getElementById('autoPrintPromptLater').addEventListener('click', function(){
+    autoPrintPrompt.hidden = true;
+    autoPrintDecided = true;
+  });
+  document.getElementById('autoPrintPromptEnable').addEventListener('click', function(){
+    autoPrintPrompt.hidden = true;
+    setAutoPrint(true, true);
+  });
+  autoPrintPrompt.addEventListener('click', function(e){ if(e.target === autoPrintPrompt) autoPrintPrompt.hidden = true; });
   function armAutoPrintAfterFirst(wasAuto){
-    if(wasAuto || autoPrint || autoPrintDecided || !isTraditional()) return;
+    if(wasAuto || autoPrint || autoPrintDecided) return;
+    if(!DESKTOP){
+      if(autoPrintPrompted) return;
+      autoPrintPrompted = true;
+      try{ localStorage.setItem(AUTO_PRINT_PROMPT_KEY, '1'); }catch(e){}
+      autoPrintPrompt.hidden = false;
+      return;
+    }
+    if(!isTraditional()) return;
     setAutoPrint(true, false);
     setTimeout(() => showToast('Auto-print is on (' + paperFor(printSize).name + ').', 4500), 1600);
   }

@@ -60,6 +60,15 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-10-27', title: 'Quicker event sharing and booth controls', for: ['website'],
+    items: [
+      'Open the All photos event gallery QR from the Photo Session dock, or show it on the guest screen while the booth is idle.',
+      'Save or change the booth PIN in Setup, then lock the booth from the Photo Session dock when guests are ready.',
+      'Get Ready now has a larger Cancel button beside Start, or below the smile / wave cue in hands-free mode.',
+      'The downloads page now highlights the right desktop installer and includes clearer setup guidance for Windows, Mac, and Print Helper.'
+    ]
+  },
+  {
     date: '2026-10-27', title: 'Open Mac printer settings', for: ['app'], app: '1.0.13',
     items: [
       'The desktop app now opens macOS Printers & Scanners for the selected printer instead of showing raw numeric driver option values.'

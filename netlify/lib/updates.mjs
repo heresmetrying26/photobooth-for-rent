@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.14', date: '2026-10-27' },
   { version: '1.0.13', date: '2026-10-27' },
   { version: '1.0.12', date: '2026-10-27' },
   { version: '1.0.11', date: '2026-10-27' },
@@ -60,12 +61,17 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
-    date: '2026-10-27', title: 'Quicker event sharing and booth controls', for: ['website'],
+    date: '2026-10-27', title: 'Quicker event sharing and booth controls', for: ['website', 'app'], app: '1.0.14',
     items: [
       'Open the All photos event gallery QR from the Photo Session dock, or show it on the guest screen while the booth is idle.',
       'Save or change the booth PIN in Setup, then lock the booth from the Photo Session dock when guests are ready.',
       'Get Ready now has a larger Cancel button beside Start, or below the smile / wave cue in hands-free mode.',
-      'The downloads page now highlights the right desktop installer and includes clearer setup guidance for Windows, Mac, and Print Helper.'
+    ]
+  },
+  {
+    date: '2026-10-27', title: 'A clearer downloads page', for: ['website'],
+    items: [
+      'The downloads page now highlights a desktop installer for your device and includes clearer setup guidance for Windows, Mac, and Print Helper.'
     ]
   },
   {

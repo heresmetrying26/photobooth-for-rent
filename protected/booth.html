@@ -11804,7 +11804,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   video.addEventListener('loadedmetadata', function(){ scheduleWelcomeRender(); });
   function refreshWelcome(){
-    var show = welcomeOn && state === 'idle' && !pickOpen && !readyOverlay.classList.contains('ready-active');
+    var show = welcomeOn && state === 'idle' && !flowBusy && !pickOpen && !readyOverlay.classList.contains('ready-active');   // not while a guest's start is still being set up (camera opening): a tap then does nothing
     welcomeOverlay.classList.toggle('on', show);
     document.body.classList.toggle('attract-camera', attractMode === 'camera' && show);
     // The welcome screen is the button: no separate Start under it, so the picture gets the room.
@@ -11962,15 +11962,22 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   // Starts the next guest's turn: (layout picker) -> countdown.
   var flowBusy = false;
+  var flowStartedAt = 0;
   async function beginGuestFlow(skipReady){
-    if(flowBusy || state === 'capturing') return;
+    if(flowBusy && state === 'idle' && Date.now() - flowStartedAt > 90000){
+      // A start that never finished (camera not answering) must not lock the welcome screen for good.
+      console.warn('Start was stuck for over 90 s: unlocking');
+      flowBusy = false; try{ readyOverlay.classList.remove('ready-active'); setGettingReady(false); }catch(e){}
+    }
+    if(flowBusy){ try{ showToast('Getting the camera ready\u2026 one moment.', 2500); }catch(e){} return; }
+    if(state === 'capturing') return;
     if(!rawFolderKey()){
       switchTab('setup');
       if(typeof goStep === 'function') goStep(5);
       showDriveFolderError('Type a folder name first.');
       return;
     }
-    flowBusy = true;
+    flowBusy = true; flowStartedAt = Date.now();
     try{
       clearTimeout(resultTimer);
       welcomeOverlay.classList.remove('on');
@@ -11984,6 +11991,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       // After picking a layout there's always a "Get ready" screen (summary,
       // filters, Start) — the countdown never starts straight from the picker.
       await startSession(keys.length > 1 ? false : skipReady);
+    } catch(err){
+      // Something broke mid-session: go back to the welcome screen instead of staying "capturing" forever.
+      console.error('Guest session failed:', err);
+      if(state === 'capturing'){ try{ endCancelledSession(); }catch(e){ state = 'idle'; } }
+      try{ showToast('Something went wrong with that session. Tap to start again.', 5000); }catch(e){}
     } finally {
       flowBusy = false;
       refreshWelcome();

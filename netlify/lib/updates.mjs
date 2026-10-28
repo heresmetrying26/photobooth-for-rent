@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.21', date: '2026-10-28' },
   { version: '1.0.20', date: '2026-10-28' },
   { version: '1.0.19', date: '2026-10-28' },
   { version: '1.0.16', date: '2026-10-27' },
@@ -64,6 +65,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-28', title: 'Fix: \u201cTap to start\u201d sometimes stopped responding', for: ['website', 'app'], app: '1.0.21',
+    items: [
+      'The welcome screen no longer comes back while the camera is still being opened, and a tap during that time now says \u201cGetting the camera ready\u201d instead of doing nothing.',
+      'If a start gets stuck for more than a minute and a half, or a session breaks halfway, the booth unlocks itself and returns to the welcome screen so guests can tap again.'
+    ]
+  },
   {
     date: '2026-10-28', title: 'Sony photos save straight to the computer, and a stuck camera no longer freezes the booth', for: ['website', 'app'], app: '1.0.20',
     items: [

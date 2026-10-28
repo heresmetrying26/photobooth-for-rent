@@ -36,6 +36,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var btBridge: BTBridge
+    private lateinit var photoStore: PhotoStore
+    private lateinit var shareServer: ShareServer
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
 
     private val PREFS_NAME = "photobooth_prefs"
@@ -75,9 +77,13 @@ class MainActivity : AppCompatActivity() {
         // 4. Configure WebView Settings
         configureWebView()
 
-        // 5. Inject BTBridge into JavaScript context (window.__BTBridge)
+        // 5. Inject BTBridge + local photo share (desktop-style guest QR over Wi-Fi)
         btBridge = BTBridge(this, webView)
         webView.addJavascriptInterface(btBridge, "__BTBridge")
+        photoStore = PhotoStore(this)
+        shareServer = ShareServer(photoStore)
+        shareServer.start()
+        webView.addJavascriptInterface(ShareBridge(photoStore, shareServer), "__PBShare")
 
         // 6. Request camera permissions if needed
         checkAndRequestPermissions()
@@ -116,6 +122,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         btBridge.disconnect()
+        if (::shareServer.isInitialized) shareServer.stop()
     }
 
     private fun hideSystemBars() {
@@ -250,7 +257,7 @@ class MainActivity : AppCompatActivity() {
                     append("<script>")
                     // window.__PB lets the booth enable GIF, retake, lock, pay, printing features
                     append("window.__PB=window.__PB||{};")
-                    append("window.__PB.desktop={v:'1.0.4',os:'android'};")
+                    append("window.__PB.desktop={v:'1.0.5',os:'android'};")
                     // Mark it as a rental-style session so all features are visible
                     append("window.__PB.type='rental';")
                     append("window.__PB.gifOpt=true;")
@@ -261,9 +268,19 @@ class MainActivity : AppCompatActivity() {
                     append("window.__PB.watermark=false;")
                     append("window.__PB.exp=").append(System.currentTimeMillis() + 365L * 24 * 3600 * 1000).append(";")  // 1-year local session
                     append("window.__PB.print=window.__PB.print||{enabled:true,sizes:['receipt80','receipt58','4x6','2x6']};")
-                    // Bundled kiosk has no local photo server. Report offline so
-                    // Drive / QR / pay skip immediately instead of hanging on DNS.
-                    append("try{Object.defineProperty(Navigator.prototype,'onLine',{get:function(){return false;},configurable:true});}catch(e){}")
+                    // Local tablet gallery — same contract as the Windows/Mac app, without
+                    // turning on laptop-only USB helper / licence UI (pb4u.desktop stays unset).
+                    append("window.pb4u=window.pb4u||{localPhotos:true,lanBase:function(){try{return String(window.__PBShare.lanBase()||'')}catch(e){return ''}}};")
+                    append("window.fetch=(function(orig){return function(url,opts){")
+                    append("var u=String(url);")
+                    append("if(u.indexOf('/local/drive')>=0&&window.__PBShare){")
+                    append("try{var body=(opts&&opts.body)?String(opts.body):'{}';")
+                    append("return Promise.resolve(new Response(window.__PBShare.savePhoto(body),{status:200,headers:{'content-type':'application/json'}}));")
+                    append("}catch(e){return Promise.resolve(new Response(JSON.stringify({ok:false,error:String(e)}),{status:500,headers:{'content-type':'application/json'}}));}")
+                    append("}")
+                    append("return orig.apply(this,arguments);};})(window.fetch);")
+                    // Photos save on this tablet, so the booth must not skip upload as "offline".
+                    append("try{Object.defineProperty(Navigator.prototype,'onLine',{get:function(){return true;},configurable:true});}catch(e){}")
                     append("</script>")
                 }
 

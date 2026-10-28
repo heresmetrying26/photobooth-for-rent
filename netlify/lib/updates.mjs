@@ -63,6 +63,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-10-28', title: 'Android tablet app \u2014 guest photo QR on booth Wi-Fi', for: ['website'],
+    items: [
+      'The Android tablet APK (v1.0.5) now saves photos on the tablet and serves them over the booth Wi-Fi, like the Windows/Mac app.',
+      'After a session, guests scan the QR (no internet required) as long as their phone is on the same Wi-Fi as the tablet, or on the tablet hotspot.',
+      'Camera, setup, and Bluetooth thermal printing still work fully offline.',
+    ]
+  },
+  {
     date: '2026-10-28', title: 'Android tablet app \u2014 true offline kiosk mode', for: ['website'],
     items: [
       'The Android tablet APK (v1.0.2) now opens and runs fully offline \u2014 no internet connection is required at the venue.',

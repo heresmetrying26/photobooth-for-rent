@@ -73,14 +73,14 @@
       <div>
         <span class="tag" style="background:#e0f5e8;color:#21764d;">Android 7.0+ · Tablet APK</span>
         <h3>Full-screen booth &amp; direct Bluetooth thermal printing</h3>
-        <p>Locked-down event kiosk mode: keeps the tablet screen awake, hides navigation bars, auto-grants camera access, and connects directly to 80 mm and 58 mm Bluetooth thermal receipt printers (Xprinter, Epson, Star, POS-80) without a print dialog. Unlocks with your normal access code and keeps running offline at the venue.</p>
+        <p>Locked-down event kiosk mode: keeps the tablet screen awake, hides navigation bars, auto-grants camera access, and connects directly to 80 mm and 58 mm Bluetooth thermal receipt printers (Xprinter, Epson, Star, POS-80) without a print dialog. Guests scan a QR on the tablet Wi-Fi to get their photos with no internet. Unlocks with your normal access code and keeps running offline at the venue.</p>
       </div>
-      <a class="download" style="background:#21764d;" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/android-v1.0.3/photobooth4u-kiosk-android.apk">Download APK</a>
+      <a class="download" style="background:#21764d;" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/android-v1.0.5/photobooth4u-kiosk-android.apk">Download APK</a>
     </div>
     <div class="install">
       <div class="callout">
         <b>Using with your access code</b>
-        <p>The Android app works completely offline — no internet needed at the venue. The booth and Bluetooth thermal printing run from the bundled page on the tablet. Connect to Wi-Fi or a phone hotspot once to unlock a rental code; after that, everything works with no internet connection.</p>
+        <p>The Android app works completely offline — no internet needed at the venue. Photos save on the tablet. Guests join the same Wi-Fi as the tablet (or the tablet hotspot) and scan the QR to open their gallery. Bluetooth thermal printing runs from the bundled page. You only need internet if you want the live website instead.</p>
       </div>
       <div class="callout">
         <b>Installing on Android</b>
@@ -110,7 +110,7 @@
       detected.textContent = arm ? 'Detected Apple Silicon Mac' : 'For an Intel Mac · check About This Mac if unsure';
     }
     if(isAndroid){
-      hero.href = 'https://github.com/heresmetrying26/photobooth-for-rent/releases/download/android-v1.0.1/photobooth4u-kiosk-android.apk';
+      hero.href = 'https://github.com/heresmetrying26/photobooth-for-rent/releases/download/android-v1.0.5/photobooth4u-kiosk-android.apk';
       title.textContent = 'Android tablet app';
       text.textContent = 'Download APK for Android';
       detected.textContent = 'Detected Android device · Bluetooth thermal printing ready';
@@ -126,7 +126,7 @@
       if(!this.open || this.dataset.loaded) return; this.dataset.loaded = '1';
       const list = document.getElementById('checksumList');
       const releases = [
-        {tag:'android-v1.0.1', label:'Android Tablet Kiosk v1.0.1'},
+        {tag:'android-v1.0.5', label:'Android Tablet Kiosk v1.0.5'},
         {tag:'desktop-v1.0.13', label:'Desktop app v1.0.13'},
         {tag:'print-helper-v1.1.7', label:'Print Helper v1.1.7'}
       ];

@@ -3117,6 +3117,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         </select>
         <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
         <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
+        <button type="button" class="action-btn" id="usbLogBtn" style="display:none; width:auto; margin:6px 0 0;">Copy camera log</button>
         <label class="switch-row" id="mirrorRow">
           <span>Mirror the live view</span>
           <input type="checkbox" id="mirrorToggle">
@@ -6518,8 +6519,64 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     viaHelper: USB_WIN,
     helperSees: false, helperName: '', helperUp: false,
     camera: null, name: '', active: false, gen: 0, libGen: 0, vfOn: false, initing: null,
-    canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null
+    canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null,
+    lastFrameAt: 0, shooting: false, stallShown: false, devId: ''
   };
+
+  // ---- USB camera diagnostics ----
+  // A short log of what the camera did, kept in this browser (last 40 events), so a drop-out can be explained
+  // afterwards: was the camera still listed on USB, was live view running, what error came back.
+  // "Copy camera log" under the Camera menu copies it; pbCameraLog() does the same from the console.
+  const usbLogBuf = [];
+  try{ const old = JSON.parse(localStorage.getItem('pb_usb_log') || '[]'); if(Array.isArray(old)) old.slice(-40).forEach(e => usbLogBuf.push(e)); }catch(e){}
+  function usbHeapMB(){ try{ return performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null; }catch(e){ return null; } }
+  function usbLog(kind, info){
+    const e = Object.assign({ t: new Date().toISOString(), kind: kind }, info || {});
+    usbLogBuf.push(e);
+    while(usbLogBuf.length > 80) usbLogBuf.shift();
+    try{ console.info('[usbcam] ' + kind, e); }catch(_){}
+    try{ localStorage.setItem('pb_usb_log', JSON.stringify(usbLogBuf.slice(-40))); }catch(_){}
+    try{ usbLogButton(); }catch(_){}
+  }
+  function usbErrInfo(err){
+    if(!err) return { error: '' };
+    return { error: String(err.message || err.name || err).slice(0, 200), errName: String(err.name || ''), errCode: err.code != null ? String(err.code) : '', critical: usbIsCritical(err) };
+  }
+  window.pbCameraLog = function(){ return usbLogBuf.map(e => JSON.stringify(e)).join('\n'); };
+  function usbLogButton(){
+    const b = document.getElementById('usbLogBtn');
+    if(!b) return;
+    b.style.display = '';
+    if(b.dataset.wired) return;
+    b.dataset.wired = '1';
+    b.addEventListener('click', () => {
+      const text = 'photobooth4u camera log\n' + navigator.userAgent + '\n' + window.pbCameraLog();
+      const done = () => { try{ showToast('Camera log copied. Paste it into a message to us.', 4000); }catch(_){} };
+      const fallback = () => {
+        try{
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+          done();
+        }catch(_){}
+      };
+      if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
+    });
+  }
+  const usbDevKey = d => d ? d.vendorId.toString(16) + ':' + d.productId.toString(16) : '';
+  // The USB devices the page can see right now (null when that can't be read).
+  async function usbDevicesNow(){
+    try{
+      if(!(navigator.usb && navigator.usb.getDevices)) return null;
+      return (await navigator.usb.getDevices()).map(d => ({ id: usbDevKey(d), name: d.productName || '', opened: !!d.opened }));
+    }catch(e){ return null; }
+  }
+  // Is the camera this page connected to still on the USB bus? true / false / null (unknown)
+  async function usbDevicePresent(){
+    if(!usbCam.devId) return null;
+    const list = await usbDevicesNow();
+    return list ? list.some(d => d.id === usbCam.devId) : null;
+  }
 
   // ---- Mac: let go of a camera macOS grabbed ----
   // macOS' camera service (and Image Capture / Photos through it) grabs a USB camera the moment it is plugged in,
@@ -6719,6 +6776,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     usbCam.camera = cam;
     usbCam.vfOn = false;
     usbCam.name = (devices[0] && devices[0].productName) || '';
+    usbCam.devId = usbDevKey(devices[0]);
+    usbLog('connected', { camera: usbCam.name, id: usbCam.devId, connects: usbCam.libGen, freed: !!usbCam.freed, heapMB: usbHeapMB() });
     const opt = Array.from(cameraSelect.options).find(o => o.value === USB_CAM_ID);
     if(opt && usbCam.name) opt.textContent = usbOptionLabel();
     return cam;
@@ -6817,8 +6876,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(usbIsCritical(err)) throw err;   // otherwise not supported on this camera: fine
     }
   }
+  // Live view timing (USB cameras in the browser). A frame that doesn't arrive is retried quickly; if the camera stays
+  // silent the booth says so after USB_STALL_SHOW_MS and reconnects after USB_STALL_MS, instead of showing a frozen picture.
+  const USB_RETRY_MS = 250;        // pause between failed live view frames
+  const USB_STALL_SHOW_MS = 2500;  // no frame this long: show "Reconnecting" over the frozen picture
+  const USB_STALL_MS = 6000;       // no frame this long: the camera is treated as lost and the booth reconnects
   async function usbLiveLoop(gen){
     let fails = 0;
+    const fast = !usbCam.viaHelper;   // the Windows helper keeps its own, slower timing
+    usbCam.lastFrameAt = Date.now();
     while(usbCam.active && usbCam.gen === gen && usbCam.camera){
       try{
         const blob = await usbCam.camera.capturePreviewAsBlob();
@@ -6829,19 +6895,66 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         }
         usbCam.ctx.drawImage(bmp, 0, 0); bmp.close();
         usbCam.hasFrame = true; fails = 0;
+        usbCam.lastFrameAt = Date.now();
+        if(usbCam.stallShown){ usbCam.stallShown = false; cameraError.style.display = 'none'; }
         await new Promise(r => setTimeout(r, 30));
       }catch(err){
+        // This loop was stopped meanwhile (the camera was replaced or reported lost): not a new failure.
+        if(usbCam.gen !== gen || !usbCam.active) return;
         usbCam.lastErr = err;
-        if(usbIsCritical(err) || ++fails >= 20){ usbDead(err); return; }
-        if(fails === 4 || fails === 12){
-          try{ await usbViewfinderOn(); }catch(e){ usbDead(e); return; }
+        if(usbIsCritical(err)){ usbDead(err, 'critical'); return; }
+        fails++;
+        if(fails === 1 || fails % 10 === 0) usbLog('frame-fail', Object.assign({ fails: fails, sinceFrameMs: Date.now() - usbCam.lastFrameAt }, usbErrInfo(err)));
+        // Before the first frame a camera may need a while to start live view: keep the patient timing then.
+        const quick = fast && usbCam.hasFrame;
+        if(fast){
+          // Unplugged or switched off: no point waiting.
+          if(fails >= 2 && (await usbDevicePresent()) === false){ if(usbCam.gen === gen) usbDead(err, 'unplugged'); return; }
+          if(usbCam.gen !== gen) return;
+        }
+        if(fails >= 20 || (quick && Date.now() - usbCam.lastFrameAt > USB_STALL_MS)){ usbDead(err, 'giveup'); return; }
+        if(quick ? (fails === 3 || fails === 8) : (fails === 4 || fails === 12)){
+          try{ await usbViewfinderOn(); }catch(e){ if(usbCam.gen === gen) usbDead(e, 'viewfinder'); return; }
+          if(usbCam.gen !== gen) return;
         } else {
-          await new Promise(r => setTimeout(r, 1000));
+          await new Promise(r => setTimeout(r, quick ? USB_RETRY_MS : 1000));
         }
       }
     }
   }
   function usbStopLive(){ usbCam.active = false; usbCam.gen++; }
+  // Watchdog: a camera that hangs mid-transfer never throws an error, so the loop above can't notice it.
+  // Not while a photo is being taken (live view legitimately pauses then) or while the page is in the background.
+  setInterval(function(){
+    if(!usbCam.active || !usbCam.camera || usbCam.viaHelper || !usbCam.hasFrame || usbCam.shooting) return;
+    if(document.hidden){ usbCam.lastFrameAt = Date.now(); return; }
+    const gap = Date.now() - usbCam.lastFrameAt;
+    if(gap > USB_STALL_MS){ usbDead(new Error('Live view stalled for ' + Math.round(gap / 1000) + ' s'), 'stalled'); return; }
+    if(gap > USB_STALL_SHOW_MS && !usbCam.stallShown && currentDeviceId === USB_CAM_ID){
+      usbCam.stallShown = true;
+      cameraErrorText.textContent = 'Camera not responding. Reconnecting…';
+      cameraError.style.display = 'flex';
+    }
+  }, 500);
+  // One line every 15 minutes while a camera is in use, so a long session shows how often it reconnected and how memory behaves.
+  setInterval(function(){
+    if(usbCam.active && usbCam.camera && !usbCam.viaHelper) usbLog('alive', { camera: usbCam.name, connects: usbCam.libGen, heapMB: usbHeapMB() });
+  }, 15 * 60 * 1000);
+  // Unplugged or switched off: react at once instead of waiting for the live view to time out.
+  if(!usbCam.viaHelper && usbCam.supported && navigator.usb && navigator.usb.addEventListener){
+    navigator.usb.addEventListener('disconnect', ev => {
+      try{
+        const d = ev && ev.device, id = usbDevKey(d);
+        usbLog('usb-disconnect', { id: id, name: d && d.productName || '', ours: !!usbCam.camera && (!usbCam.devId || id === usbCam.devId), live: !!usbCam.active });
+        if(!usbCam.camera || !d) return;
+        if(usbCam.devId && id !== usbCam.devId) return;
+        usbDead(new Error('Camera disconnected'), 'unplugged');
+      }catch(e){ console.warn('USB disconnect:', e); }
+    });
+    navigator.usb.addEventListener('connect', ev => {
+      try{ const d = ev && ev.device; usbLog('usb-connect', { id: usbDevKey(d), name: d && d.productName || '' }); }catch(e){}
+    });
+  }
 
   // ---- USB camera battery: checked every 3 minutes while it's in use ----
   // Shown under the Camera menu; a warning pops up below 25% (or "Low"),
@@ -6889,12 +7002,27 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       : 'USB remote camera isn’t available on this page load. Reload the page; if it stays missing, close other photobooth4u tabs and reload.';
     if(why){ usbCamNote(why, false); const h = document.getElementById('cameraHint'); if(h) h.style.display = ''; }
   }
-  function usbDead(err){
+  function usbDead(err, reason){
+    if(!usbCam.camera) return;     // already reported (the live loop, the watchdog and the unplug event can all notice)
     console.error('USB camera lost:', err);
-    usbCam.camera = null;
+    const cam = usbCam.camera;
     const wasLive = usbCam.active && currentDeviceId === USB_CAM_ID && streamActive;
+    const why = reason || (usbIsCritical(err) ? 'critical' : 'error');
+    usbLog('drop', Object.assign({ reason: why, camera: usbCam.name, id: usbCam.devId, live: !!wasLive, sinceFrameMs: usbCam.lastFrameAt ? Date.now() - usbCam.lastFrameAt : null, shooting: usbCam.shooting, connects: usbCam.libGen, heapMB: usbHeapMB() }, usbErrInfo(err)));
+    usbDevicesNow().then(list => usbLog('drop-usb', { listed: list }));
+    usbCam.camera = null;
     usbStopLive();
+    usbCam.stallShown = false;
+    usbReleaseCamera(cam, why);
     if(wasLive) cameraLost();      // shows "Reconnecting…" and keeps retrying
+  }
+  // Frees the lost camera's library copy (its memory and USB claim), so reconnects don't pile up over a long event.
+  // Only when nothing can still be running inside it: after a stall or a library crash an operation may still be
+  // in flight, and deleting the copy then could crash the page. The next connect closes the USB device anyway.
+  function usbReleaseCamera(cam, why){
+    if(!cam || usbCam.viaHelper || typeof cam.disconnect !== 'function') return;
+    if(why !== 'unplugged' && why !== 'giveup') return;
+    setTimeout(() => { try{ Promise.resolve(cam.disconnect()).catch(() => {}); }catch(e){} }, 300);
   }
   function initUsbCamera(){
     if(usbCam.initing) return usbCam.initing;
@@ -7523,10 +7651,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{
       // Never wait forever: a camera that stops answering must not freeze the whole session.
       let capTimer;
+      usbCam.shooting = true;   // live view legitimately pauses while the camera sends the photo
       const file = await Promise.race([
         usbCam.camera.captureImageAsFile(),
         new Promise((_, rej) => { capTimer = setTimeout(() => { const e = new Error('The camera took too long to send the photo'); e.helperMsg = 'The camera took too long to send the photo.'; rej(e); }, USB_CAPTURE_MAX_MS); })
-      ]).finally(() => clearTimeout(capTimer));
+      ]).finally(() => { clearTimeout(capTimer); usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); });
       const bmp = await createImageBitmap(file);
       const sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;   // whole photo; the layout box crops it once
       const k = Math.min(1, USB_SHOT_MAX / Math.max(sw, sh));
@@ -7544,6 +7673,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(shotCanvases === shots){ shotCanvases[index] = c; updateFilmTrack(); }
     }catch(err){
       console.error('USB shot failed:', err);
+      usbCam.shooting = false; usbCam.lastFrameAt = Date.now();
+      usbLog('shot-fail', usbErrInfo(err));
       showToast(err && err.helperMsg ? err.helperMsg + ' The live view frame was used.' : 'The camera photo didn\u2019t come through (check focus, and that the camera saves JPEG), so the live view frame was used.', 6000);
       if(usbIsCritical(err)) usbDead(err);
     }

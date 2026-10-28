@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.22', date: '2026-10-28' },
   { version: '1.0.21', date: '2026-10-28' },
   { version: '1.0.20', date: '2026-10-28' },
   { version: '1.0.19', date: '2026-10-28' },
@@ -58,13 +59,22 @@ export async function liveApp() {
   for (let i = 0; i < APP_RELEASES.length; i++) {
     const rel = APP_RELEASES[i];
     if (i === APP_RELEASES.length - 1) { live = { at: Date.now(), ttl: 2 * 60000, v: rel }; return rel; }
-    if (await released(rel.version)) { live = { at: Date.now(), ttl: 10 * 60000, v: rel }; return rel; }
+    // The newest version being out is stable (10 minutes). While a newer one is still being built an older one is offered, so look again every minute: the new one shows up shortly after its installers land on GitHub.
+    if (await released(rel.version)) { live = { at: Date.now(), ttl: i === 0 ? 10 * 60000 : 60000, v: rel }; return rel; }
   }
   return APP;
 }
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-28', title: 'USB cameras recover faster after a drop-out, and laptops hear about updates sooner', for: ['website', 'app'], app: '1.0.22',
+    items: [
+      'If a USB camera (Canon, Nikon or Sony) stops answering or is unplugged, the booth now notices within a few seconds and reconnects by itself, instead of leaving a frozen picture on screen for up to 20 seconds. \u201cReconnecting\u201d shows meanwhile.',
+      'The booth now keeps a short camera log. If a camera keeps dropping out, open the Camera menu, tap \u201cCopy camera log\u201d and send it to us.',
+      'The laptop app now checks for a new version every few minutes instead of every few hours.'
+    ]
+  },
   {
     date: '2026-10-28', title: 'Fix: \u201cTap to start\u201d sometimes stopped responding', for: ['website', 'app'], app: '1.0.21',
     items: [

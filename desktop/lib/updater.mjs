@@ -61,7 +61,8 @@ export function initUpdater({ server, version, log, notify }) {
     } catch { /* none */ }
   }
   setTimeout(() => check().catch(() => {}), 20000);
-  timer = setInterval(() => check().catch(() => {}), 4 * 3600000);
+  // Every few minutes: a new version is offered shortly after its installers are on GitHub (one small request each time).
+  timer = setInterval(() => check().catch(() => {}), 5 * 60000);
 }
 
 export async function check() {
@@ -74,7 +75,8 @@ export async function check() {
   } catch { return info(); }   // offline
   if (!/^\d+\.\d+\.\d+$/.test(v) || !newer(v, cfg.version)) return info();
   if (st.latest !== v) st = { latest: v, date, state: 'available', progress: 0, error: '', file: '' };
-  if (IS_WIN) download().catch(() => {});
+  // Windows downloads by itself, but only starts once per version (a failed download retries on its own timer).
+  if (IS_WIN) { if (st.state === 'available') download().catch(() => {}); }
   else tell();
   return info();
 }

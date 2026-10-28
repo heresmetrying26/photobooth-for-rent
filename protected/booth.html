@@ -2180,12 +2180,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   var PRINTER_FILTERS = [
     { namePrefix: 'XP' }, { namePrefix: 'Xprinter' },
+    { namePrefix: 'T80' }, { namePrefix: 'T80A' }, { namePrefix: 'T58' }, { namePrefix: 'T' },
     { namePrefix: 'TM' }, { namePrefix: 'Epson' }, { namePrefix: 'EPSON' },
     { namePrefix: 'POS' }, { namePrefix: 'Receipt' }, { namePrefix: 'Thermal' },
     { namePrefix: 'RPP' }, { namePrefix: 'Bixolon' }, { namePrefix: 'BIXOLON' },
     { namePrefix: 'Star' }, { namePrefix: 'MP' }, { namePrefix: 'BP' },
-    { namePrefix: 'Printer' }, { namePrefix: 'MTP' }, { namePrefix: 'BlueTooth' },
-    { namePrefix: 'Inner' }, { namePrefix: 'Qsprinter' }
+    { namePrefix: 'PT' }, { namePrefix: 'ZJ' }, { namePrefix: 'NT' },
+    { namePrefix: 'Printer' }, { namePrefix: 'MTP' }, { namePrefix: 'MPT' },
+    { namePrefix: 'BlueTooth' }, { namePrefix: 'Inner' }, { namePrefix: 'Qsprinter' }
   ];
 
   function BtThermal(opts) {
@@ -2238,22 +2240,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   BtThermal.prototype._connectWebBt = function() {
     var self = this;
     if (!navigator.bluetooth) {
-      return Promise.reject(new Error('Web Bluetooth not supported on this browser.'));
+      return Promise.reject(new Error('Web Bluetooth not supported on this browser. On Android tablets, use Google Chrome or install our Android Tablet App.'));
     }
-    var reqOpts = {
-      filters: PRINTER_FILTERS,
+    return navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
       optionalServices: WELL_KNOWN_SERVICES
-    };
-    return navigator.bluetooth.requestDevice(reqOpts)
-      .catch(function(e) {
-        if (e && e.name === 'NotFoundError') {
-          return navigator.bluetooth.requestDevice({
-            acceptAllDevices: true,
-            optionalServices: WELL_KNOWN_SERVICES
-          });
-        }
-        throw e;
-      })
+    })
       .then(function(device) {
         self._device = device;
         self._name   = device.name || 'Bluetooth Printer';
@@ -9736,7 +9728,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   if(btThermalConnectBtn){
     btThermalConnectBtn.addEventListener('click', async function(){
       if(!window._btThermal || !window._btThermal.isBtAvailable()){
-        return showToast('Bluetooth is not supported in this browser. Use Chrome on Android, the Android wrapper, or Safari on iOS 16+.', 4500);
+        return showToast('Bluetooth is not supported in this browser. Use Google Chrome or the Android Tablet App (APK).', 5000);
       }
       btThermalConnectBtn.disabled = true;
       btThermalConnectBtn.textContent = 'Connecting…';
@@ -9744,7 +9736,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         const name = await window._btThermal.btPrinter.connect();
         showToast('Connected to ' + (name || 'Bluetooth printer') + '!');
       }catch(err){
-        showToast('Bluetooth connection failed: ' + (err.message || err), 5000);
+        var msg = String((err && err.message) || err || '');
+        if(/globally disabled/i.test(msg)){
+          showToast('Web Bluetooth is disabled in this browser. On Xiaomi / Samsung tablets, open in Google Chrome or install our Android Tablet App (APK) from /downloads/ for direct Bluetooth printing.', 9000);
+        } else if(/User cancelled/i.test(msg) || (err && err.name === 'NotFoundError' && !/globally disabled/i.test(msg))){
+          showToast('No Bluetooth device selected.', 3000);
+        } else {
+          showToast('Bluetooth connection failed: ' + msg + '. On Android tablets, use our Android Tablet App for POS printers like T80A.', 7000);
+        }
       }finally{
         btThermalConnectBtn.disabled = false;
         refreshPrintUI();
@@ -9903,7 +9902,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> after a photo session.' }
     ];
     else if(isMobileOS() && btThermalOn && printSize && isReceiptPaper(printSize)) steps = [
-      { done: !!(window._btThermal && window._btThermal.btPrinter.connected), t: 'Connect the Bluetooth thermal printer', s: (window._btThermal && window._btThermal.btPrinter.connected) ? '\u2713 Connected: ' + window._btThermal.btPrinter.name : 'Tap <b>Connect Bluetooth Printer</b> below. Make sure it is on and paired to this tablet in Bluetooth settings.' },
+      { done: !!(window._btThermal && window._btThermal.btPrinter.connected), t: 'Connect the Bluetooth thermal printer', s: (window._btThermal && window._btThermal.btPrinter.connected) ? '\u2713 Connected: ' + window._btThermal.btPrinter.name : 'Tap <b>Connect Bluetooth Printer</b> below. Make sure it is on and paired to this tablet in Bluetooth settings. On Android tablets, use the Android Tablet App (APK) for POS printers like T80A.' },
       { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> — the receipt prints directly without a dialog.' }
     ];
     else if(isMobileOS()) steps = [
@@ -10600,8 +10599,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           : conn
             ? 'Connected: ' + (window._btThermal.btPrinter.name || 'Bluetooth Printer') + '. Prints will be sent directly via ESC/POS.'
             : (window._btThermal && window._btThermal.isNativeAndroid()
-              ? 'Android wrapper active. Tap Connect to select a paired printer.'
-              : 'Make sure the printer is turned on and paired with this device in Bluetooth settings.');
+              ? 'Android kiosk app active. Tap Connect to select your paired Bluetooth printer.'
+              : 'Make sure the printer is turned on and paired in Bluetooth settings. Note: POS printers (T80A, XP-80) use Classic Bluetooth SPP — install our Android Tablet App from /downloads/ for direct 1-tap printing.');
       }
     }
     if(printSize && printsLeft() < sheetsPerCopy(printSize) && state === 'result') printHint.textContent = 'Print limit reached' + (lim.se && sessPrinted >= lim.se ? ' for this session.' : ' for this event.');

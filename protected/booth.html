@@ -6788,7 +6788,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(!c || !Array.isArray(c.choices) || !c.choices.includes('card+sdram') || !c.choices.includes('sdram')) return;
       console.log('Sony save destination:', c.value);
       if(c.value === 'sdram') return;
-      await usbCam.camera.setConfigValue('capturetarget', 'sdram');
+      await Promise.race([usbCam.camera.setConfigValue('capturetarget', 'sdram'), new Promise((_, rej) => setTimeout(() => rej(new Error('timed out')), 8000))]);
       console.log('Sony save destination -> sdram (PC only)');
     }catch(err){ if(usbIsCritical(err)) throw err; console.warn('Sony save destination not changed:', err && err.message || err); }
   }
@@ -7514,13 +7514,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Webcam: the frame above is the photo. USB camera: that live-view frame
   // goes in first (so a failed shot never leaves a gap), then the camera's
   // real photo replaces it, cropped like the live view and sized for print.
+  const USB_CAPTURE_MAX_MS = 60000;   // longest wait for the camera's photo before the live view frame is used
   const USB_SHOT_MAX = 3000;   // longest side in px: a full 4R box at 300 dpi even after the box's crop
   async function captureShot(index){
     captureFrame(index);
     if(!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
     const shots = shotCanvases;
     try{
-      const file = await usbCam.camera.captureImageAsFile();
+      // Never wait forever: a camera that stops answering must not freeze the whole session.
+      let capTimer;
+      const file = await Promise.race([
+        usbCam.camera.captureImageAsFile(),
+        new Promise((_, rej) => { capTimer = setTimeout(() => { const e = new Error('The camera took too long to send the photo'); e.helperMsg = 'The camera took too long to send the photo.'; rej(e); }, USB_CAPTURE_MAX_MS); })
+      ]).finally(() => clearTimeout(capTimer));
       const bmp = await createImageBitmap(file);
       const sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;   // whole photo; the layout box crops it once
       const k = Math.min(1, USB_SHOT_MAX / Math.max(sw, sh));

@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.20', date: '2026-10-28' },
   { version: '1.0.19', date: '2026-10-28' },
   { version: '1.0.16', date: '2026-10-27' },
   { version: '1.0.15', date: '2026-10-27' },
@@ -63,6 +64,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-28', title: 'Sony photos save straight to the computer, and a stuck camera no longer freezes the booth', for: ['website', 'app'], app: '1.0.20',
+    items: [
+      'Sony cameras now send each photo straight to the computer instead of writing it to the memory card first, so no memory card is needed and shots should save sooner.',
+      'If a USB camera stops answering after a shot, the booth now gives up after a minute, uses the live view frame for that photo and carries on, instead of freezing.'
+    ]
+  },
   {
     date: '2026-10-28', title: 'Sony cameras over USB, and easier camera setup on Mac', for: ['website', 'app', 'helper'], app: '1.0.19', helper: '1.1.10',
     items: [

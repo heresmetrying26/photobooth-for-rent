@@ -152,7 +152,8 @@ Chrome can't open the camera on Windows (Windows' own camera driver holds it), s
   PTP commands the way gphoto2 does: connect 0x9201 (phases 1-3), 0x9202, "application" priority 0xD25A, properties 0x9209
   (ObjectInMemory 0xD215, FocusFound 0xD213), live view = object 0xFFFFC002 (JPEG after a 4-byte offset header), shutter =
   0x9207 with 0xD2C1 (half press) and 0xD2C2 (full press), photo = object 0xFFFFC001 once 0xD215 >= 0x8000. It waits ~3 s after
-  connecting (several bodies refuse photos before that) and, if *Still Img. Save Dest.* is Camera Only, switches it to PC + Camera.
+  connecting (several bodies refuse photos before that) and sets *Still Img. Save Dest.* to PC Only (photos go straight to the
+  computer, so **no memory card is needed**; if the camera won't take that it falls back to PC + Camera).
   Photos must be JPEG. Battery isn't shown (Sony reports steps, not percent). Tested only against a simulated A7 III
   (command sequence, errors, two shots in a row); **needs a real Windows + A7 III test**: if Windows' camera driver doesn't pass
   Sony's commands on, the booth says so and shows what the driver allowed.

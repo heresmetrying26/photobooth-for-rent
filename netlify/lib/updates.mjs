@@ -71,15 +71,6 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-10-27', title: 'Admin: generate a customer handout PDF', for: ['website'],
-    items: [
-      'After simulating a booking in the admin panel, tap "Voucher PDF" to open a print-ready single-page handout you can save as PDF and send to the customer.',
-      'The handout includes a QR code pointing to the booth login, the customer\'s access code and 1-hour practice code, a step-by-step quick-start guide, and links to the app downloads and setup guides.',
-      '"Copy message" builds a formatted WhatsApp/Messenger text with all the same info — paste it straight into a chat.',
-      'For any existing booking in the admin list, open the ⋮ menu and choose "Voucher PDF" or "Copy message" to generate a handout for that code.'
-    ]
-  },
-  {
     date: '2026-10-27', title: 'Reprint a photo and safer app updates', for: ['website', 'app'], app: '1.0.15',
     items: [
       'Open a photo in either gallery and choose Print photo to print that single image again.',

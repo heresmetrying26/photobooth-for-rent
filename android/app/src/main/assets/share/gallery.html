@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>photobooth4u</title>
+<style>*{box-sizing:border-box}html,body{margin:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:#F5F1EA;color:#1C1A1E;min-height:100vh}
+header{padding:22px 16px 6px;text-align:center}.brand{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:15px;letter-spacing:-.01em;color:#1C1A1E;text-decoration:none}
+.mk{display:grid;grid-template-columns:1fr 1fr;gap:2px;width:18px;height:18px}.mk i{background:#1C1A1E;border-radius:3px}.mk i:nth-child(2){background:#C93D27}
+h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spacing:-.02em}.sub{color:#6B666C;font-size:13px;margin:0 0 14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;padding:8px 12px 40px;max-width:1100px;margin:0 auto}
+.grid a{display:block;background:#fff;border-radius:10px;overflow:hidden;aspect-ratio:3/4;box-shadow:0 2px 8px rgba(60,40,20,.08)}
+.grid img{width:100%;height:100%;object-fit:cover;display:block}
+.one{max-width:560px;margin:0 auto;padding:6px 16px 40px;text-align:center}.one img,.one video{max-width:100%;max-height:72vh;border-radius:12px;background:#fff;box-shadow:0 10px 30px rgba(60,40,20,.15)}
+@media print{@page{margin:0}html,body{width:100%;height:100%;margin:0!important;background:#fff!important}body *{visibility:hidden!important}.one{position:absolute!important;inset:0!important;display:flex!important;align-items:center!important;justify-content:center!important;max-width:none!important;margin:0!important;padding:0!important}.one img{position:absolute!important;visibility:visible!important;display:block!important;max-width:100vw!important;max-height:100vh!important;width:auto!important;height:auto!important;object-fit:contain!important;border:0!important;border-radius:0!important;box-shadow:none!important}.one h1,.one .sub,.one video,.one div,.one .tip{display:none!important}}
+.btn{display:inline-block;margin:16px 6px 0;padding:14px 22px;border-radius:12px;background:#C93D27;color:#fff;font-weight:800;text-decoration:none;font-size:15px}
+.btn.alt{background:#fff;color:#1C1A1E;border:1.5px solid #E4DCCF}.tip{color:#6B666C;font-size:13px;line-height:1.5;margin:14px auto 0;max-width:420px}.empty{text-align:center;color:#6B666C;padding:40px 16px}
+.tabs{display:inline-flex;background:#EAE4D9;border-radius:24px;padding:3px;margin:0 auto 16px;gap:2px}
+.tab{background:transparent;border:0;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;color:#6B666C;cursor:pointer}
+.tab.active{background:#fff;color:#1C1A1E;box-shadow:0 1px 4px rgba(60,40,20,.1)}
+.grid.filter-photo [data-kind="gif"]{display:none!important}
+.grid.filter-gif [data-kind="photo"]{display:none!important}
+.grid a{position:relative}
+.grid [data-kind="gif"]::after{content:'GIF';position:absolute;bottom:6px;right:6px;background:rgba(28,26,30,.8);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}</style>
+</head>
+<body>
+<header><span class="brand"><span class="mk"><i></i><i></i><i></i><i></i></span>photobooth4u</span></header>
+<div id="app"><p class="empty">Loading&hellip;</p></div>
+<script>
+/* The guests' page for one booth event, served by the tablet itself (LocalShareServer).
+   /e/<event>/ shows every photo; /e/<event>/p/<file> shows one photo or GIF with a Save button.
+   Same look as the page the Windows / Mac app serves. */
+(function(){
+  var app = document.getElementById('app');
+  var m = /^\/e\/([A-Za-z0-9]+)(?:\/p\/([^\/]+))?\/?$/.exec(location.pathname);
+
+  function el(tag, cls, text){
+    var e = document.createElement(tag);
+    if(cls) e.className = cls;
+    if(text != null) e.textContent = text;
+    return e;
+  }
+  function isGif(n){ return /\.gif$/i.test(n); }
+  function isVideo(n){ return /\.(mp4|webm)$/i.test(n); }
+  function showMessage(msg, title){
+    document.title = title || 'Not found';
+    app.innerHTML = '';
+    app.appendChild(el('p', 'empty', msg));
+  }
+
+  if(!m){ showMessage('This link isn’t on this booth.'); return; }
+  var slug = m[1], file = null;
+  if(m[2]){ try{ file = decodeURIComponent(m[2]); }catch(e){ file = ''; } }
+
+  function renderList(d){
+    var files = d.files || [], gifs = 0, i;
+    for(i = 0; i < files.length; i++) if(isGif(files[i].n)) gifs++;
+    var photos = files.length - gifs;
+    document.title = d.name + ' photos';
+    app.innerHTML = '';
+
+    var head = el('div');
+    head.style.cssText = 'text-align:center;padding:0 16px';
+    head.appendChild(el('h1', null, d.name));
+    var count = (photos > 0 && gifs > 0)
+      ? photos + ' photo' + (photos === 1 ? '' : 's') + ' · ' + gifs + ' GIF' + (gifs === 1 ? '' : 's')
+      : files.length + ' photo' + (files.length === 1 ? '' : 's');
+    head.appendChild(el('p', 'sub', count + ' · tap one to save it'));
+    app.appendChild(head);
+
+    if(!files.length){
+      app.appendChild(el('p', 'empty', 'No photos yet. Pull down to refresh after your session.'));
+      return;
+    }
+
+    var grid = el('div', 'grid');
+    if(photos > 0 && gifs > 0){
+      var holder = el('div'); holder.style.textAlign = 'center';
+      var tabs = el('div', 'tabs');
+      var defs = [['all', 'All (' + files.length + ')'], ['photo', 'Photos (' + photos + ')'], ['gif', 'GIFs (' + gifs + ')']];
+      defs.forEach(function(def, idx){
+        var b = el('button', 'tab' + (idx === 0 ? ' active' : ''), def[1]);
+        b.type = 'button';
+        b.onclick = function(){
+          var all = tabs.querySelectorAll('.tab');
+          for(var k = 0; k < all.length; k++) all[k].classList.remove('active');
+          b.classList.add('active');
+          grid.className = 'grid' + (def[0] === 'all' ? '' : ' filter-' + def[0]);
+        };
+        tabs.appendChild(b);
+      });
+      holder.appendChild(tabs);
+      app.appendChild(holder);
+    }
+    files.forEach(function(f){
+      var a = el('a');
+      a.href = '/e/' + slug + '/p/' + encodeURIComponent(f.n);
+      a.setAttribute('data-kind', isGif(f.n) ? 'gif' : 'photo');
+      var img = el('img');
+      img.loading = 'lazy'; img.alt = '';
+      img.src = '/e/' + slug + '/t/' + encodeURIComponent(f.n);
+      a.appendChild(img);
+      grid.appendChild(a);
+    });
+    app.appendChild(grid);
+  }
+
+  function renderOne(d, name){
+    var found = false, i;
+    for(i = 0; i < (d.files || []).length; i++) if(d.files[i].n === name) found = true;
+    var wrap = el('div', 'one');
+    app.innerHTML = '';
+    var all = el('a', 'btn alt', 'All photos');
+    all.href = '/e/' + slug + '/';
+    if(!found){
+      document.title = 'Not ready';
+      wrap.appendChild(el('p', 'empty', 'This photo isn’t here yet. Wait a moment and refresh.'));
+      wrap.appendChild(all);
+      app.appendChild(wrap);
+      return;
+    }
+    var gif = isGif(name), vid = isVideo(name);
+    var title = gif ? 'Your GIF' : 'Your photo';
+    document.title = title;
+    wrap.appendChild(el('h1', null, title));
+    wrap.appendChild(el('p', 'sub', d.name));
+    var src = '/e/' + slug + '/f/' + encodeURIComponent(name);
+    var media;
+    if(vid){
+      media = el('video');
+      media.src = src; media.controls = true; media.autoplay = true; media.muted = true; media.loop = true;
+      media.setAttribute('playsinline', '');
+    } else {
+      media = el('img');
+      media.alt = title; media.src = src;
+    }
+    wrap.appendChild(media);
+    var row = el('div');
+    var dl = el('a', 'btn', gif ? 'Save GIF' : 'Save photo');
+    dl.href = src + '?dl=1'; dl.setAttribute('download', name);
+    row.appendChild(dl);
+    if(!vid && !gif){
+      var pr = el('button', 'btn alt', 'Print photo');
+      pr.type = 'button';
+      pr.onclick = function(){ window.print(); };
+      row.appendChild(pr);
+    }
+    row.appendChild(all);
+    wrap.appendChild(row);
+    var tip = el('p', 'tip');
+    tip.innerHTML = 'iPhone: tap <b>Save photo</b>, then <b>Save to Photos</b> (or press and hold the picture). Android: tap <b>Save photo</b>.';
+    wrap.appendChild(tip);
+    app.appendChild(wrap);
+  }
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/e/' + slug + '/list.json?t=' + Date.now());
+  xhr.onload = function(){
+    if(xhr.status === 404){ showMessage('This event isn’t on this booth anymore.'); return; }
+    var data = null;
+    try{ data = JSON.parse(xhr.responseText); }catch(e){}
+    if(xhr.status !== 200 || !data){ showMessage('Couldn’t load the photos. Pull down to refresh.', 'Photos'); return; }
+    if(file === null) renderList(data); else renderOne(data, file);
+  };
+  xhr.onerror = function(){ showMessage('Couldn’t reach the booth. Check your phone is on the booth Wi-Fi.', 'Photos'); };
+  xhr.send();
+})();
+</script>
+</body>
+</html>

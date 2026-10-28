@@ -18,7 +18,14 @@ A dedicated Android native wrapper for **photobooth4u** designed for tablets (Sa
    - **Back Button Protection**: Intercepts accidental back button presses with a confirmation dialog so guests cannot exit the photo booth.
    - **Camera Auto-Grant**: WebChromeClient automatically grants camera/microphone permissions without repeated browser pop-ups.
 
-3. **Operator URL Configuration**
+3. **Fully Offline Photos, QR Codes and GIFs (`window.__PBLocal`)**
+   - The app needs **no internet** during an event. The booth page is bundled inside the app, and every photo and GIF is saved **on the tablet**.
+   - Photos are kept in the app's storage under `Pictures/photobooth4u/<event name>/` (a copy also goes to the tablet's shared **Pictures → photobooth4u** folder on Android 10+, so you can copy them off with a USB cable or the Files app).
+   - The app runs a small read-only web server (`LocalShareServer.kt`, ports 47777, 47778, 47779, 47787, 47797). The QR on the result screen opens the guest's photo or GIF from the tablet, with a Save button, and an "All photos" page for the event. This is the same address format as the Windows/Mac app (`http://<tablet>:47777/e/<event>/`).
+   - **Guests' phones must be on the same Wi-Fi (or hotspot) as the tablet**; the link is plain `http`, to the tablet's address on that network. Put the Wi-Fi name and password in Setup → Share to show a "join the Wi-Fi" QR before the photo QR.
+   - Nothing is uploaded anywhere. Photos stay on the tablet until you delete them.
+
+4. **Operator URL Configuration**
    - Long-press anywhere on the screen to open the **Booth Configuration dialog**.
    - Quickly switch between your live domain, a trial URL, or a local network testing URL (`http://192.168.x.x:8888/`).
 

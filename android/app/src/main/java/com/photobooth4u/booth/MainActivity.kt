@@ -36,6 +36,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var btBridge: BTBridge
+    private lateinit var pbLocal: PBLocal
+    private var shareServer: LocalShareServer? = null
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
 
     private val PREFS_NAME = "photobooth_prefs"
@@ -79,6 +81,16 @@ class MainActivity : AppCompatActivity() {
         btBridge = BTBridge(this, webView)
         webView.addJavascriptInterface(btBridge, "__BTBridge")
 
+        // 5b. Offline photos: saved on this tablet through window.__PBLocal, and shown to guests' phones
+        // over the booth Wi-Fi by a small web server in the app (no internet needed).
+        pbLocal = PBLocal(this)
+        webView.addJavascriptInterface(pbLocal, "__PBLocal")
+        val share = LocalShareServer(pbLocal)
+        shareServer = share
+        Thread {
+            try { share.start() } catch (e: Exception) { /* guests just won't get a QR */ }
+        }.start()
+
         // 6. Request camera permissions if needed
         checkAndRequestPermissions()
 
@@ -116,6 +128,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         btBridge.disconnect()
+        shareServer?.stop()
     }
 
     private fun hideSystemBars() {
@@ -250,7 +263,9 @@ class MainActivity : AppCompatActivity() {
                     append("<script>")
                     // window.__PB lets the booth enable GIF, retake, lock, pay, printing features
                     append("window.__PB=window.__PB||{};")
-                    append("window.__PB.desktop={v:'1.0.4',os:'android'};")
+                    append("window.__PB.desktop={v:'1.0.5',os:'android'};")
+                    // Tells the booth that photos are saved by this app and shared over the booth Wi-Fi
+                    append("window.__PB.android=true;")
                     // Mark it as a rental-style session so all features are visible
                     append("window.__PB.type='rental';")
                     append("window.__PB.gifOpt=true;")
@@ -261,8 +276,8 @@ class MainActivity : AppCompatActivity() {
                     append("window.__PB.watermark=false;")
                     append("window.__PB.exp=").append(System.currentTimeMillis() + 365L * 24 * 3600 * 1000).append(";")  // 1-year local session
                     append("window.__PB.print=window.__PB.print||{enabled:true,sizes:['receipt80','receipt58','4x6','2x6']};")
-                    // Bundled kiosk has no local photo server. Report offline so
-                    // Drive / QR / pay skip immediately instead of hanging on DNS.
+                    // Report offline so Drive / pay / vouchers skip at once instead of hanging on DNS.
+                    // Photos don't need the internet: the app saves them (__PBLocal) and LocalShareServer shares them.
                     append("try{Object.defineProperty(Navigator.prototype,'onLine',{get:function(){return false;},configurable:true});}catch(e){}")
                     append("</script>")
                 }

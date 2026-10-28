@@ -2941,9 +2941,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
         </div>
         <div class="sub-group" id="deskBox" hidden>
-          <p class="sub-label">Photos on this laptop</p>
+          <p class="sub-label" id="deskPhotosLabel">Photos on this laptop</p>
           <p class="panel-hint" id="deskPhotos" style="margin:0; word-break:break-all;"></p>
-          <div class="desk-row">
+          <div class="desk-row" id="deskPhotoRow">
             <button type="button" class="action-btn" id="deskOpenBtn" style="width:auto; margin:0;">Open photos folder</button>
             <button type="button" class="action-btn" id="deskChangeBtn" style="width:auto; margin:0;">Change folder</button>
           </div>
@@ -2953,9 +2953,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p class="panel-hint" style="margin:0 0 6px;">Guests scan a Wi-Fi QR to join, then their photo QR. Leave empty if they already know the Wi-Fi.</p>
           <input type="text" class="label-input" id="deskWifiName" placeholder="Wi-Fi name" maxlength="32" autocomplete="off" spellcheck="false">
           <input type="text" class="label-input" id="deskWifiPass" placeholder="Wi-Fi password (empty if none)" maxlength="63" autocomplete="off" spellcheck="false" style="margin-top:8px;">
-          <p class="sub-label" style="margin-top:14px;">This laptop&rsquo;s licence</p>
+          <p class="sub-label" id="deskLicLabel" style="margin-top:14px;">This laptop&rsquo;s licence</p>
           <p class="panel-hint" id="deskLic" style="margin:0;"></p>
-          <div class="desk-row">
+          <div class="desk-row" id="deskLicRow">
             <button type="button" class="action-btn" id="deskCheckBtn" style="width:auto; margin:0;">Check for changes</button>
             <button type="button" class="action-btn" id="deskNewsBtn" style="width:auto; margin:0;">What's new</button>
             <button type="button" class="action-btn" id="deskDeactBtn" style="width:auto; margin:0;">Deactivate this laptop</button>
@@ -3594,7 +3594,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Windows / Mac app (desktop/): photos save on this laptop, guests get them
   // over the booth Wi-Fi, and printing + the Windows camera are built in.
   const DESKTOP = !!(window.pb4u && window.pb4u.desktop && window.__PB && window.__PB.desktop);
-  if(DESKTOP) document.documentElement.classList.add('pb-desktop');
+  // Android tablet app (android/): an offline kiosk. Photos are saved on the tablet through the app (window.__PBLocal)
+  // and guests on the same Wi-Fi open them from the tablet, like the laptop app does.
+  const ANDROID_LOCAL = !!(window.__PBLocal && typeof window.__PBLocal.drive === 'function' && window.__PB && window.__PB.android);
+  // Photos stay on this device and guests reach them over the booth Wi-Fi (laptop app and Android tablet app).
+  const LOCALSHARE = DESKTOP || ANDROID_LOCAL;
+  if(LOCALSHARE) document.documentElement.classList.add('pb-desktop');   // hides the online-only options (web-only)
+  const LOCAL_DEVICE = ANDROID_LOCAL ? 'tablet' : 'laptop';
   // Line icons from the SVG sprite at the top of the page.
   function ICON(name){ return '<svg class="ic" aria-hidden="true"><use href="#i-' + name + '"/></svg>'; }
   const video = document.getElementById('video');
@@ -3999,7 +4005,20 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const DRIVE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxv0WfF9rxFY9QlseCoSjrA7vePwHE-Uc8QTURZYyN6yIzcTj4SIlktEWT6Xnaw6Pv9OA/exec';
 
   function driveScriptUrl(){
-    return DESKTOP ? '/local/drive' : DRIVE_SCRIPT_URL;
+    return LOCALSHARE ? '/local/drive' : DRIVE_SCRIPT_URL;
+  }
+  // Android: a web page can't write to the tablet's storage, so the save goes through the app (window.__PBLocal.drive),
+  // which answers with the same JSON the Drive script / laptop app would.
+  function driveFetch(init){
+    if(!ANDROID_LOCAL) return fetch(driveScriptUrl(), init);
+    return new Promise(function(resolve, reject){
+      setTimeout(function(){
+        try{
+          const text = window.__PBLocal.drive(String((init && init.body) || '{}'));
+          resolve(new Response(text, { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        }catch(e){ reject(e); }
+      }, 0);
+    });
   }
 
   // Lifetime codes: the renter types only the event name; the folder is always
@@ -4063,7 +4082,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // and refreshed a few minutes before it expires.
   let ticketCache = null;
   async function getUploadTicket(folderKey){
-    if(DESKTOP) return 'local';
+    if(LOCALSHARE) return 'local';
     const key = folderKey !== undefined ? folderKey : rawFolderKey();
     if(ticketCache && ticketCache.key === key && ticketCache.exp - Date.now() > 5 * 60000) return ticketCache.ticket;
     let token = null, deviceId = null;
@@ -4090,7 +4109,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // request work cross-origin at all.
     const base64Data = await blobToBase64(blob);
     const ticket = await getUploadTicket(folderKey);
-    const res = await fetch(driveScriptUrl(), {
+    const res = await driveFetch({
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
@@ -5319,7 +5338,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Rentals only; trials and the no-code booth skip it. Never blocks the booth.
   function registerEvent(folderUrl, session){
     const pb = window.__PB;
-    if(DESKTOP || !pb || pb.type !== 'rental' || !folderUrl) return;
+    if(LOCALSHARE || !pb || pb.type !== 'rental' || !folderUrl) return;
     let token = null, deviceId = null;
     try{ token = localStorage.getItem('pb_token'); deviceId = localStorage.getItem('pb_device'); }catch(e){}
     if(!token || !deviceId) return;
@@ -5339,14 +5358,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function localShareUrl(folderUrl, file){
     var m = /^pb4u-local:([A-Za-z0-9]+)/.exec(String(folderUrl || ''));
     if(!m) return null;
-    var base = null; try{ base = window.pb4u.lanBase(); }catch(e){}
+    var base = null; try{ base = ANDROID_LOCAL ? window.__PBLocal.lanBase() : window.pb4u.lanBase(); }catch(e){}
     return base ? base + '/e/' + m[1] + '/' + (file ? 'p/' + encodeURIComponent(file) : '') : null;
   }
-  const NO_LAN_TEXT = 'Saved on this laptop. Connect the laptop to the booth Wi-Fi to show the QR.';
+  const NO_LAN_TEXT = 'Saved on this ' + LOCAL_DEVICE + '. Connect the ' + LOCAL_DEVICE + ' to the booth Wi-Fi to show the QR.';
   // Optional booth Wi-Fi the guests join first (app only; set in Share & start).
   const WIFI_KEY = 'pb_wifi';
   function wifiInfo(){
-    if(!DESKTOP) return null;
+    if(!LOCALSHARE) return null;
     try{ var w = JSON.parse(localStorage.getItem(WIFI_KEY) || 'null'); return w && w.ssid ? { ssid: String(w.ssid), pass: String(w.pass || '') } : null; }catch(e){ return null; }
   }
   function wifiQrText(w){
@@ -5354,12 +5373,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return 'WIFI:T:' + (w.pass ? 'WPA' : 'nopass') + ';S:' + e(w.ssid) + ';' + (w.pass ? 'P:' + e(w.pass) + ';' : '') + ';';
   }
   function galleryUrlFor(folderUrl){
-    if(DESKTOP) return localShareUrl(folderUrl);
+    if(LOCALSHARE) return localShareUrl(folderUrl);
     var m = /\/folders\/([A-Za-z0-9_-]{10,})/.exec(String(folderUrl || ''));
     return m ? location.origin + '/g/' + m[1] : null;
   }
-  function usesGallery(folderUrl){ return DESKTOP || (!(window.__PB && window.__PB.qrTarget === 'drive') && !!galleryUrlFor(folderUrl)); }
-  function shareUrlFor(folderUrl){ return DESKTOP ? localShareUrl(folderUrl) : (usesGallery(folderUrl) ? galleryUrlFor(folderUrl) : folderUrl); }
+  function usesGallery(folderUrl){ return LOCALSHARE || (!(window.__PB && window.__PB.qrTarget === 'drive') && !!galleryUrlFor(folderUrl)); }
+  function shareUrlFor(folderUrl){ return LOCALSHARE ? localShareUrl(folderUrl) : (usesGallery(folderUrl) ? galleryUrlFor(folderUrl) : folderUrl); }
 
   // App: the event folder on this laptop, its guests' QR (when on Wi-Fi) and an Open folder link.
   let localFolderUrl = '', localFolderName = '';
@@ -5373,11 +5392,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(url){ open.href = url; open.textContent = 'Open gallery'; }
     document.getElementById('driveFolderCopy').style.display = url ? '' : 'none';
     var dl = document.getElementById('driveFolderDrive');
-    if(dl){ dl.href = '#'; dl.textContent = 'Open folder'; dl.style.display = ''; }
+    if(dl){ dl.href = '#'; dl.textContent = 'Open folder'; dl.style.display = ANDROID_LOCAL ? 'none' : ''; }
     document.getElementById('driveFolderAll').style.display = 'none';
-    document.getElementById('driveFolderQrCaption').textContent = url ? 'All photos (same Wi-Fi)' : 'No Wi-Fi yet: connect this laptop to the booth Wi-Fi (or turn on its hotspot) to show the guests\u2019 QR.';
+    document.getElementById('driveFolderQrCaption').textContent = url ? 'All photos (same Wi-Fi)' : 'No Wi-Fi yet: connect this ' + LOCAL_DEVICE + ' to the booth Wi-Fi (or turn on its hotspot) to show the guests\u2019 QR.';
     driveFolderStatus.style.display = 'block';
-    driveFolderStatus.textContent = '\u2713 Folder ready' + (localFolderName ? ': ' + localFolderName : '') + '. Every photo saves on this laptop.';
+    driveFolderStatus.textContent = '\u2713 Folder ready' + (localFolderName ? ': ' + localFolderName : '') + '. Every photo saves on this ' + LOCAL_DEVICE + '.';
     if(typeof refreshSetupNav === 'function') refreshSetupNav();
     driveFolderQrImg.style.display = url ? '' : 'none';
     if(url) driveFolderQrImg.src = qrImageUrl(url);
@@ -5385,7 +5404,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     driveFolderQrPreview.style.display = 'block';
   }
   function showDriveFolderPreview(folderUrl, name){
-    if(DESKTOP) return showLocalFolderPreview(folderUrl, name);
+    if(LOCALSHARE) return showLocalFolderPreview(folderUrl, name);
     var url = shareUrlFor(folderUrl), gallery = usesGallery(folderUrl);
     currentFolderLink = url;
     refreshGalleryUI();
@@ -5450,7 +5469,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     x.fillText('Open your phone camera and point it here.', W / 2, 1880);
     x.fillStyle = '#6B666C'; x.font = "600 46px 'Manrope', system-ui, sans-serif";
     x.fillText('Every photo from the booth lands in this gallery.', W / 2, 1960);
-    x.fillText(DESKTOP ? 'Your phone must be on the booth Wi-Fi' + (wifi ? '.' : ' (ask us for it).') : 'No signal at the booth? Your photo still arrives later.', W / 2, 2030);
+    x.fillText(LOCALSHARE ? 'Your phone must be on the booth Wi-Fi' + (wifi ? '.' : ' (ask us for it).') : 'No signal at the booth? Your photo still arrives later.', W / 2, 2030);
     try{ const mk = brandMarkCanvas(), mw = 520, mh = Math.round(mw * mk.height / mk.width); x.drawImage(mk, (W - mw) / 2, 2180, mw, mh); }catch(e){}
     const blob = await new Promise(r => c.toBlob(r, 'image/png'));
     const file = 'qr-sign' + (name ? '-' + name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() : '') + '.png';
@@ -5476,7 +5495,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       return;
     }
     const cached = getCachedFolderUrl();
-    if(cached && !DESKTOP){               // the app always asks (it's instant, and gives the folder's name)
+    if(cached && !LOCALSHARE){            // the apps always ask (it's instant, and gives the folder's name)
       showDriveFolderPreview(cached);
       registerEvent(cached, false);
       return;
@@ -5486,7 +5505,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     driveFolderQrPreview.style.display = 'none';
     try{
       const ticket = await getUploadTicket();
-      const res = await fetch(driveScriptUrl(), {
+      const res = await driveFetch({
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ folderKey: key, subfolder: driveSubfolder() || undefined, resolveOnly: true, ticket })
@@ -5601,7 +5620,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const items = (await queuedItems()).sort((a, b) => a.t - b.t);
       for(const it of items){
         if(it.error && !manual) continue;          // needs the operator's attention
-        if(!navigator.onLine && !manual) break;
+        if(!LOCALSHARE && !navigator.onLine && !manual) break;
         try{
           const r = await uploadToDrive(it.blob, it.filename, { folderKey: it.folderKey, subfolder: it.subfolder });
           await dbDo('uploads', 'readwrite', st => st.delete(it.id));
@@ -5871,14 +5890,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // Multi-device codes: "3_strip_cam2.jpg".
     const filename = filePrefix() + (sessionNumber || 1) + '_' + layoutKey + deviceTag() + '.jpg';
 
-    if(driveReady() || DESKTOP){
+    if(driveReady() || LOCALSHARE){
       // Weak venue internet: try 3 times, then keep the photo on this device
       // and upload it by itself once the connection is back.
       const dest = { folderKey: rawFolderKey(), subfolder: driveSubfolder() };
       let drive = null, lastErr = null;
+      // Saving on this device (laptop / tablet app) never needs the internet.
+      const online = LOCALSHARE || navigator.onLine !== false;
       // Clearly offline: keep it for later straight away (no 5 s of retries).
-      if(navigator.onLine === false) lastErr = new Error('offline');
-      for(let attempt = 0; attempt < 3 && !drive && navigator.onLine !== false; attempt++){
+      if(!online) lastErr = new Error('offline');
+      for(let attempt = 0; attempt < 3 && !drive && online; attempt++){
         if(attempt){ if(onRetry) onRetry(attempt); await wait(attempt === 1 ? 1500 : 4000); }
         try{ drive = await uploadToDrive(blob, filename, dest); }
         catch(e){ lastErr = e; if(isPermanentUploadError(e)) break; }
@@ -5904,7 +5925,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // ---- The guest's own QR codes, shown after each session ----
   // The session QR opens the saved photo in the online gallery.
   function fileShareUrl(fileId){
-    if(DESKTOP){ const i = String(fileId).indexOf('/'); return i > 0 ? localShareUrl('pb4u-local:' + fileId.slice(0, i), fileId.slice(i + 1)) : null; }
+    if(LOCALSHARE){ const i = String(fileId).indexOf('/'); return i > 0 ? localShareUrl('pb4u-local:' + fileId.slice(0, i), fileId.slice(i + 1)) : null; }
     const folderUrl = getCachedFolderUrl();
     const g = folderUrl && usesGallery(folderUrl) ? galleryUrlFor(folderUrl) : null;
     if(g) return g + '#' + fileId;
@@ -5926,7 +5947,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const box = wrap.querySelector('.qr-box'); box.innerHTML = '';
     if(!url){
       // App with no Wi-Fi: the photo is safe on the laptop, there's just no link for phones.
-      const w0 = document.createElement('span'); w0.className = 'qr-wait'; w0.textContent = DESKTOP ? NO_LAN_TEXT : 'No link yet';
+      const w0 = document.createElement('span'); w0.className = 'qr-wait'; w0.textContent = LOCALSHARE ? NO_LAN_TEXT : 'No link yet';
       box.appendChild(w0);
       const l0 = wrap.querySelector('.qr-link'); if(l0) l0.remove();
       guestRender(); return;
@@ -5957,17 +5978,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const myGeneration = ++qrGeneration;
     qrResults.innerHTML = '';
     lastRenderedFolderUrl = null;
-    if(DESKTOP) addWifiSlot();
+    if(LOCALSHARE) addWifiSlot();
     qrSlot('photo', 'Your photo', 'Saving your photo…');
     // Guests get a working QR straight away: the event's All photos page,
     // swapped for their own photo's QR as soon as the upload finishes.
     const evFolder = getCachedFolderUrl();
-    if(DESKTOP && evFolder){ qrSlot('gallery', 'All photos', ''); fillQrSlot('gallery', shareUrlFor(evFolder)); }
+    if(LOCALSHARE && evFolder){ qrSlot('gallery', 'All photos', ''); fillQrSlot('gallery', shareUrlFor(evFolder)); }
     let slowTimer = null;
     const setCap = (t) => { const w = qrResults.querySelector('.qr-result[data-kind="photo"] .qr-caption'); if(w) w.textContent = t; };
     const OFFLINE_CAP = 'Scan now \u00b7 your photo arrives here once the booth is back online';
     if(evFolder){
-      setCap(DESKTOP ? 'All photos \u00b7 saving your photo\u2026' : navigator.onLine === false ? OFFLINE_CAP : 'All photos \u00b7 your photo is uploading\u2026');
+      setCap(LOCALSHARE ? 'All photos \u00b7 saving your photo\u2026' : navigator.onLine === false ? OFFLINE_CAP : 'All photos \u00b7 your photo is uploading\u2026');
       fillQrSlot('photo', shareUrlFor(evFolder));
       slowTimer = setTimeout(() => { if(myGeneration === qrGeneration) setCap('All photos \u00b7 your photo will appear here shortly'); }, 60000);
     }
@@ -8045,7 +8066,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       showQRForCurrentPhoto();
     }
     scheduleResultReset();
-    if(!DESKTOP){ showMultipleDownloadsHint(); if(curMode !== 'gif') saveToDevice(); }
+    if(!LOCALSHARE){ showMultipleDownloadsHint(); if(curMode !== 'gif') saveToDevice(); }
     maybeAutoPrint();
   }
 
@@ -16742,6 +16763,42 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var dfHelp = document.getElementById('driveFolderHelp');
   if(!dfHelp.textContent) dfHelp.textContent = 'Each event gets its own folder. Two devices? Type the same name on both.';
   driveFolderKeyInput.addEventListener('input', scheduleSetupNav);
+
+  // ---- Android tablet app: where the photos are, the address guests open, the booth Wi-Fi ----
+  (function(){
+    if(!ANDROID_LOCAL) return;
+    var box = document.getElementById('deskBox');
+    if(!box) return;
+    box.hidden = false;
+    ['deskPhotoRow', 'deskLicLabel', 'deskLic', 'deskLicRow'].forEach(function(id){ var e = document.getElementById(id); if(e) e.style.display = 'none'; });
+    var pl = document.getElementById('deskPhotosLabel'); if(pl) pl.textContent = 'Photos on this tablet';
+    var signHint = document.getElementById('driveFolderSignHint');
+    if(signHint) signHint.textContent = 'Print the sign and put it by the booth. Guests’ phones must be on the same Wi-Fi as this tablet to open the photos; add the Wi-Fi below so the sign and each guest’s QR show how to join.';
+    if(!(window.__PB && window.__PB.folderPrefix)) driveFolderKeyInput.placeholder = 'Event name';
+    try{ document.getElementById('deskPhotos').textContent = window.__PBLocal.photosPath() + ' (a copy of each photo is also in Pictures/photobooth4u)'; }catch(e){}
+    var lan = document.getElementById('deskLan'), lastBase = null;
+    function renderLan(){
+      var base = ''; try{ base = window.__PBLocal.lanBase(); }catch(e){}
+      if(base === lastBase) return;
+      var first = lastBase === null;
+      lastBase = base;
+      lan.className = 'panel-hint' + (base ? '' : ' bad');
+      lan.textContent = base
+        ? 'Guests open their photos at ' + base + ' ✓ Their phones must be on the same Wi-Fi as this tablet.'
+        : 'This tablet isn’t on a Wi-Fi network, so guests can’t open their photos yet. Connect it to the booth Wi-Fi router, or turn on its hotspot (Settings → Network → Hotspot).';
+      // The event's QR points at the tablet's address: refresh it when the address changes.
+      if(!first){ try{ if(rawFolderKey()) resolveDriveFolder(); }catch(e){} }
+    }
+    renderLan();
+    setInterval(renderLan, 5000);
+    var wn = document.getElementById('deskWifiName'), wp = document.getElementById('deskWifiPass');
+    var w0 = wifiInfo(); if(w0){ wn.value = w0.ssid; wp.value = w0.pass; }
+    function saveWifi(){
+      var ssid = wn.value.trim(), pass = wp.value;
+      try{ if(ssid) localStorage.setItem(WIFI_KEY, JSON.stringify({ ssid: ssid, pass: pass })); else localStorage.removeItem(WIFI_KEY); }catch(e){}
+    }
+    wn.addEventListener('input', saveWifi); wp.addEventListener('input', saveWifi);
+  })();
 
   // ---- Windows / Mac app: this laptop (photos folder, guests' Wi-Fi, licence) ----
   (function(){

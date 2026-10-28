@@ -68,6 +68,15 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-10-28', title: 'Android tablet app \u2014 photos, GIFs and QR codes now work fully offline', for: ['website'],
+    items: [
+      'The Android tablet app (v1.0.5) now saves every photo and GIF on the tablet, so a photo QR works at a venue with no internet at all.',
+      'Guests scan the QR with their phone, on the same Wi-Fi or hotspot as the tablet, to open their photo or GIF, tap Save, or browse the event\u2019s All photos page.',
+      'Copies are also kept in the tablet\u2019s Pictures \u203a photobooth4u folder, one folder per event, so you can copy them off afterwards.',
+      'Put your Wi-Fi name and password in Setup \u203a Share and the booth shows a \u201cjoin the Wi-Fi\u201d QR first.',
+    ]
+  },
+  {
     date: '2026-10-28', title: 'USB cameras recover faster after a drop-out, and laptops hear about updates sooner', for: ['website', 'app'], app: '1.0.22',
     items: [
       'If a USB camera (Canon, Nikon or Sony) stops answering or is unplugged, the booth now notices within a few seconds and reconnects by itself, instead of leaving a frozen picture on screen for up to 20 seconds. \u201cReconnecting\u201d shows meanwhile.',

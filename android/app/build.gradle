@@ -11,8 +11,8 @@ android {
         applicationId "com.photobooth4u.booth"
         minSdk 24
         targetSdk 34
-        versionCode 4
-        versionName "1.0.3"
+        versionCode 5
+        versionName "1.0.4"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -36,6 +36,15 @@ android {
         jvmTarget = '17'
     }
 }
+
+def boothHtml = file("${rootProject.projectDir}/../protected/booth.html")
+tasks.register('bundleBoothHtml', Copy) {
+    description = 'Copy latest booth.html into APK assets for offline kiosk'
+    from boothHtml
+    into 'src/main/assets'
+    onlyIf { boothHtml.exists() }
+}
+preBuild.dependsOn bundleBoothHtml
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'

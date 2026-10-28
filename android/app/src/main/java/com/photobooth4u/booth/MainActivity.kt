@@ -30,6 +30,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import java.io.ByteArrayInputStream
 
 class MainActivity : AppCompatActivity() {
 
@@ -39,6 +40,7 @@ class MainActivity : AppCompatActivity() {
 
     private val PREFS_NAME = "photobooth_prefs"
     private val PREF_URL = "booth_url"
+    private val PREF_LIVE = "use_live_url"
     private val DEFAULT_URL = "https://photobooth4u.netlify.app/"
     private val BASE_URL   = "https://photobooth4u.netlify.app/"
     private val ASSET_BOOTH = "booth.html"
@@ -91,10 +93,9 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // 8. Load the booth — try saved URL (live web), fall back to bundled HTML if offline
-        val targetUrl = getSavedUrl()
-        if (isOnlineNow()) {
-            webView.loadUrl(targetUrl)
+        // 8. Venue kiosk: boot the bundled booth. Live web is opt-in (long-press).
+        if (useLiveUrl()) {
+            webView.loadUrl(getSavedUrl())
         } else {
             loadOfflineBooth()
         }
@@ -137,10 +138,10 @@ class MainActivity : AppCompatActivity() {
         s.useWideViewPort = true
         s.loadWithOverviewMode = true
         s.displayZoomControls = false
-        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
-        @Suppress("DEPRECATION")
-        val isOnline = cm?.activeNetworkInfo?.isConnectedOrConnecting == true
-        s.cacheMode = if (isOnline) WebSettings.LOAD_DEFAULT else WebSettings.LOAD_CACHE_ELSE_NETWORK
+        s.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            s.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             s.safeBrowsingEnabled = false
@@ -216,6 +217,13 @@ class MainActivity : AppCompatActivity() {
                     loadOfflineBooth()
                 }
             }
+
+            override fun shouldInterceptRequest(
+                view: WebView?,
+                request: WebResourceRequest?
+            ): WebResourceResponse? {
+                return interceptOfflineRequest(request) ?: super.shouldInterceptRequest(view, request)
+            }
         }
 
         // Secret operator gesture: Long press with 2 fingers or header hold to change booth URL
@@ -242,7 +250,7 @@ class MainActivity : AppCompatActivity() {
                     append("<script>")
                     // window.__PB lets the booth enable GIF, retake, lock, pay, printing features
                     append("window.__PB=window.__PB||{};")
-                    append("window.__PB.desktop={v:'1.0.2',os:'android'};")
+                    append("window.__PB.desktop={v:'1.0.4',os:'android'};")
                     // Mark it as a rental-style session so all features are visible
                     append("window.__PB.type='rental';")
                     append("window.__PB.gifOpt=true;")
@@ -253,8 +261,9 @@ class MainActivity : AppCompatActivity() {
                     append("window.__PB.watermark=false;")
                     append("window.__PB.exp=").append(System.currentTimeMillis() + 365L * 24 * 3600 * 1000).append(";")  // 1-year local session
                     append("window.__PB.print=window.__PB.print||{enabled:true,sizes:['receipt80','receipt58','4x6','2x6']};")
-                    // Spoof navigator.onLine so booth never shows the "no internet" block
-                    append("try{Object.defineProperty(Navigator.prototype,'onLine',{get:function(){return true;},configurable:true});}catch(e){}")
+                    // Bundled kiosk has no local photo server. Report offline so
+                    // Drive / QR / pay skip immediately instead of hanging on DNS.
+                    append("try{Object.defineProperty(Navigator.prototype,'onLine',{get:function(){return false;},configurable:true});}catch(e){}")
                     append("</script>")
                 }
 
@@ -278,10 +287,41 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun isOnlineNow(): Boolean {
-        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
-        @Suppress("DEPRECATION")
-        return cm?.activeNetworkInfo?.isConnectedOrConnecting == true
+    private fun interceptOfflineRequest(request: WebResourceRequest?): WebResourceResponse? {
+        if (!offlineLoaded) return null
+        val url = request?.url ?: return null
+        val host = (url.host ?: "").lowercase()
+        val path = url.path ?: ""
+        if (host.contains("fonts.googleapis.com") || host.contains("fonts.gstatic.com")) {
+            return webResponse("text/css", ByteArray(0))
+        }
+        if (path.startsWith("/api/") || host.contains("catbox.moe") || host.contains("qrserver.com") ||
+            host.contains("script.google.com") || host.contains("drive.google.com")
+        ) {
+            return webResponse(
+                "application/json",
+                """{"ok":false,"error":"offline"}""".toByteArray(Charsets.UTF_8),
+                503,
+                "Offline"
+            )
+        }
+        return null
+    }
+
+    private fun webResponse(
+        mime: String,
+        body: ByteArray,
+        status: Int = 200,
+        reason: String = "OK"
+    ): WebResourceResponse {
+        return WebResourceResponse(
+            mime,
+            "utf-8",
+            status,
+            reason,
+            mapOf("Access-Control-Allow-Origin" to "*"),
+            ByteArrayInputStream(body)
+        )
     }
 
     private fun activityGrantPermissions(request: PermissionRequest) {
@@ -315,6 +355,14 @@ class MainActivity : AppCompatActivity() {
         return prefs.getString(PREF_URL, DEFAULT_URL) ?: DEFAULT_URL
     }
 
+    private fun useLiveUrl(): Boolean {
+        return getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getBoolean(PREF_LIVE, false)
+    }
+
+    private fun setUseLiveUrl(live: Boolean) {
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putBoolean(PREF_LIVE, live).apply()
+    }
+
     private fun saveUrl(url: String) {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putString(PREF_URL, url).apply()
@@ -327,18 +375,20 @@ class MainActivity : AppCompatActivity() {
 
         AlertDialog.Builder(this)
             .setTitle("Booth Configuration")
-            .setMessage("Change the booth target URL or trial link:")
+            .setMessage("This tablet boots the bundled booth (no internet). Save a URL only if you want the live website instead.")
             .setView(input)
-            .setPositiveButton("Save & Reload") { _, _ ->
+            .setPositiveButton("Save live URL") { _, _ ->
                 val newUrl = input.text.toString().trim()
                 if (newUrl.isNotBlank()) {
                     saveUrl(newUrl)
+                    setUseLiveUrl(true)
                     offlineLoaded = false
                     webView.loadUrl(newUrl)
                     Toast.makeText(this, "Loading $newUrl", Toast.LENGTH_SHORT).show()
                 }
             }
-            .setNeutralButton("Load bundled booth (offline)") { _, _ ->
+            .setNeutralButton("Bundled booth (offline)") { _, _ ->
+                setUseLiveUrl(false)
                 offlineLoaded = false
                 loadOfflineBooth()
                 Toast.makeText(this, "Loaded offline booth from device", Toast.LENGTH_SHORT).show()

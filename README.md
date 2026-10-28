@@ -106,8 +106,8 @@ sizes. Prints come out at the real paper size (300 dpi, zero margins):
   setting, so strips can go to e.g. "HiTi 2x6 cut" and other layouts to "HiTi 4x6".
 
 ## USB camera (remote control) mode
-For DSLR / mirrorless cameras in their **Photo Import / Remote Control** (Canon) or **PTP/MTP**
-(Nikon) USB mode, so the camera's own photo settings and flash apply. Pick
+For DSLR / mirrorless cameras in their **Photo Import / Remote Control** (Canon), **PTP/MTP**
+(Nikon) or **PC Remote** (Sony) USB mode, so the camera's own photo settings and flash apply. Pick
 **"DSLR / mirrorless over USB (remote control)"** in the Camera menu and choose the camera in
 Chrome's USB picker (only the first time; it stays allowed). Live view comes from the camera;
 each shot fires the real shutter (about 2.5–3 s per shot incl. transfer, shown as "Saving").
@@ -119,9 +119,15 @@ each shot fires the real shutter (about 2.5–3 s per shot incl. transfer, shown
 - If a shot fails (focus, RAW), the live-view frame is used and a note shows.
 - Needs the COOP/COEP headers on `/` in `netlify.toml`. Uses web-gphoto2 (LGPL-2.1) from
   `public/camera-test/build/`; `/camera-test/` is a stand-alone test page for any camera.
-- Tested: Nikon D5600 on macOS Chrome (shutter, live view, settings). Canon not yet tested.
+- **Mac desktop app**: macOS' own camera service (`ptpcamerad`, behind Photos / Image Capture) grabs a camera the moment it is
+  plugged in, which gives "Another app is using the camera". The app (`desktop/lib/camfree.mjs`, IPC `pb4u:freeCamera`) stops it
+  and quits Image Capture before every connect, keeps stopping the service for ~15 s while connecting (macOS restarts it), retries
+  once by itself, and connects when a camera is plugged in. In Chrome (not the app) quit those apps by hand.
+- Tested: Nikon D5600 on macOS Chrome (shutter, live view, settings). Canon and Sony not yet tested. The bundled
+  library (libgphoto2 2.5.28) lists Sony A7 III (PC Control) and other bodies up to about 2021; newer Sony bodies
+  need a rebuilt library.
 
-### Windows: Nikon / Canon EOS over USB through the photobooth4u Helper (1.1 / 1.1.5)
+### Windows: Nikon / Canon EOS / Sony Alpha over USB through the photobooth4u Helper (1.1 / 1.1.5 / 1.1.9)
 Chrome can't open the camera on Windows (Windows' own camera driver holds it), so the helper does it:
 - `tools/print-helper/camera-worker.ps1` (built into the helper exe) runs in PowerShell and talks to the camera
   through Windows' WPD/MTP driver ("MTP extension" commands: Nikon live view 0x9201/0x9203, shutter 0x90C0,
@@ -136,11 +142,19 @@ Chrome can't open the camera on Windows (Windows' own camera driver holds it), s
   Canon settings are left as they are (RAW + JPEG: the JPEG is used; RAW only: the booth says to switch to JPEG).
 - Canon EOS needs EOS Utility closed, and on older bodies "Live View shoot: Enable" in the camera menu
   (otherwise the camera never sends live view; the helper says so after ~9 s).
-- Booth (Windows): the Camera menu has **Nikon / Canon camera over USB (photobooth4u Helper)**. Picking it once (Chrome asks
+- Booth (Windows): the Camera menu has **Nikon / Canon / Sony camera over USB (photobooth4u Helper)**. Picking it once (Chrome asks
   to allow local access) remembers it (`pb_cam_helper`); after that the booth checks the helper on start and every
   6 s, picks a plugged-in camera by itself, switches from the built-in webcam when one is plugged in between guests,
   and keeps retrying when the helper is closed or the camera is unplugged (no Try Again needed).
-- Nikon and Canon EOS (Sony says not yet). Tested with a stand-in worker (booth + helper end to end), and the real
+- **Sony Alpha (1.1.9)**: camera's *USB Connection* must be **PC Remote** (A7 III: MENU > Setup > USB). The worker uses Sony's
+  PTP commands the way gphoto2 does: connect 0x9201 (phases 1-3), 0x9202, "application" priority 0xD25A, properties 0x9209
+  (ObjectInMemory 0xD215, FocusFound 0xD213), live view = object 0xFFFFC002 (JPEG after a 4-byte offset header), shutter =
+  0x9207 with 0xD2C1 (half press) and 0xD2C2 (full press), photo = object 0xFFFFC001 once 0xD215 >= 0x8000. It waits ~3 s after
+  connecting (several bodies refuse photos before that) and, if *Still Img. Save Dest.* is Camera Only, switches it to PC + Camera.
+  Photos must be JPEG. Battery isn't shown (Sony reports steps, not percent). Tested only against a simulated A7 III
+  (command sequence, errors, two shots in a row); **needs a real Windows + A7 III test**: if Windows' camera driver doesn't pass
+  Sony's commands on, the booth says so and shows what the driver allowed.
+- Nikon and Canon EOS: tested with a stand-in worker (booth + helper end to end), and the real
   worker's C# compiled as C# 5 (like Windows PowerShell's Add-Type) against simulated Nikon, Canon 60D-style and
   Canon R-style cameras (live view, RAW + JPEG, RAW only, focus failure, download in pieces, live view disabled).
   The WPD camera calls themselves still need a real Windows test with each brand (use /camera-test/windows/).

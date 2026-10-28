@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('pb4u', {
   copy: (t) => ipcRenderer.invoke('pb4u:copy', String(t || '')),
   openUrl: (u) => ipcRenderer.invoke('pb4u:openUrl', String(u || '')),
   quit: () => ipcRenderer.invoke('pb4u:quit'),
+  freeCamera: () => ipcRenderer.invoke('pb4u:freeCamera'),
   update: {
     info: () => ipcRenderer.invoke('pb4u:update'),
     check: () => ipcRenderer.invoke('pb4u:updateCheck'),

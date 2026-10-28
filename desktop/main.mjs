@@ -16,6 +16,7 @@ import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
 import { initPhotos, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
+import { freeCamera, guardCamera } from './lib/camfree.mjs';
 import * as U from './lib/updater.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -170,6 +171,7 @@ function setupSession() {
   // Chrome would show a USB picker; the booth camera is the device we want.
   ses.on('select-usb-device', (event, details, cb) => {
     event.preventDefault();
+    guardCamera(10000);   // Mac: stop macOS holding the camera while the booth connects
     const list = details.deviceList || [];
     const cam = list.find((d) => /nikon|canon|sony|fuji|olympus|panasonic|camera|eos|pentax|leica|ricoh/i.test((d.manufacturerName || '') + ' ' + (d.productName || ''))) || list[0];
     cb(cam ? cam.deviceId : '');
@@ -230,6 +232,8 @@ function wireIpc() {
   ipcMain.handle('pb4u:copy', (e, t) => { clipboard.writeText(String(t || '')); return true; });
   ipcMain.handle('pb4u:openUrl', (e, u) => { openOutside(String(u || '')); return true; });
   ipcMain.handle('pb4u:quit', () => { app.quit(); return true; });
+  // Mac: let go of the camera macOS grabbed (its camera service, Image Capture) so the booth can use it.
+  ipcMain.handle('pb4u:freeCamera', async () => { const r = await freeCamera(); guardCamera(15000); return r; });
   // Updates (see lib/updater.mjs)
   ipcMain.handle('pb4u:update', () => U.info());
   ipcMain.handle('pb4u:updateCheck', () => U.check());

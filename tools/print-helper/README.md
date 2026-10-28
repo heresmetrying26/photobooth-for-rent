@@ -41,6 +41,7 @@ More info → Run anyway. Signing (Apple Developer ID + notarization, Windows co
 removes those warnings.
 
 ## Versions
+- 1.1.9: Windows camera: Sony Alpha (A7 III and other bodies in PC Remote mode) over USB: live view and the real shutter, through Windows' own driver. Not yet tried on a real Windows PC with a real camera: if Windows doesn't pass Sony's commands on, the booth shows the reason (the details line says what the driver allowed).
 - 1.1.8: open Bluetooth settings from the booth and refresh the system printer list after pairing. Bluetooth printing uses the installed Windows/macOS printer queue and driver.
 - 1.1.7: the web booth can open the selected printer's Windows preferences or Mac Printers & Scanners settings.
 - 1.1.4: answers the booth at once (the printer list is kept and refreshed in the background, so Windows no longer times out with "Can't reach the Print Helper"); receipt printers: `fit: "width"` prints at the roll's full width without stretching (Receipt layouts).

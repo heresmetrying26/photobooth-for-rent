@@ -6,7 +6,7 @@
 #   request : "<id> <command> [argument]\n"
 #   reply   : "<id> <OK|ERR|GONE> <J|B|N> <byte length>\n" + that many bytes
 #             (J = JSON text, B = JPEG bytes, N = nothing; ERR/GONE carry a message)
-# Nikon DSLRs / mirrorless (D-series, Z-series) and Canon EOS (DSLRs, M, R). Sony: not yet.
+# Nikon DSLRs / mirrorless (D-series, Z-series) and Canon EOS (DSLRs, M, R) and Sony Alpha (PC Remote mode).
 param([int]$Port)
 $ErrorActionPreference = 'Stop'
 
@@ -393,7 +393,7 @@ namespace Pb4uCam
         static Ptp ptp;
         static string camName = "", camModel = "", camMaker = "", devId = null;
         static uint vendor;
-        static bool nikon, canon;
+        static bool nikon, canon, sony;
         // Stand-ins for tests; the real thing talks to Windows' camera driver.
         public static Func<Ptp> NewPtp = delegate { return new Ptp(); };
         public static Func<List<DevInfo>> ListDevs = Ptp.ListDevices;
@@ -421,7 +421,7 @@ namespace Pb4uCam
         }
 
         // ---------- camera picking ----------
-        static readonly string[] CAMERA_WORDS = { "nikon", "canon", "sony", "fuji", "panasonic", "olympus", "om system", "pentax", "eos", "lumix" };
+        static readonly string[] CAMERA_WORDS = { "nikon", "canon", "sony", "ilce", "ilme", "alpha", "zv-", "dsc-", "fuji", "panasonic", "olympus", "om system", "pentax", "eos", "lumix" };
         static bool LooksLikeCamera(DevInfo d)
         {
             string n = ((d.Name ?? "") + " " + (d.Maker ?? "")).ToLowerInvariant();
@@ -457,8 +457,9 @@ namespace Pb4uCam
             camMaker = rd.Str(); camModel = rd.Str();
             nikon = vendor == 0x0A || camMaker.IndexOf("nikon", StringComparison.OrdinalIgnoreCase) >= 0;
             canon = !nikon && (vendor == 0x0B || camMaker.IndexOf("canon", StringComparison.OrdinalIgnoreCase) >= 0);
+            sony = !nikon && !canon && (vendor == 0x11 || camMaker.IndexOf("sony", StringComparison.OrdinalIgnoreCase) >= 0);
             // The commands that matter for this brand: which ones the camera lists, which ones Windows passes on.
-            ushort[] mine = canon ? new ushort[] { 0x9114, 0x9115, 0x9116, 0x9153, 0x9110, 0x910F, 0x9128 } : new ushort[] { 0x9201, 0x9203, 0x90C0, 0x90C7, 0x90C8 };
+            ushort[] mine = canon ? new ushort[] { 0x9114, 0x9115, 0x9116, 0x9153, 0x9110, 0x910F, 0x9128 } : sony ? new ushort[] { 0x9201, 0x9202, 0x9205, 0x9207, 0x9209 } : new ushort[] { 0x9201, 0x9203, 0x90C0, 0x90C7, 0x90C8 };
             var listed = new List<string>();
             foreach (ushort op in mine) if (ops.Contains(op)) listed.Add(op.ToString("X4"));
             string driverOps = "?";
@@ -488,7 +489,7 @@ namespace Pb4uCam
                 }
                 ptp.Close();
             }
-            ptp = null; live = false; devId = null; nikon = false; canon = false;
+            ptp = null; live = false; devId = null; nikon = false; canon = false; sony = false; sonyClock = null;
         }
 
         static string Open()
@@ -505,7 +506,7 @@ namespace Pb4uCam
             foreach (var d in all) if (LooksLikeCamera(d)) order.Add(d);
             foreach (var d in all) if (!LooksLikeCamera(d)) order.Add(d);
             string seen = "";
-            CamException canonErr = null;
+            CamException canonErr = null, sonyErr = null;
             foreach (var d in order)
             {
                 var p = NewPtp();
@@ -531,6 +532,14 @@ namespace Pb4uCam
                         PrepareCanon();
                         return InfoJson();
                     }
+                    if (sony)   // Sony Alpha in PC Remote mode: connect now, live view when the booth asks
+                    {
+                        devId = d.Id;
+                        camName = SonyName(camModel);
+                        Log("Opened " + camName + " (" + d.Name + ")");
+                        PrepareSony();
+                        return InfoJson();
+                    }
                     CloseCamera();
                 }
                 catch (Exception e)
@@ -539,24 +548,27 @@ namespace Pb4uCam
                     if (canon && e is CamException) canonErr = (CamException)e;
                     else if (canon && e is GoneException) canonErr = new CamException("NOCAMERA The camera disconnected while connecting. Check the USB cable, switch the camera off and on, and try again.");
                     else if (canon) canonErr = new CamException("DRIVER Windows' camera driver didn't pass the remote-control command to the " + (camMaker + " " + camModel).Trim() + " (" + e.Message + "). Close EOS Utility and any photo-import window, unplug the camera, switch it off and on, plug it in again and try again.");
+                    if (sony && e is CamException) sonyErr = (CamException)e;
+                    else if (sony && e is GoneException) sonyErr = new CamException("NOCAMERA The camera disconnected while connecting. Check the USB cable, switch the camera off and on, and try again.");
+                    else if (sony) sonyErr = new CamException("DRIVER Windows' camera driver didn't pass the remote-control command to the " + camName + " (" + e.Message + "). " + SONY_HINT + " [" + diag + "]");
                     if (ptp == p) CloseCamera(); else p.Close();
                 }
             }
             if (canonErr != null) throw canonErr;
-            if (seen.ToLowerInvariant().Contains("sony")) throw new CamException("UNSUPPORTED Sony cameras aren't supported on Windows yet (Nikon and Canon EOS for now). Use an HDMI capture card, or the camera's webcam mode.");
-            if (seen != "") throw new CamException("NOCAMERA Found " + seen + ", but no Nikon or Canon EOS camera with live view. Switch the camera on and check its cable.");
+            if (sonyErr != null) throw sonyErr;
+            if (seen != "") throw new CamException("NOCAMERA Found " + seen + ", but no Nikon, Canon EOS or Sony Alpha camera with live view. Switch the camera on and check its cable.");
             throw new CamException("NOCAMERA No camera found. Plug the camera into this laptop with a data USB cable (not charge-only) and switch it on.");
         }
 
         static string InfoJson()
         {
-            return "{\"name\":" + Js(camName) + ",\"model\":" + Js(camModel) + ",\"maker\":" + Js(camMaker) + ",\"brand\":" + Js(nikon ? "nikon" : canon ? "canon" : "") + ",\"vendor\":" + vendor
+            return "{\"name\":" + Js(camName) + ",\"model\":" + Js(camModel) + ",\"maker\":" + Js(camMaker) + ",\"brand\":" + Js(nikon ? "nikon" : canon ? "canon" : sony ? "sony" : "") + ",\"vendor\":" + vendor
                 + ",\"liveview\":" + (live ? "true" : "false") + ",\"battery\":" + Battery() + ",\"note\":" + Js(setupNote) + ",\"diag\":" + Js(diag) + "}";
         }
 
         static int Battery()
         {
-            if (canon || !props.Contains(0x5001)) return -1;
+            if (canon || sony || !props.Contains(0x5001)) return -1;   // Sony reports battery in steps, not percent
             try { byte[] b; uint r = ptp.OpRead(0x1015, out b, 0x5001); return r == Ptp.OK && b.Length > 0 ? b[0] : -1; }
             catch (GoneException) { throw; }
             catch { return -1; }
@@ -1107,6 +1119,241 @@ namespace Pb4uCam
             return r == Ptp.OK ? img : new byte[0];
         }
 
+        // ================= Sony Alpha (PC Remote mode) =================
+        // Sony's own PTP commands (the same ones gphoto2 and Sony's remote tools use):
+        // connect 0x9201 (phases 1, 2, 3), extended device info 0x9202, all properties 0x9209,
+        // set property 0x9205, buttons 0x9207 (shutter half press 0xD2C1, full press 0xD2C2),
+        // live view = object 0xFFFFC002, a new photo = property 0xD215 >= 0x8000, then object 0xFFFFC001.
+        const uint SONY_LV = 0xFFFFC002, SONY_PHOTO = 0xFFFFC001;
+        const string SONY_HINT = "On the camera set USB Connection to PC Remote (MENU > Setup > USB), close Imaging Edge and other camera apps, switch the camera off and on, unplug and replug the USB cable, then try again.";
+        static int sonyVer = 2;
+        static Stopwatch sonyClock;
+
+        static string SonyName(string model)
+        {
+            string key = (model ?? "").ToUpperInvariant().Replace("SONY", "").Trim();
+            string[] map = {
+                "ILCE-7M2", "A7 II", "ILCE-7M3", "A7 III", "ILCE-7M4", "A7 IV", "ILCE-7M5", "A7 V",
+                "ILCE-7RM2", "A7R II", "ILCE-7RM3", "A7R III", "ILCE-7RM3A", "A7R IIIA", "ILCE-7RM4", "A7R IV", "ILCE-7RM4A", "A7R IVA", "ILCE-7RM5", "A7R V",
+                "ILCE-7SM2", "A7S II", "ILCE-7SM3", "A7S III", "ILCE-7C", "A7C", "ILCE-7CM2", "A7C II", "ILCE-7CR", "A7CR",
+                "ILCE-9", "A9", "ILCE-9M2", "A9 II", "ILCE-9M3", "A9 III", "ILCE-1", "A1",
+                "ILCE-6100", "A6100", "ILCE-6400", "A6400", "ILCE-6600", "A6600", "ILCE-6700", "A6700" };
+            for (int k = 0; k + 1 < map.Length; k += 2) if (key == map[k]) return "Sony " + map[k + 1];
+            return "Sony " + (key == "" ? "camera" : key);
+        }
+
+        // Commands that answer with data; some drivers skip the data phase when it is empty.
+        static uint SonyGet(ushort code, out byte[] data, params uint[] ps)
+        {
+            data = new byte[0];
+            try { return ptp.OpRead(code, out data, ps); }
+            catch (GoneException) { throw; }
+            catch (Exception) { data = new byte[0]; return ptp.Op(code, ps); }
+        }
+
+        static CamException SonyFail(string what, uint r)
+        {
+            return new CamException("DRIVER The " + camName + " didn't accept remote control (" + what + ", " + H(r) + "). " + SONY_HINT + " [" + diag + "]");
+        }
+
+        static void PrepareSony()
+        {
+            setupNote = "";
+            sonyClock = null;
+            if (!ops.Contains(0x9201) || !ops.Contains(0x9202))
+                throw new CamException("MODE The " + camName + " is connected as a file-transfer drive, not for remote control. " + SONY_HINT + " [" + diag + "]");
+            byte[] b; uint r;
+            r = SonyGet(0x9201, out b, 1, 0, 0); if (r != Ptp.OK) throw SonyFail("connect 1", r);
+            r = SonyGet(0x9201, out b, 2, 0, 0); if (r != Ptp.OK) throw SonyFail("connect 2", r);
+            sonyVer = 2;
+            for (int t = 0; t < 20; t++)
+            {
+                r = SonyGet(0x9202, out b, 0x12C, 1);
+                if (r == Ptp.OK && b.Length >= 2) { sonyVer = (b[0] | (b[1] << 8)) == 0x12C ? 3 : 2; break; }
+                Thread.Sleep(100);
+            }
+            r = SonyGet(0x9201, out b, 3, 0, 0); if (r != Ptp.OK) throw SonyFail("connect 3", r);
+            sonyClock = Stopwatch.StartNew();
+            diag += "; sony protocol " + sonyVer;
+            Log("Sony connected, protocol " + sonyVer);
+            // Remote control wins over the camera's own buttons ("application" priority).
+            try { ptp.OpWrite(0x9205, new byte[] { 1 }, 0xD25A); }
+            catch (GoneException) { throw; }
+            catch (Exception e) { Log("Priority mode not set: " + e.Message); }
+            // Several bodies (A7 III, A7R IV, ZV-1...) only take photos about 3 s after connecting:
+            // wait here, while the booth shows "connecting", not during the first guest's photo.
+            byte[] props = new byte[0];
+            while (sonyClock.ElapsedMilliseconds < 3000) { props = SonyProps(); Thread.Sleep(150); }
+            // The photo has to reach the computer: "Still Img. Save Dest." can't be "Camera Only".
+            if (SonyVal(props, 0xD222) == 0x10)
+            {
+                bool ok = false;
+                foreach (ushort want in new ushort[] { 0x11, 0x01 })
+                {
+                    try
+                    {
+                        if (ptp.OpWrite(0x9205, new byte[] { (byte)(want & 0xFF), (byte)(want >> 8) }, 0xD222) == Ptp.OK)
+                        {
+                            ok = true; setupNote += "Photos are sent to the computer. ";
+                            Log("Save destination Camera Only -> 0x" + want.ToString("X"));
+                            break;
+                        }
+                    }
+                    catch (GoneException) { throw; }
+                    catch (Exception e) { Log("Save destination not changed: " + e.Message); }
+                }
+                if (!ok) Log("Save destination is Camera Only; photos may not reach the computer");
+            }
+            live = true;    // Sony live view has no start command: the frames are simply there
+        }
+
+        static byte[] SonyProps()
+        {
+            byte[] b;
+            uint r = SonyGet(0x9209, out b);
+            return r == Ptp.OK ? b : new byte[0];
+        }
+        // Current value of one property in the 0x9209 blob (-1 when it isn't there):
+        // entries are  code(2) type(2) getset(1) enabled(1) default(size) current(size) ...
+        static long SonyVal(byte[] d, ushort code)
+        {
+            for (int i = 8; i + 8 <= d.Length; i++)
+            {
+                if (d[i] != (byte)(code & 0xFF) || d[i + 1] != (byte)(code >> 8)) continue;
+                int type = d[i + 2] | (d[i + 3] << 8);
+                int size = (type == 1 || type == 2) ? 1 : (type == 3 || type == 4) ? 2 : (type == 5 || type == 6) ? 4 : 0;
+                if (size == 0 || d[i + 4] > 0x84 || d[i + 5] > 2) continue;
+                int cur = i + 6 + size;
+                if (cur + size > d.Length) continue;
+                long v = 0;
+                for (int k = 0; k < size; k++) v |= (long)d[cur + k] << (8 * k);
+                return v;
+            }
+            return -1;
+        }
+        // Sony "buttons": 1 = released, 2 = pressed.
+        static uint SonyButton(ushort prop, ushort value)
+        {
+            return ptp.OpWrite(0x9207, new byte[] { (byte)(value & 0xFF), (byte)(value >> 8) }, prop);
+        }
+
+        static byte[] SonyJpeg(byte[] d)
+        {
+            int s = -1;
+            if (d.Length > 8)
+            {
+                uint off = U32(d, 0);    // the frame starts with the offset of the JPEG inside it
+                if (off + 1 < (uint)d.Length && d[off] == 0xFF && d[off + 1] == 0xD8) s = (int)off;
+            }
+            if (s < 0) s = JpegStart(d);
+            if (s < 0) return null;
+            int e = d.Length;
+            for (int k = d.Length - 2; k > s; k--) if (d[k] == 0xFF && d[k + 1] == 0xD9) { e = k + 2; break; }
+            var o = new byte[e - s];
+            Array.Copy(d, s, o, 0, o.Length);
+            return o;
+        }
+
+        static byte[] SonyFrame()
+        {
+            live = true;
+            var sw = Stopwatch.StartNew();
+            uint last = 0;
+            while (sw.ElapsedMilliseconds < 2500)
+            {
+                uint r;
+                try { byte[] oi; r = ptp.OpRead(0x1008, out oi, SONY_LV); }
+                catch (GoneException) { throw; }
+                catch (Exception) { r = Ptp.OK; }
+                if (r == 0x2009) { last = r; Thread.Sleep(50); continue; }   // InvalidObjectHandle: not ready yet (up to 1 s on some bodies)
+                byte[] lv;
+                r = ptp.OpRead(0x1009, out lv, SONY_LV);
+                last = r;
+                if (r == Ptp.OK && lv.Length > 8)
+                {
+                    var j = SonyJpeg(lv);
+                    if (j != null) return j;
+                }
+                Thread.Sleep(r == 0x200F ? 20 : 40);    // AccessDenied: asked too fast
+            }
+            if (last != Ptp.OK && last != Ptp.BUSY && last != 0 && last != 0x2009)
+                throw new CamException("LIVEVIEW The camera sends no live view (" + H(last) + "). Check it is in PC Remote mode, the lens cap is off and the camera's menu is closed.");
+            return null;
+        }
+
+        static byte[] SonyCapture()
+        {
+            var sw = Stopwatch.StartNew();
+            string cd = "";
+            // The first photo right after connecting has to wait for the camera to settle.
+            while (sonyClock != null && sonyClock.ElapsedMilliseconds < 3000) { SonyProps(); Thread.Sleep(150); }
+            // A photo left in the camera's memory by an earlier attempt would be handed over instead of this one.
+            for (int k = 0; k < 4; k++)
+            {
+                if (SonyVal(SonyProps(), 0xD215) != 0x8001) break;
+                string junk = "";
+                CanonDownload(SONY_PHOTO, 0, ref junk);
+                Log("Cleared an old photo from the camera's memory");
+            }
+            // Half press, full press (the camera focuses, then shoots).
+            uint r = SonyButton(0xD2C1, 2);
+            if (r == Ptp.OK) r = SonyButton(0xD2C2, 2);
+            if (r != Ptp.OK)
+            {
+                try { SonyButton(0xD2C2, 1); SonyButton(0xD2C1, 1); } catch (GoneException) { throw; } catch { }
+                throw new CamException("CAPTURE The camera refused the shutter (" + H(r) + "). Check the mode dial isn't on video, the camera's menu is closed and it is in PC Remote mode.");
+            }
+            try
+            {
+                // Hold until focus is found (1 s at most). Manual focus needs no wait.
+                if (SonyVal(SonyProps(), 0x500A) != 1)
+                {
+                    var hold = Stopwatch.StartNew();
+                    while (hold.ElapsedMilliseconds < 1000)
+                    {
+                        byte[] p = SonyProps();
+                        long ff = SonyVal(p, 0xD213), om = SonyVal(p, 0xD215);
+                        if (ff == 2 || ff == 3 || om >= 0x8000) break;
+                        Thread.Sleep(50);
+                    }
+                }
+            }
+            finally
+            {
+                try { SonyButton(0xD2C2, 1); SonyButton(0xD2C1, 1); } catch (GoneException) { throw; } catch { }
+            }
+            // Wait for the photo to appear in the camera's memory.
+            long mem = -1;
+            var ew = Stopwatch.StartNew();
+            while (ew.ElapsedMilliseconds < 15000)
+            {
+                mem = SonyVal(SonyProps(), 0xD215);
+                if (mem >= 0x8000) break;
+                Thread.Sleep(100);
+            }
+            cd = "memory " + (mem < 0 ? "?" : "0x" + mem.ToString("X"));
+            if (mem < 0x8000)
+            {
+                Log("No photo appeared: " + cd);
+                throw new CamException("FOCUS The camera didn't take the photo. Point it at something with detail or set the lens to MF (manual focus), and check the camera's Still Img. Save Dest. isn't Camera Only.");
+            }
+            uint size = 0;
+            try
+            {
+                byte[] oi; uint ro = ptp.OpRead(0x1008, out oi, SONY_PHOTO);
+                if (ro == Ptp.OK && oi.Length >= 12) size = U32(oi, 8);
+                cd += "; info " + H(ro) + " " + size + " B";
+            }
+            catch (GoneException) { throw; }
+            catch (Exception e) { cd += "; info failed " + e.Message; }
+            byte[] img = CanonDownload(SONY_PHOTO, size, ref cd);   // whole photo, or in 1 MB pieces
+            Log("Photo download: " + cd);
+            if (img.Length < 4) throw new CamException("CAPTURE The photo didn't come through from the camera (" + cd + ").");
+            if (!(img[0] == 0xFF && img[1] == 0xD8)) throw new CamException("CAPTURE The camera saved a RAW photo. Set File Format to JPEG (or RAW + JPEG) on the camera.");
+            Log("Photo " + (img.Length / 1024) + " KB in " + sw.ElapsedMilliseconds + " ms");
+            return img;
+        }
+
         // ---------- command loop ----------
         public static void Run(int port)
         {
@@ -1136,17 +1383,17 @@ namespace Pb4uCam
                         case "battery": Need(); kind = "J"; body = Encoding.UTF8.GetBytes("{\"battery\":" + Battery() + "}"); break;
                         case "live":
                             Need();
-                            if (arg == "off") { if (canon) CanonLiveOff(); else StopLive(); }
-                            else if (!live) { if (canon) CanonLiveOn(); else StartLive(); }
+                            if (arg == "off") { if (canon) CanonLiveOff(); else if (sony) live = false; else StopLive(); }
+                            else if (!live) { if (canon) CanonLiveOn(); else if (sony) live = true; else StartLive(); }
                             break;
                         case "frame":
                             {
                                 Need();
-                                var f = canon ? CanonFrame() : Frame();
+                                var f = canon ? CanonFrame() : sony ? SonyFrame() : Frame();
                                 if (f != null) { kind = "B"; body = f; }
                                 break;
                             }
-                        case "capture": Need(); kind = "B"; body = canon ? CanonCapture() : Capture(); break;
+                        case "capture": Need(); kind = "B"; body = canon ? CanonCapture() : sony ? SonyCapture() : Capture(); break;
                         case "close": CloseCamera(); break;
                         case "quit": CloseCamera(); return;
                         default: throw new CamException("BAD Unknown command " + cmd);

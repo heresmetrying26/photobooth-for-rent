@@ -1184,25 +1184,27 @@ namespace Pb4uCam
             // wait here, while the booth shows "connecting", not during the first guest's photo.
             byte[] props = new byte[0];
             while (sonyClock.ElapsedMilliseconds < 3000) { props = SonyProps(); Thread.Sleep(150); }
-            // The photo has to reach the computer: "Still Img. Save Dest." can't be "Camera Only".
-            if (SonyVal(props, 0xD222) == 0x10)
+            // Photos go straight to the computer ("PC Only"), so no memory card is needed: with PC + Camera or
+            // Camera Only some bodies refuse to shoot when the card is missing. 1 = PC Only, 0x11 = PC + Camera, 0x10 = Camera Only.
+            long dest = SonyVal(props, 0xD222);
+            if (dest >= 0 && dest != 0x01)
             {
                 bool ok = false;
-                foreach (ushort want in new ushort[] { 0x11, 0x01 })
+                foreach (ushort want in new ushort[] { 0x01, 0x11 })
                 {
                     try
                     {
-                        if (ptp.OpWrite(0x9205, new byte[] { (byte)(want & 0xFF), (byte)(want >> 8) }, 0xD222) == Ptp.OK)
-                        {
-                            ok = true; setupNote += "Photos are sent to the computer. ";
-                            Log("Save destination Camera Only -> 0x" + want.ToString("X"));
-                            break;
-                        }
+                        if (ptp.OpWrite(0x9205, new byte[] { (byte)(want & 0xFF), (byte)(want >> 8) }, 0xD222) != Ptp.OK) continue;
+                        if (SonyVal(SonyProps(), 0xD222) != want) continue;     // the camera must really have taken it
+                        ok = true;
+                        setupNote += want == 0x01 ? "Photos go to the computer only (no memory card needed). " : "Photos go to the computer and the card. ";
+                        Log("Save destination 0x" + dest.ToString("X") + " -> 0x" + want.ToString("X"));
+                        break;
                     }
                     catch (GoneException) { throw; }
                     catch (Exception e) { Log("Save destination not changed: " + e.Message); }
                 }
-                if (!ok) Log("Save destination is Camera Only; photos may not reach the computer");
+                if (!ok) Log("Could not change the save destination (it is 0x" + dest.ToString("X") + "); photos may need a memory card");
             }
             live = true;    // Sony live view has no start command: the frames are simply there
         }
@@ -1335,7 +1337,7 @@ namespace Pb4uCam
             if (mem < 0x8000)
             {
                 Log("No photo appeared: " + cd);
-                throw new CamException("FOCUS The camera didn't take the photo. Point it at something with detail or set the lens to MF (manual focus), and check the camera's Still Img. Save Dest. isn't Camera Only.");
+                throw new CamException("FOCUS The camera didn't take the photo. Point it at something with detail or set the lens to MF (manual focus), and check the camera's Still Img. Save Dest. is PC Only and its Release w/o Card setting is Enable.");
             }
             uint size = 0;
             try

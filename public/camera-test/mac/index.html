@@ -212,6 +212,20 @@
       if(pick && node.value !== pick) await camera.setConfigValue(node.name, pick);
     }catch(e){ if(isCritical(e)) throw e; /* not supported on this camera: fine */ }
   }
+  // Sony: photos are written to the memory card first by default (slow, and needs a
+  // card). "PC only" (sdram) sends them straight to the computer.
+  async function sonyPcOnly(){
+    try{
+      const c = findCfg(await camera.getConfig(), ['capturetarget']);
+      if(!c || !Array.isArray(c.choices) || !c.choices.includes('card+sdram') || !c.choices.includes('sdram')) return;
+      report.saveDest = c.value;
+      log('Sony save destination: ' + c.value);
+      if(c.value === 'sdram') return;
+      await camera.setConfigValue('capturetarget', 'sdram');
+      log('Sony save destination changed to PC only (sdram), so no memory card is needed');
+      report.saveDest = 'sdram (was ' + c.value + ')';
+    }catch(e){ if(isCritical(e)) throw e; log('Could not change the Sony save destination: ' + (e.message || e)); }
+  }
   const MEDIUM_JPEG = [/^medium\s*normal\s*jpeg$/i, /^medium\s*fine\s*jpeg$/i, /medium.*jpeg/i, /^m\b.*jpe?g/i, /normal/i];
   async function readInfo(){
     const ops = await camera.getSupportedOps();
@@ -270,6 +284,7 @@
       try{ sessionStorage.removeItem('pbFreedRetry'); }catch(e){}
       $('connectBtn').textContent = 'Reconnect camera';
       await setPhotoSize();
+      await sonyPcOnly();
       await readInfo();
     }catch(err){
       console.error(err);

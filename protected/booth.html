@@ -6778,6 +6778,20 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // R50 shot fine at "Medium Normal JPEG" and failed at "Large Fine JPEG").
   // A medium JPEG (about 4000 x 2600 px) is still far more than a print needs.
   const USB_MEDIUM_JPEG = [/^medium\s*normal\s*jpeg$/i, /^medium\s*fine\s*jpeg$/i, /medium.*jpeg/i, /^m\b.*jpe?g/i];
+  // Sony: by default each photo is written to the memory card first and only then
+  // sent to the computer, which can take many seconds. "PC only" skips the card, so
+  // it is fast and works with no card at all. Only touches a camera that offers the
+  // Sony choices (sdram / card / card+sdram).
+  async function usbSonyPcOnly(){
+    try{
+      const c = usbFindCfg(await usbCam.camera.getConfig(), 'capturetarget');
+      if(!c || !Array.isArray(c.choices) || !c.choices.includes('card+sdram') || !c.choices.includes('sdram')) return;
+      console.log('Sony save destination:', c.value);
+      if(c.value === 'sdram') return;
+      await usbCam.camera.setConfigValue('capturetarget', 'sdram');
+      console.log('Sony save destination -> sdram (PC only)');
+    }catch(err){ if(usbIsCritical(err)) throw err; console.warn('Sony save destination not changed:', err && err.message || err); }
+  }
   async function usbSetPhotoSize(){
     try{
       const node = usbFindCfg(await usbCam.camera.getConfig(), 'imageformat') || usbFindCfg(await usbCam.camera.getConfig(), 'imagequality');
@@ -6900,7 +6914,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         usbCam.canvas.width = 640; usbCam.canvas.height = 424;
         usbCam.ctx = usbCam.canvas.getContext('2d');
       }
-      if(!usbCam.vfOn){ await usbSetPhotoSize(); await usbViewfinderOn(); }
+      if(!usbCam.vfOn){ await usbSetPhotoSize(); await usbSonyPcOnly(); await usbViewfinderOn(); }
       usbCam.active = true; usbCam.hasFrame = false; usbCam.lastErr = null;
       const gen = ++usbCam.gen;
       usbLiveLoop(gen);

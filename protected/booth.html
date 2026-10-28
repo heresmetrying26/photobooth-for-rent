@@ -6521,6 +6521,26 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null
   };
 
+  // ---- Mac: let go of a camera macOS grabbed ----
+  // macOS' camera service (and Image Capture / Photos through it) grabs a USB camera the moment it is plugged in,
+  // so the booth's own USB connection is refused ("Another app is using the camera"). The desktop app lets go of it
+  // by itself; in Chrome the photobooth4u Helper on the same Mac does (POST /camera/free).
+  const USB_MAC = /Mac/i.test(navigator.platform || '') && !/iPhone|iPad/i.test(navigator.userAgent || '');
+  function usbCanFree(){ return DESKTOP ? !!(window.pb4u && window.pb4u.freeCamera) : (USB_MAC && !usbCam.viaHelper); }
+  // force: ask the Helper even if it was never seen here (after a failed connect). Returns true when something let go.
+  async function usbFreeCamera(force){
+    try{
+      if(DESKTOP){ if(!(window.pb4u && window.pb4u.freeCamera)) return false; await window.pb4u.freeCamera(); usbCam.freed = true; return true; }
+      if(!USB_MAC || usbCam.viaHelper) return false;
+      let known = false; try{ known = localStorage.getItem('pb_print_helper') === '1' || localStorage.getItem('pb_cam_free') === '1'; }catch(e){}
+      if(!known && !force) return false;
+      const r = await fetch(CAM_HELPER + '/camera/free', { method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(6000) });
+      const j = await r.json();
+      if(j && j.mac){ usbCam.freed = true; try{ localStorage.setItem('pb_cam_free', '1'); }catch(e){} return true; }
+    }catch(e){ /* the Helper isn't running: nothing to do */ }
+    return false;
+  }
+
   // ---- Windows: camera through the photobooth4u Helper ----
   // Same calls as the web-gphoto2 camera below, so live view, battery and the
   // real shutter all run through the same booth code.
@@ -6617,14 +6637,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(await initCamera(USB_CAM_ID)) showToast((usbCam.name || 'Camera') + ' connected.', 4000);
     }, 6000);
   }
-  // Mac app: when a camera is plugged in, let go of it (macOS grabs it first) and connect, like the Windows helper does.
-  if(DESKTOP && !usbCam.viaHelper && usbCam.supported && navigator.usb && navigator.usb.addEventListener && window.pb4u && window.pb4u.freeCamera){
+  // Mac: when a camera is plugged in, let go of it (macOS grabs it first) and connect, like the Windows helper does.
+  // In Chrome this needs the Helper (it was seen here before); the camera must have been allowed once.
+  if(!usbCam.viaHelper && usbCam.supported && navigator.usb && navigator.usb.addEventListener && usbCanFree()){
     const CAM_VENDORS = [0x054c, 0x04b0, 0x04a9, 0x04cb, 0x07b4, 0x04da, 0x0a17];   // Sony, Nikon, Canon, Fujifilm, Olympus, Panasonic, Pentax
     const looksLikeCamera = d => CAM_VENDORS.indexOf(d.vendorId) >= 0 || (d.configurations || []).some(c => (c.interfaces || []).some(i => (i.alternates || []).some(a => a.interfaceClass === 6)));
     navigator.usb.addEventListener('connect', async ev => {
       try{
         if(!ev.device || !looksLikeCamera(ev.device)) return;
-        window.pb4u.freeCamera();
+        await usbFreeCamera(false);
         await wait(1500);
         if(document.hidden || state === 'capturing' || reconnectTimer || usbCam.initing) return;
         if(currentDeviceId === USB_CAM_ID && streamActive) return;
@@ -6665,8 +6686,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(err && err.name === 'NotFoundError') return 'No USB camera picked. Set the camera’s USB mode to Photo Import / Remote Control (Canon), PTP/MTP (Nikon) or PC Remote (Sony), plug it in and switch it on, then tap Try Again and pick it.';
     if(err && err.name === 'SecurityError') return 'Tap Try Again to pick the USB camera.';
     if(err && err.name === 'UsbNoLiveView') return (usbLvBlockedText() || 'The camera connected but live view didn’t start. Close the camera’s menu, put the mode dial on M, P, A or S, take the lens cap off and check there’s a memory card in it.') + ' Then tap Try Again.';
-    if(DESKTOP && usbBusyError(err)) return 'Another app is still holding the camera, even after the app tried to let go of it. Quit Imaging Edge, Photos and Image Capture, switch the camera off and on, unplug and replug the cable, then tap Try Again.';
-    if(/claim|access denied|busy|Unable to open|LIBUSB_ERROR_ACCESS|LIBUSB_ERROR_BUSY/i.test(s)) return 'Another app is using the camera. Quit Photos, Image Capture, EOS Utility / Nikon / Sony Imaging Edge apps and other tabs, unplug and replug the camera, then tap Try Again.' + (win ? ' On Windows the camera’s driver blocks browser access — use a Mac or Android device, or the camera’s webcam mode.' : '');
+    if(usbCam.freed && usbBusyError(err)) return 'Another app is still holding the camera, even after ' + (DESKTOP ? 'the app' : 'the Helper') + ' tried to let go of it. Quit Imaging Edge, Photos and Image Capture, switch the camera off and on, unplug and replug the cable, then tap Try Again.';
+    if(/claim|access denied|busy|Unable to open|LIBUSB_ERROR_ACCESS|LIBUSB_ERROR_BUSY/i.test(s)) return 'Another app is using the camera. Quit Photos, Image Capture, EOS Utility / Nikon / Sony Imaging Edge apps and other tabs, unplug and replug the camera, then tap Try Again.' + (USB_MAC && !DESKTOP && !usbCam.freed ? ' Tip: open the photobooth4u Helper on this Mac (download at photobooth4u.netlify.app/downloads) and the booth lets go of the camera for you.' : '') + (win ? ' On Windows the camera’s driver blocks browser access — use a Mac or Android device, or the camera’s webcam mode.' : '');
     return 'USB camera problem (' + s + '). Unplug and replug the camera, then tap Try Again. If it keeps failing, reload the page.';
   }
   async function usbConnect(){
@@ -6682,8 +6703,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(hopt) hopt.textContent = usbOptionLabel();
       return hc;
     }
-    // Mac app: macOS grabs a camera when it is plugged in; the app lets go of it first.
-    if(DESKTOP && window.pb4u && window.pb4u.freeCamera){ try{ await window.pb4u.freeCamera(); }catch(e){} }
+    // Mac: macOS grabs a camera when it is plugged in; the app (or the Helper, in Chrome) lets go of it first.
+    await usbFreeCamera(false);
     let devices = await navigator.usb.getDevices();
     if(!devices.length){
       // Needs a tap (the USB picker); after that the camera stays allowed.
@@ -6909,12 +6930,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }catch(err){
       console.error('USB camera failed:', err);
       if(usbIsCritical(err)) usbCam.camera = null;
-      // Mac app: the camera is held by macOS or another app. Let go of it and try once more by itself.
-      if(DESKTOP && !usbCam.viaHelper && !retried && usbBusyError(err) && window.pb4u && window.pb4u.freeCamera){
+      // Mac: the camera is held by macOS or another app. Let go of it (the app, or the Helper in Chrome) and try once more by itself.
+      if(!usbCam.viaHelper && !retried && usbBusyError(err) && usbCanFree()){
         usbCam.camera = null;
-        try{ await window.pb4u.freeCamera(); }catch(e){}
-        await wait(1500);
-        return initUsbCameraNow(true);
+        if(await usbFreeCamera(true)){
+          await wait(1500);
+          return initUsbCameraNow(true);
+        }
       }
       streamActive = false;
       // Windows helper: keep trying, so opening the helper or plugging the

@@ -4,6 +4,8 @@
 // printer (e.g. 2x6 strips to one, 4R to another), like a native booth app.
 // Windows: also controls a Nikon or Canon EOS camera over USB through Windows' own camera
 // driver (live view + the real shutter), so no driver switch (Zadig) is needed.
+// Mac: lets go of a USB camera that macOS grabbed (its camera service, Image Capture), so the
+// booth in Chrome can open the camera itself: POST /camera/free (see camfree.mjs).
 //
 // - Listens on 127.0.0.1:17321 only (never reachable from other computers).
 // - Only accepts requests from the photobooth4u site (ALLOWED_ORIGINS).
@@ -21,9 +23,10 @@ import { tmpdir, platform, release as osRelease } from 'node:os';
 import { join } from 'node:path';
 import { writeFile, rm, mkdtemp, mkdir, readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { freeCamera, guardCamera } from './camfree.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.9';
+const VERSION = '1.1.10';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',
@@ -456,11 +459,17 @@ const server = Bun.serve({
 
     if(req.method === 'GET' && url.pathname === '/status'){
       return json({ ok: true, app: 'photobooth4u-print-helper', version: VERSION, printers: await printers(url.searchParams.get('refresh') === '1'),
-        camera: { supported: CAMERA_OK, open: !!cam.open, name: cam.open ? cam.open.name : '' } }, 200, origin);
+        camera: { supported: CAMERA_OK, open: !!cam.open, name: cam.open ? cam.open.name : '', free: IS_MAC } }, 200, origin);
     }
 
     if(url.pathname.startsWith('/camera')){
       if(!origin) return json({ ok: false, error: 'Missing origin' }, 403);
+      // Mac: stop macOS' camera service so the browser can open the camera over USB (it keeps stopping it for ~15 s).
+      if(req.method === 'POST' && url.pathname === '/camera/free'){
+        const r = await freeCamera();
+        guardCamera(15000);
+        return json({ ...r }, 200, origin);
+      }
       if(!CAMERA_OK) return json({ ok: false, code: 'UNSUPPORTED', error: 'Camera control through the helper is for Windows. On a Mac, the booth connects to the camera by itself.' }, 501, origin);
       const send = (r, okFn) => {
         if(r.status === 'OK') return okFn();
@@ -569,7 +578,7 @@ const server = Bun.serve({
 function log(msg){ console.log('[' + new Date().toLocaleTimeString() + '] ' + msg); }
 
 console.log('');
-console.log('  photobooth4u Helper ' + VERSION + ' (printing' + (CAMERA_OK ? ' + Nikon / Canon camera over USB' : '') + ')');
+console.log('  photobooth4u Helper ' + VERSION + ' (printing' + (CAMERA_OK ? ' + Nikon / Canon / Sony camera over USB' : '') + (IS_MAC ? ' + frees USB cameras for the browser' : '') + ')');
 console.log('  Running. Keep this window open while the booth is in use.');
 console.log('  (Close it to stop. Listening on 127.0.0.1:' + server.port + ' for ' + [...ALLOWED_ORIGINS][0] + ')');
 console.log('');

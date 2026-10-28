@@ -123,12 +123,33 @@
   }
   function hideMsg(){ msgEl.className = 'msg'; }
 
+  // Mac: macOS grabs a camera the moment it is plugged in. The photobooth4u Helper (if it is running on this Mac)
+  // lets go of it; without the Helper, quit Photos / Image Capture by hand.
+  const IS_MAC = /Mac/i.test(navigator.platform || '') && !/iPhone|iPad/i.test(navigator.userAgent || '');
+  const BUSY_RE = /claim|access denied|busy|Unable to open|SecurityError|LIBUSB_ERROR_ACCESS|LIBUSB_ERROR_BUSY/i;
+  let freedOnce = false;
+  async function freeCamera(){
+    if(!IS_MAC) return false;
+    try{
+      const r = await fetch('http://127.0.0.1:17321/camera/free', { method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(5000) });
+      const j = await r.json();
+      if(!(j && j.mac)) return false;
+      freedOnce = true;
+      log(j.stopped && j.stopped.length ? 'The Helper let go of the camera (stopped ' + j.stopped.join(', ') + ').' : 'The Helper checked: nothing was holding the camera.');
+      if(j.denied && j.denied.length) log('macOS would not let the Helper stop ' + j.denied.join(', ') + '.');
+      return true;
+    }catch(e){ return false; }
+  }
+
   // Plain-language reasons for common failures.
   function explain(err){
     const s = String((err && (err.message || err.name)) || err);
     if(/No device selected|NotFoundError/i.test(s) && /Win/i.test(navigator.platform || '')) return 'No camera picked. On Windows the camera only shows in the list after the one-time driver switch (see "Windows: one-time driver switch" on the left).';
-    if(/No device selected|NotFoundError/i.test(s)) return 'No camera picked. If it was missing from the list, check the cable, switch the camera on, and set USB mode to Photo Import / Remote Control (Canon) or MTP/PTP (Nikon).';
-    if(/claim|access denied|busy|Unable to open|SecurityError|LIBUSB_ERROR_ACCESS|LIBUSB_ERROR_BUSY/i.test(s)) return 'Another app is holding the camera. Quit Photos, Image Capture, EOS Utility / Nikon apps and other tabs, unplug and replug the camera, then try again.' + (/Win/i.test(navigator.platform) ? ' On Windows, the camera driver blocks browser access (needs a WinUSB driver).' : '');
+    if(/No device selected|NotFoundError/i.test(s)) return 'No camera picked. If it was missing from the list, check the cable, switch the camera on, and set USB mode to Photo Import / Remote Control (Canon), MTP/PTP (Nikon) or PC Remote (Sony).';
+    if(IS_MAC && BUSY_RE.test(s)) return freedOnce
+      ? 'Another app is still holding the camera, even after the Helper tried to let go of it. Quit Imaging Edge, Photos and Image Capture, switch the camera off and on, unplug and replug the cable, then connect again.'
+      : 'macOS (or another app) is holding the camera. Open the photobooth4u Helper on this Mac (download at photobooth4u.netlify.app/downloads) and connect again: it lets go of the camera for you. Or quit Photos, Image Capture, Imaging Edge and other tabs by hand, unplug and replug the camera.';
+    if(BUSY_RE.test(s)) return 'Another app is holding the camera. Quit Photos, Image Capture, EOS Utility / Nikon apps and other tabs, unplug and replug the camera, then try again.' + (/Win/i.test(navigator.platform) ? ' On Windows, the camera driver blocks browser access (needs a WinUSB driver).' : '');
     if(/disconnected|LIBUSB_ERROR_NO_DEVICE|transfer/i.test(s)) return 'The camera disconnected. Check the cable and that the camera did not go to sleep, then connect again.';
     if(/Could not find|Unknown model|not supported/i.test(s)) return 'This camera model may not support remote control through gPhoto2.';
     return 'Something went wrong: ' + s;
@@ -232,6 +253,7 @@
         log('Loading camera library…');
         ({ Camera } = await import('../build/camera.js'));
       }
+      await freeCamera();
       const allowed = await navigator.usb.getDevices();
       if(allowed.length){
         log('Using the camera already allowed: ' + (allowed[0].productName || 'camera'));
@@ -245,6 +267,7 @@
       await camera.connect();
       log('Connected in ' + Math.round(performance.now() - t0) + ' ms');
       report.connected = true;
+      try{ sessionStorage.removeItem('pbFreedRetry'); }catch(e){}
       $('connectBtn').textContent = 'Reconnect camera';
       await setPhotoSize();
       await readInfo();
@@ -252,6 +275,14 @@
       console.error(err);
       log('Connect failed: ' + (err && (err.message || err.name) || err));
       report.connectError = String(err && (err.message || err.name) || err);
+      // Held by macOS: let go of it through the Helper and reconnect once by itself (the library connects once per page).
+      let retried = false; try{ retried = sessionStorage.getItem('pbFreedRetry') === '1'; }catch(e){}
+      if(IS_MAC && !retried && BUSY_RE.test(String((err && (err.message || err.name)) || err)) && await freeCamera()){
+        try{ sessionStorage.setItem('pbFreedRetry', '1'); sessionStorage.setItem('pbAutoConnect', '1'); }catch(e){}
+        log('Reconnecting…');
+        setTimeout(() => location.reload(), 1200);
+        return;
+      }
       camera = null;
       $('liveBtn').disabled = true; $('shotBtn').disabled = true;
       showMsg(explain(err), 'err');

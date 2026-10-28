@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 
-export const HELPER_VERSION = '1.1.9-app';
+export const HELPER_VERSION = '1.1.10-app';
 const IS_WIN = platform() === 'win32';
 const PS = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass'];
 let WORKER_PS = '';

@@ -122,7 +122,9 @@ each shot fires the real shutter (about 2.5–3 s per shot incl. transfer, shown
 - **Mac desktop app**: macOS' own camera service (`ptpcamerad`, behind Photos / Image Capture) grabs a camera the moment it is
   plugged in, which gives "Another app is using the camera". The app (`desktop/lib/camfree.mjs`, IPC `pb4u:freeCamera`) stops it
   and quits Image Capture before every connect, keeps stopping the service for ~15 s while connecting (macOS restarts it), retries
-  once by itself, and connects when a camera is plugged in. In Chrome (not the app) quit those apps by hand.
+  once by itself, and connects when a camera is plugged in. In Chrome the same is done by the Mac photobooth4u Helper
+  (1.1.10+, `POST /camera/free`): the booth calls it before connecting when the Helper has been used here, and
+  after a "busy" error; `/camera-test/mac/` does the same. Without the Helper, quit those apps by hand.
 - Tested: Nikon D5600 on macOS Chrome (shutter, live view, settings). Canon and Sony not yet tested. The bundled
   library (libgphoto2 2.5.28) lists Sony A7 III (PC Control) and other bodies up to about 2021; newer Sony bodies
   need a rebuilt library.

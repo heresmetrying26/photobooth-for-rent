@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.18', date: '2026-10-28' },
   { version: '1.0.16', date: '2026-10-27' },
   { version: '1.0.15', date: '2026-10-27' },
   { version: '1.0.14', date: '2026-10-27' },
@@ -28,7 +29,7 @@ export const APP_RELEASES = [
   { version: '1.0.1', date: '2026-10-23' }
 ];
 export const APP = APP_RELEASES[0];
-export const HELPER = { version: '1.1.7', date: '2026-10-27' };
+export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -62,6 +63,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-28', title: 'Sony cameras over USB, and easier camera setup on Mac', for: ['website', 'app', 'helper'], app: '1.0.18', helper: '1.1.10',
+    items: [
+      'Sony Alpha cameras (built for the A7 III) can now be used over USB on Windows, in the laptop app or through the Print Helper 1.1.9 or newer: live view comes from the camera and every shot fires the real shutter, so the camera\u2019s own photo settings and flash apply.',
+      'On the camera set USB Connection to PC Remote (MENU > Setup > USB), use JPEG, plug it in, then pick \u201cNikon / Canon / Sony camera over USB\u201d in the Camera menu. It reconnects by itself after that. This is the first Sony release: if your model does not connect, the booth shows what to check.',
+      'Mac laptop app: the app now lets go of a camera that macOS grabbed (\u201cAnother app is using the camera\u201d) by itself and connects when you plug the camera in.',
+      'Mac in Chrome: the Print Helper 1.1.10 does the same, so the booth can open a Sony, Canon or Nikon over USB without quitting Photos or Image Capture by hand.'
+    ]
+  },
   {
     date: '2026-10-28', title: 'Android tablet app \u2014 true offline kiosk mode', for: ['website'],
     items: [

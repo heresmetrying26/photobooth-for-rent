@@ -63,6 +63,15 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-10-28', title: 'Android tablet app \u2014 true offline kiosk mode', for: ['website'],
+    items: [
+      'The Android tablet APK (v1.0.2) now opens and runs fully offline \u2014 no internet connection is required at the venue.',
+      'The booth page is bundled inside the app; if the device has no network when opened, it automatically loads the local copy instead of showing a \u201cWeb page not available\u201d error.',
+      'Bluetooth thermal printing and all booth features (GIF mode, retakes, lock screen) continue to work completely offline.',
+      'You only need Wi-Fi or a hotspot once \u2014 to unlock a rental code before the event.',
+    ]
+  },
+  {
     date: '2026-10-27', title: 'GIF mode in the offline laptop app', for: ['app'], app: '1.0.16',
     items: [
       'When GIF mode is switched on in the admin panel for a code, the offline laptop app now shows a "Take GIF" chip in Photo Session alongside the regular photo mode.',

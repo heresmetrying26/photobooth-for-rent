@@ -9,12 +9,13 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.view.View
 import android.view.WindowManager
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -39,6 +40,9 @@ class MainActivity : AppCompatActivity() {
     private val PREFS_NAME = "photobooth_prefs"
     private val PREF_URL = "booth_url"
     private val DEFAULT_URL = "https://photobooth4u.netlify.app/"
+    private val BASE_URL   = "https://photobooth4u.netlify.app/"
+    private val ASSET_BOOTH = "booth.html"
+    private var offlineLoaded = false
 
     private val REQ_CAMERA_PERMISSION = 2001
 
@@ -87,9 +91,13 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // 8. Load the booth URL
+        // 8. Load the booth — try saved URL (live web), fall back to bundled HTML if offline
         val targetUrl = getSavedUrl()
-        webView.loadUrl(targetUrl)
+        if (isOnlineNow()) {
+            webView.loadUrl(targetUrl)
+        } else {
+            loadOfflineBooth()
+        }
     }
 
     override fun onResume() {
@@ -185,6 +193,29 @@ class MainActivity : AppCompatActivity() {
                     false
                 }
             }
+
+            // If the live web page fails (offline, DNS error, timeout), fall back to the
+            // bundled booth.html so the kiosk keeps working at the venue without internet.
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                error: WebResourceError?
+            ) {
+                if (request?.isForMainFrame == true && !offlineLoaded) {
+                    val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) error?.errorCode else -2
+                    val networkErrors = setOf(-2, -6, -7, -8, -12, -14, -15) // ERR_FAILED, HOST_LOOKUP, CONNECT, TIMEOUT, etc.
+                    if (code == null || networkErrors.contains(code)) {
+                        loadOfflineBooth()
+                    }
+                }
+            }
+
+            @Suppress("DEPRECATION")
+            override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M && !offlineLoaded) {
+                    loadOfflineBooth()
+                }
+            }
         }
 
         // Secret operator gesture: Long press with 2 fingers or header hold to change booth URL
@@ -192,6 +223,65 @@ class MainActivity : AppCompatActivity() {
             showUrlConfigDialog()
             true
         }
+    }
+
+    // ── Offline kiosk fallback ──────────────────────────────────────────────────
+    // Reads booth.html from assets, injects the Android __PB config block so the
+    // booth knows it is running in kiosk mode and can use BTBridge, then loads
+    // it via loadDataWithBaseURL so localStorage / IndexedDB still work at the
+    // photobooth4u.netlify.app origin (which is where the user would have unlocked).
+    private fun loadOfflineBooth() {
+        offlineLoaded = true
+        runOnUiThread {
+            try {
+                val raw = assets.open(ASSET_BOOTH).bufferedReader().use { it.readText() }
+
+                // Inject Android kiosk config so booth.html behaves like the
+                // desktop app (all features on, GIF mode, thermal printing, etc.)
+                val pbConfig = buildString {
+                    append("<script>")
+                    // window.__PB lets the booth enable GIF, retake, lock, pay, printing features
+                    append("window.__PB=window.__PB||{};")
+                    append("window.__PB.desktop={v:'1.0.2',os:'android'};")
+                    // Mark it as a rental-style session so all features are visible
+                    append("window.__PB.type='rental';")
+                    append("window.__PB.gifOpt=true;")
+                    append("window.__PB.retakeOpt=true;")
+                    append("window.__PB.lockOpt=true;")
+                    append("window.__PB.payOpt=false;")
+                    append("window.__PB.traditional=false;")
+                    append("window.__PB.watermark=false;")
+                    append("window.__PB.exp=").append(System.currentTimeMillis() + 365L * 24 * 3600 * 1000).append(";")  // 1-year local session
+                    append("window.__PB.print=window.__PB.print||{enabled:true,sizes:['receipt80','receipt58','4x6','2x6']};")
+                    // Spoof navigator.onLine so booth never shows the "no internet" block
+                    append("try{Object.defineProperty(Navigator.prototype,'onLine',{get:function(){return true;},configurable:true});}catch(e){}")
+                    append("</script>")
+                }
+
+                // Inject the config just before </head>
+                val html = if (raw.contains("</head>", ignoreCase = true)) {
+                    raw.replace("</head>", "$pbConfig\n</head>", ignoreCase = true)
+                } else {
+                    pbConfig + raw
+                }
+
+                webView.loadDataWithBaseURL(
+                    BASE_URL,     // origin — localStorage keys match the live booth
+                    html,
+                    "text/html",
+                    "UTF-8",
+                    null
+                )
+            } catch (e: Exception) {
+                Toast.makeText(this, "Could not load offline booth: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun isOnlineNow(): Boolean {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+        @Suppress("DEPRECATION")
+        return cm?.activeNetworkInfo?.isConnectedOrConnecting == true
     }
 
     private fun activityGrantPermissions(request: PermissionRequest) {
@@ -243,13 +333,15 @@ class MainActivity : AppCompatActivity() {
                 val newUrl = input.text.toString().trim()
                 if (newUrl.isNotBlank()) {
                     saveUrl(newUrl)
+                    offlineLoaded = false
                     webView.loadUrl(newUrl)
                     Toast.makeText(this, "Loading $newUrl", Toast.LENGTH_SHORT).show()
                 }
             }
-            .setNeutralButton("Reset Default") { _, _ ->
-                saveUrl(DEFAULT_URL)
-                webView.loadUrl(DEFAULT_URL)
+            .setNeutralButton("Load bundled booth (offline)") { _, _ ->
+                offlineLoaded = false
+                loadOfflineBooth()
+                Toast.makeText(this, "Loaded offline booth from device", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Cancel", null)
             .show()

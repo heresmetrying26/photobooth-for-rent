@@ -33,6 +33,11 @@ jobs:
       - name: Accept Android SDK licenses
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+      - name: Bundle latest booth page into assets
+        working-directory: .
+        run: |
+          mkdir -p android/app/src/main/assets
+          cp protected/booth.html android/app/src/main/assets/booth.html
       - name: Build Debug APK
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Stage APK for release

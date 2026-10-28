@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
@@ -27,7 +28,7 @@ import java.util.concurrent.TimeUnit
  * BTBridge — Injected into WebView as window.__BTBridge.
  *
  * Provides direct Bluetooth RFCOMM SPP communication for thermal receipt printers
- * (Xprinter, Epson, Star, Goojprt, Bixolon, Munbyn, etc.).
+ * (Xprinter XP-T80A / XP-80C, Epson TM-T82X, Star, Goojprt, Bixolon, Munbyn, etc.).
  */
 class BTBridge(
     private val activity: Activity,
@@ -41,17 +42,58 @@ class BTBridge(
     // Standard SPP UUID for Serial Port Profile
     private val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")
 
-    // Common thermal printer name prefixes
+    // Common thermal printer name prefixes (NOTE: NEVER include "Bluetooth" here because keyboards/speakers start with "Bluetooth")
     private val PRINTER_PREFIXES = arrayOf(
+        "T80", "T80A", "T58", "T-80", "T-58", "T9",
         "XP", "Xprinter", "TM", "Epson", "EPSON", "POS", "Receipt",
         "Thermal", "RPP", "Bixolon", "BIXOLON", "Star", "MP", "BP",
-        "Printer", "MTP", "BlueTooth", "Inner", "Qsprinter"
+        "PT", "ZJ", "NT", "Netum", "Printer", "MTP", "MPT",
+        "Inner", "Qsprinter", "Goojprt", "GOOJPRT", "Munbyn", "Milestone",
+        "HOIN", "Sunmi", "Imin", "Diyep"
     )
 
     private var activeSocket: BluetoothSocket? = null
     private var activeOutputStream: OutputStream? = null
     private var connectedDeviceName: String? = null
     private var connectedDeviceAddress: String? = null
+
+    /**
+     * Identifies devices that are clearly NOT thermal printers (keyboards, mice, headphones, etc.).
+     */
+    private fun isNonPrinter(device: BluetoothDevice): Boolean {
+        val name = try { device.name ?: "" } catch (_: SecurityException) { "" }.lowercase()
+
+        // Name checks for common non-printer peripherals
+        if (name.contains("keyboard") || name.contains("mouse") || name.contains("headset") ||
+            name.contains("headphone") || name.contains("earbud") || name.contains("airpod") ||
+            name.contains("speaker") || name.contains("audio") || name.contains("watch") ||
+            name.contains("band") || name.contains("remote") || name.contains("controller")) {
+            return true
+        }
+
+        val btClass = try { device.bluetoothClass } catch (_: SecurityException) { null } ?: return false
+        val major = btClass.majorDeviceClass
+
+        // Exclude audio/video, phone, computer, wearable
+        if (major == BluetoothClass.Device.Major.AUDIO_VIDEO ||
+            major == BluetoothClass.Device.Major.PHONE ||
+            major == BluetoothClass.Device.Major.COMPUTER ||
+            major == BluetoothClass.Device.Major.WEARABLE) {
+            return true
+        }
+
+        // Exclude keyboards, mice, pointing devices
+        if (major == BluetoothClass.Device.Major.PERIPHERAL) {
+            val dev = btClass.deviceClass
+            if (dev == BluetoothClass.Device.PERIPHERAL_KEYBOARD ||
+                dev == BluetoothClass.Device.PERIPHERAL_POINTING ||
+                dev == BluetoothClass.Device.PERIPHERAL_KEYBOARD_POINTING) {
+                return true
+            }
+        }
+
+        return false
+    }
 
     /**
      * Called by JavaScript: window.__BTBridge.isAvailable()
@@ -110,8 +152,10 @@ class BTBridge(
 
     /**
      * Connects to a Bluetooth thermal printer.
-     * If address is null or blank, auto-connects to the single paired printer
-     * or prompts user on the UI thread.
+     * If targetAddress is null or blank:
+     *   - Reconnects to the last used printer if still paired.
+     *   - If exactly one printer candidate is paired, auto-connects.
+     *   - If multiple candidates exist, displays a selection dialog on the UI thread.
      */
     @JavascriptInterface
     fun connect(): String {
@@ -138,7 +182,7 @@ class BTBridge(
         if (!adapter.isEnabled) {
             val res = JSONObject()
             res.put("ok", false)
-            res.put("error", "Bluetooth is disabled. Please turn on Bluetooth in Android Settings.")
+            res.put("error", "Bluetooth is turned off. Please turn on Bluetooth in Android Settings.")
             return res.toString()
         }
 
@@ -151,11 +195,11 @@ class BTBridge(
         if (bondedDevices.isEmpty()) {
             val res = JSONObject()
             res.put("ok", false)
-            res.put("error", "No paired Bluetooth devices found. Pair the printer in Android Settings first.")
+            res.put("error", "No paired Bluetooth devices found. Pair your thermal printer (e.g. T80A) in tablet Bluetooth Settings first.")
             return res.toString()
         }
 
-        // 1. If explicit address given, connect to it
+        // 1. If explicit address given, connect directly
         if (!targetAddress.isNullOrBlank()) {
             val device = bondedDevices.find { it.address.equals(targetAddress, ignoreCase = true) }
             return if (device != null) {
@@ -168,19 +212,30 @@ class BTBridge(
             }
         }
 
-        // 2. Filter for devices that match known printer name prefixes
-        val matchingPrinters = bondedDevices.filter { device ->
-            val name = try { device.name ?: "" } catch (_: SecurityException) { "" }
-            PRINTER_PREFIXES.any { prefix -> name.startsWith(prefix, ignoreCase = true) }
+        // 2. Check if a previously selected printer is saved and still paired
+        val prefs = try { activity.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE) } catch (_: Exception) { null }
+        val lastAddr = prefs?.getString("last_printer_address", null)
+        if (!lastAddr.isNullOrBlank()) {
+            val savedDevice = bondedDevices.find { it.address.equals(lastAddr, ignoreCase = true) }
+            if (savedDevice != null && !isNonPrinter(savedDevice)) {
+                val connRes = connectToDevice(savedDevice)
+                val isOk = try { JSONObject(connRes).optBoolean("ok", false) } catch (_: Exception) { false }
+                if (isOk) return connRes
+                // If saved device failed, clear it and fall through to picker
+                prefs.edit().remove("last_printer_address").apply()
+            }
         }
 
-        // If exactly one printer matches, auto-connect immediately
-        if (matchingPrinters.size == 1) {
-            return connectToDevice(matchingPrinters.first())
+        // 3. Filter out non-printer peripherals (keyboards, mice, headphones)
+        val candidateDevices = bondedDevices.filter { !isNonPrinter(it) }
+
+        // If exactly one printer candidate exists, connect immediately
+        if (candidateDevices.size == 1) {
+            return connectToDevice(candidateDevices.first())
         }
 
-        // 3. If multiple devices or no prefix matches, show picker on UI thread
-        val candidates = if (matchingPrinters.isNotEmpty()) matchingPrinters else bondedDevices.toList()
+        // 4. If multiple candidates or all were filtered out, show picker on UI thread
+        val candidates = if (candidateDevices.isNotEmpty()) candidateDevices else bondedDevices.toList()
         val latch = CountDownLatch(1)
         var selectedDevice: BluetoothDevice? = null
 
@@ -220,6 +275,11 @@ class BTBridge(
     private fun connectToDevice(device: BluetoothDevice): String {
         disconnect() // Close existing connection first
 
+        // Always cancel discovery before connecting (critical for RFCOMM SPP reliability)
+        try {
+            bluetoothAdapter?.cancelDiscovery()
+        } catch (_: SecurityException) {}
+
         var socket: BluetoothSocket? = null
         var lastErr: Exception? = null
 
@@ -229,16 +289,29 @@ class BTBridge(
             socket.connect()
         } catch (e: Exception) {
             lastErr = e
-            // Fallback: reflection on createRfcommSocket(channel 1)
-            // Fixes older Chinese thermal printers whose SDP records don't report SPP
+            try { socket?.close() } catch (_: Exception) {}
+            socket = null
+
+            // Fallback 1: Insecure RFCOMM socket (many thermal printers don't implement secure encryption)
             try {
-                val method = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
-                socket = method.invoke(device, 1) as? BluetoothSocket
-                socket?.connect()
-            } catch (fallbackEx: Exception) {
-                lastErr = fallbackEx
+                socket = device.createInsecureRfcommSocketToServiceRecord(SPP_UUID)
+                socket.connect()
+            } catch (insecureEx: Exception) {
+                lastErr = insecureEx
                 try { socket?.close() } catch (_: Exception) {}
                 socket = null
+
+                // Fallback 2: Reflection on createRfcommSocket(channel 1)
+                // Fixes POS printers whose SDP records don't report standard SPP
+                try {
+                    val method = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                    socket = method.invoke(device, 1) as? BluetoothSocket
+                    socket?.connect()
+                } catch (fallbackEx: Exception) {
+                    lastErr = fallbackEx
+                    try { socket?.close() } catch (_: Exception) {}
+                    socket = null
+                }
             }
         }
 
@@ -247,6 +320,14 @@ class BTBridge(
             activeOutputStream = socket.outputStream
             connectedDeviceName = try { device.name ?: "Bluetooth Printer" } catch (_: SecurityException) { "Bluetooth Printer" }
             connectedDeviceAddress = device.address
+
+            // Save last successful printer address
+            try {
+                activity.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE)
+                    .edit()
+                    .putString("last_printer_address", device.address)
+                    .apply()
+            } catch (_: Exception) {}
 
             val res = JSONObject()
             res.put("ok", true)
@@ -305,6 +386,14 @@ class BTBridge(
         activeSocket = null
         connectedDeviceName = null
         connectedDeviceAddress = null
+
+        // Clear saved printer preference so user can choose a different device next time
+        try {
+            activity.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE)
+                .edit()
+                .remove("last_printer_address")
+                .apply()
+        } catch (_: Exception) {}
 
         val res = JSONObject()
         res.put("ok", true)

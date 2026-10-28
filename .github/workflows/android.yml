@@ -38,6 +38,11 @@ jobs:
         run: |
           mkdir -p android/app/src/main/assets
           cp protected/booth.html android/app/src/main/assets/booth.html
+      - name: Generate launcher icons from source
+        working-directory: .
+        run: |
+          pip install Pillow --quiet
+          python android/scripts/gen_icons.py android/resources/icon_source.png
       - name: Build Debug APK
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Stage APK for release

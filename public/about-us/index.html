@@ -1124,6 +1124,46 @@
       height: 16px
     }
 
+    .pg-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px
+    }
+
+    .pg-list a {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 14px 18px;
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      text-decoration: none;
+      transition: border-color .15s, transform .15s
+    }
+
+    .pg-list a:hover,
+    .pg-list a:focus-visible {
+      border-color: var(--red);
+      transform: translateY(-1px)
+    }
+
+    .pg-list a b {
+      font-size: 15.5px
+    }
+
+    .pg-list a span {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted)
+    }
+
+    .pg-list a.pg-all {
+      grid-column: 1 / -1;
+      border: 2px solid var(--red)
+    }
+
     .guide:hover .open {
       color: var(--red)
     }
@@ -1402,6 +1442,10 @@
       }
 
       .guides {
+        grid-template-columns: 1fr
+      }
+
+      .pg-list {
         grid-template-columns: 1fr
       }
 
@@ -1787,7 +1831,7 @@
     <section class="block" id="guides" aria-labelledby="gd">
       <p class="label">Guides</p>
       <h2 id="gd">Step-by-step setup guides</h2>
-      <p class="sub">Pick the guide for your plan: online plans use the Laptop or Tablet guide, offline plans use the Offline app guide. Printer guides are for everyone.</p>
+      <p class="sub">Pick the guide for your plan: online plans use the Laptop or Tablet guide, offline plans use the Offline app guide.</p>
       <div class="guides">
         <a class="guide" href="/lifetime/photobooth4u-setup-guide.pdf" target="_blank" rel="noopener">
           <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1833,111 +1877,21 @@
               <path d="M7 17 17 7M8 7h9v9" />
             </svg></span>
         </a>
-        <a class="guide" href="/how-to-print-dnp/" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 6 2 18 2 18 9" />
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-              <rect x="6" y="14" width="12" height="8" />
-            </svg></span>
-          <p class="for">Printers · DNP RX1HS, DS620, QW410</p>
-          <h3>DNP printer guide</h3>
-          <p>Driver setup, 4R borderless printing, and setting up the automatic 2-inch cut for 2×6 photo strips.</p>
-          <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
-        <a class="guide" href="/how-to-print-hiti/" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 6 2 18 2 18 9" />
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-              <rect x="6" y="14" width="12" height="8" />
-            </svg></span>
-          <p class="for">Printers · HiTi P525L &amp; dye-sub</p>
-          <h3>HiTi printer guide</h3>
-          <p>CUPS and Windows driver configuration, silent auto-printing, and dual-queue 2×6 strip cuts.</p>
-          <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
-        <a class="guide" href="/how-to-print-thermal/" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 6 2 18 2 18 9" />
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-              <rect x="6" y="14" width="12" height="8" />
-            </svg></span>
-          <p class="for">Printers &middot; 80 / 58 mm receipt &amp; Bluetooth</p>
-          <h3>Thermal printer guide</h3>
-          <p>Receipt layout on Epson, Xprinter and similar: Bluetooth on the Android app, USB on Windows and Mac, roll paper and cutting.</p>
-          <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
-        <a class="guide" href="/how-to-print-citizen/" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 6 2 18 2 18 9" />
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-              <rect x="6" y="14" width="12" height="8" />
-            </svg></span>
-          <p class="for">Printers &middot; Citizen CX-02, CX-02W, CY-02, CZ-01</p>
-          <h3>Citizen printer guide</h3>
-          <p>USB photo printers on Windows and Mac: which print sizes fit, driver setup, and how they work with the online booth and the offline laptop app.</p>
-          <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
-        <a class="guide" href="/how-to-print-mitsubishi/" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 6 2 18 2 18 9" />
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-              <rect x="6" y="14" width="12" height="8" />
-            </svg></span>
-          <p class="for">Printers &middot; Mitsubishi CP-D70DW to CP-D90DW, CP-K60DW-S</p>
-          <h3>Mitsubishi printer guide</h3>
-          <p>Windows and Mac drivers by model, USB setup, and adding the printer twice for 2&times;6 strips.</p>
-          <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
-        <a class="guide" href="/how-to-print-sinfonia/" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 6 2 18 2 18 9" />
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-              <rect x="6" y="14" width="12" height="8" />
-            </svg></span>
-          <p class="for">Printers &middot; Sinfonia Color Stream CS2, S2145, S3</p>
-          <h3>Sinfonia printer guide</h3>
-          <p>USB setup on Windows and Mac, and the CS2’s built-in 2&times;6 strip cut.</p>
-          <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
-        <a class="guide" href="/printers/" target="_blank" rel="noopener">
-          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 6 2 18 2 18 9" />
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-              <rect x="6" y="14" width="12" height="8" />
-            </svg></span>
-          <p class="for">Printers &middot; every brand in one table</p>
-          <h3>Which printers work</h3>
-          <p>DNP, HiTi, Citizen, Mitsubishi, Sinfonia, Selphy, Epson and thermal: what works with a laptop, a tablet or the Android app.</p>
-          <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17 17 7M8 7h9v9" />
-            </svg></span>
-        </a>
+      </div>
+    </section>
+
+    <section class="block" id="printer-guides" aria-labelledby="pg">
+      <p class="label">Printers</p>
+      <h2 id="pg">Printer guides</h2>
+      <p class="sub">Pick your printer for setup steps. Photo printers connect to a Windows or Mac laptop; the Android app prints to Bluetooth thermal printers.</p>
+      <div class="pg-list">
+        <a class="pg-all" href="/printers/" target="_blank" rel="noopener"><b>Which printers work</b><span>Every brand in one table</span></a>
+        <a href="/how-to-print-dnp/" target="_blank" rel="noopener"><b>DNP</b><span>RX1HS, DS620, DS820, DS40, QW410</span></a>
+        <a href="/how-to-print-hiti/" target="_blank" rel="noopener"><b>HiTi</b><span>P525L, P750L, P910L and more</span></a>
+        <a href="/how-to-print-citizen/" target="_blank" rel="noopener"><b>Citizen</b><span>CX-02, CX-02W, CY-02, CZ-01</span></a>
+        <a href="/how-to-print-mitsubishi/" target="_blank" rel="noopener"><b>Mitsubishi</b><span>CP-D70DW to CP-D90DW, CP-K60DW-S</span></a>
+        <a href="/how-to-print-sinfonia/" target="_blank" rel="noopener"><b>Sinfonia</b><span>Color Stream CS2, S2145, S3</span></a>
+        <a href="/how-to-print-thermal/" target="_blank" rel="noopener"><b>Thermal receipt</b><span>80 / 58 mm, Bluetooth on Android</span></a>
       </div>
     </section>
 

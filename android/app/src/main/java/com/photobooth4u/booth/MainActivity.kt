@@ -18,6 +18,8 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
+import android.util.Log
+import android.webkit.ConsoleMessage
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -83,6 +85,7 @@ class MainActivity : AppCompatActivity() {
     private val BASE_URL   = "https://photobooth4u.netlify.app/"
     private val ASSET_BOOTH = "booth.html"
     private var offlineLoaded = false
+    private var pageErrorToasts = 0
 
     private val REQ_CAMERA_PERMISSION = 2001
 
@@ -346,6 +349,19 @@ class MainActivity : AppCompatActivity() {
 
         // ChromeClient for camera / microphone permissions & file chooser
         webView.webChromeClient = object : WebChromeClient() {
+            // Page errors go to Logcat, and the first few show on screen so a booth that
+            // loads but won't respond (e.g. "Tap to start" does nothing) says why.
+            override fun onConsoleMessage(m: ConsoleMessage?): Boolean {
+                if (m != null && m.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+                    Log.e("PBBooth", "${m.message()} (${m.sourceId()}:${m.lineNumber()})")
+                    if (pageErrorToasts < 3) {
+                        pageErrorToasts++
+                        Toast.makeText(this@MainActivity, "Booth error: ${m.message().take(160)} (line ${m.lineNumber()})", Toast.LENGTH_LONG).show()
+                    }
+                }
+                return true
+            }
+
             override fun onPermissionRequest(request: PermissionRequest) {
                 // Automatically grant camera and microphone access to the booth
                 activityGrantPermissions(request)

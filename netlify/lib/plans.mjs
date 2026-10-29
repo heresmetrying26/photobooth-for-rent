@@ -207,6 +207,12 @@ export function getPlanDeliverables(planKey, code) {
     desc: 'Step-by-step setup for DNP RX1HS, DS620, DS40 with 2×6 strip auto-cut'
   });
   links.push({
+    id: 'citizen-guide',
+    name: 'Citizen Printer Guide',
+    url: '/how-to-print-citizen/',
+    desc: 'Citizen CX-02, CX-02W, CY-02 and CZ-01 photo printers on Windows and Mac'
+  });
+  links.push({
     id: 'thermal-guide',
     name: 'Thermal Printer Guide',
     url: '/how-to-print-thermal/',

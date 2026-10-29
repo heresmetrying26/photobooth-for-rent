@@ -1480,6 +1480,7 @@
     if (f.offlineOpt) guides.push(['offline-app-guide', 'Offline App Guide PDF', 'Windows, Mac &amp; Android app: install, activation, Wi-Fi sharing']);
     if (f.print) guides.push(['hiti-printing-guide', 'Photo Printer Guide PDF', 'Hiti, DNP &amp; Canon Selphy']);
     guides.forEach(function (g) { links.push(['📖 ' + g[1], origin + '/lifetime/photobooth4u-' + g[0] + '.pdf', g[2]]); });
+    if (f.print) links.push(['🖨️ Citizen Printer Guide', origin + '/how-to-print-citizen/', 'CX-02, CX-02W, CY-02, CZ-01']);
     if (f.print) links.push(['🧾 Thermal Printer Guide', origin + '/how-to-print-thermal/', '80 / 58 mm receipt printers']);
     var linksHtml = links.map(function (l) { return '<div class="link-card"><div class="lname">' + l[0] + '</div><div class="lurl">' + l[1] + '</div><div class="ldesc">' + l[2] + '</div></div>'; }).join('');
     var featHtml = handoutFeatures(f).map(function (x) { return '<span class="feat">' + esc(x) + '</span>'; }).join('');
@@ -1584,6 +1585,7 @@
       f.online ? '📖 *Tablet Guide PDF:* ' + origin + '/lifetime/photobooth4u-tablet-guide.pdf' : '',
       f.offlineOpt ? '📖 *Offline App Guide PDF:* ' + origin + '/lifetime/photobooth4u-offline-app-guide.pdf' : '',
       f.print ? '🖨️ *Photo Printer Guide PDF:* ' + origin + '/lifetime/photobooth4u-hiti-printing-guide.pdf' : '',
+      f.print ? '🖨️ *Citizen Printer Guide:* ' + origin + '/how-to-print-citizen/' : '',
       f.print ? '🧾 *Thermal Printer Guide:* ' + origin + '/how-to-print-thermal/' : '',
       '',
       'Message us anytime if you need help. Enjoy your event! 🎉'

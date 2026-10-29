@@ -15295,13 +15295,29 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function voiceSynth(){
     try{ return window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function' ? window.speechSynthesis : null; }catch(e){ return null; }
   }
+  // Android tablet app: the WebView's own speech is unreliable (often no voices), so the tablet's text-to-speech is used through the app.
+  function voiceNative(){
+    try{ const V = window.__PBVoice; return V && typeof V.speak === 'function' && typeof V.voices === 'function' ? V : null; }catch(e){ return null; }
+  }
+  function voiceEngine(){ return voiceNative() ? 'native' : voiceSynth() ? 'web' : ''; }
   function voicesFor(lang){
-    const ss = voiceSynth(); if(!ss) return [];
-    let all = []; try{ all = ss.getVoices() || []; }catch(e){}
+    let all = [];
+    const V = voiceNative();
+    if(V){
+      try{ all = JSON.parse(V.voices(lang === 'fil' ? 'fil' : 'en') || '[]').map(function(v){ return { name: String(v.name), lang: String(v.lang || ''), localService: !!v.local }; }); }catch(e){}
+    } else {
+      const ss = voiceSynth(); if(!ss) return [];
+      try{ all = ss.getVoices() || []; }catch(e){}
+    }
     const re = lang === 'fil' ? /^(fil|tl)([-_]|$)/i : /^en([-_]|$)/i;
     let list = all.filter(function(v){ return re.test(v.lang || ''); });
     if(navigator.onLine === false) list = list.filter(function(v){ return v.localService; });   // offline: only voices stored on the device
     return list;
+  }
+  // A readable name for the voice picker (Android voice names look like en-us-x-tpd-local).
+  function voiceLabel(v){
+    if(voiceNative()) return v.name.replace(/-local$/i, '').replace(/-network$/i, ' (needs internet)');
+    return v.name.replace(/^Microsoft\s+/i, '');
   }
   // Tagalog needs a Filipino voice on the device; without one the English words are used.
   function voiceLang(){ return fx.vLang === 'fil' && voicesFor('fil').length ? 'fil' : 'en'; }
@@ -15310,17 +15326,23 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!list.length) return null;
     return list.find(function(v){ return v.name === fx.vName; }) || list.find(function(v){ return v.localService; }) || list[0];
   }
-  function voiceActive(){ return !!(fx.sound && fx.vOn && voiceSynth() && voicePick()); }
-  function voiceStop(){ const ss = voiceSynth(); try{ if(ss && (ss.speaking || ss.pending)) ss.cancel(); }catch(e){} }
+  function voiceActive(){ return !!(fx.sound && fx.vOn && voiceEngine() && voicePick()); }
+  function voiceStop(){
+    const V = voiceNative();
+    if(V){ try{ V.stop(); }catch(e){} return; }
+    const ss = voiceSynth(); try{ if(ss && (ss.speaking || ss.pending)) ss.cancel(); }catch(e){}
+  }
   function voiceSay(text){
     if(!voiceActive()) return false;
-    const ss = voiceSynth(), v = voicePick();
+    const V = voiceNative(), v = voicePick(), vol = fx.vol === 1 ? 1 : fx.vol === 0.35 ? 0.5 : 0.85;
+    if(V){ try{ return !!V.speak(text, v.name, vol); }catch(e){ return false; } }      // the app cuts off anything still being said
+    const ss = voiceSynth();
     try{
       if(ss.speaking || ss.pending) ss.cancel();     // never let a late word pile up behind the next one
       if(ss.paused) ss.resume();
       const u = new SpeechSynthesisUtterance(text);
       u.voice = v; u.lang = v.lang; u.rate = 1; u.pitch = 1;
-      u.volume = fx.vol === 1 ? 1 : fx.vol === 0.35 ? 0.5 : 0.85;
+      u.volume = vol;
       ss.speak(u);
       return true;
     }catch(e){ return false; }
@@ -15342,6 +15364,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function voiceSmile(){ return voiceSay(voiceWords().smile); }
   // Some browsers only speak after a tap: a silent word on the first tap opens it.
   function voicePrime(){
+    if(voiceNative()) return;
     const ss = voiceSynth(); if(!ss || voicePrime.done) return;
     voicePrime.done = true;
     try{ const u = new SpeechSynthesisUtterance(' '); u.volume = 0; ss.speak(u); }catch(e){}
@@ -15503,10 +15526,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const sel = document.getElementById('fxVName'), lang = voiceLang(), list = voicesFor(lang), hint = document.getElementById('fxVHint');
       sel.innerHTML = '';
       const auto = document.createElement('option'); auto.value = ''; auto.textContent = 'Automatic'; sel.appendChild(auto);
-      list.forEach(function(v){ const o = document.createElement('option'); o.value = v.name; o.textContent = v.name.replace(/^Microsoft\s+/i, ''); sel.appendChild(o); });
+      list.forEach(function(v){ const o = document.createElement('option'); o.value = v.name; o.textContent = voiceLabel(v); sel.appendChild(o); });
       sel.value = list.some(function(v){ return v.name === fx.vName; }) ? fx.vName : '';
       sel.disabled = !list.length;
-      hint.textContent = !voiceSynth() ? 'This device can’t speak, so the booth uses the beeps.'
+      // The tablet's speech engine takes a moment to start: look again for a few seconds before saying there is no voice.
+      if(voiceNative() && !list.length && (refreshFxUI.tries = (refreshFxUI.tries || 0) + 1) < 12) setTimeout(refreshFxUI, 1500);
+      hint.textContent = !voiceEngine() ? 'This device can’t speak, so the booth uses the beeps.'
+        : !list.length && voiceNative() ? 'No voice found on this tablet yet, so the booth uses the beeps. Open the tablet’s Settings → System → Languages → Text-to-speech output, then download the English voice data (Tagalog too, if you want it).'
         : !list.length ? 'No voice found on this device yet, so the booth uses the beeps. Install an English voice in the device’s speech settings.'
         : fx.vLang === 'fil' && lang !== 'fil' ? 'This device has no Tagalog voice, so English is used. Add one in the device’s speech settings.'
         : fx.vCount === 'all' ? 'Says every number. The “Get ready” is skipped.'

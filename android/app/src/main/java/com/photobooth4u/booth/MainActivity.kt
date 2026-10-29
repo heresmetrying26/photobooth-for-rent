@@ -54,6 +54,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var root: FrameLayout
     private lateinit var btBridge: BTBridge
     private lateinit var pbLocal: PBLocal
+    private var voiceBridge: VoiceBridge? = null
     private lateinit var licence: AppLicence
     private var shareServer: LocalShareServer? = null
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
@@ -163,6 +164,10 @@ class MainActivity : AppCompatActivity() {
         // over the booth Wi-Fi by a small web server in the app (no internet needed).
         pbLocal = PBLocal(this)
         webView.addJavascriptInterface(pbLocal, "__PBLocal")
+        // The spoken countdown uses the tablet's own text-to-speech voices (window.__PBVoice).
+        val voice = VoiceBridge(this)
+        voiceBridge = voice
+        webView.addJavascriptInterface(voice, "__PBVoice")
         val share = LocalShareServer(pbLocal)
         shareServer = share
         Thread {
@@ -351,6 +356,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         btBridge.disconnect()
+        voiceBridge?.shutdown()
         shareServer?.stop()
         checkinHandler.removeCallbacksAndMessages(null)
     }

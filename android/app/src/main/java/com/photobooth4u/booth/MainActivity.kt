@@ -504,7 +504,8 @@ class MainActivity : AppCompatActivity() {
 
                 // Inject the config just before </head>
                 val html = if (raw.contains("</head>", ignoreCase = true)) {
-                    raw.replace("</head>", "$pbConfig\n</head>", ignoreCase = true)
+                    // First </head> only: booth.html has another one inside a JS string further down
+                    raw.replaceFirst("</head>", "$pbConfig\n</head>", ignoreCase = true)
                 } else {
                     pbConfig + raw
                 }

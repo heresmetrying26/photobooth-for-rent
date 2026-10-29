@@ -75,6 +75,13 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-10-29', title: 'The Android tablet app now speaks the countdown', for: ['website'],
+    items: [
+      'Android app 1.0.22: the spoken countdown (Get ready, Three, Two, One, Smile!) now works on the tablet, using the tablet\u2019s own text-to-speech voices. It works offline once an English voice is downloaded (Settings \u2192 System \u2192 Languages \u2192 Text-to-speech output).',
+      'Choose English or Tagalog (when the tablet has a Filipino voice), the last 3 numbers or every number, and the voice in Setup \u2192 Session. With no voice on the tablet the beeps are used.'
+    ]
+  },
+  {
     date: '2026-10-29', title: 'Guests can see only their own photos, and a spoken countdown', for: ['website', 'app'], app: '1.0.26',
     items: [
       'New: Setup \u2192 Share \u2192 After guests scan their QR. Choose Everyone\u2019s photos (as before), Mine first (their own photos, with a Show photos with other guests button) or Only their own.',

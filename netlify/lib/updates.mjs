@@ -74,7 +74,7 @@ export const NOTES = [
   {
     date: '2026-10-29', title: 'Vintage looks, photographer desk, flipbook and a 360 video desk', for: ['website', 'app'], app: '1.0.23',
     items: [
-      'Vintage looks: Film, Faded, 70s, Instant and Noir, with grain, darker corners and a warm light leak, plus an optional orange date stamp on each photo. They are in the filter picker, on the guests’ filter strip and on GIFs.',
+      'Vintage looks: Film, Faded, 70s, Instant and Noir, with grain, darker corners and a warm light leak, plus an optional orange date stamp on each photo. They are in the filter picker and on the guests’ filter strip, and apply to photos and flipbook frames (GIFs are recorded without filters).',
       'Photographer desk: a roving photographer’s photos go into your frame, print and get a QR code. Drop or choose the photos, or (laptop app) pick a folder the camera software saves into and new photos appear by themselves. Quick shot turns a phone or tablet into a handheld camera: every tap is saved quietly and you show the QR when a guest asks.',
       'Flipbook: guests record a short clip and the booth prints its frames as numbered cards on sheets (cut, stack, staple), with a cover card and a back card. They also get an animated GIF QR code.',
       '360 video desk: videos from the 360 arm’s camera arrive from a folder or from the recording phone’s browser. The laptop app edits them (slow motion, speed ramp or boomerang, your frame, logo and title, music, trim) and shares the finished video with a QR code. The website shares the original video, up to about 28 MB.',

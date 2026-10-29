@@ -207,6 +207,12 @@ export function getPlanDeliverables(planKey, code) {
     desc: 'Step-by-step setup for DNP RX1HS, DS620, DS40 with 2×6 strip auto-cut'
   });
   links.push({
+    id: 'extras-guide',
+    name: 'Booth Extras Guide',
+    url: '/how-to-extras/',
+    desc: 'Vintage looks, photographer desk, Quick shot and the printed flipbook'
+  });
+  links.push({
     id: 'spin-guide',
     name: '360 Video Guide',
     url: '/how-to-360/',

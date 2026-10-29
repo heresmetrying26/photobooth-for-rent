@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Booth extras guide · photobooth4u</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500..700;1,500..700&family=Manrope:wght@400..800&display=swap">
+<style>
+  :root{ --bg:#f6f1ea; --card:#fffdf9; --ink:#1f1a1d; --dim:#5d555b; --line:#e4ddd3; --red:#c8402a; --red-soft:#fbeee9; --dark:#1f1a1d; }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;}
+  a{color:var(--red);}
+  .wrap{max-width:860px; margin:0 auto; padding:0 16px;}
+  header.hero{background:var(--dark); color:#f6f1ea; padding:44px 0 40px;}
+  .brand{display:flex; align-items:center; gap:10px; font:600 22px 'Fraunces',Georgia,serif; color:#f6f1ea; text-decoration:none;}
+  .brand .mark{display:grid; grid-template-columns:repeat(2,9px); gap:3px;}
+  .brand .mark i{width:9px; height:9px; border-radius:2px; background:#f6f1ea;} .brand .mark i:nth-child(2){background:var(--red);}
+  .brand .badge{background:var(--red); color:#fff; font:800 12px 'Manrope',sans-serif; padding:2px 6px; border-radius:6px; transform:translateY(-6px);}
+  .eyebrow{font-size:13px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:#e8715a; margin:28px 0 8px;}
+  h1{font:600 clamp(36px,7vw,60px)/1.05 'Fraunces',Georgia,serif; margin:0 0 14px;}
+  h1 em{color:#e8715a;}
+  .lead{color:#d9cfc6; font-size:18px; max-width:620px; margin:0 0 22px;}
+  .hero-btns{display:flex; flex-wrap:wrap; gap:10px;}
+  .btn{display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:10px 18px; border-radius:999px; font-weight:800; font-size:15px; text-decoration:none;}
+  .btn.primary{background:var(--red); color:#fff;} .btn.ghost{border:1.5px solid #5a5056; color:#f6f1ea;}
+  nav.toc{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:-22px 0 8px; position:relative;}
+  nav.toc a{display:block; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; text-decoration:none; color:var(--ink); box-shadow:0 8px 20px rgba(70,45,25,.08);}
+  nav.toc b{display:block; color:var(--red); font-size:12px; letter-spacing:.14em; text-transform:uppercase;} nav.toc span{font-weight:700; font-size:15px;}
+  section.part{padding:34px 0 6px; scroll-margin-top:12px;}
+  section.part h2{font:600 clamp(26px,4.5vw,34px)/1.15 'Fraunces',Georgia,serif; margin:0 0 6px;}
+  .part .kicker{font-size:12px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:var(--red); margin:0 0 4px;}
+  .part .why{color:var(--dim); margin:0 0 14px;}
+  ol.steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
+  ol.steps li{display:grid; grid-template-columns:40px 1fr; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  ol.steps .n{width:40px; height:40px; border-radius:50%; background:var(--red); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center;}
+  ol.steps h3{margin:6px 0 2px; font-size:17px;}
+  ol.steps p{margin:0; color:var(--dim);}
+  code, .kbd{font:600 14px ui-monospace,'SF Mono',Menlo,Consolas,monospace; background:#efe7dd; border-radius:6px; padding:1px 6px; color:var(--ink); white-space:nowrap;}
+  .codeblock{display:flex; align-items:center; gap:10px; background:var(--dark); color:#f6f1ea; border-radius:12px; padding:12px 14px; margin:8px 0 0; font:600 14px ui-monospace,Menlo,Consolas,monospace; overflow-x:auto;}
+  .codeblock span{flex:1; white-space:nowrap;}
+  .copy{flex:none; border:1px solid #5a5056; background:transparent; color:#f6f1ea; border-radius:999px; padding:4px 12px; font:700 12px 'Manrope',sans-serif; cursor:pointer;}
+  .term{background:var(--dark); color:#d9cfc6; border-radius:14px; padding:16px 18px; font:14px/1.7 ui-monospace,Menlo,Consolas,monospace; margin-top:12px;}
+  .term .hl{color:#e8715a;} .term .w{color:#f6f1ea;}
+  .sheet{display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-top:12px;}
+  .sheet .paper{display:flex; gap:6px; width:150px; height:100px; flex:none;}
+  .sheet .paper i{flex:1; background:#e9ded3; border-radius:6px;}
+  .sheet .paper b{width:3px; background:repeating-linear-gradient(180deg,var(--red) 0 7px,transparent 7px 12px);}
+  .sheet p{margin:0; color:var(--dim);}
+  table{width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; font-size:15px;}
+  th, td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); background:#f3ece3;}
+  tr:last-child td{border-bottom:0;}
+  td:first-child{font-weight:700; width:38%;}
+  .win{background:#eef3fb; border:1px solid #cfdcf2; border-radius:16px; padding:14px 18px; margin-top:12px;}
+  .win h3{margin:0 0 4px; font-size:16px;} .win ol{margin:4px 0 0; padding-left:20px; color:var(--dim);} .win li{margin:3px 0;}
+  .callout{background:var(--red-soft); border:1px solid #f1cfc5; border-radius:16px; padding:16px 18px; margin-top:14px;}
+  .callout h3{margin:0 0 4px; font-size:17px;} .callout p{margin:0; color:var(--dim);}
+  .check{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px;}
+  .check div{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  .check b{display:block; font:600 30px 'Fraunces',Georgia,serif; color:var(--red); line-height:1;}
+  .check h3{margin:8px 0 2px; font-size:17px;} .check p{margin:0; color:var(--dim);}
+  footer{margin:40px 0 0; padding:26px 0 40px; border-top:1px solid var(--line); color:var(--dim); font-size:14px;}
+  footer .help{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; background:var(--dark); color:#f6f1ea; border-radius:16px; padding:18px 20px; margin-bottom:16px;}
+  footer .help h3{margin:0; font:600 20px 'Fraunces',Georgia,serif;} footer .help p{margin:2px 0 0; color:#d9cfc6;}
+  td code{white-space:normal; word-break:break-all;}
+  @media (max-width:760px){ nav.toc{grid-template-columns:1fr 1fr;} }
+  @media (max-width:560px){ ol.steps li{grid-template-columns:32px 1fr; padding:14px;} ol.steps .n{width:32px; height:32px; font-size:14px;} td:first-child{width:auto;} }
+  @media print{ header.hero{background:none; color:var(--ink);} .lead{color:var(--dim);} .hero-btns, nav.toc, .copy{display:none;} section.part{break-inside:avoid;} }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <a class="brand" href="/"><span class="mark"><i></i><i></i><i></i><i></i></span>photobooth<span class="badge">4u</span></a>
+    <p class="eyebrow">Booth extras &middot; Website, laptop app &amp; Android</p>
+    <h1>Vintage looks, <em>photographer</em> desk &amp; flipbook</h1>
+    <p class="lead">Extras that come with every package: vintage looks for photos, a desk for a roving photographer's pictures, a Quick shot camera, and a printed flipbook. They are switched on already. For the 360 video desk see the <a href="/how-to-360/" style="color:#e8715a">360 video guide</a>.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="toc" aria-label="Parts">
+    <a href="#vintage"><b>Part 1</b><span>Vintage looks</span></a>
+    <a href="#desk"><b>Part 2</b><span>Photographer desk</span></a>
+    <a href="#quick"><b>Part 3</b><span>Quick shot</span></a>
+    <a href="#flip"><b>Part 4</b><span>Flipbook</span></a>
+    <a href="#off"><b>Part 5</b><span>Switching one off</span></a>
+    <a href="#fix"><b>Help</b><span>If something goes wrong</span></a>
+  </nav>
+
+  <section class="part" id="overview">
+    <p class="kicker">At a glance</p>
+    <h2>What each extra does</h2>
+    <table>
+      <tr><th>Extra</th><th>What it is</th><th>Works in</th></tr>
+      <tr><td>Vintage looks</td><td>Film, Faded, 70s, Instant and Noir looks, and an orange date stamp</td><td>Website, laptop app, Android app</td></tr>
+      <tr><td>Photographer desk</td><td>A roving photographer's photos go into your frame, print and get a QR code</td><td>Website, laptop app (also watches a folder), Android app</td></tr>
+      <tr><td>Quick shot</td><td>A handheld camera: tap to take a photo, show the QR when a guest asks</td><td>Tablet or phone camera on the website, Android app, laptop app</td></tr>
+      <tr><td>Flipbook</td><td>A short clip printed as numbered cards you cut, stack and staple</td><td>Website, laptop app, Android app; needs a printer for the cards</td></tr>
+    </table>
+  </section>
+
+  <section class="part" id="vintage">
+    <p class="kicker">Part 1 &middot; Setup &rarr; Extras</p>
+    <h2>Vintage looks</h2>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Pick a look</h3><p>In <b>Setup &rarr; Extras</b>, open the filter row and tap <b>Film</b>, <b>Faded</b>, <b>70s</b>, <b>Instant</b> or <b>Noir</b>. The live view changes at once. The 70s and Instant looks add a warm light leak in the corner, and all of them add grain and slightly darker corners to the saved photo.</p></div></li>
+      <li><span class="n">2</span><div><h3>Date stamp (optional)</h3><p>Tick <b>Date stamp</b> to print an orange camera-style date, like <code>'26 10 29</code>, in the bottom-right corner of each photo.</p></div></li>
+      <li><span class="n">3</span><div><h3>Guests can choose too</h3><p>The filter chips under the live view and on the &ldquo;Get ready&rdquo; screen include the vintage looks, so guests can pick their own.</p></div></li>
+    </ol>
+    <div class="callout"><h3>Good to know</h3><p>Looks apply to photos, flipbook frames and photos from the photographer desk. GIFs are recorded without a look. The look is saved with your setup, and <b>Soft skin</b> can be used on top of it.</p></div>
+  </section>
+
+  <section class="part" id="desk">
+    <p class="kicker">Part 2 &middot; Dock &rarr; Photographer desk</p>
+    <h2>Photographer desk</h2>
+    <p class="why">For a photographer who walks around the event with a real camera. An assistant at the booth drops each photo into your frame, prints it and gives the guest a QR code.</p>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Open the desk</h3><p>Tap <b>Photographer desk</b> in the dock at the bottom of the Photo Session screen.</p></div></li>
+      <li><span class="n">2</span><div><h3>Add the photos</h3><p>Drop the photographer's photos on the desk or tap <b>Choose photos</b> (JPEG, PNG or WebP, from the memory card or phone). <b>Laptop app:</b> tap <b>Choose folder</b> once, and photos the camera software saves into that folder appear by themselves. Photos already in the folder when you pick it are not added.</p></div></li>
+      <li><span class="n">3</span><div><h3>Pick the photo</h3><p>Tap a photo. If your layout uses several photos (a strip, say), tap up to that many in order. One photo fills them all.</p></div></li>
+      <li><span class="n">4</span><div><h3>Make print + QR</h3><p>The photo goes into your frame or layout with your chosen look, and the normal result screen opens: the <b>Print</b> button (or auto-print) and the guest's QR code. Press <b>Done</b> and the desk is back for the next photo. Used photos are greyed out as &ldquo;Printed&rdquo;.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="part" id="quick">
+    <p class="kicker">Part 3 &middot; Dock &rarr; Quick shot</p>
+    <h2>Quick shot</h2>
+    <p class="why">The booth as a handheld camera on a tablet or phone. Each tap takes a photo and saves it quietly in the background; you show the QR code only when a guest asks.</p>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Open Quick shot</h3><p>Tap <b>Quick shot</b> in the dock. You see the camera full screen. It uses the tablet or phone camera (not a USB camera). <b>Flip camera</b> switches between the front and back cameras.</p></div></li>
+      <li><span class="n">2</span><div><h3>Tap the big button</h3><p>One photo per tap, no countdown. It goes into your frame with your chosen look and is saved in order.</p></div></li>
+      <li><span class="n">3</span><div><h3>Watch the dots</h3><p>Each shot has a small thumbnail with a dot: <b>grey</b> saving, <b>green</b> saved, <b>orange</b> saved on the device and waiting for the internet, <b>red</b> could not be saved.</p></div></li>
+      <li><span class="n">4</span><div><h3>Show the QR when asked</h3><p>Tap the thumbnail of that guest's photo to see its QR code. If the internet is down the photo is kept on the device, and the QR opens the event gallery where it appears once it uploads. <b>Print</b> on the same screen opens the normal result screen with the Print button.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="part" id="flip">
+    <p class="kicker">Part 4 &middot; Setup &rarr; Extras &rarr; Output mode</p>
+    <h2>Flipbook</h2>
+    <p class="why">The guest records a few seconds of video. The booth prints its frames as small numbered cards. Cut them apart, stack them in order, staple one edge, and flick through for a tiny moving picture. They also get an animated GIF QR code.</p>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Choose Flipbook</h3><p>In <b>Setup &rarr; Extras &rarr; Output mode</b> tap <b>Flipbook</b>. Set the <b>clip length</b> (4 to 7 seconds, 6 by default) and the <b>frames in the book</b> (16, 24, 30 or 40; 30 by default). A longer clip or more frames gives a thicker book.</p></div></li>
+      <li><span class="n">2</span><div><h3>Cover and back cards</h3><p>Both are ticked by default. The cover shows the event name, date and logo from your design. The back says &ldquo;Thank you!&rdquo;. Untick either if you don't want it.</p></div></li>
+      <li><span class="n">3</span><div><h3>The guest records</h3><p>Guests tap Start, see a 3-2-1 countdown and &ldquo;Go!&rdquo;, then move for the whole clip. There is no retake. The result screen shows all the cards in order.</p></div></li>
+      <li><span class="n">4</span><div><h3>Print</h3><p>Choose a printer and a normal paper size in <b>Print settings</b> (4&times;6, A4, Letter&hellip;). Receipt rolls and narrow strips aren't offered for flipbooks. The cards are about 45 &times; 34 mm: a 4&times;6 sheet holds 8, an A4 sheet 32. For example 30 frames plus both cards is 32 cards: one A4 sheet, or four 4&times;6 sheets. Each sheet counts toward your print limits.</p></div></li>
+    </ol>
+    <h3 style="margin:18px 0 8px">Cut, stack and bind checklist</h3>
+    <div class="check">
+      <div><b>1</b><h3>Cut</h3><p>Cut along the thin grey lines with a paper trimmer, in rows, so the cards are all the same size.</p></div>
+      <div><b>2</b><h3>Stack in order</h3><p>Cover on top, then the numbered cards from <b>1</b> upwards, then the back card at the bottom. The numbers are in the corner of each card.</p></div>
+      <div><b>3</b><h3>Bind</h3><p>Tap the edges even, then staple along the left edge or use a binding clip. Flick the right edge with your thumb.</p></div>
+    </div>
+  </section>
+
+  <section class="part" id="off">
+    <p class="kicker">Part 5 &middot; In Admin</p>
+    <h2>Switching one off for a client</h2>
+    <p class="why">All extras are on by default. To hide one for a client, open the booking in Admin and tap <b>Hide vintage looks</b>, <b>Hide photographer desk</b> or <b>Hide flipbook</b> (the same buttons say <b>Give</b> to turn it back on). When creating a code, untick it under <b>Extras</b>. An open booth picks the change up within about 5 minutes; the laptop and Android apps pick it up the next time they check their licence.</p>
+  </section>
+
+  <section class="part" id="fix">
+    <p class="kicker">Help</p>
+    <h2>If something goes wrong</h2>
+    <table>
+      <tr><th>Problem</th><th>Try this</th></tr>
+      <tr><td>A button isn't in the dock</td><td>The dock shows only during Photo Session, not while a session is running. The extra may also be switched off for your code: message us.</td></tr>
+      <tr><td>Photographer desk shows no photos from the folder</td><td>Only the laptop app watches a folder, and only for photos saved after you chose it. Check the camera software saves JPEG into that exact folder.</td></tr>
+      <tr><td>Quick shot says it has no picture</td><td>Wait a second for the camera to start, and check the camera is allowed. It does not use a USB camera.</td></tr>
+      <tr><td>A Quick shot dot stays grey or orange</td><td>It is saving or waiting for the internet. Orange photos are safe on the device and upload by themselves later.</td></tr>
+      <tr><td>Flipbook cards are cut off</td><td>The sheet needs a real page size. Print borderless if the printer offers it, and keep the printer's scaling at 100%.</td></tr>
+      <tr><td>No Flipbook button in Output mode</td><td>It is an extra on your code. Message us if it is missing.</td></tr>
+    </table>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="help"><div><h3>Need help?</h3><p>Message us what the booth shows and which device you use.</p></div><a class="btn primary" href="https://m.me/roktetnachi" target="_blank" rel="noopener">Message us</a></div>
+  photobooth4u &middot; <a href="/how-to-360/">360 video guide</a> &middot; <a href="/printers/">Printers</a>
+</footer>
+</body>
+</html>

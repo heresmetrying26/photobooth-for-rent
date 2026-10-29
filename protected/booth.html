@@ -3245,6 +3245,25 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <span class="lbl">Volume</span>
           <select class="mini-select pillify" id="fxVol"><option value="0.35">Soft</option><option value="0.7" selected>Normal</option><option value="1">Loud</option></select>
         </div>
+        <div id="fxVoiceBox">
+          <label class="switch-row"><span>Voice countdown (&ldquo;Get ready&hellip; Three, Two, One&hellip; Smile!&rdquo;)</span><input type="checkbox" id="fxVoice" checked></label>
+          <div id="fxVoiceRow">
+            <div class="opt-row">
+              <span class="lbl">Language</span>
+              <select class="mini-select pillify" id="fxVLang"><option value="en" selected>English</option><option value="fil">Tagalog</option></select>
+            </div>
+            <div class="opt-row">
+              <span class="lbl">Say</span>
+              <select class="mini-select pillify" id="fxVCount"><option value="3" selected>Last 3 numbers</option><option value="all">Every number</option></select>
+            </div>
+            <div class="opt-row">
+              <span class="lbl">Voice</span>
+              <select class="mini-select" id="fxVName" aria-label="Voice"></select>
+            </div>
+            <button type="button" class="action-btn" id="fxVTest" style="width:auto; margin:8px 0 0;">Hear the voice</button>
+            <p class="panel-hint" id="fxVHint" style="margin-top:6px;"></p>
+          </div>
+        </div>
         <div id="fxOwnRow">
           <p class="sub-label" style="margin:12px 0 4px;">Your own sounds (optional)</p>
           <div class="snd-row"><span class="lbl">Shutter</span><span class="snd-name" id="sndShutName">Built-in click</span><button type="button" class="action-btn" id="sndShutUp">Upload</button><button type="button" class="link-btn" id="sndShutX" hidden>Use built-in</button></div>
@@ -8107,7 +8126,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const total = totalSec * 1000;
     const cap = Math.max(1, Math.floor(totalSec));
     const start = performance.now();
-    let shown = null;
+    let shown = null, voiced = null;
     cdShot.textContent = shotsNeeded() > 1 ? ('Shot ' + (index + 1) + ' of ' + shotsNeeded()) : '';
     return new Promise(resolve => {
       const step = () => {
@@ -8115,7 +8134,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         const frac = total ? left / total : 0;
         cdBar.style.strokeDashoffset = String(100 * (1 - frac));
         const n = Math.min(cap, Math.max(1, Math.ceil(left / 1000)));
-        if(sess && sess.cancelled){ clearInterval(timer); resolve(); return; }
+        if(sess && sess.cancelled){ clearInterval(timer); try{ voiceStop(); }catch(e){} resolve(); return; }
+        // The voice runs a moment ahead of the number so the word lands on it.
+        const vn = Math.min(cap, Math.max(1, Math.ceil((left - VOICE_LEAD) / 1000)));
+        if(left > 0 && vn !== voiced){ voiced = vn; try{ voiceNumber(vn); }catch(e){} }
         if(n !== shown){ shown = n; popNum(n, false); try{ fxTick(n); }catch(e){} }
         guestCall('tick', String(n), false, frac, cdShot.textContent);
         if(left <= 0){ clearInterval(timer); resolve(); }
@@ -8129,12 +8151,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     stageShot = index;
     applyStageAspect();   // frame this shot's box
     const extra = index === 0 && !noPause ? firstExtraSec : 0;
+    try{ voiceReady(index, !!noPause, timerSec + extra); }catch(e){}
     await runCountdown(timerSec + extra, index);
     if(sess && sess.cancelled) return;
     popNum('Pose', true);
     cdBar.style.strokeDashoffset = '100';
     guestCall('tick', 'Pose', true, 0, cdShot.textContent);
-    try{ fxPose(); }catch(e){}
+    try{ if(!voiceSmile()) fxPose(); }catch(e){}
     // Screen flash: the screen goes white ~0.35 s before the photo, so the
     // camera has time to adjust to the extra light on the faces.
     const lit = fx.flash;
@@ -14999,7 +15022,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   //   hands : start without touching — 'wave' (movement in front of the
   //           camera) or 'smile' (MediaPipe Face Mesh, runs on the device)
   // =====================================================================
-  let fx = { flash: false, sound: true, vol: 0.7, hands: 'off', sens: 'normal', sShut: null, sTick: null };
+  let fx = { flash: false, sound: true, vol: 0.7, hands: 'off', sens: 'normal', sShut: null, sTick: null, vOn: true, vLang: 'en', vName: '', vCount: '3' };
   // Own sound: { id: uploaded asset, name: the file's name }
   function cleanSnd(o){
     return o && typeof o === 'object' && typeof o.id === 'string' && /^a[A-Za-z0-9]{8,32}$/.test(o.id) ? { id: o.id, name: String(o.name || 'My sound').slice(0, 60) } : null;
@@ -15012,7 +15035,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       sShut: cleanSnd(p.sShut), sTick: cleanSnd(p.sTick),
       vol: v === 0.35 || v === 0.7 || v === 1 ? v : 0.7,
       hands: p.hands === 'wave' || p.hands === 'smile' ? p.hands : 'off',
-      sens: p.sens === 'less' || p.sens === 'more' ? p.sens : 'normal'
+      sens: p.sens === 'less' || p.sens === 'more' ? p.sens : 'normal',
+      vOn: p.vOn !== false, vLang: p.vLang === 'fil' ? 'fil' : 'en',
+      vName: typeof p.vName === 'string' ? p.vName.slice(0, 120) : '', vCount: p.vCount === 'all' ? 'all' : '3'
     };
   }
 
@@ -15027,6 +15052,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   // iPad / Android only allow sound after a tap: every tap makes sure it's on.
   function unlockAudio(){
+    try{ voicePrime(); }catch(e){}
     const c = audioCtx(); if(!c) return;
     if(c.state === 'suspended') c.resume().catch(function(){});
     if(!unlockAudio.done){
@@ -15109,7 +15135,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     for(let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
     return 'data:audio/wav;base64,' + btoa(bin);
   }
-  function fxTick(n){ if(playOwn(fx.sTick)) return; tone(n === 1 ? 988 : 740, n === 1 ? 0.16 : 0.1, 'sine', 0.9); }
+  function fxBeep(n){ if(playOwn(fx.sTick)) return; tone(n === 1 ? 988 : 740, n === 1 ? 0.16 : 0.1, 'sine', 0.9); }
+  function fxTick(n){ if(voiceActive()) return; fxBeep(n); }       // the voice says the numbers instead of the beeps
   function fxPose(){ tone(1175, 0.09, 'triangle', 0.7); tone(1568, 0.14, 'triangle', 0.6, 0.08); }
   function fxShutter(){
     if(playOwn(fx.sShut)) return;
@@ -15126,6 +15153,72 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     tone(140, 0.07, 'sine', 0.8);
   }
   function fxStartChime(){ tone(880, 0.1, 'sine', 0.7); tone(1320, 0.16, 'sine', 0.6, 0.09); }
+
+  // ---- Voice countdown: "Get ready ... Three, Two, One ... Smile!" ----
+  // The device's own voice (speechSynthesis): no sound files, works offline with the
+  // voices installed on the device. No voice on the device = the beeps are used.
+  const VOICE_WORDS = {
+    en: { ready: 'Get ready!', next: 'Next one!', smile: 'Smile!',
+      n: ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen'] },
+    fil: { ready: 'Humanda!', next: 'Susunod!', smile: 'Ngiti!',
+      n: ['', 'Isa', 'Dalawa', 'Tatlo', 'Apat', 'Lima', 'Anim', 'Pito', 'Walo', 'Siyam', 'Sampu', 'Labing-isa', 'Labindalawa', 'Labintatlo', 'Labing-apat', 'Labinlima'] }
+  };
+  const VOICE_LEAD = 150;   // ms: speech starts a little early so the word lands on the number
+  function voiceSynth(){
+    try{ return window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function' ? window.speechSynthesis : null; }catch(e){ return null; }
+  }
+  function voicesFor(lang){
+    const ss = voiceSynth(); if(!ss) return [];
+    let all = []; try{ all = ss.getVoices() || []; }catch(e){}
+    const re = lang === 'fil' ? /^(fil|tl)([-_]|$)/i : /^en([-_]|$)/i;
+    let list = all.filter(function(v){ return re.test(v.lang || ''); });
+    if(navigator.onLine === false) list = list.filter(function(v){ return v.localService; });   // offline: only voices stored on the device
+    return list;
+  }
+  // Tagalog needs a Filipino voice on the device; without one the English words are used.
+  function voiceLang(){ return fx.vLang === 'fil' && voicesFor('fil').length ? 'fil' : 'en'; }
+  function voicePick(){
+    const list = voicesFor(voiceLang());
+    if(!list.length) return null;
+    return list.find(function(v){ return v.name === fx.vName; }) || list.find(function(v){ return v.localService; }) || list[0];
+  }
+  function voiceActive(){ return !!(fx.sound && fx.vOn && voiceSynth() && voicePick()); }
+  function voiceStop(){ const ss = voiceSynth(); try{ if(ss && (ss.speaking || ss.pending)) ss.cancel(); }catch(e){} }
+  function voiceSay(text){
+    if(!voiceActive()) return false;
+    const ss = voiceSynth(), v = voicePick();
+    try{
+      if(ss.speaking || ss.pending) ss.cancel();     // never let a late word pile up behind the next one
+      if(ss.paused) ss.resume();
+      const u = new SpeechSynthesisUtterance(text);
+      u.voice = v; u.lang = v.lang; u.rate = 1; u.pitch = 1;
+      u.volume = fx.vol === 1 ? 1 : fx.vol === 0.35 ? 0.5 : 0.85;
+      ss.speak(u);
+      return true;
+    }catch(e){ return false; }
+  }
+  function voiceWords(){ return VOICE_WORDS[voiceLang()]; }
+  // A number on the screen. True = the voice handles it (spoken, or silent on purpose), so no beep.
+  function voiceNumber(n){
+    if(!voiceActive()) return false;
+    if(fx.vCount !== 'all' && n > 3) return true;
+    voiceSay(voiceWords().n[n] || String(n));
+    return true;
+  }
+  // "Get ready!" as a countdown starts; only when the time before "Three" leaves room for it.
+  function voiceReady(index, retake, totalSec){
+    if(fx.vCount === 'all' || totalSec < 5) return;
+    const w = voiceWords();
+    voiceSay(index > 0 && !retake ? w.next : w.ready);
+  }
+  function voiceSmile(){ return voiceSay(voiceWords().smile); }
+  // Some browsers only speak after a tap: a silent word on the first tap opens it.
+  function voicePrime(){
+    const ss = voiceSynth(); if(!ss || voicePrime.done) return;
+    voicePrime.done = true;
+    try{ const u = new SpeechSynthesisUtterance(' '); u.volume = 0; ss.speak(u); }catch(e){}
+  }
+  try{ const ssv = voiceSynth(); if(ssv && ssv.addEventListener) ssv.addEventListener('voiceschanged', function(){ if(typeof refreshFxUI === 'function') refreshFxUI(); }); }catch(e){}
 
   // ---- Screen flash ----
   const screenFlash = document.createElement('div');
@@ -15273,6 +15366,24 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     document.getElementById('fxSound').checked = fx.sound;
     document.getElementById('fxVolRow').style.display = fx.sound ? '' : 'none';
     document.getElementById('fxOwnRow').style.display = fx.sound ? '' : 'none';
+    document.getElementById('fxVoiceBox').style.display = fx.sound ? '' : 'none';
+    document.getElementById('fxVoice').checked = fx.vOn;
+    document.getElementById('fxVoiceRow').style.display = fx.vOn ? '' : 'none';
+    setSelectValue('fxVLang', fx.vLang); setSelectValue('fxVCount', fx.vCount);
+    try{ pillSyncAll(); }catch(e){}
+    (function(){
+      const sel = document.getElementById('fxVName'), lang = voiceLang(), list = voicesFor(lang), hint = document.getElementById('fxVHint');
+      sel.innerHTML = '';
+      const auto = document.createElement('option'); auto.value = ''; auto.textContent = 'Automatic'; sel.appendChild(auto);
+      list.forEach(function(v){ const o = document.createElement('option'); o.value = v.name; o.textContent = v.name.replace(/^Microsoft\s+/i, ''); sel.appendChild(o); });
+      sel.value = list.some(function(v){ return v.name === fx.vName; }) ? fx.vName : '';
+      sel.disabled = !list.length;
+      hint.textContent = !voiceSynth() ? 'This device can’t speak, so the booth uses the beeps.'
+        : !list.length ? 'No voice found on this device yet, so the booth uses the beeps. Install an English voice in the device’s speech settings.'
+        : fx.vLang === 'fil' && lang !== 'fil' ? 'This device has no Tagalog voice, so English is used. Add one in the device’s speech settings.'
+        : fx.vCount === 'all' ? 'Says every number. The “Get ready” is skipped.'
+        : 'Says “Get ready”, the last three numbers, then “Smile!” just before the photo. Uses the Volume above.';
+    })();
     document.getElementById('sndShutName').textContent = fx.sShut ? fx.sShut.name : 'Built-in click';
     document.getElementById('sndTickName').textContent = fx.sTick ? fx.sTick.name : 'Built-in beeps';
     document.getElementById('sndShutX').hidden = !fx.sShut;
@@ -15296,6 +15407,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   document.getElementById('fxFlash').addEventListener('change', function(){ fx.flash = this.checked; fxChanged(); });
   document.getElementById('fxSound').addEventListener('change', function(){ fx.sound = this.checked; fxChanged(); if(fx.sound){ unlockAudio(); setTimeout(function(){ fxTick(3); }, 60); } });
   document.getElementById('fxVol').addEventListener('change', function(){ fx.vol = Number(this.value) || 0.7; fxChanged(); unlockAudio(); setTimeout(fxShutter, 60); });
+  function voiceTest(){
+    unlockAudio();
+    if(!voiceActive()){ showToast('No voice on this device yet, so the booth uses the beeps.', 4000); return; }
+    const w = voiceWords(), seq = [[0, w.ready], [1400, w.n[3]], [2400, w.n[2]], [3400, w.n[1]], [4400, w.smile]];
+    seq.forEach(function(s){ setTimeout(function(){ voiceSay(s[1]); }, 60 + s[0]); });
+  }
+  document.getElementById('fxVoice').addEventListener('change', function(){ fx.vOn = this.checked; fxChanged(); if(fx.vOn){ unlockAudio(); setTimeout(function(){ voiceSay(voiceWords().ready); }, 80); } });
+  document.getElementById('fxVLang').addEventListener('change', function(){ fx.vLang = this.value === 'fil' ? 'fil' : 'en'; fx.vName = ''; fxChanged(); });
+  document.getElementById('fxVCount').addEventListener('change', function(){ fx.vCount = this.value === 'all' ? 'all' : '3'; fxChanged(); });
+  document.getElementById('fxVName').addEventListener('change', function(){ fx.vName = this.value; fxChanged(); unlockAudio(); setTimeout(function(){ voiceSay(voiceWords().ready); }, 80); });
+  document.getElementById('fxVTest').addEventListener('click', voiceTest);
   document.getElementById('fxHands').addEventListener('change', function(){ fx.hands = this.value; fxChanged(); });
   document.getElementById('fxSens').addEventListener('change', function(){ fx.sens = this.value; fxChanged(); });
   // Upload / remove own sounds
@@ -15304,7 +15426,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   document.getElementById('sndShutUp').addEventListener('click', function(){ unlockAudio(); sndTarget = 'sShut'; sndFile.click(); });
   document.getElementById('sndTickUp').addEventListener('click', function(){ unlockAudio(); sndTarget = 'sTick'; sndFile.click(); });
   document.getElementById('sndShutX').addEventListener('click', function(){ fx.sShut = null; fxChanged(); unlockAudio(); setTimeout(fxShutter, 60); });
-  document.getElementById('sndTickX').addEventListener('click', function(){ fx.sTick = null; fxChanged(); unlockAudio(); setTimeout(function(){ fxTick(2); }, 60); });
+  document.getElementById('sndTickX').addEventListener('click', function(){ fx.sTick = null; fxChanged(); unlockAudio(); setTimeout(function(){ fxBeep(2); }, 60); });
   sndFile.addEventListener('change', async function(){
     const file = sndFile.files && sndFile.files[0], which = sndTarget; sndFile.value = '';
     if(!file || !which) return;
@@ -15315,11 +15437,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       sndBufs[id] = await decodeAudio(audioCtx(), dataUrlBytes(wav));
       fxChanged();
       if(!fx.sound){ fx.sound = true; fxChanged(); }
-      setTimeout(function(){ if(which === 'sShut') fxShutter(); else fxTick(2); }, 80);
+      setTimeout(function(){ if(which === 'sShut') fxShutter(); else fxBeep(2); }, 80);
       showToast(which === 'sShut' ? 'Your shutter sound is on.' : 'Your countdown beep is on.', 2500);
     }catch(e){ showToast(e && e.message || 'That sound could not be used.', 5000); }
   });
-  document.getElementById('fxTestSound').addEventListener('click', function(){ unlockAudio(); setTimeout(function(){ fxTick(2); setTimeout(function(){ fxTick(1); }, 400); setTimeout(fxShutter, 800); }, 60); });
+  document.getElementById('fxTestSound').addEventListener('click', function(){ unlockAudio(); setTimeout(function(){ fxBeep(2); setTimeout(function(){ fxBeep(1); }, 400); setTimeout(fxShutter, 800); }, 60); });
   setTimeout(refreshFxUI, 0);
 
   // ---- Saved setup ----

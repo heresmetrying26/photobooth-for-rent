@@ -849,8 +849,8 @@
   /* Photographer desk (included extra) */
   .desk-ov{position:fixed; inset:0; z-index:9500; background:rgba(28,26,30,.62); display:flex; align-items:center; justify-content:center; padding:16px;}
   .desk-ov[hidden]{display:none;}
-  .desk-card{background:#fff; border-radius:18px; width:min(960px,100%); max-height:100%; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.35);}
-  .desk-head{display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--line);}
+  .desk-card{background:#fff; border-radius:18px; width:min(960px,100%); max-height:100%; display:flex; flex-direction:column; overflow-x:hidden; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.35);}   /* the whole card scrolls; the title and the buttons stay in view */
+  .desk-head{display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--line); position:sticky; top:0; background:#fff; z-index:3; flex:none;}
   .desk-head b{font:800 18px 'Manrope',sans-serif;} .desk-head .sp{flex:1;}
   .desk-btn{border:1.5px solid var(--line); background:#fff; border-radius:999px; padding:8px 16px; font:700 14px 'Manrope',sans-serif; cursor:pointer; color:var(--ink);}
   .desk-btn.primary{background:var(--blue-deep); border-color:var(--blue-deep); color:#fff;}
@@ -859,14 +859,14 @@
   .desk-drop.over{border-color:var(--blue-deep); background:var(--tint);}
   .desk-watch{margin:8px 18px 0; font:600 13px 'Manrope',sans-serif; color:var(--ink-dim); display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
   .desk-hint{margin:10px 18px 0; font:600 13px 'Manrope',sans-serif; color:var(--ink-dim);}
-  .desk-grid{padding:12px 18px; overflow:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; flex:1; min-height:120px;}
+  .desk-grid{padding:12px 18px; display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; flex:1 0 auto; min-height:120px;}
   .desk-item{position:relative; padding:0; border:3px solid transparent; border-radius:12px; overflow:hidden; background:#eee; cursor:pointer; aspect-ratio:1/1;}
   .desk-item img{width:100%; height:100%; object-fit:cover; display:block;}
   .desk-item.sel{border-color:var(--blue-deep);}
   .desk-item.used{opacity:.45;}
   .desk-item .badge{position:absolute; top:6px; left:6px; min-width:26px; height:26px; border-radius:13px; background:var(--blue-deep); color:#fff; font:800 13px 'Manrope',sans-serif; display:flex; align-items:center; justify-content:center; padding:0 6px;}
   .desk-item .done{position:absolute; bottom:6px; right:6px; background:#1f8a4c; color:#fff; font:800 11px 'Manrope',sans-serif; padding:2px 8px; border-radius:999px;}
-  .desk-foot{display:flex; gap:10px; padding:12px 18px; border-top:1px solid var(--line); align-items:center;}
+  .desk-foot{display:flex; gap:10px; padding:12px 18px; border-top:1px solid var(--line); align-items:center; position:sticky; bottom:0; background:#fff; z-index:3; flex:none; flex-wrap:wrap;}
   .desk-foot .sp{flex:1;}
   /* Quick shot (included extra) */
   .qs-ov{position:fixed; inset:0; z-index:9600; background:#000; display:flex; align-items:center; justify-content:center;}
@@ -879,7 +879,8 @@
   .qs-count{color:#fff; font:700 14px 'Manrope',sans-serif; text-shadow:0 1px 4px rgba(0,0,0,.6);}
   .qs-shutter{position:absolute; bottom:max(26px, env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); width:78px; height:78px; border-radius:50%; background:#fff; border:6px solid rgba(255,255,255,.55); box-shadow:0 0 0 3px rgba(0,0,0,.35); cursor:pointer; padding:0;}
   .qs-shutter:active{transform:translateX(-50%) scale(.92);}
-  .qs-strip{position:absolute; left:0; right:0; bottom:calc(max(26px, env(safe-area-inset-bottom)) + 96px); display:flex; gap:8px; overflow-x:auto; padding:0 14px; flex-direction:row-reverse; justify-content:flex-end;}
+  .qs-strip{position:absolute; left:0; right:0; bottom:calc(max(26px, env(safe-area-inset-bottom)) + 96px); display:flex; gap:8px; overflow-x:auto; overflow-y:hidden; padding:0 14px 4px; flex-direction:row; justify-content:flex-start; -webkit-overflow-scrolling:touch;}
+  .qs-strip .qs-thumb{scroll-snap-align:start;}
   .qs-thumb{position:relative; flex:none; width:64px; height:64px; border-radius:10px; overflow:hidden; border:2px solid rgba(255,255,255,.7); background:#222; padding:0; cursor:pointer;}
   .qs-thumb img{width:100%; height:100%; object-fit:cover; display:block;}
   .qs-thumb i{position:absolute; right:4px; bottom:4px; width:12px; height:12px; border-radius:50%; background:#aaa; border:2px solid #fff;}
@@ -892,13 +893,39 @@
   .qs-row{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
   /* Video guestbook: guests record a short message */
   .vg-ov{z-index:9710;}
-  .vg-panel{position:absolute; left:0; right:0; bottom:0; padding:18px 16px max(22px, env(safe-area-inset-bottom)); background:linear-gradient(transparent, rgba(0,0,0,.8) 30%); color:#fff; display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center;}
-  .vg-title{margin:0; font:800 clamp(22px,4vw,34px) 'Manrope',sans-serif;}
-  .vg-sub{margin:0; font:600 15px 'Manrope',sans-serif; opacity:.85; min-height:20px;}
+  .vg-panel{position:absolute; left:0; right:0; bottom:0; padding:14px 16px max(16px, env(safe-area-inset-bottom)); background:linear-gradient(transparent, rgba(0,0,0,.75) 35%); color:#fff; display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center;}
+  .vg-title{margin:0; font:800 clamp(18px,2.4vw,24px) 'Manrope',sans-serif;}
+  .vg-sub{margin:0; font:600 13px 'Manrope',sans-serif; opacity:.85; min-height:18px;}
   .vg-qr{background:#fff; border-radius:16px; padding:10px;}
-  .vg-qr img{display:block; width:min(220px,55vw); height:auto;}
-  .vg-row{display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin-top:6px;}
+  .vg-qr img{display:block; width:min(180px,50vw); height:auto;}
+  .vg-row{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:4px;}
   .cap-go.alt{background:rgba(255,255,255,.2);}
+  /* Print preview: how the page will look, before the first print */
+  .ppv-ov{position:fixed; inset:0; z-index:9800; background:rgba(28,26,30,.72); display:flex; align-items:center; justify-content:center; padding:16px;}
+  .ppv-ov[hidden]{display:none;}
+  .ppv-card{background:#fff; color:var(--ink); border-radius:18px; padding:18px 20px; width:min(560px,100%); max-height:100%; overflow:auto; display:flex; flex-direction:column; gap:8px; align-items:center; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.4);}
+  .ppv-card h3{margin:0; font:800 20px 'Manrope',sans-serif;}
+  .ppv-sub{margin:0; font:600 14px 'Manrope',sans-serif; color:#6B666C;}
+  .ppv-stage{background:#e9e3da; border-radius:12px; padding:14px; display:flex; align-items:center; justify-content:center; width:100%;}
+  .ppv-page{background:#fff; box-shadow:0 6px 22px rgba(0,0,0,.28); height:min(52vh,460px); max-width:100%;}
+  .ppv-page img{display:block; height:100%; width:auto; max-width:100%; object-fit:contain;}
+  .ppv-note{margin:0; font:600 13px 'Manrope',sans-serif; color:#6B666C; min-height:18px;}
+  .ppv-never{font:600 13px 'Manrope',sans-serif; color:#6B666C; display:flex; gap:6px; align-items:center;}
+  .ppv-row{display:flex; gap:10px; justify-content:center; margin-top:4px;}
+  .ppv-row .desk-btn{min-width:110px; min-height:44px;}
+  /* Extras menu: the dock keeps its few everyday buttons; the rest sit in one menu */
+  .extras-pop{position:absolute; left:0; bottom:calc(100% + 8px); z-index:70; width:min(360px, calc(100vw - 24px)); padding:10px; border-radius:16px; background:#fff; color:var(--ink); border:1px solid var(--line); box-shadow:0 18px 44px rgba(0,0,0,.32); display:grid; grid-template-columns:1fr 1fr; gap:8px; pointer-events:auto;}
+  .extras-pop[hidden]{display:none;}
+  .extras-pop .dock-btn{width:100%; justify-content:flex-start; border-radius:12px; box-shadow:none; min-height:48px; position:relative; white-space:nowrap;}
+  .extras-pop .dock-btn[hidden]{display:none;}
+  .extras-pop .dock-btn[data-n]:not([data-n="0"])::after{position:absolute; top:-6px; right:-4px;}
+  .op-dock.bar .extras-pop{left:12px;}
+  .desk-phone{margin:12px 18px 0; padding:12px; border:1.5px solid var(--line); border-radius:14px; background:#faf7f2; display:flex; gap:14px; align-items:center; font:600 13px 'Manrope',sans-serif; color:var(--ink-dim);}
+  .desk-phone[hidden]{display:none;}
+  .desk-phone .qr img{display:block; width:112px; height:112px;}
+  .desk-phone b{color:var(--ink); font-size:14px;}
+  .desk-phone .lnk{word-break:break-all; font-weight:800; color:var(--ink); margin:4px 0 6px;}
+  .desk-item .phone{position:absolute; top:6px; right:6px; background:rgba(0,0,0,.6); color:#fff; font:700 11px 'Manrope',sans-serif; padding:2px 7px; border-radius:999px;}
   /* Print requests from guests' phones */
   .req-item{display:flex; flex-direction:column; gap:6px; align-items:stretch;}
   .req-item .pic{position:relative; aspect-ratio:3/4; border-radius:10px; overflow:hidden; background:#222;}
@@ -918,16 +945,10 @@
   .cap-msg{font:600 13px 'Manrope',sans-serif;}
   .cap-warn{margin:0; max-width:560px; text-align:center; font:700 13px 'Manrope',sans-serif; color:#ffd27a;}
   .cap-status{margin:0; min-height:20px; text-align:center; font:700 14px 'Manrope',sans-serif;}
-  .cap-go{min-width:min(360px,86vw); min-height:60px; border:0; border-radius:999px; background:#C93D27; color:#fff; font:800 20px 'Manrope',sans-serif; cursor:pointer; touch-action:manipulation;}
+  .cap-go{min-width:min(220px,80vw); min-height:46px; padding:0 22px; border:0; border-radius:999px; background:#C93D27; color:#fff; font:800 16px 'Manrope',sans-serif; cursor:pointer; touch-action:manipulation;}
   .cap-go:disabled{opacity:.55;}
   .cap-go.armed{background:#2EA66B;}
   .spin-link{font-weight:800; word-break:break-all;}
-  /* Quick shot without a camera: only the photos sent from phones (and the folder) */
-  .qs-ov.queue-only{background:#16141a;}
-  .qs-ov.queue-only #qsVideo, .qs-ov.queue-only .qs-shutter, .qs-ov.queue-only #qsFlip{display:none;}
-  .qs-ov.queue-only .qs-strip{top:84px; bottom:16px; flex-direction:row; flex-wrap:wrap; justify-content:flex-start; align-content:flex-start; overflow-y:auto;}
-  .qs-ov.queue-only .qs-thumb{width:104px; height:104px;}
-  .qs-hint{position:absolute; left:24px; right:24px; top:50%; transform:translateY(-50%); text-align:center; color:#fff; font:600 16px 'Manrope',sans-serif; opacity:.8; pointer-events:none;}
   .qs-phone-link{word-break:break-all; font:600 12px 'Manrope',sans-serif; color:var(--ink-dim); margin:6px 0 0;}
   .dock-btn[data-n]:not([data-n="0"])::after{content:attr(data-n); min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:#C93D27; color:#fff; font:800 11px 'Manrope',sans-serif; display:inline-flex; align-items:center; justify-content:center;}
   /* 360 desk (included extra) */
@@ -937,7 +958,8 @@
   .spin-send{margin:10px 18px 0; display:flex; gap:14px; align-items:center; font:600 13px 'Manrope',sans-serif; color:var(--ink-dim);}
   .spin-qr img{width:110px; height:110px; display:block;}
   .spin-sendtxt b{color:var(--ink);}
-  .spin-card{width:min(520px,100%);} .spin-card video{width:100%; max-height:46vh; background:#000; border-radius:12px; display:block;}
+  .spin-card{width:min(520px,100%);} .spin-card video{position:static; inset:auto; width:100%; height:auto; max-height:46vh; object-fit:contain; background:#000; border-radius:12px; display:block;}   /* (a plain video is otherwise stretched over the whole page) */
+  .desk-card, .qs-card{color:var(--ink);}   /* the dark theme makes page text light; these cards are white */
   .spin-look{margin:10px 18px 0; padding:10px 12px; border:1.5px solid var(--line); border-radius:12px; background:#faf7f2; display:flex; flex-direction:column; gap:8px;}
   .spin-row{display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; font:600 13px 'Manrope',sans-serif; color:var(--ink-dim);}
   .spin-row select, .spin-row input[type=range]{font:600 13px 'Manrope',sans-serif; border:1.5px solid var(--line); border-radius:8px; padding:4px 6px; background:#fff; color:var(--ink);}
@@ -3100,6 +3122,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <span class="stepper"><button type="button" id="ppCopiesMinus" aria-label="Fewer copies">&minus;</button><b id="ppCopiesVal">1</b><button type="button" id="ppCopiesPlus" aria-label="More copies">+</button></span>
           </div>
           <label class="switch-row" style="margin-top:6px;"><span>Let guests choose how many copies</span><input type="checkbox" id="ppGuestCopies"></label>
+          <label class="switch-row" style="margin-top:6px;"><span>Show a print preview before the first print</span><input type="checkbox" id="ppPreview"></label>
+          <p class="panel-hint" style="margin-top:4px;">The first print (and the first after you change the paper or printer) shows how the page will look, so you can check it before auto-print takes over.</p>
           <label class="switch-row" id="ppGuestReqRow" style="margin-top:6px; display:none;"><span>Let guests ask for a print from their phone</span><input type="checkbox" id="ppGuestReq"></label>
           <p class="panel-hint" id="ppGuestReqHint" style="margin-top:4px; display:none;">Off until you turn it on. Their photo page gets an &ldquo;Ask for a print at the booth&rdquo; button; each request appears under <b>Print requests</b> in the dock for you to print or dismiss. A phone can ask a few times, and a photo only once.</p>
           <details class="pp-words">
@@ -3274,6 +3298,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
               <input type="file" id="attractPosterInput" accept="image/*">
             </div>
             <button class="remove-link" id="attractPosterRemove" style="display:none;">Remove poster</button>
+            <div class="stepper" style="margin-top:8px;"><span class="lbl">Poster fit</span><span class="ctl"><select id="attractPosterFit"><option value="stretch">Stretch to fill the screen</option><option value="contain">Show the whole poster (keeps its shape)</option><option value="cover">Fill and trim the edges</option></select></span></div>
+            <p class="panel-hint" style="margin:4px 0 0;">Stretch puts the whole poster over the whole screen, nothing trimmed. If it looks squashed, design the poster at the screen's shape or choose Show the whole poster.</p>
             <p class="panel-hint" style="margin:4px 0 0;">Full-screen image — design it in Canva at your camera's aspect ratio (e.g. 3:4 portrait).</p>
           </div>
           <div id="welcomeBtnBlock" style="margin-top:12px;">
@@ -3612,6 +3638,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   </div>
 </div>
 
+<div class="ppv-ov" id="ppvOverlay" hidden role="dialog" aria-label="Print preview">
+  <div class="ppv-card">
+    <h3>Check the print</h3>
+    <p class="ppv-sub" id="ppvSub"></p>
+    <div class="ppv-stage"><div class="ppv-page" id="ppvPage"><img id="ppvImg" alt="How the print will look"></div></div>
+    <p class="ppv-note" id="ppvNote"></p>
+    <label class="ppv-never"><input type="checkbox" id="ppvNever"> Don't show this again</label>
+    <div class="ppv-row"><button type="button" class="desk-btn" id="ppvCancel">Cancel</button><button type="button" class="desk-btn primary" id="ppvPrint">Print</button></div>
+  </div>
+</div>
 <div class="print-modal" id="printModal" hidden>
   <div class="pm-card" role="dialog" aria-label="Print settings">
     <button type="button" class="pm-close" id="printModalClose" aria-label="Close">&#10005;</button>
@@ -3696,13 +3732,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   <button type="button" class="dock-btn" id="printFab" hidden aria-label="Printer settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg><span>Printer</span></button>
   <button type="button" class="dock-btn" id="backupFab" hidden aria-label="Backup folder" aria-expanded="false" aria-controls="backupPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Backup folder</span><i class="bk-dot" aria-hidden="true"></i></button>
   <button type="button" class="dock-btn" id="galleryFab" hidden aria-label="All photos gallery" aria-expanded="false" aria-controls="galleryPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zm0 6h3m3-6v3m0 3h.01"/></svg><span>All photos</span></button>
+  <button type="button" class="dock-btn" id="extrasFab" hidden aria-label="Extras" aria-expanded="false" aria-controls="extrasPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg><span>Extras</span></button>
+  <button type="button" class="dock-btn" id="lockFab" hidden aria-label="Lock booth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Lock booth</span></button>
+  </div>
+  <div class="extras-pop" id="extrasPop" hidden>
   <button type="button" class="dock-btn" id="deskFab" hidden aria-label="Photographer desk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M7 3h12a2 2 0 0 1 2 2v12"/><circle cx="10" cy="12" r="2.5"/></svg><span>Photographer desk</span></button>
-  <button type="button" class="dock-btn" id="quickFab" hidden aria-label="Quick shot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg><span>Quick shot</span></button>
   <button type="button" class="dock-btn" id="spinFab" hidden aria-label="360 desk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/><circle cx="12" cy="12" r="2.5"/></svg><span>360 desk</span></button>
   <button type="button" class="dock-btn" id="capFab" hidden aria-label="Record 360"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg><span>Record 360</span></button>
   <button type="button" class="dock-btn" id="reqFab" hidden aria-label="Print requests"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="9" rx="2"/><path d="M7 14h10v7H7z"/></svg><span>Print requests</span></button>
   <button type="button" class="dock-btn" id="vgFab" hidden aria-label="Video guestbook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg><span>Video guestbook</span></button>
-  <button type="button" class="dock-btn" id="lockFab" hidden aria-label="Lock booth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Lock booth</span></button>
   </div>
   <div class="dock-pwr" id="dockPwr" hidden>Powered by <span class="pm" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>photobooth<em>4u</em></b></div>
 </div>
@@ -3810,39 +3848,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     <button type="button" class="cap-go" id="capGo">Record</button>
   </div>
 </div>
-<div class="qs-ov" id="quickOverlay" hidden role="dialog" aria-label="Quick shot">
-  <video id="qsVideo" autoplay muted playsinline></video>
-  <div class="qs-flash" id="qsFlash"></div>
-  <div class="qs-top"><button type="button" class="qs-btn" id="qsClose">Close</button><span class="qs-count" id="qsCount"></span><button type="button" class="qs-btn" id="qsPhone" hidden>&#128241; Phone upload</button><button type="button" class="qs-btn" id="qsFlip">Flip camera</button></div>
-  <p class="qs-hint" id="qsHint" hidden>Photos sent from a phone appear here, already in your frame. Tap <b>Phone upload</b> for the QR code the photographer scans.</p>
-  <div class="qs-strip" id="qsStrip"></div>
-  <button type="button" class="qs-shutter" id="qsShutter" aria-label="Take photo"></button>
-  <div class="qs-panel" id="qsPanel" hidden>
-    <div class="qs-card">
-      <div class="qs-qr" id="qsQrBox"></div>
-      <p class="qs-note" id="qsNote"></p>
-      <div class="qs-row"><button type="button" class="desk-btn" id="qsPanelClose">Close</button><button type="button" class="desk-btn primary" id="qsPrint">Print framed</button><button type="button" class="desk-btn" id="qsPrintOrig">Print original</button></div>
-    </div>
-  </div>
-  <div class="qs-panel" id="qsPhonePanel" hidden>
-    <div class="qs-card">
-      <h3 style="margin:0 0 10px;font:800 17px 'Manrope',sans-serif;">Photos from a phone</h3>
-      <div class="qs-qr" id="qsPhoneQr"></div>
-      <p class="qs-note" id="qsPhoneNote"></p>
-      <p class="qs-phone-link" id="qsPhoneLink"></p>
-      <div class="qs-row" style="margin-top:12px;"><button type="button" class="desk-btn" id="qsPhoneCopy">Copy link</button><button type="button" class="desk-btn primary" id="qsPhoneClose">Close</button></div>
-    </div>
-  </div>
-</div>
 <div class="desk-ov" id="deskOverlay" hidden role="dialog" aria-label="Photographer desk">
   <div class="desk-card">
     <div class="desk-head"><b>📷 Photographer desk</b><span class="sp"></span><button type="button" class="desk-btn" id="deskClose">Close</button></div>
+    <div class="desk-phone" id="deskPhone" hidden>
+      <div class="qr" id="deskPhoneQr"></div>
+      <div><b>📱 Photos from a phone</b><br><span id="deskPhoneNote">One moment…</span><div class="lnk" id="deskPhoneLink"></div><button type="button" class="desk-btn" id="deskPhoneCopy">Copy link</button></div>
+    </div>
     <div class="desk-drop" id="deskDrop">Drop the photographer's photos here, or <button type="button" class="desk-btn" id="deskPick">Choose photos</button><input type="file" id="deskFile" accept="image/jpeg,image/png,image/webp" multiple hidden></div>
     <div class="desk-watch" id="deskWatch" hidden><span id="deskWatchTxt"></span><button type="button" class="desk-btn" id="deskWatchBtn">Choose folder</button></div>
     <div class="desk-watch" id="deskSoloRow"><label><input type="checkbox" id="deskSolo"> One photo per print (Solo layout, even when the event uses a strip)</label></div>
     <div class="desk-hint" id="deskHint"></div>
     <div class="desk-grid" id="deskGrid"></div>
-    <div class="desk-foot"><button type="button" class="desk-btn" id="deskClear">Clear list</button><span class="sp"></span><button type="button" class="desk-btn primary" id="deskMake" disabled>Make print + QR</button></div>
+    <div class="desk-foot"><button type="button" class="desk-btn" id="deskClear">Clear list</button><span class="sp"></span><button type="button" class="desk-btn" id="deskOrig" disabled>Print original</button><button type="button" class="desk-btn primary" id="deskMake" disabled>Make print + QR</button></div>
   </div>
 </div>
 <style id="printPageStyle"></style>
@@ -7675,7 +7693,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var chip = document.getElementById('pbTimeChip');
     var chipOn = !!(chip && chip.parentNode && chip.parentNode.id === 'dockChipSlot' && chip.style.display !== 'none');
     return !document.getElementById('camFab').hidden || !document.getElementById('printFab').hidden || !document.getElementById('backupFab').hidden ||
-      !document.getElementById('galleryFab').hidden || !document.getElementById('lockFab').hidden || !document.getElementById('deskFab').hidden || !document.getElementById('quickFab').hidden || !document.getElementById('spinFab').hidden || !document.getElementById('capFab').hidden || !document.getElementById('reqFab').hidden || !document.getElementById('vgFab').hidden ||
+      !document.getElementById('galleryFab').hidden || !document.getElementById('lockFab').hidden || !document.getElementById('deskFab').hidden || !document.getElementById('spinFab').hidden || !document.getElementById('capFab').hidden || !document.getElementById('reqFab').hidden || !document.getElementById('vgFab').hidden ||
       !document.getElementById('dockPwr').hidden || chipOn;
   }
   // Everything guests and the operator need to see or tap in Photo Session.
@@ -10853,14 +10871,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const MAX_COPIES = 10;
   const PRINT_TXT = { txtPrint: 'Print', txtPrinting: 'Printing, please hold…', txtCopies: 'How many copies?', txtLimit: 'That’s all the prints for this session' };
   // Saved with the setup (every device on the code gets them).
-  let printPrefs = { guestBtn: true, auto: false, copies: 1, guestCopies: false, guestReq: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
+  let printPrefs = { guestBtn: true, auto: false, copies: 1, guestCopies: false, guestReq: false, preview: true, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
   function printTxt(k){ return (printPrefs[k] || '').trim() || PRINT_TXT[k]; }
   function cleanPrintPrefs(p){
     p = p && typeof p === 'object' ? p : {};
     const txt = (v, n) => typeof v === 'string' ? v.replace(/[<>]/g, '').slice(0, n) : '';
     return {
       guestBtn: p.guestBtn !== false, auto: !!p.auto,
-      copies: Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(p.copies) || 1))), guestCopies: !!p.guestCopies, guestReq: !!p.guestReq,
+      copies: Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(p.copies) || 1))), guestCopies: !!p.guestCopies, guestReq: !!p.guestReq, preview: p.preview !== false,
       txtPrint: txt(p.txtPrint, 24), txtPrinting: txt(p.txtPrinting, 60), txtCopies: txt(p.txtCopies, 40), txtLimit: txt(p.txtLimit, 70)
     };
   }
@@ -11038,6 +11056,44 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     refreshStationHints();
   }
 
+  // ---- Print preview: the first print (and the first after the paper or the printer changes) shows how the page will look ----
+  const printPreviewOk = {};
+  const ppv = { auto: false, copies: 1 };
+  function printPreviewKey(){ return printSize + '|' + (printerFor(printSize) || ''); }
+  function needsPrintPreview(){ return printPrefs.preview !== false && !printPreviewOk[printPreviewKey()]; }
+  function printPreviewPages(){
+    return flipbookResult ? buildFlipbookPages(paperFor(printSize)) : keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)];
+  }
+  function closePrintPreview(){ document.getElementById('ppvOverlay').hidden = true; }
+  function showPrintPreview(auto, copies){
+    const ov = document.getElementById('ppvOverlay'); if(!ov.hidden) return;
+    ppv.auto = auto === true; ppv.copies = copies;
+    let pages = [];
+    try{ pages = printPreviewPages(); }catch(e){ console.error('Print preview failed:', e); }
+    if(!pages.length){ printPreviewOk[printPreviewKey()] = true; printCurrentPhoto(auto, copies); return; }       // nothing to show: just print
+    const paper = paperFor(printSize), pname = printerFor(printSize), c = pages[0];
+    document.getElementById('ppvPage').style.aspectRatio = c.width + ' / ' + c.height;
+    document.getElementById('ppvImg').src = c.toDataURL('image/jpeg', 0.85);
+    document.getElementById('ppvSub').textContent = paper.name + (copies > 1 ? ' · ' + copies + ' copies' : '') + ' · ' +
+      (pname ? 'Printer: ' + pname : 'No printer chosen yet: the print dialog will open');
+    const notes = [];
+    if(pages.length > 1) notes.push('Page 1 of ' + pages.length + '.');
+    if(stripTwoUp(printSize)) notes.push('Two strips side by side: cut down the middle.');
+    if(auto === true) notes.push('After this, auto-print sends photos without asking.');
+    document.getElementById('ppvNote').textContent = notes.join(' ');
+    document.getElementById('ppvNever').checked = false;
+    ov.hidden = false;
+  }
+  document.getElementById('ppvPrint').addEventListener('click', () => {
+    printPreviewOk[printPreviewKey()] = true;
+    if(document.getElementById('ppvNever').checked){ printPrefs.preview = false; printPrefsChanged(); }
+    closePrintPreview();
+    printCurrentPhoto(ppv.auto, ppv.copies);
+  });
+  document.getElementById('ppvCancel').addEventListener('click', () => { closePrintPreview(); showToast('Not printed. Tap Print when you are ready.', 3500); });
+  document.getElementById('ppvOverlay').addEventListener('click', (e) => { if(e.target.id === 'ppvOverlay'){ closePrintPreview(); } });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !document.getElementById('ppvOverlay').hidden){ e.stopPropagation(); closePrintPreview(); } }, true);
+
   async function printCurrentPhoto(auto, copies){
     if(printing || !printSize || !(state === 'result' && shotCanvases.every(Boolean))) return false;
     const per = sheetsPerCopy(printSize);
@@ -11045,6 +11101,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const room = maxCopies(printSize);
     if(room < 1){ limitReached(); return false; }
     n = Math.min(n, room);
+    if(needsPrintPreview()){ showPrintPreview(auto, n); return false; }        // nothing is counted or sent until the operator has seen the page
     printing = true;
     refreshPrintUI();
     try{
@@ -11817,6 +11874,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var attractPosterImg = null;
   var attractPosterUrl = '';
   var attractPosterId = '';
+  var attractPosterFit = 'stretch';     // stretch | contain | cover
   var welcomeBtnOn = true;
   // Renter's own logos (Setup 5): c = corner of the guest screen, w = on the welcome picture.
   // x, y = centre as a share of the screen (c) or of the welcome picture (w); s = logo height as a
@@ -12332,11 +12390,26 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // ──────────────────────────────────────────────────────────────────
   var deskQueue = [], deskSel = [], deskSeq = 0, deskReturn = false, deskTimer = null, deskSeen = {}, deskFirstScan = true, deskPrev = {};
   var deskOverlay = document.getElementById('deskOverlay'), deskGrid = document.getElementById('deskGrid');
-  var deskFab = document.getElementById('deskFab'), quickFab = document.getElementById('quickFab'), deskMakeBtn = document.getElementById('deskMake');
+  var deskFab = document.getElementById('deskFab'), deskMakeBtn = document.getElementById('deskMake'), deskOrigBtn = document.getElementById('deskOrig');
+  // ---- the Extras menu: the dock keeps Camera, Printer, All photos and Lock; every extra is one tap away in here ----
+  var EXTRA_IDS = ['deskFab', 'spinFab', 'capFab', 'reqFab', 'vgFab'];
+  var extrasFab = document.getElementById('extrasFab'), extrasPop = document.getElementById('extrasPop');
+  function closeExtras(){ extrasPop.hidden = true; extrasFab.setAttribute('aria-expanded', 'false'); }
+  function refreshExtrasBtn(){
+    var shown = 0, n = 0;
+    EXTRA_IDS.forEach(function(id){ var b = document.getElementById(id); if(b && !b.hidden){ shown++; n += Number(b.dataset.n || 0) || 0; } });
+    extrasFab.hidden = !shown; extrasFab.dataset.n = String(n);
+    if(!shown) closeExtras();
+    try{ scheduleDock(); }catch(e){}
+  }
+  extrasFab.addEventListener('click', function(e){ e.stopPropagation(); extrasPop.hidden = !extrasPop.hidden; extrasFab.setAttribute('aria-expanded', extrasPop.hidden ? 'false' : 'true'); });
+  extrasPop.addEventListener('click', function(e){ if(e.target.closest('.dock-btn')) closeExtras(); });
+  document.addEventListener('click', function(e){ if(!extrasPop.hidden && !e.target.closest('#extrasPop') && !e.target.closest('#extrasFab')) closeExtras(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !extrasPop.hidden) closeExtras(); });
+  try{ var extrasObs = new MutationObserver(function(){ refreshExtrasBtn(); }); EXTRA_IDS.forEach(function(id){ extrasObs.observe(document.getElementById(id), { attributes: true, attributeFilter: ['hidden', 'data-n'] }); }); }catch(e){}
   function refreshDeskBtn(){
     var off = !extraOn('roving') || state === 'capturing';
     if(deskFab) deskFab.hidden = off;
-    if(quickFab) quickFab.hidden = off;
     var spinFab = document.getElementById('spinFab');
     if(spinFab) spinFab.hidden = !extraOn('spin360') || state === 'capturing';
     var capFab = document.getElementById('capFab');
@@ -12345,6 +12418,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(reqFab) reqFab.hidden = !reqOn() || state === 'capturing';
     var vgFab = document.getElementById('vgFab');
     if(vgFab) vgFab.hidden = !vgAvailable() || state === 'capturing';
+    try{ refreshExtrasBtn(); }catch(e){}
     try{ scheduleDock(); }catch(e){}
   }
   var _updateUI = updateUI;
@@ -12352,15 +12426,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   refreshDeskBtn();
 
   // "One photo per print": the desk makes a Solo print instead of filling the event's layout (a strip takes 3 photos).
-  var deskSoloOn = false;
-  try{ deskSoloOn = localStorage.getItem('pb_desk_solo') === '1'; }catch(e){}
+  var deskSoloOn = true;      // a roving photographer's photo is one big print (switch it off to fill the event's layout)
+  try{ if(localStorage.getItem('pb_desk_solo') === '0') deskSoloOn = false; }catch(e){}
   function deskNeed(){ return deskSoloOn ? 1 : shotsNeeded(); }
   function deskHint(){
     var n = deskNeed(), el = document.getElementById('deskHint');
-    if(!deskQueue.length){ el.textContent = 'No photos yet. Add the photographer\u2019s photos' + (window.pb4u && window.pb4u.deskScan ? ' or choose the folder they are saved to.' : '.'); return; }
+    if(!deskQueue.length){ el.textContent = 'No photos yet. Scan the QR code above with a phone to send photos, or drop / choose the photographer\u2019s photos' + (window.pb4u && window.pb4u.deskScan ? ', or choose the folder their camera saves into.' : '.'); return; }
     el.textContent = n > 1
       ? 'This layout uses ' + n + ' photos. Tap up to ' + n + ' photos in order (one photo fills them all), then Make print + QR.'
-      : 'Tap a photo, then Make print + QR. It goes into your frame, ready to print with a QR for the guest.';
+      : 'Tap a photo, then Make print + QR (in your frame, with a QR for the guest) or Print original (the photo as it is).';
   }
   function deskRender(){
     deskGrid.innerHTML = '';
@@ -12368,12 +12442,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     deskQueue.slice().reverse().forEach(function(it){
       var b = document.createElement('button'); b.type = 'button'; b.className = 'desk-item' + (deskSel.indexOf(it.id) >= 0 ? ' sel' : '') + (it.used ? ' used' : ''); b.dataset.id = it.id;
       if(it.thumb){ var im = document.createElement('img'); im.src = it.thumb; im.alt = it.name; b.appendChild(im); }
+      if(it.phone){ var ph = document.createElement('span'); ph.className = 'phone'; ph.textContent = '\uD83D\uDCF1'; b.appendChild(ph); }
       var si = deskSel.indexOf(it.id);
       if(si >= 0){ var bd = document.createElement('span'); bd.className = 'badge'; bd.textContent = String(si + 1); b.appendChild(bd); }
       if(it.used){ var dn = document.createElement('span'); dn.className = 'done'; dn.textContent = 'Printed'; b.appendChild(dn); }
       deskGrid.appendChild(b);
     });
-    deskMakeBtn.disabled = !deskSel.length;
+    deskMakeBtn.disabled = !deskSel.length; deskOrigBtn.disabled = !deskSel.length;
     deskHint();
   }
   async function deskThumb(it){
@@ -12387,8 +12462,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }catch(e){ it.bad = true; }
     deskRender();
   }
-  function deskAdd(blob, name){
-    var it = { id: ++deskSeq, blob: blob, name: name || ('photo ' + deskSeq), used: false, thumb: '', canvas: null };
+  function deskAdd(blob, name, phone){
+    var it = { id: ++deskSeq, blob: blob, name: name || ('photo ' + deskSeq), used: false, thumb: '', canvas: null, phone: !!phone };
     deskQueue.push(it); deskRender(); deskThumb(it);
   }
   function deskAddFiles(files){
@@ -12409,20 +12484,24 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!extraOn('roving')) return;
     if(state === 'capturing'){ showToast('Finish the session first.', 3000); return; }
     deskOverlay.hidden = false; deskRender(); deskWatchUI();
+    roveUnseen = 0; deskFab.dataset.n = '0'; deskPhoneUi();
   }
   function closeDesk(){ deskOverlay.hidden = true; }
-  async function deskMake(){
+  // original = true: print the photo as it is (no frame); its QR still opens the framed version.
+  async function deskMake(original){
+    original = original === true;
     var picks = deskSel.map(function(id){ return deskQueue.find(function(x){ return x.id === id; }); }).filter(Boolean);
     if(!picks.length) return;
     if(state === 'capturing') return;
-    deskMakeBtn.disabled = true;
+    deskMakeBtn.disabled = true; deskOrigBtn.disabled = true;
     try{
-      var need = deskNeed(), shots = [];
+      var need = original ? 1 : deskNeed(), shots = [], raw = null;
       for(var i = 0; i < need; i++) shots.push(await deskCanvas(picks[Math.min(i, picks.length - 1)]));
+      if(original) raw = await quickDecode(picks[0].blob);
       picks.forEach(function(p){ p.used = true; });
       deskSel = [];
       closeDesk();
-      startDeskResult(shots, { solo: deskSoloOn });
+      startDeskResult(shots, original ? { solo: true, original: raw } : { solo: deskSoloOn });
     }catch(e){
       console.error('Desk photo failed:', e);
       showToast('Couldn\u2019t open that photo. Try another.', 4000);
@@ -12473,8 +12552,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     _resetForNextGuest();
     restoreSoloPaper();
     if(wasResult) restoreGuestLook();      // the next guest starts with the look chosen in Setup
-    if(back === 'quick') openQuick();          // the photographer's camera / queue comes straight back
-    else if(back === 'req') openReq();         // the list of print requests comes back
+    if(back === 'req') openReq();         // the list of print requests comes back
     else if(back) openDesk();
   };
   // Desktop app: watch a folder the photographer's photos are saved to.
@@ -12516,13 +12594,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }catch(e){}
   });
   deskFab.addEventListener('click', openDesk);
-  quickFab.addEventListener('click', function(){ openQuick(); });
   document.getElementById('spinFab').addEventListener('click', function(){ openSpin(); });
   document.getElementById('deskClose').addEventListener('click', closeDesk);
   document.getElementById('deskPick').addEventListener('click', function(){ document.getElementById('deskFile').click(); });
   document.getElementById('deskFile').addEventListener('change', function(e){ deskAddFiles(e.target.files); e.target.value = ''; });
   document.getElementById('deskClear').addEventListener('click', function(){ deskQueue = []; deskSel = []; deskRender(); });
-  deskMakeBtn.addEventListener('click', deskMake);
+  deskMakeBtn.addEventListener('click', function(){ deskMake(false); });
+  deskOrigBtn.addEventListener('click', function(){ deskMake(true); });
   deskGrid.addEventListener('click', function(e){
     var b = e.target.closest('.desk-item'); if(!b) return;
     var id = Number(b.dataset.id), i = deskSel.indexOf(id);
@@ -12544,25 +12622,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   deskDrop.addEventListener('drop', function(e){ if(e.dataTransfer) deskAddFiles(e.dataTransfer.files); });
   deskOverlay.addEventListener('click', function(e){ if(e.target === deskOverlay) closeDesk(); });
 
-  // ──────────────────────────────────────────────────────────────────
-  // QUICK SHOT (included extra "roving"): a handheld camera. Every tap is saved quietly in the background;
-  // the photographer shows the QR when a guest asks. One shot per tap.
-  // ──────────────────────────────────────────────────────────────────
-  var quickQueue = [], quickSeq = 0, quickChain = Promise.resolve();
-  var quickOverlay = document.getElementById('quickOverlay'), qsVideo = document.getElementById('qsVideo');
-  var qsShown = null;
-  function quickFrame(){
-    var vw = video.videoWidth, vh = video.videoHeight;
-    if(!vw || !vh) return null;
-    var c = document.createElement('canvas'); c.width = vw; c.height = vh;
-    var ctx = c.getContext('2d');
-    if(mirrorPreview()){ ctx.translate(c.width, 0); ctx.scale(-1, 1); }
-    ctx.drawImage(video, 0, 0, vw, vh); ctx.setTransform(1, 0, 0, 1, 0, 0);
-    try{ applyBgReplace(c); }catch(e){}
-    try{ applyFilterToCanvas(c); }catch(e){}
-    c._isShot = true;
-    return c;
-  }
+  // ---- Saving one photo, and opening a photo file (used by the photographer desk, print requests and the video guestbook) ----
   // The same save as a finished session (3 tries, then kept on the device and sent later), for one photo.
   async function quickUpload(blob, filename){
     if(driveReady() || LOCALSHARE){
@@ -12599,148 +12659,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     c._isShot = true;
     return c;
   }
-  // The booth's chosen look goes on the framed photo; the original stays as the camera made it.
-  function quickLooked(orig){
-    if(filterKey === 'none' && !softSkin && !dateStamp) return orig;
-    var c = document.createElement('canvas'); c.width = orig.width; c.height = orig.height;
-    c.getContext('2d').drawImage(orig, 0, 0);
-    try{ applyFilterToCanvas(c); }catch(e){}
-    c._isShot = true;
-    return c;
-  }
-  // The photo in the Solo layout (one big picture, whatever layout the event uses for guests).
-  async function quickEnsure(item){
-    if(item.shots && item.comp) return;
-    if(item.incoming){
-      if(!item.orig) item.orig = await quickDecode(item.blob);
-      item.shot = quickLooked(item.orig);
-    }
-    var shots = [item.shot], prev = shotCanvases, comp = document.createElement('canvas');
-    shotCanvases = shots;
-    try{ renderCompositeToCanvas('solo', comp); } finally { shotCanvases = prev; }
-    item.shots = shots; item.comp = comp;
-  }
-  async function quickProcess(item){
-    try{
-      await quickEnsure(item);
-      var comp = item.comp;
-      var flat = document.createElement('canvas'); flat.width = comp.width; flat.height = comp.height;
-      var fx = flat.getContext('2d'); fx.fillStyle = '#ffffff'; fx.fillRect(0, 0, flat.width, flat.height); fx.drawImage(comp, 0, 0);
-      var blob = await new Promise(function(r){ flat.toBlob(r, 'image/jpeg', 0.92); });
-      var name = filePrefix() + nextSessionNumber() + '_solo' + deviceTag() + '.jpg';
-      var res = await quickUpload(blob, name);
-      item.status = res.queued ? 'queued' : 'ready'; item.url = res.url || '';
-      if(item.incoming){ item.shot = item.orig = item.shots = item.comp = null; }   // decoded again if it is printed
-    }catch(e){ console.error('Quick shot failed:', e); item.status = 'error'; }
-    quickRender();
-  }
-  async function quickIncoming(blob, name){
-    var item = { id: ++quickSeq, shot: null, orig: null, blob: blob, incoming: true, srcName: name || '', thumb: '', status: 'saving', url: '', shots: null, comp: null };
-    try{
-      var cv = await quickDecode(blob);
-      var t = document.createElement('canvas'), k = 160 / Math.max(cv.width, cv.height);
-      t.width = Math.max(1, Math.round(cv.width * k)); t.height = Math.max(1, Math.round(cv.height * k));
-      t.getContext('2d').drawImage(cv, 0, 0, t.width, t.height);
-      item.thumb = t.toDataURL('image/jpeg', 0.7); item.orig = cv;
-    }catch(e){ console.error('A photo sent from a phone could not be opened:', e); return null; }
-    quickQueue.push(item);
-    if(quickOverlay.hidden){ roveUnseen++; quickFab.dataset.n = String(roveUnseen); }
-    quickRender();
-    quickChain = quickChain.then(function(){ return quickProcess(item); });   // one at a time, in order
-    return item;
-  }
-  function quickRender(){
-    var strip = document.getElementById('qsStrip'); strip.innerHTML = '';
-    var queueOnly = quickOverlay.classList.contains('queue-only');
-    var list = quickQueue.slice(); if(queueOnly) list.reverse();       // newest first when there is no shutter
-    list.forEach(function(it){
-      var b = document.createElement('button'); b.type = 'button'; b.className = 'qs-thumb ' + it.status; b.dataset.id = it.id;
-      var im = document.createElement('img'); im.src = it.thumb; im.alt = 'Shot ' + it.id; b.appendChild(im); b.appendChild(document.createElement('i'));
-      strip.appendChild(b);
-    });
-    var done = quickQueue.filter(function(i){ return i.status === 'ready' || i.status === 'queued'; }).length;
-    document.getElementById('qsCount').textContent = quickQueue.length ? (quickQueue.length + (quickQueue.length === 1 ? ' photo' : ' photos') + ' · ' + done + ' saved') : (queueOnly ? 'Waiting for photos' : 'Tap the button to take a photo');
-    document.getElementById('qsHint').hidden = !(queueOnly && !quickQueue.length);
-    if(qsShown && !document.getElementById('qsPanel').hidden) quickShowPanel(qsShown);
-  }
-  function quickShoot(){
-    var c = quickFrame();
-    if(!c){ showToast('The camera has no picture yet.', 2500); return; }
-    var fl = document.getElementById('qsFlash'); fl.classList.add('on'); setTimeout(function(){ fl.classList.remove('on'); }, 60);
-    var t = document.createElement('canvas'); var k = 160 / Math.max(c.width, c.height); t.width = Math.max(1, Math.round(c.width * k)); t.height = Math.max(1, Math.round(c.height * k));
-    t.getContext('2d').drawImage(c, 0, 0, t.width, t.height);
-    var item = { id: ++quickSeq, shot: c, thumb: t.toDataURL('image/jpeg', 0.7), status: 'saving', url: '', shots: null, comp: null };
-    quickQueue.push(item); quickRender();
-    quickChain = quickChain.then(function(){ return quickProcess(item); });   // one at a time, in order
-  }
-  function quickShowPanel(item){
-    qsShown = item;
-    var box = document.getElementById('qsQrBox'), note = document.getElementById('qsNote');
-    box.innerHTML = '';
-    if(item.url){
-      var im = document.createElement('img'); im.src = qrImageUrl(item.url); im.alt = 'QR code'; box.appendChild(im);
-      note.textContent = item.status === 'queued' ? 'Saved on this device. The photo appears in the event gallery once it uploads.' : 'Scan to get the photo.';
-    } else {
-      note.textContent = item.status === 'error' ? 'This photo could not be saved. Try taking it again.' : (item.status === 'queued' ? 'Saved on this device. It uploads when there is internet; there is no link yet.' : 'Still saving. This takes a few seconds.');
-    }
-    var ok = item.status === 'ready' || item.status === 'queued' || !!item.comp;
-    document.getElementById('qsPrint').disabled = !ok; document.getElementById('qsPrintOrig').disabled = !ok;
-    document.getElementById('qsPanel').hidden = false;
-  }
-  async function openQuick(){
-    if(!extraOn('roving')) return;
-    if(state === 'capturing'){ showToast('Finish the session first.', 3000); return; }
-    // No tablet/phone camera to use (a USB camera is selected, or there is none): the screen still shows the photos
-    // sent from phones, without a shutter.
-    var usb = typeof USB_CAM_ID !== 'undefined' && currentDeviceId === USB_CAM_ID, queueOnly = usb;
-    if(!usb && !streamActive){ var ok = await initCamera(cameraSelect.value || null); if(!ok){ if(roveAvailable()) queueOnly = true; else return; } }
-    if(queueOnly && !roveAvailable()){ showToast('Quick shot uses the tablet or phone camera. Pick it in the camera menu.', 4500); return; }
-    quickOverlay.classList.toggle('queue-only', queueOnly);
-    if(!queueOnly){
-      qsVideo.srcObject = currentStream || video.srcObject;
-      qsVideo.style.transform = mirrorPreview() ? 'scaleX(-1)' : '';
-      try{ await qsVideo.play(); }catch(e){}
-    }
-    document.getElementById('qsPhone').hidden = !roveAvailable();
-    quickOverlay.hidden = false; document.getElementById('qsPanel').hidden = true; document.getElementById('qsPhonePanel').hidden = true; qsShown = null;
-    roveUnseen = 0; quickFab.dataset.n = '0';
-    quickRender(); roveSchedule(); roveNow();
-  }
-  function closeQuick(){ quickOverlay.hidden = true; document.getElementById('qsPanel').hidden = true; document.getElementById('qsPhonePanel').hidden = true; qsShown = null; roveSchedule(); }
-  async function quickFlip(){
-    var opts = Array.from(cameraSelect.options).filter(function(o){ return o.value && o.value !== USB_CAM_ID; });
-    if(opts.length < 2){ showToast('This device has only one camera.', 2500); return; }
-    var i = opts.findIndex(function(o){ return o.value === cameraSelect.value; });
-    cameraSelect.value = opts[(i + 1) % opts.length].value;
-    var before = currentStream;
-    cameraSelect.dispatchEvent(new Event('change'));
-    for(var n = 0; n < 30 && (currentStream === before || !video.videoWidth); n++) await wait(100);
-    qsVideo.srcObject = currentStream || video.srcObject;
-    qsVideo.style.transform = mirrorPreview() ? 'scaleX(-1)' : '';
-    try{ await qsVideo.play(); }catch(e){}
-  }
-  document.getElementById('qsShutter').addEventListener('click', quickShoot);
-  document.getElementById('qsClose').addEventListener('click', closeQuick);
-  document.getElementById('qsFlip').addEventListener('click', quickFlip);
-  document.getElementById('qsPanelClose').addEventListener('click', function(){ document.getElementById('qsPanel').hidden = true; qsShown = null; });
-  document.getElementById('qsStrip').addEventListener('click', function(e){
-    var b = e.target.closest('.qs-thumb'); if(!b) return;
-    var it = quickQueue.find(function(x){ return x.id === Number(b.dataset.id); });
-    if(it) quickShowPanel(it);
-  });
-  // "Print framed": the photo in your frame. "Print original": the photo as it came from the camera, fitted to the paper.
-  // Both open the normal result screen with its Print button; the guest's QR is already known.
-  async function quickPrint(original){
-    var it = qsShown; if(!it) return;
-    try{ await quickEnsure(it); }
-    catch(e){ console.error('Could not open the photo:', e); showToast('Couldn’t open that photo. Try again.', 4000); return; }
-    var orig = original ? (it.orig || it.shot) : null;
-    closeQuick();
-    startDeskResult(it.shots, { qrUrl: it.url, back: 'quick', solo: true, original: orig });
-  }
-  document.getElementById('qsPrint').addEventListener('click', function(){ quickPrint(false); });
-  document.getElementById('qsPrintOrig').addEventListener('click', function(){ quickPrint(true); });
-
   // The result screen for an original photo: shows it and prints it fitted to the paper, without the frame.
   var plainResult = null;
   function drawPlainPreview(){
@@ -12802,6 +12720,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function roveSeenKey(){ return 'pb_rove_seen_' + roveFolderId(); }
   function roveSeenLoad(){ try{ var a = JSON.parse(localStorage.getItem(roveSeenKey()) || '[]'); var o = {}; (Array.isArray(a) ? a : []).forEach(function(i){ o[i] = 1; }); return o; }catch(e){ return {}; } }
   function roveSeenSave(o){ try{ localStorage.setItem(roveSeenKey(), JSON.stringify(Object.keys(o).slice(-400))); }catch(e){} }
+  // A photo a phone sent goes into the Photographer desk's list, like one from the memory card.
+  function roveArrive(blob, name){
+    deskAdd(blob, name, true);
+    if(deskOverlay.hidden){ roveUnseen++; deskFab.dataset.n = String(roveUnseen); }
+  }
   async function rovePollLaptop(){
     var list = await PBX.roveScan();
     for(var i = 0; i < list.length; i++){
@@ -12809,7 +12732,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(roveSeen[key]) continue;
       roveSeen[key] = true;
       var bytes = await PBX.roveTake(f.name);
-      if(bytes) await quickIncoming(new Blob([bytes], { type: /\.png$/i.test(f.name) ? 'image/png' : /\.webp$/i.test(f.name) ? 'image/webp' : 'image/jpeg' }), f.name);
+      if(bytes) roveArrive(new Blob([bytes], { type: /\.png$/i.test(f.name) ? 'image/png' : /\.webp$/i.test(f.name) ? 'image/webp' : 'image/jpeg' }), f.name);
     }
   }
   async function rovePollWeb(){
@@ -12823,7 +12746,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(!rr || !rr.ok) continue;                              // try again next time
       var blob = await rr.blob();
       seen[f.id] = 1; roveSeenSave(seen);
-      await quickIncoming(blob, f.name);
+      roveArrive(blob, f.name);
     }
   }
   async function roveNow(){
@@ -12839,23 +12762,23 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!roveAvailable()) return;
     if(!roveLaptop() && !roveWebOn){ try{ var rid = roveFolderId(); if(rid && localStorage.getItem('pb_rove_on_' + rid) === '1') roveWebOn = true; }catch(e){} }
     if(!roveLaptop() && !roveWebOn) return;
-    var open = !quickOverlay.hidden;
+    var open = !deskOverlay.hidden;
     var ms = roveLaptop() ? (open ? 2500 : 6000) : (open ? 8000 : 30000);
     roveTimer = setTimeout(async function(){ await roveNow(); roveSchedule(); }, ms);
   }
+  // The phone-upload QR code in the Photographer desk.
   function roveShowPhone(){
-    var panel = document.getElementById('qsPhonePanel'), box = document.getElementById('qsPhoneQr'), note = document.getElementById('qsPhoneNote'), lnk = document.getElementById('qsPhoneLink');
+    var box = document.getElementById('deskPhoneQr'), note = document.getElementById('deskPhoneNote'), lnk = document.getElementById('deskPhoneLink');
     box.innerHTML = ''; lnk.textContent = ''; roveLink = null;
     function show(url, text){
       roveLink = url;
       var im = document.createElement('img'); im.src = qrImageUrl(url); im.alt = 'QR code to send photos'; box.appendChild(im);
       note.textContent = text; lnk.textContent = url;
     }
-    panel.hidden = false;
     if(roveLaptop()){
       note.textContent = 'One moment…';
       PBX.roveInfo().then(function(info){
-        if(info && info.sendUrl) show(info.sendUrl, 'The photographer joins this laptop’s Wi-Fi, scans this code, then takes or chooses photos. Each one appears here by itself, already in your frame.');
+        if(info && info.sendUrl) show(info.sendUrl, 'The photographer joins this device’s Wi-Fi, scans this code, then takes or chooses photos. Each one appears in the list below by itself.');
         else note.textContent = NO_LAN_TEXT;
       }).catch(function(){ note.textContent = 'Could not get the link. Try again.'; });
       return;
@@ -12866,14 +12789,18 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var until = ticketCache && ticketCache.exp ? new Date(ticketCache.exp) : null;
       var ev = ''; try{ ev = (labelInput.value || '').trim(); }catch(e){}
       show(location.origin + '/rove/#t=' + ticket + (ev ? '&e=' + encodeURIComponent(ev) : ''),
-        'Scan with the photographer’s phone, on any internet. Each photo appears here within about 10 seconds, already in your frame.' + (until ? ' The link works until ' + until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '; show this code again after that.' : ''));
+        'Scan with the photographer’s phone, on any internet. Each photo appears in the list below within about 10 seconds.' + (until ? ' The link works until ' + until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '; scan the code again after that.' : ''));
       roveWebOn = true; try{ if(roveFolderId()) localStorage.setItem('pb_rove_on_' + roveFolderId(), '1'); }catch(e){}
       roveSchedule();
     }).catch(function(){ note.textContent = 'Could not get permission to receive photos. Check the internet and try again.'; });
   }
-  document.getElementById('qsPhone').addEventListener('click', roveShowPhone);
-  document.getElementById('qsPhoneClose').addEventListener('click', function(){ document.getElementById('qsPhonePanel').hidden = true; });
-  document.getElementById('qsPhoneCopy').addEventListener('click', function(){
+  function deskPhoneUi(){
+    var panel = document.getElementById('deskPhone');
+    panel.hidden = !roveAvailable();
+    if(!panel.hidden) roveShowPhone();
+    roveSchedule(); roveNow();
+  }
+  document.getElementById('deskPhoneCopy').addEventListener('click', function(){
     if(!roveLink) return;
     try{ if(window.pb4u && window.pb4u.copy){ window.pb4u.copy(roveLink); showToast('Link copied.', 2000); return; } }catch(e){}
     try{ navigator.clipboard.writeText(roveLink).then(function(){ showToast('Link copied.', 2000); }); }catch(e){}
@@ -13707,6 +13634,28 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     });
   })();
   function scheduleWelcomeRender(){ clearTimeout(welcomeTimer); welcomeTimer = setTimeout(renderWelcome, 250); }
+  // The custom poster over the welcome screen. Stretch (the default) covers the whole screen with the whole picture.
+  function drawPosterFit(ctx, img, W, H){
+    if(attractPosterFit === 'cover'){ drawImageCover(ctx, img, 0, 0, W, H, cropFocus); return; }
+    if(attractPosterFit === 'contain'){
+      ctx.fillStyle = '#1C1A1E'; ctx.fillRect(0, 0, W, H);
+      ctx.save();
+      try{ ctx.filter = 'blur(28px) brightness(.6)'; drawImageCover(ctx, img, -40, -40, W + 80, H + 80, cropFocus); }catch(e){}   // a soft, dark copy fills the sides
+      ctx.restore();
+      var k = Math.min(W / img.width, H / img.height), w = img.width * k, h = img.height * k;
+      ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+      return;
+    }
+    ctx.drawImage(img, 0, 0, W, H);
+  }
+  (function(){
+    var sel = document.getElementById('attractPosterFit');
+    if(sel) sel.addEventListener('change', function(){
+      attractPosterFit = (sel.value === 'contain' || sel.value === 'cover') ? sel.value : 'stretch';
+      scheduleWelcomeRender();
+      if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+    });
+  })();
   function roundRectPath(ctx, x, y, w, h, r){
     ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
     ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
@@ -13768,7 +13717,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       // ---- Poster mode: full-bleed uploaded image + CTA ----
       if(attractMode === 'poster'){
         if(attractPosterImg){
-          drawImageCover(ctx, attractPosterImg, 0, 0, W, H, cropFocus);
+          drawPosterFit(ctx, attractPosterImg, W, H);
         } else {
           ctx.fillStyle = '#1C1A1E'; ctx.fillRect(0, 0, W, H);
           ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.font = '600 32px Manrope, sans-serif';
@@ -15407,6 +15356,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       welcomeMsg: welcomeMsg,
       welcomeBtnOn: welcomeBtnOn,
       attractMode: attractMode,
+      attractPosterFit: attractPosterFit,
       attractPosterId: attractPosterId || '',
       attractPosterUrl: attractPosterUrl && !attractPosterId ? attractPosterUrl : '',
       accent: accent, overlay: overlay ? Object.assign({}, overlay) : null, logo: logo ? Object.assign({}, logo) : null,
@@ -15532,6 +15482,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var pId = (typeof s.attractPosterId === 'string' && /^a[A-Za-z0-9]{8,32}$/.test(s.attractPosterId)) ? s.attractPosterId : null;
       var pUrl = pId ? ((typeof ASSETS !== 'undefined' && ASSETS[pId]) ? ASSETS[pId].url : '') : (typeof s.attractPosterUrl === 'string' ? s.attractPosterUrl : '');
       attractPosterId = pId || '';
+      attractPosterFit = (s.attractPosterFit === 'contain' || s.attractPosterFit === 'cover') ? s.attractPosterFit : 'stretch';
+      var fitEl = document.getElementById('attractPosterFit'); if(fitEl) fitEl.value = attractPosterFit;
       if(pUrl){
         attractPosterUrl = pUrl;
         var pImg = new Image();
@@ -18719,6 +18671,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     document.getElementById('ppAuto').checked = autoPrint;
     document.getElementById('ppGuestCopies').checked = printPrefs.guestCopies;
     document.getElementById('ppGuestReq').checked = !!printPrefs.guestReq;
+    document.getElementById('ppPreview').checked = printPrefs.preview !== false;
     document.getElementById('ppGuestReqRow').style.display = reqAvailable() ? '' : 'none'; document.getElementById('ppGuestReqHint').style.display = reqAvailable() ? '' : 'none';
     document.getElementById('ppCopiesVal').textContent = String(printPrefs.copies);
     document.getElementById('ppCopiesMinus').disabled = printPrefs.copies <= 1;
@@ -18746,6 +18699,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   document.getElementById('ppGuestBtn').addEventListener('change', function(){ printPrefs.guestBtn = this.checked; printPrefsChanged(); });
   document.getElementById('ppAuto').addEventListener('change', function(){ setAutoPrint(this.checked, true); printPrefsChanged(); });
   document.getElementById('ppGuestCopies').addEventListener('change', function(){ printPrefs.guestCopies = this.checked; printPrefsChanged(); });
+  document.getElementById('ppPreview').addEventListener('change', function(){ printPrefs.preview = this.checked; printPrefsChanged(); });
   document.getElementById('ppGuestReq').addEventListener('change', function(){ printPrefs.guestReq = this.checked; printPrefsChanged(); reqApply(true); });
   document.getElementById('ppCopiesMinus').addEventListener('click', function(){ printPrefs.copies = Math.max(1, printPrefs.copies - 1); opCopies = printPrefs.copies; printPrefsChanged(); });
   document.getElementById('ppCopiesPlus').addEventListener('click', function(){ printPrefs.copies = Math.min(MAX_COPIES, printPrefs.copies + 1); opCopies = printPrefs.copies; printPrefsChanged(); });

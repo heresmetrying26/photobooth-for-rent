@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.25', date: '2026-10-29' },
   { version: '1.0.24', date: '2026-10-29' },
   { version: '1.0.23', date: '2026-10-29' },
   { version: '1.0.22', date: '2026-10-28' },
@@ -72,6 +73,19 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-29', title: '360 videos work in the laptop app, a simpler bottom bar, print preview and poster fit', for: ['website', 'app'], app: '1.0.25',
+    items: [
+      'Fixed: in the laptop app the 360 desk could not take videos from Choose videos or play them (the app was blocking its own video server). Videos now upload, play and edit, and Record 360 on the laptop can save to its own inbox.',
+      'Fixed: the 360 video player no longer covers the page, and card titles (such as Photographer desk) are readable again in the dark theme.',
+      'A simpler bottom bar: Camera, Printer, All photos, Extras and Lock. Photographer desk, 360 desk, Record 360, Video guestbook and Print requests are in the new Extras menu, with a number for new items.',
+      'Photographer desk: it now shows the phone QR code at the top. Photos a phone sends appear in the desk list (marked with a phone) next to memory-card photos, with Make print + QR and a new Print original. One photo per print is on by default, and the desk scrolls with many photos.',
+      'Quick shot is gone: use the Photographer desk. Phone upload moved there.',
+      'Print preview: the first print, and the first after you change the paper or printer, shows how the page will look before anything is sent. Switch it off in Print settings.',
+      'Custom welcome poster: a Poster fit choice. Stretch to fill the screen is the default and trims nothing; you can also show the whole poster or fill and trim.',
+      'The video guestbook and 360 recording buttons are smaller.'
+    ]
+  },
   {
     date: '2026-10-29', title: 'Phone photos, guest print requests, video guestbook, GIFs in your frame and 360 recording in the app', for: ['website', 'app'], app: '1.0.24',
     items: [

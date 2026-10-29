@@ -14,6 +14,7 @@ import { createDecipheriv, createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
+import { allowBoothRequest } from './lib/netguard.mjs';
 import { initPhotos, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, printReqList, printReqDone, printReqRead } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import * as SPIN from './lib/spin.mjs';
@@ -181,8 +182,8 @@ function setupSession() {
   ses.webRequest.onBeforeRequest({ urls: ['http://*/*', 'https://*/*', 'ws://*/*', 'wss://*/*'] }, (d, cb) => {
     const fromBooth = d.webContents && !d.webContents.isDestroyed() && ours(d.webContents.getURL());
     if (!fromBooth) return cb({});
-    if (/^https:\/\/fonts\.(googleapis|gstatic)\.com\//.test(d.url)) return cb({});
-    if (/^http:\/\/(127\.0\.0\.1|localhost):17321\//.test(d.url)) return cb({});
+    // The booth page plays the 360 videos from, and sends clips to, this laptop's own share server (see lib/netguard.mjs).
+    if (allowBoothRequest(d.url, sharePortNow())) return cb({});
     cb({ cancel: true });
   });
 }

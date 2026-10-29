@@ -210,7 +210,7 @@ export function getPlanDeliverables(planKey, code) {
     id: 'extras-guide',
     name: 'Booth Extras Guide',
     url: '/how-to-extras/',
-    desc: 'Vintage looks, photographer desk, Quick shot and the printed flipbook'
+    desc: 'Vintage looks, photographer desk, print preview and the printed flipbook'
   });
   links.push({
     id: 'spin-guide',

@@ -233,8 +233,6 @@ export default safe(async (req, context) => {
       if (b.printEnabled && !print.enabled) return json({ error: 'Pick at least one paper size, or turn printing off.' }, 400);
       const start = readStart(b.startsAt);
       if (!start.ok) return json({ error: 'Pick a valid opening date.' }, 400);
-      const bonusMinutes = b.bonus ? intIn(b.bonusMinutes, 5, 1440) : null;
-      if (b.bonus && !bonusMinutes) return json({ error: 'Bonus length must be 5-1440 minutes.' }, 400);
       const email = String(b.email || '').trim().toLowerCase();
       if (email && !EMAIL_RE.test(email)) return json({ error: 'That email address doesn’t look right.' }, 400);
       if (email && count > 1) return json({ error: 'An email can be on one code only. Make one code at a time when adding an email.' }, 400);
@@ -253,16 +251,9 @@ export default safe(async (req, context) => {
         const key = await freshKey(store);
         // Keep a dedicated Drive folder name. If neither field was supplied,
         // fall back to the code so the renter never has to configure Drive.
-        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, gifOpt: !!b.gifOpt, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
-        let bonus = null;
-        if (bonusMinutes) {
-          bonus = bonusRecord(await freshKey(store), rec, bonusMinutes);
-          rec.bonusKey = bonus.key;
-          await putLicense(store, bonus.key, bonus);
-        }
+        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, gifOpt: b.gifOpt !== false, retakeOpt: b.retakeOpt !== false, lockOpt: b.lockOpt !== false, payOpt: !b.offlineOnly && b.payOpt !== false, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
         await putLicense(store, key, rec);
         created.push(rec);
-        if (bonus) created.push(bonus);
       }
       return json({ created });
     }
@@ -622,7 +613,6 @@ export default safe(async (req, context) => {
         ok: true,
         simulated: true,
         code: res.code,
-        practiceCode: res.practiceCode || null,
         renewed: res.renewed,
         plan: res.plan,
         files: res.files,

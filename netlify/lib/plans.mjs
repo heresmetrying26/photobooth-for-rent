@@ -1,5 +1,5 @@
 import {
-  newCode, displayCode, normCode, DAY, MIN, LIFETIME_EXP, MAX_DEVICES, BONUS_SUBFOLDER,
+  newCode, displayCode, normCode, DAY, MIN, LIFETIME_EXP, MAX_DEVICES, BONUS_SUBFOLDER, PAPER_SIZES,
   putLicense, sendMail, codeEmail, EMAIL_RE
 } from './core.mjs';
 
@@ -48,36 +48,20 @@ export const ALL_PLANS = {
     offlineOnly: false
   },
 
-  // Per Event Packages (24 hours on event date + 1-hour practice code)
-  tablet: {
-    id: 'tablet',
-    title: 'Tablet Booth (Per Event)',
+  // Per Event Packages (24 hours on event date)
+  laptop: {
+    id: 'laptop',
+    title: 'Event Pass (Per Event)',
     category: 'event',
     price: 499,
     priceStr: '₱499 / event',
-    description: 'iPad or Android tablet · online · includes 1-hr practice code',
-    days: 1,
-    lifetime: false,
-    devices: 1,
-    traditional: false,
-    offlineOpt: false,
-    offlineOnly: false,
-    bonusMinutes: 60
-  },
-  laptop: {
-    id: 'laptop',
-    title: 'Laptop Booth (Per Event)',
-    category: 'event',
-    price: 599,
-    priceStr: '₱599 / event',
-    description: 'Laptop + guest screen, auto-print · online or offline app · includes 1-hr practice code',
+    description: 'Tablet or laptop · guest screen, auto-print · online or offline app',
     days: 1,
     lifetime: false,
     devices: 1,
     traditional: true,
     offlineOpt: true,
-    offlineOnly: false,
-    bonusMinutes: 60
+    offlineOnly: false
   },
 
   // Lifetime Packages (Never expires, 5 devices)
@@ -149,7 +133,7 @@ export const ALL_PLANS = {
   }
 };
 
-export function getPlanDeliverables(planKey, code, practiceCode) {
+export function getPlanDeliverables(planKey, code) {
   const p = ALL_PLANS[planKey] || ALL_PLANS.online;
   const isOffline = !!p.offlineOpt;
   const isOnline = !p.offlineOnly;
@@ -165,7 +149,7 @@ export function getPlanDeliverables(planKey, code, practiceCode) {
       badge: 'PDF Guide',
       desc: 'Step-by-step camera, lighting, gallery, printing & sharing setup'
     });
-    if (p.id === 'tablet') {
+    if (p.id === 'laptop') {
       files.push({
         id: 'tablet-guide',
         name: 'Tablet Guide (PDF)',
@@ -230,7 +214,6 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
   now = now || Date.now();
   const planCfg = ALL_PLANS[planKey] || ALL_PLANS.online;
   let code = null;
-  let practiceCode = null;
   let renewed = false;
   let mainRec = null;
 
@@ -262,7 +245,7 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
       }
       // Always ensure the booth feature switches are on after any renewal/upgrade
       existing.retakeOpt = true;
-      existing.payOpt = true;
+      existing.payOpt = !existing.offlineOnly;   // guest payments need the internet: not on laptop-app-only codes
       existing.lockOpt = true;
       existing.gifOpt = true;
       try {
@@ -294,14 +277,14 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
       maxDevices: planCfg.devices || 1,
       defaultTheme: null,
       startsAt: null, // Begins counting upon first redemption on device
-      print: { enabled: true, sizes: ['2x6', '4x6'], eventLimit: 0, sessionLimit: 0 },
+      print: { enabled: true, sizes: [...PAPER_SIZES], eventLimit: 0, sessionLimit: 0 },
       traditional: planCfg.traditional !== false,
       gifOpt: true,
       offlineOpt: !!planCfg.offlineOpt,
       offlineOnly: !!planCfg.offlineOnly,
       // Automatically enable all booth feature switches for every paid plan:
       retakeOpt: true,   // Give retake switch
-      payOpt: true,      // Guest payment (vouchers / PayMongo)
+      payOpt: !planCfg.offlineOnly,   // Guest payment (vouchers / PayMongo): online only, the offline app has none
       lockOpt: true,     // Lock booth with PIN
       status: 'unused',
       createdAt: now,
@@ -310,40 +293,6 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
       deviceId: null,
       email: email || null
     };
-
-    // If per-event plan, provision a 1-hour practice code
-    if (planCfg.bonusMinutes) {
-      const bKey = await freshKey(store);
-      const bonus = {
-        key: bKey,
-        code: displayCode(bKey),
-        kind: 'bonus',
-        parent: key,
-        label: `${label} · 1-Hr Practice`,
-        folderName,
-        subfolder: 'practice',
-        minutes: planCfg.bonusMinutes,
-        days: 0,
-        startsAt: null,
-        print: mainRec.print,
-        traditional: mainRec.traditional,
-        gifOpt: true,
-        offlineOpt: mainRec.offlineOpt,
-        offlineOnly: mainRec.offlineOnly,
-        status: 'unused',
-        createdAt: now + 1,
-        redeemedAt: null,
-        expiresAt: null,
-        deviceId: null
-      };
-      mainRec.bonusKey = bKey;
-      practiceCode = bonus.code;
-      try {
-        await putLicense(store, bKey, bonus);
-      } catch {
-        await store.setJSON(bKey, bonus);
-      }
-    }
 
     try {
       await putLicense(store, key, mainRec);
@@ -364,11 +313,10 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
     }
   }
 
-  const deliverables = getPlanDeliverables(planCfg.id, code, practiceCode);
+  const deliverables = getPlanDeliverables(planCfg.id, code);
 
   return {
     code,
-    practiceCode,
     plan: planCfg,
     renewed,
     files: deliverables.files,

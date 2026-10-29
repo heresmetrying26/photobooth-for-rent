@@ -855,6 +855,11 @@
   }
   .print-size-btn.active{border-color:var(--blue-deep); color:var(--blue-deep); background:var(--tint);}
   .print-size-btn:disabled{opacity:0.4; cursor:not-allowed;}
+  .print-size-btn .cs-x{margin-left:6px; opacity:.6; font-weight:800;}
+  .custom-size-row{display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:0 0 10px; font:600 12px 'Manrope',sans-serif; color:var(--ink-dim);}
+  .custom-size-row input,.custom-size-row select{width:64px; min-height:34px; border:1.5px solid var(--line); border-radius:8px; padding:0 6px; font:600 13px 'Manrope',sans-serif; background:#fff; color:var(--ink);}
+  .custom-size-row select{width:56px;}
+  .custom-size-row button{min-height:34px; padding:0 12px; border:1.5px solid var(--blue-deep); border-radius:8px; background:var(--tint); color:var(--blue-deep); font:700 12px 'Manrope',sans-serif; cursor:pointer;}
   .printer-input{width:100%; box-sizing:border-box; padding:8px 10px; border:1.5px solid #d9d2c8; border-radius:10px; font:inherit; font-size:14px; background:#fff; color:inherit;}
   .printer-input:focus{outline:none; border-color:var(--blue-deep);}
   #printArea{display:none;}
@@ -995,7 +1000,7 @@
 
   /* Countdown settings */
   .chip-row{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px;}
-  .chip{height:44px; border-radius:10px; border:1.5px solid var(--line); background:#fff; color:var(--ink);
+  .chip{min-height:44px; padding:6px 8px; line-height:1.15; overflow-wrap:anywhere; border-radius:10px; border:1.5px solid var(--line); background:#fff; color:var(--ink);
     font:800 15px 'Manrope',sans-serif; cursor:pointer;}
   .chip.active{background:var(--ink); border-color:var(--ink); color:#fff;}
   .stepper{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px;}
@@ -3395,6 +3400,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p class="ps-title">This photo</p>
           <p class="sub-label" style="margin-bottom:6px;">Paper size</p>
           <div class="print-size-row" id="printSizeRow"></div>
+          <div class="custom-size-row hidden" id="customSizeRow">
+            <span>Own size</span>
+            <input type="number" id="csW" min="1" step="0.1" placeholder="W" inputmode="decimal" aria-label="Paper width">
+            <span>&times;</span>
+            <input type="number" id="csH" min="1" step="0.1" placeholder="H" inputmode="decimal" aria-label="Paper height">
+            <select id="csU" aria-label="Unit"><option value="in">in</option><option value="mm">mm</option></select>
+            <button type="button" id="csAdd">Add</button>
+          </div>
           <label class="switch-row hidden" id="keychainRow" style="margin:4px 0 10px;">
             <span>Keychain strips at real size (2.5×7.5 in)</span>
             <input type="checkbox" id="keychainToggle">
@@ -5981,9 +5994,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(LOCALSHARE) addWifiSlot();
     qrSlot('photo', 'Your photo', 'Saving your photo…');
     // Guests get a working QR straight away: the event's All photos page,
-    // swapped for their own photo's QR as soon as the upload finishes.
+    // swapped for their own photo's QR as soon as the upload finishes. (The offline app has no extra
+    // All photos QR here: the dock's All photos button already shows it.)
     const evFolder = getCachedFolderUrl();
-    if(LOCALSHARE && evFolder){ qrSlot('gallery', 'All photos', ''); fillQrSlot('gallery', shareUrlFor(evFolder)); }
     let slowTimer = null;
     const setCap = (t) => { const w = qrResults.querySelector('.qr-result[data-kind="photo"] .qr-caption'); if(w) w.textContent = t; };
     const OFFLINE_CAP = 'Scan now \u00b7 your photo arrives here once the booth is back online';
@@ -10218,9 +10231,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       return ['receipt80', 'receipt58', '4x6', '2x6'];
     }
     if(!p || !p.enabled || !Array.isArray(p.sizes)) return null;
-    const sizes = p.sizes.filter(k => paperFor(k));
+    const sizes = Array.from(new Set(p.sizes.concat(ownSizes()))).filter(k => paperFor(k));
     return sizes.length ? sizes : null;
   }
+  // Lifetime renters can add their own paper sizes (kept on this device, up to 6).
+  const OWN_KEY = 'pb_own_sizes', OWN_MAX = 6;
+  function ownSizes(){
+    if(!(window.__PB && window.__PB.lifetime) || isTrialBooth()) return [];
+    try{ const a = JSON.parse(localStorage.getItem(OWN_KEY) || '[]'); return Array.isArray(a) ? a.filter(k => typeof k === 'string' && !PAPER[k] && paperFor(k)).slice(0, OWN_MAX) : []; }catch(e){ return []; }
+  }
+  function saveOwnSizes(a){ try{ localStorage.setItem(OWN_KEY, JSON.stringify(a)); }catch(e){} }
   // Very narrow sheets (like 2x6) only suit the tall strip; the grid would print tiny.
   function sizeFitsLayout(key){
     const p = paperFor(key);
@@ -10361,12 +10381,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       printSize = rollPick || (saved && usable.includes(saved) ? saved : null) || tabletPick || usable[0] || null;
     }
     printSizeRow.innerHTML = '';
+    document.getElementById('customSizeRow').classList.toggle('hidden', !(window.__PB && window.__PB.lifetime) || isTrialBooth());
+    const own = ownSizes();
     sizes.forEach(key => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'print-size-btn' + (key === printSize ? ' active' : '');
       b.dataset.size = key;
       b.textContent = paperFor(key).name;
+      if(own.includes(key)){ const x = document.createElement('span'); x.className = 'cs-x'; x.dataset.remove = key; x.textContent = '×'; x.title = 'Remove this size'; b.appendChild(x); }
       b.disabled = !sizeFitsLayout(key);
       if(b.disabled) b.title = 'Too narrow for this layout \u2014 strips only';
       printSizeRow.appendChild(b);
@@ -10408,10 +10431,32 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return ' In the print screen, choose ' + p.name + ' paper' + (printSize === '4x6' ? ' (may be called 4×6, Index card 4×6 or 10×15 cm)' : printSize === 'selphy' ? ' (Postcard / 100×148 mm)' : '') + ', 1 copy, portrait.';
   }
   printSizeRow.addEventListener('click', (e) => {
+    const rm = e.target.closest('.cs-x');
+    if(rm){
+      saveOwnSizes(ownSizes().filter(k => k !== rm.dataset.remove));
+      if(printSize === rm.dataset.remove) printSize = null;
+      refreshPrintUI();
+      return;
+    }
     const b = e.target.closest('.print-size-btn');
     if(!b || b.disabled) return;
     printSize = b.dataset.size;
     try{ localStorage.setItem('pb_print_paper', printSize); }catch(e){}
+    refreshPrintUI();
+  });
+  document.getElementById('csAdd').addEventListener('click', () => {
+    const w = Number(document.getElementById('csW').value), h = Number(document.getElementById('csH').value), u = document.getElementById('csU').value;
+    const lo = u === 'in' ? 1 : 25, hi = u === 'in' ? 20 : 500;
+    if(!(w >= lo && w <= hi && h >= lo && h <= hi)){ showToast('Own size must be ' + lo + '–' + hi + ' ' + u + ' on each side.', 4000); return; }
+    const key = (Math.round(w * 100) / 100) + 'x' + (Math.round(h * 100) / 100) + u;
+    const cur = ownSizes();
+    if(!cur.includes(key)){
+      if(cur.length >= OWN_MAX){ showToast('Up to ' + OWN_MAX + ' own sizes. Remove one first.', 4000); return; }
+      saveOwnSizes(cur.concat(key));
+    }
+    printSize = key;
+    try{ localStorage.setItem('pb_print_paper', key); }catch(e){}
+    document.getElementById('csW').value = ''; document.getElementById('csH').value = '';
     refreshPrintUI();
   });
   window.addEventListener('pb-print-change', refreshPrintUI);

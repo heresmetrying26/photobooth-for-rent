@@ -621,7 +621,7 @@
     /* monthly subscription plans */
     .plans-monthly {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 14px;
       margin: 20px 0;
     }
@@ -761,6 +761,30 @@
     .pkg-divider {
       margin: 36px 0 20px;
       text-align: center;
+    }
+
+    .pkg-divider.first {
+      margin-top: 28px;
+    }
+
+    .plans-event {
+      max-width: 620px;
+      margin: 0 auto;
+    }
+
+    .addons-d {
+      margin-top: 14px;
+    }
+
+    .addons-d summary {
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--muted);
+      padding: 4px 0;
+    }
+
+    .addons-d[open] summary {
+      margin-bottom: 4px;
     }
 
     .pkg-divider h3 {
@@ -1625,8 +1649,7 @@
       <h2 id="hw">From booking to photos</h2>
       <p class="sub">No booth to rent, no one to send. Just your code and your device.</p>
       <ol class="steps">
-        <li><b>Book</b><span>Message us with your event date. You get your booth code plus a 1-hour practice
-            code.</span></li>
+        <li><b>Book</b><span>Message us with your event date. You get your booth code, and you can try the free trial first.</span></li>
         <li><b>Set up</b><span>Open the booth, enter your code, and pick a design, layout and countdown.</span></li>
         <li><b>Snap</b><span>Guests tap, pose and get their photo — printed on the spot if you have a printer.</span>
         </li>
@@ -1635,57 +1658,44 @@
     </section>
 
     <section class="block" id="packages" aria-labelledby="pk">
-      <p class="label">Monthly Subscriptions</p>
-      <h2 id="pk">Here’s what I’d charge per month</h2>
-      <p class="sub">Pick your monthly plan, scan the PayMongo QR to pay, and your access code + setup guide are
-        unlocked immediately.</p>
+      <h2 id="pk">Pricing</h2>
+      <p class="sub">Pick a plan, scan the PayMongo QR to pay, and your access code + setup guide are unlocked
+        immediately.</p>
 
-      <div class="plans-monthly" aria-label="Monthly Subscriptions">
+      <div class="pkg-divider first">
+        <h3>Monthly</h3>
+        <p>Unlimited events for 30 days. Cancel anytime.</p>
+      </div>
+      <div class="plans-monthly" aria-label="Monthly plans">
         <article class="plan monthly">
           <span class="tag">Monthly</span>
           <h3>Online</h3>
-          <p class="for">iPad, tablet, phone, or laptop browser with internet</p>
+          <p class="for">iPad, tablet, phone or laptop browser &middot; needs internet</p>
           <ul class="plan-list">
             <li>Unlimited photo sessions &amp; events for 30 days</li>
             <li>Online photo gallery for guests (7-day storage)</li>
-            <li>Custom Canva frames, logo, themes &amp; stickers</li>
+            <li>Custom frames, logo, themes &amp; stickers</li>
             <li>Print wirelessly with AirPrint or Mopria</li>
           </ul>
           <div class="plan-footer">
-            <p class="price">₱799 <small>/ month</small></p>
-            <button class="plan-cta" type="button" data-sub="online" data-price="799" data-name="Online">Pay with QR →</button>
-          </div>
-        </article>
-
-        <article class="plan monthly">
-          <span class="tag">Monthly</span>
-          <h3>Offline (laptop app only)</h3>
-          <p class="for">Dedicated Windows / Mac app · zero venue internet needed</p>
-          <ul class="plan-list">
-            <li>Works 100% offline with no internet at the venue</li>
-            <li>Guests get photos over booth Wi-Fi with no internet</li>
-            <li>DSLR &amp; webcam support with automatic printing</li>
-            <li>Windows &amp; Mac desktop app activated for 30 days</li>
-          </ul>
-          <div class="plan-footer">
-            <p class="price">₱999 <small>/ month</small></p>
-            <button class="plan-cta" type="button" data-sub="offline" data-price="999" data-name="Offline (laptop app only)">Pay with QR →</button>
+            <p class="price">&#8369;799 <small>/ month</small></p>
+            <button class="plan-cta" type="button" data-sub="online" data-price="799" data-name="Online">Pay with QR &rarr;</button>
           </div>
         </article>
 
         <article class="plan monthly best">
-          <span class="tag" style="background:var(--red);color:#fff;">Best value · Optional</span>
+          <span class="tag" style="background:var(--red);color:#fff;">Best value</span>
           <h3>Online + Offline</h3>
-          <p class="for">Both: the online booth &amp; the offline desktop app</p>
+          <p class="for">The online booth plus the offline app (Windows, Mac &amp; Android tablet)</p>
           <ul class="plan-list">
-            <li>Full access to both online booth &amp; laptop offline app</li>
-            <li>Use tablets online OR laptops completely offline</li>
-            <li>Maximum flexibility for any venue, indoor or outdoor</li>
-            <li>Comprehensive PDF setup &amp; printing guides included</li>
+            <li>Everything in Online</li>
+            <li>Offline app: works with no internet at the venue</li>
+            <li>Guests get photos over booth Wi-Fi, no internet needed</li>
+            <li>DSLR &amp; webcam support with auto-print on laptop</li>
           </ul>
           <div class="plan-footer">
-            <p class="price">₱1,299 <small>/ month</small></p>
-            <button class="plan-cta" type="button" data-sub="both" data-price="1299" data-name="Online + Offline">Pay with QR →</button>
+            <p class="price">&#8369;1,299 <small>/ month</small></p>
+            <button class="plan-cta" type="button" data-sub="both" data-price="1299" data-name="Online + Offline">Pay with QR &rarr;</button>
           </div>
         </article>
       </div>
@@ -1693,84 +1703,85 @@
       <div class="renew-banner">
         <span>Already have an active monthly code?</span>
         <button type="button" class="renew-link" id="renewModalBtn">Renew or extend your existing code (+30 days)
-          →</button>
+          &rarr;</button>
       </div>
 
       <div class="pkg-divider">
-        <h3>Other ways to get photobooth4u</h3>
-        <p>Book per single event date, or own it for life.</p>
+        <h3>Lifetime</h3>
+        <p>Pay once. Every event, never expires, up to 5 devices.</p>
       </div>
-
       <div class="plans">
-        <article class="plan event">
-          <span class="tag">Per event</span>
-          <h3>Tablet Booth</h3>
-          <p class="for">iPad or Android tablet · online</p>
-          <div class="plan-footer">
-            <p class="price">₱499 <small>/ event</small></p>
-            <button class="plan-cta" type="button" data-sub="tablet" data-price="499" data-name="Tablet Booth">Pay with QR →</button>
-          </div>
-        </article>
-        <article class="plan pro event">
-          <span class="tag">Per event</span>
-          <h3>Laptop Booth</h3>
-          <p class="for">Laptop + guest screen, auto-print · online or offline app</p>
-          <div class="plan-footer">
-            <p class="price">₱599 <small>/ event</small></p>
-            <button class="plan-cta" type="button" data-sub="laptop" data-price="599" data-name="Laptop Booth">Pay with QR →</button>
-          </div>
-        </article>
         <article class="plan">
           <span class="tag">Lifetime</span>
           <h3>Lifetime Online</h3>
-          <p class="for">Tablet or laptop in the browser · every event · never expires · multiple devices</p>
+          <p class="for">Tablet or laptop in the browser &middot; every event &middot; never expires</p>
           <div class="plan-footer">
-            <p class="price">₱2,999 <small>one-time</small></p>
-            <button class="plan-cta" type="button" data-sub="lifeonline" data-price="2999" data-name="Lifetime Online">Pay with QR →</button>
+            <p class="price">&#8369;2,999 <small>one-time</small></p>
+            <button class="plan-cta" type="button" data-sub="lifeonline" data-price="2999" data-name="Lifetime Online">Pay with QR &rarr;</button>
           </div>
         </article>
         <article class="plan">
           <span class="tag">Lifetime</span>
           <h3>Lifetime Offline</h3>
-          <p class="for">The Windows / Mac app, works with no internet · every event · never expires</p>
+          <p class="for">The Windows / Mac / Android app, works with no internet &middot; every event &middot; never expires</p>
           <div class="plan-footer">
-            <p class="price">₱3,499 <small>one-time</small></p>
-            <button class="plan-cta" type="button" data-sub="lifeoffline" data-price="3499" data-name="Lifetime Offline">Pay with QR →</button>
+            <p class="price">&#8369;3,499 <small>one-time</small></p>
+            <button class="plan-cta" type="button" data-sub="lifeoffline" data-price="3499" data-name="Lifetime Offline">Pay with QR &rarr;</button>
           </div>
         </article>
         <article class="plan life">
           <span class="tag">Best value</span>
           <h3>Lifetime Online + Offline</h3>
-          <p class="for">Both: the online booth and the Windows / Mac app that works with no internet</p>
+          <p class="for">Both: the online booth and the offline app that works with no internet</p>
           <div class="plan-footer">
-            <p class="price">₱4,999 <small>one-time</small></p>
-            <button class="plan-cta" type="button" data-sub="lifetime" data-price="4999" data-name="Lifetime Online + Offline">Pay with QR →</button>
+            <p class="price">&#8369;4,999 <small>one-time</small></p>
+            <button class="plan-cta" type="button" data-sub="lifetime" data-price="4999" data-name="Lifetime Online + Offline">Pay with QR &rarr;</button>
           </div>
-          <p class="life-link" style="margin-top:8px;"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us on Messenger →</a></p>
+          <p class="life-link" style="margin-top:8px;"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us on Messenger &rarr;</a></p>
         </article>
       </div>
-      <div class="addons" aria-label="Add-ons for Lifetime owners">
-        <div class="addon">
-          <span class="ad-ic" aria-hidden="true">+</span>
-          <span class="ad-txt"><b>Add Offline later</b><small>For Lifetime Online owners: the Windows / Mac app</small></span>
-          <span class="ad-price">₱2,499</span>
-          <button class="addon-cta plan-cta" type="button" data-sub="addon_offline" data-price="2499" data-name="Add Offline App later">Pay with QR →</button>
+      <details class="addons-d">
+        <summary>Already a Lifetime owner? Add the missing side</summary>
+        <div class="addons" aria-label="Add-ons for Lifetime owners">
+          <div class="addon">
+            <span class="ad-ic" aria-hidden="true">+</span>
+            <span class="ad-txt"><b>Add Offline later</b><small>For Lifetime Online owners: the Windows / Mac / Android app</small></span>
+            <span class="ad-price">&#8369;2,499</span>
+            <button class="addon-cta plan-cta" type="button" data-sub="addon_offline" data-price="2499" data-name="Add Offline App later">Pay with QR &rarr;</button>
+          </div>
+          <div class="addon">
+            <span class="ad-ic" aria-hidden="true">+</span>
+            <span class="ad-txt"><b>Add Online later</b><small>For Lifetime Offline owners: the online booth</small></span>
+            <span class="ad-price">&#8369;1,999</span>
+            <button class="addon-cta plan-cta" type="button" data-sub="addon_online" data-price="1999" data-name="Add Online Booth later">Pay with QR &rarr;</button>
+          </div>
         </div>
-        <div class="addon">
-          <span class="ad-ic" aria-hidden="true">+</span>
-          <span class="ad-txt"><b>Add Online later</b><small>For Lifetime Offline owners: the online booth</small></span>
-          <span class="ad-price">₱1,999</span>
-          <button class="addon-cta plan-cta" type="button" data-sub="addon_online" data-price="1999" data-name="Add Online Booth later">Pay with QR →</button>
-        </div>
+      </details>
+
+      <div class="pkg-divider">
+        <h3>Single event</h3>
+        <p>Just one date? Book it for 24 hours.</p>
       </div>
+      <div class="plans-event">
+        <article class="plan pro event">
+          <span class="tag">Per event</span>
+          <h3>Event Pass</h3>
+          <p class="for">Use it on a tablet or a laptop &middot; guest screen, auto-print &middot; online or offline app</p>
+          <div class="plan-footer">
+            <p class="price">&#8369;499 <small>/ event</small></p>
+            <button class="plan-cta" type="button" data-sub="laptop" data-price="499" data-name="Event Pass">Pay with QR &rarr;</button>
+          </div>
+        </article>
+      </div>
+
       <ul class="chips" aria-label="Included with every package">
-        <li>Per event: 24 hours on your event day</li>
+        <li>Event Pass: 24 hours on your event day</li>
         <li>Unlimited snaps</li>
         <li>Online gallery for 7 days</li>
-        <li>+ 1-hour practice code</li>
+        <li>Free trial mode to test first</li>
       </ul>
-      <p class="offline-note"><b>Offline app</b> for Windows and Mac: no internet needed at the venue. Photos save on
-        the laptop and guests get theirs by scanning a QR over the booth Wi-Fi.</p>
+      <p class="offline-note"><b>Offline app</b> for Windows, Mac and Android tablets: no internet needed at the venue.
+        Photos save on the device and guests get theirs by scanning a QR over the booth Wi-Fi.</p>
     </section>
 
     <section class="block" id="guides" aria-labelledby="gd">
@@ -2051,12 +2062,6 @@ Event Date:</pre>
           <button type="button" class="btn small" id="subCopyCodeBtn">Copy code</button>
         </div>
 
-        <div id="subPracticeBox" style="display:none;margin-top:10px;" class="sd-code-box">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:4px;width:100%;">1-Hour Practice Code:</div>
-          <span class="code-val" id="subPracticeCode">PB-XXXX-XXXX-XXXX</span>
-          <button type="button" class="btn small" id="subCopyPracticeBtn">Copy practice</button>
-        </div>
-
         <p style="font-size:12.5px;color:var(--muted);margin:10px 0 16px;" id="subCodeTip">Save this code. Once entered on your device, it
           stays unlocked. Timer counts down from your first event use.</p>
 
@@ -2095,7 +2100,6 @@ Event Date:</pre>
       var renewInput = document.getElementById('subExistingCode');
       var qrBackBtn = document.getElementById('subQrBackBtn');
       var copyCodeBtn = document.getElementById('subCopyCodeBtn');
-      var copyPracticeBtn = document.getElementById('subCopyPracticeBtn');
       var goBoothBtn = document.getElementById('subGoBoothBtn');
 
       var currentPlan = 'online', currentPrice = 799, currentOrderId = null;
@@ -2314,22 +2318,14 @@ Event Date:</pre>
         var code = data.code || 'PB-XXXX-XXXX-XXXX';
         document.getElementById('subFinalCode').textContent = code;
 
-        var practiceBox = document.getElementById('subPracticeBox');
-        if (data.practiceCode && practiceBox) {
-          practiceBox.style.display = 'block';
-          document.getElementById('subPracticeCode').textContent = data.practiceCode;
-        } else if (practiceBox) {
-          practiceBox.style.display = 'none';
-        }
-
         var subTitle = document.getElementById('subSuccessSubtitle');
         var tipEl = document.getElementById('subCodeTip');
         if (data.renewed) {
           subTitle.textContent = 'Your existing access code has been updated / extended!';
           tipEl.textContent = 'Your code stays active. Check your My Events portal for updated validity.';
-        } else if (data.practiceCode) {
-          subTitle.textContent = 'Your 24-hr event code + 1-hour practice code are active and ready.';
-          tipEl.textContent = 'Use the practice code to test your gear ahead of time. On your event day, enter your main code.';
+        } else if (data.plan === 'tablet' || data.plan === 'laptop') {
+          subTitle.textContent = 'Your 24-hour event code is active and ready.';
+          tipEl.textContent = 'Save this code. Enter it on your event day; it stays unlocked for 24 hours from first use.';
         } else if (data.plan && (data.plan.startsWith('life') || data.plan.startsWith('addon'))) {
           subTitle.textContent = 'Your lifetime access is unlocked for up to 5 devices!';
           tipEl.textContent = 'This code never expires and unlocks up to 5 devices simultaneously.';
@@ -2367,16 +2363,6 @@ Event Date:</pre>
           });
         };
 
-        if (copyPracticeBtn && data.practiceCode) {
-          copyPracticeBtn.onclick = function () {
-            navigator.clipboard.writeText(data.practiceCode).then(function () {
-              copyPracticeBtn.textContent = 'Copied!';
-              setTimeout(function () { copyPracticeBtn.textContent = 'Copy practice'; }, 2000);
-            }).catch(function () {
-              copyPracticeBtn.textContent = 'Copied!';
-            });
-          };
-        }
       }
     })();
   </script>

@@ -621,7 +621,7 @@
     /* monthly subscription plans */
     .plans-monthly {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 14px;
       margin: 20px 0;
     }
@@ -1635,20 +1635,24 @@
     </section>
 
     <section class="block" id="packages" aria-labelledby="pk">
-      <p class="label">Monthly Subscriptions</p>
-      <h2 id="pk">Here’s what I’d charge per month</h2>
-      <p class="sub">Pick your monthly plan, scan the PayMongo QR to pay, and your access code + setup guide are
+      <p class="label">Pricing</p>
+      <h2 id="pk">Simple pricing</h2>
+      <p class="sub">Pick a plan, scan the PayMongo QR to pay, and your access code + setup guide are
         unlocked immediately.</p>
 
-      <div class="plans-monthly" aria-label="Monthly Subscriptions">
+      <div class="pkg-divider">
+        <h3>Monthly</h3>
+        <p>Unlimited events for 30 days. Cancel anytime.</p>
+      </div>
+      <div class="plans-monthly" aria-label="Monthly plans">
         <article class="plan monthly">
           <span class="tag">Monthly</span>
           <h3>Online</h3>
-          <p class="for">iPad, tablet, phone, or laptop browser with internet</p>
+          <p class="for">iPad, tablet, phone or laptop browser · needs internet</p>
           <ul class="plan-list">
             <li>Unlimited photo sessions &amp; events for 30 days</li>
             <li>Online photo gallery for guests (7-day storage)</li>
-            <li>Custom Canva frames, logo, themes &amp; stickers</li>
+            <li>Custom frames, logo, themes &amp; stickers</li>
             <li>Print wirelessly with AirPrint or Mopria</li>
           </ul>
           <div class="plan-footer">
@@ -1657,31 +1661,15 @@
           </div>
         </article>
 
-        <article class="plan monthly">
-          <span class="tag">Monthly</span>
-          <h3>Offline (laptop app only)</h3>
-          <p class="for">Dedicated Windows / Mac app · zero venue internet needed</p>
-          <ul class="plan-list">
-            <li>Works 100% offline with no internet at the venue</li>
-            <li>Guests get photos over booth Wi-Fi with no internet</li>
-            <li>DSLR &amp; webcam support with automatic printing</li>
-            <li>Windows &amp; Mac desktop app activated for 30 days</li>
-          </ul>
-          <div class="plan-footer">
-            <p class="price">₱999 <small>/ month</small></p>
-            <button class="plan-cta" type="button" data-sub="offline" data-price="999" data-name="Offline (laptop app only)">Pay with QR →</button>
-          </div>
-        </article>
-
         <article class="plan monthly best">
-          <span class="tag" style="background:var(--red);color:#fff;">Best value · Optional</span>
+          <span class="tag" style="background:var(--red);color:#fff;">Best value</span>
           <h3>Online + Offline</h3>
-          <p class="for">Both: the online booth &amp; the offline desktop app</p>
+          <p class="for">The online booth plus the offline app (Windows, Mac &amp; Android tablet)</p>
           <ul class="plan-list">
-            <li>Full access to both online booth &amp; laptop offline app</li>
-            <li>Use tablets online OR laptops completely offline</li>
-            <li>Maximum flexibility for any venue, indoor or outdoor</li>
-            <li>Comprehensive PDF setup &amp; printing guides included</li>
+            <li>Everything in Online</li>
+            <li>Offline app: works with no internet at the venue</li>
+            <li>Guests get photos over booth Wi-Fi, no internet needed</li>
+            <li>DSLR &amp; webcam support with auto-print on laptop</li>
           </ul>
           <div class="plan-footer">
             <p class="price">₱1,299 <small>/ month</small></p>
@@ -1697,10 +1685,52 @@
       </div>
 
       <div class="pkg-divider">
-        <h3>Other ways to get photobooth4u</h3>
-        <p>Book per single event date, or own it for life.</p>
+        <h3>Lifetime</h3>
+        <p>Pay once. Every event, never expires, up to 5 devices.</p>
       </div>
+      <div class="plans">
+        <article class="plan wide">
+          <span class="tag">Lifetime</span>
+          <h3>Lifetime Online</h3>
+          <p class="for">Tablet or laptop in the browser · every event · never expires</p>
+          <div class="plan-footer">
+            <p class="price">₱2,999 <small>one-time</small></p>
+            <button class="plan-cta" type="button" data-sub="lifeonline" data-price="2999" data-name="Lifetime Online">Pay with QR →</button>
+          </div>
+        </article>
+        <article class="plan wide life">
+          <span class="tag">Best value</span>
+          <h3>Lifetime Online + Offline</h3>
+          <p class="for">The online booth plus the offline app (Windows, Mac &amp; Android tablet) that works with no internet</p>
+          <div class="plan-footer">
+            <p class="price">₱4,999 <small>one-time</small></p>
+            <button class="plan-cta" type="button" data-sub="lifetime" data-price="4999" data-name="Lifetime Online + Offline">Pay with QR →</button>
+          </div>
+          <p class="life-link" style="margin-top:8px;"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us on Messenger →</a></p>
+        </article>
+      </div>
+      <details class="addons-fold" style="margin:12px 0 0;">
+        <summary style="cursor:pointer;font-size:14px;color:var(--muted,#6b6560);padding:6px 2px;">Already a Lifetime owner? Add the missing side</summary>
+        <div class="addons" aria-label="Add-ons for Lifetime owners" style="margin-top:8px;">
+          <div class="addon">
+            <span class="ad-ic" aria-hidden="true">+</span>
+            <span class="ad-txt"><b>Add Offline later</b><small>For Lifetime Online owners: the Windows / Mac / Android app</small></span>
+            <span class="ad-price">₱2,499</span>
+            <button class="addon-cta plan-cta" type="button" data-sub="addon_offline" data-price="2499" data-name="Add Offline App later">Pay with QR →</button>
+          </div>
+          <div class="addon">
+            <span class="ad-ic" aria-hidden="true">+</span>
+            <span class="ad-txt"><b>Add Online later</b><small>For Lifetime Offline owners: the online booth</small></span>
+            <span class="ad-price">₱1,999</span>
+            <button class="addon-cta plan-cta" type="button" data-sub="addon_online" data-price="1999" data-name="Add Online Booth later">Pay with QR →</button>
+          </div>
+        </div>
+      </details>
 
+      <div class="pkg-divider">
+        <h3>Single event</h3>
+        <p>Just one date? Book it for 24 hours.</p>
+      </div>
       <div class="plans">
         <article class="plan event">
           <span class="tag">Per event</span>
@@ -1720,57 +1750,14 @@
             <button class="plan-cta" type="button" data-sub="laptop" data-price="599" data-name="Laptop Booth">Pay with QR →</button>
           </div>
         </article>
-        <article class="plan">
-          <span class="tag">Lifetime</span>
-          <h3>Lifetime Online</h3>
-          <p class="for">Tablet or laptop in the browser · every event · never expires · multiple devices</p>
-          <div class="plan-footer">
-            <p class="price">₱2,999 <small>one-time</small></p>
-            <button class="plan-cta" type="button" data-sub="lifeonline" data-price="2999" data-name="Lifetime Online">Pay with QR →</button>
-          </div>
-        </article>
-        <article class="plan">
-          <span class="tag">Lifetime</span>
-          <h3>Lifetime Offline</h3>
-          <p class="for">The Windows / Mac app, works with no internet · every event · never expires</p>
-          <div class="plan-footer">
-            <p class="price">₱3,499 <small>one-time</small></p>
-            <button class="plan-cta" type="button" data-sub="lifeoffline" data-price="3499" data-name="Lifetime Offline">Pay with QR →</button>
-          </div>
-        </article>
-        <article class="plan life">
-          <span class="tag">Best value</span>
-          <h3>Lifetime Online + Offline</h3>
-          <p class="for">Both: the online booth and the Windows / Mac app that works with no internet</p>
-          <div class="plan-footer">
-            <p class="price">₱4,999 <small>one-time</small></p>
-            <button class="plan-cta" type="button" data-sub="lifetime" data-price="4999" data-name="Lifetime Online + Offline">Pay with QR →</button>
-          </div>
-          <p class="life-link" style="margin-top:8px;"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us on Messenger →</a></p>
-        </article>
-      </div>
-      <div class="addons" aria-label="Add-ons for Lifetime owners">
-        <div class="addon">
-          <span class="ad-ic" aria-hidden="true">+</span>
-          <span class="ad-txt"><b>Add Offline later</b><small>For Lifetime Online owners: the Windows / Mac app</small></span>
-          <span class="ad-price">₱2,499</span>
-          <button class="addon-cta plan-cta" type="button" data-sub="addon_offline" data-price="2499" data-name="Add Offline App later">Pay with QR →</button>
-        </div>
-        <div class="addon">
-          <span class="ad-ic" aria-hidden="true">+</span>
-          <span class="ad-txt"><b>Add Online later</b><small>For Lifetime Offline owners: the online booth</small></span>
-          <span class="ad-price">₱1,999</span>
-          <button class="addon-cta plan-cta" type="button" data-sub="addon_online" data-price="1999" data-name="Add Online Booth later">Pay with QR →</button>
-        </div>
       </div>
       <ul class="chips" aria-label="Included with every package">
-        <li>Per event: 24 hours on your event day</li>
         <li>Unlimited snaps</li>
         <li>Online gallery for 7 days</li>
         <li>+ 1-hour practice code</li>
       </ul>
-      <p class="offline-note"><b>Offline app</b> for Windows and Mac: no internet needed at the venue. Photos save on
-        the laptop and guests get theirs by scanning a QR over the booth Wi-Fi.</p>
+      <p class="offline-note"><b>Offline app</b> for Windows, Mac and Android tablets: no internet needed at the venue.
+        Photos save on the device and guests get theirs by scanning a QR over the booth Wi-Fi.</p>
     </section>
 
     <section class="block" id="guides" aria-labelledby="gd">

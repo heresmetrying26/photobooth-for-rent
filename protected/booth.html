@@ -12168,8 +12168,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     p = p && typeof p === 'object' ? p : {};
     var price = Math.floor(Number(p.price));
     var mode = PAY_MODES.indexOf(p.mode) >= 0 ? p.mode : 'off';
-    if(DESKTOP && mode === 'qr') mode = 'off';          // QR payments need the internet version
-    if(DESKTOP && mode === 'both') mode = 'voucher';
+    var noQr = DESKTOP || !!(window.__PB && window.__PB.offline);   // Android offline mode sets __PB.offline
+    if(noQr && mode === 'qr') mode = 'off';            // QR payments need the internet version
+    if(noQr && mode === 'both') mode = 'voucher';
     return { mode: mode, price: price >= 20 && price <= 20000 ? price : 100, prints: Math.max(0, Math.min(5, Math.floor(Number(p.prints) || 0))) };
   }
   function payActive(){ return payOn() && payCfg.mode !== 'off'; }

@@ -468,6 +468,8 @@ class MainActivity : AppCompatActivity() {
                     append("window.__PB.desktop={v:").append(jsStr(AppLicence.APP_VERSION)).append(",os:'android'};")
                     // Tells the booth that photos are saved by this app and shared over the booth Wi-Fi
                     append("window.__PB.android=true;")
+                    // Offline mode: the booth hides QR payment (it needs the internet); vouchers and GIFs still work
+                    append("window.__PB.offline=true;")
                     // Mark it as a rental-style session so all features are visible
                     append("window.__PB.type='rental';")
                     append("window.__PB.gifOpt=").append(gifOpt).append(";")
@@ -602,9 +604,9 @@ class MainActivity : AppCompatActivity() {
 
         AlertDialog.Builder(this)
             .setTitle("Booth Configuration")
-            .setMessage("This tablet boots the bundled booth (no internet). Save a URL only if you want the live website instead.")
+            .setMessage("Choose how this tablet runs.\n\nOffline: works with no internet (no QR payment; photos, GIFs and vouchers still work).\n\nOnline: opens the live website below (QR payment available, needs internet).")
             .setView(input)
-            .setPositiveButton("Save live URL") { _, _ ->
+            .setPositiveButton("Online (live site)") { _, _ ->
                 val newUrl = input.text.toString().trim()
                 if (newUrl.isNotBlank()) {
                     saveUrl(newUrl)
@@ -614,7 +616,7 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "Loading $newUrl", Toast.LENGTH_SHORT).show()
                 }
             }
-            .setNeutralButton("Bundled booth (offline)") { _, _ ->
+            .setNeutralButton("Offline") { _, _ ->
                 setUseLiveUrl(false)
                 offlineLoaded = false
                 bootWithLicence()

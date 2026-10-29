@@ -207,6 +207,24 @@ export function getPlanDeliverables(planKey, code) {
     desc: 'Step-by-step setup for DNP RX1HS, DS620, DS40 with 2×6 strip auto-cut'
   });
   links.push({
+    id: 'printers-list',
+    name: 'Which Printers Work',
+    url: '/printers/',
+    desc: 'DNP, HiTi, Citizen, Mitsubishi, Sinfonia, Selphy, Epson and thermal printers'
+  });
+  links.push({
+    id: 'mitsubishi-guide',
+    name: 'Mitsubishi Printer Guide',
+    url: '/how-to-print-mitsubishi/',
+    desc: 'Mitsubishi CP-D70DW to CP-D90DW, CP-K60DW-S, CP-M1E on Windows and Mac'
+  });
+  links.push({
+    id: 'sinfonia-guide',
+    name: 'Sinfonia Printer Guide',
+    url: '/how-to-print-sinfonia/',
+    desc: 'Sinfonia Color Stream CS2, S2145, S3 on Windows and Mac'
+  });
+  links.push({
     id: 'citizen-guide',
     name: 'Citizen Printer Guide',
     url: '/how-to-print-citizen/',

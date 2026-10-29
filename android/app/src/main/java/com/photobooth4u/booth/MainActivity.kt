@@ -45,6 +45,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import java.io.ByteArrayInputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
 class MainActivity : AppCompatActivity() {
 
@@ -88,6 +90,43 @@ class MainActivity : AppCompatActivity() {
     private var pageErrorToasts = 0
 
     private val REQ_CAMERA_PERMISSION = 2001
+
+    // ---- New version prompt ----
+    // At launch (never mid-session) ask the site for the newest tablet app; when this one is older, offer the
+    // download. "Update" opens the APK in the browser, and Android then offers to install it over this app.
+    private fun checkForAppUpdate() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        if (now - prefs.getLong("update_checked", 0L) < 6 * 3600_000L || !isNetworkAvailable()) return
+        Thread {
+            try {
+                val c = URL(BASE_URL + "api/updates").openConnection() as HttpURLConnection
+                c.connectTimeout = 6000; c.readTimeout = 6000
+                val body = c.inputStream.bufferedReader().use { it.readText() }
+                prefs.edit().putLong("update_checked", now).apply()
+                val a = JSONObject(body).optJSONObject("android") ?: return@Thread
+                val latest = a.optString("version"); val url = a.optString("url")
+                val mine = packageManager.getPackageInfo(packageName, 0).versionName ?: return@Thread
+                if (latest.isEmpty() || !url.startsWith("https://") || !versionNewer(latest, mine)) return@Thread
+                if (now < prefs.getLong("update_snooze_" + latest, 0L)) return@Thread
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    AlertDialog.Builder(this)
+                        .setTitle("New version available")
+                        .setMessage("photobooth4u " + latest + " is ready (this tablet has " + mine + "). Update between events, not during a session.")
+                        .setPositiveButton("Update") { _, _ -> try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (e: Exception) { } }
+                        .setNegativeButton("Later") { _, _ -> prefs.edit().putLong("update_snooze_" + latest, System.currentTimeMillis() + 24 * 3600_000L).apply() }
+                        .show()
+                }
+            } catch (e: Exception) { /* offline or the site is down: try again next launch */ }
+        }.start()
+    }
+
+    private fun versionNewer(a: String, b: String): Boolean {
+        val x = a.split('.').map { it.toIntOrNull() ?: 0 }; val y = b.split('.').map { it.toIntOrNull() ?: 0 }
+        for (i in 0 until maxOf(x.size, y.size)) { val p = x.getOrElse(i) { 0 }; val q = y.getOrElse(i) { 0 }; if (p != q) return p > q }
+        return false
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -155,6 +194,7 @@ class MainActivity : AppCompatActivity() {
         // a network right now — otherwise there's no point waiting on a request that can
         // only fail, so go straight to the offline booth.
         bootWithLicence()
+        checkForAppUpdate()
         checkinHandler.postDelayed(checkinLoop, 10 * 60_000L)
     }
 

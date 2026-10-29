@@ -43,7 +43,22 @@ jobs:
         run: |
           pip install Pillow --quiet
           python android/scripts/gen_icons.py android/resources/icon_source.png
+      - name: Load the signing key (when the secrets are set)
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/photobooth4u.keystore"
+            echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/photobooth4u.keystore" >> "$GITHUB_ENV"
+            echo "Signing with the fixed release key"
+          else
+            echo "No signing secrets: using a throwaway debug key (updates will need an uninstall first)"
+          fi
       - name: Build Debug APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Stage APK for release
         run: |

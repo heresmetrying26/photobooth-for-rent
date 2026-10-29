@@ -35,7 +35,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.10', date: '2026-10-29', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.10/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.17', date: '2026-10-29', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.17/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';

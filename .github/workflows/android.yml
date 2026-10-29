@@ -66,6 +66,7 @@ jobs:
           [ -z "$KS_PW" ] && { echo "::error::Secret ANDROID_KEYSTORE_PASSWORD is empty or missing"; exit 1; }
           [ -z "$KS_ALIAS" ] && { echo "::error::Secret ANDROID_KEY_ALIAS is empty or missing"; exit 1; }
           [ -z "$KEY_PW" ] && { echo "::error::Secret ANDROID_KEY_PASSWORD is empty or missing"; exit 1; }
+          echo "::notice::Keystore file: $(stat -c %s "$f") bytes, sha256 $(sha256sum "$f" | cut -c1-16); password length ${#KS_PW}; has whitespace: $(printf %s "$KS_PW" | grep -c '[[:space:]]'); contains '=': $(printf %s "$KS_PW" | grep -c '=')"
           if ! keytool -list -keystore "$f" -storepass "$KS_PW" > "$RUNNER_TEMP/ks.txt" 2>&1; then
             echo "::error::Cannot open the keystore: ANDROID_KEYSTORE_BASE64 is not the full keystore text, or ANDROID_KEYSTORE_PASSWORD is wrong ($(head -c 120 "$RUNNER_TEMP/ks.txt" | tr -s '[:space:]' ' '))"; exit 1
           fi

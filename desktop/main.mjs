@@ -7,15 +7,16 @@
 // The internet is only needed to activate (or paste an offline key) and, for a
 // lifetime code, once every few weeks to renew the licence.
 import { app, BrowserWindow, protocol, session, ipcMain, shell, dialog, Menu, net, nativeImage, powerSaveBlocker, screen, clipboard } from 'electron';
-import { readFileSync, existsSync, statSync, createReadStream, writeFileSync, mkdirSync } from 'node:fs';
-import { join, dirname, normalize, extname, sep } from 'node:path';
+import { readFileSync, existsSync, statSync, createReadStream, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { join, dirname, normalize, extname, sep, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createDecipheriv, createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
-import { initPhotos, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf } from './lib/photos.mjs';
+import { initPhotos, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
+import * as SPIN from './lib/spin.mjs';
 import { freeCamera, guardCamera } from './lib/camfree.mjs';
 import * as U from './lib/updater.mjs';
 
@@ -229,6 +230,57 @@ function wireIpc() {
     setPhotosRoot(dir); settings.photos = dir; saveSettings();
     return dir;
   });
+  // Photographer desk: a folder the photographer's photos arrive in (camera software, FTP or Wi-Fi tool saves there).
+  // The page only ever reads image files directly inside the folder the operator picked.
+  const DESK_EXT = /\.(jpe?g|png|webp)$/i;
+  ipcMain.handle('pb4u:deskFolder', () => settings.deskDir || null);
+  ipcMain.handle('pb4u:deskChoose', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Folder the photographer\u2019s photos arrive in', defaultPath: settings.deskDir || photosRoot(), properties: ['openDirectory', 'createDirectory'] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    settings.deskDir = r.filePaths[0]; saveSettings();
+    return settings.deskDir;
+  });
+  ipcMain.handle('pb4u:deskScan', () => {
+    const dir = settings.deskDir; if (!dir || !existsSync(dir)) return [];
+    try {
+      return readdirSync(dir).filter((n) => DESK_EXT.test(n)).map((n) => { try { const st = statSync(join(dir, n)); return st.isFile() ? { name: n, size: st.size, mtime: st.mtimeMs } : null; } catch { return null; } })
+        .filter(Boolean).sort((x, y) => y.mtime - x.mtime).slice(0, 300);
+    } catch { return []; }
+  });
+  ipcMain.handle('pb4u:deskRead', (e, name) => {
+    const dir = settings.deskDir; const n = basename(String(name || ''));
+    if (!dir || !DESK_EXT.test(n)) return null;
+    try { return readFileSync(join(dir, n)); } catch { return null; }
+  });
+  // 360 videos: the inbox folder, the phone send page, and sharing a clip into the event
+  const spinInfo = () => ({ dir: spinDirNow(), sendUrl: spinSendUrl(), previewBase: spinPreviewBase() });
+  ipcMain.handle('pb4u:spinInfo', () => spinInfo());
+  ipcMain.handle('pb4u:spinChoose', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Folder the 360 videos are saved to', defaultPath: spinDirNow() || photosRoot(), properties: ['openDirectory', 'createDirectory'] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    settings.spinDir = r.filePaths[0]; saveSettings(); setSpinDir(settings.spinDir);
+    return spinInfo();
+  });
+  ipcMain.handle('pb4u:spinScan', () => spinList());
+  ipcMain.handle('pb4u:spinShare', (e, name, folderKey, subfolder, outName) => spinShare(name, folderKey, subfolder, outName));
+  // Editing (ffmpeg): environment, one job per clip, progress, cancel, the music file, the overlay picture
+  ipcMain.handle('pb4u:spinEnv', async () => ({ ffmpeg: await SPIN.hasFfmpeg(), music: settings.spinMusic ? basename(settings.spinMusic) : '' }));
+  ipcMain.handle('pb4u:spinMusic', async (e, clear) => {
+    if (clear) { delete settings.spinMusic; saveSettings(); return { music: '' }; }
+    const r = await dialog.showOpenDialog(win, { title: 'Music for the 360 videos', properties: ['openFile'], filters: [{ name: 'Audio', extensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'flac'] }] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    settings.spinMusic = r.filePaths[0]; saveSettings();
+    return { music: basename(settings.spinMusic) };
+  });
+  ipcMain.handle('pb4u:spinOverlay', (e, bytes) => SPIN.saveOverlay(bytes));
+  ipcMain.handle('pb4u:spinProcess', (e, req) => {
+    const d = spinDirNow(); const n = basename(String((req && req.name) || ''));
+    if (!d || !n || !/\.(mp4|webm|mov|m4v)$/i.test(n)) return { error: 'No video' };
+    const music = settings.spinMusic && existsSync(settings.spinMusic) ? settings.spinMusic : null;
+    return SPIN.enqueue({ inputPath: join(d, n), outDir: spinEditedDir(), label: String((req && req.label) || ''), overlay: SPIN.overlayPath(req && req.overlay), music, options: (req && req.options) || {} });
+  });
+  ipcMain.handle('pb4u:spinJob', (e, id) => SPIN.jobInfo(id));
+  ipcMain.handle('pb4u:spinCancel', (e, id) => SPIN.cancelJob(id));
   ipcMain.handle('pb4u:copy', (e, t) => { clipboard.writeText(String(t || '')); return true; });
   ipcMain.handle('pb4u:openUrl', (e, u) => { openOutside(String(u || '')); return true; });
   ipcMain.handle('pb4u:quit', () => { app.quit(); return true; });
@@ -258,6 +310,8 @@ app.whenReady().then(async () => {
     root: settings.photos || join(app.getPath('pictures'), 'photobooth4u'), dataDir: dataDir(),
     makeThumb: async (f) => { const im = nativeImage.createFromPath(f); if (im.isEmpty()) return null; const s = im.getSize(); return im.resize(s.width > s.height ? { height: 360, quality: 'good' } : { width: 360, quality: 'good' }).toJPEG(72); }
   });
+  setSpinDir(settings.spinDir || null);
+  SPIN.configure({ buildDir: BUILD, temp: join(app.getPath('temp'), 'photobooth4u') });
   initHelper({ workerPath: join(BUILD, 'camera-worker.ps1') });
   await startShareServer();
   protocol.handle('app', handle);

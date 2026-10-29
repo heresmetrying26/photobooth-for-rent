@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.23', date: '2026-10-29' },
   { version: '1.0.22', date: '2026-10-28' },
   { version: '1.0.21', date: '2026-10-28' },
   { version: '1.0.20', date: '2026-10-28' },
@@ -70,6 +71,17 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-29', title: 'Vintage looks, photographer desk, flipbook and a 360 video desk', for: ['website', 'app'], app: '1.0.23',
+    items: [
+      'Vintage looks: Film, Faded, 70s, Instant and Noir, with grain, darker corners and a warm light leak, plus an optional orange date stamp on each photo. They are in the filter picker, on the guests’ filter strip and on GIFs.',
+      'Photographer desk: a roving photographer’s photos go into your frame, print and get a QR code. Drop or choose the photos, or (laptop app) pick a folder the camera software saves into and new photos appear by themselves. Quick shot turns a phone or tablet into a handheld camera: every tap is saved quietly and you show the QR when a guest asks.',
+      'Flipbook: guests record a short clip and the booth prints its frames as numbered cards on sheets (cut, stack, staple), with a cover card and a back card. They also get an animated GIF QR code.',
+      '360 video desk: videos from the 360 arm’s camera arrive from a folder or from the recording phone’s browser. The laptop app edits them (slow motion, speed ramp or boomerang, your frame, logo and title, music, trim) and shares the finished video with a QR code. The website shares the original video, up to about 28 MB.',
+      'All of these are included with every package and switched on by default. In Admin you can switch any of them off for a client.',
+      'New Event Pass for ₱499 (24 hours, tablet or laptop) replaces the Tablet and Laptop booth passes, and the 1-hour practice code is gone: use the free trial to test first.'
+    ]
+  },
   {
     date: '2026-10-29', title: 'Android tablet app now needs a code, same as the laptop app', for: ['website'],
     items: [

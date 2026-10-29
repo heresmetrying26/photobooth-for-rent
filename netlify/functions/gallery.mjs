@@ -52,12 +52,13 @@ export default safe(async (req) => {
   if (!data || !data.ok || !Array.isArray(data.files)) {
     return json({ ok: false, error: data && data.ok ? 'not-ready' : 'not-found' }, data && data.ok ? 503 : 404);
   }
-  const files = data.files.filter((x) => x && ID_RE.test(x.id) && /^image\/(png|jpeg|webp|gif)$/.test(x.mime || '')).slice(0, 2000).map((x) => ({
+  // Videos are listed too, but never relayed here (too big): the page plays them with Drive's own player.
+  const files = data.files.filter((x) => x && ID_RE.test(x.id) && /^(image\/(png|jpeg|webp|gif)|video\/(mp4|quicktime|webm|x-m4v))$/.test(x.mime || '')).slice(0, 2000).map((x) => ({
     id: x.id,
     name: String(x.name || '').slice(0, 120),
     mime: x.mime,
     t: Number(x.t) || 0,
-    src: '/api/gallery?img=' + x.id + '&s=' + sigOf(x.id)
+    src: /^video\//.test(x.mime) ? '' : '/api/gallery?img=' + x.id + '&s=' + sigOf(x.id)
   }));
   return new Response(JSON.stringify({
     ok: true,

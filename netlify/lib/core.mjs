@@ -152,13 +152,22 @@ export const STALE_DEVICE_DAYS = 7;
 // (or delLicense()) which keeps the index in step. If it is ever missing or
 // out of date, Admin -> "Rebuild index" (or the first list) rebuilds it.
 const INDEX_KEY = 'index-v1';
+// Extras every package includes: vintage looks, photographer desk, flipbook, video guestbook, 360 video.
+// Missing = on, so every old code has them; an admin can switch one off for a client.
+export const EXTRA_KEYS = ['vintage', 'roving', 'flipbook', 'video', 'spin360'];
+export function normExtras(x) {
+  const o = {};
+  for (const k of EXTRA_KEYS) o[k] = !(x && x[k] === false);
+  return o;
+}
+export const extrasOf = (rec) => normExtras(rec && rec.extras);
 export function summaryOf(rec) {
   return {
     key: rec.key, code: rec.code, label: rec.label || '', folderName: rec.folderName || '', email: rec.email || '',
     kind: rec.kind || 'rental', parent: rec.parent || null, bonusKey: rec.bonusKey || null,
     lifetime: !!rec.lifetime, days: rec.days || 0, minutes: rec.minutes || null, startsAt: rec.startsAt || null,
     status: rec.status, redeemedAt: rec.redeemedAt || null, expiresAt: rec.expiresAt || null,
-    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional, gifOpt: !!rec.gifOpt, retakeOpt: !!rec.retakeOpt, payOpt: !!rec.payOpt, offlineOpt: !!rec.offlineOpt, offlineOnly: !!rec.offlineOnly, appsUsed: devicesOf(rec).filter((d) => d.app).length, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0,
+    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional, gifOpt: !!rec.gifOpt, retakeOpt: !!rec.retakeOpt, payOpt: !!rec.payOpt, offlineOpt: !!rec.offlineOpt, offlineOnly: !!rec.offlineOnly, appsUsed: devicesOf(rec).filter((d) => d.app).length, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0, extras: extrasOf(rec),
     print: !!(rec.print && rec.print.enabled), createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null
   };
 }
@@ -382,7 +391,7 @@ export async function checkLicense(token, deviceId) {
     if (p.exp <= now) return { valid: false, reason: 'trial-ended' };
     const s = await getSettings();
     if (!s.trialEnabled) return { valid: false, reason: 'trial-disabled' };
-    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes, { eventLimit: s.trialPrintEventLimit, sessionLimit: s.trialPrintSessionLimit }), traditional: !!s.trialTraditional, gifOpt: s.trialGifOpt !== false, retakeOpt: !!s.trialRetakeOpt, lockOpt: !!s.trialLockOpt, pinResetAt: 0 };
+    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes, { eventLimit: s.trialPrintEventLimit, sessionLimit: s.trialPrintSessionLimit }), traditional: !!s.trialTraditional, gifOpt: s.trialGifOpt !== false, retakeOpt: !!s.trialRetakeOpt, lockOpt: !!s.trialLockOpt, extras: normExtras(null), pinResetAt: 0 };
   }
 
   const rec = await licenses().get(p.k, { type: 'json' });
@@ -415,6 +424,7 @@ export async function checkLicense(token, deviceId) {
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes, rec.print),
     traditional: !!rec.traditional,
     gifOpt: !!rec.gifOpt,
+    extras: extrasOf(rec),
     retakeOpt: !!rec.retakeOpt,
     payOpt: !!rec.payOpt,
     lockOpt: !!rec.lockOpt,

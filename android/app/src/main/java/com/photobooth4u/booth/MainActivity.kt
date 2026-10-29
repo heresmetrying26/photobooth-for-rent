@@ -513,6 +513,9 @@ class MainActivity : AppCompatActivity() {
                 val lockOpt = feat?.optBoolean("lockOpt", true) ?: true
                 val payOpt = feat?.optBoolean("vouchers", false) ?: false
                 val traditional = feat?.optBoolean("traditional", false) ?: false
+                // Extras every package includes (missing = on): vintage looks, photographer desk, flipbook, video guestbook
+                val exObj = feat?.optJSONObject("extras")
+                val extrasJs = listOf("vintage", "roving", "flipbook", "video", "spin360").joinToString(",") { it + ":" + (exObj?.optBoolean(it, true) ?: true) }
                 // null means a lifetime code (desktop's own "never expires" sentinel, matching netlify/lib/core.mjs LIFETIME_EXP)
                 val expMs = activeExp ?: 253402300799000L
 
@@ -529,6 +532,7 @@ class MainActivity : AppCompatActivity() {
                     // Mark it as a rental-style session so all features are visible
                     append("window.__PB.type='rental';")
                     append("window.__PB.gifOpt=").append(gifOpt).append(";")
+                    append("window.__PB.extras={").append(extrasJs).append("};")
                     append("window.__PB.retakeOpt=").append(retakeOpt).append(";")
                     append("window.__PB.lockOpt=").append(lockOpt).append(";")
                     append("window.__PB.payOpt=").append(payOpt).append(";")

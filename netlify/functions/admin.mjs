@@ -1,6 +1,6 @@
 import {
   safe, json, licenses, meta, getSettings, sign, verifyToken, sha,
-  newCode, displayCode, normCode, throttle, recordFail, clearFail, normPrint, DAY, MIN, BONUS_SUBFOLDER,
+  newCode, displayCode, normCode, throttle, recordFail, clearFail, normPrint, extrasOf, normExtras, EXTRA_KEYS, DAY, MIN, BONUS_SUBFOLDER,
   LIFETIME_EXP, MAX_DEVICES, devicesOf, setDevices, printsStore
 , putLicense, delLicense, readIndex, rebuildIndex, windowEnd } from '../lib/core.mjs';
 import { timingSafeEqual, createHash } from 'node:crypto';
@@ -251,7 +251,7 @@ export default safe(async (req, context) => {
         const key = await freshKey(store);
         // Keep a dedicated Drive folder name. If neither field was supplied,
         // fall back to the code so the renter never has to configure Drive.
-        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, gifOpt: b.gifOpt !== false, retakeOpt: b.retakeOpt !== false, lockOpt: b.lockOpt !== false, payOpt: b.payOpt !== false, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
+        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, gifOpt: b.gifOpt !== false, extras: normExtras(b.extras), retakeOpt: b.retakeOpt !== false, lockOpt: b.lockOpt !== false, payOpt: b.payOpt !== false, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
         await putLicense(store, key, rec);
         created.push(rec);
       }
@@ -547,6 +547,19 @@ export default safe(async (req, context) => {
       await putLicense(store, key, rec);
       await syncBonus(rec, { gifOpt: rec.gifOpt });
       return json({ ok: true, gifOpt: rec.gifOpt });
+    }
+
+    case 'extra': { // one included extra on/off for this code (vintage, roving, flipbook, video); applies within ~5 minutes
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      const name = String(b.name || '');
+      if (!EXTRA_KEYS.includes(name)) return json({ error: 'Unknown option.' }, 400);
+      const cur = extrasOf(rec);
+      cur[name] = typeof b.on === 'boolean' ? b.on : !cur[name];
+      rec.extras = cur;
+      await putLicense(store, key, rec);
+      await syncBonus(rec, { extras: cur });
+      return json({ ok: true, extras: cur });
     }
 
     case 'traditional': { // laptop + guest screen mode; applies to an open booth within ~5 minutes

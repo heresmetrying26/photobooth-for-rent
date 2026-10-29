@@ -846,6 +846,67 @@
 
   .hidden{display:none !important;}
 
+  /* Photographer desk (included extra) */
+  .desk-ov{position:fixed; inset:0; z-index:9500; background:rgba(28,26,30,.62); display:flex; align-items:center; justify-content:center; padding:16px;}
+  .desk-ov[hidden]{display:none;}
+  .desk-card{background:#fff; border-radius:18px; width:min(960px,100%); max-height:100%; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  .desk-head{display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--line);}
+  .desk-head b{font:800 18px 'Manrope',sans-serif;} .desk-head .sp{flex:1;}
+  .desk-btn{border:1.5px solid var(--line); background:#fff; border-radius:999px; padding:8px 16px; font:700 14px 'Manrope',sans-serif; cursor:pointer; color:var(--ink);}
+  .desk-btn.primary{background:var(--blue-deep); border-color:var(--blue-deep); color:#fff;}
+  .desk-btn:disabled{opacity:.4; cursor:not-allowed;}
+  .desk-drop{margin:14px 18px 0; padding:14px; border:2px dashed var(--line); border-radius:14px; text-align:center; font:600 14px 'Manrope',sans-serif; color:var(--ink-dim);}
+  .desk-drop.over{border-color:var(--blue-deep); background:var(--tint);}
+  .desk-watch{margin:8px 18px 0; font:600 13px 'Manrope',sans-serif; color:var(--ink-dim); display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .desk-hint{margin:10px 18px 0; font:600 13px 'Manrope',sans-serif; color:var(--ink-dim);}
+  .desk-grid{padding:12px 18px; overflow:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; flex:1; min-height:120px;}
+  .desk-item{position:relative; padding:0; border:3px solid transparent; border-radius:12px; overflow:hidden; background:#eee; cursor:pointer; aspect-ratio:1/1;}
+  .desk-item img{width:100%; height:100%; object-fit:cover; display:block;}
+  .desk-item.sel{border-color:var(--blue-deep);}
+  .desk-item.used{opacity:.45;}
+  .desk-item .badge{position:absolute; top:6px; left:6px; min-width:26px; height:26px; border-radius:13px; background:var(--blue-deep); color:#fff; font:800 13px 'Manrope',sans-serif; display:flex; align-items:center; justify-content:center; padding:0 6px;}
+  .desk-item .done{position:absolute; bottom:6px; right:6px; background:#1f8a4c; color:#fff; font:800 11px 'Manrope',sans-serif; padding:2px 8px; border-radius:999px;}
+  .desk-foot{display:flex; gap:10px; padding:12px 18px; border-top:1px solid var(--line); align-items:center;}
+  .desk-foot .sp{flex:1;}
+  /* Quick shot (included extra) */
+  .qs-ov{position:fixed; inset:0; z-index:9600; background:#000; display:flex; align-items:center; justify-content:center;}
+  .qs-ov[hidden]{display:none;}
+  .qs-ov video{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;}
+  .qs-flash{position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; transition:opacity .35s;}
+  .qs-flash.on{opacity:.85; transition:none;}
+  .qs-top{position:absolute; top:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:max(12px, env(safe-area-inset-top)) 14px 10px; background:linear-gradient(rgba(0,0,0,.55),transparent);}
+  .qs-btn{border:0; background:rgba(255,255,255,.18); color:#fff; border-radius:999px; padding:10px 18px; font:700 15px 'Manrope',sans-serif; cursor:pointer; backdrop-filter:blur(6px);}
+  .qs-count{color:#fff; font:700 14px 'Manrope',sans-serif; text-shadow:0 1px 4px rgba(0,0,0,.6);}
+  .qs-shutter{position:absolute; bottom:max(26px, env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); width:78px; height:78px; border-radius:50%; background:#fff; border:6px solid rgba(255,255,255,.55); box-shadow:0 0 0 3px rgba(0,0,0,.35); cursor:pointer; padding:0;}
+  .qs-shutter:active{transform:translateX(-50%) scale(.92);}
+  .qs-strip{position:absolute; left:0; right:0; bottom:calc(max(26px, env(safe-area-inset-bottom)) + 96px); display:flex; gap:8px; overflow-x:auto; padding:0 14px; flex-direction:row-reverse; justify-content:flex-end;}
+  .qs-thumb{position:relative; flex:none; width:64px; height:64px; border-radius:10px; overflow:hidden; border:2px solid rgba(255,255,255,.7); background:#222; padding:0; cursor:pointer;}
+  .qs-thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+  .qs-thumb i{position:absolute; right:4px; bottom:4px; width:12px; height:12px; border-radius:50%; background:#aaa; border:2px solid #fff;}
+  .qs-thumb.ready i{background:#2ea66b;} .qs-thumb.queued i{background:#f0a020;} .qs-thumb.error i{background:#d33;}
+  .qs-panel{position:absolute; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; padding:16px;}
+  .qs-panel[hidden]{display:none;}
+  .qs-card{background:#fff; border-radius:18px; padding:20px; width:min(360px,100%); text-align:center;}
+  .qs-qr img{width:min(260px,70vw); height:auto; display:block; margin:0 auto;}
+  .qs-note{margin:10px 0 14px; font:600 14px 'Manrope',sans-serif; color:var(--ink-dim);}
+  .qs-row{display:flex; gap:10px; justify-content:center;}
+  /* 360 desk (included extra) */
+  .desk-item video{width:100%; height:100%; object-fit:cover; display:block; background:#111;}
+  .desk-item .nm{position:absolute; left:0; right:0; bottom:0; padding:14px 6px 4px; background:linear-gradient(transparent,rgba(0,0,0,.65)); color:#fff; font:700 11px 'Manrope',sans-serif; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .desk-item .done.err{background:#d33;} .desk-item .done.wait{background:#b7791f;}
+  .spin-send{margin:10px 18px 0; display:flex; gap:14px; align-items:center; font:600 13px 'Manrope',sans-serif; color:var(--ink-dim);}
+  .spin-qr img{width:110px; height:110px; display:block;}
+  .spin-sendtxt b{color:var(--ink);}
+  .spin-card{width:min(520px,100%);} .spin-card video{width:100%; max-height:46vh; background:#000; border-radius:12px; display:block;}
+  .spin-look{margin:10px 18px 0; padding:10px 12px; border:1.5px solid var(--line); border-radius:12px; background:#faf7f2; display:flex; flex-direction:column; gap:8px;}
+  .spin-row{display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; font:600 13px 'Manrope',sans-serif; color:var(--ink-dim);}
+  .spin-row select, .spin-row input[type=range]{font:600 13px 'Manrope',sans-serif; border:1.5px solid var(--line); border-radius:8px; padding:4px 6px; background:#fff; color:var(--ink);}
+  .spin-row .chk{display:inline-flex; gap:6px; align-items:center;} .spin-dim{color:var(--ink-dim);}
+  .spin-trim{margin:10px 0 0; font:600 13px 'Manrope',sans-serif; color:var(--ink-dim);} .spin-trim input{width:64px; border:1.5px solid var(--line); border-radius:8px; padding:4px 6px;}
+  .spin-prog{margin:10px 0 0; font:600 13px 'Manrope',sans-serif; color:var(--ink-dim);} .spin-prog .bar{height:10px; border-radius:6px; background:#e4ddd3; overflow:hidden; margin-bottom:4px;} .spin-prog .bar i{display:block; height:100%; width:0; background:#2ea66b; transition:width .4s;}
+  .spin-card .qs-row{flex-wrap:wrap;}
+  .desk-empty{grid-column:1/-1; text-align:center; color:var(--ink-dim); font:600 14px 'Manrope',sans-serif; padding:30px 0;}
+
   /* printing (only shown when the rental allows it) */
   .print-size-row{display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 10px;}
   .print-size-btn{
@@ -2824,8 +2885,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <button type="button" class="chip active" data-outmode="photo">📷 Photo only</button>
             <button type="button" class="chip" data-outmode="gif">🎞️ GIF only</button>
             <button type="button" class="chip" data-outmode="both">📷 + 🎞️ Both</button>
+            <button type="button" class="chip" data-outmode="flipbook">📖 Flipbook</button>
           </div>
           <p class="panel-hint" id="gifModeHint" style="margin:8px 0 0; color:var(--ink-dim);">Guests get a photo strip + QR code.</p>
+          <div id="flipbookOptions" style="display:none; margin-top:10px;">
+            <p class="panel-hint" style="margin:0 0 8px;">Guests record a short clip. The booth prints its frames as numbered cards on sheets: cut along the lines, stack in order and staple. Guests also get an animated GIF QR code. Prints use the paper size chosen in Print settings.</p>
+            <div class="stepper"><span class="lbl">Clip length</span><span class="ctl"><select id="flipSecSelect"><option value="4">4 s</option><option value="5">5 s</option><option value="6" selected>6 s</option><option value="7">7 s</option></select></span></div>
+            <div class="stepper"><span class="lbl">Frames in the book</span><span class="ctl"><select id="flipFramesSelect"><option value="16">16</option><option value="24">24</option><option value="30" selected>30</option><option value="40">40</option></select></span></div>
+            <label class="toggle-row" style="margin-top:10px;"><input type="checkbox" id="flipCoverToggle" checked> Cover card (event name and date, first in the stack)</label>
+            <label class="toggle-row" style="margin-top:6px;"><input type="checkbox" id="flipBackToggle" checked> Back card (&ldquo;Thank you!&rdquo;, last in the stack)</label>
+          </div>
           <div id="gifOptions" style="display:none; margin-top:10px;">
             <p class="panel-hint" style="margin:0;">GIF follows the session through the last shot, including timers and pauses. Speed is set automatically — 2× for sessions up to 24 s, 3× for longer ones. Resolution is up to 1280 × 720 when the camera feed supports it.</p>
           </div>
@@ -2907,8 +2976,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <button type="button" class="chip" data-filter="sepia">Sepia</button>
             <button type="button" class="chip" data-filter="warm">Warm</button>
             <button type="button" class="chip" data-filter="cool">Cool</button>
+            <button type="button" class="chip" data-filter="film" data-vintage="1">Film</button>
+            <button type="button" class="chip" data-filter="faded" data-vintage="1">Faded</button>
+            <button type="button" class="chip" data-filter="retro" data-vintage="1">70s</button>
+            <button type="button" class="chip" data-filter="instant" data-vintage="1">Instant</button>
+            <button type="button" class="chip" data-filter="noir" data-vintage="1">Noir</button>
           </div>
           <label class="toggle-row" style="margin-top:12px;"><input type="checkbox" id="softSkinToggle"> Soft skin</label>
+          <label class="toggle-row" id="dateStampRow" style="margin-top:8px;"><input type="checkbox" id="dateStampToggle"> Date stamp (orange camera-style date on each photo)</label>
         </div>
       </div>
       <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="3">← Back</button><button type="button" class="action-btn primary next-btn" data-go="5">Next: Share →</button></div>
@@ -3570,6 +3645,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   <button type="button" class="dock-btn" id="printFab" hidden aria-label="Printer settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg><span>Printer</span></button>
   <button type="button" class="dock-btn" id="backupFab" hidden aria-label="Backup folder" aria-expanded="false" aria-controls="backupPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Backup folder</span><i class="bk-dot" aria-hidden="true"></i></button>
   <button type="button" class="dock-btn" id="galleryFab" hidden aria-label="All photos gallery" aria-expanded="false" aria-controls="galleryPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zm0 6h3m3-6v3m0 3h.01"/></svg><span>All photos</span></button>
+  <button type="button" class="dock-btn" id="deskFab" hidden aria-label="Photographer desk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M7 3h12a2 2 0 0 1 2 2v12"/><circle cx="10" cy="12" r="2.5"/></svg><span>Photographer desk</span></button>
+  <button type="button" class="dock-btn" id="quickFab" hidden aria-label="Quick shot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg><span>Quick shot</span></button>
+  <button type="button" class="dock-btn" id="spinFab" hidden aria-label="360 desk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/><circle cx="12" cy="12" r="2.5"/></svg><span>360 desk</span></button>
   <button type="button" class="dock-btn" id="lockFab" hidden aria-label="Lock booth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Lock booth</span></button>
   </div>
   <div class="dock-pwr" id="dockPwr" hidden>Powered by <span class="pm" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>photobooth<em>4u</em></b></div>
@@ -3600,6 +3678,70 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 </div>
 <div class="toast" id="toast"></div>
 <div id="printArea"></div>
+<div class="desk-ov" id="spinOverlay" hidden role="dialog" aria-label="360 desk">
+  <div class="desk-card">
+    <div class="desk-head"><b>🎥 360 desk</b><span class="sp"></span><button type="button" class="desk-btn" id="spinClose">Close</button></div>
+    <div class="desk-drop" id="spinDrop">Drop the 360 videos here, or <button type="button" class="desk-btn" id="spinPick">Choose videos</button><input type="file" id="spinFile" accept="video/*" multiple hidden></div>
+    <div class="spin-send" id="spinSend" hidden>
+      <div class="spin-qr" id="spinSendQr"></div>
+      <div class="spin-sendtxt"><b>Send from the phone that recorded</b><br>Scan this with that phone on the booth Wi-Fi, then pick the video. Videos saved into the folder below also appear here by themselves.<br><span id="spinDirTxt"></span> <button type="button" class="desk-btn" id="spinDirBtn">Change folder</button></div>
+    </div>
+    <div class="spin-look" id="spinLook" hidden>
+      <div class="spin-row">
+        <label>Style <select id="spinPreset"><option value="classic">Classic slow-mo</option><option value="ramp">Speed ramp</option><option value="boomerang">Boomerang</option><option value="plain">Original speed + frame</option><option value="custom">Custom</option></select></label>
+        <label>Speed <select id="spinSpeed"><option value="slow">Slow motion (0.5×)</option><option value="ramp">Speed ramp</option><option value="boomerang">Boomerang</option><option value="normal">Normal</option></select></label>
+        <label class="chk"><input type="checkbox" id="spinSmooth"> Smoother slow motion (takes longer)</label>
+        <label>Format <select id="spinOrient"><option value="portrait">Portrait (phones)</option><option value="landscape">Landscape</option></select></label>
+        <label>Quality <select id="spinQual"><option value="1080">1080p</option><option value="720">720p (faster)</option></select></label>
+      </div>
+      <div class="spin-row">
+        <label class="chk"><input type="checkbox" id="spinOverlayOn" checked> Frame, logo and title</label>
+        <label>Sound <select id="spinAudio"><option value="music">Music</option><option value="original">Original sound</option><option value="none">No sound</option></select></label>
+        <button type="button" class="desk-btn" id="spinMusicBtn">Choose music</button><span id="spinMusicName" class="spin-dim"></span>
+        <label>Volume <input type="range" id="spinVol" min="0" max="100" value="80"></label>
+        <label class="chk"><input type="checkbox" id="spinAuto"> Edit new videos by themselves</label>
+      </div>
+    </div>
+    <div class="desk-hint" id="spinNoEdit" hidden>Editing (slow motion, frame, music) is not available in this copy of the app, so videos are shared as they are.</div>
+    <div class="desk-hint" id="spinHint"></div>
+    <div class="desk-grid" id="spinGrid"></div>
+    <div class="desk-foot"><button type="button" class="desk-btn" id="spinClear">Clear list</button><span class="sp"></span></div>
+  </div>
+  <div class="qs-panel" id="spinModal" hidden>
+    <div class="qs-card spin-card">
+      <video id="spinVideo" controls playsinline></video>
+      <div class="spin-trim" id="spinTrim" hidden>Trim: start <input type="number" id="spinTrimA" min="0" step="0.1" placeholder="0"> s &nbsp; end <input type="number" id="spinTrimB" min="0" step="0.1" placeholder="end"> s</div>
+      <div class="spin-prog" id="spinProg" hidden><div class="bar"><i id="spinBar"></i></div><span id="spinProgTxt"></span></div>
+      <div class="qs-qr" id="spinQrBox"></div>
+      <p class="qs-note" id="spinMsg"></p>
+      <div class="qs-row"><button type="button" class="desk-btn" id="spinRemove">Remove</button><button type="button" class="desk-btn" id="spinEditBtn" hidden>Edit video</button><button type="button" class="desk-btn" id="spinViewBtn" hidden>View original</button><button type="button" class="desk-btn primary" id="spinShareBtn">Share + QR</button><button type="button" class="desk-btn" id="spinModalClose">Close</button></div>
+    </div>
+  </div>
+</div>
+<div class="qs-ov" id="quickOverlay" hidden role="dialog" aria-label="Quick shot">
+  <video id="qsVideo" autoplay muted playsinline></video>
+  <div class="qs-flash" id="qsFlash"></div>
+  <div class="qs-top"><button type="button" class="qs-btn" id="qsClose">Close</button><span class="qs-count" id="qsCount"></span><button type="button" class="qs-btn" id="qsFlip">Flip camera</button></div>
+  <div class="qs-strip" id="qsStrip"></div>
+  <button type="button" class="qs-shutter" id="qsShutter" aria-label="Take photo"></button>
+  <div class="qs-panel" id="qsPanel" hidden>
+    <div class="qs-card">
+      <div class="qs-qr" id="qsQrBox"></div>
+      <p class="qs-note" id="qsNote"></p>
+      <div class="qs-row"><button type="button" class="desk-btn" id="qsPanelClose">Close</button><button type="button" class="desk-btn primary" id="qsPrint">Print</button></div>
+    </div>
+  </div>
+</div>
+<div class="desk-ov" id="deskOverlay" hidden role="dialog" aria-label="Photographer desk">
+  <div class="desk-card">
+    <div class="desk-head"><b>📷 Photographer desk</b><span class="sp"></span><button type="button" class="desk-btn" id="deskClose">Close</button></div>
+    <div class="desk-drop" id="deskDrop">Drop the photographer's photos here, or <button type="button" class="desk-btn" id="deskPick">Choose photos</button><input type="file" id="deskFile" accept="image/jpeg,image/png,image/webp" multiple hidden></div>
+    <div class="desk-watch" id="deskWatch" hidden><span id="deskWatchTxt"></span><button type="button" class="desk-btn" id="deskWatchBtn">Choose folder</button></div>
+    <div class="desk-hint" id="deskHint"></div>
+    <div class="desk-grid" id="deskGrid"></div>
+    <div class="desk-foot"><button type="button" class="desk-btn" id="deskClear">Clear list</button><span class="sp"></span><button type="button" class="desk-btn primary" id="deskMake" disabled>Make print + QR</button></div>
+  </div>
+</div>
 <style id="printPageStyle"></style>
 
 <script>
@@ -6047,7 +6189,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // GIF MODE — session capture + encode + upload
   // ──────────────────────────────────────────────────────────────────
 
-  var outputMode = 'photo';    // 'photo' | 'gif' | 'both'
+  var outputMode = 'photo';    // 'photo' | 'gif' | 'both' | 'flipbook'
+  var flipSec = 6, flipFrames = 30, flipCover = true, flipBack = true, flipbookResult = null;   // flipbook (included extra): clip length, frames, and the result on screen
   var gifSpeed = 0;            // 0 chooses 2x or 3x automatically from the recorded session length
   var gifSessionCapture = null;
   var completedGifCapture = null;
@@ -6055,15 +6198,20 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function isGifAllowed(){ return !(window.__PB) || !!(window.__PB.gifOpt); }
 
   function refreshGifUI(){
-    var on = isGifAllowed();
+    var on = isGifAllowed(), fb = extraOn('flipbook');
     var s = document.getElementById('gifModeSection');
-    if(s) s.style.display = on ? '' : 'none';
-    if(!on && outputMode !== 'photo'){
+    if(s) s.style.display = (on || fb) ? '' : 'none';
+    [].forEach.call(document.querySelectorAll('#outputModeChips .chip'), function(c){
+      var k = c.dataset.outmode;
+      c.style.display = (k === 'flipbook' ? fb : (k === 'gif' || k === 'both') ? on : true) ? '' : 'none';
+    });
+    if((!on && (outputMode === 'gif' || outputMode === 'both')) || (!fb && outputMode === 'flipbook')){
       outputMode = 'photo';
-      refreshOutputModeUI();
     }
+    refreshOutputModeUI();
   }
   window.addEventListener('pb-gif-change', refreshGifUI);
+  window.addEventListener('pb-extras-change', function(){ refreshGifUI(); try{ refreshDeskBtn(); }catch(e){} });
 
   function refreshOutputModeUI(){
     var chips = document.querySelectorAll('#outputModeChips .chip');
@@ -6071,12 +6219,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var hints = {
       photo: 'Guests get a photo strip + QR code.',
       gif:   'Guests get an animated GIF + QR code (no still photo).',
-      both:  'Guests get both a photo strip AND an animated GIF — two QR codes appear.'
+      both:  'Guests get both a photo strip AND an animated GIF — two QR codes appear.',
+      flipbook: 'Guests record a short clip. It prints as a numbered flip book (cut, stack, staple) and they get an animated GIF QR code.'
     };
     var hintEl = document.getElementById('gifModeHint');
     if(hintEl) hintEl.textContent = hints[outputMode] || '';
     var gifOpts = document.getElementById('gifOptions');
     if(gifOpts) gifOpts.style.display = (outputMode === 'gif' || outputMode === 'both') ? '' : 'none';
+    var fbOpts = document.getElementById('flipbookOptions');
+    if(fbOpts) fbOpts.style.display = outputMode === 'flipbook' ? '' : 'none';
+    try{ updateReadySub(); }catch(e){}
   }
 
   (function(){
@@ -6089,6 +6241,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
     });
     // gifSpeed stays 0 (auto) always — no manual selector exposed to the operator.
+    var fs = document.getElementById('flipSecSelect'), ff = document.getElementById('flipFramesSelect');
+    if(fs) fs.addEventListener('change', function(){ flipSec = Number(fs.value) || 6; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+    if(ff) ff.addEventListener('change', function(){ flipFrames = Number(ff.value) || 30; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+    var fcv = document.getElementById('flipCoverToggle'), fbk = document.getElementById('flipBackToggle');
+    if(fcv) fcv.addEventListener('change', function(){ flipCover = fcv.checked; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+    if(fbk) fbk.addEventListener('change', function(){ flipBack = fbk.checked; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
     refreshGifUI();
     refreshOutputModeUI();
   })();
@@ -7361,7 +7519,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var chip = document.getElementById('pbTimeChip');
     var chipOn = !!(chip && chip.parentNode && chip.parentNode.id === 'dockChipSlot' && chip.style.display !== 'none');
     return !document.getElementById('camFab').hidden || !document.getElementById('printFab').hidden || !document.getElementById('backupFab').hidden ||
-      !document.getElementById('galleryFab').hidden || !document.getElementById('lockFab').hidden ||
+      !document.getElementById('galleryFab').hidden || !document.getElementById('lockFab').hidden || !document.getElementById('deskFab').hidden || !document.getElementById('quickFab').hidden || !document.getElementById('spinFab').hidden ||
       !document.getElementById('dockPwr').hidden || chipOn;
   }
   // Everything guests and the operator need to see or tap in Photo Session.
@@ -7726,6 +7884,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function fmtSec(v){ return (v % 1 === 0 ? String(v) : v.toFixed(1)); }
   function updateReadySub(){
     if(!readySub) return;
+    if(typeof flipbookActive === 'function' && flipbookActive()){ readySub.textContent = flipSec + ' second clip \u00b7 printed as a flip book'; return; }
     var n = shotsNeeded(), parts = [n + (n === 1 ? ' photo' : ' photos')];
     if(n > 1) parts.push(typeof advanceMode !== 'undefined' && advanceMode === 'tap' ? 'tap for each next photo' : fmtSec(betweenSec) + ' s between photos');
     readySub.textContent = parts.join(' \u00b7 ');
@@ -8020,6 +8179,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     video.style.display = 'block';
     previewCanvas.style.display = 'none';
     state = 'capturing';
+    flipbookResult = null;
     resetSessionPrints();
     stageShot = 0;
     sess = { cancelled: false, retake: false, pick: null };
@@ -8038,6 +8198,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(sess.cancelled){ endCancelledSession(); return; }
     consumePayCredit();          // the paid session is used once the countdown starts (Cancel at Get ready keeps it)
     countingDown = true;
+    if(flipbookActive()){ await runFlipbookSession(); return; }
     if(isGifAllowed() && (outputMode === 'gif' || outputMode === 'both')) startGifSessionCapture();
     stageShot = 0;
     try{ applyStageAspect(); }catch(e){}
@@ -10244,6 +10405,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Very narrow sheets (like 2x6) only suit the tall strip; the grid would print tiny.
   function sizeFitsLayout(key){
     const p = paperFor(key);
+    if(flipbookResult) return !isReceiptPaper(key) && p.w / p.h >= 0.45;   // flip book sheets need a real page, not a strip or a roll
     if(isReceiptPaper(key)) return true;       // thermal rolls: scale receipts, strips, and any layout to roll width
     if(layoutDef().kind === 'receipt') return true;
     if(currentLayout === 'framesheet' && p.w / p.h < 0.45) return sheetStripItems().length > 0;
@@ -10573,6 +10735,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Sheets one copy of the current print takes (keychains / frame strips can be several pages).
   function sheetsPerCopy(key){
     if(!key) return 1;
+    if(flipbookResult) return flipbookPageCount(key);
     if(keychainMode(key)){ const fit = keychainFit(key); return Math.max(1, Math.ceil(keychainFrames().length / fit.per)); }
     if(stripPagesMode(key)) return Math.max(1, sheetStripItems().length);
     return 1;
@@ -10739,7 +10902,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       sessPrinted += per * n;
       showPrintingNote(printTxt('txtPrinting'), 4000);
       let paper = paperFor(printSize);
-      const pages = keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)];
+      const pages = flipbookResult ? buildFlipbookPages(paper) : keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)];
       // Receipt rolls: the "page" is as long as the receipt.
       if(paper.receipt) paper = Object.assign({}, paper, { h: Math.round(pages[0].height / RECEIPT_DPI * 254) / 10 });
       const label = (n > 1 ? n + ' copies, ' : '') + paper.name;
@@ -11477,8 +11640,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // themes and the saved setup. (Plain `var`s so earlier code can safely
   // call these helpers during start-up.)
   // =====================================================================
-  var filterKey = 'none';      // none | bw | sepia | warm | cool
+  var filterKey = 'none';      // none | bw | sepia | warm | cool | film | faded | retro | instant | noir
   var softSkin = false;
+  var dateStamp = false;       // vintage extra: orange camera-style date on each photo
   var welcomeOn = true;
   var attractMode = 'card';    // card | camera | poster
   var attractPosterImg = null;
@@ -11515,8 +11679,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     bw:    'grayscale(1) contrast(1.08)',
     sepia: 'sepia(.85) contrast(1.05) brightness(1.03)',
     warm:  'sepia(.2) saturate(1.18) brightness(1.04)',
-    cool:  'saturate(.92) brightness(1.05) hue-rotate(10deg)'
+    cool:  'saturate(.92) brightness(1.05) hue-rotate(10deg)',
+    // Vintage looks (an included extra): the live view uses these CSS looks; the saved photo gets the
+    // matching pixel treatment plus grain, vignette and light leak in applyFilterToCanvas().
+    film:    'sepia(.22) contrast(.92) saturate(1.08) brightness(1.04)',
+    faded:   'contrast(.86) brightness(1.1) saturate(.78)',
+    retro:   'sepia(.38) saturate(1.5) hue-rotate(-10deg) contrast(1.04) brightness(1.02)',
+    instant: 'sepia(.28) saturate(1.15) contrast(.94) brightness(1.07) hue-rotate(-5deg)',
+    noir:    'grayscale(1) contrast(1.4) brightness(.94)'
   };
+  var VINTAGE_KEYS = ['film', 'faded', 'retro', 'instant', 'noir'];
+  // Extras every package includes (admin can switch one off per client). Missing = on.
+  function extraOn(name){ return !(window.__PB && window.__PB.extras && window.__PB.extras[name] === false); }
+  if(!extraOn('vintage')) VINTAGE_KEYS.forEach(function(k){ delete FILTERS[k]; });
   function liveFilterCss(){
     var f = FILTERS[filterKey] || '';
     if(softSkin) f += ' brightness(1.04) contrast(.94)';
@@ -11527,8 +11702,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{ document.getElementById('surroundVideo').style.filter = video.style.filter; }catch(e){}
     if(guestOpen()){ try{ G.v.style.filter = liveFilterCss(); }catch(e){} }
   }
+  // Per-look grain strength, vignette strength and light leak for the vintage looks.
+  var VINTAGE_FX = { film: { grain: 16, vig: .35 }, faded: { grain: 6, vig: .15 }, retro: { grain: 10, vig: .4, leak: true }, instant: { grain: 8, vig: .3, leak: true }, noir: { grain: 22, vig: .5 } };
   function applyFilterToCanvas(c){
-    if(filterKey === 'none' && !softSkin) return;
+    if(filterKey === 'none' && !softSkin && !dateStamp) return;
     var ctx = c.getContext('2d'), w = c.width, h = c.height;
     if(softSkin){
       // A softly blurred copy laid lightly on top smooths skin and evens tone.
@@ -11539,23 +11716,60 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       ctx.save(); ctx.globalAlpha = 0.26; ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(s, 0, 0, w, h); ctx.restore();
     }
-    if(filterKey === 'none' && !softSkin) return;
-    var img = ctx.getImageData(0, 0, w, h), d = img.data, i, r, g, b, y;
-    for(i = 0; i < d.length; i += 4){
-      r = d[i]; g = d[i + 1]; b = d[i + 2];
-      if(filterKey === 'bw'){ y = (0.299*r + 0.587*g + 0.114*b - 128) * 1.08 + 128; r = g = b = y; }
-      else if(filterKey === 'sepia'){
-        var tr = 0.393*r + 0.769*g + 0.189*b, tg = 0.349*r + 0.686*g + 0.168*b, tb = 0.272*r + 0.534*g + 0.131*b;
-        r = ((r*0.15 + tr*0.85) - 128) * 1.05 + 131; g = ((g*0.15 + tg*0.85) - 128) * 1.05 + 131; b = ((b*0.15 + tb*0.85) - 128) * 1.05 + 131;
+    var fx = VINTAGE_FX[filterKey] || null;
+    if(filterKey !== 'none' || softSkin){
+      var img = ctx.getImageData(0, 0, w, h), d = img.data, i, r, g, b, y, n = 0;
+      var seed = (w * 73856093) ^ (h * 19349663) ^ 0x9e3779b9, grain = fx ? fx.grain : 0;
+      for(i = 0; i < d.length; i += 4){
+        r = d[i]; g = d[i + 1]; b = d[i + 2];
+        if(filterKey === 'bw'){ y = (0.299*r + 0.587*g + 0.114*b - 128) * 1.08 + 128; r = g = b = y; }
+        else if(filterKey === 'sepia'){
+          var tr = 0.393*r + 0.769*g + 0.189*b, tg = 0.349*r + 0.686*g + 0.168*b, tb = 0.272*r + 0.534*g + 0.131*b;
+          r = ((r*0.15 + tr*0.85) - 128) * 1.05 + 131; g = ((g*0.15 + tg*0.85) - 128) * 1.05 + 131; b = ((b*0.15 + tb*0.85) - 128) * 1.05 + 131;
+        }
+        else if(filterKey === 'warm'){ r = r*1.07 + 8; g = g*1.02 + 3; b = b*0.9; }
+        else if(filterKey === 'cool'){ r = r*0.92; g = g + 3; b = b*1.08 + 10; }
+        else if(filterKey === 'film'){ r = r*0.9 + 24; g = g*0.9 + 20; b = b*0.82 + 22; }
+        else if(filterKey === 'faded'){ y = 0.299*r + 0.587*g + 0.114*b; r = (r*0.8 + y*0.2)*0.84 + 34; g = (g*0.8 + y*0.2)*0.84 + 33; b = (b*0.8 + y*0.2)*0.84 + 36; }
+        else if(filterKey === 'retro'){ r = ((r*1.12 + 10) - 128) * 1.05 + 128; g = ((g*0.98 + 4) - 128) * 1.05 + 128; b = ((b*0.78 + 6) - 128) * 1.05 + 128; }
+        else if(filterKey === 'instant'){ r = r*0.95 + 16; g = g*0.93 + 16; b = b*0.86 + 26; }
+        else if(filterKey === 'noir'){ y = (0.299*r + 0.587*g + 0.114*b - 128) * 1.3 + 124; r = g = b = y; }
+        if(grain){ seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; n = (((seed & 255) - 128) / 128) * grain; r += n; g += n; b += n; }
+        if(softSkin){ r = r*1.02 + 3; g = g*1.02 + 3; b = b*1.02 + 3; }
+        d[i] = r; d[i + 1] = g; d[i + 2] = b;   // Uint8ClampedArray clamps + rounds
       }
-      else if(filterKey === 'warm'){ r = r*1.07 + 8; g = g*1.02 + 3; b = b*0.9; }
-      else if(filterKey === 'cool'){ r = r*0.92; g = g + 3; b = b*1.08 + 10; }
-      if(softSkin){ r = r*1.02 + 3; g = g*1.02 + 3; b = b*1.02 + 3; }
-      d[i] = r; d[i + 1] = g; d[i + 2] = b;   // Uint8ClampedArray clamps + rounds
+      ctx.putImageData(img, 0, 0);
     }
-    ctx.putImageData(img, 0, 0);
+    if(fx){
+      // Darker corners (vignette), and a warm light leak from the top-left on the 70s and Instant looks.
+      var diag = Math.sqrt(w * w + h * h) / 2;
+      var vg = ctx.createRadialGradient(w / 2, h / 2, diag * 0.35, w / 2, h / 2, diag);
+      vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,' + fx.vig + ')');
+      ctx.save(); ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h);
+      if(fx.leak){
+        var lg = ctx.createRadialGradient(w * 0.02, h * 0.04, 0, w * 0.02, h * 0.04, diag * 0.9);
+        lg.addColorStop(0, 'rgba(255,150,60,0.42)'); lg.addColorStop(1, 'rgba(255,150,60,0)');
+        ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = lg; ctx.fillRect(0, 0, w, h);
+      }
+      ctx.restore();
+    }
+    if(dateStamp){
+      // Orange camera-style date, bottom right: '26 10 29
+      var dt = new Date(), pad2 = function(v){ return (v < 10 ? '0' : '') + v; };
+      var txt = "'" + pad2(dt.getFullYear() % 100) + ' ' + pad2(dt.getMonth() + 1) + ' ' + pad2(dt.getDate());
+      var fs = Math.max(14, Math.round(Math.min(w, h) * 0.04));
+      ctx.save();
+      ctx.font = 'bold ' + fs + 'px "Courier New", monospace'; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+      ctx.shadowColor = 'rgba(255,90,0,.75)'; ctx.shadowBlur = fs * 0.35; ctx.fillStyle = '#ff9a2e';
+      ctx.fillText(txt, w - fs * 0.9, h - fs * 0.7);
+      ctx.restore();
+    }
   }
   var filterChips = document.getElementById('filterChips');
+  if(!extraOn('vintage')){
+    [...filterChips.querySelectorAll('[data-vintage]')].forEach(function(c){ c.remove(); });
+    document.getElementById('dateStampRow').style.display = 'none';
+  }
   function markFilterChips(){
     [...filterChips.children].forEach(function(c){ c.classList.toggle('active', c.dataset.filter === filterKey); });
   }
@@ -11564,7 +11778,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     filterKey = c.dataset.filter; markFilterChips(); applyLiveFilter(); renderSetupPreview();
   });
   // Quick filter chips under the live view (same filters as Setup → Extras).
-  var FILTER_LABELS = { none: 'Normal', bw: 'B&W', sepia: 'Sepia', warm: 'Warm', cool: 'Cool' };
+  var FILTER_LABELS = { none: 'Normal', bw: 'B&W', sepia: 'Sepia', warm: 'Warm', cool: 'Cool', film: 'Film', faded: 'Faded', retro: '70s', instant: 'Instant', noir: 'Noir' };
   var quickFilters = document.getElementById('quickFilters');
   Object.keys(FILTERS).forEach(function(k){
     var b = document.createElement('button'); b.type = 'button'; b.className = 'sc-filter'; b.dataset.filter = k;
@@ -11625,6 +11839,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   markMirrorQuick();
   var softSkinToggle = document.getElementById('softSkinToggle');
   softSkinToggle.addEventListener('change', function(){ softSkin = softSkinToggle.checked; applyLiveFilter(); renderSetupPreview(); });
+  var dateStampToggle = document.getElementById('dateStampToggle');
+  dateStampToggle.addEventListener('change', function(){ dateStamp = dateStampToggle.checked && extraOn('vintage'); renderSetupPreview(); if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
 
   // ---- Photo review ----
   var shotReview = document.getElementById('shotReview');
@@ -11682,6 +11898,771 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     updateFilmTrack();
     updateUI();
   }
+
+  // ──────────────────────────────────────────────────────────────────
+  // FLIPBOOK (included extra): a short clip -> numbered cards on print sheets + an animated GIF QR
+  // ──────────────────────────────────────────────────────────────────
+  function flipbookActive(){ return outputMode === 'flipbook' && extraOn('flipbook'); }
+  function sleepMs(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  var FLIP_CELL_W = 45, FLIP_CELL_H = 34, FLIP_MARGIN = 4;   // mm: card size we aim for, and the sheet margin
+  function flipGrid(paper){
+    var cols = Math.max(1, Math.floor((paper.w - 2 * FLIP_MARGIN) / FLIP_CELL_W));
+    var rows = Math.max(1, Math.floor((paper.h - 2 * FLIP_MARGIN) / FLIP_CELL_H));
+    return { cols: cols, rows: rows, per: cols * rows };
+  }
+  // Everything that goes in the stack, in order: cover (no number), the numbered frames, back (no number).
+  function flipbookItems(){
+    var r = flipbookResult, out = [];
+    if(!r) return out;
+    if(r.cover) out.push({ c: r.cover, num: null });
+    r.cards.forEach(function(c, i){ out.push({ c: c, num: i + 1 }); });
+    if(r.back) out.push({ c: r.back, num: null });
+    return out;
+  }
+  function flipbookPageCount(key){
+    var p = paperFor(key);
+    if(!flipbookResult || !p) return 1;
+    return Math.max(1, Math.ceil(flipbookItems().length / flipGrid(p).per));
+  }
+  // Fill a box with a picture, cropping the overflow (like object-fit: cover).
+  function drawCover(ctx, img, x, y, w, h){
+    var iw = img.width, ih = img.height, k = Math.max(w / iw, h / ih), sw = w / k, sh = h / k;
+    ctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, x, y, w, h);
+  }
+  function drawCardNumber(ctx, n, x, y, w, h, size){
+    ctx.save();
+    ctx.font = 'bold ' + size + 'px "Courier New", monospace'; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+    ctx.lineWidth = size * 0.22; ctx.strokeStyle = 'rgba(0,0,0,.65)'; ctx.fillStyle = '#fff';
+    ctx.strokeText(String(n), x + w - size * 0.4, y + h - size * 0.25); ctx.fillText(String(n), x + w - size * 0.4, y + h - size * 0.25);
+    ctx.restore();
+  }
+  // Cover and back cards: light card with dark text, or a dark card when the booth's text colour is light.
+  function flipCardBase(){
+    var W = 800, H = 600, c = document.createElement('canvas'); c.width = W; c.height = H;
+    var x = c.getContext('2d'), dark = false;
+    try{ dark = lumOf(textColor) > 0.5; }catch(e){}
+    x.fillStyle = dark ? '#1c1a1e' : '#fffaf2'; x.fillRect(0, 0, W, H);
+    x.strokeStyle = dark ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.18)'; x.lineWidth = 4; x.strokeRect(24, 24, W - 48, H - 48);
+    return { c: c, x: x, W: W, H: H, dark: dark };
+  }
+  function flipLogo(x, W, top, maxW, maxH){
+    try{
+      if(typeof logo === 'undefined' || !logo) return 0;
+      var li = assetImg(logo.id); if(!li) return 0;
+      var k = Math.min(maxW / li.width, maxH / li.height), w = li.width * k, h = li.height * k;
+      x.drawImage(li, (W - w) / 2, top, w, h);
+      return h;
+    }catch(e){ return 0; }
+  }
+  function makeFlipCover(){
+    var b = flipCardBase(), x = b.x, W = b.W, H = b.H;
+    var lh = flipLogo(x, W, 46, W * 0.34, H * 0.24);
+    var top = lh ? 46 + lh + 10 : 70, hasTitle = false;
+    try{
+      hasTitle = !!((labelInput.value || '').trim() || currentDateLabel());
+      if(hasTitle) drawLabelBand(x, W, top, H - top - 110, labelInput.value, 0);   // the booth's own title style: name and date
+    }catch(e){ hasTitle = false; }
+    x.fillStyle = b.dark ? '#ffffff' : '#1c1a1e'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    if(!hasTitle){ x.font = 'bold 72px Manrope, sans-serif'; x.fillText('Flip book', W / 2, H / 2); }
+    x.globalAlpha = 0.7; x.font = 'bold 26px Manrope, sans-serif'; x.fillText('F L I P   B O O K', W / 2, H - 70); x.globalAlpha = 1;
+    return b.c;
+  }
+  function makeFlipBack(){
+    var b = flipCardBase(), x = b.x, W = b.W, H = b.H;
+    var lh = flipLogo(x, W, 60, W * 0.3, H * 0.22), y = lh ? H * 0.6 : H * 0.46, t = '';
+    try{ t = (labelInput.value || '').trim(); }catch(e){}
+    x.fillStyle = b.dark ? '#ffffff' : '#1c1a1e'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.font = 'bold 84px Fraunces, Georgia, serif'; x.fillText('Thank you!', W / 2, y);
+    if(t){ x.globalAlpha = 0.75; x.font = '600 32px Manrope, sans-serif'; x.fillText(t.slice(0, 40), W / 2, y + 74); x.globalAlpha = 1; }
+    return b.c;
+  }
+  // One or more print sheets: cards in stack order, numbered frames, with thin cut lines.
+  function buildFlipbookPages(paper){
+    var g = flipGrid(paper), mm = PRINT_DPI / 25.4, pages = [], items = flipbookItems();
+    var W = Math.round(paper.w * mm), H = Math.round(paper.h * mm), m = FLIP_MARGIN * mm;
+    var cw = (W - 2 * m) / g.cols, ch = (H - 2 * m) / g.rows;
+    for(var start = 0; start < items.length; start += g.per){
+      var c = document.createElement('canvas'); c.width = W; c.height = H;
+      var x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H); x.imageSmoothingQuality = 'high';
+      var count = Math.min(g.per, items.length - start);
+      for(var k = 0; k < count; k++){
+        var col = k % g.cols, row = Math.floor(k / g.cols), cx = m + col * cw, cy = m + row * ch, it = items[start + k];
+        drawCover(x, it.c, cx, cy, cw, ch);
+        if(it.num != null) drawCardNumber(x, it.num, cx, cy, cw, ch, Math.max(10, Math.round(ch * 0.11)));
+      }
+      x.strokeStyle = '#9a9a9a'; x.lineWidth = Math.max(1, Math.round(mm * 0.15));
+      for(var gx = 0; gx <= g.cols; gx++){ x.beginPath(); x.moveTo(m + gx * cw, m - mm * 2); x.lineTo(m + gx * cw, H - m + mm * 2); x.stroke(); }
+      for(var gy = 0; gy <= g.rows; gy++){ x.beginPath(); x.moveTo(m - mm * 2, m + gy * ch); x.lineTo(W - m + mm * 2, m + gy * ch); x.stroke(); }
+      pages.push(c);
+    }
+    return pages;
+  }
+  // The result screen shows all the cards in stack order instead of a layout.
+  function drawFlipbookPreview(){
+    var items = flipbookItems(), cols = 6, rows = Math.ceil(items.length / cols), cw = 200, ch = 150, pad = 46;
+    previewCanvas.width = cols * cw; previewCanvas.height = rows * ch + pad;
+    var x = previewCanvas.getContext('2d');
+    x.fillStyle = '#ffffff'; x.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+    x.fillStyle = '#1c1a1e'; x.font = 'bold 22px Manrope, sans-serif'; x.textBaseline = 'middle';
+    x.fillText('Flip book · ' + flipbookResult.cards.length + ' frames' + (flipbookResult.cover || flipbookResult.back ? ' + cover' + (flipbookResult.cover && flipbookResult.back ? ' and back' : '') : ''), 14, pad / 2);
+    items.forEach(function(it, i){
+      var cx = (i % cols) * cw, cy = pad + Math.floor(i / cols) * ch;
+      drawCover(x, it.c, cx + 1, cy + 1, cw - 2, ch - 2);
+      if(it.num != null) drawCardNumber(x, it.num, cx, cy, cw, ch, 20);
+    });
+  }
+  var _renderComposite = renderComposite;
+  renderComposite = function(){
+    if(flipbookResult){ drawFlipbookPreview(); return; }
+    _renderComposite();
+  };
+  async function runFlipbookSession(){
+    for(var n = 3; n >= 1; n--){
+      if(sess && sess.cancelled){ endCancelledSession(); return; }
+      popNum(String(n), false); guestCall('tick', String(n), false, 1, '');
+      await sleepMs(1000);
+    }
+    if(sess && sess.cancelled){ endCancelledSession(); return; }
+    popNum('Go!', true); guestCall('tick', 'Go!', true, 0, '');
+    var totalMs = Math.max(2, flipSec) * 1000, count = Math.max(8, flipFrames), step = totalMs / count;
+    var vw = video.videoWidth || 640, vh = video.videoHeight || 480, scale = Math.min(1, 1280 / vw, 720 / vh);
+    var cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(vw * scale)); cv.height = Math.max(1, Math.round(vh * scale));
+    var cx = cv.getContext('2d', { willReadFrequently: true });
+    var frames = [], t0 = performance.now();
+    for(var i = 0; i < count; i++){
+      if(sess && sess.cancelled) break;
+      var wait = t0 + i * step - performance.now();
+      if(wait > 0) await sleepMs(wait);
+      cx.save();
+      if(typeof mirrorPreview === 'function' && mirrorPreview()){ cx.translate(cv.width, 0); cx.scale(-1, 1); }
+      try{ cx.drawImage(video, 0, 0, cv.width, cv.height); }catch(e){}
+      cx.restore();
+      try{ applyFilterToCanvas(cv); }catch(e){}
+      var at = performance.now() - t0;
+      var blob = await new Promise(function(res){ cv.toBlob(res, 'image/jpeg', 0.9); });
+      if(blob) frames.push({ blob: blob, time: at });
+      popNum(String(Math.max(1, Math.ceil((totalMs - at) / 1000))), false);
+    }
+    if(sess && sess.cancelled){ endCancelledSession(); return; }
+    var durationMs = Math.max(1, performance.now() - t0);
+    if(frames.length < 4){ showToast('The clip didn\u2019t record. Check the camera and try again.', 5000); endCancelledSession(); return; }
+    // Cards for printing and the preview: 800 px wide is plenty at 45 mm.
+    var cards = [];
+    for(var f = 0; f < frames.length; f++){
+      var bmp = await createImageBitmap(frames[f].blob);
+      var w = Math.min(800, bmp.width), h = Math.round(bmp.height * w / bmp.width);
+      var card = document.createElement('canvas'); card.width = w; card.height = h;
+      card.getContext('2d').drawImage(bmp, 0, 0, w, h); bmp.close();
+      cards.push(card);
+    }
+    completedGifCapture = { frames: frames, width: cv.width, height: cv.height, durationMs: durationMs, speed: 1 };
+    flipbookResult = { cards: cards, cover: flipCover ? makeFlipCover() : null, back: flipBack ? makeFlipBack() : null };
+    var rep0 = cards[Math.floor(cards.length / 2)]; rep0._isShot = true;
+    shotCanvases = new Array(shotsNeeded()).fill(rep0);
+    countingDown = false; cancelSessionBtn.hidden = true; sess = null;
+    state = 'result';
+    sessionNumber = nextSessionNumber();
+    renderComposite(); updateUI();
+    showQRForCurrentGIF();
+    scheduleResultReset();
+    maybeAutoPrint();
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+  // PHOTOGRAPHER DESK (included extra "roving"): the photographer's photos -> your frame, print and QR
+  // ──────────────────────────────────────────────────────────────────
+  var deskQueue = [], deskSel = [], deskSeq = 0, deskReturn = false, deskTimer = null, deskSeen = {}, deskFirstScan = true, deskPrev = {};
+  var deskOverlay = document.getElementById('deskOverlay'), deskGrid = document.getElementById('deskGrid');
+  var deskFab = document.getElementById('deskFab'), quickFab = document.getElementById('quickFab'), deskMakeBtn = document.getElementById('deskMake');
+  function refreshDeskBtn(){
+    var off = !extraOn('roving') || state === 'capturing';
+    if(deskFab) deskFab.hidden = off;
+    if(quickFab) quickFab.hidden = off;
+    var spinFab = document.getElementById('spinFab');
+    if(spinFab) spinFab.hidden = !extraOn('spin360') || state === 'capturing';
+    try{ scheduleDock(); }catch(e){}
+  }
+  var _updateUI = updateUI;
+  updateUI = function(){ _updateUI(); refreshDeskBtn(); };
+  refreshDeskBtn();
+
+  function deskHint(){
+    var n = shotsNeeded(), el = document.getElementById('deskHint');
+    if(!deskQueue.length){ el.textContent = 'No photos yet. Add the photographer\u2019s photos' + (window.pb4u && window.pb4u.deskScan ? ' or choose the folder they are saved to.' : '.'); return; }
+    el.textContent = n > 1
+      ? 'This layout uses ' + n + ' photos. Tap up to ' + n + ' photos in order (one photo fills them all), then Make print + QR.'
+      : 'Tap a photo, then Make print + QR. It goes into your frame, ready to print with a QR for the guest.';
+  }
+  function deskRender(){
+    deskGrid.innerHTML = '';
+    if(!deskQueue.length){ var e = document.createElement('div'); e.className = 'desk-empty'; e.textContent = 'Photos you add appear here.'; deskGrid.appendChild(e); }
+    deskQueue.slice().reverse().forEach(function(it){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'desk-item' + (deskSel.indexOf(it.id) >= 0 ? ' sel' : '') + (it.used ? ' used' : ''); b.dataset.id = it.id;
+      if(it.thumb){ var im = document.createElement('img'); im.src = it.thumb; im.alt = it.name; b.appendChild(im); }
+      var si = deskSel.indexOf(it.id);
+      if(si >= 0){ var bd = document.createElement('span'); bd.className = 'badge'; bd.textContent = String(si + 1); b.appendChild(bd); }
+      if(it.used){ var dn = document.createElement('span'); dn.className = 'done'; dn.textContent = 'Printed'; b.appendChild(dn); }
+      deskGrid.appendChild(b);
+    });
+    deskMakeBtn.disabled = !deskSel.length;
+    deskHint();
+  }
+  async function deskThumb(it){
+    try{
+      var bmp;
+      try{ bmp = await createImageBitmap(it.blob, { imageOrientation: 'from-image' }); }catch(e){ bmp = await createImageBitmap(it.blob); }
+      var k = Math.min(1, 240 / Math.max(bmp.width, bmp.height)), c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+      c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); bmp.close();
+      it.thumb = c.toDataURL('image/jpeg', 0.7);
+    }catch(e){ it.bad = true; }
+    deskRender();
+  }
+  function deskAdd(blob, name){
+    var it = { id: ++deskSeq, blob: blob, name: name || ('photo ' + deskSeq), used: false, thumb: '', canvas: null };
+    deskQueue.push(it); deskRender(); deskThumb(it);
+  }
+  function deskAddFiles(files){
+    [].forEach.call(files || [], function(f){ if(/^image\/(jpeg|png|webp)$/.test(f.type) || /\.(jpe?g|png|webp)$/i.test(f.name || '')) deskAdd(f, f.name); });
+  }
+  async function deskCanvas(it){
+    if(it.canvas) return it.canvas;
+    var bmp;
+    try{ bmp = await createImageBitmap(it.blob, { imageOrientation: 'from-image' }); }catch(e){ bmp = await createImageBitmap(it.blob); }
+    var k = Math.min(1, 3000 / Math.max(bmp.width, bmp.height)), c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+    var ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(bmp, 0, 0, c.width, c.height); bmp.close();
+    try{ applyFilterToCanvas(c); }catch(e){}     // the booth's chosen look (including vintage) applies to these photos too
+    c._isShot = true; it.canvas = c;
+    return c;
+  }
+  function openDesk(){
+    if(!extraOn('roving')) return;
+    if(state === 'capturing'){ showToast('Finish the session first.', 3000); return; }
+    deskOverlay.hidden = false; deskRender(); deskWatchUI();
+  }
+  function closeDesk(){ deskOverlay.hidden = true; }
+  async function deskMake(){
+    var picks = deskSel.map(function(id){ return deskQueue.find(function(x){ return x.id === id; }); }).filter(Boolean);
+    if(!picks.length) return;
+    if(state === 'capturing') return;
+    deskMakeBtn.disabled = true;
+    try{
+      var need = shotsNeeded(), shots = [];
+      for(var i = 0; i < need; i++) shots.push(await deskCanvas(picks[Math.min(i, picks.length - 1)]));
+      picks.forEach(function(p){ p.used = true; });
+      deskSel = [];
+      closeDesk();
+      startDeskResult(shots);
+    }catch(e){
+      console.error('Desk photo failed:', e);
+      showToast('Couldn\u2019t open that photo. Try another.', 4000);
+      deskRender();
+    }
+  }
+  // Same finish as a normal session: the frame is drawn, the QR and Print button appear.
+  function startDeskResult(shots, opts){
+    opts = opts || {};
+    closeGalleryPop();
+    flipbookResult = null; completedGifCapture = null;
+    resetSessionPrints();
+    sess = null; countingDown = false;
+    shotCanvases = shots;
+    qrResults.innerHTML = ''; lastRenderedFolderUrl = null;
+    retakeBtn.hidden = true; doneBtn.hidden = true; reviewHint.hidden = true; cancelSessionBtn.hidden = true;
+    state = 'result'; deskReturn = opts.back || 'desk';
+    sessionNumber = nextSessionNumber();
+    renderComposite(); updateUI();
+    if(opts.qrUrl){ qrSlot('photo', 'Your photo', ''); fillQrSlot('photo', opts.qrUrl); }   // a Quick shot that is already saved: same QR, no second upload
+    else showQRForCurrentPhoto();
+    scheduleResultReset();
+    if(!LOCALSHARE && !opts.qrUrl){ showMultipleDownloadsHint(); saveToDevice(); }
+    maybeAutoPrint();
+  }
+  var _resetForNextGuest = resetForNextGuest;
+  resetForNextGuest = function(){
+    var back = deskReturn;
+    flipbookResult = null; deskReturn = false;
+    _resetForNextGuest();
+    if(back === 'quick') openQuick();          // the photographer's camera / queue comes straight back
+    else if(back) openDesk();
+  };
+  // Desktop app: watch a folder the photographer's photos are saved to.
+  function deskWatchUI(){
+    var row = document.getElementById('deskWatch');
+    if(!(window.pb4u && window.pb4u.deskScan)){ row.hidden = true; return; }
+    row.hidden = false;
+    window.pb4u.deskFolder().then(function(d){
+      document.getElementById('deskWatchTxt').textContent = d ? 'Watching: ' + d : 'Watch a folder: new photos saved there are added automatically.';
+      document.getElementById('deskWatchBtn').textContent = d ? 'Change folder' : 'Choose folder';
+      if(d) startDeskWatch();
+    }).catch(function(){});
+  }
+  function startDeskWatch(){
+    if(deskTimer || !(window.pb4u && window.pb4u.deskScan)) return;
+    deskTimer = setInterval(deskPoll, 2500); deskPoll();
+  }
+  async function deskPoll(){
+    try{
+      var list = await window.pb4u.deskScan();
+      for(var i = 0; i < list.length; i++){
+        var f = list[i], key = f.name + '|' + f.mtime;
+        if(deskSeen[key]) continue;
+        if(deskFirstScan){ deskSeen[key] = true; continue; }          // photos already there when the folder was chosen are not imported
+        var prev = deskPrev[key];
+        deskPrev[key] = f.size;
+        if(prev !== f.size || f.size < 1024) continue;                 // still being written: wait for the next poll
+        deskSeen[key] = true;
+        var bytes = await window.pb4u.deskRead(f.name);
+        if(bytes) deskAdd(new Blob([bytes], { type: /\.png$/i.test(f.name) ? 'image/png' : /\.webp$/i.test(f.name) ? 'image/webp' : 'image/jpeg' }), f.name);
+      }
+      deskFirstScan = false;
+    }catch(e){}
+  }
+  document.getElementById('deskWatchBtn').addEventListener('click', async function(){
+    try{
+      var d = await window.pb4u.deskChoose();
+      if(d){ deskSeen = {}; deskPrev = {}; deskFirstScan = true; deskWatchUI(); }
+    }catch(e){}
+  });
+  deskFab.addEventListener('click', openDesk);
+  quickFab.addEventListener('click', function(){ openQuick(); });
+  document.getElementById('spinFab').addEventListener('click', function(){ openSpin(); });
+  document.getElementById('deskClose').addEventListener('click', closeDesk);
+  document.getElementById('deskPick').addEventListener('click', function(){ document.getElementById('deskFile').click(); });
+  document.getElementById('deskFile').addEventListener('change', function(e){ deskAddFiles(e.target.files); e.target.value = ''; });
+  document.getElementById('deskClear').addEventListener('click', function(){ deskQueue = []; deskSel = []; deskRender(); });
+  deskMakeBtn.addEventListener('click', deskMake);
+  deskGrid.addEventListener('click', function(e){
+    var b = e.target.closest('.desk-item'); if(!b) return;
+    var id = Number(b.dataset.id), i = deskSel.indexOf(id);
+    if(i >= 0) deskSel.splice(i, 1);
+    else { deskSel.push(id); var need = shotsNeeded(); if(deskSel.length > need) deskSel.shift(); }
+    deskRender();
+  });
+  var deskDrop = document.getElementById('deskDrop');
+  ['dragenter', 'dragover'].forEach(function(t){ deskDrop.addEventListener(t, function(e){ e.preventDefault(); deskDrop.classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function(t){ deskDrop.addEventListener(t, function(e){ e.preventDefault(); deskDrop.classList.remove('over'); }); });
+  deskDrop.addEventListener('drop', function(e){ if(e.dataTransfer) deskAddFiles(e.dataTransfer.files); });
+  deskOverlay.addEventListener('click', function(e){ if(e.target === deskOverlay) closeDesk(); });
+
+  // ──────────────────────────────────────────────────────────────────
+  // QUICK SHOT (included extra "roving"): a handheld camera. Every tap is saved quietly in the background;
+  // the photographer shows the QR when a guest asks. One shot per tap.
+  // ──────────────────────────────────────────────────────────────────
+  var quickQueue = [], quickSeq = 0, quickChain = Promise.resolve();
+  var quickOverlay = document.getElementById('quickOverlay'), qsVideo = document.getElementById('qsVideo');
+  var qsShown = null;
+  function quickFrame(){
+    var vw = video.videoWidth, vh = video.videoHeight;
+    if(!vw || !vh) return null;
+    var c = document.createElement('canvas'); c.width = vw; c.height = vh;
+    var ctx = c.getContext('2d');
+    if(mirrorPreview()){ ctx.translate(c.width, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(video, 0, 0, vw, vh); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    try{ applyBgReplace(c); }catch(e){}
+    try{ applyFilterToCanvas(c); }catch(e){}
+    c._isShot = true;
+    return c;
+  }
+  // The same save as a finished session (3 tries, then kept on the device and sent later), for one photo.
+  async function quickUpload(blob, filename){
+    if(driveReady() || LOCALSHARE){
+      var dest = { folderKey: rawFolderKey(), subfolder: driveSubfolder() }, drive = null, lastErr = null;
+      var online = LOCALSHARE || navigator.onLine !== false;
+      if(!online) lastErr = new Error('offline');
+      for(var a = 0; a < 3 && !drive && online; a++){
+        if(a) await wait(a === 1 ? 1500 : 4000);
+        try{ drive = await uploadToDrive(blob, filename, dest); }
+        catch(e){ lastErr = e; if(isPermanentUploadError(e)) break; }
+      }
+      if(!drive){
+        var queued = false;
+        try{ queued = await queueUpload(blob, filename, dest); }catch(e){ console.error('Could not keep the photo for later:', e); }
+        if(!queued) throw lastErr || new Error('Upload failed');
+        var fu = getCachedFolderUrl();
+        return { queued: true, url: fu ? (shareUrlFor(fu) || '') : '' };   // the event gallery, where it appears once it uploads
+      }
+      if(queueCount) scheduleQueue(1500);
+      if(drive.folderUrl) rememberFolderUrl(drive.folderUrl);
+      registerEvent(drive.folderUrl || getCachedFolderUrl(), true);
+      return { queued: false, url: fileShareUrl(drive.fileId) || '' };
+    }
+    return { queued: false, url: await uploadToLitterbox(blob, filename, '1h') };
+  }
+  async function quickProcess(item){
+    try{
+      var shots = new Array(shotsNeeded()).fill(item.shot), prev = shotCanvases, comp = document.createElement('canvas');
+      shotCanvases = shots;
+      try{ renderCompositeToCanvas(currentLayout, comp); } finally { shotCanvases = prev; }
+      item.shots = shots; item.comp = comp;
+      var flat = document.createElement('canvas'); flat.width = comp.width; flat.height = comp.height;
+      var fx = flat.getContext('2d'); fx.fillStyle = '#ffffff'; fx.fillRect(0, 0, flat.width, flat.height); fx.drawImage(comp, 0, 0);
+      var blob = await new Promise(function(r){ flat.toBlob(r, 'image/jpeg', 0.92); });
+      var name = filePrefix() + nextSessionNumber() + '_' + currentLayout + deviceTag() + '.jpg';
+      var res = await quickUpload(blob, name);
+      item.status = res.queued ? 'queued' : 'ready'; item.url = res.url || '';
+    }catch(e){ console.error('Quick shot failed:', e); item.status = 'error'; }
+    quickRender();
+  }
+  function quickRender(){
+    var strip = document.getElementById('qsStrip'); strip.innerHTML = '';
+    quickQueue.slice().forEach(function(it){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'qs-thumb ' + it.status; b.dataset.id = it.id;
+      var im = document.createElement('img'); im.src = it.thumb; im.alt = 'Shot ' + it.id; b.appendChild(im); b.appendChild(document.createElement('i'));
+      strip.appendChild(b);
+    });
+    var done = quickQueue.filter(function(i){ return i.status === 'ready' || i.status === 'queued'; }).length;
+    document.getElementById('qsCount').textContent = quickQueue.length ? (quickQueue.length + (quickQueue.length === 1 ? ' shot' : ' shots') + ' · ' + done + ' saved') : 'Tap the button to take a photo';
+    if(qsShown && !document.getElementById('qsPanel').hidden) quickShowPanel(qsShown);
+  }
+  function quickShoot(){
+    var c = quickFrame();
+    if(!c){ showToast('The camera has no picture yet.', 2500); return; }
+    var fl = document.getElementById('qsFlash'); fl.classList.add('on'); setTimeout(function(){ fl.classList.remove('on'); }, 60);
+    var t = document.createElement('canvas'); var k = 160 / Math.max(c.width, c.height); t.width = Math.max(1, Math.round(c.width * k)); t.height = Math.max(1, Math.round(c.height * k));
+    t.getContext('2d').drawImage(c, 0, 0, t.width, t.height);
+    var item = { id: ++quickSeq, shot: c, thumb: t.toDataURL('image/jpeg', 0.7), status: 'saving', url: '', shots: null, comp: null };
+    quickQueue.push(item); quickRender();
+    quickChain = quickChain.then(function(){ return quickProcess(item); });   // one at a time, in order
+  }
+  function quickShowPanel(item){
+    qsShown = item;
+    var box = document.getElementById('qsQrBox'), note = document.getElementById('qsNote');
+    box.innerHTML = '';
+    if(item.url){
+      var im = document.createElement('img'); im.src = qrImageUrl(item.url); im.alt = 'QR code'; box.appendChild(im);
+      note.textContent = item.status === 'queued' ? 'Saved on this device. The photo appears in the event gallery once it uploads.' : 'Scan to get the photo.';
+    } else {
+      note.textContent = item.status === 'error' ? 'This photo could not be saved. Try taking it again.' : (item.status === 'queued' ? 'Saved on this device. It uploads when there is internet; there is no link yet.' : 'Still saving. This takes a few seconds.');
+    }
+    document.getElementById('qsPrint').disabled = !item.comp;
+    document.getElementById('qsPanel').hidden = false;
+  }
+  async function openQuick(){
+    if(!extraOn('roving')) return;
+    if(state === 'capturing'){ showToast('Finish the session first.', 3000); return; }
+    if(typeof USB_CAM_ID !== 'undefined' && currentDeviceId === USB_CAM_ID){ showToast('Quick shot uses the tablet or phone camera. Pick it in the camera menu.', 4500); return; }
+    if(!streamActive){ var ok = await initCamera(cameraSelect.value || null); if(!ok) return; }
+    qsVideo.srcObject = currentStream || video.srcObject;
+    qsVideo.style.transform = mirrorPreview() ? 'scaleX(-1)' : '';
+    try{ await qsVideo.play(); }catch(e){}
+    quickOverlay.hidden = false; document.getElementById('qsPanel').hidden = true; qsShown = null;
+    quickRender();
+  }
+  function closeQuick(){ quickOverlay.hidden = true; document.getElementById('qsPanel').hidden = true; qsShown = null; }
+  async function quickFlip(){
+    var opts = Array.from(cameraSelect.options).filter(function(o){ return o.value && o.value !== USB_CAM_ID; });
+    if(opts.length < 2){ showToast('This device has only one camera.', 2500); return; }
+    var i = opts.findIndex(function(o){ return o.value === cameraSelect.value; });
+    cameraSelect.value = opts[(i + 1) % opts.length].value;
+    var before = currentStream;
+    cameraSelect.dispatchEvent(new Event('change'));
+    for(var n = 0; n < 30 && (currentStream === before || !video.videoWidth); n++) await wait(100);
+    qsVideo.srcObject = currentStream || video.srcObject;
+    qsVideo.style.transform = mirrorPreview() ? 'scaleX(-1)' : '';
+    try{ await qsVideo.play(); }catch(e){}
+  }
+  document.getElementById('qsShutter').addEventListener('click', quickShoot);
+  document.getElementById('qsClose').addEventListener('click', closeQuick);
+  document.getElementById('qsFlip').addEventListener('click', quickFlip);
+  document.getElementById('qsPanelClose').addEventListener('click', function(){ document.getElementById('qsPanel').hidden = true; qsShown = null; });
+  document.getElementById('qsStrip').addEventListener('click', function(e){
+    var b = e.target.closest('.qs-thumb'); if(!b) return;
+    var it = quickQueue.find(function(x){ return x.id === Number(b.dataset.id); });
+    if(it) quickShowPanel(it);
+  });
+  document.getElementById('qsPrint').addEventListener('click', function(){
+    var it = qsShown; if(!it || !it.shots) return;
+    closeQuick();
+    startDeskResult(it.shots, { qrUrl: it.url, back: 'quick' });    // the normal result screen with the Print button; the QR is already known
+  });
+
+  // ──────────────────────────────────────────────────────────────────
+  // 360 DESK (included extra "spin360"): videos from the 360 arm's camera -> shared with a QR.
+  // They arrive from a folder or the phone send page (laptop app), or are dropped / picked here (website).
+  // Editing (speed, frame, music) is a laptop-app step that comes later; for now the original is shared.
+  // ──────────────────────────────────────────────────────────────────
+  var spinQueue = [], spinSeq = 0, spinTimer = null, spinSeen = {}, spinPrev = {}, spinInfo = null, spinCur = null;
+  var spinEnv = { ffmpeg: false, music: '' };
+  var SPIN_WEB_MAX = 28 * 1024 * 1024;           // the website's upload path takes about this much per video
+  var spinOverlay = document.getElementById('spinOverlay'), spinGrid = document.getElementById('spinGrid');
+  function spinDesktop(){ return !!(window.pb4u && window.pb4u.spinScan); }
+  function spinMb(n){ return (Math.round(n / 104857.6) / 10) + ' MB'; }
+  // Where a clip plays from: the inbox original, or its finished edit.
+  function spinSrc(it, edited){
+    if(it.src !== 'inbox') return it.objUrl;
+    if(!spinInfo || !spinInfo.previewBase) return '';
+    if(edited && it.edited) return spinInfo.previewBase + '/edited/' + encodeURIComponent(it.edited.replace(/^edited\//, ''));
+    return spinInfo.previewBase + '/file/' + encodeURIComponent(it.name);
+  }
+
+  // ---- the look: how every clip is edited (kept on this laptop) ----
+  var SPIN_PRESETS = {
+    classic:   { label: 'Classic slow-mo', speed: 'slow', smooth: false, audio: 'music', overlay: true },
+    ramp:      { label: 'Speed ramp', speed: 'ramp', smooth: false, audio: 'music', overlay: true },
+    boomerang: { label: 'Boomerang', speed: 'boomerang', smooth: false, audio: 'music', overlay: true },
+    plain:     { label: 'Original speed', speed: 'normal', smooth: false, audio: 'original', overlay: true }
+  };
+  var SPIN_LOOK_KEY = 'pb_spin_look';
+  var spinLook = { preset: 'classic', speed: 'slow', smooth: false, orient: 'portrait', quality: 1080, overlay: true, audio: 'music', volume: 80, auto: false };
+  try{ var sl = JSON.parse(localStorage.getItem(SPIN_LOOK_KEY) || 'null'); if(sl && typeof sl === 'object') Object.keys(spinLook).forEach(function(k){ if(sl[k] !== undefined) spinLook[k] = sl[k]; }); }catch(e){}
+  function spinLookToUI(){
+    var g = function(id){ return document.getElementById(id); };
+    g('spinPreset').value = spinLook.preset; g('spinSpeed').value = spinLook.speed; g('spinSmooth').checked = !!spinLook.smooth;
+    g('spinOrient').value = spinLook.orient; g('spinQual').value = String(spinLook.quality); g('spinOverlayOn').checked = !!spinLook.overlay;
+    g('spinAudio').value = spinLook.audio; g('spinVol').value = String(spinLook.volume); g('spinAuto').checked = !!spinLook.auto;
+    g('spinSmooth').disabled = spinLook.speed !== 'slow';
+  }
+  function spinLookFromUI(fromPreset){
+    var g = function(id){ return document.getElementById(id); };
+    spinLook.speed = g('spinSpeed').value; spinLook.smooth = g('spinSmooth').checked; spinLook.orient = g('spinOrient').value;
+    spinLook.quality = Number(g('spinQual').value) || 1080; spinLook.overlay = g('spinOverlayOn').checked; spinLook.audio = g('spinAudio').value;
+    spinLook.volume = Number(g('spinVol').value) || 0; spinLook.auto = g('spinAuto').checked;
+    if(!fromPreset) spinLook.preset = 'custom';
+    g('spinPreset').value = spinLook.preset; g('spinSmooth').disabled = spinLook.speed !== 'slow';
+    try{ localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); }catch(e){}
+  }
+  function spinPresetLabel(){ return (SPIN_PRESETS[spinLook.preset] && SPIN_PRESETS[spinLook.preset].label) || (spinLook.speed === 'slow' ? 'slow-mo' : spinLook.speed); }
+  // Output size of the picture drawn over the video (boomerang is kept at 720 to stay light).
+  function spinDims(){
+    var q = (spinLook.quality === 720 || spinLook.speed === 'boomerang') ? 720 : 1080, long = Math.round(q * 16 / 9 / 2) * 2;
+    return spinLook.orient === 'landscape' ? { W: long, H: q } : { W: q, H: long };
+  }
+  // The booth's own frame, stickers, logo and title, on a transparent picture the size of the video.
+  function spinMakeOverlay(W, H){
+    var c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d');
+    try{ drawDecorLayer(x, W, H); }catch(e){}
+    try{ var bandH = Math.round(H * 0.13); drawLabelBand(x, W, H - bandH, bandH, labelInput.value, 0); }catch(e){}
+    return new Promise(function(r){ c.toBlob(r, 'image/png'); });
+  }
+
+  function spinHint(){
+    var el = document.getElementById('spinHint');
+    el.textContent = spinQueue.length
+      ? 'Tap a video to play it' + (spinEnv.ffmpeg ? ', trim and edit it,' : '') + ' and share it. The guest scans the QR to watch and save the video.'
+      : (spinDesktop() ? 'No videos yet. Send one from the recording phone, or save it into the folder above.' : 'No videos yet. Choose the 360 videos from this device. Editing (slow motion, frame, music) is in the laptop app.');
+  }
+  function spinTag(it){
+    return it.status === 'shared' ? ['Shared', ''] : it.status === 'queued' ? ['Saved', 'wait'] : it.status === 'sharing' ? ['Sharing…', 'wait']
+      : it.status === 'editing' ? ['Editing ' + (it.pct || 0) + '%', 'wait'] : it.status === 'edited' ? ['Edited', ''] : it.status === 'error' ? ['Failed', 'err'] : null;
+  }
+  function spinRender(){
+    spinGrid.innerHTML = '';
+    if(!spinQueue.length){ var e = document.createElement('div'); e.className = 'desk-empty'; e.textContent = 'Videos you add appear here.'; spinGrid.appendChild(e); }
+    spinQueue.forEach(function(it){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'desk-item' + (it.status === 'shared' ? ' used' : ''); b.dataset.id = it.id;
+      var v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.playsInline = true;
+      var src = spinSrc(it, !it.viewOrig); if(src) v.src = src + '#t=0.1';
+      b.appendChild(v);
+      var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = it.name + ' · ' + spinMb(it.size); b.appendChild(nm);
+      var tag = spinTag(it);
+      if(tag){ var dn = document.createElement('span'); dn.className = 'done ' + tag[1]; dn.textContent = tag[0]; b.appendChild(dn); }
+      spinGrid.appendChild(b);
+    });
+    spinHint();
+  }
+  function spinTagUpdate(it){     // progress only: don't rebuild the tiles (their pictures would reload)
+    var d = spinGrid.querySelector('.desk-item[data-id="' + it.id + '"] .done');
+    var tag = spinTag(it);
+    if(d && tag){ d.textContent = tag[0]; d.className = 'done ' + tag[1]; } else spinRender();
+  }
+  function spinAddFile(file){
+    if(!(/^video\//.test(file.type) || /\.(mp4|mov|m4v|webm)$/i.test(file.name || ''))) return;
+    if(spinDesktop()){ spinSendToInbox(file); return; }     // the laptop app keeps every clip in its inbox folder
+    spinQueue.unshift({ id: ++spinSeq, src: 'file', file: file, objUrl: URL.createObjectURL(file), name: file.name || ('video ' + spinSeq), size: file.size, status: 'new', url: '' });
+    spinRender();
+  }
+  async function spinSendToInbox(file){
+    try{
+      if(!spinInfo || !spinInfo.previewBase) spinInfo = await window.pb4u.spinInfo();
+      showToast('Adding ' + file.name + '…', 2500);
+      var r = await fetch(spinInfo.previewBase + '/upload?name=' + encodeURIComponent(file.name), { method: 'POST', headers: { 'content-type': 'text/plain' }, body: file });
+      if(!r.ok) throw new Error('error ' + r.status);
+      spinPoll();
+    }catch(e){ showToast('Couldn’t add that video (' + (e.message || e) + ').', 4500); }
+  }
+  async function spinPoll(){
+    if(!spinDesktop()) return;
+    try{
+      var list = await window.pb4u.spinScan(), fresh = [];
+      for(var i = list.length - 1; i >= 0; i--){
+        var f = list[i], key = f.name + '|' + f.mtime;
+        if(spinSeen[key]) continue;
+        var prev = spinPrev[key]; spinPrev[key] = f.size;
+        if(prev !== f.size || f.size < 1024) continue;           // still being copied: wait for the next look
+        spinSeen[key] = true;
+        var it = { id: ++spinSeq, src: 'inbox', name: f.name, size: f.size, status: 'new', url: '' };
+        spinQueue.unshift(it); fresh.push(it);
+      }
+      if(fresh.length){ spinRender(); if(spinLook.auto && spinEnv.ffmpeg) fresh.forEach(function(it){ spinEdit(it); }); }
+    }catch(e){}
+  }
+  async function spinSetupInfo(){
+    var box = document.getElementById('spinSend');
+    if(!spinDesktop()){ box.hidden = true; document.getElementById('spinLook').hidden = true; document.getElementById('spinNoEdit').hidden = true; return; }
+    try{ spinInfo = await window.pb4u.spinInfo(); }catch(e){ return; }
+    try{ spinEnv = await window.pb4u.spinEnv(); }catch(e){ spinEnv = { ffmpeg: false, music: '' }; }
+    box.hidden = false;
+    var qr = document.getElementById('spinSendQr'); qr.innerHTML = '';
+    if(spinInfo.sendUrl){ var im = document.createElement('img'); im.src = qrImageUrl(spinInfo.sendUrl); im.alt = 'QR code to send a video'; qr.appendChild(im); }
+    else qr.textContent = 'Connect this laptop to the booth Wi-Fi to send from a phone.';
+    document.getElementById('spinDirTxt').textContent = spinInfo.dir || '';
+    document.getElementById('spinLook').hidden = !spinEnv.ffmpeg;
+    document.getElementById('spinNoEdit').hidden = !!spinEnv.ffmpeg;
+    document.getElementById('spinMusicName').textContent = spinEnv.music ? spinEnv.music : 'no music chosen';
+    spinLookToUI();
+    if(!spinTimer) spinTimer = setInterval(spinPoll, 2500);
+    spinPoll();
+  }
+  function openSpin(){
+    if(!extraOn('spin360')) return;
+    if(state === 'capturing'){ showToast('Finish the session first.', 3000); return; }
+    spinOverlay.hidden = false; spinRender(); spinSetupInfo();
+  }
+  function closeSpin(){ spinOverlay.hidden = true; closeSpinModal(); }
+
+  // ---- editing one clip ----
+  async function spinEdit(it){
+    if(!spinEnv.ffmpeg || it.src !== 'inbox' || it.status === 'editing') return;
+    var dims = spinDims();
+    it.status = 'editing'; it.pct = 0; it.err = ''; it.viewOrig = false; spinTagUpdate(it); spinModalUpdate();
+    try{
+      var ov = null;
+      if(spinLook.overlay){
+        var blob = await spinMakeOverlay(dims.W, dims.H);
+        if(blob) ov = await window.pb4u.spinOverlay(new Uint8Array(await blob.arrayBuffer()));
+      }
+      var j = await window.pb4u.spinProcess({
+        name: it.name, label: spinPresetLabel(), overlay: ov,
+        options: { speed: spinLook.speed, smooth: spinLook.smooth, orientation: spinLook.orient, quality: spinLook.quality, audio: spinLook.audio,
+                   volume: spinLook.volume / 100, trimStart: it.trimA || 0, trimEnd: it.trimB || null }
+      });
+      if(!j || j.error) throw new Error((j && j.error) || 'Could not start the editing');
+      it.job = j.id;
+      for(;;){
+        await wait(600);
+        var st = await window.pb4u.spinJob(j.id);
+        if(!st) throw new Error('The editing stopped unexpectedly');
+        it.pct = st.pct || 0; spinTagUpdate(it); spinModalUpdate();
+        if(st.state === 'done'){ it.edited = st.out; it.status = 'edited'; break; }
+        if(st.state === 'error') throw new Error(st.error || 'The video could not be edited');
+        if(st.state === 'cancelled'){ it.status = 'new'; it.job = null; spinRender(); spinModalUpdate(); return; }
+      }
+    }catch(e){ it.status = 'error'; it.err = (e && e.message) || 'Failed'; }
+    it.job = null; spinRender(); spinModalUpdate();
+    if(it === spinCur && it.edited){ var v = document.getElementById('spinVideo'); v.src = spinSrc(it, true); v.load(); }
+  }
+
+  // ---- the player window ----
+  function spinModalUpdate(){
+    var it = spinCur, modal = document.getElementById('spinModal');
+    if(!it || modal.hidden) return;
+    var box = document.getElementById('spinQrBox'), msg = document.getElementById('spinMsg'), btn = document.getElementById('spinShareBtn');
+    var editing = it.status === 'editing', canEdit = spinEnv.ffmpeg && it.src === 'inbox';
+    box.innerHTML = '';
+    if(it.url && !editing){ var im = document.createElement('img'); im.src = qrImageUrl(it.url); im.alt = 'QR code'; box.appendChild(im); }
+    document.getElementById('spinTrim').hidden = !canEdit || editing;
+    document.getElementById('spinProg').hidden = !editing;
+    document.getElementById('spinBar').style.width = (it.pct || 0) + '%';
+    document.getElementById('spinProgTxt').textContent = 'Editing… ' + (it.pct || 0) + '%';
+    var eb = document.getElementById('spinEditBtn');
+    eb.hidden = !canEdit; eb.textContent = editing ? 'Cancel editing' : (it.edited ? 'Edit again' : 'Edit video: ' + spinPresetLabel());
+    var vb = document.getElementById('spinViewBtn'); vb.hidden = !(it.edited && !editing); vb.textContent = it.viewOrig ? 'View edited' : 'View original';
+    var what = it.edited && !it.viewOrig ? 'edited' : 'original';
+    msg.textContent = it.status === 'shared' ? 'Shared. The guest scans this to watch and save the video.'
+      : it.status === 'queued' ? 'Saved on this device. It uploads when there is internet; the QR opens the event gallery.'
+      : it.status === 'sharing' ? 'Sharing… this takes a few seconds.'
+      : editing ? 'Editing takes about as long as the video. You can keep using the booth.'
+      : it.status === 'error' ? (it.err || 'Could not do that.') + ' You can try again.'
+      : it.src === 'file' && !spinDesktop() ? 'Shares the original video (up to 28 MB on the website).'
+      : 'Shares the ' + what + ' video.';
+    btn.disabled = it.status === 'sharing' || editing;
+    btn.textContent = it.status === 'shared' || it.status === 'queued' ? 'Share again' : 'Share + QR';
+  }
+  function spinOpenItem(it){
+    spinCur = it;
+    var v = document.getElementById('spinVideo'), src = spinSrc(it, !it.viewOrig);
+    v.pause(); v.src = src || ''; v.load();
+    document.getElementById('spinTrimA').value = it.trimA || ''; document.getElementById('spinTrimB').value = it.trimB || '';
+    document.getElementById('spinModal').hidden = false;
+    spinModalUpdate();
+  }
+  function closeSpinModal(){
+    var v = document.getElementById('spinVideo'); try{ v.pause(); }catch(e){} v.removeAttribute('src'); try{ v.load(); }catch(e){}
+    document.getElementById('spinModal').hidden = true; spinCur = null;
+  }
+  async function spinDoShare(it){
+    if(it.status === 'sharing' || it.status === 'editing') return;
+    it.status = 'sharing'; it.err = ''; spinRender(); spinModalUpdate();
+    try{
+      var ext = (/\.[a-z0-9]+$/i.exec(it.name) || ['.mp4'])[0].toLowerCase();
+      var useEdit = it.src === 'inbox' && it.edited && !it.viewOrig;
+      if(useEdit) ext = '.mp4';
+      var fname = filePrefix() + nextSessionNumber() + '_360' + deviceTag() + ext;
+      if(it.src === 'inbox'){
+        var r = await window.pb4u.spinShare(useEdit ? it.edited : it.name, rawFolderKey(), driveSubfolder(), fname);
+        if(!r || !r.ok) throw new Error((r && r.error) || 'Could not save the video');
+        try{ if(r.folderUrl) rememberFolderUrl(r.folderUrl); registerEvent(r.folderUrl || getCachedFolderUrl(), true); }catch(e){}
+        it.url = fileShareUrl(r.fileId) || ''; it.queued = false;
+      } else {
+        if(it.size > SPIN_WEB_MAX) throw new Error('This video is ' + spinMb(it.size) + '. The website takes up to 28 MB; use the laptop app for bigger videos.');
+        var res = await quickUpload(it.file, fname);
+        it.url = res.url || ''; it.queued = !!res.queued;
+      }
+      it.status = it.queued ? 'queued' : 'shared';
+    }catch(e){ it.status = 'error'; it.err = (e && e.message) || 'Failed'; }
+    spinRender(); spinModalUpdate();
+  }
+  document.getElementById('spinClose').addEventListener('click', closeSpin);
+  document.getElementById('spinModalClose').addEventListener('click', closeSpinModal);
+  document.getElementById('spinPick').addEventListener('click', function(){ document.getElementById('spinFile').click(); });
+  document.getElementById('spinFile').addEventListener('change', function(e){ [].forEach.call(e.target.files || [], spinAddFile); e.target.value = ''; });
+  document.getElementById('spinClear').addEventListener('click', function(){ spinQueue.forEach(function(i){ if(i.objUrl) try{ URL.revokeObjectURL(i.objUrl); }catch(e){} }); spinQueue = []; spinRender(); });
+  document.getElementById('spinDirBtn').addEventListener('click', async function(){
+    try{ var r = await window.pb4u.spinChoose(); if(r){ spinInfo = r; spinSeen = {}; spinPrev = {}; spinQueue = spinQueue.filter(function(i){ return i.src !== 'inbox'; }); spinRender(); spinSetupInfo(); } }catch(e){}
+  });
+  document.getElementById('spinShareBtn').addEventListener('click', function(){ if(spinCur) spinDoShare(spinCur); });
+  document.getElementById('spinEditBtn').addEventListener('click', function(){
+    var it = spinCur; if(!it) return;
+    if(it.status === 'editing'){ if(it.job) window.pb4u.spinCancel(it.job); return; }
+    var a = parseFloat(document.getElementById('spinTrimA').value), b = parseFloat(document.getElementById('spinTrimB').value);
+    it.trimA = isFinite(a) && a > 0 ? a : 0; it.trimB = isFinite(b) && b > it.trimA ? b : 0;
+    spinEdit(it);
+  });
+  document.getElementById('spinViewBtn').addEventListener('click', function(){
+    var it = spinCur; if(!it) return;
+    it.viewOrig = !it.viewOrig;
+    var v = document.getElementById('spinVideo'); v.src = spinSrc(it, !it.viewOrig); v.load();
+    spinModalUpdate();
+  });
+  document.getElementById('spinRemove').addEventListener('click', function(){
+    var it = spinCur; if(!it) return;
+    spinQueue = spinQueue.filter(function(x){ return x !== it; }); if(it.objUrl) try{ URL.revokeObjectURL(it.objUrl); }catch(e){}
+    closeSpinModal(); spinRender();
+  });
+  spinGrid.addEventListener('click', function(e){
+    var b = e.target.closest('.desk-item'); if(!b) return;
+    var it = spinQueue.find(function(x){ return x.id === Number(b.dataset.id); });
+    if(it) spinOpenItem(it);
+  });
+  // the look controls
+  document.getElementById('spinPreset').addEventListener('change', function(){
+    var pr = SPIN_PRESETS[this.value];
+    if(pr){ spinLook.preset = this.value; spinLook.speed = pr.speed; spinLook.smooth = pr.smooth; spinLook.audio = pr.audio; spinLook.overlay = pr.overlay; spinLookToUI(); spinLookFromUI(true); }
+    else { spinLook.preset = 'custom'; spinLookFromUI(true); }
+  });
+  ['spinSpeed', 'spinSmooth', 'spinOrient', 'spinQual', 'spinOverlayOn', 'spinAudio', 'spinVol', 'spinAuto'].forEach(function(id){
+    document.getElementById(id).addEventListener('change', function(){ spinLookFromUI(id === 'spinAuto' || id === 'spinVol' || id === 'spinOrient' || id === 'spinQual' ? true : false); });
+  });
+  document.getElementById('spinMusicBtn').addEventListener('click', async function(){
+    try{ var r = await window.pb4u.spinMusic(false); if(r){ spinEnv.music = r.music; document.getElementById('spinMusicName').textContent = r.music || 'no music chosen'; } }catch(e){}
+  });
+  var spinDrop = document.getElementById('spinDrop');
+  ['dragenter', 'dragover'].forEach(function(t){ spinDrop.addEventListener(t, function(e){ e.preventDefault(); spinDrop.classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function(t){ spinDrop.addEventListener(t, function(e){ e.preventDefault(); spinDrop.classList.remove('over'); }); });
+  spinDrop.addEventListener('drop', function(e){ if(e.dataTransfer) [].forEach.call(e.dataTransfer.files || [], spinAddFile); });
+  spinOverlay.addEventListener('click', function(e){ if(e.target === spinOverlay) closeSpin(); });
 
   // ---- Welcome screen (between guests) ----
   var welcomeOverlay = document.getElementById('welcomeOverlay');
@@ -13462,13 +14443,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       guestPick: guestPickOn, guestLayouts: guestLayoutSet.slice(),
       timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
       reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake,
-      outputMode: outputMode, gifSpeed: gifSpeed,
+      outputMode: outputMode, gifSpeed: gifSpeed, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack,
       backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
       frameColorChoice: frameColorChoice, photoPlacement: photoPlacement, cropFocus: cropFocus,
       label: labelInput.value, font: currentFont, dateFont: currentDateFont, dateOn: dateOn, date: dateInput.value,
       textColor: textColor, titleSize: titleSizeMultiplier, titleBg: titleBgEnabled, titleBgColor: titleBgColor,
       outline: useOutline, outlineColor: outlineColor, shadow: useShadow,
-      filter: filterKey, softSkin: softSkin,
+      filter: filterKey, softSkin: softSkin, dateStamp: dateStamp,
       welcomeOn: welcomeOn,
       welcomeMsg: welcomeMsg,
       welcomeBtnOn: welcomeBtnOn,
@@ -13557,11 +14538,18 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(s.advanceMode === 'tap' || s.advanceMode === 'auto'){ advanceMode = s.advanceMode; setSelectValue('advanceSelect', s.advanceMode); refreshAdvanceUI(); }
       if(typeof s.reviewEach === 'boolean'){ reviewEach = s.reviewEach; reviewEachToggle.checked = s.reviewEach; }
       if(typeof s.allowRetake === 'boolean'){ allowRetake = s.allowRetake; try{ refreshRetakeUI(); }catch(e){} }
-      if(s.outputMode === 'gif' || s.outputMode === 'both' || s.outputMode === 'photo'){ outputMode = isGifAllowed() ? s.outputMode : 'photo'; refreshOutputModeUI(); }
+      if(s.outputMode === 'flipbook'){ outputMode = extraOn('flipbook') ? 'flipbook' : 'photo'; }
+      else if(s.outputMode === 'gif' || s.outputMode === 'both' || s.outputMode === 'photo'){ outputMode = isGifAllowed() ? s.outputMode : 'photo'; }
+      if([4, 5, 6, 7].indexOf(Number(s.flipSec)) >= 0){ flipSec = Number(s.flipSec); var fsEl = document.getElementById('flipSecSelect'); if(fsEl) fsEl.value = String(flipSec); }
+      if([16, 24, 30, 40].indexOf(Number(s.flipFrames)) >= 0){ flipFrames = Number(s.flipFrames); var ffEl = document.getElementById('flipFramesSelect'); if(ffEl) ffEl.value = String(flipFrames); }
+      if(typeof s.flipCover === 'boolean'){ flipCover = s.flipCover; var fcEl = document.getElementById('flipCoverToggle'); if(fcEl) fcEl.checked = flipCover; }
+      if(typeof s.flipBack === 'boolean'){ flipBack = s.flipBack; var fbEl = document.getElementById('flipBackToggle'); if(fbEl) fbEl.checked = flipBack; }
+      refreshOutputModeUI();
       // gifSpeed is always auto (0); any previously saved manual value is ignored.
       filterKey = Object.prototype.hasOwnProperty.call(FILTERS, s.filter) ? s.filter : 'none';
       markFilterChips();
       softSkin = !!s.softSkin; softSkinToggle.checked = softSkin;
+      dateStamp = !!s.dateStamp && extraOn('vintage'); dateStampToggle.checked = dateStamp;
       applyLiveFilter();
       if(typeof s.welcomeOn === 'boolean'){
         welcomeOn = s.welcomeOn;
@@ -14735,7 +15723,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // ---- My themes (save the current design and reuse it) ----
   var DESIGN_KEYS = ['backdropPreset', 'backdropColor', 'elementsChoice', 'accent', 'frameColorChoice', 'photoPlacement', 'cropFocus',
     'textColor', 'font', 'dateFont', 'titleSize', 'titleBg', 'titleBgColor', 'outline', 'outlineColor', 'shadow',
-    'filter', 'softSkin', 'overlay', 'logo', 'decor', 'myProps', 'titleStyle', 'kicker', 'upper', 'art', 'artPal'];
+    'filter', 'softSkin', 'dateStamp', 'overlay', 'logo', 'decor', 'myProps', 'titleStyle', 'kicker', 'upper', 'art', 'artPal'];
   function myThemesKey(){ var pb = window.__PB || {}; return 'pb_mythemes:' + (pb.folderPrefix || pb.folderKey || 'local'); }
   async function loadMyThemes(){
     try{ myThemes = JSON.parse(localStorage.getItem(myThemesKey()) || '[]') || []; }catch(e){ myThemes = []; }

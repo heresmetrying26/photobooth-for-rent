@@ -159,7 +159,8 @@ function doPost(e) {
     if (!b64) return jsonOut({ ok: false, error: 'No image data was received.' });
     if (b64.length > MAX_IMAGE_BASE64) return jsonOut({ ok: false, error: 'Image is too large.' });
 
-    var mime = /^image\/(png|jpeg|webp|gif)$/.test(data.mimeType || '') ? data.mimeType : 'image/png';
+    // Photos, GIFs and (360 / guestbook) videos. Videos are shared by their Drive preview, not relayed.
+    var mime = /^(image\/(png|jpeg|webp|gif)|video\/(mp4|quicktime|webm|x-m4v))$/.test(data.mimeType || '') ? data.mimeType : 'image/png';
     var name = String(data.filename || ('photo-' + Date.now() + '.png')).replace(/[\/\\]/g, '_').slice(0, 120);
     var file = folder.createFile(Utilities.newBlob(Utilities.base64Decode(b64), mime, name));
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -205,7 +206,7 @@ function appendGalleryPhotos_(folder, files, depth) {
   var it = folder.getFiles();
   while (it.hasNext()) {
     var f = it.next();
-    if (f.isTrashed() || !/^image\/(png|jpeg|webp|gif)$/.test(f.getMimeType())) continue;
+    if (f.isTrashed() || !/^(image\/(png|jpeg|webp|gif)|video\/(mp4|quicktime|webm|x-m4v))$/.test(f.getMimeType())) continue;
     files.push({ id: f.getId(), name: f.getName(), mime: f.getMimeType(), size: f.getSize(), t: f.getDateCreated().getTime() });
   }
   if (depth >= 4) return;

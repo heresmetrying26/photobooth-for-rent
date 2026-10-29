@@ -201,6 +201,14 @@
         <div class="meta" style="margin:6px 0 0;" id="newPayHint">Vouchers work offline too. The GCash / Maya QR part only works on the website booth, so laptop-app-only and Android-app-only codes get vouchers only.</div>
       </div>
       <div class="modebox">
+        <label style="font-size:13px;color:var(--ink);">Extras <span style="font-weight:500;color:var(--dim);">(all included; untick to hide one)</span></label>
+        <label class="toggle"><input type="checkbox" id="newXVintage" checked> Vintage looks (film, faded, 70s, instant, noir, date stamp)</label>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newXRoving" checked> Photographer desk (roving photographer photos &rarr; frame, print, gallery)</label>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newXFlipbook" checked> Flipbook (short clip printed as a flip book)</label>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newXVideo" checked> Video guestbook (coming soon)</label>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newXSpin" checked> 360 video desk (videos from the 360 arm &rarr; QR; editing in the laptop app)</label>
+      </div>
+      <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newOffline"> Offline app (Windows / Mac laptop app)</label>
         <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newOfflineOnly"> Laptop app only (the website booth refuses this code)</label>
         <div class="meta" style="margin:6px 0 0;">Laptop Booth, Lifetime Offline and Lifetime Online + Offline include the offline app. Lifetime Offline is laptop app only (the website booth refuses it).</div>
@@ -764,6 +772,10 @@
     acts += '<button class="small" data-a="retakeopt" data-c="' + c + '">' + (l.retakeOpt ? 'Hide retake switch' : 'Give retake switch') + '</button>';
     acts += '<button class="small" data-a="gifopt" data-c="' + c + '">' + (l.gifOpt ? 'Hide GIF mode' : 'Give GIF mode') + '</button>';
     acts += '<button class="small" data-a="lockopt" data-c="' + c + '">' + (l.lockOpt ? 'Hide lock booth' : 'Give lock booth') + '</button>';
+    [['vintage', 'vintage looks'], ['roving', 'photographer desk'], ['flipbook', 'flipbook'], ['video', 'video guestbook'], ['spin360', '360 video desk']].forEach(function(x){
+      var on = !(l.extras && l.extras[x[0]] === false);
+      acts += '<button class="small" data-a="extra" data-x="' + x[0] + '" data-c="' + c + '">' + (on ? 'Hide ' : 'Give ') + x[1] + '</button>';
+    });
     if(!bonus){
       acts += '<button class="small" data-a="voucherpdf" data-c="' + c + '" title="Open / print 1-page Customer Voucher PDF with access codes, QR code &amp; all guides">📄 Customer Handout (PDF)</button>';
       acts += '<button class="small" data-a="vouchermsg" data-c="' + c + '" title="Copy formatted text message for Messenger / WhatsApp">📋 Copy Message</button>';
@@ -1118,6 +1130,12 @@
         refresh();
         return;
       }
+      if(a === 'extra'){
+        var xr = await api({ action: 'extra', code: code, name: b.dataset.x });
+        toast('Updated: ' + b.dataset.x + (xr.extras && xr.extras[b.dataset.x] ? ' on' : ' off') + ' — an open booth updates within ~5 minutes');
+        refresh();
+        return;
+      }
       if(a === 'gifopt'){
         var go = !(LIC[code] && LIC[code].gifOpt);
         await api({ action: 'gifopt', code: code, gifOpt: go });
@@ -1162,7 +1180,7 @@
     try{
       var np = readPrint($('newPrint'));
       var startsAt = readStartInputs($('newStartDate'), $('newStartTime'));
-      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, lockOpt: $('newLock').checked, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null };
+      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, lockOpt: $('newLock').checked, extras: { vintage: $('newXVintage').checked, roving: $('newXRoving').checked, flipbook: $('newXFlipbook').checked, video: $('newXVideo').checked, spin360: $('newXSpin').checked }, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null };
       var j;
       try{ j = await api(createBody); }
       catch(e1){
@@ -1408,6 +1426,7 @@
       f.gif = r.gifOpt !== false; f.retake = !!r.retakeOpt; f.lock = !!r.lockOpt; f.pay = !!r.payOpt;
       f.print = !!(r.print && r.print.enabled); f.sizes = r.print && r.print.sizes ? r.print.sizes.length : 0;
       f.opens = r.startsAt || 0;
+      var ex = r.extras || {}; f.vintage = ex.vintage !== false; f.roving = ex.roving !== false; f.flipbook = ex.flipbook !== false; f.spin360 = ex.spin360 !== false;
       var term = f.lifetime ? 'Lifetime' : (f.days >= 28 && f.days <= 31) ? 'Monthly' : f.days === 1 ? 'Per Event' : f.days + '-Day';
       var model = f.offlineOnly ? (f.traditional ? 'Offline (Laptop App)' : 'Offline (Android Tablet App)') : f.offlineOpt ? 'Online + Offline' : (f.traditional ? 'Online (Laptop)' : 'Online (Tablet)');
       f.title = term + ' ' + model;
@@ -1415,6 +1434,7 @@
       f.lifetime = !!p.lifetime; f.days = p.days || 1; f.devices = p.devices || 1;
       f.offlineOpt = !!p.offlineOpt; f.offlineOnly = !!p.offlineOnly; f.traditional = p.traditional !== false;
       f.gif = true; f.retake = true; f.lock = true; f.pay = true; f.print = true; f.sizes = 15; f.opens = 0;
+      f.vintage = f.roving = f.flipbook = f.spin360 = true;
       f.title = p.title || 'Photobooth Package';
     }
     f.online = !f.offlineOnly;
@@ -1433,6 +1453,10 @@
     if (f.lock) a.push('Lock booth');
     if (f.gif) a.push('GIF mode');
     if (f.pay) a.push(f.online ? 'Guest payments' : 'Guest vouchers');
+    if (f.vintage) a.push('Vintage looks');
+    if (f.roving) a.push('Photographer desk');
+    if (f.flipbook) a.push('Flipbook');
+    if (f.spin360) a.push('360 video desk');
     if (f.print) a.push('Printing' + (f.sizes > 1 ? ' (' + f.sizes + ' paper sizes' + (f.lifetime ? ' + your own' : '') + ')' : ''));
     return a;
   }
@@ -1480,6 +1504,7 @@
     if (f.offlineOpt) guides.push(['offline-app-guide', 'Offline App Guide PDF', 'Windows, Mac &amp; Android app: install, activation, Wi-Fi sharing']);
     if (f.print) guides.push(['hiti-printing-guide', 'Photo Printer Guide PDF', 'Hiti, DNP &amp; Canon Selphy']);
     guides.forEach(function (g) { links.push(['📖 ' + g[1], origin + '/lifetime/photobooth4u-' + g[0] + '.pdf', g[2]]); });
+    if (f.spin360) links.push(['🎥 360 Video Guide', origin + '/how-to-360/', 'Record, send, edit and share 360 videos']);
     if (f.print) links.push(['🖨️ Which Printers Work', origin + '/printers/', 'DNP, HiTi, Citizen, Mitsubishi, Sinfonia &amp; more']);
     if (f.print) links.push(['🖨️ Citizen Printer Guide', origin + '/how-to-print-citizen/', 'CX-02, CX-02W, CY-02, CZ-01']);
     if (f.print) links.push(['🧾 Thermal Printer Guide', origin + '/how-to-print-thermal/', '80 / 58 mm receipt printers']);
@@ -1586,6 +1611,7 @@
       f.online ? '📖 *Tablet Guide PDF:* ' + origin + '/lifetime/photobooth4u-tablet-guide.pdf' : '',
       f.offlineOpt ? '📖 *Offline App Guide PDF:* ' + origin + '/lifetime/photobooth4u-offline-app-guide.pdf' : '',
       f.print ? '🖨️ *Photo Printer Guide PDF:* ' + origin + '/lifetime/photobooth4u-hiti-printing-guide.pdf' : '',
+      f.spin360 ? '🎥 *360 Video Guide:* ' + origin + '/how-to-360/' : '',
       f.print ? '🖨️ *Which Printers Work:* ' + origin + '/printers/' : '',
       f.print ? '🖨️ *Citizen Printer Guide:* ' + origin + '/how-to-print-citizen/' : '',
       f.print ? '🧾 *Thermal Printer Guide:* ' + origin + '/how-to-print-thermal/' : '',

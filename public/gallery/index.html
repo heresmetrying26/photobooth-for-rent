@@ -97,6 +97,9 @@
     .qrsheet{width:min(400px,100%);background:var(--card);color:var(--ink);border-radius:24px;padding:22px 22px 18px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.35)}
     .qrsheet .qrbox{width:min(300px,72vw);height:min(300px,72vw);margin:4px auto 14px;background:#fff;border-radius:16px;padding:10px}
     .qrsheet h2{margin:0 0 4px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:24px;letter-spacing:-.02em}
+    .tile{position:relative}
+    .tile .play{position:absolute;right:8px;bottom:8px;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.62);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;pointer-events:none}
+    #vFrame{width:min(100%,900px);height:min(78vh,560px);border:0;border-radius:12px;background:#000}
     .qrsheet p{margin:0 0 14px;color:var(--muted);font-size:14px;font-weight:600;line-height:1.45}
     .qrsheet .btn{width:100%}
     @media print{
@@ -139,6 +142,7 @@
     <nav class="tabs hidden" id="tabs" aria-label="Photo gallery">
       <button class="tab" id="photosTab" type="button" aria-selected="true">All photos <i id="photoTabCount">0</i></button>
       <button class="tab" id="gifsTab" type="button" aria-selected="false">All GIFs <i id="gifTabCount">0</i></button>
+      <button class="tab hidden" id="videosTab" type="button" aria-selected="false">Videos <i id="videoTabCount">0</i></button>
       <span class="live" id="live">Live</span>
     </nav>
 
@@ -160,6 +164,7 @@
     <div class="v-stage" id="vStage">
       <span class="v-spin" id="vSpin"></span>
       <img id="vImg" alt="">
+      <iframe id="vFrame" class="hidden" allow="autoplay; fullscreen" title="Video"></iframe>
       <button class="v-nav v-prev" id="vPrev" type="button" aria-label="Previous">‹</button>
       <button class="v-nav v-next" id="vNext" type="button" aria-label="Next">›</button>
     </div>
@@ -196,22 +201,27 @@
   var tt; function toast(t){ var el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(tt); tt = setTimeout(function(){ el.classList.remove('show'); }, 2200); }
 
   // Drive serves resized photo previews quickly; GIFs use the signed relay so they animate.
-  function isGif(f){ return f.mime === 'image/gif' || /\.gif$/i.test(f.name || ''); }
-  function categoryFiles(category){ return files.filter(function(f){ return isGif(f) === (category === 'gifs'); }); }
+  function isVideo(f){ return /^video\//.test(f.mime || '') || /\.(mp4|mov|m4v|webm)$/i.test(f.name || ''); }
+  function isGif(f){ return !isVideo(f) && (f.mime === 'image/gif' || /\.gif$/i.test(f.name || '')); }
+  function catOf(f){ return isVideo(f) ? 'videos' : isGif(f) ? 'gifs' : 'photos'; }
+  function categoryFiles(category){ return files.filter(function(f){ return catOf(f) === category; }); }
   function refreshCategoryUI(){
-    var photos = categoryFiles('photos'), gifs = categoryFiles('gifs');
-    $('photoTabCount').textContent = photos.length; $('gifTabCount').textContent = gifs.length;
+    var photos = categoryFiles('photos'), gifs = categoryFiles('gifs'), videos = categoryFiles('videos');
+    $('photoTabCount').textContent = photos.length; $('gifTabCount').textContent = gifs.length; $('videoTabCount').textContent = videos.length;
+    $('videosTab').classList.toggle('hidden', !videos.length);
     $('photosTab').setAttribute('aria-selected', activeCategory === 'photos' ? 'true' : 'false');
     $('gifsTab').setAttribute('aria-selected', activeCategory === 'gifs' ? 'true' : 'false');
+    $('videosTab').setAttribute('aria-selected', activeCategory === 'videos' ? 'true' : 'false');
     $('dlPhotosBtn').classList.toggle('hidden', !photos.length); $('dlGifsBtn').classList.toggle('hidden', !gifs.length);
   }
   $('photosTab').addEventListener('click', function(){ activeCategory = 'photos'; refreshCategoryUI(); render(false); });
   $('gifsTab').addEventListener('click', function(){ activeCategory = 'gifs'; refreshCategoryUI(); render(false); });
+  $('videosTab').addEventListener('click', function(){ activeCategory = 'videos'; refreshCategoryUI(); render(false); });
   function thumbUrl(f, w){ return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w' + w; }
   function downloadUrl(f){ return 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(f.id); }
   function withFallbacks(img, f, w){
     if(isGif(f)){ img.onload = function(){ img.classList.add('ok'); }; img.src = f.src; return; }
-    var tries = [thumbUrl(f, w), 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(f.id) + '=w' + w, f.src];
+    var tries = [thumbUrl(f, w), 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(f.id) + '=w' + w, f.src].filter(Boolean);
     var i = 0;
     img.onerror = function(){ i++; if(i < tries.length) img.src = tries[i]; else img.onerror = null; };
     img.onload = function(){ img.classList.add('ok'); };
@@ -249,9 +259,10 @@
     document.title = j.name + ' | photobooth4u';
     $('title').textContent = j.name;
     if(navigator.share) $('shareBtn').classList.remove('hidden');
-    var photoCount = j.files.filter(function(f){ return !isGif(f); }).length;
-    var gifCount = j.files.length - photoCount;
+    var videoCount = j.files.filter(isVideo).length, gifCount = j.files.filter(isGif).length;
+    var photoCount = j.files.length - videoCount - gifCount;
     var bits = ['<b>' + photoCount + '</b> photo' + (photoCount === 1 ? '' : 's'), '<b>' + gifCount + '</b> GIF' + (gifCount === 1 ? '' : 's')];
+    if(videoCount) bits.push('<b>' + videoCount + '</b> video' + (videoCount === 1 ? '' : 's'));
     if(j.until) bits.push(j.until < Date.now() + 2 * 86400000 ? '<b style="color:var(--red)">Download by ' + esc(fmtDay(j.until)) + '</b>' : 'Download by ' + esc(fmtDay(j.until)));
     $('sub').innerHTML = bits.join(' · ');
     $('tabs').classList.remove('hidden');
@@ -274,7 +285,7 @@
     var grid = $('grid');
     if(!view.length){
       grid.classList.add('hidden');
-      $('empty').textContent = activeCategory === 'gifs' ? 'No GIFs yet. They show up here after a GIF session.' : 'No photos yet. They show up here a few seconds after each photo session.';
+      $('empty').textContent = activeCategory === 'gifs' ? 'No GIFs yet. They show up here after a GIF session.' : activeCategory === 'videos' ? 'No videos yet.' : 'No photos yet. They show up here a few seconds after each photo session.';
       $('empty').classList.remove('hidden');
       return;
     }
@@ -285,9 +296,10 @@
       var t = tiles[f.id];
       if(!t){
         t = document.createElement('button'); t.type = 'button'; t.className = 'tile' + (animateNew ? ' new' : '');
-        t.setAttribute('aria-label', (isGif(f) ? 'GIF ' : 'Photo ') + f.name);
+        t.setAttribute('aria-label', (isVideo(f) ? 'Video ' : isGif(f) ? 'GIF ' : 'Photo ') + f.name);
         var img = document.createElement('img'); img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
         t.appendChild(img);
+        if(isVideo(f)){ var pl = document.createElement('span'); pl.className = 'play'; pl.textContent = '\u25B6'; t.appendChild(pl); }
         withFallbacks(img, f, 640);
         t.dataset.id = f.id;
         tiles[f.id] = t;
@@ -310,20 +322,31 @@
       else { toast('Still saving — pull down to refresh in a moment'); WANT = null; }
       return;
     }
-    activeCategory = isGif(f) ? 'gifs' : 'photos';
+    activeCategory = catOf(f);
     refreshCategoryUI();
     render(false);
-    for(var j = 0; j < view.length; j++) if(view[j].id === f.id){ openViewer(j, isGif(f) ? 'Your GIF' : 'Your photo'); break; }
+    for(var j = 0; j < view.length; j++) if(view[j].id === f.id){ openViewer(j, isVideo(f) ? 'Your video' : isGif(f) ? 'Your GIF' : 'Your photo'); break; }
     WANT = null;
   }
 
   // ---- viewer ----
   var viewerLabel = '';
   function openViewer(i, label){ cur = i; viewerLabel = label || ''; $('viewer').classList.remove('hidden'); document.body.style.overflow = 'hidden'; show(); }
-  function closeViewer(){ $('viewer').classList.add('hidden'); document.body.style.overflow = ''; $('vImg').removeAttribute('src'); cur = -1; }
+  function closeViewer(){ $('viewer').classList.add('hidden'); document.body.style.overflow = ''; $('vImg').removeAttribute('src'); $('vFrame').removeAttribute('src'); cur = -1; }
   function show(){
     var f = view[cur]; if(!f) return closeViewer();
     var img = $('vImg');
+    if(isVideo(f)){
+      // Videos play in Drive's own player (it streams and skips properly on every phone); Download gets the file.
+      img.classList.add('hidden'); img.removeAttribute('src'); $('vSpin').classList.add('hidden'); $('vPrint').classList.add('hidden');
+      $('vFrame').classList.remove('hidden'); $('vFrame').src = 'https://drive.google.com/file/d/' + encodeURIComponent(f.id) + '/preview';
+      $('vCount').textContent = viewerLabel ? viewerLabel + ' \u00b7 ' + (cur + 1) + ' of ' + view.length : (cur + 1) + ' of ' + view.length;
+      $('vDownload').href = downloadUrl(f);
+      $('vPrev').style.visibility = cur > 0 ? '' : 'hidden';
+      $('vNext').style.visibility = cur < view.length - 1 ? '' : 'hidden';
+      return;
+    }
+    img.classList.remove('hidden'); $('vFrame').classList.add('hidden'); $('vFrame').removeAttribute('src'); $('vPrint').classList.remove('hidden');
     $('vSpin').classList.remove('hidden'); img.style.opacity = '0';
     img.onload = function(){ $('vSpin').classList.add('hidden'); img.style.opacity = '1'; };
     var tries = [thumbUrl(f, 2000), 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(f.id) + '=w2000', f.src], k = 0;

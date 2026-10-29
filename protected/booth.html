@@ -6238,7 +6238,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // contains the event folder or a photo number. Website with a rental code, and the laptop app.
   var gvMode = 'all', gvLinkQ = [], gvSent = {};
   var GV_CODE_RE = /^[A-Za-z0-9_-]{16,40}$/;
-  function gvAvailable(){ return LOCALSHARE ? !!((window.pb4u && typeof window.pb4u.guestViewSet === 'function') || (ANDROID_LOCAL && typeof window.__PBLocal.guestViewSet === 'function')) : canSyncServer(); }
+  // The website: a rental code, and also the free trial (its own photos stay private too).
+  function gvServer(){ var pb = window.__PB; return !!(pb && (pb.type === 'rental' || pb.type === 'trial')); }
+  function gvAvailable(){ return LOCALSHARE ? !!((window.pb4u && typeof window.pb4u.guestViewSet === 'function') || (ANDROID_LOCAL && typeof window.__PBLocal.guestViewSet === 'function')) : gvServer(); }
   function gvActive(){ return gvAvailable() && gvMode !== 'all'; }
   function gvPrivate(){ return gvAvailable() && gvMode === 'only'; }
   function gvStore(k){ try{ return JSON.parse(localStorage.getItem(k) || 'null'); }catch(e){ return null; } }

@@ -79,7 +79,7 @@ export const NOTES = [
     items: [
       'New: Setup \u2192 Share \u2192 After guests scan their QR. Choose Everyone\u2019s photos (as before), Mine first (their own photos, with a Show photos with other guests button) or Only their own.',
       'Only their own: each guest\u2019s QR opens a page with just their photo, GIF and flipbook. The event gallery is closed to guests, so an old QR or a copied link cannot open it, and the booth hides its All photos button and the guest screen\u2019s All photos QR. Use Lock booth so guests cannot open Setup or Extras.',
-      'In the laptop app and the Android tablet app (1.0.21) the event pages answer only the laptop or tablet itself in this mode. On the website it needs a rental code.',
+      'In the laptop app and the Android tablet app (1.0.21) the event pages answer only the laptop or tablet itself in this mode. It works on the website too, including the free trial.',
       'New: a spoken countdown (Get ready, Three, Two, One, Smile!) using the voices on your device. On by default; choose English or Tagalog (when the device has a Filipino voice), the last 3 numbers or every number, and the voice in Setup \u2192 Session. With no voice on the device the beeps are used. The Android app keeps the beeps for now.'
     ]
   },

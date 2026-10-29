@@ -6238,7 +6238,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // contains the event folder or a photo number. Website with a rental code, and the laptop app.
   var gvMode = 'all', gvLinkQ = [], gvSent = {};
   var GV_CODE_RE = /^[A-Za-z0-9_-]{16,40}$/;
-  function gvAvailable(){ return LOCALSHARE ? !!(window.pb4u && typeof window.pb4u.guestViewSet === 'function') : canSyncServer(); }
+  function gvAvailable(){ return LOCALSHARE ? !!((window.pb4u && typeof window.pb4u.guestViewSet === 'function') || (ANDROID_LOCAL && typeof window.__PBLocal.guestViewSet === 'function')) : canSyncServer(); }
   function gvActive(){ return gvAvailable() && gvMode !== 'all'; }
   function gvPrivate(){ return gvAvailable() && gvMode === 'only'; }
   function gvStore(k){ try{ return JSON.parse(localStorage.getItem(k) || 'null'); }catch(e){ return null; } }
@@ -6256,7 +6256,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // The link of a session's own page (null when the laptop is not on a Wi-Fi network).
   function gvSessionUrl(n){
     var code = gvCodeFor(n || sessionNumber || 1);
-    if(LOCALSHARE){ var base = ''; try{ base = window.pb4u.lanBase(); }catch(e){} return base ? base + '/o/' + code : null; }
+    if(LOCALSHARE){ var base = ''; try{ base = ANDROID_LOCAL ? window.__PBLocal.lanBase() : window.pb4u.lanBase(); }catch(e){} return base ? base + '/o/' + code : null; }
     return location.origin + '/p/' + code;
   }
   function gvFileNum(filename){
@@ -6276,7 +6276,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   async function gvApply(){
     if(!gvAvailable()) return;
     try{
-      if(LOCALSHARE){ await window.pb4u.guestViewSet(gvMode); return; }
+      if(LOCALSHARE){ if(ANDROID_LOCAL) window.__PBLocal.guestViewSet(gvMode); else await window.pb4u.guestViewSet(gvMode); return; }
       var fid = gvFolderId(getCachedFolderUrl()); if(!fid) return;
       if(gvSent[fid] === gvMode) return;
       var j = await gvApi({ action: 'mode', folderKey: rawFolderKey(), folder: fid, mode: gvMode });

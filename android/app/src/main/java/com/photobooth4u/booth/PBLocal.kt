@@ -45,6 +45,7 @@ class PBLocal(private val ctx: Context) {
         private val EXT_RE = Regex("(\\.[a-z0-9]+)$", RegexOption.IGNORE_CASE)
         private val PRIVATE_172 = Regex("^172\\.(1[6-9]|2\\d|3[01])\\.")
         private val ROVE_RE = Regex("\\.(jpe?g|png|webp)$", RegexOption.IGNORE_CASE)
+        private val GCODE_RE = Regex("^[A-Za-z0-9_-]{16,40}$")
         private const val ROVE_MAX_REQUESTS = 200
         private const val ROVE_RATE_N = 8
         private const val ROVE_RATE_MS = 600000L
@@ -83,6 +84,15 @@ class PBLocal(private val ctx: Context) {
     private val indexFile = File(ctx.filesDir, "folders.json")
     private val random = SecureRandom()
 
+    // What guests see after scanning (Setup > Share > "After guests scan their QR"): "all", "mine" or "only".
+    // A guest's own page is /o/<code>; the booth sends the code with every file it saves, so the page knows which are theirs.
+    class GuestCode(val slug: String, val files: MutableList<String>, val first: Long)
+
+    @Volatile
+    var guestView: String = "all"
+    private val codes = LinkedHashMap<String, GuestCode>()
+    private val codesFile = File(ctx.filesDir, "guestcodes.json")
+
     /** Where the event folders are. */
     val root: File = File(
         ctx.getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: File(ctx.filesDir, "Pictures"),
@@ -96,6 +106,7 @@ class PBLocal(private val ctx: Context) {
     init {
         try { root.mkdirs() } catch (e: Exception) { Log.w(TAG, "Could not create $root", e) }
         loadIndex()
+        loadCodes()
     }
 
     // ---------- the bridge the booth page calls ----------
@@ -274,6 +285,82 @@ class PBLocal(private val ctx: Context) {
         guestPrintOn = on
     }
 
+    /** Set from the booth's Setup: "all", "mine" or "only" (guests see only their own photos). */
+    @JavascriptInterface
+    fun guestViewSet(mode: String?): String {
+        guestView = if (mode == "mine" || mode == "only") mode else "all"
+        return guestView
+    }
+
+    /** A guest's own page: the files the booth saved for that code, or null when nothing was saved under it. */
+    fun guestCode(code: String): GuestCode? = synchronized(lock) {
+        val c = codes[code] ?: return@synchronized null
+        GuestCode(c.slug, c.files.toMutableList(), c.first)
+    }
+
+    private fun noteGuestFile(code: String, slug: String, file: String) {
+        if (!GCODE_RE.matches(code)) return
+        synchronized(lock) {
+            val c = codes.getOrPut(code) { GuestCode(slug, ArrayList(), System.currentTimeMillis()) }
+            if (c.slug == slug && !c.files.contains(file) && c.files.size < 40) c.files.add(file)
+            while (codes.size > 2000) codes.remove(codes.keys.first())
+            saveCodes()
+        }
+    }
+
+    /** Is this request from the tablet itself (the operator), not a guest's phone? */
+    fun isOwnAddress(ip: String): Boolean {
+        if (ip.isEmpty()) return false
+        try {
+            val clean = ip.substringBefore('%')
+            if (java.net.InetAddress.getByName(clean).isLoopbackAddress) return true   // a literal address: no name lookup
+            val nets = NetworkInterface.getNetworkInterfaces() ?: return false
+            for (ni in Collections.list(nets)) {
+                for (ia in Collections.list(ni.inetAddresses)) {
+                    if (ia.hostAddress?.substringBefore('%') == clean) return true
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not tell who is asking", e)
+        }
+        return false
+    }
+
+    private fun loadCodes() {
+        try {
+            if (!codesFile.exists()) return
+            val o = JSONObject(codesFile.readText())
+            val keys = o.keys()
+            while (keys.hasNext()) {
+                val k = keys.next()
+                val x = o.optJSONObject(k) ?: continue
+                val arr = x.optJSONArray("files") ?: continue
+                val files = ArrayList<String>()
+                for (i in 0 until arr.length()) files.add(arr.optString(i))
+                codes[k] = GuestCode(x.optString("slug", ""), files, x.optLong("first", 0L))
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not read the guests' pages", e)
+        }
+    }
+
+    private fun saveCodes() {
+        try {
+            val o = JSONObject()
+            for ((k, c) in codes) {
+                o.put(k, JSONObject().put("slug", c.slug).put("first", c.first).put("files", JSONArray(c.files)))
+            }
+            val tmp = File(codesFile.path + ".tmp")
+            tmp.writeText(o.toString())
+            if (!tmp.renameTo(codesFile)) {
+                codesFile.delete()
+                tmp.renameTo(codesFile)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not save the guests' pages", e)
+        }
+    }
+
     /** The guests' print requests that wait for the attendant, as JSON: [{id, slug, file, event, t}]. */
     @JavascriptInterface
     fun printReqList(): String {
@@ -414,6 +501,7 @@ class PBLocal(private val ctx: Context) {
             File(dir, candidate).writeBytes(bytes)
             out = candidate
         }
+        noteGuestFile(str(o, "guestCode"), f.slug, out)
         copyToGallery(out, f.name, bytes)
 
         return JSONObject()

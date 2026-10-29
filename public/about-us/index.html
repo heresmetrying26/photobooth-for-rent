@@ -352,6 +352,89 @@
       max-width: 520px
     }
 
+    /* online vs the offline apps */
+    .vers {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px
+    }
+
+    .ver {
+      padding: 20px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--line)
+    }
+
+    .ver .where {
+      margin: 0 0 6px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--red)
+    }
+
+    .ver h3 {
+      margin: 0 0 4px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: 22px;
+      letter-spacing: -.02em
+    }
+
+    .ver .net {
+      margin: 0 0 12px;
+      font-size: 14px;
+      color: var(--muted)
+    }
+
+    .ver ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+      font-size: 14px
+    }
+
+    .ver li {
+      position: relative;
+      padding-left: 20px
+    }
+
+    .ver li::before {
+      content: "\2713";
+      position: absolute;
+      left: 0;
+      font-weight: 800;
+      color: var(--red)
+    }
+
+    .ver li.no::before {
+      content: "\2013";
+      color: var(--muted)
+    }
+
+    .ver-note {
+      margin: 14px auto 0;
+      max-width: 640px;
+      text-align: center;
+      font-size: 14px;
+      color: var(--muted)
+    }
+
+    .ver-note b,
+    .ver-note a {
+      color: var(--ink)
+    }
+
+    @media (max-width: 760px) {
+      .vers {
+        grid-template-columns: 1fr
+      }
+    }
+
     /* features */
     .features {
       display: grid;
@@ -1699,6 +1782,52 @@
         </li>
         <li><b>Share</b><span>Everyone scans for the gallery. Download your favourites within 7 days.</span></li>
       </ol>
+    </section>
+
+    <section class="block" id="versions" aria-labelledby="vs">
+      <p class="label">Online or offline</p>
+      <h2 id="vs">Which one do you need?</h2>
+      <p class="sub">The same booth, three ways to run it. Pick by the internet at your venue and the printer you bring.</p>
+      <div class="vers">
+        <article class="ver">
+          <p class="where">Online &middot; website</p>
+          <h3>In a browser</h3>
+          <p class="net">Needs internet at the venue</p>
+          <ul>
+            <li>Nothing to install: iPad, Android tablet, phone or laptop</li>
+            <li>Guests scan a QR and open their photos online for 7 days</li>
+            <li>Prints over AirPrint or Mopria</li>
+            <li>Every extra: vintage looks, flipbook, photographer desk, video guestbook</li>
+            <li>360 desk shares the video as recorded, with no editing</li>
+            <li>Free trial to test it first</li>
+          </ul>
+        </article>
+        <article class="ver">
+          <p class="where">Offline &middot; laptop app</p>
+          <h3>Windows &amp; Mac</h3>
+          <p class="net">No internet needed</p>
+          <ul>
+            <li>Photos save on the laptop, and guests scan a QR over the booth Wi-Fi</li>
+            <li>DSLR or webcam, a second screen for guests, auto-print</li>
+            <li>Photo printers: DNP, HiTi, Citizen, Mitsubishi, Sinfonia, Canon Selphy and everyday printers</li>
+            <li>Every extra, and the photographer desk can watch a camera's folder</li>
+            <li>360 desk edits the video (slow motion, frame, music) &middot; beta</li>
+          </ul>
+        </article>
+        <article class="ver">
+          <p class="where">Offline &middot; Android app</p>
+          <h3>Android tablet</h3>
+          <p class="net">No internet needed</p>
+          <ul>
+            <li>Photos save on the tablet, and guests scan a QR over the booth Wi-Fi</li>
+            <li>Every extra, and flipbook cards print if you have a printer</li>
+            <li class="no">Prints to Bluetooth thermal receipt printers only: photo printers need the laptop app</li>
+            <li>Record 360 on the tablet &middot; beta. The clip goes to the laptop to be edited</li>
+          </ul>
+        </article>
+      </div>
+      <p class="ver-note"><b>Online plans</b> open the booth in a browser. <b>Offline plans</b> unlock the Windows, Mac and Android apps with one code, and <b>Online + Offline</b> gives you both.
+        Get the installers on the <a href="/downloads/">Downloads page</a>.</p>
     </section>
 
     <section class="block" id="packages" aria-labelledby="pk">

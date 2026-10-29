@@ -1,4 +1,4 @@
-import { safe, json, checkLicense, verifyToken, hmac, cleanEventName, printReqStore } from '../lib/core.mjs';
+import { safe, json, checkLicense, verifyToken, hmac, cleanEventName, printReqStore, printReqGuest, clientIp } from '../lib/core.mjs';
 
 // Guests asking for a print from the online gallery. Off until the booth turns it on for its own event.
 //
@@ -14,11 +14,7 @@ import { safe, json, checkLicense, verifyToken, hmac, cleanEventName, printReqSt
 // bored guest cannot flood the booth.
 const ID_RE = /^[A-Za-z0-9_-]{10,80}$/;
 const TTL = 3 * 86400000;            // switched on for 3 days at a time; the booth renews it while it is open
-const MAX_PENDING = 200;
-const RATE_N = 8, RATE_MS = 10 * 60000;   // 8 requests per phone per 10 minutes
 const key = (folder) => 'f:' + folder;
-
-const clientIp = (req) => String(req.headers.get('x-nf-client-connection-ip') || (req.headers.get('x-forwarded-for') || '').split(',')[0] || 'unknown').trim();
 
 export default safe(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -31,22 +27,8 @@ export default safe(async (req) => {
 
   // ---------- a guest ----------
   if (b.action === 'request') {
-    const file = String(b.file || '');
-    if (!ID_RE.test(file)) return json({ error: 'Bad request' }, 400);
-    const d = await s.get(key(folder), { type: 'json' });
-    if (!d || !d.on || d.exp <= now) return json({ error: 'off' }, 403);
-    if (d.done && d.done[file]) return json({ ok: true, done: true });
-    if (d.reqs.some((r) => r.file === file)) return json({ ok: true, waiting: true });
-    if (d.reqs.length >= MAX_PENDING) return json({ error: 'busy' }, 429);
-    const who = hmac('pr|' + clientIp(req)).slice(0, 14);
-    d.hits = d.hits || {};
-    const recent = (d.hits[who] || []).filter((t) => now - t < RATE_MS);
-    if (recent.length >= RATE_N) return json({ error: 'rate' }, 429);
-    recent.push(now); d.hits[who] = recent;
-    for (const k of Object.keys(d.hits)) if (!d.hits[k].some((t) => now - t < RATE_MS)) delete d.hits[k];
-    d.reqs.push({ id: hmac('id|' + file + '|' + now).slice(0, 12), file, t: now });
-    await s.setJSON(key(folder), d);
-    return json({ ok: true, waiting: true });
+    const r = await printReqGuest(folder, String(b.file || ''), clientIp(req));
+    return json(r.body, r.status);
   }
 
   // ---------- the booth ----------

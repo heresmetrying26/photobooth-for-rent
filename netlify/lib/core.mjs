@@ -334,6 +334,43 @@ export async function printReqOn(folder) {
     return !!(d && d.on && d.exp > Date.now());
   } catch { return false; }
 }
+export const clientIp = (req) => String(req.headers.get('x-nf-client-connection-ip') || (req.headers.get('x-forwarded-for') || '').split(',')[0] || 'unknown').trim();
+// A guest asks for a print of one photo (used by the gallery page and by a guest's own photo page).
+// Returns { status, body }. Limited per phone, one request per photo, and the list is capped.
+const PRQ_MAX_PENDING = 200, PRQ_RATE_N = 8, PRQ_RATE_MS = 10 * 60000;
+export async function printReqGuest(folder, file, ip) {
+  const ID = /^[A-Za-z0-9_-]{10,80}$/;
+  if (!ID.test(folder) || !ID.test(file)) return { status: 400, body: { error: 'Bad request' } };
+  const now = Date.now(), s = printReqStore();
+  const d = await s.get('f:' + folder, { type: 'json' });
+  if (!d || !d.on || d.exp <= now) return { status: 403, body: { error: 'off' } };
+  if (d.done && d.done[file]) return { status: 200, body: { ok: true, done: true } };
+  if (d.reqs.some((r) => r.file === file)) return { status: 200, body: { ok: true, waiting: true } };
+  if (d.reqs.length >= PRQ_MAX_PENDING) return { status: 429, body: { error: 'busy' } };
+  const who = hmac('pr|' + ip).slice(0, 14);
+  d.hits = d.hits || {};
+  const recent = (d.hits[who] || []).filter((t) => now - t < PRQ_RATE_MS);
+  if (recent.length >= PRQ_RATE_N) return { status: 429, body: { error: 'rate' } };
+  recent.push(now); d.hits[who] = recent;
+  for (const k of Object.keys(d.hits)) if (!d.hits[k].some((t) => now - t < PRQ_RATE_MS)) delete d.hits[k];
+  d.reqs.push({ id: hmac('id|' + file + '|' + now).slice(0, 12), file, t: now });
+  await s.setJSON('f:' + folder, d);
+  return { status: 200, body: { ok: true, waiting: true } };
+}
+// What guests may see after scanning their QR (set by the booth, see functions/guestview.mjs):
+//   'all'  everyone's photos (the default, and what an event with no setting does)
+//   'mine' their own photos first, with a button for everyone's
+//   'only' their own photos and nothing else
+export const guestViewStore = () => getStore({ name: 'guestview', consistency: 'strong' });
+export async function guestViewMode(folder) {
+  try {
+    if (!/^[A-Za-z0-9_-]{10,80}$/.test(String(folder || ''))) return 'all';
+    const d = await guestViewStore().get('f:' + folder, { type: 'json' });
+    return d && d.exp > Date.now() && (d.mode === 'mine' || d.mode === 'only') ? d.mode : 'all';
+  } catch { return 'all'; }
+}
+// The booth's own key to an event gallery that is set to "only their own".
+export const opKeyOf = (folder) => hmac('opview|' + folder).slice(0, 22);
 // Which counter a booth adds to: the booking (its fixed event), one per event
 // name for lifetime codes, and the trial's own throwaway folder for trials.
 // A bonus code counts on its own (it's for testing before the event).

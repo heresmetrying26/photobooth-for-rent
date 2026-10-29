@@ -3082,6 +3082,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p class="panel-hint" id="driveFolderSignHint" style="margin-top:8px;">Print the sign and put it by the booth. Guests get their own QR after each session; if the booth is offline, their photo still arrives in this gallery once it's back online.</p>
         </div>
         <p class="panel-hint" id="driveFolderHelp"></p>
+        <div class="sub-group" id="gvBox" style="display:none;">
+          <p class="sub-label">After guests scan their QR</p>
+          <select class="mini-select pillify" id="gvSelect" aria-label="What guests see after scanning"><option value="all" selected>Everyone&rsquo;s photos</option><option value="mine">Mine first</option><option value="only">Only their own</option></select>
+          <p class="panel-hint" id="gvHint" style="margin-top:6px;"></p>
+        </div>
         <div class="sub-group web-only" id="backupBox">
           <p class="sub-label">Backup on this computer</p>
           <p class="panel-hint" id="backupStatus" style="margin:0;"></p>
@@ -4414,6 +4419,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         imageBase64: base64Data,
         folderKey: folderKey,
         subfolder: subfolder || undefined,
+        guestCode: (LOCALSHARE && gvActive() && gvFileNum(filename)) ? gvCodeFor(gvFileNum(filename)) : undefined,   // laptop app: this file belongs to that guest's own page
         ticket
       })
     });
@@ -4423,6 +4429,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // folderUrl is optional on the Apps Script side (older scripts may not
     // return it yet) — everything still works, we just can't show the
     // one persistent folder QR until it's added. See note in the script.
+    try{ gvAfterUpload(filename, blob.type, data, folderKey); }catch(e){ console.error('Guest view:', e); }
     return { fileId: data.fileId, downloadUrl: data.downloadUrl, folderUrl: data.folderUrl || null };
   }
 
@@ -5611,6 +5618,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function rememberFolderUrl(url){
     if(!url) return;
     localStorage.setItem(folderUrlStorageKey(), url);
+    try{ if(gvMode !== 'all') gvApply(); }catch(e){}
   }
   function nextSessionNumber(){
     const n = parseInt(localStorage.getItem(sessionNumStorageKey()) || '0', 10) + 1;
@@ -5694,9 +5702,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     driveFolderStatus.style.display = 'block';
     driveFolderStatus.textContent = '\u2713 Folder ready' + (localFolderName ? ': ' + localFolderName : '') + '. Every photo saves on this ' + LOCAL_DEVICE + '.';
     if(typeof refreshSetupNav === 'function') refreshSetupNav();
-    driveFolderQrImg.style.display = url ? '' : 'none';
+    driveFolderQrImg.style.display = url && !gvPrivate() ? '' : 'none';
     if(url) driveFolderQrImg.src = qrImageUrl(url);
-    document.getElementById('qrSignBtn').style.display = url ? '' : 'none';
+    document.getElementById('qrSignBtn').style.display = url && !gvPrivate() ? '' : 'none';
+    if(gvPrivate()) document.getElementById('driveFolderQrCaption').textContent = 'Guests see only their own photos. This link is for you.';
     driveFolderQrPreview.style.display = 'block';
   }
   function showDriveFolderPreview(folderUrl, name){
@@ -5704,16 +5713,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var url = shareUrlFor(folderUrl), gallery = usesGallery(folderUrl);
     currentFolderLink = url;
     refreshGalleryUI();
-    document.getElementById('driveFolderOpen').href = url;
+    document.getElementById('driveFolderOpen').href = gvOpUrl(url);
     document.getElementById('driveFolderOpen').textContent = gallery ? 'Open gallery' : 'Open folder';
     var dl = document.getElementById('driveFolderDrive');
     if(dl){ dl.href = folderUrl; dl.style.display = 'none'; }   // renters use the gallery; the Drive folder stays private
-    document.getElementById('driveFolderQrCaption').textContent = 'All photos';
+    document.getElementById('driveFolderQrCaption').textContent = gvPrivate() ? 'Guests see only their own photos. This link is for you.' : 'All photos';
     document.getElementById('driveFolderAll').style.display = (window.__PB && window.__PB.type === 'rental') ? '' : 'none';
     driveFolderStatus.style.display = 'block';
     driveFolderStatus.textContent = '✓ Folder ready' + (name ? (': ' + name) : '') + '. Every photo saves here.';
     if(typeof refreshSetupNav === 'function') refreshSetupNav();
     driveFolderQrImg.src = qrImageUrl(url);
+    // Guests see only their own photos: the event QR and sign are not for them, so they are not shown.
+    driveFolderQrImg.style.display = gvPrivate() ? 'none' : '';
+    document.getElementById('qrSignBtn').style.display = gvPrivate() ? 'none' : '';
     driveFolderQrPreview.style.display = 'block';
   }
 
@@ -6054,9 +6066,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const qr = document.getElementById('galleryPopQr');
     if(!fab || !link || !qr) return;
     const url = currentFolderLink || '';
-    fab.hidden = !url;
-    if(url){ link.href = url; link.textContent = url; qr.src = qrImageUrl(url); }
-    else { link.href = '#'; qr.removeAttribute('src'); closeGalleryPop(); }
+    const hide = gvPrivate();      // guests see only their own photos: no All photos button, link or QR at the booth
+    fab.hidden = !url || hide;
+    if(url && !hide){ link.href = url; link.textContent = url; qr.src = qrImageUrl(url); }
+    else { link.href = '#'; link.textContent = ''; qr.removeAttribute('src'); closeGalleryPop(); }
     if(typeof scheduleDock === 'function') scheduleDock();
     if(typeof guestRender === 'function') guestRender();
   }
@@ -6218,9 +6231,121 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
 
 
+  // ---- What guests see after scanning their QR (Setup -> Share: "After guests scan their QR") ----
+  //   'all'  everyone's photos (today's behaviour)   'mine' their own photos first, with a button for everyone's
+  //   'only' their own photos and nothing else; the booth also hides its All photos button and the guest screen's All photos QR.
+  // A guest's own page is a link made from a random code per session (website: /p/<code>, laptop app: /o/<code>), so it never
+  // contains the event folder or a photo number. Website with a rental code, and the laptop app.
+  var gvMode = 'all', gvLinkQ = [], gvSent = {};
+  var GV_CODE_RE = /^[A-Za-z0-9_-]{16,40}$/;
+  function gvAvailable(){ return LOCALSHARE ? !!(window.pb4u && typeof window.pb4u.guestViewSet === 'function') : canSyncServer(); }
+  function gvActive(){ return gvAvailable() && gvMode !== 'all'; }
+  function gvPrivate(){ return gvAvailable() && gvMode === 'only'; }
+  function gvStore(k){ try{ return JSON.parse(localStorage.getItem(k) || 'null'); }catch(e){ return null; } }
+  function gvCodeFor(n){
+    var key = 'pb_gvc:' + currentFolderKey(), o = gvStore(key) || {}, k = String(n || 1);
+    if(!GV_CODE_RE.test(String(o[k] || ''))){
+      var a = new Uint8Array(18); crypto.getRandomValues(a);
+      var t = ''; a.forEach(function(b){ t += String.fromCharCode(b); });
+      o[k] = btoa(t).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      var keys = Object.keys(o); if(keys.length > 400) keys.slice(0, keys.length - 400).forEach(function(x){ delete o[x]; });
+      try{ localStorage.setItem(key, JSON.stringify(o)); }catch(e){}
+    }
+    return o[k];
+  }
+  // The link of a session's own page (null when the laptop is not on a Wi-Fi network).
+  function gvSessionUrl(n){
+    var code = gvCodeFor(n || sessionNumber || 1);
+    if(LOCALSHARE){ var base = ''; try{ base = window.pb4u.lanBase(); }catch(e){} return base ? base + '/o/' + code : null; }
+    return location.origin + '/p/' + code;
+  }
+  function gvFileNum(filename){
+    var m = /^(?:BONUS_)?(\d+)_(?!guestbook|360)/.exec(String(filename || ''));
+    return m ? Number(m[1]) : 0;
+  }
+  async function gvApi(body){
+    var token = null, deviceId = null; try{ token = localStorage.getItem('pb_token'); deviceId = localStorage.getItem('pb_device'); }catch(e){}
+    var r = await fetch('/api/guestview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ token: token, deviceId: deviceId }, body)) });
+    var j = await r.json().catch(function(){ return {}; });
+    if(!r.ok) throw new Error(j.error || ('error ' + r.status));
+    return j;
+  }
+  function gvFolderId(folderUrl){ var m = /\/folders\/([A-Za-z0-9_-]{10,80})/.exec(String(folderUrl || '')); return m ? m[1] : ''; }
+  // Tells the laptop app / the server which mode this event is in. The server also hands back the booth's own key to the
+  // event gallery, so the operator can still open it when guests may not.
+  async function gvApply(){
+    if(!gvAvailable()) return;
+    try{
+      if(LOCALSHARE){ await window.pb4u.guestViewSet(gvMode); return; }
+      var fid = gvFolderId(getCachedFolderUrl()); if(!fid) return;
+      if(gvSent[fid] === gvMode) return;
+      var j = await gvApi({ action: 'mode', folderKey: rawFolderKey(), folder: fid, mode: gvMode });
+      gvSent[fid] = gvMode;
+      if(j && j.opKey){ try{ localStorage.setItem('pb_gvk:' + fid, j.opKey); }catch(e){} try{ showDriveFolderPreview(getCachedFolderUrl(), ''); }catch(e){} }
+    }catch(e){ console.error('Guest view:', e); }
+  }
+  // Website: every saved file of a guest's session is added to their page. Kept and retried if the internet drops.
+  function gvQueueLoad(){ if(!gvLinkQ.length){ var q = gvStore('pb_gvq'); if(Array.isArray(q)) gvLinkQ = q.slice(0, 100); } }
+  function gvQueueSave(){ try{ localStorage.setItem('pb_gvq', JSON.stringify(gvLinkQ)); }catch(e){} }
+  var gvFlushing = false;
+  async function gvFlush(){
+    if(gvFlushing) return; gvFlushing = true;
+    try{
+      gvQueueLoad();
+      while(gvLinkQ.length && navigator.onLine !== false){
+        var it = gvLinkQ[0];
+        try{
+          await gvApi({ action: 'link', folderKey: it.folderKey, folder: it.folder, code: it.code, name: it.event, files: [{ id: it.id, name: it.name, mime: it.mime }] });
+          gvLinkQ.shift(); gvQueueSave();
+        }catch(e){ if(/locked|belongs|Bad request|event/i.test(String(e.message))){ gvLinkQ.shift(); gvQueueSave(); continue; } setTimeout(gvFlush, 6000); break; }
+      }
+    }finally{ gvFlushing = false; }
+  }
+  // Called after every upload (see uploadToDrive).
+  function gvAfterUpload(filename, mime, data, folderKey){
+    if(!gvActive() || LOCALSHARE) return;
+    var n = gvFileNum(filename), fid = gvFolderId(data.folderUrl || getCachedFolderUrl());
+    if(!n || !fid || !data.fileId) return;
+    gvApply();
+    gvQueueLoad();
+    gvLinkQ.push({ code: gvCodeFor(n), folderKey: folderKey, folder: fid, id: data.fileId, name: filename, mime: mime || '', event: (labelInput.value || '').trim().slice(0, 80) });
+    gvQueueSave(); gvFlush();
+  }
+  var GV_HINTS = {
+    all: 'Guests open the whole event gallery, with their own photo first.',
+    mine: 'Guests see their own photos first, with a Show photos with other guests button.',
+    only: 'Guests see only their own photos. The All photos button and the guest screen\u2019s QR are hidden here, and the event gallery is closed to them. Use Lock booth so guests can\u2019t open Setup or Extras.'
+  };
+  function refreshGvUI(){
+    var box = document.getElementById('gvBox'); if(!box) return;
+    box.style.display = gvAvailable() ? '' : 'none';
+    setSelectValue('gvSelect', gvMode);
+    try{ pillSyncAll(); }catch(e){}
+    document.getElementById('gvHint').textContent = GV_HINTS[gvMode] || '';
+  }
+  function gvChanged(){
+    refreshGvUI();
+    try{ refreshGalleryUI(); }catch(e){}
+    try{ var fu = getCachedFolderUrl(); if(fu) (LOCALSHARE ? showLocalFolderPreview : showDriveFolderPreview)(fu, ''); }catch(e){}
+    gvApply();
+    if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+  }
+  function applyGvSetup(v){ gvMode = v === 'mine' || v === 'only' ? v : 'all'; refreshGvUI(); try{ refreshGalleryUI(); }catch(e){} gvApply(); }
+  document.getElementById('gvSelect').addEventListener('change', function(){ gvMode = this.value === 'mine' || this.value === 'only' ? this.value : 'all'; gvChanged(); });
+  setTimeout(refreshGvUI, 0);
+  // The operator's link to the event gallery when guests may not open it: it carries the booth's own key.
+  function gvOpUrl(url){
+    if(!url || !gvPrivate()) return url;
+    var k = ''; try{ k = localStorage.getItem('pb_gvk:' + gvFolderId(getCachedFolderUrl())) || ''; }catch(e){}
+    return k ? url + (url.indexOf('?') < 0 ? '?k=' : '&k=') + k : url;
+  }
+  // Where a QR points while the guest's own photo is still saving (or the booth is offline).
+  function qrFallbackUrl(folderUrl){ return gvActive() ? gvSessionUrl() : shareUrlFor(folderUrl); }
+
   // ---- The guest's own QR codes, shown after each session ----
-  // The session QR opens the saved photo in the online gallery.
-  function fileShareUrl(fileId){
+  // The session QR opens the saved photo in the online gallery (or, when guests may only see their own photos, their own page).
+  function fileShareUrl(fileId, own){
+    if(own && gvActive()){ const u = gvSessionUrl(); if(u || gvPrivate()) return u; }
     if(LOCALSHARE){ const i = String(fileId).indexOf('/'); return i > 0 ? localShareUrl('pb4u-local:' + fileId.slice(0, i), fileId.slice(i + 1)) : null; }
     const folderUrl = getCachedFolderUrl();
     const g = folderUrl && usesGallery(folderUrl) ? galleryUrlFor(folderUrl) : null;
@@ -6280,13 +6405,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // swapped for their own photo's QR as soon as the upload finishes. (The offline app has no extra
     // All photos QR here: the dock's All photos button already shows it.)
     const evFolder = getCachedFolderUrl();
+    const gv = gvActive();       // guests get their own page: its link works straight away, whatever the upload does
     let slowTimer = null;
     const setCap = (t) => { const w = qrResults.querySelector('.qr-result[data-kind="photo"] .qr-caption'); if(w) w.textContent = t; };
     const OFFLINE_CAP = 'Scan now \u00b7 your photo arrives here once the booth is back online';
-    if(evFolder){
-      setCap(LOCALSHARE ? 'All photos \u00b7 saving your photo\u2026' : navigator.onLine === false ? OFFLINE_CAP : 'All photos \u00b7 your photo is uploading\u2026');
-      fillQrSlot('photo', shareUrlFor(evFolder));
-      slowTimer = setTimeout(() => { if(myGeneration === qrGeneration) setCap('All photos \u00b7 your photo will appear here shortly'); }, 60000);
+    if(evFolder || gv){
+      setCap(gv ? (navigator.onLine === false && !LOCALSHARE ? OFFLINE_CAP : 'Your photos \u00b7 saving\u2026') : LOCALSHARE ? 'All photos \u00b7 saving your photo\u2026' : navigator.onLine === false ? OFFLINE_CAP : 'All photos \u00b7 your photo is uploading\u2026');
+      fillQrSlot('photo', qrFallbackUrl(evFolder));
+      slowTimer = setTimeout(() => { if(myGeneration === qrGeneration) setCap(gv ? 'Your photos \u00b7 they will appear here shortly' : 'All photos \u00b7 your photo will appear here shortly'); }, 60000);
     }
     guestRender();
     let result = null, lastError = null;
@@ -6300,9 +6426,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       // All photos QR instead, where their photo will appear.
       const folderUrl = getCachedFolderUrl();
       const wrap = qrResults.querySelector('.qr-result[data-kind="photo"]');
-      if(folderUrl && wrap){
+      if((folderUrl || gv) && wrap){
         wrap.querySelector('.qr-caption').textContent = OFFLINE_CAP;
-        fillQrSlot('photo', shareUrlFor(folderUrl));
+        fillQrSlot('photo', qrFallbackUrl(folderUrl));
         wrap.classList.add('qr-offline');
       } else {
         failQrSlot('photo', 'No internet right now. Your photo is saved on this booth and goes online by itself later.');
@@ -6310,8 +6436,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       showToast('Offline: photo kept on this device. It uploads by itself when the internet is back.', 7000);
       return null;
     }
-    if(!result && evFolder){
-      setCap('All photos \u00b7 your photo appears here once it uploads');
+    if(!result && (evFolder || gv)){
+      setCap(gv ? 'Your photos \u00b7 they appear here once saved' : 'All photos \u00b7 your photo appears here once it uploads');
       showToast('Photo not saved yet. ' + driveErrorText(lastError), 7000);
       return null;
     }
@@ -6321,7 +6447,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       return null;
     }
     setCap(qrResults.querySelector('.qr-result[data-kind="wifi"]') ? '2 \u00b7 Your photo' : 'Your photo');
-    fillQrSlot('photo', result.fileId ? fileShareUrl(result.fileId, false) : result.url);
+    fillQrSlot('photo', result.fileId ? fileShareUrl(result.fileId, true) : result.url);
     showToast('Photo saved');
     return myGeneration;
   }
@@ -6631,7 +6757,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(gifResult && gifResult.fileId){
       // Use fileShareUrl() — the same path the photo QR uses — so the gallery
       // hash fragment is consistent and the gallery can locate the GIF.
-      var gifUrl = fileShareUrl(gifResult.fileId);
+      var gifUrl = fileShareUrl(gifResult.fileId, true);
       if(gifUrl){
         var img = document.createElement('img');
         img.className = 'qr-img';
@@ -8635,7 +8761,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     resolveTimer = setTimeout(resolveDriveFolder, 700);
   });
   document.getElementById('driveFolderCopy').addEventListener('click', (e) => {
-    const btn = e.currentTarget, url = currentFolderLink;
+    const btn = e.currentTarget, url = gvOpUrl(currentFolderLink);
     if(!url) return;
     const done = () => { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy link'; }, 1800); };
     try{
@@ -11730,7 +11856,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{
       const ready = readyOverlay.classList.contains('ready-active');
       const result = state === 'result' && shotCanvases.every(Boolean);
-      const galleryIdle = state === 'idle' && !pickOpen && !ready && !!currentFolderLink;
+      const galleryIdle = state === 'idle' && !pickOpen && !ready && !!currentFolderLink && !gvPrivate();
       G.galleryPill.classList.toggle('hide', !galleryIdle);
       if(!galleryIdle) G.galleryCard.classList.add('hide');
       if(galleryIdle){ G.galleryQr.src = document.getElementById('galleryPopQr').src; G.galleryLink.href = currentFolderLink; }
@@ -15490,6 +15616,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       printPrefs: Object.assign({}, printPrefs),
       bgRep: Object.assign({}, bgRep), bgMine: bgMine.slice(),
       fx: Object.assign({}, fx),
+      guestView: gvMode,
       brand: JSON.parse(JSON.stringify(brand)),
       pay: Object.assign({}, payCfg)
     };
@@ -15663,6 +15790,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(s.printPrefs) applyPrintPrefs(s.printPrefs);
       applyBgRepSetup(s.bgRep, s.bgMine);
       if(s.fx) applyFxSetup(s.fx);
+      applyGvSetup(s.guestView);
       brand = cleanBrand(s.brand);
       applyPaySetup(s.pay);
       applyFramesSetup(s);

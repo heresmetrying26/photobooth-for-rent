@@ -132,6 +132,8 @@
         </button>
         <button class="btn" id="qrBtn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>QR</button>
+        <a class="btn hidden" id="othersBtn" href="#">Show photos with other guests</a>
+        <a class="btn hidden" id="mineBtn" href="#">Show only my photos</a>
         <button class="btn hidden" id="shareBtn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v13"/><path d="m7 8 5-5 5 5"/></svg>Share</button>
         <button class="btn primary hidden" id="dlPhotosBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span id="dlPhotosLabel">Download all photos</span></button>
@@ -190,7 +192,12 @@
 (function(){
   var $ = function(id){ return document.getElementById(id); };
   var m = /^\/g\/([A-Za-z0-9_-]{10,80})\/?$/.exec(location.pathname) || /[?&]f=([A-Za-z0-9_-]{10,80})/.exec(location.search);
-  var FOLDER = m ? m[1] : null;
+  // A guest's own page (/p/<code>): only the photos of their session. It never gets the event's folder unless the booth allows it.
+  var pm = /^\/p\/([A-Za-z0-9_-]{16,40})\/?$/.exec(location.pathname), CODE = pm ? pm[1] : null;
+  var KEY = (/[?&]k=([A-Za-z0-9_-]{10,40})/.exec(location.search) || [])[1] || '';       // the booth's own key to a "guests see only their own" event
+  var FROM = (/[?&]c=([A-Za-z0-9_-]{16,40})/.exec(location.search) || [])[1] || '';      // came here from a guest's own page: offer the way back
+  var FOLDER = !CODE && m ? m[1] : null, pendTries = 0, pendT = null;
+  var DL_P = CODE ? 'Download my photos' : 'Download all photos', DL_G = CODE ? 'Download my GIFs' : 'Download all GIFs';
   var DRIVE = FOLDER ? 'https://drive.google.com/drive/folders/' + FOLDER : null;
   var files = [], view = [], cur = -1, tiles = {}, firstLoad = true, timer = null, activeCategory = 'photos', PRINT_REQ = false;
   // A guest's own QR opens straight to their saved photo: /g/<folder>#<file id>.
@@ -237,26 +244,42 @@
   }
 
   async function load(){
-    if(!FOLDER){ showState('Gallery not found', 'Check the link or scan the QR code again.', false); $('sub').textContent = ''; return; }
+    if(!FOLDER && !CODE){ showState('Gallery not found', 'Check the link or scan the QR code again.', false); $('sub').textContent = ''; return; }
     var r, j;
     try{
       // A just-taken photo may be newer than the cached list: ask for a fresh one.
-      r = await fetch('/api/gallery?f=' + encodeURIComponent(FOLDER) + (WANT ? '&v=' + encodeURIComponent(WANT.id) + (wantTries ? '-' + wantTries : '') : ''), { cache: 'no-store' });
+      r = await fetch(CODE ? '/api/guestview?c=' + encodeURIComponent(CODE)
+        : '/api/gallery?f=' + encodeURIComponent(FOLDER) + (KEY ? '&k=' + encodeURIComponent(KEY) : '') + (WANT ? '&v=' + encodeURIComponent(WANT.id) + (wantTries ? '-' + wantTries : '') : ''), { cache: 'no-store' });
       j = await r.json();
     }catch(e){
       if(firstLoad){ showState('Can’t load the photos', 'Check your internet and try again.', true); $('sub').textContent = ''; }
       return;
     }
+    if(CODE && j && j.ok && j.pending){
+      // The booth is still saving: this page checks again by itself until the photos arrive.
+      if(firstLoad){ $('sub').textContent = ''; showState('Your photos are on their way', 'They appear here in a few seconds. You can keep this page open.', false); }
+      if(++pendTries < 200){ clearTimeout(pendT); pendT = setTimeout(load, 4000); }
+      return;
+    }
     if(!j || !j.ok){
       if(!firstLoad) return;
       $('sub').textContent = '';
-      if(j && j.error === 'not-found') showState('This gallery isn’t available', 'The link may be wrong, or the photos were removed after the event.', false);
+      if(j && j.error === 'private') showState('This gallery is private', 'Guests of this event see only their own photos. Scan your own QR code at the booth to open yours.', false);
+      else if(j && j.error === 'expired') showState('This page has expired', 'Photos are kept for seven days after the event.', false);
+      else if(j && j.error === 'not-found') showState('This gallery isn’t available', 'The link may be wrong, or the photos were removed after the event.', false);
       else showState('The gallery is taking a short break', 'Your photos are safe. Please try again in a few minutes.', true);
       return;
     }
     $('state').classList.add('hidden');
     DRIVE = j.folderUrl || DRIVE;
-    setupQr(j.qr !== false);
+    setupQr(!CODE && j.qr !== false);
+    // Switch between the guest's own photos and everyone's (only when the booth allows it).
+    if(CODE){
+      $('photosTab').firstChild.nodeValue = 'Photos '; $('gifsTab').firstChild.nodeValue = 'GIFs ';
+      $('dlPhotosLabel').textContent = DL_P; $('dlGifsLabel').textContent = DL_G;
+    }
+    if(CODE && j.canAll && j.folder){ var ob = $('othersBtn'); ob.href = '/g/' + j.folder + '?c=' + CODE; ob.classList.remove('hidden'); }
+    if(FROM){ var mb = $('mineBtn'); mb.href = '/p/' + FROM; mb.classList.remove('hidden'); }
     PRINT_REQ = !!j.printReq;      // the booth lets guests ask for a print from here
     document.title = j.name + ' | photobooth4u';
     $('title').textContent = j.name;
@@ -274,6 +297,7 @@
     var known = {}; files.forEach(function(f){ known[f.id] = true; });
     var freshFiles = firstLoad ? [] : j.files.filter(function(f){ return !known[f.id]; });
     files = j.files;
+    if(CODE && firstLoad && j.files.length === 1) WANT = { id: j.files[0].id };     // one photo: open it straight away, like a guest's own QR always did
     refreshCategoryUI();
     render(!firstLoad);
     if(freshFiles.length){ var freshPhotos = freshFiles.filter(function(f){ return !isGif(f); }).length, freshGifs = freshFiles.length - freshPhotos; toast(freshPhotos + ' new photos, ' + freshGifs + ' new GIFs'); }
@@ -364,7 +388,7 @@
   }
   // "Ask for a print at the booth": the booth's attendant sees the request and prints it. Only when the booth switched it on.
   var asked = {};
-  try{ asked = JSON.parse(sessionStorage.getItem('pb_asked_' + FOLDER) || '{}') || {}; }catch(e){}
+  try{ asked = JSON.parse(sessionStorage.getItem('pb_asked_' + (FOLDER || CODE)) || '{}') || {}; }catch(e){}
   function reqButton(f){
     var b = $('vReq'), show = PRINT_REQ && !isGif(f) && !isVideo(f);
     b.classList.toggle('hidden', !show);
@@ -375,10 +399,12 @@
     var f = view[cur]; if(!f || asked[f.id]) return;
     var b = this; b.disabled = true; b.textContent = 'Sending…';
     try{
-      var r = await fetch('/api/printreq', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'request', folder: FOLDER, file: f.id }) });
+      // On a guest's own page the request goes by their code, so the event's folder never reaches their phone.
+      var r = await fetch(CODE ? '/api/guestview' : '/api/printreq', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(CODE ? { action: 'print', code: CODE, file: f.id } : { action: 'request', folder: FOLDER, file: f.id }) });
       var j = await r.json().catch(function(){ return {}; });
       if(r.ok && j.ok){
-        asked[f.id] = 1; try{ sessionStorage.setItem('pb_asked_' + FOLDER, JSON.stringify(asked)); }catch(e){}
+        asked[f.id] = 1; try{ sessionStorage.setItem('pb_asked_' + (FOLDER || CODE), JSON.stringify(asked)); }catch(e){}
         toast(j.done ? 'That photo was already printed.' : 'Sent. The attendant will print it.'); reqButton(f); return;
       }
       toast(j.error === 'rate' ? 'You have asked for a few prints already. Please wait a little.' : j.error === 'off' ? 'Print requests are not on for this booth.' : j.error === 'busy' ? 'The booth is busy. Please ask the attendant.' : 'Could not send. Try again.');
@@ -510,7 +536,7 @@
       var categoryLabel = isGifs ? 'GIF' : 'photo';
       toast(failed ? 'Downloaded ' + (list.length - failed) + ' ' + categoryLabel + 's (' + failed + ' could not load)' : 'Downloaded ' + list.length + ' ' + categoryLabel + (list.length === 1 ? '' : 's'));
     }finally{
-      label.textContent = isGifs ? 'Download all GIFs' : 'Download all photos';
+      label.textContent = isGifs ? DL_G : DL_P;
       btn.disabled = false; zipping = false;
     }
   }

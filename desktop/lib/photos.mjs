@@ -12,15 +12,17 @@ import { networkInterfaces } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import http from 'node:http';
 
-let ROOT = null, INDEX_FILE = null, index = { folders: {} }, thumbFn = null;
+let ROOT = null, INDEX_FILE = null, index = { folders: {} }, thumbFn = null, CODES_FILE = null;
 export const SHARE_PORTS = [47777, 47778, 47779, 47787, 47797];
 let sharePort = 0;
 
 export function initPhotos({ root, dataDir, makeThumb }) {
   ROOT = root; INDEX_FILE = join(dataDir, 'folders.json'); thumbFn = makeThumb || null;
+  CODES_FILE = join(dataDir, 'guestcodes.json');
   mkdirSync(ROOT, { recursive: true });
   try { index = JSON.parse(readFileSync(INDEX_FILE, 'utf8')) || { folders: {} }; } catch { index = { folders: {} }; }
   if (!index.folders) index.folders = {};
+  try { codes = JSON.parse(readFileSync(CODES_FILE, 'utf8')) || {}; } catch { codes = {}; }
 }
 export const photosRoot = () => ROOT;
 export function setPhotosRoot(dir) { ROOT = dir; mkdirSync(ROOT, { recursive: true }); }
@@ -66,6 +68,40 @@ function nextSession(dir) {
   return max + 1;
 }
 
+// ---------- what guests see after scanning (Setup -> Share: "After guests scan their QR") ----------
+//   'all'  the whole event (today's behaviour)     'mine' their own photos first, with a button for everyone's
+//   'only' their own photos and nothing else: the event pages answer only this laptop itself
+// A guest's own page is /o/<code>. The booth makes the code for each session and sends it with every file it saves
+// (guestCode), so the page knows which files are theirs. The code is unguessable, and the page never shows the
+// event's address, so nobody can step to the next guest's photo.
+const GCODE_RE = /^[A-Za-z0-9_-]{16,40}$/;
+let guestView = 'all', codes = {}, codesTimer = null;
+export function setGuestView(mode) { guestView = mode === 'mine' || mode === 'only' ? mode : 'all'; return guestView; }
+export const guestViewNow = () => guestView;
+function saveCodes() {
+  clearTimeout(codesTimer);
+  codesTimer = setTimeout(() => {
+    try {
+      const keys = Object.keys(codes);
+      if (keys.length > 2000) keys.sort((a, b) => codes[a].first - codes[b].first).slice(0, keys.length - 2000).forEach((k) => delete codes[k]);
+      const t = CODES_FILE + '.tmp'; writeFileSync(t, JSON.stringify(codes)); renameSync(t, CODES_FILE);
+    } catch { /* the photos are safe; the guest's page just won't survive a restart */ }
+  }, 300);
+}
+function noteGuestFile(code, slug, file) {
+  if (!GCODE_RE.test(String(code || ''))) return;
+  const c = codes[code] || (codes[code] = { slug, files: [], first: Date.now() });
+  if (c.slug === slug && !c.files.includes(file) && c.files.length < 40) c.files.push(file);
+  saveCodes();
+}
+// Is this request from the laptop itself (the operator), not a guest's phone?
+export function isLocalReq(req) {
+  const a = String((req.socket && req.socket.remoteAddress) || '').replace(/^::ffff:/, '');
+  if (a === '127.0.0.1' || a === '::1') return true;
+  for (const list of Object.values(networkInterfaces())) for (const x of list || []) if (x.address === a) return true;
+  return false;
+}
+
 // The booth's "Drive script" call (same request + reply shape as the Apps Script relay).
 export async function driveRequest(body) {
   if (!body || typeof body !== 'object') return { ok: false, error: 'Bad request' };
@@ -80,6 +116,7 @@ export async function driveRequest(body) {
   let out = name, i = 2;
   while (existsSync(join(f.dir, out))) { out = name.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
   writeFileSync(join(f.dir, out), Buffer.from(m, 'base64'));
+  noteGuestFile(body.guestCode, f.slug, out);
   return { ok: true, fileId: f.slug + '/' + out, downloadUrl: 'pb4u-local:' + f.slug + '/' + out, folderUrl, folderName: f.name, folderPath: f.dir };
 }
 export function folderPathOf(folderUrl) {
@@ -355,18 +392,20 @@ export function printReqRead(id) {
   const dir = dirOf(r.slug); if (!dir) return null;
   try { return readFileSync(join(dir, r.file)); } catch { return null; }
 }
-function reqButtonHtml(slug, file) {
-  return '<button class="btn alt" id="askPrint" type="button">Ask for a print at the booth</button>' +
-    '<script>(function(){var b=document.getElementById("askPrint"),k="pb_asked_' + slug + '_' + String(file).replace(/[^\w.-]/g, '_') + '";if(sessionStorage.getItem(k)){b.disabled=true;b.textContent="Requested \u2713"}' +
-    'b.addEventListener("click",function(){b.disabled=true;b.textContent="Sending\u2026";fetch("/e/' + slug + '/print/' + encodeURIComponent(file) + '",{method:"POST"}).then(function(r){return r.json()}).then(function(j){' +
+function reqButtonHtml(slug, file, postUrl, idn) {
+  const id = 'askPrint' + (idn || '');
+  return '<button class="btn alt" id="' + id + '" type="button">Ask for a print at the booth</button>' +
+    '<script>(function(){var b=document.getElementById("' + id + '"),k="pb_asked_' + slug + '_' + String(file).replace(/[^\w.-]/g, '_') + '";if(sessionStorage.getItem(k)){b.disabled=true;b.textContent="Requested \u2713"}' +
+    'b.addEventListener("click",function(){b.disabled=true;b.textContent="Sending\u2026";fetch("' + (postUrl || '/e/' + slug + '/print/' + encodeURIComponent(file)) + '",{method:"POST"}).then(function(r){return r.json()}).then(function(j){' +
     'if(j.ok){sessionStorage.setItem(k,"1");b.textContent=j.done?"Already printed \u2713":"Requested \u2713"}else{b.disabled=false;b.textContent=j.error==="rate"?"Please wait a little, then try again":j.error==="off"?"Print requests are off":"Could not send. Try again"}' +
     '}).catch(function(){b.disabled=false;b.textContent="Could not send. Try again"})})})()</script>';
 }
-function handlePrintReq(req, res, pm) {
+function handlePrintReq(req, res, pm, only) {
   if (req.method !== 'POST') return send(res, 405, 'application/json', JSON.stringify({ ok: false, error: 'Method not allowed' }));
   const fail = (code, error) => send(res, code, 'application/json', JSON.stringify({ ok: false, error }));
   if (!guestPrintOn) return fail(403, 'off');
   let file; try { file = decodeURIComponent(pm[2]); } catch { file = ''; }
+  if (only && !only.includes(file)) return fail(404, 'photo');       // a guest's own page: only that guest's files
   const dir = dirOf(pm[1]);
   if (!dir || !existsSync(dir)) return fail(404, 'event');
   if (!file || file !== basename(file) || file.startsWith('.') || !/\.(jpe?g|png|webp)$/i.test(file) || !existsSync(join(dir, file))) return fail(404, 'photo');
@@ -384,11 +423,54 @@ function handlePrintReq(req, res, pm) {
   return send(res, 200, 'application/json', JSON.stringify({ ok: true, waiting: true }));
 }
 
+// A guest's own page: only the files the booth saved for their session (see noteGuestFile).
+function handleOwn(req, res, url, om) {
+  const code = om[1], c = codes[code];
+  if (!c) {
+    if (om[2]) return send(res, 404, om[2] === 'print' ? 'application/json' : 'text/plain', om[2] === 'print' ? JSON.stringify({ ok: false, error: 'photo' }) : 'Not found');
+    // Not saved yet (or not a code of ours): the page checks again by itself, and says nothing about which codes exist.
+    return send(res, 200, 'text/html; charset=utf-8', page('Your photos', '<div class="one"><h1>Your photos are on their way</h1><p class="sub">They appear here in a few seconds. You can keep this page open.</p></div><script>setTimeout(function(){location.reload()},4000)</script>'));
+  }
+  const dir = dirOf(c.slug);
+  if (!dir || !existsSync(dir)) return send(res, 404, 'text/html; charset=utf-8', page('Not found', '<p class="empty">This event isn’t on this booth anymore.</p>'));
+  if (om[2] === 'print') return handlePrintReq(req, res, [null, c.slug, om[3]], c.files);
+  if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
+  if (om[2] === 'f') {
+    let file; try { file = decodeURIComponent(om[3]); } catch { file = ''; }
+    if (!c.files.includes(file) || !existsSync(join(dir, file))) return send(res, 404, 'text/plain', 'Not found');
+    const extra = {};
+    if (url.searchParams.get('dl')) extra['content-disposition'] = 'attachment; filename="' + file.replace(/[^\w.() -]/g, '_') + '"';
+    return serveFile(req, res, join(dir, file), TYPES[extname(file).toLowerCase()] || 'application/octet-stream', extra);
+  }
+  const ev = index.folders[c.slug];
+  const evName = ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : 'Your photos';
+  const mine = c.files.filter((n) => existsSync(join(dir, n)));
+  const items = mine.map((file, i) => {
+    const type = TYPES[extname(file).toLowerCase()] || 'application/octet-stream';
+    const isGif = /\.gif$/i.test(file), isVid = VIDEO_RE.test(file);
+    const src = '/o/' + code + '/f/' + encodeURIComponent(file);
+    const media = /^video\//.test(type) ? '<video src="' + src + '" controls playsinline autoplay muted loop></video>' : '<img src="' + src + '" alt="' + (isGif ? 'Your GIF' : 'Your photo') + '">';
+    const dlText = isVid ? 'Save video' : isGif ? 'Save GIF' : 'Save photo';
+    return '<div class="one" style="padding-bottom:6px">' + media + '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">' + dlText + '</a>' +
+      (guestPrintOn && !isVid && !isGif ? reqButtonHtml(c.slug, file, '/o/' + code + '/print/' + encodeURIComponent(file), String(i)) : '') + '</div></div>';
+  });
+  const others = guestView !== 'only' ? '<div class="one" style="padding-top:0"><a class="btn alt" href="/e/' + c.slug + '/">Show photos with other guests</a></div>' : '';
+  const body = '<div style="text-align:center;padding:0 16px"><h1>Your photos</h1><p class="sub">' + esc(evName) + '</p></div>' +
+    (items.length ? items.join('') + savingTip : '<p class="empty">This photo isn’t here yet. Wait a moment and refresh.</p><script>setTimeout(function(){location.reload()},5000)</script>') + others;
+  return send(res, 200, 'text/html; charset=utf-8', page('Your photos', body));
+}
+
 async function handleShare(req, res) {
   let url;
   try { url = new URL(req.url, 'http://x'); } catch { return send(res, 400, 'text/plain', 'Bad request'); }
   const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited|photos|photo|hello)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);
   if (sm) return handleSend(req, res, url, sm);
+  const om = /^\/o\/([A-Za-z0-9_-]{16,40})(?:\/(f|print)\/([^/]+))?\/?$/.exec(url.pathname);
+  if (om) return handleOwn(req, res, url, om);
+  // "Guests see only their own photos": the event pages answer only this laptop itself (the operator), not a guest's phone.
+  if (guestView === 'only' && /^\/e\//.test(url.pathname) && !isLocalReq(req)) {
+    return send(res, 403, 'text/html; charset=utf-8', page('Private', '<p class="empty">Guests of this event see only their own photos. Scan your own QR code at the booth to open yours.</p>'));
+  }
   const prm = /^\/e\/([A-Za-z0-9]{6,20})\/print\/([^/]+)\/?$/.exec(url.pathname);
   if (prm) return handlePrintReq(req, res, prm);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');

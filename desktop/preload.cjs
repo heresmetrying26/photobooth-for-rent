@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('pb4u', {
   roveTake: (name) => ipcRenderer.invoke('pb4u:roveTake', String(name || '')),
   // Guests asking for a print
   guestPrintSet: (on) => ipcRenderer.invoke('pb4u:guestPrintSet', !!on),
+  guestViewSet: (mode) => ipcRenderer.invoke('pb4u:guestViewSet', String(mode || '')),
   printReqList: () => ipcRenderer.invoke('pb4u:printReqList'),
   printReqDone: (id) => ipcRenderer.invoke('pb4u:printReqDone', String(id || '')),
   printReqRead: (id) => ipcRenderer.invoke('pb4u:printReqRead', String(id || '')),

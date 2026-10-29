@@ -1,4 +1,4 @@
-import { safe, json, hmac, DRIVE_SCRIPT_URL, getSettings, printReqOn } from '../lib/core.mjs';
+import { safe, json, hmac, DRIVE_SCRIPT_URL, getSettings, printReqOn, guestViewMode, opKeyOf } from '../lib/core.mjs';
 
 // Backs the online gallery (/g/<Drive folder id>).
 //   GET /api/gallery?f=<folder id>        -> the folder's photos (via the Apps Script relay)
@@ -41,6 +41,11 @@ export default safe(async (req) => {
 
   const f = u.searchParams.get('f') || '';
   if (!ID_RE.test(f)) return json({ ok: false, error: 'not-found' }, 404);
+  // An event set to "guests see only their own photos" lists nothing without the booth's own key (the booth's
+  // phone-photo lookup, rove=1, is not a guest list and stays open).
+  if (u.searchParams.get('rove') !== '1' && (await guestViewMode(f)) === 'only' && u.searchParams.get('k') !== opKeyOf(f)) {
+    return json({ ok: false, error: 'private' }, 403);
+  }
   let data = null;
   try {
     const r = await fetch(DRIVE_SCRIPT_URL + '?action=list&folder=' + encodeURIComponent(f), { redirect: 'follow' });
@@ -78,7 +83,7 @@ export default safe(async (req) => {
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-store',
       'netlify-cdn-cache-control': 'public, max-age=15, stale-while-revalidate=45',
-      'netlify-vary': 'query=f|v|rove'
+      'netlify-vary': 'query=f|v|rove|k'
     }
   });
 });

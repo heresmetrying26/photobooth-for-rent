@@ -15,7 +15,7 @@ import { Readable } from 'node:stream';
 import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
 import { allowBoothRequest } from './lib/netguard.mjs';
-import { initPhotos, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, printReqList, printReqDone, printReqRead } from './lib/photos.mjs';
+import { initPhotos, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { freeCamera, guardCamera } from './lib/camfree.mjs';
@@ -262,6 +262,7 @@ function wireIpc() {
   ipcMain.handle('pb4u:roveTake', (e, name) => roveTake(name));
   // Guests asking for a print from their phone: switched on from the booth's Print settings; requests wait here
   ipcMain.handle('pb4u:guestPrintSet', (e, on) => setGuestPrint(!!on));
+  ipcMain.handle('pb4u:guestViewSet', (e, mode) => setGuestView(String(mode || '')));
   ipcMain.handle('pb4u:printReqList', () => printReqList());
   ipcMain.handle('pb4u:printReqDone', (e, id) => printReqDone(id));
   ipcMain.handle('pb4u:printReqRead', (e, id) => printReqRead(id));

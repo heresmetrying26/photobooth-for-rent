@@ -14,7 +14,7 @@ import { createDecipheriv, createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
-import { initPhotos, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare } from './lib/photos.mjs';
+import { initPhotos, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, printReqList, printReqDone, printReqRead } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { freeCamera, guardCamera } from './lib/camfree.mjs';
@@ -255,6 +255,15 @@ function wireIpc() {
   // 360 videos: the inbox folder, the phone send page, and sharing a clip into the event
   const spinInfo = () => ({ dir: spinDirNow(), sendUrl: spinSendUrl(), previewBase: spinPreviewBase() });
   ipcMain.handle('pb4u:spinInfo', () => spinInfo());
+  // Roving photos: phones send photos to an inbox; the booth takes each one, frames it and gives it a QR
+  ipcMain.handle('pb4u:roveInfo', () => ({ dir: roveDirNow(), sendUrl: roveSendUrl(), previewBase: rovePreviewBase() }));
+  ipcMain.handle('pb4u:roveScan', () => roveList());
+  ipcMain.handle('pb4u:roveTake', (e, name) => roveTake(name));
+  // Guests asking for a print from their phone: switched on from the booth's Print settings; requests wait here
+  ipcMain.handle('pb4u:guestPrintSet', (e, on) => setGuestPrint(!!on));
+  ipcMain.handle('pb4u:printReqList', () => printReqList());
+  ipcMain.handle('pb4u:printReqDone', (e, id) => printReqDone(id));
+  ipcMain.handle('pb4u:printReqRead', (e, id) => printReqRead(id));
   ipcMain.handle('pb4u:spinChoose', async () => {
     const r = await dialog.showOpenDialog(win, { title: 'Folder the 360 videos are saved to', defaultPath: spinDirNow() || photosRoot(), properties: ['openDirectory', 'createDirectory'] });
     if (r.canceled || !r.filePaths[0]) return null;

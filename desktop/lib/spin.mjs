@@ -68,16 +68,29 @@ export function parseProbe(text) {
   if (Math.abs(rotation) % 180 === 90) { const w = width; width = height; height = w; }   // ffmpeg turns it upright by itself
   return { duration, width, height, fps: fps ? Number(fps[1]) : 0, rotation, hasAudio: /Stream #.*Audio:/.test(t) };
 }
+// The last "time=00:00:07.52" ffmpeg printed while decoding.
+export function durationFromProgress(text) {
+  const all = [...String(text || '').matchAll(/time=(\d+):(\d+):(\d+(?:\.\d+)?)/g)];
+  const m = all[all.length - 1];
+  return m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : 0;
+}
 export async function probe(file) {
   const bin = await findFfmpeg(); if (!bin) throw new Error('Video editing is not available on this laptop.');
   const r = await run(bin, ['-hide_banner', '-i', file], { timeout: 20000 });
   const info = parseProbe(r.err);
+  if (!info.duration) {
+    // A clip recorded in a browser (WebM) has no length in its header: decode it once to find out.
+    const d = await run(bin, ['-hide_banner', '-nostats', '-i', file, '-map', '0:v:0', '-f', 'null', '-'], { timeout: 120000 });
+    info.duration = durationFromProgress(d.err);
+    if (!info.width) Object.assign(info, { ...parseProbe(d.err), duration: info.duration });
+  }
   if (!info.duration) throw new Error('Could not read that video.');
   return info;
 }
 
 // ---------- the ffmpeg command ----------
-export const SPEEDS = ['normal', 'slow', 'ramp', 'boomerang'];
+export const SPEEDS = ['normal', 'slow', 'ramp', 'boomerang', 'custom'];
+const REVERSE_MAX = 8;                       // a sequence up to twice this many seconds can also play backwards (held in memory)
 const BOOMERANG_MAX = 5;                     // seconds of the clip that go forward then back (it is held in memory)
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const f2 = (n) => (Math.round(n * 1000) / 1000).toString();
@@ -85,11 +98,14 @@ const f2 = (n) => (Math.round(n * 1000) / 1000).toString();
 export function normOptions(o) {
   o = o || {};
   const speed = SPEEDS.includes(o.speed) ? o.speed : 'slow';
-  const q = o.quality === 720 || speed === 'boomerang' ? 720 : 1080;      // boomerang is kept at 720 to stay light
+  const q = o.quality === 720 || speed === 'boomerang' || (speed === 'custom' && o.reverse) ? 720 : 1080;      // boomerang and backwards are kept at 720 to stay light
   const short = q, long = Math.round(q * 16 / 9 / 2) * 2;
   const landscape = o.orientation === 'landscape';
   return {
     speed, smooth: !!o.smooth, landscape,
+    // custom: the clip is cut in equal parts and each part plays at its own rate (0.25x to 4x); reverse adds the whole thing backwards
+    rates: speed === 'custom' ? (Array.isArray(o.rates) ? o.rates : []).map(Number).filter((r) => r >= 0.25 && r <= 4).slice(0, 6) : [],
+    reverse: speed === 'custom' && !!o.reverse,
     W: landscape ? long : short, H: landscape ? short : long,
     trimStart: clamp(Number(o.trimStart) || 0, 0, 3600),
     trimEnd: o.trimEnd == null || o.trimEnd === '' ? null : Math.max(0, Number(o.trimEnd) || 0),
@@ -98,7 +114,12 @@ export function normOptions(o) {
   };
 }
 // How long the finished video is.
-export function outDuration(speed, d) {
+export function outDuration(speed, d, o) {
+  if (speed === 'custom') {
+    const rates = o && o.rates && o.rates.length ? o.rates : [1];
+    const once = rates.reduce((t, r) => t + (d / rates.length) / r, 0);
+    return o && o.reverse ? once * 2 : once;
+  }
   if (speed === 'slow') return d * 2;
   if (speed === 'ramp') return d * 1.25;
   if (speed === 'boomerang') return Math.min(d, BOOMERANG_MAX) * 2;
@@ -109,7 +130,10 @@ export function buildArgs({ input, output, overlay, music, options }, info) {
   const o = normOptions(options);
   const end = o.trimEnd != null && o.trimEnd > o.trimStart ? Math.min(o.trimEnd, info.duration) : info.duration;
   const D = Math.max(0.5, end - o.trimStart);
-  const dur = outDuration(o.speed, D);
+  if (o.speed === 'custom' && !o.rates.length) o.rates = [1];
+  // Playing backwards holds the whole sequence in memory: only for a short one.
+  if (o.speed === 'custom' && o.reverse && outDuration('custom', D, { ...o, reverse: false }) > REVERSE_MAX * 2) o.reverse = false;
+  const dur = outDuration(o.speed, D, o);
   const a = ['-hide_banner', '-y', '-nostats', '-progress', 'pipe:1'];
   a.push('-ss', f2(o.trimStart), '-t', f2(D), '-i', input);
   let idx = 1, ovIdx = -1, muIdx = -1;
@@ -129,6 +153,17 @@ export function buildArgs({ input, output, overlay, music, options }, info) {
     f.push('[b]trim=' + t1 + ':' + t2 + ',setpts=(PTS-STARTPTS)*2[v2]');
     f.push('[c]trim=' + t2 + ',setpts=(PTS-STARTPTS)/2[v3]');
     f.push('[v1][v2][v3]concat=n=3:v=1:a=0,fps=30,' + fit + '[v0]');
+  } else if (o.speed === 'custom') {
+    const n = o.rates.length, part = D / n;
+    const pre = o.smooth && o.rates.some((r) => r < 1) ? 'minterpolate=fps=60:mi_mode=blend,' : '';
+    if (n === 1) {
+      f.push(src + pre + 'setpts=' + f2(1 / o.rates[0]) + '*PTS,fps=30,' + fit + (o.reverse ? ',split[a][b]' : '[v0]'));
+    } else {
+      f.push(src + pre + 'split=' + n + o.rates.map((r, i) => '[s' + i + ']').join(''));
+      o.rates.forEach((r, i) => f.push('[s' + i + ']trim=' + f2(i * part) + ':' + f2((i + 1) * part) + ',setpts=(PTS-STARTPTS)/' + f2(r) + '[p' + i + ']'));
+      f.push(o.rates.map((r, i) => '[p' + i + ']').join('') + 'concat=n=' + n + ':v=1:a=0,fps=30,' + fit + (o.reverse ? ',split[a][b]' : '[v0]'));
+    }
+    if (o.reverse) { f.push('[b]reverse[r]'); f.push('[a][r]concat=n=2:v=1:a=0[v0]'); }
   } else if (o.speed === 'boomerang') {
     const Db = f2(Math.min(D, BOOMERANG_MAX));
     f.push(src + 'trim=0:' + Db + ',setpts=PTS-STARTPTS,fps=30,' + fit + ',split[a][b]');

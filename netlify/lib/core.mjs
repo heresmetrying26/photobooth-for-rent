@@ -324,6 +324,16 @@ export function normPrint(enabled, sizes, limits) {
 // printjobs: pages an iPad sends to the laptop "print station" page
 export const printsStore = () => getStore({ name: 'prints', consistency: 'strong' });
 export const printJobsStore = () => getStore({ name: 'printjobs', consistency: 'strong' });
+// Guests asking for a print from the online gallery (see functions/printreq.mjs): one document per gallery folder.
+export const printReqStore = () => getStore({ name: 'printreq', consistency: 'strong' });
+// The gallery asks this when it lists a folder, to know whether to show the "Ask for a print" button.
+export async function printReqOn(folder) {
+  try {
+    if (!/^[A-Za-z0-9_-]{10,80}$/.test(String(folder || ''))) return false;
+    const d = await printReqStore().get('f:' + folder, { type: 'json' });
+    return !!(d && d.on && d.exp > Date.now());
+  } catch { return false; }
+}
 // Which counter a booth adds to: the booking (its fixed event), one per event
 // name for lifetime codes, and the trial's own throwaway folder for trials.
 // A bonus code counts on its own (it's for testing before the event).

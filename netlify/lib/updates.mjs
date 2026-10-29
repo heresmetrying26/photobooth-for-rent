@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.24', date: '2026-10-29' },
   { version: '1.0.23', date: '2026-10-29' },
   { version: '1.0.22', date: '2026-10-28' },
   { version: '1.0.21', date: '2026-10-28' },
@@ -71,6 +72,19 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-29', title: 'Phone photos, guest print requests, video guestbook, GIFs in your frame and 360 recording in the app', for: ['website', 'app'], app: '1.0.24',
+    items: [
+      'GIFs now get your chosen look and sit in your frame: by default the one-photo Solo layout with your title, even when the photos use a strip. Setup → Extras → Output mode has a GIF frame choice (Solo, the chosen layout, or the plain camera view).',
+      'Quick shot and photographer desk photos use the Solo layout (no more one photo repeated on a strip). The desk has a One photo per print switch, and the Quick shot screen has Print framed and Print original.',
+      'Photos from a phone: on the Quick shot screen tap Phone upload, the photographer scans the QR code and sends photos. On the laptop and Android apps they go straight to the booth over Wi-Fi; on the website they go through the event folder. Each one is framed, saved and gets a QR code.',
+      'Guests can ask for a print: switch on Let guests ask for a print from their phone in the print settings. Their photo page gets an Ask for a print at the booth button and a Print requests button appears in the dock (website, laptop and Android apps).',
+      'Guest screen (traditional booth): an optional Look button lets each guest pick a filter. It is off until you tick Let guests choose a look in Setup → Extras → Filter.',
+      'Video guestbook: a guest records a message of up to 30 seconds, watches it and gets a QR code. It shows under Videos in the gallery.',
+      '360 recording in the app (Android and laptop apps): Record 360 in the dock records the spin from a tablet or phone on the arm, starting with the button or when the arm moves, and sends the clip to the laptop. New speed styles (0.25×, fast then slow, fast slow fast, slow-mo roller) and Edit new videos by themselves can now also get the QR ready.',
+      'Flipbook cards no longer have numbers: they print in order, left to right and top to bottom.'
+    ]
+  },
   {
     date: '2026-10-29', title: 'Vintage looks, photographer desk, flipbook and a 360 video desk', for: ['website', 'app'], app: '1.0.23',
     items: [

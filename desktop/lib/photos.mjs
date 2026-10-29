@@ -215,9 +215,92 @@ const SEND_PAGE = '<!doctype html><html lang="en"><head><meta charset="utf-8"><m
   'x.upload.onprogress=function(p){if(p.lengthComputable)row.querySelector("i").style.width=Math.round(p.loaded/p.total*100)+"%"};' +
   'x.onload=function(){var ok=x.status===200;row.querySelector("span").textContent=ok?"Sent. It is on the laptop now.":"Could not send ("+x.status+"). Try again.";if(ok)row.querySelector("i").style.width="100%"};' +
   'x.onerror=function(){row.querySelector("span").textContent="No connection to the laptop. Are you on the booth Wi-Fi?"};x.send(file)}</script></body></html>';
+// ---------- Roving photos: a phone sends photos to this laptop; the booth picks them up from the inbox ----------
+// The photographer scans a QR code, picks or takes photos on the phone, and they land in "Roving inbox".
+// The booth page takes each one (moves it to done/), puts it in the frame and gives it a QR code.
+const ROVE_MAX = 80 * 1024 * 1024;
+const ROVE_RE = /\.(jpe?g|png|webp)$/i;
+export function roveDirNow() {
+  const d = ROOT ? join(ROOT, 'Roving inbox') : null;
+  if (d) { try { mkdirSync(d, { recursive: true }); } catch { /* ignore */ } }
+  return d;
+}
+export function roveSendUrl() { const b = shareBase(); return b ? b + '/send/' + spinToken + '/photos' : null; }
+export function rovePreviewBase() { return sharePort ? 'http://127.0.0.1:' + sharePort + '/send/' + spinToken + '/photos' : null; }
+export function roveList() {
+  const d = roveDirNow(); if (!d) return [];
+  let names = []; try { names = readdirSync(d); } catch { return []; }
+  return names.filter((n) => ROVE_RE.test(n) && !n.startsWith('.')).map((n) => {
+    try { const st = statSync(join(d, n)); return st.isFile() ? { name: n, size: st.size, mtime: st.mtimeMs } : null; } catch { return null; }
+  }).filter(Boolean).sort((a, b) => a.mtime - b.mtime).slice(0, 200);
+}
+// Hands one photo to the booth page and moves it to done/ so it is never taken twice.
+export function roveTake(name) {
+  const d = roveDirNow(); const n = basename(String(name || ''));
+  if (!d || !n || n.startsWith('.') || !ROVE_RE.test(n)) return null;
+  const src = join(d, n); if (!existsSync(src)) return null;
+  let bytes; try { bytes = readFileSync(src); } catch { return null; }
+  try {
+    const done = join(d, 'done'); mkdirSync(done, { recursive: true });
+    let out = n, i = 2; while (existsSync(join(done, out))) { out = n.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
+    renameSync(src, join(done, out));
+  } catch { try { unlinkSync(src); } catch { /* ignore */ } }
+  return bytes;
+}
+const ROVE_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Send photos</title>
+<style>body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#F6F1EA;color:#1C1A1E;padding:24px 18px;text-align:center}h1{font-size:22px;margin:6px 0}p{color:#6B666C;margin:6px 0}
+label.pick{display:block;max-width:360px;margin:14px auto 0;padding:18px 26px;border-radius:14px;background:#C93D27;color:#fff;font-weight:800;font-size:18px}label.alt{background:#1C1A1E}input{display:none}
+.bar{height:10px;border-radius:6px;background:#E4DCCF;overflow:hidden;margin:6px auto 2px;max-width:420px}.bar i{display:block;height:100%;width:0;background:#2EA66B}.row{margin:14px auto 0;max-width:420px;text-align:left;font-size:14px}#list{margin-top:18px}</style></head><body>
+<h1>Send photos to the booth</h1><p>Each photo goes straight to the booth laptop, into the event frame, ready to print.</p>
+<label class="pick" for="cam">Take a photo</label><input id="cam" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
+<label class="pick alt" for="f">Choose photos</label><input id="f" type="file" accept="image/jpeg,image/png,image/webp" multiple><div id="list"></div>
+<script>var T=location.pathname.replace(/[/]+$/,"").replace(/[/]photos$/,"");
+function pick(e){Array.prototype.forEach.call(e.target.files,send);e.target.value=""}
+document.getElementById("f").addEventListener("change",pick);document.getElementById("cam").addEventListener("change",pick);
+function send(file){var row=document.createElement("div");row.className="row";row.innerHTML="<b></b><div class=bar><i></i></div><span></span>";row.querySelector("b").textContent=file.name||"photo";document.getElementById("list").insertBefore(row,document.getElementById("list").firstChild);
+var x=new XMLHttpRequest();x.open("POST",T+"/photo?name="+encodeURIComponent(file.name||"photo.jpg"));x.setRequestHeader("content-type","application/octet-stream");
+x.upload.onprogress=function(p){if(p.lengthComputable)row.querySelector("i").style.width=Math.round(p.loaded/p.total*100)+"%"};
+x.onload=function(){var ok=x.status===200;row.querySelector("span").textContent=ok?"Sent. It is on the laptop now.":"Could not send ("+x.status+"). Try again.";if(ok)row.querySelector("i").style.width="100%"};
+x.onerror=function(){row.querySelector("span").textContent="No connection to the laptop. Are you on the booth Wi-Fi?"};x.send(file)}</script></body></html>`;
+function handleRovePhoto(req, res, url) {
+  const cors = { 'access-control-allow-origin': '*' };
+  if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'POST', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
+  if (req.method !== 'POST') return send(res, 405, 'text/plain', 'Method not allowed', cors);
+  const d = roveDirNow(); if (!d) return send(res, 503, 'text/plain', 'Not ready', cors);
+  let name = basename(safeName(url.searchParams.get('name')) || ('photo-' + Date.now() + '.jpg'));
+  if (!ROVE_RE.test(name)) name = name.replace(/\.[a-z0-9]{1,5}$/i, '') + '.jpg';     // phones sometimes send IMG_1234.HEIC-style or no extension
+  name = Date.now().toString(36) + '_' + name;
+  const len = Number(req.headers['content-length'] || 0);
+  if (len > ROVE_MAX) return send(res, 413, 'application/json', JSON.stringify({ ok: false, error: 'Too big' }), cors);
+  let out = name, i = 2; while (existsSync(join(d, out))) { out = name.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
+  const part = join(d, '.' + out + '.part');                     // not listed until it is complete
+  const ws = createWriteStream(part);
+  let got = 0, dead = false;
+  const fail = (code, msg) => { if (dead) return; dead = true; try { ws.destroy(); unlinkSync(part); } catch { /* ignore */ } try { send(res, code, 'application/json', JSON.stringify({ ok: false, error: msg }), cors); } catch { /* closed */ } };
+  req.on('data', (c) => { got += c.length; if (got > ROVE_MAX) { req.destroy(); fail(413, 'Too big'); } });
+  req.on('error', () => fail(400, 'Interrupted'));
+  req.on('aborted', () => fail(400, 'Interrupted'));
+  ws.on('error', () => fail(500, 'Could not save'));
+  ws.on('finish', () => {
+    if (dead) return;
+    try { renameSync(part, join(d, out)); } catch { return fail(500, 'Could not save'); }
+    send(res, 200, 'application/json', JSON.stringify({ ok: true, name: out }), cors);
+  });
+  req.pipe(ws);
+}
 function handleSend(req, res, url, sm) {
   const cors = { 'access-control-allow-origin': '*' };
   if (sm[1] !== spinToken) return send(res, 404, 'text/plain', 'Not found');
+  if (sm[2] === 'photos') {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
+    return send(res, 200, 'text/html; charset=utf-8', ROVE_PAGE);
+  }
+  if (sm[2] === 'photo') return handleRovePhoto(req, res, url);
+  // The 360 recording tablet checks it can reach this laptop (and the link is right) before it records.
+  if (sm[2] === 'hello') {
+    if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'GET', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
+    return send(res, 200, 'application/json', JSON.stringify({ ok: true, app: 'photobooth4u', kind: 'laptop' }), cors);
+  }
   const d = spinDirNow(); if (!d) return send(res, 503, 'text/plain', 'Not ready');
   if (!sm[2]) {
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
@@ -230,7 +313,7 @@ function handleSend(req, res, url, sm) {
     if (!n || n !== basename(n) || n.startsWith('.') || !VIDEO_RE.test(n) || !existsSync(join(base, n))) return send(res, 404, 'text/plain', 'Not found');
     return serveFile(req, res, join(base, n), TYPES[extname(n).toLowerCase()] || 'video/mp4', cors);
   }
-  if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'POST', 'access-control-allow-headers': 'content-type' });
+  if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'POST', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
   if (req.method !== 'POST') return send(res, 405, 'text/plain', 'Method not allowed', cors);
   const want = safeName(url.searchParams.get('name')) || ('clip-' + Date.now() + '.mp4');
   let name = basename(want); if (!VIDEO_RE.test(name)) return send(res, 400, 'application/json', JSON.stringify({ ok: false, error: 'Only video files' }), cors);
@@ -254,11 +337,60 @@ function handleSend(req, res, url, sm) {
   req.pipe(ws);
 }
 
+// ---------- guests ask for a print ----------
+// The booth turns this on (Setup -> Print). A guest who opened their photo from the QR code can then tap "Ask for a
+// print at the booth"; the request waits here until the attendant prints or dismisses it on the booth screen.
+let guestPrintOn = false;
+const printReqs = [];                        // { id, slug, file, event, t }
+const askedBefore = new Set();               // slug/file already asked for (a photo is only asked for once)
+const reqHits = new Map();                   // phone address -> times of its recent requests
+const REQ_MAX = 200, REQ_RATE_N = 8, REQ_RATE_MS = 10 * 60000;
+export function setGuestPrint(on) { guestPrintOn = !!on; return guestPrintOn; }
+export const guestPrintNow = () => guestPrintOn;
+export const printReqList = () => printReqs.map((r) => ({ ...r }));
+export function printReqDone(id) { const i = printReqs.findIndex((r) => r.id === String(id)); if (i >= 0) printReqs.splice(i, 1); return i >= 0; }
+// The photo of a request, for the booth to print.
+export function printReqRead(id) {
+  const r = printReqs.find((x) => x.id === String(id)); if (!r) return null;
+  const dir = dirOf(r.slug); if (!dir) return null;
+  try { return readFileSync(join(dir, r.file)); } catch { return null; }
+}
+function reqButtonHtml(slug, file) {
+  return '<button class="btn alt" id="askPrint" type="button">Ask for a print at the booth</button>' +
+    '<script>(function(){var b=document.getElementById("askPrint"),k="pb_asked_' + slug + '_' + String(file).replace(/[^\w.-]/g, '_') + '";if(sessionStorage.getItem(k)){b.disabled=true;b.textContent="Requested \u2713"}' +
+    'b.addEventListener("click",function(){b.disabled=true;b.textContent="Sending\u2026";fetch("/e/' + slug + '/print/' + encodeURIComponent(file) + '",{method:"POST"}).then(function(r){return r.json()}).then(function(j){' +
+    'if(j.ok){sessionStorage.setItem(k,"1");b.textContent=j.done?"Already printed \u2713":"Requested \u2713"}else{b.disabled=false;b.textContent=j.error==="rate"?"Please wait a little, then try again":j.error==="off"?"Print requests are off":"Could not send. Try again"}' +
+    '}).catch(function(){b.disabled=false;b.textContent="Could not send. Try again"})})})()</script>';
+}
+function handlePrintReq(req, res, pm) {
+  if (req.method !== 'POST') return send(res, 405, 'application/json', JSON.stringify({ ok: false, error: 'Method not allowed' }));
+  const fail = (code, error) => send(res, code, 'application/json', JSON.stringify({ ok: false, error }));
+  if (!guestPrintOn) return fail(403, 'off');
+  let file; try { file = decodeURIComponent(pm[2]); } catch { file = ''; }
+  const dir = dirOf(pm[1]);
+  if (!dir || !existsSync(dir)) return fail(404, 'event');
+  if (!file || file !== basename(file) || file.startsWith('.') || !/\.(jpe?g|png|webp)$/i.test(file) || !existsSync(join(dir, file))) return fail(404, 'photo');
+  const key = pm[1] + '/' + file;
+  if (printReqs.some((r) => r.slug === pm[1] && r.file === file)) return send(res, 200, 'application/json', JSON.stringify({ ok: true, waiting: true }));
+  if (askedBefore.has(key)) return send(res, 200, 'application/json', JSON.stringify({ ok: true, done: true }));
+  if (printReqs.length >= REQ_MAX) return fail(429, 'busy');
+  const who = String((req.socket && req.socket.remoteAddress) || 'x'), now = Date.now();
+  const recent = (reqHits.get(who) || []).filter((t) => now - t < REQ_RATE_MS);
+  if (recent.length >= REQ_RATE_N) return fail(429, 'rate');
+  recent.push(now); reqHits.set(who, recent);
+  const ev = index.folders[pm[1]];
+  printReqs.push({ id: randomBytes(6).toString('hex'), slug: pm[1], file, event: ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : '', t: now });
+  askedBefore.add(key);
+  return send(res, 200, 'application/json', JSON.stringify({ ok: true, waiting: true }));
+}
+
 async function handleShare(req, res) {
   let url;
   try { url = new URL(req.url, 'http://x'); } catch { return send(res, 400, 'text/plain', 'Bad request'); }
-  const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);
+  const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited|photos|photo|hello)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);
   if (sm) return handleSend(req, res, url, sm);
+  const prm = /^\/e\/([A-Za-z0-9]{6,20})\/print\/([^/]+)\/?$/.exec(url.pathname);
+  if (prm) return handlePrintReq(req, res, prm);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
   const m = /^\/e\/([A-Za-z0-9]{6,20})(?:\/(p|f|t)\/([^/]+))?\/?$/.exec(url.pathname);
   if (!m) return send(res, 404, 'text/html; charset=utf-8', page('Not found', '<p class="empty">This link isn’t on this booth.</p>'));
@@ -313,7 +445,7 @@ async function handleShare(req, res) {
     const itemTitle = isVid ? 'Your video' : isGif ? 'Your GIF' : 'Your photo';
     const dlText = isVid ? 'Save video' : isGif ? 'Save GIF' : 'Save photo';
     const body = '<div class="one"><h1>' + itemTitle + '</h1><p class="sub">' + esc(evName) + '</p>' + media +
-      '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">' + dlText + '</a>' + (!/^video\//.test(type) && !isGif ? '<button class="btn alt" type="button" onclick="window.print()">Print photo</button>' : '') + '<a class="btn alt" href="/e/' + m[1] + '/">All photos</a></div>' + savingTip + '</div>';
+      '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">' + dlText + '</a>' + (!/^video\//.test(type) && !isGif ? '<button class="btn alt" type="button" onclick="window.print()">Print photo</button>' : '') + (guestPrintOn && !isVid && !isGif ? reqButtonHtml(m[1], file) : '') + '<a class="btn alt" href="/e/' + m[1] + '/">All photos</a></div>' + savingTip + '</div>';
     return send(res, 200, 'text/html; charset=utf-8', page(itemTitle, body));
   }
   if (m[2] === 't' && thumbFn && /^image\/(jpeg|png|webp)$/.test(type)) {

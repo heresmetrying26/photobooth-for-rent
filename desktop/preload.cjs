@@ -23,6 +23,15 @@ contextBridge.exposeInMainWorld('pb4u', {
   spinJob: (id) => ipcRenderer.invoke('pb4u:spinJob', id),
   spinCancel: (id) => ipcRenderer.invoke('pb4u:spinCancel', id),
   spinShare: (name, folderKey, subfolder, outName) => ipcRenderer.invoke('pb4u:spinShare', String(name || ''), String(folderKey || ''), String(subfolder || ''), String(outName || '')),
+  // Roving photos sent from a phone
+  roveInfo: () => ipcRenderer.invoke('pb4u:roveInfo'),
+  roveScan: () => ipcRenderer.invoke('pb4u:roveScan'),
+  roveTake: (name) => ipcRenderer.invoke('pb4u:roveTake', String(name || '')),
+  // Guests asking for a print
+  guestPrintSet: (on) => ipcRenderer.invoke('pb4u:guestPrintSet', !!on),
+  printReqList: () => ipcRenderer.invoke('pb4u:printReqList'),
+  printReqDone: (id) => ipcRenderer.invoke('pb4u:printReqDone', String(id || '')),
+  printReqRead: (id) => ipcRenderer.invoke('pb4u:printReqRead', String(id || '')),
   // Photographer desk folder watching
   deskFolder: () => ipcRenderer.invoke('pb4u:deskFolder'),
   deskChoose: () => ipcRenderer.invoke('pb4u:deskChoose'),

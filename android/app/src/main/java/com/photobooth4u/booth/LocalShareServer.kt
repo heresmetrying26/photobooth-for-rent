@@ -42,6 +42,9 @@ class LocalShareServer(private val store: PBLocal) {
         val PORTS = intArrayOf(47777, 47778, 47779, 47787, 47797)
         private val ROUTE = Regex("^/e/([A-Za-z0-9]{6,20})(?:/(?:(p|f|t)/([^/]+)|(list\\.json)))?/?$")
         private val FILENAME_UNSAFE = Regex("[^\\w.() -]")
+        private val SEND_ROUTE = Regex("^/send/([A-Za-z0-9]+)/(photos|photo)/?$")
+        private val PRINT_ROUTE = Regex("^/e/([A-Za-z0-9]{6,20})/print/([^/]+)/?$")
+        private const val ROVE_MAX = 80L * 1024L * 1024L
         private const val THUMB_MAX = 640
     }
 
@@ -50,6 +53,7 @@ class LocalShareServer(private val store: PBLocal) {
     private var pool: ExecutorService? = null
     private val thumbLock = Any()
     private var galleryHtml: ByteArray? = null
+    private var roveHtml: ByteArray? = null
 
     /** Starts listening on the first free port; returns it, or 0 when none is free. */
     @Synchronized
@@ -115,7 +119,7 @@ class LocalShareServer(private val store: PBLocal) {
             val input = BufferedInputStream(s.getInputStream())
             val out = BufferedOutputStream(s.getOutputStream(), 65536)
             val head = readHead(input) ?: return
-            route(head, out)
+            route(head, input, out, s.inetAddress?.hostAddress ?: "")
             out.flush()
         } catch (e: Exception) {
             // the phone went away or timed out: nothing to do
@@ -138,19 +142,26 @@ class LocalShareServer(private val store: PBLocal) {
         return null
     }
 
-    private fun route(head: String, out: OutputStream) {
+    private fun route(head: String, input: InputStream, out: OutputStream, ip: String) {
         val eol = head.indexOf("\r\n")
         val line = if (eol >= 0) head.substring(0, eol) else head
         val parts = line.split(" ")
         if (parts.size < 2) return sendText(out, 400, "Bad Request", "Bad request", false)
         val method = parts[0]
         val headOnly = method == "HEAD"
-        if (method != "GET" && !headOnly) return sendText(out, 405, "Method Not Allowed", "Method not allowed", false)
 
         val target = parts[1]
         val q = target.indexOf('?')
         val path = if (q >= 0) target.substring(0, q) else target
         val query = if (q >= 0) target.substring(q + 1) else ""
+
+        // A phone sending photos to the booth, and a guest asking for a print: the only things that are not read-only.
+        val sendM = SEND_ROUTE.find(path)
+        if (sendM != null) return sendRoute(sendM, method, head, input, out, query)
+        val printM = PRINT_ROUTE.find(path)
+        if (printM != null) return printRoute(printM, method, out, ip)
+
+        if (method != "GET" && !headOnly) return sendText(out, 405, "Method Not Allowed", "Method not allowed", false)
 
         val m = ROUTE.find(path)
         if (m == null) {
@@ -179,7 +190,7 @@ class LocalShareServer(private val store: PBLocal) {
         if (isList) {
             val arr = JSONArray()
             for (f in store.photosIn(dir)) arr.put(JSONObject().put("n", f.name))
-            val o = JSONObject().put("name", store.galleryTitle(folder)).put("files", arr)
+            val o = JSONObject().put("name", store.galleryTitle(folder)).put("files", arr).put("print", store.guestPrintOn)
             return sendBytes(out, 200, "OK", "application/json; charset=utf-8", o.toString().toByteArray(Charsets.UTF_8), headOnly, "no-store")
         }
 
@@ -198,6 +209,62 @@ class LocalShareServer(private val store: PBLocal) {
         val download = query.split("&").any { it == "dl=1" || it.startsWith("dl=") && it.length > 3 }
         val disposition = if (download) "attachment; filename=\"" + name.replace(FILENAME_UNSAFE, "_") + "\"" else null
         return sendFile(out, file, contentType(name), headOnly, "max-age=600", disposition)
+    }
+
+    // ---------- phone photos and print requests ----------
+
+    private fun headerValue(head: String, name: String): String? {
+        for (line in head.split("\r\n")) {
+            val i = line.indexOf(':')
+            if (i > 0 && line.substring(0, i).trim().equals(name, ignoreCase = true)) return line.substring(i + 1).trim()
+        }
+        return null
+    }
+
+    private fun queryParam(query: String, key: String): String? {
+        for (kv in query.split("&")) {
+            val i = kv.indexOf('=')
+            if (i > 0 && kv.substring(0, i) == key) return kv.substring(i + 1)
+        }
+        return null
+    }
+
+    private fun sendJson(out: OutputStream, status: Int, body: String) {
+        val reason = when (status) {
+            200 -> "OK"
+            403 -> "Forbidden"
+            404 -> "Not Found"
+            405 -> "Method Not Allowed"
+            413 -> "Payload Too Large"
+            429 -> "Too Many Requests"
+            else -> "Internal Server Error"
+        }
+        sendBytes(out, status, reason, "application/json; charset=utf-8", body.toByteArray(Charsets.UTF_8), false, "no-store")
+    }
+
+    // /send/<token>/photos = the page a phone opens; /send/<token>/photo?name=... = the photo it posts
+    private fun sendRoute(m: MatchResult, method: String, head: String, input: InputStream, out: OutputStream, query: String) {
+        if (m.groupValues[1] != store.roveToken()) return sendText(out, 404, "Not Found", "Not found", false)
+        if (m.groupValues[2] == "photos") {
+            if (method != "GET" && method != "HEAD") return sendText(out, 405, "Method Not Allowed", "Method not allowed", false)
+            val html = roveHtml ?: store.readAsset("share/rove.html")?.also { roveHtml = it }
+                ?: return sendText(out, 500, "Internal Server Error", "Page missing", false)
+            return sendBytes(out, 200, "OK", "text/html; charset=utf-8", html, method == "HEAD", "no-store")
+        }
+        if (method != "POST") return sendJson(out, 405, "{\"ok\":false,\"error\":\"Method not allowed\"}")
+        val len = headerValue(head, "content-length")?.toLongOrNull() ?: -1L
+        if (len <= 0L || len > ROVE_MAX) return sendJson(out, 413, "{\"ok\":false,\"error\":\"Too big\"}")
+        val name = Uri.decode(queryParam(query, "name") ?: "")
+        val saved = store.saveRovePhoto(name, input, len)
+            ?: return sendJson(out, 500, "{\"ok\":false,\"error\":\"Could not save\"}")
+        sendJson(out, 200, JSONObject().put("ok", true).put("name", saved).toString())
+    }
+
+    // /e/<event>/print/<photo>: a guest asks for a print
+    private fun printRoute(m: MatchResult, method: String, out: OutputStream, ip: String) {
+        if (method != "POST") return sendJson(out, 405, "{\"ok\":false,\"error\":\"Method not allowed\"}")
+        val r = store.addPrintRequest(m.groupValues[1], Uri.decode(m.groupValues[2]), ip)
+        sendJson(out, r.first, r.second)
     }
 
     private fun contentType(name: String): String = when (name.substringAfterLast('.', "").lowercase(Locale.ROOT)) {

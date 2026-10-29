@@ -889,7 +889,47 @@
   .qs-card{background:#fff; border-radius:18px; padding:20px; width:min(360px,100%); text-align:center;}
   .qs-qr img{width:min(260px,70vw); height:auto; display:block; margin:0 auto;}
   .qs-note{margin:10px 0 14px; font:600 14px 'Manrope',sans-serif; color:var(--ink-dim);}
-  .qs-row{display:flex; gap:10px; justify-content:center;}
+  .qs-row{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
+  /* Video guestbook: guests record a short message */
+  .vg-ov{z-index:9710;}
+  .vg-panel{position:absolute; left:0; right:0; bottom:0; padding:18px 16px max(22px, env(safe-area-inset-bottom)); background:linear-gradient(transparent, rgba(0,0,0,.8) 30%); color:#fff; display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center;}
+  .vg-title{margin:0; font:800 clamp(22px,4vw,34px) 'Manrope',sans-serif;}
+  .vg-sub{margin:0; font:600 15px 'Manrope',sans-serif; opacity:.85; min-height:20px;}
+  .vg-qr{background:#fff; border-radius:16px; padding:10px;}
+  .vg-qr img{display:block; width:min(220px,55vw); height:auto;}
+  .vg-row{display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin-top:6px;}
+  .cap-go.alt{background:rgba(255,255,255,.2);}
+  /* Print requests from guests' phones */
+  .req-item{display:flex; flex-direction:column; gap:6px; align-items:stretch;}
+  .req-item .pic{position:relative; aspect-ratio:3/4; border-radius:10px; overflow:hidden; background:#222;}
+  .req-item img{width:100%; height:100%; object-fit:cover; display:block;}
+  .req-item .when{font:600 12px 'Manrope',sans-serif; color:var(--ink-dim); text-align:center;}
+  .req-item .row{display:flex; gap:6px;}
+  .req-item .row .desk-btn{flex:1; min-height:38px; padding:0 8px;}
+  /* 360 capture: the tablet or phone on the arm records the spin */
+  .cap-ov{z-index:9700;}
+  .cap-big{position:absolute; left:0; right:0; top:34%; text-align:center; color:#fff; font:800 min(34vw,220px)/1 'Manrope',sans-serif; text-shadow:0 4px 30px rgba(0,0,0,.6); pointer-events:none;}
+  .cap-big.rec{font-size:min(9vw,64px); color:#ff5a4a; letter-spacing:.06em;}
+  .cap-panel{position:absolute; left:0; right:0; bottom:0; padding:14px 16px max(16px, env(safe-area-inset-bottom)); background:linear-gradient(transparent, rgba(0,0,0,.78) 28%); color:#fff; display:flex; flex-direction:column; gap:10px; align-items:center;}
+  .cap-row{display:flex; flex-wrap:wrap; gap:10px 16px; justify-content:center; align-items:center; font:700 14px 'Manrope',sans-serif;}
+  .cap-row label{display:flex; align-items:center; gap:8px;}
+  .cap-row select, .cap-row input[type=text]{min-height:40px; border-radius:10px; border:0; padding:0 10px; font:700 14px 'Manrope',sans-serif;}
+  .cap-row input[type=text]{width:min(320px,70vw);}
+  .cap-msg{font:600 13px 'Manrope',sans-serif;}
+  .cap-warn{margin:0; max-width:560px; text-align:center; font:700 13px 'Manrope',sans-serif; color:#ffd27a;}
+  .cap-status{margin:0; min-height:20px; text-align:center; font:700 14px 'Manrope',sans-serif;}
+  .cap-go{min-width:min(360px,86vw); min-height:60px; border:0; border-radius:999px; background:#C93D27; color:#fff; font:800 20px 'Manrope',sans-serif; cursor:pointer; touch-action:manipulation;}
+  .cap-go:disabled{opacity:.55;}
+  .cap-go.armed{background:#2EA66B;}
+  .spin-link{font-weight:800; word-break:break-all;}
+  /* Quick shot without a camera: only the photos sent from phones (and the folder) */
+  .qs-ov.queue-only{background:#16141a;}
+  .qs-ov.queue-only #qsVideo, .qs-ov.queue-only .qs-shutter, .qs-ov.queue-only #qsFlip{display:none;}
+  .qs-ov.queue-only .qs-strip{top:84px; bottom:16px; flex-direction:row; flex-wrap:wrap; justify-content:flex-start; align-content:flex-start; overflow-y:auto;}
+  .qs-ov.queue-only .qs-thumb{width:104px; height:104px;}
+  .qs-hint{position:absolute; left:24px; right:24px; top:50%; transform:translateY(-50%); text-align:center; color:#fff; font:600 16px 'Manrope',sans-serif; opacity:.8; pointer-events:none;}
+  .qs-phone-link{word-break:break-all; font:600 12px 'Manrope',sans-serif; color:var(--ink-dim); margin:6px 0 0;}
+  .dock-btn[data-n]:not([data-n="0"])::after{content:attr(data-n); min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:#C93D27; color:#fff; font:800 11px 'Manrope',sans-serif; display:inline-flex; align-items:center; justify-content:center;}
   /* 360 desk (included extra) */
   .desk-item video{width:100%; height:100%; object-fit:cover; display:block; background:#111;}
   .desk-item .nm{position:absolute; left:0; right:0; bottom:0; padding:14px 6px 4px; background:linear-gradient(transparent,rgba(0,0,0,.65)); color:#fff; font:700 11px 'Manrope',sans-serif; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
@@ -2889,14 +2929,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
           <p class="panel-hint" id="gifModeHint" style="margin:8px 0 0; color:var(--ink-dim);">Guests get a photo strip + QR code.</p>
           <div id="flipbookOptions" style="display:none; margin-top:10px;">
-            <p class="panel-hint" style="margin:0 0 8px;">Guests record a short clip. The booth prints its frames as numbered cards on sheets: cut along the lines, stack in order and staple. Guests also get an animated GIF QR code. Prints use the paper size chosen in Print settings.</p>
+            <p class="panel-hint" style="margin:0 0 8px;">Guests record a short clip. The booth prints its frames as small cards on sheets, in order from left to right and top to bottom: cut along the lines, stack them in that order and staple. Guests also get an animated GIF QR code. Prints use the paper size chosen in Print settings.</p>
             <div class="stepper"><span class="lbl">Clip length</span><span class="ctl"><select id="flipSecSelect"><option value="4">4 s</option><option value="5">5 s</option><option value="6" selected>6 s</option><option value="7">7 s</option></select></span></div>
             <div class="stepper"><span class="lbl">Frames in the book</span><span class="ctl"><select id="flipFramesSelect"><option value="16">16</option><option value="24">24</option><option value="30" selected>30</option><option value="40">40</option></select></span></div>
             <label class="toggle-row" style="margin-top:10px;"><input type="checkbox" id="flipCoverToggle" checked> Cover card (event name and date, first in the stack)</label>
             <label class="toggle-row" style="margin-top:6px;"><input type="checkbox" id="flipBackToggle" checked> Back card (&ldquo;Thank you!&rdquo;, last in the stack)</label>
           </div>
           <div id="gifOptions" style="display:none; margin-top:10px;">
-            <p class="panel-hint" style="margin:0;">GIF follows the session through the last shot, including timers and pauses. Speed is set automatically — 2× for sessions up to 24 s, 3× for longer ones. Resolution is up to 1280 × 720 when the camera feed supports it.</p>
+            <p class="panel-hint" style="margin:0;">GIF follows the session through the last shot, including timers and pauses. Speed is set automatically — 2× for sessions up to 24 s, 3× for longer ones.</p>
+            <div class="stepper" style="margin-top:8px;"><span class="lbl">GIF frame</span><span class="ctl"><select id="gifLayoutSelect"><option value="solo" selected>Solo layout (your frame and title)</option><option value="follow">Chosen layout</option><option value="raw">Plain camera view</option></select></span></div>
+            <p class="panel-hint" id="gifLayoutHint" style="margin:6px 0 0;">The GIF sits in the one-photo Solo layout with your frame, title and design, even when the photos use a strip. Guests should stand in the middle of the picture.</p>
           </div>
         </div>
 
@@ -2984,6 +3026,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
           <label class="toggle-row" style="margin-top:12px;"><input type="checkbox" id="softSkinToggle"> Soft skin</label>
           <label class="toggle-row" id="dateStampRow" style="margin-top:8px;"><input type="checkbox" id="dateStampToggle"> Date stamp (orange camera-style date on each photo)</label>
+          <div id="guestLooksRow" style="margin-top:14px;" hidden>
+            <label class="toggle-row"><input type="checkbox" id="guestLooksToggle"> Let guests choose a look on the guest screen</label>
+            <div id="guestLooksPick" hidden>
+              <p class="panel-hint" style="margin:8px 0 6px;">Tick up to 6 looks guests can choose from. Guests see one small &ldquo;Look&rdquo; button; tapping it opens the row. Each guest starts again with the look chosen above.</p>
+              <div class="chip-row" id="guestLooksChips"></div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="3">← Back</button><button type="button" class="action-btn primary next-btn" data-go="5">Next: Share →</button></div>
@@ -3051,6 +3100,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <span class="stepper"><button type="button" id="ppCopiesMinus" aria-label="Fewer copies">&minus;</button><b id="ppCopiesVal">1</b><button type="button" id="ppCopiesPlus" aria-label="More copies">+</button></span>
           </div>
           <label class="switch-row" style="margin-top:6px;"><span>Let guests choose how many copies</span><input type="checkbox" id="ppGuestCopies"></label>
+          <label class="switch-row" id="ppGuestReqRow" style="margin-top:6px; display:none;"><span>Let guests ask for a print from their phone</span><input type="checkbox" id="ppGuestReq"></label>
+          <p class="panel-hint" id="ppGuestReqHint" style="margin-top:4px; display:none;">Off until you turn it on. Their photo page gets an &ldquo;Ask for a print at the booth&rdquo; button; each request appears under <b>Print requests</b> in the dock for you to print or dismiss. A phone can ask a few times, and a photo only once.</p>
           <details class="pp-words">
             <summary>Change the wording guests see</summary>
             <label>Print button<input type="text" id="ppTxtPrint" maxlength="24" placeholder="Print"></label>
@@ -3648,6 +3699,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   <button type="button" class="dock-btn" id="deskFab" hidden aria-label="Photographer desk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M7 3h12a2 2 0 0 1 2 2v12"/><circle cx="10" cy="12" r="2.5"/></svg><span>Photographer desk</span></button>
   <button type="button" class="dock-btn" id="quickFab" hidden aria-label="Quick shot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg><span>Quick shot</span></button>
   <button type="button" class="dock-btn" id="spinFab" hidden aria-label="360 desk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/><circle cx="12" cy="12" r="2.5"/></svg><span>360 desk</span></button>
+  <button type="button" class="dock-btn" id="capFab" hidden aria-label="Record 360"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg><span>Record 360</span></button>
+  <button type="button" class="dock-btn" id="reqFab" hidden aria-label="Print requests"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="9" rx="2"/><path d="M7 14h10v7H7z"/></svg><span>Print requests</span></button>
+  <button type="button" class="dock-btn" id="vgFab" hidden aria-label="Video guestbook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg><span>Video guestbook</span></button>
   <button type="button" class="dock-btn" id="lockFab" hidden aria-label="Lock booth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Lock booth</span></button>
   </div>
   <div class="dock-pwr" id="dockPwr" hidden>Powered by <span class="pm" aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>photobooth<em>4u</em></b></div>
@@ -3684,12 +3738,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     <div class="desk-drop" id="spinDrop">Drop the 360 videos here, or <button type="button" class="desk-btn" id="spinPick">Choose videos</button><input type="file" id="spinFile" accept="video/*" multiple hidden></div>
     <div class="spin-send" id="spinSend" hidden>
       <div class="spin-qr" id="spinSendQr"></div>
-      <div class="spin-sendtxt"><b>Send from the phone that recorded</b><br>Scan this with that phone on the booth Wi-Fi, then pick the video. Videos saved into the folder below also appear here by themselves.<br><span id="spinDirTxt"></span> <button type="button" class="desk-btn" id="spinDirBtn">Change folder</button></div>
+      <div class="spin-sendtxt"><b>Send from the phone that recorded</b><br>Scan this with that phone on the booth Wi-Fi, then pick the video. Videos saved into the folder below also appear here by themselves.<br><span id="spinDirTxt"></span> <button type="button" class="desk-btn" id="spinDirBtn">Change folder</button><br><b>Recording tablet?</b> The 360 capture screen on the Android app sends its clips here. Type this address into it: <span class="spin-link" id="spinSendLink"></span> <button type="button" class="desk-btn" id="spinLinkCopy">Copy</button></div>
     </div>
     <div class="spin-look" id="spinLook" hidden>
       <div class="spin-row">
-        <label>Style <select id="spinPreset"><option value="classic">Classic slow-mo</option><option value="ramp">Speed ramp</option><option value="boomerang">Boomerang</option><option value="plain">Original speed + frame</option><option value="custom">Custom</option></select></label>
-        <label>Speed <select id="spinSpeed"><option value="slow">Slow motion (0.5×)</option><option value="ramp">Speed ramp</option><option value="boomerang">Boomerang</option><option value="normal">Normal</option></select></label>
+        <label>Style <select id="spinPreset"><option value="classic">Classic slow-mo</option><option value="ramp">Speed ramp</option><option value="boomerang">Boomerang</option><option value="plain">Original speed + frame</option><option value="super">Super slow-mo (0.25×)</option><option value="fastslow">Fast, then slow (2×, 0.5×)</option><option value="fsf">Fast, slow, fast (2×, 0.5×, 2×)</option><option value="roller">Slow-mo roller (1×, 0.25×, 2×, 0.5× and back)</option><option value="custom">Custom</option></select></label>
+        <label>Speed <select id="spinSpeed"><option value="slow">Slow motion (0.5×)</option><option value="ramp">Speed ramp</option><option value="boomerang">Boomerang</option><option value="normal">Normal</option><option value="custom">Speed sequence (from the style)</option></select></label>
         <label class="chk"><input type="checkbox" id="spinSmooth"> Smoother slow motion (takes longer)</label>
         <label>Format <select id="spinOrient"><option value="portrait">Portrait (phones)</option><option value="landscape">Landscape</option></select></label>
         <label>Quality <select id="spinQual"><option value="1080">1080p</option><option value="720">720p (faster)</option></select></label>
@@ -3700,6 +3754,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <button type="button" class="desk-btn" id="spinMusicBtn">Choose music</button><span id="spinMusicName" class="spin-dim"></span>
         <label>Volume <input type="range" id="spinVol" min="0" max="100" value="80"></label>
         <label class="chk"><input type="checkbox" id="spinAuto"> Edit new videos by themselves</label>
+        <label class="chk"><input type="checkbox" id="spinAutoShare"> and get the QR ready</label>
       </div>
     </div>
     <div class="desk-hint" id="spinNoEdit" hidden>Editing (slow motion, frame, music) is not available in this copy of the app, so videos are shared as they are.</div>
@@ -3718,17 +3773,64 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     </div>
   </div>
 </div>
+<div class="desk-ov" id="reqOverlay" hidden role="dialog" aria-label="Print requests">
+  <div class="desk-card">
+    <div class="desk-head"><b>&#128424; Print requests</b><span class="sp"></span><button type="button" class="desk-btn" id="reqClose">Close</button></div>
+    <div class="desk-hint" id="reqHint"></div>
+    <div class="desk-grid" id="reqGrid"></div>
+  </div>
+</div>
+<div class="qs-ov vg-ov" id="vgOverlay" hidden role="dialog" aria-label="Video guestbook">
+  <video id="vgVideo" autoplay muted playsinline></video>
+  <div class="qs-top"><button type="button" class="qs-btn" id="vgClose">Close</button><span class="qs-count" id="vgInfo"></span><span></span></div>
+  <div class="cap-big" id="vgBig" hidden></div>
+  <div class="vg-panel">
+    <p class="vg-title" id="vgTitle">Leave a video message</p>
+    <p class="vg-sub" id="vgSub"></p>
+    <div class="vg-qr" id="vgQr" hidden></div>
+    <div class="vg-row"><button type="button" class="cap-go" id="vgMain">Record a message</button><button type="button" class="cap-go alt" id="vgSecond" hidden>Retake</button></div>
+  </div>
+</div>
+<div class="qs-ov cap-ov" id="capOverlay" hidden role="dialog" aria-label="360 capture">
+  <video id="capVideo" autoplay muted playsinline></video>
+  <div class="qs-top"><button type="button" class="qs-btn" id="capClose">Close</button><span class="qs-count" id="capInfo"></span><button type="button" class="qs-btn" id="capFlip">Flip camera</button></div>
+  <div class="cap-big" id="capBig" hidden></div>
+  <div class="cap-panel" id="capPanel">
+    <p class="cap-warn" id="capWarn" hidden></p>
+    <div class="cap-row">
+      <label>Length <select id="capLen"><option value="6">6 s</option><option value="8" selected>8 s</option><option value="10">10 s</option><option value="12">12 s</option><option value="15">15 s</option></select></label>
+      <label>Start <select id="capMode"><option value="button">With the button</option><option value="motion">When the arm moves</option></select></label>
+      <label id="capSensRow" hidden>Sensitivity <select id="capSens"><option value="low">Low</option><option value="mid" selected>Medium</option><option value="high">High</option></select></label>
+    </div>
+    <div class="cap-row" id="capLaptopRow" hidden>
+      <label>Laptop address <input type="text" id="capLaptop" placeholder="192.168.1.20:47777/send/..." autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+      <button type="button" class="desk-btn" id="capTest">Test</button><span class="cap-msg" id="capLaptopMsg"></span>
+    </div>
+    <p class="cap-status" id="capStatus"></p>
+    <button type="button" class="cap-go" id="capGo">Record</button>
+  </div>
+</div>
 <div class="qs-ov" id="quickOverlay" hidden role="dialog" aria-label="Quick shot">
   <video id="qsVideo" autoplay muted playsinline></video>
   <div class="qs-flash" id="qsFlash"></div>
-  <div class="qs-top"><button type="button" class="qs-btn" id="qsClose">Close</button><span class="qs-count" id="qsCount"></span><button type="button" class="qs-btn" id="qsFlip">Flip camera</button></div>
+  <div class="qs-top"><button type="button" class="qs-btn" id="qsClose">Close</button><span class="qs-count" id="qsCount"></span><button type="button" class="qs-btn" id="qsPhone" hidden>&#128241; Phone upload</button><button type="button" class="qs-btn" id="qsFlip">Flip camera</button></div>
+  <p class="qs-hint" id="qsHint" hidden>Photos sent from a phone appear here, already in your frame. Tap <b>Phone upload</b> for the QR code the photographer scans.</p>
   <div class="qs-strip" id="qsStrip"></div>
   <button type="button" class="qs-shutter" id="qsShutter" aria-label="Take photo"></button>
   <div class="qs-panel" id="qsPanel" hidden>
     <div class="qs-card">
       <div class="qs-qr" id="qsQrBox"></div>
       <p class="qs-note" id="qsNote"></p>
-      <div class="qs-row"><button type="button" class="desk-btn" id="qsPanelClose">Close</button><button type="button" class="desk-btn primary" id="qsPrint">Print</button></div>
+      <div class="qs-row"><button type="button" class="desk-btn" id="qsPanelClose">Close</button><button type="button" class="desk-btn primary" id="qsPrint">Print framed</button><button type="button" class="desk-btn" id="qsPrintOrig">Print original</button></div>
+    </div>
+  </div>
+  <div class="qs-panel" id="qsPhonePanel" hidden>
+    <div class="qs-card">
+      <h3 style="margin:0 0 10px;font:800 17px 'Manrope',sans-serif;">Photos from a phone</h3>
+      <div class="qs-qr" id="qsPhoneQr"></div>
+      <p class="qs-note" id="qsPhoneNote"></p>
+      <p class="qs-phone-link" id="qsPhoneLink"></p>
+      <div class="qs-row" style="margin-top:12px;"><button type="button" class="desk-btn" id="qsPhoneCopy">Copy link</button><button type="button" class="desk-btn primary" id="qsPhoneClose">Close</button></div>
     </div>
   </div>
 </div>
@@ -3737,6 +3839,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     <div class="desk-head"><b>📷 Photographer desk</b><span class="sp"></span><button type="button" class="desk-btn" id="deskClose">Close</button></div>
     <div class="desk-drop" id="deskDrop">Drop the photographer's photos here, or <button type="button" class="desk-btn" id="deskPick">Choose photos</button><input type="file" id="deskFile" accept="image/jpeg,image/png,image/webp" multiple hidden></div>
     <div class="desk-watch" id="deskWatch" hidden><span id="deskWatchTxt"></span><button type="button" class="desk-btn" id="deskWatchBtn">Choose folder</button></div>
+    <div class="desk-watch" id="deskSoloRow"><label><input type="checkbox" id="deskSolo"> One photo per print (Solo layout, even when the event uses a strip)</label></div>
     <div class="desk-hint" id="deskHint"></div>
     <div class="desk-grid" id="deskGrid"></div>
     <div class="desk-foot"><button type="button" class="desk-btn" id="deskClear">Clear list</button><span class="sp"></span><button type="button" class="desk-btn primary" id="deskMake" disabled>Make print + QR</button></div>
@@ -4225,7 +4328,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function blobToBase64(blob){
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result.split(',')[1]);
+      // The data URL is "data:<type>;base64,<data>"; a recorded video's type can itself contain commas (codecs), so cut at ";base64,".
+      reader.onloadend = () => { const r = String(reader.result), i = r.indexOf(';base64,'); resolve(i >= 0 ? r.slice(i + 8) : r.split(',')[1]); };
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
@@ -6191,6 +6295,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   var outputMode = 'photo';    // 'photo' | 'gif' | 'both' | 'flipbook'
   var flipSec = 6, flipFrames = 30, flipCover = true, flipBack = true, flipbookResult = null;   // flipbook (included extra): clip length, frames, and the result on screen
+  var gifLayoutMode = 'solo';  // 'solo' | 'follow' | 'raw': what the GIF frames are placed in
+  function refreshGifLayoutUI(){
+    var sel = document.getElementById('gifLayoutSelect'), gh = document.getElementById('gifLayoutHint');
+    if(sel) sel.value = gifLayoutMode;
+    if(gh) gh.textContent = gifLayoutMode === 'raw' ? 'The GIF is the plain camera view, without your frame or title.'
+      : gifLayoutMode === 'follow' ? 'The GIF uses the layout chosen for the photos, with the same picture in every spot.'
+      : 'The GIF sits in the one-photo Solo layout with your frame, title and design, even when the photos use a strip. Guests should stand in the middle of the picture.';
+  }
   var gifSpeed = 0;            // 0 chooses 2x or 3x automatically from the recorded session length
   var gifSessionCapture = null;
   var completedGifCapture = null;
@@ -6220,7 +6332,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       photo: 'Guests get a photo strip + QR code.',
       gif:   'Guests get an animated GIF + QR code (no still photo).',
       both:  'Guests get both a photo strip AND an animated GIF — two QR codes appear.',
-      flipbook: 'Guests record a short clip. It prints as a numbered flip book (cut, stack, staple) and they get an animated GIF QR code.'
+      flipbook: 'Guests record a short clip. It prints as a flip book (cut, stack, staple) and they get an animated GIF QR code.'
     };
     var hintEl = document.getElementById('gifModeHint');
     if(hintEl) hintEl.textContent = hints[outputMode] || '';
@@ -6244,6 +6356,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var fs = document.getElementById('flipSecSelect'), ff = document.getElementById('flipFramesSelect');
     if(fs) fs.addEventListener('change', function(){ flipSec = Number(fs.value) || 6; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
     if(ff) ff.addEventListener('change', function(){ flipFrames = Number(ff.value) || 30; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+    var gls = document.getElementById('gifLayoutSelect');
+    if(gls) gls.addEventListener('change', function(){
+      gifLayoutMode = (gls.value === 'follow' || gls.value === 'raw') ? gls.value : 'solo';
+      refreshGifLayoutUI();
+      if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+    });
     var fcv = document.getElementById('flipCoverToggle'), fbk = document.getElementById('flipBackToggle');
     if(fcv) fcv.addEventListener('change', function(){ flipCover = fcv.checked; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
     if(fbk) fbk.addEventListener('change', function(){ flipBack = fbk.checked; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
@@ -6269,6 +6387,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(typeof mirrorPreview === 'function' && mirrorPreview()){ ctx.translate(capture.canvas.width, 0); ctx.scale(-1, 1); }
     try{ ctx.drawImage(video, 0, 0, capture.canvas.width, capture.canvas.height); }catch(e){}
     ctx.restore();
+    // The chosen look (filter, vintage look, soft skin, date stamp) goes on every GIF frame too, like the photos.
+    try{ if(typeof applyFilterToCanvas === 'function') applyFilterToCanvas(capture.canvas); }catch(e){}
     capture.busy = true;
     capture.pending = new Promise(function(resolve){
       capture.canvas.toBlob(function(blob){
@@ -6328,9 +6448,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
     for(var s = 0; s < sampleIndices.length; s++){
       var sIdx = sampleIndices[s];
-      var sBmp = await createImageBitmap(frames[sIdx].blob);
+      var sBmp = await gifFrameSource(frames[sIdx]);
       sCtx.drawImage(sBmp, 0, s * sH, sW, sH);
-      sBmp.close();
+      if(sBmp.close) sBmp.close();
     }
 
     var sImgData = sCtx.getImageData(0, 0, sampleCanvas.width, sampleCanvas.height);
@@ -6345,10 +6465,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
     for(var i = 0; i < frames.length; i++){
       var frame = frames[i];
-      var bitmap = await createImageBitmap(frame.blob);
+      var bitmap = await gifFrameSource(frame);
       ctx.clearRect(0, 0, width, height);
       ctx.drawImage(bitmap, 0, 0, width, height);
-      bitmap.close();
+      if(bitmap.close) bitmap.close();
 
       var imgData = ctx.getImageData(0, 0, width, height);
       var index = encoderLib.applyPalette(imgData.data, globalPalette, 'rgb565');
@@ -6369,6 +6489,35 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     gif.finish();
     return new Blob([gif.bytes()], { type: 'image/gif' });
   }
+
+  // Puts every GIF frame inside the booth's frame, so the GIF carries the event's title and design.
+  // Solo (one big photo) by default, even when the photos use a strip. The camera view fills the photo spot.
+  // The frames are drawn one at a time while the GIF is encoded (each has a make() that returns the framed picture),
+  // so nothing big is kept in memory and no extra JPEG step slows it down.
+  async function gifIntoLayout(framesObj){
+    var key = gifLayoutMode === 'follow' ? currentLayout : 'solo';
+    if(!LAYOUT_DEFS[key] || !framesObj.frames.length) return framesObj;
+    var n = Math.max(1, shotsNeeded(key)), box = document.createElement('canvas'), src = document.createElement('canvas');
+    src.width = framesObj.width; src.height = framesObj.height; src._isShot = true;
+    var sc = src.getContext('2d');
+    composeCanvas(key, box, new Array(n).fill(src));                     // the layout's size does not depend on the picture
+    var k = Math.min(1, 900 / Math.max(box.width, box.height));
+    var ow = Math.max(1, Math.round(box.width * k)), oh = Math.max(1, Math.round(box.height * k));
+    var small = document.createElement('canvas'); small.width = ow; small.height = oh;
+    var sx = small.getContext('2d', { willReadFrequently: true }); sx.imageSmoothingQuality = 'high';
+    var frames = framesObj.frames.map(function(f){
+      return { time: f.time, make: async function(){
+        var bmp = await createImageBitmap(f.blob);
+        sc.clearRect(0, 0, src.width, src.height); sc.drawImage(bmp, 0, 0, src.width, src.height); bmp.close();
+        composeCanvas(key, box, new Array(n).fill(src));
+        stampTrialMark(box);
+        sx.fillStyle = '#ffffff'; sx.fillRect(0, 0, ow, oh); sx.drawImage(box, 0, 0, ow, oh);
+        return small;
+      } };
+    });
+    return Object.assign({}, framesObj, { frames: frames, width: ow, height: oh });
+  }
+  function gifFrameSource(fr){ return fr.make ? fr.make() : createImageBitmap(fr.blob); }
 
   var gifGeneration = 0;
   async function showQRForCurrentGIF(){
@@ -6402,6 +6551,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(myGen !== gifGeneration) return;
 
     var statusEl = document.getElementById('gifStatusMsg');
+    if(gifLayoutMode !== 'raw' && !flipbookResult){
+      if(statusEl) statusEl.textContent = 'Framing your GIF, please wait…';
+      try{ framesObj = await gifIntoLayout(framesObj); }
+      catch(e){ console.error('GIF framing failed, using the plain camera view:', e); }
+      if(myGen !== gifGeneration) return;
+      statusEl = document.getElementById('gifStatusMsg');
+    }
     if(statusEl) statusEl.textContent = 'Creating your GIF, please wait…';
 
     var blob;
@@ -7519,7 +7675,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var chip = document.getElementById('pbTimeChip');
     var chipOn = !!(chip && chip.parentNode && chip.parentNode.id === 'dockChipSlot' && chip.style.display !== 'none');
     return !document.getElementById('camFab').hidden || !document.getElementById('printFab').hidden || !document.getElementById('backupFab').hidden ||
-      !document.getElementById('galleryFab').hidden || !document.getElementById('lockFab').hidden || !document.getElementById('deskFab').hidden || !document.getElementById('quickFab').hidden || !document.getElementById('spinFab').hidden ||
+      !document.getElementById('galleryFab').hidden || !document.getElementById('lockFab').hidden || !document.getElementById('deskFab').hidden || !document.getElementById('quickFab').hidden || !document.getElementById('spinFab').hidden || !document.getElementById('capFab').hidden || !document.getElementById('reqFab').hidden || !document.getElementById('vgFab').hidden ||
       !document.getElementById('dockPwr').hidden || chipOn;
   }
   // Everything guests and the operator need to see or tap in Photo Session.
@@ -10637,6 +10793,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     ctx.restore();
   }
   function buildPrintCanvas(key){
+    if(plainResult) return buildPlainPrint(key);          // "Print original" from the roving screen
     const paper = paperFor(key);
     let src = document.createElement('canvas');
     renderCompositeToCanvas(currentLayout, src);
@@ -10696,14 +10853,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const MAX_COPIES = 10;
   const PRINT_TXT = { txtPrint: 'Print', txtPrinting: 'Printing, please hold…', txtCopies: 'How many copies?', txtLimit: 'That’s all the prints for this session' };
   // Saved with the setup (every device on the code gets them).
-  let printPrefs = { guestBtn: true, auto: false, copies: 1, guestCopies: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
+  let printPrefs = { guestBtn: true, auto: false, copies: 1, guestCopies: false, guestReq: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
   function printTxt(k){ return (printPrefs[k] || '').trim() || PRINT_TXT[k]; }
   function cleanPrintPrefs(p){
     p = p && typeof p === 'object' ? p : {};
     const txt = (v, n) => typeof v === 'string' ? v.replace(/[<>]/g, '').slice(0, n) : '';
     return {
       guestBtn: p.guestBtn !== false, auto: !!p.auto,
-      copies: Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(p.copies) || 1))), guestCopies: !!p.guestCopies,
+      copies: Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(p.copies) || 1))), guestCopies: !!p.guestCopies, guestReq: !!p.guestReq,
       txtPrint: txt(p.txtPrint, 24), txtPrinting: txt(p.txtPrinting, 60), txtCopies: txt(p.txtCopies, 40), txtLimit: txt(p.txtLimit, 70)
     };
   }
@@ -11248,6 +11405,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     '.qrl{font-weight:800;letter-spacing:.18em;text-transform:uppercase;font-size:clamp(10px,.9vw,16px);color:var(--red);}' +
     '.fs{position:fixed;top:1.6vh;left:50%;transform:translateX(-50%);z-index:5;padding:10px 18px;border-radius:99px;border:1.5px solid #D6CEC1;background:#fff;color:var(--ink);font:700 13px Manrope,sans-serif;cursor:pointer;}' +
     '.gallery-pill{position:fixed;right:2vw;bottom:2vh;z-index:7;padding:12px 18px;border:0;border-radius:99px;background:var(--red);color:#fff;font:800 clamp(12px,1vw,17px) Manrope,sans-serif;box-shadow:0 8px 24px rgba(28,26,30,.22);cursor:pointer;}.gallery-card{position:fixed;right:2vw;bottom:calc(2vh + 58px);z-index:8;width:min(300px,90vw);padding:18px;border-radius:18px;background:#fff;box-shadow:0 18px 44px rgba(28,26,30,.28);text-align:center;}.gallery-card.hide{display:none !important;}.gallery-card h2{margin:0;font:600 22px Fraunces,Georgia,serif;}.gallery-card img{width:min(210px,60vw);aspect-ratio:1;object-fit:contain;margin:8px auto;display:block;}.gallery-card a{display:block;overflow-wrap:anywhere;color:var(--red);font-weight:700;font-size:12px;}.gallery-card button{margin-top:10px;min-height:42px;padding:0 20px;border:1px solid #D6CEC1;border-radius:99px;background:#fff;font:800 13px Manrope,sans-serif;cursor:pointer;}' +
+    '.lk{position:absolute;left:0;right:0;bottom:2.6%;z-index:6;display:flex;flex-direction:column;align-items:center;gap:1vh;pointer-events:none;}.lk>*{pointer-events:auto;}' +
+    '.lkpill{min-height:max(48px,6vh);padding:0 2vw;border:0;border-radius:99px;background:rgba(20,18,22,.74);color:#fff;font:800 clamp(14px,1.15vw,22px) Manrope,sans-serif;cursor:pointer;touch-action:manipulation;}' +
+    '.lkrow{display:flex;gap:1.2vw;max-width:94%;overflow-x:auto;padding:1vh 1.4vw;border-radius:24px;background:rgba(20,18,22,.78);}' +
+    '.lkb{flex:none;display:flex;flex-direction:column;align-items:center;gap:.6vh;border:0;background:none;color:#fff;font:700 clamp(11px,.95vw,17px) Manrope,sans-serif;cursor:pointer;touch-action:manipulation;}' +
+    '.lkb canvas{width:max(64px,7.5vh);height:max(64px,7.5vh);border-radius:50%;border:3px solid transparent;display:block;}.lkb.on canvas{border-color:#fff;}' +
     '.hide{display:none !important;}' +
     '.logo .lg{display:block;object-fit:contain;}.logo.off{visibility:hidden;}' +
     '.clogo{position:fixed;z-index:3;object-fit:contain;pointer-events:none;transform:translate(-50%,-50%);}' +
@@ -11273,7 +11435,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       '</div>' +
       '<div class="frame" id="frame"><video id="v" autoplay playsinline muted></video><div class="guide" id="guide"></div><img class="res" id="res" alt="Your photo">' +
         '<div class="cd" id="cd"><div class="cdw"><svg viewBox="0 0 100 100"><circle class="trk" cx="50" cy="50" r="46"/><circle class="bar" id="bar" cx="50" cy="50" r="46" pathLength="100" stroke-dasharray="100" stroke-dashoffset="0"/></svg><div class="num" id="num">5</div></div></div>' +
-        '<div class="flash" id="flash"></div></div>' +
+        '<div class="flash" id="flash"></div>' +
+        '<div class="lk hide" id="lk"><button class="lkpill" id="lkPill" type="button"></button><div class="lkrow hide" id="lkRow"></div></div></div>' +
       '<div class="side">' +
         '<span class="chip" id="chip">Ready</span>' +
         '<div class="film" id="film"></div>' +
@@ -11290,7 +11453,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           msg: $g('msg'), sub: $g('sub'), ev: $g('ev'), dt: $g('dt'), chip: $g('chip'), qrw: $g('qrw'), qrSig: '', fs: $g('fs'),
           pk: $g('pk'), pkg: $g('pkg'), pkSig: '', gb: $g('gb'), gRetake: $g('gRetake'), gDone: $g('gDone'), wasRev: false,
           glogo: $g('glogo'), lgImg: $g('lgImg'), clogo: $g('clogo'), pwr: $g('pwr'), brandSig: '',
-          galleryPill: $g('galleryPill'), galleryCard: $g('guestGallery'), galleryQr: $g('guestGalleryQr'), galleryLink: $g('guestGalleryLink') };
+          galleryPill: $g('galleryPill'), galleryCard: $g('guestGallery'), galleryQr: $g('guestGalleryQr'), galleryLink: $g('guestGalleryLink'),
+          lk: $g('lk'), lkPill: $g('lkPill'), lkRow: $g('lkRow'), lkSig: '' };
+    // The look button and its row must not start a session: only a tap on a look (or the button) does anything.
+    G.lk.addEventListener('click', (e) => e.stopPropagation());
+    G.lkPill.addEventListener('click', (e) => { e.stopPropagation(); guestLookOpen = !guestLookOpen; guestRender(); });
+    G.lkRow.addEventListener('click', (e) => { e.stopPropagation(); const b = e.target.closest('[data-k]'); if(b) guestPickLook(b.dataset.k); });
     G.galleryPill.addEventListener('click', (e) => { e.stopPropagation(); G.galleryQr.src = document.getElementById('galleryPopQr').src; G.galleryLink.href = currentFolderLink; G.galleryCard.classList.remove('hide'); });
     G.galleryCard.addEventListener('click', (e) => e.stopPropagation());
     G.galleryCard.querySelector('#guestGalleryClose').addEventListener('click', (e) => { e.stopPropagation(); G.galleryCard.classList.add('hide'); });
@@ -11577,6 +11745,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       }
       G.wasRev = G.wasRev && reviewing;
       guestButtons();
+      if(typeof guestLooksRender === 'function') guestLooksRender();
     }catch(e){ /* closed */ }
   }
   // One trigger for the guest screen, the keyboard and presenter clickers:
@@ -11775,6 +11944,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   filterChips.addEventListener('click', function(e){
     var c = e.target.closest('.chip'); if(!c) return;
+    guestLookBase = null;        // the operator's own choice becomes the look each guest starts with
     filterKey = c.dataset.filter; markFilterChips(); applyLiveFilter(); renderSetupPreview();
   });
   // Quick filter chips under the live view (same filters as Setup → Extras).
@@ -11819,6 +11989,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function onQuickFilter(e){
     var c = e.target.closest('.sc-filter'); if(!c) return;
     e.stopPropagation();
+    guestLookBase = null;        // the operator's own choice becomes the look each guest starts with
     filterKey = c.dataset.filter; markFilterChips(); markQuickFilters(); applyLiveFilter(); renderSetupPreview();
     if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
   }
@@ -11827,6 +11998,102 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var _markFilterChips = markFilterChips;
   markFilterChips = function(){ _markFilterChips(); markQuickFilters(); };
   markQuickFilters();
+
+  // ---- Guests choose a look on the guest screen (traditional booth only; off by default) ----
+  // One small "Look" button over the guest's camera view. Tapping it opens a row of live previews. The choice
+  // lasts for that guest: the look chosen in Setup comes back after their photos, or after 90 s with no one there.
+  var guestLooksOn = false, guestLookSet = ['none', 'bw', 'warm', 'film', 'retro', 'noir'], guestLookBase = null, guestLookOpen = false, guestLookIdle = null, guestLookTick = null;
+  var GUEST_LOOK_MAX = 6;
+  var guestLooksRow = document.getElementById('guestLooksRow'), guestLooksToggle = document.getElementById('guestLooksToggle');
+  var guestLooksPick = document.getElementById('guestLooksPick'), guestLooksChips = document.getElementById('guestLooksChips');
+  function guestLookKeys(){
+    var keys = guestLookSet.filter(function(k){ return Object.prototype.hasOwnProperty.call(FILTERS, k); });
+    var base = guestLookBase !== null ? guestLookBase : filterKey;
+    if(keys.indexOf(base) < 0) keys.unshift(base);          // the look chosen in Setup is always one of the choices
+    return keys;
+  }
+  function refreshGuestLooksUI(){
+    guestLooksRow.hidden = !isTraditional();
+    guestLooksToggle.checked = guestLooksOn;
+    guestLooksPick.hidden = !guestLooksOn;
+    guestLooksChips.innerHTML = '';
+    Object.keys(FILTERS).forEach(function(k){
+      var b = document.createElement('button'); b.type = 'button'; b.dataset.look = k;
+      b.className = 'chip' + (guestLookSet.indexOf(k) >= 0 ? ' active' : ''); b.textContent = FILTER_LABELS[k] || k;
+      guestLooksChips.appendChild(b);
+    });
+  }
+  guestLooksToggle.addEventListener('change', function(){
+    guestLooksOn = guestLooksToggle.checked;
+    if(!guestLooksOn) restoreGuestLook();
+    refreshGuestLooksUI(); guestRender();
+    if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+  });
+  guestLooksChips.addEventListener('click', function(e){
+    var c = e.target.closest('[data-look]'); if(!c) return;
+    var k = c.dataset.look, i = guestLookSet.indexOf(k);
+    if(i >= 0) guestLookSet.splice(i, 1);
+    else if(guestLookSet.length >= GUEST_LOOK_MAX){ showToast('Up to ' + GUEST_LOOK_MAX + ' looks. Untick one first.', 3000); return; }
+    else guestLookSet.push(k);
+    refreshGuestLooksUI(); guestRender();
+    if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
+  });
+  window.addEventListener('pb-mode-change', function(){ try{ refreshGuestLooksUI(); }catch(e){} });
+  refreshGuestLooksUI();
+  function restoreGuestLook(){
+    clearTimeout(guestLookIdle);
+    if(guestLookBase === null) return;
+    var b = guestLookBase; guestLookBase = null;
+    if(Object.prototype.hasOwnProperty.call(FILTERS, b)){ filterKey = b; markFilterChips(); applyLiveFilter(); try{ renderSetupPreview(); }catch(e){} }
+    guestLookOpen = false; guestRender();
+  }
+  function guestPickLook(k){
+    if(!Object.prototype.hasOwnProperty.call(FILTERS, k)) return;
+    if(guestLookBase === null) guestLookBase = filterKey;     // not saved: Setup keeps its own look
+    filterKey = k; markFilterChips(); applyLiveFilter(); try{ renderSetupPreview(); }catch(e){}
+    guestLookOpen = false;
+    clearTimeout(guestLookIdle); guestLookIdle = setTimeout(function(){ if(state === 'idle') restoreGuestLook(); }, 90000);
+    guestRender();
+  }
+  function guestLooksRender(){
+    if(!guestOpen()) return;
+    try{
+      // Shown while the booth waits for the next guest (also over the welcome picture) and on "Get ready";
+      // never while choosing a layout, counting down, reviewing or on the result.
+      var ready = readyOverlay.classList.contains('ready-active');
+      var show = guestLooksOn && isTraditional() && !pickOpen && (ready || state === 'idle') && !(sess && sess.reviewing);
+      G.lk.classList.toggle('hide', !show);
+      if(!show){ guestLookOpen = false; G.lkRow.classList.add('hide'); return; }
+      G.lkPill.textContent = '✨ Look: ' + (FILTER_LABELS[filterKey] || filterKey);
+      G.lkRow.classList.toggle('hide', !guestLookOpen);
+      var keys = guestLookKeys(), sig = keys.join(',');
+      if(G.lkSig !== sig){
+        G.lkSig = sig; G.lkRow.innerHTML = '';
+        keys.forEach(function(k){
+          var b = G.d.createElement('button'); b.type = 'button'; b.className = 'lkb'; b.dataset.k = k;
+          var cv = G.d.createElement('canvas'); cv.width = 96; cv.height = 96; cv.style.filter = FILTERS[k] || 'none';
+          var sp = G.d.createElement('span'); sp.textContent = FILTER_LABELS[k] || k;
+          b.append(cv, sp); G.lkRow.appendChild(b);
+        });
+      }
+      [].forEach.call(G.lkRow.children, function(b){ b.classList.toggle('on', b.dataset.k === filterKey); });
+      if(guestLookOpen && !guestLookTick) guestLookTick = setInterval(guestLooksThumbs, 250);
+      if(!guestLookOpen && guestLookTick){ clearInterval(guestLookTick); guestLookTick = null; }
+    }catch(e){ /* guest window closed */ }
+  }
+  // Each preview shows the live camera through that look.
+  function guestLooksThumbs(){
+    if(!guestOpen() || !guestLookOpen || !video.videoWidth){ if(guestLookTick && !guestOpen()){ clearInterval(guestLookTick); guestLookTick = null; } return; }
+    try{
+      var vw = video.videoWidth, vh = video.videoHeight, side = Math.min(vw, vh) * 0.8, sx = (vw - side) / 2, sy = (vh - side) / 2, mir = mirrorPreview();
+      [].forEach.call(G.lkRow.querySelectorAll('canvas'), function(cv){
+        var x = cv.getContext('2d'); x.save();
+        if(mir){ x.translate(cv.width, 0); x.scale(-1, 1); }
+        try{ x.drawImage(video, sx, sy, side, side, 0, 0, cv.width, cv.height); }catch(e){}
+        x.restore();
+      });
+    }catch(e){}
+  }
   var mirrorQuickBtn = document.getElementById('mirrorQuickBtn');
   function markMirrorQuick(){ mirrorQuickBtn.textContent = 'Mirror: ' + (mirrorPreview() ? 'On' : 'Off'); }
   mirrorQuickBtn.addEventListener('click', function(){
@@ -11900,7 +12167,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
 
   // ──────────────────────────────────────────────────────────────────
-  // FLIPBOOK (included extra): a short clip -> numbered cards on print sheets + an animated GIF QR
+  // FLIPBOOK (included extra): a short clip -> cards on print sheets + an animated GIF QR
   // ──────────────────────────────────────────────────────────────────
   function flipbookActive(){ return outputMode === 'flipbook' && extraOn('flipbook'); }
   function sleepMs(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
@@ -11910,13 +12177,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var rows = Math.max(1, Math.floor((paper.h - 2 * FLIP_MARGIN) / FLIP_CELL_H));
     return { cols: cols, rows: rows, per: cols * rows };
   }
-  // Everything that goes in the stack, in order: cover (no number), the numbered frames, back (no number).
+  // Everything that goes in the stack, in order: the cover, the frames, the back card.
   function flipbookItems(){
     var r = flipbookResult, out = [];
     if(!r) return out;
-    if(r.cover) out.push({ c: r.cover, num: null });
-    r.cards.forEach(function(c, i){ out.push({ c: c, num: i + 1 }); });
-    if(r.back) out.push({ c: r.back, num: null });
+    if(r.cover) out.push({ c: r.cover });
+    r.cards.forEach(function(c){ out.push({ c: c }); });
+    if(r.back) out.push({ c: r.back });
     return out;
   }
   function flipbookPageCount(key){
@@ -11928,13 +12195,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function drawCover(ctx, img, x, y, w, h){
     var iw = img.width, ih = img.height, k = Math.max(w / iw, h / ih), sw = w / k, sh = h / k;
     ctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, x, y, w, h);
-  }
-  function drawCardNumber(ctx, n, x, y, w, h, size){
-    ctx.save();
-    ctx.font = 'bold ' + size + 'px "Courier New", monospace'; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
-    ctx.lineWidth = size * 0.22; ctx.strokeStyle = 'rgba(0,0,0,.65)'; ctx.fillStyle = '#fff';
-    ctx.strokeText(String(n), x + w - size * 0.4, y + h - size * 0.25); ctx.fillText(String(n), x + w - size * 0.4, y + h - size * 0.25);
-    ctx.restore();
   }
   // Cover and back cards: light card with dark text, or a dark card when the booth's text colour is light.
   function flipCardBase(){
@@ -11976,7 +12236,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(t){ x.globalAlpha = 0.75; x.font = '600 32px Manrope, sans-serif'; x.fillText(t.slice(0, 40), W / 2, y + 74); x.globalAlpha = 1; }
     return b.c;
   }
-  // One or more print sheets: cards in stack order, numbered frames, with thin cut lines.
+  // One or more print sheets: cards in stack order (left to right, top to bottom), with thin cut lines.
   function buildFlipbookPages(paper){
     var g = flipGrid(paper), mm = PRINT_DPI / 25.4, pages = [], items = flipbookItems();
     var W = Math.round(paper.w * mm), H = Math.round(paper.h * mm), m = FLIP_MARGIN * mm;
@@ -11988,7 +12248,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       for(var k = 0; k < count; k++){
         var col = k % g.cols, row = Math.floor(k / g.cols), cx = m + col * cw, cy = m + row * ch, it = items[start + k];
         drawCover(x, it.c, cx, cy, cw, ch);
-        if(it.num != null) drawCardNumber(x, it.num, cx, cy, cw, ch, Math.max(10, Math.round(ch * 0.11)));
       }
       x.strokeStyle = '#9a9a9a'; x.lineWidth = Math.max(1, Math.round(mm * 0.15));
       for(var gx = 0; gx <= g.cols; gx++){ x.beginPath(); x.moveTo(m + gx * cw, m - mm * 2); x.lineTo(m + gx * cw, H - m + mm * 2); x.stroke(); }
@@ -12008,12 +12267,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     items.forEach(function(it, i){
       var cx = (i % cols) * cw, cy = pad + Math.floor(i / cols) * ch;
       drawCover(x, it.c, cx + 1, cy + 1, cw - 2, ch - 2);
-      if(it.num != null) drawCardNumber(x, it.num, cx, cy, cw, ch, 20);
     });
   }
   var _renderComposite = renderComposite;
   renderComposite = function(){
     if(flipbookResult){ drawFlipbookPreview(); return; }
+    if(plainResult){ drawPlainPreview(); return; }
     _renderComposite();
   };
   async function runFlipbookSession(){
@@ -12080,14 +12339,24 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(quickFab) quickFab.hidden = off;
     var spinFab = document.getElementById('spinFab');
     if(spinFab) spinFab.hidden = !extraOn('spin360') || state === 'capturing';
+    var capFab = document.getElementById('capFab');
+    if(capFab) capFab.hidden = !capAvailable() || state === 'capturing';
+    var reqFab = document.getElementById('reqFab');
+    if(reqFab) reqFab.hidden = !reqOn() || state === 'capturing';
+    var vgFab = document.getElementById('vgFab');
+    if(vgFab) vgFab.hidden = !vgAvailable() || state === 'capturing';
     try{ scheduleDock(); }catch(e){}
   }
   var _updateUI = updateUI;
   updateUI = function(){ _updateUI(); refreshDeskBtn(); };
   refreshDeskBtn();
 
+  // "One photo per print": the desk makes a Solo print instead of filling the event's layout (a strip takes 3 photos).
+  var deskSoloOn = false;
+  try{ deskSoloOn = localStorage.getItem('pb_desk_solo') === '1'; }catch(e){}
+  function deskNeed(){ return deskSoloOn ? 1 : shotsNeeded(); }
   function deskHint(){
-    var n = shotsNeeded(), el = document.getElementById('deskHint');
+    var n = deskNeed(), el = document.getElementById('deskHint');
     if(!deskQueue.length){ el.textContent = 'No photos yet. Add the photographer\u2019s photos' + (window.pb4u && window.pb4u.deskScan ? ' or choose the folder they are saved to.' : '.'); return; }
     el.textContent = n > 1
       ? 'This layout uses ' + n + ' photos. Tap up to ' + n + ' photos in order (one photo fills them all), then Make print + QR.'
@@ -12148,12 +12417,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(state === 'capturing') return;
     deskMakeBtn.disabled = true;
     try{
-      var need = shotsNeeded(), shots = [];
+      var need = deskNeed(), shots = [];
       for(var i = 0; i < need; i++) shots.push(await deskCanvas(picks[Math.min(i, picks.length - 1)]));
       picks.forEach(function(p){ p.used = true; });
       deskSel = [];
       closeDesk();
-      startDeskResult(shots);
+      startDeskResult(shots, { solo: deskSoloOn });
     }catch(e){
       console.error('Desk photo failed:', e);
       showToast('Couldn\u2019t open that photo. Try another.', 4000);
@@ -12161,12 +12430,30 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }
   }
   // Same finish as a normal session: the frame is drawn, the QR and Print button appear.
+  // A one-photo result always uses the Solo layout and a paper that fits it; resetForNextGuest puts the event's layout back.
+  var soloPaper = null;
+  function enterSoloLayout(){
+    if(currentLayout === 'solo') return;
+    if(soloPaper === null) soloPaper = printSize || '';
+    currentLayout = 'solo';
+    try{ refreshPrintUI(); }catch(e){}
+  }
+  function restoreSoloPaper(){
+    var p = soloPaper; soloPaper = null;
+    if(!p || p === printSize) return;
+    try{
+      var sz = printSettings();
+      if(sz && sz.indexOf(p) >= 0 && sizeFitsLayout(p)){ printSize = p; refreshPrintUI(); }
+    }catch(e){}
+  }
   function startDeskResult(shots, opts){
     opts = opts || {};
     closeGalleryPop();
     flipbookResult = null; completedGifCapture = null;
     resetSessionPrints();
     sess = null; countingDown = false;
+    if(opts.solo) enterSoloLayout();
+    plainResult = opts.original || null;                    // "Print original": the result is the photo itself, no frame
     shotCanvases = shots;
     qrResults.innerHTML = ''; lastRenderedFolderUrl = null;
     retakeBtn.hidden = true; doneBtn.hidden = true; reviewHint.hidden = true; cancelSessionBtn.hidden = true;
@@ -12174,17 +12461,20 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     sessionNumber = nextSessionNumber();
     renderComposite(); updateUI();
     if(opts.qrUrl){ qrSlot('photo', 'Your photo', ''); fillQrSlot('photo', opts.qrUrl); }   // a Quick shot that is already saved: same QR, no second upload
-    else showQRForCurrentPhoto();
+    else if(!opts.noQr) showQRForCurrentPhoto();
     scheduleResultReset();
-    if(!LOCALSHARE && !opts.qrUrl){ showMultipleDownloadsHint(); saveToDevice(); }
+    if(!LOCALSHARE && !opts.qrUrl && !opts.noQr){ showMultipleDownloadsHint(); saveToDevice(); }
     maybeAutoPrint();
   }
   var _resetForNextGuest = resetForNextGuest;
   resetForNextGuest = function(){
-    var back = deskReturn;
-    flipbookResult = null; deskReturn = false;
+    var back = deskReturn, wasResult = state === 'result';
+    flipbookResult = null; plainResult = null; deskReturn = false;
     _resetForNextGuest();
+    restoreSoloPaper();
+    if(wasResult) restoreGuestLook();      // the next guest starts with the look chosen in Setup
     if(back === 'quick') openQuick();          // the photographer's camera / queue comes straight back
+    else if(back === 'req') openReq();         // the list of print requests comes back
     else if(back) openDesk();
   };
   // Desktop app: watch a folder the photographer's photos are saved to.
@@ -12237,7 +12527,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var b = e.target.closest('.desk-item'); if(!b) return;
     var id = Number(b.dataset.id), i = deskSel.indexOf(id);
     if(i >= 0) deskSel.splice(i, 1);
-    else { deskSel.push(id); var need = shotsNeeded(); if(deskSel.length > need) deskSel.shift(); }
+    else { deskSel.push(id); var need = deskNeed(); if(deskSel.length > need) deskSel.shift(); }
+    deskRender();
+  });
+  var deskSoloBox = document.getElementById('deskSolo');
+  deskSoloBox.checked = deskSoloOn;
+  deskSoloBox.addEventListener('change', function(){
+    deskSoloOn = deskSoloBox.checked;
+    try{ localStorage.setItem('pb_desk_solo', deskSoloOn ? '1' : '0'); }catch(e){}
+    var need = deskNeed(); if(deskSel.length > need) deskSel = deskSel.slice(-need);
     deskRender();
   });
   var deskDrop = document.getElementById('deskDrop');
@@ -12290,30 +12588,79 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }
     return { queued: false, url: await uploadToLitterbox(blob, filename, '1h') };
   }
+  // A photo sent from a phone (or the inbox): kept as its original file; the picture is decoded when it is needed
+  // (to frame it, to print it) so a long event does not fill the memory with big canvases.
+  async function quickDecode(blob){
+    var bmp;
+    try{ bmp = await createImageBitmap(blob, { imageOrientation: 'from-image' }); }catch(e){ bmp = await createImageBitmap(blob); }
+    var k = Math.min(1, 2400 / Math.max(bmp.width, bmp.height)), c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+    var ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(bmp, 0, 0, c.width, c.height); bmp.close();
+    c._isShot = true;
+    return c;
+  }
+  // The booth's chosen look goes on the framed photo; the original stays as the camera made it.
+  function quickLooked(orig){
+    if(filterKey === 'none' && !softSkin && !dateStamp) return orig;
+    var c = document.createElement('canvas'); c.width = orig.width; c.height = orig.height;
+    c.getContext('2d').drawImage(orig, 0, 0);
+    try{ applyFilterToCanvas(c); }catch(e){}
+    c._isShot = true;
+    return c;
+  }
+  // The photo in the Solo layout (one big picture, whatever layout the event uses for guests).
+  async function quickEnsure(item){
+    if(item.shots && item.comp) return;
+    if(item.incoming){
+      if(!item.orig) item.orig = await quickDecode(item.blob);
+      item.shot = quickLooked(item.orig);
+    }
+    var shots = [item.shot], prev = shotCanvases, comp = document.createElement('canvas');
+    shotCanvases = shots;
+    try{ renderCompositeToCanvas('solo', comp); } finally { shotCanvases = prev; }
+    item.shots = shots; item.comp = comp;
+  }
   async function quickProcess(item){
     try{
-      var shots = new Array(shotsNeeded()).fill(item.shot), prev = shotCanvases, comp = document.createElement('canvas');
-      shotCanvases = shots;
-      try{ renderCompositeToCanvas(currentLayout, comp); } finally { shotCanvases = prev; }
-      item.shots = shots; item.comp = comp;
+      await quickEnsure(item);
+      var comp = item.comp;
       var flat = document.createElement('canvas'); flat.width = comp.width; flat.height = comp.height;
       var fx = flat.getContext('2d'); fx.fillStyle = '#ffffff'; fx.fillRect(0, 0, flat.width, flat.height); fx.drawImage(comp, 0, 0);
       var blob = await new Promise(function(r){ flat.toBlob(r, 'image/jpeg', 0.92); });
-      var name = filePrefix() + nextSessionNumber() + '_' + currentLayout + deviceTag() + '.jpg';
+      var name = filePrefix() + nextSessionNumber() + '_solo' + deviceTag() + '.jpg';
       var res = await quickUpload(blob, name);
       item.status = res.queued ? 'queued' : 'ready'; item.url = res.url || '';
+      if(item.incoming){ item.shot = item.orig = item.shots = item.comp = null; }   // decoded again if it is printed
     }catch(e){ console.error('Quick shot failed:', e); item.status = 'error'; }
     quickRender();
   }
+  async function quickIncoming(blob, name){
+    var item = { id: ++quickSeq, shot: null, orig: null, blob: blob, incoming: true, srcName: name || '', thumb: '', status: 'saving', url: '', shots: null, comp: null };
+    try{
+      var cv = await quickDecode(blob);
+      var t = document.createElement('canvas'), k = 160 / Math.max(cv.width, cv.height);
+      t.width = Math.max(1, Math.round(cv.width * k)); t.height = Math.max(1, Math.round(cv.height * k));
+      t.getContext('2d').drawImage(cv, 0, 0, t.width, t.height);
+      item.thumb = t.toDataURL('image/jpeg', 0.7); item.orig = cv;
+    }catch(e){ console.error('A photo sent from a phone could not be opened:', e); return null; }
+    quickQueue.push(item);
+    if(quickOverlay.hidden){ roveUnseen++; quickFab.dataset.n = String(roveUnseen); }
+    quickRender();
+    quickChain = quickChain.then(function(){ return quickProcess(item); });   // one at a time, in order
+    return item;
+  }
   function quickRender(){
     var strip = document.getElementById('qsStrip'); strip.innerHTML = '';
-    quickQueue.slice().forEach(function(it){
+    var queueOnly = quickOverlay.classList.contains('queue-only');
+    var list = quickQueue.slice(); if(queueOnly) list.reverse();       // newest first when there is no shutter
+    list.forEach(function(it){
       var b = document.createElement('button'); b.type = 'button'; b.className = 'qs-thumb ' + it.status; b.dataset.id = it.id;
       var im = document.createElement('img'); im.src = it.thumb; im.alt = 'Shot ' + it.id; b.appendChild(im); b.appendChild(document.createElement('i'));
       strip.appendChild(b);
     });
     var done = quickQueue.filter(function(i){ return i.status === 'ready' || i.status === 'queued'; }).length;
-    document.getElementById('qsCount').textContent = quickQueue.length ? (quickQueue.length + (quickQueue.length === 1 ? ' shot' : ' shots') + ' · ' + done + ' saved') : 'Tap the button to take a photo';
+    document.getElementById('qsCount').textContent = quickQueue.length ? (quickQueue.length + (quickQueue.length === 1 ? ' photo' : ' photos') + ' · ' + done + ' saved') : (queueOnly ? 'Waiting for photos' : 'Tap the button to take a photo');
+    document.getElementById('qsHint').hidden = !(queueOnly && !quickQueue.length);
     if(qsShown && !document.getElementById('qsPanel').hidden) quickShowPanel(qsShown);
   }
   function quickShoot(){
@@ -12336,21 +12683,30 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     } else {
       note.textContent = item.status === 'error' ? 'This photo could not be saved. Try taking it again.' : (item.status === 'queued' ? 'Saved on this device. It uploads when there is internet; there is no link yet.' : 'Still saving. This takes a few seconds.');
     }
-    document.getElementById('qsPrint').disabled = !item.comp;
+    var ok = item.status === 'ready' || item.status === 'queued' || !!item.comp;
+    document.getElementById('qsPrint').disabled = !ok; document.getElementById('qsPrintOrig').disabled = !ok;
     document.getElementById('qsPanel').hidden = false;
   }
   async function openQuick(){
     if(!extraOn('roving')) return;
     if(state === 'capturing'){ showToast('Finish the session first.', 3000); return; }
-    if(typeof USB_CAM_ID !== 'undefined' && currentDeviceId === USB_CAM_ID){ showToast('Quick shot uses the tablet or phone camera. Pick it in the camera menu.', 4500); return; }
-    if(!streamActive){ var ok = await initCamera(cameraSelect.value || null); if(!ok) return; }
-    qsVideo.srcObject = currentStream || video.srcObject;
-    qsVideo.style.transform = mirrorPreview() ? 'scaleX(-1)' : '';
-    try{ await qsVideo.play(); }catch(e){}
-    quickOverlay.hidden = false; document.getElementById('qsPanel').hidden = true; qsShown = null;
-    quickRender();
+    // No tablet/phone camera to use (a USB camera is selected, or there is none): the screen still shows the photos
+    // sent from phones, without a shutter.
+    var usb = typeof USB_CAM_ID !== 'undefined' && currentDeviceId === USB_CAM_ID, queueOnly = usb;
+    if(!usb && !streamActive){ var ok = await initCamera(cameraSelect.value || null); if(!ok){ if(roveAvailable()) queueOnly = true; else return; } }
+    if(queueOnly && !roveAvailable()){ showToast('Quick shot uses the tablet or phone camera. Pick it in the camera menu.', 4500); return; }
+    quickOverlay.classList.toggle('queue-only', queueOnly);
+    if(!queueOnly){
+      qsVideo.srcObject = currentStream || video.srcObject;
+      qsVideo.style.transform = mirrorPreview() ? 'scaleX(-1)' : '';
+      try{ await qsVideo.play(); }catch(e){}
+    }
+    document.getElementById('qsPhone').hidden = !roveAvailable();
+    quickOverlay.hidden = false; document.getElementById('qsPanel').hidden = true; document.getElementById('qsPhonePanel').hidden = true; qsShown = null;
+    roveUnseen = 0; quickFab.dataset.n = '0';
+    quickRender(); roveSchedule(); roveNow();
   }
-  function closeQuick(){ quickOverlay.hidden = true; document.getElementById('qsPanel').hidden = true; qsShown = null; }
+  function closeQuick(){ quickOverlay.hidden = true; document.getElementById('qsPanel').hidden = true; document.getElementById('qsPhonePanel').hidden = true; qsShown = null; roveSchedule(); }
   async function quickFlip(){
     var opts = Array.from(cameraSelect.options).filter(function(o){ return o.value && o.value !== USB_CAM_ID; });
     if(opts.length < 2){ showToast('This device has only one camera.', 2500); return; }
@@ -12372,11 +12728,160 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var it = quickQueue.find(function(x){ return x.id === Number(b.dataset.id); });
     if(it) quickShowPanel(it);
   });
-  document.getElementById('qsPrint').addEventListener('click', function(){
-    var it = qsShown; if(!it || !it.shots) return;
+  // "Print framed": the photo in your frame. "Print original": the photo as it came from the camera, fitted to the paper.
+  // Both open the normal result screen with its Print button; the guest's QR is already known.
+  async function quickPrint(original){
+    var it = qsShown; if(!it) return;
+    try{ await quickEnsure(it); }
+    catch(e){ console.error('Could not open the photo:', e); showToast('Couldn’t open that photo. Try again.', 4000); return; }
+    var orig = original ? (it.orig || it.shot) : null;
     closeQuick();
-    startDeskResult(it.shots, { qrUrl: it.url, back: 'quick' });    // the normal result screen with the Print button; the QR is already known
+    startDeskResult(it.shots, { qrUrl: it.url, back: 'quick', solo: true, original: orig });
+  }
+  document.getElementById('qsPrint').addEventListener('click', function(){ quickPrint(false); });
+  document.getElementById('qsPrintOrig').addEventListener('click', function(){ quickPrint(true); });
+
+  // The result screen for an original photo: shows it and prints it fitted to the paper, without the frame.
+  var plainResult = null;
+  function drawPlainPreview(){
+    var src = plainResult; if(!src) return;
+    previewCanvas.width = src.width; previewCanvas.height = src.height;
+    previewCanvas.getContext('2d').drawImage(src, 0, 0);
+  }
+  function buildPlainPrint(key){
+    var paper = paperFor(key), src = plainResult;
+    if(paper.receipt){
+      var rc = document.createElement('canvas');
+      rc.width = Math.round(paper.w / 25.4 * RECEIPT_DPI); rc.height = Math.round(src.height * rc.width / src.width);
+      var rx = rc.getContext('2d'); rx.fillStyle = '#ffffff'; rx.fillRect(0, 0, rc.width, rc.height); rx.drawImage(src, 0, 0, rc.width, rc.height);
+      return rc;
+    }
+    if(src.width > src.height !== paper.w > paper.h){          // a landscape photo on portrait paper prints turned 90°
+      var r = document.createElement('canvas'); r.width = src.height; r.height = src.width;
+      var rx2 = r.getContext('2d'); rx2.translate(r.width, 0); rx2.rotate(Math.PI / 2); rx2.drawImage(src, 0, 0);
+      src = r;
+    }
+    var c = document.createElement('canvas');
+    c.width = Math.round(paper.w / 25.4 * PRINT_DPI); c.height = Math.round(paper.h / 25.4 * PRINT_DPI);
+    var ctx = c.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height); ctx.imageSmoothingQuality = 'high';
+    if(src.width / src.height < 0.45 && paper.w / paper.h >= 0.5){        // a photo strip: two side by side on the sheet, cut down the middle (like the booth's own prints)
+      var half = c.width / 2; drawFitted(ctx, src, 0, 0, half, c.height); drawFitted(ctx, src, half, 0, c.width - half, c.height);
+    } else drawFitted(ctx, src, 0, 0, c.width, c.height);
+    return c;
+  }
+
+  // ---- Photos sent from a phone ----
+  // Laptop app: the phone sends photos to this laptop (the app keeps them in a "Roving inbox" folder).
+  // Website: there is no laptop, so the phone uploads into the event's Drive folder (a link made from an upload ticket)
+  // and this page checks that folder every few seconds. Either way each photo goes in the frame, gets a QR, and shows up here.
+  var roveTimer = null, roveSeen = {}, roveUnseen = 0, roveWebOn = false, roveBusy = false, roveLink = null;
+  // The laptop app answers these through its bridge (window.pb4u). The offline Android app has no such bridge: the same calls
+  // go to the app itself (window.__PBLocal), which answers with text (JSON, or a photo as base64).
+  var PBX = (function(){
+    if(window.pb4u && window.pb4u.roveScan) return window.pb4u;
+    var L = window.__PBLocal;
+    if(!(ANDROID_LOCAL && L && typeof L.roveScan === 'function')) return null;
+    var bytes = function(t){ if(!t) return null; var bin = atob(t), a = new Uint8Array(bin.length); for(var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return a; };
+    return {
+      roveInfo: async function(){ return { sendUrl: L.roveInfo() || null }; },
+      roveScan: async function(){ return JSON.parse(L.roveScan() || '[]'); },
+      roveTake: async function(name){ return bytes(L.roveTake(String(name || ''))); },
+      guestPrintSet: async function(on){ L.guestPrintSet(!!on); return !!on; },
+      printReqList: async function(){ return JSON.parse(L.printReqList() || '[]'); },
+      printReqDone: async function(id){ return L.printReqDone(String(id || '')); },
+      printReqRead: async function(id){ return bytes(L.printReqRead(String(id || ''))); }
+    };
+  })();
+  function roveLaptop(){ return !!PBX; }
+  function roveAvailable(){ return extraOn('roving') && (roveLaptop() || !LOCALSHARE); }    // not the offline Android app (yet)
+  function roveFolderId(){
+    var u = ''; try{ u = getCachedFolderUrl() || ''; }catch(e){}
+    var m = /\/folders\/([A-Za-z0-9_-]{10,80})/.exec(u);
+    return m ? m[1] : '';
+  }
+  function roveSeenKey(){ return 'pb_rove_seen_' + roveFolderId(); }
+  function roveSeenLoad(){ try{ var a = JSON.parse(localStorage.getItem(roveSeenKey()) || '[]'); var o = {}; (Array.isArray(a) ? a : []).forEach(function(i){ o[i] = 1; }); return o; }catch(e){ return {}; } }
+  function roveSeenSave(o){ try{ localStorage.setItem(roveSeenKey(), JSON.stringify(Object.keys(o).slice(-400))); }catch(e){} }
+  async function rovePollLaptop(){
+    var list = await PBX.roveScan();
+    for(var i = 0; i < list.length; i++){
+      var f = list[i], key = f.name + '|' + f.mtime;
+      if(roveSeen[key]) continue;
+      roveSeen[key] = true;
+      var bytes = await PBX.roveTake(f.name);
+      if(bytes) await quickIncoming(new Blob([bytes], { type: /\.png$/i.test(f.name) ? 'image/png' : /\.webp$/i.test(f.name) ? 'image/webp' : 'image/jpeg' }), f.name);
+    }
+  }
+  async function rovePollWeb(){
+    var id = roveFolderId(); if(!id || navigator.onLine === false) return;
+    var r = await fetch('/api/gallery?f=' + encodeURIComponent(id) + '&rove=1&v=' + Math.floor(Date.now() / 8000));
+    var j = await r.json().catch(function(){ return null; });
+    if(!j || !j.ok || !Array.isArray(j.files)) return;
+    var seen = roveSeenLoad(), fresh = j.files.filter(function(f){ return f && f.src && !seen[f.id]; }).sort(function(a, b){ return a.t - b.t; }).slice(0, 12);
+    for(var i = 0; i < fresh.length; i++){
+      var f = fresh[i], rr = await fetch(f.src).catch(function(){ return null; });
+      if(!rr || !rr.ok) continue;                              // try again next time
+      var blob = await rr.blob();
+      seen[f.id] = 1; roveSeenSave(seen);
+      await quickIncoming(blob, f.name);
+    }
+  }
+  async function roveNow(){
+    if(roveBusy || !roveAvailable()) return;
+    if(!roveLaptop() && !roveWebOn) return;                    // the website only checks Drive once the phone QR has been shown
+    roveBusy = true;
+    try{ if(roveLaptop()) await rovePollLaptop(); else if(document.visibilityState !== 'hidden') await rovePollWeb(); }
+    catch(e){ /* try again next time */ }
+    roveBusy = false;
+  }
+  function roveSchedule(){
+    clearTimeout(roveTimer);
+    if(!roveAvailable()) return;
+    if(!roveLaptop() && !roveWebOn){ try{ var rid = roveFolderId(); if(rid && localStorage.getItem('pb_rove_on_' + rid) === '1') roveWebOn = true; }catch(e){} }
+    if(!roveLaptop() && !roveWebOn) return;
+    var open = !quickOverlay.hidden;
+    var ms = roveLaptop() ? (open ? 2500 : 6000) : (open ? 8000 : 30000);
+    roveTimer = setTimeout(async function(){ await roveNow(); roveSchedule(); }, ms);
+  }
+  function roveShowPhone(){
+    var panel = document.getElementById('qsPhonePanel'), box = document.getElementById('qsPhoneQr'), note = document.getElementById('qsPhoneNote'), lnk = document.getElementById('qsPhoneLink');
+    box.innerHTML = ''; lnk.textContent = ''; roveLink = null;
+    function show(url, text){
+      roveLink = url;
+      var im = document.createElement('img'); im.src = qrImageUrl(url); im.alt = 'QR code to send photos'; box.appendChild(im);
+      note.textContent = text; lnk.textContent = url;
+    }
+    panel.hidden = false;
+    if(roveLaptop()){
+      note.textContent = 'One moment…';
+      PBX.roveInfo().then(function(info){
+        if(info && info.sendUrl) show(info.sendUrl, 'The photographer joins this laptop’s Wi-Fi, scans this code, then takes or chooses photos. Each one appears here by itself, already in your frame.');
+        else note.textContent = NO_LAN_TEXT;
+      }).catch(function(){ note.textContent = 'Could not get the link. Try again.'; });
+      return;
+    }
+    if(!driveReady()){ note.textContent = 'Set the event folder in Setup → Share first. Photos sent from a phone are saved in that folder.'; return; }
+    note.textContent = 'One moment…';
+    getUploadTicket(rawFolderKey()).then(function(ticket){
+      var until = ticketCache && ticketCache.exp ? new Date(ticketCache.exp) : null;
+      var ev = ''; try{ ev = (labelInput.value || '').trim(); }catch(e){}
+      show(location.origin + '/rove/#t=' + ticket + (ev ? '&e=' + encodeURIComponent(ev) : ''),
+        'Scan with the photographer’s phone, on any internet. Each photo appears here within about 10 seconds, already in your frame.' + (until ? ' The link works until ' + until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '; show this code again after that.' : ''));
+      roveWebOn = true; try{ if(roveFolderId()) localStorage.setItem('pb_rove_on_' + roveFolderId(), '1'); }catch(e){}
+      roveSchedule();
+    }).catch(function(){ note.textContent = 'Could not get permission to receive photos. Check the internet and try again.'; });
+  }
+  document.getElementById('qsPhone').addEventListener('click', roveShowPhone);
+  document.getElementById('qsPhoneClose').addEventListener('click', function(){ document.getElementById('qsPhonePanel').hidden = true; });
+  document.getElementById('qsPhoneCopy').addEventListener('click', function(){
+    if(!roveLink) return;
+    try{ if(window.pb4u && window.pb4u.copy){ window.pb4u.copy(roveLink); showToast('Link copied.', 2000); return; } }catch(e){}
+    try{ navigator.clipboard.writeText(roveLink).then(function(){ showToast('Link copied.', 2000); }); }catch(e){}
   });
+  // After a reload the website remembers that this event was receiving photos.
+  try{ var rid = roveFolderId(); if(rid && localStorage.getItem('pb_rove_on_' + rid) === '1') roveWebOn = true; }catch(e){}
+  window.addEventListener('pb-extras-change', function(){ roveSchedule(); });
+  roveSchedule();
 
   // ──────────────────────────────────────────────────────────────────
   // 360 DESK (included extra "spin360"): videos from the 360 arm's camera -> shared with a QR.
@@ -12402,31 +12907,37 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     classic:   { label: 'Classic slow-mo', speed: 'slow', smooth: false, audio: 'music', overlay: true },
     ramp:      { label: 'Speed ramp', speed: 'ramp', smooth: false, audio: 'music', overlay: true },
     boomerang: { label: 'Boomerang', speed: 'boomerang', smooth: false, audio: 'music', overlay: true },
-    plain:     { label: 'Original speed', speed: 'normal', smooth: false, audio: 'original', overlay: true }
+    plain:     { label: 'Original speed', speed: 'normal', smooth: false, audio: 'original', overlay: true },
+    super:     { label: 'Super slow-mo', speed: 'custom', rates: [0.25], reverse: false, smooth: true, audio: 'music', overlay: true },
+    fastslow:  { label: 'Fast then slow', speed: 'custom', rates: [2, 0.5], reverse: false, smooth: false, audio: 'music', overlay: true },
+    fsf:       { label: 'Fast slow fast', speed: 'custom', rates: [2, 0.5, 2], reverse: false, smooth: false, audio: 'music', overlay: true },
+    roller:    { label: 'Slow-mo roller', speed: 'custom', rates: [1, 0.25, 2, 0.5], reverse: true, smooth: false, audio: 'music', overlay: true }
   };
   var SPIN_LOOK_KEY = 'pb_spin_look';
-  var spinLook = { preset: 'classic', speed: 'slow', smooth: false, orient: 'portrait', quality: 1080, overlay: true, audio: 'music', volume: 80, auto: false };
+  var spinLook = { preset: 'classic', speed: 'slow', smooth: false, orient: 'portrait', quality: 1080, overlay: true, audio: 'music', volume: 80, auto: false, autoShare: false, rates: [], reverse: false };
   try{ var sl = JSON.parse(localStorage.getItem(SPIN_LOOK_KEY) || 'null'); if(sl && typeof sl === 'object') Object.keys(spinLook).forEach(function(k){ if(sl[k] !== undefined) spinLook[k] = sl[k]; }); }catch(e){}
   function spinLookToUI(){
     var g = function(id){ return document.getElementById(id); };
     g('spinPreset').value = spinLook.preset; g('spinSpeed').value = spinLook.speed; g('spinSmooth').checked = !!spinLook.smooth;
     g('spinOrient').value = spinLook.orient; g('spinQual').value = String(spinLook.quality); g('spinOverlayOn').checked = !!spinLook.overlay;
-    g('spinAudio').value = spinLook.audio; g('spinVol').value = String(spinLook.volume); g('spinAuto').checked = !!spinLook.auto;
-    g('spinSmooth').disabled = spinLook.speed !== 'slow';
+    g('spinAudio').value = spinLook.audio; g('spinVol').value = String(spinLook.volume); g('spinAuto').checked = !!spinLook.auto; g('spinAutoShare').checked = !!spinLook.autoShare; g('spinAutoShare').disabled = !spinLook.auto;
+    g('spinSmooth').disabled = spinLook.speed !== 'slow' && !(spinLook.speed === 'custom' && (spinLook.rates || []).some(function(r){ return r < 1; }));
   }
   function spinLookFromUI(fromPreset){
     var g = function(id){ return document.getElementById(id); };
     spinLook.speed = g('spinSpeed').value; spinLook.smooth = g('spinSmooth').checked; spinLook.orient = g('spinOrient').value;
     spinLook.quality = Number(g('spinQual').value) || 1080; spinLook.overlay = g('spinOverlayOn').checked; spinLook.audio = g('spinAudio').value;
-    spinLook.volume = Number(g('spinVol').value) || 0; spinLook.auto = g('spinAuto').checked;
+    spinLook.volume = Number(g('spinVol').value) || 0; spinLook.auto = g('spinAuto').checked; spinLook.autoShare = g('spinAutoShare').checked && spinLook.auto;
     if(!fromPreset) spinLook.preset = 'custom';
-    g('spinPreset').value = spinLook.preset; g('spinSmooth').disabled = spinLook.speed !== 'slow';
+    if(spinLook.speed !== 'custom'){ spinLook.rates = []; spinLook.reverse = false; }
+    g('spinPreset').value = spinLook.preset; g('spinAutoShare').disabled = !spinLook.auto;
+    g('spinSmooth').disabled = spinLook.speed !== 'slow' && !(spinLook.speed === 'custom' && (spinLook.rates || []).some(function(r){ return r < 1; }));
     try{ localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); }catch(e){}
   }
   function spinPresetLabel(){ return (SPIN_PRESETS[spinLook.preset] && SPIN_PRESETS[spinLook.preset].label) || (spinLook.speed === 'slow' ? 'slow-mo' : spinLook.speed); }
   // Output size of the picture drawn over the video (boomerang is kept at 720 to stay light).
   function spinDims(){
-    var q = (spinLook.quality === 720 || spinLook.speed === 'boomerang') ? 720 : 1080, long = Math.round(q * 16 / 9 / 2) * 2;
+    var q = (spinLook.quality === 720 || spinLook.speed === 'boomerang' || (spinLook.speed === 'custom' && spinLook.reverse)) ? 720 : 1080, long = Math.round(q * 16 / 9 / 2) * 2;
     return spinLook.orient === 'landscape' ? { W: long, H: q } : { W: q, H: long };
   }
   // The booth's own frame, stickers, logo and title, on a transparent picture the size of the video.
@@ -12495,7 +13006,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         var it = { id: ++spinSeq, src: 'inbox', name: f.name, size: f.size, status: 'new', url: '' };
         spinQueue.unshift(it); fresh.push(it);
       }
-      if(fresh.length){ spinRender(); if(spinLook.auto && spinEnv.ffmpeg) fresh.forEach(function(it){ spinEdit(it); }); }
+      if(fresh.length){
+        spinRender();
+        if(spinOverlay.hidden){ spinNew += fresh.length; document.getElementById('spinFab').dataset.n = String(spinNew); }
+        if(spinLook.auto && spinEnv.ffmpeg) fresh.forEach(function(it){ spinAuto(it); });
+      }
     }catch(e){}
   }
   async function spinSetupInfo(){
@@ -12508,6 +13023,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(spinInfo.sendUrl){ var im = document.createElement('img'); im.src = qrImageUrl(spinInfo.sendUrl); im.alt = 'QR code to send a video'; qr.appendChild(im); }
     else qr.textContent = 'Connect this laptop to the booth Wi-Fi to send from a phone.';
     document.getElementById('spinDirTxt').textContent = spinInfo.dir || '';
+    document.getElementById('spinSendLink').textContent = spinInfo.sendUrl ? spinInfo.sendUrl.replace(/^https?:\/\//, '') : '(connect this laptop to a network first)';
     document.getElementById('spinLook').hidden = !spinEnv.ffmpeg;
     document.getElementById('spinNoEdit').hidden = !!spinEnv.ffmpeg;
     document.getElementById('spinMusicName').textContent = spinEnv.music ? spinEnv.music : 'no music chosen';
@@ -12518,9 +13034,445 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function openSpin(){
     if(!extraOn('spin360')) return;
     if(state === 'capturing'){ showToast('Finish the session first.', 3000); return; }
-    spinOverlay.hidden = false; spinRender(); spinSetupInfo();
+    spinOverlay.hidden = false; spinNew = 0; document.getElementById('spinFab').dataset.n = '0'; spinRender(); spinSetupInfo();
   }
   function closeSpin(){ spinOverlay.hidden = true; closeSpinModal(); }
+
+  // ---- Video guestbook (included extra "video"): a guest records a short message on the booth, then gets a QR for it ----
+  // Kiosk: the operator opens it and hands the device over. Up to 30 seconds, and a small video (about 10 MB at most),
+  // saved in the event folder like a photo (the online gallery shows it under Videos).
+  var VG_MAX_S = 30, VG_MAX_BYTES = 25 * 1024 * 1024;
+  var vgOverlay = document.getElementById('vgOverlay'), vgVideo = document.getElementById('vgVideo');
+  var vg = { state: 'idle', rec: null, chunks: [], timer: null, tick: null, audio: null, blob: null, url: '', mime: '' };
+  function vgAvailable(){ return extraOn('video') && !!window.MediaRecorder && (driveReady() || LOCALSHARE); }
+  function vgEl(id){ return document.getElementById(id); }
+  function vgText(title, sub){ vgEl('vgTitle').textContent = title; vgEl('vgSub').textContent = sub || ''; }
+  function vgUi(){
+    var st = vg.state, main = vgEl('vgMain'), second = vgEl('vgSecond');
+    vgEl('vgQr').hidden = st !== 'done';
+    second.hidden = !(st === 'review' || st === 'failed');
+    main.disabled = st === 'counting' || st === 'saving';
+    main.textContent = st === 'idle' ? 'Record a message' : st === 'recording' ? 'Stop' : st === 'review' ? 'Save my message' : st === 'saving' ? 'Saving…' : st === 'failed' ? 'Try saving again' : st === 'done' ? 'Next guest' : 'Get ready…';
+    second.textContent = st === 'failed' ? 'Record again' : 'Retake';
+  }
+  function vgBig(t, rec){ var b = vgEl('vgBig'); b.hidden = !t; b.textContent = t || ''; b.classList.toggle('rec', !!rec); }
+  function vgClearBlob(){ if(vg.url){ try{ URL.revokeObjectURL(vg.url); }catch(e){} } vg.url = ''; vg.blob = null; }
+  async function vgLive(){        // back to the live camera
+    vgVideo.pause(); vgVideo.removeAttribute('src'); vgVideo.controls = false; vgVideo.muted = true; vgVideo.loop = false;
+    vgVideo.srcObject = currentStream || video.srcObject; vgVideo.style.transform = mirrorPreview() ? 'scaleX(-1)' : '';
+    try{ await vgVideo.play(); }catch(e){}
+  }
+  async function openVg(){
+    if(!vgAvailable()) return;
+    if(state === 'capturing'){ showToast('Finish the session first.', 3000); return; }
+    if(!streamActive){ var ok = await initCamera(cameraSelect.value || null); if(!ok) return; }
+    vg.state = 'idle'; vgClearBlob(); vgBig('');
+    vgText('Leave a video message', 'Up to ' + VG_MAX_S + ' seconds');
+    await vgLive(); vgOverlay.hidden = false; vgUi();
+  }
+  function closeVg(){
+    clearTimeout(vg.timer); clearInterval(vg.tick);
+    if(vg.state === 'recording'){ try{ vg.rec.onstop = null; vg.rec.stop(); }catch(e){} }
+    if(vg.audio){ vg.audio.getTracks().forEach(function(t){ t.stop(); }); vg.audio = null; }
+    vgVideo.pause(); vgVideo.removeAttribute('src'); vgVideo.srcObject = null; vgClearBlob();
+    vg.state = 'idle'; vgBig(''); vgOverlay.hidden = true;
+  }
+  function vgMime(){
+    var c = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+    for(var i = 0; i < c.length; i++){ try{ if(MediaRecorder.isTypeSupported(c[i])) return c[i]; }catch(e){} }
+    return '';
+  }
+  async function vgCountdown(){
+    vg.state = 'counting'; vgUi(); vgText('Get ready…', '');
+    // the microphone is asked for once, here, so the message has sound
+    if(!vg.audio){ try{ vg.audio = await navigator.mediaDevices.getUserMedia({ audio: true, video: false }); }catch(e){ vg.audio = null; } }
+    for(var n = 3; n >= 1; n--){ if(vg.state !== 'counting') return; vgBig(String(n)); await new Promise(function(r){ setTimeout(r, 1000); }); }
+    if(vg.state !== 'counting') return;
+    vgBig(''); vgRecord();
+  }
+  function vgRecord(){
+    var stream = currentStream || video.srcObject, vt = stream && stream.getVideoTracks ? stream.getVideoTracks() : [];
+    if(!vt.length){ vg.state = 'idle'; vgText('The camera has no picture yet', 'Wait a second and try again.'); vgUi(); return; }
+    var tracks = vt.slice(0, 1).concat(vg.audio ? vg.audio.getAudioTracks() : []), mime = vgMime();
+    var opts = { videoBitsPerSecond: 2500000, audioBitsPerSecond: 64000 }; if(mime) opts.mimeType = mime;
+    var rec;
+    try{ rec = new MediaRecorder(new MediaStream(tracks), opts); }
+    catch(e){ vg.state = 'idle'; vgText('This device cannot record video here', ''); vgUi(); return; }
+    vg.chunks = []; vg.rec = rec; vg.mime = rec.mimeType || mime || 'video/webm'; vg.state = 'recording';
+    rec.ondataavailable = function(e){ if(e.data && e.data.size) vg.chunks.push(e.data); };
+    rec.onstop = function(){ clearTimeout(vg.timer); clearInterval(vg.tick); vgBig(''); vgReview(); };
+    rec.start(500);
+    var left = VG_MAX_S; vgBig('REC ' + left, true); vgText('Recording…', vg.audio ? 'Tap Stop when you are done.' : 'No microphone: this message will have no sound.'); vgUi();
+    vg.tick = setInterval(function(){ left--; if(left >= 0) vgBig('REC ' + left, true); }, 1000);
+    vg.timer = setTimeout(function(){ try{ rec.stop(); }catch(e){} }, VG_MAX_S * 1000);
+  }
+  async function vgReview(){
+    var blob = new Blob(vg.chunks, { type: String(vg.mime).split(';')[0] }); vg.chunks = [];      // "video/mp4" (the upload accepts only the plain type)
+    if(!blob.size){ vg.state = 'idle'; vgText('Nothing was recorded', 'Try again.'); vgUi(); await vgLive(); return; }
+    if(blob.size > VG_MAX_BYTES){ vg.state = 'idle'; vgText('That message is too big', 'Please record a shorter one.'); vgUi(); await vgLive(); return; }
+    vg.blob = blob; vg.url = URL.createObjectURL(blob); vg.state = 'review';
+    vgVideo.srcObject = null; vgVideo.style.transform = ''; vgVideo.src = vg.url; vgVideo.muted = false; vgVideo.controls = true; vgVideo.loop = true;
+    try{ await vgVideo.play(); }catch(e){}
+    vgText('Happy with it?', 'Watch your message, then save it or record it again.'); vgUi();
+  }
+  async function vgSave(){
+    if(!vg.blob) return;
+    vg.state = 'saving'; vgText('Saving your message…', 'This takes a few seconds.'); vgUi();
+    try{
+      var ext = /mp4/.test(vg.mime) ? '.mp4' : '.webm';
+      var res = await quickUpload(vg.blob, filePrefix() + nextSessionNumber() + '_guestbook' + deviceTag() + ext);
+      vg.state = 'done';
+      var box = vgEl('vgQr'); box.innerHTML = '';
+      if(res.url){ var im = document.createElement('img'); im.src = qrImageUrl(res.url); im.alt = 'QR code for your message'; box.appendChild(im); }
+      vgText('Thank you!', res.url ? (res.queued ? 'Saved. Scan to see it once the internet is back.' : 'Scan to watch and keep your message.') : 'Your message is saved.');
+      vgVideo.pause(); vgUi();
+    }catch(e){
+      console.error('Video guestbook save failed:', e);
+      vg.state = 'failed'; vgText('Could not save it', 'Check the internet and try again. Your message is kept until you record another.'); vgUi();
+    }
+  }
+  async function vgMainClick(){
+    if(vg.state === 'idle') return vgCountdown();
+    if(vg.state === 'recording'){ try{ vg.rec.stop(); }catch(e){} return; }
+    if(vg.state === 'review' || vg.state === 'failed') return vgSave();
+    if(vg.state === 'done'){ vgClearBlob(); vg.state = 'idle'; vgText('Leave a video message', 'Up to ' + VG_MAX_S + ' seconds'); await vgLive(); vgUi(); }
+  }
+  async function vgRetake(){
+    if(vg.state !== 'review' && vg.state !== 'failed') return;
+    vgClearBlob(); vg.state = 'idle'; vgText('Leave a video message', 'Up to ' + VG_MAX_S + ' seconds'); await vgLive(); vgUi();
+  }
+  vgEl('vgFab').addEventListener('click', openVg);
+  vgEl('vgClose').addEventListener('click', closeVg);
+  vgEl('vgMain').addEventListener('click', vgMainClick);
+  vgEl('vgSecond').addEventListener('click', vgRetake);
+
+  // ---- Guests ask for a print from their phone (off until switched on in Setup -> Print) ----
+  // The guest's photo page (the QR code) gets an "Ask for a print at the booth" button. A request waits here for the
+  // attendant, who prints it (the photo as it was saved, fitted to the paper) or dismisses it.
+  var reqList = [], reqTimer = null, reqSeen = {}, reqUnseen = 0, reqEnabledFor = '', reqBusy = false;
+  var reqOverlay = document.getElementById('reqOverlay'), reqGrid = document.getElementById('reqGrid');
+  function reqLaptop(){ return !!(PBX && PBX.printReqList); }
+  function reqAvailable(){ return !!printSettings() && (reqLaptop() || !LOCALSHARE); }        // not the offline Android app (yet)
+  function reqOn(){ return reqAvailable() && !!printPrefs.guestReq; }
+  async function reqApi(body){
+    var token = null, deviceId = null; try{ token = localStorage.getItem('pb_token'); deviceId = localStorage.getItem('pb_device'); }catch(e){}
+    var r = await fetch('/api/printreq', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(Object.assign({ token: token, deviceId: deviceId, folderKey: rawFolderKey(), folder: roveFolderId() }, body)) });
+    var j = await r.json().catch(function(){ return {}; });
+    if(!r.ok) throw new Error(j.error || ('error ' + r.status));
+    return j;
+  }
+  // Tells the laptop app (or the online gallery) whether guests may ask.
+  async function reqApply(changed){
+    try{
+      if(reqLaptop()) await PBX.guestPrintSet(reqOn());
+      else if(!LOCALSHARE){
+        var fid = roveFolderId();
+        if(reqOn()){ if(fid){ await reqApi({ action: 'enable', on: true }); reqEnabledFor = fid; } }      // (the poll switches it on later if the folder is not known yet)
+        else if(fid && (changed || reqEnabledFor)){ await reqApi({ action: 'enable', on: false }); reqEnabledFor = ''; }
+      }
+    }catch(e){ console.error('Print requests:', e); }
+    try{ document.getElementById('ppGuestReqRow').style.display = reqAvailable() ? '' : 'none'; document.getElementById('ppGuestReqHint').style.display = reqAvailable() ? '' : 'none'; }catch(e){}
+    reqSchedule(); try{ refreshDeskBtn(); }catch(e){}
+  }
+  function reqBadge(){ document.getElementById('reqFab').dataset.n = String(reqUnseen); }
+  async function reqPoll(){
+    if(reqBusy || !reqOn()) return;
+    reqBusy = true;
+    try{
+      var list = [];
+      if(reqLaptop()){
+        list = (await PBX.printReqList()).map(function(r){ return { id: r.id, file: r.file, event: r.event || '', t: r.t }; });
+      } else {
+        var fid = roveFolderId(); if(!fid || navigator.onLine === false || document.visibilityState === 'hidden'){ reqBusy = false; return; }
+        if(reqEnabledFor !== fid){ await reqApi({ action: 'enable', on: true }); reqEnabledFor = fid; }
+        var j = await reqApi({ action: 'poll' });
+        list = (j.reqs || []).map(function(r){ return { id: r.id, file: r.file, event: '', t: r.t }; });
+      }
+      var fresh = list.filter(function(r){ return !reqSeen[r.id]; });
+      fresh.forEach(function(r){ reqSeen[r.id] = 1; });
+      reqList = list;
+      if(fresh.length && reqOverlay.hidden){ reqUnseen += fresh.length; showToast(fresh.length === 1 ? 'A guest asked for a print. Open Print requests.' : fresh.length + ' guests asked for prints. Open Print requests.', 5000); }
+      reqBadge(); if(!reqOverlay.hidden) reqRender();
+    }catch(e){ /* try again next time */ }
+    reqBusy = false;
+  }
+  function reqSchedule(){
+    clearTimeout(reqTimer);
+    if(!reqOn()) { reqList = []; reqBadge(); return; }
+    var ms = reqLaptop() ? 4000 : 12000;
+    reqTimer = setTimeout(async function(){ await reqPoll(); reqSchedule(); }, ms);
+  }
+  function reqRender(){
+    reqGrid.innerHTML = '';
+    document.getElementById('reqHint').textContent = reqList.length ? 'Tap Print to print the photo the guest asked for, or Dismiss. Printing counts toward your print limits.' : 'No requests right now. They appear here by themselves when a guest asks for a print.';
+    reqList.slice().reverse().forEach(function(r){
+      var d = document.createElement('div'); d.className = 'req-item'; d.dataset.id = r.id;
+      var pic = document.createElement('div'); pic.className = 'pic'; var im = document.createElement('img'); im.alt = 'Photo to print';
+      if(r.thumb) im.src = r.thumb;
+      else if(reqLaptop()){ PBX.printReqRead(r.id).then(function(bytes){ if(bytes){ r.thumb = URL.createObjectURL(new Blob([bytes])); im.src = r.thumb; } }).catch(function(){}); }
+      else im.src = 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(r.file) + '&sz=w400';
+      pic.appendChild(im); d.appendChild(pic);
+      var w = document.createElement('div'); w.className = 'when'; w.textContent = (r.event ? r.event + ' · ' : '') + new Date(r.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); d.appendChild(w);
+      var row = document.createElement('div'); row.className = 'row';
+      row.innerHTML = '<button type="button" class="desk-btn primary" data-a="print">Print</button><button type="button" class="desk-btn" data-a="dismiss">Dismiss</button>';
+      d.appendChild(row); reqGrid.appendChild(d);
+    });
+  }
+  async function reqImage(r){
+    if(reqLaptop()){
+      var bytes = await PBX.printReqRead(r.id);
+      if(!bytes) throw new Error('That photo is no longer on this laptop.');
+      return quickDecode(new Blob([bytes]));
+    }
+    var l = await (await fetch('/api/gallery?f=' + encodeURIComponent(roveFolderId()) + '&v=' + Date.now())).json();
+    var f = (l.files || []).find(function(x){ return x.id === r.file; });
+    if(!f || !f.src) throw new Error('That photo is not in the gallery yet. Try again in a moment.');
+    var rr = await fetch(f.src); if(!rr.ok) throw new Error('Could not open that photo.');
+    return quickDecode(await rr.blob());
+  }
+  async function reqDone(r){
+    try{ if(reqLaptop()) await PBX.printReqDone(r.id); else await reqApi({ action: 'done', ids: [r.id] }); }catch(e){ console.error('Print request:', e); }
+    reqList = reqList.filter(function(x){ return x.id !== r.id; });
+  }
+  async function reqPrint(r){
+    var cv;
+    try{ cv = await reqImage(r); }catch(e){ showToast((e && e.message) || 'Could not open that photo.', 4500); return; }
+    await reqDone(r);
+    closeReq();
+    startDeskResult([cv], { solo: true, original: cv, noQr: true, back: 'req' });
+  }
+  function openReq(){
+    if(!reqOn()) return;
+    if(state === 'capturing'){ showToast('Finish the session first.', 3000); return; }
+    reqUnseen = 0; reqBadge(); reqOverlay.hidden = false; reqRender(); reqPoll();
+  }
+  function closeReq(){ reqOverlay.hidden = true; }
+  document.getElementById('reqFab').addEventListener('click', openReq);
+  document.getElementById('reqClose').addEventListener('click', closeReq);
+  reqOverlay.addEventListener('click', function(e){ if(e.target === reqOverlay) closeReq(); });
+  reqGrid.addEventListener('click', async function(e){
+    var b = e.target.closest('[data-a]'); if(!b) return;
+    var item = b.closest('.req-item'), r = reqList.find(function(x){ return x.id === item.dataset.id; }); if(!r) return;
+    b.disabled = true;
+    if(b.dataset.a === 'print') await reqPrint(r);
+    else { await reqDone(r); reqRender(); }
+  });
+  window.addEventListener('pb-extras-change', function(){ try{ refreshDeskBtn(); }catch(e){} });
+  setTimeout(function(){ try{ reqApply(); }catch(e){} }, 1500);
+
+  // ---- 360 capture: the tablet or phone on the arm records the spin itself (laptop app and Android app) ----
+  // The arm still turns by its own motor (or by hand); this screen only records. It starts with the button, or by itself
+  // when the device starts to move. The clip goes to the laptop's 360 inbox, where it is edited and shared like any other.
+  var spinNew = 0;
+  var capOverlay = document.getElementById('capOverlay'), capVideo = document.getElementById('capVideo');
+  var cap = { state: 'idle', rec: null, chunks: [], timer: null, tick: null, motion: null, sensor: null, last: null };
+  var CAP_PREFS_KEY = 'pb_cap_prefs', CAP_LAPTOP_KEY = 'pb_spin_laptop';
+  function capAvailable(){ return extraOn('spin360') && (DESKTOP || ANDROID_LOCAL); }     // not on the website
+  function capEl(id){ return document.getElementById(id); }
+  function capSet(t){ capEl('capStatus').textContent = t || ''; }
+  function capTrack(){ var st = currentStream || video.srcObject; return st && st.getVideoTracks ? (st.getVideoTracks()[0] || null) : null; }
+  function capSettings(){ var t = capTrack(); try{ return t && t.getSettings ? t.getSettings() : {}; }catch(e){ return {}; } }
+  function capUsb(){ return typeof USB_CAM_ID !== 'undefined' && currentDeviceId === USB_CAM_ID; }
+  function capInfo(){
+    var s = capSettings(), w = s.width || video.videoWidth || 0, h = s.height || video.videoHeight || 0, f = Math.round(s.frameRate || 0);
+    return w ? (w + '×' + h + (f ? ' · ' + f + ' fps' : '')) + (capUsb() ? ' · USB live view' : '') : 'Waiting for the camera…';
+  }
+  // What to tell the operator about this camera (slow motion needs a sharp picture and a high frame rate).
+  function capWarning(){
+    var s = capSettings(), w = s.width || video.videoWidth || 0, f = Math.round(s.frameRate || 0);
+    if(capUsb()) return 'A USB camera usually sends only a small live picture here. For a sharp 360 video, switch the camera to webcam mode (it then appears as an ordinary camera in the camera menu) or use the tablet camera.';
+    if(w && w < 1280) return 'This camera gives a small picture (' + w + ' px wide), so the video will look soft.';
+    if(f && f < 30) return 'This camera records only ' + f + ' frames a second, so slow motion will look jerky.';
+    return '';
+  }
+  async function capBoost(){      // ask for the best the camera can do: 1080p, 60 frames a second (it keeps what it cannot)
+    var t = capTrack(); if(!t || !t.applyConstraints) return;
+    try{ await t.applyConstraints({ width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } }); }catch(e){}
+  }
+  function capPrefsLoad(){
+    var p = {}; try{ p = JSON.parse(localStorage.getItem(CAP_PREFS_KEY) || '{}') || {}; }catch(e){}
+    if([6, 8, 10, 12, 15].indexOf(Number(p.len)) >= 0) capEl('capLen').value = String(p.len);
+    if(p.mode === 'motion' || p.mode === 'button') capEl('capMode').value = p.mode;
+    if(['low', 'mid', 'high'].indexOf(p.sens) >= 0) capEl('capSens').value = p.sens;
+    var lap = ''; try{ lap = localStorage.getItem(CAP_LAPTOP_KEY) || ''; }catch(e){}
+    capEl('capLaptop').value = lap;
+  }
+  function capPrefsSave(){ try{ localStorage.setItem(CAP_PREFS_KEY, JSON.stringify({ len: capEl('capLen').value, mode: capEl('capMode').value, sens: capEl('capSens').value })); }catch(e){} }
+  // "192.168.1.20:47777/send/abc123" (with or without http://) -> "http://192.168.1.20:47777/send/abc123", or '' when it is not a laptop address
+  function capLaptopBase(){
+    var v = String(capEl('capLaptop').value || '').trim();
+    if(!v) return '';
+    if(!/^https?:\/\//i.test(v)) v = 'http://' + v;
+    v = v.replace(/\/+$/, '').replace(/\/(photos|upload|hello)$/i, '');
+    return /^http:\/\/[^\/\s]+\/send\/[A-Za-z0-9]+$/.test(v) ? v : '';
+  }
+  function capRefresh(){
+    capEl('capInfo').textContent = capInfo();
+    var warn = capWarning(), w = capEl('capWarn'); w.textContent = warn; w.hidden = !warn;
+    capEl('capSensRow').hidden = capEl('capMode').value !== 'motion';
+    capEl('capLaptopRow').hidden = !ANDROID_LOCAL;
+    var go = capEl('capGo'), motion = capEl('capMode').value === 'motion';
+    go.classList.toggle('armed', cap.state === 'armed');
+    go.disabled = cap.state === 'recording' || cap.state === 'counting' || cap.state === 'sending';
+    go.textContent = cap.state === 'armed' ? 'Waiting for the arm to move… (tap to cancel)' : cap.state === 'recording' ? 'Recording…' : cap.state === 'counting' ? 'Get ready…'
+      : cap.state === 'sending' ? 'Sending…' : cap.state === 'failed' ? 'Send again' : motion ? 'Arm: record when the arm moves' : 'Record (3, 2, 1)';
+  }
+  function capBig(text, rec){ var b = capEl('capBig'); b.hidden = !text; b.textContent = text || ''; b.classList.toggle('rec', !!rec); }
+  async function openCap(){
+    if(!capAvailable()) return;
+    if(state === 'capturing'){ showToast('Finish the session first.', 3000); return; }
+    if(!streamActive){ var ok = await initCamera(cameraSelect.value || null); if(!ok) return; }
+    capVideo.srcObject = currentStream || video.srcObject;
+    try{ await capVideo.play(); }catch(e){}
+    await capBoost();
+    capPrefsLoad(); cap.state = 'idle'; cap.last = null; capSet(''); capBig('');
+    capOverlay.hidden = false; capRefresh();
+    setTimeout(capRefresh, 800);          // the camera reports its real size a moment after it starts
+  }
+  function capDisarm(){
+    if(cap.motion){ window.removeEventListener('devicemotion', cap.motion); cap.motion = null; }
+    clearTimeout(cap.sensor); cap.sensor = null;
+    if(cap.state === 'armed') cap.state = 'idle';
+  }
+  function closeCap(){
+    if(cap.state === 'recording'){ try{ cap.rec.onstop = null; cap.rec.stop(); }catch(e){} clearTimeout(cap.timer); clearInterval(cap.tick); }
+    capDisarm(); cap.state = 'idle'; capBig(''); capOverlay.hidden = true; capVideo.srcObject = null;
+  }
+  function capMime(){
+    // mp4 first: an iPhone can play it even if the clip is shared without editing
+    var c = ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+    for(var i = 0; i < c.length; i++){ try{ if(window.MediaRecorder && MediaRecorder.isTypeSupported(c[i])) return c[i]; }catch(e){} }
+    return '';
+  }
+  function capStamp(){ var d = new Date(), p = function(n){ return String(n).padStart(2, '0'); }; return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()); }
+  function capRecord(){
+    if(cap.state === 'recording') return;
+    var stream = currentStream || video.srcObject, vt = stream && stream.getVideoTracks ? stream.getVideoTracks() : [];
+    if(!vt.length){ cap.state = 'idle'; capSet('The camera has no picture yet.'); capRefresh(); return; }
+    var len = Number(capEl('capLen').value) || 8, mime = capMime(), opts = { videoBitsPerSecond: 8000000 };
+    if(mime) opts.mimeType = mime;
+    var rec;
+    try{ rec = new MediaRecorder(new MediaStream(vt), opts); }
+    catch(e){ cap.state = 'idle'; capSet('This device cannot record video here.'); capRefresh(); return; }
+    cap.chunks = []; cap.rec = rec; cap.state = 'recording';
+    rec.ondataavailable = function(e){ if(e.data && e.data.size) cap.chunks.push(e.data); };
+    rec.onstop = function(){ clearInterval(cap.tick); capBig(''); capFinish(rec.mimeType || mime || 'video/webm'); };
+    rec.start(500);
+    var left = len; capBig('REC ' + left, true); capSet('Recording…'); capRefresh();
+    cap.tick = setInterval(function(){ left--; if(left >= 0) capBig('REC ' + left, true); }, 1000);
+    cap.timer = setTimeout(function(){ try{ rec.stop(); }catch(e){} }, len * 1000);
+  }
+  async function capCountdown(){
+    cap.state = 'counting'; capRefresh(); capSet('');
+    for(var n = 3; n >= 1; n--){ if(cap.state !== 'counting') return; capBig(String(n)); await new Promise(function(r){ setTimeout(r, 1000); }); }
+    if(cap.state !== 'counting') return;
+    capBig(''); capRecord();
+  }
+  function capArm(){
+    cap.state = 'armed'; capRefresh(); capSet('Start the arm. Recording begins as soon as this device moves.');
+    var th = { low: 45, mid: 22, high: 11 }[capEl('capSens').value] || 22, base = null, baseSum = 0, baseN = 0, hits = 0, seen = false;
+    cap.motion = function(e){
+      var rr = e.rotationRate || {}, a = e.accelerationIncludingGravity || {}, sq = function(v){ return (Number(v) || 0) * (Number(v) || 0); };
+      // A computer without a motion sensor still fires one empty event: that is not a sensor.
+      if(rr.alpha == null && rr.beta == null && rr.gamma == null && a.x == null && a.y == null && a.z == null) return;
+      seen = true;
+      var rot = Math.sqrt(sq(rr.alpha) + sq(rr.beta) + sq(rr.gamma));          // degrees a second
+      var acc = Math.sqrt(sq(a.x) + sq(a.y) + sq(a.z));
+      if(base === null){ baseSum += acc; if(++baseN >= 3) base = baseSum / baseN; return; }   // the first readings are the device at rest
+      var move = Math.max(rot, Math.abs(acc - base) * 6);
+      hits = move > th ? hits + 1 : Math.max(0, hits - 1);
+      if(hits >= 3){ capDisarm(); capRecord(); }
+    };
+    window.addEventListener('devicemotion', cap.motion);
+    cap.sensor = setTimeout(function(){
+      if(!seen){ capDisarm(); capSet('This device has no motion sensor. Start with the button instead.'); capRefresh(); }
+    }, 2500);
+  }
+  function capGoClick(){
+    if(cap.state === 'armed'){ capDisarm(); capSet(''); capRefresh(); return; }
+    if(cap.state === 'failed' && cap.last){ capDeliver(cap.last.blob, cap.last.name); return; }
+    if(cap.state !== 'idle' && cap.state !== 'failed') return;
+    capPrefsSave(); cap.state = 'idle';
+    if(capEl('capMode').value === 'motion') capArm(); else capCountdown();
+  }
+  function capFinish(mime){
+    var blob = new Blob(cap.chunks, { type: String(mime).split(';')[0] }), ext = /mp4/.test(mime) ? 'mp4' : 'webm';
+    cap.chunks = [];
+    if(!blob.size){ cap.state = 'failed'; capSet('Nothing was recorded. Try again.'); cap.last = null; capRefresh(); return; }
+    cap.last = { blob: blob, name: '360_' + capStamp() + '.' + ext };
+    capDeliver(cap.last.blob, cap.last.name);
+  }
+  async function capDeliver(blob, name){
+    cap.state = 'sending'; capSet('Sending the video… (' + Math.round(blob.size / 104857.6) / 10 + ' MB)'); capRefresh();
+    var done = function(t){ cap.state = 'idle'; cap.last = null; capSet('✓ ' + t); capRefresh(); };
+    try{
+      if(DESKTOP){
+        if(!spinInfo || !spinInfo.previewBase) spinInfo = await window.pb4u.spinInfo();
+        var r = await fetch(spinInfo.previewBase + '/upload?name=' + encodeURIComponent(name), { method: 'POST', headers: { 'content-type': 'text/plain' }, body: blob });
+        if(!r.ok) throw new Error('error ' + r.status);
+        try{ spinPoll(); }catch(e){}
+        return done('Saved in the 360 inbox on this laptop. It appears on the 360 desk.');
+      }
+      var base = capLaptopBase(), lastErr = null;
+      if(base){
+        try{
+          var r2 = await fetch(base + '/upload?name=' + encodeURIComponent(name), { method: 'POST', headers: { 'content-type': 'text/plain' }, body: blob });
+          if(!r2.ok) throw new Error('error ' + r2.status);
+          return done('Sent to the laptop. It appears on its 360 desk.');
+        }catch(e){ lastErr = e; }
+      }
+      // No laptop paired, or it could not be reached: keep the clip on this tablet so it is not lost.
+      var res = await uploadToDrive(blob, filePrefix() + nextSessionNumber() + '_360' + deviceTag() + '.' + (/\.mp4$/.test(name) ? 'mp4' : 'webm'), { folderKey: rawFolderKey(), subfolder: driveSubfolder() });
+      done((lastErr ? 'The laptop could not be reached (' + (lastErr.message || lastErr) + '). ' : '') + 'Saved on this tablet in the event folder (' + (res.fileId || 'ok') + '). Type the laptop’s address above to send clips there to be edited.');
+    }catch(e){
+      cap.state = 'failed'; capSet('Could not send the video (' + ((e && e.message) || e) + '). Your recording is kept: tap Send again.'); capRefresh();
+    }
+  }
+  async function capTestLaptop(){
+    var base = capLaptopBase(), m = capEl('capLaptopMsg');
+    if(!base){ m.textContent = 'Type the address shown on the laptop’s 360 desk.'; return; }
+    m.textContent = 'Checking…';
+    try{
+      var r = await fetch(base + '/hello'), j = await r.json();
+      if(!j || !j.ok) throw new Error('not the booth laptop');
+      try{ localStorage.setItem(CAP_LAPTOP_KEY, capEl('capLaptop').value.trim()); }catch(e){}
+      m.textContent = '✓ Connected to the laptop.';
+    }catch(e){ m.textContent = 'Could not reach it. Same Wi-Fi? Address typed right?'; }
+  }
+  async function capFlip(){
+    var opts = Array.from(cameraSelect.options).filter(function(o){ return o.value && o.value !== USB_CAM_ID; });
+    if(opts.length < 2){ showToast('This device has only one camera.', 2500); return; }
+    var i = opts.findIndex(function(o){ return o.value === cameraSelect.value; });
+    cameraSelect.value = opts[(i + 1) % opts.length].value;
+    var before = currentStream;
+    cameraSelect.dispatchEvent(new Event('change'));
+    for(var n = 0; n < 30 && (currentStream === before || !video.videoWidth); n++) await wait(100);
+    capVideo.srcObject = currentStream || video.srcObject;
+    try{ await capVideo.play(); }catch(e){}
+    await capBoost(); capRefresh(); setTimeout(capRefresh, 800);
+  }
+  capEl('capFab').addEventListener('click', openCap);
+  capEl('capClose').addEventListener('click', closeCap);
+  capEl('capGo').addEventListener('click', capGoClick);
+  capEl('capFlip').addEventListener('click', capFlip);
+  capEl('capTest').addEventListener('click', capTestLaptop);
+  ['capLen', 'capMode', 'capSens'].forEach(function(id){ capEl(id).addEventListener('change', function(){ capPrefsSave(); capRefresh(); }); });
+  window.addEventListener('pb-extras-change', function(){ try{ refreshDeskBtn(); }catch(e){} });
+  // Edit (and, if asked, share) a new clip by itself, so the QR is ready when the guest comes over.
+  async function spinAuto(it){
+    await spinEdit(it);
+    if(spinLook.autoShare && it.status === 'edited'){
+      await spinDoShare(it);
+      if(it.url){ if(!spinOverlay.hidden) spinOpenItem(it); else showToast('A 360 video is ready: open the 360 desk for its QR code.', 7000); }
+    }
+  }
+  document.getElementById('spinLinkCopy').addEventListener('click', function(){
+    var t = (spinInfo && spinInfo.sendUrl) || ''; if(!t) return;
+    try{ if(window.pb4u && window.pb4u.copy){ window.pb4u.copy(t.replace(/^https?:\/\//, '')); showToast('Address copied.', 2000); return; } }catch(e){}
+  });
+  // The laptop checks its 360 inbox from the start, so a clip a tablet sends is listed (and edited, if asked) with the desk closed.
+  if(spinDesktop() && extraOn('spin360')) setTimeout(function(){ try{ spinSetupInfo(); }catch(e){} }, 2500);
 
   // ---- editing one clip ----
   async function spinEdit(it){
@@ -12535,7 +13487,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       }
       var j = await window.pb4u.spinProcess({
         name: it.name, label: spinPresetLabel(), overlay: ov,
-        options: { speed: spinLook.speed, smooth: spinLook.smooth, orientation: spinLook.orient, quality: spinLook.quality, audio: spinLook.audio,
+        options: { speed: spinLook.speed, rates: spinLook.rates, reverse: spinLook.reverse, smooth: spinLook.smooth, orientation: spinLook.orient, quality: spinLook.quality, audio: spinLook.audio,
                    volume: spinLook.volume / 100, trimStart: it.trimA || 0, trimEnd: it.trimB || null }
       });
       if(!j || j.error) throw new Error((j && j.error) || 'Could not start the editing');
@@ -12649,11 +13601,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // the look controls
   document.getElementById('spinPreset').addEventListener('change', function(){
     var pr = SPIN_PRESETS[this.value];
-    if(pr){ spinLook.preset = this.value; spinLook.speed = pr.speed; spinLook.smooth = pr.smooth; spinLook.audio = pr.audio; spinLook.overlay = pr.overlay; spinLookToUI(); spinLookFromUI(true); }
+    if(pr){ spinLook.preset = this.value; spinLook.speed = pr.speed; spinLook.rates = (pr.rates || []).slice(); spinLook.reverse = !!pr.reverse; spinLook.smooth = pr.smooth; spinLook.audio = pr.audio; spinLook.overlay = pr.overlay; spinLookToUI(); spinLookFromUI(true); }
     else { spinLook.preset = 'custom'; spinLookFromUI(true); }
   });
-  ['spinSpeed', 'spinSmooth', 'spinOrient', 'spinQual', 'spinOverlayOn', 'spinAudio', 'spinVol', 'spinAuto'].forEach(function(id){
-    document.getElementById(id).addEventListener('change', function(){ spinLookFromUI(id === 'spinAuto' || id === 'spinVol' || id === 'spinOrient' || id === 'spinQual' ? true : false); });
+  ['spinSpeed', 'spinSmooth', 'spinOrient', 'spinQual', 'spinOverlayOn', 'spinAudio', 'spinVol', 'spinAuto', 'spinAutoShare'].forEach(function(id){
+    document.getElementById(id).addEventListener('change', function(){ spinLookFromUI(id === 'spinAuto' || id === 'spinAutoShare' || id === 'spinVol' || id === 'spinOrient' || id === 'spinQual' ? true : false); });
   });
   document.getElementById('spinMusicBtn').addEventListener('click', async function(){
     try{ var r = await window.pb4u.spinMusic(false); if(r){ spinEnv.music = r.music; document.getElementById('spinMusicName').textContent = r.music || 'no music chosen'; } }catch(e){}
@@ -14443,13 +15395,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       guestPick: guestPickOn, guestLayouts: guestLayoutSet.slice(),
       timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
       reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake,
-      outputMode: outputMode, gifSpeed: gifSpeed, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack,
+      outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack,
       backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
       frameColorChoice: frameColorChoice, photoPlacement: photoPlacement, cropFocus: cropFocus,
       label: labelInput.value, font: currentFont, dateFont: currentDateFont, dateOn: dateOn, date: dateInput.value,
       textColor: textColor, titleSize: titleSizeMultiplier, titleBg: titleBgEnabled, titleBgColor: titleBgColor,
       outline: useOutline, outlineColor: outlineColor, shadow: useShadow,
-      filter: filterKey, softSkin: softSkin, dateStamp: dateStamp,
+      filter: guestLookBase !== null ? guestLookBase : filterKey, softSkin: softSkin, dateStamp: dateStamp,
+      guestLooks: guestLooksOn, guestLookSet: guestLookSet.slice(),
       welcomeOn: welcomeOn,
       welcomeMsg: welcomeMsg,
       welcomeBtnOn: welcomeBtnOn,
@@ -14540,6 +15493,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(typeof s.allowRetake === 'boolean'){ allowRetake = s.allowRetake; try{ refreshRetakeUI(); }catch(e){} }
       if(s.outputMode === 'flipbook'){ outputMode = extraOn('flipbook') ? 'flipbook' : 'photo'; }
       else if(s.outputMode === 'gif' || s.outputMode === 'both' || s.outputMode === 'photo'){ outputMode = isGifAllowed() ? s.outputMode : 'photo'; }
+      if(s.gifLayout === 'solo' || s.gifLayout === 'follow' || s.gifLayout === 'raw'){ gifLayoutMode = s.gifLayout; refreshGifLayoutUI(); }
       if([4, 5, 6, 7].indexOf(Number(s.flipSec)) >= 0){ flipSec = Number(s.flipSec); var fsEl = document.getElementById('flipSecSelect'); if(fsEl) fsEl.value = String(flipSec); }
       if([16, 24, 30, 40].indexOf(Number(s.flipFrames)) >= 0){ flipFrames = Number(s.flipFrames); var ffEl = document.getElementById('flipFramesSelect'); if(ffEl) ffEl.value = String(flipFrames); }
       if(typeof s.flipCover === 'boolean'){ flipCover = s.flipCover; var fcEl = document.getElementById('flipCoverToggle'); if(fcEl) fcEl.checked = flipCover; }
@@ -14547,6 +15501,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       refreshOutputModeUI();
       // gifSpeed is always auto (0); any previously saved manual value is ignored.
       filterKey = Object.prototype.hasOwnProperty.call(FILTERS, s.filter) ? s.filter : 'none';
+      guestLookBase = null;
+      if(typeof s.guestLooks === 'boolean') guestLooksOn = s.guestLooks;
+      if(Array.isArray(s.guestLookSet)) guestLookSet = s.guestLookSet.filter(function(k){ return typeof k === 'string'; }).slice(0, GUEST_LOOK_MAX);
+      try{ refreshGuestLooksUI(); }catch(e){}
       markFilterChips();
       softSkin = !!s.softSkin; softSkinToggle.checked = softSkin;
       dateStamp = !!s.dateStamp && extraOn('vintage'); dateStampToggle.checked = dateStamp;
@@ -17760,6 +18718,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     document.getElementById('ppGuestBtn').checked = printPrefs.guestBtn;
     document.getElementById('ppAuto').checked = autoPrint;
     document.getElementById('ppGuestCopies').checked = printPrefs.guestCopies;
+    document.getElementById('ppGuestReq').checked = !!printPrefs.guestReq;
+    document.getElementById('ppGuestReqRow').style.display = reqAvailable() ? '' : 'none'; document.getElementById('ppGuestReqHint').style.display = reqAvailable() ? '' : 'none';
     document.getElementById('ppCopiesVal').textContent = String(printPrefs.copies);
     document.getElementById('ppCopiesMinus').disabled = printPrefs.copies <= 1;
     document.getElementById('ppCopiesPlus').disabled = printPrefs.copies >= (lim.se ? Math.min(MAX_COPIES, lim.se) : MAX_COPIES);
@@ -17777,6 +18737,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     autoPrint = printPrefs.auto;
     opCopies = printPrefs.copies;
     try{ refreshPrintSummary(); refreshPrintUI(); }catch(e){}
+    try{ reqApply(); }catch(e){}
   }
   function printPrefsChanged(){
     try{ refreshPrintSummary(); refreshPrintUI(); }catch(e){}
@@ -17785,6 +18746,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   document.getElementById('ppGuestBtn').addEventListener('change', function(){ printPrefs.guestBtn = this.checked; printPrefsChanged(); });
   document.getElementById('ppAuto').addEventListener('change', function(){ setAutoPrint(this.checked, true); printPrefsChanged(); });
   document.getElementById('ppGuestCopies').addEventListener('change', function(){ printPrefs.guestCopies = this.checked; printPrefsChanged(); });
+  document.getElementById('ppGuestReq').addEventListener('change', function(){ printPrefs.guestReq = this.checked; printPrefsChanged(); reqApply(true); });
   document.getElementById('ppCopiesMinus').addEventListener('click', function(){ printPrefs.copies = Math.max(1, printPrefs.copies - 1); opCopies = printPrefs.copies; printPrefsChanged(); });
   document.getElementById('ppCopiesPlus').addEventListener('click', function(){ printPrefs.copies = Math.min(MAX_COPIES, printPrefs.copies + 1); opCopies = printPrefs.copies; printPrefsChanged(); });
   ['txtPrint', 'txtPrinting', 'txtCopies', 'txtLimit'].forEach(function(k){

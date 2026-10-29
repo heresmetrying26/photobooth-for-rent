@@ -169,6 +169,7 @@
       <button class="v-nav v-next" id="vNext" type="button" aria-label="Next">›</button>
     </div>
     <div class="v-bottom">
+      <button class="btn hidden" id="vReq" type="button">Ask for a print at the booth</button>
       <button class="btn" id="vPrint" type="button">Print photo</button>
       <a class="btn primary" id="vDownload" href="#" rel="noopener noreferrer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>Download</a>
@@ -191,7 +192,7 @@
   var m = /^\/g\/([A-Za-z0-9_-]{10,80})\/?$/.exec(location.pathname) || /[?&]f=([A-Za-z0-9_-]{10,80})/.exec(location.search);
   var FOLDER = m ? m[1] : null;
   var DRIVE = FOLDER ? 'https://drive.google.com/drive/folders/' + FOLDER : null;
-  var files = [], view = [], cur = -1, tiles = {}, firstLoad = true, timer = null, activeCategory = 'photos';
+  var files = [], view = [], cur = -1, tiles = {}, firstLoad = true, timer = null, activeCategory = 'photos', PRINT_REQ = false;
   // A guest's own QR opens straight to their saved photo: /g/<folder>#<file id>.
   var hm = /^#([A-Za-z0-9_-]{10,80})$/.exec(location.hash || '');
   var WANT = hm ? { id: hm[1] } : null, wantTries = 0;
@@ -256,6 +257,7 @@
     $('state').classList.add('hidden');
     DRIVE = j.folderUrl || DRIVE;
     setupQr(j.qr !== false);
+    PRINT_REQ = !!j.printReq;      // the booth lets guests ask for a print from here
     document.title = j.name + ' | photobooth4u';
     $('title').textContent = j.name;
     if(navigator.share) $('shareBtn').classList.remove('hidden');
@@ -338,7 +340,7 @@
     var img = $('vImg');
     if(isVideo(f)){
       // Videos play in Drive's own player (it streams and skips properly on every phone); Download gets the file.
-      img.classList.add('hidden'); img.removeAttribute('src'); $('vSpin').classList.add('hidden'); $('vPrint').classList.add('hidden');
+      img.classList.add('hidden'); img.removeAttribute('src'); $('vSpin').classList.add('hidden'); $('vPrint').classList.add('hidden'); $('vReq').classList.add('hidden');
       $('vFrame').classList.remove('hidden'); $('vFrame').src = 'https://drive.google.com/file/d/' + encodeURIComponent(f.id) + '/preview';
       $('vCount').textContent = viewerLabel ? viewerLabel + ' \u00b7 ' + (cur + 1) + ' of ' + view.length : (cur + 1) + ' of ' + view.length;
       $('vDownload').href = downloadUrl(f);
@@ -346,7 +348,7 @@
       $('vNext').style.visibility = cur < view.length - 1 ? '' : 'hidden';
       return;
     }
-    img.classList.remove('hidden'); $('vFrame').classList.add('hidden'); $('vFrame').removeAttribute('src'); $('vPrint').classList.remove('hidden');
+    img.classList.remove('hidden'); $('vFrame').classList.add('hidden'); $('vFrame').removeAttribute('src'); $('vPrint').classList.remove('hidden'); reqButton(f);
     $('vSpin').classList.remove('hidden'); img.style.opacity = '0';
     img.onload = function(){ $('vSpin').classList.add('hidden'); img.style.opacity = '1'; };
     var tries = [thumbUrl(f, 2000), 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(f.id) + '=w2000', f.src], k = 0;
@@ -360,6 +362,29 @@
     // Warm up the next one.
     var nx = view[cur + 1]; if(nx){ var pre = new Image(); pre.referrerPolicy = 'no-referrer'; pre.src = thumbUrl(nx, 2000); }
   }
+  // "Ask for a print at the booth": the booth's attendant sees the request and prints it. Only when the booth switched it on.
+  var asked = {};
+  try{ asked = JSON.parse(sessionStorage.getItem('pb_asked_' + FOLDER) || '{}') || {}; }catch(e){}
+  function reqButton(f){
+    var b = $('vReq'), show = PRINT_REQ && !isGif(f) && !isVideo(f);
+    b.classList.toggle('hidden', !show);
+    if(!show) return;
+    b.disabled = !!asked[f.id]; b.textContent = asked[f.id] ? 'Requested ✓' : 'Ask for a print at the booth';
+  }
+  $('vReq').addEventListener('click', async function(){
+    var f = view[cur]; if(!f || asked[f.id]) return;
+    var b = this; b.disabled = true; b.textContent = 'Sending…';
+    try{
+      var r = await fetch('/api/printreq', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'request', folder: FOLDER, file: f.id }) });
+      var j = await r.json().catch(function(){ return {}; });
+      if(r.ok && j.ok){
+        asked[f.id] = 1; try{ sessionStorage.setItem('pb_asked_' + FOLDER, JSON.stringify(asked)); }catch(e){}
+        toast(j.done ? 'That photo was already printed.' : 'Sent. The attendant will print it.'); reqButton(f); return;
+      }
+      toast(j.error === 'rate' ? 'You have asked for a few prints already. Please wait a little.' : j.error === 'off' ? 'Print requests are not on for this booth.' : j.error === 'busy' ? 'The booth is busy. Please ask the attendant.' : 'Could not send. Try again.');
+    }catch(e){ toast('Could not send. Check your internet.'); }
+    reqButton(f);
+  });
   function step(d){ var n = cur + d; if(n >= 0 && n < view.length){ cur = n; viewerLabel = ''; show(); } }
   $('vClose').addEventListener('click', closeViewer);
   $('vPrev').addEventListener('click', function(){ step(-1); });

@@ -377,7 +377,9 @@ class MainActivity : AppCompatActivity() {
         s.displayZoomControls = false
         s.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            s.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            // The 360 capture screen sends its clip to the booth laptop over the booth Wi-Fi (plain http://<laptop>:47777),
+            // which a page loaded over https could not do in the stricter mode. The app only ever loads the booth's own pages.
+            s.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

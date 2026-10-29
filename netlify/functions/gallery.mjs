@@ -1,4 +1,4 @@
-import { safe, json, hmac, DRIVE_SCRIPT_URL, getSettings } from '../lib/core.mjs';
+import { safe, json, hmac, DRIVE_SCRIPT_URL, getSettings, printReqOn } from '../lib/core.mjs';
 
 // Backs the online gallery (/g/<Drive folder id>).
 //   GET /api/gallery?f=<folder id>        -> the folder's photos (via the Apps Script relay)
@@ -52,8 +52,12 @@ export default safe(async (req) => {
   if (!data || !data.ok || !Array.isArray(data.files)) {
     return json({ ok: false, error: data && data.ok ? 'not-ready' : 'not-found' }, data && data.ok ? 503 : 404);
   }
+  // Photos a roving photographer's phone sent (named rove_…) are the booth's raw material, not the guests' pictures:
+  // the booth asks for just those with &rove=1, and the guests' gallery never lists them.
+  const wantRove = u.searchParams.get('rove') === '1';
+  const isRove = (n) => /^rove_/i.test(String(n || ''));
   // Videos are listed too, but never relayed here (too big): the page plays them with Drive's own player.
-  const files = data.files.filter((x) => x && ID_RE.test(x.id) && /^(image\/(png|jpeg|webp|gif)|video\/(mp4|quicktime|webm|x-m4v))$/.test(x.mime || '')).slice(0, 2000).map((x) => ({
+  const files = data.files.filter((x) => x && ID_RE.test(x.id) && /^(image\/(png|jpeg|webp|gif)|video\/(mp4|quicktime|webm|x-m4v))$/.test(x.mime || '') && (wantRove ? isRove(x.name) && /^image\//.test(x.mime) : !isRove(x.name))).slice(0, 2000).map((x) => ({
     id: x.id,
     name: String(x.name || '').slice(0, 120),
     mime: x.mime,
@@ -66,6 +70,7 @@ export default safe(async (req) => {
     folderUrl: /^https:\/\/drive\.google\.com\//.test(data.folderUrl || '') ? data.folderUrl : 'https://drive.google.com/drive/folders/' + f,
     until: Number(data.until) || null,
     qr: (await getSettings().catch(() => ({}))).galleryQr !== false,   // Admin → Guest QR codes
+    printReq: await printReqOn(f),                                      // the booth lets guests ask for a print
     files
   }), {
     status: 200,
@@ -73,7 +78,7 @@ export default safe(async (req) => {
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-store',
       'netlify-cdn-cache-control': 'public, max-age=15, stale-while-revalidate=45',
-      'netlify-vary': 'query=f|v'
+      'netlify-vary': 'query=f|v|rove'
     }
   });
 });

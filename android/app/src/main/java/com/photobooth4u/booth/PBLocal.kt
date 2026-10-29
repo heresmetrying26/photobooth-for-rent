@@ -8,8 +8,10 @@ import android.provider.MediaStore
 import android.util.Base64
 import android.util.Log
 import android.webkit.JavascriptInterface
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.InputStream
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.security.SecureRandom
@@ -42,6 +44,10 @@ class PBLocal(private val ctx: Context) {
         private val SPACES = Regex("\\s+")
         private val EXT_RE = Regex("(\\.[a-z0-9]+)$", RegexOption.IGNORE_CASE)
         private val PRIVATE_172 = Regex("^172\\.(1[6-9]|2\\d|3[01])\\.")
+        private val ROVE_RE = Regex("\\.(jpe?g|png|webp)$", RegexOption.IGNORE_CASE)
+        private const val ROVE_MAX_REQUESTS = 200
+        private const val ROVE_RATE_N = 8
+        private const val ROVE_RATE_MS = 600000L
 
         /**
          * Picks the address guests' phones can reach out of (interface name, IPv4) pairs: a private address
@@ -114,6 +120,185 @@ class PBLocal(private val ctx: Context) {
         val ip = lanAddress()
         val port = sharePort
         return if (ip != null && port > 0) "http://$ip:$port" else ""
+    }
+
+    // ---------- phone photos and guests' print requests (mirror desktop/lib/photos.mjs) ----------
+
+    class PrintReq(val id: String, val slug: String, val file: String, val event: String, val t: Long)
+
+    /** Set from the booth's Print settings: may guests ask for a print from their photo page? */
+    @Volatile
+    var guestPrintOn: Boolean = false
+
+    private val printReqs = ArrayList<PrintReq>()
+    private val askedBefore = HashSet<String>()
+    private val reqHits = HashMap<String, MutableList<Long>>()
+    private var sendToken: String? = null
+
+    /** The random part of the phone upload address (kept between runs, so a printed QR keeps working). */
+    fun roveToken(): String = synchronized(lock) {
+        val cached = sendToken
+        if (cached != null) return@synchronized cached
+        val f = File(ctx.filesDir, "rove-token.txt")
+        var t = try { if (f.exists()) f.readText().trim() else "" } catch (e: Exception) { "" }
+        if (t.length < 8) {
+            val chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+            val sb = StringBuilder()
+            for (i in 0 until 12) sb.append(chars[random.nextInt(chars.length)])
+            t = sb.toString()
+            try { f.writeText(t) } catch (e: Exception) { Log.w(TAG, "Could not keep the phone upload token", e) }
+        }
+        sendToken = t
+        t
+    }
+
+    fun roveDir(): File {
+        val d = File(root, "Roving inbox")
+        d.mkdirs()
+        return d
+    }
+
+    /** Saves a photo a phone sent (exactly [length] bytes from [input]); returns its file name, or null. */
+    fun saveRovePhoto(rawName: String, input: InputStream, length: Long): String? {
+        return try {
+            var name = File(safeName(rawName).ifEmpty { "photo.jpg" }).name
+            if (!ROVE_RE.containsMatchIn(name)) name = name.replace(Regex("\\.[A-Za-z0-9]{1,5}$"), "") + ".jpg"
+            name = java.lang.Long.toString(System.currentTimeMillis(), 36) + "_" + name
+            val dir = roveDir()
+            var out = name
+            var i = 2
+            while (File(dir, out).exists()) {
+                out = name.replace(EXT_RE, " ($i)$1")
+                i++
+            }
+            val part = File(dir, ".$out.part")
+            var ok = true
+            part.outputStream().use { os ->
+                val buf = ByteArray(65536)
+                var left = length
+                while (left > 0) {
+                    val n = input.read(buf, 0, minOf(buf.size.toLong(), left).toInt())
+                    if (n < 0) { ok = false; break }
+                    os.write(buf, 0, n)
+                    left -= n.toLong()
+                }
+            }
+            if (!ok || !part.renameTo(File(dir, out))) {
+                part.delete()
+                null
+            } else out
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not save a phone photo", e)
+            null
+        }
+    }
+
+    /** A guest asked for a print: the HTTP status and JSON reply (same answers as the laptop app). */
+    fun addPrintRequest(slug: String, file: String, ip: String): Pair<Int, String> = synchronized(lock) {
+        if (!guestPrintOn) return@synchronized Pair(403, "{\"ok\":false,\"error\":\"off\"}")
+        val f = folders[slug] ?: return@synchronized Pair(404, "{\"ok\":false,\"error\":\"event\"}")
+        val dir = dirOf(f)
+        if (file.isEmpty() || file != File(file).name || file.startsWith(".") || !ROVE_RE.containsMatchIn(file) || !File(dir, file).isFile) {
+            return@synchronized Pair(404, "{\"ok\":false,\"error\":\"photo\"}")
+        }
+        val key = "$slug/$file"
+        if (printReqs.any { it.slug == slug && it.file == file }) return@synchronized Pair(200, "{\"ok\":true,\"waiting\":true}")
+        if (askedBefore.contains(key)) return@synchronized Pair(200, "{\"ok\":true,\"done\":true}")
+        if (printReqs.size >= ROVE_MAX_REQUESTS) return@synchronized Pair(429, "{\"ok\":false,\"error\":\"busy\"}")
+        val now = System.currentTimeMillis()
+        val recent = (reqHits[ip] ?: ArrayList<Long>()).filter { now - it < ROVE_RATE_MS }.toMutableList()
+        if (recent.size >= ROVE_RATE_N) return@synchronized Pair(429, "{\"ok\":false,\"error\":\"rate\"}")
+        recent.add(now)
+        reqHits[ip] = recent
+        val bytes = ByteArray(6)
+        random.nextBytes(bytes)
+        val id = bytes.joinToString("") { String.format(Locale.US, "%02x", it) }
+        printReqs.add(PrintReq(id, slug, file, galleryTitle(f), now))
+        askedBefore.add(key)
+        Pair(200, "{\"ok\":true,\"waiting\":true}")
+    }
+
+    /** The address a phone opens to send photos here ("" when the tablet is not on a Wi-Fi network). */
+    @JavascriptInterface
+    fun roveInfo(): String {
+        val ip = lanAddress() ?: return ""
+        val port = sharePort
+        return if (port > 0) "http://$ip:$port/send/${roveToken()}/photos" else ""
+    }
+
+    /** The photos phones sent that the booth has not taken yet, as JSON: [{name, size, mtime}]. */
+    @JavascriptInterface
+    fun roveScan(): String {
+        val arr = JSONArray()
+        try {
+            val list = roveDir().listFiles() ?: return "[]"
+            val sorted = list
+                .filter { it.isFile && !it.name.startsWith(".") && ROVE_RE.containsMatchIn(it.name) }
+                .sortedBy { it.lastModified() }
+            for (f in sorted.take(200)) {
+                arr.put(JSONObject().put("name", f.name).put("size", f.length()).put("mtime", f.lastModified()))
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not list the phone photos", e)
+        }
+        return arr.toString()
+    }
+
+    /** One phone photo as base64 (and it moves to done/ so it is never taken twice); "" when it is not there. */
+    @JavascriptInterface
+    fun roveTake(name: String?): String {
+        return try {
+            val n = File(name ?: "").name
+            if (n.isEmpty() || n.startsWith(".") || !ROVE_RE.containsMatchIn(n)) return ""
+            val src = File(roveDir(), n)
+            if (!src.isFile) return ""
+            val b64 = Base64.encodeToString(src.readBytes(), Base64.NO_WRAP)
+            val done = File(roveDir(), "done")
+            done.mkdirs()
+            var out = n
+            var i = 2
+            while (File(done, out).exists()) {
+                out = n.replace(EXT_RE, " ($i)$1")
+                i++
+            }
+            if (!src.renameTo(File(done, out))) src.delete()
+            b64
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not read a phone photo", e)
+            ""
+        }
+    }
+
+    @JavascriptInterface
+    fun guestPrintSet(on: Boolean) {
+        guestPrintOn = on
+    }
+
+    /** The guests' print requests that wait for the attendant, as JSON: [{id, slug, file, event, t}]. */
+    @JavascriptInterface
+    fun printReqList(): String {
+        val arr = JSONArray()
+        synchronized(lock) {
+            for (r in printReqs) {
+                arr.put(JSONObject().put("id", r.id).put("slug", r.slug).put("file", r.file).put("event", r.event).put("t", r.t))
+            }
+        }
+        return arr.toString()
+    }
+
+    @JavascriptInterface
+    fun printReqDone(id: String?): Boolean = synchronized(lock) { printReqs.removeAll { it.id == id } }
+
+    /** The photo of a print request as base64 ("" when it is gone). */
+    @JavascriptInterface
+    fun printReqRead(id: String?): String {
+        val r = synchronized(lock) { printReqs.firstOrNull { it.id == id } } ?: return ""
+        val f = folderBySlug(r.slug) ?: return ""
+        return try {
+            Base64.encodeToString(File(dirOf(f), r.file).readBytes(), Base64.NO_WRAP)
+        } catch (e: Exception) {
+            ""
+        }
     }
 
     /** Where the photos are kept, for the Setup screen. */

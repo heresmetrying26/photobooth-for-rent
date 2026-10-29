@@ -72,10 +72,8 @@ jobs:
           fi
           aliases=$(grep -E ', PrivateKeyEntry' "$RUNNER_TEMP/ks.txt" | cut -d, -f1 | tr -s '[:space:]' ' ')
           echo "$aliases" | grep -qw -- "$KS_ALIAS" || { echo "::error::ANDROID_KEY_ALIAS does not match. The keystore has: $aliases"; exit 1; }
-          cp "$f" "$RUNNER_TEMP/kp.keystore"
-          if ! keytool -keypasswd -keystore "$RUNNER_TEMP/kp.keystore" -storepass "$KS_PW" -alias "$KS_ALIAS" -keypass "$KEY_PW" -new "$KEY_PW" > "$RUNNER_TEMP/kp.txt" 2>&1; then
-            echo "::error::ANDROID_KEY_PASSWORD is wrong ($(head -c 120 "$RUNNER_TEMP/kp.txt" | tr -s '[:space:]' ' '))"; exit 1
-          fi
+          # A PKCS12 keystore uses one password for the store and the key.
+          [ "$KEY_PW" = "$KS_PW" ] || { echo "::error::ANDROID_KEY_PASSWORD must be the same value as ANDROID_KEYSTORE_PASSWORD"; exit 1; }
           echo "::notice::Signing key OK (alias $KS_ALIAS)"
       - name: Build Debug APK
         env:

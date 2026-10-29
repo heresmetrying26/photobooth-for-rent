@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -105,8 +107,10 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // 8. Venue kiosk: boot the bundled booth. Live web is opt-in (long-press).
-        if (useLiveUrl()) {
+        // 8. Venue kiosk: boot the bundled booth. Live web is opt-in (long-press), and only
+        // attempted when the tablet actually has a network right now — otherwise there's no
+        // point waiting on a request that can only fail, so go straight to the offline booth.
+        if (useLiveUrl() && isNetworkAvailable()) {
             webView.loadUrl(getSavedUrl())
         } else {
             loadOfflineBooth()
@@ -208,19 +212,19 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // If the live web page fails (offline, DNS error, timeout), fall back to the
-            // bundled booth.html so the kiosk keeps working at the venue without internet.
+            // If the live web page fails for ANY reason (offline, DNS error, timeout,
+            // a generic error code), fall back to the bundled booth.html so the kiosk
+            // keeps working at the venue without internet. There's no legitimate reason
+            // for the main frame to fail here other than "can't reach the live site", and
+            // Android's own ERR_INTERNET_DISCONNECTED often comes back as a generic/unknown
+            // error code rather than one of the specific ones, so this no longer filters by code.
             override fun onReceivedError(
                 view: WebView?,
                 request: WebResourceRequest?,
                 error: WebResourceError?
             ) {
                 if (request?.isForMainFrame == true && !offlineLoaded) {
-                    val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) error?.errorCode else -2
-                    val networkErrors = setOf(-2, -6, -7, -8, -12, -14, -15) // ERR_FAILED, HOST_LOOKUP, CONNECT, TIMEOUT, etc.
-                    if (code == null || networkErrors.contains(code)) {
-                        loadOfflineBooth()
-                    }
+                    loadOfflineBooth()
                 }
             }
 
@@ -263,7 +267,7 @@ class MainActivity : AppCompatActivity() {
                     append("<script>")
                     // window.__PB lets the booth enable GIF, retake, lock, pay, printing features
                     append("window.__PB=window.__PB||{};")
-                    append("window.__PB.desktop={v:'1.0.5',os:'android'};")
+                    append("window.__PB.desktop={v:'1.0.6',os:'android'};")
                     // Tells the booth that photos are saved by this app and shared over the booth Wi-Fi
                     append("window.__PB.android=true;")
                     // Mark it as a rental-style session so all features are visible
@@ -363,6 +367,16 @@ class MainActivity : AppCompatActivity() {
         if (needed.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, needed.toTypedArray(), REQ_CAMERA_PERMISSION)
         }
+    }
+
+    // A real connectivity check, not just a saved preference — the operator may have set
+    // a live URL while testing and then taken the tablet to a venue with no Wi-Fi.
+    private fun isNetworkAvailable(): Boolean {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
     private fun getSavedUrl(): String {

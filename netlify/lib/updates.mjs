@@ -68,6 +68,13 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-10-29', title: 'Fix: the Android tablet sometimes tried to load the live website and failed', for: ['website'],
+    items: [
+      'A tablet that had ever been pointed at the live website (via the hidden Booth Configuration screen) kept trying that on every launch, even at a venue with no Wi-Fi \u2014 showing Android\u2019s own \u201ccould not be loaded, internet disconnected\u201d page instead of the booth.',
+      'The app now checks for a real internet connection before it ever tries the live site, and falls back to the bundled offline booth on any load failure, not just specific error types.',
+    ]
+  },
+  {
     date: '2026-10-28', title: 'Android tablet app \u2014 photos, GIFs and QR codes now work fully offline', for: ['website'],
     items: [
       'The Android tablet app (v1.0.5) now saves every photo and GIF on the tablet, so a photo QR works at a venue with no internet at all.',

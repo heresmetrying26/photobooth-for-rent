@@ -144,20 +144,18 @@ export function getPlanDeliverables(planKey, code) {
   if (isOnline) {
     files.push({
       id: 'setup-guide',
-      name: 'Setup Guide (PDF)',
+      name: 'Laptop Setup Guide (PDF)',
       url: '/lifetime/photobooth4u-setup-guide.pdf',
       badge: 'PDF Guide',
-      desc: 'Step-by-step camera, lighting, gallery, printing & sharing setup'
+      desc: 'Laptop booth: camera, lighting, gallery, printing & sharing setup'
     });
-    if (p.id === 'laptop') {
-      files.push({
-        id: 'tablet-guide',
-        name: 'Tablet Guide (PDF)',
-        url: '/lifetime/photobooth4u-tablet-guide.pdf',
-        badge: 'PDF Guide',
-        desc: 'Quick iPad and Android tablet setup instructions'
-      });
-    }
+    files.push({
+      id: 'tablet-guide',
+      name: 'Tablet Guide (PDF)',
+      url: '/lifetime/photobooth4u-tablet-guide.pdf',
+      badge: 'PDF Guide',
+      desc: 'Quick iPad and Android tablet setup instructions'
+    });
     links.push({
       id: 'launch-booth',
       name: 'Launch Online Booth',
@@ -178,14 +176,7 @@ export function getPlanDeliverables(planKey, code) {
       name: 'Offline App Guide (PDF)',
       url: '/lifetime/photobooth4u-offline-app-guide.pdf',
       badge: 'PDF Guide',
-      desc: 'App installation, code activation, DSLR over USB & offline Wi-Fi guest sharing'
-    });
-    files.push({
-      id: 'hiti-guide',
-      name: 'Hiti / Photo Printer Guide (PDF)',
-      url: '/lifetime/photobooth4u-hiti-printing-guide.pdf',
-      badge: 'PDF Guide',
-      desc: 'Fast auto-printing setup for Hiti, DNP, Canon Selphy & thermal printers'
+      desc: 'Windows / Mac / Android app: install, activation, DSLR over USB & offline Wi-Fi guest sharing'
     });
     links.push({
       id: 'app-downloads',
@@ -194,12 +185,33 @@ export function getPlanDeliverables(planKey, code) {
       desc: 'Download desktop app for Windows 10/11 (.exe), Mac Apple Silicon (.dmg) or Mac Intel (.dmg)'
     });
     links.push({
-      id: 'dnp-guide',
-      name: 'DNP Photo Printer Guide',
-      url: '/how-to-print-dnp/',
-      desc: 'Step-by-step setup for DNP RX1HS, DS620, DS40 with 2×6 strip auto-cut'
+      id: 'android-app',
+      name: 'Android Tablet App',
+      url: '/downloads/',
+      desc: 'Download the Android APK, then enter your access code on the tablet'
     });
   }
+
+  // Printing guides are for every plan: online plans print through the Print Helper or AirPrint.
+  files.push({
+    id: 'hiti-guide',
+    name: 'Hiti / Photo Printer Guide (PDF)',
+    url: '/lifetime/photobooth4u-hiti-printing-guide.pdf',
+    badge: 'PDF Guide',
+    desc: 'Fast auto-printing setup for Hiti, DNP and Canon Selphy photo printers'
+  });
+  links.push({
+    id: 'dnp-guide',
+    name: 'DNP Photo Printer Guide',
+    url: '/how-to-print-dnp/',
+    desc: 'Step-by-step setup for DNP RX1HS, DS620, DS40 with 2×6 strip auto-cut'
+  });
+  links.push({
+    id: 'thermal-guide',
+    name: 'Thermal Printer Guide',
+    url: '/how-to-print-thermal/',
+    desc: '80 / 58 mm receipt printers: Bluetooth on Android, USB on Windows and Mac'
+  });
 
   return { files, links };
 }
@@ -245,7 +257,7 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
       }
       // Always ensure the booth feature switches are on after any renewal/upgrade
       existing.retakeOpt = true;
-      existing.payOpt = !existing.offlineOnly;   // guest payments need the internet: not on laptop-app-only codes
+      existing.payOpt = true;
       existing.lockOpt = true;
       existing.gifOpt = true;
       try {
@@ -284,7 +296,7 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
       offlineOnly: !!planCfg.offlineOnly,
       // Automatically enable all booth feature switches for every paid plan:
       retakeOpt: true,   // Give retake switch
-      payOpt: !planCfg.offlineOnly,   // Guest payment (vouchers / PayMongo): online only, the offline app has none
+      payOpt: true,      // Guest payment (vouchers; the GCash / Maya QR part needs the internet)
       lockOpt: true,     // Lock booth with PIN
       status: 'unused',
       createdAt: now,

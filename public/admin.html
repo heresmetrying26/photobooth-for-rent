@@ -166,7 +166,7 @@
             <button type="button" class="small" data-pkg="android">Android app only (offline)</button>
           </div>
         </div>
-        <div class="meta" style="margin:8px 0 0;">Fills in every setting below for that package; you can still change any of them. Every package starts with retakes, lock booth, GIF and all paper sizes on. Guest payments are on for online codes only (the offline and Android apps have none).</div>
+        <div class="meta" style="margin:8px 0 0;">Fills in every setting below for that package; you can still change any of them. Every package starts with retakes, lock booth, GIF and all paper sizes on. Guest payments are on too (the offline and Android apps get vouchers; the GCash / Maya QR needs the website).</div>
       </div>
       <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newLifetime"> Lifetime (never expires)</label>
@@ -197,8 +197,8 @@
       <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newRetake" checked> Give retake</label>
         <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newLock" checked> Give lock booth (guest-only screen with a PIN)</label>
-        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newPay" checked> Guest payments (vouchers / PayMongo, online only)</label>
-        <div class="meta" style="margin:6px 0 0;" id="newPayHint">Guest payments need the internet, so they are switched off and locked for laptop-app-only and Android-app-only codes.</div>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newPay" checked> Guest payments (vouchers; GCash / Maya QR when online)</label>
+        <div class="meta" style="margin:6px 0 0;" id="newPayHint">Vouchers work offline too. The GCash / Maya QR part only works on the website booth, so laptop-app-only and Android-app-only codes get vouchers only.</div>
       </div>
       <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newOffline"> Offline app (Windows / Mac laptop app)</label>
@@ -1162,7 +1162,7 @@
     try{
       var np = readPrint($('newPrint'));
       var startsAt = readStartInputs($('newStartDate'), $('newStartTime'));
-      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, lockOpt: $('newLock').checked, payOpt: $('newPay').checked && !$('newOfflineOnly').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null };
+      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, lockOpt: $('newLock').checked, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null };
       var j;
       try{ j = await api(createBody); }
       catch(e1){
@@ -1372,16 +1372,11 @@
     $('newDays').value = p.days; $('newDevices').value = p.devices;
     $('newLifetime').checked = p.lifetime; $('newDays').disabled = p.lifetime;
     $('newTraditional').checked = p.traditional; $('newGif').checked = p.gif; $('newOffline').checked = p.offline; $('newOfflineOnly').checked = p.only;
-    $('newRetake').checked = true; $('newLock').checked = true; syncPay();
+    $('newRetake').checked = true; $('newLock').checked = true; $('newPay').checked = true;
     [].forEach.call(this.querySelectorAll('[data-pkg]'), function(x){ x.classList.toggle('primary', x === b); });
   });
-  // Guest payments are online only: on by default for online codes, off and locked when the code is laptop / Android app only.
-  function syncPay(){
-    var only = $('newOfflineOnly').checked;
-    $('newPay').disabled = only; $('newPay').checked = !only;
-  }
-  $('newOfflineOnly').addEventListener('change', function(){ if(this.checked) $('newOffline').checked = true; syncPay(); });
-  $('newOffline').addEventListener('change', function(){ if(!this.checked) $('newOfflineOnly').checked = false; syncPay(); });
+  $('newOfflineOnly').addEventListener('change', function(){ if(this.checked) $('newOffline').checked = true; });
+  $('newOffline').addEventListener('change', function(){ if(!this.checked) $('newOfflineOnly').checked = false; });
   $('newLifetime').addEventListener('change', function(){
     $('newDays').disabled = this.checked;
     if(this.checked){ $('newTraditional').checked = true; $('newGif').checked = true; $('newOffline').checked = true; }   // Lifetime includes the offline app (untick for Lifetime Online)
@@ -1419,7 +1414,7 @@
     } else {
       f.lifetime = !!p.lifetime; f.days = p.days || 1; f.devices = p.devices || 1;
       f.offlineOpt = !!p.offlineOpt; f.offlineOnly = !!p.offlineOnly; f.traditional = p.traditional !== false;
-      f.gif = true; f.retake = true; f.lock = true; f.pay = !f.offlineOnly; f.print = true; f.sizes = 15; f.opens = 0;
+      f.gif = true; f.retake = true; f.lock = true; f.pay = true; f.print = true; f.sizes = 15; f.opens = 0;
       f.title = p.title || 'Photobooth Package';
     }
     f.online = !f.offlineOnly;
@@ -1437,7 +1432,7 @@
     if (f.retake) a.push('Retake');
     if (f.lock) a.push('Lock booth');
     if (f.gif) a.push('GIF mode');
-    if (f.pay && f.online) a.push('Guest payments');
+    if (f.pay) a.push(f.online ? 'Guest payments' : 'Guest vouchers');
     if (f.print) a.push('Printing' + (f.sizes > 1 ? ' (' + f.sizes + ' paper sizes' + (f.lifetime ? ' + your own' : '') + ')' : ''));
     return a;
   }
@@ -1478,10 +1473,14 @@
       links.push(['📱 Android App', origin + '/downloads/', 'Android tablet APK']);
     }
     var guides = [];
-    if (f.online) guides.push(f.traditional || f.offlineOpt ? ['setup-guide', 'Setup Guide PDF', 'Camera, lighting, gallery, printing'] : ['tablet-guide', 'Tablet Guide PDF', 'iPad &amp; Android tablet setup']);
-    if (f.offlineOpt) guides.push(['offline-app-guide', 'Offline App Guide PDF', 'App install, activation &amp; Wi-Fi sharing']);
-    if (f.offlineOpt || f.print) guides.push(['hiti-printing-guide', 'Printer Guide PDF', 'Hiti, DNP, Canon Selphy &amp; thermal']);
+    if (f.online) {
+      guides.push(['setup-guide', 'Laptop Setup Guide PDF', 'Camera, lighting, gallery, printing']);
+      guides.push(['tablet-guide', 'Tablet Guide PDF', 'iPad &amp; Android tablet setup']);
+    }
+    if (f.offlineOpt) guides.push(['offline-app-guide', 'Offline App Guide PDF', 'Windows, Mac &amp; Android app: install, activation, Wi-Fi sharing']);
+    if (f.print) guides.push(['hiti-printing-guide', 'Photo Printer Guide PDF', 'Hiti, DNP &amp; Canon Selphy']);
     guides.forEach(function (g) { links.push(['📖 ' + g[1], origin + '/lifetime/photobooth4u-' + g[0] + '.pdf', g[2]]); });
+    if (f.print) links.push(['🧾 Thermal Printer Guide', origin + '/how-to-print-thermal/', '80 / 58 mm receipt printers']);
     var linksHtml = links.map(function (l) { return '<div class="link-card"><div class="lname">' + l[0] + '</div><div class="lurl">' + l[1] + '</div><div class="ldesc">' + l[2] + '</div></div>'; }).join('');
     var featHtml = handoutFeatures(f).map(function (x) { return '<span class="feat">' + esc(x) + '</span>'; }).join('');
 
@@ -1581,9 +1580,11 @@
       f.offlineOpt ? '💻 *App Downloads (Win/Mac):* ' + origin + '/app/#' + code : '',
       f.offlineOpt ? '📱 *Android App:* ' + origin + '/downloads/' : '',
       '',
-      f.online ? '📖 *Setup Guide PDF:* ' + origin + '/lifetime/photobooth4u-' + (f.traditional || f.offlineOpt ? 'setup' : 'tablet') + '-guide.pdf' : '',
+      f.online ? '📖 *Laptop Setup Guide PDF:* ' + origin + '/lifetime/photobooth4u-setup-guide.pdf' : '',
+      f.online ? '📖 *Tablet Guide PDF:* ' + origin + '/lifetime/photobooth4u-tablet-guide.pdf' : '',
       f.offlineOpt ? '📖 *Offline App Guide PDF:* ' + origin + '/lifetime/photobooth4u-offline-app-guide.pdf' : '',
-      (f.offlineOpt || f.print) ? '🖨️ *Printer Guide PDF:* ' + origin + '/lifetime/photobooth4u-hiti-printing-guide.pdf' : '',
+      f.print ? '🖨️ *Photo Printer Guide PDF:* ' + origin + '/lifetime/photobooth4u-hiti-printing-guide.pdf' : '',
+      f.print ? '🧾 *Thermal Printer Guide:* ' + origin + '/how-to-print-thermal/' : '',
       '',
       'Message us anytime if you need help. Enjoy your event! 🎉'
     ].filter(function(l, i, a){ return l !== '' || (i > 0 && a[i - 1] !== ''); }).join('\n');

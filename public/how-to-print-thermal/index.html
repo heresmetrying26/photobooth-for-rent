@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>How to print on a thermal receipt printer · photobooth4u</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500..700;1,500..700&family=Manrope:wght@400..800&display=swap">
+<style>
+  :root{ --bg:#f6f1ea; --card:#fffdf9; --ink:#1f1a1d; --dim:#5d555b; --line:#e4ddd3; --red:#c8402a; --red-soft:#fbeee9; --dark:#1f1a1d; }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;}
+  a{color:var(--red);}
+  .wrap{max-width:860px; margin:0 auto; padding:0 16px;}
+  header.hero{background:var(--dark); color:#f6f1ea; padding:44px 0 40px;}
+  .brand{display:flex; align-items:center; gap:10px; font:600 22px 'Fraunces',Georgia,serif; color:#f6f1ea; text-decoration:none;}
+  .brand .mark{display:grid; grid-template-columns:repeat(2,9px); gap:3px;}
+  .brand .mark i{width:9px; height:9px; border-radius:2px; background:#f6f1ea;} .brand .mark i:nth-child(2){background:var(--red);}
+  .brand .badge{background:var(--red); color:#fff; font:800 12px 'Manrope',sans-serif; padding:2px 6px; border-radius:6px; transform:translateY(-6px);}
+  .eyebrow{font-size:13px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:#e8715a; margin:28px 0 8px;}
+  h1{font:600 clamp(36px,7vw,60px)/1.05 'Fraunces',Georgia,serif; margin:0 0 14px;}
+  h1 em{color:#e8715a;}
+  .lead{color:#d9cfc6; font-size:18px; max-width:620px; margin:0 0 22px;}
+  .hero-btns{display:flex; flex-wrap:wrap; gap:10px;}
+  .btn{display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:10px 18px; border-radius:999px; font-weight:800; font-size:15px; text-decoration:none;}
+  .btn.primary{background:var(--red); color:#fff;} .btn.ghost{border:1.5px solid #5a5056; color:#f6f1ea;}
+  nav.toc{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:-22px 0 8px; position:relative;}
+  nav.toc a{display:block; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; text-decoration:none; color:var(--ink); box-shadow:0 8px 20px rgba(70,45,25,.08);}
+  nav.toc b{display:block; color:var(--red); font-size:12px; letter-spacing:.14em; text-transform:uppercase;} nav.toc span{font-weight:700; font-size:15px;}
+  section.part{padding:34px 0 6px; scroll-margin-top:12px;}
+  section.part h2{font:600 clamp(26px,4.5vw,34px)/1.15 'Fraunces',Georgia,serif; margin:0 0 6px;}
+  .part .kicker{font-size:12px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:var(--red); margin:0 0 4px;}
+  .part .why{color:var(--dim); margin:0 0 14px;}
+  ol.steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
+  ol.steps li{display:grid; grid-template-columns:40px 1fr; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  ol.steps .n{width:40px; height:40px; border-radius:50%; background:var(--red); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center;}
+  ol.steps h3{margin:6px 0 2px; font-size:17px;}
+  ol.steps p{margin:0; color:var(--dim);}
+  code, .kbd{font:600 14px ui-monospace,'SF Mono',Menlo,Consolas,monospace; background:#efe7dd; border-radius:6px; padding:1px 6px; color:var(--ink); white-space:nowrap;}
+  .codeblock{display:flex; align-items:center; gap:10px; background:var(--dark); color:#f6f1ea; border-radius:12px; padding:12px 14px; margin:8px 0 0; font:600 14px ui-monospace,Menlo,Consolas,monospace; overflow-x:auto;}
+  .codeblock span{flex:1; white-space:nowrap;}
+  .copy{flex:none; border:1px solid #5a5056; background:transparent; color:#f6f1ea; border-radius:999px; padding:4px 12px; font:700 12px 'Manrope',sans-serif; cursor:pointer;}
+  .term{background:var(--dark); color:#d9cfc6; border-radius:14px; padding:16px 18px; font:14px/1.7 ui-monospace,Menlo,Consolas,monospace; margin-top:12px;}
+  .term .hl{color:#e8715a;} .term .w{color:#f6f1ea;}
+  .sheet{display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-top:12px;}
+  .sheet .paper{display:flex; gap:6px; width:150px; height:100px; flex:none;}
+  .sheet .paper i{flex:1; background:#e9ded3; border-radius:6px;}
+  .sheet .paper b{width:3px; background:repeating-linear-gradient(180deg,var(--red) 0 7px,transparent 7px 12px);}
+  .sheet p{margin:0; color:var(--dim);}
+  table{width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; font-size:15px;}
+  th, td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); background:#f3ece3;}
+  tr:last-child td{border-bottom:0;}
+  td:first-child{font-weight:700; width:38%;}
+  .win{background:#eef3fb; border:1px solid #cfdcf2; border-radius:16px; padding:14px 18px; margin-top:12px;}
+  .win h3{margin:0 0 4px; font-size:16px;} .win ol{margin:4px 0 0; padding-left:20px; color:var(--dim);} .win li{margin:3px 0;}
+  .callout{background:var(--red-soft); border:1px solid #f1cfc5; border-radius:16px; padding:16px 18px; margin-top:14px;}
+  .callout h3{margin:0 0 4px; font-size:17px;} .callout p{margin:0; color:var(--dim);}
+  .check{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px;}
+  .check div{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  .check b{display:block; font:600 30px 'Fraunces',Georgia,serif; color:var(--red); line-height:1;}
+  .check h3{margin:8px 0 2px; font-size:17px;} .check p{margin:0; color:var(--dim);}
+  footer{margin:40px 0 0; padding:26px 0 40px; border-top:1px solid var(--line); color:var(--dim); font-size:14px;}
+  footer .help{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; background:var(--dark); color:#f6f1ea; border-radius:16px; padding:18px 20px; margin-bottom:16px;}
+  footer .help h3{margin:0; font:600 20px 'Fraunces',Georgia,serif;} footer .help p{margin:2px 0 0; color:#d9cfc6;}
+  td code{white-space:normal; word-break:break-all;}
+  @media (max-width:760px){ nav.toc{grid-template-columns:1fr 1fr;} }
+  @media (max-width:560px){ ol.steps li{grid-template-columns:32px 1fr; padding:14px;} ol.steps .n{width:32px; height:32px; font-size:14px;} td:first-child{width:auto;} }
+  @media print{ header.hero{background:none; color:var(--ink);} .lead{color:var(--dim);} .hero-btns, nav.toc, .copy{display:none;} section.part{break-inside:avoid;} }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <a class="brand" href="/"><span class="mark"><i></i><i></i><i></i><i></i></span>photobooth<span class="badge">4u</span></a>
+    <p class="eyebrow">Printing guide &middot; Android, Windows &amp; Mac</p>
+    <h1>How to print<br>on a <em>thermal</em> printer</h1>
+    <p class="lead">For 80 mm and 58 mm receipt printers (Epson TM-T20 / T82, Xprinter, Rongta, Munbyn&hellip;). They print the black &amp; white <b>Receipt</b> layout on a roll and cut it. Set up once, then test before the event.</p>
+    <div class="hero-btns">
+      <a class="btn ghost" href="/downloads/">Get the app or Print Helper</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="toc" aria-label="Parts">
+    <a href="#before"><b>Part 1</b><span>Before you start</span></a>
+    <a href="#android"><b>Part 2</b><span>Android tablet (Bluetooth)</span></a>
+    <a href="#computer"><b>Part 3</b><span>Windows &amp; Mac (USB)</span></a>
+    <a href="#booth"><b>Part 4</b><span>Booth settings</span></a>
+    <a href="#test"><b>Part 5</b><span>Test &amp; fixes</span></a>
+  </nav>
+
+  <section class="part" id="before">
+    <p class="kicker">Part 1 &middot; Check first</p>
+    <h2>Before you start</h2>
+    <div class="check">
+      <div><b>80 / 58</b><h3>Roll width</h3><p>Buy the paper to match the printer: 80 mm or 58 mm thermal paper. The booth makes the picture the full width of the roll.</p></div>
+      <div><b>B&amp;W</b><h3>Receipt layout</h3><p>Thermal paper prints black &amp; white only. Use the <b>Receipt</b> layout: its photos are dotted so they print sharp. Other layouts need a photo printer.</p></div>
+      <div><b>Plan</b><h3>Paper size allowed</h3><p><b>Receipt 80 mm</b> and <b>Receipt 58 mm</b> are included with your code. If you don't see them in Print settings, message us.</p></div>
+    </div>
+    <table style="margin-top:14px">
+      <tr><th>Your device</th><th>How it connects</th></tr>
+      <tr><td>Android tablet app</td><td>Bluetooth (printer paired with the tablet). Part 2.</td></tr>
+      <tr><td>Windows or Mac laptop</td><td>USB or network, with the printer's driver. Part 3.</td></tr>
+      <tr><td>iPad</td><td>Not supported over Bluetooth. Print from a laptop, or use a laptop as the print station.</td></tr>
+    </table>
+  </section>
+
+  <section class="part" id="android">
+    <p class="kicker">Part 2 &middot; Android tablet app</p>
+    <h2>Pair and connect over Bluetooth</h2>
+    <p class="why">The Android app talks to the printer directly, so no driver and no Wi-Fi are needed.</p>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Pair the printer</h3><p>Turn the printer on. On the tablet open <b>Settings &rarr; Connected devices &rarr; Bluetooth &rarr; Pair new device</b> and tap the printer (often named like <code>XP-80C</code>, <code>POS-80</code>, <code>TM-T82X</code> or <code>Printer001</code>). If it asks for a PIN use <code>0000</code> or <code>1234</code>.</p></div></li>
+      <li><span class="n">2</span><div><h3>Open photobooth4u</h3><p>In the app go to <b>Photo Session &rarr; Print settings</b>. Choose <b>Receipt 80 mm</b> (or <b>58 mm</b>).</p></div></li>
+      <li><span class="n">3</span><div><h3>Turn on the Bluetooth printer</h3><p>Enable <b>Bluetooth thermal receipt printer</b>, tap <b>Connect</b>, and allow the Bluetooth permission if Android asks. If you have more than one paired device, pick your printer from the list.</p></div></li>
+      <li><span class="n">4</span><div><h3>Test print</h3><p>Tap <b>Test print</b>: the printer should feed, print a test header and cut. Then every session prints straight to it.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="part" id="computer">
+    <p class="kicker">Part 3 &middot; Windows &amp; Mac</p>
+    <h2>Install the printer on the laptop</h2>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Install the driver</h3><p>Install the maker's driver for your model, plug in the printer and print a Windows / Mac test page.</p></div></li>
+      <li><span class="n">2</span><div><h3>Choose roll paper</h3><p><b>Windows:</b> Settings &rarr; Printers &amp; scanners &rarr; your printer &rarr; <b>Printing preferences</b>: paper <b>Roll Paper 80 &times; 297 mm</b> (or longer), and <b>cut at the end of the document</b>. <b>Mac:</b> add it in <b>Printers &amp; Scanners</b> and set the paper to the roll.</p></div></li>
+      <li><span class="n">3</span><div><h3>Use the laptop app or the Print Helper</h3><p>The laptop app prints straight to it. In Chrome, open the <b>Print Helper</b> (version <b>1.1.4 or newer</b> on Windows) so the receipt prints at the roll's full width without a pop-up.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="part" id="booth">
+    <p class="kicker">Part 4 &middot; In the booth</p>
+    <h2>Choose the Receipt layout</h2>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Pick the layout</h3><p>In <b>Setup &rarr; Layout</b> choose <b>Receipt</b> (black &amp; white). It looks like a shop receipt with your event name, 3 photos and a barcode.</p></div></li>
+      <li><span class="n">2</span><div><h3>Pick the paper and printer</h3><p>In <b>Print settings</b> tap <b>Receipt 80 mm</b> or <b>58 mm</b> and choose the printer for it. Receipt paper only prints the Receipt layouts.</p></div></li>
+      <li><span class="n">3</span><div><h3>Auto-print (optional)</h3><p>After one good test, tick <b>Auto-print every session</b> so each guest's receipt prints by itself.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="part" id="test">
+    <p class="kicker">Part 5 &middot; Before the event</p>
+    <h2>Test and fixes</h2>
+    <table>
+      <tr><th>Problem</th><th>Try this</th></tr>
+      <tr><td>Printer not in the Bluetooth list</td><td>Pair it in Android Settings first, switch the printer off and on, and keep it within 2 metres.</td></tr>
+      <tr><td>Prints very small or stretched</td><td>Set the printer to <b>roll paper</b> with no fixed page size. On Windows use Print Helper 1.1.4+.</td></tr>
+      <tr><td>Picture cut off at the edge</td><td>The paper width in the booth (80 / 58 mm) must match the roll in the printer.</td></tr>
+      <tr><td>Prints are pale</td><td>Thermal paper loaded the right way round? Use fresh paper and raise the printer's print density if it has the option.</td></tr>
+      <tr><td>Doesn't cut</td><td>Turn on <b>cut at end of document</b> in the printer's preferences.</td></tr>
+      <tr><td>Stops after a few receipts</td><td>Bluetooth printers sleep. Keep it charged or on its adapter, then tap <b>Connect</b> again.</td></tr>
+    </table>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="help"><div><h3>Still stuck?</h3><p>Message us with your printer model and what the booth says.</p></div><a class="btn primary" href="https://m.me/roktetnachi" target="_blank" rel="noopener">Message us</a></div>
+  photobooth4u &middot; <a href="/how-to-print-hiti/">HiTi guide</a> &middot; <a href="/how-to-print-dnp/">DNP guide</a>
+</footer>
+</body>
+</html>

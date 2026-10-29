@@ -457,6 +457,10 @@
       grid-column: span 3
     }
 
+    .plans .plan.event.solo {
+      grid-column: 2 / span 4
+    }
+
     .plan {
       display: flex;
       flex-direction: column;
@@ -1373,7 +1377,8 @@
         grid-column: auto
       }
 
-      .plans .plan.life {
+      .plans .plan.life,
+      .plans .plan.event.solo {
         grid-column: 1 / -1
       }
 
@@ -1689,7 +1694,7 @@
         <p>Pay once. Every event, never expires, up to 5 devices.</p>
       </div>
       <div class="plans">
-        <article class="plan wide">
+        <article class="plan">
           <span class="tag">Lifetime</span>
           <h3>Lifetime Online</h3>
           <p class="for">Tablet or laptop in the browser · every event · never expires</p>
@@ -1698,10 +1703,19 @@
             <button class="plan-cta" type="button" data-sub="lifeonline" data-price="2999" data-name="Lifetime Online">Pay with QR →</button>
           </div>
         </article>
-        <article class="plan wide life">
+        <article class="plan">
+          <span class="tag">Lifetime</span>
+          <h3>Lifetime Offline</h3>
+          <p class="for">The Windows / Mac / Android app, works with no internet · every event · never expires</p>
+          <div class="plan-footer">
+            <p class="price">₱3,499 <small>one-time</small></p>
+            <button class="plan-cta" type="button" data-sub="lifeoffline" data-price="3499" data-name="Lifetime Offline">Pay with QR →</button>
+          </div>
+        </article>
+        <article class="plan life">
           <span class="tag">Best value</span>
           <h3>Lifetime Online + Offline</h3>
-          <p class="for">The online booth plus the offline app (Windows, Mac &amp; Android tablet) that works with no internet</p>
+          <p class="for">Both: the online booth and the offline app that works with no internet</p>
           <div class="plan-footer">
             <p class="price">₱4,999 <small>one-time</small></p>
             <button class="plan-cta" type="button" data-sub="lifetime" data-price="4999" data-name="Lifetime Online + Offline">Pay with QR →</button>
@@ -1732,23 +1746,16 @@
         <p>Just one date? Book it for 24 hours.</p>
       </div>
       <div class="plans">
-        <article class="plan event">
+        <article class="plan pro event solo">
           <span class="tag">Per event</span>
-          <h3>Tablet Booth</h3>
-          <p class="for">iPad or Android tablet · online</p>
-          <div class="plan-footer">
-            <p class="price">₱499 <small>/ event</small></p>
-            <button class="plan-cta" type="button" data-sub="tablet" data-price="499" data-name="Tablet Booth">Pay with QR →</button>
-          </div>
-        </article>
-        <article class="plan pro event">
-          <span class="tag">Per event</span>
-          <h3>Laptop Booth</h3>
-          <p class="for">Laptop + guest screen, auto-print · online or offline app</p>
+          <h3>Event Pass</h3>
+          <p class="for">Use it on a tablet or a laptop · guest screen, auto-print · online or offline app</p>
           <div class="plan-footer">
             <p class="price">₱599 <small>/ event</small></p>
-            <button class="plan-cta" type="button" data-sub="laptop" data-price="599" data-name="Laptop Booth">Pay with QR →</button>
+            <button class="plan-cta" type="button" data-sub="laptop" data-price="599" data-name="Event Pass">Pay with QR →</button>
           </div>
+        </article>
+      </div>
         </article>
       </div>
       <ul class="chips" aria-label="Included with every package">

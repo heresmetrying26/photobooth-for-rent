@@ -66,11 +66,11 @@ export const ALL_PLANS = {
   },
   laptop: {
     id: 'laptop',
-    title: 'Laptop Booth (Per Event)',
+    title: 'Event Pass (Per Event)',
     category: 'event',
     price: 599,
     priceStr: '₱599 / event',
-    description: 'Laptop + guest screen, auto-print · online or offline app · includes 1-hr practice code',
+    description: 'One event, tablet or laptop · guest screen, auto-print · online or offline app · includes 1-hr practice code',
     days: 1,
     lifetime: false,
     devices: 1,

@@ -25,7 +25,7 @@ export const CHECK_DAYS = 75;          // a lifetime laptop checks in this often
 export const GRACE_DAYS = 30;          // …and keeps working this long past it without one
 const DAY = 86400000;
 export const MID_RE = /^[A-Za-z0-9-]{8,64}$/;
-export const APP_KINDS = { win: 'Windows app', mac: 'Mac app' };
+export const APP_KINDS = { win: 'Windows app', mac: 'Mac app', android: 'Android app' };
 
 function privateKey() {
   const s = process.env.PB_LICENSE_KEY;
@@ -96,7 +96,7 @@ export const appDevice = (rec, pred) => devicesOf(rec).find((d) => d.app && pred
 // Adds (or refreshes) this laptop's activation on the code. Returns
 // { dev } or { error, status }. The caller saves rec.
 export function activateOn(rec, { mid, name, os, ver }, now) {
-  const osKey = os === 'mac' ? 'mac' : 'win';
+  const osKey = os === 'mac' ? 'mac' : os === 'android' ? 'android' : 'win';
   const clean = (v, n) => String(v || '').replace(/[<>"\u0000-\u001f]/g, '').trim().slice(0, n);
   let dev = appDevice(rec, (a) => a.mid === mid);
   if (dev) {

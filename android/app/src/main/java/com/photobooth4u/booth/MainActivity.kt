@@ -6,11 +6,17 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.Typeface
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.text.InputType
+import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
@@ -21,9 +27,13 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
+import org.json.JSONObject
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -37,10 +47,34 @@ import java.io.ByteArrayInputStream
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+    private lateinit var root: FrameLayout
     private lateinit var btBridge: BTBridge
     private lateinit var pbLocal: PBLocal
+    private lateinit var licence: AppLicence
     private var shareServer: LocalShareServer? = null
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
+
+    // This tablet's rental-code entitlements, from the last time status() said ok —
+    // what the bundled booth is actually allowed to turn on, and when it stops.
+    private var activeFeat: JSONObject? = null
+    private var activeExp: Long? = null
+
+    // The native "enter your code" screen shown over the WebView until this tablet
+    // is activated (see AppLicence). Built once, then shown/hidden.
+    private var gateRoot: LinearLayout? = null
+    private var gateMessage: TextView? = null
+    private var gateCode: EditText? = null
+    private var gateButton: Button? = null
+    private var gateReason: String = ""
+    private val checkinHandler = Handler(Looper.getMainLooper())
+    private val checkinLoop = object : Runnable {
+        override fun run() {
+            if (::licence.isInitialized && isNetworkAvailable()) {
+                licence.checkin { /* applied silently; a lapsed licence gates at the next boot */ }
+            }
+            checkinHandler.postDelayed(this, 10 * 60_000L)
+        }
+    }
 
     private val PREFS_NAME = "photobooth_prefs"
     private val PREF_URL = "booth_url"
@@ -63,7 +97,7 @@ class MainActivity : AppCompatActivity() {
         hideSystemBars()
 
         // 3. Set up WebView container
-        val root = FrameLayout(this)
+        root = FrameLayout(this)
         root.setBackgroundColor(Color.parseColor("#F5F1EA"))
         setContentView(root)
 
@@ -93,6 +127,12 @@ class MainActivity : AppCompatActivity() {
             try { share.start() } catch (e: Exception) { /* guests just won't get a QR */ }
         }.start()
 
+        // 5c. This tablet's offline-app licence — the same signed-licence system the
+        // desktop app uses, tied to a rental code's "offline app" add-on. The booth stays
+        // behind the activation screen until a code unlocks it (needs Wi-Fi once); after
+        // that it keeps working offline until the code's next check-in is due.
+        licence = AppLicence(this)
+
         // 6. Request camera permissions if needed
         checkAndRequestPermissions()
 
@@ -107,13 +147,149 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // 8. Venue kiosk: boot the bundled booth. Live web is opt-in (long-press), and only
-        // attempted when the tablet actually has a network right now — otherwise there's no
-        // point waiting on a request that can only fail, so go straight to the offline booth.
+        // 8. Venue kiosk: boot the bundled booth once this tablet is activated (step 5c).
+        // Live web is opt-in (long-press), and only attempted when the tablet actually has
+        // a network right now — otherwise there's no point waiting on a request that can
+        // only fail, so go straight to the offline booth.
+        bootWithLicence()
+        checkinHandler.postDelayed(checkinLoop, 10 * 60_000L)
+    }
+
+    // Applies this tablet's current licence status: shows the activation screen when it
+    // isn't activated (or has lapsed), otherwise boots the booth with that code's actual
+    // entitlements. Called at launch, after a successful activation, and from the gate's
+    // retry buttons.
+    private fun bootWithLicence() {
+        val st = licence.status()
+        if (!st.ok) {
+            showActivationGate(st)
+            return
+        }
+        hideActivationGate()
+        activeFeat = st.payload?.optJSONObject("feat")
+        activeExp = if (st.payload != null && st.payload.has("exp") && !st.payload.isNull("exp")) st.payload.optLong("exp") else null
         if (useLiveUrl() && isNetworkAvailable()) {
             webView.loadUrl(getSavedUrl())
         } else {
             loadOfflineBooth()
+        }
+    }
+
+    private fun showActivationGate(st: AppLicence.LicStatus) {
+        offlineLoaded = false
+        gateReason = st.reason
+        var view = gateRoot
+        if (view == null) {
+            view = buildGateView()
+            gateRoot = view
+            root.addView(
+                view,
+                FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+            )
+        }
+        view.visibility = View.VISIBLE
+        gateMessage?.text = st.message.ifBlank { "Enter this tablet's rental code. It needs Wi-Fi once to activate, then keeps working offline." }
+        gateButton?.isEnabled = true
+        when (st.reason) {
+            "checkin" -> {
+                gateCode?.visibility = View.GONE
+                gateButton?.text = "Retry now"
+            }
+            "clock" -> {
+                gateCode?.visibility = View.GONE
+                gateButton?.text = "I fixed it — retry"
+            }
+            else -> {
+                gateCode?.visibility = View.VISIBLE
+                gateButton?.text = "Activate"
+            }
+        }
+    }
+
+    private fun hideActivationGate() {
+        gateRoot?.visibility = View.GONE
+    }
+
+    private fun buildGateView(): LinearLayout {
+        val dp = resources.displayMetrics.density
+        fun px(v: Int) = (v * dp).toInt()
+
+        val container = LinearLayout(this)
+        container.orientation = LinearLayout.VERTICAL
+        container.gravity = Gravity.CENTER
+        container.setBackgroundColor(Color.parseColor("#F5F1EA"))
+        container.setPadding(px(32), px(32), px(32), px(32))
+
+        val title = TextView(this)
+        title.text = "Activate this tablet"
+        title.textSize = 22f
+        title.setTypeface(title.typeface, Typeface.BOLD)
+        title.setTextColor(Color.parseColor("#1C1A1E"))
+        title.gravity = Gravity.CENTER
+        container.addView(title)
+
+        val msg = TextView(this)
+        msg.textSize = 15f
+        msg.setTextColor(Color.parseColor("#6B666C"))
+        msg.gravity = Gravity.CENTER
+        val mp = LinearLayout.LayoutParams(px(520), LinearLayout.LayoutParams.WRAP_CONTENT)
+        mp.topMargin = px(12)
+        msg.layoutParams = mp
+        container.addView(msg)
+        gateMessage = msg
+
+        val input = EditText(this)
+        input.hint = "Rental code"
+        input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+        val ip = LinearLayout.LayoutParams(px(320), LinearLayout.LayoutParams.WRAP_CONTENT)
+        ip.topMargin = px(20)
+        input.layoutParams = ip
+        container.addView(input)
+        gateCode = input
+
+        val btn = Button(this)
+        btn.text = "Activate"
+        val bp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        bp.topMargin = px(16)
+        btn.layoutParams = bp
+        btn.setOnClickListener { onGateButton() }
+        container.addView(btn)
+        gateButton = btn
+
+        val note = TextView(this)
+        note.text = "This tablet's ID: " + licence.machineId()
+        note.textSize = 11f
+        note.setTextColor(Color.parseColor("#9A958F"))
+        val np = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        np.topMargin = px(28)
+        note.layoutParams = np
+        container.addView(note)
+
+        return container
+    }
+
+    private fun onGateButton() {
+        val btn = gateButton ?: return
+        when (gateReason) {
+            "clock" -> bootWithLicence()
+            "checkin" -> {
+                btn.isEnabled = false; btn.text = "Checking…"
+                licence.checkin(force = true) { result ->
+                    if (result == "ok") { bootWithLicence(); return@checkin }
+                    btn.isEnabled = true; btn.text = "Retry now"
+                    gateMessage?.text = if (result == "revoked") licence.status().message
+                        else "Still can’t reach photobooth4u. Check the Wi-Fi and try again."
+                }
+            }
+            else -> {
+                val code = gateCode?.text?.toString() ?: ""
+                btn.isEnabled = false; btn.text = "Activating…"
+                licence.activate(code) { ok, error ->
+                    if (ok) { bootWithLicence(); return@activate }
+                    btn.isEnabled = true; btn.text = "Activate"
+                    gateMessage?.text = error ?: "Couldn’t activate. Try again."
+                }
+            }
         }
     }
 
@@ -133,6 +309,7 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         btBridge.disconnect()
         shareServer?.stop()
+        checkinHandler.removeCallbacksAndMessages(null)
     }
 
     private fun hideSystemBars() {
@@ -255,31 +432,52 @@ class MainActivity : AppCompatActivity() {
     // booth knows it is running in kiosk mode and can use BTBridge, then loads
     // it via loadDataWithBaseURL so localStorage / IndexedDB still work at the
     // photobooth4u.netlify.app origin (which is where the user would have unlocked).
+    // Escapes a string for a single-quoted JS literal inside the injected config below.
+    private fun jsStr(v: String): String = "'" + v.replace("\\", "\\\\").replace("'", "\\'") + "'"
+
     private fun loadOfflineBooth() {
         offlineLoaded = true
         runOnUiThread {
             try {
                 val raw = assets.open(ASSET_BOOTH).bufferedReader().use { it.readText() }
 
-                // Inject Android kiosk config so booth.html behaves like the
-                // desktop app (all features on, GIF mode, thermal printing, etc.)
+                // This tablet's real entitlements, from its activated rental code's "offline
+                // app" add-on (see AppLicence / bootWithLicence) — not hard-coded, so a code
+                // without GIF mode, retakes, vouchers, etc. doesn't get them here either, and
+                // the booth actually stops once the code's own exp date passes.
+                val feat = activeFeat
+                val print = feat?.optJSONObject("print")
+                val printEnabled = print?.optBoolean("enabled", true) ?: true
+                val printSizesArr = print?.optJSONArray("sizes")
+                val printSizesJs = if (printSizesArr != null) {
+                    (0 until printSizesArr.length()).joinToString(",") { jsStr(printSizesArr.optString(it)) }
+                } else "'receipt80','receipt58','4x6','2x6'"
+                val gifOpt = feat?.optBoolean("gifOpt", true) ?: true
+                val retakeOpt = feat?.optBoolean("retakeOpt", true) ?: true
+                val lockOpt = feat?.optBoolean("lockOpt", true) ?: true
+                val payOpt = feat?.optBoolean("vouchers", false) ?: false
+                val traditional = feat?.optBoolean("traditional", false) ?: false
+                // null means a lifetime code (desktop's own "never expires" sentinel, matching netlify/lib/core.mjs LIFETIME_EXP)
+                val expMs = activeExp ?: 253402300799000L
+
+                // Inject Android kiosk config so booth.html turns on exactly what this code pays for.
                 val pbConfig = buildString {
                     append("<script>")
                     // window.__PB lets the booth enable GIF, retake, lock, pay, printing features
                     append("window.__PB=window.__PB||{};")
-                    append("window.__PB.desktop={v:'1.0.6',os:'android'};")
+                    append("window.__PB.desktop={v:").append(jsStr(AppLicence.APP_VERSION)).append(",os:'android'};")
                     // Tells the booth that photos are saved by this app and shared over the booth Wi-Fi
                     append("window.__PB.android=true;")
                     // Mark it as a rental-style session so all features are visible
                     append("window.__PB.type='rental';")
-                    append("window.__PB.gifOpt=true;")
-                    append("window.__PB.retakeOpt=true;")
-                    append("window.__PB.lockOpt=true;")
-                    append("window.__PB.payOpt=false;")
-                    append("window.__PB.traditional=false;")
+                    append("window.__PB.gifOpt=").append(gifOpt).append(";")
+                    append("window.__PB.retakeOpt=").append(retakeOpt).append(";")
+                    append("window.__PB.lockOpt=").append(lockOpt).append(";")
+                    append("window.__PB.payOpt=").append(payOpt).append(";")
+                    append("window.__PB.traditional=").append(traditional).append(";")
                     append("window.__PB.watermark=false;")
-                    append("window.__PB.exp=").append(System.currentTimeMillis() + 365L * 24 * 3600 * 1000).append(";")  // 1-year local session
-                    append("window.__PB.print=window.__PB.print||{enabled:true,sizes:['receipt80','receipt58','4x6','2x6']};")
+                    append("window.__PB.exp=").append(expMs).append(";")   // this rental code's own expiry, not a fixed local grant
+                    append("window.__PB.print={enabled:").append(printEnabled).append(",sizes:[").append(printSizesJs).append("]};")
                     // Report offline so Drive / pay / vouchers skip at once instead of hanging on DNS.
                     // Photos don't need the internet: the app saves them (__PBLocal) and LocalShareServer shares them.
                     append("try{Object.defineProperty(Navigator.prototype,'onLine',{get:function(){return false;},configurable:true});}catch(e){}")
@@ -419,7 +617,7 @@ class MainActivity : AppCompatActivity() {
             .setNeutralButton("Bundled booth (offline)") { _, _ ->
                 setUseLiveUrl(false)
                 offlineLoaded = false
-                loadOfflineBooth()
+                bootWithLicence()
                 Toast.makeText(this, "Loaded offline booth from device", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Cancel", null)

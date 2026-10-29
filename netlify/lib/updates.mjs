@@ -68,6 +68,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-10-29', title: 'Android tablet app now needs a code, same as the laptop app', for: ['website'],
+    items: [
+      'The Android app (v1.0.7) is still free to install, but now stays on an \u201cActivate this tablet\u201d screen until it\u2019s unlocked with a rental code that has the offline app add-on \u2014 the same signed-licence system the Windows/Mac app already uses.',
+      'It needs Wi-Fi once to activate, then keeps working offline until the licence\u2019s own renewal is due, in the background, same as the laptop app.',
+      'One code\u2019s offline-app device slots are now shared between the desktop and Android apps.',
+    ]
+  },
+  {
     date: '2026-10-29', title: 'Fix: the Android tablet sometimes tried to load the live website and failed', for: ['website'],
     items: [
       'A tablet that had ever been pointed at the live website (via the hidden Booth Configuration screen) kept trying that on every launch, even at a venue with no Wi-Fi \u2014 showing Android\u2019s own \u201ccould not be loaded, internet disconnected\u201d page instead of the booth.',

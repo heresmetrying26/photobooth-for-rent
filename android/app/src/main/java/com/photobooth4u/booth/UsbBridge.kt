@@ -438,8 +438,14 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
 
     private fun reset(id: String): JSONObject {
         val c = conn(id)
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) throw UsbErr("NotSupportedError", "Resetting a USB device needs Android 10 or newer.")
-        val ok = c.resetDevice()
+        // UsbDeviceConnection.resetDevice() exists but is not public API, so call it by reflection; where the tablet
+        // blocks it, say "not supported" (the camera library carries on without a reset).
+        val ok = try {
+            UsbDeviceConnection::class.java.getMethod("resetDevice").invoke(c) as? Boolean ?: false
+        } catch (e: Exception) {
+            log("usb-reset-unavailable", "id" to id, "error" to (e.cause?.message ?: e.message ?: e.javaClass.name))
+            throw UsbErr("NotSupportedError", "Resetting a USB device is not available on this tablet")
+        }
         log("usb-reset", "id" to id, "ok" to ok)
         if (!ok) throw UsbErr("NetworkError", "resetDevice() returned false")
         return JSONObject()

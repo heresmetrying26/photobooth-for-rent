@@ -161,6 +161,14 @@ Chrome can't open the camera on Windows (Windows' own camera driver holds it), s
   worker's C# compiled as C# 5 (like Windows PowerShell's Add-Type) against simulated Nikon, Canon 60D-style and
   Canon R-style cameras (live view, RAW + JPEG, RAW only, focus failure, download in pieces, live view disabled).
   The WPD camera calls themselves still need a real Windows test with each brand (use /camera-test/windows/).
+- **Hangs and long events (Windows)**: a camera call that never answers can't be cancelled, so the helper restarts the camera part
+  after 10 s (frame) / 45 s (photo) and tells the booth. Since then: the restart waits 1.5 s for USB to settle; the next connect sends
+  `open recover`, which makes a Canon leave remote mode (0x9115 / 0x9114 = 0) before switching it on again; two hangs in a row say
+  "switch the camera off and on". The worker logs `Camera call 0x… has waited N s with no answer` (after 3 s) and `Slow camera call`
+  (over 1.5 s) so a hang shows which command it was stuck on. Canon: if the camera ends live view by itself (heat, its time limit) the
+  worker switches it back on once per frame request. Nikon: the event list is read every 3 s during live view. Every camera request
+  is released after use and memory is collected every 400 calls. Tested with a simulated R-series camera and a stub worker; **not on a
+  real R50**.
 
 ### iPad with a DSLR (laptop app, first version after 1.0.29)
 Safari and Chrome on iPad have no USB, so an iPad can't run the Nikon / Canon / Sony USB remote itself. Two ways (guide: `/how-to-ipad/`):

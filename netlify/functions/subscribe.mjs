@@ -6,6 +6,10 @@ import { ALL_PLANS, fulfillPlanPayment, getPlanDeliverables } from '../lib/plans
 
 const PLANS = ALL_PLANS;
 
+// Lifetime plans and Lifetime add-ons are sold under the Lifetime Access Agreement (/agreement/).
+const AGREEMENT_VERSION = '3.2';
+const needsAgreement = (plan) => plan.category === 'lifetime' || plan.category === 'addon';
+
 const memOrders = new Map();
 function getPayStore() {
   let real = null;
@@ -60,6 +64,20 @@ async function fulfillOrder(order, origin) {
   order.links = res.links;
   await getPayStore().setJSON('sub/' + order.id, order);
 
+  // Keep the buyer's acceptance on the code itself (non-fatal if it can't be saved).
+  if (order.agreement) {
+    try {
+      const key = normCode(res.code);
+      const rec = key ? await store.get(key, { type: 'json' }) : null;
+      if (rec) {
+        rec.agreement = { ...order.agreement, orderId: order.id };
+        await putLicense(store, key, rec);
+      }
+    } catch (e) {
+      console.warn('Could not save agreement acceptance on the code:', e.message);
+    }
+  }
+
   return res;
 }
 
@@ -92,6 +110,14 @@ export default safe(async (req, context) => {
     const email = String(b.email || '').trim().toLowerCase();
     if (!name) return json({ error: 'Please enter your name.' }, 400);
     if (!email || !EMAIL_RE.test(email)) return json({ error: 'Please enter a valid email address.' }, 400);
+
+    let agreement = null;
+    if (needsAgreement(plan)) {
+      if (String(b.agreementVersion || '') !== AGREEMENT_VERSION) {
+        return json({ error: 'Please accept the Lifetime Access Agreement to continue.' }, 400);
+      }
+      agreement = { version: AGREEMENT_VERSION, acceptedAt: Date.now() };
+    }
 
     const renewCode = b.renewCode ? normCode(b.renewCode) : null;
     if (renewCode) {
@@ -168,6 +194,7 @@ export default safe(async (req, context) => {
       name,
       email,
       renewCode,
+      agreement,
       status: 'pending',
       createdAt: Date.now(),
       expiresAt: Date.now() + 10 * 60 * 1000,

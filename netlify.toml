@@ -58,6 +58,12 @@
   to = "/how-to-print-hiti/"
   status = 301
 
+# Lifetime Access FAQ: short links to /faq/
+[[redirects]]
+  from = "/faqs"
+  to = "/faq/"
+  status = 301
+
 [[redirects]]
   from = "/how-to-print/*"
   to = "/how-to-print-hiti/"

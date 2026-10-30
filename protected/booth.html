@@ -890,14 +890,22 @@
   .qs-card{background:#fff; border-radius:18px; padding:20px; width:min(360px,100%); text-align:center;}
   .qs-qr img{width:min(260px,70vw); height:auto; display:block; margin:0 auto;}
   /* Shared with a booth Wi-Fi: Step 1 (join) | the finished video | Step 2 (download), like the guest TV. */
-  .qs-qr.two{display:contents;}
-  .qs-qr.two img{width:min(200px,100%); display:block; margin:0 auto;} .qs-qr.two b{display:block; margin-top:6px; font:800 14px 'Manrope',sans-serif;}
-  .qs-qr.two small{display:block; font:600 12px 'Manrope',sans-serif; color:var(--ink-dim); overflow-wrap:anywhere;}
-  .qs-qr.two > div{align-self:center; grid-row:1;} .qs-qr.two > div:nth-child(1){grid-column:1;} .qs-qr.two > div:nth-child(2){grid-column:3;}
-  .spin-card:has(.qs-qr.two){width:min(940px,100%); display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr); gap:6px 18px; align-items:start;}
+  .spin-card:has(.qs-qr.two){width:min(960px,100%); display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.05fr) minmax(0,1fr); gap:8px 26px; align-items:start; padding:26px 30px 24px; background:radial-gradient(120% 90% at 50% 0%,#3a2f36 0%,#1c1a1e 62%); color:#f6f1ea; border-radius:24px;}
+  .spin-card:has(.qs-qr.two)::before{content:'Your 360 video is ready'; grid-column:1 / -1; text-align:center; font:700 clamp(22px,3.2vw,34px)/1.15 'Fraunces',Georgia,serif; margin:0 0 8px;}
   .spin-card:has(.qs-qr.two) > *{grid-column:1 / -1;}
-  .spin-card:has(.qs-qr.two) > video{grid-column:2; grid-row:1; max-height:70vh; justify-self:center; aspect-ratio:auto;}
-  @media (max-width:700px){ .spin-card:has(.qs-qr.two){display:block;} .qs-qr.two{display:flex; gap:14px; justify-content:center; align-items:flex-start;} .qs-qr.two img{width:min(150px,38vw);} }
+  .spin-card:has(.qs-qr.two) > video{grid-column:2; grid-row:2; max-height:68vh; justify-self:center; border-radius:22px; border:4px solid #f6f1ea; box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 0 8px rgba(255,255,255,.08);}
+  .qs-qr.two{display:contents;}
+  .qs-qr.two > div{grid-row:2; align-self:start; margin-top:12vh; text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px;}
+  .qs-qr.two > div:nth-child(1){grid-column:1;} .qs-qr.two > div:nth-child(2){grid-column:3;}
+  .qs-qr.two b{display:flex; flex-direction:column; align-items:center; gap:6px; font:800 20px 'Manrope',sans-serif; color:#fff; margin:0;}
+  .qs-qr.two b::before{content:attr(data-n); width:44px; height:44px; border-radius:50%; background:#c93d27; color:#fff; font:800 22px/44px 'Manrope',sans-serif; box-shadow:0 6px 16px rgba(201,61,39,.5);}
+  .qs-qr.two em{font:600 14px 'Manrope',sans-serif; font-style:normal; color:#d9cfc6; margin-top:-4px;}
+  .qs-qr.two img{width:min(220px,100%); background:#fff; padding:12px; border-radius:18px; box-shadow:0 10px 28px rgba(0,0,0,.4);}
+  .qs-qr.two small{display:block; font:700 13px 'Manrope',sans-serif; color:#f6f1ea; background:rgba(255,255,255,.12); border-radius:999px; padding:5px 12px; overflow-wrap:anywhere;}
+  .spin-card:has(.qs-qr.two) .qs-note{color:#d9cfc6; text-align:center;}
+  .spin-card:has(.qs-qr.two) .qs-row{justify-content:center;}
+  .spin-card:has(.qs-qr.two) .desk-btn:not(.primary){background:transparent; color:#f6f1ea; border-color:#5a5056;}
+  @media (max-width:700px){ .spin-card:has(.qs-qr.two){display:block;} .qs-qr.two > div{margin-top:0;} .qs-qr.two{display:flex; gap:14px; justify-content:center; align-items:flex-start; margin-top:14px;} .qs-qr.two img{width:min(140px,38vw); padding:8px;} .qs-qr.two b{font-size:15px;} .spin-card:has(.qs-qr.two) > video{max-height:46vh;} }
   .qs-note{margin:10px 0 14px; font:600 14px 'Manrope',sans-serif; color:var(--ink-dim);}
   .qs-row{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
   /* Video guestbook: guests record a short message */
@@ -13605,8 +13613,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(it.url && !editing){
       var addQr = function(text, label, sub){
         var cell = wf ? document.createElement('div') : box;
-        var im = document.createElement('img'); im.src = qrImageUrl(text); im.alt = label || 'QR code'; cell.appendChild(im);
-        if(wf){ var cap = document.createElement('b'); cap.textContent = label; cell.appendChild(cap); if(sub){ var sm = document.createElement('small'); sm.textContent = sub; cell.appendChild(sm); } box.appendChild(cell); }
+        var im = document.createElement('img'); im.src = qrImageUrl(text); im.alt = label || 'QR code';
+        if(wf){
+          var n = label.charAt(5), cap = document.createElement('b'); cap.dataset.n = n; cap.textContent = label.slice(8); cell.appendChild(cap);
+          var how = document.createElement('em'); how.textContent = n === '1' ? 'Join the booth Wi-Fi' : 'Open and save your video'; cell.appendChild(how);
+          cell.appendChild(im);
+          if(sub){ var sm = document.createElement('small'); sm.textContent = sub; cell.appendChild(sm); }
+          box.appendChild(cell);
+        } else cell.appendChild(im);
       };
       if(wf) addQr(wifiQrText(wf), 'Step 1: Network', wf.ssid + (wf.pass ? ' / ' + wf.pass : ''));
       addQr(it.url, wf ? 'Step 2: Download' : '', '');

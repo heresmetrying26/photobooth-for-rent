@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="/gallery/qrcode.min.js"></script>
 <style>
-  :root{--ink:#1C1A1E;--dim:#6B666C;--line:#E4DCCF;--blue:#C93D27;--soft:#FBEDEA;--panel:#fff;}
+  :root{--ink:#1C1A1E;--dim:#6B666C;--line:#E4DCCF;--blue:#C93D27;--soft:#FBEDEA;--panel:#fff;--muted:#6B666C;--red:#C93D27;}
   *{box-sizing:border-box;}
   body{margin:0;padding:20px 14px 60px;font-family:'Manrope',system-ui,sans-serif;color:var(--ink);background:#F5F1EA;min-height:100vh;}
   .wrap{max-width:900px;margin:0 auto;}
@@ -106,6 +106,36 @@
   .themerow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px;font-size:12.5px;color:var(--dim);font-weight:600;}
   .themerow select{font-size:13px;padding:6px 8px;}
   .loading{opacity:.5;pointer-events:none;}
+  .tabs{position:sticky;top:0;z-index:5;display:flex;gap:4px;margin:0 -14px 16px;padding:8px 14px;background:rgba(245,241,234,.94);backdrop-filter:blur(6px);border-bottom:1.5px solid var(--line);}
+  .tab{flex:1;max-width:160px;border:0;background:none;border-radius:999px;padding:9px 14px;color:var(--dim);}
+  .tab.on{background:var(--ink);color:#fff;}
+  .tabpane{display:none;} .tabpane.on{display:block;}
+  .group{font-size:12px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);font-weight:700;margin:22px 4px 10px;}
+  .group:first-child{margin-top:0;}
+  .card>.modebox:first-of-type,.card>.row+.modebox{margin-top:14px;}
+  @media (max-width:640px){ .tab{padding:9px 6px;font-size:12.5px;} }
+  body{min-height:100dvh;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));padding-bottom:max(60px,calc(env(safe-area-inset-bottom) + 40px));}
+  .tabs{margin-left:calc(-1 * max(14px,env(safe-area-inset-left)));margin-right:calc(-1 * max(14px,env(safe-area-inset-right)));padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));overflow-x:auto;scrollbar-width:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{flex:1 0 auto;white-space:nowrap;}
+  .toast{bottom:max(22px,calc(env(safe-area-inset-bottom) + 12px));}
+  button:focus-visible,summary:focus-visible,.stat:focus-visible,.size-chip:has(input:focus-visible),select:focus-visible{outline:3px solid var(--blue);outline-offset:2px;}
+  input:focus-visible{outline:3px solid rgba(201,61,39,.35);outline-offset:1px;}
+  .badge{font-size:11.5px;} .stat span{font-size:12.5px;} .devchip{font-size:12.5px;}
+  @media (min-width:641px) and (max-width:900px){ .lic-row .badges{max-width:55%;} }
+  @media (pointer:coarse){
+    button{min-height:44px;}
+    button.small{min-height:40px;padding:8px 14px;font-size:13px;}
+    .devchip{padding:3px 4px 3px 12px;} .devchip button{min-height:36px;min-width:36px;font-size:12.5px;}
+    .fchip{min-height:40px;padding:8px 14px;font-size:13.5px;}
+    .size-chip{min-height:44px;padding:8px 14px;font-size:13.5px;}
+    .size-chip input,.toggle input[type=checkbox],.toggle input[type=radio]{width:20px;height:20px;}
+    .lic-row{padding:6px 12px;min-height:56px;} .lic-row input[type=checkbox]{width:24px;height:24px;}
+    .lic-main{min-height:44px;padding:4px 0;}
+    input[type=text],input[type=password],input[type=number],input[type=date],input[type=time],select,select.sel,.custom-size input[type=number],.custom-size select,.themerow select{font-size:16px;min-height:44px;}
+    details.card>summary{min-height:44px;}
+    .stat{min-height:56px;}
+  }
 </style>
 </head>
 <body>
@@ -132,8 +162,16 @@
       <button class="stat" data-f="lifetime"><b id="stLifetime">–</b><span>Lifetime</span></button>
     </div>
 
-    <details class="card" id="createCard" open>
-      <summary><h2>Create rental codes</h2></summary>
+    <nav class="tabs" id="tabs">
+      <button class="tab on" data-tab="codes">Codes</button>
+      <button class="tab" data-tab="create">Create</button>
+      <button class="tab" data-tab="settings">Settings</button>
+      <button class="tab" data-tab="tools">Tools</button>
+    </nav>
+
+    <div class="tabpane" data-pane="create">
+    <div class="card" id="createCard">
+      <h2>Create rental codes</h2>
       <div class="row">
         <div style="flex:2;min-width:160px;"><label>Client / event</label><input id="newLabel" type="text" maxlength="80" placeholder="e.g. Sofia's Dedication"></div>
         <div style="flex:2;min-width:160px;"><label>Drive folder name</label><input id="newFolderName" type="text" maxlength="80" placeholder="Defaults to client / event"></div>
@@ -218,8 +256,11 @@
       <button class="primary" id="createBtn" style="margin-top:12px;">Generate</button>
       <div id="newBox" class="newbox hidden"></div>
       <div class="meta" style="margin-bottom:0;"><b>Devices</b> = how many tablets/laptops can use the same code at once (they share the event folder; each device's photos end in _cam1, _cam2…). Without an event date, the days start counting when the renter first enters it.</div>
-    </details>
+    </div>
+    </div>
 
+    <div class="tabpane" data-pane="settings">
+    <div class="group">Booth defaults</div>
     <details class="card" id="trialCard">
       <summary><h2>Trial password</h2></summary>
       <label class="toggle"><input type="checkbox" id="trialEnabled"> Trial enabled</label>
@@ -239,29 +280,6 @@
       <button class="primary" id="saveTrialBtn" style="margin-top:12px;">Save trial settings</button>
     </details>
 
-    <details class="card" id="shutdownCard">
-      <summary><h2>Shutdown mode (end of service)</h2></summary>
-      <div class="meta">Only for the day photobooth4u stops. When ON, every Lifetime code gets the Offline App (Windows, Mac and Android), and the licences it hands out never ask to check in again, so each booth keeps working with no photobooth4u servers. Laptops and tablets must go online <b>once</b> after you switch it on (or get an <b>Offline activation key</b> from the code's actions). Give renters at least 90 days' notice first.</div>
-      <p style="margin:8px 0;font-weight:700;">Status: <span id="shutdownStatus">Checking…</span></p>
-      <button class="small danger" id="shutdownOnBtn">Turn shutdown mode ON…</button>
-      <button class="small" id="shutdownOffBtn" style="display:none;">Turn it back OFF</button>
-    </details>
-
-    <details class="card" id="backupCard">
-      <summary><h2>Backup (all codes)</h2></summary>
-      <div class="meta">Codes live only on Netlify. A backup holds every code, its devices, agreement and flags, its events list and the Offline App activations (not booth designs, guest-payment accounts or photos). It runs <b>every week</b> by itself into a private <b>photobooth4u-backups</b> folder in the photobooth Google Drive (newest 12 kept), and you get an email at ALERT_EMAIL if it fails. Keep a copy somewhere else too.</div>
-      <p style="margin:8px 0;font-weight:700;">Last backup: <span id="backupStatus">Checking…</span></p>
-      <button class="small" id="backupDriveBtn">Back up to Drive now</button>
-      <button class="small" id="backupDownloadBtn">Download a backup file</button>
-    </details>
-
-    <details class="card" id="payAlertCard">
-      <summary><h2>Refund &amp; failed-payment alerts</h2></summary>
-      <div class="meta">When a payment to photobooth4u is <b>refunded or fails after the code was issued</b>, the code is flagged here (&#9888; Payment refunded) and you get an email at ALERT_EMAIL. Nothing is disabled automatically. Needs the PayMongo API key saved (PayMongo API Key card). Refunds you make by hand in Maribank or GoTyme are not seen: use Disable &rarr; &ldquo;payment&rdquo; for those.</div>
-      <p style="margin:8px 0;font-weight:700;">Status: <span id="payAlertStatus">Checking…</span></p>
-      <button class="small" id="payAlertSetupBtn">Set up payment alerts</button>
-    </details>
-
     <details class="card" id="qrCard">
       <summary><h2>Guest QR codes</h2></summary>
       <label class="toggle"><input type="radio" name="qrTarget" value="gallery"> Online gallery <span style="color:var(--dim);font-weight:500;">&nbsp;(recommended)</span></label>
@@ -272,6 +290,7 @@
       <div class="meta" style="margin:-8px 0 0 26px;">“Open on your phone” QR at the top of the online gallery, e.g. for a laptop or TV showing the photos.</div>
     </details>
 
+    <div class="group">Payments</div>
     <details class="card" id="paymongoCard">
       <summary><h2>PayMongo API Key (Monthly Subscriptions)</h2></summary>
       <div id="pmStatusBadge" style="margin-bottom:12px;font-size:13px;font-weight:600;">
@@ -297,7 +316,34 @@
       </div>
     </details>
 
-    <details class="card" id="paySimCard" style="margin-bottom:14px;">
+    <details class="card" id="payAlertCard">
+      <summary><h2>Refund &amp; failed-payment alerts</h2></summary>
+      <div class="meta">When a payment to photobooth4u is <b>refunded or fails after the code was issued</b>, the code is flagged here (&#9888; Payment refunded) and you get an email at ALERT_EMAIL. Nothing is disabled automatically. Needs the PayMongo API key saved (PayMongo API Key card). Refunds you make by hand in Maribank or GoTyme are not seen: use Disable &rarr; &ldquo;payment&rdquo; for those.</div>
+      <p style="margin:8px 0;font-weight:700;">Status: <span id="payAlertStatus">Checking…</span></p>
+      <button class="small" id="payAlertSetupBtn">Set up payment alerts</button>
+    </details>
+
+    <div class="group">System</div>
+    <details class="card" id="shutdownCard">
+      <summary><h2>Shutdown mode (end of service)</h2></summary>
+      <div class="meta">Only for the day photobooth4u stops. When ON, every Lifetime code gets the Offline App (Windows, Mac and Android), and the licences it hands out never ask to check in again, so each booth keeps working with no photobooth4u servers. Laptops and tablets must go online <b>once</b> after you switch it on (or get an <b>Offline activation key</b> from the code's actions). Give renters at least 90 days' notice first.</div>
+      <p style="margin:8px 0;font-weight:700;">Status: <span id="shutdownStatus">Checking…</span></p>
+      <button class="small danger" id="shutdownOnBtn">Turn shutdown mode ON…</button>
+      <button class="small" id="shutdownOffBtn" style="display:none;">Turn it back OFF</button>
+    </details>
+
+    <details class="card" id="backupCard">
+      <summary><h2>Backup (all codes)</h2></summary>
+      <div class="meta">Codes live only on Netlify. A backup holds every code, its devices, agreement and flags, its events list and the Offline App activations (not booth designs, guest-payment accounts or photos). It runs <b>every week</b> by itself into a private <b>photobooth4u-backups</b> folder in the photobooth Google Drive (newest 12 kept), and you get an email at ALERT_EMAIL if it fails. Keep a copy somewhere else too.</div>
+      <p style="margin:8px 0;font-weight:700;">Last backup: <span id="backupStatus">Checking…</span></p>
+      <button class="small" id="backupDriveBtn">Back up to Drive now</button>
+      <button class="small" id="backupDownloadBtn">Download a backup file</button>
+    </details>
+
+    </div>
+
+    <div class="tabpane" data-pane="tools">
+    <details class="card" id="paySimCard" open>
       <summary style="cursor:pointer;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:space-between;">
         <span>🧪 Payment Simulator &amp; Customer Fulfillment Tester (Admin Only)</span>
         <span class="sub" style="font-size:12px;font-weight:400;color:var(--muted);">Test post-payment delivery &amp; guides</span>
@@ -389,6 +435,9 @@
       </div>
     </details>
 
+    </div>
+
+    <div class="tabpane on" data-pane="codes">
     <div class="card" id="codesCard">
       <div class="top" style="margin-bottom:10px;"><h2 style="margin:0;">Rental codes</h2><button class="small" id="refreshBtn">Refresh</button></div>
       <div class="toolbar">
@@ -422,6 +471,7 @@
           <button class="small" id="reindexBtn" title="Re-read every code. Only needed if the list ever looks out of date.">Rebuild index</button>
         </span>
       </div>
+    </div>
     </div>
   </div>
 </div>
@@ -567,6 +617,20 @@
     $('loginBtn').disabled = false;
   }
   $('logoutBtn').addEventListener('click', logout);
+
+  // Tabs: Codes / Create / Settings / Tools.
+  function setTab(name){
+    var ok = false;
+    [].forEach.call(document.querySelectorAll('.tabpane'), function(p){ var on = p.dataset.pane === name; p.classList.toggle('on', on); ok = ok || on; });
+    if(!ok) return setTab('codes');
+    [].forEach.call(document.querySelectorAll('.tab'), function(t){ t.classList.toggle('on', t.dataset.tab === name); });
+    try{ sessionStorage.setItem('pb_admin_tab', name); }catch(e){}
+  }
+  $('tabs').addEventListener('click', function(e){
+    var b = e.target.closest('[data-tab]'); if(!b) return;
+    setTab(b.dataset.tab); window.scrollTo(0, 0);
+  });
+  try{ setTab(sessionStorage.getItem('pb_admin_tab') || 'codes'); }catch(e){}
   $('refreshBtn').addEventListener('click', function(){ load().then(function(){ toast('Refreshed'); }); });
 
   // Same rules as statusOf() in netlify/functions/admin.mjs.
@@ -891,6 +955,7 @@
     var b = e.target.closest('[data-f]'); if(!b) return;
     VIEW.filter = b.dataset.f; VIEW.page = 1;
     if(b.dataset.sort){ VIEW.sort = b.dataset.sort; $('sort').value = VIEW.sort; }
+    setTab('codes');
     load().then(function(){ $('codesCard').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   });
   $('pager').addEventListener('click', function(e){
@@ -1522,8 +1587,8 @@
 
   printPicker($('newPrint'), { enabled: true, sizes: PAPER.map(function(p){ return p[0]; }) }, 'Allow printing for these codes');
   $('newTheme').innerHTML = themeOptions('');
-  // Remember whether the Create / Trial / QR / PayMongo / Simulator cards are open.
-  ['createCard', 'trialCard', 'qrCard', 'paymongoCard', 'paySimCard'].forEach(function(id){
+  // Remember whether the Trial / QR / PayMongo cards are open.
+  ['trialCard', 'qrCard', 'paymongoCard'].forEach(function(id){
     try{ var v = localStorage.getItem('pb_admin_' + id); if(v) $(id).open = v === '1'; }catch(e){}
     $(id).addEventListener('toggle', function(){ try{ localStorage.setItem('pb_admin_' + id, $(id).open ? '1' : '0'); }catch(e){} });
   });

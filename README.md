@@ -162,6 +162,17 @@ Chrome can't open the camera on Windows (Windows' own camera driver holds it), s
   Canon R-style cameras (live view, RAW + JPEG, RAW only, focus failure, download in pieces, live view disabled).
   The WPD camera calls themselves still need a real Windows test with each brand (use /camera-test/windows/).
 
+### iPad with a DSLR (laptop app, first version after 1.0.29)
+Safari and Chrome on iPad have no USB, so an iPad can't run the Nikon / Canon / Sony USB remote itself. Two ways (guide: `/how-to-ipad/`):
+- **iPad + the laptop's camera (Windows laptop app):** Setup → Share & start → *Let an iPad use this laptop's camera*. The laptop shows
+  `http://<laptop>:47777/ipad` and a 6-digit PIN (`settings.json`: `ipadOn`, `ipadPin`; off by default). The iPad opens that in Safari; the laptop serves the
+  booth page itself (`desktop/lib/lan.mjs`, mounted on the guests' photo server) plus `/api/*`, `/helper/*` (camera), `/local/drive` (photos) and the
+  static files, all same-origin, so Safari's mixed-content block never applies. Only requests with the PIN cookie are answered; wrong PINs are rate limited.
+  In the booth, `window.__PB.lanRemote` (set by the laptop) makes it use `/helper` for the camera like the laptop window does (`LANREMOTE` in `protected/booth.html`),
+  and saves/QR go through the laptop (`LOCALSHARE`). Printing from the iPad stays AirPrint. Mac laptops can serve the iPad page, but their USB camera is WebUSB inside the
+  app window, not the Helper, so the iPad can't use it yet. **Not tested on a real iPad + DSLR.**
+- **iPad + HDMI capture card:** webcam path (no shutter / flash).
+
 ### Canon SELPHY (CP1300 / CP1500)
 Works as is: iPad over AirPrint, Android over Mopria (or Canon Print Service), laptops over USB/Wi-Fi with
 the Print Helper or the print station. Allow the **Canon Selphy postcard (100×148 mm)** size for the renter

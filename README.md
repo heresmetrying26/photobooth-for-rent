@@ -52,7 +52,7 @@ Edit `protected/booth.html` and redeploy. (The build step re-bundles it automati
   every 30 s and when the browser comes back online, also after a reload. The guest gets the
   event's All photos QR meanwhile. Photos the code can no longer upload (expired/locked) stay
   listed until saved to the computer.
-- **Backup folder (Chrome / Edge on a computer):** Setup → 5 Share → **Choose backup folder**.
+- **Backup folder (Chrome / Edge on a computer):** Setup → 6 Share → **Choose backup folder**.
   Every session's photo (full-quality PNG) is then written to `<folder>/<event name>/` instead
   of Downloads. After a browser restart Chrome asks again: tap **Allow saving** (Setup or the
   Photo Session panel). Tablets and other browsers keep saving to Downloads.
@@ -263,7 +263,7 @@ which sends every print straight to the **default printer**:
 Without kiosk mode the normal print dialog opens: pick the photo printer, set Margins to
 **None** and Scale to **Default/100%**, then print.
 
-## Light, sound and start (Setup → 5 Session → Light, sound and start)
+## Light, sound and start (Setup → 7 Session → Light, sound and start)
 - **Screen flash:** the whole screen turns white ~0.35 s before each photo and stays on through the shot, so the
   front camera gets a fill light in dim rooms (the traditional booth's guest screen flashes too). A web page can't
   raise the brightness: set the tablet's brightness to max. Off by default.
@@ -278,7 +278,7 @@ Without kiosk mode the normal print dialog opens: pick the photo printer, set Ma
   - After a session the booth waits 4 s before it can start again by itself. The welcome screen says "Wave to start"
     / "Smile to start".
 
-## Background swap / green screen (Setup → 4 Extras → Green screen)
+## Background swap / green screen (Setup → 5 Extras → Green screen)
 - **No cloth (AI):** cuts guests out with Google MediaPipe's selfie segmentation and puts them on a new background.
   Runs entirely on the device (no photo leaves it, no fees). Files are in `public/bg/` (MediaPipe Tasks Vision 1.0.1
   runtime ~12 MB + a 250 KB model, Apache 2.0, see `public/bg/NOTICE.txt`); they load only when this mode is on and are
@@ -476,10 +476,11 @@ folders with the same name.
   pick another day; Remove (or the icon again) takes it off. Works on iPad and Android.
 
 ## Design: themes, saved setup, frame, logo and stickers
-Setup is in 5 steps, one at a time: **1 Design** (two tabs: **Ready designs** and **🎨 Colours & background**) · **2 Text** (name,
+Setup is in 7 steps, one at a time: **1 Design** (two tabs: **Ready designs** and **🎨 Colours & background**) · **2 Text** (name,
 date, small line, title style, fonts, colour) · **3 Layout** (layout, guests' choice, countdown) ·
-**4 Extras** (Frame / Logo / Stickers / Filter tabs) · **5 Share** (Drive folder, all-photos QR to print
-ahead, printing). The step bar stays at the top with a one-line summary of each step (red = still
+**4 Camera** (a live view of the camera, full frame or cropped to the layout, the camera picker, Mirror and the camera log) ·
+**5 Extras** (Frame / Logo / Stickers / Filter tabs) · **6 Share** (Drive folder, all-photos QR to print
+ahead, printing) · **7 Session** (countdown, welcome screen, sounds, payment). The step bar stays at the top with a one-line summary of each step (red = still
 needed), and a bar at the bottom always shows the save status and **Start photo session**. On a
 laptop or tablet in landscape the **preview stays beside the steps**; on phones the **👁 Preview** button
 in the bottom bar (it pulses on the first visit) opens the preview just above the bar, and the steps still
@@ -497,7 +498,7 @@ small line; a template's own colours come first under Text colour.
   5 Photo border, 6 Your own background photo. Only some designs draw gold details (e.g. Gold
   Chevron, Art Deco Navy, White Marble, plus gold stickers); for the others the booth checks the
   preview and says there is nothing to change instead of showing buttons that do nothing.
-- **Your own frames** (Setup → 4 Extras → Frame): upload a frame made in Canva with the photo spots left **white
+- **Your own frames** (Setup → 5 Extras → Frame): upload a frame made in Canva with the photo spots left **white
   or see-through**. The booth finds the boxes (numbered in reading order), puts shot 1, 2, 3… in
   them and keeps the design on top; **Fix spots** lets you move, resize, add or remove a box. The
   layout becomes **My frame** (a 2×6-shaped frame prints two side by side on 4R). An image with no
@@ -544,7 +545,7 @@ small line; a template's own colours come first under Text colour.
 
 ## Guest payments: vouchers + the renter's own PayMongo (add-on)
 An add-on you switch on per code in Admin (**Give guest payments**). Then, per event, the renter picks in the booth:
-**Setup → 5 Session → Guest payment → Free / QR payment / Vouchers / QR + vouchers**, the price per session
+**Setup → 7 Session → Guest payment → Free / QR payment / Vouchers / QR + vouchers**, the price per session
 (₱20–₱20,000) and optional "prints included" (overrides the per-session print limit for paid sessions).
 
 **Guests:** the welcome screen shows "₱120 per session · Tap to start". Tapping opens the pay sheet:
@@ -593,7 +594,7 @@ codes** switches every booth back to the plain Drive folder if ever needed. My E
 **After each session** the booth (and the guest screen) shows a **Your photo** QR code. It opens the
 gallery straight on that photo (`/g/<folder>#<file id>`); with Admin set to Drive it opens the file in
 Google Drive. The **All photos** QR
-for the whole event is only in Setup → 5 Share, to print or share ahead. Between shots the pause
+for the whole event is only in Setup → 6 Share, to print or share ahead. Between shots the pause
 shows the photo just taken and "Next: photo 2 of 3", with no countdown circle.
 
 **Gallery page QR (Admin → Guest QR codes → "QR code on the gallery page", on by default):** an

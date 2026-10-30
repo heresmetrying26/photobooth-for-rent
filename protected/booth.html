@@ -7029,11 +7029,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // photobooth4u Helper (the same app that prints) controls the camera and
   // the booth talks to it on this computer (127.0.0.1). No driver switch.
   const USB_WIN = /Win/i.test(navigator.platform || '') || /Windows NT/i.test(navigator.userAgent || '');
+  // Android tablet app: its WebView has no WebUSB, so the app itself controls the camera and answers on the
+  // same address as the Windows Helper (127.0.0.1:17321), using the same calls.
+  const ANDROID_APP = /PB4uAndroid/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.android);
   const CAM_HELPER = DESKTOP ? '/helper' : 'http://127.0.0.1:17321';
   const CAM_HELPER_SEEN_KEY = 'pb_cam_helper';
   const usbCam = {
-    supported: USB_WIN ? !!window.fetch : (('usb' in navigator) && !!window.crossOriginIsolated),
-    viaHelper: USB_WIN,
+    supported: (USB_WIN || ANDROID_APP) ? !!window.fetch : (('usb' in navigator) && !!window.crossOriginIsolated),
+    viaHelper: USB_WIN || ANDROID_APP,
     helperSees: false, helperName: '', helperUp: false,
     camera: null, name: '', active: false, gen: 0, libGen: 0, vfOn: false, initing: null,
     canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null,
@@ -7161,7 +7164,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // was picked before, or it connected before.
   function camHelperProbeOk(){
     if(!usbCam.viaHelper) return false;
-    if(DESKTOP) return true;                       // built into the app
+    if(DESKTOP || ANDROID_APP) return true;        // built into the app
     try{
       if(localStorage.getItem(CAM_HELPER_SEEN_KEY) === '1' || localStorage.getItem('pb_print_helper') === '1') return true;
       const sv = JSON.parse(localStorage.getItem(CAM_PREF_KEY) || 'null');
@@ -7186,7 +7189,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   function usbOptionLabel(){
     if(usbCam.name) return usbCam.name + (usbCam.viaHelper ? ' (USB)' : ' (USB remote)');
-    if(usbCam.viaHelper) return usbCam.helperName ? usbCam.helperName + ' (USB)' : 'Nikon / Canon / Sony camera over USB (photobooth4u Helper)';
+    if(usbCam.viaHelper) return usbCam.helperName ? usbCam.helperName + ' (USB)' : ANDROID_APP ? 'Nikon camera over USB cable' : 'Nikon / Canon / Sony camera over USB (photobooth4u Helper)';
     return 'DSLR / mirrorless over USB (remote control)';
   }
 
@@ -7246,6 +7249,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(usbCam.viaHelper){
       const code = err && err.code;
       if(DESKTOP && (code === 'NOHELPER' || code === 'TIMEOUT')) return 'The camera part of the app isn\u2019t answering.' + (auto ? ' It keeps trying.' : ' Tap Try Again, or close and reopen the app.');
+      if(ANDROID_APP && (code === 'NOHELPER' || code === 'TIMEOUT')) return 'The camera part of the app isn\u2019t answering.' + (auto ? ' It keeps trying.' : ' Tap Try Again, or close and reopen the app.');
       if(code === 'NOHELPER' || code === 'TIMEOUT') return 'Can\u2019t reach the photobooth4u Helper. Open it on this laptop (download it from photobooth4u.netlify.app/downloads). If Chrome asks to let this site reach apps on this device, choose Allow.' + (auto ? ' The camera connects by itself once the helper is open.' : ' Then tap Try Again.');
       if(err && err.name === 'UsbNoLiveView' && usbCam.lastErr && usbCam.lastErr.helperMsg) return usbCam.lastErr.helperMsg + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');
       if(err && err.name === 'UsbNoLiveView') return 'The camera connected but live view didn\u2019t start. Close the camera\u2019s menu, take the lens cap off and check the battery.' + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');

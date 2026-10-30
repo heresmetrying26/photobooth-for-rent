@@ -1584,8 +1584,10 @@
   .step-tab.on{border-color:var(--blue-deep); background:var(--tint); box-shadow:0 4px 14px rgba(70,45,25,.12);}
   .step-tab.on .sn{background:var(--blue-deep); border-color:var(--blue-deep); color:#fff;}
   .step-tab.done:not(.on) .sn{background:var(--ink); border-color:var(--ink); color:#fff;}
-  /* Seven tabs side by side: below ~1300px the number sits above the name so "Camera" never gets cut off. */
-  @media (max-width:1300px){
+  /* Seven tabs side by side: when the bar itself (not the window: the Preview panel sits beside it) is narrower than
+     ~1000px, the number sits above the name so "Camera" never gets cut off. */
+  .step-bar{container-type:inline-size;}
+  @container (max-width:1000px){
     .step-bar{gap:4px;}
     .step-tab{flex-direction:column; justify-content:center; gap:3px; padding:6px 2px; text-align:center;}
     .step-tab .st{align-items:center;}

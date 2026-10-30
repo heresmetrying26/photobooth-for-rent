@@ -596,8 +596,34 @@
     try{ saveBlob(await fetchPhoto(f), fileName(f, cur)); }
     catch(err){ location.href = downloadUrl(f); }
   });
-  $('vPrint').addEventListener('click', function(){
+  // The operator, opening All photos in the same browser as the booth: "Print photo" prints through the booth
+  // (its printer, paper and copies from Print settings, no dialog). A guest's phone has no booth tab, so it keeps the normal print.
+  var boothHere = false, pch = null, pnSeq = 0;
+  try{
+    if(FOLDER && 'BroadcastChannel' in window){
+      pch = new BroadcastChannel('pb4u-print');
+      pch.onmessage = function(ev){ var m = ev.data || {}; if(m.t === 'here') boothHere = !!m.on; };
+      pch.postMessage({ t: 'hello' });
+    }
+  }catch(e){ pch = null; }
+  function printViaBooth(f){
+    return new Promise(function(resolve){
+      var id = 'p' + (++pnSeq) + '-' + Date.now(), prev = pch.onmessage, t;
+      function done(r){ clearTimeout(t); pch.onmessage = prev; resolve(r); }
+      t = setTimeout(function(){ done({ ok: false, error: 'The booth did not answer.' }); }, 45000);
+      pch.onmessage = function(ev){ var m = ev.data || {}; if(m.t === 'result' && m.id === id) done(m); else prev(ev); };
+      pch.postMessage({ t: 'print', id: id, folder: FOLDER, file: f.id });
+    });
+  }
+  $('vPrint').addEventListener('click', async function(){
     if(cur < 0 || !$('vImg').complete || !$('vImg').naturalWidth){ toast('Wait for the photo to finish loading, then print.'); return; }
+    var f = view[cur];
+    if(boothHere && pch && f){
+      var b = this; b.disabled = true; toast('Sending to the printer…');
+      var r = await printViaBooth(f);
+      b.disabled = false; toast(r.ok ? 'Printing ✓' : (r.error || 'Could not print.'));
+      return;
+    }
     window.print();
   });
 

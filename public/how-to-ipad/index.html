@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>iPad with a DSLR guide · photobooth4u</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500..700;1,500..700&family=Manrope:wght@400..800&display=swap">
+<style>
+  :root{ --bg:#f6f1ea; --card:#fffdf9; --ink:#1f1a1d; --dim:#5d555b; --line:#e4ddd3; --red:#c8402a; --red-soft:#fbeee9; --dark:#1f1a1d; }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;}
+  a{color:var(--red);}
+  .wrap{max-width:860px; margin:0 auto; padding:0 16px;}
+  header.hero{background:var(--dark); color:#f6f1ea; padding:44px 0 40px;}
+  .brand{display:flex; align-items:center; gap:10px; font:600 22px 'Fraunces',Georgia,serif; color:#f6f1ea; text-decoration:none;}
+  .brand .mark{display:grid; grid-template-columns:repeat(2,9px); gap:3px;}
+  .brand .mark i{width:9px; height:9px; border-radius:2px; background:#f6f1ea;} .brand .mark i:nth-child(2){background:var(--red);}
+  .eyebrow{font-size:13px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:#e8715a; margin:28px 0 8px;}
+  h1{font:600 clamp(34px,7vw,56px)/1.05 'Fraunces',Georgia,serif; margin:0 0 14px;}
+  h1 em{color:#e8715a;}
+  .lead{color:#d9cfc6; font-size:18px; max-width:640px; margin:0;}
+  nav.toc{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:-22px 0 8px; position:relative;}
+  nav.toc a{display:block; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; text-decoration:none; color:var(--ink); box-shadow:0 8px 20px rgba(70,45,25,.08);}
+  nav.toc b{display:block; color:var(--red); font-size:12px; letter-spacing:.14em; text-transform:uppercase;} nav.toc span{font-weight:700; font-size:15px;}
+  section.part{padding:34px 0 6px; scroll-margin-top:12px;}
+  section.part h2{font:600 clamp(26px,4.5vw,34px)/1.15 'Fraunces',Georgia,serif; margin:0 0 6px;}
+  .part .kicker{font-size:12px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:var(--red); margin:0 0 4px;}
+  .part .why{color:var(--dim); margin:0 0 14px;}
+  ol.steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
+  ol.steps li{display:grid; grid-template-columns:40px 1fr; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  ol.steps .n{width:40px; height:40px; border-radius:50%; background:var(--red); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center;}
+  ol.steps h3{margin:6px 0 2px; font-size:17px;}
+  ol.steps p{margin:0; color:var(--dim);}
+  code{font:600 14px ui-monospace,'SF Mono',Menlo,Consolas,monospace; background:#efe7dd; border-radius:6px; padding:1px 6px; color:var(--ink); word-break:break-all;}
+  table{width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; font-size:15px;}
+  th, td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); background:#f3ece3;}
+  tr:last-child td{border-bottom:0;}
+  td:first-child{font-weight:700; width:34%;}
+  .callout{background:var(--red-soft); border:1px solid #f1cfc5; border-radius:16px; padding:16px 18px; margin-top:14px;}
+  .callout h3{margin:0 0 4px; font-size:16px;} .callout p{margin:0; color:var(--dim);}
+  .ok{background:#eef6ef; border-color:#cfe5d2;}
+  footer{padding:40px 0 60px; color:var(--dim); font-size:14px;}
+  .help{display:flex; align-items:center; justify-content:space-between; gap:16px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px; margin-bottom:18px;}
+  .help h3{margin:0 0 2px;} .help p{margin:0;}
+  .btn{display:inline-flex; align-items:center; min-height:44px; padding:10px 18px; border-radius:999px; font-weight:800; font-size:15px; text-decoration:none; background:var(--red); color:#fff;}
+  @media (max-width:640px){ nav.toc{grid-template-columns:1fr;} td:first-child{width:auto;} .help{flex-direction:column; align-items:flex-start;} }
+</style>
+</head>
+<body>
+<header class="hero"><div class="wrap">
+  <a class="brand" href="/"><span class="mark"><i></i><i></i><i></i><i></i></span>photobooth4u</a>
+  <p class="eyebrow">iPad guide</p>
+  <h1>An iPad booth with a <em>DSLR</em></h1>
+  <p class="lead">An iPad can't talk to a DSLR over USB by itself (Safari and Chrome on iPad have no USB access). There are two ways around that. Pick one. Using an <b>Android tablet</b> instead? The photobooth4u Android app (1.0.29 or newer) controls a Nikon, Canon EOS or Sony Alpha plugged straight into the tablet&rsquo;s USB port: pick <b>Nikon / Canon / Sony camera over USB cable</b> in the Camera list. No laptop needed.</p>
+</div></header>
+
+<main class="wrap">
+  <nav class="toc">
+    <a href="#laptop"><b>Option A</b><span>iPad + laptop camera</span></a>
+    <a href="#hdmi"><b>Option B</b><span>iPad + HDMI capture card</span></a>
+    <a href="#fix"><b>Problems</b><span>If it doesn't work</span></a>
+  </nav>
+
+  <section class="part">
+    <p class="kicker">Which one?</p>
+    <h2>Compare the two</h2>
+    <table>
+      <tr><th></th><th>A: laptop camera</th><th>B: HDMI capture card</th></tr>
+      <tr><td>Needs</td><td>A Windows laptop with the photobooth4u app, at the booth</td><td>A capture card and a USB-C iPad. No laptop</td></tr>
+      <tr><td>Real shutter and flash</td><td>Yes</td><td>No (a still from the video; use continuous light)</td></tr>
+      <tr><td>Live view</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Works offline</td><td>Yes, over the booth Wi-Fi</td><td>The web booth needs internet</td></tr>
+      <tr><td>Cameras</td><td>Nikon, Canon EOS, Sony Alpha (the same as the laptop app)</td><td>Any camera with clean HDMI out</td></tr>
+    </table>
+  </section>
+
+  <section class="part" id="laptop">
+    <p class="kicker">Option A</p>
+    <h2>iPad + the laptop's camera</h2>
+    <p class="why">The camera plugs into the laptop. The iPad is the guest screen and opens the booth from the laptop over the Wi-Fi, so it never needs USB itself.</p>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Set up the laptop first</h3><p>Install the photobooth4u app on the Windows laptop (Downloads page), sign in with your code and check the camera works in the laptop's own window: Nikon, Canon EOS or Sony Alpha over USB. Sony: set <b>USB Connection</b> to <b>PC Remote</b>. The laptop camera guide covers each brand.</p></div></li>
+      <li><span class="n">2</span><div><h3>Put both on the same Wi-Fi</h3><p>Use one router at the booth, or turn on the laptop's mobile hotspot and join the iPad to it. No internet is needed.</p></div></li>
+      <li><span class="n">3</span><div><h3>Turn on iPad sharing on the laptop</h3><p>In the laptop booth open <b>Setup &rarr; Share &amp; start</b> and tick <b>Let an iPad use this laptop's camera</b>. The laptop shows an address and a 6-digit PIN, like <code>http://192.168.1.20:47777/ipad</code>.</p></div></li>
+      <li><span class="n">4</span><div><h3>Open it on the iPad</h3><p>In Safari go to that address and type the PIN. The booth opens. In <b>Setup</b> choose the camera named after your DSLR (it says <b>USB</b>). Tap <b>Share &rarr; Add to Home Screen</b> to keep it, and turn on Guided Access (Settings &rarr; Accessibility) so guests can't leave the booth.</p></div></li>
+      <li><span class="n">5</span><div><h3>Run a test session</h3><p>Take a full session. The iPad shows the live picture and countdown, the DSLR fires with its flash, and the photo saves on the laptop's <b>Pictures/photobooth4u</b> folder. Guests' QR codes open the photo from the laptop over the same Wi-Fi.</p></div></li>
+    </ol>
+    <div class="callout"><h3>Good to know</h3><p>Keep the laptop plugged in with its sleep turned off, and leave its booth window open. The PIN stays the same until you tap <b>Make a new PIN</b>. Printing from the iPad uses AirPrint; to print on the laptop's printer instead, use the laptop's own booth window. Mac laptops work for the iPad screen, but the USB camera control is Windows only for now; on a Mac use a webcam or HDMI capture camera.</p></div>
+  </section>
+
+  <section class="part" id="hdmi">
+    <p class="kicker">Option B</p>
+    <h2>iPad + HDMI capture card</h2>
+    <p class="why">No laptop. The camera's HDMI output goes through a capture card, and the iPad sees it as a webcam. The booth gets live video only, so the DSLR's shutter and flash are not used.</p>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Get the right gear</h3><p>A USB-C iPad with iPadOS 17 or later, an HDMI-to-USB capture card (a "UVC" card, no driver needed), an HDMI cable, and a way to keep the iPad powered (a USB-C hub with power passthrough). A dummy battery keeps the camera on for hours.</p></div></li>
+      <li><span class="n">2</span><div><h3>Set the camera</h3><p>Switch the camera to video mode with <b>clean HDMI output</b> (no on-screen info), and turn off auto power-off. Use the highest HDMI resolution it offers.</p></div></li>
+      <li><span class="n">3</span><div><h3>Plug it in and open the booth</h3><p>Camera &rarr; HDMI &rarr; capture card &rarr; iPad. Open <b>photobooth4u.netlify.app</b> in Safari, allow the camera when it asks, then choose the capture card in the Camera menu.</p></div></li>
+      <li><span class="n">4</span><div><h3>Light the scene</h3><p>Because the flash won't fire, use a ring light or two soft lights in front of the guests. Test the brightness before the event.</p></div></li>
+    </ol>
+    <div class="callout"><h3>Heads up</h3><p>This relies on iPadOS accepting the capture card as an external camera. It works with many cards, not all. Test with your exact card and iPad before the event.</p></div>
+  </section>
+
+  <section class="part" id="fix">
+    <p class="kicker">Problems</p>
+    <h2>If it doesn't work</h2>
+    <table>
+      <tr><th>Problem</th><th>Try this</th></tr>
+      <tr><td>The iPad can't open the address</td><td>Both devices must be on the same Wi-Fi (not guest Wi-Fi with "client isolation"). Check the address on the laptop; it changes if the laptop joins another network. Windows Firewall may ask to allow the app on private networks: tick Allow.</td></tr>
+      <tr><td>"That PIN isn't right" or "Too many tries"</td><td>Read the PIN on the laptop again. If the laptop made a new PIN, type the new one. After several wrong tries wait a few minutes.</td></tr>
+      <tr><td>"iPad sharing is off"</td><td>Tick <b>Let an iPad use this laptop's camera</b> in Setup &rarr; Share &amp; start on the laptop. It stays off until you do, and also stops when the laptop's code is inactive.</td></tr>
+      <tr><td>No DSLR in the iPad's camera list</td><td>Check the camera works in the laptop's own booth window first. Sony: USB Connection must be PC Remote, and close Imaging Edge. Then tap <b>Try Again</b> on the iPad.</td></tr>
+      <tr><td>The picture freezes or is slow</td><td>Move the iPad closer to the router, or use the laptop's hotspot. Close other devices that stream video on the same Wi-Fi.</td></tr>
+      <tr><td>The iPad shows the booth but photos don't save</td><td>The laptop saves them. Keep the laptop's app open and check the folder under Setup &rarr; Share &amp; start on the laptop.</td></tr>
+      <tr><td>Capture card not found (Option B)</td><td>Try another cable or card. Some cards need the iPad powered separately. Reload the page after plugging in.</td></tr>
+    </table>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="help"><div><h3>Need help?</h3><p>Message us what the booth shows, which iPad, and which camera.</p></div><a class="btn" href="https://m.me/roktetnachi" target="_blank" rel="noopener">Message us</a></div>
+  photobooth4u &middot; <a href="/printers/">Printers</a> &middot; <a href="/how-to-extras/">Extras guide</a>
+</footer>
+</body>
+</html>

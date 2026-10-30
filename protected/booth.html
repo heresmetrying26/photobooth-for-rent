@@ -146,6 +146,8 @@
   .gallery-pop .bp-title{margin:0 28px 4px 0;text-align:left;font:600 19px 'Fraunces',Georgia,serif;}
   .gallery-pop .gallery-close{position:absolute;right:10px;top:9px;width:34px;height:34px;border:1px solid var(--line);border-radius:50%;background:#fff;font-size:18px;cursor:pointer;}
   .gallery-pop .gallery-link{display:block;overflow-wrap:anywhere;color:var(--ink-dim);font-size:12px;margin:4px 0 10px;}
+  /* The apps give guests a Wi-Fi sign (Share & start), not the old All photos sign: that QR is on the booth screen. */
+  html.pb-desktop #qrSignBtn, html.pb-desktop #driveFolderSignHint{display:none !important;}
   .gallery-pop .bp-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}.gallery-pop .bp-btns .action-btn{width:auto;margin:0;min-height:40px;padding:0 14px;font-size:13px;}
   #backupSection{display:none !important;}   /* lives in the Backup folder button now */
   /* The renter's logo in Photo Session (Setup keeps the photobooth4u logo) */
@@ -1647,10 +1649,16 @@
   .step-tab.on{border-color:var(--blue-deep); background:var(--tint); box-shadow:0 4px 14px rgba(70,45,25,.12);}
   .step-tab.on .sn{background:var(--blue-deep); border-color:var(--blue-deep); color:#fff;}
   .step-tab.done:not(.on) .sn{background:var(--ink); border-color:var(--ink); color:#fff;}
-  @media (max-width:640px){
+  /* Seven tabs side by side: when the bar itself (not the window: the Preview panel sits beside it) is narrower than
+     ~1000px, the number sits above the name so "Camera" never gets cut off. */
+  .step-bar{container-type:inline-size;}
+  @container (max-width:1000px){
     .step-bar{gap:4px;}
     .step-tab{flex-direction:column; justify-content:center; gap:3px; padding:6px 2px; text-align:center;}
     .step-tab .st{align-items:center;}
+    .step-tab b{font-size:12.5px;}
+  }
+  @media (max-width:640px){
     .step-tab b{font-size:11.5px;}
     .step-tab small{display:none;}
   }
@@ -1661,6 +1669,16 @@
   .step-lead{margin:2px 0 12px;}
   .step-nav{display:flex; justify-content:space-between; align-items:center; gap:10px;}
   .step-nav .action-btn{width:auto; min-height:48px; padding:12px 22px; font-weight:800;}
+  /* Camera step: live view of the camera (full frame by default, or cropped to the layout's photo shape) */
+  .scp-frame{position:relative; aspect-ratio:var(--scp-aspect,1.3333); width:min(100%, calc(50vh * var(--scp-aspect,1.3333))); margin:0 auto; border-radius:14px; overflow:hidden; background:#16141a; border:1px solid var(--line);}
+  .scp-frame video{position:absolute; inset:0; width:100%; height:100%; display:block; object-fit:contain; background:#16141a;}
+  .scp-frame.crop video{object-fit:cover;}
+  .scp-empty{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; text-align:center; color:rgba(255,255,255,.75); font:600 13.5px 'Manrope',sans-serif;}
+  .scp-empty[hidden]{display:none;}
+  .scp-meta{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 12px; margin-top:10px;}
+  .scp-meta .chip-row{display:flex; gap:6px; margin:0;}
+  .scp-meta .chip-row .chip{flex:none; padding-left:16px; padding-right:16px;}
+  .scp-info{font:600 12.5px 'Manrope',sans-serif; color:var(--ink-dim);}
   .link-btn{background:none; border:0; padding:8px 0; min-height:40px; color:var(--blue-deep); font:700 13px 'Manrope',sans-serif; cursor:pointer;}
   @media (hover:hover){.link-btn:hover{text-decoration:underline;}}
   #saveThemeBtn.link-btn{width:auto;}
@@ -2722,9 +2740,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <button type="button" class="step-tab" data-step="1"><span class="sn">1</span><span class="st"><b>Design</b><small id="stepSum1"></small></span></button>
       <button type="button" class="step-tab" data-step="2"><span class="sn">2</span><span class="st"><b>Text</b><small id="stepSum2"></small></span></button>
       <button type="button" class="step-tab" data-step="3"><span class="sn">3</span><span class="st"><b>Layout</b><small id="stepSum3"></small></span></button>
-      <button type="button" class="step-tab" data-step="4"><span class="sn">4</span><span class="st"><b>Extras</b><small id="stepSum4"></small></span></button>
-      <button type="button" class="step-tab" data-step="5"><span class="sn">5</span><span class="st"><b>Share</b><small id="stepSum5"></small></span></button>
-      <button type="button" class="step-tab" data-step="6"><span class="sn">6</span><span class="st"><b>Session</b><small id="stepSum6"></small></span></button>
+      <button type="button" class="step-tab" data-step="4"><span class="sn">4</span><span class="st"><b>Camera</b><small id="stepSum4"></small></span></button>
+      <button type="button" class="step-tab" data-step="5"><span class="sn">5</span><span class="st"><b>Extras</b><small id="stepSum5"></small></span></button>
+      <button type="button" class="step-tab" data-step="6"><span class="sn">6</span><span class="st"><b>Share</b><small id="stepSum6"></small></span></button>
+      <button type="button" class="step-tab" data-step="7"><span class="sn">7</span><span class="st"><b>Session</b><small id="stepSum7"></small></span></button>
     </nav>
 
     <!-- STEP 1 · DESIGN -->
@@ -3084,11 +3103,45 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <select id="photoFitSelect" hidden><option value="fill" selected>Fill the box</option></select>
         <div class="guest-layouts" id="guestLayouts" hidden></div>
       </div>
-      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="2">← Back</button><button type="button" class="action-btn primary next-btn" data-go="4">Next: Extras →</button></div>
+      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="2">← Back</button><button type="button" class="action-btn primary next-btn" data-go="4">Next: Camera →</button></div>
     </section>
 
-    <!-- STEP 4 · EXTRAS -->
+    <!-- STEP 4 · CAMERA -->
     <section class="step" id="step4" data-step="4">
+      <div class="panel-section" id="camPreviewSection">
+        <p class="panel-label">Live view</p>
+        <p class="panel-hint step-lead">What the camera sees before you start. Mirror and the live filter show here too.</p>
+        <div class="scp-frame" id="scpFrame">
+          <video id="setupCamVideo" autoplay playsinline muted></video>
+          <div class="scp-empty" id="scpEmpty">Waiting for the camera…</div>
+        </div>
+        <div class="scp-meta">
+          <span class="scp-info" id="scpInfo"></span>
+          <div class="chip-row" id="scpFitChips">
+            <button type="button" class="chip active" data-fit="full">Full frame</button>
+            <button type="button" class="chip" data-fit="layout">Crop to layout</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel-section" id="cameraSection">
+        <p class="panel-label">Camera</p>
+        <select class="cam-select" id="cameraSelect">
+          <option value="">Loading cameras…</option>
+        </select>
+        <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
+        <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
+        <button type="button" class="action-btn" id="usbLogBtn" style="display:none; width:auto; margin:6px 0 0;">Copy camera log</button>
+        <label class="switch-row" id="mirrorRow">
+          <span>Mirror the live view</span>
+          <input type="checkbox" id="mirrorToggle">
+        </label>
+        <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos look the same as the preview (mirrored when this is on).</p>
+      </div>
+      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="3">← Back</button><button type="button" class="action-btn primary next-btn" data-go="5">Next: Extras →</button></div>
+    </section>
+
+    <!-- STEP 5 · EXTRAS -->
+    <section class="step" id="step5" data-step="5">
       <div class="panel-section" id="decorSection">
         <p class="panel-label">Extras</p>
         <p class="panel-hint step-lead">All optional.</p>
@@ -3107,7 +3160,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <div id="flipbookOptions" style="display:none; margin-top:10px;">
             <p class="panel-hint" style="margin:0 0 8px;">Guests record a short clip. The booth prints its frames as small cards on sheets, in order from left to right and top to bottom: cut along the lines, stack them in that order and staple. Guests also get an animated GIF QR code. Prints use the paper size chosen in Print settings.</p>
             <div class="stepper"><span class="lbl">Clip length</span><span class="ctl"><select id="flipSecSelect"><option value="4">4 s</option><option value="5">5 s</option><option value="6" selected>6 s</option><option value="7">7 s</option></select></span></div>
-            <div class="stepper"><span class="lbl">Frames in the book</span><span class="ctl"><select id="flipFramesSelect"><option value="16">16</option><option value="24">24</option><option value="30" selected>30</option><option value="40">40</option></select></span></div>
+            <div class="stepper"><span class="lbl">Frames in the book</span><span class="ctl"><select id="flipFramesSelect"><option value="16">16</option><option value="24" selected>24</option><option value="30">30</option><option value="40">40</option></select></span></div>
+            <p class="panel-hint" style="margin:6px 0 0;">The booth records more pictures than the book needs and keeps the sharpest ones, spaced so every page differs from the last. Fewer frames over a longer clip means bigger changes between pages.</p>
             <label class="toggle-row" style="margin-top:10px;"><input type="checkbox" id="flipCoverToggle" checked> Cover card (event name and date, first in the stack)</label>
             <label class="toggle-row" style="margin-top:6px;"><input type="checkbox" id="flipBackToggle" checked> Back card (&ldquo;Thank you!&rdquo;, last in the stack)</label>
           </div>
@@ -3211,11 +3265,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
         </div>
       </div>
-      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="3">← Back</button><button type="button" class="action-btn primary next-btn" data-go="5">Next: Share →</button></div>
+      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="4">← Back</button><button type="button" class="action-btn primary next-btn" data-go="6">Next: Share →</button></div>
     </section>
 
-    <!-- STEP 5 · SHARE -->
-    <section class="step" id="step5" data-step="5">
+    <!-- STEP 6 · SHARE -->
+    <section class="step" id="step6" data-step="6">
       <div class="panel-section" id="driveSetupSection">
         <p class="panel-label">Share</p>
         <p class="panel-hint step-lead" id="driveStatusText">Type a folder name to save the photos.</p>
@@ -3259,10 +3313,26 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
           <p class="sub-label" style="margin-top:14px;">Guests&rsquo; phones</p>
           <p class="panel-hint" id="deskLan" style="margin:0;"></p>
+          <div id="deskIpadBox" style="display:none;">
+            <p class="sub-label" style="margin-top:14px;">iPad with this laptop&rsquo;s camera</p>
+            <label class="switch-row"><span>Let an iPad use this laptop&rsquo;s camera</span><input type="checkbox" id="deskIpadOn"></label>
+            <p class="panel-hint" id="deskIpad" style="margin:6px 0 0; word-break:break-all;"></p>
+            <div class="desk-row" id="deskIpadRow" style="display:none;">
+              <button type="button" class="action-btn" id="deskIpadCopy" style="width:auto; margin:0;">Copy iPad address</button>
+              <button type="button" class="action-btn" id="deskIpadPin" style="width:auto; margin:0;">Make a new PIN</button>
+            </div>
+          </div>
           <p class="sub-label" style="margin-top:14px;">Booth Wi-Fi for guests (optional)</p>
-          <p class="panel-hint" style="margin:0 0 6px;">Guests scan a Wi-Fi QR to join, then their photo QR. Leave empty if they already know the Wi-Fi.</p>
+          <p class="panel-hint" style="margin:0 0 6px;">Guests scan the Wi-Fi QR to join, then their photo QR. The Wi-Fi this device is on is filled in when the app can read it. Leave empty if they already know the Wi-Fi.</p>
           <input type="text" class="label-input" id="deskWifiName" placeholder="Wi-Fi name" maxlength="32" autocomplete="off" spellcheck="false">
           <input type="text" class="label-input" id="deskWifiPass" placeholder="Wi-Fi password (empty if none)" maxlength="63" autocomplete="off" spellcheck="false" style="margin-top:8px;">
+          <div class="desk-row" style="margin-top:8px;"><button type="button" class="action-btn" id="deskWifiDetect" style="width:auto; margin:0; display:none;">Use current Wi-Fi</button></div>
+          <p class="panel-hint" id="deskWifiHint" style="margin:6px 0 0;"></p>
+          <div id="deskWifiQrBox" style="display:none; margin-top:12px; text-align:center;">
+            <img id="deskWifiQrImg" class="qr-img" style="width:140px;height:140px;" alt="Wi-Fi QR code">
+            <p class="qr-caption" id="deskWifiQrCap"></p>
+            <button type="button" class="action-btn" id="wifiSignBtn" style="width:auto; margin:10px auto 0; padding:9px 16px;">Download WIFI QR Sign</button>
+          </div>
           <p class="sub-label" id="deskLicLabel" style="margin-top:14px;">This laptop&rsquo;s licence</p>
           <p class="panel-hint" id="deskLic" style="margin:0;"></p>
           <div class="desk-row" id="deskLicRow">
@@ -3300,11 +3370,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p class="panel-hint web-only" id="ppRouteHint" style="margin:4px 0 0;"></p>
         </div>
       </div>
-      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="4">← Back</button><button type="button" class="action-btn primary next-btn" data-go="6">Next: Session →</button></div>
+      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="5">← Back</button><button type="button" class="action-btn primary next-btn" data-go="7">Next: Session →</button></div>
     </section>
 
-    <!-- STEP 6 · SESSION -->
-    <section class="step" id="step6" data-step="6">
+    <!-- STEP 7 · SESSION -->
+    <section class="step" id="step7" data-step="7">
       <div class="panel-section" id="sessionSection">
         <p class="panel-label">Session</p>
         <p class="panel-hint step-lead">How each guest's turn runs: countdown, time between photos and retakes.</p>
@@ -3443,20 +3513,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p class="panel-hint" id="fxMeterTxt" style="margin:6px 0 0;"></p>
         </div>
       </div>
-      <div class="panel-section" id="cameraSection">
-        <p class="panel-label">Camera</p>
-        <select class="cam-select" id="cameraSelect">
-          <option value="">Loading cameras…</option>
-        </select>
-        <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
-        <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
-        <button type="button" class="action-btn" id="usbLogBtn" style="display:none; width:auto; margin:6px 0 0;">Copy camera log</button>
-        <label class="switch-row" id="mirrorRow">
-          <span>Mirror the live view</span>
-          <input type="checkbox" id="mirrorToggle">
-        </label>
-        <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos look the same as the preview (mirrored when this is on).</p>
-      </div>
       <div class="panel-section" id="brandSection">
         <p class="panel-label">Welcome screen &amp; branding</p>
         <p class="panel-hint step-lead" id="brandLead">Customize the screen guests see between sessions, and display your logo.</p>
@@ -3557,7 +3613,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <p class="panel-hint" id="lockTestNote" style="margin:0 0 10px; padding:6px 10px; border-radius:10px; background:#fff6db; border:1px solid #f0d98a; color:#6b5300; font-weight:700;">For testing: the PIN is <b>1234</b> until you set your own.</p>
         <p class="panel-hint" style="margin:0;">Set or change the PIN here. When you are ready to leave the booth in guest mode, use <b>Lock booth</b> in the Photo Session dock.</p>
       </div>
-      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="5">← Back</button><button class="action-btn primary" id="goToSessionBtn">Start photo session →</button></div>
+      <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="6">← Back</button><button class="action-btn primary" id="goToSessionBtn">Start photo session →</button></div>
     </section>
 
     <div class="panel-section" id="previewSection">
@@ -3934,6 +3990,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   <button type="button" class="dock-btn" id="backupFab" hidden aria-label="Backup folder" aria-expanded="false" aria-controls="backupPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Backup folder</span><i class="bk-dot" aria-hidden="true"></i></button>
   <button type="button" class="dock-btn" id="galleryFab" hidden aria-label="All photos gallery" aria-expanded="false" aria-controls="galleryPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zm0 6h3m3-6v3m0 3h.01"/></svg><span>All photos</span></button>
   <button type="button" class="dock-btn" id="extrasFab" hidden aria-label="Extras" aria-expanded="false" aria-controls="extrasPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg><span>Extras</span></button>
+  <button type="button" class="dock-btn" id="wifiFab" hidden aria-label="Booth Wi-Fi" aria-expanded="false" aria-controls="wifiPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/><path d="M12 19.5h.01"/></svg><span>Wi-Fi</span></button>
   <button type="button" class="dock-btn" id="lockFab" hidden aria-label="Lock booth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Lock booth</span></button>
   </div>
   <div class="extras-pop" id="extrasPop" hidden>
@@ -3954,6 +4011,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   <button type="button" class="gallery-close" id="galleryPopClose" aria-label="Close">&#215;</button>
   <p class="bp-title">All photos</p><img id="galleryPopQr" alt="All photos gallery QR code"><a class="gallery-link" id="galleryPopLink" href="#" target="_blank" rel="noopener">Open event gallery</a>
   <div class="bp-btns"><button type="button" class="action-btn" id="galleryPopCopy">Copy link</button></div>
+</div>
+<div class="gallery-pop" id="wifiPop" role="dialog" aria-label="Booth Wi-Fi" hidden>
+  <button type="button" class="gallery-close" id="wifiPopClose" aria-label="Close">&#215;</button>
+  <p class="bp-title">Booth Wi-Fi</p><img id="wifiPopQr" alt="Wi-Fi QR code">
+  <p class="gallery-link" id="wifiPopName" style="margin:0;font-weight:700;font-size:14px;color:var(--ink);"></p>
+  <p class="gallery-link" id="wifiPopPass" style="margin:2px 0 10px;"></p>
+  <p class="gallery-link" style="margin:0;">Scan to join, then scan your photo QR.</p>
 </div>
 <button type="button" class="lock-icon" id="lockIcon" aria-label="Unlock" title="Unlock" hidden><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></button>
 <div class="pin-modal" id="pinModal" hidden>
@@ -4075,7 +4139,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // and guests on the same Wi-Fi open them from the tablet, like the laptop app does.
   const ANDROID_LOCAL = !!(window.__PBLocal && typeof window.__PBLocal.drive === 'function' && window.__PB && window.__PB.android);
   // Photos stay on this device and guests reach them over the booth Wi-Fi (laptop app and Android tablet app).
-  const LOCALSHARE = DESKTOP || ANDROID_LOCAL;
+  // An iPad / tablet that opened the booth from the laptop app over the booth Wi-Fi (http://<laptop>:47777/ipad/<PIN>): the
+  // laptop does the camera, the photo folder and the licence; this page only shows the booth (desktop/lib/lan.mjs).
+  const LANREMOTE = !DESKTOP && !!(window.__PB && window.__PB.lanRemote && window.__PB.lanRemote.base);
+  const LOCALSHARE = DESKTOP || ANDROID_LOCAL || LANREMOTE;
+  // The laptop's address on the booth Wi-Fi, as the guests' phones reach it ('' when unknown).
+  function lanBaseNow(){
+    try{
+      if(LANREMOTE) return String(window.__PB.lanRemote.base || '');
+      return (ANDROID_LOCAL ? window.__PBLocal.lanBase() : window.pb4u.lanBase()) || '';
+    }catch(e){ return ''; }
+  }
   if(LOCALSHARE) document.documentElement.classList.add('pb-desktop');   // hides the online-only options (web-only)
   const LOCAL_DEVICE = ANDROID_LOCAL ? 'tablet' : 'laptop';
   // Line icons from the SVG sprite at the top of the page.
@@ -4157,6 +4231,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     tabSetup.classList.toggle('hidden', toSession);
     tabSession.classList.toggle('hidden', !toSession);
     document.body.classList.toggle('in-session', toSession);   // smaller header: the camera gets the room
+    try{ if(typeof scpRefresh === 'function') scpRefresh(); }catch(e){}
     window.scrollTo(0, 0);
     if(toSession && typeof applyStageAspect === 'function') requestAnimationFrame(function(){ applyStageAspect(); });
     try{ refreshPrintFab(); refreshPanelSolo(); }catch(e){}
@@ -4178,7 +4253,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   goToSessionBtn.addEventListener('click', () => {
     if(!rawFolderKey()){
-      if(typeof goStep === 'function') goStep(5);
+      if(typeof goStep === 'function') goStep(6);
       showDriveFolderError('Type a folder name first.');
       driveFolderKeyInput.focus();
       return;
@@ -5855,7 +5930,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function localShareUrl(folderUrl, file){
     var m = /^pb4u-local:([A-Za-z0-9]+)/.exec(String(folderUrl || ''));
     if(!m) return null;
-    var base = null; try{ base = ANDROID_LOCAL ? window.__PBLocal.lanBase() : window.pb4u.lanBase(); }catch(e){}
+    var base = lanBaseNow();
     return base ? base + '/e/' + m[1] + '/' + (file ? 'p/' + encodeURIComponent(file) : '') : null;
   }
   const NO_LAN_TEXT = 'Saved on this ' + LOCAL_DEVICE + '. Connect the ' + LOCAL_DEVICE + ' to the booth Wi-Fi to show the QR.';
@@ -5868,6 +5943,40 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function wifiQrText(w){
     var e = function(t){ return String(t).replace(/([\\;,":])/g, '\\$1'); };
     return 'WIFI:T:' + (w.pass ? 'WPA' : 'nopass') + ';S:' + e(w.ssid) + ';' + (w.pass ? 'P:' + e(w.pass) + ';' : '') + ';';
+  }
+  function saveWifiInfo(ssid, pass){
+    try{ if(ssid) localStorage.setItem(WIFI_KEY, JSON.stringify({ ssid: ssid, pass: pass })); else localStorage.removeItem(WIFI_KEY); }catch(e){}
+    refreshWifiUI();
+  }
+  // Booth Wi-Fi QR: in Share & start (with the sign button) and behind the Wi-Fi button in the dock.
+  function refreshWifiUI(){
+    const w = wifiInfo();
+    const box = document.getElementById('deskWifiQrBox');
+    if(box){
+      box.style.display = w ? '' : 'none';
+      if(w){ document.getElementById('deskWifiQrImg').src = qrImageUrl(wifiQrText(w)); document.getElementById('deskWifiQrCap').textContent = 'Join “' + w.ssid + '”'; }
+    }
+    const fab = document.getElementById('wifiFab'); if(!fab) return;
+    fab.hidden = !w;
+    if(w){
+      document.getElementById('wifiPopQr').src = qrImageUrl(wifiQrText(w));
+      document.getElementById('wifiPopName').textContent = w.ssid;
+      document.getElementById('wifiPopPass').textContent = w.pass ? 'Password: ' + w.pass : 'No password';
+    }else closeWifiPop();
+    if(typeof scheduleDock === 'function') scheduleDock();
+  }
+  function closeWifiPop(){
+    const pop = document.getElementById('wifiPop'); if(!pop || pop.hidden) return;
+    pop.hidden = true;
+    const fab = document.getElementById('wifiFab'); if(fab) fab.setAttribute('aria-expanded', 'false');
+  }
+  function openWifiPop(){
+    const pop = document.getElementById('wifiPop'), fab = document.getElementById('wifiFab');
+    if(!pop || !fab || fab.hidden) return;
+    pop.hidden = false; fab.setAttribute('aria-expanded', 'true');
+    const r = fab.getBoundingClientRect();
+    pop.style.left = Math.max(12, Math.min(r.left, window.innerWidth - pop.offsetWidth - 12)) + 'px';
+    pop.style.bottom = (window.innerHeight - r.top + 10) + 'px';
   }
   function galleryUrlFor(folderUrl){
     if(LOCALSHARE) return localShareUrl(folderUrl);
@@ -5937,27 +6046,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     x.fillText('SCAN FOR YOUR PHOTOS', W / 2, 330);
     x.fillStyle = '#1C1A1E'; fit(name || 'Photo booth', "600 #px 'Fraunces', Georgia, serif", 150, W - 360);
     x.fillText(name || 'Photo booth', W / 2, 500);
-    const wifi = wifiInfo();
-    const drawQr = (text, ox, oy, size) => {
-      let qq = null; try{ qq = qrcode(0, 'M'); qq.addData(String(text)); qq.make(); }catch(e){ return; }
-      const n = qq.getModuleCount(), cell = Math.floor(size / (n + 4)), qs = cell * (n + 4);
-      ox = Math.round(ox + (size - qs) / 2);
-      x.fillStyle = '#ffffff'; x.fillRect(ox, oy, qs, qs);
-      x.fillStyle = '#000000';
-      for(let r = 0; r < n; r++) for(let k = 0; k < n; k++) if(qq.isDark(r, k)) x.fillRect(ox + (k + 2) * cell, oy + (r + 2) * cell, cell, cell);
-      x.strokeStyle = '#E4DCCF'; x.lineWidth = 6; x.strokeRect(ox - 3, oy - 3, qs + 6, qs + 6);
-    };
-    let q = null;
-    if(wifi){
-      // 1. join the booth Wi-Fi  2. open the photos (guests' phones must be on the laptop's Wi-Fi)
-      drawQr(wifiQrText(wifi), 170, 640, 640); drawQr(url, 938, 640, 640);
-      x.textAlign = 'center';
-      x.fillStyle = '#1C1A1E'; x.font = "800 52px 'Manrope', system-ui, sans-serif";
-      x.fillText('1. Join the Wi-Fi', 490, 1390); x.fillText('2. Open your photos', 1258, 1390);
-      x.fillStyle = '#6B666C'; fit(wifi.ssid, "700 #px 'Manrope', system-ui, sans-serif", 44, 640);
-      x.fillText(wifi.ssid, 490, 1460);
-      if(wifi.pass){ fit('Password: ' + wifi.pass, "600 #px 'Manrope', system-ui, sans-serif", 38, 640); x.fillText('Password: ' + wifi.pass, 490, 1520); }
-    } else { try{ q = qrcode(0, 'M'); q.addData(String(url)); q.make(); }catch(e){} }
+    let q = null; try{ q = qrcode(0, 'M'); q.addData(String(url)); q.make(); }catch(e){}
     if(q){
       const n = q.getModuleCount(), size = 1100, cell = Math.floor(size / (n + 4)), qs = cell * (n + 4);
       const ox = Math.round((W - qs) / 2), oy = 620;
@@ -5970,19 +6059,58 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     x.fillText('Open your phone camera and point it here.', W / 2, 1880);
     x.fillStyle = '#6B666C'; x.font = "600 46px 'Manrope', system-ui, sans-serif";
     x.fillText('Every photo from the booth lands in this gallery.', W / 2, 1960);
-    x.fillText(LOCALSHARE ? 'Your phone must be on the booth Wi-Fi' + (wifi ? '.' : ' (ask us for it).') : 'No signal at the booth? Your photo still arrives later.', W / 2, 2030);
+    x.fillText('No signal at the booth? Your photo still arrives later.', W / 2, 2030);
     try{ const mk = brandMarkCanvas(), mw = 520, mh = Math.round(mw * mk.height / mk.width); x.drawImage(mk, (W - mw) / 2, 2180, mw, mh); }catch(e){}
+    await saveSignPng(c, 'qr-sign', name, 'QR sign');
+  }
+  document.getElementById('qrSignBtn').addEventListener('click', downloadQrSign);
+
+  async function saveSignPng(c, base, name, title){
     const blob = await new Promise(r => c.toBlob(r, 'image/png'));
-    const file = 'qr-sign' + (name ? '-' + name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() : '') + '.png';
+    const file = base + (name ? '-' + name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() : '') + '.png';
     try{
       const f = new File([blob], file, { type: 'image/png' });
-      if(isMobileOS() && navigator.canShare && navigator.canShare({ files: [f] })){ await navigator.share({ files: [f], title: 'QR sign' }); return; }
+      if(isMobileOS() && navigator.canShare && navigator.canShare({ files: [f] })){ await navigator.share({ files: [f], title: title }); return; }
     }catch(e){ if(e && e.name === 'AbortError') return; }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file; document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 3000);
-    showToast('QR sign saved. Print it on A5 or bigger.');
+    showToast(title + ' saved. Print it on A5 or bigger.');
   }
-  document.getElementById('qrSignBtn').addEventListener('click', downloadQrSign);
+
+  // Apps: a printable "Join our Wi-Fi" sign (A5, 300 dpi PNG) with the booth Wi-Fi QR, name and password.
+  // The photos' QR is not here: guests get it on the booth screen after each session.
+  async function downloadWifiSign(){
+    const w = wifiInfo(); if(!w){ showToast('Add the booth Wi-Fi name first.'); return; }
+    let q = null; try{ q = qrcode(0, 'M'); q.addData(String(wifiQrText(w))); q.make(); }catch(e){ return; }
+    try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
+    const W = 1748, H = 2480, c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d');
+    x.fillStyle = '#F5F1EA'; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#ffffff'; x.fillRect(110, 110, W - 220, H - 220);
+    x.textAlign = 'center';
+    const name = ((labelInput && labelInput.value) || '').trim();
+    const fit = (t, font, size, maxW) => { let f = size; do { x.font = font.replace('#', f); f -= 4; } while(f > 40 && x.measureText(t).width > maxW); };
+    x.fillStyle = '#6B666C'; fit('JOIN OUR WI-FI', "800 #px 'Manrope', system-ui, sans-serif", 64, W - 400);
+    x.fillText('JOIN OUR WI-FI', W / 2, 330);
+    x.fillStyle = '#1C1A1E'; fit(name || 'Photo booth', "600 #px 'Fraunces', Georgia, serif", 150, W - 360);
+    x.fillText(name || 'Photo booth', W / 2, 500);
+    const n = q.getModuleCount(), size = 1100, cell = Math.floor(size / (n + 4)), qs = cell * (n + 4);
+    const ox = Math.round((W - qs) / 2), oy = 620;
+    x.fillStyle = '#ffffff'; x.fillRect(ox, oy, qs, qs);
+    x.fillStyle = '#000000';
+    for(let r = 0; r < n; r++) for(let k = 0; k < n; k++) if(q.isDark(r, k)) x.fillRect(ox + (k + 2) * cell, oy + (r + 2) * cell, cell, cell);
+    x.strokeStyle = '#E4DCCF'; x.lineWidth = 6; x.strokeRect(ox - 3, oy - 3, qs + 6, qs + 6);
+    x.fillStyle = '#1C1A1E'; fit(w.ssid, "800 #px 'Manrope', system-ui, sans-serif", 72, W - 360);
+    x.fillText(w.ssid, W / 2, 1860);
+    x.fillStyle = '#6B666C';
+    if(w.pass){ fit('Password: ' + w.pass, "600 #px 'Manrope', system-ui, sans-serif", 54, W - 360); x.fillText('Password: ' + w.pass, W / 2, 1940); }
+    else { x.font = "600 54px 'Manrope', system-ui, sans-serif"; x.fillText('No password', W / 2, 1940); }
+    x.font = "600 46px 'Manrope', system-ui, sans-serif";
+    x.fillText('Point your phone camera here, then scan your photo QR at the booth.', W / 2, 2030);
+    try{ const mk = brandMarkCanvas(), mw = 520, mh = Math.round(mw * mk.height / mk.width); x.drawImage(mk, (W - mw) / 2, 2180, mw, mh); }catch(e){}
+    await saveSignPng(c, 'wifi-sign', name, 'Wi-Fi sign');
+  }
+  document.getElementById('wifiSignBtn').addEventListener('click', downloadWifiSign);
 
   let resolveTimer = null;
 
@@ -6326,6 +6454,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     document.getElementById('backupPopChange').addEventListener('click', (e) => { e.stopPropagation(); closeBackupPop(); document.getElementById('backupChooseBtn').click(); });
     document.getElementById('backupPop').addEventListener('click', (e) => e.stopPropagation());
     document.getElementById('galleryFab').addEventListener('click', (e) => { e.stopPropagation(); const pop = document.getElementById('galleryPop'); if(pop.hidden) openGalleryPop(); else closeGalleryPop(); });
+    document.getElementById('wifiFab').addEventListener('click', (e) => { e.stopPropagation(); closeGalleryPop(); const pop = document.getElementById('wifiPop'); if(pop.hidden) openWifiPop(); else closeWifiPop(); });
+    document.getElementById('wifiPopClose').addEventListener('click', closeWifiPop);
+    document.getElementById('wifiPop').addEventListener('click', (e) => e.stopPropagation());
+    document.addEventListener('click', closeWifiPop);
+    window.addEventListener('resize', closeWifiPop);
     document.getElementById('galleryPopClose').addEventListener('click', closeGalleryPop);
     document.getElementById('galleryPop').addEventListener('click', (e) => e.stopPropagation());
     document.getElementById('galleryPopCopy').addEventListener('click', async () => {
@@ -6334,7 +6467,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     });
     document.addEventListener('click', closeBackupPop);
     document.addEventListener('click', closeGalleryPop);
-    document.addEventListener('keydown', (e) => { if(e.key === 'Escape'){ closeBackupPop(); closeGalleryPop(); } });
+    document.addEventListener('keydown', (e) => { if(e.key === 'Escape'){ closeBackupPop(); closeGalleryPop(); closeWifiPop(); } });
     window.addEventListener('resize', () => { closeBackupPop(); closeGalleryPop(); });
     document.getElementById('backupStopBtn').addEventListener('click', async () => {
       backupDir = null; backupOk = false;
@@ -6346,6 +6479,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     driveFolderKeyInput.addEventListener('input', refreshBackupUI);
     refreshBackupUI();
     refreshGalleryUI();
+    refreshWifiUI();
     if(canBackupFolder){
       dbDo('kv', 'readonly', st => st.get('backupDir')).then(async h => {
         if(!h) return;
@@ -6433,7 +6567,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var GV_CODE_RE = /^[A-Za-z0-9_-]{16,40}$/;
   // The website: a rental code, and also the free trial (its own photos stay private too).
   function gvServer(){ var pb = window.__PB; return !!(pb && (pb.type === 'rental' || pb.type === 'trial')); }
-  function gvAvailable(){ return LOCALSHARE ? !!((window.pb4u && typeof window.pb4u.guestViewSet === 'function') || (ANDROID_LOCAL && typeof window.__PBLocal.guestViewSet === 'function')) : gvServer(); }
+  function gvAvailable(){ return LOCALSHARE ? !!(LANREMOTE || (window.pb4u && typeof window.pb4u.guestViewSet === 'function') || (ANDROID_LOCAL && typeof window.__PBLocal.guestViewSet === 'function')) : gvServer(); }
   function gvActive(){ return gvAvailable() && gvMode !== 'all'; }
   function gvPrivate(){ return gvAvailable() && gvMode === 'only'; }
   function gvStore(k){ try{ return JSON.parse(localStorage.getItem(k) || 'null'); }catch(e){ return null; } }
@@ -6451,7 +6585,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // The link of a session's own page (null when the laptop is not on a Wi-Fi network).
   function gvSessionUrl(n){
     var code = gvCodeFor(n || sessionNumber || 1);
-    if(LOCALSHARE){ var base = ''; try{ base = ANDROID_LOCAL ? window.__PBLocal.lanBase() : window.pb4u.lanBase(); }catch(e){} return base ? base + '/o/' + code : null; }
+    if(LOCALSHARE){ var base = lanBaseNow(); return base ? base + '/o/' + code : null; }
     return location.origin + '/p/' + code;
   }
   function gvFileNum(filename){
@@ -6471,7 +6605,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   async function gvApply(){
     if(!gvAvailable()) return;
     try{
-      if(LOCALSHARE){ if(ANDROID_LOCAL) window.__PBLocal.guestViewSet(gvMode); else await window.pb4u.guestViewSet(gvMode); return; }
+      if(LOCALSHARE){
+        if(ANDROID_LOCAL) window.__PBLocal.guestViewSet(gvMode);
+        else if(LANREMOTE) await fetch('/local/guestview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: gvMode }) });
+        else await window.pb4u.guestViewSet(gvMode);
+        return;
+      }
       var fid = gvFolderId(getCachedFolderUrl()); if(!fid) return;
       if(gvSent[fid] === gvMode) return;
       var j = await gvApi({ action: 'mode', folderKey: rawFolderKey(), folder: fid, mode: gvMode });
@@ -6575,13 +6714,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     link.href = url;
     guestRender();
   }
-  function addWifiSlot(){
-    const w = wifiInfo(); if(!w || !localShareUrl(getCachedFolderUrl() || 'pb4u-local:x')) return;
-    const wrap = qrSlot('wifi', '1 \u00b7 Join \u201c' + w.ssid + '\u201d', '');
-    const box = wrap.querySelector('.qr-box'); box.innerHTML = '';
-    const img = document.createElement('img'); img.className = 'qr-img'; img.src = qrImageUrl(wifiQrText(w)); img.alt = 'Wi-Fi QR code';
-    box.appendChild(img);
-  }
   function failQrSlot(kind, text){
     const wrap = qrResults.querySelector('.qr-result[data-kind="' + kind + '"]'); if(!wrap) return;
     const w = wrap.querySelector('.qr-wait'); if(w) w.textContent = text;
@@ -6594,7 +6726,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const myGeneration = ++qrGeneration;
     qrResults.innerHTML = '';
     lastRenderedFolderUrl = null;
-    if(LOCALSHARE) addWifiSlot();
     qrSlot('photo', 'Your photo', 'Saving your photo…');
     // Guests get a working QR straight away: the event's All photos page,
     // swapped for their own photo's QR as soon as the upload finishes. (The offline app has no extra
@@ -6652,7 +6783,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // ──────────────────────────────────────────────────────────────────
 
   var outputMode = 'photo';    // 'photo' | 'gif' | 'both' | 'flipbook'
-  var flipSec = 6, flipFrames = 30, flipCover = true, flipBack = true, flipbookResult = null;   // flipbook (included extra): clip length, frames, and the result on screen
+  var flipSec = 6, flipFrames = 24, flipCover = true, flipBack = true, flipbookResult = null;   // flipbook (included extra): clip length, frames, and the result on screen
   var gifLayoutMode = 'solo';  // 'solo' | 'follow' | 'raw': what the GIF frames are placed in
   function refreshGifLayoutUI(){
     var sel = document.getElementById('gifLayoutSelect'), gh = document.getElementById('gifLayoutHint');
@@ -6713,7 +6844,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // gifSpeed stays 0 (auto) always — no manual selector exposed to the operator.
     var fs = document.getElementById('flipSecSelect'), ff = document.getElementById('flipFramesSelect');
     if(fs) fs.addEventListener('change', function(){ flipSec = Number(fs.value) || 6; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
-    if(ff) ff.addEventListener('change', function(){ flipFrames = Number(ff.value) || 30; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+    if(ff) ff.addEventListener('change', function(){ flipFrames = Number(ff.value) || 24; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
     var gls = document.getElementById('gifLayoutSelect');
     if(gls) gls.addEventListener('change', function(){
       gifLayoutMode = (gls.value === 'follow' || gls.value === 'raw') ? gls.value : 'solo';
@@ -7218,11 +7349,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // photobooth4u Helper (the same app that prints) controls the camera and
   // the booth talks to it on this computer (127.0.0.1). No driver switch.
   const USB_WIN = /Win/i.test(navigator.platform || '') || /Windows NT/i.test(navigator.userAgent || '');
-  const CAM_HELPER = DESKTOP ? '/helper' : 'http://127.0.0.1:17321';
+  // Android tablet app: its WebView has no WebUSB, so the app itself controls the camera and answers on the
+  // same address as the Windows Helper (127.0.0.1:17321), using the same calls.
+  const ANDROID_APP = /PB4uAndroid/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.android);
+  const CAM_HELPER = (DESKTOP || LANREMOTE) ? '/helper' : 'http://127.0.0.1:17321';
   const CAM_HELPER_SEEN_KEY = 'pb_cam_helper';
   const usbCam = {
-    supported: USB_WIN ? !!window.fetch : (('usb' in navigator) && !!window.crossOriginIsolated),
-    viaHelper: USB_WIN,
+    supported: (USB_WIN || LANREMOTE || ANDROID_APP) ? !!window.fetch : (('usb' in navigator) && !!window.crossOriginIsolated),
+    viaHelper: USB_WIN || LANREMOTE || ANDROID_APP,          // an iPad on the laptop's Wi-Fi uses the laptop's camera the same way
     helperSees: false, helperName: '', helperUp: false,
     camera: null, name: '', active: false, gen: 0, libGen: 0, vfOn: false, initing: null,
     canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null,
@@ -7350,7 +7484,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // was picked before, or it connected before.
   function camHelperProbeOk(){
     if(!usbCam.viaHelper) return false;
-    if(DESKTOP) return true;                       // built into the app
+    if(DESKTOP || LANREMOTE || ANDROID_APP) return true;   // built into the app / the laptop the iPad is connected to / the tablet app
     try{
       if(localStorage.getItem(CAM_HELPER_SEEN_KEY) === '1' || localStorage.getItem('pb_print_helper') === '1') return true;
       const sv = JSON.parse(localStorage.getItem(CAM_PREF_KEY) || 'null');
@@ -7375,7 +7509,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   function usbOptionLabel(){
     if(usbCam.name) return usbCam.name + (usbCam.viaHelper ? ' (USB)' : ' (USB remote)');
-    if(usbCam.viaHelper) return usbCam.helperName ? usbCam.helperName + ' (USB)' : 'Nikon / Canon / Sony camera over USB (photobooth4u Helper)';
+    if(usbCam.viaHelper) return usbCam.helperName ? usbCam.helperName + ' (USB)' : ANDROID_APP ? 'Nikon / Canon / Sony camera over USB cable' : 'Nikon / Canon / Sony camera over USB (photobooth4u Helper)';
     return 'DSLR / mirrorless over USB (remote control)';
   }
 
@@ -7435,6 +7569,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(usbCam.viaHelper){
       const code = err && err.code;
       if(DESKTOP && (code === 'NOHELPER' || code === 'TIMEOUT')) return 'The camera part of the app isn\u2019t answering.' + (auto ? ' It keeps trying.' : ' Tap Try Again, or close and reopen the app.');
+      if(ANDROID_APP && (code === 'NOHELPER' || code === 'TIMEOUT')) return 'The camera part of the app isn\u2019t answering.' + (auto ? ' It keeps trying.' : ' Tap Try Again, or close and reopen the app.');
       if(code === 'NOHELPER' || code === 'TIMEOUT') return 'Can\u2019t reach the photobooth4u Helper. Open it on this laptop (download it from photobooth4u.netlify.app/downloads). If Chrome asks to let this site reach apps on this device, choose Allow.' + (auto ? ' The camera connects by itself once the helper is open.' : ' Then tap Try Again.');
       if(err && err.name === 'UsbNoLiveView' && usbCam.lastErr && usbCam.lastErr.helperMsg) return usbCam.lastErr.helperMsg + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');
       if(err && err.name === 'UsbNoLiveView') return 'The camera connected but live view didn\u2019t start. Close the camera\u2019s menu, take the lens cap off and check the battery.' + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');
@@ -8033,7 +8168,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var chip = document.getElementById('pbTimeChip');
     var chipOn = !!(chip && chip.parentNode && chip.parentNode.id === 'dockChipSlot' && chip.style.display !== 'none');
     return !document.getElementById('camFab').hidden || !document.getElementById('printFab').hidden || !document.getElementById('backupFab').hidden ||
-      !document.getElementById('galleryFab').hidden || !document.getElementById('lockFab').hidden || !document.getElementById('deskFab').hidden || !document.getElementById('spinFab').hidden || !document.getElementById('capFab').hidden || !document.getElementById('reqFab').hidden || !document.getElementById('vgFab').hidden ||
+      !document.getElementById('galleryFab').hidden || !document.getElementById('wifiFab').hidden || !document.getElementById('lockFab').hidden || !document.getElementById('deskFab').hidden || !document.getElementById('spinFab').hidden || !document.getElementById('capFab').hidden || !document.getElementById('reqFab').hidden || !document.getElementById('vgFab').hidden ||
       !document.getElementById('dockPwr').hidden || chipOn;
   }
   // Everything guests and the operator need to see or tap in Photo Session.
@@ -8298,6 +8433,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function applyMirror(){
     video.style.transform = mirrorPreview() ? 'scaleX(-1)' : 'scaleX(1)';
     try{ document.getElementById('surroundVideo').style.transform = video.style.transform; }catch(e){}
+    try{ if(typeof scpRefresh === 'function') scpRefresh(); }catch(e){}
     const t = document.getElementById('mirrorToggle');
     if(t) t.checked = mirrorPreview();
   }
@@ -11466,9 +11602,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   document.getElementById('printModalClose').addEventListener('click', closePrintModal);
   printModal.addEventListener('click', (e) => { if(e.target === printModal) closePrintModal(); });
   document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !printModal.hidden){ e.stopPropagation(); closePrintModal(); } }, true);
-  // "Camera" shortcut in Photo Session: the camera menu lives in Setup → 5.
+  // "Camera" shortcut in Photo Session: the camera menu lives in Setup → 4 Camera.
   const camFab = document.getElementById('camFab');
-  // The Camera card lives in Setup → 5; in Photo Session it opens in a pop-up
+  // The Camera card lives in Setup → 4 Camera; in Photo Session it opens in a pop-up
   // (moved in while open, put back on close), like Print settings.
   const camModal = document.getElementById('camModal'), camModalBody = document.getElementById('camModalBody');
   const camHome = document.createComment('camera-section-home');
@@ -11486,7 +11622,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     try{ refreshCamFab(); }catch(e){}
   }
   camFab.addEventListener('click', openCamModal);
-  document.getElementById('chooseCameraBtn').addEventListener('click', (e) => { e.stopPropagation(); if(document.body.classList.contains('in-session')) openCamModal(); else { switchTab('setup'); if(typeof goStep === 'function') goStep(6); } });
+  document.getElementById('chooseCameraBtn').addEventListener('click', (e) => { e.stopPropagation(); if(document.body.classList.contains('in-session')) openCamModal(); else { switchTab('setup'); if(typeof goStep === 'function') goStep(4); } });
   document.getElementById('camModalClose').addEventListener('click', closeCamModal);
   camModal.addEventListener('click', (e) => { if(e.target === camModal) closeCamModal(); });
   document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !camModal.hidden){ e.stopPropagation(); closeCamModal(); } }, true);
@@ -12737,6 +12873,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function applyLiveFilter(){
     video.style.filter = liveFilterCss();
     try{ document.getElementById('surroundVideo').style.filter = video.style.filter; }catch(e){}
+    try{ if(typeof scpRefresh === 'function') scpRefresh(); }catch(e){}
     if(guestOpen()){ try{ G.v.style.filter = liveFilterCss(); }catch(e){} }
   }
   // Per-look grain strength, vignette strength and light leak for the vintage looks.
@@ -13146,6 +13283,72 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(plainResult){ drawPlainPreview(); return; }
     _renderComposite();
   };
+  // ---- Flip book capture: fresh pictures, the sharpest one around each moment, frames chosen so each page differs ----
+  // Waits for the camera to deliver a new picture (so the same picture is never taken twice). The video's clock moves on with
+  // each new picture, also when the video is hidden or off screen (the frame callback does not fire then). A stalled camera
+  // gives up after 80 ms, so the clip is never held up.
+  function nextVideoFrame(){
+    return new Promise(function(res){
+      var t0 = video.currentTime, start = performance.now();
+      (function poll(){
+        if(video.currentTime !== t0) return res(true);
+        if(performance.now() - start > 80) return res(false);
+        setTimeout(poll, 6);
+      })();
+    });
+  }
+  // How sharp the live picture is right now: the variance of its Laplacian on a small grey copy (motion blur lowers it).
+  function frameSharpness(px, probe){
+    try{ px.drawImage(video, 0, 0, probe.width, probe.height); }catch(e){ return 0; }
+    var w = probe.width, h = probe.height, d = px.getImageData(0, 0, w, h).data, g = new Float32Array(w * h);
+    for(var i = 0, j = 0; i < d.length; i += 4, j++) g[j] = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+    var sum = 0, sum2 = 0, n = 0;
+    for(var y = 1; y < h - 1; y++) for(var x = 1; x < w - 1; x++){
+      var c = y * w + x, l = 4 * g[c] - g[c - 1] - g[c + 1] - g[c - w] - g[c + w];
+      sum += l; sum2 += l * l; n++;
+    }
+    return n ? sum2 / n - (sum / n) * (sum / n) : 0;
+  }
+  // A 32 x 24 grey copy of the picture just measured, to tell how much the scene moved between two pictures.
+  function frameSignature(tx, tiny, probe){
+    tx.drawImage(probe, 0, 0, tiny.width, tiny.height);
+    var d = tx.getImageData(0, 0, tiny.width, tiny.height).data, sig = new Uint8Array(tiny.width * tiny.height);
+    for(var i = 0, j = 0; i < d.length; i += 4, j++) sig[j] = (d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8;
+    return sig;
+  }
+  // JPEG of the canvas as it is now (toBlob copies the picture when called), with what pickFlipFrames needs.
+  function encodeFlipCandidate(cv, best){
+    return new Promise(function(res){
+      cv.toBlob(function(blob){ res(blob ? { blob: blob, time: best.time, sig: best.sig, score: best.score } : null); }, 'image/jpeg', 0.9);
+    });
+  }
+  // Picks `count` of the recorded pictures so that each page differs from the last by about the same amount of movement
+  // (a still moment gets few pages, a lively one gets more). A third of the spacing still follows the clock, so a long
+  // still stretch never becomes a long freeze. A clip with almost no movement is simply spaced evenly.
+  function pickFlipFrames(cand, count){
+    var m = cand.length;
+    if(m <= count) return cand.slice();
+    var C = [0], i, k;
+    for(i = 1; i < m; i++){
+      var a = cand[i - 1].sig, b = cand[i].sig, d = 0;
+      for(k = 0; k < a.length; k++) d += Math.abs(a[k] - b[k]);
+      C.push(C[i - 1] + d / a.length);
+    }
+    var T = C[m - 1], moving = T / m >= 1, t0 = cand[0].time, tSpan = Math.max(1, cand[m - 1].time - t0), S = [];
+    for(i = 0; i < m; i++){
+      var tf = (cand[i].time - t0) / tSpan;
+      S.push(moving ? 0.65 * (C[i] / T) + 0.35 * tf : tf);
+    }
+    var out = [], last = -1;
+    for(k = 0; k < count; k++){
+      var target = k / (count - 1), idx = last + 1;
+      while(idx < m - 1 && S[idx] < target) idx++;
+      if(idx - 1 > last && Math.abs(S[idx - 1] - target) < Math.abs(S[idx] - target)) idx--;
+      idx = Math.min(Math.max(idx, last + 1), m - (count - k));   // keep room for the pages still to come
+      out.push(cand[idx]); last = idx;
+    }
+    return out;
+  }
   async function runFlipbookSession(){
     for(var n = 3; n >= 1; n--){
       if(sess && sess.cancelled){ endCancelledSession(); return; }
@@ -13154,25 +13357,42 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }
     if(sess && sess.cancelled){ endCancelledSession(); return; }
     popNum('Go!', true); guestCall('tick', 'Go!', true, 0, '');
-    var totalMs = Math.max(2, flipSec) * 1000, count = Math.max(8, flipFrames), step = totalMs / count;
+    var totalMs = Math.max(2, flipSec) * 1000, count = Math.max(8, flipFrames);
+    // Pictures are recorded more densely than the book needs (one per 100 ms at most, up to twice the pages); the pages
+    // are chosen from them afterwards so that each differs from the last (see pickFlipFrames).
+    var fineN = Math.max(count, Math.min(count * 2, Math.floor(totalMs / 100))), fineStep = totalMs / fineN;
     var vw = video.videoWidth || 640, vh = video.videoHeight || 480, scale = Math.min(1, 1280 / vw, 720 / vh);
     var cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(vw * scale)); cv.height = Math.max(1, Math.round(vh * scale));
     var cx = cv.getContext('2d', { willReadFrequently: true });
-    var frames = [], t0 = performance.now();
-    for(var i = 0; i < count; i++){
+    var probe = document.createElement('canvas'); probe.width = 192; probe.height = Math.max(8, Math.round(192 * vh / vw));
+    var px = probe.getContext('2d', { willReadFrequently: true });
+    var tiny = document.createElement('canvas'); tiny.width = 32; tiny.height = 24;
+    var tx = tiny.getContext('2d', { willReadFrequently: true });
+    var pending = [], t0 = performance.now(), at = 0;
+    for(var i = 0; i < fineN; i++){
       if(sess && sess.cancelled) break;
-      var wait = t0 + i * step - performance.now();
+      var wait = t0 + i * fineStep - performance.now();
       if(wait > 0) await sleepMs(wait);
-      cx.save();
-      if(typeof mirrorPreview === 'function' && mirrorPreview()){ cx.translate(cv.width, 0); cx.scale(-1, 1); }
-      try{ cx.drawImage(video, 0, 0, cv.width, cv.height); }catch(e){}
-      cx.restore();
+      // The sharpest of a few fresh pictures taken just after this moment (motion blur makes some of them smeared).
+      var winEnd = performance.now() + Math.min(60, fineStep * 0.4), best = null, tries = 0;
+      do{
+        await nextVideoFrame(); tries++;
+        var score = frameSharpness(px, probe);
+        if(!best || score > best.score){
+          best = { score: score, time: performance.now() - t0, sig: frameSignature(tx, tiny, probe) };
+          cx.save();
+          if(typeof mirrorPreview === 'function' && mirrorPreview()){ cx.translate(cv.width, 0); cx.scale(-1, 1); }
+          try{ cx.drawImage(video, 0, 0, cv.width, cv.height); }catch(e){}
+          cx.restore();
+        }
+      }while(tries < 3 && performance.now() < winEnd);
       try{ applyFilterToCanvas(cv); }catch(e){}
-      var at = performance.now() - t0;
-      var blob = await new Promise(function(res){ cv.toBlob(res, 'image/jpeg', 0.9); });
-      if(blob) frames.push({ blob: blob, time: at });
+      pending.push(encodeFlipCandidate(cv, best));   // the picture is copied now; encoding it must not hold up the next one
+      at = performance.now() - t0;
       popNum(String(Math.max(1, Math.ceil((totalMs - at) / 1000))), false);
     }
+    var cand = (await Promise.all(pending)).filter(Boolean);
+    var frames = cand.length >= 4 ? pickFlipFrames(cand, Math.min(count, cand.length)) : cand;
     if(sess && sess.cancelled){ endCancelledSession(); return; }
     var durationMs = Math.max(1, performance.now() - t0);
     if(frames.length < 4){ showToast('The clip didn\u2019t record. Check the camera and try again.', 5000); endCancelledSession(); return; }
@@ -13479,8 +13699,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     previewCanvas.width = src.width; previewCanvas.height = src.height;
     previewCanvas.getContext('2d').drawImage(src, 0, 0);
   }
-  function buildPlainPrint(key){
-    var paper = paperFor(key), src = plainResult;
+  function buildPlainPrint(key, srcIn){
+    var paper = paperFor(key), src = srcIn || plainResult;
     if(paper.receipt){
       var rc = document.createElement('canvas');
       rc.width = Math.round(paper.w / 25.4 * RECEIPT_DPI); rc.height = Math.round(src.height * rc.width / src.width);
@@ -13981,6 +14201,99 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     await reqDone(r);
     closeReq();
     startDeskResult([cv], { solo: true, original: cv, noQr: true, back: 'req' });
+  }
+  // ---- Print now: the operator opens an earlier photo in All photos and taps "Print photo" ----
+  // It prints at once on the printer, paper and copies chosen in Print settings (no preview, no dialog), like auto-print.
+  // Laptop app: the gallery page is served by the app, which hands the photo over (pb4u.printNowTake).
+  // Website: the gallery page asks this booth tab (same browser) through a BroadcastChannel.
+  var pnChain = Promise.resolve(), pnBusy = false;
+  function printSavedNow(cv){
+    var job = pnChain.then(function(){ return pnRun(cv); });
+    pnChain = job.catch(function(){});
+    return job;
+  }
+  async function pnRun(cv){
+    var paper = printSize ? paperFor(printSize) : null;
+    if(!printSettings() || !paper) return { ok: false, error: 'Printing isn’t set up on this booth.' };
+    var pname = printerFor(printSize), viaStation = useStation();
+    if(!viaStation && DESKTOP && !pname) return { ok: false, error: 'Choose a printer for ' + paper.name + ' in Print settings.' };
+    for(var w = 0; printing && w < 100; w++) await new Promise(function(r){ setTimeout(r, 300); });
+    if(printing) return { ok: false, error: 'The booth is busy printing. Try again.' };
+    var lim = printLimits(), left = lim.ev && printCount && printCount.left != null ? printCount.left : Infinity;
+    if(left < 1){ limitReached(); return { ok: false, error: 'No prints left for this event.' }; }
+    var n = Math.min(left, Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(printPrefs.copies) || 1))));
+    printing = true; refreshPrintUI();
+    try{
+      var res = await reservePrints(n);
+      if(!res.ok){ limitReached(); return { ok: false, error: 'No prints left for this event.' }; }
+      var pages = [buildPlainPrint(printSize, cv)];
+      if(paper.receipt) paper = Object.assign({}, paper, { h: Math.round(pages[0].height / RECEIPT_DPI * 254) / 10 });
+      var label = (n > 1 ? n + ' copies, ' : '') + paper.name;
+      if(viaStation){ await sendToStation(pages, paper, n); showToast('Sent to the print station (' + label + ').', 4000); return { ok: true }; }
+      var all = []; for(var c = 0; c < n; c++) all.push.apply(all, pages);
+      if(helperOn && pname){
+        var sent = true;
+        for(var i = 0; i < all.length && sent; i += 20) sent = await printViaHelper(all.slice(i, i + 20), paper, pname);
+        if(sent){ showToast('Printing on ' + pname + ' (' + label + ').'); return { ok: true }; }
+        if(DESKTOP) return { ok: false, error: 'The printer didn’t take the photo. Check it is on and try again.' };
+      }
+      if(isMobileOS() || DESKTOP) return { ok: false, error: 'Choose a printer in Print settings.' };
+      // Website without the Print Helper: the browser's own print (silent with Chrome's --kiosk-printing).
+      var urls = [];
+      printArea.innerHTML = '';
+      for(var k = 0; k < all.length; k++){
+        var blob = await new Promise(function(res2){ all[k].toBlob(res2, 'image/png'); });
+        var url = URL.createObjectURL(blob); urls.push(url);
+        var img = new Image(); img.src = url; await img.decode();
+        var pg = document.createElement('div'); pg.className = 'print-page';
+        pg.style.width = paper.w + 'mm'; pg.style.height = (paper.h - 0.4) + 'mm';
+        if(k < all.length - 1) pg.style.breakAfter = 'page';
+        pg.appendChild(img); printArea.appendChild(pg);
+      }
+      printPageStyle.textContent = '@page { size: ' + paper.w + 'mm ' + paper.h + 'mm; margin: 0; }';
+      window.print();
+      setTimeout(function(){ printArea.innerHTML = ''; urls.forEach(function(u){ URL.revokeObjectURL(u); }); }, 2000);
+      showToast('Sent to the printer (' + label + ').');
+      return { ok: true };
+    }catch(e){
+      console.error('Print now failed:', e);
+      return { ok: false, error: 'Couldn’t print. Try again.' };
+    }finally{
+      printing = false; refreshPrintUI();
+      if(printLimits().ev) setTimeout(refreshPrintCount, 1500);
+    }
+  }
+  async function pnPoll(){
+    var api = window.pb4u; if(pnBusy || !api || !api.printNowTake) return;
+    pnBusy = true;
+    try{
+      var jobs = await api.printNowTake();
+      for(var i = 0; i < jobs.length; i++){
+        var j = jobs[i], r;
+        try{ r = await printSavedNow(await quickDecode(new Blob([j.bytes]))); }catch(e){ r = { ok: false, error: 'Couldn’t open that photo.' }; }
+        if(!r.ok) showToast(r.error, 5000);
+        try{ await api.printNowDone(j.id, !!r.ok, r.ok ? '' : r.error); }catch(e){}
+      }
+    }catch(e){ /* try again next time */ }
+    pnBusy = false;
+  }
+  if(DESKTOP && window.pb4u && window.pb4u.printNowTake) setInterval(pnPoll, 1500);
+  if(!LOCALSHARE && 'BroadcastChannel' in window){
+    var pnCh = new BroadcastChannel('pb4u-print');
+    var pnHere = function(){ try{ pnCh.postMessage({ t: 'here', on: !!printSettings() }); }catch(e){} };
+    pnCh.onmessage = async function(ev){
+      var m = ev.data || {};
+      if(m.t === 'hello') return pnHere();
+      if(m.t !== 'print') return;
+      var reply = function(r){ try{ pnCh.postMessage({ t: 'result', id: m.id, ok: !!r.ok, error: r.error || '' }); }catch(e){} };
+      if(!printSettings()) return reply({ ok: false, error: 'Printing isn’t on for this booth.' });
+      var fid = roveFolderId();
+      if(!fid || String(m.folder) !== fid) return reply({ ok: false, error: 'That photo isn’t from this booth’s event.' });
+      try{ reply(await printSavedNow(await reqImage({ file: String(m.file) }))); }
+      catch(e){ reply({ ok: false, error: (e && e.message) || 'Could not open that photo.' }); }
+    };
+    window.addEventListener('pb-print-change', pnHere);
+    pnHere();
   }
   function openReq(){
     if(!reqOn()) return;
@@ -14881,7 +15194,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(state === 'capturing') return;
     if(!rawFolderKey()){
       switchTab('setup');
-      if(typeof goStep === 'function') goStep(5);
+      if(typeof goStep === 'function') goStep(6);
       showDriveFolderError('Type a folder name first.');
       return;
     }
@@ -15275,7 +15588,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   setInterval(function(){ if(payOn() && payVoucherOn()) refreshVoucherCache(); }, 10 * 60000);
   setInterval(function(){ if(payOn() && document.body.classList.contains('in-session') === false) payLoadConfig(); }, 5 * 60000);
   setTimeout(function(){ payLoadConfig(); syncVouchers(); }, 1500);
-  (function(){ var s6 = document.querySelector('#stepBar .step-tab[data-step="6"]'); if(s6) s6.addEventListener('click', function(){ if(payOn()){ payLoadConfig(); payLoadBatches(); } }); })();
+  (function(){ var s6 = document.querySelector('#stepBar .step-tab[data-step="7"]'); if(s6) s6.addEventListener('click', function(){ if(payOn()){ payLoadConfig(); payLoadBatches(); } }); })();
 
   // ---- Lock booth: guest-only screen behind a 4-digit PIN ----
   // Only for codes the admin gave the option to. The PIN is kept (hashed) on
@@ -15429,7 +15742,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   setTimeout(function(){ applyLock(); fetchCodePin(); }, 0);
 
   // =====================================================================
-  // Background swap (Setup → 4 Extras → Green screen)
+  // Background swap (Setup → 5 Extras → Green screen)
   //   ai    : no green cloth needed. Google MediaPipe's selfie segmentation
   //           model runs on this device (files in /bg/, loaded only when
   //           this is switched on). Nothing is uploaded anywhere.
@@ -15823,7 +16136,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
 
   // =====================================================================
-  // Light, sound and start (Setup → 5 Session)
+  // Light, sound and start (Setup → 7 Session)
   //   flash : the whole screen turns white as each photo is taken (a fill
   //           light for the front camera in dim rooms)
   //   sound : countdown beeps + a shutter click (made here, no sound files)
@@ -15881,7 +16194,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     o.connect(g); g.connect(c.destination);
     o.start(t); o.stop(t + dur + 0.03);
   }
-  // ---- Own sounds (uploaded in Setup → 5 Session) ----
+  // ---- Own sounds (uploaded in Setup → 7 Session) ----
   const sndBufs = {};            // asset id -> decoded AudioBuffer
   function dataUrlBytes(url){
     const b = atob(String(url).split(',')[1] || ''), a = new Uint8Array(b.length);
@@ -16073,7 +16386,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const HF_SMILE = { less: 0.46, normal: 0.43, more: 0.40 };
   function hfMeterOn(){
     // Setup → Session open: show the live meter so the renter can try it.
-    return fx.hands !== 'off' && !tabSetup.classList.contains('hidden') && curStep === 6;
+    return fx.hands !== 'off' && !tabSetup.classList.contains('hidden') && curStep === 7;
   }
   function hfWanted(){
     if(fx.hands === 'off' || document.hidden || !streamActive || !video.videoWidth) return false;
@@ -19779,7 +20092,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var setupLoadPromise = loadSetup(false);
 
   // =====================================================================
-  // Setup in 6 steps: 1 Design · 2 Text · 3 Layout · 4 Extras · 5 Session · 6 Share.
+  // Setup in 7 steps: 1 Design · 2 Text · 3 Layout · 4 Camera · 5 Extras · 6 Share · 7 Session.
   // One step shows at a time; the step bar (with a one-line summary of
   // each step) and the bottom Start bar stay in reach.
   // =====================================================================
@@ -19787,9 +20100,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var setupShellEl = document.querySelector('#tabSetup .setup-shell');
   var stepTabs = [].slice.call(document.querySelectorAll('#stepBar .step-tab'));
   function goStep(n, opts){
-    n = Math.max(1, Math.min(6, Number(n) || 1));
+    n = Math.max(1, Math.min(7, Number(n) || 1));
     curStep = n;
-    for(var i = 1; i <= 6; i++) document.getElementById('step' + i).classList.toggle('on', i === n);
+    for(var i = 1; i <= 7; i++) document.getElementById('step' + i).classList.toggle('on', i === n);
     stepTabs.forEach(function(t){
       var on = Number(t.dataset.step) === n;
       t.classList.toggle('on', on);
@@ -19799,8 +20112,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(n === 2){ renderFontUI(); refreshThemePalette(); }
     if(n === 3) queueLayoutThumbs();
     else prewarmLayoutThumbs();
-    if(n === 5) refreshPrintSummary();
+    if(n === 6) refreshPrintSummary();
     refreshSetupNav();
+    if(typeof scpRefresh === 'function') scpRefresh();
     if(!(opts && opts.noScroll)){
       var top = setupShellEl.getBoundingClientRect().top + window.scrollY - 4;
       if(window.scrollY > top) window.scrollTo(0, top);
@@ -19844,15 +20158,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var d = LAYOUT_DEFS[setupLayout] || layoutDef();
     setStepSum(3, d.name);
     var ex = extrasList();
-    setStepSum(4, ex.length ? ex.join(', ') : 'None');
+    setStepSum(4, cameraSummary());
+    setStepSum(5, ex.length ? ex.join(', ') : 'None');
     var folderOk = !!rawFolderKey();
-    setStepSum(5, folderOk ? 'Ready' : 'Folder needed', !folderOk);
-    setStepSum(6, fmtSec(timerSec) + ' s countdown' + (advanceMode === 'tap' ? ', tap for next' : ''));
+    setStepSum(6, folderOk ? 'Ready' : 'Folder needed', !folderOk);
+    setStepSum(7, fmtSec(timerSec) + ' s countdown' + (advanceMode === 'tap' ? ', tap for next' : ''));
     stepTabs[1].classList.toggle('done', !!nm);
-    stepTabs[4].classList.toggle('done', folderOk);
-    stepTabs[5].classList.remove('done');
+    stepTabs[5].classList.toggle('done', folderOk);
+    stepTabs[6].classList.remove('done');
     var st = document.getElementById('startStatus');
-    st.textContent = folderOk ? 'Ready to start' : 'Add a folder name (step 5)';
+    st.textContent = folderOk ? 'Ready to start' : 'Add a folder name (step 6)';
     st.classList.toggle('warn', !folderOk);
     // Backdrop & colours summary
     var bs = PRESET_NAMES[backdropPreset] || 'Background';
@@ -20425,10 +20740,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     setInterval(renderLan, 5000);
     var wn = document.getElementById('deskWifiName'), wp = document.getElementById('deskWifiPass');
     var w0 = wifiInfo(); if(w0){ wn.value = w0.ssid; wp.value = w0.pass; }
-    function saveWifi(){
-      var ssid = wn.value.trim(), pass = wp.value;
-      try{ if(ssid) localStorage.setItem(WIFI_KEY, JSON.stringify({ ssid: ssid, pass: pass })); else localStorage.removeItem(WIFI_KEY); }catch(e){}
-    }
+    function saveWifi(){ saveWifiInfo(wn.value.trim(), wp.value); }
     wn.addEventListener('input', saveWifi); wp.addEventListener('input', saveWifi);
   })();
 
@@ -20506,6 +20818,25 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var b = null; try{ b = api.lanBase(); }catch(e){}
       if(b !== lanNow){ lanNow = b; refresh(); if(localFolderUrl) showLocalFolderPreview(localFolderUrl); }
     }, 8000);
+    // iPad using this laptop's camera over the Wi-Fi (switched on here; the iPad opens the address with the PIN).
+    (function(){
+      if(!api.ipadInfo) return;
+      var ibox = document.getElementById('deskIpadBox'), ion = document.getElementById('deskIpadOn'), itxt = document.getElementById('deskIpad'), irow = document.getElementById('deskIpadRow');
+      var cur = null;
+      function irender(i){
+        cur = i; ibox.style.display = '';
+        ion.checked = !!i.on; irow.style.display = i.on ? '' : 'none';
+        itxt.className = 'panel-hint' + (i.on && !i.url ? ' bad' : '');
+        if(!i.on) itxt.textContent = 'Off. Turn it on to use this laptop’s camera (real shutter, live view and flash) from an iPad on the same Wi-Fi.';
+        else if(!i.url) itxt.textContent = 'This laptop isn’t on a Wi-Fi network yet. Connect it to the booth Wi-Fi router or turn on its hotspot, then the iPad address shows here.';
+        else itxt.textContent = 'On the iPad (same Wi-Fi), open Safari and go to ' + i.url + ' and type the PIN ' + i.pin + ' — or open ' + i.urlWithPin + ' directly.' + (i.camera ? '' : ' The USB camera needs a Windows laptop; on a Mac the iPad can only use webcam / HDMI-capture cameras.');
+      }
+      api.ipadInfo().then(irender).catch(function(){});
+      ion.addEventListener('change', function(){ api.ipadSet(ion.checked, false).then(irender); });
+      document.getElementById('deskIpadPin').addEventListener('click', function(){ api.ipadSet(true, true).then(function(i){ irender(i); showToast('New PIN: ' + i.pin + '. iPads need the new PIN.', 5000); }); });
+      document.getElementById('deskIpadCopy').addEventListener('click', function(){ if(cur && cur.urlWithPin){ api.copy(cur.urlWithPin); showToast('iPad address copied.', 2000); } });
+      setInterval(function(){ api.ipadInfo().then(function(i){ if(!cur || i.url !== cur.url || i.on !== cur.on || i.pin !== cur.pin) irender(i); }).catch(function(){}); }, 8000);
+    })();
     document.getElementById('deskOpenBtn').addEventListener('click', function(){ api.openPhotos(localFolderUrl || ''); });
     var dl = document.getElementById('driveFolderDrive');
     if(dl) dl.addEventListener('click', function(e){ e.preventDefault(); api.openPhotos(localFolderUrl || ''); });
@@ -20521,11 +20852,37 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     });
     var wn = document.getElementById('deskWifiName'), wp = document.getElementById('deskWifiPass');
     var w0 = wifiInfo(); if(w0){ wn.value = w0.ssid; wp.value = w0.pass; }
-    function saveWifi(){
-      var ssid = wn.value.trim(), pass = wp.value;
-      try{ if(ssid) localStorage.setItem(WIFI_KEY, JSON.stringify({ ssid: ssid, pass: pass })); else localStorage.removeItem(WIFI_KEY); }catch(e){}
-    }
+    function saveWifi(){ saveWifiInfo(wn.value.trim(), wp.value); }
     wn.addEventListener('input', saveWifi); wp.addEventListener('input', saveWifi);
+    // Fill in the Wi-Fi this laptop is on. Done when the network changes (not on every check, so
+    // a name the operator typed isn't overwritten) and when "Use current Wi-Fi" is pressed.
+    var wHint = document.getElementById('deskWifiHint'), wBtn = document.getElementById('deskWifiDetect'), lastSsid = null, detecting = false;
+    function detectWifi(force){
+      if(!api.wifi || detecting) return;
+      detecting = true;
+      api.wifi(!!force).then(function(d){
+        detecting = false;
+        if(!d || !d.ssid){
+          lastSsid = '';
+          if(force){ wHint.className = 'panel-hint bad'; wHint.textContent = 'This laptop isn’t on Wi-Fi. Connect it to the booth Wi-Fi, or type the name and password above.'; }
+          return;
+        }
+        if(!force && d.ssid === lastSsid) return;
+        lastSsid = d.ssid;
+        var cur = wifiInfo(), pass = d.passKnown ? d.pass : (cur && cur.ssid === d.ssid ? cur.pass : '');
+        wn.value = d.ssid; wp.value = pass; saveWifiInfo(d.ssid, pass);
+        wHint.className = 'panel-hint' + (d.passKnown ? '' : ' bad');
+        wHint.textContent = d.passKnown
+          ? 'Using the Wi-Fi this laptop is on ✓'
+          : 'Using “' + d.ssid + '”, but the password couldn’t be read. Type it above so guests can join.';
+      }).catch(function(){ detecting = false; });
+    }
+    if(api.wifi){
+      wBtn.style.display = '';
+      wBtn.addEventListener('click', function(){ detectWifi(true); });
+      detectWifi(false);
+      setInterval(function(){ detectWifi(false); }, 6000);
+    }
     document.getElementById('deskCheckBtn').addEventListener('click', function(){
       var b = this; b.disabled = true; b.textContent = 'Checking\u2026';
       api.checkin().then(function(r){
@@ -20559,14 +20916,57 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     });
   })();
 
+  // ---- Camera step: a live view of the camera before the session starts ----
+  // A second <video> on the same stream (like the 360 recorder), full camera frame by default or cropped to the
+  // layout's photo shape. It lets go of the stream when this step is not showing.
+  var scpVideo = document.getElementById('setupCamVideo'), scpFrame = document.getElementById('scpFrame');
+  var scpEmpty = document.getElementById('scpEmpty'), scpInfo = document.getElementById('scpInfo');
+  var SCP_FIT_KEY = 'pb_setup_cam_fit', scpFit = 'full', scpSum = null;
+  try{ if(localStorage.getItem(SCP_FIT_KEY) === 'layout') scpFit = 'layout'; }catch(e){}
+  function cameraSummary(){
+    var o = cameraSelect.options[cameraSelect.selectedIndex];
+    return o && o.value ? o.text.trim() : 'Choose a camera';
+  }
+  function scpRefresh(){
+    if(!scpVideo) return;
+    var show = curStep === 4 && !tabSetup.classList.contains('hidden');
+    var stream = show ? (currentStream || video.srcObject) : null;
+    if(scpVideo.srcObject !== stream) scpVideo.srcObject = stream;
+    if(!show) return;
+    if(stream && scpVideo.paused){ try{ var pr = scpVideo.play(); if(pr && pr.catch) pr.catch(function(){}); }catch(e){} }
+    scpVideo.style.transform = video.style.transform || '';
+    scpVideo.style.filter = video.style.filter || '';
+    var layout = scpFit === 'layout', a = camAspect();
+    if(layout){ try{ a = currentBoxAspect(); }catch(e){} }
+    scpFrame.style.setProperty('--scp-aspect', a.toFixed(4));
+    scpFrame.classList.toggle('crop', layout);
+    var live = !!stream && !!video.videoWidth && streamActive, err = cameraError.style.display === 'flex';
+    scpEmpty.hidden = live && !err;
+    scpEmpty.textContent = err ? cameraErrorText.textContent : 'Waiting for the camera…';
+    scpInfo.textContent = live ? video.videoWidth + ' × ' + video.videoHeight + (layout ? ' · cropped to the layout' : ' · full camera frame') : '';
+    [].forEach.call(document.querySelectorAll('#scpFitChips .chip'), function(c){ c.classList.toggle('active', c.dataset.fit === scpFit); });
+  }
+  document.getElementById('scpFitChips').addEventListener('click', function(e){
+    var b = e.target.closest('[data-fit]'); if(!b) return;
+    scpFit = b.dataset.fit === 'layout' ? 'layout' : 'full';
+    try{ localStorage.setItem(SCP_FIT_KEY, scpFit); }catch(err){}
+    scpRefresh();
+  });
+  scpVideo.addEventListener('loadedmetadata', scpRefresh);
+  video.addEventListener('loadedmetadata', scpRefresh);
+  video.addEventListener('resize', scpRefresh);
+  cameraSelect.addEventListener('change', function(){ scheduleSetupNav(); setTimeout(scpRefresh, 400); });
+  // Cameras come and go (and the picture size changes): keep the live view and the step's one-line summary current.
+  setInterval(function(){ var t = cameraSummary(); if(t !== scpSum){ scpSum = t; refreshSetupNav(); } scpRefresh(); }, 1000);
+
   // ---- First step to show ----
   (function(){
     var saved = 0; try{ saved = Number(sessionStorage.getItem('pb_step')) || 0; }catch(e){}
-    goStep(saved >= 1 && saved <= 6 ? saved : 1, { noScroll: true });
+    goStep(saved >= 1 && saved <= 7 ? saved : 1, { noScroll: true });
     afterSetupPreview();
     setupLoadPromise.then(function(){
       // A returning renter with the design done but no folder yet: go straight to Share.
-      if(!saved && labelInput.value.trim() && !rawFolderKey()) goStep(5, { noScroll: true });
+      if(!saved && labelInput.value.trim() && !rawFolderKey()) goStep(6, { noScroll: true });
       refreshSetupNav();
     });
   })();

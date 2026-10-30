@@ -60,12 +60,24 @@ function verifyTrashTicket_(ticket) {
 // Only folders inside ROOT_FOLDER_ID can be trashed, never the root itself.
 function trashEventFolder_(id) {
   if (id === ROOT_FOLDER_ID) return { ok: false, error: 'not-allowed' };
-  var folder;
-  try { folder = DriveApp.getFolderById(id); } catch (err) { return { ok: false, error: 'not-found' }; }
-  if (!isInsideRoot_(folder)) return { ok: false, error: 'not-allowed' };
-  if (folder.isTrashed()) return { ok: true, already: true };
-  folder.setTrashed(true);
-  return { ok: true };
+  var step = 'open the folder';
+  try {
+    var folder = DriveApp.getFolderById(id);
+    step = 'check it is inside the photo folder';
+    if (!isInsideRoot_(folder)) return { ok: false, error: 'not-allowed' };
+    step = 'read its Trash state';
+    if (folder.isTrashed()) return { ok: true, already: true };
+    step = 'move it to the Trash';
+    folder.setTrashed(true);
+    return { ok: true };
+  } catch (err) {
+    if (step === 'open the folder' && /no item with the given id|not found/i.test(String(err))) return { ok: false, error: 'not-found' };
+    // Say which step failed and who owns the folder, so "Access denied: DriveApp" can be traced.
+    var who = '', owner = '';
+    try { who = Session.getEffectiveUser().getEmail(); } catch (e1) { who = 'unknown'; }
+    try { var o = DriveApp.getFolderById(id).getOwner(); owner = o ? o.getEmail() : 'no owner (Shared Drive?)'; } catch (e2) { owner = 'unreadable'; }
+    return { ok: false, error: 'Could not ' + step + ': ' + String(err) + ' [script runs as ' + who + '; folder owner ' + owner + '; folder id ' + id + ']' };
+  }
 }
 function sendMail_(t) {
   if (MailApp.getRemainingDailyQuota() < 1) return { ok: false, error: 'Daily email limit reached. Try again tomorrow.' };

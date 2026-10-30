@@ -15,7 +15,8 @@ import { Readable } from 'node:stream';
 import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
 import { allowBoothRequest } from './lib/netguard.mjs';
-import { initPhotos, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead } from './lib/photos.mjs';
+import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
+import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { freeCamera, guardCamera } from './lib/camfree.mjs';
@@ -297,7 +298,16 @@ function wireIpc() {
     try { const r = await net.fetch(L.SERVER + '/api/updates', { cache: 'no-store' }); const j = await r.json(); return { ok: true, notes: j.notes || [], app: j.app || null }; }
     catch { return { ok: false, notes: [] }; }
   });
-  ipcMain.handle('pb4u:copy', (e, t) => { clipboard.writeText(String(t || '')); return true; });
+  // iPad using this laptop's camera over the booth Wi-Fi (see lib/lan.mjs)
+  const ipadInfo = () => { const b = shareBase(); return { on: !!settings.ipadOn, pin: settings.ipadPin, url: b ? b + '/ipad' : null, urlWithPin: b ? b + '/ipad/' + settings.ipadPin : null, camera: process.platform === 'win32' }; };
+  ipcMain.handle('pb4u:ipadInfo', () => ipadInfo());
+  ipcMain.handle('pb4u:ipadSet', (e, on, renewPin) => {
+    settings.ipadOn = !!on;
+    if (renewPin || !validPin(settings.ipadPin)) settings.ipadPin = newPin();
+    saveSettings();
+    return ipadInfo();
+  });
+  ipcMain.handle('pb4u:copy',(e, t) => { clipboard.writeText(String(t || '')); return true; });
   ipcMain.handle('pb4u:openUrl', (e, u) => { openOutside(String(u || '')); return true; });
   ipcMain.handle('pb4u:quit', () => { app.quit(); return true; });
   // Mac: let go of the camera macOS grabbed (its camera service, Image Capture) so the booth can use it.
@@ -329,6 +339,13 @@ app.whenReady().then(async () => {
   setSpinDir(settings.spinDir || null);
   SPIN.configure({ buildDir: BUILD, temp: join(app.getPath('temp'), 'photobooth4u') });
   initHelper({ workerPath: join(BUILD, 'camera-worker.ps1') });
+  if (!validPin(settings.ipadPin)) { settings.ipadPin = newPin(); saveSettings(); }
+  setLanHandler(createLanHandler({
+    state: () => ({ on: !!settings.ipadOn && L.status().ok, pin: settings.ipadPin }),
+    boothPage: ({ extraHead }) => boothPage({ deviceId: L.deviceId(), extraHead }),
+    handleWeb: (webReq) => handle(webReq),
+    setGuestView
+  }));
   await startShareServer();
   protocol.handle('app', handle);
   setupSession();

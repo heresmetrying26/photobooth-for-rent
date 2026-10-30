@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld('pb4u', {
   deskChoose: () => ipcRenderer.invoke('pb4u:deskChoose'),
   deskScan: () => ipcRenderer.invoke('pb4u:deskScan'),
   deskRead: (name) => ipcRenderer.invoke('pb4u:deskRead', String(name || '')),
+  ipadInfo: () => ipcRenderer.invoke('pb4u:ipadInfo'),
+  ipadSet: (on, renewPin) => ipcRenderer.invoke('pb4u:ipadSet', !!on, !!renewPin),
   copy: (t) => ipcRenderer.invoke('pb4u:copy', String(t || '')),
   openUrl: (u) => ipcRenderer.invoke('pb4u:openUrl', String(u || '')),
   quit: () => ipcRenderer.invoke('pb4u:quit'),

@@ -3133,6 +3133,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
           <p class="sub-label" style="margin-top:14px;">Guests&rsquo; phones</p>
           <p class="panel-hint" id="deskLan" style="margin:0;"></p>
+          <div id="deskIpadBox" style="display:none;">
+            <p class="sub-label" style="margin-top:14px;">iPad with this laptop&rsquo;s camera</p>
+            <label class="switch-row"><span>Let an iPad use this laptop&rsquo;s camera</span><input type="checkbox" id="deskIpadOn"></label>
+            <p class="panel-hint" id="deskIpad" style="margin:6px 0 0; word-break:break-all;"></p>
+            <div class="desk-row" id="deskIpadRow" style="display:none;">
+              <button type="button" class="action-btn" id="deskIpadCopy" style="width:auto; margin:0;">Copy iPad address</button>
+              <button type="button" class="action-btn" id="deskIpadPin" style="width:auto; margin:0;">Make a new PIN</button>
+            </div>
+          </div>
           <p class="sub-label" style="margin-top:14px;">Booth Wi-Fi for guests (optional)</p>
           <p class="panel-hint" style="margin:0 0 6px;">Guests scan a Wi-Fi QR to join, then their photo QR. Leave empty if they already know the Wi-Fi.</p>
           <input type="text" class="label-input" id="deskWifiName" placeholder="Wi-Fi name" maxlength="32" autocomplete="off" spellcheck="false">
@@ -3926,7 +3935,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // and guests on the same Wi-Fi open them from the tablet, like the laptop app does.
   const ANDROID_LOCAL = !!(window.__PBLocal && typeof window.__PBLocal.drive === 'function' && window.__PB && window.__PB.android);
   // Photos stay on this device and guests reach them over the booth Wi-Fi (laptop app and Android tablet app).
-  const LOCALSHARE = DESKTOP || ANDROID_LOCAL;
+  // An iPad / tablet that opened the booth from the laptop app over the booth Wi-Fi (http://<laptop>:47777/ipad/<PIN>): the
+  // laptop does the camera, the photo folder and the licence; this page only shows the booth (desktop/lib/lan.mjs).
+  const LANREMOTE = !DESKTOP && !!(window.__PB && window.__PB.lanRemote && window.__PB.lanRemote.base);
+  const LOCALSHARE = DESKTOP || ANDROID_LOCAL || LANREMOTE;
+  // The laptop's address on the booth Wi-Fi, as the guests' phones reach it ('' when unknown).
+  function lanBaseNow(){
+    try{
+      if(LANREMOTE) return String(window.__PB.lanRemote.base || '');
+      return (ANDROID_LOCAL ? window.__PBLocal.lanBase() : window.pb4u.lanBase()) || '';
+    }catch(e){ return ''; }
+  }
   if(LOCALSHARE) document.documentElement.classList.add('pb-desktop');   // hides the online-only options (web-only)
   const LOCAL_DEVICE = ANDROID_LOCAL ? 'tablet' : 'laptop';
   // Line icons from the SVG sprite at the top of the page.
@@ -5690,7 +5709,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function localShareUrl(folderUrl, file){
     var m = /^pb4u-local:([A-Za-z0-9]+)/.exec(String(folderUrl || ''));
     if(!m) return null;
-    var base = null; try{ base = ANDROID_LOCAL ? window.__PBLocal.lanBase() : window.pb4u.lanBase(); }catch(e){}
+    var base = lanBaseNow();
     return base ? base + '/e/' + m[1] + '/' + (file ? 'p/' + encodeURIComponent(file) : '') : null;
   }
   const NO_LAN_TEXT = 'Saved on this ' + LOCAL_DEVICE + '. Connect the ' + LOCAL_DEVICE + ' to the booth Wi-Fi to show the QR.';
@@ -6268,7 +6287,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var GV_CODE_RE = /^[A-Za-z0-9_-]{16,40}$/;
   // The website: a rental code, and also the free trial (its own photos stay private too).
   function gvServer(){ var pb = window.__PB; return !!(pb && (pb.type === 'rental' || pb.type === 'trial')); }
-  function gvAvailable(){ return LOCALSHARE ? !!((window.pb4u && typeof window.pb4u.guestViewSet === 'function') || (ANDROID_LOCAL && typeof window.__PBLocal.guestViewSet === 'function')) : gvServer(); }
+  function gvAvailable(){ return LOCALSHARE ? !!(LANREMOTE || (window.pb4u && typeof window.pb4u.guestViewSet === 'function') || (ANDROID_LOCAL && typeof window.__PBLocal.guestViewSet === 'function')) : gvServer(); }
   function gvActive(){ return gvAvailable() && gvMode !== 'all'; }
   function gvPrivate(){ return gvAvailable() && gvMode === 'only'; }
   function gvStore(k){ try{ return JSON.parse(localStorage.getItem(k) || 'null'); }catch(e){ return null; } }
@@ -6286,7 +6305,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // The link of a session's own page (null when the laptop is not on a Wi-Fi network).
   function gvSessionUrl(n){
     var code = gvCodeFor(n || sessionNumber || 1);
-    if(LOCALSHARE){ var base = ''; try{ base = ANDROID_LOCAL ? window.__PBLocal.lanBase() : window.pb4u.lanBase(); }catch(e){} return base ? base + '/o/' + code : null; }
+    if(LOCALSHARE){ var base = lanBaseNow(); return base ? base + '/o/' + code : null; }
     return location.origin + '/p/' + code;
   }
   function gvFileNum(filename){
@@ -6306,7 +6325,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   async function gvApply(){
     if(!gvAvailable()) return;
     try{
-      if(LOCALSHARE){ if(ANDROID_LOCAL) window.__PBLocal.guestViewSet(gvMode); else await window.pb4u.guestViewSet(gvMode); return; }
+      if(LOCALSHARE){
+        if(ANDROID_LOCAL) window.__PBLocal.guestViewSet(gvMode);
+        else if(LANREMOTE) await fetch('/local/guestview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: gvMode }) });
+        else await window.pb4u.guestViewSet(gvMode);
+        return;
+      }
       var fid = gvFolderId(getCachedFolderUrl()); if(!fid) return;
       if(gvSent[fid] === gvMode) return;
       var j = await gvApi({ action: 'mode', folderKey: rawFolderKey(), folder: fid, mode: gvMode });
@@ -7053,11 +7077,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // photobooth4u Helper (the same app that prints) controls the camera and
   // the booth talks to it on this computer (127.0.0.1). No driver switch.
   const USB_WIN = /Win/i.test(navigator.platform || '') || /Windows NT/i.test(navigator.userAgent || '');
-  const CAM_HELPER = DESKTOP ? '/helper' : 'http://127.0.0.1:17321';
+  const CAM_HELPER = (DESKTOP || LANREMOTE) ? '/helper' : 'http://127.0.0.1:17321';
   const CAM_HELPER_SEEN_KEY = 'pb_cam_helper';
   const usbCam = {
-    supported: USB_WIN ? !!window.fetch : (('usb' in navigator) && !!window.crossOriginIsolated),
-    viaHelper: USB_WIN,
+    supported: (USB_WIN || LANREMOTE) ? !!window.fetch : (('usb' in navigator) && !!window.crossOriginIsolated),
+    viaHelper: USB_WIN || LANREMOTE,          // an iPad on the laptop's Wi-Fi uses the laptop's camera the same way
     helperSees: false, helperName: '', helperUp: false,
     camera: null, name: '', active: false, gen: 0, libGen: 0, vfOn: false, initing: null,
     canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null,
@@ -7185,7 +7209,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // was picked before, or it connected before.
   function camHelperProbeOk(){
     if(!usbCam.viaHelper) return false;
-    if(DESKTOP) return true;                       // built into the app
+    if(DESKTOP || LANREMOTE) return true;          // built into the app / the laptop the iPad is connected to
     try{
       if(localStorage.getItem(CAM_HELPER_SEEN_KEY) === '1' || localStorage.getItem('pb_print_helper') === '1') return true;
       const sv = JSON.parse(localStorage.getItem(CAM_PREF_KEY) || 'null');
@@ -19172,6 +19196,25 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var b = null; try{ b = api.lanBase(); }catch(e){}
       if(b !== lanNow){ lanNow = b; refresh(); if(localFolderUrl) showLocalFolderPreview(localFolderUrl); }
     }, 8000);
+    // iPad using this laptop's camera over the Wi-Fi (switched on here; the iPad opens the address with the PIN).
+    (function(){
+      if(!api.ipadInfo) return;
+      var ibox = document.getElementById('deskIpadBox'), ion = document.getElementById('deskIpadOn'), itxt = document.getElementById('deskIpad'), irow = document.getElementById('deskIpadRow');
+      var cur = null;
+      function irender(i){
+        cur = i; ibox.style.display = '';
+        ion.checked = !!i.on; irow.style.display = i.on ? '' : 'none';
+        itxt.className = 'panel-hint' + (i.on && !i.url ? ' bad' : '');
+        if(!i.on) itxt.textContent = 'Off. Turn it on to use this laptop’s camera (real shutter, live view and flash) from an iPad on the same Wi-Fi.';
+        else if(!i.url) itxt.textContent = 'This laptop isn’t on a Wi-Fi network yet. Connect it to the booth Wi-Fi router or turn on its hotspot, then the iPad address shows here.';
+        else itxt.textContent = 'On the iPad (same Wi-Fi), open Safari and go to ' + i.url + ' and type the PIN ' + i.pin + ' — or open ' + i.urlWithPin + ' directly.' + (i.camera ? '' : ' The USB camera needs a Windows laptop; on a Mac the iPad can only use webcam / HDMI-capture cameras.');
+      }
+      api.ipadInfo().then(irender).catch(function(){});
+      ion.addEventListener('change', function(){ api.ipadSet(ion.checked, false).then(irender); });
+      document.getElementById('deskIpadPin').addEventListener('click', function(){ api.ipadSet(true, true).then(function(i){ irender(i); showToast('New PIN: ' + i.pin + '. iPads need the new PIN.', 5000); }); });
+      document.getElementById('deskIpadCopy').addEventListener('click', function(){ if(cur && cur.urlWithPin){ api.copy(cur.urlWithPin); showToast('iPad address copied.', 2000); } });
+      setInterval(function(){ api.ipadInfo().then(function(i){ if(!cur || i.url !== cur.url || i.on !== cur.on || i.pin !== cur.pin) irender(i); }).catch(function(){}); }, 8000);
+    })();
     document.getElementById('deskOpenBtn').addEventListener('click', function(){ api.openPhotos(localFolderUrl || ''); });
     var dl = document.getElementById('driveFolderDrive');
     if(dl) dl.addEventListener('click', function(e){ e.preventDefault(); api.openPhotos(localFolderUrl || ''); });

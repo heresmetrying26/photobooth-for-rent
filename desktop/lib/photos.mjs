@@ -460,7 +460,12 @@ function handleOwn(req, res, url, om) {
   return send(res, 200, 'text/html; charset=utf-8', page('Your photos', body));
 }
 
+// The iPad-uses-this-laptop pages (lib/lan.mjs) answer first; they return false for everything else.
+let lanHandler = null;
+export function setLanHandler(fn) { lanHandler = fn; }
+
 async function handleShare(req, res) {
+  if (lanHandler && await lanHandler(req, res)) return;
   let url;
   try { url = new URL(req.url, 'http://x'); } catch { return send(res, 400, 'text/plain', 'Bad request'); }
   const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited|photos|photo|hello)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);

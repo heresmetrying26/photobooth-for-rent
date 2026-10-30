@@ -889,6 +889,10 @@
   .qs-panel[hidden]{display:none;}
   .qs-card{background:#fff; border-radius:18px; padding:20px; width:min(360px,100%); text-align:center;}
   .qs-qr img{width:min(260px,70vw); height:auto; display:block; margin:0 auto;}
+  .qs-qr.two{display:flex; gap:14px; justify-content:center; align-items:flex-start;}
+  .qs-qr.two img{width:min(150px,38vw);} .qs-qr.two b{display:block; margin-top:6px; font:800 13px 'Manrope',sans-serif;}
+  .qs-qr.two small{display:block; font:600 11px 'Manrope',sans-serif; color:var(--ink-dim); overflow-wrap:anywhere;}
+  .spin-card:has(.qs-qr.two){width:min(440px,100%);}
   .qs-note{margin:10px 0 14px; font:600 14px 'Manrope',sans-serif; color:var(--ink-dim);}
   .qs-row{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
   /* Video guestbook: guests record a short message */
@@ -13591,7 +13595,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var box = document.getElementById('spinQrBox'), msg = document.getElementById('spinMsg'), btn = document.getElementById('spinShareBtn');
     var editing = it.status === 'editing', canEdit = spinEnv.ffmpeg && it.src === 'inbox';
     box.innerHTML = '';
-    if(it.url && !editing){ var im = document.createElement('img'); im.src = qrImageUrl(it.url); im.alt = 'QR code'; box.appendChild(im); }
+    var wf = it.url && !editing && !it.queued ? wifiInfo() : null;
+    box.classList.toggle('two', !!wf);
+    if(it.url && !editing){
+      var addQr = function(text, label, sub){
+        var cell = wf ? document.createElement('div') : box;
+        var im = document.createElement('img'); im.src = qrImageUrl(text); im.alt = label || 'QR code'; cell.appendChild(im);
+        if(wf){ var cap = document.createElement('b'); cap.textContent = label; cell.appendChild(cap); if(sub){ var sm = document.createElement('small'); sm.textContent = sub; cell.appendChild(sm); } box.appendChild(cell); }
+      };
+      if(wf) addQr(wifiQrText(wf), 'Step 1: Network', wf.ssid + (wf.pass ? ' / ' + wf.pass : ''));
+      addQr(it.url, wf ? 'Step 2: Download' : '', '');
+    }
     document.getElementById('spinTrim').hidden = !canEdit || editing;
     document.getElementById('spinProg').hidden = !editing;
     document.getElementById('spinBar').style.width = (it.pct || 0) + '%';
@@ -13600,12 +13614,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     eb.hidden = !canEdit; eb.textContent = editing ? 'Cancel editing' : (it.edited ? 'Edit again' : 'Edit video: ' + spinPresetLabel());
     var vb = document.getElementById('spinViewBtn'); vb.hidden = !(it.edited && !editing); vb.textContent = it.viewOrig ? 'View edited' : 'View original';
     var what = it.edited && !it.viewOrig ? 'edited' : 'original';
-    msg.textContent = it.status === 'shared' ? 'Shared. The guest scans this to watch and save the video.'
+    msg.textContent = it.status === 'shared' ? (wf ? 'Shared. Guest scans Step 1 to join the Wi-Fi, then Step 2 to watch and save the video.' : 'Shared. The guest scans this to watch and save the video.')
       : it.status === 'queued' ? 'Saved on this device. It uploads when there is internet; the QR opens the event gallery.'
       : it.status === 'sharing' ? 'Sharing… this takes a few seconds.'
       : editing ? 'Editing takes about as long as the video. You can keep using the booth.'
       : it.status === 'error' ? (it.err || 'Could not do that.') + ' You can try again.'
-      : it.src === 'file' && !spinDesktop() ? 'Shares the original video (up to 28 MB on the website).'
+      : it.src === 'file' && !spinDesktop() ? 'Shares the original video (up to 28 MB' + (ANDROID_LOCAL ? ' on this tablet).' : ' on the website).')
       : 'Shares the ' + what + ' video.';
     btn.disabled = it.status === 'sharing' || editing;
     btn.textContent = it.status === 'shared' || it.status === 'queued' ? 'Share again' : 'Share + QR';
@@ -13636,7 +13650,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         try{ if(r.folderUrl) rememberFolderUrl(r.folderUrl); registerEvent(r.folderUrl || getCachedFolderUrl(), true); }catch(e){}
         it.url = fileShareUrl(r.fileId) || ''; it.queued = false;
       } else {
-        if(it.size > SPIN_WEB_MAX) throw new Error('This video is ' + spinMb(it.size) + '. The website takes up to 28 MB; use the laptop app for bigger videos.');
+        if(it.size > SPIN_WEB_MAX) throw new Error('This video is ' + spinMb(it.size) + '. ' + (ANDROID_LOCAL ? 'The tablet takes up to 28 MB' : 'The website takes up to 28 MB') + '; use the laptop app for bigger videos.');
         var res = await quickUpload(it.file, fname);
         it.url = res.url || ''; it.queued = !!res.queued;
       }

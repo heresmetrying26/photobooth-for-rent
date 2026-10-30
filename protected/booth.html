@@ -1101,6 +1101,59 @@
     font-family:'Manrope',sans-serif; font-weight:800; font-size:clamp(13px,2.4vw,16px); letter-spacing:-0.02em; line-height:1; transform:rotate(-7deg);}
   .brandbar .subtitle{font-family:'Manrope',sans-serif; font-weight:700; letter-spacing:0.28em; font-size:12px;}
 
+  /* ---- Booth type (Setup) + trading card / certificate booths ---- */
+  body:not(.bt-allowed) .bt-switch{display:none !important;}
+  .bt-switch{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 14px;}
+  .bt-switch .bt-lbl{font:800 11px 'Manrope',sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-dim);}
+  .bt-switch .seg-tabs{margin:0; flex:1; min-width:260px; max-width:560px;}
+  .bt-chips{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 4px;}
+  .bt-chip{display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:6px 16px 6px 8px; border:1.5px solid var(--line); border-radius:999px; background:#fff; font:700 13px 'Manrope',sans-serif; color:var(--ink); cursor:pointer;}
+  .bt-chip i{width:28px; height:28px; border-radius:50%; display:block; box-shadow:0 0 0 1px rgba(0,0,0,.2);}
+  .bt-chip.on{border-color:var(--blue-deep); box-shadow:0 0 0 2px var(--blue-deep) inset;}
+  .bt-grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  @media (max-width:560px){ .bt-grid2{grid-template-columns:1fr;} }
+  body:not(.bt-on) #btStyleSection, body:not(.bt-on) #btTextSection{display:none !important;}
+  body.bt-on #step1 > :not(#btStyleSection){display:none !important;}
+  body.bt-card .bt-only-cert, body.bt-cert .bt-only-card{display:none !important;}
+  body.bt-on .lay-guest-toggle, body.bt-on #guestPickHint{display:none !important;}
+  .bt-grp{margin-top:14px;}
+  .bt-grp-h{display:flex; align-items:baseline; gap:8px; margin:0 0 8px;}
+  .bt-grp-h b{font:800 14px 'Manrope',sans-serif; color:var(--ink);}
+  .bt-grp-h span{font:600 12px 'Manrope',sans-serif; color:var(--ink-dim);}
+  .bt-tpls{display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:10px;}
+  .bt-tpl{border:1.5px solid var(--line); border-radius:12px; background:#fff; padding:6px; display:flex; flex-direction:column; gap:6px; cursor:pointer;}
+  .bt-tpl.on{border-color:var(--blue-deep); box-shadow:0 0 0 2px var(--blue-deep) inset;}
+  .bt-tpl img{width:100%; aspect-ratio:1/1; object-fit:contain; background:repeating-conic-gradient(#eee 0 25%,#fff 0 50%) 0 0/14px 14px; border-radius:8px;}
+  .bt-tpl-n{font:700 12px 'Manrope',sans-serif; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .bt-tpl-b{display:flex; gap:4px;}
+  .bt-tpl-b button{flex:1; min-height:32px; border:1px solid var(--line); border-radius:8px; background:var(--panel-2); font:700 11.5px 'Manrope',sans-serif; color:var(--ink); cursor:pointer;}
+  .bt-tpl-b button[data-act="del"]{flex:0 0 34px; color:#c0392b;}
+  .bt-editor{margin-top:18px; padding:14px; border:1.5px solid var(--blue-deep); border-radius:14px; background:#fff;}
+  .bt-ed-h{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
+  .bt-ed-h b{font:800 15px 'Manrope',sans-serif;}
+  .bt-t, .bt-n{display:flex; flex-direction:column; gap:4px;}
+  .bt-t span, .bt-n span{font:700 11px 'Manrope',sans-serif; color:var(--ink-dim);}
+  .bt-t input, .bt-n input, .bt-n select{min-height:38px; padding:0 8px; border:1px solid var(--line); border-radius:8px; font:600 13px 'Manrope',sans-serif; background:#fff; width:100%;}
+  .bt-n input[type=color]{padding:2px; min-height:38px;}
+  .bt-zone{margin-top:12px; padding-top:10px; border-top:1px solid var(--line);}
+  .bt-nums{display:grid; grid-template-columns:repeat(auto-fill,minmax(82px,1fr)); gap:8px; margin-top:6px;}
+  .bt-gtabs{display:flex; gap:8px; flex-wrap:wrap; justify-content:center;}
+  .bt-gtab{min-height:44px; padding:0 18px; border:0; border-radius:999px; background:rgba(255,255,255,.14); color:#fff; font:800 15px 'Manrope',sans-serif; cursor:pointer;}
+  .bt-gtab.on{background:#ffd36b; color:#2a1d00;}
+  .bt-pick-btn img{width:100%; height:auto; aspect-ratio:auto; display:block; border-radius:8px;}
+  .bt-pick-cancel{align-self:center; min-height:48px; padding:0 28px; border:0; border-radius:14px; font:800 15px 'Manrope',sans-serif; cursor:pointer;}
+  .bt-details{align-items:center; justify-content:center; z-index:75;}
+  .bt-form{width:min(560px, 100%); display:flex; flex-direction:column; gap:14px; align-items:stretch; text-align:center;}
+  .bt-f{display:flex; flex-direction:column; gap:6px; text-align:left;}
+  .bt-f span{color:rgba(255,255,255,.85); font:700 13px 'Manrope',sans-serif; letter-spacing:.04em;}
+  .bt-f input{min-height:60px; padding:0 18px; border:2px solid transparent; border-radius:16px; background:#fff; color:#1c1a1e; font:600 24px 'Manrope',sans-serif;}
+  .bt-f input:focus{outline:none; border-color:#ffd36b;}
+  .bt-f input.bad{border-color:#ff6b6b;}
+  .bt-err{margin:0; min-height:20px; color:#ffb4b4; font:700 14px 'Manrope',sans-serif;}
+  .bt-acts{display:flex; gap:10px;}
+  .bt-acts button{flex:1; min-height:58px; border:0; border-radius:16px; font:800 18px 'Manrope',sans-serif; cursor:pointer;}
+  .bt-cancel{background:rgba(255,255,255,.14); color:#fff;}
+  .bt-go{background:#ffd36b; color:#2a1d00; flex:2 !important;}
   /* Start screen (shown once, before Setup) */
   .start-screen{position:fixed; inset:0; z-index:200; background:var(--bg-page); overflow:hidden; cursor:pointer;
     display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px;
@@ -2644,6 +2697,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   <div class="desk-upd" id="deskUpdBar" role="status" hidden></div>
   <div class="setup-shell">
 
+    <div class="bt-switch" id="btSwitch" role="radiogroup" aria-label="Booth type">
+      <span class="bt-lbl">Booth type</span>
+      <div class="seg-tabs">
+        <button type="button" class="on" data-bt="photo" role="radio" aria-checked="true">Photo booth</button>
+        <button type="button" data-bt="card" role="radio" aria-checked="false">Trading card</button>
+        <button type="button" data-bt="cert" role="radio" aria-checked="false">Certificate</button>
+      </div>
+    </div>
+
     <nav class="step-bar" id="stepBar" aria-label="Setup steps">
       <button type="button" class="step-tab" data-step="1"><span class="sn">1</span><span class="st"><b>Design</b><small id="stepSum1"></small></span></button>
       <button type="button" class="step-tab" data-step="2"><span class="sn">2</span><span class="st"><b>Text</b><small id="stepSum2"></small></span></button>
@@ -2655,6 +2717,27 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
     <!-- STEP 1 · DESIGN -->
     <section class="step" id="step1" data-step="1">
+      <div class="panel-section" id="btStyleSection">
+        <p class="panel-label" id="btStyleTitle">Card style</p>
+        <p class="panel-hint step-lead" id="btStyleHint"></p>
+        <div class="bt-chips" id="btStyleChips"></div>
+        <label class="toggle-row bt-only-card" style="margin-top:12px;"><input type="checkbox" id="btStats"> Random stats &amp; rarity (HP, ATK, DEF, SPD, Common &rarr; Legendary)</label>
+        <div id="btTplBox">
+          <p class="sub-label" style="margin-top:18px;">Your own templates</p>
+          <p class="panel-hint">Upload a design made in Canva (PNG). Leave the photo window <b>white or see-through</b>. Type a group name first (like &ldquo;Superheroes&rdquo; or &ldquo;Graduation&rdquo;) to keep them together.</p>
+          <div class="bt-grid2">
+            <input type="text" class="label-input" id="btTplGroup" list="btTplGroups" maxlength="24" placeholder="Group, e.g. Superheroes" aria-label="Group name for the templates you upload">
+            <datalist id="btTplGroups"></datalist>
+            <label class="action-btn primary" for="btTplInput" style="margin:0; text-align:center;">Upload templates</label>
+            <input type="file" id="btTplInput" accept="image/png,image/webp,image/jpeg,image/*" multiple hidden>
+          </div>
+          <div id="btTplList"></div>
+          <label class="toggle-row" id="btPickRow" style="margin-top:10px;"><input type="checkbox" id="btPick"> Let guests choose their design (sorted by group)</label>
+          <label class="toggle-row" id="btBuiltinRow" style="margin-top:6px;"><input type="checkbox" id="btBuiltin" checked> Include the built-in styles in that choice</label>
+        </div>
+        <div class="bt-editor" id="btTplEditor" hidden></div>
+        <p class="panel-hint" style="margin-top:12px;">The event name, font and date are in the next step. Your own stickers and logo from Extras still go on top.</p>
+      </div>
       <div class="seg-tabs d1-tabs" id="designTabs" role="tablist" aria-label="Design">
         <button type="button" class="on" data-pane="designs" role="tab" aria-selected="true">Ready designs</button>
         <button type="button" data-pane="colours" role="tab" aria-selected="false"><svg class="ic" aria-hidden="true"><use href="#i-palette"/></svg> Colours &amp; background<small id="backdropSum"></small></button>
@@ -2789,6 +2872,25 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
     <!-- STEP 2 · TEXT -->
     <section class="step" id="step2" data-step="2">
+      <div class="panel-section" id="btTextSection">
+        <p class="panel-label bt-only-card">Trading card</p>
+        <p class="panel-label bt-only-cert">Certificate wording</p>
+        <p class="panel-hint step-lead bt-only-card">Each guest types their <b>name</b> and a <b>title line</b> (like &ldquo;Dancing Queen&rdquo;) on the booth before the photo. The event name below goes at the bottom of the card.</p>
+        <div class="bt-only-cert">
+          <p class="sub-label">Certificate title</p>
+          <input type="text" class="label-input" id="btCertTitle" maxlength="48" aria-label="Certificate title">
+          <p class="sub-label" style="margin-top:12px;">Line above the name</p>
+          <input type="text" class="label-input" id="btCertLead" maxlength="60" placeholder="is proudly presented to" aria-label="Line above the name">
+          <p class="sub-label" style="margin-top:12px;">Message under the name (optional)</p>
+          <input type="text" class="label-input" id="btCertMsg" maxlength="120" placeholder="for being a wonderful part of our celebration" aria-label="Message under the name">
+          <div class="bt-grid2" style="margin-top:12px;">
+            <div><p class="sub-label">Signed by</p><input type="text" class="label-input" id="btCertSigner" maxlength="40" placeholder="Name" aria-label="Signed by"></div>
+            <div><p class="sub-label">Their role</p><input type="text" class="label-input" id="btCertRole" maxlength="40" placeholder="e.g. Principal" aria-label="Their role"></div>
+          </div>
+          <label class="toggle-row" style="margin-top:12px;"><input type="checkbox" id="btCertAsk"> Ask each guest for an award title (e.g. &ldquo;Best Dancer&rdquo;)</label>
+        </div>
+        <p class="panel-hint" style="margin-top:12px;">Event name, font and date are just below.</p>
+      </div>
       <div class="panel-section" id="labelSection">
         <p class="panel-label">Make it yours</p>
         <p class="sub-label">Name on the photo</p>
@@ -3512,6 +3614,25 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <p class="pick-sub" id="pickSub">Tap a design to start your session</p>
           </div>
           <div class="pick-grid" id="pickGrid"></div>
+        </div>
+        <div class="pick-overlay bt-details" id="btDetailsOverlay" aria-label="Your details">
+          <form class="bt-form" id="btdForm" autocomplete="off" novalidate>
+            <p class="pick-title" id="btdTitle">Make your card</p>
+            <p class="pick-sub" id="btdSub"></p>
+            <label class="bt-f"><span id="btdLbl1">Your name</span><input type="text" id="btdName" maxlength="24" autocapitalize="words" enterkeyhint="next"></label>
+            <label class="bt-f" id="btdRow2"><span id="btdLbl2">Title</span><input type="text" id="btdLine" maxlength="32" autocapitalize="words" enterkeyhint="done"></label>
+            <p class="bt-err" id="btdErr" aria-live="polite"></p>
+            <div class="bt-acts"><button type="button" class="bt-cancel" id="btdCancel">Cancel</button><button type="submit" class="bt-go" id="btdGo">Continue</button></div>
+          </form>
+        </div>
+        <div class="pick-overlay bt-details" id="btPickOverlay" aria-label="Choose your design">
+          <div class="pick-head">
+            <p class="pick-title" id="btPickTitle">Choose your card</p>
+            <p class="pick-sub">Tap a design to start</p>
+          </div>
+          <div class="bt-gtabs" id="btPickTabs"></div>
+          <div class="pick-grid" id="btPickGrid"></div>
+          <button type="button" class="bt-cancel bt-pick-cancel" id="btPickCancel">Cancel</button>
         </div>
 
         <div class="rec-dot" id="recDot"><i></i><span>LIVE</span></div>
@@ -4549,6 +4670,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // 80 mm / 58 mm thermal receipt printers; the colour one suits photo printers.
     receipt:  { name: 'Receipt',        shots: 3, kind: 'receipt', hint: 'Like a shop receipt, in black & white. Made for 80 mm or 58 mm thermal receipt printers (Epson TM, Xprinter…).' },
     receiptc: { name: 'Receipt colour', shots: 3, kind: 'receipt', color: true, hint: 'The receipt look with colour photos. Prints on photo paper (2 side by side on 4R) or a receipt printer.' },
+    // Only offered when the booth type (top of Setup) is Trading card / Certificate.
+    card: { name: 'Trading card', shots: 1, kind: 'card', hint: 'One collectible card: the guest’s photo, name, a title line and random stats. 2.5 × 3.5 in.' },
+    cert: { name: 'Certificate', shots: 1, kind: 'cert', hint: 'A landscape certificate with the guest’s name, an award line, a round photo, a seal and the date.' },
     // Your own uploaded frames (see "Frames with photo spots" below). Shown once a frame is uploaded.
     myframe:    { name: 'My frame', kind: 'frame', get shots(){ var f = typeof activeFrame === 'function' ? activeFrame() : null; return f ? Math.max(1, frameShotCount(f)) : 1; },
                   hint: 'One of your frames on its own. Photos fill its white or see-through spots.' },
@@ -4589,6 +4713,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   let state = 'idle'; // idle | capturing | result
   let currentLayout = 'strip';
+  // Booth type (top of Setup): the normal photo booth, a trading card booth or a certificate booth.
+  var boothType = 'photo';                      // 'photo' | 'card' | 'cert'
+  var photoLayoutMemo = 'strip';                // the photo layout to go back to
+  var btCfg = {
+    card: { style: 'fire', stats: true, tpl: null, pick: false, builtin: true },
+    cert: { style: 'gold', title: 'Certificate of Achievement', lead: 'is proudly presented to', msg: '', signer: '', role: '', askAward: true, tpl: null, pick: false, builtin: true }
+  };
+  var guestInfo = { name: '', line: '' };       // what this guest typed (and the design they picked) for their card / certificate
+  var myTpls = [];                              // own card / certificate templates (uploaded PNGs with a photo window + text zones)
+  var MAX_TPLS = 30;
+  var tplEdit = null;                           // { id, sel } while a template is being edited in Setup
+  var btForce = null;                           // draws one design for a thumbnail
+  var btdOpen = false;                          // the name / title form is on screen
   let backgroundImg = null;
   let shotCanvases = new Array(shotsNeeded('strip')).fill(null);
   let mainIndex = 0;
@@ -7728,7 +7865,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var BOX_PROBE = null, boxAspectCache = { key: '', a: 0 };
   function boxAspectKey(){
     var f = currentLayout === 'myframe' && typeof activeFrame === 'function' ? activeFrame() : null;
-    return currentLayout + '|' + (f ? f.id + ':' + spotsKey(f) : '') + '|' + (typeof titleStyle !== 'undefined' ? titleStyle : '');
+    return currentLayout + '|' + (f ? f.id + ':' + spotsKey(f) : '') + '|' + (typeof titleStyle !== 'undefined' ? titleStyle : '') + '|' + (typeof btAspectKey === 'function' ? btAspectKey() : '');
   }
   // Renders the layout once with tiny stand-in shots and records the shape of
   // the first box a shot is drawn into.
@@ -7812,7 +7949,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // except the traditional laptop + guest-screen setup (that has its own guest window).
   function updateFullStage(){
     var b = document.body, sh = document.querySelector('.app-shell');
-    var picking = false; try{ picking = !!pickOpen; }catch(e){}
+    var picking = false; try{ picking = !!pickOpen || btdOpen; }catch(e){}
     var reviewing = false; try{ reviewing = !!(sess && sess.reviewing); }catch(e){}
     var trad = false; try{ trad = isTraditional() && (typeof guestOpen === 'function' && guestOpen()); }catch(e){}
     var on = b.classList.contains('in-session') && !trad && state !== 'result' &&
@@ -7831,7 +7968,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var b = document.body, on = false;
     try{
       var sh = document.querySelector('.app-shell'), picking = false;
-      try{ picking = !!pickOpen; }catch(e){}
+      try{ picking = !!pickOpen || btdOpen; }catch(e){}
       on = b.classList.contains('stage-full') && !b.classList.contains('stage-review') && !b.classList.contains('welcome-on') && !picking &&
         !b.classList.contains('stage-shoot') &&
         (state === 'capturing' || !!(sh && sh.classList.contains('getting-ready'))) &&
@@ -8053,7 +8190,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     appShell.classList.toggle('capturing', isCapturing);
     appShell.classList.toggle('result', state === 'result');
     try{ refreshPanelSolo(); }catch(e){}
-    document.body.classList.toggle('shooting', isCapturing || (typeof pickOpen !== 'undefined' && pickOpen));
+    document.body.classList.toggle('shooting', isCapturing || btdOpen || (typeof pickOpen !== 'undefined' && pickOpen));
     applyStageAspect();      // re-size now that the shooting layout is on/off
 
     video.style.display = state === 'result' ? 'none' : 'block';
@@ -8839,6 +8976,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var L = landscapeCells(key, 1800, 1200), bx = 6, by = 30, bw = 88, bh = 40;
       return L.shots.map(function(c){ return pct(bx + c.x / 1800 * bw, by + c.y / 1200 * bh, c.w / 1800 * bw, c.h / 1200 * bh); });
     }
+    if(d.kind === 'card') return [pct(14, 14, 72, 48)];
+    if(d.kind === 'cert') return [pct(8, 36, 24, 24)];
     if(d.kind === 'frame'){
       if(key === 'myframe'){
         var f = activeFrame(); if(!f) return [];
@@ -8855,6 +8994,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const d = LAYOUT_DEFS[key];
     if(!d) return '';
     if(d.kind === 'landscape') return '4R, sideways';
+    if(d.kind === 'card') return '2.5\u00d73.5 card, or 4R';
+    if(d.kind === 'cert') return 'A4 / Letter, or 4R';
     if(d.kind === 'receipt') return d.color ? 'Photo paper or receipt' : 'Receipt printer';
     if(d.kind === 'frame') return key === 'framesheet' ? ((typeof sheetPaper === 'function' && sheetPaper().name) || '4R') : (isStripLayout(key) ? '2\u00d76 or 2 on 4R' : '4R');
     if(d.kind === 'strip') return '2\u00d76 or 2 on 4R';
@@ -8912,9 +9053,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(fdw && fdw.parentNode) fdw.parentNode.removeChild(fdw);
     layoutGrid.innerHTML = '';
     const hasFrames = typeof myFrames !== 'undefined' && myFrames && myFrames.length;
-    const groups = LAYOUT_GROUPS.slice();
+    const groups = boothType === 'card' ? [{ t: 'Trading card', s: '2.5\u00d73.5 in card, or 4R', keys: ['card'] }]
+      : boothType === 'cert' ? [{ t: 'Certificate', s: 'A4 or Letter, sideways (or 4R)', keys: ['cert'] }]
+      : LAYOUT_GROUPS.slice();
     const frameGroup = { t: 'Your frames', s: hasFrames ? 'Made in Canva · tap one to use it' : 'Made in Canva: leave the photo spots white or see-through. Best size 1200 × 1800 px (4R) or 600 × 1800 px (2×6).', frames: true };
-    if(hasFrames) groups.unshift(frameGroup); else groups.push(frameGroup);
+    if(boothType === 'photo'){ if(hasFrames) groups.unshift(frameGroup); else groups.push(frameGroup); }
     groups.forEach(g => {
       const wrap = document.createElement('div'); wrap.className = 'lay-group';
       const h = document.createElement('p'); h.className = 'lay-group-h';
@@ -9454,11 +9597,258 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     ctx.restore();
   }
 
+  // ---- Trading card & certificate booths ----
+  // Booth type (top of Setup) = Trading card / Certificate. One photo per guest, plus the
+  // name (and a title / award line) the guest types on the booth before the countdown.
+  const CARD_STYLES = {
+    fire:   { name: 'Fire',     a: '#ff7a3d', b: '#7a1d0e', ink: '#2b0f08', glow: '#ffd27a' },
+    water:  { name: 'Water',    a: '#4db6ff', b: '#0b3a73', ink: '#071c38', glow: '#c9ecff' },
+    grass:  { name: 'Grass',    a: '#6fd16b', b: '#14562a', ink: '#082612', glow: '#e0ffb8' },
+    spark:  { name: 'Electric', a: '#ffd93d', b: '#8a5a00', ink: '#2e2000', glow: '#fff6b0' },
+    shadow: { name: 'Shadow',   a: '#a06bff', b: '#2a0f5c', ink: '#12062b', glow: '#e4d0ff' },
+    gold:   { name: 'Gold',     a: '#f3d27a', b: '#7a5a12', ink: '#2c1f04', glow: '#fff3c4' }
+  };
+  const CARD_RARITIES = [
+    { k: 'Common',    w: 58, stars: 1, frame: '#c9ced6' },
+    { k: 'Rare',      w: 25, stars: 2, frame: '#f0c75e' },
+    { k: 'Epic',      w: 12, stars: 3, frame: '#c58bff' },
+    { k: 'Legendary', w: 5,  stars: 4, frame: '#ffd36b' }
+  ];
+  const CERT_STYLES = {
+    gold:  { name: 'Classic gold', bg: '#fbf6e6', edge: '#b8902f', ink: '#2d2a26', acc: '#9a7420' },
+    blue:  { name: 'Royal blue',   bg: '#f5f8fd', edge: '#1f3a73', ink: '#16213b', acc: '#27478f' },
+    green: { name: 'Forest green', bg: '#f4f9f4', edge: '#2f6b4a', ink: '#14301f', acc: '#2f6b4a' },
+    night: { name: 'Black & gold', bg: '#1b1a1f', edge: '#d6b25e', ink: '#f4eedd', acc: '#d6b25e' }
+  };
+  function btSeed(s){ var h = 7; s = String(s); for(var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 2147483629; return h + 1; }
+  // Shrinks the font until the text fits; css(size) returns the ctx.font string.
+  function btFit(ctx, text, css, start, maxW, min){
+    var s = start; ctx.font = css(s);
+    while(s > min && ctx.measureText(text).width > maxW){ s -= 2; ctx.font = css(s); }
+    return s;
+  }
+  function btWrap(ctx, text, maxW, maxLines){
+    var words = String(text).split(/\s+/).filter(Boolean), lines = [], cur = '';
+    words.forEach(function(w){
+      var t = cur ? cur + ' ' + w : w;
+      if(cur && ctx.measureText(t).width > maxW){ lines.push(cur); cur = w; } else cur = t;
+    });
+    if(cur) lines.push(cur);
+    return lines.slice(0, maxLines);
+  }
+  function btSans(weight){ return function(s){ return weight + ' ' + s + 'px Manrope, "Segoe UI", Arial, sans-serif'; }; }
+
+  function composeCard(layoutKey, targetCanvas, shots){
+    const cfg = btCfg.card, pk = btPick('card');
+    if(pk.f) return composeTplCanvas('card', pk.f, targetCanvas, shots);
+    const W = 1200, H = 1680, st = CARD_STYLES[pk.style] || CARD_STYLES.fire;
+    targetCanvas.width = W; targetCanvas.height = H;
+    const ctx = targetCanvas.getContext('2d');
+    const real = !!(guestInfo.name || '').trim();
+    const name = (guestInfo.name || '').trim() || 'Your Name';
+    const line = (guestInfo.line || '').trim() || 'Special Move';
+    const rnd = seededRand(btSeed(name + '|' + line) + (real ? (sessionNumber || 0) * 977 : 0));
+    let ri = 0, roll = rnd() * 100, acc = 0;
+    for(let i = 0; i < CARD_RARITIES.length; i++){ acc += CARD_RARITIES[i].w; if(roll < acc){ ri = i; break; } }
+    if(!real) ri = 2;                                    // the Setup preview shows a shiny one
+    const rar = CARD_RARITIES[cfg.stats ? ri : 1];
+    const stat = () => Math.min(99, Math.round(18 + ri * 9 + rnd() * (60 - ri * 4)));
+    const hp = 40 + ri * 20 + Math.floor(rnd() * 8) * 10;
+    const stats = [['ATK', stat()], ['DEF', stat()], ['SPD', stat()]];
+
+    // Metal edge, then the coloured card face with a soft glow and fine diagonal lines.
+    let g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, mixHex(rar.frame, '#ffffff', 0.55)); g.addColorStop(0.5, rar.frame); g.addColorStop(1, mixHex(rar.frame, '#000000', 0.3));
+    roundRectPath(ctx, 0, 0, W, H, 64); ctx.fillStyle = g; ctx.fill();
+    const fx = 38, fy = 38, fw = W - 76, fh = H - 76;
+    g = ctx.createLinearGradient(0, fy, 0, fy + fh);
+    g.addColorStop(0, st.a); g.addColorStop(1, st.b);
+    roundRectPath(ctx, fx, fy, fw, fh, 40); ctx.fillStyle = g; ctx.fill();
+    ctx.save();
+    roundRectPath(ctx, fx, fy, fw, fh, 40); ctx.clip();
+    const rg = ctx.createRadialGradient(W / 2, 620, 40, W / 2, 620, 760);
+    rg.addColorStop(0, st.glow); rg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.globalAlpha = 0.45; ctx.fillStyle = rg; ctx.fillRect(fx, fy, fw, fh); ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 6;
+    for(let x = -H; x < W; x += 46){ ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x + H, 0); ctx.stroke(); }
+    ctx.restore();
+
+    // Name plate (+ HP)
+    const hx = 72, hy = 66, hw = W - 144, hh = 118, hmid = hy + hh / 2 + 4;
+    roundRectPath(ctx, hx, hy, hw, hh, 30); ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.fill();
+    ctx.textBaseline = 'middle'; ctx.fillStyle = st.ink;
+    ctx.textAlign = cfg.stats ? 'left' : 'center';
+    btFit(ctx, name, s => fontString(currentFont, s), 82, cfg.stats ? hw - 330 : hw - 60, 34);
+    ctx.fillText(name, cfg.stats ? hx + 34 : hx + hw / 2, hmid);
+    if(cfg.stats){
+      ctx.textAlign = 'right';
+      ctx.font = btSans(800)(76); const hpTxt = String(hp), vw = ctx.measureText(hpTxt).width;
+      ctx.fillStyle = st.ink; ctx.fillText(hpTxt, hx + hw - 34, hmid);
+      ctx.font = btSans(800)(32); ctx.fillStyle = '#b3261e'; ctx.fillText('HP', hx + hw - 34 - vw - 12, hmid + 10);
+    }
+
+    // The photo
+    const ax = 84, ay = 214, aw = W - 168, ah = 800;
+    ctx.save();
+    roundRectPath(ctx, ax, ay, aw, ah, 28); ctx.clip();
+    if(shots[0]) drawImageCover(ctx, shots[0], ax, ay, aw, ah);
+    else {
+      g = ctx.createLinearGradient(ax, ay, ax + aw, ay + ah);
+      g.addColorStop(0, mixHex(st.a, '#000000', 0.35)); g.addColorStop(1, mixHex(st.b, '#000000', 0.35));
+      ctx.fillStyle = g; ctx.fillRect(ax, ay, aw, ah);
+    }
+    ctx.restore();
+    roundRectPath(ctx, ax, ay, aw, ah, 28); ctx.lineWidth = 12; ctx.strokeStyle = mixHex(rar.frame, '#ffffff', 0.2); ctx.stroke();
+
+    // Title line on a ribbon
+    const ry = ay + ah + 24, rh = 86;
+    roundRectPath(ctx, 150, ry, W - 300, rh, 43); ctx.fillStyle = 'rgba(0,0,0,0.42)'; ctx.fill();
+    ctx.textAlign = 'center'; ctx.fillStyle = '#ffffff';
+    btFit(ctx, line, s => fontString(currentFont, s), 54, W - 380, 28);
+    ctx.fillText(line, W / 2, ry + rh / 2 + 3);
+
+    // Stats (or the event name when random stats are off)
+    const py = ry + rh + 26, ph = 340;
+    roundRectPath(ctx, 84, py, W - 168, ph, 28); ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fill();
+    const evt = (labelInput.value || '').trim(), dateTxt = currentDateLabel();
+    if(cfg.stats){
+      stats.forEach(function(sv, i){
+        const y = py + 62 + i * 100, bx = 290, bw = 680, bh = 34;
+        ctx.font = btSans(800)(40); ctx.fillStyle = st.ink;
+        ctx.textAlign = 'left'; ctx.fillText(sv[0], 130, y);
+        roundRectPath(ctx, bx, y - bh / 2, bw, bh, 17); ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fill();
+        const gg = ctx.createLinearGradient(bx, 0, bx + bw, 0); gg.addColorStop(0, st.a); gg.addColorStop(1, st.b);
+        roundRectPath(ctx, bx, y - bh / 2, Math.max(bh, bw * sv[1] / 100), bh, 17); ctx.fillStyle = gg; ctx.fill();
+        ctx.fillStyle = st.ink; ctx.textAlign = 'right'; ctx.fillText(String(sv[1]), W - 130, y);
+      });
+    } else {
+      ctx.textAlign = 'center'; ctx.fillStyle = st.ink;
+      const t = evt || 'Trading card', fs = btFit(ctx, t, s => fontString(currentFont, s), 96, W - 300, 40);
+      const lines = btWrap(ctx, t, W - 300, 3), lh = fs * 1.15, y0 = py + ph / 2 - (lines.length - 1) * lh / 2;
+      lines.forEach((l, i) => ctx.fillText(l, W / 2, y0 + i * lh));
+    }
+
+    // Footer: card number, event, date | rarity
+    const fyy = H - 96;
+    ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    const left = ['#' + String(sessionNumber || 1).padStart(3, '0'), cfg.stats ? evt : '', dateTxt].filter(Boolean).join('  ·  ');
+    ctx.textAlign = 'left'; btFit(ctx, left, btSans(700), 32, cfg.stats ? 640 : W - 168, 20); ctx.fillText(left, 84, fyy);
+    if(cfg.stats){
+      ctx.textAlign = 'right'; ctx.font = btSans(800)(34);
+      ctx.fillText('★'.repeat(rar.stars) + '  ' + rar.k.toUpperCase(), W - 84, fyy);
+    }
+
+    // Holo shine + sparkles on Epic / Legendary
+    if(cfg.stats && ri >= 2){
+      ctx.save();
+      roundRectPath(ctx, 0, 0, W, H, 64); ctx.clip();
+      const hg = ctx.createLinearGradient(0, H, W, 0);
+      ['#ff5fa2', '#ffd23f', '#5dffb1', '#4db8ff', '#c78bff', '#ff5fa2'].forEach((c, i, a) => hg.addColorStop(i / (a.length - 1), c));
+      ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = ri === 3 ? 0.55 : 0.32;
+      ctx.fillStyle = hg; ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+      const sr = seededRand(btSeed(name) + 5);
+      for(let i = 0; i < (ri === 3 ? 26 : 14); i++) drawStar(ctx, sr() * W, sr() * H, 10 + sr() * 20, 4, 0, '#ffffff', 0.5 + sr() * 0.4);
+      ctx.restore();
+    }
+    if(typeof drawDecorLayer === 'function') drawDecorLayer(ctx, W, H);
+    return targetCanvas;
+  }
+
+  function composeCert(layoutKey, targetCanvas, shots){
+    const cfg = btCfg.cert, pk = btPick('cert');
+    if(pk.f) return composeTplCanvas('cert', pk.f, targetCanvas, shots);
+    const W = 3000, H = 2121, st = CERT_STYLES[pk.style] || CERT_STYLES.gold;
+    targetCanvas.width = W; targetCanvas.height = H;
+    const ctx = targetCanvas.getContext('2d');
+    const name = (guestInfo.name || '').trim() || 'Recipient Name';
+    const award = (guestInfo.line || '').trim() || (!(guestInfo.name || '').trim() && cfg.askAward ? 'Award Title' : '');   // the Setup preview shows a sample award
+    const serif = s => 'italic ' + s + 'px Fraunces, Georgia, "Times New Roman", serif';
+
+    // Paper, border, corner diamonds
+    ctx.fillStyle = st.bg; ctx.fillRect(0, 0, W, H);
+    const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, W * 0.62);
+    vg.addColorStop(0, 'rgba(255,255,255,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.10)');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = st.edge; ctx.lineWidth = 16; ctx.strokeRect(70, 70, W - 140, H - 140);
+    ctx.lineWidth = 5; ctx.strokeRect(120, 120, W - 240, H - 240);
+    [[120, 120], [W - 120, 120], [120, H - 120], [W - 120, H - 120]].forEach(function(c){
+      ctx.save(); ctx.translate(c[0], c[1]); ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = st.bg; ctx.fillRect(-34, -34, 68, 68);
+      ctx.strokeStyle = st.edge; ctx.lineWidth = 7; ctx.strokeRect(-34, -34, 68, 68);
+      ctx.fillStyle = st.edge; ctx.fillRect(-14, -14, 28, 28);
+      ctx.restore();
+    });
+
+    // Round photo with a double ring, and a seal
+    const pcx = 640, pcy = 1030, pr = 380;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(pcx, pcy, pr, 0, Math.PI * 2); ctx.clip();
+    if(shots[0]) drawImageCover(ctx, shots[0], pcx - pr, pcy - pr, pr * 2, pr * 2);
+    else { ctx.fillStyle = mixHex(st.bg, st.edge, 0.25); ctx.fillRect(pcx - pr, pcy - pr, pr * 2, pr * 2); }
+    ctx.restore();
+    ctx.strokeStyle = st.edge; ctx.lineWidth = 18; ctx.beginPath(); ctx.arc(pcx, pcy, pr + 16, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(pcx, pcy, pr + 52, 0, Math.PI * 2); ctx.stroke();
+    const sx = pcx + 270, sy = pcy + 330, sr = 150;
+    drawStar(ctx, sx, sy, sr, 24, 0, st.edge, 1);
+    ctx.beginPath(); ctx.arc(sx, sy, sr * 0.72, 0, Math.PI * 2); ctx.fillStyle = mixHex(st.edge, '#000000', 0.18); ctx.fill();
+    ctx.lineWidth = 6; ctx.strokeStyle = mixHex(st.edge, '#ffffff', 0.5); ctx.beginPath(); ctx.arc(sx, sy, sr * 0.6, 0, Math.PI * 2); ctx.stroke();
+    drawStar(ctx, sx, sy, sr * 0.45, 5, 0, mixHex(st.edge, '#ffffff', 0.65), 1);
+
+    // Words
+    const tx = 1990, tw = 1560;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const title = (cfg.title || '').trim() || 'Certificate';
+    btFit(ctx, title, s => fontString(currentFont, s), 118, tw, 60);
+    ctx.fillStyle = st.acc; ctx.fillText(title, tx, 420);
+    ctx.strokeStyle = st.edge; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(tx - 420, 520); ctx.lineTo(tx - 40, 520); ctx.moveTo(tx + 40, 520); ctx.lineTo(tx + 420, 520); ctx.stroke();
+    ctx.save(); ctx.translate(tx, 520); ctx.rotate(Math.PI / 4); ctx.fillStyle = st.edge; ctx.fillRect(-14, -14, 28, 28); ctx.restore();
+    const lead = (cfg.lead || '').trim();
+    if(lead){ btFit(ctx, lead, serif, 58, tw, 30); ctx.fillStyle = st.ink; ctx.fillText(lead, tx, 650); }
+    const nfs = btFit(ctx, name, s => fontString(currentFont, s), 210, tw, 70);
+    ctx.fillStyle = st.ink; ctx.fillText(name, tx, 850);
+    ctx.strokeStyle = st.edge; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(tx - tw * 0.46, 850 + nfs * 0.62); ctx.lineTo(tx + tw * 0.46, 850 + nfs * 0.62); ctx.stroke();
+    let yy = 1130;
+    if(award){
+      btFit(ctx, award, s => fontString(currentFont, s), 100, tw, 44);
+      ctx.fillStyle = st.acc; ctx.fillText(award, tx, yy); yy += 150;
+    }
+    const msg = (cfg.msg || '').trim();
+    if(msg){
+      ctx.font = serif(56); ctx.fillStyle = st.ink;
+      btWrap(ctx, msg, tw, 2).forEach(function(l, i){ ctx.fillText(l, tx, yy + i * 76); });
+    }
+
+    // Signature and date
+    ctx.strokeStyle = st.ink; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(1260, 1700); ctx.lineTo(1880, 1700); ctx.moveTo(2160, 1700); ctx.lineTo(2780, 1700); ctx.stroke();
+    ctx.fillStyle = st.ink;
+    const signer = (cfg.signer || '').trim(), role = (cfg.role || '').trim();
+    ctx.font = serif(46); ctx.fillText(signer || 'Signature', 1570, 1752);
+    if(role){ ctx.font = btSans(600)(34); ctx.globalAlpha = 0.75; ctx.fillText(role, 1570, 1806); ctx.globalAlpha = 1; }
+    const when = currentDateLabel() || new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    ctx.font = serif(50); ctx.fillText(when, 2470, 1660);
+    ctx.font = serif(46); ctx.fillText('Date', 2470, 1752);
+    const evt = (labelInput.value || '').trim();
+    if(evt){
+      ctx.font = btSans(700)(34); ctx.fillStyle = st.acc;
+      try{ ctx.letterSpacing = '6px'; }catch(e){}
+      ctx.fillText(evt.toUpperCase(), W / 2, 1935);
+      try{ ctx.letterSpacing = '0px'; }catch(e){}
+    }
+    if(typeof drawDecorLayer === 'function') drawDecorLayer(ctx, W, H);
+    return targetCanvas;
+  }
+
   // ---- Shared composite builder, used for both the real result and the
   // Setup tab's live preview, so they never fall out of sync. ----
   function composeCanvas(layoutKey, targetCanvas, shots){
     if(layoutDef(layoutKey).kind === 'frame') return composeFrameCanvas(layoutKey, targetCanvas, shots);
     if(layoutDef(layoutKey).kind === 'landscape') return composeLandscape(layoutKey, targetCanvas, shots);
+    if(layoutDef(layoutKey).kind === 'card') return composeCard(layoutKey, targetCanvas, shots);
+    if(layoutDef(layoutKey).kind === 'cert') return composeCert(layoutKey, targetCanvas, shots);
     if(layoutDef(layoutKey).kind === 'receipt') return composeReceipt(layoutKey, targetCanvas, shots);
     const trimmed = (labelInput.value || '').trim();
     const dateText = currentDateLabel();
@@ -10308,6 +10698,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     previewUsesAccent = accentUsed;
     if(typeof refreshAccentHelp === 'function') refreshAccentHelp();
     if(typeof drawFrameOverlays === 'function') drawFrameOverlays();
+    if(typeof btDrawEditOverlay === 'function') btDrawEditOverlay();
     if(typeof drawDecorSelection === 'function') drawDecorSelection();
     if(typeof scheduleWelcomeRender === 'function') scheduleWelcomeRender();
     afterSetupPreview();
@@ -12388,6 +12779,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function resetForNextGuest(){
     clearTimeout(resultTimer);
     state = 'idle';
+    guestInfo = { name: '', line: '' };
+    if(tplEdit){ tplEdit = null; try{ btRenderTplEditor(); }catch(e){} }
     if(currentLayout !== setupLayout) setLayout(setupLayout);
     if(setupLayout === 'myframe' && typeof setupActiveFrameId !== 'undefined' && setupActiveFrameId) activeFrameId = setupActiveFrameId;
     shotCanvases = new Array(shotsNeeded()).fill(null);
@@ -14262,6 +14655,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var key = keys.length > 1 ? await pickLayout(keys) : (keys[0] || setupLayout);
       if(/^frame:/.test(key)){ activeFrameId = key.slice(6); key = 'myframe'; setLayout(key); }   // the guest's frame, this session
       else if(key !== currentLayout) setLayout(key);
+      // Trading card / certificate booth: the guest types their name (and a title) first.
+      if(boothType !== 'photo' && (!(await askGuestDesign()) || !(await askGuestDetails()))) return;
       // After picking a layout there's always a "Get ready" screen (summary,
       // filters, Start) — the countdown never starts straight from the picker.
       await startSession(keys.length > 1 ? false : skipReady);
@@ -15642,6 +16037,549 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   document.getElementById('fxTestSound').addEventListener('click', function(){ unlockAudio(); setTimeout(function(){ fxBeep(2); setTimeout(function(){ fxBeep(1); }, 400); setTimeout(fxShutter, 800); }, 60); });
   setTimeout(refreshFxUI, 0);
 
+  // ---- Booth type: Photo booth / Trading card / Certificate ----
+  // The switch at the top of Setup. Card and certificate booths take one photo and ask the
+  // guest for a name (and a title / award) first; everything else (camera, QR, print) is shared.
+  var btSwitchEl = document.getElementById('btSwitch');
+  var btChipsEl = document.getElementById('btStyleChips');
+  var btCertIds = { title: 'btCertTitle', lead: 'btCertLead', msg: 'btCertMsg', signer: 'btCertSigner', role: 'btCertRole' };
+  function btApplyCfg(c){
+    c = c && typeof c === 'object' ? c : {};
+    var cd = c.card || {}, ce = c.cert || {};
+    var t = function(v, n, d){ return typeof v === 'string' ? v.replace(/[<>]/g, '').slice(0, n) : d; };
+    var tp = function(v, kind){ var f = typeof v === 'string' ? tplById(v) : null; return f && f.t === kind ? v : null; };
+    btCfg = {
+      card: { style: CARD_STYLES[cd.style] ? cd.style : 'fire', stats: cd.stats !== false, tpl: tp(cd.tpl, 'card'), pick: !!cd.pick, builtin: cd.builtin !== false },
+      cert: { style: CERT_STYLES[ce.style] ? ce.style : 'gold', title: t(ce.title, 48, 'Certificate of Achievement'), lead: t(ce.lead, 60, 'is proudly presented to'),
+              msg: t(ce.msg, 120, ''), signer: t(ce.signer, 40, ''), role: t(ce.role, 40, ''), askAward: ce.askAward !== false,
+              tpl: tp(ce.tpl, 'cert'), pick: !!ce.pick, builtin: ce.builtin !== false }
+    };
+  }
+  function btRefresh(){
+    qrResults.innerHTML = ''; lastRenderedFolderUrl = null;
+    try{ renderComposite(); renderSetupPreview(); }catch(e){}
+    try{ markLayoutThumbsDirty(); }catch(e){}
+    scheduleSetupSave();
+  }
+  function btBuildChips(){
+    var card = boothType === 'card', set = card ? CARD_STYLES : CERT_STYLES, cur = (card ? btCfg.card : btCfg.cert).style;
+    btChipsEl.innerHTML = '';
+    Object.keys(set).forEach(function(k){
+      var s = set[k], b = document.createElement('button'), i = document.createElement('i');
+      b.type = 'button'; b.className = 'bt-chip' + (k === cur && !(card ? btCfg.card : btCfg.cert).tpl ? ' on' : ''); b.dataset.style = k;
+      i.style.background = card ? 'linear-gradient(135deg,' + s.a + ',' + s.b + ')' : 'linear-gradient(135deg,' + s.bg + ' 50%,' + s.edge + ' 50%)';
+      b.appendChild(i); b.appendChild(document.createTextNode(s.name));
+      btChipsEl.appendChild(b);
+    });
+  }
+  // Admin turns this on per code (and for trials): window.__PB.typesOpt. Without it the booth is the normal photo booth.
+  function typesAllowed(){ return !!(window.__PB && window.__PB.typesOpt); }
+  function syncBoothTypeUI(rebuild){
+    var bt = boothType, card = bt === 'card';
+    document.body.classList.toggle('bt-allowed', typesAllowed());
+    document.body.classList.toggle('bt-on', bt !== 'photo');
+    document.body.classList.toggle('bt-card', card);
+    document.body.classList.toggle('bt-cert', bt === 'cert');
+    [].forEach.call(btSwitchEl.querySelectorAll('button[data-bt]'), function(b){
+      var on = b.dataset.bt === bt; b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+    if(bt !== 'photo'){
+      document.getElementById('btStyleTitle').textContent = card ? 'Card style' : 'Certificate style';
+      document.getElementById('btStyleHint').textContent = card
+        ? 'The colour of the card. Epic and Legendary cards get a rainbow holo shine.'
+        : 'The paper and border colours of the certificate.';
+      btBuildChips();
+      document.getElementById('btStats').checked = !!btCfg.card.stats;
+      Object.keys(btCertIds).forEach(function(k){ document.getElementById(btCertIds[k]).value = btCfg.cert[k]; });
+      document.getElementById('btCertAsk').checked = !!btCfg.cert.askAward;
+      btRenderTpls(); btRenderTplEditor();
+    }
+    if(rebuild) buildLayoutPicker();
+  }
+  function setBoothType(t){
+    t = t === 'card' || t === 'cert' ? t : 'photo';
+    if(t === boothType) return;
+    if(boothType === 'photo') photoLayoutMemo = setupLayout;
+    boothType = t; tplEdit = null;
+    if(t !== 'photo'){ guestPickOn = false; guestPickToggle.checked = false; setupLayout = t; layoutPicked = true; }
+    else setupLayout = LAYOUT_DEFS[photoLayoutMemo] && photoLayoutMemo !== 'card' && photoLayoutMemo !== 'cert' ? photoLayoutMemo : 'strip';
+    syncBoothTypeUI(true);
+    if(state !== 'capturing') setLayout(setupLayout);
+    refreshGuestLayoutChoices();
+    btRefresh();
+  }
+  function btOptionChanged(){
+    if(!typesAllowed() && boothType !== 'photo' && state !== 'capturing') setBoothType('photo');
+    else syncBoothTypeUI(false);
+  }
+  window.addEventListener('pb-types-change', btOptionChanged);
+  setTimeout(btOptionChanged, 0);
+  btSwitchEl.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-bt]');
+    if(b) setBoothType(b.dataset.bt);
+  });
+  btChipsEl.addEventListener('click', function(e){
+    var b = e.target.closest('.bt-chip');
+    if(!b) return;
+    var cc = boothType === 'card' ? btCfg.card : btCfg.cert;
+    cc.style = b.dataset.style; cc.tpl = null;
+    btBuildChips(); btRenderTpls(); btRefresh();
+  });
+  document.getElementById('btStats').addEventListener('change', function(){ btCfg.card.stats = this.checked; btRefresh(); });
+  document.getElementById('btCertAsk').addEventListener('change', function(){ btCfg.cert.askAward = this.checked; btRefresh(); });
+  Object.keys(btCertIds).forEach(function(k){
+    document.getElementById(btCertIds[k]).addEventListener('input', function(){ btCfg.cert[k] = this.value.replace(/[<>]/g, ''); btRefresh(); });
+  });
+
+  // ---- Own templates for the trading card / certificate booths ----
+  // A template is an uploaded PNG (made in Canva) with one white or see-through photo window,
+  // plus text zones for the guest's name, title / award, the date and the event name.
+  // Templates are grouped by a name the renter types; guests can be offered the choice by group.
+  var BT_ZONES = ['name', 'line', 'date', 'evt'];
+  function btZoneLabel(t, k){
+    return { name: t === 'card' ? 'Name' : 'Recipient name', line: t === 'card' ? 'Title / special move' : 'Award', date: 'Date', evt: 'Event name' }[k];
+  }
+  function tplById(id){ for(var i = 0; i < myTpls.length; i++) if(myTpls[i].id === id) return myTpls[i]; return null; }
+  function tplsOf(t){ return myTpls.filter(function(f){ return f.t === t; }); }
+  function tplGroups(t){
+    var order = [], map = {};
+    tplsOf(t).forEach(function(f){ var g = f.grp || 'General'; if(!map[g]){ map[g] = []; order.push(g); } map[g].push(f); });
+    return order.map(function(g){ return { g: g, items: map[g] }; });
+  }
+  function tplDefaultZones(t){
+    var z = function(on, x, y, w, h, al){ return { on: on, x: x, y: y, w: w, h: h, c: '#222222', al: al }; };
+    return t === 'card'
+      ? { name: z(1, .08, .035, .84, .075, 'c'), line: z(1, .10, .80, .80, .055, 'c'), date: z(0, .55, .93, .37, .035, 'r'), evt: z(0, .08, .93, .45, .035, 'l') }
+      : { name: z(1, .30, .40, .62, .14, 'c'), line: z(1, .30, .58, .62, .07, 'c'), date: z(1, .62, .80, .30, .05, 'c'), evt: z(0, .30, .88, .62, .04, 'c') };
+  }
+  // Which design is drawn right now: the one being edited, a forced one (thumbnails), the guest's pick, or the event's.
+  function btPick(t){
+    var cfg = btCfg[t], f;
+    if(tplEdit && (f = tplById(tplEdit.id)) && f.t === t) return { f: f };
+    if(btForce) return btForce;
+    if(guestInfo.tpl && (f = tplById(guestInfo.tpl))) return { f: f };
+    var styles = t === 'card' ? CARD_STYLES : CERT_STYLES;
+    if(guestInfo.style && styles[guestInfo.style]) return { style: guestInfo.style };
+    if(cfg.tpl && (f = tplById(cfg.tpl))) return { f: f };
+    return { style: cfg.style };
+  }
+  function btAspectKey(){
+    if(boothType === 'photo') return '';
+    var pk = btPick(boothType);
+    return pk.f ? pk.f.id + ':' + spotsKey(pk.f) : 's:' + pk.style;
+  }
+  function tplDrawText(ctx, z, W, H, text){
+    if(!z || !z.on || !text) return;
+    var x = z.x * W, y = z.y * H, w = z.w * W, h = z.h * H;
+    var fs = btFit(ctx, text, function(s){ return fontString(currentFont, s); }, Math.max(10, Math.round(h * 0.9)), w, 10);
+    ctx.save();
+    ctx.fillStyle = z.c; ctx.textBaseline = 'middle';
+    ctx.textAlign = z.al === 'l' ? 'left' : z.al === 'r' ? 'right' : 'center';
+    ctx.fillText(text, z.al === 'l' ? x : z.al === 'r' ? x + w : x + w / 2, y + h / 2 + fs * 0.04);
+    ctx.restore();
+  }
+  function composeTplCanvas(t, f, targetCanvas, shots){
+    var k = (t === 'card' ? 1800 : 3000) / Math.max(f.w, f.h);
+    var W = Math.round(f.w * k), H = Math.round(f.h * k);
+    targetCanvas.width = W; targetCanvas.height = H;
+    var ctx = targetCanvas.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+    drawFrameInto(ctx, f, 0, 0, W, H, shots);
+    var real = !!(guestInfo.name || '').trim(), card = t === 'card';
+    var Z = f.zones || tplDefaultZones(t);
+    tplDrawText(ctx, Z.name, W, H, (guestInfo.name || '').trim() || (card ? 'Your Name' : 'Recipient Name'));
+    tplDrawText(ctx, Z.line, W, H, (guestInfo.line || '').trim() || (real ? '' : (card ? 'Special Move' : 'Award Title')));
+    tplDrawText(ctx, Z.date, W, H, currentDateLabel() || new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }));
+    tplDrawText(ctx, Z.evt, W, H, (labelInput.value || '').trim());
+    var ov = overlay; overlay = null;                 // stickers and logo go on top; a plain overlay frame doesn't
+    try{ drawDecorLayer(ctx, W, H); } finally { overlay = ov; }
+    return targetCanvas;
+  }
+
+  // ---- Saving ----
+  function tplsSnapshot(){
+    var r3 = function(v){ return Math.round(v * 1000) / 1000; };
+    return myTpls.map(function(f){
+      var o = { id: f.id, n: f.name, g: f.grp, t: f.t, w: f.w, h: f.h,
+        s: f.spots.map(function(s){ var q = [r3(s.x), r3(s.y), r3(s.w), r3(s.h)]; if(s.a) q.push(Math.round(s.a * 10) / 10); return q; }),
+        z: BT_ZONES.map(function(k){ var z = f.zones[k]; return [z.on ? 1 : 0, r3(z.x), r3(z.y), r3(z.w), r3(z.h), z.c, z.al]; }) };
+      if(f.key) o.k = f.key;
+      return o;
+    });
+  }
+  function applyTplsSetup(arr){
+    var okId = function(id){ return typeof id === 'string' && /^a[A-Za-z0-9]{8,32}$/.test(id); };
+    var num = function(v, lo, hi, d){ v = Number(v); return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
+    var txt = function(v, n, d){ return typeof v === 'string' && v.trim() ? v.replace(/[<>]/g, '').trim().slice(0, n) : d; };
+    myTpls = (Array.isArray(arr) ? arr : []).filter(function(f){ return f && okId(f.id) && (f.t === 'card' || f.t === 'cert') && Array.isArray(f.s) && f.s.length; }).slice(0, MAX_TPLS).map(function(f){
+      var zs = tplDefaultZones(f.t), Z = {};
+      BT_ZONES.forEach(function(k, i){
+        var a = Array.isArray(f.z) && Array.isArray(f.z[i]) ? f.z[i] : null, d = zs[k];
+        Z[k] = a ? { on: a[0] ? 1 : 0, x: num(a[1], 0, 1, d.x), y: num(a[2], 0, 1, d.y), w: num(a[3], 0.02, 1, d.w), h: num(a[4], 0.01, 1, d.h), c: /^#[0-9a-f]{6}$/i.test(a[5]) ? a[5] : d.c, al: a[6] === 'l' || a[6] === 'r' ? a[6] : 'c' } : d;
+      });
+      var key = f.k && Array.isArray(f.k.c) && f.k.c.length === 3 ? { c: f.k.c.map(function(v){ return Math.round(num(v, 0, 255, 0)); }), t: Math.round(num(f.k.t, 4, 100, 36)) } : null;
+      var sp = f.s[0];
+      var spot = { x: num(sp[0], -0.5, 1, 0.1), y: num(sp[1], -0.5, 1, 0.1), w: num(sp[2], 0.02, 1, 0.5), h: num(sp[3], 0.02, 1, 0.5) };
+      if(num(sp[4], -45, 45, 0)) spot.a = num(sp[4], -45, 45, 0);
+      return { id: f.id, name: txt(f.n, 30, 'Template'), grp: txt(f.g, 24, 'General'), t: f.t, w: num(f.w, 1, 10000, 1200), h: num(f.h, 1, 10000, 1800), key: key, spots: [spot], zones: Z };
+    });
+  }
+
+  // ---- Setup: the list, grouped ----
+  var btTplListEl = document.getElementById('btTplList');
+  var btTplEditorEl = document.getElementById('btTplEditor');
+  var BT_THUMBS = {};
+  function btTplChanged(opts){
+    BT_THUMBS = {};
+    opts = opts || {};
+    if(!opts.noList) btRenderTpls();
+    btRefresh();
+  }
+  function btRenderTpls(){
+    var t = boothType; if(t === 'photo') return;
+    var cfg = btCfg[t], groups = tplGroups(t), dl = document.getElementById('btTplGroups');
+    dl.innerHTML = '';
+    groups.forEach(function(g){ var o = document.createElement('option'); o.value = g.g; dl.appendChild(o); });
+    btTplListEl.innerHTML = '';
+    groups.forEach(function(g){
+      var wrap = document.createElement('div'); wrap.className = 'bt-grp';
+      var h = document.createElement('p'); h.className = 'bt-grp-h';
+      var hb = document.createElement('b'); hb.textContent = g.g;
+      var hs = document.createElement('span'); hs.textContent = g.items.length + (g.items.length === 1 ? ' design' : ' designs');
+      h.appendChild(hb); h.appendChild(hs); wrap.appendChild(h);
+      var row = document.createElement('div'); row.className = 'bt-tpls';
+      g.items.forEach(function(f){
+        var tile = document.createElement('div'); tile.className = 'bt-tpl' + (cfg.tpl === f.id ? ' on' : ''); tile.dataset.id = f.id;
+        var img = document.createElement('img'); img.alt = ''; img.src = ASSETS[f.id] ? ASSETS[f.id].url : '';
+        var nm = document.createElement('span'); nm.className = 'bt-tpl-n'; nm.textContent = f.name;
+        var bar = document.createElement('div'); bar.className = 'bt-tpl-b';
+        [['use', cfg.tpl === f.id ? 'In use' : 'Use'], ['edit', 'Edit'], ['del', '✕']].forEach(function(a){
+          var b = document.createElement('button'); b.type = 'button'; b.dataset.act = a[0]; b.textContent = a[1];
+          if(a[0] === 'del') b.setAttribute('aria-label', 'Remove this template');
+          bar.appendChild(b);
+        });
+        tile.appendChild(img); tile.appendChild(nm); tile.appendChild(bar); row.appendChild(tile);
+      });
+      wrap.appendChild(row); btTplListEl.appendChild(wrap);
+    });
+    if(!groups.length){
+      var e = document.createElement('p'); e.className = 'panel-hint'; e.textContent = 'No templates yet. The built-in styles above are used.'; btTplListEl.appendChild(e);
+    }
+    document.getElementById('btPick').checked = !!cfg.pick;
+    document.getElementById('btBuiltin').checked = cfg.builtin !== false;
+    document.getElementById('btBuiltinRow').style.display = cfg.pick ? '' : 'none';
+    document.getElementById('btPickRow').style.display = '';
+  }
+  btTplListEl.addEventListener('click', function(e){
+    var tile = e.target.closest('.bt-tpl'); if(!tile) return;
+    var f = tplById(tile.dataset.id); if(!f) return;
+    var b = e.target.closest('button'), act = b ? b.dataset.act : 'use';
+    if(act === 'del'){
+      if(!window.confirm('Remove “' + f.name + '”?')) return;
+      myTpls = myTpls.filter(function(x){ return x.id !== f.id; });
+      ['card', 'cert'].forEach(function(k){ if(btCfg[k].tpl === f.id) btCfg[k].tpl = null; });
+      if(tplEdit && tplEdit.id === f.id) tplEdit = null;
+      btRenderTplEditor(); btTplChanged(); return;
+    }
+    if(act === 'edit'){ tplEdit = { id: f.id, sel: 's0' }; btRenderTplEditor(); btTplChanged({ noList: true }); return; }
+    btCfg[boothType].tpl = f.id; btBuildChips(); btTplChanged();
+  });
+  document.getElementById('btPick').addEventListener('change', function(){ btCfg[boothType].pick = this.checked; btRenderTpls(); scheduleSetupSave(); });
+  document.getElementById('btBuiltin').addEventListener('change', function(){ btCfg[boothType].builtin = this.checked; scheduleSetupSave(); });
+
+  // ---- Upload ----
+  // Text colour that reads on the template: white on dark art, dark on light art.
+  function tplAutoColours(f, img){
+    try{
+      var c = document.createElement('canvas'), S = 64; c.width = S; c.height = Math.max(8, Math.round(S * f.h / f.w));
+      var x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
+      BT_ZONES.forEach(function(k){
+        var z = f.zones[k], px = Math.max(0, Math.floor(z.x * c.width)), py = Math.max(0, Math.floor(z.y * c.height));
+        var pw = Math.max(1, Math.min(Math.floor(z.w * c.width), c.width - px)), ph = Math.max(1, Math.min(Math.floor(z.h * c.height), c.height - py));
+        var d = x.getImageData(px, py, pw, ph).data, sum = 0, n = 0;
+        for(var i = 0; i < d.length; i += 4){ sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; n++; }
+        z.c = n && sum / n < 140 ? '#ffffff' : '#222222';
+      });
+    }catch(e){}
+  }
+  async function btAddTemplates(files){
+    var t = boothType, grp = (document.getElementById('btTplGroup').value || '').replace(/[<>]/g, '').trim().slice(0, 24) || 'General', added = [], noWindow = 0;
+    for(var i = 0; i < files.length; i++){
+      if(myTpls.length >= MAX_TPLS){ showToast('Up to ' + MAX_TPLS + ' templates. Remove one first.', 4000); break; }
+      try{
+        var url = await readImageFile(files[i], 2400), img = await loadImageUrl(url);
+        var spots = detectSpots(img);
+        if(spots.length === 1 && spots[0].w * spots[0].h > 0.75) spots = [];          // a border overlay, not a photo window
+        var best = null;
+        spots.forEach(function(s){ if(!best || s.w * s.h > best.w * best.h) best = s; });
+        if(!best){ best = t === 'card' ? { x: .10, y: .12, w: .80, h: .50 } : { x: .05, y: .25, w: .25, h: .45 }; noWindow++; }
+        var id = await addAsset(url);
+        var f = { id: id, name: (files[i].name || '').replace(/\.[^/.]+$/, '').trim().slice(0, 30) || 'Template ' + (myTpls.length + 1), grp: grp, t: t, w: img.width, h: img.height, key: null, spots: [best], zones: tplDefaultZones(t) };
+        tplAutoColours(f, img);
+        myTpls.push(f); added.push(f);
+      }catch(err){ showToast(err.message, 4000); }
+    }
+    if(!added.length) return;
+    if(added.length === 1 || !btCfg[t].tpl) btCfg[t].tpl = added[0].id;
+    btBuildChips();
+    tplEdit = { id: added[0].id, sel: 's0' };
+    btRenderTplEditor(); btTplChanged();
+    showToast(added.length === 1 ? 'Template added. Drag the blue box to the photo window and the orange boxes to where the text goes.' : added.length + ' templates added to “' + grp + '”. Tap Edit on each to place the photo and text.', 7000);
+    if(noWindow) showToast('No white or see-through photo window found in ' + (noWindow === 1 ? 'one' : noWindow) + ' of them. Drag the blue box over the photo area.', 8000);
+  }
+  document.getElementById('btTplInput').addEventListener('change', function(){
+    var files = [].slice.call(this.files || []); this.value = '';
+    if(files.length) btAddTemplates(files);
+  });
+
+  // ---- Editor: name, group, photo window and text zones (numbers here, or drag in the preview) ----
+  var btNum = function(id, label, v, extra){ return '<label class="bt-n"><span>' + label + '</span><input type="number" min="0" max="100" step="0.5" value="' + v + '" data-f="' + id + '"' + (extra || '') + '></label>'; };
+  function btRenderTplEditor(){
+    var f = tplEdit && tplById(tplEdit.id);
+    btTplEditorEl.hidden = !f;
+    if(!f){ btTplEditorEl.innerHTML = ''; return; }
+    var p = function(v){ return Math.round(v * 1000) / 10; }, s = f.spots[0], h = '';
+    h += '<div class="bt-ed-h"><b>Edit template</b><button type="button" class="action-btn primary mini" data-f="done">Done</button></div>';
+    h += '<p class="panel-hint">Drag the boxes in the preview. <b style="color:#2b7de9">Blue</b> = the photo, <b style="color:#e8761d">orange</b> = the text. Drag the little square at a box’s corner to resize it.</p>';
+    h += '<div class="bt-grid2"><label class="bt-t"><span>Name</span><input type="text" maxlength="30" value="' + f.name.replace(/"/g, '&quot;') + '" data-f="name"></label>';
+    h += '<label class="bt-t"><span>Group</span><input type="text" maxlength="24" list="btTplGroups" value="' + f.grp.replace(/"/g, '&quot;') + '" data-f="grp"></label></div>';
+    h += '<div class="bt-zone" data-sel="s0"><p class="sub-label">Photo window</p><div class="bt-nums">' + btNum('s:x', 'Left %', p(s.x)) + btNum('s:y', 'Top %', p(s.y)) + btNum('s:w', 'Width %', p(s.w)) + btNum('s:h', 'Height %', p(s.h)) + '</div></div>';
+    BT_ZONES.forEach(function(k){
+      var z = f.zones[k];
+      h += '<div class="bt-zone" data-sel="' + k + '"><label class="toggle-row"><input type="checkbox" data-f="z:' + k + ':on"' + (z.on ? ' checked' : '') + '> ' + btZoneLabel(f.t, k) + '</label>';
+      h += '<div class="bt-nums">' + btNum('z:' + k + ':x', 'Left %', p(z.x)) + btNum('z:' + k + ':y', 'Top %', p(z.y)) + btNum('z:' + k + ':w', 'Width %', p(z.w)) + btNum('z:' + k + ':h', 'Height %', p(z.h));
+      h += '<label class="bt-n"><span>Colour</span><input type="color" value="' + z.c + '" data-f="z:' + k + ':c"></label>';
+      h += '<label class="bt-n"><span>Align</span><select data-f="z:' + k + ':al"><option value="l"' + (z.al === 'l' ? ' selected' : '') + '>Left</option><option value="c"' + (z.al === 'c' ? ' selected' : '') + '>Centre</option><option value="r"' + (z.al === 'r' ? ' selected' : '') + '>Right</option></select></label></div></div>';
+    });
+    btTplEditorEl.innerHTML = h;
+  }
+  function btSyncEditorNumbers(){
+    var f = tplEdit && tplById(tplEdit.id); if(!f) return;
+    var p = function(v){ return Math.round(v * 1000) / 10; };
+    [].forEach.call(btTplEditorEl.querySelectorAll('input[type=number]'), function(inp){
+      if(document.activeElement === inp) return;
+      var a = inp.dataset.f.split(':'), o = a[0] === 's' ? f.spots[0] : f.zones[a[1]], k = a[0] === 's' ? a[1] : a[2];
+      inp.value = p(o[k]);
+    });
+  }
+  function btEditorInput(e){
+    var f = tplEdit && tplById(tplEdit.id), el = e.target; if(!f || !el.dataset.f) return;
+    var a = el.dataset.f.split(':'), v = el.type === 'checkbox' ? el.checked : el.value;
+    if(a[0] === 'name'){ f.name = String(v).replace(/[<>]/g, '').slice(0, 30) || 'Template'; }
+    else if(a[0] === 'grp'){ f.grp = String(v).replace(/[<>]/g, '').trim().slice(0, 24) || 'General'; }
+    else if(a[0] === 's'){ var n = Math.max(0, Math.min(100, Number(v) || 0)) / 100, s = f.spots[0]; s[a[1]] = (a[1] === 'w' || a[1] === 'h') ? Math.max(0.02, n) : n; }
+    else if(a[0] === 'z'){
+      var z = f.zones[a[1]];
+      if(a[2] === 'on') z.on = v ? 1 : 0;
+      else if(a[2] === 'c') z.c = String(v);
+      else if(a[2] === 'al') z.al = String(v);
+      else { var m = Math.max(0, Math.min(100, Number(v) || 0)) / 100; z[a[2]] = (a[2] === 'w' || a[2] === 'h') ? Math.max(0.01, m) : m; }
+    } else return;
+    tplEdit.sel = a[0] === 's' ? 's0' : (a[0] === 'z' ? a[1] : tplEdit.sel);
+    BT_THUMBS = {}; renderSetupPreview(); scheduleSetupSave();
+  }
+  btTplEditorEl.addEventListener('input', btEditorInput);
+  btTplEditorEl.addEventListener('change', function(e){ if(e.target.dataset.f && (e.target.dataset.f === 'name' || e.target.dataset.f === 'grp')) btRenderTpls(); });
+  btTplEditorEl.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-f="done"]');
+    if(b){ tplEdit = null; btRenderTplEditor(); btTplChanged(); return; }
+    var z = e.target.closest('.bt-zone'); if(z && tplEdit){ tplEdit.sel = z.dataset.sel; renderSetupPreview(); }
+  });
+
+  // Boxes drawn on the Setup preview while editing (never on the real photo).
+  function btEditBoxes(f){
+    var out = [{ k: 's0', r: f.spots[0], col: '#2b7de9', label: 'Photo' }];
+    BT_ZONES.forEach(function(k){ if(f.zones[k].on) out.push({ k: k, r: f.zones[k], col: '#e8761d', label: btZoneLabel(f.t, k) }); });
+    return out;
+  }
+  function btDrawEditOverlay(){
+    var f = tplEdit && tplById(tplEdit.id); if(!f) return;
+    var ctx = setupPreviewCanvas.getContext('2d'), W = setupPreviewCanvas.width, H = setupPreviewCanvas.height, u = Math.max(W, H);
+    ctx.save();
+    btEditBoxes(f).forEach(function(b){
+      var on = tplEdit.sel === b.k, x = b.r.x * W, y = b.r.y * H, w = b.r.w * W, h = b.r.h * H, hr = u * 0.014;
+      ctx.fillStyle = b.col + (on ? '40' : '22'); ctx.fillRect(x, y, w, h);
+      ctx.lineWidth = Math.max(2, u * (on ? 0.005 : 0.003)); ctx.setLineDash([u * 0.012, u * 0.008]); ctx.strokeStyle = b.col; ctx.strokeRect(x, y, w, h); ctx.setLineDash([]);
+      ctx.fillStyle = b.col; ctx.fillRect(x + w - hr, y + h - hr, hr * 2, hr * 2);
+      ctx.font = '800 ' + Math.max(10, Math.round(u * 0.016)) + 'px Manrope, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      var tw = ctx.measureText(b.label).width + u * 0.012;
+      ctx.fillStyle = b.col; ctx.fillRect(x, y, tw, u * 0.024);
+      ctx.fillStyle = '#fff'; ctx.fillText(b.label, x + u * 0.006, y + u * 0.004);
+    });
+    ctx.restore();
+  }
+  var btDrag = null, btDragRaf = 0;
+  setupPreviewCanvas.addEventListener('pointerdown', function(e){
+    var f = tplEdit && tplById(tplEdit.id); if(!f) return;
+    e.stopImmediatePropagation(); e.preventDefault();
+    var rect = setupPreviewCanvas.getBoundingClientRect(), W = setupPreviewCanvas.width, H = setupPreviewCanvas.height, u = Math.max(W, H);
+    var px = (e.clientX - rect.left) / rect.width * W, py = (e.clientY - rect.top) / rect.height * H;
+    var boxes = btEditBoxes(f), hit = null;
+    // The selected box's corner and body win; then the topmost box under the finger (zones sit above the photo).
+    var order = boxes.slice().reverse();
+    order.sort(function(a, b){ return (b.k === tplEdit.sel) - (a.k === tplEdit.sel); });
+    for(var i = 0; i < order.length && !hit; i++){
+      var b = order[i], x = b.r.x * W, y = b.r.y * H, w = b.r.w * W, h = b.r.h * H, hr = u * 0.03;
+      if(Math.abs(px - (x + w)) < hr && Math.abs(py - (y + h)) < hr) hit = { b: b, mode: 'resize' };
+      else if(px >= x && px <= x + w && py >= y && py <= y + h) hit = { b: b, mode: 'move' };
+    }
+    if(hit){
+      tplEdit.sel = hit.b.k;
+      btDrag = { id: e.pointerId, r: hit.b.r, mode: hit.mode, dx: hit.b.r.x - px / W, dy: hit.b.r.y - py / H };
+      try{ setupPreviewCanvas.setPointerCapture(e.pointerId); }catch(err){}
+    }
+    renderSetupPreview();
+  }, true);
+  setupPreviewCanvas.addEventListener('pointermove', function(e){
+    if(!btDrag || e.pointerId !== btDrag.id) return;
+    var rect = setupPreviewCanvas.getBoundingClientRect(), nx = (e.clientX - rect.left) / rect.width, ny = (e.clientY - rect.top) / rect.height, r = btDrag.r;
+    if(btDrag.mode === 'move'){ r.x = Math.max(0, Math.min(1 - r.w, nx + btDrag.dx)); r.y = Math.max(0, Math.min(1 - r.h, ny + btDrag.dy)); }
+    else { r.w = Math.max(0.03, Math.min(1 - r.x, nx - r.x)); r.h = Math.max(0.015, Math.min(1 - r.y, ny - r.y)); }
+    btSyncEditorNumbers();
+    if(!btDragRaf) btDragRaf = requestAnimationFrame(function(){ btDragRaf = 0; renderSetupPreview(); });
+  });
+  function btEndDrag(e){
+    if(!btDrag || (e && e.pointerId !== btDrag.id)) return;
+    btDrag = null; BT_THUMBS = {}; scheduleSetupSave();
+  }
+  setupPreviewCanvas.addEventListener('pointerup', btEndDrag);
+  setupPreviewCanvas.addEventListener('pointercancel', btEndDrag);
+
+  // ---- Guests choose their design, grouped ----
+  var btPickEl = document.getElementById('btPickOverlay');
+  var btPickTabs = document.getElementById('btPickTabs'), btPickGrid = document.getElementById('btPickGrid');
+  var btPickResolve = null, btPickOpen = false;
+  function btDesignItems(t){
+    var cfg = btCfg[t], items = [], styles = t === 'card' ? CARD_STYLES : CERT_STYLES;
+    tplsOf(t).forEach(function(f){ items.push({ id: f.id, kind: 'tpl', name: f.name, grp: f.grp || 'General', f: f }); });
+    if(cfg.builtin !== false || !items.length) Object.keys(styles).forEach(function(k){ items.push({ id: 'style:' + k, kind: 'style', name: styles[k].name, grp: 'Classic', style: k }); });
+    return items;
+  }
+  function btThumb(it, t){
+    if(BT_THUMBS[it.id + t]) return BT_THUMBS[it.id + t];
+    var big = document.createElement('canvas'), keepForce = btForce, keepGuest = guestInfo, keepSample = previewSample;
+    btForce = it.kind === 'tpl' ? { f: it.f } : { style: it.style }; guestInfo = { name: '', line: '' }; previewSample = null;
+    try{ composeCanvas(t, big, buildPlaceholderShots(300, 1)); }
+    finally { btForce = keepForce; guestInfo = keepGuest; previewSample = keepSample; }
+    var small = document.createElement('canvas'), sc = 420 / big.height;
+    small.width = Math.round(big.width * sc); small.height = 420;
+    var c = small.getContext('2d'); c.imageSmoothingQuality = 'high'; c.drawImage(big, 0, 0, small.width, small.height);
+    var url = small.toDataURL('image/jpeg', 0.85);
+    if(it.kind !== 'tpl' || assetImg(it.f.id)) BT_THUMBS[it.id + t] = url;      // not kept while the template's picture is still loading
+    return url;
+  }
+  function btShowGroup(items, t, grp){
+    [].forEach.call(btPickTabs.children, function(b){ b.classList.toggle('on', b.dataset.g === grp); });
+    btPickGrid.innerHTML = '';
+    var shown = items.filter(function(it){ return grp === '*' || it.grp === grp; }), imgs = [];
+    shown.forEach(function(it){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'pick-btn bt-pick-btn';
+      var im = document.createElement('img'); im.alt = ''; imgs.push([im, it]);
+      var sp = document.createElement('span'); sp.className = 'pick-name'; sp.textContent = it.name;
+      b.appendChild(im); b.appendChild(sp);
+      b.addEventListener('click', function(e){ e.stopPropagation(); btPickFinish(it); });
+      btPickGrid.appendChild(b);
+    });
+    // Thumbnails are drawn one at a time so a big group never freezes the screen.
+    (async function(){
+      for(var i = 0; i < imgs.length; i++){
+        if(!btPickOpen) return;
+        try{ imgs[i][0].src = btThumb(imgs[i][1], t); }catch(e){}
+        await new Promise(function(r){ setTimeout(r, 0); });
+      }
+    })();
+  }
+  function btPickDesign(items, t){
+    return new Promise(function(resolve){
+      btPickResolve = resolve; btPickOpen = true;
+      document.getElementById('btPickTitle').textContent = t === 'card' ? 'Choose your card' : 'Choose your certificate';
+      var groups = [], seen = {};
+      items.forEach(function(it){ if(!seen[it.grp]){ seen[it.grp] = 1; groups.push(it.grp); } });
+      btPickTabs.innerHTML = ''; btPickTabs.style.display = groups.length > 1 ? '' : 'none';
+      [['*', 'All']].concat(groups.map(function(g){ return [g, g]; })).forEach(function(a){
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'bt-gtab'; b.dataset.g = a[0]; b.textContent = a[1];
+        b.addEventListener('click', function(e){ e.stopPropagation(); btShowGroup(items, t, a[0]); });
+        btPickTabs.appendChild(b);
+      });
+      btShowGroup(items, t, groups.length > 1 ? groups[0] : '*');
+      btPickEl.classList.add('on'); document.body.classList.add('shooting', 'picking'); btdOpen = true;
+      try{ refreshPrintFab(); }catch(e){}
+      refreshWelcome(); guestRender();
+    });
+  }
+  function btPickFinish(it){
+    if(!btPickOpen) return;
+    btPickOpen = false; btdOpen = false;
+    btPickEl.classList.remove('on'); document.body.classList.remove('picking');
+    if(state !== 'capturing') document.body.classList.remove('shooting');
+    try{ refreshPrintFab(); }catch(e){}
+    var r = btPickResolve; btPickResolve = null;
+    guestRender();
+    if(r) r(it);
+  }
+  document.getElementById('btPickCancel').addEventListener('click', function(e){ e.stopPropagation(); btPickFinish(null); });
+  ['click', 'pointerdown'].forEach(function(ev){ btPickEl.addEventListener(ev, function(e){ e.stopPropagation(); }); });
+  async function askGuestDesign(){
+    var t = boothType, cfg = btCfg[t]; if(!cfg.pick) return true;
+    var items = btDesignItems(t); if(items.length < 2) return true;
+    var it = await btPickDesign(items, t);
+    if(!it) return false;
+    guestInfo.tpl = it.kind === 'tpl' ? it.id : ''; guestInfo.style = it.kind === 'style' ? it.style : '';
+    return true;
+  }
+
+  // The guest types their name (and a title / award) before the photo.
+  var btDetails = document.getElementById('btDetailsOverlay');
+  var btdForm = document.getElementById('btdForm'), btdName = document.getElementById('btdName'), btdLine = document.getElementById('btdLine');
+  var btdRow2 = document.getElementById('btdRow2'), btdErr = document.getElementById('btdErr');
+  var btdResolve = null, btdIdle = null, btdShowLine = true;
+  function btdTouch(){ clearTimeout(btdIdle); btdIdle = setTimeout(function(){ btdFinish(false); }, 120000); }
+  function askGuestDetails(){
+    return new Promise(function(resolve){
+      var card = boothType === 'card';
+      btdShowLine = card || !!btCfg.cert.askAward;
+      document.getElementById('btdTitle').textContent = card ? 'Make your card' : 'Your certificate';
+      document.getElementById('btdSub').textContent = card ? 'Type your name and a title, then smile!' : 'Type your name for the certificate';
+      document.getElementById('btdLbl1').textContent = card ? 'Your name' : 'Name on the certificate';
+      document.getElementById('btdLbl2').textContent = card ? 'Title or special move (optional)' : 'Award (optional)';
+      btdLine.placeholder = card ? 'e.g. Dancing Queen' : 'e.g. Best Dancer';
+      btdRow2.style.display = btdShowLine ? '' : 'none';
+      btdName.value = ''; btdLine.value = ''; btdErr.textContent = ''; btdName.classList.remove('bad');
+      btdOpen = true; btdResolve = resolve;
+      btDetails.classList.add('on');
+      document.body.classList.add('shooting', 'picking');
+      try{ refreshPrintFab(); }catch(e){}
+      refreshWelcome(); guestRender();
+      btdTouch();
+      setTimeout(function(){ try{ btdName.focus(); }catch(e){} }, 150);
+    });
+  }
+  function btdFinish(ok){
+    if(!btdOpen) return;
+    btdOpen = false; clearTimeout(btdIdle);
+    if(ok){ guestInfo.name = btdName.value.trim(); guestInfo.line = btdShowLine ? btdLine.value.trim() : ''; }
+    btDetails.classList.remove('on');
+    document.body.classList.remove('picking');
+    if(state !== 'capturing') document.body.classList.remove('shooting');
+    try{ btdName.blur(); btdLine.blur(); }catch(e){}
+    try{ refreshPrintFab(); }catch(e){}
+    var r = btdResolve; btdResolve = null;
+    guestRender();
+    if(r) r(ok);
+  }
+  btdForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    if(!btdName.value.trim()){ btdName.classList.add('bad'); btdErr.textContent = 'Please type your name.'; btdName.focus(); return; }
+    btdFinish(true);
+  });
+  btdName.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' && btdShowLine && !btdLine.value){ e.preventDefault(); btdLine.focus(); }
+  });
+  btdName.addEventListener('input', function(){ btdName.classList.remove('bad'); btdErr.textContent = ''; });
+  document.getElementById('btdCancel').addEventListener('click', function(){ btdFinish(false); });
+  btDetails.addEventListener('keydown', function(e){ btdTouch(); if(e.key === 'Escape'){ e.stopPropagation(); btdFinish(false); } });
+  ['click', 'pointerdown', 'input'].forEach(function(ev){ btDetails.addEventListener(ev, function(e){ e.stopPropagation(); btdTouch(); }); });
+
   // ---- Saved setup ----
   // Saved on this device right away, and to the server for rental codes, so
   // a refresh / restart / another device on the same code gets the same design.
@@ -15662,6 +16600,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       themeId: themeId,
       layout: setupLayout,
       guestPick: guestPickOn, guestLayouts: guestLayoutSet.slice(),
+      boothType: boothType, btCfg: JSON.parse(JSON.stringify(btCfg)), tpls: tplsSnapshot(),
       timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
       reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake,
       outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack,
@@ -15866,6 +16805,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       brand = cleanBrand(s.brand);
       applyPaySetup(s.pay);
       applyFramesSetup(s);
+      applyTplsSetup(s.tpls);
       buildLayoutPicker();
       ensureAssets(designAssetIds().concat(myProps)).then(function(){
         if(attractPosterId && typeof ASSETS !== 'undefined' && ASSETS[attractPosterId] && (!attractPosterImg || attractPosterUrl !== ASSETS[attractPosterId].url)){
@@ -15880,14 +16820,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           im.src = attractPosterUrl;
         }
         refreshDecorUI(); refreshFrameUI(); redrawAll(); refreshBrandUI(); guestRender();
+        try{ btRenderTpls(); }catch(e){}
       });
+      boothType =typesAllowed() && (s.boothType === 'card' || s.boothType === 'cert') ? s.boothType : 'photo';
+      btApplyCfg(s.btCfg);
       if(LAYOUT_DEFS[s.layout]) setupLayout = (s.layout === 'trio' ? 'strip' : s.layout);   // Trio was removed
+      if(boothType !== 'photo') setupLayout = boothType; else if(setupLayout === 'card' || setupLayout === 'cert') setupLayout = 'strip';
       guestPickOn = !!s.guestPick; guestPickToggle.checked = guestPickOn;
       guestLayoutSet = Array.isArray(s.guestLayouts) ? s.guestLayouts.filter(function(k){ return LAYOUT_DEFS[k]; }) : [];
       // Older setups: several frames ticked with "Guests choose one" = guests choose, now with the cards ticked.
       if(s.guestPick === undefined && setupLayout === 'myframe' && frameMode === 'choose' && chooseIds.length > 1){ guestPickOn = true; guestPickToggle.checked = true; guestLayoutSet = []; }
       frameMode = 'choose';
       if(s.layout && s.layout !== 'strip') layoutPicked = true;
+      syncBoothTypeUI(true);
       if(state !== 'capturing') setLayout(setupLayout);
       refreshGuestLayoutChoices();
       dateInput.value = /^\d{4}-\d{2}-\d{2}$/.test(s.date || '') ? s.date : '';
@@ -16237,7 +17182,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     refreshTitleUI();
     // opts.layout: the layout picked in the design preview (keep mine / the design's); else the design's own.
     var tl = opts && opts.layout !== undefined ? opts.layout : (t.layout && LAYOUT_DEFS[t.layout] ? t.layout : null);
-    if(tl && LAYOUT_DEFS[tl] && tl !== currentLayout && state !== 'capturing'){
+    if(boothType === 'photo' && tl && LAYOUT_DEFS[tl] && tl !== currentLayout && state !== 'capturing'){
       setupLayout = tl; setLayout(tl);
       if(typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
     }
@@ -16325,6 +17270,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(logo) ids.push(logo.id);
     decor.forEach(function(d){ if(d.src.indexOf('a:') === 0) ids.push(d.src.slice(2)); });
     (typeof myFrames !== 'undefined' && myFrames || []).forEach(function(f){ ids.push(f.id); });
+    myTpls.forEach(function(f){ ids.push(f.id); });
     if(typeof bgMine !== 'undefined') bgMine.forEach(function(a){ ids.push(a); });
     if(typeof fx !== 'undefined' && fx){ if(fx.sShut) ids.push(fx.sShut.id); if(fx.sTick) ids.push(fx.sTick.id); }
     if(brand){ if(brand.c.id) ids.push(brand.c.id); if(brand.w.id) ids.push(brand.w.id); }

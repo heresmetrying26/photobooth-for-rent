@@ -61,7 +61,7 @@ export function readLicence(lic) {
 export function featuresOf(rec, deviceNo) {
   return {
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes, rec.print),
-    traditional: !!rec.traditional, retakeOpt: !!rec.retakeOpt, lockOpt: !!rec.lockOpt,
+    traditional: !!rec.traditional, retakeOpt: !!rec.retakeOpt, typesOpt: !!rec.typesOpt, lockOpt: !!rec.lockOpt,
     gifOpt: rec.gifOpt !== false,
     extras: extrasOf(rec),
     vouchers: !!rec.payOpt,                       // offline: vouchers only (QR payments need internet)

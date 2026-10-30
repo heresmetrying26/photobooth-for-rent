@@ -531,6 +531,7 @@ class MainActivity : AppCompatActivity() {
                 val gifOpt = feat?.optBoolean("gifOpt", true) ?: true
                 val retakeOpt = feat?.optBoolean("retakeOpt", true) ?: true
                 val lockOpt = feat?.optBoolean("lockOpt", true) ?: true
+                val typesOpt = feat?.optBoolean("typesOpt", false) ?: false
                 val payOpt = feat?.optBoolean("vouchers", false) ?: false
                 val traditional = feat?.optBoolean("traditional", false) ?: false
                 // Extras every package includes (missing = on): vintage looks, photographer desk, flipbook, video guestbook
@@ -555,6 +556,7 @@ class MainActivity : AppCompatActivity() {
                     append("window.__PB.extras={").append(extrasJs).append("};")
                     append("window.__PB.retakeOpt=").append(retakeOpt).append(";")
                     append("window.__PB.lockOpt=").append(lockOpt).append(";")
+                    append("window.__PB.typesOpt=").append(typesOpt).append(";")
                     append("window.__PB.payOpt=").append(payOpt).append(";")
                     append("window.__PB.traditional=").append(traditional).append(";")
                     append("window.__PB.watermark=false;")

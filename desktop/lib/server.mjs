@@ -61,7 +61,7 @@ export async function syncRecord(p, deviceId, ok) {
     lifetime: !!(p && p.lifetime), label: (p && p.renter) || '',
     folderName: (p && p.lifetime ? feat.folderPrefix : feat.folderKey) || (p && p.renter) || '',
     print: feat.print || { enabled: false, sizes: [] },
-    traditional: !!feat.traditional, retakeOpt: !!feat.retakeOpt, payOpt: !!feat.vouchers, lockOpt: !!feat.lockOpt,
+    traditional: !!feat.traditional, retakeOpt: !!feat.retakeOpt, typesOpt: !!feat.typesOpt, payOpt: !!feat.vouchers, lockOpt: !!feat.lockOpt,
     gifOpt: feat.gifOpt !== false,
     extras: feat.extras || old.extras,
     pinResetAt: feat.pinResetAt || 0, defaultTheme: feat.defaultTheme || null,

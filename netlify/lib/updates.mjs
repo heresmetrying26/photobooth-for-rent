@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.27', date: '2026-10-30' },
   { version: '1.0.26', date: '2026-10-29' },
   { version: '1.0.25', date: '2026-10-29' },
   { version: '1.0.24', date: '2026-10-29' },
@@ -39,7 +40,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.22', date: '2026-10-29', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.22/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.23', date: '2026-10-30', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.23/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -74,6 +75,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-30', title: '360 videos: join the Wi-Fi and download, with two QR codes', for: ['website'],
+    items: [
+      'Laptop app 1.0.27 and Android app 1.0.23: when you set the booth Wi-Fi name and password in Setup → Share & start, the 360 player shows two codes. Step 1: Network joins the guest’s phone to the booth Wi-Fi, and Step 2: Download opens the video. It works with no internet.',
+      'With no Wi-Fi set, you still get the single download code as before.'
+    ]
+  },
   {
     date: '2026-10-29', title: 'The Android tablet app now speaks the countdown', for: ['website'],
     items: [

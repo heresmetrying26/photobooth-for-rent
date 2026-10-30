@@ -109,19 +109,13 @@ export const REVOKE_REASONS = ['leak', 'sharing', 'abuse', 'security', 'other'];
 // How the setups store names a customer's data (shared by setup.mjs and the Replace code action).
 export const setupKeyFor = (scope) => 'k' + createHash('sha256').update(scope).digest('hex').slice(0, 40);
 
-// ---------- email changes (Lifetime Access Agreement s.3 and s.7) ----------
-// The email on a Lifetime code is also its "Forgot your code?" address, so changing it can quietly
-// hand the code to someone else. A renter may change it EMAIL_CHANGE_LIMIT times per rolling year;
-// moving the code to a new owner is an Admin "transfer" (once). rec.emailHistory keeps every change.
-export const EMAIL_CHANGE_LIMIT = 2;
-export const EMAIL_MSG = 'You have changed the email on this code ' + EMAIL_CHANGE_LIMIT + ' times in the past year (the limit). Please message us to change it.';
-export function emailChangesThisYear(rec, now) {
-  return (rec.emailHistory || []).filter((h) => h.by === 'renter' && h.at >= now - 365 * 86400000).length;
-}
-// The very first email set on a code is free; after that every change counts.
-export const emailChangeBlocked = (rec, now) => swapsLimited(rec)
-  && (!!rec.email || (rec.emailHistory || []).length > 0)
-  && emailChangesThisYear(rec, now) >= EMAIL_CHANGE_LIMIT;
+// ---------- email lock (Lifetime Access Agreement s.3 and s.7) ----------
+// The email on a Lifetime code is also its "Forgot your code?" address, so changing it can quietly hand
+// the code to someone else. Once a Lifetime code has an email, the renter can never change or clear it
+// (the first email can still be added if the code has none). Only Admin can change it: fixing a typo, or
+// "Transfer code" after a business sale. rec.emailHistory keeps every change.
+export const EMAIL_LOCKED_MSG = 'The email on a Lifetime code can’t be changed here. If it needs fixing, or you sold your business, please message us.';
+export const emailLocked = (rec) => !!(rec && rec.lifetime && rec.email);
 export function logEmailChange(rec, to, now, by) {
   const from = rec.email || null;
   if ((from || '') === (to || '')) return;
@@ -132,6 +126,50 @@ export function logEmailChange(rec, to, now, by) {
 export function logSwap(rec, now) {
   if (!swapsLimited(rec)) return;
   rec.freed = [...(rec.freed || []).filter((t) => t >= now - 65 * 86400000), now];
+}
+
+// ---------- alert to the owner when a Lifetime renter frees a device slot ----------
+// Sends an email to ALERT_EMAIL (a Netlify environment variable; nothing is sent when it is not set).
+// It only tells you: it never blocks the renter, suspends the code or changes anything.
+//   how: 'removed' (My Events), 'deactivated' (Offline App) or 'replaced' (unused 7+ days, taken over by a new device)
+const FREED_HOW = {
+  removed: 'removed it on My Events',
+  deactivated: 'deactivated it in the Offline App',
+  replaced: 'had it replaced automatically (it was unused for 7+ days and a new device entered the code)'
+};
+export async function alertDeviceFreed(rec, dev, how, now) {
+  const to = String(process.env.ALERT_EMAIL || '').trim();
+  if (!to || !rec || !rec.lifetime || rec.kind === 'bonus') return false;
+  try {
+    const when = (t) => (t ? new Date(t).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) : 'never');
+    const used = swapsThisMonth(rec, now);
+    const text = [
+      'A Lifetime renter freed a device slot.',
+      '',
+      'Renter: ' + (rec.label || rec.folderName || '(no name)'),
+      'Code: ' + (rec.code || displayCode(rec.key)),
+      'Renter email: ' + (rec.email || '(none)'),
+      '',
+      'They ' + (FREED_HOW[how] || how) + '.',
+      'Device ' + ((dev && dev.no) || '?') + ': ' + ((dev && (dev.kind || (dev.app && dev.app.name))) || 'unknown type') + (dev && dev.app && dev.app.name ? ' (' + dev.app.name + ')' : ''),
+      'Added: ' + when(dev && dev.at) + ' · last seen: ' + when(dev && (dev.seen || (dev.app && dev.app.seen))),
+      '',
+      'Devices now in use: ' + devicesOf(rec).length + ' of ' + maxDevicesOf(rec),
+      'Slots freed this month: ' + used + ' of ' + SWAP_LIMIT + (swapsLimited(rec) ? '' : ' (this older code has no monthly limit)'),
+      'Time: ' + when(now),
+      '',
+      'Nothing was suspended or blocked. Open Admin to look at this code if you want to.'
+    ].join('\n');
+    // Never let a slow mail relay hold up the renter's request for long.
+    await Promise.race([
+      sendMail({ to, subject: 'Device freed on Lifetime code ' + (rec.code || '') + ' (' + (rec.label || rec.folderName || 'renter') + ')', text, html: '' }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('alert mail timed out')), 7000))
+    ]);
+    return true;
+  } catch (e) {
+    console.error('device alert mail', e.message);
+    return false;
+  }
 }
 
 // ---------- event folders (for the /lifetime customer page) ----------

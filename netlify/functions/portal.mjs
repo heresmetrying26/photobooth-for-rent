@@ -3,7 +3,7 @@ import {
   devicesOf, maxDevicesOf, eventsStore, isDriveUrl, DAY, EVENT_KEEP_DAYS, BONUS_KEEP_DAYS, getSettings,
   normPrint, putLicense, readIndex, sendMail, codeEmail, EMAIL_RE, setDevices,
   swapBlocked, logSwap, swapsLimited, swapsThisMonth, SWAP_LIMIT, SWAP_MSG,
-  emailChangeBlocked, logEmailChange, emailChangesThisYear, EMAIL_CHANGE_LIMIT, EMAIL_MSG
+  emailLocked, logEmailChange, EMAIL_LOCKED_MSG, alertDeviceFreed
 } from '../lib/core.mjs';
 
 // Backs the /lifetime customer page: sign in with the rental code (or, on a
@@ -75,7 +75,8 @@ export default safe(async (req, context) => {
     if (email && rec.lifetime && await emailTaken(email, rec.key)) return json({ error: 'That email is already used by another lifetime code. Please use a different email, or message us.', field: 'email' }, 409);
     if (!rec.folderName) rec.folderName = rec.label || rec.code;
     const emailChanged = (rec.email || '') !== email;
-    if (emailChanged && emailChangeBlocked(rec, now)) return json({ error: EMAIL_MSG, field: 'email', code: 'email-limit' }, 429);
+    // A Lifetime code's email can never be changed or cleared by the renter, only by Admin.
+    if (emailChanged && emailLocked(rec)) return json({ error: EMAIL_LOCKED_MSG, field: 'email', code: 'email-locked' }, 403);
     rec.label = name;
     if (emailChanged) logEmailChange(rec, email, now, 'renter');
     rec.email = email || null;
@@ -90,9 +91,11 @@ export default safe(async (req, context) => {
     const list = devicesOf(rec);
     if (!list.some((d) => d.no === no)) return json({ error: 'That device isn’t on your code any more.' }, 404);
     if (swapBlocked(rec, now)) return json({ error: SWAP_MSG, code: 'swap-limit' }, 429);
+    const gone = list.find((d) => d.no === no);
     setDevices(rec, list.filter((d) => d.no !== no));
     logSwap(rec, now);
     await putLicense(store, rec.key, rec);
+    await alertDeviceFreed(rec, gone, 'removed', now);     // email to the owner (ALERT_EMAIL); never blocks or suspends
     return json({ ok: true });
   }
 
@@ -140,7 +143,7 @@ export default safe(async (req, context) => {
       swaps: swapsLimited(rec) ? { used: swapsThisMonth(rec, now), limit: SWAP_LIMIT } : null,
       list: devicesOf(rec).map((d) => ({ no: d.no || 1, kind: d.kind || null, at: d.at || null, seen: d.seen || null, me: !!(meDevice && d.id === meDevice) })) },
     email: rec.email || '',
-    emailChanges: swapsLimited(rec) ? { used: emailChangesThisYear(rec, now), limit: EMAIL_CHANGE_LIMIT } : null,
+    emailLocked: emailLocked(rec),
     keepDays: EVENT_KEEP_DAYS,
     qrTarget: (await getSettings()).qrTarget === 'drive' ? 'drive' : 'gallery',
     events,

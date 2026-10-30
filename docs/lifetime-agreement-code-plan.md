@@ -54,7 +54,18 @@ Original notes:
   log it, because it protects an honest renter whose iPad lost its saved data.
 - Check: remove devices 1 to 3 (ok), 4th blocked, admin reset allows it again.
 
-## 3. Transfer and email changes (agreement s.3 and s.7) — DONE
+## UPDATE (later): email is now fully locked, and device alerts
+
+The 2-changes-per-year rule below was replaced: once a Lifetime code has an email, the renter can
+never change or clear it in My Events (`emailLocked` in `core.mjs`, enforced in `portal.mjs`); only
+Admin can (Change email, or Transfer code). A code with no email can still add its first one.
+My Events shows the email read-only. Also new: `alertDeviceFreed` (`core.mjs`) emails the owner
+when a Lifetime renter removes a device (My Events), deactivates the Offline App, or has an
+unused device replaced automatically. It needs the Netlify environment variable `ALERT_EMAIL`
+(the address to alert; nothing is sent if it is unset), only tells you, and never blocks or
+suspends anything. Test: `node scripts/test-email-lock-and-alerts.mjs`.
+
+## 3. Transfer and email changes (agreement s.3 and s.7) — DONE (email part superseded, see above)
 
 Built: helpers in `netlify/lib/core.mjs` (`EMAIL_CHANGE_LIMIT = 2` per rolling 365 days;
 the first email set on a code is free; clearing and re-adding counts). `portal.mjs`

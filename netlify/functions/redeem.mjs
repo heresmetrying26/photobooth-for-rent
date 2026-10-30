@@ -1,4 +1,4 @@
-import { safe, json, licenses, getSettings, sign, normCode, throttle, recordFail, clearFail, shortId, DAY, MIN, fmtWhen, windowEnd, LIFETIME_EXP, devicesOf, maxDevicesOf, addDevice, setDevices, STALE_DEVICE_DAYS , putLicense, delLicense, deviceKindOf, logSwap } from '../lib/core.mjs';
+import { safe, json, licenses, getSettings, sign, normCode, throttle, recordFail, clearFail, shortId, DAY, MIN, fmtWhen, windowEnd, LIFETIME_EXP, devicesOf, maxDevicesOf, addDevice, setDevices, STALE_DEVICE_DAYS , putLicense, delLicense, deviceKindOf, logSwap, alertDeviceFreed } from '../lib/core.mjs';
 
 export default safe(async (req, context) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -32,17 +32,19 @@ export default safe(async (req, context) => {
       // All slots taken: a device unused for STALE_DEVICE_DAYS gives up its
       // slot (e.g. Safari wiped the iPad's saved data after a week unused,
       // so the same iPad now looks like a new device).
+      let replacedStale = null;
       if (!mine && devs.length >= maxDevicesOf(rec)) {
         const stale = devs
           .filter((d) => !d.app && now - (d.seen || d.at || 0) > STALE_DEVICE_DAYS * DAY)   // offline-app laptops check in rarely: never replaced
           .sort((a, b) => (a.seen || a.at || 0) - (b.seen || b.at || 0))[0];
         // Counted toward the monthly swap allowance on agreement codes, but never blocked.
-        if (stale) { setDevices(rec, devs.filter((d) => d !== stale)); logSwap(rec, now); }
+        if (stale) { setDevices(rec, devs.filter((d) => d !== stale)); logSwap(rec, now); replacedStale = stale; }
       }
       if (!mine && devicesOf(rec).length < maxDevicesOf(rec)) {
         addDevice(rec, deviceId, now, deviceKindOf(body.dk, req.headers.get('user-agent')));
         await putLicense(store, key, rec);
         mine = true;
+        if (replacedStale) await alertDeviceFreed(rec, replacedStale, 'replaced', now);   // email to the owner; never blocks
       }
       if (mine && mine !== true && !mine.kind) {          // older devices: learn their type once
         const k = deviceKindOf(body.dk, req.headers.get('user-agent'));

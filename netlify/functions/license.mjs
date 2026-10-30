@@ -3,7 +3,7 @@
 //   POST { action: 'checkin',    licence, mid, ver }                     -> { ok, licence } | { ok: false, revoked, reason, error }
 //   POST { action: 'deactivate', licence, mid }                          -> { ok }   (frees this laptop's device slot)
 //   GET  /api/license?pub=1                                              -> the public key the app checks licences with
-import { safe, json, licenses, normCode, throttle, recordFail, clearFail, DAY, MIN, fmtWhen, LIFETIME_EXP, devicesOf, setDevices, putLicense, windowEnd, getShutdown, swapBlocked, logSwap, SWAP_MSG } from '../lib/core.mjs';
+import { safe, json, licenses, normCode, throttle, recordFail, clearFail, DAY, MIN, fmtWhen, LIFETIME_EXP, devicesOf, setDevices, putLicense, windowEnd, getShutdown, swapBlocked, logSwap, SWAP_MSG, alertDeviceFreed } from '../lib/core.mjs';
 import { readLicence, licenceFor, activateOn, saveMap, readMap, dropMap, appDevice, publicKeyInfo, MID_RE } from '../lib/license.mjs';
 import { liveApp } from '../lib/updates.mjs';
 
@@ -70,6 +70,7 @@ export default safe(async (req, context) => {
         setDevices(rec, devicesOf(rec).filter((d) => d.id !== dev.id));
         logSwap(rec, now);
         await putLicense(store, map.key, rec);
+        await alertDeviceFreed(rec, dev, 'deactivated', now);   // email to the owner (ALERT_EMAIL); never blocks or suspends
       }
       await dropMap(p.lid);
       return json({ ok: true });

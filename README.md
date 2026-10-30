@@ -162,7 +162,7 @@ Chrome can't open the camera on Windows (Windows' own camera driver holds it), s
   Canon R-style cameras (live view, RAW + JPEG, RAW only, focus failure, download in pieces, live view disabled).
   The WPD camera calls themselves still need a real Windows test with each brand (use /camera-test/windows/).
 
-### iPad with a DSLR (laptop app 1.0.29+)
+### iPad with a DSLR (laptop app, first version after 1.0.29)
 Safari and Chrome on iPad have no USB, so an iPad can't run the Nikon / Canon / Sony USB remote itself. Two ways (guide: `/how-to-ipad/`):
 - **iPad + the laptop's camera (Windows laptop app):** Setup → Share & start → *Let an iPad use this laptop's camera*. The laptop shows
   `http://<laptop>:47777/ipad` and a 6-digit PIN (`settings.json`: `ipadOn`, `ipadPin`; off by default). The iPad opens that in Safari; the laptop serves the

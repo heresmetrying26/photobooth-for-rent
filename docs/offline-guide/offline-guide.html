@@ -173,12 +173,12 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
   <p class="lead">Do these in order. The app must be installed and activated already (pages 3 and 4).</p>
   <ol class="steps">
     <li><span class="n">1</span><h4>Plug everything in</h4><p>Laptop on its charger. Guest screen by HDMI, set to <b>Extend</b> (Windows: <span class="kbd">Win + P</span> → Extend). Camera on a full or dummy battery. Printer on, paper loaded.</p></li>
-    <li><span class="n">2</span><h4>Start the booth Wi-Fi</h4><p>Connect the laptop to the <b>booth Wi-Fi router</b>, or turn on the laptop's own <b>hotspot</b> (Windows: Settings → Network → Mobile hotspot; Mac: a pocket router is easier). It doesn't need internet; guests only need to reach the laptop.</p></li>
+    <li><span class="n">2</span><h4>Start the booth Wi-Fi</h4><p>Connect the laptop to a Wi-Fi that guests can also join. The easiest: a <b>pocket router</b> with no internet cable, or a <b>second phone's hotspot</b> (works with no data or signal). The laptop's own Windows hotspot also works, but Windows may refuse to turn it on with no connection. The app never creates a Wi-Fi itself, and a phone can't join its own hotspot, so test with another phone.</p></li>
     <li><span class="n">3</span><h4>Open photobooth4u</h4><p>From the Start menu (Windows) or Applications (Mac). It opens straight into the booth.</p></li>
     <li><span class="n">4</span><h4>Choose the camera</h4><p><b>Setup → 5 Session → Camera</b>. Windows: <b>Nikon / Canon camera over USB</b>. Mac: <b>DSLR / mirrorless over USB</b>, then pick the camera. Or a webcam / HDMI capture card.</p></li>
-    <li><span class="n">5</span><h4>Check Setup and Share &amp; start</h4><p>Design, name, layout as usual. In <b>Share &amp; start</b>, check the <b>event name</b>, <b>Photos on this laptop</b> and <b>Guests' phones</b> (it shows the address guests use). Type the <b>booth Wi-Fi name and password</b> if guests don't know it.</p></li>
+    <li><span class="n">5</span><h4>Check Setup and Share &amp; start</h4><p>Design, name, layout as usual. In <b>Share &amp; start</b>, check the <b>event name</b>, <b>Photos on this laptop</b> and <b>Guests' phones</b> (it shows the address guests use). The <b>booth Wi-Fi name and password</b> are filled in for you from the Wi-Fi the laptop is on (if the password can't be read, type it there).</p></li>
     <li><span class="n">6</span><h4>Choose the printers</h4><p>In <b>Photo Session</b> tap <b>&#128424; Print settings</b>, pick each paper size and its printer. Printing is built in: no Print Helper, no pop-up.</p></li>
-    <li><span class="n">7</span><h4>Test with your phone</h4><p>Take one session. Join the booth Wi-Fi on your phone, scan the photo QR, tap <b>Save photo</b>. Print once.</p></li>
+    <li><span class="n">7</span><h4>Test with your phone</h4><p>Tap <b>Wi-Fi</b> in the bottom bar, scan its QR with another phone to join. Take one session, scan the photo QR, tap <b>Save photo</b>. Print once.</p></li>
     <li><span class="n">8</span><h4>Open the guest screen</h4><p>In <b>Setup → 5 Session</b>, tap <b>Open guest screen</b>. You're ready.</p></li>
   </ol>
   <div class="cols even" style="margin-top:14px">
@@ -290,6 +290,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
         <li><span class="n">1</span><h4>Set up the printer once</h4><p>Install its driver and do one test print from the laptop. In the printer's own preferences set the <b>paper size</b>, <b>borderless</b> and, for 2×6 strips, <b>cut</b>.</p></li>
         <li><span class="n">2</span><h4>Choose a printer per paper size</h4><p>In <b>Photo Session → &#128424; Print settings</b>, pick a printer for each size (e.g. 4R on one, 2×6 strips on another). The app remembers it.</p></li>
         <li><span class="n">3</span><h4>Auto-print</h4><p>Print once to test, then tick <b>Auto-print every session</b>. Prints go straight to the printer, no pop-up.</p></li>
+        <li><span class="n">4</span><h4>Print an earlier photo</h4><p>On the booth laptop, open <b>All photos</b> (bottom bar), tap a photo, then <b>Print photo</b>. It prints at once on the printer, paper size and copies from Print settings, with no pop-up. This works on the booth laptop only; guests' phones keep their own print.</p></li>
       </ol>
       <div class="card green">
         <h5>Good to know</h5>
@@ -316,8 +317,8 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
       <ol class="steps">
         <li><span class="n">1</span><h4>One Wi-Fi for laptop and guests</h4><p>A small router at the booth (no SIM or internet needed), or the laptop's hotspot. Venue Wi-Fi works too, if guests' phones can join it.</p></li>
         <li><span class="n">2</span><h4>Check Share &amp; start</h4><p><b>Guests' phones</b> shows the address guests open, with a ✓. If it says the laptop isn't on a Wi-Fi network, connect it first.</p></li>
-        <li><span class="n">3</span><h4>Optional: Join Wi-Fi QR</h4><p>Type the <b>Wi-Fi name and password</b> under <b>Booth Wi-Fi for guests</b>. Guests then see a <b>Join Wi-Fi</b> QR next to their photo QR: scan it first, then the photo QR.</p></li>
-        <li><span class="n">4</span><h4>Print the QR sign</h4><p>Under <b>QR sign</b>, save the sign with the Wi-Fi and <b>All photos</b> QR codes and print it (A5 or bigger) for the booth table.</p></li>
+        <li><span class="n">3</span><h4>Join Wi-Fi QR</h4><p>Under <b>Booth Wi-Fi for guests</b> the app fills in the name and password of the Wi-Fi the laptop is on (tap <b>Use current Wi-Fi</b> to read it again; type the password if it can't be read; on a Mac, allow the Keychain request). The <b>Wi-Fi</b> button in the bottom bar, beside <b>Extras</b> and <b>Lock booth</b>, shows the same QR on the booth screen: guests scan it to join, then scan their photo QR.</p></li>
+        <li><span class="n">4</span><h4>Print the Wi-Fi sign</h4><p>Tap <b>Download WIFI QR Sign</b> and print it (A5 or bigger) for the booth table. After each session guests get their <b>photo</b> and <b>GIF</b> QR codes; the <b>All photos</b> QR is behind the <b>All photos</b> button in the bottom bar.</p></li>
       </ol>
       <div>
         <div class="card cream">

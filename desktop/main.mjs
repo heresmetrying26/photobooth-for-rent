@@ -16,9 +16,10 @@ import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
 import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
-import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead } from './lib/photos.mjs';
+import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import * as SPIN from './lib/spin.mjs';
+import { detectWifi } from './lib/wifi.mjs';
 import { freeCamera, guardCamera } from './lib/camfree.mjs';
 import * as U from './lib/updater.mjs';
 
@@ -201,6 +202,7 @@ function buildMenu() {
 // ---------- IPC (preload.cjs) ----------
 function wireIpc() {
   ipcMain.on('pb4u:lan', (e) => { e.returnValue = shareBase(); });
+  ipcMain.handle('pb4u:wifi', (e, force) => detectWifi(!!force));
   ipcMain.handle('pb4u:info', async () => ({
     licence: L.info(), version: VERSION, update: U.info(), photos: photosRoot(), share: shareBase(), lanIp: lanAddress(), port: sharePortNow(), server: L.SERVER
   }));
@@ -262,6 +264,8 @@ function wireIpc() {
   ipcMain.handle('pb4u:roveScan', () => roveList());
   ipcMain.handle('pb4u:roveTake', (e, name) => roveTake(name));
   // Guests asking for a print from their phone: switched on from the booth's Print settings; requests wait here
+  ipcMain.handle('pb4u:printNowTake', () => printNowTake());
+  ipcMain.handle('pb4u:printNowDone', (e, id, ok, msg) => printNowDone(id, !!ok, msg));
   ipcMain.handle('pb4u:guestPrintSet', (e, on) => setGuestPrint(!!on));
   ipcMain.handle('pb4u:guestViewSet', (e, mode) => setGuestView(String(mode || '')));
   ipcMain.handle('pb4u:printReqList', () => printReqList());

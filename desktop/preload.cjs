@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('pb4u', {
   desktop: true,
   // This laptop's address for guests' phones (http://<ip>:<port>) or null when it isn't on a network.
   lanBase: () => ipcRenderer.sendSync('pb4u:lan'),
+  // The Wi-Fi this laptop is on: { ssid, pass, open, passKnown } (ssid is '' when it isn't on Wi-Fi).
+  wifi: (force) => ipcRenderer.invoke('pb4u:wifi', !!force),
   info: () => ipcRenderer.invoke('pb4u:info'),
   activate: (code) => ipcRenderer.invoke('pb4u:activate', String(code || '')),
   activateOffline: (text) => ipcRenderer.invoke('pb4u:activateOffline', String(text || '')),
@@ -29,6 +31,9 @@ contextBridge.exposeInMainWorld('pb4u', {
   roveTake: (name) => ipcRenderer.invoke('pb4u:roveTake', String(name || '')),
   // Guests asking for a print
   news: () => ipcRenderer.invoke('pb4u:news'),
+  // The operator tapped "Print photo" on an earlier photo in All photos: the booth prints it now.
+  printNowTake: () => ipcRenderer.invoke('pb4u:printNowTake'),
+  printNowDone: (id, ok, msg) => ipcRenderer.invoke('pb4u:printNowDone', String(id || ''), !!ok, String(msg || '')),
   guestPrintSet: (on) => ipcRenderer.invoke('pb4u:guestPrintSet', !!on),
   guestViewSet: (mode) => ipcRenderer.invoke('pb4u:guestViewSet', String(mode || '')),
   printReqList: () => ipcRenderer.invoke('pb4u:printReqList'),

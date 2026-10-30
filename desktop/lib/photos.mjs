@@ -392,6 +392,60 @@ export function printReqRead(id) {
   const dir = dirOf(r.slug); if (!dir) return null;
   try { return readFileSync(join(dir, r.file)); } catch { return null; }
 }
+// ---------- the operator prints an earlier photo from All photos ----------
+// Only this laptop's own browser may ask (isLocalReq), never a guest's phone. The booth takes the job and prints it
+// on the printer, paper and copies chosen in Print settings (like auto-print); the page then shows how it went.
+const printNowJobs = new Map();              // id -> { slug, file, state: 'wait' | 'taken' | 'ok' | 'fail', msg, t }
+const PRINTNOW_MAX = 20, PRINTNOW_KEEP_MS = 120000;
+export function printNowTake() {
+  const out = [];
+  for (const [id, j] of printNowJobs) {
+    if (Date.now() - j.t > PRINTNOW_KEEP_MS) { printNowJobs.delete(id); continue; }
+    if (j.state !== 'wait') continue;
+    const dir = dirOf(j.slug); let bytes = null;
+    try { bytes = dir ? readFileSync(join(dir, j.file)) : null; } catch { /* gone */ }
+    if (!bytes) { j.state = 'fail'; j.msg = 'That photo is no longer on this laptop.'; continue; }
+    j.state = 'taken'; out.push({ id, file: j.file, bytes });
+  }
+  return out;
+}
+export function printNowDone(id, ok, msg) {
+  const j = printNowJobs.get(String(id)); if (!j) return false;
+  j.state = ok ? 'ok' : 'fail'; j.msg = String(msg || '').slice(0, 200);
+  return true;
+}
+function handlePrintNow(req, res, pm) {
+  const reply = (code, o) => send(res, code, 'application/json', JSON.stringify(o));
+  if (req.method !== 'POST') return reply(405, { ok: false, error: 'Method not allowed' });
+  if (!isLocalReq(req)) return reply(403, { ok: false, error: 'Only the booth laptop can print from here.' });
+  let file; try { file = decodeURIComponent(pm[2]); } catch { file = ''; }
+  const dir = dirOf(pm[1]);
+  if (!dir || !file || file !== basename(file) || file.startsWith('.') || !/\.(jpe?g|png|webp)$/i.test(file) || !existsSync(join(dir, file))) return reply(404, { ok: false, error: 'Photo not found' });
+  let live = 0; for (const j of printNowJobs.values()) if (j.state === 'wait' || j.state === 'taken') live++;
+  if (live >= PRINTNOW_MAX) return reply(429, { ok: false, error: 'The booth is busy printing. Try again in a moment.' });
+  const id = randomBytes(6).toString('hex');
+  printNowJobs.set(id, { slug: pm[1], file, state: 'wait', msg: '', t: Date.now() });
+  return reply(200, { ok: true, id });
+}
+function handlePrintNowStatus(req, res, pm) {
+  const reply = (code, o) => send(res, code, 'application/json', JSON.stringify(o));
+  if (!isLocalReq(req)) return reply(403, { ok: false });
+  const j = printNowJobs.get(pm[1]);
+  return j ? reply(200, { ok: true, state: j.state, msg: j.msg }) : reply(404, { ok: false, state: 'gone' });
+}
+// "Print photo" on a photo page opened on the booth laptop itself: prints now, no dialog.
+function opPrintButtonHtml(slug, file) {
+  return '<button class="btn alt" id="opPrint" type="button">Print photo</button>' +
+    '<script>(function(){var b=document.getElementById("opPrint");' +
+    'function end(m,ok){b.textContent=m;setTimeout(function(){b.disabled=false;b.textContent="Print photo"},ok?2500:4500)}' +
+    'b.addEventListener("click",function(){b.disabled=true;b.textContent="Sending…";' +
+    'fetch("/e/' + slug + '/printnow/' + encodeURIComponent(file) + '",{method:"POST"}).then(function(r){return r.json()}).then(function(j){' +
+    'if(!j.ok){end(j.error||"Could not print",0);return}' +
+    'var n=0;(function poll(){fetch("/printnow/"+j.id).then(function(r){return r.json()}).then(function(s){' +
+    'if(s.state==="ok")return end("Printing ✓",1);if(s.state==="fail")return end(s.msg||"Could not print",0);' +
+    'if(++n>40)return end("The booth did not answer",0);setTimeout(poll,700)}).catch(function(){end("Could not print",0)})})()' +
+    '}).catch(function(){end("Could not print",0)})})})()</script>';
+}
 function reqButtonHtml(slug, file, postUrl, idn) {
   const id = 'askPrint' + (idn || '');
   return '<button class="btn alt" id="' + id + '" type="button">Ask for a print at the booth</button>' +
@@ -476,6 +530,10 @@ async function handleShare(req, res) {
   if (guestView === 'only' && /^\/e\//.test(url.pathname) && !isLocalReq(req)) {
     return send(res, 403, 'text/html; charset=utf-8', page('Private', '<p class="empty">Guests of this event see only their own photos. Scan your own QR code at the booth to open yours.</p>'));
   }
+  const pnm = /^\/e\/([A-Za-z0-9]{6,20})\/printnow\/([^/]+)\/?$/.exec(url.pathname);
+  if (pnm) return handlePrintNow(req, res, pnm);
+  const pns = /^\/printnow\/([a-f0-9]{12})\/?$/.exec(url.pathname);
+  if (pns) return handlePrintNowStatus(req, res, pns);
   const prm = /^\/e\/([A-Za-z0-9]{6,20})\/print\/([^/]+)\/?$/.exec(url.pathname);
   if (prm) return handlePrintReq(req, res, prm);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
@@ -532,7 +590,7 @@ async function handleShare(req, res) {
     const itemTitle = isVid ? 'Your video' : isGif ? 'Your GIF' : 'Your photo';
     const dlText = isVid ? 'Save video' : isGif ? 'Save GIF' : 'Save photo';
     const body = '<div class="one"><h1>' + itemTitle + '</h1><p class="sub">' + esc(evName) + '</p>' + media +
-      '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">' + dlText + '</a>' + (!/^video\//.test(type) && !isGif ? '<button class="btn alt" type="button" onclick="window.print()">Print photo</button>' : '') + (guestPrintOn && !isVid && !isGif ? reqButtonHtml(m[1], file) : '') + '<a class="btn alt" href="/e/' + m[1] + '/">All photos</a></div>' + savingTip + '</div>';
+      '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">' + dlText + '</a>' + (!/^video\//.test(type) && !isGif ? (isLocalReq(req) ? opPrintButtonHtml(m[1], file) : '<button class="btn alt" type="button" onclick="window.print()">Print photo</button>') : '') + (guestPrintOn && !isVid && !isGif ? reqButtonHtml(m[1], file) : '') + '<a class="btn alt" href="/e/' + m[1] + '/">All photos</a></div>' + savingTip + '</div>';
     return send(res, 200, 'text/html; charset=utf-8', page(itemTitle, body));
   }
   if (m[2] === 't' && thumbFn && /^image\/(jpeg|png|webp)$/.test(type)) {

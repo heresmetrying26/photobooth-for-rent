@@ -46,15 +46,66 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
     private val pendingPermission = ConcurrentHashMap<String, (Boolean) -> Unit>()
     private var started = false
 
+    // Camera log: the last LOG_MAX events as JSON lines, the same shape as the website's "photobooth4u camera log"
+    // ({"t": ISO time, "kind": ..., ...}), with the raw error text so a failure says what Android actually returned.
+    // Identical back-to-back entries (a frame retry loop) are folded into one with a count ("n").
+    private val ring = ArrayDeque<JSONObject>()
+    private var lastSig = ""
+    private var lastRepeat = 1
+    private val isoFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
+        timeZone = java.util.TimeZone.getTimeZone("UTC")
+    }
+
+    fun log(kind: String, vararg kv: Pair<String, Any?>) {
+        val e = JSONObject()
+        e.put("t", synchronized(isoFormat) { isoFormat.format(java.util.Date()) })
+        e.put("kind", kind)
+        for ((k, v) in kv) if (v != null) e.put(k, v)
+        val sig = kind + "|" + kv.joinToString("|") { it.first + "=" + it.second }
+        synchronized(ring) {
+            if (sig == lastSig && ring.isNotEmpty()) {
+                lastRepeat++
+                ring.last().put("n", lastRepeat).put("lastT", e.getString("t"))
+            } else {
+                lastSig = sig
+                lastRepeat = 1
+                ring.addLast(e)
+                while (ring.size > LOG_MAX) ring.removeFirst()
+            }
+        }
+        Log.i(TAG, e.toString())
+    }
+
+    // The whole log, one JSON line per event, oldest first.
+    fun logText(): String = synchronized(ring) { ring.joinToString("\n") { it.toString() } }
+
+    // From the page (usb-shim.js): events only the page can see, such as calls its own checks refused.
+    @JavascriptInterface
+    fun logFromPage(kind: String, json: String) {
+        try {
+            val o = JSONObject(if (json.isEmpty()) "{}" else json)
+            val kv = o.keys().asSequence().map { it to o.opt(it) }.toList().toTypedArray()
+            log(kind, *kv)
+        } catch (e: Exception) {
+            log(kind, "raw" to json.take(300))
+        }
+    }
+
+    private fun devInfo(d: UsbDevice) = arrayOf<Pair<String, Any?>>(
+        "id" to d.deviceName, "vid" to hex(d.vendorId), "pid" to hex(d.productId), "name" to (d.productName ?: "")
+    )
+
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
             val dev = deviceOf(i) ?: return
             when (i.action) {
                 ACTION_PERMISSION -> {
                     val granted = i.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+                    log(if (granted) "usb-permission-granted" else "usb-permission-denied", *devInfo(dev))
                     pendingPermission.remove(dev.deviceName)?.invoke(granted)
                 }
                 UsbManager.ACTION_USB_DEVICE_DETACHED -> {
+                    log("usb-detach", *devInfo(dev))
                     closeDevice(dev.deviceName)
                     emit("disconnect", dev)
                 }
@@ -66,6 +117,8 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
     fun start() {
         if (started) return
         started = true
+        log("bridge-start", "android" to Build.VERSION.RELEASE, "sdk" to Build.VERSION.SDK_INT, "model" to Build.MODEL,
+            "usbHost" to activity.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_USB_HOST))
         val f = IntentFilter().apply {
             addAction(ACTION_PERMISSION)
             addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
@@ -87,6 +140,7 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
     fun onAttachedIntent(i: Intent?) {
         if (i?.action != UsbManager.ACTION_USB_DEVICE_ATTACHED) return
         val dev = deviceOf(i) ?: return
+        log("usb-attach", *devInfo(dev), "permission" to usb.hasPermission(dev))
         emit("connect", dev)
     }
 
@@ -98,7 +152,13 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
             try {
                 val a = JSONObject(if (argsJson.isEmpty()) "{}" else argsJson)
                 val out = when (op) {
-                    "list" -> JSONObject().put("devices", describeAll(onlyPermitted = true))
+                    "list" -> {
+                        val all = usb.deviceList.values
+                        val permitted = describeAll(onlyPermitted = true)
+                        log("usb-list", "attached" to all.size, "permitted" to permitted.length(),
+                            "devices" to all.joinToString(",") { hex(it.vendorId) + ":" + hex(it.productId) + (if (usb.hasPermission(it)) "+" else "-") })
+                        JSONObject().put("devices", permitted)
+                    }
                     "request" -> { request(cb, a.optJSONArray("filters")); return@execute }
                     "open" -> open(a.getString("id"))
                     "close" -> { closeDevice(a.getString("id")); JSONObject() }
@@ -116,15 +176,25 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
                 }
                 reply(cb, true, out)
             } catch (e: UsbErr) {
+                log("usb-op-fail", "op" to op, "args" to briefArgs(argsJson), "errName" to e.name, "error" to (e.message ?: ""))
                 reply(cb, false, JSONObject().put("name", e.name).put("message", e.message ?: ""))
             } catch (e: SecurityException) {
+                log("usb-op-fail", "op" to op, "args" to briefArgs(argsJson), "errName" to "SecurityError", "error" to (e.message ?: ""), "exception" to e.javaClass.name)
                 reply(cb, false, JSONObject().put("name", "SecurityError").put("message", e.message ?: "USB permission denied"))
             } catch (e: Exception) {
                 Log.e(TAG, "$op failed", e)
+                log("usb-op-fail", "op" to op, "args" to briefArgs(argsJson), "errName" to "NetworkError", "error" to (e.message ?: ""), "exception" to e.javaClass.name)
                 reply(cb, false, JSONObject().put("name", "NetworkError").put("message", e.message ?: e.javaClass.simpleName))
             }
         }
     }
+
+    // The call's arguments for the log, without the (possibly large) data payload.
+    private fun briefArgs(argsJson: String): String = try {
+        val o = JSONObject(argsJson)
+        o.remove("data")
+        o.toString().take(200)
+    } catch (e: Exception) { "" }
 
     // ── Device list and permission ───────────────────────────────────────────────────────────
 
@@ -140,6 +210,7 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
 
     private fun request(cb: Int, filters: JSONArray?) {
         val matches = usb.deviceList.values.filter { matches(it, filters) }
+        log("usb-request", "filters" to (filters?.toString() ?: ""), "attached" to usb.deviceList.size, "matching" to matches.size)
         if (matches.isEmpty()) {
             reply(cb, false, JSONObject().put("name", "NotFoundError").put("message", "No device selected."))
             return
@@ -164,6 +235,7 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
             reply(cb, true, JSONObject().put("device", describe(d)))
             return
         }
+        log("usb-permission-asked", *devInfo(d))
         pendingPermission[d.deviceName] = { granted ->
             if (granted) reply(cb, true, JSONObject().put("device", describe(d)))
             else reply(cb, false, JSONObject().put("name", "NotFoundError").put("message", "No device selected."))
@@ -283,11 +355,13 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
         if (!usb.hasPermission(d)) throw UsbErr("SecurityError", "Access denied: USB permission not granted.")
         val c = usb.openDevice(d) ?: throw UsbErr("NetworkError", "Unable to open the USB device.")
         connections[id] = c
+        log("usb-open", *devInfo(d))
         return JSONObject()
     }
 
     private fun closeDevice(id: String) {
         val c = connections.remove(id) ?: return
+        log("usb-close", "id" to id)
         val nums = claimed.remove(id)
         val d = usb.deviceList[id]
         if (d != null && nums != null) {
@@ -311,11 +385,15 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
     private fun selectConfiguration(id: String, value: Int): JSONObject {
         val c = conn(id)
         val d = find(id)
-        if (d.configurationCount <= 1) return JSONObject()
+        if (d.configurationCount <= 1) {
+            log("usb-select-config", "id" to id, "value" to value, "skipped" to "only one configuration")
+            return JSONObject()
+        }
         for (ci in 0 until d.configurationCount) {
             val cfg = d.getConfiguration(ci)
             if (cfg.id == value) {
-                if (!c.setConfiguration(cfg)) throw UsbErr("NetworkError", "Unable to select configuration $value.")
+                if (!c.setConfiguration(cfg)) throw UsbErr("NetworkError", "setConfiguration($value) returned false")
+                log("usb-select-config", "id" to id, "value" to value)
                 return JSONObject()
             }
         }
@@ -326,7 +404,10 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
         val c = conn(id)
         val itf = findInterface(find(id), number, null) ?: throw UsbErr("NotFoundError", "No such interface: $number")
         // force = true detaches whatever kernel driver or system app holds the interface (the "another app is using the camera" case)
-        if (!c.claimInterface(itf, true)) throw UsbErr("NetworkError", "Unable to claim interface $number (another app may be using the camera).")
+        val ok = c.claimInterface(itf, true)
+        log(if (ok) "usb-claim" else "usb-claim-fail", "id" to id, "interface" to number, "class" to itf.interfaceClass,
+            "endpoints" to itf.endpointCount, "permission" to (usb.deviceList[id]?.let { usb.hasPermission(it) }))
+        if (!ok) throw UsbErr("NetworkError", "claimInterface($number) returned false (Android refused to hand over the interface: another app or the system may hold it)")
         claimed.getOrPut(id) { ConcurrentHashMap.newKeySet() }.add(number)
         return JSONObject()
     }
@@ -334,7 +415,8 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
     private fun release(id: String, number: Int): JSONObject {
         val c = conn(id)
         val itf = findInterface(find(id), number, null) ?: return JSONObject()
-        c.releaseInterface(itf)
+        val ok = c.releaseInterface(itf)
+        log("usb-release", "id" to id, "interface" to number, "ok" to ok)
         claimed[id]?.remove(number)
         return JSONObject()
     }
@@ -357,7 +439,9 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
     private fun reset(id: String): JSONObject {
         val c = conn(id)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) throw UsbErr("NotSupportedError", "Resetting a USB device needs Android 10 or newer.")
-        if (!c.resetDevice()) throw UsbErr("NetworkError", "Unable to reset the USB device.")
+        val ok = c.resetDevice()
+        log("usb-reset", "id" to id, "ok" to ok)
+        if (!ok) throw UsbErr("NetworkError", "resetDevice() returned false")
         return JSONObject()
     }
 
@@ -391,10 +475,13 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
         while (got < length) {
             val want = minOf(CHUNK, length - got)
             val chunk = ByteArray(want)
+            val t0 = System.currentTimeMillis()
             val n = c.bulkTransfer(ep, chunk, want, 0)
             if (n < 0) {
+                log("usb-transfer-fail", "dir" to "in", "endpoint" to endpoint, "epType" to ep.type, "wanted" to want, "got" to got,
+                    "result" to n, "afterMs" to (System.currentTimeMillis() - t0), "stillAttached" to usb.deviceList.containsKey(id))
                 if (got > 0) break
-                throw UsbErr("NetworkError", "The USB transfer failed (the camera may have been unplugged or gone to sleep).")
+                throw UsbErr("NetworkError", "bulkTransfer(in, ep $endpoint) returned $n after ${System.currentTimeMillis() - t0} ms (the camera may have been unplugged or gone to sleep)")
             }
             System.arraycopy(chunk, 0, out, got, n)
             got += n
@@ -413,8 +500,13 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
         do {
             val want = minOf(CHUNK, data.size - sent)
             val chunk = if (sent == 0 && want == data.size) data else data.copyOfRange(sent, sent + want)
+            val t0 = System.currentTimeMillis()
             val n = c.bulkTransfer(ep, chunk, want, OUT_TIMEOUT_MS)
-            if (n < 0) throw UsbErr("NetworkError", "The USB transfer failed (the camera may have been unplugged or gone to sleep).")
+            if (n < 0) {
+                log("usb-transfer-fail", "dir" to "out", "endpoint" to endpoint, "epType" to ep.type, "wanted" to want, "sent" to sent,
+                    "result" to n, "afterMs" to (System.currentTimeMillis() - t0), "stillAttached" to usb.deviceList.containsKey(id))
+                throw UsbErr("NetworkError", "bulkTransfer(out, ep $endpoint) returned $n after ${System.currentTimeMillis() - t0} ms (the camera may have been unplugged or gone to sleep)")
+            }
             sent += n
         } while (sent < data.size)
         return JSONObject().put("status", "ok").put("bytesWritten", sent)
@@ -430,12 +522,18 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
             val len = a.getInt("length")
             val buf = ByteArray(len)
             val n = c.controlTransfer(reqType, request, value, index, buf, len, CONTROL_TIMEOUT_MS)
-            if (n < 0) throw UsbErr("NetworkError", "The USB control transfer failed.")
+            if (n < 0) {
+                log("usb-control-fail", "dir" to "in", "type" to type, "request" to request, "value" to value, "index" to index, "result" to n)
+                throw UsbErr("NetworkError", "controlTransfer(in, request $request) returned $n")
+            }
             return JSONObject().put("status", "ok").put("data", Base64.encodeToString(buf, 0, n, Base64.NO_WRAP))
         }
         val data = if (a.has("data")) Base64.decode(a.getString("data"), Base64.DEFAULT) else ByteArray(0)
         val n = c.controlTransfer(reqType, request, value, index, data, data.size, CONTROL_TIMEOUT_MS)
-        if (n < 0) throw UsbErr("NetworkError", "The USB control transfer failed.")
+        if (n < 0) {
+            log("usb-control-fail", "dir" to "out", "type" to type, "request" to request, "value" to value, "index" to index, "result" to n)
+            throw UsbErr("NetworkError", "controlTransfer(out, request $request) returned $n")
+        }
         return JSONObject().put("status", "ok").put("bytesWritten", n)
     }
 
@@ -468,6 +566,7 @@ class UsbBridge(private val activity: Activity, private val webView: WebView) {
 
     companion object {
         private const val TAG = "PBUsb"
+        private const val LOG_MAX = 500
         private const val ACTION_PERMISSION = "com.photobooth4u.booth.USB_PERMISSION"
         private const val CHUNK = 16384
         private const val OUT_TIMEOUT_MS = 30_000

@@ -31,13 +31,17 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.widget.Button
+import android.widget.ScrollView
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import org.json.JSONObject
+import org.json.JSONTokener
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -747,7 +751,15 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Booth Configuration")
             .setMessage("Choose how this tablet runs.\n\nOffline: works with no internet (no QR payment; photos, GIFs and vouchers still work).\n\nOnline: opens the live website below (QR payment available, needs internet).")
-            .setView(input)
+            .setView(LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(48, 8, 48, 0)
+                addView(input)
+                addView(Button(this@MainActivity).apply {
+                    text = "Camera log (copy / share)"
+                    setOnClickListener { showCameraLog() }
+                })
+            })
             .setPositiveButton("Online (live site)") { _, _ ->
                 val newUrl = input.text.toString().trim()
                 if (newUrl.isNotBlank()) {
@@ -766,6 +778,58 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    // The USB camera log: this app's own events (plug in, permission, open, claim, failed transfers with Android's raw
+    // result) plus the booth's own camera log (what the website's "Copy camera log" gives), so one paste explains a
+    // camera that won't connect.
+    private fun showCameraLog() {
+        val js = "(function(){try{return JSON.stringify({iso:!!self.crossOriginIsolated,usb:('usb' in navigator)," +
+            "log:(window.pbCameraLog?window.pbCameraLog():'')});}catch(e){return JSON.stringify({err:String(e)});}})()"
+        webView.evaluateJavascript(js) { raw ->
+            var page = JSONObject()
+            try { (JSONTokener(raw).nextValue() as? String)?.let { page = JSONObject(it) } } catch (e: Exception) { }
+            val version = try { packageManager.getPackageInfo(packageName, 0).versionName } catch (e: Exception) { "?" }
+            val head = StringBuilder("photobooth4u camera log (Android app ").append(version).append(")\n")
+            head.append("Android ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append("), ")
+                .append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append('\n')
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                try { WebView.getCurrentWebViewPackage()?.let { head.append("WebView ").append(it.versionName).append('\n') } } catch (e: Exception) { }
+            }
+            head.append("page: crossOriginIsolated=").append(page.opt("iso")).append(", navigator.usb=").append(page.opt("usb")).append('\n')
+            val nativeLog = usbBridge?.logText().orEmpty()
+            val full = head.append("--- app (USB) ---\n")
+                .append(if (nativeLog.isEmpty()) "(no USB events yet)" else nativeLog)
+                .append("\n--- booth ---\n")
+                .append(page.optString("log").ifEmpty { "(the booth has not logged anything yet)" })
+                .toString()
+            if (isFinishing || isDestroyed) return@evaluateJavascript
+            val body = TextView(this).apply {
+                this.text = full
+                textSize = 11f
+                typeface = Typeface.MONOSPACE
+                setTextIsSelectable(true)
+                setPadding(32, 16, 32, 16)
+            }
+            AlertDialog.Builder(this)
+                .setTitle("Camera log")
+                .setView(ScrollView(this).apply { addView(body) })
+                .setPositiveButton("Copy") { _, _ ->
+                    (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("photobooth4u camera log", full))
+                    Toast.makeText(this, "Camera log copied. Paste it into a message to us.", Toast.LENGTH_LONG).show()
+                }
+                .setNeutralButton("Share") { _, _ ->
+                    try {
+                        startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "photobooth4u camera log")
+                            putExtra(Intent.EXTRA_TEXT, full)
+                        }, "Share camera log"))
+                    } catch (e: Exception) { Toast.makeText(this, "Nothing to share with", Toast.LENGTH_SHORT).show() }
+                }
+                .setNegativeButton("Close", null)
+                .show()
+        }
     }
 
     private fun showExitConfirmation() {

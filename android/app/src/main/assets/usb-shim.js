@@ -29,13 +29,29 @@
     catch (e) { var err = new Error(message || name); err.name = name; return err; }
   }
 
+  // Camera log: events only the page can see go into the app's camera log (UsbBridge.logFromPage); what Android
+  // itself did and returned is logged on the native side.
+  function plog(kind, info) {
+    try { if (native.logFromPage) native.logFromPage(kind, JSON.stringify(info || {})); } catch (e) { }
+  }
+
+  // An error the shim raises itself (before anything reaches Android), logged with its exact text.
+  function refused(name, message) {
+    plog('shim-refused', { errName: name, error: message });
+    return domError(name, message);
+  }
+
   var transport = {
     call: function (op, args) {
       return new Promise(function (resolve, reject) {
         var id = nextId++;
         pending[id] = { resolve: resolve, reject: reject };
         try { native.call(id, op, JSON.stringify(args || {})); }
-        catch (e) { delete pending[id]; reject(domError('NetworkError', String(e && e.message || e))); }
+        catch (e) {
+          delete pending[id];
+          plog('shim-call-throw', { op: op, error: String(e && e.message || e) });
+          reject(domError('NetworkError', String(e && e.message || e)));
+        }
       });
     }
   };
@@ -129,14 +145,14 @@
   var P = Device.prototype;
 
   P._needOpen = function () {
-    if (!this.opened) throw domError('InvalidStateError', 'The device must be opened first.');
+    if (!this.opened) throw refused('InvalidStateError', 'The device must be opened first.');
   };
 
   P._iface = function (n) {
     var cfg = this.configuration;
-    if (!cfg) throw domError('InvalidStateError', 'The device must have a configuration selected.');
+    if (!cfg) throw refused('InvalidStateError', 'The device must have a configuration selected.');
     for (var i = 0; i < cfg.interfaces.length; i++) if (cfg.interfaces[i].interfaceNumber === n) return cfg.interfaces[i];
-    throw domError('NotFoundError', 'The interface number provided is not supported by the device in its current configuration.');
+    throw refused('NotFoundError', 'The interface number provided is not supported by the device in its current configuration.');
   };
 
   P.open = function () {
@@ -163,7 +179,7 @@
     return Promise.resolve().then(function () {
       self._needOpen();
       var cfg = self.configurations.filter(function (c) { return c.configurationValue === value; })[0];
-      if (!cfg) throw domError('NotFoundError', 'The configuration value provided is not supported by the device.');
+      if (!cfg) throw refused('NotFoundError', 'The configuration value provided is not supported by the device.');
       return transport.call('selectConfiguration', { id: self._id, value: value }).then(function () { self.configuration = cfg; });
     });
   };
@@ -192,7 +208,7 @@
       self._needOpen();
       var itf = self._iface(n);
       var a = itf.alternates.filter(function (x) { return x.alternateSetting === alt; })[0];
-      if (!a) throw domError('NotFoundError', 'The alternate setting provided is not supported by the device.');
+      if (!a) throw refused('NotFoundError', 'The alternate setting provided is not supported by the device.');
       return transport.call('selectAlternateInterface', { id: self._id, number: n, alt: alt }).then(function () { itf.alternate = a; });
     });
   };
@@ -322,6 +338,7 @@
       dev.opened = false;
       delete devices[desc.id];
     }
+    plog('shim-event', { event: kind, name: desc.productName || '', id: desc.id });
     var ev = ConnectionEvent(kind, dev);
     var handler = usb['on' + kind];
     if (typeof handler === 'function') { try { handler.call(usb, ev); } catch (e) { } }
@@ -338,7 +355,9 @@
   if (!window.USBDevice) window.USBDevice = Device;
 
   // The booth only turns the camera on in a cross-origin isolated page; say so in the log if the app's page is not one.
+  plog('shim-start', { url: String(location.href).slice(0, 120), isolated: !!window.crossOriginIsolated });
   window.addEventListener('load', function () {
+    plog('shim-loaded', { isolated: !!window.crossOriginIsolated, usbInNavigator: 'usb' in navigator, sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined' });
     if (!window.crossOriginIsolated) console.warn('[PBUsb] This page is not cross-origin isolated, so the USB camera mode stays off.');
   });
 })();

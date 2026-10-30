@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.34', date: '2026-10-30' },
   { version: '1.0.33', date: '2026-10-30' },
   { version: '1.0.32', date: '2026-10-30' },
   { version: '1.0.31', date: '2026-10-30' },
@@ -45,7 +46,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.30', date: '2026-10-30', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.30/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.31', date: '2026-10-30', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.31/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -80,6 +81,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-30', title: 'Flip book: sharper pages that differ from each other', for: ['website', 'app'], app: '1.0.34',
+    items: [
+      'Flip book (website, laptop app 1.0.34 and Android app 1.0.31): pages are no longer near copies of each other, and fewer are blurry. The booth records more pictures than the book needs, keeps the sharpest one around each moment, then spaces the pages so each differs from the last: a still moment gets fewer pages and a lively one gets more.',
+      'The default is now 24 frames in a 6 second clip (it was 30). Setups that already chose a number keep it. For bigger changes between pages choose fewer frames (16 or 24) and a 6 or 7 second clip.',
+      'Blur also comes from a dim room: the camera then uses a slow shutter. A little more light on the guest helps more than any setting.'
+    ]
+  },
   {
     date: '2026-10-30', title: 'Windows laptop: a DSLR that stops answering now recovers instead of freezing the booth', for: ['website', 'app'], app: '1.0.33',
     items: [

@@ -13,6 +13,9 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
+    <!-- USB cameras (Canon / Nikon / Sony over a cable): optional, so tablets without USB host can still install the app -->
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+
     <!-- Screen keep-awake for Kiosk / Tablet operation -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
@@ -49,6 +52,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
             android:screenOrientation="sensorLandscape"
             android:windowSoftInputMode="adjustResize">
@@ -56,6 +60,13 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- A camera plugged in (PTP/MTP): Android offers to open this app and, with "always", remembers the camera's USB permission -->
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter" />
         </activity>
     </application>
 

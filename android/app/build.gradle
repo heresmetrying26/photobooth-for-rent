@@ -62,6 +62,17 @@ tasks.register('bundleBoothHtml', Copy) {
 }
 preBuild.dependsOn bundleBoothHtml
 
+// The USB camera library (gPhoto2 WASM) the booth loads from /camera-test/build/; the app serves it from its own
+// assets so the camera also works with no internet (see MainActivity.interceptOfflineRequest).
+tasks.register('bundleCameraLib', Copy) {
+    description = 'Copy the USB camera library into APK assets for offline kiosk'
+    from "${rootProject.projectDir}/../public/camera-test/build"
+    include 'camera.js', 'libapi.mjs', 'libapi.wasm', 'libapi.worker.js', 'LICENSE'
+    into 'src/main/assets/camera-test/build'
+    onlyIf { file("${rootProject.projectDir}/../public/camera-test/build").exists() }
+}
+preBuild.dependsOn bundleCameraLib
+
 dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'

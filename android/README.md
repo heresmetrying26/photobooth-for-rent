@@ -31,7 +31,14 @@ A dedicated Android native wrapper for **photobooth4u** designed for tablets (Sa
    - **Guests' phones must be on the same Wi-Fi (or hotspot) as the tablet**; the link is plain `http`, to the tablet's address on that network. Put the Wi-Fi name and password in Setup → Share to show a "join the Wi-Fi" QR before the photo QR.
    - Nothing is uploaded anywhere. Photos stay on the tablet until you delete them.
 
-5. **Operator URL Configuration**
+5. **USB DSLR / mirrorless cameras (`window.__PBUsb`)**
+   - Canon, Nikon and Sony cameras over a USB cable (OTG adapter if needed), with live view and the real shutter, the same as Chrome's USB camera mode on the website.
+   - The WebView has no WebUSB, so `UsbBridge.kt` talks to the camera with `UsbManager` and `assets/usb-shim.js` builds `navigator.usb` on top of it. The booth's existing gPhoto2 camera code runs unchanged.
+   - The camera library (`assets/camera-test/build/`, copied from `public/camera-test/build/` at build time) is served from the app, and the offline booth page is answered with COOP / COEP headers so it is cross-origin isolated, which that library needs.
+   - Camera setup is the same as on the website: USB mode Photo Import / Remote Control (Canon), PTP/MTP (Nikon), PC Remote (Sony); mode dial on P, A, S or M (Nikon refuses live view in Auto).
+   - Plug the camera in and tap **Allow** (tick "use by default" so it reconnects by itself); to test, open the booth, Camera → DSLR / mirrorless over USB. Logcat tag `PBUsb` / `PBBooth`.
+
+6. **Operator URL Configuration**
    - Long-press anywhere on the screen to open the **Booth Configuration dialog**.
    - Quickly switch between your live domain, a trial URL, or a local network testing URL (`http://192.168.x.x:8888/`).
 

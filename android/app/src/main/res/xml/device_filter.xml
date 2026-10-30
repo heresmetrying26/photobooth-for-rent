@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Which USB devices make Android offer to open the booth: cameras that speak PTP / MTP (interface class 6, subclass 1).
+     Matched by class, not by Canon / Nikon / Sony vendor id, so a Canon inkjet printer plugged in does not trigger it. -->
+<resources>
+    <usb-device class="6" subclass="1" />
+</resources>

@@ -29,6 +29,8 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -55,6 +57,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btBridge: BTBridge
     private lateinit var pbLocal: PBLocal
     private var voiceBridge: VoiceBridge? = null
+    private var usbBridge: UsbBridge? = null
+    // window.__PBUsb gives the WebView a navigator.usb (USB cameras); this is the page-side script for it.
+    private var usbShim: String = ""
+    private var usbShimAtDocStart = false
     private lateinit var licence: AppLicence
     private var shareServer: LocalShareServer? = null
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
@@ -87,7 +93,13 @@ class MainActivity : AppCompatActivity() {
     private val DEFAULT_URL = "https://photobooth4u.netlify.app/"
     private val BASE_URL   = "https://photobooth4u.netlify.app/"
     private val ASSET_BOOTH = "booth.html"
+    private val BASE_HOST = "photobooth4u.netlify.app"
+    private val CAMERA_LIB_PATH = "/camera-test/build/"
+    private val CAMERA_LIB_FILES = setOf("camera.js", "libapi.mjs", "libapi.wasm", "libapi.worker.js")
     private var offlineLoaded = false
+    // The offline booth page, served by interceptOfflineRequest at BASE_URL (not loadDataWithBaseURL) so it can carry the
+    // COOP / COEP headers that make it cross-origin isolated, which the USB camera library needs.
+    private var offlineHtml: String? = null
     private var pageErrorToasts = 0
 
     private val REQ_CAMERA_PERMISSION = 2001
@@ -168,6 +180,20 @@ class MainActivity : AppCompatActivity() {
         val voice = VoiceBridge(this)
         voiceBridge = voice
         webView.addJavascriptInterface(voice, "__PBVoice")
+        // USB cameras (Canon / Nikon / Sony over a USB cable) through a WebUSB shim: UsbBridge is the native half,
+        // assets/usb-shim.js builds navigator.usb on top of it.
+        val usb = UsbBridge(this, webView)
+        usbBridge = usb
+        webView.addJavascriptInterface(usb, "__PBUsb")
+        usb.start()
+        usb.onAttachedIntent(intent)
+        try { usbShim = assets.open("usb-shim.js").bufferedReader().use { it.readText() } } catch (e: Exception) { Log.e("PBBooth", "usb-shim.js missing", e) }
+        if (usbShim.isNotEmpty() && WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            try {
+                WebViewCompat.addDocumentStartJavaScript(webView, usbShim, setOf("*"))
+                usbShimAtDocStart = true
+            } catch (e: Exception) { Log.e("PBBooth", "usb shim not installed at document start", e) }
+        }
         val share = LocalShareServer(pbLocal)
         shareServer = share
         Thread {
@@ -346,6 +372,13 @@ class MainActivity : AppCompatActivity() {
         hideSystemBars()
     }
 
+    // "Camera plugged in" brings the already-running booth forward (launchMode singleTask) instead of starting a second one.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        usbBridge?.onAttachedIntent(intent)
+    }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
@@ -358,6 +391,7 @@ class MainActivity : AppCompatActivity() {
         btBridge.disconnect()
         voiceBridge?.shutdown()
         shareServer?.stop()
+        usbBridge?.shutdown()
         checkinHandler.removeCallbacksAndMessages(null)
     }
 
@@ -400,6 +434,7 @@ class MainActivity : AppCompatActivity() {
             // Page errors go to Logcat, and the first few show on screen so a booth that
             // loads but won't respond (e.g. "Tap to start" does nothing) says why.
             override fun onConsoleMessage(m: ConsoleMessage?): Boolean {
+                if (m != null && m.message().startsWith("[PBUsb]")) Log.w("PBBooth", m.message())
                 if (m != null && m.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
                     Log.e("PBBooth", "${m.message()} (${m.sourceId()}:${m.lineNumber()})")
                     if (pageErrorToasts < 3) {
@@ -437,6 +472,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
+            // WebViews too old for document-start scripts get the USB shim as soon as the page starts (the offline
+            // booth has it inlined, so it is already there before any page script runs).
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                if (!usbShimAtDocStart && usbShim.isNotEmpty()) view?.evaluateJavascript(usbShim, null)
+            }
+
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val uri = request?.url ?: return false
                 val host = uri.host ?: ""
@@ -529,6 +571,8 @@ class MainActivity : AppCompatActivity() {
 
                 // Inject Android kiosk config so booth.html turns on exactly what this code pays for.
                 val pbConfig = buildString {
+                    // The USB camera shim goes first so navigator.usb exists before any booth script looks for it
+                    if (usbShim.isNotEmpty()) append("<script>").append(usbShim).append("</script>")
                     append("<script>")
                     // window.__PB lets the booth enable GIF, retake, lock, pay, printing features
                     append("window.__PB=window.__PB||{};")
@@ -562,13 +606,11 @@ class MainActivity : AppCompatActivity() {
                     pbConfig + raw
                 }
 
-                webView.loadDataWithBaseURL(
-                    BASE_URL,     // origin — localStorage keys match the live booth
-                    html,
-                    "text/html",
-                    "UTF-8",
-                    null
-                )
+                // Loaded as a real request at the live booth's own URL (answered by interceptOfflineRequest), so the page
+                // keeps the same origin (localStorage / IndexedDB match the live booth) and, unlike loadDataWithBaseURL,
+                // can carry response headers.
+                offlineHtml = html
+                webView.loadUrl(BASE_URL)
             } catch (e: Exception) {
                 Toast.makeText(this, "Could not load offline booth: ${e.message}", Toast.LENGTH_LONG).show()
             }
@@ -580,6 +622,20 @@ class MainActivity : AppCompatActivity() {
         val url = request?.url ?: return null
         val host = (url.host ?: "").lowercase()
         val path = url.path ?: ""
+        if (request?.isForMainFrame == true && host == BASE_HOST && (path == "/" || path == "/index.html")) {
+            val html = offlineHtml ?: return null
+            return isolatedResponse("text/html", html.toByteArray(Charsets.UTF_8))
+        }
+        // The USB camera library (gPhoto2 WASM) ships inside the app so the camera works with no internet.
+        if (host == BASE_HOST && path.startsWith(CAMERA_LIB_PATH)) {
+            val name = path.removePrefix(CAMERA_LIB_PATH)
+            if (name in CAMERA_LIB_FILES) {
+                return try {
+                    val mime = if (name.endsWith(".wasm")) "application/wasm" else "text/javascript"
+                    isolatedResponse(mime, assets.open("camera-test/build/$name").use { it.readBytes() })
+                } catch (e: Exception) { null }
+            }
+        }
         if (host.contains("fonts.googleapis.com") || host.contains("fonts.gstatic.com")) {
             return webResponse("text/css", ByteArray(0))
         }
@@ -594,6 +650,23 @@ class MainActivity : AppCompatActivity() {
             )
         }
         return null
+    }
+
+    // A page, script or WASM file with the headers that make the booth cross-origin isolated (same as "/" in netlify.toml).
+    private fun isolatedResponse(mime: String, body: ByteArray): WebResourceResponse {
+        return WebResourceResponse(
+            mime,
+            "utf-8",
+            200,
+            "OK",
+            mapOf(
+                "Cross-Origin-Opener-Policy" to "same-origin",
+                "Cross-Origin-Embedder-Policy" to "credentialless",
+                "Cross-Origin-Resource-Policy" to "same-origin",
+                "Cache-Control" to "no-store"
+            ),
+            ByteArrayInputStream(body)
+        )
     }
 
     private fun webResponse(

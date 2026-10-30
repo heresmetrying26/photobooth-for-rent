@@ -3451,7 +3451,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <button type="button" class="menu-btn" id="setupMenuBtn" aria-label="More" aria-haspopup="true">⋯</button>
           <div class="menu" id="setupMenu" hidden>
             <button type="button" id="menuMyEvents" hidden>My Events ↗ (links, payments, printing)</button>
-            <button type="button" id="menuWhatsNew">What’s new ↗</button>
+            <button type="button" id="menuWhatsNew">What’s new</button>
             <button type="button" id="menuFullscreen">Full screen (hide tabs)</button>
             <button type="button" id="resetSetupBtn" class="danger">Reset setup</button>
           </div>
@@ -18510,12 +18510,38 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var a = document.getElementById('myEventsLink'), m = document.getElementById('menuMyEvents');
     if(a) a.hidden = !rental;
     if(m){ m.hidden = !rental || DESKTOP; m.addEventListener('click', function(){ window.open('/lifetime/?booth=1', '_blank', 'noopener'); }); }
-    // What's new: the website's updates page (the app opens it in the laptop's browser).
+    // What's new: a window inside the booth (the laptop app and the tablet app stay open; no browser).
+    window.pbOpenNews = function(){
+      var ov = document.getElementById('newsOv');
+      if(!ov){
+        ov = document.createElement('div'); ov.id = 'newsOv'; ov.className = 'desk-ov'; ov.style.zIndex = 9800;
+        ov.innerHTML = '<div class="desk-card" style="width:min(640px,100%)"><div class="desk-head"><b>What’s new</b><span class="sp"></span><button type="button" class="desk-btn" id="newsClose">Close</button></div><div id="newsBody" style="padding:6px 18px 18px;overflow:auto"></div></div>';
+        document.body.appendChild(ov);
+        var shut = function(){ ov.hidden = true; };
+        ov.addEventListener('click', function(e){ if(e.target === ov) shut(); });
+        ov.querySelector('#newsClose').addEventListener('click', shut);
+      }
+      ov.hidden = false;
+      var body = ov.querySelector('#newsBody'), say = function(t){ body.innerHTML = ''; var p = document.createElement('p'); p.className = 'desk-hint'; p.style.margin = '14px 0'; p.textContent = t; body.appendChild(p); };
+      say('Loading…');
+      var tag = DESKTOP ? 'app' : 'website';
+      var get = DESKTOP && window.pb4u && window.pb4u.news ? window.pb4u.news() : fetch('/api/updates', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(j){ return { ok: !!j.notes, notes: j.notes || [] }; });
+      Promise.resolve(get).then(function(j){
+        var list = ((j && j.notes) || []).filter(function(n){ return (n.for || []).indexOf(tag) >= 0; }).slice(0, 8);
+        if(!j || !j.ok || !list.length){ say(j && j.ok ? 'Nothing new to show.' : 'Can’t load what’s new right now. Connect to the internet and try again.'); return; }
+        body.innerHTML = '';
+        list.forEach(function(n){
+          var d = document.createElement('div'); d.style.cssText = 'padding:12px 0;border-bottom:1px solid var(--line)';
+          var t = document.createElement('b'); t.style.cssText = 'display:block;font:800 16px Manrope,sans-serif'; t.textContent = n.title || '';
+          var dt = document.createElement('small'); dt.style.cssText = 'color:var(--ink-dim)'; dt.textContent = n.date || '';
+          var ul = document.createElement('ul'); ul.style.cssText = 'margin:6px 0 0;padding-left:20px;font:500 14px/1.5 Manrope,sans-serif';
+          (n.items || []).forEach(function(i){ var li = document.createElement('li'); li.textContent = i; ul.appendChild(li); });
+          d.appendChild(dt); d.appendChild(t); d.appendChild(ul); body.appendChild(d);
+        });
+      }).catch(function(){ say('Can’t load what’s new right now. Connect to the internet and try again.'); });
+    };
     var wn = document.getElementById('menuWhatsNew');
-    if(wn) wn.addEventListener('click', function(){
-      if(DESKTOP && window.pb4u && window.pb4u.openUrl) window.pb4u.openUrl('app://booth/updates/');
-      else window.open('/updates/', '_blank', 'noopener');
-    });
+    if(wn) wn.addEventListener('click', function(){ window.pbOpenNews(); });
   })();
   // ---- Full screen: hides the browser's tabs and address bar ----
   // Browsers only allow full screen after a tap, so the booth goes full screen
@@ -19073,7 +19099,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(L.warn) txt += ' ' + L.warn;
       document.getElementById('deskLic').textContent = txt;
     }
-    document.getElementById('deskNewsBtn').addEventListener('click', function(){ api.openUrl('app://booth/updates/'); });
+    document.getElementById('deskNewsBtn').addEventListener('click', function(){ window.pbOpenNews(); });
     // A new version of the app: a bar at the top of Setup (never on the guest's screens).
     var updBar = document.getElementById('deskUpdBar'), updLater = false, updSig = '';
     function updRender(u){
@@ -19099,7 +19125,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(updBar) updBar.addEventListener('click', function(e){
       var b = e.target.closest('[data-u]'); if(!b || !api.update) return;
       var a = b.dataset.u;
-      if(a === 'news') api.openUrl('app://booth/updates/?for=app');
+      if(a === 'news') window.pbOpenNews();
       else if(a === 'later'){ updLater = true; updBar.hidden = true; }
       else if(a === 'install'){ b.disabled = true; b.textContent = 'Restarting\u2026'; api.update.install(); }
       else if(a === 'download'){ b.disabled = true; api.update.download().then(updRender); }

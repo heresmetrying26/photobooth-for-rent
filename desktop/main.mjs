@@ -292,6 +292,11 @@ function wireIpc() {
   });
   ipcMain.handle('pb4u:spinJob', (e, id) => SPIN.jobInfo(id));
   ipcMain.handle('pb4u:spinCancel', (e, id) => SPIN.cancelJob(id));
+  // What's new, shown inside the app: the notes come from the website (online only).
+  ipcMain.handle('pb4u:news', async () => {
+    try { const r = await net.fetch(L.SERVER + '/api/updates', { cache: 'no-store' }); const j = await r.json(); return { ok: true, notes: j.notes || [], app: j.app || null }; }
+    catch { return { ok: false, notes: [] }; }
+  });
   ipcMain.handle('pb4u:copy', (e, t) => { clipboard.writeText(String(t || '')); return true; });
   ipcMain.handle('pb4u:openUrl', (e, u) => { openOutside(String(u || '')); return true; });
   ipcMain.handle('pb4u:quit', () => { app.quit(); return true; });

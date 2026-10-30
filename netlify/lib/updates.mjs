@@ -76,7 +76,7 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
-    date: '2026-10-30', title: '360 videos: join the Wi-Fi and download, with two QR codes', for: ['website'],
+    date: '2026-10-30', title: '360 videos: join the Wi-Fi and download, with two QR codes', for: ['website', 'app'], app: '1.0.27',
     items: [
       'Laptop app 1.0.27 and Android app 1.0.23: when you set the booth Wi-Fi name and password in Setup → Share & start, the 360 player shows two codes. Step 1: Network joins the guest’s phone to the booth Wi-Fi, and Step 2: Download opens the video. It works with no internet.',
       'With no Wi-Fi set, you still get the single download code as before.'

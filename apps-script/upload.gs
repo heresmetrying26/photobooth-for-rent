@@ -79,6 +79,33 @@ function trashEventFolder_(id) {
     return { ok: false, error: 'Could not ' + step + ': ' + String(err) + ' [script runs as ' + who + '; folder owner ' + owner + '; folder id ' + id + ']' };
   }
 }
+// Backup ticket (weekly backup of all codes, or Admin "Back up now"): signed by the server, valid 2 minutes, used once.
+// It carries the file name and the SHA-256 of the content, so only exactly that content is saved.
+function verifyBackupTicket_(ticket) {
+  var t = verifySigned_(ticket);
+  if (!t || t.m !== 'backup' || t.f || !/^photobooth4u-backup-[0-9]{4}-[0-9]{2}-[0-9]{2}(-[a-z]{1,12})?\.json$/.test(String(t.n || '')) || !/^[0-9a-f]{64}$/.test(String(t.h || ''))) return null;
+  var cache = CacheService.getScriptCache(), key = 'backup_' + String(ticket).split('.')[1].slice(0, 60);
+  if (cache.get(key)) return null;
+  cache.put(key, '1', 600);
+  return t;
+}
+// Saves the backup in a PRIVATE "photobooth4u-backups" folder in this Google account's own Drive (not the photos folder),
+// and keeps the newest 12 files.
+function saveBackup_(t, content) {
+  var text = String(content || '');
+  var hex = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, text, Utilities.Charset.UTF_8)
+    .map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join('');
+  if (hex !== t.h) return { ok: false, error: 'Backup content did not match its ticket.' };
+  var it = DriveApp.getFoldersByName('photobooth4u-backups'), folder = null;
+  while (it.hasNext()) { var f = it.next(); if (!f.isTrashed()) { folder = f; break; } }
+  if (!folder) folder = DriveApp.createFolder('photobooth4u-backups');
+  folder.createFile(t.n, text, 'application/json');
+  var files = [], fi = folder.getFiles();
+  while (fi.hasNext()) { var file = fi.next(); if (!file.isTrashed()) files.push(file); }
+  files.sort(function (a, b) { return b.getDateCreated().getTime() - a.getDateCreated().getTime(); });
+  for (var i = 12; i < files.length; i++) files[i].setTrashed(true);
+  return { ok: true, name: t.n, kept: Math.min(files.length, 12) };
+}
 function sendMail_(t) {
   if (MailApp.getRemainingDailyQuota() < 1) return { ok: false, error: 'Daily email limit reached. Try again tomorrow.' };
   MailApp.sendEmail({ to: String(t.to), subject: String(t.s || 'photobooth4u'), body: String(t.b || ''), htmlBody: t.h ? String(t.h) : undefined, name: 'photobooth4u' });
@@ -175,6 +202,11 @@ function doPost(e) {
       var mt = verifyMailTicket_(data.mail);
       if (!mt) return jsonOut({ ok: false, error: 'Email not allowed (missing, used or expired ticket).' });
       return jsonOut(sendMail_(mt));
+    }
+    if (data.backup) {
+      var bt = verifyBackupTicket_(data.backup);
+      if (!bt) return jsonOut({ ok: false, error: 'Backup not allowed (missing, used or expired ticket).' });
+      return jsonOut(saveBackup_(bt, data.content));
     }
     if (data.trash) {
       var tt = verifyTrashTicket_(data.trash);

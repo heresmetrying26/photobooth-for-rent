@@ -170,6 +170,8 @@
       </div>
       <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newLifetime"> Lifetime (never expires)</label>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newAgreed"> Buyer accepted the Lifetime Access Agreement (they replied &ldquo;I agree&rdquo; by message or email)</label>
+        <div class="meta" style="margin:0;">Tick this for a Lifetime code you make by hand (for example after a Messenger sale). It records the acceptance and turns on the monthly device-swap limit for that code. Send the buyer <b>photobooth4u.netlify.app/agreement/</b> first. You can also record it later with the &ldquo;Record agreement&rdquo; button on the code.</div>
         <div class="meta" style="margin:0;" id="lifetimeHint">For clients who buy the booth for good. Instead of one fixed Drive folder, the booth asks for an <b>event name</b> each time, and every event gets its own folder: <b>“Drive folder name · event name”</b>. Turning this on also turns on the Traditional (Pro) booth below; untick that if they use a tablet. Lifetime renters can also add their own paper sizes in the booth's print panel.</div>
       </div>
       <div class="modebox">
@@ -243,6 +245,21 @@
       <p style="margin:8px 0;font-weight:700;">Status: <span id="shutdownStatus">Checking…</span></p>
       <button class="small danger" id="shutdownOnBtn">Turn shutdown mode ON…</button>
       <button class="small" id="shutdownOffBtn" style="display:none;">Turn it back OFF</button>
+    </details>
+
+    <details class="card" id="backupCard">
+      <summary><h2>Backup (all codes)</h2></summary>
+      <div class="meta">Codes live only on Netlify. A backup holds every code, its devices, agreement and flags, its events list and the Offline App activations (not booth designs, guest-payment accounts or photos). It runs <b>every week</b> by itself into a private <b>photobooth4u-backups</b> folder in the photobooth Google Drive (newest 12 kept), and you get an email at ALERT_EMAIL if it fails. Keep a copy somewhere else too.</div>
+      <p style="margin:8px 0;font-weight:700;">Last backup: <span id="backupStatus">Checking…</span></p>
+      <button class="small" id="backupDriveBtn">Back up to Drive now</button>
+      <button class="small" id="backupDownloadBtn">Download a backup file</button>
+    </details>
+
+    <details class="card" id="payAlertCard">
+      <summary><h2>Refund &amp; failed-payment alerts</h2></summary>
+      <div class="meta">When a payment to photobooth4u is <b>refunded or fails after the code was issued</b>, the code is flagged here (&#9888; Payment refunded) and you get an email at ALERT_EMAIL. Nothing is disabled automatically. Needs the PayMongo API key saved (PayMongo API Key card). Refunds you make by hand in Maribank or GoTyme are not seen: use Disable &rarr; &ldquo;payment&rdquo; for those.</div>
+      <p style="margin:8px 0;font-weight:700;">Status: <span id="payAlertStatus">Checking…</span></p>
+      <button class="small" id="payAlertSetupBtn">Set up payment alerts</button>
     </details>
 
     <details class="card" id="qrCard">
@@ -796,6 +813,8 @@
       if(l.offlineOpt && st !== 'revoked') acts += '<button class="small" data-a="offkey" data-c="' + c + '" title="For a laptop with no internet: paste its Machine ID, get a licence key">Offline activation key</button>';
     }
     if(l.lifetime && !bonus && st !== 'revoked') acts += '<button class="small danger" data-a="replacecode" data-c="' + c + '" title="The code leaked or was shared: make a new code with the same events and settings, and disable this one">Replace code</button>';
+    if(l.lifetime && !bonus && !l.agreement) acts += '<button class="small" data-a="setagreement" data-c="' + c + '" title="The buyer replied I agree to the Lifetime Access Agreement: record it (turns on the monthly device-swap limit)">Record agreement</button>';
+    if(l.paymentReview) acts += '<button class="small" data-a="clearpaymentflag" data-c="' + c + '" title="You checked the refunded or failed payment and it is fine">Clear payment flag</button>';
     if(!bonus) acts += '<button class="small danger" data-a="deleteevent" data-c="' + c + '" title="A client or guest asked for an event’s online photos to be removed before the 7 days are up">Delete event photos</button>';
     if(l.lifetime && !bonus) acts += '<button class="small" data-a="transfer" data-c="' + c + '" title="The renter sold their whole business: move this code to the new owner’s email (once, with proof of sale)">Transfer code</button>';
     if(l.lifetime && !bonus) acts += '<button class="small" data-a="resetswaps" data-c="' + c + '" title="Clear this month’s device-swap count (3 per month on Lifetime Access Agreement codes)">Reset device swaps</button>';
@@ -809,7 +828,9 @@
       : esc(l.folderName || l.label || l.code) + (bonus ? ' / ' + esc(l.subfolder || 'Bonus') + ' <span style="font-weight:500;">(files named BONUS_…)</span>' : '');
     var flags = (l.revokeReason ? 'Disabled: <b>' + esc(l.revokeReason) + '</b>' + (l.replacedBy ? ' · replaced by <b>' + esc(l.replacedBy) + '</b>' : '') + '<br>' : '') +
       (l.replacedFrom ? 'Replaces <b>' + esc(l.replacedFrom) + '</b> (leaked or shared code)<br>' : '') +
-      (l.transferredAt ? 'Transferred to this owner on <b>' + fmtDate(l.transferredAt) + '</b><br>' : '');
+      (l.transferredAt ? 'Transferred to this owner on <b>' + fmtDate(l.transferredAt) + '</b><br>' : '') +
+      (l.paymentReview ? '<span style="color:#b3261e;font-weight:700;">&#9888; Payment ' + esc(l.paymentReview.reason) + ' on ' + fmtDate(l.paymentReview.at) + ' &mdash; review this code (Disable it if the money was not kept).</span><br>' : '') +
+      (l.lifetime && !bonus ? 'Agreement: <b>' + (l.agreement ? 'v' + esc(l.agreement) + ' accepted' + (l.agreementAt ? ' (' + fmtDate(l.agreementAt) + ')' : '') : 'not recorded') + '</b><br>' : '');
     return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + flags + (l.email ? 'Email: <b>' + esc(l.email) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
       '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>GIF mode: <b>' + (l.gifOpt ? 'Yes (Photo + GIF &amp; GIF-only options)' : 'No (Photo only)') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? (l.offlineOnly ? 'Laptop app only' : 'Yes') + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
       '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
@@ -1139,6 +1160,16 @@
         refresh();
         return;
       }
+      if(a === 'setagreement'){
+        if(!confirm('Record that the buyer of ' + code + ' accepted the Lifetime Access Agreement (they replied "I agree")? This turns on the monthly device-swap limit for this code.')) return;
+        await api({ action: 'setagreement', code: code });
+        toast('Agreement recorded'); refresh(); return;
+      }
+      if(a === 'clearpaymentflag'){
+        if(!confirm('Clear the payment flag on ' + code + '? Only if you checked the refund or failed payment and the code is fine to keep.')) return;
+        await api({ action: 'clearpaymentflag', code: code });
+        toast('Payment flag cleared'); refresh(); return;
+      }
       if(a === 'deleteevent'){
         var evs = (await api({ action: 'events', code: code })).events.filter(function(e){ return e.hasFolder && !e.deletedAt; });
         if(!evs.length){ toast('No event photos to delete on this code (none saved, or already deleted)', true); return; }
@@ -1224,7 +1255,7 @@
       if(a === 'revoke' && !confirm('Disable ' + code + '? The renter is locked out at their next check (within ~5 minutes).')) return;
       var body = { action: a, code: code };
       if(a === 'revoke'){
-        var why = prompt('Why is this code being disabled?\nType one: leak, sharing, abuse, security, other', 'other');
+        var why = prompt('Why is this code being disabled?\nType one: leak, sharing, abuse, security, payment, other', 'other');
         if(why === null) return;
         body.reason = why.trim().toLowerCase();
       }
@@ -1243,7 +1274,7 @@
     try{
       var np = readPrint($('newPrint'));
       var startsAt = readStartInputs($('newStartDate'), $('newStartTime'));
-      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, lockOpt: $('newLock').checked, extras: { vintage: $('newXVintage').checked, roving: $('newXRoving').checked, flipbook: $('newXFlipbook').checked, video: $('newXVideo').checked, spin360: $('newXSpin').checked }, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null };
+      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, agreementAccepted: $('newAgreed').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, lockOpt: $('newLock').checked, extras: { vintage: $('newXVintage').checked, roving: $('newXRoving').checked, flipbook: $('newXFlipbook').checked, video: $('newXVideo').checked, spin360: $('newXSpin').checked }, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null };
       var j;
       try{ j = await api(createBody); }
       catch(e1){
@@ -1297,6 +1328,45 @@
   $('shutdownCard').addEventListener('toggle', async function(){
     if(!this.open) return;
     try{ shutdownShow(await api({ action: 'shutdownget' })); }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+  });
+  // Backup of all codes (weekly to Drive, or download by hand) and refund / failed-payment alerts.
+  function backupShow(l){
+    $('backupStatus').textContent = !l ? 'never' : (l.ok ? new Date(l.at).toLocaleString() + ' · ' + l.codes + ' codes saved (' + l.name + ')' : 'FAILED ' + new Date(l.at).toLocaleString() + ' — ' + l.error);
+    $('backupStatus').style.color = l && !l.ok ? '#b3261e' : '';
+  }
+  $('backupCard').addEventListener('toggle', async function(){
+    if(!this.open) return;
+    try{ backupShow((await api({ action: 'backupstatus' })).last); }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+  });
+  $('backupDriveBtn').addEventListener('click', async function(){
+    this.disabled = true;
+    try{ var r = await api({ action: 'backupdrive' }); backupShow(r); toast(r.ok ? 'Backup saved to Drive' : r.error, !r.ok); }
+    catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+    this.disabled = false;
+  });
+  $('backupDownloadBtn').addEventListener('click', async function(){
+    this.disabled = true;
+    try{
+      var r = await api({ action: 'backupdownload' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([r.content], { type: 'application/json' }));
+      a.download = r.name; document.body.appendChild(a); a.click(); a.remove();
+      toast('Backup downloaded (' + r.codes + ' codes). Keep it private: it contains every code.');
+    }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+    this.disabled = false;
+  });
+  function payAlertShow(s){
+    $('payAlertStatus').textContent = s && s.set ? 'ON' + (s.at ? ' since ' + new Date(s.at).toLocaleString() : '') + (s.live ? ' (live)' : ' (test mode)') : 'NOT set up';
+    $('payAlertStatus').style.color = s && s.set ? '' : '#b3261e';
+  }
+  $('payAlertCard').addEventListener('toggle', async function(){
+    if(!this.open) return;
+    try{ payAlertShow(await api({ action: 'subhookstatus' })); }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+  });
+  $('payAlertSetupBtn').addEventListener('click', async function(){
+    if(!confirm('Create the PayMongo webhook for refunds and failed payments on your PayMongo account?')) return;
+    try{ await api({ action: 'subhooksetup' }); payAlertShow(await api({ action: 'subhookstatus' })); toast('Payment alerts are ON'); }
+    catch(err){ if(err.message !== 'auth') toast(err.message, true); }
   });
   $('shutdownOnBtn').addEventListener('click', async function(){
     var t = prompt('This ends normal service: every Lifetime code gets the Offline App and licences that never need a check-in.\n\nType END SERVICE to confirm.');

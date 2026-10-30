@@ -6,8 +6,9 @@ import {
 import { timingSafeEqual, createHash } from 'node:crypto';
 import { setupsStore } from '../lib/core.mjs';
 import { ownerId, eventKeyOf, getAcct, acctPublic, acctKey, payStore, unseal, pm, listJSON, usedMap, batchView, createBatch, batchKey, KEY_RE } from '../lib/pay.mjs';
-import { cleanEventName, sendMail, codeEmail, EMAIL_RE, logEmailChange, REVOKE_REASONS, eventsStore, getShutdown, setShutdown, trashDriveFolder, isDriveUrl } from '../lib/core.mjs';
+import { cleanEventName, sendMail, codeEmail, EMAIL_RE, logEmailChange, REVOKE_REASONS, eventsStore, getShutdown, setShutdown, trashDriveFolder, isDriveUrl, AGREEMENT_VERSION, SUBHOOK_EVENTS } from '../lib/core.mjs';
 import { replaceLifetimeCode } from '../lib/replace.mjs';
+import { buildBackup, backupName, runDriveBackup } from '../lib/backup.mjs';
 import { licenceFor, activateOn, saveMap, dropMap, licenceReady, MID_RE } from '../lib/license.mjs';
 import { ALL_PLANS, fulfillPlanPayment, getPlanDeliverables } from '../lib/plans.mjs';
 
@@ -255,6 +256,8 @@ export default safe(async (req, context) => {
         // Keep a dedicated Drive folder name. If neither field was supplied,
         // fall back to the code so the renter never has to configure Drive.
         const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, gifOpt: b.gifOpt !== false, extras: normExtras(b.extras), retakeOpt: b.retakeOpt !== false, lockOpt: b.lockOpt !== false, payOpt: b.payOpt !== false, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
+        // A hand-made Lifetime code (for example a Messenger sale): Admin ticks that the buyer replied "I agree".
+        if (lifetime && b.agreementAccepted) rec.agreement = { version: AGREEMENT_VERSION, acceptedAt: Date.now(), by: 'admin' };
         await putLicense(store, key, rec);
         created.push(rec);
       }
@@ -541,6 +544,57 @@ export default safe(async (req, context) => {
       if (r.isNew) await saveMap(r.dev.app.lid, key, mid);
       return json({ ok: true, licence: licenceFor(key, rec, r.dev, now, sd.on), deviceNo: r.dev.no });
     }
+
+    case 'setagreement': { // the buyer of a hand-made Lifetime code replied "I agree": record it (turns on the swap limit)
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      if (!rec.lifetime) return json({ error: 'The Lifetime Access Agreement is only for Lifetime codes.' }, 400);
+      rec.agreement = { version: AGREEMENT_VERSION, acceptedAt: Date.now(), by: 'admin' };
+      await putLicense(store, key, rec);
+      return json({ ok: true, version: AGREEMENT_VERSION });
+    }
+
+    case 'clearpaymentflag': { // you looked at a refunded / failed payment flag and it is fine
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      delete rec.paymentReview;
+      await putLicense(store, key, rec);
+      return json({ ok: true });
+    }
+
+    case 'subhookstatus': { // are payment alerts (refunds / failed payments to photobooth4u) set up?
+      const h = (await meta().get('subhook', { type: 'json' })) || {};
+      return json({ ok: true, set: !!(h.secret || process.env.PAYMONGO_WEBHOOK_SECRET), url: h.url || null, at: h.at || null, live: !!h.live });
+    }
+
+    case 'subhooksetup': { // creates the PayMongo webhook for refunds / failed payments and keeps its secret
+      const pmKey = (await getSettings()).paymongoSecretKey || process.env.PAYMONGO_SECRET_KEY || '';
+      if (!pmKey) return json({ error: 'Save the PayMongo API key first (PayMongo API Key card).' }, 400);
+      const url = (process.env.URL || new URL(req.url).origin).replace(/\/+$/, '') + '/api/subscribe/hook';
+      try {
+        for (const w of ((await pm(pmKey, 'GET', '/webhooks')).data || [])) {
+          const a = w.attributes || {};
+          if (a.url === url && a.status !== 'disabled') { try { await pm(pmKey, 'POST', '/webhooks/' + w.id + '/disable'); } catch (e) { /* old one stays */ } }
+        }
+        const made = await pm(pmKey, 'POST', '/webhooks', { data: { attributes: { url, events: SUBHOOK_EVENTS } } });
+        const secret = made && made.data && made.data.attributes && made.data.attributes.secret_key;
+        if (!secret) return json({ error: 'PayMongo did not return a webhook secret. Create the webhook in the PayMongo dashboard instead and set PAYMONGO_WEBHOOK_SECRET in Netlify.' }, 502);
+        await meta().setJSON('subhook', { id: made.data.id, secret, url, at: Date.now(), live: pmKey.startsWith('sk_live_') });
+        return json({ ok: true, url, live: pmKey.startsWith('sk_live_') });
+      } catch (e) { return json({ error: 'PayMongo: ' + e.message }, 502); }
+    }
+
+    case 'backupstatus':
+      return json({ ok: true, last: (await meta().get('lastbackup', { type: 'json' })) || null });
+
+    case 'backupdownload': { // everything needed to sign every renter in again, as a file you keep
+      const now = Date.now();
+      const data = await buildBackup(now);
+      return json({ ok: true, name: backupName(now, 'manual'), codes: Object.keys(data.licenses).length, content: JSON.stringify(data) });
+    }
+
+    case 'backupdrive': // "Back up now" to the photobooth Google account's Drive
+      return json({ ...(await runDriveBackup(Date.now(), 'manual')) });
 
     case 'events': { // this code's event folders (Drive links), newest first
       const { key, rec } = await getRec();

@@ -186,7 +186,7 @@
         <div class="meta" style="margin:0;">Enables animated GIF recording in the booth: guests can get a GIF or both photo strip + GIF with separate QR codes.</div>
       </div>
       <div class="modebox">
-        <label class="toggle"><input type="checkbox" id="newOffline"> Offline app (Windows / Mac laptop app)</label>
+        <label class="toggle"><input type="checkbox" id="newOffline"> Offline app (Windows / Mac / Android)</label>
         <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newOfflineOnly"> Laptop app only (the website booth refuses this code)</label>
         <div class="meta" style="margin:6px 0 0;">Laptop Booth, Lifetime Offline and Lifetime Online + Offline include the offline app. Lifetime Offline is laptop app only (the website booth refuses it).</div>
       </div>
@@ -212,6 +212,14 @@
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialLockOpt"> Trials get Lock booth (guest-only screen with a PIN)</label></div>
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialWatermark" checked> Watermark trial photos (the photobooth4u logo, faint, in a corner)</label></div>
       <button class="primary" id="saveTrialBtn" style="margin-top:12px;">Save trial settings</button>
+    </details>
+
+    <details class="card" id="shutdownCard">
+      <summary><h2>Shutdown mode (end of service)</h2></summary>
+      <div class="meta">Only for the day photobooth4u stops. When ON, every Lifetime code gets the Offline App (Windows, Mac and Android), and the licences it hands out never ask to check in again, so each booth keeps working with no photobooth4u servers. Laptops and tablets must go online <b>once</b> after you switch it on (or get an <b>Offline activation key</b> from the code's actions). Give renters at least 90 days' notice first.</div>
+      <p style="margin:8px 0;font-weight:700;">Status: <span id="shutdownStatus">Checking…</span></p>
+      <button class="small danger" id="shutdownOnBtn">Turn shutdown mode ON…</button>
+      <button class="small" id="shutdownOffBtn" style="display:none;">Turn it back OFF</button>
     </details>
 
     <details class="card" id="qrCard">
@@ -770,6 +778,10 @@
       if(l.offlineOpt) acts += '<button class="small" data-a="offlineonly" data-c="' + c + '" title="Laptop app only: the website booth refuses this code (Lifetime Offline)">' + (l.offlineOnly ? 'Allow website too' : 'Laptop app only') + '</button>';
       if(l.offlineOpt && st !== 'revoked') acts += '<button class="small" data-a="offkey" data-c="' + c + '" title="For a laptop with no internet: paste its Machine ID, get a licence key">Offline activation key</button>';
     }
+    if(l.lifetime && !bonus && st !== 'revoked') acts += '<button class="small danger" data-a="replacecode" data-c="' + c + '" title="The code leaked or was shared: make a new code with the same events and settings, and disable this one">Replace code</button>';
+    if(!bonus) acts += '<button class="small danger" data-a="deleteevent" data-c="' + c + '" title="A client or guest asked for an event’s online photos to be removed before the 7 days are up">Delete event photos</button>';
+    if(l.lifetime && !bonus) acts += '<button class="small" data-a="transfer" data-c="' + c + '" title="The renter sold their whole business: move this code to the new owner’s email (once, with proof of sale)">Transfer code</button>';
+    if(l.lifetime && !bonus) acts += '<button class="small" data-a="resetswaps" data-c="' + c + '" title="Clear this month’s device-swap count (3 per month on Lifetime Access Agreement codes)">Reset device swaps</button>';
     if(l.lockOpt) acts += '<button class="small" data-a="pinreset" data-c="' + c + '">Reset lock PIN</button>';
     acts += st === 'revoked'
       ? '<button class="small" data-a="restore" data-c="' + c + '">Restore</button>'
@@ -778,7 +790,10 @@
     var folder = l.lifetime
       ? esc(l.folderName || l.label || l.code) + ' · <i>event name</i></b> <span style="font-weight:500;">(new folder per event)</span><b>'
       : esc(l.folderName || l.label || l.code) + (bonus ? ' / ' + esc(l.subfolder || 'Bonus') + ' <span style="font-weight:500;">(files named BONUS_…)</span>' : '');
-    return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + (l.email ? 'Email: <b>' + esc(l.email) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
+    var flags = (l.revokeReason ? 'Disabled: <b>' + esc(l.revokeReason) + '</b>' + (l.replacedBy ? ' · replaced by <b>' + esc(l.replacedBy) + '</b>' : '') + '<br>' : '') +
+      (l.replacedFrom ? 'Replaces <b>' + esc(l.replacedFrom) + '</b> (leaked or shared code)<br>' : '') +
+      (l.transferredAt ? 'Transferred to this owner on <b>' + fmtDate(l.transferredAt) + '</b><br>' : '');
+    return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + flags + (l.email ? 'Email: <b>' + esc(l.email) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
       '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>GIF mode: <b>' + (l.gifOpt ? 'Yes (Photo + GIF &amp; GIF-only options)' : 'No (Photo only)') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? (l.offlineOnly ? 'Laptop app only' : 'Yes') + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
       '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
       (devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.kind ? ' · ' + esc(d.kind) : '') + (d.app && d.app.name ? ' · ' + esc(d.app.name) : '') + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + (d.app && d.app.seen ? ' · checked in ' + new Date(d.app.seen).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="' + (d.app ? 'Deactivate this laptop (stops at its next check-in)' : 'Remove this device') + '">' + (d.app ? 'Deactivate' : 'Remove') + '</button></span>'; }).join('') + '</div>' : '') +
@@ -1007,7 +1022,7 @@
       if(a === 'offlineopt'){
         var oo = !(LIC[code] && LIC[code].offlineOpt);
         var ro = await api({ action: 'offlineopt', code: code, offlineOpt: oo });
-        toast(oo ? (ro.keyReady ? 'Offline app given: the renter can now activate their Windows / Mac app with this code' : 'Offline app given, but PB_LICENSE_KEY isn\u2019t set in Netlify yet, so activations will fail') : 'Offline app hidden: activated laptops stop at their next check-in');
+        toast(oo ? (ro.keyReady ? 'Offline app given: the renter can now activate their Windows / Mac / Android app with this code' : 'Offline app given, but PB_LICENSE_KEY isn\u2019t set in Netlify yet, so activations will fail') : 'Offline app hidden: activated laptops stop at their next check-in');
         refresh();
         return;
       }
@@ -1099,6 +1114,49 @@
         refresh();
         return;
       }
+      if(a === 'replacecode'){
+        if(!confirm('Replace ' + code + '?\n\nA NEW code is made with the same events, saved booth setups, logos/frames, themes and lock PIN. This code is disabled and its email moves to the new code.\n\nGuest payments (PayMongo) do not carry over: the renter reconnects them with a new payments PIN.')) return;
+        var rp = await api({ action: 'replacecode', code: code, reason: 'leak' });
+        prompt('New code (copy it and send it to the renter):', rp.code);
+        if(rp.paymentsNeedReconnect) toast('Tell the renter to reconnect guest payments with a new payments PIN', true);
+        refresh();
+        return;
+      }
+      if(a === 'deleteevent'){
+        var evs = (await api({ action: 'events', code: code })).events.filter(function(e){ return e.hasFolder && !e.deletedAt; });
+        if(!evs.length){ toast('No event photos to delete on this code (none saved, or already deleted)', true); return; }
+        var list = evs.map(function(e, i){ return (i + 1) + '. ' + e.name + ' (' + e.sessions + ' sessions' + (e.lastAt ? ', last ' + new Date(e.lastAt).toLocaleDateString() : '') + ')'; }).join('\n');
+        var pick = prompt('Delete the online photos of which event?\n\n' + list + '\n\nType its number. The Drive folder goes to the Trash (guests’ gallery links stop working).', '1');
+        if(pick === null) return;
+        var chosen = evs[Number(pick) - 1];
+        if(!chosen){ toast('Type a number from the list', true); return; }
+        if(!confirm('Delete the photos of "' + chosen.name + '" now? This cannot be undone from the booth. (Google keeps the Trash for about 30 days.)')) return;
+        var dr = await api({ action: 'deleteevent', code: code, id: chosen.id });
+        toast('Photos of "' + dr.name + '" deleted');
+        return;
+      }
+      if(a === 'transfer'){
+        var tn = prompt('Transfer ' + code + ' to the new owner’s email.\n\nOnly after you have proof the renter sold their whole photo booth business. Their old events and devices stay on the code; remove devices separately if needed.', '');
+        if(tn === null || !tn.trim()) return;
+        var tr;
+        try { tr = await api({ action: 'transfer', code: code, email: tn.trim() }); }
+        catch(err){
+          if(/already transferred/i.test(String(err && err.message))){
+            if(!confirm(err.message)) return;
+            tr = await api({ action: 'transfer', code: code, email: tn.trim(), override: true });
+          } else { throw err; }
+        }
+        toast('Code transferred to ' + tr.email);
+        refresh();
+        return;
+      }
+      if(a === 'resetswaps'){
+        if(!confirm('Reset the device-swap count for ' + code + '? Use this when a renter lost, had stolen, or broke a device.')) return;
+        await api({ action: 'resetswaps', code: code });
+        toast('Device swaps reset');
+        refresh();
+        return;
+      }
       if(a === 'pinreset'){
         if(!confirm('Reset the lock PIN for ' + code + '? A locked booth unlocks within ~5 minutes and they set a new PIN.')) return;
         await api({ action: 'pinreset', code: code });
@@ -1159,6 +1217,11 @@
       if(a === 'delete' && !confirm('Delete ' + code + ' permanently? If it is active, the renter is locked out.' + (LIC[code] && LIC[code].bonusKey ? ' Its bonus code is deleted too.' : ''))) return;
       if(a === 'revoke' && !confirm('Disable ' + code + '? The renter is locked out at their next check (within ~5 minutes).')) return;
       var body = { action: a, code: code };
+      if(a === 'revoke'){
+        var why = prompt('Why is this code being disabled?\nType one: leak, sharing, abuse, security, other', 'other');
+        if(why === null) return;
+        body.reason = why.trim().toLowerCase();
+      }
       if(a === 'extend'){
         var d = prompt('Add how many days?', '1'); if(!d) return;
         body.days = d;
@@ -1215,6 +1278,30 @@
       await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes, trialPrintEventLimit: tp.eventLimit, trialPrintSessionLimit: tp.sessionLimit, trialTraditional: $('trialTraditional').checked, trialGifOpt: $('trialGifOpt').checked, trialRetakeOpt: $('trialRetakeOpt').checked, trialLockOpt: $('trialLockOpt').checked, trialWatermark: $('trialWatermark').checked });
       toast('Trial settings saved');
     }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+  });
+
+  // Shutdown mode (Lifetime Access Agreement s.6): every Lifetime code gets a licence that never needs a check-in.
+  function shutdownShow(s){
+    var on = !!(s && s.on);
+    $('shutdownStatus').textContent = on ? 'ON since ' + new Date(s.at).toLocaleString() : 'OFF (normal service)';
+    $('shutdownStatus').style.color = on ? '#b3261e' : '';
+    $('shutdownOnBtn').style.display = on ? 'none' : '';
+    $('shutdownOffBtn').style.display = on ? '' : 'none';
+  }
+  $('shutdownCard').addEventListener('toggle', async function(){
+    if(!this.open) return;
+    try{ shutdownShow(await api({ action: 'shutdownget' })); }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+  });
+  $('shutdownOnBtn').addEventListener('click', async function(){
+    var t = prompt('This ends normal service: every Lifetime code gets the Offline App and licences that never need a check-in.\n\nType END SERVICE to confirm.');
+    if(t === null) return;
+    try{ shutdownShow(await api({ action: 'shutdownset', on: true, confirm: t.trim() })); toast('Shutdown mode is ON'); }
+    catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+  });
+  $('shutdownOffBtn').addEventListener('click', async function(){
+    if(!confirm('Turn shutdown mode OFF? New check-ins go back to the normal 75-day licences. Licences already handed out stay final.')) return;
+    try{ shutdownShow(await api({ action: 'shutdownset', on: false })); toast('Shutdown mode is OFF'); }
+    catch(err){ if(err.message !== 'auth') toast(err.message, true); }
   });
 
   [].slice.call(document.querySelectorAll('input[name=qrTarget]')).forEach(function(r){

@@ -6,7 +6,8 @@ import {
 import { timingSafeEqual, createHash } from 'node:crypto';
 import { setupsStore } from '../lib/core.mjs';
 import { ownerId, eventKeyOf, getAcct, acctPublic, acctKey, payStore, unseal, pm, listJSON, usedMap, batchView, createBatch, batchKey, KEY_RE } from '../lib/pay.mjs';
-import { cleanEventName, sendMail, codeEmail, EMAIL_RE } from '../lib/core.mjs';
+import { cleanEventName, sendMail, codeEmail, EMAIL_RE, logEmailChange, REVOKE_REASONS, eventsStore, getShutdown, setShutdown, trashDriveFolder, isDriveUrl } from '../lib/core.mjs';
+import { replaceLifetimeCode } from '../lib/replace.mjs';
 import { licenceFor, activateOn, saveMap, dropMap, licenceReady, MID_RE } from '../lib/license.mjs';
 import { ALL_PLANS, fulfillPlanPayment, getPlanDeliverables } from '../lib/plans.mjs';
 
@@ -199,7 +200,9 @@ export default safe(async (req, context) => {
           await delLicense(store, key);
           if (rec.bonusKey) await delLicense(store, rec.bonusKey);
         } else {
+          if (op === 'restore' && rec.replacedBy) continue;           // a replaced code stays disabled
           rec.status = op === 'revoke' ? 'revoked' : (rec.redeemedAt ? 'active' : 'unused');
+          if (op === 'revoke') { rec.revokeReason = rec.revokeReason || 'other'; rec.revokedAt = Date.now(); }
           await putLicense(store, key, rec);
         }
         done++;
@@ -307,13 +310,27 @@ export default safe(async (req, context) => {
       const { key, rec } = await getRec();
       if (!rec) return json({ error: 'Code not found.' }, 404);
       rec.status = 'revoked';
+      rec.revokeReason = REVOKE_REASONS.includes(b.reason) ? b.reason : 'other';
+      rec.revokedAt = Date.now();
       await putLicense(store, key, rec);
       return json({ ok: true });
+    }
+
+    case 'replacecode': { // a leaked code: new code, same events and settings; the old one is disabled
+      const { key } = await getRec();
+      if (!key) return json({ error: 'Code not found.' }, 404);
+      const reason = REVOKE_REASONS.includes(b.reason) ? b.reason : 'leak';
+      const r = await replaceLifetimeCode(
+        { licenses: store, events: eventsStore(), setups: setupsStore(), putLicense, newKey: freshKey },
+        key, reason, Date.now());
+      if (r.error) return json({ error: r.error }, r.status || 400);
+      return json(r);
     }
 
     case 'restore': {
       const { key, rec } = await getRec();
       if (!rec) return json({ error: 'Code not found.' }, 404);
+      if (rec.replacedBy) return json({ error: 'This code was replaced by ' + displayCode(rec.replacedBy) + ' and cannot be restored.' }, 400);
       rec.status = rec.redeemedAt ? 'active' : 'unused';
       await putLicense(store, key, rec);
       return json({ ok: true });
@@ -325,6 +342,14 @@ export default safe(async (req, context) => {
       const no = b.deviceNo == null ? null : Number(b.deviceNo);
       for (const d of devicesOf(rec)) if (d.app && (no == null || d.no === no)) await dropMap(d.app.lid);   // offline app: cancelled at its next check-in
       setDevices(rec, no == null ? [] : devicesOf(rec).filter((d) => d.no !== no));
+      await putLicense(store, key, rec);
+      return json({ ok: true });
+    }
+
+    case 'resetswaps': { // clear this month's device-swap count (a renter lost or broke a device)
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      rec.freed = [];
       await putLicense(store, key, rec);
       return json({ ok: true });
     }
@@ -442,9 +467,30 @@ export default safe(async (req, context) => {
       if (email && rec.lifetime && Object.values((await readIndex()).rows).some((r) => r.lifetime && r.kind !== 'bonus' && r.key !== key && String(r.email || '').toLowerCase() === email)) {
         return json({ error: 'That email is already on another lifetime code (one email per lifetime code).' }, 409);
       }
+      logEmailChange(rec, email, Date.now(), 'admin');
       rec.email = email || null;
       await putLicense(store, key, rec);
       return json({ ok: true, email: rec.email || '' });
+    }
+
+    case 'transfer': { // the renter sold their whole business: move the code to the new owner's email (once)
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      if (!rec.lifetime) return json({ error: 'Only Lifetime codes are transferred.' }, 400);
+      const email = String(b.email || '').trim().toLowerCase();
+      if (!email || !EMAIL_RE.test(email)) return json({ error: 'Type the new owner’s email address.' }, 400);
+      if (rec.transferredAt && !b.override) {
+        return json({ error: 'This code was already transferred on ' + new Date(rec.transferredAt).toLocaleDateString('en-PH') + '. A code can be transferred once. Transfer again anyway?', code: 'already-transferred' }, 409);
+      }
+      if (Object.values((await readIndex()).rows).some((r) => r.lifetime && r.kind !== 'bonus' && r.key !== key && String(r.email || '').toLowerCase() === email)) {
+        return json({ error: 'That email is already on another lifetime code (one email per lifetime code).' }, 409);
+      }
+      const now = Date.now();
+      logEmailChange(rec, email, now, 'admin-transfer');
+      rec.email = email;
+      rec.transferredAt = now;
+      await putLicense(store, key, rec);
+      return json({ ok: true, email, transferredAt: now });
     }
 
     case 'sendcode': { // email the code to the renter's saved address
@@ -486,7 +532,8 @@ export default safe(async (req, context) => {
     case 'offlinekey': { // activate a laptop with no internet: its Machine ID in, a licence key out
       const { key, rec } = await getRec();
       if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
-      if (!rec.offlineOpt) return json({ error: 'Give this code the offline app first.' }, 400);
+      const sd = await getShutdown();
+      if (!rec.offlineOpt && !(sd.on && rec.lifetime)) return json({ error: 'Give this code the offline app first.' }, 400);
       if (rec.status === 'revoked') return json({ error: 'This code is disabled.' }, 400);
       const mid = String(b.mid || '').trim().toUpperCase();
       if (!MID_RE.test(mid)) return json({ error: 'That Machine ID doesn\u2019t look right. Copy it exactly from the app (e.g. M-ABCD-EFGH-JKLM-NPQR).' }, 400);
@@ -501,7 +548,39 @@ export default safe(async (req, context) => {
       if (r.error) return json({ error: r.error }, r.status || 400);
       await putLicense(store, key, rec);
       if (r.isNew) await saveMap(r.dev.app.lid, key, mid);
-      return json({ ok: true, licence: licenceFor(key, rec, r.dev, now), deviceNo: r.dev.no });
+      return json({ ok: true, licence: licenceFor(key, rec, r.dev, now, sd.on), deviceNo: r.dev.no });
+    }
+
+    case 'events': { // this code's event folders (Drive links), newest first
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      const owner = rec.kind === 'bonus' && rec.parent ? rec.parent : key;
+      const doc = (await eventsStore().get(owner, { type: 'json' })) || { events: [] };
+      return json({ ok: true, events: doc.events.map((e) => ({ id: e.id, name: e.name, sessions: e.sessions || 0, firstAt: e.firstAt || null, lastAt: e.lastAt || null, deletedAt: e.deletedAt || null, hasFolder: isDriveUrl(e.folderUrl) })) });
+    }
+
+    case 'deleteevent': { // a client or guest asked for an event's online photos to be removed before the 7 days are up
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      const owner = rec.kind === 'bonus' && rec.parent ? rec.parent : key;
+      const store2 = eventsStore();
+      const doc = (await store2.get(owner, { type: 'json' })) || { events: [] };
+      const ev = doc.events.find((e) => e.id === String(b.id || ''));
+      if (!ev) return json({ error: 'That event was not found on this code.' }, 404);
+      if (!isDriveUrl(ev.folderUrl)) return json({ error: 'That event has no Drive folder link.' }, 400);
+      try { await trashDriveFolder(ev.folderUrl); }
+      catch (e) { return json({ error: e.message }, 502); }
+      ev.deletedAt = Date.now();
+      await store2.setJSON(owner, doc);
+      return json({ ok: true, name: ev.name, deletedAt: ev.deletedAt });
+    }
+
+    case 'shutdownget': // is shutdown mode on? (Lifetime Access Agreement s.6)
+      return json({ ok: true, ...(await getShutdown()) });
+
+    case 'shutdownset': { // turn shutdown mode on (typed confirmation) or back off
+      if (b.on && b.confirm !== 'END SERVICE') return json({ error: 'Type END SERVICE to confirm.' }, 400);
+      return json({ ok: true, ...(await setShutdown(!!b.on, Date.now())) });
     }
 
     case 'payinfo': { // PayMongo connection (never the key), money taken and voucher batches for one booking

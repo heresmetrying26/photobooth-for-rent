@@ -45,6 +45,7 @@ export default safe(async (req) => {
     doc.events.unshift(ev);
     doc.events = doc.events.slice(0, MAX_EVENTS);
   }
+  if (ev.deletedAt) { delete ev.deletedAt; ev.sessions = 0; ev.firstAt = now; ev.lastAt = null; }   // photos were deleted early; this is a fresh folder
   ev.folderUrl = folderUrl;
   if (b.session) { ev.sessions = (ev.sessions || 0) + 1; ev.lastAt = now; }
   await store.setJSON(owner, doc);

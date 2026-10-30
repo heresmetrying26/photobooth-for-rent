@@ -16826,7 +16826,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(L.code) parts.push(L.code);
       parts.push(L.lifetime ? 'Lifetime' : (L.exp ? 'until ' + fmt(L.exp) : ''));
       var txt = parts.filter(Boolean).join(' \u00b7 ') + '. ' + (L.os === 'mac' ? 'Mac' : 'Windows') + ' app ' + (info.version || '') + ', ID ' + L.mid + '.';
-      if(L.lifetime && L.hard) txt += ' Works offline until ' + fmt(L.hard) + '; it renews by itself whenever this laptop has internet.';
+      if(L.feat && L.feat.final) txt += ' photobooth4u has ended its online service. This is the final version of the app: it keeps working with no internet and no check-ins.';
+      else if(L.lifetime && L.hard) txt += ' Works offline until ' + fmt(L.hard) + '; it renews by itself whenever this laptop has internet.';
       if(L.warn) txt += ' ' + L.warn;
       document.getElementById('deskLic').textContent = txt;
     }

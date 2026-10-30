@@ -377,7 +377,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       badges.push('<span class="badge">' + esc(d.code) + '</span>');
       $('acctBadges').innerHTML = badges.join('');
       var meta = [];
-      meta.push('Devices: <b>' + d.devices.used + ' of ' + d.devices.max + '</b> in use');
+      meta.push('Devices: <b>' + d.devices.used + ' of ' + d.devices.max + '</b> in use' + (d.devices.swaps ? ' · <b>' + d.devices.swaps.used + ' of ' + d.devices.swaps.limit + '</b> device swaps used this month' : ''));
       if(!d.lifetime && d.expiresAt) meta.push((d.status === 'expired' ? 'Ended ' : 'Booth open until ') + '<b>' + esc(fmt(d.expiresAt, true)) + '</b>');
       else if(!d.lifetime && d.startsAt) meta.push('Opens <b>' + esc(fmt(d.startsAt, true)) + '</b>');
       if(d.lifetime && !d.offlineOnly) meta.push('New event? In the booth, go to Setup → Google Drive and type the event name.');

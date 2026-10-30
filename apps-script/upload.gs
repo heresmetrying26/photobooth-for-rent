@@ -46,6 +46,27 @@ function verifyMailTicket_(ticket) {
   cache.put(key, '1', 600);
   return t;
 }
+// Trash ticket (Admin "Delete event photos", when a client or guest asks for photos to be removed early):
+// signed by the server, valid 2 minutes, and each ticket works once. It names ONE folder id.
+function verifyTrashTicket_(ticket) {
+  var t = verifySigned_(ticket);
+  if (!t || t.m !== 'trash' || t.f || !/^[A-Za-z0-9_-]{10,80}$/.test(String(t.id || ''))) return null;
+  var cache = CacheService.getScriptCache(), key = 'trash_' + String(ticket).split('.')[1].slice(0, 60);
+  if (cache.get(key)) return null;
+  cache.put(key, '1', 600);
+  return t;
+}
+// Moves one event folder (and what is inside it) to the Drive Trash, the same way the cleanup script does.
+// Only folders inside ROOT_FOLDER_ID can be trashed, never the root itself.
+function trashEventFolder_(id) {
+  if (id === ROOT_FOLDER_ID) return { ok: false, error: 'not-allowed' };
+  var folder;
+  try { folder = DriveApp.getFolderById(id); } catch (err) { return { ok: false, error: 'not-found' }; }
+  if (!isInsideRoot_(folder)) return { ok: false, error: 'not-allowed' };
+  if (folder.isTrashed()) return { ok: true, already: true };
+  folder.setTrashed(true);
+  return { ok: true };
+}
 function sendMail_(t) {
   if (MailApp.getRemainingDailyQuota() < 1) return { ok: false, error: 'Daily email limit reached. Try again tomorrow.' };
   MailApp.sendEmail({ to: String(t.to), subject: String(t.s || 'photobooth4u'), body: String(t.b || ''), htmlBody: t.h ? String(t.h) : undefined, name: 'photobooth4u' });
@@ -142,6 +163,11 @@ function doPost(e) {
       var mt = verifyMailTicket_(data.mail);
       if (!mt) return jsonOut({ ok: false, error: 'Email not allowed (missing, used or expired ticket).' });
       return jsonOut(sendMail_(mt));
+    }
+    if (data.trash) {
+      var tt = verifyTrashTicket_(data.trash);
+      if (!tt) return jsonOut({ ok: false, error: 'Delete not allowed (missing, used or expired ticket).' });
+      return jsonOut(trashEventFolder_(String(tt.id)));
     }
     var t = verifyTicket_(data.ticket);
     if (!t) return jsonOut({ ok: false, error: 'Upload not allowed (missing or expired ticket). Reload the booth and try again.' });

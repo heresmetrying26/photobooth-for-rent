@@ -1,7 +1,9 @@
 import {
   safe, json, licenses, verifyToken, normCode, throttle, recordFail, clearFail,
   devicesOf, maxDevicesOf, eventsStore, isDriveUrl, DAY, EVENT_KEEP_DAYS, BONUS_KEEP_DAYS, getSettings,
-  normPrint, putLicense, readIndex, sendMail, codeEmail, EMAIL_RE, setDevices
+  normPrint, putLicense, readIndex, sendMail, codeEmail, EMAIL_RE, setDevices,
+  swapBlocked, logSwap, swapsLimited, swapsThisMonth, SWAP_LIMIT, SWAP_MSG,
+  emailChangeBlocked, logEmailChange, emailChangesThisYear, EMAIL_CHANGE_LIMIT, EMAIL_MSG
 } from '../lib/core.mjs';
 
 // Backs the /lifetime customer page: sign in with the rental code (or, on a
@@ -72,7 +74,10 @@ export default safe(async (req, context) => {
     if (email && !EMAIL_RE.test(email)) return json({ error: 'That email address doesn’t look right.', field: 'email' }, 400);
     if (email && rec.lifetime && await emailTaken(email, rec.key)) return json({ error: 'That email is already used by another lifetime code. Please use a different email, or message us.', field: 'email' }, 409);
     if (!rec.folderName) rec.folderName = rec.label || rec.code;
+    const emailChanged = (rec.email || '') !== email;
+    if (emailChanged && emailChangeBlocked(rec, now)) return json({ error: EMAIL_MSG, field: 'email', code: 'email-limit' }, 429);
     rec.label = name;
+    if (emailChanged) logEmailChange(rec, email, now, 'renter');
     rec.email = email || null;
     await putLicense(store, rec.key, rec);
     return json({ ok: true, label: rec.label, email: rec.email || '' });
@@ -84,7 +89,9 @@ export default safe(async (req, context) => {
     const no = Math.floor(Number(b.no) || 0);
     const list = devicesOf(rec);
     if (!list.some((d) => d.no === no)) return json({ error: 'That device isn’t on your code any more.' }, 404);
+    if (swapBlocked(rec, now)) return json({ error: SWAP_MSG, code: 'swap-limit' }, 429);
     setDevices(rec, list.filter((d) => d.no !== no));
+    logSwap(rec, now);
     await putLicense(store, rec.key, rec);
     return json({ ok: true });
   }
@@ -111,7 +118,7 @@ export default safe(async (req, context) => {
     .map((e) => {
       const from = e.bonus ? e.firstAt : (e.lastAt || e.firstAt);
       const deleteAfter = from + (e.bonus ? BONUS_KEEP_DAYS : EVENT_KEEP_DAYS) * DAY;
-      return { name: e.name, folderUrl: e.folderUrl, bonus: !!e.bonus, firstAt: e.firstAt, lastAt: e.lastAt, sessions: e.sessions || 0, deleteAfter, deleted: deleteAfter <= now };
+      return { name: e.name, folderUrl: e.folderUrl, bonus: !!e.bonus, firstAt: e.firstAt, lastAt: e.lastAt, sessions: e.sessions || 0, deleteAfter, deleted: !!e.deletedAt || deleteAfter <= now };
     })
     .sort((a, b) => (b.lastAt || b.firstAt) - (a.lastAt || a.firstAt));
 
@@ -130,8 +137,10 @@ export default safe(async (req, context) => {
     print: rec.print && rec.print.enabled ? normPrint(true, rec.print.sizes, rec.print) : { enabled: false, sizes: [] },
     folderPrefix: rec.lifetime ? (rec.folderName || rec.label || rec.code) : null,
     devices: { used: devicesOf(rec).length, max: maxDevicesOf(rec),
+      swaps: swapsLimited(rec) ? { used: swapsThisMonth(rec, now), limit: SWAP_LIMIT } : null,
       list: devicesOf(rec).map((d) => ({ no: d.no || 1, kind: d.kind || null, at: d.at || null, seen: d.seen || null, me: !!(meDevice && d.id === meDevice) })) },
     email: rec.email || '',
+    emailChanges: swapsLimited(rec) ? { used: emailChangesThisYear(rec, now), limit: EMAIL_CHANGE_LIMIT } : null,
     keepDays: EVENT_KEEP_DAYS,
     qrTarget: (await getSettings()).qrTarget === 'drive' ? 'drive' : 'gallery',
     events,

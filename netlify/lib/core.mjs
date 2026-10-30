@@ -75,6 +75,65 @@ export function setDevices(rec, list) {
   rec.deviceId = list.length ? list[0].id : null;
 }
 
+// ---------- device slot swaps (Lifetime Access Agreement s.3) ----------
+// A renter may free up to SWAP_LIMIT device slots per calendar month (Manila time).
+// Only codes bought under the agreement (rec.agreement) are limited; older codes and
+// Admin actions are never counted. rec.freed holds the timestamps of recent swaps.
+export const SWAP_LIMIT = 3;
+export const SWAP_MSG = 'You have freed ' + SWAP_LIMIT + ' devices this month (the monthly limit). If a device was lost, stolen or broken, message us and we will free it for you.';
+const MANILA_OFFSET = 8 * 3600000;
+export const swapsLimited = (rec) => !!(rec && rec.lifetime && rec.agreement);
+function monthStart(now) {
+  const d = new Date(now + MANILA_OFFSET);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) - MANILA_OFFSET;
+}
+export function swapsThisMonth(rec, now) {
+  const from = monthStart(now);
+  return (rec.freed || []).filter((t) => t >= from).length;
+}
+export const swapBlocked = (rec, now) => swapsLimited(rec) && swapsThisMonth(rec, now) >= SWAP_LIMIT;
+// ---------- shutdown mode (Lifetime Access Agreement s.6) ----------
+// When photobooth4u ends the service, every Lifetime code gets the Offline App and its licences stop
+// asking to check in: chk and hard are set to FINAL_EXP, so a laptop or tablet that checks in once
+// (or is given an offline activation key) keeps working with no photobooth4u servers.
+export const FINAL_EXP = Date.UTC(2100, 0, 1);
+export async function getShutdown() { return (await meta().get('shutdown', { type: 'json' })) || { on: false }; }
+export async function setShutdown(on, now) {
+  const v = on ? { on: true, at: now } : { on: false, endedAt: now };
+  await meta().setJSON('shutdown', v);
+  return v;
+}
+
+// ---------- disabling a code (Lifetime Access Agreement s.7) ----------
+export const REVOKE_REASONS = ['leak', 'sharing', 'abuse', 'security', 'other'];
+// How the setups store names a customer's data (shared by setup.mjs and the Replace code action).
+export const setupKeyFor = (scope) => 'k' + createHash('sha256').update(scope).digest('hex').slice(0, 40);
+
+// ---------- email changes (Lifetime Access Agreement s.3 and s.7) ----------
+// The email on a Lifetime code is also its "Forgot your code?" address, so changing it can quietly
+// hand the code to someone else. A renter may change it EMAIL_CHANGE_LIMIT times per rolling year;
+// moving the code to a new owner is an Admin "transfer" (once). rec.emailHistory keeps every change.
+export const EMAIL_CHANGE_LIMIT = 2;
+export const EMAIL_MSG = 'You have changed the email on this code ' + EMAIL_CHANGE_LIMIT + ' times in the past year (the limit). Please message us to change it.';
+export function emailChangesThisYear(rec, now) {
+  return (rec.emailHistory || []).filter((h) => h.by === 'renter' && h.at >= now - 365 * 86400000).length;
+}
+// The very first email set on a code is free; after that every change counts.
+export const emailChangeBlocked = (rec, now) => swapsLimited(rec)
+  && (!!rec.email || (rec.emailHistory || []).length > 0)
+  && emailChangesThisYear(rec, now) >= EMAIL_CHANGE_LIMIT;
+export function logEmailChange(rec, to, now, by) {
+  const from = rec.email || null;
+  if ((from || '') === (to || '')) return;
+  const first = !from && !(rec.emailHistory || []).length;   // setting the first email is not a "change"
+  rec.emailHistory = [...(rec.emailHistory || []), { from, to: to || null, at: now, by: first ? 'first' : by }].slice(-20);
+}
+
+export function logSwap(rec, now) {
+  if (!swapsLimited(rec)) return;
+  rec.freed = [...(rec.freed || []).filter((t) => t >= now - 65 * 86400000), now];
+}
+
 // ---------- event folders (for the /lifetime customer page) ----------
 // The booth reports every Drive folder it uses, so customers can find their
 // event links again later from any device. Stored per code:
@@ -116,14 +175,30 @@ export async function sendMail({ to, subject, text, html }) {
   if (!j.ok) throw new Error(j.error || 'The email could not be sent (update the Apps Script relay?)');
   return true;
 }
+// ---------- delete one event's photos early (Lifetime Access Agreement s.4) ----------
+// Asks the Apps Script relay to move an event's Drive folder to the Trash (what the 7-day cleanup does).
+// Needs the relay version with the "trash" ticket; an older relay answers with an upload error.
+export const driveFolderId = (url) => ((/\/folders\/([A-Za-z0-9_-]{10,80})/.exec(String(url || '')) || [])[1]) || null;
+export async function trashDriveFolder(folderUrl) {
+  const id = driveFolderId(folderUrl);
+  if (!id) throw new Error('That event has no Drive folder link.');
+  const ticket = signTicket({ m: 'trash', id, exp: Date.now() + 2 * 60000 });
+  const r = await fetch(DRIVE_SCRIPT_URL, { method: 'POST', headers: { 'content-type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ trash: ticket }), redirect: 'follow', signal: AbortSignal.timeout(30000) });
+  const j = await r.json().catch(() => ({}));
+  if (!j.ok) throw new Error(/ticket|Upload not allowed/i.test(j.error || '') ? 'The Google Apps Script relay needs the newest apps-script/upload.gs (Deploy → New version) before photos can be deleted.' : (j.error || 'Drive could not delete the folder.'));
+  return { already: !!j.already };
+}
+
 const escHtml = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // "Your photobooth4u code" email; recs = the bookings registered to that address.
 export function codeEmail(recs, origin) {
   const site = String(origin || 'https://photobooth4u.netlify.app').replace(/\/+$/, '');
   const name = (recs[0] && recs[0].label) || '';
   const lines = recs.map((r) => (r.label ? r.label + ': ' : '') + r.code + (r.lifetime ? ' (lifetime)' : ''));
+  const hasLifetime = recs.some((r) => r.lifetime);   // Lifetime buyers also get the agreement and FAQ links
   const text = 'Hi' + (name ? ' ' + name : '') + ',\n\nHere ' + (recs.length > 1 ? 'are your photobooth4u codes' : 'is your photobooth4u code') + ':\n\n' + lines.join('\n') +
     '\n\nOpen the booth: ' + site + '\nMy Events (links, payments, printing): ' + site + '/lifetime/\nSetup guide (PDF): ' + site + '/lifetime/photobooth4u-setup-guide.pdf' +
+    (hasLifetime ? '\nLifetime Access Agreement: ' + site + '/agreement/\nLifetime FAQ: ' + site + '/faq/' : '') +
     '\n\nKeep your code private. If you didn\u2019t ask for this email, you can ignore it.\n\nphotobooth4u';
   const html = '<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#1c1a1e;max-width:520px">' +
     '<p style="font-size:20px;font-weight:bold;margin:0 0 12px">photobooth<span style="background:#c93d27;color:#fff;border-radius:4px;padding:0 4px;font-size:12px;vertical-align:top">4u</span></p>' +
@@ -131,6 +206,7 @@ export function codeEmail(recs, origin) {
     recs.map((r) => '<p style="margin:8px 0;padding:12px 14px;background:#f5f1ea;border-radius:10px">' + (r.label ? escHtml(r.label) + '<br>' : '') +
       '<b style="font-size:20px;letter-spacing:1px">' + escHtml(r.code) + '</b>' + (r.lifetime ? ' &nbsp;<span style="font-size:12px;color:#6b666c">lifetime</span>' : '') + '</p>').join('') +
     '<p><a href="' + site + '" style="color:#c93d27;font-weight:bold">Open the booth</a> &nbsp;·&nbsp; <a href="' + site + '/lifetime/" style="color:#c93d27;font-weight:bold">My Events</a> &nbsp;·&nbsp; <a href="' + site + '/lifetime/photobooth4u-setup-guide.pdf" style="color:#c93d27;font-weight:bold">Setup guide (PDF)</a></p>' +
+    (hasLifetime ? '<p><a href="' + site + '/agreement/" style="color:#c93d27;font-weight:bold">Lifetime Access Agreement</a> &nbsp;·&nbsp; <a href="' + site + '/faq/" style="color:#c93d27;font-weight:bold">Lifetime FAQ</a></p>' : '') +
     '<p style="font-size:13px;color:#6b666c">Keep your code private. If you didn\u2019t ask for this email, you can ignore it.</p></div>';
   return { subject: 'Your photobooth4u code', text, html };
 }
@@ -159,7 +235,8 @@ export function summaryOf(rec) {
     lifetime: !!rec.lifetime, days: rec.days || 0, minutes: rec.minutes || null, startsAt: rec.startsAt || null,
     status: rec.status, redeemedAt: rec.redeemedAt || null, expiresAt: rec.expiresAt || null,
     maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional, gifOpt: !!rec.gifOpt, retakeOpt: !!rec.retakeOpt, payOpt: !!rec.payOpt, offlineOpt: !!rec.offlineOpt, offlineOnly: !!rec.offlineOnly, appsUsed: devicesOf(rec).filter((d) => d.app).length, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0,
-    print: !!(rec.print && rec.print.enabled), createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null
+    print: !!(rec.print && rec.print.enabled), createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null,
+    revokeReason: rec.revokeReason || null, replacedBy: rec.replacedBy || null, replacedFrom: rec.replacedFrom || null, transferredAt: rec.transferredAt || null
   };
 }
 export async function rebuildIndex() {

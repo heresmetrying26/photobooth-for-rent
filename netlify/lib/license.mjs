@@ -18,7 +18,7 @@
 // / "Mac app"), so removing that device in Admin or My Events cancels it at the
 // laptop's next check-in.
 import { createPrivateKey, createPublicKey, sign as edSign, verify as edVerify, randomBytes } from 'node:crypto';
-import { meta, normPrint, LIFETIME_EXP, maxDevicesOf, devicesOf, addDevice, setDevices, displayCode } from './core.mjs';
+import { meta, normPrint, LIFETIME_EXP, FINAL_EXP, maxDevicesOf, devicesOf, addDevice, setDevices, displayCode } from './core.mjs';
 
 export const LIC_PREFIX = 'PB4U-LIC1';
 export const CHECK_DAYS = 75;          // a lifetime laptop checks in this often (when it has internet)
@@ -73,16 +73,18 @@ export function featuresOf(rec, deviceNo) {
 const maskCode = (key) => { const c = displayCode(key); return c.slice(0, 3) + '••••-••••-' + c.slice(-4); };
 
 // A fresh licence for one activation (device entry with .app).
-export function licenceFor(key, rec, dev, now) {
+// final = shutdown mode is on: a Lifetime licence never asks to check in again.
+export function licenceFor(key, rec, dev, now, final) {
+  const isFinal = !!final && !!rec.lifetime;
   const exp = rec.lifetime || rec.expiresAt >= LIFETIME_EXP ? null : rec.expiresAt;
-  const chk = now + CHECK_DAYS * DAY;
+  const chk = isFinal ? FINAL_EXP : now + CHECK_DAYS * DAY;
   // Lifetime: must check in now and then. A code with an end date (event, 6-Month
   // Pass) works offline right up to that date; Admin changes reach it if it goes online.
-  const hard = exp || chk + GRACE_DAYS * DAY;
+  const hard = isFinal ? FINAL_EXP : (exp || chk + GRACE_DAYS * DAY);
   return signLicence({
     v: 1, typ: 'pb4u-desktop', lid: dev.app.lid, mid: dev.app.mid, os: dev.app.os, name: dev.app.name || '',
     renter: rec.label || rec.folderName || '', code: maskCode(key), lifetime: !!rec.lifetime,
-    exp, iat: now, chk, hard, feat: featuresOf(rec, dev.no)
+    exp, iat: now, chk, hard, feat: { ...featuresOf(rec, dev.no), final: isFinal }
   });
 }
 

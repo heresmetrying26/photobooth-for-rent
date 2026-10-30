@@ -7,6 +7,8 @@ on:
   workflow_dispatch:
   push:
     tags: ['android-v*']
+    # TEMPORARY: build the USB-camera test branch on every push (remove before merging to main)
+    branches: ['claude/relaxed-bhabha-797f07']
 
 permissions:
   contents: write

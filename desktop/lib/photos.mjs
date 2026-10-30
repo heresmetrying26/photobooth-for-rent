@@ -181,6 +181,24 @@ function send(res, status, type, body, extra) {
   res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', ...(extra || {}) });
   res.end(body);
 }
+// Trading cards (files named ..._card.jpg) shine and tilt on the guest's phone: tilt the phone, or move a finger.
+const HOLO = String.raw`<script>(function(){
+var imgs=[].filter.call(document.querySelectorAll('.one img'),function(i){return /_card(_|\.)/i.test(decodeURIComponent(i.getAttribute('src')||''));});
+if(!imgs.length)return;
+try{if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission){document.addEventListener('click',function f(){DeviceOrientationEvent.requestPermission().catch(function(){});document.removeEventListener('click',f);});}}catch(e){}
+var cards=imgs.map(function(im){
+var w=document.createElement('div');w.style.cssText='position:relative;display:inline-block;perspective:900px;line-height:0';
+im.parentNode.insertBefore(w,im);w.appendChild(im);
+var s=document.createElement('div');s.style.cssText='position:absolute;inset:0;pointer-events:none;border-radius:12px;mix-blend-mode:color-dodge;opacity:.5;background:linear-gradient(115deg,transparent 18%,rgba(255,90,170,.65) 34%,rgba(255,220,80,.65) 44%,rgba(90,255,180,.65) 54%,rgba(80,170,255,.65) 64%,transparent 80%);background-size:260% 260%';
+w.appendChild(s);return {w:w,s:s,im:im};});
+var last=0;
+function clamp(v){return Math.max(-1,Math.min(1,v));}
+function apply(c,nx,ny){var t='rotateY('+(nx*14)+'deg) rotateX('+(-ny*14)+'deg)';c.im.style.transform=t;c.s.style.transform=t;c.s.style.backgroundPosition=(50+nx*45)+'% '+(50+ny*45)+'%';}
+cards.forEach(function(c){c.w.addEventListener('pointermove',function(e){var r=c.w.getBoundingClientRect();last=performance.now();apply(c,clamp((e.clientX-r.left-r.width/2)/(r.width/2)),clamp((e.clientY-r.top-r.height/2)/(r.height/2)));});});
+window.addEventListener('deviceorientation',function(e){if(e.gamma==null)return;last=performance.now();cards.forEach(function(c){apply(c,clamp(e.gamma/25),clamp(((e.beta||0)-50)/25));});});
+(function loop(n){if(n-last>1800)cards.forEach(function(c){apply(c,Math.sin(n/900)*.6,Math.cos(n/1300)*.3);});requestAnimationFrame(loop);})(0);
+})();</script>`;
+const holoFor = (names) => (names || []).some((n) => /_card(_|\.)/i.test(n)) ? HOLO : '';
 const savingTip = '<p class="tip">iPhone: tap <b>Save photo</b>, then <b>Save to Photos</b> (or press and hold the picture). Android: tap <b>Save photo</b>.</p>';
 
 // ---------- a file with Range support (phones need it to play and skip through a video) ----------
@@ -457,7 +475,7 @@ function handleOwn(req, res, url, om) {
   const others = guestView !== 'only' ? '<div class="one" style="padding-top:0"><a class="btn alt" href="/e/' + c.slug + '/">Show photos with other guests</a></div>' : '';
   const body = '<div style="text-align:center;padding:0 16px"><h1>Your photos</h1><p class="sub">' + esc(evName) + '</p></div>' +
     (items.length ? items.join('') + savingTip : '<p class="empty">This photo isn’t here yet. Wait a moment and refresh.</p><script>setTimeout(function(){location.reload()},5000)</script>') + others;
-  return send(res, 200, 'text/html; charset=utf-8', page('Your photos', body));
+  return send(res, 200, 'text/html; charset=utf-8', page('Your photos', body + holoFor(mine)));
 }
 
 async function handleShare(req, res) {
@@ -528,7 +546,7 @@ async function handleShare(req, res) {
     const dlText = isVid ? 'Save video' : isGif ? 'Save GIF' : 'Save photo';
     const body = '<div class="one"><h1>' + itemTitle + '</h1><p class="sub">' + esc(evName) + '</p>' + media +
       '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">' + dlText + '</a>' + (!/^video\//.test(type) && !isGif ? '<button class="btn alt" type="button" onclick="window.print()">Print photo</button>' : '') + (guestPrintOn && !isVid && !isGif ? reqButtonHtml(m[1], file) : '') + '<a class="btn alt" href="/e/' + m[1] + '/">All photos</a></div>' + savingTip + '</div>';
-    return send(res, 200, 'text/html; charset=utf-8', page(itemTitle, body));
+    return send(res, 200, 'text/html; charset=utf-8', page(itemTitle, body + holoFor([file])));
   }
   if (m[2] === 't' && thumbFn && /^image\/(jpeg|png|webp)$/.test(type)) {
     try {

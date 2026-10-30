@@ -73,6 +73,9 @@
     .v-stage{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;padding:0 56px}
     @media (max-width:560px){ .v-stage{padding:0 8px} }
     .v-stage img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;user-select:none;-webkit-user-drag:none}
+    /* Trading cards (files named ..._card.jpg): a holo shine that follows the tilt */
+    .v-stage.holo img{border-radius:3.4%;box-shadow:0 24px 70px rgba(0,0,0,.55);will-change:transform}
+    .v-shine{position:absolute;display:none;pointer-events:none;border-radius:3.4%;mix-blend-mode:color-dodge;opacity:.5;will-change:transform;background:linear-gradient(115deg,transparent 18%,rgba(255,90,170,.65) 34%,rgba(255,220,80,.65) 44%,rgba(90,255,180,.65) 54%,rgba(80,170,255,.65) 64%,transparent 80%);background-size:260% 260%}
     .v-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
     .v-nav:hover{background:rgba(255,255,255,.22)} .v-prev{left:8px} .v-next{right:8px}
     @media (max-width:560px){ .v-nav{display:none} }
@@ -355,13 +358,57 @@
     WANT = null;
   }
 
+  // ---- Trading cards: the card shines and tilts (tilt the phone, or move a finger / the mouse) ----
+  var holoOn = false, holoLast = 0, holoRaf = 0;
+  function isCard(f){ return !!f && /_card(_|\.)/i.test(f.name || ''); }
+  function holoShine(){ var s = $('vShine'); if(!s){ s = document.createElement('div'); s.id = 'vShine'; s.className = 'v-shine'; $('vStage').appendChild(s); } return s; }
+  function holoPlace(){
+    var img = $('vImg'), s = holoShine();
+    s.style.left = img.offsetLeft + 'px'; s.style.top = img.offsetTop + 'px'; s.style.width = img.offsetWidth + 'px'; s.style.height = img.offsetHeight + 'px'; s.style.display = 'block';
+  }
+  function holoApply(nx, ny){
+    var img = $('vImg'), s = holoShine(), t = 'perspective(900px) rotateY(' + (nx * 14).toFixed(2) + 'deg) rotateX(' + (-ny * 14).toFixed(2) + 'deg)';
+    img.style.transform = t; s.style.transform = t;
+    s.style.backgroundPosition = (50 + nx * 45).toFixed(1) + '% ' + (50 + ny * 45).toFixed(1) + '%';
+  }
+  function holoLoop(now){
+    if(!holoOn){ holoRaf = 0; return; }
+    if(now - holoLast > 1800) holoApply(Math.sin(now / 900) * 0.6, Math.cos(now / 1300) * 0.3);     // shimmers by itself when nothing moves
+    holoRaf = requestAnimationFrame(holoLoop);
+  }
+  function holoSet(f){
+    holoOn = isCard(f);
+    $('vStage').classList.toggle('holo', holoOn);
+    var img = $('vImg'), s = $('vShine');
+    if(!holoOn){ img.style.transform = ''; if(s) s.style.display = 'none'; return; }
+    if(s) s.style.display = 'none';
+    if(!holoRaf) holoRaf = requestAnimationFrame(holoLoop);
+  }
+  function holoPoint(e){
+    if(!holoOn) return;
+    var img = $('vImg'), st = $('vStage').getBoundingClientRect(), w = img.offsetWidth / 2 || 1, h = img.offsetHeight / 2 || 1;
+    var nx = (e.clientX - (st.left + img.offsetLeft + w)) / w, ny = (e.clientY - (st.top + img.offsetTop + h)) / h;
+    holoLast = performance.now(); holoApply(Math.max(-1, Math.min(1, nx)), Math.max(-1, Math.min(1, ny)));
+  }
+  $('vStage').addEventListener('pointermove', holoPoint);
+  window.addEventListener('deviceorientation', function(e){
+    if(!holoOn || e.gamma == null) return;
+    holoLast = performance.now();
+    holoApply(Math.max(-1, Math.min(1, e.gamma / 25)), Math.max(-1, Math.min(1, ((e.beta || 0) - 50) / 25)));
+  });
+  window.addEventListener('resize', function(){ if(holoOn) holoPlace(); });
+
   // ---- viewer ----
   var viewerLabel = '';
-  function openViewer(i, label){ cur = i; viewerLabel = label || ''; $('viewer').classList.remove('hidden'); document.body.style.overflow = 'hidden'; show(); }
-  function closeViewer(){ $('viewer').classList.add('hidden'); document.body.style.overflow = ''; $('vImg').removeAttribute('src'); $('vFrame').removeAttribute('src'); cur = -1; }
+  function openViewer(i, label){
+    // iPhones ask once before a page may read the tilt of the phone (must come from a tap).
+    try{ if(isCard(view[i]) && window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') DeviceOrientationEvent.requestPermission().catch(function(){}); }catch(e){}
+    cur = i; viewerLabel = label || ''; $('viewer').classList.remove('hidden'); document.body.style.overflow = 'hidden'; show(); }
+  function closeViewer(){ holoSet(null); $('viewer').classList.add('hidden'); document.body.style.overflow = ''; $('vImg').removeAttribute('src'); $('vFrame').removeAttribute('src'); cur = -1; }
   function show(){
     var f = view[cur]; if(!f) return closeViewer();
     var img = $('vImg');
+    holoSet(isVideo(f) ? null : f);
     if(isVideo(f)){
       // Videos play in Drive's own player (it streams and skips properly on every phone); Download gets the file.
       img.classList.add('hidden'); img.removeAttribute('src'); $('vSpin').classList.add('hidden'); $('vPrint').classList.add('hidden'); $('vReq').classList.add('hidden');
@@ -374,7 +421,7 @@
     }
     img.classList.remove('hidden'); $('vFrame').classList.add('hidden'); $('vFrame').removeAttribute('src'); $('vPrint').classList.remove('hidden'); reqButton(f);
     $('vSpin').classList.remove('hidden'); img.style.opacity = '0';
-    img.onload = function(){ $('vSpin').classList.add('hidden'); img.style.opacity = '1'; };
+    img.onload = function(){ $('vSpin').classList.add('hidden'); img.style.opacity = '1'; if(holoOn) holoPlace(); };
     var tries = [thumbUrl(f, 2000), 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(f.id) + '=w2000', f.src], k = 0;
     img.onerror = function(){ k++; if(k < tries.length) img.src = tries[k]; else $('vSpin').classList.add('hidden'); };
     img.src = tries[0];

@@ -1142,6 +1142,18 @@
   .bt-gtab.on{background:#ffd36b; color:#2a1d00;}
   .bt-pick-btn img{width:100%; height:auto; aspect-ratio:auto; display:block; border-radius:8px;}
   .bt-pick-cancel{align-self:center; min-height:48px; padding:0 28px; border:0; border-radius:14px; font:800 15px 'Manrope',sans-serif; cursor:pointer;}
+  .bt-chips{display:block;}
+  .bt-chip-g{margin:14px 0 6px; font:800 11px 'Manrope',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-dim);}
+  .bt-chip-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .bt-sides{display:flex; gap:4px; padding:4px; background:var(--panel-2); border:1px solid var(--line); border-radius:12px; margin:8px 0;}
+  .bt-sides button{flex:1; min-height:38px; border:0; border-radius:9px; background:transparent; font:700 13px 'Manrope',sans-serif; color:var(--ink-dim); cursor:pointer;}
+  .bt-sides button.on{background:#fff; color:var(--ink); box-shadow:0 1px 4px rgba(0,0,0,.14);}
+  .bt-form-wrap{display:flex; gap:28px; align-items:center; justify-content:center; flex-wrap:wrap; width:100%;}
+  .bt-form-wrap .bt-form{flex:1 1 340px; max-width:520px;}
+  .bt-prev{height:min(56vh,440px); width:auto; max-width:80vw; border-radius:16px; box-shadow:0 20px 50px rgba(0,0,0,.55); cursor:pointer; display:block; margin:0 auto; background:#222;}
+  .bt-prev-cap{margin:10px 0 0; text-align:center; min-height:18px; color:rgba(255,255,255,.7); font:700 13px 'Manrope',sans-serif;}
+  @media (max-height:640px){ .bt-prev-wrap{display:none;} }
+  #btdQs{display:flex; flex-direction:column; gap:14px;}
   .bt-details{align-items:center; justify-content:center; z-index:75;}
   .bt-form{width:min(560px, 100%); display:flex; flex-direction:column; gap:14px; align-items:stretch; text-align:center;}
   .bt-f{display:flex; flex-direction:column; gap:6px; text-align:left;}
@@ -2722,6 +2734,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <p class="panel-hint step-lead" id="btStyleHint"></p>
         <div class="bt-chips" id="btStyleChips"></div>
         <label class="toggle-row bt-only-card" style="margin-top:12px;"><input type="checkbox" id="btStats"> Random stats &amp; rarity (HP, ATK, DEF, SPD, Common &rarr; Legendary)</label>
+        <div class="bt-only-card" id="btBackBox" style="margin-top:14px;">
+          <label class="toggle-row"><input type="checkbox" id="btBackOn"> Give every card a back (guests can flip it)</label>
+          <label class="toggle-row" id="btBackPrintRow" style="margin-top:6px;"><input type="checkbox" id="btBackPrint" checked> Print both sides on one sheet (fold in half)</label>
+          <button type="button" class="action-btn" id="btBackPrev" style="margin-top:8px; width:auto;">Preview the back</button>
+        </div>
         <div id="btTplBox">
           <p class="sub-label" style="margin-top:18px;">Your own templates</p>
           <p class="panel-hint">Upload a design made in Canva (PNG). Leave the photo window <b>white or see-through</b>. Type a group name first (like &ldquo;Superheroes&rdquo; or &ldquo;Graduation&rdquo;) to keep them together.</p>
@@ -2876,6 +2893,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <p class="panel-label bt-only-card">Trading card</p>
         <p class="panel-label bt-only-cert">Certificate wording</p>
         <p class="panel-hint step-lead bt-only-card">Each guest types their <b>name</b> and a <b>title line</b> (like &ldquo;Dancing Queen&rdquo;) on the booth before the photo. The event name below goes at the bottom of the card.</p>
+        <div class="bt-only-card" style="margin-top:14px;">
+          <p class="sub-label">Questions for the back of the card (optional)</p>
+          <p class="panel-hint">Each question you type is asked after the guest&rsquo;s name and printed on the back. Leave blank to skip. Turn on the back in Design.</p>
+          <input type="text" class="label-input" id="btQ1" maxlength="30" placeholder="e.g. Favourite team" aria-label="Question 1">
+          <input type="text" class="label-input" id="btQ2" maxlength="30" placeholder="e.g. Special move" aria-label="Question 2" style="margin-top:8px;">
+          <input type="text" class="label-input" id="btQ3" maxlength="30" placeholder="e.g. My story in one line" aria-label="Question 3" style="margin-top:8px;">
+        </div>
         <div class="bt-only-cert">
           <p class="sub-label">Certificate title</p>
           <input type="text" class="label-input" id="btCertTitle" maxlength="48" aria-label="Certificate title">
@@ -3616,14 +3640,18 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <div class="pick-grid" id="pickGrid"></div>
         </div>
         <div class="pick-overlay bt-details" id="btDetailsOverlay" aria-label="Your details">
-          <form class="bt-form" id="btdForm" autocomplete="off" novalidate>
-            <p class="pick-title" id="btdTitle">Make your card</p>
-            <p class="pick-sub" id="btdSub"></p>
-            <label class="bt-f"><span id="btdLbl1">Your name</span><input type="text" id="btdName" maxlength="24" autocapitalize="words" enterkeyhint="next"></label>
-            <label class="bt-f" id="btdRow2"><span id="btdLbl2">Title</span><input type="text" id="btdLine" maxlength="32" autocapitalize="words" enterkeyhint="done"></label>
-            <p class="bt-err" id="btdErr" aria-live="polite"></p>
-            <div class="bt-acts"><button type="button" class="bt-cancel" id="btdCancel">Cancel</button><button type="submit" class="bt-go" id="btdGo">Continue</button></div>
-          </form>
+          <div class="bt-form-wrap">
+            <form class="bt-form" id="btdForm" autocomplete="off" novalidate>
+              <p class="pick-title" id="btdTitle">Make your card</p>
+              <p class="pick-sub" id="btdSub"></p>
+              <label class="bt-f"><span id="btdLbl1">Your name</span><input type="text" id="btdName" maxlength="24" autocapitalize="words" enterkeyhint="next"></label>
+              <label class="bt-f" id="btdRow2"><span id="btdLbl2">Title</span><input type="text" id="btdLine" maxlength="32" autocapitalize="words" enterkeyhint="next"></label>
+              <div id="btdQs"></div>
+              <p class="bt-err" id="btdErr" aria-live="polite"></p>
+              <div class="bt-acts"><button type="button" class="bt-cancel" id="btdCancel">Cancel</button><button type="submit" class="bt-go" id="btdGo">Continue</button></div>
+            </form>
+            <div class="bt-prev-wrap" id="btdPrevWrap"><canvas class="bt-prev" id="btdPrev"></canvas><p class="bt-prev-cap" id="btdPrevCap"></p></div>
+          </div>
         </div>
         <div class="pick-overlay bt-details" id="btPickOverlay" aria-label="Choose your design">
           <div class="pick-head">
@@ -4717,7 +4745,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var boothType = 'photo';                      // 'photo' | 'card' | 'cert'
   var photoLayoutMemo = 'strip';                // the photo layout to go back to
   var btCfg = {
-    card: { style: 'fire', stats: true, tpl: null, pick: false, builtin: true },
+    card: { style: 'fire', stats: true, tpl: null, pick: false, builtin: true, back: { on: false, print: true }, qs: ['', '', ''] },
     cert: { style: 'gold', title: 'Certificate of Achievement', lead: 'is proudly presented to', msg: '', signer: '', role: '', askAward: true, tpl: null, pick: false, builtin: true }
   };
   var guestInfo = { name: '', line: '' };       // what this guest typed (and the design they picked) for their card / certificate
@@ -8717,6 +8745,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     sessionNumber = nextSessionNumber();
     renderComposite();
     updateUI();
+    btAfterResult();
     // ── Output mode: photo / gif / both ──
     var curMode = isGifAllowed() ? outputMode : 'photo';
     if(curMode === 'gif'){
@@ -9599,14 +9628,32 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   // ---- Trading card & certificate booths ----
   // Booth type (top of Setup) = Trading card / Certificate. One photo per guest, plus the
-  // name (and a title / award line) the guest types on the booth before the countdown.
+  // name (and a title / award, and a few optional questions) the guest types on the booth first.
+  // Built-in looks are drawn here; own templates (PNG with a photo window) are in the Setup code below.
   const CARD_STYLES = {
-    fire:   { name: 'Fire',     a: '#ff7a3d', b: '#7a1d0e', ink: '#2b0f08', glow: '#ffd27a' },
-    water:  { name: 'Water',    a: '#4db6ff', b: '#0b3a73', ink: '#071c38', glow: '#c9ecff' },
-    grass:  { name: 'Grass',    a: '#6fd16b', b: '#14562a', ink: '#082612', glow: '#e0ffb8' },
-    spark:  { name: 'Electric', a: '#ffd93d', b: '#8a5a00', ink: '#2e2000', glow: '#fff6b0' },
-    shadow: { name: 'Shadow',   a: '#a06bff', b: '#2a0f5c', ink: '#12062b', glow: '#e4d0ff' },
-    gold:   { name: 'Gold',     a: '#f3d27a', b: '#7a5a12', ink: '#2c1f04', glow: '#fff3c4' }
+    fire:      { name: 'Fire',      grp: 'Classic',     deco: 'diag',     a: '#ff7a3d', b: '#7a1d0e', ink: '#2b0f08', glow: '#ffd27a' },
+    water:     { name: 'Water',     grp: 'Classic',     deco: 'diag',     a: '#4db6ff', b: '#0b3a73', ink: '#071c38', glow: '#c9ecff' },
+    grass:     { name: 'Grass',     grp: 'Classic',     deco: 'diag',     a: '#6fd16b', b: '#14562a', ink: '#082612', glow: '#e0ffb8' },
+    spark:     { name: 'Electric',  grp: 'Classic',     deco: 'diag',     a: '#ffd93d', b: '#8a5a00', ink: '#2e2000', glow: '#fff6b0' },
+    shadow:    { name: 'Shadow',    grp: 'Classic',     deco: 'diag',     a: '#a06bff', b: '#2a0f5c', ink: '#12062b', glow: '#e4d0ff' },
+    gold:      { name: 'Gold',      grp: 'Classic',     deco: 'diag',     a: '#f3d27a', b: '#7a5a12', ink: '#2c1f04', glow: '#fff3c4' },
+    stadium:   { name: 'Stadium',   grp: 'Sports',      deco: 'stripes',  a: '#2f7bff', b: '#0b2a6b', ink: '#06122e', glow: '#cfe3ff' },
+    court:     { name: 'Court',     grp: 'Sports',      deco: 'court',    a: '#ff9a3c', b: '#7a3500', ink: '#2b1200', glow: '#ffe0b8' },
+    pitch:     { name: 'Pitch',     grp: 'Sports',      deco: 'pitch',    a: '#3dbb5a', b: '#0b4a1f', ink: '#06220e', glow: '#d8ffdf' },
+    neon:      { name: 'Neon',      grp: 'Gaming',      deco: 'grid',     a: '#7b2cff', b: '#0a0630', ink: '#14083a', glow: '#38f2ff' },
+    pixel:     { name: 'Pixel',     grp: 'Gaming',      deco: 'pixels',   a: '#39d353', b: '#06210f', ink: '#04170a', glow: '#c9ffd1' },
+    arcade:    { name: 'Arcade',    grp: 'Gaming',      deco: 'rays',     a: '#ff3cac', b: '#2b1055', ink: '#1a0a3a', glow: '#ffe66d' },
+    confetti:  { name: 'Confetti',  grp: 'Celebration', deco: 'confetti', a: '#ff6b9d', b: '#7a1f5a', ink: '#3a0a2a', glow: '#fff0a8' },
+    partygold: { name: 'Party gold', grp: 'Celebration', deco: 'sparkles', a: '#ffd166', b: '#9c5a00', ink: '#2e1d00', glow: '#fffbe0' },
+    balloons:  { name: 'Balloons',  grp: 'Celebration', deco: 'bubbles',  a: '#4cc9f0', b: '#4361ee', ink: '#0b1a52', glow: '#e0f7ff' },
+    sunset:    { name: 'Sunset',    grp: 'Festival',    deco: 'rays',     a: '#ff7e5f', b: '#6b1b5e', ink: '#2b0a24', glow: '#ffd9a0' },
+    rave:      { name: 'Rave',      grp: 'Festival',    deco: 'grid',     a: '#00e5ff', b: '#3a0ca3', ink: '#10063a', glow: '#ff7bff' },
+    blush:     { name: 'Blush',     grp: 'Beauty',      deco: 'sparkles', a: '#ffb3c7', b: '#b04a77', ink: '#4a1230', glow: '#fff0f5' },
+    pearl:     { name: 'Pearl',     grp: 'Beauty',      deco: 'sparkles', a: '#e8defa', b: '#8f7bc9', ink: '#2a1f4d', glow: '#ffffff' },
+    hope:      { name: 'Hope',      grp: 'Causes',      deco: 'hearts',   a: '#2ec4b6', b: '#0b4f5c', ink: '#05303a', glow: '#d7fff9' },
+    ribbon:    { name: 'Ribbon',    grp: 'Causes',      deco: 'hearts',   a: '#ef476f', b: '#6a0f2c', ink: '#33061a', glow: '#ffd6e0' },
+    corporate: { name: 'Corporate', grp: 'Workplace',   deco: 'lines',    a: '#3a5a8c', b: '#0f1d33', ink: '#0a1424', glow: '#dbe7ff' },
+    mint:      { name: 'Mint',      grp: 'Workplace',   deco: 'lines',    a: '#5ed6a8', b: '#0f5a44', ink: '#06291f', glow: '#e0fff3' }
   };
   const CARD_RARITIES = [
     { k: 'Common',    w: 58, stars: 1, frame: '#c9ced6' },
@@ -9615,10 +9662,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     { k: 'Legendary', w: 5,  stars: 4, frame: '#ffd36b' }
   ];
   const CERT_STYLES = {
-    gold:  { name: 'Classic gold', bg: '#fbf6e6', edge: '#b8902f', ink: '#2d2a26', acc: '#9a7420' },
-    blue:  { name: 'Royal blue',   bg: '#f5f8fd', edge: '#1f3a73', ink: '#16213b', acc: '#27478f' },
-    green: { name: 'Forest green', bg: '#f4f9f4', edge: '#2f6b4a', ink: '#14301f', acc: '#2f6b4a' },
-    night: { name: 'Black & gold', bg: '#1b1a1f', edge: '#d6b25e', ink: '#f4eedd', acc: '#d6b25e' }
+    gold:     { name: 'Classic gold', grp: 'Classic',     bg: '#fbf6e6', edge: '#b8902f', ink: '#2d2a26', acc: '#9a7420' },
+    blue:     { name: 'Royal blue',   grp: 'Classic',     bg: '#f5f8fd', edge: '#1f3a73', ink: '#16213b', acc: '#27478f' },
+    green:    { name: 'Forest green', grp: 'Classic',     bg: '#f4f9f4', edge: '#2f6b4a', ink: '#14301f', acc: '#2f6b4a' },
+    night:    { name: 'Black & gold', grp: 'Classic',     bg: '#1b1a1f', edge: '#d6b25e', ink: '#f4eedd', acc: '#d6b25e' },
+    rose:     { name: 'Rose',         grp: 'Classic',     bg: '#fff5f6', edge: '#c27a86', ink: '#3b2227', acc: '#a8566a' },
+    teal:     { name: 'Teal',         grp: 'Classic',     bg: '#f1f9f9', edge: '#1d7f86', ink: '#10343a', acc: '#17636a' },
+    burgundy: { name: 'Burgundy',     grp: 'Classic',     bg: '#fbf4ef', edge: '#7b1e2e', ink: '#2e1216', acc: '#7b1e2e' },
+    party:    { name: 'Confetti',     grp: 'Celebration', bg: '#fffaf2', edge: '#e84393', ink: '#2d1b2e', acc: '#c2185b', deco: 'confetti' },
+    sparkle:  { name: 'Sparkle',      grp: 'Celebration', bg: '#17122b', edge: '#ffd166', ink: '#f6f1ff', acc: '#ffd166', deco: 'sparkles' }
   };
   function btSeed(s){ var h = 7; s = String(s); for(var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 2147483629; return h + 1; }
   // Shrinks the font until the text fits; css(size) returns the ctx.font string.
@@ -9637,26 +9689,79 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return lines.slice(0, maxLines);
   }
   function btSans(weight){ return function(s){ return weight + ' ' + s + 'px Manrope, "Segoe UI", Arial, sans-serif'; }; }
-
-  function composeCard(layoutKey, targetCanvas, shots){
-    const cfg = btCfg.card, pk = btPick('card');
-    if(pk.f) return composeTplCanvas('card', pk.f, targetCanvas, shots);
-    const W = 1200, H = 1680, st = CARD_STYLES[pk.style] || CARD_STYLES.fire;
-    targetCanvas.width = W; targetCanvas.height = H;
-    const ctx = targetCanvas.getContext('2d');
-    const real = !!(guestInfo.name || '').trim();
-    const name = (guestInfo.name || '').trim() || 'Your Name';
-    const line = (guestInfo.line || '').trim() || 'Special Move';
-    const rnd = seededRand(btSeed(name + '|' + line) + (real ? (sessionNumber || 0) * 977 : 0));
-    let ri = 0, roll = rnd() * 100, acc = 0;
-    for(let i = 0; i < CARD_RARITIES.length; i++){ acc += CARD_RARITIES[i].w; if(roll < acc){ ri = i; break; } }
-    if(!real) ri = 2;                                    // the Setup preview shows a shiny one
-    const rar = CARD_RARITIES[cfg.stats ? ri : 1];
-    const stat = () => Math.min(99, Math.round(18 + ri * 9 + rnd() * (60 - ri * 4)));
-    const hp = 40 + ri * 20 + Math.floor(rnd() * 8) * 10;
-    const stats = [['ATK', stat()], ['DEF', stat()], ['SPD', stat()]];
-
-    // Metal edge, then the coloured card face with a soft glow and fine diagonal lines.
+  function btHeart(ctx, x, y, s){
+    ctx.beginPath(); ctx.moveTo(x, y + s * 0.35);
+    ctx.bezierCurveTo(x - s * 0.9, y - s * 0.3, x - s * 0.5, y - s * 0.95, x, y - s * 0.4);
+    ctx.bezierCurveTo(x + s * 0.5, y - s * 0.95, x + s * 0.9, y - s * 0.3, x, y + s * 0.35);
+    ctx.closePath(); ctx.fill();
+  }
+  // The pattern behind a card's art (drawn inside the clipped card face / certificate border area).
+  function btDeco(ctx, kind, x, y, w, h, st){
+    const r = seededRand(btSeed(kind) + 11), pick = a => a[Math.floor(r() * a.length)];
+    ctx.save();
+    if(kind === 'stripes'){
+      ctx.fillStyle = 'rgba(255,255,255,0.09)';
+      for(let i = 0; i < 9; i += 2) ctx.fillRect(x + i * w / 9, y, w / 9, h);
+    } else if(kind === 'court'){
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 5;
+      for(let yy = y; yy < y + h; yy += 84){ ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + w, yy); ctx.stroke(); }
+      ctx.lineWidth = 9; ctx.beginPath(); ctx.arc(x + w / 2, y + h * 0.5, 300, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y + h * 0.5); ctx.lineTo(x + w, y + h * 0.5); ctx.stroke();
+    } else if(kind === 'pitch'){
+      ctx.fillStyle = 'rgba(255,255,255,0.07)';
+      for(let yy = y, i = 0; yy < y + h; yy += 110, i++) if(i % 2) ctx.fillRect(x, yy, w, 110);
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.arc(x + w / 2, y + h * 0.45, 230, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y + h * 0.45); ctx.lineTo(x + w, y + h * 0.45); ctx.stroke();
+    } else if(kind === 'grid'){
+      ctx.strokeStyle = st.glow; ctx.globalAlpha = 0.22; ctx.lineWidth = 3;
+      for(let xx = x; xx <= x + w; xx += 64){ ctx.beginPath(); ctx.moveTo(xx, y); ctx.lineTo(xx, y + h); ctx.stroke(); }
+      for(let yy = y; yy <= y + h; yy += 64){ ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + w, yy); ctx.stroke(); }
+    } else if(kind === 'pixels'){
+      for(let i = 0; i < 90; i++){
+        ctx.fillStyle = 'rgba(255,255,255,' + (0.05 + r() * 0.13).toFixed(2) + ')';
+        const s = 40 * (1 + Math.floor(r() * 2));
+        ctx.fillRect(x + Math.floor(r() * (w / 40)) * 40, y + Math.floor(r() * (h / 40)) * 40, s, s);
+      }
+    } else if(kind === 'rays'){
+      const cx = x + w / 2, cy = y + h * 0.4, n = 28;
+      ctx.fillStyle = 'rgba(255,255,255,0.10)';
+      for(let i = 0; i < n; i += 2){
+        const a0 = i / n * Math.PI * 2, a1 = (i + 1) / n * Math.PI * 2;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a0) * 2000, cy + Math.sin(a0) * 2000); ctx.lineTo(cx + Math.cos(a1) * 2000, cy + Math.sin(a1) * 2000); ctx.closePath(); ctx.fill();
+      }
+    } else if(kind === 'confetti'){
+      const cols = ['#ffffff', '#ffe066', '#7ce0ff', '#ff9bd2', '#9dff9d'];
+      for(let i = 0; i < 90; i++){
+        ctx.save(); ctx.translate(x + r() * w, y + r() * h); ctx.rotate(r() * 6.28);
+        ctx.fillStyle = pick(cols); ctx.globalAlpha = 0.5 + r() * 0.35;
+        if(r() < 0.35){ ctx.beginPath(); ctx.arc(0, 0, 8 + r() * 8, 0, 6.28); ctx.fill(); } else ctx.fillRect(-9, -4, 18 + r() * 12, 8);
+        ctx.restore();
+      }
+    } else if(kind === 'sparkles'){
+      for(let i = 0; i < 34; i++) drawStar(ctx, x + r() * w, y + r() * h, 12 + r() * 26, 4, 0, '#ffffff', 0.3 + r() * 0.45);
+    } else if(kind === 'bubbles'){
+      for(let i = 0; i < 14; i++){
+        ctx.beginPath(); ctx.arc(x + r() * w, y + r() * h, 40 + r() * 80, 0, 6.28);
+        ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 4; ctx.stroke();
+      }
+    } else if(kind === 'hearts'){
+      ctx.fillStyle = 'rgba(255,255,255,0.14)';
+      for(let i = 0; i < 26; i++) btHeart(ctx, x + r() * w, y + r() * h, 30 + r() * 60);
+    } else if(kind === 'lines'){
+      ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 4;
+      for(let i = -h; i < w; i += 70){ ctx.beginPath(); ctx.moveTo(x + i, y + h); ctx.lineTo(x + i + h, y); ctx.stroke(); }
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w * 0.55, y); ctx.lineTo(x, y + h * 0.3); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x + w, y + h); ctx.lineTo(x + w * 0.45, y + h); ctx.lineTo(x + w, y + h * 0.7); ctx.closePath(); ctx.fill();
+    } else {                                              // diag: fine diagonal lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 6;
+      for(let xx = x - h; xx < x + w; xx += 46){ ctx.beginPath(); ctx.moveTo(xx, y + h); ctx.lineTo(xx + h, y); ctx.stroke(); }
+    }
+    ctx.restore();
+  }
+  // Metal edge + coloured face + glow + pattern: shared by the front and the back.
+  function btCardFace(ctx, W, H, st, rar){
     let g = ctx.createLinearGradient(0, 0, W, H);
     g.addColorStop(0, mixHex(rar.frame, '#ffffff', 0.55)); g.addColorStop(0.5, rar.frame); g.addColorStop(1, mixHex(rar.frame, '#000000', 0.3));
     roundRectPath(ctx, 0, 0, W, H, 64); ctx.fillStyle = g; ctx.fill();
@@ -9669,9 +9774,46 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const rg = ctx.createRadialGradient(W / 2, 620, 40, W / 2, 620, 760);
     rg.addColorStop(0, st.glow); rg.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.globalAlpha = 0.45; ctx.fillStyle = rg; ctx.fillRect(fx, fy, fw, fh); ctx.globalAlpha = 1;
-    ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 6;
-    for(let x = -H; x < W; x += 46){ ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x + H, 0); ctx.stroke(); }
+    btDeco(ctx, st.deco || 'diag', fx, fy, fw, fh, st);
     ctx.restore();
+  }
+  // The random part of a card: rarity, HP and stats. The same name on the same session always gives the same card.
+  var btLastRar = null, btDraft = false, btSide = 'front', btViewBack = false;
+  function btRoll(name, line, real){
+    const rnd = seededRand(btSeed(name + '|' + line) + (real ? (sessionNumber || 0) * 977 : 0));
+    let ri = 0, roll = rnd() * 100, acc = 0;
+    for(let i = 0; i < CARD_RARITIES.length; i++){ acc += CARD_RARITIES[i].w; if(roll < acc){ ri = i; break; } }
+    if(!real) ri = 2;                                    // the Setup preview shows a shiny one
+    const stat = () => Math.min(99, Math.round(18 + ri * 9 + rnd() * (60 - ri * 4)));
+    const hp = 40 + ri * 20 + Math.floor(rnd() * 8) * 10;
+    return { ri: ri, hp: hp, stats: [['ATK', stat()], ['DEF', stat()], ['SPD', stat()]] };
+  }
+  function btHasBack(){
+    if(boothType !== 'card' || !btCfg.card.back.on) return false;
+    const pk = btPick('card');
+    return pk.f ? !!pk.f.back : true;
+  }
+  function btQuestions(){ return (btCfg.card.qs || []).map(function(lab, i){ return { lab: lab, ans: ((guestInfo.q || [])[i] || '').trim() }; }).filter(function(q){ return q.lab; }); }
+
+  function composeCard(layoutKey, targetCanvas, shots){
+    const cfg = btCfg.card, pk = btPick('card');
+    const preview = targetCanvas === previewCanvas || targetCanvas === setupPreviewCanvas;
+    if((btSide === 'back' || (preview && (btViewBack || (tplEdit && tplEdit.side === 'back')))) && btHasBack()){
+      return pk.f ? composeTplBack(pk.f, targetCanvas) : composeCardBack(targetCanvas, CARD_STYLES[pk.style] || CARD_STYLES.fire);
+    }
+    if(pk.f) return composeTplCanvas('card', pk.f, targetCanvas, shots);
+    const W = 1200, H = 1680, st = CARD_STYLES[pk.style] || CARD_STYLES.fire;
+    targetCanvas.width = W; targetCanvas.height = H;
+    const ctx = targetCanvas.getContext('2d');
+    const real = !!(guestInfo.name || '').trim() && !btDraft;
+    const name = (guestInfo.name || '').trim() || 'Your Name';
+    const line = (guestInfo.line || '').trim() || 'Special Move';
+    const roll = btRoll(name, line, real), ri = roll.ri, hp = roll.hp, stats = roll.stats;
+    const rar = CARD_RARITIES[cfg.stats ? ri : 1];
+    if(real) btLastRar = cfg.stats ? rar : null;
+
+    btCardFace(ctx, W, H, st, rar);
+    let g;
 
     // Name plate (+ HP)
     const hx = 72, hy = 66, hw = W - 144, hh = 118, hmid = hy + hh / 2 + 4;
@@ -9755,6 +9897,61 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return targetCanvas;
   }
 
+  // The back of a built-in card: who it belongs to, their answers, and the card's number.
+  function composeCardBack(targetCanvas, st){
+    const W = 1200, H = 1680, cfg = btCfg.card;
+    targetCanvas.width = W; targetCanvas.height = H;
+    const ctx = targetCanvas.getContext('2d');
+    const real = !!(guestInfo.name || '').trim() && !btDraft;
+    const name = (guestInfo.name || '').trim() || 'Your Name';
+    const line = (guestInfo.line || '').trim() || 'Special Move';
+    const ri = btRoll(name, line, real).ri, rar = CARD_RARITIES[cfg.stats ? ri : 1];
+    btCardFace(ctx, W, H, st, rar);
+    // Name plate
+    roundRectPath(ctx, 72, 66, W - 144, 118, 30); ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.fill();
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.fillStyle = st.ink;
+    btFit(ctx, name, s => fontString(currentFont, s), 82, W - 204, 34);
+    ctx.fillText(name, W / 2, 66 + 118 / 2 + 4);
+    // Emblem
+    const ex = W / 2, ey = 430, er = 190;
+    ctx.beginPath(); ctx.arc(ex, ey, er, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.fill();
+    ctx.lineWidth = 14; ctx.strokeStyle = mixHex(rar.frame, '#ffffff', 0.15); ctx.stroke();
+    drawStar(ctx, ex, ey - 8, 130, 5, 0, st.a, 1);
+    drawStar(ctx, ex, ey - 8, 70, 5, 0, '#ffffff', 0.9);
+    ctx.fillStyle = st.ink; ctx.font = btSans(800)(36);
+    ctx.fillText(cfg.stats ? rar.k.toUpperCase() : 'COLLECTOR CARD', ex, ey + er + 62);
+    // Answers (or the title and event when there are no questions)
+    const py = 770, ph = 690;
+    roundRectPath(ctx, 84, py, W - 168, ph, 28); ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.fill();
+    const qs = btQuestions(), evt = (labelInput.value || '').trim();
+    ctx.fillStyle = st.ink;
+    if(qs.length){
+      const rowH = ph / qs.length;
+      qs.forEach(function(q, i){
+        const cy = py + rowH * i + rowH / 2, ans = q.ans || (real ? '—' : 'Your answer');
+        ctx.textAlign = 'left'; ctx.fillStyle = mixHex(st.ink, '#ffffff', 0.35); ctx.font = btSans(800)(34);
+        ctx.fillText(q.lab.toUpperCase(), 130, cy - 44, W - 260);
+        ctx.fillStyle = st.ink;
+        const fs = btFit(ctx, ans, s => fontString(currentFont, s), 82, W - 260, 30);
+        const lines = btWrap(ctx, ans, W - 260, 2);
+        lines.forEach(function(l, k){ ctx.fillText(l, 130, cy + 24 + k * fs * 1.1 - (lines.length - 1) * fs * 0.4); });
+        if(i < qs.length - 1){ ctx.fillStyle = 'rgba(0,0,0,0.10)'; ctx.fillRect(130, py + rowH * (i + 1) - 2, W - 260, 4); }
+      });
+    } else {
+      ctx.textAlign = 'center';
+      btFit(ctx, line, s => fontString(currentFont, s), 96, W - 260, 36);
+      ctx.fillText(line, W / 2, py + ph * 0.36);
+      if(evt){ btFit(ctx, evt, btSans(700), 52, W - 260, 24); ctx.fillStyle = mixHex(st.ink, '#ffffff', 0.3); ctx.fillText(evt, W / 2, py + ph * 0.66); }
+    }
+    // Footer
+    ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.textAlign = 'left';
+    const left = ['#' + String(sessionNumber || 1).padStart(3, '0'), evt, currentDateLabel()].filter(Boolean).join('  ·  ');
+    btFit(ctx, left, btSans(700), 32, 900, 20); ctx.fillText(left, 84, H - 96);
+    ctx.textAlign = 'right'; ctx.font = btSans(800)(34);
+    if(cfg.stats) ctx.fillText('★'.repeat(rar.stars), W - 84, H - 96);
+    return targetCanvas;
+  }
+
   function composeCert(layoutKey, targetCanvas, shots){
     const cfg = btCfg.cert, pk = btPick('cert');
     if(pk.f) return composeTplCanvas('cert', pk.f, targetCanvas, shots);
@@ -9765,11 +9962,29 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const award = (guestInfo.line || '').trim() || (!(guestInfo.name || '').trim() && cfg.askAward ? 'Award Title' : '');   // the Setup preview shows a sample award
     const serif = s => 'italic ' + s + 'px Fraunces, Georgia, "Times New Roman", serif';
 
-    // Paper, border, corner diamonds
+    // Paper, pattern, border, corner diamonds
     ctx.fillStyle = st.bg; ctx.fillRect(0, 0, W, H);
     const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, W * 0.62);
     vg.addColorStop(0, 'rgba(255,255,255,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.10)');
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    if(st.deco){
+      // Only around the edges, so the words stay clean.
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.rect(300, 240, W - 600, H - 480); ctx.clip('evenodd');
+      if(st.deco === 'confetti'){
+        const r = seededRand(97), cols = [st.edge, '#ffd166', '#4cc9f0', '#7ae582', '#b388ff'];
+        for(let i = 0; i < 260; i++){
+          ctx.save(); ctx.translate(r() * W, r() * H); ctx.rotate(r() * 6.28);
+          ctx.fillStyle = cols[Math.floor(r() * cols.length)]; ctx.globalAlpha = 0.55 + r() * 0.35;
+          if(r() < 0.35){ ctx.beginPath(); ctx.arc(0, 0, 12 + r() * 12, 0, 6.28); ctx.fill(); } else ctx.fillRect(-14, -6, 28 + r() * 18, 12);
+          ctx.restore();
+        }
+      } else {
+        const r = seededRand(53);
+        for(let i = 0; i < 120; i++) drawStar(ctx, r() * W, r() * H, 14 + r() * 34, 4, 0, st.edge, 0.25 + r() * 0.5);
+      }
+      ctx.restore();
+    }
     ctx.strokeStyle = st.edge; ctx.lineWidth = 16; ctx.strokeRect(70, 70, W - 140, H - 140);
     ctx.lineWidth = 5; ctx.strokeRect(120, 120, W - 240, H - 240);
     [[120, 120], [W - 120, 120], [120, H - 120], [W - 120, H - 120]].forEach(function(c){
@@ -9840,6 +10055,30 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }
     if(typeof drawDecorLayer === 'function') drawDecorLayer(ctx, W, H);
     return targetCanvas;
+  }
+
+  // Front and back on one sheet, side by side with a fold line (prints on 4R: fold in half and sleeve).
+  function btTwoUpCanvas(front){
+    const back = document.createElement('canvas');
+    btSide = 'back';
+    try{ composeCanvas('card', back, shotCanvases); } finally { btSide = 'front'; }
+    const PW = 1200, PH = 1680, M = 50, c = document.createElement('canvas');
+    c.width = M * 3 + PW * 2; c.height = PH + M * 2;
+    const x = c.getContext('2d');
+    x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height);
+    x.imageSmoothingQuality = 'high';
+    [front, back].forEach(function(img, i){
+      const s = Math.min(PW / img.width, PH / img.height), w = img.width * s, h = img.height * s;
+      x.drawImage(img, M + i * (PW + M) + (PW - w) / 2, M + (PH - h) / 2, w, h);
+    });
+    x.strokeStyle = 'rgba(0,0,0,0.25)'; x.lineWidth = 3; x.setLineDash([18, 14]);
+    x.beginPath(); x.moveTo(M * 1.5 + PW, 10); x.lineTo(M * 1.5 + PW, c.height - 10); x.stroke();
+    return c;
+  }
+  // What goes to the printer: front + back on one sheet when the card has a back and the paper is big enough.
+  function btPrintCanvas(src, paper){
+    if(boothType === 'card' && btCfg.card.back.on && btCfg.card.back.print && btHasBack() && paper && paper.w >= 85) return btTwoUpCanvas(src);
+    return src;
   }
 
   // ---- Shared composite builder, used for both the real result and the
@@ -11385,6 +11624,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const paper = paperFor(key);
     let src = document.createElement('canvas');
     renderCompositeToCanvas(currentLayout, src);
+    src = btPrintCanvas(src, paper);          // card booth: front + back on one sheet
     if(paper.receipt){
       // Full roll width at the thermal printer's own 203 dpi; as long as the receipt is.
       const rc = document.createElement('canvas');
@@ -12779,7 +13019,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function resetForNextGuest(){
     clearTimeout(resultTimer);
     state = 'idle';
-    guestInfo = { name: '', line: '' };
+    guestInfo = { name: '', line: '', q: ['', '', ''] };
+    btViewBack = false; try{ btFlipBtn.hidden = true; }catch(e){}
     if(tplEdit){ tplEdit = null; try{ btRenderTplEditor(); }catch(e){} }
     if(currentLayout !== setupLayout) setLayout(setupLayout);
     if(setupLayout === 'myframe' && typeof setupActiveFrameId !== 'undefined' && setupActiveFrameId) activeFrameId = setupActiveFrameId;
@@ -16049,7 +16290,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var t = function(v, n, d){ return typeof v === 'string' ? v.replace(/[<>]/g, '').slice(0, n) : d; };
     var tp = function(v, kind){ var f = typeof v === 'string' ? tplById(v) : null; return f && f.t === kind ? v : null; };
     btCfg = {
-      card: { style: CARD_STYLES[cd.style] ? cd.style : 'fire', stats: cd.stats !== false, tpl: tp(cd.tpl, 'card'), pick: !!cd.pick, builtin: cd.builtin !== false },
+      card: { style: CARD_STYLES[cd.style] ? cd.style : 'fire', stats: cd.stats !== false, tpl: tp(cd.tpl, 'card'), pick: !!cd.pick, builtin: cd.builtin !== false,
+              back: { on: !!(cd.back && cd.back.on), print: !(cd.back && cd.back.print === false) },
+              qs: [0, 1, 2].map(function(i){ return t(Array.isArray(cd.qs) ? cd.qs[i] : '', 30, ''); }) },
       cert: { style: CERT_STYLES[ce.style] ? ce.style : 'gold', title: t(ce.title, 48, 'Certificate of Achievement'), lead: t(ce.lead, 60, 'is proudly presented to'),
               msg: t(ce.msg, 120, ''), signer: t(ce.signer, 40, ''), role: t(ce.role, 40, ''), askAward: ce.askAward !== false,
               tpl: tp(ce.tpl, 'cert'), pick: !!ce.pick, builtin: ce.builtin !== false }
@@ -16062,14 +16305,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     scheduleSetupSave();
   }
   function btBuildChips(){
-    var card = boothType === 'card', set = card ? CARD_STYLES : CERT_STYLES, cur = (card ? btCfg.card : btCfg.cert).style;
+    var card = boothType === 'card', set = card ? CARD_STYLES : CERT_STYLES, cc = card ? btCfg.card : btCfg.cert, groups = [], by = {};
+    Object.keys(set).forEach(function(k){ var g = set[k].grp || 'Classic'; if(!by[g]){ by[g] = []; groups.push(g); } by[g].push(k); });
     btChipsEl.innerHTML = '';
-    Object.keys(set).forEach(function(k){
-      var s = set[k], b = document.createElement('button'), i = document.createElement('i');
-      b.type = 'button'; b.className = 'bt-chip' + (k === cur && !(card ? btCfg.card : btCfg.cert).tpl ? ' on' : ''); b.dataset.style = k;
-      i.style.background = card ? 'linear-gradient(135deg,' + s.a + ',' + s.b + ')' : 'linear-gradient(135deg,' + s.bg + ' 50%,' + s.edge + ' 50%)';
-      b.appendChild(i); b.appendChild(document.createTextNode(s.name));
-      btChipsEl.appendChild(b);
+    groups.forEach(function(g){
+      var h = document.createElement('p'); h.className = 'bt-chip-g'; h.textContent = g; btChipsEl.appendChild(h);
+      var row = document.createElement('div'); row.className = 'bt-chip-row';
+      by[g].forEach(function(k){
+        var st = set[k], b = document.createElement('button'), i = document.createElement('i');
+        b.type = 'button'; b.className = 'bt-chip' + (k === cc.style && !cc.tpl ? ' on' : ''); b.dataset.style = k;
+        i.style.background = card ? 'linear-gradient(135deg,' + st.a + ',' + st.b + ')' : 'linear-gradient(135deg,' + st.bg + ' 50%,' + st.edge + ' 50%)';
+        b.appendChild(i); b.appendChild(document.createTextNode(st.name)); row.appendChild(b);
+      });
+      btChipsEl.appendChild(row);
     });
   }
   // Admin turns this on per code (and for trials): window.__PB.typesOpt. Without it the booth is the normal photo booth.
@@ -16092,7 +16340,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       document.getElementById('btStats').checked = !!btCfg.card.stats;
       Object.keys(btCertIds).forEach(function(k){ document.getElementById(btCertIds[k]).value = btCfg.cert[k]; });
       document.getElementById('btCertAsk').checked = !!btCfg.cert.askAward;
-      btRenderTpls(); btRenderTplEditor();
+      btRenderTpls(); btRenderTplEditor(); btSyncBackUI();
     }
     if(rebuild) buildLayoutPicker();
   }
@@ -16204,6 +16452,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         s: f.spots.map(function(s){ var q = [r3(s.x), r3(s.y), r3(s.w), r3(s.h)]; if(s.a) q.push(Math.round(s.a * 10) / 10); return q; }),
         z: BT_ZONES.map(function(k){ var z = f.zones[k]; return [z.on ? 1 : 0, r3(z.x), r3(z.y), r3(z.w), r3(z.h), z.c, z.al]; }) };
       if(f.key) o.k = f.key;
+      if(f.back) o.b = { id: f.back.id, w: f.back.w, h: f.back.h, z: BT_BACK_ZONES.map(function(k){ var z = f.back.zones[k]; return [z.on ? 1 : 0, r3(z.x), r3(z.y), r3(z.w), r3(z.h), z.c, z.al]; }) };
       return o;
     });
   }
@@ -16221,7 +16470,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var sp = f.s[0];
       var spot = { x: num(sp[0], -0.5, 1, 0.1), y: num(sp[1], -0.5, 1, 0.1), w: num(sp[2], 0.02, 1, 0.5), h: num(sp[3], 0.02, 1, 0.5) };
       if(num(sp[4], -45, 45, 0)) spot.a = num(sp[4], -45, 45, 0);
-      return { id: f.id, name: txt(f.n, 30, 'Template'), grp: txt(f.g, 24, 'General'), t: f.t, w: num(f.w, 1, 10000, 1200), h: num(f.h, 1, 10000, 1800), key: key, spots: [spot], zones: Z };
+      var back = null;
+      if(f.t === 'card' && f.b && okId(f.b.id)){
+        var bz = tplDefaultBackZones(), BZ = {};
+        BT_BACK_ZONES.forEach(function(k, i){
+          var a = Array.isArray(f.b.z) && Array.isArray(f.b.z[i]) ? f.b.z[i] : null, d = bz[k];
+          BZ[k] = a ? { on: a[0] ? 1 : 0, x: num(a[1], 0, 1, d.x), y: num(a[2], 0, 1, d.y), w: num(a[3], 0.02, 1, d.w), h: num(a[4], 0.01, 1, d.h), c: /^#[0-9a-f]{6}$/i.test(a[5]) ? a[5] : d.c, al: a[6] === 'l' || a[6] === 'r' ? a[6] : 'c' } : d;
+        });
+        back = { id: f.b.id, w: num(f.b.w, 1, 10000, 1200), h: num(f.b.h, 1, 10000, 1800), zones: BZ };
+      }
+      return { id: f.id, name: txt(f.n, 30, 'Template'), grp: txt(f.g, 24, 'General'), t: f.t, w: num(f.w, 1, 10000, 1200), h: num(f.h, 1, 10000, 1800), key: key, spots: [spot], zones: Z, back: back };
     });
   }
 
@@ -16251,7 +16509,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       g.items.forEach(function(f){
         var tile = document.createElement('div'); tile.className = 'bt-tpl' + (cfg.tpl === f.id ? ' on' : ''); tile.dataset.id = f.id;
         var img = document.createElement('img'); img.alt = ''; img.src = ASSETS[f.id] ? ASSETS[f.id].url : '';
-        var nm = document.createElement('span'); nm.className = 'bt-tpl-n'; nm.textContent = f.name;
+        var nm = document.createElement('span'); nm.className = 'bt-tpl-n'; nm.textContent = f.name + (f.back ? ' \u00b7 2-sided' : '');
         var bar = document.createElement('div'); bar.className = 'bt-tpl-b';
         [['use', cfg.tpl === f.id ? 'In use' : 'Use'], ['edit', 'Edit'], ['del', '✕']].forEach(function(a){
           var b = document.createElement('button'); b.type = 'button'; b.dataset.act = a[0]; b.textContent = a[1];
@@ -16288,20 +16546,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   document.getElementById('btBuiltin').addEventListener('change', function(){ btCfg[boothType].builtin = this.checked; scheduleSetupSave(); });
 
   // ---- Upload ----
-  // Text colour that reads on the template: white on dark art, dark on light art.
-  function tplAutoColours(f, img){
-    try{
-      var c = document.createElement('canvas'), S = 64; c.width = S; c.height = Math.max(8, Math.round(S * f.h / f.w));
-      var x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
-      BT_ZONES.forEach(function(k){
-        var z = f.zones[k], px = Math.max(0, Math.floor(z.x * c.width)), py = Math.max(0, Math.floor(z.y * c.height));
-        var pw = Math.max(1, Math.min(Math.floor(z.w * c.width), c.width - px)), ph = Math.max(1, Math.min(Math.floor(z.h * c.height), c.height - py));
-        var d = x.getImageData(px, py, pw, ph).data, sum = 0, n = 0;
-        for(var i = 0; i < d.length; i += 4){ sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; n++; }
-        z.c = n && sum / n < 140 ? '#ffffff' : '#222222';
-      });
-    }catch(e){}
-  }
   async function btAddTemplates(files){
     var t = boothType, grp = (document.getElementById('btTplGroup').value || '').replace(/[<>]/g, '').trim().slice(0, 24) || 'General', added = [], noWindow = 0;
     for(var i = 0; i < files.length; i++){
@@ -16315,7 +16559,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         if(!best){ best = t === 'card' ? { x: .10, y: .12, w: .80, h: .50 } : { x: .05, y: .25, w: .25, h: .45 }; noWindow++; }
         var id = await addAsset(url);
         var f = { id: id, name: (files[i].name || '').replace(/\.[^/.]+$/, '').trim().slice(0, 30) || 'Template ' + (myTpls.length + 1), grp: grp, t: t, w: img.width, h: img.height, key: null, spots: [best], zones: tplDefaultZones(t) };
-        tplAutoColours(f, img);
+        tplAutoColours(f.zones, BT_ZONES, img, f.w, f.h);
         myTpls.push(f); added.push(f);
       }catch(err){ showToast(err.message, 4000); }
     }
@@ -16332,34 +16576,94 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(files.length) btAddTemplates(files);
   });
 
-  // ---- Editor: name, group, photo window and text zones (numbers here, or drag in the preview) ----
+  // ---- Editor: name, group, photo window and text zones; cards can also have a back ----
+  var BT_BACK_ZONES = ['name', 'line', 'q1', 'q2', 'q3', 'date', 'evt'];
+  function btBackLabel(k){
+    return { name: 'Name', line: 'Title / special move', q1: 'Answer 1', q2: 'Answer 2', q3: 'Answer 3', date: 'Date', evt: 'Event name' }[k];
+  }
+  function tplDefaultBackZones(){
+    var z = function(on, x, y, w, h, al){ return { on: on, x: x, y: y, w: w, h: h, c: '#222222', al: al }; };
+    return { name: z(1, .10, .08, .80, .07, 'c'), line: z(1, .10, .17, .80, .05, 'c'), q1: z(1, .12, .35, .76, .06, 'l'), q2: z(1, .12, .50, .76, .06, 'l'),
+      q3: z(1, .12, .65, .76, .06, 'l'), date: z(0, .55, .93, .37, .035, 'r'), evt: z(0, .08, .93, .45, .035, 'l') };
+  }
+  // The text zones' colour that reads on the picture: white on dark art, dark on light art.
+  function tplAutoColours(Z, keys, img, iw, ih){
+    try{
+      var c = document.createElement('canvas'), S = 64; c.width = S; c.height = Math.max(8, Math.round(S * ih / iw));
+      var x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
+      keys.forEach(function(k){
+        var z = Z[k], px = Math.max(0, Math.floor(z.x * c.width)), py = Math.max(0, Math.floor(z.y * c.height));
+        var pw = Math.max(1, Math.min(Math.floor(z.w * c.width), c.width - px)), ph = Math.max(1, Math.min(Math.floor(z.h * c.height), c.height - py));
+        var d = x.getImageData(px, py, pw, ph).data, sum = 0, n = 0;
+        for(var i = 0; i < d.length; i += 4){ sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; n++; }
+        z.c = n && sum / n < 140 ? '#ffffff' : '#222222';
+      });
+    }catch(e){}
+  }
+  function composeTplBack(f, targetCanvas){
+    var b = f.back, k = 1800 / Math.max(b.w, b.h), W = Math.round(b.w * k), H = Math.round(b.h * k);
+    targetCanvas.width = W; targetCanvas.height = H;
+    var ctx = targetCanvas.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+    var img = assetImg(b.id); if(img) ctx.drawImage(img, 0, 0, W, H);
+    var real = !!(guestInfo.name || '').trim() && !btDraft, Z = b.zones, qs = btCfg.card.qs || [];
+    tplDrawText(ctx, Z.name, W, H, (guestInfo.name || '').trim() || 'Your Name');
+    tplDrawText(ctx, Z.line, W, H, (guestInfo.line || '').trim() || (real ? '' : 'Special Move'));
+    [0, 1, 2].forEach(function(i){
+      if(!qs[i]) return;
+      tplDrawText(ctx, Z['q' + (i + 1)], W, H, ((guestInfo.q || [])[i] || '').trim() || (real ? '' : 'Your answer'));
+    });
+    tplDrawText(ctx, Z.date, W, H, currentDateLabel() || new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }));
+    tplDrawText(ctx, Z.evt, W, H, (labelInput.value || '').trim());
+    var ov = overlay; overlay = null;
+    try{ drawDecorLayer(ctx, W, H); } finally { overlay = ov; }
+    return targetCanvas;
+  }
+  function btEdSet(f){
+    return tplEdit && tplEdit.side === 'back' && f.back
+      ? { keys: BT_BACK_ZONES, Z: f.back.zones, label: btBackLabel, pre: 'bz' }
+      : { keys: BT_ZONES, Z: f.zones, label: function(k){ return btZoneLabel(f.t, k); }, pre: 'z' };
+  }
   var btNum = function(id, label, v, extra){ return '<label class="bt-n"><span>' + label + '</span><input type="number" min="0" max="100" step="0.5" value="' + v + '" data-f="' + id + '"' + (extra || '') + '></label>'; };
   function btRenderTplEditor(){
     var f = tplEdit && tplById(tplEdit.id);
     btTplEditorEl.hidden = !f;
     if(!f){ btTplEditorEl.innerHTML = ''; return; }
-    var p = function(v){ return Math.round(v * 1000) / 10; }, s = f.spots[0], h = '';
+    if(f.t !== 'card') tplEdit.side = 'front';
+    var back = tplEdit.side === 'back', p = function(v){ return Math.round(v * 1000) / 10; }, s = f.spots[0], h = '';
     h += '<div class="bt-ed-h"><b>Edit template</b><button type="button" class="action-btn primary mini" data-f="done">Done</button></div>';
-    h += '<p class="panel-hint">Drag the boxes in the preview. <b style="color:#2b7de9">Blue</b> = the photo, <b style="color:#e8761d">orange</b> = the text. Drag the little square at a box’s corner to resize it.</p>';
-    h += '<div class="bt-grid2"><label class="bt-t"><span>Name</span><input type="text" maxlength="30" value="' + f.name.replace(/"/g, '&quot;') + '" data-f="name"></label>';
-    h += '<label class="bt-t"><span>Group</span><input type="text" maxlength="24" list="btTplGroups" value="' + f.grp.replace(/"/g, '&quot;') + '" data-f="grp"></label></div>';
-    h += '<div class="bt-zone" data-sel="s0"><p class="sub-label">Photo window</p><div class="bt-nums">' + btNum('s:x', 'Left %', p(s.x)) + btNum('s:y', 'Top %', p(s.y)) + btNum('s:w', 'Width %', p(s.w)) + btNum('s:h', 'Height %', p(s.h)) + '</div></div>';
-    BT_ZONES.forEach(function(k){
-      var z = f.zones[k];
-      h += '<div class="bt-zone" data-sel="' + k + '"><label class="toggle-row"><input type="checkbox" data-f="z:' + k + ':on"' + (z.on ? ' checked' : '') + '> ' + btZoneLabel(f.t, k) + '</label>';
-      h += '<div class="bt-nums">' + btNum('z:' + k + ':x', 'Left %', p(z.x)) + btNum('z:' + k + ':y', 'Top %', p(z.y)) + btNum('z:' + k + ':w', 'Width %', p(z.w)) + btNum('z:' + k + ':h', 'Height %', p(z.h));
-      h += '<label class="bt-n"><span>Colour</span><input type="color" value="' + z.c + '" data-f="z:' + k + ':c"></label>';
-      h += '<label class="bt-n"><span>Align</span><select data-f="z:' + k + ':al"><option value="l"' + (z.al === 'l' ? ' selected' : '') + '>Left</option><option value="c"' + (z.al === 'c' ? ' selected' : '') + '>Centre</option><option value="r"' + (z.al === 'r' ? ' selected' : '') + '>Right</option></select></label></div></div>';
+    if(f.t === 'card'){
+      h += '<div class="bt-sides"><button type="button" data-f="side:front" class="' + (back ? '' : 'on') + '">Front</button><button type="button" data-f="side:back" class="' + (back ? 'on' : '') + '">Back' + (f.back ? '' : ' (none yet)') + '</button></div>';
+    }
+    if(back && !f.back){
+      h += '<p class="panel-hint">Give this card a back: upload a second PNG (made in Canva) with the layout of the back. Guests’ name, title and answers are written on it.</p>';
+      h += '<label class="action-btn primary" for="btBackInput" style="display:block; text-align:center;">Upload the back design</label><input type="file" id="btBackInput" accept="image/png,image/webp,image/jpeg,image/*" hidden>';
+      btTplEditorEl.innerHTML = h; return;
+    }
+    h += '<p class="panel-hint">Drag the boxes in the preview. ' + (back ? '' : '<b style="color:#2b7de9">Blue</b> = the photo, ') + '<b style="color:#e8761d">orange</b> = the text. Drag the little square at a box’s corner to resize it.</p>';
+    if(!back){
+      h += '<div class="bt-grid2"><label class="bt-t"><span>Name</span><input type="text" maxlength="30" value="' + f.name.replace(/"/g, '&quot;') + '" data-f="name"></label>';
+      h += '<label class="bt-t"><span>Group</span><input type="text" maxlength="24" list="btTplGroups" value="' + f.grp.replace(/"/g, '&quot;') + '" data-f="grp"></label></div>';
+      h += '<div class="bt-zone" data-sel="s0"><p class="sub-label">Photo window</p><div class="bt-nums">' + btNum('s:x', 'Left %', p(s.x)) + btNum('s:y', 'Top %', p(s.y)) + btNum('s:w', 'Width %', p(s.w)) + btNum('s:h', 'Height %', p(s.h)) + '</div></div>';
+    }
+    var E = btEdSet(f);
+    E.keys.forEach(function(k){
+      var z = E.Z[k];
+      h += '<div class="bt-zone" data-sel="' + k + '"><label class="toggle-row"><input type="checkbox" data-f="' + E.pre + ':' + k + ':on"' + (z.on ? ' checked' : '') + '> ' + E.label(k) + '</label>';
+      h += '<div class="bt-nums">' + btNum(E.pre + ':' + k + ':x', 'Left %', p(z.x)) + btNum(E.pre + ':' + k + ':y', 'Top %', p(z.y)) + btNum(E.pre + ':' + k + ':w', 'Width %', p(z.w)) + btNum(E.pre + ':' + k + ':h', 'Height %', p(z.h));
+      h += '<label class="bt-n"><span>Colour</span><input type="color" value="' + z.c + '" data-f="' + E.pre + ':' + k + ':c"></label>';
+      h += '<label class="bt-n"><span>Align</span><select data-f="' + E.pre + ':' + k + ':al"><option value="l"' + (z.al === 'l' ? ' selected' : '') + '>Left</option><option value="c"' + (z.al === 'c' ? ' selected' : '') + '>Centre</option><option value="r"' + (z.al === 'r' ? ' selected' : '') + '>Right</option></select></label></div></div>';
     });
+    if(back) h += '<button type="button" class="action-btn" data-f="rmback" style="margin-top:12px; color:#c0392b;">Remove the back design</button>';
     btTplEditorEl.innerHTML = h;
   }
   function btSyncEditorNumbers(){
     var f = tplEdit && tplById(tplEdit.id); if(!f) return;
-    var p = function(v){ return Math.round(v * 1000) / 10; };
+    var E = btEdSet(f), p = function(v){ return Math.round(v * 1000) / 10; };
     [].forEach.call(btTplEditorEl.querySelectorAll('input[type=number]'), function(inp){
       if(document.activeElement === inp) return;
-      var a = inp.dataset.f.split(':'), o = a[0] === 's' ? f.spots[0] : f.zones[a[1]], k = a[0] === 's' ? a[1] : a[2];
-      inp.value = p(o[k]);
+      var a = inp.dataset.f.split(':'), o = a[0] === 's' ? f.spots[0] : E.Z[a[1]], k = a[0] === 's' ? a[1] : a[2];
+      if(o) inp.value = p(o[k]);
     });
   }
   function btEditorInput(e){
@@ -16368,28 +16672,49 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(a[0] === 'name'){ f.name = String(v).replace(/[<>]/g, '').slice(0, 30) || 'Template'; }
     else if(a[0] === 'grp'){ f.grp = String(v).replace(/[<>]/g, '').trim().slice(0, 24) || 'General'; }
     else if(a[0] === 's'){ var n = Math.max(0, Math.min(100, Number(v) || 0)) / 100, s = f.spots[0]; s[a[1]] = (a[1] === 'w' || a[1] === 'h') ? Math.max(0.02, n) : n; }
-    else if(a[0] === 'z'){
-      var z = f.zones[a[1]];
+    else if(a[0] === 'z' || a[0] === 'bz'){
+      var z = (a[0] === 'bz' ? (f.back && f.back.zones) : f.zones)[a[1]]; if(!z) return;
       if(a[2] === 'on') z.on = v ? 1 : 0;
       else if(a[2] === 'c') z.c = String(v);
       else if(a[2] === 'al') z.al = String(v);
       else { var m = Math.max(0, Math.min(100, Number(v) || 0)) / 100; z[a[2]] = (a[2] === 'w' || a[2] === 'h') ? Math.max(0.01, m) : m; }
     } else return;
-    tplEdit.sel = a[0] === 's' ? 's0' : (a[0] === 'z' ? a[1] : tplEdit.sel);
+    tplEdit.sel = a[0] === 's' ? 's0' : (a[0] === 'z' || a[0] === 'bz' ? a[1] : tplEdit.sel);
     BT_THUMBS = {}; renderSetupPreview(); scheduleSetupSave();
   }
+  async function btAddBack(file){
+    var f = tplEdit && tplById(tplEdit.id); if(!f || !file) return;
+    try{
+      var url = await readImageFile(file, 2400), img = await loadImageUrl(url), id = await addAsset(url);
+      f.back = { id: id, w: img.width, h: img.height, zones: tplDefaultBackZones() };
+      tplAutoColours(f.back.zones, BT_BACK_ZONES, img, f.back.w, f.back.h);
+      btCfg.card.back.on = true;
+      tplEdit.side = 'back'; tplEdit.sel = 'name';
+      btRenderTplEditor(); btTplChanged(); btSyncBackUI();
+      showToast('Back added. Drag the orange boxes to where the name, title and answers go.', 6000);
+    }catch(err){ showToast(err.message, 4000); }
+  }
   btTplEditorEl.addEventListener('input', btEditorInput);
-  btTplEditorEl.addEventListener('change', function(e){ if(e.target.dataset.f && (e.target.dataset.f === 'name' || e.target.dataset.f === 'grp')) btRenderTpls(); });
+  btTplEditorEl.addEventListener('change', function(e){
+    if(e.target.id === 'btBackInput'){ var fl = e.target.files && e.target.files[0]; e.target.value = ''; if(fl) btAddBack(fl); return; }
+    if(e.target.dataset.f && (e.target.dataset.f === 'name' || e.target.dataset.f === 'grp')) btRenderTpls();
+  });
   btTplEditorEl.addEventListener('click', function(e){
-    var b = e.target.closest('button[data-f="done"]');
-    if(b){ tplEdit = null; btRenderTplEditor(); btTplChanged(); return; }
+    var b = e.target.closest('button[data-f]');
+    if(b){
+      var act = b.dataset.f;
+      if(act === 'done'){ tplEdit = null; btRenderTplEditor(); btTplChanged(); return; }
+      if(act.indexOf('side:') === 0 && tplEdit){ tplEdit.side = act.slice(5); tplEdit.sel = tplEdit.side === 'back' ? 'name' : 's0'; btRenderTplEditor(); renderSetupPreview(); return; }
+      if(act === 'rmback' && tplEdit){ var ff = tplById(tplEdit.id); if(ff){ ff.back = null; tplEdit.side = 'front'; tplEdit.sel = 's0'; btRenderTplEditor(); btTplChanged(); } return; }
+    }
     var z = e.target.closest('.bt-zone'); if(z && tplEdit){ tplEdit.sel = z.dataset.sel; renderSetupPreview(); }
   });
 
   // Boxes drawn on the Setup preview while editing (never on the real photo).
   function btEditBoxes(f){
-    var out = [{ k: 's0', r: f.spots[0], col: '#2b7de9', label: 'Photo' }];
-    BT_ZONES.forEach(function(k){ if(f.zones[k].on) out.push({ k: k, r: f.zones[k], col: '#e8761d', label: btZoneLabel(f.t, k) }); });
+    var E = btEdSet(f), out = [];
+    if(!(tplEdit && tplEdit.side === 'back' && f.back)) out.push({ k: 's0', r: f.spots[0], col: '#2b7de9', label: 'Photo' });
+    E.keys.forEach(function(k){ if(E.Z[k].on) out.push({ k: k, r: E.Z[k], col: '#e8761d', label: E.label(k) }); });
     return out;
   }
   function btDrawEditOverlay(){
@@ -16452,7 +16777,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function btDesignItems(t){
     var cfg = btCfg[t], items = [], styles = t === 'card' ? CARD_STYLES : CERT_STYLES;
     tplsOf(t).forEach(function(f){ items.push({ id: f.id, kind: 'tpl', name: f.name, grp: f.grp || 'General', f: f }); });
-    if(cfg.builtin !== false || !items.length) Object.keys(styles).forEach(function(k){ items.push({ id: 'style:' + k, kind: 'style', name: styles[k].name, grp: 'Classic', style: k }); });
+    if(cfg.builtin !== false || !items.length) Object.keys(styles).forEach(function(k){ items.push({ id: 'style:' + k, kind: 'style', name: styles[k].name, grp: styles[k].grp || 'Classic', style: k }); });
     return items;
   }
   function btThumb(it, t){
@@ -16528,12 +16853,65 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return true;
   }
 
-  // The guest types their name (and a title / award) before the photo.
+  // ---- Back of the card, questions, flip ----
+  var btBackOnEl = document.getElementById('btBackOn'), btBackPrintEl = document.getElementById('btBackPrint'), btBackPrevEl = document.getElementById('btBackPrev');
+  var btQEls = [document.getElementById('btQ1'), document.getElementById('btQ2'), document.getElementById('btQ3')];
+  function btSyncBackUI(){
+    var b = btCfg.card.back;
+    btBackOnEl.checked = !!b.on; btBackPrintEl.checked = !!b.print;
+    document.getElementById('btBackPrintRow').style.display = b.on ? '' : 'none';
+    btBackPrevEl.style.display = b.on ? '' : 'none';
+    btBackPrevEl.textContent = btViewBack ? 'Preview the front' : 'Preview the back';
+    btQEls.forEach(function(el, i){ el.value = (btCfg.card.qs || [])[i] || ''; });
+  }
+  btBackOnEl.addEventListener('change', function(){ btCfg.card.back.on = this.checked; if(!this.checked) btViewBack = false; btSyncBackUI(); btRefresh(); });
+  btBackPrintEl.addEventListener('change', function(){ btCfg.card.back.print = this.checked; scheduleSetupSave(); });
+  btBackPrevEl.addEventListener('click', function(){ btViewBack = !btViewBack; btSyncBackUI(); renderSetupPreview(); });
+  btQEls.forEach(function(el, i){
+    el.addEventListener('input', function(){
+      var q = (btCfg.card.qs || []).slice(); while(q.length < 3) q.push('');
+      q[i] = this.value.replace(/[<>]/g, '').slice(0, 30); btCfg.card.qs = q; btRefresh();
+    });
+  });
+  // Result card: "Flip card", and a surprise rarity message.
+  var btFlipBtn = document.createElement('button');
+  btFlipBtn.type = 'button'; btFlipBtn.className = 'action-btn'; btFlipBtn.id = 'btFlipBtn'; btFlipBtn.hidden = true; btFlipBtn.textContent = 'Flip card';
+  (function(){ var acts = document.getElementById('resultActions'); if(acts) acts.insertBefore(btFlipBtn, acts.firstChild); })();
+  btFlipBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    btViewBack = !btViewBack; btFlipBtn.textContent = btViewBack ? 'See the front' : 'Flip card';
+    renderComposite();
+  });
+  function btAfterResult(){
+    btViewBack = false; btFlipBtn.textContent = 'Flip card';
+    btFlipBtn.hidden = !btHasBack();
+    if(boothType === 'card' && btLastRar && !btPick('card').f) showToast('You pulled a ' + btLastRar.k + ' card!  ' + '★'.repeat(btLastRar.stars), 5000);
+  }
+
+  // The guest types their name (and a title / award, and any questions) before the photo, with the card shown live beside it.
   var btDetails = document.getElementById('btDetailsOverlay');
   var btdForm = document.getElementById('btdForm'), btdName = document.getElementById('btdName'), btdLine = document.getElementById('btdLine');
-  var btdRow2 = document.getElementById('btdRow2'), btdErr = document.getElementById('btdErr');
-  var btdResolve = null, btdIdle = null, btdShowLine = true;
+  var btdRow2 = document.getElementById('btdRow2'), btdErr = document.getElementById('btdErr'), btdQs = document.getElementById('btdQs');
+  var btdPrev = document.getElementById('btdPrev'), btdPrevWrap = document.getElementById('btdPrevWrap'), btdPrevCap = document.getElementById('btdPrevCap');
+  var btdResolve = null, btdIdle = null, btdShowLine = true, btdQInputs = [], btdPrevTimer = 0, btdPrevBack = false;
   function btdTouch(){ clearTimeout(btdIdle); btdIdle = setTimeout(function(){ btdFinish(false); }, 120000); }
+  function btdRead(){
+    guestInfo.name = btdName.value.trim();
+    guestInfo.line = btdShowLine ? btdLine.value.trim() : '';
+    var q = ['', '', ''];
+    btdQInputs.forEach(function(inp){ q[inp._qi] = inp.value.trim(); });
+    guestInfo.q = q;
+  }
+  function btdRenderPrev(){
+    if(!btdOpen || !btdPrev) return;
+    btdRead();
+    var keep = previewSample; previewSample = null; btDraft = true; btSide = btdPrevBack && btHasBack() ? 'back' : 'front';
+    try{ composeCanvas(boothType, btdPrev, buildPlaceholderShots(300, 1)); }
+    catch(e){ console.error(e); }
+    finally { btDraft = false; btSide = 'front'; previewSample = keep; }
+    btdPrevCap.textContent = btHasBack() ? 'Tap the card to flip it' : (boothType === 'card' && btCfg.card.stats && !btPick('card').f ? 'Your rarity is a surprise!' : '');
+  }
+  function btdPrevSoon(){ clearTimeout(btdPrevTimer); btdPrevTimer = setTimeout(btdRenderPrev, 140); }
   function askGuestDetails(){
     return new Promise(function(resolve){
       var card = boothType === 'card';
@@ -16544,24 +16922,31 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       document.getElementById('btdLbl2').textContent = card ? 'Title or special move (optional)' : 'Award (optional)';
       btdLine.placeholder = card ? 'e.g. Dancing Queen' : 'e.g. Best Dancer';
       btdRow2.style.display = btdShowLine ? '' : 'none';
-      btdName.value = ''; btdLine.value = ''; btdErr.textContent = ''; btdName.classList.remove('bad');
+      btdQs.innerHTML = ''; btdQInputs = [];
+      if(card) (btCfg.card.qs || []).forEach(function(lab, i){
+        if(!lab) return;
+        var l = document.createElement('label'), s = document.createElement('span'), inp = document.createElement('input');
+        l.className = 'bt-f'; s.textContent = lab + ' (optional)'; inp.type = 'text'; inp.maxLength = 60; inp._qi = i; inp.autocapitalize = 'sentences';
+        l.appendChild(s); l.appendChild(inp); btdQs.appendChild(l); btdQInputs.push(inp);
+      });
+      btdName.value = ''; btdLine.value = ''; btdErr.textContent = ''; btdName.classList.remove('bad'); btdPrevBack = false;
       btdOpen = true; btdResolve = resolve;
       btDetails.classList.add('on');
       document.body.classList.add('shooting', 'picking');
       try{ refreshPrintFab(); }catch(e){}
       refreshWelcome(); guestRender();
-      btdTouch();
+      btdTouch(); btdRenderPrev();
       setTimeout(function(){ try{ btdName.focus(); }catch(e){} }, 150);
     });
   }
   function btdFinish(ok){
     if(!btdOpen) return;
-    btdOpen = false; clearTimeout(btdIdle);
-    if(ok){ guestInfo.name = btdName.value.trim(); guestInfo.line = btdShowLine ? btdLine.value.trim() : ''; }
+    btdRead();
+    btdOpen = false; clearTimeout(btdIdle); clearTimeout(btdPrevTimer);
     btDetails.classList.remove('on');
     document.body.classList.remove('picking');
     if(state !== 'capturing') document.body.classList.remove('shooting');
-    try{ btdName.blur(); btdLine.blur(); }catch(e){}
+    try{ document.activeElement && document.activeElement.blur(); }catch(e){}
     try{ refreshPrintFab(); }catch(e){}
     var r = btdResolve; btdResolve = null;
     guestRender();
@@ -16572,10 +16957,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!btdName.value.trim()){ btdName.classList.add('bad'); btdErr.textContent = 'Please type your name.'; btdName.focus(); return; }
     btdFinish(true);
   });
-  btdName.addEventListener('keydown', function(e){
-    if(e.key === 'Enter' && btdShowLine && !btdLine.value){ e.preventDefault(); btdLine.focus(); }
+  btdForm.addEventListener('keydown', function(e){
+    if(e.key !== 'Enter' || e.target.tagName !== 'INPUT') return;
+    var list = [btdName].concat(btdShowLine ? [btdLine] : [], btdQInputs), i = list.indexOf(e.target);
+    if(i >= 0 && i < list.length - 1){ e.preventDefault(); list[i + 1].focus(); }
   });
-  btdName.addEventListener('input', function(){ btdName.classList.remove('bad'); btdErr.textContent = ''; });
+  btdForm.addEventListener('input', function(e){ if(e.target === btdName){ btdName.classList.remove('bad'); btdErr.textContent = ''; } btdPrevSoon(); });
+  btdPrev.addEventListener('click', function(){ if(!btHasBack()) return; btdPrevBack = !btdPrevBack; btdRenderPrev(); });
   document.getElementById('btdCancel').addEventListener('click', function(){ btdFinish(false); });
   btDetails.addEventListener('keydown', function(e){ btdTouch(); if(e.key === 'Escape'){ e.stopPropagation(); btdFinish(false); } });
   ['click', 'pointerdown', 'input'].forEach(function(ev){ btDetails.addEventListener(ev, function(e){ e.stopPropagation(); btdTouch(); }); });
@@ -17270,7 +17658,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(logo) ids.push(logo.id);
     decor.forEach(function(d){ if(d.src.indexOf('a:') === 0) ids.push(d.src.slice(2)); });
     (typeof myFrames !== 'undefined' && myFrames || []).forEach(function(f){ ids.push(f.id); });
-    myTpls.forEach(function(f){ ids.push(f.id); });
+    myTpls.forEach(function(f){ ids.push(f.id); if(f.back) ids.push(f.back.id); });
     if(typeof bgMine !== 'undefined') bgMine.forEach(function(a){ ids.push(a); });
     if(typeof fx !== 'undefined' && fx){ if(fx.sShut) ids.push(fx.sShut.id); if(fx.sTick) ids.push(fx.sTick.id); }
     if(brand){ if(brand.c.id) ids.push(brand.c.id); if(brand.w.id) ids.push(brand.w.id); }

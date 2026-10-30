@@ -1,5 +1,5 @@
 import {
-  safe, json, licenses, newCode, displayCode, normCode, DAY, putLicense, sendMail, codeEmail, EMAIL_RE, getSettings
+  safe, json, licenses, newCode, displayCode, normCode, DAY, putLicense, sendMail, codeEmail, EMAIL_RE, getSettings, AGREEMENT_VERSION
 } from '../lib/core.mjs';
 import { payStore, pm } from '../lib/pay.mjs';
 import { ALL_PLANS, fulfillPlanPayment, getPlanDeliverables } from '../lib/plans.mjs';
@@ -7,7 +7,6 @@ import { ALL_PLANS, fulfillPlanPayment, getPlanDeliverables } from '../lib/plans
 const PLANS = ALL_PLANS;
 
 // Lifetime plans and Lifetime add-ons are sold under the Lifetime Access Agreement (/agreement/).
-const AGREEMENT_VERSION = '3.2';
 const needsAgreement = (plan) => plan.category === 'lifetime' || plan.category === 'addon';
 
 const memOrders = new Map();

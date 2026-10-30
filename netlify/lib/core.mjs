@@ -105,7 +105,11 @@ export async function setShutdown(on, now) {
 }
 
 // ---------- disabling a code (Lifetime Access Agreement s.7) ----------
-export const REVOKE_REASONS = ['leak', 'sharing', 'abuse', 'security', 'other'];
+export const REVOKE_REASONS = ['leak', 'sharing', 'abuse', 'security', 'payment', 'other'];
+// PayMongo events about payments to photobooth4u itself that functions/subhook.mjs watches (refunds, failures).
+export const SUBHOOK_EVENTS = ['payment.refunded', 'payment.refund.updated', 'payment.failed'];
+// The Lifetime Access Agreement version new Lifetime buyers accept (checkout, or recorded by Admin for hand-made codes).
+export const AGREEMENT_VERSION = '3.3';
 // How the setups store names a customer's data (shared by setup.mjs and the Replace code action).
 export const setupKeyFor = (scope) => 'k' + createHash('sha256').update(scope).digest('hex').slice(0, 40);
 
@@ -137,9 +141,24 @@ const FREED_HOW = {
   deactivated: 'deactivated it in the Offline App',
   replaced: 'had it replaced automatically (it was unused for 7+ days and a new device entered the code)'
 };
-export async function alertDeviceFreed(rec, dev, how, now) {
+// Emails the owner (ALERT_EMAIL). Returns false, never throws, when it is not set or the mail relay fails.
+export async function notifyOwner(subject, text) {
   const to = String(process.env.ALERT_EMAIL || '').trim();
-  if (!to || !rec || !rec.lifetime || rec.kind === 'bonus') return false;
+  if (!to) return false;
+  try {
+    // Never let a slow mail relay hold up a renter's request for long.
+    await Promise.race([
+      sendMail({ to, subject, text, html: '' }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('alert mail timed out')), 7000))
+    ]);
+    return true;
+  } catch (e) {
+    console.error('owner alert mail', e.message);
+    return false;
+  }
+}
+export async function alertDeviceFreed(rec, dev, how, now) {
+  if (!String(process.env.ALERT_EMAIL || '').trim() || !rec || !rec.lifetime || rec.kind === 'bonus') return false;
   try {
     const when = (t) => (t ? new Date(t).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) : 'never');
     const used = swapsThisMonth(rec, now);
@@ -160,12 +179,7 @@ export async function alertDeviceFreed(rec, dev, how, now) {
       '',
       'Nothing was suspended or blocked. Open Admin to look at this code if you want to.'
     ].join('\n');
-    // Never let a slow mail relay hold up the renter's request for long.
-    await Promise.race([
-      sendMail({ to, subject: 'Device freed on Lifetime code ' + (rec.code || '') + ' (' + (rec.label || rec.folderName || 'renter') + ')', text, html: '' }),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('alert mail timed out')), 7000))
-    ]);
-    return true;
+    return await notifyOwner('Device freed on Lifetime code ' + (rec.code || '') + ' (' + (rec.label || rec.folderName || 'renter') + ')', text);
   } catch (e) {
     console.error('device alert mail', e.message);
     return false;
@@ -283,7 +297,9 @@ export function summaryOf(rec) {
     status: rec.status, redeemedAt: rec.redeemedAt || null, expiresAt: rec.expiresAt || null,
     maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional, gifOpt: !!rec.gifOpt, retakeOpt: !!rec.retakeOpt, payOpt: !!rec.payOpt, offlineOpt: !!rec.offlineOpt, offlineOnly: !!rec.offlineOnly, appsUsed: devicesOf(rec).filter((d) => d.app).length, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0, extras: extrasOf(rec),
     print: !!(rec.print && rec.print.enabled), createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null,
-    revokeReason: rec.revokeReason || null, replacedBy: rec.replacedBy || null, replacedFrom: rec.replacedFrom || null, transferredAt: rec.transferredAt || null
+    revokeReason: rec.revokeReason || null, replacedBy: rec.replacedBy || null, replacedFrom: rec.replacedFrom || null, transferredAt: rec.transferredAt || null,
+    agreement: rec.agreement ? rec.agreement.version : null, agreementAt: rec.agreement ? rec.agreement.acceptedAt || null : null,
+    paymentReview: rec.paymentReview ? { reason: rec.paymentReview.reason, at: rec.paymentReview.at } : null
   };
 }
 export async function rebuildIndex() {

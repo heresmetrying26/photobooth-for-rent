@@ -10,6 +10,10 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.26', date: '2026-10-29' },
+  { version: '1.0.25', date: '2026-10-29' },
+  { version: '1.0.24', date: '2026-10-29' },
+  { version: '1.0.23', date: '2026-10-29' },
   { version: '1.0.22', date: '2026-10-28' },
   { version: '1.0.21', date: '2026-10-28' },
   { version: '1.0.20', date: '2026-10-28' },
@@ -33,6 +37,9 @@ export const APP_RELEASES = [
 ];
 export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
+// The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
+// offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
+export const ANDROID = { version: '1.0.22', date: '2026-10-29', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.22/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -67,6 +74,59 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-29', title: 'The Android tablet app now speaks the countdown', for: ['website'],
+    items: [
+      'Android app 1.0.22: the spoken countdown (Get ready, Three, Two, One, Smile!) now works on the tablet, using the tablet\u2019s own text-to-speech voices. It works offline once an English voice is downloaded (Settings \u2192 System \u2192 Languages \u2192 Text-to-speech output).',
+      'Choose English or Tagalog (when the tablet has a Filipino voice), the last 3 numbers or every number, and the voice in Setup \u2192 Session. With no voice on the tablet the beeps are used.'
+    ]
+  },
+  {
+    date: '2026-10-29', title: 'Guests can see only their own photos, and a spoken countdown', for: ['website', 'app'], app: '1.0.26',
+    items: [
+      'New: Setup \u2192 Share \u2192 After guests scan their QR. Choose Everyone\u2019s photos (as before), Mine first (their own photos, with a Show photos with other guests button) or Only their own.',
+      'Only their own: each guest\u2019s QR opens a page with just their photo, GIF and flipbook. The event gallery is closed to guests, so an old QR or a copied link cannot open it, and the booth hides its All photos button and the guest screen\u2019s All photos QR. Use Lock booth so guests cannot open Setup or Extras.',
+      'In the laptop app and the Android tablet app (1.0.21) the event pages answer only the laptop or tablet itself in this mode. It works on the website too, including the free trial.',
+      'New: a spoken countdown (Get ready, Three, Two, One, Smile!) using the voices on your device. On by default; choose English or Tagalog (when the device has a Filipino voice), the last 3 numbers or every number, and the voice in Setup \u2192 Session. With no voice on the device the beeps are used. The Android app keeps the beeps for now.'
+    ]
+  },
+  {
+    date: '2026-10-29', title: '360 videos work in the laptop app, a simpler bottom bar, print preview and poster fit', for: ['website', 'app'], app: '1.0.25',
+    items: [
+      'Fixed: in the laptop app the 360 desk could not take videos from Choose videos or play them (the app was blocking its own video server). Videos now upload, play and edit, and Record 360 on the laptop can save to its own inbox.',
+      'Fixed: the 360 video player no longer covers the page, and card titles (such as Photographer desk) are readable again in the dark theme.',
+      'A simpler bottom bar: Camera, Printer, All photos, Extras and Lock. Photographer desk, 360 desk, Record 360, Video guestbook and Print requests are in the new Extras menu, with a number for new items.',
+      'Photographer desk: it now shows the phone QR code at the top. Photos a phone sends appear in the desk list (marked with a phone) next to memory-card photos, with Make print + QR and a new Print original. One photo per print is on by default, and the desk scrolls with many photos.',
+      'Quick shot is gone: use the Photographer desk. Phone upload moved there.',
+      'Print preview: the first print, and the first after you change the paper or printer, shows how the page will look before anything is sent. Switch it off in Print settings.',
+      'Custom welcome poster: a Poster fit choice. Stretch to fill the screen is the default and trims nothing; you can also show the whole poster or fill and trim.',
+      'The video guestbook and 360 recording buttons are smaller.'
+    ]
+  },
+  {
+    date: '2026-10-29', title: 'Phone photos, guest print requests, video guestbook, GIFs in your frame and 360 recording in the app', for: ['website', 'app'], app: '1.0.24',
+    items: [
+      'GIFs now get your chosen look and sit in your frame: by default the one-photo Solo layout with your title, even when the photos use a strip. Setup → Extras → Output mode has a GIF frame choice (Solo, the chosen layout, or the plain camera view).',
+      'Quick shot and photographer desk photos use the Solo layout (no more one photo repeated on a strip). The desk has a One photo per print switch, and the Quick shot screen has Print framed and Print original.',
+      'Photos from a phone: on the Quick shot screen tap Phone upload, the photographer scans the QR code and sends photos. On the laptop and Android apps they go straight to the booth over Wi-Fi; on the website they go through the event folder. Each one is framed, saved and gets a QR code.',
+      'Guests can ask for a print: switch on Let guests ask for a print from their phone in the print settings. Their photo page gets an Ask for a print at the booth button and a Print requests button appears in the dock (website, laptop and Android apps).',
+      'Guest screen (traditional booth): an optional Look button lets each guest pick a filter. It is off until you tick Let guests choose a look in Setup → Extras → Filter.',
+      'Video guestbook: a guest records a message of up to 30 seconds, watches it and gets a QR code. It shows under Videos in the gallery.',
+      '360 recording in the app (Android and laptop apps): Record 360 in the dock records the spin from a tablet or phone on the arm, starting with the button or when the arm moves, and sends the clip to the laptop. New speed styles (0.25×, fast then slow, fast slow fast, slow-mo roller) and Edit new videos by themselves can now also get the QR ready.',
+      'Flipbook cards no longer have numbers: they print in order, left to right and top to bottom.'
+    ]
+  },
+  {
+    date: '2026-10-29', title: 'Vintage looks, photographer desk, flipbook and a 360 video desk', for: ['website', 'app'], app: '1.0.23',
+    items: [
+      'Vintage looks: Film, Faded, 70s, Instant and Noir, with grain, darker corners and a warm light leak, plus an optional orange date stamp on each photo. They are in the filter picker and on the guests’ filter strip, and apply to photos and flipbook frames (GIFs are recorded without filters).',
+      'Photographer desk: a roving photographer’s photos go into your frame, print and get a QR code. Drop or choose the photos, or (laptop app) pick a folder the camera software saves into and new photos appear by themselves. Quick shot turns a phone or tablet into a handheld camera: every tap is saved quietly and you show the QR when a guest asks.',
+      'Flipbook: guests record a short clip and the booth prints its frames as numbered cards on sheets (cut, stack, staple), with a cover card and a back card. They also get an animated GIF QR code.',
+      '360 video desk: videos from the 360 arm’s camera arrive from a folder or from the recording phone’s browser. The laptop app edits them (slow motion, speed ramp or boomerang, your frame, logo and title, music, trim) and shares the finished video with a QR code. The website shares the original video, up to about 28 MB.',
+      'All of these are included with every package and switched on by default. In Admin you can switch any of them off for a client.',
+      'New Event Pass for ₱499 (24 hours, tablet or laptop) replaces the Tablet and Laptop booth passes, and the 1-hour practice code is gone: use the free trial to test first.'
+    ]
+  },
   {
     date: '2026-10-29', title: 'Android tablet app now needs a code, same as the laptop app', for: ['website'],
     items: [

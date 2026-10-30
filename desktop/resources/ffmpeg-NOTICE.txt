@@ -1,0 +1,17 @@
+photobooth4u and FFmpeg
+=======================
+
+photobooth4u's 360 video desk edits videos with FFmpeg (https://ffmpeg.org), a separate program
+that is installed next to the app in the "ffmpeg" folder. photobooth4u starts it as its own process and
+exchanges only files and command-line options with it.
+
+The FFmpeg build included here is provided by the "ffmpeg-static" project
+(https://github.com/eugeneware/ffmpeg-static). It includes components under the GNU General Public License
+(GPL), including the x264 H.264 encoder. The licence texts are in this folder (ffmpeg-static-LICENSE and
+ffmpeg-static-README.md) and at https://www.gnu.org/licenses/gpl-3.0.html.
+
+FFmpeg is a trademark of Fabrice Bellard. The FFmpeg source code, and the source of the build used here, are
+available at https://ffmpeg.org/download.html and https://github.com/eugeneware/ffmpeg-static. You may
+replace this file with your own build of FFmpeg: the app uses the ffmpeg program in this folder.
+
+If you would like a copy of the source code, write to us and we will send it.

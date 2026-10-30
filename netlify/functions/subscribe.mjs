@@ -58,7 +58,6 @@ async function fulfillOrder(order, origin) {
   order.status = 'paid';
   order.paidAt = Date.now();
   order.code = res.code;
-  order.practiceCode = res.practiceCode || null;
   order.renewed = res.renewed;
   order.files = res.files;
   order.links = res.links;
@@ -224,13 +223,12 @@ export default safe(async (req, context) => {
     if (!order) return json({ error: 'Order not found or expired.' }, 404);
 
     if (order.status === 'paid') {
-      const del = getPlanDeliverables(order.plan, order.code, order.practiceCode);
+      const del = getPlanDeliverables(order.plan, order.code);
       const planCfg = ALL_PLANS[order.plan] || ALL_PLANS.online;
       return json({
         ok: true,
         status: 'paid',
         code: order.code,
-        practiceCode: order.practiceCode || null,
         renewed: !!order.renewed,
         plan: order.plan,
         planTitle: planCfg.title,
@@ -254,7 +252,6 @@ export default safe(async (req, context) => {
             ok: true,
             status: 'paid',
             code: res.code,
-            practiceCode: res.practiceCode || null,
             renewed: res.renewed,
             plan: order.plan,
             planTitle: res.plan.title,

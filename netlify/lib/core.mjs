@@ -228,13 +228,22 @@ export const STALE_DEVICE_DAYS = 7;
 // (or delLicense()) which keeps the index in step. If it is ever missing or
 // out of date, Admin -> "Rebuild index" (or the first list) rebuilds it.
 const INDEX_KEY = 'index-v1';
+// Extras every package includes: vintage looks, photographer desk, flipbook, video guestbook, 360 video.
+// Missing = on, so every old code has them; an admin can switch one off for a client.
+export const EXTRA_KEYS = ['vintage', 'roving', 'flipbook', 'video', 'spin360'];
+export function normExtras(x) {
+  const o = {};
+  for (const k of EXTRA_KEYS) o[k] = !(x && x[k] === false);
+  return o;
+}
+export const extrasOf = (rec) => normExtras(rec && rec.extras);
 export function summaryOf(rec) {
   return {
     key: rec.key, code: rec.code, label: rec.label || '', folderName: rec.folderName || '', email: rec.email || '',
     kind: rec.kind || 'rental', parent: rec.parent || null, bonusKey: rec.bonusKey || null,
     lifetime: !!rec.lifetime, days: rec.days || 0, minutes: rec.minutes || null, startsAt: rec.startsAt || null,
     status: rec.status, redeemedAt: rec.redeemedAt || null, expiresAt: rec.expiresAt || null,
-    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional, gifOpt: !!rec.gifOpt, retakeOpt: !!rec.retakeOpt, payOpt: !!rec.payOpt, offlineOpt: !!rec.offlineOpt, offlineOnly: !!rec.offlineOnly, appsUsed: devicesOf(rec).filter((d) => d.app).length, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0,
+    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional, gifOpt: !!rec.gifOpt, retakeOpt: !!rec.retakeOpt, payOpt: !!rec.payOpt, offlineOpt: !!rec.offlineOpt, offlineOnly: !!rec.offlineOnly, appsUsed: devicesOf(rec).filter((d) => d.app).length, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0, extras: extrasOf(rec),
     print: !!(rec.print && rec.print.enabled), createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null,
     revokeReason: rec.revokeReason || null, replacedBy: rec.replacedBy || null, replacedFrom: rec.replacedFrom || null, transferredAt: rec.transferredAt || null
   };
@@ -392,6 +401,53 @@ export function normPrint(enabled, sizes, limits) {
 // printjobs: pages an iPad sends to the laptop "print station" page
 export const printsStore = () => getStore({ name: 'prints', consistency: 'strong' });
 export const printJobsStore = () => getStore({ name: 'printjobs', consistency: 'strong' });
+// Guests asking for a print from the online gallery (see functions/printreq.mjs): one document per gallery folder.
+export const printReqStore = () => getStore({ name: 'printreq', consistency: 'strong' });
+// The gallery asks this when it lists a folder, to know whether to show the "Ask for a print" button.
+export async function printReqOn(folder) {
+  try {
+    if (!/^[A-Za-z0-9_-]{10,80}$/.test(String(folder || ''))) return false;
+    const d = await printReqStore().get('f:' + folder, { type: 'json' });
+    return !!(d && d.on && d.exp > Date.now());
+  } catch { return false; }
+}
+export const clientIp = (req) => String(req.headers.get('x-nf-client-connection-ip') || (req.headers.get('x-forwarded-for') || '').split(',')[0] || 'unknown').trim();
+// A guest asks for a print of one photo (used by the gallery page and by a guest's own photo page).
+// Returns { status, body }. Limited per phone, one request per photo, and the list is capped.
+const PRQ_MAX_PENDING = 200, PRQ_RATE_N = 8, PRQ_RATE_MS = 10 * 60000;
+export async function printReqGuest(folder, file, ip) {
+  const ID = /^[A-Za-z0-9_-]{10,80}$/;
+  if (!ID.test(folder) || !ID.test(file)) return { status: 400, body: { error: 'Bad request' } };
+  const now = Date.now(), s = printReqStore();
+  const d = await s.get('f:' + folder, { type: 'json' });
+  if (!d || !d.on || d.exp <= now) return { status: 403, body: { error: 'off' } };
+  if (d.done && d.done[file]) return { status: 200, body: { ok: true, done: true } };
+  if (d.reqs.some((r) => r.file === file)) return { status: 200, body: { ok: true, waiting: true } };
+  if (d.reqs.length >= PRQ_MAX_PENDING) return { status: 429, body: { error: 'busy' } };
+  const who = hmac('pr|' + ip).slice(0, 14);
+  d.hits = d.hits || {};
+  const recent = (d.hits[who] || []).filter((t) => now - t < PRQ_RATE_MS);
+  if (recent.length >= PRQ_RATE_N) return { status: 429, body: { error: 'rate' } };
+  recent.push(now); d.hits[who] = recent;
+  for (const k of Object.keys(d.hits)) if (!d.hits[k].some((t) => now - t < PRQ_RATE_MS)) delete d.hits[k];
+  d.reqs.push({ id: hmac('id|' + file + '|' + now).slice(0, 12), file, t: now });
+  await s.setJSON('f:' + folder, d);
+  return { status: 200, body: { ok: true, waiting: true } };
+}
+// What guests may see after scanning their QR (set by the booth, see functions/guestview.mjs):
+//   'all'  everyone's photos (the default, and what an event with no setting does)
+//   'mine' their own photos first, with a button for everyone's
+//   'only' their own photos and nothing else
+export const guestViewStore = () => getStore({ name: 'guestview', consistency: 'strong' });
+export async function guestViewMode(folder) {
+  try {
+    if (!/^[A-Za-z0-9_-]{10,80}$/.test(String(folder || ''))) return 'all';
+    const d = await guestViewStore().get('f:' + folder, { type: 'json' });
+    return d && d.exp > Date.now() && (d.mode === 'mine' || d.mode === 'only') ? d.mode : 'all';
+  } catch { return 'all'; }
+}
+// The booth's own key to an event gallery that is set to "only their own".
+export const opKeyOf = (folder) => hmac('opview|' + folder).slice(0, 22);
 // Which counter a booth adds to: the booking (its fixed event), one per event
 // name for lifetime codes, and the trial's own throwaway folder for trials.
 // A bonus code counts on its own (it's for testing before the event).
@@ -459,7 +515,7 @@ export async function checkLicense(token, deviceId) {
     if (p.exp <= now) return { valid: false, reason: 'trial-ended' };
     const s = await getSettings();
     if (!s.trialEnabled) return { valid: false, reason: 'trial-disabled' };
-    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes, { eventLimit: s.trialPrintEventLimit, sessionLimit: s.trialPrintSessionLimit }), traditional: !!s.trialTraditional, gifOpt: s.trialGifOpt !== false, retakeOpt: !!s.trialRetakeOpt, lockOpt: !!s.trialLockOpt, pinResetAt: 0 };
+    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes, { eventLimit: s.trialPrintEventLimit, sessionLimit: s.trialPrintSessionLimit }), traditional: !!s.trialTraditional, gifOpt: s.trialGifOpt !== false, retakeOpt: !!s.trialRetakeOpt, lockOpt: !!s.trialLockOpt, extras: normExtras(null), pinResetAt: 0 };
   }
 
   const rec = await licenses().get(p.k, { type: 'json' });
@@ -492,6 +548,7 @@ export async function checkLicense(token, deviceId) {
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes, rec.print),
     traditional: !!rec.traditional,
     gifOpt: !!rec.gifOpt,
+    extras: extrasOf(rec),
     retakeOpt: !!rec.retakeOpt,
     payOpt: !!rec.payOpt,
     lockOpt: !!rec.lockOpt,

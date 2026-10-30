@@ -112,6 +112,21 @@ if (nHead && existsSync(tickets)) {
 }
 cpSync(join(ROOT, 'tools', 'print-helper', 'camera-worker.ps1'), join(OUT, 'camera-worker.ps1'));
 
+// ---------- ffmpeg for the 360 desk (optional) ----------
+// A separate program that edits the 360 videos. Without it the app still shares the original videos.
+// CI installs it with: npm install --no-save ffmpeg-static. Its licence notice ships beside it.
+try {
+  const ff = (await import('ffmpeg-static')).default;
+  if (ff && existsSync(ff)) {
+    mkdirSync(join(OUT, 'ffmpeg'), { recursive: true });
+    cpSync(ff, join(OUT, 'ffmpeg', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'));
+    for (const n of ['LICENSE', 'README.md']) { const f = join(dirname(ff), n); if (existsSync(f)) cpSync(f, join(OUT, 'ffmpeg', 'ffmpeg-static-' + n)); }
+    const notice = join(DESK, 'resources', 'ffmpeg-NOTICE.txt');
+    if (existsSync(notice)) cpSync(notice, join(OUT, 'ffmpeg', 'ffmpeg-NOTICE.txt'));
+    log('ffmpeg: bundled for the 360 desk');
+  } else log('ffmpeg: not found; the 360 desk will share videos as they are');
+} catch { log('ffmpeg: ffmpeg-static is not installed; the 360 desk will share videos as they are'); }
+
 // ---------- the licence public key ----------
 async function publicKey() {
   if (process.env.PB4U_LICENSE_PUB) return process.env.PB4U_LICENSE_PUB.trim();

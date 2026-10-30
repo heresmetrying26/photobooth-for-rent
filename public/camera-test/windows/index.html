@@ -58,19 +58,20 @@
 <body>
 <main>
   <h1>USB camera test · Windows</h1>
-  <p class="lead">Checks that the booth can control your <b>Nikon</b> or <b>Canon EOS</b> from this laptop: live view, the real shutter (flash works) and the full photo. Uses the <b>photobooth4u Helper</b> and Windows' own camera driver, so there's nothing to install for the camera itself.</p>
+  <p class="lead">Checks that the booth can control your <b>Nikon</b>, <b>Canon EOS</b> or <b>Sony Alpha</b> from this laptop: live view, the real shutter (flash works) and the full photo. Uses the <b>photobooth4u Helper</b> and Windows' own camera driver, so there's nothing to install for the camera itself.</p>
 
   <div class="grid">
     <div>
       <div class="card">
         <h2>Before you start</h2>
         <ol class="help" style="padding-left:18px; margin-top:0;">
-          <li><b>Open the photobooth4u Helper</b> (Canon: version <b>1.1.5</b> or newer) on this laptop. <a href="/downloads/">Download it</a>, unzip, double-click. Keep its window open.</li>
+          <li><b>Open the photobooth4u Helper</b> (latest is <b>1.1.10</b>; Canon needs 1.1.5+, Sony 1.1.9+) on this laptop. <a href="/downloads/">Download it</a>, unzip, double-click. Keep its window open.</li>
           <li><b>Plug the camera straight into the laptop</b> with a <b>data</b> USB cable (many micro-USB cables only charge) and switch it on. Windows lists it under <b>This PC</b> and in Device Manager under <b>Portable Devices</b> (not under "Cameras").</li>
-          <li>Close camera apps (<b>EOS Utility</b>, EOS Webcam Utility, NX Studio, Nikon Webcam Utility) and any "Import photos" window that popped up.</li>
+          <li>Close camera apps (<b>EOS Utility</b>, EOS Webcam Utility, NX Studio, Nikon Webcam Utility, <b>Sony Imaging Edge</b> / Camera Remote) and any "Import photos" window that popped up.</li>
           <li>Camera: mode dial on <b>P, S, A or M</b> (Canon: <b>P, Tv, Av or M</b>), lens cap off, SD card in, battery charged (or a mains adapter), <b>Auto power off</b> disabled.</li>
           <li><b>Canon:</b> on older models (60D, 70D, 600D, 7D…) turn on <b>Live View shoot</b> in the camera's menu. Models with Wi-Fi: turn Wi-Fi off. Newer models with a "Choose USB connection app" menu: <b>Photo Import / Remote Control</b>.</li>
           <li><b>Nikon</b> with SnapBridge: turn on <b>Airplane mode</b>.</li>
+          <li><b>Sony Alpha</b> (A7 III, A7 IV, A6400, ZV-E10&hellip;): MENU &gt; Setup &gt; USB &gt; <b>USB Connection: PC Remote</b> (not Mass Storage or MTP), and leave <b>Still Img. Save Dest.</b> on PC Only if you see it. Mode dial on a photo mode (not video). The tester sets the save destination to PC only for you, so no memory card is needed.</li>
           <li>If you ever used Zadig on this camera, undo it: Device Manager &rarr; the camera (under "Universal Serial Bus devices") &rarr; <b>Uninstall device</b>, tick "Delete the driver", unplug and replug.</li>
         </ol>
         <ul class="checks" id="checks" style="margin-top:8px;"></ul>
@@ -118,7 +119,7 @@
       </div>
     </div>
   </div>
-  <p class="help" style="margin-top:20px;"><a href="../mac/">On a Mac or Android? Use that tester</a> (no helper needed there). Sony Alpha (e.g. A7 III) works in the booth through the Helper 1.1.9+ when the camera's USB Connection is <b>PC Remote</b>; this tester is Nikon only, so for a Sony open the booth and pick <b>Nikon / Canon / Sony camera over USB</b>, or use a Mac / Android tablet, or an HDMI capture card.</p>
+  <p class="help" style="margin-top:20px;"><a href="../mac/">On a Mac or Android? Use that tester</a> (no helper needed there). Sony not connecting? Re-check <b>USB Connection: PC Remote</b>, close Imaging Edge, switch the camera off and on, then press <b>Reconnect camera</b>. If it still fails, copy the test report: its <b>Details</b> line shows what Windows' driver allowed.</p>
 </main>
 
 <script>
@@ -223,9 +224,13 @@
       const cams = list.devices.filter(d => d.camera);
       const camText = cams.map(d => (d.name || d.maker || '').trim()).join(', ');
       if(!list.devices.length){
-        step('seen', 'bad', 'Windows sees no camera. Check the cable is a data cable, plug straight into the laptop (no hub), switch the camera on. Close EOS Utility / camera apps.');
+        step('seen', 'bad', 'Windows sees no camera. Check the cable is a data cable, plug straight into the laptop (no hub), switch the camera on (Sony: USB Connection = PC Remote). Close EOS Utility / Imaging Edge / camera apps.');
       } else {
         step('seen', 'ok', camText || list.devices.map(d => (d.name || '').trim()).join(', '));
+      }
+      if(cams.some(d => /sony|ilce|ilme|alpha|zv-/i.test(d.name + ' ' + d.maker)) && !versionAtLeast(st.version, '1.1.9')){
+        const m = 'Sony cameras need Helper 1.1.9 or newer (this one is ' + st.version + '). Close it, download it again from the Downloads page, and open the new one.';
+        step('helper', 'bad', m); showMsg(m, 'err'); return;
       }
       if(cams.some(d => /canon|eos/i.test(d.name + ' ' + d.maker)) && !versionAtLeast(st.version, '1.1.5')){
         const m = 'Canon cameras need Helper 1.1.5 or newer (this one is ' + st.version + '). Close it, download it again from the Downloads page, and open the new one.';

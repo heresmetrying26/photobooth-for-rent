@@ -81,6 +81,18 @@
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-cache"
 
+# A guest's own photos: /p/<code> (made by the booth, see functions/guestview.mjs). Same page as the gallery.
+[[redirects]]
+  from = "/p/*"
+  to = "/gallery/index.html"
+  status = 200
+
+[[headers]]
+  for = "/p/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-cache"
+
 [[headers]]
   for = "/gallery/*"
   [headers.values]

@@ -18,6 +18,8 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
+import android.util.Log
+import android.webkit.ConsoleMessage
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -43,6 +45,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import java.io.ByteArrayInputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
 class MainActivity : AppCompatActivity() {
 
@@ -50,6 +54,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var root: FrameLayout
     private lateinit var btBridge: BTBridge
     private lateinit var pbLocal: PBLocal
+    private var voiceBridge: VoiceBridge? = null
     private lateinit var licence: AppLicence
     private var shareServer: LocalShareServer? = null
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
@@ -83,8 +88,46 @@ class MainActivity : AppCompatActivity() {
     private val BASE_URL   = "https://photobooth4u.netlify.app/"
     private val ASSET_BOOTH = "booth.html"
     private var offlineLoaded = false
+    private var pageErrorToasts = 0
 
     private val REQ_CAMERA_PERMISSION = 2001
+
+    // ---- New version prompt ----
+    // At launch (never mid-session) ask the site for the newest tablet app; when this one is older, offer the
+    // download. "Update" opens the APK in the browser, and Android then offers to install it over this app.
+    private fun checkForAppUpdate() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        if (now - prefs.getLong("update_checked", 0L) < 6 * 3600_000L || !isNetworkAvailable()) return
+        Thread {
+            try {
+                val c = URL(BASE_URL + "api/updates").openConnection() as HttpURLConnection
+                c.connectTimeout = 6000; c.readTimeout = 6000
+                val body = c.inputStream.bufferedReader().use { it.readText() }
+                prefs.edit().putLong("update_checked", now).apply()
+                val a = JSONObject(body).optJSONObject("android") ?: return@Thread
+                val latest = a.optString("version"); val url = a.optString("url")
+                val mine = packageManager.getPackageInfo(packageName, 0).versionName ?: return@Thread
+                if (latest.isEmpty() || !url.startsWith("https://") || !versionNewer(latest, mine)) return@Thread
+                if (now < prefs.getLong("update_snooze_" + latest, 0L)) return@Thread
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    AlertDialog.Builder(this)
+                        .setTitle("New version available")
+                        .setMessage("photobooth4u " + latest + " is ready (this tablet has " + mine + "). Update between events, not during a session.")
+                        .setPositiveButton("Update") { _, _ -> try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (e: Exception) { } }
+                        .setNegativeButton("Later") { _, _ -> prefs.edit().putLong("update_snooze_" + latest, System.currentTimeMillis() + 24 * 3600_000L).apply() }
+                        .show()
+                }
+            } catch (e: Exception) { /* offline or the site is down: try again next launch */ }
+        }.start()
+    }
+
+    private fun versionNewer(a: String, b: String): Boolean {
+        val x = a.split('.').map { it.toIntOrNull() ?: 0 }; val y = b.split('.').map { it.toIntOrNull() ?: 0 }
+        for (i in 0 until maxOf(x.size, y.size)) { val p = x.getOrElse(i) { 0 }; val q = y.getOrElse(i) { 0 }; if (p != q) return p > q }
+        return false
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -121,6 +164,10 @@ class MainActivity : AppCompatActivity() {
         // over the booth Wi-Fi by a small web server in the app (no internet needed).
         pbLocal = PBLocal(this)
         webView.addJavascriptInterface(pbLocal, "__PBLocal")
+        // The spoken countdown uses the tablet's own text-to-speech voices (window.__PBVoice).
+        val voice = VoiceBridge(this)
+        voiceBridge = voice
+        webView.addJavascriptInterface(voice, "__PBVoice")
         val share = LocalShareServer(pbLocal)
         shareServer = share
         Thread {
@@ -152,6 +199,7 @@ class MainActivity : AppCompatActivity() {
         // a network right now — otherwise there's no point waiting on a request that can
         // only fail, so go straight to the offline booth.
         bootWithLicence()
+        checkForAppUpdate()
         checkinHandler.postDelayed(checkinLoop, 10 * 60_000L)
     }
 
@@ -308,6 +356,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         btBridge.disconnect()
+        voiceBridge?.shutdown()
         shareServer?.stop()
         checkinHandler.removeCallbacksAndMessages(null)
     }
@@ -334,7 +383,9 @@ class MainActivity : AppCompatActivity() {
         s.displayZoomControls = false
         s.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            s.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            // The 360 capture screen sends its clip to the booth laptop over the booth Wi-Fi (plain http://<laptop>:47777),
+            // which a page loaded over https could not do in the stricter mode. The app only ever loads the booth's own pages.
+            s.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -346,6 +397,19 @@ class MainActivity : AppCompatActivity() {
 
         // ChromeClient for camera / microphone permissions & file chooser
         webView.webChromeClient = object : WebChromeClient() {
+            // Page errors go to Logcat, and the first few show on screen so a booth that
+            // loads but won't respond (e.g. "Tap to start" does nothing) says why.
+            override fun onConsoleMessage(m: ConsoleMessage?): Boolean {
+                if (m != null && m.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+                    Log.e("PBBooth", "${m.message()} (${m.sourceId()}:${m.lineNumber()})")
+                    if (pageErrorToasts < 3) {
+                        pageErrorToasts++
+                        Toast.makeText(this@MainActivity, "Booth error: ${m.message().take(160)} (line ${m.lineNumber()})", Toast.LENGTH_LONG).show()
+                    }
+                }
+                return true
+            }
+
             override fun onPermissionRequest(request: PermissionRequest) {
                 // Automatically grant camera and microphone access to the booth
                 activityGrantPermissions(request)
@@ -457,6 +521,9 @@ class MainActivity : AppCompatActivity() {
                 val lockOpt = feat?.optBoolean("lockOpt", true) ?: true
                 val payOpt = feat?.optBoolean("vouchers", false) ?: false
                 val traditional = feat?.optBoolean("traditional", false) ?: false
+                // Extras every package includes (missing = on): vintage looks, photographer desk, flipbook, video guestbook
+                val exObj = feat?.optJSONObject("extras")
+                val extrasJs = listOf("vintage", "roving", "flipbook", "video", "spin360").joinToString(",") { it + ":" + (exObj?.optBoolean(it, true) ?: true) }
                 // null means a lifetime code (desktop's own "never expires" sentinel, matching netlify/lib/core.mjs LIFETIME_EXP)
                 val expMs = activeExp ?: 253402300799000L
 
@@ -468,9 +535,12 @@ class MainActivity : AppCompatActivity() {
                     append("window.__PB.desktop={v:").append(jsStr(AppLicence.APP_VERSION)).append(",os:'android'};")
                     // Tells the booth that photos are saved by this app and shared over the booth Wi-Fi
                     append("window.__PB.android=true;")
+                    // Offline mode: the booth hides QR payment (it needs the internet); vouchers and GIFs still work
+                    append("window.__PB.offline=true;")
                     // Mark it as a rental-style session so all features are visible
                     append("window.__PB.type='rental';")
                     append("window.__PB.gifOpt=").append(gifOpt).append(";")
+                    append("window.__PB.extras={").append(extrasJs).append("};")
                     append("window.__PB.retakeOpt=").append(retakeOpt).append(";")
                     append("window.__PB.lockOpt=").append(lockOpt).append(";")
                     append("window.__PB.payOpt=").append(payOpt).append(";")
@@ -486,7 +556,8 @@ class MainActivity : AppCompatActivity() {
 
                 // Inject the config just before </head>
                 val html = if (raw.contains("</head>", ignoreCase = true)) {
-                    raw.replace("</head>", "$pbConfig\n</head>", ignoreCase = true)
+                    // First </head> only: booth.html has another one inside a JS string further down
+                    raw.replaceFirst("</head>", "$pbConfig\n</head>", ignoreCase = true)
                 } else {
                     pbConfig + raw
                 }
@@ -602,9 +673,9 @@ class MainActivity : AppCompatActivity() {
 
         AlertDialog.Builder(this)
             .setTitle("Booth Configuration")
-            .setMessage("This tablet boots the bundled booth (no internet). Save a URL only if you want the live website instead.")
+            .setMessage("Choose how this tablet runs.\n\nOffline: works with no internet (no QR payment; photos, GIFs and vouchers still work).\n\nOnline: opens the live website below (QR payment available, needs internet).")
             .setView(input)
-            .setPositiveButton("Save live URL") { _, _ ->
+            .setPositiveButton("Online (live site)") { _, _ ->
                 val newUrl = input.text.toString().trim()
                 if (newUrl.isNotBlank()) {
                     saveUrl(newUrl)
@@ -614,7 +685,7 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "Loading $newUrl", Toast.LENGTH_SHORT).show()
                 }
             }
-            .setNeutralButton("Bundled booth (offline)") { _, _ ->
+            .setNeutralButton("Offline") { _, _ ->
                 setUseLiveUrl(false)
                 offlineLoaded = false
                 bootWithLicence()

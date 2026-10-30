@@ -18,7 +18,7 @@
 // / "Mac app"), so removing that device in Admin or My Events cancels it at the
 // laptop's next check-in.
 import { createPrivateKey, createPublicKey, sign as edSign, verify as edVerify, randomBytes } from 'node:crypto';
-import { meta, normPrint, LIFETIME_EXP, FINAL_EXP, maxDevicesOf, devicesOf, addDevice, setDevices, displayCode } from './core.mjs';
+import { meta, normPrint, extrasOf, LIFETIME_EXP, FINAL_EXP, maxDevicesOf, devicesOf, addDevice, setDevices, displayCode } from './core.mjs';
 
 export const LIC_PREFIX = 'PB4U-LIC1';
 export const CHECK_DAYS = 75;          // a lifetime laptop checks in this often (when it has internet)
@@ -63,6 +63,7 @@ export function featuresOf(rec, deviceNo) {
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes, rec.print),
     traditional: !!rec.traditional, retakeOpt: !!rec.retakeOpt, lockOpt: !!rec.lockOpt,
     gifOpt: rec.gifOpt !== false,
+    extras: extrasOf(rec),
     vouchers: !!rec.payOpt,                       // offline: vouchers only (QR payments need internet)
     folderKey: rec.lifetime ? null : ((rec.folderName || rec.label || '').trim() || null),
     folderPrefix: rec.lifetime ? ((rec.folderName || rec.label || rec.code || '').trim() || null) : null,

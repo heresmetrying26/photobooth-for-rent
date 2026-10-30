@@ -352,6 +352,89 @@
       max-width: 520px
     }
 
+    /* online vs the offline apps */
+    .vers {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px
+    }
+
+    .ver {
+      padding: 20px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--line)
+    }
+
+    .ver .where {
+      margin: 0 0 6px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--red)
+    }
+
+    .ver h3 {
+      margin: 0 0 4px;
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: 22px;
+      letter-spacing: -.02em
+    }
+
+    .ver .net {
+      margin: 0 0 12px;
+      font-size: 14px;
+      color: var(--muted)
+    }
+
+    .ver ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+      font-size: 14px
+    }
+
+    .ver li {
+      position: relative;
+      padding-left: 20px
+    }
+
+    .ver li::before {
+      content: "\2713";
+      position: absolute;
+      left: 0;
+      font-weight: 800;
+      color: var(--red)
+    }
+
+    .ver li.no::before {
+      content: "\2013";
+      color: var(--muted)
+    }
+
+    .ver-note {
+      margin: 14px auto 0;
+      max-width: 640px;
+      text-align: center;
+      font-size: 14px;
+      color: var(--muted)
+    }
+
+    .ver-note b,
+    .ver-note a {
+      color: var(--ink)
+    }
+
+    @media (max-width: 760px) {
+      .vers {
+        grid-template-columns: 1fr
+      }
+    }
+
     /* features */
     .features {
       display: grid;
@@ -767,6 +850,30 @@
       text-align: center;
     }
 
+    .pkg-divider.first {
+      margin-top: 28px;
+    }
+
+    .plans-event {
+      max-width: 620px;
+      margin: 0 auto;
+    }
+
+    .addons-d {
+      margin-top: 14px;
+    }
+
+    .addons-d summary {
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--muted);
+      padding: 4px 0;
+    }
+
+    .addons-d[open] summary {
+      margin-bottom: 4px;
+    }
+
     .pkg-divider h3 {
       font-family: 'Fraunces', Georgia, serif;
       font-weight: 600;
@@ -1104,6 +1211,46 @@
       height: 16px
     }
 
+    .pg-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px
+    }
+
+    .pg-list a {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 14px 18px;
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      text-decoration: none;
+      transition: border-color .15s, transform .15s
+    }
+
+    .pg-list a:hover,
+    .pg-list a:focus-visible {
+      border-color: var(--red);
+      transform: translateY(-1px)
+    }
+
+    .pg-list a b {
+      font-size: 15.5px
+    }
+
+    .pg-list a span {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted)
+    }
+
+    .pg-list a.pg-all {
+      grid-column: 1 / -1;
+      border: 2px solid var(--red)
+    }
+
     .guide:hover .open {
       color: var(--red)
     }
@@ -1386,6 +1533,10 @@
         grid-template-columns: 1fr
       }
 
+      .pg-list {
+        grid-template-columns: 1fr
+      }
+
       .steps {
         grid-template-columns: 1fr 1fr
       }
@@ -1630,8 +1781,7 @@
       <h2 id="hw">From booking to photos</h2>
       <p class="sub">No booth to rent, no one to send. Just your code and your device.</p>
       <ol class="steps">
-        <li><b>Book</b><span>Message us with your event date. You get your booth code plus a 1-hour practice
-            code.</span></li>
+        <li><b>Book</b><span>Message us with your event date. You get your booth code, and you can try the free trial first.</span></li>
         <li><b>Set up</b><span>Open the booth, enter your code, and pick a design, layout and countdown.</span></li>
         <li><b>Snap</b><span>Guests tap, pose and get their photo — printed on the spot if you have a printer.</span>
         </li>
@@ -1639,13 +1789,58 @@
       </ol>
     </section>
 
-    <section class="block" id="packages" aria-labelledby="pk">
-      <p class="label">Pricing</p>
-      <h2 id="pk">Simple pricing</h2>
-      <p class="sub">Pick a plan, scan the PayMongo QR to pay, and your access code + setup guide are
-        unlocked immediately.</p>
+    <section class="block" id="versions" aria-labelledby="vs">
+      <p class="label">Online or offline</p>
+      <h2 id="vs">Which one do you need?</h2>
+      <p class="sub">The same booth, three ways to run it. Pick by the internet at your venue and the printer you bring.</p>
+      <div class="vers">
+        <article class="ver">
+          <p class="where">Online &middot; website</p>
+          <h3>In a browser</h3>
+          <p class="net">Needs internet at the venue</p>
+          <ul>
+            <li>Nothing to install: iPad, Android tablet, phone or laptop</li>
+            <li>Guests scan a QR and open their photos online for 7 days</li>
+            <li>Prints over AirPrint or Mopria</li>
+            <li>Every extra: vintage looks, flipbook, photographer desk, video guestbook</li>
+            <li>360 desk shares the video as recorded, with no editing</li>
+            <li>Free trial to test it first</li>
+          </ul>
+        </article>
+        <article class="ver">
+          <p class="where">Offline &middot; laptop app</p>
+          <h3>Windows &amp; Mac</h3>
+          <p class="net">No internet needed</p>
+          <ul>
+            <li>Photos save on the laptop, and guests scan a QR over the booth Wi-Fi</li>
+            <li>DSLR or webcam, a second screen for guests, auto-print</li>
+            <li>Photo printers: DNP, HiTi, Citizen, Mitsubishi, Sinfonia, Canon Selphy and everyday printers</li>
+            <li>Every extra, and the photographer desk can watch a camera's folder</li>
+            <li>360 desk edits the video (slow motion, frame, music) &middot; beta</li>
+          </ul>
+        </article>
+        <article class="ver">
+          <p class="where">Offline &middot; Android app</p>
+          <h3>Android tablet</h3>
+          <p class="net">No internet needed</p>
+          <ul>
+            <li>Photos save on the tablet, and guests scan a QR over the booth Wi-Fi</li>
+            <li>Every extra, and flipbook cards print if you have a printer</li>
+            <li class="no">Prints to Bluetooth thermal receipt printers only: photo printers need the laptop app</li>
+            <li>Record 360 on the tablet &middot; beta. The clip goes to the laptop to be edited</li>
+          </ul>
+        </article>
+      </div>
+      <p class="ver-note"><b>Online plans</b> open the booth in a browser. <b>Offline plans</b> unlock the Windows, Mac and Android apps with one code, and <b>Online + Offline</b> gives you both.
+        Get the installers on the <a href="/downloads/">Downloads page</a>.</p>
+    </section>
 
-      <div class="pkg-divider">
+    <section class="block" id="packages" aria-labelledby="pk">
+      <h2 id="pk">Pricing</h2>
+      <p class="sub">Pick a plan, scan the PayMongo QR to pay, and your access code + setup guide are unlocked
+        immediately.</p>
+
+      <div class="pkg-divider first">
         <h3>Monthly</h3>
         <p>Unlimited events for 30 days. Cancel anytime.</p>
       </div>
@@ -1653,7 +1848,7 @@
         <article class="plan monthly">
           <span class="tag">Monthly</span>
           <h3>Online</h3>
-          <p class="for">iPad, tablet, phone or laptop browser · needs internet</p>
+          <p class="for">iPad, tablet, phone or laptop browser &middot; needs internet</p>
           <ul class="plan-list">
             <li>Unlimited photo sessions &amp; events for 30 days</li>
             <li>Online photo gallery for guests (7-day storage)</li>
@@ -1661,8 +1856,24 @@
             <li>Print wirelessly with AirPrint or Mopria</li>
           </ul>
           <div class="plan-footer">
-            <p class="price">₱799 <small>/ month</small></p>
-            <button class="plan-cta" type="button" data-sub="online" data-price="799" data-name="Online">Pay with QR →</button>
+            <p class="price">&#8369;799 <small>/ month</small></p>
+            <button class="plan-cta" type="button" data-sub="online" data-price="799" data-name="Online">Pay with QR &rarr;</button>
+          </div>
+        </article>
+
+        <article class="plan monthly">
+          <span class="tag">Monthly</span>
+          <h3>Offline (laptop + Android)</h3>
+          <p class="for">Windows / Mac app &amp; Android tablet app &middot; zero venue internet needed</p>
+          <ul class="plan-list">
+            <li>Works 100% offline with no internet at the venue</li>
+            <li>Guests get photos over booth Wi-Fi, no internet needed</li>
+            <li>Laptop (DSLR &amp; webcam, auto-print) or Android tablet</li>
+            <li>Offline apps activated for 30 days</li>
+          </ul>
+          <div class="plan-footer">
+            <p class="price">&#8369;999 <small>/ month</small></p>
+            <button class="plan-cta" type="button" data-sub="offline" data-price="999" data-name="Offline (laptop + Android)">Pay with QR &rarr;</button>
           </div>
         </article>
 
@@ -1677,8 +1888,8 @@
             <li>DSLR &amp; webcam support with auto-print on laptop</li>
           </ul>
           <div class="plan-footer">
-            <p class="price">₱1,299 <small>/ month</small></p>
-            <button class="plan-cta" type="button" data-sub="both" data-price="1299" data-name="Online + Offline">Pay with QR →</button>
+            <p class="price">&#8369;1,399 <small>/ month</small></p>
+            <button class="plan-cta" type="button" data-sub="both" data-price="1399" data-name="Online + Offline">Pay with QR &rarr;</button>
           </div>
         </article>
       </div>
@@ -1686,30 +1897,30 @@
       <div class="renew-banner">
         <span>Already have an active monthly code?</span>
         <button type="button" class="renew-link" id="renewModalBtn">Renew or extend your existing code (+30 days)
-          →</button>
+          &rarr;</button>
       </div>
 
       <div class="pkg-divider">
         <h3>Lifetime</h3>
-        <p>Pay once. Every event, never expires, up to 5 devices. <a href="/faq/">Lifetime FAQ →</a></p>
+        <p>Pay once. Every event, never expires, up to 5 devices. <a href="/faq/">Lifetime FAQ &rarr;</a></p>
       </div>
       <div class="plans">
         <article class="plan">
           <span class="tag">Lifetime</span>
           <h3>Lifetime Online</h3>
-          <p class="for">Tablet or laptop in the browser · every event · never expires</p>
+          <p class="for">Tablet or laptop in the browser &middot; every event &middot; never expires</p>
           <div class="plan-footer">
-            <p class="price">₱2,999 <small>one-time</small></p>
-            <button class="plan-cta" type="button" data-sub="lifeonline" data-price="2999" data-name="Lifetime Online">Pay with QR →</button>
+            <p class="price">&#8369;2,999 <small>one-time</small></p>
+            <button class="plan-cta" type="button" data-sub="lifeonline" data-price="2999" data-name="Lifetime Online">Pay with QR &rarr;</button>
           </div>
         </article>
         <article class="plan">
           <span class="tag">Lifetime</span>
           <h3>Lifetime Offline</h3>
-          <p class="for">The Windows / Mac / Android app, works with no internet · every event · never expires</p>
+          <p class="for">The Windows / Mac / Android app, works with no internet &middot; every event &middot; never expires</p>
           <div class="plan-footer">
-            <p class="price">₱3,499 <small>one-time</small></p>
-            <button class="plan-cta" type="button" data-sub="lifeoffline" data-price="3499" data-name="Lifetime Offline">Pay with QR →</button>
+            <p class="price">&#8369;3,499 <small>one-time</small></p>
+            <button class="plan-cta" type="button" data-sub="lifeoffline" data-price="3499" data-name="Lifetime Offline">Pay with QR &rarr;</button>
           </div>
         </article>
         <article class="plan life">
@@ -1717,26 +1928,26 @@
           <h3>Lifetime Online + Offline</h3>
           <p class="for">Both: the online booth and the offline app that works with no internet</p>
           <div class="plan-footer">
-            <p class="price">₱4,999 <small>one-time</small></p>
-            <button class="plan-cta" type="button" data-sub="lifetime" data-price="4999" data-name="Lifetime Online + Offline">Pay with QR →</button>
+            <p class="price">&#8369;4,999 <small>one-time</small></p>
+            <button class="plan-cta" type="button" data-sub="lifetime" data-price="4999" data-name="Lifetime Online + Offline">Pay with QR &rarr;</button>
           </div>
-          <p class="life-link" style="margin-top:8px;"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us on Messenger →</a></p>
+          <p class="life-link" style="margin-top:8px;"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us on Messenger &rarr;</a></p>
         </article>
       </div>
-      <details class="addons-fold" style="margin:12px 0 0;">
-        <summary style="cursor:pointer;font-size:14px;color:var(--muted,#6b6560);padding:6px 2px;">Already a Lifetime owner? Add the missing side</summary>
-        <div class="addons" aria-label="Add-ons for Lifetime owners" style="margin-top:8px;">
+      <details class="addons-d">
+        <summary>Already a Lifetime owner? Add the missing side</summary>
+        <div class="addons" aria-label="Add-ons for Lifetime owners">
           <div class="addon">
             <span class="ad-ic" aria-hidden="true">+</span>
             <span class="ad-txt"><b>Add Offline later</b><small>For Lifetime Online owners: the Windows / Mac / Android app</small></span>
-            <span class="ad-price">₱2,499</span>
-            <button class="addon-cta plan-cta" type="button" data-sub="addon_offline" data-price="2499" data-name="Add Offline App later">Pay with QR →</button>
+            <span class="ad-price">&#8369;2,499</span>
+            <button class="addon-cta plan-cta" type="button" data-sub="addon_offline" data-price="2499" data-name="Add Offline App later">Pay with QR &rarr;</button>
           </div>
           <div class="addon">
             <span class="ad-ic" aria-hidden="true">+</span>
             <span class="ad-txt"><b>Add Online later</b><small>For Lifetime Offline owners: the online booth</small></span>
-            <span class="ad-price">₱1,999</span>
-            <button class="addon-cta plan-cta" type="button" data-sub="addon_online" data-price="1999" data-name="Add Online Booth later">Pay with QR →</button>
+            <span class="ad-price">&#8369;1,999</span>
+            <button class="addon-cta plan-cta" type="button" data-sub="addon_online" data-price="1999" data-name="Add Online Booth later">Pay with QR &rarr;</button>
           </div>
         </div>
       </details>
@@ -1745,23 +1956,24 @@
         <h3>Single event</h3>
         <p>Just one date? Book it for 24 hours.</p>
       </div>
-      <div class="plans">
-        <article class="plan pro event solo">
+      <div class="plans-event">
+        <article class="plan pro event">
           <span class="tag">Per event</span>
           <h3>Event Pass</h3>
-          <p class="for">Use it on a tablet or a laptop · guest screen, auto-print · online or offline app</p>
+          <p class="for">Use it on a tablet or a laptop &middot; guest screen, auto-print &middot; online or offline app</p>
           <div class="plan-footer">
-            <p class="price">₱599 <small>/ event</small></p>
-            <button class="plan-cta" type="button" data-sub="laptop" data-price="599" data-name="Event Pass">Pay with QR →</button>
+            <p class="price">&#8369;499 <small>/ event</small></p>
+            <button class="plan-cta" type="button" data-sub="laptop" data-price="499" data-name="Event Pass">Pay with QR &rarr;</button>
           </div>
         </article>
       </div>
-        </article>
-      </div>
+
       <ul class="chips" aria-label="Included with every package">
+        <li>Event Pass: 24 hours on your event day</li>
         <li>Unlimited snaps</li>
         <li>Online gallery for 7 days</li>
-        <li>+ 1-hour practice code</li>
+        <li>Free trial mode to test first</li>
+        <li>Vintage looks, flipbook, photographer desk and 360 video desk</li>
       </ul>
       <p class="offline-note"><b>Offline app</b> for Windows, Mac and Android tablets: no internet needed at the venue.
         Photos save on the device and guests get theirs by scanning a QR over the booth Wi-Fi.</p>
@@ -1825,7 +2037,7 @@
     <section class="block" id="guides" aria-labelledby="gd">
       <p class="label">Guides</p>
       <h2 id="gd">Step-by-step setup guides</h2>
-      <p class="sub">Pick the guide for your setup. Each one opens as a PDF you can save or print.</p>
+      <p class="sub">Pick the guide for your plan: online plans use the Laptop or Tablet guide, offline plans use the Offline app guide.</p>
       <div class="guides">
         <a class="guide" href="/lifetime/photobooth4u-setup-guide.pdf" target="_blank" rel="noopener">
           <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1833,7 +2045,7 @@
               <rect x="3" y="4" width="18" height="12" rx="1.5" />
               <path d="M2 20h20" />
             </svg></span>
-          <p class="for">Online · Chrome on Windows or Mac</p>
+          <p class="for">Online plans &middot; Chrome on Windows or Mac</p>
           <h3>Laptop guide</h3>
           <p>Laptop Booth with a guest screen, DSLR over USB, silent printing, guest payments and the backup folder.</p>
           <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
@@ -1847,7 +2059,7 @@
               <rect x="5" y="2.5" width="14" height="19" rx="2" />
               <path d="M11 18h2" />
             </svg></span>
-          <p class="for">Online · iPad &amp; Android</p>
+          <p class="for">Online plans &middot; iPad &amp; Android</p>
           <h3>Tablet guide</h3>
           <p>Prepare the tablet, camera and position, guest-only mode, printing over AirPrint or Mopria, and weak
             internet.</p>
@@ -1862,45 +2074,59 @@
               <path
                 d="M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8A15 15 0 0 0 10.5 5.1M5.2 12.4a10 10 0 0 1 3.2-1.9M18.8 12.4a10 10 0 0 0-2.4-1.6M8.8 15.9a5 5 0 0 1 6.4 0M12 19.5h.01M3 3l18 18" />
             </svg></span>
-          <p class="for">Offline · Windows &amp; Mac app</p>
+          <p class="for">Offline plans &middot; Windows, Mac &amp; Android app</p>
           <h3>Offline app guide</h3>
-          <p>Install and activate, camera and printing, and sharing guests' photos over the booth Wi-Fi with no
+          <p>Install and activate on a laptop or an Android tablet, camera and printing, and sharing guests' photos over the booth Wi-Fi with no
             internet.</p>
           <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M7 17 17 7M8 7h9v9" />
             </svg></span>
         </a>
-        <a class="guide" href="/how-to-print-dnp/" target="_blank" rel="noopener">
+        <a class="guide" href="/how-to-360/" target="_blank" rel="noopener">
           <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 6 2 18 2 18 9" />
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-              <rect x="6" y="14" width="12" height="8" />
+              <path d="M21 12a9 9 0 1 1-3-6.7" />
+              <path d="M21 4v5h-5" />
+              <circle cx="12" cy="12" r="2.5" />
             </svg></span>
-          <p class="for">Printers · DNP RX1HS, DS620, QW410</p>
-          <h3>DNP printer guide</h3>
-          <p>Driver setup, 4R borderless printing, and setting up the automatic 2-inch cut for 2×6 photo strips.</p>
+          <p class="for">360 booth &middot; Laptop app &amp; website</p>
+          <h3>360 video guide</h3>
+          <p>Camera settings for the arm, sending videos to the laptop, slow motion, speed ramp and boomerang, music, and sharing with a QR.</p>
           <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M7 17 17 7M8 7h9v9" />
             </svg></span>
         </a>
-        <a class="guide" href="/how-to-print-hiti/" target="_blank" rel="noopener">
+        <a class="guide" href="/how-to-extras/" target="_blank" rel="noopener">
           <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 6 2 18 2 18 9" />
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-              <rect x="6" y="14" width="12" height="8" />
+              <path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.5 6.8 19.2l1-5.9L3.5 9.2l5.9-.8z" />
             </svg></span>
-          <p class="for">Printers · HiTi P525L &amp; dye-sub</p>
-          <h3>HiTi printer guide</h3>
-          <p>CUPS and Windows driver configuration, silent auto-printing, and dual-queue 2×6 strip cuts.</p>
+          <p class="for">Included with every package</p>
+          <h3>Booth extras guide</h3>
+          <p>Vintage looks, the photographer desk, the print preview, and the printed flipbook: how to set each up and use it at an event.</p>
           <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M7 17 17 7M8 7h9v9" />
             </svg></span>
         </a>
+      </div>
+    </section>
+
+    <section class="block" id="printer-guides" aria-labelledby="pg">
+      <p class="label">Printers</p>
+      <h2 id="pg">Printer guides</h2>
+      <p class="sub">Pick your printer for setup steps. Photo printers connect to a Windows or Mac laptop; the Android app prints to Bluetooth thermal printers.</p>
+      <div class="pg-list">
+        <a class="pg-all" href="/printers/" target="_blank" rel="noopener"><b>Which printers work</b><span>Every brand in one table</span></a>
+        <a href="/printers/#everyday" target="_blank" rel="noopener"><b>Epson, Brother, HP, Canon</b><span>Everyday inkjet and laser printers work too</span></a>
+        <a href="/how-to-print-dnp/" target="_blank" rel="noopener"><b>DNP</b><span>RX1HS, DS620, DS820, DS40, QW410</span></a>
+        <a href="/how-to-print-hiti/" target="_blank" rel="noopener"><b>HiTi</b><span>P525L, P750L, P910L and more</span></a>
+        <a href="/how-to-print-citizen/" target="_blank" rel="noopener"><b>Citizen</b><span>CX-02, CX-02W, CY-02, CZ-01</span></a>
+        <a href="/how-to-print-mitsubishi/" target="_blank" rel="noopener"><b>Mitsubishi</b><span>CP-D70DW to CP-D90DW, CP-K60DW-S</span></a>
+        <a href="/how-to-print-sinfonia/" target="_blank" rel="noopener"><b>Sinfonia</b><span>Color Stream CS2, S2145, S3</span></a>
+        <a href="/how-to-print-thermal/" target="_blank" rel="noopener"><b>Thermal receipt</b><span>80 / 58 mm, Bluetooth on Android</span></a>
       </div>
     </section>
 
@@ -2106,12 +2332,6 @@ Event Date:</pre>
           <button type="button" class="btn small" id="subCopyCodeBtn">Copy code</button>
         </div>
 
-        <div id="subPracticeBox" style="display:none;margin-top:10px;" class="sd-code-box">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:4px;width:100%;">1-Hour Practice Code:</div>
-          <span class="code-val" id="subPracticeCode">PB-XXXX-XXXX-XXXX</span>
-          <button type="button" class="btn small" id="subCopyPracticeBtn">Copy practice</button>
-        </div>
-
         <p style="font-size:12.5px;color:var(--muted);margin:10px 0 16px;" id="subCodeTip">Save this code. Once entered on your device, it
           stays unlocked. Timer counts down from your first event use.</p>
 
@@ -2153,7 +2373,6 @@ Event Date:</pre>
       var AGREEMENT_VERSION = '3.2';
       var qrBackBtn = document.getElementById('subQrBackBtn');
       var copyCodeBtn = document.getElementById('subCopyCodeBtn');
-      var copyPracticeBtn = document.getElementById('subCopyPracticeBtn');
       var goBoothBtn = document.getElementById('subGoBoothBtn');
 
       var currentPlan = 'online', currentPrice = 799, currentOrderId = null;
@@ -2382,22 +2601,14 @@ Event Date:</pre>
         var code = data.code || 'PB-XXXX-XXXX-XXXX';
         document.getElementById('subFinalCode').textContent = code;
 
-        var practiceBox = document.getElementById('subPracticeBox');
-        if (data.practiceCode && practiceBox) {
-          practiceBox.style.display = 'block';
-          document.getElementById('subPracticeCode').textContent = data.practiceCode;
-        } else if (practiceBox) {
-          practiceBox.style.display = 'none';
-        }
-
         var subTitle = document.getElementById('subSuccessSubtitle');
         var tipEl = document.getElementById('subCodeTip');
         if (data.renewed) {
           subTitle.textContent = 'Your existing access code has been updated / extended!';
           tipEl.textContent = 'Your code stays active. Check your My Events portal for updated validity.';
-        } else if (data.practiceCode) {
-          subTitle.textContent = 'Your 24-hr event code + 1-hour practice code are active and ready.';
-          tipEl.textContent = 'Use the practice code to test your gear ahead of time. On your event day, enter your main code.';
+        } else if (data.plan === 'tablet' || data.plan === 'laptop') {
+          subTitle.textContent = 'Your 24-hour event code is active and ready.';
+          tipEl.textContent = 'Save this code. Enter it on your event day; it stays unlocked for 24 hours from first use.';
         } else if (data.plan && (data.plan.startsWith('life') || data.plan.startsWith('addon'))) {
           subTitle.textContent = 'Your lifetime access is unlocked for up to 5 devices!';
           tipEl.textContent = 'This code never expires and unlocks up to 5 devices simultaneously.';
@@ -2435,16 +2646,6 @@ Event Date:</pre>
           });
         };
 
-        if (copyPracticeBtn && data.practiceCode) {
-          copyPracticeBtn.onclick = function () {
-            navigator.clipboard.writeText(data.practiceCode).then(function () {
-              copyPracticeBtn.textContent = 'Copied!';
-              setTimeout(function () { copyPracticeBtn.textContent = 'Copy practice'; }, 2000);
-            }).catch(function () {
-              copyPracticeBtn.textContent = 'Copied!';
-            });
-          };
-        }
       }
     })();
   </script>

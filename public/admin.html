@@ -62,6 +62,7 @@
   .devchip{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;border:1.5px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;color:var(--ink);background:#fff;}
   .devchip button{padding:2px 8px;font-size:11px;border-radius:999px;}
   #newDays:disabled{opacity:.45;} .b-bonus{background:#E6F4F1;color:#1F6F62;}
+  .pkg-l{margin:8px 0 3px;font-weight:700;} .pkg-l:first-child{margin-top:4px;}
   .bonusrow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:8px;}
   .bonusrow>div{width:150px;}
   .bonusrow.off{display:none;}
@@ -143,18 +144,33 @@
       </div>
       <div class="modebox">
         <label style="font-size:13px;color:var(--ink);">Package</label>
-        <div class="row" id="newPackages" style="gap:6px;margin-top:4px;">
-          <button type="button" class="small" data-pkg="tablet">Tablet Booth · ₱499</button>
-          <button type="button" class="small" data-pkg="laptop">Laptop Booth · ₱599</button>
-          <button type="button" class="small" data-pkg="lifeonline">Lifetime Online · ₱2,999</button>
-          <button type="button" class="small" data-pkg="lifeoffline">Lifetime Offline · ₱3,499</button>
-          <button type="button" class="small" data-pkg="lifetime">Lifetime Online + Offline · ₱4,999</button>
+        <div id="newPackages">
+          <div class="meta pkg-l">Per event</div>
+          <div class="row" style="gap:6px;">
+            <button type="button" class="small" data-pkg="laptop">Event Pass · ₱499</button>
+          </div>
+          <div class="meta pkg-l">Monthly (30 days)</div>
+          <div class="row" style="gap:6px;">
+            <button type="button" class="small" data-pkg="monthonline">Online · ₱799</button>
+            <button type="button" class="small" data-pkg="monthoffline">Offline (Laptop + Android) · ₱999</button>
+            <button type="button" class="small" data-pkg="monthboth">Online + Offline · ₱1,399</button>
+          </div>
+          <div class="meta pkg-l">Lifetime</div>
+          <div class="row" style="gap:6px;">
+            <button type="button" class="small" data-pkg="lifeonline">Online · ₱2,999</button>
+            <button type="button" class="small" data-pkg="lifeoffline">Offline · ₱3,499</button>
+            <button type="button" class="small" data-pkg="lifetime">Online + Offline · ₱4,999</button>
+          </div>
+          <div class="meta pkg-l">Android tablet app</div>
+          <div class="row" style="gap:6px;">
+            <button type="button" class="small" data-pkg="android">Android app only (offline)</button>
+          </div>
         </div>
-        <div class="meta" style="margin:6px 0 0;">Fills in the settings below for that package; you can still change any of them.</div>
+        <div class="meta" style="margin:8px 0 0;">Fills in every setting below for that package; you can still change any of them. Every package starts with retakes, lock booth, GIF and all paper sizes on. Guest payments are on too (the offline and Android apps get vouchers; the GCash / Maya QR needs the website).</div>
       </div>
       <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newLifetime"> Lifetime (never expires)</label>
-        <div class="meta" style="margin:0;" id="lifetimeHint">For clients who buy the booth for good. Instead of one fixed Drive folder, the booth asks for an <b>event name</b> each time, and every event gets its own folder: <b>“Drive folder name · event name”</b>. Turning this on also turns on the Traditional (Pro) booth below; untick that if they use a tablet.</div>
+        <div class="meta" style="margin:0;" id="lifetimeHint">For clients who buy the booth for good. Instead of one fixed Drive folder, the booth asks for an <b>event name</b> each time, and every event gets its own folder: <b>“Drive folder name · event name”</b>. Turning this on also turns on the Traditional (Pro) booth below; untick that if they use a tablet. Lifetime renters can also add their own paper sizes in the booth's print panel.</div>
       </div>
       <div class="modebox">
         <label style="font-size:13px;color:var(--ink);">Event date <span style="font-weight:500;color:var(--dim);">(optional)</span></label>
@@ -163,13 +179,6 @@
           <div><label>From time</label><input id="newStartTime" type="time" value="00:00"></div>
         </div>
         <div class="meta" style="margin:6px 0 0;" id="newStartHint">Leave blank and the days start when the renter first enters the code. With a date, the code can't be used before it opens and runs for the Days above from that time (e.g. 1 day = 24 hours).</div>
-      </div>
-      <div class="modebox">
-        <label class="toggle"><input type="checkbox" id="newBonus"> Include a bonus code</label>
-        <div class="bonusrow off" id="newBonusRow">
-          <div><label>Bonus length (minutes)</label><input id="newBonusMin" type="number" min="5" max="1440" value="60"></div>
-        </div>
-        <div class="meta" style="margin:6px 0 0;">A second code the renter can use any time before their booking ends (e.g. to test before the event). The time starts on first entry. Its photos go to a <b>Bonus</b> folder inside the event folder, named BONUS_1, BONUS_2…</div>
       </div>
       <div class="modebox">
         <label style="font-size:13px;color:var(--ink);">Starting theme <span style="font-weight:500;color:var(--dim);">(optional)</span></label>
@@ -182,8 +191,22 @@
         <div class="meta" style="margin:0;">For a laptop with a second monitor: guests see the camera and countdown on the extended screen, the renter runs setup and printing on the laptop, and prints can run automatically. Leave off for tablets (iPad / Android).</div>
       </div>
       <div class="modebox">
-        <label class="toggle"><input type="checkbox" id="newGif"> GIF mode (animated GIF &amp; Photo + GIF options)</label>
+        <label class="toggle"><input type="checkbox" id="newGif" checked> GIF mode (animated GIF &amp; Photo + GIF options)</label>
         <div class="meta" style="margin:0;">Enables animated GIF recording in the booth: guests can get a GIF or both photo strip + GIF with separate QR codes.</div>
+      </div>
+      <div class="modebox">
+        <label class="toggle"><input type="checkbox" id="newRetake" checked> Give retake</label>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newLock" checked> Give lock booth (guest-only screen with a PIN)</label>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newPay" checked> Guest payments (vouchers; GCash / Maya QR when online)</label>
+        <div class="meta" style="margin:6px 0 0;" id="newPayHint">Vouchers work offline too. The GCash / Maya QR part only works on the website booth, so laptop-app-only and Android-app-only codes get vouchers only.</div>
+      </div>
+      <div class="modebox">
+        <label style="font-size:13px;color:var(--ink);">Extras <span style="font-weight:500;color:var(--dim);">(all included; untick to hide one)</span></label>
+        <label class="toggle"><input type="checkbox" id="newXVintage" checked> Vintage looks (film, faded, 70s, instant, noir, date stamp)</label>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newXRoving" checked> Photographer desk (roving photographer photos &rarr; frame, print, gallery)</label>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newXFlipbook" checked> Flipbook (short clip printed as a flip book)</label>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newXVideo" checked> Video guestbook (guests record a short message)</label>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newXSpin" checked> 360 video desk (videos from the 360 arm &rarr; QR; editing in the laptop app)</label>
       </div>
       <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newOffline"> Offline app (Windows / Mac / Android)</label>
@@ -272,12 +295,11 @@
             <select id="simPlanSelect" class="sel" style="width:100%;">
               <optgroup label="Monthly Subscriptions (30 days)">
                 <option value="online">Online · ₱799 / mo</option>
-                <option value="offline">Offline Laptop App · ₱999 / mo</option>
-                <option value="both">Online + Offline · ₱1,299 / mo</option>
+                <option value="offline">Offline Laptop + Android · ₱999 / mo</option>
+                <option value="both">Online + Offline · ₱1,399 / mo</option>
               </optgroup>
-              <optgroup label="Per Event Packages (24 hrs + 1-hr practice code)">
-                <option value="tablet">Tablet Booth · ₱499 / event</option>
-                <option value="laptop">Laptop Booth · ₱599 / event</option>
+              <optgroup label="Per Event Packages (24 hrs)">
+                <option value="laptop">Event Pass · ₱499 / event</option>
               </optgroup>
               <optgroup label="Lifetime Packages (Never expires, 5 devices)">
                 <option value="lifeonline">Lifetime Online · ₱2,999</option>
@@ -331,14 +353,6 @@
               <small id="simResCodeNote" style="display:block;margin-top:4px;color:var(--muted);font-size:11px;"></small>
             </div>
 
-            <div id="simPracticeBox" style="display:none;background:#fff;padding:12px;border-radius:8px;border:1px solid #e0e0e0;">
-              <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:0.5px;">1-Hour Practice Code</span>
-              <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-                <code id="simResPractice" style="font-size:18px;font-weight:800;color:var(--ink);"></code>
-                <button type="button" class="small" id="simCopyPracticeBtn">Copy</button>
-              </div>
-              <small style="display:block;margin-top:4px;color:var(--muted);font-size:11px;">Free test shots before real event</small>
-            </div>
           </div>
 
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(0,0,0,0.08);">
@@ -760,13 +774,16 @@
       if(st !== 'revoked' && !l.lifetime) acts += '<button class="small" data-a="extend" data-c="' + c + '">+ Add days</button>';
       if(st !== 'revoked' && !l.lifetime) acts += '<button class="small" data-a="makelifetime" data-c="' + c + '">Make lifetime</button>';
       if(unusedish || (st === 'expired' && !l.redeemedAt)) acts += '<button class="small" data-a="schedopen" data-c="' + c + '">' + (l.startsAt ? 'Change date' : 'Set date') + '</button>';
-      if(!l.bonusKey) acts += '<button class="small" data-a="addbonus" data-c="' + c + '">+ Bonus code</button>';
     }
     acts += '<button class="small" data-a="printedit" data-c="' + c + '">Print settings</button>';
     acts += '<button class="small" data-a="mode" data-c="' + c + '">' + (l.traditional ? 'Switch to tablet' : 'Make traditional') + '</button>';
     acts += '<button class="small" data-a="retakeopt" data-c="' + c + '">' + (l.retakeOpt ? 'Hide retake switch' : 'Give retake switch') + '</button>';
     acts += '<button class="small" data-a="gifopt" data-c="' + c + '">' + (l.gifOpt ? 'Hide GIF mode' : 'Give GIF mode') + '</button>';
     acts += '<button class="small" data-a="lockopt" data-c="' + c + '">' + (l.lockOpt ? 'Hide lock booth' : 'Give lock booth') + '</button>';
+    [['vintage', 'vintage looks'], ['roving', 'photographer desk'], ['flipbook', 'flipbook'], ['video', 'video guestbook'], ['spin360', '360 video desk']].forEach(function(x){
+      var on = !(l.extras && l.extras[x[0]] === false);
+      acts += '<button class="small" data-a="extra" data-x="' + x[0] + '" data-c="' + c + '">' + (on ? 'Hide ' : 'Give ') + x[1] + '</button>';
+    });
     if(!bonus){
       acts += '<button class="small" data-a="voucherpdf" data-c="' + c + '" title="Open / print 1-page Customer Voucher PDF with access codes, QR code &amp; all guides">📄 Customer Handout (PDF)</button>';
       acts += '<button class="small" data-a="vouchermsg" data-c="' + c + '" title="Copy formatted text message for Messenger / WhatsApp">📋 Copy Message</button>';
@@ -1171,6 +1188,12 @@
         refresh();
         return;
       }
+      if(a === 'extra'){
+        var xr = await api({ action: 'extra', code: code, name: b.dataset.x });
+        toast('Updated: ' + b.dataset.x + (xr.extras && xr.extras[b.dataset.x] ? ' on' : ' off') + ' — an open booth updates within ~5 minutes');
+        refresh();
+        return;
+      }
       if(a === 'gifopt'){
         var go = !(LIC[code] && LIC[code].gifOpt);
         await api({ action: 'gifopt', code: code, gifOpt: go });
@@ -1181,30 +1204,13 @@
       if(a === 'voucherpdf'){
         var rec = LIC[code];
         if(!rec){ toast('Open the code row first so it loads', true); return; }
-        var bKey = rec.bonusKey;
-        var practiceC = bKey && LIC[bKey] ? LIC[bKey].code : null;
-        openCustomerHandout({
-          code: rec.code,
-          practiceCode: practiceC,
-          name: rec.label || rec.code,
-          email: rec.email || null,
-          plan: { title: (rec.lifetime ? 'Lifetime' : rec.days + '-Day') + ' ' + (rec.traditional ? 'Laptop Booth' : 'Tablet Booth'), lifetime: !!rec.lifetime, offlineOpt: !!rec.offlineOpt },
-          files: [], links: []
-        });
+        openCustomerHandout({ code: rec.code, name: rec.label || rec.code, email: rec.email || null, rec: rec });
         return;
       }
       if(a === 'vouchermsg'){
         var rec3 = LIC[code];
         if(!rec3){ toast('Open the code row first so it loads', true); return; }
-        var bKey3 = rec3.bonusKey;
-        var practiceC3 = bKey3 && LIC[bKey3] ? LIC[bKey3].code : null;
-        copyCustomerMessage({
-          code: rec3.code,
-          practiceCode: practiceC3,
-          name: rec3.label || rec3.code,
-          plan: { title: (rec3.lifetime ? 'Lifetime' : rec3.days + '-Day') + ' ' + (rec3.traditional ? 'Laptop Booth' : 'Tablet Booth'), lifetime: !!rec3.lifetime, offlineOpt: !!rec3.offlineOpt },
-          files: [], links: []
-        });
+        copyCustomerMessage({ code: rec3.code, name: rec3.label || rec3.code, rec: rec3 });
         return;
       }
       if(a === 'mode'){
@@ -1237,7 +1243,7 @@
     try{
       var np = readPrint($('newPrint'));
       var startsAt = readStartInputs($('newStartDate'), $('newStartTime'));
-      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), bonus: $('newBonus').checked, bonusMinutes: $('newBonusMin').value, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null };
+      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, lockOpt: $('newLock').checked, extras: { vintage: $('newXVintage').checked, roving: $('newXRoving').checked, flipbook: $('newXFlipbook').checked, video: $('newXVideo').checked, spin360: $('newXSpin').checked }, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null };
       var j;
       try{ j = await api(createBody); }
       catch(e1){
@@ -1390,12 +1396,6 @@
         ? 'Existing code successfully extended / upgraded (+30 days or lifetime).'
         : (res.plan.lifetime ? 'Lifetime access · never expires · up to 5 devices.' : (res.plan.days || 30) + ' days access · starts on first redemption.');
 
-      if(res.practiceCode){
-        $('simPracticeBox').style.display = 'block';
-        $('simResPractice').textContent = res.practiceCode;
-      } else {
-        $('simPracticeBox').style.display = 'none';
-      }
 
       // Render deliverables (PDFs & Links)
       var dBox = $('simDeliverables');
@@ -1419,7 +1419,7 @@
         dBox.appendChild(card);
       });
 
-      SIM_RES = { code: res.code, practiceCode: res.practiceCode, plan: res.plan, name: name, email: email, files: res.files, links: res.links };
+      SIM_RES = { code: res.code, plan: res.plan, name: name, email: email, files: res.files, links: res.links };
       toast('Simulated payment for ' + (res.plan.title || 'package') + ' completed!');
       refresh();
     } catch(err){
@@ -1439,14 +1439,6 @@
     }).catch(function(){ toast('Code: ' + code); });
   });
 
-  $('simCopyPracticeBtn').addEventListener('click', function(){
-    var code = $('simResPractice').textContent;
-    if(!code) return;
-    navigator.clipboard.writeText(code).then(function(){
-      $('simCopyPracticeBtn').textContent = 'Copied!';
-      setTimeout(function(){ $('simCopyPracticeBtn').textContent = 'Copy'; }, 1800);
-    }).catch(function(){ toast('Code: ' + code); });
-  });
 
   $('simVoucherPdfBtn').addEventListener('click', function(){
     if(!SIM_RES){ toast('Simulate a payment first', true); return; }
@@ -1458,7 +1450,7 @@
     copyCustomerMessage(SIM_RES);
   });
 
-  printPicker($('newPrint'), null, 'Allow printing for these codes');
+  printPicker($('newPrint'), { enabled: true, sizes: PAPER.map(function(p){ return p[0]; }) }, 'Allow printing for these codes');
   $('newTheme').innerHTML = themeOptions('');
   // Remember whether the Create / Trial / QR / PayMongo / Simulator cards are open.
   ['createCard', 'trialCard', 'qrCard', 'paymongoCard', 'paySimCard'].forEach(function(id){
@@ -1469,8 +1461,12 @@
   // Lifetime Online adding the offline app later (₱2,499; founders ₱999): open the code → Give offline app.
   // Lifetime Offline adding the online booth later (₱1,999): open the code → Allow website too.
   var PKG = {
-    tablet:   { days: 1,   devices: 1, lifetime: false, traditional: false, gif: false, offline: false, only: false },
+    tablet:   { days: 1,   devices: 1, lifetime: false, traditional: false, gif: true, offline: false, only: false },
     laptop:   { days: 1,   devices: 1, lifetime: false, traditional: true,  gif: true,  offline: true,  only: false },
+    monthonline:  { days: 30, devices: 1, lifetime: false, traditional: true, gif: true, offline: false, only: false },
+    monthoffline: { days: 30, devices: 1, lifetime: false, traditional: true, gif: true, offline: true,  only: true },
+    monthboth:    { days: 30, devices: 1, lifetime: false, traditional: true, gif: true, offline: true,  only: false },
+    android:      { days: 30, devices: 1, lifetime: false, traditional: false, gif: true, offline: true, only: true },
     lifeonline: { days: 1, devices: 5, lifetime: true,  traditional: true,  gif: true,  offline: false, only: false },
     lifeoffline: { days: 1, devices: 5, lifetime: true, traditional: true,  gif: true,  offline: true,  only: true },
     lifetime: { days: 1,   devices: 5, lifetime: true,  traditional: true,  gif: true,  offline: true,  only: false }
@@ -1481,6 +1477,7 @@
     $('newDays').value = p.days; $('newDevices').value = p.devices;
     $('newLifetime').checked = p.lifetime; $('newDays').disabled = p.lifetime;
     $('newTraditional').checked = p.traditional; $('newGif').checked = p.gif; $('newOffline').checked = p.offline; $('newOfflineOnly').checked = p.only;
+    $('newRetake').checked = true; $('newLock').checked = true; $('newPay').checked = true;
     [].forEach.call(this.querySelectorAll('[data-pkg]'), function(x){ x.classList.toggle('primary', x === b); });
   });
   $('newOfflineOnly').addEventListener('change', function(){ if(this.checked) $('newOffline').checked = true; });
@@ -1492,7 +1489,6 @@
     if(this.checked && $('newDevices').value === '1') $('newDevices').value = '5';
     else if(!this.checked && $('newDevices').value === '5') $('newDevices').value = '1';
   });
-  $('newBonus').addEventListener('change', function(){ $('newBonusRow').classList.toggle('off', !this.checked); });
 
   // ---- Customer Handout PDF Generator ----
   function makeQrDataUrl(url) {
@@ -1504,35 +1500,106 @@
     } catch(e) { return ''; }
   }
 
+  // What the renter bought, in one shape, from either a booking record (Voucher PDF / message buttons) or
+  // a simulated purchase. Everything in the handout and the WhatsApp message is built from this, so it only
+  // mentions what that renter actually has.
+  function handoutFacts(info) {
+    var r = info.rec, p = info.plan || {}, f = {};
+    f.code = info.code || '';
+    f.name = (info.name || '').split(' · ')[0].trim();
+    if (r) {
+      f.lifetime = !!r.lifetime; f.days = r.days || 1; f.devices = r.maxDevices || 1;
+      f.offlineOpt = !!r.offlineOpt; f.offlineOnly = !!r.offlineOnly; f.traditional = !!r.traditional;
+      f.gif = r.gifOpt !== false; f.retake = !!r.retakeOpt; f.lock = !!r.lockOpt; f.pay = !!r.payOpt;
+      f.print = !!(r.print && r.print.enabled); f.sizes = r.print && r.print.sizes ? r.print.sizes.length : 0;
+      f.opens = r.startsAt || 0;
+      var ex = r.extras || {}; f.vintage = ex.vintage !== false; f.roving = ex.roving !== false; f.flipbook = ex.flipbook !== false; f.spin360 = ex.spin360 !== false;
+      var term = f.lifetime ? 'Lifetime' : (f.days >= 28 && f.days <= 31) ? 'Monthly' : f.days === 1 ? 'Per Event' : f.days + '-Day';
+      var model = f.offlineOnly ? (f.traditional ? 'Offline (Laptop App)' : 'Offline (Android Tablet App)') : f.offlineOpt ? 'Online + Offline' : (f.traditional ? 'Online (Laptop)' : 'Online (Tablet)');
+      f.title = term + ' ' + model;
+    } else {
+      f.lifetime = !!p.lifetime; f.days = p.days || 1; f.devices = p.devices || 1;
+      f.offlineOpt = !!p.offlineOpt; f.offlineOnly = !!p.offlineOnly; f.traditional = p.traditional !== false;
+      f.gif = true; f.retake = true; f.lock = true; f.pay = true; f.print = true; f.sizes = 15; f.opens = 0;
+      f.vintage = f.roving = f.flipbook = f.spin360 = true;
+      f.title = p.title || 'Photobooth Package';
+    }
+    f.online = !f.offlineOnly;
+    f.android = f.offlineOnly && !f.traditional;
+    f.valid = f.lifetime ? 'Lifetime · never expires' : f.opens ? f.days + ' day' + (f.days === 1 ? '' : 's') + ' from ' + fmtDate(f.opens) : f.days + ' day' + (f.days === 1 ? '' : 's') + ' from first use';
+    return f;
+  }
+  // The handout's tab title is the file name the browser suggests when saving as PDF.
+  function handoutFileName(f) {
+    return ('photobooth4u - ' + (f.name || f.code) + ' - ' + f.title).replace(/[\\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim();
+  }
+  function handoutFeatures(f) {
+    var a = [];
+    a.push(f.traditional ? 'Laptop + guest screen' : 'Tablet booth');
+    if (f.retake) a.push('Retake');
+    if (f.lock) a.push('Lock booth');
+    if (f.gif) a.push('GIF mode');
+    if (f.pay) a.push(f.online ? 'Guest payments' : 'Guest vouchers');
+    if (f.vintage) a.push('Vintage looks');
+    if (f.roving) a.push('Photographer desk');
+    if (f.flipbook) a.push('Flipbook');
+    if (f.spin360) a.push('360 video desk');
+    if (f.print) a.push('Printing' + (f.sizes > 1 ? ' (' + f.sizes + ' paper sizes' + (f.lifetime ? ' + your own' : '') + ')' : ''));
+    return a;
+  }
+
   function openCustomerHandout(info) {
     var origin = location.origin;
-    var code = info.code || '';
-    var practiceCode = info.practiceCode || '';
-    var customerName = (info.name || '').split(' \u00b7 ')[0].trim();
-    var planTitle = (info.plan && info.plan.title) || 'Photobooth Package';
-    var isOffline = !!(info.plan && info.plan.offlineOpt);
-    var launchUrl = origin + '/?code=' + encodeURIComponent(code);
+    var f = handoutFacts(info);
+    var code = f.code;
+    var launchUrl = f.online ? origin + '/?code=' + encodeURIComponent(code) : origin + '/app/#' + encodeURIComponent(code);
     var qrDataUrl = makeQrDataUrl(launchUrl);
     var today = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    var fileName = handoutFileName(f);
 
-    var colsCss = practiceCode ? '1fr 1fr' : '1fr';
-    var practiceHtml = practiceCode
-      ? '<div class="code-box practice"><div class="code-label">\uD83C\uDFAF 1-Hr Practice Code</div>'
-        + '<div class="code-value">' + practiceCode + '</div>'
-        + '<div class="code-hint">Use before the event &mdash; separate folder</div></div>'
-      : '';
-    var offlineStep = isOffline
-      ? '<div class="step"><div class="step-num">5</div><div class="step-body"><b>Offline Laptop App</b> &mdash; Download the Windows / Mac app from the App Downloads link below. Activate with your Access Code. Works with no internet!</div></div>'
-      : '';
-    var appLink = isOffline
-      ? '<div class="link-card"><div class="lname">\uD83D\uDCBB App Downloads</div><div class="lurl">' + origin + '/app/#' + code + '</div><div class="ldesc">Windows &amp; Mac desktop app</div></div>'
-      : '';
-    var printerLink = isOffline
-      ? '<div class="link-card"><div class="lname">\uD83D\uDDA8\uFE0F Printer Guide</div><div class="lurl">' + origin + '/lifetime/photobooth4u-hiti-printing-guide.pdf</div><div class="ldesc">Hiti, DNP, Canon Selphy &amp; thermal</div></div>'
-      : '';
-    var guideFile = isOffline ? 'offline-app' : 'tablet';
+    var steps = [];
+    if (f.online) {
+      steps.push('<b>Open the Booth</b> &mdash; Scan the QR above or go to <b>photobooth4u.netlify.app</b>. Click <b>"Enter code"</b> and type your Access Code.');
+    }
+    if (f.offlineOpt) {
+      steps.push(f.android
+        ? '<b>Install the Android app</b> &mdash; Download the APK from the Downloads page on your tablet, open it, then enter your Access Code on the <b>Activate this tablet</b> screen. Works with no internet.'
+        : '<b>Install the ' + (f.online ? 'Offline ' : '') + 'Laptop App</b> &mdash; Download the Windows / Mac app from the App Downloads link below and enter your Access Code to activate it. Works with no internet' + (f.online ? ' at the venue' : '') + '.');
+    }
+    steps.push(f.android
+      ? '<b>Connect your Camera</b> &mdash; The tablet’s own camera works right away. Pick it in <b>Setup &rarr; Camera</b>.'
+      : '<b>Connect your Camera</b> &mdash; Allow camera access. With the laptop app (or the Print Helper) you can plug in a Nikon / Canon / Sony via USB and choose it in <b>Setup &rarr; Camera</b>.');
+    steps.push('<b>Customize</b> &mdash; Change overlay, countdown &amp; print layout in <b>Setup &rarr; Design</b>.' + (f.online ? ' Your photos save to the Drive folder named in <b>Setup &rarr; Share</b>.' : ' Photos save on the ' + (f.android ? 'tablet' : 'laptop') + ' and guests scan a QR over the booth Wi-Fi.'));
+    if (f.online) steps.push('<b>Guest Gallery &amp; Sharing</b> &mdash; Guests scan the QR on their photo to view &amp; download. Visit <b>My Events</b> to manage galleries and guest access.');
+    if (f.print) steps.push('<b>Printing</b> &mdash; Pick a paper size in the print panel' + (f.lifetime ? ' (or add your own size)' : '') + ', then connect a printer (see the Printer Guide).');
+    var stepsHtml = steps.map(function (s, i) { return '<div class="step"><div class="step-num">' + (i + 1) + '</div><div class="step-body">' + s + '</div></div>'; }).join('');
 
-    var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>photobooth4u \u2013 Customer Handout</title>'
+    var links = [];
+    if (f.online) {
+      links.push(['🚀 Launch Booth', origin + '/?code=' + code, 'Open the booth in your browser']);
+      links.push(['📁 My Events Portal', origin + '/lifetime/#' + code, 'Galleries, Drive photos &amp; settings']);
+    }
+    if (f.offlineOpt) {
+      links.push(['💻 App Downloads', origin + '/app/#' + code, 'Windows &amp; Mac desktop app']);
+      links.push(['📱 Android App', origin + '/downloads/', 'Android tablet APK']);
+    }
+    var guides = [];
+    if (f.online) {
+      guides.push(['setup-guide', 'Laptop Setup Guide PDF', 'Camera, lighting, gallery, printing']);
+      guides.push(['tablet-guide', 'Tablet Guide PDF', 'iPad &amp; Android tablet setup']);
+    }
+    if (f.offlineOpt) guides.push(['offline-app-guide', 'Offline App Guide PDF', 'Windows, Mac &amp; Android app: install, activation, Wi-Fi sharing']);
+    if (f.print) guides.push(['hiti-printing-guide', 'Photo Printer Guide PDF', 'Hiti, DNP &amp; Canon Selphy']);
+    guides.forEach(function (g) { links.push(['📖 ' + g[1], origin + '/lifetime/photobooth4u-' + g[0] + '.pdf', g[2]]); });
+    links.push(['✨ Booth Extras Guide', origin + '/how-to-extras/', 'Vintage looks, photographer desk, print preview, flipbook']);
+    if (f.spin360) links.push(['🎥 360 Video Guide', origin + '/how-to-360/', 'Record, send, edit and share 360 videos']);
+    if (f.print) links.push(['🖨️ Which Printers Work', origin + '/printers/', 'DNP, HiTi, Citizen, Mitsubishi, Sinfonia &amp; more']);
+    if (f.print) links.push(['🖨️ Citizen Printer Guide', origin + '/how-to-print-citizen/', 'CX-02, CX-02W, CY-02, CZ-01']);
+    if (f.print) links.push(['🧾 Thermal Printer Guide', origin + '/how-to-print-thermal/', '80 / 58 mm receipt printers']);
+    var linksHtml = links.map(function (l) { return '<div class="link-card"><div class="lname">' + l[0] + '</div><div class="lurl">' + l[1] + '</div><div class="ldesc">' + l[2] + '</div></div>'; }).join('');
+    var featHtml = handoutFeatures(f).map(function (x) { return '<span class="feat">' + esc(x) + '</span>'; }).join('');
+
+    var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>' + esc(fileName) + '</title>'
       + '<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">'
       + '<style>'
       + '*{box-sizing:border-box;margin:0;padding:0;}'
@@ -1546,13 +1613,13 @@
       + '.subtitle{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#6B666C;margin-top:4px;}'
       + '.cust{font-size:15px;font-weight:800;margin-top:5px;}'
       + '.issued{font-size:11px;color:#6B666C;margin-top:2px;}'
-      + '.codes-grid{display:grid;grid-template-columns:' + colsCss + ';gap:12px;margin-bottom:18px;}'
+      + '.codes-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px;}'
       + '.code-box{background:#FBEDEA;border:1.5px solid #f0c9c4;border-radius:11px;padding:12px 14px;}'
-      + '.code-box.practice{background:#F0F4FF;border-color:#C7D4F5;}'
       + '.code-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#C93D27;margin-bottom:4px;}'
-      + '.code-box.practice .code-label{color:#2f5fa8;}'
       + '.code-value{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:800;font-size:20px;letter-spacing:.5px;color:#1C1A1E;word-break:break-all;}'
       + '.code-hint{font-size:11px;color:#6B666C;margin-top:4px;}'
+      + '.incl{margin-bottom:18px;}.incl .valid{font-size:12px;font-weight:700;margin-bottom:6px;}'
+      + '.feat{display:inline-block;margin:0 5px 5px 0;padding:2px 10px;border:1.5px solid #E4DCCF;border-radius:99px;font-size:11px;font-weight:700;color:#3a363c;}'
       + '.section{margin-bottom:16px;}'
       + '.section-title{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#6B666C;margin-bottom:9px;padding-bottom:4px;border-bottom:1px solid #E4DCCF;}'
       + '.step{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start;}'
@@ -1565,6 +1632,7 @@
       + '.link-card .ldesc{font-size:10px;color:#6B666C;margin-top:2px;}'
       + '.footer{margin-top:18px;padding-top:12px;border-top:1px solid #E4DCCF;font-size:10.5px;color:#6B666C;text-align:center;}'
       + '.no-print-btn{margin-top:14px;text-align:center;}'
+      + '.no-print-btn small{display:block;margin-top:6px;font-size:11px;color:#6B666C;}'
       + 'button.print-btn{font-family:inherit;font-size:13.5px;font-weight:700;padding:10px 26px;background:#C93D27;color:#fff;border:none;border-radius:9px;cursor:pointer;}'
       + '@media print{.no-print-btn{display:none!important;}body{padding:10px 14px;}@page{margin:8mm 10mm;}}'
       + '</style></head><body>'
@@ -1572,44 +1640,38 @@
       + '<div class="header">'
         + '<div>'
           + '<h1>photobooth<em>4u</em></h1>'
-          + '<div class="subtitle">' + planTitle + ' &middot; Customer Voucher</div>'
-          + (customerName ? '<div class="cust">' + customerName + '</div>' : '')
+          + '<div class="subtitle">' + esc(f.title) + ' &middot; Customer Voucher</div>'
+          + (f.name ? '<div class="cust">' + esc(f.name) + '</div>' : '')
           + '<div class="issued">Issued: ' + today + '</div>'
         + '</div>'
-        + (qrDataUrl ? '<div class="qr-wrap"><img src="' + qrDataUrl + '" alt="QR Code to launch booth"><div class="qr-label">Scan to launch</div></div>' : '')
+        + (qrDataUrl ? '<div class="qr-wrap"><img src="' + qrDataUrl + '" alt="QR code"><div class="qr-label">' + (f.online ? 'Scan to launch' : 'Scan for the app') + '</div></div>' : '')
       + '</div>'
 
       + '<div class="codes-grid">'
         + '<div class="code-box">'
-          + '<div class="code-label">\uD83D\uDD11 Access Code</div>'
-          + '<div class="code-value">' + code + '</div>'
-          + '<div class="code-hint">Enter at photobooth4u.netlify.app</div>'
+          + '<div class="code-label">🔑 Access Code</div>'
+          + '<div class="code-value">' + esc(code) + '</div>'
+          + '<div class="code-hint">' + (f.online ? 'Enter at photobooth4u.netlify.app' + (f.offlineOpt ? ' or in the app' : '') : 'Enter in the photobooth4u ' + (f.android ? 'Android app' : 'laptop app')) + '</div>'
         + '</div>'
-        + practiceHtml
+      + '</div>'
+
+      + '<div class="incl"><div class="section-title">What’s included</div>'
+        + '<div class="valid">' + esc(f.valid) + (f.devices > 1 ? ' &middot; up to ' + f.devices + ' devices at once' : '') + '</div>'
+        + featHtml
       + '</div>'
 
       + '<div class="section">'
         + '<div class="section-title">Quick Setup Guide</div>'
-        + '<div class="step"><div class="step-num">1</div><div class="step-body"><b>Open the Booth</b> &mdash; Scan the QR above or go to <b>photobooth4u.netlify.app</b>. Click <b>"Enter code"</b> and type your Access Code.</div></div>'
-        + '<div class="step"><div class="step-num">2</div><div class="step-body"><b>Connect your Camera</b> &mdash; Allow browser camera access. In the laptop app, plug in your DSLR / mirrorless via USB and choose it in <b>Setup &rarr; Camera</b>.</div></div>'
-        + '<div class="step"><div class="step-num">3</div><div class="step-body"><b>Customize</b> &mdash; Change overlay, countdown &amp; print layout in <b>Setup &rarr; Design</b>. Set your Google Drive folder in <b>Setup &rarr; Drive</b> to auto-save all photos.</div></div>'
-        + '<div class="step"><div class="step-num">4</div><div class="step-body"><b>Guest Gallery &amp; Sharing</b> &mdash; Guests scan the QR on their photo to view &amp; download. Visit <b>My Events</b> to manage galleries and guest access.</div></div>'
-        + offlineStep
+        + stepsHtml
       + '</div>'
 
       + '<div class="section">'
         + '<div class="section-title">Your Links &amp; Downloads</div>'
-        + '<div class="links-grid">'
-          + '<div class="link-card"><div class="lname">\uD83D\uDE80 Launch Booth</div><div class="lurl">' + origin + '/?code=' + code + '</div><div class="ldesc">Open the booth in your browser</div></div>'
-          + '<div class="link-card"><div class="lname">\uD83D\uDCC1 My Events Portal</div><div class="lurl">' + origin + '/lifetime/#' + code + '</div><div class="ldesc">Galleries, Drive photos &amp; settings</div></div>'
-          + appLink
-          + '<div class="link-card"><div class="lname">\uD83D\uDCD6 Setup Guide PDF</div><div class="lurl">' + origin + '/lifetime/photobooth4u-' + guideFile + '-guide.pdf</div><div class="ldesc">Full step-by-step instructions</div></div>'
-          + printerLink
-        + '</div>'
+        + '<div class="links-grid">' + linksHtml + '</div>'
       + '</div>'
 
       + '<div class="footer">Questions? Message us on Facebook &middot; photobooth4u.netlify.app &middot; Non-transferable.</div>'
-      + '<div class="no-print-btn"><button class="print-btn" onclick="window.print()">\uD83D\uDDA8\uFE0F Print / Save as PDF</button></div>'
+      + '<div class="no-print-btn"><button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button><small>Saves as “' + esc(fileName) + '.pdf”</small></div>'
       + '</body></html>';
 
     var w = window.open('', '_blank', 'width=760,height=940');
@@ -1619,29 +1681,34 @@
 
   function copyCustomerMessage(info) {
     var origin = location.origin;
-    var code = info.code || '';
-    var practiceCode = info.practiceCode || '';
-    var customerName = (info.name || '').split(' \u00b7 ')[0].trim();
-    var planTitle = (info.plan && info.plan.title) || 'Photobooth Package';
-    var isOffline = !!(info.plan && info.plan.offlineOpt);
-    var guideFile = isOffline ? 'offline-app' : 'tablet';
+    var f = handoutFacts(info);
+    var code = f.code;
     var lines = [
-      '\uD83D\uDCF8 *photobooth4u* \u2014 ' + planTitle + (customerName ? ' \u2014 ' + customerName : ''),
+      '📸 *photobooth4u* — ' + f.title + (f.name ? ' — ' + f.name : ''),
       '',
-      '\uD83D\uDD11 *Access Code:* ' + code,
-      practiceCode ? '\uD83C\uDFAF *Practice Code (1 hr):* ' + practiceCode : '',
+      '🔑 *Access Code:* ' + code,
+      '⏳ *Valid:* ' + f.valid + (f.devices > 1 ? ' · up to ' + f.devices + ' devices' : ''),
+      '✨ *Includes:* ' + handoutFeatures(f).join(', '),
       '',
-      '\uD83D\uDE80 *Launch Booth:* ' + origin + '/?code=' + code,
-      '\uD83D\uDCC1 *My Events Portal:* ' + origin + '/lifetime/#' + code,
-      isOffline ? '\uD83D\uDCBB *App Downloads (Win/Mac):* ' + origin + '/app/#' + code : '',
+      f.online ? '🚀 *Launch Booth:* ' + origin + '/?code=' + code : '',
+      f.online ? '📁 *My Events Portal:* ' + origin + '/lifetime/#' + code : '',
+      f.offlineOpt ? '💻 *App Downloads (Win/Mac):* ' + origin + '/app/#' + code : '',
+      f.offlineOpt ? '📱 *Android App:* ' + origin + '/downloads/' : '',
       '',
-      '\uD83D\uDCD6 *Setup Guide PDF:* ' + origin + '/lifetime/photobooth4u-' + guideFile + '-guide.pdf',
-      isOffline ? '\uD83D\uDDA8\uFE0F *Printer Guide PDF:* ' + origin + '/lifetime/photobooth4u-hiti-printing-guide.pdf' : '',
+      f.online ? '📖 *Laptop Setup Guide PDF:* ' + origin + '/lifetime/photobooth4u-setup-guide.pdf' : '',
+      f.online ? '📖 *Tablet Guide PDF:* ' + origin + '/lifetime/photobooth4u-tablet-guide.pdf' : '',
+      f.offlineOpt ? '📖 *Offline App Guide PDF:* ' + origin + '/lifetime/photobooth4u-offline-app-guide.pdf' : '',
+      f.print ? '🖨️ *Photo Printer Guide PDF:* ' + origin + '/lifetime/photobooth4u-hiti-printing-guide.pdf' : '',
+      '✨ *Booth Extras Guide:* ' + origin + '/how-to-extras/',
+      f.spin360 ? '🎥 *360 Video Guide:* ' + origin + '/how-to-360/' : '',
+      f.print ? '🖨️ *Which Printers Work:* ' + origin + '/printers/' : '',
+      f.print ? '🖨️ *Citizen Printer Guide:* ' + origin + '/how-to-print-citizen/' : '',
+      f.print ? '🧾 *Thermal Printer Guide:* ' + origin + '/how-to-print-thermal/' : '',
       '',
-      'Message us anytime if you need help. Enjoy your event! \uD83C\uDF89'
-    ].filter(function(l){ return l !== ''; }).join('\n');
+      'Message us anytime if you need help. Enjoy your event! 🎉'
+    ].filter(function(l, i, a){ return l !== '' || (i > 0 && a[i - 1] !== ''); }).join('\n');
     navigator.clipboard.writeText(lines).then(function(){
-      toast('Customer message copied \u2014 paste into Messenger or WhatsApp');
+      toast('Customer message copied — paste into Messenger or WhatsApp');
     }).catch(function(){ toast('Could not copy. Code: ' + code, true); });
   }
 

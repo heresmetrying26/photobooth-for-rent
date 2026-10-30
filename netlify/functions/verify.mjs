@@ -4,7 +4,7 @@ export default safe(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   const b = await req.json().catch(() => ({}));
   const r = await checkLicense(b.token, b.deviceId);
-  return json(r.valid ? { valid: true, type: r.type, exp: r.exp, token: r.token, folderKey: r.folderKey || null, print: r.print, traditional: !!r.traditional, gifOpt: !!r.gifOpt, retakeOpt: !!r.retakeOpt, payOpt: !!r.payOpt, lockOpt: !!r.lockOpt, pinResetAt: r.pinResetAt || 0 } : { valid: false, reason: r.reason });
+  return json(r.valid ? { valid: true, type: r.type, exp: r.exp, token: r.token, folderKey: r.folderKey || null, print: r.print, traditional: !!r.traditional, gifOpt: !!r.gifOpt, extras: r.extras, retakeOpt: !!r.retakeOpt, payOpt: !!r.payOpt, lockOpt: !!r.lockOpt, pinResetAt: r.pinResetAt || 0 } : { valid: false, reason: r.reason });
 });
 
 export const config = { path: '/api/verify' };

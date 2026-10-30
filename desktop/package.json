@@ -1,7 +1,7 @@
 {
   "name": "photobooth4u-desktop",
   "productName": "photobooth4u",
-  "version": "1.0.22",
+  "version": "1.0.26",
   "private": true,
   "description": "photobooth4u offline booth for Windows and Mac",
   "author": "photobooth4u",
@@ -36,6 +36,9 @@
       "!build/**/*.map"
     ],
     "asar": true,
+    "asarUnpack": [
+      "build/ffmpeg/**"
+    ],
     "electronFuses": {
       "runAsNode": false,
       "enableCookieEncryption": true,

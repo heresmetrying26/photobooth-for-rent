@@ -96,3 +96,15 @@ npm start          # = node scripts/prepare.mjs && electron .
 - `pages/activate.html` — activation / renewal screen. `preload.cjs` — the small bridge the booth uses.
 - In `protected/booth.html`, everything app-only is behind `DESKTOP` (set when `window.__PB.desktop` and
   the bridge exist), so the website behaves as before.
+
+## 360 video desk (laptop app)
+- **Dock → 360 desk** (an included extra, switched per client in Admin). Videos from the 360 arm's camera arrive in the *360 inbox* folder
+  (default `Pictures/photobooth4u/360 inbox`, changeable) by AirDrop, USB, a cloud folder or a camera's FTP, or from the recording phone's browser:
+  the desk shows a QR code for a send page on the booth Wi-Fi (the address contains a code that changes each time the app starts).
+- **Editing** uses `ffmpeg`, a separate program shipped in `build/ffmpeg/` (unpacked from the asar). `scripts/prepare.mjs` copies it from the
+  `ffmpeg-static` package when it is installed; CI installs it with `npm install --no-save ffmpeg-static`. Without it the desk shares the originals.
+  Licence notice: `resources/ffmpeg-NOTICE.txt` (ships beside the program). The Mac Intel (x64) build made on an Apple-silicon runner would carry
+  an arm64 ffmpeg: the app checks that ffmpeg starts and otherwise hides the editing controls.
+- **Looks**: Classic slow-mo (0.5x), Speed ramp (fast-slow-fast), Boomerang (first 5 s forward then back, 720p), Original speed; portrait or
+  landscape; 1080p / 720p; the booth's frame, logo and title drawn over it; the original sound, one music file chosen on this laptop, or none.
+  Finished MP4s go to `360 inbox/edited/` and are shared into the event like any photo (QR, `/e/<slug>/p/<file>`).

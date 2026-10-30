@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>How to print on a Citizen photo printer · photobooth4u</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500..700;1,500..700&family=Manrope:wght@400..800&display=swap">
+<style>
+  :root{ --bg:#f6f1ea; --card:#fffdf9; --ink:#1f1a1d; --dim:#5d555b; --line:#e4ddd3; --red:#c8402a; --red-soft:#fbeee9; --dark:#1f1a1d; }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;}
+  a{color:var(--red);}
+  .wrap{max-width:860px; margin:0 auto; padding:0 16px;}
+  header.hero{background:var(--dark); color:#f6f1ea; padding:44px 0 40px;}
+  .brand{display:flex; align-items:center; gap:10px; font:600 22px 'Fraunces',Georgia,serif; color:#f6f1ea; text-decoration:none;}
+  .brand .mark{display:grid; grid-template-columns:repeat(2,9px); gap:3px;}
+  .brand .mark i{width:9px; height:9px; border-radius:2px; background:#f6f1ea;} .brand .mark i:nth-child(2){background:var(--red);}
+  .brand .badge{background:var(--red); color:#fff; font:800 12px 'Manrope',sans-serif; padding:2px 6px; border-radius:6px; transform:translateY(-6px);}
+  .eyebrow{font-size:13px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:#e8715a; margin:28px 0 8px;}
+  h1{font:600 clamp(36px,7vw,60px)/1.05 'Fraunces',Georgia,serif; margin:0 0 14px;}
+  h1 em{color:#e8715a;}
+  .lead{color:#d9cfc6; font-size:18px; max-width:620px; margin:0 0 22px;}
+  .hero-btns{display:flex; flex-wrap:wrap; gap:10px;}
+  .btn{display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:10px 18px; border-radius:999px; font-weight:800; font-size:15px; text-decoration:none;}
+  .btn.primary{background:var(--red); color:#fff;} .btn.ghost{border:1.5px solid #5a5056; color:#f6f1ea;}
+  nav.toc{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:-22px 0 8px; position:relative;}
+  nav.toc a{display:block; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; text-decoration:none; color:var(--ink); box-shadow:0 8px 20px rgba(70,45,25,.08);}
+  nav.toc b{display:block; color:var(--red); font-size:12px; letter-spacing:.14em; text-transform:uppercase;} nav.toc span{font-weight:700; font-size:15px;}
+  section.part{padding:34px 0 6px; scroll-margin-top:12px;}
+  section.part h2{font:600 clamp(26px,4.5vw,34px)/1.15 'Fraunces',Georgia,serif; margin:0 0 6px;}
+  .part .kicker{font-size:12px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:var(--red); margin:0 0 4px;}
+  .part .why{color:var(--dim); margin:0 0 14px;}
+  ol.steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
+  ol.steps li{display:grid; grid-template-columns:40px 1fr; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  ol.steps .n{width:40px; height:40px; border-radius:50%; background:var(--red); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center;}
+  ol.steps h3{margin:6px 0 2px; font-size:17px;}
+  ol.steps p{margin:0; color:var(--dim);}
+  code, .kbd{font:600 14px ui-monospace,'SF Mono',Menlo,Consolas,monospace; background:#efe7dd; border-radius:6px; padding:1px 6px; color:var(--ink); white-space:nowrap;}
+  .codeblock{display:flex; align-items:center; gap:10px; background:var(--dark); color:#f6f1ea; border-radius:12px; padding:12px 14px; margin:8px 0 0; font:600 14px ui-monospace,Menlo,Consolas,monospace; overflow-x:auto;}
+  .codeblock span{flex:1; white-space:nowrap;}
+  .copy{flex:none; border:1px solid #5a5056; background:transparent; color:#f6f1ea; border-radius:999px; padding:4px 12px; font:700 12px 'Manrope',sans-serif; cursor:pointer;}
+  .term{background:var(--dark); color:#d9cfc6; border-radius:14px; padding:16px 18px; font:14px/1.7 ui-monospace,Menlo,Consolas,monospace; margin-top:12px;}
+  .term .hl{color:#e8715a;} .term .w{color:#f6f1ea;}
+  .sheet{display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-top:12px;}
+  .sheet .paper{display:flex; gap:6px; width:150px; height:100px; flex:none;}
+  .sheet .paper i{flex:1; background:#e9ded3; border-radius:6px;}
+  .sheet .paper b{width:3px; background:repeating-linear-gradient(180deg,var(--red) 0 7px,transparent 7px 12px);}
+  .sheet p{margin:0; color:var(--dim);}
+  table{width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; font-size:15px;}
+  th, td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); background:#f3ece3;}
+  tr:last-child td{border-bottom:0;}
+  td:first-child{font-weight:700; width:38%;}
+  .win{background:#eef3fb; border:1px solid #cfdcf2; border-radius:16px; padding:14px 18px; margin-top:12px;}
+  .win h3{margin:0 0 4px; font-size:16px;} .win ol{margin:4px 0 0; padding-left:20px; color:var(--dim);} .win li{margin:3px 0;}
+  .callout{background:var(--red-soft); border:1px solid #f1cfc5; border-radius:16px; padding:16px 18px; margin-top:14px;}
+  .callout h3{margin:0 0 4px; font-size:17px;} .callout p{margin:0; color:var(--dim);}
+  .check{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px;}
+  .check div{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  .check b{display:block; font:600 30px 'Fraunces',Georgia,serif; color:var(--red); line-height:1;}
+  .check h3{margin:8px 0 2px; font-size:17px;} .check p{margin:0; color:var(--dim);}
+  footer{margin:40px 0 0; padding:26px 0 40px; border-top:1px solid var(--line); color:var(--dim); font-size:14px;}
+  footer .help{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; background:var(--dark); color:#f6f1ea; border-radius:16px; padding:18px 20px; margin-bottom:16px;}
+  footer .help h3{margin:0; font:600 20px 'Fraunces',Georgia,serif;} footer .help p{margin:2px 0 0; color:#d9cfc6;}
+  td code{white-space:normal; word-break:break-all;}
+  @media (max-width:760px){ nav.toc{grid-template-columns:1fr 1fr;} }
+  @media (max-width:560px){ ol.steps li{grid-template-columns:32px 1fr; padding:14px;} ol.steps .n{width:32px; height:32px; font-size:14px;} td:first-child{width:auto;} }
+  @media print{ header.hero{background:none; color:var(--ink);} .lead{color:var(--dim);} .hero-btns, nav.toc, .copy{display:none;} section.part{break-inside:avoid;} }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <a class="brand" href="/"><span class="mark"><i></i><i></i><i></i><i></i></span>photobooth<span class="badge">4u</span></a>
+    <p class="eyebrow">Printing guide &middot; Windows &amp; Mac</p>
+    <h1>How to print<br>on a <em>Citizen</em> printer</h1>
+    <p class="lead">For the Citizen <b>CX-02</b>, <b>CX-02W</b>, <b>CY-02</b> and <b>CZ-01</b> dye-sublimation photo printers. They connect by USB to a Windows or Mac laptop, and the booth prints to them like any other printer. Set up once, then test before the event.</p>
+    <div class="hero-btns">
+      <a class="btn ghost" href="/downloads/">Get the app or Print Helper</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="toc" aria-label="Parts">
+    <a href="#works"><b>Part 1</b><span>Where it works</span></a>
+    <a href="#install"><b>Part 2</b><span>Install the printer</span></a>
+    <a href="#booth"><b>Part 3</b><span>Booth settings</span></a>
+    <a href="#strips"><b>Part 4</b><span>Photo strips</span></a>
+    <a href="#test"><b>Part 5</b><span>Test &amp; fixes</span></a>
+  </nav>
+
+  <section class="part" id="works">
+    <p class="kicker">Part 1 &middot; Check first</p>
+    <h2>Where the booth works with these printers</h2>
+    <p class="why">All four connect by <b>USB 2.0</b> and have Windows (7, 10, 11) and Mac drivers on Citizen's website. None lists Wi-Fi, Bluetooth or AirPrint, so the printer is always plugged into a laptop.</p>
+    <table>
+      <tr><th>Model</th><th>Print sizes (Citizen)</th><th>Booth paper size</th></tr>
+      <tr><td>CX-02</td><td>4&times;6, 5&times;7, 6&times;8, 6&times;9, 3.5&times;5 in</td><td>4R, 5R, 6R, 3R. For 6&times;9 add a custom size.</td></tr>
+      <tr><td>CX-02W (wide)</td><td>8&times;12, A4, 6&times;8, 8&times;10 in</td><td>6R, 8R, A4. For 8&times;12 add a custom size.</td></tr>
+      <tr><td>CY-02</td><td>4&times;6, 6&times;8 in</td><td>4R, 6R</td></tr>
+      <tr><td>CZ-01</td><td>4&times;6, 4&times;4 in</td><td>4R. For 4&times;4 add a custom size.</td></tr>
+    </table>
+    <table style="margin-top:14px">
+      <tr><th>How you run the booth</th><th>Works?</th></tr>
+      <tr><td>Windows / Mac laptop app (offline)</td><td><b>Yes.</b> The app prints straight to the printer, no pop-up, no internet needed.</td></tr>
+      <tr><td>Windows / Mac laptop, online booth in Chrome</td><td><b>Yes.</b> Open the Print Helper so the booth prints without a pop-up.</td></tr>
+      <tr><td>iPad or Android tablet booth (online)</td><td><b>Through a laptop.</b> Plug the printer into a laptop and open <b>photobooth4u.netlify.app/print-station/</b> there. On the tablet choose <b>Printer &rarr; Send prints to &rarr; Laptop print station</b>.</td></tr>
+      <tr><td>Android tablet app (APK)</td><td><b>No.</b> The Android app prints only to Bluetooth thermal receipt printers. Use a laptop for these printers.</td></tr>
+    </table>
+  </section>
+
+  <section class="part" id="install">
+    <p class="kicker">Part 2 &middot; Once</p>
+    <h2>Install the printer on the laptop</h2>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Install the driver</h3><p>Download the Windows or Mac driver for your model from its page on <a href="https://www.citizen-systems.com/en/products/printer/photo/overview" target="_blank" rel="noopener">Citizen's website</a>, install it, then restart the laptop.</p></div></li>
+      <li><span class="n">2</span><div><h3>Load paper and ribbon</h3><p>Use Citizen's own media for your model, and match the paper size to the ribbon. Load the roll and ribbon as shown in the printer's quick-start guide.</p></div></li>
+      <li><span class="n">3</span><div><h3>Connect it</h3><p>Turn the printer on and plug its USB cable straight into the laptop (no hub). Use the cable that came with it, or a short good-quality one.</p></div></li>
+      <li><span class="n">4</span><div><h3>Set the paper and finish</h3><p><b>Windows:</b> Settings &rarr; Bluetooth &amp; devices &rarr; Printers &amp; scanners &rarr; your Citizen &rarr; <b>Printing preferences</b>. <b>Mac:</b> System Settings &rarr; Printers &amp; Scanners, then the print dialog's options. Choose the paper size for the loaded roll (for example 4&times;6), and the finish (glossy or matte). Leave it borderless if the driver offers it.</p></div></li>
+      <li><span class="n">5</span><div><h3>Test it</h3><p>Print one photo from the <b>Photos</b> app (Windows) or <b>Preview</b> (Mac) at the same paper size to check the printer works.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="part" id="booth">
+    <p class="kicker">Part 3 &middot; In the booth</p>
+    <h2>Choose the printer and paper</h2>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Laptop app or Print Helper</h3><p><b>Laptop app:</b> nothing to open. <b>Online booth in Chrome:</b> open the <b>Print Helper</b> and keep its window open during the event. Always open the booth from <b>photobooth4u.netlify.app</b>.</p></div></li>
+      <li><span class="n">2</span><div><h3>Pick a printer per paper size</h3><p>In <b>Photo Session &rarr; Print settings</b>, tap the paper size (for example <b>4&times;6 in</b>) and choose your Citizen in the printer list. The booth remembers it.</p></div></li>
+      <li><span class="n">3</span><div><h3>Need another size?</h3><p>Sizes such as 4&times;4, 6&times;9 or 8&times;12 aren't in the standard list. Lifetime codes can add an <b>own size</b> in the print panel; other codes: message us and we'll add it to your code.</p></div></li>
+      <li><span class="n">4</span><div><h3>Auto-print (optional)</h3><p>After one good test, tick <b>Auto-print every session</b> so each guest's print starts by itself.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="part" id="strips">
+    <p class="kicker">Part 4 &middot; If you print 2&times;6 strips</p>
+    <h2>Photo strips</h2>
+    <div class="callout"><h3>Automatic strip cutting is not confirmed</h3><p>Citizen's pages for these four models don't mention a 2-inch strip cut. The booth puts <b>two 2&times;6 strips side by side on one 4&times;6 sheet</b>. Unless your driver has a cut option for it, cut the sheet in half by hand with a paper trimmer. Check the driver's printing preferences for a &ldquo;2 inch cut&rdquo; style option, and tell us if you find one.</p></div>
+  </section>
+
+  <section class="part" id="test">
+    <p class="kicker">Part 5 &middot; Before the event</p>
+    <h2>Test and fixes</h2>
+    <table>
+      <tr><th>Problem</th><th>Try this</th></tr>
+      <tr><td>Printer not in the booth's list</td><td>Is it on and showing in Windows / Mac Printers &amp; scanners? Reopen the Print Helper, or restart the laptop app.</td></tr>
+      <tr><td>Prints at the wrong size or with a white border</td><td>Set the paper size in the driver's preferences to match the loaded roll, and choose borderless if offered.</td></tr>
+      <tr><td>Printer says media or ribbon mismatch</td><td>The ribbon and paper must be the same size. Replace both together.</td></tr>
+      <tr><td>Pop-up print dialog appears every time</td><td>Online booth: open the Print Helper. Or use the laptop app.</td></tr>
+      <tr><td>Nothing prints from an iPad</td><td>Plug the printer into a laptop running the print station. The Citizen printers do not print from an iPad directly.</td></tr>
+      <tr><td>Slow first print</td><td>Normal: the printer warms up. Take a test photo before guests arrive.</td></tr>
+    </table>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="help"><div><h3>Need help?</h3><p>Message us your printer model and what the booth says.</p></div><a class="btn primary" href="https://m.me/roktetnachi" target="_blank" rel="noopener">Message us</a></div>
+  photobooth4u &middot; <a href="/how-to-print-hiti/">HiTi guide</a> &middot; <a href="/how-to-print-dnp/">DNP guide</a> &middot; <a href="/how-to-print-thermal/">Thermal guide</a> &middot; <a href="/printers/">All printers</a>
+</footer>
+</body>
+</html>

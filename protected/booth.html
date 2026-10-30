@@ -3034,7 +3034,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <div id="flipbookOptions" style="display:none; margin-top:10px;">
             <p class="panel-hint" style="margin:0 0 8px;">Guests record a short clip. The booth prints its frames as small cards on sheets, in order from left to right and top to bottom: cut along the lines, stack them in that order and staple. Guests also get an animated GIF QR code. Prints use the paper size chosen in Print settings.</p>
             <div class="stepper"><span class="lbl">Clip length</span><span class="ctl"><select id="flipSecSelect"><option value="4">4 s</option><option value="5">5 s</option><option value="6" selected>6 s</option><option value="7">7 s</option></select></span></div>
-            <div class="stepper"><span class="lbl">Frames in the book</span><span class="ctl"><select id="flipFramesSelect"><option value="16">16</option><option value="24">24</option><option value="30" selected>30</option><option value="40">40</option></select></span></div>
+            <div class="stepper"><span class="lbl">Frames in the book</span><span class="ctl"><select id="flipFramesSelect"><option value="16">16</option><option value="24" selected>24</option><option value="30">30</option><option value="40">40</option></select></span></div>
+            <p class="panel-hint" style="margin:6px 0 0;">The booth records more pictures than the book needs and keeps the sharpest ones, spaced so every page differs from the last. Fewer frames over a longer clip means bigger changes between pages.</p>
             <label class="toggle-row" style="margin-top:10px;"><input type="checkbox" id="flipCoverToggle" checked> Cover card (event name and date, first in the stack)</label>
             <label class="toggle-row" style="margin-top:6px;"><input type="checkbox" id="flipBackToggle" checked> Back card (&ldquo;Thank you!&rdquo;, last in the stack)</label>
           </div>
@@ -6617,7 +6618,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // ──────────────────────────────────────────────────────────────────
 
   var outputMode = 'photo';    // 'photo' | 'gif' | 'both' | 'flipbook'
-  var flipSec = 6, flipFrames = 30, flipCover = true, flipBack = true, flipbookResult = null;   // flipbook (included extra): clip length, frames, and the result on screen
+  var flipSec = 6, flipFrames = 24, flipCover = true, flipBack = true, flipbookResult = null;   // flipbook (included extra): clip length, frames, and the result on screen
   var gifLayoutMode = 'solo';  // 'solo' | 'follow' | 'raw': what the GIF frames are placed in
   function refreshGifLayoutUI(){
     var sel = document.getElementById('gifLayoutSelect'), gh = document.getElementById('gifLayoutHint');
@@ -6678,7 +6679,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // gifSpeed stays 0 (auto) always — no manual selector exposed to the operator.
     var fs = document.getElementById('flipSecSelect'), ff = document.getElementById('flipFramesSelect');
     if(fs) fs.addEventListener('change', function(){ flipSec = Number(fs.value) || 6; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
-    if(ff) ff.addEventListener('change', function(){ flipFrames = Number(ff.value) || 30; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+    if(ff) ff.addEventListener('change', function(){ flipFrames = Number(ff.value) || 24; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
     var gls = document.getElementById('gifLayoutSelect');
     if(gls) gls.addEventListener('change', function(){
       gifLayoutMode = (gls.value === 'follow' || gls.value === 'raw') ? gls.value : 'solo';
@@ -12648,6 +12649,72 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(plainResult){ drawPlainPreview(); return; }
     _renderComposite();
   };
+  // ---- Flip book capture: fresh pictures, the sharpest one around each moment, frames chosen so each page differs ----
+  // Waits for the camera to deliver a new picture (so the same picture is never taken twice). The video's clock moves on with
+  // each new picture, also when the video is hidden or off screen (the frame callback does not fire then). A stalled camera
+  // gives up after 80 ms, so the clip is never held up.
+  function nextVideoFrame(){
+    return new Promise(function(res){
+      var t0 = video.currentTime, start = performance.now();
+      (function poll(){
+        if(video.currentTime !== t0) return res(true);
+        if(performance.now() - start > 80) return res(false);
+        setTimeout(poll, 6);
+      })();
+    });
+  }
+  // How sharp the live picture is right now: the variance of its Laplacian on a small grey copy (motion blur lowers it).
+  function frameSharpness(px, probe){
+    try{ px.drawImage(video, 0, 0, probe.width, probe.height); }catch(e){ return 0; }
+    var w = probe.width, h = probe.height, d = px.getImageData(0, 0, w, h).data, g = new Float32Array(w * h);
+    for(var i = 0, j = 0; i < d.length; i += 4, j++) g[j] = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+    var sum = 0, sum2 = 0, n = 0;
+    for(var y = 1; y < h - 1; y++) for(var x = 1; x < w - 1; x++){
+      var c = y * w + x, l = 4 * g[c] - g[c - 1] - g[c + 1] - g[c - w] - g[c + w];
+      sum += l; sum2 += l * l; n++;
+    }
+    return n ? sum2 / n - (sum / n) * (sum / n) : 0;
+  }
+  // A 32 x 24 grey copy of the picture just measured, to tell how much the scene moved between two pictures.
+  function frameSignature(tx, tiny, probe){
+    tx.drawImage(probe, 0, 0, tiny.width, tiny.height);
+    var d = tx.getImageData(0, 0, tiny.width, tiny.height).data, sig = new Uint8Array(tiny.width * tiny.height);
+    for(var i = 0, j = 0; i < d.length; i += 4, j++) sig[j] = (d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8;
+    return sig;
+  }
+  // JPEG of the canvas as it is now (toBlob copies the picture when called), with what pickFlipFrames needs.
+  function encodeFlipCandidate(cv, best){
+    return new Promise(function(res){
+      cv.toBlob(function(blob){ res(blob ? { blob: blob, time: best.time, sig: best.sig, score: best.score } : null); }, 'image/jpeg', 0.9);
+    });
+  }
+  // Picks `count` of the recorded pictures so that each page differs from the last by about the same amount of movement
+  // (a still moment gets few pages, a lively one gets more). A third of the spacing still follows the clock, so a long
+  // still stretch never becomes a long freeze. A clip with almost no movement is simply spaced evenly.
+  function pickFlipFrames(cand, count){
+    var m = cand.length;
+    if(m <= count) return cand.slice();
+    var C = [0], i, k;
+    for(i = 1; i < m; i++){
+      var a = cand[i - 1].sig, b = cand[i].sig, d = 0;
+      for(k = 0; k < a.length; k++) d += Math.abs(a[k] - b[k]);
+      C.push(C[i - 1] + d / a.length);
+    }
+    var T = C[m - 1], moving = T / m >= 1, t0 = cand[0].time, tSpan = Math.max(1, cand[m - 1].time - t0), S = [];
+    for(i = 0; i < m; i++){
+      var tf = (cand[i].time - t0) / tSpan;
+      S.push(moving ? 0.65 * (C[i] / T) + 0.35 * tf : tf);
+    }
+    var out = [], last = -1;
+    for(k = 0; k < count; k++){
+      var target = k / (count - 1), idx = last + 1;
+      while(idx < m - 1 && S[idx] < target) idx++;
+      if(idx - 1 > last && Math.abs(S[idx - 1] - target) < Math.abs(S[idx] - target)) idx--;
+      idx = Math.min(Math.max(idx, last + 1), m - (count - k));   // keep room for the pages still to come
+      out.push(cand[idx]); last = idx;
+    }
+    return out;
+  }
   async function runFlipbookSession(){
     for(var n = 3; n >= 1; n--){
       if(sess && sess.cancelled){ endCancelledSession(); return; }
@@ -12656,25 +12723,42 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }
     if(sess && sess.cancelled){ endCancelledSession(); return; }
     popNum('Go!', true); guestCall('tick', 'Go!', true, 0, '');
-    var totalMs = Math.max(2, flipSec) * 1000, count = Math.max(8, flipFrames), step = totalMs / count;
+    var totalMs = Math.max(2, flipSec) * 1000, count = Math.max(8, flipFrames);
+    // Pictures are recorded more densely than the book needs (one per 100 ms at most, up to twice the pages); the pages
+    // are chosen from them afterwards so that each differs from the last (see pickFlipFrames).
+    var fineN = Math.max(count, Math.min(count * 2, Math.floor(totalMs / 100))), fineStep = totalMs / fineN;
     var vw = video.videoWidth || 640, vh = video.videoHeight || 480, scale = Math.min(1, 1280 / vw, 720 / vh);
     var cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(vw * scale)); cv.height = Math.max(1, Math.round(vh * scale));
     var cx = cv.getContext('2d', { willReadFrequently: true });
-    var frames = [], t0 = performance.now();
-    for(var i = 0; i < count; i++){
+    var probe = document.createElement('canvas'); probe.width = 192; probe.height = Math.max(8, Math.round(192 * vh / vw));
+    var px = probe.getContext('2d', { willReadFrequently: true });
+    var tiny = document.createElement('canvas'); tiny.width = 32; tiny.height = 24;
+    var tx = tiny.getContext('2d', { willReadFrequently: true });
+    var pending = [], t0 = performance.now(), at = 0;
+    for(var i = 0; i < fineN; i++){
       if(sess && sess.cancelled) break;
-      var wait = t0 + i * step - performance.now();
+      var wait = t0 + i * fineStep - performance.now();
       if(wait > 0) await sleepMs(wait);
-      cx.save();
-      if(typeof mirrorPreview === 'function' && mirrorPreview()){ cx.translate(cv.width, 0); cx.scale(-1, 1); }
-      try{ cx.drawImage(video, 0, 0, cv.width, cv.height); }catch(e){}
-      cx.restore();
+      // The sharpest of a few fresh pictures taken just after this moment (motion blur makes some of them smeared).
+      var winEnd = performance.now() + Math.min(60, fineStep * 0.4), best = null, tries = 0;
+      do{
+        await nextVideoFrame(); tries++;
+        var score = frameSharpness(px, probe);
+        if(!best || score > best.score){
+          best = { score: score, time: performance.now() - t0, sig: frameSignature(tx, tiny, probe) };
+          cx.save();
+          if(typeof mirrorPreview === 'function' && mirrorPreview()){ cx.translate(cv.width, 0); cx.scale(-1, 1); }
+          try{ cx.drawImage(video, 0, 0, cv.width, cv.height); }catch(e){}
+          cx.restore();
+        }
+      }while(tries < 3 && performance.now() < winEnd);
       try{ applyFilterToCanvas(cv); }catch(e){}
-      var at = performance.now() - t0;
-      var blob = await new Promise(function(res){ cv.toBlob(res, 'image/jpeg', 0.9); });
-      if(blob) frames.push({ blob: blob, time: at });
+      pending.push(encodeFlipCandidate(cv, best));   // the picture is copied now; encoding it must not hold up the next one
+      at = performance.now() - t0;
       popNum(String(Math.max(1, Math.ceil((totalMs - at) / 1000))), false);
     }
+    var cand = (await Promise.all(pending)).filter(Boolean);
+    var frames = cand.length >= 4 ? pickFlipFrames(cand, Math.min(count, cand.length)) : cand;
     if(sess && sess.cancelled){ endCancelledSession(); return; }
     var durationMs = Math.max(1, performance.now() - t0);
     if(frames.length < 4){ showToast('The clip didn\u2019t record. Check the camera and try again.', 5000); endCancelledSession(); return; }

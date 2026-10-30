@@ -7,7 +7,7 @@
 // The internet is only needed to activate (or paste an offline key) and, for a
 // lifetime code, once every few weeks to renew the licence.
 import { app, BrowserWindow, protocol, session, ipcMain, shell, dialog, Menu, net, nativeImage, powerSaveBlocker, screen, clipboard } from 'electron';
-import { readFileSync, existsSync, statSync, createReadStream, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, createReadStream, writeFileSync, appendFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, dirname, normalize, extname, sep, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createDecipheriv, createHash } from 'node:crypto';
@@ -342,7 +342,20 @@ app.whenReady().then(async () => {
   });
   setSpinDir(settings.spinDir || null);
   SPIN.configure({ buildDir: BUILD, temp: join(app.getPath('temp'), 'photobooth4u') });
-  initHelper({ workerPath: join(BUILD, 'camera-worker.ps1') });
+  // Camera and printer messages also go to camera.log in the app's data folder (%APPDATA%\photobooth4u), so a camera that
+  // hangs can be diagnosed afterwards. It starts over when it passes 512 KB.
+  const camLog = join(dataDir(), 'camera.log');
+  initHelper({
+    workerPath: join(BUILD, 'camera-worker.ps1'),
+    logger: (m) => {
+      console.log('[helper] ' + m);
+      try {
+        const line = new Date().toISOString() + ' ' + m + '\n';
+        appendFileSync(camLog, line);
+        if (statSync(camLog).size > 512 * 1024) writeFileSync(camLog, line);
+      } catch { /* the log is a convenience */ }
+    }
+  });
   if (!validPin(settings.ipadPin)) { settings.ipadPin = newPin(); saveSettings(); }
   setLanHandler(createLanHandler({
     state: () => ({ on: !!settings.ipadOn && L.status().ok, pin: settings.ipadPin }),

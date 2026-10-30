@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.33', date: '2026-10-30' },
   { version: '1.0.32', date: '2026-10-30' },
   { version: '1.0.31', date: '2026-10-30' },
   { version: '1.0.29', date: '2026-10-30' },
@@ -79,6 +80,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-30', title: 'Windows laptop: a DSLR that stops answering now recovers instead of freezing the booth', for: ['website', 'app'], app: '1.0.33',
+    items: [
+      'Laptop app 1.0.33 (Windows, Nikon / Canon EOS / Sony Alpha over USB): when the camera stops answering, the booth now waits a moment, reconnects and resets a Canon’s remote mode first. If it happens twice in a row it tells you to switch the camera off and on and check the USB cable.',
+      'Canon: if the camera ends live view by itself (heat, or its time limit), the booth switches it back on. Nikon: the booth now keeps the camera’s event list short during long live-view sessions. Memory use stays flat over a long event.',
+      'The app now keeps a camera.log file (in %APPDATA%\photobooth4u) that records which camera command was stuck, so a hang can be diagnosed. A Canon EOS R50 hang is not confirmed fixed yet: if it still happens, send us that file.'
+    ]
+  },
   {
     date: '2026-10-30', title: 'A Camera step in Setup, with a live view of your camera', for: ['website', 'app'], app: '1.0.32',
     items: [

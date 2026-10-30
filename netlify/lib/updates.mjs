@@ -43,7 +43,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.28', date: '2026-10-30', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.28/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.29', date: '2026-10-30', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.29/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -84,6 +84,7 @@ export const NOTES = [
       'Laptop app 1.0.31: the booth now reads the Wi-Fi the laptop is connected to and fills in the Wi-Fi name and password in Setup → Share & start. Tap “Use current Wi-Fi” to read it again. If the password can’t be read, type it there (on a Mac, allow the Keychain request). The app does not create a Wi-Fi itself: connect the laptop to your router or a phone hotspot first.',
       'New Wi-Fi button in the bottom bar, beside Extras and Lock booth: it shows the Wi-Fi QR so guests can join, then scan their photo QR. In Share & start, “Download WIFI QR Sign” saves a printable Wi-Fi sign. After each session guests now see their Photo and GIF QR codes only.',
       'All photos: on the booth laptop, open an earlier photo and tap Print photo. It prints at once on the printer, paper size and copies you set in Print settings, with no print dialog. It works in the laptop app and in the online gallery when it is open in the same browser as the booth. Guests’ phones keep their own print.',
+      'Android app 1.0.29: the USB camera no longer drops out when the camera answers slowly (it pauses and carries on instead of disconnecting), and a camera of another make now says plainly that it can’t be controlled by the app and to use its USB webcam mode instead.',
       'Android app 1.0.28: the same Wi-Fi button and Wi-Fi sign. On the tablet, type the Wi-Fi name and password in Share & start (the tablet does not read them by itself).',
       'The laptop app also includes using the laptop’s DSLR from an iPad over Wi-Fi: see the iPad guide at /how-to-ipad/.'
     ]

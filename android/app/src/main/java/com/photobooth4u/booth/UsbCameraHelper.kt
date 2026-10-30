@@ -51,7 +51,7 @@ class UsbCameraHelper(private val ctx: Context) {
         private const val VENDOR_NIKON = 0x04b0
         private const val VENDOR_CANON = 0x04a9
         private const val VENDOR_SONY = 0x054c
-        private val CAMERA_VENDORS = intArrayOf(VENDOR_NIKON, VENDOR_CANON, VENDOR_SONY)
+        private val CAMERA_VENDORS = intArrayOf(VENDOR_NIKON, VENDOR_CANON, VENDOR_SONY, 0x04cb, 0x07b4, 0x04da, 0x0a17, 0x05ca)   // + Fujifilm, Olympus, Panasonic, Pentax, Ricoh
 
         private const val OK = 0x2001
         private const val SESSION_OPEN = 0x201E
@@ -69,7 +69,7 @@ class UsbCameraHelper(private val ctx: Context) {
     }
 
     /** code: NOCAMERA / GONE / UNSUPPORTED / MODE / LIVEVIEW / FOCUS / CAPTURE / ERROR (what the booth page switches on). */
-    private class CamErr(val code: String, message: String) : Exception(message) {
+    private class CamErr(val code: String, message: String, val transient: Boolean = false) : Exception(message) {
         val status: Int get() = when (code) { "GONE" -> 410; "NOCAMERA" -> 404; else -> 409 }
     }
 
@@ -280,6 +280,27 @@ class UsbCameraHelper(private val ctx: Context) {
         return CamErr("GONE", why)
     }
 
+    /**
+     * A USB transfer failed. Only when the camera has really left the USB bus is it gone; otherwise (a slow answer,
+     * a stalled endpoint) clear the stall, drain what is left of the exchange and let the caller try again.
+     */
+    private fun usbFail(why: String, what: String): CamErr {
+        val d = dev
+        val present = d != null && usb.deviceList.containsKey(d.deviceName)
+        log("USB $what failed; the camera is " + (if (present) "still listed" else "no longer listed"))
+        if (!present) return gone(why)
+        resync()
+        return CamErr("ERROR", "The camera paused for a moment ($what). Trying again.", true)
+    }
+
+    private fun resync() {
+        val c = conn ?: return
+        for (ep in listOfNotNull(epIn, epOut)) { try { c.controlTransfer(0x02, 0x01, 0, ep.address, null, 0, 1000) } catch (_: Exception) { } }   // CLEAR_FEATURE(ENDPOINT_HALT)
+        val ep = epIn
+        if (ep != null) { var n = 0; while (n < 20 && c.bulkTransfer(ep, rbuf, rbuf.size, 100) > 0) n++ }
+        pendLen = 0
+    }
+
     private fun send(b: ByteArray) {
         val c = conn ?: throw gone("The camera was unplugged.")
         val ep = epOut ?: throw gone("The camera was unplugged.")
@@ -288,7 +309,7 @@ class UsbCameraHelper(private val ctx: Context) {
             val n = minOf(16384, b.size - off)
             val chunk = if (off == 0 && n == b.size) b else b.copyOfRange(off, off + n)
             val r = c.bulkTransfer(ep, chunk, n, 5000)
-            if (r < 0) throw gone("The camera stopped answering. Check it is on and the USB cable is plugged in.")
+            if (r < 0) throw usbFail("The camera stopped answering. Check it is on and the USB cable is plugged in.", "write")
             off += n
         }
     }
@@ -299,8 +320,8 @@ class UsbCameraHelper(private val ctx: Context) {
         var empty = 0
         while (pendLen < n) {
             val r = c.bulkTransfer(ep, rbuf, rbuf.size, timeoutMs)
-            if (r < 0) throw gone("The camera stopped answering. Check it is on and the USB cable is plugged in.")
-            if (r == 0) { if (++empty > 50) throw gone("The camera stopped answering."); continue }   // zero-length packet that ends a transfer
+            if (r < 0) throw usbFail("The camera stopped answering. Check it is on and the USB cable is plugged in.", "read")
+            if (r == 0) { if (++empty > 50) throw usbFail("The camera stopped answering.", "read"); continue }   // zero-length packet that ends a transfer
             empty = 0
             if (pendLen + r > pend.size) pend = pend.copyOf(maxOf(pend.size * 2, pendLen + r))
             System.arraycopy(rbuf, 0, pend, pendLen, r)
@@ -331,7 +352,7 @@ class UsbCameraHelper(private val ctx: Context) {
         while (true) {
             fill(12, timeoutMs)
             val len = le(pend, 0)
-            if (len < 12 || len > 300_000_000) throw gone("The camera sent something unexpected. Unplug it and plug it in again.")
+            if (len < 12 || len > 300_000_000) throw usbFail("The camera sent something unexpected. Unplug it and plug it in again.", "answer")
             fill(len, timeoutMs)
             val type = le16(pend, 4)
             val code = le16(pend, 6)
@@ -449,7 +470,7 @@ class UsbCameraHelper(private val ctx: Context) {
             }
         }
         brandErr?.let { throw it }
-        if (seen.isNotEmpty()) throw CamErr("NOCAMERA", "Found $seen, but no Nikon, Canon EOS or Sony Alpha camera with live view. Switch the camera on and check its cable.")
+        if (seen.isNotEmpty()) throw CamErr("NOCAMERA", "Found $seen, but the tablet app can only control Nikon, Canon EOS and Sony Alpha cameras. For another make, switch the camera to its USB webcam mode (or use an HDMI capture card): it then shows up in the Camera list by itself.")
         throw CamErr("NOCAMERA", "No camera found. Plug the camera into the tablet with a data USB cable (not charge-only) and switch it on.")
     }
 
@@ -528,9 +549,18 @@ class UsbCameraHelper(private val ctx: Context) {
         Unit
     }
 
+    private var frameFails = 0
+
+    // A hiccup while fetching a live view picture just skips that picture; only a run of them is reported.
     private fun frame(): ByteArray? = synchronized(lock) {
         needCamera()
-        if (canon) canonFrame() else if (sony) sonyFrame() else nikonFrame()
+        try {
+            val f = if (canon) canonFrame() else if (sony) sonyFrame() else nikonFrame()
+            frameFails = 0
+            f
+        } catch (e: CamErr) {
+            if (e.transient && ++frameFails <= 5) null else throw e
+        }
     }
 
     private fun capture(): ByteArray = synchronized(lock) {

@@ -114,6 +114,28 @@
   .group:first-child{margin-top:0;}
   .card>.modebox:first-of-type,.card>.row+.modebox{margin-top:14px;}
   @media (max-width:640px){ .tab{padding:9px 6px;font-size:12.5px;} }
+  body{min-height:100dvh;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));padding-bottom:max(60px,calc(env(safe-area-inset-bottom) + 40px));}
+  .tabs{margin-left:calc(-1 * max(14px,env(safe-area-inset-left)));margin-right:calc(-1 * max(14px,env(safe-area-inset-right)));padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));overflow-x:auto;scrollbar-width:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{flex:1 0 auto;white-space:nowrap;}
+  .toast{bottom:max(22px,calc(env(safe-area-inset-bottom) + 12px));}
+  button:focus-visible,summary:focus-visible,.stat:focus-visible,.size-chip:has(input:focus-visible),select:focus-visible{outline:3px solid var(--blue);outline-offset:2px;}
+  input:focus-visible{outline:3px solid rgba(201,61,39,.35);outline-offset:1px;}
+  .badge{font-size:11.5px;} .stat span{font-size:12.5px;} .devchip{font-size:12.5px;}
+  @media (min-width:641px) and (max-width:900px){ .lic-row .badges{max-width:55%;} }
+  @media (pointer:coarse){
+    button{min-height:44px;}
+    button.small{min-height:40px;padding:8px 14px;font-size:13px;}
+    .devchip{padding:3px 4px 3px 12px;} .devchip button{min-height:36px;min-width:36px;font-size:12.5px;}
+    .fchip{min-height:40px;padding:8px 14px;font-size:13.5px;}
+    .size-chip{min-height:44px;padding:8px 14px;font-size:13.5px;}
+    .size-chip input,.toggle input[type=checkbox],.toggle input[type=radio]{width:20px;height:20px;}
+    .lic-row{padding:6px 12px;min-height:56px;} .lic-row input[type=checkbox]{width:24px;height:24px;}
+    .lic-main{min-height:44px;padding:4px 0;}
+    input[type=text],input[type=password],input[type=number],input[type=date],input[type=time],select,select.sel,.custom-size input[type=number],.custom-size select,.themerow select{font-size:16px;min-height:44px;}
+    details.card>summary{min-height:44px;}
+    .stat{min-height:56px;}
+  }
 </style>
 </head>
 <body>

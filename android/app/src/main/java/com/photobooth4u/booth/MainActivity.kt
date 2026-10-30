@@ -93,12 +93,21 @@ class MainActivity : AppCompatActivity() {
     private val REQ_CAMERA_PERMISSION = 2001
 
     // ---- New version prompt ----
-    // At launch (never mid-session) ask the site for the newest tablet app; when this one is older, offer the
-    // download. "Update" opens the APK in the browser, and Android then offers to install it over this app.
+    // At launch, when the app comes back to the front, and every 5 minutes while it is open (like the laptop app),
+    // ask the site for the newest tablet app; when this one is older, offer the download. "Later" hides that
+    // version for a day. "Update" opens the APK in the browser, and Android then offers to install it over this app.
+    private val updateHandler = Handler(Looper.getMainLooper())
+    private val updateLoop = object : Runnable {
+        override fun run() { checkForAppUpdate(); updateHandler.postDelayed(this, 5 * 60_000L) }
+    }
+    @Volatile private var updateChecking = false
+    private var updateDialog: AlertDialog? = null
+
     private fun checkForAppUpdate() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
-        if (now - prefs.getLong("update_checked", 0L) < 6 * 3600_000L || !isNetworkAvailable()) return
+        if (updateChecking || now - prefs.getLong("update_checked", 0L) < 4 * 60_000L || !isNetworkAvailable()) return
+        updateChecking = true
         Thread {
             try {
                 val c = URL(BASE_URL + "api/updates").openConnection() as HttpURLConnection
@@ -111,15 +120,16 @@ class MainActivity : AppCompatActivity() {
                 if (latest.isEmpty() || !url.startsWith("https://") || !versionNewer(latest, mine)) return@Thread
                 if (now < prefs.getLong("update_snooze_" + latest, 0L)) return@Thread
                 runOnUiThread {
-                    if (isFinishing || isDestroyed) return@runOnUiThread
-                    AlertDialog.Builder(this)
+                    if (isFinishing || isDestroyed || updateDialog?.isShowing == true) return@runOnUiThread
+                    updateDialog = AlertDialog.Builder(this)
                         .setTitle("New version available")
                         .setMessage("photobooth4u " + latest + " is ready (this tablet has " + mine + "). Update between events, not during a session.")
                         .setPositiveButton("Update") { _, _ -> try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (e: Exception) { } }
                         .setNegativeButton("Later") { _, _ -> prefs.edit().putLong("update_snooze_" + latest, System.currentTimeMillis() + 24 * 3600_000L).apply() }
                         .show()
                 }
-            } catch (e: Exception) { /* offline or the site is down: try again next launch */ }
+            } catch (e: Exception) { /* offline or the site is down: try again in 5 minutes */ }
+            finally { updateChecking = false }
         }.start()
     }
 
@@ -199,7 +209,7 @@ class MainActivity : AppCompatActivity() {
         // a network right now — otherwise there's no point waiting on a request that can
         // only fail, so go straight to the offline booth.
         bootWithLicence()
-        checkForAppUpdate()
+        updateHandler.postDelayed(updateLoop, 20_000L)
         checkinHandler.postDelayed(checkinLoop, 10 * 60_000L)
     }
 
@@ -344,6 +354,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         hideSystemBars()
+        checkForAppUpdate()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -359,6 +370,7 @@ class MainActivity : AppCompatActivity() {
         voiceBridge?.shutdown()
         shareServer?.stop()
         checkinHandler.removeCallbacksAndMessages(null)
+        updateHandler.removeCallbacksAndMessages(null)
     }
 
     private fun hideSystemBars() {

@@ -170,6 +170,10 @@ class MainActivity : AppCompatActivity() {
         // 5. Inject BTBridge into JavaScript context (window.__BTBridge)
         btBridge = BTBridge(this, webView)
         webView.addJavascriptInterface(btBridge, "__BTBridge")
+        // 5a. Every other printer (Epson, Canon, HP, Brother, Wi-Fi/Mopria…): Android's own print system (window.__PBPrint)
+        webView.addJavascriptInterface(PrintBridge(this), "__PBPrint")
+        // Wi-Fi printers found and printed to by the app itself, like NokoPrint (window.__PBNet)
+        webView.addJavascriptInterface(NetPrintBridge(this, webView), "__PBNet")
 
         // 5b. Offline photos: saved on this tablet through window.__PBLocal, and shown to guests' phones
         // over the booth Wi-Fi by a small web server in the app (no internet needed).

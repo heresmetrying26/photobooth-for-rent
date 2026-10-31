@@ -52,7 +52,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.34', date: '2026-10-31', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.34/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.35', date: '2026-10-31', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.35/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -87,6 +87,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-31', title: 'Android app prints to Wi-Fi and USB printers it finds itself', for: ['website'],
+    items: [
+      'Android app 1.0.35: Print settings has a new Wi-Fi printer section. Tap Find Wi-Fi printers and the tablet lists printers on the same Wi-Fi, such as Epson, Canon, HP and Brother models that support AirPrint / Mopria, and prints photos straight to the one you pick, with no print dialog.',
+      'Printers plugged into the tablet’s USB port appear in the same list. Receipt printers and printers that support IPP-over-USB can be printed to. Printers that need their own driver (for example Epson L120 / L210, DNP, HiTi) are shown as detected but still need the laptop.',
+      'Receipt printers on Wi-Fi or USB work too, and if a direct print fails the booth opens the Android print dialog instead. See the new Android printing guide.'
+    ]
+  },
   {
     date: '2026-10-31', title: 'Photo + GIF: guests can retake photos again', for: ['website', 'app'], app: '1.0.40',
     items: [

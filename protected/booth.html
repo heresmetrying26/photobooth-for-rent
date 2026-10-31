@@ -3875,6 +3875,18 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
               <p class="panel-hint" id="btThermalStatusHint" style="margin:4px 0 6px;"></p>
             </div>
           </div>
+          <div class="printer-pick" id="wifiPrinterRow" style="display:none;margin-top:10px;">
+            <label class="sub-label" style="display:block; margin:6px 0 2px;">Wi-Fi printer</label>
+            <p class="panel-hint" style="margin:2px 0 8px;">The tablet looks for printers on this Wi-Fi and on its USB port by itself (Epson, Canon, HP, Brother, receipt printers…) and prints straight to the one you pick, with no print dialog. Plug a USB printer in and it appears here.</p>
+            <button type="button" class="action-btn" id="wifiPrinterFindBtn" style="width:auto;margin:0 8px 8px 0;">Find Wi-Fi printers</button>
+            <button type="button" class="action-btn" id="wifiPrinterForgetBtn" style="display:none;width:auto;margin:0 8px 8px 0;">Forget</button>
+            <p class="panel-hint" id="wifiPrinterStatus" style="margin:4px 0 6px;"></p>
+            <div id="wifiPrinterList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <input type="text" id="wifiPrinterIp" class="printer-input" inputmode="decimal" placeholder="Printer not listed? Type its IP, e.g. 192.168.1.50" style="flex:1;min-width:180px;">
+              <button type="button" class="action-btn" id="wifiPrinterAddBtn" style="width:auto;margin:0;">Add</button>
+            </div>
+          </div>
           <details class="ps-steps" id="printStepsWrap">
             <summary>Printer setup checklist</summary>
             <ol class="print-steps" id="printSteps"></ol>
@@ -12107,6 +12119,117 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   document.getElementById('ppvOverlay').addEventListener('click', (e) => { if(e.target.id === 'ppvOverlay'){ closePrintPreview(); } });
   document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !document.getElementById('ppvOverlay').hidden){ e.stopPropagation(); closePrintPreview(); } }, true);
 
+  // ---- Wi-Fi printers the Android app finds and prints to itself (window.__PBNet) ----
+  const WIFI_PRINTER_KEY = 'pb_wifi_printer';
+  let wifiPrinter = null;
+  try{ wifiPrinter = JSON.parse(localStorage.getItem(WIFI_PRINTER_KEY) || 'null'); }catch(e){}
+  let wifiScanTimer = null;
+  const wifiJobs = {};
+  window.__PBNetResult = function(r){
+    const j = r && wifiJobs[r.job];
+    if(!j) return;
+    delete wifiJobs[r.job];
+    if(r.ok) j.res(r); else j.rej(new Error(r.error || 'The printer did not answer.'));
+  };
+  function wifiNetAvailable(){ return !!(window.__PBNet && typeof window.__PBNet.scan === 'function'); }
+  function wifiJob(start){
+    return new Promise((res, rej) => {
+      const id = 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+      wifiJobs[id] = { res, rej };
+      setTimeout(() => { if(wifiJobs[id]){ delete wifiJobs[id]; rej(new Error('The printer took too long to answer.')); } }, 120000);
+      try{ start(id); }catch(e){ delete wifiJobs[id]; rej(e); }
+    });
+  }
+  function wifiSave(p){
+    wifiPrinter = p || null;
+    try{ if(p) localStorage.setItem(WIFI_PRINTER_KEY, JSON.stringify(p)); else localStorage.removeItem(WIFI_PRINTER_KEY); }catch(e){}
+  }
+  function wifiList(){
+    try{ return JSON.parse(window.__PBNet.list()) || { printers: [], scanning: false }; }catch(e){ return { printers: [], scanning: false }; }
+  }
+  function wifiRenderList(d){
+    const box = document.getElementById('wifiPrinterList'), st = document.getElementById('wifiPrinterStatus');
+    if(!box) return;
+    box.textContent = '';
+    d.printers.forEach(p => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
+      const sel = wifiPrinter && wifiPrinter.ip === p.ip;
+      b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? '' : ' · ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.raw ? ' · receipt' : '') + (p.noDriver ? ' · no driver' : '');
+      b.addEventListener('click', () => {
+        if(p.noDriver){
+          showToast(p.name + ' is detected, but this model needs its own driver, which the tablet app doesn’t have. Use the laptop print station for it.', 7000);
+          return;
+        }
+        wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb });
+        showToast('Will print to ' + p.name + '.', 3000);
+        wifiRenderList(wifiList());
+        refreshPrintUI();
+      });
+      box.appendChild(b);
+    });
+    if(st && !wifiPrinter) st.textContent = d.scanning ? 'Looking for printers…' : (d.printers.length ? 'Tap your printer.' : 'No printers found. Check it is on and on the same Wi-Fi, or type its IP below.');
+  }
+  function wifiScan(){
+    if(!wifiNetAvailable()) return;
+    try{ window.__PBNet.scan(); }catch(e){ return; }
+    clearInterval(wifiScanTimer);
+    const t0 = Date.now();
+    const tick = () => {
+      const d = wifiList();
+      wifiRenderList(d);
+      if(!d.scanning || Date.now() - t0 > 20000){ clearInterval(wifiScanTimer); wifiScanTimer = null; }
+    };
+    wifiScanTimer = setInterval(tick, 1000);
+    tick();
+  }
+  function wifiPrinterUI(){
+    const row = document.getElementById('wifiPrinterRow');
+    if(!row) return;
+    row.style.display = wifiNetAvailable() && printSize && !useStation() ? '' : 'none';
+    const st = document.getElementById('wifiPrinterStatus'), forget = document.getElementById('wifiPrinterForgetBtn');
+    if(forget) forget.style.display = wifiPrinter ? '' : 'none';
+    if(st && wifiPrinter) st.textContent = 'Printing to: ' + wifiPrinter.name + ' (' + wifiPrinter.ip + ')';
+    else if(st && !wifiScanTimer) st.textContent = '';
+  }
+  (function(){
+    const f = document.getElementById('wifiPrinterFindBtn'), g = document.getElementById('wifiPrinterForgetBtn'), a = document.getElementById('wifiPrinterAddBtn');
+    if(f) f.addEventListener('click', wifiScan);
+    // A USB printer plugged in (or out) while this panel is open shows up without pressing anything.
+    setInterval(() => {
+      const row = document.getElementById('wifiPrinterRow');
+      if(row && row.style.display !== 'none' && wifiNetAvailable() && !wifiScanTimer) wifiRenderList(wifiList());
+    }, 3000);
+    if(g) g.addEventListener('click', () => { wifiSave(null); wifiRenderList(wifiList()); refreshPrintUI(); });
+    if(a) a.addEventListener('click', () => {
+      const inp = document.getElementById('wifiPrinterIp');
+      if(!inp || !wifiNetAvailable()) return;
+      if(window.__PBNet.addByIp(inp.value) !== 'ok'){ showToast('That doesn’t look like an IP address (e.g. 192.168.1.50).', 4000); return; }
+      setTimeout(() => wifiRenderList(wifiList()), 1500);
+      setTimeout(() => wifiRenderList(wifiList()), 3500);
+    });
+  })();
+  function wifiBytesToB64(bytes){
+    let s = '';
+    for(let i = 0; i < bytes.length; i += 8192) s += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + 8192, bytes.length)));
+    return btoa(s);
+  }
+  async function printViaWifi(all, paper){
+    const p = wifiPrinter;
+    if(paper.receipt && p.raw && window._btThermal && window._btThermal.EscPosEncoder){
+      const dotW = paper.w <= 55 ? 384 : 576;
+      for(const cv of all){
+        const bytes = new window._btThermal.EscPosEncoder(dotW).initialize().image(window._btThermal.toReceiptCanvas(cv, dotW)).cut().getBuffer();
+        await wifiJob(id => window.__PBNet.printRaw(id, p.ip, wifiBytesToB64(bytes)));
+      }
+      return;
+    }
+    if(!p.ipp) throw new Error(p.name + ' only takes receipts. Pick a photo printer.');
+    if(p.usb) showToast('Allow USB access on the tablet if it asks.', 3000);
+    const imgs = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
+    await wifiJob(id => window.__PBNet.printIpp(id, p.ip, paper.w, paper.h, 1, JSON.stringify(imgs)));
+  }
+
   async function printCurrentPhoto(auto, copies){
     if(printing || !printSize || !(state === 'result' && shotCanvases.every(Boolean))) return false;
     const per = sheetsPerCopy(printSize);
@@ -12176,6 +12299,36 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           return true;
         }
       }
+      // Android tablet app with a Wi-Fi printer picked: the app finds it and prints straight to it.
+      if(wifiPrinter && wifiNetAvailable()){
+        try{
+          showPrintingNote(printTxt('txtPrinting'), 8000);
+          await printViaWifi(all, paper);
+          showToast((auto === true ? 'Auto-printing on ' : 'Printing on ') + wifiPrinter.name + ' (' + label + ').');
+          armAutoPrintAfterFirst(auto === true);
+          return true;
+        }catch(wErr){
+          showToast('Wi-Fi print failed: ' + (wErr.message || wErr) + ' Opening the print dialog instead.', 6500);
+        }
+      }
+      // Android tablet app: WebView can't window.print(), so hand the sheets to Android's print system,
+      // which lists every Wi-Fi / installed-service printer (Epson, Canon, HP, Brother, Mopria, ...).
+      if(window.__PBPrint && typeof window.__PBPrint.print === 'function'){
+        try{
+          const imgs = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
+          const r = JSON.parse(window.__PBPrint.print('Photobooth ' + paper.name, paper.w, paper.h, JSON.stringify(imgs)) || '{}');
+          if(r.ok){
+            showToast((auto === true ? 'Auto-printing (' : 'Choose your printer to print (') + label + ').');
+            armAutoPrintAfterFirst(auto === true);
+            return true;
+          }
+          showToast('Couldn’t open printing: ' + (r.error || 'unknown error'), 5500);
+          return false;
+        }catch(e2){
+          showToast('Couldn’t open printing: ' + (e2.message || e2), 5500);
+          return false;
+        }
+      }
       const urls = [];
       printArea.innerHTML = '';
       for(let i = 0; i < all.length; i++){
@@ -12240,6 +12393,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     printRouteSelect.querySelector('option[value="station"]').disabled = !(isRentalBooth() || isTrialBooth());
     // The Print Helper is a computer app: never offered on iPad / Android.
     document.getElementById('printerPick').style.display = printSize && !useStation() && !isMobileOS() ? '' : 'none';
+    try{ wifiPrinterUI(); }catch(_){}
     // Bluetooth thermal UI elements (tablet only)
     const btRow = document.getElementById('btThermalRow');
     const btConnBtn = document.getElementById('btThermalConnectBtn');

@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.36', date: '2026-10-31' },
   { version: '1.0.35', date: '2026-10-31' },
   { version: '1.0.34', date: '2026-10-30' },
   { version: '1.0.33', date: '2026-10-30' },
@@ -82,6 +83,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-31', title: 'Camera: a frozen or black live view now recovers (Canon on Windows, and webcams)', for: ['website', 'app'], app: '1.0.36',
+    items: [
+      'Fixed: with a Canon (such as the EOS R50) on Windows, the live view could freeze and then go black during a session, with no message and no way back. Laptop app 1.0.36 starts the live view again properly whenever the camera ends it, when frames stop, and right after every photo.',
+      'The booth now watches the Windows camera too: after about 4 seconds without a new picture it asks the camera to start live view again and shows \u201cCamera not responding\u201d, and it reconnects by itself after 15 seconds.',
+      'A webcam whose picture stops while the camera is still \u201con\u201d (for example Canon\u2019s EOS Webcam Utility when the camera goes to sleep) is noticed after 8 seconds and reconnected. This part works on the website too.',
+      'If it still happens, open the Camera menu \u2192 Copy camera log right after and send it to us: it now says whether the picture stalled, what was tried and what came back.'
+    ]
+  },
   {
     date: '2026-10-31', title: 'Use a DSLR with an iPad: the iPad uses the laptop’s camera over Wi-Fi', for: ['website', 'app'], app: '1.0.35',
     items: [

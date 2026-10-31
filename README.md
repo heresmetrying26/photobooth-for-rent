@@ -170,7 +170,7 @@ Chrome can't open the camera on Windows (Windows' own camera driver holds it), s
   is released after use and memory is collected every 400 calls. Tested with a simulated R-series camera and a stub worker; **not on a
   real R50**.
 
-### iPad with a DSLR (laptop app, 1.0.35+)
+### iPad with a DSLR (laptop app, 1.0.37+)
 Safari and Chrome on iPad have no USB, so an iPad can't run the Nikon / Canon / Sony USB remote itself. Two ways (guide: `/how-to-ipad/`):
 - **iPad + the laptop's camera (Windows laptop app):** Setup → Share & start → *Let an iPad use this laptop's camera*. The laptop shows
   `http://<laptop>:47777/ipad` and a 6-digit PIN (`settings.json`: `ipadOn`, `ipadPin`; off by default). The iPad opens that in Safari; the laptop serves the

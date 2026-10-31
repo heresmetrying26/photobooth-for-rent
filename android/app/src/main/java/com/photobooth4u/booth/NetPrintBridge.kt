@@ -56,6 +56,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         @Volatile var model: String = ""                       // "EPSON L3250 Series", from the printer itself
         @Volatile var formats: List<String> = emptyList()      // document formats it says it can print
         @Volatile var attrsTried = false
+        @Volatile var qualities: List<Int> = emptyList()       // print-quality-supported: 3 draft, 4 normal, 5 high
+        @Volatile var colorModes: List<String> = emptyList()   // print-color-mode-supported: color, monochrome...
+        @Volatile var mediaTypes: List<String> = emptyList()   // media-type-supported: stationery, photographic-glossy...
         @Volatile var usbDev: UsbDevice? = null                // set for a printer on the USB port
     }
 
@@ -100,7 +103,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     .put("name", it.name.ifBlank { "Printer at ${it.ip}" })
                     .put("ip", it.ip)
                     .put("ipp", it.ippPort > 0)
-                    .put("raw", it.rawPort > 0))
+                    .put("raw", it.rawPort > 0)
+                    .put("qualities", JSONArray(it.qualities))
+                    .put("colorModes", JSONArray(it.colorModes))
+                    .put("mediaTypes", JSONArray(it.mediaTypes)))
             }
         usbListInto(arr)
         return JSONObject().put("scanning", scanning).put("printers", arr).toString()
@@ -120,17 +126,19 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
      * pagesJson: JSON array of base64 JPEGs, one per sheet; copies repeats the whole set.
      */
     @JavascriptInterface
-    fun printIpp(job: String, ip: String, widthMm: Double, heightMm: Double, copies: Int, pagesJson: String): String {
+    fun printIpp(job: String, ip: String, widthMm: Double, heightMm: Double, copies: Int, pagesJson: String, optionsJson: String): String {
         pool.execute {
             val r = JSONObject().put("job", job)
             try {
+                val o = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
+                val opts = Opts(o.optString("quality"), o.optString("color"), o.optString("media"))
                 val e = if (ip.startsWith("usb:")) usbEntry(ip) else found[ip] ?: Entry(ip).also { probeInto(it) }
                 if (e.ippPort <= 0) throw IllegalStateException("This printer can't take photo print jobs from the tablet.")
                 val arr = JSONArray(pagesJson)
                 val pages = ArrayList<ByteArray>()
                 for (i in 0 until arr.length()) pages.add(decode(arr.getString(i)))
                 for (c in 0 until copies.coerceIn(1, 20)) {
-                    for (p in pages) sendIppJob(e, job, p, widthMm, heightMm)
+                    for (p in pages) sendIppJob(e, job, p, widthMm, heightMm, opts)
                 }
                 r.put("ok", true)
             } catch (ex: Exception) {
@@ -390,10 +398,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
      * Result arrives as window.__PBNetResult.
      */
     @JavascriptInterface
-    fun printEscp2(job: String, id: String, widthMm: Double, heightMm: Double, copies: Int, pagesJson: String): String {
+    fun printEscp2(job: String, id: String, widthMm: Double, heightMm: Double, copies: Int, pagesJson: String, optionsJson: String): String {
         pool.execute {
             val r = JSONObject().put("job", job)
             try {
+                val colour = try { JSONObject(optionsJson).optString("color") == "color" } catch (_: Exception) { false }
                 val d = usbFind(id)
                 usbEnsure(d)
                 usbIsEscpr(d)                              // reads the printer's ID into the cache
@@ -404,7 +413,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val jpeg = decode(arr.getString(i))
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
-                        usbRaw(id, EscP2Job.build(bmp, widthMm, heightMm))
+                        usbRaw(id, EscP2Job.build(bmp, widthMm, heightMm, colour))
                     }
                 }
                 r.put("ok", true)
@@ -622,12 +631,22 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val r = doPost(e, path, ippGetAttributes(ippUri(e, path)))
                 if (r.http != 200 || r.ipp !in 0..2) continue
                 val formats = ArrayList<String>()
+                val qualities = ArrayList<Int>()
+                val colorModes = ArrayList<String>()
+                val mediaTypes = ArrayList<String>()
                 var model = ""
-                parseIpp(r.body) { name, tag, value ->
+                parseIpp(r.body) { name, tag, raw ->
+                    val value = String(raw, Charsets.UTF_8)
                     if (name == "document-format-supported" && tag == 0x49) formats.add(value.lowercase())
                     if (name == "printer-make-and-model" && (tag == 0x41 || tag == 0x42) && model.isEmpty()) model = value
+                    if (name == "print-quality-supported" && tag == 0x23 && raw.size == 4) qualities.add(raw[3].toInt() and 0xFF)
+                    if (name == "print-color-mode-supported" && tag == 0x44) colorModes.add(value)
+                    if (name == "media-type-supported" && tag == 0x44) mediaTypes.add(value)
                 }
                 e.formats = formats
+                e.qualities = qualities
+                e.colorModes = colorModes
+                e.mediaTypes = mediaTypes
                 if (model.isNotBlank()) { e.model = model; if (e.name.isBlank()) e.name = model }
                 e.ippPath = path
                 return
@@ -636,7 +655,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     }
 
     /** Walks an IPP response and hands every attribute value to the callback. */
-    private fun parseIpp(b: ByteArray, cb: (name: String, tag: Int, value: String) -> Unit) {
+    private fun parseIpp(b: ByteArray, cb: (name: String, tag: Int, value: ByteArray) -> Unit) {
         var p = 8
         var last = ""
         fun u16(i: Int) = ((b[i].toInt() and 0xFF) shl 8) or (b[i + 1].toInt() and 0xFF)
@@ -650,13 +669,29 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             if (nl > 0) { last = String(b, p, nl, Charsets.ISO_8859_1); p += nl }
             val vl = u16(p); p += 2
             if (p + vl > b.size) return
-            cb(last, tag, String(b, p, vl, Charsets.UTF_8))
+            cb(last, tag, b.copyOfRange(p, p + vl))
             p += vl
         }
     }
 
-    private fun sendIppJob(e: Entry, job: String, jpeg: ByteArray, wMm: Double, hMm: Double) {
+    private class Opts(val quality: String, val color: String, val media: String)
+
+    private fun sendIppJob(e: Entry, job: String, jpeg: ByteArray, wMm: Double, hMm: Double, opts: Opts) {
         fetchAttrs(e)
+        // Only ask for settings this printer says it supports (quality, colour mode, paper type).
+        val q = when (opts.quality) { "draft" -> 3; "normal" -> 4; "high" -> 5; else -> 0 }
+        val qv = if (q != 0 && q in e.qualities) q else 0
+        val cm = when {
+            opts.color == "mono" && "monochrome" in e.colorModes -> "monochrome"
+            opts.color == "color" && "color" in e.colorModes -> "color"
+            else -> ""
+        }
+        val mt = when (opts.media) {
+            "plain" -> e.mediaTypes.firstOrNull { it == "stationery" } ?: e.mediaTypes.firstOrNull { it.startsWith("stationery") } ?: ""
+            "photo" -> e.mediaTypes.firstOrNull { it == "photographic-glossy" } ?: e.mediaTypes.firstOrNull { it.startsWith("photographic") } ?: ""
+            else -> ""
+        }
+        val hasOpts = qv != 0 || cm.isNotEmpty() || mt.isNotEmpty()
         val formats = e.formats
         // Photo as-is when the printer takes JPEG (or won't say); otherwise wrap it in a PDF.
         val (format, data) = when {
@@ -668,9 +703,12 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             )
         }
         var lastErr = "The printer didn't accept the job."
-        for (withMedia in listOf(true, false)) {
+        // Try with the page size and settings first, then drop them one at a time if the printer refuses.
+        val attempts = if (hasOpts) listOf(true to true, false to true, true to false, false to false) else listOf(true to false, false to false)
+        for ((withMedia, withOpts) in attempts) {
             for (path in ippPaths(e)) {
-                val body = ippPrintJob(ippUri(e, path), job, format, data, if (withMedia) wMm else 0.0, hMm)
+                val body = ippPrintJob(ippUri(e, path), job, format, data, if (withMedia) wMm else 0.0, hMm,
+                    if (withOpts) qv else 0, if (withOpts) cm else "", if (withOpts) mt else "")
                 val r = doPost(e, path, body)
                 when {
                     r.http == 200 && r.ipp in 0..2 -> return
@@ -724,7 +762,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         attr(0x48, "attributes-natural-language", "en")
         attr(0x45, "printer-uri", uri)
         attr(0x44, "requested-attributes", "printer-make-and-model")
-        u8(0x44); u16(0); str("document-format-supported")
+        for (n in listOf("document-format-supported", "print-quality-supported", "print-color-mode-supported", "media-type-supported")) {
+            u8(0x44); u16(0); str(n)
+        }
         u8(0x03)
         return o.toByteArray()
     }
@@ -780,7 +820,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     private fun doPost(e: Entry, path: String, body: ByteArray): Reply =
         if (e.usbDev != null) usbPost(e.usbDev!!, path, body) else post(e.ip, e.ippPort, path, body)
 
-    private fun ippPrintJob(uri: String, job: String, format: String, doc: ByteArray, wMm: Double, hMm: Double): ByteArray {
+    private fun ippPrintJob(uri: String, job: String, format: String, doc: ByteArray, wMm: Double, hMm: Double,
+                            quality: Int = 0, colorMode: String = "", mediaType: String = ""): ByteArray {
         val o = ByteArrayOutputStream()
         fun u8(v: Int) = o.write(v and 0xFF)
         fun u16(v: Int) { u8(v shr 8); u8(v) }
@@ -814,6 +855,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             u8(0x37); u16(0); u16(0)                            // end media-col
         }
         attr(0x44, "print-scaling", "fill")
+        if (quality != 0) { u8(0x23); str("print-quality"); u16(4); u32(quality) }          // enum
+        if (colorMode.isNotEmpty()) attr(0x44, "print-color-mode", colorMode)
+        if (mediaType.isNotEmpty()) attr(0x44, "media-type", mediaType)
         u8(0x03)                                                // end of attributes
         o.write(doc)
         return o.toByteArray()

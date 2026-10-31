@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.39', date: '2026-10-31' },
   { version: '1.0.38', date: '2026-10-31' },
   { version: '1.0.37', date: '2026-10-31' },
   { version: '1.0.36', date: '2026-10-31' },
@@ -50,7 +51,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.32', date: '2026-10-31', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.32/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.33', date: '2026-10-31', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.33/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -85,6 +86,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-31', title: 'Canon on Windows: the photo now lands on "Pose", and live view comes back after each shot', for: ['website', 'app'], app: '1.0.39',
+    items: [
+      'Laptop app 1.0.39: a Canon left on its self-timer (the beeps that get faster before the photo) is put back on single shot, so the picture is taken when the countdown ends instead of seconds later.',
+      'The booth learns how long the camera takes from the shutter command to the photo and fires that much earlier, so the saved photo is the pose guests held at "Pose".',
+      'After each photo the booth asks the camera for live view straight away and no longer flashes "Reconnecting" while it comes back. A photo that takes over 25 seconds is skipped and the live view picture is used.',
+      'Also turn off the beep in the camera menu (Beep: Disable) so guests do not mistake it for the countdown.'
+    ]
+  },
   {
     date: '2026-10-31', title: 'Android tablet: the Bluetooth printer list shows your receipt printer first', for: ['website'],
     items: [

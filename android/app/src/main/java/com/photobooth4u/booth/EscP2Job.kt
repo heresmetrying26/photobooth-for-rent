@@ -36,7 +36,9 @@ object EscP2Job {
     private const val CBAND = CN * SEP                 // 118 rows per colour pass
     // channel id, offset in rows, lines the printer needs per pass
     // In colour mode every channel, black included, works in blocks of 60 lines (59 nozzles); 180 lines is black-only mode.
-    private val CHANNELS = arrayOf(intArrayOf(0, 0, 60), intArrayOf(2, 0, 60), intArrayOf(1, 120, 60), intArrayOf(4, 240, 60))
+    // Measured on a real L120 colour-bar print: yellow nozzles are the highest group, magenta 120 rows lower, and cyan and
+    // black 240 rows lower than yellow (the reverse of the first guess). Offsets are measured from the yellow nozzles.
+    private val CHANNELS = arrayOf(intArrayOf(0, 240, 60), intArrayOf(2, 240, 60), intArrayOf(1, 120, 60), intArrayOf(4, 0, 60))
 
     fun build(src: Bitmap, widthMm: Double, heightMm: Double, color: Boolean = false): ByteArray =
         if (color) buildColor(src, widthMm, heightMm) else buildMono(src, widthMm, heightMm)
@@ -190,7 +192,10 @@ object EscP2Job {
                 val cy = 255 - ((c shr 16) and 0xFF)
                 val ma = 255 - ((c shr 8) and 0xFF)
                 val ye = 255 - (c and 0xFF)
-                val k = minOf(cy, minOf(ma, ye))
+                // Black only where the colour is dark (grey component squared): keeps skin and sky in colour instead of
+                // turning every grey part into black ink.
+                val grey = minOf(cy, minOf(ma, ye))
+                val k = grey * grey / 255
                 ink[0] = k.toFloat(); ink[1] = (cy - k).toFloat(); ink[2] = (ma - k).toFloat(); ink[3] = (ye - k).toFloat()
                 for (pl in 0 until 4) {
                     val v = ink[pl] + c0[pl][x + 1]

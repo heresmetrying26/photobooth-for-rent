@@ -89,6 +89,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-01', title: 'Android app: Android print dialog, print settings and more printers over USB', for: ['website'],
+    items: [
+      'Android app 1.0.44: Print settings has a new Android print dialog choice. It opens Android\u2019s own print screen for any printer the tablet can reach, and a button opens Android print settings so print services (Mopria, Epson, Canon, HP, Brother) can be switched on.',
+      'After you pick a Wi-Fi printer the app shows its own colour, quality and paper-type choices, only the ones that printer lists.',
+      'USB (OTG): printers with driverless USB printing and receipt printers can be printed to, and some older Epson ink-tank models work in an experimental black-and-white and colour mode. Printers that need their own driver still need the laptop.'
+    ]
+  },
+  {
     date: '2026-10-31', title: 'Android app prints to Wi-Fi and USB printers it finds itself', for: ['website'],
     items: [
       'Android app 1.0.35: Print settings has a new Wi-Fi printer section. Tap Find Wi-Fi printers and the tablet lists printers on the same Wi-Fi, such as Epson, Canon, HP and Brother models that support AirPrint / Mopria, and prints photos straight to the one you pick, with no print dialog.',

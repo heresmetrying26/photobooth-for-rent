@@ -103,7 +103,8 @@
       <tr><td>Canon Selphy (CP1300, CP1500)</td><td>Wi-Fi, same as above.</td></tr>
       <tr><td>80 mm / 58 mm receipt printers</td><td>Bluetooth, Wi-Fi / network, or USB. See the <a href="/how-to-print-thermal/">thermal guide</a>.</td></tr>
       <tr><td>Newer USB printers that support IPP-over-USB</td><td>USB cable to the tablet.</td></tr>
-      <tr><td>Older USB-only Epson inkjets (for example L120, L210)</td><td><b>Experimental.</b> The tablet reads the printer&rsquo;s own ID. An L120 speaks Epson&rsquo;s ESC/P2 language, so it is listed as a photo printer that prints in black &amp; white on plain paper with 3&nbsp;mm side borders. A <b>Colour (experimental)</b> choice appears in its settings; it is still being tested and leaves a blank strip at the top. Run a Test print first; for dependable quality and colour use the laptop app, or the laptop as a print station.</td></tr>
+      <tr><td>Some older Epson ink-tank printers over USB</td><td><b>Experimental.</b> The tablet reads the printer&rsquo;s own ID. An Epson that lists the ESC/P2 language is shown as a photo printer: black &amp; white on plain paper with 3&nbsp;mm side borders, plus a <b>Colour (experimental)</b> choice that leaves a blank strip at the top. Tested on the L120; the L110, L130 and L210 share its design but are not tested. Run a Test print first.</td></tr>
+      <tr><td>Other USB printers (older HP, Canon, Brother&hellip;)</td><td>Not directly: they need their own driver and show as <b>no driver</b>. Use the Android print dialog if the maker has an Android print service, or the laptop app.</td></tr>
       <tr><td>DNP, HiTi, Citizen, Mitsubishi, Sinfonia</td><td>Use the laptop app or the Print Helper (USB drivers).</td></tr>
     </table>
     <div class="callout"><h3>Good to know</h3><p>Some printers only accept secure (ipps) printing, or only their own file formats. If the booth says so, it opens the Android print dialog instead, or you can use the laptop.</p></div>
@@ -139,7 +140,7 @@
     <p class="why">After you pick a printer, the app shows only the settings that printer says it supports.</p>
     <table>
       <tr><th>Setting</th><th>What you can choose</th></tr>
-      <tr><td>Colour</td><td>Colour or black &amp; white, on printers that offer both. On an Epson L120, black &amp; white is the dependable one.</td></tr>
+      <tr><td>Colour</td><td>Colour or black &amp; white, on printers that offer both. On the Epson ink-tank models that use the USB mode above, black &amp; white is the dependable one.</td></tr>
       <tr><td>Quality</td><td>Draft, Normal or High, on Wi-Fi printers that support it. Printer default if you leave it.</td></tr>
       <tr><td>Paper type</td><td>Plain or photo paper, if the printer lists it. Leave on printer default if unsure.</td></tr>
       <tr><td>Paper size</td><td>Chosen in Print settings, the same as for every printer. The printer gets that size with no borders when it supports it.</td></tr>
@@ -160,8 +161,8 @@
 
   <section class="part" id="epson-test">
     <p class="kicker">Experimental &middot; help us test</p>
-    <h2>Epson L120 over USB</h2>
-    <p class="why">These older ink-tank printers have no Wi-Fi. App 1.0.35 can try to print to them from the tablet, but this is still being tested, so do not rely on it for an event yet.</p>
+    <h2>Some Epson ink-tank printers over USB</h2>
+    <p class="why">These older ink-tank printers have no Wi-Fi. The tablet app can try to print to them over USB, but this is still being tested, so do a full test before an event.</p>
     <ol class="steps">
       <li><span class="n">1</span><div><h3>Load plain paper</h3><p>Put plain A4 or 4&times;6 paper in the printer and switch it on.</p></div></li>
       <li><span class="n">2</span><div><h3>Plug it into the tablet</h3><p>Use a USB cable and an OTG adapter, then tap <b>OK</b> when Android asks to allow USB access.</p></div></li>

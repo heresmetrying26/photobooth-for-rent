@@ -102,7 +102,7 @@
       <tr><td>Canon Selphy (CP1300, CP1500)</td><td>Wi-Fi, same as above.</td></tr>
       <tr><td>80 mm / 58 mm receipt printers</td><td>Bluetooth, Wi-Fi / network, or USB. See the <a href="/how-to-print-thermal/">thermal guide</a>.</td></tr>
       <tr><td>Newer USB printers that support IPP-over-USB</td><td>USB cable to the tablet.</td></tr>
-      <tr><td>Older USB-only Epson inkjets (for example L120, L210)</td><td><b>Experimental.</b> The tablet asks the printer whether it speaks Epson&rsquo;s ESC/P-R language and, if so, lists it as &ldquo;photo (experimental)&rdquo;. Prints are plain colour on plain paper with 3 mm borders. Run a Test print first; for dependable quality use the laptop app, or the laptop as a print station.</td></tr>
+      <tr><td>Older USB-only Epson inkjets (for example L120, L210)</td><td><b>Experimental.</b> The tablet reads the printer&rsquo;s own ID. An L120 speaks Epson&rsquo;s ESC/P2 language, so it is listed as &ldquo;black &amp; white photo (experimental)&rdquo;: black ink only, plain paper, 3&nbsp;mm side borders. Run a Test print first; for dependable quality and colour use the laptop app, or the laptop as a print station.</td></tr>
       <tr><td>DNP, HiTi, Citizen, Mitsubishi, Sinfonia</td><td>Use the laptop app or the Print Helper (USB drivers).</td></tr>
     </table>
     <div class="callout"><h3>Good to know</h3><p>Some printers only accept secure (ipps) printing, or only their own file formats. If the booth says so, it opens the Android print dialog instead, or you can use the laptop.</p></div>
@@ -133,13 +133,13 @@
 
   <section class="part" id="epson-test">
     <p class="kicker">Experimental &middot; help us test</p>
-    <h2>Epson L120 / L210 over USB</h2>
+    <h2>Epson L120 over USB</h2>
     <p class="why">These older ink-tank printers have no Wi-Fi. App 1.0.35 can try to print to them from the tablet, but this is still being tested, so do not rely on it for an event yet.</p>
     <ol class="steps">
       <li><span class="n">1</span><div><h3>Load plain paper</h3><p>Put plain A4 or 4&times;6 paper in the printer and switch it on.</p></div></li>
       <li><span class="n">2</span><div><h3>Plug it into the tablet</h3><p>Use a USB cable and an OTG adapter, then tap <b>OK</b> when Android asks to allow USB access.</p></div></li>
       <li><span class="n">3</span><div><h3>Pick it</h3><p>In <b>Print settings &rarr; Wi-Fi printer</b> the printer should appear as <b>photo (experimental)</b>. If it says <b>no driver</b>, the printer did not report Epson&rsquo;s ESC/P-R language and the app will not send it anything.</p></div></li>
-      <li><span class="n">4</span><div><h3>Tap Test print</h3><p>You should get a bordered test sheet. Plain colour, plain paper, 3&nbsp;mm borders; no borderless or photo-paper settings.</p></div></li>
+      <li><span class="n">4</span><div><h3>Tap Test print</h3><p>You should get one test sheet with a border, in black and white. If you get pages of letters and symbols instead, stop and tell us.</p></div></li>
       <li><span class="n">5</span><div><h3>Tell us what happened</h3><p>Message us with the printer model and what came out: nothing, a blank page, strange lines, or a clear print.</p></div></li>
     </ol>
   </section>

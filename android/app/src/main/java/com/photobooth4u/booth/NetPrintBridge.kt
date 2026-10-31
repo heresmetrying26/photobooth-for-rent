@@ -377,6 +377,46 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         return ok
     }
 
+    /** True when the printer's own ID lists Epson's ESC/P2 language (CMD:ESCPL2) but not ESC/P-R: Epson L120 and kin. */
+    private fun usbIsEscp2(d: UsbDevice): Boolean {
+        if (d.vendorId != 0x04b8 || usb?.hasPermission(d) != true) return false
+        val id = usbIds[d.deviceName] ?: return false
+        return Regex("CMD:[^;]*ESCPL2", RegexOption.IGNORE_CASE).containsMatchIn(id) &&
+            !Regex("CMD:[^;]*ESCPR", RegexOption.IGNORE_CASE).containsMatchIn(id)
+    }
+
+    /**
+     * EXPERIMENTAL: prints JPEG pages in black and white to an Epson ESC/P2 USB printer (Epson L120 family).
+     * Result arrives as window.__PBNetResult.
+     */
+    @JavascriptInterface
+    fun printEscp2(job: String, id: String, widthMm: Double, heightMm: Double, copies: Int, pagesJson: String): String {
+        pool.execute {
+            val r = JSONObject().put("job", job)
+            try {
+                val d = usbFind(id)
+                usbEnsure(d)
+                usbIsEscpr(d)                              // reads the printer's ID into the cache
+                if (!usbIsEscp2(d)) throw IllegalStateException("This printer doesn't list Epson's ESC/P2 language, so the app won't send it that data.")
+                val arr = JSONArray(pagesJson)
+                for (c in 0 until copies.coerceIn(1, 20)) {
+                    for (i in 0 until arr.length()) {
+                        val jpeg = decode(arr.getString(i))
+                        val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+                            ?: throw IllegalStateException("Couldn't read the picture to print.")
+                        usbRaw(id, EscP2Job.build(bmp, widthMm, heightMm))
+                    }
+                }
+                r.put("ok", true)
+            } catch (ex: Exception) {
+                Log.w(TAG, "escp2 print failed", ex)
+                r.put("ok", false).put("error", ex.message ?: "Couldn't print.")
+            }
+            deliver(r)
+        }
+        return "started"
+    }
+
     /**
      * EXPERIMENTAL: prints JPEG pages to an Epson ESC/P-R USB printer (Epson L120 / L210 and similar).
      * Result arrives as window.__PBNetResult.
@@ -442,11 +482,13 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             val raw = !ipp && usbRawIface(d) != null && usbLooksLikeReceipt(d)
             val escpr = !ipp && !raw && usbIsEscpr(d)
             val perm = m.hasPermission(d)
+            val escp2 = !ipp && !raw && !escpr && usbIsEscp2(d)
             val id = "usb:" + d.deviceName
             arr.put(JSONObject()
                 .put("id", id).put("ip", id).put("name", usbName(d) + " (USB)")
                 .put("ipp", ipp).put("raw", raw).put("escpr", escpr).put("usb", true)
-                .put("noDriver", perm && !ipp && !raw && !escpr)
+                .put("escp2", escp2)
+                .put("noDriver", perm && !ipp && !raw && !escpr && !escp2)
                 .put("needsPermission", !perm && !ipp && !raw)
                 .put("info", (usbIds[d.deviceName] ?: "").take(300))
                 .put("vid", d.vendorId).put("pid", d.productId))

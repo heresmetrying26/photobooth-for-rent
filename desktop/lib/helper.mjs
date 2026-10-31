@@ -294,9 +294,11 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm) {
 
 // ---------- camera (Windows) ----------
 const camOk = () => (IS_WIN ? !!WORKER_PS : !!process.env.PB_CAMERA_WORKER);
-const cam = { proc: null, sock: null, server: null, starting: null, buf: Buffer.alloc(0), wait: null, seq: 0, queue: Promise.resolve(), open: null };
+// hangs: calls in a row the camera never answered; recover: the camera part was restarted, so the next open tells a Canon to leave remote mode first; resetAt: when it was stopped last.
+const cam = { proc: null, sock: null, server: null, starting: null, buf: Buffer.alloc(0), wait: null, seq: 0, queue: Promise.resolve(), open: null, hangs: 0, recover: false, resetAt: 0 };
 function camReset(why) {
   if (why) log('Camera part stopped: ' + why);
+  cam.resetAt = Date.now();
   try { cam.proc && cam.proc.kill(); } catch { /* gone */ }
   try { cam.sock && cam.sock.destroy(); } catch { /* gone */ }
   try { cam.server && cam.server.close(); } catch { /* gone */ }
@@ -313,13 +315,20 @@ function camParse() {
     const body = Buffer.from(cam.buf.subarray(nl + 1, nl + 1 + len));
     cam.buf = cam.buf.subarray(nl + 1 + len);
     const w = cam.wait;
-    if (w && head[0] === w.id) { cam.wait = null; w.resolve({ status: head[1], kind: head[2], body }); }
+    if (w && head[0] === w.id) {
+      cam.wait = null;
+      if (head[1] === 'OK' && (w.cmd === 'frame' || w.cmd === 'capture')) cam.hangs = 0;   // real work got through, not just a reconnect
+      w.resolve({ status: head[1], kind: head[2], body });
+    }
   }
 }
 async function camStart() {
   if (cam.sock) return;
   if (cam.starting) return cam.starting;
   cam.starting = (async () => {
+    // Give the USB connection a moment to settle after the camera part was stopped.
+    const settle = 1500 - (Date.now() - cam.resetAt);
+    if (settle > 0) await new Promise((r) => setTimeout(r, settle));
     let onConn;
     const connected = new Promise((res) => { onConn = res; });
     const server = net.createServer((sock) => {
@@ -366,13 +375,19 @@ function camCall(cmd, arg, timeoutMs) {
   const job = cam.queue.then(async () => {
     await camStart();
     const id = String(++cam.seq);
-    const reply = new Promise((resolve, reject) => { cam.wait = { id, resolve, reject }; });
+    const reply = new Promise((resolve, reject) => { cam.wait = { id, cmd, resolve, reject }; });
     cam.sock.write(id + ' ' + cmd + (arg ? ' ' + arg : '') + '\n');
     let timer;
     const to = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), timeoutMs || 15000); });
     try { return await Promise.race([reply, to]); }
     catch (e) {
-      if (e && e.message === 'timeout') { camReset('no answer to ' + cmd); throw new Error('The camera didn’t answer. Check it is on and its USB cable is plugged in.'); }
+      if (e && e.message === 'timeout') {
+        camReset('no answer to ' + cmd);
+        cam.hangs++; cam.recover = true;
+        throw new Error(cam.hangs >= 2
+          ? 'The camera stopped answering again. Switch the camera off and on, check its USB cable, then try again.'
+          : 'The camera didn’t answer. Check it is on and its USB cable is plugged in.');
+      }
       throw e;
     } finally { clearTimeout(timer); }
   });
@@ -444,7 +459,8 @@ export async function handleHelper(req, path, search) {
     try {
       if (method === 'GET' && path === '/camera') { const r = await camCall('list', '', 20000); return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) })); }
       if (method === 'POST' && path === '/camera/open') {
-        const r = await camCall('open', '', 60000);
+        const r = await camCall('open', cam.recover ? 'recover' : '', 60000);
+        cam.recover = false;
         return send(r, () => { cam.open = JSON.parse(r.body.toString('utf8')); log('Camera connected: ' + cam.open.name); return json({ ok: true, ...cam.open }); });
       }
       if (method === 'POST' && path === '/camera/live') { const on = search.get('on') !== '0'; const r = await camCall('live', on ? 'on' : 'off', 20000); return send(r, () => json({ ok: true })); }

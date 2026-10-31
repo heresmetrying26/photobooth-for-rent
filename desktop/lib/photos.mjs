@@ -181,6 +181,24 @@ function send(res, status, type, body, extra) {
   res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', ...(extra || {}) });
   res.end(body);
 }
+// Trading cards (files named ..._card.jpg) shine and tilt on the guest's phone: tilt the phone, or move a finger.
+const HOLO = String.raw`<script>(function(){
+var imgs=[].filter.call(document.querySelectorAll('.one img'),function(i){return /_card(_|\.)/i.test(decodeURIComponent(i.getAttribute('src')||''));});
+if(!imgs.length)return;
+try{if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission){document.addEventListener('click',function f(){DeviceOrientationEvent.requestPermission().catch(function(){});document.removeEventListener('click',f);});}}catch(e){}
+var cards=imgs.map(function(im){
+var w=document.createElement('div');w.style.cssText='position:relative;display:inline-block;perspective:900px;line-height:0';
+im.parentNode.insertBefore(w,im);w.appendChild(im);
+var s=document.createElement('div');s.style.cssText='position:absolute;inset:0;pointer-events:none;border-radius:12px;mix-blend-mode:color-dodge;opacity:.5;background:linear-gradient(115deg,transparent 18%,rgba(255,90,170,.65) 34%,rgba(255,220,80,.65) 44%,rgba(90,255,180,.65) 54%,rgba(80,170,255,.65) 64%,transparent 80%);background-size:260% 260%';
+w.appendChild(s);return {w:w,s:s,im:im};});
+var last=0;
+function clamp(v){return Math.max(-1,Math.min(1,v));}
+function apply(c,nx,ny){var t='rotateY('+(nx*14)+'deg) rotateX('+(-ny*14)+'deg)';c.im.style.transform=t;c.s.style.transform=t;c.s.style.backgroundPosition=(50+nx*45)+'% '+(50+ny*45)+'%';}
+cards.forEach(function(c){c.w.addEventListener('pointermove',function(e){var r=c.w.getBoundingClientRect();last=performance.now();apply(c,clamp((e.clientX-r.left-r.width/2)/(r.width/2)),clamp((e.clientY-r.top-r.height/2)/(r.height/2)));});});
+window.addEventListener('deviceorientation',function(e){if(e.gamma==null)return;last=performance.now();cards.forEach(function(c){apply(c,clamp(e.gamma/25),clamp(((e.beta||0)-50)/25));});});
+(function loop(n){if(n-last>1800)cards.forEach(function(c){apply(c,Math.sin(n/900)*.6,Math.cos(n/1300)*.3);});requestAnimationFrame(loop);})(0);
+})();</script>`;
+const holoFor = (names) => (names || []).some((n) => /_card(_|\.)/i.test(n)) ? HOLO : '';
 const savingTip = '<p class="tip">iPhone: tap <b>Save photo</b>, then <b>Save to Photos</b> (or press and hold the picture). Android: tap <b>Save photo</b>.</p>';
 
 // ---------- a file with Range support (phones need it to play and skip through a video) ----------
@@ -392,6 +410,60 @@ export function printReqRead(id) {
   const dir = dirOf(r.slug); if (!dir) return null;
   try { return readFileSync(join(dir, r.file)); } catch { return null; }
 }
+// ---------- the operator prints an earlier photo from All photos ----------
+// Only this laptop's own browser may ask (isLocalReq), never a guest's phone. The booth takes the job and prints it
+// on the printer, paper and copies chosen in Print settings (like auto-print); the page then shows how it went.
+const printNowJobs = new Map();              // id -> { slug, file, state: 'wait' | 'taken' | 'ok' | 'fail', msg, t }
+const PRINTNOW_MAX = 20, PRINTNOW_KEEP_MS = 120000;
+export function printNowTake() {
+  const out = [];
+  for (const [id, j] of printNowJobs) {
+    if (Date.now() - j.t > PRINTNOW_KEEP_MS) { printNowJobs.delete(id); continue; }
+    if (j.state !== 'wait') continue;
+    const dir = dirOf(j.slug); let bytes = null;
+    try { bytes = dir ? readFileSync(join(dir, j.file)) : null; } catch { /* gone */ }
+    if (!bytes) { j.state = 'fail'; j.msg = 'That photo is no longer on this laptop.'; continue; }
+    j.state = 'taken'; out.push({ id, file: j.file, bytes });
+  }
+  return out;
+}
+export function printNowDone(id, ok, msg) {
+  const j = printNowJobs.get(String(id)); if (!j) return false;
+  j.state = ok ? 'ok' : 'fail'; j.msg = String(msg || '').slice(0, 200);
+  return true;
+}
+function handlePrintNow(req, res, pm) {
+  const reply = (code, o) => send(res, code, 'application/json', JSON.stringify(o));
+  if (req.method !== 'POST') return reply(405, { ok: false, error: 'Method not allowed' });
+  if (!isLocalReq(req)) return reply(403, { ok: false, error: 'Only the booth laptop can print from here.' });
+  let file; try { file = decodeURIComponent(pm[2]); } catch { file = ''; }
+  const dir = dirOf(pm[1]);
+  if (!dir || !file || file !== basename(file) || file.startsWith('.') || !/\.(jpe?g|png|webp)$/i.test(file) || !existsSync(join(dir, file))) return reply(404, { ok: false, error: 'Photo not found' });
+  let live = 0; for (const j of printNowJobs.values()) if (j.state === 'wait' || j.state === 'taken') live++;
+  if (live >= PRINTNOW_MAX) return reply(429, { ok: false, error: 'The booth is busy printing. Try again in a moment.' });
+  const id = randomBytes(6).toString('hex');
+  printNowJobs.set(id, { slug: pm[1], file, state: 'wait', msg: '', t: Date.now() });
+  return reply(200, { ok: true, id });
+}
+function handlePrintNowStatus(req, res, pm) {
+  const reply = (code, o) => send(res, code, 'application/json', JSON.stringify(o));
+  if (!isLocalReq(req)) return reply(403, { ok: false });
+  const j = printNowJobs.get(pm[1]);
+  return j ? reply(200, { ok: true, state: j.state, msg: j.msg }) : reply(404, { ok: false, state: 'gone' });
+}
+// "Print photo" on a photo page opened on the booth laptop itself: prints now, no dialog.
+function opPrintButtonHtml(slug, file) {
+  return '<button class="btn alt" id="opPrint" type="button">Print photo</button>' +
+    '<script>(function(){var b=document.getElementById("opPrint");' +
+    'function end(m,ok){b.textContent=m;setTimeout(function(){b.disabled=false;b.textContent="Print photo"},ok?2500:4500)}' +
+    'b.addEventListener("click",function(){b.disabled=true;b.textContent="Sending…";' +
+    'fetch("/e/' + slug + '/printnow/' + encodeURIComponent(file) + '",{method:"POST"}).then(function(r){return r.json()}).then(function(j){' +
+    'if(!j.ok){end(j.error||"Could not print",0);return}' +
+    'var n=0;(function poll(){fetch("/printnow/"+j.id).then(function(r){return r.json()}).then(function(s){' +
+    'if(s.state==="ok")return end("Printing ✓",1);if(s.state==="fail")return end(s.msg||"Could not print",0);' +
+    'if(++n>40)return end("The booth did not answer",0);setTimeout(poll,700)}).catch(function(){end("Could not print",0)})})()' +
+    '}).catch(function(){end("Could not print",0)})})})()</script>';
+}
 function reqButtonHtml(slug, file, postUrl, idn) {
   const id = 'askPrint' + (idn || '');
   return '<button class="btn alt" id="' + id + '" type="button">Ask for a print at the booth</button>' +
@@ -457,10 +529,15 @@ function handleOwn(req, res, url, om) {
   const others = guestView !== 'only' ? '<div class="one" style="padding-top:0"><a class="btn alt" href="/e/' + c.slug + '/">Show photos with other guests</a></div>' : '';
   const body = '<div style="text-align:center;padding:0 16px"><h1>Your photos</h1><p class="sub">' + esc(evName) + '</p></div>' +
     (items.length ? items.join('') + savingTip : '<p class="empty">This photo isn’t here yet. Wait a moment and refresh.</p><script>setTimeout(function(){location.reload()},5000)</script>') + others;
-  return send(res, 200, 'text/html; charset=utf-8', page('Your photos', body));
+  return send(res, 200, 'text/html; charset=utf-8', page('Your photos', body + holoFor(mine)));
 }
 
+// The iPad-uses-this-laptop pages (lib/lan.mjs) answer first; they return false for everything else.
+let lanHandler = null;
+export function setLanHandler(fn) { lanHandler = fn; }
+
 async function handleShare(req, res) {
+  if (lanHandler && await lanHandler(req, res)) return;
   let url;
   try { url = new URL(req.url, 'http://x'); } catch { return send(res, 400, 'text/plain', 'Bad request'); }
   const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited|photos|photo|hello)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);
@@ -471,6 +548,10 @@ async function handleShare(req, res) {
   if (guestView === 'only' && /^\/e\//.test(url.pathname) && !isLocalReq(req)) {
     return send(res, 403, 'text/html; charset=utf-8', page('Private', '<p class="empty">Guests of this event see only their own photos. Scan your own QR code at the booth to open yours.</p>'));
   }
+  const pnm = /^\/e\/([A-Za-z0-9]{6,20})\/printnow\/([^/]+)\/?$/.exec(url.pathname);
+  if (pnm) return handlePrintNow(req, res, pnm);
+  const pns = /^\/printnow\/([a-f0-9]{12})\/?$/.exec(url.pathname);
+  if (pns) return handlePrintNowStatus(req, res, pns);
   const prm = /^\/e\/([A-Za-z0-9]{6,20})\/print\/([^/]+)\/?$/.exec(url.pathname);
   if (prm) return handlePrintReq(req, res, prm);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
@@ -527,8 +608,8 @@ async function handleShare(req, res) {
     const itemTitle = isVid ? 'Your video' : isGif ? 'Your GIF' : 'Your photo';
     const dlText = isVid ? 'Save video' : isGif ? 'Save GIF' : 'Save photo';
     const body = '<div class="one"><h1>' + itemTitle + '</h1><p class="sub">' + esc(evName) + '</p>' + media +
-      '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">' + dlText + '</a>' + (!/^video\//.test(type) && !isGif ? '<button class="btn alt" type="button" onclick="window.print()">Print photo</button>' : '') + (guestPrintOn && !isVid && !isGif ? reqButtonHtml(m[1], file) : '') + '<a class="btn alt" href="/e/' + m[1] + '/">All photos</a></div>' + savingTip + '</div>';
-    return send(res, 200, 'text/html; charset=utf-8', page(itemTitle, body));
+      '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">' + dlText + '</a>' + (!/^video\//.test(type) && !isGif ? (isLocalReq(req) ? opPrintButtonHtml(m[1], file) : '<button class="btn alt" type="button" onclick="window.print()">Print photo</button>') : '') + (guestPrintOn && !isVid && !isGif ? reqButtonHtml(m[1], file) : '') + '<a class="btn alt" href="/e/' + m[1] + '/">All photos</a></div>' + savingTip + '</div>';
+    return send(res, 200, 'text/html; charset=utf-8', page(itemTitle, body + holoFor([file])));
   }
   if (m[2] === 't' && thumbFn && /^image\/(jpeg|png|webp)$/.test(type)) {
     try {

@@ -226,7 +226,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       </section>
       <section class="card pay hidden" id="payCard" aria-labelledby="payH">
         <div class="pay-top">
-          <div><h2 id="payH">Guest payments</h2><p class="sub">Guests pay before each session — by scanning a QR with GCash, Maya or any bank app, or with vouchers you sell at the booth. Turn it on per event in the booth: Setup → 5 Session → Guest payment. <a href="/lifetime/photobooth4u-setup-guide.pdf#page=9" target="_blank" rel="noopener"><b>Step-by-step guide (PDF)</b></a></p></div>
+          <div><h2 id="payH">Guest payments</h2><p class="sub">Guests pay before each session — by scanning a QR with GCash, Maya or any bank app, or with vouchers you sell at the booth. Turn it on per event in the booth: Setup → 7 Session → Guest payment. <a href="/lifetime/photobooth4u-setup-guide.pdf#page=9" target="_blank" rel="noopener"><b>Step-by-step guide (PDF)</b></a></p></div>
           <span class="pchip" id="payChip"><i></i><span>Not connected</span></span>
         </div>
         <div id="payConnect" class="hidden">
@@ -261,7 +261,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         </div>
         <div class="psec hidden" id="payVouchers">
           <h3>Vouchers</h3>
-          <p class="sub">Make vouchers in the booth (Setup → 5 Session → Guest payment). Every batch shows here so you can reprint tickets.</p>
+          <p class="sub">Make vouchers in the booth (Setup → 7 Session → Guest payment). Every batch shows here so you can reprint tickets.</p>
           <div id="payBatchList"></div>
         </div>
       </section>
@@ -377,7 +377,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       badges.push('<span class="badge">' + esc(d.code) + '</span>');
       $('acctBadges').innerHTML = badges.join('');
       var meta = [];
-      meta.push('Devices: <b>' + d.devices.used + ' of ' + d.devices.max + '</b> in use');
+      meta.push('Devices: <b>' + d.devices.used + ' of ' + d.devices.max + '</b> in use' + (d.devices.swaps ? ' · <b>' + d.devices.swaps.used + ' of ' + d.devices.swaps.limit + '</b> device swaps used this month' : ''));
       if(!d.lifetime && d.expiresAt) meta.push((d.status === 'expired' ? 'Ended ' : 'Booth open until ') + '<b>' + esc(fmt(d.expiresAt, true)) + '</b>');
       else if(!d.lifetime && d.startsAt) meta.push('Opens <b>' + esc(fmt(d.startsAt, true)) + '</b>');
       if(d.lifetime && !d.offlineOnly) meta.push('New event? In the booth, go to Setup → Google Drive and type the event name.');
@@ -471,6 +471,10 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       if(!data) return;
       if(document.activeElement !== $('accName')) $('accName').value = data.label || '';
       if(document.activeElement !== $('accEmail')) $('accEmail').value = data.email || '';
+      // A Lifetime code's email can't be changed here (only photobooth4u can): show it read-only.
+      $('accEmail').readOnly = !!data.emailLocked;
+      $('accEmail').title = data.emailLocked ? 'This email can’t be changed here. Message photobooth4u if it needs fixing.' : '';
+      $('accEmail').style.opacity = data.emailLocked ? '.7' : '';
       var dv = data.devices || { used: 0, max: 1, list: [] };
       $('devSub').innerHTML = '<b style="color:var(--ink)">' + dv.used + ' of ' + dv.max + '</b> device' + (dv.max === 1 ? '' : 's') + ' in use. Changed tablets or phones? Remove the old one here, then enter your code on the new device.';
       $('devList').innerHTML = (dv.list || []).map(function(d){

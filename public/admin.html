@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="/gallery/qrcode.min.js"></script>
 <style>
-  :root{--ink:#1C1A1E;--dim:#6B666C;--line:#E4DCCF;--blue:#C93D27;--soft:#FBEDEA;--panel:#fff;}
+  :root{--ink:#1C1A1E;--dim:#6B666C;--line:#E4DCCF;--blue:#C93D27;--soft:#FBEDEA;--panel:#fff;--muted:#6B666C;--red:#C93D27;}
   *{box-sizing:border-box;}
   body{margin:0;padding:20px 14px 60px;font-family:'Manrope',system-ui,sans-serif;color:var(--ink);background:#F5F1EA;min-height:100vh;}
   .wrap{max-width:900px;margin:0 auto;}
@@ -106,6 +106,36 @@
   .themerow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px;font-size:12.5px;color:var(--dim);font-weight:600;}
   .themerow select{font-size:13px;padding:6px 8px;}
   .loading{opacity:.5;pointer-events:none;}
+  .tabs{position:sticky;top:0;z-index:5;display:flex;gap:4px;margin:0 -14px 16px;padding:8px 14px;background:rgba(245,241,234,.94);backdrop-filter:blur(6px);border-bottom:1.5px solid var(--line);}
+  .tab{flex:1;max-width:160px;border:0;background:none;border-radius:999px;padding:9px 14px;color:var(--dim);}
+  .tab.on{background:var(--ink);color:#fff;}
+  .tabpane{display:none;} .tabpane.on{display:block;}
+  .group{font-size:12px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);font-weight:700;margin:22px 4px 10px;}
+  .group:first-child{margin-top:0;}
+  .card>.modebox:first-of-type,.card>.row+.modebox{margin-top:14px;}
+  @media (max-width:640px){ .tab{padding:9px 6px;font-size:12.5px;} }
+  body{min-height:100dvh;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));padding-bottom:max(60px,calc(env(safe-area-inset-bottom) + 40px));}
+  .tabs{margin-left:calc(-1 * max(14px,env(safe-area-inset-left)));margin-right:calc(-1 * max(14px,env(safe-area-inset-right)));padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));overflow-x:auto;scrollbar-width:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{flex:1 0 auto;white-space:nowrap;}
+  .toast{bottom:max(22px,calc(env(safe-area-inset-bottom) + 12px));}
+  button:focus-visible,summary:focus-visible,.stat:focus-visible,.size-chip:has(input:focus-visible),select:focus-visible{outline:3px solid var(--blue);outline-offset:2px;}
+  input:focus-visible{outline:3px solid rgba(201,61,39,.35);outline-offset:1px;}
+  .badge{font-size:11.5px;} .stat span{font-size:12.5px;} .devchip{font-size:12.5px;}
+  @media (min-width:641px) and (max-width:900px){ .lic-row .badges{max-width:55%;} }
+  @media (pointer:coarse){
+    button{min-height:44px;}
+    button.small{min-height:40px;padding:8px 14px;font-size:13px;}
+    .devchip{padding:3px 4px 3px 12px;} .devchip button{min-height:36px;min-width:36px;font-size:12.5px;}
+    .fchip{min-height:40px;padding:8px 14px;font-size:13.5px;}
+    .size-chip{min-height:44px;padding:8px 14px;font-size:13.5px;}
+    .size-chip input,.toggle input[type=checkbox],.toggle input[type=radio]{width:20px;height:20px;}
+    .lic-row{padding:6px 12px;min-height:56px;} .lic-row input[type=checkbox]{width:24px;height:24px;}
+    .lic-main{min-height:44px;padding:4px 0;}
+    input[type=text],input[type=password],input[type=number],input[type=date],input[type=time],select,select.sel,.custom-size input[type=number],.custom-size select,.themerow select{font-size:16px;min-height:44px;}
+    details.card>summary{min-height:44px;}
+    .stat{min-height:56px;}
+  }
 </style>
 </head>
 <body>
@@ -132,8 +162,16 @@
       <button class="stat" data-f="lifetime"><b id="stLifetime">–</b><span>Lifetime</span></button>
     </div>
 
-    <details class="card" id="createCard" open>
-      <summary><h2>Create rental codes</h2></summary>
+    <nav class="tabs" id="tabs">
+      <button class="tab on" data-tab="codes">Codes</button>
+      <button class="tab" data-tab="create">Create</button>
+      <button class="tab" data-tab="settings">Settings</button>
+      <button class="tab" data-tab="tools">Tools</button>
+    </nav>
+
+    <div class="tabpane" data-pane="create">
+    <div class="card" id="createCard">
+      <h2>Create rental codes</h2>
       <div class="row">
         <div style="flex:2;min-width:160px;"><label>Client / event</label><input id="newLabel" type="text" maxlength="80" placeholder="e.g. Sofia's Dedication"></div>
         <div style="flex:2;min-width:160px;"><label>Drive folder name</label><input id="newFolderName" type="text" maxlength="80" placeholder="Defaults to client / event"></div>
@@ -147,13 +185,13 @@
         <div id="newPackages">
           <div class="meta pkg-l">Per event</div>
           <div class="row" style="gap:6px;">
-            <button type="button" class="small" data-pkg="laptop">Event Pass · ₱499</button>
+            <button type="button" class="small" data-pkg="laptop">Event Pass · ₱599</button>
           </div>
           <div class="meta pkg-l">Monthly (30 days)</div>
           <div class="row" style="gap:6px;">
             <button type="button" class="small" data-pkg="monthonline">Online · ₱799</button>
-            <button type="button" class="small" data-pkg="monthoffline">Offline · ₱999</button>
-            <button type="button" class="small" data-pkg="monthboth">Online + Offline · ₱1,299</button>
+            <button type="button" class="small" data-pkg="monthoffline">Offline (Laptop + Android) · ₱999</button>
+            <button type="button" class="small" data-pkg="monthboth">Online + Offline · ₱1,399</button>
           </div>
           <div class="meta pkg-l">Lifetime</div>
           <div class="row" style="gap:6px;">
@@ -170,6 +208,8 @@
       </div>
       <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newLifetime"> Lifetime (never expires)</label>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newAgreed"> Buyer accepted the Lifetime Access Agreement (they replied &ldquo;I agree&rdquo; by message or email)</label>
+        <div class="meta" style="margin:0;">Tick this for a Lifetime code you make by hand (for example after a Messenger sale). It records the acceptance and turns on the monthly device-swap limit for that code. Send the buyer <b>photobooth4u.netlify.app/agreement/</b> first. You can also record it later with the &ldquo;Record agreement&rdquo; button on the code.</div>
         <div class="meta" style="margin:0;" id="lifetimeHint">For clients who buy the booth for good. Instead of one fixed Drive folder, the booth asks for an <b>event name</b> each time, and every event gets its own folder: <b>“Drive folder name · event name”</b>. Turning this on also turns on the Traditional (Pro) booth below; untick that if they use a tablet. Lifetime renters can also add their own paper sizes in the booth's print panel.</div>
       </div>
       <div class="modebox">
@@ -197,6 +237,7 @@
       <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newRetake" checked> Give retake</label>
         <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newLock" checked> Give lock booth (guest-only screen with a PIN)</label>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newTypes"> Give trading card &amp; certificate booths (Booth type switch in Setup)</label>
         <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newPay" checked> Guest payments (vouchers; GCash / Maya QR when online)</label>
         <div class="meta" style="margin:6px 0 0;" id="newPayHint">Vouchers work offline too. The GCash / Maya QR part only works on the website booth, so laptop-app-only and Android-app-only codes get vouchers only.</div>
       </div>
@@ -209,15 +250,18 @@
         <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newXSpin" checked> 360 video desk (videos from the 360 arm &rarr; QR; editing in the laptop app)</label>
       </div>
       <div class="modebox">
-        <label class="toggle"><input type="checkbox" id="newOffline"> Offline app (Windows / Mac laptop app)</label>
+        <label class="toggle"><input type="checkbox" id="newOffline"> Offline app (Windows / Mac / Android)</label>
         <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newOfflineOnly"> Laptop app only (the website booth refuses this code)</label>
         <div class="meta" style="margin:6px 0 0;">Laptop Booth, Lifetime Offline and Lifetime Online + Offline include the offline app. Lifetime Offline is laptop app only (the website booth refuses it).</div>
       </div>
       <button class="primary" id="createBtn" style="margin-top:12px;">Generate</button>
       <div id="newBox" class="newbox hidden"></div>
       <div class="meta" style="margin-bottom:0;"><b>Devices</b> = how many tablets/laptops can use the same code at once (they share the event folder; each device's photos end in _cam1, _cam2…). Without an event date, the days start counting when the renter first enters it.</div>
-    </details>
+    </div>
+    </div>
 
+    <div class="tabpane" data-pane="settings">
+    <div class="group">Booth defaults</div>
     <details class="card" id="trialCard">
       <summary><h2>Trial password</h2></summary>
       <label class="toggle"><input type="checkbox" id="trialEnabled"> Trial enabled</label>
@@ -232,6 +276,7 @@
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialTraditional"> Trials use the traditional booth (laptop + guest screen)</label></div>
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialGifOpt" checked> Trials get GIF mode (animated GIF &amp; Photo + GIF options)</label></div>
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialRetakeOpt"> Trials get the retake switch (“Allow retakes” in Setup)</label></div>
+      <div class="modebox"><label class="toggle"><input type="checkbox" id="trialTypesOpt"> Trials get Trading card &amp; Certificate booths (the Booth type switch in Setup)</label></div>
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialLockOpt"> Trials get Lock booth (guest-only screen with a PIN)</label></div>
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialWatermark" checked> Watermark trial photos (the photobooth4u logo, faint, in a corner)</label></div>
       <button class="primary" id="saveTrialBtn" style="margin-top:12px;">Save trial settings</button>
@@ -247,6 +292,7 @@
       <div class="meta" style="margin:-8px 0 0 26px;">“Open on your phone” QR at the top of the online gallery, e.g. for a laptop or TV showing the photos.</div>
     </details>
 
+    <div class="group">Payments</div>
     <details class="card" id="paymongoCard">
       <summary><h2>PayMongo API Key (Monthly Subscriptions)</h2></summary>
       <div id="pmStatusBadge" style="margin-bottom:12px;font-size:13px;font-weight:600;">
@@ -272,7 +318,34 @@
       </div>
     </details>
 
-    <details class="card" id="paySimCard" style="margin-bottom:14px;">
+    <details class="card" id="payAlertCard">
+      <summary><h2>Refund &amp; failed-payment alerts</h2></summary>
+      <div class="meta">When a payment to photobooth4u is <b>refunded or fails after the code was issued</b>, the code is flagged here (&#9888; Payment refunded) and you get an email at ALERT_EMAIL. Nothing is disabled automatically. Needs the PayMongo API key saved (PayMongo API Key card). Refunds you make by hand in Maribank or GoTyme are not seen: use Disable &rarr; &ldquo;payment&rdquo; for those.</div>
+      <p style="margin:8px 0;font-weight:700;">Status: <span id="payAlertStatus">Checking…</span></p>
+      <button class="small" id="payAlertSetupBtn">Set up payment alerts</button>
+    </details>
+
+    <div class="group">System</div>
+    <details class="card" id="shutdownCard">
+      <summary><h2>Shutdown mode (end of service)</h2></summary>
+      <div class="meta">Only for the day photobooth4u stops. When ON, every Lifetime code gets the Offline App (Windows, Mac and Android), and the licences it hands out never ask to check in again, so each booth keeps working with no photobooth4u servers. Laptops and tablets must go online <b>once</b> after you switch it on (or get an <b>Offline activation key</b> from the code's actions). Give renters at least 90 days' notice first.</div>
+      <p style="margin:8px 0;font-weight:700;">Status: <span id="shutdownStatus">Checking…</span></p>
+      <button class="small danger" id="shutdownOnBtn">Turn shutdown mode ON…</button>
+      <button class="small" id="shutdownOffBtn" style="display:none;">Turn it back OFF</button>
+    </details>
+
+    <details class="card" id="backupCard">
+      <summary><h2>Backup (all codes)</h2></summary>
+      <div class="meta">Codes live only on Netlify. A backup holds every code, its devices, agreement and flags, its events list and the Offline App activations (not booth designs, guest-payment accounts or photos). It runs <b>every week</b> by itself into a private <b>photobooth4u-backups</b> folder in the photobooth Google Drive (newest 12 kept), and you get an email at ALERT_EMAIL if it fails. Keep a copy somewhere else too.</div>
+      <p style="margin:8px 0;font-weight:700;">Last backup: <span id="backupStatus">Checking…</span></p>
+      <button class="small" id="backupDriveBtn">Back up to Drive now</button>
+      <button class="small" id="backupDownloadBtn">Download a backup file</button>
+    </details>
+
+    </div>
+
+    <div class="tabpane" data-pane="tools">
+    <details class="card" id="paySimCard" open>
       <summary style="cursor:pointer;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:space-between;">
         <span>🧪 Payment Simulator &amp; Customer Fulfillment Tester (Admin Only)</span>
         <span class="sub" style="font-size:12px;font-weight:400;color:var(--muted);">Test post-payment delivery &amp; guides</span>
@@ -287,11 +360,11 @@
             <select id="simPlanSelect" class="sel" style="width:100%;">
               <optgroup label="Monthly Subscriptions (30 days)">
                 <option value="online">Online · ₱799 / mo</option>
-                <option value="offline">Offline Laptop App · ₱999 / mo</option>
-                <option value="both">Online + Offline · ₱1,299 / mo</option>
+                <option value="offline">Offline Laptop + Android · ₱999 / mo</option>
+                <option value="both">Online + Offline · ₱1,399 / mo</option>
               </optgroup>
               <optgroup label="Per Event Packages (24 hrs)">
-                <option value="laptop">Event Pass · ₱499 / event</option>
+                <option value="laptop">Event Pass · ₱599 / event</option>
               </optgroup>
               <optgroup label="Lifetime Packages (Never expires, 5 devices)">
                 <option value="lifeonline">Lifetime Online · ₱2,999</option>
@@ -364,6 +437,9 @@
       </div>
     </details>
 
+    </div>
+
+    <div class="tabpane on" data-pane="codes">
     <div class="card" id="codesCard">
       <div class="top" style="margin-bottom:10px;"><h2 style="margin:0;">Rental codes</h2><button class="small" id="refreshBtn">Refresh</button></div>
       <div class="toolbar">
@@ -397,6 +473,7 @@
           <button class="small" id="reindexBtn" title="Re-read every code. Only needed if the list ever looks out of date.">Rebuild index</button>
         </span>
       </div>
+    </div>
     </div>
   </div>
 </div>
@@ -542,6 +619,20 @@
     $('loginBtn').disabled = false;
   }
   $('logoutBtn').addEventListener('click', logout);
+
+  // Tabs: Codes / Create / Settings / Tools.
+  function setTab(name){
+    var ok = false;
+    [].forEach.call(document.querySelectorAll('.tabpane'), function(p){ var on = p.dataset.pane === name; p.classList.toggle('on', on); ok = ok || on; });
+    if(!ok) return setTab('codes');
+    [].forEach.call(document.querySelectorAll('.tab'), function(t){ t.classList.toggle('on', t.dataset.tab === name); });
+    try{ sessionStorage.setItem('pb_admin_tab', name); }catch(e){}
+  }
+  $('tabs').addEventListener('click', function(e){
+    var b = e.target.closest('[data-tab]'); if(!b) return;
+    setTab(b.dataset.tab); window.scrollTo(0, 0);
+  });
+  try{ setTab(sessionStorage.getItem('pb_admin_tab') || 'codes'); }catch(e){}
   $('refreshBtn').addEventListener('click', function(){ load().then(function(){ toast('Refreshed'); }); });
 
   // Same rules as statusOf() in netlify/functions/admin.mjs.
@@ -650,6 +741,7 @@
     $('trialTraditional').checked = !!s.trialTraditional;
     $('trialGifOpt').checked = s.trialGifOpt !== false;
     $('trialRetakeOpt').checked = !!s.trialRetakeOpt;
+    $('trialTypesOpt').checked = !!s.trialTypesOpt;
     $('trialLockOpt').checked = !!s.trialLockOpt;
     $('trialWatermark').checked = s.trialWatermark !== false;
     $('galleryQr').checked = s.galleryQr !== false;
@@ -770,6 +862,7 @@
     acts += '<button class="small" data-a="printedit" data-c="' + c + '">Print settings</button>';
     acts += '<button class="small" data-a="mode" data-c="' + c + '">' + (l.traditional ? 'Switch to tablet' : 'Make traditional') + '</button>';
     acts += '<button class="small" data-a="retakeopt" data-c="' + c + '">' + (l.retakeOpt ? 'Hide retake switch' : 'Give retake switch') + '</button>';
+    acts += '<button class="small" data-a="typesopt" data-c="' + c + '">' + (l.typesOpt ? 'Hide card &amp; certificate booths' : 'Give card &amp; certificate booths') + '</button>';
     acts += '<button class="small" data-a="gifopt" data-c="' + c + '">' + (l.gifOpt ? 'Hide GIF mode' : 'Give GIF mode') + '</button>';
     acts += '<button class="small" data-a="lockopt" data-c="' + c + '">' + (l.lockOpt ? 'Hide lock booth' : 'Give lock booth') + '</button>';
     [['vintage', 'vintage looks'], ['roving', 'photographer desk'], ['flipbook', 'flipbook'], ['video', 'video guestbook'], ['spin360', '360 video desk']].forEach(function(x){
@@ -787,6 +880,12 @@
       if(l.offlineOpt) acts += '<button class="small" data-a="offlineonly" data-c="' + c + '" title="Laptop app only: the website booth refuses this code (Lifetime Offline)">' + (l.offlineOnly ? 'Allow website too' : 'Laptop app only') + '</button>';
       if(l.offlineOpt && st !== 'revoked') acts += '<button class="small" data-a="offkey" data-c="' + c + '" title="For a laptop with no internet: paste its Machine ID, get a licence key">Offline activation key</button>';
     }
+    if(l.lifetime && !bonus && st !== 'revoked') acts += '<button class="small danger" data-a="replacecode" data-c="' + c + '" title="The code leaked or was shared: make a new code with the same events and settings, and disable this one">Replace code</button>';
+    if(l.lifetime && !bonus && !l.agreement) acts += '<button class="small" data-a="setagreement" data-c="' + c + '" title="The buyer replied I agree to the Lifetime Access Agreement: record it (turns on the monthly device-swap limit)">Record agreement</button>';
+    if(l.paymentReview) acts += '<button class="small" data-a="clearpaymentflag" data-c="' + c + '" title="You checked the refunded or failed payment and it is fine">Clear payment flag</button>';
+    if(!bonus) acts += '<button class="small danger" data-a="deleteevent" data-c="' + c + '" title="A client or guest asked for an event’s online photos to be removed before the 7 days are up">Delete event photos</button>';
+    if(l.lifetime && !bonus) acts += '<button class="small" data-a="transfer" data-c="' + c + '" title="The renter sold their whole business: move this code to the new owner’s email (once, with proof of sale)">Transfer code</button>';
+    if(l.lifetime && !bonus) acts += '<button class="small" data-a="resetswaps" data-c="' + c + '" title="Clear this month’s device-swap count (3 per month on Lifetime Access Agreement codes)">Reset device swaps</button>';
     if(l.lockOpt) acts += '<button class="small" data-a="pinreset" data-c="' + c + '">Reset lock PIN</button>';
     acts += st === 'revoked'
       ? '<button class="small" data-a="restore" data-c="' + c + '">Restore</button>'
@@ -795,8 +894,13 @@
     var folder = l.lifetime
       ? esc(l.folderName || l.label || l.code) + ' · <i>event name</i></b> <span style="font-weight:500;">(new folder per event)</span><b>'
       : esc(l.folderName || l.label || l.code) + (bonus ? ' / ' + esc(l.subfolder || 'Bonus') + ' <span style="font-weight:500;">(files named BONUS_…)</span>' : '');
-    return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + (l.email ? 'Email: <b>' + esc(l.email) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
-      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>GIF mode: <b>' + (l.gifOpt ? 'Yes (Photo + GIF &amp; GIF-only options)' : 'No (Photo only)') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? (l.offlineOnly ? 'Laptop app only' : 'Yes') + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
+    var flags = (l.revokeReason ? 'Disabled: <b>' + esc(l.revokeReason) + '</b>' + (l.replacedBy ? ' · replaced by <b>' + esc(l.replacedBy) + '</b>' : '') + '<br>' : '') +
+      (l.replacedFrom ? 'Replaces <b>' + esc(l.replacedFrom) + '</b> (leaked or shared code)<br>' : '') +
+      (l.transferredAt ? 'Transferred to this owner on <b>' + fmtDate(l.transferredAt) + '</b><br>' : '') +
+      (l.paymentReview ? '<span style="color:#b3261e;font-weight:700;">&#9888; Payment ' + esc(l.paymentReview.reason) + ' on ' + fmtDate(l.paymentReview.at) + ' &mdash; review this code (Disable it if the money was not kept).</span><br>' : '') +
+      (l.lifetime && !bonus ? 'Agreement: <b>' + (l.agreement ? 'v' + esc(l.agreement) + ' accepted' + (l.agreementAt ? ' (' + fmtDate(l.agreementAt) + ')' : '') : 'not recorded') + '</b><br>' : '');
+    return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + flags + (l.email ? 'Email: <b>' + esc(l.email) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
+      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>GIF mode: <b>' + (l.gifOpt ? 'Yes (Photo + GIF &amp; GIF-only options)' : 'No (Photo only)') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Card &amp; certificate booths: <b>' + (l.typesOpt ? 'Yes (Booth type switch in Setup)' : 'No') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? (l.offlineOnly ? 'Laptop app only' : 'Yes') + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
       '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
       (devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.kind ? ' · ' + esc(d.kind) : '') + (d.app && d.app.name ? ' · ' + esc(d.app.name) : '') + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + (d.app && d.app.seen ? ' · checked in ' + new Date(d.app.seen).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="' + (d.app ? 'Deactivate this laptop (stops at its next check-in)' : 'Remove this device') + '">' + (d.app ? 'Deactivate' : 'Remove') + '</button></span>'; }).join('') + '</div>' : '') +
       '</div>' +
@@ -855,6 +959,7 @@
     var b = e.target.closest('[data-f]'); if(!b) return;
     VIEW.filter = b.dataset.f; VIEW.page = 1;
     if(b.dataset.sort){ VIEW.sort = b.dataset.sort; $('sort').value = VIEW.sort; }
+    setTab('codes');
     load().then(function(){ $('codesCard').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   });
   $('pager').addEventListener('click', function(e){
@@ -1024,7 +1129,7 @@
       if(a === 'offlineopt'){
         var oo = !(LIC[code] && LIC[code].offlineOpt);
         var ro = await api({ action: 'offlineopt', code: code, offlineOpt: oo });
-        toast(oo ? (ro.keyReady ? 'Offline app given: the renter can now activate their Windows / Mac app with this code' : 'Offline app given, but PB_LICENSE_KEY isn\u2019t set in Netlify yet, so activations will fail') : 'Offline app hidden: activated laptops stop at their next check-in');
+        toast(oo ? (ro.keyReady ? 'Offline app given: the renter can now activate their Windows / Mac / Android app with this code' : 'Offline app given, but PB_LICENSE_KEY isn\u2019t set in Netlify yet, so activations will fail') : 'Offline app hidden: activated laptops stop at their next check-in');
         refresh();
         return;
       }
@@ -1116,10 +1221,70 @@
         refresh();
         return;
       }
+      if(a === 'replacecode'){
+        if(!confirm('Replace ' + code + '?\n\nA NEW code is made with the same events, saved booth setups, logos/frames, themes and lock PIN. This code is disabled and its email moves to the new code.\n\nGuest payments (PayMongo) do not carry over: the renter reconnects them with a new payments PIN.')) return;
+        var rp = await api({ action: 'replacecode', code: code, reason: 'leak' });
+        prompt('New code (copy it and send it to the renter):', rp.code);
+        if(rp.paymentsNeedReconnect) toast('Tell the renter to reconnect guest payments with a new payments PIN', true);
+        refresh();
+        return;
+      }
+      if(a === 'setagreement'){
+        if(!confirm('Record that the buyer of ' + code + ' accepted the Lifetime Access Agreement (they replied "I agree")? This turns on the monthly device-swap limit for this code.')) return;
+        await api({ action: 'setagreement', code: code });
+        toast('Agreement recorded'); refresh(); return;
+      }
+      if(a === 'clearpaymentflag'){
+        if(!confirm('Clear the payment flag on ' + code + '? Only if you checked the refund or failed payment and the code is fine to keep.')) return;
+        await api({ action: 'clearpaymentflag', code: code });
+        toast('Payment flag cleared'); refresh(); return;
+      }
+      if(a === 'deleteevent'){
+        var evs = (await api({ action: 'events', code: code })).events.filter(function(e){ return e.hasFolder && !e.deletedAt; });
+        if(!evs.length){ toast('No event photos to delete on this code (none saved, or already deleted)', true); return; }
+        var list = evs.map(function(e, i){ return (i + 1) + '. ' + e.name + ' (' + e.sessions + ' sessions' + (e.lastAt ? ', last ' + new Date(e.lastAt).toLocaleDateString() : '') + ')'; }).join('\n');
+        var pick = prompt('Delete the online photos of which event?\n\n' + list + '\n\nType its number. The Drive folder goes to the Trash (guests’ gallery links stop working).', '1');
+        if(pick === null) return;
+        var chosen = evs[Number(pick) - 1];
+        if(!chosen){ toast('Type a number from the list', true); return; }
+        if(!confirm('Delete the photos of "' + chosen.name + '" now? This cannot be undone from the booth. (Google keeps the Trash for about 30 days.)')) return;
+        var dr = await api({ action: 'deleteevent', code: code, id: chosen.id });
+        toast('Photos of "' + dr.name + '" deleted');
+        return;
+      }
+      if(a === 'transfer'){
+        var tn = prompt('Transfer ' + code + ' to the new owner’s email.\n\nOnly after you have proof the renter sold their whole photo booth business. Their old events and devices stay on the code; remove devices separately if needed.', '');
+        if(tn === null || !tn.trim()) return;
+        var tr;
+        try { tr = await api({ action: 'transfer', code: code, email: tn.trim() }); }
+        catch(err){
+          if(/already transferred/i.test(String(err && err.message))){
+            if(!confirm(err.message)) return;
+            tr = await api({ action: 'transfer', code: code, email: tn.trim(), override: true });
+          } else { throw err; }
+        }
+        toast('Code transferred to ' + tr.email);
+        refresh();
+        return;
+      }
+      if(a === 'resetswaps'){
+        if(!confirm('Reset the device-swap count for ' + code + '? Use this when a renter lost, had stolen, or broke a device.')) return;
+        await api({ action: 'resetswaps', code: code });
+        toast('Device swaps reset');
+        refresh();
+        return;
+      }
       if(a === 'pinreset'){
         if(!confirm('Reset the lock PIN for ' + code + '? A locked booth unlocks within ~5 minutes and they set a new PIN.')) return;
         await api({ action: 'pinreset', code: code });
         toast('PIN reset — the booth unlocks within ~5 minutes');
+        refresh();
+        return;
+      }
+      if(a === 'typesopt'){
+        var to = !(LIC[code] && LIC[code].typesOpt);
+        await api({ action: 'typesopt', code: code, typesOpt: to });
+        toast((to ? 'Card & certificate booths given' : 'Card & certificate booths hidden') + ' — an open booth updates within ~5 minutes');
         refresh();
         return;
       }
@@ -1165,6 +1330,11 @@
       if(a === 'delete' && !confirm('Delete ' + code + ' permanently? If it is active, the renter is locked out.' + (LIC[code] && LIC[code].bonusKey ? ' Its bonus code is deleted too.' : ''))) return;
       if(a === 'revoke' && !confirm('Disable ' + code + '? The renter is locked out at their next check (within ~5 minutes).')) return;
       var body = { action: a, code: code };
+      if(a === 'revoke'){
+        var why = prompt('Why is this code being disabled?\nType one: leak, sharing, abuse, security, payment, other', 'other');
+        if(why === null) return;
+        body.reason = why.trim().toLowerCase();
+      }
       if(a === 'extend'){
         var d = prompt('Add how many days?', '1'); if(!d) return;
         body.days = d;
@@ -1180,7 +1350,7 @@
     try{
       var np = readPrint($('newPrint'));
       var startsAt = readStartInputs($('newStartDate'), $('newStartTime'));
-      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, lockOpt: $('newLock').checked, extras: { vintage: $('newXVintage').checked, roving: $('newXRoving').checked, flipbook: $('newXFlipbook').checked, video: $('newXVideo').checked, spin360: $('newXSpin').checked }, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null };
+      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, agreementAccepted: $('newAgreed').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, typesOpt: $('newTypes').checked, lockOpt: $('newLock').checked, extras: { vintage: $('newXVintage').checked, roving: $('newXRoving').checked, flipbook: $('newXFlipbook').checked, video: $('newXVideo').checked, spin360: $('newXSpin').checked }, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null };
       var j;
       try{ j = await api(createBody); }
       catch(e1){
@@ -1218,9 +1388,72 @@
   $('saveTrialBtn').addEventListener('click', async function(){
     try{
       var tp = readPrint($('trialPrint'));
-      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes, trialPrintEventLimit: tp.eventLimit, trialPrintSessionLimit: tp.sessionLimit, trialTraditional: $('trialTraditional').checked, trialGifOpt: $('trialGifOpt').checked, trialRetakeOpt: $('trialRetakeOpt').checked, trialLockOpt: $('trialLockOpt').checked, trialWatermark: $('trialWatermark').checked });
+      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes, trialPrintEventLimit: tp.eventLimit, trialPrintSessionLimit: tp.sessionLimit, trialTraditional: $('trialTraditional').checked, trialGifOpt: $('trialGifOpt').checked, trialRetakeOpt: $('trialRetakeOpt').checked, trialTypesOpt: $('trialTypesOpt').checked, trialLockOpt: $('trialLockOpt').checked, trialWatermark: $('trialWatermark').checked });
       toast('Trial settings saved');
     }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+  });
+
+  // Shutdown mode (Lifetime Access Agreement s.6): every Lifetime code gets a licence that never needs a check-in.
+  function shutdownShow(s){
+    var on = !!(s && s.on);
+    $('shutdownStatus').textContent = on ? 'ON since ' + new Date(s.at).toLocaleString() : 'OFF (normal service)';
+    $('shutdownStatus').style.color = on ? '#b3261e' : '';
+    $('shutdownOnBtn').style.display = on ? 'none' : '';
+    $('shutdownOffBtn').style.display = on ? '' : 'none';
+  }
+  $('shutdownCard').addEventListener('toggle', async function(){
+    if(!this.open) return;
+    try{ shutdownShow(await api({ action: 'shutdownget' })); }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+  });
+  // Backup of all codes (weekly to Drive, or download by hand) and refund / failed-payment alerts.
+  function backupShow(l){
+    $('backupStatus').textContent = !l ? 'never' : (l.ok ? new Date(l.at).toLocaleString() + ' · ' + l.codes + ' codes saved (' + l.name + ')' : 'FAILED ' + new Date(l.at).toLocaleString() + ' — ' + l.error);
+    $('backupStatus').style.color = l && !l.ok ? '#b3261e' : '';
+  }
+  $('backupCard').addEventListener('toggle', async function(){
+    if(!this.open) return;
+    try{ backupShow((await api({ action: 'backupstatus' })).last); }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+  });
+  $('backupDriveBtn').addEventListener('click', async function(){
+    this.disabled = true;
+    try{ var r = await api({ action: 'backupdrive' }); backupShow(r); toast(r.ok ? 'Backup saved to Drive' : r.error, !r.ok); }
+    catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+    this.disabled = false;
+  });
+  $('backupDownloadBtn').addEventListener('click', async function(){
+    this.disabled = true;
+    try{
+      var r = await api({ action: 'backupdownload' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([r.content], { type: 'application/json' }));
+      a.download = r.name; document.body.appendChild(a); a.click(); a.remove();
+      toast('Backup downloaded (' + r.codes + ' codes). Keep it private: it contains every code.');
+    }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+    this.disabled = false;
+  });
+  function payAlertShow(s){
+    $('payAlertStatus').textContent = s && s.set ? 'ON' + (s.at ? ' since ' + new Date(s.at).toLocaleString() : '') + (s.live ? ' (live)' : ' (test mode)') : 'NOT set up';
+    $('payAlertStatus').style.color = s && s.set ? '' : '#b3261e';
+  }
+  $('payAlertCard').addEventListener('toggle', async function(){
+    if(!this.open) return;
+    try{ payAlertShow(await api({ action: 'subhookstatus' })); }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+  });
+  $('payAlertSetupBtn').addEventListener('click', async function(){
+    if(!confirm('Create the PayMongo webhook for refunds and failed payments on your PayMongo account?')) return;
+    try{ await api({ action: 'subhooksetup' }); payAlertShow(await api({ action: 'subhookstatus' })); toast('Payment alerts are ON'); }
+    catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+  });
+  $('shutdownOnBtn').addEventListener('click', async function(){
+    var t = prompt('This ends normal service: every Lifetime code gets the Offline App and licences that never need a check-in.\n\nType END SERVICE to confirm.');
+    if(t === null) return;
+    try{ shutdownShow(await api({ action: 'shutdownset', on: true, confirm: t.trim() })); toast('Shutdown mode is ON'); }
+    catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+  });
+  $('shutdownOffBtn').addEventListener('click', async function(){
+    if(!confirm('Turn shutdown mode OFF? New check-ins go back to the normal 75-day licences. Licences already handed out stay final.')) return;
+    try{ shutdownShow(await api({ action: 'shutdownset', on: false })); toast('Shutdown mode is OFF'); }
+    catch(err){ if(err.message !== 'auth') toast(err.message, true); }
   });
 
   [].slice.call(document.querySelectorAll('input[name=qrTarget]')).forEach(function(r){
@@ -1365,8 +1598,8 @@
 
   printPicker($('newPrint'), { enabled: true, sizes: PAPER.map(function(p){ return p[0]; }) }, 'Allow printing for these codes');
   $('newTheme').innerHTML = themeOptions('');
-  // Remember whether the Create / Trial / QR / PayMongo / Simulator cards are open.
-  ['createCard', 'trialCard', 'qrCard', 'paymongoCard', 'paySimCard'].forEach(function(id){
+  // Remember whether the Trial / QR / PayMongo cards are open.
+  ['trialCard', 'qrCard', 'paymongoCard'].forEach(function(id){
     try{ var v = localStorage.getItem('pb_admin_' + id); if(v) $(id).open = v === '1'; }catch(e){}
     $(id).addEventListener('toggle', function(){ try{ localStorage.setItem('pb_admin_' + id, $(id).open ? '1' : '0'); }catch(e){} });
   });
@@ -1390,7 +1623,7 @@
     $('newDays').value = p.days; $('newDevices').value = p.devices;
     $('newLifetime').checked = p.lifetime; $('newDays').disabled = p.lifetime;
     $('newTraditional').checked = p.traditional; $('newGif').checked = p.gif; $('newOffline').checked = p.offline; $('newOfflineOnly').checked = p.only;
-    $('newRetake').checked = true; $('newLock').checked = true; $('newPay').checked = true;
+    $('newRetake').checked = true; $('newTypes').checked = false; $('newLock').checked = true; $('newPay').checked = true;
     [].forEach.call(this.querySelectorAll('[data-pkg]'), function(x){ x.classList.toggle('primary', x === b); });
   });
   $('newOfflineOnly').addEventListener('change', function(){ if(this.checked) $('newOffline').checked = true; });

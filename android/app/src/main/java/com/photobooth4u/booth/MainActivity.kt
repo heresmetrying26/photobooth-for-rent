@@ -57,6 +57,7 @@ class MainActivity : AppCompatActivity() {
     private var voiceBridge: VoiceBridge? = null
     private lateinit var licence: AppLicence
     private var shareServer: LocalShareServer? = null
+    private var cameraHelper: UsbCameraHelper? = null
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
 
     // This tablet's rental-code entitlements, from the last time status() said ok —
@@ -93,12 +94,21 @@ class MainActivity : AppCompatActivity() {
     private val REQ_CAMERA_PERMISSION = 2001
 
     // ---- New version prompt ----
-    // At launch (never mid-session) ask the site for the newest tablet app; when this one is older, offer the
-    // download. "Update" opens the APK in the browser, and Android then offers to install it over this app.
+    // At launch, when the app comes back to the front, and every 5 minutes while it is open (like the laptop app),
+    // ask the site for the newest tablet app; when this one is older, offer the download. "Later" hides that
+    // version for a day. "Update" opens the APK in the browser, and Android then offers to install it over this app.
+    private val updateHandler = Handler(Looper.getMainLooper())
+    private val updateLoop = object : Runnable {
+        override fun run() { checkForAppUpdate(); updateHandler.postDelayed(this, 5 * 60_000L) }
+    }
+    @Volatile private var updateChecking = false
+    private var updateDialog: AlertDialog? = null
+
     private fun checkForAppUpdate() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
-        if (now - prefs.getLong("update_checked", 0L) < 6 * 3600_000L || !isNetworkAvailable()) return
+        if (updateChecking || now - prefs.getLong("update_checked", 0L) < 4 * 60_000L || !isNetworkAvailable()) return
+        updateChecking = true
         Thread {
             try {
                 val c = URL(BASE_URL + "api/updates").openConnection() as HttpURLConnection
@@ -111,15 +121,16 @@ class MainActivity : AppCompatActivity() {
                 if (latest.isEmpty() || !url.startsWith("https://") || !versionNewer(latest, mine)) return@Thread
                 if (now < prefs.getLong("update_snooze_" + latest, 0L)) return@Thread
                 runOnUiThread {
-                    if (isFinishing || isDestroyed) return@runOnUiThread
-                    AlertDialog.Builder(this)
+                    if (isFinishing || isDestroyed || updateDialog?.isShowing == true) return@runOnUiThread
+                    updateDialog = AlertDialog.Builder(this)
                         .setTitle("New version available")
                         .setMessage("photobooth4u " + latest + " is ready (this tablet has " + mine + "). Update between events, not during a session.")
                         .setPositiveButton("Update") { _, _ -> try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (e: Exception) { } }
                         .setNegativeButton("Later") { _, _ -> prefs.edit().putLong("update_snooze_" + latest, System.currentTimeMillis() + 24 * 3600_000L).apply() }
                         .show()
                 }
-            } catch (e: Exception) { /* offline or the site is down: try again next launch */ }
+            } catch (e: Exception) { /* offline or the site is down: try again in 5 minutes */ }
+            finally { updateChecking = false }
         }.start()
     }
 
@@ -174,6 +185,12 @@ class MainActivity : AppCompatActivity() {
             try { share.start() } catch (e: Exception) { /* guests just won't get a QR */ }
         }.start()
 
+        // 5b2. A Nikon camera on the USB port: WebView has no WebUSB, so the app talks to it and the booth
+        // reaches it on 127.0.0.1:17321 (same calls as the Windows Helper; the booth page recognises "PB4uAndroid").
+        val cam = UsbCameraHelper(applicationContext)
+        cameraHelper = cam
+        Thread { try { cam.start() } catch (e: Exception) { Log.w("PBCam", "camera helper", e) } }.start()
+
         // 5c. This tablet's offline-app licence — the same signed-licence system the
         // desktop app uses, tied to a rental code's "offline app" add-on. The booth stays
         // behind the activation screen until a code unlocks it (needs Wi-Fi once); after
@@ -199,7 +216,7 @@ class MainActivity : AppCompatActivity() {
         // a network right now — otherwise there's no point waiting on a request that can
         // only fail, so go straight to the offline booth.
         bootWithLicence()
-        checkForAppUpdate()
+        updateHandler.postDelayed(updateLoop, 20_000L)
         checkinHandler.postDelayed(checkinLoop, 10 * 60_000L)
     }
 
@@ -344,6 +361,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         hideSystemBars()
+        checkForAppUpdate()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -358,7 +376,9 @@ class MainActivity : AppCompatActivity() {
         btBridge.disconnect()
         voiceBridge?.shutdown()
         shareServer?.stop()
+        cameraHelper?.stop()
         checkinHandler.removeCallbacksAndMessages(null)
+        updateHandler.removeCallbacksAndMessages(null)
     }
 
     private fun hideSystemBars() {
@@ -382,6 +402,8 @@ class MainActivity : AppCompatActivity() {
         s.loadWithOverviewMode = true
         s.displayZoomControls = false
         s.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
+        // Lets the booth page know it runs inside the tablet app (it then uses the app's USB camera control)
+        s.userAgentString = s.userAgentString + " PB4uAndroid"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             // The 360 capture screen sends its clip to the booth laptop over the booth Wi-Fi (plain http://<laptop>:47777),
             // which a page loaded over https could not do in the stricter mode. The app only ever loads the booth's own pages.
@@ -519,6 +541,7 @@ class MainActivity : AppCompatActivity() {
                 val gifOpt = feat?.optBoolean("gifOpt", true) ?: true
                 val retakeOpt = feat?.optBoolean("retakeOpt", true) ?: true
                 val lockOpt = feat?.optBoolean("lockOpt", true) ?: true
+                val typesOpt = feat?.optBoolean("typesOpt", false) ?: false
                 val payOpt = feat?.optBoolean("vouchers", false) ?: false
                 val traditional = feat?.optBoolean("traditional", false) ?: false
                 // Extras every package includes (missing = on): vintage looks, photographer desk, flipbook, video guestbook
@@ -543,6 +566,7 @@ class MainActivity : AppCompatActivity() {
                     append("window.__PB.extras={").append(extrasJs).append("};")
                     append("window.__PB.retakeOpt=").append(retakeOpt).append(";")
                     append("window.__PB.lockOpt=").append(lockOpt).append(";")
+                    append("window.__PB.typesOpt=").append(typesOpt).append(";")
                     append("window.__PB.payOpt=").append(payOpt).append(";")
                     append("window.__PB.traditional=").append(traditional).append(";")
                     append("window.__PB.watermark=false;")

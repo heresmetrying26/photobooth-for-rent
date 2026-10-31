@@ -540,6 +540,10 @@
       grid-column: span 3
     }
 
+    .plans .plan.event.solo {
+      grid-column: 2 / span 4
+    }
+
     .plan {
       display: flex;
       flex-direction: column;
@@ -704,7 +708,7 @@
     /* monthly subscription plans */
     .plans-monthly {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 14px;
       margin: 20px 0;
     }
@@ -1520,7 +1524,8 @@
         grid-column: auto
       }
 
-      .plans .plan.life {
+      .plans .plan.life,
+      .plans .plan.event.solo {
         grid-column: 1 / -1
       }
 
@@ -1625,6 +1630,7 @@
       <nav class="navlinks" aria-label="Main">
         <a href="/about-us/" aria-current="page">About us</a>
         <a href="/about-us/#packages">Pricing</a>
+        <a href="/faq/">FAQ</a>
         <a href="/lifetime/">My events</a>
         <a href="/">Open booth</a>
         <a class="cta" href="/about-us/#avail">Book now</a>
@@ -1766,7 +1772,7 @@
             </svg></span>
           <h3>Tablet or laptop booth</h3>
           <p>Run it on an iPad or Android tablet, or a laptop with a second screen for guests and automatic printing. No
-            internet at the venue? Use the Windows / Mac app.</p>
+            internet at the venue? Use the Windows / Mac / Android app.</p>
         </article>
       </div>
     </section>
@@ -1856,6 +1862,22 @@
           </div>
         </article>
 
+        <article class="plan monthly">
+          <span class="tag">Monthly</span>
+          <h3>Offline (laptop + Android)</h3>
+          <p class="for">Windows / Mac app &amp; Android tablet app &middot; zero venue internet needed</p>
+          <ul class="plan-list">
+            <li>Works 100% offline with no internet at the venue</li>
+            <li>Guests get photos over booth Wi-Fi, no internet needed</li>
+            <li>Laptop (DSLR &amp; webcam, auto-print) or Android tablet (Nikon, Canon or Sony camera over USB)</li>
+            <li>Offline apps activated for 30 days</li>
+          </ul>
+          <div class="plan-footer">
+            <p class="price">&#8369;999 <small>/ month</small></p>
+            <button class="plan-cta" type="button" data-sub="offline" data-price="999" data-name="Offline (laptop + Android)">Pay with QR &rarr;</button>
+          </div>
+        </article>
+
         <article class="plan monthly best">
           <span class="tag" style="background:var(--red);color:#fff;">Best value</span>
           <h3>Online + Offline</h3>
@@ -1864,11 +1886,11 @@
             <li>Everything in Online</li>
             <li>Offline app: works with no internet at the venue</li>
             <li>Guests get photos over booth Wi-Fi, no internet needed</li>
-            <li>DSLR &amp; webcam support with auto-print on laptop</li>
+            <li>DSLR &amp; webcam support (auto-print on laptop; Nikon, Canon and Sony over USB on the Android app)</li>
           </ul>
           <div class="plan-footer">
-            <p class="price">&#8369;1,299 <small>/ month</small></p>
-            <button class="plan-cta" type="button" data-sub="both" data-price="1299" data-name="Online + Offline">Pay with QR &rarr;</button>
+            <p class="price">&#8369;1,399 <small>/ month</small></p>
+            <button class="plan-cta" type="button" data-sub="both" data-price="1399" data-name="Online + Offline">Pay with QR &rarr;</button>
           </div>
         </article>
       </div>
@@ -1881,7 +1903,7 @@
 
       <div class="pkg-divider">
         <h3>Lifetime</h3>
-        <p>Pay once. Every event, never expires, up to 5 devices.</p>
+        <p>Pay once. Every event, never expires, up to 5 devices. <a href="/faq/">Lifetime FAQ &rarr;</a></p>
       </div>
       <div class="plans">
         <article class="plan">
@@ -1913,6 +1935,12 @@
           <p class="life-link" style="margin-top:8px;"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us on Messenger &rarr;</a></p>
         </article>
       </div>
+      <p class="life-terms" style="margin:12px 0 0;font-size:13.5px;line-height:1.55;color:var(--muted);">
+        <b>What &ldquo;Lifetime&rdquo; means:</b> the code never expires and you are never charged again for the features in your plan, for as long as
+        photobooth4u operates them. If we ever stop, you get at least 90 days' notice and a final Offline App that keeps working with no
+        photobooth4u servers. Add-ons and any future paid features are separate. Read the
+        <a href="/agreement/" target="_blank" rel="noopener">Lifetime Access Agreement</a> and the <a href="/faq/" target="_blank" rel="noopener">FAQ</a>.
+      </p>
       <details class="addons-d">
         <summary>Already a Lifetime owner? Add the missing side</summary>
         <div class="addons" aria-label="Add-ons for Lifetime owners">
@@ -1941,8 +1969,8 @@
           <h3>Event Pass</h3>
           <p class="for">Use it on a tablet or a laptop &middot; guest screen, auto-print &middot; online or offline app</p>
           <div class="plan-footer">
-            <p class="price">&#8369;499 <small>/ event</small></p>
-            <button class="plan-cta" type="button" data-sub="laptop" data-price="499" data-name="Event Pass">Pay with QR &rarr;</button>
+            <p class="price">&#8369;599 <small>/ event</small></p>
+            <button class="plan-cta" type="button" data-sub="laptop" data-price="599" data-name="Event Pass">Pay with QR &rarr;</button>
           </div>
         </article>
       </div>
@@ -1956,6 +1984,61 @@
       </ul>
       <p class="offline-note"><b>Offline app</b> for Windows, Mac and Android tablets: no internet needed at the venue.
         Photos save on the device and guests get theirs by scanning a QR over the booth Wi-Fi.</p>
+    </section>
+
+    <section class="block" id="devices" aria-labelledby="dv">
+      <p class="label">Supported devices</p>
+      <h2 id="dv">What photobooth4u runs on</h2>
+      <p class="sub">The devices and versions we support today. Lifetime owners: this is the list your agreement refers to.</p>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:15px;line-height:1.5;">
+          <thead>
+            <tr style="text-align:left;">
+              <th style="padding:10px 12px;border-bottom:2px solid var(--line);">Plan part</th>
+              <th style="padding:10px 12px;border-bottom:2px solid var(--line);">Device</th>
+              <th style="padding:10px 12px;border-bottom:2px solid var(--line);">What you need</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;"><b>Online booth</b></td>
+              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">Windows or Mac laptop</td>
+              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">A current version of Chrome (needed for a DSLR or USB camera). Internet at the venue.</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;"><b>Online booth</b></td>
+              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">iPad or iPhone</td>
+              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">A current version of Safari. Printing over AirPrint. Internet at the venue.</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;"><b>Online booth</b></td>
+              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">Android tablet or phone</td>
+              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">A current version of Chrome. Printing over Mopria. Internet at the venue.</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;"><b>Offline App</b></td>
+              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">Windows laptop</td>
+              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">Windows 10 or later, 64-bit (x64).</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;"><b>Offline App</b></td>
+              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">Mac laptop</td>
+              <td style="padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;">macOS 11 (Big Sur) or later, Apple Silicon or Intel.</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 12px;vertical-align:top;"><b>Offline App</b></td>
+              <td style="padding:10px 12px;vertical-align:top;">Android tablet</td>
+              <td style="padding:10px 12px;vertical-align:top;">Android 7.0 (Nougat) or later. Prints to Bluetooth thermal receipt printers only; photo printers need the laptop app.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="sub" style="margin-top:12px;font-size:14px;">
+        Hardware (tablet, laptop, camera, printer, paper, ink) and internet are not included. We make reasonable efforts to
+        support the current and previous major version of each browser and operating system. Support for versions more than
+        5 years old may end with 90 days' notice, and new printer or camera models are not guaranteed. USB camera control needs Chrome
+        or the laptop app on a laptop, or the Android tablet app for Nikon, Canon EOS and Sony Alpha cameras (Safari and iPad can't do it).
+      </p>
     </section>
 
     <section class="block" id="guides" aria-labelledby="gd">
@@ -2031,6 +2114,21 @@
           <h3>Booth extras guide</h3>
           <p>Vintage looks, the photographer desk, the print preview, and the printed flipbook: how to set each up and use it at an event.</p>
           <span class="open">Open guide <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M7 17 17 7M8 7h9v9" />
+            </svg></span>
+        </a>
+        <a class="guide" href="/lifetime/photobooth4u-card-certificate-guide.pdf" target="_blank" rel="noopener">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="6" y="2.5" width="12" height="19" rx="2" />
+              <circle cx="12" cy="9.5" r="2.5" />
+              <path d="M9 16h6M9 18.5h4" />
+            </svg></span>
+          <p class="for">When Card &amp; certificate booths is on for your plan</p>
+          <h3>Trading card &amp; certificate guide</h3>
+          <p>The Booth type switch, built-in styles, your own templates in groups, the back of the card, guest questions, printing both sides, and the holo viewer.</p>
+          <span class="open">Open PDF <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M7 17 17 7M8 7h9v9" />
             </svg></span>
@@ -2201,6 +2299,12 @@ Event Date:</pre>
           <input type="text" id="subExistingCode" placeholder="PB-XXXX-XXXX-XXXX" autocapitalize="characters">
         </div>
 
+        <label class="sd-toggle" id="subAgreeRow" style="display:none;">
+          <input type="checkbox" id="subAgree">
+          <span>I have read and accept the <a href="/agreement/" target="_blank" rel="noopener">Lifetime Access Agreement</a>
+            (see also the <a href="/faq/" target="_blank" rel="noopener">FAQ</a>).</span>
+        </label>
+
         <div class="sd-msg" id="subFormMsg"></div>
 
         <button type="button" class="btn red" id="subSubmitBtn" style="width:100%;margin-top:6px;">Generate PayMongo QR
@@ -2286,6 +2390,9 @@ Event Date:</pre>
       var renewToggle = document.getElementById('subRenewToggle');
       var renewBox = document.getElementById('subRenewBox');
       var renewInput = document.getElementById('subExistingCode');
+      var agreeRow = document.getElementById('subAgreeRow');
+      var agreeBox = document.getElementById('subAgree');
+      var AGREEMENT_VERSION = '3.3';
       var qrBackBtn = document.getElementById('subQrBackBtn');
       var copyCodeBtn = document.getElementById('subCopyCodeBtn');
       var goBoothBtn = document.getElementById('subGoBoothBtn');
@@ -2317,6 +2424,9 @@ Event Date:</pre>
         submitBtn.textContent = 'Generate PayMongo QR · ₱' + priceStr;
 
         var isAddon = currentPlan.startsWith('addon');
+        // Lifetime plans and Lifetime add-ons are bought under the Lifetime Access Agreement.
+        agreeRow.style.display = (currentPlan.startsWith('life') || isAddon) ? 'flex' : 'none';
+        agreeBox.checked = false;
         var toggleSpan = renewToggle.parentElement.querySelector('span');
         var codeLabel = document.querySelector('label[for="subExistingCode"]');
 
@@ -2411,6 +2521,12 @@ Event Date:</pre>
           renewInput.focus();
           return;
         }
+        var needsAgreement = currentPlan.startsWith('life') || isAddon;
+        if (needsAgreement && !agreeBox.checked) {
+          formMsg.textContent = 'Please tick the box to accept the Lifetime Access Agreement.';
+          formMsg.className = 'sd-msg err';
+          return;
+        }
 
         submitBtn.disabled = true;
         submitBtn.textContent = 'Connecting to PayMongo…';
@@ -2425,7 +2541,8 @@ Event Date:</pre>
               plan: currentPlan,
               name: name,
               email: email,
-              renewCode: renewCode
+              renewCode: renewCode,
+              agreementVersion: needsAgreement && agreeBox.checked ? AGREEMENT_VERSION : ''
             })
           });
           var data = await resp.json();

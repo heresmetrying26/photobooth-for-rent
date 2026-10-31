@@ -11,13 +11,17 @@ anything in this folder, and Netlify never builds it.
   Mac over USB, the same way as in Chrome, and the app lets go of the camera macOS grabs when it is plugged in
   (`lib/camfree.mjs`: stops macOS' camera service and Image Capture, then the booth connects by itself). Webcams and HDMI capture as before.
 - **Silent printing** to a named printer per paper size (built in; no Print Helper to install).
+- **Print an earlier photo**: on the laptop, *All photos* → a photo → *Print photo* prints it at once on the chosen printer
+  (the gallery page asks the app; `printNowTake` / `printNowDone` hand the job to the booth). Laptop only, never a guest's phone.
 - **Photos on the laptop**: `Pictures/photobooth4u/<event>/1_strip.jpg …` (Share & start → *Open photos folder*
   / *Change folder*). Nothing is uploaded.
 - **Guests' QR codes** open the photo from the laptop over the booth Wi-Fi
   (`http://<laptop address>:47777/e/<event id>/`): one photo page with a **Save photo** button, and an
   *All photos* gallery. Guests' phones must be on the same Wi-Fi as the laptop (a router at the booth, or the
-  laptop's own hotspot). Optional: type the Wi-Fi name and password in Share & start, and guests get a
-  **Join Wi-Fi** QR next to their photo QR (also on the printable QR sign).
+  laptop's own hotspot). The app reads the Wi-Fi the laptop is on (`lib/wifi.mjs`: `netsh wlan` on Windows,
+  `networksetup` + Keychain on Mac) and fills in Share & start; type the password if it can't be read. That
+  **Join Wi-Fi** QR is in Share & start (with *Download WIFI QR Sign*) and behind the **Wi-Fi** button in the bottom
+  bar; guests' session QRs are the photo and GIF only. The app does not create a hotspot.
 
 Not in the app (they need the internet): QR payments (GCash / Maya; vouchers work), the online gallery and
 Google Drive, My Events, the laptop print station for iPads, and trial codes.

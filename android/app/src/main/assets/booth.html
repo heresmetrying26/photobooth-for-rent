@@ -3883,6 +3883,20 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <button type="button" class="action-btn" id="wifiPrinterTestBtn" style="display:none;width:auto;margin:0 8px 8px 0;">Test print</button>
             <button type="button" class="action-btn" id="wifiPrinterForgetBtn" style="display:none;width:auto;margin:0 8px 8px 0;">Forget</button>
             <p class="panel-hint" id="wifiPrinterStatus" style="margin:4px 0 6px;"></p>
+            <details id="wifiDiag" style="display:none;margin:0 0 8px;">
+              <summary>Colour diagnostics (testing only)</summary>
+              <p class="panel-hint" style="margin:4px 0 6px;">Each button prints one small strip on plain paper. Tell us what each one printed: a strip, nothing, or letters and symbols.</p>
+              <label class="sub-label" for="wifiDiagK" style="display:block;margin:4px 0 2px;">Colour-mode command</label>
+              <select id="wifiDiagK" class="printer-input"><option value="2">2 (colour)</option><option value="1">1</option><option value="-1">none</option></select>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
+                <button type="button" class="action-btn" data-diag="1" style="width:auto;margin:0;">1 Black</button>
+                <button type="button" class="action-btn" data-diag="2" style="width:auto;margin:0;">2 Cyan</button>
+                <button type="button" class="action-btn" data-diag="3" style="width:auto;margin:0;">3 Magenta</button>
+                <button type="button" class="action-btn" data-diag="4" style="width:auto;margin:0;">4 Yellow</button>
+                <button type="button" class="action-btn" data-diag="5" style="width:auto;margin:0;">5 C+M+Y</button>
+                <button type="button" class="action-btn" data-diag="6" style="width:auto;margin:0;">6 Black, 180 lines</button>
+              </div>
+            </details>
             <div id="wifiOptions" style="display:none;margin:0 0 8px;">
               <label class="sub-label" style="display:block;margin:6px 0 2px;" id="wifiOptColorLbl">Colour</label>
               <select id="wifiOptColor" class="printer-input"></select>
@@ -12250,6 +12264,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const tst = document.getElementById('wifiPrinterTestBtn');
     if(tst) tst.style.display = wifiPrinter ? '' : 'none';
     try{ wifiOptsUI(); }catch(e){}
+    const dg = document.getElementById('wifiDiag');
+    if(dg) dg.style.display = wifiPrinter && wifiPrinter.escp2 ? '' : 'none';
     if(st && wifiPrinter) st.textContent = 'Printing to: ' + wifiPrinter.name + (wifiPrinter.usb ? ' [USB ' + (wifiPrinter.vid||0).toString(16) + ':' + (wifiPrinter.pid||0).toString(16) + (wifiPrinter.info ? ' ID: ' + wifiPrinter.info : ' ID not readable') + ']' : ' (' + wifiPrinter.ip + ')');
     else if(st && !wifiScanTimer) st.textContent = '';
   }
@@ -12258,6 +12274,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(f) f.addEventListener('click', wifiScan);
     const t = document.getElementById('wifiPrinterTestBtn');
     if(t) t.addEventListener('click', wifiTestPrint);
+    document.querySelectorAll('#wifiDiag [data-diag]').forEach(b => b.addEventListener('click', () => wifiDiag(parseInt(b.getAttribute('data-diag'), 10))));
     [['wifiOptColor', 'color'], ['wifiOptQuality', 'quality'], ['wifiOptMedia', 'media']].forEach(([id, key]) => {
       const el = document.getElementById(id);
       if(el) el.addEventListener('change', () => {
@@ -12283,6 +12300,25 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     let s = '';
     for(let i = 0; i < bytes.length; i += 8192) s += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + 8192, bytes.length)));
     return btoa(s);
+  }
+  // Colour diagnostics for the Epson L120 family: one small strip per channel.
+  let wifiDiagBusy = false;
+  async function wifiDiag(step){
+    if(wifiDiagBusy) return;
+    if(!wifiPrinter || !wifiPrinter.escp2){ showToast('Pick the Epson L120 first.', 3000); return; }
+    const paper = printSize ? paperFor(printSize) : { w: 88.9, h: 127 };
+    const sel = document.getElementById('wifiDiagK');
+    const k = sel ? parseInt(sel.value, 10) : 2;
+    wifiDiagBusy = true;
+    try{
+      showToast('Sending colour test ' + step + '\u2026', 4000);
+      await wifiJob(id => window.__PBNet.printEscp2Diag(id, wifiPrinter.ip, paper.w, paper.h, step, k));
+      showToast('Colour test ' + step + ' sent. Tell us what it printed.', 6000);
+    }catch(e){
+      showToast('Colour test ' + step + ' failed: ' + (e.message || e), 6500);
+    }finally{
+      wifiDiagBusy = false;
+    }
   }
   async function printViaWifi(all, paper){
     const p = wifiPrinter;

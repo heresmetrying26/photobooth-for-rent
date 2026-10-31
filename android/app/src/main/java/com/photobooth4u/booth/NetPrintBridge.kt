@@ -393,6 +393,27 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             !Regex("CMD:[^;]*ESCPR", RegexOption.IGNORE_CASE).containsMatchIn(id)
     }
 
+    /** DIAGNOSTIC: prints one small colour test strip (see EscP2Job.diagnostic). Result arrives as window.__PBNetResult. */
+    @JavascriptInterface
+    fun printEscp2Diag(job: String, id: String, widthMm: Double, heightMm: Double, step: Int, kMode: Int): String {
+        pool.execute {
+            val r = JSONObject().put("job", job)
+            try {
+                val d = usbFind(id)
+                usbEnsure(d)
+                usbIsEscpr(d)
+                if (!usbIsEscp2(d)) throw IllegalStateException("This printer doesn't list Epson's ESC/P2 language.")
+                usbRaw(id, EscP2Job.diagnostic(step, kMode, widthMm, heightMm))
+                r.put("ok", true)
+            } catch (ex: Exception) {
+                Log.w(TAG, "escp2 diag failed", ex)
+                r.put("ok", false).put("error", ex.message ?: "Couldn't print.")
+            }
+            deliver(r)
+        }
+        return "started"
+    }
+
     /**
      * EXPERIMENTAL: prints JPEG pages in black and white to an Epson ESC/P2 USB printer (Epson L120 family).
      * Result arrives as window.__PBNetResult.
@@ -560,15 +581,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     private fun usbWrite(conn: UsbDeviceConnection, ep: UsbEndpoint, data: ByteArray) {
         var off = 0
-        var stalls = 0
         while (off < data.size) {
-            val r = conn.bulkTransfer(ep, data, off, minOf(16384, data.size - off), 20_000)
-            if (r < 0) {
-                // an inkjet's buffer fills while it prints: wait and retry a few times before giving up
-                if (++stalls > 6) throw IllegalStateException("The USB printer stopped answering.")
-                continue
-            }
-            stalls = 0
+            // Never resend after a timeout: the printer may already hold part of the chunk, and a repeated piece
+            // of a print job is read as text. Wait up to a minute for the printer to take each chunk instead.
+            val r = conn.bulkTransfer(ep, data, off, minOf(16384, data.size - off), 60_000)
+            if (r < 0) throw IllegalStateException("The USB printer stopped answering. Switch it off and on, then try again.")
             off += r
         }
     }

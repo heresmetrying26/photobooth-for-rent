@@ -32,12 +32,14 @@ object EscP2Job {
     private const val CN = 59
     private const val CBAND = CN * SEP                 // 118 rows per colour pass
     // channel id, offset in rows, lines the printer needs per pass
-    private val CHANNELS = arrayOf(intArrayOf(0, 0, 180), intArrayOf(2, 0, 60), intArrayOf(1, 120, 60), intArrayOf(4, 240, 60))
+    // In colour mode every channel, black included, works in blocks of 60 lines (59 nozzles); 180 lines is black-only mode.
+    private val CHANNELS = arrayOf(intArrayOf(0, 0, 60), intArrayOf(2, 0, 60), intArrayOf(1, 120, 60), intArrayOf(4, 240, 60))
 
     fun build(src: Bitmap, widthMm: Double, heightMm: Double, color: Boolean = false): ByteArray =
         if (color) buildColor(src, widthMm, heightMm) else buildMono(src, widthMm, heightMm)
 
-    private fun header(out: ByteArrayOutputStream, paperW: Int, paperH: Int, colour: Boolean) {
+    /** kMode: value for the ESC ( K colour-mode command (1 black only, 2 colour), or -1 to leave the command out. */
+    private fun header(out: ByteArrayOutputStream, paperW: Int, paperH: Int, kMode: Int) {
         out.put(bytes(0x00, 0x00, 0x00, 0x1B, 0x01), ascii("@EJL 1284.4\n@EJL     \n"), bytes(0x1B, 0x40))
         out.put(bytes(0x1B, 0x40))
         out.put(bytes(0x1B, 0x28, 0x52, 0x08, 0x00, 0x00), ascii("REMOTE1"))
@@ -45,7 +47,7 @@ object EscP2Job {
         out.put(bytes(0x1B, 0x00, 0x00, 0x00))
         out.put(bytes(0x1B, 0x28, 0x47, 0x01, 0x00, 0x01))
         out.put(bytes(0x1B, 0x28, 0x55, 0x05, 0x00, 10, 10, 10, 0x10, 0x0E))
-        out.put(bytes(0x1B, 0x28, 0x4B, 0x02, 0x00, 0x00, if (colour) 0x02 else 0x01))                  // colour / black only
+        if (kMode >= 0) out.put(bytes(0x1B, 0x28, 0x4B, 0x02, 0x00, 0x00, kMode))                      // colour / black only
         out.put(bytes(0x1B, 0x28, 0x69, 0x01, 0x00, 0x00))
         out.put(bytes(0x1B, 0x55, 0x01))
         out.put(bytes(0x1B, 0x28, 0x44, 0x04, 0x00, 0x40, 0x38, 0x50, 0x28))
@@ -60,6 +62,36 @@ object EscP2Job {
         out.put(bytes(0x4C, 0x44, 0x00, 0x00))
         out.put(bytes(0x4A, 0x45, 0x01, 0x00, 0x00))
         out.put(bytes(0x1B, 0x00, 0x00, 0x00))
+    }
+
+    /**
+     * DIAGNOSTIC for the colour mode. Prints one small solid strip (2 in wide, about 0.3 in tall per pass pair) per channel
+     * so a failure points at one cause. step: 1 black, 2 cyan, 3 magenta, 4 yellow, 5 cyan+magenta+yellow,
+     * 6 black in 180-line blocks (expected to fail in colour mode).
+     * kMode as in header().
+     */
+    fun diagnostic(step: Int, kMode: Int, widthMm: Double, heightMm: Double): ByteArray {
+        val paperW = Math.round(minOf(widthMm, heightMm) / 25.4 * DPI).toInt()
+        val paperH = Math.round(maxOf(widthMm, heightMm) / 25.4 * DPI).toInt()
+        val chans = when (step) { 1, 6 -> intArrayOf(0); 2 -> intArrayOf(1); 3 -> intArrayOf(2); 4 -> intArrayOf(3); else -> intArrayOf(1, 2, 3) }
+        val rowBytes = 90                                              // 720 dots = 2 inches
+        val out = ByteArrayOutputStream()
+        header(out, paperW, paperH, kMode)
+        var last = 0
+        for (p in 0 until SEP) {                                       // two interleaved passes: 59 nozzles x 2 rows = 118 rows
+            out.put(bytes(0x1B, 0x28, 0x76, 0x04, 0x00), le32(p - last))
+            last = p
+            for (c in chans) {
+                val lines = if (step == 6) 180 else CHANNELS[c][2]            // step 6: black in 180-line blocks, the form that failed
+                val buf = ByteArray(lines * rowBytes)
+                java.util.Arrays.fill(buf, 0, CN * rowBytes, 0xFF.toByte())
+                out.put(bytes(0x1B, 0x28, 0x24, 0x04, 0x00), le32(SIDE))
+                out.put(bytes(0x1B, 0x69, CHANNELS[c][0], 0x00, 0x01), le16(rowBytes), le16(lines), buf)
+                out.put(bytes(0x0D))
+            }
+        }
+        footer(out)
+        return out.toByteArray()
     }
 
     /** EXPERIMENTAL colour: four planes (black, cyan, magenta, yellow), each dithered to 1 bit and printed by its own nozzles. */
@@ -78,7 +110,7 @@ object EscP2Job {
         val planes = cmykPlanes(bmp, areaW, areaH, rowBytes)               // same order as CHANNELS: K, C, M, Y
 
         val out = ByteArrayOutputStream()
-        header(out, paperW, paperH, true)
+        header(out, paperW, paperH, 2)
         var last = 0
         val jMax = (TOP + areaH + CBAND - 1) / CBAND
         for (j in 0..jMax) {

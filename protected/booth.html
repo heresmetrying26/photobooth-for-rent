@@ -12160,7 +12160,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? '' : ' · ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.escpr ? ' · photo (experimental)' : '') + (p.raw ? ' · receipt' : '') + (p.noDriver ? ' · no driver' : '');
       b.addEventListener('click', () => {
         if(p.noDriver){
-          showToast(p.name + ' is detected, but this model needs its own driver, which the tablet app doesn’t have. Use the laptop print station for it.', 7000);
+          showToast(p.name + ' is detected, but the app has no driver for it. ' + (p.usb ? '[USB ' + (p.vid||0).toString(16) + ':' + (p.pid||0).toString(16) + (p.info ? ' ' + p.info : ' (could not read its ID)') + '] ' : '') + 'Use the laptop print station for it, or send us this message.', 14000);
           return;
         }
         wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr });

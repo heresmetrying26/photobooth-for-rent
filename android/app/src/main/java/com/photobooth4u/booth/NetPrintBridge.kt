@@ -337,21 +337,41 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         val iface = usbRawIface(d) ?: return null
         val conn = usb?.openDevice(d) ?: return null
         try {
+            // some printers only answer once the interface is claimed
+            try { conn.claimInterface(iface, true) } catch (_: Exception) {}
             val buf = ByteArray(1024)
-            // GET_DEVICE_ID: class request to the interface; wIndex = interface number << 8 | alternate setting
-            val n = conn.controlTransfer(0xA1, 0, 0, (iface.id shl 8) or iface.alternateSetting, buf, buf.size, 2000)
-            return if (n > 2) String(buf, 2, n - 2, Charsets.ISO_8859_1) else null
-        } finally { conn.close() }
+            // GET_DEVICE_ID: class request to the interface; wIndex = interface number << 8 | alternate setting.
+            // wValue is the configuration index; try 0 first, then the usual 1-based forms.
+            for (value in intArrayOf(0, 1)) {
+                val n = conn.controlTransfer(0xA1, 0, value, (iface.id shl 8) or iface.alternateSetting, buf, buf.size, 2000)
+                if (n > 2) return String(buf, 2, n - 2, Charsets.ISO_8859_1)
+            }
+            return null
+        } finally {
+            try { conn.releaseInterface(iface) } catch (_: Exception) {}
+            conn.close()
+        }
     }
+
+    private val usbIds = ConcurrentHashMap<String, String>()
+
+    /** Epson ink-tank models of the L120 / L210 era (L1xx, L2xx, L3xx, L5xx): they speak ESC/P-R over USB. */
+    private fun epsonLSeries(name: String?): Boolean =
+        name != null && Regex("""(?i)\bL\s?(1\d\d|2\d\d|3\d\d|5\d\d)\b""").containsMatchIn(name)
 
     /** True when the printer says it speaks Epson's ESC/P-R language (the family the L120 / L210 belong to). */
     private fun usbIsEscpr(d: UsbDevice): Boolean {
         if (usb?.hasPermission(d) != true) return false
+        if (d.vendorId != 0x04b8) return false
         escprCache[d.deviceName]?.let { return it }
         val id = try { usbDeviceId(d) } catch (e: Exception) { Log.w(TAG, "device id", e); null }
-        if (id == null) return false
-        val ok = d.vendorId == 0x04b8 && Regex("CMD:[^;]*ESCPR", RegexOption.IGNORE_CASE).containsMatchIn(id)
-        escprCache[d.deviceName] = ok
+        if (id != null) usbIds[d.deviceName] = id
+        // Say it speaks ESC/P-R when its own ID says so, or (like PrinterShare / PrintHand) when the model is a
+        // known Epson L-series name and the ID could not be read or does not list another language to use.
+        val byId = id != null && Regex("CMD:[^;]*ESCPR", RegexOption.IGNORE_CASE).containsMatchIn(id)
+        val byModel = epsonLSeries(usbProduct(d)) || (id != null && epsonLSeries(id))
+        val ok = byId || byModel
+        if (id != null || ok) escprCache[d.deviceName] = ok
         return ok
     }
 
@@ -423,7 +443,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             arr.put(JSONObject()
                 .put("id", id).put("ip", id).put("name", usbName(d) + " (USB)")
                 .put("ipp", ipp).put("raw", raw).put("escpr", escpr).put("usb", true)
-                .put("noDriver", !ipp && !raw && !escpr))
+                .put("noDriver", !ipp && !raw && !escpr)
+                .put("info", (usbIds[d.deviceName] ?: "").take(300))
+                .put("vid", d.vendorId).put("pid", d.productId))
         }
     }
 

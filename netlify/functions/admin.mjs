@@ -3,8 +3,8 @@ import {
   newCode, displayCode, normCode, throttle, recordFail, clearFail, normPrint, extrasOf, normExtras, EXTRA_KEYS, DAY, MIN, BONUS_SUBFOLDER,
   LIFETIME_EXP, MAX_DEVICES, devicesOf, setDevices, printsStore
 , putLicense, delLicense, readIndex, rebuildIndex, windowEnd } from '../lib/core.mjs';
-import { timingSafeEqual, createHash } from 'node:crypto';
-import { setupsStore } from '../lib/core.mjs';
+import { timingSafeEqual, createHash, randomBytes } from 'node:crypto';
+import { setupsStore, setupKeyFor } from '../lib/core.mjs';
 import { ownerId, eventKeyOf, getAcct, acctPublic, acctKey, payStore, unseal, pm, listJSON, usedMap, batchView, createBatch, batchKey, KEY_RE } from '../lib/pay.mjs';
 import { cleanEventName, sendMail, codeEmail, EMAIL_RE, logEmailChange, REVOKE_REASONS, eventsStore, getShutdown, setShutdown, trashDriveFolder, isDriveUrl, AGREEMENT_VERSION, SUBHOOK_EVENTS } from '../lib/core.mjs';
 import { replaceLifetimeCode } from '../lib/replace.mjs';
@@ -223,6 +223,25 @@ export default safe(async (req, context) => {
       return json({ ok: true });
     }
 
+    case 'startframe': { // a frame made for one renter: it shows up in their Setup -> Layout -> Your frames (image null removes it)
+      const { key, rec } = await getRec();
+      if (!rec || rec.kind === 'bonus') return json({ error: 'Code not found.' }, 404);
+      const sstore = setupsStore();
+      const own = setupKeyFor('own|' + key);
+      const data = b.image === null ? null : String(b.image || '');
+      if (data !== null && (data.length > 3500000 || !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(data))) return json({ error: 'That is not a PNG/JPEG, or it is too large.' }, 413);
+      const old = rec.startFrame && rec.startFrame.id;
+      if (data === null) rec.startFrame = null;
+      else {
+        const id = 'a' + randomBytes(14).toString('base64url').replace(/[^A-Za-z0-9]/g, 'x').slice(0, 18);
+        await sstore.set(own + '_a_' + id, data);
+        rec.startFrame = { id, name: String(b.name || '').trim().slice(0, 40) || 'Frame' };
+      }
+      await putLicense(store, key, rec);
+      if (old) await sstore.delete(own + '_a_' + old); // renters who already have it keep their own copy
+      return json({ ok: true, name: rec.startFrame ? rec.startFrame.name : null });
+    }
+
     case 'create': {
       const lifetime = !!b.lifetime;
       const days = lifetime ? (intIn(b.days, 1, 365) || 1) : intIn(b.days, 1, 365);
@@ -429,6 +448,15 @@ export default safe(async (req, context) => {
       await putLicense(store, key, rec);
       await syncBonus(rec, { lockOpt: rec.lockOpt });
       return json({ ok: true, lockOpt: rec.lockOpt });
+    }
+
+    case 'ipadopt': { // an iPad may use the laptop app's camera over Wi-Fi (on by default; the laptop app reads it at its next check-in)
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      rec.ipadOpt = !!b.ipadOpt;
+      await putLicense(store, key, rec);
+      await syncBonus(rec, { ipadOpt: rec.ipadOpt });
+      return json({ ok: true, ipadOpt: rec.ipadOpt });
     }
 
     case 'pinreset': { // forgotten lock PIN: the booth clears it and unlocks within ~5 minutes

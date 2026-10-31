@@ -43,7 +43,7 @@ export default safe(async (req) => {
   if (!ID_RE.test(f)) return json({ ok: false, error: 'not-found' }, 404);
   // An event set to "guests see only their own photos" lists nothing without the booth's own key (the booth's
   // phone-photo lookup, rove=1, is not a guest list and stays open).
-  if (u.searchParams.get('rove') !== '1' && (await guestViewMode(f)) === 'only' && u.searchParams.get('k') !== opKeyOf(f)) {
+  if (u.searchParams.get('rove') !== '1' && u.searchParams.get('spin') !== '1' && (await guestViewMode(f)) === 'only' && u.searchParams.get('k') !== opKeyOf(f)) {
     return json({ ok: false, error: 'private' }, 403);
   }
   let data = null;
@@ -61,8 +61,11 @@ export default safe(async (req) => {
   // the booth asks for just those with &rove=1, and the guests' gallery never lists them.
   const wantRove = u.searchParams.get('rove') === '1';
   const isRove = (n) => /^rove_/i.test(String(n || ''));
+  // 360 videos a phone sent to the booth's 360 desk (named spin_…): the booth asks for just those with &spin=1.
+  const wantSpin = u.searchParams.get('spin') === '1';
+  const isSpin = (n) => /^spin_/i.test(String(n || ''));
   // Videos are listed too, but never relayed here (too big): the page plays them with Drive's own player.
-  const files = data.files.filter((x) => x && ID_RE.test(x.id) && /^(image\/(png|jpeg|webp|gif)|video\/(mp4|quicktime|webm|x-m4v))$/.test(x.mime || '') && (wantRove ? isRove(x.name) && /^image\//.test(x.mime) : !isRove(x.name))).slice(0, 2000).map((x) => ({
+  const files = data.files.filter((x) => x && ID_RE.test(x.id) && /^(image\/(png|jpeg|webp|gif)|video\/(mp4|quicktime|webm|x-m4v))$/.test(x.mime || '') && (wantSpin ? isSpin(x.name) && /^video\//.test(x.mime) : wantRove ? isRove(x.name) && /^image\//.test(x.mime) : !isRove(x.name))).slice(0, 2000).map((x) => ({
     id: x.id,
     name: String(x.name || '').slice(0, 120),
     mime: x.mime,
@@ -83,7 +86,7 @@ export default safe(async (req) => {
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-store',
       'netlify-cdn-cache-control': 'public, max-age=15, stale-while-revalidate=45',
-      'netlify-vary': 'query=f|v|rove|k'
+      'netlify-vary': 'query=f|v|rove|spin|k'
     }
   });
 });

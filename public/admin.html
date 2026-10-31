@@ -865,6 +865,7 @@
     acts += '<button class="small" data-a="typesopt" data-c="' + c + '">' + (l.typesOpt ? 'Hide card &amp; certificate booths' : 'Give card &amp; certificate booths') + '</button>';
     acts += '<button class="small" data-a="gifopt" data-c="' + c + '">' + (l.gifOpt ? 'Hide GIF mode' : 'Give GIF mode') + '</button>';
     acts += '<button class="small" data-a="lockopt" data-c="' + c + '">' + (l.lockOpt ? 'Hide lock booth' : 'Give lock booth') + '</button>';
+    if(l.offlineOpt || l.offlineOnly) acts += '<button class="small" data-a="ipadopt" data-c="' + c + '" title="Lets an iPad use the laptop app\'s camera over Wi-Fi (Setup → Share &amp; start)">' + (l.ipadOpt ? 'Turn off iPad camera' : 'Turn on iPad camera') + '</button>';
     [['vintage', 'vintage looks'], ['roving', 'photographer desk'], ['flipbook', 'flipbook'], ['video', 'video guestbook'], ['spin360', '360 video desk']].forEach(function(x){
       var on = !(l.extras && l.extras[x[0]] === false);
       acts += '<button class="small" data-a="extra" data-x="' + x[0] + '" data-c="' + c + '">' + (on ? 'Hide ' : 'Give ') + x[1] + '</button>';
@@ -904,7 +905,10 @@
       '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
       (devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.kind ? ' · ' + esc(d.kind) : '') + (d.app && d.app.name ? ' · ' + esc(d.app.name) : '') + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + (d.app && d.app.seen ? ' · checked in ' + new Date(d.app.seen).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="' + (d.app ? 'Deactivate this laptop (stops at its next check-in)' : 'Remove this device') + '">' + (d.app ? 'Deactivate' : 'Remove') + '</button></span>'; }).join('') + '</div>' : '') +
       '</div>' +
-      (bonus ? '' : '<div class="themerow">Starting theme <select class="sel" data-theme-for="' + c + '">' + themeOptions(l.defaultTheme || '') + '</select></div>') +
+      (bonus ? '' : '<div class="themerow">Starting theme <select class="sel" data-theme-for="' + c + '">' + themeOptions(l.defaultTheme || '') + '</select>' +
+        '&nbsp; Starting frame <button class="small" data-a="sframe" data-c="' + c + '" title="A PNG with the photo spots left white or see-through. It appears in the renter’s Your frames.">' + (l.startFrame ? esc(l.startFrame.name || l.startFrame) + ' &middot; replace' : 'Upload') + '</button>' +
+        (l.startFrame ? '<button class="small" data-a="sframeoff" data-c="' + c + '">Remove</button>' : '') +
+        '<input type="file" class="hidden" accept="image/png,image/jpeg,image/webp" data-sframe-for="' + c + '"></div>') +
       '<div class="printbox hidden" data-print-edit></div>' +
       '<div class="printbox hidden" data-pay-box></div>' +
       '<div class="printbox hidden" data-offkey-box></div>' +
@@ -1029,6 +1033,18 @@
   $('list').addEventListener('change', async function(e){
     var cb = e.target.closest('.selc');
     if(cb){ if(cb.checked) SEL[cb.dataset.c] = true; else delete SEL[cb.dataset.c]; syncSelUI(); return; }
+    var sf = e.target.closest('[data-sframe-for]');
+    if(sf){
+      var file = sf.files && sf.files[0], scode = sf.dataset.sframeFor; sf.value = '';
+      if(!file) return;
+      try{
+        var url = await new Promise(function(res, rej){ var fr = new FileReader(); fr.onload = function(){ res(fr.result); }; fr.onerror = function(){ rej(new Error('Could not read that file.')); }; fr.readAsDataURL(file); });
+        var fname = file.name.replace(/\.[^/.]+$/, '').trim();
+        await api({ action: 'startframe', code: scode, image: url, name: fname });
+        toast('Starting frame saved: it appears in their Your frames the next time the booth opens'); load();
+      }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
+      return;
+    }
     var ts = e.target.closest('[data-theme-for]');
     if(ts){
       var code = ts.dataset.themeFor;
@@ -1047,6 +1063,12 @@
     try{
       if(a === 'toggle'){ if(OPEN[code]) closeRow(code); else await openRow(code); return; }
       if(a === 'copy'){ await navigator.clipboard.writeText(code); toast('Copied ' + code); return; }
+      if(a === 'sframe'){ b.parentNode.querySelector('[data-sframe-for]').click(); return; }
+      if(a === 'sframeoff'){
+        if(!confirm('Remove the starting frame from ' + code + '? Renters who already received it keep their copy.')) return;
+        await api({ action: 'startframe', code: code, image: null });
+        toast('Starting frame removed'); refresh(); return;
+      }
       if(a === 'portal'){ await navigator.clipboard.writeText(location.origin + '/lifetime/#' + code); toast('Copied the My Events link for ' + code); return; }
       if(a === 'rmdev'){
         var n = Number(b.dataset.n);
@@ -1218,6 +1240,13 @@
         var lo = !(LIC[code] && LIC[code].lockOpt);
         await api({ action: 'lockopt', code: code, lockOpt: lo });
         toast((lo ? 'Lock booth given' : 'Lock booth hidden') + ' — an open booth updates within ~5 minutes');
+        refresh();
+        return;
+      }
+      if(a === 'ipadopt'){
+        var io = !(LIC[code] && LIC[code].ipadOpt);
+        await api({ action: 'ipadopt', code: code, ipadOpt: io });
+        toast((io ? 'iPad camera turned on' : 'iPad camera turned off') + ' — the laptop app picks it up within ~10 minutes');
         refresh();
         return;
       }

@@ -55,12 +55,12 @@
   <a class="brand" href="/"><span class="mark"><i></i><i></i><i></i><i></i></span>photobooth4u</a>
   <p class="eyebrow">iPad guide</p>
   <h1>An iPad booth with a <em>DSLR</em></h1>
-  <p class="lead">An iPad can't talk to a DSLR over USB by itself (Safari and Chrome on iPad have no USB access). There are two ways around that. Pick one. Using an <b>Android tablet</b> instead? The photobooth4u Android app (1.0.29 or newer) controls a Nikon, Canon EOS or Sony Alpha plugged straight into the tablet&rsquo;s USB port: pick <b>Nikon / Canon / Sony camera over USB cable</b> in the Camera list. No laptop needed.</p>
+  <p class="lead">An iPad can't control a DSLR over USB by itself (Safari and Chrome on iPad have no USB access). To get the real shutter and flash you need a Windows laptop too. Without a laptop, an HDMI capture card gives live video only. Using an <b>Android tablet</b> instead? The photobooth4u Android app (1.0.29 or newer) controls a Nikon, Canon EOS or Sony Alpha plugged straight into the tablet&rsquo;s USB port: pick <b>Nikon / Canon / Sony camera over USB cable</b> in the Camera list. No laptop needed.</p>
 </div></header>
 
 <main class="wrap">
   <nav class="toc">
-    <a href="#laptop"><b>Option A</b><span>iPad + laptop camera</span></a>
+    <a href="#laptop"><b>Option A</b><span>iPad + laptop camera (needs app 1.0.37+)</span></a>
     <a href="#hdmi"><b>Option B</b><span>iPad + HDMI capture card</span></a>
     <a href="#fix"><b>Problems</b><span>If it doesn't work</span></a>
   </nav>
@@ -76,6 +76,19 @@
       <tr><td>Works offline</td><td>Yes, over the booth Wi-Fi</td><td>The web booth needs internet</td></tr>
       <tr><td>Cameras</td><td>Nikon, Canon EOS, Sony Alpha (the same as the laptop app)</td><td>Any camera with clean HDMI out</td></tr>
     </table>
+  </section>
+
+  <section class="part">
+    <p class="kicker">What you need</p>
+    <h2>An iPad plus a camera is not enough</h2>
+    <p class="why">To use the real DSLR (shutter, flash and camera settings) you need a <b>Windows laptop</b> as well. An iPad with a DSLR plugged straight into it, and nothing else, cannot control the camera.</p>
+    <table>
+      <tr><th>Setup</th><th>Real shutter and flash</th><th>Live view</th></tr>
+      <tr><td>iPad + DSLR over USB, no laptop</td><td>No</td><td>No</td></tr>
+      <tr><td>iPad + camera through an HDMI capture card, no laptop</td><td>No</td><td>Yes</td></tr>
+      <tr><td>iPad + Windows laptop with the DSLR (Option A)</td><td>Yes</td><td>Yes</td></tr>
+    </table>
+    <div class="callout"><h3>For Option A you need all of these</h3><p>The photobooth4u laptop app <b>1.0.37 or later</b> on a Windows laptop with an active code; a Nikon, Canon EOS or Sony Alpha plus its USB cable (Sony: USB Connection set to PC Remote); an iPad with Safari; and one Wi-Fi network that the laptop and the iPad are both on (a router, or the laptop's hotspot; no internet needed). Mac laptops can't use the USB camera for the iPad yet.</p></div>
   </section>
 
   <section class="part" id="laptop">

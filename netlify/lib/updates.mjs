@@ -10,6 +10,12 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.40', date: '2026-10-31' },
+  { version: '1.0.39', date: '2026-10-31' },
+  { version: '1.0.38', date: '2026-10-31' },
+  { version: '1.0.37', date: '2026-10-31' },
+  { version: '1.0.36', date: '2026-10-31' },
+  { version: '1.0.35', date: '2026-10-31' },
   { version: '1.0.34', date: '2026-10-30' },
   { version: '1.0.33', date: '2026-10-30' },
   { version: '1.0.32', date: '2026-10-30' },
@@ -46,7 +52,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.31', date: '2026-10-30', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.31/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.34', date: '2026-10-31', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.34/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -81,6 +87,55 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-31', title: 'Photo + GIF: guests can retake photos again', for: ['website', 'app'], app: '1.0.40',
+    items: [
+      'Laptop app 1.0.40 and Android app 1.0.34: with Photo + GIF, the Retake button is back, both between shots and on the final review screen.',
+      'The GIF is the first complete run of shots. A retake pressed between shots is in the GIF; a retake at the final review changes the photo but not the GIF.',
+      'GIF only still has no photo retakes, and Setup now says so.'
+    ]
+  },
+  {
+    date: '2026-10-31', title: 'Canon on Windows: the photo now lands on "Pose", and live view comes back after each shot', for: ['website', 'app'], app: '1.0.39',
+    items: [
+      'Laptop app 1.0.39: a Canon left on its self-timer (the beeps that get faster before the photo) is put back on single shot, so the picture is taken when the countdown ends instead of seconds later.',
+      'The booth learns how long the camera takes from the shutter command to the photo and fires that much earlier, so the saved photo is the pose guests held at "Pose".',
+      'After each photo the booth asks the camera for live view straight away and no longer flashes "Reconnecting" while it comes back. A photo that takes over 25 seconds is skipped and the live view picture is used.',
+      'Also turn off the beep in the camera menu (Beep: Disable) so guests do not mistake it for the countdown.'
+    ]
+  },
+  {
+    date: '2026-10-31', title: 'Android tablet: the Bluetooth printer list shows your receipt printer first', for: ['website'],
+    items: [
+      'Android app 1.0.32: when you connect a Bluetooth receipt printer, the list now shows the devices that look like printers first. Keyboards, headphones, speakers, watches and phones no longer appear.',
+      'A printer with an unusual name is under “Other paired devices” at the bottom of the list, so you can still pick it. If only one printer is found, the tablet connects to it by itself.',
+      'The printer must be paired first in Android Settings → Bluetooth, and be a standard (classic Bluetooth) receipt printer, 58 mm or 80 mm.'
+    ]
+  },
+  {
+    date: '2026-10-31', title: '360 desk: no more editing the same videos twice', for: ['website', 'app'], app: '1.0.38',
+    items: [
+      'Laptop app 1.0.38: a video you already edited stays marked as edited when you close and reopen the app, and "Edit new videos by themselves" no longer edits it again.',
+      'On the website, the 360 desk has a new Choose folder button that adds every video in a folder.'
+    ]
+  },
+  {
+    date: '2026-10-31', title: 'Camera: a frozen or black live view now recovers (Canon on Windows, and webcams)', for: ['website', 'app'], app: '1.0.36',
+    items: [
+      'Fixed: with a Canon (such as the EOS R50) on Windows, the live view could freeze and then go black during a session, with no message and no way back. Laptop app 1.0.36 starts the live view again properly whenever the camera ends it, when frames stop, and right after every photo.',
+      'The booth now watches the Windows camera too: after about 4 seconds without a new picture it asks the camera to start live view again and shows \u201cCamera not responding\u201d, and it reconnects by itself after 15 seconds.',
+      'A webcam whose picture stops while the camera is still \u201con\u201d (for example Canon\u2019s EOS Webcam Utility when the camera goes to sleep) is noticed after 8 seconds and reconnected. This part works on the website too.',
+      'If it still happens, open the Camera menu \u2192 Copy camera log right after and send it to us: it now says whether the picture stalled, what was tried and what came back.'
+    ]
+  },
+  {
+    date: '2026-10-31', title: 'Use a DSLR with an iPad: the iPad uses the laptop’s camera over Wi-Fi', for: ['website', 'app'], app: '1.0.37',
+    items: [
+      'Laptop app 1.0.37 (Windows): an iPad can now use the real DSLR shutter, live view and flash. Plug the Nikon, Canon EOS or Sony Alpha into the laptop, then in Setup → Share & start turn on “Let an iPad use this laptop’s camera”. The laptop shows an address and a 6-digit PIN: open it in Safari on the iPad (same Wi-Fi) and type the PIN. It works with no internet, and photos save on the laptop. An iPad with a camera and no laptop can’t do this.',
+      'No laptop? An iPad can still use a camera through an HDMI-to-USB capture card (no real shutter or flash). The new iPad guide at /how-to-ipad/ explains both ways.',
+      'About us: the three monthly plans now sit in one row, and the top menu has an FAQ link.'
+    ]
+  },
   {
     date: '2026-10-30', title: 'Flip book: sharper pages that differ from each other', for: ['website', 'app'], app: '1.0.34',
     items: [

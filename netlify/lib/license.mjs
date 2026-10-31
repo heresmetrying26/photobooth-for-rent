@@ -63,6 +63,7 @@ export function featuresOf(rec, deviceNo) {
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes, rec.print),
     traditional: !!rec.traditional, retakeOpt: !!rec.retakeOpt, typesOpt: !!rec.typesOpt, lockOpt: !!rec.lockOpt,
     gifOpt: rec.gifOpt !== false,
+    ipadOpt: rec.ipadOpt !== false,               // an iPad may use this laptop's camera over Wi-Fi (on unless Admin turns it off)
     extras: extrasOf(rec),
     vouchers: !!rec.payOpt,                       // offline: vouchers only (QR payments need internet)
     folderKey: rec.lifetime ? null : ((rec.folderName || rec.label || '').trim() || null),

@@ -987,6 +987,7 @@
   .desk-item .done.err{background:#d33;} .desk-item .done.wait{background:#b7791f;}
   .spin-send{margin:10px 18px 0; display:flex; gap:14px; align-items:center; font:600 13px 'Manrope',sans-serif; color:var(--ink-dim);}
   .spin-qr img{width:110px; height:110px; display:block;}
+  .spin-send[hidden], .spin-look[hidden]{display:none;}   /* (their display rules would otherwise show the laptop-only controls on the website) */
   .spin-sendtxt b{color:var(--ink);}
   .spin-card{width:min(520px,100%);} .spin-card video{position:static; inset:auto; width:100%; height:auto; max-height:46vh; object-fit:contain; background:#000; border-radius:12px; display:block;}   /* (a plain video is otherwise stretched over the whole page) */
   .desk-card, .qs-card{color:var(--ink);}   /* the dark theme makes page text light; these cards are white */
@@ -3167,7 +3168,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <label class="toggle-row" style="margin-top:6px;"><input type="checkbox" id="flipBackToggle" checked> Back card (&ldquo;Thank you!&rdquo;, last in the stack)</label>
           </div>
           <div id="gifOptions" style="display:none; margin-top:10px;">
-            <p class="panel-hint" style="margin:0;">GIF follows the session through the last shot, including timers and pauses. Speed is set automatically — 2× for sessions up to 24 s, 3× for longer ones.</p>
+            <p class="panel-hint" style="margin:0;">GIF follows the session through the first complete run of shots, including timers, pauses and any retake pressed between shots. Retakes at the final review change the photo but not the GIF. Speed is set automatically — 2× for sessions up to 24 s, 3× for longer ones.</p>
             <div class="stepper" style="margin-top:8px;"><span class="lbl">GIF frame</span><span class="ctl"><select id="gifLayoutSelect"><option value="solo" selected>Solo layout (your frame and title)</option><option value="follow">Chosen layout</option><option value="raw">Plain camera view</option></select></span></div>
             <p class="panel-hint" id="gifLayoutHint" style="margin:6px 0 0;">The GIF sits in the one-photo Solo layout with your frame, title and design, even when the photos use a strip. Guests should stand in the middle of the picture.</p>
           </div>
@@ -4039,10 +4040,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 <div class="desk-ov" id="spinOverlay" hidden role="dialog" aria-label="360 desk">
   <div class="desk-card">
     <div class="desk-head"><b>🎥 360 desk</b><span class="sp"></span><button type="button" class="desk-btn" id="spinClose">Close</button></div>
-    <div class="desk-drop" id="spinDrop">Drop the 360 videos here, or <button type="button" class="desk-btn" id="spinPick">Choose videos</button><input type="file" id="spinFile" accept="video/*" multiple hidden></div>
+    <div class="desk-drop" id="spinDrop">Drop the 360 videos here, or <button type="button" class="desk-btn" id="spinPick">Choose videos</button> <button type="button" class="desk-btn" id="spinPickDir">Choose folder</button><input type="file" id="spinFile" accept="video/*" multiple hidden><input type="file" id="spinDirFile" webkitdirectory multiple hidden></div>
     <div class="spin-send" id="spinSend" hidden>
       <div class="spin-qr" id="spinSendQr"></div>
       <div class="spin-sendtxt"><b>Send from the phone that recorded</b><br>Scan this with that phone on the booth Wi-Fi, then pick the video. Videos saved into the folder below also appear here by themselves.<br><span id="spinDirTxt"></span> <button type="button" class="desk-btn" id="spinDirBtn">Change folder</button><br><b>Recording tablet?</b> The 360 capture screen on the Android app sends its clips here. Type this address into it: <span class="spin-link" id="spinSendLink"></span> <button type="button" class="desk-btn" id="spinLinkCopy">Copy</button></div>
+    </div>
+    <div class="spin-send" id="spinWeb" hidden>
+      <div class="spin-qr" id="spinWebQr"></div>
+      <div class="spin-sendtxt"><b>📱 Videos from a phone</b><br><span id="spinWebNote">One moment…</span><div class="spin-link" id="spinWebLink"></div><button type="button" class="desk-btn" id="spinWebCopy">Copy link</button></div>
     </div>
     <div class="spin-look" id="spinLook" hidden>
       <div class="spin-row">
@@ -6001,7 +6006,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var dl = document.getElementById('driveFolderDrive');
     if(dl){ dl.href = '#'; dl.textContent = 'Open folder'; dl.style.display = ANDROID_LOCAL ? 'none' : ''; }
     document.getElementById('driveFolderAll').style.display = 'none';
-    document.getElementById('driveFolderQrCaption').textContent = url ? 'All photos (same Wi-Fi)' : 'No Wi-Fi yet: connect this ' + LOCAL_DEVICE + ' to the booth Wi-Fi (or turn on its hotspot) to show the guests\u2019 QR.';
+    document.getElementById('driveFolderQrCaption').textContent = url ? 'All photos (same Wi-Fi)' : 'No Wi-Fi yet: connect this ' + LOCAL_DEVICE + ' to the booth Wi-Fi (a pocket router or phone hotspot works, no internet needed) to show the guests\u2019 QR.';
     driveFolderStatus.style.display = 'block';
     driveFolderStatus.textContent = '\u2713 Folder ready' + (localFolderName ? ': ' + localFolderName : '') + '. Every photo saves on this ' + LOCAL_DEVICE + '.';
     if(typeof refreshSetupNav === 'function') refreshSetupNav();
@@ -6820,7 +6825,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     chips.forEach(function(c){ c.classList.toggle('active', c.dataset.outmode === outputMode); });
     var hints = {
       photo: 'Guests get a photo strip + QR code.',
-      gif:   'Guests get an animated GIF + QR code (no still photo).',
+      gif:   'Guests get an animated GIF + QR code (no still photo). Photo retakes are not available in GIF only mode.',
       both:  'Guests get both a photo strip AND an animated GIF — two QR codes appear.',
       flipbook: 'Guests record a short clip. It prints as a flip book (cut, stack, staple) and they get an animated GIF QR code.'
     };
@@ -7166,10 +7171,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   async function enumerateCameras(){
     const previous = cameraSelect.value;
-    if(!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return [];
-    let devices = await navigator.mediaDevices.enumerateDevices();
+    // An iPad / tablet on the laptop's plain-http address has no webcam API (browsers only give it to https pages),
+    // but can still use the laptop's USB camera, so carry on with an empty webcam list instead of stopping here.
+    const webcamApi = !!(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices);
+    if(!webcamApi && !usbCam.supported) return [];
+    let devices = webcamApi ? await navigator.mediaDevices.enumerateDevices() : [];
     let videoDevices = devices.filter(d => d.kind === 'videoinput');
-    if(!videoDevices.length || videoDevices.some(d => !d.label)){
+    if(webcamApi && (!videoDevices.length || videoDevices.some(d => !d.label))){
       try{
         // Need permission first to get labels
         const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -7262,6 +7270,23 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     });
     track.addEventListener('unmute', () => clearTimeout(muteTimer));
   }
+  // A camera that stops delivering pictures without ending its stream (a Canon in webcam mode that went to sleep, a loose
+  // cable) leaves the last frame on screen, then black. The track stays "live" and never says "muted", so count the
+  // frames the video really shows: none for 8 s = treat it as lost and reconnect.
+  let wcFrames = -1, wcAt = Date.now();
+  setInterval(function(){
+    try{
+      if(!streamActive || !currentStream || currentDeviceId === USB_CAM_ID || document.hidden || reconnectTimer || video.paused || !video.videoWidth){ wcAt = Date.now(); wcFrames = -1; return; }
+      const q = video.getVideoPlaybackQuality ? video.getVideoPlaybackQuality() : null;
+      const n = q && typeof q.totalVideoFrames === 'number' ? q.totalVideoFrames : Math.round(video.currentTime * 100);
+      if(n !== wcFrames){ wcFrames = n; wcAt = Date.now(); return; }
+      if(Date.now() - wcAt > 8000){
+        usbLog('webcam-stall', { frames: n, label: (cameraSelect.options[cameraSelect.selectedIndex] || {}).textContent || '' });
+        wcAt = Date.now(); wcFrames = -1;
+        cameraLost();
+      }
+    }catch(e){}
+  }, 1000);
   // A camera plugged in mid-event: pick it up if the booth has none, or if
   // it is the camera the operator chose before (not while photos are being taken).
   let deviceChangeTimer = null;
@@ -7361,7 +7386,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     helperSees: false, helperName: '', helperUp: false,
     camera: null, name: '', active: false, gen: 0, libGen: 0, vfOn: false, initing: null,
     canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null,
-    lastFrameAt: 0, shooting: false, stallShown: false, devId: ''
+    lastFrameAt: 0, shooting: false, stallShown: false, devId: '',
+    shutterLagMs: 0, graceUntil: 0                           // learned delay from shutter command to exposure; live view may pause until graceUntil after a photo
   };
 
   // ---- USB camera diagnostics ----
@@ -7723,6 +7749,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const USB_RETRY_MS = 250;        // pause between failed live view frames
   const USB_STALL_SHOW_MS = 2500;  // no frame this long: show "Reconnecting" over the frozen picture
   const USB_STALL_MS = 6000;       // no frame this long: the camera is treated as lost and the booth reconnects
+  // The Windows helper (Canon / Nikon / Sony over USB) answers more slowly, so it gets longer: after USB_HELPER_KICK_MS it is
+  // asked to start live view again (a Canon often leaves live view after a photo or a camera timeout), and only if that
+  // does not help the booth reconnects.
+  const USB_HELPER_KICK_MS = 3500, USB_HELPER_SHOW_MS = 4500, USB_HELPER_STALL_MS = 15000;
   async function usbLiveLoop(gen){
     let fails = 0;
     const fast = !usbCam.viaHelper;   // the Windows helper keeps its own, slower timing
@@ -7738,7 +7768,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         usbCam.ctx.drawImage(bmp, 0, 0); bmp.close();
         usbCam.hasFrame = true; fails = 0;
         usbCam.lastFrameAt = Date.now();
-        if(usbCam.stallShown){ usbCam.stallShown = false; cameraError.style.display = 'none'; }
+        usbCam.kicked = false;
+        if(usbCam.stallShown){ usbCam.stallShown = false; cameraError.style.display = 'none'; usbLog('stall-over', { camera: usbCam.name }); }
         await new Promise(r => setTimeout(r, 30));
       }catch(err){
         // This loop was stopped meanwhile (the camera was replaced or reported lost): not a new failure.
@@ -7768,12 +7799,20 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Watchdog: a camera that hangs mid-transfer never throws an error, so the loop above can't notice it.
   // Not while a photo is being taken (live view legitimately pauses then) or while the page is in the background.
   setInterval(function(){
-    if(!usbCam.active || !usbCam.camera || usbCam.viaHelper || !usbCam.hasFrame || usbCam.shooting) return;
+    if(!usbCam.active || !usbCam.camera || !usbCam.hasFrame || usbCam.shooting) return;
     if(document.hidden){ usbCam.lastFrameAt = Date.now(); return; }
-    const gap = Date.now() - usbCam.lastFrameAt;
-    if(gap > USB_STALL_MS){ usbDead(new Error('Live view stalled for ' + Math.round(gap / 1000) + ' s'), 'stalled'); return; }
-    if(gap > USB_STALL_SHOW_MS && !usbCam.stallShown && currentDeviceId === USB_CAM_ID){
+    // Right after a photo the camera takes a few seconds to bring live view back: not a stall, so no "Reconnecting".
+    if(Date.now() < usbCam.graceUntil){ usbCam.lastFrameAt = Math.max(usbCam.lastFrameAt, Date.now() - 1000); return; }
+    const gap = Date.now() - usbCam.lastFrameAt, helper = usbCam.viaHelper;
+    if(helper && gap > USB_HELPER_KICK_MS && !usbCam.kicked){
+      usbCam.kicked = true;
+      usbLog('stall-kick', { camera: usbCam.name, sinceFrameMs: gap });
+      usbViewfinderOn().catch(function(){});       // asks the helper to start live view again
+    }
+    if(gap > (helper ? USB_HELPER_STALL_MS : USB_STALL_MS)){ usbDead(new Error('Live view stalled for ' + Math.round(gap / 1000) + ' s'), 'stalled'); return; }
+    if(gap > (helper ? USB_HELPER_SHOW_MS : USB_STALL_SHOW_MS) && !usbCam.stallShown && currentDeviceId === USB_CAM_ID){
       usbCam.stallShown = true;
+      usbLog('stall-show', { camera: usbCam.name, sinceFrameMs: gap, viaHelper: !!helper });
       cameraErrorText.textContent = 'Camera not responding. Reconnecting…';
       cameraError.style.display = 'flex';
     }
@@ -7885,7 +7924,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         usbCam.ctx = usbCam.canvas.getContext('2d');
       }
       if(!usbCam.vfOn){ await usbSetPhotoSize(); await usbSonyPcOnly(); await usbViewfinderOn(); }
-      usbCam.active = true; usbCam.hasFrame = false; usbCam.lastErr = null;
+      usbCam.active = true; usbCam.hasFrame = false; usbCam.lastErr = null; usbCam.kicked = false;
       const gen = ++usbCam.gen;
       usbLiveLoop(gen);
       const t0 = Date.now();
@@ -8485,8 +8524,28 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Webcam: the frame above is the photo. USB camera: that live-view frame
   // goes in first (so a failed shot never leaves a gap), then the camera's
   // real photo replaces it, cropped like the live view and sized for print.
-  const USB_CAPTURE_MAX_MS = 60000;   // longest wait for the camera's photo before the live view frame is used
+  const USB_CAPTURE_MAX_MS = 25000;   // longest wait for the camera's photo before the live view frame is used (a photo this late is the wrong moment anyway)
+  const USB_GRACE_MS = 10000;         // after a photo, live view may take this long to come back without "Reconnecting"
+  const USB_LEAD_MAX = 1500;          // the shutter is fired at most this much before "Pose"
   const USB_SHOT_MAX = 3000;   // longest side in px: a full 4R box at 300 dpi even after the box's crop
+  // After a photo (helper cameras): hide any "Reconnecting" for a while, ask for live view again at once (a Canon leaves
+  // it after every photo) and learn how long the camera took from the shutter command to the exposure.
+  function usbAfterShot(){
+    if(!usbCam.viaHelper) return;
+    usbCam.graceUntil = Date.now() + USB_GRACE_MS;
+    if(usbCam.stallShown){ usbCam.stallShown = false; cameraError.style.display = 'none'; }
+    try{ usbCam.kicked = true; Promise.resolve(usbViewfinderOn()).catch(function(){}); }catch(e){}
+    fetch(CAM_HELPER + '/camera', { cache: 'no-store', signal: AbortSignal.timeout(8000) }).then(r => r.json()).then(j => {
+      const ms = Number(j && j.shutterMs) || 0;
+      if(ms > 0) usbCam.shutterLagMs = usbCam.shutterLagMs ? Math.round(usbCam.shutterLagMs * 0.5 + ms * 0.5) : ms;
+    }).catch(function(){});
+  }
+  // How much earlier than "Pose + 0.6 s" the shutter command goes out. The lag includes saving the photo, so some of it is
+  // taken off (the exposure itself is a bit before the camera reports the file).
+  function usbShutterLead(){
+    if(!(usbCam.viaHelper && usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return 0;
+    return Math.max(0, Math.min(USB_LEAD_MAX, usbCam.shutterLagMs - 200));
+  }
   async function captureShot(index){
     captureFrame(index);
     if(!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
@@ -8498,7 +8557,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const file = await Promise.race([
         usbCam.camera.captureImageAsFile(),
         new Promise((_, rej) => { capTimer = setTimeout(() => { const e = new Error('The camera took too long to send the photo'); e.helperMsg = 'The camera took too long to send the photo.'; rej(e); }, USB_CAPTURE_MAX_MS); })
-      ]).finally(() => { clearTimeout(capTimer); usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); });
+      ]).finally(() => { clearTimeout(capTimer); usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); usbAfterShot(); });
       const bmp = await createImageBitmap(file);
       const sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;   // whole photo; the layout box crops it once
       const k = Math.min(1, USB_SHOT_MAX / Math.max(sw, sh));
@@ -8516,7 +8575,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(shotCanvases === shots){ shotCanvases[index] = c; updateFilmTrack(); }
     }catch(err){
       console.error('USB shot failed:', err);
-      usbCam.shooting = false; usbCam.lastFrameAt = Date.now();
+      usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); usbAfterShot();
       usbLog('shot-fail', usbErrInfo(err));
       showToast(err && err.helperMsg ? err.helperMsg + ' The live view frame was used.' : 'The camera photo didn\u2019t come through (check focus, and that the camera saves JPEG), so the live view frame was used.', 6000);
       if(usbIsCritical(err)) usbDead(err);
@@ -8580,11 +8639,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // shows more than the whole seconds chosen (5.5 s starts at "5").
   // Timestamps, not frame counts, so it stays accurate even if the window
   // is in the background (guest screen in front).
-  function runCountdown(totalSec, index){
+  function runCountdown(totalSec, index, earlyMs, onEarly){
     const total = totalSec * 1000;
     const cap = Math.max(1, Math.floor(totalSec));
     const start = performance.now();
-    let shown = null, voiced = null;
+    let shown = null, voiced = null, early = !(earlyMs > 0 && onEarly);
     cdShot.textContent = shotsNeeded() > 1 ? ('Shot ' + (index + 1) + ' of ' + shotsNeeded()) : '';
     return new Promise(resolve => {
       const step = () => {
@@ -8595,6 +8654,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         if(sess && sess.cancelled){ clearInterval(timer); try{ voiceStop(); }catch(e){} resolve(); return; }
         // The voice runs a moment ahead of the number so the word lands on it.
         const vn = Math.min(cap, Math.max(1, Math.ceil((left - VOICE_LEAD) / 1000)));
+        if(!early && left <= earlyMs){ early = true; try{ onEarly(); }catch(e){} }   // camera with a shutter lag: fire before the countdown ends
         if(left > 0 && vn !== voiced){ voiced = vn; try{ voiceNumber(vn); }catch(e){} }
         if(n !== shown){ shown = n; popNum(n, false); try{ fxTick(n); }catch(e){} }
         guestCall('tick', String(n), false, frac, cdShot.textContent);
@@ -8610,7 +8670,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     applyStageAspect();   // frame this shot's box
     const extra = index === 0 && !noPause ? firstExtraSec : 0;
     try{ voiceReady(index, !!noPause, timerSec + extra); }catch(e){}
-    await runCountdown(timerSec + extra, index);
+    // The photo is wanted 0.6 s after "Pose". A camera that needs `lead` ms between the shutter command and the exposure
+    // gets the command that much earlier: after "Pose" if lead < 0.6 s, else during the last seconds of the countdown.
+    const lead = usbShutterLead();
+    let shot = null;
+    const fireNow = () => { if(!shot) shot = captureShot(index); };   // webcam: instant; USB camera: fires the real shutter
+    await runCountdown(timerSec + extra, index, lead > 600 ? lead - 600 : 0, fireNow);
     if(sess && sess.cancelled) return;
     popNum('Pose', true);
     cdBar.style.strokeDashoffset = '100';
@@ -8619,13 +8684,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // Screen flash: the screen goes white ~0.35 s before the photo, so the
     // camera has time to adjust to the extra light on the faces.
     const lit = fx.flash;
-    if(lit){ await wait(250); if(sess && sess.cancelled) return; screenFlashOn(); await wait(350); }
+    const leadTimer = lead > 0 && lead <= 600 ? setTimeout(fireNow, 600 - lead) : null;
+    if(lit){ await wait(250); if(sess && sess.cancelled){ clearTimeout(leadTimer); return; } screenFlashOn(); await wait(350); }
     else await wait(600);
+    clearTimeout(leadTimer);
     if(sess && sess.cancelled){ if(lit) screenFlashOff(); return; }
     try{ fxShutter(); }catch(e){}
     flashOverlay.classList.add('flash-active');
     guestCall('flash');
-    const shot = captureShot(index);   // webcam: instant; USB camera: fires the real shutter
+    fireNow();   // already fired above when the camera has a shutter lag
     await wait(180);
     flashOverlay.classList.remove('flash-active');
     if(lit) setTimeout(screenFlashOff, 120);
@@ -8666,7 +8733,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var sess = null;
   // Retake can be switched off per event, when the admin has enabled that option for this code.
   let allowRetake = true;
-  function retakesAllowed(){ var gifChosen = isGifAllowed() && (outputMode === 'gif' || outputMode === 'both'); return !gifChosen && (!(window.__PB && window.__PB.retakeOpt) || allowRetake); }
+  function retakesAllowed(){ var gifOnly = isGifAllowed() && outputMode === 'gif'; return !gifOnly && (!(window.__PB && window.__PB.retakeOpt) || allowRetake); }
   function refreshRetakeUI(){
     const on = !!(window.__PB && window.__PB.retakeOpt);
     const row = document.getElementById('allowRetakeRow'), hint = document.getElementById('allowRetakeHint'), t = document.getElementById('allowRetakeToggle');
@@ -13927,7 +13994,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.playsInline = true;
       var src = spinSrc(it, !it.viewOrig); if(src) v.src = src + '#t=0.1';
       b.appendChild(v);
-      var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = it.name + ' · ' + spinMb(it.size); b.appendChild(nm);
+      var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = it.name + (it.size ? ' · ' + spinMb(it.size) : ''); b.appendChild(nm);
       var tag = spinTag(it);
       if(tag){ var dn = document.createElement('span'); dn.className = 'done ' + tag[1]; dn.textContent = tag[0]; b.appendChild(dn); }
       spinGrid.appendChild(b);
@@ -13954,6 +14021,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       spinPoll();
     }catch(e){ showToast('Couldn’t add that video (' + (e.message || e) + ').', 4500); }
   }
+  // Finished edits are remembered (by clip name + time) so reopening the app does not edit the same clips again.
+  var SPIN_DONE_KEY = 'pb_spin_done';
+  function spinDoneAll(){ try{ return JSON.parse(localStorage.getItem(SPIN_DONE_KEY) || '{}') || {}; }catch(e){ return {}; } }
+  function spinDoneSet(key, out){
+    try{
+      var all = spinDoneAll(); all[key] = { out: out, t: Date.now() };
+      var ks = Object.keys(all); if(ks.length > 400){ ks.sort(function(a, b){ return all[a].t - all[b].t; }).slice(0, ks.length - 400).forEach(function(k){ delete all[k]; }); }
+      localStorage.setItem(SPIN_DONE_KEY, JSON.stringify(all));
+    }catch(e){}
+  }
+  async function spinDoneStill(rec){
+    try{ if(!rec || !rec.out || !spinInfo || !spinInfo.previewBase) return false; var r = await fetch(spinInfo.previewBase + '/edited/' + encodeURIComponent(rec.out.replace(/^edited\//, '')), { method: 'HEAD' }); return r.ok; }catch(e){ return false; }
+  }
   async function spinPoll(){
     if(!spinDesktop()) return;
     try{
@@ -13964,7 +14044,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         var prev = spinPrev[key]; spinPrev[key] = f.size;
         if(prev !== f.size || f.size < 1024) continue;           // still being copied: wait for the next look
         spinSeen[key] = true;
-        var it = { id: ++spinSeq, src: 'inbox', name: f.name, size: f.size, status: 'new', url: '' };
+        var it = { id: ++spinSeq, src: 'inbox', name: f.name, size: f.size, key: key, status: 'new', url: '' };
+        var rec = spinDoneAll()[key];
+        if(rec){
+          if(!spinInfo || !spinInfo.previewBase) try{ spinInfo = await window.pb4u.spinInfo(); }catch(e2){}
+          if(await spinDoneStill(rec)){ it.edited = rec.out; it.status = 'edited'; spinQueue.unshift(it); continue; }   // already edited: show it as edited, do not edit again
+        }
         spinQueue.unshift(it); fresh.push(it);
       }
       if(fresh.length){
@@ -13992,10 +14077,58 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!spinTimer) spinTimer = setInterval(spinPoll, 2500);
     spinPoll();
   }
+  // ---- the website: a phone sends its 360 video to the event folder; the booth picks it up from there ----
+  var spinWebTimer = null, spinWebLinkUrl = '', spinWebSeen = {};
+  function spinWebAvailable(){ return !spinDesktop() && !LOCALSHARE; }
+  function spinWebFolderId(){ var m = /\/folders\/([A-Za-z0-9_-]{10,80})/.exec(getCachedFolderUrl() || ''); return m ? m[1] : ''; }
+  function spinWebShow(){
+    var box = document.getElementById('spinWeb'); if(!box) return;
+    box.hidden = !spinWebAvailable(); if(box.hidden) return;
+    var qr = document.getElementById('spinWebQr'), note = document.getElementById('spinWebNote'), lnk = document.getElementById('spinWebLink');
+    qr.innerHTML = ''; lnk.textContent = ''; spinWebLinkUrl = '';
+    if(!driveReady()){ note.textContent = 'Set the event folder in Setup → Share first. Videos sent from a phone are saved in that folder.'; return; }
+    note.textContent = 'One moment…';
+    getUploadTicket(rawFolderKey()).then(async function(ticket){
+      if(!spinWebFolderId()){ try{ await resolveDriveFolder(); }catch(e){} }
+      var until = ticketCache && ticketCache.exp ? new Date(ticketCache.exp) : null;
+      var ev = ''; try{ ev = (labelInput.value || '').trim(); }catch(e){}
+      spinWebLinkUrl = location.origin + '/rove360/#t=' + ticket + (ev ? '&e=' + encodeURIComponent(ev) : '');
+      var im = document.createElement('img'); im.src = qrImageUrl(spinWebLinkUrl); im.alt = 'QR code to send a video'; qr.appendChild(im);
+      note.textContent = 'Scan with the phone that recorded the 360 video (any internet), then choose the video (up to 28 MB). It appears in the list below within about 10 seconds.' + (until ? ' The link works until ' + until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '.' : '');
+      lnk.textContent = spinWebLinkUrl.replace(/#.*$/, '');
+      spinWebSchedule();
+    }).catch(function(){ note.textContent = 'Could not get permission to receive videos. Check the internet and try again.'; });
+  }
+  async function spinWebPoll(){
+    var id = spinWebFolderId(); if(!id || navigator.onLine === false || document.visibilityState === 'hidden') return;
+    var r = await fetch('/api/gallery?f=' + encodeURIComponent(id) + '&spin=1&v=' + Math.floor(Date.now() / 8000));
+    var j = await r.json().catch(function(){ return null; });
+    if(!j || !j.ok || !Array.isArray(j.files)) return;
+    var fresh = [];
+    j.files.slice().sort(function(a, b){ return a.t - b.t; }).forEach(function(f){ if(f && f.id && !spinWebSeen[f.id]){ spinWebSeen[f.id] = 1; fresh.push(f); } });
+    var url = shareUrlFor(getCachedFolderUrl()) || '';
+    fresh.forEach(function(f){
+      spinQueue.unshift({ id: ++spinSeq, src: 'drive', driveId: f.id, name: f.name || 'video', size: 0, status: 'shared', url: url });
+    });
+    if(fresh.length){
+      spinRender();
+      if(spinOverlay.hidden){ spinNew += fresh.length; document.getElementById('spinFab').dataset.n = String(spinNew); }
+      else showToast(fresh.length + ' video' + (fresh.length === 1 ? '' : 's') + ' arrived from a phone.', 3500);
+    }
+  }
+  function spinWebSchedule(){
+    clearTimeout(spinWebTimer);
+    if(!spinWebAvailable() || !spinWebLinkUrl) return;
+    spinWebTimer = setTimeout(async function(){ try{ await spinWebPoll(); }catch(e){} spinWebSchedule(); }, spinOverlay.hidden ? 30000 : 8000);
+  }
+  document.getElementById('spinWebCopy').addEventListener('click', function(){
+    if(!spinWebLinkUrl) return;
+    try{ navigator.clipboard.writeText(spinWebLinkUrl).then(function(){ showToast('Link copied.', 2000); }); }catch(e){}
+  });
   function openSpin(){
     if(!extraOn('spin360')) return;
     if(state === 'capturing'){ showToast('Finish the session first.', 3000); return; }
-    spinOverlay.hidden = false; spinNew = 0; document.getElementById('spinFab').dataset.n = '0'; spinRender(); spinSetupInfo();
+    spinOverlay.hidden = false; spinNew = 0; document.getElementById('spinFab').dataset.n = '0'; spinRender(); spinSetupInfo(); spinWebShow();
   }
   function closeSpin(){ spinOverlay.hidden = true; closeSpinModal(); }
 
@@ -14551,7 +14684,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         var st = await window.pb4u.spinJob(j.id);
         if(!st) throw new Error('The editing stopped unexpectedly');
         it.pct = st.pct || 0; spinTagUpdate(it); spinModalUpdate();
-        if(st.state === 'done'){ it.edited = st.out; it.status = 'edited'; break; }
+        if(st.state === 'done'){ it.edited = st.out; it.status = 'edited'; if(it.key) spinDoneSet(it.key, st.out); break; }
         if(st.state === 'error') throw new Error(st.error || 'The video could not be edited');
         if(st.state === 'cancelled'){ it.status = 'new'; it.job = null; spinRender(); spinModalUpdate(); return; }
       }
@@ -14599,13 +14732,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       : it.status === 'error' ? (it.err || 'Could not do that.') + ' You can try again.'
       : it.src === 'file' && !spinDesktop() ? 'Shares the original video (up to 28 MB' + (ANDROID_LOCAL ? ' on this tablet).' : ' on the website).')
       : 'Shares the ' + what + ' video.';
-    btn.disabled = it.status === 'sharing' || editing;
+    btn.hidden = it.src === 'drive'; btn.disabled = it.status === 'sharing' || editing;
     btn.textContent = it.status === 'shared' || it.status === 'queued' ? 'Share again' : 'Share + QR';
   }
   function spinOpenItem(it){
     spinCur = it;
     var v = document.getElementById('spinVideo'), src = spinSrc(it, !it.viewOrig);
-    v.pause(); v.src = src || ''; v.load();
+    v.pause(); v.src = src || ''; v.load(); v.style.display = it.src === 'drive' ? 'none' : '';
     document.getElementById('spinTrimA').value = it.trimA || ''; document.getElementById('spinTrimB').value = it.trimB || '';
     document.getElementById('spinModal').hidden = false;
     spinModalUpdate();
@@ -14615,7 +14748,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     document.getElementById('spinModal').hidden = true; spinCur = null;
   }
   async function spinDoShare(it){
-    if(it.status === 'sharing' || it.status === 'editing') return;
+    if(it.src === 'drive' || it.status === 'sharing' || it.status === 'editing') return;      // a phone's video is already in the event folder
     it.status = 'sharing'; it.err = ''; spinRender(); spinModalUpdate();
     try{
       var ext = (/\.[a-z0-9]+$/i.exec(it.name) || ['.mp4'])[0].toLowerCase();
@@ -14639,6 +14772,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   document.getElementById('spinClose').addEventListener('click', closeSpin);
   document.getElementById('spinModalClose').addEventListener('click', closeSpinModal);
   document.getElementById('spinPick').addEventListener('click', function(){ document.getElementById('spinFile').click(); });
+  document.getElementById('spinPickDir').addEventListener('click', function(){ document.getElementById('spinDirFile').click(); });
+  document.getElementById('spinDirFile').addEventListener('change', function(e){
+    var vids = [].filter.call(e.target.files || [], function(f){ return /^video\//.test(f.type) || /\.(mp4|mov|m4v|webm)$/i.test(f.name || ''); });
+    if(!vids.length) showToast('No videos in that folder.', 3500); else { vids.sort(function(a, b){ return a.name < b.name ? -1 : 1; }).forEach(spinAddFile); showToast(vids.length + ' video' + (vids.length === 1 ? '' : 's') + ' added.', 2500); }
+    e.target.value = '';
+  });
   document.getElementById('spinFile').addEventListener('change', function(e){ [].forEach.call(e.target.files || [], spinAddFile); e.target.value = ''; });
   document.getElementById('spinClear').addEventListener('click', function(){ spinQueue.forEach(function(i){ if(i.objUrl) try{ URL.revokeObjectURL(i.objUrl); }catch(e){} }); spinQueue = []; spinRender(); });
   document.getElementById('spinDirBtn').addEventListener('click', async function(){
@@ -17323,7 +17462,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       accent: accent, overlay: overlay ? Object.assign({}, overlay) : null, logo: logo ? Object.assign({}, logo) : null,
       decor: decor.map(function(d){ return { src: d.src, x: Math.round(d.x * 1000) / 1000, y: Math.round(d.y * 1000) / 1000, s: Math.round(d.s * 1000) / 1000, r: Math.round(d.r || 0) }; }),
       myProps: myProps.slice(),
-      frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet,
+      frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet, sfDone: startFrameDone,
       frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
       titleStyle: titleStyle, kicker: kickerText, upper: titleUpper, art: themeArt.slice(), artPal: Object.assign({}, artPal),
       printPrefs: Object.assign({}, printPrefs),
@@ -17614,7 +17753,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   async function loadSetup(carryOver){
     var key = localSetupKey();
     setupLoadedKey = key;
-    var local = null, localImg = null;
+    var local = null, localImg = null, sfOffer = null, sfFresh = false;
     try{ local = JSON.parse(localStorage.getItem(key) || 'null'); localImg = localStorage.getItem(key + '#img'); }catch(e){}
     if(local && local.settings){
       applySetup(local.settings, localImg);
@@ -17625,6 +17764,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       try{
         var j = await fetchServerSetup();
         if(setupLoadedKey !== key) return;
+        sfOffer = j.startFrame || null; sfFresh = !j.settings && !local;
         if(j.settings && (!local || (j.updatedAt || 0) > (local.updatedAt || 0))){
           applySetup(j.settings, j.image || null);
           lastSavedJson = JSON.stringify(j.settings);
@@ -17645,6 +17785,23 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       lastSavedJson = null; setupReady = true; saveSetupNow();
     }
     setupReady = true;
+    if(sfOffer && setupLoadedKey === key) await applyStartFrame(sfOffer, sfFresh);
+  }
+  // A frame Admin made for this renter: added once to Your frames (and used as the layout on a brand-new setup).
+  // The renter can delete it; it is not added again because the setup remembers it (sfDone).
+  async function applyStartFrame(sf, fresh){
+    if(!sf || !/^a[A-Za-z0-9]{8,32}$/.test(sf.id || '') || startFrameDone === sf.id || frameById(sf.id)) return;
+    try{
+      await ensureAssets([sf.id]);
+      if(!ASSETS[sf.id]) return;                              // offline: try again next time
+      var img = await loadImageUrl(ASSETS[sf.id].url);
+      var spots = detectSpots(img);
+      startFrameDone = sf.id;
+      if(!spots.length || (spots.length === 1 && spots[0].w * spots[0].h > 0.75) || myFrames.length >= MAX_FRAMES){ scheduleSetupSave(); return; }
+      myFrames.push({ id: sf.id, name: String(sf.name || '').slice(0, 40) || undefined, w: img.width, h: img.height, spots: spots });
+      if(fresh){ activeFrameId = sf.id; setupLayout = 'myframe'; layoutPicked = true; if(chooseIds.indexOf(sf.id) < 0) chooseIds.push(sf.id); }
+      framesChanged(fresh ? { layout: 'myframe' } : {});
+    }catch(e){ /* keep going without it */ }
   }
   // Any change in Setup saves (debounced). The Drive folder box is excluded:
   // for lifetime codes it switches to that event's own saved setup instead.
@@ -18676,6 +18833,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // =====================================================================
   var myFrames = [];            // [{ id, w, h, spots: [{ x, y, w, h }] }]  (spots as 0-1 of the frame)
   var activeFrameId = null;     // the frame used by the "My frame" layout
+  var startFrameDone = '';      // id of the Admin-made starting frame this setup already received
   var sheet = { pattern: 'tall-one-two-strips', items: [] };   // items: [{ f, cx, cy, s, r }] (0-1 of the sheet; s = width share)
   // 2 or more frames ticked: 'choose' = guests pick one before each session,
   // 'sheet' = all of them together on one sheet of sheetSize paper.
@@ -19941,6 +20099,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         return o;
       }), copy: typeof f.copy === 'boolean' ? f.copy : undefined };
     });
+    startFrameDone = okId(s.sfDone) ? s.sfDone : '';
     activeFrameId = okId(s.activeFrame) && frameById(s.activeFrame) ? s.activeFrame : (myFrames[0] ? myFrames[0].id : null);
     setupActiveFrameId = activeFrameId;
     // Older setups with several frames were always "all on one sheet".
@@ -20733,7 +20892,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       lan.className = 'panel-hint' + (base ? '' : ' bad');
       lan.textContent = base
         ? 'Guests open their photos at ' + base + ' ✓ Their phones must be on the same Wi-Fi as this tablet.'
-        : 'This tablet isn’t on a Wi-Fi network, so guests can’t open their photos yet. Connect it to the booth Wi-Fi router, or turn on its hotspot (Settings → Network → Hotspot).';
+        : 'This tablet isn’t on a Wi-Fi network, so guests can’t open their photos yet. Connect it to the booth Wi-Fi router or a phone hotspot (no internet needed), or turn on this tablet’s own hotspot (Settings → Network → Hotspot).';
       // The event's QR points at the tablet's address: refresh it when the address changes.
       if(!first){ try{ if(rawFolderKey()) resolveDriveFolder(); }catch(e){} }
     }
@@ -20765,7 +20924,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       lan.className = 'panel-hint' + (info.share ? '' : ' bad');
       lan.textContent = info.share
         ? 'Guests open their photos at ' + info.share + ' \u2713 Their phones must be on the same Wi-Fi as this laptop.'
-        : 'This laptop isn\u2019t on a Wi-Fi network, so guests can\u2019t open their photos yet. Connect it to the booth Wi-Fi router, or turn on its hotspot (Windows: Settings \u2192 Network \u2192 Mobile hotspot).';
+        : 'This laptop isn\u2019t on a Wi-Fi network, so guests can\u2019t open their photos yet. Connect it to a pocket Wi-Fi router or a phone hotspot (no internet needed). Windows\u2019 own Mobile hotspot only works once the laptop is connected to a network.';
       var L = info.licence || {}, parts = [];
       if(L.renter) parts.push(L.renter);
       if(L.code) parts.push(L.code);
@@ -20825,7 +20984,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var ibox = document.getElementById('deskIpadBox'), ion = document.getElementById('deskIpadOn'), itxt = document.getElementById('deskIpad'), irow = document.getElementById('deskIpadRow');
       var cur = null;
       function irender(i){
-        cur = i; ibox.style.display = '';
+        cur = i;
+        if(i.allowed === false){ ibox.style.display = 'none'; return; }       // Admin turned it off for this code
+        ibox.style.display = '';
         ion.checked = !!i.on; irow.style.display = i.on ? '' : 'none';
         itxt.className = 'panel-hint' + (i.on && !i.url ? ' bad' : '');
         if(!i.on) itxt.textContent = 'Off. Turn it on to use this laptop’s camera (real shutter, live view and flash) from an iPad on the same Wi-Fi.';

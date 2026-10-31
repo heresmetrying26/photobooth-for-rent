@@ -17430,7 +17430,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       accent: accent, overlay: overlay ? Object.assign({}, overlay) : null, logo: logo ? Object.assign({}, logo) : null,
       decor: decor.map(function(d){ return { src: d.src, x: Math.round(d.x * 1000) / 1000, y: Math.round(d.y * 1000) / 1000, s: Math.round(d.s * 1000) / 1000, r: Math.round(d.r || 0) }; }),
       myProps: myProps.slice(),
-      frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet,
+      frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet, sfDone: startFrameDone,
       frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
       titleStyle: titleStyle, kicker: kickerText, upper: titleUpper, art: themeArt.slice(), artPal: Object.assign({}, artPal),
       printPrefs: Object.assign({}, printPrefs),
@@ -17721,7 +17721,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   async function loadSetup(carryOver){
     var key = localSetupKey();
     setupLoadedKey = key;
-    var local = null, localImg = null;
+    var local = null, localImg = null, sfOffer = null, sfFresh = false;
     try{ local = JSON.parse(localStorage.getItem(key) || 'null'); localImg = localStorage.getItem(key + '#img'); }catch(e){}
     if(local && local.settings){
       applySetup(local.settings, localImg);
@@ -17732,6 +17732,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       try{
         var j = await fetchServerSetup();
         if(setupLoadedKey !== key) return;
+        sfOffer = j.startFrame || null; sfFresh = !j.settings && !local;
         if(j.settings && (!local || (j.updatedAt || 0) > (local.updatedAt || 0))){
           applySetup(j.settings, j.image || null);
           lastSavedJson = JSON.stringify(j.settings);
@@ -17752,6 +17753,23 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       lastSavedJson = null; setupReady = true; saveSetupNow();
     }
     setupReady = true;
+    if(sfOffer && setupLoadedKey === key) await applyStartFrame(sfOffer, sfFresh);
+  }
+  // A frame Admin made for this renter: added once to Your frames (and used as the layout on a brand-new setup).
+  // The renter can delete it; it is not added again because the setup remembers it (sfDone).
+  async function applyStartFrame(sf, fresh){
+    if(!sf || !/^a[A-Za-z0-9]{8,32}$/.test(sf.id || '') || startFrameDone === sf.id || frameById(sf.id)) return;
+    try{
+      await ensureAssets([sf.id]);
+      if(!ASSETS[sf.id]) return;                              // offline: try again next time
+      var img = await loadImageUrl(ASSETS[sf.id].url);
+      var spots = detectSpots(img);
+      startFrameDone = sf.id;
+      if(!spots.length || (spots.length === 1 && spots[0].w * spots[0].h > 0.75) || myFrames.length >= MAX_FRAMES){ scheduleSetupSave(); return; }
+      myFrames.push({ id: sf.id, name: String(sf.name || '').slice(0, 40) || undefined, w: img.width, h: img.height, spots: spots });
+      if(fresh){ activeFrameId = sf.id; setupLayout = 'myframe'; layoutPicked = true; if(chooseIds.indexOf(sf.id) < 0) chooseIds.push(sf.id); }
+      framesChanged(fresh ? { layout: 'myframe' } : {});
+    }catch(e){ /* keep going without it */ }
   }
   // Any change in Setup saves (debounced). The Drive folder box is excluded:
   // for lifetime codes it switches to that event's own saved setup instead.
@@ -18783,6 +18801,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // =====================================================================
   var myFrames = [];            // [{ id, w, h, spots: [{ x, y, w, h }] }]  (spots as 0-1 of the frame)
   var activeFrameId = null;     // the frame used by the "My frame" layout
+  var startFrameDone = '';      // id of the Admin-made starting frame this setup already received
   var sheet = { pattern: 'tall-one-two-strips', items: [] };   // items: [{ f, cx, cy, s, r }] (0-1 of the sheet; s = width share)
   // 2 or more frames ticked: 'choose' = guests pick one before each session,
   // 'sheet' = all of them together on one sheet of sheetSize paper.
@@ -20048,6 +20067,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         return o;
       }), copy: typeof f.copy === 'boolean' ? f.copy : undefined };
     });
+    startFrameDone = okId(s.sfDone) ? s.sfDone : '';
     activeFrameId = okId(s.activeFrame) && frameById(s.activeFrame) ? s.activeFrame : (myFrames[0] ? myFrames[0].id : null);
     setupActiveFrameId = activeFrameId;
     // Older setups with several frames were always "all on one sheet".

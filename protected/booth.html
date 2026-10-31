@@ -1144,6 +1144,7 @@
   .bt-gtab.on{background:#ffd36b; color:#2a1d00;}
   .bt-pick-btn img{width:100%; height:auto; aspect-ratio:auto; display:block; border-radius:8px;}
   .bt-pick-cancel{align-self:center; min-height:48px; padding:0 28px; border:0; border-radius:14px; font:800 15px 'Manrope',sans-serif; cursor:pointer;}
+  #btFlipBtn[hidden]{display:none !important;}   /* .action-btn is display:flex, which would otherwise beat the hidden attribute */
   .bt-chips{display:block;}
   .bt-chip-g{margin:14px 0 6px; font:800 11px 'Manrope',sans-serif; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-dim);}
   .bt-chip-row{display:flex; gap:8px; flex-wrap:wrap;}
@@ -9925,7 +9926,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return { ri: ri, hp: hp, stats: [['ATK', stat()], ['DEF', stat()], ['SPD', stat()]] };
   }
   function btHasBack(){
-    if(boothType !== 'card' || !btCfg.card.back.on) return false;
+    if(!typesAllowed() || boothType !== 'card' || !btCfg.card.back.on) return false;
     const pk = btPick('card');
     return pk.f ? !!pk.f.back : true;
   }

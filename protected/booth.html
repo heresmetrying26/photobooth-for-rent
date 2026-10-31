@@ -6937,6 +6937,23 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     });
     track.addEventListener('unmute', () => clearTimeout(muteTimer));
   }
+  // A camera that stops delivering pictures without ending its stream (a Canon in webcam mode that went to sleep, a loose
+  // cable) leaves the last frame on screen, then black. The track stays "live" and never says "muted", so count the
+  // frames the video really shows: none for 8 s = treat it as lost and reconnect.
+  let wcFrames = -1, wcAt = Date.now();
+  setInterval(function(){
+    try{
+      if(!streamActive || !currentStream || currentDeviceId === USB_CAM_ID || document.hidden || reconnectTimer || video.paused || !video.videoWidth){ wcAt = Date.now(); wcFrames = -1; return; }
+      const q = video.getVideoPlaybackQuality ? video.getVideoPlaybackQuality() : null;
+      const n = q && typeof q.totalVideoFrames === 'number' ? q.totalVideoFrames : Math.round(video.currentTime * 100);
+      if(n !== wcFrames){ wcFrames = n; wcAt = Date.now(); return; }
+      if(Date.now() - wcAt > 8000){
+        usbLog('webcam-stall', { frames: n, label: (cameraSelect.options[cameraSelect.selectedIndex] || {}).textContent || '' });
+        wcAt = Date.now(); wcFrames = -1;
+        cameraLost();
+      }
+    }catch(e){}
+  }, 1000);
   // A camera plugged in mid-event: pick it up if the booth has none, or if
   // it is the camera the operator chose before (not while photos are being taken).
   let deviceChangeTimer = null;
@@ -7394,6 +7411,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const USB_RETRY_MS = 250;        // pause between failed live view frames
   const USB_STALL_SHOW_MS = 2500;  // no frame this long: show "Reconnecting" over the frozen picture
   const USB_STALL_MS = 6000;       // no frame this long: the camera is treated as lost and the booth reconnects
+  // The Windows helper (Canon / Nikon / Sony over USB) answers more slowly, so it gets longer: after USB_HELPER_KICK_MS it is
+  // asked to start live view again (a Canon often leaves live view after a photo or a camera timeout), and only if that
+  // does not help the booth reconnects.
+  const USB_HELPER_KICK_MS = 3500, USB_HELPER_SHOW_MS = 4500, USB_HELPER_STALL_MS = 15000;
   async function usbLiveLoop(gen){
     let fails = 0;
     const fast = !usbCam.viaHelper;   // the Windows helper keeps its own, slower timing
@@ -7409,7 +7430,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         usbCam.ctx.drawImage(bmp, 0, 0); bmp.close();
         usbCam.hasFrame = true; fails = 0;
         usbCam.lastFrameAt = Date.now();
-        if(usbCam.stallShown){ usbCam.stallShown = false; cameraError.style.display = 'none'; }
+        usbCam.kicked = false;
+        if(usbCam.stallShown){ usbCam.stallShown = false; cameraError.style.display = 'none'; usbLog('stall-over', { camera: usbCam.name }); }
         await new Promise(r => setTimeout(r, 30));
       }catch(err){
         // This loop was stopped meanwhile (the camera was replaced or reported lost): not a new failure.
@@ -7439,12 +7461,18 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Watchdog: a camera that hangs mid-transfer never throws an error, so the loop above can't notice it.
   // Not while a photo is being taken (live view legitimately pauses then) or while the page is in the background.
   setInterval(function(){
-    if(!usbCam.active || !usbCam.camera || usbCam.viaHelper || !usbCam.hasFrame || usbCam.shooting) return;
+    if(!usbCam.active || !usbCam.camera || !usbCam.hasFrame || usbCam.shooting) return;
     if(document.hidden){ usbCam.lastFrameAt = Date.now(); return; }
-    const gap = Date.now() - usbCam.lastFrameAt;
-    if(gap > USB_STALL_MS){ usbDead(new Error('Live view stalled for ' + Math.round(gap / 1000) + ' s'), 'stalled'); return; }
-    if(gap > USB_STALL_SHOW_MS && !usbCam.stallShown && currentDeviceId === USB_CAM_ID){
+    const gap = Date.now() - usbCam.lastFrameAt, helper = usbCam.viaHelper;
+    if(helper && gap > USB_HELPER_KICK_MS && !usbCam.kicked){
+      usbCam.kicked = true;
+      usbLog('stall-kick', { camera: usbCam.name, sinceFrameMs: gap });
+      usbViewfinderOn().catch(function(){});       // asks the helper to start live view again
+    }
+    if(gap > (helper ? USB_HELPER_STALL_MS : USB_STALL_MS)){ usbDead(new Error('Live view stalled for ' + Math.round(gap / 1000) + ' s'), 'stalled'); return; }
+    if(gap > (helper ? USB_HELPER_SHOW_MS : USB_STALL_SHOW_MS) && !usbCam.stallShown && currentDeviceId === USB_CAM_ID){
       usbCam.stallShown = true;
+      usbLog('stall-show', { camera: usbCam.name, sinceFrameMs: gap, viaHelper: !!helper });
       cameraErrorText.textContent = 'Camera not responding. Reconnecting…';
       cameraError.style.display = 'flex';
     }
@@ -7556,7 +7584,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         usbCam.ctx = usbCam.canvas.getContext('2d');
       }
       if(!usbCam.vfOn){ await usbSetPhotoSize(); await usbSonyPcOnly(); await usbViewfinderOn(); }
-      usbCam.active = true; usbCam.hasFrame = false; usbCam.lastErr = null;
+      usbCam.active = true; usbCam.hasFrame = false; usbCam.lastErr = null; usbCam.kicked = false;
       const gen = ++usbCam.gen;
       usbLiveLoop(gen);
       const t0 = Date.now();

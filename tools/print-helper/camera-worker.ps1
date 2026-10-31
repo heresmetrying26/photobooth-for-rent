@@ -949,6 +949,14 @@ namespace Pb4uCam
             catch { }
             live = false;
         }
+        // The camera ended live view by itself (after a photo, its own timeout, a sleep): the "live" flag still says it is
+        // on, so start it again from the beginning (not only the live view mode) instead of waiting for frames that never come.
+        static void CanonRestartLive()
+        {
+            Log("Live view stopped: starting it again");
+            live = false;
+            CanonLiveOn();
+        }
 
         // The live view data is a list of blocks { length, type, data }; one of them is the JPEG.
         static byte[] EosJpeg(byte[] d)
@@ -993,8 +1001,8 @@ namespace Pb4uCam
                     if (j != null) { gotFrame = true; return j; }
                 }
                 else if (r != Ptp.BUSY && r != NOTREADY) break;
-                // Some models leave live view after a photo: switch it back on once.
-                if (!kicked && sw.ElapsedMilliseconds > 1200 && liveSw.ElapsedMilliseconds > 4000) { kicked = true; SetEos(0xD1B0, 2); }
+                // Some models leave live view after a photo (or when the camera times out): start it again, once per request.
+                if (!kicked && sw.ElapsedMilliseconds > 1200 && liveSw.ElapsedMilliseconds > 4000) { kicked = true; CanonRestartLive(); }
                 Thread.Sleep(50);
             }
             if (last != Ptp.OK && last != Ptp.BUSY && last != NOTREADY && last != 0)
@@ -1386,7 +1394,8 @@ namespace Pb4uCam
                         case "live":
                             Need();
                             if (arg == "off") { if (canon) CanonLiveOff(); else if (sony) live = false; else StopLive(); }
-                            else if (!live) { if (canon) CanonLiveOn(); else if (sony) live = true; else StartLive(); }
+                            else if (canon) CanonRestartLive();   // "on" is also how the booth asks for live view again when frames stopped
+                            else if (!live) { if (sony) live = true; else StartLive(); }
                             break;
                         case "frame":
                             {
@@ -1395,7 +1404,12 @@ namespace Pb4uCam
                                 if (f != null) { kind = "B"; body = f; }
                                 break;
                             }
-                        case "capture": Need(); kind = "B"; body = canon ? CanonCapture() : sony ? SonyCapture() : Capture(); break;
+                        case "capture":
+                            Need(); kind = "B";
+                            // A Canon often leaves live view after a photo: the next frame request starts it again right away.
+                            if (canon) { try { body = CanonCapture(); } finally { live = false; } }
+                            else body = sony ? SonyCapture() : Capture();
+                            break;
                         case "close": CloseCamera(); break;
                         case "quit": CloseCamera(); return;
                         default: throw new CamException("BAD Unknown command " + cmd);

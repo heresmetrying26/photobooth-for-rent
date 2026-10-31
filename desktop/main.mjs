@@ -303,7 +303,9 @@ function wireIpc() {
     catch { return { ok: false, notes: [] }; }
   });
   // iPad using this laptop's camera over the booth Wi-Fi (see lib/lan.mjs)
-  const ipadInfo = () => { const b = shareBase(); return { on: !!settings.ipadOn, pin: settings.ipadPin, url: b ? b + '/ipad' : null, urlWithPin: b ? b + '/ipad/' + settings.ipadPin : null, camera: process.platform === 'win32' }; };
+  // Admin can turn this off per code (the licence's feat.ipadOpt === false); it is on for every other code.
+  const ipadAllowed = () => { const s = L.status(); return !(s.p && s.p.feat && s.p.feat.ipadOpt === false); };
+  const ipadInfo = () => { const b = shareBase(); return { allowed: ipadAllowed(), on: !!settings.ipadOn && ipadAllowed(), pin: settings.ipadPin, url: b ? b + '/ipad' : null, urlWithPin: b ? b + '/ipad/' + settings.ipadPin : null, camera: process.platform === 'win32' }; };
   ipcMain.handle('pb4u:ipadInfo', () => ipadInfo());
   ipcMain.handle('pb4u:ipadSet', (e, on, renewPin) => {
     settings.ipadOn = !!on;
@@ -358,7 +360,7 @@ app.whenReady().then(async () => {
   });
   if (!validPin(settings.ipadPin)) { settings.ipadPin = newPin(); saveSettings(); }
   setLanHandler(createLanHandler({
-    state: () => ({ on: !!settings.ipadOn && L.status().ok, pin: settings.ipadPin }),
+    state: () => { const s = L.status(); return { on: !!settings.ipadOn && s.ok && !(s.p && s.p.feat && s.p.feat.ipadOpt === false), pin: settings.ipadPin }; },
     boothPage: ({ extraHead }) => boothPage({ deviceId: L.deviceId(), extraHead }),
     handleWeb: (webReq) => handle(webReq),
     setGuestView

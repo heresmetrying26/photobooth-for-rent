@@ -7165,10 +7165,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   async function enumerateCameras(){
     const previous = cameraSelect.value;
-    if(!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return [];
-    let devices = await navigator.mediaDevices.enumerateDevices();
+    // An iPad / tablet on the laptop's plain-http address has no webcam API (browsers only give it to https pages),
+    // but can still use the laptop's USB camera, so carry on with an empty webcam list instead of stopping here.
+    const webcamApi = !!(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices);
+    if(!webcamApi && !usbCam.supported) return [];
+    let devices = webcamApi ? await navigator.mediaDevices.enumerateDevices() : [];
     let videoDevices = devices.filter(d => d.kind === 'videoinput');
-    if(!videoDevices.length || videoDevices.some(d => !d.label)){
+    if(webcamApi && (!videoDevices.length || videoDevices.some(d => !d.label))){
       try{
         // Need permission first to get labels
         const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -20852,7 +20855,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var ibox = document.getElementById('deskIpadBox'), ion = document.getElementById('deskIpadOn'), itxt = document.getElementById('deskIpad'), irow = document.getElementById('deskIpadRow');
       var cur = null;
       function irender(i){
-        cur = i; ibox.style.display = '';
+        cur = i;
+        if(i.allowed === false){ ibox.style.display = 'none'; return; }       // Admin turned it off for this code
+        ibox.style.display = '';
         ion.checked = !!i.on; irow.style.display = i.on ? '' : 'none';
         itxt.className = 'panel-hint' + (i.on && !i.url ? ' bad' : '');
         if(!i.on) itxt.textContent = 'Off. Turn it on to use this laptop’s camera (real shutter, live view and flash) from an iPad on the same Wi-Fi.';

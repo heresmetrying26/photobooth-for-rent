@@ -865,6 +865,7 @@
     acts += '<button class="small" data-a="typesopt" data-c="' + c + '">' + (l.typesOpt ? 'Hide card &amp; certificate booths' : 'Give card &amp; certificate booths') + '</button>';
     acts += '<button class="small" data-a="gifopt" data-c="' + c + '">' + (l.gifOpt ? 'Hide GIF mode' : 'Give GIF mode') + '</button>';
     acts += '<button class="small" data-a="lockopt" data-c="' + c + '">' + (l.lockOpt ? 'Hide lock booth' : 'Give lock booth') + '</button>';
+    if(l.offlineOpt || l.offlineOnly) acts += '<button class="small" data-a="ipadopt" data-c="' + c + '" title="Lets an iPad use the laptop app\'s camera over Wi-Fi (Setup → Share &amp; start)">' + (l.ipadOpt ? 'Turn off iPad camera' : 'Turn on iPad camera') + '</button>';
     [['vintage', 'vintage looks'], ['roving', 'photographer desk'], ['flipbook', 'flipbook'], ['video', 'video guestbook'], ['spin360', '360 video desk']].forEach(function(x){
       var on = !(l.extras && l.extras[x[0]] === false);
       acts += '<button class="small" data-a="extra" data-x="' + x[0] + '" data-c="' + c + '">' + (on ? 'Hide ' : 'Give ') + x[1] + '</button>';
@@ -1218,6 +1219,13 @@
         var lo = !(LIC[code] && LIC[code].lockOpt);
         await api({ action: 'lockopt', code: code, lockOpt: lo });
         toast((lo ? 'Lock booth given' : 'Lock booth hidden') + ' — an open booth updates within ~5 minutes');
+        refresh();
+        return;
+      }
+      if(a === 'ipadopt'){
+        var io = !(LIC[code] && LIC[code].ipadOpt);
+        await api({ action: 'ipadopt', code: code, ipadOpt: io });
+        toast((io ? 'iPad camera turned on' : 'iPad camera turned off') + ' — the laptop app picks it up within ~10 minutes');
         refresh();
         return;
       }

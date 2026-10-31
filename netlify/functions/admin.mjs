@@ -431,6 +431,15 @@ export default safe(async (req, context) => {
       return json({ ok: true, lockOpt: rec.lockOpt });
     }
 
+    case 'ipadopt': { // an iPad may use the laptop app's camera over Wi-Fi (on by default; the laptop app reads it at its next check-in)
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      rec.ipadOpt = !!b.ipadOpt;
+      await putLicense(store, key, rec);
+      await syncBonus(rec, { ipadOpt: rec.ipadOpt });
+      return json({ ok: true, ipadOpt: rec.ipadOpt });
+    }
+
     case 'pinreset': { // forgotten lock PIN: the booth clears it and unlocks within ~5 minutes
       const { key, rec } = await getRec();
       if (!rec) return json({ error: 'Code not found.' }, 404);

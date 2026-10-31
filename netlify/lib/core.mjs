@@ -295,7 +295,7 @@ export function summaryOf(rec) {
     kind: rec.kind || 'rental', parent: rec.parent || null, bonusKey: rec.bonusKey || null,
     lifetime: !!rec.lifetime, days: rec.days || 0, minutes: rec.minutes || null, startsAt: rec.startsAt || null,
     status: rec.status, redeemedAt: rec.redeemedAt || null, expiresAt: rec.expiresAt || null,
-    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional, gifOpt: !!rec.gifOpt, retakeOpt: !!rec.retakeOpt, typesOpt: !!rec.typesOpt, payOpt: !!rec.payOpt, offlineOpt: !!rec.offlineOpt, offlineOnly: !!rec.offlineOnly, appsUsed: devicesOf(rec).filter((d) => d.app).length, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0, extras: extrasOf(rec),
+    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional, gifOpt: !!rec.gifOpt, retakeOpt: !!rec.retakeOpt, typesOpt: !!rec.typesOpt, payOpt: !!rec.payOpt, offlineOpt: !!rec.offlineOpt, offlineOnly: !!rec.offlineOnly, ipadOpt: rec.ipadOpt !== false, appsUsed: devicesOf(rec).filter((d) => d.app).length, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0, extras: extrasOf(rec),
     print: !!(rec.print && rec.print.enabled), createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null,
     revokeReason: rec.revokeReason || null, replacedBy: rec.replacedBy || null, replacedFrom: rec.replacedFrom || null, transferredAt: rec.transferredAt || null,
     agreement: rec.agreement ? rec.agreement.version : null, agreementAt: rec.agreement ? rec.agreement.acceptedAt || null : null,

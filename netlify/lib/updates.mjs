@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.38', date: '2026-10-31' },
   { version: '1.0.37', date: '2026-10-31' },
   { version: '1.0.36', date: '2026-10-31' },
   { version: '1.0.35', date: '2026-10-31' },
@@ -84,6 +85,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-31', title: '360 desk: no more editing the same videos twice', for: ['website', 'app'], app: '1.0.38',
+    items: [
+      'Laptop app 1.0.38: a video you already edited stays marked as edited when you close and reopen the app, and "Edit new videos by themselves" no longer edits it again.',
+      'On the website, the 360 desk has a new Choose folder button that adds every video in a folder.'
+    ]
+  },
   {
     date: '2026-10-31', title: 'Camera: a frozen or black live view now recovers (Canon on Windows, and webcams)', for: ['website', 'app'], app: '1.0.36',
     items: [

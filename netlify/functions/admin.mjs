@@ -101,7 +101,7 @@ function bonusRecord(key, parent, minutes) {
   return {
     key, code: displayCode(key), kind: 'bonus', parent: parent.key,
     label: (parent.label || parent.code) + ' · Bonus', folderName: parent.folderName, subfolder: BONUS_SUBFOLDER,
-    minutes, days: 0, startsAt: null, print: parent.print, traditional: !!parent.traditional, gifOpt: !!parent.gifOpt, retakeOpt: !!parent.retakeOpt, payOpt: !!parent.payOpt, lockOpt: !!parent.lockOpt, defaultTheme: parent.defaultTheme || null,
+    minutes, days: 0, startsAt: null, print: parent.print, traditional: !!parent.traditional, gifOpt: !!parent.gifOpt, retakeOpt: !!parent.retakeOpt, typesOpt: !!parent.typesOpt, payOpt: !!parent.payOpt, lockOpt: !!parent.lockOpt, defaultTheme: parent.defaultTheme || null,
     status: 'unused', createdAt: Date.now() + 1, redeemedAt: null, expiresAt: null, deviceId: null
   };
 }
@@ -255,7 +255,7 @@ export default safe(async (req, context) => {
         const key = await freshKey(store);
         // Keep a dedicated Drive folder name. If neither field was supplied,
         // fall back to the code so the renter never has to configure Drive.
-        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, gifOpt: b.gifOpt !== false, extras: normExtras(b.extras), retakeOpt: b.retakeOpt !== false, lockOpt: b.lockOpt !== false, payOpt: b.payOpt !== false, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
+        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, gifOpt: b.gifOpt !== false, extras: normExtras(b.extras), retakeOpt: b.retakeOpt !== false, typesOpt: !!b.typesOpt, lockOpt: b.lockOpt !== false, payOpt: b.payOpt !== false, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
         // A hand-made Lifetime code (for example a Messenger sale): Admin ticks that the buyer replied "I agree".
         if (lifetime && b.agreementAccepted) rec.agreement = { version: AGREEMENT_VERSION, acceptedAt: Date.now(), by: 'admin' };
         await putLicense(store, key, rec);
@@ -431,6 +431,15 @@ export default safe(async (req, context) => {
       return json({ ok: true, lockOpt: rec.lockOpt });
     }
 
+    case 'ipadopt': { // an iPad may use the laptop app's camera over Wi-Fi (on by default; the laptop app reads it at its next check-in)
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      rec.ipadOpt = !!b.ipadOpt;
+      await putLicense(store, key, rec);
+      await syncBonus(rec, { ipadOpt: rec.ipadOpt });
+      return json({ ok: true, ipadOpt: rec.ipadOpt });
+    }
+
     case 'pinreset': { // forgotten lock PIN: the booth clears it and unlocks within ~5 minutes
       const { key, rec } = await getRec();
       if (!rec) return json({ error: 'Code not found.' }, 404);
@@ -451,6 +460,15 @@ export default safe(async (req, context) => {
       await putLicense(store, key, rec);
       await syncBonus(rec, { retakeOpt: rec.retakeOpt });
       return json({ ok: true, retakeOpt: rec.retakeOpt });
+    }
+
+    case 'typesopt': { // trading card + certificate booth types (switch at the top of Setup); an open booth picks it up within ~5 minutes
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      rec.typesOpt = !!b.typesOpt;
+      await putLicense(store, key, rec);
+      await syncBonus(rec, { typesOpt: rec.typesOpt });
+      return json({ ok: true, typesOpt: rec.typesOpt });
     }
 
     case 'setemail': { // the renter's email (for "Forgot your code?" and "Email code")
@@ -793,6 +811,7 @@ export default safe(async (req, context) => {
         trialTraditional: !!b.trialTraditional,
         trialGifOpt: b.trialGifOpt !== false,
         trialRetakeOpt: !!b.trialRetakeOpt,
+        trialTypesOpt: !!b.trialTypesOpt,
         trialLockOpt: !!b.trialLockOpt,
         trialWatermark: b.trialWatermark !== false };
       const prev = await getSettings();

@@ -10,6 +10,13 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.37', date: '2026-10-31' },
+  { version: '1.0.36', date: '2026-10-31' },
+  { version: '1.0.35', date: '2026-10-31' },
+  { version: '1.0.34', date: '2026-10-30' },
+  { version: '1.0.33', date: '2026-10-30' },
+  { version: '1.0.32', date: '2026-10-30' },
+  { version: '1.0.31', date: '2026-10-30' },
   { version: '1.0.29', date: '2026-10-30' },
   { version: '1.0.28', date: '2026-10-30' },
   { version: '1.0.27', date: '2026-10-30' },
@@ -42,7 +49,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.26', date: '2026-10-30', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.26/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.31', date: '2026-10-30', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.31/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -78,13 +85,66 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-10-31', title: 'Camera: a frozen or black live view now recovers (Canon on Windows, and webcams)', for: ['website', 'app'], app: '1.0.36',
+    items: [
+      'Fixed: with a Canon (such as the EOS R50) on Windows, the live view could freeze and then go black during a session, with no message and no way back. Laptop app 1.0.36 starts the live view again properly whenever the camera ends it, when frames stop, and right after every photo.',
+      'The booth now watches the Windows camera too: after about 4 seconds without a new picture it asks the camera to start live view again and shows \u201cCamera not responding\u201d, and it reconnects by itself after 15 seconds.',
+      'A webcam whose picture stops while the camera is still \u201con\u201d (for example Canon\u2019s EOS Webcam Utility when the camera goes to sleep) is noticed after 8 seconds and reconnected. This part works on the website too.',
+      'If it still happens, open the Camera menu \u2192 Copy camera log right after and send it to us: it now says whether the picture stalled, what was tried and what came back.'
+    ]
+  },
+  {
+    date: '2026-10-31', title: 'Use a DSLR with an iPad: the iPad uses the laptop’s camera over Wi-Fi', for: ['website', 'app'], app: '1.0.37',
+    items: [
+      'Laptop app 1.0.37 (Windows): an iPad can now use the real DSLR shutter, live view and flash. Plug the Nikon, Canon EOS or Sony Alpha into the laptop, then in Setup → Share & start turn on “Let an iPad use this laptop’s camera”. The laptop shows an address and a 6-digit PIN: open it in Safari on the iPad (same Wi-Fi) and type the PIN. It works with no internet, and photos save on the laptop. An iPad with a camera and no laptop can’t do this.',
+      'No laptop? An iPad can still use a camera through an HDMI-to-USB capture card (no real shutter or flash). The new iPad guide at /how-to-ipad/ explains both ways.',
+      'About us: the three monthly plans now sit in one row, and the top menu has an FAQ link.'
+    ]
+  },
+  {
+    date: '2026-10-30', title: 'Flip book: sharper pages that differ from each other', for: ['website', 'app'], app: '1.0.34',
+    items: [
+      'Flip book (website, laptop app 1.0.34 and Android app 1.0.31): pages are no longer near copies of each other, and fewer are blurry. The booth records more pictures than the book needs, keeps the sharpest one around each moment, then spaces the pages so each differs from the last: a still moment gets fewer pages and a lively one gets more.',
+      'The default is now 24 frames in a 6 second clip (it was 30). Setups that already chose a number keep it. For bigger changes between pages choose fewer frames (16 or 24) and a 6 or 7 second clip.',
+      'Blur also comes from a dim room: the camera then uses a slow shutter. A little more light on the guest helps more than any setting.'
+    ]
+  },
+  {
+    date: '2026-10-30', title: 'Windows laptop: a DSLR that stops answering now recovers instead of freezing the booth', for: ['website', 'app'], app: '1.0.33',
+    items: [
+      'Laptop app 1.0.33 (Windows, Nikon / Canon EOS / Sony Alpha over USB): when the camera stops answering, the booth now waits a moment, reconnects and resets a Canon’s remote mode first. If it happens twice in a row it tells you to switch the camera off and on and check the USB cable.',
+      'Canon: if the camera ends live view by itself (heat, or its time limit), the booth switches it back on. Nikon: the booth now keeps the camera’s event list short during long live-view sessions. Memory use stays flat over a long event.',
+      'The app now keeps a camera.log file (in %APPDATA%\\photobooth4u) that records which camera command was stuck, so a hang can be diagnosed. A Canon EOS R50 hang is not confirmed fixed yet: if it still happens, send us that file.'
+    ]
+  },
+  {
+    date: '2026-10-30', title: 'A Camera step in Setup, with a live view of your camera', for: ['website', 'app'], app: '1.0.32',
+    items: [
+      'Laptop app 1.0.32 and Android app 1.0.30: Setup has a new step after Layout, Camera. It shows a live view of what the camera sees before you start: the full camera frame by default, or tap “Crop to layout” to see only the part that fits your layout.',
+      'The camera picker, Mirror and the camera log moved there from the Session step. Mirror and the live filter show in the live view. The Camera button in Photo Session works as before.',
+      'Setup now has 7 steps: Design, Text, Layout, Camera, Extras, Share and Session (Share is step 6 and Session is step 7).'
+    ]
+  },
+  {
+    date: '2026-10-30', title: 'Wi-Fi read for you, a Wi-Fi button in the bottom bar, and one-tap printing of earlier photos', for: ['website', 'app'], app: '1.0.31',
+    items: [
+      'Laptop app 1.0.31: the booth now reads the Wi-Fi the laptop is connected to and fills in the Wi-Fi name and password in Setup → Share & start. Tap “Use current Wi-Fi” to read it again. If the password can’t be read, type it there (on a Mac, allow the Keychain request). The app does not create a Wi-Fi itself: connect the laptop to your router or a phone hotspot first.',
+      'New Wi-Fi button in the bottom bar, beside Extras and Lock booth: it shows the Wi-Fi QR so guests can join, then scan their photo QR. In Share & start, “Download WIFI QR Sign” saves a printable Wi-Fi sign. After each session guests now see their Photo and GIF QR codes only.',
+      'All photos: on the booth laptop, open an earlier photo and tap Print photo. It prints at once on the printer, paper size and copies you set in Print settings, with no print dialog. It works in the laptop app and in the online gallery when it is open in the same browser as the booth. Guests’ phones keep their own print.',
+      'Android app 1.0.29: the USB camera no longer drops out when the camera answers slowly (it pauses and carries on instead of disconnecting), and a camera of another make now says plainly that it can’t be controlled by the app and to use its USB webcam mode instead.',
+      'Android app 1.0.28: the same Wi-Fi button and Wi-Fi sign. On the tablet, type the Wi-Fi name and password in Share & start (the tablet does not read them by itself).',
+      'The laptop app also includes using the laptop’s DSLR from an iPad over Wi-Fi: see the iPad guide at /how-to-ipad/.'
+    ]
+  },
+  {
     date: '2026-10-30', title: '360 videos: join the Wi-Fi and download, with two QR codes', for: ['website', 'app'], app: '1.0.29',
     items: [
       'Laptop app 1.0.27 and Android app 1.0.23: when you set the booth Wi-Fi name and password in Setup → Share & start, the 360 player shows two codes. Step 1: Network joins the guest’s phone to the booth Wi-Fi, and Step 2: Download opens the video. It works with no internet.',
       'With no Wi-Fi set, you still get the single download code as before.',
       'New look: the finished video now shows between the two codes, with numbered steps on a dark card (laptop 1.0.29, Android 1.0.26).',
       'Android app 1.0.25: the tablet now looks for a new version every 5 minutes while it is open (and when it comes back to the front), like the laptop app, instead of every 6 hours.',
-      'What’s new now opens in a window inside the app (laptop 1.0.28, Android 1.0.24) instead of the browser.'
+      'What’s new now opens in a window inside the app (laptop 1.0.28, Android 1.0.24) instead of the browser.',
+      'Android app 1.0.27: a Nikon, Canon EOS or Sony Alpha camera plugged into the tablet’s USB port now shows up in the Camera list (“Nikon / Canon / Sony camera over USB cable”). Set the camera to PTP / MTP (Nikon), Remote Control (Canon) or PC Remote (Sony), plug it in and tap OK when Android asks.'
     ]
   },
   {

@@ -237,6 +237,7 @@
       <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newRetake" checked> Give retake</label>
         <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newLock" checked> Give lock booth (guest-only screen with a PIN)</label>
+        <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newTypes"> Give trading card &amp; certificate booths (Booth type switch in Setup)</label>
         <label class="toggle" style="margin-top:6px;"><input type="checkbox" id="newPay" checked> Guest payments (vouchers; GCash / Maya QR when online)</label>
         <div class="meta" style="margin:6px 0 0;" id="newPayHint">Vouchers work offline too. The GCash / Maya QR part only works on the website booth, so laptop-app-only and Android-app-only codes get vouchers only.</div>
       </div>
@@ -275,6 +276,7 @@
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialTraditional"> Trials use the traditional booth (laptop + guest screen)</label></div>
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialGifOpt" checked> Trials get GIF mode (animated GIF &amp; Photo + GIF options)</label></div>
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialRetakeOpt"> Trials get the retake switch (“Allow retakes” in Setup)</label></div>
+      <div class="modebox"><label class="toggle"><input type="checkbox" id="trialTypesOpt"> Trials get Trading card &amp; Certificate booths (the Booth type switch in Setup)</label></div>
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialLockOpt"> Trials get Lock booth (guest-only screen with a PIN)</label></div>
       <div class="modebox"><label class="toggle"><input type="checkbox" id="trialWatermark" checked> Watermark trial photos (the photobooth4u logo, faint, in a corner)</label></div>
       <button class="primary" id="saveTrialBtn" style="margin-top:12px;">Save trial settings</button>
@@ -739,6 +741,7 @@
     $('trialTraditional').checked = !!s.trialTraditional;
     $('trialGifOpt').checked = s.trialGifOpt !== false;
     $('trialRetakeOpt').checked = !!s.trialRetakeOpt;
+    $('trialTypesOpt').checked = !!s.trialTypesOpt;
     $('trialLockOpt').checked = !!s.trialLockOpt;
     $('trialWatermark').checked = s.trialWatermark !== false;
     $('galleryQr').checked = s.galleryQr !== false;
@@ -859,8 +862,10 @@
     acts += '<button class="small" data-a="printedit" data-c="' + c + '">Print settings</button>';
     acts += '<button class="small" data-a="mode" data-c="' + c + '">' + (l.traditional ? 'Switch to tablet' : 'Make traditional') + '</button>';
     acts += '<button class="small" data-a="retakeopt" data-c="' + c + '">' + (l.retakeOpt ? 'Hide retake switch' : 'Give retake switch') + '</button>';
+    acts += '<button class="small" data-a="typesopt" data-c="' + c + '">' + (l.typesOpt ? 'Hide card &amp; certificate booths' : 'Give card &amp; certificate booths') + '</button>';
     acts += '<button class="small" data-a="gifopt" data-c="' + c + '">' + (l.gifOpt ? 'Hide GIF mode' : 'Give GIF mode') + '</button>';
     acts += '<button class="small" data-a="lockopt" data-c="' + c + '">' + (l.lockOpt ? 'Hide lock booth' : 'Give lock booth') + '</button>';
+    if(l.offlineOpt || l.offlineOnly) acts += '<button class="small" data-a="ipadopt" data-c="' + c + '" title="Lets an iPad use the laptop app\'s camera over Wi-Fi (Setup → Share &amp; start)">' + (l.ipadOpt ? 'Turn off iPad camera' : 'Turn on iPad camera') + '</button>';
     [['vintage', 'vintage looks'], ['roving', 'photographer desk'], ['flipbook', 'flipbook'], ['video', 'video guestbook'], ['spin360', '360 video desk']].forEach(function(x){
       var on = !(l.extras && l.extras[x[0]] === false);
       acts += '<button class="small" data-a="extra" data-x="' + x[0] + '" data-c="' + c + '">' + (on ? 'Hide ' : 'Give ') + x[1] + '</button>';
@@ -896,7 +901,7 @@
       (l.paymentReview ? '<span style="color:#b3261e;font-weight:700;">&#9888; Payment ' + esc(l.paymentReview.reason) + ' on ' + fmtDate(l.paymentReview.at) + ' &mdash; review this code (Disable it if the money was not kept).</span><br>' : '') +
       (l.lifetime && !bonus ? 'Agreement: <b>' + (l.agreement ? 'v' + esc(l.agreement) + ' accepted' + (l.agreementAt ? ' (' + fmtDate(l.agreementAt) + ')' : '') : 'not recorded') + '</b><br>' : '');
     return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + flags + (l.email ? 'Email: <b>' + esc(l.email) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
-      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>GIF mode: <b>' + (l.gifOpt ? 'Yes (Photo + GIF &amp; GIF-only options)' : 'No (Photo only)') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? (l.offlineOnly ? 'Laptop app only' : 'Yes') + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
+      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>GIF mode: <b>' + (l.gifOpt ? 'Yes (Photo + GIF &amp; GIF-only options)' : 'No (Photo only)') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Card &amp; certificate booths: <b>' + (l.typesOpt ? 'Yes (Booth type switch in Setup)' : 'No') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? (l.offlineOnly ? 'Laptop app only' : 'Yes') + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
       '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
       (devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.kind ? ' · ' + esc(d.kind) : '') + (d.app && d.app.name ? ' · ' + esc(d.app.name) : '') + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + (d.app && d.app.seen ? ' · checked in ' + new Date(d.app.seen).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="' + (d.app ? 'Deactivate this laptop (stops at its next check-in)' : 'Remove this device') + '">' + (d.app ? 'Deactivate' : 'Remove') + '</button></span>'; }).join('') + '</div>' : '') +
       '</div>' +
@@ -1217,6 +1222,13 @@
         refresh();
         return;
       }
+      if(a === 'ipadopt'){
+        var io = !(LIC[code] && LIC[code].ipadOpt);
+        await api({ action: 'ipadopt', code: code, ipadOpt: io });
+        toast((io ? 'iPad camera turned on' : 'iPad camera turned off') + ' — the laptop app picks it up within ~10 minutes');
+        refresh();
+        return;
+      }
       if(a === 'replacecode'){
         if(!confirm('Replace ' + code + '?\n\nA NEW code is made with the same events, saved booth setups, logos/frames, themes and lock PIN. This code is disabled and its email moves to the new code.\n\nGuest payments (PayMongo) do not carry over: the renter reconnects them with a new payments PIN.')) return;
         var rp = await api({ action: 'replacecode', code: code, reason: 'leak' });
@@ -1274,6 +1286,13 @@
         if(!confirm('Reset the lock PIN for ' + code + '? A locked booth unlocks within ~5 minutes and they set a new PIN.')) return;
         await api({ action: 'pinreset', code: code });
         toast('PIN reset — the booth unlocks within ~5 minutes');
+        refresh();
+        return;
+      }
+      if(a === 'typesopt'){
+        var to = !(LIC[code] && LIC[code].typesOpt);
+        await api({ action: 'typesopt', code: code, typesOpt: to });
+        toast((to ? 'Card & certificate booths given' : 'Card & certificate booths hidden') + ' — an open booth updates within ~5 minutes');
         refresh();
         return;
       }
@@ -1339,7 +1358,7 @@
     try{
       var np = readPrint($('newPrint'));
       var startsAt = readStartInputs($('newStartDate'), $('newStartTime'));
-      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, agreementAccepted: $('newAgreed').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, lockOpt: $('newLock').checked, extras: { vintage: $('newXVintage').checked, roving: $('newXRoving').checked, flipbook: $('newXFlipbook').checked, video: $('newXVideo').checked, spin360: $('newXSpin').checked }, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null };
+      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, agreementAccepted: $('newAgreed').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, typesOpt: $('newTypes').checked, lockOpt: $('newLock').checked, extras: { vintage: $('newXVintage').checked, roving: $('newXRoving').checked, flipbook: $('newXFlipbook').checked, video: $('newXVideo').checked, spin360: $('newXSpin').checked }, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null };
       var j;
       try{ j = await api(createBody); }
       catch(e1){
@@ -1377,7 +1396,7 @@
   $('saveTrialBtn').addEventListener('click', async function(){
     try{
       var tp = readPrint($('trialPrint'));
-      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes, trialPrintEventLimit: tp.eventLimit, trialPrintSessionLimit: tp.sessionLimit, trialTraditional: $('trialTraditional').checked, trialGifOpt: $('trialGifOpt').checked, trialRetakeOpt: $('trialRetakeOpt').checked, trialLockOpt: $('trialLockOpt').checked, trialWatermark: $('trialWatermark').checked });
+      await api({ action: 'settings', trialEnabled: $('trialEnabled').checked, trialPassword: $('trialPw').value, trialMinutes: $('trialMin').value, trialFolderPrefix: $('trialFolderPrefix').value, trialPrintEnabled: tp.enabled, trialPrintSizes: tp.sizes, trialPrintEventLimit: tp.eventLimit, trialPrintSessionLimit: tp.sessionLimit, trialTraditional: $('trialTraditional').checked, trialGifOpt: $('trialGifOpt').checked, trialRetakeOpt: $('trialRetakeOpt').checked, trialTypesOpt: $('trialTypesOpt').checked, trialLockOpt: $('trialLockOpt').checked, trialWatermark: $('trialWatermark').checked });
       toast('Trial settings saved');
     }catch(err){ if(err.message !== 'auth') toast(err.message, true); }
   });
@@ -1612,7 +1631,7 @@
     $('newDays').value = p.days; $('newDevices').value = p.devices;
     $('newLifetime').checked = p.lifetime; $('newDays').disabled = p.lifetime;
     $('newTraditional').checked = p.traditional; $('newGif').checked = p.gif; $('newOffline').checked = p.offline; $('newOfflineOnly').checked = p.only;
-    $('newRetake').checked = true; $('newLock').checked = true; $('newPay').checked = true;
+    $('newRetake').checked = true; $('newTypes').checked = false; $('newLock').checked = true; $('newPay').checked = true;
     [].forEach.call(this.querySelectorAll('[data-pkg]'), function(x){ x.classList.toggle('primary', x === b); });
   });
   $('newOfflineOnly').addEventListener('change', function(){ if(this.checked) $('newOffline').checked = true; });

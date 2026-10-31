@@ -57,6 +57,7 @@ class MainActivity : AppCompatActivity() {
     private var voiceBridge: VoiceBridge? = null
     private lateinit var licence: AppLicence
     private var shareServer: LocalShareServer? = null
+    private var cameraHelper: UsbCameraHelper? = null
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
 
     // This tablet's rental-code entitlements, from the last time status() said ok —
@@ -183,6 +184,12 @@ class MainActivity : AppCompatActivity() {
         Thread {
             try { share.start() } catch (e: Exception) { /* guests just won't get a QR */ }
         }.start()
+
+        // 5b2. A Nikon camera on the USB port: WebView has no WebUSB, so the app talks to it and the booth
+        // reaches it on 127.0.0.1:17321 (same calls as the Windows Helper; the booth page recognises "PB4uAndroid").
+        val cam = UsbCameraHelper(applicationContext)
+        cameraHelper = cam
+        Thread { try { cam.start() } catch (e: Exception) { Log.w("PBCam", "camera helper", e) } }.start()
 
         // 5c. This tablet's offline-app licence — the same signed-licence system the
         // desktop app uses, tied to a rental code's "offline app" add-on. The booth stays
@@ -369,6 +376,7 @@ class MainActivity : AppCompatActivity() {
         btBridge.disconnect()
         voiceBridge?.shutdown()
         shareServer?.stop()
+        cameraHelper?.stop()
         checkinHandler.removeCallbacksAndMessages(null)
         updateHandler.removeCallbacksAndMessages(null)
     }
@@ -394,6 +402,8 @@ class MainActivity : AppCompatActivity() {
         s.loadWithOverviewMode = true
         s.displayZoomControls = false
         s.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
+        // Lets the booth page know it runs inside the tablet app (it then uses the app's USB camera control)
+        s.userAgentString = s.userAgentString + " PB4uAndroid"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             // The 360 capture screen sends its clip to the booth laptop over the booth Wi-Fi (plain http://<laptop>:47777),
             // which a page loaded over https could not do in the stricter mode. The app only ever loads the booth's own pages.
@@ -531,6 +541,7 @@ class MainActivity : AppCompatActivity() {
                 val gifOpt = feat?.optBoolean("gifOpt", true) ?: true
                 val retakeOpt = feat?.optBoolean("retakeOpt", true) ?: true
                 val lockOpt = feat?.optBoolean("lockOpt", true) ?: true
+                val typesOpt = feat?.optBoolean("typesOpt", false) ?: false
                 val payOpt = feat?.optBoolean("vouchers", false) ?: false
                 val traditional = feat?.optBoolean("traditional", false) ?: false
                 // Extras every package includes (missing = on): vintage looks, photographer desk, flipbook, video guestbook
@@ -555,6 +566,7 @@ class MainActivity : AppCompatActivity() {
                     append("window.__PB.extras={").append(extrasJs).append("};")
                     append("window.__PB.retakeOpt=").append(retakeOpt).append(";")
                     append("window.__PB.lockOpt=").append(lockOpt).append(";")
+                    append("window.__PB.typesOpt=").append(typesOpt).append(";")
                     append("window.__PB.payOpt=").append(payOpt).append(";")
                     append("window.__PB.traditional=").append(traditional).append(";")
                     append("window.__PB.watermark=false;")

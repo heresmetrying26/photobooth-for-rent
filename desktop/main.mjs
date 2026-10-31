@@ -7,7 +7,7 @@
 // The internet is only needed to activate (or paste an offline key) and, for a
 // lifetime code, once every few weeks to renew the licence.
 import { app, BrowserWindow, protocol, session, ipcMain, shell, dialog, Menu, net, nativeImage, powerSaveBlocker, screen, clipboard } from 'electron';
-import { readFileSync, existsSync, statSync, createReadStream, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, createReadStream, writeFileSync, appendFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, dirname, normalize, extname, sep, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createDecipheriv, createHash } from 'node:crypto';
@@ -15,9 +15,11 @@ import { Readable } from 'node:stream';
 import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
 import { allowBoothRequest } from './lib/netguard.mjs';
-import { initPhotos, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead } from './lib/photos.mjs';
+import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
+import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import * as SPIN from './lib/spin.mjs';
+import { detectWifi } from './lib/wifi.mjs';
 import { freeCamera, guardCamera } from './lib/camfree.mjs';
 import * as U from './lib/updater.mjs';
 
@@ -200,6 +202,7 @@ function buildMenu() {
 // ---------- IPC (preload.cjs) ----------
 function wireIpc() {
   ipcMain.on('pb4u:lan', (e) => { e.returnValue = shareBase(); });
+  ipcMain.handle('pb4u:wifi', (e, force) => detectWifi(!!force));
   ipcMain.handle('pb4u:info', async () => ({
     licence: L.info(), version: VERSION, update: U.info(), photos: photosRoot(), share: shareBase(), lanIp: lanAddress(), port: sharePortNow(), server: L.SERVER
   }));
@@ -261,6 +264,8 @@ function wireIpc() {
   ipcMain.handle('pb4u:roveScan', () => roveList());
   ipcMain.handle('pb4u:roveTake', (e, name) => roveTake(name));
   // Guests asking for a print from their phone: switched on from the booth's Print settings; requests wait here
+  ipcMain.handle('pb4u:printNowTake', () => printNowTake());
+  ipcMain.handle('pb4u:printNowDone', (e, id, ok, msg) => printNowDone(id, !!ok, msg));
   ipcMain.handle('pb4u:guestPrintSet', (e, on) => setGuestPrint(!!on));
   ipcMain.handle('pb4u:guestViewSet', (e, mode) => setGuestView(String(mode || '')));
   ipcMain.handle('pb4u:printReqList', () => printReqList());
@@ -297,7 +302,18 @@ function wireIpc() {
     try { const r = await net.fetch(L.SERVER + '/api/updates', { cache: 'no-store' }); const j = await r.json(); return { ok: true, notes: j.notes || [], app: j.app || null }; }
     catch { return { ok: false, notes: [] }; }
   });
-  ipcMain.handle('pb4u:copy', (e, t) => { clipboard.writeText(String(t || '')); return true; });
+  // iPad using this laptop's camera over the booth Wi-Fi (see lib/lan.mjs)
+  // Admin can turn this off per code (the licence's feat.ipadOpt === false); it is on for every other code.
+  const ipadAllowed = () => { const s = L.status(); return !(s.p && s.p.feat && s.p.feat.ipadOpt === false); };
+  const ipadInfo = () => { const b = shareBase(); return { allowed: ipadAllowed(), on: !!settings.ipadOn && ipadAllowed(), pin: settings.ipadPin, url: b ? b + '/ipad' : null, urlWithPin: b ? b + '/ipad/' + settings.ipadPin : null, camera: process.platform === 'win32' }; };
+  ipcMain.handle('pb4u:ipadInfo', () => ipadInfo());
+  ipcMain.handle('pb4u:ipadSet', (e, on, renewPin) => {
+    settings.ipadOn = !!on;
+    if (renewPin || !validPin(settings.ipadPin)) settings.ipadPin = newPin();
+    saveSettings();
+    return ipadInfo();
+  });
+  ipcMain.handle('pb4u:copy',(e, t) => { clipboard.writeText(String(t || '')); return true; });
   ipcMain.handle('pb4u:openUrl', (e, u) => { openOutside(String(u || '')); return true; });
   ipcMain.handle('pb4u:quit', () => { app.quit(); return true; });
   // Mac: let go of the camera macOS grabbed (its camera service, Image Capture) so the booth can use it.
@@ -328,7 +344,27 @@ app.whenReady().then(async () => {
   });
   setSpinDir(settings.spinDir || null);
   SPIN.configure({ buildDir: BUILD, temp: join(app.getPath('temp'), 'photobooth4u') });
-  initHelper({ workerPath: join(BUILD, 'camera-worker.ps1') });
+  // Camera and printer messages also go to camera.log in the app's data folder (%APPDATA%\photobooth4u), so a camera that
+  // hangs can be diagnosed afterwards. It starts over when it passes 512 KB.
+  const camLog = join(dataDir(), 'camera.log');
+  initHelper({
+    workerPath: join(BUILD, 'camera-worker.ps1'),
+    logger: (m) => {
+      console.log('[helper] ' + m);
+      try {
+        const line = new Date().toISOString() + ' ' + m + '\n';
+        appendFileSync(camLog, line);
+        if (statSync(camLog).size > 512 * 1024) writeFileSync(camLog, line);
+      } catch { /* the log is a convenience */ }
+    }
+  });
+  if (!validPin(settings.ipadPin)) { settings.ipadPin = newPin(); saveSettings(); }
+  setLanHandler(createLanHandler({
+    state: () => { const s = L.status(); return { on: !!settings.ipadOn && s.ok && !(s.p && s.p.feat && s.p.feat.ipadOpt === false), pin: settings.ipadPin }; },
+    boothPage: ({ extraHead }) => boothPage({ deviceId: L.deviceId(), extraHead }),
+    handleWeb: (webReq) => handle(webReq),
+    setGuestView
+  }));
   await startShareServer();
   protocol.handle('app', handle);
   setupSession();

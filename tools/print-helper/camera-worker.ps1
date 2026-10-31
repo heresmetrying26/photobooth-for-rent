@@ -135,6 +135,13 @@ namespace Pb4uCam
         PropertyKey kCtx = new PropertyKey(MTPX, 1006), kTotal = new PropertyKey(MTPX, 1007), kToRead = new PropertyKey(MTPX, 1008);
         PropertyKey kRead = new PropertyKey(MTPX, 1009), kToWrite = new PropertyKey(MTPX, 1010), kData = new PropertyKey(MTPX, 1012);
         IPortableDevice dev;
+        // For diagnosis: which command is in flight and since when (Worker.Watch logs a call that waits too long),
+        // and a log line for calls that were slow but did answer.
+        public static Action<string> Slow = null;
+        public static volatile int CallSeq = 0, InFlight = 0, InSinceTick = 0;
+        public static volatile ushort InOp = 0;
+        ushort lastOp = 0;
+        int calls = 0;
 
         static T Create<T>(string clsid) { return (T)Activator.CreateInstance(Type.GetTypeFromCLSID(new Guid(clsid))); }
         static void Check(int hr, string what)
@@ -226,16 +233,33 @@ namespace Pb4uCam
         IPortableDeviceValues Send(uint cmdPid, IPortableDeviceValues v)
         {
             Guid cat = MTPX;
-            Check(v.SetGuidValue(ref kCat, ref cat), "Set category");
-            Check(v.SetUnsignedIntegerValue(ref kId, cmdPid), "Set command");
-            IPortableDeviceValues res;
-            Check(dev.SendCommand(0, v, out res), "Camera command");
-            int hr;
-            if (res.GetErrorValue(ref kHr, out hr) == 0 && hr != 0) Check(hr, "Camera command");
-            return res;
+            try
+            {
+                Check(v.SetGuidValue(ref kCat, ref cat), "Set category");
+                Check(v.SetUnsignedIntegerValue(ref kId, cmdPid), "Set command");
+                IPortableDeviceValues res;
+                var sw = Stopwatch.StartNew();
+                CallSeq++; InOp = lastOp; InSinceTick = Environment.TickCount; InFlight = 1;
+                int hr0;
+                try { hr0 = dev.SendCommand(0, v, out res); }
+                finally { InFlight = 0; }
+                if (sw.ElapsedMilliseconds > 1500 && Slow != null) { try { Slow("Slow camera call: 0x" + lastOp.ToString("X4") + " (step " + cmdPid + ") took " + sw.ElapsedMilliseconds + " ms"); } catch { } }
+                Check(hr0, "Camera command");
+                int hr;
+                if (res.GetErrorValue(ref kHr, out hr) == 0 && hr != 0) Check(hr, "Camera command");
+                return res;
+            }
+            finally
+            {
+                // The request is spent (callers never reuse it): let go of it now. A long live-view session makes
+                // millions of these; now and then collect what is left so memory stays flat for hours.
+                try { Marshal.ReleaseComObject(v); } catch { }
+                if (++calls % 400 == 0) { GC.Collect(); GC.WaitForPendingFinalizers(); }
+            }
         }
         void SetOp(IPortableDeviceValues v, ushort code, uint[] ps)
         {
+            lastOp = code;
             Check(v.SetUnsignedIntegerValue(ref kOp, code), "Set op");
             var c = Create<IPortableDevicePropVariantCollection>("08a99e2f-6d6d-4b80-af5a-baf2bcbe4cb9");
             foreach (uint p in ps) { var pv = new PropVariant(); pv.vt = 19; pv.uintVal = p; Check(c.Add(ref pv), "Add param"); }
@@ -405,6 +429,10 @@ namespace Pb4uCam
         static List<ushort> ops = new List<ushort>(), props = new List<ushort>();
         static bool live;
         static string setupNote = "";
+        // Set by the helper when it had to restart this program (the camera stopped answering): the Canon is told to
+        // leave remote mode before it is switched on again, because the old session ended without a goodbye.
+        static bool recoverNext;
+        static Stopwatch nikEv = Stopwatch.StartNew();
 
         static void Log(string s) { try { Console.WriteLine("[camera] " + s); Console.Out.Flush(); } catch { } }
         static string H(uint v) { return "0x" + v.ToString("X4"); }
@@ -697,6 +725,8 @@ namespace Pb4uCam
         static byte[] Frame()
         {
             if (!live) StartLive();
+            // Events are only read when a photo is taken: over hours of live view the camera's list would keep growing.
+            if (nikEv.ElapsedMilliseconds > 3000 && Has(0x90C7)) { nikEv.Restart(); DrainEvents(); }
             var sw = Stopwatch.StartNew();
             int restarts = 0;
             uint last = 0;
@@ -908,6 +938,14 @@ namespace Pb4uCam
         {
             setupNote = "";
             eosVals.Clear(); canonNew.Clear(); gotFrame = false;
+            if (recoverNext)
+            {
+                recoverNext = false;
+                try { ptp.Op(0x9115, 0); } catch (GoneException) { throw; } catch { }
+                try { ptp.Op(0x9114, 0); } catch (GoneException) { throw; } catch { }
+                Log("Reset the camera's remote mode before connecting (the last session ended without a goodbye)");
+                Thread.Sleep(600);
+            }
             uint r = OpRetry(0x9114, 1);   // remote mode on
             Log("SetRemoteMode: " + H(r));
             uint r2 = OpRetry(0x9115, 1);  // send events when asked
@@ -949,6 +987,14 @@ namespace Pb4uCam
             catch { }
             live = false;
         }
+        // The camera ended live view by itself (after a photo, its own timeout, a sleep): the "live" flag still says it is
+        // on, so start it again from the beginning (not only the live view mode) instead of waiting for frames that never come.
+        static void CanonRestartLive()
+        {
+            Log("Live view stopped: starting it again");
+            live = false;
+            CanonLiveOn();
+        }
 
         // The live view data is a list of blocks { length, type, data }; one of them is the JPEG.
         static byte[] EosJpeg(byte[] d)
@@ -981,7 +1027,7 @@ namespace Pb4uCam
             if (!live) CanonLiveOn();
             var sw = Stopwatch.StartNew();
             uint last = 0;
-            bool kicked = false;
+            bool kicked = false, rearmed = false;
             while (sw.ElapsedMilliseconds < 3000)
             {
                 CanonKeep();
@@ -992,9 +1038,22 @@ namespace Pb4uCam
                     var j = EosJpeg(d);
                     if (j != null) { gotFrame = true; return j; }
                 }
-                else if (r != Ptp.BUSY && r != NOTREADY) break;
-                // Some models leave live view after a photo: switch it back on once.
-                if (!kicked && sw.ElapsedMilliseconds > 1200 && liveSw.ElapsedMilliseconds > 4000) { kicked = true; SetEos(0xD1B0, 2); }
+                else if (r != Ptp.BUSY && r != NOTREADY)
+                {
+                    // The camera ended live view by itself (heat, its time limit, a photo from its own button): switch it back on once.
+                    if (gotFrame && !rearmed)
+                    {
+                        rearmed = true;
+                        Log("Live view was stopped by the camera (" + H(r) + "): switching it back on");
+                        try { CanonLiveOn(); } catch (GoneException) { throw; } catch (CamException) { throw; } catch { }
+                        Thread.Sleep(150);
+                        continue;
+                    }
+                    break;
+                }
+                // Some models leave live view after a photo or a camera timeout and then only answer "busy" or nothing:
+                // start it again from the beginning, once per request.
+                if (!kicked && sw.ElapsedMilliseconds > 1200 && liveSw.ElapsedMilliseconds > 4000) { kicked = true; CanonRestartLive(); }
                 Thread.Sleep(50);
             }
             if (last != Ptp.OK && last != Ptp.BUSY && last != NOTREADY && last != 0)
@@ -1356,6 +1415,31 @@ namespace Pb4uCam
             return img;
         }
 
+        // Says in the log when one camera call has been waiting a long time (the helper restarts this program after ~10 s),
+        // so a hang shows which command it was stuck on.
+        static void Watch()
+        {
+            int loggedSeq = -1;
+            while (true)
+            {
+                Thread.Sleep(1000);
+                try
+                {
+                    int seq = Ptp.CallSeq;
+                    if (Ptp.InFlight == 1 && seq != loggedSeq)
+                    {
+                        int waited = unchecked(Environment.TickCount - Ptp.InSinceTick);
+                        if (waited >= 3000)
+                        {
+                            loggedSeq = seq;
+                            Log("Camera call 0x" + Ptp.InOp.ToString("X4") + " has waited " + (waited / 1000) + " s with no answer (the camera may be stuck: switch it off and on)");
+                        }
+                    }
+                }
+                catch { }
+            }
+        }
+
         // ---------- command loop ----------
         public static void Run(int port)
         {
@@ -1365,6 +1449,8 @@ namespace Pb4uCam
             var net = client.GetStream();
             var reader = new StreamReader(net, new UTF8Encoding(false));
             Log("Camera worker ready");
+            Ptp.Slow = Log;
+            var watcher = new Thread(Watch); watcher.IsBackground = true; watcher.Start();
             string line;
             while ((line = reader.ReadLine()) != null)
             {
@@ -1380,13 +1466,14 @@ namespace Pb4uCam
                     {
                         case "ping": kind = "J"; body = Encoding.UTF8.GetBytes("{\"ok\":true}"); break;
                         case "list": kind = "J"; body = Encoding.UTF8.GetBytes(ListJson()); break;
-                        case "open": kind = "J"; body = Encoding.UTF8.GetBytes(Open()); break;
+                        case "open": recoverNext = arg == "recover"; kind = "J"; body = Encoding.UTF8.GetBytes(Open()); break;
                         case "info": Need(); kind = "J"; body = Encoding.UTF8.GetBytes(InfoJson()); break;
                         case "battery": Need(); kind = "J"; body = Encoding.UTF8.GetBytes("{\"battery\":" + Battery() + "}"); break;
                         case "live":
                             Need();
                             if (arg == "off") { if (canon) CanonLiveOff(); else if (sony) live = false; else StopLive(); }
-                            else if (!live) { if (canon) CanonLiveOn(); else if (sony) live = true; else StartLive(); }
+                            else if (canon) CanonRestartLive();   // "on" is also how the booth asks for live view again when frames stopped
+                            else if (!live) { if (sony) live = true; else StartLive(); }
                             break;
                         case "frame":
                             {
@@ -1395,7 +1482,12 @@ namespace Pb4uCam
                                 if (f != null) { kind = "B"; body = f; }
                                 break;
                             }
-                        case "capture": Need(); kind = "B"; body = canon ? CanonCapture() : sony ? SonyCapture() : Capture(); break;
+                        case "capture":
+                            Need(); kind = "B";
+                            // A Canon often leaves live view after a photo: the next frame request starts it again right away.
+                            if (canon) { try { body = CanonCapture(); } finally { live = false; } }
+                            else body = sony ? SonyCapture() : Capture();
+                            break;
                         case "close": CloseCamera(); break;
                         case "quit": CloseCamera(); return;
                         default: throw new CamException("BAD Unknown command " + cmd);

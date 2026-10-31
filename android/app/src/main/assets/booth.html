@@ -2822,7 +2822,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
           <p class="panel-hint" id="gifModeHint" style="margin:8px 0 0; color:var(--ink-dim);">Guests get a photo strip + QR code.</p>
           <div id="gifOptions" style="display:none; margin-top:10px;">
-            <p class="panel-hint" style="margin:0;">GIF follows the session through the last shot, including timers and pauses. Speed is set automatically — 2× for sessions up to 24 s, 3× for longer ones. Resolution is up to 1280 × 720 when the camera feed supports it.</p>
+            <p class="panel-hint" style="margin:0;">GIF follows the session through the first complete run of shots, including timers, pauses and any retake pressed between shots. Retakes at the final review change the photo but not the GIF. Speed is set automatically — 2× for sessions up to 24 s, 3× for longer ones. Resolution is up to 1280 × 720 when the camera feed supports it.</p>
           </div>
         </div>
 
@@ -6035,7 +6035,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     chips.forEach(function(c){ c.classList.toggle('active', c.dataset.outmode === outputMode); });
     var hints = {
       photo: 'Guests get a photo strip + QR code.',
-      gif:   'Guests get an animated GIF + QR code (no still photo).',
+      gif:   'Guests get an animated GIF + QR code (no still photo). Photo retakes are not available in GIF only mode.',
       both:  'Guests get both a photo strip AND an animated GIF — two QR codes appear.'
     };
     var hintEl = document.getElementById('gifModeHint');
@@ -7609,7 +7609,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var sess = null;
   // Retake can be switched off per event, when the admin has enabled that option for this code.
   let allowRetake = true;
-  function retakesAllowed(){ var gifChosen = isGifAllowed() && (outputMode === 'gif' || outputMode === 'both'); return !gifChosen && (!(window.__PB && window.__PB.retakeOpt) || allowRetake); }
+  function retakesAllowed(){ var gifOnly = isGifAllowed() && outputMode === 'gif'; return !gifOnly && (!(window.__PB && window.__PB.retakeOpt) || allowRetake); }
   function refreshRetakeUI(){
     const on = !!(window.__PB && window.__PB.retakeOpt);
     const row = document.getElementById('allowRetakeRow'), hint = document.getElementById('allowRetakeHint'), t = document.getElementById('allowRetakeToggle');

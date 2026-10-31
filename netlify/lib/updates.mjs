@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.40', date: '2026-10-31' },
   { version: '1.0.39', date: '2026-10-31' },
   { version: '1.0.38', date: '2026-10-31' },
   { version: '1.0.37', date: '2026-10-31' },
@@ -51,7 +52,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.33', date: '2026-10-31', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.33/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.34', date: '2026-10-31', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.34/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -86,6 +87,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-31', title: 'Photo + GIF: guests can retake photos again', for: ['website', 'app'], app: '1.0.40',
+    items: [
+      'Laptop app 1.0.40 and Android app 1.0.34: with Photo + GIF, the Retake button is back, both between shots and on the final review screen.',
+      'The GIF is the first complete run of shots. A retake pressed between shots is in the GIF; a retake at the final review changes the photo but not the GIF.',
+      'GIF only still has no photo retakes, and Setup now says so.'
+    ]
+  },
   {
     date: '2026-10-31', title: 'Canon on Windows: the photo now lands on "Pose", and live view comes back after each shot', for: ['website', 'app'], app: '1.0.39',
     items: [

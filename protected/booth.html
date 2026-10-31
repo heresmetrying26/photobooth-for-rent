@@ -3167,7 +3167,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <label class="toggle-row" style="margin-top:6px;"><input type="checkbox" id="flipBackToggle" checked> Back card (&ldquo;Thank you!&rdquo;, last in the stack)</label>
           </div>
           <div id="gifOptions" style="display:none; margin-top:10px;">
-            <p class="panel-hint" style="margin:0;">GIF follows the session through the last shot, including timers and pauses. Speed is set automatically — 2× for sessions up to 24 s, 3× for longer ones.</p>
+            <p class="panel-hint" style="margin:0;">GIF follows the session through the first complete run of shots, including timers, pauses and any retake pressed between shots. Retakes at the final review change the photo but not the GIF. Speed is set automatically — 2× for sessions up to 24 s, 3× for longer ones.</p>
             <div class="stepper" style="margin-top:8px;"><span class="lbl">GIF frame</span><span class="ctl"><select id="gifLayoutSelect"><option value="solo" selected>Solo layout (your frame and title)</option><option value="follow">Chosen layout</option><option value="raw">Plain camera view</option></select></span></div>
             <p class="panel-hint" id="gifLayoutHint" style="margin:6px 0 0;">The GIF sits in the one-photo Solo layout with your frame, title and design, even when the photos use a strip. Guests should stand in the middle of the picture.</p>
           </div>
@@ -6824,7 +6824,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     chips.forEach(function(c){ c.classList.toggle('active', c.dataset.outmode === outputMode); });
     var hints = {
       photo: 'Guests get a photo strip + QR code.',
-      gif:   'Guests get an animated GIF + QR code (no still photo).',
+      gif:   'Guests get an animated GIF + QR code (no still photo). Photo retakes are not available in GIF only mode.',
       both:  'Guests get both a photo strip AND an animated GIF — two QR codes appear.',
       flipbook: 'Guests record a short clip. It prints as a flip book (cut, stack, staple) and they get an animated GIF QR code.'
     };
@@ -8732,7 +8732,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   var sess = null;
   // Retake can be switched off per event, when the admin has enabled that option for this code.
   let allowRetake = true;
-  function retakesAllowed(){ var gifChosen = isGifAllowed() && (outputMode === 'gif' || outputMode === 'both'); return !gifChosen && (!(window.__PB && window.__PB.retakeOpt) || allowRetake); }
+  function retakesAllowed(){ var gifOnly = isGifAllowed() && outputMode === 'gif'; return !gifOnly && (!(window.__PB && window.__PB.retakeOpt) || allowRetake); }
   function refreshRetakeUI(){
     const on = !!(window.__PB && window.__PB.retakeOpt);
     const row = document.getElementById('allowRetakeRow'), hint = document.getElementById('allowRetakeHint'), t = document.getElementById('allowRetakeToggle');

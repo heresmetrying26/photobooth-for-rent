@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.41', date: '2026-10-31' },
   { version: '1.0.40', date: '2026-10-31' },
   { version: '1.0.39', date: '2026-10-31' },
   { version: '1.0.38', date: '2026-10-31' },
@@ -93,6 +94,12 @@ export const NOTES = [
       'Android app 1.0.35: Print settings has a new Wi-Fi printer section. Tap Find Wi-Fi printers and the tablet lists printers on the same Wi-Fi, such as Epson, Canon, HP and Brother models that support AirPrint / Mopria, and prints photos straight to the one you pick, with no print dialog.',
       'Printers plugged into the tablet’s USB port appear in the same list. Receipt printers and printers that support IPP-over-USB can be printed to. Printers that need their own driver (for example Epson L120 / L210, DNP, HiTi) are shown as detected but still need the laptop.',
       'Receipt printers on Wi-Fi or USB work too, and if a direct print fails the booth opens the Android print dialog instead. See the new Android printing guide.'
+    ]
+  },
+  {
+    date: '2026-10-31', title: 'Card booth: "Flip card" only shows when Card & certificate booths is on', for: ['website', 'app'], app: '1.0.41',
+    items: [
+      'Laptop app 1.0.41 and the website: the "Flip card" button on the result screen no longer shows on a normal photo booth. It only appears for codes that have Card & certificate booths turned on in Admin.'
     ]
   },
   {

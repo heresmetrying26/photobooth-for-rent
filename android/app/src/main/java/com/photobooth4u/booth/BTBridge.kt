@@ -96,6 +96,18 @@ class BTBridge(
     }
 
     /**
+     * True when the device looks like a receipt printer: it reports itself as an imaging/printer device,
+     * or its name starts with a known thermal-printer prefix. Anything obviously not a printer is out.
+     */
+    private fun isLikelyPrinter(device: BluetoothDevice): Boolean {
+        if (isNonPrinter(device)) return false
+        val btClass = try { device.bluetoothClass } catch (_: SecurityException) { null }
+        if (btClass != null && btClass.majorDeviceClass == BluetoothClass.Device.Major.IMAGING) return true
+        val name = try { device.name ?: "" } catch (_: SecurityException) { "" }
+        return name.isNotBlank() && PRINTER_PREFIXES.any { name.startsWith(it, ignoreCase = true) }
+    }
+
+    /**
      * Called by JavaScript: window.__BTBridge.isAvailable()
      */
     @JavascriptInterface
@@ -127,7 +139,8 @@ class BTBridge(
     }
 
     /**
-     * Returns JSON list of all paired devices.
+     * Returns JSON list of paired devices, likely printers first. Each entry has "printer": true when it
+     * looks like a receipt printer, false for anything else (so the page can hide or group those).
      */
     @JavascriptInterface
     fun listDevices(): String {
@@ -137,11 +150,14 @@ class BTBridge(
         }
         val list = JSONArray()
         try {
-            val bonded = bluetoothAdapter?.bondedDevices ?: emptySet()
+            val bonded = (bluetoothAdapter?.bondedDevices ?: emptySet())
+                .filter { !isNonPrinter(it) }
+                .sortedByDescending { isLikelyPrinter(it) }
             for (device in bonded) {
                 val obj = JSONObject()
                 obj.put("name", device.name ?: "Unknown")
                 obj.put("address", device.address)
+                obj.put("printer", isLikelyPrinter(device))
                 list.put(obj)
             }
         } catch (e: SecurityException) {
@@ -226,40 +242,52 @@ class BTBridge(
             }
         }
 
-        // 3. Filter out non-printer peripherals (keyboards, mice, headphones)
-        val candidateDevices = bondedDevices.filter { !isNonPrinter(it) }
+        // 3. Likely printers first; keyboards, headphones and the like never show up
+        val likely = bondedDevices.filter { isLikelyPrinter(it) }
+        val others = bondedDevices.filter { !isNonPrinter(it) && !isLikelyPrinter(it) }
 
-        // If exactly one printer candidate exists, connect immediately
-        if (candidateDevices.size == 1) {
-            return connectToDevice(candidateDevices.first())
+        // Exactly one likely printer: connect straight away
+        if (likely.size == 1) {
+            return connectToDevice(likely.first())
         }
 
-        // 4. If multiple candidates or all were filtered out, show picker on UI thread
-        val candidates = if (candidateDevices.isNotEmpty()) candidateDevices else bondedDevices.toList()
+        // 4. Otherwise show a picker. Unrecognised devices sit behind "Other paired devices" so a printer
+        //    with an odd name can still be chosen. If nothing is recognised, the list is those devices.
         val latch = CountDownLatch(1)
         var selectedDevice: BluetoothDevice? = null
 
-        activity.runOnUiThread {
-            val names = candidates.map {
-                val n = try { it.name ?: "Unknown" } catch (_: SecurityException) { "Unknown" }
-                "$n (${it.address})"
-            }.toTypedArray()
+        fun label(d: BluetoothDevice): String {
+            val n = try { d.name ?: "Unknown" } catch (_: SecurityException) { "Unknown" }
+            return "$n (${d.address})"
+        }
 
+        fun showPicker(devices: List<BluetoothDevice>, withOthers: Boolean) {
+            val items = devices.map { label(it) } + (if (withOthers) listOf("Other paired devices…") else emptyList())
             AlertDialog.Builder(activity)
-                .setTitle("Select Bluetooth Thermal Printer")
-                .setItems(names) { _, which ->
-                    selectedDevice = candidates[which]
-                    latch.countDown()
+                .setTitle(if (withOthers || devices === likely) "Select Bluetooth Thermal Printer" else "Other paired devices")
+                .setItems(items.toTypedArray()) { _, which ->
+                    if (which < devices.size) {
+                        selectedDevice = devices[which]
+                        latch.countDown()
+                    } else {
+                        showPicker(others, false)
+                    }
                 }
-                .setNegativeButton("Cancel") { _, _ ->
-                    latch.countDown()
-                }
+                .setNegativeButton("Cancel") { _, _ -> latch.countDown() }
                 .setCancelable(false)
                 .show()
         }
 
+        activity.runOnUiThread {
+            when {
+                likely.isNotEmpty() -> showPicker(likely, others.isNotEmpty())
+                others.isNotEmpty() -> showPicker(others, false)
+                else -> showPicker(bondedDevices.toList(), false)
+            }
+        }
+
         try {
-            latch.await(30, TimeUnit.SECONDS)
+            latch.await(60, TimeUnit.SECONDS)
         } catch (_: InterruptedException) {}
 
         return if (selectedDevice != null) {

@@ -38,9 +38,7 @@ object EscP2Job {
         if (color) buildColor(src, widthMm, heightMm) else buildMono(src, widthMm, heightMm)
 
     private fun header(out: ByteArrayOutputStream, paperW: Int, paperH: Int, colour: Boolean) {
-        out.put(bytes(0x00, 0x00, 0x00, 0x1B, 0x01), ascii("@EJL 1284.4
-@EJL     
-"), bytes(0x1B, 0x40))
+        out.put(bytes(0x00, 0x00, 0x00, 0x1B, 0x01), ascii("@EJL 1284.4\n@EJL     \n"), bytes(0x1B, 0x40))
         out.put(bytes(0x1B, 0x40))
         out.put(bytes(0x1B, 0x28, 0x52, 0x08, 0x00, 0x00), ascii("REMOTE1"))
         out.put(bytes(0x50, 0x4D, 0x02, 0x00, 0x00, 0x00))

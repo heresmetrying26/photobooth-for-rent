@@ -3825,7 +3825,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 <div class="desk-ov" id="spinOverlay" hidden role="dialog" aria-label="360 desk">
   <div class="desk-card">
     <div class="desk-head"><b>🎥 360 desk</b><span class="sp"></span><button type="button" class="desk-btn" id="spinClose">Close</button></div>
-    <div class="desk-drop" id="spinDrop">Drop the 360 videos here, or <button type="button" class="desk-btn" id="spinPick">Choose videos</button><input type="file" id="spinFile" accept="video/*" multiple hidden></div>
+    <div class="desk-drop" id="spinDrop">Drop the 360 videos here, or <button type="button" class="desk-btn" id="spinPick">Choose videos</button> <button type="button" class="desk-btn" id="spinPickDir">Choose folder</button><input type="file" id="spinFile" accept="video/*" multiple hidden><input type="file" id="spinDirFile" webkitdirectory multiple hidden></div>
     <div class="spin-send" id="spinSend" hidden>
       <div class="spin-qr" id="spinSendQr"></div>
       <div class="spin-sendtxt"><b>Send from the phone that recorded</b><br>Scan this with that phone on the booth Wi-Fi, then pick the video. Videos saved into the folder below also appear here by themselves.<br><span id="spinDirTxt"></span> <button type="button" class="desk-btn" id="spinDirBtn">Change folder</button><br><b>Recording tablet?</b> The 360 capture screen on the Android app sends its clips here. Type this address into it: <span class="spin-link" id="spinSendLink"></span> <button type="button" class="desk-btn" id="spinLinkCopy">Copy</button></div>
@@ -13099,6 +13099,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       spinPoll();
     }catch(e){ showToast('Couldn’t add that video (' + (e.message || e) + ').', 4500); }
   }
+  // Finished edits are remembered (by clip name + time) so reopening the app does not edit the same clips again.
+  var SPIN_DONE_KEY = 'pb_spin_done';
+  function spinDoneAll(){ try{ return JSON.parse(localStorage.getItem(SPIN_DONE_KEY) || '{}') || {}; }catch(e){ return {}; } }
+  function spinDoneSet(key, out){
+    try{
+      var all = spinDoneAll(); all[key] = { out: out, t: Date.now() };
+      var ks = Object.keys(all); if(ks.length > 400){ ks.sort(function(a, b){ return all[a].t - all[b].t; }).slice(0, ks.length - 400).forEach(function(k){ delete all[k]; }); }
+      localStorage.setItem(SPIN_DONE_KEY, JSON.stringify(all));
+    }catch(e){}
+  }
+  async function spinDoneStill(rec){
+    try{ if(!rec || !rec.out || !spinInfo || !spinInfo.previewBase) return false; var r = await fetch(spinInfo.previewBase + '/edited/' + encodeURIComponent(rec.out.replace(/^edited\//, '')), { method: 'HEAD' }); return r.ok; }catch(e){ return false; }
+  }
   async function spinPoll(){
     if(!spinDesktop()) return;
     try{
@@ -13109,7 +13122,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         var prev = spinPrev[key]; spinPrev[key] = f.size;
         if(prev !== f.size || f.size < 1024) continue;           // still being copied: wait for the next look
         spinSeen[key] = true;
-        var it = { id: ++spinSeq, src: 'inbox', name: f.name, size: f.size, status: 'new', url: '' };
+        var it = { id: ++spinSeq, src: 'inbox', name: f.name, size: f.size, key: key, status: 'new', url: '' };
+        var rec = spinDoneAll()[key];
+        if(rec){
+          if(!spinInfo || !spinInfo.previewBase) try{ spinInfo = await window.pb4u.spinInfo(); }catch(e2){}
+          if(await spinDoneStill(rec)){ it.edited = rec.out; it.status = 'edited'; spinQueue.unshift(it); continue; }   // already edited: show it as edited, do not edit again
+        }
         spinQueue.unshift(it); fresh.push(it);
       }
       if(fresh.length){
@@ -13603,7 +13621,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         var st = await window.pb4u.spinJob(j.id);
         if(!st) throw new Error('The editing stopped unexpectedly');
         it.pct = st.pct || 0; spinTagUpdate(it); spinModalUpdate();
-        if(st.state === 'done'){ it.edited = st.out; it.status = 'edited'; break; }
+        if(st.state === 'done'){ it.edited = st.out; it.status = 'edited'; if(it.key) spinDoneSet(it.key, st.out); break; }
         if(st.state === 'error') throw new Error(st.error || 'The video could not be edited');
         if(st.state === 'cancelled'){ it.status = 'new'; it.job = null; spinRender(); spinModalUpdate(); return; }
       }
@@ -13691,6 +13709,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   document.getElementById('spinClose').addEventListener('click', closeSpin);
   document.getElementById('spinModalClose').addEventListener('click', closeSpinModal);
   document.getElementById('spinPick').addEventListener('click', function(){ document.getElementById('spinFile').click(); });
+  document.getElementById('spinPickDir').addEventListener('click', function(){ document.getElementById('spinDirFile').click(); });
+  document.getElementById('spinDirFile').addEventListener('change', function(e){
+    var vids = [].filter.call(e.target.files || [], function(f){ return /^video\//.test(f.type) || /\.(mp4|mov|m4v|webm)$/i.test(f.name || ''); });
+    if(!vids.length) showToast('No videos in that folder.', 3500); else { vids.sort(function(a, b){ return a.name < b.name ? -1 : 1; }).forEach(spinAddFile); showToast(vids.length + ' video' + (vids.length === 1 ? '' : 's') + ' added.', 2500); }
+    e.target.value = '';
+  });
   document.getElementById('spinFile').addEventListener('change', function(e){ [].forEach.call(e.target.files || [], spinAddFile); e.target.value = ''; });
   document.getElementById('spinClear').addEventListener('click', function(){ spinQueue.forEach(function(i){ if(i.objUrl) try{ URL.revokeObjectURL(i.objUrl); }catch(e){} }); spinQueue = []; spinRender(); });
   document.getElementById('spinDirBtn').addEventListener('click', async function(){

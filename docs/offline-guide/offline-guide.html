@@ -42,6 +42,7 @@ h2{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:31px; line-h
 /* numbered steps with a thin rail */
 .steps{position:relative; margin:0; padding:0; list-style:none}
 .steps li{position:relative; padding:0 0 12px 38px}
+.qs .steps li{padding-bottom:8px}
 .steps li::before{content:''; position:absolute; left:12px; top:22px; bottom:-2px; width:1px; background:#e0d7cb}
 .steps li:last-child::before{display:none}
 .steps .n{position:absolute; left:0; top:2px; width:24px; height:24px; border-radius:50%; background:var(--red); color:#fff;
@@ -86,7 +87,7 @@ figcaption{font-size:11.4px; color:var(--body); margin-top:8px; line-height:1.5}
 .logo .word{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:24px; letter-spacing:-.035em; color:var(--ink); line-height:1}
 .logo .badge{font-weight:800; font-size:10px; color:#fff; background:var(--red); border-radius:4px; padding:1px 4px; transform:rotate(-7deg) translate(-4px,-9px); line-height:1.2}
 .cover .top{padding:44px 64px 0}
-.cover h1{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:67px; line-height:1.02; letter-spacing:-.025em; color:var(--ink); margin:34px 0 20px}
+.cover h1{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:62px; line-height:1.02; letter-spacing:-.025em; color:var(--ink); margin:34px 0 20px}
 .cover h1 em{font-style:italic; font-weight:500; color:var(--red)}
 .cover .intro{font-size:14.6px; line-height:1.62; max-width:560px; margin:0}
 .hero{margin:34px 0 0; border-top:1px solid #e3d9cb; border-bottom:1px solid #e3d9cb; background:var(--cream)}
@@ -106,9 +107,9 @@ table.fix.pay td:first-child{width:200px}
 /* troubleshooting */
 table.fix{width:100%; border-collapse:collapse; font-size:11.6px; line-height:1.5}
 table.fix th{text-align:left; font-size:8.4px; font-weight:700; letter-spacing:.2em; color:var(--dim); text-transform:uppercase; padding:0 0 8px; border-bottom:1.5px solid var(--ink)}
-table.fix td{padding:5px 0; border-bottom:1px solid #e6dfd4; vertical-align:top}
+table.fix td{padding:4px 0; border-bottom:1px solid #e6dfd4; vertical-align:top}
 table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color:var(--ink)}
-.help{margin-top:18px; background:var(--ink); border-radius:12px; padding:18px 24px; display:flex; align-items:center; justify-content:space-between; color:#d7d1ca}
+.help{margin-top:12px; background:var(--ink); border-radius:12px; padding:18px 24px; display:flex; align-items:center; justify-content:space-between; color:#d7d1ca}
 .help h3{font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:20px; color:#fff; margin:0 0 2px}
 .help p{margin:0; font-size:12px} .help b{color:#fff}
 .help .btn{background:var(--red); color:#fff; font-weight:700; font-size:12.4px; border-radius:999px; padding:9px 18px}
@@ -124,7 +125,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
 .flow{display:flex; align-items:center; gap:10px; margin:6px 0 4px; flex-wrap:wrap}
 .flow span{background:#fff; border:1.5px solid var(--line); border-radius:10px; padding:8px 12px; font-weight:700; color:var(--ink); font-size:11.6px}
 .flow i{font-style:normal; color:var(--red); font-weight:800}
-.cover .bigpanel{margin:34px 64px 0; border-radius:16px; background:var(--ink); color:#d7d1ca; padding:26px 28px; display:grid; grid-template-columns:repeat(3,1fr); gap:18px}
+.cover .bigpanel{margin:24px 64px 0; border-radius:16px; background:var(--ink); color:#d7d1ca; padding:26px 28px; display:grid; grid-template-columns:repeat(3,1fr); gap:18px}
 .cover .bigpanel b{display:block; color:#fff; font-size:14px; margin:0 0 4px}
 .cover .bigpanel p{margin:0; font-size:12px; line-height:1.55}
 .cover .bigpanel .ic{width:30px; height:30px; border-radius:9px; background:var(--red); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; margin-bottom:10px}
@@ -136,14 +137,14 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
   <div class="top">
     <div class="logo"><span class="mark"><i></i><i></i><i></i><i></i></span><span class="word">photobooth</span><span class="badge">4u</span></div>
     <h1>Your booth,<br><em>no internet</em> needed.</h1>
-    <p class="intro">The photobooth4u app for <b>Windows</b> and <b>Mac</b>. The same booth as the website, installed on your laptop: it takes, saves and prints photos with <b>no internet</b>, and guests get their photo by scanning a QR over the booth Wi-Fi. <b>Page 2 is a one-page quick start</b> for event day.</p>
+    <p class="intro">The photobooth4u app for <b>Windows</b>, <b>Mac</b> and <b>Android tablets</b> (page 8). The same booth as the website, installed on your laptop or tablet: it takes, saves and prints photos with <b>no internet</b>, and guests scan a QR to get their photo. <b>You still need a local Wi-Fi</b> (a router or a phone hotspot) that the booth and guests' phones are on. <b>Page 2 is a one-page quick start</b> for event day.</p>
   </div>
   <div class="bigpanel">
     <div><span class="ic">1</span><b>Install once</b><p>Windows 10 / 11 or macOS. Activate with your code (internet needed once).</p></div>
     <div><span class="ic">2</span><b>Shoot offline</b><p>Designs, layouts, frames, guest screen, USB camera, silent printing and vouchers all work offline.</p></div>
     <div><span class="ic">3</span><b>Share on Wi-Fi</b><p>Photos save on the laptop. Guests on the booth Wi-Fi scan the QR and save their photo.</p></div>
   </div>
-  <ol class="toc" style="margin-top:22px">
+  <ol class="toc" style="margin-top:12px">
     <li><span>&#9733;</span>Quick start (page 2)</li>
     <li><span>04</span>Printing</li>
     <li><span>01</span>Install the app</li>
@@ -154,11 +155,12 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
     <li><span>07</span>Pop-ups: what to click</li>
     <li><span>08</span>Your licence</li>
     <li><span>09</span>Troubleshooting &amp; help</li>
+    <li><span>A</span>Android tablet app</li>
   </ol>
   <div class="card cream" style="margin:18px 64px 0">
     <h5>Which packages include the app?</h5>
     <ul class="dots" style="margin:0">
-      <li><b>Lifetime</b> (online + offline), <b>Laptop 6-Month Pass</b>, and the <b>Laptop Booth</b> per event when you ask for the offline app.</li>
+      <li><b>Monthly Offline</b>, <b>Monthly Online + Offline</b>, <b>Lifetime Offline</b>, <b>Lifetime Online + Offline</b>, and the <b>Event Pass</b> (24 hours) when you ask for the offline app.</li>
       <li>One code can activate more than one laptop: each laptop uses one of the code's <b>device slots</b>.</li>
     </ul>
   </div>
@@ -166,23 +168,24 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
 </section>
 
 <!-- ============ QUICK START ============ -->
-<section class="page">
+<section class="page qs" style="padding-top:52px">
   <p class="kicker">&#9733; Event day</p>
   <h2>Quick start</h2>
   <p class="lead">Do these in order. The app must be installed and activated already (pages 3 to 5).</p>
   <ol class="steps">
     <li><span class="n">1</span><h4>Plug everything in</h4><p>Laptop on its charger. Guest screen by HDMI, set to <b>Extend</b> (Windows: <span class="kbd">Win + P</span> → Extend). Camera on a full or dummy battery. Printer on, paper loaded.</p></li>
-    <li><span class="n">2</span><h4>Start the booth Wi-Fi</h4><p>Connect the laptop to a <b>pocket Wi-Fi router</b> or a <b>phone hotspot</b>, and have guests join the same one. It doesn't need internet: a router with no SIM works, and a phone hotspot works with mobile data turned off. Guests only need to reach the laptop. <i>(The laptop's own Windows "Mobile hotspot" won't turn on unless the laptop is already connected to a network, so don't rely on it. Macs can't host their own Wi-Fi at all.)</i></p></li>
+    <li><span class="n">2</span><h4>Start the booth Wi-Fi</h4><p>Connect the laptop to a Wi-Fi that guests can join too: a <b>pocket router</b> (no internet cable needed) or a <b>second phone's hotspot</b> (no data needed). The laptop's own Windows hotspot may refuse to start with no connection. The app never creates a Wi-Fi itself.</p></li>
     <li><span class="n">3</span><h4>Open photobooth4u</h4><p>From the Start menu (Windows) or Applications (Mac). It opens straight into the booth.</p></li>
-    <li><span class="n">4</span><h4>Choose the camera</h4><p><b>Setup → 5 Session → Camera</b>. Windows: <b>Nikon / Canon camera over USB</b>. Mac: <b>DSLR / mirrorless over USB</b>, then pick the camera. Or a webcam / HDMI capture card.</p></li>
-    <li><span class="n">5</span><h4>Check Setup and Share &amp; start</h4><p>Design, name, layout as usual. In <b>Share &amp; start</b>, check the <b>event name</b>, <b>Photos on this laptop</b> and <b>Guests' phones</b> (it shows the address guests use). Type the <b>booth Wi-Fi name and password</b> if guests don't know it.</p></li>
+    <li><span class="n">4</span><h4>Choose the camera</h4><p><b>Setup → 4 Camera</b> (it shows a live view of what the camera sees). Windows: <b>Nikon / Canon camera over USB</b>. Mac: <b>DSLR / mirrorless over USB</b>, then pick the camera. Or a webcam / HDMI capture card.</p></li>
+    <li><span class="n">5</span><h4>Check Setup and Share &amp; start</h4><p>Design, name, layout as usual. In <b>Share &amp; start</b>, check the <b>event name</b>, <b>Photos on this laptop</b> and <b>Guests' phones</b> (it shows the address guests use). The <b>booth Wi-Fi name and password</b> are filled in for you from the Wi-Fi the laptop is on (if the password can't be read, type it there).</p></li>
     <li><span class="n">6</span><h4>Choose the printers</h4><p>In <b>Photo Session</b> tap <b>&#128424; Print settings</b>, pick each paper size and its printer. Printing is built in: no Print Helper, no pop-up.</p></li>
-    <li><span class="n">7</span><h4>Test with your phone</h4><p>Take one session. Join the booth Wi-Fi on your phone, scan the photo QR, tap <b>Save photo</b>. Print once.</p></li>
-    <li><span class="n">8</span><h4>Open the guest screen</h4><p>In <b>Setup → 5 Session</b>, tap <b>Open guest screen</b>. You're ready.</p></li>
+    <li><span class="n">7</span><h4>Test with your phone</h4><p>Tap <b>Wi-Fi</b> in the bottom bar, scan its QR with another phone to join. Take one session, scan the photo QR, tap <b>Save photo</b>. Print once.</p></li>
+    <li><span class="n">8</span><h4>Open the guest screen</h4><p>In <b>Setup → 7 Session</b>, tap <b>Open guest screen</b>. You're ready.</p></li>
   </ol>
   <div class="cols even" style="margin-top:14px">
     <div class="card green">
       <h5>Works with no internet</h5>
+      <p style="margin:0 0 8px"><b>No internet does not mean no Wi-Fi.</b> Put the laptop and guests on one router or phone hotspot (no data needed). On no network at all, photos still save but there is no QR.</p>
       <ul class="dots">
         <li>All designs, layouts, your frames, stickers, filters, retakes, Lock booth</li>
         <li>Guest screen, USB camera, silent printing, <b>vouchers</b></li>
@@ -223,7 +226,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
         </ol>
       </div>
     </div>
-    <div class="note card green" style="margin-top:12px"><b>New version?</b> The app tells you when one is out. Your activation, designs and photos stay. See <b>Updating the app</b> (page 7) and <b>Pop-ups</b> (page 8).</div>
+    <div class="note card green" style="margin-top:12px"><b>New version?</b> The app tells you when one is out. Your activation, designs and photos stay. See <b>Updating the app</b> (page 7) and <b>Pop-ups</b> (page 9).</div>
   </div>
   <div class="sec">
     <p class="kicker">02 · Once per laptop</p>
@@ -271,6 +274,15 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
         </ul>
       </div>
     </div>
+    <div class="card cream" style="margin-top:12px">
+      <span class="os">Android tablet app</span>
+      <ul class="dots">
+        <li><b>Nikon</b>, <b>Canon EOS</b> and <b>Sony Alpha</b>, built into the app (version 1.0.29 or newer).</li>
+        <li>Plug the camera into the tablet's USB port with a <b>data</b> cable (USB-C or an OTG adapter), switch it on and tap <b>OK</b> when Android asks to allow it. In the booth pick <b>Nikon / Canon / Sony camera over USB cable</b> in the Camera list. After that it reconnects by itself.</li>
+        <li><b>Canon:</b> Live View shoot: Enable, or <b>Photo Import / Remote Control</b> USB mode. <b>Sony:</b> <b>USB Connection → PC Remote</b>. <b>Nikon:</b> PTP / MTP. Use a data cable, not charge-only.</li>
+        <li>Another make (Fujifilm, Panasonic, Olympus…)? Use its USB webcam mode or an HDMI capture card: it shows up in the Camera list.</li>
+      </ul>
+    </div>
     <div class="card line" style="margin-top:12px">
       <h5>For every camera</h5>
       <div class="split mini">
@@ -294,6 +306,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
         <li><span class="n">1</span><h4>Set up the printer once</h4><p>Install its driver and do one test print from the laptop. In the printer's own preferences set the <b>paper size</b>, <b>borderless</b> and, for 2×6 strips, <b>cut</b>.</p></li>
         <li><span class="n">2</span><h4>Choose a printer per paper size</h4><p>In <b>Photo Session → &#128424; Print settings</b>, pick a printer for each size (e.g. 4R on one, 2×6 strips on another). The app remembers it.</p></li>
         <li><span class="n">3</span><h4>Auto-print</h4><p>Print once to test, then tick <b>Auto-print every session</b>. Prints go straight to the printer, no pop-up.</p></li>
+        <li><span class="n">4</span><h4>Print an earlier photo</h4><p>On the booth laptop, open <b>All photos</b> (bottom bar), tap a photo, then <b>Print photo</b>. It prints at once on the printer, paper size and copies from Print settings, with no pop-up. This works on the booth laptop only; guests' phones keep their own print.</p></li>
       </ol>
       <div class="card green">
         <h5>Good to know</h5>
@@ -301,6 +314,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
           <li>The <b>Print Helper</b> isn't needed: it's built into the app.</li>
           <li>Same printer for two sizes? Add it to the laptop <b>twice</b>, each with its own defaults and name.</li>
           <li>The paper sizes in your package appear in Print settings.</li>
+          <li><b>Thermal receipt printers</b> (80 / 58 mm): see the Thermal printing guide at photobooth4u.netlify.app/how-to-print-thermal/.</li>
         </ul>
       </div>
     </div>
@@ -317,10 +331,10 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
     <div class="flow"><span>Guest joins the booth Wi-Fi</span><i>→</i><span>Scans their photo QR</span><i>→</i><span>Taps Save photo</span></div>
     <div class="cols" style="margin-top:14px">
       <ol class="steps">
-        <li><span class="n">1</span><h4>One Wi-Fi for laptop and guests</h4><p>A small pocket router at the booth (no SIM or internet needed), or a phone hotspot (mobile data can be off). Venue Wi-Fi works too, if guests' phones can join it. The laptop's own Windows "Mobile hotspot" needs the laptop to be connected to a network first, so use a router or phone hotspot instead.</p></li>
+        <li><span class="n">1</span><h4>One Wi-Fi for laptop and guests</h4><p>A small router at the booth (no SIM or internet needed) or a second phone's hotspot (no data needed). Venue Wi-Fi works too, if guests' phones can join it. The laptop's own Windows hotspot may refuse to start with no connection, so a router or phone hotspot is more reliable. The laptop must be connected to it, or there is no photo QR.</p></li>
         <li><span class="n">2</span><h4>Check Share &amp; start</h4><p><b>Guests' phones</b> shows the address guests open, with a ✓. If it says the laptop isn't on a Wi-Fi network, connect it first.</p></li>
-        <li><span class="n">3</span><h4>Optional: Join Wi-Fi QR</h4><p>Type the <b>Wi-Fi name and password</b> under <b>Booth Wi-Fi for guests</b>. Guests then see a <b>Join Wi-Fi</b> QR next to their photo QR: scan it first, then the photo QR.</p></li>
-        <li><span class="n">4</span><h4>Print the QR sign</h4><p>Under <b>QR sign</b>, save the sign with the Wi-Fi and <b>All photos</b> QR codes and print it (A5 or bigger) for the booth table.</p></li>
+        <li><span class="n">3</span><h4>Join Wi-Fi QR</h4><p>Under <b>Booth Wi-Fi for guests</b> the app fills in the name and password of the Wi-Fi the laptop is on (tap <b>Use current Wi-Fi</b> to read it again; type the password if it can't be read; on a Mac, allow the Keychain request). The <b>Wi-Fi</b> button in the bottom bar, beside <b>Extras</b> and <b>Lock booth</b>, shows the same QR on the booth screen: guests scan it to join, then scan their photo QR.</p></li>
+        <li><span class="n">4</span><h4>Print the Wi-Fi sign</h4><p>Tap <b>Download WIFI QR Sign</b> and print it (A5 or bigger) for the booth table. After each session guests get their <b>photo</b> and <b>GIF</b> QR codes; the <b>All photos</b> QR is behind the <b>All photos</b> button in the bottom bar.</p></li>
       </ol>
       <div>
         <div class="card cream">
@@ -338,7 +352,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
   <div class="sec">
     <p class="kicker">Guest payments offline</p>
     <h3 class="h3">Vouchers</h3>
-    <p style="margin:0">QR payments (GCash, Maya) need the internet. <b>Vouchers</b> work offline: set <b>Guest payment</b> to <b>Vouchers</b> in <b>Setup → 5 Session</b>, sell the printed codes at the table, and each code works once.</p>
+    <p style="margin:0">QR payments (GCash, Maya) need the internet. <b>Vouchers</b> work offline: set <b>Guest payment</b> to <b>Vouchers</b> in <b>Setup → 7 Session</b>, sell the printed codes at the table, and each code works once.</p>
   </div>
   <div class="foot"><span>photobooth4u offline app guide</span><span>6</span></div>
 </section>
@@ -374,6 +388,38 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
   <div class="foot"><span>photobooth4u offline app guide</span><span>7</span></div>
 </section>
 
+<!-- ============ ANDROID ============ -->
+<section class="page">
+  <div class="sec">
+    <p class="kicker">A &middot; Android tablet</p>
+    <h2>The Android tablet app</h2>
+    <p class="lead">The same offline booth as a tablet app (Android 7.0 or newer). Photos save on the tablet and guests get theirs over the booth Wi-Fi. Your code must include the <b>offline app</b> (Offline or Online + Offline packages).</p>
+    <div class="cols">
+      <ol class="steps">
+        <li><span class="n">1</span><h4>Download the app</h4><p>On the tablet open <b>photobooth4u.netlify.app/downloads</b> and tap <b>Download APK</b>. Open the file; when Android asks, allow <b>Install unknown apps</b> for your browser, then <b>Install</b>.</p></li>
+        <li><span class="n">2</span><h4>Activate with your code</h4><p>Open photobooth4u and type your access code on the <b>Activate this tablet</b> screen. It needs internet this one time.</p></li>
+        <li><span class="n">3</span><h4>Set up as usual</h4><p>Design, layout and Share &amp; start work like the laptop app. The tablet's camera is used. Guests scan the photo QR on the booth Wi-Fi.</p></li>
+        <li><span class="n">4</span><h4>Print on Bluetooth thermal printers</h4><p>Pair the printer in <b>Android Settings &rarr; Bluetooth</b> (PIN 0000 or 1234), then in the booth pick <b>Receipt 80 mm</b> or <b>58 mm</b>, enable <b>Bluetooth thermal receipt printer</b>, tap <b>Connect</b> and <b>Test print</b>. For HiTi / DNP photo printers use the laptop app.</p></li>
+      </ol>
+      <div>
+        <div class="card green">
+          <h5>New versions</h5>
+          <p style="margin:0">When you open the app with internet, it can show <b>New version available</b>. Tap <b>Update</b> between events: the new file downloads, then Android asks to install it over the old app. Your activation stays.</p>
+        </div>
+        <div class="card pink" style="margin-top:12px">
+          <h5>"App not installed"?</h5>
+          <p style="margin:0">Android only installs an update signed by the same key. If it refuses, <b>copy your photos off the tablet first</b>, uninstall photobooth4u, install the new file and enter your code again.</p>
+        </div>
+        <div class="card cream" style="margin-top:12px">
+          <h5>Not in the Android app</h5>
+          <p style="margin:0">GCash / Maya QR payments (vouchers work), the online gallery and My Events. Use the website booth for those.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>photobooth4u offline app guide</span><span>8</span></div>
+</section>
+
 <!-- ============ POP-UPS ============ -->
 <section class="page">
   <div class="sec">
@@ -395,7 +441,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
     </table>
     <div class="note card cream" style="margin-top:16px"><b>A pop-up that isn't here?</b> Don't guess: take a photo or screenshot of it and message us (Facebook Messenger, <b>m.me/roktetnachi</b>). Never type your code or password into a window that appeared from a website or a message.</div>
   </div>
-  <div class="foot"><span>photobooth4u offline app guide</span><span>8</span></div>
+  <div class="foot"><span>photobooth4u offline app guide</span><span>9</span></div>
 </section>
 
 <!-- ============ LICENCE + TROUBLESHOOTING ============ -->
@@ -431,6 +477,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
       <tr><td>"Windows protected your PC" / Mac won't open it</td><td>Windows: <b>More info → Run anyway</b>. Mac: right-click the app → <b>Open</b>, or Privacy &amp; Security → <b>Open Anyway</b>.</td></tr>
       <tr><td>Activation says no free device slot</td><td>Deactivate an old laptop (Share &amp; start), or message us to free one.</td></tr>
       <tr><td>Camera not found (Windows)</td><td>Data USB cable straight into the laptop, camera on. Close EOS Utility / NX Studio and any "Import photos" window. Unplug, replug.</td></tr>
+      <tr><td>Android: camera not in the list</td><td>Use a data USB cable or OTG adapter, camera on, tap <b>OK</b> on Android's USB prompt, and set the camera's USB mode (Sony: PC Remote). Unplug, replug.</td></tr>
       <tr><td>Canon: no live view</td><td>Menu → <b>Live View shoot: Enable</b>, close the menu, mode dial on P, Tv, Av or M.</td></tr>
       <tr><td>Camera "couldn't focus"</td><td>Point it at something with detail, add light, or set the lens to <b>MF</b>.</td></tr>
       <tr><td>Guests' QR doesn't open</td><td>Phone and laptop on the same Wi-Fi; phone's mobile data off. Mac: allow incoming connections (System Settings → Network → Firewall).</td></tr>
@@ -443,7 +490,7 @@ table.fix td:first-child{width:236px; padding-right:16px; font-weight:700; color
       <a class="btn" href="https://m.me/roktetnachi" style="text-decoration:none">Message us</a>
     </div>
   </div>
-  <div class="foot"><span>photobooth4u offline app guide</span><span>9</span></div>
+  <div class="foot"><span>photobooth4u offline app guide</span><span>10</span></div>
 </section>
 
 </body>

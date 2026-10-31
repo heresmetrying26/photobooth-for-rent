@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cameras that talk PTP / MTP over USB (Nikon, Canon, Sony...) -->
+    <usb-device class="6" subclass="1" protocol="1" />
+    <usb-device vendor-id="1200" />
+    <usb-device vendor-id="1193" />
+    <usb-device vendor-id="1356" />
+</resources>

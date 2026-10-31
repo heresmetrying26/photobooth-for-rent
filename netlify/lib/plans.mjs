@@ -1,5 +1,5 @@
 import {
-  newCode, displayCode, normCode, DAY, MIN, LIFETIME_EXP, MAX_DEVICES, BONUS_SUBFOLDER,
+  newCode, displayCode, normCode, DAY, MIN, LIFETIME_EXP, MAX_DEVICES, BONUS_SUBFOLDER, PAPER_SIZES,
   putLicense, sendMail, codeEmail, EMAIL_RE
 } from './core.mjs';
 
@@ -21,11 +21,11 @@ export const ALL_PLANS = {
   },
   offline: {
     id: 'offline',
-    title: 'Monthly Offline (Laptop app only)',
+    title: 'Monthly Offline (Laptop + Android)',
     category: 'monthly',
     price: 999,
     priceStr: '₱999 / month',
-    description: 'Windows / Mac offline desktop app · zero internet needed',
+    description: 'Windows / Mac + Android tablet offline apps · zero internet needed',
     days: 30,
     lifetime: false,
     devices: 1,
@@ -37,8 +37,8 @@ export const ALL_PLANS = {
     id: 'both',
     title: 'Monthly Online + Offline',
     category: 'monthly',
-    price: 1299,
-    priceStr: '₱1,299 / month',
+    price: 1399,
+    priceStr: '₱1,399 / month',
     description: 'Both: online booth & offline desktop app',
     days: 30,
     lifetime: false,
@@ -48,36 +48,20 @@ export const ALL_PLANS = {
     offlineOnly: false
   },
 
-  // Per Event Packages (24 hours on event date + 1-hour practice code)
-  tablet: {
-    id: 'tablet',
-    title: 'Tablet Booth (Per Event)',
-    category: 'event',
-    price: 499,
-    priceStr: '₱499 / event',
-    description: 'iPad or Android tablet · online · includes 1-hr practice code',
-    days: 1,
-    lifetime: false,
-    devices: 1,
-    traditional: false,
-    offlineOpt: false,
-    offlineOnly: false,
-    bonusMinutes: 60
-  },
+  // Per Event Packages (24 hours on event date)
   laptop: {
     id: 'laptop',
     title: 'Event Pass (Per Event)',
     category: 'event',
     price: 599,
     priceStr: '₱599 / event',
-    description: 'One event, tablet or laptop · guest screen, auto-print · online or offline app · includes 1-hr practice code',
+    description: 'Tablet or laptop · guest screen, auto-print · online or offline app',
     days: 1,
     lifetime: false,
     devices: 1,
     traditional: true,
     offlineOpt: true,
-    offlineOnly: false,
-    bonusMinutes: 60
+    offlineOnly: false
   },
 
   // Lifetime Packages (Never expires, 5 devices)
@@ -101,7 +85,7 @@ export const ALL_PLANS = {
     category: 'lifetime',
     price: 3499,
     priceStr: '₱3,499 one-time',
-    description: 'The Windows / Mac app, works with no internet · every event · never expires · 5 devices',
+    description: 'The Windows / Mac / Android app, works with no internet · every event · never expires · 5 devices',
     days: 1,
     lifetime: true,
     devices: 5,
@@ -115,7 +99,7 @@ export const ALL_PLANS = {
     category: 'lifetime',
     price: 4999,
     priceStr: '₱4,999 one-time',
-    description: 'Both: online booth & offline Windows / Mac app · never expires · 5 devices',
+    description: 'Both: online booth & offline Windows / Mac / Android app · never expires · 5 devices',
     days: 1,
     lifetime: true,
     devices: 5,
@@ -131,7 +115,7 @@ export const ALL_PLANS = {
     category: 'addon',
     price: 2499,
     priceStr: '₱2,499 one-time',
-    description: 'For Lifetime Online owners: unlocks Windows / Mac app',
+    description: 'For Lifetime Online owners: unlocks Windows / Mac / Android app',
     traditional: true,
     offlineOpt: true,
     offlineOnly: false
@@ -149,7 +133,7 @@ export const ALL_PLANS = {
   }
 };
 
-export function getPlanDeliverables(planKey, code, practiceCode) {
+export function getPlanDeliverables(planKey, code) {
   const p = ALL_PLANS[planKey] || ALL_PLANS.online;
   const isOffline = !!p.offlineOpt;
   const isOnline = !p.offlineOnly;
@@ -160,20 +144,18 @@ export function getPlanDeliverables(planKey, code, practiceCode) {
   if (isOnline) {
     files.push({
       id: 'setup-guide',
-      name: 'Setup Guide (PDF)',
+      name: 'Laptop Setup Guide (PDF)',
       url: '/lifetime/photobooth4u-setup-guide.pdf',
       badge: 'PDF Guide',
-      desc: 'Step-by-step camera, lighting, gallery, printing & sharing setup'
+      desc: 'Laptop booth: camera, lighting, gallery, printing & sharing setup'
     });
-    if (p.id === 'tablet') {
-      files.push({
-        id: 'tablet-guide',
-        name: 'Tablet Guide (PDF)',
-        url: '/lifetime/photobooth4u-tablet-guide.pdf',
-        badge: 'PDF Guide',
-        desc: 'Quick iPad and Android tablet setup instructions'
-      });
-    }
+    files.push({
+      id: 'tablet-guide',
+      name: 'Tablet Guide (PDF)',
+      url: '/lifetime/photobooth4u-tablet-guide.pdf',
+      badge: 'PDF Guide',
+      desc: 'Quick iPad and Android tablet setup instructions'
+    });
     links.push({
       id: 'launch-booth',
       name: 'Launch Online Booth',
@@ -194,14 +176,7 @@ export function getPlanDeliverables(planKey, code, practiceCode) {
       name: 'Offline App Guide (PDF)',
       url: '/lifetime/photobooth4u-offline-app-guide.pdf',
       badge: 'PDF Guide',
-      desc: 'App installation, code activation, DSLR over USB & offline Wi-Fi guest sharing'
-    });
-    files.push({
-      id: 'hiti-guide',
-      name: 'Hiti / Photo Printer Guide (PDF)',
-      url: '/lifetime/photobooth4u-hiti-printing-guide.pdf',
-      badge: 'PDF Guide',
-      desc: 'Fast auto-printing setup for Hiti, DNP, Canon Selphy & thermal printers'
+      desc: 'Windows / Mac / Android app: install, activation, DSLR over USB & offline Wi-Fi guest sharing'
     });
     links.push({
       id: 'app-downloads',
@@ -210,12 +185,69 @@ export function getPlanDeliverables(planKey, code, practiceCode) {
       desc: 'Download desktop app for Windows 10/11 (.exe), Mac Apple Silicon (.dmg) or Mac Intel (.dmg)'
     });
     links.push({
-      id: 'dnp-guide',
-      name: 'DNP Photo Printer Guide',
-      url: '/how-to-print-dnp/',
-      desc: 'Step-by-step setup for DNP RX1HS, DS620, DS40 with 2×6 strip auto-cut'
+      id: 'android-app',
+      name: 'Android Tablet App',
+      url: '/downloads/',
+      desc: 'Download the Android APK, then enter your access code on the tablet'
     });
   }
+
+  // Printing guides are for every plan: online plans print through the Print Helper or AirPrint.
+  files.push({
+    id: 'hiti-guide',
+    name: 'Hiti / Photo Printer Guide (PDF)',
+    url: '/lifetime/photobooth4u-hiti-printing-guide.pdf',
+    badge: 'PDF Guide',
+    desc: 'Fast auto-printing setup for Hiti, DNP and Canon Selphy photo printers'
+  });
+  links.push({
+    id: 'dnp-guide',
+    name: 'DNP Photo Printer Guide',
+    url: '/how-to-print-dnp/',
+    desc: 'Step-by-step setup for DNP RX1HS, DS620, DS40 with 2×6 strip auto-cut'
+  });
+  links.push({
+    id: 'extras-guide',
+    name: 'Booth Extras Guide',
+    url: '/how-to-extras/',
+    desc: 'Vintage looks, photographer desk, print preview and the printed flipbook'
+  });
+  links.push({
+    id: 'spin-guide',
+    name: '360 Video Guide',
+    url: '/how-to-360/',
+    desc: 'Record, send, edit and share 360 videos: camera settings, the 360 desk and its looks'
+  });
+  links.push({
+    id: 'printers-list',
+    name: 'Which Printers Work',
+    url: '/printers/',
+    desc: 'DNP, HiTi, Citizen, Mitsubishi, Sinfonia, Selphy, Epson and thermal printers'
+  });
+  links.push({
+    id: 'mitsubishi-guide',
+    name: 'Mitsubishi Printer Guide',
+    url: '/how-to-print-mitsubishi/',
+    desc: 'Mitsubishi CP-D70DW to CP-D90DW, CP-K60DW-S, CP-M1E on Windows and Mac'
+  });
+  links.push({
+    id: 'sinfonia-guide',
+    name: 'Sinfonia Printer Guide',
+    url: '/how-to-print-sinfonia/',
+    desc: 'Sinfonia Color Stream CS2, S2145, S3 on Windows and Mac'
+  });
+  links.push({
+    id: 'citizen-guide',
+    name: 'Citizen Printer Guide',
+    url: '/how-to-print-citizen/',
+    desc: 'Citizen CX-02, CX-02W, CY-02 and CZ-01 photo printers on Windows and Mac'
+  });
+  links.push({
+    id: 'thermal-guide',
+    name: 'Thermal Printer Guide',
+    url: '/how-to-print-thermal/',
+    desc: '80 / 58 mm receipt printers: Bluetooth on Android, USB on Windows and Mac'
+  });
 
   return { files, links };
 }
@@ -230,7 +262,6 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
   now = now || Date.now();
   const planCfg = ALL_PLANS[planKey] || ALL_PLANS.online;
   let code = null;
-  let practiceCode = null;
   let renewed = false;
   let mainRec = null;
 
@@ -294,14 +325,14 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
       maxDevices: planCfg.devices || 1,
       defaultTheme: null,
       startsAt: null, // Begins counting upon first redemption on device
-      print: { enabled: true, sizes: ['2x6', '4x6'], eventLimit: 0, sessionLimit: 0 },
+      print: { enabled: true, sizes: [...PAPER_SIZES], eventLimit: 0, sessionLimit: 0 },
       traditional: planCfg.traditional !== false,
       gifOpt: true,
       offlineOpt: !!planCfg.offlineOpt,
       offlineOnly: !!planCfg.offlineOnly,
       // Automatically enable all booth feature switches for every paid plan:
       retakeOpt: true,   // Give retake switch
-      payOpt: true,      // Guest payment (vouchers / PayMongo)
+      payOpt: true,      // Guest payment (vouchers; the GCash / Maya QR part needs the internet)
       lockOpt: true,     // Lock booth with PIN
       status: 'unused',
       createdAt: now,
@@ -310,40 +341,6 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
       deviceId: null,
       email: email || null
     };
-
-    // If per-event plan, provision a 1-hour practice code
-    if (planCfg.bonusMinutes) {
-      const bKey = await freshKey(store);
-      const bonus = {
-        key: bKey,
-        code: displayCode(bKey),
-        kind: 'bonus',
-        parent: key,
-        label: `${label} · 1-Hr Practice`,
-        folderName,
-        subfolder: 'practice',
-        minutes: planCfg.bonusMinutes,
-        days: 0,
-        startsAt: null,
-        print: mainRec.print,
-        traditional: mainRec.traditional,
-        gifOpt: true,
-        offlineOpt: mainRec.offlineOpt,
-        offlineOnly: mainRec.offlineOnly,
-        status: 'unused',
-        createdAt: now + 1,
-        redeemedAt: null,
-        expiresAt: null,
-        deviceId: null
-      };
-      mainRec.bonusKey = bKey;
-      practiceCode = bonus.code;
-      try {
-        await putLicense(store, bKey, bonus);
-      } catch {
-        await store.setJSON(bKey, bonus);
-      }
-    }
 
     try {
       await putLicense(store, key, mainRec);
@@ -364,11 +361,10 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
     }
   }
 
-  const deliverables = getPlanDeliverables(planCfg.id, code, practiceCode);
+  const deliverables = getPlanDeliverables(planCfg.id, code);
 
   return {
     code,
-    practiceCode,
     plan: planCfg,
     renewed,
     files: deliverables.files,

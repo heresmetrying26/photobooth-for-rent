@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>360 video guide · photobooth4u</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500..700;1,500..700&family=Manrope:wght@400..800&display=swap">
+<style>
+  :root{ --bg:#f6f1ea; --card:#fffdf9; --ink:#1f1a1d; --dim:#5d555b; --line:#e4ddd3; --red:#c8402a; --red-soft:#fbeee9; --dark:#1f1a1d; }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;}
+  a{color:var(--red);}
+  .wrap{max-width:860px; margin:0 auto; padding:0 16px;}
+  header.hero{background:var(--dark); color:#f6f1ea; padding:44px 0 40px;}
+  .brand{display:flex; align-items:center; gap:10px; font:600 22px 'Fraunces',Georgia,serif; color:#f6f1ea; text-decoration:none;}
+  .brand .mark{display:grid; grid-template-columns:repeat(2,9px); gap:3px;}
+  .brand .mark i{width:9px; height:9px; border-radius:2px; background:#f6f1ea;} .brand .mark i:nth-child(2){background:var(--red);}
+  .brand .badge{background:var(--red); color:#fff; font:800 12px 'Manrope',sans-serif; padding:2px 6px; border-radius:6px; transform:translateY(-6px);}
+  .eyebrow{font-size:13px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:#e8715a; margin:28px 0 8px;}
+  h1{font:600 clamp(36px,7vw,60px)/1.05 'Fraunces',Georgia,serif; margin:0 0 14px;}
+  h1 em{color:#e8715a;}
+  .lead{color:#d9cfc6; font-size:18px; max-width:620px; margin:0 0 22px;}
+  .hero-btns{display:flex; flex-wrap:wrap; gap:10px;}
+  .btn{display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:10px 18px; border-radius:999px; font-weight:800; font-size:15px; text-decoration:none;}
+  .btn.primary{background:var(--red); color:#fff;} .btn.ghost{border:1.5px solid #5a5056; color:#f6f1ea;}
+  nav.toc{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:-22px 0 8px; position:relative;}
+  nav.toc a{display:block; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; text-decoration:none; color:var(--ink); box-shadow:0 8px 20px rgba(70,45,25,.08);}
+  nav.toc b{display:block; color:var(--red); font-size:12px; letter-spacing:.14em; text-transform:uppercase;} nav.toc span{font-weight:700; font-size:15px;}
+  section.part{padding:34px 0 6px; scroll-margin-top:12px;}
+  section.part h2{font:600 clamp(26px,4.5vw,34px)/1.15 'Fraunces',Georgia,serif; margin:0 0 6px;}
+  .part .kicker{font-size:12px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:var(--red); margin:0 0 4px;}
+  .part .why{color:var(--dim); margin:0 0 14px;}
+  ol.steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
+  ol.steps li{display:grid; grid-template-columns:40px 1fr; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  ol.steps .n{width:40px; height:40px; border-radius:50%; background:var(--red); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center;}
+  ol.steps h3{margin:6px 0 2px; font-size:17px;}
+  ol.steps p{margin:0; color:var(--dim);}
+  code, .kbd{font:600 14px ui-monospace,'SF Mono',Menlo,Consolas,monospace; background:#efe7dd; border-radius:6px; padding:1px 6px; color:var(--ink); white-space:nowrap;}
+  .codeblock{display:flex; align-items:center; gap:10px; background:var(--dark); color:#f6f1ea; border-radius:12px; padding:12px 14px; margin:8px 0 0; font:600 14px ui-monospace,Menlo,Consolas,monospace; overflow-x:auto;}
+  .codeblock span{flex:1; white-space:nowrap;}
+  .copy{flex:none; border:1px solid #5a5056; background:transparent; color:#f6f1ea; border-radius:999px; padding:4px 12px; font:700 12px 'Manrope',sans-serif; cursor:pointer;}
+  .term{background:var(--dark); color:#d9cfc6; border-radius:14px; padding:16px 18px; font:14px/1.7 ui-monospace,Menlo,Consolas,monospace; margin-top:12px;}
+  .term .hl{color:#e8715a;} .term .w{color:#f6f1ea;}
+  .sheet{display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-top:12px;}
+  .sheet .paper{display:flex; gap:6px; width:150px; height:100px; flex:none;}
+  .sheet .paper i{flex:1; background:#e9ded3; border-radius:6px;}
+  .sheet .paper b{width:3px; background:repeating-linear-gradient(180deg,var(--red) 0 7px,transparent 7px 12px);}
+  .sheet p{margin:0; color:var(--dim);}
+  table{width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; font-size:15px;}
+  th, td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); background:#f3ece3;}
+  tr:last-child td{border-bottom:0;}
+  td:first-child{font-weight:700; width:38%;}
+  .win{background:#eef3fb; border:1px solid #cfdcf2; border-radius:16px; padding:14px 18px; margin-top:12px;}
+  .win h3{margin:0 0 4px; font-size:16px;} .win ol{margin:4px 0 0; padding-left:20px; color:var(--dim);} .win li{margin:3px 0;}
+  .callout{background:var(--red-soft); border:1px solid #f1cfc5; border-radius:16px; padding:16px 18px; margin-top:14px;}
+  .callout h3{margin:0 0 4px; font-size:17px;} .callout p{margin:0; color:var(--dim);}
+  .check{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px;}
+  .check div{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;}
+  .check b{display:block; font:600 30px 'Fraunces',Georgia,serif; color:var(--red); line-height:1;}
+  .check h3{margin:8px 0 2px; font-size:17px;} .check p{margin:0; color:var(--dim);}
+  footer{margin:40px 0 0; padding:26px 0 40px; border-top:1px solid var(--line); color:var(--dim); font-size:14px;}
+  footer .help{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; background:var(--dark); color:#f6f1ea; border-radius:16px; padding:18px 20px; margin-bottom:16px;}
+  footer .help h3{margin:0; font:600 20px 'Fraunces',Georgia,serif;} footer .help p{margin:2px 0 0; color:#d9cfc6;}
+  td code{white-space:normal; word-break:break-all;}
+  @media (max-width:760px){ nav.toc{grid-template-columns:1fr 1fr;} }
+  @media (max-width:560px){ ol.steps li{grid-template-columns:32px 1fr; padding:14px;} ol.steps .n{width:32px; height:32px; font-size:14px;} td:first-child{width:auto;} }
+  @media print{ header.hero{background:none; color:var(--ink);} .lead{color:var(--dim);} .hero-btns, nav.toc, .copy{display:none;} section.part{break-inside:avoid;} }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <a class="brand" href="/"><span class="mark"><i></i><i></i><i></i><i></i></span>photobooth<span class="badge">4u</span></a>
+    <p class="eyebrow">360 video guide &middot; Laptop app &amp; website</p>
+    <h1>Run a <em>360</em> booth<br>with photobooth4u</h1>
+    <p class="lead">The 360 arm's camera records the spin. photobooth4u gets the video, edits it (slow motion, your frame and music) and gives the guest a QR code to watch and save it. Editing is in the laptop app; the website shares the original video.</p>
+    <div class="hero-btns"><a class="btn ghost" href="/downloads/">Get the laptop app</a></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="toc" aria-label="Parts">
+    <a href="#kit"><b>Part 1</b><span>What you need</span></a>
+    <a href="#record"><b>Part 2</b><span>Record the spin</span></a>
+    <a href="#send"><b>Part 3</b><span>Get the video to the laptop</span></a>
+    <a href="#edit"><b>Part 4</b><span>Edit and share</span></a>
+    <a href="#web"><b>Part 5</b><span>Website only</span></a>
+    <a href="#fix"><b>Help</b><span>If something goes wrong</span></a>
+  </nav>
+
+  <section class="part" id="kit">
+    <p class="kicker">Part 1 &middot; Before the event</p>
+    <h2>What you need</h2>
+    <div class="check">
+      <div><b>Arm</b><h3>The 360 arm</h3><p>Any 360 platform with a camera or phone on the arm. It can carry an iPad, iPhone, Android phone, or a camera. The arm is not connected to the booth software: you start it with its own remote or switch.</p></div>
+      <div><b>Laptop</b><h3>A Windows or Mac laptop</h3><p>With the photobooth4u laptop app. It edits the videos and shares them with guests over the booth Wi-Fi, with no internet needed.</p></div>
+      <div><b>Wi-Fi</b><h3>One Wi-Fi network</h3><p>A small router at the booth (no internet needed) or the laptop's hotspot. The recording phone and guests' phones join it.</p></div>
+    </div>
+  </section>
+
+  <section class="part" id="record">
+    <p class="kicker">Part 2 &middot; The camera on the arm</p>
+    <h2>Record the spin</h2>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Choose the quality</h3><p>Record at <b>1080p or higher</b>. For smooth slow motion record at <b>60 frames per second</b> (most phones have this setting). At 30 frames per second slow motion works but looks less smooth.</p></div></li>
+      <li><span class="n">2</span><div><h3>Hold the picture steady</h3><p>Lock focus and exposure on the guests (tap and hold on a phone) so the picture doesn't pump as the arm turns. Turn off auto-sleep and keep the camera charged.</p></div></li>
+      <li><span class="n">3</span><div><h3>Hold the phone upright</h3><p>Record in portrait for social media. The app crops to portrait or landscape for you, whichever way the phone was held.</p></div></li>
+      <li><span class="n">4</span><div><h3>Aim for 10 to 15 seconds</h3><p>One full turn is plenty. Shorter clips edit faster. A slow-motion edit is twice as long as the clip you record.</p></div></li>
+      <li><span class="n">5</span><div><h3>Light the guests</h3><p>A turning arm needs even light all round. Bright, even light gives a cleaner video than a dark room.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="part" id="app">
+    <p class="kicker">Part 2b &middot; Record in the booth app</p>
+    <h2>Record the spin in the app (Android and laptop app)</h2>
+    <p class="why">Instead of the phone's own camera app, the booth app itself can record the spin. Mount the tablet or phone on the arm, open <b>Record 360</b> in the dock, and the clip goes to the laptop to be edited by itself. The arm still turns by its own motor (or by hand): the app only records. It is in the Android app and the laptop app, not on the website.</p>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Pair the tablet with the laptop (once)</h3><p>On the laptop open the <b>360 desk</b>. Under the QR code it shows an address like <code>192.168.1.20:47777/send/&hellip;</code> and a <b>Copy</b> button (paste it as it is; it has no <code>http://</code>). On the tablet open <b>Record 360</b>, type that address into <b>Laptop address</b> and tap <b>Test</b>: it says <b>Connected to the laptop</b>. Both must be on the same Wi-Fi. The address changes each time the laptop app starts, so check it at the start of each event.</p></div></li>
+      <li><span class="n">2</span><div><h3>Check the picture</h3><p>The top of the screen shows what the camera gives, for example <b>1920&times;1080 &middot; 60 fps</b>. It asks the camera for 1080p at 60 fps. If it is smaller or slower it says so, because slow motion needs a sharp picture and a high frame rate. <b>Flip camera</b> switches between the front and back cameras: use the back one.</p></div></li>
+      <li><span class="n">3</span><div><h3>Choose the length and how to start</h3><p>Pick <b>6 to 15 seconds</b>. <b>With the button</b> counts 3, 2, 1 and records. <b>When the arm moves</b> waits until the device starts to move, then records at once; choose <b>Low, Medium or High</b> sensitivity (High starts on a small movement). If the device has no motion sensor it tells you to use the button.</p></div></li>
+      <li><span class="n">4</span><div><h3>Record</h3><p>Tap the big button. A counter shows the seconds left. When it ends the clip is sent: <b>Sent to the laptop. It appears on its 360 desk.</b> If the laptop can't be reached the clip is kept on the tablet in the event folder, and you can type the address and record again. If sending fails the recording is kept: tap <b>Send again</b>.</p></div></li>
+    </ol>
+    <div class="callout"><h3>Which camera?</h3><p>The tablet's or phone's own camera is the sharpest and simplest. A DSLR or mirrorless camera works if it is in <b>webcam mode</b> (the maker's webcam utility makes it appear as an ordinary camera in the booth's camera menu): pick it there before you open Record 360. A USB camera used through the booth's USB remote control usually sends only a small live picture, so the app warns you and the video may look soft. The Android tablet app (1.0.29 or newer) can also control a Nikon, Canon EOS or Sony Alpha plugged into its USB port (“Nikon / Canon / Sony camera over USB cable” in the Camera list), with the same small live picture. A camera cable on a spinning arm needs a slip ring, or it will wind up.</p></div>
+  </section>
+
+  <section class="part" id="send">
+    <p class="kicker">Part 3 &middot; In the laptop app</p>
+    <h2>Get the video to the laptop</h2>
+    <p class="why">Open the <b>360 desk</b> from the dock at the bottom of the photo session screen. Videos arrive in the <b>360 inbox</b> folder (in your Pictures &rarr; photobooth4u folder, and you can change it). Any of these routes works:</p>
+    <table>
+      <tr><th>Route</th><th>How</th></tr>
+      <tr><td>From the recording phone</td><td>The desk shows a <b>QR code</b>. Scan it with the phone that recorded (on the booth Wi-Fi), tap <b>Choose a video</b> and pick the clip. It appears on the laptop in a few seconds. The page's address has a code that changes each time the app starts, so guests on the Wi-Fi can't use it.</td></tr>
+      <tr><td>Drop or choose files</td><td>Drag videos onto the desk, or tap <b>Choose videos</b>.</td></tr>
+      <tr><td>Save into the folder</td><td>Anything saved into the 360 inbox shows up by itself: AirDrop to the Mac, a USB cable or card reader, a cloud folder, or a camera's Wi-Fi or FTP transfer.</td></tr>
+    </table>
+  </section>
+
+  <section class="part" id="edit">
+    <p class="kicker">Part 4 &middot; The 360 desk</p>
+    <h2>Edit and share</h2>
+    <p class="why">Tap a video to play it. <b>Edit video</b> makes the finished MP4 while you keep using the booth. <b>Share + QR</b> saves it in the event and shows the QR code for the guest.</p>
+    <table>
+      <tr><th>Style</th><th>What it does</th></tr>
+      <tr><td>Classic slow-mo</td><td>Half speed, with your frame, logo and title and your music. Turn on <b>Smoother slow motion</b> for a softer look (it takes longer).</td></tr>
+      <tr><td>Speed ramp</td><td>Fast, then slow in the middle, then fast again.</td></tr>
+      <tr><td>Boomerang</td><td>The first 5 seconds forward, then backward. Made at 720p.</td></tr>
+      <tr><td>Original speed</td><td>Normal speed, with the frame and title, and the original sound.</td></tr>
+      <tr><td>Super slow-mo</td><td>Everything at a quarter of the speed (0.25&times;). Best with a 60 fps recording; the smoother option helps.</td></tr>
+      <tr><td>Fast, then slow</td><td>The clip is cut in two equal parts: the first at 2&times;, the second at 0.5&times;.</td></tr>
+      <tr><td>Fast, slow, fast</td><td>Three equal parts at 2&times;, 0.5&times; and 2&times;.</td></tr>
+      <tr><td>Slow-mo roller</td><td>Four equal parts at 1&times;, 0.25&times;, 2&times; and 0.5&times;, then the whole thing played backwards. It is made at 720p and is long, so record 8 seconds or less; a longer clip plays without the backwards part.</td></tr>
+    </table>
+    <ol class="steps" style="margin-top:12px">
+      <li><span class="n">1</span><div><h3>Frame, logo and title</h3><p>Uses the booth's own design from Setup (your frame, stickers, logo, event name and date). Switch it off with <b>Frame, logo and title</b>.</p></div></li>
+      <li><span class="n">2</span><div><h3>Music</h3><p>Tap <b>Choose music</b> once on this laptop and pick a song file you have the right to use at the event. It fades in and out and is cut to the video's length. Or choose <b>Original sound</b> or <b>No sound</b>.</p></div></li>
+      <li><span class="n">3</span><div><h3>Trim</h3><p>In the player type a start and end time in seconds to cut the beginning or end before editing.</p></div></li>
+      <li><span class="n">4</span><div><h3>Format</h3><p>Portrait (phones) is the default. Landscape and 720p (faster) are in the same panel.</p></div></li>
+      <li><span class="n">5</span><div><h3>Do it automatically</h3><p>Tick <b>Edit new videos by themselves</b> and every video that arrives is edited as it comes in, even with the 360 desk closed. Also tick <b>and get the QR ready</b> and the finished video is shared too: when the 360 desk is open its QR code appears on its own, otherwise a message tells you to open the desk. A number on the 360 desk button shows clips that arrived while it was closed.</p></div></li>
+      <li><span class="n">6</span><div><h3>Two QR codes: join the Wi-Fi, then download</h3><p>In Setup &rsaquo; Share &amp; start, type the booth Wi-Fi name and password once. After that, <b>Share + QR</b> shows two codes: <b>Step 1: Network</b> joins the guest's phone to the booth Wi-Fi (no typing), and <b>Step 2: Download</b> opens the video. The Wi-Fi name and password are also written under Step 1 for phones that can't scan it. It works with no internet. Use a Wi-Fi made only for the booth, not the venue's. Leave the Wi-Fi blank and only the Step 2 code shows (for guests already on the booth Wi-Fi).</p></div></li>
+      <li><span class="n">7</span><div><h3>Guests watch and save</h3><p>The guest scans the QR code on the booth Wi-Fi and the video opens in their phone's browser with a <b>Save video</b> button. The edited video is saved in the event folder, and the original stays in the 360 inbox.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="part" id="web">
+    <p class="kicker">Part 5 &middot; No laptop app</p>
+    <h2>Using the website</h2>
+    <p class="why">The 360 desk is also in the website booth. There you can drop or choose videos and share them with a QR code, but the video is shared <b>as recorded</b>: no slow motion, frame or music. The website takes videos up to about <b>28 MB</b>; for bigger ones, or to edit, use the laptop app. Guests watch the video in the event gallery's Videos tab.</p>
+  </section>
+
+  <section class="part" id="fix">
+    <p class="kicker">Help</p>
+    <h2>If something goes wrong</h2>
+    <table>
+      <tr><th>Problem</th><th>Try this</th></tr>
+      <tr><td>The 360 desk button isn't there</td><td>It is an extra on your code. Message us if it is missing.</td></tr>
+      <tr><td>No editing controls, only the original is shared</td><td>This copy of the laptop app has no video editor (it is installed with the app). Reinstall the latest app from the Downloads page. On a Mac with an Intel chip, message us.</td></tr>
+      <tr><td>Record 360 isn't in the dock</td><td>It shows only in the Android app and the laptop app (not on the website), and only if the 360 extra is on for your code.</td></tr>
+      <tr><td>Record 360 can't reach the laptop</td><td>Same Wi-Fi? The address is the one under the QR code on the laptop's 360 desk, and it changes each time the laptop app starts. Tap <b>Test</b> after typing it.</td></tr>
+      <tr><td>&ldquo;When the arm moves&rdquo; never starts</td><td>Try <b>High</b> sensitivity, make sure the device is firmly on the arm, or start with the button. A computer has no motion sensor.</td></tr>
+      <tr><td>Step 2 won't open after joining the Wi-Fi</td><td>Some phones leave a Wi-Fi that has no internet and go back to mobile data. Tell the guest to stay on the booth Wi-Fi (on Android, tap <b>Stay connected</b> if asked), then scan Step 2 again.</td></tr>
+      <tr><td>The Step 1 code does nothing</td><td>iPhones and Android 10 or newer join from the Camera app. Older Android phones need Google Lens or a QR app. The name and password are under the code to type in.</td></tr>
+      <tr><td>Only one QR code shows</td><td>No booth Wi-Fi is set. Add it in Setup &rsaquo; Share &amp; start. The video also has to be shared on the device itself, not queued for later.</td></tr>
+      <tr><td>The phone can't open the send page</td><td>Is the phone on the booth Wi-Fi and the laptop too? Restart the app to get a new QR code.</td></tr>
+      <tr><td>Slow motion looks jerky</td><td>The camera recorded at 30 frames per second. Record at 60 next time, or tick <b>Smoother slow motion</b>.</td></tr>
+      <tr><td>Editing is slow</td><td>Choose 720p, switch off Smoother slow motion, and trim the video to what you need. A 10 to 15 second clip should be ready in under a minute on a normal laptop.</td></tr>
+      <tr><td>The video is rotated or cropped</td><td>The app crops to fill a portrait (or landscape) picture. Keep the guests in the middle of the frame when you record.</td></tr>
+    </table>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="help"><div><h3>Need help?</h3><p>Message us what the booth shows and your camera or phone model.</p></div><a class="btn primary" href="https://m.me/roktetnachi" target="_blank" rel="noopener">Message us</a></div>
+  photobooth4u &middot; <a href="/printers/">Printers</a> &middot; <a href="/downloads/">Downloads</a>
+</footer>
+</body>
+</html>

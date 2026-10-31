@@ -75,6 +75,117 @@ export function setDevices(rec, list) {
   rec.deviceId = list.length ? list[0].id : null;
 }
 
+// ---------- device slot swaps (Lifetime Access Agreement s.3) ----------
+// A renter may free up to SWAP_LIMIT device slots per calendar month (Manila time).
+// Only codes bought under the agreement (rec.agreement) are limited; older codes and
+// Admin actions are never counted. rec.freed holds the timestamps of recent swaps.
+export const SWAP_LIMIT = 3;
+export const SWAP_MSG = 'You have freed ' + SWAP_LIMIT + ' devices this month (the monthly limit). If a device was lost, stolen or broken, message us and we will free it for you.';
+const MANILA_OFFSET = 8 * 3600000;
+export const swapsLimited = (rec) => !!(rec && rec.lifetime && rec.agreement);
+function monthStart(now) {
+  const d = new Date(now + MANILA_OFFSET);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) - MANILA_OFFSET;
+}
+export function swapsThisMonth(rec, now) {
+  const from = monthStart(now);
+  return (rec.freed || []).filter((t) => t >= from).length;
+}
+export const swapBlocked = (rec, now) => swapsLimited(rec) && swapsThisMonth(rec, now) >= SWAP_LIMIT;
+// ---------- shutdown mode (Lifetime Access Agreement s.6) ----------
+// When photobooth4u ends the service, every Lifetime code gets the Offline App and its licences stop
+// asking to check in: chk and hard are set to FINAL_EXP, so a laptop or tablet that checks in once
+// (or is given an offline activation key) keeps working with no photobooth4u servers.
+export const FINAL_EXP = Date.UTC(2100, 0, 1);
+export async function getShutdown() { return (await meta().get('shutdown', { type: 'json' })) || { on: false }; }
+export async function setShutdown(on, now) {
+  const v = on ? { on: true, at: now } : { on: false, endedAt: now };
+  await meta().setJSON('shutdown', v);
+  return v;
+}
+
+// ---------- disabling a code (Lifetime Access Agreement s.7) ----------
+export const REVOKE_REASONS = ['leak', 'sharing', 'abuse', 'security', 'payment', 'other'];
+// PayMongo events about payments to photobooth4u itself that functions/subhook.mjs watches (refunds, failures).
+export const SUBHOOK_EVENTS = ['payment.refunded', 'payment.refund.updated', 'payment.failed'];
+// The Lifetime Access Agreement version new Lifetime buyers accept (checkout, or recorded by Admin for hand-made codes).
+export const AGREEMENT_VERSION = '3.3';
+// How the setups store names a customer's data (shared by setup.mjs and the Replace code action).
+export const setupKeyFor = (scope) => 'k' + createHash('sha256').update(scope).digest('hex').slice(0, 40);
+
+// ---------- email lock (Lifetime Access Agreement s.3 and s.7) ----------
+// The email on a Lifetime code is also its "Forgot your code?" address, so changing it can quietly hand
+// the code to someone else. Once a Lifetime code has an email, the renter can never change or clear it
+// (the first email can still be added if the code has none). Only Admin can change it: fixing a typo, or
+// "Transfer code" after a business sale. rec.emailHistory keeps every change.
+export const EMAIL_LOCKED_MSG = 'The email on a Lifetime code can’t be changed here. If it needs fixing, or you sold your business, please message us.';
+export const emailLocked = (rec) => !!(rec && rec.lifetime && rec.email);
+export function logEmailChange(rec, to, now, by) {
+  const from = rec.email || null;
+  if ((from || '') === (to || '')) return;
+  const first = !from && !(rec.emailHistory || []).length;   // setting the first email is not a "change"
+  rec.emailHistory = [...(rec.emailHistory || []), { from, to: to || null, at: now, by: first ? 'first' : by }].slice(-20);
+}
+
+export function logSwap(rec, now) {
+  if (!swapsLimited(rec)) return;
+  rec.freed = [...(rec.freed || []).filter((t) => t >= now - 65 * 86400000), now];
+}
+
+// ---------- alert to the owner when a Lifetime renter frees a device slot ----------
+// Sends an email to ALERT_EMAIL (a Netlify environment variable; nothing is sent when it is not set).
+// It only tells you: it never blocks the renter, suspends the code or changes anything.
+//   how: 'removed' (My Events), 'deactivated' (Offline App) or 'replaced' (unused 7+ days, taken over by a new device)
+const FREED_HOW = {
+  removed: 'removed it on My Events',
+  deactivated: 'deactivated it in the Offline App',
+  replaced: 'had it replaced automatically (it was unused for 7+ days and a new device entered the code)'
+};
+// Emails the owner (ALERT_EMAIL). Returns false, never throws, when it is not set or the mail relay fails.
+export async function notifyOwner(subject, text) {
+  const to = String(process.env.ALERT_EMAIL || '').trim();
+  if (!to) return false;
+  try {
+    // Never let a slow mail relay hold up a renter's request for long.
+    await Promise.race([
+      sendMail({ to, subject, text, html: '' }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('alert mail timed out')), 7000))
+    ]);
+    return true;
+  } catch (e) {
+    console.error('owner alert mail', e.message);
+    return false;
+  }
+}
+export async function alertDeviceFreed(rec, dev, how, now) {
+  if (!String(process.env.ALERT_EMAIL || '').trim() || !rec || !rec.lifetime || rec.kind === 'bonus') return false;
+  try {
+    const when = (t) => (t ? new Date(t).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) : 'never');
+    const used = swapsThisMonth(rec, now);
+    const text = [
+      'A Lifetime renter freed a device slot.',
+      '',
+      'Renter: ' + (rec.label || rec.folderName || '(no name)'),
+      'Code: ' + (rec.code || displayCode(rec.key)),
+      'Renter email: ' + (rec.email || '(none)'),
+      '',
+      'They ' + (FREED_HOW[how] || how) + '.',
+      'Device ' + ((dev && dev.no) || '?') + ': ' + ((dev && (dev.kind || (dev.app && dev.app.name))) || 'unknown type') + (dev && dev.app && dev.app.name ? ' (' + dev.app.name + ')' : ''),
+      'Added: ' + when(dev && dev.at) + ' · last seen: ' + when(dev && (dev.seen || (dev.app && dev.app.seen))),
+      '',
+      'Devices now in use: ' + devicesOf(rec).length + ' of ' + maxDevicesOf(rec),
+      'Slots freed this month: ' + used + ' of ' + SWAP_LIMIT + (swapsLimited(rec) ? '' : ' (this older code has no monthly limit)'),
+      'Time: ' + when(now),
+      '',
+      'Nothing was suspended or blocked. Open Admin to look at this code if you want to.'
+    ].join('\n');
+    return await notifyOwner('Device freed on Lifetime code ' + (rec.code || '') + ' (' + (rec.label || rec.folderName || 'renter') + ')', text);
+  } catch (e) {
+    console.error('device alert mail', e.message);
+    return false;
+  }
+}
+
 // ---------- event folders (for the /lifetime customer page) ----------
 // The booth reports every Drive folder it uses, so customers can find their
 // event links again later from any device. Stored per code:
@@ -116,14 +227,30 @@ export async function sendMail({ to, subject, text, html }) {
   if (!j.ok) throw new Error(j.error || 'The email could not be sent (update the Apps Script relay?)');
   return true;
 }
+// ---------- delete one event's photos early (Lifetime Access Agreement s.4) ----------
+// Asks the Apps Script relay to move an event's Drive folder to the Trash (what the 7-day cleanup does).
+// Needs the relay version with the "trash" ticket; an older relay answers with an upload error.
+export const driveFolderId = (url) => ((/\/folders\/([A-Za-z0-9_-]{10,80})/.exec(String(url || '')) || [])[1]) || null;
+export async function trashDriveFolder(folderUrl) {
+  const id = driveFolderId(folderUrl);
+  if (!id) throw new Error('That event has no Drive folder link.');
+  const ticket = signTicket({ m: 'trash', id, exp: Date.now() + 2 * 60000 });
+  const r = await fetch(DRIVE_SCRIPT_URL, { method: 'POST', headers: { 'content-type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ trash: ticket }), redirect: 'follow', signal: AbortSignal.timeout(30000) });
+  const j = await r.json().catch(() => ({}));
+  if (!j.ok) throw new Error(/ticket|Upload not allowed/i.test(j.error || '') ? 'The Google Apps Script relay needs the newest apps-script/upload.gs (Deploy → New version) before photos can be deleted.' : (j.error || 'Drive could not delete the folder.'));
+  return { already: !!j.already };
+}
+
 const escHtml = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // "Your photobooth4u code" email; recs = the bookings registered to that address.
 export function codeEmail(recs, origin) {
   const site = String(origin || 'https://photobooth4u.netlify.app').replace(/\/+$/, '');
   const name = (recs[0] && recs[0].label) || '';
   const lines = recs.map((r) => (r.label ? r.label + ': ' : '') + r.code + (r.lifetime ? ' (lifetime)' : ''));
+  const hasLifetime = recs.some((r) => r.lifetime);   // Lifetime buyers also get the agreement and FAQ links
   const text = 'Hi' + (name ? ' ' + name : '') + ',\n\nHere ' + (recs.length > 1 ? 'are your photobooth4u codes' : 'is your photobooth4u code') + ':\n\n' + lines.join('\n') +
     '\n\nOpen the booth: ' + site + '\nMy Events (links, payments, printing): ' + site + '/lifetime/\nSetup guide (PDF): ' + site + '/lifetime/photobooth4u-setup-guide.pdf' +
+    (hasLifetime ? '\nLifetime Access Agreement: ' + site + '/agreement/\nLifetime FAQ: ' + site + '/faq/' : '') +
     '\n\nKeep your code private. If you didn\u2019t ask for this email, you can ignore it.\n\nphotobooth4u';
   const html = '<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#1c1a1e;max-width:520px">' +
     '<p style="font-size:20px;font-weight:bold;margin:0 0 12px">photobooth<span style="background:#c93d27;color:#fff;border-radius:4px;padding:0 4px;font-size:12px;vertical-align:top">4u</span></p>' +
@@ -131,6 +258,7 @@ export function codeEmail(recs, origin) {
     recs.map((r) => '<p style="margin:8px 0;padding:12px 14px;background:#f5f1ea;border-radius:10px">' + (r.label ? escHtml(r.label) + '<br>' : '') +
       '<b style="font-size:20px;letter-spacing:1px">' + escHtml(r.code) + '</b>' + (r.lifetime ? ' &nbsp;<span style="font-size:12px;color:#6b666c">lifetime</span>' : '') + '</p>').join('') +
     '<p><a href="' + site + '" style="color:#c93d27;font-weight:bold">Open the booth</a> &nbsp;·&nbsp; <a href="' + site + '/lifetime/" style="color:#c93d27;font-weight:bold">My Events</a> &nbsp;·&nbsp; <a href="' + site + '/lifetime/photobooth4u-setup-guide.pdf" style="color:#c93d27;font-weight:bold">Setup guide (PDF)</a></p>' +
+    (hasLifetime ? '<p><a href="' + site + '/agreement/" style="color:#c93d27;font-weight:bold">Lifetime Access Agreement</a> &nbsp;·&nbsp; <a href="' + site + '/faq/" style="color:#c93d27;font-weight:bold">Lifetime FAQ</a></p>' : '') +
     '<p style="font-size:13px;color:#6b666c">Keep your code private. If you didn\u2019t ask for this email, you can ignore it.</p></div>';
   return { subject: 'Your photobooth4u code', text, html };
 }
@@ -152,14 +280,26 @@ export const STALE_DEVICE_DAYS = 7;
 // (or delLicense()) which keeps the index in step. If it is ever missing or
 // out of date, Admin -> "Rebuild index" (or the first list) rebuilds it.
 const INDEX_KEY = 'index-v1';
+// Extras every package includes: vintage looks, photographer desk, flipbook, video guestbook, 360 video.
+// Missing = on, so every old code has them; an admin can switch one off for a client.
+export const EXTRA_KEYS = ['vintage', 'roving', 'flipbook', 'video', 'spin360'];
+export function normExtras(x) {
+  const o = {};
+  for (const k of EXTRA_KEYS) o[k] = !(x && x[k] === false);
+  return o;
+}
+export const extrasOf = (rec) => normExtras(rec && rec.extras);
 export function summaryOf(rec) {
   return {
     key: rec.key, code: rec.code, label: rec.label || '', folderName: rec.folderName || '', email: rec.email || '',
     kind: rec.kind || 'rental', parent: rec.parent || null, bonusKey: rec.bonusKey || null,
     lifetime: !!rec.lifetime, days: rec.days || 0, minutes: rec.minutes || null, startsAt: rec.startsAt || null,
     status: rec.status, redeemedAt: rec.redeemedAt || null, expiresAt: rec.expiresAt || null,
-    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional, gifOpt: !!rec.gifOpt, retakeOpt: !!rec.retakeOpt, payOpt: !!rec.payOpt, offlineOpt: !!rec.offlineOpt, offlineOnly: !!rec.offlineOnly, appsUsed: devicesOf(rec).filter((d) => d.app).length, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0,
-    print: !!(rec.print && rec.print.enabled), createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null
+    maxDevices: rec.maxDevices || 1, devicesUsed: devicesOf(rec).length, traditional: !!rec.traditional, gifOpt: !!rec.gifOpt, retakeOpt: !!rec.retakeOpt, typesOpt: !!rec.typesOpt, payOpt: !!rec.payOpt, offlineOpt: !!rec.offlineOpt, offlineOnly: !!rec.offlineOnly, ipadOpt: rec.ipadOpt !== false, appsUsed: devicesOf(rec).filter((d) => d.app).length, lockOpt: !!rec.lockOpt, pinResetAt: rec.pinResetAt || 0, extras: extrasOf(rec),
+    print: !!(rec.print && rec.print.enabled), createdAt: rec.createdAt || 0, defaultTheme: rec.defaultTheme || null,
+    revokeReason: rec.revokeReason || null, replacedBy: rec.replacedBy || null, replacedFrom: rec.replacedFrom || null, transferredAt: rec.transferredAt || null,
+    agreement: rec.agreement ? rec.agreement.version : null, agreementAt: rec.agreement ? rec.agreement.acceptedAt || null : null,
+    paymentReview: rec.paymentReview ? { reason: rec.paymentReview.reason, at: rec.paymentReview.at } : null
   };
 }
 export async function rebuildIndex() {
@@ -315,6 +455,53 @@ export function normPrint(enabled, sizes, limits) {
 // printjobs: pages an iPad sends to the laptop "print station" page
 export const printsStore = () => getStore({ name: 'prints', consistency: 'strong' });
 export const printJobsStore = () => getStore({ name: 'printjobs', consistency: 'strong' });
+// Guests asking for a print from the online gallery (see functions/printreq.mjs): one document per gallery folder.
+export const printReqStore = () => getStore({ name: 'printreq', consistency: 'strong' });
+// The gallery asks this when it lists a folder, to know whether to show the "Ask for a print" button.
+export async function printReqOn(folder) {
+  try {
+    if (!/^[A-Za-z0-9_-]{10,80}$/.test(String(folder || ''))) return false;
+    const d = await printReqStore().get('f:' + folder, { type: 'json' });
+    return !!(d && d.on && d.exp > Date.now());
+  } catch { return false; }
+}
+export const clientIp = (req) => String(req.headers.get('x-nf-client-connection-ip') || (req.headers.get('x-forwarded-for') || '').split(',')[0] || 'unknown').trim();
+// A guest asks for a print of one photo (used by the gallery page and by a guest's own photo page).
+// Returns { status, body }. Limited per phone, one request per photo, and the list is capped.
+const PRQ_MAX_PENDING = 200, PRQ_RATE_N = 8, PRQ_RATE_MS = 10 * 60000;
+export async function printReqGuest(folder, file, ip) {
+  const ID = /^[A-Za-z0-9_-]{10,80}$/;
+  if (!ID.test(folder) || !ID.test(file)) return { status: 400, body: { error: 'Bad request' } };
+  const now = Date.now(), s = printReqStore();
+  const d = await s.get('f:' + folder, { type: 'json' });
+  if (!d || !d.on || d.exp <= now) return { status: 403, body: { error: 'off' } };
+  if (d.done && d.done[file]) return { status: 200, body: { ok: true, done: true } };
+  if (d.reqs.some((r) => r.file === file)) return { status: 200, body: { ok: true, waiting: true } };
+  if (d.reqs.length >= PRQ_MAX_PENDING) return { status: 429, body: { error: 'busy' } };
+  const who = hmac('pr|' + ip).slice(0, 14);
+  d.hits = d.hits || {};
+  const recent = (d.hits[who] || []).filter((t) => now - t < PRQ_RATE_MS);
+  if (recent.length >= PRQ_RATE_N) return { status: 429, body: { error: 'rate' } };
+  recent.push(now); d.hits[who] = recent;
+  for (const k of Object.keys(d.hits)) if (!d.hits[k].some((t) => now - t < PRQ_RATE_MS)) delete d.hits[k];
+  d.reqs.push({ id: hmac('id|' + file + '|' + now).slice(0, 12), file, t: now });
+  await s.setJSON('f:' + folder, d);
+  return { status: 200, body: { ok: true, waiting: true } };
+}
+// What guests may see after scanning their QR (set by the booth, see functions/guestview.mjs):
+//   'all'  everyone's photos (the default, and what an event with no setting does)
+//   'mine' their own photos first, with a button for everyone's
+//   'only' their own photos and nothing else
+export const guestViewStore = () => getStore({ name: 'guestview', consistency: 'strong' });
+export async function guestViewMode(folder) {
+  try {
+    if (!/^[A-Za-z0-9_-]{10,80}$/.test(String(folder || ''))) return 'all';
+    const d = await guestViewStore().get('f:' + folder, { type: 'json' });
+    return d && d.exp > Date.now() && (d.mode === 'mine' || d.mode === 'only') ? d.mode : 'all';
+  } catch { return 'all'; }
+}
+// The booth's own key to an event gallery that is set to "only their own".
+export const opKeyOf = (folder) => hmac('opview|' + folder).slice(0, 22);
 // Which counter a booth adds to: the booking (its fixed event), one per event
 // name for lifetime codes, and the trial's own throwaway folder for trials.
 // A bonus code counts on its own (it's for testing before the event).
@@ -345,6 +532,7 @@ export async function getSettings() {
     trialTraditional: false,
     trialGifOpt: true,
     trialRetakeOpt: false,
+    trialTypesOpt: false,
     trialLockOpt: false,
     qrTarget: 'gallery',
     galleryQr: true,        // "open on your phone" QR on the gallery page
@@ -382,7 +570,7 @@ export async function checkLicense(token, deviceId) {
     if (p.exp <= now) return { valid: false, reason: 'trial-ended' };
     const s = await getSettings();
     if (!s.trialEnabled) return { valid: false, reason: 'trial-disabled' };
-    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes, { eventLimit: s.trialPrintEventLimit, sessionLimit: s.trialPrintSessionLimit }), traditional: !!s.trialTraditional, gifOpt: s.trialGifOpt !== false, retakeOpt: !!s.trialRetakeOpt, lockOpt: !!s.trialLockOpt, pinResetAt: 0 };
+    return { valid: true, type: 'trial', exp: p.exp, token, folderKey: p.f || null, print: normPrint(s.trialPrintEnabled, s.trialPrintSizes, { eventLimit: s.trialPrintEventLimit, sessionLimit: s.trialPrintSessionLimit }), traditional: !!s.trialTraditional, gifOpt: s.trialGifOpt !== false, retakeOpt: !!s.trialRetakeOpt, typesOpt: !!s.trialTypesOpt, lockOpt: !!s.trialLockOpt, extras: normExtras(null), pinResetAt: 0 };
   }
 
   const rec = await licenses().get(p.k, { type: 'json' });
@@ -415,7 +603,9 @@ export async function checkLicense(token, deviceId) {
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes, rec.print),
     traditional: !!rec.traditional,
     gifOpt: !!rec.gifOpt,
+    extras: extrasOf(rec),
     retakeOpt: !!rec.retakeOpt,
+    typesOpt: !!rec.typesOpt,
     payOpt: !!rec.payOpt,
     lockOpt: !!rec.lockOpt,
     pinResetAt: rec.pinResetAt || 0,

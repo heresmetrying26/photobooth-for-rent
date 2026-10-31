@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('pb4u', {
   desktop: true,
   // This laptop's address for guests' phones (http://<ip>:<port>) or null when it isn't on a network.
   lanBase: () => ipcRenderer.sendSync('pb4u:lan'),
+  // The Wi-Fi this laptop is on: { ssid, pass, open, passKnown } (ssid is '' when it isn't on Wi-Fi).
+  wifi: (force) => ipcRenderer.invoke('pb4u:wifi', !!force),
   info: () => ipcRenderer.invoke('pb4u:info'),
   activate: (code) => ipcRenderer.invoke('pb4u:activate', String(code || '')),
   activateOffline: (text) => ipcRenderer.invoke('pb4u:activateOffline', String(text || '')),
@@ -12,6 +14,38 @@ contextBridge.exposeInMainWorld('pb4u', {
   deactivate: () => ipcRenderer.invoke('pb4u:deactivate'),
   openPhotos: (folderUrl) => ipcRenderer.invoke('pb4u:openPhotos', folderUrl ? String(folderUrl) : ''),
   choosePhotos: () => ipcRenderer.invoke('pb4u:choosePhotos'),
+  // 360 videos
+  spinInfo: () => ipcRenderer.invoke('pb4u:spinInfo'),
+  spinChoose: () => ipcRenderer.invoke('pb4u:spinChoose'),
+  spinScan: () => ipcRenderer.invoke('pb4u:spinScan'),
+  spinEnv: () => ipcRenderer.invoke('pb4u:spinEnv'),
+  spinMusic: (clear) => ipcRenderer.invoke('pb4u:spinMusic', !!clear),
+  spinOverlay: (bytes) => ipcRenderer.invoke('pb4u:spinOverlay', bytes),
+  spinProcess: (req) => ipcRenderer.invoke('pb4u:spinProcess', req),
+  spinJob: (id) => ipcRenderer.invoke('pb4u:spinJob', id),
+  spinCancel: (id) => ipcRenderer.invoke('pb4u:spinCancel', id),
+  spinShare: (name, folderKey, subfolder, outName) => ipcRenderer.invoke('pb4u:spinShare', String(name || ''), String(folderKey || ''), String(subfolder || ''), String(outName || '')),
+  // Roving photos sent from a phone
+  roveInfo: () => ipcRenderer.invoke('pb4u:roveInfo'),
+  roveScan: () => ipcRenderer.invoke('pb4u:roveScan'),
+  roveTake: (name) => ipcRenderer.invoke('pb4u:roveTake', String(name || '')),
+  // Guests asking for a print
+  news: () => ipcRenderer.invoke('pb4u:news'),
+  // The operator tapped "Print photo" on an earlier photo in All photos: the booth prints it now.
+  printNowTake: () => ipcRenderer.invoke('pb4u:printNowTake'),
+  printNowDone: (id, ok, msg) => ipcRenderer.invoke('pb4u:printNowDone', String(id || ''), !!ok, String(msg || '')),
+  guestPrintSet: (on) => ipcRenderer.invoke('pb4u:guestPrintSet', !!on),
+  guestViewSet: (mode) => ipcRenderer.invoke('pb4u:guestViewSet', String(mode || '')),
+  printReqList: () => ipcRenderer.invoke('pb4u:printReqList'),
+  printReqDone: (id) => ipcRenderer.invoke('pb4u:printReqDone', String(id || '')),
+  printReqRead: (id) => ipcRenderer.invoke('pb4u:printReqRead', String(id || '')),
+  // Photographer desk folder watching
+  deskFolder: () => ipcRenderer.invoke('pb4u:deskFolder'),
+  deskChoose: () => ipcRenderer.invoke('pb4u:deskChoose'),
+  deskScan: () => ipcRenderer.invoke('pb4u:deskScan'),
+  deskRead: (name) => ipcRenderer.invoke('pb4u:deskRead', String(name || '')),
+  ipadInfo: () => ipcRenderer.invoke('pb4u:ipadInfo'),
+  ipadSet: (on, renewPin) => ipcRenderer.invoke('pb4u:ipadSet', !!on, !!renewPin),
   copy: (t) => ipcRenderer.invoke('pb4u:copy', String(t || '')),
   openUrl: (u) => ipcRenderer.invoke('pb4u:openUrl', String(u || '')),
   quit: () => ipcRenderer.invoke('pb4u:quit'),

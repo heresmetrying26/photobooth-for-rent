@@ -1,10 +1,13 @@
 import {
-  safe, json, licenses, newCode, displayCode, normCode, DAY, putLicense, sendMail, codeEmail, EMAIL_RE, getSettings
+  safe, json, licenses, newCode, displayCode, normCode, DAY, putLicense, sendMail, codeEmail, EMAIL_RE, getSettings, AGREEMENT_VERSION
 } from '../lib/core.mjs';
 import { payStore, pm } from '../lib/pay.mjs';
 import { ALL_PLANS, fulfillPlanPayment, getPlanDeliverables } from '../lib/plans.mjs';
 
 const PLANS = ALL_PLANS;
+
+// Lifetime plans and Lifetime add-ons are sold under the Lifetime Access Agreement (/agreement/).
+const needsAgreement = (plan) => plan.category === 'lifetime' || plan.category === 'addon';
 
 const memOrders = new Map();
 function getPayStore() {
@@ -54,11 +57,24 @@ async function fulfillOrder(order, origin) {
   order.status = 'paid';
   order.paidAt = Date.now();
   order.code = res.code;
-  order.practiceCode = res.practiceCode || null;
   order.renewed = res.renewed;
   order.files = res.files;
   order.links = res.links;
   await getPayStore().setJSON('sub/' + order.id, order);
+
+  // Keep the buyer's acceptance on the code itself (non-fatal if it can't be saved).
+  if (order.agreement) {
+    try {
+      const key = normCode(res.code);
+      const rec = key ? await store.get(key, { type: 'json' }) : null;
+      if (rec) {
+        rec.agreement = { ...order.agreement, orderId: order.id };
+        await putLicense(store, key, rec);
+      }
+    } catch (e) {
+      console.warn('Could not save agreement acceptance on the code:', e.message);
+    }
+  }
 
   return res;
 }
@@ -92,6 +108,14 @@ export default safe(async (req, context) => {
     const email = String(b.email || '').trim().toLowerCase();
     if (!name) return json({ error: 'Please enter your name.' }, 400);
     if (!email || !EMAIL_RE.test(email)) return json({ error: 'Please enter a valid email address.' }, 400);
+
+    let agreement = null;
+    if (needsAgreement(plan)) {
+      if (String(b.agreementVersion || '') !== AGREEMENT_VERSION) {
+        return json({ error: 'Please accept the Lifetime Access Agreement to continue.' }, 400);
+      }
+      agreement = { version: AGREEMENT_VERSION, acceptedAt: Date.now() };
+    }
 
     const renewCode = b.renewCode ? normCode(b.renewCode) : null;
     if (renewCode) {
@@ -168,6 +192,7 @@ export default safe(async (req, context) => {
       name,
       email,
       renewCode,
+      agreement,
       status: 'pending',
       createdAt: Date.now(),
       expiresAt: Date.now() + 10 * 60 * 1000,
@@ -197,13 +222,12 @@ export default safe(async (req, context) => {
     if (!order) return json({ error: 'Order not found or expired.' }, 404);
 
     if (order.status === 'paid') {
-      const del = getPlanDeliverables(order.plan, order.code, order.practiceCode);
+      const del = getPlanDeliverables(order.plan, order.code);
       const planCfg = ALL_PLANS[order.plan] || ALL_PLANS.online;
       return json({
         ok: true,
         status: 'paid',
         code: order.code,
-        practiceCode: order.practiceCode || null,
         renewed: !!order.renewed,
         plan: order.plan,
         planTitle: planCfg.title,
@@ -227,7 +251,6 @@ export default safe(async (req, context) => {
             ok: true,
             status: 'paid',
             code: res.code,
-            practiceCode: res.practiceCode || null,
             renewed: res.renewed,
             plan: order.plan,
             planTitle: res.plan.title,

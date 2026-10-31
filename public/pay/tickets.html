@@ -49,7 +49,7 @@
   var out = document.getElementById('out');
   var esc = function(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
   if(!d || !d.codes || !d.codes.length){
-    out.innerHTML = '<p class="empty">No vouchers to print. Go back to the booth (Setup → 5 Session → Guest payment) and tap “Print tickets”.</p>';
+    out.innerHTML = '<p class="empty">No vouchers to print. Go back to the booth (Setup → 7 Session → Guest payment) and tap “Print tickets”.</p>';
     document.getElementById('printBtn').disabled = true;
     return;
   }

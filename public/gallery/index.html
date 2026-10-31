@@ -73,6 +73,9 @@
     .v-stage{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;padding:0 56px}
     @media (max-width:560px){ .v-stage{padding:0 8px} }
     .v-stage img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;user-select:none;-webkit-user-drag:none}
+    /* Trading cards (files named ..._card.jpg): a holo shine that follows the tilt */
+    .v-stage.holo img{border-radius:3.4%;box-shadow:0 24px 70px rgba(0,0,0,.55);will-change:transform}
+    .v-shine{position:absolute;display:none;pointer-events:none;border-radius:3.4%;mix-blend-mode:color-dodge;opacity:.5;will-change:transform;background:linear-gradient(115deg,transparent 18%,rgba(255,90,170,.65) 34%,rgba(255,220,80,.65) 44%,rgba(90,255,180,.65) 54%,rgba(80,170,255,.65) 64%,transparent 80%);background-size:260% 260%}
     .v-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
     .v-nav:hover{background:rgba(255,255,255,.22)} .v-prev{left:8px} .v-next{right:8px}
     @media (max-width:560px){ .v-nav{display:none} }
@@ -97,6 +100,9 @@
     .qrsheet{width:min(400px,100%);background:var(--card);color:var(--ink);border-radius:24px;padding:22px 22px 18px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.35)}
     .qrsheet .qrbox{width:min(300px,72vw);height:min(300px,72vw);margin:4px auto 14px;background:#fff;border-radius:16px;padding:10px}
     .qrsheet h2{margin:0 0 4px;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:24px;letter-spacing:-.02em}
+    .tile{position:relative}
+    .tile .play{position:absolute;right:8px;bottom:8px;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.62);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;pointer-events:none}
+    #vFrame{width:min(100%,900px);height:min(78vh,560px);border:0;border-radius:12px;background:#000}
     .qrsheet p{margin:0 0 14px;color:var(--muted);font-size:14px;font-weight:600;line-height:1.45}
     .qrsheet .btn{width:100%}
     @media print{
@@ -129,6 +135,8 @@
         </button>
         <button class="btn" id="qrBtn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>QR</button>
+        <a class="btn hidden" id="othersBtn" href="#">Show photos with other guests</a>
+        <a class="btn hidden" id="mineBtn" href="#">Show only my photos</a>
         <button class="btn hidden" id="shareBtn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v13"/><path d="m7 8 5-5 5 5"/></svg>Share</button>
         <button class="btn primary hidden" id="dlPhotosBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span id="dlPhotosLabel">Download all photos</span></button>
@@ -139,6 +147,7 @@
     <nav class="tabs hidden" id="tabs" aria-label="Photo gallery">
       <button class="tab" id="photosTab" type="button" aria-selected="true">All photos <i id="photoTabCount">0</i></button>
       <button class="tab" id="gifsTab" type="button" aria-selected="false">All GIFs <i id="gifTabCount">0</i></button>
+      <button class="tab hidden" id="videosTab" type="button" aria-selected="false">Videos <i id="videoTabCount">0</i></button>
       <span class="live" id="live">Live</span>
     </nav>
 
@@ -160,10 +169,12 @@
     <div class="v-stage" id="vStage">
       <span class="v-spin" id="vSpin"></span>
       <img id="vImg" alt="">
+      <iframe id="vFrame" class="hidden" allow="autoplay; fullscreen" title="Video"></iframe>
       <button class="v-nav v-prev" id="vPrev" type="button" aria-label="Previous">‹</button>
       <button class="v-nav v-next" id="vNext" type="button" aria-label="Next">›</button>
     </div>
     <div class="v-bottom">
+      <button class="btn hidden" id="vReq" type="button">Ask for a print at the booth</button>
       <button class="btn" id="vPrint" type="button">Print photo</button>
       <a class="btn primary" id="vDownload" href="#" rel="noopener noreferrer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>Download</a>
@@ -184,9 +195,14 @@
 (function(){
   var $ = function(id){ return document.getElementById(id); };
   var m = /^\/g\/([A-Za-z0-9_-]{10,80})\/?$/.exec(location.pathname) || /[?&]f=([A-Za-z0-9_-]{10,80})/.exec(location.search);
-  var FOLDER = m ? m[1] : null;
+  // A guest's own page (/p/<code>): only the photos of their session. It never gets the event's folder unless the booth allows it.
+  var pm = /^\/p\/([A-Za-z0-9_-]{16,40})\/?$/.exec(location.pathname), CODE = pm ? pm[1] : null;
+  var KEY = (/[?&]k=([A-Za-z0-9_-]{10,40})/.exec(location.search) || [])[1] || '';       // the booth's own key to a "guests see only their own" event
+  var FROM = (/[?&]c=([A-Za-z0-9_-]{16,40})/.exec(location.search) || [])[1] || '';      // came here from a guest's own page: offer the way back
+  var FOLDER = !CODE && m ? m[1] : null, pendTries = 0, pendT = null;
+  var DL_P = CODE ? 'Download my photos' : 'Download all photos', DL_G = CODE ? 'Download my GIFs' : 'Download all GIFs';
   var DRIVE = FOLDER ? 'https://drive.google.com/drive/folders/' + FOLDER : null;
-  var files = [], view = [], cur = -1, tiles = {}, firstLoad = true, timer = null, activeCategory = 'photos';
+  var files = [], view = [], cur = -1, tiles = {}, firstLoad = true, timer = null, activeCategory = 'photos', PRINT_REQ = false;
   // A guest's own QR opens straight to their saved photo: /g/<folder>#<file id>.
   var hm = /^#([A-Za-z0-9_-]{10,80})$/.exec(location.hash || '');
   var WANT = hm ? { id: hm[1] } : null, wantTries = 0;
@@ -196,22 +212,27 @@
   var tt; function toast(t){ var el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(tt); tt = setTimeout(function(){ el.classList.remove('show'); }, 2200); }
 
   // Drive serves resized photo previews quickly; GIFs use the signed relay so they animate.
-  function isGif(f){ return f.mime === 'image/gif' || /\.gif$/i.test(f.name || ''); }
-  function categoryFiles(category){ return files.filter(function(f){ return isGif(f) === (category === 'gifs'); }); }
+  function isVideo(f){ return /^video\//.test(f.mime || '') || /\.(mp4|mov|m4v|webm)$/i.test(f.name || ''); }
+  function isGif(f){ return !isVideo(f) && (f.mime === 'image/gif' || /\.gif$/i.test(f.name || '')); }
+  function catOf(f){ return isVideo(f) ? 'videos' : isGif(f) ? 'gifs' : 'photos'; }
+  function categoryFiles(category){ return files.filter(function(f){ return catOf(f) === category; }); }
   function refreshCategoryUI(){
-    var photos = categoryFiles('photos'), gifs = categoryFiles('gifs');
-    $('photoTabCount').textContent = photos.length; $('gifTabCount').textContent = gifs.length;
+    var photos = categoryFiles('photos'), gifs = categoryFiles('gifs'), videos = categoryFiles('videos');
+    $('photoTabCount').textContent = photos.length; $('gifTabCount').textContent = gifs.length; $('videoTabCount').textContent = videos.length;
+    $('videosTab').classList.toggle('hidden', !videos.length);
     $('photosTab').setAttribute('aria-selected', activeCategory === 'photos' ? 'true' : 'false');
     $('gifsTab').setAttribute('aria-selected', activeCategory === 'gifs' ? 'true' : 'false');
+    $('videosTab').setAttribute('aria-selected', activeCategory === 'videos' ? 'true' : 'false');
     $('dlPhotosBtn').classList.toggle('hidden', !photos.length); $('dlGifsBtn').classList.toggle('hidden', !gifs.length);
   }
   $('photosTab').addEventListener('click', function(){ activeCategory = 'photos'; refreshCategoryUI(); render(false); });
   $('gifsTab').addEventListener('click', function(){ activeCategory = 'gifs'; refreshCategoryUI(); render(false); });
+  $('videosTab').addEventListener('click', function(){ activeCategory = 'videos'; refreshCategoryUI(); render(false); });
   function thumbUrl(f, w){ return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w' + w; }
   function downloadUrl(f){ return 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(f.id); }
   function withFallbacks(img, f, w){
     if(isGif(f)){ img.onload = function(){ img.classList.add('ok'); }; img.src = f.src; return; }
-    var tries = [thumbUrl(f, w), 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(f.id) + '=w' + w, f.src];
+    var tries = [thumbUrl(f, w), 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(f.id) + '=w' + w, f.src].filter(Boolean);
     var i = 0;
     img.onerror = function(){ i++; if(i < tries.length) img.src = tries[i]; else img.onerror = null; };
     img.onload = function(){ img.classList.add('ok'); };
@@ -226,32 +247,50 @@
   }
 
   async function load(){
-    if(!FOLDER){ showState('Gallery not found', 'Check the link or scan the QR code again.', false); $('sub').textContent = ''; return; }
+    if(!FOLDER && !CODE){ showState('Gallery not found', 'Check the link or scan the QR code again.', false); $('sub').textContent = ''; return; }
     var r, j;
     try{
       // A just-taken photo may be newer than the cached list: ask for a fresh one.
-      r = await fetch('/api/gallery?f=' + encodeURIComponent(FOLDER) + (WANT ? '&v=' + encodeURIComponent(WANT.id) + (wantTries ? '-' + wantTries : '') : ''), { cache: 'no-store' });
+      r = await fetch(CODE ? '/api/guestview?c=' + encodeURIComponent(CODE)
+        : '/api/gallery?f=' + encodeURIComponent(FOLDER) + (KEY ? '&k=' + encodeURIComponent(KEY) : '') + (WANT ? '&v=' + encodeURIComponent(WANT.id) + (wantTries ? '-' + wantTries : '') : ''), { cache: 'no-store' });
       j = await r.json();
     }catch(e){
       if(firstLoad){ showState('Can’t load the photos', 'Check your internet and try again.', true); $('sub').textContent = ''; }
       return;
     }
+    if(CODE && j && j.ok && j.pending){
+      // The booth is still saving: this page checks again by itself until the photos arrive.
+      if(firstLoad){ $('sub').textContent = ''; showState('Your photos are on their way', 'They appear here in a few seconds. You can keep this page open.', false); }
+      if(++pendTries < 200){ clearTimeout(pendT); pendT = setTimeout(load, 4000); }
+      return;
+    }
     if(!j || !j.ok){
       if(!firstLoad) return;
       $('sub').textContent = '';
-      if(j && j.error === 'not-found') showState('This gallery isn’t available', 'The link may be wrong, or the photos were removed after the event.', false);
+      if(j && j.error === 'private') showState('This gallery is private', 'Guests of this event see only their own photos. Scan your own QR code at the booth to open yours.', false);
+      else if(j && j.error === 'expired') showState('This page has expired', 'Photos are kept for seven days after the event.', false);
+      else if(j && j.error === 'not-found') showState('This gallery isn’t available', 'The link may be wrong, or the photos were removed after the event.', false);
       else showState('The gallery is taking a short break', 'Your photos are safe. Please try again in a few minutes.', true);
       return;
     }
     $('state').classList.add('hidden');
     DRIVE = j.folderUrl || DRIVE;
-    setupQr(j.qr !== false);
+    setupQr(!CODE && j.qr !== false);
+    // Switch between the guest's own photos and everyone's (only when the booth allows it).
+    if(CODE){
+      $('photosTab').firstChild.nodeValue = 'Photos '; $('gifsTab').firstChild.nodeValue = 'GIFs ';
+      $('dlPhotosLabel').textContent = DL_P; $('dlGifsLabel').textContent = DL_G;
+    }
+    if(CODE && j.canAll && j.folder){ var ob = $('othersBtn'); ob.href = '/g/' + j.folder + '?c=' + CODE; ob.classList.remove('hidden'); }
+    if(FROM){ var mb = $('mineBtn'); mb.href = '/p/' + FROM; mb.classList.remove('hidden'); }
+    PRINT_REQ = !!j.printReq;      // the booth lets guests ask for a print from here
     document.title = j.name + ' | photobooth4u';
     $('title').textContent = j.name;
     if(navigator.share) $('shareBtn').classList.remove('hidden');
-    var photoCount = j.files.filter(function(f){ return !isGif(f); }).length;
-    var gifCount = j.files.length - photoCount;
+    var videoCount = j.files.filter(isVideo).length, gifCount = j.files.filter(isGif).length;
+    var photoCount = j.files.length - videoCount - gifCount;
     var bits = ['<b>' + photoCount + '</b> photo' + (photoCount === 1 ? '' : 's'), '<b>' + gifCount + '</b> GIF' + (gifCount === 1 ? '' : 's')];
+    if(videoCount) bits.push('<b>' + videoCount + '</b> video' + (videoCount === 1 ? '' : 's'));
     if(j.until) bits.push(j.until < Date.now() + 2 * 86400000 ? '<b style="color:var(--red)">Download by ' + esc(fmtDay(j.until)) + '</b>' : 'Download by ' + esc(fmtDay(j.until)));
     $('sub').innerHTML = bits.join(' · ');
     $('tabs').classList.remove('hidden');
@@ -261,6 +300,7 @@
     var known = {}; files.forEach(function(f){ known[f.id] = true; });
     var freshFiles = firstLoad ? [] : j.files.filter(function(f){ return !known[f.id]; });
     files = j.files;
+    if(CODE && firstLoad && j.files.length === 1) WANT = { id: j.files[0].id };     // one photo: open it straight away, like a guest's own QR always did
     refreshCategoryUI();
     render(!firstLoad);
     if(freshFiles.length){ var freshPhotos = freshFiles.filter(function(f){ return !isGif(f); }).length, freshGifs = freshFiles.length - freshPhotos; toast(freshPhotos + ' new photos, ' + freshGifs + ' new GIFs'); }
@@ -274,7 +314,7 @@
     var grid = $('grid');
     if(!view.length){
       grid.classList.add('hidden');
-      $('empty').textContent = activeCategory === 'gifs' ? 'No GIFs yet. They show up here after a GIF session.' : 'No photos yet. They show up here a few seconds after each photo session.';
+      $('empty').textContent = activeCategory === 'gifs' ? 'No GIFs yet. They show up here after a GIF session.' : activeCategory === 'videos' ? 'No videos yet.' : 'No photos yet. They show up here a few seconds after each photo session.';
       $('empty').classList.remove('hidden');
       return;
     }
@@ -285,9 +325,10 @@
       var t = tiles[f.id];
       if(!t){
         t = document.createElement('button'); t.type = 'button'; t.className = 'tile' + (animateNew ? ' new' : '');
-        t.setAttribute('aria-label', (isGif(f) ? 'GIF ' : 'Photo ') + f.name);
+        t.setAttribute('aria-label', (isVideo(f) ? 'Video ' : isGif(f) ? 'GIF ' : 'Photo ') + f.name);
         var img = document.createElement('img'); img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
         t.appendChild(img);
+        if(isVideo(f)){ var pl = document.createElement('span'); pl.className = 'play'; pl.textContent = '\u25B6'; t.appendChild(pl); }
         withFallbacks(img, f, 640);
         t.dataset.id = f.id;
         tiles[f.id] = t;
@@ -310,22 +351,77 @@
       else { toast('Still saving — pull down to refresh in a moment'); WANT = null; }
       return;
     }
-    activeCategory = isGif(f) ? 'gifs' : 'photos';
+    activeCategory = catOf(f);
     refreshCategoryUI();
     render(false);
-    for(var j = 0; j < view.length; j++) if(view[j].id === f.id){ openViewer(j, isGif(f) ? 'Your GIF' : 'Your photo'); break; }
+    for(var j = 0; j < view.length; j++) if(view[j].id === f.id){ openViewer(j, isVideo(f) ? 'Your video' : isGif(f) ? 'Your GIF' : 'Your photo'); break; }
     WANT = null;
   }
 
+  // ---- Trading cards: the card shines and tilts (tilt the phone, or move a finger / the mouse) ----
+  var holoOn = false, holoLast = 0, holoRaf = 0;
+  function isCard(f){ return !!f && /_card(_|\.)/i.test(f.name || ''); }
+  function holoShine(){ var s = $('vShine'); if(!s){ s = document.createElement('div'); s.id = 'vShine'; s.className = 'v-shine'; $('vStage').appendChild(s); } return s; }
+  function holoPlace(){
+    var img = $('vImg'), s = holoShine();
+    s.style.left = img.offsetLeft + 'px'; s.style.top = img.offsetTop + 'px'; s.style.width = img.offsetWidth + 'px'; s.style.height = img.offsetHeight + 'px'; s.style.display = 'block';
+  }
+  function holoApply(nx, ny){
+    var img = $('vImg'), s = holoShine(), t = 'perspective(900px) rotateY(' + (nx * 14).toFixed(2) + 'deg) rotateX(' + (-ny * 14).toFixed(2) + 'deg)';
+    img.style.transform = t; s.style.transform = t;
+    s.style.backgroundPosition = (50 + nx * 45).toFixed(1) + '% ' + (50 + ny * 45).toFixed(1) + '%';
+  }
+  function holoLoop(now){
+    if(!holoOn){ holoRaf = 0; return; }
+    if(now - holoLast > 1800) holoApply(Math.sin(now / 900) * 0.6, Math.cos(now / 1300) * 0.3);     // shimmers by itself when nothing moves
+    holoRaf = requestAnimationFrame(holoLoop);
+  }
+  function holoSet(f){
+    holoOn = isCard(f);
+    $('vStage').classList.toggle('holo', holoOn);
+    var img = $('vImg'), s = $('vShine');
+    if(!holoOn){ img.style.transform = ''; if(s) s.style.display = 'none'; return; }
+    if(s) s.style.display = 'none';
+    if(!holoRaf) holoRaf = requestAnimationFrame(holoLoop);
+  }
+  function holoPoint(e){
+    if(!holoOn) return;
+    var img = $('vImg'), st = $('vStage').getBoundingClientRect(), w = img.offsetWidth / 2 || 1, h = img.offsetHeight / 2 || 1;
+    var nx = (e.clientX - (st.left + img.offsetLeft + w)) / w, ny = (e.clientY - (st.top + img.offsetTop + h)) / h;
+    holoLast = performance.now(); holoApply(Math.max(-1, Math.min(1, nx)), Math.max(-1, Math.min(1, ny)));
+  }
+  $('vStage').addEventListener('pointermove', holoPoint);
+  window.addEventListener('deviceorientation', function(e){
+    if(!holoOn || e.gamma == null) return;
+    holoLast = performance.now();
+    holoApply(Math.max(-1, Math.min(1, e.gamma / 25)), Math.max(-1, Math.min(1, ((e.beta || 0) - 50) / 25)));
+  });
+  window.addEventListener('resize', function(){ if(holoOn) holoPlace(); });
+
   // ---- viewer ----
   var viewerLabel = '';
-  function openViewer(i, label){ cur = i; viewerLabel = label || ''; $('viewer').classList.remove('hidden'); document.body.style.overflow = 'hidden'; show(); }
-  function closeViewer(){ $('viewer').classList.add('hidden'); document.body.style.overflow = ''; $('vImg').removeAttribute('src'); cur = -1; }
+  function openViewer(i, label){
+    // iPhones ask once before a page may read the tilt of the phone (must come from a tap).
+    try{ if(isCard(view[i]) && window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') DeviceOrientationEvent.requestPermission().catch(function(){}); }catch(e){}
+    cur = i; viewerLabel = label || ''; $('viewer').classList.remove('hidden'); document.body.style.overflow = 'hidden'; show(); }
+  function closeViewer(){ holoSet(null); $('viewer').classList.add('hidden'); document.body.style.overflow = ''; $('vImg').removeAttribute('src'); $('vFrame').removeAttribute('src'); cur = -1; }
   function show(){
     var f = view[cur]; if(!f) return closeViewer();
     var img = $('vImg');
+    holoSet(isVideo(f) ? null : f);
+    if(isVideo(f)){
+      // Videos play in Drive's own player (it streams and skips properly on every phone); Download gets the file.
+      img.classList.add('hidden'); img.removeAttribute('src'); $('vSpin').classList.add('hidden'); $('vPrint').classList.add('hidden'); $('vReq').classList.add('hidden');
+      $('vFrame').classList.remove('hidden'); $('vFrame').src = 'https://drive.google.com/file/d/' + encodeURIComponent(f.id) + '/preview';
+      $('vCount').textContent = viewerLabel ? viewerLabel + ' \u00b7 ' + (cur + 1) + ' of ' + view.length : (cur + 1) + ' of ' + view.length;
+      $('vDownload').href = downloadUrl(f);
+      $('vPrev').style.visibility = cur > 0 ? '' : 'hidden';
+      $('vNext').style.visibility = cur < view.length - 1 ? '' : 'hidden';
+      return;
+    }
+    img.classList.remove('hidden'); $('vFrame').classList.add('hidden'); $('vFrame').removeAttribute('src'); $('vPrint').classList.remove('hidden'); reqButton(f);
     $('vSpin').classList.remove('hidden'); img.style.opacity = '0';
-    img.onload = function(){ $('vSpin').classList.add('hidden'); img.style.opacity = '1'; };
+    img.onload = function(){ $('vSpin').classList.add('hidden'); img.style.opacity = '1'; if(holoOn) holoPlace(); };
     var tries = [thumbUrl(f, 2000), 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(f.id) + '=w2000', f.src], k = 0;
     img.onerror = function(){ k++; if(k < tries.length) img.src = tries[k]; else $('vSpin').classList.add('hidden'); };
     img.src = tries[0];
@@ -337,6 +433,31 @@
     // Warm up the next one.
     var nx = view[cur + 1]; if(nx){ var pre = new Image(); pre.referrerPolicy = 'no-referrer'; pre.src = thumbUrl(nx, 2000); }
   }
+  // "Ask for a print at the booth": the booth's attendant sees the request and prints it. Only when the booth switched it on.
+  var asked = {};
+  try{ asked = JSON.parse(sessionStorage.getItem('pb_asked_' + (FOLDER || CODE)) || '{}') || {}; }catch(e){}
+  function reqButton(f){
+    var b = $('vReq'), show = PRINT_REQ && !isGif(f) && !isVideo(f);
+    b.classList.toggle('hidden', !show);
+    if(!show) return;
+    b.disabled = !!asked[f.id]; b.textContent = asked[f.id] ? 'Requested ✓' : 'Ask for a print at the booth';
+  }
+  $('vReq').addEventListener('click', async function(){
+    var f = view[cur]; if(!f || asked[f.id]) return;
+    var b = this; b.disabled = true; b.textContent = 'Sending…';
+    try{
+      // On a guest's own page the request goes by their code, so the event's folder never reaches their phone.
+      var r = await fetch(CODE ? '/api/guestview' : '/api/printreq', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(CODE ? { action: 'print', code: CODE, file: f.id } : { action: 'request', folder: FOLDER, file: f.id }) });
+      var j = await r.json().catch(function(){ return {}; });
+      if(r.ok && j.ok){
+        asked[f.id] = 1; try{ sessionStorage.setItem('pb_asked_' + (FOLDER || CODE), JSON.stringify(asked)); }catch(e){}
+        toast(j.done ? 'That photo was already printed.' : 'Sent. The attendant will print it.'); reqButton(f); return;
+      }
+      toast(j.error === 'rate' ? 'You have asked for a few prints already. Please wait a little.' : j.error === 'off' ? 'Print requests are not on for this booth.' : j.error === 'busy' ? 'The booth is busy. Please ask the attendant.' : 'Could not send. Try again.');
+    }catch(e){ toast('Could not send. Check your internet.'); }
+    reqButton(f);
+  });
   function step(d){ var n = cur + d; if(n >= 0 && n < view.length){ cur = n; viewerLabel = ''; show(); } }
   $('vClose').addEventListener('click', closeViewer);
   $('vPrev').addEventListener('click', function(){ step(-1); });
@@ -462,7 +583,7 @@
       var categoryLabel = isGifs ? 'GIF' : 'photo';
       toast(failed ? 'Downloaded ' + (list.length - failed) + ' ' + categoryLabel + 's (' + failed + ' could not load)' : 'Downloaded ' + list.length + ' ' + categoryLabel + (list.length === 1 ? '' : 's'));
     }finally{
-      label.textContent = isGifs ? 'Download all GIFs' : 'Download all photos';
+      label.textContent = isGifs ? DL_G : DL_P;
       btn.disabled = false; zipping = false;
     }
   }
@@ -475,8 +596,34 @@
     try{ saveBlob(await fetchPhoto(f), fileName(f, cur)); }
     catch(err){ location.href = downloadUrl(f); }
   });
-  $('vPrint').addEventListener('click', function(){
+  // The operator, opening All photos in the same browser as the booth: "Print photo" prints through the booth
+  // (its printer, paper and copies from Print settings, no dialog). A guest's phone has no booth tab, so it keeps the normal print.
+  var boothHere = false, pch = null, pnSeq = 0;
+  try{
+    if(FOLDER && 'BroadcastChannel' in window){
+      pch = new BroadcastChannel('pb4u-print');
+      pch.onmessage = function(ev){ var m = ev.data || {}; if(m.t === 'here') boothHere = !!m.on; };
+      pch.postMessage({ t: 'hello' });
+    }
+  }catch(e){ pch = null; }
+  function printViaBooth(f){
+    return new Promise(function(resolve){
+      var id = 'p' + (++pnSeq) + '-' + Date.now(), prev = pch.onmessage, t;
+      function done(r){ clearTimeout(t); pch.onmessage = prev; resolve(r); }
+      t = setTimeout(function(){ done({ ok: false, error: 'The booth did not answer.' }); }, 45000);
+      pch.onmessage = function(ev){ var m = ev.data || {}; if(m.t === 'result' && m.id === id) done(m); else prev(ev); };
+      pch.postMessage({ t: 'print', id: id, folder: FOLDER, file: f.id });
+    });
+  }
+  $('vPrint').addEventListener('click', async function(){
     if(cur < 0 || !$('vImg').complete || !$('vImg').naturalWidth){ toast('Wait for the photo to finish loading, then print.'); return; }
+    var f = view[cur];
+    if(boothHere && pch && f){
+      var b = this; b.disabled = true; toast('Sending to the printer…');
+      var r = await printViaBooth(f);
+      b.disabled = false; toast(r.ok ? 'Printing ✓' : (r.error || 'Could not print.'));
+      return;
+    }
     window.print();
   });
 

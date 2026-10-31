@@ -1,4 +1,4 @@
-import { safe, json, licenses, getSettings, sign, normCode, throttle, recordFail, clearFail, shortId, DAY, MIN, fmtWhen, windowEnd, LIFETIME_EXP, devicesOf, maxDevicesOf, addDevice, setDevices, STALE_DEVICE_DAYS , putLicense, delLicense, deviceKindOf } from '../lib/core.mjs';
+import { safe, json, licenses, getSettings, sign, normCode, throttle, recordFail, clearFail, shortId, DAY, MIN, fmtWhen, windowEnd, LIFETIME_EXP, devicesOf, maxDevicesOf, addDevice, setDevices, STALE_DEVICE_DAYS , putLicense, delLicense, deviceKindOf, logSwap, alertDeviceFreed } from '../lib/core.mjs';
 
 export default safe(async (req, context) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -21,7 +21,7 @@ export default safe(async (req, context) => {
   if (rec) {
     if (rec.status === 'revoked') return json({ error: 'This code has been disabled. Please contact the owner.' }, 403);
     // Laptop 6-Month Pass and other laptop-app-only codes: only the Windows / Mac app takes them.
-    if (rec.offlineOnly) { await clearFail(t); return json({ error: 'This code is for the photobooth4u laptop app (Windows / Mac). Install the app on your laptop and enter the code there.', code: 'offline-only' }, 403); }
+    if (rec.offlineOnly) { await clearFail(t); return json({ error: 'This code is for the photobooth4u offline app (Windows, Mac or Android tablet). Install the app and enter the code there.', code: 'offline-only' }, 403); }
 
     if (rec.status === 'active') {
       if (rec.expiresAt <= now) return json({ error: rec.kind === 'bonus' ? 'This bonus code has been used up.' : 'This code has expired.' }, 403);
@@ -32,16 +32,19 @@ export default safe(async (req, context) => {
       // All slots taken: a device unused for STALE_DEVICE_DAYS gives up its
       // slot (e.g. Safari wiped the iPad's saved data after a week unused,
       // so the same iPad now looks like a new device).
+      let replacedStale = null;
       if (!mine && devs.length >= maxDevicesOf(rec)) {
         const stale = devs
           .filter((d) => !d.app && now - (d.seen || d.at || 0) > STALE_DEVICE_DAYS * DAY)   // offline-app laptops check in rarely: never replaced
           .sort((a, b) => (a.seen || a.at || 0) - (b.seen || b.at || 0))[0];
-        if (stale) setDevices(rec, devs.filter((d) => d !== stale));
+        // Counted toward the monthly swap allowance on agreement codes, but never blocked.
+        if (stale) { setDevices(rec, devs.filter((d) => d !== stale)); logSwap(rec, now); replacedStale = stale; }
       }
       if (!mine && devicesOf(rec).length < maxDevicesOf(rec)) {
         addDevice(rec, deviceId, now, deviceKindOf(body.dk, req.headers.get('user-agent')));
         await putLicense(store, key, rec);
         mine = true;
+        if (replacedStale) await alertDeviceFreed(rec, replacedStale, 'replaced', now);   // email to the owner; never blocks
       }
       if (mine && mine !== true && !mine.kind) {          // older devices: learn their type once
         const k = deviceKindOf(body.dk, req.headers.get('user-agent'));

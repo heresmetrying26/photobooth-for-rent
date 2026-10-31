@@ -1,10 +1,10 @@
 import { safe, json, licenses, normCode, throttle, recordFail, clearFail, devicesOf, maxDevicesOf } from '../lib/core.mjs';
-import { HELPER, NOTES, appDownloads, liveApp } from '../lib/updates.mjs';
+import { HELPER, ANDROID, NOTES, appDownloads, liveApp } from '../lib/updates.mjs';
 
 // GET  /api/updates            -> { ok, app, helper, notes }   (public: the What's new page)
 // POST /api/updates { code }   -> the laptop app downloads for that code (if it includes the app)
 export default safe(async (req, context) => {
-  if (req.method === 'GET') return json({ ok: true, app: await liveApp(), helper: HELPER, notes: NOTES });
+  if (req.method === 'GET') return json({ ok: true, app: await liveApp(), helper: HELPER, android: ANDROID, notes: NOTES });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   const b = await req.json().catch(() => null);
   if (!b || !b.code) return json({ error: 'Type your code.' }, 400);

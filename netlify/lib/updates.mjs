@@ -10,6 +10,21 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.38', date: '2026-10-31' },
+  { version: '1.0.37', date: '2026-10-31' },
+  { version: '1.0.36', date: '2026-10-31' },
+  { version: '1.0.35', date: '2026-10-31' },
+  { version: '1.0.34', date: '2026-10-30' },
+  { version: '1.0.33', date: '2026-10-30' },
+  { version: '1.0.32', date: '2026-10-30' },
+  { version: '1.0.31', date: '2026-10-30' },
+  { version: '1.0.29', date: '2026-10-30' },
+  { version: '1.0.28', date: '2026-10-30' },
+  { version: '1.0.27', date: '2026-10-30' },
+  { version: '1.0.26', date: '2026-10-29' },
+  { version: '1.0.25', date: '2026-10-29' },
+  { version: '1.0.24', date: '2026-10-29' },
+  { version: '1.0.23', date: '2026-10-29' },
   { version: '1.0.22', date: '2026-10-28' },
   { version: '1.0.21', date: '2026-10-28' },
   { version: '1.0.20', date: '2026-10-28' },
@@ -33,6 +48,9 @@ export const APP_RELEASES = [
 ];
 export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
+// The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
+// offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
+export const ANDROID = { version: '1.0.31', date: '2026-10-30', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.31/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -67,6 +85,129 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-31', title: '360 desk: no more editing the same videos twice', for: ['website', 'app'], app: '1.0.38',
+    items: [
+      'Laptop app 1.0.38: a video you already edited stays marked as edited when you close and reopen the app, and "Edit new videos by themselves" no longer edits it again.',
+      'On the website, the 360 desk has a new Choose folder button that adds every video in a folder.'
+    ]
+  },
+  {
+    date: '2026-10-31', title: 'Camera: a frozen or black live view now recovers (Canon on Windows, and webcams)', for: ['website', 'app'], app: '1.0.36',
+    items: [
+      'Fixed: with a Canon (such as the EOS R50) on Windows, the live view could freeze and then go black during a session, with no message and no way back. Laptop app 1.0.36 starts the live view again properly whenever the camera ends it, when frames stop, and right after every photo.',
+      'The booth now watches the Windows camera too: after about 4 seconds without a new picture it asks the camera to start live view again and shows \u201cCamera not responding\u201d, and it reconnects by itself after 15 seconds.',
+      'A webcam whose picture stops while the camera is still \u201con\u201d (for example Canon\u2019s EOS Webcam Utility when the camera goes to sleep) is noticed after 8 seconds and reconnected. This part works on the website too.',
+      'If it still happens, open the Camera menu \u2192 Copy camera log right after and send it to us: it now says whether the picture stalled, what was tried and what came back.'
+    ]
+  },
+  {
+    date: '2026-10-31', title: 'Use a DSLR with an iPad: the iPad uses the laptop’s camera over Wi-Fi', for: ['website', 'app'], app: '1.0.37',
+    items: [
+      'Laptop app 1.0.37 (Windows): an iPad can now use the real DSLR shutter, live view and flash. Plug the Nikon, Canon EOS or Sony Alpha into the laptop, then in Setup → Share & start turn on “Let an iPad use this laptop’s camera”. The laptop shows an address and a 6-digit PIN: open it in Safari on the iPad (same Wi-Fi) and type the PIN. It works with no internet, and photos save on the laptop. An iPad with a camera and no laptop can’t do this.',
+      'No laptop? An iPad can still use a camera through an HDMI-to-USB capture card (no real shutter or flash). The new iPad guide at /how-to-ipad/ explains both ways.',
+      'About us: the three monthly plans now sit in one row, and the top menu has an FAQ link.'
+    ]
+  },
+  {
+    date: '2026-10-30', title: 'Flip book: sharper pages that differ from each other', for: ['website', 'app'], app: '1.0.34',
+    items: [
+      'Flip book (website, laptop app 1.0.34 and Android app 1.0.31): pages are no longer near copies of each other, and fewer are blurry. The booth records more pictures than the book needs, keeps the sharpest one around each moment, then spaces the pages so each differs from the last: a still moment gets fewer pages and a lively one gets more.',
+      'The default is now 24 frames in a 6 second clip (it was 30). Setups that already chose a number keep it. For bigger changes between pages choose fewer frames (16 or 24) and a 6 or 7 second clip.',
+      'Blur also comes from a dim room: the camera then uses a slow shutter. A little more light on the guest helps more than any setting.'
+    ]
+  },
+  {
+    date: '2026-10-30', title: 'Windows laptop: a DSLR that stops answering now recovers instead of freezing the booth', for: ['website', 'app'], app: '1.0.33',
+    items: [
+      'Laptop app 1.0.33 (Windows, Nikon / Canon EOS / Sony Alpha over USB): when the camera stops answering, the booth now waits a moment, reconnects and resets a Canon’s remote mode first. If it happens twice in a row it tells you to switch the camera off and on and check the USB cable.',
+      'Canon: if the camera ends live view by itself (heat, or its time limit), the booth switches it back on. Nikon: the booth now keeps the camera’s event list short during long live-view sessions. Memory use stays flat over a long event.',
+      'The app now keeps a camera.log file (in %APPDATA%\\photobooth4u) that records which camera command was stuck, so a hang can be diagnosed. A Canon EOS R50 hang is not confirmed fixed yet: if it still happens, send us that file.'
+    ]
+  },
+  {
+    date: '2026-10-30', title: 'A Camera step in Setup, with a live view of your camera', for: ['website', 'app'], app: '1.0.32',
+    items: [
+      'Laptop app 1.0.32 and Android app 1.0.30: Setup has a new step after Layout, Camera. It shows a live view of what the camera sees before you start: the full camera frame by default, or tap “Crop to layout” to see only the part that fits your layout.',
+      'The camera picker, Mirror and the camera log moved there from the Session step. Mirror and the live filter show in the live view. The Camera button in Photo Session works as before.',
+      'Setup now has 7 steps: Design, Text, Layout, Camera, Extras, Share and Session (Share is step 6 and Session is step 7).'
+    ]
+  },
+  {
+    date: '2026-10-30', title: 'Wi-Fi read for you, a Wi-Fi button in the bottom bar, and one-tap printing of earlier photos', for: ['website', 'app'], app: '1.0.31',
+    items: [
+      'Laptop app 1.0.31: the booth now reads the Wi-Fi the laptop is connected to and fills in the Wi-Fi name and password in Setup → Share & start. Tap “Use current Wi-Fi” to read it again. If the password can’t be read, type it there (on a Mac, allow the Keychain request). The app does not create a Wi-Fi itself: connect the laptop to your router or a phone hotspot first.',
+      'New Wi-Fi button in the bottom bar, beside Extras and Lock booth: it shows the Wi-Fi QR so guests can join, then scan their photo QR. In Share & start, “Download WIFI QR Sign” saves a printable Wi-Fi sign. After each session guests now see their Photo and GIF QR codes only.',
+      'All photos: on the booth laptop, open an earlier photo and tap Print photo. It prints at once on the printer, paper size and copies you set in Print settings, with no print dialog. It works in the laptop app and in the online gallery when it is open in the same browser as the booth. Guests’ phones keep their own print.',
+      'Android app 1.0.29: the USB camera no longer drops out when the camera answers slowly (it pauses and carries on instead of disconnecting), and a camera of another make now says plainly that it can’t be controlled by the app and to use its USB webcam mode instead.',
+      'Android app 1.0.28: the same Wi-Fi button and Wi-Fi sign. On the tablet, type the Wi-Fi name and password in Share & start (the tablet does not read them by itself).',
+      'The laptop app also includes using the laptop’s DSLR from an iPad over Wi-Fi: see the iPad guide at /how-to-ipad/.'
+    ]
+  },
+  {
+    date: '2026-10-30', title: '360 videos: join the Wi-Fi and download, with two QR codes', for: ['website', 'app'], app: '1.0.29',
+    items: [
+      'Laptop app 1.0.27 and Android app 1.0.23: when you set the booth Wi-Fi name and password in Setup → Share & start, the 360 player shows two codes. Step 1: Network joins the guest’s phone to the booth Wi-Fi, and Step 2: Download opens the video. It works with no internet.',
+      'With no Wi-Fi set, you still get the single download code as before.',
+      'New look: the finished video now shows between the two codes, with numbered steps on a dark card (laptop 1.0.29, Android 1.0.26).',
+      'Android app 1.0.25: the tablet now looks for a new version every 5 minutes while it is open (and when it comes back to the front), like the laptop app, instead of every 6 hours.',
+      'What’s new now opens in a window inside the app (laptop 1.0.28, Android 1.0.24) instead of the browser.',
+      'Android app 1.0.27: a Nikon, Canon EOS or Sony Alpha camera plugged into the tablet’s USB port now shows up in the Camera list (“Nikon / Canon / Sony camera over USB cable”). Set the camera to PTP / MTP (Nikon), Remote Control (Canon) or PC Remote (Sony), plug it in and tap OK when Android asks.'
+    ]
+  },
+  {
+    date: '2026-10-29', title: 'The Android tablet app now speaks the countdown', for: ['website'],
+    items: [
+      'Android app 1.0.22: the spoken countdown (Get ready, Three, Two, One, Smile!) now works on the tablet, using the tablet\u2019s own text-to-speech voices. It works offline once an English voice is downloaded (Settings \u2192 System \u2192 Languages \u2192 Text-to-speech output).',
+      'Choose English or Tagalog (when the tablet has a Filipino voice), the last 3 numbers or every number, and the voice in Setup \u2192 Session. With no voice on the tablet the beeps are used.'
+    ]
+  },
+  {
+    date: '2026-10-29', title: 'Guests can see only their own photos, and a spoken countdown', for: ['website', 'app'], app: '1.0.26',
+    items: [
+      'New: Setup \u2192 Share \u2192 After guests scan their QR. Choose Everyone\u2019s photos (as before), Mine first (their own photos, with a Show photos with other guests button) or Only their own.',
+      'Only their own: each guest\u2019s QR opens a page with just their photo, GIF and flipbook. The event gallery is closed to guests, so an old QR or a copied link cannot open it, and the booth hides its All photos button and the guest screen\u2019s All photos QR. Use Lock booth so guests cannot open Setup or Extras.',
+      'In the laptop app and the Android tablet app (1.0.21) the event pages answer only the laptop or tablet itself in this mode. It works on the website too, including the free trial.',
+      'New: a spoken countdown (Get ready, Three, Two, One, Smile!) using the voices on your device. On by default; choose English or Tagalog (when the device has a Filipino voice), the last 3 numbers or every number, and the voice in Setup \u2192 Session. With no voice on the device the beeps are used. The Android app keeps the beeps for now.'
+    ]
+  },
+  {
+    date: '2026-10-29', title: '360 videos work in the laptop app, a simpler bottom bar, print preview and poster fit', for: ['website', 'app'], app: '1.0.25',
+    items: [
+      'Fixed: in the laptop app the 360 desk could not take videos from Choose videos or play them (the app was blocking its own video server). Videos now upload, play and edit, and Record 360 on the laptop can save to its own inbox.',
+      'Fixed: the 360 video player no longer covers the page, and card titles (such as Photographer desk) are readable again in the dark theme.',
+      'A simpler bottom bar: Camera, Printer, All photos, Extras and Lock. Photographer desk, 360 desk, Record 360, Video guestbook and Print requests are in the new Extras menu, with a number for new items.',
+      'Photographer desk: it now shows the phone QR code at the top. Photos a phone sends appear in the desk list (marked with a phone) next to memory-card photos, with Make print + QR and a new Print original. One photo per print is on by default, and the desk scrolls with many photos.',
+      'Quick shot is gone: use the Photographer desk. Phone upload moved there.',
+      'Print preview: the first print, and the first after you change the paper or printer, shows how the page will look before anything is sent. Switch it off in Print settings.',
+      'Custom welcome poster: a Poster fit choice. Stretch to fill the screen is the default and trims nothing; you can also show the whole poster or fill and trim.',
+      'The video guestbook and 360 recording buttons are smaller.'
+    ]
+  },
+  {
+    date: '2026-10-29', title: 'Phone photos, guest print requests, video guestbook, GIFs in your frame and 360 recording in the app', for: ['website', 'app'], app: '1.0.24',
+    items: [
+      'GIFs now get your chosen look and sit in your frame: by default the one-photo Solo layout with your title, even when the photos use a strip. Setup → Extras → Output mode has a GIF frame choice (Solo, the chosen layout, or the plain camera view).',
+      'Quick shot and photographer desk photos use the Solo layout (no more one photo repeated on a strip). The desk has a One photo per print switch, and the Quick shot screen has Print framed and Print original.',
+      'Photos from a phone: on the Quick shot screen tap Phone upload, the photographer scans the QR code and sends photos. On the laptop and Android apps they go straight to the booth over Wi-Fi; on the website they go through the event folder. Each one is framed, saved and gets a QR code.',
+      'Guests can ask for a print: switch on Let guests ask for a print from their phone in the print settings. Their photo page gets an Ask for a print at the booth button and a Print requests button appears in the dock (website, laptop and Android apps).',
+      'Guest screen (traditional booth): an optional Look button lets each guest pick a filter. It is off until you tick Let guests choose a look in Setup → Extras → Filter.',
+      'Video guestbook: a guest records a message of up to 30 seconds, watches it and gets a QR code. It shows under Videos in the gallery.',
+      '360 recording in the app (Android and laptop apps): Record 360 in the dock records the spin from a tablet or phone on the arm, starting with the button or when the arm moves, and sends the clip to the laptop. New speed styles (0.25×, fast then slow, fast slow fast, slow-mo roller) and Edit new videos by themselves can now also get the QR ready.',
+      'Flipbook cards no longer have numbers: they print in order, left to right and top to bottom.'
+    ]
+  },
+  {
+    date: '2026-10-29', title: 'Vintage looks, photographer desk, flipbook and a 360 video desk', for: ['website', 'app'], app: '1.0.23',
+    items: [
+      'Vintage looks: Film, Faded, 70s, Instant and Noir, with grain, darker corners and a warm light leak, plus an optional orange date stamp on each photo. They are in the filter picker and on the guests’ filter strip, and apply to photos and flipbook frames (GIFs are recorded without filters).',
+      'Photographer desk: a roving photographer’s photos go into your frame, print and get a QR code. Drop or choose the photos, or (laptop app) pick a folder the camera software saves into and new photos appear by themselves. Quick shot turns a phone or tablet into a handheld camera: every tap is saved quietly and you show the QR when a guest asks.',
+      'Flipbook: guests record a short clip and the booth prints its frames as numbered cards on sheets (cut, stack, staple), with a cover card and a back card. They also get an animated GIF QR code.',
+      '360 video desk: videos from the 360 arm’s camera arrive from a folder or from the recording phone’s browser. The laptop app edits them (slow motion, speed ramp or boomerang, your frame, logo and title, music, trim) and shares the finished video with a QR code. The website shares the original video, up to about 28 MB.',
+      'All of these are included with every package and switched on by default. In Admin you can switch any of them off for a client.',
+      'New Event Pass for ₱499 (24 hours, tablet or laptop) replaces the Tablet and Laptop booth passes, and the 1-hour practice code is gone: use the free trial to test first.'
+    ]
+  },
   {
     date: '2026-10-29', title: 'Android tablet app now needs a code, same as the laptop app', for: ['website'],
     items: [

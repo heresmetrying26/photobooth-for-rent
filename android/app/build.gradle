@@ -11,10 +11,25 @@ android {
         applicationId "com.photobooth4u.booth"
         minSdk 24
         targetSdk 34
-        versionCode 8
-        versionName "1.0.7"
+        versionCode 32
+        versionName "1.0.31"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // Every release is signed with the same key, so a new APK installs over the old app (and keeps its
+    // activation and photos). The key comes from GitHub secrets in CI; without them (local builds) the
+    // normal debug key is used.
+    def keystorePath = System.getenv('ANDROID_KEYSTORE_FILE')
+    if (keystorePath && file(keystorePath).exists()) {
+        signingConfigs {
+            photobooth {
+                storeFile file(keystorePath)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
     }
 
     buildTypes {
@@ -24,6 +39,7 @@ android {
         }
         debug {
             debuggable true
+            if (signingConfigs.findByName('photobooth')) signingConfig signingConfigs.photobooth
         }
     }
 

@@ -1,5 +1,4 @@
-import { createHash } from 'node:crypto';
-import { safe, json, checkLicense, verifyToken, licenses, setupsStore, cleanEventName } from '../lib/core.mjs';
+import { safe, json, checkLicense, verifyToken, licenses, setupsStore, cleanEventName, setupKeyFor as keyFor } from '../lib/core.mjs';
 
 // Saves and loads the booth's Setup (layout, theme, backdrop, event name,
 // fonts, timers, filters...) on the server, so it survives refreshes, restarts
@@ -20,8 +19,6 @@ const IMAGE_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 const MAX_SOUND = 600000;
 const SOUND_RE = /^data:audio\/wav;base64,[A-Za-z0-9+/=]+$/;
 const ASSET_ID_RE = /^a[A-Za-z0-9]{8,32}$/;
-
-const keyFor = (scope) => 'k' + createHash('sha256').update(scope).digest('hex').slice(0, 40);
 
 export default safe(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);

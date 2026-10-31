@@ -11,13 +11,17 @@ anything in this folder, and Netlify never builds it.
   Mac over USB, the same way as in Chrome, and the app lets go of the camera macOS grabs when it is plugged in
   (`lib/camfree.mjs`: stops macOS' camera service and Image Capture, then the booth connects by itself). Webcams and HDMI capture as before.
 - **Silent printing** to a named printer per paper size (built in; no Print Helper to install).
+- **Print an earlier photo**: on the laptop, *All photos* → a photo → *Print photo* prints it at once on the chosen printer
+  (the gallery page asks the app; `printNowTake` / `printNowDone` hand the job to the booth). Laptop only, never a guest's phone.
 - **Photos on the laptop**: `Pictures/photobooth4u/<event>/1_strip.jpg …` (Share & start → *Open photos folder*
   / *Change folder*). Nothing is uploaded.
 - **Guests' QR codes** open the photo from the laptop over the booth Wi-Fi
   (`http://<laptop address>:47777/e/<event id>/`): one photo page with a **Save photo** button, and an
   *All photos* gallery. Guests' phones must be on the same Wi-Fi as the laptop (a router at the booth, or the
-  laptop's own hotspot). Optional: type the Wi-Fi name and password in Share & start, and guests get a
-  **Join Wi-Fi** QR next to their photo QR (also on the printable QR sign).
+  laptop's own hotspot). The app reads the Wi-Fi the laptop is on (`lib/wifi.mjs`: `netsh wlan` on Windows,
+  `networksetup` + Keychain on Mac) and fills in Share & start; type the password if it can't be read. That
+  **Join Wi-Fi** QR is in Share & start (with *Download WIFI QR Sign*) and behind the **Wi-Fi** button in the bottom
+  bar; guests' session QRs are the photo and GIF only. The app does not create a hotspot.
 
 Not in the app (they need the internet): QR payments (GCash / Maya; vouchers work), the online gallery and
 Google Drive, My Events, the laptop print station for iPads, and trial codes.
@@ -96,3 +100,15 @@ npm start          # = node scripts/prepare.mjs && electron .
 - `pages/activate.html` — activation / renewal screen. `preload.cjs` — the small bridge the booth uses.
 - In `protected/booth.html`, everything app-only is behind `DESKTOP` (set when `window.__PB.desktop` and
   the bridge exist), so the website behaves as before.
+
+## 360 video desk (laptop app)
+- **Dock → 360 desk** (an included extra, switched per client in Admin). Videos from the 360 arm's camera arrive in the *360 inbox* folder
+  (default `Pictures/photobooth4u/360 inbox`, changeable) by AirDrop, USB, a cloud folder or a camera's FTP, or from the recording phone's browser:
+  the desk shows a QR code for a send page on the booth Wi-Fi (the address contains a code that changes each time the app starts).
+- **Editing** uses `ffmpeg`, a separate program shipped in `build/ffmpeg/` (unpacked from the asar). `scripts/prepare.mjs` copies it from the
+  `ffmpeg-static` package when it is installed; CI installs it with `npm install --no-save ffmpeg-static`. Without it the desk shares the originals.
+  Licence notice: `resources/ffmpeg-NOTICE.txt` (ships beside the program). The Mac Intel (x64) build made on an Apple-silicon runner would carry
+  an arm64 ffmpeg: the app checks that ffmpeg starts and otherwise hides the editing controls.
+- **Looks**: Classic slow-mo (0.5x), Speed ramp (fast-slow-fast), Boomerang (first 5 s forward then back, 720p), Original speed; portrait or
+  landscape; 1080p / 720p; the booth's frame, logo and title drawn over it; the original sound, one music file chosen on this laptop, or none.
+  Finished MP4s go to `360 inbox/edited/` and are shared into the event like any photo (QR, `/e/<slug>/p/<file>`).

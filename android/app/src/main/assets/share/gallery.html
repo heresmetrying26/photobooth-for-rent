@@ -145,6 +145,25 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
       pr.onclick = function(){ window.print(); };
       row.appendChild(pr);
     }
+    if(!vid && !gif && d.print){
+      var ask = el('button', 'btn alt', 'Ask for a print at the booth');
+      ask.type = 'button';
+      var askKey = 'pb_asked_' + slug + '_' + name;
+      try{ if(sessionStorage.getItem(askKey)){ ask.disabled = true; ask.textContent = 'Requested ✓'; } }catch(e){}
+      ask.onclick = function(){
+        ask.disabled = true; ask.textContent = 'Sending…';
+        var x = new XMLHttpRequest();
+        x.open('POST', '/e/' + slug + '/print/' + encodeURIComponent(name));
+        x.onload = function(){
+          var j = null; try{ j = JSON.parse(x.responseText); }catch(e){}
+          if(j && j.ok){ try{ sessionStorage.setItem(askKey, '1'); }catch(e){} ask.textContent = j.done ? 'Already printed ✓' : 'Requested ✓'; }
+          else { ask.disabled = false; ask.textContent = (j && j.error === 'rate') ? 'Please wait a little, then try again' : (j && j.error === 'off') ? 'Print requests are off' : 'Could not send. Try again'; }
+        };
+        x.onerror = function(){ ask.disabled = false; ask.textContent = 'Could not send. Try again'; };
+        x.send();
+      };
+      row.appendChild(ask);
+    }
     row.appendChild(all);
     wrap.appendChild(row);
     var tip = el('p', 'tip');

@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Send photos</title>
+<style>body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#F6F1EA;color:#1C1A1E;padding:24px 18px;text-align:center}h1{font-size:22px;margin:6px 0}p{color:#6B666C;margin:6px 0}
+label.pick{display:block;max-width:360px;margin:14px auto 0;padding:18px 26px;border-radius:14px;background:#C93D27;color:#fff;font-weight:800;font-size:18px}label.alt{background:#1C1A1E}input{display:none}
+.bar{height:10px;border-radius:6px;background:#E4DCCF;overflow:hidden;margin:6px auto 2px;max-width:420px}.bar i{display:block;height:100%;width:0;background:#2EA66B}.row{margin:14px auto 0;max-width:420px;text-align:left;font-size:14px}#list{margin-top:18px}</style></head><body>
+<h1>Send photos to the booth</h1><p>Each photo goes straight to the booth laptop, into the event frame, ready to print.</p>
+<label class="pick" for="cam">Take a photo</label><input id="cam" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
+<label class="pick alt" for="f">Choose photos</label><input id="f" type="file" accept="image/jpeg,image/png,image/webp" multiple><div id="list"></div>
+<script>var T=location.pathname.replace(/[/]+$/,"").replace(/[/]photos$/,"");
+function pick(e){Array.prototype.forEach.call(e.target.files,send);e.target.value=""}
+document.getElementById("f").addEventListener("change",pick);document.getElementById("cam").addEventListener("change",pick);
+function send(file){var row=document.createElement("div");row.className="row";row.innerHTML="<b></b><div class=bar><i></i></div><span></span>";row.querySelector("b").textContent=file.name||"photo";document.getElementById("list").insertBefore(row,document.getElementById("list").firstChild);
+var x=new XMLHttpRequest();x.open("POST",T+"/photo?name="+encodeURIComponent(file.name||"photo.jpg"));x.setRequestHeader("content-type","application/octet-stream");
+x.upload.onprogress=function(p){if(p.lengthComputable)row.querySelector("i").style.width=Math.round(p.loaded/p.total*100)+"%"};
+x.onload=function(){var ok=x.status===200;row.querySelector("span").textContent=ok?"Sent. It is on the laptop now.":"Could not send ("+x.status+"). Try again.";if(ok)row.querySelector("i").style.width="100%"};
+x.onerror=function(){row.querySelector("span").textContent="No connection to the laptop. Are you on the booth Wi-Fi?"};x.send(file)}</script></body></html>

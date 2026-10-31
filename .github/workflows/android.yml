@@ -43,7 +43,43 @@ jobs:
         run: |
           pip install Pillow --quiet
           python android/scripts/gen_icons.py android/resources/icon_source.png
+      - name: Load the signing key (when the secrets are set)
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/photobooth4u.keystore"
+            echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/photobooth4u.keystore" >> "$GITHUB_ENV"
+            echo "Signing with the fixed release key"
+          else
+            echo "No signing secrets: using a throwaway debug key (updates will need an uninstall first)"
+          fi
+      - name: Check the signing key
+        if: env.ANDROID_KEYSTORE_FILE != ''
+        env:
+          KS_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PW: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          # Says which secret is wrong (never prints their values), so a bad one is easy to fix.
+          f="$ANDROID_KEYSTORE_FILE"
+          [ -z "$KS_PW" ] && { echo "::error::Secret ANDROID_KEYSTORE_PASSWORD is empty or missing"; exit 1; }
+          [ -z "$KS_ALIAS" ] && { echo "::error::Secret ANDROID_KEY_ALIAS is empty or missing"; exit 1; }
+          [ -z "$KEY_PW" ] && { echo "::error::Secret ANDROID_KEY_PASSWORD is empty or missing"; exit 1; }
+          echo "::notice::Keystore file: $(stat -c %s "$f") bytes, sha256 $(sha256sum "$f" | cut -c1-16); password length ${#KS_PW}; has whitespace: $(printf %s "$KS_PW" | grep -c '[[:space:]]'); contains '=': $(printf %s "$KS_PW" | grep -c '=')"
+          if ! keytool -list -keystore "$f" -storepass "$KS_PW" > "$RUNNER_TEMP/ks.txt" 2>&1; then
+            echo "::error::Cannot open the keystore: ANDROID_KEYSTORE_BASE64 is not the full keystore text, or ANDROID_KEYSTORE_PASSWORD is wrong ($(head -c 120 "$RUNNER_TEMP/ks.txt" | tr -s '[:space:]' ' '))"; exit 1
+          fi
+          aliases=$(grep -E ', PrivateKeyEntry' "$RUNNER_TEMP/ks.txt" | cut -d, -f1 | tr -s '[:space:]' ' ')
+          echo "$aliases" | grep -qw -- "$KS_ALIAS" || { echo "::error::ANDROID_KEY_ALIAS does not match. The keystore has: $aliases"; exit 1; }
+          # A PKCS12 keystore uses one password for the store and the key.
+          [ "$KEY_PW" = "$KS_PW" ] || { echo "::error::ANDROID_KEY_PASSWORD must be the same value as ANDROID_KEYSTORE_PASSWORD"; exit 1; }
+          echo "::notice::Signing key OK (alias $KS_ALIAS)"
       - name: Build Debug APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Stage APK for release
         run: |

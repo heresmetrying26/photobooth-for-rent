@@ -3,7 +3,7 @@
 //   POST { action: 'checkin',    licence, mid, ver }                     -> { ok, licence } | { ok: false, revoked, reason, error }
 //   POST { action: 'deactivate', licence, mid }                          -> { ok }   (frees this laptop's device slot)
 //   GET  /api/license?pub=1                                              -> the public key the app checks licences with
-import { safe, json, licenses, normCode, throttle, recordFail, clearFail, DAY, MIN, fmtWhen, LIFETIME_EXP, devicesOf, setDevices, putLicense, windowEnd } from '../lib/core.mjs';
+import { safe, json, licenses, normCode, throttle, recordFail, clearFail, DAY, MIN, fmtWhen, LIFETIME_EXP, devicesOf, setDevices, putLicense, windowEnd, getShutdown, swapBlocked, logSwap, SWAP_MSG, alertDeviceFreed } from '../lib/core.mjs';
 import { readLicence, licenceFor, activateOn, saveMap, readMap, dropMap, appDevice, publicKeyInfo, MID_RE } from '../lib/license.mjs';
 import { liveApp } from '../lib/updates.mjs';
 
@@ -43,7 +43,9 @@ export default safe(async (req, context) => {
     await clearFail(t);
     if (rec.status === 'revoked') return json({ error: 'This code has been disabled. Please contact us.' }, 403);
     if (rec.kind === 'bonus') return json({ error: 'Bonus codes work in the web booth only. Use your main booking code.' }, 400);
-    if (!rec.offlineOpt) return json({ error: NO_ADDON, code: 'no-addon' }, 403);
+    // In shutdown mode every Lifetime code gets the Offline App (agreement s.6).
+    const sd = await getShutdown();
+    if (!rec.offlineOpt && !(sd.on && rec.lifetime)) return json({ error: NO_ADDON, code: 'no-addon' }, 403);
     if (rec.status !== 'active') {
       const why = startCode(rec, now);
       if (why) return json({ error: why }, 403);
@@ -52,7 +54,7 @@ export default safe(async (req, context) => {
     if (r.error) return json({ error: r.error }, r.status || 400);
     await putLicense(store, key, rec);
     if (r.isNew) await saveMap(r.dev.app.lid, key, mid);
-    return json({ ok: true, licence: licenceFor(key, rec, r.dev, now), deviceNo: r.dev.no, app: await liveApp() });
+    return json({ ok: true, licence: licenceFor(key, rec, r.dev, now, sd.on), deviceNo: r.dev.no, app: await liveApp() });
   }
 
   if (b.action === 'checkin' || b.action === 'deactivate') {
@@ -63,19 +65,26 @@ export default safe(async (req, context) => {
     const rec = map ? await store.get(map.key, { type: 'json' }) : null;
     const dev = rec && appDevice(rec, (a) => a.lid === p.lid && a.mid === mid);
     if (b.action === 'deactivate') {
-      if (rec && dev) { setDevices(rec, devicesOf(rec).filter((d) => d.id !== dev.id)); await putLicense(store, map.key, rec); }
+      if (rec && dev) {
+        if (swapBlocked(rec, now)) return json({ ok: false, error: SWAP_MSG, code: 'swap-limit' }, 429);
+        setDevices(rec, devicesOf(rec).filter((d) => d.id !== dev.id));
+        logSwap(rec, now);
+        await putLicense(store, map.key, rec);
+        await alertDeviceFreed(rec, dev, 'deactivated', now);   // email to the owner (ALERT_EMAIL); never blocks or suspends
+      }
       await dropMap(p.lid);
       return json({ ok: true });
     }
     if (!rec || !dev) return json({ ok: false, revoked: true, reason: 'removed', error: 'This computer was removed from your code. Activate it again with your code.' });
     if (rec.status === 'revoked') return json({ ok: false, revoked: true, reason: 'disabled', error: 'This code has been disabled. Please contact us.' });
-    if (!rec.offlineOpt) return json({ ok: false, revoked: true, reason: 'no-addon', error: NO_ADDON });
+    const sd = await getShutdown();
+    if (!rec.offlineOpt && !(sd.on && rec.lifetime)) return json({ ok: false, revoked: true, reason: 'no-addon', error: NO_ADDON });
     if (rec.expiresAt <= now) return json({ ok: false, revoked: true, reason: 'expired', error: 'This code has expired.' });
     dev.app.seen = now; dev.seen = now;
     if (b.ver) dev.app.ver = String(b.ver).slice(0, 20);
     setDevices(rec, devicesOf(rec).map((d) => (d.id === dev.id ? dev : d)));
     await putLicense(store, map.key, rec);
-    return json({ ok: true, licence: licenceFor(map.key, rec, dev, now), app: await liveApp() });
+    return json({ ok: true, licence: licenceFor(map.key, rec, dev, now, sd.on), app: await liveApp() });
   }
 
   return json({ error: 'Unknown action' }, 400);

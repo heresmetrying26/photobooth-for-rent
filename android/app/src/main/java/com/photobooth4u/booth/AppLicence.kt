@@ -52,7 +52,7 @@ class AppLicence(private val ctx: Context) {
 
     companion object {
         private const val TAG = "PBLicence"
-        const val APP_VERSION = "1.0.7"
+        const val APP_VERSION = "1.0.9"
         const val SERVER = "https://photobooth4u.netlify.app"
         private const val PREFIX = "PB4U-LIC1"
         private const val CHECK_EVERY_MS = 10 * 60_000L

@@ -7,15 +7,19 @@
 // The internet is only needed to activate (or paste an offline key) and, for a
 // lifetime code, once every few weeks to renew the licence.
 import { app, BrowserWindow, protocol, session, ipcMain, shell, dialog, Menu, net, nativeImage, powerSaveBlocker, screen, clipboard } from 'electron';
-import { readFileSync, existsSync, statSync, createReadStream, writeFileSync, mkdirSync } from 'node:fs';
-import { join, dirname, normalize, extname, sep } from 'node:path';
+import { readFileSync, existsSync, statSync, createReadStream, writeFileSync, appendFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { join, dirname, normalize, extname, sep, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createDecipheriv, createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
-import { initPhotos, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf } from './lib/photos.mjs';
+import { allowBoothRequest } from './lib/netguard.mjs';
+import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
+import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
+import * as SPIN from './lib/spin.mjs';
+import { detectWifi } from './lib/wifi.mjs';
 import { freeCamera, guardCamera } from './lib/camfree.mjs';
 import * as U from './lib/updater.mjs';
 
@@ -180,8 +184,8 @@ function setupSession() {
   ses.webRequest.onBeforeRequest({ urls: ['http://*/*', 'https://*/*', 'ws://*/*', 'wss://*/*'] }, (d, cb) => {
     const fromBooth = d.webContents && !d.webContents.isDestroyed() && ours(d.webContents.getURL());
     if (!fromBooth) return cb({});
-    if (/^https:\/\/fonts\.(googleapis|gstatic)\.com\//.test(d.url)) return cb({});
-    if (/^http:\/\/(127\.0\.0\.1|localhost):17321\//.test(d.url)) return cb({});
+    // The booth page plays the 360 videos from, and sends clips to, this laptop's own share server (see lib/netguard.mjs).
+    if (allowBoothRequest(d.url, sharePortNow())) return cb({});
     cb({ cancel: true });
   });
 }
@@ -198,6 +202,7 @@ function buildMenu() {
 // ---------- IPC (preload.cjs) ----------
 function wireIpc() {
   ipcMain.on('pb4u:lan', (e) => { e.returnValue = shareBase(); });
+  ipcMain.handle('pb4u:wifi', (e, force) => detectWifi(!!force));
   ipcMain.handle('pb4u:info', async () => ({
     licence: L.info(), version: VERSION, update: U.info(), photos: photosRoot(), share: shareBase(), lanIp: lanAddress(), port: sharePortNow(), server: L.SERVER
   }));
@@ -229,7 +234,86 @@ function wireIpc() {
     setPhotosRoot(dir); settings.photos = dir; saveSettings();
     return dir;
   });
-  ipcMain.handle('pb4u:copy', (e, t) => { clipboard.writeText(String(t || '')); return true; });
+  // Photographer desk: a folder the photographer's photos arrive in (camera software, FTP or Wi-Fi tool saves there).
+  // The page only ever reads image files directly inside the folder the operator picked.
+  const DESK_EXT = /\.(jpe?g|png|webp)$/i;
+  ipcMain.handle('pb4u:deskFolder', () => settings.deskDir || null);
+  ipcMain.handle('pb4u:deskChoose', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Folder the photographer\u2019s photos arrive in', defaultPath: settings.deskDir || photosRoot(), properties: ['openDirectory', 'createDirectory'] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    settings.deskDir = r.filePaths[0]; saveSettings();
+    return settings.deskDir;
+  });
+  ipcMain.handle('pb4u:deskScan', () => {
+    const dir = settings.deskDir; if (!dir || !existsSync(dir)) return [];
+    try {
+      return readdirSync(dir).filter((n) => DESK_EXT.test(n)).map((n) => { try { const st = statSync(join(dir, n)); return st.isFile() ? { name: n, size: st.size, mtime: st.mtimeMs } : null; } catch { return null; } })
+        .filter(Boolean).sort((x, y) => y.mtime - x.mtime).slice(0, 300);
+    } catch { return []; }
+  });
+  ipcMain.handle('pb4u:deskRead', (e, name) => {
+    const dir = settings.deskDir; const n = basename(String(name || ''));
+    if (!dir || !DESK_EXT.test(n)) return null;
+    try { return readFileSync(join(dir, n)); } catch { return null; }
+  });
+  // 360 videos: the inbox folder, the phone send page, and sharing a clip into the event
+  const spinInfo = () => ({ dir: spinDirNow(), sendUrl: spinSendUrl(), previewBase: spinPreviewBase() });
+  ipcMain.handle('pb4u:spinInfo', () => spinInfo());
+  // Roving photos: phones send photos to an inbox; the booth takes each one, frames it and gives it a QR
+  ipcMain.handle('pb4u:roveInfo', () => ({ dir: roveDirNow(), sendUrl: roveSendUrl(), previewBase: rovePreviewBase() }));
+  ipcMain.handle('pb4u:roveScan', () => roveList());
+  ipcMain.handle('pb4u:roveTake', (e, name) => roveTake(name));
+  // Guests asking for a print from their phone: switched on from the booth's Print settings; requests wait here
+  ipcMain.handle('pb4u:printNowTake', () => printNowTake());
+  ipcMain.handle('pb4u:printNowDone', (e, id, ok, msg) => printNowDone(id, !!ok, msg));
+  ipcMain.handle('pb4u:guestPrintSet', (e, on) => setGuestPrint(!!on));
+  ipcMain.handle('pb4u:guestViewSet', (e, mode) => setGuestView(String(mode || '')));
+  ipcMain.handle('pb4u:printReqList', () => printReqList());
+  ipcMain.handle('pb4u:printReqDone', (e, id) => printReqDone(id));
+  ipcMain.handle('pb4u:printReqRead', (e, id) => printReqRead(id));
+  ipcMain.handle('pb4u:spinChoose', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Folder the 360 videos are saved to', defaultPath: spinDirNow() || photosRoot(), properties: ['openDirectory', 'createDirectory'] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    settings.spinDir = r.filePaths[0]; saveSettings(); setSpinDir(settings.spinDir);
+    return spinInfo();
+  });
+  ipcMain.handle('pb4u:spinScan', () => spinList());
+  ipcMain.handle('pb4u:spinShare', (e, name, folderKey, subfolder, outName) => spinShare(name, folderKey, subfolder, outName));
+  // Editing (ffmpeg): environment, one job per clip, progress, cancel, the music file, the overlay picture
+  ipcMain.handle('pb4u:spinEnv', async () => ({ ffmpeg: await SPIN.hasFfmpeg(), music: settings.spinMusic ? basename(settings.spinMusic) : '' }));
+  ipcMain.handle('pb4u:spinMusic', async (e, clear) => {
+    if (clear) { delete settings.spinMusic; saveSettings(); return { music: '' }; }
+    const r = await dialog.showOpenDialog(win, { title: 'Music for the 360 videos', properties: ['openFile'], filters: [{ name: 'Audio', extensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'flac'] }] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    settings.spinMusic = r.filePaths[0]; saveSettings();
+    return { music: basename(settings.spinMusic) };
+  });
+  ipcMain.handle('pb4u:spinOverlay', (e, bytes) => SPIN.saveOverlay(bytes));
+  ipcMain.handle('pb4u:spinProcess', (e, req) => {
+    const d = spinDirNow(); const n = basename(String((req && req.name) || ''));
+    if (!d || !n || !/\.(mp4|webm|mov|m4v)$/i.test(n)) return { error: 'No video' };
+    const music = settings.spinMusic && existsSync(settings.spinMusic) ? settings.spinMusic : null;
+    return SPIN.enqueue({ inputPath: join(d, n), outDir: spinEditedDir(), label: String((req && req.label) || ''), overlay: SPIN.overlayPath(req && req.overlay), music, options: (req && req.options) || {} });
+  });
+  ipcMain.handle('pb4u:spinJob', (e, id) => SPIN.jobInfo(id));
+  ipcMain.handle('pb4u:spinCancel', (e, id) => SPIN.cancelJob(id));
+  // What's new, shown inside the app: the notes come from the website (online only).
+  ipcMain.handle('pb4u:news', async () => {
+    try { const r = await net.fetch(L.SERVER + '/api/updates', { cache: 'no-store' }); const j = await r.json(); return { ok: true, notes: j.notes || [], app: j.app || null }; }
+    catch { return { ok: false, notes: [] }; }
+  });
+  // iPad using this laptop's camera over the booth Wi-Fi (see lib/lan.mjs)
+  // Admin can turn this off per code (the licence's feat.ipadOpt === false); it is on for every other code.
+  const ipadAllowed = () => { const s = L.status(); return !(s.p && s.p.feat && s.p.feat.ipadOpt === false); };
+  const ipadInfo = () => { const b = shareBase(); return { allowed: ipadAllowed(), on: !!settings.ipadOn && ipadAllowed(), pin: settings.ipadPin, url: b ? b + '/ipad' : null, urlWithPin: b ? b + '/ipad/' + settings.ipadPin : null, camera: process.platform === 'win32' }; };
+  ipcMain.handle('pb4u:ipadInfo', () => ipadInfo());
+  ipcMain.handle('pb4u:ipadSet', (e, on, renewPin) => {
+    settings.ipadOn = !!on;
+    if (renewPin || !validPin(settings.ipadPin)) settings.ipadPin = newPin();
+    saveSettings();
+    return ipadInfo();
+  });
+  ipcMain.handle('pb4u:copy',(e, t) => { clipboard.writeText(String(t || '')); return true; });
   ipcMain.handle('pb4u:openUrl', (e, u) => { openOutside(String(u || '')); return true; });
   ipcMain.handle('pb4u:quit', () => { app.quit(); return true; });
   // Mac: let go of the camera macOS grabbed (its camera service, Image Capture) so the booth can use it.
@@ -258,7 +342,29 @@ app.whenReady().then(async () => {
     root: settings.photos || join(app.getPath('pictures'), 'photobooth4u'), dataDir: dataDir(),
     makeThumb: async (f) => { const im = nativeImage.createFromPath(f); if (im.isEmpty()) return null; const s = im.getSize(); return im.resize(s.width > s.height ? { height: 360, quality: 'good' } : { width: 360, quality: 'good' }).toJPEG(72); }
   });
-  initHelper({ workerPath: join(BUILD, 'camera-worker.ps1') });
+  setSpinDir(settings.spinDir || null);
+  SPIN.configure({ buildDir: BUILD, temp: join(app.getPath('temp'), 'photobooth4u') });
+  // Camera and printer messages also go to camera.log in the app's data folder (%APPDATA%\photobooth4u), so a camera that
+  // hangs can be diagnosed afterwards. It starts over when it passes 512 KB.
+  const camLog = join(dataDir(), 'camera.log');
+  initHelper({
+    workerPath: join(BUILD, 'camera-worker.ps1'),
+    logger: (m) => {
+      console.log('[helper] ' + m);
+      try {
+        const line = new Date().toISOString() + ' ' + m + '\n';
+        appendFileSync(camLog, line);
+        if (statSync(camLog).size > 512 * 1024) writeFileSync(camLog, line);
+      } catch { /* the log is a convenience */ }
+    }
+  });
+  if (!validPin(settings.ipadPin)) { settings.ipadPin = newPin(); saveSettings(); }
+  setLanHandler(createLanHandler({
+    state: () => { const s = L.status(); return { on: !!settings.ipadOn && s.ok && !(s.p && s.p.feat && s.p.feat.ipadOpt === false), pin: settings.ipadPin }; },
+    boothPage: ({ extraHead }) => boothPage({ deviceId: L.deviceId(), extraHead }),
+    handleWeb: (webReq) => handle(webReq),
+    setGuestView
+  }));
   await startShareServer();
   protocol.handle('app', handle);
   setupSession();

@@ -5394,7 +5394,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var dl = document.getElementById('driveFolderDrive');
     if(dl){ dl.href = '#'; dl.textContent = 'Open folder'; dl.style.display = ANDROID_LOCAL ? 'none' : ''; }
     document.getElementById('driveFolderAll').style.display = 'none';
-    document.getElementById('driveFolderQrCaption').textContent = url ? 'All photos (same Wi-Fi)' : 'No Wi-Fi yet: connect this ' + LOCAL_DEVICE + ' to the booth Wi-Fi (or turn on its hotspot) to show the guests\u2019 QR.';
+    document.getElementById('driveFolderQrCaption').textContent = url ? 'All photos (same Wi-Fi)' : 'No Wi-Fi yet: connect this ' + LOCAL_DEVICE + ' to the booth Wi-Fi (a pocket router or phone hotspot works, no internet needed) to show the guests\u2019 QR.';
     driveFolderStatus.style.display = 'block';
     driveFolderStatus.textContent = '\u2713 Folder ready' + (localFolderName ? ': ' + localFolderName : '') + '. Every photo saves on this ' + LOCAL_DEVICE + '.';
     if(typeof refreshSetupNav === 'function') refreshSetupNav();
@@ -16785,7 +16785,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       lan.className = 'panel-hint' + (base ? '' : ' bad');
       lan.textContent = base
         ? 'Guests open their photos at ' + base + ' ✓ Their phones must be on the same Wi-Fi as this tablet.'
-        : 'This tablet isn’t on a Wi-Fi network, so guests can’t open their photos yet. Connect it to the booth Wi-Fi router, or turn on its hotspot (Settings → Network → Hotspot).';
+        : 'This tablet isn’t on a Wi-Fi network, so guests can’t open their photos yet. Connect it to the booth Wi-Fi router or a phone hotspot (no internet needed), or turn on this tablet’s own hotspot (Settings → Network → Hotspot).';
       // The event's QR points at the tablet's address: refresh it when the address changes.
       if(!first){ try{ if(rawFolderKey()) resolveDriveFolder(); }catch(e){} }
     }
@@ -16820,7 +16820,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       lan.className = 'panel-hint' + (info.share ? '' : ' bad');
       lan.textContent = info.share
         ? 'Guests open their photos at ' + info.share + ' \u2713 Their phones must be on the same Wi-Fi as this laptop.'
-        : 'This laptop isn\u2019t on a Wi-Fi network, so guests can\u2019t open their photos yet. Connect it to the booth Wi-Fi router, or turn on its hotspot (Windows: Settings \u2192 Network \u2192 Mobile hotspot).';
+        : 'This laptop isn\u2019t on a Wi-Fi network, so guests can\u2019t open their photos yet. Connect it to a pocket Wi-Fi router or a phone hotspot (no internet needed). Windows\u2019 own Mobile hotspot only works once the laptop is connected to a network.';
       var L = info.licence || {}, parts = [];
       if(L.renter) parts.push(L.renter);
       if(L.code) parts.push(L.code);

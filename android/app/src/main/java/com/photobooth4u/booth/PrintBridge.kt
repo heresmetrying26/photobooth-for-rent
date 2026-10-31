@@ -4,6 +4,7 @@ import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Rect
+import android.content.Intent
 import android.os.Bundle
 import android.os.CancellationSignal
 import android.os.ParcelFileDescriptor
@@ -13,6 +14,7 @@ import android.print.PrintDocumentAdapter
 import android.print.PrintDocumentInfo
 import android.print.PrintManager
 import android.print.pdf.PrintedPdfDocument
+import android.provider.Settings
 import android.util.Base64
 import android.util.Log
 import android.webkit.JavascriptInterface
@@ -36,6 +38,16 @@ class PrintBridge(private val activity: Activity) {
 
     @JavascriptInterface
     fun isAvailable(): Boolean = activity.getSystemService(PrintManager::class.java) != null
+
+    /** Opens Android's own Printing settings, where print services (Mopria, Epson, Canon, HP, Brother...) are switched on. */
+    @JavascriptInterface
+    fun openPrintSettings(): Boolean = try {
+        activity.runOnUiThread {
+            try { activity.startActivity(Intent(Settings.ACTION_PRINT_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            catch (e: Exception) { Log.w(TAG, "print settings", e) }
+        }
+        true
+    } catch (e: Exception) { false }
 
     /**
      * pagesJson: JSON array of base64 JPEG/PNG images, one per sheet. widthMm/heightMm: the sheet size.

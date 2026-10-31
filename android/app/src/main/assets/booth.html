@@ -3882,6 +3882,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <button type="button" class="action-btn" id="wifiPrinterFindBtn" style="width:auto;margin:0 8px 8px 0;">Find Wi-Fi printers</button>
             <button type="button" class="action-btn" id="wifiPrinterTestBtn" style="display:none;width:auto;margin:0 8px 8px 0;">Test print</button>
             <button type="button" class="action-btn" id="wifiPrinterForgetBtn" style="display:none;width:auto;margin:0 8px 8px 0;">Forget</button>
+            <button type="button" class="action-btn" id="wifiPrinterSettingsBtn" style="display:none;width:auto;margin:0 8px 8px 0;">Open Android print settings</button>
             <p class="panel-hint" id="wifiPrinterStatus" style="margin:4px 0 6px;"></p>
             <details id="wifiDiag" style="display:none;margin:0 0 8px;">
               <summary>Colour diagnostics (testing only)</summary>
@@ -12215,6 +12216,18 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const box = document.getElementById('wifiPrinterList'), st = document.getElementById('wifiPrinterStatus');
     if(!box) return;
     box.textContent = '';
+    if(window.__PBPrint && typeof window.__PBPrint.print === 'function'){
+      const bd = document.createElement('button');
+      bd.type = 'button'; bd.className = 'action-btn'; bd.style.cssText = 'width:auto;margin:0;text-align:left;';
+      bd.textContent = (wifiPrinter && wifiPrinter.dialog ? '\u2713 ' : '') + 'Android print dialog \u00b7 any printer the tablet can see \u00b7 one tap per print';
+      bd.addEventListener('click', () => {
+        wifiSave({ ip: 'android:dialog', name: 'Android print dialog', dialog: true });
+        showToast('Prints will open the Android print dialog.', 3500);
+        wifiRenderList(wifiList());
+        refreshPrintUI();
+      });
+      box.appendChild(bd);
+    }
     d.printers.forEach(p => {
       if(wifiPrinter && p.usb && wifiPrinter.ip === p.ip){ wifiPrinter.info = p.info || ''; wifiPrinter.vid = p.vid || 0; wifiPrinter.pid = p.pid || 0; }
       if(wifiPrinter && wifiPrinter.ip === p.ip && !p.usb){ wifiPrinter.qualities = p.qualities || []; wifiPrinter.colorModes = p.colorModes || []; wifiPrinter.mediaTypes = p.mediaTypes || []; }
@@ -12265,10 +12278,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(forget) forget.style.display = wifiPrinter ? '' : 'none';
     const tst = document.getElementById('wifiPrinterTestBtn');
     if(tst) tst.style.display = wifiPrinter ? '' : 'none';
+    const pset = document.getElementById('wifiPrinterSettingsBtn');
+    if(pset) pset.style.display = window.__PBPrint && typeof window.__PBPrint.openPrintSettings === 'function' ? '' : 'none';
     try{ wifiOptsUI(); }catch(e){}
     const dg = document.getElementById('wifiDiag');
     if(dg) dg.style.display = wifiPrinter && wifiPrinter.escp2 ? '' : 'none';
-    if(st && wifiPrinter) st.textContent = 'Printing to: ' + wifiPrinter.name + (wifiPrinter.usb ? ' [USB ' + (wifiPrinter.vid||0).toString(16) + ':' + (wifiPrinter.pid||0).toString(16) + (wifiPrinter.info ? ' ID: ' + wifiPrinter.info : ' ID not readable') + ']' : ' (' + wifiPrinter.ip + ')');
+    if(st && wifiPrinter && wifiPrinter.dialog) st.textContent = 'Prints open the Android print dialog: pick the printer there. Printers that need a print service show up after you switch it on in Android print settings.';
+    else if(st && wifiPrinter) st.textContent = 'Printing to: ' + wifiPrinter.name + (wifiPrinter.usb ? ' [USB ' + (wifiPrinter.vid||0).toString(16) + ':' + (wifiPrinter.pid||0).toString(16) + (wifiPrinter.info ? ' ID: ' + wifiPrinter.info : ' ID not readable') + ']' : ' (' + wifiPrinter.ip + ')');
     else if(st && !wifiScanTimer) st.textContent = '';
   }
   (function(){
@@ -12276,6 +12292,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(f) f.addEventListener('click', wifiScan);
     const t = document.getElementById('wifiPrinterTestBtn');
     if(t) t.addEventListener('click', wifiTestPrint);
+    const ps = document.getElementById('wifiPrinterSettingsBtn');
+    if(ps) ps.addEventListener('click', () => { try{ window.__PBPrint.openPrintSettings(); }catch(e){} });
     document.querySelectorAll('#wifiDiag [data-diag]').forEach(b => b.addEventListener('click', () => wifiDiag(parseInt(b.getAttribute('data-diag'), 10))));
     [['wifiOptColor', 'color'], ['wifiOptQuality', 'quality'], ['wifiOptMedia', 'media']].forEach(([id, key]) => {
       const el = document.getElementById(id);
@@ -12324,6 +12342,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   }
   async function printViaWifi(all, paper){
     const p = wifiPrinter;
+    if(p.dialog){
+      // The Android print dialog: the tablet lists every printer its print services can reach.
+      const dlg = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
+      const dr = JSON.parse(window.__PBPrint.print('Photobooth ' + (paper.name || ''), paper.w, paper.h, JSON.stringify(dlg)) || '{}');
+      if(!dr.ok) throw new Error(dr.error || 'The Android print dialog did not open.');
+      return;
+    }
     if(paper.receipt && p.raw && window._btThermal && window._btThermal.EscPosEncoder){
       const dotW = paper.w <= 55 ? 384 : 576;
       for(const cv of all){
@@ -12457,7 +12482,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         }
       }
       // Android tablet app with a Wi-Fi printer picked: the app finds it and prints straight to it.
-      if(wifiPrinter && wifiNetAvailable()){
+      if(wifiPrinter && !wifiPrinter.dialog && wifiNetAvailable()){
         try{
           showPrintingNote(printTxt('txtPrinting'), 8000);
           await printViaWifi(all, paper);

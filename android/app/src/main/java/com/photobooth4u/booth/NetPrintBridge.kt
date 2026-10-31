@@ -596,7 +596,15 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         usbEnsure(d)
         val iface = usbRawIface(d) ?: usbIfaces(d).firstOrNull { it.interfaceClass == 7 }
             ?: throw IllegalStateException("This USB device isn't a printer.")
-        usbSession(d, iface) { conn, out, _ -> usbWrite(conn, out, data) }
+        usbSession(d, iface) { conn, out, inn ->
+            // A bidirectional printer can send status back; read and drop it while we write so it never waits on us.
+            val stop = java.util.concurrent.atomic.AtomicBoolean(false)
+            val reader = if (inn == null) null else Thread {
+                val b = ByteArray(1024)
+                while (!stop.get()) { try { conn.bulkTransfer(inn, b, b.size, 200) } catch (_: Exception) {} }
+            }.also { it.isDaemon = true; it.start() }
+            try { usbWrite(conn, out, data) } finally { stop.set(true); reader?.join(1000) }
+        }
     }
 
     /** One IPP request/response over IPP-over-USB: HTTP carried on the printer's bulk endpoints. */

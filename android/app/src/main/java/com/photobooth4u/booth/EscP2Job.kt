@@ -1,7 +1,10 @@
 package com.photobooth4u.booth
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Matrix
+import android.graphics.Paint
 import java.io.ByteArrayOutputStream
 
 /**
@@ -71,6 +74,8 @@ object EscP2Job {
      * kMode as in header().
      */
     fun diagnostic(step: Int, kMode: Int, widthMm: Double, heightMm: Double): ByteArray {
+        // 7 and 8 run the real full-page colour path on a synthetic bar chart: 7 = about 35 mm tall, 8 = the whole page.
+        if (step >= 7) return buildColor(bars(), widthMm, heightMm, if (step == 7) 500 else Int.MAX_VALUE)
         val paperW = Math.round(minOf(widthMm, heightMm) / 25.4 * DPI).toInt()
         val paperH = Math.round(maxOf(widthMm, heightMm) / 25.4 * DPI).toInt()
         val chans = when (step) { 1, 6 -> intArrayOf(0); 2 -> intArrayOf(1); 3 -> intArrayOf(2); 4 -> intArrayOf(3); else -> intArrayOf(1, 2, 3) }
@@ -95,11 +100,11 @@ object EscP2Job {
     }
 
     /** EXPERIMENTAL colour: four planes (black, cyan, magenta, yellow), each dithered to 1 bit and printed by its own nozzles. */
-    private fun buildColor(src: Bitmap, widthMm: Double, heightMm: Double): ByteArray {
+    private fun buildColor(src: Bitmap, widthMm: Double, heightMm: Double, limitRows: Int = Int.MAX_VALUE): ByteArray {
         val paperW = Math.round(minOf(widthMm, heightMm) / 25.4 * DPI).toInt()
         val paperH = Math.round(maxOf(widthMm, heightMm) / 25.4 * DPI).toInt()
         val areaW = paperW - 2 * SIDE
-        val areaH = paperH - TOP - EXTRA_BOTTOM
+        val areaH = minOf(paperH - TOP - EXTRA_BOTTOM, limitRows)
         require(areaW > 0 && areaH > 0) { "Sheet too small" }
         var bmp = src
         if (bmp.width > bmp.height && widthMm <= heightMm) {
@@ -144,6 +149,29 @@ object EscP2Job {
         }
         footer(out)
         return out.toByteArray()
+    }
+
+    /** A bar chart for the diagnostics: black, cyan, magenta, yellow, red, green, blue and a grey ramp, left to right. */
+    private fun bars(): Bitmap {
+        val w = 840
+        val h = 1200
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        c.drawColor(Color.WHITE)
+        val colours = intArrayOf(Color.BLACK, Color.rgb(0, 255, 255), Color.rgb(255, 0, 255), Color.rgb(255, 255, 0),
+            Color.RED, Color.GREEN, Color.BLUE)
+        val p = Paint()
+        val barW = w / 8
+        for (i in colours.indices) {
+            p.color = colours[i]
+            c.drawRect((i * barW).toFloat(), 0f, ((i + 1) * barW).toFloat(), h.toFloat(), p)
+        }
+        for (y in 0 until h) {                                         // last bar: grey ramp top (white) to bottom (black)
+            val g = 255 - 255 * y / (h - 1)
+            p.color = Color.rgb(g, g, g)
+            c.drawRect((7 * barW).toFloat(), y.toFloat(), w.toFloat(), (y + 1).toFloat(), p)
+        }
+        return bmp
     }
 
     /** RGB to black / cyan / magenta / yellow, with the grey part moved to black, each plane dithered to 1 bit. */

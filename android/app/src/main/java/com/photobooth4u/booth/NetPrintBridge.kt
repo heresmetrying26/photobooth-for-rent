@@ -439,14 +439,26 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             val ipp = usbIppIface(d) != null
             val raw = !ipp && usbRawIface(d) != null && usbLooksLikeReceipt(d)
             val escpr = !ipp && !raw && usbIsEscpr(d)
+            val perm = m.hasPermission(d)
             val id = "usb:" + d.deviceName
             arr.put(JSONObject()
                 .put("id", id).put("ip", id).put("name", usbName(d) + " (USB)")
                 .put("ipp", ipp).put("raw", raw).put("escpr", escpr).put("usb", true)
-                .put("noDriver", !ipp && !raw && !escpr)
+                .put("noDriver", perm && !ipp && !raw && !escpr)
+                .put("needsPermission", !perm && !ipp && !raw)
                 .put("info", (usbIds[d.deviceName] ?: "").take(300))
                 .put("vid", d.vendorId).put("pid", d.productId))
         }
+    }
+
+    /** Asks Android for USB access again (the first prompt may have been dismissed or missed). */
+    @JavascriptInterface
+    fun usbAllow(id: String): String {
+        val m = usb ?: return "none"
+        val d = try { usbFind(id) } catch (e: Exception) { return "gone" }
+        if (m.hasPermission(d)) return "granted"
+        activity.runOnUiThread { try { m.requestPermission(d, usbPermIntent()) } catch (e: Exception) { Log.w(TAG, "usb permission", e) } }
+        return "asked"
     }
 
     private fun usbFind(id: String): UsbDevice =

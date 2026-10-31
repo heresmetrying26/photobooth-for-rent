@@ -12157,8 +12157,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
       const sel = wifiPrinter && wifiPrinter.ip === p.ip;
-      b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? '' : ' · ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.escpr ? ' · photo (experimental)' : '') + (p.raw ? ' · receipt' : '') + (p.noDriver ? ' · no driver' : '');
+      b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? '' : ' · ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.escpr ? ' · photo (experimental)' : '') + (p.raw ? ' · receipt' : '') + (p.needsPermission ? ' · tap to allow USB access' : '') + (p.noDriver ? ' · no driver' : '');
       b.addEventListener('click', () => {
+        if(p.needsPermission){
+          // The tablet has not been given access to this USB printer yet, so it cannot read what it is.
+          let r = ''; try{ r = window.__PBNet.usbAllow(p.id); }catch(e){}
+          showToast(r === 'gone' ? 'The USB printer was unplugged.' : 'Tap OK on the Android prompt to let photobooth4u use the USB printer, then tap the printer again.', 8000);
+          setTimeout(() => wifiRenderList(wifiList()), 2500);
+          setTimeout(() => wifiRenderList(wifiList()), 6000);
+          return;
+        }
         if(p.noDriver){
           showToast(p.name + ' is detected, but the app has no driver for it. ' + (p.usb ? '[USB ' + (p.vid||0).toString(16) + ':' + (p.pid||0).toString(16) + (p.info ? ' ' + p.info : ' (could not read its ID)') + '] ' : '') + 'Use the laptop print station for it, or send us this message.', 14000);
           return;

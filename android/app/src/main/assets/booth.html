@@ -12154,6 +12154,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!box) return;
     box.textContent = '';
     d.printers.forEach(p => {
+      if(wifiPrinter && p.usb && wifiPrinter.ip === p.ip){ wifiPrinter.info = p.info || ''; wifiPrinter.vid = p.vid || 0; wifiPrinter.pid = p.pid || 0; }
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
       const sel = wifiPrinter && wifiPrinter.ip === p.ip;
@@ -12171,7 +12172,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           showToast(p.name + ' is detected, but the app has no driver for it. ' + (p.usb ? '[USB ' + (p.vid||0).toString(16) + ':' + (p.pid||0).toString(16) + (p.info ? ' ' + p.info : ' (could not read its ID)') + '] ' : '') + 'Use the laptop print station for it, or send us this message.', 14000);
           return;
         }
-        wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr });
+        wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0 });
         showToast('Will print to ' + p.name + '.', 3000);
         wifiRenderList(wifiList());
         refreshPrintUI();
@@ -12201,7 +12202,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(forget) forget.style.display = wifiPrinter ? '' : 'none';
     const tst = document.getElementById('wifiPrinterTestBtn');
     if(tst) tst.style.display = wifiPrinter ? '' : 'none';
-    if(st && wifiPrinter) st.textContent = 'Printing to: ' + wifiPrinter.name + ' (' + wifiPrinter.ip + ')';
+    if(st && wifiPrinter) st.textContent = 'Printing to: ' + wifiPrinter.name + (wifiPrinter.usb ? ' [USB ' + (wifiPrinter.vid||0).toString(16) + ':' + (wifiPrinter.pid||0).toString(16) + (wifiPrinter.info ? ' ID: ' + wifiPrinter.info : ' ID not readable') + ']' : ' (' + wifiPrinter.ip + ')');
     else if(st && !wifiScanTimer) st.textContent = '';
   }
   (function(){

@@ -370,8 +370,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         // known Epson L-series name and the ID could not be read or does not list another language to use.
         val byId = id != null && Regex("CMD:[^;]*ESCPR", RegexOption.IGNORE_CASE).containsMatchIn(id)
         val byModel = epsonLSeries(usbProduct(d)) || (id != null && epsonLSeries(id))
-        val ok = byId || byModel
-        if (id != null || ok) escprCache[d.deviceName] = ok
+        // When the printer's own ID can be read, trust only what it says; the model name is only the fallback
+        // for an ID that cannot be read. (Sending ESC/P-R data to a printer that does not speak it prints text.)
+        val ok = if (id != null) byId else byModel
+        if (id != null) escprCache[d.deviceName] = ok
         return ok
     }
 

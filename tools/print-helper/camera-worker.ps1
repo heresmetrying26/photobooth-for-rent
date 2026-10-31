@@ -470,7 +470,7 @@ namespace Pb4uCam
                 first = false;
                 sb.Append("{\"name\":" + Js(d.Name) + ",\"maker\":" + Js(d.Maker) + ",\"camera\":" + (LooksLikeCamera(d) ? "true" : "false") + "}");
             }
-            sb.Append("],\"open\":" + (ptp != null ? "true" : "false") + ",\"name\":" + Js(ptp != null ? camName : "") + "}");
+            sb.Append("],\"open\":" + (ptp != null ? "true" : "false") + ",\"name\":" + Js(ptp != null ? camName : "") + ",\"shutterMs\":" + lastShutterMs + "}");
             return sb.ToString();
         }
 
@@ -879,6 +879,9 @@ namespace Pb4uCam
         static List<uint[]> canonNew = new List<uint[]>();   // new files: { handle, event, format, size }
         static Stopwatch liveSw = new Stopwatch(), keepSw = new Stopwatch(), pollSw = new Stopwatch();
         static bool gotFrame;
+        // How long the last photo took from the shutter command until the camera reported it (focus + exposure + saving);
+        // the booth reads it to fire the shutter that much earlier, so the photo lands on "Pose".
+        static int lastShutterMs = 0;
 
         static uint U32(byte[] b, int i) { return (uint)(b[i] | (b[i + 1] << 8) | (b[i + 2] << 16) | (b[i + 3] << 24)); }
         static uint U16(byte[] b, int i) { return (uint)(b[i] | (b[i + 1] << 8)); }
@@ -959,7 +962,28 @@ namespace Pb4uCam
                 throw new CamException("UNSUPPORTED The " + camName + " doesn't send live view over USB.");
             if (!Has(0x910F) && !Has(0x9128))
                 throw new CamException("UNSUPPORTED The " + camName + " doesn't take photos over USB.");
+            lastShutterMs = 0;
+            CanonSingleShot();
             keepSw.Restart();
+        }
+
+        // A camera left on its self-timer (the beeps that speed up before the photo) takes the picture 2 or 10 seconds after
+        // the shutter command, long after the guests' "Pose". Put it back on single shot; never fails the session if it can't.
+        static void CanonSingleShot()
+        {
+            uint dm;
+            if (!eosVals.TryGetValue(0xD106, out dm)) return;
+            bool timer = dm == 0x07 || (dm >= 0x10 && dm <= 0x1F);
+            if (!timer) return;
+            try
+            {
+                uint r = SetEos(0xD106, 0);
+                Log("Drive mode was a self-timer (" + dm + "): set to single shot: " + H(r));
+                if (r == Ptp.OK) setupNote += "Camera was on self-timer; set to single shot. ";
+                else setupNote += "Camera is on self-timer: switch its drive mode to single shot. ";
+            }
+            catch (GoneException) { throw; }
+            catch (Exception e) { Log("Drive mode not changed: " + e.Message); }
         }
 
         // Every few seconds: read news (keeps the camera's list short) and keep it awake.
@@ -1075,7 +1099,9 @@ namespace Pb4uCam
         {
             var sw = Stopwatch.StartNew();
             CanonPoll();
+            CanonSingleShot();   // the operator may have turned the self-timer on since the session started
             canonNew.Clear();
+            sw.Restart();        // the shutter lag is counted from the shutter command
             uint r;
             if (ops.Contains(0x9128))
             {
@@ -1112,7 +1138,7 @@ namespace Pb4uCam
                 CanonPoll();
                 foreach (var o in canonNew) if (o[2] != 0x3001) files.Add(o);   // not folders
                 canonNew.Clear();
-                if (files.Count > 0 && firstAt < 0) firstAt = ew.ElapsedMilliseconds;
+                if (files.Count > 0 && firstAt < 0) { firstAt = ew.ElapsedMilliseconds; lastShutterMs = (int)Math.Min(sw.ElapsedMilliseconds, 10000); Log("Shutter lag " + lastShutterMs + " ms"); }
                 if (firstAt >= 0 && ew.ElapsedMilliseconds - firstAt > 350) break;
                 Thread.Sleep(80);
             }

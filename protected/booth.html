@@ -7385,7 +7385,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     helperSees: false, helperName: '', helperUp: false,
     camera: null, name: '', active: false, gen: 0, libGen: 0, vfOn: false, initing: null,
     canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null,
-    lastFrameAt: 0, shooting: false, stallShown: false, devId: ''
+    lastFrameAt: 0, shooting: false, stallShown: false, devId: '',
+    shutterLagMs: 0, graceUntil: 0                           // learned delay from shutter command to exposure; live view may pause until graceUntil after a photo
   };
 
   // ---- USB camera diagnostics ----
@@ -7799,6 +7800,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   setInterval(function(){
     if(!usbCam.active || !usbCam.camera || !usbCam.hasFrame || usbCam.shooting) return;
     if(document.hidden){ usbCam.lastFrameAt = Date.now(); return; }
+    // Right after a photo the camera takes a few seconds to bring live view back: not a stall, so no "Reconnecting".
+    if(Date.now() < usbCam.graceUntil){ usbCam.lastFrameAt = Math.max(usbCam.lastFrameAt, Date.now() - 1000); return; }
     const gap = Date.now() - usbCam.lastFrameAt, helper = usbCam.viaHelper;
     if(helper && gap > USB_HELPER_KICK_MS && !usbCam.kicked){
       usbCam.kicked = true;
@@ -8520,8 +8523,28 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Webcam: the frame above is the photo. USB camera: that live-view frame
   // goes in first (so a failed shot never leaves a gap), then the camera's
   // real photo replaces it, cropped like the live view and sized for print.
-  const USB_CAPTURE_MAX_MS = 60000;   // longest wait for the camera's photo before the live view frame is used
+  const USB_CAPTURE_MAX_MS = 25000;   // longest wait for the camera's photo before the live view frame is used (a photo this late is the wrong moment anyway)
+  const USB_GRACE_MS = 10000;         // after a photo, live view may take this long to come back without "Reconnecting"
+  const USB_LEAD_MAX = 1500;          // the shutter is fired at most this much before "Pose"
   const USB_SHOT_MAX = 3000;   // longest side in px: a full 4R box at 300 dpi even after the box's crop
+  // After a photo (helper cameras): hide any "Reconnecting" for a while, ask for live view again at once (a Canon leaves
+  // it after every photo) and learn how long the camera took from the shutter command to the exposure.
+  function usbAfterShot(){
+    if(!usbCam.viaHelper) return;
+    usbCam.graceUntil = Date.now() + USB_GRACE_MS;
+    if(usbCam.stallShown){ usbCam.stallShown = false; cameraError.style.display = 'none'; }
+    try{ usbCam.kicked = true; Promise.resolve(usbViewfinderOn()).catch(function(){}); }catch(e){}
+    fetch(CAM_HELPER + '/camera', { cache: 'no-store', signal: AbortSignal.timeout(8000) }).then(r => r.json()).then(j => {
+      const ms = Number(j && j.shutterMs) || 0;
+      if(ms > 0) usbCam.shutterLagMs = usbCam.shutterLagMs ? Math.round(usbCam.shutterLagMs * 0.5 + ms * 0.5) : ms;
+    }).catch(function(){});
+  }
+  // How much earlier than "Pose + 0.6 s" the shutter command goes out. The lag includes saving the photo, so some of it is
+  // taken off (the exposure itself is a bit before the camera reports the file).
+  function usbShutterLead(){
+    if(!(usbCam.viaHelper && usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return 0;
+    return Math.max(0, Math.min(USB_LEAD_MAX, usbCam.shutterLagMs - 200));
+  }
   async function captureShot(index){
     captureFrame(index);
     if(!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
@@ -8533,7 +8556,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const file = await Promise.race([
         usbCam.camera.captureImageAsFile(),
         new Promise((_, rej) => { capTimer = setTimeout(() => { const e = new Error('The camera took too long to send the photo'); e.helperMsg = 'The camera took too long to send the photo.'; rej(e); }, USB_CAPTURE_MAX_MS); })
-      ]).finally(() => { clearTimeout(capTimer); usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); });
+      ]).finally(() => { clearTimeout(capTimer); usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); usbAfterShot(); });
       const bmp = await createImageBitmap(file);
       const sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;   // whole photo; the layout box crops it once
       const k = Math.min(1, USB_SHOT_MAX / Math.max(sw, sh));
@@ -8551,7 +8574,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(shotCanvases === shots){ shotCanvases[index] = c; updateFilmTrack(); }
     }catch(err){
       console.error('USB shot failed:', err);
-      usbCam.shooting = false; usbCam.lastFrameAt = Date.now();
+      usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); usbAfterShot();
       usbLog('shot-fail', usbErrInfo(err));
       showToast(err && err.helperMsg ? err.helperMsg + ' The live view frame was used.' : 'The camera photo didn\u2019t come through (check focus, and that the camera saves JPEG), so the live view frame was used.', 6000);
       if(usbIsCritical(err)) usbDead(err);
@@ -8615,11 +8638,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // shows more than the whole seconds chosen (5.5 s starts at "5").
   // Timestamps, not frame counts, so it stays accurate even if the window
   // is in the background (guest screen in front).
-  function runCountdown(totalSec, index){
+  function runCountdown(totalSec, index, earlyMs, onEarly){
     const total = totalSec * 1000;
     const cap = Math.max(1, Math.floor(totalSec));
     const start = performance.now();
-    let shown = null, voiced = null;
+    let shown = null, voiced = null, early = !(earlyMs > 0 && onEarly);
     cdShot.textContent = shotsNeeded() > 1 ? ('Shot ' + (index + 1) + ' of ' + shotsNeeded()) : '';
     return new Promise(resolve => {
       const step = () => {
@@ -8630,6 +8653,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         if(sess && sess.cancelled){ clearInterval(timer); try{ voiceStop(); }catch(e){} resolve(); return; }
         // The voice runs a moment ahead of the number so the word lands on it.
         const vn = Math.min(cap, Math.max(1, Math.ceil((left - VOICE_LEAD) / 1000)));
+        if(!early && left <= earlyMs){ early = true; try{ onEarly(); }catch(e){} }   // camera with a shutter lag: fire before the countdown ends
         if(left > 0 && vn !== voiced){ voiced = vn; try{ voiceNumber(vn); }catch(e){} }
         if(n !== shown){ shown = n; popNum(n, false); try{ fxTick(n); }catch(e){} }
         guestCall('tick', String(n), false, frac, cdShot.textContent);
@@ -8645,7 +8669,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     applyStageAspect();   // frame this shot's box
     const extra = index === 0 && !noPause ? firstExtraSec : 0;
     try{ voiceReady(index, !!noPause, timerSec + extra); }catch(e){}
-    await runCountdown(timerSec + extra, index);
+    // The photo is wanted 0.6 s after "Pose". A camera that needs `lead` ms between the shutter command and the exposure
+    // gets the command that much earlier: after "Pose" if lead < 0.6 s, else during the last seconds of the countdown.
+    const lead = usbShutterLead();
+    let shot = null;
+    const fireNow = () => { if(!shot) shot = captureShot(index); };   // webcam: instant; USB camera: fires the real shutter
+    await runCountdown(timerSec + extra, index, lead > 600 ? lead - 600 : 0, fireNow);
     if(sess && sess.cancelled) return;
     popNum('Pose', true);
     cdBar.style.strokeDashoffset = '100';
@@ -8654,13 +8683,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // Screen flash: the screen goes white ~0.35 s before the photo, so the
     // camera has time to adjust to the extra light on the faces.
     const lit = fx.flash;
-    if(lit){ await wait(250); if(sess && sess.cancelled) return; screenFlashOn(); await wait(350); }
+    const leadTimer = lead > 0 && lead <= 600 ? setTimeout(fireNow, 600 - lead) : null;
+    if(lit){ await wait(250); if(sess && sess.cancelled){ clearTimeout(leadTimer); return; } screenFlashOn(); await wait(350); }
     else await wait(600);
+    clearTimeout(leadTimer);
     if(sess && sess.cancelled){ if(lit) screenFlashOff(); return; }
     try{ fxShutter(); }catch(e){}
     flashOverlay.classList.add('flash-active');
     guestCall('flash');
-    const shot = captureShot(index);   // webcam: instant; USB camera: fires the real shutter
+    fireNow();   // already fired above when the camera has a shutter lag
     await wait(180);
     flashOverlay.classList.remove('flash-active');
     if(lit) setTimeout(screenFlashOff, 120);

@@ -3879,6 +3879,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <label class="sub-label" style="display:block; margin:6px 0 2px;">Wi-Fi printer</label>
             <p class="panel-hint" style="margin:2px 0 8px;">The tablet looks for printers on this Wi-Fi and on its USB port by itself (Epson, Canon, HP, Brother, receipt printers…) and prints straight to the one you pick, with no print dialog. Plug a USB printer in and it appears here.</p>
             <button type="button" class="action-btn" id="wifiPrinterFindBtn" style="width:auto;margin:0 8px 8px 0;">Find Wi-Fi printers</button>
+            <button type="button" class="action-btn" id="wifiPrinterTestBtn" style="display:none;width:auto;margin:0 8px 8px 0;">Test print</button>
             <button type="button" class="action-btn" id="wifiPrinterForgetBtn" style="display:none;width:auto;margin:0 8px 8px 0;">Forget</button>
             <p class="panel-hint" id="wifiPrinterStatus" style="margin:4px 0 6px;"></p>
             <div id="wifiPrinterList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
@@ -12189,12 +12190,16 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     row.style.display = wifiNetAvailable() && printSize && !useStation() ? '' : 'none';
     const st = document.getElementById('wifiPrinterStatus'), forget = document.getElementById('wifiPrinterForgetBtn');
     if(forget) forget.style.display = wifiPrinter ? '' : 'none';
+    const tst = document.getElementById('wifiPrinterTestBtn');
+    if(tst) tst.style.display = wifiPrinter ? '' : 'none';
     if(st && wifiPrinter) st.textContent = 'Printing to: ' + wifiPrinter.name + ' (' + wifiPrinter.ip + ')';
     else if(st && !wifiScanTimer) st.textContent = '';
   }
   (function(){
     const f = document.getElementById('wifiPrinterFindBtn'), g = document.getElementById('wifiPrinterForgetBtn'), a = document.getElementById('wifiPrinterAddBtn');
     if(f) f.addEventListener('click', wifiScan);
+    const t = document.getElementById('wifiPrinterTestBtn');
+    if(t) t.addEventListener('click', wifiTestPrint);
     // A USB printer plugged in (or out) while this panel is open shows up without pressing anything.
     setInterval(() => {
       const row = document.getElementById('wifiPrinterRow');
@@ -12228,6 +12233,43 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(p.usb) showToast('Allow USB access on the tablet if it asks.', 3000);
     const imgs = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
     await wifiJob(id => window.__PBNet.printIpp(id, p.ip, paper.w, paper.h, 1, JSON.stringify(imgs)));
+  }
+
+  // One test sheet at the chosen paper size: not counted as a guest print and never starts auto-print,
+  // so the printer (e.g. a Canon Selphy) can be checked for size, margins and paper before the event.
+  let wifiTesting = false;
+  async function wifiTestPrint(){
+    if(wifiTesting) return;
+    if(!wifiPrinter){ showToast('Pick a printer first.', 3000); return; }
+    if(!printSize){ showToast('Choose a paper size first.', 3000); return; }
+    wifiTesting = true;
+    try{
+      const paper = paperFor(printSize);
+      const dpi = paper.receipt ? RECEIPT_DPI : PRINT_DPI;
+      const hMm = paper.h || 100;
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(paper.w / 25.4 * dpi); cv.height = Math.round(hMm / 25.4 * dpi);
+      const g = cv.getContext('2d'), u = cv.width / 100;
+      g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+      g.strokeStyle = '#000'; g.lineWidth = Math.max(2, u * 0.6);
+      g.strokeRect(g.lineWidth * 2, g.lineWidth * 2, cv.width - g.lineWidth * 4, cv.height - g.lineWidth * 4);
+      g.fillStyle = '#000'; g.textAlign = 'center';
+      g.font = '700 ' + Math.round(u * 9) + 'px sans-serif';
+      g.fillText('photobooth4u', cv.width / 2, cv.height * 0.3);
+      g.font = '600 ' + Math.round(u * 6) + 'px sans-serif';
+      g.fillText('Test print', cv.width / 2, cv.height * 0.42);
+      g.font = Math.round(u * 5) + 'px sans-serif';
+      g.fillText(wifiPrinter.name, cv.width / 2, cv.height * 0.54);
+      g.fillText(paper.name + ' (' + paper.w + ' x ' + hMm + ' mm)', cv.width / 2, cv.height * 0.64);
+      g.fillText('Check the border is not cut off', cv.width / 2, cv.height * 0.78);
+      showToast('Sending a test print to ' + wifiPrinter.name + '…', 4000);
+      await printViaWifi([cv], paper);
+      showToast('Test print sent. If the border is cut off or the size is wrong, check the paper in the printer.', 6500);
+    }catch(e){
+      showToast('Test print failed: ' + (e.message || e), 6500);
+    }finally{
+      wifiTesting = false;
+    }
   }
 
   async function printCurrentPhoto(auto, copies){

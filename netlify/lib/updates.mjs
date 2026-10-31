@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.35', date: '2026-10-31' },
   { version: '1.0.34', date: '2026-10-30' },
   { version: '1.0.33', date: '2026-10-30' },
   { version: '1.0.32', date: '2026-10-30' },
@@ -81,6 +82,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-31', title: 'Use a DSLR with an iPad: the iPad uses the laptop’s camera over Wi-Fi', for: ['website', 'app'], app: '1.0.35',
+    items: [
+      'Laptop app 1.0.35 (Windows): an iPad can now use the real DSLR shutter, live view and flash. Plug the Nikon, Canon EOS or Sony Alpha into the laptop, then in Setup → Share & start turn on “Let an iPad use this laptop’s camera”. The laptop shows an address and a 6-digit PIN: open it in Safari on the iPad (same Wi-Fi) and type the PIN. It works with no internet, and photos save on the laptop. An iPad with a camera and no laptop can’t do this.',
+      'No laptop? An iPad can still use a camera through an HDMI-to-USB capture card (no real shutter or flash). The new iPad guide at /how-to-ipad/ explains both ways.',
+      'About us: the three monthly plans now sit in one row, and the top menu has an FAQ link.'
+    ]
+  },
   {
     date: '2026-10-30', title: 'Flip book: sharper pages that differ from each other', for: ['website', 'app'], app: '1.0.34',
     items: [

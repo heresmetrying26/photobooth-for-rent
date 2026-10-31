@@ -86,6 +86,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-10-31', title: 'Android tablet: the Bluetooth printer list shows your receipt printer first', for: ['website'],
+    items: [
+      'Android app 1.0.32: when you connect a Bluetooth receipt printer, the list now shows the devices that look like printers first. Keyboards, headphones, speakers, watches and phones no longer appear.',
+      'A printer with an unusual name is under “Other paired devices” at the bottom of the list, so you can still pick it. If only one printer is found, the tablet connects to it by itself.',
+      'The printer must be paired first in Android Settings → Bluetooth, and be a standard (classic Bluetooth) receipt printer, 58 mm or 80 mm.'
+    ]
+  },
+  {
     date: '2026-10-31', title: '360 desk: no more editing the same videos twice', for: ['website', 'app'], app: '1.0.38',
     items: [
       'Laptop app 1.0.38: a video you already edited stays marked as edited when you close and reopen the app, and "Edit new videos by themselves" no longer edits it again.',

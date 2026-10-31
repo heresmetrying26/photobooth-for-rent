@@ -4044,6 +4044,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <div class="spin-qr" id="spinSendQr"></div>
       <div class="spin-sendtxt"><b>Send from the phone that recorded</b><br>Scan this with that phone on the booth Wi-Fi, then pick the video. Videos saved into the folder below also appear here by themselves.<br><span id="spinDirTxt"></span> <button type="button" class="desk-btn" id="spinDirBtn">Change folder</button><br><b>Recording tablet?</b> The 360 capture screen on the Android app sends its clips here. Type this address into it: <span class="spin-link" id="spinSendLink"></span> <button type="button" class="desk-btn" id="spinLinkCopy">Copy</button></div>
     </div>
+    <div class="spin-send" id="spinWeb" hidden>
+      <div class="spin-qr" id="spinWebQr"></div>
+      <div class="spin-sendtxt"><b>📱 Videos from a phone</b><br><span id="spinWebNote">One moment…</span><div class="spin-link" id="spinWebLink"></div><button type="button" class="desk-btn" id="spinWebCopy">Copy link</button></div>
+    </div>
     <div class="spin-look" id="spinLook" hidden>
       <div class="spin-row">
         <label>Style <select id="spinPreset"><option value="classic">Classic slow-mo</option><option value="ramp">Speed ramp</option><option value="boomerang">Boomerang</option><option value="plain">Original speed + frame</option><option value="super">Super slow-mo (0.25×)</option><option value="fastslow">Fast, then slow (2×, 0.5×)</option><option value="fsf">Fast, slow, fast (2×, 0.5×, 2×)</option><option value="roller">Slow-mo roller (1×, 0.25×, 2×, 0.5× and back)</option><option value="custom">Custom</option></select></label>
@@ -13958,7 +13962,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.playsInline = true;
       var src = spinSrc(it, !it.viewOrig); if(src) v.src = src + '#t=0.1';
       b.appendChild(v);
-      var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = it.name + ' · ' + spinMb(it.size); b.appendChild(nm);
+      var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = it.name + (it.size ? ' · ' + spinMb(it.size) : ''); b.appendChild(nm);
       var tag = spinTag(it);
       if(tag){ var dn = document.createElement('span'); dn.className = 'done ' + tag[1]; dn.textContent = tag[0]; b.appendChild(dn); }
       spinGrid.appendChild(b);
@@ -14041,10 +14045,58 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(!spinTimer) spinTimer = setInterval(spinPoll, 2500);
     spinPoll();
   }
+  // ---- the website: a phone sends its 360 video to the event folder; the booth picks it up from there ----
+  var spinWebTimer = null, spinWebLinkUrl = '', spinWebSeen = {};
+  function spinWebAvailable(){ return !spinDesktop() && !LOCALSHARE; }
+  function spinWebFolderId(){ var m = /\/folders\/([A-Za-z0-9_-]{10,80})/.exec(getCachedFolderUrl() || ''); return m ? m[1] : ''; }
+  function spinWebShow(){
+    var box = document.getElementById('spinWeb'); if(!box) return;
+    box.hidden = !spinWebAvailable(); if(box.hidden) return;
+    var qr = document.getElementById('spinWebQr'), note = document.getElementById('spinWebNote'), lnk = document.getElementById('spinWebLink');
+    qr.innerHTML = ''; lnk.textContent = ''; spinWebLinkUrl = '';
+    if(!driveReady()){ note.textContent = 'Set the event folder in Setup → Share first. Videos sent from a phone are saved in that folder.'; return; }
+    note.textContent = 'One moment…';
+    getUploadTicket(rawFolderKey()).then(async function(ticket){
+      if(!spinWebFolderId()){ try{ await resolveDriveFolder(); }catch(e){} }
+      var until = ticketCache && ticketCache.exp ? new Date(ticketCache.exp) : null;
+      var ev = ''; try{ ev = (labelInput.value || '').trim(); }catch(e){}
+      spinWebLinkUrl = location.origin + '/rove360/#t=' + ticket + (ev ? '&e=' + encodeURIComponent(ev) : '');
+      var im = document.createElement('img'); im.src = qrImageUrl(spinWebLinkUrl); im.alt = 'QR code to send a video'; qr.appendChild(im);
+      note.textContent = 'Scan with the phone that recorded the 360 video (any internet), then choose the video (up to 28 MB). It appears in the list below within about 10 seconds.' + (until ? ' The link works until ' + until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '.' : '');
+      lnk.textContent = spinWebLinkUrl.replace(/#.*$/, '');
+      spinWebSchedule();
+    }).catch(function(){ note.textContent = 'Could not get permission to receive videos. Check the internet and try again.'; });
+  }
+  async function spinWebPoll(){
+    var id = spinWebFolderId(); if(!id || navigator.onLine === false || document.visibilityState === 'hidden') return;
+    var r = await fetch('/api/gallery?f=' + encodeURIComponent(id) + '&spin=1&v=' + Math.floor(Date.now() / 8000));
+    var j = await r.json().catch(function(){ return null; });
+    if(!j || !j.ok || !Array.isArray(j.files)) return;
+    var fresh = [];
+    j.files.slice().sort(function(a, b){ return a.t - b.t; }).forEach(function(f){ if(f && f.id && !spinWebSeen[f.id]){ spinWebSeen[f.id] = 1; fresh.push(f); } });
+    var url = shareUrlFor(getCachedFolderUrl()) || '';
+    fresh.forEach(function(f){
+      spinQueue.unshift({ id: ++spinSeq, src: 'drive', driveId: f.id, name: f.name || 'video', size: 0, status: 'shared', url: url });
+    });
+    if(fresh.length){
+      spinRender();
+      if(spinOverlay.hidden){ spinNew += fresh.length; document.getElementById('spinFab').dataset.n = String(spinNew); }
+      else showToast(fresh.length + ' video' + (fresh.length === 1 ? '' : 's') + ' arrived from a phone.', 3500);
+    }
+  }
+  function spinWebSchedule(){
+    clearTimeout(spinWebTimer);
+    if(!spinWebAvailable() || !spinWebLinkUrl) return;
+    spinWebTimer = setTimeout(async function(){ try{ await spinWebPoll(); }catch(e){} spinWebSchedule(); }, spinOverlay.hidden ? 30000 : 8000);
+  }
+  document.getElementById('spinWebCopy').addEventListener('click', function(){
+    if(!spinWebLinkUrl) return;
+    try{ navigator.clipboard.writeText(spinWebLinkUrl).then(function(){ showToast('Link copied.', 2000); }); }catch(e){}
+  });
   function openSpin(){
     if(!extraOn('spin360')) return;
     if(state === 'capturing'){ showToast('Finish the session first.', 3000); return; }
-    spinOverlay.hidden = false; spinNew = 0; document.getElementById('spinFab').dataset.n = '0'; spinRender(); spinSetupInfo();
+    spinOverlay.hidden = false; spinNew = 0; document.getElementById('spinFab').dataset.n = '0'; spinRender(); spinSetupInfo(); spinWebShow();
   }
   function closeSpin(){ spinOverlay.hidden = true; closeSpinModal(); }
 
@@ -14648,13 +14700,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       : it.status === 'error' ? (it.err || 'Could not do that.') + ' You can try again.'
       : it.src === 'file' && !spinDesktop() ? 'Shares the original video (up to 28 MB' + (ANDROID_LOCAL ? ' on this tablet).' : ' on the website).')
       : 'Shares the ' + what + ' video.';
-    btn.disabled = it.status === 'sharing' || editing;
+    btn.hidden = it.src === 'drive'; btn.disabled = it.status === 'sharing' || editing;
     btn.textContent = it.status === 'shared' || it.status === 'queued' ? 'Share again' : 'Share + QR';
   }
   function spinOpenItem(it){
     spinCur = it;
     var v = document.getElementById('spinVideo'), src = spinSrc(it, !it.viewOrig);
-    v.pause(); v.src = src || ''; v.load();
+    v.pause(); v.src = src || ''; v.load(); v.style.display = it.src === 'drive' ? 'none' : '';
     document.getElementById('spinTrimA').value = it.trimA || ''; document.getElementById('spinTrimB').value = it.trimB || '';
     document.getElementById('spinModal').hidden = false;
     spinModalUpdate();
@@ -14664,7 +14716,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     document.getElementById('spinModal').hidden = true; spinCur = null;
   }
   async function spinDoShare(it){
-    if(it.status === 'sharing' || it.status === 'editing') return;
+    if(it.src === 'drive' || it.status === 'sharing' || it.status === 'editing') return;      // a phone's video is already in the event folder
     it.status = 'sharing'; it.err = ''; spinRender(); spinModalUpdate();
     try{
       var ext = (/\.[a-z0-9]+$/i.exec(it.name) || ['.mp4'])[0].toLowerCase();

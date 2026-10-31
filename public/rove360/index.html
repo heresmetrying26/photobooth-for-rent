@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex,nofollow">
+<title>Send a 360 video to the booth</title>
+<style>
+  :root{--bg:#F6F1EA;--ink:#1C1A1E;--dim:#6B666C;--red:#C93D27;--green:#2EA66B;--line:#E4DCCF;--card:#fff}
+  @media (prefers-color-scheme:dark){:root{--bg:#17151a;--ink:#F3EEE6;--dim:#A39DA6;--line:#34303a;--card:#221f27}}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:28px 16px 40px;text-align:center}
+  main{max-width:440px;margin:0 auto}
+  h1{font-size:23px;line-height:1.2;margin:4px 0 6px}
+  p{margin:6px 0;color:var(--dim)}
+  .ev{font-weight:700;color:var(--ink);font-size:18px}
+  label.pick{display:block;margin:16px 0 0;padding:18px 22px;border-radius:14px;background:var(--red);color:#fff;font-weight:800;font-size:18px;cursor:pointer;touch-action:manipulation}
+  label.alt{background:var(--ink);color:var(--bg)}
+  input[type=file]{display:none}
+  #list{margin-top:22px;text-align:left}
+  .row{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:14px}
+  .row b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar{height:8px;border-radius:5px;background:var(--line);overflow:hidden;margin:8px 0 6px}
+  .bar i{display:block;height:100%;width:0;background:var(--green);transition:width .2s}
+  .st{color:var(--dim)}.ok{color:var(--green);font-weight:700}.bad{color:var(--red);font-weight:700}
+  #until{font-size:13px}
+  #dead{display:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:20px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Send a 360 video to the booth</h1>
+  <p class="ev" id="ev"></p>
+  <p>Pick the clip you just recorded. It goes to the booth, which gives the guest a QR code for it. Videos up to 28 MB.</p>
+  <div id="dead"><b>This link isn&rsquo;t working.</b><p id="deadWhy">Ask the booth to show the QR code again, then scan it.</p></div>
+  <div id="ctl">
+    <label class="pick" for="f">Choose a video</label>
+    <input id="f" type="file" accept="video/*" multiple>
+    <p id="until"></p>
+  </div>
+  <div id="list"></div>
+</main>
+<script>
+(function(){
+  // The booth's upload address. It must match DRIVE_SCRIPT_URL in the booth page.
+  var SCRIPT = 'https://script.google.com/macros/s/AKfycbxv0WfF9rxFY9QlseCoSjrA7vePwHE-Uc8QTURZYyN6yIzcTj4SIlktEWT6Xnaw6Pv9OA/exec';
+  var MAX_BYTES = 28 * 1024 * 1024;          // the booth's upload takes about this much per video
+  var params = {};
+  location.hash.replace(/^#/, '').split('&').forEach(function(p){ var i = p.indexOf('='); if(i > 0) params[p.slice(0, i)] = decodeURIComponent(p.slice(i + 1)); });
+  var ticket = params.t || '';
+  var $ = function(id){ return document.getElementById(id); };
+  $('ev').textContent = params.e || '';
+
+  // The ticket says when it stops working.
+  var exp = 0;
+  try{
+    var body = ticket.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'); while(body.length % 4) body += '=';
+    exp = JSON.parse(atob(body)).exp || 0;
+  }catch(e){}
+  function dead(why){ $('ctl').style.display = 'none'; $('dead').style.display = 'block'; if(why) $('deadWhy').textContent = why; }
+  if(!ticket || !exp) dead('The link is incomplete. Scan the QR code on the booth again.');
+  else if(exp < Date.now()) dead('This link has expired. Ask the booth to show the QR code again, then scan it.');
+  else $('until').textContent = 'This link works until ' + new Date(exp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '.';
+
+  function wait(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function stamp(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function toBase64(blob){
+    return new Promise(function(res, rej){ var r = new FileReader(); r.onloadend = function(){ res(String(r.result).split(',')[1] || ''); }; r.onerror = rej; r.readAsDataURL(blob); });
+  }
+  async function post(name, mime, b64){
+    var r = await fetch(SCRIPT, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ filename: name, mimeType: mime, imageBase64: b64, ticket: ticket }) });
+    var j = await r.json();
+    if(!j || !j.ok) throw new Error((j && j.error) || 'Upload failed');
+  }
+  async function send(file){
+    var row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = '<b></b><div class="bar"><i></i></div><span class="st">Getting ready…</span>';
+    row.querySelector('b').textContent = file.name || 'video';
+    $('list').insertBefore(row, $('list').firstChild);
+    var bar = row.querySelector('i'), st = row.querySelector('.st');
+    if(!(/^video\//.test(file.type) || /\.(mp4|mov|m4v|webm)$/i.test(file.name || ''))){ st.className = 'st bad'; st.textContent = 'That is not a video.'; return; }
+    if(file.size > MAX_BYTES){ st.className = 'st bad'; st.textContent = 'This video is ' + (Math.round(file.size / 104857.6) / 10) + ' MB. The booth takes up to 28 MB: record a shorter clip or a lower quality.'; return; }
+    try{
+      var b64 = await toBase64(file); bar.style.width = '40%'; st.textContent = 'Sending… keep this page open.';
+      var ext = (/\.(mp4|mov|m4v|webm)$/i.exec(file.name || '') || ['.mp4'])[0].toLowerCase();
+      var mime = /^video\/(mp4|quicktime|webm|x-m4v)$/.test(file.type) ? file.type : (ext === '.mov' ? 'video/quicktime' : ext === '.webm' ? 'video/webm' : 'video/mp4');
+      var name = 'spin_' + stamp() + ext, err = null;
+      for(var a = 0; a < 3; a++){
+        try{ await post(name, mime, b64); err = null; break; }
+        catch(e){ err = e; if(/ticket|not allowed|expired|too large/i.test(String(e.message))) break; await wait(a ? 4000 : 1500); }
+      }
+      if(err) throw err;
+      bar.style.width = '100%'; st.className = 'st ok'; st.textContent = 'Sent. It will appear on the booth in a few seconds.';
+    }catch(e){
+      st.className = 'st bad';
+      st.textContent = /too large/i.test(String(e && e.message)) ? 'This video is too big for the booth. Record a shorter clip or a lower quality.' : /ticket|not allowed|expired/i.test(String(e && e.message)) ? 'This link has expired. Ask the booth to show the QR code again.' : 'Could not send. Check the internet and try again.';
+    }
+  }
+  function pick(e){ Array.prototype.forEach.call(e.target.files, send); e.target.value = ''; }
+  $('f').addEventListener('change', pick);
+})();
+</script>
+</body>
+</html>

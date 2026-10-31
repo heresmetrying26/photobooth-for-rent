@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.41', date: '2026-10-31' },
   { version: '1.0.40', date: '2026-10-31' },
   { version: '1.0.39', date: '2026-10-31' },
   { version: '1.0.38', date: '2026-10-31' },
@@ -87,6 +88,12 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-10-31', title: 'Card booth: "Flip card" only shows when Card & certificate booths is on', for: ['website', 'app'], app: '1.0.41',
+    items: [
+      'Laptop app 1.0.41 and the website: the "Flip card" button on the result screen no longer shows on a normal photo booth. It only appears for codes that have Card & certificate booths turned on in Admin.'
+    ]
+  },
   {
     date: '2026-10-31', title: 'Photo + GIF: guests can retake photos again', for: ['website', 'app'], app: '1.0.40',
     items: [

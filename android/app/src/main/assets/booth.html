@@ -12171,9 +12171,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const WIFI_OPTS_KEY = 'pb_wifi_print_opts';
   let wifiOptsState = { color: '', quality: '', media: '' };
   try{ wifiOptsState = Object.assign(wifiOptsState, JSON.parse(localStorage.getItem(WIFI_OPTS_KEY) || '{}')); }catch(e){}
+  // Debug-only extras (printer IDs, colour test strips, "experimental" wording): off unless Admin turns them on for this code.
+  function pbDebug(){ return !!(window.__PB && window.__PB.debugOpt); }
   function wifiOpts(){
     const o = { color: wifiOptsState.color || '', quality: wifiOptsState.quality || '', media: wifiOptsState.media || '' };
-    if(wifiPrinter && wifiPrinter.escp2 && o.color !== 'color') o.color = 'mono';      // L120 family: black and white unless colour is chosen
+    if(wifiPrinter && wifiPrinter.escp2 && !(pbDebug() && o.color === 'color')) o.color = 'mono';   // L120 family: black and white; colour only in debug
     return o;
   }
   function wifiOptsUI(){
@@ -12192,7 +12194,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     };
     let colorCh = [], qualCh = [], mediaCh = [];
     if(p){
-      if(p.escp2) colorCh = [['mono', 'Black & white'], ['color', 'Colour (experimental)']];
+      if(p.escp2 && pbDebug()) colorCh = [['mono', 'Black & white'], ['color', 'Colour (experimental)']];
       else if((p.colorModes || []).includes('monochrome') && (p.colorModes || []).includes('color')) colorCh = [['', 'Printer default'], ['color', 'Colour'], ['mono', 'Black & white']];
       const qs = p.qualities || [];
       if(qs.some(q => q >= 3 && q <= 5)) qualCh = [['', 'Printer default']].concat([[ 'draft', 'Draft (fast)'], ['normal', 'Normal'], ['high', 'High (best)']].filter((c, i) => qs.includes(3 + i)));
@@ -12234,7 +12236,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
       const sel = wifiPrinter && wifiPrinter.ip === p.ip;
-      b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? '' : ' · ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.escpr ? ' · photo (experimental)' : '') + (p.escp2 ? ' · photo (black & white; colour experimental)' : '') + (p.raw ? ' · receipt' : '') + (p.needsPermission ? ' · tap to allow USB access' : '') + (p.noDriver ? ' · no driver' : '');
+      b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? '' : ' · ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.escpr ? ' · photo' + (pbDebug() ? ' (experimental)' : '') : '') + (p.escp2 ? ' · photo (black & white' + (pbDebug() ? '; colour experimental' : '') + ')' : '') + (p.raw ? ' · receipt' : '') + (p.needsPermission ? ' · tap to allow USB access' : '') + (p.noDriver ? ' · no driver' : '');
       b.addEventListener('click', () => {
         if(p.needsPermission){
           // The tablet has not been given access to this USB printer yet, so it cannot read what it is.
@@ -12245,7 +12247,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           return;
         }
         if(p.noDriver){
-          showToast(p.name + ' is detected, but the app has no driver for it. ' + (p.usb ? '[USB ' + (p.vid||0).toString(16) + ':' + (p.pid||0).toString(16) + (p.info ? ' ' + p.info : ' (could not read its ID)') + '] ' : '') + 'Use the laptop print station for it, or send us this message.', 14000);
+          showToast(p.name + ' is detected, but the app has no driver for it. Use the Android print dialog or the laptop print station for it.' + (pbDebug() && p.usb ? ' [USB ' + (p.vid||0).toString(16) + ':' + (p.pid||0).toString(16) + (p.info ? ' ' + p.info : ' (could not read its ID)') + ']' : ''), pbDebug() ? 14000 : 6000);
           return;
         }
         wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
@@ -12282,9 +12284,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(pset) pset.style.display = window.__PBPrint && typeof window.__PBPrint.openPrintSettings === 'function' ? '' : 'none';
     try{ wifiOptsUI(); }catch(e){}
     const dg = document.getElementById('wifiDiag');
-    if(dg) dg.style.display = wifiPrinter && wifiPrinter.escp2 ? '' : 'none';
+    if(dg) dg.style.display = pbDebug() && wifiPrinter && wifiPrinter.escp2 ? '' : 'none';
     if(st && wifiPrinter && wifiPrinter.dialog) st.textContent = 'Prints open the Android print dialog: pick the printer there. Printers that need a print service show up after you switch it on in Android print settings.';
-    else if(st && wifiPrinter) st.textContent = 'Printing to: ' + wifiPrinter.name + (wifiPrinter.usb ? ' [USB ' + (wifiPrinter.vid||0).toString(16) + ':' + (wifiPrinter.pid||0).toString(16) + (wifiPrinter.info ? ' ID: ' + wifiPrinter.info : ' ID not readable') + ']' : ' (' + wifiPrinter.ip + ')');
+    else if(st && wifiPrinter) st.textContent = 'Printing to: ' + wifiPrinter.name + (wifiPrinter.usb ? (pbDebug() ? ' [USB ' + (wifiPrinter.vid||0).toString(16) + ':' + (wifiPrinter.pid||0).toString(16) + (wifiPrinter.info ? ' ID: ' + wifiPrinter.info : ' ID not readable') + ']' : '') : ' (' + wifiPrinter.ip + ')');
     else if(st && !wifiScanTimer) st.textContent = '';
   }
   (function(){

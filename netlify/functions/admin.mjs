@@ -490,6 +490,14 @@ export default safe(async (req, context) => {
       return json({ ok: true, typesOpt: rec.typesOpt });
     }
 
+    case 'debugopt': { // debug tools in the Android app (printer IDs, colour diagnostics); off unless Admin turns it on for this code
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      rec.debugOpt = !!b.debugOpt;
+      await putLicense(store, key, rec);
+      return json({ ok: true, debugOpt: rec.debugOpt });
+    }
+
     case 'setemail': { // the renter's email (for "Forgot your code?" and "Email code")
       const { key, rec } = await getRec();
       if (!rec) return json({ error: 'Code not found.' }, 404);

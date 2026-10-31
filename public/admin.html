@@ -863,6 +863,7 @@
     acts += '<button class="small" data-a="mode" data-c="' + c + '">' + (l.traditional ? 'Switch to tablet' : 'Make traditional') + '</button>';
     acts += '<button class="small" data-a="retakeopt" data-c="' + c + '">' + (l.retakeOpt ? 'Hide retake switch' : 'Give retake switch') + '</button>';
     acts += '<button class="small" data-a="typesopt" data-c="' + c + '">' + (l.typesOpt ? 'Hide card &amp; certificate booths' : 'Give card &amp; certificate booths') + '</button>';
+    acts += '<button class="small" data-a="debugopt" data-c="' + c + '">' + (l.debugOpt ? 'Turn off debug tools' : 'Turn on debug tools') + '</button>';
     acts += '<button class="small" data-a="gifopt" data-c="' + c + '">' + (l.gifOpt ? 'Hide GIF mode' : 'Give GIF mode') + '</button>';
     acts += '<button class="small" data-a="lockopt" data-c="' + c + '">' + (l.lockOpt ? 'Hide lock booth' : 'Give lock booth') + '</button>';
     if(l.offlineOpt || l.offlineOnly) acts += '<button class="small" data-a="ipadopt" data-c="' + c + '" title="Lets an iPad use the laptop app\'s camera over Wi-Fi (Setup → Share &amp; start)">' + (l.ipadOpt ? 'Turn off iPad camera' : 'Turn on iPad camera') + '</button>';
@@ -901,7 +902,7 @@
       (l.paymentReview ? '<span style="color:#b3261e;font-weight:700;">&#9888; Payment ' + esc(l.paymentReview.reason) + ' on ' + fmtDate(l.paymentReview.at) + ' &mdash; review this code (Disable it if the money was not kept).</span><br>' : '') +
       (l.lifetime && !bonus ? 'Agreement: <b>' + (l.agreement ? 'v' + esc(l.agreement) + ' accepted' + (l.agreementAt ? ' (' + fmtDate(l.agreementAt) + ')' : '') : 'not recorded') + '</b><br>' : '');
     return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + flags + (l.email ? 'Email: <b>' + esc(l.email) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
-      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>GIF mode: <b>' + (l.gifOpt ? 'Yes (Photo + GIF &amp; GIF-only options)' : 'No (Photo only)') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Card &amp; certificate booths: <b>' + (l.typesOpt ? 'Yes (Booth type switch in Setup)' : 'No') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? (l.offlineOnly ? 'Laptop app only' : 'Yes') + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
+      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>GIF mode: <b>' + (l.gifOpt ? 'Yes (Photo + GIF &amp; GIF-only options)' : 'No (Photo only)') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Card &amp; certificate booths: <b>' + (l.typesOpt ? 'Yes (Booth type switch in Setup)' : 'No') + '</b><br>Debug tools (Android printer IDs, colour tests): <b>' + (l.debugOpt ? 'On' : 'Off') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? (l.offlineOnly ? 'Laptop app only' : 'Yes') + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
       '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
       (devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.kind ? ' · ' + esc(d.kind) : '') + (d.app && d.app.name ? ' · ' + esc(d.app.name) : '') + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + (d.app && d.app.seen ? ' · checked in ' + new Date(d.app.seen).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="' + (d.app ? 'Deactivate this laptop (stops at its next check-in)' : 'Remove this device') + '">' + (d.app ? 'Deactivate' : 'Remove') + '</button></span>'; }).join('') + '</div>' : '') +
       '</div>' +
@@ -1314,6 +1315,13 @@
         var to = !(LIC[code] && LIC[code].typesOpt);
         await api({ action: 'typesopt', code: code, typesOpt: to });
         toast((to ? 'Card & certificate booths given' : 'Card & certificate booths hidden') + ' — an open booth updates within ~5 minutes');
+        refresh();
+        return;
+      }
+      if(a === 'debugopt'){
+        var dbg = !(LIC[code] && LIC[code].debugOpt);
+        await api({ action: 'debugopt', code: code, debugOpt: dbg });
+        toast((dbg ? 'Debug tools on' : 'Debug tools off') + ' for this code — the Android app picks it up at its next check-in (Share & start → Check for changes)');
         refresh();
         return;
       }

@@ -3823,6 +3823,23 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <span>Keychain strips at real size (2.5×7.5 in)</span>
             <input type="checkbox" id="keychainToggle">
           </label>
+          <div id="photoFitBox">
+            <p class="sub-label" style="margin:10px 0 6px;">Photo on the sheet</p>
+            <select id="photoFitSelect" class="printer-input">
+              <option value="auto">Automatic (fills the page when the shape matches)</option>
+              <option value="contain">Whole photo, white borders if the shape differs</option>
+              <option value="fill">Fill the whole page (edges may be cut)</option>
+              <option value="size">Choose a photo size&hellip;</option>
+            </select>
+            <div class="print-size-row hidden" id="photoSizeRow"></div>
+            <label class="switch-row" style="margin:8px 0 2px;"><span>Borderless, no trimming</span><input type="checkbox" id="borderlessToggle"></label>
+            <p class="panel-hint" id="borderlessHint" style="margin:2px 0 8px;"></p>
+            <div style="display:flex;gap:10px;align-items:center;margin:6px 0 8px;">
+              <img id="ppThumb" alt="How the page will look" hidden style="max-height:120px;border:1px solid #ddd;background:#fff;">
+              <p class="panel-hint" id="ppThumbNote" style="margin:0;">Finish a photo session to see a preview here.</p>
+              <button type="button" class="action-btn" id="printPreviewBtn" style="width:auto;margin:0;">Preview</button>
+            </div>
+          </div>
           <div class="copies-row"><span>Copies</span>
             <span class="stepper"><button type="button" id="copiesMinus" aria-label="Fewer copies">&minus;</button><b id="copiesVal">1</b><button type="button" id="copiesPlus" aria-label="More copies">+</button></span>
           </div>
@@ -11710,7 +11727,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   // Print settings live in a pop-up (floating button) so the live view keeps the room.
   const printModal = document.getElementById('printModal'), printFab = document.getElementById('printFab');
   document.getElementById('printModalBody').appendChild(printSection);
-  function openPrintModal(){ try{ closeCamModal(); }catch(e){} printModal.hidden = false; checkHelper(true); }
+  function openPrintModal(){ try{ closeCamModal(); }catch(e){} printModal.hidden = false; checkHelper(true); try{ schedulePrintThumb(); }catch(e){} }
   function closePrintModal(){ printModal.hidden = true; }
   printFab.addEventListener('click', openPrintModal);
   document.getElementById('printQuickBtn').addEventListener('click', (e) => { e.stopPropagation(); guestPrintTap(); });
@@ -11791,6 +11808,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       printSizeRow.appendChild(b);
     });
     const ready = state === 'result' && shotCanvases.every(Boolean);
+    try{ refreshPhotoFitUI(); }catch(e){}
     printBtn.disabled = !ready || !printSize || printing;
     if(!printSize){
       printHint.textContent = 'Pick a paper size above to print.';
@@ -11857,12 +11875,97 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   });
   window.addEventListener('pb-print-change', refreshPrintUI);
 
+  // ---- Photo on the sheet: automatic / whole photo / fill / a chosen size, borderless, preview on demand ----
+  // Where the photo goes on the sheet (the pixels are in the print canvas, PRINT_DPI).
+  function drawPhotoOnSheet(ctx, src, w, h){
+    const m = printPrefs.fit || 'auto';
+    if(m === 'contain'){ drawFitted(ctx, src, 0, 0, w, h, 'contain'); return; }
+    if(m === 'fill'){ drawFitted(ctx, src, 0, 0, w, h, 'cover'); return; }
+    if(m === 'size' && printPrefs.photoSize){
+      const ps = paperFor(printPrefs.photoSize);
+      if(ps){
+        let bw = ps.w / 25.4 * PRINT_DPI, bh = ps.h / 25.4 * PRINT_DPI;
+        if((w > h) !== (bw > bh)){ const t = bw; bw = bh; bh = t; }
+        bw = Math.min(bw, w); bh = Math.min(bh, h);
+        drawFitted(ctx, src, (w - bw) / 2, (h - bh) / 2, bw, bh);
+        return;
+      }
+    }
+    drawFitted(ctx, src, 0, 0, w, h);                  // automatic: the original behaviour
+  }
+  const photoFitSelect = document.getElementById('photoFitSelect'), photoSizeRow = document.getElementById('photoSizeRow');
+  const borderlessToggle = document.getElementById('borderlessToggle'), borderlessHint = document.getElementById('borderlessHint');
+  // Photo sizes smaller than the chosen paper (the paper is always stored short side first).
+  function photoSizeChoices(){
+    const paper = printSize ? paperFor(printSize) : null;
+    if(!paper) return [];
+    return ['3.5x5', '4x6', '5x7', '6x8', '8x10', 'A5'].filter(k => {
+      const p = paperFor(k);
+      return p && p.w <= paper.w + 0.5 && p.h <= paper.h + 0.5 && (p.w < paper.w - 1 || p.h < paper.h - 1);
+    });
+  }
+  function refreshPhotoFitUI(){
+    const box = document.getElementById('photoFitBox');
+    if(!box) return;
+    const paper = printSize ? paperFor(printSize) : null;
+    const show = !!paper && !isReceiptPaper(printSize);
+    box.classList.toggle('hidden', !show);
+    if(!show) return;
+    const sizes = photoSizeChoices();
+    photoFitSelect.querySelector('option[value="size"]').disabled = !sizes.length;
+    if(printPrefs.fit === 'size' && !sizes.includes(printPrefs.photoSize)) printPrefs.photoSize = sizes[0] || '';
+    if(printPrefs.fit === 'size' && !printPrefs.photoSize) printPrefs.fit = 'auto';
+    photoFitSelect.value = printPrefs.fit || 'auto';
+    photoSizeRow.classList.toggle('hidden', printPrefs.fit !== 'size');
+    photoSizeRow.innerHTML = '';
+    sizes.forEach(k => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'print-size-btn' + (k === printPrefs.photoSize ? ' active' : ''); b.dataset.size = k; b.textContent = paperFor(k).name;
+      photoSizeRow.appendChild(b);
+    });
+    borderlessToggle.checked = !!printPrefs.borderless;
+    let hint = 'Prints edge to edge with no printer margins and no scaling by the printer, so nothing is trimmed. It works on Wi-Fi and driverless USB printers.';
+    try{ if(wifiPrinter && (wifiPrinter.escp2 || wifiPrinter.canon)) hint = 'This printer prints with a small border. Borderless needs a Wi-Fi or driverless USB printer.'; }catch(e){}
+    borderlessHint.textContent = hint;
+    schedulePrintThumb();
+  }
+  photoFitSelect.addEventListener('change', () => {
+    printPrefs.fit = photoFitSelect.value;
+    if(printPrefs.fit === 'size' && !printPrefs.photoSize){ printPrefs.photoSize = photoSizeChoices()[0] || ''; }
+    printPrefsChanged();
+  });
+  photoSizeRow.addEventListener('click', (e) => {
+    const b = e.target.closest('.print-size-btn');
+    if(!b) return;
+    printPrefs.photoSize = b.dataset.size; printPrefsChanged();
+  });
+  borderlessToggle.addEventListener('change', () => { printPrefs.borderless = borderlessToggle.checked; printPrefsChanged(); });
+  document.getElementById('printPreviewBtn').addEventListener('click', () => showPrintPreview(false, opCopies || 1, true));
+  // A small live picture of the page, rebuilt a moment after any change while Print settings is open.
+  let thumbTimer = null;
+  function schedulePrintThumb(){ clearTimeout(thumbTimer); thumbTimer = setTimeout(updatePrintThumb, 400); }
+  function updatePrintThumb(){
+    const img = document.getElementById('ppThumb'), note = document.getElementById('ppThumbNote');
+    if(!img || printModal.hidden || !printSize || isReceiptPaper(printSize)) return;
+    const ready = state === 'result' && shotCanvases.every(Boolean);
+    img.hidden = !ready; note.hidden = ready;
+    if(!ready) return;
+    try{
+      const pages = printPreviewPages();
+      if(!pages.length) return;
+      const c = pages[0], sm = document.createElement('canvas');
+      sm.width = 220; sm.height = Math.max(1, Math.round(c.height * 220 / c.width));
+      sm.getContext('2d').drawImage(c, 0, 0, sm.width, sm.height);
+      img.src = sm.toDataURL('image/jpeg', 0.7);
+    }catch(e){ img.hidden = true; }
+  }
+
   // Fill when the shapes are close (only trims a sliver of backdrop margin, so
   // the print runs edge to edge); otherwise fit the whole image with white space.
-  function drawFitted(ctx, img, x, y, w, h){
+  function drawFitted(ctx, img, x, y, w, h, mode){
     const ir = img.width / img.height, br = w / h;
     const mismatch = Math.abs(ir - br) / br;
-    const cover = mismatch <= 0.08;
+    const cover = mode === 'cover' ? true : mode === 'contain' ? false : mismatch <= 0.08;
     const scale = cover ? Math.max(w / img.width, h / img.height) : Math.min(w / img.width, h / img.height);
     const dw = img.width * scale, dh = img.height * scale;
     ctx.save();
@@ -11906,7 +12009,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       drawFitted(ctx, src, 0, 0, half, c.height);
       drawFitted(ctx, src, half, 0, c.width - half, c.height);
     } else {
-      drawFitted(ctx, src, 0, 0, c.width, c.height);
+      drawPhotoOnSheet(ctx, src, c.width, c.height);
     }
     return c;
   }
@@ -11932,7 +12035,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const MAX_COPIES = 10;
   const PRINT_TXT = { txtPrint: 'Print', txtPrinting: 'Printing, please hold…', txtCopies: 'How many copies?', txtLimit: 'That’s all the prints for this session' };
   // Saved with the setup (every device on the code gets them).
-  let printPrefs = { guestBtn: true, auto: false, copies: 1, guestCopies: false, guestReq: false, preview: true, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
+  let printPrefs = { guestBtn: true, auto: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
   function printTxt(k){ return (printPrefs[k] || '').trim() || PRINT_TXT[k]; }
   function cleanPrintPrefs(p){
     p = p && typeof p === 'object' ? p : {};
@@ -11940,6 +12043,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return {
       guestBtn: p.guestBtn !== false, auto: !!p.auto,
       copies: Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(p.copies) || 1))), guestCopies: !!p.guestCopies, guestReq: !!p.guestReq, preview: p.preview !== false,
+      fit: ['auto', 'contain', 'fill', 'size'].includes(p.fit) ? p.fit : 'auto',
+      photoSize: typeof p.photoSize === 'string' && /^[0-9A-Za-z.]{1,12}$/.test(p.photoSize) ? p.photoSize : '', borderless: !!p.borderless,
       txtPrint: txt(p.txtPrint, 24), txtPrinting: txt(p.txtPrinting, 60), txtCopies: txt(p.txtCopies, 40), txtLimit: txt(p.txtLimit, 70)
     };
   }
@@ -12126,12 +12231,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     return flipbookResult ? buildFlipbookPages(paperFor(printSize)) : keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)];
   }
   function closePrintPreview(){ document.getElementById('ppvOverlay').hidden = true; }
-  function showPrintPreview(auto, copies){
+  function showPrintPreview(auto, copies, viewOnly){
     const ov = document.getElementById('ppvOverlay'); if(!ov.hidden) return;
     ppv.auto = auto === true; ppv.copies = copies;
     let pages = [];
     try{ pages = printPreviewPages(); }catch(e){ console.error('Print preview failed:', e); }
-    if(!pages.length){ printPreviewOk[printPreviewKey()] = true; printCurrentPhoto(auto, copies); return; }       // nothing to show: just print
+    if(!pages.length){
+      if(viewOnly === true){ showToast('Finish a photo session to preview it.', 3500); return; }
+      printPreviewOk[printPreviewKey()] = true; printCurrentPhoto(auto, copies); return;       // nothing to show: just print
+    }
     const paper = paperFor(printSize), pname = printerFor(printSize), c = pages[0];
     document.getElementById('ppvPage').style.aspectRatio = c.width + ' / ' + c.height;
     document.getElementById('ppvImg').src = c.toDataURL('image/jpeg', 0.85);
@@ -12140,9 +12248,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const notes = [];
     if(pages.length > 1) notes.push('Page 1 of ' + pages.length + '.');
     if(stripTwoUp(printSize)) notes.push('Two strips side by side: cut down the middle.');
+    if(printPrefs.borderless) notes.push('Borderless: printed edge to edge with no trimming (Wi-Fi and driverless USB printers).');
     if(auto === true) notes.push('After this, auto-print sends photos without asking.');
     document.getElementById('ppvNote').textContent = notes.join(' ');
     document.getElementById('ppvNever').checked = false;
+    const vo = viewOnly === true;                               // a look only: no Print button
+    document.getElementById('ppvPrint').hidden = vo;
+    document.getElementById('ppvNever').closest('label').hidden = vo;
+    document.getElementById('ppvCancel').textContent = vo ? 'Close' : 'Cancel';
     ov.hidden = false;
   }
   document.getElementById('ppvPrint').addEventListener('click', () => {
@@ -12151,7 +12264,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     closePrintPreview();
     printCurrentPhoto(ppv.auto, ppv.copies);
   });
-  document.getElementById('ppvCancel').addEventListener('click', () => { closePrintPreview(); showToast('Not printed. Tap Print when you are ready.', 3500); });
+  document.getElementById('ppvCancel').addEventListener('click', () => { const looking = document.getElementById('ppvPrint').hidden; closePrintPreview(); if(!looking) showToast('Not printed. Tap Print when you are ready.', 3500); });
   document.getElementById('ppvOverlay').addEventListener('click', (e) => { if(e.target.id === 'ppvOverlay'){ closePrintPreview(); } });
   document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !document.getElementById('ppvOverlay').hidden){ e.stopPropagation(); closePrintPreview(); } }, true);
 
@@ -12197,6 +12310,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const o = { color: wifiOptsState.color || '', quality: wifiOptsState.quality || '', media: wifiOptsState.media || '' };
     if(wifiPrinter && wifiPrinter.escp2 && !(pbDebug() && o.color === 'color')) o.color = 'mono';   // L120 family: black and white; colour only in debug
     o.cal = wifiCal;
+    o.borderless = !!(printPrefs && printPrefs.borderless);
     return o;
   }
   function wifiOptsUI(){

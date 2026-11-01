@@ -48,22 +48,26 @@ object EscP2Job {
     private fun channels(cal: Cal) = arrayOf(
         intArrayOf(0, cal.k, MIN_LINES), intArrayOf(2, cal.c, MIN_LINES), intArrayOf(1, cal.m, MIN_LINES), intArrayOf(4, 0, MIN_LINES))
 
-    fun build(src: Bitmap, widthMm: Double, heightMm: Double, color: Boolean = false, cal: Cal = Cal()): ByteArray =
-        if (color) buildColor(src, widthMm, heightMm, cal) else buildMono(src, widthMm, heightMm)
+    /** quality: 0 draft (half the passes), 1 normal (360 dpi), 2 best (720 dpi with smaller dots, when the page is small enough). */
+    fun build(src: Bitmap, widthMm: Double, heightMm: Double, color: Boolean = false, cal: Cal = Cal(), quality: Int = 1): ByteArray =
+        if (color) buildColor(src, widthMm, heightMm, cal, quality = quality) else buildMono(src, widthMm, heightMm, cal, quality)
+
+    private const val BEST_MAX_PIXELS = 16_000_000L       // above this the page stays at 360 dpi (memory on the tablet)
 
     /** kMode: value for the ESC ( K colour-mode command (1 black only, 2 colour), or -1 to leave the command out. */
-    private fun header(out: ByteArrayOutputStream, paperW: Int, paperH: Int, kMode: Int) {
+    private fun header(out: ByteArrayOutputStream, paperW: Int, paperH: Int, kMode: Int, s: Int = 1) {
         out.put(bytes(0x00, 0x00, 0x00, 0x1B, 0x01), ascii("@EJL 1284.4\n@EJL     \n"), bytes(0x1B, 0x40))
         out.put(bytes(0x1B, 0x40))
         out.put(bytes(0x1B, 0x28, 0x52, 0x08, 0x00, 0x00), ascii("REMOTE1"))
         out.put(bytes(0x50, 0x4D, 0x02, 0x00, 0x00, 0x00))
         out.put(bytes(0x1B, 0x00, 0x00, 0x00))
         out.put(bytes(0x1B, 0x28, 0x47, 0x01, 0x00, 0x01))
-        out.put(bytes(0x1B, 0x28, 0x55, 0x05, 0x00, 10, 10, 10, 0x10, 0x0E))
+        out.put(bytes(0x1B, 0x28, 0x55, 0x05, 0x00, 10, 10 / s, 10 / s, 0x10, 0x0E))                 // units: 1/360 or 1/720 inch
         if (kMode >= 0) out.put(bytes(0x1B, 0x28, 0x4B, 0x02, 0x00, 0x00, kMode))                      // colour / black only
         out.put(bytes(0x1B, 0x28, 0x69, 0x01, 0x00, 0x00))
         out.put(bytes(0x1B, 0x55, 0x01))
-        out.put(bytes(0x1B, 0x28, 0x44, 0x04, 0x00, 0x40, 0x38, 0x50, 0x28))
+        if (s > 1) out.put(bytes(0x1B, 0x28, 0x65, 0x02, 0x00, 0x00, 0x11))                           // smaller dots at 720 dpi
+        out.put(bytes(0x1B, 0x28, 0x44, 0x04, 0x00, 0x40, 0x38, 0x50, 40 / s))
         out.put(bytes(0x1B, 0x28, 0x43, 0x04, 0x00), le32(paperH + EXTRA_BOTTOM))
         out.put(bytes(0x1B, 0x28, 0x53, 0x08, 0x00), le32(paperW), le32(paperH + EXTRA_BOTTOM))
     }
@@ -111,16 +115,21 @@ object EscP2Job {
     }
 
     /** EXPERIMENTAL colour: four planes (black, cyan, magenta, yellow), each dithered to 1 bit and printed by its own nozzles. */
-    private fun buildColor(src: Bitmap, widthMm: Double, heightMm: Double, cal: Cal, limitRows: Int = Int.MAX_VALUE): ByteArray {
+    private fun buildColor(src: Bitmap, widthMm: Double, heightMm: Double, cal: Cal, limitRows: Int = Int.MAX_VALUE, quality: Int = 1): ByteArray {
         val CHANNELS = channels(cal)
-        val top = maxOf(cal.m, cal.c, cal.k)               // blank rows at the top so the lower colours can reach the first rows
+        val top360 = maxOf(cal.m, cal.c, cal.k)            // blank rows at the top so the lower colours can reach the first rows
         val nz = cal.n
-        val cband = nz * SEP                               // rows covered by one colour pass (two interleaved halves)
         val paperW = Math.round(minOf(widthMm, heightMm) / 25.4 * DPI).toInt()
         val paperH = Math.round(maxOf(widthMm, heightMm) / 25.4 * DPI).toInt()
-        val areaW = paperW - 2 * SIDE
-        val areaH = minOf(paperH - top - EXTRA_BOTTOM, limitRows)
-        require(areaW > 0 && areaH > 0) { "Sheet too small" }
+        val area360W = paperW - 2 * SIDE
+        val area360H = minOf(paperH - top360 - EXTRA_BOTTOM, limitRows)
+        require(area360W > 0 && area360H > 0) { "Sheet too small" }
+        val s = if (quality == 2 && area360W.toLong() * area360H * 4 <= BEST_MAX_PIXELS) 2 else 1   // 1 = 360 dpi, 2 = 720 dpi
+        val areaW = area360W * s
+        val areaH = area360H * s
+        val top = top360 * s
+        val phases = SEP * s                               // interleaved passes per band
+        val cband = nz * phases                            // rows covered by one colour band
         var bmp = src
         if (bmp.width > bmp.height && widthMm <= heightMm) {
             bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, Matrix().apply { postRotate(90f) }, true)
@@ -130,21 +139,22 @@ object EscP2Job {
         val planes = cmykPlanes(bmp, areaW, areaH, rowBytes, cal.gamma)    // same order as CHANNELS: K, C, M, Y
 
         val out = ByteArrayOutputStream()
-        header(out, paperW, paperH, 2)
+        header(out, paperW, paperH, 2, s)
         var last = 0
+        val use = if (quality == 0) 1 else phases           // draft prints only the first pass of each band
         val jMax = (top + areaH + cband - 1) / cband
         for (j in 0..jMax) {
-            for (p in 0 until SEP) {
+            for (p in 0 until use) {
                 val head = j * cband + p
                 val lines = arrayOfNulls<ByteArray>(CHANNELS.size)
                 var any = false
                 for (c in CHANNELS.indices) {
-                    val off = CHANNELS[c][1]
+                    val off = CHANNELS[c][1] * s
                     val n = CHANNELS[c][2]
                     val buf = ByteArray(n * rowBytes)
                     var used = false
                     for (k in 0 until nz) {
-                        val row = head + off + SEP * k - top
+                        val row = head + off + phases * k - top
                         if (row < 0 || row >= areaH) continue
                         System.arraycopy(planes[c], row * rowBytes, buf, k * rowBytes, rowBytes)
                     }
@@ -156,7 +166,7 @@ object EscP2Job {
                 last = head
                 for (c in CHANNELS.indices) {
                     val buf = lines[c] ?: continue
-                    out.put(bytes(0x1B, 0x28, 0x24, 0x04, 0x00), le32(SIDE))
+                    out.put(bytes(0x1B, 0x28, 0x24, 0x04, 0x00), le32(SIDE * s))
                     out.put(bytes(0x1B, 0x69, CHANNELS[c][0], 0x00, 0x01), le16(rowBytes), le16(CHANNELS[c][2]), buf)
                     out.put(bytes(0x0D))
                 }
@@ -227,12 +237,15 @@ object EscP2Job {
         return planes
     }
 
-    private fun buildMono(src: Bitmap, widthMm: Double, heightMm: Double): ByteArray {
+    private fun buildMono(src: Bitmap, widthMm: Double, heightMm: Double, cal: Cal, quality: Int): ByteArray {
         val paperW = Math.round(minOf(widthMm, heightMm) / 25.4 * DPI).toInt()
         val paperH = Math.round(maxOf(widthMm, heightMm) / 25.4 * DPI).toInt()
-        val areaW = paperW - 2 * SIDE
-        val areaH = paperH - SIDE - EXTRA_BOTTOM
-        require(areaW > 0 && areaH > 0) { "Sheet too small" }
+        val area360W = paperW - 2 * SIDE
+        val area360H = paperH - SIDE - EXTRA_BOTTOM
+        require(area360W > 0 && area360H > 0) { "Sheet too small" }
+        val s = if (quality == 2 && area360W.toLong() * area360H * 4 <= BEST_MAX_PIXELS) 2 else 1   // 1 = 360 dpi, 2 = 720 dpi
+        val areaW = area360W * s
+        val areaH = area360H * s
 
         var bmp = src
         if (bmp.width > bmp.height && widthMm <= heightMm) {
@@ -240,59 +253,44 @@ object EscP2Job {
         }
         bmp = Bitmap.createScaledBitmap(bmp, areaW, areaH, true)
         val rowBytes = (areaW + 7) / 8
-        val bits = dither(bmp, areaW, areaH, rowBytes)
+        val bits = dither(bmp, areaW, areaH, rowBytes, if (s == 2) cal.gamma else 1.0)
 
         val out = ByteArrayOutputStream()
-        // ── job start ──
-        out.put(bytes(0x00, 0x00, 0x00, 0x1B, 0x01), ascii("@EJL 1284.4\n@EJL     \n"), bytes(0x1B, 0x40))   // leave packet mode
-        out.put(bytes(0x1B, 0x40))                                                                      // reset
-        out.put(bytes(0x1B, 0x28, 0x52, 0x08, 0x00, 0x00), ascii("REMOTE1"))                            // remote mode
-        out.put(bytes(0x50, 0x4D, 0x02, 0x00, 0x00, 0x00))                                              // PM
-        out.put(bytes(0x1B, 0x00, 0x00, 0x00))                                                          // leave remote mode
-        out.put(bytes(0x1B, 0x28, 0x47, 0x01, 0x00, 0x01))                                              // graphics mode
-        out.put(bytes(0x1B, 0x28, 0x55, 0x05, 0x00, 10, 10, 10, 0x10, 0x0E))                            // units: 1/360 inch
-        out.put(bytes(0x1B, 0x28, 0x4B, 0x02, 0x00, 0x00, 0x01))                                        // black only
-        out.put(bytes(0x1B, 0x28, 0x69, 0x01, 0x00, 0x00))                                              // microweave off
-        out.put(bytes(0x1B, 0x55, 0x01))                                                                // one direction
-        out.put(bytes(0x1B, 0x28, 0x44, 0x04, 0x00, 0x40, 0x38, 0x50, 0x28))                            // head resolution
-        out.put(bytes(0x1B, 0x28, 0x43, 0x04, 0x00), le32(paperH + EXTRA_BOTTOM))                       // page length
-        out.put(bytes(0x1B, 0x28, 0x53, 0x08, 0x00), le32(paperW), le32(paperH + EXTRA_BOTTOM))         // paper size
+        header(out, paperW, paperH, 1, s)
 
-        // ── page: each band of 360 rows as two passes (even rows, then odd rows) ──
+        // each band is printed as interleaved passes (2 at 360 dpi, 4 at 720 dpi); draft prints only the first pass
+        val phases = SEP * s
+        val band = NOZZLES * phases
+        val use = if (quality == 0) 1 else phases
         var last = 0
-        val bands = (areaH + BAND - 1) / BAND
+        val bands = (areaH + band - 1) / band
         val pass = ByteArray(NOZZLES * rowBytes)
         for (b in 0 until bands) {
-            for (p in 0 until SEP) {
+            for (p in 0 until use) {
                 var any = false
                 java.util.Arrays.fill(pass, 0)
                 for (k in 0 until NOZZLES) {
-                    val row = b * BAND + p + SEP * k
+                    val row = b * band + p + phases * k
                     if (row >= areaH) break
                     System.arraycopy(bits, row * rowBytes, pass, k * rowBytes, rowBytes)
                 }
                 for (v in pass) if (v.toInt() != 0) { any = true; break }
                 if (!any) continue
-                val start = b * BAND + p
+                val start = b * band + p
                 out.put(bytes(0x1B, 0x28, 0x76, 0x04, 0x00), le32(start - last))                       // paper advance
                 last = start
-                out.put(bytes(0x1B, 0x28, 0x24, 0x04, 0x00), le32(SIDE))                                // left position
+                out.put(bytes(0x1B, 0x28, 0x24, 0x04, 0x00), le32(SIDE * s))                            // left position
                 out.put(bytes(0x1B, 0x69, 0x00, 0x00, 0x01), le16(rowBytes), le16(NOZZLES), pass)       // black, raw, 1 bit
                 out.put(bytes(0x0D))
             }
         }
-        // ── page end, job end ──
-        out.put(bytes(0x0C))
-        out.put(bytes(0x1B, 0x40))
-        out.put(bytes(0x1B, 0x28, 0x52, 0x08, 0x00, 0x00), ascii("REMOTE1"))
-        out.put(bytes(0x4C, 0x44, 0x00, 0x00))                                                          // LD
-        out.put(bytes(0x4A, 0x45, 0x01, 0x00, 0x00))                                                    // JE
-        out.put(bytes(0x1B, 0x00, 0x00, 0x00))
+        footer(out)
         return out.toByteArray()
     }
 
     /** Floyd-Steinberg to 1 bit, packed MSB first, 1 = ink. */
-    internal fun dither(bmp: Bitmap, w: Int, h: Int, rowBytes: Int): ByteArray {
+    internal fun dither(bmp: Bitmap, w: Int, h: Int, rowBytes: Int, gamma: Double = 1.0): ByteArray {
+        val lut = IntArray(256) { Math.round(255.0 * Math.pow(it / 255.0, gamma)).toInt() }
         val out = ByteArray(rowBytes * h)
         val px = IntArray(w)
         var cur = FloatArray(w + 2)
@@ -302,7 +300,8 @@ object EscP2Job {
             java.util.Arrays.fill(next, 0f)
             for (x in 0 until w) {
                 val c = px[x]
-                val lum = 0.299f * ((c shr 16) and 0xFF) + 0.587f * ((c shr 8) and 0xFF) + 0.114f * (c and 0xFF) + cur[x + 1]
+                val l0 = 0.299f * ((c shr 16) and 0xFF) + 0.587f * ((c shr 8) and 0xFF) + 0.114f * (c and 0xFF)
+                val lum = (if (gamma == 1.0) l0 else 255f - lut[(255f - l0).toInt().coerceIn(0, 255)]) + cur[x + 1]
                 val on = lum < 128f
                 val err = lum - (if (on) 0f else 255f)
                 if (on) out[y * rowBytes + (x shr 3)] = (out[y * rowBytes + (x shr 3)].toInt() or (0x80 shr (x and 7))).toByte()

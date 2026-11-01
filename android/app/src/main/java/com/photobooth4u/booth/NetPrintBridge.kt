@@ -480,6 +480,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val optJson = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
                 val colour = optJson.optString("color") == "color"
                 val cal = calOf(optJson.optJSONObject("cal"))
+                val quality = when (optJson.optString("quality")) { "draft" -> 0; "high" -> 2; else -> 1 }
                 val d = usbFind(id)
                 usbEnsure(d)
                 usbIsEscpr(d)                              // reads the printer's ID into the cache
@@ -490,7 +491,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val jpeg = decode(arr.getString(i))
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
-                        usbRaw(id, EscP2Job.build(bmp, widthMm, heightMm, colour, cal))
+                        usbRaw(id, EscP2Job.build(bmp, widthMm, heightMm, colour, cal, quality))
                     }
                 }
                 r.put("ok", true)

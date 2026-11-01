@@ -184,6 +184,21 @@ export function listPtpDevices() {
   return out;
 }
 
+// Every USB device libusb can see (not only cameras): { vendor, product, classes }. For the Camera check screen.
+export function listAllUsb() {
+  const out = [];
+  let devs = [];
+  try { devs = lib().getDeviceList(); } catch { return out; }
+  for (const dev of devs) {
+    const d = dev.deviceDescriptor;
+    if (!d) continue;
+    const classes = [];
+    try { for (const alts of (dev.configDescriptor && dev.configDescriptor.interfaces) || []) for (const a of alts) if (!classes.includes(a.bInterfaceClass)) classes.push(a.bInterfaceClass); } catch { /* no descriptor */ }
+    out.push({ vendor: d.idVendor, product: d.idProduct, classes });
+  }
+  return out;
+}
+
 // Opens the device, takes its PTP interface (macOS' own camera service may hold it for a moment: it is retried) and starts a session.
 export async function openUsbPtp(entry, { tries = 10, onBusy = null } = {}) {
   const dev = entry.dev;

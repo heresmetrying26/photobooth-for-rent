@@ -130,6 +130,8 @@ each shot fires the real shutter (about 2.5–3 s per shot incl. transfer, shown
   is the PTP framing + libusb transport, and `lib/helper.mjs` answers the booth's `/helper/camera/*` calls with it on a Mac. The booth
   (`usbNativeConnect`) tries it first and falls back to the browser (web-gphoto2) path when no Canon is listed or it isn't an EOS.
   Nikon and Sony stay on the browser path. `node desktop/test/fake-canon.mjs` runs it against a simulated EOS (no camera needed).
+  Setup → Camera has a **Camera check** button in the Mac app: it shows what macOS lists on USB, what the app's libusb sees, whether the
+  camera opens and sends a live picture, and the camera part's log (copyable), for support.
   Not yet tried on a real Mac + Canon. If the Mac doesn't list the camera at all (System Information → USB), no software path helps.
 - Tested: Nikon D5600 on macOS Chrome (shutter, live view, settings). Canon and Sony not yet tested. The bundled
   library (libgphoto2 2.5.28) lists Sony A7 III (PC Control) and other bodies up to about 2021; newer Sony bodies

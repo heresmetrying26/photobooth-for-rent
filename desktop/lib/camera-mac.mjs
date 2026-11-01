@@ -4,7 +4,7 @@
 // so it behaves like the Windows camera. Nikon and Sony stay on the browser path (they are not listed here as cameras).
 //
 // call(cmd, arg) answers like the Windows worker: { status: 'OK' | 'ERR' | 'GONE', kind: 'J' json | 'B' bytes | 'N' none, body: Buffer }.
-import { PtpSession, OK, BUSY, GoneError, CamError, TimeoutError, Reader, hex, sleep, listPtpDevices, openUsbPtp } from './ptp.mjs';
+import { PtpSession, OK, BUSY, GoneError, CamError, TimeoutError, Reader, hex, sleep, listPtpDevices, listAllUsb, openUsbPtp } from './ptp.mjs';
 import { freeCamera, guardCamera } from './camfree.mjs';
 
 const NOTREADY = 0xA102;                 // Canon: "not ready yet, ask again"
@@ -13,13 +13,20 @@ const CANON = 0x04a9;
 // What talks to the hardware; tests replace it with a fake camera.
 const realBackend = {
   list: () => listPtpDevices(),
+  all: () => listAllUsb(),
   open: (entry, opts) => openUsbPtp(entry, opts),
   free: async () => { await freeCamera({ quiet: true }); guardCamera(12000); }
 };
 let backend = realBackend;
 export function setBackend(b) { backend = b || realBackend; }
 
-const log = (m) => { try { console.log('[camera] ' + m); } catch { /* ignore */ } };
+// The last lines are kept so the Camera check screen can show what the camera part did.
+const logBuf = [];
+const log = (m) => {
+  logBuf.push(new Date().toTimeString().slice(0, 8) + ' ' + m);
+  if (logBuf.length > 60) logBuf.shift();
+  try { console.log('[camera] ' + m); } catch { /* ignore */ }
+};
 
 const s = {
   ptp: null, entry: null, name: '', model: '', maker: '', vendorExt: 0,
@@ -150,7 +157,7 @@ async function liveOff() {
 
 // The camera ended live view by itself (after a photo, its own timeout, a sleep): start it again from the beginning.
 async function restartLive() {
-  log('Live view stopped: starting it again');
+  log('Starting live view');
   s.live = false;
   await liveOn();
 }
@@ -360,6 +367,13 @@ function listJson() {
 
 const reply = (status, kind, body) => ({ status, kind, body: Buffer.isBuffer(body) ? body : Buffer.from(String(body || ''), 'utf8') });
 
+const diagJson = () => JSON.stringify({
+  lines: logBuf.slice(-40),
+  usb: (backend.all ? backend.all() : []).map((d) => ({ id: d.vendor.toString(16).padStart(4, '0') + ':' + d.product.toString(16).padStart(4, '0'), classes: d.classes || [] })),
+  ptp: backend.list().map((e) => ({ id: e.vendor.toString(16).padStart(4, '0') + ':' + e.product.toString(16).padStart(4, '0'), canon: e.vendor === CANON })),
+  open: !!s.ptp, name: s.ptp ? s.name : ''
+});
+
 export function isOpen() { return !!s.ptp; }
 export async function reset() { try { await closeCamera(); } catch { /* ignore */ } }
 
@@ -368,6 +382,7 @@ export async function call(cmd, arg) {
   try {
     if (cmd === 'ping') return reply('OK', 'J', '{"ok":true}');
     if (cmd === 'list') return reply('OK', 'J', listJson());
+    if (cmd === 'diag') return reply('OK', 'J', diagJson());
     if (cmd === 'open') return reply('OK', 'J', await open(arg === 'recover'));
     if (!s.ptp) throw new GoneError('NOCAMERA The camera isn’t connected.');
     if (cmd === 'info') return reply('OK', 'J', infoJson());

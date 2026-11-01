@@ -3133,6 +3133,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
         <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
         <button type="button" class="action-btn" id="usbLogBtn" style="display:none; width:auto; margin:6px 0 0;">Copy camera log</button>
+        <button type="button" class="action-btn" id="usbCheckBtn" style="display:none; width:auto; margin:6px 0 0;">Camera check</button>
+        <pre id="usbCheckOut" style="display:none; white-space:pre-wrap; font:12px/1.5 ui-monospace,Menlo,monospace; background:#f6f3ee; border:1px solid #ddd; border-radius:8px; padding:10px; margin:8px 0 0; max-height:260px; overflow:auto;"></pre>
+        <button type="button" class="action-btn" id="usbCheckCopy" style="display:none; width:auto; margin:6px 0 0;">Copy check result</button>
         <label class="switch-row" id="mirrorRow">
           <span>Mirror the live view</span>
           <input type="checkbox" id="mirrorToggle">
@@ -7729,6 +7732,81 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }
     return hc;
   }
+  // Mac app: "Camera check" in Setup > Camera. Runs the steps one by one and shows each result on screen, so a customer can say exactly where it
+  // stops: what the Mac lists, what the app's own USB library sees, whether the camera opens and sends a live picture.
+  (function(){
+    const btn = document.getElementById('usbCheckBtn');
+    if(!btn || !(DESKTOP && USB_MAC)) return;
+    btn.style.display = '';
+    const out = document.getElementById('usbCheckOut'), copy = document.getElementById('usbCheckCopy');
+    let running = false;
+    btn.addEventListener('click', async () => {
+      if(running) return;
+      running = true; btn.disabled = true;
+      out.style.display = ''; copy.style.display = '';
+      const lines = [];
+      const add = (mark, text) => { lines.push((mark === 1 ? '[OK] ' : mark === 0 ? '[!!] ' : '     ') + text); out.textContent = lines.join('\n'); out.scrollTop = out.scrollHeight; };
+      try{
+        add(null, 'photobooth4u camera check · ' + new Date().toLocaleString() + ' · app ' + ((window.__PB && window.__PB.desktop && window.__PB.desktop.v) || '?'));
+        // 1. the Mac itself
+        let macOk = null;
+        try{
+          const m = await window.pb4u.usbScan();
+          if(m && m.ok && m.mac){
+            if(m.cameras && m.cameras.length){ macOk = true; add(1, 'The Mac lists a camera on USB: ' + m.cameras.join(', ') + '.'); }
+            else { macOk = false; add(0, 'The Mac does not list any camera on USB (' + m.count + ' other USB devices seen: ' + (m.devices || []).slice(0, 8).join(', ') + '). That means the cable, the adapter or the camera: use the camera\u2019s own data cable (not charge-only), try another USB-C port or adapter, switch the camera on, Wi-Fi off, dial on M, then unplug and replug it.'); }
+          } else add(null, 'Could not ask the Mac what it lists on USB.');
+        }catch(e){ add(null, 'Could not ask the Mac what it lists on USB (' + e.message + ').'); }
+        // 2. what the app's own USB library sees
+        let diag = null;
+        try{
+          const r = await fetch(CAM_HELPER + '/camera/diag', { cache: 'no-store', signal: AbortSignal.timeout(9000) });
+          diag = await r.json();
+        }catch(e){}
+        let canon = false;
+        if(diag && diag.ok){
+          canon = (diag.ptp || []).some(d => d.canon);
+          const n = (diag.usb || []).length;
+          add(canon ? 1 : 0, 'The app\u2019s USB library sees ' + n + ' USB device' + (n === 1 ? '' : 's') + (canon ? ', including a Canon camera with a picture interface.' : ' and no Canon camera with a picture interface.') + (n ? ' [' + diag.usb.map(d => d.id + (d.classes.length ? ' c' + d.classes.join('/') : '')).join(' ') + ']' : ''));
+        } else add(0, 'The app\u2019s camera part did not answer.');
+        // 3. open it and ask for a live picture
+        if(canon){
+          const wasOpen = !!(usbCam.camera && usbCam.camera instanceof HelperCamera);
+          try{
+            if(usbCam.camera && !wasOpen) add(null, 'The booth is using a camera through the browser path right now, so the direct connection may be refused. Pick another camera in the list above and run the check again.');
+            const hc = wasOpen ? usbCam.camera : new HelperCamera();
+            if(!wasOpen) await hc.connect();
+            add(1, 'Connected to ' + (hc.name || 'the camera') + ' directly' + (wasOpen ? ' (already in use by the booth).' : '.'));
+            let frameKb = 0, lastErr = '';
+            try{ await hc.setConfigValue('viewfinder', 1); }catch(e){ lastErr = e.helperMsg || e.message; }
+            for(let i = 0; i < 12 && !frameKb; i++){
+              try{ const b = await hc.capturePreviewAsBlob(); frameKb = Math.round(b.size / 1024); }catch(e){ lastErr = e.helperMsg || e.message || String(e); await wait(500); }
+            }
+            add(frameKb ? 1 : 0, frameKb ? 'Live view works (a ' + frameKb + ' KB picture arrived).' : 'No live picture arrived: ' + lastErr);
+            if(!wasOpen){
+              try{ await hc.setConfigValue('viewfinder', 0); }catch(e){}
+              try{ await fetch(CAM_HELPER + '/camera/close', { method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(10000) }); }catch(e){}
+            }
+          }catch(e){
+            add(0, 'Could not connect directly: ' + (e.helperMsg || e.message || e));
+          }
+        } else if(macOk) add(0, 'The Mac lists a camera but it is not a Canon EOS the app drives directly. A Nikon or Sony uses the browser path: pick DSLR / mirrorless over USB in the camera list instead.');
+        // 4. what the camera part did
+        try{
+          const r = await fetch(CAM_HELPER + '/camera/diag', { cache: 'no-store', signal: AbortSignal.timeout(9000) });
+          const d2 = await r.json();
+          if(d2 && d2.lines && d2.lines.length){ add(null, '--- camera part log ---'); d2.lines.slice(-18).forEach(l => add(null, l)); }
+        }catch(e){}
+        add(null, 'Done. Tap Copy check result and send it to photobooth4u support if something is marked [!!].');
+      }finally{ running = false; btn.disabled = false; }
+    });
+    copy.addEventListener('click', () => {
+      const text = out.textContent;
+      const done = () => { try{ showToast('Check result copied. Paste it into a message to us.', 4000); }catch(_){} };
+      if(window.pb4u && window.pb4u.copy){ Promise.resolve(window.pb4u.copy(text)).then(done, done); return; }
+      try{ navigator.clipboard.writeText(text).then(done, done); }catch(_){}
+    });
+  })();
   async function usbConnect(){
     if(usbCam.camera) return usbCam.camera;
     if(usbCam.viaHelper){

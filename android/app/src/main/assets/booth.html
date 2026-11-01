@@ -2742,7 +2742,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       <button type="button" class="step-tab" data-step="1"><span class="sn">1</span><span class="st"><b>Design</b><small id="stepSum1"></small></span></button>
       <button type="button" class="step-tab" data-step="2"><span class="sn">2</span><span class="st"><b>Text</b><small id="stepSum2"></small></span></button>
       <button type="button" class="step-tab" data-step="3"><span class="sn">3</span><span class="st"><b>Layout</b><small id="stepSum3"></small></span></button>
-      <button type="button" class="step-tab" data-step="4"><span class="sn">4</span><span class="st"><b>Camera</b><small id="stepSum4"></small></span></button>
+      <button type="button" class="step-tab" data-step="4"><span class="sn">4</span><span class="st"><b>Camera &amp; printer</b><small id="stepSum4"></small></span></button>
       <button type="button" class="step-tab" data-step="5"><span class="sn">5</span><span class="st"><b>Extras</b><small id="stepSum5"></small></span></button>
       <button type="button" class="step-tab" data-step="6"><span class="sn">6</span><span class="st"><b>Share</b><small id="stepSum6"></small></span></button>
       <button type="button" class="step-tab" data-step="7"><span class="sn">7</span><span class="st"><b>Session</b><small id="stepSum7"></small></span></button>
@@ -3138,6 +3138,18 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <input type="checkbox" id="mirrorToggle">
         </label>
         <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos look the same as the preview (mirrored when this is on).</p>
+      </div>
+      <div class="panel-section hidden" id="step4Printer">
+        <p class="panel-label">Printer</p>
+        <p class="panel-hint step-lead" id="s4PrinterSum"></p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0 10px;">
+          <button type="button" class="action-btn primary" id="s4PrinterBtn" style="width:auto;margin:0;">Choose printer &amp; paper</button>
+          <button type="button" class="action-btn" id="s4PreviewBtn" style="width:auto;margin:0;">Print preview</button>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <img id="s4Thumb" alt="How the page will look" hidden style="max-height:170px;border:1px solid #ddd;background:#fff;">
+          <p class="panel-hint" id="s4ThumbNote" style="margin:0;">The preview shows how the printed page will look.</p>
+        </div>
       </div>
       <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="3">← Back</button><button type="button" class="action-btn primary next-btn" data-go="5">Next: Extras →</button></div>
     </section>
@@ -11809,6 +11821,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     });
     const ready = state === 'result' && shotCanvases.every(Boolean);
     try{ refreshPhotoFitUI(); }catch(e){}
+    try{ refreshStep4Printer(); }catch(e){}
     printBtn.disabled = !ready || !printSize || printing;
     if(!printSize){
       printHint.textContent = 'Pick a paper size above to print.';
@@ -11950,20 +11963,43 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   let thumbTimer = null;
   function schedulePrintThumb(){ clearTimeout(thumbTimer); thumbTimer = setTimeout(updatePrintThumb, 400); }
   function updatePrintThumb(){
-    const img = document.getElementById('ppThumb'), note = document.getElementById('ppThumbNote');
-    if(!img || printModal.hidden || !printSize || isReceiptPaper(printSize)) return;
-    const ready = state === 'result' && shotCanvases.every(Boolean);
-    img.hidden = !ready; note.hidden = ready;
-    if(!ready) return;
-    try{
-      const pages = printPreviewPages();
-      if(!pages.length) return;
-      const c = pages[0], sm = document.createElement('canvas');
+    if(!printSize || isReceiptPaper(printSize)) return;
+    const targets = [];
+    if(!printModal.hidden) targets.push(['ppThumb', 'ppThumbNote']);
+    const s4 = document.getElementById('s4Thumb');
+    if(s4 && s4.offsetParent !== null) targets.push(['s4Thumb', 's4ThumbNote']);          // Setup step 4 is on screen
+    if(!targets.length) return;
+    let c = null;
+    try{ const pages = printPreviewPages(); c = pages.length ? pages[0] : null; }catch(e){ c = null; }
+    targets.forEach(([iid, nid]) => {
+      const img = document.getElementById(iid), note = document.getElementById(nid);
+      if(!c){ img.hidden = true; note.hidden = false; return; }
+      const sm = document.createElement('canvas');
       sm.width = 220; sm.height = Math.max(1, Math.round(c.height * 220 / c.width));
       sm.getContext('2d').drawImage(c, 0, 0, sm.width, sm.height);
       img.src = sm.toDataURL('image/jpeg', 0.7);
-    }catch(e){ img.hidden = true; }
+      img.hidden = false; note.hidden = true;
+    });
   }
+  // Setup step 4: which printer and paper, whether auto-print is on, and the preview.
+  function refreshStep4Printer(){
+    const box = document.getElementById('step4Printer');
+    if(!box) return;
+    const sizes = printSettings();
+    box.classList.toggle('hidden', !sizes);
+    if(!sizes) return;
+    const paper = printSize ? paperFor(printSize) : null;
+    let pr = printSize ? (printerFor(printSize) || '') : '';
+    try{ if(wifiPrinter && wifiPrinter.name) pr = wifiPrinter.name; }catch(e){}
+    const fitTxt = { auto: 'photo fitted automatically', contain: 'whole photo with white borders', fill: 'photo fills the page', size: 'photo size ' + (printPrefs.photoSize ? (paperFor(printPrefs.photoSize) || {}).name || '' : '') }[printPrefs.fit || 'auto'];
+    document.getElementById('s4PrinterSum').textContent =
+      (paper ? 'Paper: ' + paper.name + '. ' : 'No paper size chosen yet. ') +
+      (pr ? 'Printer: ' + pr + '. ' : 'No printer chosen yet. ') +
+      'Auto-print is ' + (autoPrint ? 'on' : 'off') + '. ' + (paper && !isReceiptPaper(printSize) ? 'Layout: ' + fitTxt + '.' : '');
+    schedulePrintThumb();
+  }
+  document.getElementById('s4PrinterBtn').addEventListener('click', () => openPrintModal());
+  document.getElementById('s4PreviewBtn').addEventListener('click', () => showPrintPreview(false, opCopies || 1, true));
 
   // Fill when the shapes are close (only trims a sliver of backdrop margin, so
   // the print runs edge to edge); otherwise fit the whole image with white space.
@@ -12242,7 +12278,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     let pages = [];
     try{ pages = printPreviewPages(); }catch(e){ console.error('Print preview failed:', e); }
     if(!pages.length){
-      if(viewOnly === true){ showToast('Finish a photo session to preview it.', 3500); return; }
+      if(viewOnly === true){ showToast('Take a test photo first to preview it.', 3500); return; }
       printPreviewOk[printPreviewKey()] = true; printCurrentPhoto(auto, copies); return;       // nothing to show: just print
     }
     const paper = paperFor(printSize), pname = printerFor(printSize), c = pages[0];
@@ -20772,6 +20808,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(n === 3) queueLayoutThumbs();
     else prewarmLayoutThumbs();
     if(n === 6) refreshPrintSummary();
+    if(n === 4){ try{ refreshStep4Printer(); }catch(e){} }
     refreshSetupNav();
     if(typeof scpRefresh === 'function') scpRefresh();
     if(!(opts && opts.noScroll)){

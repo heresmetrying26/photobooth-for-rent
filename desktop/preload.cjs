@@ -50,6 +50,7 @@ contextBridge.exposeInMainWorld('pb4u', {
   openUrl: (u) => ipcRenderer.invoke('pb4u:openUrl', String(u || '')),
   quit: () => ipcRenderer.invoke('pb4u:quit'),
   freeCamera: () => ipcRenderer.invoke('pb4u:freeCamera'),
+  usbScan: () => ipcRenderer.invoke('pb4u:usbScan'),
   update: {
     info: () => ipcRenderer.invoke('pb4u:update'),
     check: () => ipcRenderer.invoke('pb4u:updateCheck'),

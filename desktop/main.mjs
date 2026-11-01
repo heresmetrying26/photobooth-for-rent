@@ -21,6 +21,7 @@ import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { detectWifi } from './lib/wifi.mjs';
 import { freeCamera, guardCamera } from './lib/camfree.mjs';
+import { scanUsb } from './lib/usbscan.mjs';
 import * as U from './lib/updater.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -325,6 +326,7 @@ function wireIpc() {
   ipcMain.handle('pb4u:quit', () => { app.quit(); return true; });
   // Mac: let go of the camera macOS grabbed (its camera service, Image Capture) so the booth can use it.
   ipcMain.handle('pb4u:freeCamera', async () => { const r = await freeCamera(); guardCamera(15000); return r; });
+  ipcMain.handle('pb4u:usbScan', async () => { try { return await scanUsb(); } catch { return { ok: false, mac: false, count: 0, cameras: [] }; } });
   // Updates (see lib/updater.mjs)
   ipcMain.handle('pb4u:update', () => U.info());
   ipcMain.handle('pb4u:updateCheck', () => U.check());

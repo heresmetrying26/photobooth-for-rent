@@ -7679,12 +7679,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       return 'Camera problem (' + s + '). Unplug and replug the camera' + (auto ? '; the booth keeps trying.' : ', then tap Try Again.');
     }
     if(err && err.name === 'NotFoundError' && win) return 'No USB camera picked. On Windows the camera only appears after a one-time driver switch (Zadig). Steps: open /camera-test/ on this site. Or use a Mac or Android device, where it works with no setup.';
-    if(err && err.name === 'NotFoundError') return 'No USB camera picked. Set the camera’s USB mode to Photo Import / Remote Control (Canon), PTP/MTP (Nikon) or PC Remote (Sony), plug it in and switch it on, then tap Try Again and pick it.';
+    if(err && err.name === 'NotFoundError') return 'No USB camera picked. Set the camera’s USB mode to Photo Import / Remote Control (Canon), PTP/MTP (Nikon) or PC Remote (Sony), plug it in and switch it on, then tap Try Again and pick it.' + usbMacHint();
     if(err && err.name === 'SecurityError') return 'Tap Try Again to pick the USB camera.';
     if(err && err.name === 'UsbNoLiveView') return (usbLvBlockedText() || 'The camera connected but live view didn’t start. Close the camera’s menu, put the mode dial on M, P, A or S, take the lens cap off and check there’s a memory card in it.') + ' Then tap Try Again.';
     if(usbCam.freed && usbBusyError(err)) return 'Another app is still holding the camera, even after ' + (DESKTOP ? 'the app' : 'the Helper') + ' tried to let go of it. Quit Imaging Edge, Photos and Image Capture, switch the camera off and on, unplug and replug the cable, then tap Try Again.';
     if(/claim|access denied|busy|Unable to open|LIBUSB_ERROR_ACCESS|LIBUSB_ERROR_BUSY/i.test(s)) return 'Another app is using the camera. Quit Photos, Image Capture, EOS Utility / Nikon / Sony Imaging Edge apps and other tabs, unplug and replug the camera, then tap Try Again.' + (USB_MAC && !DESKTOP && !usbCam.freed ? ' Tip: open the photobooth4u Helper on this Mac (download at photobooth4u.netlify.app/downloads) and the booth lets go of the camera for you.' : '') + (win ? ' On Windows the camera’s driver blocks browser access — use a Mac or Android device, or the camera’s webcam mode.' : '');
-    if(/unknown model|could not detect/i.test(s)) return 'The booth can’t find a camera it knows on USB' + (usbCam.seen ? ' (it sees: ' + usbCam.seen + ')' : '') + '. Plug the camera straight into the ' + LOCAL_DEVICE + ' (not through a hub), switch it on, set its dial to M, P, A or S, and turn its Wi-Fi off. Then unplug and replug it and tap Try Again.';
+    if(/unknown model|could not detect/i.test(s)) return 'The booth can’t find a camera it knows on USB' + (usbCam.seen ? ' (it sees: ' + usbCam.seen + ')' : '') + '. Plug the camera straight into the ' + LOCAL_DEVICE + ' (not through a hub), switch it on, set its dial to M, P, A or S, and turn its Wi-Fi off. Then unplug and replug it and tap Try Again.' + usbMacHint();
     return 'USB camera problem (' + s + '). Unplug and replug the camera, then tap Try Again. If it keeps failing, reload the page.';
   }
   // Which of the USB devices the page can see are cameras (a PTP interface, or a camera maker's id). On a Mac behind a USB-C hub the
@@ -7693,6 +7693,22 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   const usbClassesOf = d => { const r = []; try{ (d.configurations || []).forEach(c => (c.interfaces || []).forEach(i => (i.alternates || []).forEach(a => { if(r.indexOf(a.interfaceClass) < 0) r.push(a.interfaceClass); }))); }catch(e){} return r; };
   const usbLooksLikeCamera = d => !!d && (USB_CAM_VENDORS.indexOf(d.vendorId) >= 0 || usbClassesOf(d).indexOf(6) >= 0);
   const usbDescribe = list => (list || []).map(d => usbDevKey(d) + (d.productName ? ' ' + d.productName : '') + ' [class ' + (usbClassesOf(d).join(',') || '?') + ']').join('; ');
+  // Desktop Mac app: what the Mac itself lists on USB, asked when the camera can't be found. It tells a cable / adapter / camera-mode
+  // problem (macOS sees no camera) from a booth problem (macOS sees one).
+  async function usbMacScan(){
+    usbCam.macScan = null;
+    try{
+      if(!(DESKTOP && window.pb4u && window.pb4u.usbScan)) return;
+      const r = await window.pb4u.usbScan();
+      if(r && r.ok && r.mac) usbCam.macScan = r;
+    }catch(e){}
+  }
+  function usbMacHint(){
+    const m = usbCam.macScan;
+    if(!m) return '';
+    if(m.cameras && m.cameras.length) return ' The Mac does list a camera (' + m.cameras.join(', ') + '), so the cable works. Quit Photos and Image Capture, switch the camera off and on, then tap Try Again.';
+    return ' The Mac does not list any camera on USB at all (' + m.count + ' other USB device' + (m.count === 1 ? '' : 's') + ' seen), so this is the cable, the adapter or the camera, not the booth: use the camera’s own data cable (not a charge-only one), try another USB-C port or adapter, switch the camera on with Wi-Fi off, then unplug and replug it.';
+  }
   async function usbConnect(){
     if(usbCam.camera) return usbCam.camera;
     if(usbCam.viaHelper){
@@ -7711,7 +7727,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     let devices = await navigator.usb.getDevices();
     if(!devices.some(usbLooksLikeCamera)){
       // Needs a tap (the USB picker); after that the camera stays allowed.
-      await navigator.usb.requestDevice({ filters: [{ classCode: 6, subclassCode: 1 }] });
+      try{ await navigator.usb.requestDevice({ filters: [{ classCode: 6, subclassCode: 1 }] }); }
+      catch(err){ await usbMacScan(); throw err; }
       devices = await navigator.usb.getDevices();
     }
     for(const d of devices){ try{ if(d.opened) await d.close(); }catch(e){} }
@@ -7723,10 +7740,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     catch(err){
       // "Unknown model" = the camera library found no camera it knows among the USB devices: record what it was given.
       usbCam.seen = usbDescribe(devices);
-      usbLog('connect-fail', Object.assign(usbErrInfo(err), { listed: usbCam.seen }));
+      await usbMacScan();
+      usbLog('connect-fail', Object.assign(usbErrInfo(err), { listed: usbCam.seen, mac: usbCam.macScan ? { count: usbCam.macScan.count, cameras: usbCam.macScan.cameras, devices: (usbCam.macScan.devices || []).slice(0, 20) } : null }));
       throw err;
     }
-    usbCam.seen = '';
+    usbCam.seen = ''; usbCam.macScan = null;
     usbCam.camera = cam;
     usbCam.vfOn = false;
     usbCam.name = (camDev && camDev.productName) || '';

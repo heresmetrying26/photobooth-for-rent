@@ -59,6 +59,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         @Volatile var qualities: List<Int> = emptyList()       // print-quality-supported: 3 draft, 4 normal, 5 high
         @Volatile var colorModes: List<String> = emptyList()   // print-color-mode-supported: color, monochrome...
         @Volatile var mediaTypes: List<String> = emptyList()   // media-type-supported: stationery, photographic-glossy...
+        @Volatile var pwgRes: List<Int> = emptyList()          // pwg-raster-document-resolution-supported (dpi)
+        @Volatile var pwgTypes: List<String> = emptyList()     // pwg-raster-document-type-supported: srgb_8, sgray_8...
         @Volatile var usbDev: UsbDevice? = null                // set for a printer on the USB port
     }
 
@@ -714,6 +716,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val qualities = ArrayList<Int>()
                 val colorModes = ArrayList<String>()
                 val mediaTypes = ArrayList<String>()
+                val pwgRes = ArrayList<Int>()
+                val pwgTypes = ArrayList<String>()
                 var model = ""
                 parseIpp(r.body) { name, tag, raw ->
                     val value = String(raw, Charsets.UTF_8)
@@ -722,11 +726,18 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     if (name == "print-quality-supported" && tag == 0x23 && raw.size == 4) qualities.add(raw[3].toInt() and 0xFF)
                     if (name == "print-color-mode-supported" && tag == 0x44) colorModes.add(value)
                     if (name == "media-type-supported" && tag == 0x44) mediaTypes.add(value)
+                    if (name == "pwg-raster-document-type-supported" && tag == 0x44) pwgTypes.add(value)
+                    // resolution value: 4 bytes across, 4 bytes down, 1 byte units (3 = dots per inch)
+                    if (name == "pwg-raster-document-resolution-supported" && tag == 0x32 && raw.size == 9 && raw[8].toInt() == 3) {
+                        pwgRes.add(((raw[0].toInt() and 0xFF) shl 24) or ((raw[1].toInt() and 0xFF) shl 16) or ((raw[2].toInt() and 0xFF) shl 8) or (raw[3].toInt() and 0xFF))
+                    }
                 }
                 e.formats = formats
                 e.qualities = qualities
                 e.colorModes = colorModes
                 e.mediaTypes = mediaTypes
+                e.pwgRes = pwgRes
+                e.pwgTypes = pwgTypes
                 if (model.isNotBlank()) { e.model = model; if (e.name.isBlank()) e.name = model }
                 e.ippPath = path
                 return
@@ -773,33 +784,53 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         }
         val hasOpts = qv != 0 || cm.isNotEmpty() || mt.isNotEmpty()
         val formats = e.formats
-        // Photo as-is when the printer takes JPEG (or won't say); otherwise wrap it in a PDF.
-        val (format, data) = when {
-            formats.isEmpty() || "image/jpeg" in formats -> "image/jpeg" to jpeg
-            "application/pdf" in formats -> "application/pdf" to jpegToPdf(jpeg, wMm, hMm)
-            else -> throw IllegalStateException(
-                (e.model.ifBlank { "This printer" }) + " can't take photos from the tablet over Wi-Fi (it accepts: " +
+        // Formats to try, in order: the photo as-is when the printer takes JPEG (or won't say), then PDF, then PWG raster.
+        val candidates = ArrayList<Pair<String, () -> ByteArray>>()
+        if (formats.isEmpty() || "image/jpeg" in formats) candidates.add("image/jpeg" to { jpeg })
+        if ("application/pdf" in formats) candidates.add("application/pdf" to { jpegToPdf(jpeg, wMm, hMm) })
+        if ("image/pwg-raster" in formats) candidates.add("image/pwg-raster" to { pwgPage(e, jpeg, wMm, hMm, opts) })
+        if (candidates.isEmpty()) {
+            throw IllegalStateException(
+                (e.model.ifBlank { "This printer" }) + " can't take photos from the tablet (it accepts: " +
                     formats.filter { it.startsWith("image/") || it.startsWith("application/") }.take(5).joinToString(", ") + ")."
             )
         }
         var lastErr = "The printer didn't accept the job."
         // Try with the page size and settings first, then drop them one at a time if the printer refuses.
         val attempts = if (hasOpts) listOf(true to true, false to true, true to false, false to false) else listOf(true to false, false to false)
-        for ((withMedia, withOpts) in attempts) {
-            for (path in ippPaths(e)) {
-                val body = ippPrintJob(ippUri(e, path), job, format, data, if (withMedia) wMm else 0.0, hMm,
-                    if (withOpts) qv else 0, if (withOpts) cm else "", if (withOpts) mt else "")
-                val r = doPost(e, path, body)
-                when {
-                    r.http == 200 && r.ipp in 0..2 -> return
-                    r.http == 200 -> lastErr = "The printer refused the photo (code 0x" + Integer.toHexString(r.ipp) + ")."
-                    r.http == 426 || r.http == 301 || r.http == 302 -> lastErr = "This printer only accepts secure printing, which the app doesn't support yet."
-                    r.http == 404 -> {}
-                    else -> if (r.http > 0) lastErr = "The printer answered with HTTP ${r.http}."
+        for ((format, make) in candidates) {
+            val data = try { make() } catch (ex: Exception) { lastErr = ex.message ?: lastErr; continue }
+            for ((withMedia, withOpts) in attempts) {
+                for (path in ippPaths(e)) {
+                    val body = ippPrintJob(ippUri(e, path), job, format, data, if (withMedia) wMm else 0.0, hMm,
+                        if (withOpts) qv else 0, if (withOpts) cm else "", if (withOpts) mt else "")
+                    val r = doPost(e, path, body)
+                    when {
+                        r.http == 200 && r.ipp in 0..2 -> return
+                        r.http == 200 -> lastErr = "The printer refused the photo (code 0x" + Integer.toHexString(r.ipp) + ")."
+                        r.http == 426 || r.http == 301 || r.http == 302 -> lastErr = "This printer only accepts secure printing, which the app doesn't support yet."
+                        r.http == 404 -> {}
+                        else -> if (r.http > 0) lastErr = "The printer answered with HTTP ${r.http}."
+                    }
                 }
             }
         }
         throw IllegalStateException(lastErr)
+    }
+
+    /** One PWG Raster page for printers that list image/pwg-raster: 300 dpi when offered, colour unless grey is asked for or all they list. */
+    private fun pwgPage(e: Entry, jpeg: ByteArray, wMm: Double, hMm: Double, opts: Opts): ByteArray {
+        val types = e.pwgTypes
+        if (types.isNotEmpty() && "srgb_8" !in types && "sgray_8" !in types) {
+            throw IllegalStateException("This printer's raster mode (" + types.take(3).joinToString(", ") + ") isn't supported yet.")
+        }
+        val gray = types.isNotEmpty() && "sgray_8" in types && ("srgb_8" !in types || opts.color == "mono")
+        val dpi = when {
+            300 in e.pwgRes -> 300
+            e.pwgRes.isNotEmpty() -> e.pwgRes.minByOrNull { Math.abs(it - 300) } ?: 300
+            else -> 300
+        }
+        return PwgRaster.fromJpeg(jpeg, wMm, hMm, dpi, gray)
     }
 
     /** A one-page PDF holding the JPEG at the sheet size, for printers that take PDF but not JPEG. */
@@ -842,7 +873,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         attr(0x48, "attributes-natural-language", "en")
         attr(0x45, "printer-uri", uri)
         attr(0x44, "requested-attributes", "printer-make-and-model")
-        for (n in listOf("document-format-supported", "print-quality-supported", "print-color-mode-supported", "media-type-supported")) {
+        for (n in listOf("document-format-supported", "print-quality-supported", "print-color-mode-supported", "media-type-supported",
+            "pwg-raster-document-resolution-supported", "pwg-raster-document-type-supported")) {
             u8(0x44); u16(0); str(n)
         }
         u8(0x03)

@@ -7,3 +7,6 @@ public/downloads/*.exe
 
 # Local Netlify folder
 .netlify
+.codex/
+AGENTS.md
+

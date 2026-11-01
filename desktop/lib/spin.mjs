@@ -118,12 +118,20 @@ export function listFx() {
   return [];
 }
 
+function isValidFxFile(p) {
+  try {
+    return Boolean(p && existsSync(p) && statSync(p).size > 1024);
+  } catch {
+    return false;
+  }
+}
+
 export function resolveFx(spec) {
   if (!spec) return null;
-  if (typeof spec === 'object' && spec.path && existsSync(spec.path)) return spec;
+  if (typeof spec === 'object' && spec.path && isValidFxFile(spec.path)) return spec;
   const id = typeof spec === 'string' ? spec.trim() : String(spec.id || spec.file || '').trim();
   if (!id || id === 'none') return null;
-  if (existsSync(id)) {
+  if (isValidFxFile(id)) {
     return {
       id,
       path: id,
@@ -141,7 +149,7 @@ export function resolveFx(spec) {
           if (found) {
             const p1 = join(fxDirectory, 'loops', found.file || found.filename || found.path || '');
             const p2 = join(fxDirectory, found.file || found.filename || found.path || '');
-            const actual = existsSync(p1) ? p1 : (existsSync(p2) ? p2 : null);
+            const actual = isValidFxFile(p1) ? p1 : (isValidFxFile(p2) ? p2 : null);
             if (actual) {
               return {
                 id: found.id,
@@ -158,7 +166,7 @@ export function resolveFx(spec) {
     for (const sub of ['', 'loops']) {
       for (const ext of ['', '.mp4', '.webm']) {
         const p = join(fxDirectory, sub, id + ext);
-        if (existsSync(p)) {
+        if (isValidFxFile(p)) {
           return {
             id,
             path: p,

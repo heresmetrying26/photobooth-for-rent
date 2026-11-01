@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.49', date: '2026-11-02' },
   { version: '1.0.48', date: '2026-11-02' },
   { version: '1.0.47', date: '2026-11-02' },
   { version: '1.0.46', date: '2026-11-01' },
@@ -95,6 +96,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-02', title: '360 desk: animated video overlay loops and reliability fix', for: ['website', 'app'], app: '1.0.49',
+    items: [
+      'Bundles all 40 full procedural animated video overlay loops (WebM VP9 with alpha and H.264 MP4 with Screen blend) for confetti, gold dust, streamers, rose petals, neon cyberpunk, fireworks, and more.',
+      'Includes fallback error safety in the 360 video pipeline to ensure video edits complete smoothly even if an overlay asset is unavailable.'
+    ]
+  },
   {
     date: '2026-11-02', title: 'Android tablet: the tablet can make its own booth Wi-Fi', for: ['website'],
     items: [

@@ -69,7 +69,7 @@ async function checkinNow(force) {
 }
 
 // ---------- static files ----------
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.json': 'application/json', '.tflite': 'application/octet-stream', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.json': 'application/json', '.tflite': 'application/octet-stream', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain', '.webp': 'image/webp', '.mp4': 'video/mp4', '.webm': 'video/webm' };
 const LOCAL_STATIC = ['/bg/', '/camera-test/build/', '/pay/', '/fonts/', '/img/'];
 function fileResponse(base, rel, extra) {
   const f = normalize(join(base, rel));
@@ -117,6 +117,10 @@ async function handle(req) {
       return jsonRes(await driveRequest(body));
     }
     if (p.startsWith('/helper/') || p === '/helper') return await handleHelper(req, p.slice(7) || '/', url.searchParams);
+    if (p.startsWith('/spin-fx/')) {
+      const fxDir = SPIN.getFxDir() || (existsSync(join(HERE, 'resources', 'spin-fx')) ? join(HERE, 'resources', 'spin-fx') : join(BUILD, 'spin-fx'));
+      return fileResponse(fxDir, p.slice(9));
+    }
     if (LOCAL_STATIC.some((x) => p.startsWith(x))) return fileResponse(join(BUILD, 'public'), p.slice(1));
   } catch (e) {
     console.error(e);
@@ -212,15 +216,15 @@ function buildMenu() {
 function wireIpc() {
   ipcMain.on('pb4u:lan', (e) => { e.returnValue = shareBase(); });
   ipcMain.handle('pb4u:wifi', (e, force) => detectWifi(!!force));
-  ipcMain.handle('pb4u:info', async () => ({
-    licence: L.info(), version: VERSION, update: U.info(), photos: photosRoot(), share: shareBase(), lanIp: lanAddress(), port: sharePortNow(), server: L.SERVER
-  }));
-  ipcMain.handle('pb4u:activate', async (e, code) => {
   // The booth's own Wi-Fi (Windows' Mobile hotspot, see lib/hotspot.mjs)
   ipcMain.handle('pb4u:hotspot', () => hotspotInfo());
   ipcMain.handle('pb4u:hotspotSet', (e, on) => (on ? hotspotStart() : hotspotStop()));
   ipcMain.handle('pb4u:hotspotAuto', (e, on) => hotspotSetAuto(!!on));
   ipcMain.handle('pb4u:hotspotSetup', async () => { const r = await hotspotSetup(); return { ...r, info: hotspotInfo() }; });
+  ipcMain.handle('pb4u:info', async () => ({
+    licence: L.info(), version: VERSION, update: U.info(), photos: photosRoot(), share: shareBase(), lanIp: lanAddress(), port: sharePortNow(), server: L.SERVER
+  }));
+  ipcMain.handle('pb4u:activate', async (e, code) => {
     const r = await L.activate(net.fetch.bind(net), code);
     if (r.ok) await refreshRecord();
     return r;
@@ -302,12 +306,22 @@ function wireIpc() {
     settings.spinMusic = r.filePaths[0]; saveSettings();
     return { music: basename(settings.spinMusic) };
   });
+  ipcMain.handle('pb4u:spinFxList', () => SPIN.listFx());
   ipcMain.handle('pb4u:spinOverlay', (e, bytes) => SPIN.saveOverlay(bytes));
   ipcMain.handle('pb4u:spinProcess', (e, req) => {
     const d = spinDirNow(); const n = basename(String((req && req.name) || ''));
     if (!d || !n || !/\.(mp4|webm|mov|m4v)$/i.test(n)) return { error: 'No video' };
     const music = settings.spinMusic && existsSync(settings.spinMusic) ? settings.spinMusic : null;
-    return SPIN.enqueue({ inputPath: join(d, n), outDir: spinEditedDir(), label: String((req && req.label) || ''), overlay: SPIN.overlayPath(req && req.overlay), music, options: (req && req.options) || {} });
+    const fx = SPIN.resolveFx((req && req.options && req.options.fx) || (req && req.options && req.options.fxId) || (req && req.fx));
+    return SPIN.enqueue({
+      inputPath: join(d, n),
+      outDir: spinEditedDir(),
+      label: String((req && req.label) || ''),
+      overlay: SPIN.overlayPath(req && req.overlay),
+      fx,
+      music,
+      options: (req && req.options) || {}
+    });
   });
   ipcMain.handle('pb4u:spinJob', (e, id) => SPIN.jobInfo(id));
   ipcMain.handle('pb4u:spinCancel', (e, id) => SPIN.cancelJob(id));
@@ -358,7 +372,8 @@ app.whenReady().then(async () => {
     makeThumb: async (f) => { const im = nativeImage.createFromPath(f); if (im.isEmpty()) return null; const s = im.getSize(); return im.resize(s.width > s.height ? { height: 360, quality: 'good' } : { width: 360, quality: 'good' }).toJPEG(72); }
   });
   setSpinDir(settings.spinDir || null);
-  SPIN.configure({ buildDir: BUILD, temp: join(app.getPath('temp'), 'photobooth4u') });
+  const fxResDir = existsSync(join(HERE, 'resources', 'spin-fx')) ? join(HERE, 'resources', 'spin-fx') : null;
+  SPIN.configure({ buildDir: BUILD, temp: join(app.getPath('temp'), 'photobooth4u'), fxDir: fxResDir });
   // Camera and printer messages also go to camera.log in the app's data folder (%APPDATA%\photobooth4u), so a camera that
   // hangs can be diagnosed afterwards. It starts over when it passes 512 KB.
   const camLog = join(dataDir(), 'camera.log');
@@ -381,6 +396,7 @@ app.whenReady().then(async () => {
     setGuestView
   }));
   await startShareServer();
+  initHotspot({ get: () => (settings.hotspot = settings.hotspot || {}), save: saveSettings, logger: (m) => console.log('[hotspot] ' + m) });
   protocol.handle('app', handle);
   setupSession();
   buildMenu();
@@ -395,4 +411,3 @@ app.whenReady().then(async () => {
   setInterval(() => { L.touchClock(); refreshRecord().catch(() => {}); }, 5 * 60000);
   setInterval(() => { checkinNow(false).catch(() => {}); }, 2 * 60000);   // checks in every 10 min (see licence.mjs)
 });
-  initHotspot({ get: () => (settings.hotspot = settings.hotspot || {}), save: saveSettings, logger: (m) => console.log('[hotspot] ' + m) });

@@ -995,6 +995,7 @@
   .spin-row{display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; font:600 13px 'Manrope',sans-serif; color:var(--ink-dim);}
   .spin-row select, .spin-row input[type=range]{font:600 13px 'Manrope',sans-serif; border:1.5px solid var(--line); border-radius:8px; padding:4px 6px; background:#fff; color:var(--ink);}
   .spin-row .chk{display:inline-flex; gap:6px; align-items:center;} .spin-dim{color:var(--ink-dim);}
+  .spin-fx-pill{display:inline-flex; align-items:center; gap:5px; font:700 11px 'Manrope',sans-serif; background:#efe7dd; border:1px solid var(--line); border-radius:999px; padding:2px 8px; color:var(--ink); line-height:1.5;}
   .spin-trim{margin:10px 0 0; font:600 13px 'Manrope',sans-serif; color:var(--ink-dim);} .spin-trim input{width:64px; border:1.5px solid var(--line); border-radius:8px; padding:4px 6px;}
   .spin-prog{margin:10px 0 0; font:600 13px 'Manrope',sans-serif; color:var(--ink-dim);} .spin-prog .bar{height:10px; border-radius:6px; background:#e4ddd3; overflow:hidden; margin-bottom:4px;} .spin-prog .bar i{display:block; height:100%; width:0; background:#2ea66b; transition:width .4s;}
   .spin-card .qs-row{flex-wrap:wrap;}
@@ -3341,13 +3342,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
           <p class="sub-label" style="margin-top:14px;">Booth Wi-Fi for guests (optional)</p>
           <p class="panel-hint" style="margin:0 0 6px;">Guests scan the Wi-Fi QR to join, then their photo QR. The Wi-Fi this device is on is filled in when the app can read it. Leave empty if they already know the Wi-Fi.</p>
-          <input type="text" class="label-input" id="deskWifiName" placeholder="Wi-Fi name" maxlength="32" autocomplete="off" spellcheck="false">
           <div id="deskHotspotBox" style="display:none; margin:0 0 12px;">
             <label class="switch-row"><span>Make this laptop the booth Wi-Fi (no router needed)</span><input type="checkbox" id="deskHotspotOn"></label>
             <label class="switch-row"><span>Turn it on whenever the app opens</span><input type="checkbox" id="deskHotspotAuto"></label>
             <p class="panel-hint" id="deskHotspotHint" style="margin:6px 0 0;"></p>
             <div class="desk-row" id="deskHotspotSetupRow" style="display:none;"><button type="button" class="action-btn" id="deskHotspotSetup" style="width:auto; margin:0;">Set up (one time)</button></div>
           </div>
+          <input type="text" class="label-input" id="deskWifiName" placeholder="Wi-Fi name" maxlength="32" autocomplete="off" spellcheck="false">
           <input type="text" class="label-input" id="deskWifiPass" placeholder="Wi-Fi password (empty if none)" maxlength="63" autocomplete="off" spellcheck="false" style="margin-top:8px;">
           <div class="desk-row" style="margin-top:8px;"><button type="button" class="action-btn" id="deskWifiDetect" style="width:auto; margin:0; display:none;">Use current Wi-Fi</button></div>
           <p class="panel-hint" id="deskWifiHint" style="margin:6px 0 0;"></p>
@@ -4139,6 +4140,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       </div>
       <div class="spin-row">
         <label class="chk"><input type="checkbox" id="spinOverlayOn" checked> Frame, logo and title</label>
+        <label>Animated effect <select id="spinFx"><option value="none">None (no effect)</option></select></label>
+        <span id="spinFxBadge" class="spin-fx-pill" hidden></span>
         <label>Sound <select id="spinAudio"><option value="music">Music</option><option value="original">Original sound</option><option value="none">No sound</option></select></label>
         <button type="button" class="desk-btn" id="spinMusicBtn">Choose music</button><span id="spinMusicName" class="spin-dim"></span>
         <label>Volume <input type="range" id="spinVol" min="0" max="100" value="80"></label>
@@ -14628,19 +14631,64 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     roller:    { label: 'Slow-mo roller', speed: 'custom', rates: [1, 0.25, 2, 0.5], reverse: true, smooth: false, audio: 'music', overlay: true }
   };
   var SPIN_LOOK_KEY = 'pb_spin_look';
-  var spinLook = { preset: 'classic', speed: 'slow', smooth: false, orient: 'portrait', quality: 1080, overlay: true, audio: 'music', volume: 80, auto: false, autoShare: false, rates: [], reverse: false };
+  var spinLook = { preset: 'classic', speed: 'slow', smooth: false, orient: 'portrait', quality: 1080, overlay: true, fx: 'none', audio: 'music', volume: 80, auto: false, autoShare: false, rates: [], reverse: false };
   try{ var sl = JSON.parse(localStorage.getItem(SPIN_LOOK_KEY) || 'null'); if(sl && typeof sl === 'object') Object.keys(spinLook).forEach(function(k){ if(sl[k] !== undefined) spinLook[k] = sl[k]; }); }catch(e){}
+  var spinFxCatalog = [];
+  async function spinLoadFx(){
+    if(!spinDesktop() || !window.pb4u || !window.pb4u.spinFxList) return;
+    try{
+      spinFxCatalog = await window.pb4u.spinFxList() || [];
+      spinPopulateFxUI();
+    }catch(e){}
+  }
+  function spinPopulateFxUI(){
+    var sel = document.getElementById('spinFx'); if(!sel) return;
+    var cur = spinLook.fx || 'none';
+    sel.innerHTML = '<option value="none">None (no effect)</option>';
+    var byCat = {};
+    (spinFxCatalog || []).forEach(function(item){
+      var c = item.category || 'Other';
+      if(!byCat[c]) byCat[c] = [];
+      byCat[c].push(item);
+    });
+    Object.keys(byCat).forEach(function(c){
+      var grp = document.createElement('optgroup'); grp.label = c;
+      byCat[c].forEach(function(item){
+        var opt = document.createElement('option');
+        opt.value = item.id;
+        opt.textContent = item.name + (item.blend === 'screen' ? ' ✨' : ' 🎨');
+        grp.appendChild(opt);
+      });
+      sel.appendChild(grp);
+    });
+    sel.value = cur;
+    spinUpdateFxBadge();
+  }
+  function spinUpdateFxBadge(){
+    var badge = document.getElementById('spinFxBadge'), sel = document.getElementById('spinFx');
+    if(!badge || !sel) return;
+    var val = sel.value || (spinLook && spinLook.fx) || 'none';
+    if(val === 'none'){ badge.hidden = true; badge.textContent = ''; return; }
+    var item = (spinFxCatalog || []).find(function(x){ return x.id === val; });
+    badge.hidden = false;
+    badge.textContent = item ? (item.blend === 'screen' ? '✨ Screen' : '🎨 Alpha') : 'Active';
+  }
   function spinLookToUI(){
     var g = function(id){ return document.getElementById(id); };
     g('spinPreset').value = spinLook.preset; g('spinSpeed').value = spinLook.speed; g('spinSmooth').checked = !!spinLook.smooth;
     g('spinOrient').value = spinLook.orient; g('spinQual').value = String(spinLook.quality); g('spinOverlayOn').checked = !!spinLook.overlay;
+    if(g('spinFx')) g('spinFx').value = spinLook.fx || 'none';
+    spinUpdateFxBadge();
     g('spinAudio').value = spinLook.audio; g('spinVol').value = String(spinLook.volume); g('spinAuto').checked = !!spinLook.auto; g('spinAutoShare').checked = !!spinLook.autoShare; g('spinAutoShare').disabled = !spinLook.auto;
     g('spinSmooth').disabled = spinLook.speed !== 'slow' && !(spinLook.speed === 'custom' && (spinLook.rates || []).some(function(r){ return r < 1; }));
   }
   function spinLookFromUI(fromPreset){
     var g = function(id){ return document.getElementById(id); };
     spinLook.speed = g('spinSpeed').value; spinLook.smooth = g('spinSmooth').checked; spinLook.orient = g('spinOrient').value;
-    spinLook.quality = Number(g('spinQual').value) || 1080; spinLook.overlay = g('spinOverlayOn').checked; spinLook.audio = g('spinAudio').value;
+    spinLook.quality = Number(g('spinQual').value) || 1080; spinLook.overlay = g('spinOverlayOn').checked;
+    if(g('spinFx')) spinLook.fx = g('spinFx').value || 'none';
+    spinUpdateFxBadge();
+    spinLook.audio = g('spinAudio').value;
     spinLook.volume = Number(g('spinVol').value) || 0; spinLook.auto = g('spinAuto').checked; spinLook.autoShare = g('spinAutoShare').checked && spinLook.auto;
     if(!fromPreset) spinLook.preset = 'custom';
     if(spinLook.speed !== 'custom'){ spinLook.rates = []; spinLook.reverse = false; }
@@ -14759,6 +14807,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     document.getElementById('spinLook').hidden = !spinEnv.ffmpeg;
     document.getElementById('spinNoEdit').hidden = !!spinEnv.ffmpeg;
     document.getElementById('spinMusicName').textContent = spinEnv.music ? spinEnv.music : 'no music chosen';
+    await spinLoadFx();
     spinLookToUI();
     if(!spinTimer) spinTimer = setInterval(spinPoll, 2500);
     spinPoll();
@@ -15361,7 +15410,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       var j = await window.pb4u.spinProcess({
         name: it.name, label: spinPresetLabel(), overlay: ov,
         options: { speed: spinLook.speed, rates: spinLook.rates, reverse: spinLook.reverse, smooth: spinLook.smooth, orientation: spinLook.orient, quality: spinLook.quality, audio: spinLook.audio,
-                   volume: spinLook.volume / 100, trimStart: it.trimA || 0, trimEnd: it.trimB || null }
+                   volume: spinLook.volume / 100, trimStart: it.trimA || 0, trimEnd: it.trimB || null, fx: spinLook.fx || 'none' }
       });
       if(!j || j.error) throw new Error((j && j.error) || 'Could not start the editing');
       it.job = j.id;
@@ -15499,8 +15548,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(pr){ spinLook.preset = this.value; spinLook.speed = pr.speed; spinLook.rates = (pr.rates || []).slice(); spinLook.reverse = !!pr.reverse; spinLook.smooth = pr.smooth; spinLook.audio = pr.audio; spinLook.overlay = pr.overlay; spinLookToUI(); spinLookFromUI(true); }
     else { spinLook.preset = 'custom'; spinLookFromUI(true); }
   });
-  ['spinSpeed', 'spinSmooth', 'spinOrient', 'spinQual', 'spinOverlayOn', 'spinAudio', 'spinVol', 'spinAuto', 'spinAutoShare'].forEach(function(id){
-    document.getElementById(id).addEventListener('change', function(){ spinLookFromUI(id === 'spinAuto' || id === 'spinAutoShare' || id === 'spinVol' || id === 'spinOrient' || id === 'spinQual' ? true : false); });
+  ['spinSpeed', 'spinSmooth', 'spinOrient', 'spinQual', 'spinFx', 'spinOverlayOn', 'spinAudio', 'spinVol', 'spinAuto', 'spinAutoShare'].forEach(function(id){
+    document.getElementById(id).addEventListener('change', function(){ spinLookFromUI(id === 'spinAuto' || id === 'spinAutoShare' || id === 'spinVol' || id === 'spinOrient' || id === 'spinQual' || id === 'spinFx' ? true : false); });
   });
   document.getElementById('spinMusicBtn').addEventListener('click', async function(){
     try{ var r = await window.pb4u.spinMusic(false); if(r){ spinEnv.music = r.music; document.getElementById('spinMusicName').textContent = r.music || 'no music chosen'; } }catch(e){}
@@ -21706,10 +21755,10 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // Fill in the Wi-Fi this laptop is on. Done when the network changes (not on every check, so
     // a name the operator typed isn't overwritten) and when "Use current Wi-Fi" is pressed.
     var wHint = document.getElementById('deskWifiHint'), wBtn = document.getElementById('deskWifiDetect'), lastSsid = null, detecting = false;
+    var hs = {};   // the booth's own Wi-Fi (Windows), see below: while it is on, the Wi-Fi name and password are its own
     function detectWifi(force){
       if(!api.wifi || detecting || hs.on) return;
       detecting = true;
-    var hs = {};   // the booth's own Wi-Fi (Windows), see below: while it is on, the Wi-Fi name and password are its own
       api.wifi(!!force).then(function(d){
         detecting = false;
         if(!d || !d.ssid){
@@ -21733,9 +21782,6 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       detectWifi(false);
       setInterval(function(){ detectWifi(false); }, 6000);
     }
-    document.getElementById('deskCheckBtn').addEventListener('click', function(){
-      var b = this; b.disabled = true; b.textContent = 'Checking\u2026';
-      api.checkin().then(function(r){
     // Windows: this laptop makes the booth Wi-Fi itself (Mobile hotspot), so no router or phone hotspot is needed.
     // While it is on, its name and password fill the Join QR; the fields can't be edited then.
     (function(){
@@ -21784,6 +21830,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       refresh();
       setInterval(refresh, 5000);
     })();
+    document.getElementById('deskCheckBtn').addEventListener('click', function(){
+      var b = this; b.disabled = true; b.textContent = 'Checking\u2026';
+      api.checkin().then(function(r){
         b.disabled = false; b.textContent = 'Check for changes';
         if(r.licence && !r.licence.ok){ location.reload(); return; }
         render({ licence: r.licence, photos: document.getElementById('deskPhotos').textContent, share: lanNow, version: (window.__PB.desktop || {}).v });

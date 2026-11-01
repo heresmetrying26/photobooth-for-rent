@@ -127,6 +127,14 @@ try {
   } else log('ffmpeg: not found; the 360 desk will share videos as they are');
 } catch { log('ffmpeg: ffmpeg-static is not installed; the 360 desk will share videos as they are'); }
 
+// ---------- animated video overlays for 360 desk (spin-fx) ----------
+const fxSource = join(DESK, 'resources', 'spin-fx');
+if (existsSync(fxSource)) {
+  mkdirSync(join(OUT, 'spin-fx'), { recursive: true });
+  cpSync(fxSource, join(OUT, 'spin-fx'), { recursive: true });
+  log('spin-fx: bundled animated overlay library');
+}
+
 // ---------- the licence public key ----------
 async function publicKey() {
   if (process.env.PB4U_LICENSE_PUB) return process.env.PB4U_LICENSE_PUB.trim();

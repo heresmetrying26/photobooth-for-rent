@@ -1,0 +1,403 @@
+[
+  {
+    "id": "confetti_multi",
+    "name": "Color Confetti",
+    "category": "Celebration & Party",
+    "description": "Multi-colored paper celebration confetti gently fluttering down",
+    "file": "confetti_multi.webm",
+    "thumb": "confetti_multi.webp",
+    "blend": "overlay",
+    "opacity": 1.0
+  },
+  {
+    "id": "confetti_gold",
+    "name": "Metallic Gold Confetti",
+    "category": "Celebration & Party",
+    "description": "Reflective gold metallic foil squares and ribbons cascade",
+    "file": "confetti_gold.webm",
+    "thumb": "confetti_gold.webp",
+    "blend": "overlay",
+    "opacity": 1.0
+  },
+  {
+    "id": "streamers_party",
+    "name": "Party Streamers",
+    "category": "Celebration & Party",
+    "description": "Vibrant party popper serpentine spirals cascading through the frame",
+    "file": "streamers_party.webm",
+    "thumb": "streamers_party.webp",
+    "blend": "overlay",
+    "opacity": 1.0
+  },
+  {
+    "id": "champagne_bubbles",
+    "name": "Champagne Bubbles",
+    "category": "Celebration & Party",
+    "description": "Effervescent golden fizz bubbles rising smoothly from bottom to top",
+    "file": "champagne_bubbles.mp4",
+    "thumb": "champagne_bubbles.webp",
+    "blend": "screen",
+    "opacity": 0.9
+  },
+  {
+    "id": "disco_mirror",
+    "name": "Disco Ball Reflections",
+    "category": "Celebration & Party",
+    "description": "Rotating mirror ball pin-spot reflections and light flares",
+    "file": "disco_mirror.mp4",
+    "thumb": "disco_mirror.webp",
+    "blend": "screen",
+    "opacity": 0.85
+  },
+  {
+    "id": "rainbow_strobe",
+    "name": "Rainbow Strobe",
+    "category": "Celebration & Party",
+    "description": "Rhythmic colorful party flash pulses and party light bursts",
+    "file": "rainbow_strobe.mp4",
+    "thumb": "rainbow_strobe.webp",
+    "blend": "screen",
+    "opacity": 0.75
+  },
+  {
+    "id": "fireworks_midnight",
+    "name": "Midnight Fireworks",
+    "category": "Celebration & Party",
+    "description": "Brilliant starburst fireworks exploding over the upper frame",
+    "file": "fireworks_midnight.mp4",
+    "thumb": "fireworks_midnight.webp",
+    "blend": "screen",
+    "opacity": 0.95
+  },
+  {
+    "id": "balloons_pastel",
+    "name": "Celebration Balloons",
+    "category": "Celebration & Party",
+    "description": "Pastel celebration balloons gently ascending along the sides",
+    "file": "balloons_pastel.webm",
+    "thumb": "balloons_pastel.webp",
+    "blend": "overlay",
+    "opacity": 1.0
+  },
+  {
+    "id": "hearts_floating",
+    "name": "Floating Hearts",
+    "category": "Weddings & Romance",
+    "description": "Romantic soft pink and crimson translucent hearts drifting upward",
+    "file": "hearts_floating.webm",
+    "thumb": "hearts_floating.webp",
+    "blend": "overlay",
+    "opacity": 0.95
+  },
+  {
+    "id": "rose_petals_red",
+    "name": "Red Rose Petals",
+    "category": "Weddings & Romance",
+    "description": "Slow-motion deep red rose petals tumbling naturally through air",
+    "file": "rose_petals_red.webm",
+    "thumb": "rose_petals_red.webp",
+    "blend": "overlay",
+    "opacity": 1.0
+  },
+  {
+    "id": "petals_white_drift",
+    "name": "White Floral Cascade",
+    "category": "Weddings & Romance",
+    "description": "Ethereal white flower blossoms and cherry petals in gentle wind",
+    "file": "petals_white_drift.webm",
+    "thumb": "petals_white_drift.webp",
+    "blend": "overlay",
+    "opacity": 0.95
+  },
+  {
+    "id": "bokeh_golden",
+    "name": "Golden Bokeh Rings",
+    "category": "Weddings & Romance",
+    "description": "Warm out-of-focus optical bokeh circles with gentle ambient shimmer",
+    "file": "bokeh_golden.mp4",
+    "thumb": "bokeh_golden.webp",
+    "blend": "screen",
+    "opacity": 0.85
+  },
+  {
+    "id": "fairy_dust",
+    "name": "Fairy Magic Dust",
+    "category": "Weddings & Romance",
+    "description": "Whimsical golden glitter trail sweeping dynamically across screen",
+    "file": "fairy_dust.mp4",
+    "thumb": "fairy_dust.webp",
+    "blend": "screen",
+    "opacity": 0.9
+  },
+  {
+    "id": "sunburst_warm",
+    "name": "Romantic Sunburst",
+    "category": "Weddings & Romance",
+    "description": "Soft amber golden-hour lens flare and organic anamorphic streak",
+    "file": "sunburst_warm.mp4",
+    "thumb": "sunburst_warm.webp",
+    "blend": "screen",
+    "opacity": 0.75
+  },
+  {
+    "id": "sparkler_fountain",
+    "name": "Sparkler Fountains",
+    "category": "Weddings & Romance",
+    "description": "Wedding cold-spark fountain effects shooting from bottom corners",
+    "file": "sparkler_fountain.mp4",
+    "thumb": "sparkler_fountain.webp",
+    "blend": "screen",
+    "opacity": 0.9
+  },
+  {
+    "id": "gold_dust",
+    "name": "24K Gold Dust",
+    "category": "VIP & Luxury",
+    "description": "Slow-drifting micro particles of pure luxury gold with soft glints",
+    "file": "gold_dust.mp4",
+    "thumb": "gold_dust.webp",
+    "blend": "screen",
+    "opacity": 0.95
+  },
+  {
+    "id": "art_deco_lines",
+    "name": "Art Deco Geometry",
+    "category": "VIP & Luxury",
+    "description": "Gilded geometric architectural lines framing the photo edges",
+    "file": "art_deco_lines.mp4",
+    "thumb": "art_deco_lines.webp",
+    "blend": "screen",
+    "opacity": 0.9
+  },
+  {
+    "id": "silver_shimmer",
+    "name": "Silver Shimmer",
+    "category": "VIP & Luxury",
+    "description": "Platinum metallic stardust falling in continuous smooth streaks",
+    "file": "silver_shimmer.mp4",
+    "thumb": "silver_shimmer.webp",
+    "blend": "screen",
+    "opacity": 0.9
+  },
+  {
+    "id": "spotlight_sweep",
+    "name": "Stage Spotlights",
+    "category": "VIP & Luxury",
+    "description": "Volumetric theater spotlights crisscrossing smoothly overhead",
+    "file": "spotlight_sweep.mp4",
+    "thumb": "spotlight_sweep.webp",
+    "blend": "screen",
+    "opacity": 0.7
+  },
+  {
+    "id": "ribbon_swirls_gold",
+    "name": "Golden Ribbon Swirls",
+    "category": "VIP & Luxury",
+    "description": "Fluid satin gold ribbons floating weightlessly in 3D perspective",
+    "file": "ribbon_swirls_gold.webm",
+    "thumb": "ribbon_swirls_gold.webp",
+    "blend": "overlay",
+    "opacity": 0.95
+  },
+  {
+    "id": "galaxy_stars",
+    "name": "Twinkling Galaxy",
+    "category": "VIP & Luxury",
+    "description": "Deep celestial nebula cloud with micro stars twinkling rhythmically",
+    "file": "galaxy_stars.mp4",
+    "thumb": "galaxy_stars.webp",
+    "blend": "screen",
+    "opacity": 0.85
+  },
+  {
+    "id": "corporate_grid",
+    "name": "Hexagon Tech Grid",
+    "category": "VIP & Luxury",
+    "description": "High-tech minimalist glowing geometric lattice along corners",
+    "file": "corporate_grid.mp4",
+    "thumb": "corporate_grid.webp",
+    "blend": "screen",
+    "opacity": 0.8
+  },
+  {
+    "id": "neon_cyberpunk",
+    "name": "Cyberpunk Neon Frame",
+    "category": "Nightlife & Neon",
+    "description": "Pulsing dual-color cyan and magenta high-energy neon borders",
+    "file": "neon_cyberpunk.mp4",
+    "thumb": "neon_cyberpunk.webp",
+    "blend": "screen",
+    "opacity": 0.95
+  },
+  {
+    "id": "laser_beams",
+    "name": "Club Laser Rays",
+    "category": "Nightlife & Neon",
+    "description": "Emerald green and sapphire blue club concert laser scan fan",
+    "file": "laser_beams.mp4",
+    "thumb": "laser_beams.webp",
+    "blend": "screen",
+    "opacity": 0.85
+  },
+  {
+    "id": "stage_smoke",
+    "name": "Stage Smoke & Haze",
+    "category": "Nightlife & Neon",
+    "description": "Rolling atmospheric dry-ice smoke billowing across the floor",
+    "file": "stage_smoke.mp4",
+    "thumb": "stage_smoke.webp",
+    "blend": "screen",
+    "opacity": 0.7
+  },
+  {
+    "id": "audio_equalizer",
+    "name": "Equalizer Waves",
+    "category": "Nightlife & Neon",
+    "description": "Dynamic audio spectrum frequency analyzer bars bouncing to beat",
+    "file": "audio_equalizer.mp4",
+    "thumb": "audio_equalizer.webp",
+    "blend": "screen",
+    "opacity": 0.85
+  },
+  {
+    "id": "prism_leak",
+    "name": "Prism Light Leak",
+    "category": "Nightlife & Neon",
+    "description": "Chromatic rainbow light leaks refracted across the camera lens",
+    "file": "prism_leak.mp4",
+    "thumb": "prism_leak.webp",
+    "blend": "screen",
+    "opacity": 0.8
+  },
+  {
+    "id": "lightning_arcs",
+    "name": "Electric Lightning",
+    "category": "Nightlife & Neon",
+    "description": "High-voltage electric plasma bolts crackling around the frame",
+    "file": "lightning_arcs.mp4",
+    "thumb": "lightning_arcs.webp",
+    "blend": "screen",
+    "opacity": 0.9
+  },
+  {
+    "id": "blacklight_uv",
+    "name": "UV Glow Dust",
+    "category": "Nightlife & Neon",
+    "description": "Fluorescent ultraviolet glowing specks dancing in the dark",
+    "file": "blacklight_uv.mp4",
+    "thumb": "blacklight_uv.webp",
+    "blend": "screen",
+    "opacity": 0.85
+  },
+  {
+    "id": "fire_border",
+    "name": "Fire & Hot Embers",
+    "category": "Action & Retro",
+    "description": "Blazing flames along edges with rising glowing hot spark embers",
+    "file": "fire_border.mp4",
+    "thumb": "fire_border.webp",
+    "blend": "screen",
+    "opacity": 0.95
+  },
+  {
+    "id": "cash_rain",
+    "name": "Dollar Bills Rain",
+    "category": "Action & Retro",
+    "description": "Cascading hundred-dollar bank notes spinning and falling",
+    "file": "cash_rain.webm",
+    "thumb": "cash_rain.webp",
+    "blend": "overlay",
+    "opacity": 1.0
+  },
+  {
+    "id": "film_8mm",
+    "name": "Vintage 8mm Film",
+    "category": "Action & Retro",
+    "description": "Retro projector grain, authentic film hair, dust and jittery frame",
+    "file": "film_8mm.mp4",
+    "thumb": "film_8mm.webp",
+    "blend": "screen",
+    "opacity": 0.8
+  },
+  {
+    "id": "vhs_glitch",
+    "name": "Retro VHS Glitch",
+    "category": "Action & Retro",
+    "description": "90s analog videotape tracking lines, RGB chromatic distortion, noise",
+    "file": "vhs_glitch.mp4",
+    "thumb": "vhs_glitch.webp",
+    "blend": "screen",
+    "opacity": 0.8
+  },
+  {
+    "id": "action_speed_lines",
+    "name": "Anime Speed Lines",
+    "category": "Action & Retro",
+    "description": "Dynamic radial focal speed lines exaggerating camera acceleration",
+    "file": "action_speed_lines.mp4",
+    "thumb": "action_speed_lines.webp",
+    "blend": "screen",
+    "opacity": 0.85
+  },
+  {
+    "id": "diamond_prism",
+    "name": "Diamond Facets",
+    "category": "Action & Retro",
+    "description": "Faceted crystalline kaleidoscope refractions along the periphery",
+    "file": "diamond_prism.mp4",
+    "thumb": "diamond_prism.webp",
+    "blend": "screen",
+    "opacity": 0.75
+  },
+  {
+    "id": "snow_blizzard",
+    "name": "Winter Snowstorm",
+    "category": "Holidays & Seasons",
+    "description": "Crisp white crystal snowflakes swirling in a calm winter breeze",
+    "file": "snow_blizzard.mp4",
+    "thumb": "snow_blizzard.webp",
+    "blend": "screen",
+    "opacity": 0.9
+  },
+  {
+    "id": "nye_countdown",
+    "name": "New Year Sparklers",
+    "category": "Holidays & Seasons",
+    "description": "Glistening celebration sparkler countdown explosion and flash",
+    "file": "nye_countdown.mp4",
+    "thumb": "nye_countdown.webp",
+    "blend": "screen",
+    "opacity": 0.95
+  },
+  {
+    "id": "halloween_bats",
+    "name": "Spooky Bats & Mist",
+    "category": "Holidays & Seasons",
+    "description": "Silhouette vampire bats swooping through rolling eerie twilight fog",
+    "file": "halloween_bats.webm",
+    "thumb": "halloween_bats.webp",
+    "blend": "overlay",
+    "opacity": 0.95
+  },
+  {
+    "id": "autumn_leaves",
+    "name": "Autumn Maple Leaves",
+    "category": "Holidays & Seasons",
+    "description": "Golden orange and scarlet autumn maple leaves tumbling in wind",
+    "file": "autumn_leaves.webm",
+    "thumb": "autumn_leaves.webp",
+    "blend": "overlay",
+    "opacity": 1.0
+  },
+  {
+    "id": "summer_flare",
+    "name": "Summer Golden Flare",
+    "category": "Holidays & Seasons",
+    "description": "Sunny radiant warm optical glow with shimmering tropical warmth",
+    "file": "summer_flare.mp4",
+    "thumb": "summer_flare.webp",
+    "blend": "screen",
+    "opacity": 0.75
+  }
+]
+

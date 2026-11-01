@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.48', date: '2026-11-02' },
   { version: '1.0.47', date: '2026-11-02' },
   { version: '1.0.46', date: '2026-11-01' },
   { version: '1.0.45', date: '2026-11-01' },
@@ -94,6 +95,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-02', title: '360 desk: 40 animated video effects (confetti, sparks, neon, and more)', for: ['website', 'app'], app: '1.0.48',
+    items: [
+      'The 360 desk's editing panel has a new "Animated effect" menu with 40 overlay effects: confetti cannons, gold dust storms, rose petals, neon laser grids, burning embers, snowfall, fireworks and more — grouped by Celebration, Weddings, VIP/Luxury, Nightlife, Action/Retro and Holidays.',
+      'Effects composite directly over the slow-motion or boomerang clip on the laptop using FFmpeg, with no internet or subscription required. Light effects (sparks, lens flares, light leaks) use a fast screen-blend mode; solid particles (confetti, petals, cash rain) use an alpha-channel overlay.',
+      'The chosen effect is remembered between events. Picking "None" skips the overlay step entirely, keeping the same fast processing as before.'
+    ]
+  },
   {
     date: '2026-11-02', title: 'Windows app: the laptop can make its own booth Wi-Fi', for: ['website', 'app'], app: '1.0.47',
     items: [

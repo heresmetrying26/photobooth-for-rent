@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('pb4u', {
   spinChoose: () => ipcRenderer.invoke('pb4u:spinChoose'),
   spinScan: () => ipcRenderer.invoke('pb4u:spinScan'),
   spinEnv: () => ipcRenderer.invoke('pb4u:spinEnv'),
+  spinFxList: () => ipcRenderer.invoke('pb4u:spinFxList'),
   spinMusic: (clear) => ipcRenderer.invoke('pb4u:spinMusic', !!clear),
   spinOverlay: (bytes) => ipcRenderer.invoke('pb4u:spinOverlay', bytes),
   spinProcess: (req) => ipcRenderer.invoke('pb4u:spinProcess', req),

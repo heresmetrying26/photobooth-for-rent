@@ -5,16 +5,24 @@
 // ramp, boomerang), cropped to portrait or landscape, with the event's frame / logo / title drawn over it
 // (a transparent PNG made by the booth page) and optional music. Jobs run one at a time.
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync, readdirSync, statSync, unlinkSync, renameSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readdirSync, statSync, unlinkSync, renameSync, readFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { createRequire } from 'node:module';
 
 const EXE = process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
-let candidates = [], resolved = undefined, tempDir = null;
+let candidates = [], resolved = undefined, tempDir = null, fxDirectory = null;
 
 // buildDir: where prepare.mjs put build/ffmpeg (inside app.asar.unpacked when packaged).
-export function configure({ buildDir, temp }) {
+export function configure({ buildDir, temp, fxDir }) {
   tempDir = temp || null;
+  if (fxDir) {
+    fxDirectory = fxDir;
+  } else if (buildDir) {
+    const unpacked = join(buildDir.replace(/app\.asar(?![.\w])/, 'app.asar.unpacked'), 'spin-fx');
+    fxDirectory = existsSync(unpacked) ? unpacked : join(buildDir, 'spin-fx');
+  } else {
+    fxDirectory = null;
+  }
   candidates = [];
   if (process.env.PB4U_FFMPEG) candidates.push(process.env.PB4U_FFMPEG);
   if (buildDir) {
@@ -25,6 +33,9 @@ export function configure({ buildDir, temp }) {
   candidates.push('ffmpeg');           // one the laptop already has
   resolved = undefined;
 }
+
+export function setFxDir(dir) { fxDirectory = dir || null; }
+export function getFxDir() { return fxDirectory; }
 
 function run(bin, args, { timeout = 0, onStdout, onProc } = {}) {
   return new Promise((resolve) => {
@@ -95,6 +106,72 @@ const BOOMERANG_MAX = 5;                     // seconds of the clip that go forw
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const f2 = (n) => (Math.round(n * 1000) / 1000).toString();
 
+export function listFx() {
+  if (!fxDirectory || !existsSync(fxDirectory)) return [];
+  const catPath = join(fxDirectory, 'catalog.json');
+  if (existsSync(catPath)) {
+    try {
+      const data = JSON.parse(readFileSync(catPath, 'utf8'));
+      if (Array.isArray(data)) return data;
+    } catch { /* ignore parse error */ }
+  }
+  return [];
+}
+
+export function resolveFx(spec) {
+  if (!spec) return null;
+  if (typeof spec === 'object' && spec.path && existsSync(spec.path)) return spec;
+  const id = typeof spec === 'string' ? spec.trim() : String(spec.id || spec.file || '').trim();
+  if (!id || id === 'none') return null;
+  if (existsSync(id)) {
+    return {
+      id,
+      path: id,
+      blend: typeof spec === 'object' && spec.blend ? spec.blend : (/\.webm$/i.test(id) ? 'overlay' : 'screen'),
+      opacity: typeof spec === 'object' && spec.opacity != null ? Number(spec.opacity) : 1.0
+    };
+  }
+  if (fxDirectory && existsSync(fxDirectory)) {
+    const catPath = join(fxDirectory, 'catalog.json');
+    if (existsSync(catPath)) {
+      try {
+        const cat = JSON.parse(readFileSync(catPath, 'utf8'));
+        if (Array.isArray(cat)) {
+          const found = cat.find((item) => item.id === id || item.file === id);
+          if (found) {
+            const p1 = join(fxDirectory, 'loops', found.file || found.filename || found.path || '');
+            const p2 = join(fxDirectory, found.file || found.filename || found.path || '');
+            const actual = existsSync(p1) ? p1 : (existsSync(p2) ? p2 : null);
+            if (actual) {
+              return {
+                id: found.id,
+                name: found.name || found.id,
+                path: actual,
+                blend: found.blend || (/\.webm$/i.test(actual) ? 'overlay' : 'screen'),
+                opacity: found.opacity != null ? Number(found.opacity) : 1.0
+              };
+            }
+          }
+        }
+      } catch { /* ignore json error */ }
+    }
+    for (const sub of ['', 'loops']) {
+      for (const ext of ['', '.mp4', '.webm']) {
+        const p = join(fxDirectory, sub, id + ext);
+        if (existsSync(p)) {
+          return {
+            id,
+            path: p,
+            blend: /\.webm$/i.test(p) ? 'overlay' : 'screen',
+            opacity: 1.0
+          };
+        }
+      }
+    }
+  }
+  return null;
+}
+
 export function normOptions(o) {
   o = o || {};
   const speed = SPEEDS.includes(o.speed) ? o.speed : 'slow';
@@ -110,7 +187,8 @@ export function normOptions(o) {
     trimStart: clamp(Number(o.trimStart) || 0, 0, 3600),
     trimEnd: o.trimEnd == null || o.trimEnd === '' ? null : Math.max(0, Number(o.trimEnd) || 0),
     audio: ['music', 'original', 'none'].includes(o.audio) ? o.audio : 'music',
-    volume: clamp(o.volume == null ? 0.8 : Number(o.volume), 0, 1)
+    volume: clamp(o.volume == null ? 0.8 : Number(o.volume), 0, 1),
+    fx: o.fx || null
   };
 }
 // How long the finished video is.
@@ -125,8 +203,8 @@ export function outDuration(speed, d, o) {
   if (speed === 'boomerang') return Math.min(d, BOOMERANG_MAX) * 2;
   return d;
 }
-// { args, duration, W, H } for one clip. overlay / music are file paths or null.
-export function buildArgs({ input, output, overlay, music, options }, info) {
+// { args, duration, W, H } for one clip. overlay / fx / music are file paths or null.
+export function buildArgs({ input, output, overlay, fx, music, options }, info) {
   const o = normOptions(options);
   const end = o.trimEnd != null && o.trimEnd > o.trimStart ? Math.min(o.trimEnd, info.duration) : info.duration;
   const D = Math.max(0.5, end - o.trimStart);
@@ -136,7 +214,20 @@ export function buildArgs({ input, output, overlay, music, options }, info) {
   const dur = outDuration(o.speed, D, o);
   const a = ['-hide_banner', '-y', '-nostats', '-progress', 'pipe:1'];
   a.push('-ss', f2(o.trimStart), '-t', f2(D), '-i', input);
-  let idx = 1, ovIdx = -1, muIdx = -1;
+
+  const fxResolved = resolveFx(fx || o.fx);
+  let fxPath = null, fxBlend = 'screen', fxOpacity = 1.0;
+  if (fxResolved && fxResolved.path && existsSync(fxResolved.path)) {
+    fxPath = fxResolved.path;
+    fxBlend = ['overlay', 'screen', 'addition'].includes(fxResolved.blend) ? fxResolved.blend : (/\.webm$/i.test(fxPath) ? 'overlay' : 'screen');
+    fxOpacity = clamp(Number(fxResolved.opacity != null ? fxResolved.opacity : 1.0), 0, 1);
+  }
+
+  let idx = 1, fxIdx = -1, ovIdx = -1, muIdx = -1;
+  if (fxPath) {
+    a.push('-stream_loop', '-1', '-i', fxPath);
+    fxIdx = idx++;
+  }
   if (overlay) { a.push('-i', overlay); ovIdx = idx++; }
   const useMusic = o.audio === 'music' && !!music;
   if (useMusic) { a.push('-stream_loop', '-1', '-i', music); muIdx = idx++; }
@@ -173,6 +264,25 @@ export function buildArgs({ input, output, overlay, music, options }, info) {
     f.push(src + 'fps=30,' + fit + '[v0]');
   }
   let last = '[v0]';
+  if (fxIdx >= 0) {
+    f.push('[' + fxIdx + ':v]scale=' + o.W + ':' + o.H + ':force_original_aspect_ratio=increase,crop=' + o.W + ':' + o.H + ',setsar=1,fps=30[fx_fit]');
+    if (fxBlend === 'overlay') {
+      f.push('[fx_fit]format=rgba[fx_rgba]');
+      if (fxOpacity < 0.999) {
+        f.push('[fx_rgba]colorchannelmixer=aa=' + f2(fxOpacity) + '[fx_alpha]');
+        f.push(last + '[fx_alpha]overlay=0:0:format=auto:shortest=1[v_fx]');
+      } else {
+        f.push(last + '[fx_rgba]overlay=0:0:format=auto:shortest=1[v_fx]');
+      }
+      last = '[v_fx]';
+    } else if (fxBlend === 'addition') {
+      f.push(last + '[fx_fit]blend=all_mode=addition' + (fxOpacity < 0.999 ? ':all_opacity=' + f2(fxOpacity) : '') + ':shortest=1[v_fx]');
+      last = '[v_fx]';
+    } else {
+      f.push(last + '[fx_fit]blend=all_mode=screen' + (fxOpacity < 0.999 ? ':all_opacity=' + f2(fxOpacity) : '') + ':shortest=1[v_fx]');
+      last = '[v_fx]';
+    }
+  }
   if (ovIdx >= 0) {
     f.push('[' + ovIdx + ':v]scale=' + o.W + ':' + o.H + ',format=rgba[ov]');
     f.push(last + '[ov]overlay=0:0:format=auto[v1o]');
@@ -209,10 +319,10 @@ export function cancelJob(id) {
 const safeBase = (n) => basename(String(n || 'video')).replace(/\.[a-z0-9]+$/i, '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60) || 'video';
 
 // inputPath: the clip; outDir: where the finished MP4 goes; the rest as in buildArgs.
-export function enqueue({ inputPath, outDir, label, overlay, music, options }) {
+export function enqueue({ inputPath, outDir, label, overlay, fx, music, options }) {
   const job = { id: ++seq, state: 'queued', pct: 0, out: null, error: '', proc: null };
   jobs.set(job.id, job);
-  chain = chain.then(() => runJob(job, { inputPath, outDir, label, overlay, music, options })).catch(() => {});
+  chain = chain.then(() => runJob(job, { inputPath, outDir, label, overlay, fx, music, options })).catch(() => {});
   return { id: job.id };
 }
 async function runJob(job, p) {
@@ -226,7 +336,7 @@ async function runJob(job, p) {
     let name = safeBase(p.inputPath) + (p.label ? ' ' + safeBase(p.label) : ' edited') + '.mp4', i = 2;
     while (existsSync(join(p.outDir, name))) { name = name.replace(/( \(\d+\))?\.mp4$/, ' (' + i + ').mp4'); i++; }
     const outPath = join(p.outDir, '.' + name + '.part.mp4');         // not listed until finished
-    const built = buildArgs({ input: p.inputPath, output: outPath, overlay: p.overlay, music: p.music, options: p.options }, info);
+    const built = buildArgs({ input: p.inputPath, output: outPath, overlay: p.overlay, fx: p.fx, music: p.music, options: p.options }, info);
     const total = built.duration;
     const r = await run(bin, built.args, {
       onProc: (pr) => { job.proc = pr; },

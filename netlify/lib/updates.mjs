@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.46', date: '2026-11-01' },
   { version: '1.0.45', date: '2026-11-01' },
   { version: '1.0.44', date: '2026-11-01' },
   { version: '1.0.43', date: '2026-11-01' },
@@ -92,6 +93,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-01', title: 'Mac: AirPrint printers print at the best quality automatically', for: ['website', 'app'], app: '1.0.46',
+    items: [
+      'On a Mac, a printer added as AirPrint now prints photos at its highest quality, and on photo paper when the printer offers it, without opening the printer settings. Printers with their own driver (DNP, HiTi and similar) keep their own settings.',
+      'Some AirPrint printers list few quality options; then they print at their own default.'
+    ]
+  },
   {
     date: '2026-11-01', title: 'Mac app: Nikon and Sony Alpha cameras connect straight over USB', for: ['website', 'app'], app: '1.0.45',
     items: [

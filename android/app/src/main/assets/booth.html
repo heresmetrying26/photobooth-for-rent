@@ -1639,7 +1639,7 @@
     background:var(--panel-2); border:1.5px solid var(--line); font:800 12px 'Manrope',sans-serif; color:var(--ink-dim);
   }
   .step-tab .st{display:flex; flex-direction:column; min-width:0; line-height:1.2;}
-  .step-tab b{font-size:13px; font-weight:800; white-space:nowrap;}
+  .step-tab b{font-size:13px; font-weight:800; white-space:normal; overflow-wrap:break-word; text-wrap:balance;}      /* a long name (Camera & printer) wraps onto two lines instead of spilling out */
   /* The one-line summary only shows when the tab is wide enough to show it whole;
      otherwise a dot on the number says the step still needs something. */
   .step-tab{container-type:inline-size;}
@@ -1658,7 +1658,7 @@
     .step-bar{gap:4px;}
     .step-tab{flex-direction:column; justify-content:center; gap:3px; padding:6px 2px; text-align:center;}
     .step-tab .st{align-items:center;}
-    .step-tab b{font-size:12.5px;}
+    .step-tab b{font-size:12.5px; line-height:1.15;}
   }
   @media (max-width:640px){
     .step-tab b{font-size:11.5px;}

@@ -12216,6 +12216,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     let colorCh = [], qualCh = [], mediaCh = [];
     if(p){
       if(p.escp2 && pbDebug()) colorCh = [['mono', 'Black & white'], ['color', 'Colour (experimental)']];
+      else if(p.canon && pbDebug()) colorCh = [['color', 'Colour'], ['mono', 'Black & white']];
       else if((p.colorModes || []).includes('monochrome') && (p.colorModes || []).includes('color')) colorCh = [['', 'Printer default'], ['color', 'Colour'], ['mono', 'Black & white']];
       const qs = p.qualities || [];
       if(qs.some(q => q >= 3 && q <= 5)) qualCh = [['', 'Printer default']].concat([[ 'draft', 'Draft (fast)'], ['normal', 'Normal'], ['high', 'High (best)']].filter((c, i) => qs.includes(3 + i)));
@@ -12257,7 +12258,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
       const sel = wifiPrinter && wifiPrinter.ip === p.ip;
-      b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? '' : ' · ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.escpr ? ' · photo' + (pbDebug() ? ' (experimental)' : '') : '') + (p.escp2 ? ' · photo (black & white' + (pbDebug() ? '; colour experimental' : '') + ')' : '') + (p.raw ? ' · receipt' : '') + (p.needsPermission ? ' · tap to allow USB access' : '') + (p.noDriver ? ' · no driver' : '');
+      b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? '' : ' · ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.escpr ? ' · photo' + (pbDebug() ? ' (experimental)' : '') : '') + (p.escp2 ? ' · photo (black & white' + (pbDebug() ? '; colour experimental' : '') + ')' : '') + (p.raw ? ' · receipt' : '') + (p.needsPermission ? ' · tap to allow USB access' : '') + ((p.noDriver || (p.canon && !pbDebug())) ? ' · no driver' : '') + (p.canon && pbDebug() ? ' · photo (Canon USB, experimental)' : '');
       b.addEventListener('click', () => {
         if(p.needsPermission){
           // The tablet has not been given access to this USB printer yet, so it cannot read what it is.
@@ -12267,11 +12268,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           setTimeout(() => wifiRenderList(wifiList()), 6000);
           return;
         }
-        if(p.noDriver){
+        if(p.noDriver || (p.canon && !pbDebug())){
           showToast(p.name + ' is detected, but the app has no driver for it. Use the Android print dialog or the laptop print station for it.' + (pbDebug() && p.usb ? ' [USB ' + (p.vid||0).toString(16) + ':' + (p.pid||0).toString(16) + (p.info ? ' ' + p.info : ' (could not read its ID)') + ']' : ''), pbDebug() ? 14000 : 6000);
           return;
         }
-        wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
+        wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
         showToast('Will print to ' + p.name + '.', 3000);
         wifiRenderList(wifiList());
         refreshPrintUI();
@@ -12385,6 +12386,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         const bytes = new window._btThermal.EscPosEncoder(dotW).initialize().image(window._btThermal.toReceiptCanvas(cv, dotW)).cut().getBuffer();
         await wifiJob(id => window.__PBNet.printRaw(id, p.ip, wifiBytesToB64(bytes)));
       }
+      return;
+    }
+    if(p.canon){
+      // Experimental Canon G-series path over USB: 300 dpi, plain paper, 4x6 / A4 / Letter.
+      const picsC = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
+      await wifiJob(id => window.__PBNet.printCanon(id, p.ip, paper.w, paper.h, 1, JSON.stringify(picsC), JSON.stringify(wifiOpts())));
       return;
     }
     if(p.escp2){

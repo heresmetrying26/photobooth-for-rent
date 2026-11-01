@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.45', date: '2026-11-01' },
   { version: '1.0.44', date: '2026-11-01' },
   { version: '1.0.43', date: '2026-11-01' },
   { version: '1.0.42', date: '2026-11-01' },
@@ -91,6 +92,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-01', title: 'Mac app: Nikon and Sony Alpha cameras connect straight over USB', for: ['website', 'app'], app: '1.0.45',
+    items: [
+      'On a Mac the app now connects to a Nikon (D-series and Z-series) or a Sony Alpha camera by itself over USB, the same way it already does for Canon EOS and the same way the Windows app does, instead of through the browser layer. Live view and the real shutter work, and photos come straight to the laptop.',
+      'Nikon: set the camera’s USB mode to PTP or MTP. The app records to the camera’s own memory (no SD card needed) and picks JPEG and a photo size that comes over USB quickly.',
+      'Sony: set USB Connection to PC Remote (MENU > Setup > USB). Photos go to the computer only, so no memory card is needed. Allow about 3 seconds after connecting before the first photo.',
+      'Setup → Camera → Camera check on the Mac now names the Nikon or Sony it finds, not only Canon.'
+    ]
+  },
   {
     date: '2026-11-01', title: 'Mac app: Camera check', for: ['website', 'app'], app: '1.0.44',
     items: [

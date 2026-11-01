@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.43', date: '2026-11-01' },
   { version: '1.0.42', date: '2026-11-01' },
   { version: '1.0.41', date: '2026-10-31' },
   { version: '1.0.40', date: '2026-10-31' },
@@ -89,6 +90,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-01', title: 'Mac app: Canon EOS cameras connect straight over USB', for: ['website', 'app'], app: '1.0.43',
+    items: [
+      'On a Mac the app now connects to a Canon EOS camera by itself over USB, the same way the Windows app does, instead of through the browser layer. Nikon and Sony keep working as before.',
+      'If the camera is not found, the message now says whether the Mac itself lists a camera (so it is the cable, adapter or camera mode) or whether the app could not open it.'
+    ]
+  },
   {
     date: '2026-11-01', title: 'Laptop app: a USB camera is found even with a hub or other USB devices plugged in', for: ['website', 'app'], app: '1.0.42',
     items: [

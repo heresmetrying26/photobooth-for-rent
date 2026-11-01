@@ -170,7 +170,16 @@ function setupSession() {
   const ALLOW = new Set(['media', 'fullscreen', 'window-management', 'clipboard-sanitized-write', 'clipboard-read', 'usb', 'hid', 'serial', 'pointerLock', 'notifications', 'speaker-selection', 'keyboardLock']);
   ses.setPermissionRequestHandler((wc, perm, cb, details) => cb(ALLOW.has(perm) && ours(details.requestingUrl || wc.getURL())));
   ses.setPermissionCheckHandler((wc, perm, origin) => ALLOW.has(perm) && (!origin || isOurs(origin) || origin === 'null' || (wc && isOurs(wc.getURL()))));
-  ses.setDevicePermissionHandler((d) => (d.deviceType === 'usb' || d.deviceType === 'hid') && (!d.origin || isOurs(d.origin) || d.origin === 'null'));
+  // The booth only needs the camera: showing it every USB device (hubs, card readers) made the camera library fail with "Unknown model".
+  const CAM_VENDORS = [0x054c, 0x04b0, 0x04a9, 0x04cb, 0x07b4, 0x04da, 0x0a17];   // Sony, Nikon, Canon, Fujifilm, Olympus, Panasonic, Pentax
+  const camLike = (dev) => {
+    if (!dev) return true;
+    if (CAM_VENDORS.includes(dev.vendorId)) return true;
+    const cfgs = dev.configurations;
+    if (!Array.isArray(cfgs)) return true;           // can't tell: keep the old behaviour
+    return cfgs.some((c) => (c.interfaces || []).some((i) => (i.alternates || []).some((a) => a.interfaceClass === 6)));
+  };
+  ses.setDevicePermissionHandler((d) => ((d.deviceType === 'usb' && camLike(d.device)) || d.deviceType === 'hid') && (!d.origin || isOurs(d.origin) || d.origin === 'null'));
   ses.setUSBProtectedClassesHandler(() => []);
   // Chrome would show a USB picker; the booth camera is the device we want.
   ses.on('select-usb-device', (event, details, cb) => {

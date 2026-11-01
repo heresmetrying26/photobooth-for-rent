@@ -7684,8 +7684,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(err && err.name === 'UsbNoLiveView') return (usbLvBlockedText() || 'The camera connected but live view didn’t start. Close the camera’s menu, put the mode dial on M, P, A or S, take the lens cap off and check there’s a memory card in it.') + ' Then tap Try Again.';
     if(usbCam.freed && usbBusyError(err)) return 'Another app is still holding the camera, even after ' + (DESKTOP ? 'the app' : 'the Helper') + ' tried to let go of it. Quit Imaging Edge, Photos and Image Capture, switch the camera off and on, unplug and replug the cable, then tap Try Again.';
     if(/claim|access denied|busy|Unable to open|LIBUSB_ERROR_ACCESS|LIBUSB_ERROR_BUSY/i.test(s)) return 'Another app is using the camera. Quit Photos, Image Capture, EOS Utility / Nikon / Sony Imaging Edge apps and other tabs, unplug and replug the camera, then tap Try Again.' + (USB_MAC && !DESKTOP && !usbCam.freed ? ' Tip: open the photobooth4u Helper on this Mac (download at photobooth4u.netlify.app/downloads) and the booth lets go of the camera for you.' : '') + (win ? ' On Windows the camera’s driver blocks browser access — use a Mac or Android device, or the camera’s webcam mode.' : '');
+    if(/unknown model|could not detect/i.test(s)) return 'The booth can’t find a camera it knows on USB' + (usbCam.seen ? ' (it sees: ' + usbCam.seen + ')' : '') + '. Plug the camera straight into the ' + LOCAL_DEVICE + ' (not through a hub), switch it on, set its dial to M, P, A or S, and turn its Wi-Fi off. Then unplug and replug it and tap Try Again.';
     return 'USB camera problem (' + s + '). Unplug and replug the camera, then tap Try Again. If it keeps failing, reload the page.';
   }
+  // Which of the USB devices the page can see are cameras (a PTP interface, or a camera maker's id). On a Mac behind a USB-C hub the
+  // list also holds the hub, card readers and so on; only the camera is used to name and pick.
+  const USB_CAM_VENDORS = [0x054c, 0x04b0, 0x04a9, 0x04cb, 0x07b4, 0x04da, 0x0a17];   // Sony, Nikon, Canon, Fujifilm, Olympus, Panasonic, Pentax
+  const usbClassesOf = d => { const r = []; try{ (d.configurations || []).forEach(c => (c.interfaces || []).forEach(i => (i.alternates || []).forEach(a => { if(r.indexOf(a.interfaceClass) < 0) r.push(a.interfaceClass); }))); }catch(e){} return r; };
+  const usbLooksLikeCamera = d => !!d && (USB_CAM_VENDORS.indexOf(d.vendorId) >= 0 || usbClassesOf(d).indexOf(6) >= 0);
+  const usbDescribe = list => (list || []).map(d => usbDevKey(d) + (d.productName ? ' ' + d.productName : '') + ' [class ' + (usbClassesOf(d).join(',') || '?') + ']').join('; ');
   async function usbConnect(){
     if(usbCam.camera) return usbCam.camera;
     if(usbCam.viaHelper){
@@ -7702,20 +7709,28 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // Mac: macOS grabs a camera when it is plugged in; the app (or the Helper, in Chrome) lets go of it first.
     await usbFreeCamera(false);
     let devices = await navigator.usb.getDevices();
-    if(!devices.length){
+    if(!devices.some(usbLooksLikeCamera)){
       // Needs a tap (the USB picker); after that the camera stays allowed.
       await navigator.usb.requestDevice({ filters: [{ classCode: 6, subclassCode: 1 }] });
       devices = await navigator.usb.getDevices();
     }
     for(const d of devices){ try{ if(d.opened) await d.close(); }catch(e){} }
+    const camDev = devices.find(usbLooksLikeCamera) || devices[0];
     const mod = await import(USB_LIB + (usbCam.libGen ? '?r=' + usbCam.libGen : ''));
     usbCam.libGen++;
     const cam = new mod.Camera();
-    await cam.connect();
+    try{ await cam.connect(); }
+    catch(err){
+      // "Unknown model" = the camera library found no camera it knows among the USB devices: record what it was given.
+      usbCam.seen = usbDescribe(devices);
+      usbLog('connect-fail', Object.assign(usbErrInfo(err), { listed: usbCam.seen }));
+      throw err;
+    }
+    usbCam.seen = '';
     usbCam.camera = cam;
     usbCam.vfOn = false;
-    usbCam.name = (devices[0] && devices[0].productName) || '';
-    usbCam.devId = usbDevKey(devices[0]);
+    usbCam.name = (camDev && camDev.productName) || '';
+    usbCam.devId = usbDevKey(camDev);
     usbLog('connected', { camera: usbCam.name, id: usbCam.devId, connects: usbCam.libGen, freed: !!usbCam.freed, heapMB: usbHeapMB() });
     const opt = Array.from(cameraSelect.options).find(o => o.value === USB_CAM_ID);
     if(opt && usbCam.name) opt.textContent = usbOptionLabel();

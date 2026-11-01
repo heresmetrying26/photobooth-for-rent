@@ -3147,7 +3147,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <button type="button" class="action-btn" id="s4PreviewBtn" style="width:auto;margin:0;">Print preview</button>
         </div>
         <div style="display:flex;gap:12px;align-items:flex-start;">
-          <img id="s4Thumb" alt="How the page will look" hidden style="max-height:170px;border:1px solid #ddd;background:#fff;">
+          <img id="s4Thumb" alt="How the page will look" hidden style="max-height:170px;border:1px solid #bbb;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);">
           <p class="panel-hint" id="s4ThumbNote" style="margin:0;">The preview shows how the printed page will look.</p>
         </div>
       </div>
@@ -3836,18 +3836,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
             <input type="checkbox" id="keychainToggle">
           </label>
           <div id="photoFitBox">
-            <p class="sub-label" style="margin:10px 0 6px;">Photo on the sheet</p>
-            <select id="photoFitSelect" class="printer-input">
-              <option value="auto">Automatic (fills the page when the shape matches)</option>
-              <option value="contain">Whole photo, white borders if the shape differs</option>
-              <option value="fill">Fill the whole page (edges may be cut)</option>
-              <option value="size">Choose a photo size&hellip;</option>
-            </select>
-            <div class="print-size-row hidden" id="photoSizeRow"></div>
+            <p class="sub-label" style="margin:10px 0 6px;">Photo size on the paper</p>
+            <div class="print-size-row" id="photoSizeRow"></div>
+            <p class="panel-hint" id="photoFitHint" style="margin:2px 0 6px;"></p>
             <label class="switch-row" id="borderlessRow" style="margin:8px 0 2px;"><span>Borderless, no trimming</span><input type="checkbox" id="borderlessToggle"></label>
             <p class="panel-hint" id="borderlessHint" style="margin:2px 0 8px;"></p>
             <div style="display:flex;gap:10px;align-items:center;margin:6px 0 8px;">
-              <img id="ppThumb" alt="How the page will look" hidden style="max-height:120px;border:1px solid #ddd;background:#fff;">
+              <img id="ppThumb" alt="How the page will look" hidden style="max-height:140px;border:1px solid #bbb;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);">
               <p class="panel-hint" id="ppThumbNote" style="margin:0;">Finish a photo session to see a preview here.</p>
               <button type="button" class="action-btn" id="printPreviewBtn" style="width:auto;margin:0;">Preview</button>
             </div>
@@ -11837,7 +11832,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       printHint.textContent = 'Each strip on its own ' + paperFor(printSize).name + ' page (' + n + ' page' + (n === 1 ? '' : 's') + ').';
     } else if(isReceiptPaper(printSize)){
       printHint.textContent = 'Prints on the ' + paperFor(printSize).name + ' roll at full width; the printer cuts it at the end. Set the printer to roll paper (no fixed page size).';
-    } else if(stripTwoUp(printSize)){
+    } else if(stripTwoUp(printSize) && !sizedPhoto()){
       printHint.textContent = (layoutDef().kind === 'receipt' ? 'Two receipts side by side.' : 'Two strips side by side.') + ' Cut down the middle.' + paperMatchTip();
     } else {
       printHint.textContent = 'Prints at ' + paperFor(printSize).name + ' size.' + paperMatchTip();
@@ -11894,7 +11889,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const m = printPrefs.fit || 'auto';
     if(m === 'contain'){ drawFitted(ctx, src, 0, 0, w, h, 'contain'); return; }
     if(m === 'fill'){ drawFitted(ctx, src, 0, 0, w, h, 'cover'); return; }
-    if(m === 'size' && printPrefs.photoSize){
+    if(m === 'size' && sizedPhoto()){
       const ps = paperFor(printPrefs.photoSize);
       if(ps){
         let bw = ps.w / 25.4 * PRINT_DPI, bh = ps.h / 25.4 * PRINT_DPI;
@@ -11906,16 +11901,20 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     }
     drawFitted(ctx, src, 0, 0, w, h);                  // automatic: the original behaviour
   }
-  const photoFitSelect = document.getElementById('photoFitSelect'), photoSizeRow = document.getElementById('photoSizeRow');
+  const photoSizeRow = document.getElementById('photoSizeRow'), photoFitHint = document.getElementById('photoFitHint');
   const borderlessToggle = document.getElementById('borderlessToggle'), borderlessHint = document.getElementById('borderlessHint');
   // Photo sizes smaller than the chosen paper (the paper is always stored short side first).
   function photoSizeChoices(){
     const paper = printSize ? paperFor(printSize) : null;
     if(!paper) return [];
-    return ['3.5x5', '4x6', '5x7', '6x8', '8x10', 'A5'].filter(k => {
+    return ['2x6', '3.5x5', '4x6', '5x7', '6x8', '8x10', 'A5'].filter(k => {
       const p = paperFor(k);
       return p && p.w <= paper.w + 0.5 && p.h <= paper.h + 0.5 && (p.w < paper.w - 1 || p.h < paper.h - 1);
     });
+  }
+  // A real photo size is chosen and it fits on this paper: the photo prints at that size, in the middle of the sheet.
+  function sizedPhoto(){
+    return printPrefs.fit === 'size' && !!printPrefs.photoSize && photoSizeChoices().includes(printPrefs.photoSize);
   }
   function refreshPhotoFitUI(){
     const box = document.getElementById('photoFitBox');
@@ -11925,17 +11924,18 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     box.classList.toggle('hidden', !show);
     if(!show) return;
     const sizes = photoSizeChoices();
-    photoFitSelect.querySelector('option[value="size"]').disabled = !sizes.length;
-    if(printPrefs.fit === 'size' && !sizes.includes(printPrefs.photoSize)) printPrefs.photoSize = sizes[0] || '';
-    if(printPrefs.fit === 'size' && !printPrefs.photoSize) printPrefs.fit = 'auto';
-    photoFitSelect.value = printPrefs.fit || 'auto';
-    photoSizeRow.classList.toggle('hidden', printPrefs.fit !== 'size');
+    if(printPrefs.fit === 'size' && !sizes.includes(printPrefs.photoSize)) printPrefs.fit = 'auto';      // that size does not fit this paper
+    const cur = printPrefs.fit === 'size' ? 'size:' + printPrefs.photoSize : printPrefs.fit === 'fill' ? 'fill' : 'auto';
+    const opts = [['auto', 'Fit the page']].concat(sizes.map(k => ['size:' + k, paperFor(k).name]), [['fill', 'Fill the page']]);
     photoSizeRow.innerHTML = '';
-    sizes.forEach(k => {
+    opts.forEach(o => {
       const b = document.createElement('button');
-      b.type = 'button'; b.className = 'print-size-btn' + (k === printPrefs.photoSize ? ' active' : ''); b.dataset.size = k; b.textContent = paperFor(k).name;
+      b.type = 'button'; b.className = 'print-size-btn' + (o[0] === cur ? ' active' : ''); b.dataset.pick = o[0]; b.textContent = o[1];
       photoSizeRow.appendChild(b);
     });
+    photoFitHint.textContent = cur === 'fill' ? 'The photo covers the whole page. The edges may be cut off.'
+      : cur.indexOf('size:') === 0 ? 'The photo prints at real ' + paperFor(printPrefs.photoSize).name + ' size, in the middle of the ' + paper.name + ' paper. The rest of the paper stays white.'
+      : 'The photo is as big as the paper allows. Nothing is cut off; if the shapes differ there are white borders.';
     // Borderless is sent by the Android app to Wi-Fi / driverless USB printers. On the website and the laptop app the
     // printer driver decides the margins, so the switch is hidden there.
     const bl = !!(window.__PBNet && typeof window.__PBNet.scan === 'function');
@@ -11947,15 +11947,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     borderlessHint.textContent = hint;
     schedulePrintThumb();
   }
-  photoFitSelect.addEventListener('change', () => {
-    printPrefs.fit = photoFitSelect.value;
-    if(printPrefs.fit === 'size' && !printPrefs.photoSize){ printPrefs.photoSize = photoSizeChoices()[0] || ''; }
-    printPrefsChanged();
-  });
   photoSizeRow.addEventListener('click', (e) => {
     const b = e.target.closest('.print-size-btn');
     if(!b) return;
-    printPrefs.photoSize = b.dataset.size; printPrefsChanged();
+    const v = b.dataset.pick || 'auto';
+    if(v.indexOf('size:') === 0){ printPrefs.fit = 'size'; printPrefs.photoSize = v.slice(5); }
+    else printPrefs.fit = v;
+    printPrefsChanged();
   });
   borderlessToggle.addEventListener('change', () => { printPrefs.borderless = borderlessToggle.checked; printPrefsChanged(); });
   document.getElementById('printPreviewBtn').addEventListener('click', () => showPrintPreview(false, opCopies || 1, true));
@@ -11991,7 +11989,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const paper = printSize ? paperFor(printSize) : null;
     let pr = printSize ? (printerFor(printSize) || '') : '';
     try{ if(wifiPrinter && wifiPrinter.name) pr = wifiPrinter.name; }catch(e){}
-    const fitTxt = { auto: 'photo fitted automatically', contain: 'whole photo with white borders', fill: 'photo fills the page', size: 'photo size ' + (printPrefs.photoSize ? (paperFor(printPrefs.photoSize) || {}).name || '' : '') }[printPrefs.fit || 'auto'];
+    const fitTxt = { auto: 'photo fitted automatically', contain: 'whole photo with white borders', fill: 'photo fills the page', size: 'photo at real ' + (printPrefs.photoSize ? (paperFor(printPrefs.photoSize) || {}).name || '' : '') + ' size, in the middle' }[printPrefs.fit || 'auto'];
     document.getElementById('s4PrinterSum').textContent =
       (paper ? 'Paper: ' + paper.name + '. ' : 'No paper size chosen yet. ') +
       (pr ? 'Printer: ' + pr + '. ' : 'No printer chosen yet. ') +
@@ -12044,7 +12042,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, c.width, c.height);
     ctx.imageSmoothingQuality = 'high';
-    if(stripTwoUp(key)){
+    if(stripTwoUp(key) && !sizedPhoto()){
       // Classic photo-booth sheet: two identical strips, cut down the middle.
       const half = c.width / 2;
       drawFitted(ctx, src, 0, 0, half, c.height);
@@ -12288,7 +12286,8 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       (pname ? 'Printer: ' + pname : 'No printer chosen yet: the print dialog will open');
     const notes = [];
     if(pages.length > 1) notes.push('Page 1 of ' + pages.length + '.');
-    if(stripTwoUp(printSize)) notes.push('Two strips side by side: cut down the middle.');
+    if(stripTwoUp(printSize) && !sizedPhoto()) notes.push('Two strips side by side: cut down the middle.');
+    if(sizedPhoto()) notes.push('The photo is printed at real ' + paperFor(printPrefs.photoSize).name + ' size, in the middle of the paper.');
     if(printPrefs.borderless && window.__PBNet) notes.push('Borderless: printed edge to edge with no trimming (Wi-Fi and driverless USB printers).');
     if(auto === true) notes.push('After this, auto-print sends photos without asking.');
     document.getElementById('ppvNote').textContent = notes.join(' ');

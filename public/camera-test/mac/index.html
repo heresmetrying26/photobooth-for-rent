@@ -62,9 +62,11 @@
           <li>Camera USB mode: <b>Photo Import / Remote Control</b> (Canon) or <b>PTP/MTP</b> (Nikon). Plug in, then switch the camera on.</li>
           <li><b>Quit Photos, Image Capture, Preview</b>, EOS Utility and Nikon apps &mdash; macOS grabs cameras for them.</li>
           <li>Mode dial on <b>M, P, A or S</b> (Auto works too); image quality <b>JPEG</b>. Charge the battery.</li>
+          <li>Plug the camera <b>straight into the Mac</b> with its own data cable (not a charge-only cable, and not through a hub). Camera <b>Wi-Fi off</b>.</li>
           <li>Android: use a USB-C OTG adapter; tap <b>Allow</b> when Chrome asks.</li>
         </ol>
         <p class="help">Normal: the camera's own screen may go dark while connected (Canon, Nikon) &mdash; live view shows here instead.</p>
+        <p class="help">This page tests the <b>Chrome</b> camera path only. The photobooth4u <b>Mac app</b> has its own USB connection for Canon EOS cameras, so a result here does not say whether the app will work.</p>
       </div>
 
 
@@ -123,6 +125,22 @@
   }
   function hideMsg(){ msgEl.className = 'msg'; }
 
+  // Which of the USB devices this page can see are cameras (a picture / PTP interface, or a camera maker's id).
+  // A hub or card reader on the same port is not a camera.
+  const CAM_VENDORS = [0x054c, 0x04b0, 0x04a9, 0x04cb, 0x07b4, 0x04da, 0x0a17];   // Sony, Nikon, Canon, Fujifilm, Olympus, Panasonic, Pentax
+  const usbClasses = d => { const r = []; try{ (d.configurations || []).forEach(c => (c.interfaces || []).forEach(i => (i.alternates || []).forEach(a => { if(r.indexOf(a.interfaceClass) < 0) r.push(a.interfaceClass); }))); }catch(e){} return r; };
+  const looksLikeCamera = d => !!d && (CAM_VENDORS.indexOf(d.vendorId) >= 0 || usbClasses(d).indexOf(6) >= 0);
+  const hex4 = n => ('0000' + Number(n).toString(16)).slice(-4);
+  const describeUsb = list => (list || []).map(d => hex4(d.vendorId) + ':' + hex4(d.productId) + (d.productName ? ' ' + d.productName : '') + ' [class ' + (usbClasses(d).join(',') || '?') + ']').join('; ');
+  async function logUsb(){
+    try{
+      const list = await navigator.usb.getDevices();
+      report.usbSeen = describeUsb(list);
+      log(list.length ? 'USB devices this page may use: ' + report.usbSeen : 'This page is not allowed to use any USB device yet (nothing was picked).');
+      return list;
+    }catch(e){ return []; }
+  }
+
   // Mac: macOS grabs a camera the moment it is plugged in. The photobooth4u Helper (if it is running on this Mac)
   // lets go of it; without the Helper, quit Photos / Image Capture by hand.
   const IS_MAC = /Mac/i.test(navigator.platform || '') && !/iPhone|iPad/i.test(navigator.userAgent || '');
@@ -145,6 +163,8 @@
   function explain(err){
     const s = String((err && (err.message || err.name)) || err);
     if(/No device selected|NotFoundError/i.test(s) && /Win/i.test(navigator.platform || '')) return 'No camera picked. On Windows the camera only shows in the list after the one-time driver switch (see "Windows: one-time driver switch" on the left).';
+    if(/Unknown model|Could not detect/i.test(s)) return 'The camera library found no camera it knows on USB' + (report.usbSeen ? ' (it was given: ' + report.usbSeen + ')' : '') + '. Plug the camera straight into the Mac (not through a hub), switch it on, mode dial on M, P, A or S, camera Wi-Fi off, then reload this page and connect again. Canon EOS 1500D / 2000D is listed in the library as USB 04a9:32e1.';
+    if(/No device selected|NotFoundError/i.test(s) && IS_MAC) return 'No camera picked: Chrome’s list only shows a device that presents itself as a camera, and none did. First check the Mac sees it: Apple menu, hold Option, System Information, USB: is the Canon listed there? If NOT, the Mac does not see the camera at all, so it is the cable (use the camera’s own data cable), the adapter or the camera (switch it on, Wi-Fi off, dial on M). If it IS listed, quit Photos and Image Capture, switch the camera off and on, then connect again and pick it.';
     if(/No device selected|NotFoundError/i.test(s)) return 'No camera picked. If it was missing from the list, check the cable, switch the camera on, and set USB mode to Photo Import / Remote Control (Canon), MTP/PTP (Nikon) or PC Remote (Sony).';
     if(IS_MAC && BUSY_RE.test(s)) return freedOnce
       ? 'Another app is still holding the camera, even after the Helper tried to let go of it. Quit Imaging Edge, Photos and Image Capture, switch the camera off and on, unplug and replug the cable, then connect again.'
@@ -268,7 +288,7 @@
         ({ Camera } = await import('../build/camera.js'));
       }
       await freeCamera();
-      const allowed = await navigator.usb.getDevices();
+      const allowed = (await navigator.usb.getDevices()).filter(looksLikeCamera);
       if(allowed.length){
         log('Using the camera already allowed: ' + (allowed[0].productName || 'camera'));
       } else {
@@ -290,6 +310,7 @@
       console.error(err);
       log('Connect failed: ' + (err && (err.message || err.name) || err));
       report.connectError = String(err && (err.message || err.name) || err);
+      await logUsb();
       // Held by macOS: let go of it through the Helper and reconnect once by itself (the library connects once per page).
       let retried = false; try{ retried = sessionStorage.getItem('pbFreedRetry') === '1'; }catch(e){}
       if(IS_MAC && !retried && BUSY_RE.test(String((err && (err.message || err.name)) || err)) && await freeCamera()){

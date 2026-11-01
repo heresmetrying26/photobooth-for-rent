@@ -139,7 +139,10 @@ export function lanAddress() {
       else if (/^172\.(1[6-9]|2\d|3[01])\./.test(a.address)) score += 1;
       if (/^(wi-?fi|wlan|en0|en1|wireless|local area connection\*)/i.test(name)) score += 2;
       if (/^192\.168\.137\./.test(a.address)) score += 3;   // Windows mobile hotspot
-      if (VIRTUAL.test(name)) score -= 10;
+      if (VIRTUAL.test(name)) {
+        if (/^bridge100$/i.test(name) || (/^192\.168\.[23]\./.test(a.address) && /^bridge/i.test(name))) score += 5; // macOS internet sharing bridge
+        else score -= 10;
+      }
       cands.push({ ip: a.address, name, score });
     }
   }

@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.42', date: '2026-11-01' },
   { version: '1.0.41', date: '2026-10-31' },
   { version: '1.0.40', date: '2026-10-31' },
   { version: '1.0.39', date: '2026-10-31' },
@@ -88,6 +89,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-01', title: 'Laptop app: a USB camera is found even with a hub or other USB devices plugged in', for: ['website', 'app'], app: '1.0.42',
+    items: [
+      'The app now only looks at cameras on USB (Canon, Nikon, Sony, Fujifilm, Olympus, Panasonic, Pentax), not at every USB device. A hub, a card reader or the laptop’s own camera could stop a Canon from being found (“Unknown model”).',
+      'If the camera is still not found, the message now lists what the app sees, and Copy camera log has the same detail.'
+    ]
+  },
   {
     date: '2026-11-01', title: 'Photo size on the paper, in plain choices', for: ['website'],
     items: [

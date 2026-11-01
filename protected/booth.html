@@ -12215,17 +12215,17 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     };
     let colorCh = [], qualCh = [], mediaCh = [];
     if(p){
-      if(p.escp2 && pbDebug()) colorCh = [['mono', 'Black & white'], ['color', 'Colour (experimental)']];
+      if(p.escp2 && pbDebug()) colorCh = [['mono', 'Black & white'], ['color', 'Colour (beta)']];
       else if(p.canon) colorCh = [['color', 'Colour'], ['mono', 'Black & white']];
       else if((p.colorModes || []).includes('monochrome') && (p.colorModes || []).includes('color')) colorCh = [['', 'Printer default'], ['color', 'Colour'], ['mono', 'Black & white']];
       const qs = p.qualities || [];
       if(p.escp2) qualCh = [['normal', 'Normal'], ['draft', 'Draft (fast)'], ['high', 'Best (slower, finer)']];
-      else if(p.canon) qualCh = [['normal', 'Normal'], ['draft', 'Draft (saves ink)'], ['high', 'Best (600 dpi, untested)']];
+      else if(p.canon) qualCh = [['normal', 'Normal'], ['draft', 'Draft (saves ink)'], ['high', 'Best (600 dpi, beta)']];
       else       if(qs.some(q => q >= 3 && q <= 5)) qualCh = [['', 'Printer default']].concat([[ 'draft', 'Draft (fast)'], ['normal', 'Normal'], ['high', 'High (best)']].filter((c, i) => qs.includes(3 + i)));
       const mt = p.mediaTypes || [];
       const plain = mt.some(m => m.indexOf('stationery') === 0), photo = mt.some(m => m.indexOf('photographic') === 0);
       if(p.escp2) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper (glossy)'], ['matte', 'Matte / inkjet paper']];
-      else if(p.canon) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper, glossy (untested)'], ['matte', 'Matte photo paper (untested)']];
+      else if(p.canon) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper, glossy (beta)'], ['matte', 'Matte photo paper (beta)']];
       else if(plain || photo) mediaCh = [['', 'Printer default']].concat(plain ? [['plain', 'Plain paper']] : [], photo ? [['photo', 'Photo paper']] : []);
     }
     fill('wifiOptColor', 'wifiOptColorLbl', colorCh, 'color');

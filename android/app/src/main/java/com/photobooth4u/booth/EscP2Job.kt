@@ -29,19 +29,27 @@ object EscP2Job {
     private fun ascii(s: String) = s.toByteArray(Charsets.ISO_8859_1)
     private fun ByteArrayOutputStream.put(vararg parts: ByteArray) { for (p in parts) write(p) }
 
-    // Colour head layout (Gutenprint data for this family): cyan nozzles start at the top of the head, magenta 120 rows
-    // below and yellow 240 rows below (60 nozzles x 2 rows each), 59 nozzles per colour, rows 2 apart.
-    private const val TOP = 240                        // blank rows at the top so the lower colours can reach the first rows
-    private const val CN = 59
-    private const val CBAND = CN * SEP                 // 118 rows per colour pass
-    // channel id, offset in rows, lines the printer needs per pass
-    // In colour mode every channel, black included, works in blocks of 60 lines (59 nozzles); 180 lines is black-only mode.
-    // Measured on a real L120 colour-bar print: yellow nozzles are the highest group, magenta 120 rows lower, and cyan and
-    // black 240 rows lower than yellow (the reverse of the first guess). Offsets are measured from the yellow nozzles.
-    private val CHANNELS = arrayOf(intArrayOf(0, 240, 60), intArrayOf(2, 240, 60), intArrayOf(1, 120, 60), intArrayOf(4, 0, 60))
+    /**
+     * Colour head calibration (the debug screen can change it). Offsets are in rows, measured from the yellow nozzles:
+     * measured on a real L120 colour-bar print, yellow is the highest group, magenta ~120 rows lower, cyan and black ~240.
+     * n = nozzles used per colour pass (59, or 60 to line the passes of every colour up on the same rows);
+     * gamma lightens the picture before it is dotted (1.0 = none), because 1-bit dots at 360 dpi spread and print dark.
+     */
+    class Cal(m: Int = 120, c: Int = 240, k: Int = 240, n: Int = 59, gamma: Double = 1.6) {
+        val m = m.coerceIn(0, 400)
+        val c = c.coerceIn(0, 400)
+        val k = k.coerceIn(0, 400)
+        val n = n.coerceIn(30, 60)
+        val gamma = gamma.coerceIn(0.8, 3.0)
+    }
 
-    fun build(src: Bitmap, widthMm: Double, heightMm: Double, color: Boolean = false): ByteArray =
-        if (color) buildColor(src, widthMm, heightMm) else buildMono(src, widthMm, heightMm)
+    private const val MIN_LINES = 60                    // colour channels always send blocks of 60 lines
+    // channel id (black 0, magenta 1, cyan 2, yellow 4), offset in rows, lines per block. Order: K, C, M, Y.
+    private fun channels(cal: Cal) = arrayOf(
+        intArrayOf(0, cal.k, MIN_LINES), intArrayOf(2, cal.c, MIN_LINES), intArrayOf(1, cal.m, MIN_LINES), intArrayOf(4, 0, MIN_LINES))
+
+    fun build(src: Bitmap, widthMm: Double, heightMm: Double, color: Boolean = false, cal: Cal = Cal()): ByteArray =
+        if (color) buildColor(src, widthMm, heightMm, cal) else buildMono(src, widthMm, heightMm)
 
     /** kMode: value for the ESC ( K colour-mode command (1 black only, 2 colour), or -1 to leave the command out. */
     private fun header(out: ByteArrayOutputStream, paperW: Int, paperH: Int, kMode: Int) {
@@ -75,9 +83,10 @@ object EscP2Job {
      * 6 black in 180-line blocks (expected to fail in colour mode).
      * kMode as in header().
      */
-    fun diagnostic(step: Int, kMode: Int, widthMm: Double, heightMm: Double): ByteArray {
+    fun diagnostic(step: Int, kMode: Int, widthMm: Double, heightMm: Double, cal: Cal = Cal()): ByteArray {
+        val CHANNELS = channels(cal)
         // 7 and 8 run the real full-page colour path on a synthetic bar chart: 7 = about 35 mm tall, 8 = the whole page.
-        if (step >= 7) return buildColor(bars(), widthMm, heightMm, if (step == 7) 500 else Int.MAX_VALUE)
+        if (step >= 7) return buildColor(bars(), widthMm, heightMm, cal, if (step == 7) 500 else Int.MAX_VALUE)
         val paperW = Math.round(minOf(widthMm, heightMm) / 25.4 * DPI).toInt()
         val paperH = Math.round(maxOf(widthMm, heightMm) / 25.4 * DPI).toInt()
         val chans = when (step) { 1, 6 -> intArrayOf(0); 2 -> intArrayOf(1); 3 -> intArrayOf(2); 4 -> intArrayOf(3); else -> intArrayOf(1, 2, 3) }
@@ -91,7 +100,7 @@ object EscP2Job {
             for (c in chans) {
                 val lines = if (step == 6) 180 else CHANNELS[c][2]            // step 6: black in 180-line blocks, the form that failed
                 val buf = ByteArray(lines * rowBytes)
-                java.util.Arrays.fill(buf, 0, CN * rowBytes, 0xFF.toByte())
+                java.util.Arrays.fill(buf, 0, cal.n * rowBytes, 0xFF.toByte())
                 out.put(bytes(0x1B, 0x28, 0x24, 0x04, 0x00), le32(SIDE))
                 out.put(bytes(0x1B, 0x69, CHANNELS[c][0], 0x00, 0x01), le16(rowBytes), le16(lines), buf)
                 out.put(bytes(0x0D))
@@ -102,11 +111,15 @@ object EscP2Job {
     }
 
     /** EXPERIMENTAL colour: four planes (black, cyan, magenta, yellow), each dithered to 1 bit and printed by its own nozzles. */
-    private fun buildColor(src: Bitmap, widthMm: Double, heightMm: Double, limitRows: Int = Int.MAX_VALUE): ByteArray {
+    private fun buildColor(src: Bitmap, widthMm: Double, heightMm: Double, cal: Cal, limitRows: Int = Int.MAX_VALUE): ByteArray {
+        val CHANNELS = channels(cal)
+        val top = maxOf(cal.m, cal.c, cal.k)               // blank rows at the top so the lower colours can reach the first rows
+        val nz = cal.n
+        val cband = nz * SEP                               // rows covered by one colour pass (two interleaved halves)
         val paperW = Math.round(minOf(widthMm, heightMm) / 25.4 * DPI).toInt()
         val paperH = Math.round(maxOf(widthMm, heightMm) / 25.4 * DPI).toInt()
         val areaW = paperW - 2 * SIDE
-        val areaH = minOf(paperH - TOP - EXTRA_BOTTOM, limitRows)
+        val areaH = minOf(paperH - top - EXTRA_BOTTOM, limitRows)
         require(areaW > 0 && areaH > 0) { "Sheet too small" }
         var bmp = src
         if (bmp.width > bmp.height && widthMm <= heightMm) {
@@ -114,15 +127,15 @@ object EscP2Job {
         }
         bmp = Bitmap.createScaledBitmap(bmp, areaW, areaH, true)
         val rowBytes = (areaW + 7) / 8
-        val planes = cmykPlanes(bmp, areaW, areaH, rowBytes)               // same order as CHANNELS: K, C, M, Y
+        val planes = cmykPlanes(bmp, areaW, areaH, rowBytes, cal.gamma)    // same order as CHANNELS: K, C, M, Y
 
         val out = ByteArrayOutputStream()
         header(out, paperW, paperH, 2)
         var last = 0
-        val jMax = (TOP + areaH + CBAND - 1) / CBAND
+        val jMax = (top + areaH + cband - 1) / cband
         for (j in 0..jMax) {
             for (p in 0 until SEP) {
-                val head = j * CBAND + p
+                val head = j * cband + p
                 val lines = arrayOfNulls<ByteArray>(CHANNELS.size)
                 var any = false
                 for (c in CHANNELS.indices) {
@@ -130,8 +143,8 @@ object EscP2Job {
                     val n = CHANNELS[c][2]
                     val buf = ByteArray(n * rowBytes)
                     var used = false
-                    for (k in 0 until CN) {
-                        val row = head + off + SEP * k - TOP
+                    for (k in 0 until nz) {
+                        val row = head + off + SEP * k - top
                         if (row < 0 || row >= areaH) continue
                         System.arraycopy(planes[c], row * rowBytes, buf, k * rowBytes, rowBytes)
                     }
@@ -177,7 +190,8 @@ object EscP2Job {
     }
 
     /** RGB to black / cyan / magenta / yellow, with the grey part moved to black, each plane dithered to 1 bit. */
-    internal fun cmykPlanes(bmp: Bitmap, w: Int, h: Int, rowBytes: Int): Array<ByteArray> {
+    internal fun cmykPlanes(bmp: Bitmap, w: Int, h: Int, rowBytes: Int, gamma: Double): Array<ByteArray> {
+        val lut = IntArray(256) { Math.round(255.0 * Math.pow(it / 255.0, gamma)).toInt() }
         val planes = Array(4) { ByteArray(rowBytes * h) }
         val px = IntArray(w)
         val cur = Array(4) { FloatArray(w + 2) }
@@ -196,7 +210,7 @@ object EscP2Job {
                 // turning every grey part into black ink.
                 val grey = minOf(cy, minOf(ma, ye))
                 val k = grey * grey / 255
-                ink[0] = k.toFloat(); ink[1] = (cy - k).toFloat(); ink[2] = (ma - k).toFloat(); ink[3] = (ye - k).toFloat()
+                ink[0] = lut[k].toFloat(); ink[1] = lut[cy - k].toFloat(); ink[2] = lut[ma - k].toFloat(); ink[3] = lut[ye - k].toFloat()
                 for (pl in 0 until 4) {
                     val v = ink[pl] + c0[pl][x + 1]
                     val on = v >= 128f

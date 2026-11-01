@@ -393,9 +393,13 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             !Regex("CMD:[^;]*ESCPR", RegexOption.IGNORE_CASE).containsMatchIn(id)
     }
 
+    private fun calOf(j: JSONObject?): EscP2Job.Cal =
+        if (j == null) EscP2Job.Cal()
+        else EscP2Job.Cal(j.optInt("m", 120), j.optInt("c", 240), j.optInt("k", 240), j.optInt("n", 59), j.optDouble("g", 1.6))
+
     /** DIAGNOSTIC: prints one small colour test strip (see EscP2Job.diagnostic). Result arrives as window.__PBNetResult. */
     @JavascriptInterface
-    fun printEscp2Diag(job: String, id: String, widthMm: Double, heightMm: Double, step: Int, kMode: Int): String {
+    fun printEscp2Diag(job: String, id: String, widthMm: Double, heightMm: Double, step: Int, kMode: Int, calJson: String): String {
         pool.execute {
             val r = JSONObject().put("job", job)
             try {
@@ -403,7 +407,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 usbEnsure(d)
                 usbIsEscpr(d)
                 if (!usbIsEscp2(d)) throw IllegalStateException("This printer doesn't list Epson's ESC/P2 language.")
-                usbRaw(id, EscP2Job.diagnostic(step, kMode, widthMm, heightMm))
+                usbRaw(id, EscP2Job.diagnostic(step, kMode, widthMm, heightMm, calOf(try { JSONObject(calJson) } catch (_: Exception) { null })))
                 r.put("ok", true)
             } catch (ex: Exception) {
                 Log.w(TAG, "escp2 diag failed", ex)
@@ -423,7 +427,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         pool.execute {
             val r = JSONObject().put("job", job)
             try {
-                val colour = try { JSONObject(optionsJson).optString("color") == "color" } catch (_: Exception) { false }
+                val optJson = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
+                val colour = optJson.optString("color") == "color"
+                val cal = calOf(optJson.optJSONObject("cal"))
                 val d = usbFind(id)
                 usbEnsure(d)
                 usbIsEscpr(d)                              // reads the printer's ID into the cache
@@ -434,7 +440,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val jpeg = decode(arr.getString(i))
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
-                        usbRaw(id, EscP2Job.build(bmp, widthMm, heightMm, colour))
+                        usbRaw(id, EscP2Job.build(bmp, widthMm, heightMm, colour, cal))
                     }
                 }
                 r.put("ok", true)

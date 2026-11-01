@@ -360,6 +360,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         if (usb?.hasPermission(d) == true) try { d.productName?.trim()?.takeIf { it.isNotEmpty() } } catch (_: Exception) { null } else null
 
     private val escprCache = ConcurrentHashMap<String, Boolean>()
+    private val escprLogged: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     /** The printer's IEEE-1284 device ID (e.g. "MFG:EPSON;CMD:ESCPL2,ESCPR1,...;MDL:L210 Series;"), asked over USB. */
     private fun usbDeviceId(d: UsbDevice): String? {
@@ -384,9 +385,12 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     private val usbIds = ConcurrentHashMap<String, String>()
 
-    /** Epson ink-tank models of the L120 / L210 era (L1xx, L2xx, L3xx, L5xx): they speak ESC/P-R over USB. */
+    /**
+     * Epson ink-tank models that speak ESC/P-R over USB: the L120 / L210 era (L1xx, L2xx, L3xx, L5xx) and the newer
+     * four-digit names (L3210, L3250, L3276, L4260, L5290, L8050…). The five-digit A3 models (L14150) are not matched.
+     */
     private fun epsonLSeries(name: String?): Boolean =
-        name != null && Regex("""(?i)\bL\s?(1\d\d|2\d\d|3\d\d|5\d\d)\b""").containsMatchIn(name)
+        name != null && Regex("""(?i)\bL\s?(1\d\d|2\d\d|3\d\d|5\d\d|[1-8]\d{3})\b""").containsMatchIn(name)
 
     /** True when the printer says it speaks Epson's ESC/P-R language (the family the L120 / L210 belong to). */
     private fun usbIsEscpr(d: UsbDevice): Boolean {
@@ -402,6 +406,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         // When the printer's own ID can be read, trust only what it says; the model name is only the fallback
         // for an ID that cannot be read. (Sending ESC/P-R data to a printer that does not speak it prints text.)
         val ok = if (id != null) byId else byModel
+        // Logged once per printer (adb logcat, tag PBNet) so a printer that won't print can be diagnosed.
+        if (escprLogged.add(d.deviceName + (id ?: "")))
+            Log.i(TAG, "epson usb %04x:%04x product=%s id=%s escpr=%s".format(d.vendorId, d.productId, usbProduct(d), id ?: "(unreadable)", ok))
         if (id != null) escprCache[d.deviceName] = ok
         return ok
     }

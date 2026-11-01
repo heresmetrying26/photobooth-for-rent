@@ -60,7 +60,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.58', date: '2026-11-02', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.58/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.59', date: '2026-11-02', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.59/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -99,7 +99,7 @@ export const NOTES = [
     date: '2026-11-02', title: 'Android tablet: the tablet can make its own booth Wi-Fi', for: ['website'],
     items: [
       'In Setup → Share there is a new switch, “Make this tablet the booth Wi-Fi”. It turns on a Wi-Fi network from the tablet itself, so guests can scan the Join QR and open their photos with no router, pocket Wi-Fi or phone hotspot. The name and password are made for you. Android 13 and newer asks to allow “Nearby devices”; older Android asks for Location.',
-      'Switch the tablet’s Wi-Fi on first (it does not need to join a network). While it hosts, many tablets can’t also use another Wi-Fi, so activate and update the app beforehand. If a tablet can’t do it, the app says so and a router or phone hotspot works as before. Android app 1.0.58.'
+      'Switch the tablet’s Wi-Fi on first (it does not need to join a network). While it hosts, many tablets can’t also use another Wi-Fi, so activate and update the app beforehand. If a tablet can’t do it, the app says so and a router or phone hotspot works as before. Android app 1.0.59.'
     ]
   },
   {

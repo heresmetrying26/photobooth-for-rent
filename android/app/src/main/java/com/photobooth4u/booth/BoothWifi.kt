@@ -5,12 +5,14 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.wifi.WifiManager
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.util.Log
 import android.webkit.JavascriptInterface
 import androidx.core.app.ActivityCompat
@@ -22,17 +24,16 @@ import java.security.SecureRandom
 import java.util.Collections
 
 /**
- * The booth's own Wi-Fi: this tablet makes the network guests' phones join (window.__PBWifi), so no router,
- * pocket Wi-Fi or phone hotspot is needed at the booth. It is the tablet-side twin of desktop/lib/hotspot.mjs.
+ * The booth's own Wi-Fi: this tablet/phone makes the network guests' phones join (window.__PBWifi),
+ * so no router, pocket Wi-Fi or external hotspot is needed at the booth.
  *
- * 1. A Wi-Fi Direct group with a name and password made once per tablet (Android 10 and up lets an app choose them).
- *    Phones join it like any Wi-Fi network (the name starts with DIRECT-). The tablet is at 192.168.49.1.
- * 2. Android's local-only hotspot (Android 8 and up) when the group can't start. Android picks its name and
- *    password; the Join QR carries whatever it picked.
+ * 1. A Wi-Fi Direct group with a custom name/password (Android 10+).
+ * 2. A default Wi-Fi Direct group (universal fallback, supported across all Android versions).
+ * 3. Android's local-only hotspot (Android 8+) with automatic retry on transient channel busy.
+ * 4. Detection of native phone hotspot (Tethering) if the user toggled it in Android settings.
  *
- * Either way the booth's Join Wi-Fi QR is filled in from [info], and [PBLocal.ownAddress] makes the guests' QR
- * point at the tablet's address on this network. The tablet's Wi-Fi has to be switched on (it need not join anything).
- * While it hosts, many tablets can't also stay on another Wi-Fi.
+ * Either way the booth's Join Wi-Fi QR is filled in from [info], and [PBLocal.ownAddress] makes the
+ * guests' QR point at this device's address on the network (e.g. 192.168.49.1 or 192.168.43.1).
  */
 class BoothWifi(private val activity: Activity, private val local: PBLocal) {
 
@@ -138,19 +139,30 @@ class BoothWifi(private val activity: Activity, private val local: PBLocal) {
         if (!pendingStart) return
         pendingStart = false
         if (granted) startNow()
-        else fail("Allow “Nearby devices” (or Location on older Android) so this tablet can make its own Wi-Fi.")
+        else fail("Allow Location or Nearby Devices so this device can make its own Wi-Fi.")
     }
 
     // ---------- start / stop (main thread) ----------
 
     private fun neededPermissions(): List<String> {
-        val want = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.NEARBY_WIFI_DEVICES else Manifest.permission.ACCESS_FINE_LOCATION
-        return if (ContextCompat.checkSelfPermission(activity, want) == PackageManager.PERMISSION_GRANTED) emptyList() else listOf(want)
+        if (Build.VERSION.SDK_INT >= 33) {
+            val want = Manifest.permission.NEARBY_WIFI_DEVICES
+            return if (ContextCompat.checkSelfPermission(activity, want) == PackageManager.PERMISSION_GRANTED) emptyList() else listOf(want)
+        }
+        // Android 12 and lower: ACCESS_FINE_LOCATION must be requested with ACCESS_COARSE_LOCATION
+        val list = mutableListOf<String>()
+        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            list.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            list.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+        return list
     }
 
     private fun startNow() {
         if (busy) return
-        if (!supported()) { fail("This tablet can’t make its own Wi-Fi. Use a router or a phone hotspot."); return }
+        if (!supported()) { fail("This device can’t make its own Wi-Fi. Turn on your phone’s Hotspot in Android settings or use a router."); return }
         wanted = true
         error = ""
         val need = neededPermissions()
@@ -159,8 +171,33 @@ class BoothWifi(private val activity: Activity, private val local: PBLocal) {
             ActivityCompat.requestPermissions(activity, need.toTypedArray(), REQ_PERMISSION)
             return
         }
+
+        // On Android 12 and older (e.g. Google Pixel 3 XL), Android requires Location Services (GPS)
+        // to be toggled ON in quick settings for Wi-Fi Direct and local hotspot channel allocation.
+        if (Build.VERSION.SDK_INT < 33) {
+            val lm = activity.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+            val locOn = if (Build.VERSION.SDK_INT >= 28) {
+                lm?.isLocationEnabled == true
+            } else {
+                try {
+                    Settings.Secure.getInt(activity.contentResolver, Settings.Secure.LOCATION_MODE) != Settings.Secure.LOCATION_MODE_OFF
+                } catch (e: Exception) { true }
+            }
+            if (!locOn) {
+                fail("Turn on “Location” in your phone’s quick settings. Android requires Location to be on for Wi-Fi Direct and hotspots.")
+                return
+            }
+        }
+
+        // Check if the device already has a personal hotspot / tethering IP active
+        val existingIp = addressesNow().firstOrNull { it.startsWith("192.168.43.") || (it.endsWith(".1") && it.startsWith("192.168.") && it != "192.168.49.1") }
+        if (existingIp != null) {
+            up("hotspot", existingIp)
+            return
+        }
+
         if (wifi?.isWifiEnabled != true) {
-            fail("Turn this tablet’s Wi-Fi on (it doesn’t have to join a network), then try again.")
+            fail("Turn this phone’s Wi-Fi on (it doesn’t have to join a network), then try again.")
             return
         }
         busy = true
@@ -169,7 +206,7 @@ class BoothWifi(private val activity: Activity, private val local: PBLocal) {
         scheduleKeep()
         // Never leave the switch stuck if Android doesn't answer.
         main.postDelayed({
-            if (busy) fail("The tablet’s Wi-Fi didn’t start. Turn its Wi-Fi off and on, then try again.")
+            if (busy) fail("The phone’s Wi-Fi didn’t start. Turn its Wi-Fi off and on, then try again.")
         }, 45000L)
     }
 
@@ -195,17 +232,31 @@ class BoothWifi(private val activity: Activity, private val local: PBLocal) {
     @SuppressLint("MissingPermission")
     private fun startDirect() {
         val mgr = p2p
-        if (mgr == null) { startHotspot(); return }
+        if (mgr == null) { startHotspot(false); return }
         val ch = channel ?: try { mgr.initialize(activity.applicationContext, Looper.getMainLooper(), null) } catch (e: Exception) { null }
-        if (ch == null) { startHotspot(); return }
+        if (ch == null) { startHotspot(false); return }
         channel = ch
-        val done = object : WifiP2pManager.ActionListener {
+
+        val doneDefault = object : WifiP2pManager.ActionListener {
             override fun onSuccess() { readGroup(0) }
             override fun onFailure(reason: Int) {
-                Log.w(TAG, "Wi-Fi Direct group failed ($reason), trying the local hotspot")
-                startHotspot()
+                Log.w(TAG, "Wi-Fi Direct default createGroup failed ($reason), trying local hotspot")
+                startHotspot(false)
             }
         }
+
+        val doneConfig = object : WifiP2pManager.ActionListener {
+            override fun onSuccess() { readGroup(0) }
+            override fun onFailure(reason: Int) {
+                Log.w(TAG, "Wi-Fi Direct custom config failed ($reason), trying default createGroup")
+                try {
+                    mgr.createGroup(ch, doneDefault)
+                } catch (e: Exception) {
+                    startHotspot(false)
+                }
+            }
+        }
+
         try {
             if (Build.VERSION.SDK_INT >= 29) {
                 val cfg = WifiP2pConfig.Builder()
@@ -214,13 +265,17 @@ class BoothWifi(private val activity: Activity, private val local: PBLocal) {
                     .enablePersistentMode(false)
                     .setGroupOperatingBand(WifiP2pConfig.GROUP_OWNER_BAND_2GHZ)
                     .build()
-                mgr.createGroup(ch, cfg, done)
+                mgr.createGroup(ch, cfg, doneConfig)
             } else {
-                mgr.createGroup(ch, done)
+                mgr.createGroup(ch, doneDefault)
             }
         } catch (e: Exception) {
-            Log.w(TAG, "createGroup threw", e)
-            startHotspot()
+            Log.w(TAG, "createGroup with config threw, trying default createGroup", e)
+            try {
+                mgr.createGroup(ch, doneDefault)
+            } catch (e2: Exception) {
+                startHotspot(false)
+            }
         }
     }
 
@@ -229,7 +284,7 @@ class BoothWifi(private val activity: Activity, private val local: PBLocal) {
     private fun readGroup(attempt: Int) {
         val mgr = p2p
         val ch = channel
-        if (mgr == null || ch == null) { startHotspot(); return }
+        if (mgr == null || ch == null) { startHotspot(false); return }
         try {
             mgr.requestGroupInfo(ch) { group ->
                 val iface = if (group != null) (group.`interface` ?: "") else ""
@@ -242,21 +297,21 @@ class BoothWifi(private val activity: Activity, private val local: PBLocal) {
                 } else if (attempt < 8) {
                     main.postDelayed({ readGroup(attempt + 1) }, 700)
                 } else {
-                    startHotspot()
+                    startHotspot(false)
                 }
             }
         } catch (e: Exception) {
             Log.w(TAG, "requestGroupInfo threw", e)
-            startHotspot()
+            startHotspot(false)
         }
     }
 
     /** Android's local-only hotspot (when the Wi-Fi Direct group can't start). */
     @SuppressLint("MissingPermission")
-    private fun startHotspot() {
+    private fun startHotspot(isRetry: Boolean) {
         val w = wifi
         if (w == null || Build.VERSION.SDK_INT < 26) {
-            fail("This tablet can’t make its own Wi-Fi. Use a router or a phone hotspot.")
+            fail("This device can’t make its own Wi-Fi. Turn on your phone’s Hotspot in Android settings or use a router.")
             return
         }
         val before = addressesNow()
@@ -273,18 +328,34 @@ class BoothWifi(private val activity: Activity, private val local: PBLocal) {
                 }
 
                 override fun onFailed(reason: Int) {
+                    if (reason == WifiManager.LocalOnlyHotspotCallback.ERROR_NO_CHANNEL && !isRetry) {
+                        Log.i(TAG, "Hotspot returned ERROR_NO_CHANNEL, retrying in 2.5s...")
+                        main.postDelayed({
+                            if (wanted && busy) startHotspot(true)
+                        }, 2500)
+                        return
+                    }
                     val msg = when (reason) {
-                        WifiManager.LocalOnlyHotspotCallback.ERROR_NO_CHANNEL -> "This tablet has no free Wi-Fi channel right now. Turn its Wi-Fi off and on, then try again."
-                        WifiManager.LocalOnlyHotspotCallback.ERROR_TETHERING_DISALLOWED -> "This tablet doesn’t allow hotspots. Use a router or a phone hotspot."
-                        WifiManager.LocalOnlyHotspotCallback.ERROR_INCOMPATIBLE_MODE -> "Turn off this tablet’s own hotspot or Wi-Fi Direct, then try again."
-                        else -> "This tablet can’t make its own Wi-Fi. Use a router or a phone hotspot."
+                        WifiManager.LocalOnlyHotspotCallback.ERROR_NO_CHANNEL -> {
+                            "Could not allocate a Wi-Fi channel. Turn on “Location” in quick settings, or turn on your phone’s Hotspot in Settings."
+                        }
+                        WifiManager.LocalOnlyHotspotCallback.ERROR_TETHERING_DISALLOWED -> "Hotspots are restricted on this device. Use a router or mobile hotspot."
+                        WifiManager.LocalOnlyHotspotCallback.ERROR_INCOMPATIBLE_MODE -> {
+                            val ip = addressesNow().firstOrNull { it.startsWith("192.168.") }
+                            if (ip != null) {
+                                up("hotspot", ip)
+                                return
+                            }
+                            "Turn off this phone’s own hotspot or Wi-Fi Direct, then try again."
+                        }
+                        else -> "This phone can’t make its own Wi-Fi. Turn on your phone’s Hotspot in Android settings or use a router."
                     }
                     main.post { fail(msg) }
                 }
             }, main)
         } catch (e: Exception) {
             Log.w(TAG, "startLocalOnlyHotspot threw", e)
-            fail("This tablet can’t make its own Wi-Fi. Use a router or a phone hotspot.")
+            fail("This phone can’t make its own Wi-Fi. Turn on your phone’s Hotspot in Android settings or use a router.")
         }
     }
 
@@ -317,7 +388,7 @@ class BoothWifi(private val activity: Activity, private val local: PBLocal) {
             ?: addressesNow().firstOrNull { it.endsWith(".1") && it.startsWith("192.168.") && it !in before }
         if (ip != null) { up("hotspot", ip); return }
         if (attempt < 10) main.postDelayed({ waitForAddress(before, attempt + 1) }, 600)
-        else fail("The tablet’s Wi-Fi started but has no address. Try again.")
+        else fail("The phone’s Wi-Fi started but has no address. Try again.")
     }
 
     private fun up(m: String, ip: String) {

@@ -371,7 +371,7 @@ class MainActivity : AppCompatActivity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == BoothWifi.REQ_PERMISSION) {
-            boothWifi?.onPermissionResult(grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED })
+            boothWifi?.onPermissionResult(grantResults.isNotEmpty() && grantResults.any { it == PackageManager.PERMISSION_GRANTED })
         }
     }
 

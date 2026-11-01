@@ -22,6 +22,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="32" />
 
     <!-- The booth's own Wi-Fi (BoothWifi): a Wi-Fi Direct group or Android's local-only hotspot, so guests need no router.
          Android 13+ asks for "Nearby devices"; Android 12 and below ask for Location (above). -->

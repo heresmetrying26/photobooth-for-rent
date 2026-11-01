@@ -56,6 +56,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         @Volatile var model: String = ""                       // "EPSON L3250 Series", from the printer itself
         @Volatile var formats: List<String> = emptyList()      // document formats it says it can print
         @Volatile var attrsTried = false
+        @Volatile var attrsAttempts = 0
         @Volatile var qualities: List<Int> = emptyList()       // print-quality-supported: 3 draft, 4 normal, 5 high
         @Volatile var colorModes: List<String> = emptyList()   // print-color-mode-supported: color, monochrome...
         @Volatile var mediaTypes: List<String> = emptyList()   // media-type-supported: stationery, photographic-glossy...
@@ -332,8 +333,26 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     private fun usbIfaces(d: UsbDevice): List<UsbInterface> = (0 until d.interfaceCount).map { d.getInterface(it) }
     private fun usbIsPrinter(d: UsbDevice) = usbIfaces(d).any { it.interfaceClass == UsbConstants.USB_CLASS_PRINTER }
-    private fun usbIppIface(d: UsbDevice) =
-        usbIfaces(d).firstOrNull { it.interfaceClass == 7 && it.interfaceSubclass == 1 && it.interfaceProtocol == 4 }
+    /** True when this interface (alternate setting) has both a bulk OUT and a bulk IN endpoint. */
+    private fun hasBulkPair(i: UsbInterface): Boolean {
+        var out = false
+        var inn = false
+        for (k in 0 until i.endpointCount) {
+            val ep = i.getEndpoint(k)
+            if (ep.type != UsbConstants.USB_ENDPOINT_XFER_BULK) continue
+            if (ep.direction == UsbConstants.USB_DIR_OUT) out = true else inn = true
+        }
+        return out && inn
+    }
+
+    /**
+     * IPP-over-USB interface (class 7, subclass 1, protocol 4). A printer lists several alternate settings of it and
+     * only one has the data endpoints, so take that one (the way OpenPrinting's ipp-usb does). Some HP printers use
+     * a vendor-specific form of it (class 255, subclass 9, protocol 1).
+     */
+    private fun usbIppIface(d: UsbDevice): UsbInterface? =
+        usbIfaces(d).firstOrNull { it.interfaceClass == 7 && it.interfaceSubclass == 1 && it.interfaceProtocol == 4 && hasBulkPair(it) }
+            ?: usbIfaces(d).firstOrNull { d.vendorId == 0x03f0 && it.interfaceClass == 255 && it.interfaceSubclass == 9 && it.interfaceProtocol == 1 && hasBulkPair(it) }
     private fun usbRawIface(d: UsbDevice) =
         usbIfaces(d).firstOrNull { it.interfaceClass == 7 && it.interfaceSubclass == 1 && it.interfaceProtocol in 1..2 }
 
@@ -634,6 +653,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         val conn = usb?.openDevice(d) ?: throw IllegalStateException("Couldn't open the USB printer.")
         try {
             if (!conn.claimInterface(iface, true)) throw IllegalStateException("The USB printer is busy. Unplug it, plug it in again and retry.")
+            // a printer's data endpoints exist only in a non-zero alternate setting: switch it on before using them
+            if (iface.alternateSetting != 0 && !conn.setInterface(iface)) {
+                throw IllegalStateException("Couldn't switch the USB printer's data port on. Unplug it, plug it in again and retry.")
+            }
             var out: UsbEndpoint? = null
             var inn: UsbEndpoint? = null
             for (i in 0 until iface.endpointCount) {
@@ -720,7 +743,16 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     /** Asks the printer who it is and which document formats it can print (IPP Get-Printer-Attributes). */
     private fun fetchAttrs(e: Entry) {
         if (e.attrsTried || e.ippPort <= 0) return
-        e.attrsTried = true
+        synchronized(e) {
+            if (e.attrsTried) return
+            e.attrsAttempts++
+            // Wi-Fi printers get one try; a USB printer may still be waking up, so it gets up to three
+            if (e.usbDev == null || e.attrsAttempts >= 3) e.attrsTried = true
+            fetchAttrsOnce(e)
+        }
+    }
+
+    private fun fetchAttrsOnce(e: Entry) {
         for (path in ippPaths(e)) {
             try {
                 val r = doPost(e, path, ippGetAttributes(ippUri(e, path)))
@@ -753,6 +785,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 e.pwgTypes = pwgTypes
                 if (model.isNotBlank()) { e.model = model; if (e.name.isBlank()) e.name = model }
                 e.ippPath = path
+                e.attrsTried = true
                 return
             } catch (_: Exception) { return }
         }

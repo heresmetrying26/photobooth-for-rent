@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.44', date: '2026-11-01' },
   { version: '1.0.43', date: '2026-11-01' },
   { version: '1.0.42', date: '2026-11-01' },
   { version: '1.0.41', date: '2026-10-31' },
@@ -90,6 +91,12 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-01', title: 'Mac app: Camera check', for: ['website', 'app'], app: '1.0.44',
+    items: [
+      'Setup → Camera has a new Camera check button in the Mac app. It shows what the Mac lists on USB, whether the app can open the Canon camera and get a live picture, and the steps it tried. Copy check result sends the same detail to support.'
+    ]
+  },
   {
     date: '2026-11-01', title: 'Mac app: Canon EOS cameras connect straight over USB', for: ['website', 'app'], app: '1.0.43',
     items: [

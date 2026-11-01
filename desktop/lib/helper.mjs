@@ -12,6 +12,7 @@ import net from 'node:net';
 
 export const HELPER_VERSION = '1.1.10-app';
 const IS_WIN = platform() === 'win32';
+const IS_MAC = platform() === 'darwin' || process.env.PB_TEST_MAC_CAMERA === '1';   // (the env var lets tests run the Mac camera path on another system)
 const PS = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass'];
 let WORKER_PS = '';
 let log = (m) => console.log('[helper] ' + m);
@@ -293,7 +294,10 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm) {
 }
 
 // ---------- camera (Windows) ----------
-const camOk = () => (IS_WIN ? !!WORKER_PS : !!process.env.PB_CAMERA_WORKER);
+// On a Mac the Canon part runs inside the app (lib/camera-mac.mjs, libusb); loaded only there.
+let macCamP = null;
+const macCam = () => (macCamP || (macCamP = import('./camera-mac.mjs')));
+const camOk = () => (IS_MAC ? true : IS_WIN ? !!WORKER_PS : !!process.env.PB_CAMERA_WORKER);
 // hangs: calls in a row the camera never answered; recover: the camera part was restarted, so the next open tells a Canon to leave remote mode first; resetAt: when it was stopped last.
 const cam = { proc: null, sock: null, server: null, starting: null, buf: Buffer.alloc(0), wait: null, seq: 0, queue: Promise.resolve(), open: null, hangs: 0, recover: false, resetAt: 0 };
 function camReset(why) {
@@ -373,6 +377,7 @@ async function camStart() {
 }
 function camCall(cmd, arg, timeoutMs) {
   const job = cam.queue.then(async () => {
+    if (IS_MAC) return camCallMac(cmd, arg, timeoutMs);
     await camStart();
     const id = String(++cam.seq);
     const reply = new Promise((resolve, reject) => { cam.wait = { id, cmd, resolve, reject }; });
@@ -393,6 +398,28 @@ function camCall(cmd, arg, timeoutMs) {
   });
   cam.queue = job.catch(() => {});
   return job;
+}
+// Mac: the same call, answered by the in-app Canon code instead of a separate worker program.
+async function camCallMac(cmd, arg, timeoutMs) {
+  const m = await macCam();
+  let timer;
+  const to = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), timeoutMs || 15000); });
+  try {
+    const r = await Promise.race([m.call(cmd, arg), to]);
+    if (r.status === 'OK' && (cmd === 'frame' || cmd === 'capture')) cam.hangs = 0;
+    return r;
+  }
+  catch (e) {
+    if (e && e.message === 'timeout') {
+      log('Camera part stopped: no answer to ' + cmd);
+      m.reset().catch(() => {});
+      cam.hangs++; cam.recover = true;
+      throw new Error(cam.hangs >= 2
+        ? 'The camera stopped answering again. Switch the camera off and on, check its USB cable, then try again.'
+        : 'The camera didn’t answer. Check it is on and its USB cable is plugged in.');
+    }
+    throw e;
+  } finally { clearTimeout(timer); }
 }
 function camError(r) {
   const text = r.body.toString('utf8');
@@ -508,4 +535,7 @@ export async function handleHelper(req, path, search) {
   }
   return json({ ok: false, error: 'Not found' }, 404);
 }
-export function stopHelper() { try { cam.proc && cam.proc.kill(); } catch { /* gone */ } }
+export function stopHelper() {
+  try { cam.proc && cam.proc.kill(); } catch { /* gone */ }
+  if (macCamP) macCamP.then((m) => m.reset()).catch(() => {});
+}

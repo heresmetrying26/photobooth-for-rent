@@ -7678,6 +7678,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if(err && err.helperMsg) return err.helperMsg + (code === 'NOCAMERA' || code === 'GONE' ? (auto ? ' It connects by itself once it\u2019s plugged in and on.' : ' Then tap Try Again.') : '');
       return 'Camera problem (' + s + '). Unplug and replug the camera' + (auto ? '; the booth keeps trying.' : ', then tap Try Again.');
     }
+    if(!usbCam.viaHelper && err && err.helperMsg) return err.helperMsg + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');      // the Mac app's own Canon connection explains itself
     if(err && err.name === 'NotFoundError' && win) return 'No USB camera picked. On Windows the camera only appears after a one-time driver switch (Zadig). Steps: open /camera-test/ on this site. Or use a Mac or Android device, where it works with no setup.';
     if(err && err.name === 'NotFoundError') return 'No USB camera picked. Set the camera’s USB mode to Photo Import / Remote Control (Canon), PTP/MTP (Nikon) or PC Remote (Sony), plug it in and switch it on, then tap Try Again and pick it.' + usbMacHint();
     if(err && err.name === 'SecurityError') return 'Tap Try Again to pick the USB camera.';
@@ -7709,6 +7710,25 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(m.cameras && m.cameras.length) return ' The Mac does list a camera (' + m.cameras.join(', ') + '), so the cable works. Quit Photos and Image Capture, switch the camera off and on, then tap Try Again.';
     return ' The Mac does not list any camera on USB at all (' + m.count + ' other USB device' + (m.count === 1 ? '' : 's') + ' seen), so this is the cable, the adapter or the camera, not the booth: use the camera’s own data cable (not a charge-only one), try another USB-C port or adapter, switch the camera on with Wi-Fi off, then unplug and replug it.';
   }
+  // Asks the app whether a Canon camera is on USB and connects to it that way. null = none / not one it can drive: use the browser path.
+  async function usbNativeConnect(){
+    if(!(DESKTOP && USB_MAC)) return null;
+    let list;
+    try{
+      const r = await fetch(CAM_HELPER + '/camera', { cache: 'no-store', signal: AbortSignal.timeout(6000) });
+      if(!r.ok) return null;
+      list = await r.json();
+    }catch(e){ return null; }
+    if(!list || !(list.open || (list.devices || []).some(d => d.camera))) return null;
+    const hc = new HelperCamera();
+    try{ await hc.connect(); }
+    catch(err){
+      usbLog('native-fail', { code: err && err.code || '', error: String(err && (err.helperMsg || err.message) || err).slice(0, 200) });
+      if(err && (err.code === 'NOCAMERA' || err.code === 'UNSUPPORTED')) return null;
+      throw err;
+    }
+    return hc;
+  }
   async function usbConnect(){
     if(usbCam.camera) return usbCam.camera;
     if(usbCam.viaHelper){
@@ -7721,6 +7741,19 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       const hopt = Array.from(cameraSelect.options).find(o => o.value === USB_CAM_ID);
       if(hopt) hopt.textContent = usbOptionLabel();
       return hc;
+    }
+    // Mac app: a Canon EOS is driven by the app itself over USB (libusb), which works where the browser's WebUSB layer does not.
+    const nat = await usbNativeConnect();
+    if(nat){
+      usbCam.camera = nat;
+      usbCam.vfOn = false;
+      usbCam.name = nat.name || 'Canon camera';
+      usbCam.devId = '';
+      usbCam.seen = ''; usbCam.macScan = null;
+      usbLog('connected', { camera: usbCam.name, native: true, connects: usbCam.libGen });
+      const nopt = Array.from(cameraSelect.options).find(o => o.value === USB_CAM_ID);
+      if(nopt) nopt.textContent = usbOptionLabel();
+      return nat;
     }
     // Mac: macOS grabs a camera when it is plugged in; the app (or the Helper, in Chrome) lets go of it first.
     await usbFreeCamera(false);

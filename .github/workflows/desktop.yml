@@ -48,6 +48,11 @@ jobs:
         env:
           # Not code-signed yet (see desktop/README.md). The Mac app is ad-hoc signed.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # The Mac app drives Canon cameras itself through the "usb" package: make sure it loads here and shipped inside the app.
+      - if: matrix.os == 'macos-latest'
+        run: |
+          node -e "const u=require('usb'); console.log('usb loads on', process.platform, process.arch, '- devices seen:', u.getDeviceList().length)"
+          find dist -path '*usb/prebuilds*' -name '*.node' | head -5 || true
       - uses: actions/upload-artifact@v4
         with:
           name: photobooth4u-${{ matrix.os }}

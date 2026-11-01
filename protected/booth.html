@@ -3343,7 +3343,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p class="sub-label" style="margin-top:14px;">Booth Wi-Fi for guests (optional)</p>
           <p class="panel-hint" style="margin:0 0 6px;">Guests scan the Wi-Fi QR to join, then their photo QR. The Wi-Fi this device is on is filled in when the app can read it. Leave empty if they already know the Wi-Fi.</p>
           <div id="deskHotspotBox" style="display:none; margin:0 0 12px;">
-            <label class="switch-row"><span>Make this laptop the booth Wi-Fi (no router needed)</span><input type="checkbox" id="deskHotspotOn"></label>
+            <label class="switch-row"><span id="deskHotspotLabel">Make this laptop the booth Wi-Fi (no router needed)</span><input type="checkbox" id="deskHotspotOn"></label>
             <label class="switch-row"><span>Turn it on whenever the app opens</span><input type="checkbox" id="deskHotspotAuto"></label>
             <p class="panel-hint" id="deskHotspotHint" style="margin:6px 0 0;"></p>
             <div class="desk-row" id="deskHotspotSetupRow" style="display:none;"><button type="button" class="action-btn" id="deskHotspotSetup" style="width:auto; margin:0;">Set up (one time)</button></div>
@@ -21628,7 +21628,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       lan.className = 'panel-hint' + (base ? '' : ' bad');
       lan.textContent = base
         ? 'Guests open their photos at ' + base + ' ✓ Their phones must be on the same Wi-Fi as this tablet.'
-        : 'This tablet isn’t on a Wi-Fi network, so guests can’t open their photos yet. Connect it to the booth Wi-Fi router or a phone hotspot (no internet needed), or turn on this tablet’s own hotspot (Settings → Network → Hotspot).';
+        : 'This tablet isn’t on a Wi-Fi network, so guests can’t open their photos yet. ' + (window.__PBWifi ? 'Turn on “Make this tablet the booth Wi-Fi” below, or connect it' : 'Connect it') + ' to the booth Wi-Fi router or a phone hotspot (no internet needed).';
       // The event's QR points at the tablet's address: refresh it when the address changes.
       if(!first){ try{ if(rawFolderKey()) resolveDriveFolder(); }catch(e){} }
     }
@@ -21638,6 +21638,48 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var w0 = wifiInfo(); if(w0){ wn.value = w0.ssid; wp.value = w0.pass; }
     function saveWifi(){ saveWifiInfo(wn.value.trim(), wp.value); }
     wn.addEventListener('input', saveWifi); wp.addEventListener('input', saveWifi);
+    // This tablet makes the booth Wi-Fi itself (Wi-Fi Direct, or Android's local hotspot), so no router or phone hotspot
+    // is needed. While it is on, its name and password fill the Join QR; the fields can't be edited then.
+    (function(){
+      var W = window.__PBWifi;
+      if(!(W && typeof W.info === 'function')) return;
+      var box = document.getElementById('deskHotspotBox'), on = document.getElementById('deskHotspotOn'), auto = document.getElementById('deskHotspotAuto');
+      var hint = document.getElementById('deskHotspotHint'), lbl = document.getElementById('deskHotspotLabel');
+      if(!(box && on && auto && hint)) return;
+      if(lbl) lbl.textContent = 'Make this tablet the booth Wi-Fi (no router needed)';
+      var wasOn = false;
+      function read(){ try{ return JSON.parse(W.info()); }catch(e){ return null; } }
+      function render(){
+        var i = read();
+        if(!i || !i.supported){ box.style.display = 'none'; return; }
+        box.style.display = '';
+        on.checked = !!(i.on || (i.wanted && i.busy));
+        on.disabled = !!i.busy;
+        auto.checked = !!i.auto;
+        if(i.busy){ hint.className = 'panel-hint'; hint.textContent = 'Starting the booth Wi-Fi… allow “Nearby devices” or Location if Android asks.'; }
+        else if(i.on){ hint.className = 'panel-hint'; hint.textContent = 'The booth Wi-Fi is on ✓ Guests scan the Join QR below, then their photo QR. Their phone may say “no internet”: they should stay connected. While it is on, this tablet may not use other Wi-Fi.'; }
+        else if(i.error){ hint.className = 'panel-hint bad'; hint.textContent = i.error; }
+        else { hint.className = 'panel-hint'; hint.textContent = 'Off. Turn it on and this tablet makes its own Wi-Fi for guests. Switch this tablet’s Wi-Fi on first (it doesn’t need to join anything).'; }
+        if(i.on){
+          wn.readOnly = wp.readOnly = true;
+          var cur = wifiInfo();
+          if(!cur || cur.ssid !== i.ssid || cur.pass !== i.pass){ wn.value = i.ssid; wp.value = i.pass; saveWifiInfo(i.ssid, i.pass); }
+        }else{
+          wn.readOnly = wp.readOnly = false;
+          if(wasOn){ wn.value = ''; wp.value = ''; saveWifiInfo('', ''); }
+        }
+        wasOn = !!i.on;
+      }
+      on.addEventListener('change', function(){
+        on.disabled = true;
+        hint.className = 'panel-hint'; hint.textContent = on.checked ? 'Starting the booth Wi-Fi…' : 'Turning it off…';
+        try{ W.set(on.checked); }catch(e){}
+        setTimeout(render, 500);
+      });
+      auto.addEventListener('change', function(){ try{ W.setAuto(auto.checked); }catch(e){} });
+      render();
+      setInterval(render, 2000);
+    })();
   })();
 
   // ---- Windows / Mac app: this laptop (photos folder, guests' Wi-Fi, licence) ----

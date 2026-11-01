@@ -103,6 +103,10 @@ class PBLocal(private val ctx: Context) {
     @Volatile
     var sharePort: Int = 0
 
+    /** This tablet's address on the booth Wi-Fi it makes itself (BoothWifi), or null when it isn't making one. */
+    @Volatile
+    var ownAddress: String? = null
+
     init {
         try { root.mkdirs() } catch (e: Exception) { Log.w(TAG, "Could not create $root", e) }
         loadIndex()
@@ -576,6 +580,8 @@ class PBLocal(private val ctx: Context) {
      * Mobile-data and VPN interfaces are skipped, so the QR never points guests at an address they can't reach.
      */
     fun lanAddress(): String? {
+        // The Wi-Fi this tablet makes itself wins: that is the network guests were told to join.
+        ownAddress?.let { return it }
         val found = ArrayList<Pair<String, String>>()
         try {
             val nets = NetworkInterface.getNetworkInterfaces() ?: return null

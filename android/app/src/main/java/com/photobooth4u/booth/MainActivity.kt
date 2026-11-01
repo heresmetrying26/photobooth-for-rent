@@ -57,6 +57,7 @@ class MainActivity : AppCompatActivity() {
     private var voiceBridge: VoiceBridge? = null
     private lateinit var licence: AppLicence
     private var shareServer: LocalShareServer? = null
+    private var boothWifi: BoothWifi? = null
     private var cameraHelper: UsbCameraHelper? = null
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
 
@@ -188,6 +189,11 @@ class MainActivity : AppCompatActivity() {
         Thread {
             try { share.start() } catch (e: Exception) { /* guests just won't get a QR */ }
         }.start()
+        // The booth's own Wi-Fi (window.__PBWifi): this tablet makes the network guests join, so no router is needed.
+        val wifi = BoothWifi(this, pbLocal)
+        boothWifi = wifi
+        webView.addJavascriptInterface(wifi, "__PBWifi")
+        wifi.autoStart()
 
         // 5b2. A Nikon camera on the USB port: WebView has no WebUSB, so the app talks to it and the booth
         // reaches it on 127.0.0.1:17321 (same calls as the Windows Helper; the booth page recognises "PB4uAndroid").
@@ -362,6 +368,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == BoothWifi.REQ_PERMISSION) {
+            boothWifi?.onPermissionResult(grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED })
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         hideSystemBars()
@@ -380,6 +393,7 @@ class MainActivity : AppCompatActivity() {
         btBridge.disconnect()
         voiceBridge?.shutdown()
         shareServer?.stop()
+        boothWifi?.shutdown()
         cameraHelper?.stop()
         checkinHandler.removeCallbacksAndMessages(null)
         updateHandler.removeCallbacksAndMessages(null)

@@ -1,18 +1,18 @@
-// The booth's own Wi-Fi (Windows): the laptop turns on Windows' Mobile hotspot itself, so guests' phones can join it
+// The booth's own Wi-Fi (Windows & Mac): the laptop turns on its own hotspot itself, so guests' phones can join it
 // with the Join QR and open their photos with no router, pocket Wi-Fi or phone hotspot at the booth.
 //
-// start / stop: the Windows Runtime NetworkOperatorTetheringManager (what Settings -> Mobile hotspot uses), driven from
-// PowerShell. Windows only starts it when the laptop has some network connection to share. With none (a venue with no
-// Wi-Fi), `setup` adds Microsoft's loopback adapter once, which gives Windows something to share. That step needs admin
-// (one UAC prompt) and is only run when the operator presses the button for it.
-// Mac has no way to switch Internet Sharing on from an app, so this does nothing there.
+// Windows: start / stop uses Windows Runtime NetworkOperatorTetheringManager. With no external Wi-Fi, `setup` adds
+// Microsoft's loopback adapter once.
+// Mac: `setup` adds an offline loopback service (BoothDummy) once with administrator privileges, unlocking macOS
+// Internet Sharing to Wi-Fi without external internet, routing on bridge100.
 import { tmpdir, platform, networkInterfaces } from 'node:os';
 import { join } from 'node:path';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
 import { randomInt } from 'node:crypto';
 
 const IS_WIN = platform() === 'win32';
+const IS_MAC = platform() === 'darwin';
 const PS = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass'];
 export const HOTSPOT_IP = '192.168.137.1';   // where Windows puts the laptop on its hotspot
 let log = (m) => console.log('[hotspot] ' + m);
@@ -171,11 +171,37 @@ async function tether(mode, ssid, pass, timeout) {
 const SAFE = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const rand = (n) => Array.from({ length: n }, () => SAFE[randomInt(SAFE.length)]).join('');
 
-// Is the laptop's hotspot adapter up right now? (Windows gives it 192.168.137.1.)
+function macCheckDummy() {
+  return new Promise((resolve) => {
+    if (!IS_MAC) return resolve(false);
+    execFile('networksetup', ['-listallnetworkservices'], { timeout: 4000, encoding: 'utf8' }, (err, stdout) => {
+      if (err || !stdout) return resolve(false);
+      resolve(stdout.split('\n').some((l) => l.trim() === 'BoothDummy'));
+    });
+  });
+}
+
+function openMacSharing() {
+  return new Promise((resolve) => {
+    execFile('open', ['x-apple.systempreferences:com.apple.Sharing-Settings.extension'], () => {
+      execFile('open', ['x-apple.systempreferences:com.apple.preferences.sharing'], () => resolve());
+    });
+  });
+}
+
+// Is the laptop's hotspot adapter up right now?
+// Windows: 192.168.137.1. Mac: bridge100 (192.168.2.1 / 192.168.3.1).
 export function hotspotUp() {
-  if (!IS_WIN) return false;
   const nets = networkInterfaces();
-  return Object.values(nets).some((l) => (l || []).some((a) => (a.family === 'IPv4' || a.family === 4) && a.address === HOTSPOT_IP));
+  if (IS_WIN) {
+    return Object.values(nets).some((l) => (l || []).some((a) => (a.family === 'IPv4' || a.family === 4) && a.address === HOTSPOT_IP));
+  }
+  if (IS_MAC) {
+    return Object.entries(nets).some(([name, list]) =>
+      (/^bridge/i.test(name)) && (list || []).some((a) => (a.family === 'IPv4' || a.family === 4) && !a.internal && /^192\.168\./.test(a.address))
+    );
+  }
+  return false;
 }
 
 // ---------- what main.mjs uses ----------
@@ -187,34 +213,76 @@ export function initHotspot({ get, save, logger }) {
   if (!c.ssid || !c.pass) { c.ssid = 'photobooth4u-' + rand(4); c.pass = rand(10); }
   c.on = false; save();   // it was switched off when the app last closed
   if (IS_WIN && c.auto) hotspotStart().catch(() => {});
+  if (IS_MAC) {
+    macCheckDummy().then((has) => {
+      st.needsSetup = !has;
+      if (!has) {
+        st.error = 'Mac needs a 1-time setup to share Wi-Fi offline. Press “Set up (one time)”: your Mac asks for permission once.';
+      }
+    }).catch(() => {});
+  }
   keepAlive();
 }
 
 export function hotspotInfo() {
   const c = cfgStore.get();
   return {
-    supported: IS_WIN, ssid: c.ssid || '', pass: c.pass || '', auto: !!c.auto,
-    on: IS_WIN && hotspotUp(), wanted: !!c.on, busy: st.busy, error: st.error, needsSetup: st.needsSetup
+    supported: IS_WIN || IS_MAC, ssid: c.ssid || '', pass: c.pass || '', auto: !!c.auto,
+    on: (IS_WIN || IS_MAC) && hotspotUp(), wanted: !!c.on, busy: st.busy, error: st.error, needsSetup: st.needsSetup
   };
 }
 
 function explain(error) {
   const e = String(error || '');
   if (/no-connection|NetworkLimitedConnectivity|doesn.?t have an Ethernet/i.test(e)) {
-    return { needsSetup: true, text: 'Windows only starts its hotspot when the laptop has a network to share, and this one has none. Press “Set up (one time)” while you are at the booth or at home: Windows asks for permission once.' };
+    return { needsSetup: true, text: (IS_MAC ? 'Mac' : 'Windows') + ' only starts its hotspot when the laptop has a network to share, and this one has none. Press “Set up (one time)” while you are at the booth or at home: the laptop asks for permission once.' };
   }
   if (/WiFiDeviceOff/.test(e)) return { needsSetup: false, text: 'This laptop’s Wi-Fi is switched off. Turn Wi-Fi on (airplane mode off), then try again.' };
   if (/NotSupported|0x80004002|No such interface/i.test(e)) return { needsSetup: false, text: 'This laptop’s Wi-Fi adapter can’t host a hotspot. Use a pocket Wi-Fi router, or a phone hotspot.' };
-  if (/OperationInProgress/.test(e)) return { needsSetup: false, text: 'Windows is still busy with the hotspot. Wait a few seconds and try again.' };
+  if (/OperationInProgress/.test(e)) return { needsSetup: false, text: 'The laptop is still busy with the hotspot. Wait a few seconds and try again.' };
   return { needsSetup: false, text: 'Couldn’t start the hotspot (' + e.slice(0, 120) + '). Use a pocket Wi-Fi router or a phone hotspot instead.' };
 }
 
 export async function hotspotStart() {
-  if (!IS_WIN) return hotspotInfo();
+  if (!IS_WIN && !IS_MAC) return hotspotInfo();
   if (st.busy) return hotspotInfo();
   const c = cfgStore.get();
   st.busy = true; st.error = ''; st.needsSetup = false;
   c.on = true; cfgStore.save();
+
+  if (IS_MAC) {
+    try {
+      const hasDummy = await macCheckDummy();
+      if (!hasDummy) {
+        st.needsSetup = true;
+        st.error = 'Press “Set up (one time)” first to prepare your Mac for offline booth Wi-Fi.';
+        c.on = false; cfgStore.save();
+        return hotspotInfo();
+      }
+      await new Promise((resolve) => {
+        const cmd = 'do shell script "launchctl load -w /System/Library/LaunchDaemons/com.apple.InternetSharing.plist" with administrator privileges';
+        execFile('osascript', ['-e', cmd], { timeout: 20000 }, () => resolve());
+      });
+      await openMacSharing();
+      for (let i = 0; i < 4; i++) {
+        await new Promise((r) => setTimeout(r, 1000));
+        if (hotspotUp()) break;
+      }
+      if (hotspotUp()) {
+        st.started = true;
+        st.fails = 0;
+        log('mac hotspot on');
+      } else {
+        st.error = 'In System Settings → Sharing, turn Internet Sharing ON (Share from: BoothDummy, to: Wi-Fi).';
+      }
+    } catch {
+      st.error = 'In System Settings → Sharing, turn Internet Sharing ON (Share from: BoothDummy, to: Wi-Fi).';
+    } finally {
+      st.busy = false;
+    }
+    return hotspotInfo();
+  }
+
   try {
     const r = await tether('start', c.ssid, c.pass, 70000);
     if (r.ok) { st.started = true; st.fails = 0; log('on: ' + c.ssid); }
@@ -229,12 +297,26 @@ export async function hotspotStart() {
 }
 
 export async function hotspotStop() {
-  if (!IS_WIN) return hotspotInfo();
+  if (!IS_WIN && !IS_MAC) return hotspotInfo();
   const c = cfgStore.get();
   c.on = false; cfgStore.save();
   st.error = ''; st.needsSetup = false;
   if (st.busy) return hotspotInfo();
   st.busy = true;
+
+  if (IS_MAC) {
+    try {
+      await new Promise((resolve) => {
+        const cmd = 'do shell script "launchctl unload -w /System/Library/LaunchDaemons/com.apple.InternetSharing.plist" with administrator privileges';
+        execFile('osascript', ['-e', cmd], { timeout: 20000 }, () => resolve());
+      });
+      st.started = false;
+      log('mac hotspot off');
+    } catch { /* ignore */ }
+    finally { st.busy = false; }
+    return hotspotInfo();
+  }
+
   try { await tether('stop', '', '', 30000); st.started = false; log('off'); }
   finally { st.busy = false; }
   return hotspotInfo();
@@ -242,7 +324,14 @@ export async function hotspotStop() {
 
 // Stop the hotspot when the app quits, without holding the quit up.
 export function hotspotStopOnQuit() {
-  if (!IS_WIN || !st.started) return;
+  if ((!IS_WIN && !IS_MAC) || !st.started) return;
+  if (IS_MAC) {
+    try {
+      const cmd = 'do shell script "launchctl unload -w /System/Library/LaunchDaemons/com.apple.InternetSharing.plist" with administrator privileges';
+      execFile('osascript', ['-e', cmd], () => {});
+    } catch { /* ignore */ }
+    return;
+  }
   try {
     const dir = mkdtempSync(join(tmpdir(), 'pb4u-hotspot-'));
     const ps1 = join(dir, 'hotspot.ps1');
@@ -252,9 +341,9 @@ export function hotspotStopOnQuit() {
   } catch { /* ignore */ }
 }
 
-// Windows switches the hotspot off when nobody has been connected for a few minutes: put it back while it is wanted.
+// Windows & Mac keepalive: if the hotspot goes off while wanted, start it again.
 function keepAlive() {
-  if (!IS_WIN || keepTimer) return;
+  if ((!IS_WIN && !IS_MAC) || keepTimer) return;
   keepTimer = setInterval(() => {
     const c = cfgStore.get();
     if (!c.on || st.busy || st.fails >= 3 || hotspotUp()) return;
@@ -270,11 +359,38 @@ export function hotspotSetAuto(on) {
   return hotspotInfo();
 }
 
-// One-time set-up with admin rights (a single Windows permission prompt).
+// One-time set-up with admin rights (a single permission prompt).
 export async function hotspotSetup() {
-  if (!IS_WIN) return { ok: false, error: 'Windows only.' };
+  if (!IS_WIN && !IS_MAC) return { ok: false, error: 'Not supported.' };
   if (st.busy) return { ok: false, error: 'Busy.' };
   st.busy = true; st.error = '';
+
+  if (IS_MAC) {
+    try {
+      const setupScript = 'do shell script "networksetup -createnetworkservice BoothDummy lo0 && networksetup -setmanual BoothDummy 192.168.1.88 255.255.255.255" with administrator privileges';
+      const r = await new Promise((resolve) => {
+        execFile('osascript', ['-e', setupScript], { timeout: 60000, encoding: 'utf8' }, (err, stdout, stderr) => {
+          resolve({ ok: !err, err: String(stderr || (err && err.message) || '') });
+        });
+      });
+      if (!r.ok) {
+        const cancelled = /user canceled/i.test(r.err);
+        st.error = cancelled ? 'Set-up was cancelled. Press the button again and enter your Mac password.' : 'Set-up failed: ' + r.err.slice(0, 140);
+        return { ok: false, error: st.error };
+      }
+      st.needsSetup = false;
+      st.fails = 0;
+      st.error = '';
+      log('mac setup done: BoothDummy created');
+      await openMacSharing();
+      return { ok: true };
+    } catch (e) {
+      st.error = 'Set-up failed: ' + String(e && e.message || e).slice(0, 140);
+      return { ok: false, error: st.error };
+    } finally {
+      st.busy = false;
+    }
+  }
   let dir = '';
   try {
     dir = mkdtempSync(join(tmpdir(), 'pb4u-hotspot-'));

@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.50', date: '2026-11-02' },
   { version: '1.0.49', date: '2026-11-02' },
   { version: '1.0.48', date: '2026-11-02' },
   { version: '1.0.47', date: '2026-11-02' },
@@ -96,6 +97,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-02', title: 'Mac & Windows laptops: standalone booth Wi-Fi with no router or internet', for: ['website', 'app'], app: '1.0.50',
+    items: [
+      'Mac laptops can now create their own booth Wi-Fi in Setup → Share with the new “Set up (one time)” and “Make this laptop the booth Wi-Fi” switch.',
+      'The app sets up an offline loopback service (BoothDummy) on macOS to unlock Internet Sharing to Wi-Fi without external internet, routing automatically to guests over bridge100.',
+      'Guests scan the Join QR and access photos and videos directly with no router, pocket Wi-Fi, or phone hotspot at the booth.'
+    ]
+  },
   {
     date: '2026-11-02', title: '360 desk: animated video overlay loops and reliability fix', for: ['website', 'app'], app: '1.0.49',
     items: [

@@ -153,7 +153,7 @@ function drawStar(buf, cx, cy, rad, r, g, b, a = 255) {
 // Deterministic Pseudo-Random
 function createRng(seed = 1234567) {
   let s = seed;
-  return function() {
+  return function () {
     s = (s * 1664525 + 1013904223) % 4294967296;
     return s / 4294967296;
   };

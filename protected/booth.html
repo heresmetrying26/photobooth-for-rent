@@ -21861,7 +21861,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       });
       auto.addEventListener('change', function(){ api.hotspotAuto(auto.checked).then(render).catch(function(){}); });
       setupBtn.addEventListener('click', function(){
-        setupBtn.disabled = true; setupBtn.textContent = 'Waiting for Windows…';
+        setupBtn.disabled = true; setupBtn.textContent = 'Setting up…';
         api.hotspotSetup().then(function(r){
           setupBtn.disabled = false; setupBtn.textContent = 'Set up (one time)';
           if(r && r.ok) return api.hotspotSet(true).then(render);

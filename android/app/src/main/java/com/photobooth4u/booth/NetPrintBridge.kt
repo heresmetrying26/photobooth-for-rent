@@ -480,7 +480,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val optJson = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
                 val colour = optJson.optString("color") == "color"
                 val cal = calOf(optJson.optJSONObject("cal"))
-                val quality = when (optJson.optString("quality")) { "draft" -> 0; "high" -> 2; else -> 1 }
+                val media = optJson.optString("media")
+                val feed = when (media) { "photo" -> 8; "matte" -> 7; else -> 0 }
+                // photo paper needs the finer mode (Gutenprint allows premium papers at 720 dpi and above only)
+                val quality = when (optJson.optString("quality")) { "draft" -> 0; "high" -> 2; else -> if (media == "photo") 2 else 1 }
                 val d = usbFind(id)
                 usbEnsure(d)
                 usbIsEscpr(d)                              // reads the printer's ID into the cache
@@ -491,7 +494,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val jpeg = decode(arr.getString(i))
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
-                        usbRaw(id, EscP2Job.build(bmp, widthMm, heightMm, colour, cal, quality))
+                        usbRaw(id, EscP2Job.build(bmp, widthMm, heightMm, colour, cal, quality, feed))
                     }
                 }
                 r.put("ok", true)
@@ -569,6 +572,12 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             val raw = !ipp && usbRawIface(d) != null && usbLooksLikeReceipt(d)
             val escpr = !ipp && !raw && usbIsEscpr(d)
             val perm = m.hasPermission(d)
+            val ippEntry = if (ipp && perm) {
+                usbEntries.getOrPut("usb:" + d.deviceName) { Entry("usb:" + d.deviceName) }.also {
+                    it.usbDev = d; it.ippPort = 1
+                    if (!it.attrsTried) pool.execute { try { fetchAttrs(it) } catch (_: Exception) {} }
+                }
+            } else null
             val escp2 = !ipp && !raw && !escpr && usbIsEscp2(d)
             val canon = !ipp && !raw && !escpr && !escp2 && usbIsCanon(d)
             val id = "usb:" + d.deviceName
@@ -578,6 +587,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 .put("escp2", escp2).put("canon", canon)
                 .put("noDriver", perm && !ipp && !raw && !escpr && !escp2 && !canon)
                 .put("needsPermission", !perm && !ipp && !raw)
+                .put("qualities", JSONArray(ippEntry?.qualities ?: emptyList<Int>()))
+                .put("colorModes", JSONArray(ippEntry?.colorModes ?: emptyList<String>()))
+                .put("mediaTypes", JSONArray(ippEntry?.mediaTypes ?: emptyList<String>()))
                 .put("info", (usbIds[d.deviceName] ?: "").take(300))
                 .put("vid", d.vendorId).put("pid", d.productId))
         }
@@ -826,11 +838,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             throw IllegalStateException("This printer's raster mode (" + types.take(3).joinToString(", ") + ") isn't supported yet.")
         }
         val gray = types.isNotEmpty() && "sgray_8" in types && ("srgb_8" !in types || opts.color == "mono")
-        val dpi = when {
-            300 in e.pwgRes -> 300
-            e.pwgRes.isNotEmpty() -> e.pwgRes.minByOrNull { Math.abs(it - 300) } ?: 300
-            else -> 300
-        }
+        val avail = if (e.pwgRes.isNotEmpty()) e.pwgRes else listOf(300)
+        val want = when (opts.quality) { "draft" -> 150; "high" -> 600; else -> 300 }
+        fun pixelsAt(d: Int) = Math.round(minOf(wMm, hMm) / 25.4 * d).toLong() * Math.round(maxOf(wMm, hMm) / 25.4 * d)
+        val fits = avail.filter { pixelsAt(it) <= 26_000_000L }
+        val dpi = (if (fits.isNotEmpty()) fits else avail).minByOrNull { Math.abs(it - want) } ?: 300
         return PwgRaster.fromJpeg(jpeg, wMm, hMm, dpi, gray)
     }
 

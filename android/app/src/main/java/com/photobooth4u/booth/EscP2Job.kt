@@ -49,17 +49,19 @@ object EscP2Job {
         intArrayOf(0, cal.k, MIN_LINES), intArrayOf(2, cal.c, MIN_LINES), intArrayOf(1, cal.m, MIN_LINES), intArrayOf(4, 0, MIN_LINES))
 
     /** quality: 0 draft (half the passes), 1 normal (360 dpi), 2 best (720 dpi with smaller dots, when the page is small enough). */
-    fun build(src: Bitmap, widthMm: Double, heightMm: Double, color: Boolean = false, cal: Cal = Cal(), quality: Int = 1): ByteArray =
-        if (color) buildColor(src, widthMm, heightMm, cal, quality = quality) else buildMono(src, widthMm, heightMm, cal, quality)
+    /** feed: paper feed sequence for the paper type (0 = plain, left unsent; 8 = photo paper; 7 = matte / inkjet paper). */
+    fun build(src: Bitmap, widthMm: Double, heightMm: Double, color: Boolean = false, cal: Cal = Cal(), quality: Int = 1, feed: Int = 0): ByteArray =
+        if (color) buildColor(src, widthMm, heightMm, cal, quality = quality, feed = feed) else buildMono(src, widthMm, heightMm, cal, quality, feed)
 
     private const val BEST_MAX_PIXELS = 16_000_000L       // above this the page stays at 360 dpi (memory on the tablet)
 
     /** kMode: value for the ESC ( K colour-mode command (1 black only, 2 colour), or -1 to leave the command out. */
-    private fun header(out: ByteArrayOutputStream, paperW: Int, paperH: Int, kMode: Int, s: Int = 1) {
+    private fun header(out: ByteArrayOutputStream, paperW: Int, paperH: Int, kMode: Int, s: Int = 1, feed: Int = 0) {
         out.put(bytes(0x00, 0x00, 0x00, 0x1B, 0x01), ascii("@EJL 1284.4\n@EJL     \n"), bytes(0x1B, 0x40))
         out.put(bytes(0x1B, 0x40))
         out.put(bytes(0x1B, 0x28, 0x52, 0x08, 0x00, 0x00), ascii("REMOTE1"))
         out.put(bytes(0x50, 0x4D, 0x02, 0x00, 0x00, 0x00))
+        if (feed > 0) out.put(bytes(0x53, 0x4E, 0x03, 0x00, 0x00, 0x00, feed))                         // paper feed sequence (photo 8, matte 7)
         out.put(bytes(0x1B, 0x00, 0x00, 0x00))
         out.put(bytes(0x1B, 0x28, 0x47, 0x01, 0x00, 0x01))
         out.put(bytes(0x1B, 0x28, 0x55, 0x05, 0x00, 10, 10 / s, 10 / s, 0x10, 0x0E))                 // units: 1/360 or 1/720 inch
@@ -115,7 +117,7 @@ object EscP2Job {
     }
 
     /** EXPERIMENTAL colour: four planes (black, cyan, magenta, yellow), each dithered to 1 bit and printed by its own nozzles. */
-    private fun buildColor(src: Bitmap, widthMm: Double, heightMm: Double, cal: Cal, limitRows: Int = Int.MAX_VALUE, quality: Int = 1): ByteArray {
+    private fun buildColor(src: Bitmap, widthMm: Double, heightMm: Double, cal: Cal, limitRows: Int = Int.MAX_VALUE, quality: Int = 1, feed: Int = 0): ByteArray {
         val CHANNELS = channels(cal)
         val top360 = maxOf(cal.m, cal.c, cal.k)            // blank rows at the top so the lower colours can reach the first rows
         val nz = cal.n
@@ -139,7 +141,7 @@ object EscP2Job {
         val planes = cmykPlanes(bmp, areaW, areaH, rowBytes, cal.gamma)    // same order as CHANNELS: K, C, M, Y
 
         val out = ByteArrayOutputStream()
-        header(out, paperW, paperH, 2, s)
+        header(out, paperW, paperH, 2, s, feed)
         var last = 0
         val use = if (quality == 0) 1 else phases           // draft prints only the first pass of each band
         val jMax = (top + areaH + cband - 1) / cband
@@ -237,7 +239,7 @@ object EscP2Job {
         return planes
     }
 
-    private fun buildMono(src: Bitmap, widthMm: Double, heightMm: Double, cal: Cal, quality: Int): ByteArray {
+    private fun buildMono(src: Bitmap, widthMm: Double, heightMm: Double, cal: Cal, quality: Int, feed: Int = 0): ByteArray {
         val paperW = Math.round(minOf(widthMm, heightMm) / 25.4 * DPI).toInt()
         val paperH = Math.round(maxOf(widthMm, heightMm) / 25.4 * DPI).toInt()
         val area360W = paperW - 2 * SIDE
@@ -256,7 +258,7 @@ object EscP2Job {
         val bits = dither(bmp, areaW, areaH, rowBytes, if (s == 2) cal.gamma else 1.0)
 
         val out = ByteArrayOutputStream()
-        header(out, paperW, paperH, 1, s)
+        header(out, paperW, paperH, 1, s, feed)
 
         // each band is printed as interleaved passes (2 at 360 dpi, 4 at 720 dpi); draft prints only the first pass
         val phases = SEP * s

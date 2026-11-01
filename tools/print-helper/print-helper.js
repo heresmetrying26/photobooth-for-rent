@@ -193,6 +193,35 @@ async function pickPaper(printer, widthMm, heightMm) {
   return best;
 }
 
+// Photo quality for AirPrint queues (Mac): a printer added as AirPrint is a driverless IPP queue and
+// prints at draft/normal quality unless told otherwise. Only for those queues, ask for the best
+// quality and photo paper using the options the queue lists; driver queues keep their own settings.
+async function airPrintQualityOptions(printer){
+  try {
+    const v = await run('lpstat', ['-v', printer]);
+    if(!/^device for [^:]+:\s*(?:ipps?|dnssd|mdns|ippusb):/im.test(v.out || '')) return [];
+    const lo = await run('lpoptions', ['-p', printer, '-l']);
+    const opts = [];
+    for(const line of lo.out.split(/\r?\n/)){
+      const m = /^([^/:]+)\/([^:]*):\s*(.*)$/.exec(line);
+      if(m) opts.push({ key: m[1], choices: m[3].trim().split(/\s+/).filter(Boolean).map(v => ({ value: v.replace(/^\*/, ''), selected: v.startsWith('*') })) });
+    }
+    const out = [], notes = [];
+    const quality = opts.find(o => /^(?:cups)?print-?quality$/i.test(o.key));
+    if(quality){
+      const best = quality.choices.find(c => /^(?:5|high|best|photo)/i.test(c.value)) || quality.choices.find(c => /^(?:4|normal)/i.test(c.value));
+      if(best){ out.push('-o', quality.key + '=' + best.value); notes.push(quality.key + '=' + best.value); }
+    } else { out.push('-o', 'print-quality=5'); notes.push('print-quality=5'); }
+    const type = opts.find(o => /^media-?type$/i.test(o.key));
+    if(type && !type.choices.some(c => c.selected && /photo|glossy/i.test(c.value))){
+      const photo = type.choices.find(c => /photo.*gloss|glossy/i.test(c.value)) || type.choices.find(c => /photo/i.test(c.value));
+      if(photo){ out.push('-o', type.key + '=' + photo.value); notes.push(type.key + '=' + photo.value); }
+    }
+    if(notes.length) log('AirPrint quality: ' + notes.join(', '));
+    return out;
+  } catch { return []; }
+}
+
 const WIN_PRINT_PS = String.raw`
 param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName)
 $ErrorActionPreference = 'Stop'
@@ -269,7 +298,8 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm){
       if(pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
       const media = fit === 'width' && widthMm > 0 && heightMm > 0 ? ['-o', 'media=Custom.' + Math.round(widthMm) + 'x' + Math.round(heightMm) + 'mm']
         : pick && !pick.keep ? ['-o', (pick.opt === 'media' ? 'media=' : 'PageSize=') + pick.key] : [];
-      r = await run('lp', ['-d', printer, ...media, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
+      const quality = await airPrintQualityOptions(printer);
+      r = await run('lp', ['-d', printer, ...media, ...quality, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
     }
     if(r.code !== 0) throw new Error((r.err || r.out || ('exit ' + r.code)).trim().slice(0, 300));
   } finally {

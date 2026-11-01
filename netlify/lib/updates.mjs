@@ -53,7 +53,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.55', date: '2026-11-01', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.55/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.56', date: '2026-11-01', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.56/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -92,7 +92,7 @@ export const NOTES = [
     date: '2026-11-01', title: 'Photo size on the paper, in plain choices', for: ['website'],
     items: [
       'Print settings now has one row under Photo size on the paper: Fit the page, a real size such as 2×6 strip or 4R, or Fill the page. A real size prints in the middle of a bigger paper such as A4.',
-      'Setup step 4 is now Camera & printer, with the printer, paper and a print preview. Android app 1.0.55.'
+      'Setup step 4 is now Camera & printer, with the printer, paper and a print preview. Android app 1.0.56.'
     ]
   },
   {

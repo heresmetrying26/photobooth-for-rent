@@ -504,8 +504,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val cal = calOf(optJson.optJSONObject("cal"))
                 val media = optJson.optString("media")
                 val feed = when (media) { "photo" -> 8; "matte" -> 7; else -> 0 }
-                // photo paper needs the finer mode (Gutenprint allows premium papers at 720 dpi and above only)
-                val quality = when (optJson.optString("quality")) { "draft" -> 0; "high" -> 2; else -> if (media == "photo") 2 else 1 }
+                // The 720 dpi mode (Best, and photo paper before) made the L120 eject blank sheets on a real printer, so every
+                // quality except Draft prints at the 360 dpi mode that is known to work. Photo paper only adds its feed sequence.
+                val quality = if (optJson.optString("quality") == "draft") 0 else 1
                 val d = usbFind(id)
                 usbEnsure(d)
                 usbIsEscpr(d)                              // reads the printer's ID into the cache

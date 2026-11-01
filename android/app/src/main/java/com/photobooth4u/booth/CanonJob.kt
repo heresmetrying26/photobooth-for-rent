@@ -49,13 +49,25 @@ object CanonJob {
 
     fun supports(wMm: Double, hMm: Double) = sizeCode(wMm, hMm) != null
 
-    fun build(src: Bitmap, widthMm: Double, heightMm: Double, mono: Boolean): ByteArray {
+    private const val BEST_MAX_PIXELS = 16_000_000L     // above this a page stays at 300 dpi (tablet memory)
+
+    /**
+     * quality: 0 draft (300 dpi, less ink), 1 normal (300 dpi), 2 best (600 dpi).
+     * media: 0 plain paper, 1 glossy photo paper (printed at 600 dpi), 2 matte photo paper.
+     * The 600 dpi mode and the photo / matte paper codes follow Gutenprint's G1000 data but are untested on a real printer.
+     */
+    fun build(src: Bitmap, widthMm: Double, heightMm: Double, mono: Boolean, quality: Int = 1, media: Int = 0): ByteArray {
         val size = sizeCode(widthMm, heightMm)
             ?: throw IllegalArgumentException("This paper size isn't supported on Canon USB printers yet. Use 4x6, A4 or Letter.")
-        val paperW = Math.round(minOf(widthMm, heightMm) / 25.4 * DPI).toInt()
-        val paperH = Math.round(maxOf(widthMm, heightMm) / 25.4 * DPI).toInt()
-        val areaW = paperW - 2 * MARGIN_SIDE
-        val areaH = ((paperH - MARGIN_TOP - MARGIN_BOTTOM) / LINES) * LINES
+        fun areaWOf(d: Int) = Math.round(minOf(widthMm, heightMm) / 25.4 * d).toInt() - 2 * MARGIN_SIDE * (d / DPI)
+        fun areaHOf(d: Int) = ((Math.round(maxOf(widthMm, heightMm) / 25.4 * d).toInt() - (MARGIN_TOP + MARGIN_BOTTOM) * (d / DPI)) / LINES) * LINES
+        var dpi = if (quality == 2 || media == 1) 600 else 300
+        if (dpi == 600 && areaWOf(600).toLong() * areaHOf(600) > BEST_MAX_PIXELS) dpi = 300
+        val u = 600 / dpi                                   // the printer counts page areas in 1/600 inch
+        val paperW = Math.round(minOf(widthMm, heightMm) / 25.4 * dpi).toInt()
+        val paperH = Math.round(maxOf(widthMm, heightMm) / 25.4 * dpi).toInt()
+        val areaW = areaWOf(dpi)
+        val areaH = areaHOf(dpi)
         require(areaW > 0 && areaH > 0) { "Sheet too small" }
 
         var bmp = src
@@ -70,28 +82,32 @@ object CanonJob {
             val p = Paint().apply { colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) }) }
             Canvas(grey).apply { drawColor(Color.WHITE); drawBitmap(bmp, 0f, 0f, p) }
             arrayOf(ByteArray(rowBytes * areaH), ByteArray(rowBytes * areaH), ByteArray(rowBytes * areaH),
-                EscP2Job.dither(grey, areaW, areaH, rowBytes))
+                EscP2Job.dither(grey, areaW, areaH, rowBytes, if (quality == 0) 2.2 else 1.0))
         } else {
-            val k = EscP2Job.cmykPlanes(bmp, areaW, areaH, rowBytes, 1.6)      // K, C, M, Y
+            val k = EscP2Job.cmykPlanes(bmp, areaW, areaH, rowBytes, if (quality == 0) 2.2 else 1.6)   // K, C, M, Y
             arrayOf(k[1], k[2], k[3], k[0])
         }
 
-        val paperW600 = if (size == 0x03) 4961 else paperW * 2
-        val paperH600 = if (size == 0x03) 7016 else paperH * 2
+        // paper codes for the page-setup commands: ESC ( c, ESC ( l and ESC ( P (plain 0; glossy photo; matte photo)
+        val mediaC = when (media) { 1 -> 0x1D; 2 -> 0x0A; else -> 0x00 }
+        val mediaL = when (media) { 1 -> 0x23; 2 -> 0x10; else -> 0x00 }
+        val mediaP = when (media) { 1 -> 0x32; 2 -> 0x1C; else -> 0x00 }
+        val paperW600 = if (size == 0x03) 4961 else paperW * u
+        val paperH600 = if (size == 0x03) 7016 else paperH * u
         val out = ByteArrayOutputStream()
         out.put(ascii(PRE_XML))
         out.put(bytes(0x1B, 0x5B, 0x4B, 0x02, 0x00, 0x00, 0x0F))                      // reset (first page)
         out.put(bytes(0x1B, 0x28, 0x62, 0x01, 0x00, 0x01))                            // data compression on
         out.put(bytes(0x1B, 0x28, 0x71, 0x01, 0x00, 0x01))                            // page id
-        out.put(bytes(0x1B, 0x28, 0x64, 0x04, 0x00), be16(DPI), be16(DPI))            // resolution 300 x 300
-        out.put(bytes(0x1B, 0x28, 0x74, 0x18, 0x00, 0x80, 0x00, 0x01,                 // image format: 4 inks, 1 bit each
+        out.put(bytes(0x1B, 0x28, 0x64, 0x04, 0x00), be16(dpi), be16(dpi))            // resolution 300 or 600
+        out.put(bytes(0x1B, 0x28, 0x74, 0x18, 0x00, 0x80, if (dpi == 600) 0x80 else 0x00, 0x01,   // image format: 4 inks, 1 bit each
             0x01, 0x00, 0x02, 0x01, 0x00, 0x02, 0x01, 0x00, 0x02, 0x01, 0x00, 0x02,
             0, 0, 0, 0, 0, 0, 0, 0, 0))
-        out.put(bytes(0x1B, 0x28, 0x63, 0x03, 0x00, 0x30, 0x00, 0x01))                // plain paper, standard quality
-        out.put(bytes(0x1B, 0x28, 0x70, 0x2E, 0x00), be16(areaH * 2), be16(0), be16(areaW * 2), be16(0), be32(0), be16(600),
-            be32(83), be32(75), be32(areaW * 2), be32(areaH * 2), be32(0), be32(0), be32(paperW600), be32(paperH600))
-        out.put(bytes(0x1B, 0x28, 0x50, 0x09, 0x00, 0x00, size, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0xFF))   // paper size, portrait
-        out.put(bytes(0x1B, 0x28, 0x6C, 0x03, 0x00, 0x34, 0x00, 0x00))                // rear tray, plain paper
+        out.put(bytes(0x1B, 0x28, 0x63, 0x03, 0x00, 0x30, mediaC, if (dpi == 600) 0x02 else 0x01))   // paper type, quality
+        out.put(bytes(0x1B, 0x28, 0x70, 0x2E, 0x00), be16(areaH * u), be16(0), be16(areaW * u), be16(0), be32(0), be16(600),
+            be32(83), be32(75), be32(areaW * u), be32(areaH * u), be32(0), be32(0), be32(paperW600), be32(paperH600))
+        out.put(bytes(0x1B, 0x28, 0x50, 0x09, 0x00, 0x00, size, 0x00, mediaP, 0x01, 0x00, 0x01, 0x00, 0xFF))   // paper size, portrait
+        out.put(bytes(0x1B, 0x28, 0x6C, 0x03, 0x00, 0x34, mediaL, 0x00))              // rear tray, paper type
         out.put(bytes(0x1B, 0x28, 0x76, 0x01, 0x00, 0x00))                            // portrait
         out.put(bytes(0x1B, 0x28, 0x49, 0x01, 0x00, 0x01))                            // multi-line raster on
         out.put(bytes(0x1B, 0x28, 0x4A, 0x01, 0x00, LINES))                           // 8 rows per band

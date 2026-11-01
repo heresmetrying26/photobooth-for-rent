@@ -434,14 +434,17 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val d = usbFind(id)
                 usbEnsure(d)
                 if (!usbIsCanon(d)) throw IllegalStateException("This printer doesn't look like a Canon G-series printer, so the app won't send it that data.")
-                val mono = (try { JSONObject(optionsJson).optString("color") } catch (_: Exception) { "" }) == "mono"
+                val copt = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
+                val mono = copt.optString("color") == "mono"
+                val cq = when (copt.optString("quality")) { "draft" -> 0; "high" -> 2; else -> 1 }
+                val cm = when (copt.optString("media")) { "photo" -> 1; "matte" -> 2; else -> 0 }
                 val arr = JSONArray(pagesJson)
                 for (c in 0 until copies.coerceIn(1, 20)) {
                     for (i in 0 until arr.length()) {
                         val jpeg = decode(arr.getString(i))
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
-                        usbRaw(id, CanonJob.build(bmp, widthMm, heightMm, mono))
+                        usbRaw(id, CanonJob.build(bmp, widthMm, heightMm, mono, cq, cm))
                     }
                 }
                 r.put("ok", true)

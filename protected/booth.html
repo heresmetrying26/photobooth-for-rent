@@ -3832,7 +3832,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
               <option value="size">Choose a photo size&hellip;</option>
             </select>
             <div class="print-size-row hidden" id="photoSizeRow"></div>
-            <label class="switch-row" style="margin:8px 0 2px;"><span>Borderless, no trimming</span><input type="checkbox" id="borderlessToggle"></label>
+            <label class="switch-row" id="borderlessRow" style="margin:8px 0 2px;"><span>Borderless, no trimming</span><input type="checkbox" id="borderlessToggle"></label>
             <p class="panel-hint" id="borderlessHint" style="margin:2px 0 8px;"></p>
             <div style="display:flex;gap:10px;align-items:center;margin:6px 0 8px;">
               <img id="ppThumb" alt="How the page will look" hidden style="max-height:120px;border:1px solid #ddd;background:#fff;">
@@ -11923,6 +11923,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       b.type = 'button'; b.className = 'print-size-btn' + (k === printPrefs.photoSize ? ' active' : ''); b.dataset.size = k; b.textContent = paperFor(k).name;
       photoSizeRow.appendChild(b);
     });
+    // Borderless is sent by the Android app to Wi-Fi / driverless USB printers. On the website and the laptop app the
+    // printer driver decides the margins, so the switch is hidden there.
+    const bl = !!(window.__PBNet && typeof window.__PBNet.scan === 'function');
+    document.getElementById('borderlessRow').hidden = !bl;
+    borderlessHint.hidden = !bl;
     borderlessToggle.checked = !!printPrefs.borderless;
     let hint = 'Prints edge to edge with no printer margins and no scaling by the printer, so nothing is trimmed. It works on Wi-Fi and driverless USB printers.';
     try{ if(wifiPrinter && (wifiPrinter.escp2 || wifiPrinter.canon)) hint = 'This printer prints with a small border. Borderless needs a Wi-Fi or driverless USB printer.'; }catch(e){}
@@ -12248,7 +12253,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const notes = [];
     if(pages.length > 1) notes.push('Page 1 of ' + pages.length + '.');
     if(stripTwoUp(printSize)) notes.push('Two strips side by side: cut down the middle.');
-    if(printPrefs.borderless) notes.push('Borderless: printed edge to edge with no trimming (Wi-Fi and driverless USB printers).');
+    if(printPrefs.borderless && window.__PBNet) notes.push('Borderless: printed edge to edge with no trimming (Wi-Fi and driverless USB printers).');
     if(auto === true) notes.push('After this, auto-print sends photos without asking.');
     document.getElementById('ppvNote').textContent = notes.join(' ');
     document.getElementById('ppvNever').checked = false;
@@ -12310,7 +12315,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     const o = { color: wifiOptsState.color || '', quality: wifiOptsState.quality || '', media: wifiOptsState.media || '' };
     if(wifiPrinter && wifiPrinter.escp2 && !(pbDebug() && o.color === 'color')) o.color = 'mono';   // L120 family: black and white; colour only in debug
     o.cal = wifiCal;
-    o.borderless = !!(printPrefs && printPrefs.borderless);
+    o.borderless = !!(printPrefs && printPrefs.borderless && window.__PBNet);
     return o;
   }
   function wifiOptsUI(){

@@ -60,6 +60,7 @@
   .b-scheduled{background:#FFF0D6;color:#9A5B00;} .b-lifetime{background:#1C1A1E;color:#fff;} .b-devices{background:#EEF0F4;color:#3D4656;}
   .devlist{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 0;}
   .devchip{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;border:1.5px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;color:var(--ink);background:#fff;}
+  .verold{color:#B3261E;font-weight:700;}
   .devchip button{padding:2px 8px;font-size:11px;border-radius:999px;}
   #newDays:disabled{opacity:.45;} .b-bonus{background:#E6F4F1;color:#1F6F62;}
   .pkg-l{margin:8px 0 3px;font-weight:700;} .pkg-l:first-child{margin-top:4px;}
@@ -676,6 +677,26 @@
     var d = new Date(ms);
     return { date: d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()), time: pad2(d.getHours()) + ':' + pad2(d.getMinutes()) };
   }
+  // Newest app versions (from the public /api/updates), to flag devices that are behind.
+  var LATEST = {};
+  fetch('/api/updates').then(function(r){ return r.json(); }).then(function(j){
+    LATEST = { app: j.app && j.app.version, android: j.android && j.android.version };
+  }).catch(function(){});
+  function verNewer(a, b){   // is version a newer than b?
+    var x = String(a).split('.').map(Number), y = String(b).split('.').map(Number);
+    for(var i = 0; i < 3; i++){ var p = x[i] || 0, q = y[i] || 0; if(p !== q) return p > q; }
+    return false;
+  }
+  // " · v1.0.41" for the laptop app / Android app, with a flag when it is not the newest.
+  function appVerChip(d){
+    if(!d.app) return '';
+    var v = d.app.ver || '', android = d.app.os === 'android', latest = android ? LATEST.android : LATEST.app;
+    if(!v) return ' · <i title="No version reported yet: it appears after the app’s next check-in">version unknown</i>';
+    // Android apps before 1.0.57 always reported 1.0.9, whatever they really were.
+    if(android && v === '1.0.9') return ' · <b class="verold" title="This Android app is older than 1.0.57 and does not report its exact version">older app (before 1.0.57)</b>';
+    var behind = latest && verNewer(latest, v);
+    return ' · <span' + (behind ? ' class="verold" title="Newest is ' + esc(latest) + '"' : '') + '>v' + esc(v) + (behind ? ' · update available' : '') + '</span>';
+  }
   function devicesOf(l){ return Array.isArray(l.devices) ? l.devices : (l.deviceId ? [{ id: l.deviceId, no: 1, at: l.redeemedAt }] : []); }
   function devCount(l){ return typeof l.devicesUsed === 'number' ? l.devicesUsed : devicesOf(l).length; }
   function fmtMinutes(m){ return m >= 60 ? (Math.floor(m / 60) + 'h' + (m % 60 ? ' ' + (m % 60) + 'm' : '')) : m + ' min'; }
@@ -904,7 +925,7 @@
     return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + flags + (l.email ? 'Email: <b>' + esc(l.email) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
       '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>GIF mode: <b>' + (l.gifOpt ? 'Yes (Photo + GIF &amp; GIF-only options)' : 'No (Photo only)') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Card &amp; certificate booths: <b>' + (l.typesOpt ? 'Yes (Booth type switch in Setup)' : 'No') + '</b><br>Debug tools (Android printer IDs, colour tests): <b>' + (l.debugOpt ? 'On' : 'Off') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? (l.offlineOnly ? 'Laptop app only' : 'Yes') + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
       '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
-      (devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.kind ? ' · ' + esc(d.kind) : '') + (d.app && d.app.name ? ' · ' + esc(d.app.name) : '') + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + (d.app && d.app.seen ? ' · checked in ' + new Date(d.app.seen).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="' + (d.app ? 'Deactivate this laptop (stops at its next check-in)' : 'Remove this device') + '">' + (d.app ? 'Deactivate' : 'Remove') + '</button></span>'; }).join('') + '</div>' : '') +
+      (devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.kind ? ' · ' + esc(d.kind) : '') + (d.app && d.app.name ? ' · ' + esc(d.app.name) : '') + appVerChip(d) + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + (d.app && d.app.seen ? ' · checked in ' + new Date(d.app.seen).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="' + (d.app ? 'Deactivate this laptop (stops at its next check-in)' : 'Remove this device') + '">' + (d.app ? 'Deactivate' : 'Remove') + '</button></span>'; }).join('') + '</div>' : '') +
       '</div>' +
       (bonus ? '' : '<div class="themerow">Starting theme <select class="sel" data-theme-for="' + c + '">' + themeOptions(l.defaultTheme || '') + '</select>' +
         '&nbsp; Starting frame <button class="small" data-a="sframe" data-c="' + c + '" title="A PNG with the photo spots left white or see-through. It appears in the renter’s Your frames.">' + (l.startFrame ? esc(l.startFrame.name || l.startFrame) + ' &middot; replace' : 'Upload') + '</button>' +

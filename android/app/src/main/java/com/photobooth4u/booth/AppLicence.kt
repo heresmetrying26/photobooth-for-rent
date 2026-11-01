@@ -275,6 +275,9 @@ class AppLicence(private val ctx: Context) {
         }
     }
 
+    /** The installed app's real version (what the admin page shows per device). */
+    fun appVersion(): String = try { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName ?: APP_VERSION } catch (e: Exception) { APP_VERSION }
+
     /** Activates this tablet with a rental code. Needs Wi-Fi; calls back on the main thread. */
     fun activate(code: String, cb: (ok: Boolean, error: String?) -> Unit) {
         val c = code.trim()
@@ -282,7 +285,7 @@ class AppLicence(private val ctx: Context) {
         thread(name = "pb-licence-activate") {
             val body = JSONObject()
                 .put("action", "activate").put("code", c).put("mid", machineId())
-                .put("name", deviceName()).put("os", "android").put("ver", APP_VERSION)
+                .put("name", deviceName()).put("os", "android").put("ver", appVersion())
             val res = post(body, 20000)
             if (res == null) { mainHandler.post { cb(false, "Can’t reach photobooth4u. Check the Wi-Fi and try again.") }; return@thread }
             val licText = res.json.optString("licence", "")
@@ -304,7 +307,7 @@ class AppLicence(private val ctx: Context) {
         if (!force && now - lastTry < CHECK_EVERY_MS && skew == 0L) { cb?.invoke("skip"); return }
         lastTry = now; saveState()
         thread(name = "pb-licence-checkin") {
-            val body = JSONObject().put("action", "checkin").put("licence", l).put("mid", machineId()).put("ver", APP_VERSION)
+            val body = JSONObject().put("action", "checkin").put("licence", l).put("mid", machineId()).put("ver", appVersion())
             val res = post(body, 15000)
             if (res == null) { mainHandler.post { cb?.invoke("offline") }; return@thread }
             applyClockFrom(res.date)

@@ -560,7 +560,7 @@ class MainActivity : AppCompatActivity() {
                     append("<script>")
                     // window.__PB lets the booth enable GIF, retake, lock, pay, printing features
                     append("window.__PB=window.__PB||{};")
-                    append("window.__PB.desktop={v:").append(jsStr(AppLicence.APP_VERSION)).append(",os:'android'};")
+                    append("window.__PB.desktop={v:").append(jsStr(licence.appVersion())).append(",os:'android'};")
                     // Tells the booth that photos are saved by this app and shared over the booth Wi-Fi
                     append("window.__PB.android=true;")
                     // Offline mode: the booth hides QR payment (it needs the internet); vouchers and GIFs still work

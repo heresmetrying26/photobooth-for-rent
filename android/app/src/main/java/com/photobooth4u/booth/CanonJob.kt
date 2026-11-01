@@ -105,7 +105,7 @@ object CanonJob {
                     val y = b * LINES + r
                     var end = rowBytes
                     while (end > 0 && planes[ch][y * rowBytes + end - 1].toInt() == 0) end--
-                    if (end > 0) band.write(EscP2Job.packBits(planes[ch].copyOfRange(y * rowBytes, y * rowBytes + end), 1))
+                    if (end > 0) band.write(EscprJob.packBits(planes[ch].copyOfRange(y * rowBytes, y * rowBytes + end), 1))
                     band.write(0x80)                                                  // end of row
                 }
                 val data = band.toByteArray()

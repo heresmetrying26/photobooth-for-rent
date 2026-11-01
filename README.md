@@ -125,6 +125,12 @@ each shot fires the real shutter (about 2.5–3 s per shot incl. transfer, shown
   once by itself, and connects when a camera is plugged in. In Chrome the same is done by the Mac photobooth4u Helper
   (1.1.10+, `POST /camera/free`): the booth calls it before connecting when the Helper has been used here, and
   after a "busy" error; `/camera-test/mac/` does the same. Without the Helper, quit those apps by hand.
+- **Mac desktop app, Canon EOS (native path)**: the app drives a Canon EOS itself over USB with libusb (the `usb` npm package):
+  `desktop/lib/camera-mac.mjs` is a port of the Canon part of the Windows camera worker (same Canon PTP commands), `desktop/lib/ptp.mjs`
+  is the PTP framing + libusb transport, and `lib/helper.mjs` answers the booth's `/helper/camera/*` calls with it on a Mac. The booth
+  (`usbNativeConnect`) tries it first and falls back to the browser (web-gphoto2) path when no Canon is listed or it isn't an EOS.
+  Nikon and Sony stay on the browser path. `node desktop/test/fake-canon.mjs` runs it against a simulated EOS (no camera needed).
+  Not yet tried on a real Mac + Canon. If the Mac doesn't list the camera at all (System Information → USB), no software path helps.
 - Tested: Nikon D5600 on macOS Chrome (shutter, live view, settings). Canon and Sony not yet tested. The bundled
   library (libgphoto2 2.5.28) lists Sony A7 III (PC Control) and other bodies up to about 2021; newer Sony bodies
   need a rebuilt library.

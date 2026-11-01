@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.47', date: '2026-11-02' },
   { version: '1.0.46', date: '2026-11-01' },
   { version: '1.0.45', date: '2026-11-01' },
   { version: '1.0.44', date: '2026-11-01' },
@@ -93,6 +94,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-02', title: 'Windows app: the laptop can make its own booth Wi-Fi', for: ['website', 'app'], app: '1.0.47',
+    items: [
+      'On Windows, Share & start has a new switch, “Make this laptop the booth Wi-Fi”. It turns on the laptop’s own Wi-Fi, so guests can scan the Join QR and open their photos with no router, pocket Wi-Fi or phone hotspot at the booth. The Wi-Fi name and password are made for you.',
+      'If the laptop has no network at all, Windows won’t start its hotspot by itself. Press “Set up (one time)”: Windows asks for permission once. While the laptop hosts the Wi-Fi it has no internet unless it is also connected by cable or Wi-Fi, so activate and update the app beforehand.',
+      'Some laptops’ Wi-Fi chips can’t host a hotspot. The app tells you, and a router or a phone hotspot works as before. The Mac app is unchanged.'
+    ]
+  },
   {
     date: '2026-11-01', title: 'Mac: AirPrint printers print at the best quality automatically', for: ['website', 'app'], app: '1.0.46',
     items: [

@@ -3342,6 +3342,12 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           <p class="sub-label" style="margin-top:14px;">Booth Wi-Fi for guests (optional)</p>
           <p class="panel-hint" style="margin:0 0 6px;">Guests scan the Wi-Fi QR to join, then their photo QR. The Wi-Fi this device is on is filled in when the app can read it. Leave empty if they already know the Wi-Fi.</p>
           <input type="text" class="label-input" id="deskWifiName" placeholder="Wi-Fi name" maxlength="32" autocomplete="off" spellcheck="false">
+          <div id="deskHotspotBox" style="display:none; margin:0 0 12px;">
+            <label class="switch-row"><span>Make this laptop the booth Wi-Fi (no router needed)</span><input type="checkbox" id="deskHotspotOn"></label>
+            <label class="switch-row"><span>Turn it on whenever the app opens</span><input type="checkbox" id="deskHotspotAuto"></label>
+            <p class="panel-hint" id="deskHotspotHint" style="margin:6px 0 0;"></p>
+            <div class="desk-row" id="deskHotspotSetupRow" style="display:none;"><button type="button" class="action-btn" id="deskHotspotSetup" style="width:auto; margin:0;">Set up (one time)</button></div>
+          </div>
           <input type="text" class="label-input" id="deskWifiPass" placeholder="Wi-Fi password (empty if none)" maxlength="63" autocomplete="off" spellcheck="false" style="margin-top:8px;">
           <div class="desk-row" style="margin-top:8px;"><button type="button" class="action-btn" id="deskWifiDetect" style="width:auto; margin:0; display:none;">Use current Wi-Fi</button></div>
           <p class="panel-hint" id="deskWifiHint" style="margin:6px 0 0;"></p>
@@ -21605,7 +21611,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       lan.className = 'panel-hint' + (info.share ? '' : ' bad');
       lan.textContent = info.share
         ? 'Guests open their photos at ' + info.share + ' \u2713 Their phones must be on the same Wi-Fi as this laptop.'
-        : 'This laptop isn\u2019t on a Wi-Fi network, so guests can\u2019t open their photos yet. Connect it to a pocket Wi-Fi router or a phone hotspot (no internet needed). Windows\u2019 own Mobile hotspot only works once the laptop is connected to a network.';
+        : 'This laptop isn\u2019t on a Wi-Fi network, so guests can\u2019t open their photos yet. ' + (window.pb4u && window.pb4u.hotspot && (info.licence || {}).os !== 'mac' ? 'Turn on \u201cMake this laptop the booth Wi-Fi\u201d below, or connect it' : 'Connect it') + ' to a pocket Wi-Fi router or a phone hotspot (no internet needed).';
       var L = info.licence || {}, parts = [];
       if(L.renter) parts.push(L.renter);
       if(L.code) parts.push(L.code);
@@ -21701,8 +21707,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     // a name the operator typed isn't overwritten) and when "Use current Wi-Fi" is pressed.
     var wHint = document.getElementById('deskWifiHint'), wBtn = document.getElementById('deskWifiDetect'), lastSsid = null, detecting = false;
     function detectWifi(force){
-      if(!api.wifi || detecting) return;
+      if(!api.wifi || detecting || hs.on) return;
       detecting = true;
+    var hs = {};   // the booth's own Wi-Fi (Windows), see below: while it is on, the Wi-Fi name and password are its own
       api.wifi(!!force).then(function(d){
         detecting = false;
         if(!d || !d.ssid){
@@ -21729,6 +21736,54 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     document.getElementById('deskCheckBtn').addEventListener('click', function(){
       var b = this; b.disabled = true; b.textContent = 'Checking\u2026';
       api.checkin().then(function(r){
+    // Windows: this laptop makes the booth Wi-Fi itself (Mobile hotspot), so no router or phone hotspot is needed.
+    // While it is on, its name and password fill the Join QR; the fields can't be edited then.
+    (function(){
+      if(!api.hotspot) return;
+      var box = document.getElementById('deskHotspotBox'), on = document.getElementById('deskHotspotOn'), auto = document.getElementById('deskHotspotAuto');
+      var hint = document.getElementById('deskHotspotHint'), setupRow = document.getElementById('deskHotspotSetupRow'), setupBtn = document.getElementById('deskHotspotSetup');
+      function render(i){
+        if(!i || !i.supported){ box.style.display = 'none'; return; }
+        var wasOn = !!hs.on;
+        hs = i;
+        box.style.display = '';
+        on.checked = !!(i.on || (i.wanted && i.busy));
+        on.disabled = !!i.busy;
+        auto.checked = !!i.auto;
+        setupRow.style.display = i.needsSetup ? '' : 'none';
+        if(i.busy){ hint.className = 'panel-hint'; hint.textContent = 'Working on it… this can take up to a minute.'; }
+        else if(i.on){ hint.className = 'panel-hint'; hint.textContent = 'The booth Wi-Fi is on ✓ Guests scan the Join QR below, then their photo QR. Their phone may say “no internet”: they should stay connected.'; }
+        else if(i.error){ hint.className = 'panel-hint bad'; hint.textContent = i.error; }
+        else { hint.className = 'panel-hint'; hint.textContent = 'Off. Turn it on and this laptop makes its own Wi-Fi for guests. Then the laptop has no internet unless it also uses a cable.'; }
+        if(i.on){
+          wn.readOnly = wp.readOnly = true;
+          var cur = wifiInfo();
+          if(!cur || cur.ssid !== i.ssid || cur.pass !== i.pass){ wn.value = i.ssid; wp.value = i.pass; saveWifiInfo(i.ssid, i.pass); }
+          wHint.className = 'panel-hint'; wHint.textContent = 'Using the booth Wi-Fi this laptop is making ✓';
+        }else{
+          wn.readOnly = wp.readOnly = false;
+          if(wasOn){ wn.value = ''; wp.value = ''; saveWifiInfo('', ''); wHint.textContent = ''; lastSsid = null; detectWifi(false); }
+        }
+      }
+      function refresh(){ api.hotspot().then(render).catch(function(){}); }
+      on.addEventListener('change', function(){
+        on.disabled = true;
+        hint.className = 'panel-hint'; hint.textContent = on.checked ? 'Starting the booth Wi-Fi…' : 'Turning it off…';
+        api.hotspotSet(on.checked).then(render).catch(function(){ refresh(); });
+      });
+      auto.addEventListener('change', function(){ api.hotspotAuto(auto.checked).then(render).catch(function(){}); });
+      setupBtn.addEventListener('click', function(){
+        setupBtn.disabled = true; setupBtn.textContent = 'Waiting for Windows…';
+        api.hotspotSetup().then(function(r){
+          setupBtn.disabled = false; setupBtn.textContent = 'Set up (one time)';
+          if(r && r.ok) return api.hotspotSet(true).then(render);
+          render(r && r.info);
+          if(r && r.error) showToast(r.error, 6000);
+        }).catch(function(){ setupBtn.disabled = false; setupBtn.textContent = 'Set up (one time)'; });
+      });
+      refresh();
+      setInterval(refresh, 5000);
+    })();
         b.disabled = false; b.textContent = 'Check for changes';
         if(r.licence && !r.licence.ok){ location.reload(); return; }
         render({ licence: r.licence, photos: document.getElementById('deskPhotos').textContent, share: lanNow, version: (window.__PB.desktop || {}).v });

@@ -23,7 +23,17 @@ anything in this folder, and Netlify never builds it.
   laptop's own hotspot). The app reads the Wi-Fi the laptop is on (`lib/wifi.mjs`: `netsh wlan` on Windows,
   `networksetup` + Keychain on Mac) and fills in Share & start; type the password if it can't be read. That
   **Join Wi-Fi** QR is in Share & start (with *Download WIFI QR Sign*) and behind the **Wi-Fi** button in the bottom
-  bar; guests' session QRs are the photo and GIF only. The app does not create a hotspot.
+  bar; guests' session QRs are the photo and GIF only.
+- **The laptop's own Wi-Fi (Windows only)**: Share & start → *Make this laptop the booth Wi-Fi* turns on Windows'
+  Mobile hotspot (`lib/hotspot.mjs`, the `NetworkOperatorTetheringManager` API driven from PowerShell), with a name
+  and password made once per laptop. The Join QR then shows them, and the address in guests' QRs becomes
+  `192.168.137.1`. No router or phone hotspot needed. *Turn it on whenever the app opens* starts it at launch; it is
+  switched off when the app closes, and put back if Windows drops it after a few minutes with nobody connected.
+  Windows only starts its hotspot when the laptop has a network to share. With none (a venue with no Wi-Fi) the
+  **Set up (one time)** button adds Microsoft's loopback adapter and a firewall rule for the hotspot's subnet (one
+  Windows permission prompt). With no other connection the laptop has no internet while it hosts, so activate and update beforehand. The Mac
+  has no equivalent; use a router or phone hotspot there. Needs a real-hardware test on each laptop model: some Wi-Fi
+  chips can't host. Problems are logged to the console as `[hotspot]`.
 
 Not in the app (they need the internet): QR payments (GCash / Maya; vouchers work), the online gallery and
 Google Drive, My Events, the laptop print station for iPads, and trial codes.

@@ -20,6 +20,7 @@ import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareSer
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { detectWifi } from './lib/wifi.mjs';
+import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetup } from './lib/hotspot.mjs';
 import { freeCamera, guardCamera } from './lib/camfree.mjs';
 import { scanUsb } from './lib/usbscan.mjs';
 import * as U from './lib/updater.mjs';
@@ -215,6 +216,11 @@ function wireIpc() {
     licence: L.info(), version: VERSION, update: U.info(), photos: photosRoot(), share: shareBase(), lanIp: lanAddress(), port: sharePortNow(), server: L.SERVER
   }));
   ipcMain.handle('pb4u:activate', async (e, code) => {
+  // The booth's own Wi-Fi (Windows' Mobile hotspot, see lib/hotspot.mjs)
+  ipcMain.handle('pb4u:hotspot', () => hotspotInfo());
+  ipcMain.handle('pb4u:hotspotSet', (e, on) => (on ? hotspotStart() : hotspotStop()));
+  ipcMain.handle('pb4u:hotspotAuto', (e, on) => hotspotSetAuto(!!on));
+  ipcMain.handle('pb4u:hotspotSetup', async () => { const r = await hotspotSetup(); return { ...r, info: hotspotInfo() }; });
     const r = await L.activate(net.fetch.bind(net), code);
     if (r.ok) await refreshRecord();
     return r;
@@ -337,7 +343,7 @@ function wireIpc() {
 
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
 app.on('window-all-closed', () => app.quit());
-app.on('before-quit', () => { try { U.installOnQuit(); } catch { /* ignore */ } stopHelper(); stopShareServer(); try { L.touchClock(); } catch { /* ignore */ } });
+app.on('before-quit', () => { try { U.installOnQuit(); } catch { /* ignore */ } stopHelper(); stopShareServer(); hotspotStopOnQuit(); try { L.touchClock(); } catch { /* ignore */ } });
 
 app.whenReady().then(async () => {
   loadSettings();
@@ -389,3 +395,4 @@ app.whenReady().then(async () => {
   setInterval(() => { L.touchClock(); refreshRecord().catch(() => {}); }, 5 * 60000);
   setInterval(() => { checkinNow(false).catch(() => {}); }, 2 * 60000);   // checks in every 10 min (see licence.mjs)
 });
+  initHotspot({ get: () => (settings.hotspot = settings.hotspot || {}), save: saveSettings, logger: (m) => console.log('[hotspot] ' + m) });

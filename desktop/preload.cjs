@@ -7,6 +7,11 @@ contextBridge.exposeInMainWorld('pb4u', {
   lanBase: () => ipcRenderer.sendSync('pb4u:lan'),
   // The Wi-Fi this laptop is on: { ssid, pass, open, passKnown } (ssid is '' when it isn't on Wi-Fi).
   wifi: (force) => ipcRenderer.invoke('pb4u:wifi', !!force),
+  // The booth's own Wi-Fi (Windows): { supported, on, wanted, busy, ssid, pass, auto, error, needsSetup }
+  hotspot: () => ipcRenderer.invoke('pb4u:hotspot'),
+  hotspotSet: (on) => ipcRenderer.invoke('pb4u:hotspotSet', !!on),
+  hotspotAuto: (on) => ipcRenderer.invoke('pb4u:hotspotAuto', !!on),
+  hotspotSetup: () => ipcRenderer.invoke('pb4u:hotspotSetup'),
   info: () => ipcRenderer.invoke('pb4u:info'),
   activate: (code) => ipcRenderer.invoke('pb4u:activate', String(code || '')),
   activateOffline: (text) => ipcRenderer.invoke('pb4u:activateOffline', String(text || '')),

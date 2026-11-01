@@ -8,7 +8,9 @@ anything in this folder, and Netlify never builds it.
 - The full booth: designs, frames, layouts, guest options, background AI, retakes, Lock booth, traditional
   mode with the guest screen, vouchers.
 - **USB camera**: Windows Nikon, Canon EOS and Sony Alpha (PC Remote mode) through the built-in helper (same as Print Helper 1.1.9, no Zadig);
-  Mac over USB, the same way as in Chrome, and the app lets go of the camera macOS grabs when it is plugged in
+  Mac over USB: Canon EOS, Nikon and Sony Alpha (PC Remote mode) are driven by the app itself with libusb, the same commands as
+  the Windows helper (`lib/camera-mac.mjs`, `lib/cam-nikon.mjs`, `lib/cam-sony.mjs`; tests: `node test/fake-canon.mjs`,
+  `node test/fake-nikon-sony.mjs`), and the app lets go of the camera macOS grabs when it is plugged in
   (`lib/camfree.mjs`: stops macOS' camera service and Image Capture, then the booth connects by itself). Webcams and HDMI capture as before.
 - **Silent printing** to a named printer per paper size (built in; no Print Helper to install).
 - **Print an earlier photo**: on the laptop, *All photos* → a photo → *Print photo* prints it at once on the chosen printer

@@ -7713,7 +7713,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(m.cameras && m.cameras.length) return ' The Mac does list a camera (' + m.cameras.join(', ') + '), so the cable works. Quit Photos and Image Capture, switch the camera off and on, then tap Try Again.';
     return ' The Mac does not list any camera on USB at all (' + m.count + ' other USB device' + (m.count === 1 ? '' : 's') + ' seen), so this is the cable, the adapter or the camera, not the booth: use the camera’s own data cable (not a charge-only one), try another USB-C port or adapter, switch the camera on with Wi-Fi off, then unplug and replug it.';
   }
-  // Asks the app whether a Canon camera is on USB and connects to it that way. null = none / not one it can drive: use the browser path.
+  // Asks the app whether a Canon, Nikon or Sony camera is on USB and connects to it that way. null = none / not one it can drive: use the browser path.
   async function usbNativeConnect(){
     if(!(DESKTOP && USB_MAC)) return null;
     let list;
@@ -7765,9 +7765,11 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
         }catch(e){}
         let canon = false;
         if(diag && diag.ok){
-          canon = (diag.ptp || []).some(d => d.canon);
+          const seen = (diag.ptp || []).find(d => d.camera || d.canon);
+          canon = !!seen;
+          const brandName = seen && seen.brand ? seen.brand.charAt(0).toUpperCase() + seen.brand.slice(1) : 'Canon';
           const n = (diag.usb || []).length;
-          add(canon ? 1 : 0, 'The app\u2019s USB library sees ' + n + ' USB device' + (n === 1 ? '' : 's') + (canon ? ', including a Canon camera with a picture interface.' : ' and no Canon camera with a picture interface.') + (n ? ' [' + diag.usb.map(d => d.id + (d.classes.length ? ' c' + d.classes.join('/') : '')).join(' ') + ']' : ''));
+          add(canon ? 1 : 0, 'The app\u2019s USB library sees ' + n + ' USB device' + (n === 1 ? '' : 's') + (canon ? ', including a ' + brandName + ' camera with a picture interface.' : ' and no Canon, Nikon or Sony camera with a picture interface.') +(n ? ' [' + diag.usb.map(d => d.id + (d.classes.length ? ' c' + d.classes.join('/') : '')).join(' ') + ']' : ''));
         } else add(0, 'The app\u2019s camera part did not answer.');
         // 3. open it and ask for a live picture
         if(canon){
@@ -7790,7 +7792,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           }catch(e){
             add(0, 'Could not connect directly: ' + (e.helperMsg || e.message || e));
           }
-        } else if(macOk) add(0, 'The Mac lists a camera but it is not a Canon EOS the app drives directly. A Nikon or Sony uses the browser path: pick DSLR / mirrorless over USB in the camera list instead.');
+        } else if(macOk) add(0, 'The Mac lists a camera but it is not a Canon, Nikon or Sony the app drives directly. Pick DSLR / mirrorless over USB in the camera list instead (the browser path).');
         // 4. what the camera part did
         try{
           const r = await fetch(CAM_HELPER + '/camera/diag', { cache: 'no-store', signal: AbortSignal.timeout(9000) });

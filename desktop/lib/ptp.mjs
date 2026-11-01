@@ -1,5 +1,5 @@
 // PTP (Picture Transfer Protocol) over USB, straight to the camera with libusb (the "usb" package).
-// Used by the Mac app for Canon EOS cameras (lib/camera-mac.mjs). The framing follows the PTP spec: every message is a
+// Used by the Mac app for Canon EOS, Nikon and Sony cameras (lib/camera-mac.mjs, cam-nikon.mjs, cam-sony.mjs). The framing follows the PTP spec: every message is a
 // "container" { length u32, type u16, code u16, transaction u32, payload }, types 1 command, 2 data, 3 response, 4 event.
 import { createRequire } from 'node:module';
 
@@ -118,6 +118,54 @@ export class Reader {
     return s;
   }
   u16Array() { const n = this.u32(), l = []; for (let k = 0; k < n; k++) l.push(this.u16()); return l; }
+  get pos() { return this.i; }
+  // One value of a PTP data type, as text (numbers) or the string itself.
+  value(type) {
+    switch (type) {
+      case 1: { const v = this.b.readInt8(this.i); this.i += 1; return String(v); }
+      case 2: return String(this.u8());
+      case 3: { const v = this.b.readInt16LE(this.i); this.i += 2; return String(v); }
+      case 4: return String(this.u16());
+      case 5: { const v = this.b.readInt32LE(this.i); this.i += 4; return String(v); }
+      case 6: return String(this.u32());
+      case 0xFFFF: return this.str();
+      default: throw new Error('type ' + type);
+    }
+  }
+}
+
+// ---------- pieces shared by the brand drivers (Nikon, Sony) ----------
+export const jpegStart = (d) => { for (let k = 0; k + 1 < d.length && k < 4096; k++) if (d[k] === 0xFF && d[k + 1] === 0xD8) return k; return -1; };
+// The JPEG that starts at s: up to its last end marker.
+export function cutJpeg(d, s) {
+  let e = d.length;
+  for (let k = d.length - 2; k > s; k--) if (d[k] === 0xFF && d[k + 1] === 0xD9) { e = k + 2; break; }
+  return Buffer.from(d.subarray(s, e));
+}
+
+// A photo from the camera: whole, or in 1 MB pieces when the camera hands back nothing for a big one. Returns an empty Buffer on failure.
+// notes collects what happened (shown in the log). pieceOp is the command for pieces (Canon has its own, 0x9107).
+export async function downloadObject(ptp, h, size, notes, pieceOp = 0x101B) {
+  if (size === 0) {
+    try { const { resp, data } = await ptp.opRead(0x1008, h); if (resp === OK && data.length >= 12) size = data.readUInt32LE(8); notes.push('info ' + hex(resp) + ' ' + size + ' B'); }
+    catch (e) { if (e instanceof GoneError) throw e; notes.push('info failed ' + e.message); }
+  }
+  let img = Buffer.alloc(0), r = 0;
+  try { const g = await ptp.opRead(0x1009, h); r = g.resp; img = g.data; notes.push('get ' + hex(r) + ' ' + img.length + ' B'); }
+  catch (e) { if (e instanceof GoneError) throw e; r = 0; notes.push('get failed ' + e.message); }
+  if ((r !== OK || img.length < 4 || (size > 0 && img.length < size)) && size > 0) {
+    const parts = [];
+    let off = 0, pr = 0;
+    while (off < size) {
+      const g = await ptp.opRead(pieceOp, h, off, Math.min(1048576, size - off));
+      pr = g.resp;
+      if (pr !== OK || g.data.length === 0) break;
+      parts.push(g.data); off += g.data.length;
+    }
+    notes.push('pieces ' + hex(pieceOp) + ' ' + hex(pr) + ' ' + off + ' B');
+    if (off >= size) { img = Buffer.concat(parts); r = OK; }
+  }
+  return r === OK ? img : Buffer.alloc(0);
 }
 
 // ---------- libusb transport ----------

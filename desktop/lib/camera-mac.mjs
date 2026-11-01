@@ -1,14 +1,19 @@
-// Canon EOS cameras on a Mac, straight over USB (libusb), without the browser's WebUSB layer.
-// It is a port of the Canon part of tools/print-helper/camera-worker.ps1 (the Windows camera part), which runs the same Canon
-// commands EOS Utility and gphoto2 use. The booth reaches it through the app's /helper/camera/* addresses (lib/helper.mjs),
-// so it behaves like the Windows camera. Nikon and Sony stay on the browser path (they are not listed here as cameras).
+// Canon EOS, Nikon and Sony Alpha cameras on a Mac, straight over USB (libusb), without the browser's WebUSB layer.
+// It is a port of tools/print-helper/camera-worker.ps1 (the Windows camera part), which runs the same commands EOS Utility,
+// Nikon's tools and gphoto2 use. Canon is handled in this file; Nikon is lib/cam-nikon.mjs and Sony lib/cam-sony.mjs, which
+// get the opened camera from here. The booth reaches all of them through the app's /helper/camera/* addresses (lib/helper.mjs),
+// so they behave like the Windows camera.
 //
 // call(cmd, arg) answers like the Windows worker: { status: 'OK' | 'ERR' | 'GONE', kind: 'J' json | 'B' bytes | 'N' none, body: Buffer }.
-import { PtpSession, OK, BUSY, GoneError, CamError, TimeoutError, Reader, hex, sleep, listPtpDevices, listAllUsb, openUsbPtp } from './ptp.mjs';
+import { PtpSession, OK, BUSY, GoneError, CamError, TimeoutError, Reader, hex, sleep, listPtpDevices, listAllUsb, openUsbPtp, downloadObject } from './ptp.mjs';
 import { freeCamera, guardCamera } from './camfree.mjs';
+import { createNikon } from './cam-nikon.mjs';
+import { createSony, sonyName } from './cam-sony.mjs';
 
 const NOTREADY = 0xA102;                 // Canon: "not ready yet, ask again"
-const CANON = 0x04a9;
+const CANON = 0x04a9, NIKON = 0x04b0, SONY = 0x054c;   // USB vendor ids
+const BRANDS = new Map([[CANON, 'canon'], [NIKON, 'nikon'], [SONY, 'sony']]);
+const MAKERS = new Map([[CANON, 'Canon'], [NIKON, 'Nikon'], [SONY, 'Sony']]);
 
 // What talks to the hardware; tests replace it with a fake camera.
 const realBackend = {
@@ -29,7 +34,7 @@ const log = (m) => {
 };
 
 const s = {
-  ptp: null, entry: null, name: '', model: '', maker: '', vendorExt: 0,
+  ptp: null, entry: null, name: '', model: '', maker: '', vendorExt: 0, brand: 'canon', drv: null, battery: -1,   // drv: the Nikon / Sony driver (Canon is handled in this file)
   ops: [], props: [], live: false, gotFrame: false, setupNote: '', diag: '',
   eosVals: new Map(), newFiles: [], pollAt: 0, keepAt: 0, liveAt: 0, lastShutterMs: 0, recoverNext: false
 };
@@ -221,30 +226,8 @@ function shotError(r, res) {
   return new CamError('CAPTURE The camera refused the photo (' + hex(r) + (res !== 0 ? ', result ' + res : '') + "). Close the camera's menu, set the mode dial to P, Tv, Av or M (not video), and check the SD card.");
 }
 
-async function download(h, size, notes) {
-  if (size === 0) {
-    try { const { resp, data } = await s.ptp.opRead(0x1008, h); if (resp === OK && data.length >= 12) size = u32(data, 8); notes.push('info ' + hex(resp) + ' ' + size + ' B'); }
-    catch (e) { if (e instanceof GoneError) throw e; notes.push('info failed ' + e.message); }
-  }
-  let img = Buffer.alloc(0), r = 0;
-  try { const g = await s.ptp.opRead(0x1009, h); r = g.resp; img = g.data; notes.push('get ' + hex(r) + ' ' + img.length + ' B'); }
-  catch (e) { if (e instanceof GoneError) throw e; r = 0; notes.push('get failed ' + e.message); }
-  if ((r !== OK || img.length < 4 || (size > 0 && img.length < size)) && size > 0) {
-    // In 1 MB pieces (Canon's own command, then the standard one).
-    const piece = has(0x9107) ? 0x9107 : 0x101B;
-    const parts = [];
-    let off = 0, pr = 0;
-    while (off < size) {
-      const g = await s.ptp.opRead(piece, h, off, Math.min(1048576, size - off));
-      pr = g.resp;
-      if (pr !== OK || g.data.length === 0) break;
-      parts.push(g.data); off += g.data.length;
-    }
-    notes.push('pieces ' + hex(piece) + ' ' + hex(pr) + ' ' + off + ' B');
-    if (off >= size) { img = Buffer.concat(parts); r = OK; }
-  }
-  return r === OK ? img : Buffer.alloc(0);
-}
+// Whole, or in 1 MB pieces (Canon's own command, then the standard one).
+const download = (h, size, notes) => downloadObject(s.ptp, h, size, notes, has(0x9107) ? 0x9107 : 0x101B);
 
 async function capture() {
   const t0 = Date.now();
@@ -314,25 +297,30 @@ async function capture() {
 async function closeCamera() {
   const p = s.ptp;
   if (p) {
-    // Hand the camera back: live view off, out of remote mode.
-    try { if (s.live) await setEos(0xD1B0, 0); await p.op(0x9115, 0); await p.op(0x9114, 0); } catch { /* ignore */ }
+    if (s.drv) {
+      try { await s.drv.close(); } catch { /* ignore */ }
+    } else {
+      // Hand the camera back: live view off, out of remote mode.
+      try { if (s.live) await setEos(0xD1B0, 0); await p.op(0x9115, 0); await p.op(0x9114, 0); } catch { /* ignore */ }
+    }
     try { await p.closeSession(); } catch { /* ignore */ }
     await p.close();
   }
-  s.ptp = null; s.entry = null; s.live = false; s.ops = []; s.props = [];
+  s.ptp = null; s.entry = null; s.live = false; s.ops = []; s.props = []; s.drv = null; s.brand = 'canon'; s.battery = -1;
 }
 
-const infoJson = () => JSON.stringify({ name: s.name, model: s.model, maker: s.maker, brand: 'canon', vendor: s.vendorExt, liveview: s.live, battery: -1, note: s.setupNote, diag: s.diag });
+const infoJson = () => JSON.stringify({ name: s.name, model: s.model, maker: s.maker, brand: s.brand, vendor: s.vendorExt, liveview: s.drv ? s.drv.live : s.live, battery: s.battery, note: s.setupNote, diag: s.diag });
 
 async function alive() {
+  if (s.drv) { await s.drv.alive(); return; }
   if (has(0x911D)) { await s.ptp.op(0x911D); return; }
   await s.ptp.opRead(0x1001);
 }
 
 async function open(recover) {
   if (s.ptp) { try { await alive(); return infoJson(); } catch { /* reconnect below */ } await closeCamera(); }
-  const cams = backend.list().filter((e) => e.vendor === CANON);
-  if (!cams.length) throw new CamError('NOCAMERA No Canon camera found on USB. Plug the camera into this Mac with a data USB cable (not charge-only) and switch it on.');
+  const cams = backend.list().filter((e) => BRANDS.has(e.vendor));
+  if (!cams.length) throw new CamError('NOCAMERA No Canon, Nikon or Sony camera found on USB. Plug the camera into this Mac with a data USB cable (not charge-only) and switch it on. Canon: Photo Import / Remote Control. Nikon: PTP or MTP. Sony: PC Remote.');
   await backend.free();
   s.recoverNext = !!recover;
   let lastErr = null;
@@ -340,12 +328,22 @@ async function open(recover) {
     let p = null;
     try {
       p = await backend.open(entry, { onBusy: () => backend.free() });
-      s.ptp = p; s.entry = entry;
+      s.ptp = p; s.entry = entry; s.brand = BRANDS.get(entry.vendor);
       await p.openSession();
       if (!(await readInfo())) { await closeCamera(); continue; }
-      s.name = 'Canon ' + s.model.replace(/Canon/i, '').trim();
-      log('Opened ' + s.name);
-      await prepare();
+      if (entry.vendor === CANON) {
+        s.name = 'Canon ' + s.model.replace(/Canon/i, '').trim();
+        log('Opened ' + s.name);
+        await prepare();
+      } else {
+        s.name = entry.vendor === SONY ? sonyName(s.model) : 'Nikon ' + s.model.replace(/nikon/gi, '').trim();
+        log('Opened ' + s.name);
+        s.setupNote = '';
+        const ctx = { ptp: p, ops: s.ops, props: s.props, name: s.name, log, note: (t) => { s.setupNote += t; }, diag: () => s.diag, addDiag: (t) => { s.diag += '; ' + t; } };
+        s.drv = entry.vendor === SONY ? createSony(ctx) : createNikon(ctx);
+        await s.drv.prepare();
+        s.battery = await s.drv.battery();
+      }
       return infoJson();
     } catch (e) {
       lastErr = e;
@@ -355,12 +353,12 @@ async function open(recover) {
   }
   if (lastErr instanceof GoneError) throw new CamError('NOCAMERA The camera disconnected while connecting. Check the USB cable, switch the camera off and on, and try again.');
   if (lastErr instanceof CamError) throw lastErr;
-  throw new CamError('DRIVER The camera did not answer (' + (lastErr && lastErr.message) + '). Quit Photos, Image Capture and EOS Utility, switch the camera off and on, unplug and replug it, and try again.');
+  throw new CamError('DRIVER The camera did not answer (' + (lastErr && lastErr.message) + '). Quit Photos, Image Capture, EOS Utility and Imaging Edge, switch the camera off and on, unplug and replug it, and try again.');
 }
 
 function listJson() {
-  const devs = backend.list().map((e) => (e.vendor === CANON
-    ? { name: 'Canon camera', maker: 'Canon', camera: true }
+  const devs = backend.list().map((e) => (BRANDS.has(e.vendor)
+    ? { name: MAKERS.get(e.vendor) + ' camera', maker: MAKERS.get(e.vendor), camera: true }
     : { name: 'USB camera ' + e.vendor.toString(16) + ':' + e.product.toString(16), maker: '', camera: false }));
   return JSON.stringify({ devices: devs, open: !!s.ptp, name: s.ptp ? s.name : '', shutterMs: s.lastShutterMs });
 }
@@ -370,7 +368,7 @@ const reply = (status, kind, body) => ({ status, kind, body: Buffer.isBuffer(bod
 const diagJson = () => JSON.stringify({
   lines: logBuf.slice(-40),
   usb: (backend.all ? backend.all() : []).map((d) => ({ id: d.vendor.toString(16).padStart(4, '0') + ':' + d.product.toString(16).padStart(4, '0'), classes: d.classes || [] })),
-  ptp: backend.list().map((e) => ({ id: e.vendor.toString(16).padStart(4, '0') + ':' + e.product.toString(16).padStart(4, '0'), canon: e.vendor === CANON })),
+  ptp: backend.list().map((e) => ({ id: e.vendor.toString(16).padStart(4, '0') + ':' + e.product.toString(16).padStart(4, '0'), canon: e.vendor === CANON, camera: BRANDS.has(e.vendor), brand: BRANDS.get(e.vendor) || '' })),
   open: !!s.ptp, name: s.ptp ? s.name : ''
 });
 
@@ -386,13 +384,15 @@ export async function call(cmd, arg) {
     if (cmd === 'open') return reply('OK', 'J', await open(arg === 'recover'));
     if (!s.ptp) throw new GoneError('NOCAMERA The camera isn’t connected.');
     if (cmd === 'info') return reply('OK', 'J', infoJson());
-    if (cmd === 'battery') return reply('OK', 'J', '{"battery":-1}');
+    if (cmd === 'battery') { if (s.drv) s.battery = await s.drv.battery(); return reply('OK', 'J', JSON.stringify({ battery: s.battery })); }
     if (cmd === 'live') {
-      if (arg === 'off') await liveOff(); else await restartLive();   // "on" is also how the booth asks for live view again when frames stopped
+      if (s.drv) { if (arg === 'off') await s.drv.liveOff(); else await s.drv.liveOn(); }
+      else if (arg === 'off') await liveOff(); else await restartLive();   // "on" is also how the booth asks for live view again when frames stopped
       return reply('OK', 'N', '');
     }
-    if (cmd === 'frame') { const f = await frame(); return f ? reply('OK', 'B', f) : reply('OK', 'N', ''); }
+    if (cmd === 'frame') { const f = s.drv ? await s.drv.frame() : await frame(); return f ? reply('OK', 'B', f) : reply('OK', 'N', ''); }
     if (cmd === 'capture') {
+      if (s.drv) { const img = await s.drv.capture(); s.lastShutterMs = s.drv.lastShutterMs || s.lastShutterMs; return reply('OK', 'B', img); }
       try { return reply('OK', 'B', await capture()); }
       finally { s.live = false; }     // a Canon often leaves live view after a photo: the next frame request starts it again
     }

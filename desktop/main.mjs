@@ -170,15 +170,12 @@ function setupSession() {
   const ALLOW = new Set(['media', 'fullscreen', 'window-management', 'clipboard-sanitized-write', 'clipboard-read', 'usb', 'hid', 'serial', 'pointerLock', 'notifications', 'speaker-selection', 'keyboardLock']);
   ses.setPermissionRequestHandler((wc, perm, cb, details) => cb(ALLOW.has(perm) && ours(details.requestingUrl || wc.getURL())));
   ses.setPermissionCheckHandler((wc, perm, origin) => ALLOW.has(perm) && (!origin || isOurs(origin) || origin === 'null' || (wc && isOurs(wc.getURL()))));
-  // The booth only needs the camera: showing it every USB device (hubs, card readers) made the camera library fail with "Unknown model".
-  const CAM_VENDORS = [0x054c, 0x04b0, 0x04a9, 0x04cb, 0x07b4, 0x04da, 0x0a17];   // Sony, Nikon, Canon, Fujifilm, Olympus, Panasonic, Pentax
-  const camLike = (dev) => {
-    if (!dev) return true;
-    if (CAM_VENDORS.includes(dev.vendorId)) return true;
-    const cfgs = dev.configurations;
-    if (!Array.isArray(cfgs)) return true;           // can't tell: keep the old behaviour
-    return cfgs.some((c) => (c.interfaces || []).some((i) => (i.alternates || []).some((a) => a.interfaceClass === 6)));
-  };
+  // The booth only needs the camera. Left open to every USB device, the page also saw the laptop's own camera, keyboard,
+  // Bluetooth and any hub, and the camera library failed with "Unknown model". The handler is only told the device's vendor and
+  // class (not its interfaces), so a camera is recognised by its maker (Sony, Nikon, Canon, Fujifilm, Olympus, Panasonic, Pentax).
+  const CAM_VENDORS = [0x054c, 0x04b0, 0x04a9, 0x04cb, 0x07b4, 0x04da, 0x0a17];
+  const pickedVendors = new Set();                  // a camera of another maker that was chosen in the picker
+  const camLike = (dev) => !dev || CAM_VENDORS.includes(dev.vendorId) || pickedVendors.has(dev.vendorId) || dev.deviceClass === 6;
   ses.setDevicePermissionHandler((d) => ((d.deviceType === 'usb' && camLike(d.device)) || d.deviceType === 'hid') && (!d.origin || isOurs(d.origin) || d.origin === 'null'));
   ses.setUSBProtectedClassesHandler(() => []);
   // Chrome would show a USB picker; the booth camera is the device we want.
@@ -187,6 +184,7 @@ function setupSession() {
     guardCamera(10000);   // Mac: stop macOS holding the camera while the booth connects
     const list = details.deviceList || [];
     const cam = list.find((d) => /nikon|canon|sony|fuji|olympus|panasonic|camera|eos|pentax|leica|ricoh/i.test((d.manufacturerName || '') + ' ' + (d.productName || ''))) || list[0];
+    if (cam && cam.vendorId) pickedVendors.add(cam.vendorId);
     cb(cam ? cam.deviceId : '');
   });
   // Block anything leaving the laptop from the booth page except our own server.

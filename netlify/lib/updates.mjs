@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.52', date: '2026-11-02' },
   { version: '1.0.51', date: '2026-11-02' },
   { version: '1.0.50', date: '2026-11-02' },
   { version: '1.0.49', date: '2026-11-02' },
@@ -98,6 +99,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-02', title: 'Mac: fix crash (unexpected quit) when closing the app', for: ['website', 'app'], app: '1.0.52',
+    items: [
+      'Fixed "photobooth4u quit unexpectedly" (SIGABRT / __assert_rtn on CrBrowserMain) that appeared every time the Mac app was closed.',
+      'Root cause: on quit, the app was firing a privileged osascript call to unload Internet Sharing — triggering a macOS authorization prompt mid-teardown, which races with Electron\'s process shutdown and causes a hard abort.',
+      'Fix: the app no longer calls launchctl on quit on Mac. Internet Sharing stays on after quit (same as before the 1.0.50 hotspot feature) until the operator turns it off in System Settings.',
+      'Also: the powerSaveBlocker, camera-guard timer, and background intervals are now all explicitly stopped before the process exits, preventing dangling native handles that could cause similar crashes.'
+    ]
+  },
   {
     date: '2026-11-02', title: '360 desk: natural color blending and transparent animated overlays', for: ['website', 'app'], app: '1.0.51',
     items: [

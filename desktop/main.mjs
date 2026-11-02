@@ -21,7 +21,7 @@ import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { detectWifi } from './lib/wifi.mjs';
 import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetup } from './lib/hotspot.mjs';
-import { freeCamera, guardCamera } from './lib/camfree.mjs';
+import { freeCamera, guardCamera, stopGuardCamera } from './lib/camfree.mjs';
 import { scanUsb } from './lib/usbscan.mjs';
 import * as U from './lib/updater.mjs';
 
@@ -355,9 +355,28 @@ function wireIpc() {
   ipcMain.handle('pb4u:updateInstall', () => U.installNow());
 }
 
+let isQuitting = false;
+let clockTimer = null, checkinTimer = null;
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
 app.on('window-all-closed', () => app.quit());
-app.on('before-quit', () => { try { U.installOnQuit(); } catch { /* ignore */ } stopHelper(); stopShareServer(); hotspotStopOnQuit(); try { L.touchClock(); } catch { /* ignore */ } });
+app.on('before-quit', () => {
+  if (isQuitting) return;
+  isQuitting = true;
+  if (blocker !== null) {
+    try {
+      if (powerSaveBlocker.isStarted(blocker)) powerSaveBlocker.stop(blocker);
+    } catch { /* ignore */ }
+    blocker = null;
+  }
+  if (clockTimer) clearInterval(clockTimer);
+  if (checkinTimer) clearInterval(checkinTimer);
+  try { U.installOnQuit(); } catch { /* ignore */ }
+  stopHelper();
+  stopShareServer();
+  hotspotStopOnQuit();
+  stopGuardCamera();
+  try { L.touchClock(); } catch { /* ignore */ }
+});
 
 app.whenReady().then(async () => {
   loadSettings();
@@ -408,6 +427,6 @@ app.whenReady().then(async () => {
   checkinNow(true).catch(() => {});                      // every start-up, when online
   U.initUpdater({ server: L.SERVER, version: VERSION, log: (m) => console.log('[update] ' + m),
     notify: (i) => { if (win && !win.isDestroyed()) win.webContents.send('pb4u:update', i); } });
-  setInterval(() => { L.touchClock(); refreshRecord().catch(() => {}); }, 5 * 60000);
-  setInterval(() => { checkinNow(false).catch(() => {}); }, 2 * 60000);   // checks in every 10 min (see licence.mjs)
+  clockTimer = setInterval(() => { L.touchClock(); refreshRecord().catch(() => {}); }, 5 * 60000);
+  checkinTimer = setInterval(() => { checkinNow(false).catch(() => {}); }, 2 * 60000);   // checks in every 10 min (see licence.mjs)
 });

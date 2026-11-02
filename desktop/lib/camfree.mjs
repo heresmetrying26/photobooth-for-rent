@@ -55,3 +55,8 @@ export function guardCamera(ms, opts = {}) {
   }, opts.every || 400);
   if (timer.unref) timer.unref();
 }
+
+export function stopGuardCamera() {
+  if (timer) { clearInterval(timer); timer = null; }
+  until = 0;
+}

@@ -324,12 +324,14 @@ export async function hotspotStop() {
 
 // Stop the hotspot when the app quits, without holding the quit up.
 export function hotspotStopOnQuit() {
+  if (keepTimer) { clearInterval(keepTimer); keepTimer = null; }
   if ((!IS_WIN && !IS_MAC) || !st.started) return;
+  st.started = false;
   if (IS_MAC) {
-    try {
-      const cmd = 'do shell script "launchctl unload -w /System/Library/LaunchDaemons/com.apple.InternetSharing.plist" with administrator privileges';
-      execFile('osascript', ['-e', cmd], () => {});
-    } catch { /* ignore */ }
+    // On macOS, never trigger privileged AppleScripts (osascript with administrator privileges)
+    // during app termination. Spawning an authorization prompt while the window and process
+    // are being torn down triggers SIGABRT / __assert_rtn, and launchctl unload -w on
+    // /System/Library is blocked by System Integrity Protection (SIP) on modern macOS anyway.
     return;
   }
   try {

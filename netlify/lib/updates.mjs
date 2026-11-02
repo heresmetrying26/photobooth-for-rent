@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.61', date: '2026-11-02' },
   { version: '1.0.60', date: '2026-11-02' },
   { version: '1.0.59', date: '2026-11-02' },
   { version: '1.0.57', date: '2026-11-02' },
@@ -106,6 +107,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-02', title: 'Photos no longer cut off or zoomed in on ink-tank printers (Windows)', for: ['website', 'app'], app: '1.0.61',
+    items: [
+      'Printers such as the Epson L3210 no longer lose the edge of the picture. The whole picture is fitted inside the part the printer says it can print. With Borderless on, it is drawn slightly smaller so the printer’s own enlargement does not trim it.',
+      'The Printer margins settings and the calibration sheet from 1.0.59 are gone. The app now follows the printer’s own settings (paper, Borderless, orientation) instead of its own margin options.',
+      'Prints use the printer’s best quality when its driver offers one. Paper size, Borderless and orientation stay as set in the printer.',
+      'Fit the page no longer zooms in and trims the photo when the layout is a little different in shape from the paper (for example a 4×6 layout on 4.3 × 6.2 in paper). The whole photo is kept, with thin white borders where the shapes differ.'
+    ]
+  },
   {
     date: '2026-11-02', title: 'Find Wi-Fi and network printers from the laptop app', for: ['app'], app: '1.0.60',
     items: [

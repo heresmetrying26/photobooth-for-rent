@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.58', date: '2026-11-02' },
   { version: '1.0.57', date: '2026-11-02' },
   { version: '1.0.56', date: '2026-11-02' },
   { version: '1.0.55', date: '2026-11-02' },
@@ -104,6 +105,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-02', title: 'Prints no longer cut off at the edges (Windows)', for: ['app'], app: '1.0.58',
+    items: [
+      'Printers that cannot print right to the paper edge (many Epson ink-tank models) no longer lose the edge of the picture. The whole picture is now fitted inside the part the printer can print.',
+      'New in Print settings, Printer margins: Automatic, Calibrated, Safe margin, or Edge to edge. Calibrated prints a test sheet, you enter the four edge numbers once, and the print preview then shows the sheet exactly as it will print.'
+    ]
+  },
   {
     date: '2026-11-02', title: 'Easier Setup: flipbook options and printing', for: ['website', 'app'], app: '1.0.57',
     items: [

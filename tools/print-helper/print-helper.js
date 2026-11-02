@@ -225,6 +225,12 @@ async function airPrintQualityOptions(printer){
 const WIN_PRINT_PS = String.raw`
 param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName)
 $ErrorActionPreference = 'Stop'
+# With Borderless on, the printer driver enlarges the picture a little past the sheet so no white edge is left,
+# and the edge of the picture is lost. Its enlargement setting is private to the driver (Epson: Borderless >
+# Settings), so the picture is drawn this much smaller and the driver's enlargement brings it back to the edge.
+# Dye-sub photo printers (DNP, HiTi, Mitsubishi, SELPHY...) do not enlarge, so they print to the edge as they are.
+$ExpandMm = 3
+$DyeSub = $Printer -match 'DNP|DS-?RX|DS-?\d{3}|HiTi|Mitsubishi|CP-?D\d|Sinfonia|CHC-?S|SELPHY|Kodak|Shinko'
 Add-Type -AssemblyName System.Drawing
 # @( ) keeps a one-page list an array (otherwise $files[0] is just the first letter of the path)
 $files = @(Get-Content -LiteralPath $ListFile -Encoding UTF8 | Where-Object { $_ })
@@ -232,6 +238,34 @@ if ($files.Count -eq 0) { throw "No pages to print" }
 $doc = New-Object System.Drawing.Printing.PrintDocument
 $doc.PrinterSettings.PrinterName = $Printer
 if (-not $doc.PrinterSettings.IsValid) { throw "Printer not found: $Printer" }
+# Print quality: the driver's best quality, applied on top of the printer's own saved settings (its paper,
+# Borderless and orientation stay as they are set). If the driver has no such option, nothing changes.
+try {
+  Add-Type -AssemblyName System.Printing
+  Add-Type -AssemblyName ReachFramework
+  $pq = (New-Object System.Printing.LocalPrintServer).GetPrintQueue($Printer)
+  $tx = [xml]([IO.StreamReader]::new($pq.UserPrintTicket.GetXmlStream()).ReadToEnd())
+  $tn = New-Object Xml.XmlNamespaceManager($tx.NameTable)
+  $tn.AddNamespace('psf', 'http://schemas.microsoft.com/windows/2003/08/printing/printschemaframework')
+  $cx = [xml]([IO.StreamReader]::new($pq.GetPrintCapabilitiesAsXml()).ReadToEnd())
+  $qo = @($cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']") | ForEach-Object { $_.name })
+  $best = $qo | Where-Object { $_ -match 'HighQuality|Best|Photographic' } | Select-Object -First 1
+  $qf = $tx.SelectSingleNode("//psf:Feature[@name='psk:PageOutputQuality']/psf:Option", $tn)
+  if ($best -and $qf -and $qf.GetAttribute('name') -ne $best) {
+    $qf.SetAttribute('name', $best)
+    $vt = $pq.MergeAndValidatePrintTicket($pq.UserPrintTicket, (New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($tx.OuterXml)))))).ValidatedPrintTicket
+    $vx = [xml]([IO.StreamReader]::new($vt.GetXmlStream()).ReadToEnd())
+    $vq = $vx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']")
+    if ($vq -and $vq.GetAttribute('name') -eq $best) {
+      $dm = (New-Object System.Printing.Interop.PrintTicketConverter($Printer, $pq.ClientPrintSchemaVersion)).ConvertPrintTicketToDevMode($vt, [System.Printing.Interop.BaseDevModeType]::UserDefault)
+      $hd = [Runtime.InteropServices.Marshal]::AllocHGlobal($dm.Length)
+      [Runtime.InteropServices.Marshal]::Copy($dm, 0, $hd, $dm.Length)
+      $doc.PrinterSettings.SetHdevmode($hd); $doc.DefaultPageSettings.SetHdevmode($hd)
+      [Runtime.InteropServices.Marshal]::FreeHGlobal($hd)
+      [Console]::Out.WriteLine('info|quality ' + $best)
+    }
+  }
+} catch { }
 if ($PaperName) {
   $p = $doc.PrinterSettings.PaperSizes | Where-Object { $_.PaperName -eq $PaperName } | Select-Object -First 1
   if ($p) { $doc.DefaultPageSettings.PaperSize = $p }
@@ -262,9 +296,27 @@ $doc.add_PrintPage({
     $imgLandscape = $img.Width -gt $img.Height
     if ($pageLandscape -ne $imgLandscape) { $img.RotateFlip([System.Drawing.RotateFlipType]::Rotate90FlipNone) }
     $e.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-    # Undo the printer's hard margin so the image covers the whole sheet.
     $hx = $e.PageSettings.HardMarginX; $hy = $e.PageSettings.HardMarginY
-    $e.Graphics.DrawImage($img, [single](-$hx), [single](-$hy), [single]$page.Width, [single]$page.Height)
+    # What the driver says it can print on this paper: the smaller of its printable area and the page's clip.
+    $vis = $e.Graphics.VisibleClipBounds; $pa = $e.PageSettings.PrintableArea
+    $clip = New-Object System.Drawing.RectangleF $vis.X, $vis.Y, ([Math]::Min($vis.Width, $pa.Width)), ([Math]::Min($vis.Height, $pa.Height))
+    [Console]::Out.WriteLine(('info|sheet {0}x{1}, printable {2}x{3} at {4},{5}, hard margin {6},{7} (1/100 in)' -f $page.Width, $page.Height, $clip.Width, $clip.Height, $clip.X, $clip.Y, $hx, $hy))
+    if ($clip.Width -ge $page.Width * 0.99 -and $clip.Height -ge $page.Height * 0.99) {
+      # The driver says the whole sheet is printable (Borderless is on): the picture covers it edge to edge,
+      # drawn $ExpandMm smaller on every side first (not for dye-sub), so the driver's enlargement does not cut it.
+      $m = $ExpandMm / 25.4 * 100
+      if ($DyeSub) { $m = 0 }
+      $aw = $page.Width - 2 * $m; $ah = $page.Height - 2 * $m
+      $s = [Math]::Min($aw / $img.Width, $ah / $img.Height)
+      $w = [single]($img.Width * $s); $h = [single]($img.Height * $s)
+      $e.Graphics.DrawImage($img, [single](-$hx + $m + ($aw - $w) / 2), [single](-$hy + $m + ($ah - $h) / 2), $w, $h)
+    } else {
+      # The driver keeps a margin it cannot print on. Fit the whole picture inside the part it says it can
+      # print, so nothing is cut off at the edges.
+      $s = [Math]::Min($clip.Width / $img.Width, $clip.Height / $img.Height)
+      $w = [single]($img.Width * $s); $h = [single]($img.Height * $s)
+      $e.Graphics.DrawImage($img, [single]($clip.X + ($clip.Width - $w) / 2), [single]($clip.Y + ($clip.Height - $h) / 2), $w, $h)
+    }
   } finally { $img.Dispose() }
   $script:i++
   $e.HasMorePages = ($script:i -lt $files.Count)
@@ -302,6 +354,7 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm){
       r = await run('lp', ['-d', printer, ...media, ...quality, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
     }
     if(r.code !== 0) throw new Error((r.err || r.out || ('exit ' + r.code)).trim().slice(0, 300));
+    for(const line of String(r.out || '').split(/\r?\n/)) if(line.startsWith('info|')) log('Page: ' + line.slice(5));
   } finally {
     // Give the spooler a moment to read the files before removing them.
     setTimeout(() => rm(dir, { recursive: true, force: true }).catch(() => {}), 60000);

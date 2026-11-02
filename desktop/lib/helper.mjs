@@ -303,14 +303,48 @@ async function airPrintQualityOptions(printer) {
 }
 
 const WIN_PRINT_PS = String.raw`
-param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Margin = 'auto', [double]$InsetMm = 3)
+param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName)
 $ErrorActionPreference = 'Stop'
+# With Borderless on, the printer driver enlarges the picture a little past the sheet so no white edge is left,
+# and the edge of the picture is lost. Its enlargement setting is private to the driver (Epson: Borderless >
+# Settings), so the picture is drawn this much smaller and the driver's enlargement brings it back to the edge.
+# Dye-sub photo printers (DNP, HiTi, Mitsubishi, SELPHY...) do not enlarge, so they print to the edge as they are.
+$ExpandMm = 3
+$DyeSub = $Printer -match 'DNP|DS-?RX|DS-?\d{3}|HiTi|Mitsubishi|CP-?D\d|Sinfonia|CHC-?S|SELPHY|Kodak|Shinko'
 Add-Type -AssemblyName System.Drawing
 $files = @(Get-Content -LiteralPath $ListFile -Encoding UTF8 | Where-Object { $_ })
 if ($files.Count -eq 0) { throw "No pages to print" }
 $doc = New-Object System.Drawing.Printing.PrintDocument
 $doc.PrinterSettings.PrinterName = $Printer
 if (-not $doc.PrinterSettings.IsValid) { throw "Printer not found: $Printer" }
+# Print quality: the driver's best quality, applied on top of the printer's own saved settings (its paper,
+# Borderless and orientation stay as they are set). If the driver has no such option, nothing changes.
+try {
+  Add-Type -AssemblyName System.Printing
+  Add-Type -AssemblyName ReachFramework
+  $pq = (New-Object System.Printing.LocalPrintServer).GetPrintQueue($Printer)
+  $tx = [xml]([IO.StreamReader]::new($pq.UserPrintTicket.GetXmlStream()).ReadToEnd())
+  $tn = New-Object Xml.XmlNamespaceManager($tx.NameTable)
+  $tn.AddNamespace('psf', 'http://schemas.microsoft.com/windows/2003/08/printing/printschemaframework')
+  $cx = [xml]([IO.StreamReader]::new($pq.GetPrintCapabilitiesAsXml()).ReadToEnd())
+  $qo = @($cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']") | ForEach-Object { $_.name })
+  $best = $qo | Where-Object { $_ -match 'HighQuality|Best|Photographic' } | Select-Object -First 1
+  $qf = $tx.SelectSingleNode("//psf:Feature[@name='psk:PageOutputQuality']/psf:Option", $tn)
+  if ($best -and $qf -and $qf.GetAttribute('name') -ne $best) {
+    $qf.SetAttribute('name', $best)
+    $vt = $pq.MergeAndValidatePrintTicket($pq.UserPrintTicket, (New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($tx.OuterXml)))))).ValidatedPrintTicket
+    $vx = [xml]([IO.StreamReader]::new($vt.GetXmlStream()).ReadToEnd())
+    $vq = $vx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']")
+    if ($vq -and $vq.GetAttribute('name') -eq $best) {
+      $dm = (New-Object System.Printing.Interop.PrintTicketConverter($Printer, $pq.ClientPrintSchemaVersion)).ConvertPrintTicketToDevMode($vt, [System.Printing.Interop.BaseDevModeType]::UserDefault)
+      $hd = [Runtime.InteropServices.Marshal]::AllocHGlobal($dm.Length)
+      [Runtime.InteropServices.Marshal]::Copy($dm, 0, $hd, $dm.Length)
+      $doc.PrinterSettings.SetHdevmode($hd); $doc.DefaultPageSettings.SetHdevmode($hd)
+      [Runtime.InteropServices.Marshal]::FreeHGlobal($hd)
+      [Console]::Out.WriteLine('info|quality ' + $best)
+    }
+  }
+} catch { }
 if ($PaperName) {
   $p = $doc.PrinterSettings.PaperSizes | Where-Object { $_.PaperName -eq $PaperName } | Select-Object -First 1
   if ($p) { $doc.DefaultPageSettings.PaperSize = $p }
@@ -340,26 +374,22 @@ $doc.add_PrintPage({
     if ($pageLandscape -ne $imgLandscape) { $img.RotateFlip([System.Drawing.RotateFlipType]::Rotate90FlipNone) }
     $e.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
     $hx = $e.PageSettings.HardMarginX; $hy = $e.PageSettings.HardMarginY
-    $clip = $e.Graphics.VisibleClipBounds
+    # What the driver says it can print on this paper: the smaller of its printable area and the page's clip.
+    $vis = $e.Graphics.VisibleClipBounds; $pa = $e.PageSettings.PrintableArea
+    $clip = New-Object System.Drawing.RectangleF $vis.X, $vis.Y, ([Math]::Min($vis.Width, $pa.Width)), ([Math]::Min($vis.Height, $pa.Height))
     [Console]::Out.WriteLine(('info|sheet {0}x{1}, printable {2}x{3} at {4},{5}, hard margin {6},{7} (1/100 in)' -f $page.Width, $page.Height, $clip.Width, $clip.Height, $clip.X, $clip.Y, $hx, $hy))
-    if ($Margin -eq 'raw') {
-      # The booth already placed everything for this printer (see its calibration): print the sheet 1:1,
-      # from the printer's own origin, with no fitting or shifting here, so what it sent is what prints.
-      $e.Graphics.DrawImage($img, [single]0, [single]0, [single]$page.Width, [single]$page.Height)
-    } elseif ($Margin -eq 'safe') {
-      # Set by hand: the printer cuts this much off every side (some drivers do not report it), so
-      # the picture is fitted inside the sheet less that margin. The origin is the printable corner.
-      $m = $InsetMm / 25.4 * 100
-      $aw = [Math]::Max(10, $page.Width - 2 * $m); $ah = [Math]::Max(10, $page.Height - 2 * $m)
+    if ($clip.Width -ge $page.Width * 0.99 -and $clip.Height -ge $page.Height * 0.99) {
+      # The driver says the whole sheet is printable (Borderless is on): the picture covers it edge to edge,
+      # drawn $ExpandMm smaller on every side first (not for dye-sub), so the driver's enlargement does not cut it.
+      $m = $ExpandMm / 25.4 * 100
+      if ($DyeSub) { $m = 0 }
+      $aw = $page.Width - 2 * $m; $ah = $page.Height - 2 * $m
       $s = [Math]::Min($aw / $img.Width, $ah / $img.Height)
       $w = [single]($img.Width * $s); $h = [single]($img.Height * $s)
-      $e.Graphics.DrawImage($img, [single](($aw - $w) / 2), [single](($ah - $h) / 2), $w, $h)
-    } elseif ($Margin -eq 'edge' -or ($clip.Width -ge $page.Width * 0.99 -and $clip.Height -ge $page.Height * 0.99)) {
-      # Borderless: the whole sheet is printable, so the picture covers it edge to edge.
-      $e.Graphics.DrawImage($img, [single](-$hx), [single](-$hy), [single]$page.Width, [single]$page.Height)
+      $e.Graphics.DrawImage($img, [single](-$hx + $m + ($aw - $w) / 2), [single](-$hy + $m + ($ah - $h) / 2), $w, $h)
     } else {
-      # The printer keeps a margin around the sheet it cannot print on. Fit the whole picture
-      # inside the part it can print, so nothing is cut off at the edges.
+      # The driver keeps a margin it cannot print on. Fit the whole picture inside the part it says it can
+      # print, so nothing is cut off at the edges.
       $s = [Math]::Min($clip.Width / $img.Width, $clip.Height / $img.Height)
       $w = [single]($img.Width * $s); $h = [single]($img.Height * $s)
       $e.Graphics.DrawImage($img, [single]($clip.X + ($clip.Width - $w) / 2), [single]($clip.Y + ($clip.Height - $h) / 2), $w, $h)
@@ -371,9 +401,7 @@ $doc.add_PrintPage({
 $doc.Print()
 'ok'
 `;
-// margin: 'auto' (fit inside whatever the printer reports), 'safe' (inside a margin of insetMm on every side),
-// 'edge' (edge to edge) or 'raw' (the sheet is already laid out by the booth: printed 1:1).
-async function printPages(printer, pngBuffers, fit, widthMm, heightMm, margin, insetMm) {
+async function printPages(printer, pngBuffers, fit, widthMm, heightMm) {
   const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
   try {
     const files = [];
@@ -385,7 +413,7 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm, margin, i
       await writeFile(list, files.join('\r\n'), 'utf8');
       const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
       if (pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
-      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && !pick.keep ? ['-PaperName', pick.key] : []), ...(fit !== 'width' && margin ? ['-Margin', margin, '-InsetMm', String(insetMm)] : [])]);
+      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && !pick.keep ? ['-PaperName', pick.key] : [])]);
     } else {
       const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
       if (pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
@@ -655,9 +683,7 @@ export async function handleHelper(req, path, search) {
     }
     const fit = body.fit === 'width' ? 'width' : '';
     const prev = getPrintQueue(name);
-    const margin = ['safe', 'edge', 'raw'].includes(body.margin) ? body.margin : 'auto';
-    const insetMm = Math.max(0, Math.min(15, Number(body.marginMm) || 0));
-    const job = prev.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0, margin, insetMm));
+    const job = prev.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0));
     printQueues.set(name, job.catch(() => { }));
     try { await job; log('Printed ' + buffers.length + ' page(s) on ' + name); return json({ ok: true }); }
     catch (e) { log('Print failed on ' + name + ': ' + (e && e.message || e)); return json({ ok: false, error: String(e && e.message || e) }, 500); }

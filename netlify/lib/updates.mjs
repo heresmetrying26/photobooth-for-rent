@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.62', date: '2026-11-02' },
   { version: '1.0.61', date: '2026-11-02' },
   { version: '1.0.60', date: '2026-11-02' },
   { version: '1.0.59', date: '2026-11-02' },
@@ -107,6 +108,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-02', title: 'Borderless prints follow the printer’s own setting (Windows)', for: ['app'], app: '1.0.62',
+    items: [
+      'With Borderless on, the picture is now sent edge to edge and the printer’s own enlargement setting decides the edge (for Epson: Borderless, Settings, Expansion). The extra 3 mm margin added in 1.0.61 is gone, so a printer set to Min no longer gets a white border.',
+      'If a white line shows on an edge, move the printer’s Expansion slider one step to the right; if an edge is trimmed, move it back to the left.'
+    ]
+  },
   {
     date: '2026-11-02', title: 'Photos no longer cut off or zoomed in on ink-tank printers (Windows)', for: ['website', 'app'], app: '1.0.61',
     items: [

@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.56', date: '2026-11-02' },
   { version: '1.0.55', date: '2026-11-02' },
   { version: '1.0.54', date: '2026-11-02' },
   { version: '1.0.53', date: '2026-11-02' },
@@ -102,6 +103,12 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-02', title: 'Print preview: look at every page', for: ['website', 'app'], app: '1.0.56',
+    items: [
+      'The "Check the print" preview now lets you browse all pages of a flipbook, strip sheet or keychain print, not just page 1. Tap a page number, use the arrows, swipe, or press the left and right arrow keys.'
+    ]
+  },
   {
     date: '2026-11-02', title: 'Update from the "Tap to start" screen', for: ['app'], app: '1.0.55',
     items: [

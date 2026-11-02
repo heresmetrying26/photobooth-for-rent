@@ -9,6 +9,7 @@ import { writeFile, rm, mkdtemp, mkdir, readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
+import { discoverNetworkPrinters } from './netprinters.mjs';
 
 export const HELPER_VERSION = '1.1.10-app';
 const IS_WIN = platform() === 'win32';
@@ -105,6 +106,56 @@ async function openBluetoothSettings() {
     return r.ok ? { ok: true, message: 'Bluetooth settings opened. Pair the printer, then add it in Printers & Scanners so it appears in the printer list.' } : r;
   }
   return { ok: false, error: 'Opening Bluetooth settings is supported on Windows and Mac.' };
+}
+
+// ---------- network printers: find the ones on this Wi-Fi / LAN (like Windows "Add a printer"), and add one ----------
+// What this computer already has: name + the address its port points at (Standard TCP/IP ports show it; WSD ports don't).
+async function installedPrinterHosts() {
+  if (IS_WIN) {
+    const r = await run('powershell.exe', [...PS, '-Command', '[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-Printer | ForEach-Object { $p = Get-PrinterPort -Name $_.PortName -ErrorAction SilentlyContinue; ($_.Name + "`t" + $_.PortName + "`t" + $p.PrinterHostAddress) }']);
+    return r.out.split(/\r?\n/).map((l) => l.split('\t')).filter((c) => c[0]).map((c) => ({ name: c[0].trim(), port: (c[1] || '').trim(), host: (c[2] || '').trim() }));
+  }
+  const r = await run('lpstat', ['-v']);
+  return r.out.split(/\r?\n/).map((l) => /^device for ([^:]+):\s*(\S+)/.exec(l)).filter(Boolean).map((m) => ({ name: m[1].trim(), port: m[2], host: (/\/\/(?:[^@/]*@)?\[?([^\]:/]+)/.exec(m[2]) || [])[1] || '' }));
+}
+const normName = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+// "EPSON L14150 Series" -> "l14150": Windows names the same printer "EPSONC95FED (L14150 Series)", so match on the model code.
+const modelCode = (s) => { const m = String(s || '').match(/\b[A-Za-z]{0,4}-?[A-Za-z]?\d{3,}[A-Za-z0-9-]*\b/g); return m ? normName(m[m.length - 1]) : ''; };
+function installedAs(printer, installed) {
+  const byHost = installed.find((i) => i.host === printer.ip || (i.port && i.port.includes(printer.ip)));
+  if (byHost) return byHost.name;
+  const code = modelCode(printer.name);
+  if (code.length >= 4) { const hit = installed.find((i) => normName(i.name).includes(code)); if (hit) return hit.name; }
+  return '';
+}
+let discoverRun = null;
+function discoverPrinters(extra) {
+  if (!discoverRun) {
+    discoverRun = (async () => {
+      const [res, installed] = await Promise.all([discoverNetworkPrinters({ extra }), installedPrinterHosts().catch(() => [])]);
+      return { ok: true, subnets: res.subnets, checked: res.checked, printers: res.printers.map((p) => ({ ...p, installed: installedAs(p, installed) })) };
+    })().finally(() => { discoverRun = null; });
+  }
+  return discoverRun;
+}
+async function addNetworkPrinter({ ip, port, path, name }) {
+  if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip || '')) return { ok: false, error: 'Bad printer address.' };
+  const p = Number(port) || 631, rp = /^\/[\w\-./]*$/.test(path || '') ? path : '/ipp/print';
+  const url = `http://${ip}:${p}${rp}`;
+  if (IS_WIN) {
+    const script = '$ErrorActionPreference="Stop"; $b=@(Get-Printer|ForEach-Object Name); Add-Printer -IppURL "' + url + '"; $a=@(Get-Printer|ForEach-Object Name); ($a|Where-Object{$b -notcontains $_}) -join "`n"';
+    const r = await run('powershell.exe', [...PS, '-Command', script]);
+    const added = r.out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)[0];
+    if (r.code === 0 && added) { await printers(true); return { ok: true, printer: added }; }
+    // Older Windows builds, or a printer that wants its own driver: hand over to Windows' own "Add a printer".
+    launchDetached('cmd.exe', ['/c', 'start', '', 'ms-settings:printers']).catch(() => {});
+    return { ok: false, opened: true, error: 'Windows could not add it by itself, so Printers & scanners was opened. Choose Add device and pick ' + (name || ip) + ' there, then come back and refresh.' };
+  }
+  const queue = (String(name || '').replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'Network_Printer_' + ip.replace(/\./g, '_')).slice(0, 60);
+  const r = await run('lpadmin', ['-p', queue, '-E', '-v', `ipp://${ip}:${p}${rp}`, '-m', 'everywhere']);
+  if (r.code !== 0) return { ok: false, error: (r.err || r.out || 'Could not add the printer.').trim() };
+  await printers(true);
+  return { ok: true, printer: queue };
 }
 
 // ---------- paper sizes: tell the printer which paper to use ----------
@@ -509,6 +560,17 @@ export async function handleHelper(req, path, search) {
     return json(await openPrinterSettings(name));
   }
   if (path === '/printer/bluetooth' && method === 'POST') return json(await openBluetoothSettings());
+  if (path === '/printer/discover' && method === 'GET') {
+    const extra = String(search.get('ip') || '').split(',').map((s) => s.trim()).filter((s) => /^\d{1,3}(\.\d{1,3}){3}$/.test(s));
+    try { return json(await discoverPrinters(extra)); }
+    catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
+  }
+  if (path === '/printer/add' && method === 'POST') {
+    let body;
+    try { body = await req.json(); } catch { return json({ ok: false, error: 'Bad request' }, 400); }
+    try { return json(await addNetworkPrinter({ ip: String(body.ip || ''), port: body.port, path: String(body.path || ''), name: String(body.name || '') })); }
+    catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
+  }
   if (path === '/printer/options' && method === 'GET') {
     const name = String(search.get('printer') || '').trim();
     if (!name || !(await printers(false)).includes(name)) return json({ ok: false, error: 'No printer selected' }, 404);

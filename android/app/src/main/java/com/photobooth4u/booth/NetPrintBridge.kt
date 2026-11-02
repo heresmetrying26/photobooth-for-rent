@@ -12,8 +12,12 @@ import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbEndpoint
 import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.util.Base64
 import android.util.Log
@@ -23,6 +27,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.net.Inet4Address
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.NetworkInterface
 import java.net.Socket
@@ -30,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * NetPrintBridge — injected into the WebView as window.__PBNet.
@@ -45,8 +51,14 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     companion object {
         private const val TAG = "PBNet"
         private val SERVICE_TYPES = arrayOf("_ipp._tcp.", "_printer._tcp.", "_pdl-datastream._tcp.")
-        private const val SCAN_MS = 12_000L
+        private const val SCAN_MIN_MS = 8_000L        // the Bonjour answers need this long even when the sweep is quick
+        private const val SCAN_MAX_MS = 45_000L
+        private const val PROBE_MS = 900              // a sleeping or busy Wi-Fi printer can take over half a second to answer
+        private const val RESOLVE_MS = 4L             // seconds to wait for one Bonjour name to resolve
     }
+
+    /** One local IPv4 network the tablet is on. [network] is set when Android knows it, so sockets can be bound to it. */
+    private class LocalNet(val network: Network?, val addr: Inet4Address, val prefix: Int)
 
     private class Entry(val ip: String) {
         @Volatile var name: String = ""
@@ -72,8 +84,20 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     private val resolveLock = Any()
     private val resolveQueue = ArrayDeque<NsdServiceInfo>()
     private var resolving = false
+    private var resolveToken = 0
+    private val resolveTimer = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "pbnet-resolve").also { it.isDaemon = true } }
+    // The address sweep gets its own threads so it never holds up a print job waiting in `pool`.
+    private val scanPool = Executors.newFixedThreadPool(64) { r -> Thread(r, "pbnet-scan").also { it.isDaemon = true } }
+    private val cm: ConnectivityManager? = activity.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+    @Volatile private var nets: List<LocalNet> = emptyList()
+    @Volatile private var netsAt = 0L
+    private var multicastLock: WifiManager.MulticastLock? = null
     @Volatile private var scanning = false
     @Volatile private var scanId = 0
+    @Volatile private var scanNote = ""
+    @Volatile private var addNote = ""
+    private val probed = AtomicInteger(0)
+    @Volatile private var probeTotal = 0
 
     @JavascriptInterface
     fun isAvailable(): Boolean = true
@@ -83,15 +107,40 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     fun scan(): String {
         stopDiscovery()
         found.clear()
+        synchronized(resolveLock) { resolveQueue.clear() }
         val id = ++scanId
+        probed.set(0)
+        probeTotal = 0
+        scanNote = ""
+        addNote = ""
         scanning = true
+        holdMulticast(true)
         startDiscovery()
-        pool.execute { sweepSubnet() }
+        pool.execute { try { sweepSubnet(id) } catch (e: Exception) { Log.w(TAG, "sweep", e) } }
         Thread {
-            try { Thread.sleep(SCAN_MS) } catch (_: InterruptedException) {}
-            if (scanId == id) { stopDiscovery(); scanning = false }
+            val t0 = System.currentTimeMillis()
+            // Done when every address was tried (and Bonjour had a fair chance), or after the cap.
+            while (scanId == id) {
+                val ms = System.currentTimeMillis() - t0
+                if (ms >= SCAN_MAX_MS || (ms >= SCAN_MIN_MS && probeTotal > 0 && probed.get() >= probeTotal)) break
+                try { Thread.sleep(250) } catch (_: InterruptedException) {}
+            }
+            if (scanId == id) { stopDiscovery(); scanning = false; holdMulticast(false) }
         }.start()
         return "ok"
+    }
+
+    /** Some tablets drop Bonjour (multicast) packets unless an app asks for them; this asks while the search runs. */
+    private fun holdMulticast(on: Boolean) {
+        try {
+            if (on) {
+                if (multicastLock == null) {
+                    val wm = activity.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                    multicastLock = wm?.createMulticastLock("pbnet")?.also { it.setReferenceCounted(false) }
+                }
+                multicastLock?.takeIf { !it.isHeld }?.acquire()
+            } else multicastLock?.takeIf { it.isHeld }?.release()
+        } catch (e: Exception) { Log.w(TAG, "multicast lock", e) }
     }
 
     @JavascriptInterface
@@ -112,7 +161,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     .put("mediaTypes", JSONArray(it.mediaTypes)))
             }
         usbListInto(arr)
-        return JSONObject().put("scanning", scanning).put("printers", arr).toString()
+        return JSONObject().put("scanning", scanning).put("printers", arr)
+            .put("note", scanNote).put("checked", probed.get()).put("total", probeTotal).put("addNote", addNote).toString()
     }
 
     /** Adds a printer by its address when the search can't see it (different subnet, mDNS blocked…). */
@@ -120,7 +170,16 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     fun addByIp(ip: String): String {
         val clean = ip.trim()
         if (!Regex("^\\d{1,3}(\\.\\d{1,3}){3}$").matches(clean)) return "bad"
-        pool.execute { probe(clean) }
+        addNote = ""
+        pool.execute {
+            val e = Entry(clean)
+            probeInto(e, 2500)
+            if (e.ippPort > 0 || e.rawPort > 0) {
+                val cur = found.getOrPut(clean) { e }
+                if (cur !== e) { if (cur.ippPort == 0) cur.ippPort = e.ippPort; if (cur.rawPort == 0) cur.rawPort = e.rawPort }
+                fetchAttrs(cur)
+            } else addNote = "Nothing at $clean answered on the printing ports (631, 9100). Check the address, and that the tablet and printer are on the same Wi-Fi."
+        }
         return "ok"
     }
 
@@ -161,7 +220,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             try {
                 val data = Base64.decode(base64Data, Base64.DEFAULT)
                 if (ip.startsWith("usb:")) usbRaw(ip, data)
-                else Socket().use { s ->
+                else newSocket(ip).use { s ->
                     s.connect(InetSocketAddress(ip, found[ip]?.rawPort?.takeIf { it > 0 } ?: 9100), 4000)
                     s.soTimeout = 15000
                     s.getOutputStream().apply { write(data); flush() }
@@ -224,12 +283,20 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     private fun resolveNext() {
         val mgr = nsd ?: return
         val next: NsdServiceInfo
+        val token: Int
         synchronized(resolveLock) {
             if (resolving) return
             next = resolveQueue.removeFirstOrNull() ?: return
             resolving = true
+            token = ++resolveToken
         }
-        val done = { synchronized(resolveLock) { resolving = false }; resolveNext() }
+        // Android sometimes never answers a resolve; without this the whole line behind it would wait forever.
+        val done = {
+            var go = false
+            synchronized(resolveLock) { if (resolving && resolveToken == token) { resolving = false; go = true } }
+            if (go) resolveNext()
+        }
+        try { resolveTimer.schedule(Runnable { done() }, RESOLVE_MS, TimeUnit.SECONDS) } catch (_: Exception) {}
         try {
             mgr.resolveService(next, object : NsdManager.ResolveListener {
                 override fun onResolveFailed(i: NsdServiceInfo?, code: Int) { done() }
@@ -243,7 +310,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     @Suppress("DEPRECATION")
     private fun addResolved(i: NsdServiceInfo) {
-        val addr = i.host as? Inet4Address ?: return        // keep to IPv4: that's what the sweep and sockets use
+        // Keep to IPv4: that's what the sweep and sockets use. A printer announces both kinds of address, and
+        // Android 14+ lists them all, so take the IPv4 one instead of dropping the printer when the first is IPv6.
+        val addr = (if (Build.VERSION.SDK_INT >= 34) i.hostAddresses.firstOrNull { it is Inet4Address } else null)
+            as? Inet4Address ?: i.host as? Inet4Address ?: return
         val ip = addr.hostAddress ?: return
         val e = found.getOrPut(ip) { Entry(ip) }
         fun attr(k: String): String = try { String(i.attributes[k] ?: ByteArray(0)) } catch (_: Exception) { "" }
@@ -261,28 +331,101 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         if (e.ippPort > 0) pool.execute { fetchAttrs(e) }
     }
 
-    /** Looks for printer ports on every address of this tablet's local /24 networks. */
-    private fun sweepSubnet() {
-        val prefixes = HashSet<String>()
+    private fun ipLong(a: Inet4Address): Long = a.address.fold(0L) { acc, b -> (acc shl 8) or (b.toLong() and 0xFF) }
+    private fun ipText(v: Long) = "${(v shr 24) and 0xFF}.${(v shr 16) and 0xFF}.${(v shr 8) and 0xFF}.${v and 0xFF}"
+
+    /**
+     * The IPv4 networks the tablet is on right now. Wi-Fi and Ethernet come from Android's own network list (with their
+     * real prefix length, and so that sockets can be tied to that network); anything else with a private address, like the
+     * booth's own hotspot, is added from the interface list. Mobile-data interfaces are left out.
+     */
+    @Suppress("DEPRECATION")
+    private fun localNets(): List<LocalNet> {
+        val out = ArrayList<LocalNet>()
+        try {
+            val mgr = cm
+            if (mgr != null) for (n in mgr.allNetworks) {
+                val caps = mgr.getNetworkCapabilities(n) ?: continue
+                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) continue
+                if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) && !caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) continue
+                val lp = mgr.getLinkProperties(n) ?: continue
+                for (la in lp.linkAddresses) {
+                    val a = la.address
+                    if (a is Inet4Address && !a.isLoopbackAddress && !a.isLinkLocalAddress) out.add(LocalNet(n, a, la.prefixLength))
+                }
+            }
+        } catch (e: Exception) { Log.w(TAG, "networks", e) }
         try {
             for (ni in NetworkInterface.getNetworkInterfaces()) {
                 if (!ni.isUp || ni.isLoopback) continue
-                for (a in ni.inetAddresses) {
-                    if (a is Inet4Address && a.isSiteLocalAddress) {
-                        val p = a.hostAddress!!.substringBeforeLast('.')
-                        prefixes.add(p)
-                    }
+                val nm = ni.name.lowercase()
+                if (nm.startsWith("rmnet") || nm.startsWith("ccmni") || nm.startsWith("pdp") || nm.startsWith("tun") || nm.startsWith("ppp") || nm.startsWith("v4-") || nm.startsWith("dummy")) continue
+                for (ia in ni.interfaceAddresses) {
+                    val a = ia.address
+                    if (a is Inet4Address && a.isSiteLocalAddress && out.none { it.addr == a }) out.add(LocalNet(null, a, ia.networkPrefixLength.toInt()))
                 }
             }
         } catch (e: Exception) { Log.w(TAG, "interfaces", e) }
-        for (p in prefixes) for (n in 1..254) {
-            val ip = "$p.$n"
-            pool.execute { if (scanning) probe(ip) }
+        return out
+    }
+
+    private fun currentNets(): List<LocalNet> {
+        val now = System.currentTimeMillis()
+        if (nets.isEmpty() || now - netsAt > 5_000) { nets = localNets(); netsAt = now }
+        return nets
+    }
+
+    /** A socket that goes out over the Wi-Fi the printer is on, even when Android prefers mobile data because that Wi-Fi has no internet. */
+    private fun newSocket(ip: String): Socket {
+        try {
+            val a = InetAddress.getByName(ip) as? Inet4Address
+            if (a != null) {
+                val v = ipLong(a)
+                for (n in currentNets()) {
+                    val net = n.network ?: continue
+                    val mask = if (n.prefix <= 0) 0L else (0xFFFFFFFFL shl (32 - n.prefix.coerceAtMost(32))) and 0xFFFFFFFFL
+                    if ((ipLong(n.addr) and mask) == (v and mask)) return net.socketFactory.createSocket()
+                }
+            }
+        } catch (e: Exception) { Log.w(TAG, "bound socket", e) }
+        return Socket()
+    }
+
+    /**
+     * Looks for printer ports on the networks the tablet is on: first the tablet's own /24 (where the printer nearly
+     * always is), then the rest of a larger subnet (up to a /22, 1,022 addresses).
+     */
+    private fun sweepSubnet(id: Int) {
+        nets = localNets(); netsAt = System.currentTimeMillis()
+        val list = nets
+        val targets = LinkedHashSet<Long>()
+        val mine = HashSet<Long>()
+        for (n in list) {
+            mine.add(ipLong(n.addr))
+            val base = ipLong(n.addr) and 0xFFFFFF00L
+            for (h in 1L..254L) targets.add(base or h)
+        }
+        for (n in list) {
+            if (n.prefix >= 24 || n.prefix <= 0) continue
+            val p = n.prefix.coerceAtLeast(22)
+            val size = 1L shl (32 - p)
+            val start = ipLong(n.addr) and ((0xFFFFFFFFL shl (32 - p)) and 0xFFFFFFFFL)
+            for (h in 1L until size - 1) targets.add(start + h)
+        }
+        targets.removeAll(mine)
+        scanNote = if (list.isEmpty()) "The tablet has no Wi-Fi address, so there is nothing to search. Connect it to the printer's Wi-Fi."
+        else "Searched " + targets.size + " addresses on " + list.joinToString(", ") { it.addr.hostAddress + "/" + it.prefix }
+        probeTotal = targets.size
+        for (v in targets) {
+            val ip = ipText(v)
+            scanPool.execute {
+                try { if (scanning && scanId == id) probe(ip) } finally { probed.incrementAndGet() }
+            }
         }
     }
 
-    private fun open(ip: String, port: Int, timeoutMs: Int = 300): Boolean = try {
-        Socket().use { it.connect(InetSocketAddress(ip, port), timeoutMs); true }
+    private fun open(ip: String, port: Int, timeoutMs: Int = PROBE_MS): Boolean = try {
+        newSocket(ip).use { it.connect(InetSocketAddress(ip, port), timeoutMs); true }
     } catch (_: Exception) { false }
 
     private fun probe(ip: String) {
@@ -298,9 +441,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         }
     }
 
-    private fun probeInto(e: Entry) {
-        if (e.ippPort == 0 && open(e.ip, 631)) e.ippPort = 631
-        if (e.rawPort == 0 && open(e.ip, 9100)) e.rawPort = 9100
+    private fun probeInto(e: Entry, timeoutMs: Int = PROBE_MS) {
+        if (e.ippPort == 0 && open(e.ip, 631, timeoutMs)) e.ippPort = 631
+        if (e.rawPort == 0 && open(e.ip, 9100, timeoutMs)) e.rawPort = 9100
     }
 
     // ── USB printers ─────────────────────────────────────────────────────────
@@ -757,8 +900,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         synchronized(e) {
             if (e.attrsTried) return
             e.attrsAttempts++
-            // Wi-Fi printers get one try; a USB printer may still be waking up, so it gets up to three
-            if (e.usbDev == null || e.attrsAttempts >= 3) e.attrsTried = true
+            // A Wi-Fi printer gets two tries (the second is at print time); a USB printer may still be waking up, so it gets up to three
+            if (e.attrsAttempts >= (if (e.usbDev == null) 2 else 3)) e.attrsTried = true
             fetchAttrsOnce(e)
         }
     }
@@ -942,7 +1085,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     private fun post(ip: String, port: Int, path: String, body: ByteArray): Reply {
         try {
-            Socket().use { s ->
+            newSocket(ip).use { s ->
                 s.connect(InetSocketAddress(ip, port), 5000)
                 s.soTimeout = 90_000
                 val out = s.getOutputStream()

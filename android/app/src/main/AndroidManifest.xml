@@ -28,6 +28,8 @@
          Android 13+ asks for "Nearby devices"; Android 12 and below ask for Location (above). -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <!-- Lets the printer search ask the Wi-Fi chip to pass on Bonjour (multicast) answers while it runs -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <uses-permission
         android:name="android.permission.NEARBY_WIFI_DEVICES"
         android:usesPermissionFlags="neverForLocation"

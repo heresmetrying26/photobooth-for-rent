@@ -12563,6 +12563,17 @@
                 style="display:none;width:auto;margin:8px 8px 0 0;">Set up Bluetooth printer</button>
               <button type="button" class="action-btn" id="refreshPrintersBtn"
                 style="display:none;width:auto;margin:8px 0 0;">Refresh printer list</button>
+              <button type="button" class="action-btn" id="findNetPrintersBtn"
+                style="display:none;width:auto;margin:8px 8px 0 0;">Find Wi-Fi / network printers</button>
+              <div id="netPrinterBox" style="display:none;margin-top:8px;">
+                <p class="panel-hint" id="netPrinterStatus" style="margin:0 0 6px;"></p>
+                <div id="netPrinterList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px;"></div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <input type="text" id="netPrinterIp" class="printer-input" inputmode="decimal"
+                    placeholder="Not listed? Type its IP, e.g. 192.168.1.50" style="flex:1;min-width:180px;">
+                  <button type="button" class="action-btn" id="netPrinterIpBtn" style="width:auto;margin:0;">Search</button>
+                </div>
+              </div>
               <p class="panel-hint" style="margin:6px 0 0;">For Bluetooth 80 mm Xprinter or Epson models: pair the
                 printer, add it in Windows or Mac printer settings, then refresh and select it here.</p>
               <button type="button" class="action-btn" id="printerSetupBtn"
@@ -20629,6 +20640,67 @@
           finally { refreshPrintersBtn.disabled = false; refreshPrintersBtn.textContent = 'Refresh printer list'; }
         });
       }
+      // Network printers: the laptop app asks every address on this Wi-Fi / LAN who takes print jobs, like Windows "Add a printer".
+      const findNetPrintersBtn = document.getElementById('findNetPrintersBtn');
+      if (findNetPrintersBtn) {
+        findNetPrintersBtn.style.display = DESKTOP ? '' : 'none';
+        const box = document.getElementById('netPrinterBox'), st = document.getElementById('netPrinterStatus'), list = document.getElementById('netPrinterList');
+        const ipIn = document.getElementById('netPrinterIp'), ipBtn = document.getElementById('netPrinterIpBtn');
+        const pickInstalled = async function (name) {
+          await checkHelper(true);
+          if (![...printerSelect.options].some(o => o.value === name)) { st.textContent = '“' + name + '” is added, but not in the list yet. Choose Refresh printer list.'; return; }
+          printerSelect.value = name;
+          printerSelect.dispatchEvent(new Event('change'));
+          showToast('Will print to ' + name + '.', 3000);
+        };
+        const render = function (res) {
+          list.textContent = '';
+          res.printers.forEach(function (p) {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;';
+            const label = document.createElement('span');
+            label.style.cssText = 'flex:1;min-width:160px;';
+            label.textContent = (p.name || 'Printer') + ' · ' + p.ip + (p.ipp ? '' : ' · receipt/raw only') + (p.installed ? ' · on this computer as “' + p.installed + '”' : '');
+            const b = document.createElement('button');
+            b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;';
+            b.textContent = p.installed ? 'Use this printer' : (p.ipp ? 'Add to this computer' : 'Add in system settings');
+            b.addEventListener('click', async function () {
+              b.disabled = true;
+              try {
+                if (p.installed) { await pickInstalled(p.installed); return; }
+                st.textContent = 'Adding ' + (p.name || p.ip) + '… this can take a little while.';
+                const rr = await fetch(HELPER_URL + '/printer/add', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ip: p.ip, port: p.port, path: p.path, name: p.name }) });
+                const jj = await rr.json();
+                if (!jj.ok) { st.textContent = jj.error || 'Could not add the printer.'; return; }
+                st.textContent = 'Added. Choosing it for ' + (printSize ? paperFor(printSize).name : 'this size') + '…';
+                await pickInstalled(jj.printer);
+              } catch (e) { st.textContent = 'Could not add the printer: ' + (e.message || e); }
+              finally { b.disabled = false; }
+            });
+            row.appendChild(label); row.appendChild(b); list.appendChild(row);
+          });
+        };
+        const search = async function (ip) {
+          findNetPrintersBtn.disabled = true; ipBtn.disabled = true; findNetPrintersBtn.textContent = 'Searching…';
+          box.style.display = 'block'; list.textContent = '';
+          st.textContent = 'Asking every address on this network which ones are printers. About 10 seconds…';
+          try {
+            const rr = await fetch(HELPER_URL + '/printer/discover' + (ip ? '?ip=' + encodeURIComponent(ip) : ''));
+            const jj = await rr.json();
+            if (!rr.ok || !jj.ok) throw new Error(jj.error || 'The search failed.');
+            render(jj);
+            const where = jj.subnets && jj.subnets.length ? ' Searched ' + jj.checked + ' addresses on ' + jj.subnets.join(', ') + '.' : ' This computer is not on a Wi-Fi or LAN network.';
+            st.textContent = jj.printers.length ? 'Found ' + jj.printers.length + (jj.printers.length === 1 ? ' printer.' : ' printers.') + where
+              : 'No printers found.' + where + ' Check the printer is on and on the same Wi-Fi as this computer (not a guest network), or type its IP below.';
+          } catch (e) { st.textContent = 'Could not search: ' + (e.message || e); }
+          finally { findNetPrintersBtn.disabled = false; ipBtn.disabled = false; findNetPrintersBtn.textContent = 'Find Wi-Fi / network printers'; }
+        };
+        findNetPrintersBtn.addEventListener('click', function () { search(''); });
+        if (ipBtn) ipBtn.addEventListener('click', function () {
+          if (!/^\d{1,3}(\.\d{1,3}){3}$/.test((ipIn.value || '').trim())) { showToast('That doesn’t look like an IP address (e.g. 192.168.1.50).', 4000); return; }
+          search(ipIn.value.trim());
+        });
+      }
       if (printerSetupBtn) {
         printerSetupBtn.style.display = DESKTOP ? '' : 'none';
         printerSetupBtn.addEventListener('click', async function () {
@@ -22003,7 +22075,13 @@
           });
           box.appendChild(b);
         });
-        if (st && !wifiPrinter) st.textContent = d.scanning ? 'Looking for printers…' : (d.printers.length ? 'Tap your printer.' : 'No printers found. Check it is on and on the same Wi-Fi, or type its IP below.');
+        if (st && !wifiPrinter) {
+          const prog = d.total ? ' ' + Math.min(d.checked || 0, d.total) + ' of ' + d.total + ' addresses checked.' : '';
+          st.textContent = d.scanning ? 'Looking for printers…' + prog + (d.printers.length ? ' Tap your printer when it appears.' : '')
+            : d.printers.length ? 'Tap your printer.'
+              : 'No printers found. ' + (d.note ? d.note + '. ' : '') + 'Check the printer is on and on the same Wi-Fi as this tablet (not a guest network), or type its IP below.';
+        }
+        if (st && d.addNote) st.textContent = d.addNote;
       }
       function wifiScan() {
         if (!wifiNetAvailable()) return;
@@ -22013,7 +22091,7 @@
         const tick = () => {
           const d = wifiList();
           wifiRenderList(d);
-          if (!d.scanning || Date.now() - t0 > 20000) { clearInterval(wifiScanTimer); wifiScanTimer = null; }
+          if (!d.scanning || Date.now() - t0 > 50000) { clearInterval(wifiScanTimer); wifiScanTimer = null; }
         };
         wifiScanTimer = setInterval(tick, 1000);
         tick();
@@ -22067,8 +22145,10 @@
           const inp = document.getElementById('wifiPrinterIp');
           if (!inp || !wifiNetAvailable()) return;
           if (window.__PBNet.addByIp(inp.value) !== 'ok') { showToast('That doesn’t look like an IP address (e.g. 192.168.1.50).', 4000); return; }
+          const st = document.getElementById('wifiPrinterStatus'); if (st) st.textContent = 'Checking ' + inp.value.trim() + '…';
           setTimeout(() => wifiRenderList(wifiList()), 1500);
           setTimeout(() => wifiRenderList(wifiList()), 3500);
+          setTimeout(() => wifiRenderList(wifiList()), 6500);
         });
       })();
       function wifiBytesToB64(bytes) {

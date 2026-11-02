@@ -12918,6 +12918,110 @@
   </div>
   <style id="printPageStyle"></style>
 
+  <!-- Laptop app: "a new version is out" on the Tap to start screen. This is its own script on purpose: if the booth
+       script below ever fails to start (as in 1.0.53), the start screen stays up and the owner can still update. -->
+  <script id="pbUpdPrompt">
+    (function () {
+      try {
+        var api = window.pb4u, up = api && api.desktop && api.update;
+        if (!up) return;
+        var css = document.createElement('style');
+        css.textContent =
+          '.pbu-chip,.pbu-ov{font-family:Manrope,system-ui,sans-serif}' +
+          '.pbu-chip[hidden],.pbu-ov[hidden]{display:none!important}' +
+          '.pbu-chip{position:fixed;z-index:255;top:max(10px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:calc(100vw - 100px);min-height:40px;padding:0 18px;border:0;border-radius:999px;background:#1C1A1E;color:#fff;font:800 13.5px Manrope,system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.28);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+          '.pbu-ov{position:fixed;inset:0;z-index:9700;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(20,16,22,.6)}' +
+          '.pbu-card{width:min(440px,100%);padding:20px 22px;border-radius:20px;background:#fff;color:#1C1A1E;box-shadow:0 24px 60px rgba(0,0,0,.35)}' +
+          '.pbu-card b{display:block;font-size:17px;font-weight:800}' +
+          '.pbu-card p{margin:6px 0 0;font-size:13.5px;line-height:1.5;color:#5b5560}' +
+          '.pbu-bar{height:6px;margin-top:14px;border-radius:6px;background:#ece8f0;overflow:hidden}' +
+          '.pbu-bar i{display:block;height:100%;width:0;background:#1C1A1E}' +
+          '.pbu-row{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;margin-top:16px}' +
+          '.pbu-row button{min-height:44px;padding:0 20px;border-radius:999px;border:1.5px solid #cfc8d6;background:#fff;color:#1C1A1E;font:700 14px Manrope,system-ui,sans-serif;cursor:pointer}' +
+          '.pbu-row button.go{background:#1C1A1E;border-color:#1C1A1E;color:#fff}' +
+          '.pbu-row button:disabled{opacity:.6}';
+        document.head.appendChild(css);
+
+        var mk = function (tag, cls) { var e = document.createElement(tag); if (cls) e.className = cls; return e; };
+        var chip = mk('button', 'pbu-chip'); chip.type = 'button'; chip.hidden = true;
+        var ov = mk('div', 'pbu-ov'); ov.hidden = true;
+        document.body.appendChild(chip); document.body.appendChild(ov);
+
+        var u = null, later = false, sig = '';
+        var startUp = function () { var s = document.getElementById('startScreen'); return !!s && !s.classList.contains('gone') && s.style.display !== 'none'; };
+        var wanted = function () { return !!(u && u.latest && u.state !== 'idle' && !(later && u.state === 'ready')); };
+        var take = function (i) { if (i && i.latest !== undefined) { u = i; sync(); } };
+        var pct = function () { return (u.progress || 0) + '%'; };
+
+        function label() {
+          if (u.state === 'downloading') return 'Downloading update ' + pct();
+          if (u.state === 'ready') return u.os === 'win' ? 'Update ready — tap to install' : 'Update downloaded — tap for steps';
+          if (u.state === 'error') return 'Update problem — tap to retry';
+          return 'Update ' + u.latest + ' available — tap';
+        }
+        function button(text, cls, fn) {
+          var b = mk('button', cls); b.type = 'button'; b.textContent = text;
+          b.addEventListener('click', function () { try { fn(b); } catch (e) { } });
+          return b;
+        }
+        function fillCard() {
+          var s = [u.state, u.latest, u.os, u.state === 'downloading' ? '' : u.progress, u.error].join('|');
+          if (s === sig) {
+            var bi = ov.querySelector('.pbu-bar i'); if (bi) bi.style.width = pct();
+            var pc = ov.querySelector('.pbu-pc'); if (pc) pc.textContent = pct();
+            return;
+          }
+          sig = s;
+          ov.innerHTML = '';
+          var card = mk('div', 'pbu-card'), title = mk('b'), note = mk('p'), row = mk('div', 'pbu-row');
+          var keep = 'This laptop has ' + (u.current || '?') + '. Your activation, designs and photos stay.';
+          if (u.state === 'downloading') {
+            title.textContent = 'Downloading version ' + u.latest;
+            note.appendChild(document.createTextNode('Almost there: '));
+            var pc = mk('span', 'pbu-pc'); pc.textContent = pct(); note.appendChild(pc);
+          } else if (u.state === 'ready' && u.os === 'win') {
+            title.textContent = 'Version ' + u.latest + ' is ready';
+            note.textContent = 'Restart now to install it (Windows asks once for permission), or choose Later and it installs when you close the app.';
+            row.appendChild(button('Later', '', function () { later = true; ov.hidden = true; sync(); }));
+            row.appendChild(button('Restart now', 'go', function (b) { b.disabled = true; b.textContent = 'Restarting…'; up.install(); }));
+          } else if (u.state === 'ready') {
+            title.textContent = 'Version ' + u.latest + ' is downloaded';
+            note.textContent = 'In the window that opened, drag photobooth4u into Applications and choose Replace. Then quit this app and open it again.';
+            row.appendChild(button('Show it again', 'go', function () { up.open(); }));
+          } else if (u.state === 'error') {
+            title.textContent = 'Couldn’t download version ' + u.latest;
+            note.textContent = u.error || 'Check the internet connection and try again.';
+            row.appendChild(button('Try again', 'go', function (b) { b.disabled = true; up.download().then(take); }));
+          } else {
+            title.textContent = 'Version ' + u.latest + ' of the app is out';
+            note.textContent = keep;
+            row.appendChild(button('Download', 'go', function (b) { b.disabled = true; up.download().then(take); }));
+          }
+          row.insertBefore(button('Close', '', function () { ov.hidden = true; }), row.firstChild);
+          card.appendChild(title); card.appendChild(note);
+          if (u.state === 'downloading') { var bar = mk('div', 'pbu-bar'), fill = mk('i'); fill.style.width = pct(); bar.appendChild(fill); card.appendChild(bar); }
+          card.appendChild(row);
+          ov.appendChild(card);
+        }
+        function sync() {
+          var show = wanted() && startUp() && !document.body.classList.contains('booth-locked');
+          chip.hidden = !show;
+          if (!show) { ov.hidden = true; return; }
+          chip.textContent = label();
+          if (!ov.hidden) fillCard();
+        }
+
+        chip.addEventListener('click', function (e) { e.stopPropagation(); if (!wanted()) return; sig = ''; fillCard(); ov.hidden = false; });
+        ov.addEventListener('click', function (e) { if (e.target === ov) ov.hidden = true; });
+        up.on(take);
+        api.info().then(function (i) { take(i && i.update); }).catch(function () { });
+        // The app checks on its own 20 s after it opens; ask now so the prompt shows right away.
+        setTimeout(function () { try { up.check().then(take).catch(function () { }); } catch (e) { } }, 1500);
+        setInterval(sync, 1500);   // the chip goes away with the start screen (Setup has its own update bar)
+      } catch (e) { /* never let the update prompt stop the booth */ }
+    })();
+  </script>
+
   <script>
     (function () {
       // Windows / Mac app (desktop/): photos save on this laptop, guests get them

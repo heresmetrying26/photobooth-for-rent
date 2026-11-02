@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.54', date: '2026-11-02' },
   { version: '1.0.53', date: '2026-11-02' },
   { version: '1.0.52', date: '2026-11-02' },
   { version: '1.0.51', date: '2026-11-02' },
@@ -100,6 +101,12 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-02', title: 'Fix: "Tap to start" not responding after the flipbook update', for: ['website', 'app'], app: '1.0.54',
+    items: [
+      'Fixed a startup error in 1.0.53 that stopped the booth from loading fully, so tapping the start screen did nothing on both the website and the laptop app.'
+    ]
+  },
   {
     date: '2026-11-02', title: 'Flipbook suite: stack-cut imposition, branded covers, interactive preview, and printer pooling', for: ['website', 'app'], app: '1.0.53',
     items: [

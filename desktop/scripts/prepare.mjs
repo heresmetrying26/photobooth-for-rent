@@ -115,17 +115,30 @@ cpSync(join(ROOT, 'tools', 'print-helper', 'camera-worker.ps1'), join(OUT, 'came
 // ---------- ffmpeg for the 360 desk (optional) ----------
 // A separate program that edits the 360 videos. Without it the app still shares the original videos.
 // CI installs it with: npm install --no-save ffmpeg-static. Its licence notice ships beside it.
-try {
-  const ff = (await import('ffmpeg-static')).default;
-  if (ff && existsSync(ff)) {
-    mkdirSync(join(OUT, 'ffmpeg'), { recursive: true });
-    cpSync(ff, join(OUT, 'ffmpeg', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'));
-    for (const n of ['LICENSE', 'README.md']) { const f = join(dirname(ff), n); if (existsSync(f)) cpSync(f, join(OUT, 'ffmpeg', 'ffmpeg-static-' + n)); }
-    const notice = join(DESK, 'resources', 'ffmpeg-NOTICE.txt');
-    if (existsSync(notice)) cpSync(notice, join(OUT, 'ffmpeg', 'ffmpeg-NOTICE.txt'));
-    log('ffmpeg: bundled for the 360 desk');
-  } else log('ffmpeg: not found; the 360 desk will share videos as they are');
-} catch { log('ffmpeg: ffmpeg-static is not installed; the 360 desk will share videos as they are'); }
+const existingFfmpeg = join(OUT, 'ffmpeg', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
+if (existsSync(existingFfmpeg)) {
+  log('ffmpeg: already bundled in build/ffmpeg');
+} else {
+  try {
+    let ff = null;
+    try { ff = (await import('ffmpeg-static')).default; } catch {}
+    if (!ff || !existsSync(ff)) {
+      const candidates = [
+        'C:\\Program Files\\photobooth4u\\resources\\app.asar.unpacked\\build\\ffmpeg\\ffmpeg.exe',
+        process.env.PB4U_FFMPEG
+      ];
+      for (const c of candidates) if (c && existsSync(c)) { ff = c; break; }
+    }
+    if (ff && existsSync(ff)) {
+      mkdirSync(join(OUT, 'ffmpeg'), { recursive: true });
+      cpSync(ff, existingFfmpeg);
+      for (const n of ['LICENSE', 'README.md']) { const f = join(dirname(ff), n); if (existsSync(f)) cpSync(f, join(OUT, 'ffmpeg', 'ffmpeg-static-' + n)); }
+      const notice = join(DESK, 'resources', 'ffmpeg-NOTICE.txt');
+      if (existsSync(notice)) cpSync(notice, join(OUT, 'ffmpeg', 'ffmpeg-NOTICE.txt'));
+      log('ffmpeg: bundled for the 360 desk');
+    } else log('ffmpeg: not found; the 360 desk will share videos as they are');
+  } catch { log('ffmpeg: ffmpeg-static is not installed; the 360 desk will share videos as they are'); }
+}
 
 // ---------- animated video overlays for 360 desk (spin-fx) ----------
 const fxSource = join(DESK, 'resources', 'spin-fx');

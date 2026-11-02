@@ -26,8 +26,8 @@ try {
   const dummyFxWebm = join(testDir, 'confetti.webm');
   writeFileSync(dummyInput, 'fake video');
   writeFileSync(dummyOverlay, 'fake png');
-  writeFileSync(dummyFxMp4, 'fake fx mp4');
-  writeFileSync(dummyFxWebm, 'fake fx webm');
+  writeFileSync(dummyFxMp4, Buffer.alloc(2048));
+  writeFileSync(dummyFxWebm, Buffer.alloc(2048));
 
   const fakeInfo = { duration: 10, width: 1920, height: 1080, fps: 30, hasAudio: true };
 
@@ -64,6 +64,7 @@ try {
 
     const filterArg = r.args[r.args.indexOf('-filter_complex') + 1];
     assert(filterArg.includes('[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fps=30[fx_fit]'), 'FX is scaled/cropped to match output WxH');
+    assert(filterArg.includes('format=gbrp[v_base]') && filterArg.includes('format=gbrp[fx_rgb]'), 'Converts to planar RGB (gbrp) before screen blend to prevent YUV pinkish tint');
     assert(filterArg.includes('blend=all_mode=screen:all_opacity=0.9:shortest=1[v_fx]'), 'Screen blend with 0.9 opacity applied');
     assert(filterArg.includes('[v_fx][ov]overlay=0:0:format=auto[v1o]'), 'Layer order: branding overlay sits on top of [v_fx]');
   }
@@ -79,6 +80,8 @@ try {
     }, fakeInfo);
 
     assert(r.W === 1920 && r.H === 1080, 'Landscape dimensions 1920x1080');
+    const loopIdx = r.args.indexOf('-stream_loop');
+    assert(loopIdx > 0 && r.args[loopIdx + 2] === '-c:v' && r.args[loopIdx + 3] === 'libvpx-vp9', 'WebM input uses libvpx-vp9 decoder to decode alpha channel');
     const filterArg = r.args[r.args.indexOf('-filter_complex') + 1];
     assert(filterArg.includes('[fx_rgba]colorchannelmixer=aa=0.8[fx_alpha]'), 'Alpha channel opacity mixer applied');
     assert(filterArg.includes('[fx_alpha]overlay=0:0:format=auto:shortest=1[v_fx]'), 'Overlay filter applied');
@@ -91,7 +94,7 @@ try {
     const loopsDir = join(testDir, 'loops');
     mkdirSync(loopsDir, { recursive: true });
     const sparklesFile = join(loopsDir, 'sparkles.mp4');
-    writeFileSync(sparklesFile, 'dummy sparkles');
+    writeFileSync(sparklesFile, Buffer.alloc(2048));
 
     const catalog = [
       { id: 'sparkles_gold', name: 'Golden Sparkles', category: 'VIP', file: 'sparkles.mp4', blend: 'screen', opacity: 0.95 }

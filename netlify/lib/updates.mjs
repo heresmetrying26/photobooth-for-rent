@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.51', date: '2026-11-02' },
   { version: '1.0.50', date: '2026-11-02' },
   { version: '1.0.49', date: '2026-11-02' },
   { version: '1.0.48', date: '2026-11-02' },
@@ -97,6 +98,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-02', title: '360 desk: natural color blending and transparent animated overlays', for: ['website', 'app'], app: '1.0.51',
+    items: [
+      'Fixed animated video overlays appearing pinkish or saturated with a magenta wash by upgrading Screen and Addition blend modes to planar RGB compositing.',
+      'Fixed WebM overlay effects (Floating Hearts, Streamers, Confetti, Rose Petals, Balloons) covering the person in solid black by decoding VP9 alpha transparency with libvpx-vp9.',
+      'Overlays now blend seamlessly with natural skin tones and transparent backgrounds behind floating particles.'
+    ]
+  },
   {
     date: '2026-11-02', title: 'Mac & Windows laptops: standalone booth Wi-Fi with no router or internet', for: ['website', 'app'], app: '1.0.50',
     items: [

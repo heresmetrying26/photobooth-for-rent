@@ -3176,12 +3176,15 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
           </div>
           <p class="panel-hint" id="gifModeHint" style="margin:8px 0 0; color:var(--ink-dim);">Guests get a photo strip + QR code.</p>
           <div id="flipbookOptions" style="display:none; margin-top:10px;">
-            <p class="panel-hint" style="margin:0 0 8px;">Guests record a short clip. The booth prints its frames as small cards on sheets, in order from left to right and top to bottom: cut along the lines, stack them in that order and staple. Guests also get an animated GIF QR code. Prints use the paper size chosen in Print settings.</p>
+            <p class="panel-hint" style="margin:0 0 8px;">Guests record a short clip. The booth prints its frames as small cards on sheets. Cut along the lines, stack the piles and staple. Guests also get an animated GIF QR code. Prints use the paper size chosen in Print settings.</p>
             <div class="stepper"><span class="lbl">Clip length</span><span class="ctl"><select id="flipSecSelect"><option value="4">4 s</option><option value="5">5 s</option><option value="6" selected>6 s</option><option value="7">7 s</option></select></span></div>
             <div class="stepper"><span class="lbl">Frames in the book</span><span class="ctl"><select id="flipFramesSelect"><option value="16">16</option><option value="24" selected>24</option><option value="30">30</option><option value="40">40</option></select></span></div>
-            <p class="panel-hint" style="margin:6px 0 0;">The booth records more pictures than the book needs and keeps the sharpest ones, spaced so every page differs from the last. Fewer frames over a longer clip means bigger changes between pages.</p>
+            <div class="stepper" style="margin-top:8px;"><span class="lbl">Page collation</span><span class="ctl"><select id="flipCollationSelect"><option value="stack" selected>Stack-cut (cut stack &amp; pile)</option><option value="grid">Sequential grid (left to right)</option></select></span></div>
+            <p class="panel-hint" style="margin:6px 0 0;">Stack-cut arranges cards so that cutting the stack of printed sheets yields pre-ordered piles (Pile 1 on Pile 2 = in order) without manual sorting.</p>
             <label class="toggle-row" style="margin-top:10px;"><input type="checkbox" id="flipCoverToggle" checked> Cover card (event name and date, first in the stack)</label>
             <label class="toggle-row" style="margin-top:6px;"><input type="checkbox" id="flipBackToggle" checked> Back card (&ldquo;Thank you!&rdquo;, last in the stack)</label>
+            <label class="toggle-row" style="margin-top:6px;"><input type="checkbox" id="flipGutterToggle" checked> Binding gutter (6mm margin + staple dots)</label>
+            <label class="toggle-row" style="margin-top:6px;"><input type="checkbox" id="flipNumbersToggle" checked> Page numbers in binding margin</label>
           </div>
           <div id="gifOptions" style="display:none; margin-top:10px;">
             <p class="panel-hint" style="margin:0;">GIF follows the session through the first complete run of shots, including timers, pauses and any retake pressed between shots. Retakes at the final review change the photo but not the GIF. Speed is set automatically — 2× for sessions up to 24 s, 3× for longer ones.</p>
@@ -6873,6 +6876,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
 
   var outputMode = 'photo';    // 'photo' | 'gif' | 'both' | 'flipbook'
   var flipSec = 6, flipFrames = 24, flipCover = true, flipBack = true, flipbookResult = null;   // flipbook (included extra): clip length, frames, and the result on screen
+  var flipCollation = 'stack'; // 'stack' (cut-and-stack) | 'grid' (sequential)
+  var flipGutter = true;       // 6mm binding gutter with staple dots & crease guide
+  var flipNumbers = true;      // frame numbering in the binding gutter
   var gifLayoutMode = 'solo';  // 'solo' | 'follow' | 'raw': what the GIF frames are placed in
   function refreshGifLayoutUI(){
     var sel = document.getElementById('gifLayoutSelect'), gh = document.getElementById('gifLayoutHint');
@@ -6940,9 +6946,14 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       refreshGifLayoutUI();
       if(typeof scheduleSetupSave === 'function') scheduleSetupSave();
     });
+    var fcol = document.getElementById('flipCollationSelect');
+    if(fcol) fcol.addEventListener('change', function(){ flipCollation = fcol.value === 'grid' ? 'grid' : 'stack'; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
     var fcv = document.getElementById('flipCoverToggle'), fbk = document.getElementById('flipBackToggle');
     if(fcv) fcv.addEventListener('change', function(){ flipCover = fcv.checked; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
     if(fbk) fbk.addEventListener('change', function(){ flipBack = fbk.checked; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+    var fgt = document.getElementById('flipGutterToggle'), fnum = document.getElementById('flipNumbersToggle');
+    if(fgt) fgt.addEventListener('change', function(){ flipGutter = fgt.checked; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+    if(fnum) fnum.addEventListener('change', function(){ flipNumbers = fnum.checked; if(typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
     refreshGifUI();
     refreshOutputModeUI();
   })();
@@ -13946,9 +13957,13 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function flipbookItems(){
     var r = flipbookResult, out = [];
     if(!r) return out;
-    if(r.cover) out.push({ c: r.cover });
-    r.cards.forEach(function(c){ out.push({ c: c }); });
-    if(r.back) out.push({ c: r.back });
+    if(r.cover) out.push({ c: r.cover, kind: 'cover', label: 'Cover' });
+    r.cards.forEach(function(c, idx){
+      var nStr = String(idx + 1);
+      if(nStr.length < 2) nStr = '0' + nStr;
+      out.push({ c: c, kind: 'frame', num: idx + 1, total: r.cards.length, label: nStr });
+    });
+    if(r.back) out.push({ c: r.back, kind: 'back', label: 'End' });
     return out;
   }
   function flipbookPageCount(key){
@@ -13960,6 +13975,46 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
   function drawCover(ctx, img, x, y, w, h){
     var iw = img.width, ih = img.height, k = Math.max(w / iw, h / ih), sw = w / k, sh = h / k;
     ctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, x, y, w, h);
+  }
+  // Left binding gutter on each card: reserved for stapling and tape, with staple alignment marks, fold guide & numbering.
+  function drawBindingGutter(x, cx, cy, gw, ch, it, mm){
+    x.fillStyle = '#fafafa';
+    x.fillRect(cx, cy, gw, ch);
+
+    // Subtle vertical crease guideline at boundary (cx + gw)
+    x.save();
+    x.strokeStyle = '#d5d5d5';
+    x.lineWidth = Math.max(1, Math.round(mm * 0.12));
+    x.setLineDash([Math.max(1, Math.round(1.5 * mm)), Math.max(1, Math.round(1.5 * mm))]);
+    x.beginPath();
+    x.moveTo(cx + gw, cy);
+    x.lineTo(cx + gw, cy + ch);
+    x.stroke();
+    x.restore();
+
+    // Staple placement alignment marks (subtle dots at 28% and 72% height)
+    var dotX = cx + Math.round(gw * 0.42);
+    var dotR = Math.max(1.5, Math.round(mm * 0.4));
+    x.fillStyle = '#a0a0a0';
+    x.beginPath();
+    x.arc(dotX, cy + Math.round(ch * 0.28), dotR, 0, Math.PI * 2);
+    x.fill();
+    x.beginPath();
+    x.arc(dotX, cy + Math.round(ch * 0.72), dotR, 0, Math.PI * 2);
+    x.fill();
+
+    // Subtle frame numbering in gutter margin
+    if(flipNumbers && it && it.label){
+      x.save();
+      x.translate(cx + Math.round(gw * 0.42), cy + Math.round(ch * 0.5));
+      x.rotate(-Math.PI / 2);
+      x.fillStyle = '#8e8e8e';
+      x.font = '600 ' + Math.max(9, Math.round(mm * 2.2)) + 'px Manrope, sans-serif';
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      x.fillText(it.label, 0, 0);
+      x.restore();
+    }
   }
   // Cover and back cards: light card with dark text, or a dark card when the booth's text colour is light.
   function flipCardBase(){
@@ -14001,19 +14056,34 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     if(t){ x.globalAlpha = 0.75; x.font = '600 32px Manrope, sans-serif'; x.fillText(t.slice(0, 40), W / 2, y + 74); x.globalAlpha = 1; }
     return b.c;
   }
-  // One or more print sheets: cards in stack order (left to right, top to bottom), with thin cut lines.
+  // One or more print sheets: cards arranged in stack-cut or sequential order, with binding gutters and cut lines.
   function buildFlipbookPages(paper){
     var g = flipGrid(paper), mm = PRINT_DPI / 25.4, pages = [], items = flipbookItems();
     var W = Math.round(paper.w * mm), H = Math.round(paper.h * mm), m = FLIP_MARGIN * mm;
     var cw = (W - 2 * m) / g.cols, ch = (H - 2 * m) / g.rows;
-    for(var start = 0; start < items.length; start += g.per){
+    var totalSheets = Math.max(1, Math.ceil(items.length / g.per));
+    var isStack = flipCollation === 'stack';
+    var gw = flipGutter ? Math.round(6 * mm) : 0;   // 6 mm binding gutter
+
+    for(var s = 0; s < totalSheets; s++){
       var c = document.createElement('canvas'); c.width = W; c.height = H;
       var x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H); x.imageSmoothingQuality = 'high';
-      var count = Math.min(g.per, items.length - start);
-      for(var k = 0; k < count; k++){
-        var col = k % g.cols, row = Math.floor(k / g.cols), cx = m + col * cw, cy = m + row * ch, it = items[start + k];
-        drawCover(x, it.c, cx, cy, cw, ch);
+
+      for(var k = 0; k < g.per; k++){
+        var itemIndex = isStack ? (k * totalSheets + s) : (s * g.per + k);
+        if(itemIndex >= items.length) continue;
+        var col = k % g.cols, row = Math.floor(k / g.cols);
+        var cx = m + col * cw, cy = m + row * ch;
+        var it = items[itemIndex];
+
+        // Draw photo offset by binding gutter
+        drawCover(x, it.c, cx + gw, cy, cw - gw, ch);
+        if(flipGutter){
+          drawBindingGutter(x, cx, cy, gw, ch, it, mm);
+        }
       }
+
+      // Thin cut lines across the sheet
       x.strokeStyle = '#9a9a9a'; x.lineWidth = Math.max(1, Math.round(mm * 0.15));
       for(var gx = 0; gx <= g.cols; gx++){ x.beginPath(); x.moveTo(m + gx * cw, m - mm * 2); x.lineTo(m + gx * cw, H - m + mm * 2); x.stroke(); }
       for(var gy = 0; gy <= g.rows; gy++){ x.beginPath(); x.moveTo(m - mm * 2, m + gy * ch); x.lineTo(W - m + mm * 2, m + gy * ch); x.stroke(); }
@@ -14028,10 +14098,18 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
     var x = previewCanvas.getContext('2d');
     x.fillStyle = '#ffffff'; x.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
     x.fillStyle = '#1c1a1e'; x.font = 'bold 22px Manrope, sans-serif'; x.textBaseline = 'middle';
-    x.fillText('Flip book · ' + flipbookResult.cards.length + ' frames' + (flipbookResult.cover || flipbookResult.back ? ' + cover' + (flipbookResult.cover && flipbookResult.back ? ' and back' : '') : ''), 14, pad / 2);
+    x.fillText('Flip book · ' + flipbookResult.cards.length + ' frames' + (flipbookResult.cover || flipbookResult.back ? ' + cover' + (flipbookResult.cover && flipbookResult.back ? ' and back' : '') : '') + (flipCollation === 'stack' ? ' · Stack-cut' : ''), 14, pad / 2);
     items.forEach(function(it, i){
       var cx = (i % cols) * cw, cy = pad + Math.floor(i / cols) * ch;
       drawCover(x, it.c, cx + 1, cy + 1, cw - 2, ch - 2);
+      if(it.label){
+        x.fillStyle = 'rgba(0,0,0,0.55)';
+        x.fillRect(cx + 2, cy + ch - 24, 46, 22);
+        x.fillStyle = '#ffffff';
+        x.font = 'bold 12px Manrope, sans-serif';
+        x.textAlign = 'center'; x.textBaseline = 'middle';
+        x.fillText(it.label, cx + 25, cy + ch - 13);
+      }
     });
   }
   var _renderComposite = renderComposite;
@@ -18179,7 +18257,7 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       boothType: boothType, btCfg: JSON.parse(JSON.stringify(btCfg)), tpls: tplsSnapshot(),
       timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
       reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake,
-      outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack,
+      outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipNumbers: flipNumbers,
       backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
       frameColorChoice: frameColorChoice, photoPlacement: photoPlacement, cropFocus: cropFocus,
       label: labelInput.value, font: currentFont, dateFont: currentDateFont, dateOn: dateOn, date: dateInput.value,
@@ -18284,6 +18362,9 @@ var gifenc=function(){var t={},e=Object.defineProperty;e(t,"__esModule",{value:!
       if([16, 24, 30, 40].indexOf(Number(s.flipFrames)) >= 0){ flipFrames = Number(s.flipFrames); var ffEl = document.getElementById('flipFramesSelect'); if(ffEl) ffEl.value = String(flipFrames); }
       if(typeof s.flipCover === 'boolean'){ flipCover = s.flipCover; var fcEl = document.getElementById('flipCoverToggle'); if(fcEl) fcEl.checked = flipCover; }
       if(typeof s.flipBack === 'boolean'){ flipBack = s.flipBack; var fbEl = document.getElementById('flipBackToggle'); if(fbEl) fbEl.checked = flipBack; }
+      if(s.flipCollation === 'stack' || s.flipCollation === 'grid'){ flipCollation = s.flipCollation; var fcolEl = document.getElementById('flipCollationSelect'); if(fcolEl) fcolEl.value = flipCollation; }
+      if(typeof s.flipGutter === 'boolean'){ flipGutter = s.flipGutter; var fgEl = document.getElementById('flipGutterToggle'); if(fgEl) fgEl.checked = flipGutter; }
+      if(typeof s.flipNumbers === 'boolean'){ flipNumbers = s.flipNumbers; var fnEl = document.getElementById('flipNumbersToggle'); if(fnEl) fnEl.checked = flipNumbers; }
       refreshOutputModeUI();
       // gifSpeed is always auto (0); any previously saved manual value is ignored.
       filterKey = Object.prototype.hasOwnProperty.call(FILTERS, s.filter) ? s.filter : 'none';

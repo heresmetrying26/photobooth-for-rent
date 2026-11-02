@@ -5,7 +5,7 @@
 // ramp, boomerang), cropped to portrait or landscape, with the event's frame / logo / title drawn over it
 // (a transparent PNG made by the booth page) and optional music. Jobs run one at a time.
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync, readdirSync, statSync, unlinkSync, renameSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readdirSync, statSync, unlinkSync, renameSync, readFileSync, openSync, readSync, closeSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { createRequire } from 'node:module';
 
@@ -126,6 +126,19 @@ function isValidFxFile(p) {
   }
 }
 
+function isVp9Webm(filePath) {
+  if (!filePath || !/\.webm$/i.test(filePath)) return false;
+  try {
+    const fd = openSync(filePath, 'r');
+    const buf = Buffer.alloc(4096);
+    const read = readSync(fd, buf, 0, 4096, 0);
+    closeSync(fd);
+    return !buf.subarray(0, read).includes('V_VP8');
+  } catch {
+    return true;
+  }
+}
+
 export function resolveFx(spec) {
   if (!spec) return null;
   if (typeof spec === 'object' && spec.path && isValidFxFile(spec.path)) return spec;
@@ -233,7 +246,11 @@ export function buildArgs({ input, output, overlay, fx, music, options }, info) 
 
   let idx = 1, fxIdx = -1, ovIdx = -1, muIdx = -1;
   if (fxPath) {
-    a.push('-stream_loop', '-1', '-i', fxPath);
+    a.push('-stream_loop', '-1');
+    if (isVp9Webm(fxPath)) {
+      a.push('-c:v', 'libvpx-vp9');
+    }
+    a.push('-i', fxPath);
     fxIdx = idx++;
   }
   if (overlay) { a.push('-i', overlay); ovIdx = idx++; }
@@ -284,10 +301,14 @@ export function buildArgs({ input, output, overlay, fx, music, options }, info) 
       }
       last = '[v_fx]';
     } else if (fxBlend === 'addition') {
-      f.push(last + '[fx_fit]blend=all_mode=addition' + (fxOpacity < 0.999 ? ':all_opacity=' + f2(fxOpacity) : '') + ':shortest=1[v_fx]');
+      f.push(last + 'format=gbrp[v_base]');
+      f.push('[fx_fit]format=gbrp[fx_rgb]');
+      f.push('[v_base][fx_rgb]blend=all_mode=addition' + (fxOpacity < 0.999 ? ':all_opacity=' + f2(fxOpacity) : '') + ':shortest=1[v_fx]');
       last = '[v_fx]';
     } else {
-      f.push(last + '[fx_fit]blend=all_mode=screen' + (fxOpacity < 0.999 ? ':all_opacity=' + f2(fxOpacity) : '') + ':shortest=1[v_fx]');
+      f.push(last + 'format=gbrp[v_base]');
+      f.push('[fx_fit]format=gbrp[fx_rgb]');
+      f.push('[v_base][fx_rgb]blend=all_mode=screen' + (fxOpacity < 0.999 ? ':all_opacity=' + f2(fxOpacity) : '') + ':shortest=1[v_fx]');
       last = '[v_fx]';
     }
   }

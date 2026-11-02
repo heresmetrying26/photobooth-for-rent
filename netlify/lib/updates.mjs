@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.60', date: '2026-11-02' },
   { version: '1.0.59', date: '2026-11-02' },
   { version: '1.0.57', date: '2026-11-02' },
   { version: '1.0.56', date: '2026-11-02' },
@@ -105,6 +106,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-02', title: 'Find Wi-Fi and network printers from the laptop app', for: ['app'], app: '1.0.60',
+    items: [
+      'New in Setup, Camera & printer: Find Wi-Fi / network printers. The app asks every address on the Wi-Fi or network you are on which ones are printers, shows each by name, and lets you use it. A printer your computer does not have yet can be added from the same list.',
+      'If a printer is not listed, type its IP address (for example 192.168.1.50) and search again. The result says which addresses were searched when nothing is found.'
+    ]
+  },
   {
     date: '2026-11-02', title: 'Prints no longer cut off, and a second printer (Windows)', for: ['app'], app: '1.0.59',
     items: [

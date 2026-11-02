@@ -20670,8 +20670,8 @@
                 if (p.installed) { await pickInstalled(p.installed); return; }
                 st.textContent = 'Adding ' + (p.name || p.ip) + '… this can take a little while.';
                 const rr = await fetch(HELPER_URL + '/printer/add', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ip: p.ip, port: p.port, path: p.path, name: p.name }) });
-                const jj = await rr.json();
-                if (!jj.ok) { st.textContent = jj.error || 'Could not add the printer.'; return; }
+                let jj = null; try { jj = await rr.json(); } catch (e) { }
+                if (!jj || !jj.ok) { st.textContent = (jj && jj.error) || 'Could not add the printer. Update the app to 1.0.60 or newer and try again.'; return; }
                 st.textContent = 'Added. Choosing it for ' + (printSize ? paperFor(printSize).name : 'this size') + '…';
                 await pickInstalled(jj.printer);
               } catch (e) { st.textContent = 'Could not add the printer: ' + (e.message || e); }
@@ -20686,7 +20686,9 @@
           st.textContent = 'Asking every address on this network which ones are printers. About 10 seconds…';
           try {
             const rr = await fetch(HELPER_URL + '/printer/discover' + (ip ? '?ip=' + encodeURIComponent(ip) : ''));
-            const jj = await rr.json();
+            let jj = null; try { jj = await rr.json(); } catch (e) { }
+            // An app older than 1.0.60 has no network search and answers with something that is not this reply.
+            if (!jj || rr.status === 404 || rr.status === 501) throw new Error('This version of the app can’t search the network yet. Update the app to 1.0.60 or newer, then try again.');
             if (!rr.ok || !jj.ok) throw new Error(jj.error || 'The search failed.');
             render(jj);
             const where = jj.subnets && jj.subnets.length ? ' Searched ' + jj.checked + ' addresses on ' + jj.subnets.join(', ') + '.' : ' This computer is not on a Wi-Fi or LAN network.';

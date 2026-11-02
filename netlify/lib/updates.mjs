@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.53', date: '2026-11-02' },
   { version: '1.0.52', date: '2026-11-02' },
   { version: '1.0.51', date: '2026-11-02' },
   { version: '1.0.50', date: '2026-11-02' },
@@ -99,6 +100,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-02', title: 'Flipbook suite: stack-cut imposition, branded covers, interactive preview, and printer pooling', for: ['website', 'app'], app: '1.0.53',
+    items: [
+      'Stack-cut collation & binding gutters: slices printed sheets directly into collated piles with 6mm spine margin and staple alignment dots, reducing manual sorting to ~3 seconds.',
+      'Hybrid digital deliverables: back-cover dynamic QR codes linking to animated GIFs, plus customizable cover styles (Event Branding, Photo Cover with hero frame, Custom Artwork upload).',
+      'Interactive on-screen flipbook experience: interactive scrubber timeline with 3D booklet player, tap-to-flip controls, sheet grid overview with click-to-jump, and phased motion prompts during recording.',
+      'High-volume printer pooling: alternates sheets across dual dye-sub printers to cut print wait times in half, with per-printer queue management and 6-up / 8-up grid presets.'
+    ]
+  },
   {
     date: '2026-11-02', title: 'Mac: fix crash (unexpected quit) when closing the app', for: ['website', 'app'], app: '1.0.52',
     items: [

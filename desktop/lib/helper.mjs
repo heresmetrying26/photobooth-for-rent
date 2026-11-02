@@ -458,7 +458,11 @@ function camError(r) {
 
 // ---------- requests from the booth ----------
 const json = (obj, status) => new Response(JSON.stringify(obj), { status: status || 200, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
-let printQueue = Promise.resolve();
+const printQueues = new Map();
+function getPrintQueue(name) {
+  if (!printQueues.has(name)) printQueues.set(name, Promise.resolve());
+  return printQueues.get(name);
+}
 
 // path is what follows /helper (e.g. "/status", "/camera/open").
 export async function handleHelper(req, path, search) {
@@ -558,8 +562,9 @@ export async function handleHelper(req, path, search) {
       buffers.push(Buffer.from(m[1], 'base64'));
     }
     const fit = body.fit === 'width' ? 'width' : '';
-    const job = printQueue.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0));
-    printQueue = job.catch(() => {});
+    const prev = getPrintQueue(name);
+    const job = prev.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0));
+    printQueues.set(name, job.catch(() => {}));
     try { await job; log('Printed ' + buffers.length + ' page(s) on ' + name); return json({ ok: true }); }
     catch (e) { log('Print failed on ' + name + ': ' + (e && e.message || e)); return json({ ok: false, error: String(e && e.message || e) }, 500); }
   }

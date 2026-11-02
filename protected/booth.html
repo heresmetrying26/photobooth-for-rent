@@ -21863,7 +21863,7 @@
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
           const sel = wifiPrinter && wifiPrinter.ip === p.ip;
-          b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? '' : ' · ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.escpr ? ' · photo' : '') + (p.escp2 ? ' · photo (black & white)' : '') + (p.raw ? ' · receipt' : '') + (p.needsPermission ? ' · tap to allow USB access' : '') + (p.noDriver ? ' · no driver' : '') + (p.canon ? ' · photo' : '');
+          b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? '' : ' · ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.escpr ? ' · photo' : '') + (p.escp2 ? ' · photo (black & white)' : '') + (p.raw ? ' · receipt' : '') + (p.needsPermission ? ' · tap to allow USB access' : '') + (p.noDriver ? ' · no driver' : '') + (p.canon ? ' · photo' : '') + (p.selphy ? ' · photo (SELPHY)' : '');
           b.addEventListener('click', () => {
             if (p.needsPermission) {
               // The tablet has not been given access to this USB printer yet, so it cannot read what it is.
@@ -21877,7 +21877,7 @@
               showToast(p.name + ' is detected, but the app has no driver for it. Use the Android print dialog or the laptop print station for it.' + (pbDebug() && p.usb ? ' [USB ' + (p.vid || 0).toString(16) + ':' + (p.pid || 0).toString(16) + (p.info ? ' ' + p.info : ' (could not read its ID)') + ']' : ''), pbDebug() ? 14000 : 6000);
               return;
             }
-            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
+            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, selphy: !!p.selphy, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
             showToast('Will print to ' + p.name + '.', 3000);
             wifiRenderList(wifiList());
             refreshPrintUI();
@@ -21999,6 +21999,12 @@
             const bytes = new window._btThermal.EscPosEncoder(dotW).initialize().image(window._btThermal.toReceiptCanvas(cv, dotW)).cut().getBuffer();
             await wifiJob(id => window.__PBNet.printRaw(id, p.ip, wifiBytesToB64(bytes)));
           }
+          return;
+        }
+        if (p.selphy) {
+          // Direct Canon SELPHY dye-sub photo printing over USB (CP820 / CP910 / CP1000 / CP1200 / CP1300 / CP1500)
+          const picsS = all.map(cv => cv.toDataURL('image/jpeg', 0.95));
+          await wifiJob(id => window.__PBNet.printSelphy(id, p.ip, paper.w, paper.h, 1, JSON.stringify(picsS), JSON.stringify(wifiOpts())));
           return;
         }
         if (p.canon) {

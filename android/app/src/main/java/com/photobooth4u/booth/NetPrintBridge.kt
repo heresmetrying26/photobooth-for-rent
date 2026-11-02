@@ -475,7 +475,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     }
 
     private fun usbIfaces(d: UsbDevice): List<UsbInterface> = (0 until d.interfaceCount).map { d.getInterface(it) }
-    private fun usbIsPrinter(d: UsbDevice) = usbIfaces(d).any { it.interfaceClass == UsbConstants.USB_CLASS_PRINTER }
+    private fun usbIsPrinter(d: UsbDevice) = usbIfaces(d).any { it.interfaceClass == UsbConstants.USB_CLASS_PRINTER } ||
+        (d.vendorId == CanonSelphyJob.VENDOR_ID && (d.productId in CanonSelphyJob.PRODUCT_IDS || (d.productName ?: "").contains("SELPHY", true)))
     /** True when this interface (alternate setting) has both a bulk OUT and a bulk IN endpoint. */
     private fun hasBulkPair(i: UsbInterface): Boolean {
         var out = false
@@ -562,6 +563,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
      */
     private fun usbIsCanon(d: UsbDevice): Boolean {
         if (d.vendorId != 0x04a9 || usb?.hasPermission(d) != true) return false
+        if (usbIsSelphy(d)) return false // Handled separately by CanonSelphyJob
         var id = usbIds[d.deviceName]
         if (id == null) {
             id = try { usbDeviceId(d) } catch (e: Exception) { Log.w(TAG, "canon id", e); null }
@@ -570,6 +572,110 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         if (id != null && Regex("CMD:[^;]*(IVEC|BJRaster)", RegexOption.IGNORE_CASE).containsMatchIn(id)) return true
         val name = (usbProduct(d) ?: "") + " " + (id ?: "")
         return Regex("""(?i)\bG[1-4]\d{3}\b""").containsMatchIn(name)
+    }
+
+    /** True for Canon SELPHY compact dye-sub photo printers (CP820 / CP910 / CP1000 / CP1200 / CP1300 / CP1500). */
+    private fun usbIsSelphy(d: UsbDevice): Boolean {
+        if (d.vendorId != CanonSelphyJob.VENDOR_ID) return false
+        if (d.productId in CanonSelphyJob.PRODUCT_IDS) return true
+        val name = ((usbProduct(d) ?: "") + " " + (d.productName ?: "") + " " + (usbIds[d.deviceName] ?: "")).uppercase()
+        return name.contains("SELPHY") || name.contains("CP1300") || name.contains("CP1500") || name.contains("CP1200") ||
+            name.contains("CP1000") || name.contains("CP910") || name.contains("CP820")
+    }
+
+    /**
+     * Prints photos directly to Canon SELPHY dye-sub photo printers (CP820 / CP910 / CP1000 / CP1200 / CP1300 / CP1500) over USB.
+     * Result arrives as window.__PBNetResult.
+     */
+    @JavascriptInterface
+    fun printSelphy(job: String, id: String, widthMm: Double, heightMm: Double, copies: Int, pagesJson: String, optionsJson: String): String {
+        pool.execute {
+            val r = JSONObject().put("job", job)
+            try {
+                val d = usbFind(id)
+                usbEnsure(d)
+                if (!usbIsSelphy(d)) throw IllegalStateException("This printer doesn't look like a Canon SELPHY printer.")
+
+                val iface = usbRawIface(d) ?: usbIfaces(d).firstOrNull { it.interfaceClass == UsbConstants.USB_CLASS_PRINTER && hasBulkPair(it) }
+                    ?: usbIfaces(d).firstOrNull { hasBulkPair(it) }
+                    ?: throw IllegalStateException("This USB device has no printer data interface.")
+
+                val arr = JSONArray(pagesJson)
+                val bitmaps = ArrayList<android.graphics.Bitmap>()
+                for (i in 0 until arr.length()) {
+                    val jpeg = decode(arr.getString(i))
+                    val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+                        ?: throw IllegalStateException("Couldn't decode photo for printing.")
+                    bitmaps.add(bmp)
+                }
+
+                usbSession(d, iface) { conn, out, inn ->
+                    if (inn == null) throw IllegalStateException("The SELPHY printer has no status reply port.")
+
+                    val rd = ByteArray(12)
+                    // Initial query to clear/check status
+                    val ret = conn.bulkTransfer(inn, rd, rd.size, 3000)
+                    if (ret > 0 && rd[2].toInt() != 0) {
+                        conn.bulkTransfer(inn, rd, rd.size, 1000)
+                    }
+
+                    for (c in 0 until copies.coerceIn(1, 20)) {
+                        for (bmp in bitmaps) {
+                            // Wait for printer to be Idle (status 0x01)
+                            val waitStart = System.currentTimeMillis()
+                            while (System.currentTimeMillis() - waitStart < 45_000) {
+                                val n = conn.bulkTransfer(inn, rd, rd.size, 2000)
+                                if (n >= 12) {
+                                    val status = rd[0].toInt() and 0xFF
+                                    val err = rd[2].toInt() and 0xFF
+                                    if (err != 0) {
+                                        val errDesc = CanonSelphyJob.errorDescription(err)
+                                        throw IllegalStateException("Canon SELPHY error: $errDesc")
+                                    }
+                                    if (status == 0x01) break
+                                }
+                                Thread.sleep(500)
+                            }
+
+                            // Build 32-byte header + 3 YUV444 planes
+                            val jobData = CanonSelphyJob.build(bmp, widthMm, heightMm)
+
+                            // Write data to printer over bulk OUT
+                            usbWrite(conn, out, jobData)
+
+                            // Wait for printing cycle to start and finish
+                            // Status cycle: 0x02 (Feeding paper) -> 0x04 (Yellow) -> 0x08 (Magenta) -> 0x10 (Cyan) -> 0x20 (Laminate) -> 0x01 (Idle)
+                            val printStart = System.currentTimeMillis()
+                            var printingSeen = false
+                            while (System.currentTimeMillis() - printStart < 120_000) {
+                                val n = conn.bulkTransfer(inn, rd, rd.size, 3000)
+                                if (n >= 12) {
+                                    val status = rd[0].toInt() and 0xFF
+                                    val err = rd[2].toInt() and 0xFF
+                                    if (err != 0) {
+                                        val errDesc = CanonSelphyJob.errorDescription(err)
+                                        throw IllegalStateException("Canon SELPHY error during print: $errDesc")
+                                    }
+                                    if (status in listOf(0x02, 0x04, 0x08, 0x10, 0x20)) {
+                                        printingSeen = true
+                                    }
+                                    if (printingSeen && status == 0x01) {
+                                        break // Print completed successfully!
+                                    }
+                                }
+                                Thread.sleep(500)
+                            }
+                        }
+                    }
+                }
+                r.put("ok", true)
+            } catch (ex: Exception) {
+                Log.w(TAG, "canon selphy print failed", ex)
+                r.put("ok", false).put("error", ex.message ?: "Couldn't print to Canon SELPHY.")
+            }
+            deliver(r)
+        }
+        return "started"
     }
 
     /**
@@ -752,14 +858,15 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 }
             } else null
             val escp2 = !ipp && !raw && !escpr && usbIsEscp2(d)
-            val canon = !ipp && !raw && !escpr && !escp2 && usbIsCanon(d)
+            val selphy = !ipp && !raw && !escpr && !escp2 && usbIsSelphy(d)
+            val canon = !ipp && !raw && !escpr && !escp2 && !selphy && usbIsCanon(d)
             val id = "usb:" + d.deviceName
             arr.put(JSONObject()
                 .put("id", id).put("ip", id).put("name", usbName(d) + " (USB)")
                 .put("ipp", ipp).put("raw", raw).put("escpr", escpr).put("usb", true)
-                .put("escp2", escp2).put("canon", canon)
-                .put("noDriver", perm && !ipp && !raw && !escpr && !escp2 && !canon)
-                .put("needsPermission", !perm && !ipp && !raw)
+                .put("escp2", escp2).put("canon", canon).put("selphy", selphy)
+                .put("noDriver", perm && !ipp && !raw && !escpr && !escp2 && !canon && !selphy)
+                .put("needsPermission", !perm && !ipp && !raw && !selphy)
                 .put("qualities", JSONArray(ippEntry?.qualities ?: emptyList<Int>()))
                 .put("colorModes", JSONArray(ippEntry?.colorModes ?: emptyList<String>()))
                 .put("mediaTypes", JSONArray(ippEntry?.mediaTypes ?: emptyList<String>()))

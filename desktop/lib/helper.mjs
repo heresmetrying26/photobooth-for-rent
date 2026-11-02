@@ -305,12 +305,6 @@ async function airPrintQualityOptions(printer) {
 const WIN_PRINT_PS = String.raw`
 param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName)
 $ErrorActionPreference = 'Stop'
-# With Borderless on, the printer driver enlarges the picture a little past the sheet so no white edge is left,
-# and the edge of the picture is lost. Its enlargement setting is private to the driver (Epson: Borderless >
-# Settings), so the picture is drawn this much smaller and the driver's enlargement brings it back to the edge.
-# Dye-sub photo printers (DNP, HiTi, Mitsubishi, SELPHY...) do not enlarge, so they print to the edge as they are.
-$ExpandMm = 3
-$DyeSub = $Printer -match 'DNP|DS-?RX|DS-?\d{3}|HiTi|Mitsubishi|CP-?D\d|Sinfonia|CHC-?S|SELPHY|Kodak|Shinko'
 Add-Type -AssemblyName System.Drawing
 $files = @(Get-Content -LiteralPath $ListFile -Encoding UTF8 | Where-Object { $_ })
 if ($files.Count -eq 0) { throw "No pages to print" }
@@ -379,14 +373,11 @@ $doc.add_PrintPage({
     $clip = New-Object System.Drawing.RectangleF $vis.X, $vis.Y, ([Math]::Min($vis.Width, $pa.Width)), ([Math]::Min($vis.Height, $pa.Height))
     [Console]::Out.WriteLine(('info|sheet {0}x{1}, printable {2}x{3} at {4},{5}, hard margin {6},{7} (1/100 in)' -f $page.Width, $page.Height, $clip.Width, $clip.Height, $clip.X, $clip.Y, $hx, $hy))
     if ($clip.Width -ge $page.Width * 0.99 -and $clip.Height -ge $page.Height * 0.99) {
-      # The driver says the whole sheet is printable (Borderless is on): the picture covers it edge to edge,
-      # drawn $ExpandMm smaller on every side first (not for dye-sub), so the driver's enlargement does not cut it.
-      $m = $ExpandMm / 25.4 * 100
-      if ($DyeSub) { $m = 0 }
-      $aw = $page.Width - 2 * $m; $ah = $page.Height - 2 * $m
-      $s = [Math]::Min($aw / $img.Width, $ah / $img.Height)
-      $w = [single]($img.Width * $s); $h = [single]($img.Height * $s)
-      $e.Graphics.DrawImage($img, [single](-$hx + $m + ($aw - $w) / 2), [single](-$hy + $m + ($ah - $h) / 2), $w, $h)
+      # The driver says the whole sheet is printable (Borderless is on): the picture covers it edge to edge.
+      # How far the driver enlarges it past the edge is its own setting (Epson: Borderless > Settings >
+      # Expansion), so the app does not add a margin of its own: move that slider if a white line or a
+      # trimmed edge shows.
+      $e.Graphics.DrawImage($img, [single](-$hx), [single](-$hy), [single]$page.Width, [single]$page.Height)
     } else {
       # The driver keeps a margin it cannot print on. Fit the whole picture inside the part it says it can
       # print, so nothing is cut off at the edges.

@@ -28,22 +28,25 @@ jobs:
           mkdir -p ios/photobooth4u
           cp protected/booth.html ios/photobooth4u/booth.html
 
-      - name: Build Xcode Archive
+      - name: Build Xcode Project
         run: |
           xcodebuild -project ios/photobooth4u.xcodeproj \
             -scheme photobooth4u \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -archivePath build/photobooth4u.xcarchive \
-            archive \
+            -derivedDataPath build \
+            build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY=""
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_STYLE=Manual
 
       - name: Package IPA
         run: |
           mkdir -p dist/Payload
-          cp -r build/photobooth4u.xcarchive/Products/Applications/photobooth4u.app dist/Payload/
+          APP_PATH=$(find build -name "photobooth4u.app" -type d | head -n 1)
+          echo "Found app at: $APP_PATH"
+          cp -r "$APP_PATH" dist/Payload/
           cd dist
           zip -qr photobooth4u-kiosk-ipad.ipa Payload
           rm -rf Payload

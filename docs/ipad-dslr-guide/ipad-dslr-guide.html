@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>iPad + USB DSLR Photobooth Setup Guide · photobooth4u</title>
+  <!--
+    iPad + DSLR Photobooth Guide
+    Covers:
+    - Single-Port iPad USB-C Hub Wiring (Power Delivery + DSLR + Printer)
+    - Native Apple ImageCaptureCore PTP Tethering (No WebUSB limitations)
+    - Canon, Nikon & Sony DSLR/Mirrorless Menu Configurations
+    - iPadOS Kiosk Lockdown (Guided Access, Keep Awake, USB Accessories)
+    - Local Wi-Fi QR Downloads (Port 47777) & AirPrint Integration
+  -->
+  <style>
+    @font-face {
+      font-family: 'Fraunces';
+      src: url(../setup-guide/fonts/fraunces-latin-600-normal.woff2) format('woff2');
+      font-weight: 600;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Fraunces';
+      src: url(../setup-guide/fonts/fraunces-latin-500-italic.woff2) format('woff2');
+      font-weight: 500;
+      font-style: italic;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url(../setup-guide/fonts/manrope-latin-400-normal.woff2) format('woff2');
+      font-weight: 400;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url(../setup-guide/fonts/manrope-latin-500-normal.woff2) format('woff2');
+      font-weight: 500;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url(../setup-guide/fonts/manrope-latin-600-normal.woff2) format('woff2');
+      font-weight: 600;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url(../setup-guide/fonts/manrope-latin-700-normal.woff2) format('woff2');
+      font-weight: 700;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url(../setup-guide/fonts/manrope-latin-800-normal.woff2) format('woff2');
+      font-weight: 800;
+    }
+
+    :root {
+      --cream: #f6f2ea;
+      --ink: #1a171c;
+      --body: #423d44;
+      --dim: #6e6670;
+      --red: #c83924;
+      --red-soft: #fbeee9;
+      --line: #e2dad0;
+      --card: #ffffff;
+      --purple: #583ca3;
+      --purple-bg: #ede7f7;
+      --green: #1b7358;
+      --green-bg: #e6f4ef;
+      --amber: #b86c12;
+      --amber-bg: #fef5e7;
+      --blue: #1d6fa5;
+      --blue-bg: #eaf3fa;
+      --mono: 'SF Mono', Consolas, Menlo, monospace;
+    }
+
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #fff; }
+    body {
+      font-family: 'Manrope', -apple-system, system-ui, sans-serif;
+      color: var(--body);
+      font-size: 11.5px;
+      line-height: 1.54;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    b, strong { color: var(--ink); font-weight: 700; }
+    h1, h2, h3, h4 { color: var(--ink); font-family: 'Fraunces', Georgia, serif; letter-spacing: -.02em; }
+
+    .page {
+      width: 210mm;
+      height: 297mm;
+      position: relative;
+      overflow: hidden;
+      padding: 46px 52px 42px;
+      background: #fff;
+      page-break-after: always;
+      break-after: page;
+    }
+    .page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+
+    /* Top bar */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-mark {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5px;
+      width: 20px;
+      height: 20px;
+    }
+    .brand-mark i {
+      background: var(--ink);
+      border-radius: 2.5px;
+    }
+    .brand-mark i:nth-child(2) {
+      background: var(--red);
+    }
+    .brand-word {
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -.03em;
+      color: var(--ink);
+    }
+    .brand-word em {
+      display: inline-block;
+      margin-left: 2px;
+      padding: 2px 4px;
+      border-radius: 4px;
+      background: var(--red);
+      color: #fff;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 800;
+      font-size: 8.5px;
+      font-style: normal;
+      transform: rotate(-5deg);
+    }
+    .top-tag {
+      font-size: 8.5px;
+      font-weight: 800;
+      letter-spacing: .15em;
+      color: var(--dim);
+      text-transform: uppercase;
+    }
+
+    /* Footer */
+    .foot {
+      position: absolute;
+      left: 52px;
+      right: 52px;
+      bottom: 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      color: var(--dim);
+      text-transform: uppercase;
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+    }
+
+    /* Page title */
+    .hero-title {
+      font-size: 27px;
+      line-height: 1.15;
+      margin: 0 0 6px;
+      color: var(--ink);
+    }
+    .lead {
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: var(--dim);
+      margin: 0 0 16px;
+    }
+
+    /* Cards & Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--cream);
+      padding: 14px 16px;
+    }
+    .card.white { background: #fff; }
+    .card.purple { border-color: #d8cff0; background: var(--purple-bg); }
+    .card.green { border-color: #c7e6dc; background: var(--green-bg); }
+    .card.amber { border-color: #fae4be; background: var(--amber-bg); }
+
+    .card-title {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 14.5px;
+      margin: 0 0 6px;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: #fff;
+      color: var(--ink);
+    }
+    .badge.purple { background: var(--purple); color: #fff; }
+    .badge.green { background: var(--green); color: #fff; }
+    .badge.red { background: var(--red); color: #fff; }
+
+    /* Wiring Chain visual */
+    .chain {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin: 14px 0;
+    }
+    .chain-node {
+      flex: 1;
+      text-align: center;
+      background: var(--cream);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 6px;
+    }
+    .chain-node b { display: block; font-size: 11px; margin-bottom: 2px; }
+    .chain-node span { font-size: 9px; color: var(--dim); display: block; }
+    .chain-arrow { font-weight: 800; color: var(--red); font-size: 14px; }
+
+    /* Numbered steps */
+    .step-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .step-item {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: flex-start;
+    }
+    .step-num {
+      flex: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--ink);
+      color: #fff;
+      font-weight: 800;
+      font-size: 9.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-content { flex: 1; }
+    .step-content b { display: block; font-size: 11.5px; margin-bottom: 1px; }
+
+    /* Callout */
+    .callout {
+      border-left: 3.5px solid var(--red);
+      background: var(--red-soft);
+      padding: 10px 14px;
+      border-radius: 0 8px 8px 0;
+      margin: 10px 0;
+      font-size: 11px;
+    }
+    .callout.green { border-left-color: var(--green); background: var(--green-bg); }
+    .callout.purple { border-left-color: var(--purple); background: var(--purple-bg); }
+
+    /* Tables */
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5px;
+      margin: 10px 0;
+    }
+    table.data-table th, table.data-table td {
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      text-align: left;
+    }
+    table.data-table th {
+      background: var(--cream);
+      font-weight: 800;
+      color: var(--ink);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== PAGE 1 ==================== -->
+  <section class="page">
+    <div class="top-bar">
+      <div class="brand">
+        <span class="brand-mark"><i></i><i></i><i></i><i></i></span>
+        <span class="brand-word">photobooth<em>4u</em></span>
+      </div>
+      <span class="top-tag">iPad + DSLR Setup Guide · Part 1</span>
+    </div>
+
+    <h1 class="hero-title">iPad + USB DSLR Photobooth Guide</h1>
+    <p class="lead">Connect professional Canon, Nikon, and Sony DSLRs directly to your iPad via USB-C using Apple's native <b>ImageCaptureCore</b> framework for real studio optics, strobe flash sync, and 100% offline kiosk events.</p>
+
+    <div class="card purple" style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <h3 class="card-title" style="margin:0;">The Secret: Apple Native ImageCaptureCore (No WebUSB)</h3>
+        <span class="badge purple">iPadOS 15.0+</span>
+      </div>
+      <p style="margin:0;font-size:11px;">Standard iPad browsers like Safari block direct USB access (WebUSB). <b>photobooth4u for iPad</b> bypasses this completely by running as a native iPadOS wrapper. It communicates directly with connected cameras through Apple's low-level <b>ImageCaptureCore PTP framework</b> on <code>127.0.0.1:17321</code>, delivering real-time live view, instant shutter triggering, and full-resolution photo downloads straight into memory.</p>
+    </div>
+
+    <h3 style="font-size:16px;margin:14px 0 6px;">1. The Single-Port iPad Hardware Wiring Chain</h3>
+    <p style="margin:0 0 8px;color:var(--dim);">Because iPads have only one USB-C (or Lightning) port, you must route power and camera data through a <b>Powered USB-C Hub with Power Delivery (PD)</b> so the iPad never dies during a live event.</p>
+
+    <div class="chain">
+      <div class="chain-node">
+        <b>DSLR Camera</b>
+        <span>Canon / Nikon / Sony</span>
+      </div>
+      <span class="chain-arrow">→</span>
+      <div class="chain-node">
+        <b>USB Data Cable</b>
+        <span>High-speed tether cable</span>
+      </div>
+      <span class="chain-arrow">→</span>
+      <div class="chain-node" style="border-color:var(--red);background:#fff9f8;">
+        <b>Powered USB Hub</b>
+        <span>60W+ USB-PD pass-through</span>
+      </div>
+      <span class="chain-arrow">→</span>
+      <div class="chain-node">
+        <b>iPad (USB-C)</b>
+        <span>photobooth4u kiosk app</span>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card white">
+        <h4 class="card-title">Essential Hardware Checklist</h4>
+        <ul style="margin:0;padding-left:16px;font-size:11px;">
+          <li><b>iPad with USB-C:</b> iPad Pro (any), iPad Air 4/5/M2, iPad 10th Gen, or iPad mini 6. (Lightning iPads require Apple Lightning to USB 3 Camera Adapter).</li>
+          <li><b>Powered USB-C Hub:</b> Must feature at least one USB-A/C data port AND a <b>USB-C Power Delivery (PD) In</b> port (Anker, Ugreen, Satechi).</li>
+          <li><b>High-Wattage Wall Charger:</b> 30W–65W USB-C wall adapter plugged into the hub's PD port to power both the iPad and attached peripherals.</li>
+          <li><b>Camera USB Data Cable:</b> Genuine camera manufacturer data cable (avoid charge-only phone cords).</li>
+        </ul>
+      </div>
+
+      <div class="card white">
+        <h4 class="card-title">Pro Event Tip: AC Dummy Battery</h4>
+        <p style="margin:0 0 8px;font-size:11px;">Do NOT rely on regular camera batteries at long weddings or corporate gigs. A DSLR in constant Live View drains a battery in 60–90 minutes.</p>
+        <div class="callout green" style="margin:0;">
+          <b>Use a DC Coupler (Dummy Battery)</b>
+          Plug a dummy battery directly into a wall outlet or high-capacity power bank. Your camera stays powered on for 12+ hours with zero battery swaps mid-event.
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>photobooth4u · All-in-One Photobooth System</span>
+      <span>Page 1 of 4 · Hardware Architecture</span>
+    </div>
+  </section>
+
+  <!-- ==================== PAGE 2 ==================== -->
+  <section class="page">
+    <div class="top-bar">
+      <div class="brand">
+        <span class="brand-mark"><i></i><i></i><i></i><i></i></span>
+        <span class="brand-word">photobooth<em>4u</em></span>
+      </div>
+      <span class="top-tag">iPad + DSLR Setup Guide · Part 2</span>
+    </div>
+
+    <h2 class="hero-title">Camera Menu Configuration by Brand</h2>
+    <p class="lead">Before plugging your camera into the iPad hub, set the camera dial and menu settings to allow external PTP host tethering control.</p>
+
+    <div class="grid-3">
+      <!-- CANON -->
+      <div class="card white" style="border-top:4px solid var(--red);">
+        <span class="badge red" style="margin-bottom:8px;">Canon EOS</span>
+        <h3 style="font-size:14px;margin:0 0 6px;">Canon EOS DSLRs &amp; Mirrorless</h3>
+        <p style="font-size:10px;color:var(--dim);margin:0 0 8px;">EOS R, R5, R6, R8, R10, R50, RP, 5D IV, 6D II, 90D, 80D, 200D/250D, M50 II</p>
+        <ul style="margin:0;padding-left:14px;font-size:10.5px;line-height:1.5;">
+          <li><b>Dial:</b> Set top dial to <b>Manual (M)</b> mode.</li>
+          <li><b>Exposure:</b> Shutter 1/125s, f/5.6 – f/8, ISO 200–400 (with strobe).</li>
+          <li><b>USB Mode:</b> Set to <b>PC Remote</b> or <b>Computer</b>.</li>
+          <li><b>Wi-Fi/Bluetooth:</b> Turn <b>OFF</b> in the camera menu (avoids port lockout).</li>
+          <li><b>Auto Power Off:</b> Set to <b>Disable</b> so camera never sleeps.</li>
+          <li><b>SD Card:</b> Keep a formatted SD card inside camera.</li>
+        </ul>
+      </div>
+
+      <!-- NIKON -->
+      <div class="card white" style="border-top:4px solid var(--amber);">
+        <span class="badge" style="background:var(--amber);color:#fff;margin-bottom:8px;">Nikon</span>
+        <h3 style="font-size:14px;margin:0 0 6px;">Nikon Z &amp; D-Series</h3>
+        <p style="font-size:10px;color:var(--dim);margin:0 0 8px;">Z5, Z6, Z7, Z50, Zfc, D850, D780, D750, D7500, D5600, D3500, D3400</p>
+        <ul style="margin:0;padding-left:14px;font-size:10.5px;line-height:1.5;">
+          <li><b>Dial:</b> Turn dial to <b>Manual (M)</b> mode.</li>
+          <li><b>Focus Mode:</b> Set to <b>AF-S (Single AF)</b> with wide-area or face detection.</li>
+          <li><b>USB Connection:</b> Set to <b>MTP / PTP</b> in Setup Menu.</li>
+          <li><b>Standby Timer:</b> Set c2 (Standby Timer) to <b>No Limit</b> or 30 mins.</li>
+          <li><b>Flash Sync:</b> Set built-in flash or hot-shoe speedlite to Manual.</li>
+          <li><b>Live View:</b> Enabled automatically upon iPad connection.</li>
+        </ul>
+      </div>
+
+      <!-- SONY -->
+      <div class="card white" style="border-top:4px solid var(--purple);">
+        <span class="badge purple" style="margin-bottom:8px;">Sony Alpha</span>
+        <h3 style="font-size:14px;margin:0 0 6px;">Sony Alpha Mirrorless</h3>
+        <p style="font-size:10px;color:var(--dim);margin:0 0 8px;">A7 III, A7 IV, A7C, A7R, A6000, A6100, A6400, A6600, A6700, ZV-E10</p>
+        <ul style="margin:0;padding-left:14px;font-size:10.5px;line-height:1.5;">
+          <li><b>Dial:</b> Set mode dial to <b>Manual (M)</b>.</li>
+          <li><b>USB Connection:</b> MENU → Setup → <b>PC Remote</b> (Crucial!).</li>
+          <li><b>USB LUN Setting:</b> Set to <b>Multi</b>.</li>
+          <li><b>PC Remote Settings:</b> Save Destination → <b>PC + Camera</b> (keeps SD backup).</li>
+          <li><b>Smartphone Control:</b> Set to <b>OFF</b> (required to allow USB tethering).</li>
+          <li><b>Power Save Start Time:</b> Set to <b>30 Min</b> or Off.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card green" style="margin-top:14px;">
+      <h4 class="card-title" style="color:var(--green);margin:0 0 4px;">Studio Lighting &amp; Strobe Flash Synchronization</h4>
+      <p style="margin:0;font-size:11px;">Because the iPad triggers the physical shutter of your DSLR via PTP, you get <b>true hot-shoe flash synchronization</b>. Mount a Godox, Neewer, or Flashpoint wireless radio trigger (e.g., Godox Xpro or X2T) onto your camera's hot-shoe. When the countdown finishes on the iPad screen, the camera shutter fires and triggers your studio softboxes or beauty dishes with zero shutter lag.</p>
+    </div>
+
+    <div class="card white" style="margin-top:14px;">
+      <h4 class="card-title">Recommended Camera Exposure Settings for Photo Booths</h4>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Lighting Setup</th>
+            <th>Shutter Speed</th>
+            <th>Aperture</th>
+            <th>ISO</th>
+            <th>Focus Mode</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Studio Strobes / Softbox</b></td>
+            <td>1/125s – 1/160s</td>
+            <td>f/6.3 – f/8.0</td>
+            <td>ISO 100 – 200</td>
+            <td>Single AF (AF-S) on backdrop center</td>
+          </tr>
+          <tr>
+            <td><b>LED Constant Ring Light</b></td>
+            <td>1/80s – 1/100s</td>
+            <td>f/3.5 – f/4.5</td>
+            <td>ISO 400 – 800</td>
+            <td>Face Detection / Continuous AF</td>
+          </tr>
+          <tr>
+            <td><b>Ambient / Indoor Venue</b></td>
+            <td>1/60s – 1/80s</td>
+            <td>f/2.8 – f/4.0</td>
+            <td>ISO 800 – 1600</td>
+            <td>Center Point AF with AF Assist Beam</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="foot">
+      <span>photobooth4u · All-in-One Photobooth System</span>
+      <span>Page 2 of 4 · Camera Configuration</span>
+    </div>
+  </section>
+
+  <!-- ==================== PAGE 3 ==================== -->
+  <section class="page">
+    <div class="top-bar">
+      <div class="brand">
+        <span class="brand-mark"><i></i><i></i><i></i><i></i></span>
+        <span class="brand-word">photobooth<em>4u</em></span>
+      </div>
+      <span class="top-tag">iPad + DSLR Setup Guide · Part 3</span>
+    </div>
+
+    <h2 class="hero-title">iPadOS Kiosk Setup &amp; USB Permissions</h2>
+    <p class="lead">Configure your iPad settings to keep the screen awake, enable permanent USB accessory data access, and lock down the booth so guests cannot exit into your apps.</p>
+
+    <div class="grid-2">
+      <!-- USB ACCESSORIES PERMISSION -->
+      <div class="card white">
+        <h4 class="card-title">1. Prevent USB Disconnect (Crucial)</h4>
+        <p style="font-size:11px;margin:0 0 8px;">By default, iPadOS locks down its USB-C port after 60 minutes of inactivity to protect your device. For live events, you must disable this lock:</p>
+        <ol class="step-list">
+          <li class="step-item">
+            <span class="step-num">1</span>
+            <div class="step-content">Open iPad <b>Settings</b>.</div>
+          </li>
+          <li class="step-item">
+            <span class="step-num">2</span>
+            <div class="step-content">Tap <b>Face ID &amp; Passcode</b> (or Touch ID &amp; Passcode).</div>
+          </li>
+          <li class="step-item">
+            <span class="step-num">3</span>
+            <div class="step-content">Scroll down to the <i>Allow Access When Locked</i> section.</div>
+          </li>
+          <li class="step-item">
+            <span class="step-num">4</span>
+            <div class="step-content">Toggle <b>USB Accessories</b> to <b>ON (Green)</b>.</div>
+          </li>
+        </ol>
+        <div class="callout green" style="margin-top:8px;">
+          Your DSLR will now stay permanently tethered without sudden mid-event disconnects.
+        </div>
+      </div>
+
+      <!-- GUIDED ACCESS -->
+      <div class="card white">
+        <h4 class="card-title">2. Apple Guided Access (Kiosk Lock)</h4>
+        <p style="font-size:11px;margin:0 0 8px;">Lock the iPad into <b>photobooth4u</b> so guests cannot swipe home, view notifications, or change iPad settings:</p>
+        <ol class="step-list">
+          <li class="step-item">
+            <span class="step-num">1</span>
+            <div class="step-content">Open <b>Settings → Accessibility → Guided Access</b>.</div>
+          </li>
+          <li class="step-item">
+            <span class="step-num">2</span>
+            <div class="step-content">Turn <b>Guided Access</b> ON and set a 4-digit Passcode.</div>
+          </li>
+          <li class="step-item">
+            <span class="step-num">3</span>
+            <div class="step-content">Open the <b>photobooth4u</b> app.</div>
+          </li>
+          <li class="step-item">
+            <span class="step-num">4</span>
+            <div class="step-content"><b>Triple-click the Top Power Button</b>. Tap <b>Start</b> in the upper right.</div>
+          </li>
+        </ol>
+        <div class="callout purple" style="margin-top:8px;">
+          To exit after the event: Triple-click the Top button, enter your passcode, and tap <b>End</b>.
+        </div>
+      </div>
+    </div>
+
+    <h3 style="font-size:15px;margin:16px 0 8px;">3. Launching &amp; Testing in photobooth4u</h3>
+    <div class="card white">
+      <div class="grid-3" style="margin:0;">
+        <div>
+          <b style="font-size:12px;">Step A: Unlock Licence</b>
+          <p style="font-size:10.5px;color:var(--dim);margin:4px 0 0;">Enter your photobooth4u code on the activation screen. The iPad needs Wi-Fi once to verify; thereafter it works 100% offline.</p>
+        </div>
+        <div>
+          <b style="font-size:12px;">Step B: Select Camera</b>
+          <p style="font-size:10.5px;color:var(--dim);margin:4px 0 0;">In the booth top bar, tap the Camera icon. Your attached Canon, Nikon, or Sony DSLR will appear in the list. Tap it to start Live View.</p>
+        </div>
+        <div>
+          <b style="font-size:12px;">Step C: Test Capture</b>
+          <p style="font-size:10.5px;color:var(--dim);margin:4px 0 0;">Tap the screen to trigger a countdown. The camera fires, the photo downloads to the iPad, and the photo strip preview renders instantly!</p>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="font-size:15px;margin:16px 0 8px;">4. Local File &amp; Photos Storage Architecture</h3>
+    <div class="card white">
+      <p style="margin:0 0 8px;font-size:11px;">Every photo taken on the iPad is automatically saved in two locations on device (zero cloud required):</p>
+      <div class="grid-2" style="margin:0;">
+        <div style="background:var(--cream);padding:10px;border-radius:8px;">
+          <b>1. In-App Event Storage</b>
+          <span style="display:block;font-size:10px;color:var(--dim);font-family:var(--mono);margin-top:2px;">Documents/Pictures/photobooth4u/&lt;Event&gt;/</span>
+          <span style="display:block;font-size:10px;margin-top:4px;">Full-resolution originals and finished formatted photo strips (2x6 or 4R).</span>
+        </div>
+        <div style="background:var(--cream);padding:10px;border-radius:8px;">
+          <b>2. iPad Photo Library (Camera Roll)</b>
+          <span style="display:block;font-size:10px;color:var(--dim);margin-top:2px;">Apple Photos App → Recents</span>
+          <span style="display:block;font-size:10px;margin-top:4px;">Easily AirDrop all event photos to your client's iPhone or Mac at the end of the night!</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>photobooth4u · All-in-One Photobooth System</span>
+      <span>Page 3 of 4 · iPadOS Kiosk Configuration</span>
+    </div>
+  </section>
+
+  <!-- ==================== PAGE 4 ==================== -->
+  <section class="page">
+    <div class="top-bar">
+      <div class="brand">
+        <span class="brand-mark"><i></i><i></i><i></i><i></i></span>
+        <span class="brand-word">photobooth<em>4u</em></span>
+      </div>
+      <span class="top-tag">iPad + DSLR Setup Guide · Part 4</span>
+    </div>
+
+    <h2 class="hero-title">Local Wi-Fi QR Downloads &amp; Printing</h2>
+    <p class="lead">Guests scan an on-screen QR code to download their high-res photos and GIFs directly from the iPad over local Wi-Fi without needing cell service or cloud uploads.</p>
+
+    <div class="grid-2">
+      <!-- LOCAL QR SERVER -->
+      <div class="card white">
+        <h4 class="card-title">How Local QR Downloads Work</h4>
+        <p style="font-size:11px;margin:0 0 8px;">The iPad app runs an embedded read-only HTTP server on <b>port 47777</b> (<code>LocalShareServer.swift</code>):</p>
+        <ul style="margin:0;padding-left:14px;font-size:11px;line-height:1.5;">
+          <li><b>Step 1 (Join Wi-Fi):</b> Guests connect their smartphones to the same local Wi-Fi or pocket router as the iPad.</li>
+          <li><b>Step 2 (Scan Result QR):</b> At the end of each session, the screen displays a QR code linking to:
+            <code style="display:block;margin:4px 0;padding:4px;background:var(--cream);border-radius:4px;font-size:10px;">http://&lt;ipad-ip&gt;:47777/e/&lt;event&gt;/</code>
+          </li>
+          <li><b>Step 3 (Instant Save):</b> The guest's phone opens the branded mobile gallery with a <b>Save Photo</b> button.</li>
+        </ul>
+        <div class="callout green" style="margin-top:8px;">
+          <b>Zero data usage:</b> All photos transfer locally over the venue router at up to 100 Mbps!
+        </div>
+      </div>
+
+      <!-- AIRPRINT PRINTING -->
+      <div class="card white">
+        <h4 class="card-title">Wireless Printing from iPad</h4>
+        <p style="font-size:11px;margin:0 0 8px;">Print physical 4R photo cards or 2x6 strips instantly:</p>
+        <ul style="margin:0;padding-left:14px;font-size:11px;line-height:1.5;">
+          <li><b>AirPrint Dye-Sub Printers:</b> Connect directly to Canon SELPHY (CP1300, CP1500), Epson PictureMate, or DNP/HiTi via wireless print servers (WPS Pro).</li>
+          <li><b>Receipt Photobooth:</b> Connect to thermal receipt printers over Bluetooth or network IPP.</li>
+          <li><b>Auto-Cut:</b> Set your layout to 2x6 dual strips; AirPrint sends the cutting command directly to the printer spooler.</li>
+        </ul>
+        <div class="callout purple" style="margin-top:8px;">
+          Turn on <b>Silent Auto-Print</b> in booth settings to skip all confirmation dialogs.
+        </div>
+      </div>
+    </div>
+
+    <h3 style="font-size:16px;margin:16px 0 8px;">Pre-Event Operator Checklist (Print &amp; Laminate)</h3>
+    <div class="card white" style="border:1.5px solid var(--ink);padding:12px 16px;">
+      <div class="grid-2" style="margin:0;">
+        <div>
+          <b style="font-size:11.5px;color:var(--red);">Hardware Rig:</b>
+          <ul style="margin:4px 0 0;padding-left:16px;font-size:10.5px;line-height:1.6;">
+            <li>[ ] iPad charger plugged into USB-C Hub PD port.</li>
+            <li>[ ] Camera dummy battery plugged into wall power.</li>
+            <li>[ ] High-speed USB data cable firmly secured.</li>
+            <li>[ ] Wireless flash trigger powered on &amp; test fired.</li>
+          </ul>
+        </div>
+        <div>
+          <b style="font-size:11.5px;color:var(--red);">iPad &amp; Camera Settings:</b>
+          <ul style="margin:4px 0 0;padding-left:16px;font-size:10.5px;line-height:1.6;">
+            <li>[ ] Camera dial set to Manual (M) with focus locked.</li>
+            <li>[ ] iPad Settings → USB Accessories turned <b>ON</b>.</li>
+            <li>[ ] iPad volume set to 100% for voice prompts.</li>
+            <li>[ ] Guided Access locked (Triple-click top button).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="card amber" style="margin-top:14px;">
+      <h4 class="card-title" style="color:var(--amber);margin:0 0 4px;">Troubleshooting: What If the Camera Won't Connect?</h4>
+      <p style="margin:0;font-size:10.5px;">1. <b>Unplug &amp; replug:</b> Unplug the USB-C cable from the iPad and plug it back in. iOS will re-initialize the <code>ICDeviceBrowser</code> session.<br>
+      2. <b>Check USB mode:</b> On Sony, confirm USB is set to <i>PC Remote</i>. On Canon, turn off Wi-Fi/Bluetooth in camera menu.<br>
+      3. <b>Check power:</b> Ensure the iPad hub's power LED is glowing. A hub without enough current cannot handshake with a DSLR sensor.</p>
+    </div>
+
+    <div class="foot">
+      <span>photobooth4u · All-in-One Photobooth System</span>
+      <span>Page 4 of 4 · QR Sharing &amp; Operator Checklist</span>
+    </div>
+  </section>
+
+</body>
+</html>
+

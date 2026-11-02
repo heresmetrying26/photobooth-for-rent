@@ -18,7 +18,7 @@ import UIKit
  *   POST /camera/close     -> release camera
  *   POST /camera/free      -> clear locks
  */
-class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate {
+class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate, ICCameraDeviceDownloadDelegate {
 
     static let shared = IccCameraHelper()
     static let port: UInt16 = 17321
@@ -45,9 +45,11 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     override init() {
         super.init()
         browser.delegate = self
-        browser.browsedDeviceTypeMask = ICDeviceTypeMask(
-            rawValue: ICDeviceTypeMask.camera.rawValue | ICDeviceLocationTypeMask.local.rawValue
-        )
+        let mask: ICDeviceTypeMask = [.camera]
+        let locationMask: ICDeviceLocationTypeMask = [.local]
+        if let combined = ICDeviceTypeMask(rawValue: mask.rawValue | locationMask.rawValue) {
+            browser.browsedDeviceTypeMask = combined
+        }
     }
 
     // MARK: - Lifecycle
@@ -138,7 +140,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         let semaphore = DispatchSemaphore(value: 0)
         var openError: Error?
 
-        cam.requestOpenSession { error in
+        cam.requestOpenSession(options: nil) { error in
             openError = error
             semaphore.signal()
         }
@@ -150,16 +152,17 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         }
 
         // Enable tethering for live shooting
-        cam.requestEnableTethering { _ in }
+        cam.requestEnableTethering()
 
         let vendor = inferVendorString(cam)
+        let batteryVal = cam.batteryLevelAvailable ? cam.batteryLevel : 100
         return [
             "ok": true,
             "name": cam.name ?? "Camera",
             "maker": vendor.capitalized,
             "model": cam.model ?? "DSLR",
             "vendor": vendor,
-            "battery": cam.batteryLevelPercentage
+            "battery": batteryVal
         ]
     }
 
@@ -172,8 +175,8 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         latestFrame = nil
 
         if let cam = activeCamera {
-            cam.requestDisableTethering { _ in }
-            cam.requestCloseSession { _ in }
+            cam.requestDisableTethering()
+            cam.requestCloseSession(options: nil) { _ in }
             activeCamera = nil
         }
     }
@@ -224,10 +227,9 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         cmd.append(Data(bytes: &code, count: 2))
         cmd.append(Data(bytes: &tid, count: 4))
 
-        cam.requestSendPTPCommand(cmd, outData: nil) { [weak self] inData, responseCode, error in
-            guard let self = self, let data = inData, error == nil else { return }
-            // Extract embedded JPEG bytes from PTP payload
-            if let jpeg = self.extractJpeg(from: data) {
+        cam.requestSendPTPCommand(cmd, outData: nil) { [weak self] responseData, outData, error in
+            guard let self = self, error == nil else { return }
+            if let jpeg = self.extractJpeg(from: responseData) {
                 self.lock.lock()
                 self.latestFrame = jpeg
                 self.lock.unlock()
@@ -275,28 +277,31 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         cam.requestTakePicture()
     }
 
-    // MARK: - ICCameraDeviceDelegate
+    // MARK: - ICCameraDeviceDelegate & ICCameraDeviceDownloadDelegate
 
     func cameraDevice(_ camera: ICCameraDevice, didAdd items: [ICCameraItem]) {
         for item in items {
             guard let file = item as? ICCameraFile else { continue }
-            // Download original capture
+            let tempDir = FileManager.default.temporaryDirectory
+            let filename = file.name ?? "capture.jpg"
             let options: [ICDownloadOption: Any] = [
-                .saveAsFilename: file.name ?? "capture.jpg"
+                .downloadsDirectoryURL: tempDir,
+                .saveAsFilename: filename,
+                .overwrite: true
             ]
 
             camera.requestDownloadFile(
                 file,
                 options: options,
                 downloadDelegate: self,
-                didDownloadSelector: #selector(didDownloadFile(_:error:options:contextInfo:)),
+                didDownloadSelector: #selector(didDownloadFile(file:error:options:contextInfo:)),
                 contextInfo: nil
             )
         }
     }
 
-    @objc private func didDownloadFile(
-        _ file: ICCameraFile,
+    @objc func didDownloadFile(
+        file: ICCameraFile,
         error: Error?,
         options: [String: Any],
         contextInfo: UnsafeMutableRawPointer?
@@ -314,11 +319,13 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             return
         }
 
-        // Read downloaded file data
-        if let fileData = file.fileData {
-            cb?(.success(fileData))
+        let tempDir = FileManager.default.temporaryDirectory
+        let downloadedUrl = tempDir.appendingPathComponent(file.name ?? "capture.jpg")
+        if let data = try? Data(contentsOf: downloadedUrl) {
+            try? FileManager.default.removeItem(at: downloadedUrl)
+            cb?(.success(data))
         } else {
-            cb?(.failure(CameraError(code: "EMPTY_DATA", message: "Downloaded file is empty")))
+            cb?(.failure(CameraError(code: "EMPTY_DATA", message: "Downloaded file is empty or missing")))
         }
     }
 
@@ -476,7 +483,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
 
         case ("GET", "/camera/battery"):
             lock.lock()
-            let b = activeCamera?.batteryLevelPercentage ?? 100
+            let b = (activeCamera?.batteryLevelAvailable == true) ? (activeCamera?.batteryLevel ?? 100) : 100
             lock.unlock()
             sendJson(clientSock, json: ["ok": true, "battery": b])
 
@@ -526,4 +533,3 @@ struct CameraError: Error {
     let code: String
     let message: String
 }
-

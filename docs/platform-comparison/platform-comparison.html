@@ -1,0 +1,1119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>photobooth4u — Full Platform &amp; Plan Comparison Guide</title>
+<style>
+@font-face{font-family:'Fraunces';src:url(../setup-guide/fonts/fraunces-latin-600-normal.woff2) format('woff2');font-weight:600;font-style:normal}
+@font-face{font-family:'Fraunces';src:url(../setup-guide/fonts/fraunces-latin-500-italic.woff2) format('woff2');font-weight:500;font-style:italic}
+@font-face{font-family:'Fraunces';src:url(../setup-guide/fonts/fraunces-latin-600-italic.woff2) format('woff2');font-weight:600;font-style:italic}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-400-normal.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-500-normal.woff2) format('woff2');font-weight:500}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-600-normal.woff2) format('woff2');font-weight:600}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-700-normal.woff2) format('woff2');font-weight:700}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-800-normal.woff2) format('woff2');font-weight:800}
+
+:root {
+  --cream: #f6f2ea;
+  --ink: #1a181c;
+  --body: #444043;
+  --dim: #767073;
+  --red: #c93d27;
+  --red-bg: #faedea;
+  --line: #e3dcce;
+  --line-light: #eee8de;
+  --purple: #563aa0;
+  --purple-bg: #ece6f8;
+  --green: #196f60;
+  --green-bg: #e4f5f1;
+  --blue: #235ea8;
+  --blue-bg: #e8f1fc;
+  --mono: 'DejaVu Sans Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #fff; }
+body {
+  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+  color: var(--body);
+  font-size: 11px;
+  line-height: 1.5;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+b, strong { color: var(--ink); font-weight: 700; }
+
+.page {
+  width: 210mm;
+  height: 297mm;
+  position: relative;
+  overflow: hidden;
+  padding: 38px 42px 34px;
+  background: #fff;
+  page-break-after: always;
+  break-after: page;
+}
+
+.page:last-child {
+  page-break-after: auto;
+  break-after: auto;
+}
+
+.foot {
+  position: absolute;
+  left: 42px;
+  right: 42px;
+  bottom: 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: .15em;
+  color: var(--dim);
+  text-transform: uppercase;
+  border-top: 1px solid var(--line-light);
+  padding-top: 8px;
+}
+
+/* Header & Brand */
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-icon {
+  display: grid;
+  grid-template-columns: 8px 8px;
+  gap: 2.5px;
+}
+
+.brand-icon i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--ink);
+}
+
+.brand-icon i:nth-child(2) { background: var(--red); }
+
+.brand-name {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -.03em;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.brand-badge {
+  font-size: 9px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--red);
+  border-radius: 4px;
+  padding: 2px 5px;
+  margin-left: 2px;
+  line-height: 1.2;
+}
+
+.top-tag {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.kicker {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin: 0 0 3px;
+}
+
+h1.doc-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-size: 27px;
+  line-height: 1.15;
+  letter-spacing: -.02em;
+  color: var(--ink);
+  margin: 0 0 6px;
+}
+
+h2.sec-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-size: 19px;
+  line-height: 1.2;
+  letter-spacing: -.01em;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+p.lead {
+  font-size: 11.8px;
+  line-height: 1.55;
+  color: var(--body);
+  margin: 0 0 14px;
+}
+
+/* Callouts / Banners */
+.tldr-box {
+  background: var(--cream);
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.tldr-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.tldr-title span.badge {
+  background: var(--red);
+  color: #fff;
+  font-size: 8px;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.tldr-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 18px;
+  font-size: 10.5px;
+}
+
+.tldr-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.tldr-item::before {
+  content: '✓';
+  color: var(--green);
+  font-weight: 800;
+}
+
+/* 3-Column Platforms */
+.platforms-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.plat-card {
+  border-radius: 10px;
+  border: 1.5px solid var(--line);
+  padding: 12px 14px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.plat-card.online { border-top: 4px solid var(--blue); }
+.plat-card.desktop { border-top: 4px solid var(--purple); background: #faf9fd; }
+.plat-card.android { border-top: 4px solid var(--green); background: #f8fcfa; }
+
+.plat-tag {
+  font-size: 8.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  margin-bottom: 4px;
+}
+
+.plat-card.online .plat-tag { color: var(--blue); }
+.plat-card.desktop .plat-tag { color: var(--purple); }
+.plat-card.android .plat-tag { color: var(--green); }
+
+.plat-name {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.2;
+  margin: 0 0 6px;
+}
+
+.plat-device {
+  font-size: 9.8px;
+  color: var(--dim);
+  font-weight: 600;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-light);
+}
+
+.plat-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+  font-size: 10px;
+  line-height: 1.45;
+  flex-grow: 1;
+}
+
+.plat-bullets li {
+  position: relative;
+  padding-left: 12px;
+  margin-bottom: 4px;
+}
+
+.plat-bullets li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  font-weight: bold;
+}
+
+.plat-card.online .plat-bullets li::before { color: var(--blue); }
+.plat-card.desktop .plat-bullets li::before { color: var(--purple); }
+.plat-card.android .plat-bullets li::before { color: var(--green); }
+
+.plat-summary-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.plat-card.online .plat-summary-badge { background: var(--blue-bg); color: var(--blue); }
+.plat-card.desktop .plat-summary-badge { background: var(--purple-bg); color: var(--purple); }
+.plat-card.android .plat-summary-badge { background: var(--green-bg); color: var(--green); }
+
+/* Pricing Table / Banner */
+.pricing-banner {
+  background: #fff;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.pricing-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.pricing-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.pricing-tag {
+  font-size: 8.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--red);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.pricing-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.15fr;
+  gap: 10px;
+}
+
+.price-item {
+  background: var(--cream);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.price-item.featured {
+  background: var(--green-bg);
+  border: 1.5px solid var(--green);
+}
+
+.price-item h4 {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.price-val {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--red);
+  margin-bottom: 3px;
+}
+
+.price-item.featured .price-val { color: var(--green); }
+
+.price-desc {
+  font-size: 9px;
+  color: var(--body);
+  line-height: 1.35;
+}
+
+.customer-feedback-note {
+  font-size: 9.8px;
+  background: var(--pink-bg);
+  border-left: 3px solid var(--red);
+  padding: 6px 10px;
+  border-radius: 0 6px 6px 0;
+  color: var(--ink);
+  margin-top: 8px;
+}
+
+/* 2-Column Split Details (Pages 2 & 3) */
+.split-sections {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.feature-block {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px 13px;
+  margin-bottom: 12px;
+}
+
+.feature-block.highlight {
+  background: var(--cream);
+  border-color: #dcd3c3;
+}
+
+.fb-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 0 0 5px;
+}
+
+.fb-title .icon {
+  font-size: 13px;
+}
+
+.fb-desc {
+  font-size: 10px;
+  line-height: 1.48;
+  color: var(--body);
+  margin: 0 0 6px;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.tag {
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1.5px 5px;
+  border-radius: 3px;
+  background: #ece7dc;
+  color: var(--ink);
+}
+
+.tag.blue { background: var(--blue-bg); color: var(--blue); }
+.tag.purple { background: var(--purple-bg); color: var(--purple); }
+.tag.green { background: var(--green-bg); color: var(--green); }
+.tag.red { background: var(--red-bg); color: var(--red); }
+
+/* Master Matrix Table (Page 4) */
+.matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9.4px;
+  margin-top: 8px;
+  margin-bottom: 14px;
+}
+
+.matrix-table th, .matrix-table td {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.matrix-table th {
+  background: var(--cream);
+  font-weight: 800;
+  color: var(--ink);
+  font-size: 9.6px;
+}
+
+.matrix-table th.center, .matrix-table td.center {
+  text-align: center;
+}
+
+.matrix-table tr.cat-header td {
+  background: #f1ebd8;
+  font-weight: 800;
+  font-size: 10px;
+  color: var(--ink);
+  padding: 5px 8px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.matrix-table tr:nth-child(even):not(.cat-header) {
+  background: #faf8f4;
+}
+
+.status-yes {
+  color: var(--green);
+  font-weight: 800;
+}
+
+.status-no {
+  color: #a8a0a4;
+  font-weight: 700;
+}
+
+.status-part {
+  color: #b56e06;
+  font-weight: 700;
+}
+
+.matrix-sub {
+  display: block;
+  font-size: 8px;
+  color: var(--dim);
+  font-weight: normal;
+  margin-top: 1px;
+}
+
+/* Recommendations Flow */
+.rec-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.rec-box {
+  background: var(--cream);
+  border-radius: 8px;
+  padding: 9px 12px;
+  border-left: 3.5px solid var(--ink);
+}
+
+.rec-box.desktop-rec { border-left-color: var(--purple); }
+.rec-box.android-rec { border-left-color: var(--green); }
+.rec-box.online-rec { border-left-color: var(--blue); }
+.rec-box.combo-rec { border-left-color: var(--red); background: #fdf5f2; }
+
+.rec-box h5 {
+  margin: 0 0 3px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.rec-box p {
+  margin: 0;
+  font-size: 9.5px;
+  line-height: 1.4;
+  color: var(--body);
+}
+
+.bottom-cta-banner {
+  background: var(--ink);
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bottom-cta-banner h4 {
+  margin: 0 0 2px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.bottom-cta-banner p {
+  margin: 0;
+  font-size: 9.5px;
+  color: #d1c7bc;
+}
+
+.bottom-cta-banner .cta-badge {
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<!-- ========================================================================= -->
+<!-- PAGE 1: EXECUTIVE OVERVIEW & THREE PLATFORMS -->
+<!-- ========================================================================= -->
+<section class="page">
+  <div class="top-bar">
+    <div class="brand">
+      <div class="brand-icon"><i></i><i></i><i></i><i></i></div>
+      <span class="brand-name">photobooth4u</span>
+      <span class="brand-badge">Guide</span>
+    </div>
+    <div class="top-tag">Architecture &amp; Feature Comparison</div>
+  </div>
+
+  <p class="kicker">Official Product Documentation</p>
+  <h1 class="doc-title">Full Platform &amp; Plan Comparison Guide</h1>
+  <p class="lead">A complete architectural breakdown of <b>Online (Cloud Web)</b>, <b>Offline Desktop (Windows &amp; Mac)</b>, and the <b>Android Tablet Offline APK</b>. Choose the ideal deployment model for your photo studio, wedding photobooth, or pop-up receipt booth.</p>
+
+  <div class="tldr-box">
+    <div class="tldr-title">
+      ⚡ Executive Summary &amp; Key Innovations
+      <span class="badge">At a Glance</span>
+    </div>
+    <div class="tldr-grid">
+      <div class="tldr-item"><span><b>100% Offline Capability:</b> Desktop &amp; Android run without internet at the venue.</span></div>
+      <div class="tldr-item"><span><b>Direct USB DSLR Control:</b> Native shutter, flash sync, and live view on Canon, Nikon, Sony.</span></div>
+      <div class="tldr-item"><span><b>Thermal Receipt Printing:</b> Full Bluetooth &amp; USB support for 58mm &amp; 80mm low-cost receipt booths.</span></div>
+      <div class="tldr-item"><span><b>Virtual Assistant Voice:</b> Spoken pose countdowns ("3, 2, 1... Smile!") in English &amp; Tagalog.</span></div>
+      <div class="tldr-item"><span><b>Local Share Web Server:</b> Guests scan QR over local Wi-Fi to save photos straight from the device.</span></div>
+      <div class="tldr-item"><span><b>360 Video Desk (Beta):</b> Complete slow-mo, boomerang, and 40 animated Spin-FX overlays.</span></div>
+    </div>
+  </div>
+
+  <h2 class="sec-title">The Three Platforms Explained</h2>
+  
+  <div class="platforms-grid">
+    <!-- PLATFORM 1: ONLINE -->
+    <div class="plat-card online">
+      <div class="plat-tag">Web / Cloud Platform</div>
+      <h3 class="plat-name">🌐 Online Booth</h3>
+      <div class="plat-device">Runs in any modern browser (Chrome, Safari, Edge) on PC, Mac, iPad, or Phone</div>
+      <ul class="plat-bullets">
+        <li><b>Zero Installation:</b> Open URL, log in with access code, and begin shooting instantly.</li>
+        <li><b>PayMongo QR Payments:</b> Collect payments via GCash, Maya, ShopeePay before shooting.</li>
+        <li><b>Google Drive Auto-Sync:</b> Automatic cloud backup of all photos and animated GIFs.</li>
+        <li><b>7-Day Online Gallery:</b> Public event links for guests to view everyone's photos.</li>
+        <li><b>Requirement:</b> Requires an active, dependable venue Wi-Fi or cellular data connection.</li>
+      </ul>
+      <div class="plat-summary-badge">Best for: Studios with Wi-Fi &amp; iPad kiosks</div>
+    </div>
+
+    <!-- PLATFORM 2: OFFLINE DESKTOP -->
+    <div class="plat-card desktop">
+      <div class="plat-tag">Standalone Native App</div>
+      <h3 class="plat-name">💻 Desktop (Win/Mac)</h3>
+      <div class="plat-device">Windows 10/11 or macOS (Apple Silicon &amp; Intel) installable software</div>
+      <ul class="plat-bullets">
+        <li><b>100% True Offline:</b> Needs internet once to activate; zero internet needed at events.</li>
+        <li><b>USB DSLR &amp; Mirrorless:</b> Direct PTP hardware shutter &amp; flash sync (Canon, Nikon, Sony).</li>
+        <li><b>Silent Spooler Printing:</b> Auto-route 2x6 strips and 4R postcards to dye-sub printers without popups.</li>
+        <li><b>Built-in Booth Hotspot:</b> Windows laptop can host its own Wi-Fi with no router or internet.</li>
+        <li><b>Dual-Display Guest Screen:</b> Fullscreen live viewfinder on second TV/monitor via HDMI.</li>
+      </ul>
+      <div class="plat-summary-badge">Best for: Pro event rentals, weddings, &amp; high volume</div>
+    </div>
+
+    <!-- PLATFORM 3: ANDROID TABLET APK -->
+    <div class="plat-card android">
+      <div class="plat-tag">Native Tablet Kiosk</div>
+      <h3 class="plat-name">📱 Android APK</h3>
+      <div class="plat-device">Dedicated APK for Android tablets (Samsung Tab, Lenovo, Pixel, API 24+)</div>
+      <ul class="plat-bullets">
+        <li><b>Bluetooth Thermal Receipt:</b> Direct RFCOMM SPP bridge for 58mm &amp; 80mm ESC/POS printers.</li>
+        <li><b>Event Kiosk Mode:</b> Sticky fullscreen, screen keep-awake, and back-button lock protection.</li>
+        <li><b>Wi-Fi Direct Hosting:</b> Tablet creates its own local offline Wi-Fi for guest QR downloads.</li>
+        <li><b>USB OTG Camera Host:</b> Connects Nikon, Canon, and Sony cameras via USB-C/OTG adapter.</li>
+        <li><b>Ultra-Portable:</b> Lightweight, cable-free battery-powered setup for mobile booths.</li>
+      </ul>
+      <div class="plat-summary-badge">Best for: Receipt photobooths &amp; mobile tablet stands</div>
+    </div>
+  </div>
+
+  <!-- PRICING SECTION -->
+  <div class="pricing-banner">
+    <div class="pricing-title-row">
+      <div class="pricing-title">🏷️ Introductory Launch Pricing (Special Discount Phase)</div>
+      <div class="pricing-tag">Special Launch Offer</div>
+    </div>
+    <div class="pricing-cols">
+      <div class="price-item">
+        <h4>🌐 Online Plan</h4>
+        <div class="price-val">₱799 / mo &bull; ₱3,299 Lifetime</div>
+        <div class="price-desc">Full browser cloud booth, PayMongo GCash/Maya QR payments, Google Drive sync, and online guest galleries.</div>
+      </div>
+      <div class="price-item">
+        <h4>🔌 Offline Plan</h4>
+        <div class="price-val">₱999 / mo &bull; ₱3,999 Lifetime</div>
+        <div class="price-desc">Windows, Mac, and Android offline apps. Zero internet needed, USB DSLR control, local Wi-Fi QR, and silent printing.</div>
+      </div>
+      <div class="price-item featured">
+        <h4>🚀 Online + Offline Combo</h4>
+        <div class="price-val">₱1,299 / mo &bull; ₱4,999 Lifetime</div>
+        <div class="price-desc"><b>Complete peace of mind.</b> Access both Cloud Web and Offline Desktop + Android apps. Switch seamlessly anytime!</div>
+      </div>
+    </div>
+    <div class="customer-feedback-note">
+      ❤️ <b>Why are Lifetime prices discounted?</b> We are in active launching mode and value customer feedback above all else. Availing now locks in your lifetime license with free updates forever as new features land. <i>Check our post comments section to see real customer reviews and implemented requests!</i>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>photobooth4u Platform Comparison Guide</span>
+    <span>Page 1 of 4 &bull; Architecture Overview</span>
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<!-- PAGE 2: HARDWARE, CAMERAS, PRINTING & NETWORKING -->
+<!-- ========================================================================= -->
+<section class="page">
+  <div class="top-bar">
+    <div class="brand">
+      <div class="brand-icon"><i></i><i></i><i></i><i></i></div>
+      <span class="brand-name">photobooth4u</span>
+      <span class="brand-badge">Guide</span>
+    </div>
+    <div class="top-tag">Part 1: Hardware &amp; Connectivity</div>
+  </div>
+
+  <p class="kicker">Core Hardware Capabilities</p>
+  <h2 class="sec-title">Cameras, Printers &amp; Offline Networking</h2>
+  <p class="lead">Understanding how each platform interfaces with external photography equipment, commercial printing engines, and guest network connections.</p>
+
+  <div class="split-sections">
+    <!-- LEFT COLUMN: CAMERAS -->
+    <div>
+      <div class="feature-block highlight">
+        <div class="fb-title"><span class="icon">📷</span> DSLR &amp; Mirrorless USB Control (PTP)</div>
+        <div class="fb-desc">
+          Allows the booth software to command the camera's hardware shutter, synchronize external studio strobes/flashes, pull the live viewfinder video stream, and instantly download high-resolution RAW/JPEG captures.
+        </div>
+        <div class="tag-row">
+          <span class="tag purple">Desktop: Native (No Zadig)</span>
+          <span class="tag green">Android: USB-OTG Host</span>
+          <span class="tag red">Online: WebUSB (Chrome only)</span>
+        </div>
+      </div>
+
+      <div class="feature-block">
+        <div class="fb-title"><span class="icon">🔍</span> Supported Camera Brands &amp; Models</div>
+        <div class="fb-desc">
+          <b>• Canon EOS:</b> Rebel T3i–T8i, 60D, 70D, 80D, 90D, 7D, 5D Mk III/IV, EOS R, RP, R10, R50, R6.<br>
+          <b>• Nikon:</b> D3200, D3400, D5300, D5600, D7100, D7200, D750, D850, Z50, Zfc, Z5, Z6.<br>
+          <b>• Sony Alpha:</b> A7 III, A7 IV, A6000, A6400, A6600 (Set USB to <i>PC Remote</i>).<br>
+          <b>• Others (Fujifilm, Lumix, Olympus):</b> Supported via clean HDMI capture or USB webcam mode.
+        </div>
+        <div class="tag-row">
+          <span class="tag">Canon PTP</span>
+          <span class="tag">Nikon MTP/PTP</span>
+          <span class="tag">Sony PC Remote</span>
+          <span class="tag">HDMI CamLink</span>
+        </div>
+      </div>
+
+      <div class="feature-block">
+        <div class="fb-title"><span class="icon">💻</span> macOS Camera Conflict Breaker (camfree)</div>
+        <div class="fb-desc">
+          On macOS, system daemons like <code>ptpcamerad</code> and Image Capture automatically hijack plugged-in DSLRs. The Mac desktop app automatically terminates these processes on launch so photobooth4u connects without permission errors.
+        </div>
+        <div class="tag-row">
+          <span class="tag purple">Mac App Exclusive</span>
+          <span class="tag">Automated Release</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: PRINTERS & NETWORKING -->
+    <div>
+      <div class="feature-block highlight">
+        <div class="fb-title"><span class="icon">🧾</span> Bluetooth &amp; USB Thermal Receipt Printing</div>
+        <div class="fb-desc">
+          Direct hardware printing for trending 58mm and 80mm receipt photobooths. The Android app features a dedicated Kotlin RFCOMM SPP bridge with Floyd-Steinberg dithering and 256-line raster slicing to prevent buffer overflow on low-memory receipt printers.
+        </div>
+        <div class="tag-row">
+          <span class="tag green">Android: Direct Bluetooth SPP</span>
+          <span class="tag purple">Desktop: System Spooler</span>
+          <span class="tag">58mm / 80mm</span>
+        </div>
+      </div>
+
+      <div class="feature-block">
+        <div class="fb-title"><span class="icon">🖨️</span> Commercial Dye-Sub &amp; Inkjet Printers</div>
+        <div class="fb-desc">
+          <b>• Dye-Sub Photo Printers:</b> DNP DS620, RX1HS, HiTi P525L, Citizen CX-02, Sinfonia CS2, Mitsubishi CP-D70DW. (Supported natively on Desktop with zero-dialog silent auto-cut).<br>
+          <b>• Portable &amp; Inkjets:</b> Canon Selphy CP1300/1500, Epson EcoTank L-series, Brother, HP. (Desktop via driver; Android via driverless IPP/Mopria).
+        </div>
+        <div class="tag-row">
+          <span class="tag purple">Desktop: Multi-Queue Routing</span>
+          <span class="tag green">Android: IPP / ESC/P-R</span>
+        </div>
+      </div>
+
+      <div class="feature-block">
+        <div class="fb-title"><span class="icon">📡</span> Built-in Local Share Server (Port 47777+)</div>
+        <div class="fb-desc">
+          Both Desktop and Android run a local micro web server. When guests scan the Photo QR, they connect over local Wi-Fi directly to the laptop/tablet:
+          <br><code>http://&lt;device-ip&gt;:47777/e/&lt;event&gt;/</code>. Includes HTTP 206 Range headers so smartphones stream MP4s smoothly without lag.
+        </div>
+        <div class="tag-row">
+          <span class="tag purple">Desktop Server</span>
+          <span class="tag green">Android Server</span>
+          <span class="tag">Zero Data / SIM</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature-block">
+    <div class="fb-title"><span class="icon">📶</span> Autonomous Wi-Fi Hosting Comparison (No External Router Needed)</div>
+    <div class="fb-desc">
+      How to let guests scan QR codes in venues with no existing Wi-Fi or phone signal:
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:6px; font-size:9.5px;">
+      <div style="background:var(--cream); padding:7px 10px; border-radius:6px;">
+        <b>Windows Desktop:</b> Uses <code>NetworkOperatorTetheringManager</code> via PowerShell. Automatically configures Microsoft Loopback adapter and firewall rules to host a local hotspot with <i>zero internet</i>.
+      </div>
+      <div style="background:var(--cream); padding:7px 10px; border-radius:6px;">
+        <b>Android APK:</b> Activates Wi-Fi Direct group (<code>DIRECT-pb-photobooth4u-...</code>) at <code>192.168.49.1</code> or Local-Only Hotspot. Generates instant Join-Wi-Fi QR for guests.
+      </div>
+      <div style="background:var(--cream); padding:7px 10px; border-radius:6px;">
+        <b>Mac Desktop &amp; Online:</b> Connects to any portable pocket router or mobile phone hotspot (no cellular data required on the router, just a local network).
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>photobooth4u Platform Comparison Guide</span>
+    <span>Page 2 of 4 &bull; Hardware &amp; Networking</span>
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<!-- PAGE 3: INTERACTIVE FEATURES, FX, PAYMENTS & MANAGEMENT -->
+<!-- ========================================================================= -->
+<section class="page">
+  <div class="top-bar">
+    <div class="brand">
+      <div class="brand-icon"><i></i><i></i><i></i><i></i></div>
+      <span class="brand-name">photobooth4u</span>
+      <span class="brand-badge">Guide</span>
+    </div>
+    <div class="top-tag">Part 2: Features, FX &amp; Monetization</div>
+  </div>
+
+  <p class="kicker">Experience, Creative &amp; Monetization</p>
+  <h2 class="sec-title">Interactive Experience, Design &amp; Payments</h2>
+  <p class="lead">From automated voice assistants and roving photographers to cashless PayMongo QR payments and 360 spin desks.</p>
+
+  <div class="split-sections">
+    <!-- LEFT COLUMN: INTERACTIVE & OPERATIONS -->
+    <div>
+      <div class="feature-block highlight">
+        <div class="fb-title"><span class="icon">🎙️</span> Virtual Assistant &amp; Voice Countdown</div>
+        <div class="fb-desc">
+          Interactive synthesized voice prompts that hype up guests and keep the photo queue moving: <i>"Get ready… Three, Two, One… Smile!"</i>. Prompts automatically sync with countdown numbers and support English and Tagalog device voices.
+        </div>
+        <div class="tag-row">
+          <span class="tag blue">Online: Web Speech</span>
+          <span class="tag purple">Desktop: Native TTS</span>
+          <span class="tag green">Android: TextToSpeech API</span>
+        </div>
+      </div>
+
+      <div class="feature-block">
+        <div class="fb-title"><span class="icon">🚶‍♂️</span> Roving Photoman / Photographer Mode</div>
+        <div class="fb-desc">
+          Untether the photographer from the booth! A roving photographer roams the venue, takes pictures with their phone, scans the booth's Roving QR code, and uploads photos over local Wi-Fi. The laptop automatically places them into the event's Canva frame and sends them to the printer.
+        </div>
+        <div class="tag-row">
+          <span class="tag purple">Desktop Built-in</span>
+          <span class="tag">Local Wi-Fi Upload</span>
+          <span class="tag">Instant Auto-Print</span>
+        </div>
+      </div>
+
+      <div class="feature-block">
+        <div class="fb-title"><span class="icon">🔒</span> Lock Photobooth &amp; Kiosk Protection</div>
+        <div class="fb-desc">
+          Prevents guests, curious clients, or kids from messing with booth configurations:
+          <br><b>• Desktop/Online:</b> Passcode-protected admin settings dock.
+          <br><b>• Android APK:</b> Immersive sticky full-screen (hides navigation/status bars), screen keep-awake (<code>FLAG_KEEP_SCREEN_ON</code>), and back-button interception.
+        </div>
+        <div class="tag-row">
+          <span class="tag">Passcode Lock</span>
+          <span class="tag green">Android Kiosk Mode</span>
+          <span class="tag">Unattended Operation</span>
+        </div>
+      </div>
+
+      <div class="feature-block">
+        <div class="fb-title"><span class="icon">📸</span> Live Event Gallery &amp; One-Click Reprints</div>
+        <div class="fb-desc">
+          Operators can open the "All Photos" drawer in the bottom bar at any time to review past captures. Tapping any photo reveals an instant <b>"Print photo"</b> button to produce extra copies on demand on the designated printer without opening file explorer.
+        </div>
+        <div class="tag-row">
+          <span class="tag purple">Desktop: Direct Print</span>
+          <span class="tag green">Android: Local Gallery</span>
+          <span class="tag blue">Online: Cloud Drawer</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: CREATIVE FX, PAYMENTS & 360 -->
+    <div>
+      <div class="feature-block highlight">
+        <div class="fb-title"><span class="icon">💳</span> Payments: QR PayMongo vs. Offline Vouchers</div>
+        <div class="fb-desc">
+          <b>• Online (PayMongo QR):</b> Dynamic QR codes displayed on screen for GCash, Maya, ShopeePay, and banks. Camera and printing only unlock once the webhook confirms payment.<br>
+          <b>• Offline (Single-Use Vouchers):</b> Sell pre-printed numbered codes at the registration desk. Guests enter code on the booth touch screen to initiate a session.
+        </div>
+        <div class="tag-row">
+          <span class="tag blue">Online: GCash &amp; Maya</span>
+          <span class="tag purple">Desktop: Vouchers</span>
+          <span class="tag green">Android: Vouchers</span>
+        </div>
+      </div>
+
+      <div class="feature-block">
+        <div class="fb-title"><span class="icon">🎥</span> Video Guestbook &amp; Motion Modes</div>
+        <div class="fb-desc">
+          <b>• Video Guestbook:</b> Guests record a 5–30 second greeting with microphone sound. Generates an instant Video QR code to download.<br>
+          <b>• Animated GIF Mode:</b> Generates a looping GIF alongside photo strips.<br>
+          <b>• Printable Flipbooks:</b> Decomposes a 6-second clip into 16–40 cards formatted for stack-cut collation with an animated QR on the cover.
+        </div>
+        <div class="tag-row">
+          <span class="tag">Video Guestbook</span>
+          <span class="tag">Animated GIF</span>
+          <span class="tag">Printable Flipbook</span>
+        </div>
+      </div>
+
+      <div class="feature-block">
+        <div class="fb-title"><span class="icon">🔄</span> 360 Spin Video Desk &amp; FX <span class="tag red">BETA</span></div>
+        <div class="fb-desc">
+          Dedicated 360 video management station on the desktop app. Supports phone send portal (<code>/spin/send</code>), ffmpeg video processing (0.5x Slow-mo, Speed Ramp, Boomerang forward/back), background music track mixing, transparent event logo overlays, and <b>40 animated Spin-FX loop overlays</b> (confetti, light leaks, sparkles, hearts, smoke).
+        </div>
+        <div class="tag-row">
+          <span class="tag purple">Desktop App</span>
+          <span class="tag red">Currently in Beta</span>
+          <span class="tag">ffmpeg Engine</span>
+        </div>
+      </div>
+
+      <div class="feature-block">
+        <div class="fb-title"><span class="icon">🎨</span> Layouts, Canva Frames &amp; Vintage Filters</div>
+        <div class="fb-desc">
+          Choose from 12+ built-in aspect ratios (2x6 strips, 4R, single shot, film reels). Upload custom Canva PNG frames with transparent cutouts, add logos and stickers, and apply vintage color grades (Film, Faded, 70s, Instant, Noir, B&amp;W, Sepia) with optional date stamp overlays.
+        </div>
+        <div class="tag-row">
+          <span class="tag">12+ Layouts</span>
+          <span class="tag">Custom Canva</span>
+          <span class="tag">Vintage Filters</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>photobooth4u Platform Comparison Guide</span>
+    <span>Page 3 of 4 &bull; Features &amp; Creative Modes</span>
+  </div>
+</section>
+
+<!-- ========================================================================= -->
+<!-- PAGE 4: MASTER FEATURE MATRIX & DEPLOYMENT GUIDE -->
+<!-- ========================================================================= -->
+<section class="page">
+  <div class="top-bar">
+    <div class="brand">
+      <div class="brand-icon"><i></i><i></i><i></i><i></i></div>
+      <span class="brand-name">photobooth4u</span>
+      <span class="brand-badge">Guide</span>
+    </div>
+    <div class="top-tag">Part 3: Master Matrix &amp; Recommendations</div>
+  </div>
+
+  <p class="kicker">Full Feature Matrix</p>
+  <h2 class="sec-title">Side-by-Side Comparison &amp; Recommendations</h2>
+
+  <table class="matrix-table">
+    <thead>
+      <tr>
+        <th style="width:34%;">Feature / Capability</th>
+        <th style="width:22%;" class="center">🌐 Online (Cloud Web)</th>
+        <th style="width:22%;" class="center">💻 Desktop (Win &amp; Mac)</th>
+        <th style="width:22%;" class="center">📱 Android APK</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- CATEGORY 1 -->
+      <tr class="cat-header"><td colspan="4">Environment &amp; Infrastructure</td></tr>
+      <tr>
+        <td>Venue Internet Requirement</td>
+        <td class="center"><span class="status-no">Continuous Online</span><span class="matrix-sub">Requires active Wi-Fi/4G</span></td>
+        <td class="center"><span class="status-yes">100% Offline</span><span class="matrix-sub">Activates once, runs offline</span></td>
+        <td class="center"><span class="status-yes">100% Offline</span><span class="matrix-sub">Activates once, runs offline</span></td>
+      </tr>
+      <tr>
+        <td>Local Share Server (Port 47777+)</td>
+        <td class="center"><span class="status-no">❌ No</span><span class="matrix-sub">Uses Netlify cloud links</span></td>
+        <td class="center"><span class="status-yes">✅ Yes</span><span class="matrix-sub">Embedded Node HTTP server</span></td>
+        <td class="center"><span class="status-yes">✅ Yes</span><span class="matrix-sub">Embedded Kotlin HTTP server</span></td>
+      </tr>
+      <tr>
+        <td>Autonomous Wi-Fi Hosting</td>
+        <td class="center"><span class="status-no">❌ No</span></td>
+        <td class="center"><span class="status-yes">✅ Windows Hotspot</span><span class="matrix-sub">Zero router required on Win</span></td>
+        <td class="center"><span class="status-yes">✅ Wi-Fi Direct</span><span class="matrix-sub">Direct or local hotspot</span></td>
+      </tr>
+      <tr>
+        <td>Dual-Screen HDMI Extend</td>
+        <td class="center"><span class="status-part">⚡ Browser Pop-up</span></td>
+        <td class="center"><span class="status-yes">✅ Native Dual Window</span><span class="matrix-sub">Auto-targets 2nd display</span></td>
+        <td class="center"><span class="status-no">❌ No</span><span class="matrix-sub">Single screen tablet display</span></td>
+      </tr>
+
+      <!-- CATEGORY 2 -->
+      <tr class="cat-header"><td colspan="4">Camera &amp; Printing Hardware</td></tr>
+      <tr>
+        <td>DSLR/Mirrorless (Canon, Nikon, Sony)</td>
+        <td class="center"><span class="status-part">⚡ WebUSB</span><span class="matrix-sub">Chrome only, limited models</span></td>
+        <td class="center"><span class="status-yes">✅ Native USB PTP</span><span class="matrix-sub">Real shutter, live view, flash</span></td>
+        <td class="center"><span class="status-yes">✅ USB-OTG Host</span><span class="matrix-sub">Direct PTP over USB cable</span></td>
+      </tr>
+      <tr>
+        <td>Commercial Dye-Sub Photo Printers</td>
+        <td class="center"><span class="status-part">⚡ Via Print Helper</span></td>
+        <td class="center"><span class="status-yes">✅ Built-in Silent</span><span class="matrix-sub">Auto-routes sizes to queues</span></td>
+        <td class="center"><span class="status-part">⚡ Network Only</span><span class="matrix-sub">If printer supports AirPrint</span></td>
+      </tr>
+      <tr>
+        <td>Bluetooth Thermal Receipt Printers</td>
+        <td class="center"><span class="status-part">⚡ Web Bluetooth</span></td>
+        <td class="center"><span class="status-part">⚡ Via OS Driver</span></td>
+        <td class="center"><span class="status-yes">✅ Native RFCOMM SPP</span><span class="matrix-sub">Floyd-Steinberg dithered</span></td>
+      </tr>
+
+      <!-- CATEGORY 3 -->
+      <tr class="cat-header"><td colspan="4">Interactive Experience &amp; Creative FX</td></tr>
+      <tr>
+        <td>Virtual Assistant Voice Countdowns</td>
+        <td class="center"><span class="status-yes">✅ Yes</span></td>
+        <td class="center"><span class="status-yes">✅ Yes</span></td>
+        <td class="center"><span class="status-yes">✅ Yes</span></td>
+      </tr>
+      <tr>
+        <td>Roving Photoman Mode</td>
+        <td class="center"><span class="status-no">❌ No</span></td>
+        <td class="center"><span class="status-yes">✅ Yes (Built-in)</span><span class="matrix-sub">Phone to laptop auto-print</span></td>
+        <td class="center"><span class="status-no">❌ No</span></td>
+      </tr>
+      <tr>
+        <td>360 Spin Video Desk (BETA)</td>
+        <td class="center"><span class="status-no">❌ No</span></td>
+        <td class="center"><span class="status-yes">✅ Full ffmpeg Suite</span><span class="matrix-sub">Slow-mo, boomerang, 40 FX</span></td>
+        <td class="center"><span class="status-no">❌ No</span></td>
+      </tr>
+      <tr>
+        <td>Video Guestbook (with QR download)</td>
+        <td class="center"><span class="status-yes">✅ Yes</span></td>
+        <td class="center"><span class="status-yes">✅ Yes</span></td>
+        <td class="center"><span class="status-yes">✅ Yes</span></td>
+      </tr>
+      <tr>
+        <td>Pay with QR (GCash, Maya, ShopeePay)</td>
+        <td class="center"><span class="status-yes">✅ PayMongo Live QR</span></td>
+        <td class="center"><span class="status-no">❌ Vouchers Only</span></td>
+        <td class="center"><span class="status-no">❌ Vouchers Only</span></td>
+      </tr>
+      <tr>
+        <td>Lock Booth (Kiosk Protection)</td>
+        <td class="center"><span class="status-yes">✅ Passcode Dock</span></td>
+        <td class="center"><span class="status-yes">✅ Passcode Dock</span></td>
+        <td class="center"><span class="status-yes">✅ Full Kiosk Lockdown</span><span class="matrix-sub">Keep-awake &amp; nav-bar hide</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- RECOMMENDATIONS GRID -->
+  <div class="rec-grid">
+    <div class="rec-box desktop-rec">
+      <h5>Choose Offline Desktop when:</h5>
+      <p>You run full-scale wedding or event booths with a DSLR/Mirrorless camera, studio flash strobes, dual screens (TV for guests), and a dye-sub printer (DNP, HiTi) for instant high-volume cutting.</p>
+    </div>
+    <div class="rec-box android-rec">
+      <h5>Choose Android APK when:</h5>
+      <p>You want an ultra-portable, battery-powered setup, a mobile roving tablet stand, or a trending low-cost <b>Thermal Receipt Photobooth</b> printing directly to Bluetooth receipt rolls.</p>
+    </div>
+    <div class="rec-box online-rec">
+      <h5>Choose Online (Cloud) when:</h5>
+      <p>Your venue has high-speed Wi-Fi, you want automated cashless QR payments (GCash/Maya) before guests shoot, or you run self-service iPad studio booths with cloud backup.</p>
+    </div>
+    <div class="rec-box combo-rec">
+      <h5>Choose Online + Offline Combo for:</h5>
+      <p><b>Maximum business versatility.</b> Handle indoor venue events with no cell service using the Desktop/Android apps, and switch to Cloud Online when hosting self-shoot studios or cashless pop-ups!</p>
+    </div>
+  </div>
+
+  <!-- BOTTOM CALL TO ACTION -->
+  <div class="bottom-cta-banner">
+    <div>
+      <h4>Ready to test photobooth4u? Try our 30-Minute Free Trial!</h4>
+      <p>Visit <b>photobooth4u.netlify.app</b> and enter trial code: <code style="color:#ffe; background:#333; padding:1px 5px; border-radius:3px;">TRIALMODE</code></p>
+    </div>
+    <div class="cta-badge">Discounted Launch Promo Active</div>
+  </div>
+
+  <div class="foot">
+    <span>photobooth4u Platform Comparison Guide</span>
+    <span>Page 4 of 4 &bull; Master Feature Matrix</span>
+  </div>
+</section>
+
+</body>
+</html>
+

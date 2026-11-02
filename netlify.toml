@@ -49,6 +49,21 @@
 
 # Printing guide: short links to /how-to-print-hiti/ and /how-to-print-dnp/
 [[redirects]]
+  from = "/compare"
+  to = "/compare/"
+  status = 301
+
+[[redirects]]
+  from = "/plans"
+  to = "/compare/"
+  status = 301
+
+[[redirects]]
+  from = "/comparison"
+  to = "/compare/"
+  status = 301
+
+[[redirects]]
   from = "/dnp"
   to = "/how-to-print-dnp/"
   status = 301

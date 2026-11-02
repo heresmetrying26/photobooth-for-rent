@@ -12488,6 +12488,29 @@
               <label class="switch-row" id="borderlessRow" style="margin:8px 0 2px;"><span>Borderless, no
                   trimming</span><input type="checkbox" id="borderlessToggle"></label>
               <p class="panel-hint" id="borderlessHint" style="margin:2px 0 8px;"></p>
+              <div id="marginBox" hidden>
+                <p class="sub-label" style="margin:10px 0 6px;">Printer margins</p>
+                <div class="print-size-row" id="marginRow">
+                  <button type="button" class="print-size-btn" data-m="auto">Automatic</button>
+                  <button type="button" class="print-size-btn" data-m="cal">Calibrated</button>
+                  <button type="button" class="print-size-btn" data-m="safe">Safe margin</button>
+                  <button type="button" class="print-size-btn" data-m="edge">Edge to edge</button>
+                </div>
+                <label class="switch-row" id="marginMmRow" style="margin:6px 0 2px;" hidden><span>Margin on every side (mm)</span>
+                  <input type="number" id="marginMm" min="0" max="15" step="0.5" inputmode="decimal" style="width:70px;" aria-label="Margin in millimetres"></label>
+                <div id="calBox" hidden>
+                  <button type="button" class="action-btn" id="calPrintBtn" style="width:auto;margin:6px 0 4px;">Print calibration sheet</button>
+                  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:4px 0;">
+                    <label>L <input type="number" id="calL" min="0" max="15" step="0.5" inputmode="decimal" style="width:60px;" aria-label="Left, mm"></label>
+                    <label>T <input type="number" id="calT" min="0" max="15" step="0.5" inputmode="decimal" style="width:60px;" aria-label="Top, mm"></label>
+                    <label>R <input type="number" id="calR" min="0" max="15" step="0.5" inputmode="decimal" style="width:60px;" aria-label="Right, mm"></label>
+                    <label>B <input type="number" id="calB" min="0" max="15" step="0.5" inputmode="decimal" style="width:60px;" aria-label="Bottom, mm"></label>
+                    <span>mm</span>
+                  </div>
+                  <p class="panel-hint" id="calStatus" style="margin:2px 0 4px;"></p>
+                </div>
+                <p class="panel-hint" id="marginHint" style="margin:2px 0 8px;"></p>
+              </div>
               <div style="display:flex;gap:10px;align-items:center;margin:6px 0 8px;">
                 <img id="ppThumb" alt="How the page will look" hidden
                   style="max-height:140px;border:1px solid #bbb;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);">
@@ -20839,7 +20862,9 @@
         for (let i = 0; i < 3; i++) { if ((a[i] || 0) !== b[i]) return (a[i] || 0) > b[i]; }
         return true;
       }
-      async function printViaHelper(pages, paper, name) {
+      // rawMode: 'raw' sends the pages exactly as given (the calibration sheet). Otherwise the margin setting applies;
+      // Calibrated lays each page out inside what this printer really prints and sends it 1:1.
+      async function printViaHelper(pages, paper, name, rawMode) {
         const h = await checkHelper(true);
         if (!h.ok) return false;
         // Older Windows helpers stretch the picture to the driver's page; Mac (CUPS) already keeps its shape.
@@ -20848,7 +20873,12 @@
           return false;
         }
         try {
-          const body = JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, fit: paper.receipt ? 'width' : undefined, pages: pages.map(c => c.toDataURL('image/png')) });
+          let margin = rawMode || printPrefs.margin || 'auto', sheets = pages;
+          if (!rawMode && margin === 'cal') {
+            const cal = calFor(paper, name);
+            if (cal) { sheets = pages.map(c => calibratedSheet(c, paper, cal, false)); margin = 'raw'; } else margin = 'auto';
+          }
+          const body = JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, fit: paper.receipt ? 'width' : undefined, margin: margin, marginMm: printPrefs.marginMm, pages: sheets.map(c => c.toDataURL('image/png')) });
           const r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
           const j = await r.json().catch(() => ({}));
           if (r.ok && j.ok) return true;
@@ -21174,6 +21204,7 @@
         let hint = 'Prints edge to edge with no printer margins and no scaling by the printer, so nothing is trimmed. It works on Wi-Fi and driverless USB printers.';
         try { if (wifiPrinter && (wifiPrinter.escp2 || wifiPrinter.canon)) hint = 'This printer prints with a small border. Borderless needs a Wi-Fi or driverless USB printer.'; } catch (e) { }
         borderlessHint.textContent = hint;
+        refreshMarginUI();
         schedulePrintThumb();
       }
       photoSizeRow.addEventListener('click', (e) => {
@@ -21185,6 +21216,146 @@
         printPrefsChanged();
       });
       borderlessToggle.addEventListener('change', () => { printPrefs.borderless = borderlessToggle.checked; printPrefsChanged(); });
+      // Printer margins: only the Windows Print Helper / laptop app draws the page itself, so only there can this be set.
+      const MARGIN_HINTS = {
+        auto: 'Fits the whole picture inside what the printer says it can print, so nothing is cut off. Borderless printers still print edge to edge.',
+        cal: 'Matches the preview to the paper. Print the calibration sheet, then on each edge find the lowest number whose short line is still printed (L left, T top, R right, B bottom) and enter the four numbers. Do it again if the printer’s Borderless or paper settings change.',
+        safe: 'Use this if the edges are still cut off: the picture is scaled to fit inside this margin on every side. Try 3 mm, and raise it until nothing is trimmed.',
+        edge: 'Prints the picture over the whole sheet with no margin. Only for printers set to Borderless; any other printer cuts the edges.'
+      };
+      // ---- Calibration: what this printer really loses at each edge, measured once on paper (per printer + paper, on this laptop) ----
+      // The sheet is printed 1:1 ('raw'), so the booth can lay the picture out inside what the printer really prints and
+      // the preview shows that same sheet.
+      const CAL_KEY = 'pb_print_cal';
+      function calStore() { try { const o = JSON.parse(localStorage.getItem(CAL_KEY) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } }
+      function getCal(name, size) {
+        const c = calStore()[name + '|' + size];
+        if (!c) return null;
+        const v = ['l', 't', 'r', 'b'].map(k => Number(c[k]));
+        return v.every(x => isFinite(x) && x >= 0 && x <= 15) ? { l: v[0], t: v[1], r: v[2], b: v[3] } : null;
+      }
+      function setCal(name, size, cal) {
+        const o = calStore();
+        if (cal) o[name + '|' + size] = cal; else delete o[name + '|' + size];
+        try { localStorage.setItem(CAL_KEY, JSON.stringify(o)); } catch (e) { }
+      }
+      // The calibration to use for this paper on this printer, or null (not in Calibrated mode, no numbers yet, not the laptop app).
+      function calFor(paper, name) {
+        if (!DESKTOP || !/Win/i.test(navigator.platform || '') || printPrefs.margin !== 'cal' || !paper || paper.receipt || !name || !printSize) return null;
+        return getCal(name, printSize);
+      }
+      // The page laid out on the sheet the printer gets: portrait, the picture fitted inside the part that prints. shade: grey bands for the lost edge (preview only).
+      function calibratedSheet(src, paper, cal, shade) {
+        const mm = PRINT_DPI / 25.4, SW = Math.round(paper.w * mm), SH = Math.round(paper.h * mm);
+        if (src.width > src.height) {                       // the print helper turns a landscape page a quarter turn clockwise; do the same here
+          const r = document.createElement('canvas'); r.width = src.height; r.height = src.width;
+          const rc = r.getContext('2d'); rc.translate(r.width, 0); rc.rotate(Math.PI / 2); rc.drawImage(src, 0, 0);
+          src = r;
+        }
+        const out = document.createElement('canvas'); out.width = SW; out.height = SH;
+        const ctx = out.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, SW, SH);
+        const x0 = cal.l * mm, y0 = cal.t * mm, x1 = SW - cal.r * mm, y1 = SH - cal.b * mm;
+        const aw = Math.max(20, x1 - x0), ah = Math.max(20, y1 - y0);
+        const s = Math.min(aw / src.width, ah / src.height), dw = src.width * s, dh = src.height * s;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(src, x0 + (aw - dw) / 2, y0 + (ah - dh) / 2, dw, dh);
+        if (shade) {
+          ctx.fillStyle = 'rgba(120,120,120,.35)';
+          ctx.fillRect(0, 0, SW, y0); ctx.fillRect(0, SH - cal.b * mm, SW, cal.b * mm);
+          ctx.fillRect(0, y0, x0, SH - y0 - cal.b * mm); ctx.fillRect(SW - cal.r * mm, y0, cal.r * mm, SH - y0 - cal.b * mm);
+        }
+        return out;
+      }
+      // The calibration sheet: on every edge a staircase of short lines 0 to 15 mm in from that edge, each numbered (L7 = 7 mm in from the left).
+      function calTestCanvas(paper) {
+        const mm = PRINT_DPI / 25.4, SW = Math.round(paper.w * mm), SH = Math.round(paper.h * mm);
+        const c = document.createElement('canvas'); c.width = SW; c.height = SH;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, SW, SH);
+        ctx.fillStyle = '#000'; ctx.strokeStyle = '#000';
+        const fs = paper.w < 70 ? 24 : 30, lw = 3, seg = 2.2 * mm;           // font size, line width, half length of a short line (px)
+        ctx.font = '600 ' + fs + 'px Arial, sans-serif'; ctx.textBaseline = 'middle';
+        const H = paper.w, V = paper.h;                                     // sheet size in mm
+        for (let k = 0; k <= 15; k++) {
+          const u = k / 15, d = k * mm;
+          const xs = (8 + u * (H - 16)) * mm, ys = (32 + u * (V - 64)) * mm;   // where this step sits along the edge
+          const row = (k % 2) * 4 * mm;                                      // labels alternate between two rows so they do not collide
+          // top / bottom: horizontal line, label further in
+          ctx.fillRect(xs - seg, d, 2 * seg, lw); ctx.fillRect(xs, d, 1, 17 * mm + row - d);
+          ctx.fillRect(xs - seg, SH - d - lw, 2 * seg, lw); ctx.fillRect(xs, SH - 17 * mm - row, 1, 17 * mm + row - d);
+          ctx.textAlign = 'center';
+          ctx.fillText('T' + k, xs, 17 * mm + row + fs * 0.7);
+          ctx.fillText('B' + k, xs, SH - 17 * mm - row - fs * 0.7);
+          // left / right: vertical line, label further in
+          ctx.fillRect(d, ys - seg, lw, 2 * seg); ctx.fillRect(d, ys, 17 * mm + row - d, 1);
+          ctx.fillRect(SW - d - lw, ys - seg, lw, 2 * seg); ctx.fillRect(SW - 17 * mm - row, ys, 17 * mm + row - d, 1);
+          ctx.textAlign = 'left'; ctx.fillText('L' + k, 17 * mm + row + fs * 0.3, ys);
+          ctx.textAlign = 'right'; ctx.fillText('R' + k, SW - 17 * mm - row - fs * 0.3, ys);
+        }
+        // Instructions in the middle.
+        const lines = ['PRINTER CALIBRATION', 'On each edge find the lowest number whose short line is printed. Enter L, T, R and B in the booth (Print settings).'];
+        ctx.textAlign = 'center'; ctx.fillStyle = '#000';
+        const maxW = SW - 52 * mm;
+        let y = SH / 2 - 20 * mm;
+        if (maxW > 15 * mm) lines.forEach((t, i) => {            // a narrow strip has no room between the labels: the numbers explain themselves
+          ctx.font = (i ? '400 ' : '700 ') + Math.round(fs * (i ? 0.95 : 1.15)) + 'px Arial, sans-serif';
+          let row = '';
+          t.split(' ').forEach(w => {
+            if (row && ctx.measureText(row + ' ' + w).width > maxW) { ctx.fillText(row, SW / 2, y); y += fs * 1.3; row = w; } else row = row ? row + ' ' + w : w;
+          });
+          ctx.fillText(row, SW / 2, y); y += fs * 1.8;
+        });
+        return c;
+      }
+      async function printCalSheet() {
+        const name = printerFor(printSize), paper = printSize ? paperFor(printSize) : null;
+        if (!name || !paper || paper.receipt) { showToast('Choose the printer for this paper size first.', 3500); return; }
+        const ok = await printViaHelper([calTestCanvas(paper)], paper, name, 'raw');
+        if (ok) showToast('Calibration sheet sent to ' + name + '. Read the four numbers off the paper.', 5000);
+      }
+      function refreshMarginUI() {
+        const marginBox = document.getElementById('marginBox'), marginRow = document.getElementById('marginRow');
+        const marginMm = document.getElementById('marginMm'), marginMmRow = document.getElementById('marginMmRow'), marginHint = document.getElementById('marginHint');
+        if (!marginBox) return;
+        const show = DESKTOP && /Win/i.test(navigator.platform || '') && !!printSize && !isReceiptPaper(printSize);
+        marginBox.hidden = !show;
+        if (!show) return;
+        const cur = printPrefs.margin || 'auto';
+        [].forEach.call(marginRow.querySelectorAll('[data-m]'), (b) => b.classList.toggle('active', b.dataset.m === cur));
+        marginMmRow.hidden = cur !== 'safe';
+        if (document.activeElement !== marginMm) marginMm.value = String(printPrefs.marginMm === undefined ? 3 : printPrefs.marginMm);
+        marginHint.textContent = MARGIN_HINTS[cur];
+        const calBox = document.getElementById('calBox'), pname = printerFor(printSize), cal = pname ? getCal(pname, printSize) : null;
+        calBox.hidden = cur !== 'cal';
+        if (cur === 'cal') {
+          ['L', 'T', 'R', 'B'].forEach(k => { const el = document.getElementById('cal' + k); if (document.activeElement !== el) el.value = cal ? String(cal[k.toLowerCase()]) : ''; });
+          document.getElementById('calStatus').textContent = !pname ? 'Choose the printer for this paper size first.'
+            : cal ? 'Calibrated for ' + pname + ', ' + paperFor(printSize).name + '. The preview now shows the sheet as it prints; grey is the edge this printer cannot print.'
+              : 'Not calibrated yet for ' + pname + ', ' + paperFor(printSize).name + ': printing as Automatic until you enter the four numbers.';
+        }
+      }
+      document.getElementById('calPrintBtn').addEventListener('click', printCalSheet);
+      ['L', 'T', 'R', 'B'].forEach(k => document.getElementById('cal' + k).addEventListener('input', () => {
+        const name = printerFor(printSize); if (!name) return;
+        const v = ['L', 'T', 'R', 'B'].map(j => document.getElementById('cal' + j).value);
+        if (v.some(x => x === '' || !isFinite(Number(x)))) return;            // wait until all four are filled in
+        const n = v.map(x => Math.max(0, Math.min(15, Math.round(Number(x) * 2) / 2)));
+        setCal(name, printSize, { l: n[0], t: n[1], r: n[2], b: n[3] });
+        refreshMarginUI(); schedulePrintThumb();
+      }));
+      document.getElementById('marginRow').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-m]');
+        if (!b) return;
+        printPrefs.margin = b.dataset.m;
+        printPrefsChanged();
+      });
+      document.getElementById('marginMm').addEventListener('input', (e) => {
+        const el = e.target, v = Number(el.value);
+        if (el.value === '' || !isFinite(v)) return;
+        printPrefs.marginMm = Math.max(0, Math.min(15, Math.round(v * 2) / 2));
+        printPrefsChanged();
+      });
       document.getElementById('printPreviewBtn').addEventListener('click', () => showPrintPreview(false, opCopies || 1, true));
       // A small live picture of the page, rebuilt a moment after any change while Print settings is open.
       let thumbTimer = null;
@@ -21307,7 +21478,7 @@
       const MAX_COPIES = 10;
       const PRINT_TXT = { txtPrint: 'Print', txtPrinting: 'Printing, please hold…', txtCopies: 'How many copies?', txtLimit: 'That’s all the prints for this session' };
       // Saved with the setup (every device on the code gets them).
-      let printPrefs = { guestBtn: true, auto: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
+      let printPrefs = { guestBtn: true, auto: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, margin: 'auto', marginMm: 3, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
       function printTxt(k) { return (printPrefs[k] || '').trim() || PRINT_TXT[k]; }
       function cleanPrintPrefs(p) {
         p = p && typeof p === 'object' ? p : {};
@@ -21317,6 +21488,7 @@
           copies: Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(p.copies) || 1))), guestCopies: !!p.guestCopies, guestReq: !!p.guestReq, preview: p.preview !== false,
           fit: ['auto', 'contain', 'fill', 'size'].includes(p.fit) ? p.fit : 'auto',
           photoSize: typeof p.photoSize === 'string' && /^[0-9A-Za-z.]{1,12}$/.test(p.photoSize) ? p.photoSize : '', borderless: !!p.borderless,
+          margin: ['auto', 'cal', 'safe', 'edge'].includes(p.margin) ? p.margin : 'auto', marginMm: p.marginMm === undefined ? 3 : Math.max(0, Math.min(15, Math.round((Number(p.marginMm) || 0) * 2) / 2)),
           txtPrint: txt(p.txtPrint, 24), txtPrinting: txt(p.txtPrinting, 60), txtCopies: txt(p.txtCopies, 40), txtLimit: txt(p.txtLimit, 70)
         };
       }
@@ -21502,7 +21674,9 @@
       function printPreviewKey() { return printSize + '|' + (printerFor(printSize) || ''); }
       function needsPrintPreview() { return printPrefs.preview !== false && !printPreviewOk[printPreviewKey()]; }
       function printPreviewPages() {
-        return flipbookResult ? buildFlipbookPages(paperFor(printSize)) : keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)];
+        const pages = flipbookResult ? buildFlipbookPages(paperFor(printSize)) : keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)];
+        const cal = calFor(paperFor(printSize), printerFor(printSize));          // Calibrated: show the sheet exactly as it will print
+        return cal ? pages.map(c => calibratedSheet(c, paperFor(printSize), cal, true)) : pages;
       }
       function closePrintPreview() { document.getElementById('ppvOverlay').hidden = true; ppv.pages = []; ppv.urls = []; }
       // Look at every page: arrows, numbered buttons, swipe, or the left / right keys. Pages are turned into pictures only when looked at.
@@ -21555,6 +21729,8 @@
         if (stripTwoUp(printSize) && !sizedPhoto()) notes.push('Two strips side by side: cut down the middle.');
         if (sizedPhoto()) notes.push('The photo is printed at real ' + paperFor(printPrefs.photoSize).name + ' size, in the middle of the paper.');
         if (printPrefs.borderless && window.__PBNet) notes.push('Borderless: printed edge to edge with no trimming (Wi-Fi and driverless USB printers).');
+        if (calFor(paper, pname)) notes.push('Calibrated for this printer: the grey edge is what it cannot print, so this is how the print will look.');
+        if (printPrefs.margin === 'safe' && DESKTOP) notes.push('Safe margin: the picture is printed ' + printPrefs.marginMm + ' mm in from each edge, so the paper keeps a thin white border.');
         if (auto === true) notes.push('After this, auto-print sends photos without asking.');
         ppv.pages = pages; ppv.urls = []; ppv.notes = notes.join(' ');
         ppvBuildNav();

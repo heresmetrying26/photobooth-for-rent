@@ -112,9 +112,11 @@ async function openBluetoothSettings() {
 // so a 4R photo came out on A4. We look up the paper sizes the printer offers
 // and pick the one that matches the booth's paper size (borderless if it has it).
 const PAPER_CACHE = new Map();
-const PAPER_NAMES = { a3: [297, 420], a4: [210, 297], a5: [148, 210], a6: [105, 148], letter: [215.9, 279.4], legal: [215.9, 355.6],
+const PAPER_NAMES = {
+  a3: [297, 420], a4: [210, 297], a5: [148, 210], a6: [105, 148], letter: [215.9, 279.4], legal: [215.9, 355.6],
   postcard: [100, 148], hagaki: [100, 148], l: [89, 127], '2l': [127, 178], kg: [102, 152], '4r': [102, 152], '5r': [127, 178], '6r': [152, 203], '8r': [203, 254], '3r': [89, 127],
-  '80mm': [80, 297], '58mm': [58, 210], roll80: [80, 297], roll58: [58, 210], receipt80: [80, 297], receipt58: [58, 210] };
+  '80mm': [80, 297], '58mm': [58, 210], roll80: [80, 297], roll58: [58, 210], receipt80: [80, 297], receipt58: [58, 210]
+};
 function sizeFromName(key) {
   const k = String(key).toLowerCase();
   let m = /^w(\d+(?:\.\d+)?)h(\d+(?:\.\d+)?)/.exec(k);           // CUPS style: width and height in points
@@ -191,7 +193,7 @@ async function winPaperSizes(printer) {
       sizes.push({ key: m[1], name: m[1], w: Number(m[2]) * 0.254, h: Number(m[3]) * 0.254, borderless: isBorderlessName(m[1]) });
     }
     return { sizes, def };
-  } finally { rm(dir, { recursive: true, force: true }).catch(() => {}); }
+  } finally { rm(dir, { recursive: true, force: true }).catch(() => { }); }
 }
 async function paperSizes(printer) {
   const c = PAPER_CACHE.get(printer);
@@ -250,7 +252,7 @@ async function airPrintQualityOptions(printer) {
 }
 
 const WIN_PRINT_PS = String.raw`
-param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName)
+param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Margin = 'auto', [double]$InsetMm = 3)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $files = @(Get-Content -LiteralPath $ListFile -Encoding UTF8 | Where-Object { $_ })
@@ -287,7 +289,30 @@ $doc.add_PrintPage({
     if ($pageLandscape -ne $imgLandscape) { $img.RotateFlip([System.Drawing.RotateFlipType]::Rotate90FlipNone) }
     $e.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
     $hx = $e.PageSettings.HardMarginX; $hy = $e.PageSettings.HardMarginY
-    $e.Graphics.DrawImage($img, [single](-$hx), [single](-$hy), [single]$page.Width, [single]$page.Height)
+    $clip = $e.Graphics.VisibleClipBounds
+    [Console]::Out.WriteLine(('info|sheet {0}x{1}, printable {2}x{3} at {4},{5}, hard margin {6},{7} (1/100 in)' -f $page.Width, $page.Height, $clip.Width, $clip.Height, $clip.X, $clip.Y, $hx, $hy))
+    if ($Margin -eq 'raw') {
+      # The booth already placed everything for this printer (see its calibration): print the sheet 1:1,
+      # from the printer's own origin, with no fitting or shifting here, so what it sent is what prints.
+      $e.Graphics.DrawImage($img, [single]0, [single]0, [single]$page.Width, [single]$page.Height)
+    } elseif ($Margin -eq 'safe') {
+      # Set by hand: the printer cuts this much off every side (some drivers do not report it), so
+      # the picture is fitted inside the sheet less that margin. The origin is the printable corner.
+      $m = $InsetMm / 25.4 * 100
+      $aw = [Math]::Max(10, $page.Width - 2 * $m); $ah = [Math]::Max(10, $page.Height - 2 * $m)
+      $s = [Math]::Min($aw / $img.Width, $ah / $img.Height)
+      $w = [single]($img.Width * $s); $h = [single]($img.Height * $s)
+      $e.Graphics.DrawImage($img, [single](($aw - $w) / 2), [single](($ah - $h) / 2), $w, $h)
+    } elseif ($Margin -eq 'edge' -or ($clip.Width -ge $page.Width * 0.99 -and $clip.Height -ge $page.Height * 0.99)) {
+      # Borderless: the whole sheet is printable, so the picture covers it edge to edge.
+      $e.Graphics.DrawImage($img, [single](-$hx), [single](-$hy), [single]$page.Width, [single]$page.Height)
+    } else {
+      # The printer keeps a margin around the sheet it cannot print on. Fit the whole picture
+      # inside the part it can print, so nothing is cut off at the edges.
+      $s = [Math]::Min($clip.Width / $img.Width, $clip.Height / $img.Height)
+      $w = [single]($img.Width * $s); $h = [single]($img.Height * $s)
+      $e.Graphics.DrawImage($img, [single]($clip.X + ($clip.Width - $w) / 2), [single]($clip.Y + ($clip.Height - $h) / 2), $w, $h)
+    }
   } finally { $img.Dispose() }
   $script:i++
   $e.HasMorePages = ($script:i -lt $files.Count)
@@ -295,7 +320,9 @@ $doc.add_PrintPage({
 $doc.Print()
 'ok'
 `;
-async function printPages(printer, pngBuffers, fit, widthMm, heightMm) {
+// margin: 'auto' (fit inside whatever the printer reports), 'safe' (inside a margin of insetMm on every side),
+// 'edge' (edge to edge) or 'raw' (the sheet is already laid out by the booth: printed 1:1).
+async function printPages(printer, pngBuffers, fit, widthMm, heightMm, margin, insetMm) {
   const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
   try {
     const files = [];
@@ -307,7 +334,7 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm) {
       await writeFile(list, files.join('\r\n'), 'utf8');
       const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
       if (pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
-      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && !pick.keep ? ['-PaperName', pick.key] : [])]);
+      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && !pick.keep ? ['-PaperName', pick.key] : []), ...(fit !== 'width' && margin ? ['-Margin', margin, '-InsetMm', String(insetMm)] : [])]);
     } else {
       const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
       if (pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
@@ -317,8 +344,9 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm) {
       r = await run('lp', ['-d', printer, ...media, ...quality, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
     }
     if (r.code !== 0) throw new Error((r.err || r.out || ('exit ' + r.code)).trim().slice(0, 300));
+    for (const line of String(r.out || '').split(/\r?\n/)) if (line.startsWith('info|')) log('Page: ' + line.slice(5));
   } finally {
-    setTimeout(() => rm(dir, { recursive: true, force: true }).catch(() => {}), 60000);
+    setTimeout(() => rm(dir, { recursive: true, force: true }).catch(() => { }), 60000);
   }
 }
 
@@ -339,7 +367,7 @@ function camReset(why) {
   cam.proc = null; cam.sock = null; cam.server = null; cam.buf = Buffer.alloc(0); cam.open = null;
 }
 function camParse() {
-  for (;;) {
+  for (; ;) {
     const nl = cam.buf.indexOf(10);
     if (nl < 0) return;
     const head = cam.buf.subarray(0, nl).toString('utf8').trim().split(' ');
@@ -425,7 +453,7 @@ function camCall(cmd, arg, timeoutMs) {
       throw e;
     } finally { clearTimeout(timer); }
   });
-  cam.queue = job.catch(() => {});
+  cam.queue = job.catch(() => { });
   return job;
 }
 // Mac: the same call, answered by the in-app Canon code instead of a separate worker program.
@@ -441,7 +469,7 @@ async function camCallMac(cmd, arg, timeoutMs) {
   catch (e) {
     if (e && e.message === 'timeout') {
       log('Camera part stopped: no answer to ' + cmd);
-      m.reset().catch(() => {});
+      m.reset().catch(() => { });
       cam.hangs++; cam.recover = true;
       throw new Error(cam.hangs >= 2
         ? 'The camera stopped answering again. Switch the camera off and on, check its USB cable, then try again.'
@@ -468,8 +496,10 @@ function getPrintQueue(name) {
 export async function handleHelper(req, path, search) {
   const method = req.method;
   if (method === 'GET' && path === '/status') {
-    return json({ ok: true, app: 'photobooth4u-print-helper', builtIn: true, version: HELPER_VERSION, printers: await printers(search.get('refresh') === '1'),
-      camera: { supported: camOk(), open: !!cam.open, name: cam.open ? cam.open.name : '' } });
+    return json({
+      ok: true, app: 'photobooth4u-print-helper', builtIn: true, version: HELPER_VERSION, printers: await printers(search.get('refresh') === '1'),
+      camera: { supported: camOk(), open: !!cam.open, name: cam.open ? cam.open.name : '' }
+    });
   }
   if (path === '/printer/configure' && method === 'POST') {
     let body;
@@ -563,8 +593,10 @@ export async function handleHelper(req, path, search) {
     }
     const fit = body.fit === 'width' ? 'width' : '';
     const prev = getPrintQueue(name);
-    const job = prev.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0));
-    printQueues.set(name, job.catch(() => {}));
+    const margin = ['safe', 'edge', 'raw'].includes(body.margin) ? body.margin : 'auto';
+    const insetMm = Math.max(0, Math.min(15, Number(body.marginMm) || 0));
+    const job = prev.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0, margin, insetMm));
+    printQueues.set(name, job.catch(() => { }));
     try { await job; log('Printed ' + buffers.length + ' page(s) on ' + name); return json({ ok: true }); }
     catch (e) { log('Print failed on ' + name + ': ' + (e && e.message || e)); return json({ ok: false, error: String(e && e.message || e) }, 500); }
   }
@@ -572,5 +604,5 @@ export async function handleHelper(req, path, search) {
 }
 export function stopHelper() {
   try { cam.proc && cam.proc.kill(); } catch { /* gone */ }
-  if (macCamP) macCamP.then((m) => m.reset()).catch(() => {});
+  if (macCamP) macCamP.then((m) => m.reset()).catch(() => { });
 }

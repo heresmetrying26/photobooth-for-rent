@@ -15715,7 +15715,9 @@
         refreshGifUI();
         refreshOutputModeUI();
         refreshFlipCoverUI();
-        refreshFlipPoolUI();
+        // refreshFlipPoolUI() reads `helperOn`, declared later with `let` — calling it here
+        // threw a TDZ error that aborted the whole script. fillPrinterSelect() calls it
+        // once the helper state exists.
       })();
 
       function refreshFlipPoolUI() {

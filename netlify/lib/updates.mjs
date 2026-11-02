@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.57', date: '2026-11-02' },
   { version: '1.0.56', date: '2026-11-02' },
   { version: '1.0.55', date: '2026-11-02' },
   { version: '1.0.54', date: '2026-11-02' },
@@ -103,6 +104,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-02', title: 'Easier Setup: flipbook options and printing', for: ['website', 'app'], app: '1.0.57',
+    items: [
+      'Flipbook and GIF settings in Extras are now grouped into small cards with tap-to-pick buttons and clear on/off switches, with less text to read.',
+      'Printing settings moved from Share to Camera & printer, next to the printer and paper choice. A quick summary shows the paper, printer and auto-print at a glance.'
+    ]
+  },
   {
     date: '2026-11-02', title: 'Print preview: look at every page', for: ['website', 'app'], app: '1.0.56',
     items: [

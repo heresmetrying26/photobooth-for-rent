@@ -7871,6 +7871,99 @@
       color: #fff;
     }
 
+    /* Setup option cards (flipbook / GIF settings, guest printing): one small card per topic, a choice per row */
+    .fb-opts,
+    .pr-opts {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .fb-card {
+      background: #fff;
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px 14px;
+    }
+
+    .fb-card .sub-label {
+      margin: 0 0 2px;
+    }
+
+    .fb-card .fb-opt {
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+
+    .fb-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .fb-row .lbl {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .fb-row select,
+    .fb-row .label-input {
+      width: 100%;
+    }
+
+    .fb-card .switch-row {
+      min-height: 40px;
+      margin-top: 8px;
+    }
+
+    .fb-card .copies-row {
+      margin-top: 8px;
+    }
+
+    /* an option that only matters when the switch above it is on */
+    .fb-sub {
+      margin-left: 6px;
+      padding-left: 12px;
+      border-left: 2px solid var(--line);
+    }
+
+    .s4-sum {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 2px 0 8px;
+    }
+
+    .s4-chip {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: var(--panel-2);
+      border: 1.5px solid var(--line);
+      font: 700 13px 'Manrope', sans-serif;
+      color: var(--ink);
+    }
+
+    .s4-chip small {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--ink-dim);
+    }
+
+    .s4-chip.bad {
+      border-color: #c0392b;
+      color: #c0392b;
+    }
+
     details.more .toggle-row,
     .pane .toggle-row,
     #formatSection .toggle-row {
@@ -11380,11 +11473,11 @@
             <input type="checkbox" id="mirrorToggle">
           </label>
           <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos
-            look the same as the preview (mirrored when this is on).</p>
+            match the preview.</p>
         </div>
         <div class="panel-section hidden" id="step4Printer">
-          <p class="panel-label">Printer</p>
-          <p class="panel-hint step-lead" id="s4PrinterSum"></p>
+          <p class="panel-label">Printing</p>
+          <div class="s4-sum" id="s4PrinterSum"></div>
           <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0 10px;">
             <button type="button" class="action-btn primary" id="s4PrinterBtn" style="width:auto;margin:0;">Choose
               printer &amp; paper</button>
@@ -11396,6 +11489,54 @@
               style="max-height:170px;border:1px solid #bbb;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);">
             <p class="panel-hint" id="s4ThumbNote" style="margin:0;">The preview shows how the printed page will look.
             </p>
+          </div>
+
+          <div class="pr-opts" id="printSummaryBox" style="display:none;">
+            <p class="panel-hint" id="printSummary" style="margin:0;"></p>
+
+            <div class="fb-card">
+              <p class="sub-label">Guests</p>
+              <label class="switch-row"><span>Print button for guests</span><input type="checkbox"
+                  id="ppGuestBtn"></label>
+              <label class="switch-row"><span>Let guests choose how many copies</span><input type="checkbox"
+                  id="ppGuestCopies"></label>
+              <label class="switch-row" id="ppGuestReqRow" style="display:none;"><span>Let guests ask for a print from
+                  their phone</span><input type="checkbox" id="ppGuestReq"></label>
+              <p class="panel-hint" id="ppGuestReqHint" style="margin:4px 0 0; display:none;">Their photo page gets an
+                &ldquo;Ask for a print&rdquo; button. Requests show under <b>Print requests</b> in the dock.</p>
+            </div>
+
+            <div class="fb-card">
+              <p class="sub-label">Automatic printing</p>
+              <label class="switch-row"><span>Print after each session</span><input type="checkbox"
+                  id="ppAuto"></label>
+              <p class="panel-hint" id="ppAutoHint" style="margin:4px 0 0;"></p>
+              <div class="copies-row"><span>Copies each time</span>
+                <span class="stepper"><button type="button" id="ppCopiesMinus"
+                    aria-label="Fewer copies">&minus;</button><b id="ppCopiesVal">1</b><button type="button"
+                    id="ppCopiesPlus" aria-label="More copies">+</button></span>
+              </div>
+              <label class="switch-row"><span>Check the page before the first print</span><input type="checkbox"
+                  id="ppPreview"></label>
+            </div>
+
+            <details class="pp-words">
+              <summary>Change the wording guests see</summary>
+              <label>Print button<input type="text" id="ppTxtPrint" maxlength="24" placeholder="Print"></label>
+              <label>While printing<input type="text" id="ppTxtPrinting" maxlength="60"
+                  placeholder="Printing, please hold…"></label>
+              <label>Copies question<input type="text" id="ppTxtCopies" maxlength="40"
+                  placeholder="How many copies?"></label>
+              <label>When the print limit is reached<input type="text" id="ppTxtLimit" maxlength="70"
+                  placeholder="That's all the prints for this session"></label>
+            </details>
+            <label class="sub-label web-only" for="ppRoute" style="display:block; margin:12px 0 4px;">Send prints to
+              (this device)</label>
+            <select id="ppRoute" class="print-route web-only">
+              <option value="here">This device</option>
+              <option value="station">Laptop print station (no pop-up)</option>
+            </select>
+            <p class="panel-hint web-only" id="ppRouteHint" style="margin:4px 0 0;"></p>
           </div>
         </div>
         <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="3">← Back</button><button
@@ -11421,92 +11562,110 @@
             </div>
             <p class="panel-hint" id="gifModeHint" style="margin:8px 0 0; color:var(--ink-dim);">Guests get a photo
               strip + QR code.</p>
-            <div id="flipbookOptions" style="display:none; margin-top:10px;">
-              <p class="panel-hint" style="margin:0 0 8px;">Guests record a short clip. The booth prints its frames as
-                small cards on sheets. Cut along the lines, stack the piles and staple. Guests also get an animated GIF
-                QR code. Prints use the paper size chosen in Print settings.</p>
-              <div class="stepper"><span class="lbl">Clip length</span><span class="ctl"><select id="flipSecSelect">
+            <div id="flipbookOptions" class="fb-opts" style="display:none;">
+              <div class="fb-card">
+                <p class="sub-label">1 · Recording</p>
+                <div class="fb-row"><span class="lbl">Clip length</span>
+                  <select id="flipSecSelect" class="pillify" aria-label="Clip length">
                     <option value="4">4 s</option>
                     <option value="5">5 s</option>
                     <option value="6" selected>6 s</option>
                     <option value="7">7 s</option>
-                  </select></span></div>
-              <div class="stepper"><span class="lbl">Frames in the book</span><span class="ctl"><select
-                    id="flipFramesSelect">
+                  </select></div>
+                <div class="fb-row"><span class="lbl">Frames in the book</span>
+                  <select id="flipFramesSelect" class="pillify" aria-label="Frames in the book">
                     <option value="16">16</option>
                     <option value="24" selected>24</option>
                     <option value="30">30</option>
                     <option value="40">40</option>
-                  </select></span></div>
-              <div class="stepper" style="margin-top:8px;"><span class="lbl">Page collation</span><span
-                  class="ctl"><select id="flipCollationSelect">
-                    <option value="stack" selected>Stack-cut (cut stack &amp; pile)</option>
-                    <option value="grid">Sequential grid (left to right)</option>
-                  </select></span></div>
-              <p class="panel-hint" style="margin:6px 0 0;">Stack-cut arranges cards so that cutting the stack of
-                printed sheets yields pre-ordered piles (Pile 1 on Pile 2 = in order) without manual sorting.</p>
-              <label class="toggle-row" style="margin-top:10px;"><input type="checkbox" id="flipCoverToggle" checked>
-                Cover card (first in the stack)</label>
-              <div class="stepper" id="flipCoverStyleWrap" style="margin-top:6px;"><span class="lbl">Cover
-                  style</span><span class="ctl"><select id="flipCoverStyleSelect">
-                    <option value="title" selected>Event branding (Logo + Title)</option>
-                    <option value="photo">Photo cover (Clip photo + Title)</option>
-                    <option value="custom">Custom image upload</option>
-                  </select></span></div>
-              <div id="flipCoverCustomWrap"
-                style="display:none; margin:8px 0 10px; padding:10px 12px; background:var(--panel-1, rgba(0,0,0,.04)); border-radius:8px;">
-                <div class="bg-row">
-                  <img class="bg-thumb" id="flipCoverThumb" alt="Cover"
-                    style="display:none; max-width:80px; max-height:60px; border-radius:4px; object-fit:cover;">
-                  <label class="upload-btn" for="flipCoverInput" style="font-size:13px; padding:6px 12px;">Upload cover
-                    image</label>
-                  <input type="file" id="flipCoverInput" accept="image/*">
+                  </select></div>
+                <label class="switch-row"><span>Show motion prompts while recording</span><input type="checkbox"
+                    id="flipCuesToggle" checked></label>
+              </div>
+
+              <div class="fb-card">
+                <p class="sub-label">2 · Cover &amp; back</p>
+                <label class="switch-row"><span>Cover card</span><input type="checkbox" id="flipCoverToggle"
+                    checked></label>
+                <div class="fb-row fb-sub" id="flipCoverStyleWrap"><span class="lbl">Cover style</span>
+                  <select id="flipCoverStyleSelect" class="pillify" aria-label="Cover style">
+                    <option value="title" selected>Logo + title</option>
+                    <option value="photo">Clip photo</option>
+                    <option value="custom">Your image</option>
+                  </select></div>
+                <div id="flipCoverCustomWrap" class="fb-sub" style="display:none;">
+                  <div class="bg-row">
+                    <img class="bg-thumb" id="flipCoverThumb" alt="Cover"
+                      style="display:none; max-width:80px; max-height:60px; border-radius:4px; object-fit:cover;">
+                    <label class="upload-btn" for="flipCoverInput" style="font-size:13px; padding:6px 12px;">Upload
+                      cover image</label>
+                    <input type="file" id="flipCoverInput" accept="image/*">
+                  </div>
+                  <button type="button" class="remove-link" id="flipCoverRemove"
+                    style="display:none; margin-top:6px;">Remove custom cover</button>
                 </div>
-                <button type="button" class="remove-link" id="flipCoverRemove"
-                  style="display:none; margin-top:6px;">Remove custom cover</button>
+                <label class="switch-row"><span>Back card</span><input type="checkbox" id="flipBackToggle"
+                    checked></label>
+                <div id="flipBackDetails" class="fb-sub">
+                  <label class="switch-row"><span>QR code to the digital flipbook</span><input type="checkbox"
+                      id="flipBackQrToggle" checked></label>
+                  <div class="fb-row"><span class="lbl">Caption under the QR</span>
+                    <input type="text" class="label-input" id="flipBackTextInput" maxlength="60"
+                      placeholder="Scan to view &amp; share"></div>
+                </div>
               </div>
-              <label class="toggle-row" style="margin-top:8px;"><input type="checkbox" id="flipBackToggle" checked> Back
-                card (last in the stack)</label>
-              <div id="flipBackDetails" style="margin:6px 0 10px 18px;">
-                <label class="toggle-row" style="margin-top:4px;"><input type="checkbox" id="flipBackQrToggle" checked>
-                  QR code for digital flipbook</label>
-                <div class="stepper" style="margin-top:6px;"><span class="lbl">Back caption</span><span
-                    class="ctl"><input type="text" id="flipBackTextInput" placeholder="Scan to view &amp; share"
-                      style="font-size:13px; max-width:180px;"></span></div>
+
+              <div class="fb-card">
+                <p class="sub-label">3 · Printed sheets</p>
+                <div class="fb-row"><span class="lbl">Card order</span>
+                  <select id="flipCollationSelect" class="pillify" aria-label="Card order">
+                    <option value="stack" selected>Stack-cut</option>
+                    <option value="grid">In order</option>
+                  </select></div>
+                <p class="panel-hint" style="margin:6px 0 0;">Stack-cut: cut the sheets as one stack and the piles
+                  come out already in order.</p>
+                <div class="fb-row"><span class="lbl">Cards per sheet</span>
+                  <select id="flipGridPresetSelect" class="pillify" aria-label="Cards per sheet">
+                    <option value="auto" selected>Auto</option>
+                    <option value="6up">6 per sheet</option>
+                    <option value="8up">8 per sheet</option>
+                  </select></div>
+                <label class="switch-row"><span>Binding margin and staple dots</span><input type="checkbox"
+                    id="flipGutterToggle" checked></label>
+                <label class="switch-row"><span>Page numbers in the margin</span><input type="checkbox"
+                    id="flipNumbersToggle" checked></label>
+                <p class="panel-hint" style="margin:8px 0 0;">Paper and printer are chosen in Camera &amp; printer.</p>
               </div>
-              <label class="toggle-row" style="margin-top:8px;"><input type="checkbox" id="flipGutterToggle" checked>
-                Binding gutter (6mm margin + staple dots)</label>
-              <label class="toggle-row" style="margin-top:6px;"><input type="checkbox" id="flipNumbersToggle" checked>
-                Page numbers in binding margin</label>
-              <label class="toggle-row" style="margin-top:6px;"><input type="checkbox" id="flipCuesToggle" checked>
-                On-screen motion prompts during recording</label>
-              <div class="stepper" style="margin-top:10px;"><span class="lbl">Grid preset</span><span class="ctl"><select id="flipGridPresetSelect">
-                    <option value="auto" selected>Auto (best fit)</option>
-                    <option value="6up">6 cards / sheet (classic)</option>
-                    <option value="8up">8 cards / sheet (fewer sheets)</option>
-                  </select></span></div>
-              <div class="stepper" style="margin-top:8px;"><span class="lbl">Printer pool</span><span class="ctl"><select id="flipPrinterPoolSelect">
+
+              <div class="fb-card">
+                <p class="sub-label">Two printers <span class="fb-opt">optional</span></p>
+                <div class="fb-row"><span class="lbl">Second printer</span>
+                  <select id="flipPrinterPoolSelect" class="mini-select" aria-label="Second printer">
                     <option value="" selected>None (single printer)</option>
-                  </select></span></div>
-              <div class="stepper" id="flipPoolModeWrap" style="display:none; margin-top:6px;"><span class="lbl">Pool mode</span><span class="ctl"><select id="flipPoolModeSelect">
-                    <option value="pages" selected>Alternate sheets (cut wait in half)</option>
-                    <option value="copies">Alternate copies (multi-copy)</option>
-                  </select></span></div>
-              <p class="panel-hint" id="flipPoolHint" style="display:none; margin:4px 0 0;">Spools alternating sheets across 2 printers concurrently to halve queue wait times.</p>
+                  </select></div>
+                <div class="fb-row" id="flipPoolModeWrap" style="display:none;"><span class="lbl">Share the work by</span>
+                  <select id="flipPoolModeSelect" class="pillify" aria-label="Share the work by">
+                    <option value="pages" selected>Sheets</option>
+                    <option value="copies">Copies</option>
+                  </select></div>
+                <p class="panel-hint" id="flipPoolHint" style="display:none; margin:6px 0 0;">Splits the work between
+                  two printers so guests wait about half as long.</p>
+              </div>
             </div>
-            <div id="gifOptions" style="display:none; margin-top:10px;">
-              <p class="panel-hint" style="margin:0;">GIF follows the session through the first complete run of shots,
-                including timers, pauses and any retake pressed between shots. Retakes at the final review change the
-                photo but not the GIF. Speed is set automatically — 2× for sessions up to 24 s, 3× for longer ones.</p>
-              <div class="stepper" style="margin-top:8px;"><span class="lbl">GIF frame</span><span class="ctl"><select
-                    id="gifLayoutSelect">
-                    <option value="solo" selected>Solo layout (your frame and title)</option>
+            <div id="gifOptions" class="fb-opts" style="display:none;">
+              <div class="fb-card">
+                <p class="sub-label">GIF</p>
+                <div class="fb-row"><span class="lbl">Picture frame</span>
+                  <select id="gifLayoutSelect" class="pillify" aria-label="GIF picture frame">
+                    <option value="solo" selected>Solo layout</option>
                     <option value="follow">Chosen layout</option>
-                    <option value="raw">Plain camera view</option>
-                  </select></span></div>
-              <p class="panel-hint" id="gifLayoutHint" style="margin:6px 0 0;">The GIF sits in the one-photo Solo layout
-                with your frame, title and design, even when the photos use a strip. Guests should stand in the middle
-                of the picture.</p>
+                    <option value="raw">Plain camera</option>
+                  </select></div>
+                <p class="panel-hint" id="gifLayoutHint" style="margin:6px 0 0;">The GIF sits in the one-photo Solo
+                  layout with your frame and title. Guests should stand in the middle.</p>
+                <p class="panel-hint" style="margin:6px 0 0;">It follows the first run of shots. Speed is automatic.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -11730,49 +11889,6 @@
               <button type="button" class="action-btn" id="deskDeactBtn" style="width:auto; margin:0;">Deactivate this
                 laptop</button>
             </div>
-          </div>
-          <div class="sub-group" id="printSummaryBox" style="display:none;">
-            <p class="sub-label">Printing</p>
-            <p class="panel-hint" id="printSummary" style="margin:0;"></p>
-            <label class="switch-row"><span>Print button for guests</span><input type="checkbox"
-                id="ppGuestBtn"></label>
-            <label class="switch-row"><span>Send a print automatically after each session</span><input type="checkbox"
-                id="ppAuto"></label>
-            <p class="panel-hint" id="ppAutoHint" style="margin:4px 0 0;"></p>
-            <div class="copies-row"><span>Copies each time</span>
-              <span class="stepper"><button type="button" id="ppCopiesMinus"
-                  aria-label="Fewer copies">&minus;</button><b id="ppCopiesVal">1</b><button type="button"
-                  id="ppCopiesPlus" aria-label="More copies">+</button></span>
-            </div>
-            <label class="switch-row" style="margin-top:6px;"><span>Let guests choose how many copies</span><input
-                type="checkbox" id="ppGuestCopies"></label>
-            <label class="switch-row" style="margin-top:6px;"><span>Show a print preview before the first
-                print</span><input type="checkbox" id="ppPreview"></label>
-            <p class="panel-hint" style="margin-top:4px;">The first print (and the first after you change the paper or
-              printer) shows how the page will look, so you can check it before auto-print takes over.</p>
-            <label class="switch-row" id="ppGuestReqRow" style="margin-top:6px; display:none;"><span>Let guests ask for
-                a print from their phone</span><input type="checkbox" id="ppGuestReq"></label>
-            <p class="panel-hint" id="ppGuestReqHint" style="margin-top:4px; display:none;">Off until you turn it on.
-              Their photo page gets an &ldquo;Ask for a print at the booth&rdquo; button; each request appears under
-              <b>Print requests</b> in the dock for you to print or dismiss. A phone can ask a few times, and a photo
-              only once.</p>
-            <details class="pp-words">
-              <summary>Change the wording guests see</summary>
-              <label>Print button<input type="text" id="ppTxtPrint" maxlength="24" placeholder="Print"></label>
-              <label>While printing<input type="text" id="ppTxtPrinting" maxlength="60"
-                  placeholder="Printing, please hold…"></label>
-              <label>Copies question<input type="text" id="ppTxtCopies" maxlength="40"
-                  placeholder="How many copies?"></label>
-              <label>When the print limit is reached<input type="text" id="ppTxtLimit" maxlength="70"
-                  placeholder="That's all the prints for this session"></label>
-            </details>
-            <label class="sub-label web-only" for="ppRoute" style="display:block; margin:12px 0 4px;">Send prints to
-              (this device)</label>
-            <select id="ppRoute" class="print-route web-only">
-              <option value="here">This device</option>
-              <option value="station">Laptop print station (no pop-up)</option>
-            </select>
-            <p class="panel-hint web-only" id="ppRouteHint" style="margin:4px 0 0;"></p>
           </div>
         </div>
         <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="5">← Back</button><button
@@ -15775,7 +15891,7 @@
           photo: 'Guests get a photo strip + QR code.',
           gif: 'Guests get an animated GIF + QR code (no still photo). Photo retakes are not available in GIF only mode.',
           both: 'Guests get both a photo strip AND an animated GIF — two QR codes appear.',
-          flipbook: 'Guests record a short clip. It prints as a flip book (cut, stack, staple) and they get an animated GIF QR code.'
+          flipbook: 'Guests record a short clip. It prints as a flip book to cut, stack and staple, and they get a GIF QR code.'
         };
         var hintEl = document.getElementById('gifModeHint');
         if (hintEl) hintEl.textContent = hints[outputMode] || '';
@@ -15824,6 +15940,7 @@
           var bDetails = document.getElementById('flipBackDetails');
           if (bDetails) bDetails.style.display = flipBack ? 'block' : 'none';
         }
+        window.refreshFlipCoverUI = refreshFlipCoverUI;   // the saved-setup loader calls it from outside this block
         var fcv = document.getElementById('flipCoverToggle'), fbk = document.getElementById('flipBackToggle');
         if (fcv) fcv.addEventListener('change', function () { flipCover = fcv.checked; refreshFlipCoverUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
         if (fbk) fbk.addEventListener('change', function () { flipBack = fbk.checked; refreshFlipCoverUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
@@ -21102,10 +21219,14 @@
         let pr = printSize ? (printerFor(printSize) || '') : '';
         try { if (wifiPrinter && wifiPrinter.name) pr = wifiPrinter.name; } catch (e) { }
         const fitTxt = { auto: 'photo fitted automatically', contain: 'whole photo with white borders', fill: 'photo fills the page', size: 'photo at real ' + (printPrefs.photoSize ? (paperFor(printPrefs.photoSize) || {}).name || '' : '') + ' size, in the middle' }[printPrefs.fit || 'auto'];
-        document.getElementById('s4PrinterSum').textContent =
-          (paper ? 'Paper: ' + paper.name + '. ' : 'No paper size chosen yet. ') +
-          (pr ? 'Printer: ' + pr + '. ' : 'No printer chosen yet. ') +
-          'Auto-print is ' + (autoPrint ? 'on' : 'off') + '. ' + (paper && !isReceiptPaper(printSize) ? 'Layout: ' + fitTxt + '.' : '');
+        // Paper, printer and auto-print at a glance (a red chip = still to choose).
+        const sum = document.getElementById('s4PrinterSum'); sum.innerHTML = '';
+        [['Paper', paper ? paper.name : 'not chosen', !paper], ['Printer', pr || 'not chosen', !pr], ['Auto-print', autoPrint ? 'On' : 'Off', false],
+        ...(paper && !isReceiptPaper(printSize) ? [['Layout', fitTxt, false]] : [])].forEach(([k, v, bad]) => {
+          const chip = document.createElement('span'); chip.className = 's4-chip' + (bad ? ' bad' : '');
+          const sm = document.createElement('small'); sm.textContent = k; chip.appendChild(sm); chip.appendChild(document.createTextNode(v));
+          sum.appendChild(chip);
+        });
         schedulePrintThumb();
       }
       document.getElementById('s4PrinterBtn').addEventListener('click', () => openPrintModal());
@@ -31056,6 +31177,9 @@
           var b = e.target.closest('.pill'); if (!b) return;
           sel.value = b.dataset.v; sel.dispatchEvent(new Event('change', { bubbles: true })); sync();
         });
+        // Setting `.value` from code (loading a saved setup) updates the pills too.
+        var vd = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+        Object.defineProperty(sel, 'value', { configurable: true, get: function () { return vd.get.call(sel); }, set: function (v) { vd.set.call(sel, v); sync(); } });
         sel.style.display = 'none';
         sel.parentNode.insertBefore(row, sel.nextSibling);
         pillSyncs.push(sync); sync();
@@ -31194,8 +31318,10 @@
         var lim = printLimits(), limTxt = [];
         if (lim.ev) limTxt.push(printCount && printCount.left != null ? printCount.left + ' of ' + lim.ev + ' prints left for the event' : lim.ev + ' prints for the event');
         if (lim.se) limTxt.push(lim.se + ' per session');
-        document.getElementById('printSummary').textContent = 'Printing is on: ' + sizes.map(function (k) { var p = paperFor(k); return p ? p.name : k; }).join(', ') +
-          '.' + (limTxt.length ? ' Limit: ' + limTxt.join(', ') + ' (copies count too).' : '');
+        // Paper and printer are shown above; only the print limit needs saying here.
+        var ps = document.getElementById('printSummary');
+        ps.textContent = limTxt.length ? 'Limit: ' + limTxt.join(', ') + ' (copies count too).' : '';
+        ps.style.display = limTxt.length ? '' : 'none';
         document.getElementById('ppGuestBtn').checked = printPrefs.guestBtn;
         document.getElementById('ppAuto').checked = autoPrint;
         document.getElementById('ppGuestCopies').checked = printPrefs.guestCopies;

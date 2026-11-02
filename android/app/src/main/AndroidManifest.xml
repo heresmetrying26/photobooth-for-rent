@@ -76,16 +76,10 @@
             <intent-filter>
                 <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
             </intent-filter>
-            <!-- Camera filter (Nikon / Canon / Sony PTP cameras) -->
+            <!-- USB auto-attach filter: cameras (Nikon, Canon, Sony) and printers (Epson L8050, L3210, L3276, Selphy, thermal) -->
             <meta-data
                 android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
-                android:resource="@xml/usb_camera_filter" />
-            <!-- Printer filter: Epson L8050 / L3210 / L3276 and any Epson printer class device.
-                 Android shows the "Allow this app to use the USB device?" prompt automatically
-                 when one of these printers is plugged in. -->
-            <meta-data
-                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
-                android:resource="@xml/usb_printer_filter" />
+                android:resource="@xml/usb_device_filter" />
         </activity>
     </application>
 

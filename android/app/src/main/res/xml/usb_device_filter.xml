@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cameras that talk PTP / MTP over USB (Nikon, Canon, Sony...) -->
+    <usb-device class="6" subclass="1" protocol="1" />
+    <usb-device vendor-id="1200" />   <!-- Nikon -->
+    <usb-device vendor-id="1193" />   <!-- Canon -->
+    <usb-device vendor-id="1356" />   <!-- Sony -->
+
+    <!--
+        Epson ink-tank photo & AIO printers (Seiko Epson Corp. Vendor ID 1208 / 0x04B8)
+        Product IDs (decimal):
+          - Epson L8050: 2150 (0x0866)
+          - Epson L3210: 58993 (0xE671)
+          - Epson L3276: 17498 (0x445A)
+    -->
+    <usb-device vendor-id="1208" product-id="2150" />
+    <usb-device vendor-id="1208" product-id="58993" />
+    <usb-device vendor-id="1208" product-id="17498" />
+
+    <!-- General printer class (class 7 = USB printer: Epson, Canon SELPHY, thermal receipt, etc.) -->
+    <usb-device class="7" />
+    <usb-device vendor-id="1208" />
+</resources>
+

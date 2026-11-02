@@ -19,6 +19,7 @@
 
     <!-- General printer class (class 7 = USB printer: Epson, Canon SELPHY, thermal receipt, etc.) -->
     <usb-device class="7" />
-    <usb-device vendor-id="1208" />
+    <usb-device vendor-id="1208" />   <!-- Epson -->
+    <usb-device vendor-id="1273" />   <!-- Brother (0x04F9) -->
 </resources>
 

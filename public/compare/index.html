@@ -466,7 +466,7 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download PDF Guide
         </a>
-        <a href="/?code=TRIALMODE" class="btn primary">Try Free Trial</a>
+        <a href="/" class="btn primary" id="trialBtn">Try Free Trial</a>
       </div>
     </div>
   </div>
@@ -784,9 +784,21 @@
 <footer class="site-footer">
   <div class="wrap">
     <p>photobooth4u &bull; All-in-One Professional Photobooth System</p>
-    <p>Try the 30-Minute Free Trial with code: <code>TRIALMODE</code> at <a href="https://photobooth4u.netlify.app">photobooth4u.netlify.app</a></p>
+    <p>Try the 30-Minute Free Trial<span id="trialCodeSpan" hidden></span> at <a href="https://photobooth4u.netlify.app">photobooth4u.netlify.app</a></p>
   </div>
 </footer>
 
+<script>
+  fetch('/api/trial').then(function(r) { return r.json(); }).then(function(d) {
+    if (d && d.enabled && d.code) {
+      var b = document.getElementById('trialBtn');
+      if (b) b.href = '/?code=' + encodeURIComponent(d.code);
+      var s = document.getElementById('trialCodeSpan');
+      if (s) { s.innerHTML = ' with code: <code>' + d.code + '</code>'; s.hidden = false; }
+    }
+  }).catch(function() { });
+</script>
+
 </body>
 </html>
+

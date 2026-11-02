@@ -31,10 +31,11 @@ object EscprJob {
         return w to h
     }
 
-    fun build(src: Bitmap, widthMm: Double, heightMm: Double, mono: Boolean): ByteArray {
+    fun build(src: Bitmap, widthMm: Double, heightMm: Double, mono: Boolean, borderless: Boolean = false): ByteArray {
         val (paperW, paperH) = paperPixels(widthMm, heightMm)
-        val areaW = paperW - 2 * BORDER
-        val areaH = paperH - 2 * BORDER
+        val border = if (borderless) 0 else BORDER
+        val areaW = paperW - 2 * border
+        val areaH = paperH - 2 * border
         require(areaW > 0 && areaH > 0) { "Sheet too small" }
 
         // Turn a landscape picture to match the portrait feed, then fit it to the printable area.
@@ -64,7 +65,7 @@ object EscprJob {
             bytes(0x00, 0x01, if (mono) 1 else 0, 0, 0, 0, 0x00, 0x00, 0x00))
         // job: page size and printable area, 360 dpi, bidirectional
         out.put(bytes(0x1B, 0x6A, 0x16, 0x00, 0x00, 0x00), ascii("setj"),
-            be32(paperW), be32(paperH), be16(BORDER), be16(BORDER), be32(areaW), be32(areaH), bytes(0x00, 0x00))
+            be32(paperW), be32(paperH), be16(border), be16(border), be32(areaW), be32(areaH), bytes(0x00, 0x00))
         // ── page ──
         out.put(bytes(0x1B, 0x70, 0x00, 0x00, 0x00, 0x00), ascii("sttp"))
         out.put(bytes(0x1B, 0x70, 0x01, 0x00, 0x00, 0x00), ascii("setn"), bytes(0x01))

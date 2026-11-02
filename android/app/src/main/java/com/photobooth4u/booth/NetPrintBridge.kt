@@ -503,6 +503,38 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     private fun usbProduct(d: UsbDevice): String? =
         if (usb?.hasPermission(d) == true) try { d.productName?.trim()?.takeIf { it.isNotEmpty() } } catch (_: Exception) { null } else null
 
+    // ── Hardcoded Epson L-series USB models ──────────────────────────────────
+    // VID 0x04B8 = Seiko Epson Corp.  All three models speak ESC/P-R over USB.
+    //
+    //  Model    PID (hex)  PID (dec)  Notes
+    //  ───────────────────────────────────────────────────────────────────────
+    //  L8050    0x0866     2150       6-ink photo printer, ESC/P-R, borderless
+    //  L3210    0xE671     58993      4-ink all-in-one, ESC/P-R
+    //  L3276    0x445A     17498      4-ink Wi-Fi AIO (L3270-family USB PID)
+    //
+    // These are the exact PIDs from the Windows INF files installed on the
+    // operator's laptop (e1wf1b0e.inf for L8050, e_wf1yxe.inf for L3210/L3276).
+    object EpsonLModels {
+        const val VENDOR_ID = 0x04B8
+
+        // Map of USB Product ID → friendly model name
+        val MODELS: Map<Int, String> = mapOf(
+            0x0866 to "L8050",
+            0xE671 to "L3210",
+            0x445A to "L3276"   // L3270-series PID; L3276 is the Wi-Fi variant
+        )
+
+        fun match(d: UsbDevice): String? =
+            if (d.vendorId == VENDOR_ID) MODELS[d.productId] else null
+
+        /** True when this is one of the three hardcoded Epson photo/AIO printers. */
+        fun isKnown(d: UsbDevice): Boolean = match(d) != null
+
+        /** True for the L8050, which supports borderless photo printing. */
+        fun isBorderless(d: UsbDevice): Boolean = d.vendorId == VENDOR_ID && d.productId == 0x0866
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     private val escprCache = ConcurrentHashMap<String, Boolean>()
     private val escprLogged: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
@@ -541,6 +573,13 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         if (usb?.hasPermission(d) != true) return false
         if (d.vendorId != 0x04b8) return false
         escprCache[d.deviceName]?.let { return it }
+        // Fast-path: the three hardcoded models are known ESC/P-R printers; skip the USB control transfer
+        // so the printer is usable even before it answers the IEEE-1284 device-ID request.
+        if (EpsonLModels.isKnown(d)) {
+            Log.i(TAG, "epson usb %04x:%04x hardcoded model=%s escpr=true".format(d.vendorId, d.productId, EpsonLModels.match(d)))
+            escprCache[d.deviceName] = true
+            return true
+        }
         val id = try { usbDeviceId(d) } catch (e: Exception) { Log.w(TAG, "device id", e); null }
         if (id != null) usbIds[d.deviceName] = id
         // Say it speaks ESC/P-R when its own ID says so, or (like PrinterShare / PrintHand) when the model is a
@@ -817,7 +856,69 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         return "started"
     }
 
+    /**
+     * Prints JPEG pages to a hardcoded Epson L-series USB printer via ESC/P-R:
+     *   • Epson L8050  (PID 0x0866) — 6-ink photo printer, supports borderless
+     *   • Epson L3210  (PID 0xE671) — 4-ink all-in-one
+     *   • Epson L3276  (PID 0x445A) — 4-ink Wi-Fi AIO (L3270-family USB PID)
+     *
+     * The printer is identified by USB VID/PID without reading the IEEE-1284 device ID,
+     * so it is available the instant the USB permission is granted.
+     *
+     * optionsJson keys:
+     *   color      — "color" | "mono"               (default: color)
+     *   quality    — "draft" | "normal" | "high"     (default: normal → 360 dpi)
+     *   media      — "photo" | "matte" | "plain"     (default: plain)
+     *   borderless — true | false                    (L8050 only; ignored for L3210/L3276)
+     *
+     * Result arrives as window.__PBNetResult({job, ok, error}).
+     */
+    @JavascriptInterface
+    fun printEpsonL(job: String, id: String, widthMm: Double, heightMm: Double,
+                    copies: Int, pagesJson: String, optionsJson: String): String {
+        pool.execute {
+            val r = JSONObject().put("job", job)
+            try {
+                val d = usbFind(id)
+                usbEnsure(d)
+                val model = EpsonLModels.match(d)
+                    ?: throw IllegalStateException(
+                        "This printer (VID=%04x PID=%04x) is not one of the hardcoded Epson L-series models."
+                            .format(d.vendorId, d.productId))
+                Log.i(TAG, "printEpsonL: model=$model id=$id")
+
+                val optJson = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
+                val colour  = optJson.optString("color", "color") != "mono"
+                // quality / media / borderless: saved for future EscP2Job-style expansion;
+                // EscprJob.build currently takes colour/mono only.
+                @Suppress("UNUSED_VARIABLE")
+                val borderless = optJson.optBoolean("borderless", false) && EpsonLModels.isBorderless(d)
+
+                val arr = JSONArray(pagesJson)
+                for (c in 0 until copies.coerceIn(1, 20)) {
+                    for (i in 0 until arr.length()) {
+                        val jpeg = decode(arr.getString(i))
+                        val bmp  = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+                            ?: throw IllegalStateException("Couldn't decode photo for printing.")
+                        // All three models use ESC/P-R; EscprJob.build handles colour/mono and borderless.
+                        // The L8050 supports 6-colour (CMYK+lc+lm) and borderless; ESC/P-R sends sRGB and
+                        // the printer's internal colour engine renders it.
+                        usbRaw(id, EscprJob.build(bmp, widthMm, heightMm, !colour, borderless))
+                    }
+                }
+                r.put("ok", true)
+            } catch (ex: Exception) {
+                Log.w(TAG, "printEpsonL failed", ex)
+                r.put("ok", false).put("error", ex.message ?: "Couldn't print to Epson L-series printer.")
+            }
+            deliver(r)
+        }
+        return "started"
+    }
+
     private fun usbName(d: UsbDevice): String {
+        // Hardcoded Epson L-series: return the exact marketing name immediately, no USB control needed.
+        EpsonLModels.match(d)?.let { return "Epson $it" }
         val maker = when (d.vendorId) {
             0x04b8 -> "Epson"; 0x03f0 -> "HP"; 0x04a9 -> "Canon"; 0x04f9 -> "Brother"
             0x0519 -> "Star"; 0x1504 -> "Bixolon"; 0x1d90 -> "Citizen"; else -> ""
@@ -849,7 +950,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             if (!m.hasPermission(d)) usbAsk(d)
             val ipp = usbIppIface(d) != null
             val raw = !ipp && usbRawIface(d) != null && usbLooksLikeReceipt(d)
-            val escpr = !ipp && !raw && usbIsEscpr(d)
+            // Hardcoded Epson L-series check first — no USB control transfer required,
+            // so the printer appears in the list the moment permission is granted.
+            val epsonL = !ipp && !raw && EpsonLModels.isKnown(d)
+            val escpr = !ipp && !raw && !epsonL && usbIsEscpr(d)
             val perm = m.hasPermission(d)
             val ippEntry = if (ipp && perm) {
                 usbEntries.getOrPut("usb:" + d.deviceName) { Entry("usb:" + d.deviceName) }.also {
@@ -857,15 +961,18 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     if (!it.attrsTried) pool.execute { try { fetchAttrs(it) } catch (_: Exception) {} }
                 }
             } else null
-            val escp2 = !ipp && !raw && !escpr && usbIsEscp2(d)
-            val selphy = !ipp && !raw && !escpr && !escp2 && usbIsSelphy(d)
-            val canon = !ipp && !raw && !escpr && !escp2 && !selphy && usbIsCanon(d)
+            val escp2 = !ipp && !raw && !epsonL && !escpr && usbIsEscp2(d)
+            val selphy = !ipp && !raw && !epsonL && !escpr && !escp2 && usbIsSelphy(d)
+            val canon = !ipp && !raw && !epsonL && !escpr && !escp2 && !selphy && usbIsCanon(d)
             val id = "usb:" + d.deviceName
             arr.put(JSONObject()
                 .put("id", id).put("ip", id).put("name", usbName(d) + " (USB)")
-                .put("ipp", ipp).put("raw", raw).put("escpr", escpr).put("usb", true)
+                .put("ipp", ipp).put("raw", raw).put("escpr", escpr || epsonL).put("usb", true)
+                .put("epsonL", epsonL)
+                .put("epsonModel", if (epsonL) (EpsonLModels.match(d) ?: "") else "")
+                .put("borderless", epsonL && EpsonLModels.isBorderless(d))
                 .put("escp2", escp2).put("canon", canon).put("selphy", selphy)
-                .put("noDriver", perm && !ipp && !raw && !escpr && !escp2 && !canon && !selphy)
+                .put("noDriver", perm && !ipp && !raw && !epsonL && !escpr && !escp2 && !canon && !selphy)
                 .put("needsPermission", !perm && !ipp && !raw && !selphy)
                 .put("qualities", JSONArray(ippEntry?.qualities ?: emptyList<Int>()))
                 .put("colorModes", JSONArray(ippEntry?.colorModes ?: emptyList<String>()))

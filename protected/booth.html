@@ -21817,16 +21817,18 @@
         let colorCh = [], qualCh = [], mediaCh = [];
         if (p) {
           if (p.escp2 && pbDebug()) colorCh = [['mono', 'Black & white'], ['color', 'Colour (beta)']];
-          else if (p.canon) colorCh = [['color', 'Colour'], ['mono', 'Black & white']];
+          else if (p.canon || p.epsonL) colorCh = [['color', 'Colour'], ['mono', 'Black & white']];
           else if ((p.colorModes || []).includes('monochrome') && (p.colorModes || []).includes('color')) colorCh = [['', 'Printer default'], ['color', 'Colour'], ['mono', 'Black & white']];
           const qs = p.qualities || [];
           if (p.escp2) qualCh = [['normal', 'Normal'], ['draft', 'Draft (fast)']];
           else if (p.canon) qualCh = [['normal', 'Normal'], ['draft', 'Draft (saves ink)'], ['high', 'Best (600 dpi, beta)']];
+          else if (p.epsonL) qualCh = [['normal', 'Normal (360 dpi)'], ['draft', 'Draft (fast)']];
           else if (qs.some(q => q >= 3 && q <= 5)) qualCh = [['', 'Printer default']].concat([['draft', 'Draft (fast)'], ['normal', 'Normal'], ['high', 'High (best)']].filter((c, i) => qs.includes(3 + i)));
           const mt = p.mediaTypes || [];
           const plain = mt.some(m => m.indexOf('stationery') === 0), photo = mt.some(m => m.indexOf('photographic') === 0);
           if (p.escp2) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper (glossy)'], ['matte', 'Matte / inkjet paper']];
           else if (p.canon) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper, glossy (beta)'], ['matte', 'Matte photo paper (beta)']];
+          else if (p.epsonL) mediaCh = [['plain', 'Plain paper'], ['photo', 'Photo paper (glossy)']];
           else if (plain || photo) mediaCh = [['', 'Printer default']].concat(plain ? [['plain', 'Plain paper']] : [], photo ? [['photo', 'Photo paper']] : []);
         }
         fill('wifiOptColor', 'wifiOptColorLbl', colorCh, 'color');
@@ -21863,7 +21865,7 @@
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
           const sel = wifiPrinter && wifiPrinter.ip === p.ip;
-          b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? '' : ' · ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.escpr ? ' · photo' : '') + (p.escp2 ? ' · photo (black & white)' : '') + (p.raw ? ' · receipt' : '') + (p.needsPermission ? ' · tap to allow USB access' : '') + (p.noDriver ? ' · no driver' : '') + (p.canon ? ' · photo' : '') + (p.selphy ? ' · photo (SELPHY)' : '');
+          b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? '' : ' · ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.epsonL ? ' · photo (Epson ' + (p.epsonModel || 'L-series') + ')' : (p.escpr ? ' · photo' : '')) + (p.escp2 ? ' · photo (black & white)' : '') + (p.raw ? ' · receipt' : '') + (p.needsPermission ? ' · tap to allow USB access' : '') + (p.noDriver ? ' · no driver' : '') + (p.canon ? ' · photo' : '') + (p.selphy ? ' · photo (SELPHY)' : '');
           b.addEventListener('click', () => {
             if (p.needsPermission) {
               // The tablet has not been given access to this USB printer yet, so it cannot read what it is.
@@ -21877,7 +21879,7 @@
               showToast(p.name + ' is detected, but the app has no driver for it. Use the Android print dialog or the laptop print station for it.' + (pbDebug() && p.usb ? ' [USB ' + (p.vid || 0).toString(16) + ':' + (p.pid || 0).toString(16) + (p.info ? ' ' + p.info : ' (could not read its ID)') + ']' : ''), pbDebug() ? 14000 : 6000);
               return;
             }
-            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, selphy: !!p.selphy, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
+            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, selphy: !!p.selphy, epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
             showToast('Will print to ' + p.name + '.', 3000);
             wifiRenderList(wifiList());
             refreshPrintUI();
@@ -22019,8 +22021,15 @@
           await wifiJob(id => window.__PBNet.printEscp2(id, p.ip, paper.w, paper.h, 1, JSON.stringify(pics2), JSON.stringify(wifiOpts())));
           return;
         }
+        if (p.epsonL) {
+          // Hardcoded Epson L-series: L8050 (photo 6-ink), L3210, L3276 — direct USB ESC/P-R printing.
+          const picsL = all.map(cv => cv.toDataURL('image/jpeg', 0.95));
+          const epsonLOpts = Object.assign({}, wifiOpts(), { borderless: !!p.borderless });
+          await wifiJob(id => window.__PBNet.printEpsonL(id, p.ip, paper.w, paper.h, 1, JSON.stringify(picsL), JSON.stringify(epsonLOpts)));
+          return;
+        }
         if (p.escpr) {
-          // Experimental Epson ESC/P-R path (Epson L120 / L210 and similar over USB): plain colour, 3 mm borders.
+          // Epson ESC/P-R path (Epson L120 / L210 and similar over USB): plain colour, 3 mm borders.
           const pics = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
           await wifiJob(id => window.__PBNet.printEscpr(id, p.ip, paper.w, paper.h, 1, JSON.stringify(pics)));
           return;

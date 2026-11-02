@@ -12499,6 +12499,8 @@
                 <label class="switch-row" id="marginMmRow" style="margin:6px 0 2px;" hidden><span>Margin on every side (mm)</span>
                   <input type="number" id="marginMm" min="0" max="15" step="0.5" inputmode="decimal" style="width:70px;" aria-label="Margin in millimetres"></label>
                 <div id="calBox" hidden>
+                  <label class="sub-label" id="calTargetRow" for="calTarget" style="display:block; margin:6px 0 4px;" hidden>Calibrate
+                    <select id="calTarget" class="printer-input" style="margin-top:4px;"></select></label>
                   <button type="button" class="action-btn" id="calPrintBtn" style="width:auto;margin:6px 0 4px;">Print calibration sheet</button>
                   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:4px 0;">
                     <label>L <input type="number" id="calL" min="0" max="15" step="0.5" inputmode="decimal" style="width:60px;" aria-label="Left, mm"></label>
@@ -12569,6 +12571,19 @@
               <input type="text" id="printerNameInput" hidden>
               <datalist id="printerList"></datalist>
               <p class="panel-hint" id="printerHelperHint" style="margin:4px 0 10px;"></p>
+              <div id="secondPrinterBox" hidden>
+                <label class="sub-label" for="secondPrinterSelect" style="display:block; margin:8px 0 4px;">Second printer (optional)</label>
+                <select id="secondPrinterSelect" class="printer-input"></select>
+                <div class="print-size-row" id="secondModeRow" style="margin-top:6px;" hidden>
+                  <button type="button" class="print-size-btn" data-sm="share">Share the work</button>
+                  <button type="button" class="print-size-btn" data-sm="extra">Also print another size</button>
+                </div>
+                <div id="secondSizeRow" hidden style="margin-top:6px;">
+                  <label class="sub-label" for="secondSizeSelect" style="display:block; margin:0 0 4px;">Paper on the second printer</label>
+                  <select id="secondSizeSelect" class="printer-input"></select>
+                </div>
+                <p class="panel-hint" id="secondHint" style="margin:4px 0 10px;"></p>
+              </div>
             </div>
             <div class="printer-pick" id="btThermalRow" style="display:none;margin-top:10px;">
               <label class="switch-row" style="margin:6px 0 2px;">
@@ -20862,9 +20877,94 @@
         for (let i = 0; i < 3; i++) { if ((a[i] || 0) !== b[i]) return (a[i] || 0) > b[i]; }
         return true;
       }
+      // ---- Second printer (this laptop only, since printer names differ per computer) ----
+      // share: the sheets alternate between the two printers, so a busy booth prints faster. extra: every session also prints
+      // another paper size on it (for example the photo on the Epson and a receipt strip on the receipt printer).
+      const SECOND_KEY = 'pb_print_second';
+      function secondStore() { try { const o = JSON.parse(localStorage.getItem(SECOND_KEY) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } }
+      function saveSecond(o) { try { localStorage.setItem(SECOND_KEY, JSON.stringify(o)); } catch (e) { } }
+      // The second printer to use now, or null (none chosen, same as the first, not on this laptop, or no sensible paper).
+      function secondPrinter() {
+        if (!helperOn || !helper || !helper.ok || !printSize) return null;
+        const s = secondStore(), pname = printerFor(printSize);
+        if (!s.name || !pname || s.name === pname || !(helper.printers || []).includes(s.name)) return null;
+        if (s.mode !== 'extra') return { name: s.name, mode: 'share' };
+        const sizes = printSettings() || [];
+        return s.size && s.size !== printSize && sizes.includes(s.size) && paperFor(s.size) ? { name: s.name, mode: 'extra', size: s.size } : null;
+      }
+      let poolTurn = 0;                  // which printer gets the next sheet, so single prints alternate between the two
+      async function printChunks(sheets, paper, name) {
+        for (let i = 0; i < sheets.length; i += 20) if (!(await printViaHelper(sheets.slice(i, i + 20), paper, name))) return false;
+        return true;
+      }
+      // Sends the sheets to the printer, or alternates them between it and the second printer when sharing.
+      async function printSheets(all, paper, pname) {
+        const sec = secondPrinter();
+        if (!sec || sec.mode !== 'share') return printChunks(all, paper, pname);
+        const A = [], B = [];
+        all.forEach((c, i) => ((i + poolTurn) % 2 === 0 ? A : B).push(c));
+        poolTurn = (poolTurn + all.length) % 2;
+        const [okA, okB] = await Promise.all([A.length ? printChunks(A, paper, pname) : true, B.length ? printChunks(B, paper, sec.name) : true]);
+        if (okA && okB) return true;
+        if (!okA && okB) return printChunks(A, paper, sec.name);      // one printer failed (off, out of paper): the other takes its sheets
+        if (okA && !okB) return printChunks(B, paper, pname);
+        return false;
+      }
+      // The extra print on the second printer (never throws, never holds up the main print).
+      async function printExtraSheet(sec) {
+        try {
+          let ep = paperFor(sec.size);
+          const c = buildPrintCanvas(sec.size);
+          if (ep.receipt) ep = Object.assign({}, ep, { h: Math.round(c.height / RECEIPT_DPI * 254) / 10 });
+          const ok = await printViaHelper([c], ep, sec.name, undefined, sec.size);
+          if (!ok) showToast('The second printer (' + sec.name + ') did not print.', 5000);
+          return ok;
+        } catch (e) { return false; }
+      }
+      const SECOND_HINTS = {
+        share: 'The sheets alternate between the two printers (one after the other when there is a single print), so they finish faster. Load the same paper in both. If one fails, the other prints its sheets.',
+        extra: 'Every session also prints on the second printer, on the paper chosen here, using the paper loaded in it. These extra prints are not counted in the print limit.'
+      };
+      function refreshSecondPrinterUI() {
+        const box = document.getElementById('secondPrinterBox'); if (!box) return;
+        const show = helperOn && helper && helper.ok && !!printSize && (helper.printers || []).length > 1;
+        box.hidden = !show;
+        if (!show) return;
+        const s = secondStore(), pname = printerFor(printSize), sel = document.getElementById('secondPrinterSelect');
+        if (document.activeElement !== sel) {
+          sel.innerHTML = '';
+          const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
+          add('', 'None');
+          helper.printers.filter(n => n !== pname).forEach(n => add(n, n));
+          sel.value = s.name && [...sel.options].some(o => o.value === s.name) ? s.name : '';
+        }
+        const on = !!sel.value, mode = s.mode === 'extra' ? 'extra' : 'share';
+        document.getElementById('secondModeRow').hidden = !on;
+        [].forEach.call(document.querySelectorAll('#secondModeRow [data-sm]'), (b) => b.classList.toggle('active', b.dataset.sm === mode));
+        const sizeRow = document.getElementById('secondSizeRow'), sizeSel = document.getElementById('secondSizeSelect');
+        sizeRow.hidden = !(on && mode === 'extra');
+        if (!sizeRow.hidden && document.activeElement !== sizeSel) {
+          sizeSel.innerHTML = '';
+          (printSettings() || []).filter(k => k !== printSize && paperFor(k)).forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = paperFor(k).name; sizeSel.appendChild(o); });
+          sizeSel.value = s.size && [...sizeSel.options].some(o => o.value === s.size) ? s.size : (sizeSel.options[0] ? sizeSel.options[0].value : '');
+          if (sizeSel.value && sizeSel.value !== s.size) saveSecond(Object.assign(s, { size: sizeSel.value }));
+        }
+        document.getElementById('secondHint').textContent = on ? SECOND_HINTS[mode] : 'Add a second printer to share the work, or to print a second paper size (such as a receipt) at the same time.';
+      }
+      document.getElementById('secondPrinterSelect').addEventListener('change', (e) => {
+        saveSecond(Object.assign(secondStore(), { name: e.target.value }));
+        refreshSecondPrinterUI(); try { refreshMarginUI(); } catch (_) { }
+      });
+      document.getElementById('secondModeRow').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-sm]'); if (!b) return;
+        saveSecond(Object.assign(secondStore(), { mode: b.dataset.sm === 'extra' ? 'extra' : 'share' }));
+        refreshSecondPrinterUI(); try { refreshMarginUI(); } catch (_) { }
+      });
+      document.getElementById('secondSizeSelect').addEventListener('change', (e) => { saveSecond(Object.assign(secondStore(), { size: e.target.value })); refreshSecondPrinterUI(); });
       // rawMode: 'raw' sends the pages exactly as given (the calibration sheet). Otherwise the margin setting applies;
-      // Calibrated lays each page out inside what this printer really prints and sends it 1:1.
-      async function printViaHelper(pages, paper, name, rawMode) {
+      // Calibrated lays each page out inside what this printer really prints and sends it 1:1. sizeKey: the paper size key
+      // when it is not the one on screen (the second printer's extra paper), so the right calibration is found.
+      async function printViaHelper(pages, paper, name, rawMode, sizeKey) {
         const h = await checkHelper(true);
         if (!h.ok) return false;
         // Older Windows helpers stretch the picture to the driver's page; Mac (CUPS) already keeps its shape.
@@ -20875,7 +20975,7 @@
         try {
           let margin = rawMode || printPrefs.margin || 'auto', sheets = pages;
           if (!rawMode && margin === 'cal') {
-            const cal = calFor(paper, name);
+            const cal = calFor(paper, name, sizeKey);
             if (cal) { sheets = pages.map(c => calibratedSheet(c, paper, cal, false)); margin = 'raw'; } else margin = 'auto';
           }
           const body = JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, fit: paper.receipt ? 'width' : undefined, margin: margin, marginMm: printPrefs.marginMm, pages: sheets.map(c => c.toDataURL('image/png')) });
@@ -21100,6 +21200,7 @@
         fillPrinterSelect();
         document.getElementById('printerPick').style.display = printSize ? '' : 'none';
         refreshPrinterHint();
+        try { refreshSecondPrinterUI(); } catch (e) { }
         if (helperOn) checkHelper(false);
         if (ready && printSize && printsLeft() < sheetsPerCopy(printSize)) printBtn.disabled = true;
         refreshPrintExtras();
@@ -21240,9 +21341,16 @@
         try { localStorage.setItem(CAL_KEY, JSON.stringify(o)); } catch (e) { }
       }
       // The calibration to use for this paper on this printer, or null (not in Calibrated mode, no numbers yet, not the laptop app).
-      function calFor(paper, name) {
-        if (!DESKTOP || !/Win/i.test(navigator.platform || '') || printPrefs.margin !== 'cal' || !paper || paper.receipt || !name || !printSize) return null;
-        return getCal(name, printSize);
+      function calFor(paper, name, sizeKey) {
+        const k = sizeKey || printSize;
+        if (!DESKTOP || !/Win/i.test(navigator.platform || '') || printPrefs.margin !== 'cal' || !paper || paper.receipt || !name || !k) return null;
+        return getCal(name, k);
+      }
+      // Which printer the calibration box is about: the one chosen for this paper, or (when sharing) the second one.
+      let calWhich = 'main';
+      function calPrinter() {
+        const s = calWhich === 'second' ? secondPrinter() : null;
+        return s && s.mode === 'share' ? s.name : printerFor(printSize);
       }
       // The page laid out on the sheet the printer gets: portrait, the picture fitted inside the part that prints. shade: grey bands for the lost edge (preview only).
       function calibratedSheet(src, paper, cal, shade) {
@@ -21309,7 +21417,7 @@
         return c;
       }
       async function printCalSheet() {
-        const name = printerFor(printSize), paper = printSize ? paperFor(printSize) : null;
+        const name = calPrinter(), paper = printSize ? paperFor(printSize) : null;
         if (!name || !paper || paper.receipt) { showToast('Choose the printer for this paper size first.', 3500); return; }
         const ok = await printViaHelper([calTestCanvas(paper)], paper, name, 'raw');
         if (ok) showToast('Calibration sheet sent to ' + name + '. Read the four numbers off the paper.', 5000);
@@ -21326,9 +21434,18 @@
         marginMmRow.hidden = cur !== 'safe';
         if (document.activeElement !== marginMm) marginMm.value = String(printPrefs.marginMm === undefined ? 3 : printPrefs.marginMm);
         marginHint.textContent = MARGIN_HINTS[cur];
-        const calBox = document.getElementById('calBox'), pname = printerFor(printSize), cal = pname ? getCal(pname, printSize) : null;
+        const calBox = document.getElementById('calBox');
         calBox.hidden = cur !== 'cal';
         if (cur === 'cal') {
+          const sec = secondPrinter(), tgt = document.getElementById('calTarget');
+          if (!(sec && sec.mode === 'share')) calWhich = 'main';
+          document.getElementById('calTargetRow').hidden = !(sec && sec.mode === 'share');
+          if (sec && sec.mode === 'share') {
+            tgt.innerHTML = '';
+            [['main', printerFor(printSize)], ['second', sec.name]].forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; tgt.appendChild(o); });
+            tgt.value = calWhich;
+          }
+          var pname = calPrinter(), cal = pname ? getCal(pname, printSize) : null;
           ['L', 'T', 'R', 'B'].forEach(k => { const el = document.getElementById('cal' + k); if (document.activeElement !== el) el.value = cal ? String(cal[k.toLowerCase()]) : ''; });
           document.getElementById('calStatus').textContent = !pname ? 'Choose the printer for this paper size first.'
             : cal ? 'Calibrated for ' + pname + ', ' + paperFor(printSize).name + '. The preview now shows the sheet as it prints; grey is the edge this printer cannot print.'
@@ -21336,8 +21453,9 @@
         }
       }
       document.getElementById('calPrintBtn').addEventListener('click', printCalSheet);
+      document.getElementById('calTarget').addEventListener('change', (e) => { calWhich = e.target.value === 'second' ? 'second' : 'main'; refreshMarginUI(); });
       ['L', 'T', 'R', 'B'].forEach(k => document.getElementById('cal' + k).addEventListener('input', () => {
-        const name = printerFor(printSize); if (!name) return;
+        const name = calPrinter(); if (!name) return;
         const v = ['L', 'T', 'R', 'B'].map(j => document.getElementById('cal' + j).value);
         if (v.some(x => x === '' || !isFinite(Number(x)))) return;            // wait until all four are filled in
         const n = v.map(x => Math.max(0, Math.min(15, Math.round(Number(x) * 2) / 2)));
@@ -22121,6 +22239,8 @@
           const pname = printerFor(printSize);
           if (helperOn && pname) {
             let sent = true;
+            const sec = secondPrinter();
+            const extraJob = sec && sec.mode === 'extra' ? printExtraSheet(sec) : null;       // e.g. a receipt strip on the second printer, at the same time
             if (flipbookResult && flipPrinterPool && flipPrinterPool !== pname && helper && Array.isArray(helper.printers) && helper.printers.indexOf(flipPrinterPool) >= 0) {
               const p1 = pname, p2 = flipPrinterPool;
               const p1Pages = [], p2Pages = [];
@@ -22140,14 +22260,16 @@
                 p2Pages.length ? printViaHelper(p2Pages, paper, p2) : Promise.resolve(true)
               ]);
               if (res1 && res2) {
+                if (extraJob) await extraJob;
                 showToast((auto === true ? 'Auto-printing (pooled): ' : 'Printing (pooled): ') + p1 + ' & ' + p2 + ' (' + label + ').');
                 armAutoPrintAfterFirst(auto === true);
                 return true;
               }
             }
-            for (let i = 0; i < all.length && sent; i += 20) sent = await printViaHelper(all.slice(i, i + 20), paper, pname);
+            sent = await printSheets(all, paper, pname);
+            if (extraJob) await extraJob;
             if (sent) {
-              showToast((auto === true ? 'Auto-printing on ' : 'Printing on ') + pname + ' (' + label + ').');
+              showToast((auto === true ? 'Auto-printing on ' : 'Printing on ') + pname + (sec ? ' & ' + sec.name : '') + ' (' + label + ').');
               armAutoPrintAfterFirst(auto === true);
               return true;
             }
@@ -24939,7 +25061,7 @@
           var all = []; for (var c = 0; c < n; c++) all.push.apply(all, pages);
           if (helperOn && pname) {
             var sent = true;
-            for (var i = 0; i < all.length && sent; i += 20) sent = await printViaHelper(all.slice(i, i + 20), paper, pname);
+            sent = await printSheets(all, paper, pname);
             if (sent) { showToast('Printing on ' + pname + ' (' + label + ').'); return { ok: true }; }
             if (DESKTOP) return { ok: false, error: 'The printer didn’t take the photo. Check it is on and try again.' };
           }

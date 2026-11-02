@@ -42,12 +42,16 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     private var isRunning = false
     private let serverQueue = DispatchQueue(label: "com.photobooth4u.cameraserver", qos: .userInitiated)
 
+    // PTP transaction ids for commands sent through requestSendPTPCommand
+    private var ptpTransactionId: UInt32 = 1
+    private let ptpTransactionLock = NSLock()
+
     override init() {
         super.init()
         browser.delegate = self
-        let mask: ICDeviceTypeMask = [.camera]
-        let locationMask: ICDeviceLocationTypeMask = [.local]
-        if let combined = ICDeviceTypeMask(rawValue: mask.rawValue | locationMask.rawValue) {
+        // ICDeviceTypeMask / browsedDeviceTypeMask only exist from iOS 15.2
+        if #available(iOS 15.2, *),
+           let combined = ICDeviceTypeMask(rawValue: ICDeviceTypeMask.camera.rawValue | ICDeviceLocationTypeMask.local.rawValue) {
             browser.browsedDeviceTypeMask = combined
         }
     }
@@ -57,6 +61,9 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
     func start() {
         guard !isRunning else { return }
         isRunning = true
+        // iPadOS asks the user once before an app may list and control USB cameras
+        browser.requestContentsAuthorization { _ in }
+        browser.requestControlAuthorization { _ in }
         browser.start()
         startHttpServer()
         print("[IccCameraHelper] Started camera helper & browser on 127.0.0.1:\(IccCameraHelper.port)")
@@ -77,7 +84,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         lock.lock()
         if !availableCameras.contains(where: { $0.uuidString == camera.uuidString }) {
             availableCameras.append(camera)
-            print("[IccCameraHelper] Discovered camera: \(camera.name ?? "Unknown") (\(camera.model ?? ""))")
+            print("[IccCameraHelper] Discovered camera: \(camera.name ?? "Unknown") (\(camera.productKind ?? ""))")
         }
         lock.unlock()
     }
@@ -105,7 +112,7 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             let isOpen = (activeCamera?.uuidString == cam.uuidString)
             list.append([
                 "name": cam.name ?? "USB Camera",
-                "model": cam.model ?? "",
+                "model": cam.productKind ?? "",
                 "vendor": inferVendorString(cam),
                 "open": isOpen
             ])
@@ -151,16 +158,13 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             throw CameraError(code: "ERROR", message: "Failed to open camera: \(err.localizedDescription)")
         }
 
-        // Enable tethering for live shooting
-        cam.requestEnableTethering()
-
         let vendor = inferVendorString(cam)
-        let batteryVal = cam.batteryLevelAvailable ? cam.batteryLevel : 100
+        let batteryVal = readBattery(cam)
         return [
             "ok": true,
             "name": cam.name ?? "Camera",
             "maker": vendor.capitalized,
-            "model": cam.model ?? "DSLR",
+            "model": cam.productKind ?? "DSLR",
             "vendor": vendor,
             "battery": batteryVal
         ]
@@ -175,10 +179,50 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         latestFrame = nil
 
         if let cam = activeCamera {
-            cam.requestDisableTethering()
             cam.requestCloseSession(options: nil) { _ in }
             activeCamera = nil
         }
+    }
+
+    // MARK: - PTP helpers
+    //
+    // iOS has no requestTakePicture / tethering / battery API (macOS only), so the camera
+    // is driven with raw PTP commands through requestSendPTPCommand instead.
+
+    private func ptpContainer(code: UInt16, params: [UInt32] = []) -> Data {
+        ptpTransactionLock.lock()
+        let tid = ptpTransactionId
+        ptpTransactionId &+= 1
+        ptpTransactionLock.unlock()
+
+        var data = Data()
+        func put<T: FixedWidthInteger>(_ value: T) {
+            var le = value.littleEndian
+            withUnsafeBytes(of: &le) { data.append(contentsOf: $0) }
+        }
+        put(UInt32(12 + params.count * 4)) // container length
+        put(UInt16(1))                     // PTP_USB_CONTAINER_COMMAND
+        put(code)
+        put(tid)
+        for p in params { put(p) }
+        return data
+    }
+
+    private func sendPTP(_ cam: ICCameraDevice, code: UInt16, params: [UInt32] = [],
+                         completion: @escaping (_ response: Data, _ data: Data, _ error: Error?) -> Void) {
+        cam.requestSendPTPCommand(ptpContainer(code: code, params: params), outData: nil, completion: completion)
+    }
+
+    /// GetDevicePropValue(BatteryLevel); falls back to 100 when the camera doesn't answer.
+    private func readBattery(_ cam: ICCameraDevice) -> Int {
+        let sema = DispatchSemaphore(value: 0)
+        var level = 100
+        sendPTP(cam, code: 0x1015, params: [0x5001]) { _, data, error in
+            if error == nil, let b = data.last, b <= 100 { level = Int(b) }
+            sema.signal()
+        }
+        _ = sema.wait(timeout: .now() + 2.0)
+        return level
     }
 
     private func setLiveView(enabled: Bool) {
@@ -215,21 +259,9 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         guard let cam = activeCamera, isLiveViewActive else { return }
 
         // Send PTP GetLiveViewImg command (0x9203 for Nikon, Canon CCAPI/PTP equivalent)
-        // Command container: length u32, type 1, code u16, tid u32
-        var cmd = Data()
-        var len: UInt32 = 12
-        var type: UInt16 = 1 // PTP_USB_CONTAINER_COMMAND
-        var code: UInt16 = 0x9203 // GetLiveViewImg
-        var tid: UInt32 = 1
-
-        cmd.append(Data(bytes: &len, count: 4))
-        cmd.append(Data(bytes: &type, count: 2))
-        cmd.append(Data(bytes: &code, count: 2))
-        cmd.append(Data(bytes: &tid, count: 4))
-
-        cam.requestSendPTPCommand(cmd, outData: nil) { [weak self] responseData, outData, error in
+        sendPTP(cam, code: 0x9203) { [weak self] _, data, error in
             guard let self = self, error == nil else { return }
-            if let jpeg = self.extractJpeg(from: responseData) {
+            if let jpeg = self.extractJpeg(from: data) {
                 self.lock.lock()
                 self.latestFrame = jpeg
                 self.lock.unlock()
@@ -273,11 +305,61 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
             }
         }
 
-        // Trigger physical shutter capture
-        cam.requestTakePicture()
+        // Trigger the shutter with PTP InitiateCapture (0x100E, any storage, any format).
+        // The new photo then arrives through cameraDevice(_:didAdd:) and is downloaded there.
+        sendPTP(cam, code: 0x100E, params: [0, 0]) { [weak self] _, _, error in
+            guard let self = self, let error = error else { return }
+            self.lock.lock()
+            let cb = self.pendingCaptureCompletion
+            self.pendingCaptureCompletion = nil
+            self.lock.unlock()
+            cb?(.failure(CameraError(code: "CAPTURE_FAILED", message: error.localizedDescription)))
+        }
+    }
+
+    // MARK: - ICDeviceDelegate
+
+    func device(_ device: ICDevice, didOpenSessionWithError error: Error?) {}
+
+    func device(_ device: ICDevice, didCloseSessionWithError error: Error?) {}
+
+    func didRemove(_ device: ICDevice) {
+        lock.lock()
+        availableCameras.removeAll(where: { $0.uuidString == device.uuidString })
+        if activeCamera?.uuidString == device.uuidString {
+            activeCamera = nil
+            isLiveViewActive = false
+        }
+        lock.unlock()
+    }
+
+    func deviceDidBecomeReady(_ device: ICDevice) {
+        print("[IccCameraHelper] Camera became ready: \(device.name ?? "")")
+    }
+
+    func device(_ device: ICDevice, didEncounterError error: Error?) {
+        print("[IccCameraHelper] Camera error: \(error?.localizedDescription ?? "unknown")")
     }
 
     // MARK: - ICCameraDeviceDelegate & ICCameraDeviceDownloadDelegate
+
+    func cameraDevice(_ camera: ICCameraDevice, didRemove items: [ICCameraItem]) {}
+
+    func cameraDevice(_ camera: ICCameraDevice, didReceiveThumbnail thumbnail: CGImage?, for item: ICCameraItem, error: Error?) {}
+
+    func cameraDevice(_ camera: ICCameraDevice, didReceiveMetadata metadata: [AnyHashable: Any]?, for item: ICCameraItem, error: Error?) {}
+
+    func cameraDevice(_ camera: ICCameraDevice, didRenameItems items: [ICCameraItem]) {}
+
+    func cameraDeviceDidChangeCapability(_ camera: ICCameraDevice) {}
+
+    func cameraDevice(_ camera: ICCameraDevice, didReceivePTPEvent eventData: Data) {}
+
+    func deviceDidBecomeReady(withCompleteContentCatalog device: ICCameraDevice) {}
+
+    func cameraDeviceDidRemoveAccessRestriction(_ device: ICDevice) {}
+
+    func cameraDeviceDidEnableAccessRestriction(_ device: ICDevice) {}
 
     func cameraDevice(_ camera: ICCameraDevice, didAdd items: [ICCameraItem]) {
         for item in items {
@@ -294,14 +376,14 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
                 file,
                 options: options,
                 downloadDelegate: self,
-                didDownloadSelector: #selector(didDownloadFile(file:error:options:contextInfo:)),
+                didDownloadSelector: #selector(didDownloadFile(_:error:options:contextInfo:)),
                 contextInfo: nil
             )
         }
     }
 
     @objc func didDownloadFile(
-        file: ICCameraFile,
+        _ file: ICCameraFile,
         error: Error?,
         options: [String: Any],
         contextInfo: UnsafeMutableRawPointer?
@@ -327,14 +409,6 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
         } else {
             cb?(.failure(CameraError(code: "EMPTY_DATA", message: "Downloaded file is empty or missing")))
         }
-    }
-
-    func cameraDeviceDidBecomeReady(_ camera: ICCameraDevice) {
-        print("[IccCameraHelper] Camera became ready: \(camera.name ?? "")")
-    }
-
-    func cameraDevice(_ camera: ICCameraDevice, didFailWithError error: Error) {
-        print("[IccCameraHelper] Camera error: \(error.localizedDescription)")
     }
 
     // MARK: - Lightweight POSIX HTTP Server (127.0.0.1:17321)
@@ -483,8 +557,9 @@ class IccCameraHelper: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate
 
         case ("GET", "/camera/battery"):
             lock.lock()
-            let b = (activeCamera?.batteryLevelAvailable == true) ? (activeCamera?.batteryLevel ?? 100) : 100
+            let cam = activeCamera
             lock.unlock()
+            let b = cam.map { readBattery($0) } ?? 100
             sendJson(clientSock, json: ["ok": true, "battery": b])
 
         case ("POST", "/camera/close"):

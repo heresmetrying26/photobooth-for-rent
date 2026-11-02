@@ -16,7 +16,7 @@ booth.html (WKWebView)
   │    │
   │    ├─ ImageCaptureCore (ICDeviceBrowser, ICCameraDevice)
   │    ├─ Native PTP Command Engine (requestSendPTPCommand)
-  │    ├─ Shutter Trigger (requestTakePicture)
+  │    ├─ Shutter Trigger (PTP InitiateCapture via requestSendPTPCommand)
   │    └─ Live View JPEG Extractor
   │         │
   │         ▼ USB-C Cable (Data)

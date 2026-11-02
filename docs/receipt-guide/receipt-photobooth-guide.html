@@ -1,1413 +1,941 @@
 <!doctype html>
 <html lang="en">
-
 <head>
-  <meta charset="utf-8">
-  <title>Receipt Photobooth & Unmanned Kiosk Setup Guide · photobooth4u</title>
-  <!--
-  Receipt Photobooth & Unmanned Kiosk Guide
-  Covers:
-  - Single-Port Samsung Tablet USB-C Hub Wiring (Power + DSLR + Printer)
-  - PayMongo Dynamic QR Ph (GCash/Maya) Automatic Push-Through Flow
-  - Thermal Receipt Printer Integration (80mm & 58mm Bluetooth/USB)
-  - Samsung Tablet Kiosk Lockdown (App Pinning, Keep Awake)
-  - Emergency Offline Voucher Fallback
+<meta charset="utf-8">
+<title>Samsung Tab 11 Photobooth Setup Guide · Canon &amp; PayMongo · photobooth4u</title>
+<!--
+  Tailored Photobooth Setup Guide:
+  - Tablet: Samsung Galaxy Tab 11" (Single USB-C Port)
+  - Cameras: Canon EOS M50, Canon EOS 1300D, Canon EOS 60D
+  - Printers: Canon Selphy CP1300 (Wi-Fi/Mopria) & DNP RX1HS (Laptop Print Station)
+  - Payment: PayMongo Dynamic QR Ph (GCash/Maya) 100% Automatic Push-Through
+  - Written in clear layman's terms with Tagalog operator callouts.
 -->
-  <style>
-    @font-face {
-      font-family: 'Fraunces';
-      src: url(../setup-guide/fonts/fraunces-latin-600-normal.woff2) format('woff2');
-      font-weight: 600;
-      font-style: normal
-    }
-
-    @font-face {
-      font-family: 'Fraunces';
-      src: url(../setup-guide/fonts/fraunces-latin-500-italic.woff2) format('woff2');
-      font-weight: 500;
-      font-style: italic
-    }
-
-    @font-face {
-      font-family: 'Fraunces';
-      src: url(../setup-guide/fonts/fraunces-latin-600-italic.woff2) format('woff2');
-      font-weight: 600;
-      font-style: italic
-    }
-
-    @font-face {
-      font-family: 'Manrope';
-      src: url(../setup-guide/fonts/manrope-latin-400-normal.woff2) format('woff2');
-      font-weight: 400
-    }
-
-    @font-face {
-      font-family: 'Manrope';
-      src: url(../setup-guide/fonts/manrope-latin-500-normal.woff2) format('woff2');
-      font-weight: 500
-    }
-
-    @font-face {
-      font-family: 'Manrope';
-      src: url(../setup-guide/fonts/manrope-latin-600-normal.woff2) format('woff2');
-      font-weight: 600
-    }
-
-    @font-face {
-      font-family: 'Manrope';
-      src: url(../setup-guide/fonts/manrope-latin-700-normal.woff2) format('woff2');
-      font-weight: 700
-    }
-
-    @font-face {
-      font-family: 'Manrope';
-      src: url(../setup-guide/fonts/manrope-latin-800-normal.woff2) format('woff2');
-      font-weight: 800
-    }
-
-    :root {
-      --cream: #f6f2ea;
-      --ink: #1a171c;
-      --body: #423d44;
-      --dim: #6e6670;
-      --red: #c83924;
-      --red-soft: #fbeee9;
-      --line: #e2dad0;
-      --card: #ffffff;
-      --purple: #583ca3;
-      --purple-bg: #ede7f7;
-      --green: #1b7358;
-      --green-bg: #e6f4ef;
-      --amber: #b86c12;
-      --amber-bg: #fef5e7;
-      --blue: #1d6fa5;
-      --blue-bg: #eaf3fa;
-      --mono: 'SF Mono', Consolas, Menlo, monospace;
-    }
-
-    @page {
-      size: A4;
-      margin: 0
-    }
-
-    * {
-      box-sizing: border-box
-    }
-
-    html,
-    body {
-      margin: 0;
-      padding: 0;
-      background: #fff
-    }
-
-    body {
-      font-family: 'Manrope', -apple-system, system-ui, sans-serif;
-      color: var(--body);
-      font-size: 11.8px;
-      line-height: 1.56;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-
-    b,
-    strong {
-      color: var(--ink);
-      font-weight: 700
-    }
-
-    h1,
-    h2,
-    h3,
-    h4 {
-      color: var(--ink);
-      font-family: 'Fraunces', Georgia, serif;
-      letter-spacing: -.02em
-    }
-
-    .page {
-      width: 210mm;
-      height: 297mm;
-      position: relative;
-      overflow: hidden;
-      padding: 50px 54px 44px;
-      background: #fff;
-      page-break-after: always;
-      break-after: page;
-    }
-
-    .page:last-child {
-      page-break-after: auto;
-      break-after: auto
-    }
-
-    .foot {
-      position: absolute;
-      left: 54px;
-      right: 54px;
-      bottom: 28px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 8.4px;
-      font-weight: 700;
-      letter-spacing: .18em;
-      color: var(--dim);
-      text-transform: uppercase;
-      border-top: 1px solid var(--line);
-      padding-top: 10px;
-    }
-
-    .foot span.brand-tag {
-      color: var(--ink);
-      font-weight: 800
-    }
-
-    .foot span.page-num {
-      color: var(--red);
-      font-weight: 800
-    }
-
-    /* Header & Badges */
-    .kicker {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 9px;
-      font-weight: 800;
-      letter-spacing: .18em;
-      text-transform: uppercase;
-      color: var(--red);
-      margin: 0 0 4px;
-    }
-
-    .kicker::before {
-      content: "";
-      display: inline-block;
-      width: 14px;
-      height: 2px;
-      background: currentColor;
-    }
-
-    h2.title {
-      font-size: 26px;
-      line-height: 1.15;
-      margin: 0 0 6px;
-    }
-
-    .lead {
-      font-size: 13px;
-      line-height: 1.55;
-      color: var(--dim);
-      margin: 0 0 16px;
-      max-width: 94%;
-    }
-
-    .pill {
-      display: inline-block;
-      font-size: 8px;
-      font-weight: 800;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      color: #fff;
-      border-radius: 999px;
-      padding: 3px 9px;
-      background: var(--ink);
-    }
-
-    .pill.red {
-      background: var(--red)
-    }
-
-    .pill.green {
-      background: var(--green)
-    }
-
-    .pill.purple {
-      background: var(--purple)
-    }
-
-    .pill.amber {
-      background: var(--amber)
-    }
-
-    .pill.blue {
-      background: var(--blue)
-    }
-
-    /* Cards and layout grids */
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px
-    }
-
-    .grid-3 {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 11px
-    }
-
-    .grid-70-30 {
-      display: grid;
-      grid-template-columns: 1.8fr 1fr;
-      gap: 14px
-    }
-
-    .grid-30-70 {
-      display: grid;
-      grid-template-columns: 1fr 1.8fr;
-      gap: 14px
-    }
-
-    .card {
-      border-radius: 12px;
-      padding: 14px 16px;
-      position: relative;
-    }
-
-    .card.line {
-      border: 1px solid var(--line);
-      background: #fff
-    }
-
-    .card.cream {
-      background: var(--cream);
-      border: 1px solid #ebd9c8
-    }
-
-    .card.purple {
-      background: var(--purple-bg);
-      border: 1px solid #dfd3f3
-    }
-
-    .card.green {
-      background: var(--green-bg);
-      border: 1px solid #cfebd9
-    }
-
-    .card.amber {
-      background: var(--amber-bg);
-      border: 1px solid #f6e2b8
-    }
-
-    .card.blue {
-      background: var(--blue-bg);
-      border: 1px solid #c9e0f3
-    }
-
-    .card.dark {
-      background: var(--ink);
-      color: #f3efe9;
-      border: 1px solid #332d36
-    }
-
-    .card.dark h3,
-    .card.dark h4,
-    .card.dark b {
-      color: #fff
-    }
-
-    .card h4 {
-      font-size: 14.5px;
-      margin: 0 0 6px;
-      line-height: 1.25
-    }
-
-    .card h5 {
-      font-size: 12px;
-      margin: 0 0 4px;
-      font-weight: 800;
-      color: var(--ink);
-      text-transform: uppercase;
-      letter-spacing: .05em
-    }
-
-    .card p {
-      margin: 0 0 6px;
-      font-size: 11.4px;
-      line-height: 1.52
-    }
-
-    .card p:last-child {
-      margin-bottom: 0
-    }
-
-    /* Steps list */
-    .steps {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      position: relative
-    }
-
-    .steps li {
-      position: relative;
-      padding: 0 0 12px 34px
-    }
-
-    .steps li::before {
-      content: '';
-      position: absolute;
-      left: 11px;
-      top: 22px;
-      bottom: -2px;
-      width: 1.5px;
-      background: #dfd6ca;
-    }
-
-    .steps li:last-child::before {
-      display: none
-    }
-
-    .steps .num {
-      position: absolute;
-      left: 0;
-      top: 1px;
-      width: 23px;
-      height: 23px;
-      border-radius: 50%;
-      background: var(--red);
-      color: #fff;
-      font-size: 10px;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .steps h4 {
-      font-size: 13.5px;
-      font-weight: 700;
-      margin: 0 0 2px;
-      color: var(--ink)
-    }
-
-    .steps p {
-      margin: 0;
-      font-size: 11.3px;
-      line-height: 1.5
-    }
-
-    /* Code & keyboard */
-    code {
-      font-family: var(--mono);
-      font-size: 10.2px;
-      background: #f1ece5;
-      border: 1px solid #e0d5c7;
-      border-radius: 4px;
-      padding: 1px 5px;
-      color: var(--ink);
-      font-weight: 600;
-    }
-
-    /* Bullet list with dots */
-    .dots {
-      list-style: none;
-      margin: 0;
-      padding: 0
-    }
-
-    .dots li {
-      position: relative;
-      padding-left: 16px;
-      margin: 0 0 6px;
-      font-size: 11.4px;
-      line-height: 1.5
-    }
-
-    .dots li:last-child {
-      margin-bottom: 0
-    }
-
-    .dots li::before {
-      content: '';
-      position: absolute;
-      left: 2px;
-      top: 7px;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--red);
-    }
-
-    /* Tagalog operator callouts */
-    .tagalog-box {
-      background: #fffaf3;
-      border-left: 3.5px solid var(--amber);
-      border-radius: 0 10px 10px 0;
-      padding: 10px 13px;
-      margin: 10px 0;
-      font-size: 11px;
-      line-height: 1.52;
-    }
-
-    .tagalog-box .tagalog-title {
-      font-weight: 800;
-      color: var(--amber);
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      font-size: 9.5px;
-      margin-bottom: 3px;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    /* Diagrams */
-    .diagram-wrap {
-      background: #faf7f2;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 12px 14px;
-      margin: 10px 0;
-    }
-
-    /* Tables */
-    table.guide-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 11px;
-      line-height: 1.45;
-    }
-
-    table.guide-table th {
-      background: #efe8de;
-      text-align: left;
-      padding: 7px 10px;
-      font-size: 8.6px;
-      letter-spacing: .14em;
-      text-transform: uppercase;
-      color: var(--ink);
-      border-bottom: 1.5px solid var(--ink);
-    }
-
-    table.guide-table td {
-      padding: 7px 10px;
-      border-bottom: 1px solid var(--line);
-      vertical-align: top;
-    }
-
-    table.guide-table tr:last-child td {
-      border-bottom: none
-    }
-
-    /* Flowchart Nodes */
-    .flow-container {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-      margin: 10px 0;
-    }
-
-    .flow-step {
-      flex: 1;
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 8px 8px;
-      text-align: center;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, .03);
-    }
-
-    .flow-step .f-icon {
-      font-size: 18px;
-      line-height: 1;
-      margin-bottom: 3px
-    }
-
-    .flow-step .f-title {
-      font-weight: 800;
-      font-size: 10.5px;
-      color: var(--ink);
-      margin-bottom: 2px
-    }
-
-    .flow-step .f-desc {
-      font-size: 9.5px;
-      color: var(--dim);
-      line-height: 1.3
-    }
-
-    .flow-arrow {
-      font-size: 16px;
-      color: var(--red);
-      font-weight: 800;
-      flex: none
-    }
-
-    /* Cover page specific */
-    .cover {
-      background: var(--cream);
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-
-    .cover-top {
-      padding: 48px 54px 0
-    }
-
-    .cover-brand {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      margin-bottom: 22px
-    }
-
-    .cover-brand .mark {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 3px;
-      width: 26px;
-      height: 26px
-    }
-
-    .cover-brand .mark i {
-      background: var(--ink);
-      border-radius: 3.5px
-    }
-
-    .cover-brand .mark i:nth-child(2) {
-      background: var(--red)
-    }
-
-    .cover-brand .name {
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--ink);
-      letter-spacing: -.03em
-    }
-
-    .cover-brand .badge {
-      background: var(--red);
-      color: #fff;
-      font-size: 9.5px;
-      font-weight: 800;
-      padding: 2px 6px;
-      border-radius: 5px;
-      transform: rotate(-6deg)
-    }
-
-    .cover h1 {
-      font-size: 46px;
-      line-height: 1.06;
-      letter-spacing: -.03em;
-      margin: 0 0 14px;
-    }
-
-    .cover h1 em {
-      font-style: italic;
-      font-weight: 500;
-      color: var(--red)
-    }
-
-    .cover .subtitle {
-      font-size: 14.5px;
-      line-height: 1.6;
-      color: var(--body);
-      max-width: 580px;
-      margin: 0 0 24px;
-    }
-
-    .cover-badge-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 24px
-    }
-
-    .hero-box {
-      background: #fff;
-      border: 1px solid #ded5c7;
-      border-radius: 16px;
-      padding: 16px 20px;
-      box-shadow: 0 12px 28px rgba(35, 25, 20, .06);
-      margin: 0 54px;
-    }
-
-    .hero-box h3 {
-      font-size: 17px;
-      margin: 0 0 8px;
-      color: var(--ink)
-    }
-
-    .hero-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-top: 8px
-    }
-
-    .hero-metric {
-      background: var(--cream);
-      border-radius: 10px;
-      padding: 10px 12px;
-      text-align: center
-    }
-
-    .hero-metric .val {
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--red);
-      line-height: 1.1
-    }
-
-    .hero-metric .lbl {
-      font-size: 9.5px;
-      font-weight: 700;
-      color: var(--dim);
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      margin-top: 3px
-    }
-
-    .cover-toc {
-      padding: 20px 54px 34px;
-      background: #fff;
-      border-top: 1px solid var(--line);
-    }
-
-    .cover-toc h4 {
-      font-size: 12px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: .12em;
-      color: var(--dim);
-      margin: 0 0 10px
-    }
-
-    .cover-toc-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px 28px;
-      list-style: none;
-      padding: 0;
-      margin: 0
-    }
-
-    .cover-toc-grid li {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 11.8px;
-      padding: 4px 0;
-      border-bottom: 1px dashed #e8e2d8
-    }
-
-    .cover-toc-grid li span.num {
-      font-weight: 800;
-      color: var(--red);
-      font-size: 10.5px
-    }
-
-    .cover-toc-grid li span.text {
-      font-weight: 600;
-      color: var(--ink);
-      flex: 1;
-      margin-left: 8px
-    }
-
-    .cover-toc-grid li span.page-ref {
-      font-size: 10px;
-      color: var(--dim);
-      font-weight: 700
-    }
-  </style>
+<style>
+@font-face{font-family:'Fraunces';src:url(../setup-guide/fonts/fraunces-latin-600-normal.woff2) format('woff2');font-weight:600;font-style:normal}
+@font-face{font-family:'Fraunces';src:url(../setup-guide/fonts/fraunces-latin-500-italic.woff2) format('woff2');font-weight:500;font-style:italic}
+@font-face{font-family:'Fraunces';src:url(../setup-guide/fonts/fraunces-latin-600-italic.woff2) format('woff2');font-weight:600;font-style:italic}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-400-normal.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-500-normal.woff2) format('woff2');font-weight:500}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-600-normal.woff2) format('woff2');font-weight:600}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-700-normal.woff2) format('woff2');font-weight:700}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-800-normal.woff2) format('woff2');font-weight:800}
+
+:root{
+  --cream:#f7f3ec;
+  --ink:#1a171c;
+  --body:#423d44;
+  --dim:#6e6670;
+  --red:#c83924;
+  --red-soft:#fbeee9;
+  --line:#e2dad0;
+  --card:#ffffff;
+  --purple:#583ca3;
+  --purple-bg:#ede7f7;
+  --green:#1b7358;
+  --green-bg:#e6f4ef;
+  --amber:#b86c12;
+  --amber-bg:#fef5e7;
+  --blue:#1d6fa5;
+  --blue-bg:#eaf3fa;
+  --mono:'SF Mono',Consolas,Menlo,monospace;
+}
+
+@page{size:A4; margin:0}
+*{box-sizing:border-box}
+html,body{margin:0; padding:0; background:#fff}
+body{
+  font-family:'Manrope',-apple-system,system-ui,sans-serif;
+  color:var(--body);
+  font-size:11.7px;
+  line-height:1.54;
+  -webkit-print-color-adjust:exact;
+  print-color-adjust:exact;
+}
+
+b,strong{color:var(--ink); font-weight:700}
+h1,h2,h3,h4{color:var(--ink); font-family:'Fraunces',Georgia,serif; letter-spacing:-.02em}
+
+.page{
+  width:210mm;
+  height:297mm;
+  position:relative;
+  overflow:hidden;
+  padding:48px 52px 42px;
+  background:#fff;
+  page-break-after:always;
+  break-after:page;
+}
+.page:last-child{page-break-after:auto; break-after:auto}
+
+.foot{
+  position:absolute;
+  left:52px;
+  right:52px;
+  bottom:26px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-size:8.4px;
+  font-weight:700;
+  letter-spacing:.18em;
+  color:var(--dim);
+  text-transform:uppercase;
+  border-top:1px solid var(--line);
+  padding-top:10px;
+}
+.foot span.brand-tag{color:var(--ink); font-weight:800}
+.foot span.page-num{color:var(--red); font-weight:800}
+
+/* Header & Badges */
+.kicker{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--red);
+  margin:0 0 4px;
+}
+.kicker::before{
+  content:"";
+  display:inline-block;
+  width:14px;
+  height:2px;
+  background:currentColor;
+}
+h2.title{
+  font-size:25px;
+  line-height:1.15;
+  margin:0 0 5px;
+}
+.lead{
+  font-size:12.8px;
+  line-height:1.52;
+  color:var(--dim);
+  margin:0 0 14px;
+  max-width:96%;
+}
+
+.pill{
+  display:inline-block;
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#fff;
+  border-radius:999px;
+  padding:3px 9px;
+  background:var(--ink);
+}
+.pill.red{background:var(--red)}
+.pill.green{background:var(--green)}
+.pill.purple{background:var(--purple)}
+.pill.amber{background:var(--amber)}
+.pill.blue{background:var(--blue)}
+
+/* Cards and layout grids */
+.grid-2{display:grid; grid-template-columns:1fr 1fr; gap:13px}
+.grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:11px}
+.grid-70-30{display:grid; grid-template-columns:1.8fr 1fr; gap:13px}
+.grid-30-70{display:grid; grid-template-columns:1fr 1.8fr; gap:13px}
+
+.card{
+  border-radius:12px;
+  padding:13px 15px;
+  position:relative;
+}
+.card.line{border:1px solid var(--line); background:#fff}
+.card.cream{background:var(--cream); border:1px solid #ebd9c8}
+.card.purple{background:var(--purple-bg); border:1px solid #dfd3f3}
+.card.green{background:var(--green-bg); border:1px solid #cfebd9}
+.card.amber{background:var(--amber-bg); border:1px solid #f6e2b8}
+.card.blue{background:var(--blue-bg); border:1px solid #c9e0f3}
+.card.dark{background:var(--ink); color:#f3efe9; border:1px solid #332d36}
+.card.dark h3, .card.dark h4, .card.dark b{color:#fff}
+
+.card h4{font-size:14px; margin:0 0 5px; line-height:1.25}
+.card h5{font-size:11.5px; margin:0 0 4px; font-weight:800; color:var(--ink); text-transform:uppercase; letter-spacing:.05em}
+.card p{margin:0 0 5px; font-size:11.2px; line-height:1.5}
+.card p:last-child{margin-bottom:0}
+
+/* Steps list */
+.steps{margin:0; padding:0; list-style:none; position:relative}
+.steps li{position:relative; padding:0 0 11px 32px}
+.steps li::before{
+  content:'';
+  position:absolute;
+  left:10px;
+  top:22px;
+  bottom:-2px;
+  width:1.5px;
+  background:#dfd6ca;
+}
+.steps li:last-child::before{display:none}
+.steps .num{
+  position:absolute;
+  left:0;
+  top:1px;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background:var(--red);
+  color:#fff;
+  font-size:9.5px;
+  font-weight:800;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.steps h4{font-size:13px; font-weight:700; margin:0 0 2px; color:var(--ink)}
+.steps p{margin:0; font-size:11.1px; line-height:1.48}
+
+/* Code & keyboard */
+code{
+  font-family:var(--mono);
+  font-size:10px;
+  background:#f1ece5;
+  border:1px solid #e0d5c7;
+  border-radius:4px;
+  padding:1px 5px;
+  color:var(--ink);
+  font-weight:600;
+}
+
+/* Bullet list with dots */
+.dots{list-style:none; margin:0; padding:0}
+.dots li{position:relative; padding-left:15px; margin:0 0 5px; font-size:11.2px; line-height:1.48}
+.dots li:last-child{margin-bottom:0}
+.dots li::before{
+  content:'';
+  position:absolute;
+  left:2px;
+  top:6px;
+  width:5.5px;
+  height:5.5px;
+  border-radius:50%;
+  background:var(--red);
+}
+
+/* Tagalog / Layman Callout Box */
+.tagalog-box{
+  background:#fffaf3;
+  border-left:3.5px solid var(--amber);
+  border-radius:0 10px 10px 0;
+  padding:9px 12px;
+  margin:9px 0;
+  font-size:11px;
+  line-height:1.5;
+}
+.tagalog-box .tagalog-title{
+  font-weight:800;
+  color:var(--amber);
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-size:9.2px;
+  margin-bottom:2px;
+  display:flex;
+  align-items:center;
+  gap:5px;
+}
+
+/* Diagrams */
+.diagram-wrap{
+  background:#faf7f2;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:11px 13px;
+  margin:9px 0;
+}
+
+/* Tables */
+table.guide-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:10.8px;
+  line-height:1.45;
+}
+table.guide-table th{
+  background:#efe8de;
+  text-align:left;
+  padding:6px 9px;
+  font-size:8.4px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--ink);
+  border-bottom:1.5px solid var(--ink);
+}
+table.guide-table td{
+  padding:6px 9px;
+  border-bottom:1px solid var(--line);
+  vertical-align:top;
+}
+table.guide-table tr:last-child td{border-bottom:none}
+
+/* Flowchart Nodes */
+.flow-container{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:5px;
+  margin:9px 0;
+}
+.flow-step{
+  flex:1;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:7px 7px;
+  text-align:center;
+  box-shadow:0 2px 5px rgba(0,0,0,.03);
+}
+.flow-step .f-icon{font-size:16px; line-height:1; margin-bottom:2px}
+.flow-step .f-title{font-weight:800; font-size:10.2px; color:var(--ink); margin-bottom:1px}
+.flow-step .f-desc{font-size:9.2px; color:var(--dim); line-height:1.28}
+.flow-arrow{font-size:15px; color:var(--red); font-weight:800; flex:none}
+
+/* Cover page specific */
+.cover{
+  background:var(--cream);
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+.cover-top{padding:44px 52px 0}
+.cover-brand{display:flex; align-items:center; gap:9px; margin-bottom:18px}
+.cover-brand .mark{display:grid; grid-template-columns:1fr 1fr; gap:3px; width:26px; height:26px}
+.cover-brand .mark i{background:var(--ink); border-radius:3.5px}
+.cover-brand .mark i:nth-child(2){background:var(--red)}
+.cover-brand .name{font-family:'Fraunces',Georgia,serif; font-size:22px; font-weight:700; color:var(--ink); letter-spacing:-.03em}
+.cover-brand .badge{background:var(--red); color:#fff; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:5px; transform:rotate(-6deg)}
+
+.cover h1{
+  font-size:42px;
+  line-height:1.06;
+  letter-spacing:-.03em;
+  margin:0 0 12px;
+}
+.cover h1 em{font-style:italic; font-weight:500; color:var(--red)}
+.cover .subtitle{
+  font-size:13.8px;
+  line-height:1.55;
+  color:var(--body);
+  max-width:610px;
+  margin:0 0 20px;
+}
+
+.cover-badge-row{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:20px}
+.gear-summary-box{
+  background:#fff;
+  border:1px solid #ded5c7;
+  border-radius:14px;
+  padding:15px 18px;
+  box-shadow:0 10px 24px rgba(35,25,20,.05);
+  margin:0 52px;
+}
+.gear-summary-box h3{font-size:16px; margin:0 0 8px; color:var(--ink)}
+.gear-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px}
+.gear-item{background:var(--cream); border-radius:9px; padding:9px 10px; border:1px solid #ebd9c8}
+.gear-item .tag{font-size:8.4px; font-weight:800; text-transform:uppercase; color:var(--red); letter-spacing:.08em}
+.gear-item .title{font-size:12px; font-weight:800; color:var(--ink); margin:2px 0 1px}
+.gear-item .desc{font-size:9.6px; color:var(--dim); line-height:1.3}
+
+.cover-toc{
+  padding:18px 52px 30px;
+  background:#fff;
+  border-top:1px solid var(--line);
+}
+.cover-toc h4{font-size:11.5px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:var(--dim); margin:0 0 8px}
+.cover-toc-grid{display:grid; grid-template-columns:1fr 1fr; gap:5px 26px; list-style:none; padding:0; margin:0}
+.cover-toc-grid li{display:flex; align-items:center; justify-content:space-between; font-size:11.4px; padding:3px 0; border-bottom:1px dashed #e8e2d8}
+.cover-toc-grid li span.num{font-weight:800; color:var(--red); font-size:10.2px}
+.cover-toc-grid li span.text{font-weight:600; color:var(--ink); flex:1; margin-left:7px}
+.cover-toc-grid li span.page-ref{font-size:9.8px; color:var(--dim); font-weight:700}
+</style>
 </head>
-
 <body>
 
-  <!-- ========================================================= -->
-  <!-- PAGE 1: COVER & SYSTEM OVERVIEW                           -->
-  <!-- ========================================================= -->
-  <section class="page cover">
-    <div class="cover-top">
-      <div class="cover-brand">
-        <div class="mark"><i></i><i></i><i></i><i></i></div>
-        <div class="name">photobooth<em>4u</em></div>
-        <div class="badge">OFFICIAL GUIDE</div>
+<!-- ========================================================= -->
+<!-- PAGE 1: COVER & YOUR SPECIFIC HARDWARE SUITE              -->
+<!-- ========================================================= -->
+<section class="page cover">
+  <div class="cover-top">
+    <div class="cover-brand">
+      <div class="mark"><i></i><i></i><i></i><i></i></div>
+      <div class="name">photobooth<em>4u</em></div>
+      <div class="badge">TAILORED OPERATOR GUIDE</div>
+    </div>
+    
+    <p class="kicker">Samsung Galaxy Tab 11" · Canon · DNP &amp; Selphy</p>
+    <h1>Samsung Tab 11<br><em>Photobooth Setup</em> Guide</h1>
+    <p class="subtitle">Customized manual for your exact gear: Samsung Galaxy Tab 11", Canon M50, 1300D &amp; 60D cameras, Canon Selphy CP1300 and DNP RX1HS printers, plus 100% automated PayMongo QR Ph push-through.</p>
+    
+    <div class="cover-badge-row">
+      <span class="pill red">Samsung Tab 11 (Single USB-C)</span>
+      <span class="pill blue">Canon M50 / 1300D / 60D</span>
+      <span class="pill green">Canon Selphy CP1300 (Wi-Fi)</span>
+      <span class="pill purple">DNP RX1HS (Print Station)</span>
+      <span class="pill amber">PayMongo QR Ph Automatic</span>
+    </div>
+  </div>
+
+  <!-- Specific Hardware Summary Box -->
+  <div class="gear-summary-box">
+    <h3>Your Equipment Compatibility Overview</h3>
+    <div class="gear-grid">
+      <div class="gear-item">
+        <div class="tag">Kiosk Tablet</div>
+        <div class="title">Samsung Tab 11"</div>
+        <div class="desc">Single USB-C port. Uses Powered PD Hub to charge while running.</div>
       </div>
-
-      <p class="kicker">Self-Service &amp; Pop-Up Photobooths</p>
-      <h1>Receipt Photobooth &amp;<br><em>Unmanned Kiosk</em> Guide</h1>
-      <p class="subtitle">Complete technical manual for setting up low-cost vintage thermal receipt printing,
-        single-port Samsung Android tablets, DSLR cameras, and 100% automated PayMongo QR Ph customer payments.</p>
-
-      <div class="cover-badge-row">
-        <span class="pill red">Samsung Galaxy Tab Setup</span>
-        <span class="pill green">PayMongo QR Ph Automation</span>
-        <span class="pill purple">58mm &amp; 80mm Thermal Printers</span>
-        <span class="pill blue">Canon / Nikon / Sony DSLR USB</span>
+      <div class="gear-item">
+        <div class="tag">Cameras</div>
+        <div class="title">Canon M50/1300D/60D</div>
+        <div class="desc">Direct USB connection with Live View &amp; real shutter sync.</div>
+      </div>
+      <div class="gear-item">
+        <div class="tag">Wi-Fi Printer</div>
+        <div class="title">Canon Selphy CP1300</div>
+        <div class="desc">Direct Wi-Fi / Mopria from tablet. Zero cables needed!</div>
+      </div>
+      <div class="gear-item">
+        <div class="tag">High-Speed Dye-Sub</div>
+        <div class="title">DNP RX1HS</div>
+        <div class="desc">Drives via Laptop Print Station bridge over Wi-Fi.</div>
       </div>
     </div>
+  </div>
 
-    <div class="hero-box">
-      <h3>Why Operators Love the Receipt Photobooth Model</h3>
-      <p style="font-size:11.6px; color:var(--dim); margin:0 0 10px">The receipt photobooth combines trendy
-        Korean/Japanese vintage monochrome aesthetic with near-zero operating costs. Ideal for unmanned mall pop-ups,
-        cafes, school fairs, and events.</p>
-      <div class="hero-grid">
-        <div class="hero-metric">
-          <div class="val">₱0.40</div>
-          <div class="lbl">Cost Per Print</div>
-        </div>
-        <div class="hero-metric">
-          <div class="val">2.5s</div>
-          <div class="lbl">Print &amp; Cut Speed</div>
-        </div>
-        <div class="hero-metric">
-          <div class="val">100%</div>
-          <div class="lbl">Zero Operator / Auto</div>
-        </div>
-        <div class="hero-metric">
-          <div class="val">₱50–₱100</div>
-          <div class="lbl">Avg Guest Fee (85%+ Margin)</div>
-        </div>
-      </div>
-    </div>
+  <div class="cover-toc">
+    <h4>Step-by-step contents of this guide</h4>
+    <ul class="cover-toc-grid">
+      <li><span class="num">01</span><span class="text">Samsung Tab 11 Single-Port USB-C Hub Wiring</span><span class="page-ref">Page 2</span></li>
+      <li><span class="num">02</span><span class="text">Power Delivery (PD): Keeping Tablet 100% All Day</span><span class="page-ref">Page 2</span></li>
+      <li><span class="num">03</span><span class="text">Canon M50, 1300D &amp; 60D Cables and Camera Settings</span><span class="page-ref">Page 3</span></li>
+      <li><span class="num">04</span><span class="text">Camera Live View Sync &amp; Dummy Battery Tips</span><span class="page-ref">Page 3</span></li>
+      <li><span class="num">05</span><span class="text">Canon Selphy CP1300 Direct Wi-Fi Printing</span><span class="page-ref">Page 4</span></li>
+      <li><span class="num">06</span><span class="text">DNP RX1HS Setup with Laptop Print Station Bridge</span><span class="page-ref">Page 4</span></li>
+      <li><span class="num">07</span><span class="text">PayMongo QR Ph Automatic Push-Through Flow</span><span class="page-ref">Page 5</span></li>
+      <li><span class="num">08</span><span class="text">Emergency Offline Cash &amp; Voucher Fallback</span><span class="page-ref">Page 5</span></li>
+      <li><span class="num">09</span><span class="text">Samsung Tab Kiosk Pinning &amp; Stay Awake Lock</span><span class="page-ref">Page 6</span></li>
+      <li><span class="num">10</span><span class="text">Pre-Event 8-Point Checklist &amp; Quick Troubleshooting</span><span class="page-ref">Page 6</span></li>
+    </ul>
+  </div>
 
-    <div class="cover-toc">
-      <h4>Contents of this setup guide</h4>
-      <ul class="cover-toc-grid">
-        <li><span class="num">01</span><span class="text">Single-Port Samsung Tablet Hardware Wiring</span><span
-            class="page-ref">Page 2</span></li>
-        <li><span class="num">02</span><span class="text">USB-C Powered Hub &amp; Continuous Power Delivery</span><span
-            class="page-ref">Page 2</span></li>
-        <li><span class="num">03</span><span class="text">Connecting DSLR Cameras &amp; Camera Settings</span><span
-            class="page-ref">Page 3</span></li>
-        <li><span class="num">04</span><span class="text">Thermal Receipt Printer Setup (Bluetooth &amp;
-            USB)</span><span class="page-ref">Page 3</span></li>
-        <li><span class="num">05</span><span class="text">PayMongo QR Ph Setup &amp; Automatic Push-Through</span><span
-            class="page-ref">Page 4</span></li>
-        <li><span class="num">06</span><span class="text">Step-by-Step Guest Automation Journey</span><span
-            class="page-ref">Page 4</span></li>
-        <li><span class="num">07</span><span class="text">Samsung Tablet Kiosk Lock &amp; Tamper-Proofing</span><span
-            class="page-ref">Page 5</span></li>
-        <li><span class="num">08</span><span class="text">Emergency Offline Cash &amp; Voucher Fallback</span><span
-            class="page-ref">Page 5</span></li>
-        <li><span class="num">09</span><span class="text">Event Day Checklist &amp; Troubleshooting Guide</span><span
-            class="page-ref">Page 6</span></li>
-        <li><span class="num">10</span><span class="text">Operator Support &amp; Recommended Gear Links</span><span
-            class="page-ref">Page 6</span></li>
+  <div class="foot">
+    <span class="brand-tag">photobooth4u · Customized Gear Guide</span>
+    <span>Model: Tab 11 · Canon · Selphy · DNP</span>
+    <span class="page-num">Page 1</span>
+  </div>
+</section>
+
+
+<!-- ========================================================= -->
+<!-- PAGE 2: HARDWARE WIRING & SINGLE USB-C PORT SOLUTION      -->
+<!-- ========================================================= -->
+<section class="page">
+  <p class="kicker">Part 01 · Layman Hardware Architecture</p>
+  <h2 class="title">Samsung Tab 11 Single-Port Wiring</h2>
+  <p class="lead"><b>Ang Problema:</b> Iisa lang ang USB-C port ng Samsung Tab 11. Kung isasaksak mo ang Canon camera nang direkta, hindi mo macha-charge ang tablet at mauubos ang battery sa kalagitnaan ng event.<br>
+  <b>Ang Solusyon:</b> Isang <b>USB-C Powered Hub na may Power Delivery (PD)</b>. Para itong extension cord na may hiwalay na charging port at USB data ports.</p>
+
+  <!-- Complete Visual Wiring Schematic -->
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 680 185" style="width:100%; height:auto; display:block;">
+      <!-- Wall Charger -->
+      <rect x="10" y="72" width="115" height="52" rx="8" fill="#1a171c" />
+      <text x="67" y="94" fill="#fff" font-family="'Manrope',sans-serif" font-weight="700" font-size="11" text-anchor="middle">Wall Charger</text>
+      <text x="67" y="108" fill="#fbd1cc" font-family="'Manrope',sans-serif" font-weight="600" font-size="9" text-anchor="middle">45W–65W USB-C PD</text>
+      <text x="67" y="118" fill="#aaa" font-family="'Manrope',sans-serif" font-weight="600" font-size="7.5" text-anchor="middle">(Samsung / Ugreen GaN)</text>
+
+      <!-- Cable 1: Power -->
+      <path d="M 125 98 L 185 98" stroke="#c83924" stroke-width="2.5" stroke-dasharray="4 2" fill="none" />
+      <text x="155" y="90" fill="#c83924" font-family="'Manrope',sans-serif" font-weight="800" font-size="8.5" text-anchor="middle">Power (PD)</text>
+
+      <!-- USB-C Hub Box -->
+      <rect x="185" y="45" width="160" height="106" rx="10" fill="#f7f3ec" stroke="#c83924" stroke-width="2" />
+      <text x="265" y="68" fill="#c83924" font-family="'Fraunces',Georgia,serif" font-weight="700" font-size="13.5" text-anchor="middle">USB-C Powered Hub</text>
+      <text x="265" y="86" fill="#1a171c" font-family="'Manrope',sans-serif" font-weight="700" font-size="9.5" text-anchor="middle">May "PD IN" Port (60W–100W)</text>
+      <text x="265" y="102" fill="#6e6670" font-family="'Manrope',sans-serif" font-weight="600" font-size="8.5" text-anchor="middle">Ugreen / Baseus / Anker</text>
+      <text x="265" y="122" fill="#1b7358" font-family="'Manrope',sans-serif" font-weight="800" font-size="9" text-anchor="middle">Sabay ang Charge + Camera Data</text>
+      <text x="265" y="136" fill="#b86c12" font-family="'Manrope',sans-serif" font-weight="700" font-size="8" text-anchor="middle">Huwag ordinaryong OTG dongle!</text>
+
+      <!-- Host Cable to Tablet -->
+      <path d="M 265 45 L 265 20 L 415 20 L 415 35" stroke="#1a171c" stroke-width="2.5" fill="none" />
+      <text x="340" y="14" fill="#1a171c" font-family="'Manrope',sans-serif" font-weight="800" font-size="8.5" text-anchor="middle">Hub Main Cable (USB-C)</text>
+
+      <!-- Samsung Tab 11 -->
+      <rect x="360" y="35" width="150" height="52" rx="8" fill="#1b7358" />
+      <text x="435" y="57" fill="#fff" font-family="'Manrope',sans-serif" font-weight="700" font-size="12" text-anchor="middle">Samsung Tab 11"</text>
+      <text x="435" y="72" fill="#d0f1e4" font-family="'Manrope',sans-serif" font-weight="600" font-size="9" text-anchor="middle">Charging 100% + Kiosk Screen</text>
+
+      <!-- Cable to Canon Camera -->
+      <path d="M 345 98 L 415 98 L 415 116" stroke="#1d6fa5" stroke-width="2.5" fill="none" />
+      <text x="380" y="92" fill="#1d6fa5" font-family="'Manrope',sans-serif" font-weight="800" font-size="8.5" text-anchor="middle">USB Cable</text>
+
+      <!-- Canon Camera Box -->
+      <rect x="360" y="116" width="150" height="52" rx="8" fill="#1d6fa5" />
+      <text x="435" y="137" fill="#fff" font-family="'Manrope',sans-serif" font-weight="700" font-size="11.5" text-anchor="middle">Canon M50 / 1300D / 60D</text>
+      <text x="435" y="152" fill="#d2e8f8" font-family="'Manrope',sans-serif" font-weight="600" font-size="8.5" text-anchor="middle">Live View + Real Shutter Sync</text>
+
+      <!-- Wi-Fi Output to Printers -->
+      <path d="M 510 55 L 545 55 L 545 42 L 565 42" stroke="#1b7358" stroke-width="2" stroke-dasharray="3 3" fill="none" />
+      <text x="538" y="34" fill="#1b7358" font-family="'Manrope',sans-serif" font-weight="800" font-size="7.5" text-anchor="middle">Wi-Fi</text>
+      <!-- Selphy Box -->
+      <rect x="565" y="20" width="105" height="46" rx="7" fill="#1b7358" />
+      <text x="617" y="40" fill="#fff" font-family="'Manrope',sans-serif" font-weight="700" font-size="10.5" text-anchor="middle">Selphy CP1300</text>
+      <text x="617" y="53" fill="#d0f1e4" font-family="'Manrope',sans-serif" font-weight="600" font-size="8" text-anchor="middle">Direct Wi-Fi / Mopria</text>
+
+      <!-- Wi-Fi Output to DNP Laptop -->
+      <path d="M 510 65 L 545 65 L 545 110 L 565 110" stroke="#583ca3" stroke-width="2" stroke-dasharray="3 3" fill="none" />
+      <text x="538" y="102" fill="#583ca3" font-family="'Manrope',sans-serif" font-weight="800" font-size="7.5" text-anchor="middle">Wi-Fi</text>
+      <!-- DNP Box -->
+      <rect x="565" y="88" width="105" height="52" rx="7" fill="#583ca3" />
+      <text x="617" y="108" fill="#fff" font-family="'Manrope',sans-serif" font-weight="700" font-size="10" text-anchor="middle">DNP RX1HS</text>
+      <text x="617" y="121" fill="#ede7f7" font-family="'Manrope',sans-serif" font-weight="600" font-size="8" text-anchor="middle">Laptop Print Station</text>
+      <text x="617" y="132" fill="#fff" font-family="'Manrope',sans-serif" font-weight="700" font-size="7.5" text-anchor="middle">12s High-Speed Prints</text>
+    </svg>
+  </div>
+
+  <div class="grid-2" style="margin-top:6px">
+    <div class="card cream">
+      <span class="pill red">Equipment #1</span>
+      <h4>Anong Klase ang USB-C Hub na Bibilhin?</h4>
+      <p>Huwag bibili ng simpleng ₱100 OTG dongle na may 1 USB port lang dahil hindi nito kayang mag-charge habang may nakasaksak na camera.</p>
+      <p><b>Hanapin sa Shopee / Lazada:</b></p>
+      <ul class="dots">
+        <li><b>Pangalan:</b> <i>"USB-C Hub Multiport Adapter with 100W PD (Power Delivery)"</i>.</li>
+        <li><b>Mga Port na Kailangan:</b>
+          <br>&bull; <b>1x USB-C PD IN port:</b> Dito isasaksak ang charger.
+          <br>&bull; <b>2x o 3x USB 3.0 Type-A ports:</b> Dito isasaksak ang camera USB cable.
+        </li>
+        <li><b>Subok na Brand:</b> <b>Ugreen 5-in-1 / 6-in-1</b>, <b>Baseus Metal Glam</b>, o <b>Anker 332</b> (presyo: humigit-kumulang ₱600–₱950).</li>
       </ul>
     </div>
 
-    <div class="foot">
-      <span class="brand-tag">photobooth4u · Receipt Photobooth Manual</span>
-      <span>Document Ref: PB4U-RECEIPT-2026-V1</span>
-      <span class="page-num">Page 1</span>
+    <div class="card cream">
+      <span class="pill green">Equipment #2</span>
+      <h4>Charger at Power Cord (45W–65W)</h4>
+      <p>Ang original na maliit na 15W charger ng phone ay masyadong mahina. Kinakain ng hub ang 5W–10W, kaya babagsak pa rin ang battery ng Samsung tablet.</p>
+      <p><b>Tamang Power Setup:</b></p>
+      <ul class="dots">
+        <li><b>Charger Adapter:</b> <b>45W o 65W GaN USB-C Charger</b> (tulad ng Samsung 45W Super Fast Charger, Ugreen 65W GaN, o Baseus 65W).</li>
+        <li><b>Cable:</b> 100W USB-C to USB-C cable (mas maganda kung 2 meters o 3 meters para madaling umabot sa extension cord ng venue).</li>
+        <li><b>Resulta:</b> Mananatiling <b>100% full battery</b> ang Samsung Tab 11 maghapon kahit naka-todo ang brightness ng screen at laging nakabukas ang Live View ng Canon!</li>
+      </ul>
     </div>
-  </section>
+  </div>
+
+  <!-- Tagalog Layman Callout -->
+  <div class="tagalog-box">
+    <div class="tagalog-title">💡 Layman's Summary (Paano Isaksak ang mga Kable)</div>
+    1. Isaksak ang 45W charger sa <b>PD port</b> ng USB-C Hub gamit ang Type-C cable.<br>
+    2. Isaksak ang main cable ng USB-C Hub sa <b>USB-C port ng Samsung Tab 11</b>. Mapapansin mong magsisimulang mag-charge ang tablet.<br>
+    3. Isaksak ang USB cable ng Canon camera sa <b>USB-A port ng Hub</b>. Handa na ang iyong hardware wiring!
+  </div>
+
+  <div class="foot">
+    <span class="brand-tag">photobooth4u · Customized Gear Guide</span>
+    <span>Part 01 · Tablet Hub &amp; Power Wiring</span>
+    <span class="page-num">Page 2</span>
+  </div>
+</section>
 
 
-  <!-- ========================================================= -->
-  <!-- PAGE 2: HARDWARE WIRING & SINGLE-PORT SAMSUNG TABLETS     -->
-  <!-- ========================================================= -->
-  <section class="page">
-    <p class="kicker">Part 01 · Hardware Architecture</p>
-    <h2 class="title">Single-Port Samsung Tablet Wiring</h2>
-    <p class="lead">Samsung Galaxy Tablets (Tab A9, A9+, S6 Lite, S7/S8/S9) only have <b>one USB-C port</b>. Here is how
-      you keep the tablet continuously charged while simultaneously connecting a DSLR camera and receipt printer.</p>
+<!-- ========================================================= -->
+<!-- PAGE 3: CANON CAMERAS (M50, 1300D, 60D) SETUP             -->
+<!-- ========================================================= -->
+<section class="page">
+  <p class="kicker">Part 02 · Canon Camera Integration</p>
+  <h2 class="title">Canon M50, 1300D &amp; 60D Settings</h2>
+  <p class="lead">Lahat ng tatlong camera mo ay <b>100% supported</b> ng photobooth4u gamit ang built-in USB driver ng app. Narito ang tamang kable at camera settings para sa bawat modelo.</p>
 
-    <!-- Visual Schematic Diagram -->
-    <div class="diagram-wrap">
-      <svg viewBox="0 0 680 180" style="width:100%; height:auto; display:block;">
-        <!-- Wall Charger -->
-        <rect x="10" y="70" width="105" height="50" rx="8" fill="#1a171c" />
-        <text x="62" y="93" fill="#fff" font-family="'Manrope',sans-serif" font-weight="700" font-size="11"
-          text-anchor="middle">Wall Charger</text>
-        <text x="62" y="108" fill="#fbd1cc" font-family="'Manrope',sans-serif" font-weight="600" font-size="9"
-          text-anchor="middle">45W–65W USB-C PD</text>
+  <!-- Table of Cameras -->
+  <table class="guide-table" style="margin-bottom:10px">
+    <tr>
+      <th style="width:24%">Camera Model</th>
+      <th style="width:26%">Kable na Kailangan</th>
+      <th style="width:26%">Mode Dial</th>
+      <th style="width:24%">Kritikal na Setting</th>
+    </tr>
+    <tr>
+      <td><b>Canon EOS M50</b><br><span style="font-size:9.5px; color:var(--dim)">(Mirrorless)</span></td>
+      <td><b>Micro-USB to USB-A</b><br><span style="font-size:9px; color:var(--dim)">(yung lumang Android cord)</span></td>
+      <td><b>P o M</b><br><span style="font-size:9px; color:var(--dim)">(Program / Manual)</span></td>
+      <td>Live View: <b>Enabled</b><br>Auto Power Off: <b>Disable</b><br>Quality: <b>JPEG (L/Fine)</b></td>
+    </tr>
+    <tr>
+      <td><b>Canon EOS 1300D</b><br><span style="font-size:9.5px; color:var(--dim)">(Rebel T6 DSLR)</span></td>
+      <td><b>Mini-USB to USB-A</b><br><span style="font-size:9px; color:var(--dim)">(medyo makapal na trapezoid)</span></td>
+      <td><b>P, Av, Tv, o M</b><br><span style="font-size:9px; color:var(--dim)">(Huwag Auto / Green box)</span></td>
+      <td>Live View Shoot: <b>Enable</b><br>Auto Power Off: <b>Disable</b><br>Quality: <b>JPEG (L)</b></td>
+    </tr>
+    <tr>
+      <td><b>Canon EOS 60D</b><br><span style="font-size:9.5px; color:var(--dim)">(Pro DSLR)</span></td>
+      <td><b>Mini-USB to USB-A</b><br><span style="font-size:9px; color:var(--dim)">(standard Canon DSLR cord)</span></td>
+      <td><b>P, Av, Tv, o M</b><br><span style="font-size:9px; color:var(--dim)">(Piliin ang P o M)</span></td>
+      <td>Live View func.: <b>Enable</b><br>Auto Power Off: <b>Disable</b><br>Quality: <b>JPEG (Fine)</b></td>
+    </tr>
+  </table>
 
-        <!-- Cable 1 -->
-        <path d="M 115 95 L 180 95" stroke="#c83924" stroke-width="2.5" stroke-dasharray="4 2" fill="none" />
-        <text x="147" y="87" fill="#c83924" font-family="'Manrope',sans-serif" font-weight="800" font-size="8"
-          text-anchor="middle">Power (PD)</text>
-
-        <!-- USB-C Hub Box -->
-        <rect x="180" y="45" width="165" height="100" rx="10" fill="#f6f2ea" stroke="#c83924" stroke-width="2" />
-        <text x="262" y="70" fill="#c83924" font-family="'Fraunces',Georgia,serif" font-weight="700" font-size="14"
-          text-anchor="middle">USB-C Powered Hub</text>
-        <text x="262" y="88" fill="#1a171c" font-family="'Manrope',sans-serif" font-weight="700" font-size="10"
-          text-anchor="middle">Must have PD Pass-Through</text>
-        <text x="262" y="104" fill="#6e6670" font-family="'Manrope',sans-serif" font-weight="600" font-size="8.5"
-          text-anchor="middle">(Ugreen / Baseus / Anker)</text>
-        <text x="262" y="126" fill="#1b7358" font-family="'Manrope',sans-serif" font-weight="800" font-size="9"
-          text-anchor="middle">Data + Power Simultaneous</text>
-
-        <!-- Cable to Tablet -->
-        <path d="M 262 45 L 262 20 L 400 20 L 400 35" stroke="#1a171c" stroke-width="2.5" fill="none" />
-        <text x="330" y="14" fill="#1a171c" font-family="'Manrope',sans-serif" font-weight="800" font-size="8"
-          text-anchor="middle">Hub Host Cable (USB-C)</text>
-
-        <!-- Samsung Tablet -->
-        <rect x="360" y="35" width="145" height="52" rx="8" fill="#1b7358" />
-        <text x="432" y="58" fill="#fff" font-family="'Manrope',sans-serif" font-weight="700" font-size="11.5"
-          text-anchor="middle">Samsung Galaxy Tab</text>
-        <text x="432" y="73" fill="#d0f1e4" font-family="'Manrope',sans-serif" font-weight="600" font-size="9"
-          text-anchor="middle">Charges + Runs Photobooth App</text>
-
-        <!-- Cable to DSLR -->
-        <path d="M 345 95 L 430 95 L 430 115" stroke="#1d6fa5" stroke-width="2.5" fill="none" />
-        <text x="390" y="90" fill="#1d6fa5" font-family="'Manrope',sans-serif" font-weight="800" font-size="8"
-          text-anchor="middle">USB Data</text>
-
-        <!-- DSLR Camera -->
-        <rect x="360" y="115" width="145" height="50" rx="8" fill="#1d6fa5" />
-        <text x="432" y="137" fill="#fff" font-family="'Manrope',sans-serif" font-weight="700" font-size="11"
-          text-anchor="middle">DSLR / Mirrorless</text>
-        <text x="432" y="152" fill="#d2e8f8" font-family="'Manrope',sans-serif" font-weight="600" font-size="8.5"
-          text-anchor="middle">Canon / Nikon / Sony via USB</text>
-
-        <!-- Bluetooth / USB to Thermal Printer -->
-        <path d="M 505 60 L 550 60 L 550 95 L 565 95" stroke="#b86c12" stroke-width="2" stroke-dasharray="3 3"
-          fill="none" />
-        <text x="535" y="52" fill="#b86c12" font-family="'Manrope',sans-serif" font-weight="800" font-size="8"
-          text-anchor="middle">Bluetooth / USB</text>
-
-        <!-- Receipt Printer -->
-        <rect x="565" y="70" width="105" height="55" rx="8" fill="#b86c12" />
-        <text x="617" y="92" fill="#fff" font-family="'Manrope',sans-serif" font-weight="700" font-size="11"
-          text-anchor="middle">Thermal Printer</text>
-        <text x="617" y="106" fill="#fdf0dd" font-family="'Manrope',sans-serif" font-weight="600" font-size="8.5"
-          text-anchor="middle">80mm / 58mm Roll</text>
-        <text x="617" y="118" fill="#fff" font-family="'Manrope',sans-serif" font-weight="800" font-size="8"
-          text-anchor="middle">Bluetooth or USB</text>
-      </svg>
-    </div>
-
-    <div class="grid-2">
-      <div class="card cream">
-        <span class="pill red">Crucial Component</span>
-        <h4>1. The USB-C Powered Hub with PD</h4>
-        <p>Do NOT buy an ordinary passive OTG dongle (the small ₱150 adapter with 1 USB port). An ordinary OTG cable
-          blocks charging—your tablet battery will drop to 0% after 2 to 3 hours of live booth operation.</p>
-        <p><b>Must-Have Specifications:</b></p>
-        <ul class="dots">
-          <li><b>USB-C Power Delivery (PD) In:</b> Must support <b>60W or 100W PD input</b>. You plug the wall charger
-            directly into this port.</li>
-          <li><b>USB 3.0 Type-A Ports (at least 2):</b> One connects to your DSLR camera cable; the second can connect a
-            USB receipt printer or USB flash drive.</li>
-          <li><b>Proven Brands:</b> Ugreen 5-in-1 / 6-in-1, Baseus Metal Glam, Anker 332 USB-C Hub.</li>
-        </ul>
-      </div>
-
-      <div class="card cream">
-        <span class="pill green">Power &amp; Cables</span>
-        <h4>2. Wall Charger &amp; Power Requirements</h4>
-        <p>A standard 10W or 15W phone charger is too weak. The hub itself consumes 5W–10W, leaving too little wattage
-          for the Samsung tablet.</p>
-        <p><b>Recommended Power Setup:</b></p>
-        <ul class="dots">
-          <li><b>Charger:</b> Use a <b>45W or 65W GaN USB-C PD Charger</b> (e.g. Samsung 45W Super Fast Charger, Ugreen
-            65W GaN, or Baseus 65W).</li>
-          <li><b>Cable:</b> 100W E-Marker USB-C to USB-C cable (minimum 2 meters) to reach the venue wall socket safely.
+  <div class="grid-2">
+    <div>
+      <div class="card line">
+        <span class="pill blue">Step-by-Step Connection</span>
+        <h4>Paano Ikabit sa Samsung Tab 11:</h4>
+        <ol class="steps" style="margin-top:6px">
+          <li>
+            <span class="num">1</span>
+            <h4>I-off Muna ang Camera</h4>
+            <p>Siguraduhing <b>OFF</b> ang Canon camera. Isaksak ang USB cable mula sa camera papunta sa USB-A port ng USB-C Hub.</p>
           </li>
-          <li><b>Result:</b> The tablet maintains <b>100% battery all day</b> even with the screen at max brightness and
-            DSLR live view active!</li>
+          <li>
+            <span class="num">2</span>
+            <h4>I-ON ang Camera</h4>
+            <p>I-switch sa <b>ON</b> ang camera. Biglang magpa-pop up ang mensahe sa screen ng Samsung Tab 11:</p>
+            <p style="background:#f1ece5; padding:5px 8px; border-radius:6px; font-weight:700; color:var(--ink); margin:3px 0 4px">
+              "Allow photobooth4u to access Canon Digital Camera?"
+            </p>
+            <p>Pindutin ang <b>Always Allow</b> o <b>OK</b>.</p>
+          </li>
+          <li>
+            <span class="num">3</span>
+            <h4>Piliin sa photobooth4u App</h4>
+            <p>Buksan ang booth &rarr; <b>Setup &rarr; 7 Session &rarr; Camera</b> &rarr; Piliin ang <i>"DSLR / Mirrorless over USB cable"</i>. Makikita mo agad ang live preview ng camera sa screen ng tablet!</p>
+          </li>
+        </ol>
+      </div>
+    </div>
+
+    <div>
+      <div class="card cream">
+        <span class="pill red">Napaka-Importanteng Paalala</span>
+        <h4>1. I-disable ang "Auto Power Off"</h4>
+        <p>Sa default settings ng Canon, kusang namamatay ang camera pagkatapos ng 1 o 2 minuto kapag walang pumipindot sa shutter. Kung mangyari ito sa event, mawawala ang live view sa tablet.</p>
+        <p><b>Solusyon:</b> Pindutin ang <code>MENU</code> sa Canon camera &rarr; pumunta sa dilaw na wrench/setup tab &rarr; hanapin ang <b>Auto Power Off</b> &rarr; i-set sa <b>"Disable" / "Off"</b>.</p>
+
+        <h4 style="margin-top:10px">2. Gumamit ng Dummy Battery (AC Coupler)</h4>
+        <p>Ang battery ng Canon M50 (LP-E12) at 1300D (LP-E10) ay tumatagal lang ng humigit-kumulang 1.5 oras kapag laging bukas ang Live View screen.</p>
+        <p><b>Rekomendasyon:</b> Bumili ng <b>"ACK-E10" (para sa 1300D)</b>, <b>"ACK-E12" (para sa M50)</b>, o <b>"ACK-E6" (para sa 60D)</b> Dummy Battery sa Shopee (₱400–₱600). Isinasaksak ito sa wall outlet para tuluy-tuloy ang kuryente ng camera maghapon nang hindi nagpapalit ng baterya!</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tagalog-box" style="margin-top:9px">
+    <div class="tagalog-title">📸 Paano ang Focus at Flash?</div>
+    I-set ang lens ng Canon sa <b>Auto Focus (AF)</b> sa simula para ma-focus ang mga bisita, pagkatapos ay i-switch ang lens sa <b>Manual Focus (MF)</b> kapag malinaw na ang imahe. Sa ganitong paraan, hindi na maghahunt ng focus ang camera bawat pose kaya mabilis ang kuha! Kung may external speedlight flash ka sa hot shoe ng camera, kusa itong puputok tuwing pipindutin ang countdown shutter.
+  </div>
+
+  <div class="foot">
+    <span class="brand-tag">photobooth4u · Customized Gear Guide</span>
+    <span>Part 02 · Canon M50, 1300D &amp; 60D Integration</span>
+    <span class="page-num">Page 3</span>
+  </div>
+</section>
+
+
+<!-- ========================================================= -->
+<!-- PAGE 4: PRINTER SETUP (CANON SELPHY CP1300 & DNP RX1HS)   -->
+<!-- ========================================================= -->
+<section class="page">
+  <p class="kicker">Part 03 · Printing Solutions</p>
+  <h2 class="title">Canon Selphy CP1300 &amp; DNP RX1HS</h2>
+  <p class="lead">Dalawa ang printer mo na may magkaibang paraan ng pagkakabit. Ang <b>Canon Selphy CP1300</b> ay wireless (Wi-Fi), habang ang <b>DNP RX1HS</b> naman ay heavy-duty USB printer na gumagamit ng <i>Laptop Print Station</i>.</p>
+
+  <div class="grid-2">
+    <!-- Canon Selphy CP1300 Column -->
+    <div>
+      <div class="card line">
+        <span class="pill green">Printer #1 · Wireless</span>
+        <h4>Canon Selphy CP1300 (Wi-Fi)</h4>
+        <p><b>Kagandahan:</b> Walang kable! Nakakakonekta ang Samsung Tab 11 sa Selphy CP1300 gamit ang Wi-Fi o Mopria print service.</p>
+
+        <h5 style="margin-top:8px">Paano Ikonekta:</h5>
+        <ol class="steps" style="margin-top:4px">
+          <li>
+            <span class="num">1</span>
+            <h4>I-install ang Mopria o Canon Service</h4>
+            <p>Sa Samsung Tab 11, buksan ang Google Play Store. I-download ang <b>"Mopria Print Service"</b> o <b>"Canon Print Service"</b> at i-enable ito sa Android settings.</p>
+          </li>
+          <li>
+            <span class="num">2</span>
+            <h4>Parehong Wi-Fi Network</h4>
+            <p>Ikonekta ang Samsung Tab 11 at ang Canon Selphy CP1300 sa <b>parehong Pocket Wi-Fi o Phone Hotspot</b>. (Pwede rin ang Direct Wi-Fi connection ng Selphy kung walang internet sa venue).</p>
+          </li>
+          <li>
+            <span class="num">3</span>
+            <h4>I-set sa photobooth4u</h4>
+            <p>Sa app, pindutin ang <b>Printer (ibabang kaliwa)</b> &rarr; Piliin ang <b>Postcard (4x6)</b> o <b>Strip (2x6)</b> &rarr; tap <b>Test Print</b>. Piliin ang Canon Selphy CP1300 sa print sheet. I-on ang <b>"Print automatically after each session"</b>.</p>
+          </li>
+        </ol>
+        <p style="font-size:10.5px; color:var(--dim); margin-top:4px"><i>Speed: ~45 seconds per postcard print. Tamang-tama para sa intimate parties at birthday rentals!</i></p>
+      </div>
+    </div>
+
+    <!-- DNP RX1HS Column -->
+    <div>
+      <div class="card line">
+        <span class="pill purple">Printer #2 · Heavy-Duty</span>
+        <h4>DNP RX1HS (Via Laptop Bridge)</h4>
+        <p><b>Bakit kailangan ng Laptop?</b> Walang Android driver ang DNP RX1HS kahit saang tablet sa buong mundo (Windows at Mac lang ang may driver nito).</p>
+
+        <h5 style="margin-top:8px">Madaling Solusyon (Laptop Print Station):</h5>
+        <ol class="steps" style="margin-top:4px">
+          <li>
+            <span class="num">1</span>
+            <h4>Isaksak ang DNP sa Laptop</h4>
+            <p>Isaksak ang USB cable ng DNP RX1HS sa isang Windows laptop. Siguraduhing installed ang DNP driver at nakakapag-print ng test page ang laptop.</p>
+          </li>
+          <li>
+            <span class="num">2</span>
+            <h4>Buksan ang Print Helper sa Laptop</h4>
+            <p>Sa laptop, i-download at buksan ang <b>photobooth4u Print Helper</b> at pumunta sa web page: <code>photobooth4u.netlify.app/print-station/</code>. Piliin ang DNP RX1HS.</p>
+          </li>
+          <li>
+            <span class="num">3</span>
+            <h4>I-link ang Samsung Tab 11</h4>
+            <p>Sa Samsung Tab 11: Pumunta sa <b>Printer &rarr; Send prints to &rarr; Laptop Print Station</b>. Kusang makikita ng tablet ang laptop sa parehong Wi-Fi.</p>
+          </li>
+        </ol>
+        <p style="font-size:10.5px; color:var(--purple); margin-top:4px"><b>12 seconds lang per print!</b> Kusang ipapadala ng tablet ang picture sa laptop at magpi-print ang DNP nang tahimik na walang pop-up.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comparison & Pro-Tip Table -->
+  <table class="guide-table" style="margin-top:10px">
+    <tr>
+      <th style="width:20%">Printer</th>
+      <th style="width:25%">Kailan Gagamitin?</th>
+      <th style="width:25%">Print Speed</th>
+      <th style="width:30%">Recommended Paper Size</th>
+    </tr>
+    <tr>
+      <td><b>Canon Selphy CP1300</b></td>
+      <td>Minimalist setups, portable kiosks, walang dalang laptop sa event.</td>
+      <td>~45–47 segundo bawat print</td>
+      <td><b>4x6 Postcard (KP-108IN / RP-108)</b> o 2x6 Photo Strips (cut sa gitna).</td>
+    </tr>
+    <tr>
+      <td><b>DNP RX1HS</b></td>
+      <td>Malalaking kasal, debut, corporate events na may 150+ na bisita.</td>
+      <td><b>12–14 segundo</b> (Napakabilis!)</td>
+      <td><b>4x6 Postcard</b> o <b>2x6 Cut Strips</b> (kusang puputulin ng DNP auto-cutter).</td>
+    </tr>
+  </table>
+
+  <div class="tagalog-box" style="margin-top:9px">
+    <div class="tagalog-title">💡 Paano kung Receipt Printer (58mm/80mm) ang gamit mo?</div>
+    Kung gagamit ka naman ng thermal receipt printer (tulad ng Xprinter XP-80C) para sa trendy vintage black &amp; white receipt booths: <b>i-on lang ang Bluetooth ng printer at i-pair sa Samsung Tab 11</b>. Direkta itong magpi-print sa loob ng 2.5 segundo nang hindi nangangailangan ng laptop!
+  </div>
+
+  <div class="foot">
+    <span class="brand-tag">photobooth4u · Customized Gear Guide</span>
+    <span>Part 03 · Printing with Selphy &amp; DNP</span>
+    <span class="page-num">Page 4</span>
+  </div>
+</section>
+
+
+<!-- ========================================================= -->
+<!-- PAGE 5: PAYMONGO QR PH AUTOMATIC PUSH-THROUGH FLOW        -->
+<!-- ========================================================= -->
+<section class="page">
+  <p class="kicker">Part 04 · 100% Unattended Automation</p>
+  <h2 class="title">PayMongo QR Ph Automatic Flow</h2>
+  <p class="lead">Sagot sa tanong ng kliyente: <b>"Automatic po ba? Once paid na si client ay mag push thru na si photobooth?"</b> &rarr; <b>OPO, 100% AUTOMATIC!</b> Walang kailangang bantay o pipindutin ang operator. Pagka-bayad sa GCash o Maya, kusang magsisimula ang picture-taking at printing!</p>
+
+  <!-- Complete Layman Flowchart -->
+  <div class="flow-container">
+    <div class="flow-step">
+      <div class="f-icon">👋</div>
+      <div class="f-title">1. Welcome Screen</div>
+      <div class="f-desc">"I-tap para mag-picture · ₱50"</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step">
+      <div class="f-icon">📱</div>
+      <div class="f-title">2. Dynamic QR Ph</div>
+      <div class="f-desc">Scan via GCash, Maya, ShopeePay</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step" style="border-color:var(--green); background:#f4fbf7">
+      <div class="f-icon">⚡</div>
+      <div class="f-title" style="color:var(--green)">3. Push-Thru (&lt;1.5s)</div>
+      <div class="f-desc">PayMongo confirms payment agad!</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step">
+      <div class="f-icon">📸</div>
+      <div class="f-title">4. Canon Shutter</div>
+      <div class="f-desc">3, 2, 1 countdown + DSLR snap</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step" style="border-color:var(--amber); background:#fffdf8">
+      <div class="f-icon">🖨️</div>
+      <div class="f-title" style="color:var(--amber)">5. Auto Print &amp; QR</div>
+      <div class="f-desc">Kusang lalabas ang print + phone QR</div>
+    </div>
+  </div>
+
+  <div class="grid-70-30" style="margin-top:10px">
+    <div>
+      <div class="card line">
+        <span class="pill green">Simpleng Setup Guide</span>
+        <h4>Paano Ikabit ang PayMongo sa photobooth4u:</h4>
+        
+        <ol class="steps" style="margin-top:6px">
+          <li>
+            <span class="num">1</span>
+            <h4>Kuhanin ang Public Key sa PayMongo</h4>
+            <p>Mag-log in sa iyong <b>PayMongo Dashboard</b> (<code>paymongo.com</code>). Sa bandang kaliwa, pindutin ang <b>Developers &rarr; API Keys</b>. Kopyahin ang iyong <b>Public Key</b> (nagsisimula sa <code>pk_live_...</code>).</p>
+          </li>
+          <li>
+            <span class="num">2</span>
+            <h4>I-paste sa photobooth4u Setup</h4>
+            <p>Sa tablet, buksan ang photobooth4u &rarr; <b>Setup &rarr; 7 Session &rarr; Guest payment</b>. I-toggle sa <b>ON</b> ang <i>"Enable Pay with QR Ph (PayMongo)"</i>. I-paste ang iyong Public Key.</p>
+          </li>
+          <li>
+            <span class="num">3</span>
+            <h4>I-set ang Presyo at Bilang ng Print</h4>
+            <p>Ilagay ang presyo ng bawat session (halimbawa: <code>50</code> para sa ₱50, o <code>100</code> para sa ₱100). Piliin kung ilang kopya ng print ang kasama (hal. 1 o 2 prints). Pindutin ang <b>Save</b>.</p>
+          </li>
+          <li>
+            <span class="num">4</span>
+            <h4>I-on ang "Automatic start upon payment"</h4>
+            <p>I-check ang option na <b>Automatic start upon payment</b>. Sa ilalim ng Printer settings, i-on din ang <b>Print automatically</b>. Ngayon, 100% self-service na ang iyong booth!</p>
+          </li>
+        </ol>
+      </div>
+    </div>
+
+    <div>
+      <div class="card dark">
+        <span class="pill red">Diretso sa Bangko Mo</span>
+        <h4>Payouts &amp; E-Wallets</h4>
+        <p style="font-size:10.8px; color:#d8d2da">Lahat ng ibinayad ng mga bisita sa QR Ph ay pumapasok sa iyong PayMongo balance at kusang idinedeposito sa iyong rehistradong <b>BDO, BPI, UnionBank, Metrobank</b> o <b>GCash/Maya</b> account linggo-linggo.</p>
+        
+        <h5 style="margin-top:10px; color:#fff">Tinatanggap na Bayad:</h5>
+        <ul class="dots" style="color:#d8d2da">
+          <li><b>GCash</b> (Scan QR Ph)</li>
+          <li><b>Maya</b> (Scan QR Ph)</li>
+          <li><b>ShopeePay &amp; GrabPay</b></li>
+          <li><b>Lahat ng QR Ph banking apps</b></li>
         </ul>
       </div>
-    </div>
 
-    <!-- Tagalog Operator Callout -->
-    <div class="tagalog-box">
-      <div class="tagalog-title">💡 Paalala sa Samsung Tablet USB Connections (Sagot sa Tanong ng Kliyente)</div>
-      Dahil iisa lang ang USB-C port ng Samsung tablet, <b>USB-C Hub na may "Power Delivery (PD)" port ang solusyon</b>.
-      Isaksak ang 45W/65W charger sa PD port ng Hub, ang DSLR camera sa USB-A port ng Hub, at ang thermal receipt
-      printer naman ay ikonekta via <b>Bluetooth (wireless)</b> para walang kalat na kable sa booth!
-    </div>
-
-    <div class="card line" style="margin-top:8px">
-      <h5 style="color:var(--ink)">Dye-Sub Photo Printers vs. Thermal Receipt Printers</h5>
-      <p style="margin:0 0 6px"><b>Thermal Receipt Printers (XP-80C, TM-T82X, Rongta):</b> Work 100% natively on Android
-        tablets via Bluetooth or USB. Zero computer needed!</p>
-      <p style="margin:0"><b>Dye-Sub Printers (DNP DS620, HiTi P525L, Citizen):</b> Dye-sub photo printers require
-        Windows/Mac raster drivers. If you want to use dye-sub prints alongside a tablet, run our <b>Laptop Print
-          Station</b> over Wi-Fi (the tablet sends the photo wirelessly to the laptop print queue). For receipt booths,
-        a thermal printer is direct and laptop-free.</p>
-    </div>
-
-    <div class="foot">
-      <span class="brand-tag">photobooth4u · Receipt Photobooth Manual</span>
-      <span>Part 01 · Tablet Hardware Wiring</span>
-      <span class="page-num">Page 2</span>
-    </div>
-  </section>
-
-
-  <!-- ========================================================= -->
-  <!-- PAGE 3: CAMERA CONNECTIONS & THERMAL PRINTER SETUP        -->
-  <!-- ========================================================= -->
-  <section class="page">
-    <p class="kicker">Part 02 · Devices &amp; Imaging</p>
-    <h2 class="title">Camera &amp; Thermal Printer Setup</h2>
-    <p class="lead">How to configure your camera for crisp shots and calibrate your thermal receipt printer for sharp,
-      high-contrast black &amp; white photo strips with zero ink.</p>
-
-    <div class="grid-2">
-      <!-- Camera Section -->
-      <div>
-        <div class="card line">
-          <span class="pill blue">Camera Options</span>
-          <h4>Connecting Your DSLR / Mirrorless</h4>
-          <p>The Android photobooth4u app features a built-in USB PTP camera driver that connects directly to Canon,
-            Nikon, and Sony cameras.</p>
-
-          <ol class="steps" style="margin-top:10px">
-            <li>
-              <span class="num">1</span>
-              <h4>Connect USB Cable</h4>
-              <p>Plug the camera USB cable into the USB-C Hub. Turn the camera ON. Android will show a prompt: <i>"Open
-                  photobooth4u to access camera?"</i> &rarr; Tap <b>Always Allow / OK</b>.</p>
-            </li>
-            <li>
-              <span class="num">2</span>
-              <h4>Set Camera Settings</h4>
-              <p><b>Canon EOS:</b> Mode dial to <b>P, Av, Tv, or M</b>. Enable "Live View shoot". Set Auto Power Off to
-                "Disable". Quality: <b>JPEG (Fine/Normal)</b>.<br>
-                <b>Sony Alpha:</b> Menu &rarr; USB Connection &rarr; <b>PC Remote</b>. USB LUN Setting: Multi.<br>
-                <b>Nikon:</b> USB mode to <b>PTP / MTP</b>. Mode dial to M or Auto.
-              </p>
-            </li>
-            <li>
-              <span class="num">3</span>
-              <h4>Select in App</h4>
-              <p>In photobooth4u, open <b>Setup &rarr; Session &rarr; Camera</b> and select <i>"DSLR / Mirrorless over
-                  USB cable"</i>. The live preview will appear on the tablet screen instantly.</p>
-            </li>
-          </ol>
-        </div>
-
-        <div class="card cream" style="margin-top:10px">
-          <h5>Budget Option: Tablet Front Camera</h5>
-          <p>You don't even need a DSLR! The Samsung Tab front-facing camera with our built-in <b>Screen Flash</b>
-            feature creates a clean, authentic retro selfie experience with zero extra cables.</p>
-        </div>
-      </div>
-
-      <!-- Thermal Printer Section -->
-      <div>
-        <div class="card line">
-          <span class="pill amber">Receipt Hardware</span>
-          <h4>Thermal Printer Integration</h4>
-          <p>Thermal printers use heat-sensitive paper roll—no ink, ribbons, or cartridges. They are immune to smudging
-            and print in under 3 seconds.</p>
-
-          <table class="guide-table" style="margin:10px 0">
-            <tr>
-              <th>Spec</th>
-              <th>80mm Roll (Recommended)</th>
-              <th>58mm Roll</th>
-            </tr>
-            <tr>
-              <td><b>Paper Width</b></td>
-              <td>3.12 inches (wider photos)</td>
-              <td>2.28 inches (pocket size)</td>
-            </tr>
-            <tr>
-              <td><b>Cutter</b></td>
-              <td>Automatic motorized cut</td>
-              <td>Manual tear-off bar</td>
-            </tr>
-            <tr>
-              <td><b>Popular Models</b></td>
-              <td>Xprinter XP-80C / XP-N160II, Epson TM-T82X, Rongta RP326</td>
-              <td>Xprinter XP-58, GOOJPRT POS-5802, Milestone</td>
-            </tr>
-            <tr>
-              <td><b>Connection</b></td>
-              <td>Bluetooth or USB</td>
-              <td>Bluetooth or USB</td>
-            </tr>
-          </table>
-
-          <h5 style="margin-top:10px">Pairing via Bluetooth on Android:</h5>
-          <ol class="steps" style="margin-top:8px">
-            <li>
-              <span class="num">1</span>
-              <h4>Pair in Android Settings</h4>
-              <p>Turn printer ON. Android <b>Settings &rarr; Connected devices &rarr; Bluetooth &rarr; Pair new
-                  device</b>. Tap your printer name (e.g. <code>XP-80C</code>, <code>POS-80</code>). PIN is usually
-                <code>0000</code> or <code>1234</code>.</p>
-            </li>
-            <li>
-              <span class="num">2</span>
-              <h4>Select in photobooth4u</h4>
-              <p>Go to <b>Print Settings &rarr; Receipt 80mm (or 58mm)</b>. Toggle <b>Bluetooth thermal receipt printer
-                  &rarr; Connect</b>.</p>
-            </li>
-            <li>
-              <span class="num">3</span>
-              <h4>Halftone &amp; Dithering</h4>
-              <p>photobooth4u automatically applies Floyd-Steinberg dithering so portraits and QR codes print sharp
-                without blurry grey blocks.</p>
-            </li>
-          </ol>
-        </div>
+      <div class="card amber" style="margin-top:9px">
+        <h5 style="color:var(--amber)">Emergency Offline Vouchers</h5>
+        <p style="margin:0; font-size:10.5px">Kung mawalan man ng internet sa venue, may built-in <b>Offline Voucher Mode</b> ang app. Pwedeng mag-abot ng cash ang guest sa cashier at bibigyan sila ng 8-digit ticket mula sa <code>/pay/tickets.html</code> para i-type sa screen!</p>
       </div>
     </div>
+  </div>
 
-    <div class="tagalog-box" style="margin-top:12px">
-      <div class="tagalog-title">📌 Tip sa Thermal Paper Roll</div>
-      Bumili ng <b>"BPA-Free High Density Thermal Paper"</b> sa Shopee/Lazada (karaniwang ₱25–₱35 per roll ng 80x80mm).
-      Ang isang roll ay nakakapag-print ng mahigit <b>150 hanggang 200 photo strips</b>! Ibig sabihin, wala pang
-      <b>₱0.40</b> ang puhunan mo bawat print ng bisita.
+  <div class="tagalog-box" style="margin-top:10px">
+    <div class="tagalog-title">💬 Eksaktong Isasagot sa Kliyente:</div>
+    <i>"Opo ma'am/sir! 100% Automatic po ang push-through. Pagka-scan at pagka-bayad ni client sa kanyang GCash o Maya, marereceive agad ito ng PayMongo at sa loob ng 1 to 2 seconds, kusang magsisimula ang countdown 3-2-1, puputok ang Canon camera, at kusang magpi-print sa printer. Kahit iwanan ninyo po ang tablet booth na walang tao o bantay, tuluy-tuloy itong kikita sa event o tindahan!"</i>
+  </div>
+
+  <div class="foot">
+    <span class="brand-tag">photobooth4u · Customized Gear Guide</span>
+    <span>Part 04 · PayMongo QR Ph Automation</span>
+    <span class="page-num">Page 5</span>
+  </div>
+</section>
+
+
+<!-- ========================================================= -->
+<!-- PAGE 6: KIOSK LOCKDOWN, CHECKLIST & TROUBLESHOOTING       -->
+<!-- ========================================================= -->
+<section class="page">
+  <p class="kicker">Part 05 · Security &amp; Event Day Operations</p>
+  <h2 class="title">Tablet Lockdown &amp; Checklist</h2>
+  <p class="lead">Paano i-lock ang Samsung Tab 11 para hindi mapindot ng makukulit na bisita ang YouTube o settings, kasama ang mabilisang solusyon sa mga karaniwang problema sa event.</p>
+
+  <div class="grid-2">
+    <div class="card line">
+      <span class="pill red">Security</span>
+      <h4>1. I-lock ang Tablet (Kiosk Mode)</h4>
+      <p><b>A. photobooth4u PIN Lock:</b> Pumunta sa <b>Setup &rarr; 7 Session &rarr; Lock Booth</b>. Mag-set ng 4-digit PIN (hal. <code>1234</code>). Mawawala ang Setup button sa screen para puro camera session lang ang makikita ng guests.</p>
+      <p><b>B. Samsung Android App Pinning:</b> Buksan ang <b>Settings &rarr; Security and privacy &rarr; More security settings &rarr; App Pinning &rarr; ON</b>. Buksan ang photobooth4u &rarr; i-tap ang Recent Apps &rarr; i-tap ang logo ng app sa itaas &rarr; pindutin ang <b>"Pin this app"</b>. <i>Madi-disable ang Home, Back, at Notification bar!</i></p>
+      <p><b>C. Screen Stay Awake:</b> Sa Developer Options, i-on ang <b>"Stay awake while charging"</b> para hindi mag-sleep ang tablet.</p>
     </div>
 
-    <div class="foot">
-      <span class="brand-tag">photobooth4u · Receipt Photobooth Manual</span>
-      <span>Part 02 · Camera &amp; Thermal Printing</span>
-      <span class="page-num">Page 3</span>
+    <div class="card green">
+      <span class="pill green">Checklist</span>
+      <h4>2. Pre-Event 8-Point Quick Checklist</h4>
+      <ul class="dots">
+        <li><b>Charger:</b> 45W+ charger nakasaksak sa PD port ng Hub ("Fast charging").</li>
+        <li><b>Canon Camera:</b> Mode dial naka-P/M; Auto Power Off ay <b>Disabled</b>.</li>
+        <li><b>Focus:</b> Auto-focus sa simula, pagkatapos ay i-switch ang lens sa <b>MF</b>.</li>
+        <li><b>Printer Link:</b> Selphy CP1300 naka-Wi-Fi o DNP RX1HS naka-Print Station.</li>
+        <li><b>Test Print:</b> Nagawa ang 1 test print at maayos ang kulay at alignment.</li>
+        <li><b>PayMongo Active:</b> Naka-live mode at gumagana ang QR Ph payment.</li>
+        <li><b>Backup Vouchers:</b> May nakaimprentang voucher tickets kung sakaling magka-aberya ang signal.</li>
+        <li><b>Tablet Lock:</b> Naka-App Pinning ang Samsung Tab 11.</li>
+      </ul>
     </div>
-  </section>
+  </div>
 
+  <!-- Troubleshooting Table -->
+  <table class="guide-table" style="margin-top:10px">
+    <tr>
+      <th style="width:26%">Problema</th>
+      <th style="width:34%">Dahilan</th>
+      <th style="width:40%">Madaling Solusyon</th>
+    </tr>
+    <tr>
+      <td><b>Bumababa ang battery ng Samsung tablet</b></td>
+      <td>Mahina ang charger (hal. 10W phone charger lang ang gamit).</td>
+      <td>Gumamit ng <b>45W o 65W GaN USB-C PD Charger</b>. Isaksak sa tamang PD-IN port ng USB-C Hub.</td>
+    </tr>
+    <tr>
+      <td><b>Namamatay ang Live View ng Canon pagkalipas ng 2 minuto</b></td>
+      <td>Naka-on ang "Auto Power Off" ng Canon camera.</td>
+      <td>Sa Camera Menu: i-set ang <b>Auto Power Off &rarr; Disable / Off</b>. Gumamit ng Dummy Battery (AC Coupler) sa outlet.</td>
+    </tr>
+    <tr>
+      <td><b>Hindi lumalabas ang Canon Camera sa tablet</b></td>
+      <td>Hindi napindot ang USB permission popup sa Android.</td>
+      <td>I-unplug at isaksak muli ang camera USB cord. Pag lumabas ang popup sa tablet, i-check ang <b>"Always allow"</b> at tap <b>OK</b>.</td>
+    </tr>
+    <tr>
+      <td><b>Hindi nagpi-print ang Selphy CP1300</b></td>
+      <td>Magkaiba ng Wi-Fi connection ang tablet at ang printer.</td>
+      <td>Siguraduhing parehong nakakonekta ang Samsung Tab 11 at ang Selphy sa <b>parehong Pocket Wi-Fi o Hotspot</b>.</td>
+    </tr>
+    <tr>
+      <td><b>Hindi nagpi-print ang DNP RX1HS</b></td>
+      <td>Hindi bukas ang Print Helper o Print Station sa laptop.</td>
+      <td>Buksan ang <code>photobooth4u.netlify.app/print-station/</code> sa laptop at i-check kung "Connected" ang Print Helper.</td>
+    </tr>
+    <tr>
+      <td><b>Walang lumalabas na PayMongo QR Code</b></td>
+      <td>Nawalan ng internet data ang tablet sa venue.</td>
+      <td>I-connect ang tablet sa cellphone hotspot, o gamitin pansamantala ang <b>Offline Voucher tickets</b>.</td>
+    </tr>
+  </table>
 
-  <!-- ========================================================= -->
-  <!-- PAGE 4: PAYMONGO QR PH AUTOMATIC PUSH-THROUGH FLOW        -->
-  <!-- ========================================================= -->
-  <section class="page">
-    <p class="kicker">Part 03 · Payment Automation</p>
-    <h2 class="title">PayMongo QR Ph Automatic Flow</h2>
-    <p class="lead">The core question operators ask: <b>"Automatic po ba? Once paid na si client ay mag push thru na si
-        receipt photobooth?"</b> &rarr; <b>YES! It is 100% automated.</b> The kiosk detects payment in under 2 seconds
-      and starts the session without touching anything.</p>
-
-    <!-- Flowchart Diagram -->
-    <div class="flow-container">
-      <div class="flow-step">
-        <div class="f-icon">👋</div>
-        <div class="f-title">1. Attract Screen</div>
-        <div class="f-desc">Shows "Tap to start · ₱50 for photo strip"</div>
-      </div>
-      <div class="flow-arrow">&rarr;</div>
-      <div class="flow-step">
-        <div class="f-icon">📱</div>
-        <div class="f-title">2. Dynamic QR Ph</div>
-        <div class="f-desc">Guest scans with GCash, Maya, ShopeePay</div>
-      </div>
-      <div class="flow-arrow">&rarr;</div>
-      <div class="flow-step" style="border-color:var(--green); background:#f4fbf7">
-        <div class="f-icon">⚡</div>
-        <div class="f-title" style="color:var(--green)">3. Instant Push-Thru</div>
-        <div class="f-desc">PayMongo confirms payment in &lt;1.5s</div>
-      </div>
-      <div class="flow-arrow">&rarr;</div>
-      <div class="flow-step">
-        <div class="f-icon">📸</div>
-        <div class="f-title">4. Photo Capture</div>
-        <div class="f-desc">Countdown 3, 2, 1 with live view &amp; flash</div>
-      </div>
-      <div class="flow-arrow">&rarr;</div>
-      <div class="flow-step" style="border-color:var(--amber); background:#fffdf8">
-        <div class="f-icon">🖨️</div>
-        <div class="f-title" style="color:var(--amber)">5. Auto Print &amp; Cut</div>
-        <div class="f-desc">Instant thermal receipt + digital download QR</div>
-      </div>
+  <!-- Support Footer Banner -->
+  <div class="card dark" style="margin-top:10px; display:flex; align-items:center; justify-content:space-between; padding:12px 16px">
+    <div>
+      <h3 style="margin:0 0 2px; font-size:15px; color:#fff">Kailangan mo ng Tulong habang nasa Event?</h3>
+      <p style="margin:0; font-size:11px; color:#cfc8d2">Mabilis kaming sumasagot sa aming Facebook Messenger engineering support.</p>
     </div>
-
-    <div class="grid-70-30" style="margin-top:14px">
-      <div>
-        <div class="card line">
-          <span class="pill green">Step-by-Step Setup</span>
-          <h4>Connecting Your PayMongo Account in photobooth4u</h4>
-
-          <ol class="steps" style="margin-top:8px">
-            <li>
-              <span class="num">1</span>
-              <h4>Get Your PayMongo API Keys</h4>
-              <p>Log in to your <b>PayMongo Dashboard</b> (<code>paymongo.com</code>). In the left sidebar, navigate to
-                <b>Developers &rarr; API Keys</b>. Copy your <b>Public Key</b> (starts with <code>pk_live_...</code>).
-              </p>
-            </li>
-            <li>
-              <span class="num">2</span>
-              <h4>Paste Key into photobooth4u</h4>
-              <p>In the booth, open <b>Setup &rarr; 7 Session &rarr; Guest Payment</b>. Toggle <b>"Enable Pay with QR Ph
-                  (PayMongo)"</b> to ON. Paste your Public Key into the API Key field.</p>
-            </li>
-            <li>
-              <span class="num">3</span>
-              <h4>Set Session Price &amp; Included Prints</h4>
-              <p>Enter your desired price (e.g., <code>50</code> for ₱50.00). Specify how many printed receipt strips
-                are included per session (usually 1 or 2 strips). Tap <b>Save</b>.</p>
-            </li>
-            <li>
-              <span class="num">4</span>
-              <h4>Enable Auto-Start &amp; Auto-Print</h4>
-              <p>Under Session settings, turn ON <b>"Automatic start upon payment confirmation"</b> and in Printer
-                settings turn ON <b>"Print automatically after each session"</b>.</p>
-            </li>
-          </ol>
-        </div>
-      </div>
-
-      <div>
-        <div class="card dark">
-          <span class="pill red">PayMongo Perks</span>
-          <h4>Direct Bank Payouts</h4>
-          <p style="font-size:11px; color:#d8d2da">With PayMongo, all customer payments go straight into your registered
-            Philippine bank account (BDO, BPI, UnionBank, Metrobank) or GCash/Maya business account on PayMongo's
-            standard weekly payout schedule.</p>
-
-          <h5 style="margin-top:12px; color:#fff">Compatible E-Wallets:</h5>
-          <ul class="dots" style="color:#d8d2da">
-            <li><b>GCash</b> (Scan QR)</li>
-            <li><b>Maya</b> (Scan QR)</li>
-            <li><b>ShopeePay</b></li>
-            <li><b>GrabPay</b></li>
-            <li><b>All BDO, BPI, UnionBank</b> QR Ph mobile apps</li>
-          </ul>
-        </div>
-
-        <div class="card green" style="margin-top:10px">
-          <h5 style="color:var(--green)">Zero Card Reader Needed</h5>
-          <p style="margin:0; font-size:10.8px">No bulky POS terminals or expensive merchant card readers. The tablet
-            screen displays the QR Ph code dynamically for every customer!</p>
-        </div>
-      </div>
+    <div style="background:var(--red); color:#fff; font-weight:800; font-size:11px; border-radius:999px; padding:8px 16px; white-space:nowrap">
+      m.me/roktetnachi
     </div>
+  </div>
 
-    <div class="tagalog-box" style="margin-top:12px">
-      <div class="tagalog-title">💬 Sagot sa Kliyente: Automatic po ba ang Push Through?</div>
-      <b>Opo, 100% Automatic!</b> Pagka-scan at pagka-bayad ng customer sa kanyang GCash o Maya app, magpapadala agad
-      ang PayMongo ng webhook signal sa tablet sa loob ng 1 hanggang 2 segundo. Tutunog ang kiosk ng <i>"Payment
-        Received!"</i>, kusang magsisimula ang countdown 3-2-1, kukuha ng litrato, at kusang magpi-print ang resibo nang
-      hindi na kailangan pindutin ng operator. Pwedeng iwanan ang booth na unattended sa mga cafe o events!
-    </div>
-
-    <div class="foot">
-      <span class="brand-tag">photobooth4u · Receipt Photobooth Manual</span>
-      <span>Part 03 · PayMongo QR Ph Automation</span>
-      <span class="page-num">Page 4</span>
-    </div>
-  </section>
-
-
-  <!-- ========================================================= -->
-  <!-- PAGE 5: KIOSK LOCKDOWN & OFFLINE VOUCHER BACKUP           -->
-  <!-- ========================================================= -->
-  <section class="page">
-    <p class="kicker">Part 04 · Kiosk Security &amp; Fail-Safes</p>
-    <h2 class="title">Tablet Lockdown &amp; Offline Vouchers</h2>
-    <p class="lead">How to lock down the Samsung tablet so guests cannot tamper with settings, and how to accept cash
-      payments seamlessly using offline voucher tickets if venue internet fails.</p>
-
-    <div class="grid-2">
-      <!-- Lockdown Column -->
-      <div>
-        <div class="card line">
-          <span class="pill red">Tamper-Proof Kiosk</span>
-          <h4>Locking the Samsung Tablet</h4>
-          <p>In an unattended or self-service receipt booth, guests and curious kids might swipe to exit or change
-            settings. Use this two-layer lock:</p>
-
-          <ol class="steps" style="margin-top:8px">
-            <li>
-              <span class="num">1</span>
-              <h4>photobooth4u PIN Lock</h4>
-              <p>Go to <b>Setup &rarr; 7 Session &rarr; Lock Booth</b>. Set a secret 4-digit PIN (e.g.
-                <code>2468</code>). The Setup button disappears, leaving only the guest interface. To re-enter Setup,
-                tap the secret lock icon in the upper right corner and enter your PIN.</p>
-            </li>
-            <li>
-              <span class="num">2</span>
-              <h4>Android App Pinning (Kiosk Mode)</h4>
-              <p>On the Samsung tablet, open <b>Settings &rarr; Security and privacy &rarr; More security settings
-                  &rarr; App Pinning &rarr; ON</b>. Check <i>"Ask for PIN before unpinning"</i>.<br>
-                Open photobooth4u &rarr; tap Recent Apps &rarr; tap the photobooth4u circular icon &rarr; tap <b>Pin
-                  this app</b>.<br>
-                <i>The Home, Back, and Notification bars are completely disabled!</i>
-              </p>
-            </li>
-            <li>
-              <span class="num">3</span>
-              <h4>Keep Screen Awake While Charging</h4>
-              <p><b>Settings &rarr; About tablet &rarr; tap "Build number" 7 times</b> to unlock Developer options. Go
-                to <b>Settings &rarr; Developer options &rarr; Stay awake</b> (Screen will never sleep while charging).
-                Kiosk stays awake 24/7.</p>
-            </li>
-          </ol>
-        </div>
-      </div>
-
-      <!-- Voucher / Offline Backup -->
-      <div>
-        <div class="card line">
-          <span class="pill amber">Emergency Fallback</span>
-          <h4>Offline Cash &amp; Voucher Tickets</h4>
-          <p>If venue Wi-Fi drops or mobile cellular signal in a basement mall is dead, PayMongo QR cannot generate.
-            photobooth4u includes a <b>100% Offline Voucher Engine</b> as an emergency backup.</p>
-
-          <ol class="steps" style="margin-top:8px">
-            <li>
-              <span class="num">1</span>
-              <h4>Generate Vouchers in Advance</h4>
-              <p>In <b>Setup &rarr; 7 Session &rarr; Guest payment</b>, tap <b>Generate Voucher Codes</b> (e.g. 50 or
-                100 codes). Each code is an 8-digit unique token (e.g. <code>4821 9302</code>).</p>
-            </li>
-            <li>
-              <span class="num">2</span>
-              <h4>Print Voucher Tickets Sheet</h4>
-              <p>Tap <b>Print tickets</b> (or open <code>/pay/tickets.html</code>). It prints an A4 sheet with 10
-                perforated ticket slips with event name, price, and code ready to cut.</p>
-            </li>
-            <li>
-              <span class="num">3</span>
-              <h4>Cash Transaction at Counter</h4>
-              <p>Guests pay cash (₱50 or ₱100) to the cafe barista or event coordinator &rarr; they hand the guest a
-                physical voucher ticket.</p>
-            </li>
-            <li>
-              <span class="num">4</span>
-              <h4>Guest Redeems on Tablet</h4>
-              <p>Guest taps the kiosk screen &rarr; taps <b>"I have a voucher"</b> &rarr; enters their 8-digit code. The
-                booth validates locally without internet and triggers the session immediately!</p>
-            </li>
-          </ol>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid-3" style="margin-top:14px">
-      <div class="card cream">
-        <h5>Single-Use Protection</h5>
-        <p style="font-size:10.8px; margin:0">Each voucher code expires immediately after one use. It cannot be shared
-          or reused by other guests.</p>
-      </div>
-      <div class="card cream">
-        <h5>Zero Internet Required</h5>
-        <p style="font-size:10.8px; margin:0">The voucher database is stored securely in the tablet's local storage.
-          Works even in airplane mode.</p>
-      </div>
-      <div class="card cream">
-        <h5>Mixed Payment Allowed</h5>
-        <p style="font-size:10.8px; margin:0">You can have BOTH PayMongo QR and Voucher mode active at the same time on
-          the welcome screen.</p>
-      </div>
-    </div>
-
-    <div class="tagalog-box" style="margin-top:12px">
-      <div class="tagalog-title">💡 Pro-Tip para sa Unmanned Booths</div>
-      Kung ilalagay mo ang booth sa isang cafe o milk tea shop, pwede kang makipag-partner sa may-ari: ibigay ang
-      voucher tickets sa kanilang kahera. Sila ang tatanggap ng cash sa POS nila, at maghahati kayo sa kita bawat buwan
-      (revenue share)!
-    </div>
-
-    <div class="foot">
-      <span class="brand-tag">photobooth4u · Receipt Photobooth Manual</span>
-      <span>Part 04 · Kiosk Lockdown &amp; Vouchers</span>
-      <span class="page-num">Page 5</span>
-    </div>
-  </section>
-
-
-  <!-- ========================================================= -->
-  <!-- PAGE 6: EVENT DAY CHECKLIST & TROUBLESHOOTING             -->
-  <!-- ========================================================= -->
-  <section class="page">
-    <p class="kicker">Part 05 · Operations &amp; Support</p>
-    <h2 class="title">Event Checklist &amp; Troubleshooting</h2>
-    <p class="lead">Keep this quick reference guide handy during setup and live hours to instantly diagnose and resolve
-      common hardware, payment, or printing issues.</p>
-
-    <!-- Troubleshooting Table -->
-    <table class="guide-table">
-      <tr>
-        <th style="width:28%">Issue / Symptom</th>
-        <th style="width:36%">Probable Cause</th>
-        <th style="width:36%">Immediate Fix</th>
-      </tr>
-      <tr>
-        <td><b>Tablet battery draining while plugged into hub</b></td>
-        <td>Charger wattage is too low, or non-PD USB-C hub being used.</td>
-        <td>Upgrade wall charger to at least <b>45W or 65W GaN USB-C PD</b>. Verify hub has a dedicated PD-IN port. Do
-          not use 10W phone bricks.</td>
-      </tr>
-      <tr>
-        <td><b>DSLR camera turns off after a few minutes</b></td>
-        <td>Camera power saving / Auto Power Off timeout engaged.</td>
-        <td>In DSLR settings, set <b>Auto Power Off &rarr; Disable / Off</b>. Use a dummy AC battery coupler for all-day
-          continuous power.</td>
-      </tr>
-      <tr>
-        <td><b>Thermal printout is too faint or blurry</b></td>
-        <td>Low print head density or low-quality thin paper roll.</td>
-        <td>In photobooth4u Print Settings, increase <b>Thermal Contrast / Darkness</b>. Always use premium high-density
-          BPA-free thermal rolls.</td>
-      </tr>
-      <tr>
-        <td><b>PayMongo QR Ph code does not generate</b></td>
-        <td>Internet disconnected or incorrect Public Key entered.</td>
-        <td>Check Wi-Fi / hotspot connection. Re-check API key starts with <code>pk_live_</code>. Fallback to <b>Voucher
-            Mode</b> immediately.</td>
-      </tr>
-      <tr>
-        <td><b>Receipt printer prints blank paper</b></td>
-        <td>Thermal paper roll installed upside-down.</td>
-        <td>Thermal paper is single-sided heat-sensitive. Flip the roll over so the smooth coated side feeds toward the
-          thermal print head.</td>
-      </tr>
-      <tr>
-        <td><b>Bluetooth printer disconnects intermittently</b></td>
-        <td>Tablet Bluetooth power optimization or interference.</td>
-        <td>Turn tablet Bluetooth off and on. In Android Battery settings, set photobooth4u to <b>"Unrestricted"</b>
-          battery usage.</td>
-      </tr>
-      <tr>
-        <td><b>Guests accidentally exit the app</b></td>
-        <td>App Pinning or Kiosk PIN Lock not activated.</td>
-        <td>Activate <b>Lock Booth PIN</b> in Setup, and enable Android <b>App Pinning</b> from Recent Apps screen (see
-          Page 5).</td>
-      </tr>
-    </table>
-
-    <!-- Pre-Event Checklist -->
-    <div class="card green" style="margin-top:14px">
-      <h5 style="color:var(--green)">10-Point Pre-Event Operator Checklist</h5>
-      <div class="grid-2" style="margin-top:8px">
-        <ul class="dots">
-          <li><b>USB-C Hub:</b> 45W+ charger plugged into PD port; tablet shows "Fast Charging".</li>
-          <li><b>DSLR Camera:</b> Mode dial set to P/M; Auto Power Off disabled; lens focus locked.</li>
-          <li><b>Thermal Printer:</b> Paper roll loaded correctly; test print executed and cut.</li>
-          <li><b>Spare Paper:</b> At least 3 extra rolls of 80mm thermal paper stored in booth enclosure.</li>
-          <li><b>PayMongo Active:</b> Test ₱1 live transaction performed; payout account confirmed.</li>
-        </ul>
-        <ul class="dots">
-          <li><b>Offline Backup:</b> 50 printed voucher ticket slips packed in event toolbox.</li>
-          <li><b>Screen Clean:</b> Tablet screen wiped with microfiber cloth; camera lens clean.</li>
-          <li><b>Kiosk Lockdown:</b> App pinned in Android; photobooth4u PIN lock active.</li>
-          <li><b>Audio &amp; Countdown:</b> Tablet volume set to 100% for voice prompts and beeps.</li>
-          <li><b>Emergency Hotspot:</b> Pocket Wi-Fi or phone hotspot ready as backup data source.</li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- Help & Support Footer Banner -->
-    <div class="card dark"
-      style="margin-top:14px; display:flex; align-items:center; justify-content:space-between; padding:16px 20px">
-      <div>
-        <h3 style="margin:0 0 4px; font-size:17px; color:#fff">Need Operator Assistance or Custom Branding?</h3>
-        <p style="margin:0; font-size:11.5px; color:#cfc8d2">Reach out to our engineering support team directly on
-          Facebook Messenger.</p>
-      </div>
-      <div
-        style="background:var(--red); color:#fff; font-weight:800; font-size:12px; border-radius:999px; padding:10px 18px; white-space:nowrap">
-        m.me/roktetnachi
-      </div>
-    </div>
-
-    <div class="foot">
-      <span class="brand-tag">photobooth4u · Receipt Photobooth Manual</span>
-      <span>Part 05 · Checklist &amp; Troubleshooting</span>
-      <span class="page-num">Page 6</span>
-    </div>
-  </section>
+  <div class="foot">
+    <span class="brand-tag">photobooth4u · Customized Gear Guide</span>
+    <span>Part 05 · Kiosk Security &amp; Quick Troubleshooting</span>
+    <span class="page-num">Page 6</span>
+  </div>
+</section>
 
 </body>
-
 </html>

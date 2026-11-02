@@ -1,0 +1,278 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		100100012CE8000100000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000001 /* AppDelegate.swift */; };
+		100100012CE8000100000002 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000002 /* SceneDelegate.swift */; };
+		100100012CE8000100000003 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000003 /* ViewController.swift */; };
+		100100012CE8000100000004 /* IccCameraHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000004 /* IccCameraHelper.swift */; };
+		100100012CE8000100000005 /* LocalShareServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000005 /* LocalShareServer.swift */; };
+		100100012CE8000100000006 /* PBLocal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000006 /* PBLocal.swift */; };
+		100100012CE8000100000007 /* VoiceBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000007 /* VoiceBridge.swift */; };
+		100100012CE8000100000008 /* AppLicence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000008 /* AppLicence.swift */; };
+		100100012CE8000100000009 /* booth.html in Resources */ = {isa = PBXBuildFile; fileRef = 200100012CE8000100000009 /* booth.html */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		200100012CE8000100000000 /* photobooth4u.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = photobooth4u.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		200100012CE8000100000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		200100012CE8000100000002 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		200100012CE8000100000003 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		200100012CE8000100000004 /* IccCameraHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IccCameraHelper.swift; sourceTree = "<group>"; };
+		200100012CE8000100000005 /* LocalShareServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalShareServer.swift; sourceTree = "<group>"; };
+		200100012CE8000100000006 /* PBLocal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PBLocal.swift; sourceTree = "<group>"; };
+		200100012CE8000100000007 /* VoiceBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceBridge.swift; sourceTree = "<group>"; };
+		200100012CE8000100000008 /* AppLicence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLicence.swift; sourceTree = "<group>"; };
+		200100012CE8000100000009 /* booth.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = booth.html; sourceTree = "<group>"; };
+		200100012CE8000100000010 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		300100012CE8000100000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		400100012CE8000100000001 = {
+			isa = PBXGroup;
+			children = (
+				400100012CE8000100000002 /* photobooth4u */,
+				400100012CE8000100000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		400100012CE8000100000002 /* photobooth4u */ = {
+			isa = PBXGroup;
+			children = (
+				200100012CE8000100000001 /* AppDelegate.swift */,
+				200100012CE8000100000002 /* SceneDelegate.swift */,
+				200100012CE8000100000003 /* ViewController.swift */,
+				200100012CE8000100000004 /* IccCameraHelper.swift */,
+				200100012CE8000100000005 /* LocalShareServer.swift */,
+				200100012CE8000100000006 /* PBLocal.swift */,
+				200100012CE8000100000007 /* VoiceBridge.swift */,
+				200100012CE8000100000008 /* AppLicence.swift */,
+				200100012CE8000100000009 /* booth.html */,
+				200100012CE8000100000010 /* Info.plist */,
+			);
+			path = photobooth4u;
+			sourceTree = "<group>";
+		};
+		400100012CE8000100000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				200100012CE8000100000000 /* photobooth4u.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		500100012CE8000100000001 /* photobooth4u */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 600100012CE8000100000001 /* Build configuration list for PBXNativeTarget "photobooth4u" */;
+			buildPhases = (
+				700100012CE8000100000001 /* Sources */,
+				300100012CE8000100000001 /* Frameworks */,
+				800100012CE8000100000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = photobooth4u;
+			productName = photobooth4u;
+			productReference = 200100012CE8000100000000 /* photobooth4u.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		900100012CE8000100000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					500100012CE8000100000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = 600100012CE8000100000002 /* Build configuration list for PBXProject "photobooth4u" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 400100012CE8000100000001;
+			productRefGroup = 400100012CE8000100000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				500100012CE8000100000001 /* photobooth4u */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		800100012CE8000100000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100100012CE8000100000009 /* booth.html in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		700100012CE8000100000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100100012CE8000100000001 /* AppDelegate.swift in Sources */,
+				100100012CE8000100000002 /* SceneDelegate.swift in Sources */,
+				100100012CE8000100000003 /* ViewController.swift in Sources */,
+				100100012CE8000100000004 /* IccCameraHelper.swift in Sources */,
+				100100012CE8000100000005 /* LocalShareServer.swift in Sources */,
+				100100012CE8000100000006 /* PBLocal.swift in Sources */,
+				100100012CE8000100000007 /* VoiceBridge.swift in Sources */,
+				100100012CE8000100000008 /* AppLicence.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A00100012CE8000100000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A00100012CE8000100000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A00100012CE8000100000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = photobooth4u/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.photobooth4u.booth;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "2";
+			};
+			name = Debug;
+		};
+		A00100012CE8000100000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = photobooth4u/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.photobooth4u.booth;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		600100012CE8000100000001 /* Build configuration list for PBXNativeTarget "photobooth4u" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00100012CE8000100000003 /* Debug */,
+				A00100012CE8000100000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		600100012CE8000100000002 /* Build configuration list for PBXProject "photobooth4u" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00100012CE8000100000001 /* Debug */,
+				A00100012CE8000100000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = 900100012CE8000100000001 /* Project object */;
+}
+

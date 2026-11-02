@@ -90,6 +90,30 @@
       </div>
     </div>
   </section>
+  <section id="ipad-builds">
+    <div class="section-head"><h2>iPad tablet app</h2><p>Full-screen kiosk for iPad with direct USB DSLR camera control.</p></div>
+    <div class="helper" style="background:#f5f4fb;border-color:#dedbf2;">
+      <div>
+        <span class="tag" style="background:#e9e6f7;color:#5438a1;">iPadOS 15.0+ · Native iPad App · version 1.0.0</span>
+        <h3>Run the booth on an iPad</h3>
+        <p>A native iPadOS kiosk app running 100% offline. The iPad stays awake, status bars are hidden, and the app pairs with Apple Guided Access for a tamper-proof event kiosk. Unlock with your access code.</p>
+        <p><b>Direct USB DSLR Camera:</b> Connects to Canon EOS, Nikon, or Sony Alpha cameras through a USB-C data cable or Apple USB adapter using Apple&rsquo;s native <code>ImageCaptureCore</code> framework. Streams live view, focuses, and triggers high-res physical shutter captures without WebUSB browser restrictions.</p>
+        <p><b>Local Wi-Fi QR Sharing:</b> The iPad hosts an offline local sharing server on port 47777. Guests join the booth Wi-Fi and scan the on-screen QR code to immediately view the gallery and download their photo strips.</p>
+        <p><b>Printing:</b> Prints directly to AirPrint photo and office printers, or wireless network queues.</p>
+      </div>
+      <a class="download" style="background:#5438a1;" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/ios-v1.0.0/photobooth4u-kiosk-ipad.ipa">Download IPA</a>
+    </div>
+    <div class="install">
+      <div class="callout">
+        <b>Installing on iPad</b>
+        <p>Install the <code>.ipa</code> package using AltStore, Sideloadly, TrollStore, Apple Configurator, or accept an invitation via Apple TestFlight.</p>
+      </div>
+      <div class="callout">
+        <b>USB DSLR Cable Connection</b>
+        <p>Connect your camera to a powered USB-C hub with Power Delivery connected to the iPad. Set your camera to Manual (M) exposure and PC Remote / PTP USB mode.</p>
+      </div>
+    </div>
+  </section>
   <footer><span>photobooth4u · Operator &amp; companion tools</span><span><a href="/">Back to photobooth4u</a></span></footer>
 </main>
 <script>
@@ -103,6 +127,7 @@
     const isMac = /mac/i.test(platform) || /Macintosh|Mac OS X/i.test(ua);
     const isWindows = /win/i.test(platform) || /Windows/i.test(ua);
     const isAndroid = /android/i.test(platform) || /Android/i.test(ua);
+    const isIPad = /iPad/i.test(ua) || (isMac && navigator.maxTouchPoints > 1);
     function setMac(arch){
       if(!arch){ hero.href = '#desktop-builds'; title.textContent = 'Choose your Mac build'; text.textContent = 'Choose Apple Silicon or Intel'; detected.textContent = 'Mac detected · choose the processor build below'; return; }
       const arm = /arm|aarch64/i.test(arch || '');
@@ -111,7 +136,13 @@
       text.textContent = arm ? 'Download for Apple Silicon' : 'Download for Mac Intel';
       detected.textContent = arm ? 'Detected Apple Silicon Mac' : 'For an Intel Mac · check About This Mac if unsure';
     }
-    if(isAndroid){
+    if(isIPad){
+      hero.href = 'https://github.com/heresmetrying26/photobooth-for-rent/releases/download/ios-v1.0.0/photobooth4u-kiosk-ipad.ipa';
+      title.textContent = 'iPad kiosk app';
+      document.getElementById('heroVersion').textContent = 'Version 1.0.0 · iPadOS 15.0+';
+      text.textContent = 'Download IPA for iPad';
+      detected.textContent = 'Detected iPad · USB DSLR tethering and offline kiosk ready';
+    } else if(isAndroid){
       hero.href = 'https://github.com/heresmetrying26/photobooth-for-rent/releases/download/android-v1.0.58/photobooth4u-kiosk-android.apk';
       title.textContent = 'Android tablet app';
       document.getElementById('heroVersion').textContent = 'Version 1.0.58 · Android tablet';
@@ -129,6 +160,7 @@
       if(!this.open || this.dataset.loaded) return; this.dataset.loaded = '1';
       const list = document.getElementById('checksumList');
       const releases = [
+        {tag:'ios-v1.0.0', label:'iPad Kiosk v1.0.0'},
         {tag:'android-v1.0.58', label:'Android Tablet Kiosk v1.0.58'},
         {tag:'desktop-v1.0.44', label:'Desktop app v1.0.44'},
         {tag:'print-helper-v1.1.10', label:'Print Helper v1.1.10'}

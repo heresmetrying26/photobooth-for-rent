@@ -294,6 +294,8 @@
     }
     .step-content { flex: 1; }
     .step-content b { display: block; font-size: 11.5px; margin-bottom: 1px; }
+    .install .step-content b { display: inline; font-size: inherit; margin: 0; }
+    .install .step-item { margin-bottom: 5px; }
 
     /* Callout */
     .callout {
@@ -339,17 +341,28 @@
     </div>
 
     <h1 class="hero-title">iPad + USB DSLR Photobooth Guide</h1>
-    <p class="lead">Connect professional Canon, Nikon, and Sony DSLRs directly to your iPad via USB-C using Apple's native <b>ImageCaptureCore</b> framework for real studio optics, strobe flash sync, and 100% offline kiosk events.</p>
+    <p class="lead">Connect your Canon, Nikon, or Sony camera straight to your iPad with a USB-C cable for real studio photos, flash sync, and events that work without internet.</p>
 
-    <div class="card purple" style="margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <h3 class="card-title" style="margin:0;">The Secret: Apple Native ImageCaptureCore (No WebUSB)</h3>
-        <span class="badge purple">iPadOS 15.0+</span>
+    <div class="card purple install" style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <h3 class="card-title" style="margin:0;">Step 1: Install the photobooth4u iPad app</h3>
+        <span class="badge purple">iPadOS 15 or newer</span>
       </div>
-      <p style="margin:0;font-size:11px;">Standard iPad browsers like Safari block direct USB access (WebUSB). <b>photobooth4u for iPad</b> bypasses this completely by running as a native iPadOS wrapper. It communicates directly with connected cameras through Apple's low-level <b>ImageCaptureCore PTP framework</b> on <code>127.0.0.1:17321</code>, delivering real-time live view, instant shutter triggering, and full-resolution photo downloads straight into memory.</p>
+      <p style="margin:0 0 6px;font-size:11px;">After you download <b>photobooth4u-kiosk-ipad.ipa</b> from our Downloads page, it must be put onto the iPad from a computer (a Windows PC or a Mac). Do this once, before your event:</p>
+      <ol class="step-list">
+        <li class="step-item"><span class="step-num">1</span><div class="step-content">On the computer, install <b>Sideloadly</b> (free, from sideloadly.io).</div></li>
+        <li class="step-item"><span class="step-num">2</span><div class="step-content">Plug the iPad into the computer with a cable. If the iPad asks, tap <b>Trust</b>.</div></li>
+        <li class="step-item"><span class="step-num">3</span><div class="step-content">Open Sideloadly, drag the <b>.ipa</b> file into it, type your Apple ID email, then click <b>Start</b>.</div></li>
+        <li class="step-item"><span class="step-num">4</span><div class="step-content">On the iPad open <b>Settings → General → VPN &amp; Device Management</b>, tap your Apple ID, then tap <b>Trust</b>.</div></li>
+        <li class="step-item"><span class="step-num">5</span><div class="step-content">If you see <b>Developer Mode</b> under <b>Settings → Privacy &amp; Security</b>, turn it <b>On</b> and let the iPad restart.</div></li>
+        <li class="step-item"><span class="step-num">6</span><div class="step-content">Open the <b>photobooth4u</b> app on the iPad and enter your code. Done!</div></li>
+      </ol>
+      <div class="callout" style="margin:6px 0 0;">
+        <b>Good to know:</b> with a free Apple ID the app stops opening after 7 days, so re-install it (steps 2 and 3) the week of your event. A paid Apple Developer account lasts one year.
+      </div>
     </div>
 
-    <h3 style="font-size:16px;margin:14px 0 6px;">1. The Single-Port iPad Hardware Wiring Chain</h3>
+    <h3 style="font-size:16px;margin:12px 0 6px;">Step 2: The Single-Port iPad Hardware Wiring Chain</h3>
     <p style="margin:0 0 8px;color:var(--dim);">Because iPads have only one USB-C (or Lightning) port, you must route power and camera data through a <b>Powered USB-C Hub with Power Delivery (PD)</b> so the iPad never dies during a live event.</p>
 
     <div class="chain">
@@ -397,7 +410,7 @@
 
     <div class="foot">
       <span>photobooth4u · All-in-One Photobooth System</span>
-      <span>Page 1 of 4 · Hardware Architecture</span>
+      <span>Page 1 of 4 · App Install &amp; Hardware</span>
     </div>
   </section>
 

@@ -28,7 +28,7 @@
   .platforms{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.platform{padding:20px;border:1px solid var(--line);border-radius:18px;background:var(--card)}.platform h3{margin:0;font-size:21px}.platform p{min-height:42px;margin:5px 0 14px;color:var(--muted);font-size:13px}.platform .download{min-height:44px;font-size:13px}.tag{display:inline-block;padding:3px 8px;border-radius:999px;background:var(--soft);color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
   .helper{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;padding:24px;border:1px solid var(--line);border-radius:20px;background:#fffaf4}.helper h3{margin:8px 0 4px;font-size:25px}.helper p{max-width:660px;margin:0;color:var(--muted);font-size:14px}.helper .download{min-width:190px}
   .guide-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.guide{padding:22px;border:1px solid var(--line);border-radius:18px;background:var(--card)}.guide h3{margin:0 0 12px;font-size:22px}.guide ol{padding-left:20px;margin:0}.guide li{margin:7px 0;color:#48434a;font-size:13px}.guide a{color:var(--red);font-weight:800;text-decoration-thickness:1px;text-underline-offset:3px}
-  .install{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.callout{padding:18px;border-radius:16px;background:var(--soft)}.callout b{display:block;margin-bottom:4px}.callout p{margin:0;color:var(--muted);font-size:13px}
+  .install{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.callout{padding:18px;border-radius:16px;background:var(--soft)}.callout b{display:block;margin-bottom:4px}.callout p{margin:0;color:var(--muted);font-size:13px}.callout ol{color:var(--muted);font-size:13px;line-height:1.55}.callout ol b,.callout p b{display:inline;margin:0}.callout p+ol,.callout ol+p{margin-top:8px}
   details.checks{margin-top:14px;border:1px solid var(--line);border-radius:16px;background:var(--card)}details.checks summary{cursor:pointer;padding:16px 18px;font-weight:800} .checks-content{padding:0 18px 18px;color:var(--muted);font-size:13px}.checks-content p{margin:0 0 8px}.checks-content ul{padding-left:20px;margin:0}.digest{display:block;overflow-wrap:anywhere;margin:7px 0;padding:8px 10px;border-radius:8px;background:#f1ede7;color:var(--ink);font:11px/1.5 ui-monospace,Consolas,monospace}.digest.wait{color:var(--muted);font-family:Manrope,sans-serif}
   .camera{margin-top:14px;padding:22px;border:1px solid var(--line);border-radius:18px;background:var(--card)}.camera h3{margin:0 0 6px;font-size:22px}.camera p{margin:0 0 8px;color:var(--muted);font-size:13px}.camera ul{padding-left:20px;margin:0}.camera li{margin:5px 0;font-size:13px}
   footer{display:flex;justify-content:space-between;gap:14px;margin-top:42px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}footer a{font-weight:800;color:var(--ink)}
@@ -97,16 +97,24 @@
         <span class="tag" style="background:#e9e6f7;color:#5438a1;">iPadOS 15.0+ · Native iPad App · version 1.0.0</span>
         <h3>Run the booth on an iPad</h3>
         <p>A native iPadOS kiosk app running 100% offline. The iPad stays awake, status bars are hidden, and the app pairs with Apple Guided Access for a tamper-proof event kiosk. Unlock with your access code.</p>
-        <p><b>Direct USB DSLR Camera:</b> Connects to Canon EOS, Nikon, or Sony Alpha cameras through a USB-C data cable or Apple USB adapter using Apple&rsquo;s native <code>ImageCaptureCore</code> framework. Streams live view, focuses, and triggers high-res physical shutter captures without WebUSB browser restrictions.</p>
+        <p><b>Direct USB DSLR Camera:</b> Plug in a Canon EOS, Nikon, or Sony Alpha camera with a USB-C data cable (or Apple USB adapter). The iPad shows the live view and fires the camera&rsquo;s shutter for full-quality photos.</p>
         <p><b>Local Wi-Fi QR Sharing:</b> The iPad hosts an offline local sharing server on port 47777. Guests join the booth Wi-Fi and scan the on-screen QR code to immediately view the gallery and download their photo strips.</p>
         <p><b>Printing:</b> Prints directly to AirPrint photo and office printers, or wireless network queues.</p>
       </div>
-      <a class="download" style="background:#5438a1;" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/ios-v1.0.0/photobooth4u-kiosk-ipad.ipa">Download IPA</a>
+      <a class="download" style="background:#5438a1;" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/ios-v1.0.2/photobooth4u-kiosk-ipad.ipa">Download IPA</a>
     </div>
     <div class="install">
       <div class="callout">
         <b>Installing on iPad</b>
-        <p>Install the <code>.ipa</code> package using AltStore, Sideloadly, TrollStore, Apple Configurator, or accept an invitation via Apple TestFlight.</p>
+<p>The iPad can&rsquo;t open the downloaded <code>.ipa</code> file by itself. Download it on a Windows PC or Mac, then:</p>
+        <ol style="margin:6px 0 0;padding-left:18px;">
+          <li>Install <b>Sideloadly</b> (free, from sideloadly.io) on the computer.</li>
+          <li>Plug the iPad into the computer and tap <b>Trust</b> on the iPad.</li>
+          <li>Drag the <code>.ipa</code> into Sideloadly, enter your Apple ID, and click <b>Start</b>.</li>
+          <li>On the iPad: <b>Settings &rarr; General &rarr; VPN &amp; Device Management</b>, tap your Apple ID, then <b>Trust</b>. Turn on <b>Developer Mode</b> in Privacy &amp; Security if it appears.</li>
+          <li>Open <b>photobooth4u</b> and enter your code.</li>
+        </ol>
+        <p>A free Apple ID lets the app run for 7 days, so re-install it the week of your event. <a href="/photobooth4u-ipad-dslr-guide.pdf" download>Full iPad setup guide (PDF) &rarr;</a></p>
       </div>
       <div class="callout">
         <b>USB DSLR Cable Connection</b>
@@ -137,9 +145,9 @@
       detected.textContent = arm ? 'Detected Apple Silicon Mac' : 'For an Intel Mac · check About This Mac if unsure';
     }
     if(isIPad){
-      hero.href = 'https://github.com/heresmetrying26/photobooth-for-rent/releases/download/ios-v1.0.0/photobooth4u-kiosk-ipad.ipa';
+      hero.href = 'https://github.com/heresmetrying26/photobooth-for-rent/releases/download/ios-v1.0.2/photobooth4u-kiosk-ipad.ipa';
       title.textContent = 'iPad kiosk app';
-      document.getElementById('heroVersion').textContent = 'Version 1.0.0 · iPadOS 15.0+';
+      document.getElementById('heroVersion').textContent = 'Version 1.0.2 · iPadOS 15.0+';
       text.textContent = 'Download IPA for iPad';
       detected.textContent = 'Detected iPad · USB DSLR tethering and offline kiosk ready';
     } else if(isAndroid){
@@ -160,7 +168,7 @@
       if(!this.open || this.dataset.loaded) return; this.dataset.loaded = '1';
       const list = document.getElementById('checksumList');
       const releases = [
-        {tag:'ios-v1.0.0', label:'iPad Kiosk v1.0.0'},
+        {tag:'ios-v1.0.2', label:'iPad Kiosk v1.0.2'},
         {tag:'android-v1.0.58', label:'Android Tablet Kiosk v1.0.58'},
         {tag:'desktop-v1.0.44', label:'Desktop app v1.0.44'},
         {tag:'print-helper-v1.1.10', label:'Print Helper v1.1.10'}

@@ -1,4 +1,4 @@
-plugins {
+﻿plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
 }
@@ -11,8 +11,8 @@ android {
         applicationId "com.photobooth4u.booth"
         minSdk 24
         targetSdk 34
-        versionCode 69
-        versionName "1.0.68"
+        versionCode 70
+        versionName "1.0.69"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -71,3 +71,4 @@ dependencies {
     // Verifies this tablet's signed rental-code licence (Ed25519; no JCE provider needed below API 33)
     implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
 }
+

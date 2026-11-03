@@ -27016,31 +27016,173 @@
       }
       async function payLoadBatches() {
         if (!payOn() || !payVoucherOn()) return;
-        try { var r = await postApi('/api/pay', { action: 'batches' }, 10000); if (r.status === 200 && r.j.batches) { payBatches = r.j.batches; renderPayBatches(); } } catch (e) { }
+        // Restore any locally-generated offline batches first so the UI is never empty.
+        try {
+          var saved = JSON.parse(localStorage.getItem('pb_offline_batches_' + vCacheKey()) || '[]');
+          if (saved.length) { payBatches = saved; renderPayBatches(); }
+        } catch (_e) { }
+        // Then merge with server batches (when online).
+        try {
+          var r = await postApi('/api/pay', { action: 'batches' }, 10000);
+          if (r.status === 200 && r.j.batches) {
+            var srv = r.j.batches;
+            // Keep offline-only batches not present on the server.
+            var offBatches = payBatches.filter(function (b) { return /^off_/.test(b.id) && !srv.some(function (s) { return s.id === b.id; }); });
+            payBatches = srv.concat(offBatches);
+            renderPayBatches();
+          }
+        } catch (e) { }
       }
+      // ---- offline voucher generation helpers ----
+      function offlineBatchStorageKey() { return 'pb_offline_batches_' + vCacheKey(); }
+      function saveOfflineBatches(batches) { try { localStorage.setItem(offlineBatchStorageKey(), JSON.stringify(batches)); } catch (e) { } }
+      function loadOfflineBatches() { try { return JSON.parse(localStorage.getItem(offlineBatchStorageKey()) || '[]'); } catch (e) { return []; } }
+
+      async function makeOfflineBatch(n, prints, price, label) {
+        // Collect all existing codes to avoid collisions.
+        var taken = new Set();
+        var existing = loadOfflineBatches();
+        existing.forEach(function (b) { (b.codes || []).forEach(function (c) { taken.add(c.c || c); }); });
+        payBatches.forEach(function (b) { (b.codes || []).forEach(function (c) { taken.add(c.c || c); }); });
+
+        // Generate n unique 8-digit numeric codes.
+        var codes = [];
+        while (codes.length < n) {
+          var num = String(Math.floor(10000000 + Math.random() * 90000000));
+          if (!taken.has(num)) { taken.add(num); codes.push(num); }
+        }
+
+        // Owner-id for hashing — must match payRedeem / vHash.
+        var pb = window.__PB || {};
+        var oid = (pb.folderPrefix || pb.folderKey || 'offline');
+        var key = vCacheKey();
+
+        // Load or create the voucher cache and inject the hashes.
+        var cData = null;
+        try { cData = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { }
+        if (!cData || !cData.oid) cData = { oid: oid, at: Date.now(), list: [] };
+
+        for (var ci = 0; ci < codes.length; ci++) {
+          var h = await vHash(cData.oid, codes[ci]);
+          cData.list.push([h, prints || 0]);
+        }
+        try { localStorage.setItem(key, JSON.stringify(cData)); } catch (e) { }
+
+        var ev = setupScopeEvent() || '';
+        var evName = (typeof labelInput !== 'undefined' && labelInput && labelInput.value ? labelInput.value.trim() : '') || ev || 'Photo booth';
+        var batchId = 'off_' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
+        var batch = {
+          id: batchId,
+          offlineOnly: true,
+          ev: ev,
+          evName: evName,
+          price: price || 0,
+          prints: prints || 1,
+          label: label || '1 photo session',
+          at: Date.now(),
+          codes: codes.map(function (c) { return { c: c, used: 0, voided: 0 }; })
+        };
+
+        // Persist to localStorage so it survives reloads.
+        var offBatches = loadOfflineBatches();
+        offBatches.unshift(batch);
+        saveOfflineBatches(offBatches);
+        return batch;
+      }
+
       document.getElementById('payMakeBtn').addEventListener('click', async function () {
         var btn = this, n = Number(document.getElementById('payMakeCount').value) || 20;
         btn.disabled = true; btn.textContent = 'Making…';
+        var serverOk = false;
         try {
           var r = await postApi('/api/pay', { action: 'batch.create', count: n, prints: payCfg.prints, price: payCfg.price, label: '1 photo session' }, 15000);
-          if (r.status === 200 && r.j.batch) { payBatches.unshift(r.j.batch); renderPayBatches(); refreshVoucherCache(); showToast(n + ' vouchers ready. Tap “Print tickets”.', 4000); }
-          else showToast((r.j && r.j.error) || 'Couldn’t make vouchers.', 4500);
-        } catch (e) { showToast('No internet. Vouchers need internet to make.', 4500); }
+          if (r.status === 200 && r.j.batch) {
+            payBatches.unshift(r.j.batch); renderPayBatches(); refreshVoucherCache();
+            showToast(n + ' vouchers ready. Tap “Print tickets”.', 4000);
+            serverOk = true;
+          }
+        } catch (e) { /* offline — fall through */ }
+        if (!serverOk) {
+          try {
+            var offBatch = await makeOfflineBatch(n, payCfg.prints, payCfg.price, '1 photo session');
+            payBatches.unshift(offBatch);
+            renderPayBatches();
+            refreshVoucherCache();
+            showToast(n + ' offline vouchers ready. Tap “Print tickets”.', 4000);
+          } catch (oe) { showToast('Could not generate vouchers: ' + (oe.message || oe), 4500); }
+        }
         btn.disabled = false; btn.textContent = 'Make vouchers';
       });
+      // ---- Android-compatible ticket printer ----
+      async function renderVoucherTicketsForAndroid(data) {
+        if (!data || !data.codes || !data.codes.length) { showToast('No codes to print.', 3000); return; }
+        try {
+          var W = 400, H = 200, MM2PX = W / 85;
+          var pages = [];
+          var codesPerPage = 4;
+          for (var p = 0; p < data.codes.length; p += codesPerPage) {
+            var cv = document.createElement('canvas');
+            cv.width = W; cv.height = H * Math.min(codesPerPage, data.codes.length - p);
+            var ctx = cv.getContext('2d');
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, cv.width, cv.height);
+            for (var i = 0; i < codesPerPage && (p + i) < data.codes.length; i++) {
+              var code = data.codes[p + i];
+              var x = 0, y = i * H, tw = W, th = H;
+              ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1;
+              ctx.strokeRect(x + 4, y + 4, tw - 8, th - 8);
+              ctx.fillStyle = '#222';
+              ctx.font = 'bold ' + Math.round(10 * MM2PX / 3) + 'px monospace';
+              ctx.textAlign = 'center';
+              var ev = data.event || 'Photo booth';
+              ctx.fillText(ev.length > 28 ? ev.slice(0, 27) + '…' : ev, x + tw / 2, y + Math.round(th * 0.28));
+              ctx.font = 'bold ' + Math.round(16 * MM2PX / 3) + 'px monospace';
+              ctx.fillStyle = '#000';
+              ctx.fillText(code, x + tw / 2, y + Math.round(th * 0.55));
+              ctx.font = Math.round(7 * MM2PX / 3) + 'px sans-serif';
+              ctx.fillStyle = '#555';
+              var how = (data.prints || 1) + ' photo session' + ((data.prints || 1) !== 1 ? 's' : '');
+              var hw = ctx.measureText(how).width;
+              ctx.fillText(how, x + (tw - hw) / 2, y + th - Math.round(5 * MM2PX / 3));
+            }
+            pages.push(cv.toDataURL('image/jpeg', 0.92));
+          }
+          if (window.__PBPrint && typeof window.__PBPrint.print === 'function') {
+            var result = JSON.parse(window.__PBPrint.print('Voucher tickets · ' + (data.event || 'Photo booth'), W, H * Math.min(codesPerPage, data.codes.length), JSON.stringify(pages)) || '{}');
+            if (!result.ok) showToast(result.error || 'Couldn’t open the print dialog.', 4000);
+          } else {
+            // Fallback: open in new tab (desktop/browser).
+            try {
+              localStorage.setItem('pb_ticket_print', JSON.stringify({ event: data.event, price: data.price, prints: data.prints, codes: data.codes, at: Date.now() }));
+            } catch (err) { }
+            var w = window.open('/pay/tickets.html', '_blank');
+            if (!w) showToast('Allow pop-ups to print the tickets.', 4000);
+          }
+        } catch (err) {
+          showToast('Print error: ' + (err.message || err), 4000);
+        }
+      }
+
       document.getElementById('payBatches').addEventListener('click', async function (e) {
         var b = e.target.closest('button[data-act]'); if (!b) return;
         var id = b.closest('.pay-batch').dataset.id, bt = payBatches.find(function (x) { return x.id === id; }); if (!bt) return;
         if (b.dataset.act === 'print') {
           var codes = bt.codes.filter(function (x) { return !x.used && !x.voided; }).map(function (x) { return x.c; });
-          try { localStorage.setItem('pb_ticket_print', JSON.stringify({ event: (labelInput.value || '').trim() || setupScopeEvent() || bt.evName || 'Photo booth', price: bt.price, prints: bt.prints, codes: codes, at: Date.now() })); } catch (err) { }
-          var w = window.open('/pay/tickets.html', '_blank');
-          if (!w) showToast('Allow pop-ups to print the tickets.', 4000);
+          var printData = { event: (labelInput.value || '').trim() || setupScopeEvent() || bt.evName || 'Photo booth', price: bt.price, prints: bt.prints, codes: codes, at: Date.now() };
+          await renderVoucherTicketsForAndroid(printData);
           return;
         }
         if (b.dataset.act === 'void') {
           if (!b.classList.contains('confirm')) { b.classList.add('confirm'); b.textContent = 'Tap again to cancel'; setTimeout(function () { if (b.isConnected) { b.classList.remove('confirm'); b.textContent = 'Cancel unused'; } }, 4000); return; }
-          try { var r = await postApi('/api/pay', { action: 'batch.void', id: id }, 10000); if (r.status === 200 && r.j.batch) { Object.assign(bt, r.j.batch); renderPayBatches(); refreshVoucherCache(); showToast('Unused vouchers cancelled.'); } } catch (err) { showToast('No internet. Try again.', 4000); }
+          if (bt.offlineOnly) {
+            // Void offline-only batch locally.
+            bt.codes.forEach(function (c) { if (!c.used) c.voided = 1; });
+            var offBatches = loadOfflineBatches().map(function (ob) { return ob.id === bt.id ? bt : ob; });
+            saveOfflineBatches(offBatches);
+            renderPayBatches(); refreshVoucherCache(); showToast('Unused offline vouchers cancelled.');
+          } else {
+            try { var r = await postApi('/api/pay', { action: 'batch.void', id: id }, 10000); if (r.status === 200 && r.j.batch) { Object.assign(bt, r.j.batch); renderPayBatches(); refreshVoucherCache(); showToast('Unused vouchers cancelled.'); } } catch (err) { showToast('No internet. Try again.', 4000); }
+          }
         }
       });
       window.addEventListener('pb-pay-change', function () { payLoadConfig(); if (payOn() && payVoucherOn()) { payLoadBatches(); refreshVoucherCache(); } });

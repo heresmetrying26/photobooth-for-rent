@@ -1,6 +1,10 @@
 package com.photobooth4u.booth
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 
 /**
  * Colour-correction settings for print output.
@@ -30,35 +34,39 @@ data class PrintColorAdj(
             blue       = o.optInt("blue",       0).coerceIn(-100, 100)
         )
     }
+
+    /** Creates a native ColorMatrixColorFilter for hardware-accelerated drawing. */
+    fun toColorFilter(): ColorMatrixColorFilter? {
+        if (isNoop) return null
+        val bOff = (brightness.coerceIn(-100, 100) * 2.55f)
+        val rOff = bOff + (red.coerceIn(-100, 100) * 2.55f)
+        val gOff = bOff + (green.coerceIn(-100, 100) * 2.55f)
+        val bOff2 = bOff + (blue.coerceIn(-100, 100) * 2.55f)
+        val matrix = ColorMatrix(floatArrayOf(
+            1f, 0f, 0f, 0f, rOff,
+            0f, 1f, 0f, 0f, gOff,
+            0f, 0f, 1f, 0f, bOff2,
+            0f, 0f, 0f, 1f, 0f
+        ))
+        return ColorMatrixColorFilter(matrix)
+    }
 }
 
 /**
  * Applies [PrintColorAdj] to every pixel and returns the adjusted bitmap.
  * Returns `this` unchanged when all adjustments are zero.
+ * Uses native Skia ColorMatrixColorFilter via Canvas for high performance.
  */
 fun Bitmap.applyColorAdj(adj: PrintColorAdj): Bitmap {
     if (adj.isNoop) return this
 
-    // Scale -100…+100 → -255…+255 offset per channel (brightness is common to all).
-    val bOff = (adj.brightness * 2.55).toInt()
-    val rOff = bOff + (adj.red   * 2.55).toInt()
-    val gOff = bOff + (adj.green * 2.55).toInt()
-    val bOff2 = bOff + (adj.blue  * 2.55).toInt()
-
+    val filter = adj.toColorFilter() ?: return this
     val out = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-    val px = IntArray(width)
-    for (y in 0 until height) {
-        getPixels(px, 0, width, 0, y, width, 1)
-        for (x in 0 until width) {
-            val c = px[x]
-            val a =  (c ushr 24) and 0xFF
-            val r = ((c shr 16) and 0xFF + rOff).coerceIn(0, 255)
-            val g = ((c shr  8) and 0xFF + gOff).coerceIn(0, 255)
-            val b = ( c         and 0xFF + bOff2).coerceIn(0, 255)
-            px[x] = (a shl 24) or (r shl 16) or (g shl 8) or b
-        }
-        out.setPixels(px, 0, width, 0, y, width, 1)
+    val canvas = Canvas(out)
+    val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
+        colorFilter = filter
     }
+    canvas.drawBitmap(this, 0f, 0f, paint)
     return out
 }
 

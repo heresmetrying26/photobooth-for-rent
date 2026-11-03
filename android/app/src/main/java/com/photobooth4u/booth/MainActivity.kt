@@ -8,6 +8,8 @@ import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
+import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
@@ -22,6 +24,7 @@ import android.view.WindowManager
 import android.util.Log
 import android.webkit.ConsoleMessage
 import android.webkit.PermissionRequest
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -54,6 +57,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var root: FrameLayout
     private lateinit var btBridge: BTBridge
+    private var netPrintBridge: NetPrintBridge? = null
     private lateinit var pbLocal: PBLocal
     private var voiceBridge: VoiceBridge? = null
     private lateinit var licence: AppLicence
@@ -175,7 +179,9 @@ class MainActivity : AppCompatActivity() {
         // 5a. Every other printer (Epson, Canon, HP, Brother, Wi-Fi/Mopria…): Android's own print system (window.__PBPrint)
         webView.addJavascriptInterface(PrintBridge(this), "__PBPrint")
         // Wi-Fi printers found and printed to by the app itself, like NokoPrint (window.__PBNet)
-        webView.addJavascriptInterface(NetPrintBridge(this, webView), "__PBNet")
+        val netPrint = NetPrintBridge(this, webView)
+        netPrintBridge = netPrint
+        webView.addJavascriptInterface(netPrint, "__PBNet")
 
         // 5b. Offline photos: saved on this tablet through window.__PBLocal, and shown to guests' phones
         // over the booth Wi-Fi by a small web server in the app (no internet needed).
@@ -429,6 +435,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        netPrintBridge?.shutdown()
         btBridge.disconnect()
         voiceBridge?.shutdown()
         shareServer?.stop()
@@ -560,6 +567,14 @@ class MainActivity : AppCompatActivity() {
                 request: WebResourceRequest?
             ): WebResourceResponse? {
                 return interceptOfflineRequest(request) ?: super.shouldInterceptRequest(view, request)
+            }
+
+            override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
+                val crashed = detail?.didCrash() ?: false
+                Log.e("PBMainActivity", "WebView render process gone (didCrash: $crashed)")
+                offlineLoaded = false
+                bootWithLicence()
+                return true
             }
         }
 
@@ -794,6 +809,24 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Stay", null)
             .show()
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent?.action == UsbManager.ACTION_USB_DEVICE_ATTACHED) {
+            val dev: UsbDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+            }
+            Log.i("PBMainActivity", "USB device attached: ${dev?.productName ?: dev?.deviceName}")
+            webView.evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('pb-usb-attached', { detail: { name: '${(dev?.productName ?: dev?.deviceName ?: "").replace("'", "\\'")}' } }));",
+                null
+            )
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

@@ -59,11 +59,24 @@ object EscprJob {
         require(areaW > 0 && areaH > 0) { "Sheet too small" }
 
         // Turn a landscape picture to match the portrait feed, then fit it to the printable area.
-        var bmp = src
-        if (bmp.width > bmp.height && widthMm <= heightMm) {
-            bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, Matrix().apply { postRotate(90f) }, true)
+        val needsRotate = src.width > src.height && widthMm <= heightMm
+        val rotatedSrc: Bitmap
+        val shouldRecycleRotated: Boolean
+        if (needsRotate) {
+            rotatedSrc = Bitmap.createBitmap(src, 0, 0, src.width, src.height, Matrix().apply { postRotate(90f) }, true)
+            shouldRecycleRotated = (rotatedSrc !== src)
+        } else {
+            rotatedSrc = src
+            shouldRecycleRotated = false
         }
-        bmp = Bitmap.createScaledBitmap(bmp, areaW, areaH, true)
+        val bmp = if (rotatedSrc.width == areaW && rotatedSrc.height == areaH) {
+            rotatedSrc
+        } else {
+            Bitmap.createScaledBitmap(rotatedSrc, areaW, areaH, true)
+        }
+        if (shouldRecycleRotated) {
+            try { rotatedSrc.recycle() } catch (_: Exception) {}
+        }
 
         val out = ByteArrayOutputStream()
         // ── job start ──
@@ -129,6 +142,9 @@ object EscprJob {
         out.put(bytes(0x1B, 0x28, 0x52, 0x08, 0x00, 0x00), ascii("REMOTE1"))
         out.put(bytes(0x4A, 0x45, 0x01, 0x00, 0x00))                                            // JE: job end
         out.put(bytes(0x1B, 0x00, 0x00, 0x00))
+        if (bmp !== src) {
+            try { bmp.recycle() } catch (_: Exception) {}
+        }
         return out.toByteArray()
     }
 

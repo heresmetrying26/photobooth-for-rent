@@ -48,14 +48,34 @@ object CanonSelphyJob {
         val cols = spec.cols
         val rows = spec.rows
 
-        var bmp = src.applyColorAdj(adj)
         // Rotate if needed to match the portrait feed orientation (cols < rows)
-        if (bmp.width > bmp.height && cols < rows) {
-            val matrix = Matrix().apply { postRotate(90f) }
-            bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, matrix, true)
+        val needsRotate = src.width > src.height && cols < rows
+        val rotatedSrc: Bitmap
+        val shouldRecycleRotated: Boolean
+        if (needsRotate) {
+            rotatedSrc = Bitmap.createBitmap(src, 0, 0, src.width, src.height, Matrix().apply { postRotate(90f) }, true)
+            shouldRecycleRotated = (rotatedSrc !== src)
+        } else {
+            rotatedSrc = src
+            shouldRecycleRotated = false
         }
-        if (bmp.width != cols || bmp.height != rows) {
-            bmp = Bitmap.createScaledBitmap(bmp, cols, rows, true)
+
+        // Scale and apply color adjustment at target dimensions (cols x rows) to minimize memory and CPU
+        val bmp = if (rotatedSrc.width == cols && rotatedSrc.height == rows && adj.isNoop) {
+            rotatedSrc
+        } else {
+            val target = Bitmap.createBitmap(cols, rows, Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(target)
+            val paint = android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG or android.graphics.Paint.ANTI_ALIAS_FLAG)
+            val filter = adj.toColorFilter()
+            if (filter != null) paint.colorFilter = filter
+            val scaleMatrix = Matrix()
+            scaleMatrix.postScale(cols.toFloat() / rotatedSrc.width, rows.toFloat() / rotatedSrc.height)
+            canvas.drawBitmap(rotatedSrc, scaleMatrix, paint)
+            target
+        }
+        if (shouldRecycleRotated) {
+            try { rotatedSrc.recycle() } catch (_: Exception) {}
         }
 
         val planeSize = cols * rows

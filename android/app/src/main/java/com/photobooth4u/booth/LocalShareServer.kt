@@ -147,7 +147,7 @@ class LocalShareServer(private val store: PBLocal) {
             if (b < 0) return null
             buf.write(b)
             last4 = (last4 shl 8) or b
-            if (last4 == 0x0D0A0D0A) return buf.toString("ISO-8859-1")
+            if (last4 == 0x0D0A0D0A || (last4 and 0xFFFF) == 0x0A0A) return buf.toString("ISO-8859-1")
         }
         return null
     }

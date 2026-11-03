@@ -73,22 +73,49 @@ object CanonJob {
         val areaH = areaHOf(dpi)
         require(areaW > 0 && areaH > 0) { "Sheet too small" }
 
-        var bmp = src.applyColorAdj(adj)
-        if (bmp.width > bmp.height && widthMm <= heightMm) {
-            bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, Matrix().apply { postRotate(90f) }, true)
+        val needsRotate = src.width > src.height && widthMm <= heightMm
+        val rotatedSrc: Bitmap
+        val shouldRecycleRotated: Boolean
+        if (needsRotate) {
+            rotatedSrc = Bitmap.createBitmap(src, 0, 0, src.width, src.height, Matrix().apply { postRotate(90f) }, true)
+            shouldRecycleRotated = (rotatedSrc !== src)
+        } else {
+            rotatedSrc = src
+            shouldRecycleRotated = false
         }
-        bmp = Bitmap.createScaledBitmap(bmp, areaW, areaH, true)
+
+        // Scale and apply color adjustment at target dimensions (areaW x areaH)
+        val bmp = if (rotatedSrc.width == areaW && rotatedSrc.height == areaH && adj.isNoop) {
+            rotatedSrc
+        } else {
+            val target = Bitmap.createBitmap(areaW, areaH, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(target)
+            val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+            val filter = adj.toColorFilter()
+            if (filter != null) paint.colorFilter = filter
+            val scaleMatrix = Matrix()
+            scaleMatrix.postScale(areaW.toFloat() / rotatedSrc.width, areaH.toFloat() / rotatedSrc.height)
+            canvas.drawBitmap(rotatedSrc, scaleMatrix, paint)
+            target
+        }
+        if (shouldRecycleRotated) {
+            try { rotatedSrc.recycle() } catch (_: Exception) {}
+        }
         val rowBytes = (areaW + 7) / 8
         // planes in the printer's order: cyan, magenta, yellow, black
         val planes: Array<ByteArray> = if (mono) {
             val grey = Bitmap.createBitmap(areaW, areaH, Bitmap.Config.ARGB_8888)
             val p = Paint().apply { colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) }) }
             Canvas(grey).apply { drawColor(Color.WHITE); drawBitmap(bmp, 0f, 0f, p) }
-            arrayOf(ByteArray(rowBytes * areaH), ByteArray(rowBytes * areaH), ByteArray(rowBytes * areaH),
-                EscP2Job.dither(grey, areaW, areaH, rowBytes, if (quality == 0) 2.2 else 1.0))
+            val dithered = EscP2Job.dither(grey, areaW, areaH, rowBytes, if (quality == 0) 2.2 else 1.0)
+            try { grey.recycle() } catch (_: Exception) {}
+            arrayOf(ByteArray(rowBytes * areaH), ByteArray(rowBytes * areaH), ByteArray(rowBytes * areaH), dithered)
         } else {
             val k = EscP2Job.cmykPlanes(bmp, areaW, areaH, rowBytes, if (quality == 0) 2.2 else 1.6)   // K, C, M, Y
             arrayOf(k[1], k[2], k[3], k[0])
+        }
+        if (bmp !== src) {
+            try { bmp.recycle() } catch (_: Exception) {}
         }
 
         // paper codes for the page-setup commands: ESC ( c, ESC ( l and ESC ( P (plain 0; glossy photo; matte photo)

@@ -134,13 +134,39 @@ object EscP2Job {
         val top = top360 * s
         val phases = SEP * s                               // interleaved passes per band
         val cband = nz * phases                            // rows covered by one colour band
-        var bmp = src.applyColorAdj(adj)
-        if (bmp.width > bmp.height && widthMm <= heightMm) {
-            bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, Matrix().apply { postRotate(90f) }, true)
+        val needsRotate = src.width > src.height && widthMm <= heightMm
+        val rotatedSrc: Bitmap
+        val shouldRecycleRotated: Boolean
+        if (needsRotate) {
+            rotatedSrc = Bitmap.createBitmap(src, 0, 0, src.width, src.height, Matrix().apply { postRotate(90f) }, true)
+            shouldRecycleRotated = (rotatedSrc !== src)
+        } else {
+            rotatedSrc = src
+            shouldRecycleRotated = false
         }
-        bmp = Bitmap.createScaledBitmap(bmp, areaW, areaH, true)
+
+        // Scale and apply color adjustment at target dimensions (areaW x areaH)
+        val bmp = if (rotatedSrc.width == areaW && rotatedSrc.height == areaH && adj.isNoop) {
+            rotatedSrc
+        } else {
+            val target = Bitmap.createBitmap(areaW, areaH, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(target)
+            val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+            val filter = adj.toColorFilter()
+            if (filter != null) paint.colorFilter = filter
+            val scaleMatrix = Matrix()
+            scaleMatrix.postScale(areaW.toFloat() / rotatedSrc.width, areaH.toFloat() / rotatedSrc.height)
+            canvas.drawBitmap(rotatedSrc, scaleMatrix, paint)
+            target
+        }
+        if (shouldRecycleRotated) {
+            try { rotatedSrc.recycle() } catch (_: Exception) {}
+        }
         val rowBytes = (areaW + 7) / 8
         val planes = cmykPlanes(bmp, areaW, areaH, rowBytes, cal.gamma)    // same order as CHANNELS: K, C, M, Y
+        if (bmp !== src) {
+            try { bmp.recycle() } catch (_: Exception) {}
+        }
 
         val out = ByteArrayOutputStream()
         header(out, paperW, paperH, 2, s, feed)
@@ -251,13 +277,38 @@ object EscP2Job {
         val areaW = area360W * s
         val areaH = area360H * s
 
-        var bmp = src.applyColorAdj(adj)
-        if (bmp.width > bmp.height && widthMm <= heightMm) {
-            bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, Matrix().apply { postRotate(90f) }, true)
+        val needsRotate = src.width > src.height && widthMm <= heightMm
+        val rotatedSrc: Bitmap
+        val shouldRecycleRotated: Boolean
+        if (needsRotate) {
+            rotatedSrc = Bitmap.createBitmap(src, 0, 0, src.width, src.height, Matrix().apply { postRotate(90f) }, true)
+            shouldRecycleRotated = (rotatedSrc !== src)
+        } else {
+            rotatedSrc = src
+            shouldRecycleRotated = false
         }
-        bmp = Bitmap.createScaledBitmap(bmp, areaW, areaH, true)
+
+        val bmp = if (rotatedSrc.width == areaW && rotatedSrc.height == areaH && adj.isNoop) {
+            rotatedSrc
+        } else {
+            val target = Bitmap.createBitmap(areaW, areaH, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(target)
+            val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+            val filter = adj.toColorFilter()
+            if (filter != null) paint.colorFilter = filter
+            val scaleMatrix = Matrix()
+            scaleMatrix.postScale(areaW.toFloat() / rotatedSrc.width, areaH.toFloat() / rotatedSrc.height)
+            canvas.drawBitmap(rotatedSrc, scaleMatrix, paint)
+            target
+        }
+        if (shouldRecycleRotated) {
+            try { rotatedSrc.recycle() } catch (_: Exception) {}
+        }
         val rowBytes = (areaW + 7) / 8
         val bits = dither(bmp, areaW, areaH, rowBytes, if (s == 2) cal.gamma else 1.0)
+        if (bmp !== src) {
+            try { bmp.recycle() } catch (_: Exception) {}
+        }
 
         val out = ByteArrayOutputStream()
         header(out, paperW, paperH, 1, s, feed)

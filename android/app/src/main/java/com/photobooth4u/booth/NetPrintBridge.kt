@@ -98,15 +98,27 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     @Volatile private var addNote = ""
     private val probed = AtomicInteger(0)
     @Volatile private var probeTotal = 0
+    private var usbReceiver: BroadcastReceiver? = null
 
     @JavascriptInterface
     fun isAvailable(): Boolean = true
+
+    fun shutdown() {
+        stopDiscovery()
+        holdMulticast(false)
+        try { usbReceiver?.let { activity.unregisterReceiver(it) } } catch (_: Exception) {}
+        usbReceiver = null
+        try { pool.shutdownNow() } catch (_: Exception) {}
+        try { scanPool.shutdownNow() } catch (_: Exception) {}
+        try { resolveTimer.shutdownNow() } catch (_: Exception) {}
+    }
 
     /** Starts a fresh search; the page then polls list() for what turned up. */
     @JavascriptInterface
     fun scan(): String {
         stopDiscovery()
         found.clear()
+        synchronized(usbAsked) { usbAsked.clear() }
         synchronized(resolveLock) { resolveQueue.clear() }
         val id = ++scanId
         probed.set(0)
@@ -204,10 +216,20 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     if (!adj.isNoop) {
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(data, 0, data.size)
                         if (bmp != null) {
-                            val adjBmp = bmp.applyColorAdj(adj)
-                            val bos = ByteArrayOutputStream()
-                            adjBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, bos)
-                            data = bos.toByteArray()
+                            try {
+                                val adjBmp = bmp.applyColorAdj(adj)
+                                try {
+                                    val bos = ByteArrayOutputStream()
+                                    adjBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, bos)
+                                    data = bos.toByteArray()
+                                } finally {
+                                    if (adjBmp !== bmp) {
+                                        try { adjBmp.recycle() } catch (_: Exception) {}
+                                    }
+                                }
+                            } finally {
+                                try { bmp.recycle() } catch (_: Exception) {}
+                            }
                         }
                     }
                     pages.add(data)
@@ -589,6 +611,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 usbWaiters.remove(d.deviceName)?.countDown()
             }
         }
+        usbReceiver = rx
         val f = IntentFilter(usbPermAction)
         if (Build.VERSION.SDK_INT >= 33) activity.registerReceiver(rx, f, Context.RECEIVER_NOT_EXPORTED)
         else activity.registerReceiver(rx, f)
@@ -764,12 +787,16 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val adj = PrintColorAdj.from(optJson)
 
                 val arr = JSONArray(pagesJson)
-                val bitmaps = ArrayList<android.graphics.Bitmap>()
+                val pageJobs = ArrayList<ByteArray>()
                 for (i in 0 until arr.length()) {
                     val jpeg = decode(arr.getString(i))
                     val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                         ?: throw IllegalStateException("Couldn't decode photo for printing.")
-                    bitmaps.add(bmp)
+                    try {
+                        pageJobs.add(CanonSelphyJob.build(bmp, widthMm, heightMm, adj))
+                    } finally {
+                        try { bmp.recycle() } catch (_: Exception) {}
+                    }
                 }
 
                 usbSession(d, iface) { conn, out, inn ->
@@ -783,7 +810,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     }
 
                     for (c in 0 until copies.coerceIn(1, 20)) {
-                        for (bmp in bitmaps) {
+                        for (jobData in pageJobs) {
                             // Wait for printer to be Idle (status 0x01)
                             val waitStart = System.currentTimeMillis()
                             while (System.currentTimeMillis() - waitStart < 45_000) {
@@ -799,9 +826,6 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                                 }
                                 Thread.sleep(500)
                             }
-
-                            // Build 32-byte header + 3 YUV444 planes
-                            val jobData = CanonSelphyJob.build(bmp, widthMm, heightMm, adj)
 
                             // Write data to printer over bulk OUT
                             usbWrite(conn, out, jobData)
@@ -864,7 +888,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val jpeg = decode(arr.getString(i))
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
-                        usbRaw(id, CanonJob.build(bmp, widthMm, heightMm, mono, cq, cm, adj))
+                        try {
+                            usbRaw(id, CanonJob.build(bmp, widthMm, heightMm, mono, cq, cm, adj))
+                        } finally {
+                            try { bmp.recycle() } catch (_: Exception) {}
+                        }
                     }
                 }
                 r.put("ok", true)
@@ -938,7 +966,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val jpeg = decode(arr.getString(i))
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
-                        usbRaw(id, EscP2Job.build(bmp, widthMm, heightMm, colour, cal, quality, feed, adj))
+                        try {
+                            usbRaw(id, EscP2Job.build(bmp, widthMm, heightMm, colour, cal, quality, feed, adj))
+                        } finally {
+                            try { bmp.recycle() } catch (_: Exception) {}
+                        }
                     }
                 }
                 r.put("ok", true)
@@ -974,7 +1006,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val jpeg = decode(arr.getString(i))
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
-                        usbRaw(id, EscprJob.build(bmp, widthMm, heightMm, false, adj = adj))
+                        try {
+                            usbRaw(id, EscprJob.build(bmp, widthMm, heightMm, false, adj = adj))
+                        } finally {
+                            try { bmp.recycle() } catch (_: Exception) {}
+                        }
                     }
                 }
                 r.put("ok", true)
@@ -1032,7 +1068,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val jpeg = decode(arr.getString(i))
                         val bmp  = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't decode photo for printing.")
-                        usbRaw(id, EscprJob.build(bmp, widthMm, heightMm, !colour, borderless, photoMedia, draft, adj))
+                        try {
+                            usbRaw(id, EscprJob.build(bmp, widthMm, heightMm, !colour, borderless, photoMedia, draft, adj))
+                        } finally {
+                            try { bmp.recycle() } catch (_: Exception) {}
+                        }
                     }
                 }
                 r.put("ok", true)

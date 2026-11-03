@@ -331,7 +331,8 @@ class BTBridge(
                     }
                 }
                 .setNegativeButton("Cancel") { _, _ -> latch.countDown() }
-                .setCancelable(false)
+                .setOnDismissListener { latch.countDown() }
+                .setCancelable(true)
                 .show()
         }
 
@@ -448,6 +449,7 @@ class BTBridge(
             res.put("ok", true)
             res.toString()
         } catch (e: Exception) {
+            disconnect()
             val res = JSONObject()
             res.put("ok", false)
             res.put("error", e.message ?: "Write failed")

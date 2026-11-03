@@ -1571,4 +1571,199 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         o.write(doc)
         return o.toByteArray()
     }
+
+    /** Lists printer names available via USB and Wi-Fi for 127.0.0.1:17321 /status and /printers */
+    fun getPrinterNames(): List<String> {
+        val list = mutableListOf<String>()
+        val arr = JSONArray()
+        usbListInto(arr)
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val name = o.optString("name")
+            if (name.isNotBlank() && !list.contains(name)) list.add(name)
+        }
+        for (e in found.values) {
+            if (e.ippPort > 0 || e.rawPort > 0) {
+                val n = e.name.ifBlank { "Printer at ${e.ip}" }
+                if (!list.contains(n)) list.add(n)
+            }
+        }
+        return list
+    }
+
+    /**
+     * Synchronous printing call used by the 127.0.0.1:17321 HTTP server.
+     * Blocks the HTTP worker thread until data is dispatched to the printer.
+     */
+    fun printFromHelper(
+        printerName: String,
+        widthMm: Double,
+        heightMm: Double,
+        pagesArr: JSONArray,
+        fit: String?
+    ): String? {
+        try {
+            val m = usb ?: throw IllegalStateException("USB service unavailable.")
+            val cleanName = printerName.trim()
+
+            // 1. Check if matching USB printer exists
+            val usbPrinters = m.deviceList.values.filter { usbIsPrinter(it) }
+            val matchedUsb = usbPrinters.firstOrNull { d ->
+                val fullName = usbName(d) + " (USB)"
+                fullName.equals(cleanName, ignoreCase = true) ||
+                usbName(d).equals(cleanName, ignoreCase = true) ||
+                ("usb:" + d.deviceName).equals(cleanName, ignoreCase = true)
+            } ?: (if (usbPrinters.size == 1) usbPrinters[0] else null)
+
+            if (matchedUsb != null) {
+                val d = matchedUsb
+                val id = "usb:" + d.deviceName
+                usbEnsure(d)
+
+                val ipp = usbIppIface(d) != null
+                val raw = !ipp && usbRawIface(d) != null && usbLooksLikeReceipt(d)
+                val epsonL = !ipp && !raw && EpsonLModels.isKnown(d)
+                val escpr = !ipp && !raw && !epsonL && usbIsEscpr(d)
+                val escp2 = !ipp && !raw && !epsonL && !escpr && usbIsEscp2(d)
+                val selphy = !ipp && !raw && !epsonL && !escpr && !escp2 && usbIsSelphy(d)
+                val canon = !ipp && !raw && !epsonL && !escpr && !escp2 && !selphy && usbIsCanon(d)
+
+                when {
+                    epsonL || escpr -> {
+                        val borderless = (epsonL && EpsonLModels.isBorderless(d)) || escpr
+                        val photoMedia = true
+                        val adj = PrintColorAdj()
+                        for (i in 0 until pagesArr.length()) {
+                            val jpeg = decode(pagesArr.getString(i))
+                            val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+                                ?: throw IllegalStateException("Couldn't decode photo for printing.")
+                            try {
+                                val bytes = EscprJob.build(bmp, widthMm, heightMm, mono = false, borderless = borderless, photoMedia = photoMedia, draft = false, adj = adj)
+                                usbRaw(id, bytes)
+                            } finally {
+                                try { bmp.recycle() } catch (_: Exception) {}
+                            }
+                        }
+                    }
+                    selphy -> {
+                        val adj = PrintColorAdj()
+                        val iface = usbRawIface(d)
+                            ?: usbIfaces(d).firstOrNull { it.interfaceClass == UsbConstants.USB_CLASS_PRINTER && hasBulkPair(it) }
+                            ?: usbIfaces(d).firstOrNull { hasBulkPair(it) }
+                            ?: throw IllegalStateException("No bulk interface for Canon SELPHY.")
+                        val pageJobs = ArrayList<ByteArray>()
+                        for (i in 0 until pagesArr.length()) {
+                            val jpeg = decode(pagesArr.getString(i))
+                            val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+                                ?: throw IllegalStateException("Couldn't decode photo for printing.")
+                            try {
+                                pageJobs.add(CanonSelphyJob.build(bmp, widthMm, heightMm, adj))
+                            } finally {
+                                try { bmp.recycle() } catch (_: Exception) {}
+                            }
+                        }
+                        usbSession(d, iface) { conn, out, inn ->
+                            if (inn == null) throw IllegalStateException("The SELPHY printer has no status reply port.")
+                            val rd = ByteArray(12)
+                            val ret = conn.bulkTransfer(inn, rd, rd.size, 3000)
+                            if (ret > 0 && rd[2].toInt() != 0) {
+                                conn.bulkTransfer(inn, rd, rd.size, 1000)
+                            }
+                            for (jobData in pageJobs) {
+                                val waitStart = System.currentTimeMillis()
+                                while (System.currentTimeMillis() - waitStart < 45_000) {
+                                    val n = conn.bulkTransfer(inn, rd, rd.size, 2000)
+                                    if (n >= 12) {
+                                        val status = rd[0].toInt() and 0xFF
+                                        val err = rd[2].toInt() and 0xFF
+                                        if (status == 1 && err == 0) break
+                                        if (err != 0) throw IllegalStateException("SELPHY error code $err (check ink/paper)")
+                                    }
+                                    try { Thread.sleep(500) } catch (_: Exception) {}
+                                }
+                                usbWrite(conn, out, jobData)
+                            }
+                        }
+                    }
+                    canon -> {
+                        val adj = PrintColorAdj()
+                        for (i in 0 until pagesArr.length()) {
+                            val jpeg = decode(pagesArr.getString(i))
+                            val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+                                ?: throw IllegalStateException("Couldn't decode photo for printing.")
+                            try {
+                                val bytes = CanonJob.build(bmp, widthMm, heightMm, mono = false, quality = 1, media = 1, adj = adj)
+                                usbRaw(id, bytes)
+                            } finally {
+                                try { bmp.recycle() } catch (_: Exception) {}
+                            }
+                        }
+                    }
+                    raw -> {
+                        for (i in 0 until pagesArr.length()) {
+                            val jpeg = decode(pagesArr.getString(i))
+                            val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+                                ?: throw IllegalStateException("Couldn't decode photo for printing.")
+                            try {
+                                val rollW = if (widthMm <= 55.0) 384 else 576
+                                val escpos = ReceiptRaster.build(bmp, rollW)
+                                usbRaw(id, escpos)
+                            } finally {
+                                try { bmp.recycle() } catch (_: Exception) {}
+                            }
+                        }
+                    }
+                    ipp -> {
+                        val opts = Opts("", "", "", true)
+                        val e = usbEntry(id)
+                        for (i in 0 until pagesArr.length()) {
+                            val data = decode(pagesArr.getString(i))
+                            sendIppJob(e, "helper_" + System.currentTimeMillis(), data, widthMm, heightMm, opts)
+                        }
+                    }
+                    else -> {
+                        throw IllegalStateException("Unsupported USB printer model: VID=${d.vendorId} PID=${d.productId}")
+                    }
+                }
+                return null
+            }
+
+            // 2. If not USB, check Wi-Fi printers
+            val netMatch = found.values.firstOrNull {
+                it.ip == cleanName || it.name.equals(cleanName, ignoreCase = true)
+            }
+            if (netMatch != null) {
+                if (netMatch.rawPort > 0 && fit == "width") {
+                    for (i in 0 until pagesArr.length()) {
+                        val jpeg = decode(pagesArr.getString(i))
+                        val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+                            ?: throw IllegalStateException("Couldn't decode photo for printing.")
+                        try {
+                            val rollW = if (widthMm <= 55.0) 384 else 576
+                            val escpos = ReceiptRaster.build(bmp, rollW)
+                            newSocket(netMatch.ip).use { s ->
+                                s.connect(InetSocketAddress(netMatch.ip, netMatch.rawPort), 5000)
+                                s.soTimeout = 15000
+                                s.getOutputStream().apply { write(escpos); flush() }
+                            }
+                        } finally {
+                            try { bmp.recycle() } catch (_: Exception) {}
+                        }
+                    }
+                } else {
+                    val opts = Opts("", "", "", true)
+                    for (i in 0 until pagesArr.length()) {
+                        val data = decode(pagesArr.getString(i))
+                        sendIppJob(netMatch, "helper_" + System.currentTimeMillis(), data, widthMm, heightMm, opts)
+                    }
+                }
+                return null
+            }
+
+            return "No printer found matching '$cleanName'."
+        } catch (e: Exception) {
+            Log.e(TAG, "printFromHelper failed", e)
+            return e.message ?: "Printing failed"
+        }
+    }
 }

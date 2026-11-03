@@ -208,8 +208,12 @@ class MainActivity : AppCompatActivity() {
         // 5b2. A Nikon camera on the USB port: WebView has no WebUSB, so the app talks to it and the booth
         // reaches it on 127.0.0.1:17321 (same calls as the Windows Helper; the booth page recognises "PB4uAndroid").
         val cam = UsbCameraHelper(applicationContext)
+        cam.printBridge = netPrint
         cameraHelper = cam
         Thread { try { cam.start() } catch (e: Exception) { Log.w("PBCam", "camera helper", e) } }.start()
+
+        // 5b3. Background Print & Camera Helper foreground service (127.0.0.1:17321) for mobile Chrome & Web Booth
+        PrintHelperService.start(this)
 
         // 5c. This tablet's offline-app licence — the same signed-licence system the
         // desktop app uses, tied to a rental code's "offline app" add-on. The booth stays
@@ -510,7 +514,7 @@ class MainActivity : AppCompatActivity() {
                 fileUploadCallback = filePathCallback
 
                 val intent = fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).apply {
-                    type = "image/*"
+                    type = "*/*"
                 }
                 try {
                     startActivityForResult(intent, 3001)
@@ -728,6 +732,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkAndRequestPermissions() {
         val permissions = mutableListOf(Manifest.permission.CAMERA)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
             permissions.add(Manifest.permission.BLUETOOTH_SCAN)

@@ -6305,7 +6305,8 @@
       display: block;
     }
 
-    .welcome-overlay img {
+    .welcome-overlay img,
+    .welcome-overlay video {
       width: 100%;
       height: 100%;
       object-fit: contain;
@@ -6320,8 +6321,44 @@
       background: transparent !important;
     }
 
-    body.attract-camera .welcome-overlay img {
+    body.attract-camera .welcome-overlay img,
+    body.attract-camera .welcome-overlay video {
       object-fit: cover;
+    }
+
+    .welcome-cta-overlay {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 72px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .welcome-cta-btn {
+      pointer-events: auto;
+      background: #C93D27;
+      color: #fff;
+      border: none;
+      font-family: 'Manrope', -apple-system, sans-serif;
+      font-weight: 800;
+      font-size: clamp(18px, 3.2vw, 28px);
+      padding: 16px 42px;
+      border-radius: 999px;
+      cursor: pointer;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .welcome-cta-btn:active {
+      transform: scale(0.96);
+      background: #b3331f;
     }
 
     .shot-review {
@@ -8731,7 +8768,8 @@
       display: none;
     }
 
-    .welcome-overlay img {
+    .welcome-overlay img,
+    .welcome-overlay video {
       object-fit: cover;
     }
 
@@ -10465,9 +10503,28 @@
         display: flex !important;
       }
 
-      /* In portrait, ensure welcome image is fully contained with zero edge cropping */
-      .welcome-overlay img {
+      /* In portrait, welcome media scales to fit the tablet according to selected fit (cover/contain/fill) */
+      .welcome-overlay img,
+      .welcome-overlay video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      body.welcome-fit-contain .welcome-overlay img,
+      body.welcome-fit-contain .welcome-overlay video {
         object-fit: contain !important;
+      }
+
+      body.welcome-fit-stretch .welcome-overlay img,
+      body.welcome-fit-stretch .welcome-overlay video {
+        object-fit: fill !important;
+      }
+
+      body.welcome-fit-cover .welcome-overlay img,
+      body.welcome-fit-cover .welcome-overlay video {
+        object-fit: cover !important;
       }
 
       /* In portrait capture session: camera stage is vertically and horizontally centred */
@@ -10600,8 +10657,19 @@
       }
 
       /* Sizing constraints so stage fits well with dock and controls in portrait */
-      body.in-session:not(.shooting) .stage-frame {
+      body.in-session:not(.shooting):not(.welcome-on) .stage-frame {
         max-height: calc(var(--vh, 100vh) - 160px) !important;
+      }
+
+      body.welcome-on.in-session:not(.shooting) .stage-frame,
+      body.stage-full.welcome-on .app-shell .stage-frame {
+        max-height: 100% !important;
+        height: 100% !important;
+      }
+
+      body.stage-full.welcome-on .app-shell .stage-wrap {
+        height: 100% !important;
+        inset: 0 !important;
       }
     }
   </style>
@@ -12355,21 +12423,20 @@
             <div id="attractPosterRow" style="display:none; margin-top:10px;">
               <div class="bg-row">
                 <img class="bg-thumb" id="attractPosterThumb" alt="Poster" style="display:none;">
-                <label class="upload-btn" for="attractPosterInput">Upload poster image</label>
-                <input type="file" id="attractPosterInput" accept="image/*">
+                <video class="bg-thumb" id="attractPosterVideoThumb" muted playsinline loop style="display:none; object-fit:cover;"></video>
+                <label class="upload-btn" for="attractPosterInput">Upload image, video or GIF</label>
+                <input type="file" id="attractPosterInput" accept="image/*,video/mp4,video/webm,video/*">
               </div>
-              <button class="remove-link" id="attractPosterRemove" style="display:none;">Remove poster</button>
-              <div class="stepper" style="margin-top:8px;"><span class="lbl">Poster fit</span><span class="ctl"><select
+              <button class="remove-link" id="attractPosterRemove" style="display:none;">Remove media</button>
+              <div class="stepper" style="margin-top:8px;"><span class="lbl">Media fit</span><span class="ctl"><select
                     id="attractPosterFit">
+                    <option value="cover">Fill tablet screen (fits scale accordingly)</option>
+                    <option value="contain">Show whole media (keeps shape with bars)</option>
                     <option value="stretch">Stretch to fill the screen</option>
-                    <option value="contain">Show the whole poster (keeps its shape)</option>
-                    <option value="cover">Fill and trim the edges</option>
                   </select></span></div>
-              <p class="panel-hint" style="margin:4px 0 0;">Stretch puts the whole poster over the whole screen, nothing
-                trimmed. If it looks squashed, design the poster at the screen's shape or choose Show the whole poster.
+              <p class="panel-hint" style="margin:4px 0 0;">Fill tablet screen scales cleanly to your tablet's display without letterboxing. Show whole media preserves original borders.
               </p>
-              <p class="panel-hint" style="margin:4px 0 0;">Full-screen image — design it in Canva at your camera's
-                aspect ratio (e.g. 3:4 portrait).</p>
+              <p class="panel-hint" style="margin:4px 0 0;">Full-screen graphic, animated GIF, or MP4/WebM video (auto-loops on the tap to start screen).</p>
             </div>
             <div id="welcomeBtnBlock" style="margin-top:12px;">
               <label class="switch-row" style="margin-top:0;"><span>Show "Tap to start" button</span><input
@@ -12402,6 +12469,8 @@
                 </div>
                 <img id="welcomePreview" alt="Welcome screen preview"
                   style="position:relative; z-index:1; width:100%; height:100%; object-fit:contain; display:block;">
+                <video id="welcomeVideoPreview" autoplay loop muted playsinline
+                  style="display:none; position:relative; z-index:1; width:100%; height:100%; object-fit:contain;"></video>
               </div>
             </div>
           </div>
@@ -12571,9 +12640,14 @@
           <canvas id="previewCanvas"></canvas>
           <div class="box-guide" id="boxGuide" aria-hidden="true"><span>Photo area</span></div>
           <img class="shot-review" id="shotReview" alt="">
-          <div class="welcome-overlay" id="welcomeOverlay" role="button" tabindex="0" aria-label="Tap to start"><img
-              id="welcomeImg" alt="Welcome — tap to start"><span class="welcome-pulse" id="welcomePulse"
-              aria-hidden="true"></span></div>
+          <div class="welcome-overlay" id="welcomeOverlay" role="button" tabindex="0" aria-label="Tap to start">
+            <img id="welcomeImg" alt="Welcome — tap to start">
+            <video id="welcomeVideo" autoplay loop muted playsinline style="display:none;"></video>
+            <div class="welcome-cta-overlay" id="welcomeCtaOverlay" style="display:none;">
+              <button type="button" class="welcome-cta-btn" id="welcomeCtaBtn">Tap to start</button>
+            </div>
+            <span class="welcome-pulse" id="welcomePulse" aria-hidden="true"></span>
+          </div>
           <div class="pick-overlay" id="pickOverlay" aria-label="Choose your layout">
             <div class="pick-head">
               <p class="pick-title" id="pickTitle">Choose your layout</p>
@@ -21181,7 +21255,7 @@
       const refreshPrintersBtn = document.getElementById('refreshPrintersBtn');
       const printerOptionsBox = document.getElementById('printerOptionsBox');
       if (bluetoothPrinterBtn) {
-        bluetoothPrinterBtn.style.display = DESKTOP || (!isMobileOS() && helperOn) ? '' : 'none';
+        bluetoothPrinterBtn.style.display = DESKTOP || helperOn ? '' : 'none';
         bluetoothPrinterBtn.addEventListener('click', async function () {
           bluetoothPrinterBtn.disabled = true; printerOptionsBox.style.display = 'block';
           printerOptionsBox.textContent = 'Opening Bluetooth settings…';
@@ -21194,7 +21268,7 @@
         });
       }
       if (refreshPrintersBtn) {
-        refreshPrintersBtn.style.display = DESKTOP || (!isMobileOS() && helperOn) ? '' : 'none';
+        refreshPrintersBtn.style.display = DESKTOP || helperOn ? '' : 'none';
         refreshPrintersBtn.addEventListener('click', async function () {
           refreshPrintersBtn.disabled = true; refreshPrintersBtn.textContent = 'Refreshing…';
           try { await checkHelper(true); printerOptionsBox.style.display = 'block'; printerOptionsBox.textContent = helper.ok ? (helper.printers.length ? 'Printer list refreshed. Choose the Bluetooth printer from the list above.' : 'No system printers found yet. Finish adding the printer and install its driver, then refresh again.') : 'Print Helper is unavailable. Open it, then refresh the printer list.'; }
@@ -21416,8 +21490,8 @@
           printerSetupBtn.style.display = canOpen ? '' : 'none';
           printerSetupBtn.textContent = 'Configure printer';
         }
-        if (bluetoothPrinterBtn) bluetoothPrinterBtn.style.display = (DESKTOP || (!isMobileOS() && helperOn && helper.ok && helperAtLeast('1.1.8'))) ? '' : 'none';
-        if (refreshPrintersBtn) refreshPrintersBtn.style.display = (DESKTOP || (!isMobileOS() && helperOn && helper.ok && helperAtLeast('1.1.8'))) ? '' : 'none';
+        if (bluetoothPrinterBtn) bluetoothPrinterBtn.style.display = (DESKTOP || (helperOn && helper.ok && helperAtLeast('1.1.8'))) ? '' : 'none';
+        if (refreshPrintersBtn) refreshPrintersBtn.style.display = (DESKTOP || (helperOn && helper.ok && helperAtLeast('1.1.8'))) ? '' : 'none';
         if (helperOn && helper.ok) {
           if (DESKTOP && !helper.printers.length) printerHelperHint.textContent = 'No printers found on this laptop. For Bluetooth, pair the printer, add it in Printers & Scanners, and install its driver. 80 mm Bluetooth Xprinter and Epson receipt printers are the target.';
           else if (!name) printerHelperHint.textContent = 'Print Helper connected. Choose the printer for this paper size.';
@@ -23614,7 +23688,8 @@
       var attractPosterImg = null;
       var attractPosterUrl = '';
       var attractPosterId = '';
-      var attractPosterFit = 'stretch';     // stretch | contain | cover
+      var attractPosterType = 'image';      // image | gif | video
+      var attractPosterFit = 'cover';       // cover | contain | stretch
       var welcomeBtnOn = true;
       var welcomeCustomOn = false;
       var welcomeGreeting = '';
@@ -26361,7 +26436,7 @@
       var attractHints = {
         card: 'Auto-generates a branded welcome card with your event title, date, 3-step guest instructions, and a sample photo print.',
         camera: 'Guests see themselves on the live camera like a mirror. Tap to start appears over the video.',
-        poster: 'Shows a full-screen custom graphic (e.g. designed in Canva at your camera’s aspect ratio).'
+        poster: 'Shows a full-screen custom graphic, auto-looping video, or animated GIF (e.g. designed in Canva at your tablet’s aspect ratio).'
       };
       function setAttractModeUI(mode) {
         attractMode = (mode === 'camera' || mode === 'poster') ? mode : 'card';
@@ -26388,34 +26463,109 @@
           renderWelcome(); refreshWelcome(); guestRender();
           if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
         });
-        // Poster upload
+        // Media detection helpers
+        function isPosterVideo(url, type) {
+          if (type === 'video') return true;
+          if (typeof url !== 'string' || !url) return false;
+          return url.startsWith('data:video/') || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url);
+        }
+        function isPosterGif(url, type) {
+          if (type === 'gif') return true;
+          if (typeof url !== 'string' || !url) return false;
+          return url.startsWith('data:image/gif') || /\.gif(\?|$)/i.test(url);
+        }
+        window._isPosterVideo = isPosterVideo;
+        window._isPosterGif = isPosterGif;
+
+        window._loadAttractPosterMedia = function (url, type, id) {
+          attractPosterUrl = url || '';
+          attractPosterId = id || attractPosterId || '';
+          attractPosterType = type || (isPosterVideo(url) ? 'video' : (isPosterGif(url) ? 'gif' : 'image'));
+
+          var pt = document.getElementById('attractPosterThumb');
+          var pvt = document.getElementById('attractPosterVideoThumb');
+          var pr = document.getElementById('attractPosterRemove');
+
+          if (!url) {
+            attractPosterImg = null;
+            if (pt) { pt.src = ''; pt.style.display = 'none'; }
+            if (pvt) { pvt.src = ''; pvt.style.display = 'none'; }
+            if (pr) pr.style.display = 'none';
+            renderWelcome(); refreshWelcome(); guestRender();
+            return;
+          }
+
+          if (pr) pr.style.display = '';
+
+          if (attractPosterType === 'video') {
+            attractPosterImg = null;
+            if (pt) { pt.src = ''; pt.style.display = 'none'; }
+            if (pvt) { pvt.src = url; pvt.style.display = ''; }
+            renderWelcome(); refreshWelcome(); guestRender();
+          } else {
+            if (pvt) { pvt.src = ''; pvt.style.display = 'none'; }
+            var im = new Image();
+            im.onload = function () {
+              attractPosterImg = im;
+              if (pt) { pt.src = url; pt.style.display = ''; }
+              renderWelcome(); refreshWelcome(); guestRender();
+            };
+            im.src = url;
+          }
+        };
+
+        // Poster / video / GIF upload
         var posterInput = document.getElementById('attractPosterInput');
         var posterThumb = document.getElementById('attractPosterThumb');
         var posterRemove = document.getElementById('attractPosterRemove');
         if (posterInput) posterInput.addEventListener('change', async function () {
           var f = posterInput.files[0]; if (!f) return;
+          var isVid = f.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(f.name || '');
+          var isGif = f.type === 'image/gif' || /\.gif$/i.test(f.name || '');
+          var mediaType = isVid ? 'video' : (isGif ? 'gif' : 'image');
+
+          if (isVid && f.size > 50 * 1024 * 1024) {
+            if (typeof showToast === 'function') showToast('Please choose a video under 50 MB for the welcome loop.', 4500);
+            posterInput.value = '';
+            return;
+          }
+
           try {
-            var url = typeof readImageFile === 'function' ? await readImageFile(f, 1800) : await (new Promise(function (res) { var r = new FileReader(); r.onload = function () { res(r.result); }; r.readAsDataURL(f); }));
-            var id = typeof addAsset === 'function' ? await addAsset(url) : '';
-            attractPosterId = id;
-            attractPosterUrl = url;
-            var img = new Image();
-            img.onload = function () {
-              attractPosterImg = img;
-              if (posterThumb) { posterThumb.src = attractPosterUrl; posterThumb.style.display = ''; }
-              if (posterRemove) posterRemove.style.display = '';
-              renderWelcome(); refreshWelcome(); guestRender();
-              if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
-            };
-            img.src = attractPosterUrl;
-          } catch (err) { if (typeof showToast === 'function') showToast(err.message || 'Could not load poster', 4000); }
+            var readPromise;
+            if (isVid || isGif) {
+              readPromise = new Promise(function (res, reject) {
+                var r = new FileReader();
+                r.onload = function () { res(r.result); };
+                r.onerror = reject;
+                r.readAsDataURL(f);
+              });
+            } else {
+              readPromise = typeof readImageFile === 'function' ? readImageFile(f, 1800) : new Promise(function (res, reject) {
+                var r = new FileReader();
+                r.onload = function () { res(r.result); };
+                r.onerror = reject;
+                r.readAsDataURL(f);
+              });
+            }
+
+            var url = await readPromise;
+            var id = '';
+            if (typeof addAsset === 'function') {
+              if (url.length <= 4 * 1024 * 1024) {
+                id = await addAsset(url);
+              } else {
+                id = newAssetId();
+                registerAsset(id, url);
+                cacheAssetLocal(id, url);
+              }
+            }
+            window._loadAttractPosterMedia(url, mediaType, id);
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          } catch (err) { if (typeof showToast === 'function') showToast(err.message || 'Could not load media', 4000); }
           posterInput.value = '';
         });
         if (posterRemove) posterRemove.addEventListener('click', function () {
-          attractPosterImg = null; attractPosterUrl = ''; attractPosterId = '';
-          if (posterThumb) { posterThumb.src = ''; posterThumb.style.display = 'none'; }
-          posterRemove.style.display = 'none';
-          renderWelcome(); refreshWelcome(); guestRender();
+          window._loadAttractPosterMedia('', 'image', '');
           if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
         });
       })();
@@ -26464,7 +26614,7 @@
           var land = !isPort && (wa >= 1.15);
           var H = isPort ? 1600 : 1200;
           var portAspect = (window.innerHeight && window.innerWidth) ? (window.innerWidth / window.innerHeight) : 0.625;
-          var W = isPort ? Math.round(H * Math.max(0.48, Math.min(0.85, portAspect))) : Math.round(H * wa);
+          var W = isPort ? Math.round(H * portAspect) : Math.round(H * wa);
           var c = document.createElement('canvas'); c.width = W; c.height = H;
           var ctx = c.getContext('2d');
           var pvFrame = document.querySelector('.welcome-pv-frame');
@@ -26504,15 +26654,20 @@
             return;
           }
 
-          // ---- Poster mode: full-bleed uploaded image + CTA ----
+          // ---- Poster mode: full-bleed uploaded image/video + CTA ----
           if (attractMode === 'poster') {
-            if (attractPosterImg) {
+            if (attractPosterType === 'video') {
+              ctx.fillStyle = '#1C1A1E'; ctx.fillRect(0, 0, W, H);
+              ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = '600 28px Manrope, sans-serif';
+              ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+              ctx.fillText('▶ Video welcome card (auto-looping)', W / 2, H / 2);
+            } else if (attractPosterImg) {
               drawPosterFit(ctx, attractPosterImg, W, H);
             } else {
               ctx.fillStyle = '#1C1A1E'; ctx.fillRect(0, 0, W, H);
               ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.font = '600 32px Manrope, sans-serif';
               ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-              ctx.fillText('Upload a poster image in Setup', W / 2, H / 2);
+              ctx.fillText('Upload a poster, video or GIF in Setup', W / 2, H / 2);
             }
             if (welcomeBtnOn) {
               // Soft bottom gradient for button readability
@@ -26548,7 +26703,15 @@
             welcomeDataUrl = c.toDataURL('image/jpeg', 0.88);
             if (typeof brandPvLayout === 'function') brandPvLayout();
             welcomeImg.src = welcomeDataUrl;
-            var prev2 = document.getElementById('welcomePreview'); if (prev2) prev2.src = welcomeDataUrl;
+            var prev2 = document.getElementById('welcomePreview');
+            var prevVid2 = document.getElementById('welcomeVideoPreview');
+            if (attractPosterType === 'video' && attractPosterUrl) {
+              if (prevVid2) { if (prevVid2.src !== attractPosterUrl) prevVid2.src = attractPosterUrl; prevVid2.style.display = ''; }
+              if (prev2) prev2.style.display = 'none';
+            } else {
+              if (prevVid2) { prevVid2.pause(); prevVid2.style.display = 'none'; }
+              if (prev2) { prev2.style.display = ''; prev2.src = welcomeDataUrl; }
+            }
             guestRender();
             return;
           }
@@ -26760,15 +26923,72 @@
         var show = welcomeOn && state === 'idle' && !flowBusy && !pickOpen && !readyOverlay.classList.contains('ready-active');   // not while a guest's start is still being set up (camera opening): a tap then does nothing
         welcomeOverlay.classList.toggle('on', show);
         document.body.classList.toggle('attract-camera', attractMode === 'camera' && show);
+        document.body.classList.toggle('welcome-fit-contain', attractPosterFit === 'contain');
+        document.body.classList.toggle('welcome-fit-stretch', attractPosterFit === 'stretch');
+        document.body.classList.toggle('welcome-fit-cover', attractPosterFit !== 'contain' && attractPosterFit !== 'stretch');
+
         // The welcome screen is the button: no separate Start under it, so the picture gets the room.
         if (document.body.classList.contains('welcome-on') !== show) {
           document.body.classList.toggle('welcome-on', show);
           try { scheduleDock(); } catch (e) { }
         }
         try { refreshPayBadge(); } catch (e) { }
+
+        // Looping video, animated GIF, or image handling
+        var welcomeVid = document.getElementById('welcomeVideo');
+        var welcomeCtaOverlay = document.getElementById('welcomeCtaOverlay');
+        var welcomeCtaBtn = document.getElementById('welcomeCtaBtn');
+        var hfMode = typeof fx !== 'undefined' ? fx.hands : 'off';
+        var btnText = welcomeMsg || (hfMode === 'wave' ? 'Wave to start' : hfMode === 'smile' ? 'Smile to start' : 'Tap to start');
+
+        if (show && attractMode === 'poster' && attractPosterType === 'video' && attractPosterUrl) {
+          if (welcomeVid) {
+            if (welcomeVid.src !== attractPosterUrl) welcomeVid.src = attractPosterUrl;
+            welcomeVid.loop = true;
+            welcomeVid.muted = true;
+            welcomeVid.style.display = 'block';
+            welcomeVid.style.objectFit = (attractPosterFit === 'contain' ? 'contain' : (attractPosterFit === 'stretch' ? 'fill' : 'cover'));
+            var playPromise = welcomeVid.play();
+            if (playPromise && playPromise.catch) playPromise.catch(function () {});
+          }
+          if (welcomeImg) welcomeImg.style.display = 'none';
+          if (welcomeCtaOverlay && welcomeCtaBtn) {
+            if (welcomeBtnOn) {
+              welcomeCtaOverlay.style.display = 'flex';
+              welcomeCtaBtn.textContent = btnText;
+            } else {
+              welcomeCtaOverlay.style.display = 'none';
+            }
+          }
+        } else if (show && attractMode === 'poster' && attractPosterType === 'gif' && attractPosterUrl) {
+          if (welcomeVid) { welcomeVid.pause(); welcomeVid.style.display = 'none'; }
+          if (welcomeImg) {
+            welcomeImg.src = attractPosterUrl;
+            welcomeImg.style.display = 'block';
+            welcomeImg.style.objectFit = (attractPosterFit === 'contain' ? 'contain' : (attractPosterFit === 'stretch' ? 'fill' : 'cover'));
+          }
+          if (welcomeCtaOverlay && welcomeCtaBtn) {
+            if (welcomeBtnOn) {
+              welcomeCtaOverlay.style.display = 'flex';
+              welcomeCtaBtn.textContent = btnText;
+            } else {
+              welcomeCtaOverlay.style.display = 'none';
+            }
+          }
+        } else {
+          if (welcomeVid) { welcomeVid.pause(); welcomeVid.style.display = 'none'; }
+          if (welcomeCtaOverlay) welcomeCtaOverlay.style.display = 'none';
+          if (welcomeImg) {
+            welcomeImg.style.display = 'block';
+            welcomeImg.src = welcomeDataUrl;
+            welcomeImg.style.objectFit = (attractMode === 'poster' && attractPosterFit === 'contain' ? 'contain' : (attractMode === 'poster' && attractPosterFit === 'stretch' ? 'fill' : 'cover'));
+          }
+        }
       }
       welcomeOverlay.addEventListener('click', function (e) { e.stopPropagation(); beginGuestFlow(true); });
       welcomeOverlay.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); beginGuestFlow(true); } });
+      var ctaBtnEl = document.getElementById('welcomeCtaBtn');
+      if (ctaBtnEl) ctaBtnEl.addEventListener('click', function (e) { e.stopPropagation(); beginGuestFlow(true); });
 
       // ---- Guests choose the layout ----
       var guestPickToggle = document.getElementById('guestPickToggle');
@@ -29421,6 +29641,7 @@
           welcomeStep3: welcomeStep3,
           attractMode: attractMode,
           attractPosterFit: attractPosterFit,
+          attractPosterType: attractPosterType || 'image',
           attractPosterId: attractPosterId || '',
           attractPosterUrl: attractPosterUrl && !attractPosterId ? attractPosterUrl : '',
           accent: accent, overlay: overlay ? Object.assign({}, overlay) : null, logo: logo ? Object.assign({}, logo) : null,
@@ -29621,22 +29842,11 @@
           var pId = (typeof s.attractPosterId === 'string' && /^a[A-Za-z0-9]{8,32}$/.test(s.attractPosterId)) ? s.attractPosterId : null;
           var pUrl = pId ? ((typeof ASSETS !== 'undefined' && ASSETS[pId]) ? ASSETS[pId].url : '') : (typeof s.attractPosterUrl === 'string' ? s.attractPosterUrl : '');
           attractPosterId = pId || '';
-          attractPosterFit = (s.attractPosterFit === 'contain' || s.attractPosterFit === 'cover') ? s.attractPosterFit : 'stretch';
+          attractPosterFit = (s.attractPosterFit === 'contain' || s.attractPosterFit === 'stretch') ? s.attractPosterFit : 'cover';
+          attractPosterType = s.attractPosterType || (window._isPosterVideo(pUrl) ? 'video' : (window._isPosterGif(pUrl) ? 'gif' : 'image'));
           var fitEl = document.getElementById('attractPosterFit'); if (fitEl) fitEl.value = attractPosterFit;
-          if (pUrl) {
-            attractPosterUrl = pUrl;
-            var pImg = new Image();
-            pImg.onload = function () {
-              attractPosterImg = pImg;
-              var pt = document.getElementById('attractPosterThumb'); if (pt) { pt.src = pUrl; pt.style.display = ''; }
-              var pr = document.getElementById('attractPosterRemove'); if (pr) pr.style.display = '';
-              renderWelcome(); refreshWelcome(); guestRender();
-            };
-            pImg.src = pUrl;
-          } else if (!pId) {
-            attractPosterImg = null; attractPosterUrl = '';
-            var pt = document.getElementById('attractPosterThumb'); if (pt) { pt.src = ''; pt.style.display = 'none'; }
-            var pr = document.getElementById('attractPosterRemove'); if (pr) pr.style.display = 'none';
+          if (typeof window._loadAttractPosterMedia === 'function') {
+            window._loadAttractPosterMedia(pUrl, attractPosterType, pId);
           }
           setFrameColorUI(s.frameColorChoice === 'auto' || isHex(s.frameColorChoice) ? s.frameColorChoice : 'auto');
           if (typeof setAndroidOrientationUI === 'function') {
@@ -29690,16 +29900,10 @@
           applyTplsSetup(s.tpls);
           buildLayoutPicker();
           ensureAssets(designAssetIds().concat(myProps)).then(function () {
-            if (attractPosterId && typeof ASSETS !== 'undefined' && ASSETS[attractPosterId] && (!attractPosterImg || attractPosterUrl !== ASSETS[attractPosterId].url)) {
-              attractPosterUrl = ASSETS[attractPosterId].url;
-              var im = new Image();
-              im.onload = function () {
-                attractPosterImg = im;
-                var pt = document.getElementById('attractPosterThumb'); if (pt) { pt.src = attractPosterUrl; pt.style.display = ''; }
-                var pr = document.getElementById('attractPosterRemove'); if (pr) pr.style.display = '';
-                renderWelcome(); refreshWelcome(); guestRender();
-              };
-              im.src = attractPosterUrl;
+            if (attractPosterId && typeof ASSETS !== 'undefined' && ASSETS[attractPosterId] && attractPosterUrl !== ASSETS[attractPosterId].url) {
+              if (typeof window._loadAttractPosterMedia === 'function') {
+                window._loadAttractPosterMedia(ASSETS[attractPosterId].url, attractPosterType, attractPosterId);
+              }
             }
             refreshDecorUI(); refreshFrameUI(); redrawAll(); refreshBrandUI(); guestRender();
             if (typeof refreshFlipCoverUI === 'function') refreshFlipCoverUI();

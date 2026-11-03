@@ -59,7 +59,7 @@ object EscprJob {
         require(areaW > 0 && areaH > 0) { "Sheet too small" }
 
         // Turn a landscape picture to match the portrait feed, then fit it to the printable area.
-        val needsRotate = src.width > src.height && widthMm <= heightMm
+        val needsRotate = (src.width > src.height) != (areaW > areaH)
         val rotatedSrc: Bitmap
         val shouldRecycleRotated: Boolean
         if (needsRotate) {

@@ -18,6 +18,11 @@
     <!-- Screen keep-awake for Kiosk / Tablet operation -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Background helper service on 127.0.0.1:17321 for mobile Chrome & Web Booth -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Bluetooth Classic (Android 11 and below) -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
@@ -82,6 +87,13 @@
                 android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
                 android:resource="@xml/usb_device_filter" />
         </activity>
+
+        <!-- Foreground service for 127.0.0.1:17321 Print & Camera Helper -->
+        <service
+            android:name=".PrintHelperService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
     </application>
 
 </manifest>

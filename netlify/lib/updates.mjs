@@ -74,7 +74,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.74', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.74/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.75', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.75/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -109,6 +109,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-03', title: 'Android Print & Camera Helper (127.0.0.1:17321) for mobile Chrome & direct USB printing', for: ['app'], app: '1.0.75',
+    items: [
+      'Built-in background Print & Camera Helper: Runs a local helper service on 127.0.0.1:17321 with ongoing foreground notification support, allowing photobooth4u in Google Chrome on Android phones to connect directly via Print Helper.',
+      'Silent direct USB OTG printing: Enables 100% silent, zero-dialog printing from mobile Chrome to Epson L3210, L8050, L3276, Canon SELPHY CP1500, and USB POS thermal receipt printers.',
+      'Automatic feed rotation: Ensures landscape photos always fill the portrait feed on Epson ink-tank printers with zero edge cutoff.',
+      'Background persistence: Foreground service keeps USB connection and HTTP server awake when switching to Chrome or other apps.'
+    ]
+  },
   {
     date: '2026-11-03', title: 'Landscape 4×6 borderless print fix, Lightness & RGB colour correction & camera stability (Windows & Mac)', for: ['app'], app: '1.0.63',
     items: [

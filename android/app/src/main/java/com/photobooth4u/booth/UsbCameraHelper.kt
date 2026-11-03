@@ -82,6 +82,7 @@ class UsbCameraHelper(private val ctx: Context) {
     private val usb = ctx.getSystemService(Context.USB_SERVICE) as UsbManager
     private val lock = Any()
     private val uvc = UvcWebcam(ctx)
+    var printBridge: NetPrintBridge? = null
 
     // ---- the open camera (all guarded by lock) ----
     private var dev: UsbDevice? = null
@@ -159,25 +160,45 @@ class UsbCameraHelper(private val ctx: Context) {
     private fun handle(s: Socket) {
         s.use { sock ->
             try {
-                sock.soTimeout = 10000
+                sock.soTimeout = 60000
                 val inp = sock.getInputStream().buffered()
                 val line = readLine(inp) ?: return
                 val parts = line.split(' ')
                 if (parts.size < 2) return
-                while (true) { val h = readLine(inp) ?: break; if (h.isEmpty()) break }   // headers: nothing in them is needed
+                var contentLength = 0
+                while (true) {
+                    val h = readLine(inp) ?: break
+                    if (h.isEmpty()) break
+                    val colon = h.indexOf(':')
+                    if (colon > 0 && h.substring(0, colon).trim().equals("content-length", ignoreCase = true)) {
+                        contentLength = h.substring(colon + 1).trim().toIntOrNull() ?: 0
+                    }
+                }
                 val method = parts[0]
                 val full = parts[1]
                 val path = full.substringBefore('?').trimEnd('/')
                 val query = if (full.contains('?')) full.substringAfter('?') else ""
                 val out = sock.getOutputStream()
                 if (method == "OPTIONS") { reply(out, 204, "text/plain", ByteArray(0)); return }
+
+                val body = if (contentLength in 1..(50 * 1024 * 1024)) {
+                    val b = ByteArray(contentLength)
+                    var readTotal = 0
+                    while (readTotal < contentLength) {
+                        val n = inp.read(b, readTotal, contentLength - readTotal)
+                        if (n < 0) break
+                        readTotal += n
+                    }
+                    if (readTotal == contentLength) b else null
+                } else null
+
                 try {
-                    route(out, method, path, query)
+                    route(out, method, path, query, body)
                 } catch (e: CamErr) {
                     log("Camera call $path failed: ${e.code} ${e.message}")
                     reply(out, e.status, "application/json", err(e.code, e.message ?: "Camera problem").toByteArray())
                 } catch (e: Exception) {
-                    Log.w(TAG, "camera call failed", e)
+                    Log.w(TAG, "helper call failed", e)
                     reply(out, 409, "application/json", err("ERROR", e.message ?: e.javaClass.simpleName).toByteArray())
                 }
             } catch (_: IOException) { }
@@ -209,13 +230,20 @@ class UsbCameraHelper(private val ctx: Context) {
 
     private fun json(out: OutputStream, o: JSONObject) = reply(out, 200, "application/json", o.put("ok", true).toString().toByteArray())
 
-    private fun route(out: OutputStream, method: String, path: String, query: String) {
+    private fun route(out: OutputStream, method: String, path: String, query: String, body: ByteArray?) {
         if (path == "/uvc" || path.startsWith("/uvc/")) {   // plain USB webcams (see UvcWebcam)
             val r = uvc.route(method, path, query)
             reply(out, r.status, r.type, r.body)
             return
         }
         when {
+            method == "GET" && path == "/status" -> json(out, statusJson(query.contains("refresh=1")))
+            method == "GET" && path == "/printers" -> json(out, printersJson())
+            method == "GET" && path == "/paper" -> json(out, paperJson(query))
+            method == "POST" && path == "/printer/configure" -> json(out, printerConfigureJson())
+            method == "POST" && path == "/printer/bluetooth" -> json(out, printerBluetoothJson())
+            method == "GET" && path == "/printer/discover" -> json(out, printerDiscoverJson())
+            method == "POST" && path == "/print" -> printJson(out, body)
             method == "GET" && path == "/camera" -> json(out, listJson())
             method == "POST" && path == "/camera/open" -> json(out, openCamera())
             method == "POST" && path == "/camera/live" -> { setLive(!query.contains("on=0")); json(out, JSONObject()) }
@@ -228,6 +256,102 @@ class UsbCameraHelper(private val ctx: Context) {
             method == "POST" && path == "/camera/close" -> { synchronized(lock) { closeCamera() }; json(out, JSONObject()) }
             method == "POST" && path == "/camera/free" -> json(out, JSONObject())
             else -> reply(out, 404, "application/json", err("NOTFOUND", "Not found").toByteArray())
+        }
+    }
+
+    private fun statusJson(refresh: Boolean): JSONObject {
+        val o = JSONObject()
+        o.put("ok", true)
+        o.put("app", "photobooth4u-print-helper")
+        o.put("version", "1.1.11-android")
+        val pb = printBridge
+        val printersArr = JSONArray()
+        if (pb != null) {
+            for (p in pb.getPrinterNames()) printersArr.put(p)
+        }
+        o.put("printers", printersArr)
+        val camObj = JSONObject()
+        camObj.put("supported", true)
+        camObj.put("open", conn != null)
+        camObj.put("name", dev?.let { it.productName ?: "Camera" } ?: "")
+        camObj.put("free", false)
+        o.put("camera", camObj)
+        return o
+    }
+
+    private fun printersJson(): JSONObject {
+        val o = JSONObject().put("ok", true)
+        val arr = JSONArray()
+        printBridge?.let { pb ->
+            for (p in pb.getPrinterNames()) arr.put(p)
+        }
+        o.put("printers", arr)
+        return o
+    }
+
+    private fun paperJson(query: String): JSONObject {
+        val o = JSONObject().put("ok", true).put("known", true)
+        val match = JSONObject().put("name", "4x6 in").put("borderless", true).put("isDefault", true)
+        o.put("match", match)
+        o.put("def", "4x6 in")
+        val sizes = JSONArray().put("4x6 in").put("2x6 in").put("A4").put("80mm Receipt").put("58mm Receipt")
+        o.put("sizes", sizes)
+        return o
+    }
+
+    private fun printerConfigureJson(): JSONObject =
+        JSONObject().put("ok", true).put("message", "Printer preferences are managed automatically by the Photobooth Helper.")
+
+    private fun printerBluetoothJson(): JSONObject {
+        try {
+            val i = Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            ctx.startActivity(i)
+        } catch (_: Exception) {}
+        return JSONObject().put("ok", true).put("message", "Bluetooth settings opened.")
+    }
+
+    private fun printerDiscoverJson(): JSONObject {
+        val o = JSONObject().put("ok", true)
+        val arr = JSONArray()
+        printBridge?.let { pb ->
+            for (p in pb.getPrinterNames()) arr.put(p)
+        }
+        o.put("printers", arr)
+        return o
+    }
+
+    private fun printJson(out: OutputStream, body: ByteArray?) {
+        if (body == null || body.isEmpty()) {
+            reply(out, 400, "application/json", err("BAD_REQUEST", "Missing request body").toByteArray())
+            return
+        }
+        val pb = printBridge
+        if (pb == null) {
+            reply(out, 503, "application/json", err("UNAVAILABLE", "Print bridge not available").toByteArray())
+            return
+        }
+        try {
+            val req = JSONObject(String(body, Charsets.UTF_8))
+            val printer = req.optString("printer", "").trim()
+            val widthMm = req.optDouble("widthMm", 101.6)
+            val heightMm = req.optDouble("heightMm", 152.4)
+            val fit = req.optString("fit", "").ifEmpty { null }
+            val pages = req.optJSONArray("pages")
+            if (pages == null || pages.length() == 0) {
+                reply(out, 400, "application/json", err("NOPAGES", "No pages to print").toByteArray())
+                return
+            }
+            val err = pb.printFromHelper(printer, widthMm, heightMm, pages, fit)
+            if (err == null) {
+                json(out, JSONObject())
+            } else {
+                reply(out, 500, "application/json", err("PRINT_FAILED", err).toByteArray())
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "printJson failed", e)
+            reply(out, 500, "application/json", err("ERROR", e.message ?: "Print failed").toByteArray())
         }
     }
 

@@ -16644,7 +16644,8 @@
       // 127.0.0.1:17321/uvc; here they become one more "webcam" in the camera menu (a canvas stream), so everything else
       // in the booth works unchanged.
       const UVC_ID = 'pb-uvc-webcam';
-      // Webcam resolution settings (this tablet only): preview auto | max | 1080 | 720 | 480; photo preview | max.
+      const IS_ANDROID_APP = /PB4uAndroid/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.android);
+      // Webcam resolution settings (remembered per device): preview auto | max | 1080 | 720 | 480; photo preview | max.
       const WEBCAM_RES_KEY = 'pb4u.webcamRes';
       const webcamRes = (function () {
         let v = null; try { v = JSON.parse(localStorage.getItem(WEBCAM_RES_KEY) || 'null'); } catch (e) { }
@@ -16652,19 +16653,25 @@
         return { preview: ['auto', 'max', '1080', '720', '480'].includes(v.preview) ? v.preview : 'auto', photo: v.photo === 'max' ? 'max' : 'preview' };
       })();
       function saveWebcamRes() { try { localStorage.setItem(WEBCAM_RES_KEY, JSON.stringify(webcamRes)); } catch (e) { } }
-      // getUserMedia size for a webcam Android lists itself (Path 1)
+      // getUserMedia size for an external USB webcam (Android Path 1 or browser)
       function webcamGumSize() {
         const p = webcamRes.preview;
-        if (p === 'max') return { width: { ideal: 4096 }, height: { ideal: 2160 } };
+        if (p === 'max') return { width: { ideal: 3840 }, height: { ideal: 2160 } };
         if (p === '720') return { width: { ideal: 1280 }, height: { ideal: 720 } };
         if (p === '480') return { width: { ideal: 640 }, height: { ideal: 480 } };
         return { width: { ideal: 1920 }, height: { ideal: 1080 } };
       }
-      function isUsbWebcamOption(id, label) { return id === UVC_ID || /usb webcam|facing external/i.test(label || ''); }
+      function isUsbWebcamOption(id, label) {
+        if (!id || id === 'usb-remote') return false;
+        if (id === UVC_ID) return true;
+        const l = String(label || '');
+        if (/facetime|macbook|imac|built-in|integrated|isight|facing (front|back)|\b(front|back|rear) camera\b/i.test(l)) return false;
+        if (IS_ANDROID_APP && window.__pbUvcInfo && window.__pbUvcInfo.native) return true;
+        return /facing external|\busb\b|\buvc\b|webcam|logitech|brio|c270|c920|c922|elgato|capture/i.test(l);
+      }
       (function uvcShim() {
-        const inApp = /PB4uAndroid/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.android);
         const md = navigator.mediaDevices;
-        if (!inApp || !md || !md.enumerateDevices || !md.getUserMedia) return;
+        if (!IS_ANDROID_APP || !md || !md.enumerateDevices || !md.getUserMedia) return;
         const BASE = 'http://127.0.0.1:17321/uvc';
         const origEnum = md.enumerateDevices.bind(md);
         const origGum = md.getUserMedia.bind(md);
@@ -16672,6 +16679,7 @@
         async function probe() {
           try {
             const j = await (await fetch(BASE, { cache: 'no-store', signal: AbortSignal.timeout(4000) })).json();
+            if (j && j.ok) window.__pbUvcInfo = j;
             const d = j && j.ok && !j.native && j.devices && j.devices[0];
             return d ? { name: d.name || 'USB webcam' } : null;
           } catch (e) { return null; }
@@ -16703,6 +16711,7 @@
           if (!r.ok || !j.ok) {
             const e = new Error((j && j.error) || 'The USB webcam did not start.');
             e.name = 'NotReadableError';
+            e.uvcMsg = e.message;
             try { if (typeof usbLog === 'function') usbLog('uvc-open-failed', { error: e.message }); } catch (x) { }
             throw e;
           }
@@ -16711,6 +16720,7 @@
           const canvas = document.createElement('canvas');
           canvas.width = w || 1280; canvas.height = h || 720;
           const g = canvas.getContext('2d');
+          g.fillRect(0, 0, canvas.width, canvas.height);
           const stream = canvas.captureStream(30);
           const track = stream.getVideoTracks()[0];
           let alive = true, fails = 0;
@@ -16763,9 +16773,12 @@
         webcamPhotoRes.value = webcamRes.photo;
         const note = document.getElementById('webcamResNote');
         const info = window.__pbUvcInfo;
-        const now = (typeof video !== 'undefined' && video && video.videoWidth) ? video.videoWidth + '\u00d7' + video.videoHeight : '';
-        if (note) note.textContent = (now ? 'Now: ' + now + '. ' : '') + (info && info.max ? 'Camera max: ' + info.max + '. ' : '') +
-          'Tablets with a USB 2.0 port (Tab A11, S9 FE...) can\u2019t show 4K live; use Max photo instead.';
+        const vw = (typeof video !== 'undefined' && video && video.videoWidth) ? video.videoWidth : 0;
+        const vh = (typeof video !== 'undefined' && video && video.videoHeight) ? video.videoHeight : 0;
+        const now = vw ? vw + '\u00d7' + vh : '';
+        const softWarn = (vh > 0 && vh <= 480 && webcamRes.photo !== 'max') ? '480p is smooth for GIFs/boomerangs, but soft for 4R prints \u2014 pick 720p+ or Max photo for sharper prints. ' : '';
+        const usb2Hint = IS_ANDROID_APP ? 'Tablets with a USB 2.0 port (Tab A11, S9 FE...) can\u2019t show 4K live; use Max photo instead.' : '';
+        if (note) note.textContent = ((now ? 'Now: ' + now + '. ' : '') + (info && info.max ? 'Camera max: ' + info.max + '. ' : '') + softWarn + usb2Hint).trim();
       }
       if (webcamResBox) {
         webcamPreviewRes.addEventListener('change', () => {
@@ -16966,6 +16979,7 @@
 
       // Plain-language reason the camera didn't start, with Mac-specific steps.
       function cameraErrorMessage(err) {
+        if (err && err.uvcMsg) return err.uvcMsg;
         const name = (err && err.name) || '';
         const isMac = /Mac/i.test(navigator.platform || navigator.userAgent) && !(navigator.maxTouchPoints > 1);
         if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || name === 'SecurityError') {
@@ -16999,9 +17013,9 @@
       // A busy or blocked camera is never swapped for a different one.
       async function openCameraStream(deviceId) {
         const selOpt = deviceId && Array.from(cameraSelect.options).find(o => o.value === deviceId);
-        const size = (ANDROID_APP && selOpt && isUsbWebcamOption(deviceId, selOpt.textContent)) ? webcamGumSize() : { width: { ideal: 1920 }, height: { ideal: 1080 } };
+        const size = (selOpt && isUsbWebcamOption(deviceId, selOpt.textContent)) ? webcamGumSize() : { width: { ideal: 1920 }, height: { ideal: 1080 } };
         const gum = video => navigator.mediaDevices.getUserMedia({ video, audio: false });
-        const stop = e => e && (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e.name === 'SecurityError');
+        const stop = e => e && (e.uvcMsg || e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e.name === 'SecurityError');
         let lastErr = null;
         const tries = deviceId
           ? [Object.assign({ deviceId: { exact: deviceId } }, size), { deviceId: { exact: deviceId } }]
@@ -18429,7 +18443,7 @@
       }
       async function captureShot(index) {
         captureFrame(index);
-        if (ANDROID_APP && webcamRes.photo === 'max' && currentDeviceId !== USB_CAM_ID && usbWebcamSelected()) return webcamMaxShot(index);
+        if (webcamRes.photo === 'max' && currentDeviceId !== USB_CAM_ID && usbWebcamSelected()) return webcamMaxShot(index);
         if (!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
         const shots = shotCanvases;
         try {
@@ -18582,7 +18596,7 @@
         await wait(180);
         flashOverlay.classList.remove('flash-active');
         if (lit) setTimeout(screenFlashOff, 120);
-        if (usbCam.active && currentDeviceId === USB_CAM_ID) {
+        if ((usbCam.active && currentDeviceId === USB_CAM_ID) || (webcamRes.photo === 'max' && currentDeviceId !== USB_CAM_ID && usbWebcamSelected())) {
           popNum('Saving', true);
           guestCall('tick', 'Saving', true, 0, cdShot.textContent);
         }

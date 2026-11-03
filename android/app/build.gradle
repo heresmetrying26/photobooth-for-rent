@@ -15,9 +15,6 @@ android {
         versionName "1.0.73"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
-        // Native webcam library: only ship the ARM builds real tablets use (keeps the APK small)
-        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
     }
 
     // Every release is signed with the same key, so a new APK installs over the old app (and keeps its
@@ -74,6 +71,6 @@ dependencies {
     // Verifies this tablet's signed rental-code licence (Ed25519; no JCE provider needed below API 33)
     implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
     // Plain USB webcams (Logitech Brio / C270...) on tablets whose Android doesn't offer them to apps (libuvc; see UvcWebcam.kt)
-    implementation 'com.herohan:UVCAndroid:1.0.7'
+    implementation 'com.herohan:UVCAndroid:1.0.13'
 }
 

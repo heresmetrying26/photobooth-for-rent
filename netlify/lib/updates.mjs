@@ -73,7 +73,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.63', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.63/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.64', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.64/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -109,11 +109,12 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
-    date: '2026-11-03', title: 'Screen orientation lock and portrait layout (Android)', for: ['app'], app: '1.0.63',
+    date: '2026-11-03', title: 'Portrait camera centering, side thumbnails & welcome card fix (Android)', for: ['app'], app: '1.0.64',
     items: [
-      'Operators can now configure the tablet screen orientation from the Admin panel: lock to Landscape, lock to Portrait, or allow Either orientation.',
-      'When set to Either, renters can switch and lock their preferred orientation (Landscape or Portrait) directly in Booth Setup on the tablet.',
-      'Responsive portrait layout with centered camera preview and photo film strip positioned below for vertical tablet booths.'
+      'Welcome card layout on vertical tablets: sample strip and card are proportionally balanced with guaranteed bottom padding so the start button is never clipped.',
+      'Live camera stage in portrait mode is now vertically and horizontally centered with 100% width coverage.',
+      '4R grid polaroid layout fix: camera viewfinder remains centered and full width after preview without shrinking.',
+      'Shot preview thumbnails are now cleanly layered top-to-bottom along the right side of the screen.'
     ]
   },
   {

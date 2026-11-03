@@ -11955,48 +11955,6 @@
             <label class="toggle-row" id="dateStampRow" style="margin-top:8px;"><input type="checkbox"
                 id="dateStampToggle"> Date stamp (orange camera-style date on each photo)</label>
 
-            <!-- Lightness & Colour Correction (Thermal & Photo printing) -->
-            <div class="color-adj-box" style="margin-top:14px; padding:12px 14px; background:var(--panel-2, #faf6f0); border:1px solid var(--line); border-radius:12px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <p class="panel-label" style="margin:0; font-size:13px; font-weight:700;">Lightness &amp; Colour Correction</p>
-                <button type="button" class="link-btn" id="btnResetColorAdj" style="font-size:12px; color:var(--ink-dim); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0;">Reset</button>
-              </div>
-              <p class="panel-hint" style="margin:0 0 10px; font-size:11.5px; line-height:1.4;">Adjust exposure and RGB balance. Increase lightness (+20 to +40) if thermal prints are too dark. Shows in live preview and prints.</p>
-              
-              <div style="display:flex; flex-direction:column; gap:8px;">
-                <div>
-                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
-                    <span>Lightness / Exposure</span>
-                    <b id="valAdjBrightness">0</b>
-                  </div>
-                  <input type="range" id="sliderAdjBrightness" min="-100" max="100" value="0" style="width:100%; cursor:pointer;">
-                </div>
-
-                <div>
-                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
-                    <span style="color:#b91c1c;">Red balance</span>
-                    <b id="valAdjRed" style="color:#b91c1c;">0</b>
-                  </div>
-                  <input type="range" id="sliderAdjRed" min="-100" max="100" value="0" style="width:100%; cursor:pointer; accent-color:#b91c1c;">
-                </div>
-
-                <div>
-                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
-                    <span style="color:#15803d;">Green balance</span>
-                    <b id="valAdjGreen" style="color:#15803d;">0</b>
-                  </div>
-                  <input type="range" id="sliderAdjGreen" min="-100" max="100" value="0" style="width:100%; cursor:pointer; accent-color:#15803d;">
-                </div>
-
-                <div>
-                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
-                    <span style="color:#1d4ed8;">Blue balance</span>
-                    <b id="valAdjBlue" style="color:#1d4ed8;">0</b>
-                  </div>
-                  <input type="range" id="sliderAdjBlue" min="-100" max="100" value="0" style="width:100%; cursor:pointer; accent-color:#1d4ed8;">
-                </div>
-              </div>
-            </div>
             <div id="guestLooksRow" style="margin-top:14px;" hidden>
               <label class="toggle-row"><input type="checkbox" id="guestLooksToggle"> Let guests choose a look on the
                 guest screen</label>
@@ -12781,7 +12739,50 @@
                   style="width:auto;margin:0;">Preview</button>
               </div>
             </div>
-            <div class="copies-row"><span>Copies</span>
+                        <!-- Lightness & Colour Correction (Thermal & Photo printing) -->
+            <div class="color-adj-box" style="margin-top:14px; padding:12px 14px; background:var(--panel-2, #faf6f0); border:1px solid var(--line); border-radius:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <p class="panel-label" style="margin:0; font-size:13px; font-weight:700;">Lightness &amp; Colour Correction</p>
+                <button type="button" class="link-btn" id="btnResetColorAdj" style="font-size:12px; color:var(--ink-dim); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0;">Reset</button>
+              </div>
+              <p class="panel-hint" style="margin:0 0 10px; font-size:11.5px; line-height:1.4;">Adjust exposure and RGB balance for prints. If thermal prints are too dark, increase lightness (+20 to +40). Changes apply to the preview and the next print.</p>
+              
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <div>
+                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
+                    <span>Lightness / Exposure</span>
+                    <b id="valAdjBrightness">0</b>
+                  </div>
+                  <input type="range" id="sliderAdjBrightness" min="-100" max="100" value="0" style="width:100%; cursor:pointer;">
+                </div>
+
+                <div>
+                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
+                    <span style="color:#b91c1c;">Red balance</span>
+                    <b id="valAdjRed" style="color:#b91c1c;">0</b>
+                  </div>
+                  <input type="range" id="sliderAdjRed" min="-100" max="100" value="0" style="width:100%; cursor:pointer; accent-color:#b91c1c;">
+                </div>
+
+                <div>
+                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
+                    <span style="color:#15803d;">Green balance</span>
+                    <b id="valAdjGreen" style="color:#15803d;">0</b>
+                  </div>
+                  <input type="range" id="sliderAdjGreen" min="-100" max="100" value="0" style="width:100%; cursor:pointer; accent-color:#15803d;">
+                </div>
+
+                <div>
+                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
+                    <span style="color:#1d4ed8;">Blue balance</span>
+                    <b id="valAdjBlue" style="color:#1d4ed8;">0</b>
+                  </div>
+                  <input type="range" id="sliderAdjBlue" min="-100" max="100" value="0" style="width:100%; cursor:pointer; accent-color:#1d4ed8;">
+                </div>
+              </div>
+            </div>
+
+<div class="copies-row"><span>Copies</span>
               <span class="stepper"><button type="button" id="copiesMinus" aria-label="Fewer copies">&minus;</button><b
                   id="copiesVal">1</b><button type="button" id="copiesPlus" aria-label="More copies">+</button></span>
             </div>
@@ -12875,7 +12876,7 @@
                     style="display:none;width:auto;margin:0 0 8px 0;">Disconnect</button>
                 </div>
                 <p class="panel-hint" id="btThermalStatusHint" style="margin:4px 0 6px;"></p>
-                <p class="panel-hint" style="margin:4px 0 6px; font-size:12px; color:var(--ink-dim);">Thermal print too dark? Adjust <b>Lightness &amp; Colour</b> in Step 5 (Extras) to lighten the output (+20 to +40).</p>
+                <p class="panel-hint" style="margin:4px 0 6px; font-size:12px; color:var(--ink-dim);">Thermal print too dark? Increase <b>Lightness / Exposure</b> (+20 to +40) in Print settings above to lighten the output.</p>
               </div>
             </div>
             <div class="printer-pick" id="wifiPrinterRow" style="display:none;margin-top:10px;">
@@ -21754,7 +21755,8 @@
         // Paper, printer and auto-print at a glance (a red chip = still to choose).
         const sum = document.getElementById('s4PrinterSum'); sum.innerHTML = '';
         [['Paper', paper ? paper.name : 'not chosen', !paper], ['Printer', pr || 'not chosen', !pr], ['Auto-print', autoPrint ? 'On' : 'Off', false],
-        ...(paper && !isReceiptPaper(printSize) ? [['Layout', fitTxt, false]] : [])].forEach(([k, v, bad]) => {
+        ...(paper && !isReceiptPaper(printSize) ? [['Layout', fitTxt, false]] : []),
+        ...(typeof hasColorAdj === 'function' && hasColorAdj() ? [['Lightness', (colorAdj.brightness > 0 ? '+' : '') + colorAdj.brightness, false]] : [])].forEach(([k, v, bad]) => {
           const chip = document.createElement('span'); chip.className = 's4-chip' + (bad ? ' bad' : '');
           const sm = document.createElement('small'); sm.textContent = k; chip.appendChild(sm); chip.appendChild(document.createTextNode(v));
           sum.appendChild(chip);
@@ -23549,6 +23551,7 @@
           reapplyFiltersToShots();
           renderSetupPreview();
           try { schedulePrintThumb(); } catch (e) { }
+          try { refreshStep4Printer(); } catch (e) { }
           if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
         };
         [sB, sR, sG, sU].forEach(function (el) {
@@ -23567,6 +23570,7 @@
             reapplyFiltersToShots();
             renderSetupPreview();
             try { schedulePrintThumb(); } catch (e) { }
+            try { refreshStep4Printer(); } catch (e) { }
             if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
           });
         }
@@ -26787,6 +26791,28 @@
         c.list.splice(i, 1);
         try { localStorage.setItem(vCacheKey(), JSON.stringify(c)); } catch (e) { }
         var q = vQueue(); q.push({ code: code, at: Date.now(), ev: setupScopeEvent() }); vQueueSet(q);
+        // Track used code in offline batches if generated locally
+        try {
+          var offBatches = loadOfflineBatches();
+          var changed = false;
+          offBatches.forEach(function (ob) {
+            (ob.codes || []).forEach(function (cd) {
+              if ((cd.c || cd) === code && !cd.used) {
+                cd.used = true;
+                ob.usedCount = (ob.usedCount || 0) + 1;
+                changed = true;
+              }
+            });
+          });
+          if (changed) {
+            saveOfflineBatches(offBatches);
+            offBatches.forEach(function (ob) {
+              var mem = payBatches.find(function (b) { return b.id === ob.id; });
+              if (mem) { mem.usedCount = ob.usedCount; mem.codes = ob.codes; }
+            });
+            renderPayBatches();
+          }
+        } catch (_oe) { }
         return { ok: true, prints: prints, offline: true };
       }
       var V_ERR = {
@@ -27007,26 +27033,29 @@
         var box = document.getElementById('payBatches'); if (!box) return;
         if (!payBatches.length) { box.innerHTML = '<p class="panel-hint" style="margin:10px 0 0;">No vouchers yet for this event.</p>'; return; }
         box.innerHTML = payBatches.map(function (bt) {
-          var left = bt.total - bt.usedCount - bt.voidCount;
-          return '<div class="pay-batch" data-id="' + payEsc(bt.id) + '"><div class="bi"><b>' + bt.total + ' vouchers · ' + bt.usedCount + ' used</b><small>' +
-            (bt.price ? payEsc(peso(bt.price)) + ' · ' : '') + 'made ' + fmtShortDate(bt.at) + (bt.by === 'admin' ? ' by photobooth4u' : '') + (bt.voidCount ? ' · ' + bt.voidCount + ' cancelled' : '') + '</small>' +
-            '<div class="meter"><i style="width:' + Math.round(bt.usedCount / bt.total * 100) + '%"></i></div></div>' +
+          var total = typeof bt.total === 'number' ? bt.total : (bt.codes ? bt.codes.length : 0);
+          var usedCount = typeof bt.usedCount === 'number' ? bt.usedCount : (bt.codes ? bt.codes.filter(function (x) { return x.used; }).length : 0);
+          var voidCount = typeof bt.voidCount === 'number' ? bt.voidCount : (bt.codes ? bt.codes.filter(function (x) { return x.voided && !x.used; }).length : 0);
+          var left = total - usedCount - voidCount;
+          return '<div class="pay-batch" data-id="' + payEsc(bt.id) + '"><div class="bi"><b>' + total + ' vouchers · ' + usedCount + ' used</b><small>' +
+            (bt.price ? payEsc(peso(bt.price)) + ' · ' : '') + 'made ' + fmtShortDate(bt.at) + (bt.by === 'admin' ? ' by photobooth4u' : '') + (voidCount ? ' · ' + voidCount + ' cancelled' : '') + '</small>' +
+            '<div class="meter"><i style="width:' + Math.round((total ? usedCount / total : 0) * 100) + '%"></i></div></div>' +
             (left > 0 ? '<button type="button" class="action-btn" data-act="print">Print tickets</button><button type="button" class="action-btn" data-act="void">Cancel unused</button>' : '') + '</div>';
         }).join('');
       }
       async function payLoadBatches() {
         if (!payOn() || !payVoucherOn()) return;
-        // Restore any locally-generated offline batches first so the UI is never empty.
+        // Restore locally-generated offline batches first so the list is available immediately
         try {
-          var saved = JSON.parse(localStorage.getItem('pb_offline_batches_' + vCacheKey()) || '[]');
+          var saved = loadOfflineBatches();
           if (saved.length) { payBatches = saved; renderPayBatches(); }
         } catch (_e) { }
-        // Then merge with server batches (when online).
+        // Then merge with server batches (when online)
         try {
           var r = await postApi('/api/pay', { action: 'batches' }, 10000);
           if (r.status === 200 && r.j.batches) {
             var srv = r.j.batches;
-            // Keep offline-only batches not present on the server.
+            // Keep offline-only batches not present on server
             var offBatches = payBatches.filter(function (b) { return /^off_/.test(b.id) && !srv.some(function (s) { return s.id === b.id; }); });
             payBatches = srv.concat(offBatches);
             renderPayBatches();
@@ -27039,25 +27068,25 @@
       function loadOfflineBatches() { try { return JSON.parse(localStorage.getItem(offlineBatchStorageKey()) || '[]'); } catch (e) { return []; } }
 
       async function makeOfflineBatch(n, prints, price, label) {
-        // Collect all existing codes to avoid collisions.
+        // Collect all existing codes to avoid collisions
         var taken = new Set();
         var existing = loadOfflineBatches();
         existing.forEach(function (b) { (b.codes || []).forEach(function (c) { taken.add(c.c || c); }); });
         payBatches.forEach(function (b) { (b.codes || []).forEach(function (c) { taken.add(c.c || c); }); });
 
-        // Generate n unique 8-digit numeric codes.
+        // Generate n unique 8-digit numeric codes
         var codes = [];
         while (codes.length < n) {
           var num = String(Math.floor(10000000 + Math.random() * 90000000));
           if (!taken.has(num)) { taken.add(num); codes.push(num); }
         }
 
-        // Owner-id for hashing — must match payRedeem / vHash.
+        // Owner-id for hashing — must match payRedeem / vHash
         var pb = window.__PB || {};
         var oid = (pb.folderPrefix || pb.folderKey || 'offline');
         var key = vCacheKey();
 
-        // Load or create the voucher cache and inject the hashes.
+        // Load or create the voucher cache and inject the hashes
         var cData = null;
         try { cData = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { }
         if (!cData || !cData.oid) cData = { oid: oid, at: Date.now(), list: [] };
@@ -27080,10 +27109,13 @@
           prints: prints || 1,
           label: label || '1 photo session',
           at: Date.now(),
-          codes: codes.map(function (c) { return { c: c, used: 0, voided: 0 }; })
+          total: codes.length,
+          usedCount: 0,
+          voidCount: 0,
+          codes: codes.map(function (c) { return { c: c, used: false, voided: false }; })
         };
 
-        // Persist to localStorage so it survives reloads.
+        // Persist to localStorage so it survives app restarts
         var offBatches = loadOfflineBatches();
         offBatches.unshift(batch);
         saveOfflineBatches(offBatches);
@@ -27113,45 +27145,114 @@
         }
         btn.disabled = false; btn.textContent = 'Make vouchers';
       });
-      // ---- Android-compatible ticket printer ----
+
+      // ---- Android-compatible A4 ticket sheet printer ----
       async function renderVoucherTicketsForAndroid(data) {
         if (!data || !data.codes || !data.codes.length) { showToast('No codes to print.', 3000); return; }
         try {
-          var W = 400, H = 200, MM2PX = W / 85;
+          // Standard A4 sheet: 210mm x 297mm (1240 x 1754 px at ~150 DPI)
+          var W = 1240, H = 1754;
+          var marginX = 60, marginY = 60;
+          var cols = 2, rows = 5;
+          var perPage = cols * rows; // 10 tickets per sheet
+          var cellW = Math.floor((W - marginX * 2) / cols); // 560 px
+          var cellH = Math.floor((H - marginY * 2) / rows); // 326 px
           var pages = [];
-          var codesPerPage = 4;
-          for (var p = 0; p < data.codes.length; p += codesPerPage) {
+
+          var pesoStr = function (amt) { return '₱' + Number(amt || 0).toLocaleString('en-PH'); };
+          var incStr = '1 photo session' + (data.prints ? ' · ' + data.prints + ' print' + (data.prints > 1 ? 's' : '') : '');
+
+          for (var p = 0; p < data.codes.length; p += perPage) {
             var cv = document.createElement('canvas');
-            cv.width = W; cv.height = H * Math.min(codesPerPage, data.codes.length - p);
+            cv.width = W; cv.height = H;
             var ctx = cv.getContext('2d');
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(0, 0, cv.width, cv.height);
-            for (var i = 0; i < codesPerPage && (p + i) < data.codes.length; i++) {
-              var code = data.codes[p + i];
-              var x = 0, y = i * H, tw = W, th = H;
-              ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1;
-              ctx.strokeRect(x + 4, y + 4, tw - 8, th - 8);
-              ctx.fillStyle = '#222';
-              ctx.font = 'bold ' + Math.round(10 * MM2PX / 3) + 'px monospace';
-              ctx.textAlign = 'center';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, W, H);
+
+            var pageCodes = data.codes.slice(p, p + perPage);
+            for (var idx = 0; idx < pageCodes.length; idx++) {
+              var cCol = idx % cols;
+              var cRow = Math.floor(idx / cols);
+              var x = marginX + cCol * cellW;
+              var y = marginY + cRow * cellH;
+              var code = pageCodes[idx];
+              var codeFormatted = code.length === 8 ? (code.slice(0, 4) + ' ' + code.slice(4)) : code;
+
+              // Dashed cutting border
+              ctx.save();
+              ctx.setLineDash([6, 6]);
+              ctx.strokeStyle = '#b9b0a3';
+              ctx.lineWidth = 1.5;
+              ctx.strokeRect(x + 4, y + 4, cellW - 8, cellH - 8);
+              ctx.restore();
+
+              // Top Kicker: PHOTOBOOTH4U · VOUCHER
+              ctx.fillStyle = '#6B666C';
+              ctx.font = 'bold 12px sans-serif';
+              ctx.textAlign = 'left';
+              ctx.fillText('PHOTOBOOTH4U · VOUCHER', x + 24, y + 36);
+
+              // Event name
               var ev = data.event || 'Photo booth';
-              ctx.fillText(ev.length > 28 ? ev.slice(0, 27) + '…' : ev, x + tw / 2, y + Math.round(th * 0.28));
-              ctx.font = 'bold ' + Math.round(16 * MM2PX / 3) + 'px monospace';
-              ctx.fillStyle = '#000';
-              ctx.fillText(code, x + tw / 2, y + Math.round(th * 0.55));
-              ctx.font = Math.round(7 * MM2PX / 3) + 'px sans-serif';
-              ctx.fillStyle = '#555';
-              var how = (data.prints || 1) + ' photo session' + ((data.prints || 1) !== 1 ? 's' : '');
-              var hw = ctx.measureText(how).width;
-              ctx.fillText(how, x + (tw - hw) / 2, y + th - Math.round(5 * MM2PX / 3));
+              if (ev.length > 24) ev = ev.slice(0, 23) + '…';
+              ctx.fillStyle = '#1C1A1E';
+              ctx.font = 'bold 20px Georgia, serif';
+              ctx.fillText(ev, x + 24, y + 66);
+
+              // Price (if set)
+              if (data.price) {
+                ctx.fillStyle = '#C93D27';
+                ctx.font = 'bold 22px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(pesoStr(data.price), x + cellW - 24, y + 66);
+              }
+
+              // Code background box
+              var boxW = cellW - 48;
+              var boxH = 68;
+              var boxX = x + 24;
+              var boxY = y + 92;
+              ctx.fillStyle = '#f6f1ea';
+              ctx.beginPath();
+              var r = 10;
+              ctx.moveTo(boxX + r, boxY);
+              ctx.lineTo(boxX + boxW - r, boxY);
+              ctx.quadraticCurveTo(boxX + boxW, boxY, boxX + boxW, boxY + r);
+              ctx.lineTo(boxX + boxW, boxY + boxH - r);
+              ctx.quadraticCurveTo(boxX + boxW, boxY + boxH, boxX + boxW - r, boxY + boxH);
+              ctx.lineTo(boxX + r, boxY + boxH);
+              ctx.quadraticCurveTo(boxX, boxY + boxH, boxX, boxY + boxH - r);
+              ctx.lineTo(boxX, boxY + r);
+              ctx.quadraticCurveTo(boxX, boxY, boxX + r, boxY);
+              ctx.closePath();
+              ctx.fill();
+
+              // Code text
+              ctx.fillStyle = '#1C1A1E';
+              ctx.font = 'bold 36px monospace';
+              ctx.textAlign = 'center';
+              ctx.fillText(codeFormatted, x + cellW / 2, boxY + 48);
+
+              // Includes line
+              ctx.fillStyle = '#1C1A1E';
+              ctx.font = 'bold 15px sans-serif';
+              ctx.fillText(incStr, x + cellW / 2, y + 196);
+
+              // Instruction how to use
+              ctx.fillStyle = '#6B666C';
+              ctx.font = '13px sans-serif';
+              ctx.fillText('Tap screen → I have a voucher → type code. Works once.', x + cellW / 2, y + 236);
             }
-            pages.push(cv.toDataURL('image/jpeg', 0.92));
+
+            pages.push(cv.toDataURL('image/jpeg', 0.90));
           }
+
           if (window.__PBPrint && typeof window.__PBPrint.print === 'function') {
-            var result = JSON.parse(window.__PBPrint.print('Voucher tickets · ' + (data.event || 'Photo booth'), W, H * Math.min(codesPerPage, data.codes.length), JSON.stringify(pages)) || '{}');
+            // Width: 210mm, Height: 297mm (Standard ISO A4)
+            var result = JSON.parse(window.__PBPrint.print('Voucher tickets · ' + (data.event || 'Photo booth'), 210, 297, JSON.stringify(pages)) || '{}');
             if (!result.ok) showToast(result.error || 'Couldn’t open the print dialog.', 4000);
           } else {
-            // Fallback: open in new tab (desktop/browser).
+            // Fallback for desktop / browser: localStorage + popup
             try {
               localStorage.setItem('pb_ticket_print', JSON.stringify({ event: data.event, price: data.price, prints: data.prints, codes: data.codes, at: Date.now() }));
             } catch (err) { }
@@ -27175,10 +27276,22 @@
         if (b.dataset.act === 'void') {
           if (!b.classList.contains('confirm')) { b.classList.add('confirm'); b.textContent = 'Tap again to cancel'; setTimeout(function () { if (b.isConnected) { b.classList.remove('confirm'); b.textContent = 'Cancel unused'; } }, 4000); return; }
           if (bt.offlineOnly) {
-            // Void offline-only batch locally.
-            bt.codes.forEach(function (c) { if (!c.used) c.voided = 1; });
+            // Void offline-only batch locally
+            bt.codes.forEach(function (c) { if (!c.used) c.voided = true; });
+            bt.voidCount = bt.codes.filter(function (c) { return c.voided && !c.used; }).length;
             var offBatches = loadOfflineBatches().map(function (ob) { return ob.id === bt.id ? bt : ob; });
             saveOfflineBatches(offBatches);
+            // Remove voided voucher hashes from localStorage voucher cache
+            try {
+              var cData = JSON.parse(localStorage.getItem(vCacheKey()) || 'null');
+              if (cData && cData.oid && cData.list) {
+                var voidCodes = bt.codes.filter(function (c) { return c.voided; }).map(function (c) { return c.c; });
+                var voidHashes = await Promise.all(voidCodes.map(function (vc) { return vHash(cData.oid, vc); }));
+                var vSet = new Set(voidHashes);
+                cData.list = cData.list.filter(function (entry) { return !vSet.has(entry[0]); });
+                localStorage.setItem(vCacheKey(), JSON.stringify(cData));
+              }
+            } catch (_ve) { }
             renderPayBatches(); refreshVoucherCache(); showToast('Unused offline vouchers cancelled.');
           } else {
             try { var r = await postApi('/api/pay', { action: 'batch.void', id: id }, 10000); if (r.status === 200 && r.j.batch) { Object.assign(bt, r.j.batch); renderPayBatches(); refreshVoucherCache(); showToast('Unused vouchers cancelled.'); } } catch (err) { showToast('No internet. Try again.', 4000); }

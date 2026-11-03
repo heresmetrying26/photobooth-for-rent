@@ -73,7 +73,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.72', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.72/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.73', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.73/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -108,6 +108,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-03', title: 'Offline voucher redemption, cloud batch sync & My Events tally (Android)', for: ['app'], app: '1.0.73',
+    items: [
+      'Guaranteed offline voucher redemption: Local offline batch lookup prevents offline-generated codes from being rejected as unrecognised.',
+      'Offline batch syncing: Automatically synchronizes offline-generated voucher batches, used counts, and voided tickets to the server when connected to Wi-Fi.',
+      'My Events voucher tally: Complete dashboard bar tallying total vouchers created, redeemed by guests, cancelled, remaining available, and total revenue.',
+      'USB webcam & UVC support: Expanded support for external USB webcams with preview and high-resolution still capture options.'
+    ]
+  },
   {
     date: '2026-11-03', title: 'Android app stability, hardware acceleration & print memory optimization', for: ['app'], app: '1.0.72',
     items: [

@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
@@ -179,6 +180,9 @@ class MainActivity : AppCompatActivity() {
         // 5b. Offline photos: saved on this tablet through window.__PBLocal, and shown to guests' phones
         // over the booth Wi-Fi by a small web server in the app (no internet needed).
         pbLocal = PBLocal(this)
+        pbLocal.onOrientationChange = { mode ->
+            applyOrientation(mode, savePref = true)
+        }
         webView.addJavascriptInterface(pbLocal, "__PBLocal")
         // The spoken countdown uses the tablet's own text-to-speech voices (window.__PBVoice).
         val voice = VoiceBridge(this)
@@ -221,7 +225,11 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // 8. Venue kiosk: boot the bundled booth once this tablet is activated (step 5c).
+        // 8. Apply saved orientation preference (or default landscape) before booting
+        val initialPref = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString("pref_orientation", "landscape") ?: "landscape"
+        applyOrientation(initialPref)
+
+        // 9. Venue kiosk: boot the bundled booth once this tablet is activated (step 5c).
         // Live web is opt-in (long-press), and only attempted when the tablet actually has
         // a network right now — otherwise there's no point waiting on a request that can
         // only fail, so go straight to the offline booth.
@@ -243,10 +251,41 @@ class MainActivity : AppCompatActivity() {
         hideActivationGate()
         activeFeat = st.payload?.optJSONObject("feat")
         activeExp = if (st.payload != null && st.payload.has("exp") && !st.payload.isNull("exp")) st.payload.optLong("exp") else null
+        val adminOrientation = activeFeat?.optString("orientation", "landscape") ?: "landscape"
+        val savedPref = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString("pref_orientation", null)
+        if (adminOrientation == "either") {
+            applyOrientation(savedPref ?: "either")
+        } else {
+            applyOrientation(adminOrientation)
+        }
         if (useLiveUrl() && isNetworkAvailable()) {
             webView.loadUrl(getSavedUrl())
         } else {
             loadOfflineBooth()
+        }
+    }
+
+    fun applyOrientation(mode: String, savePref: Boolean = false) {
+        val m = mode.lowercase()
+        if (savePref) {
+            getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putString("pref_orientation", m).apply()
+        }
+        runOnUiThread {
+            when (m) {
+                "vertical", "portrait" -> {
+                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                }
+                "landscape" -> {
+                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                }
+                "either", "auto", "sensor", "unspecified" -> {
+                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                }
+                else -> {
+                    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                }
+            }
         }
     }
 
@@ -563,6 +602,7 @@ class MainActivity : AppCompatActivity() {
                 val debugOpt = feat?.optBoolean("debugOpt", false) ?: false     // Admin turns this on per code; off for everyone else
                 val payOpt = feat?.optBoolean("vouchers", false) ?: false
                 val traditional = feat?.optBoolean("traditional", false) ?: false
+                val orientationOpt = feat?.optString("orientation", "landscape") ?: "landscape"
                 // Extras every package includes (missing = on): vintage looks, photographer desk, flipbook, video guestbook
                 val exObj = feat?.optJSONObject("extras")
                 val extrasJs = listOf("vintage", "roving", "flipbook", "video", "spin360").joinToString(",") { it + ":" + (exObj?.optBoolean(it, true) ?: true) }
@@ -589,6 +629,7 @@ class MainActivity : AppCompatActivity() {
                     append("window.__PB.debugOpt=").append(debugOpt).append(";")
                     append("window.__PB.payOpt=").append(payOpt).append(";")
                     append("window.__PB.traditional=").append(traditional).append(";")
+                    append("window.__PB.orientation=").append(jsStr(orientationOpt)).append(";")
                     append("window.__PB.watermark=false;")
                     append("window.__PB.exp=").append(expMs).append(";")   // this rental code's own expiry, not a fixed local grant
                     append("window.__PB.print={enabled:").append(printEnabled).append(",sizes:[").append(printSizesJs).append("]};")

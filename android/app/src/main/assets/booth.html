@@ -10434,6 +10434,122 @@
       padding: 0 14px;
       font-size: 13px;
     }
+
+    /* ---- Android tablet / device portrait layout adjustments ---- */
+    @media (orientation: portrait) {
+      .app-shell,
+      .app-shell.has-qr,
+      body.in-session .app-shell:not(.capturing) {
+        grid-template-columns: 1fr !important;
+        max-width: min(720px, 96vw) !important;
+        margin: 0 auto !important;
+      }
+
+      .setup-shell {
+        display: block !important;
+        max-width: 680px !important;
+        margin: 0 auto !important;
+      }
+
+      .setup-shell > * {
+        grid-column: auto !important;
+      }
+
+      .setup-shell > #previewSection:not(.docked) {
+        display: none !important;
+      }
+
+      .start-prev,
+      .preview-fab,
+      .see-prev-btn {
+        display: flex !important;
+      }
+
+      /* In portrait capture session: stage is centred, film strip sits below */
+      body.in-session .app-shell.capturing .stage-wrap {
+        display: block !important;
+      }
+
+      body.in-session .app-shell.capturing .film-track {
+        flex-direction: row !important;
+        justify-content: center !important;
+        margin-top: 12px !important;
+      }
+
+      body.in-session .app-shell.capturing .film-track .film-frame {
+        width: auto !important;
+        height: min(75px, 9vh) !important;
+      }
+
+      body.in-session .app-shell.btn-beside .start-btn-wrap {
+        position: static !important;
+        margin: 16px auto 0 !important;
+        left: auto !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+      }
+
+      /* In portrait result view: QR and actions sit neatly below the photo */
+      .app-shell .panel #qrSection {
+        text-align: left;
+      }
+
+      #qrSection {
+        display: grid !important;
+        grid-template-columns: auto 1fr !important;
+        grid-template-areas: 'qr title' 'qr hint' 'qr acts' 'qr timer' !important;
+        column-gap: 16px !important;
+        text-align: left !important;
+        align-items: center !important;
+        margin-top: 14px !important;
+      }
+
+      #qrSection .panel-label {
+        grid-area: title !important;
+        font-size: 20px !important;
+        align-self: end !important;
+      }
+
+      #qrSection .qr-results {
+        grid-area: qr !important;
+        margin: 0 !important;
+      }
+
+      #qrSection .qr-box {
+        width: clamp(120px, 20vw, 150px) !important;
+        height: clamp(120px, 20vw, 150px) !important;
+      }
+
+      #qrSection #qrHint {
+        grid-area: hint !important;
+        margin: 2px 0 0 !important;
+        align-self: start !important;
+      }
+
+      #qrSection #shareSlot {
+        display: none !important;
+      }
+
+      #qrSection .result-actions {
+        grid-area: acts !important;
+        margin-top: 10px !important;
+      }
+
+      #qrSection .result-timer {
+        grid-area: timer !important;
+        margin: 10px 0 0 !important;
+      }
+
+      .result-actions > button {
+        min-height: 50px !important;
+        font-size: 15.5px !important;
+      }
+
+      /* Sizing constraints so stage fits well with dock and controls in portrait */
+      body.in-session:not(.shooting) .stage-frame {
+        max-height: calc(var(--vh, 100vh) - 160px) !important;
+      }
+    }
   </style>
   <script>/* qrcode-generator 1.4.4 (MIT) — QR codes are made on this device, no outside service. */
     // Copyright (c) 2009 Kazuhiko Arase
@@ -12079,6 +12195,14 @@
             <p class="panel-hint" id="fxMeterTxt" style="margin:6px 0 0;"></p>
           </div>
         </div>
+        <div class="panel-section" id="orientationSection" style="display:none;">
+          <p class="panel-label">Screen orientation</p>
+          <p class="panel-hint step-lead">Lock the tablet to landscape or portrait for this event.</p>
+          <div class="chip-row" id="orientChips">
+            <button type="button" class="chip active" data-orient="landscape">Landscape</button>
+            <button type="button" class="chip" data-orient="portrait">Portrait</button>
+          </div>
+        </div>
         <div class="panel-section" id="brandSection">
           <p class="panel-label">Welcome screen &amp; branding</p>
           <p class="panel-hint step-lead" id="brandLead">Customize the screen guests see between sessions, and display
@@ -12094,6 +12218,50 @@
             </div>
             <p class="panel-hint" id="attractHint" style="margin:6px 0 0;">Auto-generates a branded welcome card with
               your event title, date, 3-step guest instructions, and a sample photo print.</p>
+            <div id="welcomeCardCustomBlock" style="margin-top:12px; padding:12px; background:var(--panel-2); border-radius:12px; border:1px solid var(--line);">
+              <label class="switch-row" style="margin-top:0;"><span>Personalize welcome card text &amp; font</span><input
+                  type="checkbox" id="welcomeCustomToggle"></label>
+              <p class="panel-hint" style="margin:4px 0 0;">Separate what guests see on the welcome card from your photo print text.</p>
+              <div id="welcomeCustomFields" style="display:none; margin-top:12px;">
+                <div style="margin-bottom:10px;">
+                  <p class="sub-label" style="margin:0 0 4px;">Greeting line</p>
+                  <input type="text" class="label-input" id="welcomeGreetingInput" placeholder="Welcome to" maxlength="40"
+                    style="font-family:'Manrope',sans-serif; font-size:14px;">
+                  <p class="panel-hint" style="margin:2px 0 0;">e.g. &ldquo;Welcome to&rdquo;, &ldquo;Welcome to the wedding of&rdquo;, or leave empty.</p>
+                </div>
+                <div style="margin-bottom:10px;">
+                  <p class="sub-label" style="margin:0 0 4px;">Headline / Event name</p>
+                  <input type="text" class="label-input" id="welcomeTitleInput" placeholder="Sofia's 7th Birthday" maxlength="60"
+                    style="font-family:'Manrope',sans-serif; font-size:14px;">
+                  <p class="panel-hint" style="margin:2px 0 0;">Custom title on the welcome screen (not linked to Text 02).</p>
+                </div>
+                <div style="margin-bottom:10px;">
+                  <p class="sub-label" style="margin:0 0 4px;">Welcome headline font</p>
+                  <div class="custom-dd" id="welcomeFontDropdown">
+                    <button type="button" class="custom-dd-btn label-input" id="welcomeFontDropdownBtn"
+                      style="font-size:14px; padding:8px 12px;"></button>
+                    <div class="custom-dd-list" id="welcomeFontDropdownList"></div>
+                  </div>
+                </div>
+                <div style="margin-bottom:10px;">
+                  <p class="sub-label" style="margin:0 0 4px;">Subtitle / Date line</p>
+                  <input type="text" class="label-input" id="welcomeSubInput" placeholder="Leave empty to use date from Step 2" maxlength="60"
+                    style="font-family:'Manrope',sans-serif; font-size:14px;">
+                </div>
+                <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--line);">
+                  <label class="switch-row" style="margin-top:0;"><span>Show 3-step guest instructions</span><input
+                      type="checkbox" id="welcomeStepsToggle" checked></label>
+                  <div id="welcomeStepsBlock" style="margin-top:8px;">
+                    <input type="text" class="label-input" id="welcomeStep1Input" placeholder="1. Tap the screen" maxlength="40"
+                      style="font-family:'Manrope',sans-serif; font-size:13px; margin-bottom:6px;">
+                    <input type="text" class="label-input" id="welcomeStep2Input" placeholder="2. Strike a pose" maxlength="40"
+                      style="font-family:'Manrope',sans-serif; font-size:13px; margin-bottom:6px;">
+                    <input type="text" class="label-input" id="welcomeStep3Input" placeholder="3. Scan the QR for your photos" maxlength="40"
+                      style="font-family:'Manrope',sans-serif; font-size:13px;">
+                  </div>
+                </div>
+              </div>
+            </div>
             <div id="attractPosterRow" style="display:none; margin-top:10px;">
               <div class="bg-row">
                 <img class="bg-thumb" id="attractPosterThumb" alt="Poster" style="display:none;">
@@ -17679,6 +17847,16 @@
         ['sessionControls', 'tabSession'].forEach(function (id) { var el = document.getElementById(id); if (el) stageRO.observe(el); });
       } catch (e) { }
       window.addEventListener('resize', function () { applyStageAspect(); });
+      window.addEventListener('orientationchange', function () {
+        setTimeout(function () { applyStageAspect(); }, 120);
+        setTimeout(function () { applyStageAspect(); }, 350);
+      });
+      if (window.screen && window.screen.orientation && typeof window.screen.orientation.addEventListener === 'function') {
+        window.screen.orientation.addEventListener('change', function () {
+          setTimeout(function () { applyStageAspect(); }, 120);
+          setTimeout(function () { applyStageAspect(); }, 350);
+        });
+      }
       video.addEventListener('loadedmetadata', function () { applyStageAspect(); });
       video.addEventListener('resize', function () { applyStageAspect(); });
       // A small preview of a shot cropped like its photo box (cached per shot).
@@ -22924,6 +23102,15 @@
       var attractPosterId = '';
       var attractPosterFit = 'stretch';     // stretch | contain | cover
       var welcomeBtnOn = true;
+      var welcomeCustomOn = false;
+      var welcomeGreeting = '';
+      var welcomeTitle = '';
+      var welcomeFont = '';
+      var welcomeSub = '';
+      var welcomeStepsOn = true;
+      var welcomeStep1 = '';
+      var welcomeStep2 = '';
+      var welcomeStep3 = '';
       // Renter's own logos (Setup 5): c = corner of the guest screen, w = on the welcome picture.
       // x, y = centre as a share of the screen (c) or of the welcome picture (w); s = logo height as a
       // share of that height. null = the default place (c: where the photobooth4u logo sits;
@@ -25455,6 +25642,105 @@
         });
       }
 
+      var welcomeCustomToggle = document.getElementById('welcomeCustomToggle');
+      var welcomeGreetingInput = document.getElementById('welcomeGreetingInput');
+      var welcomeTitleInput = document.getElementById('welcomeTitleInput');
+      var welcomeFontDropdownBtn = document.getElementById('welcomeFontDropdownBtn');
+      var welcomeFontDropdownList = document.getElementById('welcomeFontDropdownList');
+      var welcomeSubInput = document.getElementById('welcomeSubInput');
+      var welcomeStepsToggle = document.getElementById('welcomeStepsToggle');
+      var welcomeStep1Input = document.getElementById('welcomeStep1Input');
+      var welcomeStep2Input = document.getElementById('welcomeStep2Input');
+      var welcomeStep3Input = document.getElementById('welcomeStep3Input');
+
+      if (welcomeCustomToggle) {
+        welcomeCustomToggle.addEventListener('change', function () {
+          welcomeCustomOn = welcomeCustomToggle.checked;
+          var wcf = document.getElementById('welcomeCustomFields');
+          if (wcf) wcf.style.display = welcomeCustomOn ? '' : 'none';
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      [welcomeGreetingInput, welcomeTitleInput, welcomeSubInput, welcomeStep1Input, welcomeStep2Input, welcomeStep3Input].forEach(function (inp) {
+        if (!inp) return;
+        inp.addEventListener('input', function () {
+          welcomeGreeting = welcomeGreetingInput ? welcomeGreetingInput.value : '';
+          welcomeTitle = welcomeTitleInput ? welcomeTitleInput.value : '';
+          welcomeSub = welcomeSubInput ? welcomeSubInput.value : '';
+          welcomeStep1 = welcomeStep1Input ? welcomeStep1Input.value : '';
+          welcomeStep2 = welcomeStep2Input ? welcomeStep2Input.value : '';
+          welcomeStep3 = welcomeStep3Input ? welcomeStep3Input.value : '';
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      });
+      if (welcomeStepsToggle) {
+        welcomeStepsToggle.addEventListener('change', function () {
+          welcomeStepsOn = welcomeStepsToggle.checked;
+          var wsb = document.getElementById('welcomeStepsBlock');
+          if (wsb) wsb.style.display = welcomeStepsOn ? '' : 'none';
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+
+      var WELCOME_FONT_OPTIONS = [['', 'Same as photo font (Auto)']].concat(typeof FONT_OPTIONS !== 'undefined' ? FONT_OPTIONS : []);
+      if (welcomeFontDropdownBtn && welcomeFontDropdownList) {
+        buildFontDropdown(welcomeFontDropdownBtn, welcomeFontDropdownList, WELCOME_FONT_OPTIONS, function (value) {
+          welcomeFont = value;
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      function selectWelcomeFontUI(val) {
+        if (!welcomeFontDropdownBtn || !welcomeFontDropdownList) return;
+        welcomeFont = val || '';
+        var opt = WELCOME_FONT_OPTIONS.find(function (o) { return o[0] === welcomeFont; }) || WELCOME_FONT_OPTIONS[0];
+        welcomeFontDropdownBtn.textContent = opt[1];
+        welcomeFontDropdownBtn.style.fontFamily = opt[0] || 'inherit';
+        [...welcomeFontDropdownList.children].forEach(function (c) {
+          c.classList.toggle('active', c.dataset.value === (opt[0] || ''));
+        });
+      }
+
+      // ---- Android Screen Orientation (when admin allows 'either') ----
+      var _androidOrientationChoice = 'landscape';
+      function setAndroidOrientationUI(mode, applyNative) {
+        _androidOrientationChoice = (mode === 'portrait' || mode === 'vertical') ? 'portrait' : 'landscape';
+        var chips = document.getElementById('orientChips');
+        if (chips) {
+          [].forEach.call(chips.querySelectorAll('.chip'), function (c) {
+            c.classList.toggle('active', c.dataset.orient === _androidOrientationChoice);
+          });
+        }
+        var sec = document.getElementById('orientationSection');
+        var allowed = !!(window.__PB && window.__PB.android && window.__PB.orientation === 'either');
+        if (sec) sec.style.display = allowed ? '' : 'none';
+        if (applyNative !== false && window.__PB && window.__PB.android && window.__PBLocal && typeof window.__PBLocal.setOrientation === 'function') {
+          try { window.__PBLocal.setOrientation(_androidOrientationChoice); } catch (e) { }
+        }
+      }
+      (function () {
+        var chips = document.getElementById('orientChips');
+        if (chips) {
+          chips.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-orient]');
+            if (!btn) return;
+            setAndroidOrientationUI(btn.dataset.orient, true);
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
+        var sec = document.getElementById('orientationSection');
+        if (sec) {
+          var allowed = !!(window.__PB && window.__PB.android && window.__PB.orientation === 'either');
+          sec.style.display = allowed ? '' : 'none';
+        }
+        window.addEventListener('pb-orientation-change', function () {
+          setAndroidOrientationUI(_androidOrientationChoice);
+        });
+      })();
+
       // ---- Attract mode switching ----
       var attractHints = {
         card: 'Auto-generates a branded welcome card with your event title, date, 3-step guest instructions, and a sample photo print.',
@@ -25475,6 +25761,8 @@
         if (posterRow) posterRow.style.display = attractMode === 'poster' ? '' : 'none';
         var camHint = document.getElementById('welcomePvCamHint');
         if (camHint) camHint.style.display = attractMode === 'camera' ? 'flex' : 'none';
+        var cardBlock = document.getElementById('welcomeCardCustomBlock');
+        if (cardBlock) cardBlock.style.display = attractMode === 'card' ? '' : 'none';
       }
       (function () {
         var chips = document.getElementById('attractModeChips'); if (!chips) return;
@@ -25677,8 +25965,29 @@
           var ink = colorDist(textColor, cardColor) > 140 ? textColor : (lumOf(cardColor) > 0.5 ? '#1C1A1E' : '#ffffff');
           var soft = lumOf(cardColor) > 0.5 ? 'rgba(28,26,30,.62)' : 'rgba(255,255,255,.75)';
           var dt = currentDateLabel();
+
+          var isCustom = !!welcomeCustomOn;
+          var name = (labelInput.value || '').trim();
+          var cardGreeting = isCustom ? (welcomeGreeting != null ? welcomeGreeting : (name ? 'Welcome to' : 'Welcome to our')) : (name ? 'Welcome to' : 'Welcome to our');
+          var hasGreeting = Boolean(cardGreeting && cardGreeting.trim());
+          var cardTitle = isCustom && (welcomeTitle || '').trim() ? (welcomeTitle || '').trim() : (name || 'photo booth');
+          var cardFont = isCustom && welcomeFont ? welcomeFont : currentFont;
+          var cardSub = isCustom ? (welcomeSub !== '' ? welcomeSub : '') : dt;
+          var cardSubFont = isCustom && welcomeFont ? welcomeFont : currentDateFont;
+          var showSteps = !isCustom || welcomeStepsOn !== false;
+
+          var defaultSteps = [hfMode === 'wave' ? 'Wave at the camera' : hfMode === 'smile' ? 'Smile at the camera' : 'Tap the screen', 'Strike a pose', 'Scan the QR for your photos'];
+          var steps = [];
+          if (showSteps) {
+            steps = [
+              (isCustom && (welcomeStep1 || '').trim()) ? welcomeStep1.trim() : defaultSteps[0],
+              (isCustom && (welcomeStep2 || '').trim()) ? welcomeStep2.trim() : defaultSteps[1],
+              (isCustom && (welcomeStep3 || '').trim()) ? welcomeStep3.trim() : defaultSteps[2]
+            ];
+          }
+
           var cardBox = function (slotH) {
-            var ch = 64 + 40 + 110 + (dt ? 54 : 0) + 40 + 3 * 64 + (welcomeBtnOn ? (40 + 92) : 0) + 56 + slotH;
+            var ch = 64 + (hasGreeting ? 40 : 10) + (hasGreeting ? 110 : 80) + (cardSub ? 54 : 0) + (showSteps ? (40 + steps.length * 64) : 20) + (welcomeBtnOn ? (40 + 92) : 0) + 56 + slotH;
             var cw = land ? Math.min(W * 0.42, 720) : Math.min(W * 0.82, 760);
             var cx = land ? W * 0.53 : (W - cw) / 2;
             var cy = land ? (H - ch) / 2 : Math.max(area.y + area.h + 30, H - ch - H * 0.05);
@@ -25700,27 +26009,33 @@
           ctx.restore();
           ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
           var mid = cx + cw / 2, yy = cy + 64 + 26 + box.slot;
-          ctx.fillStyle = soft; ctx.font = '700 30px Manrope, sans-serif';
-          var name = (labelInput.value || '').trim();
-          ctx.fillText(name ? 'Welcome to' : 'Welcome to our', mid, yy);
-          yy += 110;
+
+          if (hasGreeting) {
+            ctx.fillStyle = soft; ctx.font = '700 30px Manrope, sans-serif';
+            ctx.fillText(cardGreeting.trim(), mid, yy);
+            yy += 110;
+          } else {
+            yy += 30;
+          }
+
           ctx.fillStyle = ink;
-          var title = name || 'photo booth';
-          var ts = fitFont(ctx, title, currentFont, 96, cw - 80, 40);
-          ctx.font = fontString(currentFont, ts);
-          ctx.fillText(title, mid, yy);
-          if (dt) { yy += 54; ctx.fillStyle = soft; ctx.font = fontString(currentDateFont, 38); ctx.fillText(dt, mid, yy); }
-          yy += 40;
-          var steps = [hfMode === 'wave' ? 'Wave at the camera' : hfMode === 'smile' ? 'Smile at the camera' : 'Tap the screen', 'Strike a pose', 'Scan the QR for your photos'];
-          ctx.font = '700 31px Manrope, sans-serif';
-          var widest = Math.max.apply(null, steps.map(function (t) { return ctx.measureText(t).width; }));
-          var sx = mid - (widest + 62) / 2;
-          steps.forEach(function (t, i) {
-            var sy = yy + 50 + i * 64;
-            ctx.fillStyle = '#C93D27'; ctx.beginPath(); ctx.arc(sx + 22, sy - 11, 22, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#fff'; ctx.font = '800 24px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + 22, sy - 3);
-            ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 31px Manrope, sans-serif'; ctx.fillText(t, sx + 62, sy);
-          });
+          var ts = fitFont(ctx, cardTitle, cardFont, 96, cw - 80, 40);
+          ctx.font = fontString(cardFont, ts);
+          ctx.fillText(cardTitle, mid, yy);
+          if (cardSub) { yy += 54; ctx.fillStyle = soft; ctx.font = fontString(cardSubFont, 38); ctx.fillText(cardSub, mid, yy); }
+
+          if (showSteps && steps.length) {
+            yy += 40;
+            ctx.font = '700 31px Manrope, sans-serif';
+            var widest = Math.max.apply(null, steps.map(function (t) { return ctx.measureText(t).width; }));
+            var sx = mid - (widest + 62) / 2;
+            steps.forEach(function (t, i) {
+              var sy = yy + 50 + i * 64;
+              ctx.fillStyle = '#C93D27'; ctx.beginPath(); ctx.arc(sx + 22, sy - 11, 22, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = '#fff'; ctx.font = '800 24px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + 22, sy - 3);
+              ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 31px Manrope, sans-serif'; ctx.fillText(t, sx + 62, sy);
+            });
+          }
           if (welcomeBtnOn) {
             ctx.font = '800 34px Manrope, sans-serif';
             var bw = Math.min(cw - 80, ctx.measureText(btnText).width + 130), bh = 92, bx = mid - bw / 2, by = cy + ch - bh - 48;
@@ -28085,6 +28400,15 @@
           welcomeOn: welcomeOn,
           welcomeMsg: welcomeMsg,
           welcomeBtnOn: welcomeBtnOn,
+          welcomeCustomOn: welcomeCustomOn,
+          welcomeGreeting: welcomeGreeting,
+          welcomeTitle: welcomeTitle,
+          welcomeFont: welcomeFont,
+          welcomeSub: welcomeSub,
+          welcomeStepsOn: welcomeStepsOn,
+          welcomeStep1: welcomeStep1,
+          welcomeStep2: welcomeStep2,
+          welcomeStep3: welcomeStep3,
           attractMode: attractMode,
           attractPosterFit: attractPosterFit,
           attractPosterId: attractPosterId || '',
@@ -28100,7 +28424,8 @@
           fx: Object.assign({}, fx),
           guestView: gvMode,
           brand: JSON.parse(JSON.stringify(brand)),
-          pay: Object.assign({}, payCfg)
+          pay: Object.assign({}, payCfg),
+          androidOrientation: (typeof _androidOrientationChoice === 'string') ? _androidOrientationChoice : 'landscape'
         };
       }
       function selectFont(which, value) {
@@ -28237,6 +28562,36 @@
             var wmRow = document.getElementById('welcomeMsgRow');
             if (wmRow) wmRow.style.display = welcomeBtnOn ? '' : 'none';
           }
+          if (typeof s.welcomeCustomOn === 'boolean') {
+            welcomeCustomOn = s.welcomeCustomOn;
+            if (welcomeCustomToggle) welcomeCustomToggle.checked = welcomeCustomOn;
+            var wcf = document.getElementById('welcomeCustomFields');
+            if (wcf) wcf.style.display = welcomeCustomOn ? '' : 'none';
+          }
+          if (typeof s.welcomeGreeting === 'string') {
+            welcomeGreeting = s.welcomeGreeting;
+            if (welcomeGreetingInput) welcomeGreetingInput.value = welcomeGreeting;
+          }
+          if (typeof s.welcomeTitle === 'string') {
+            welcomeTitle = s.welcomeTitle;
+            if (welcomeTitleInput) welcomeTitleInput.value = welcomeTitle;
+          }
+          if (typeof s.welcomeFont === 'string') {
+            selectWelcomeFontUI(s.welcomeFont);
+          }
+          if (typeof s.welcomeSub === 'string') {
+            welcomeSub = s.welcomeSub;
+            if (welcomeSubInput) welcomeSubInput.value = welcomeSub;
+          }
+          if (typeof s.welcomeStepsOn === 'boolean') {
+            welcomeStepsOn = s.welcomeStepsOn;
+            if (welcomeStepsToggle) welcomeStepsToggle.checked = welcomeStepsOn;
+            var wsb = document.getElementById('welcomeStepsBlock');
+            if (wsb) wsb.style.display = welcomeStepsOn ? '' : 'none';
+          }
+          if (typeof s.welcomeStep1 === 'string') { welcomeStep1 = s.welcomeStep1; if (welcomeStep1Input) welcomeStep1Input.value = welcomeStep1; }
+          if (typeof s.welcomeStep2 === 'string') { welcomeStep2 = s.welcomeStep2; if (welcomeStep2Input) welcomeStep2Input.value = welcomeStep2; }
+          if (typeof s.welcomeStep3 === 'string') { welcomeStep3 = s.welcomeStep3; if (welcomeStep3Input) welcomeStep3Input.value = welcomeStep3; }
           if (typeof setAttractModeUI === 'function') {
             setAttractModeUI(s.attractMode || 'card');
           } else {
@@ -28263,6 +28618,9 @@
             var pr = document.getElementById('attractPosterRemove'); if (pr) pr.style.display = 'none';
           }
           setFrameColorUI(s.frameColorChoice === 'auto' || isHex(s.frameColorChoice) ? s.frameColorChoice : 'auto');
+          if (typeof setAndroidOrientationUI === 'function') {
+            setAndroidOrientationUI(typeof s.androidOrientation === 'string' ? s.androidOrientation : 'landscape');
+          }
           photoPlacement = s.photoPlacement === 'background' ? 'background' : 'band';
           photoPlacementSelect.value = photoPlacement;
           if (typeof s.cropFocus === 'string') cropFocus = s.cropFocus;
@@ -29143,8 +29501,10 @@
           brandEls.dt.style.fontSize = px(0.9);
           brandEls.pwr.style.fontSize = px(0.72);
           brandEls.pwr.hidden = !cImg;
-          brandEls.ev.textContent = (labelInput.value || '').trim() || 'Your event';
-          brandEls.dt.textContent = (typeof currentDateLabel === 'function' && currentDateLabel()) || '';
+          var isCustomW = typeof welcomeCustomOn !== 'undefined' && welcomeCustomOn;
+          col.querySelector('.bpv-msg').textContent = isCustomW && (welcomeGreeting != null && welcomeGreeting !== '') ? welcomeGreeting : 'Welcome!';
+          brandEls.ev.textContent = isCustomW && (welcomeTitle || '').trim() ? welcomeTitle.trim() : ((labelInput.value || '').trim() || 'Your event');
+          brandEls.dt.textContent = isCustomW && welcomeSub !== '' ? welcomeSub : ((typeof currentDateLabel === 'function' && currentDateLabel()) || '');
           brandEls.chip.style.cssText = 'font-size:' + px(0.85) + ';left:' + (brandPvGeo.colR) + 'px;top:' + padY + 'px;transform:translateX(-50%);';
         }
         // Corner logo

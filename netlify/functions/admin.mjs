@@ -274,7 +274,8 @@ export default safe(async (req, context) => {
         const key = await freshKey(store);
         // Keep a dedicated Drive folder name. If neither field was supplied,
         // fall back to the code so the renter never has to configure Drive.
-        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, gifOpt: b.gifOpt !== false, extras: normExtras(b.extras), retakeOpt: b.retakeOpt !== false, typesOpt: !!b.typesOpt, lockOpt: b.lockOpt !== false, payOpt: b.payOpt !== false, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
+        const _allowedOr = ['landscape', 'portrait', 'either'];
+        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, gifOpt: b.gifOpt !== false, extras: normExtras(b.extras), retakeOpt: b.retakeOpt !== false, typesOpt: !!b.typesOpt, lockOpt: b.lockOpt !== false, payOpt: b.payOpt !== false, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, orientation: _allowedOr.includes(b.orientation) ? b.orientation : 'landscape', status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
         // A hand-made Lifetime code (for example a Messenger sale): Admin ticks that the buyer replied "I agree".
         if (lifetime && b.agreementAccepted) rec.agreement = { version: AGREEMENT_VERSION, acceptedAt: Date.now(), by: 'admin' };
         await putLicense(store, key, rec);
@@ -496,6 +497,16 @@ export default safe(async (req, context) => {
       rec.debugOpt = !!b.debugOpt;
       await putLicense(store, key, rec);
       return json({ ok: true, debugOpt: rec.debugOpt });
+    }
+
+    case 'orientationopt': { // Android screen orientation for this code: landscape | portrait | either (renter picks)
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      const allowed = ['landscape', 'portrait', 'either'];
+      rec.orientation = allowed.includes(b.orientation) ? b.orientation : 'landscape';
+      await putLicense(store, key, rec);
+      await syncBonus(rec, { orientation: rec.orientation });
+      return json({ ok: true, orientation: rec.orientation });
     }
 
     case 'setemail': { // the renter's email (for "Forgot your code?" and "Email code")

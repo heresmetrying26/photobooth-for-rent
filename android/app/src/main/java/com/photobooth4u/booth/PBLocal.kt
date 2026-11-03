@@ -107,6 +107,10 @@ class PBLocal(private val ctx: Context) {
     @Volatile
     var ownAddress: String? = null
 
+    /** Orientation change listener for dynamic landscape/portrait locking */
+    @Volatile
+    var onOrientationChange: ((String) -> Unit)? = null
+
     init {
         try { root.mkdirs() } catch (e: Exception) { Log.w(TAG, "Could not create $root", e) }
         loadIndex()
@@ -294,6 +298,14 @@ class PBLocal(private val ctx: Context) {
     fun guestViewSet(mode: String?): String {
         guestView = if (mode == "mine" || mode == "only") mode else "all"
         return guestView
+    }
+
+    /** Changes screen orientation: "landscape", "vertical" / "portrait", or "either" / "auto" */
+    @JavascriptInterface
+    fun setOrientation(mode: String?): String {
+        val m = mode?.lowercase() ?: "landscape"
+        onOrientationChange?.invoke(m)
+        return m
     }
 
     /** A guest's own page: the files the booth saved for that code, or null when nothing was saved under it. */

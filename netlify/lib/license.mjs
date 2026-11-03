@@ -62,6 +62,7 @@ export function featuresOf(rec, deviceNo) {
   return {
     print: normPrint(rec.print && rec.print.enabled, rec.print && rec.print.sizes, rec.print),
     traditional: !!rec.traditional, retakeOpt: !!rec.retakeOpt, typesOpt: !!rec.typesOpt, lockOpt: !!rec.lockOpt, debugOpt: !!rec.debugOpt,
+    orientation: rec.orientation || 'landscape',
     gifOpt: rec.gifOpt !== false,
     ipadOpt: rec.ipadOpt !== false,               // an iPad may use this laptop's camera over Wi-Fi (on unless Admin turns it off)
     extras: extrasOf(rec),

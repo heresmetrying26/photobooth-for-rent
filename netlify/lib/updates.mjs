@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.63', date: '2026-11-03' },
   { version: '1.0.62', date: '2026-11-02' },
   { version: '1.0.61', date: '2026-11-02' },
   { version: '1.0.60', date: '2026-11-02' },
@@ -108,6 +109,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-03', title: 'Landscape 4×6 borderless print fix, Lightness & RGB colour correction & camera stability (Windows & Mac)', for: ['app'], app: '1.0.63',
+    items: [
+      'Landscape & borderless 4×6 prints (Windows): Prints now fill the whole 4×6 in sheet right-side up even when the printer driver (such as Epson L3210 or L8050) is set to Landscape, fixing 2/3-size prints and upside-down Print Previews.',
+      'Lightness / Exposure & RGB colour correction: Adjust lightness/darkness (-100 to +100) and Red, Green, and Blue balance directly in Setup Extras or Print settings, with real-time live preview and print support across thermal and photo printers.',
+      'Camera glitch & false-disconnect fixes: Resolved false "Camera disconnected" watchdog loops on built-in/integrated webcams and paused result screens, improved camera error prompts, and added external USB webcam preview/capture resolution controls (Auto, Max, 1080p, 720p, 480p).',
+      'Offline voucher sync & single Photo + GIF QR: Guaranteed local offline voucher redemption with automatic cloud batch sync when back online, plus one unified QR code for guests in Photo + GIF mode.'
+    ]
+  },
   {
     date: '2026-11-03', title: 'External USB webcam support & resolution controls (Android)', for: ['app'], app: '1.0.74',
     items: [

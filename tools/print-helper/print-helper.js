@@ -26,7 +26,7 @@ import { spawn } from 'node:child_process';
 import { freeCamera, guardCamera } from './camfree.mjs';
 import WORKER_PS from './camera-worker.ps1' with { type: 'text' };
 
-const VERSION = '1.1.10';
+const VERSION = '1.1.11';
 const PORT = 17321;
 const ALLOWED_ORIGINS = new Set([
   'https://photobooth4u.netlify.app',
@@ -288,12 +288,15 @@ $doc.add_PrintPage({
     $page = $e.PageBounds
     $pageLandscape = $page.Width -gt $page.Height
     $imgLandscape = $img.Width -gt $img.Height
-    if ($pageLandscape -ne $imgLandscape) { $img.RotateFlip([System.Drawing.RotateFlipType]::Rotate90FlipNone) }
+    if ($pageLandscape -ne $imgLandscape) { $img.RotateFlip([System.Drawing.RotateFlipType]::Rotate270FlipNone) }
     $e.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
     $hx = $e.PageSettings.HardMarginX; $hy = $e.PageSettings.HardMarginY
     # What the driver says it can print on this paper: the smaller of its printable area and the page's clip.
+    # (.NET's PageSettings.PrintableArea stays in portrait even when the driver is set to Landscape.)
     $vis = $e.Graphics.VisibleClipBounds; $pa = $e.PageSettings.PrintableArea
-    $clip = New-Object System.Drawing.RectangleF $vis.X, $vis.Y, ([Math]::Min($vis.Width, $pa.Width)), ([Math]::Min($vis.Height, $pa.Height))
+    $paW = if (($pa.Width -gt $pa.Height) -ne $pageLandscape) { $pa.Height } else { $pa.Width }
+    $paH = if (($pa.Width -gt $pa.Height) -ne $pageLandscape) { $pa.Width } else { $pa.Height }
+    $clip = New-Object System.Drawing.RectangleF $vis.X, $vis.Y, ([Math]::Min($vis.Width, $paW)), ([Math]::Min($vis.Height, $paH))
     [Console]::Out.WriteLine(('info|sheet {0}x{1}, printable {2}x{3} at {4},{5}, hard margin {6},{7} (1/100 in)' -f $page.Width, $page.Height, $clip.Width, $clip.Height, $clip.X, $clip.Y, $hx, $hy))
     if ($clip.Width -ge $page.Width * 0.99 -and $clip.Height -ge $page.Height * 0.99) {
       # The driver says the whole sheet is printable (Borderless is on): the picture covers it edge to edge.

@@ -630,11 +630,11 @@ class MainActivity : AppCompatActivity() {
                     append("window.__PB.payOpt=").append(payOpt).append(";")
                     append("window.__PB.traditional=").append(traditional).append(";")
                     append("window.__PB.orientation=").append(jsStr(orientationOpt)).append(";")
-        // Folder key/prefix for offline vouchers (required for offlineOnly codes)
-        val folderKey = feat?.optString("folderKey", "") ?: ""
-        val folderPrefix = feat?.optString("folderPrefix", "") ?: ""
-        append("window.__PB.folderKey=").append(jsStr(folderKey)).append(";")
-        append("window.__PB.folderPrefix=").append(jsStr(folderPrefix)).append(";")
+                    // Folder key/prefix for offline vouchers (required for offlineOnly codes)
+                    val folderKey = feat?.optString("folderKey", "") ?: ""
+                    val folderPrefix = feat?.optString("folderPrefix", "") ?: ""
+                    append("window.__PB.folderKey=").append(jsStr(folderKey)).append(";")
+                    append("window.__PB.folderPrefix=").append(jsStr(folderPrefix)).append(";")
                     append("window.__PB.watermark=false;")
                     append("window.__PB.exp=").append(expMs).append(";")   // this rental code's own expiry, not a fixed local grant
                     append("window.__PB.print={enabled:").append(printEnabled).append(",sizes:[").append(printSizesJs).append("]};")

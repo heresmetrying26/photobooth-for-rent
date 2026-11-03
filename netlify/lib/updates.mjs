@@ -73,7 +73,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.67', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.67/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.68', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.68/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -108,6 +108,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-03', title: 'Lightness & RGB colour correction for thermal & photo printers (Android)', for: ['app'], app: '1.0.68',
+    items: [
+      'New Lightness / Exposure slider (-100 to +100) in Setup Extras to prevent dark or muddy prints on thermal receipt printers.',
+      'Fine-tuned RGB color balance sliders (Red, Green, Blue from -100 to +100) with instant real-time live preview after photo sessions.',
+      'Adjustments update the post-session preview canvas (#previewCanvas) and live camera view in real time.',
+      'Full color correction applied to all supported printers: thermal receipt printers (ESC/POS dithering luminance offset), Epson L-series, Canon SELPHY, Canon PIXMA G, ESC/P2, ESC/P-R, and IPP Wi-Fi printers.'
+    ]
+  },
   {
     date: '2026-11-03', title: 'Portrait centered welcome card & layout preview fix (Android)', for: ['app'], app: '1.0.67',
     items: [

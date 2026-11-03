@@ -40,12 +40,15 @@ object CanonSelphyJob {
         }
     }
 
-    fun build(src: Bitmap, widthMm: Double, heightMm: Double): ByteArray {
+    fun build(src: Bitmap, widthMm: Double, heightMm: Double, brightness: Int = 0): ByteArray =
+        build(src, widthMm, heightMm, PrintColorAdj(brightness = brightness))
+
+    fun build(src: Bitmap, widthMm: Double, heightMm: Double, adj: PrintColorAdj): ByteArray {
         val spec = specFor(widthMm, heightMm)
         val cols = spec.cols
         val rows = spec.rows
 
-        var bmp = src
+        var bmp = src.applyColorAdj(adj)
         // Rotate if needed to match the portrait feed orientation (cols < rows)
         if (bmp.width > bmp.height && cols < rows) {
             val matrix = Matrix().apply { postRotate(90f) }

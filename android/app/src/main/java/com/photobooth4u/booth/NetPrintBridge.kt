@@ -194,11 +194,24 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             try {
                 val o = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
                 val opts = Opts(o.optString("quality"), o.optString("color"), o.optString("media"), o.optBoolean("borderless"))
+                val adj = PrintColorAdj.from(o)
                 val e = if (ip.startsWith("usb:")) usbEntry(ip) else found[ip] ?: Entry(ip).also { probeInto(it) }
                 if (e.ippPort <= 0) throw IllegalStateException("This printer can't take photo print jobs from the tablet.")
                 val arr = JSONArray(pagesJson)
                 val pages = ArrayList<ByteArray>()
-                for (i in 0 until arr.length()) pages.add(decode(arr.getString(i)))
+                for (i in 0 until arr.length()) {
+                    var data = decode(arr.getString(i))
+                    if (!adj.isNoop) {
+                        val bmp = android.graphics.BitmapFactory.decodeByteArray(data, 0, data.size)
+                        if (bmp != null) {
+                            val adjBmp = bmp.applyColorAdj(adj)
+                            val bos = ByteArrayOutputStream()
+                            adjBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, bos)
+                            data = bos.toByteArray()
+                        }
+                    }
+                    pages.add(data)
+                }
                 for (c in 0 until copies.coerceIn(1, 20)) {
                     for (p in pages) sendIppJob(e, job, p, widthMm, heightMm, opts)
                 }
@@ -637,8 +650,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         /** True when this is one of the three hardcoded Epson photo/AIO printers. */
         fun isKnown(d: UsbDevice): Boolean = match(d) != null
 
-        /** True for the L8050, which supports borderless photo printing. */
-        fun isBorderless(d: UsbDevice): Boolean = d.vendorId == VENDOR_ID && d.productId == 0x0866
+        /** True for models that support borderless photo printing (L8050, L3210, L3276). */
+        fun isBorderless(d: UsbDevice): Boolean =
+            d.vendorId == VENDOR_ID && (d.productId == 0x0866 || d.productId == 0xE671 || d.productId == 0x445A)
     }
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -746,6 +760,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     ?: usbIfaces(d).firstOrNull { hasBulkPair(it) }
                     ?: throw IllegalStateException("This USB device has no printer data interface.")
 
+                val optJson = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
+                val adj = PrintColorAdj.from(optJson)
+
                 val arr = JSONArray(pagesJson)
                 val bitmaps = ArrayList<android.graphics.Bitmap>()
                 for (i in 0 until arr.length()) {
@@ -784,7 +801,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                             }
 
                             // Build 32-byte header + 3 YUV444 planes
-                            val jobData = CanonSelphyJob.build(bmp, widthMm, heightMm)
+                            val jobData = CanonSelphyJob.build(bmp, widthMm, heightMm, adj)
 
                             // Write data to printer over bulk OUT
                             usbWrite(conn, out, jobData)
@@ -840,13 +857,14 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val mono = copt.optString("color") == "mono"
                 val cq = when (copt.optString("quality")) { "draft" -> 0; "high" -> 2; else -> 1 }
                 val cm = when (copt.optString("media")) { "photo" -> 1; "matte" -> 2; else -> 0 }
+                val adj = PrintColorAdj.from(copt)
                 val arr = JSONArray(pagesJson)
                 for (c in 0 until copies.coerceIn(1, 20)) {
                     for (i in 0 until arr.length()) {
                         val jpeg = decode(arr.getString(i))
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
-                        usbRaw(id, CanonJob.build(bmp, widthMm, heightMm, mono, cq, cm))
+                        usbRaw(id, CanonJob.build(bmp, widthMm, heightMm, mono, cq, cm, adj))
                     }
                 }
                 r.put("ok", true)
@@ -909,6 +927,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 // The 720 dpi mode (Best, and photo paper before) made the L120 eject blank sheets on a real printer, so every
                 // quality except Draft prints at the 360 dpi mode that is known to work. Photo paper only adds its feed sequence.
                 val quality = if (optJson.optString("quality") == "draft") 0 else 1
+                val adj = PrintColorAdj.from(optJson)
                 val d = usbFind(id)
                 usbEnsure(d)
                 usbIsEscpr(d)                              // reads the printer's ID into the cache
@@ -919,7 +938,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val jpeg = decode(arr.getString(i))
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
-                        usbRaw(id, EscP2Job.build(bmp, widthMm, heightMm, colour, cal, quality, feed))
+                        usbRaw(id, EscP2Job.build(bmp, widthMm, heightMm, colour, cal, quality, feed, adj))
                     }
                 }
                 r.put("ok", true)
@@ -935,22 +954,27 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     /**
      * EXPERIMENTAL: prints JPEG pages to an Epson ESC/P-R USB printer (Epson L120 / L210 and similar).
      * Result arrives as window.__PBNetResult.
+     *
+     * optionsJson keys (all optional):
+     *   brightness — integer -100 … +100  (default: 0; negative = darker, positive = lighter)
      */
     @JavascriptInterface
-    fun printEscpr(job: String, id: String, widthMm: Double, heightMm: Double, copies: Int, pagesJson: String): String {
+    fun printEscpr(job: String, id: String, widthMm: Double, heightMm: Double, copies: Int, pagesJson: String, optionsJson: String = "{}"): String {
         pool.execute {
             val r = JSONObject().put("job", job)
             try {
                 val d = usbFind(id)
                 usbEnsure(d)
                 if (!usbIsEscpr(d)) throw IllegalStateException("This printer doesn't report Epson's ESC/P-R language, so the app won't send it that data.")
+                val optJson = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
+                val adj = PrintColorAdj.from(optJson)
                 val arr = JSONArray(pagesJson)
                 for (c in 0 until copies.coerceIn(1, 20)) {
                     for (i in 0 until arr.length()) {
                         val jpeg = decode(arr.getString(i))
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
-                        usbRaw(id, EscprJob.build(bmp, widthMm, heightMm, false))
+                        usbRaw(id, EscprJob.build(bmp, widthMm, heightMm, false, adj = adj))
                     }
                 }
                 r.put("ok", true)
@@ -966,8 +990,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     /**
      * Prints JPEG pages to a hardcoded Epson L-series USB printer via ESC/P-R:
      *   • Epson L8050  (PID 0x0866) — 6-ink photo printer, supports borderless
-     *   • Epson L3210  (PID 0xE671) — 4-ink all-in-one
-     *   • Epson L3276  (PID 0x445A) — 4-ink Wi-Fi AIO (L3270-family USB PID)
+     *   • Epson L3210  (PID 0xE671) — 4-ink all-in-one, supports borderless (up to 4R)
+     *   • Epson L3276  (PID 0x445A) — 4-ink Wi-Fi AIO, supports borderless (up to 4R)
      *
      * The printer is identified by USB VID/PID without reading the IEEE-1284 device ID,
      * so it is available the instant the USB permission is granted.
@@ -976,7 +1000,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
      *   color      — "color" | "mono"               (default: color)
      *   quality    — "draft" | "normal" | "high"     (default: normal → 360 dpi)
      *   media      — "photo" | "matte" | "plain"     (default: plain)
-     *   borderless — true | false                    (L8050 only; ignored for L3210/L3276)
+     *   borderless — true | false                    (L8050, L3210, L3276 supported)
+     *   brightness — integer -100 … +100             (default: 0; negative = darker, positive = lighter)
      *
      * Result arrives as window.__PBNetResult({job, ok, error}).
      */
@@ -996,10 +1021,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
                 val optJson = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
                 val colour  = optJson.optString("color", "color") != "mono"
-                // quality / media / borderless: saved for future EscP2Job-style expansion;
-                // EscprJob.build currently takes colour/mono only.
-                @Suppress("UNUSED_VARIABLE")
-                val borderless = optJson.optBoolean("borderless", false) && EpsonLModels.isBorderless(d)
+                val borderless = (optJson.optBoolean("borderless", false) || optJson.optBoolean("bl", false)) && EpsonLModels.isBorderless(d)
+                val photoMedia = optJson.optString("media", "") == "photo" || borderless
+                val draft = optJson.optString("quality", "") == "draft"
+                val adj = PrintColorAdj.from(optJson)
 
                 val arr = JSONArray(pagesJson)
                 for (c in 0 until copies.coerceIn(1, 20)) {
@@ -1007,10 +1032,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val jpeg = decode(arr.getString(i))
                         val bmp  = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't decode photo for printing.")
-                        // All three models use ESC/P-R; EscprJob.build handles colour/mono and borderless.
-                        // The L8050 supports 6-colour (CMYK+lc+lm) and borderless; ESC/P-R sends sRGB and
-                        // the printer's internal colour engine renders it.
-                        usbRaw(id, EscprJob.build(bmp, widthMm, heightMm, !colour, borderless))
+                        usbRaw(id, EscprJob.build(bmp, widthMm, heightMm, !colour, borderless, photoMedia, draft, adj))
                     }
                 }
                 r.put("ok", true)

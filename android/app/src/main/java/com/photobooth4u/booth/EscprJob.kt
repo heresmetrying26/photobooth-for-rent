@@ -31,7 +31,27 @@ object EscprJob {
         return w to h
     }
 
-    fun build(src: Bitmap, widthMm: Double, heightMm: Double, mono: Boolean, borderless: Boolean = false): ByteArray {
+    fun build(
+        src: Bitmap,
+        widthMm: Double,
+        heightMm: Double,
+        mono: Boolean,
+        borderless: Boolean = false,
+        photoMedia: Boolean = false,
+        draft: Boolean = false,
+        brightness: Int = 0
+    ): ByteArray = build(src, widthMm, heightMm, mono, borderless, photoMedia, draft, PrintColorAdj(brightness = brightness))
+
+    fun build(
+        src: Bitmap,
+        widthMm: Double,
+        heightMm: Double,
+        mono: Boolean,
+        borderless: Boolean = false,
+        photoMedia: Boolean = false,
+        draft: Boolean = false,
+        adj: PrintColorAdj = PrintColorAdj()
+    ): ByteArray {
         val (paperW, paperH) = paperPixels(widthMm, heightMm)
         val border = if (borderless) 0 else BORDER
         val areaW = paperW - 2 * border
@@ -60,15 +80,21 @@ object EscprJob {
         out.put(bytes(0x50, 0x50, 0x03, 0x00, 0x00, 0x01, 0xFF))                                // PP: any paper source
         out.put(bytes(0x1B, 0x00, 0x00, 0x00))                                                  // leave remote mode
         out.put(bytes(0x1B, 0x28, 0x52, 0x06, 0x00, 0x00), ascii("ESCPR"))                      // ESC/P-R mode
-        // print quality: plain paper, normal, colour/mono, no brightness/contrast/saturation change, RGB, no palette
+        // print quality: media (0x01 photo paper when borderless/photo, else 0x00 plain), quality (0x00 draft, 0x01 normal), colour/mono
+        val media = if (photoMedia || borderless) 0x01 else 0x00
+        val quality = if (draft) 0x00 else 0x01
         out.put(bytes(0x1B, 0x71, 0x09, 0x00, 0x00, 0x00), ascii("setq"),
-            bytes(0x00, 0x01, if (mono) 1 else 0, 0, 0, 0, 0x00, 0x00, 0x00))
+            bytes(media, quality, if (mono) 1 else 0, 0, 0, 0, 0x00, 0x00, 0x00))
         // job: page size and printable area, 360 dpi, bidirectional
         out.put(bytes(0x1B, 0x6A, 0x16, 0x00, 0x00, 0x00), ascii("setj"),
             be32(paperW), be32(paperH), be16(border), be16(border), be32(areaW), be32(areaH), bytes(0x00, 0x00))
         // ── page ──
         out.put(bytes(0x1B, 0x70, 0x00, 0x00, 0x00, 0x00), ascii("sttp"))
         out.put(bytes(0x1B, 0x70, 0x01, 0x00, 0x00, 0x00), ascii("setn"), bytes(0x01))
+        val bOff = (adj.brightness.coerceIn(-100, 100) * 2.55).toInt()
+        val rOff = bOff + (adj.red.coerceIn(-100, 100) * 2.55).toInt()
+        val gOff = bOff + (adj.green.coerceIn(-100, 100) * 2.55).toInt()
+        val bOff2 = bOff + (adj.blue.coerceIn(-100, 100) * 2.55).toInt()
         val px = IntArray(areaW)
         val row = ByteArray(areaW * 3)
         for (y in 0 until areaH) {
@@ -80,6 +106,11 @@ object EscprJob {
                 var g = (c shr 8) and 0xFF
                 var b = c and 0xFF
                 if (mono) { val l = (0.299 * r + 0.587 * g + 0.114 * b).toInt(); r = l; g = l; b = l }
+                if (!adj.isNoop) {
+                    r = (r + rOff).coerceIn(0, 255)
+                    g = (g + gOff).coerceIn(0, 255)
+                    b = (b + bOff2).coerceIn(0, 255)
+                }
                 row[x * 3] = r.toByte(); row[x * 3 + 1] = g.toByte(); row[x * 3 + 2] = b.toByte()
                 if (r != 0xFF || g != 0xFF || b != 0xFF) white = false
             }

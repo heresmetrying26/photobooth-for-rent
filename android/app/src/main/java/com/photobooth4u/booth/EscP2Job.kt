@@ -50,9 +50,11 @@ object EscP2Job {
 
     /** quality: 0 draft (half the passes), 1 normal (360 dpi), 2 best (720 dpi with smaller dots, when the page is small enough). */
     /** feed: paper feed sequence for the paper type (0 = plain, left unsent; 8 = photo paper; 7 = matte / inkjet paper). */
-    fun build(src: Bitmap, widthMm: Double, heightMm: Double, color: Boolean = false, cal: Cal = Cal(), quality: Int = 1, feed: Int = 0): ByteArray =
-        if (color) buildColor(src, widthMm, heightMm, cal, quality = quality, feed = feed) else buildMono(src, widthMm, heightMm, cal, quality, feed)
+    fun build(src: Bitmap, widthMm: Double, heightMm: Double, color: Boolean = false, cal: Cal = Cal(), quality: Int = 1, feed: Int = 0, brightness: Int = 0): ByteArray =
+        build(src, widthMm, heightMm, color, cal, quality, feed, PrintColorAdj(brightness = brightness))
 
+    fun build(src: Bitmap, widthMm: Double, heightMm: Double, color: Boolean = false, cal: Cal = Cal(), quality: Int = 1, feed: Int = 0, adj: PrintColorAdj): ByteArray =
+        if (color) buildColor(src, widthMm, heightMm, cal, quality = quality, feed = feed, adj = adj) else buildMono(src, widthMm, heightMm, cal, quality, feed, adj)
     private const val BEST_MAX_PIXELS = 16_000_000L       // above this the page stays at 360 dpi (memory on the tablet)
 
     /** kMode: value for the ESC ( K colour-mode command (1 black only, 2 colour), or -1 to leave the command out. */
@@ -117,7 +119,7 @@ object EscP2Job {
     }
 
     /** EXPERIMENTAL colour: four planes (black, cyan, magenta, yellow), each dithered to 1 bit and printed by its own nozzles. */
-    private fun buildColor(src: Bitmap, widthMm: Double, heightMm: Double, cal: Cal, limitRows: Int = Int.MAX_VALUE, quality: Int = 1, feed: Int = 0): ByteArray {
+    private fun buildColor(src: Bitmap, widthMm: Double, heightMm: Double, cal: Cal, limitRows: Int = Int.MAX_VALUE, quality: Int = 1, feed: Int = 0, adj: PrintColorAdj = PrintColorAdj()): ByteArray {
         val CHANNELS = channels(cal)
         val top360 = maxOf(cal.m, cal.c, cal.k)            // blank rows at the top so the lower colours can reach the first rows
         val nz = cal.n
@@ -132,7 +134,7 @@ object EscP2Job {
         val top = top360 * s
         val phases = SEP * s                               // interleaved passes per band
         val cband = nz * phases                            // rows covered by one colour band
-        var bmp = src
+        var bmp = src.applyColorAdj(adj)
         if (bmp.width > bmp.height && widthMm <= heightMm) {
             bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, Matrix().apply { postRotate(90f) }, true)
         }
@@ -239,7 +241,7 @@ object EscP2Job {
         return planes
     }
 
-    private fun buildMono(src: Bitmap, widthMm: Double, heightMm: Double, cal: Cal, quality: Int, feed: Int = 0): ByteArray {
+    private fun buildMono(src: Bitmap, widthMm: Double, heightMm: Double, cal: Cal, quality: Int, feed: Int = 0, adj: PrintColorAdj = PrintColorAdj()): ByteArray {
         val paperW = Math.round(minOf(widthMm, heightMm) / 25.4 * DPI).toInt()
         val paperH = Math.round(maxOf(widthMm, heightMm) / 25.4 * DPI).toInt()
         val area360W = paperW - 2 * SIDE
@@ -249,7 +251,7 @@ object EscP2Job {
         val areaW = area360W * s
         val areaH = area360H * s
 
-        var bmp = src
+        var bmp = src.applyColorAdj(adj)
         if (bmp.width > bmp.height && widthMm <= heightMm) {
             bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, Matrix().apply { postRotate(90f) }, true)
         }

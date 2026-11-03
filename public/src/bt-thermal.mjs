@@ -93,7 +93,7 @@
 
   // ── Canvas → monochrome with 2-line Floyd-Steinberg dithering ──────────────
   // Uses two rows of error diffusion for low memory footprint (~4 KB vs 6 MB).
-  function toReceiptCanvas(src, dotW) {
+  function toReceiptCanvas(src, dotW, brightness) {
     dotW = dotW || 576;
     var scale = dotW / src.width;
     var dotH  = Math.max(1, Math.round(src.height * scale));
@@ -110,11 +110,14 @@
     var curErr  = new Float32Array(dotW);
     var nextErr = new Float32Array(dotW);
 
+    // brightness: -100 (darker) to +100 (lighter) offset for thermal dithering
+    var bOffset = (typeof brightness === 'number') ? brightness * 1.28 : ((typeof global._colorAdj !== 'undefined' && global._colorAdj && global._colorAdj.brightness) ? global._colorAdj.brightness * 1.28 : 0);
+
     for (var y = 0; y < dotH; y++) {
       nextErr.fill(0);
       for (var x = 0; x < dotW; x++) {
         var i4 = (y * dotW + x) * 4;
-        var lum = 0.299 * d[i4] + 0.587 * d[i4 + 1] + 0.114 * d[i4 + 2] + curErr[x];
+        var lum = 0.299 * d[i4] + 0.587 * d[i4 + 1] + 0.114 * d[i4 + 2] + curErr[x] + bOffset;
         var v = lum < 128 ? 0 : 255;
         var e = lum - v;
         d[i4] = d[i4 + 1] = d[i4 + 2] = v;
@@ -366,7 +369,7 @@
     var feed = opts.feed != null ? opts.feed : 3;
     if (!this._mode) return Promise.reject(new Error('Printer not connected'));
 
-    var mono = toReceiptCanvas(canvas, this._paperWidth);
+    var mono = toReceiptCanvas(canvas, this._paperWidth, opts.brightness);
     var enc  = new EscPosEncoder(this._paperWidth);
     enc.initialize().image(mono).feed(feed);
     if (cut) enc.cut();
@@ -419,12 +422,12 @@
    * @param {HTMLCanvasElement} canvas
    * @param {'80mm'|'58mm'} paper
    */
-  function printViaBluetooth(canvas, paper) {
+  function printViaBluetooth(canvas, paper, opts) {
     btPrinter._paperWidth = PAPER_WIDTHS[paper || '80mm'] || 576;
     var p = btPrinter.connected
       ? Promise.resolve()
       : btPrinter.connect();
-    return p.then(function() { return btPrinter.printCanvas(canvas); });
+    return p.then(function() { return btPrinter.printCanvas(canvas, opts); });
   }
 
   // Expose on global/window

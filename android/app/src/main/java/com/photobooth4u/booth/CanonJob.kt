@@ -56,7 +56,10 @@ object CanonJob {
      * media: 0 plain paper, 1 glossy photo paper (printed at 600 dpi), 2 matte photo paper.
      * The 600 dpi mode and the photo / matte paper codes follow Gutenprint's G1000 data but are untested on a real printer.
      */
-    fun build(src: Bitmap, widthMm: Double, heightMm: Double, mono: Boolean, quality: Int = 1, media: Int = 0): ByteArray {
+    fun build(src: Bitmap, widthMm: Double, heightMm: Double, mono: Boolean, quality: Int = 1, media: Int = 0, brightness: Int = 0): ByteArray =
+        build(src, widthMm, heightMm, mono, quality, media, PrintColorAdj(brightness = brightness))
+
+    fun build(src: Bitmap, widthMm: Double, heightMm: Double, mono: Boolean, quality: Int = 1, media: Int = 0, adj: PrintColorAdj): ByteArray {
         val size = sizeCode(widthMm, heightMm)
             ?: throw IllegalArgumentException("This paper size isn't supported on Canon USB printers yet. Use 4x6, A4 or Letter.")
         fun areaWOf(d: Int) = Math.round(minOf(widthMm, heightMm) / 25.4 * d).toInt() - 2 * MARGIN_SIDE * (d / DPI)
@@ -70,7 +73,7 @@ object CanonJob {
         val areaH = areaHOf(dpi)
         require(areaW > 0 && areaH > 0) { "Sheet too small" }
 
-        var bmp = src
+        var bmp = src.applyColorAdj(adj)
         if (bmp.width > bmp.height && widthMm <= heightMm) {
             bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, Matrix().apply { postRotate(90f) }, true)
         }

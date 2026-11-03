@@ -73,7 +73,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.73', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.73/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.74', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.74/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -109,12 +109,20 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-03', title: 'External USB webcam support & resolution controls (Android)', for: ['app'], app: '1.0.74',
+    items: [
+      'Plug-and-play USB webcams: Supports Logitech Brio 4K, Logitech C270 HD, C920, and other UVC webcams via native Android external camera (Android 14+) and built-in UVC fallback (Samsung Galaxy Tab A11, S9 FE, Xiaomi Pad, etc.).',
+      'Preview resolution selector: Choose Auto (up to 1080p), Max, 1080p, 720p, or 480p (smoothest for GIFs/boomerangs), with automatic MJPEG fallback and MediaTek USB bandwidth quirks.',
+      'Max-resolution still capture: Keep smooth 1080p/720p live view on USB 2.0 tablets while switching to the webcam\u2019s highest supported resolution at capture.',
+      'Power & disconnect recovery: Automatic stall detection, hub power guidance, and mid-event hot-plug reconnection.'
+    ]
+  },
+  {
     date: '2026-11-03', title: 'Offline voucher redemption, cloud batch sync & My Events tally (Android)', for: ['app'], app: '1.0.73',
     items: [
       'Guaranteed offline voucher redemption: Local offline batch lookup prevents offline-generated codes from being rejected as unrecognised.',
       'Offline batch syncing: Automatically synchronizes offline-generated voucher batches, used counts, and voided tickets to the server when connected to Wi-Fi.',
-      'My Events voucher tally: Complete dashboard bar tallying total vouchers created, redeemed by guests, cancelled, remaining available, and total revenue.',
-      'USB webcam & UVC support: Expanded support for external USB webcams with preview and high-resolution still capture options.'
+      'My Events voucher tally: Complete dashboard bar tallying total vouchers created, redeemed by guests, cancelled, remaining available, and total revenue.'
     ]
   },
   {

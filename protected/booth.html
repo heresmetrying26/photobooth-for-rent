@@ -6300,6 +6300,18 @@
       cursor: pointer;
     }
 
+    .welcome-overlay {
+      opacity: 1;
+      transform: scale(1);
+      transition: opacity 0.22s ease-out, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .welcome-overlay.dismissing {
+      opacity: 0 !important;
+      transform: scale(0.97) !important;
+      pointer-events: none !important;
+    }
+
     .welcome-overlay.on,
     .pick-overlay.on {
       display: block;
@@ -6311,6 +6323,12 @@
       height: 100%;
       object-fit: contain;
       display: block;
+      transition: opacity 0.22s ease;
+    }
+
+    .welcome-overlay.slide-fade img,
+    .welcome-overlay.slide-fade video {
+      opacity: 0.15;
     }
 
     .welcome-overlay {
@@ -12421,34 +12439,73 @@
               </div>
             </div>
             <div id="attractPosterRow" style="display:none; margin-top:10px;">
-              <div class="bg-row">
-                <img class="bg-thumb" id="attractPosterThumb" alt="Poster" style="display:none;">
-                <video class="bg-thumb" id="attractPosterVideoThumb" muted playsinline loop style="display:none; object-fit:cover;"></video>
-                <label class="upload-btn" for="attractPosterInput">Upload image, video or GIF</label>
-                <input type="file" id="attractPosterInput" accept="image/*,video/mp4,video/webm,video/*">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                <p class="sub-label" style="margin:0;">Sponsor / Media slides</p>
+                <span id="playlistCountBadge" class="chip" style="font-size:11px; padding:2px 8px; display:none; background:var(--panel-2);"></span>
               </div>
-              <button class="remove-link" id="attractPosterRemove" style="display:none;">Remove media</button>
-              <div class="stepper" style="margin-top:8px;"><span class="lbl">Media fit</span><span class="ctl"><select
+
+              <!-- Playlist slides grid / reel -->
+              <div id="attractPlaylistGrid" style="display:none; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
+
+              <div class="bg-row">
+                <label class="upload-btn" for="attractPosterInput" style="display:inline-flex; align-items:center; gap:6px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M12 5v14M5 12h14"/></svg>
+                  <span>Add slides (Image, Video, or GIF)</span>
+                </label>
+                <input type="file" id="attractPosterInput" accept="image/*,video/mp4,video/webm,video/*" multiple>
+              </div>
+              <button class="remove-link" id="attractPlaylistClearAll" style="display:none; margin-top:6px;">Clear all slides</button>
+
+              <div class="stepper" style="margin-top:10px;"><span class="lbl">Media fit</span><span class="ctl"><select
                     id="attractPosterFit">
                     <option value="cover">Fill tablet screen (fits scale accordingly)</option>
                     <option value="contain">Show whole media (keeps shape with bars)</option>
                     <option value="stretch">Stretch to fill the screen</option>
                   </select></span></div>
-              <p class="panel-hint" style="margin:4px 0 0;">Fill tablet screen scales cleanly to your tablet's display without letterboxing. Show whole media preserves original borders.
-              </p>
-              <p class="panel-hint" style="margin:4px 0 0;">Full-screen graphic, animated GIF, or MP4/WebM video (auto-loops on the tap to start screen).</p>
+
+              <div class="stepper" id="attractSlideDurationRow" style="margin-top:8px; display:none;"><span class="lbl">Image slide duration</span><span class="ctl"><select
+                    id="attractSlideDuration">
+                    <option value="4">4 seconds</option>
+                    <option value="6" selected>6 seconds</option>
+                    <option value="8">8 seconds</option>
+                    <option value="10">10 seconds</option>
+                    <option value="15">15 seconds</option>
+                  </select></span></div>
+
+              <p class="panel-hint" style="margin:4px 0 0;">Upload multiple videos and graphics to create an automated billboard sponsor loop between guests. Videos play in full; graphics advance based on your slide duration.</p>
             </div>
             <div id="welcomeBtnBlock" style="margin-top:12px;">
               <label class="switch-row" style="margin-top:0;"><span>Show "Tap to start" button</span><input
                   type="checkbox" id="welcomeBtnToggle" checked></label>
               <p class="panel-hint" id="welcomeBtnHint" style="margin:4px 0 0;">Turn off if your custom poster or
                 graphic already has a start button or instructions designed in.</p>
-              <div id="welcomeMsgRow" style="margin-top:8px;">
-                <p class="sub-label" style="margin:0 0 4px;">Button text</p>
-                <input type="text" class="label-input" id="welcomeMsgInput" placeholder="Tap to start"
-                  style="font-family:'Manrope',sans-serif; font-size:14px;">
-                <p class="panel-hint" style="margin:4px 0 0;">Leave empty for the default "Tap to start" (or "Wave" /
-                  "Smile" when hands-free is on).</p>
+              <div id="welcomeBtnOptions" style="margin-top:8px;">
+                <div id="welcomeMsgRow" style="margin-top:8px;">
+                  <p class="sub-label" style="margin:0 0 4px;">Button text</p>
+                  <input type="text" class="label-input" id="welcomeMsgInput" placeholder="Tap to start"
+                    style="font-family:'Manrope',sans-serif; font-size:14px;">
+                  <p class="panel-hint" style="margin:4px 0 0;">Leave empty for the default "Tap to start" (or "Wave" /
+                    "Smile" when hands-free is on).</p>
+                </div>
+                <div id="welcomeBtnColorRow" style="margin-top:10px;">
+                  <p class="sub-label" style="margin:0 0 6px;">Button color</p>
+                  <div class="chip-row" id="welcomeBtnColorChips">
+                    <button type="button" class="chip active" data-color="#C93D27" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#C93D27;display:inline-block;"></i>Red</button>
+                    <button type="button" class="chip" data-color="#C5A059" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#C5A059;display:inline-block;"></i>Gold</button>
+                    <button type="button" class="chip" data-color="#1C1A1E" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#1C1A1E;border:1px solid rgba(255,255,255,.2);display:inline-block;"></i>Black</button>
+                    <button type="button" class="chip" data-color="#FFFFFF" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(0,0,0,.2);display:inline-block;"></i>White</button>
+                    <button type="button" class="chip" data-color="#1B4D3E" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#1B4D3E;display:inline-block;"></i>Emerald</button>
+                    <button type="button" class="chip" data-color="#D87080" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#D87080;display:inline-block;"></i>Rose</button>
+                  </div>
+                </div>
+                <div id="welcomeBtnPosRow" style="margin-top:10px;">
+                  <p class="sub-label" style="margin:0 0 6px;">Button position</p>
+                  <div class="chip-row" id="welcomeBtnPosChips">
+                    <button type="button" class="chip active" data-pos="bottom">Bottom</button>
+                    <button type="button" class="chip" data-pos="center">Center</button>
+                    <button type="button" class="chip" data-pos="lower">Lower third</button>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="welcome-pv-card" id="welcomePvCard" style="margin-top:14px;">
@@ -23690,6 +23747,12 @@
       var attractPosterId = '';
       var attractPosterType = 'image';      // image | gif | video
       var attractPosterFit = 'cover';       // cover | contain | stretch
+      var attractPlaylist = [];             // [{ id, url, type, name }]
+      var attractPlayIndex = 0;
+      var attractSlideDuration = 6;         // seconds for image/gif slides
+      var attractPlaylistTimer = null;
+      var welcomeBtnColor = '#C93D27';
+      var welcomeBtnPos = 'bottom';         // bottom | center | lower
       var welcomeBtnOn = true;
       var welcomeCustomOn = false;
       var welcomeGreeting = '';
@@ -26324,10 +26387,50 @@
         scheduleWelcomeRender();
         if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
       });
+      function setWelcomeBtnColorUI(hex) {
+        welcomeBtnColor = hex || '#C93D27';
+        var chips = document.getElementById('welcomeBtnColorChips');
+        if (chips) {
+          [].forEach.call(chips.querySelectorAll('.chip'), function (c) {
+            c.classList.toggle('active', (c.dataset.color || '').toLowerCase() === welcomeBtnColor.toLowerCase());
+          });
+        }
+      }
+      function setWelcomeBtnPosUI(pos) {
+        welcomeBtnPos = (pos === 'center' || pos === 'lower') ? pos : 'bottom';
+        var chips = document.getElementById('welcomeBtnPosChips');
+        if (chips) {
+          [].forEach.call(chips.querySelectorAll('.chip'), function (c) {
+            c.classList.toggle('active', c.dataset.pos === welcomeBtnPos);
+          });
+        }
+      }
+      (function () {
+        var colorChips = document.getElementById('welcomeBtnColorChips');
+        if (colorChips) {
+          colorChips.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-color]'); if (!b) return;
+            setWelcomeBtnColorUI(b.dataset.color);
+            scheduleWelcomeRender();
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
+        var posChips = document.getElementById('welcomeBtnPosChips');
+        if (posChips) {
+          posChips.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-pos]'); if (!b) return;
+            setWelcomeBtnPosUI(b.dataset.pos);
+            scheduleWelcomeRender();
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
+      })();
+
       if (welcomeBtnToggle) {
         welcomeBtnToggle.addEventListener('change', function () {
           welcomeBtnOn = welcomeBtnToggle.checked;
-          if (welcomeMsgRow) welcomeMsgRow.style.display = welcomeBtnOn ? '' : 'none';
+          var btnOpts = document.getElementById('welcomeBtnOptions');
+          if (btnOpts) btnOpts.style.display = welcomeBtnOn ? '' : 'none';
           scheduleWelcomeRender();
           if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
         });
@@ -26477,96 +26580,219 @@
         window._isPosterVideo = isPosterVideo;
         window._isPosterGif = isPosterGif;
 
+        function renderPlaylistGridUI() {
+          var grid = document.getElementById('attractPlaylistGrid');
+          var badge = document.getElementById('playlistCountBadge');
+          var clearBtn = document.getElementById('attractPlaylistClearAll');
+          var durRow = document.getElementById('attractSlideDurationRow');
+          if (!grid) return;
+
+          if (!attractPlaylist.length) {
+            grid.style.display = 'none';
+            grid.innerHTML = '';
+            if (badge) badge.style.display = 'none';
+            if (clearBtn) clearBtn.style.display = 'none';
+            if (durRow) durRow.style.display = 'none';
+            return;
+          }
+
+          grid.style.display = 'flex';
+          if (badge) {
+            badge.style.display = '';
+            badge.textContent = attractPlaylist.length + (attractPlaylist.length === 1 ? ' slide' : ' slides (Billboard loop)');
+          }
+          if (clearBtn) clearBtn.style.display = '';
+          if (durRow) durRow.style.display = attractPlaylist.length > 1 ? 'flex' : 'none';
+
+          var h = '';
+          attractPlaylist.forEach(function (it, idx) {
+            var isV = it.type === 'video';
+            var isG = it.type === 'gif';
+            var typeLabel = isV ? 'Video · loops/auto-advances' : (isG ? 'Animated GIF' : 'Graphic');
+            h += '<div class="playlist-item" style="display:flex; align-items:center; justify-content:space-between; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:6px 10px; gap:8px;">';
+            h += '<div style="display:flex; align-items:center; gap:8px; overflow:hidden;">';
+            h += '<span style="font-size:12px; font-weight:800; color:var(--brand); min-width:16px;">' + (idx + 1) + '</span>';
+            if (isV) {
+              h += '<video src="' + it.url + '" muted playsinline style="width:38px; height:38px; border-radius:6px; object-fit:cover; background:#000; flex-shrink:0;"></video>';
+            } else {
+              h += '<img src="' + it.url + '" style="width:38px; height:38px; border-radius:6px; object-fit:cover; background:#000; flex-shrink:0;">';
+            }
+            h += '<div style="overflow:hidden;">';
+            h += '<p style="margin:0; font-size:12px; font-weight:700; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">' + (it.name || ('Slide ' + (idx + 1))) + '</p>';
+            h += '<span style="font-size:10px; opacity:.7;">' + typeLabel + '</span>';
+            h += '</div></div>';
+            h += '<button type="button" data-del-slide="' + idx + '" style="background:none; border:none; color:var(--err); cursor:pointer; font-size:14px; padding:4px 8px;" title="Remove slide">✕</button>';
+            h += '</div>';
+          });
+          grid.innerHTML = h;
+        }
+        window._renderPlaylistGridUI = renderPlaylistGridUI;
+
         window._loadAttractPosterMedia = function (url, type, id) {
           attractPosterUrl = url || '';
           attractPosterId = id || attractPosterId || '';
           attractPosterType = type || (isPosterVideo(url) ? 'video' : (isPosterGif(url) ? 'gif' : 'image'));
 
-          var pt = document.getElementById('attractPosterThumb');
-          var pvt = document.getElementById('attractPosterVideoThumb');
-          var pr = document.getElementById('attractPosterRemove');
+          if (!attractPlaylist.length && url) {
+            attractPlaylist = [{ id: attractPosterId, url: url, type: attractPosterType, name: 'Slide 1' }];
+          }
 
           if (!url) {
             attractPosterImg = null;
-            if (pt) { pt.src = ''; pt.style.display = 'none'; }
-            if (pvt) { pvt.src = ''; pvt.style.display = 'none'; }
-            if (pr) pr.style.display = 'none';
+            attractPlaylist = [];
+            renderPlaylistGridUI();
             renderWelcome(); refreshWelcome(); guestRender();
             return;
           }
 
-          if (pr) pr.style.display = '';
-
           if (attractPosterType === 'video') {
             attractPosterImg = null;
-            if (pt) { pt.src = ''; pt.style.display = 'none'; }
-            if (pvt) { pvt.src = url; pvt.style.display = ''; }
+            renderPlaylistGridUI();
             renderWelcome(); refreshWelcome(); guestRender();
           } else {
-            if (pvt) { pvt.src = ''; pvt.style.display = 'none'; }
             var im = new Image();
             im.onload = function () {
               attractPosterImg = im;
-              if (pt) { pt.src = url; pt.style.display = ''; }
+              renderPlaylistGridUI();
               renderWelcome(); refreshWelcome(); guestRender();
             };
             im.src = url;
           }
         };
 
-        // Poster / video / GIF upload
+        // Multi-file Sponsor Playlist upload with IndexedDB Blob caching
         var posterInput = document.getElementById('attractPosterInput');
-        var posterThumb = document.getElementById('attractPosterThumb');
-        var posterRemove = document.getElementById('attractPosterRemove');
-        if (posterInput) posterInput.addEventListener('change', async function () {
-          var f = posterInput.files[0]; if (!f) return;
-          var isVid = f.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(f.name || '');
-          var isGif = f.type === 'image/gif' || /\.gif$/i.test(f.name || '');
-          var mediaType = isVid ? 'video' : (isGif ? 'gif' : 'image');
+        var playlistGrid = document.getElementById('attractPlaylistGrid');
+        var playlistClear = document.getElementById('attractPlaylistClearAll');
+        var slideDurSelect = document.getElementById('attractSlideDuration');
 
-          if (isVid && f.size > 50 * 1024 * 1024) {
-            if (typeof showToast === 'function') showToast('Please choose a video under 50 MB for the welcome loop.', 4500);
-            posterInput.value = '';
-            return;
+        if (playlistGrid) {
+          playlistGrid.addEventListener('click', async function (e) {
+            var btn = e.target.closest('[data-del-slide]');
+            if (!btn) return;
+            var idx = Number(btn.dataset.delSlide);
+            if (idx >= 0 && idx < attractPlaylist.length) {
+              var removed = attractPlaylist.splice(idx, 1)[0];
+              try {
+                if (typeof dbDo === 'function' && removed && removed.id) {
+                  await dbDo('kv', 'readwrite', function (st) { return st.delete('attract_blob:' + removed.id); });
+                }
+              } catch (e) {}
+              if (attractPlaylist.length > 0) {
+                attractPlayIndex = 0;
+                attractPosterUrl = attractPlaylist[0].url;
+                attractPosterType = attractPlaylist[0].type;
+                attractPosterId = attractPlaylist[0].id;
+              } else {
+                attractPosterUrl = '';
+                attractPosterId = '';
+                attractPosterImg = null;
+              }
+              renderPlaylistGridUI();
+              renderWelcome(); refreshWelcome(); guestRender();
+              if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+            }
+          });
+        }
+
+        if (playlistClear) {
+          playlistClear.addEventListener('click', async function () {
+            for (var i = 0; i < attractPlaylist.length; i++) {
+              try {
+                if (typeof dbDo === 'function' && attractPlaylist[i].id) {
+                  await dbDo('kv', 'readwrite', function (st) { return st.delete('attract_blob:' + attractPlaylist[i].id); });
+                }
+              } catch (e) {}
+            }
+            try {
+              if (typeof dbDo === 'function') {
+                await dbDo('kv', 'readwrite', function (st) { return st.delete('attract_poster_blob'); });
+              }
+            } catch (e) {}
+            attractPlaylist = [];
+            window._loadAttractPosterMedia('', 'image', '');
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
+
+        if (slideDurSelect) {
+          slideDurSelect.addEventListener('change', function () {
+            attractSlideDuration = Number(slideDurSelect.value) || 6;
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
+
+        if (posterInput) posterInput.addEventListener('change', async function () {
+          var files = [].slice.call(posterInput.files || []);
+          if (!files.length) return;
+
+          for (var i = 0; i < files.length; i++) {
+            var f = files[i];
+            var isVid = f.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(f.name || '');
+            var isGif = f.type === 'image/gif' || /\.gif$/i.test(f.name || '');
+            var mediaType = isVid ? 'video' : (isGif ? 'gif' : 'image');
+
+            if (isVid && f.size > 50 * 1024 * 1024) {
+              if (typeof showToast === 'function') showToast(f.name + ' is over 50 MB. Skipped.', 4000);
+              continue;
+            }
+
+            try {
+              var url = '';
+              var id = typeof newAssetId === 'function' ? newAssetId() : ('a' + Math.random().toString(36).slice(2, 10));
+
+              if (isVid || isGif) {
+                // Store binary Blob in IndexedDB kv store
+                try {
+                  if (typeof dbDo === 'function') {
+                    await dbDo('kv', 'readwrite', function (st) { return st.put(f, 'attract_blob:' + id); });
+                  }
+                } catch (dbErr) { console.warn('IDB blob store failed', dbErr); }
+
+                url = URL.createObjectURL(f);
+
+                // If small (<= 4MB), also create DataURL for cloud sync
+                if (f.size <= 4 * 1024 * 1024) {
+                  var dataUrl = await new Promise(function (res, rej) {
+                    var r = new FileReader(); r.onload = function () { res(r.result); }; r.onerror = rej; r.readAsDataURL(f);
+                  });
+                  if (typeof addAsset === 'function') await addAsset(dataUrl);
+                }
+              } else {
+                url = typeof readImageFile === 'function' ? await readImageFile(f, 1800) : await (new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { res(r.result); }; r.onerror = rej; r.readAsDataURL(f); }));
+                if (typeof addAsset === 'function') await addAsset(url);
+              }
+
+              attractPlaylist.push({
+                id: id,
+                url: url,
+                type: mediaType,
+                name: f.name || ('Slide ' + (attractPlaylist.length + 1))
+              });
+            } catch (err) {
+              console.error('File add err', err);
+            }
           }
 
-          try {
-            var readPromise;
-            if (isVid || isGif) {
-              readPromise = new Promise(function (res, reject) {
-                var r = new FileReader();
-                r.onload = function () { res(r.result); };
-                r.onerror = reject;
-                r.readAsDataURL(f);
-              });
+          if (attractPlaylist.length > 0) {
+            attractPosterUrl = attractPlaylist[0].url;
+            attractPosterType = attractPlaylist[0].type;
+            attractPosterId = attractPlaylist[0].id;
+            if (attractPosterType !== 'video') {
+              var im = new Image();
+              im.onload = function () {
+                attractPosterImg = im;
+                renderWelcome(); refreshWelcome(); guestRender();
+              };
+              im.src = attractPosterUrl;
             } else {
-              readPromise = typeof readImageFile === 'function' ? readImageFile(f, 1800) : new Promise(function (res, reject) {
-                var r = new FileReader();
-                r.onload = function () { res(r.result); };
-                r.onerror = reject;
-                r.readAsDataURL(f);
-              });
+              attractPosterImg = null;
+              renderWelcome(); refreshWelcome(); guestRender();
             }
-
-            var url = await readPromise;
-            var id = '';
-            if (typeof addAsset === 'function') {
-              if (url.length <= 4 * 1024 * 1024) {
-                id = await addAsset(url);
-              } else {
-                id = newAssetId();
-                registerAsset(id, url);
-                cacheAssetLocal(id, url);
-              }
-            }
-            window._loadAttractPosterMedia(url, mediaType, id);
-            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
-          } catch (err) { if (typeof showToast === 'function') showToast(err.message || 'Could not load media', 4000); }
-          posterInput.value = '';
-        });
-        if (posterRemove) posterRemove.addEventListener('click', function () {
-          window._loadAttractPosterMedia('', 'image', '');
+          }
+          renderPlaylistGridUI();
           if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          posterInput.value = '';
         });
       })();
       function scheduleWelcomeRender() { clearTimeout(welcomeTimer); welcomeTimer = setTimeout(renderWelcome, 250); }
@@ -26677,9 +26903,12 @@
               // Draw the CTA button
               ctx.font = '800 34px Manrope, sans-serif';
               var bw2 = Math.min(W * 0.7, ctx.measureText(btnText).width + 130), bh2 = 92;
-              var bx2 = W / 2 - bw2 / 2, by2 = H - bh2 - 80;
-              roundRectPath(ctx, bx2, by2, bw2, bh2, bh2 / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
-              ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+              var bx2 = W / 2 - bw2 / 2;
+              var by2 = welcomeBtnPos === 'center' ? (H / 2 - bh2 / 2) : (welcomeBtnPos === 'lower' ? (H * 0.68 - bh2 / 2) : (H - bh2 - 80));
+              var bCol = welcomeBtnColor || '#C93D27';
+              roundRectPath(ctx, bx2, by2, bw2, bh2, bh2 / 2); ctx.fillStyle = bCol; ctx.fill();
+              ctx.fillStyle = (typeof lumOf === 'function' && lumOf(bCol) > 0.6) ? '#1C1A1E' : '#ffffff';
+              ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
               var bs2 = fitFont(ctx, btnText, 'Manrope, sans-serif', 34, bw2 - 50, 18);
               ctx.font = '800 ' + bs2 + 'px Manrope, sans-serif';
               ctx.fillText(btnText, W / 2, by2 + bh2 / 2 + bs2 * 0.36);
@@ -26879,8 +27108,10 @@
             ctx.font = '800 34px Manrope, sans-serif';
             var bh = land ? 92 : 78, bw = Math.min(cw - 70, ctx.measureText(btnText).width + (land ? 130 : 100));
             var bx = mid - bw / 2, by = cy + ch - bh - (land ? 48 : 24);
-            roundRectPath(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
-            ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+            var bCol2 = welcomeBtnColor || '#C93D27';
+            roundRectPath(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = bCol2; ctx.fill();
+            ctx.fillStyle = (typeof lumOf === 'function' && lumOf(bCol2) > 0.6) ? '#1C1A1E' : '#ffffff';
+            ctx.textAlign = 'center';
             var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', land ? 34 : 28, bw - 40, 16);
             ctx.font = '800 ' + bs + 'px Manrope, sans-serif';
             ctx.fillText(btnText, mid, by + bh / 2 + bs * 0.36);
@@ -26917,6 +27148,11 @@
         p.style.display = '';
         p.style.left = welcomeCta.l + '%'; p.style.top = welcomeCta.t + '%';
         p.style.width = welcomeCta.w + '%'; p.style.height = welcomeCta.h + '%';
+        var c = welcomeBtnColor || '#C93D27';
+        if (typeof hexToRgb === 'function') {
+          var rgb = hexToRgb(c);
+          p.style.boxShadow = '0 0 0 0 rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',.55)';
+        }
       }
       video.addEventListener('loadedmetadata', function () { scheduleWelcomeRender(); });
       function refreshWelcome() {
@@ -26941,41 +27177,10 @@
         var hfMode = typeof fx !== 'undefined' ? fx.hands : 'off';
         var btnText = welcomeMsg || (hfMode === 'wave' ? 'Wave to start' : hfMode === 'smile' ? 'Smile to start' : 'Tap to start');
 
-        if (show && attractMode === 'poster' && attractPosterType === 'video' && attractPosterUrl) {
-          if (welcomeVid) {
-            if (welcomeVid.src !== attractPosterUrl) welcomeVid.src = attractPosterUrl;
-            welcomeVid.loop = true;
-            welcomeVid.muted = true;
-            welcomeVid.style.display = 'block';
-            welcomeVid.style.objectFit = (attractPosterFit === 'contain' ? 'contain' : (attractPosterFit === 'stretch' ? 'fill' : 'cover'));
-            var playPromise = welcomeVid.play();
-            if (playPromise && playPromise.catch) playPromise.catch(function () {});
-          }
-          if (welcomeImg) welcomeImg.style.display = 'none';
-          if (welcomeCtaOverlay && welcomeCtaBtn) {
-            if (welcomeBtnOn) {
-              welcomeCtaOverlay.style.display = 'flex';
-              welcomeCtaBtn.textContent = btnText;
-            } else {
-              welcomeCtaOverlay.style.display = 'none';
-            }
-          }
-        } else if (show && attractMode === 'poster' && attractPosterType === 'gif' && attractPosterUrl) {
-          if (welcomeVid) { welcomeVid.pause(); welcomeVid.style.display = 'none'; }
-          if (welcomeImg) {
-            welcomeImg.src = attractPosterUrl;
-            welcomeImg.style.display = 'block';
-            welcomeImg.style.objectFit = (attractPosterFit === 'contain' ? 'contain' : (attractPosterFit === 'stretch' ? 'fill' : 'cover'));
-          }
-          if (welcomeCtaOverlay && welcomeCtaBtn) {
-            if (welcomeBtnOn) {
-              welcomeCtaOverlay.style.display = 'flex';
-              welcomeCtaBtn.textContent = btnText;
-            } else {
-              welcomeCtaOverlay.style.display = 'none';
-            }
-          }
+        if (show && attractMode === 'poster' && (attractPlaylist.length > 0 || attractPosterUrl)) {
+          startPlaylistPlayback();
         } else {
+          stopPlaylistPlayback();
           if (welcomeVid) { welcomeVid.pause(); welcomeVid.style.display = 'none'; }
           if (welcomeCtaOverlay) welcomeCtaOverlay.style.display = 'none';
           if (welcomeImg) {
@@ -26985,10 +27190,150 @@
           }
         }
       }
-      welcomeOverlay.addEventListener('click', function (e) { e.stopPropagation(); beginGuestFlow(true); });
-      welcomeOverlay.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); beginGuestFlow(true); } });
+
+      // Smooth dismiss transition on tap
+      var welcomeDismissing = false;
+      function triggerWelcomeTap(e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        if (welcomeDismissing) return;
+        welcomeDismissing = true;
+        welcomeOverlay.classList.add('dismissing');
+        setTimeout(function () {
+          beginGuestFlow(true);
+          setTimeout(function () {
+            welcomeOverlay.classList.remove('dismissing');
+            welcomeDismissing = false;
+          }, 350);
+        }, 200);
+      }
+      welcomeOverlay.addEventListener('click', triggerWelcomeTap);
+      welcomeOverlay.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') triggerWelcomeTap(e); });
       var ctaBtnEl = document.getElementById('welcomeCtaBtn');
-      if (ctaBtnEl) ctaBtnEl.addEventListener('click', function (e) { e.stopPropagation(); beginGuestFlow(true); });
+      if (ctaBtnEl) ctaBtnEl.addEventListener('click', triggerWelcomeTap);
+
+      // ---- Sponsor Playlist Carousel Engine ----
+      function startPlaylistPlayback() {
+        clearTimeout(attractPlaylistTimer);
+        var list = attractPlaylist.length ? attractPlaylist : (attractPosterUrl ? [{ id: attractPosterId, url: attractPosterUrl, type: attractPosterType }] : []);
+        if (!list.length) return;
+        if (attractPlayIndex >= list.length) attractPlayIndex = 0;
+        displayCurrentSlide(attractPlayIndex);
+      }
+
+      function stopPlaylistPlayback() {
+        clearTimeout(attractPlaylistTimer);
+        var welcomeVid = document.getElementById('welcomeVideo');
+        if (welcomeVid) {
+          welcomeVid.pause();
+          welcomeVid.onended = null;
+        }
+      }
+
+      function advancePlaylist() {
+        clearTimeout(attractPlaylistTimer);
+        var list = attractPlaylist.length ? attractPlaylist : (attractPosterUrl ? [{ id: attractPosterId, url: attractPosterUrl, type: attractPosterType }] : []);
+        if (!welcomeOverlay.classList.contains('on') || state !== 'idle' || flowBusy || list.length <= 1) return;
+
+        welcomeOverlay.classList.add('slide-fade');
+        setTimeout(function () {
+          attractPlayIndex = (attractPlayIndex + 1) % list.length;
+          displayCurrentSlide(attractPlayIndex);
+          setTimeout(function () {
+            welcomeOverlay.classList.remove('slide-fade');
+          }, 180);
+        }, 180);
+      }
+
+      function displayCurrentSlide(idx) {
+        var list = attractPlaylist.length ? attractPlaylist : (attractPosterUrl ? [{ id: attractPosterId, url: attractPosterUrl, type: attractPosterType }] : []);
+        if (!list.length) return;
+        var item = list[idx] || list[0];
+        var welcomeVid = document.getElementById('welcomeVideo');
+        var welcomeImg = document.getElementById('welcomeImg');
+        var welcomeCtaOverlay = document.getElementById('welcomeCtaOverlay');
+        var welcomeCtaBtn = document.getElementById('welcomeCtaBtn');
+        var hfMode = typeof fx !== 'undefined' ? fx.hands : 'off';
+        var btnText = welcomeMsg || (hfMode === 'wave' ? 'Wave to start' : hfMode === 'smile' ? 'Smile to start' : 'Tap to start');
+        var fitMode = (attractPosterFit === 'contain' ? 'contain' : (attractPosterFit === 'stretch' ? 'fill' : 'cover'));
+
+        if (item.type === 'video') {
+          if (welcomeImg) welcomeImg.style.display = 'none';
+          if (welcomeVid) {
+            if (welcomeVid.src !== item.url) welcomeVid.src = item.url;
+            welcomeVid.style.display = 'block';
+            welcomeVid.style.objectFit = fitMode;
+            welcomeVid.muted = true;
+            welcomeVid.playsInline = true;
+
+            if (list.length > 1) {
+              welcomeVid.loop = false;
+              welcomeVid.onended = function () { advancePlaylist(); };
+              var maxVidTime = 45000;
+              attractPlaylistTimer = setTimeout(advancePlaylist, maxVidTime);
+            } else {
+              welcomeVid.loop = true;
+              welcomeVid.onended = null;
+            }
+            var p = welcomeVid.play();
+            if (p && p.catch) p.catch(function () {});
+          }
+        } else {
+          // Image or GIF
+          if (welcomeVid) {
+            welcomeVid.pause();
+            welcomeVid.style.display = 'none';
+            welcomeVid.onended = null;
+          }
+          if (welcomeImg) {
+            welcomeImg.src = item.url;
+            welcomeImg.style.display = 'block';
+            welcomeImg.style.objectFit = fitMode;
+          }
+          if (list.length > 1) {
+            var durMs = (attractSlideDuration || 6) * 1000;
+            attractPlaylistTimer = setTimeout(advancePlaylist, durMs);
+          }
+        }
+
+        if (welcomeCtaOverlay && welcomeCtaBtn) {
+          if (welcomeBtnOn) {
+            welcomeCtaOverlay.style.display = 'flex';
+            welcomeCtaOverlay.style.bottom = welcomeBtnPos === 'center' ? '50%' : (welcomeBtnPos === 'lower' ? '20%' : '72px');
+            welcomeCtaOverlay.style.transform = welcomeBtnPos === 'center' ? 'translateY(50%)' : 'none';
+            welcomeCtaBtn.textContent = btnText;
+            var bCol = welcomeBtnColor || '#C93D27';
+            welcomeCtaBtn.style.background = bCol;
+            welcomeCtaBtn.style.color = (typeof lumOf === 'function' && lumOf(bCol) > 0.6) ? '#1C1A1E' : '#ffffff';
+          } else {
+            welcomeCtaOverlay.style.display = 'none';
+          }
+        }
+      }
+
+      // Sleep/Wake & Playback Watchdog: guarantees video never stays paused or stalled
+      function resumeWelcomeVideoIfNeeded() {
+        var show = welcomeOn && state === 'idle' && !flowBusy && !pickOpen;
+        if (show && attractMode === 'poster' && attractPosterType === 'video' && attractPosterUrl) {
+          var v = document.getElementById('welcomeVideo');
+          if (v && v.style.display !== 'none') {
+            if (v.paused || v.ended) {
+              if (v.ended) v.currentTime = 0;
+              var p = v.play();
+              if (p && p.catch) p.catch(function () {});
+            }
+          }
+        }
+      }
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) setTimeout(resumeWelcomeVideoIfNeeded, 120);
+      });
+      window.addEventListener('focus', function () {
+        setTimeout(resumeWelcomeVideoIfNeeded, 120);
+      });
+      window.addEventListener('pageshow', function () {
+        setTimeout(resumeWelcomeVideoIfNeeded, 120);
+      });
+      setInterval(resumeWelcomeVideoIfNeeded, 2500);
 
       // ---- Guests choose the layout ----
       var guestPickToggle = document.getElementById('guestPickToggle');
@@ -29642,6 +29987,17 @@
           attractMode: attractMode,
           attractPosterFit: attractPosterFit,
           attractPosterType: attractPosterType || 'image',
+          attractPlaylist: attractPlaylist.map(function (it) {
+            return {
+              id: it.id,
+              type: it.type,
+              name: it.name || '',
+              url: (it.url && it.url.length <= 4 * 1024 * 1024) ? it.url : ''
+            };
+          }),
+          attractSlideDuration: attractSlideDuration || 6,
+          welcomeBtnColor: welcomeBtnColor || '#C93D27',
+          welcomeBtnPos: welcomeBtnPos || 'bottom',
           attractPosterId: attractPosterId || '',
           attractPosterUrl: attractPosterUrl && !attractPosterId ? attractPosterUrl : '',
           accent: accent, overlay: overlay ? Object.assign({}, overlay) : null, logo: logo ? Object.assign({}, logo) : null,
@@ -29845,9 +30201,66 @@
           attractPosterFit = (s.attractPosterFit === 'contain' || s.attractPosterFit === 'stretch') ? s.attractPosterFit : 'cover';
           attractPosterType = s.attractPosterType || (window._isPosterVideo(pUrl) ? 'video' : (window._isPosterGif(pUrl) ? 'gif' : 'image'));
           var fitEl = document.getElementById('attractPosterFit'); if (fitEl) fitEl.value = attractPosterFit;
-          if (typeof window._loadAttractPosterMedia === 'function') {
-            window._loadAttractPosterMedia(pUrl, attractPosterType, pId);
-          }
+          if (typeof setWelcomeBtnColorUI === 'function') setWelcomeBtnColorUI(s.welcomeBtnColor || '#C93D27');
+          if (typeof setWelcomeBtnPosUI === 'function') setWelcomeBtnPosUI(s.welcomeBtnPos || 'bottom');
+
+          attractSlideDuration = Number(s.attractSlideDuration) || 6;
+          var durSelectEl = document.getElementById('attractSlideDuration');
+          if (durSelectEl) durSelectEl.value = String(attractSlideDuration);
+
+          // Restore playlist checking IndexedDB binary blobs
+          (async function () {
+            var restored = [];
+            if (Array.isArray(s.attractPlaylist) && s.attractPlaylist.length) {
+              for (var i = 0; i < s.attractPlaylist.length; i++) {
+                var it = s.attractPlaylist[i];
+                var u = it.url || '';
+                try {
+                  if (typeof dbDo === 'function' && it.id) {
+                    var b = await dbDo('kv', 'readonly', function (st) { return st.get('attract_blob:' + it.id); });
+                    if (b && (b instanceof Blob || (b.size && b.type))) {
+                      u = URL.createObjectURL(b);
+                    }
+                  }
+                } catch (e) {}
+                if (!u && it.id && typeof ASSETS !== 'undefined' && ASSETS[it.id]) {
+                  u = ASSETS[it.id].url;
+                }
+                if (u) {
+                  restored.push({ id: it.id, url: u, type: it.type, name: it.name });
+                }
+              }
+            }
+
+            if (restored.length) {
+              attractPlaylist = restored;
+              attractPosterUrl = attractPlaylist[0].url;
+              attractPosterType = attractPlaylist[0].type;
+              attractPosterId = attractPlaylist[0].id;
+              if (typeof window._renderPlaylistGridUI === 'function') window._renderPlaylistGridUI();
+              renderWelcome(); refreshWelcome(); guestRender();
+              return;
+            }
+
+            // Fallback single file check
+            try {
+              if (typeof dbDo === 'function') {
+                var blob = await dbDo('kv', 'readonly', function (st) { return st.get('attract_poster_blob'); });
+                if (blob && (blob instanceof Blob || (blob.size && blob.type))) {
+                  var bUrl = URL.createObjectURL(blob);
+                  var bType = attractPosterType || (blob.type.startsWith('video/') ? 'video' : (blob.type === 'image/gif' ? 'gif' : 'image'));
+                  if (typeof window._loadAttractPosterMedia === 'function') {
+                    window._loadAttractPosterMedia(bUrl, bType, pId);
+                  }
+                  return;
+                }
+              }
+            } catch (e) {}
+
+            if (typeof window._loadAttractPosterMedia === 'function') {
+              window._loadAttractPosterMedia(pUrl, attractPosterType, pId);
+            }
+          })();
           setFrameColorUI(s.frameColorChoice === 'auto' || isHex(s.frameColorChoice) ? s.frameColorChoice : 'auto');
           if (typeof setAndroidOrientationUI === 'function') {
             setAndroidOrientationUI(typeof s.androidOrientation === 'string' ? s.androidOrientation : 'landscape');

@@ -74,7 +74,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.75', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.75/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.76', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.76/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -109,6 +109,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-03', title: 'Video/GIF Tap-to-Start, Corporate Sponsor Billboard Playlist & Tablet Portrait Fitting', for: ['website', 'app'], app: '1.0.76',
+    items: [
+      'Video & Animated GIF Welcome Screens: Tap-to-start screen now accepts looping MP4/WebM videos and multi-frame animated GIFs.',
+      'Corporate Sponsor Playlist (Billboard Mode): Upload multiple sponsor videos and brand graphics that automatically cycle and crossfade between guests.',
+      'Tablet Portrait Scale-to-Fit: Full-bleed edge-to-edge scaling on Android tablets with zero border bars, custom button accent colors and smooth tap dismiss transition.',
+      'IndexedDB Binary Blob Storage & Loop Watchdog: Low-memory binary storage preventing RAM bloat on budget tablets with auto-recovery on sleep/wake.'
+    ]
+  },
   {
     date: '2026-11-03', title: 'Android Print & Camera Helper (127.0.0.1:17321) for mobile Chrome & direct USB printing', for: ['app'], app: '1.0.75',
     items: [

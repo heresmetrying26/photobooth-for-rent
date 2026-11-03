@@ -73,7 +73,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.68', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.68/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.70', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.70/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -108,6 +108,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-03', title: 'Single QR for Photo + GIF & tablet camera reliability (Android / Web)', for: ['app', 'website'], app: '1.0.70',
+    items: [
+      'Single unified QR code for Photo + GIF mode: Guests now scan one QR code to access and save both their photo strip and animated GIF with individual save buttons.',
+      'Fixed false "Camera disconnected" watchdog on Android tablets: Resolved false disconnection timeouts caused by WebView video pause during result screens.',
+      'Accurate camera error reporting: Tablet/built-in cameras no longer display misleading "Check USB cable" prompts.',
+      'Transferred Lightness / Exposure and RGB color correction sliders directly into the Print settings panel for fast re-prints.'
+    ]
+  },
   {
     date: '2026-11-03', title: 'Lightness & RGB colour correction for thermal & photo printers (Android)', for: ['app'], app: '1.0.68',
     items: [

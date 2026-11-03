@@ -14035,7 +14035,7 @@
             imageBase64: base64Data,
             folderKey: folderKey,
             subfolder: subfolder || undefined,
-            guestCode: (LOCALSHARE && gvActive() && gvFileNum(filename)) ? gvCodeFor(gvFileNum(filename)) : undefined,   // laptop app: this file belongs to that guest's own page
+            guestCode: ((LOCALSHARE || outputMode === 'both') && (gvActive() || outputMode === 'both') && gvFileNum(filename)) ? gvCodeFor(gvFileNum(filename)) : undefined,   // this file belongs to that guest's own page
             ticket
           })
         });
@@ -16005,7 +16005,7 @@
       }
       // Called after every upload (see uploadToDrive).
       function gvAfterUpload(filename, mime, data, folderKey) {
-        if (!gvActive() || LOCALSHARE) return;
+        if ((!gvActive() && outputMode !== 'both') || LOCALSHARE) return;
         var n = gvFileNum(filename), fid = gvFolderId(data.folderUrl || getCachedFolderUrl());
         if (!n || !fid || !data.fileId) return;
         gvApply();
@@ -16047,7 +16047,7 @@
       // ---- The guest's own QR codes, shown after each session ----
       // The session QR opens the saved photo in the online gallery (or, when guests may only see their own photos, their own page).
       function fileShareUrl(fileId, own) {
-        if (own && gvActive()) { const u = gvSessionUrl(); if (u || gvPrivate()) return u; }
+        if (own && (gvActive() || outputMode === 'both')) { const u = gvSessionUrl(); if (u || gvPrivate()) return u; }
         if (LOCALSHARE) { const i = String(fileId).indexOf('/'); return i > 0 ? localShareUrl('pb4u-local:' + fileId.slice(0, i), fileId.slice(i + 1)) : null; }
         const folderUrl = getCachedFolderUrl();
         const g = folderUrl && usesGallery(folderUrl) ? galleryUrlFor(folderUrl) : null;
@@ -16094,19 +16094,20 @@
         const myGeneration = ++qrGeneration;
         qrResults.innerHTML = '';
         lastRenderedFolderUrl = null;
-        qrSlot('photo', 'Your photo', 'Saving your photo…');
+        const isBoth = (outputMode === 'both');
+        qrSlot('photo', isBoth ? 'Your photo & GIF' : 'Your photo', isBoth ? 'Saving your photo & GIF…' : 'Saving your photo…');
         // Guests get a working QR straight away: the event's All photos page,
         // swapped for their own photo's QR as soon as the upload finishes. (The offline app has no extra
         // All photos QR here: the dock's All photos button already shows it.)
         const evFolder = getCachedFolderUrl();
-        const gv = gvActive();       // guests get their own page: its link works straight away, whatever the upload does
+        const gv = gvActive() || isBoth;       // guests get their own page: its link works straight away, whatever the upload does
         let slowTimer = null;
         const setCap = (t) => { const w = qrResults.querySelector('.qr-result[data-kind="photo"] .qr-caption'); if (w) w.textContent = t; };
         const OFFLINE_CAP = 'Scan now \u00b7 your photo arrives here once the booth is back online';
         if (evFolder || gv) {
-          setCap(gv ? (navigator.onLine === false && !LOCALSHARE ? OFFLINE_CAP : 'Your photos \u00b7 saving\u2026') : LOCALSHARE ? 'All photos \u00b7 saving your photo\u2026' : navigator.onLine === false ? OFFLINE_CAP : 'All photos \u00b7 your photo is uploading\u2026');
+          setCap(gv ? (navigator.onLine === false && !LOCALSHARE ? OFFLINE_CAP : (isBoth ? 'Your photo & GIF \u00b7 saving\u2026' : 'Your photos \u00b7 saving\u2026')) : LOCALSHARE ? 'All photos \u00b7 saving your photo\u2026' : navigator.onLine === false ? OFFLINE_CAP : 'All photos \u00b7 your photo is uploading\u2026');
           fillQrSlot('photo', qrFallbackUrl(evFolder));
-          slowTimer = setTimeout(() => { if (myGeneration === qrGeneration) setCap(gv ? 'Your photos \u00b7 they will appear here shortly' : 'All photos \u00b7 your photo will appear here shortly'); }, 60000);
+          slowTimer = setTimeout(() => { if (myGeneration === qrGeneration) setCap(gv ? (isBoth ? 'Your photo & GIF \u00b7 they will appear here shortly' : 'Your photos \u00b7 they will appear here shortly') : 'All photos \u00b7 your photo will appear here shortly'); }, 60000);
         }
         guestRender();
         let result = null, lastError = null;
@@ -16131,7 +16132,7 @@
           return null;
         }
         if (!result && (evFolder || gv)) {
-          setCap(gv ? 'Your photos \u00b7 they appear here once saved' : 'All photos \u00b7 your photo appears here once it uploads');
+          setCap(gv ? (isBoth ? 'Your photo & GIF \u00b7 they appear here once saved' : 'Your photos \u00b7 they appear here once saved') : 'All photos \u00b7 your photo appears here once it uploads');
           showToast('Photo not saved yet. ' + driveErrorText(lastError), 7000);
           return null;
         }
@@ -16140,9 +16141,9 @@
           showToast('Photo not saved. ' + driveErrorText(lastError), 7000);
           return null;
         }
-        setCap(qrResults.querySelector('.qr-result[data-kind="wifi"]') ? '2 \u00b7 Your photo' : 'Your photo');
+        setCap(qrResults.querySelector('.qr-result[data-kind="wifi"]') ? (isBoth ? '2 \u00b7 Your photo & GIF' : '2 \u00b7 Your photo') : (isBoth ? 'Your photo & GIF' : 'Your photo'));
         fillQrSlot('photo', result.fileId ? fileShareUrl(result.fileId, true) : result.url);
-        showToast('Photo saved');
+        showToast(isBoth ? 'Photo saved (GIF creating…)' : 'Photo saved');
         return myGeneration;
       }
 
@@ -16203,7 +16204,7 @@
         var hints = {
           photo: 'Guests get a photo strip + QR code.',
           gif: 'Guests get an animated GIF + QR code (no still photo). Photo retakes are not available in GIF only mode.',
-          both: 'Guests get both a photo strip AND an animated GIF — two QR codes appear.',
+          both: 'Guests get both a photo strip AND an animated GIF on a single QR code.',
           flipbook: 'Guests record a short clip. It prints as a flip book to cut, stack and staple, and they get a GIF QR code.'
         };
         var hintEl = document.getElementById('gifModeHint');
@@ -16476,9 +16477,10 @@
       var gifGeneration = 0;
       async function showQRForCurrentGIF() {
         var myGen = ++gifGeneration;
+        var isBoth = (outputMode === 'both');
         // Add a GIF QR slot next to any existing photo slot.
         var existing = qrResults.querySelector('.qr-result[data-kind="gif"]');
-        if (!existing) {
+        if (!isBoth && !existing) {
           var slot = document.createElement('div');
           slot.className = 'qr-result'; slot.dataset.kind = 'gif';
           var box = document.createElement('div'); box.className = 'qr-box';
@@ -16539,6 +16541,19 @@
           console.error('GIF upload failed:', e);
         }
         if (myGen !== gifGeneration) return;
+
+        if (isBoth) {
+          if (gifResult && gifResult.fileId) {
+            showToast('Photo & GIF saved');
+            if (flipbookResult && flipBack && typeof makeFlipBack === 'function') {
+              var gifUrl = fileShareUrl(gifResult.fileId, true);
+              if (gifUrl) flipbookResult.back = makeFlipBack(gifUrl);
+              if (typeof renderComposite === 'function') renderComposite();
+            }
+          }
+          if (typeof guestRender === 'function') guestRender();
+          return;
+        }
 
         var gifSlot = qrResults.querySelector('.qr-result[data-kind="gif"]');
         if (!gifSlot) return;
@@ -16699,9 +16714,13 @@
       let reconnectTimer = null;
       let muteTimer = null;
       function showReconnecting() {
-        cameraErrorText.textContent = 'Camera disconnected. Reconnecting… Check the camera is on and its USB cable is plugged in.';
-        // Windows camera through the helper: say what's missing (helper closed, no camera).
-        if (usbCam.viaHelper && usbCam.lastMsg && cameraSelect.value === USB_CAM_ID) cameraErrorText.textContent = usbCam.lastMsg;
+        if (cameraSelect && cameraSelect.value === USB_CAM_ID) {
+          cameraErrorText.textContent = (usbCam.viaHelper && usbCam.lastMsg) ? usbCam.lastMsg : 'Camera disconnected. Reconnecting… Check the camera is on and its USB cable is plugged in.';
+        } else {
+          cameraErrorText.textContent = 'Camera disconnected. Reconnecting…';
+        }
+
+
         cameraError.style.display = 'flex';
         recDot.style.display = 'none';
       }
@@ -16736,13 +16755,32 @@
       // A camera that stops delivering pictures without ending its stream (a Canon in webcam mode that went to sleep, a loose
       // cable) leaves the last frame on screen, then black. The track stays "live" and never says "muted", so count the
       // frames the video really shows: none for 8 s = treat it as lost and reconnect.
+      let rvfcCount = 0;
+      function listenVideoFrames(v) {
+        if (!v || !('requestVideoFrameCallback' in HTMLVideoElement.prototype)) return;
+        const cb = () => {
+          rvfcCount++;
+          if (streamActive && currentStream && !v.paused) {
+            try { v.requestVideoFrameCallback(cb); } catch (e) { }
+          }
+        };
+        try { v.requestVideoFrameCallback(cb); } catch (e) { }
+      }
       let wcFrames = -1, wcAt = Date.now();
       setInterval(function () {
         try {
-          if (!streamActive || !currentStream || currentDeviceId === USB_CAM_ID || document.hidden || reconnectTimer || video.paused || !video.videoWidth) { wcAt = Date.now(); wcFrames = -1; return; }
+          if (!streamActive || !currentStream || currentDeviceId === USB_CAM_ID || document.hidden || reconnectTimer || video.paused || !video.videoWidth || state === 'result' || video.style.display === 'none' || video.offsetParent === null) { wcAt = Date.now(); wcFrames = -1; return; }
+          const curOpt = cameraSelect.options[cameraSelect.selectedIndex];
+          const curLabel = (curOpt ? curOpt.textContent : '').toLowerCase();
+          const trk = currentStream.getVideoTracks()[0];
+          const trkSet = trk && trk.getSettings ? trk.getSettings() : {};
+          if (ANDROID_APP || trkSet.facingMode || /front|back|rear|user|environment|built-in|integrated|facetime|tablet/i.test(curLabel)) {
+            wcAt = Date.now(); wcFrames = -1; return;
+          }
           const q = video.getVideoPlaybackQuality ? video.getVideoPlaybackQuality() : null;
-          const n = q && typeof q.totalVideoFrames === 'number' ? q.totalVideoFrames : Math.round(video.currentTime * 100);
+          const n = rvfcCount > 0 ? rvfcCount : (q && typeof q.totalVideoFrames === 'number' && q.totalVideoFrames > 0 ? q.totalVideoFrames : Math.round(video.currentTime * 100));
           if (n !== wcFrames) { wcFrames = n; wcAt = Date.now(); return; }
+          if (n === 0 && video.readyState >= 2 && !video.paused) { wcAt = Date.now(); return; }
           if (Date.now() - wcAt > 8000) {
             usbLog('webcam-stall', { frames: n, label: (cameraSelect.options[cameraSelect.selectedIndex] || {}).textContent || '' });
             wcAt = Date.now(); wcFrames = -1;
@@ -16809,16 +16847,32 @@
       async function openCameraStream(deviceId) {
         const size = { width: { ideal: 1920 }, height: { ideal: 1080 } };
         const gum = video => navigator.mediaDevices.getUserMedia({ video, audio: false });
-        const stop = e => e && (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e.name === 'SecurityError' || e.name === 'NotReadableError' || e.name === 'TrackStartError');
+        const stop = e => e && (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e.name === 'SecurityError');
         let lastErr = null;
         const tries = deviceId
           ? [Object.assign({ deviceId: { exact: deviceId } }, size), { deviceId: { exact: deviceId } }]
           : [Object.assign({ facingMode: 'user' }, size), size];
         for (const v of tries) {
-          try { return await gum(v); } catch (e) { lastErr = e; if (stop(e)) throw e; }
+          try { return await gum(v); }
+          catch (e) {
+            lastErr = e;
+            if (e && (e.name === 'NotReadableError' || e.name === 'TrackStartError')) {
+              await wait(350);
+              try { return await gum(v); } catch (e2) { lastErr = e2; }
+            }
+            if (stop(e)) throw e;
+          }
         }
         for (const v of [size, true]) {
-          try { return await gum(v); } catch (e) { lastErr = e; if (stop(e)) throw e; }
+          try { return await gum(v); }
+          catch (e) {
+            lastErr = e;
+            if (e && (e.name === 'NotReadableError' || e.name === 'TrackStartError')) {
+              await wait(350);
+              try { return await gum(v); } catch (e2) { lastErr = e2; }
+            }
+            if (stop(e)) throw e;
+          }
         }
         throw lastErr;
       }
@@ -17545,6 +17599,7 @@
           if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
           video.srcObject = usbCam.stream;
           await video.play();
+          listenVideoFrames(video);
           streamActive = true;
           currentDeviceId = USB_CAM_ID;
           if (Array.from(cameraSelect.options).some(o => o.value === USB_CAM_ID)) cameraSelect.value = USB_CAM_ID;
@@ -17588,7 +17643,7 @@
         clearInterval(usbBattTimer); usbCamNote('');
         // Stop any existing stream
         if (currentStream) {
-          if (currentStream !== usbCam.stream) currentStream.getTracks().forEach(t => t.stop());
+          if (currentStream !== usbCam.stream) { currentStream.getTracks().forEach(t => t.stop()); await wait(250); }
           currentStream = null;
         }
         try {
@@ -17599,6 +17654,7 @@
           if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
           video.srcObject = stream;
           await video.play();
+          listenVideoFrames(video);
           // Safari can resolve play() before the first frame; give it a moment.
           if (!video.videoWidth) {
             await new Promise(r => {

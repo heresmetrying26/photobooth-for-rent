@@ -10434,6 +10434,176 @@
       padding: 0 14px;
       font-size: 13px;
     }
+
+    /* ---- Android tablet / device portrait layout adjustments ---- */
+    @media (orientation: portrait) {
+      .app-shell,
+      .app-shell.has-qr,
+      body.in-session .app-shell:not(.capturing) {
+        grid-template-columns: 1fr !important;
+        max-width: min(720px, 96vw) !important;
+        margin: 0 auto !important;
+      }
+
+      .setup-shell {
+        display: block !important;
+        max-width: 680px !important;
+        margin: 0 auto !important;
+      }
+
+      .setup-shell > * {
+        grid-column: auto !important;
+      }
+
+      .setup-shell > #previewSection:not(.docked) {
+        display: none !important;
+      }
+
+      .start-prev,
+      .preview-fab,
+      .see-prev-btn {
+        display: flex !important;
+      }
+
+      /* In portrait, ensure welcome image is fully contained with zero edge cropping */
+      .welcome-overlay img {
+        object-fit: contain !important;
+      }
+
+      /* In portrait capture session: camera stage is vertically and horizontally centred */
+      body.stage-full .app-shell .stage-wrap,
+      body.in-session .app-shell.capturing .stage-wrap {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 100% !important;
+        inset: 0 !important;
+      }
+
+      /* Camera frame spans 100vw width and is centered */
+      body.stage-full .app-shell .stage-frame,
+      body.stage-full.in-session.shooting .app-shell.capturing .stage-frame,
+      body.stage-full.has-film-shots .app-shell .stage-frame,
+      body.stage-full.has-film-shots.in-session.shooting .app-shell.capturing .stage-frame {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        margin: auto 0 !important;
+      }
+
+      /* Shots preview: floating vertical stack on the right side, layered top-to-bottom */
+      body.stage-full .app-shell .film-track,
+      body.stage-review .app-shell .film-track,
+      body.in-session .app-shell.capturing .film-track,
+      body.in-session .app-shell .film-track {
+        position: fixed !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        right: max(10px, env(safe-area-inset-right)) !important;
+        left: auto !important;
+        bottom: auto !important;
+        width: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 8px !important;
+        z-index: 50 !important;
+        margin: 0 !important;
+        padding: 8px 6px !important;
+        border-radius: 16px !important;
+        background: rgba(0, 0, 0, 0.55) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        backdrop-filter: blur(8px) !important;
+        max-height: calc(100dvh - 120px) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+      }
+
+      body.stage-full .app-shell .film-track .film-frame,
+      body.stage-review .app-shell .film-track .film-frame,
+      body.in-session .app-shell.capturing .film-track .film-frame,
+      body.in-session .app-shell .film-track .film-frame {
+        width: clamp(54px, 12vw, 84px) !important;
+        height: auto !important;
+        aspect-ratio: var(--box-aspect, 0.8) !important;
+        flex-shrink: 0 !important;
+      }
+
+      .film-frame.pickable::after {
+        font-size: 10px !important;
+        padding: 3px 2px !important;
+        line-height: 1.15 !important;
+      }
+
+      body.in-session .app-shell.btn-beside .start-btn-wrap {
+        position: static !important;
+        margin: 16px auto 0 !important;
+        left: auto !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+      }
+
+      /* In portrait result view: QR and actions sit neatly below the photo */
+      .app-shell .panel #qrSection {
+        text-align: left;
+      }
+
+      #qrSection {
+        display: grid !important;
+        grid-template-columns: auto 1fr !important;
+        grid-template-areas: 'qr title' 'qr hint' 'qr acts' 'qr timer' !important;
+        column-gap: 16px !important;
+        text-align: left !important;
+        align-items: center !important;
+        margin-top: 14px !important;
+      }
+
+      #qrSection .panel-label {
+        grid-area: title !important;
+        font-size: 20px !important;
+        align-self: end !important;
+      }
+
+      #qrSection .qr-results {
+        grid-area: qr !important;
+        margin: 0 !important;
+      }
+
+      #qrSection .qr-box {
+        width: clamp(120px, 20vw, 150px) !important;
+        height: clamp(120px, 20vw, 150px) !important;
+      }
+
+      #qrSection #qrHint {
+        grid-area: hint !important;
+        margin: 2px 0 0 !important;
+        align-self: start !important;
+      }
+
+      #qrSection #shareSlot {
+        display: none !important;
+      }
+
+      #qrSection .result-actions {
+        grid-area: acts !important;
+        margin-top: 10px !important;
+      }
+
+      #qrSection .result-timer {
+        grid-area: timer !important;
+        margin: 10px 0 0 !important;
+      }
+
+      .result-actions > button {
+        min-height: 50px !important;
+        font-size: 15.5px !important;
+      }
+
+      /* Sizing constraints so stage fits well with dock and controls in portrait */
+      body.in-session:not(.shooting) .stage-frame {
+        max-height: calc(var(--vh, 100vh) - 160px) !important;
+      }
+    }
   </style>
   <script>/* qrcode-generator 1.4.4 (MIT) — QR codes are made on this device, no outside service. */
     // Copyright (c) 2009 Kazuhiko Arase
@@ -10518,7 +10688,7 @@
         return new Uint8Array(this._buf);
       };
 
-      function toReceiptCanvas(src, dotW) {
+      function toReceiptCanvas(src, dotW, brightness) {
         dotW = dotW || 576;
         var scale = dotW / src.width;
         var dotH = Math.max(1, Math.round(src.height * scale));
@@ -10534,11 +10704,14 @@
         var curErr = new Float32Array(dotW);
         var nextErr = new Float32Array(dotW);
 
+        // brightness: -100 (darker) to +100 (lighter) offset for thermal dithering
+        var bOffset = (typeof brightness === 'number') ? brightness * 1.28 : ((typeof window !== 'undefined' && window._colorAdj && window._colorAdj.brightness) ? window._colorAdj.brightness * 1.28 : ((typeof colorAdj !== 'undefined' && colorAdj && colorAdj.brightness) ? colorAdj.brightness * 1.28 : 0));
+
         for (var y = 0; y < dotH; y++) {
           nextErr.fill(0);
           for (var x = 0; x < dotW; x++) {
             var i4 = (y * dotW + x) * 4;
-            var lum = 0.299 * d[i4] + 0.587 * d[i4 + 1] + 0.114 * d[i4 + 2] + curErr[x];
+            var lum = 0.299 * d[i4] + 0.587 * d[i4 + 1] + 0.114 * d[i4 + 2] + curErr[x] + bOffset;
             var v = lum < 128 ? 0 : 255;
             var e = lum - v;
             d[i4] = d[i4 + 1] = d[i4 + 2] = v;
@@ -10587,7 +10760,9 @@
         { namePrefix: 'Star' }, { namePrefix: 'MP' }, { namePrefix: 'BP' },
         { namePrefix: 'PT' }, { namePrefix: 'ZJ' }, { namePrefix: 'NT' },
         { namePrefix: 'Printer' }, { namePrefix: 'MTP' }, { namePrefix: 'MPT' },
-        { namePrefix: 'BlueTooth' }, { namePrefix: 'Inner' }, { namePrefix: 'Qsprinter' }
+        { namePrefix: 'BlueTooth' }, { namePrefix: 'Inner' }, { namePrefix: 'Qsprinter' },
+        { namePrefix: 'VOZY' }, { namePrefix: 'G80' }, { namePrefix: 'P50' },
+        { namePrefix: 'TSP' }, { namePrefix: 'P300' }
       ];
 
       function BtThermal(opts) {
@@ -10762,7 +10937,7 @@
         var feed = opts.feed != null ? opts.feed : 3;
         if (!this._mode) return Promise.reject(new Error('Printer not connected'));
 
-        var mono = toReceiptCanvas(canvas, this._paperWidth);
+        var mono = toReceiptCanvas(canvas, this._paperWidth, opts.brightness);
         var enc = new EscPosEncoder(this._paperWidth);
         enc.initialize().image(mono).feed(feed);
         if (cut) enc.cut();
@@ -10807,13 +10982,25 @@
 
       function isBtAvailable() { return BtThermal.available() !== null; }
       function isNativeAndroid() { return !!(global.__BTBridge && global.__BTBridge.connect); }
+      function isBtEnabled() {
+        if (global.__BTBridge && typeof global.__BTBridge.isEnabled === 'function') {
+          try { return global.__BTBridge.isEnabled(); } catch (_) { return true; }
+        }
+        return true;
+      }
+      function openBtSettings() {
+        if (global.__BTBridge && typeof global.__BTBridge.openBluetoothSettings === 'function') {
+          return global.__BTBridge.openBluetoothSettings();
+        }
+        return false;
+      }
 
-      function printViaBluetooth(canvas, paper) {
+      function printViaBluetooth(canvas, paper, opts) {
         btPrinter._paperWidth = PAPER_WIDTHS[paper || '80mm'] || 576;
         var p = btPrinter.connected
           ? Promise.resolve()
           : btPrinter.connect();
-        return p.then(function () { return btPrinter.printCanvas(canvas); });
+        return p.then(function () { return btPrinter.printCanvas(canvas, opts); });
       }
 
       global._btThermal = {
@@ -10824,6 +11011,8 @@
         btPrinter: btPrinter,
         isBtAvailable: isBtAvailable,
         isNativeAndroid: isNativeAndroid,
+        isBtEnabled: isBtEnabled,
+        openBtSettings: openBtSettings,
         printViaBluetooth: printViaBluetooth,
       };
 
@@ -11765,6 +11954,7 @@
               skin</label>
             <label class="toggle-row" id="dateStampRow" style="margin-top:8px;"><input type="checkbox"
                 id="dateStampToggle"> Date stamp (orange camera-style date on each photo)</label>
+
             <div id="guestLooksRow" style="margin-top:14px;" hidden>
               <label class="toggle-row"><input type="checkbox" id="guestLooksToggle"> Let guests choose a look on the
                 guest screen</label>
@@ -12079,6 +12269,14 @@
             <p class="panel-hint" id="fxMeterTxt" style="margin:6px 0 0;"></p>
           </div>
         </div>
+        <div class="panel-section" id="orientationSection" style="display:none;">
+          <p class="panel-label">Screen orientation</p>
+          <p class="panel-hint step-lead">Lock the tablet to landscape or portrait for this event.</p>
+          <div class="chip-row" id="orientChips">
+            <button type="button" class="chip active" data-orient="landscape">Landscape</button>
+            <button type="button" class="chip" data-orient="portrait">Portrait</button>
+          </div>
+        </div>
         <div class="panel-section" id="brandSection">
           <p class="panel-label">Welcome screen &amp; branding</p>
           <p class="panel-hint step-lead" id="brandLead">Customize the screen guests see between sessions, and display
@@ -12094,6 +12292,50 @@
             </div>
             <p class="panel-hint" id="attractHint" style="margin:6px 0 0;">Auto-generates a branded welcome card with
               your event title, date, 3-step guest instructions, and a sample photo print.</p>
+            <div id="welcomeCardCustomBlock" style="margin-top:12px; padding:12px; background:var(--panel-2); border-radius:12px; border:1px solid var(--line);">
+              <label class="switch-row" style="margin-top:0;"><span>Personalize welcome card text &amp; font</span><input
+                  type="checkbox" id="welcomeCustomToggle"></label>
+              <p class="panel-hint" style="margin:4px 0 0;">Separate what guests see on the welcome card from your photo print text.</p>
+              <div id="welcomeCustomFields" style="display:none; margin-top:12px;">
+                <div style="margin-bottom:10px;">
+                  <p class="sub-label" style="margin:0 0 4px;">Greeting line</p>
+                  <input type="text" class="label-input" id="welcomeGreetingInput" placeholder="Welcome to" maxlength="40"
+                    style="font-family:'Manrope',sans-serif; font-size:14px;">
+                  <p class="panel-hint" style="margin:2px 0 0;">e.g. &ldquo;Welcome to&rdquo;, &ldquo;Welcome to the wedding of&rdquo;, or leave empty.</p>
+                </div>
+                <div style="margin-bottom:10px;">
+                  <p class="sub-label" style="margin:0 0 4px;">Headline / Event name</p>
+                  <input type="text" class="label-input" id="welcomeTitleInput" placeholder="Sofia's 7th Birthday" maxlength="60"
+                    style="font-family:'Manrope',sans-serif; font-size:14px;">
+                  <p class="panel-hint" style="margin:2px 0 0;">Custom title on the welcome screen (not linked to Text 02).</p>
+                </div>
+                <div style="margin-bottom:10px;">
+                  <p class="sub-label" style="margin:0 0 4px;">Welcome headline font</p>
+                  <div class="custom-dd" id="welcomeFontDropdown">
+                    <button type="button" class="custom-dd-btn label-input" id="welcomeFontDropdownBtn"
+                      style="font-size:14px; padding:8px 12px;"></button>
+                    <div class="custom-dd-list" id="welcomeFontDropdownList"></div>
+                  </div>
+                </div>
+                <div style="margin-bottom:10px;">
+                  <p class="sub-label" style="margin:0 0 4px;">Subtitle / Date line</p>
+                  <input type="text" class="label-input" id="welcomeSubInput" placeholder="Leave empty to use date from Step 2" maxlength="60"
+                    style="font-family:'Manrope',sans-serif; font-size:14px;">
+                </div>
+                <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--line);">
+                  <label class="switch-row" style="margin-top:0;"><span>Show 3-step guest instructions</span><input
+                      type="checkbox" id="welcomeStepsToggle" checked></label>
+                  <div id="welcomeStepsBlock" style="margin-top:8px;">
+                    <input type="text" class="label-input" id="welcomeStep1Input" placeholder="1. Tap the screen" maxlength="40"
+                      style="font-family:'Manrope',sans-serif; font-size:13px; margin-bottom:6px;">
+                    <input type="text" class="label-input" id="welcomeStep2Input" placeholder="2. Strike a pose" maxlength="40"
+                      style="font-family:'Manrope',sans-serif; font-size:13px; margin-bottom:6px;">
+                    <input type="text" class="label-input" id="welcomeStep3Input" placeholder="3. Scan the QR for your photos" maxlength="40"
+                      style="font-family:'Manrope',sans-serif; font-size:13px;">
+                  </div>
+                </div>
+              </div>
+            </div>
             <div id="attractPosterRow" style="display:none; margin-top:10px;">
               <div class="bg-row">
                 <img class="bg-thumb" id="attractPosterThumb" alt="Poster" style="display:none;">
@@ -12488,31 +12730,6 @@
               <label class="switch-row" id="borderlessRow" style="margin:8px 0 2px;"><span>Borderless, no
                   trimming</span><input type="checkbox" id="borderlessToggle"></label>
               <p class="panel-hint" id="borderlessHint" style="margin:2px 0 8px;"></p>
-              <div id="marginBox" hidden>
-                <p class="sub-label" style="margin:10px 0 6px;">Printer margins</p>
-                <div class="print-size-row" id="marginRow">
-                  <button type="button" class="print-size-btn" data-m="auto">Automatic</button>
-                  <button type="button" class="print-size-btn" data-m="cal">Calibrated</button>
-                  <button type="button" class="print-size-btn" data-m="safe">Safe margin</button>
-                  <button type="button" class="print-size-btn" data-m="edge">Edge to edge</button>
-                </div>
-                <label class="switch-row" id="marginMmRow" style="margin:6px 0 2px;" hidden><span>Margin on every side (mm)</span>
-                  <input type="number" id="marginMm" min="0" max="15" step="0.5" inputmode="decimal" style="width:70px;" aria-label="Margin in millimetres"></label>
-                <div id="calBox" hidden>
-                  <label class="sub-label" id="calTargetRow" for="calTarget" style="display:block; margin:6px 0 4px;" hidden>Calibrate
-                    <select id="calTarget" class="printer-input" style="margin-top:4px;"></select></label>
-                  <button type="button" class="action-btn" id="calPrintBtn" style="width:auto;margin:6px 0 4px;">Print calibration sheet</button>
-                  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:4px 0;">
-                    <label>L <input type="number" id="calL" min="0" max="15" step="0.5" inputmode="decimal" style="width:60px;" aria-label="Left, mm"></label>
-                    <label>T <input type="number" id="calT" min="0" max="15" step="0.5" inputmode="decimal" style="width:60px;" aria-label="Top, mm"></label>
-                    <label>R <input type="number" id="calR" min="0" max="15" step="0.5" inputmode="decimal" style="width:60px;" aria-label="Right, mm"></label>
-                    <label>B <input type="number" id="calB" min="0" max="15" step="0.5" inputmode="decimal" style="width:60px;" aria-label="Bottom, mm"></label>
-                    <span>mm</span>
-                  </div>
-                  <p class="panel-hint" id="calStatus" style="margin:2px 0 4px;"></p>
-                </div>
-                <p class="panel-hint" id="marginHint" style="margin:2px 0 8px;"></p>
-              </div>
               <div style="display:flex;gap:10px;align-items:center;margin:6px 0 8px;">
                 <img id="ppThumb" alt="How the page will look" hidden
                   style="max-height:140px;border:1px solid #bbb;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);">
@@ -12522,7 +12739,50 @@
                   style="width:auto;margin:0;">Preview</button>
               </div>
             </div>
-            <div class="copies-row"><span>Copies</span>
+                        <!-- Lightness & Colour Correction (Thermal & Photo printing) -->
+            <div class="color-adj-box" style="margin-top:14px; padding:12px 14px; background:var(--panel-2, #faf6f0); border:1px solid var(--line); border-radius:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <p class="panel-label" style="margin:0; font-size:13px; font-weight:700;">Lightness &amp; Colour Correction</p>
+                <button type="button" class="link-btn" id="btnResetColorAdj" style="font-size:12px; color:var(--ink-dim); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0;">Reset</button>
+              </div>
+              <p class="panel-hint" style="margin:0 0 10px; font-size:11.5px; line-height:1.4;">Adjust exposure and RGB balance for prints. If thermal prints are too dark, increase lightness (+20 to +40). Changes apply to the preview and the next print.</p>
+              
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <div>
+                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
+                    <span>Lightness / Exposure</span>
+                    <b id="valAdjBrightness">0</b>
+                  </div>
+                  <input type="range" id="sliderAdjBrightness" min="-100" max="100" value="0" style="width:100%; cursor:pointer;">
+                </div>
+
+                <div>
+                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
+                    <span style="color:#b91c1c;">Red balance</span>
+                    <b id="valAdjRed" style="color:#b91c1c;">0</b>
+                  </div>
+                  <input type="range" id="sliderAdjRed" min="-100" max="100" value="0" style="width:100%; cursor:pointer; accent-color:#b91c1c;">
+                </div>
+
+                <div>
+                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
+                    <span style="color:#15803d;">Green balance</span>
+                    <b id="valAdjGreen" style="color:#15803d;">0</b>
+                  </div>
+                  <input type="range" id="sliderAdjGreen" min="-100" max="100" value="0" style="width:100%; cursor:pointer; accent-color:#15803d;">
+                </div>
+
+                <div>
+                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
+                    <span style="color:#1d4ed8;">Blue balance</span>
+                    <b id="valAdjBlue" style="color:#1d4ed8;">0</b>
+                  </div>
+                  <input type="range" id="sliderAdjBlue" min="-100" max="100" value="0" style="width:100%; cursor:pointer; accent-color:#1d4ed8;">
+                </div>
+              </div>
+            </div>
+
+<div class="copies-row"><span>Copies</span>
               <span class="stepper"><button type="button" id="copiesMinus" aria-label="Fewer copies">&minus;</button><b
                   id="copiesVal">1</b><button type="button" id="copiesPlus" aria-label="More copies">+</button></span>
             </div>
@@ -12601,25 +12861,29 @@
                 <span>Bluetooth thermal receipt printer</span>
                 <input type="checkbox" id="btThermalToggle">
               </label>
-              <p class="panel-hint" style="margin:2px 0 8px;">Directly print receipts over Bluetooth to 80 mm or 58 mm
-                thermal printers (Xprinter, Epson, etc.) without a print dialog.</p>
+              <p class="panel-hint" style="margin:2px 0 8px;">Directly print receipts and strips over Bluetooth to 80 mm or 58 mm thermal printers (Xprinter, Epson, Star, VOZY, etc.) without a print dialog.</p>
               <div id="btThermalControls" style="margin-top:8px;">
-                <button type="button" class="action-btn" id="btThermalConnectBtn"
-                  style="width:auto;margin:0 8px 8px 0;">Connect Bluetooth Printer</button>
-                <button type="button" class="action-btn" id="btThermalTestBtn"
-                  style="display:none;width:auto;margin:0 8px 8px 0;">Test print</button>
-                <button type="button" class="action-btn" id="btThermalDisconnectBtn"
-                  style="display:none;width:auto;margin:0 8px 8px 0;">Disconnect</button>
+                <p class="panel-hint" id="btThermalWarnHint" style="display:none;color:#b91c1c;font-weight:600;margin:0 0 8px;"></p>
+                <p class="panel-hint" id="btThermalPaperHint" style="display:none;color:#856404;background:#fff3cd;padding:6px 10px;border-radius:4px;margin:0 0 8px;"></p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <button type="button" class="action-btn" id="btThermalConnectBtn"
+                    style="width:auto;margin:0 0 8px 0;">Connect Bluetooth Printer</button>
+                  <button type="button" class="action-btn" id="btThermalSettingsBtn"
+                    style="display:none;width:auto;margin:0 0 8px 0;">Pair in Android Bluetooth settings</button>
+                  <button type="button" class="action-btn" id="btThermalTestBtn"
+                    style="display:none;width:auto;margin:0 0 8px 0;">Test print</button>
+                  <button type="button" class="action-btn" id="btThermalDisconnectBtn"
+                    style="display:none;width:auto;margin:0 0 8px 0;">Disconnect</button>
+                </div>
                 <p class="panel-hint" id="btThermalStatusHint" style="margin:4px 0 6px;"></p>
+                <p class="panel-hint" style="margin:4px 0 6px; font-size:12px; color:var(--ink-dim);">Thermal print too dark? Increase <b>Lightness / Exposure</b> (+20 to +40) in Print settings above to lighten the output.</p>
               </div>
             </div>
             <div class="printer-pick" id="wifiPrinterRow" style="display:none;margin-top:10px;">
-              <label class="sub-label" style="display:block; margin:6px 0 2px;">Wi-Fi printer</label>
-              <p class="panel-hint" style="margin:2px 0 8px;">The tablet looks for printers on this Wi-Fi and on its USB
-                port by itself (Epson, Canon, HP, Brother, receipt printers…) and prints straight to the one you pick,
-                with no print dialog. Plug a USB printer in and it appears here.</p>
+              <label class="sub-label" style="display:block; margin:6px 0 2px;">Wi-Fi &amp; USB Printers</label>
+              <p class="panel-hint" style="margin:2px 0 8px;">The tablet automatically looks for USB printers (plugged into the USB-OTG port) and Wi-Fi printers on this network (Epson L8050/L3210/TM-T82X, Canon SELPHY CP1300/1500, Star, Xprinter, VOZY, HP, Brother…) and prints straight to the one you pick, with no print dialog.</p>
               <button type="button" class="action-btn" id="wifiPrinterFindBtn"
-                style="width:auto;margin:0 8px 8px 0;">Find Wi-Fi printers</button>
+                style="width:auto;margin:0 8px 8px 0;">Find Wi-Fi &amp; USB printers</button>
               <button type="button" class="action-btn" id="wifiPrinterTestBtn"
                 style="display:none;width:auto;margin:0 8px 8px 0;">Test print</button>
               <button type="button" class="action-btn" id="wifiPrinterForgetBtn"
@@ -13771,7 +14035,7 @@
             imageBase64: base64Data,
             folderKey: folderKey,
             subfolder: subfolder || undefined,
-            guestCode: (LOCALSHARE && gvActive() && gvFileNum(filename)) ? gvCodeFor(gvFileNum(filename)) : undefined,   // laptop app: this file belongs to that guest's own page
+            guestCode: ((LOCALSHARE || outputMode === 'both') && (gvActive() || outputMode === 'both') && gvFileNum(filename)) ? gvCodeFor(gvFileNum(filename)) : undefined,   // this file belongs to that guest's own page
             ticket
           })
         });
@@ -15741,7 +16005,7 @@
       }
       // Called after every upload (see uploadToDrive).
       function gvAfterUpload(filename, mime, data, folderKey) {
-        if (!gvActive() || LOCALSHARE) return;
+        if ((!gvActive() && outputMode !== 'both') || LOCALSHARE) return;
         var n = gvFileNum(filename), fid = gvFolderId(data.folderUrl || getCachedFolderUrl());
         if (!n || !fid || !data.fileId) return;
         gvApply();
@@ -15783,7 +16047,7 @@
       // ---- The guest's own QR codes, shown after each session ----
       // The session QR opens the saved photo in the online gallery (or, when guests may only see their own photos, their own page).
       function fileShareUrl(fileId, own) {
-        if (own && gvActive()) { const u = gvSessionUrl(); if (u || gvPrivate()) return u; }
+        if (own && (gvActive() || outputMode === 'both')) { const u = gvSessionUrl(); if (u || gvPrivate()) return u; }
         if (LOCALSHARE) { const i = String(fileId).indexOf('/'); return i > 0 ? localShareUrl('pb4u-local:' + fileId.slice(0, i), fileId.slice(i + 1)) : null; }
         const folderUrl = getCachedFolderUrl();
         const g = folderUrl && usesGallery(folderUrl) ? galleryUrlFor(folderUrl) : null;
@@ -15830,19 +16094,20 @@
         const myGeneration = ++qrGeneration;
         qrResults.innerHTML = '';
         lastRenderedFolderUrl = null;
-        qrSlot('photo', 'Your photo', 'Saving your photo…');
+        const isBoth = (outputMode === 'both');
+        qrSlot('photo', isBoth ? 'Your photo & GIF' : 'Your photo', isBoth ? 'Saving your photo & GIF…' : 'Saving your photo…');
         // Guests get a working QR straight away: the event's All photos page,
         // swapped for their own photo's QR as soon as the upload finishes. (The offline app has no extra
         // All photos QR here: the dock's All photos button already shows it.)
         const evFolder = getCachedFolderUrl();
-        const gv = gvActive();       // guests get their own page: its link works straight away, whatever the upload does
+        const gv = gvActive() || isBoth;       // guests get their own page: its link works straight away, whatever the upload does
         let slowTimer = null;
         const setCap = (t) => { const w = qrResults.querySelector('.qr-result[data-kind="photo"] .qr-caption'); if (w) w.textContent = t; };
         const OFFLINE_CAP = 'Scan now \u00b7 your photo arrives here once the booth is back online';
         if (evFolder || gv) {
-          setCap(gv ? (navigator.onLine === false && !LOCALSHARE ? OFFLINE_CAP : 'Your photos \u00b7 saving\u2026') : LOCALSHARE ? 'All photos \u00b7 saving your photo\u2026' : navigator.onLine === false ? OFFLINE_CAP : 'All photos \u00b7 your photo is uploading\u2026');
+          setCap(gv ? (navigator.onLine === false && !LOCALSHARE ? OFFLINE_CAP : (isBoth ? 'Your photo & GIF \u00b7 saving\u2026' : 'Your photos \u00b7 saving\u2026')) : LOCALSHARE ? 'All photos \u00b7 saving your photo\u2026' : navigator.onLine === false ? OFFLINE_CAP : 'All photos \u00b7 your photo is uploading\u2026');
           fillQrSlot('photo', qrFallbackUrl(evFolder));
-          slowTimer = setTimeout(() => { if (myGeneration === qrGeneration) setCap(gv ? 'Your photos \u00b7 they will appear here shortly' : 'All photos \u00b7 your photo will appear here shortly'); }, 60000);
+          slowTimer = setTimeout(() => { if (myGeneration === qrGeneration) setCap(gv ? (isBoth ? 'Your photo & GIF \u00b7 they will appear here shortly' : 'Your photos \u00b7 they will appear here shortly') : 'All photos \u00b7 your photo will appear here shortly'); }, 60000);
         }
         guestRender();
         let result = null, lastError = null;
@@ -15867,7 +16132,7 @@
           return null;
         }
         if (!result && (evFolder || gv)) {
-          setCap(gv ? 'Your photos \u00b7 they appear here once saved' : 'All photos \u00b7 your photo appears here once it uploads');
+          setCap(gv ? (isBoth ? 'Your photo & GIF \u00b7 they appear here once saved' : 'Your photos \u00b7 they appear here once saved') : 'All photos \u00b7 your photo appears here once it uploads');
           showToast('Photo not saved yet. ' + driveErrorText(lastError), 7000);
           return null;
         }
@@ -15876,9 +16141,9 @@
           showToast('Photo not saved. ' + driveErrorText(lastError), 7000);
           return null;
         }
-        setCap(qrResults.querySelector('.qr-result[data-kind="wifi"]') ? '2 \u00b7 Your photo' : 'Your photo');
+        setCap(qrResults.querySelector('.qr-result[data-kind="wifi"]') ? (isBoth ? '2 \u00b7 Your photo & GIF' : '2 \u00b7 Your photo') : (isBoth ? 'Your photo & GIF' : 'Your photo'));
         fillQrSlot('photo', result.fileId ? fileShareUrl(result.fileId, true) : result.url);
-        showToast('Photo saved');
+        showToast(isBoth ? 'Photo saved (GIF creating…)' : 'Photo saved');
         return myGeneration;
       }
 
@@ -15939,7 +16204,7 @@
         var hints = {
           photo: 'Guests get a photo strip + QR code.',
           gif: 'Guests get an animated GIF + QR code (no still photo). Photo retakes are not available in GIF only mode.',
-          both: 'Guests get both a photo strip AND an animated GIF — two QR codes appear.',
+          both: 'Guests get both a photo strip AND an animated GIF on a single QR code.',
           flipbook: 'Guests record a short clip. It prints as a flip book to cut, stack and staple, and they get a GIF QR code.'
         };
         var hintEl = document.getElementById('gifModeHint');
@@ -16212,9 +16477,10 @@
       var gifGeneration = 0;
       async function showQRForCurrentGIF() {
         var myGen = ++gifGeneration;
+        var isBoth = (outputMode === 'both');
         // Add a GIF QR slot next to any existing photo slot.
         var existing = qrResults.querySelector('.qr-result[data-kind="gif"]');
-        if (!existing) {
+        if (!isBoth && !existing) {
           var slot = document.createElement('div');
           slot.className = 'qr-result'; slot.dataset.kind = 'gif';
           var box = document.createElement('div'); box.className = 'qr-box';
@@ -16275,6 +16541,19 @@
           console.error('GIF upload failed:', e);
         }
         if (myGen !== gifGeneration) return;
+
+        if (isBoth) {
+          if (gifResult && gifResult.fileId) {
+            showToast('Photo & GIF saved');
+            if (flipbookResult && flipBack && typeof makeFlipBack === 'function') {
+              var gifUrl = fileShareUrl(gifResult.fileId, true);
+              if (gifUrl) flipbookResult.back = makeFlipBack(gifUrl);
+              if (typeof renderComposite === 'function') renderComposite();
+            }
+          }
+          if (typeof guestRender === 'function') guestRender();
+          return;
+        }
 
         var gifSlot = qrResults.querySelector('.qr-result[data-kind="gif"]');
         if (!gifSlot) return;
@@ -16435,9 +16714,13 @@
       let reconnectTimer = null;
       let muteTimer = null;
       function showReconnecting() {
-        cameraErrorText.textContent = 'Camera disconnected. Reconnecting… Check the camera is on and its USB cable is plugged in.';
-        // Windows camera through the helper: say what's missing (helper closed, no camera).
-        if (usbCam.viaHelper && usbCam.lastMsg && cameraSelect.value === USB_CAM_ID) cameraErrorText.textContent = usbCam.lastMsg;
+        if (cameraSelect && cameraSelect.value === USB_CAM_ID) {
+          cameraErrorText.textContent = (usbCam.viaHelper && usbCam.lastMsg) ? usbCam.lastMsg : 'Camera disconnected. Reconnecting… Check the camera is on and its USB cable is plugged in.';
+        } else {
+          cameraErrorText.textContent = 'Camera disconnected. Reconnecting…';
+        }
+
+
         cameraError.style.display = 'flex';
         recDot.style.display = 'none';
       }
@@ -16472,13 +16755,32 @@
       // A camera that stops delivering pictures without ending its stream (a Canon in webcam mode that went to sleep, a loose
       // cable) leaves the last frame on screen, then black. The track stays "live" and never says "muted", so count the
       // frames the video really shows: none for 8 s = treat it as lost and reconnect.
+      let rvfcCount = 0;
+      function listenVideoFrames(v) {
+        if (!v || !('requestVideoFrameCallback' in HTMLVideoElement.prototype)) return;
+        const cb = () => {
+          rvfcCount++;
+          if (streamActive && currentStream && !v.paused) {
+            try { v.requestVideoFrameCallback(cb); } catch (e) { }
+          }
+        };
+        try { v.requestVideoFrameCallback(cb); } catch (e) { }
+      }
       let wcFrames = -1, wcAt = Date.now();
       setInterval(function () {
         try {
-          if (!streamActive || !currentStream || currentDeviceId === USB_CAM_ID || document.hidden || reconnectTimer || video.paused || !video.videoWidth) { wcAt = Date.now(); wcFrames = -1; return; }
+          if (!streamActive || !currentStream || currentDeviceId === USB_CAM_ID || document.hidden || reconnectTimer || video.paused || !video.videoWidth || state === 'result' || video.style.display === 'none' || video.offsetParent === null) { wcAt = Date.now(); wcFrames = -1; return; }
+          const curOpt = cameraSelect.options[cameraSelect.selectedIndex];
+          const curLabel = (curOpt ? curOpt.textContent : '').toLowerCase();
+          const trk = currentStream.getVideoTracks()[0];
+          const trkSet = trk && trk.getSettings ? trk.getSettings() : {};
+          if (ANDROID_APP || trkSet.facingMode || /front|back|rear|user|environment|built-in|integrated|facetime|tablet/i.test(curLabel)) {
+            wcAt = Date.now(); wcFrames = -1; return;
+          }
           const q = video.getVideoPlaybackQuality ? video.getVideoPlaybackQuality() : null;
-          const n = q && typeof q.totalVideoFrames === 'number' ? q.totalVideoFrames : Math.round(video.currentTime * 100);
+          const n = rvfcCount > 0 ? rvfcCount : (q && typeof q.totalVideoFrames === 'number' && q.totalVideoFrames > 0 ? q.totalVideoFrames : Math.round(video.currentTime * 100));
           if (n !== wcFrames) { wcFrames = n; wcAt = Date.now(); return; }
+          if (n === 0 && video.readyState >= 2 && !video.paused) { wcAt = Date.now(); return; }
           if (Date.now() - wcAt > 8000) {
             usbLog('webcam-stall', { frames: n, label: (cameraSelect.options[cameraSelect.selectedIndex] || {}).textContent || '' });
             wcAt = Date.now(); wcFrames = -1;
@@ -16545,16 +16847,32 @@
       async function openCameraStream(deviceId) {
         const size = { width: { ideal: 1920 }, height: { ideal: 1080 } };
         const gum = video => navigator.mediaDevices.getUserMedia({ video, audio: false });
-        const stop = e => e && (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e.name === 'SecurityError' || e.name === 'NotReadableError' || e.name === 'TrackStartError');
+        const stop = e => e && (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e.name === 'SecurityError');
         let lastErr = null;
         const tries = deviceId
           ? [Object.assign({ deviceId: { exact: deviceId } }, size), { deviceId: { exact: deviceId } }]
           : [Object.assign({ facingMode: 'user' }, size), size];
         for (const v of tries) {
-          try { return await gum(v); } catch (e) { lastErr = e; if (stop(e)) throw e; }
+          try { return await gum(v); }
+          catch (e) {
+            lastErr = e;
+            if (e && (e.name === 'NotReadableError' || e.name === 'TrackStartError')) {
+              await wait(350);
+              try { return await gum(v); } catch (e2) { lastErr = e2; }
+            }
+            if (stop(e)) throw e;
+          }
         }
         for (const v of [size, true]) {
-          try { return await gum(v); } catch (e) { lastErr = e; if (stop(e)) throw e; }
+          try { return await gum(v); }
+          catch (e) {
+            lastErr = e;
+            if (e && (e.name === 'NotReadableError' || e.name === 'TrackStartError')) {
+              await wait(350);
+              try { return await gum(v); } catch (e2) { lastErr = e2; }
+            }
+            if (stop(e)) throw e;
+          }
         }
         throw lastErr;
       }
@@ -17281,6 +17599,7 @@
           if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
           video.srcObject = usbCam.stream;
           await video.play();
+          listenVideoFrames(video);
           streamActive = true;
           currentDeviceId = USB_CAM_ID;
           if (Array.from(cameraSelect.options).some(o => o.value === USB_CAM_ID)) cameraSelect.value = USB_CAM_ID;
@@ -17324,7 +17643,7 @@
         clearInterval(usbBattTimer); usbCamNote('');
         // Stop any existing stream
         if (currentStream) {
-          if (currentStream !== usbCam.stream) currentStream.getTracks().forEach(t => t.stop());
+          if (currentStream !== usbCam.stream) { currentStream.getTracks().forEach(t => t.stop()); await wait(250); }
           currentStream = null;
         }
         try {
@@ -17335,6 +17654,7 @@
           if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
           video.srcObject = stream;
           await video.play();
+          listenVideoFrames(video);
           // Safari can resolve play() before the first frame; give it a moment.
           if (!video.videoWidth) {
             await new Promise(r => {
@@ -17461,10 +17781,16 @@
         var cam = camAspect(), filmBox = currentBoxAspect(), box = filmBox;
         try { if (state === 'capturing') box = shotBoxAspect(stageShot); } catch (e) { }
         var sf = document.getElementById('stageFrame');
+        var isPort = (window.innerHeight && window.innerWidth) ? (window.innerHeight > window.innerWidth) : false;
         var sa = state === 'capturing' ? box : (photoFit === 'whole' ? cam : box);                 // whole photo: camera picture between sessions; per-shot box during capture
         // Between guests (idle, welcome, layout picker) the preview is always the
-        // standard camera shape, never the last layout's box.
-        try { if (state !== 'capturing') sa = cam; } catch (e) { }
+        // standard camera shape, never the last layout's box. In portrait mode on welcome,
+        // use viewport shape so the branded card fills the screen cleanly.
+        try {
+          if (state !== 'capturing') {
+            sa = (isPort && (document.body.classList.contains('welcome-on') || state === 'idle')) ? (window.innerWidth / window.innerHeight) : cam;
+          }
+        } catch (e) { }
         var showingStrip = false;
         try { showingStrip = (state === 'result' || !!(sess && sess.reviewing)) && previewCanvas.width > 0 && previewCanvas.style.display !== 'none'; } catch (e) { }
         if (showingStrip) sa = previewCanvas.width / previewCanvas.height;   // the finished strip fills the stage
@@ -17703,7 +18029,20 @@
         var stageRO = new ResizeObserver(function () { requestAnimationFrame(function () { applyStageAspect(); }); });
         ['sessionControls', 'tabSession'].forEach(function (id) { var el = document.getElementById(id); if (el) stageRO.observe(el); });
       } catch (e) { }
-      window.addEventListener('resize', function () { applyStageAspect(); });
+      window.addEventListener('resize', function () {
+        applyStageAspect();
+        if (typeof renderWelcome === 'function') renderWelcome();
+      });
+      window.addEventListener('orientationchange', function () {
+        setTimeout(function () { applyStageAspect(); if (typeof renderWelcome === 'function') renderWelcome(); }, 120);
+        setTimeout(function () { applyStageAspect(); if (typeof renderWelcome === 'function') renderWelcome(); }, 350);
+      });
+      if (window.screen && window.screen.orientation && typeof window.screen.orientation.addEventListener === 'function') {
+        window.screen.orientation.addEventListener('change', function () {
+          setTimeout(function () { applyStageAspect(); if (typeof renderWelcome === 'function') renderWelcome(); }, 120);
+          setTimeout(function () { applyStageAspect(); if (typeof renderWelcome === 'function') renderWelcome(); }, 350);
+        });
+      }
       video.addEventListener('loadedmetadata', function () { applyStageAspect(); });
       video.addEventListener('resize', function () { applyStageAspect(); });
       // A small preview of a shot cropped like its photo box (cached per shot).
@@ -17857,6 +18196,10 @@
         ctx.drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         applyBgReplace(c);
+        var rawCopy = document.createElement('canvas');
+        rawCopy.width = c.width; rawCopy.height = c.height;
+        rawCopy.getContext('2d').drawImage(c, 0, 0);
+        c._raw = rawCopy;
         applyFilterToCanvas(c);
         c._isShot = true;
         shotCanvases[index] = c;
@@ -17912,6 +18255,10 @@
           bmp.close();
           ctx.setTransform(1, 0, 0, 1, 0, 0);
           applyBgReplace(c);
+          var rawCopy = document.createElement('canvas');
+          rawCopy.width = c.width; rawCopy.height = c.height;
+          rawCopy.getContext('2d').drawImage(c, 0, 0);
+          c._raw = rawCopy;
           applyFilterToCanvas(c);
           c._isShot = true;
           if (shotCanvases === shots) { shotCanvases[index] = c; updateFilmTrack(); }
@@ -20592,7 +20939,10 @@
       // their own printer setup, e.g. the same HiTi added again with "2x6 cut" on.
       function printerKey(key) { return key && typeof stripTwoUp === 'function' && stripTwoUp(key) ? 'strip:' + key : key; }
       function printerFor(key) { if (!key) return ''; var k = printerKey(key); return printerMap[k] || (k !== key ? printerMap[key] || '' : ''); }
-      function savePrinterMap() { try { localStorage.setItem(PRINTER_MAP_KEY, JSON.stringify(printerMap)); } catch (e) { } }
+      function savePrinterMap() {
+        try { localStorage.setItem(PRINTER_MAP_KEY, JSON.stringify(printerMap)); } catch (e) { }
+        try { if (typeof printPreviewOk !== 'undefined') delete printPreviewOk[printPreviewKey()]; printPrefs.preview = true; } catch (e) { }
+      }
       async function checkHelper(force) {
         if (!helperOn) { helper = { ok: false, printers: [], checked: 0 }; refreshPrinterHint(); return helper; }
         if (!force && helper.checked && Date.now() - helper.checked < 15000) return helper;
@@ -20718,9 +21068,29 @@
       }
       const btThermalToggle = document.getElementById('btThermalToggle');
       const btThermalConnectBtn = document.getElementById('btThermalConnectBtn');
+      const btThermalSettingsBtn = document.getElementById('btThermalSettingsBtn');
       const btThermalTestBtn = document.getElementById('btThermalTestBtn');
       const btThermalDisconnectBtn = document.getElementById('btThermalDisconnectBtn');
 
+      if (btThermalSettingsBtn) {
+        btThermalSettingsBtn.addEventListener('click', function () {
+          if (window._btThermal && typeof window._btThermal.openBtSettings === 'function') {
+            window._btThermal.openBtSettings();
+          }
+        });
+      }
+      if (btThermalDisconnectBtn) {
+        btThermalDisconnectBtn.addEventListener('click', function () {
+          try {
+            if (window._btThermal && window._btThermal.btPrinter) {
+              window._btThermal.btPrinter.disconnect();
+            }
+          } catch (_) { }
+          setBtThermalOn(false);
+          showToast('Bluetooth printer disconnected.', 3000);
+          refreshPrintUI();
+        });
+      }
       if (btThermalToggle) {
         btThermalToggle.addEventListener('change', function () {
           setBtThermalOn(btThermalToggle.checked);
@@ -20732,14 +21102,26 @@
           if (!window._btThermal || !window._btThermal.isBtAvailable()) {
             return showToast('Bluetooth is not supported in this browser. Use Google Chrome or the Android Tablet App (APK).', 5000);
           }
+          if (window._btThermal.isNativeAndroid && window._btThermal.isNativeAndroid() && typeof window._btThermal.isBtEnabled === 'function' && !window._btThermal.isBtEnabled()) {
+            showToast('Bluetooth is turned off on this tablet. Opening Bluetooth Settings…', 4500);
+            if (typeof window._btThermal.openBtSettings === 'function') window._btThermal.openBtSettings();
+            return;
+          }
           btThermalConnectBtn.disabled = true;
           btThermalConnectBtn.textContent = 'Connecting…';
           try {
             const name = await window._btThermal.btPrinter.connect();
+            setBtThermalOn(true);
             showToast('Connected to ' + (name || 'Bluetooth printer') + '!');
           } catch (err) {
             var msg = String((err && err.message) || err || '');
-            if (/globally disabled/i.test(msg)) {
+            if (/turned off/i.test(msg) || /enable bluetooth/i.test(msg)) {
+              showToast('Bluetooth is turned off. Please turn it on in Android Settings.', 6000);
+              if (window._btThermal.isNativeAndroid && typeof window._btThermal.openBtSettings === 'function') window._btThermal.openBtSettings();
+            } else if (/No paired/i.test(msg)) {
+              showToast(msg, 7000);
+              if (window._btThermal.isNativeAndroid && typeof window._btThermal.openBtSettings === 'function') window._btThermal.openBtSettings();
+            } else if (/globally disabled/i.test(msg)) {
               showToast('Web Bluetooth is disabled in this browser. On Xiaomi / Samsung tablets, open in Google Chrome or install our Android Tablet App (APK) from /downloads/ for direct Bluetooth printing.', 9000);
             } else if (/User cancelled/i.test(msg) || (err && err.name === 'NotFoundError' && !/globally disabled/i.test(msg))) {
               showToast('No Bluetooth device selected.', 3000);
@@ -20990,7 +21372,7 @@
           let ep = paperFor(sec.size);
           const c = buildPrintCanvas(sec.size);
           if (ep.receipt) ep = Object.assign({}, ep, { h: Math.round(c.height / RECEIPT_DPI * 254) / 10 });
-          const ok = await printViaHelper([c], ep, sec.name, undefined, sec.size);
+          const ok = await printViaHelper([c], ep, sec.name);
           if (!ok) showToast('The second printer (' + sec.name + ') did not print.', 5000);
           return ok;
         } catch (e) { return false; }
@@ -21027,18 +21409,15 @@
       }
       document.getElementById('secondPrinterSelect').addEventListener('change', (e) => {
         saveSecond(Object.assign(secondStore(), { name: e.target.value }));
-        refreshSecondPrinterUI(); try { refreshMarginUI(); } catch (_) { }
+        refreshSecondPrinterUI();
       });
       document.getElementById('secondModeRow').addEventListener('click', (e) => {
         const b = e.target.closest('[data-sm]'); if (!b) return;
         saveSecond(Object.assign(secondStore(), { mode: b.dataset.sm === 'extra' ? 'extra' : 'share' }));
-        refreshSecondPrinterUI(); try { refreshMarginUI(); } catch (_) { }
+        refreshSecondPrinterUI();
       });
       document.getElementById('secondSizeSelect').addEventListener('change', (e) => { saveSecond(Object.assign(secondStore(), { size: e.target.value })); refreshSecondPrinterUI(); });
-      // rawMode: 'raw' sends the pages exactly as given (the calibration sheet). Otherwise the margin setting applies;
-      // Calibrated lays each page out inside what this printer really prints and sends it 1:1. sizeKey: the paper size key
-      // when it is not the one on screen (the second printer's extra paper), so the right calibration is found.
-      async function printViaHelper(pages, paper, name, rawMode, sizeKey) {
+      async function printViaHelper(pages, paper, name) {
         const h = await checkHelper(true);
         if (!h.ok) return false;
         // Older Windows helpers stretch the picture to the driver's page; Mac (CUPS) already keeps its shape.
@@ -21047,12 +21426,7 @@
           return false;
         }
         try {
-          let margin = rawMode || printPrefs.margin || 'auto', sheets = pages;
-          if (!rawMode && margin === 'cal') {
-            const cal = calFor(paper, name, sizeKey);
-            if (cal) { sheets = pages.map(c => calibratedSheet(c, paper, cal, false)); margin = 'raw'; } else margin = 'auto';
-          }
-          const body = JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, fit: paper.receipt ? 'width' : undefined, margin: margin, marginMm: printPrefs.marginMm, pages: sheets.map(c => c.toDataURL('image/png')) });
+          const body = JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, fit: paper.receipt ? 'width' : undefined, pages: pages.map(c => c.toDataURL('image/png')) });
           const r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
           const j = await r.json().catch(() => ({}));
           if (r.ok && j.ok) return true;
@@ -21376,10 +21750,9 @@
         document.getElementById('borderlessRow').hidden = !bl;
         borderlessHint.hidden = !bl;
         borderlessToggle.checked = !!printPrefs.borderless;
-        let hint = 'Prints edge to edge with no printer margins and no scaling by the printer, so nothing is trimmed. It works on Wi-Fi and driverless USB printers.';
-        try { if (wifiPrinter && (wifiPrinter.escp2 || wifiPrinter.canon)) hint = 'This printer prints with a small border. Borderless needs a Wi-Fi or driverless USB printer.'; } catch (e) { }
+        let hint = 'Prints edge to edge with no printer margins and no scaling by the printer, so nothing is trimmed. It works on Wi-Fi and driverless USB printers (Epson L8050, L3210, L3276 supported).';
+        try { if (wifiPrinter && (wifiPrinter.escp2 || wifiPrinter.canon)) hint = 'This printer prints with a small border. Borderless needs a Wi-Fi or driverless USB printer (Epson L8050, L3210, L3276 support borderless).'; } catch (e) { }
         borderlessHint.textContent = hint;
-        refreshMarginUI();
         schedulePrintThumb();
       }
       photoSizeRow.addEventListener('click', (e) => {
@@ -21392,162 +21765,6 @@
       });
       borderlessToggle.addEventListener('change', () => { printPrefs.borderless = borderlessToggle.checked; printPrefsChanged(); });
       // Printer margins: only the Windows Print Helper / laptop app draws the page itself, so only there can this be set.
-      const MARGIN_HINTS = {
-        auto: 'Fits the whole picture inside what the printer says it can print, so nothing is cut off. Borderless printers still print edge to edge.',
-        cal: 'Matches the preview to the paper. Print the calibration sheet, then on each edge find the lowest number whose short line is still printed (L left, T top, R right, B bottom) and enter the four numbers. Do it again if the printer’s Borderless or paper settings change.',
-        safe: 'Use this if the edges are still cut off: the picture is scaled to fit inside this margin on every side. Try 3 mm, and raise it until nothing is trimmed.',
-        edge: 'Prints the picture over the whole sheet with no margin. Only for printers set to Borderless; any other printer cuts the edges.'
-      };
-      // ---- Calibration: what this printer really loses at each edge, measured once on paper (per printer + paper, on this laptop) ----
-      // The sheet is printed 1:1 ('raw'), so the booth can lay the picture out inside what the printer really prints and
-      // the preview shows that same sheet.
-      const CAL_KEY = 'pb_print_cal';
-      function calStore() { try { const o = JSON.parse(localStorage.getItem(CAL_KEY) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } }
-      function getCal(name, size) {
-        const c = calStore()[name + '|' + size];
-        if (!c) return null;
-        const v = ['l', 't', 'r', 'b'].map(k => Number(c[k]));
-        return v.every(x => isFinite(x) && x >= 0 && x <= 15) ? { l: v[0], t: v[1], r: v[2], b: v[3] } : null;
-      }
-      function setCal(name, size, cal) {
-        const o = calStore();
-        if (cal) o[name + '|' + size] = cal; else delete o[name + '|' + size];
-        try { localStorage.setItem(CAL_KEY, JSON.stringify(o)); } catch (e) { }
-      }
-      // The calibration to use for this paper on this printer, or null (not in Calibrated mode, no numbers yet, not the laptop app).
-      function calFor(paper, name, sizeKey) {
-        const k = sizeKey || printSize;
-        if (!DESKTOP || !/Win/i.test(navigator.platform || '') || printPrefs.margin !== 'cal' || !paper || paper.receipt || !name || !k) return null;
-        return getCal(name, k);
-      }
-      // Which printer the calibration box is about: the one chosen for this paper, or (when sharing) the second one.
-      let calWhich = 'main';
-      function calPrinter() {
-        const s = calWhich === 'second' ? secondPrinter() : null;
-        return s && s.mode === 'share' ? s.name : printerFor(printSize);
-      }
-      // The page laid out on the sheet the printer gets: portrait, the picture fitted inside the part that prints. shade: grey bands for the lost edge (preview only).
-      function calibratedSheet(src, paper, cal, shade) {
-        const mm = PRINT_DPI / 25.4, SW = Math.round(paper.w * mm), SH = Math.round(paper.h * mm);
-        if (src.width > src.height) {                       // the print helper turns a landscape page a quarter turn clockwise; do the same here
-          const r = document.createElement('canvas'); r.width = src.height; r.height = src.width;
-          const rc = r.getContext('2d'); rc.translate(r.width, 0); rc.rotate(Math.PI / 2); rc.drawImage(src, 0, 0);
-          src = r;
-        }
-        const out = document.createElement('canvas'); out.width = SW; out.height = SH;
-        const ctx = out.getContext('2d');
-        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, SW, SH);
-        const x0 = cal.l * mm, y0 = cal.t * mm, x1 = SW - cal.r * mm, y1 = SH - cal.b * mm;
-        const aw = Math.max(20, x1 - x0), ah = Math.max(20, y1 - y0);
-        const s = Math.min(aw / src.width, ah / src.height), dw = src.width * s, dh = src.height * s;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(src, x0 + (aw - dw) / 2, y0 + (ah - dh) / 2, dw, dh);
-        if (shade) {
-          ctx.fillStyle = 'rgba(120,120,120,.35)';
-          ctx.fillRect(0, 0, SW, y0); ctx.fillRect(0, SH - cal.b * mm, SW, cal.b * mm);
-          ctx.fillRect(0, y0, x0, SH - y0 - cal.b * mm); ctx.fillRect(SW - cal.r * mm, y0, cal.r * mm, SH - y0 - cal.b * mm);
-        }
-        return out;
-      }
-      // The calibration sheet: on every edge a staircase of short lines 0 to 15 mm in from that edge, each numbered (L7 = 7 mm in from the left).
-      function calTestCanvas(paper) {
-        const mm = PRINT_DPI / 25.4, SW = Math.round(paper.w * mm), SH = Math.round(paper.h * mm);
-        const c = document.createElement('canvas'); c.width = SW; c.height = SH;
-        const ctx = c.getContext('2d');
-        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, SW, SH);
-        ctx.fillStyle = '#000'; ctx.strokeStyle = '#000';
-        const fs = paper.w < 70 ? 24 : 30, lw = 3, seg = 2.2 * mm;           // font size, line width, half length of a short line (px)
-        ctx.font = '600 ' + fs + 'px Arial, sans-serif'; ctx.textBaseline = 'middle';
-        const H = paper.w, V = paper.h;                                     // sheet size in mm
-        for (let k = 0; k <= 15; k++) {
-          const u = k / 15, d = k * mm;
-          const xs = (8 + u * (H - 16)) * mm, ys = (32 + u * (V - 64)) * mm;   // where this step sits along the edge
-          const row = (k % 2) * 4 * mm;                                      // labels alternate between two rows so they do not collide
-          // top / bottom: horizontal line, label further in
-          ctx.fillRect(xs - seg, d, 2 * seg, lw); ctx.fillRect(xs, d, 1, 17 * mm + row - d);
-          ctx.fillRect(xs - seg, SH - d - lw, 2 * seg, lw); ctx.fillRect(xs, SH - 17 * mm - row, 1, 17 * mm + row - d);
-          ctx.textAlign = 'center';
-          ctx.fillText('T' + k, xs, 17 * mm + row + fs * 0.7);
-          ctx.fillText('B' + k, xs, SH - 17 * mm - row - fs * 0.7);
-          // left / right: vertical line, label further in
-          ctx.fillRect(d, ys - seg, lw, 2 * seg); ctx.fillRect(d, ys, 17 * mm + row - d, 1);
-          ctx.fillRect(SW - d - lw, ys - seg, lw, 2 * seg); ctx.fillRect(SW - 17 * mm - row, ys, 17 * mm + row - d, 1);
-          ctx.textAlign = 'left'; ctx.fillText('L' + k, 17 * mm + row + fs * 0.3, ys);
-          ctx.textAlign = 'right'; ctx.fillText('R' + k, SW - 17 * mm - row - fs * 0.3, ys);
-        }
-        // Instructions in the middle.
-        const lines = ['PRINTER CALIBRATION', 'On each edge find the lowest number whose short line is printed. Enter L, T, R and B in the booth (Print settings).'];
-        ctx.textAlign = 'center'; ctx.fillStyle = '#000';
-        const maxW = SW - 52 * mm;
-        let y = SH / 2 - 20 * mm;
-        if (maxW > 15 * mm) lines.forEach((t, i) => {            // a narrow strip has no room between the labels: the numbers explain themselves
-          ctx.font = (i ? '400 ' : '700 ') + Math.round(fs * (i ? 0.95 : 1.15)) + 'px Arial, sans-serif';
-          let row = '';
-          t.split(' ').forEach(w => {
-            if (row && ctx.measureText(row + ' ' + w).width > maxW) { ctx.fillText(row, SW / 2, y); y += fs * 1.3; row = w; } else row = row ? row + ' ' + w : w;
-          });
-          ctx.fillText(row, SW / 2, y); y += fs * 1.8;
-        });
-        return c;
-      }
-      async function printCalSheet() {
-        const name = calPrinter(), paper = printSize ? paperFor(printSize) : null;
-        if (!name || !paper || paper.receipt) { showToast('Choose the printer for this paper size first.', 3500); return; }
-        const ok = await printViaHelper([calTestCanvas(paper)], paper, name, 'raw');
-        if (ok) showToast('Calibration sheet sent to ' + name + '. Read the four numbers off the paper.', 5000);
-      }
-      function refreshMarginUI() {
-        const marginBox = document.getElementById('marginBox'), marginRow = document.getElementById('marginRow');
-        const marginMm = document.getElementById('marginMm'), marginMmRow = document.getElementById('marginMmRow'), marginHint = document.getElementById('marginHint');
-        if (!marginBox) return;
-        const show = DESKTOP && /Win/i.test(navigator.platform || '') && !!printSize && !isReceiptPaper(printSize);
-        marginBox.hidden = !show;
-        if (!show) return;
-        const cur = printPrefs.margin || 'auto';
-        [].forEach.call(marginRow.querySelectorAll('[data-m]'), (b) => b.classList.toggle('active', b.dataset.m === cur));
-        marginMmRow.hidden = cur !== 'safe';
-        if (document.activeElement !== marginMm) marginMm.value = String(printPrefs.marginMm === undefined ? 3 : printPrefs.marginMm);
-        marginHint.textContent = MARGIN_HINTS[cur];
-        const calBox = document.getElementById('calBox');
-        calBox.hidden = cur !== 'cal';
-        if (cur === 'cal') {
-          const sec = secondPrinter(), tgt = document.getElementById('calTarget');
-          if (!(sec && sec.mode === 'share')) calWhich = 'main';
-          document.getElementById('calTargetRow').hidden = !(sec && sec.mode === 'share');
-          if (sec && sec.mode === 'share') {
-            tgt.innerHTML = '';
-            [['main', printerFor(printSize)], ['second', sec.name]].forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; tgt.appendChild(o); });
-            tgt.value = calWhich;
-          }
-          var pname = calPrinter(), cal = pname ? getCal(pname, printSize) : null;
-          ['L', 'T', 'R', 'B'].forEach(k => { const el = document.getElementById('cal' + k); if (document.activeElement !== el) el.value = cal ? String(cal[k.toLowerCase()]) : ''; });
-          document.getElementById('calStatus').textContent = !pname ? 'Choose the printer for this paper size first.'
-            : cal ? 'Calibrated for ' + pname + ', ' + paperFor(printSize).name + '. The preview now shows the sheet as it prints; grey is the edge this printer cannot print.'
-              : 'Not calibrated yet for ' + pname + ', ' + paperFor(printSize).name + ': printing as Automatic until you enter the four numbers.';
-        }
-      }
-      document.getElementById('calPrintBtn').addEventListener('click', printCalSheet);
-      document.getElementById('calTarget').addEventListener('change', (e) => { calWhich = e.target.value === 'second' ? 'second' : 'main'; refreshMarginUI(); });
-      ['L', 'T', 'R', 'B'].forEach(k => document.getElementById('cal' + k).addEventListener('input', () => {
-        const name = calPrinter(); if (!name) return;
-        const v = ['L', 'T', 'R', 'B'].map(j => document.getElementById('cal' + j).value);
-        if (v.some(x => x === '' || !isFinite(Number(x)))) return;            // wait until all four are filled in
-        const n = v.map(x => Math.max(0, Math.min(15, Math.round(Number(x) * 2) / 2)));
-        setCal(name, printSize, { l: n[0], t: n[1], r: n[2], b: n[3] });
-        refreshMarginUI(); schedulePrintThumb();
-      }));
-      document.getElementById('marginRow').addEventListener('click', (e) => {
-        const b = e.target.closest('[data-m]');
-        if (!b) return;
-        printPrefs.margin = b.dataset.m;
-        printPrefsChanged();
-      });
-      document.getElementById('marginMm').addEventListener('input', (e) => {
-        const el = e.target, v = Number(el.value);
-        if (el.value === '' || !isFinite(v)) return;
-        printPrefs.marginMm = Math.max(0, Math.min(15, Math.round(v * 2) / 2));
-        printPrefsChanged();
-      });
       document.getElementById('printPreviewBtn').addEventListener('click', () => showPrintPreview(false, opCopies || 1, true));
       // A small live picture of the page, rebuilt a moment after any change while Print settings is open.
       let thumbTimer = null;
@@ -21559,16 +21776,25 @@
         const s4 = document.getElementById('s4Thumb');
         if (s4 && s4.offsetParent !== null) targets.push(['s4Thumb', 's4ThumbNote']);          // Setup step 4 is on screen
         if (!targets.length) return;
+        const haveRealShots = Array.isArray(shotCanvases) && shotCanvases.length > 0 && shotCanvases.some(Boolean);
+        if (!haveRealShots) {
+          targets.forEach(([iid, nid]) => {
+            const img = document.getElementById(iid), note = document.getElementById(nid);
+            if (img) img.hidden = true;
+            if (note) { note.hidden = false; note.textContent = 'Take a photo to preview how it looks on paper.'; }
+          });
+          return;
+        }
         let c = null;
         try { const pages = printPreviewPages(); c = pages.length ? pages[0] : null; } catch (e) { c = null; }
         targets.forEach(([iid, nid]) => {
           const img = document.getElementById(iid), note = document.getElementById(nid);
-          if (!c) { img.hidden = true; note.hidden = false; return; }
+          if (!c) { if (img) img.hidden = true; if (note) note.hidden = false; return; }
           const sm = document.createElement('canvas');
           sm.width = 220; sm.height = Math.max(1, Math.round(c.height * 220 / c.width));
           sm.getContext('2d').drawImage(c, 0, 0, sm.width, sm.height);
-          img.src = sm.toDataURL('image/jpeg', 0.7);
-          img.hidden = false; note.hidden = true;
+          if (img) { img.src = sm.toDataURL('image/jpeg', 0.7); img.hidden = false; }
+          if (note) note.hidden = true;
         });
       }
       // Setup step 4: which printer and paper, whether auto-print is on, and the preview.
@@ -21585,7 +21811,8 @@
         // Paper, printer and auto-print at a glance (a red chip = still to choose).
         const sum = document.getElementById('s4PrinterSum'); sum.innerHTML = '';
         [['Paper', paper ? paper.name : 'not chosen', !paper], ['Printer', pr || 'not chosen', !pr], ['Auto-print', autoPrint ? 'On' : 'Off', false],
-        ...(paper && !isReceiptPaper(printSize) ? [['Layout', fitTxt, false]] : [])].forEach(([k, v, bad]) => {
+        ...(paper && !isReceiptPaper(printSize) ? [['Layout', fitTxt, false]] : []),
+        ...(typeof hasColorAdj === 'function' && hasColorAdj() ? [['Lightness', (colorAdj.brightness > 0 ? '+' : '') + colorAdj.brightness, false]] : [])].forEach(([k, v, bad]) => {
           const chip = document.createElement('span'); chip.className = 's4-chip' + (bad ? ' bad' : '');
           const sm = document.createElement('small'); sm.textContent = k; chip.appendChild(sm); chip.appendChild(document.createTextNode(v));
           sum.appendChild(chip);
@@ -21595,12 +21822,13 @@
       document.getElementById('s4PrinterBtn').addEventListener('click', () => openPrintModal());
       document.getElementById('s4PreviewBtn').addEventListener('click', () => showPrintPreview(false, opCopies || 1, true));
 
-      // Fill when the shapes are close (only trims a sliver of backdrop margin, so
-      // the print runs edge to edge); otherwise fit the whole image with white space.
+      // Fill only when the shapes are practically the same (a trim of about 1 mm, so the print runs
+      // edge to edge); otherwise fit the whole image with white space, so nothing is ever cut off
+      // (a 4x6 layout on 4.3 x 6.2 in paper differs by about 4%, which used to zoom in and trim it).
       function drawFitted(ctx, img, x, y, w, h, mode) {
         const ir = img.width / img.height, br = w / h;
         const mismatch = Math.abs(ir - br) / br;
-        const cover = mode === 'cover' ? true : mode === 'contain' ? false : mismatch <= 0.08;
+        const cover = mode === 'cover' ? true : mode === 'contain' ? false : mismatch <= 0.02;
         const scale = cover ? Math.max(w / img.width, h / img.height) : Math.min(w / img.width, h / img.height);
         const dw = img.width * scale, dh = img.height * scale;
         ctx.save();
@@ -21670,7 +21898,7 @@
       const MAX_COPIES = 10;
       const PRINT_TXT = { txtPrint: 'Print', txtPrinting: 'Printing, please hold…', txtCopies: 'How many copies?', txtLimit: 'That’s all the prints for this session' };
       // Saved with the setup (every device on the code gets them).
-      let printPrefs = { guestBtn: true, auto: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, margin: 'auto', marginMm: 3, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
+      let printPrefs = { guestBtn: true, auto: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
       function printTxt(k) { return (printPrefs[k] || '').trim() || PRINT_TXT[k]; }
       function cleanPrintPrefs(p) {
         p = p && typeof p === 'object' ? p : {};
@@ -21680,7 +21908,6 @@
           copies: Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(p.copies) || 1))), guestCopies: !!p.guestCopies, guestReq: !!p.guestReq, preview: p.preview !== false,
           fit: ['auto', 'contain', 'fill', 'size'].includes(p.fit) ? p.fit : 'auto',
           photoSize: typeof p.photoSize === 'string' && /^[0-9A-Za-z.]{1,12}$/.test(p.photoSize) ? p.photoSize : '', borderless: !!p.borderless,
-          margin: ['auto', 'cal', 'safe', 'edge'].includes(p.margin) ? p.margin : 'auto', marginMm: p.marginMm === undefined ? 3 : Math.max(0, Math.min(15, Math.round((Number(p.marginMm) || 0) * 2) / 2)),
           txtPrint: txt(p.txtPrint, 24), txtPrinting: txt(p.txtPrinting, 60), txtCopies: txt(p.txtCopies, 40), txtLimit: txt(p.txtLimit, 70)
         };
       }
@@ -21861,14 +22088,22 @@
       }
 
       // ---- Print preview: the first print (and the first after the paper or the printer changes) shows how the page will look ----
-      const printPreviewOk = {};
+      var printPreviewOk = {};
       const ppv = { auto: false, copies: 1, pages: [], urls: [], i: 0, notes: '' };
-      function printPreviewKey() { return printSize + '|' + (printerFor(printSize) || ''); }
-      function needsPrintPreview() { return printPrefs.preview !== false && !printPreviewOk[printPreviewKey()]; }
+      function activePrinterName() {
+        if (window.__PBNet && wifiPrinter) {
+          return wifiPrinter.name || wifiPrinter.ip || 'android';
+        }
+        return (printSize ? printerFor(printSize) : '') || '';
+      }
+      function printPreviewKey() { return (printSize || 'default') + '|' + activePrinterName(); }
+      function needsPrintPreview(isAuto) {
+        if (isAuto === true) return false;     // Never interrupt auto printing with a preview popup!
+        return printPrefs.preview !== false && !printPreviewOk[printPreviewKey()];
+      }
       function printPreviewPages() {
         const pages = flipbookResult ? buildFlipbookPages(paperFor(printSize)) : keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)];
-        const cal = calFor(paperFor(printSize), printerFor(printSize));          // Calibrated: show the sheet exactly as it will print
-        return cal ? pages.map(c => calibratedSheet(c, paperFor(printSize), cal, true)) : pages;
+        return pages;
       }
       function closePrintPreview() { document.getElementById('ppvOverlay').hidden = true; ppv.pages = []; ppv.urls = []; }
       // Look at every page: arrows, numbered buttons, swipe, or the left / right keys. Pages are turned into pictures only when looked at.
@@ -21907,22 +22142,25 @@
       })();
       function showPrintPreview(auto, copies, viewOnly) {
         const ov = document.getElementById('ppvOverlay'); if (!ov.hidden) return;
+        const haveRealShots = Array.isArray(shotCanvases) && shotCanvases.length > 0 && shotCanvases.some(Boolean);
+        if (!haveRealShots) {
+          if (viewOnly === true) { showToast('Take a photo first to preview the print layout.', 3500); return; }
+          printPreviewOk[printPreviewKey()] = true; printCurrentPhoto(auto, copies); return;       // nothing to show: just print
+        }
         ppv.auto = auto === true; ppv.copies = copies;
         let pages = [];
         try { pages = printPreviewPages(); } catch (e) { console.error('Print preview failed:', e); }
         if (!pages.length) {
-          if (viewOnly === true) { showToast('Take a test photo first to preview it.', 3500); return; }
+          if (viewOnly === true) { showToast('Take a photo first to preview the print layout.', 3500); return; }
           printPreviewOk[printPreviewKey()] = true; printCurrentPhoto(auto, copies); return;       // nothing to show: just print
         }
-        const paper = paperFor(printSize), pname = printerFor(printSize);
+        const paper = paperFor(printSize), pname = activePrinterName() || printerFor(printSize);
         document.getElementById('ppvSub').textContent = paper.name + (copies > 1 ? ' · ' + copies + ' copies' : '') + ' · ' +
           (pname ? 'Printer: ' + pname : 'No printer chosen yet: the print dialog will open');
         const notes = [];
         if (stripTwoUp(printSize) && !sizedPhoto()) notes.push('Two strips side by side: cut down the middle.');
         if (sizedPhoto()) notes.push('The photo is printed at real ' + paperFor(printPrefs.photoSize).name + ' size, in the middle of the paper.');
         if (printPrefs.borderless && window.__PBNet) notes.push('Borderless: printed edge to edge with no trimming (Wi-Fi and driverless USB printers).');
-        if (calFor(paper, pname)) notes.push('Calibrated for this printer: the grey edge is what it cannot print, so this is how the print will look.');
-        if (printPrefs.margin === 'safe' && DESKTOP) notes.push('Safe margin: the picture is printed ' + printPrefs.marginMm + ' mm in from each edge, so the paper keeps a thin white border.');
         if (auto === true) notes.push('After this, auto-print sends photos without asking.');
         ppv.pages = pages; ppv.urls = []; ppv.notes = notes.join(' ');
         ppvBuildNav();
@@ -21991,6 +22229,10 @@
         if (wifiPrinter && wifiPrinter.escp2 && !(pbDebug() && o.color === 'color')) o.color = 'mono';   // L120 family: black and white; colour only in debug
         o.cal = wifiCal;
         o.borderless = !!(printPrefs && printPrefs.borderless && window.__PBNet);
+        o.brightness = (typeof colorAdj !== 'undefined' && colorAdj.brightness) ? colorAdj.brightness : 0;
+        o.red = (typeof colorAdj !== 'undefined' && colorAdj.red) ? colorAdj.red : 0;
+        o.green = (typeof colorAdj !== 'undefined' && colorAdj.green) ? colorAdj.green : 0;
+        o.blue = (typeof colorAdj !== 'undefined' && colorAdj.blue) ? colorAdj.blue : 0;
         return o;
       }
       function wifiOptsUI() {
@@ -22010,16 +22252,18 @@
         let colorCh = [], qualCh = [], mediaCh = [];
         if (p) {
           if (p.escp2 && pbDebug()) colorCh = [['mono', 'Black & white'], ['color', 'Colour (beta)']];
-          else if (p.canon) colorCh = [['color', 'Colour'], ['mono', 'Black & white']];
+          else if (p.canon || p.epsonL) colorCh = [['color', 'Colour'], ['mono', 'Black & white']];
           else if ((p.colorModes || []).includes('monochrome') && (p.colorModes || []).includes('color')) colorCh = [['', 'Printer default'], ['color', 'Colour'], ['mono', 'Black & white']];
           const qs = p.qualities || [];
           if (p.escp2) qualCh = [['normal', 'Normal'], ['draft', 'Draft (fast)']];
           else if (p.canon) qualCh = [['normal', 'Normal'], ['draft', 'Draft (saves ink)'], ['high', 'Best (600 dpi, beta)']];
+          else if (p.epsonL) qualCh = [['normal', 'Normal (360 dpi)'], ['draft', 'Draft (fast)']];
           else if (qs.some(q => q >= 3 && q <= 5)) qualCh = [['', 'Printer default']].concat([['draft', 'Draft (fast)'], ['normal', 'Normal'], ['high', 'High (best)']].filter((c, i) => qs.includes(3 + i)));
           const mt = p.mediaTypes || [];
           const plain = mt.some(m => m.indexOf('stationery') === 0), photo = mt.some(m => m.indexOf('photographic') === 0);
           if (p.escp2) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper (glossy)'], ['matte', 'Matte / inkjet paper']];
           else if (p.canon) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper, glossy (beta)'], ['matte', 'Matte photo paper (beta)']];
+          else if (p.epsonL) mediaCh = [['plain', 'Plain paper'], ['photo', 'Photo paper (glossy)']];
           else if (plain || photo) mediaCh = [['', 'Printer default']].concat(plain ? [['plain', 'Plain paper']] : [], photo ? [['photo', 'Photo paper']] : []);
         }
         fill('wifiOptColor', 'wifiOptColorLbl', colorCh, 'color');
@@ -22030,6 +22274,9 @@
       function wifiSave(p) {
         wifiPrinter = p || null;
         try { if (p) localStorage.setItem(WIFI_PRINTER_KEY, JSON.stringify(p)); else localStorage.removeItem(WIFI_PRINTER_KEY); } catch (e) { }
+        try { if (typeof printPreviewOk !== 'undefined') delete printPreviewOk[printPreviewKey()]; printPrefs.preview = true; } catch (e) { }
+        if (p && p.borderless) { printPrefs.borderless = true; try { borderlessToggle.checked = true; } catch (e) { } }
+        try { printPrefsChanged(); } catch (e) { }
       }
       function wifiList() {
         try { return JSON.parse(window.__PBNet.list()) || { printers: [], scanning: false }; } catch (e) { return { printers: [], scanning: false }; }
@@ -22056,7 +22303,7 @@
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
           const sel = wifiPrinter && wifiPrinter.ip === p.ip;
-          b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? '' : ' · ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.escpr ? ' · photo' : '') + (p.escp2 ? ' · photo (black & white)' : '') + (p.raw ? ' · receipt' : '') + (p.needsPermission ? ' · tap to allow USB access' : '') + (p.noDriver ? ' · no driver' : '') + (p.canon ? ' · photo' : '');
+          b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? ' · USB' : ' · Wi-Fi ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.epsonL ? ' · photo (Epson ' + (p.epsonModel || 'L-series') + ')' : (p.escpr ? ' · photo' : '')) + (p.escp2 ? ' · photo (black & white)' : '') + (p.raw ? ' · receipt' : '') + (p.needsPermission ? ' · tap to allow USB access' : '') + (p.noDriver ? ' · no driver' : '') + (p.canon ? ' · photo' : '') + (p.selphy ? ' · photo (SELPHY)' : '');
           b.addEventListener('click', () => {
             if (p.needsPermission) {
               // The tablet has not been given access to this USB printer yet, so it cannot read what it is.
@@ -22070,7 +22317,7 @@
               showToast(p.name + ' is detected, but the app has no driver for it. Use the Android print dialog or the laptop print station for it.' + (pbDebug() && p.usb ? ' [USB ' + (p.vid || 0).toString(16) + ':' + (p.pid || 0).toString(16) + (p.info ? ' ' + p.info : ' (could not read its ID)') + ']' : ''), pbDebug() ? 14000 : 6000);
               return;
             }
-            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
+            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, selphy: !!p.selphy, epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
             showToast('Will print to ' + p.name + '.', 3000);
             wifiRenderList(wifiList());
             refreshPrintUI();
@@ -22079,9 +22326,9 @@
         });
         if (st && !wifiPrinter) {
           const prog = d.total ? ' ' + Math.min(d.checked || 0, d.total) + ' of ' + d.total + ' addresses checked.' : '';
-          st.textContent = d.scanning ? 'Looking for printers…' + prog + (d.printers.length ? ' Tap your printer when it appears.' : '')
+          st.textContent = d.scanning ? 'Looking for Wi-Fi and USB printers…' + prog + (d.printers.length ? ' Tap your printer when it appears.' : '')
             : d.printers.length ? 'Tap your printer.'
-              : 'No printers found. ' + (d.note ? d.note + '. ' : '') + 'Check the printer is on and on the same Wi-Fi as this tablet (not a guest network), or type its IP below.';
+              : 'No printers found. ' + (d.note ? d.note + '. ' : '') + 'Make sure Wi-Fi printers are on the same Wi-Fi network, or plug in a USB printer via USB-OTG cable.';
         }
         if (st && d.addNote) st.textContent = d.addNote;
       }
@@ -22089,11 +22336,17 @@
         if (!wifiNetAvailable()) return;
         try { window.__PBNet.scan(); } catch (e) { return; }
         clearInterval(wifiScanTimer);
+        const fb = document.getElementById('wifiPrinterFindBtn');
+        if (fb) fb.textContent = 'Scanning Wi-Fi & USB…';
         const t0 = Date.now();
         const tick = () => {
           const d = wifiList();
           wifiRenderList(d);
-          if (!d.scanning || Date.now() - t0 > 50000) { clearInterval(wifiScanTimer); wifiScanTimer = null; }
+          if (!d.scanning || Date.now() - t0 > 50000) {
+            clearInterval(wifiScanTimer);
+            wifiScanTimer = null;
+            if (fb) fb.textContent = 'Find Wi-Fi & USB printers';
+          }
         };
         wifiScanTimer = setInterval(tick, 1000);
         tick();
@@ -22112,7 +22365,7 @@
         const dg = document.getElementById('wifiDiag');
         if (dg) dg.style.display = pbDebug() && wifiPrinter && wifiPrinter.escp2 ? '' : 'none';
         if (st && wifiPrinter && wifiPrinter.dialog) st.textContent = 'Prints open the Android print dialog: pick the printer there. Printers that need a print service show up after you switch it on in Android print settings.';
-        else if (st && wifiPrinter) st.textContent = 'Printing to: ' + wifiPrinter.name + (wifiPrinter.usb ? (pbDebug() ? ' [USB ' + (wifiPrinter.vid || 0).toString(16) + ':' + (wifiPrinter.pid || 0).toString(16) + (wifiPrinter.info ? ' ID: ' + wifiPrinter.info : ' ID not readable') + ']' : '') : ' (' + wifiPrinter.ip + ')');
+        else if (st && wifiPrinter) st.textContent = 'Printing to: ' + wifiPrinter.name + (wifiPrinter.usb ? ' [USB connected]' : ' [Wi-Fi ' + wifiPrinter.ip + ']');
         else if (st && !wifiScanTimer) st.textContent = '';
       }
       (function () {
@@ -22188,10 +22441,17 @@
         }
         if (paper.receipt && p.raw && window._btThermal && window._btThermal.EscPosEncoder) {
           const dotW = paper.w <= 55 ? 384 : 576;
+          const bVal = (typeof colorAdj !== 'undefined' && colorAdj && colorAdj.brightness) ? colorAdj.brightness : 0;
           for (const cv of all) {
-            const bytes = new window._btThermal.EscPosEncoder(dotW).initialize().image(window._btThermal.toReceiptCanvas(cv, dotW)).cut().getBuffer();
+            const bytes = new window._btThermal.EscPosEncoder(dotW).initialize().image(window._btThermal.toReceiptCanvas(cv, dotW, bVal)).cut().getBuffer();
             await wifiJob(id => window.__PBNet.printRaw(id, p.ip, wifiBytesToB64(bytes)));
           }
+          return;
+        }
+        if (p.selphy) {
+          // Direct Canon SELPHY dye-sub photo printing over USB (CP820 / CP910 / CP1000 / CP1200 / CP1300 / CP1500)
+          const picsS = all.map(cv => cv.toDataURL('image/jpeg', 0.95));
+          await wifiJob(id => window.__PBNet.printSelphy(id, p.ip, paper.w, paper.h, 1, JSON.stringify(picsS), JSON.stringify(wifiOpts())));
           return;
         }
         if (p.canon) {
@@ -22206,10 +22466,18 @@
           await wifiJob(id => window.__PBNet.printEscp2(id, p.ip, paper.w, paper.h, 1, JSON.stringify(pics2), JSON.stringify(wifiOpts())));
           return;
         }
+        if (p.epsonL) {
+          // Hardcoded Epson L-series: L8050 (photo 6-ink), L3210, L3276 — direct USB ESC/P-R printing.
+          const picsL = all.map(cv => cv.toDataURL('image/jpeg', 0.95));
+          const isBl = !!(p.borderless && (printPrefs.borderless !== false));
+          const epsonLOpts = Object.assign({}, wifiOpts(), { borderless: isBl });
+          await wifiJob(id => window.__PBNet.printEpsonL(id, p.ip, paper.w, paper.h, 1, JSON.stringify(picsL), JSON.stringify(epsonLOpts)));
+          return;
+        }
         if (p.escpr) {
-          // Experimental Epson ESC/P-R path (Epson L120 / L210 and similar over USB): plain colour, 3 mm borders.
+          // Epson ESC/P-R path (Epson L120 / L210 and similar over USB): plain colour, 3 mm borders.
           const pics = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
-          await wifiJob(id => window.__PBNet.printEscpr(id, p.ip, paper.w, paper.h, 1, JSON.stringify(pics)));
+          await wifiJob(id => window.__PBNet.printEscpr(id, p.ip, paper.w, paper.h, 1, JSON.stringify(pics), JSON.stringify(wifiOpts())));
           return;
         }
         if (!p.ipp) throw new Error(p.name + ' only takes receipts. Pick a photo printer.');
@@ -22266,7 +22534,7 @@
         const room = maxCopies(printSize);
         if (room < 1) { limitReached(); return false; }
         n = Math.min(n, room);
-        if (needsPrintPreview()) { showPrintPreview(auto, n); return false; }        // nothing is counted or sent until the operator has seen the page
+        if (needsPrintPreview(auto === true)) { showPrintPreview(auto, n); return false; }        // nothing is counted or sent until the operator has seen the page
         printing = true;
         refreshPrintUI();
         try {
@@ -22300,12 +22568,15 @@
           for (let c = 0; c < n; c++) all.push(...pages);
 
           // ---- Bluetooth thermal printer path (tablet / Android / iOS) ----
-          if ((isMobileOS() || !helperOn) && btThermalOn && paper.receipt && isBtThermalAvailable()) {
+          const btConnected = !!(window._btThermal && window._btThermal.btPrinter && window._btThermal.btPrinter.connected);
+          if ((isMobileOS() || !helperOn) && btThermalOn && (paper.receipt || btConnected) && isBtThermalAvailable()) {
             try {
               showPrintingNote(printTxt('txtPrinting'), 8000);
-              await window._btThermal.printViaBluetooth(pages[0], paper.w <= 55 ? '58mm' : '80mm');
+              const rollW = (paper.w && paper.w <= 55) ? '58mm' : '80mm';
+              const btOpts = { brightness: (typeof colorAdj !== 'undefined' && colorAdj && colorAdj.brightness) ? colorAdj.brightness : 0 };
+              await window._btThermal.printViaBluetooth(pages[0], rollW, btOpts);
               // If n > 1 copies, print the rest
-              for (let ci = 1; ci < all.length; ci++) await window._btThermal.printViaBluetooth(all[ci], paper.w <= 55 ? '58mm' : '80mm');
+              for (let ci = 1; ci < all.length; ci++) await window._btThermal.printViaBluetooth(all[ci], rollW, btOpts);
               showToast((auto === true ? 'Auto-printed via Bluetooth (' : 'Printed via Bluetooth (') + label + ').');
               armAutoPrintAfterFirst(auto === true);
               return true;
@@ -22455,28 +22726,60 @@
         const btRow = document.getElementById('btThermalRow');
         const btConnBtn = document.getElementById('btThermalConnectBtn');
         const btToggle = document.getElementById('btThermalToggle');
+        const btSettingsBtn = document.getElementById('btThermalSettingsBtn');
         const btTestBtn = document.getElementById('btThermalTestBtn');
         const btDiscBtn = document.getElementById('btThermalDisconnectBtn');
         const btStatus = document.getElementById('btThermalStatusHint');
+        const btWarn = document.getElementById('btThermalWarnHint');
+        const btPaperHint = document.getElementById('btThermalPaperHint');
         if (btRow) {
-          const showBt = (isMobileOS() || !helperOn) && isBtThermalAvailable() && !useStation() && printSize && isReceiptPaper(printSize);
+          const showBt = (isMobileOS() || !helperOn || (window._btThermal && window._btThermal.isNativeAndroid()))
+                         && isBtThermalAvailable() && !useStation();
           btRow.style.display = showBt ? '' : 'none';
           if (btToggle) btToggle.checked = btThermalOn;
           const conn = !!(window._btThermal && window._btThermal.btPrinter.connected);
-          if (btConnBtn) {
-            btConnBtn.textContent = conn ? '\u2713 ' + (window._btThermal.btPrinter.name || 'Printer connected') : 'Connect Bluetooth Printer';
-            btConnBtn.style.display = btThermalOn ? '' : 'none';
+          const btEnabled = window._btThermal && typeof window._btThermal.isBtEnabled === 'function' ? window._btThermal.isBtEnabled() : true;
+
+          if (btWarn) {
+            if (!btEnabled) {
+              btWarn.textContent = '⚠️ Bluetooth is turned off on this tablet. Turn on Bluetooth in Android Settings before connecting.';
+              btWarn.style.display = '';
+            } else {
+              btWarn.textContent = '';
+              btWarn.style.display = 'none';
+            }
           }
-          if (btTestBtn) btTestBtn.style.display = btThermalOn && conn ? '' : 'none';
-          if (btDiscBtn) btDiscBtn.style.display = btThermalOn && conn ? '' : 'none';
+
+          if (btPaperHint) {
+            if (printSize && !isReceiptPaper(printSize)) {
+              btPaperHint.textContent = '💡 Tip: Print size is set to “' + (paperFor(printSize).name || printSize) + '”. For standard roll thermal printing, pick “Receipt 80 mm” or “Receipt 58 mm” above. (2×6 strips also scale nicely to receipt rolls).';
+              btPaperHint.style.display = '';
+            } else {
+              btPaperHint.textContent = '';
+              btPaperHint.style.display = 'none';
+            }
+          }
+
+          if (btConnBtn) {
+            btConnBtn.textContent = conn
+              ? '✓ ' + (window._btThermal.btPrinter.name || 'Printer connected') + ' (Change)'
+              : 'Connect Bluetooth Printer';
+            btConnBtn.style.display = '';
+          }
+          if (btSettingsBtn) {
+            btSettingsBtn.style.display = (window._btThermal && window._btThermal.isNativeAndroid() && (!conn || !btEnabled)) ? '' : 'none';
+            btSettingsBtn.textContent = !btEnabled ? 'Open Android Bluetooth Settings' : 'Pair in Android Bluetooth settings';
+          }
+          if (btTestBtn) btTestBtn.style.display = conn ? '' : 'none';
+          if (btDiscBtn) btDiscBtn.style.display = conn ? '' : 'none';
           if (btStatus) {
-            btStatus.textContent = !btThermalOn
-              ? ''
-              : conn
-                ? 'Connected: ' + (window._btThermal.btPrinter.name || 'Bluetooth Printer') + '. Prints will be sent directly via ESC/POS.'
+            btStatus.textContent = conn
+              ? 'Connected: ' + (window._btThermal.btPrinter.name || 'Bluetooth Printer') + '. Prints are sent directly via ESC/POS.'
+              : (!btEnabled
+                ? 'Turn on Bluetooth in Android Settings, pair your thermal printer, then return here and tap Connect.'
                 : (window._btThermal && window._btThermal.isNativeAndroid()
-                  ? 'Android kiosk app active. Tap Connect to select your paired Bluetooth printer.'
-                  : 'Make sure the printer is turned on and paired in Bluetooth settings. Note: POS printers (T80A, XP-80) use Classic Bluetooth SPP — install our Android Tablet App from /downloads/ for direct 1-tap printing.');
+                  ? 'Pair your thermal printer (Xprinter, Epson, Star, VOZY, etc.) in Android Bluetooth Settings first, then tap Connect.'
+                  : 'Make sure the printer is turned on and paired in Bluetooth settings. Note: POS printers (T80A, XP-80) use Classic Bluetooth SPP — install our Android Tablet App from /downloads/ for direct 1-tap printing.'));
           }
         }
         if (printSize && printsLeft() < sheetsPerCopy(printSize) && state === 'result') printHint.textContent = 'Print limit reached' + (lim.se && sessPrinted >= lim.se ? ' for this session.' : ' for this event.');
@@ -23102,6 +23405,15 @@
       var attractPosterId = '';
       var attractPosterFit = 'stretch';     // stretch | contain | cover
       var welcomeBtnOn = true;
+      var welcomeCustomOn = false;
+      var welcomeGreeting = '';
+      var welcomeTitle = '';
+      var welcomeFont = '';
+      var welcomeSub = '';
+      var welcomeStepsOn = true;
+      var welcomeStep1 = '';
+      var welcomeStep2 = '';
+      var welcomeStep3 = '';
       // Renter's own logos (Setup 5): c = corner of the guest screen, w = on the welcome picture.
       // x, y = centre as a share of the screen (c) or of the welcome picture (w); s = logo height as a
       // share of that height. null = the default place (c: where the photobooth4u logo sits;
@@ -23145,9 +23457,22 @@
       // Extras every package includes (admin can switch one off per client). Missing = on.
       function extraOn(name) { return !(window.__PB && window.__PB.extras && window.__PB.extras[name] === false); }
       if (!extraOn('vintage')) VINTAGE_KEYS.forEach(function (k) { delete FILTERS[k]; });
+      // Colour adjustment (Exposure / Lightness and RGB channels)
+      var COLOR_ADJ_KEY = 'pb_color_adj';
+      var colorAdj = { brightness: 0, red: 0, green: 0, blue: 0 };
+      try { colorAdj = Object.assign(colorAdj, JSON.parse(localStorage.getItem(COLOR_ADJ_KEY) || '{}')); } catch (e) { }
+      window._colorAdj = colorAdj;
+      function hasColorAdj() {
+        return !!(colorAdj.brightness || colorAdj.red || colorAdj.green || colorAdj.blue);
+      }
+
       function liveFilterCss() {
         var f = FILTERS[filterKey] || '';
         if (softSkin) f += ' brightness(1.04) contrast(.94)';
+        if (colorAdj.brightness) {
+          var bMul = Math.max(0, 1 + (colorAdj.brightness / 100));
+          f += ' brightness(' + bMul.toFixed(2) + ')';
+        }
         return f.trim();
       }
       function applyLiveFilter() {
@@ -23159,7 +23484,8 @@
       // Per-look grain strength, vignette strength and light leak for the vintage looks.
       var VINTAGE_FX = { film: { grain: 16, vig: .35 }, faded: { grain: 6, vig: .15 }, retro: { grain: 10, vig: .4, leak: true }, instant: { grain: 8, vig: .3, leak: true }, noir: { grain: 22, vig: .5 } };
       function applyFilterToCanvas(c) {
-        if (filterKey === 'none' && !softSkin && !dateStamp) return;
+        var withAdj = hasColorAdj();
+        if (filterKey === 'none' && !softSkin && !dateStamp && !withAdj) return;
         var ctx = c.getContext('2d'), w = c.width, h = c.height;
         if (softSkin) {
           // A softly blurred copy laid lightly on top smooths skin and evens tone.
@@ -23171,9 +23497,13 @@
           ctx.drawImage(s, 0, 0, w, h); ctx.restore();
         }
         var fx = VINTAGE_FX[filterKey] || null;
-        if (filterKey !== 'none' || softSkin) {
+        if (filterKey !== 'none' || softSkin || withAdj) {
           var img = ctx.getImageData(0, 0, w, h), d = img.data, i, r, g, b, y, n = 0;
           var seed = (w * 73856093) ^ (h * 19349663) ^ 0x9e3779b9, grain = fx ? fx.grain : 0;
+          var bOff = withAdj ? (colorAdj.brightness || 0) * 2.55 : 0;
+          var rOff = withAdj ? bOff + (colorAdj.red || 0) * 2.55 : 0;
+          var gOff = withAdj ? bOff + (colorAdj.green || 0) * 2.55 : 0;
+          var bOff2 = withAdj ? bOff + (colorAdj.blue || 0) * 2.55 : 0;
           for (i = 0; i < d.length; i += 4) {
             r = d[i]; g = d[i + 1]; b = d[i + 2];
             if (filterKey === 'bw') { y = (0.299 * r + 0.587 * g + 0.114 * b - 128) * 1.08 + 128; r = g = b = y; }
@@ -23190,6 +23520,11 @@
             else if (filterKey === 'noir') { y = (0.299 * r + 0.587 * g + 0.114 * b - 128) * 1.3 + 124; r = g = b = y; }
             if (grain) { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; n = (((seed & 255) - 128) / 128) * grain; r += n; g += n; b += n; }
             if (softSkin) { r = r * 1.02 + 3; g = g * 1.02 + 3; b = b * 1.02 + 3; }
+            if (withAdj) {
+              r += rOff;
+              g += gOff;
+              b += bOff2;
+            }
             d[i] = r; d[i + 1] = g; d[i + 2] = b;   // Uint8ClampedArray clamps + rounds
           }
           ctx.putImageData(img, 0, 0);
@@ -23219,6 +23554,85 @@
           ctx.restore();
         }
       }
+
+      function reapplyFiltersToShots() {
+        if (!Array.isArray(shotCanvases)) return;
+        shotCanvases.forEach(function (c) {
+          if (c && c._raw) {
+            var ctx = c.getContext('2d');
+            ctx.clearRect(0, 0, c.width, c.height);
+            ctx.drawImage(c._raw, 0, 0);
+            applyFilterToCanvas(c);
+          }
+        });
+        if (state === 'result') {
+          renderComposite();
+        }
+      }
+
+      function updateColorAdjUI() {
+        var sB = document.getElementById('sliderAdjBrightness');
+        var sR = document.getElementById('sliderAdjRed');
+        var sG = document.getElementById('sliderAdjGreen');
+        var sU = document.getElementById('sliderAdjBlue');
+        var vB = document.getElementById('valAdjBrightness');
+        var vR = document.getElementById('valAdjRed');
+        var vG = document.getElementById('valAdjGreen');
+        var vU = document.getElementById('valAdjBlue');
+        if (sB) sB.value = colorAdj.brightness || 0;
+        if (sR) sR.value = colorAdj.red || 0;
+        if (sG) sG.value = colorAdj.green || 0;
+        if (sU) sU.value = colorAdj.blue || 0;
+        if (vB) vB.textContent = (colorAdj.brightness > 0 ? '+' : '') + (colorAdj.brightness || 0);
+        if (vR) vR.textContent = (colorAdj.red > 0 ? '+' : '') + (colorAdj.red || 0);
+        if (vG) vG.textContent = (colorAdj.green > 0 ? '+' : '') + (colorAdj.green || 0);
+        if (vU) vU.textContent = (colorAdj.blue > 0 ? '+' : '') + (colorAdj.blue || 0);
+      }
+
+      function setupColorAdjListeners() {
+        var sB = document.getElementById('sliderAdjBrightness');
+        var sR = document.getElementById('sliderAdjRed');
+        var sG = document.getElementById('sliderAdjGreen');
+        var sU = document.getElementById('sliderAdjBlue');
+        var btnReset = document.getElementById('btnResetColorAdj');
+        var onInput = function () {
+          colorAdj.brightness = parseInt(sB.value, 10) || 0;
+          colorAdj.red = parseInt(sR.value, 10) || 0;
+          colorAdj.green = parseInt(sG.value, 10) || 0;
+          colorAdj.blue = parseInt(sU.value, 10) || 0;
+          window._colorAdj = colorAdj;
+          updateColorAdjUI();
+          try { localStorage.setItem(COLOR_ADJ_KEY, JSON.stringify(colorAdj)); } catch (e) { }
+          applyLiveFilter();
+          reapplyFiltersToShots();
+          renderSetupPreview();
+          try { schedulePrintThumb(); } catch (e) { }
+          try { refreshStep4Printer(); } catch (e) { }
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        };
+        [sB, sR, sG, sU].forEach(function (el) {
+          if (el) {
+            el.addEventListener('input', onInput);
+            el.addEventListener('change', onInput);
+          }
+        });
+        if (btnReset) {
+          btnReset.addEventListener('click', function () {
+            colorAdj = { brightness: 0, red: 0, green: 0, blue: 0 };
+            window._colorAdj = colorAdj;
+            updateColorAdjUI();
+            try { localStorage.setItem(COLOR_ADJ_KEY, JSON.stringify(colorAdj)); } catch (e) { }
+            applyLiveFilter();
+            reapplyFiltersToShots();
+            renderSetupPreview();
+            try { schedulePrintThumb(); } catch (e) { }
+            try { refreshStep4Printer(); } catch (e) { }
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
+        updateColorAdjUI();
+      }
+      setTimeout(setupColorAdjListeners, 0);
       var filterChips = document.getElementById('filterChips');
       if (!extraOn('vintage')) {
         [...filterChips.querySelectorAll('[data-vintage]')].forEach(function (c) { c.remove(); });
@@ -25633,6 +26047,105 @@
         });
       }
 
+      var welcomeCustomToggle = document.getElementById('welcomeCustomToggle');
+      var welcomeGreetingInput = document.getElementById('welcomeGreetingInput');
+      var welcomeTitleInput = document.getElementById('welcomeTitleInput');
+      var welcomeFontDropdownBtn = document.getElementById('welcomeFontDropdownBtn');
+      var welcomeFontDropdownList = document.getElementById('welcomeFontDropdownList');
+      var welcomeSubInput = document.getElementById('welcomeSubInput');
+      var welcomeStepsToggle = document.getElementById('welcomeStepsToggle');
+      var welcomeStep1Input = document.getElementById('welcomeStep1Input');
+      var welcomeStep2Input = document.getElementById('welcomeStep2Input');
+      var welcomeStep3Input = document.getElementById('welcomeStep3Input');
+
+      if (welcomeCustomToggle) {
+        welcomeCustomToggle.addEventListener('change', function () {
+          welcomeCustomOn = welcomeCustomToggle.checked;
+          var wcf = document.getElementById('welcomeCustomFields');
+          if (wcf) wcf.style.display = welcomeCustomOn ? '' : 'none';
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      [welcomeGreetingInput, welcomeTitleInput, welcomeSubInput, welcomeStep1Input, welcomeStep2Input, welcomeStep3Input].forEach(function (inp) {
+        if (!inp) return;
+        inp.addEventListener('input', function () {
+          welcomeGreeting = welcomeGreetingInput ? welcomeGreetingInput.value : '';
+          welcomeTitle = welcomeTitleInput ? welcomeTitleInput.value : '';
+          welcomeSub = welcomeSubInput ? welcomeSubInput.value : '';
+          welcomeStep1 = welcomeStep1Input ? welcomeStep1Input.value : '';
+          welcomeStep2 = welcomeStep2Input ? welcomeStep2Input.value : '';
+          welcomeStep3 = welcomeStep3Input ? welcomeStep3Input.value : '';
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      });
+      if (welcomeStepsToggle) {
+        welcomeStepsToggle.addEventListener('change', function () {
+          welcomeStepsOn = welcomeStepsToggle.checked;
+          var wsb = document.getElementById('welcomeStepsBlock');
+          if (wsb) wsb.style.display = welcomeStepsOn ? '' : 'none';
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+
+      var WELCOME_FONT_OPTIONS = [['', 'Same as photo font (Auto)']].concat(typeof FONT_OPTIONS !== 'undefined' ? FONT_OPTIONS : []);
+      if (welcomeFontDropdownBtn && welcomeFontDropdownList) {
+        buildFontDropdown(welcomeFontDropdownBtn, welcomeFontDropdownList, WELCOME_FONT_OPTIONS, function (value) {
+          welcomeFont = value;
+          scheduleWelcomeRender();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      function selectWelcomeFontUI(val) {
+        if (!welcomeFontDropdownBtn || !welcomeFontDropdownList) return;
+        welcomeFont = val || '';
+        var opt = WELCOME_FONT_OPTIONS.find(function (o) { return o[0] === welcomeFont; }) || WELCOME_FONT_OPTIONS[0];
+        welcomeFontDropdownBtn.textContent = opt[1];
+        welcomeFontDropdownBtn.style.fontFamily = opt[0] || 'inherit';
+        [...welcomeFontDropdownList.children].forEach(function (c) {
+          c.classList.toggle('active', c.dataset.value === (opt[0] || ''));
+        });
+      }
+
+      // ---- Android Screen Orientation (when admin allows 'either') ----
+      var _androidOrientationChoice = 'landscape';
+      function setAndroidOrientationUI(mode, applyNative) {
+        _androidOrientationChoice = (mode === 'portrait' || mode === 'vertical') ? 'portrait' : 'landscape';
+        var chips = document.getElementById('orientChips');
+        if (chips) {
+          [].forEach.call(chips.querySelectorAll('.chip'), function (c) {
+            c.classList.toggle('active', c.dataset.orient === _androidOrientationChoice);
+          });
+        }
+        var sec = document.getElementById('orientationSection');
+        var allowed = !!(window.__PB && window.__PB.android && window.__PB.orientation === 'either');
+        if (sec) sec.style.display = allowed ? '' : 'none';
+        if (applyNative !== false && window.__PB && window.__PB.android && window.__PBLocal && typeof window.__PBLocal.setOrientation === 'function') {
+          try { window.__PBLocal.setOrientation(_androidOrientationChoice); } catch (e) { }
+        }
+      }
+      (function () {
+        var chips = document.getElementById('orientChips');
+        if (chips) {
+          chips.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-orient]');
+            if (!btn) return;
+            setAndroidOrientationUI(btn.dataset.orient, true);
+            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          });
+        }
+        var sec = document.getElementById('orientationSection');
+        if (sec) {
+          var allowed = !!(window.__PB && window.__PB.android && window.__PB.orientation === 'either');
+          sec.style.display = allowed ? '' : 'none';
+        }
+        window.addEventListener('pb-orientation-change', function () {
+          setAndroidOrientationUI(_androidOrientationChoice);
+        });
+      })();
+
       // ---- Attract mode switching ----
       var attractHints = {
         card: 'Auto-generates a branded welcome card with your event title, date, 3-step guest instructions, and a sample photo print.',
@@ -25653,6 +26166,8 @@
         if (posterRow) posterRow.style.display = attractMode === 'poster' ? '' : 'none';
         var camHint = document.getElementById('welcomePvCamHint');
         if (camHint) camHint.style.display = attractMode === 'camera' ? 'flex' : 'none';
+        var cardBlock = document.getElementById('welcomeCardCustomBlock');
+        if (cardBlock) cardBlock.style.display = attractMode === 'card' ? '' : 'none';
       }
       (function () {
         var chips = document.getElementById('attractModeChips'); if (!chips) return;
@@ -25734,7 +26249,11 @@
         try {
           var wa = 4 / 3;
           try { wa = Math.max(0.5, Math.min(2.4, camAspect())); } catch (e) { }
-          var H = 1200, W = Math.round(H * wa), land = wa >= 1.15;
+          var isPort = (window.innerHeight && window.innerWidth) ? (window.innerHeight > window.innerWidth) : false;
+          var land = !isPort && (wa >= 1.15);
+          var H = isPort ? 1600 : 1200;
+          var portAspect = (window.innerHeight && window.innerWidth) ? (window.innerWidth / window.innerHeight) : 0.625;
+          var W = isPort ? Math.round(H * Math.max(0.48, Math.min(0.85, portAspect))) : Math.round(H * wa);
           var c = document.createElement('canvas'); c.width = W; c.height = H;
           var ctx = c.getContext('2d');
           var pvFrame = document.querySelector('.welcome-pv-frame');
@@ -25837,31 +26356,91 @@
           // Sample print of their layout (drawn people, never a real guest's photo)
           var sample = document.createElement('canvas');
           try { composeCanvas(currentLayout, sample, buildPlaceholderShots(300, shotsNeeded(currentLayout))); } catch (e) { sample = null; }
-          var area = land ? { x: W * 0.05, y: H * 0.08, w: W * 0.42, h: H * 0.84 } : { x: W * 0.1, y: H * 0.05, w: W * 0.8, h: H * 0.44 };
-          if (sample && sample.width) {
-            var k = Math.min(area.w / sample.width, area.h / sample.height), pw = sample.width * k, ph = sample.height * k;
-            ctx.save();
-            ctx.translate(area.x + area.w / 2, area.y + area.h / 2);
-            ctx.rotate(-3 * Math.PI / 180);
-            ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 18;
-            ctx.fillStyle = '#fff'; ctx.fillRect(-pw / 2, -ph / 2, pw, ph);
-            ctx.shadowColor = 'transparent';
-            ctx.drawImage(sample, -pw / 2, -ph / 2, pw, ph);
-            ctx.restore();
-          }
 
           // Card with the event name and how it works
           var cardColor = titleBgEnabled ? titleBgColor : '#ffffff';
           var ink = colorDist(textColor, cardColor) > 140 ? textColor : (lumOf(cardColor) > 0.5 ? '#1C1A1E' : '#ffffff');
           var soft = lumOf(cardColor) > 0.5 ? 'rgba(28,26,30,.62)' : 'rgba(255,255,255,.75)';
           var dt = currentDateLabel();
+
+          var isCustom = !!welcomeCustomOn;
+          var name = (labelInput.value || '').trim();
+          var cardGreeting = isCustom ? (welcomeGreeting != null ? welcomeGreeting : (name ? 'Welcome to' : 'Welcome to our')) : (name ? 'Welcome to' : 'Welcome to our');
+          var hasGreeting = Boolean(cardGreeting && cardGreeting.trim());
+          var cardTitle = isCustom && (welcomeTitle || '').trim() ? (welcomeTitle || '').trim() : (name || 'photo booth');
+          var cardFont = isCustom && welcomeFont ? welcomeFont : currentFont;
+          var cardSub = isCustom ? (welcomeSub !== '' ? welcomeSub : '') : dt;
+          var cardSubFont = isCustom && welcomeFont ? welcomeFont : currentDateFont;
+          var showSteps = !isCustom || welcomeStepsOn !== false;
+
+          var defaultSteps = [hfMode === 'wave' ? 'Wave at the camera' : hfMode === 'smile' ? 'Smile at the camera' : 'Tap the screen', 'Strike a pose', 'Scan the QR for your photos'];
+          var steps = [];
+          if (showSteps) {
+            steps = [
+              (isCustom && (welcomeStep1 || '').trim()) ? welcomeStep1.trim() : defaultSteps[0],
+              (isCustom && (welcomeStep2 || '').trim()) ? welcomeStep2.trim() : defaultSteps[1],
+              (isCustom && (welcomeStep3 || '').trim()) ? welcomeStep3.trim() : defaultSteps[2]
+            ];
+          }
+
           var cardBox = function (slotH) {
-            var ch = 64 + 40 + 110 + (dt ? 54 : 0) + 40 + 3 * 64 + (welcomeBtnOn ? (40 + 92) : 0) + 56 + slotH;
-            var cw = land ? Math.min(W * 0.42, 720) : Math.min(W * 0.82, 760);
-            var cx = land ? W * 0.53 : (W - cw) / 2;
-            var cy = land ? (H - ch) / 2 : Math.max(area.y + area.h + 30, H - ch - H * 0.05);
-            if (!land && cy + ch > H - 20) { var sc = (H - 20 - cy) / ch; ch *= Math.max(0.6, sc); }
-            return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH };
+            if (land) {
+              var area = { x: W * 0.05, y: H * 0.08, w: W * 0.42, h: H * 0.84 };
+              var pw = 0, ph = 0;
+              if (sample && sample.width) {
+                var k = Math.min(area.w / sample.width, area.h / sample.height);
+                pw = sample.width * k; ph = sample.height * k;
+              }
+              var ch = 64 + (hasGreeting ? 40 : 10) + (hasGreeting ? 110 : 80) + (cardSub ? 54 : 0) + (showSteps ? (40 + steps.length * 64) : 20) + (welcomeBtnOn ? (40 + 92) : 0) + 56 + slotH;
+              var cw = Math.min(W * 0.42, 720);
+              var cx = W * 0.53;
+              var cy = (H - ch) / 2;
+              return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: 64, titleSize: 96, padY: 64, pw: pw, ph: ph, sampleX: area.x + area.w / 2, sampleY: area.y + area.h / 2 };
+            }
+
+            // Portrait layout: vertically and horizontally centered between topbar and bottom dock
+            var safeTop = 130;
+            var safeBottom = H - 130;
+            var safeH = safeBottom - safeTop;
+            var cw = Math.min(W * 0.88, 720);
+            var cx = (W - cw) / 2;
+            var mid = W / 2;
+            var stepCount = showSteps ? steps.length : 0;
+            var stepH = 50;
+            var titleSize = 78;
+            var padY = 34;
+            var baseCardH = padY + (hasGreeting ? 32 : 10) + 72 + (cardSub ? 38 : 0) + (showSteps ? (22 + stepCount * stepH) : 10) + (welcomeBtnOn ? (24 + 80) : 0) + 32 + slotH;
+            var ch = baseCardH;
+
+            var maxSampleH = Math.min(500, Math.max(260, safeH - ch - 36));
+            var maxSampleW = Math.min(W * 0.74, 560);
+            var pw = 0, ph = 0;
+            if (sample && sample.width) {
+              var k = Math.min(maxSampleW / sample.width, maxSampleH / sample.height);
+              pw = sample.width * k;
+              ph = sample.height * k;
+            }
+
+            var gap = (ph > 0) ? 24 : 0;
+            var totalH = ph + gap + ch;
+            if (totalH > safeH) {
+              var scale = safeH / totalH;
+              if (ph > 0) {
+                ph = Math.round(ph * scale);
+                pw = Math.round(pw * scale);
+              }
+              ch = Math.round(ch * scale);
+              stepH = Math.max(38, Math.round(stepH * scale));
+              titleSize = Math.max(48, Math.round(titleSize * scale));
+              gap = Math.round(gap * scale);
+              totalH = ph + gap + ch;
+            }
+
+            var groupTop = safeTop + Math.max(0, Math.round((safeH - totalH) / 2));
+            var sampleX = mid;
+            var sampleY = groupTop + ph / 2;
+            var cy = groupTop + (ph > 0 ? (ph + gap) : 0);
+            return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: stepH, titleSize: titleSize, padY: padY, pw: pw, ph: ph, sampleX: sampleX, sampleY: sampleY };
           };
           // The renter's welcome logo gets a space at the top of the card while it sits on the card.
           var wl = brandImgFor('w'), wb = brand.w;
@@ -25871,40 +26450,64 @@
             if (!(lx0 >= box.cx && lx0 <= box.cx + box.cw && ly0 >= box.cy && ly0 <= box.cy + box.ch)) box = cardBox(0);
           }
           var ch = box.ch, cw = box.cw, cx = box.cx, cy = box.cy;
+          var pw = box.pw, ph = box.ph, sampleX = box.sampleX, sampleY = box.sampleY;
+
+          // Draw sample print of layout chosen (centered horizontally, fully visible)
+          if (sample && sample.width && pw > 0 && ph > 0) {
+            ctx.save();
+            ctx.translate(sampleX, sampleY);
+            ctx.rotate((land ? -3 : 0) * Math.PI / 180);
+            ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 46; ctx.shadowOffsetY = 16;
+            ctx.fillStyle = '#fff'; ctx.fillRect(-pw / 2, -ph / 2, pw, ph);
+            ctx.shadowColor = 'transparent';
+            ctx.drawImage(sample, -pw / 2, -ph / 2, pw, ph);
+            ctx.restore();
+          }
+
+          // Draw branded details card below the sample print
           ctx.save();
-          ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = 44; ctx.shadowOffsetY = 14;
-          roundRectPath(ctx, cx, cy, cw, ch, 34);
+          ctx.shadowColor = 'rgba(0,0,0,.22)'; ctx.shadowBlur = 42; ctx.shadowOffsetY = 14;
+          roundRectPath(ctx, cx, cy, cw, ch, 32);
           ctx.globalAlpha = 0.95; ctx.fillStyle = cardColor; ctx.fill();
           ctx.restore();
           ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-          var mid = cx + cw / 2, yy = cy + 64 + 26 + box.slot;
-          ctx.fillStyle = soft; ctx.font = '700 30px Manrope, sans-serif';
-          var name = (labelInput.value || '').trim();
-          ctx.fillText(name ? 'Welcome to' : 'Welcome to our', mid, yy);
-          yy += 110;
+          var mid = cx + cw / 2, yy = cy + (box.padY || 34) + 16 + box.slot;
+
+          if (hasGreeting) {
+            ctx.fillStyle = soft; ctx.font = (land ? '700 30px' : '700 24px') + ' Manrope, sans-serif';
+            ctx.fillText(cardGreeting.trim(), mid, yy);
+            yy += land ? 110 : 54;
+          } else {
+            yy += land ? 30 : 15;
+          }
+
           ctx.fillStyle = ink;
-          var title = name || 'photo booth';
-          var ts = fitFont(ctx, title, currentFont, 96, cw - 80, 40);
-          ctx.font = fontString(currentFont, ts);
-          ctx.fillText(title, mid, yy);
-          if (dt) { yy += 54; ctx.fillStyle = soft; ctx.font = fontString(currentDateFont, 38); ctx.fillText(dt, mid, yy); }
-          yy += 40;
-          var steps = [hfMode === 'wave' ? 'Wave at the camera' : hfMode === 'smile' ? 'Smile at the camera' : 'Tap the screen', 'Strike a pose', 'Scan the QR for your photos'];
-          ctx.font = '700 31px Manrope, sans-serif';
-          var widest = Math.max.apply(null, steps.map(function (t) { return ctx.measureText(t).width; }));
-          var sx = mid - (widest + 62) / 2;
-          steps.forEach(function (t, i) {
-            var sy = yy + 50 + i * 64;
-            ctx.fillStyle = '#C93D27'; ctx.beginPath(); ctx.arc(sx + 22, sy - 11, 22, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#fff'; ctx.font = '800 24px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + 22, sy - 3);
-            ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 31px Manrope, sans-serif'; ctx.fillText(t, sx + 62, sy);
-          });
+          var ts = fitFont(ctx, cardTitle, cardFont, box.titleSize || (land ? 96 : 78), cw - 70, 32);
+          ctx.font = fontString(cardFont, ts);
+          ctx.fillText(cardTitle, mid, yy);
+          if (cardSub) { yy += land ? 54 : 40; ctx.fillStyle = soft; ctx.font = fontString(cardSubFont, land ? 38 : 28); ctx.fillText(cardSub, mid, yy); }
+
+          if (showSteps && steps.length) {
+            yy += land ? 40 : 24;
+            ctx.font = (land ? '700 31px' : '700 24px') + ' Manrope, sans-serif';
+            var widest = Math.max.apply(null, steps.map(function (t) { return ctx.measureText(t).width; }));
+            var sx = mid - (widest + (land ? 62 : 48)) / 2;
+            var stepH = box.stepH || (land ? 64 : 50);
+            steps.forEach(function (t, i) {
+              var sy = yy + (land ? 50 : 34) + i * stepH;
+              var r = land ? 22 : 16;
+              ctx.fillStyle = '#C93D27'; ctx.beginPath(); ctx.arc(sx + r, sy - (r * 0.5), r, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = '#fff'; ctx.font = '800 ' + (land ? '24px' : '18px') + ' Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + r, sy - 2);
+              ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 ' + (land ? '31px' : '24px') + ' Manrope, sans-serif'; ctx.fillText(t, sx + r * 2 + 14, sy);
+            });
+          }
           if (welcomeBtnOn) {
             ctx.font = '800 34px Manrope, sans-serif';
-            var bw = Math.min(cw - 80, ctx.measureText(btnText).width + 130), bh = 92, bx = mid - bw / 2, by = cy + ch - bh - 48;
+            var bh = land ? 92 : 78, bw = Math.min(cw - 70, ctx.measureText(btnText).width + (land ? 130 : 100));
+            var bx = mid - bw / 2, by = cy + ch - bh - (land ? 48 : 24);
             roundRectPath(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
             ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
-            var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', 34, bw - 50, 18);
+            var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', land ? 34 : 28, bw - 40, 16);
             ctx.font = '800 ' + bs + 'px Manrope, sans-serif';
             ctx.fillText(btnText, mid, by + bh / 2 + bs * 0.36);
             welcomeCta = { l: bx / W * 100, t: by / H * 100, w: bw / W * 100, h: bh / H * 100 };
@@ -26244,6 +26847,28 @@
         c.list.splice(i, 1);
         try { localStorage.setItem(vCacheKey(), JSON.stringify(c)); } catch (e) { }
         var q = vQueue(); q.push({ code: code, at: Date.now(), ev: setupScopeEvent() }); vQueueSet(q);
+        // Track used code in offline batches if generated locally
+        try {
+          var offBatches = loadOfflineBatches();
+          var changed = false;
+          offBatches.forEach(function (ob) {
+            (ob.codes || []).forEach(function (cd) {
+              if ((cd.c || cd) === code && !cd.used) {
+                cd.used = true;
+                ob.usedCount = (ob.usedCount || 0) + 1;
+                changed = true;
+              }
+            });
+          });
+          if (changed) {
+            saveOfflineBatches(offBatches);
+            offBatches.forEach(function (ob) {
+              var mem = payBatches.find(function (b) { return b.id === ob.id; });
+              if (mem) { mem.usedCount = ob.usedCount; mem.codes = ob.codes; }
+            });
+            renderPayBatches();
+          }
+        } catch (_oe) { }
         return { ok: true, prints: prints, offline: true };
       }
       var V_ERR = {
@@ -26464,40 +27089,269 @@
         var box = document.getElementById('payBatches'); if (!box) return;
         if (!payBatches.length) { box.innerHTML = '<p class="panel-hint" style="margin:10px 0 0;">No vouchers yet for this event.</p>'; return; }
         box.innerHTML = payBatches.map(function (bt) {
-          var left = bt.total - bt.usedCount - bt.voidCount;
-          return '<div class="pay-batch" data-id="' + payEsc(bt.id) + '"><div class="bi"><b>' + bt.total + ' vouchers · ' + bt.usedCount + ' used</b><small>' +
-            (bt.price ? payEsc(peso(bt.price)) + ' · ' : '') + 'made ' + fmtShortDate(bt.at) + (bt.by === 'admin' ? ' by photobooth4u' : '') + (bt.voidCount ? ' · ' + bt.voidCount + ' cancelled' : '') + '</small>' +
-            '<div class="meter"><i style="width:' + Math.round(bt.usedCount / bt.total * 100) + '%"></i></div></div>' +
+          var total = typeof bt.total === 'number' ? bt.total : (bt.codes ? bt.codes.length : 0);
+          var usedCount = typeof bt.usedCount === 'number' ? bt.usedCount : (bt.codes ? bt.codes.filter(function (x) { return x.used; }).length : 0);
+          var voidCount = typeof bt.voidCount === 'number' ? bt.voidCount : (bt.codes ? bt.codes.filter(function (x) { return x.voided && !x.used; }).length : 0);
+          var left = total - usedCount - voidCount;
+          return '<div class="pay-batch" data-id="' + payEsc(bt.id) + '"><div class="bi"><b>' + total + ' vouchers · ' + usedCount + ' used</b><small>' +
+            (bt.price ? payEsc(peso(bt.price)) + ' · ' : '') + 'made ' + fmtShortDate(bt.at) + (bt.by === 'admin' ? ' by photobooth4u' : '') + (voidCount ? ' · ' + voidCount + ' cancelled' : '') + '</small>' +
+            '<div class="meter"><i style="width:' + Math.round((total ? usedCount / total : 0) * 100) + '%"></i></div></div>' +
             (left > 0 ? '<button type="button" class="action-btn" data-act="print">Print tickets</button><button type="button" class="action-btn" data-act="void">Cancel unused</button>' : '') + '</div>';
         }).join('');
       }
       async function payLoadBatches() {
         if (!payOn() || !payVoucherOn()) return;
-        try { var r = await postApi('/api/pay', { action: 'batches' }, 10000); if (r.status === 200 && r.j.batches) { payBatches = r.j.batches; renderPayBatches(); } } catch (e) { }
+        // Restore locally-generated offline batches first so the list is available immediately
+        try {
+          var saved = loadOfflineBatches();
+          if (saved.length) { payBatches = saved; renderPayBatches(); }
+        } catch (_e) { }
+        // Then merge with server batches (when online)
+        try {
+          var r = await postApi('/api/pay', { action: 'batches' }, 10000);
+          if (r.status === 200 && r.j.batches) {
+            var srv = r.j.batches;
+            // Keep offline-only batches not present on server
+            var offBatches = payBatches.filter(function (b) { return /^off_/.test(b.id) && !srv.some(function (s) { return s.id === b.id; }); });
+            payBatches = srv.concat(offBatches);
+            renderPayBatches();
+          }
+        } catch (e) { }
       }
+      // ---- offline voucher generation helpers ----
+      function offlineBatchStorageKey() { return 'pb_offline_batches_' + vCacheKey(); }
+      function saveOfflineBatches(batches) { try { localStorage.setItem(offlineBatchStorageKey(), JSON.stringify(batches)); } catch (e) { } }
+      function loadOfflineBatches() { try { return JSON.parse(localStorage.getItem(offlineBatchStorageKey()) || '[]'); } catch (e) { return []; } }
+
+      async function makeOfflineBatch(n, prints, price, label) {
+        // Collect all existing codes to avoid collisions
+        var taken = new Set();
+        var existing = loadOfflineBatches();
+        existing.forEach(function (b) { (b.codes || []).forEach(function (c) { taken.add(c.c || c); }); });
+        payBatches.forEach(function (b) { (b.codes || []).forEach(function (c) { taken.add(c.c || c); }); });
+
+        // Generate n unique 8-digit numeric codes
+        var codes = [];
+        while (codes.length < n) {
+          var num = String(Math.floor(10000000 + Math.random() * 90000000));
+          if (!taken.has(num)) { taken.add(num); codes.push(num); }
+        }
+
+        // Owner-id for hashing — must match payRedeem / vHash
+        var pb = window.__PB || {};
+        var oid = (pb.folderPrefix || pb.folderKey || 'offline');
+        var key = vCacheKey();
+
+        // Load or create the voucher cache and inject the hashes
+        var cData = null;
+        try { cData = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { }
+        if (!cData || !cData.oid) cData = { oid: oid, at: Date.now(), list: [] };
+
+        for (var ci = 0; ci < codes.length; ci++) {
+          var h = await vHash(cData.oid, codes[ci]);
+          cData.list.push([h, prints || 0]);
+        }
+        try { localStorage.setItem(key, JSON.stringify(cData)); } catch (e) { }
+
+        var ev = setupScopeEvent() || '';
+        var evName = (typeof labelInput !== 'undefined' && labelInput && labelInput.value ? labelInput.value.trim() : '') || ev || 'Photo booth';
+        var batchId = 'off_' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
+        var batch = {
+          id: batchId,
+          offlineOnly: true,
+          ev: ev,
+          evName: evName,
+          price: price || 0,
+          prints: prints || 1,
+          label: label || '1 photo session',
+          at: Date.now(),
+          total: codes.length,
+          usedCount: 0,
+          voidCount: 0,
+          codes: codes.map(function (c) { return { c: c, used: false, voided: false }; })
+        };
+
+        // Persist to localStorage so it survives app restarts
+        var offBatches = loadOfflineBatches();
+        offBatches.unshift(batch);
+        saveOfflineBatches(offBatches);
+        return batch;
+      }
+
       document.getElementById('payMakeBtn').addEventListener('click', async function () {
         var btn = this, n = Number(document.getElementById('payMakeCount').value) || 20;
         btn.disabled = true; btn.textContent = 'Making…';
+        var serverOk = false;
         try {
           var r = await postApi('/api/pay', { action: 'batch.create', count: n, prints: payCfg.prints, price: payCfg.price, label: '1 photo session' }, 15000);
-          if (r.status === 200 && r.j.batch) { payBatches.unshift(r.j.batch); renderPayBatches(); refreshVoucherCache(); showToast(n + ' vouchers ready. Tap “Print tickets”.', 4000); }
-          else showToast((r.j && r.j.error) || 'Couldn’t make vouchers.', 4500);
-        } catch (e) { showToast('No internet. Vouchers need internet to make.', 4500); }
+          if (r.status === 200 && r.j.batch) {
+            payBatches.unshift(r.j.batch); renderPayBatches(); refreshVoucherCache();
+            showToast(n + ' vouchers ready. Tap “Print tickets”.', 4000);
+            serverOk = true;
+          }
+        } catch (e) { /* offline — fall through */ }
+        if (!serverOk) {
+          try {
+            var offBatch = await makeOfflineBatch(n, payCfg.prints, payCfg.price, '1 photo session');
+            payBatches.unshift(offBatch);
+            renderPayBatches();
+            refreshVoucherCache();
+            showToast(n + ' offline vouchers ready. Tap “Print tickets”.', 4000);
+          } catch (oe) { showToast('Could not generate vouchers: ' + (oe.message || oe), 4500); }
+        }
         btn.disabled = false; btn.textContent = 'Make vouchers';
       });
+
+      // ---- Android-compatible A4 ticket sheet printer ----
+      async function renderVoucherTicketsForAndroid(data) {
+        if (!data || !data.codes || !data.codes.length) { showToast('No codes to print.', 3000); return; }
+        try {
+          // Standard A4 sheet: 210mm x 297mm (1240 x 1754 px at ~150 DPI)
+          var W = 1240, H = 1754;
+          var marginX = 60, marginY = 60;
+          var cols = 2, rows = 5;
+          var perPage = cols * rows; // 10 tickets per sheet
+          var cellW = Math.floor((W - marginX * 2) / cols); // 560 px
+          var cellH = Math.floor((H - marginY * 2) / rows); // 326 px
+          var pages = [];
+
+          var pesoStr = function (amt) { return '₱' + Number(amt || 0).toLocaleString('en-PH'); };
+          var incStr = '1 photo session' + (data.prints ? ' · ' + data.prints + ' print' + (data.prints > 1 ? 's' : '') : '');
+
+          for (var p = 0; p < data.codes.length; p += perPage) {
+            var cv = document.createElement('canvas');
+            cv.width = W; cv.height = H;
+            var ctx = cv.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, W, H);
+
+            var pageCodes = data.codes.slice(p, p + perPage);
+            for (var idx = 0; idx < pageCodes.length; idx++) {
+              var cCol = idx % cols;
+              var cRow = Math.floor(idx / cols);
+              var x = marginX + cCol * cellW;
+              var y = marginY + cRow * cellH;
+              var code = pageCodes[idx];
+              var codeFormatted = code.length === 8 ? (code.slice(0, 4) + ' ' + code.slice(4)) : code;
+
+              // Dashed cutting border
+              ctx.save();
+              ctx.setLineDash([6, 6]);
+              ctx.strokeStyle = '#b9b0a3';
+              ctx.lineWidth = 1.5;
+              ctx.strokeRect(x + 4, y + 4, cellW - 8, cellH - 8);
+              ctx.restore();
+
+              // Top Kicker: PHOTOBOOTH4U · VOUCHER
+              ctx.fillStyle = '#6B666C';
+              ctx.font = 'bold 12px sans-serif';
+              ctx.textAlign = 'left';
+              ctx.fillText('PHOTOBOOTH4U · VOUCHER', x + 24, y + 36);
+
+              // Event name
+              var ev = data.event || 'Photo booth';
+              if (ev.length > 24) ev = ev.slice(0, 23) + '…';
+              ctx.fillStyle = '#1C1A1E';
+              ctx.font = 'bold 20px Georgia, serif';
+              ctx.fillText(ev, x + 24, y + 66);
+
+              // Price (if set)
+              if (data.price) {
+                ctx.fillStyle = '#C93D27';
+                ctx.font = 'bold 22px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(pesoStr(data.price), x + cellW - 24, y + 66);
+              }
+
+              // Code background box
+              var boxW = cellW - 48;
+              var boxH = 68;
+              var boxX = x + 24;
+              var boxY = y + 92;
+              ctx.fillStyle = '#f6f1ea';
+              ctx.beginPath();
+              var r = 10;
+              ctx.moveTo(boxX + r, boxY);
+              ctx.lineTo(boxX + boxW - r, boxY);
+              ctx.quadraticCurveTo(boxX + boxW, boxY, boxX + boxW, boxY + r);
+              ctx.lineTo(boxX + boxW, boxY + boxH - r);
+              ctx.quadraticCurveTo(boxX + boxW, boxY + boxH, boxX + boxW - r, boxY + boxH);
+              ctx.lineTo(boxX + r, boxY + boxH);
+              ctx.quadraticCurveTo(boxX, boxY + boxH, boxX, boxY + boxH - r);
+              ctx.lineTo(boxX, boxY + r);
+              ctx.quadraticCurveTo(boxX, boxY, boxX + r, boxY);
+              ctx.closePath();
+              ctx.fill();
+
+              // Code text
+              ctx.fillStyle = '#1C1A1E';
+              ctx.font = 'bold 36px monospace';
+              ctx.textAlign = 'center';
+              ctx.fillText(codeFormatted, x + cellW / 2, boxY + 48);
+
+              // Includes line
+              ctx.fillStyle = '#1C1A1E';
+              ctx.font = 'bold 15px sans-serif';
+              ctx.fillText(incStr, x + cellW / 2, y + 196);
+
+              // Instruction how to use
+              ctx.fillStyle = '#6B666C';
+              ctx.font = '13px sans-serif';
+              ctx.fillText('Tap screen → I have a voucher → type code. Works once.', x + cellW / 2, y + 236);
+            }
+
+            pages.push(cv.toDataURL('image/jpeg', 0.90));
+          }
+
+          if (window.__PBPrint && typeof window.__PBPrint.print === 'function') {
+            // Width: 210mm, Height: 297mm (Standard ISO A4)
+            var result = JSON.parse(window.__PBPrint.print('Voucher tickets · ' + (data.event || 'Photo booth'), 210, 297, JSON.stringify(pages)) || '{}');
+            if (!result.ok) showToast(result.error || 'Couldn’t open the print dialog.', 4000);
+          } else {
+            // Fallback for desktop / browser: localStorage + popup
+            try {
+              localStorage.setItem('pb_ticket_print', JSON.stringify({ event: data.event, price: data.price, prints: data.prints, codes: data.codes, at: Date.now() }));
+            } catch (err) { }
+            var w = window.open('/pay/tickets.html', '_blank');
+            if (!w) showToast('Allow pop-ups to print the tickets.', 4000);
+          }
+        } catch (err) {
+          showToast('Print error: ' + (err.message || err), 4000);
+        }
+      }
+
       document.getElementById('payBatches').addEventListener('click', async function (e) {
         var b = e.target.closest('button[data-act]'); if (!b) return;
         var id = b.closest('.pay-batch').dataset.id, bt = payBatches.find(function (x) { return x.id === id; }); if (!bt) return;
         if (b.dataset.act === 'print') {
           var codes = bt.codes.filter(function (x) { return !x.used && !x.voided; }).map(function (x) { return x.c; });
-          try { localStorage.setItem('pb_ticket_print', JSON.stringify({ event: (labelInput.value || '').trim() || setupScopeEvent() || bt.evName || 'Photo booth', price: bt.price, prints: bt.prints, codes: codes, at: Date.now() })); } catch (err) { }
-          var w = window.open('/pay/tickets.html', '_blank');
-          if (!w) showToast('Allow pop-ups to print the tickets.', 4000);
+          var printData = { event: (labelInput.value || '').trim() || setupScopeEvent() || bt.evName || 'Photo booth', price: bt.price, prints: bt.prints, codes: codes, at: Date.now() };
+          await renderVoucherTicketsForAndroid(printData);
           return;
         }
         if (b.dataset.act === 'void') {
           if (!b.classList.contains('confirm')) { b.classList.add('confirm'); b.textContent = 'Tap again to cancel'; setTimeout(function () { if (b.isConnected) { b.classList.remove('confirm'); b.textContent = 'Cancel unused'; } }, 4000); return; }
-          try { var r = await postApi('/api/pay', { action: 'batch.void', id: id }, 10000); if (r.status === 200 && r.j.batch) { Object.assign(bt, r.j.batch); renderPayBatches(); refreshVoucherCache(); showToast('Unused vouchers cancelled.'); } } catch (err) { showToast('No internet. Try again.', 4000); }
+          if (bt.offlineOnly) {
+            // Void offline-only batch locally
+            bt.codes.forEach(function (c) { if (!c.used) c.voided = true; });
+            bt.voidCount = bt.codes.filter(function (c) { return c.voided && !c.used; }).length;
+            var offBatches = loadOfflineBatches().map(function (ob) { return ob.id === bt.id ? bt : ob; });
+            saveOfflineBatches(offBatches);
+            // Remove voided voucher hashes from localStorage voucher cache
+            try {
+              var cData = JSON.parse(localStorage.getItem(vCacheKey()) || 'null');
+              if (cData && cData.oid && cData.list) {
+                var voidCodes = bt.codes.filter(function (c) { return c.voided; }).map(function (c) { return c.c; });
+                var voidHashes = await Promise.all(voidCodes.map(function (vc) { return vHash(cData.oid, vc); }));
+                var vSet = new Set(voidHashes);
+                cData.list = cData.list.filter(function (entry) { return !vSet.has(entry[0]); });
+                localStorage.setItem(vCacheKey(), JSON.stringify(cData));
+              }
+            } catch (_ve) { }
+            renderPayBatches(); refreshVoucherCache(); showToast('Unused offline vouchers cancelled.');
+          } else {
+            try { var r = await postApi('/api/pay', { action: 'batch.void', id: id }, 10000); if (r.status === 200 && r.j.batch) { Object.assign(bt, r.j.batch); renderPayBatches(); refreshVoucherCache(); showToast('Unused vouchers cancelled.'); } } catch (err) { showToast('No internet. Try again.', 4000); }
+          }
         }
       });
       window.addEventListener('pb-pay-change', function () { payLoadConfig(); if (payOn() && payVoucherOn()) { payLoadBatches(); refreshVoucherCache(); } });
@@ -28259,10 +29113,20 @@
           textColor: textColor, titleSize: titleSizeMultiplier, titleBg: titleBgEnabled, titleBgColor: titleBgColor,
           outline: useOutline, outlineColor: outlineColor, shadow: useShadow,
           filter: guestLookBase !== null ? guestLookBase : filterKey, softSkin: softSkin, dateStamp: dateStamp,
+          colorAdj: Object.assign({}, colorAdj),
           guestLooks: guestLooksOn, guestLookSet: guestLookSet.slice(),
           welcomeOn: welcomeOn,
           welcomeMsg: welcomeMsg,
           welcomeBtnOn: welcomeBtnOn,
+          welcomeCustomOn: welcomeCustomOn,
+          welcomeGreeting: welcomeGreeting,
+          welcomeTitle: welcomeTitle,
+          welcomeFont: welcomeFont,
+          welcomeSub: welcomeSub,
+          welcomeStepsOn: welcomeStepsOn,
+          welcomeStep1: welcomeStep1,
+          welcomeStep2: welcomeStep2,
+          welcomeStep3: welcomeStep3,
           attractMode: attractMode,
           attractPosterFit: attractPosterFit,
           attractPosterId: attractPosterId || '',
@@ -28278,7 +29142,8 @@
           fx: Object.assign({}, fx),
           guestView: gvMode,
           brand: JSON.parse(JSON.stringify(brand)),
-          pay: Object.assign({}, payCfg)
+          pay: Object.assign({}, payCfg),
+          androidOrientation: (typeof _androidOrientationChoice === 'string') ? _androidOrientationChoice : 'landscape'
         };
       }
       function selectFont(which, value) {
@@ -28350,6 +29215,17 @@
           if (s.advanceMode === 'tap' || s.advanceMode === 'auto') { advanceMode = s.advanceMode; setSelectValue('advanceSelect', s.advanceMode); refreshAdvanceUI(); }
           if (typeof s.reviewEach === 'boolean') { reviewEach = s.reviewEach; reviewEachToggle.checked = s.reviewEach; }
           if (typeof s.allowRetake === 'boolean') { allowRetake = s.allowRetake; try { refreshRetakeUI(); } catch (e) { } }
+          if (s.colorAdj && typeof s.colorAdj === 'object') {
+            colorAdj = {
+              brightness: Math.max(-100, Math.min(100, Number(s.colorAdj.brightness) || 0)),
+              red: Math.max(-100, Math.min(100, Number(s.colorAdj.red) || 0)),
+              green: Math.max(-100, Math.min(100, Number(s.colorAdj.green) || 0)),
+              blue: Math.max(-100, Math.min(100, Number(s.colorAdj.blue) || 0))
+            };
+            window._colorAdj = colorAdj;
+            if (typeof updateColorAdjUI === 'function') updateColorAdjUI();
+            if (typeof applyLiveFilter === 'function') applyLiveFilter();
+          }
           if (s.outputMode === 'flipbook') { outputMode = extraOn('flipbook') ? 'flipbook' : 'photo'; }
           else if (s.outputMode === 'gif' || s.outputMode === 'both' || s.outputMode === 'photo') { outputMode = isGifAllowed() ? s.outputMode : 'photo'; }
           if (s.gifLayout === 'solo' || s.gifLayout === 'follow' || s.gifLayout === 'raw') { gifLayoutMode = s.gifLayout; refreshGifLayoutUI(); }
@@ -28415,6 +29291,36 @@
             var wmRow = document.getElementById('welcomeMsgRow');
             if (wmRow) wmRow.style.display = welcomeBtnOn ? '' : 'none';
           }
+          if (typeof s.welcomeCustomOn === 'boolean') {
+            welcomeCustomOn = s.welcomeCustomOn;
+            if (welcomeCustomToggle) welcomeCustomToggle.checked = welcomeCustomOn;
+            var wcf = document.getElementById('welcomeCustomFields');
+            if (wcf) wcf.style.display = welcomeCustomOn ? '' : 'none';
+          }
+          if (typeof s.welcomeGreeting === 'string') {
+            welcomeGreeting = s.welcomeGreeting;
+            if (welcomeGreetingInput) welcomeGreetingInput.value = welcomeGreeting;
+          }
+          if (typeof s.welcomeTitle === 'string') {
+            welcomeTitle = s.welcomeTitle;
+            if (welcomeTitleInput) welcomeTitleInput.value = welcomeTitle;
+          }
+          if (typeof s.welcomeFont === 'string') {
+            selectWelcomeFontUI(s.welcomeFont);
+          }
+          if (typeof s.welcomeSub === 'string') {
+            welcomeSub = s.welcomeSub;
+            if (welcomeSubInput) welcomeSubInput.value = welcomeSub;
+          }
+          if (typeof s.welcomeStepsOn === 'boolean') {
+            welcomeStepsOn = s.welcomeStepsOn;
+            if (welcomeStepsToggle) welcomeStepsToggle.checked = welcomeStepsOn;
+            var wsb = document.getElementById('welcomeStepsBlock');
+            if (wsb) wsb.style.display = welcomeStepsOn ? '' : 'none';
+          }
+          if (typeof s.welcomeStep1 === 'string') { welcomeStep1 = s.welcomeStep1; if (welcomeStep1Input) welcomeStep1Input.value = welcomeStep1; }
+          if (typeof s.welcomeStep2 === 'string') { welcomeStep2 = s.welcomeStep2; if (welcomeStep2Input) welcomeStep2Input.value = welcomeStep2; }
+          if (typeof s.welcomeStep3 === 'string') { welcomeStep3 = s.welcomeStep3; if (welcomeStep3Input) welcomeStep3Input.value = welcomeStep3; }
           if (typeof setAttractModeUI === 'function') {
             setAttractModeUI(s.attractMode || 'card');
           } else {
@@ -28441,6 +29347,9 @@
             var pr = document.getElementById('attractPosterRemove'); if (pr) pr.style.display = 'none';
           }
           setFrameColorUI(s.frameColorChoice === 'auto' || isHex(s.frameColorChoice) ? s.frameColorChoice : 'auto');
+          if (typeof setAndroidOrientationUI === 'function') {
+            setAndroidOrientationUI(typeof s.androidOrientation === 'string' ? s.androidOrientation : 'landscape');
+          }
           photoPlacement = s.photoPlacement === 'background' ? 'background' : 'band';
           photoPlacementSelect.value = photoPlacement;
           if (typeof s.cropFocus === 'string') cropFocus = s.cropFocus;
@@ -29321,8 +30230,10 @@
           brandEls.dt.style.fontSize = px(0.9);
           brandEls.pwr.style.fontSize = px(0.72);
           brandEls.pwr.hidden = !cImg;
-          brandEls.ev.textContent = (labelInput.value || '').trim() || 'Your event';
-          brandEls.dt.textContent = (typeof currentDateLabel === 'function' && currentDateLabel()) || '';
+          var isCustomW = typeof welcomeCustomOn !== 'undefined' && welcomeCustomOn;
+          col.querySelector('.bpv-msg').textContent = isCustomW && (welcomeGreeting != null && welcomeGreeting !== '') ? welcomeGreeting : 'Welcome!';
+          brandEls.ev.textContent = isCustomW && (welcomeTitle || '').trim() ? welcomeTitle.trim() : ((labelInput.value || '').trim() || 'Your event');
+          brandEls.dt.textContent = isCustomW && welcomeSub !== '' ? welcomeSub : ((typeof currentDateLabel === 'function' && currentDateLabel()) || '');
           brandEls.chip.style.cssText = 'font-size:' + px(0.85) + ';left:' + (brandPvGeo.colR) + 'px;top:' + padY + 'px;transform:translateX(-50%);';
         }
         // Corner logo

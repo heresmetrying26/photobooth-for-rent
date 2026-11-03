@@ -6,6 +6,10 @@
     <usb-device vendor-id="1193" />   <!-- Canon -->
     <usb-device vendor-id="1356" />   <!-- Sony -->
 
+    <!-- USB webcams (UVC = USB Video class 14): Logitech Brio / C270 / C920 and others -->
+    <usb-device class="14" />
+    <usb-device vendor-id="1133" />   <!-- Logitech (0x046D) -->
+
     <!--
         Epson ink-tank photo & AIO printers (Seiko Epson Corp. Vendor ID 1208 / 0x04B8)
         Product IDs (decimal):

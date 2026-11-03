@@ -653,9 +653,8 @@ class MainActivity : AppCompatActivity() {
                     append("window.__PB.watermark=false;")
                     append("window.__PB.exp=").append(expMs).append(";")   // this rental code's own expiry, not a fixed local grant
                     append("window.__PB.print={enabled:").append(printEnabled).append(",sizes:[").append(printSizesJs).append("]};")
-                    // Report offline so Drive / pay / vouchers skip at once instead of hanging on DNS.
-                    // Photos don't need the internet: the app saves them (__PBLocal) and LocalShareServer shares them.
-                    append("try{Object.defineProperty(Navigator.prototype,'onLine',{get:function(){return false;},configurable:true});}catch(e){}")
+                    // In offline kiosk mode, let navigator.onLine reflect real network connectivity via __PBLocal
+                    append("try{Object.defineProperty(Navigator.prototype,'onLine',{get:function(){return (window.__PBLocal && typeof window.__PBLocal.isOnline === 'function') ? window.__PBLocal.isOnline() : true;},configurable:true});}catch(e){}")
                     append("</script>")
                 }
 
@@ -691,6 +690,10 @@ class MainActivity : AppCompatActivity() {
         if (path.startsWith("/api/") || host.contains("catbox.moe") || host.contains("qrserver.com") ||
             host.contains("script.google.com") || host.contains("drive.google.com")
         ) {
+            // When internet is available, allow /api/pay so vouchers and offline batches sync to the server
+            if (isNetworkAvailable() && path.startsWith("/api/pay")) {
+                return null
+            }
             return webResponse(
                 "application/json",
                 """{"ok":false,"error":"offline"}""".toByteArray(Charsets.UTF_8),

@@ -81,6 +81,7 @@ class UsbCameraHelper(private val ctx: Context) {
 
     private val usb = ctx.getSystemService(Context.USB_SERVICE) as UsbManager
     private val lock = Any()
+    private val uvc = UvcWebcam(ctx)
 
     // ---- the open camera (all guarded by lock) ----
     private var dev: UsbDevice? = null
@@ -152,6 +153,7 @@ class UsbCameraHelper(private val ctx: Context) {
         try { server?.close() } catch (_: IOException) { }
         server = null
         synchronized(lock) { closeCamera() }
+        uvc.release()
     }
 
     private fun handle(s: Socket) {
@@ -208,6 +210,11 @@ class UsbCameraHelper(private val ctx: Context) {
     private fun json(out: OutputStream, o: JSONObject) = reply(out, 200, "application/json", o.put("ok", true).toString().toByteArray())
 
     private fun route(out: OutputStream, method: String, path: String, query: String) {
+        if (path == "/uvc" || path.startsWith("/uvc/")) {   // plain USB webcams (see UvcWebcam)
+            val r = uvc.route(method, path, query)
+            reply(out, r.status, r.type, r.body)
+            return
+        }
         when {
             method == "GET" && path == "/camera" -> json(out, listJson())
             method == "POST" && path == "/camera/open" -> json(out, openCamera())

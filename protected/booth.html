@@ -11648,6 +11648,22 @@
             <option value="">Loading cameras…</option>
           </select>
           <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
+          <div id="webcamResBox" style="display:none; margin-top:8px;">
+            <p class="panel-label" style="margin-top:6px;">USB webcam preview</p>
+            <select class="cam-select" id="webcamPreviewRes">
+              <option value="auto">Auto (best that works, up to 1080p)</option>
+              <option value="max">Max (camera's full resolution)</option>
+              <option value="1080">1080p</option>
+              <option value="720">720p</option>
+              <option value="480">480p (smoothest, GIF / boomerang)</option>
+            </select>
+            <p class="panel-label" style="margin-top:6px;">USB webcam photo</p>
+            <select class="cam-select" id="webcamPhotoRes">
+              <option value="preview">Same as preview (instant)</option>
+              <option value="max">Max resolution (switches at capture, ~1–2 s)</option>
+            </select>
+            <p class="panel-hint" id="webcamResNote"></p>
+          </div>
           <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
           <button type="button" class="action-btn" id="usbLogBtn" style="display:none; width:auto; margin:6px 0 0;">Copy
             camera log</button>
@@ -16622,8 +16638,144 @@
 
       function wait(ms) { return new Promise(res => setTimeout(res, ms)); }
 
+      // ---- Plain USB webcams (Logitech Brio / C270...) in the Android app ----
+      // Tablets whose Android lists USB webcams itself (Android 14+, maker dependent) need nothing: getUserMedia sees them.
+      // Elsewhere (Samsung Tab A / S9 FE, Xiaomi Pad...) the app opens the webcam (UvcWebcam.kt) and serves JPEG frames on
+      // 127.0.0.1:17321/uvc; here they become one more "webcam" in the camera menu (a canvas stream), so everything else
+      // in the booth works unchanged.
+      const UVC_ID = 'pb-uvc-webcam';
+      // Webcam resolution settings (this tablet only): preview auto | max | 1080 | 720 | 480; photo preview | max.
+      const WEBCAM_RES_KEY = 'pb4u.webcamRes';
+      const webcamRes = (function () {
+        let v = null; try { v = JSON.parse(localStorage.getItem(WEBCAM_RES_KEY) || 'null'); } catch (e) { }
+        v = v || {};
+        return { preview: ['auto', 'max', '1080', '720', '480'].includes(v.preview) ? v.preview : 'auto', photo: v.photo === 'max' ? 'max' : 'preview' };
+      })();
+      function saveWebcamRes() { try { localStorage.setItem(WEBCAM_RES_KEY, JSON.stringify(webcamRes)); } catch (e) { } }
+      // getUserMedia size for a webcam Android lists itself (Path 1)
+      function webcamGumSize() {
+        const p = webcamRes.preview;
+        if (p === 'max') return { width: { ideal: 4096 }, height: { ideal: 2160 } };
+        if (p === '720') return { width: { ideal: 1280 }, height: { ideal: 720 } };
+        if (p === '480') return { width: { ideal: 640 }, height: { ideal: 480 } };
+        return { width: { ideal: 1920 }, height: { ideal: 1080 } };
+      }
+      function isUsbWebcamOption(id, label) { return id === UVC_ID || /usb webcam|facing external/i.test(label || ''); }
+      (function uvcShim() {
+        const inApp = /PB4uAndroid/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.android);
+        const md = navigator.mediaDevices;
+        if (!inApp || !md || !md.enumerateDevices || !md.getUserMedia) return;
+        const BASE = 'http://127.0.0.1:17321/uvc';
+        const origEnum = md.enumerateDevices.bind(md);
+        const origGum = md.getUserMedia.bind(md);
+        let present = null;   // { name } when the app has a webcam to offer
+        async function probe() {
+          try {
+            const j = await (await fetch(BASE, { cache: 'no-store', signal: AbortSignal.timeout(4000) })).json();
+            const d = j && j.ok && !j.native && j.devices && j.devices[0];
+            return d ? { name: d.name || 'USB webcam' } : null;
+          } catch (e) { return null; }
+        }
+        async function recheck() {
+          const now = await probe();
+          if (!!now !== !!present) { present = now; try { md.dispatchEvent(new Event('devicechange')); } catch (e) { } }
+          present = now;
+        }
+        recheck();
+        setInterval(() => { if (!document.hidden) recheck(); }, 3000);
+        window.addEventListener('pb-usb-attached', () => setTimeout(recheck, 800));
+        md.enumerateDevices = async function () {
+          const list = await origEnum();
+          if (present === null) present = await probe();
+          if (!present) return list;
+          const fake = { deviceId: UVC_ID, groupId: UVC_ID, kind: 'videoinput', label: 'USB webcam \u2013 ' + present.name };
+          fake.toJSON = () => Object.assign({}, fake);
+          return list.concat([fake]);
+        };
+        const wantsUvc = v => {
+          const id = v && typeof v === 'object' ? v.deviceId : null;
+          return id === UVC_ID || !!(id && (id.exact === UVC_ID || id.ideal === UVC_ID));
+        };
+        md.getUserMedia = async function (c) {
+          if (!c || !wantsUvc(c.video)) return origGum(c);
+          const r = await fetch(BASE + '/open?preview=' + encodeURIComponent(webcamRes.preview), { method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(95000) });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j.ok) {
+            const e = new Error((j && j.error) || 'The USB webcam did not start.');
+            e.name = 'NotReadableError';
+            try { if (typeof usbLog === 'function') usbLog('uvc-open-failed', { error: e.message }); } catch (x) { }
+            throw e;
+          }
+          window.__pbUvcInfo = j;
+          const [w, h] = String(j.size || '1280x720').split('x').map(Number);
+          const canvas = document.createElement('canvas');
+          canvas.width = w || 1280; canvas.height = h || 720;
+          const g = canvas.getContext('2d');
+          const stream = canvas.captureStream(30);
+          const track = stream.getVideoTracks()[0];
+          let alive = true, fails = 0;
+          const origStop = track.stop.bind(track);
+          track.stop = function () {
+            if (!alive) return;
+            alive = false; origStop();
+            fetch(BASE + '/close', { method: 'POST', cache: 'no-store' }).catch(() => { });
+          };
+          const lost = () => {
+            if (!alive) return;
+            alive = false; origStop();
+            try { track.dispatchEvent(new Event('ended')); } catch (e) { }   // the booth's "Reconnecting…" takes over
+          };
+          (async function pump() {
+            while (alive) {
+              try {
+                const fr = await fetch(BASE + '/frame', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+                if (fr.status === 410) { lost(); return; }
+                if (fr.status === 200) {
+                  const bmp = await createImageBitmap(await fr.blob());
+                  if (bmp.width !== canvas.width || bmp.height !== canvas.height) { canvas.width = bmp.width; canvas.height = bmp.height; }
+                  g.drawImage(bmp, 0, 0); bmp.close && bmp.close();
+                  fails = 0;
+                } else { await wait(30); }
+              } catch (e) {
+                if (++fails > 20) { lost(); return; }
+                await wait(150);
+              }
+            }
+          })();
+          return stream;
+        };
+      })();
+
       const cameraSelect = document.getElementById('cameraSelect');
       const cameraSection = document.getElementById('cameraSection');
+      // USB webcam resolution menus: only shown while a USB webcam is the chosen camera.
+      const webcamResBox = document.getElementById('webcamResBox');
+      const webcamPreviewRes = document.getElementById('webcamPreviewRes');
+      const webcamPhotoRes = document.getElementById('webcamPhotoRes');
+      function usbWebcamSelected() {
+        const o = cameraSelect && cameraSelect.options[cameraSelect.selectedIndex];
+        return !!(o && isUsbWebcamOption(o.value, o.textContent));
+      }
+      function refreshWebcamResUI() {
+        if (!webcamResBox) return;
+        webcamResBox.style.display = usbWebcamSelected() ? '' : 'none';
+        webcamPreviewRes.value = webcamRes.preview;
+        webcamPhotoRes.value = webcamRes.photo;
+        const note = document.getElementById('webcamResNote');
+        const info = window.__pbUvcInfo;
+        const now = (typeof video !== 'undefined' && video && video.videoWidth) ? video.videoWidth + '\u00d7' + video.videoHeight : '';
+        if (note) note.textContent = (now ? 'Now: ' + now + '. ' : '') + (info && info.max ? 'Camera max: ' + info.max + '. ' : '') +
+          'Tablets with a USB 2.0 port (Tab A11, S9 FE...) can\u2019t show 4K live; use Max photo instead.';
+      }
+      if (webcamResBox) {
+        webcamPreviewRes.addEventListener('change', () => {
+          webcamRes.preview = webcamPreviewRes.value; saveWebcamRes();
+          if (usbWebcamSelected() && cameraSelect.value) { try { initCamera(cameraSelect.value); } catch (e) { } }   // reopen at the new size
+        });
+        webcamPhotoRes.addEventListener('change', () => { webcamRes.photo = webcamPhotoRes.value; saveWebcamRes(); });
+        cameraSelect.addEventListener('change', () => setTimeout(refreshWebcamResUI, 0));
+        setInterval(() => { if (!document.hidden && cameraSection && cameraSection.offsetParent !== null) refreshWebcamResUI(); }, 2000);
+      }
       let currentDeviceId = null;
       let currentStream = null;
 
@@ -16671,7 +16823,7 @@
         videoDevices.forEach((d, i) => {
           const opt = document.createElement('option');
           opt.value = d.deviceId;
-          opt.textContent = d.label || 'Camera ' + (i + 1);
+          opt.textContent = (ANDROID_APP && /facing external/i.test(d.label || '')) ? 'USB webcam (' + d.label + ')' : (d.label || 'Camera ' + (i + 1));
           cameraSelect.appendChild(opt);
         });
         if (usbCam.supported) {
@@ -16702,6 +16854,7 @@
         const usbPick = usbCam.supported && (previous === USB_CAM_ID || (!previous && saved && saved.id === USB_CAM_ID) || (!previous && usbCam.viaHelper && usbCam.helperSees)) ? { deviceId: USB_CAM_ID } : null;
         const pick = usbPick || byId(previous)
           || (saved && (byId(saved.id) || (saved.label && videoDevices.find(d => d.label === saved.label))))
+          || (ANDROID_APP && videoDevices.find(d => d.deviceId === UVC_ID || /external|usb webcam/i.test(d.label || '')))   // tablet app: a plugged-in USB webcam beats the tablet's own cameras
           || videoDevices.find(d => BUILTIN.test(lbl(d)))
           || videoDevices.find(d => d.label && !AVOID.test(lbl(d)));
         if (pick) cameraSelect.value = pick.deviceId;
@@ -16845,7 +16998,8 @@
       // drops the size first, then the id if that camera no longer exists.
       // A busy or blocked camera is never swapped for a different one.
       async function openCameraStream(deviceId) {
-        const size = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+        const selOpt = deviceId && Array.from(cameraSelect.options).find(o => o.value === deviceId);
+        const size = (ANDROID_APP && selOpt && isUsbWebcamOption(deviceId, selOpt.textContent)) ? webcamGumSize() : { width: { ideal: 1920 }, height: { ideal: 1080 } };
         const gum = video => navigator.mediaDevices.getUserMedia({ video, audio: false });
         const stop = e => e && (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e.name === 'SecurityError');
         let lastErr = null;
@@ -18231,8 +18385,51 @@
         if (!(usbCam.viaHelper && usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return 0;
         return Math.max(0, Math.min(USB_LEAD_MAX, usbCam.shutterLagMs - 200));
       }
+      // USB webcam set to "Max resolution" photos: the full-size still replaces the live-view frame
+      // (app webcam: /uvc/capture switches the webcam to its biggest mode for the shot; Android-listed webcam: ImageCapture).
+      async function webcamMaxStill() {
+        if (currentDeviceId === UVC_ID) {
+          const r = await fetch('http://127.0.0.1:17321/uvc/capture?mode=max', { method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(15000) });
+          if (r.status !== 200) throw new Error('webcam still failed (' + r.status + ')');
+          return await r.blob();
+        }
+        const trk = currentStream && currentStream.getVideoTracks()[0];
+        if (!trk || typeof ImageCapture === 'undefined') throw new Error('no ImageCapture');
+        const ic = new ImageCapture(trk);
+        let opts = {};
+        try { const caps = await ic.getPhotoCapabilities(); if (caps && caps.imageWidth && caps.imageWidth.max) opts = { imageWidth: caps.imageWidth.max, imageHeight: caps.imageHeight.max }; } catch (e) { }
+        return await ic.takePhoto(opts);
+      }
+      async function webcamMaxShot(index) {
+        const shots = shotCanvases;
+        try {
+          const bmp = await createImageBitmap(await webcamMaxStill());
+          if (bmp.width <= (video.videoWidth || 0)) { bmp.close(); return; }   // not bigger than the live view: keep the instant frame
+          const k = Math.min(1, USB_SHOT_MAX / Math.max(bmp.width, bmp.height));
+          const c = document.createElement('canvas');
+          c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+          const ctx = c.getContext('2d');
+          ctx.imageSmoothingQuality = 'high';
+          if (mirrorPreview()) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
+          ctx.drawImage(bmp, 0, 0, c.width, c.height);
+          bmp.close();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          applyBgReplace(c);
+          var rawW = document.createElement('canvas');
+          rawW.width = c.width; rawW.height = c.height;
+          rawW.getContext('2d').drawImage(c, 0, 0);
+          c._raw = rawW;
+          applyFilterToCanvas(c);
+          c._isShot = true;
+          if (shotCanvases === shots) { shotCanvases[index] = c; updateFilmTrack(); }
+        } catch (err) {
+          console.warn('Webcam max photo failed, live frame used:', err);
+          try { usbLog('webcam-max-fail', { error: String(err && err.message || err) }); } catch (e) { }
+        }
+      }
       async function captureShot(index) {
         captureFrame(index);
+        if (ANDROID_APP && webcamRes.photo === 'max' && currentDeviceId !== USB_CAM_ID && usbWebcamSelected()) return webcamMaxShot(index);
         if (!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
         const shots = shotCanvases;
         try {
@@ -26798,6 +26995,38 @@
         var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('v|' + oid + '|' + code));
         return Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('').slice(0, 20);
       }
+
+      // Offline batch storage across all events on this tablet
+      function offlineBatchStorageKey() { return 'pb_offline_batches_' + vCacheKey(); }
+      function loadAllOfflineBatches() {
+        var map = {};
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('pb_offline_batches_') >= 0) {
+            try {
+              var list = JSON.parse(localStorage.getItem(k) || '[]');
+              if (Array.isArray(list)) {
+                list.forEach(function (b) { if (b && b.id) { b._storageKey = k; map[b.id] = b; } });
+              }
+            } catch (e) { }
+          }
+        }
+        return Object.values(map);
+      }
+      function saveAllOfflineBatches(all) {
+        var curKey = offlineBatchStorageKey();
+        var byKey = {};
+        all.forEach(function (b) {
+          var k = b._storageKey || curKey;
+          (byKey[k] = byKey[k] || []).push(b);
+        });
+        for (var k in byKey) {
+          try { localStorage.setItem(k, JSON.stringify(byKey[k])); } catch (e) { }
+        }
+      }
+      function saveOfflineBatches(batches) { saveAllOfflineBatches(batches); }
+      function loadOfflineBatches() { return loadAllOfflineBatches(); }
+
       async function refreshVoucherCache() {
         if (!payOn() || !payVoucherOn() || navigator.onLine === false) return;
         try {
@@ -26810,8 +27039,20 @@
           }
         } catch (e) { }
       }
+
       async function syncVouchers() {
-        var q = vQueue(); if (!q.length || navigator.onLine === false) return;
+        if (navigator.onLine === false) return;
+
+        // 1. Sync offline batches to server so My Events records them and tallies used/voided counts
+        try {
+          var allOff = loadAllOfflineBatches();
+          if (allOff.length) {
+            await postApi('/api/pay', { action: 'batch.sync', batches: allOff }, 15000);
+          }
+        } catch (_bErr) { }
+
+        // 2. Sync used codes queue
+        var q = vQueue(); if (!q.length) return;
         var byEv = {};
         q.forEach(function (x) { (byEv[x.ev || ''] = byEv[x.ev || ''] || []).push(x); });
         var left = [];
@@ -26823,54 +27064,102 @@
         }
         vQueueSet(left);
       }
+
+      async function removeCodeFromAllCaches(code) {
+        for (var kIdx = 0; kIdx < localStorage.length; kIdx++) {
+          var lk = localStorage.key(kIdx);
+          if (lk && lk.indexOf('pb_vcache:') >= 0) {
+            try {
+              var c = JSON.parse(localStorage.getItem(lk) || 'null');
+              if (c && c.oid && Array.isArray(c.list)) {
+                var h = await vHash(c.oid, code);
+                var prevLen = c.list.length;
+                c.list = c.list.filter(function (x) { return x[0] !== h; });
+                if (c.list.length !== prevLen) localStorage.setItem(lk, JSON.stringify(c));
+              }
+            } catch (e) { }
+          }
+        }
+      }
+
       async function payRedeem(code) {
+        code = String(code || '').replace(/\D/g, '');
+        if (code.length !== 8) return { error: 'bad' };
+
+        // 1. Check if already redeemed in this kiosk queue
+        if (vQueue().some(function (x) { return x.code === code; })) return { error: 'used' };
+
+        // 2. DIRECT OFFLINE BATCH CHECK (guarantees offline-created vouchers always work)
+        var allBatches = loadAllOfflineBatches();
+        for (var bi = 0; bi < allBatches.length; bi++) {
+          var ob = allBatches[bi];
+          var match = (ob.codes || []).find(function (x) { return (x.c || x) === code; });
+          if (match) {
+            if (match.used) return { error: 'used' };
+            if (match.voided) return { error: 'void' };
+            match.used = true;
+            match.usedAt = Date.now();
+            ob.usedCount = (ob.codes || []).filter(function (x) { return x.used; }).length;
+            saveAllOfflineBatches(allBatches);
+            var q = vQueue();
+            q.push({ code: code, at: Date.now(), ev: ob.ev || setupScopeEvent(), batchId: ob.id });
+            vQueueSet(q);
+            if (typeof payBatches !== 'undefined' && Array.isArray(payBatches)) {
+              var mem = payBatches.find(function (b) { return b.id === ob.id; });
+              if (mem) { mem.usedCount = ob.usedCount; mem.codes = ob.codes; }
+              if (typeof renderPayBatches === 'function') renderPayBatches();
+            }
+            if (navigator.onLine !== false) syncVouchers();
+            return { ok: true, prints: ob.prints || 1, offline: true };
+          }
+        }
+
+        // 3. Online redeem attempt if connected
         if (navigator.onLine !== false) {
           try {
             var r = await postApi('/api/pay', { action: 'redeem', code: code }, 7000);
             if (r.status === 200 && r.j.ok) {
-              try { var c0 = JSON.parse(localStorage.getItem(vCacheKey()) || 'null'); if (c0 && c0.oid) { var h0 = await vHash(c0.oid, code); c0.list = c0.list.filter(function (x) { return x[0] !== h0; }); localStorage.setItem(vCacheKey(), JSON.stringify(c0)); } } catch (e) { }
+              removeCodeFromAllCaches(code);
               return { ok: true, prints: r.j.prints || 0 };
             }
             if (r.status === 200 && r.j.error) return { error: r.j.error };
             if (r.status === 429) return { error: 'wait' };
             if (r.status === 403 && r.j.off) return { error: 'off' };
             if (r.status < 500) return { error: 'bad' };
-          } catch (e) { /* no connection: check the offline copy */ }
+          } catch (e) { /* offline / network error: fall through */ }
         }
-        var c = null; try { c = JSON.parse(localStorage.getItem(vCacheKey()) || 'null'); } catch (e) { }
-        if (vQueue().some(function (x) { return x.code === code; })) return { error: 'used' };
-        if (!c || !c.oid) return { error: 'offline' };
-        var h = await vHash(c.oid, code);
-        var i = c.list.findIndex(function (x) { return x[0] === h; });
-        if (i < 0) return { error: 'bad-offline' };
-        var prints = c.list[i][1] || 0;
-        c.list.splice(i, 1);
-        try { localStorage.setItem(vCacheKey(), JSON.stringify(c)); } catch (e) { }
-        var q = vQueue(); q.push({ code: code, at: Date.now(), ev: setupScopeEvent() }); vQueueSet(q);
-        // Track used code in offline batches if generated locally
-        try {
-          var offBatches = loadOfflineBatches();
-          var changed = false;
-          offBatches.forEach(function (ob) {
-            (ob.codes || []).forEach(function (cd) {
-              if ((cd.c || cd) === code && !cd.used) {
-                cd.used = true;
-                ob.usedCount = (ob.usedCount || 0) + 1;
-                changed = true;
-              }
-            });
-          });
-          if (changed) {
-            saveOfflineBatches(offBatches);
-            offBatches.forEach(function (ob) {
-              var mem = payBatches.find(function (b) { return b.id === ob.id; });
-              if (mem) { mem.usedCount = ob.usedCount; mem.codes = ob.codes; }
-            });
-            renderPayBatches();
+
+        // 4. Offline check against cached hashes (vouchers created on server / website)
+        var cacheKeys = [vCacheKey()];
+        for (var kIdx = 0; kIdx < localStorage.length; kIdx++) {
+          var lk = localStorage.key(kIdx);
+          if (lk && lk.indexOf('pb_vcache:') >= 0 && cacheKeys.indexOf(lk) < 0) {
+            cacheKeys.push(lk);
           }
-        } catch (_oe) { }
-        return { ok: true, prints: prints, offline: true };
+        }
+        for (var ck = 0; ck < cacheKeys.length; ck++) {
+          var cKey = cacheKeys[ck];
+          var c = null;
+          try { c = JSON.parse(localStorage.getItem(cKey) || 'null'); } catch (e) { }
+          if (c && c.oid && Array.isArray(c.list) && c.list.length) {
+            var h = await vHash(c.oid, code);
+            var i = c.list.findIndex(function (x) { return x[0] === h; });
+            if (i >= 0) {
+              var prints = c.list[i][1] || 0;
+              c.list.splice(i, 1);
+              try { localStorage.setItem(cKey, JSON.stringify(c)); } catch (e) { }
+              var q2 = vQueue();
+              q2.push({ code: code, at: Date.now(), ev: setupScopeEvent() });
+              vQueueSet(q2);
+              if (navigator.onLine !== false) syncVouchers();
+              return { ok: true, prints: prints, offline: true };
+            }
+          }
+        }
+
+        return { error: 'bad-offline' };
       }
+
       var V_ERR = {
         bad: 'That isn’t a valid voucher. Check the numbers and try again.',
         'bad-offline': 'The booth is offline and doesn’t recognise this code. Check the numbers, or ask the attendant.',
@@ -26920,67 +27209,51 @@
         document.getElementById('payProblemT').textContent = text;
         var b = document.getElementById('payRetry');
         b.hidden = !retry; b.textContent = retryLabel || 'Try again';
-        b.onclick = retry || null;
         payShow('payProblem');
       }
-      function payPaid(prints) {
-        payStopTimers();
-        setPayCredit({ prints: prints || 0, at: Date.now() });
-        try { if (fx && fx.sound) { unlockAudio(); fxPose(); } } catch (e) { }
-        payShow('payDone');
-        setTimeout(function () { payFinish(true); }, 1500);
-      }
-
       async function payStartQr() {
         payStopTimers();
         payShow('payQr');
-        var img = document.getElementById('payQrImg'), wait = document.getElementById('payQrWait'), st = document.getElementById('payQrState');
-        img.removeAttribute('src'); wait.hidden = false; wait.textContent = 'Making your QR…';
-        document.getElementById('payTimerBar').style.width = '100%';
-        document.getElementById('paySim').hidden = true; document.getElementById('payTestTag').hidden = true;
-        st.innerHTML = '<span class="dot"></span>Waiting for payment';
-        if (!(payAcct && payAcct.connected)) {
-          return payVoucherOn() ? payStartVoucher('QR payment isn’t ready. Use a voucher, or ask the attendant.') : payProblem('QR payment isn’t set up on this booth yet. Please ask the attendant.');
+        document.getElementById('payQrWait').hidden = false;
+        document.getElementById('payQrImg').hidden = true;
+        try {
+          var r = await postApi('/api/pay', { action: 'qr', amount: payCfg.price, prints: payCfg.prints, label: '1 photo session' }, 12000);
+          if (r.status === 200 && r.j.image) {
+            payState.qrId = r.j.id; payState.exp = r.j.expiresAt || (Date.now() + 180000); payState.test = !!r.j.test;
+            var img = document.getElementById('payQrImg');
+            img.src = r.j.image; img.hidden = false;
+            document.getElementById('payQrWait').hidden = true;
+            document.getElementById('payQrNotice').hidden = !payState.test;
+            payPollStart();
+          } else {
+            payProblem((r.j && r.j.error) || 'Couldn’t make the payment QR. Please try again or ask the attendant.', true);
+          }
+        } catch (e) {
+          payProblem('Can’t reach payments right now. Please ask the attendant or use a voucher.', true);
         }
-        if (navigator.onLine === false) {
-          return payVoucherOn() ? payStartVoucher('No internet for QR payment right now — enter a voucher instead.') : payProblem('No internet for QR payment right now. Please ask the attendant.', payStartQr);
-        }
-        var r;
-        try { r = await postApi('/api/pay', { action: 'qr', amount: payCfg.price, prints: payCfg.prints, label: (labelInput.value || '').trim() }, 25000); }
-        catch (e) { r = { status: 0, j: {} }; }
-        if (!payState.resolve || payState.view !== 'payQr') return;            // closed while it was loading
-        if (r.status !== 200 || !r.j.image) {
-          return payProblem((r.j && r.j.error) || 'Couldn’t make the payment QR. Check the internet and try again.', payStartQr);
-        }
-        payState.qrId = r.j.id; payState.test = !!r.j.test;
-        payState.exp = Date.now() + 295000;
-        img.onload = function () { wait.hidden = true; }; img.onerror = function () { wait.textContent = 'QR didn\u2019t load. Tap \u2190 or \u2715 and try again.'; };
-        img.src = r.j.image; if (img.complete && img.naturalWidth) wait.hidden = true;
-        document.getElementById('paySim').hidden = !r.j.test; document.getElementById('payTestTag').hidden = !r.j.test;
-        var total = payState.exp - Date.now();
-        var tick = function () {
-          var left = Math.max(0, payState.exp - Date.now());
-          document.getElementById('payTimerBar').style.width = (left / total * 100).toFixed(1) + '%';
-          var m = Math.floor(left / 60000), s2 = Math.floor(left / 1000) % 60;
-          st.innerHTML = '<span class="dot"></span>Waiting for payment · ' + m + ':' + String(s2).padStart(2, '0');
-          if (left <= 0) payProblem('This QR has expired. Make a new one to pay.', payStartQr, 'New QR');
-        };
-        tick(); payState.timer = setInterval(tick, 1000);
-        var id = r.j.id;
+      }
+      function payPollStart() {
+        clearInterval(payState.poll);
         payState.poll = setInterval(async function () {
-          if (payState.qrId !== id || payState.busy) return;
-          payState.busy = true;
+          if (!payState.qrId || payState.view !== 'payQr') { clearInterval(payState.poll); return; }
+          if (Date.now() > payState.exp) { payProblem('That payment code expired. Tap below to get a fresh one.', true, 'New code'); return; }
           try {
-            var s3 = await postApi('/api/pay', { action: 'status', id: id }, 8000);
-            if (payState.qrId === id && s3.status === 200 && s3.j.status === 'paid') payPaid(s3.j.prints);
+            var r = await postApi('/api/pay', { action: 'status', id: payState.qrId }, 5000);
+            if (r.status === 200 && r.j.status === 'paid') {
+              clearInterval(payState.poll);
+              document.getElementById('payDoneT').textContent = 'Payment received';
+              payPaid(payCfg.prints);
+            }
           } catch (e) { }
-          payState.busy = false;
         }, 2500);
       }
-      document.getElementById('paySim').addEventListener('click', async function () {
-        if (!payState.qrId) return;
-        try { var r = await postApi('/api/pay', { action: 'simulate', id: payState.qrId }, 8000); if (r.status === 200 && r.j.status === 'paid') payPaid(r.j.prints); else showToast(r.j.error || 'Couldn’t simulate.', 4000); } catch (e) { }
-      });
+      function payPaid(prints) {
+        payStopTimers();
+        payPrintAllow = prints || 0;
+        setPayCredit({ at: Date.now(), prints: payPrintAllow });
+        payShow('payDone');
+        setTimeout(function () { payFinish(true); }, 1500);
+      }
 
       function payRenderCode() {
         var el = document.getElementById('payCode'), h = '';
@@ -27038,27 +27311,19 @@
       function refreshPayUI() {
         var sec = document.getElementById('paySection'); if (!sec) return;
         sec.style.display = payOn() ? '' : 'none';
-        if (!payOn()) return;
-        [].forEach.call(document.querySelectorAll('#payModes .chip'), function (b) { b.classList.toggle('active', b.dataset.mode === payCfg.mode); b.setAttribute('aria-checked', b.dataset.mode === payCfg.mode ? 'true' : 'false'); });
-        document.getElementById('payMore').style.display = payCfg.mode === 'off' ? 'none' : '';
-        var pr = document.getElementById('payPrice'); if (document.activeElement !== pr) pr.value = payCfg.price;
-        document.getElementById('payPrintsVal').textContent = payCfg.prints ? payCfg.prints + ' print' + (payCfg.prints > 1 ? 's' : '') : 'Use print settings';
-        document.getElementById('payPrintsMinus').disabled = payCfg.prints <= 0;
-        document.getElementById('payPrintsPlus').disabled = payCfg.prints >= 5;
-        var qs = document.getElementById('payQrStatus');
-        qs.style.display = payQrOn() ? '' : 'none';
-        var link = '<a href="/lifetime/?booth=1" target="_blank" rel="noopener">My Events</a>';
-        if (payAcct && payAcct.connected) {
-          qs.className = 'pay-status ok';
-          qs.innerHTML = '<b>PayMongo connected</b>' + (payAcct.mode === 'live' ? '<span class="tag live">Live</span>' : '<span class="tag">Test mode</span>') +
-            '<br>Guests pay by QR Ph (GCash, Maya, bank apps). Money goes straight to your PayMongo account; PayMongo’s fee is 1.5%.' +
-            (payAcct.mode === 'live' ? '' : '<br><b>Test mode:</b> guests see a “Simulate payment” button. Connect your live key on ' + link + ' before the event.');
-        } else {
-          qs.className = 'pay-status warn';
-          qs.innerHTML = '<b>PayMongo isn’t connected yet.</b> Open ' + link + ', sign in with your code and tap <b>Connect PayMongo</b>. Until then guests can’t pay by QR' + (payVoucherOn() ? ' (vouchers still work).' : '.');
+        var off = !payActive();
+        document.querySelectorAll('.pay-on-row').forEach(function (el) { el.hidden = off; });
+        document.querySelectorAll('#payModes .chip').forEach(function (c) { c.classList.toggle('active', c.dataset.mode === payCfg.mode); });
+        var pi = document.getElementById('payPrice'); if (pi) pi.value = payCfg.price;
+        var pv = document.getElementById('payPrintsVal'); if (pv) pv.textContent = payCfg.prints ? payCfg.prints + ' print' + (payCfg.prints > 1 ? 's' : '') : 'none';
+        var qf = document.getElementById('payQrFields'); if (qf) qf.hidden = !payQrOn();
+        var vf = document.getElementById('payVoucherFields'); if (vf) vf.hidden = !payVoucherOn();
+        var ac = document.getElementById('payAcctStatus');
+        if (ac) {
+          if (!payAcct) ac.innerHTML = 'PayMongo not connected. Connect it on the My Events page to take QR payments.';
+          else ac.innerHTML = 'Connected to PayMongo (' + payEsc(payAcct.mode) + ' mode, •••• ' + payEsc(payAcct.last4 || '••••') + ').';
         }
-        document.getElementById('payVoucherBox').style.display = payVoucherOn() ? '' : 'none';
-        document.getElementById('payLockHint').innerHTML = payLockHint();
+        var hint = document.getElementById('payLockHint'); if (hint) hint.innerHTML = payLockHint();
         refreshPayBadge();
       }
       function payChanged() { refreshPayUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); if (payVoucherOn()) { refreshVoucherCache(); payLoadBatches(); } }
@@ -27083,6 +27348,7 @@
         } catch (e) { }
         refreshPayUI();
       }
+
       var payBatches = [];
       function fmtShortDate(t) { try { return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); } catch (e) { return ''; } }
       function renderPayBatches() {
@@ -27092,18 +27358,19 @@
           var total = typeof bt.total === 'number' ? bt.total : (bt.codes ? bt.codes.length : 0);
           var usedCount = typeof bt.usedCount === 'number' ? bt.usedCount : (bt.codes ? bt.codes.filter(function (x) { return x.used; }).length : 0);
           var voidCount = typeof bt.voidCount === 'number' ? bt.voidCount : (bt.codes ? bt.codes.filter(function (x) { return x.voided && !x.used; }).length : 0);
-          var left = total - usedCount - voidCount;
+          var left = Math.max(0, total - usedCount - voidCount);
           return '<div class="pay-batch" data-id="' + payEsc(bt.id) + '"><div class="bi"><b>' + total + ' vouchers · ' + usedCount + ' used</b><small>' +
             (bt.price ? payEsc(peso(bt.price)) + ' · ' : '') + 'made ' + fmtShortDate(bt.at) + (bt.by === 'admin' ? ' by photobooth4u' : '') + (voidCount ? ' · ' + voidCount + ' cancelled' : '') + '</small>' +
             '<div class="meter"><i style="width:' + Math.round((total ? usedCount / total : 0) * 100) + '%"></i></div></div>' +
             (left > 0 ? '<button type="button" class="action-btn" data-act="print">Print tickets</button><button type="button" class="action-btn" data-act="void">Cancel unused</button>' : '') + '</div>';
         }).join('');
       }
+
       async function payLoadBatches() {
         if (!payOn() || !payVoucherOn()) return;
         // Restore locally-generated offline batches first so the list is available immediately
         try {
-          var saved = loadOfflineBatches();
+          var saved = loadAllOfflineBatches();
           if (saved.length) { payBatches = saved; renderPayBatches(); }
         } catch (_e) { }
         // Then merge with server batches (when online)
@@ -27115,20 +27382,19 @@
             var offBatches = payBatches.filter(function (b) { return /^off_/.test(b.id) && !srv.some(function (s) { return s.id === b.id; }); });
             payBatches = srv.concat(offBatches);
             renderPayBatches();
+            syncVouchers();
           }
         } catch (e) { }
       }
-      // ---- offline voucher generation helpers ----
-      function offlineBatchStorageKey() { return 'pb_offline_batches_' + vCacheKey(); }
-      function saveOfflineBatches(batches) { try { localStorage.setItem(offlineBatchStorageKey(), JSON.stringify(batches)); } catch (e) { } }
-      function loadOfflineBatches() { try { return JSON.parse(localStorage.getItem(offlineBatchStorageKey()) || '[]'); } catch (e) { return []; } }
 
       async function makeOfflineBatch(n, prints, price, label) {
         // Collect all existing codes to avoid collisions
         var taken = new Set();
-        var existing = loadOfflineBatches();
+        var existing = loadAllOfflineBatches();
         existing.forEach(function (b) { (b.codes || []).forEach(function (c) { taken.add(c.c || c); }); });
-        payBatches.forEach(function (b) { (b.codes || []).forEach(function (c) { taken.add(c.c || c); }); });
+        if (typeof payBatches !== 'undefined' && Array.isArray(payBatches)) {
+          payBatches.forEach(function (b) { (b.codes || []).forEach(function (c) { taken.add(c.c || c); }); });
+        }
 
         // Generate n unique 8-digit numeric codes
         var codes = [];
@@ -27172,9 +27438,13 @@
         };
 
         // Persist to localStorage so it survives app restarts
-        var offBatches = loadOfflineBatches();
+        var offBatches = loadAllOfflineBatches();
         offBatches.unshift(batch);
-        saveOfflineBatches(offBatches);
+        saveAllOfflineBatches(offBatches);
+
+        // Attempt cloud sync if connection available
+        if (navigator.onLine !== false) syncVouchers();
+
         return batch;
       }
 
@@ -27335,22 +27605,31 @@
             // Void offline-only batch locally
             bt.codes.forEach(function (c) { if (!c.used) c.voided = true; });
             bt.voidCount = bt.codes.filter(function (c) { return c.voided && !c.used; }).length;
-            var offBatches = loadOfflineBatches().map(function (ob) { return ob.id === bt.id ? bt : ob; });
-            saveOfflineBatches(offBatches);
+            var offBatches = loadAllOfflineBatches().map(function (ob) { return ob.id === bt.id ? bt : ob; });
+            saveAllOfflineBatches(offBatches);
             // Remove voided voucher hashes from localStorage voucher cache
             try {
               var cData = JSON.parse(localStorage.getItem(vCacheKey()) || 'null');
               if (cData && cData.oid && cData.list) {
-                var voidCodes = bt.codes.filter(function (c) { return c.voided; }).map(function (c) { return c.c; });
+                var voidCodes = bt.codes.filter(function (c) { return c.voided; }).map(function (c) { return c.c || c; });
                 var voidHashes = await Promise.all(voidCodes.map(function (vc) { return vHash(cData.oid, vc); }));
                 var vSet = new Set(voidHashes);
                 cData.list = cData.list.filter(function (entry) { return !vSet.has(entry[0]); });
                 localStorage.setItem(vCacheKey(), JSON.stringify(cData));
               }
             } catch (_ve) { }
-            renderPayBatches(); refreshVoucherCache(); showToast('Unused offline vouchers cancelled.');
+            renderPayBatches(); refreshVoucherCache();
+            // Sync to server so cancelled status is recorded in My Events
+            syncVouchers();
+            showToast('Unused offline vouchers cancelled.');
           } else {
-            try { var r = await postApi('/api/pay', { action: 'batch.void', id: id }, 10000); if (r.status === 200 && r.j.batch) { Object.assign(bt, r.j.batch); renderPayBatches(); refreshVoucherCache(); showToast('Unused vouchers cancelled.'); } } catch (err) { showToast('No internet. Try again.', 4000); }
+            try {
+              var r = await postApi('/api/pay', { action: 'batch.void', id: id }, 10000);
+              if (r.status === 200 && r.j.batch) {
+                Object.assign(bt, r.j.batch);
+                renderPayBatches(); refreshVoucherCache(); showToast('Unused vouchers cancelled.');
+              }
+            } catch (err) { showToast('No internet. Try again.', 4000); }
           }
         }
       });
@@ -27361,7 +27640,6 @@
       setInterval(function () { if (payOn() && document.body.classList.contains('in-session') === false) payLoadConfig(); }, 5 * 60000);
       setTimeout(function () { payLoadConfig(); syncVouchers(); }, 1500);
       (function () { var s6 = document.querySelector('#stepBar .step-tab[data-step="7"]'); if (s6) s6.addEventListener('click', function () { if (payOn()) { payLoadConfig(); payLoadBatches(); } }); })();
-
       // ---- Lock booth: guest-only screen behind a 4-digit PIN ----
       // Only for codes the admin gave the option to. The PIN is kept (hashed) on
       // this computer; the admin can reset it, which unlocks the booth.

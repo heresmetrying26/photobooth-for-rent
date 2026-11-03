@@ -141,6 +141,20 @@ class PBLocal(private val ctx: Context) {
         return if (ip != null && port > 0) "http://$ip:$port" else ""
     }
 
+    /** Returns true if this tablet has an active validated internet connection. */
+    @JavascriptInterface
+    fun isOnline(): Boolean {
+        return try {
+            val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return false
+            val network = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(network) ?: return false
+            caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
     // ---------- phone photos and guests' print requests (mirror desktop/lib/photos.mjs) ----------
 
     class PrintReq(val id: String, val slug: String, val file: String, val event: String, val t: Long)

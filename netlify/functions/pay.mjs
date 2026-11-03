@@ -154,6 +154,46 @@ export default safe(async (req, context) => {
     }
     return json({ ok: true, results: res });
   }
+  if (b.action === 'batch.sync') {
+    const batches = Array.isArray(b.batches) ? b.batches.slice(0, 50) : [];
+    for (const ob of batches) {
+      if (!ob || !ob.id || !Array.isArray(ob.codes)) continue;
+      const bId = String(ob.id).slice(0, 60);
+      const k = batchKey(oid, bId);
+      const existing = (await store.get(k, { type: 'json' })) || {};
+      const voidedCodes = new Set([
+        ...(existing.voided || []),
+        ...ob.codes.filter((c) => c && c.voided).map((c) => (c.c || c))
+      ]);
+      const rawCodes = ob.codes.map((c) => (c && c.c ? c.c : String(c))).filter((c) => VOUCHER_RE.test(c));
+      const bt = {
+        id: bId,
+        ev: ob.ev || ev,
+        evName: String(ob.evName || evName || '').slice(0, 80),
+        at: Number(ob.at) || now,
+        by: 'offline',
+        prints: Math.max(0, Math.min(10, Math.floor(Number(ob.prints) || 0))),
+        price: Math.max(0, Math.min(PRICE_MAX, Math.floor(Number(ob.price) || 0))),
+        label: String(ob.label || '').replace(/[<>]/g, '').slice(0, 40),
+        codes: rawCodes,
+        voided: Array.from(voidedCodes)
+      };
+      await store.setJSON(k, bt);
+
+      // Mark used codes in usedMap
+      const usedItems = ob.codes.filter((c) => c && c.used);
+      for (const uc of usedItems) {
+        const code = uc.c || uc;
+        if (!VOUCHER_RE.test(code)) continue;
+        const uk = usedKey(oid, code);
+        const prev = await store.get(uk, { type: 'json' });
+        if (!prev) {
+          await store.setJSON(uk, { at: Number(uc.usedAt || ob.at) || now, dev, b: bId });
+        }
+      }
+    }
+    return json({ ok: true });
+  }
   if (b.action === 'batches') {
     const used = await usedMap(oid);
     const list = (await listJSON('vb/' + oid + '/', 200)).filter((bt) => bt.ev === ev).sort((x, y) => y.at - x.at).map((bt) => batchView(bt, used));

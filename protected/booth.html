@@ -10465,6 +10465,11 @@
         display: flex !important;
       }
 
+      /* In portrait, ensure welcome image is fully contained with zero edge cropping */
+      .welcome-overlay img {
+        object-fit: contain !important;
+      }
+
       /* In portrait capture session: camera stage is vertically and horizontally centred */
       body.stage-full .app-shell .stage-wrap,
       body.in-session .app-shell.capturing .stage-wrap {
@@ -10488,6 +10493,7 @@
 
       /* Shots preview: floating vertical stack on the right side, layered top-to-bottom */
       body.stage-full .app-shell .film-track,
+      body.stage-review .app-shell .film-track,
       body.in-session .app-shell.capturing .film-track,
       body.in-session .app-shell .film-track {
         position: fixed !important;
@@ -10514,6 +10520,7 @@
       }
 
       body.stage-full .app-shell .film-track .film-frame,
+      body.stage-review .app-shell .film-track .film-frame,
       body.in-session .app-shell.capturing .film-track .film-frame,
       body.in-session .app-shell .film-track .film-frame {
         width: clamp(54px, 12vw, 84px) !important;
@@ -25994,7 +26001,8 @@
           var isPort = (window.innerHeight && window.innerWidth) ? (window.innerHeight > window.innerWidth) : false;
           var land = !isPort && (wa >= 1.15);
           var H = isPort ? 1600 : 1200;
-          var W = isPort ? Math.round(H * Math.max(0.55, Math.min(0.85, window.innerWidth / window.innerHeight))) : Math.round(H * wa);
+          var portAspect = (window.innerHeight && window.innerWidth) ? (window.innerWidth / window.innerHeight) : 0.625;
+          var W = isPort ? Math.round(H * Math.max(0.48, Math.min(0.85, portAspect))) : Math.round(H * wa);
           var c = document.createElement('canvas'); c.width = W; c.height = H;
           var ctx = c.getContext('2d');
           var pvFrame = document.querySelector('.welcome-pv-frame');
@@ -26097,18 +26105,6 @@
           // Sample print of their layout (drawn people, never a real guest's photo)
           var sample = document.createElement('canvas');
           try { composeCanvas(currentLayout, sample, buildPlaceholderShots(300, shotsNeeded(currentLayout))); } catch (e) { sample = null; }
-          var area = land ? { x: W * 0.05, y: H * 0.08, w: W * 0.42, h: H * 0.84 } : { x: W * 0.12, y: H * 0.035, w: W * 0.76, h: H * 0.30 };
-          if (sample && sample.width) {
-            var k = Math.min(area.w / sample.width, area.h / sample.height), pw = sample.width * k, ph = sample.height * k;
-            ctx.save();
-            ctx.translate(area.x + area.w / 2, area.y + area.h / 2);
-            ctx.rotate((land ? -3 : -1.5) * Math.PI / 180);
-            ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 18;
-            ctx.fillStyle = '#fff'; ctx.fillRect(-pw / 2, -ph / 2, pw, ph);
-            ctx.shadowColor = 'transparent';
-            ctx.drawImage(sample, -pw / 2, -ph / 2, pw, ph);
-            ctx.restore();
-          }
 
           // Card with the event name and how it works
           var cardColor = titleBgEnabled ? titleBgColor : '#ffffff';
@@ -26138,23 +26134,62 @@
 
           var cardBox = function (slotH) {
             if (land) {
+              var area = { x: W * 0.05, y: H * 0.08, w: W * 0.42, h: H * 0.84 };
+              var pw = 0, ph = 0;
+              if (sample && sample.width) {
+                var k = Math.min(area.w / sample.width, area.h / sample.height);
+                pw = sample.width * k; ph = sample.height * k;
+              }
               var ch = 64 + (hasGreeting ? 40 : 10) + (hasGreeting ? 110 : 80) + (cardSub ? 54 : 0) + (showSteps ? (40 + steps.length * 64) : 20) + (welcomeBtnOn ? (40 + 92) : 0) + 56 + slotH;
               var cw = Math.min(W * 0.42, 720);
               var cx = W * 0.53;
               var cy = (H - ch) / 2;
-              return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: 64, titleSize: 96, padY: 64 };
+              return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: 64, titleSize: 96, padY: 64, pw: pw, ph: ph, sampleX: area.x + area.w / 2, sampleY: area.y + area.h / 2 };
             }
-            var cw = Math.min(W * 0.88, 760);
+
+            // Portrait layout: vertically and horizontally centered between topbar and bottom dock
+            var safeTop = 130;
+            var safeBottom = H - 130;
+            var safeH = safeBottom - safeTop;
+            var cw = Math.min(W * 0.88, 720);
             var cx = (W - cw) / 2;
-            var cy = area.y + area.h + 20;
-            var maxBottom = H - (welcomeBtnOn ? 90 : 40);
-            var availH = Math.max(300, maxBottom - cy);
+            var mid = W / 2;
             var stepCount = showSteps ? steps.length : 0;
-            var baseH = 34 + (hasGreeting ? 26 : 0) + 70 + (cardSub ? 36 : 0) + (showSteps ? (24 + stepCount * 54) : 10) + (welcomeBtnOn ? (28 + 84) : 0) + 32 + slotH;
-            var ch = Math.min(baseH, availH);
-            if (cy + ch > H - 36) { ch = Math.max(260, H - 36 - cy); }
-            var tight = ch < 620;
-            return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: tight ? 48 : 56, titleSize: tight ? 72 : 84, padY: tight ? 32 : 44 };
+            var stepH = 50;
+            var titleSize = 78;
+            var padY = 34;
+            var baseCardH = padY + (hasGreeting ? 32 : 10) + 72 + (cardSub ? 38 : 0) + (showSteps ? (22 + stepCount * stepH) : 10) + (welcomeBtnOn ? (24 + 80) : 0) + 32 + slotH;
+            var ch = baseCardH;
+
+            var maxSampleH = Math.min(500, Math.max(260, safeH - ch - 36));
+            var maxSampleW = Math.min(W * 0.74, 560);
+            var pw = 0, ph = 0;
+            if (sample && sample.width) {
+              var k = Math.min(maxSampleW / sample.width, maxSampleH / sample.height);
+              pw = sample.width * k;
+              ph = sample.height * k;
+            }
+
+            var gap = (ph > 0) ? 24 : 0;
+            var totalH = ph + gap + ch;
+            if (totalH > safeH) {
+              var scale = safeH / totalH;
+              if (ph > 0) {
+                ph = Math.round(ph * scale);
+                pw = Math.round(pw * scale);
+              }
+              ch = Math.round(ch * scale);
+              stepH = Math.max(38, Math.round(stepH * scale));
+              titleSize = Math.max(48, Math.round(titleSize * scale));
+              gap = Math.round(gap * scale);
+              totalH = ph + gap + ch;
+            }
+
+            var groupTop = safeTop + Math.max(0, Math.round((safeH - totalH) / 2));
+            var sampleX = mid;
+            var sampleY = groupTop + ph / 2;
+            var cy = groupTop + (ph > 0 ? (ph + gap) : 0);
+            return { ch: ch, cw: cw, cx: cx, cy: cy, slot: slotH, stepH: stepH, titleSize: titleSize, padY: padY, pw: pw, ph: ph, sampleX: sampleX, sampleY: sampleY };
           };
           // The renter's welcome logo gets a space at the top of the card while it sits on the card.
           var wl = brandImgFor('w'), wb = brand.w;
@@ -26164,49 +26199,64 @@
             if (!(lx0 >= box.cx && lx0 <= box.cx + box.cw && ly0 >= box.cy && ly0 <= box.cy + box.ch)) box = cardBox(0);
           }
           var ch = box.ch, cw = box.cw, cx = box.cx, cy = box.cy;
+          var pw = box.pw, ph = box.ph, sampleX = box.sampleX, sampleY = box.sampleY;
+
+          // Draw sample print of layout chosen (centered horizontally, fully visible)
+          if (sample && sample.width && pw > 0 && ph > 0) {
+            ctx.save();
+            ctx.translate(sampleX, sampleY);
+            ctx.rotate((land ? -3 : 0) * Math.PI / 180);
+            ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 46; ctx.shadowOffsetY = 16;
+            ctx.fillStyle = '#fff'; ctx.fillRect(-pw / 2, -ph / 2, pw, ph);
+            ctx.shadowColor = 'transparent';
+            ctx.drawImage(sample, -pw / 2, -ph / 2, pw, ph);
+            ctx.restore();
+          }
+
+          // Draw branded details card below the sample print
           ctx.save();
-          ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = 44; ctx.shadowOffsetY = 14;
-          roundRectPath(ctx, cx, cy, cw, ch, 34);
+          ctx.shadowColor = 'rgba(0,0,0,.22)'; ctx.shadowBlur = 42; ctx.shadowOffsetY = 14;
+          roundRectPath(ctx, cx, cy, cw, ch, 32);
           ctx.globalAlpha = 0.95; ctx.fillStyle = cardColor; ctx.fill();
           ctx.restore();
           ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-          var mid = cx + cw / 2, yy = cy + (box.padY || 50) + 20 + box.slot;
+          var mid = cx + cw / 2, yy = cy + (box.padY || 34) + 16 + box.slot;
 
           if (hasGreeting) {
-            ctx.fillStyle = soft; ctx.font = (land ? '700 30px' : '700 26px') + ' Manrope, sans-serif';
+            ctx.fillStyle = soft; ctx.font = (land ? '700 30px' : '700 24px') + ' Manrope, sans-serif';
             ctx.fillText(cardGreeting.trim(), mid, yy);
-            yy += land ? 110 : 70;
+            yy += land ? 110 : 54;
           } else {
             yy += land ? 30 : 15;
           }
 
           ctx.fillStyle = ink;
-          var ts = fitFont(ctx, cardTitle, cardFont, box.titleSize || 96, cw - 80, 36);
+          var ts = fitFont(ctx, cardTitle, cardFont, box.titleSize || (land ? 96 : 78), cw - 70, 32);
           ctx.font = fontString(cardFont, ts);
           ctx.fillText(cardTitle, mid, yy);
-          if (cardSub) { yy += land ? 54 : 44; ctx.fillStyle = soft; ctx.font = fontString(cardSubFont, land ? 38 : 32); ctx.fillText(cardSub, mid, yy); }
+          if (cardSub) { yy += land ? 54 : 40; ctx.fillStyle = soft; ctx.font = fontString(cardSubFont, land ? 38 : 28); ctx.fillText(cardSub, mid, yy); }
 
           if (showSteps && steps.length) {
-            yy += land ? 40 : 26;
-            ctx.font = (land ? '700 31px' : '700 27px') + ' Manrope, sans-serif';
+            yy += land ? 40 : 24;
+            ctx.font = (land ? '700 31px' : '700 24px') + ' Manrope, sans-serif';
             var widest = Math.max.apply(null, steps.map(function (t) { return ctx.measureText(t).width; }));
-            var sx = mid - (widest + (land ? 62 : 54)) / 2;
-            var stepH = box.stepH || 64;
+            var sx = mid - (widest + (land ? 62 : 48)) / 2;
+            var stepH = box.stepH || (land ? 64 : 50);
             steps.forEach(function (t, i) {
-              var sy = yy + (land ? 50 : 38) + i * stepH;
-              var r = land ? 22 : 18;
+              var sy = yy + (land ? 50 : 34) + i * stepH;
+              var r = land ? 22 : 16;
               ctx.fillStyle = '#C93D27'; ctx.beginPath(); ctx.arc(sx + r, sy - (r * 0.5), r, 0, Math.PI * 2); ctx.fill();
-              ctx.fillStyle = '#fff'; ctx.font = '800 ' + (land ? '24px' : '20px') + ' Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + r, sy - 2);
-              ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 ' + (land ? '31px' : '27px') + ' Manrope, sans-serif'; ctx.fillText(t, sx + r * 2 + 16, sy);
+              ctx.fillStyle = '#fff'; ctx.font = '800 ' + (land ? '24px' : '18px') + ' Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + r, sy - 2);
+              ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '700 ' + (land ? '31px' : '24px') + ' Manrope, sans-serif'; ctx.fillText(t, sx + r * 2 + 14, sy);
             });
           }
           if (welcomeBtnOn) {
             ctx.font = '800 34px Manrope, sans-serif';
-            var bh = land ? 92 : 84, bw = Math.min(cw - 80, ctx.measureText(btnText).width + (land ? 130 : 110));
-            var bx = mid - bw / 2, by = cy + ch - bh - (land ? 48 : 26);
+            var bh = land ? 92 : 78, bw = Math.min(cw - 70, ctx.measureText(btnText).width + (land ? 130 : 100));
+            var bx = mid - bw / 2, by = cy + ch - bh - (land ? 48 : 24);
             roundRectPath(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = '#C93D27'; ctx.fill();
             ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
-            var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', land ? 34 : 30, bw - 50, 18);
+            var bs = fitFont(ctx, btnText, 'Manrope, sans-serif', land ? 34 : 28, bw - 40, 16);
             ctx.font = '800 ' + bs + 'px Manrope, sans-serif';
             ctx.fillText(btnText, mid, by + bh / 2 + bs * 0.36);
             welcomeCta = { l: bx / W * 100, t: by / H * 100, w: bw / W * 100, h: bh / H * 100 };

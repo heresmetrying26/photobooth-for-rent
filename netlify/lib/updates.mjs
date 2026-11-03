@@ -109,6 +109,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-03', title: 'Screen orientation lock and portrait layout (Android)', for: ['app'], app: '1.0.63',
+    items: [
+      'Operators can now configure the tablet screen orientation from the Admin panel: lock to Landscape, lock to Portrait, or allow Either orientation.',
+      'When set to Either, renters can switch and lock their preferred orientation (Landscape or Portrait) directly in Booth Setup on the tablet.',
+      'Responsive portrait layout with centered camera preview and photo film strip positioned below for vertical tablet booths.'
+    ]
+  },
+  {
     date: '2026-11-02', title: 'Borderless prints follow the printer’s own setting (Windows)', for: ['app'], app: '1.0.62',
     items: [
       'With Borderless on, the picture is now sent edge to edge and the printer’s own enlargement setting decides the edge (for Epson: Borderless, Settings, Expansion). The extra 3 mm margin added in 1.0.61 is gone, so a printer set to Min no longer gets a white border.',

@@ -73,7 +73,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.65', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.65/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.66', date: '2026-11-03', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.66/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -108,6 +108,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-03', title: 'Bluetooth thermal printers, settings shortcut & USB detection (Android)', for: ['app'], app: '1.0.66',
+    items: [
+      'Connect Bluetooth Printer button is now always visible on tablets without needing to select receipt paper first.',
+      'Direct shortcut to Android Bluetooth Settings and instant warning notification if Bluetooth is disabled on the tablet.',
+      'Added recognized hardware support for VOZY G80, P50 and MP210 thermal receipt printers.',
+      'Added recognized hardware support for Star Micronics TSP143III series and Xprinter XP-T80Q / XP-P300.',
+      'Wi-Fi & USB printer section renamed and updated with clear [USB] connection indicators.'
+    ]
+  },
   {
     date: '2026-11-03', title: 'Portrait camera centering, side thumbnails & welcome card fix (Android)', for: ['app'], app: '1.0.65',
     items: [

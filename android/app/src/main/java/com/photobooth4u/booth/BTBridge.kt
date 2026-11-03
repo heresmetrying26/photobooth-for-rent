@@ -9,8 +9,10 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.provider.Settings
 import android.util.Base64
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -138,6 +140,36 @@ class BTBridge(
     @JavascriptInterface
     fun isAvailable(): Boolean {
         return bluetoothAdapter != null
+    }
+
+    /**
+     * Called by JavaScript: window.__BTBridge.isEnabled()
+     * Returns true if Bluetooth is currently turned on.
+     */
+    @JavascriptInterface
+    fun isEnabled(): Boolean {
+        return try {
+            bluetoothAdapter?.isEnabled == true
+        } catch (_: SecurityException) {
+            false
+        }
+    }
+
+    /**
+     * Opens Android's Bluetooth Settings so the user can turn on BT and pair their thermal printer.
+     */
+    @JavascriptInterface
+    fun openBluetoothSettings(): Boolean = try {
+        activity.runOnUiThread {
+            try {
+                activity.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+        true
+    } catch (_: Exception) {
+        false
     }
 
     /**

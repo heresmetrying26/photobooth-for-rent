@@ -10750,7 +10750,9 @@
         { namePrefix: 'Star' }, { namePrefix: 'MP' }, { namePrefix: 'BP' },
         { namePrefix: 'PT' }, { namePrefix: 'ZJ' }, { namePrefix: 'NT' },
         { namePrefix: 'Printer' }, { namePrefix: 'MTP' }, { namePrefix: 'MPT' },
-        { namePrefix: 'BlueTooth' }, { namePrefix: 'Inner' }, { namePrefix: 'Qsprinter' }
+        { namePrefix: 'BlueTooth' }, { namePrefix: 'Inner' }, { namePrefix: 'Qsprinter' },
+        { namePrefix: 'VOZY' }, { namePrefix: 'G80' }, { namePrefix: 'P50' },
+        { namePrefix: 'TSP' }, { namePrefix: 'P300' }
       ];
 
       function BtThermal(opts) {
@@ -10970,6 +10972,18 @@
 
       function isBtAvailable() { return BtThermal.available() !== null; }
       function isNativeAndroid() { return !!(global.__BTBridge && global.__BTBridge.connect); }
+      function isBtEnabled() {
+        if (global.__BTBridge && typeof global.__BTBridge.isEnabled === 'function') {
+          try { return global.__BTBridge.isEnabled(); } catch (_) { return true; }
+        }
+        return true;
+      }
+      function openBtSettings() {
+        if (global.__BTBridge && typeof global.__BTBridge.openBluetoothSettings === 'function') {
+          return global.__BTBridge.openBluetoothSettings();
+        }
+        return false;
+      }
 
       function printViaBluetooth(canvas, paper) {
         btPrinter._paperWidth = PAPER_WIDTHS[paper || '80mm'] || 576;
@@ -10987,6 +11001,8 @@
         btPrinter: btPrinter,
         isBtAvailable: isBtAvailable,
         isNativeAndroid: isNativeAndroid,
+        isBtEnabled: isBtEnabled,
+        openBtSettings: openBtSettings,
         printViaBluetooth: printViaBluetooth,
       };
 
@@ -12791,25 +12807,28 @@
                 <span>Bluetooth thermal receipt printer</span>
                 <input type="checkbox" id="btThermalToggle">
               </label>
-              <p class="panel-hint" style="margin:2px 0 8px;">Directly print receipts over Bluetooth to 80 mm or 58 mm
-                thermal printers (Xprinter, Epson, etc.) without a print dialog.</p>
+              <p class="panel-hint" style="margin:2px 0 8px;">Directly print receipts and strips over Bluetooth to 80 mm or 58 mm thermal printers (Xprinter, Epson, Star, VOZY, etc.) without a print dialog.</p>
               <div id="btThermalControls" style="margin-top:8px;">
-                <button type="button" class="action-btn" id="btThermalConnectBtn"
-                  style="width:auto;margin:0 8px 8px 0;">Connect Bluetooth Printer</button>
-                <button type="button" class="action-btn" id="btThermalTestBtn"
-                  style="display:none;width:auto;margin:0 8px 8px 0;">Test print</button>
-                <button type="button" class="action-btn" id="btThermalDisconnectBtn"
-                  style="display:none;width:auto;margin:0 8px 8px 0;">Disconnect</button>
+                <p class="panel-hint" id="btThermalWarnHint" style="display:none;color:#b91c1c;font-weight:600;margin:0 0 8px;"></p>
+                <p class="panel-hint" id="btThermalPaperHint" style="display:none;color:#856404;background:#fff3cd;padding:6px 10px;border-radius:4px;margin:0 0 8px;"></p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <button type="button" class="action-btn" id="btThermalConnectBtn"
+                    style="width:auto;margin:0 0 8px 0;">Connect Bluetooth Printer</button>
+                  <button type="button" class="action-btn" id="btThermalSettingsBtn"
+                    style="display:none;width:auto;margin:0 0 8px 0;">Pair in Android Bluetooth settings</button>
+                  <button type="button" class="action-btn" id="btThermalTestBtn"
+                    style="display:none;width:auto;margin:0 0 8px 0;">Test print</button>
+                  <button type="button" class="action-btn" id="btThermalDisconnectBtn"
+                    style="display:none;width:auto;margin:0 0 8px 0;">Disconnect</button>
+                </div>
                 <p class="panel-hint" id="btThermalStatusHint" style="margin:4px 0 6px;"></p>
               </div>
             </div>
             <div class="printer-pick" id="wifiPrinterRow" style="display:none;margin-top:10px;">
-              <label class="sub-label" style="display:block; margin:6px 0 2px;">Wi-Fi printer</label>
-              <p class="panel-hint" style="margin:2px 0 8px;">The tablet looks for printers on this Wi-Fi and on its USB
-                port by itself (Epson, Canon, HP, Brother, receipt printers…) and prints straight to the one you pick,
-                with no print dialog. Plug a USB printer in and it appears here.</p>
+              <label class="sub-label" style="display:block; margin:6px 0 2px;">Wi-Fi &amp; USB Printers</label>
+              <p class="panel-hint" style="margin:2px 0 8px;">The tablet automatically looks for USB printers (plugged into the USB-OTG port) and Wi-Fi printers on this network (Epson L8050/L3210/TM-T82X, Canon SELPHY CP1300/1500, Star, Xprinter, VOZY, HP, Brother…) and prints straight to the one you pick, with no print dialog.</p>
               <button type="button" class="action-btn" id="wifiPrinterFindBtn"
-                style="width:auto;margin:0 8px 8px 0;">Find Wi-Fi printers</button>
+                style="width:auto;margin:0 8px 8px 0;">Find Wi-Fi &amp; USB printers</button>
               <button type="button" class="action-btn" id="wifiPrinterTestBtn"
                 style="display:none;width:auto;margin:0 8px 8px 0;">Test print</button>
               <button type="button" class="action-btn" id="wifiPrinterForgetBtn"
@@ -20927,9 +20946,29 @@
       }
       const btThermalToggle = document.getElementById('btThermalToggle');
       const btThermalConnectBtn = document.getElementById('btThermalConnectBtn');
+      const btThermalSettingsBtn = document.getElementById('btThermalSettingsBtn');
       const btThermalTestBtn = document.getElementById('btThermalTestBtn');
       const btThermalDisconnectBtn = document.getElementById('btThermalDisconnectBtn');
 
+      if (btThermalSettingsBtn) {
+        btThermalSettingsBtn.addEventListener('click', function () {
+          if (window._btThermal && typeof window._btThermal.openBtSettings === 'function') {
+            window._btThermal.openBtSettings();
+          }
+        });
+      }
+      if (btThermalDisconnectBtn) {
+        btThermalDisconnectBtn.addEventListener('click', function () {
+          try {
+            if (window._btThermal && window._btThermal.btPrinter) {
+              window._btThermal.btPrinter.disconnect();
+            }
+          } catch (_) { }
+          setBtThermalOn(false);
+          showToast('Bluetooth printer disconnected.', 3000);
+          refreshPrintUI();
+        });
+      }
       if (btThermalToggle) {
         btThermalToggle.addEventListener('change', function () {
           setBtThermalOn(btThermalToggle.checked);
@@ -20941,14 +20980,26 @@
           if (!window._btThermal || !window._btThermal.isBtAvailable()) {
             return showToast('Bluetooth is not supported in this browser. Use Google Chrome or the Android Tablet App (APK).', 5000);
           }
+          if (window._btThermal.isNativeAndroid && window._btThermal.isNativeAndroid() && typeof window._btThermal.isBtEnabled === 'function' && !window._btThermal.isBtEnabled()) {
+            showToast('Bluetooth is turned off on this tablet. Opening Bluetooth Settings…', 4500);
+            if (typeof window._btThermal.openBtSettings === 'function') window._btThermal.openBtSettings();
+            return;
+          }
           btThermalConnectBtn.disabled = true;
           btThermalConnectBtn.textContent = 'Connecting…';
           try {
             const name = await window._btThermal.btPrinter.connect();
+            setBtThermalOn(true);
             showToast('Connected to ' + (name || 'Bluetooth printer') + '!');
           } catch (err) {
             var msg = String((err && err.message) || err || '');
-            if (/globally disabled/i.test(msg)) {
+            if (/turned off/i.test(msg) || /enable bluetooth/i.test(msg)) {
+              showToast('Bluetooth is turned off. Please turn it on in Android Settings.', 6000);
+              if (window._btThermal.isNativeAndroid && typeof window._btThermal.openBtSettings === 'function') window._btThermal.openBtSettings();
+            } else if (/No paired/i.test(msg)) {
+              showToast(msg, 7000);
+              if (window._btThermal.isNativeAndroid && typeof window._btThermal.openBtSettings === 'function') window._btThermal.openBtSettings();
+            } else if (/globally disabled/i.test(msg)) {
               showToast('Web Bluetooth is disabled in this browser. On Xiaomi / Samsung tablets, open in Google Chrome or install our Android Tablet App (APK) from /downloads/ for direct Bluetooth printing.', 9000);
             } else if (/User cancelled/i.test(msg) || (err && err.name === 'NotFoundError' && !/globally disabled/i.test(msg))) {
               showToast('No Bluetooth device selected.', 3000);
@@ -22099,7 +22150,7 @@
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
           const sel = wifiPrinter && wifiPrinter.ip === p.ip;
-          b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? '' : ' · ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.epsonL ? ' · photo (Epson ' + (p.epsonModel || 'L-series') + ')' : (p.escpr ? ' · photo' : '')) + (p.escp2 ? ' · photo (black & white)' : '') + (p.raw ? ' · receipt' : '') + (p.needsPermission ? ' · tap to allow USB access' : '') + (p.noDriver ? ' · no driver' : '') + (p.canon ? ' · photo' : '') + (p.selphy ? ' · photo (SELPHY)' : '');
+          b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? ' · USB' : ' · Wi-Fi ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.epsonL ? ' · photo (Epson ' + (p.epsonModel || 'L-series') + ')' : (p.escpr ? ' · photo' : '')) + (p.escp2 ? ' · photo (black & white)' : '') + (p.raw ? ' · receipt' : '') + (p.needsPermission ? ' · tap to allow USB access' : '') + (p.noDriver ? ' · no driver' : '') + (p.canon ? ' · photo' : '') + (p.selphy ? ' · photo (SELPHY)' : '');
           b.addEventListener('click', () => {
             if (p.needsPermission) {
               // The tablet has not been given access to this USB printer yet, so it cannot read what it is.
@@ -22122,9 +22173,9 @@
         });
         if (st && !wifiPrinter) {
           const prog = d.total ? ' ' + Math.min(d.checked || 0, d.total) + ' of ' + d.total + ' addresses checked.' : '';
-          st.textContent = d.scanning ? 'Looking for printers…' + prog + (d.printers.length ? ' Tap your printer when it appears.' : '')
+          st.textContent = d.scanning ? 'Looking for Wi-Fi and USB printers…' + prog + (d.printers.length ? ' Tap your printer when it appears.' : '')
             : d.printers.length ? 'Tap your printer.'
-              : 'No printers found. ' + (d.note ? d.note + '. ' : '') + 'Check the printer is on and on the same Wi-Fi as this tablet (not a guest network), or type its IP below.';
+              : 'No printers found. ' + (d.note ? d.note + '. ' : '') + 'Make sure Wi-Fi printers are on the same Wi-Fi network, or plug in a USB printer via USB-OTG cable.';
         }
         if (st && d.addNote) st.textContent = d.addNote;
       }
@@ -22132,11 +22183,17 @@
         if (!wifiNetAvailable()) return;
         try { window.__PBNet.scan(); } catch (e) { return; }
         clearInterval(wifiScanTimer);
+        const fb = document.getElementById('wifiPrinterFindBtn');
+        if (fb) fb.textContent = 'Scanning Wi-Fi & USB…';
         const t0 = Date.now();
         const tick = () => {
           const d = wifiList();
           wifiRenderList(d);
-          if (!d.scanning || Date.now() - t0 > 50000) { clearInterval(wifiScanTimer); wifiScanTimer = null; }
+          if (!d.scanning || Date.now() - t0 > 50000) {
+            clearInterval(wifiScanTimer);
+            wifiScanTimer = null;
+            if (fb) fb.textContent = 'Find Wi-Fi & USB printers';
+          }
         };
         wifiScanTimer = setInterval(tick, 1000);
         tick();
@@ -22155,7 +22212,7 @@
         const dg = document.getElementById('wifiDiag');
         if (dg) dg.style.display = pbDebug() && wifiPrinter && wifiPrinter.escp2 ? '' : 'none';
         if (st && wifiPrinter && wifiPrinter.dialog) st.textContent = 'Prints open the Android print dialog: pick the printer there. Printers that need a print service show up after you switch it on in Android print settings.';
-        else if (st && wifiPrinter) st.textContent = 'Printing to: ' + wifiPrinter.name + (wifiPrinter.usb ? (pbDebug() ? ' [USB ' + (wifiPrinter.vid || 0).toString(16) + ':' + (wifiPrinter.pid || 0).toString(16) + (wifiPrinter.info ? ' ID: ' + wifiPrinter.info : ' ID not readable') + ']' : '') : ' (' + wifiPrinter.ip + ')');
+        else if (st && wifiPrinter) st.textContent = 'Printing to: ' + wifiPrinter.name + (wifiPrinter.usb ? ' [USB connected]' : ' [Wi-Fi ' + wifiPrinter.ip + ']');
         else if (st && !wifiScanTimer) st.textContent = '';
       }
       (function () {
@@ -22356,12 +22413,14 @@
           for (let c = 0; c < n; c++) all.push(...pages);
 
           // ---- Bluetooth thermal printer path (tablet / Android / iOS) ----
-          if ((isMobileOS() || !helperOn) && btThermalOn && paper.receipt && isBtThermalAvailable()) {
+          const btConnected = !!(window._btThermal && window._btThermal.btPrinter && window._btThermal.btPrinter.connected);
+          if ((isMobileOS() || !helperOn) && btThermalOn && (paper.receipt || btConnected) && isBtThermalAvailable()) {
             try {
               showPrintingNote(printTxt('txtPrinting'), 8000);
-              await window._btThermal.printViaBluetooth(pages[0], paper.w <= 55 ? '58mm' : '80mm');
+              const rollW = (paper.w && paper.w <= 55) ? '58mm' : '80mm';
+              await window._btThermal.printViaBluetooth(pages[0], rollW);
               // If n > 1 copies, print the rest
-              for (let ci = 1; ci < all.length; ci++) await window._btThermal.printViaBluetooth(all[ci], paper.w <= 55 ? '58mm' : '80mm');
+              for (let ci = 1; ci < all.length; ci++) await window._btThermal.printViaBluetooth(all[ci], rollW);
               showToast((auto === true ? 'Auto-printed via Bluetooth (' : 'Printed via Bluetooth (') + label + ').');
               armAutoPrintAfterFirst(auto === true);
               return true;
@@ -22511,28 +22570,60 @@
         const btRow = document.getElementById('btThermalRow');
         const btConnBtn = document.getElementById('btThermalConnectBtn');
         const btToggle = document.getElementById('btThermalToggle');
+        const btSettingsBtn = document.getElementById('btThermalSettingsBtn');
         const btTestBtn = document.getElementById('btThermalTestBtn');
         const btDiscBtn = document.getElementById('btThermalDisconnectBtn');
         const btStatus = document.getElementById('btThermalStatusHint');
+        const btWarn = document.getElementById('btThermalWarnHint');
+        const btPaperHint = document.getElementById('btThermalPaperHint');
         if (btRow) {
-          const showBt = (isMobileOS() || !helperOn) && isBtThermalAvailable() && !useStation() && printSize && isReceiptPaper(printSize);
+          const showBt = (isMobileOS() || !helperOn || (window._btThermal && window._btThermal.isNativeAndroid()))
+                         && isBtThermalAvailable() && !useStation();
           btRow.style.display = showBt ? '' : 'none';
           if (btToggle) btToggle.checked = btThermalOn;
           const conn = !!(window._btThermal && window._btThermal.btPrinter.connected);
-          if (btConnBtn) {
-            btConnBtn.textContent = conn ? '\u2713 ' + (window._btThermal.btPrinter.name || 'Printer connected') : 'Connect Bluetooth Printer';
-            btConnBtn.style.display = btThermalOn ? '' : 'none';
+          const btEnabled = window._btThermal && typeof window._btThermal.isBtEnabled === 'function' ? window._btThermal.isBtEnabled() : true;
+
+          if (btWarn) {
+            if (!btEnabled) {
+              btWarn.textContent = '⚠️ Bluetooth is turned off on this tablet. Turn on Bluetooth in Android Settings before connecting.';
+              btWarn.style.display = '';
+            } else {
+              btWarn.textContent = '';
+              btWarn.style.display = 'none';
+            }
           }
-          if (btTestBtn) btTestBtn.style.display = btThermalOn && conn ? '' : 'none';
-          if (btDiscBtn) btDiscBtn.style.display = btThermalOn && conn ? '' : 'none';
+
+          if (btPaperHint) {
+            if (printSize && !isReceiptPaper(printSize)) {
+              btPaperHint.textContent = '💡 Tip: Print size is set to “' + (paperFor(printSize).name || printSize) + '”. For standard roll thermal printing, pick “Receipt 80 mm” or “Receipt 58 mm” above. (2×6 strips also scale nicely to receipt rolls).';
+              btPaperHint.style.display = '';
+            } else {
+              btPaperHint.textContent = '';
+              btPaperHint.style.display = 'none';
+            }
+          }
+
+          if (btConnBtn) {
+            btConnBtn.textContent = conn
+              ? '✓ ' + (window._btThermal.btPrinter.name || 'Printer connected') + ' (Change)'
+              : 'Connect Bluetooth Printer';
+            btConnBtn.style.display = '';
+          }
+          if (btSettingsBtn) {
+            btSettingsBtn.style.display = (window._btThermal && window._btThermal.isNativeAndroid() && (!conn || !btEnabled)) ? '' : 'none';
+            btSettingsBtn.textContent = !btEnabled ? 'Open Android Bluetooth Settings' : 'Pair in Android Bluetooth settings';
+          }
+          if (btTestBtn) btTestBtn.style.display = conn ? '' : 'none';
+          if (btDiscBtn) btDiscBtn.style.display = conn ? '' : 'none';
           if (btStatus) {
-            btStatus.textContent = !btThermalOn
-              ? ''
-              : conn
-                ? 'Connected: ' + (window._btThermal.btPrinter.name || 'Bluetooth Printer') + '. Prints will be sent directly via ESC/POS.'
+            btStatus.textContent = conn
+              ? 'Connected: ' + (window._btThermal.btPrinter.name || 'Bluetooth Printer') + '. Prints are sent directly via ESC/POS.'
+              : (!btEnabled
+                ? 'Turn on Bluetooth in Android Settings, pair your thermal printer, then return here and tap Connect.'
                 : (window._btThermal && window._btThermal.isNativeAndroid()
-                  ? 'Android kiosk app active. Tap Connect to select your paired Bluetooth printer.'
-                  : 'Make sure the printer is turned on and paired in Bluetooth settings. Note: POS printers (T80A, XP-80) use Classic Bluetooth SPP — install our Android Tablet App from /downloads/ for direct 1-tap printing.');
+                  ? 'Pair your thermal printer (Xprinter, Epson, Star, VOZY, etc.) in Android Bluetooth Settings first, then tap Connect.'
+                  : 'Make sure the printer is turned on and paired in Bluetooth settings. Note: POS printers (T80A, XP-80) use Classic Bluetooth SPP — install our Android Tablet App from /downloads/ for direct 1-tap printing.'));
           }
         }
         if (printSize && printsLeft() < sheetsPerCopy(printSize) && state === 'result') printHint.textContent = 'Print limit reached' + (lim.se && sessPrinted >= lim.se ? ' for this session.' : ' for this event.');

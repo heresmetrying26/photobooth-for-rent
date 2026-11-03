@@ -17,9 +17,39 @@
     <usb-device vendor-id="1208" product-id="58993" />
     <usb-device vendor-id="1208" product-id="17498" />
 
+    <!--
+        Epson TM / EU receipt printers (VID 0x04B8 = 1208 decimal)
+        Product IDs (decimal):
+          - TM-T82X / TM-T82X-II (USB Printer Class mode):  3623  (0x0E27)
+          - TM-T82X / TM-T82X-II (Vendor-Defined Class):     514  (0x0202)
+          - EU-m30 kiosk module  (USB Printer Class mode):  3630  (0x0E2E)
+          - EU-m30 kiosk module  (Vendor-Defined Class):     514  (0x0202, shared with TM series)
+    -->
+    <usb-device vendor-id="1208" product-id="3623" />   <!-- Epson TM-T82X-II (printer class) -->
+    <usb-device vendor-id="1208" product-id="514" />    <!-- Epson TM / EU-m30 (vendor-defined) -->
+    <usb-device vendor-id="1208" product-id="3630" />   <!-- Epson EU-m30 (printer class) -->
+
     <!-- General printer class (class 7 = USB printer: Epson, Canon SELPHY, thermal receipt, etc.) -->
     <usb-device class="7" />
-    <usb-device vendor-id="1208" />   <!-- Epson -->
+    <usb-device vendor-id="1208" />   <!-- Epson (all models, catch-all) -->
     <usb-device vendor-id="1273" />   <!-- Brother (0x04F9) -->
+
+    <!--
+        Star Micronics receipt printers (VID 0x0519 = 1305 decimal)
+        Product IDs (decimal):
+          - TSP143IIIU / TSP100IIIU:  3  (0x0003)
+          - mC-Print2 / mC-Print3:   7  (0x0007)
+        ⚠ Must have ESC/POS routing enabled via Star futurePRNT Configuration Utility.
+    -->
+    <usb-device vendor-id="1305" product-id="3" />   <!-- Star TSP143IIIU -->
+    <usb-device vendor-id="1305" product-id="7" />   <!-- Star mC-Print2/3 -->
+    <usb-device vendor-id="1305" />                  <!-- Star (all models, catch-all) -->
+
+    <!--
+        Xprinter thermal receipt printers (VID 0x28e9 = 10473 decimal, GigaDevice chipset)
+        Covers: XP-T80Q, XP-P300, XP-80C, and most Xprinter USB receipt models.
+        PIDs vary by firmware batch; the VID alone is used for auto-attach.
+    -->
+    <usb-device vendor-id="10473" />   <!-- Xprinter / GigaDevice (XP-T80Q, XP-P300, etc.) -->
 </resources>
 

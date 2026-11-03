@@ -459,7 +459,114 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     private val usbWaiters = ConcurrentHashMap<String, CountDownLatch>()
     private val usbEntries = ConcurrentHashMap<String, Entry>()
     private val usbPermAction = "com.photobooth4u.booth.USB_PRINTER_PERMISSION"
+    // USB Vendor IDs of known thermal/receipt printer chipsets.
+    // 0x0519 = Star Micronics (TSP143IIIU, mC-Print series)
+    // 0x28e9 = GigaDevice (used by Xprinter XP-T80Q, XP-P300, and many generic POS printers)
+    // 0x04b8 = Seiko Epson (TM-T82X-II, EU-m30 — handled separately by epsonReceiptModels below)
     private val thermalVendors = setOf(0x0519, 0x1504, 0x1d90, 0x0dd4, 0x0483, 0x0416, 0x28e9, 0x4b43, 0x0fe6, 0x1fc9, 0x6868)
+
+    /**
+     * Hardcoded Epson TM / EU receipt printer USB models (VID 0x04B8).
+     * These use raw ESC/POS over USB bulk-OUT, NOT ESC/P-R (the ink-tank L-series language).
+     *
+     * PID notes:
+     *   TM-T82X / TM-T82X-II ship in two USB classes depending on firmware setting:
+     *     0x0202 — Vendor-Defined class (default on some firmware; still ESC/POS)
+     *     0x0E27 — USB Printer Class (preferred; set via Epson TM Utility → USB descriptor)
+     *   EU-m30 kiosk module:
+     *     0x0202 — Vendor-Defined (common default)
+     *     0x0E2E — USB Printer Class (when configured via Epson EU-m30 utility)
+     *
+     * ⚠ Star TSP143IIIU (VID 0x0519, PID 0x0003) is in thermalVendors above but ships in
+     *   Star Line / Raster mode. Enable ESC/POS routing via the Star futurePRNT
+     *   Configuration Utility on Windows before using with this app.
+     */
+    private object EpsonReceiptModels {
+        const val VENDOR_ID = 0x04B8
+
+        // Map of USB Product ID → friendly model name
+        val MODELS: Map<Int, String> = mapOf(
+            // Epson TM-T82X / TM-T82X-II (printer-class firmware)
+            0x0E27 to "TM-T82X",
+            // Epson TM-T82X / TM-T82X-II (vendor-defined firmware, same ESC/POS)
+            0x0202 to "TM series",
+            // Epson EU-m30 kiosk module (printer-class firmware)
+            0x0E2E to "EU-m30",
+        )
+
+        fun match(d: android.hardware.usb.UsbDevice): String? =
+            if (d.vendorId == VENDOR_ID) MODELS[d.productId] else null
+
+        fun isKnown(d: android.hardware.usb.UsbDevice): Boolean = match(d) != null
+    }
+
+    /**
+     * Hardcoded Star Micronics receipt printer USB models (VID 0x0519).
+     * ⚠ These printers MUST have ESC/POS routing enabled via Star futurePRNT utility.
+     */
+    private object StarReceiptModels {
+        const val VENDOR_ID = 0x0519
+
+        val MODELS: Map<Int, String> = mapOf(
+            // TSP143IIIU / TSP100IIIU family
+            0x0003 to "TSP143IIIU",
+            // mC-Print2 / mC-Print3 USB
+            0x0007 to "mC-Print",
+        )
+
+        fun match(d: android.hardware.usb.UsbDevice): String? =
+            if (d.vendorId == VENDOR_ID) MODELS[d.productId] else null
+
+        fun isKnown(d: android.hardware.usb.UsbDevice): Boolean = match(d) != null
+    }
+
+    /**
+     * Hardcoded Xprinter receipt printer USB models (VID 0x28e9 / GigaDevice).
+     * Covers XP-T80Q, XP-P300, and most Xprinter USB thermal receipt printers.
+     * All speak standard ESC/POS over USB bulk-OUT.
+     */
+    private object XprinterModels {
+        const val VENDOR_ID = 0x28e9
+
+        // Xprinter PIDs vary by batch/firmware; the VID alone is sufficient for detection
+        // because all GigaDevice-based Xprinter units use ESC/POS over bulk-OUT.
+        fun isKnown(d: android.hardware.usb.UsbDevice): Boolean = d.vendorId == VENDOR_ID
+    }
+
+    /**
+     * Hardcoded VOZY receipt printer USB models (ESC/POS, all models confirmed compatible).
+     *
+     * VOZY is a Philippine white-label POS brand built on standard ESC/POS chipsets:
+     *   G80  — 80mm, USB + BT, auto-cutter (VID typically 0x28e9 or 0x0416)
+     *   P50  — 58mm portable, USB + BT          (VID typically 0x28e9 or 0x0416)
+     *   MP210 — 58mm mini mobile, USB + BT       (VID typically 0x0416 or 0x6868)
+     *
+     * All three VIDs (0x28e9, 0x0416, 0x6868) are already in thermalVendors, so VOZY printers
+     * are detected automatically as ESC/POS receipt printers without needing a dedicated PID map.
+     * This object exists solely for accurate display naming in the printer list.
+     */
+    private object VozyReceiptModels {
+        // VIDs VOZY units are known to use (may vary by batch)
+        private val VENDOR_IDS = setOf(0x28e9, 0x0416, 0x6868)
+
+        fun isKnown(d: android.hardware.usb.UsbDevice): Boolean {
+            if (d.vendorId !in VENDOR_IDS) return false
+            // Match on product name containing VOZY model identifiers
+            val name = (d.productName ?: "").uppercase()
+            return name.contains("VOZY") || name.contains("G80") ||
+                   name.contains("P50") || name.contains("MP210")
+        }
+
+        fun modelName(d: android.hardware.usb.UsbDevice): String {
+            val name = (d.productName ?: "").uppercase()
+            return when {
+                name.contains("G80")  -> "VOZY G80"
+                name.contains("P50")  -> "VOZY P50"
+                name.contains("MP210") -> "VOZY MP210"
+                else -> "VOZY printer"
+            }
+        }
+    }
 
     init {
         val rx = object : BroadcastReceiver() {
@@ -917,8 +1024,19 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     }
 
     private fun usbName(d: UsbDevice): String {
-        // Hardcoded Epson L-series: return the exact marketing name immediately, no USB control needed.
+        // Hardcoded Epson L-series inkjet: return the exact marketing name immediately.
         EpsonLModels.match(d)?.let { return "Epson $it" }
+        // Hardcoded Epson TM / EU receipt printers.
+        EpsonReceiptModels.match(d)?.let { return "Epson $it" }
+        // Hardcoded Star receipt printers (need ESC/POS mode enabled).
+        StarReceiptModels.match(d)?.let { return "Star $it" }
+        // VOZY receipt printers (G80, P50, MP210) — name from product descriptor when available.
+        if (VozyReceiptModels.isKnown(d)) return VozyReceiptModels.modelName(d)
+        // Xprinter (GigaDevice VID) — model name from USB descriptor when available.
+        if (XprinterModels.isKnown(d)) {
+            val prod = usbProduct(d)
+            return if (!prod.isNullOrBlank()) "Xprinter $prod" else "Xprinter printer"
+        }
         val maker = when (d.vendorId) {
             0x04b8 -> "Epson"; 0x03f0 -> "HP"; 0x04a9 -> "Canon"; 0x04f9 -> "Brother"
             0x0519 -> "Star"; 0x1504 -> "Bixolon"; 0x1d90 -> "Citizen"; else -> ""
@@ -929,6 +1047,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     private fun usbLooksLikeReceipt(d: UsbDevice): Boolean =
         d.vendorId in thermalVendors ||
+        EpsonReceiptModels.isKnown(d) ||
+        StarReceiptModels.isKnown(d) ||
+        XprinterModels.isKnown(d) ||
             (usbProduct(d)?.let { Regex("(?i)(^|[^a-z])tm[- ]?[a-z]?\\d|pos|receipt|thermal").containsMatchIn(it) } ?: false)
 
     private fun usbPermIntent(): PendingIntent = PendingIntent.getBroadcast(

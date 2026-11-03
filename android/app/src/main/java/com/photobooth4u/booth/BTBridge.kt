@@ -27,8 +27,25 @@ import java.util.concurrent.TimeUnit
 /**
  * BTBridge — Injected into WebView as window.__BTBridge.
  *
- * Provides direct Bluetooth RFCOMM SPP communication for thermal receipt printers
- * (Xprinter XP-T80A / XP-80C, Epson TM-T82X, Star, Goojprt, Bixolon, Munbyn, etc.).
+ * Provides direct Bluetooth RFCOMM SPP communication for thermal receipt printers.
+ * Hardcoded-compatible models (all via ESC/POS over SPP):
+ *   Bluetooth:
+ *     - Xprinter XP-T80Q, XP-P300 (BT name starts with "XP")
+ *     - Epson TM-T82X-II           (BT name starts with "TM" or "Epson")
+ *     - Star TSP143IIIBi           (BT name starts with "TSP" or "Star")
+ *     - VOZY G80                   (BT name starts with "VOZY" or "G80")
+ *     - VOZY P50                   (BT name starts with "VOZY" or "P50")
+ *     - VOZY MP210                 (BT name starts with "MP" — already covered — or "VOZY")
+ *   USB (handled by NetPrintBridge / raw ESC/POS):
+ *     - Xprinter XP-T80Q, XP-P300 (VID 0x28e9)
+ *     - Epson TM-T82X-II           (VID 0x04B8, PID 0x0E27 printer-class / 0x0202 vendor-class)
+ *     - Epson EU-m30               (VID 0x04B8, PID 0x0202 / 0x0E2E)
+ *     - Star TSP143IIIU            (VID 0x0519, PID 0x0003 — must be in ESC/POS routing mode)
+ *     - VOZY G80 / P50             (VID 0x28e9 or 0x0416 — both already in thermalVendors)
+ *     - VOZY MP210                 (VID 0x0416 or 0x6868 — both already in thermalVendors)
+ *
+ * ⚠ Star TSP143III note: ships in Star Line / Raster mode. Enable ESC/POS routing via the
+ *   Star futurePRNT Configuration Utility (Windows) → "Enable ESC/POS Routing", then save.
  */
 class BTBridge(
     private val activity: Activity,
@@ -49,7 +66,15 @@ class BTBridge(
         "Thermal", "RPP", "Bixolon", "BIXOLON", "Star", "MP", "BP",
         "PT", "ZJ", "NT", "Netum", "Printer", "MTP", "MPT",
         "Inner", "Qsprinter", "Goojprt", "GOOJPRT", "Munbyn", "Milestone",
-        "HOIN", "Sunmi", "Imin", "Diyep"
+        "HOIN", "Sunmi", "Imin", "Diyep",
+        // Star TSP143IIIBi advertises itself as "TSP143III" (no "Star" prefix)
+        "TSP",
+        // Xprinter XP-P300 sometimes advertises as "P300" on older firmware
+        "P300",
+        // VOZY receipt printers: G80 (80mm), P50 (58mm portable), MP210 (58mm mini) — all ESC/POS
+        // MP210 BT name is usually "MP210" which is already caught by "MP" above,
+        // but "VOZY" covers any model that advertises the brand name first.
+        "VOZY", "G80", "P50"
     )
 
     private var activeSocket: BluetoothSocket? = null

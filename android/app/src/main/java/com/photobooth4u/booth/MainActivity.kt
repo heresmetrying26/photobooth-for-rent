@@ -487,15 +487,10 @@ class MainActivity : AppCompatActivity() {
 
         // ChromeClient for camera / microphone permissions & file chooser
         webView.webChromeClient = object : WebChromeClient() {
-            // Page errors go to Logcat, and the first few show on screen so a booth that
-            // loads but won't respond (e.g. "Tap to start" does nothing) says why.
+            // Page errors go to Logcat
             override fun onConsoleMessage(m: ConsoleMessage?): Boolean {
                 if (m != null && m.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
                     Log.e("PBBooth", "${m.message()} (${m.sourceId()}:${m.lineNumber()})")
-                    if (pageErrorToasts < 3) {
-                        pageErrorToasts++
-                        Toast.makeText(this@MainActivity, "Booth error: ${m.message().take(160)} (line ${m.lineNumber()})", Toast.LENGTH_LONG).show()
-                    }
                 }
                 return true
             }

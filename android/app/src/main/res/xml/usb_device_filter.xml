@@ -16,10 +16,37 @@
           - Epson L8050: 2150 (0x0866)
           - Epson L3210: 58993 (0xE671)
           - Epson L3276: 17498 (0x445A)
+          - Epson L120 / L121: 94 (0x005E)
     -->
     <usb-device vendor-id="1208" product-id="2150" />
     <usb-device vendor-id="1208" product-id="58993" />
     <usb-device vendor-id="1208" product-id="17498" />
+    <usb-device vendor-id="1208" product-id="94" />
+
+    <!--
+        Canon PIXMA G-series ink-tank printers (Canon Inc. Vendor ID 1193 / 0x04A9)
+        Product IDs (decimal):
+          - Canon G1010: 6204 (0x183C)
+          - Canon G1000: 6035 (0x1793)
+          - Canon G2010: 6205 (0x183D)
+          - Canon G2000: 6037 (0x1795)
+          - Canon G3010: 6203 (0x183B)
+          - Canon G3000: 6036 (0x1794)
+          - Canon G3020: 6335 (0x18BF)
+          - Canon G3060: 6336 (0x18C0)
+          - Canon G3070: 6408 (0x1908)
+          - Canon G3030: 6510 (0x196E)
+    -->
+    <usb-device vendor-id="1193" product-id="6204" />
+    <usb-device vendor-id="1193" product-id="6035" />
+    <usb-device vendor-id="1193" product-id="6205" />
+    <usb-device vendor-id="1193" product-id="6037" />
+    <usb-device vendor-id="1193" product-id="6203" />
+    <usb-device vendor-id="1193" product-id="6036" />
+    <usb-device vendor-id="1193" product-id="6335" />
+    <usb-device vendor-id="1193" product-id="6336" />
+    <usb-device vendor-id="1193" product-id="6408" />
+    <usb-device vendor-id="1193" product-id="6510" />
 
     <!--
         Epson TM / EU receipt printers (VID 0x04B8 = 1208 decimal)

@@ -12981,8 +12981,7 @@
                   <button type="button" class="action-btn" id="netPrinterIpBtn" style="width:auto;margin:0;">Search</button>
                 </div>
               </div>
-              <p class="panel-hint" style="margin:6px 0 0;">For Bluetooth 80 mm Xprinter or Epson models: pair the
-                printer, add it in Windows or Mac printer settings, then refresh and select it here.</p>
+              <p class="panel-hint" style="margin:6px 0 0;">For desktop Bluetooth printers: pair the printer in system settings, then refresh and select it here.</p>
               <button type="button" class="action-btn" id="printerSetupBtn"
                 style="display:none;width:auto;margin:8px 0 0;">Configure printer</button>
               <div id="printerOptionsBox" style="display:none;margin-top:8px;"></div>
@@ -13008,7 +13007,7 @@
                 <span>Bluetooth thermal receipt printer</span>
                 <input type="checkbox" id="btThermalToggle">
               </label>
-              <p class="panel-hint" style="margin:2px 0 8px;">Directly print receipts and strips over Bluetooth to 80 mm or 58 mm thermal printers (Xprinter, Epson, Star, VOZY, etc.) without a print dialog.</p>
+              <p class="panel-hint" style="margin:2px 0 8px;">Direct printing for 58 mm and 80 mm Bluetooth thermal receipt printers without a print dialog.</p>
               <div id="btThermalControls" style="margin-top:8px;">
                 <p class="panel-hint" id="btThermalWarnHint" style="display:none;color:#b91c1c;font-weight:600;margin:0 0 8px;"></p>
                 <p class="panel-hint" id="btThermalPaperHint" style="display:none;color:#856404;background:#fff3cd;padding:6px 10px;border-radius:4px;margin:0 0 8px;"></p>
@@ -13028,7 +13027,7 @@
             </div>
             <div class="printer-pick" id="wifiPrinterRow" style="display:none;margin-top:10px;">
               <label class="sub-label" style="display:block; margin:6px 0 2px;">Wi-Fi &amp; USB Printers</label>
-              <p class="panel-hint" style="margin:2px 0 8px;">The tablet automatically looks for USB printers (plugged into the USB-OTG port) and Wi-Fi printers on this network (Epson L8050/L3210/TM-T82X, Canon SELPHY CP1300/1500, Star, Xprinter, VOZY, HP, Brother…) and prints straight to the one you pick, with no print dialog.</p>
+              <p class="panel-hint" style="margin:2px 0 8px;">Automatically detects connected USB and local network printers for direct driverless printing.</p>
               <button type="button" class="action-btn" id="wifiPrinterFindBtn"
                 style="width:auto;margin:0 8px 8px 0;">Find Wi-Fi &amp; USB printers</button>
               <button type="button" class="action-btn" id="wifiPrinterTestBtn"
@@ -13039,9 +13038,8 @@
                 style="display:none;width:auto;margin:0 8px 8px 0;">Open Android print settings</button>
               <p class="panel-hint" id="wifiPrinterStatus" style="margin:4px 0 6px;"></p>
               <details id="wifiDiag" style="display:none;margin:0 0 8px;">
-                <summary>Colour diagnostics (testing only)</summary>
-                <p class="panel-hint" style="margin:4px 0 6px;">Each button prints one small strip on plain paper. Tell
-                  us what each one printed: a strip, nothing, or letters and symbols.</p>
+                <summary>Colour diagnostics (advanced)</summary>
+                <p class="panel-hint" style="margin:4px 0 6px;">Prints diagnostic test patterns to calibrate color output.</p>
                 <label class="sub-label" for="wifiDiagK" style="display:block;margin:4px 0 2px;">Colour-mode
                   command</label>
                 <select id="wifiDiagK" class="printer-input">
@@ -14282,7 +14280,7 @@
         land4: { name: 'Landscape 4', shots: 4, kind: 'landscape', hint: 'Landscape 4R: 1 big shot and the name on top, 3 below.' },
         // Receipt photo booth: looks like a shop receipt. Black & white is made for
         // 80 mm / 58 mm thermal receipt printers; the colour one suits photo printers.
-        receipt: { name: 'Receipt', shots: 3, kind: 'receipt', hint: 'Like a shop receipt, in black & white. Made for 80 mm or 58 mm thermal receipt printers (Epson TM, Xprinter…).' },
+        receipt: { name: 'Receipt', shots: 3, kind: 'receipt', hint: 'Black & white layout formatted for 58 mm and 80 mm thermal receipt printers.' },
         receiptc: { name: 'Receipt colour', shots: 3, kind: 'receipt', color: true, hint: 'The receipt look with colour photos. Prints on photo paper (2 side by side on 4R) or a receipt printer.' },
         // Only offered when the booth type (top of Setup) is Trading card / Certificate.
         card: { name: 'Trading card', shots: 1, kind: 'card', hint: 'One collectible card: the guest’s photo, name, a title line and random stats. 2.5 × 3.5 in.' },
@@ -15784,7 +15782,7 @@
         const left = await refreshQueueUI();
         if (left.some(i => !i.error)) scheduleQueue(30000);
         if (uploaded && !left.length) showToast(before > 1 ? 'All waiting photos uploaded ✓' : 'Waiting photo uploaded ✓');
-        else if (manual && left.length) showToast(left.length === 1 ? 'Still 1 photo waiting. Check the internet.' : 'Still ' + left.length + ' photos waiting. Check the internet.', 5000);
+        else if (manual && left.length) showToast(left.length === 1 ? '1 photo pending upload. Check network connection.' : left.length + ' photos pending upload. Check network connection.', 5000);
       }
       async function saveQueuedToComputer() {
         const items = await queuedItems();
@@ -16275,7 +16273,7 @@
           } else {
             failQrSlot('photo', 'No internet right now. Your photo is saved on this booth and goes online by itself later.');
           }
-          showToast('Offline: photo kept on this device. It uploads by itself when the internet is back.', 7000);
+          showToast('Offline: photo saved locally. Will sync automatically when online.', 6000);
           return null;
         }
         if (!result && (evFolder || gv)) {
@@ -16908,7 +16906,7 @@
         const vh = (typeof video !== 'undefined' && video && video.videoHeight) ? video.videoHeight : 0;
         const now = vw ? vw + '\u00d7' + vh : '';
         const softWarn = (vh > 0 && vh <= 480 && webcamRes.photo !== 'max') ? '480p is smooth for GIFs/boomerangs, but soft for 4R prints \u2014 pick 720p+ or Max photo for sharper prints. ' : '';
-        const usb2Hint = IS_ANDROID_APP ? 'Tablets with a USB 2.0 port (Tab A11, S9 FE...) can\u2019t show 4K live; use Max photo instead.' : '';
+        const usb2Hint = IS_ANDROID_APP ? 'USB 2.0 tablet ports may limit 4K preview; standard resolution is recommended for live view.' : '';
         if (note) note.textContent = ((now ? 'Now: ' + now + '. ' : '') + (info && info.max ? 'Camera max: ' + info.max + '. ' : '') + softWarn + usb2Hint).trim();
       }
       if (webcamResBox) {
@@ -17234,7 +17232,7 @@
         b.dataset.wired = '1';
         b.addEventListener('click', () => {
           const text = 'photobooth4u camera log\n' + navigator.userAgent + '\n' + window.pbCameraLog();
-          const done = () => { try { showToast('Camera log copied. Paste it into a message to us.', 4000); } catch (_) { } };
+          const done = () => { try { showToast('Camera log copied to clipboard.', 4000); } catch (_) { } };
           const fallback = () => {
             try {
               const ta = document.createElement('textarea');
@@ -17352,7 +17350,7 @@
       }
       function usbOptionLabel() {
         if (usbCam.name) return usbCam.name + (usbCam.viaHelper ? ' (USB)' : ' (USB remote)');
-        if (usbCam.viaHelper) return usbCam.helperName ? usbCam.helperName + ' (USB)' : ANDROID_APP ? 'Nikon / Canon / Sony camera over USB cable' : 'Nikon / Canon / Sony camera over USB (photobooth4u Helper)';
+        if (usbCam.viaHelper) return usbCam.helperName ? usbCam.helperName + ' (USB)' : ANDROID_APP ? 'DSLR / Mirrorless camera (USB)' : 'DSLR / Mirrorless camera (USB Helper)';
         return 'DSLR / mirrorless over USB (remote control)';
       }
 
@@ -17412,7 +17410,7 @@
         if (usbCam.viaHelper) {
           const code = err && err.code;
           if (DESKTOP && (code === 'NOHELPER' || code === 'TIMEOUT')) return 'The camera part of the app isn\u2019t answering.' + (auto ? ' It keeps trying.' : ' Tap Try Again, or close and reopen the app.');
-          if (ANDROID_APP && (code === 'NOHELPER' || code === 'TIMEOUT')) return 'The camera part of the app isn\u2019t answering.' + (auto ? ' It keeps trying.' : ' Tap Try Again, or close and reopen the app.');
+          if (ANDROID_APP && (code === 'NOHELPER' || code === 'TIMEOUT')) return 'Camera connection timed out.' + (auto ? ' Reconnecting…' : ' Tap Try Again, or reconnect the camera.');
           if (code === 'NOHELPER' || code === 'TIMEOUT') return 'Can\u2019t reach the photobooth4u Helper. Open it on this laptop (download it from photobooth4u.netlify.app/downloads). If Chrome asks to let this site reach apps on this device, choose Allow.' + (auto ? ' The camera connects by itself once the helper is open.' : ' Then tap Try Again.');
           if (err && err.name === 'UsbNoLiveView' && usbCam.lastErr && usbCam.lastErr.helperMsg) return usbCam.lastErr.helperMsg + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');
           if (err && err.name === 'UsbNoLiveView') return 'The camera connected but live view didn\u2019t start. Close the camera\u2019s menu, take the lens cap off and check the battery.' + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');
@@ -17425,7 +17423,7 @@
         }
         if (!usbCam.viaHelper && err && err.helperMsg) return err.helperMsg + (auto ? ' The booth keeps trying.' : ' Then tap Try Again.');      // the Mac app's own Canon connection explains itself
         if (err && err.name === 'NotFoundError' && win) return 'No USB camera picked. On Windows the camera only appears after a one-time driver switch (Zadig). Steps: open /camera-test/ on this site. Or use a Mac or Android device, where it works with no setup.';
-        if (err && err.name === 'NotFoundError') return 'No USB camera picked. Set the camera’s USB mode to Photo Import / Remote Control (Canon), PTP/MTP (Nikon) or PC Remote (Sony), plug it in and switch it on, then tap Try Again and pick it.' + usbMacHint();
+        if (err && err.name === 'NotFoundError') return 'No USB camera detected. Verify camera is set to PC Remote / PTP mode, powered on, and tap Try Again.' + usbMacHint();
         if (err && err.name === 'SecurityError') return 'Tap Try Again to pick the USB camera.';
         if (err && err.name === 'UsbNoLiveView') return (usbLvBlockedText() || 'The camera connected but live view didn’t start. Close the camera’s menu, put the mode dial on M, P, A or S, take the lens cap off and check there’s a memory card in it.') + ' Then tap Try Again.';
         if (usbCam.freed && usbBusyError(err)) return 'Another app is still holding the camera, even after ' + (DESKTOP ? 'the app' : 'the Helper') + ' tried to let go of it. Quit Imaging Edge, Photos and Image Capture, switch the camera off and on, unplug and replug the cable, then tap Try Again.';
@@ -17546,7 +17544,7 @@
         });
         copy.addEventListener('click', () => {
           const text = out.textContent;
-          const done = () => { try { showToast('Check result copied. Paste it into a message to us.', 4000); } catch (_) { } };
+          const done = () => { try { showToast('Diagnostic results copied to clipboard.', 4000); } catch (_) { } };
           if (window.pb4u && window.pb4u.copy) { Promise.resolve(window.pb4u.copy(text)).then(done, done); return; }
           try { navigator.clipboard.writeText(text).then(done, done); } catch (_) { }
         });
@@ -17822,7 +17820,7 @@
           usbCamNote('Camera battery: ' + v + (low ? ' — swap it or plug in mains power soon.' : ''), low);
           if (low && Date.now() - usbBattWarnedAt > 10 * 60 * 1000) {
             usbBattWarnedAt = Date.now();
-            showToast('Camera battery low (' + v + '). Swap the battery or plug in mains power before the next guests.', 8000);
+            showToast('Camera battery low (' + v + '). Connect external power before continuing.', 8000);
           }
         } catch (err) {
           if (usbIsCritical(err)) usbDead(err);
@@ -18608,7 +18606,7 @@
           console.error('USB shot failed:', err);
           usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); usbAfterShot();
           usbLog('shot-fail', usbErrInfo(err));
-          showToast(err && err.helperMsg ? err.helperMsg + ' The live view frame was used.' : 'The camera photo didn\u2019t come through (check focus, and that the camera saves JPEG), so the live view frame was used.', 6000);
+          showToast(err && err.helperMsg ? err.helperMsg + ' Live view frame captured instead.' : 'Camera capture timed out. Live view frame captured instead.', 6000);
           if (usbIsCritical(err)) usbDead(err);
         }
       }
@@ -21391,7 +21389,7 @@
         };
         findNetPrintersBtn.addEventListener('click', function () { search(''); });
         if (ipBtn) ipBtn.addEventListener('click', function () {
-          if (!/^\d{1,3}(\.\d{1,3}){3}$/.test((ipIn.value || '').trim())) { showToast('That doesn’t look like an IP address (e.g. 192.168.1.50).', 4000); return; }
+          if (!/^\d{1,3}(\.\d{1,3}){3}$/.test((ipIn.value || '').trim())) { showToast('Invalid IP address. Format: 192.168.1.50', 4000); return; }
           search(ipIn.value.trim());
         });
       }
@@ -21464,11 +21462,11 @@
               showToast(msg, 7000);
               if (window._btThermal.isNativeAndroid && typeof window._btThermal.openBtSettings === 'function') window._btThermal.openBtSettings();
             } else if (/globally disabled/i.test(msg)) {
-              showToast('Web Bluetooth is disabled in this browser. On Xiaomi / Samsung tablets, open in Google Chrome or install our Android Tablet App (APK) from /downloads/ for direct Bluetooth printing.', 9000);
+              showToast(IS_ANDROID_APP ? 'Bluetooth connection failed. Ensure Bluetooth is enabled and the printer is paired.' : 'Web Bluetooth is unavailable in this browser. Open in Google Chrome or install the Android Tablet App.', 7000);
             } else if (/User cancelled/i.test(msg) || (err && err.name === 'NotFoundError' && !/globally disabled/i.test(msg))) {
               showToast('No Bluetooth device selected.', 3000);
             } else {
-              showToast('Bluetooth connection failed: ' + msg + '. On Android tablets, use our Android Tablet App for POS printers like T80A.', 7000);
+              showToast('Bluetooth connection failed: ' + msg + (IS_ANDROID_APP ? '' : '. For Classic Bluetooth POS printers, use the Android Tablet App.'), 6000);
             }
           } finally {
             btThermalConnectBtn.disabled = false;
@@ -21550,7 +21548,7 @@
         if (bluetoothPrinterBtn) bluetoothPrinterBtn.style.display = (DESKTOP || (helperOn && helper.ok && helperAtLeast('1.1.8'))) ? '' : 'none';
         if (refreshPrintersBtn) refreshPrintersBtn.style.display = (DESKTOP || (helperOn && helper.ok && helperAtLeast('1.1.8'))) ? '' : 'none';
         if (helperOn && helper.ok) {
-          if (DESKTOP && !helper.printers.length) printerHelperHint.textContent = 'No printers found on this laptop. For Bluetooth, pair the printer, add it in Printers & Scanners, and install its driver. 80 mm Bluetooth Xprinter and Epson receipt printers are the target.';
+          if (DESKTOP && !helper.printers.length) printerHelperHint.textContent = 'No printers found on this computer. For Bluetooth, pair the printer in system settings and install its driver if required.';
           else if (!name) printerHelperHint.textContent = 'Print Helper connected. Choose the printer for this paper size.';
           else if (helper.printers.length && !helper.printers.includes(name)) printerHelperHint.textContent = 'No printer on this computer is called “' + name + '”. Pick one from the list.';
           else printerHelperHint.textContent = 'Prints go straight to “' + name + '” — no dialog.';
@@ -21629,11 +21627,11 @@
           { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> after a photo session.' }
         ];
         else if (isMobileOS() && btThermalOn && printSize && isReceiptPaper(printSize)) steps = [
-          { done: !!(window._btThermal && window._btThermal.btPrinter.connected), t: 'Connect the Bluetooth thermal printer', s: (window._btThermal && window._btThermal.btPrinter.connected) ? '\u2713 Connected: ' + window._btThermal.btPrinter.name : 'Tap <b>Connect Bluetooth Printer</b> below. Make sure it is on and paired to this tablet in Bluetooth settings. On Android tablets, use the Android Tablet App (APK) for POS printers like T80A.' },
+          { done: !!(window._btThermal && window._btThermal.btPrinter.connected), t: 'Connect the Bluetooth thermal printer', s: (window._btThermal && window._btThermal.btPrinter.connected) ? '\u2713 Connected: ' + window._btThermal.btPrinter.name : 'Tap <b>Connect Bluetooth Printer</b> below. Ensure printer is powered on and paired in Bluetooth settings.' },
           { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> — the receipt prints directly without a dialog.' }
         ];
         else if (isMobileOS()) steps = [
-          { done: false, t: 'Turn on the printer and join the same Wi-Fi', s: 'AirPrint printers (Canon Selphy, Epson, HP\u2026) show up by themselves. For DNP / HiTi, use a laptop print station.' + (isBtThermalAvailable() && printSize && isReceiptPaper(printSize) ? ' For 80 mm Bluetooth thermal printers, enable <b>Bluetooth Receipt Printer</b> below.' : '') },
+          { done: false, t: 'Turn on the printer and join the same Wi-Fi', s: 'Compatible network printers appear automatically. Dye-sublimation stations require a connected print station.' + (isBtThermalAvailable() && printSize && isReceiptPaper(printSize) ? ' For Bluetooth thermal printing, enable <b>Bluetooth thermal receipt printer</b> below.' : '') },
           { done: false, t: 'Print once and pick the printer', s: 'Press <b>Print</b>, choose the printer in the AirPrint sheet. The iPad remembers it.' + (navigator.standalone ? ' <b>Home Screen app:</b> if no sheet appears, open the booth in a Safari tab instead, or use a laptop print station.' : '') },
           { done: false, t: 'Test a print', s: 'Tap <b>' + escHtml(printTxt('txtPrint')) + '</b> and choose the printer in the AirPrint sheet.' }
         ];
@@ -22092,8 +22090,8 @@
         document.getElementById('borderlessRow').hidden = !bl;
         borderlessHint.hidden = !bl;
         borderlessToggle.checked = !!printPrefs.borderless;
-        let hint = 'Prints edge to edge with no printer margins and no scaling by the printer, so nothing is trimmed. It works on Wi-Fi and driverless USB printers (Epson L8050, L3210, L3276 supported).';
-        try { if (wifiPrinter && (wifiPrinter.escp2 || wifiPrinter.canon)) hint = 'This printer prints with a small border. Borderless needs a Wi-Fi or driverless USB printer (Epson L8050, L3210, L3276 support borderless).'; } catch (e) { }
+        let hint = 'Prints edge-to-edge without margins or scaling on supported photo printers.';
+        try { if (wifiPrinter && (wifiPrinter.escp2 || wifiPrinter.canon)) hint = 'This printer requires standard page margins; borderless mode is not supported by this model.'; } catch (e) { }
         borderlessHint.textContent = hint;
         schedulePrintThumb();
       }
@@ -22568,7 +22566,7 @@
       }
       function wifiOpts() {
         const o = { color: wifiOptsState.color || '', quality: wifiOptsState.quality || '', media: wifiOptsState.media || '' };
-        if (wifiPrinter && wifiPrinter.escp2 && !(pbDebug() && o.color === 'color')) o.color = 'mono';   // L120 family: black and white; colour only in debug
+        if (wifiPrinter && wifiPrinter.escp2 && !o.color) o.color = 'color';   // L120 / L121: colour enabled by default
         o.cal = wifiCal;
         o.borderless = !!(printPrefs && printPrefs.borderless && window.__PBNet);
         o.brightness = (typeof colorAdj !== 'undefined' && colorAdj.brightness) ? colorAdj.brightness : 0;
@@ -22593,8 +22591,8 @@
         };
         let colorCh = [], qualCh = [], mediaCh = [];
         if (p) {
-          if (p.escp2 && pbDebug()) colorCh = [['mono', 'Black & white'], ['color', 'Colour (beta)']];
-          else if (p.canon || p.epsonL) colorCh = [['color', 'Colour'], ['mono', 'Black & white']];
+          if (p.escp2 || p.canon || p.epsonL) colorCh = [['color', 'Colour'], ['mono', 'Black & white']];
+
           else if ((p.colorModes || []).includes('monochrome') && (p.colorModes || []).includes('color')) colorCh = [['', 'Printer default'], ['color', 'Colour'], ['mono', 'Black & white']];
           const qs = p.qualities || [];
           if (p.escp2) qualCh = [['normal', 'Normal'], ['draft', 'Draft (fast)']];
@@ -22630,7 +22628,7 @@
         if (window.__PBPrint && typeof window.__PBPrint.print === 'function') {
           const bd = document.createElement('button');
           bd.type = 'button'; bd.className = 'action-btn'; bd.style.cssText = 'width:auto;margin:0;text-align:left;';
-          bd.textContent = (wifiPrinter && wifiPrinter.dialog ? '\u2713 ' : '') + 'Android print dialog \u00b7 any printer the tablet can see \u00b7 one tap per print';
+          bd.textContent = (wifiPrinter && wifiPrinter.dialog ? '\u2713 ' : '') + 'System Print Dialog · All available printers';
           bd.addEventListener('click', () => {
             wifiSave({ ip: 'android:dialog', name: 'Android print dialog', dialog: true });
             showToast('Prints will open the Android print dialog.', 3500);
@@ -22645,22 +22643,24 @@
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
           const sel = wifiPrinter && wifiPrinter.ip === p.ip;
-          b.textContent = (sel ? '✓ ' : '') + p.name + (p.usb ? ' · USB' : ' · Wi-Fi ' + p.ip) + (p.ipp ? ' · photo' : '') + (p.epsonL ? ' · photo (Epson ' + (p.epsonModel || 'L-series') + ')' : (p.escpr ? ' · photo' : '')) + (p.escp2 ? ' · photo (black & white)' : '') + (p.raw ? ' · receipt' : '') + (p.needsPermission ? ' · tap to allow USB access' : '') + (p.noDriver ? ' · no driver' : '') + (p.canon ? ' · photo' : '') + (p.selphy ? ' · photo (SELPHY)' : '');
+          var tag = p.needsPermission ? ' · Tap to allow USB access' : p.noDriver ? ' · No driver' : p.raw ? ' · Receipt' : p.escp2 ? ' · Photo (' + (p.epsonModel ? 'Epson ' + p.epsonModel : 'Photo') + ')' : p.epsonL ? ' · Photo (' + (p.epsonModel || 'Photo') + ')' : p.selphy ? ' · Photo (SELPHY)' : p.canon ? ' · Photo (' + (p.canonModel ? 'Canon ' + p.canonModel : 'Canon') + ')' : (p.ipp || p.escpr) ? ' · Photo' : '';
+          var connTag = (p.name && p.name.indexOf('(USB)') >= 0) ? '' : (p.usb ? ' · USB' : (p.ip ? ' · Wi-Fi' : ''));
+          b.textContent = (sel ? '✓ ' : '') + p.name + connTag + tag;
           b.addEventListener('click', () => {
             if (p.needsPermission) {
               // The tablet has not been given access to this USB printer yet, so it cannot read what it is.
               let r = ''; try { r = window.__PBNet.usbAllow(p.id); } catch (e) { }
-              showToast(r === 'gone' ? 'The USB printer was unplugged.' : 'Tap OK on the Android prompt to let photobooth4u use the USB printer, then tap the printer again.', 8000);
+              showToast(r === 'gone' ? 'The USB printer was disconnected.' : 'Please allow USB access in the system prompt, then tap the printer again.', 7000);
               setTimeout(() => wifiRenderList(wifiList()), 2500);
               setTimeout(() => wifiRenderList(wifiList()), 6000);
               return;
             }
             if (p.noDriver) {
-              showToast(p.name + ' is detected, but the app has no driver for it. Use the Android print dialog or the laptop print station for it.' + (pbDebug() && p.usb ? ' [USB ' + (p.vid || 0).toString(16) + ':' + (p.pid || 0).toString(16) + (p.info ? ' ' + p.info : ' (could not read its ID)') + ']' : ''), pbDebug() ? 14000 : 6000);
+              showToast(p.name + ' is detected, but requires the System Print Dialog or Print Station.' + (pbDebug() && p.usb ? ' [USB ' + (p.vid || 0).toString(16) + ':' + (p.pid || 0).toString(16) + (p.info ? ' ' + p.info : '') + ']' : ''), pbDebug() ? 10000 : 5000);
               return;
             }
-            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, selphy: !!p.selphy, epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
-            showToast('Will print to ' + p.name + '.', 3000);
+            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
+            showToast('Printer selected: ' + p.name, 3000);
             wifiRenderList(wifiList());
             refreshPrintUI();
           });
@@ -22668,9 +22668,9 @@
         });
         if (st && !wifiPrinter) {
           const prog = d.total ? ' ' + Math.min(d.checked || 0, d.total) + ' of ' + d.total + ' addresses checked.' : '';
-          st.textContent = d.scanning ? 'Looking for Wi-Fi and USB printers…' + prog + (d.printers.length ? ' Tap your printer when it appears.' : '')
-            : d.printers.length ? 'Tap your printer.'
-              : 'No printers found. ' + (d.note ? d.note + '. ' : '') + 'Make sure Wi-Fi printers are on the same Wi-Fi network, or plug in a USB printer via USB-OTG cable.';
+          st.textContent = d.scanning ? 'Scanning for printers…' + (d.printers.length ? ' Select a printer below.' : '')
+            : d.printers.length ? 'Select a printer below.'
+              : 'No printers found. Ensure Wi-Fi printers are on the same network or USB printers are connected via USB-OTG.';
         }
         if (st && d.addNote) st.textContent = d.addNote;
       }
@@ -22741,7 +22741,7 @@
         if (a) a.addEventListener('click', () => {
           const inp = document.getElementById('wifiPrinterIp');
           if (!inp || !wifiNetAvailable()) return;
-          if (window.__PBNet.addByIp(inp.value) !== 'ok') { showToast('That doesn’t look like an IP address (e.g. 192.168.1.50).', 4000); return; }
+          if (window.__PBNet.addByIp(inp.value) !== 'ok') { showToast('Invalid IP address. Format: 192.168.1.50', 4000); return; }
           const st = document.getElementById('wifiPrinterStatus'); if (st) st.textContent = 'Checking ' + inp.value.trim() + '…';
           setTimeout(() => wifiRenderList(wifiList()), 1500);
           setTimeout(() => wifiRenderList(wifiList()), 3500);
@@ -23116,12 +23116,14 @@
           if (btDiscBtn) btDiscBtn.style.display = conn ? '' : 'none';
           if (btStatus) {
             btStatus.textContent = conn
-              ? 'Connected: ' + (window._btThermal.btPrinter.name || 'Bluetooth Printer') + '. Prints are sent directly via ESC/POS.'
+              ? 'Connected: ' + (window._btThermal.btPrinter.name || 'Bluetooth Printer') + ' (ESC/POS).'
               : (!btEnabled
-                ? 'Turn on Bluetooth in Android Settings, pair your thermal printer, then return here and tap Connect.'
+                ? 'Bluetooth is disabled. Turn on Bluetooth in Settings, pair your printer, then tap Connect.'
                 : (window._btThermal && window._btThermal.isNativeAndroid()
-                  ? 'Pair your thermal printer (Xprinter, Epson, Star, VOZY, etc.) in Android Bluetooth Settings first, then tap Connect.'
-                  : 'Make sure the printer is turned on and paired in Bluetooth settings. Note: POS printers (T80A, XP-80) use Classic Bluetooth SPP — install our Android Tablet App from /downloads/ for direct 1-tap printing.'));
+                  ? 'Pair your thermal printer in Bluetooth Settings first, then tap Connect.'
+                  : (IS_ANDROID_APP
+                    ? 'Ensure your thermal printer is powered on and paired in Bluetooth Settings, then tap Connect.'
+                    : 'Ensure your printer is powered on and paired in Bluetooth settings. For POS printers with Classic Bluetooth SPP, use the Android Tablet App for direct printing.')));
           }
         }
         if (printSize && printsLeft() < sheetsPerCopy(printSize) && state === 'result') printHint.textContent = 'Print limit reached' + (lim.se && sessPrinted >= lim.se ? ' for this session.' : ' for this event.');

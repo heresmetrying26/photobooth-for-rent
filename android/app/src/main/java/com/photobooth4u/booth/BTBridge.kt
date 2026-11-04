@@ -268,7 +268,7 @@ class BTBridge(
         if (bondedDevices.isEmpty()) {
             val res = JSONObject()
             res.put("ok", false)
-            res.put("error", "No paired Bluetooth devices found. Pair your thermal printer (e.g. T80A) in tablet Bluetooth Settings first.")
+            res.put("error", "No paired Bluetooth devices found. Pair your thermal printer in tablet Bluetooth Settings first.")
             return res.toString()
         }
 

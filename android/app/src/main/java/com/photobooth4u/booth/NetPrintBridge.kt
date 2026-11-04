@@ -208,7 +208,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val opts = Opts(o.optString("quality"), o.optString("color"), o.optString("media"), o.optBoolean("borderless"))
                 val adj = PrintColorAdj.from(o)
                 val e = if (ip.startsWith("usb:")) usbEntry(ip) else found[ip] ?: Entry(ip).also { probeInto(it) }
-                if (e.ippPort <= 0) throw IllegalStateException("This printer can't take photo print jobs from the tablet.")
+                if (e.ippPort <= 0) throw IllegalStateException("This printer cannot receive photo print jobs.")
                 val arr = JSONArray(pagesJson)
                 val pages = ArrayList<ByteArray>()
                 for (i in 0 until arr.length()) {
@@ -679,6 +679,62 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     }
     // ─────────────────────────────────────────────────────────────────────────
 
+    // ── Hardcoded Epson ESC/P2 printers (L120, L121) ─────────────────────────
+    // VID 0x04B8 = Seiko Epson Corp.
+    // L120 / L121 speak ESC/P2 (CMD:ESCPL2) raster, not ESC/P-R.
+    // They print in color via EscP2Job.
+    object EpsonEscp2Models {
+        const val VENDOR_ID = 0x04B8
+
+        val MODELS: Map<Int, String> = mapOf(
+            0x005E to "L120",   // Epson L120 / L121 USB PID (94)
+            0x005F to "L121"
+        )
+
+        fun match(d: UsbDevice): String? {
+            if (d.vendorId != VENDOR_ID) return null
+            MODELS[d.productId]?.let { return it }
+            val prod = (d.productName ?: "")
+            if (prod.contains("L121", ignoreCase = true)) return "L121"
+            if (prod.contains("L120", ignoreCase = true)) return "L120"
+            return null
+        }
+
+        fun isKnown(d: UsbDevice): Boolean = match(d) != null
+    }
+
+    // ── Hardcoded Canon PIXMA G-series printers (G1010, G3030, etc.) ─────────
+    // VID 0x04A9 = Canon Inc.
+    // G-series ink-tank models speak Canon IVEC XML + BJRaster raster over USB.
+    object CanonGModels {
+        const val VENDOR_ID = 0x04A9
+
+        val MODELS: Map<Int, String> = mapOf(
+            0x183C to "G1010",
+            0x1793 to "G1000",
+            0x183D to "G2010",
+            0x1795 to "G2000",
+            0x183B to "G3010",
+            0x1794 to "G3000",
+            0x18BF to "G3020",
+            0x18C0 to "G3060",
+            0x1908 to "G3070",
+            0x196E to "G3030"
+        )
+
+        fun match(d: UsbDevice): String? {
+            if (d.vendorId != VENDOR_ID) return null
+            MODELS[d.productId]?.let { return it }
+            val prod = (d.productName ?: "")
+            val m = Regex("""(?i)\b(G[1-4]\d{3})\b""").find(prod)
+            if (m != null) return m.groupValues[1].uppercase()
+            return null
+        }
+
+        fun isKnown(d: UsbDevice): Boolean = match(d) != null
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     private val escprCache = ConcurrentHashMap<String, Boolean>()
     private val escprLogged: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
@@ -716,6 +772,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     private fun usbIsEscpr(d: UsbDevice): Boolean {
         if (usb?.hasPermission(d) != true) return false
         if (d.vendorId != 0x04b8) return false
+        // Never treat hardcoded ESC/P2 printers (L120, L121) as ESC/P-R:
+        if (EpsonEscp2Models.isKnown(d)) return false
         escprCache[d.deviceName]?.let { return it }
         // Fast-path: the three hardcoded models are known ESC/P-R printers; skip the USB control transfer
         // so the printer is usable even before it answers the IEEE-1284 device-ID request.
@@ -747,6 +805,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     private fun usbIsCanon(d: UsbDevice): Boolean {
         if (d.vendorId != 0x04a9 || usb?.hasPermission(d) != true) return false
         if (usbIsSelphy(d)) return false // Handled separately by CanonSelphyJob
+        if (CanonGModels.isKnown(d)) return true
         var id = usbIds[d.deviceName]
         if (id == null) {
             id = try { usbDeviceId(d) } catch (e: Exception) { Log.w(TAG, "canon id", e); null }
@@ -777,7 +836,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             try {
                 val d = usbFind(id)
                 usbEnsure(d)
-                if (!usbIsSelphy(d)) throw IllegalStateException("This printer doesn't look like a Canon SELPHY printer.")
+                if (!usbIsSelphy(d)) throw IllegalStateException("This device is not a recognized dye-sub photo printer.")
 
                 val iface = usbRawIface(d) ?: usbIfaces(d).firstOrNull { it.interfaceClass == UsbConstants.USB_CLASS_PRINTER && hasBulkPair(it) }
                     ?: usbIfaces(d).firstOrNull { hasBulkPair(it) }
@@ -876,7 +935,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             try {
                 val d = usbFind(id)
                 usbEnsure(d)
-                if (!usbIsCanon(d)) throw IllegalStateException("This printer doesn't look like a Canon G-series printer, so the app won't send it that data.")
+                if (!usbIsCanon(d)) throw IllegalStateException("Printer model is not supported for direct USB rendering.")
                 val copt = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
                 val mono = copt.optString("color") == "mono"
                 val cq = when (copt.optString("quality")) { "draft" -> 0; "high" -> 2; else -> 1 }
@@ -908,6 +967,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     /** True when the printer's own ID lists Epson's ESC/P2 language (CMD:ESCPL2) but not ESC/P-R: Epson L120 and kin. */
     private fun usbIsEscp2(d: UsbDevice): Boolean {
         if (d.vendorId != 0x04b8 || usb?.hasPermission(d) != true) return false
+        if (EpsonEscp2Models.isKnown(d)) return true
         val id = usbIds[d.deviceName] ?: return false
         return Regex("CMD:[^;]*ESCPL2", RegexOption.IGNORE_CASE).containsMatchIn(id) &&
             !Regex("CMD:[^;]*ESCPR", RegexOption.IGNORE_CASE).containsMatchIn(id)
@@ -926,7 +986,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val d = usbFind(id)
                 usbEnsure(d)
                 usbIsEscpr(d)
-                if (!usbIsEscp2(d)) throw IllegalStateException("This printer doesn't list Epson's ESC/P2 language.")
+                if (!usbIsEscp2(d)) throw IllegalStateException("Printer does not support ESC/P2 raster commands.")
                 usbRaw(id, EscP2Job.diagnostic(step, kMode, widthMm, heightMm, calOf(try { JSONObject(calJson) } catch (_: Exception) { null })))
                 r.put("ok", true)
             } catch (ex: Exception) {
@@ -959,7 +1019,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val d = usbFind(id)
                 usbEnsure(d)
                 usbIsEscpr(d)                              // reads the printer's ID into the cache
-                if (!usbIsEscp2(d)) throw IllegalStateException("This printer doesn't list Epson's ESC/P2 language, so the app won't send it that data.")
+                if (!usbIsEscp2(d)) throw IllegalStateException("Printer does not support ESC/P2 raster commands.")
                 val arr = JSONArray(pagesJson)
                 for (c in 0 until copies.coerceIn(1, 20)) {
                     for (i in 0 until arr.length()) {
@@ -997,7 +1057,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             try {
                 val d = usbFind(id)
                 usbEnsure(d)
-                if (!usbIsEscpr(d)) throw IllegalStateException("This printer doesn't report Epson's ESC/P-R language, so the app won't send it that data.")
+                if (!usbIsEscpr(d)) throw IllegalStateException("Printer does not support ESC/P-R raster commands.")
                 val optJson = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
                 val adj = PrintColorAdj.from(optJson)
                 val arr = JSONArray(pagesJson)
@@ -1088,6 +1148,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     private fun usbName(d: UsbDevice): String {
         // Hardcoded Epson L-series inkjet: return the exact marketing name immediately.
         EpsonLModels.match(d)?.let { return "Epson $it" }
+        // Hardcoded Epson ESC/P2 inkjet (L120, L121).
+        EpsonEscp2Models.match(d)?.let { return "Epson $it" }
+        // Hardcoded Canon PIXMA G-series inkjet (G1010, G3030, etc.).
+        CanonGModels.match(d)?.let { return "Canon PIXMA $it" }
         // Hardcoded Epson TM / EU receipt printers.
         EpsonReceiptModels.match(d)?.let { return "Epson $it" }
         // Hardcoded Star receipt printers (need ESC/POS mode enabled).
@@ -1148,13 +1212,20 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             val selphy = !ipp && !raw && !epsonL && !escpr && !escp2 && usbIsSelphy(d)
             val canon = !ipp && !raw && !epsonL && !escpr && !escp2 && !selphy && usbIsCanon(d)
             val id = "usb:" + d.deviceName
+            val epsonModelName = if (epsonL) (EpsonLModels.match(d) ?: "")
+                else if (escp2) (EpsonEscp2Models.match(d) ?: "")
+                else ""
+            val canonModelName = if (canon) (CanonGModels.match(d) ?: "") else ""
             arr.put(JSONObject()
                 .put("id", id).put("ip", id).put("name", usbName(d) + " (USB)")
                 .put("ipp", ipp).put("raw", raw).put("escpr", escpr || epsonL).put("usb", true)
                 .put("epsonL", epsonL)
-                .put("epsonModel", if (epsonL) (EpsonLModels.match(d) ?: "") else "")
+                .put("epsonModel", epsonModelName)
                 .put("borderless", epsonL && EpsonLModels.isBorderless(d))
-                .put("escp2", escp2).put("canon", canon).put("selphy", selphy)
+                .put("escp2", escp2)
+                .put("canon", canon)
+                .put("canonModel", canonModelName)
+                .put("selphy", selphy)
                 .put("noDriver", perm && !ipp && !raw && !epsonL && !escpr && !escp2 && !canon && !selphy)
                 .put("needsPermission", !perm && !ipp && !raw && !selphy)
                 .put("qualities", JSONArray(ippEntry?.qualities ?: emptyList<Int>()))
@@ -1177,17 +1248,17 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     private fun usbFind(id: String): UsbDevice =
         usb?.deviceList?.values?.firstOrNull { "usb:" + it.deviceName == id }
-            ?: throw IllegalStateException("The USB printer was unplugged. Plug it in and pick it again.")
+            ?: throw IllegalStateException("The USB printer was disconnected. Reconnect and select it again.")
 
     /** Blocks (up to 30 s) until Android's "allow this app to use the USB device?" prompt has been answered. */
     private fun usbEnsure(d: UsbDevice) {
-        val m = usb ?: throw IllegalStateException("This tablet has no USB host support.")
+        val m = usb ?: throw IllegalStateException("This tablet does not support USB host mode.")
         if (m.hasPermission(d)) return
         val latch = CountDownLatch(1)
         usbWaiters[d.deviceName] = latch
         activity.runOnUiThread { try { m.requestPermission(d, usbPermIntent()) } catch (_: Exception) { latch.countDown() } }
         latch.await(30, TimeUnit.SECONDS)
-        if (!m.hasPermission(d)) throw IllegalStateException("USB access wasn't allowed. Unplug the printer, plug it in again and tap Allow.")
+        if (!m.hasPermission(d)) throw IllegalStateException("USB permission not granted. Reconnect the printer and tap Allow.")
     }
 
     private fun usbEntry(id: String): Entry {
@@ -1201,12 +1272,12 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     }
 
     private fun <T> usbSession(d: UsbDevice, iface: UsbInterface, block: (UsbDeviceConnection, UsbEndpoint, UsbEndpoint?) -> T): T {
-        val conn = usb?.openDevice(d) ?: throw IllegalStateException("Couldn't open the USB printer.")
+        val conn = usb?.openDevice(d) ?: throw IllegalStateException("Could not open USB printer connection.")
         try {
-            if (!conn.claimInterface(iface, true)) throw IllegalStateException("The USB printer is busy. Unplug it, plug it in again and retry.")
+            if (!conn.claimInterface(iface, true)) throw IllegalStateException("The USB printer is busy. Reconnect and retry.")
             // a printer's data endpoints exist only in a non-zero alternate setting: switch it on before using them
             if (iface.alternateSetting != 0 && !conn.setInterface(iface)) {
-                throw IllegalStateException("Couldn't switch the USB printer's data port on. Unplug it, plug it in again and retry.")
+                throw IllegalStateException("Could not initialize printer USB data interface.")
             }
             var out: UsbEndpoint? = null
             var inn: UsbEndpoint? = null
@@ -1215,7 +1286,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 if (ep.type != UsbConstants.USB_ENDPOINT_XFER_BULK) continue
                 if (ep.direction == UsbConstants.USB_DIR_OUT) { if (out == null) out = ep } else if (inn == null) inn = ep
             }
-            if (out == null) throw IllegalStateException("The USB printer has no data port the app can use.")
+            if (out == null) throw IllegalStateException("No compatible USB printer data endpoint found.")
             return block(conn, out, inn)
         } finally {
             try { conn.releaseInterface(iface) } catch (_: Exception) {}
@@ -1229,7 +1300,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             // Never resend after a timeout: the printer may already hold part of the chunk, and a repeated piece
             // of a print job is read as text. Wait up to a minute for the printer to take each chunk instead.
             val r = conn.bulkTransfer(ep, data, off, minOf(16384, data.size - off), 60_000)
-            if (r < 0) throw IllegalStateException("The USB printer stopped answering. Switch it off and on, then try again.")
+            if (r < 0) throw IllegalStateException("Printer communication timed out. Power cycle the printer and retry.")
             off += r
         }
     }
@@ -1239,7 +1310,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         val d = usbFind(id)
         usbEnsure(d)
         val iface = usbRawIface(d) ?: usbIfaces(d).firstOrNull { it.interfaceClass == 7 }
-            ?: throw IllegalStateException("This USB device isn't a printer.")
+            ?: throw IllegalStateException("Connected USB device is not a supported printer.")
         usbSession(d, iface) { conn, out, inn ->
             // A bidirectional printer can send status back; read and drop it while we write so it never waits on us.
             val stop = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -1253,7 +1324,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     /** One IPP request/response over IPP-over-USB: HTTP carried on the printer's bulk endpoints. */
     private fun usbPost(d: UsbDevice, path: String, body: ByteArray): Reply {
-        val iface = usbIppIface(d) ?: throw IllegalStateException("This USB printer needs its own driver; the app can't print to it.")
+        val iface = usbIppIface(d) ?: throw IllegalStateException("This USB printer requires a dedicated driver or print station.")
         return usbSession(d, iface) { conn, out, inn ->
             if (inn == null) throw IllegalStateException("The USB printer has no reply port.")
             val head = "POST $path HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/ipp\r\nContent-Length: ${body.size}\r\n\r\n"
@@ -1266,7 +1337,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 if (n > 0) buf.write(tmp, 0, n)
                 if (buf.size() > 0 && httpComplete(buf.toByteArray())) break
             }
-            if (buf.size() == 0) throw IllegalStateException("The USB printer didn't answer.")
+            if (buf.size() == 0) throw IllegalStateException("Printer did not respond to status request.")
             parseReply(buf.toByteArray())
         }
     }
@@ -1502,7 +1573,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             }
         } catch (ex: Exception) {
             Log.w(TAG, "post $ip:$port$path", ex)
-            throw IllegalStateException("Couldn't reach the printer at $ip. Check it is on and on the same Wi-Fi.")
+            throw IllegalStateException("Could not reach printer at $ip. Verify it is powered on and connected to the same network.")
         }
     }
 
@@ -1682,6 +1753,21 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                                     try { Thread.sleep(500) } catch (_: Exception) {}
                                 }
                                 usbWrite(conn, out, jobData)
+                            }
+                        }
+                    }
+                    escp2 -> {
+                        val adj = PrintColorAdj()
+                        val cal = EscP2Job.Cal()
+                        for (i in 0 until pagesArr.length()) {
+                            val jpeg = decode(pagesArr.getString(i))
+                            val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+                                ?: throw IllegalStateException("Couldn't decode photo for printing.")
+                            try {
+                                val bytes = EscP2Job.build(bmp, widthMm, heightMm, color = true, cal = cal, quality = 1, feed = 0, adj = adj)
+                                usbRaw(id, bytes)
+                            } finally {
+                                try { bmp.recycle() } catch (_: Exception) {}
                             }
                         }
                     }

@@ -266,6 +266,8 @@ export function normOptions(o) {
     rates: speed === 'custom' ? (Array.isArray(o.rates) ? o.rates : []).map(Number).filter((r) => r >= 0.25 && r <= 4).slice(0, 6) : [],
     reverse: speed === 'custom' && !!o.reverse,
     W, H,
+    zoom: o.zoom !== undefined ? !!o.zoom : true,
+    flash: o.flash !== undefined ? !!o.flash : true,
     trimStart: clamp(Number(o.trimStart) || 0, 0, 3600),
     trimEnd: o.trimEnd == null || o.trimEnd === '' ? null : Math.max(0, Number(o.trimEnd) || 0),
     audio: ['music', 'original', 'none'].includes(o.audio) ? o.audio : 'music',
@@ -337,14 +339,21 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
   let src = '[0:v]';
   if (o.speed === 'slow') {
     const smoothSlow = o.smooth && (inFps <= 0 || inFps < 50);
-    f.push(src + fit + ',' + (smoothSlow ? 'minterpolate=fps=60:mi_mode=blend,' : '') + 'setpts=2.0*PTS,fps=30[v0]');
+    const durSlow = D * 2;
+    const zoomFilter = o.zoom ? ',scale=w=\'trunc(iw*(1+0.14*sin(t/' + f2(durSlow) + '*PI))/2)*2\':h=\'trunc(ih*(1+0.14*sin(t/' + f2(durSlow) + '*PI))/2)*2\':eval=frame,crop=' + o.W + ':' + o.H : '';
+    const flashFilter = o.flash ? ',fade=t=out:st=0.0:d=0.06:color=white,fade=t=in:st=0.06:d=0.10:color=white' : '';
+    f.push(src + fit + ',' + (smoothSlow ? 'minterpolate=fps=60:mi_mode=blend,' : '') + 'setpts=2.0*PTS,fps=30' + zoomFilter + flashFilter + '[v0]');
   } else if (o.speed === 'ramp') {
     const t1 = f2(D * 0.25), t2 = f2(D * 0.75);
+    const bDur = (D * 0.75 - D * 0.25) * 2;
+    const bZoom = o.zoom ? ',scale=w=\'trunc(iw*(1+0.15*sin(t/' + f2(bDur) + '*PI))/2)*2\':h=\'trunc(ih*(1+0.15*sin(t/' + f2(bDur) + '*PI))/2)*2\':eval=frame,crop=' + o.W + ':' + o.H : '';
     f.push(src + fit + ',split=3[a][b][c]');
     f.push('[a]trim=0:' + t1 + ',setpts=(PTS-STARTPTS)/2[v1]');
-    f.push('[b]trim=' + t1 + ':' + t2 + ',setpts=(PTS-STARTPTS)*2[v2]');
+    f.push('[b]trim=' + t1 + ':' + t2 + ',setpts=(PTS-STARTPTS)*2' + bZoom + '[v2]');
     f.push('[c]trim=' + t2 + ',setpts=(PTS-STARTPTS)/2[v3]');
-    f.push('[v1][v2][v3]concat=n=3:v=1:a=0,fps=30[v0]');
+    const tDrop = (D * 0.25) / 2;
+    const rampFlash = o.flash ? ',fade=t=out:st=' + f2(tDrop) + ':d=0.06:color=white,fade=t=in:st=' + f2(tDrop + 0.06) + ':d=0.10:color=white' : '';
+    f.push('[v1][v2][v3]concat=n=3:v=1:a=0,fps=30' + rampFlash + '[v0]');
   } else if (o.speed === 'custom') {
     const n = o.rates.length, part = D / n;
     const minRate = Math.min(...o.rates);
@@ -357,12 +366,20 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
       o.rates.forEach((r, i) => f.push('[s' + i + ']trim=' + f2(i * part) + ':' + f2((i + 1) * part) + ',setpts=(PTS-STARTPTS)/' + f2(r) + '[p' + i + ']'));
       f.push(o.rates.map((r, i) => '[p' + i + ']').join('') + 'concat=n=' + n + ':v=1:a=0,fps=30' + (o.reverse ? ',split[a][b]' : '[v0]'));
     }
-    if (o.reverse) { f.push('[b]reverse[r]'); f.push('[a][r]concat=n=2:v=1:a=0[v0]'); }
+    if (o.reverse) {
+      const revFlash = o.flash ? ',fade=t=out:st=0.0:d=0.06:color=white,fade=t=in:st=0.06:d=0.10:color=white' : '';
+      f.push('[b]reverse' + revFlash + '[r]');
+      f.push('[a][r]concat=n=2:v=1:a=0[v0]');
+    }
   } else if (o.speed === 'boomerang') {
     const Db = f2(Math.min(D, BOOMERANG_MAX));
+    const bDur = Math.min(D, BOOMERANG_MAX) * 2;
+    const bZoom = o.zoom ? ',scale=w=\'trunc(iw*(1+0.14*sin(t/' + f2(bDur) + '*PI))/2)*2\':h=\'trunc(ih*(1+0.14*sin(t/' + f2(bDur) + '*PI))/2)*2\':eval=frame,crop=' + o.W + ':' + o.H : '';
+    const turnPoint = f2(Math.min(D, BOOMERANG_MAX));
+    const bFlash = o.flash ? ',fade=t=out:st=' + turnPoint + ':d=0.06:color=white,fade=t=in:st=' + f2(Number(turnPoint) + 0.06) + ':d=0.10:color=white' : '';
     f.push(src + 'trim=0:' + Db + ',setpts=PTS-STARTPTS,' + fit + ',fps=30,split[a][b]');
     f.push('[b]reverse[r]');
-    f.push('[a][r]concat=n=2:v=1:a=0[v0]');
+    f.push('[a][r]concat=n=2:v=1:a=0' + bZoom + bFlash + '[v0]');
   } else {
     f.push(src + fit + ',fps=30[v0]');
   }

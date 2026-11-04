@@ -178,7 +178,7 @@ try {
     assert(boom.W === 720 && boom.H === 1280, 'Boomerang auto-caps to 720p (720x1280)');
     assert(boom.duration === 10, 'Boomerang caps at 5s forward + 5s reverse = 10s');
     assert(fgBoom.indexOf('scale=720:1280') < fgBoom.indexOf('split[a][b]'), '1.1: Scale/crop runs BEFORE split in boomerang mode');
-    assert(fgBoom.includes('reverse[r]') && fgBoom.includes('[a][r]concat=n=2:v=1:a=0[v0]'), 'Boomerang reverses and concats');
+    assert(fgBoom.includes('reverse[r]') && fgBoom.includes('[a][r]concat=n=2:v=1:a=0'), 'Boomerang reverses and concats');
     assert(boom.args.includes('-an'), 'Audio none passes -an');
 
     // 1.6: Original audio in boomerang mode
@@ -199,8 +199,28 @@ try {
     const fgCust = customRev.args[customRev.args.indexOf('-filter_complex') + 1];
     assert(customRev.W === 720 && customRev.H === 1280, 'Custom+reverse auto-caps to 720p');
     assert(fgCust.indexOf('scale=720:1280') < fgCust.indexOf('minterpolate=fps=60'), '1.1: Scale/crop runs BEFORE minterpolate and split in custom mode');
-    assert(fgCust.includes('split=3[s0][s1][s2]') && fgCust.includes('reverse[r]'), 'Custom multi-rate + reverse splits and reverses');
+    assert(fgCust.includes('split=3[s0][s1][s2]') && fgCust.includes('reverse') && fgCust.includes('[a][r]concat=n=2:v=1:a=0[v0]'), 'Custom multi-rate + reverse splits and reverses');
     assert(fgCust.includes('atempo=0.5,atempo=0.5') && fgCust.includes('areverse[ar]'), '1.6: Custom 0.25x + reverse chains atempo=0.5,atempo=0.5 and areverse');
+
+    // 1.7: Dynamic zoom & optical beat flash
+    const slowZoomFlash = buildArgs({
+      input: dummyInput,
+      output: dummyOutput,
+      options: { speed: 'slow', orientation: 'portrait', zoom: true, flash: true }
+    }, fakeInfo);
+    const fgSlowZF = slowZoomFlash.args[slowZoomFlash.args.indexOf('-filter_complex') + 1];
+    assert(fgSlowZF.includes('eval=frame') && fgSlowZF.includes('crop=1080:1920'), 'Slow-mo includes dynamic camera punch-in zoom');
+    assert(fgSlowZF.includes('fade=t=out:st=0.0:d=0.06:color=white'), 'Slow-mo includes beat drop optical white flash');
+
+    // Zoom and flash can be disabled cleanly
+    const noZF = buildArgs({
+      input: dummyInput,
+      output: dummyOutput,
+      options: { speed: 'slow', orientation: 'portrait', zoom: false, flash: false }
+    }, fakeInfo);
+    const fgNoZF = noZF.args[noZF.args.indexOf('-filter_complex') + 1];
+    assert(!fgNoZF.includes('eval=frame'), 'Zoom is omitted when disabled');
+    assert(!fgNoZF.includes('fade=t=out:st=0.0'), 'Flash is omitted when disabled');
 
     // 1.5: Hardware encoder option
     const gpuArgs = buildArgs({

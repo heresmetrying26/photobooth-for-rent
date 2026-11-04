@@ -361,14 +361,9 @@ function drawRosePetal(buf, cx, cy, sz, angle, pitch, isRed = true) {
       const lx = (dx * cosA + dy * sinA) / projW;
       const ly = (-dx * sinA + dy * cosA) / projH;
 
-      const rSq = lx * lx + ly * ly;
-      if (rSq > 1.6 || rSq < 0.0001) continue;
-      const r = Math.sqrt(rSq);
-      const invR = 1 / r;
-      const invR2 = invR * invR;
-
-      // sin(theta) = ly / r, cos(2*theta) = (lx^2 - ly^2) / r^2
-      const bound = 0.9 + 0.25 * (ly * invR) - 0.15 * ((lx * lx - ly * ly) * invR2);
+      const r = Math.hypot(lx, ly);
+      const theta = Math.atan2(ly, lx);
+      const bound = 0.9 + 0.25 * Math.sin(theta) - 0.15 * Math.cos(2 * theta);
       if (r > bound) continue;
 
       const norm = r / bound;
@@ -1215,7 +1210,7 @@ async function main() {
       }
       console.log(`Synced to desktop/build/spin-fx`);
     }
-  } catch (e) {}
+  } catch (e) { }
 
   // Optional: Copy to installed app directory if writable
   try {

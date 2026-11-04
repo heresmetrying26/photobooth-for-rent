@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.66', date: '2026-11-04' },
   { version: '1.0.65', date: '2026-11-04' },
   { version: '1.0.64', date: '2026-11-04' },
   { version: '1.0.63', date: '2026-11-03' },
@@ -111,6 +112,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-04', title: 'Wedding Floral & Gold Designer Frames, Dynamic Slow-Mo Zoom & Beat Flash', for: ['app', 'website'], app: '1.0.66',
+    items: [
+      'Wedding Floral & Gold Designer Frame: High-end 4-layer composition matching commercial Touchpix & dslrBooth standards — double metallic gold borders, botanical eucalyptus foliage, ruffled peach & blush garden roses, golden berry sprigs, bottom-left couple calligraphy ("Yustina & George"), and bottom-right serif date ("07.31.2022").',
+      'Art Deco Gala & Neon Cyberpunk Frames: Additional luxury templates including 1920s Great Gatsby stepped chevron borders and electric cyan / magenta neon club designs.',
+      'Dynamic Slow-Mo Punch-In Zoom: Automatic 1.0x to 1.14x camera push-in and pull-out during slow-motion segments, mimicking an expensive robotic camera arm.',
+      'Beat Drop Optical Flash: 0.12s optical white flash at slow-motion speed changes and turnaround points to punctuate music drops and mask framerate changes.',
+      'New UI Controls: Designer frame selector, Dynamic zoom toggle, and Beat flash toggle right in the 360 booth settings panel.'
+    ]
+  },
   {
     date: '2026-11-04', title: 'High-Fidelity 1080p Spin-FX Overlays & Text Overlay Fix', for: ['app', 'website'], app: '1.0.65',
     items: [

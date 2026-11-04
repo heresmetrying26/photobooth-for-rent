@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('pb4u', {
   spinProcess: (req) => ipcRenderer.invoke('pb4u:spinProcess', req),
   spinJob: (id) => ipcRenderer.invoke('pb4u:spinJob', id),
   spinCancel: (id) => ipcRenderer.invoke('pb4u:spinCancel', id),
+  spinDelete: (name) => ipcRenderer.invoke('pb4u:spinDelete', name),
   spinShare: (name, folderKey, subfolder, outName) => ipcRenderer.invoke('pb4u:spinShare', String(name || ''), String(folderKey || ''), String(subfolder || ''), String(outName || '')),
   spinStationUrl: (slug) => ipcRenderer.invoke('pb4u:spinStationUrl', slug ? String(slug) : ''),
   spinWallUrl: (slug) => ipcRenderer.invoke('pb4u:spinWallUrl', slug ? String(slug) : ''),

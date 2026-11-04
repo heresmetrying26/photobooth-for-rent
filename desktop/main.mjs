@@ -327,6 +327,15 @@ function wireIpc() {
   });
   ipcMain.handle('pb4u:spinJob', (e, id) => SPIN.jobInfo(id));
   ipcMain.handle('pb4u:spinCancel', (e, id) => SPIN.cancelJob(id));
+  ipcMain.handle('pb4u:spinDelete', (e, name) => {
+    const d = spinDirNow(); const n = basename(String(name || ''));
+    if (!d || !n) return { ok: false, error: 'No video name' };
+    const p = join(d, n);
+    if (existsSync(p)) { try { unlinkSync(p); } catch (err) { return { ok: false, error: String(err) }; } }
+    const ed = join(spinEditedDir(), n);
+    if (existsSync(ed)) { try { unlinkSync(ed); } catch {} }
+    return { ok: true };
+  });
   // What's new, shown inside the app: the notes come from the website (online only).
   ipcMain.handle('pb4u:news', async () => {
     try { const r = await net.fetch(L.SERVER + '/api/updates', { cache: 'no-store' }); const j = await r.json(); return { ok: true, notes: j.notes || [], app: j.app || null }; }

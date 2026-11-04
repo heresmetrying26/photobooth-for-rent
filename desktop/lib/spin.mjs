@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync, readdirSync, statSync, unlinkSync, renameSync, readFileSync, openSync, readSync, closeSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { createRequire } from 'node:module';
+import os from 'node:os';
 
 const EXE = process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
 let candidates = [], resolved = undefined, resolvedHw = undefined, tempDir = null, fxDirectory = null;
@@ -41,18 +42,45 @@ export function configure({ buildDir, temp, fxDir, resume = false }) {
 export function setFxDir(dir) { fxDirectory = dir || null; }
 export function getFxDir() { return fxDirectory; }
 
-function run(bin, args, { timeout = 0, onStdout, onProc } = {}) {
+function run(bin, args, { timeout = 0, watchdogMs = 0, onStdout, onProc } = {}) {
   return new Promise((resolve) => {
-    let out = '', err = '', done = false, timer = null;
+    let out = '', err = '', done = false, timer = null, watchdogTimer = null, lastActivity = Date.now();
     let p;
     try { p = spawn(bin, args, { windowsHide: true }); } catch (e) { return resolve({ code: -1, out, err: String(e) }); }
+    try {
+      if (p && p.pid && os.constants && os.constants.priority) {
+        os.setPriority(p.pid, os.constants.priority.PRIORITY_BELOW_NORMAL);
+      }
+    } catch { /* ignore unsupported platform */ }
     if (onProc) onProc(p);
-    const end = (code) => { if (done) return; done = true; if (timer) clearTimeout(timer); resolve({ code, out, err }); };
-    p.stdout.on('data', (d) => { const t = d.toString(); out += t; if (onStdout) onStdout(t); if (out.length > 200000) out = out.slice(-100000); });
-    p.stderr.on('data', (d) => { err += d.toString(); if (err.length > 200000) err = err.slice(-100000); });
+    const end = (code) => {
+      if (done) return;
+      done = true;
+      if (timer) clearTimeout(timer);
+      if (watchdogTimer) clearInterval(watchdogTimer);
+      resolve({ code, out, err });
+    };
+    p.stdout.on('data', (d) => {
+      lastActivity = Date.now();
+      const t = d.toString(); out += t;
+      if (onStdout) onStdout(t);
+      if (out.length > 200000) out = out.slice(-100000);
+    });
+    p.stderr.on('data', (d) => {
+      const t = d.toString(); err += t;
+      if (err.length > 200000) err = err.slice(-100000);
+    });
     p.on('error', (e) => end(-1, (err += String(e))));
     p.on('close', (code) => end(code == null ? -1 : code));
     if (timeout) timer = setTimeout(() => { try { p.kill(); } catch { /* gone */ } end(-2); }, timeout);
+    if (watchdogMs > 0) {
+      watchdogTimer = setInterval(() => {
+        if (Date.now() - lastActivity > watchdogMs) {
+          try { p.kill(); } catch { /* gone */ }
+          end(-3);
+        }
+      }, 1000);
+    }
   });
 }
 
@@ -341,7 +369,7 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
     const smoothSlow = o.smooth && (inFps <= 0 || inFps < 50);
     const durSlow = D * 2;
     const zoomFilter = o.zoom ? ',scale=w=\'trunc(iw*(1+0.14*sin(t/' + f2(durSlow) + '*PI))/2)*2\':h=\'trunc(ih*(1+0.14*sin(t/' + f2(durSlow) + '*PI))/2)*2\':eval=frame,crop=' + o.W + ':' + o.H : '';
-    const flashFilter = o.flash ? ',fade=t=out:st=0.0:d=0.06:color=white,fade=t=in:st=0.06:d=0.10:color=white' : '';
+    const flashFilter = o.flash ? ',drawbox=x=0:y=0:w=in_w:h=in_h:color=white@0.65:t=fill:enable=\'between(t,0,0.10)\'' : '';
     f.push(src + fit + ',' + (smoothSlow ? 'minterpolate=fps=60:mi_mode=blend,' : '') + 'setpts=2.0*PTS,fps=30' + zoomFilter + flashFilter + '[v0]');
   } else if (o.speed === 'ramp') {
     const t1 = f2(D * 0.25), t2 = f2(D * 0.75);
@@ -352,7 +380,7 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
     f.push('[b]trim=' + t1 + ':' + t2 + ',setpts=(PTS-STARTPTS)*2' + bZoom + '[v2]');
     f.push('[c]trim=' + t2 + ',setpts=(PTS-STARTPTS)/2[v3]');
     const tDrop = (D * 0.25) / 2;
-    const rampFlash = o.flash ? ',fade=t=out:st=' + f2(tDrop) + ':d=0.06:color=white,fade=t=in:st=' + f2(tDrop + 0.06) + ':d=0.10:color=white' : '';
+    const rampFlash = o.flash ? ',drawbox=x=0:y=0:w=in_w:h=in_h:color=white@0.65:t=fill:enable=\'between(t,' + f2(tDrop) + ',' + f2(tDrop + 0.10) + ')\'' : '';
     f.push('[v1][v2][v3]concat=n=3:v=1:a=0,fps=30' + rampFlash + '[v0]');
   } else if (o.speed === 'custom') {
     const n = o.rates.length, part = D / n;
@@ -367,7 +395,7 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
       f.push(o.rates.map((r, i) => '[p' + i + ']').join('') + 'concat=n=' + n + ':v=1:a=0,fps=30' + (o.reverse ? ',split[a][b]' : '[v0]'));
     }
     if (o.reverse) {
-      const revFlash = o.flash ? ',fade=t=out:st=0.0:d=0.06:color=white,fade=t=in:st=0.06:d=0.10:color=white' : '';
+      const revFlash = o.flash ? ',drawbox=x=0:y=0:w=in_w:h=in_h:color=white@0.65:t=fill:enable=\'between(t,0,0.10)\'' : '';
       f.push('[b]reverse' + revFlash + '[r]');
       f.push('[a][r]concat=n=2:v=1:a=0[v0]');
     }
@@ -376,7 +404,7 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
     const bDur = Math.min(D, BOOMERANG_MAX) * 2;
     const bZoom = o.zoom ? ',scale=w=\'trunc(iw*(1+0.14*sin(t/' + f2(bDur) + '*PI))/2)*2\':h=\'trunc(ih*(1+0.14*sin(t/' + f2(bDur) + '*PI))/2)*2\':eval=frame,crop=' + o.W + ':' + o.H : '';
     const turnPoint = f2(Math.min(D, BOOMERANG_MAX));
-    const bFlash = o.flash ? ',fade=t=out:st=' + turnPoint + ':d=0.06:color=white,fade=t=in:st=' + f2(Number(turnPoint) + 0.06) + ':d=0.10:color=white' : '';
+    const bFlash = o.flash ? ',drawbox=x=0:y=0:w=in_w:h=in_h:color=white@0.65:t=fill:enable=\'between(t,' + f2(Number(turnPoint) - 0.05) + ',' + f2(Number(turnPoint) + 0.05) + ')\'' : '';
     f.push(src + 'trim=0:' + Db + ',setpts=PTS-STARTPTS,' + fit + ',fps=30,split[a][b]');
     f.push('[b]reverse[r]');
     f.push('[a][r]concat=n=2:v=1:a=0' + bZoom + bFlash + '[v0]');
@@ -546,7 +574,9 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
   } else if (hw === 'h264_amf') {
     a.push('-c:v', 'h264_amf', '-rc', 'cqp', '-qp_i', '22', '-qp_p', '22', '-pix_fmt', 'yuv420p');
   } else {
-    a.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p');
+    const cpuCount = (typeof os.cpus === 'function' ? os.cpus()?.length : 4) || 4;
+    const safeThreads = Math.min(4, Math.max(2, cpuCount - 1));
+    a.push('-c:v', 'libx264', '-threads', String(safeThreads), '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p');
   }
   if (audioMap.length) a.push('-c:a', 'aac', '-b:a', '160k', '-ar', '44100'); else a.push('-an');
   a.push('-movflags', '+faststart', output);
@@ -645,11 +675,13 @@ async function runJob(job, p) {
     let built = buildArgs({ input: p.inputPath, output: outPath, overlay: p.overlay, textOverlay: p.textOverlay, fx: p.fx, music: p.music, intro: introPath, outro: outroPath, options: p.options, hwEncoder }, combinedInfo);
     const total = built.duration;
     let r = await run(bin, built.args, {
+      watchdogMs: hwEncoder ? 10000 : 0,
       onProc: (pr) => { job.proc = pr; },
       onStdout: (t) => { const m = [...t.matchAll(/out_time_(?:us|ms)=(\d+)/g)].pop(); if (m) job.pct = clamp(Math.round(Number(m[1]) / 1e6 / total * 100), 0, 99); }
     });
-    // If GPU encoding failed at runtime, transparently fall back to libx264.
+    // If GPU encoding failed at runtime or stalled (watchdog), transparently fall back to libx264.
     if (hwEncoder && job.state !== 'cancelled' && (r.code !== 0 || !existsSync(outPath))) {
+      resolvedHw = null;
       try { unlinkSync(outPath); } catch { /* ignore */ }
       built = buildArgs({ input: p.inputPath, output: outPath, overlay: p.overlay, textOverlay: p.textOverlay, fx: p.fx, music: p.music, intro: introPath, outro: outroPath, options: { ...p.options, gpu: false }, hwEncoder: null }, combinedInfo);
       r = await run(bin, built.args, {

@@ -3568,19 +3568,47 @@
     }
 
     .spin-card {
-      width: min(520px, 100%);
+      width: min(540px, 100%);
     }
 
-    .spin-card video {
+    .spin-stage-wrap {
+      position: relative;
+      width: 100%;
+      max-height: 44vh;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 10px;
+    }
+
+    .spin-stage-wrap video {
       position: static;
       inset: auto;
       width: 100%;
-      height: auto;
-      max-height: 46vh;
+      height: 100%;
+      max-height: 44vh;
       object-fit: contain;
       background: #000;
       border-radius: 12px;
       display: block;
+    }
+
+    .spin-stage-wrap canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      object-fit: contain;
+    }
+
+    .spin-speed-btn.active {
+      background: #D4AF37 !important;
+      color: #000 !important;
+      font-weight: 700 !important;
     }
 
     /* (a plain video is otherwise stretched over the whole page) */
@@ -6521,6 +6549,22 @@
       padding: 2px 9px;
       border-radius: 999px;
       letter-spacing: .03em;
+    }
+
+    .pick-tier-tag {
+      font: 800 clamp(10px, 1.3vmin, 12px) 'Manrope', sans-serif;
+      padding: 3px 8px;
+      border-radius: 999px;
+      margin-top: 4px;
+      letter-spacing: .02em;
+    }
+    .pick-tier-tag.thermal {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .pick-tier-tag.color {
+      background: #e0f2fe;
+      color: #0369a1;
     }
 
     /* ---- Frame, logo, stickers, pattern color, my themes ---- */
@@ -11517,6 +11561,12 @@
             <input type="text" class="label-input" id="kickerInput" maxlength="40"
               style="font-family:'Manrope',sans-serif; font-size:14px;" aria-label="Small line">
           </div>
+          <div id="receiptNoteRow" style="margin-top:12px;">
+            <p class="sub-label">Receipt note &amp; social handle (optional)</p>
+            <input type="text" class="label-input" id="receiptNoteInput" maxlength="45" placeholder="e.g. @yourbooth · #weddingday"
+              style="font-family:'Manrope',sans-serif; font-size:14px;" aria-label="Receipt note or social handle">
+            <p class="panel-hint" style="margin:2px 0 0;">Prints on thermal receipts (e.g. Instagram handle, hashtag, or promo code).</p>
+          </div>
 
           <p class="sub-label" style="margin-top:16px;">Title style</p>
           <div class="style-tiles" id="titleStyleTiles"></div>
@@ -12271,10 +12321,29 @@
             <button type="button" class="chip web-only" data-mode="both">QR + vouchers</button>
           </div>
           <div id="payMore">
-            <div class="pay-row">
+            <div class="pay-row" id="paySingleRow">
               <span class="lbl">Price per session</span>
               <label class="pay-price"><span>₱</span><input type="number" inputmode="numeric" min="20" max="20000"
                   step="10" id="payPrice" value="100" aria-label="Price per session in pesos"></label>
+            </div>
+            <label class="switch-row" style="margin-top:14px;">
+              <span>Dual pricing (e.g. Thermal vs Canon)</span>
+              <input type="checkbox" id="payDualToggle">
+            </label>
+            <div id="payDualRows" style="display:none; margin-top:10px;">
+              <p class="panel-hint" style="margin:0 0 8px;">Guests choose between two print options with separate custom labels, prices and printers.</p>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px;">
+                <div style="background:var(--panel-2,#f4efe7); padding:10px; border-radius:10px; border:1px solid var(--line);">
+                  <span class="lbl" style="font-size:12px; font-weight:800; color:var(--ink-dim); text-transform:uppercase;">Option 1 (Thermal)</span>
+                  <input type="text" id="payTier1Label" class="printer-input" value="Thermal 50" placeholder="e.g. Thermal 50" style="margin:6px 0 4px; width:100%; font-weight:700;">
+                  <label class="pay-price" style="margin-top:4px;"><span>₱</span><input type="number" id="payTier1Price" value="50" min="20" max="20000" step="10"></label>
+                </div>
+                <div style="background:var(--panel-2,#f4efe7); padding:10px; border-radius:10px; border:1px solid var(--line);">
+                  <span class="lbl" style="font-size:12px; font-weight:800; color:var(--ink-dim); text-transform:uppercase;">Option 2 (Color)</span>
+                  <input type="text" id="payTier2Label" class="printer-input" value="Canon Color 100" placeholder="e.g. Canon Color 100" style="margin:6px 0 4px; width:100%; font-weight:700;">
+                  <label class="pay-price" style="margin-top:4px;"><span>₱</span><input type="number" id="payTier2Price" value="100" min="20" max="20000" step="10"></label>
+                </div>
+              </div>
             </div>
             <div class="stepper" style="margin-top:12px;">
               <span class="lbl">Prints included</span>
@@ -12290,6 +12359,11 @@
               <p class="panel-hint" style="margin:4px 0 0;">Each voucher works once. Print, cut and sell them at the
                 booth table; guests type the 8 digits on the screen.</p>
               <div class="pay-make">
+                <select class="mini-select pillify" id="payMakeTier" aria-label="Which voucher" style="max-width:180px;">
+                  <option value="all">Any layout</option>
+                  <option value="tier1">Thermal (Option 1)</option>
+                  <option value="tier2">Color (Option 2)</option>
+                </select>
                 <select class="mini-select pillify" id="payMakeCount" aria-label="How many vouchers">
                   <option value="10">10 vouchers</option>
                   <option value="20" selected>20 vouchers</option>
@@ -13246,6 +13320,21 @@
       <h2 class="pay-title" id="payTitle">₱100</h2>
       <p class="pay-sub" id="paySub">1 photo session</p>
       <div class="pay-view" id="payChoose">
+        <div id="payDualChooseBox" style="display:none; margin-bottom:12px;">
+          <p class="panel-hint" style="margin:0 0 8px; font-weight:700; color:var(--ink);">Choose your print:</p>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <button type="button" class="pay-opt" id="payDualOpt1" style="flex-direction:column; align-items:center; text-align:center; padding:12px 8px;">
+              <span class="ico" style="margin:0 0 4px;">🧾</span>
+              <b id="payDualOpt1Label">Thermal 50</b>
+              <small id="payDualOpt1Price">₱50</small>
+            </button>
+            <button type="button" class="pay-opt" id="payDualOpt2" style="flex-direction:column; align-items:center; text-align:center; padding:12px 8px;">
+              <span class="ico" style="margin:0 0 4px;">🎨</span>
+              <b id="payDualOpt2Label">Canon Color 100</b>
+              <small id="payDualOpt2Price">₱100</small>
+            </button>
+          </div>
+        </div>
         <button type="button" class="pay-opt" id="payOptQr"><span class="ico">QR</span><span><b>Pay with
               QR</b><small>GCash · Maya · any bank app</small></span></button>
         <button type="button" class="pay-opt" id="payOptVoucher"><span class="ico">#</span><span><b>I have a
@@ -13544,16 +13633,108 @@
     </div>
     <div class="qs-panel" id="spinModal" hidden>
       <div class="qs-card spin-card">
-        <video id="spinVideo" controls playsinline></video>
-        <div class="spin-trim" id="spinTrim" hidden>Trim: start <input type="number" id="spinTrimA" min="0" step="0.1"
-            placeholder="0" style="width:55px"> s &nbsp; end <input type="number" id="spinTrimB" min="0" step="0.1"
-            placeholder="end" style="width:55px"> s
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;margin-top:6px;">
-            <span>Text this clip: <input type="text" id="spinTrimText1" placeholder="Line 1 override"
-                style="width:130px"></span>
-            <span><input type="text" id="spinTrimText2" placeholder="Line 2 override" style="width:130px"></span>
+        <div class="spin-stage-wrap" id="spinStageWrap">
+          <video id="spinVideo" playsinline loop></video>
+          <canvas id="spinPreviewCanvas"></canvas>
+        </div>
+
+        <!-- Live playback & speed preview toolbar -->
+        <div class="spin-play-bar" style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;padding:4px 8px;background:rgba(0,0,0,0.04);border-radius:8px;margin-bottom:8px;font-size:12px;">
+          <button type="button" class="desk-btn" id="spinModalPlayBtn" style="padding:4px 10px;font-size:12px;">▶ Play</button>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <span style="opacity:0.75;">Live speed:</span>
+            <button type="button" class="desk-btn spin-speed-btn" data-rate="0.25" style="padding:3px 6px;font-size:11px;">0.25x</button>
+            <button type="button" class="desk-btn spin-speed-btn" data-rate="0.5" style="padding:3px 6px;font-size:11px;">0.5x</button>
+            <button type="button" class="desk-btn spin-speed-btn active" data-rate="1.0" style="padding:3px 6px;font-size:11px;">1x</button>
+            <button type="button" class="desk-btn spin-speed-btn" data-rate="2.0" style="padding:3px 6px;font-size:11px;">2x</button>
+          </div>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;margin:0;">
+            <input type="checkbox" id="spinModalTogglePreview" checked> Overlay preview
+          </label>
+        </div>
+
+        <!-- Real-time Designer Frame & Custom Frame Upload -->
+        <div class="spin-edit-box" id="spinModalEditBox" style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+            <span style="font-weight:600;">Frame &amp; Look:</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <select id="spinModalFrameStyle" style="font-size:12px;padding:2px 6px;border-radius:4px;">
+                <option value="floral_gold">Wedding Floral Gold</option>
+                <option value="gilded_art_deco">Gilded Art Deco Gala</option>
+                <option value="neon_cyberpunk">Neon Cyberpunk VIP</option>
+                <option value="classic_box">Classic Bottom Band</option>
+                <option value="custom">Custom Uploaded Frame</option>
+                <option value="none">No Frame (Clean)</option>
+              </select>
+              <label class="desk-btn" style="padding:3px 8px;font-size:11px;cursor:pointer;margin:0;">
+                Upload PNG
+                <input type="file" id="spinModalCustomFile" accept="image/png,image/webp" style="display:none">
+              </label>
+            </div>
+          </div>
+
+          <!-- Real-time Text Overlays & Dynamic Placement -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+            <input type="text" id="spinTrimText1" placeholder="Line 1 (e.g. Sarah &amp; Michael)" style="font-size:12px;padding:4px 6px;border-radius:4px;border:1px solid #ccc;">
+            <input type="text" id="spinTrimText2" placeholder="Line 2 (e.g. October 24, 2026)" style="font-size:12px;padding:4px 6px;border-radius:4px;border:1px solid #ccc;">
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+            <span>Pos:
+              <select id="spinModalTextPos" style="font-size:11px;padding:2px 4px;">
+                <option value="top">Top (12%)</option>
+                <option value="upper">Upper Third (28%)</option>
+                <option value="middle">Center / Middle (50%)</option>
+                <option value="lower">Lower Third (72%)</option>
+                <option value="bottom">Bottom (84%)</option>
+                <option value="custom">Custom Y Slider</option>
+              </select>
+            </span>
+            <span id="spinModalYWrap" style="display:flex;align-items:center;gap:4px;">
+              Y: <input type="range" id="spinModalTextY" min="5" max="95" value="12" step="1" style="width:70px">
+              <span id="spinModalTextYVal" style="min-width:26px;font-size:11px;">12%</span>
+            </span>
+            <span>Align:
+              <select id="spinModalTextAlign" style="font-size:11px;padding:2px 4px;">
+                <option value="center">Center</option>
+                <option value="left">Left</option>
+                <option value="right">Right</option>
+              </select>
+            </span>
+            <span>Font:
+              <select id="spinModalTextFont" style="font-size:11px;padding:2px 4px;">
+                <option value="cursive">Cursive / Script</option>
+                <option value="serif">Serif</option>
+                <option value="sans-serif">Sans-Serif</option>
+                <option value="impact">Impact</option>
+              </select>
+            </span>
+            <span>Color:
+              <input type="color" id="spinModalTextColor" value="#FFF2A8" style="width:24px;height:22px;padding:0;border:none;vertical-align:middle;cursor:pointer;">
+            </span>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span>Effect:
+              <select id="spinModalFx" style="font-size:11px;padding:2px 4px;">
+                <option value="none">None</option>
+                <option value="gold_dust">Gold Dust</option>
+                <option value="sparkles">Sparkles</option>
+                <option value="confetti">Confetti</option>
+                <option value="bokeh">Bokeh Lights</option>
+                <option value="floating_hearts">Floating Hearts</option>
+                <option value="rose_petals">Rose Petals</option>
+                <option value="smoke_ring">Smoke Ring</option>
+                <option value="champagne_bubbles">Champagne Bubbles</option>
+                <option value="neon_glow_edge">Neon Glow Edge</option>
+              </select>
+            </span>
+            <div class="spin-trim" id="spinTrim" style="display:inline-flex;align-items:center;gap:4px;margin:0;">
+              <span>Trim: <input type="number" id="spinTrimA" min="0" step="0.1" placeholder="0" style="width:45px;font-size:11px;padding:2px 4px;"> s &ndash; <input type="number" id="spinTrimB" min="0" step="0.1" placeholder="end" style="width:45px;font-size:11px;padding:2px 4px;"> s</span>
+            </div>
           </div>
         </div>
+
         <div class="spin-prog" id="spinProg" hidden>
           <div class="bar"><i id="spinBar"></i></div><span id="spinProgTxt"></span>
         </div>
@@ -14394,8 +14575,14 @@
         land4: { name: 'Landscape 4', shots: 4, kind: 'landscape', hint: 'Landscape 4R: 1 big shot and the name on top, 3 below.' },
         // Receipt photo booth: looks like a shop receipt. Black & white is made for
         // 80 mm / 58 mm thermal receipt printers; the colour one suits photo printers.
-        receipt: { name: 'Receipt', shots: 3, kind: 'receipt', hint: 'Black & white layout formatted for 58 mm and 80 mm thermal receipt printers.' },
-        receiptc: { name: 'Receipt colour', shots: 3, kind: 'receipt', color: true, hint: 'The receipt look with colour photos. Prints on photo paper (2 side by side on 4R) or a receipt printer.' },
+        receipt: { name: 'Receipt (3 shots)', shots: 3, kind: 'receipt', hint: 'Black & white layout formatted for 58 mm and 80 mm thermal receipt printers.' },
+        receiptc: { name: 'Receipt colour (3 shots)', shots: 3, kind: 'receipt', color: true, hint: 'The receipt look with colour photos. Prints on photo paper (2 side by side on 4R) or a receipt printer.' },
+        receipt1: { name: 'Receipt Solo (1 shot)', shots: 1, kind: 'receipt', hint: '1 large portrait photo receipt with header, totals and barcode. Thermal or photo paper.' },
+        receipt1c: { name: 'Receipt Solo colour', shots: 1, kind: 'receipt', color: true, hint: '1 large colour photo receipt. Thermal or photo paper.' },
+        receipt2: { name: 'Receipt Duo (2 shots)', shots: 2, kind: 'receipt', hint: '2 stacked photos on receipt paper. Thermal or photo paper.' },
+        receipt2c: { name: 'Receipt Duo colour', shots: 2, kind: 'receipt', color: true, hint: '2 stacked colour photos on receipt paper.' },
+        receipt4: { name: 'Receipt Strip 4 (4 shots)', shots: 4, kind: 'receipt', hint: '4 shots in a tall receipt. Thermal or photo paper.' },
+        receipt4c: { name: 'Receipt 4 colour', shots: 4, kind: 'receipt', color: true, hint: '4 colour shots on receipt paper or 4R.' },
         // Only offered when the booth type (top of Setup) is Trading card / Certificate.
         card: { name: 'Trading card', shots: 1, kind: 'card', hint: 'One collectible card: the guest’s photo, name, a title line and random stats. 2.5 × 3.5 in.' },
         cert: { name: 'Certificate', shots: 1, kind: 'cert', hint: 'A landscape certificate with the guest’s name, an award line, a round photo, a seal and the date.' },
@@ -14409,7 +14596,7 @@
           hint: 'Two or more of your frames together on one sheet. Tick them below, choose the sheet size and an arrangement, then drag them in the preview.'
         }
       };
-      const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'feature', 'film6', 'land3', 'land4', 'receipt', 'receiptc'];
+      const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'feature', 'film6', 'land3', 'land4', 'receipt', 'receipt1', 'receipt2', 'receipt4', 'receiptc', 'receipt1c', 'receipt2c', 'receipt4c'];
       // The built-in layouts, plus your frames once at least one is uploaded.
       function layoutOrder() {
         var has = typeof myFrames !== 'undefined' && myFrames && myFrames.length;
@@ -19346,7 +19533,11 @@
           return [pct(10, 7, 36, 30), pct(54, 7, 36, 30), pct(10, 44, 36, 30), pct(54, 44, 36, 30)];
         }
         if (d.kind === 'receipt') {
-          // Narrow receipt: a header line, 3 square photos, the totals.
+          const n = d.shots;
+          if (n === 1) return [pct(20, 5, 60, 4), pct(14, 18, 72, 62), pct(20, 88, 60, 5)];
+          if (n === 2) return [pct(20, 5, 60, 4), pct(14, 18, 72, 32), pct(14, 53, 72, 32), pct(20, 89, 60, 5)];
+          if (n === 4) return [pct(20, 4, 60, 3), pct(14, 12, 72, 16), pct(14, 30, 72, 16), pct(14, 48, 72, 16), pct(14, 66, 72, 16), pct(20, 89, 60, 4)];
+          // 3 square photos
           return [pct(20, 5, 60, 4), pct(14, 17, 72, 21), pct(14, 40, 72, 21), pct(14, 63, 72, 21), pct(20, 88, 60, 5)];
         }
         if (d.kind === 'landscape') {
@@ -19386,7 +19577,7 @@
         { t: 'Strips', s: '2×6, or 2 strips on 4R', keys: ['strip', 'strip4'] },
         { t: '4R sheet', s: '4×6 photo paper', keys: ['grid', 'grid4', 'hero', 'solo', 'duo', 'feature', 'film6'] },
         { t: 'Landscape', s: '4R turned sideways', keys: ['land3', 'land4'] },
-        { t: 'Receipt', s: 'Thermal receipt printer, or photo paper', keys: ['receipt', 'receiptc'] }
+        { t: 'Receipt & Thermal', s: 'Thermal receipt printer (80/58 mm), or photo paper', keys: ['receipt', 'receipt1', 'receipt2', 'receipt4', 'receiptc', 'receipt1c', 'receipt2c', 'receipt4c'] }
       ];
       let layoutPicked = false;            // the renter tapped a layout (ready designs then ask before changing it)
       function frameThumbCells(f) {
@@ -19517,6 +19708,18 @@
         updateReadySub();
         renderComposite();
         renderSetupPreview();
+        if (layoutDef(key).kind === 'receipt') {
+          if (typeof isReceiptPaper === 'function' && !isReceiptPaper(printSize)) {
+            const usable = (printSettings() || []).filter(isReceiptPaper);
+            if (usable.length) printSize = usable.includes('receipt80') ? 'receipt80' : usable[0];
+            else printSize = 'receipt80';
+          }
+        } else {
+          if (typeof isReceiptPaper === 'function' && isReceiptPaper(printSize)) {
+            const usable = (printSettings() || []).filter(k => !isReceiptPaper(k));
+            if (usable.length) printSize = usable.includes('4x6') ? '4x6' : (usable.includes('selphy') ? 'selphy' : usable[0]);
+          }
+        }
         refreshPrintUI();
         if (typeof refreshDecorUI === 'function' && typeof overlaySizeHint !== 'undefined' && overlaySizeHint) refreshDecorUI();
         if (typeof frameListEl !== 'undefined' && frameListEl) refreshFrameUI();
@@ -21010,10 +21213,15 @@
         for (let i = 0, j = 0; i < d.length; i += 4, j++) { d[i] = d[i + 1] = d[i + 2] = g[j]; d[i + 3] = 255; }
         ctx.putImageData(im, x, y);
       }
+      var receiptCustomNote = '';
       function composeReceipt(layoutKey, targetCanvas, shots) {
         const W = RECEIPT_W, M = 34, inner = W - 2 * M, color = !!layoutDef(layoutKey).color;
         const mono = "'Courier New', Courier, 'Liberation Mono', monospace";
-        const n = Math.max(1, layoutDef(layoutKey).shots), ph = Math.round(inner * 0.92), gap = 14;
+        const n = Math.max(1, layoutDef(layoutKey).shots);
+        let ph = Math.round(inner * 0.92), gap = 14;
+        if (n === 1) { ph = Math.round(inner * 1.15); gap = 0; }
+        else if (n === 2) { ph = Math.round(inner * 0.82); gap = 14; }
+        else if (n === 4) { ph = Math.round(inner * 0.72); gap = 12; }
         const name = ((labelInput.value || '').trim() || 'PHOTO BOOTH').toUpperCase();
         const kick = (kickerText || '').trim().toUpperCase();
         const when = receiptTime(sessionNumber || 0);
@@ -21021,6 +21229,8 @@
         const dateTxt = currentDateLabel() || (pad2(when.getMonth() + 1) + '/' + pad2(when.getDate()) + '/' + when.getFullYear());
         const timeTxt = when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toUpperCase();
         const order = '#' + String(sessionNumber || 1).padStart(4, '0');
+        const rNote = (typeof receiptCustomNote !== 'undefined' && receiptCustomNote ? receiptCustomNote.trim() : '');
+        const rNoteH = rNote ? 34 : 0;
         // Measure the event name (wrapped to 2 lines at most, as big as fits).
         const mx = document.createElement('canvas').getContext('2d');
         let fs = 54, lines = [name];
@@ -21032,7 +21242,7 @@
           if (a && b && mx.measureText(b).width <= inner) { lines = [a, b]; break; }
         }
         const headH = 40 + lines.length * fs * 1.1 + (kick ? 34 : 0) + 40 + 34;
-        const H = Math.round(headH + 30 + 40 + 30 + n * ph + (n - 1) * gap + 30 + 3 * 36 + 30 + 50 + 30 + 76 + 34 + 30 + 46 + 32 + 44);
+        const H = Math.round(headH + 30 + 40 + 30 + n * ph + (n - 1) * gap + 30 + 3 * 36 + 30 + 50 + 30 + 76 + 34 + 30 + 46 + rNoteH + 32 + 44);
         targetCanvas.width = W; targetCanvas.height = H;
         const ctx = targetCanvas.getContext('2d');
         ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
@@ -21074,6 +21284,7 @@
         }
         y += 76 + 34; text(order.replace('#', '') + ' ' + dateTxt.replace(/\D/g, ''), 20, 400, 'center', y);
         y += 46; text('THANK YOU!', 34, 700, 'center', y);
+        if (rNote) { y += 34; text(rNote.toUpperCase(), 20, 700, 'center', y); }
         y += 32; text('PLEASE COME AGAIN', 20, 400, 'center', y);
         return targetCanvas;
       }
@@ -21081,6 +21292,14 @@
       // ---- Setup controls (Event name section) ----
       var titleStyleSelect = document.getElementById('titleStyleSelect');
       var kickerInput = document.getElementById('kickerInput');
+      var receiptNoteInput = document.getElementById('receiptNoteInput');
+      if (receiptNoteInput) {
+        receiptNoteInput.addEventListener('input', function () {
+          receiptCustomNote = receiptNoteInput.value.slice(0, 45);
+          redrawAll();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
       TITLE_STYLES.forEach(function (s) { var o = document.createElement('option'); o.value = s[0]; o.textContent = s[1]; titleStyleSelect.appendChild(o); });
       function refreshTitleUI() {
         titleStyleSelect.value = titleStyle;
@@ -23025,7 +23244,7 @@
 
           // ---- Bluetooth thermal printer path (tablet / Android / iOS) ----
           const btConnected = !!(window._btThermal && window._btThermal.btPrinter && window._btThermal.btPrinter.connected);
-          if ((isMobileOS() || !helperOn) && btThermalOn && (paper.receipt || btConnected) && isBtThermalAvailable()) {
+          if ((isMobileOS() || !helperOn) && btThermalOn && paper.receipt && isBtThermalAvailable()) {
             try {
               showPrintingNote(printTxt('txtPrinting'), 8000);
               const rollW = (paper.w && paper.w <= 55) ? '58mm' : '80mm';
@@ -25662,15 +25881,17 @@
         var active = opt.textOn !== undefined ? opt.textOn : (spinLook.textOn || !!(l1 || l2));
         if (!active) return;
 
-        var pos = (opt.textPos || spinLook.textPos || 'top').toLowerCase();
-        var color = opt.textColor || spinLook.textColor || '#ffffff';
-        var sizeOpt = (opt.textSize || spinLook.textSize || 'medium').toLowerCase();
-        var fontOpt = (opt.textFont || spinLook.textFont || 'sans-serif').toLowerCase();
+        var pos = (opt.textPos || (spinLook && spinLook.textPos) || 'top').toLowerCase();
+        var color = opt.textColor || (spinLook && spinLook.textColor) || '#ffffff';
+        var sizeOpt = (opt.textSize || (spinLook && spinLook.textSize) || 'medium').toLowerCase();
+        var fontOpt = (opt.textFont || (spinLook && spinLook.textFont) || 'sans-serif').toLowerCase();
+        var align = (opt.textAlign || (spinLook && spinLook.textAlign) || 'center').toLowerCase();
+        var customY = (opt.textYPercent != null) ? Number(opt.textYPercent) : (pos === 'custom' && opt.customY != null ? Number(opt.customY) : null);
 
         var fontFamilies = {
           'sans-serif': 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Color Emoji", sans-serif',
-          'serif': 'Georgia, "Times New Roman", "Noto Color Emoji", serif',
-          'cursive': '"Brush Script MT", "Segoe Script", "Apple Chancery", cursive, "Noto Color Emoji"',
+          'serif': '"Cinzel", "Playfair Display", Georgia, "Times New Roman", "Noto Color Emoji", serif',
+          'cursive': '"Alex Brush", "Pinyon Script", "Great Vibes", "Brush Script MT", "Segoe Script", "Apple Chancery", cursive, "Noto Color Emoji"',
           'impact': 'Impact, "Arial Black", "Noto Color Emoji", sans-serif'
         };
         var family = fontFamilies[fontOpt] || fontFamilies['sans-serif'];
@@ -25681,20 +25902,30 @@
         var lineHeight = Math.round(fontSize * 1.25);
 
         x.save();
-        x.font = 'bold ' + fontSize + 'px ' + family;
-        x.textAlign = 'center';
+        x.font = (fontOpt === 'cursive' ? 'italic ' : 'bold ') + fontSize + 'px ' + family;
+        x.textAlign = align === 'left' ? 'left' : (align === 'right' ? 'right' : 'center');
         x.textBaseline = 'middle';
 
         var totalTextH = (l1 && l2) ? lineHeight : 0;
         var yAnchor;
-        if (pos === 'top') {
+        if (customY != null && !isNaN(customY)) {
+          yAnchor = Math.round(H * (customY / 100));
+        } else if (pos === 'top') {
           yAnchor = Math.round(H * 0.12);
+        } else if (pos === 'upper') {
+          yAnchor = Math.round(H * 0.28);
+        } else if (pos === 'middle' || pos === 'center') {
+          yAnchor = Math.round(H * 0.5) - Math.round(totalTextH / 2);
+        } else if (pos === 'lower') {
+          yAnchor = Math.round(H * 0.72);
         } else if (pos === 'bottom') {
           var bandOffset = Math.round(H * 0.15);
           yAnchor = H - bandOffset - totalTextH - Math.round(H * 0.03);
         } else {
-          yAnchor = Math.round(H * 0.5) - Math.round(totalTextH / 2);
+          yAnchor = Math.round(H * 0.12);
         }
+
+        var xAnchor = align === 'left' ? Math.round(W * 0.08) : (align === 'right' ? Math.round(W * 0.92) : Math.round(W / 2));
 
         var lines = [];
         if (l1) lines.push(l1);
@@ -25706,7 +25937,7 @@
           x.strokeStyle = 'rgba(0, 0, 0, 0.9)';
           x.lineWidth = Math.max(3, Math.round(fontSize * 0.12));
           x.lineJoin = 'round';
-          x.strokeText(line, W / 2, curY);
+          x.strokeText(line, xAnchor, curY);
 
           x.shadowColor = 'rgba(0, 0, 0, 0.7)';
           x.shadowBlur = Math.round(fontSize * 0.2);
@@ -25714,7 +25945,7 @@
           x.shadowOffsetY = Math.round(fontSize * 0.04);
 
           x.fillStyle = color;
-          x.fillText(line, W / 2, curY);
+          x.fillText(line, xAnchor, curY);
         });
 
         x.restore();
@@ -25963,7 +26194,7 @@
           t2 = String(now.getMonth() + 1).padStart(2, '0') + '.' + String(now.getDate()).padStart(2, '0') + '.' + now.getFullYear();
         }
 
-        if (t1) {
+        if (opt.drawTextInFrame !== false && t1) {
           ctx.save();
           var scriptFont = '"Alex Brush", "Pinyon Script", "Great Vibes", "Brush Script MT", "Segoe Script", "Apple Chancery", cursive';
           var nameSize = Math.max(24, Math.round(minDim * 0.068));
@@ -26080,7 +26311,7 @@
         var labelVal = (typeof labelInput !== 'undefined' && labelInput && labelInput.value) ? labelInput.value : '';
         var t1 = (opt.text1 != null && String(opt.text1).trim() !== '') ? String(opt.text1).trim() : (labelVal || '').trim();
         var t2 = (opt.text2 != null && String(opt.text2).trim() !== '') ? String(opt.text2).trim() : '';
-        if (t1) {
+        if (opt.drawTextInFrame !== false && t1) {
           ctx.save();
           var titleSize = Math.max(22, Math.round(minDim * 0.05));
           ctx.font = '700 ' + titleSize + 'px "Cinzel", "Playfair Display", "Times New Roman", serif';
@@ -26142,7 +26373,7 @@
         var labelVal = (typeof labelInput !== 'undefined' && labelInput && labelInput.value) ? labelInput.value : '';
         var t1 = (opt.text1 != null && String(opt.text1).trim() !== '') ? String(opt.text1).trim() : (labelVal || '').trim();
         var t2 = (opt.text2 != null && String(opt.text2).trim() !== '') ? String(opt.text2).trim() : '';
-        if (t1) {
+        if (opt.drawTextInFrame !== false && t1) {
           ctx.save();
           var titleSize = Math.max(22, Math.round(minDim * 0.055));
           ctx.font = '900 ' + titleSize + 'px Impact, "Arial Black", sans-serif';
@@ -26165,8 +26396,12 @@
       // The booth's own frame, stickers, logo and title, on a transparent picture the size of the video.
       function spinMakeOverlay(W, H, opt) {
         var c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d');
-        var style = (spinLook && spinLook.frameStyle) || 'floral_gold';
-        if (style === 'floral_gold') {
+        var style = (opt && opt.frameStyle) || (spinLook && spinLook.frameStyle) || 'floral_gold';
+        if (style === 'custom' && ((opt && opt.customImage) || spinModalCustomImage)) {
+          var img = (opt && opt.customImage) || spinModalCustomImage;
+          try { x.drawImage(img, 0, 0, W, H); } catch (e) { }
+          try { if (typeof decor !== 'undefined' && decor && decor.length) drawDecorLayer(x, W, H); } catch (e) { }
+        } else if (style === 'floral_gold') {
           try { drawWeddingFloralFrame(x, W, H, opt); } catch (e) { }
           try { if (typeof decor !== 'undefined' && decor && decor.length) drawDecorLayer(x, W, H); } catch (e) { }
         } else if (style === 'gilded_art_deco') {
@@ -26238,6 +26473,18 @@
       }
       // Finished edits are remembered (by clip name + time) so reopening the app does not edit the same clips again.
       var SPIN_DONE_KEY = 'pb_spin_done';
+      var SPIN_DISMISSED_KEY = 'pb_spin_dismissed';
+      var spinDismissed = {};
+      try { spinDismissed = JSON.parse(localStorage.getItem(SPIN_DISMISSED_KEY) || '{}') || {}; } catch (e) { spinDismissed = {}; }
+      function saveSpinDismissed() {
+        try {
+          var ks = Object.keys(spinDismissed);
+          if (ks.length > 2000) {
+            ks.sort(function (a, b) { return spinDismissed[a] - spinDismissed[b]; }).slice(0, ks.length - 2000).forEach(function (k) { delete spinDismissed[k]; });
+          }
+          localStorage.setItem(SPIN_DISMISSED_KEY, JSON.stringify(spinDismissed));
+        } catch (e) { }
+      }
       function spinDoneAll() { try { return JSON.parse(localStorage.getItem(SPIN_DONE_KEY) || '{}') || {}; } catch (e) { return {}; } }
       function spinDoneSet(key, out) {
         try {
@@ -26255,7 +26502,7 @@
           var list = await PBX.spinScan(), fresh = [];
           for (var i = list.length - 1; i >= 0; i--) {
             var f = list[i], key = f.name + '|' + f.mtime;
-            if (spinSeen[key]) continue;
+            if (spinDismissed[key] || spinSeen[key]) continue;
             var prev = spinPrev[key]; spinPrev[key] = f.size;
             if (prev !== f.size || f.size < 1024) continue;           // still being copied: wait for the next look
             spinSeen[key] = true;
@@ -26885,6 +27132,84 @@
       // The laptop checks its 360 inbox from the start, so a clip a tablet sends is listed (and edited, if asked) with the desk closed.
       if (spinDesktop() && extraOn('spin360')) setTimeout(function () { try { spinSetupInfo(); } catch (e) { } }, 2500);
 
+      var spinModalCustomImage = null;
+
+      function renderSpinModalPreview() {
+        var it = spinCur;
+        var modal = document.getElementById('spinModal');
+        if (!it || modal.hidden) return;
+        var cvs = document.getElementById('spinPreviewCanvas');
+        if (!cvs) return;
+        var showPv = document.getElementById('spinModalTogglePreview');
+        if (showPv && !showPv.checked) {
+          cvs.style.display = 'none';
+          return;
+        }
+        if (it.edited && !it.viewOrig) {
+          cvs.style.display = 'none';
+          return;
+        }
+        cvs.style.display = 'block';
+
+        var v = document.getElementById('spinVideo');
+        var vw = (v && v.videoWidth) || 1080;
+        var vh = (v && v.videoHeight) || 1920;
+        if (vw <= 0) vw = 1080;
+        if (vh <= 0) vh = 1920;
+        cvs.width = vw;
+        cvs.height = vh;
+        var ctx = cvs.getContext('2d');
+        ctx.clearRect(0, 0, vw, vh);
+
+        var frameSel = document.getElementById('spinModalFrameStyle');
+        var frameStyle = frameSel ? frameSel.value : (it.frameStyle || (spinLook && spinLook.frameStyle) || 'floral_gold');
+
+        var t1 = (document.getElementById('spinTrimText1') ? document.getElementById('spinTrimText1').value : (it.text1 || spinLook.text1 || '')).trim();
+        var t2 = (document.getElementById('spinTrimText2') ? document.getElementById('spinTrimText2').value : (it.text2 || spinLook.text2 || '')).trim();
+        var posSel = document.getElementById('spinModalTextPos');
+        var textPos = posSel ? posSel.value : (it.textPos || (spinLook && spinLook.textPos) || 'top');
+        var ySlider = document.getElementById('spinModalTextY');
+        var defaultY = (textPos === 'bottom' ? 84 : (textPos === 'middle' ? 50 : (textPos === 'upper' ? 28 : (textPos === 'lower' ? 72 : 12))));
+        var textY = (ySlider && ySlider.value) ? Number(ySlider.value) : defaultY;
+        var alignSel = document.getElementById('spinModalTextAlign');
+        var textAlign = alignSel ? alignSel.value : (it.textAlign || 'center');
+        var fontSel = document.getElementById('spinModalTextFont');
+        var textFont = fontSel ? fontSel.value : (it.textFont || 'cursive');
+        var colInput = document.getElementById('spinModalTextColor');
+        var textColor = colInput ? colInput.value : (it.textColor || '#FFF2A8');
+
+        var textOpt = {
+          text1: t1,
+          text2: t2,
+          textOn: Boolean(t1 || t2),
+          textPos: textPos,
+          textYPercent: textY,
+          textAlign: textAlign,
+          textFont: textFont,
+          textColor: textColor
+        };
+
+        var isDesignerFrame = (frameStyle === 'floral_gold' || frameStyle === 'gilded_art_deco' || frameStyle === 'neon_cyberpunk');
+        var needsExtraText = textOpt.textOn && (textOpt.text1 || textOpt.text2) && (!isDesignerFrame || textOpt.textPos !== 'top' || frameStyle === 'custom');
+
+        if (frameStyle === 'custom' && (it.customFrameImage || spinModalCustomImage)) {
+          var cImg = it.customFrameImage || spinModalCustomImage;
+          try { ctx.drawImage(cImg, 0, 0, vw, vh); } catch (e) { }
+        } else if (frameStyle === 'floral_gold') {
+          try { drawWeddingFloralFrame(ctx, vw, vh, Object.assign({}, textOpt, { drawTextInFrame: !needsExtraText })); } catch (e) { }
+        } else if (frameStyle === 'gilded_art_deco') {
+          try { drawArtDecoGalaFrame(ctx, vw, vh, Object.assign({}, textOpt, { drawTextInFrame: !needsExtraText })); } catch (e) { }
+        } else if (frameStyle === 'neon_cyberpunk') {
+          try { drawNeonCyberpunkFrame(ctx, vw, vh, Object.assign({}, textOpt, { drawTextInFrame: !needsExtraText })); } catch (e) { }
+        } else if (frameStyle === 'classic_box') {
+          try { var bandH = Math.round(vh * 0.13); drawLabelBand(ctx, vw, vh - bandH, bandH, (typeof labelInput !== 'undefined' && labelInput ? labelInput.value : ''), 0); } catch (e) { }
+        }
+
+        if (needsExtraText) {
+          try { drawSpinExtraText(ctx, vw, vh, textOpt); } catch (e) { }
+        }
+      }
+
       // ---- editing one clip ----
       async function spinEdit(it) {
         if (!spinEnv.ffmpeg || it.src !== 'inbox' || it.status === 'editing') return;
@@ -26898,22 +27223,28 @@
           var effectiveT1 = (it.text1 != null && String(it.text1).trim() !== '') ? String(it.text1).trim() : (spinLook.text1 || '').trim();
           var effectiveT2 = (it.text2 != null && String(it.text2).trim() !== '') ? String(it.text2).trim() : (spinLook.text2 || '').trim();
           var hasText = Boolean(effectiveT1 || effectiveT2);
+          var effectiveFrameStyle = it.frameStyle || (spinLook && spinLook.frameStyle) || 'floral_gold';
           var textOpt = {
             text1: effectiveT1,
             text2: effectiveT2,
             textOn: hasText || !!spinLook.textOn,
-            textPos: spinLook.textPos || 'top',
-            textColor: spinLook.textColor || '#ffffff',
-            textSize: spinLook.textSize || 'medium',
-            textFont: spinLook.textFont || 'sans-serif',
-            textTiming: spinLook.textTiming || 'always'
+            textPos: it.textPos || spinLook.textPos || 'top',
+            textYPercent: it.textYPercent != null ? it.textYPercent : (spinLook && spinLook.textYPercent),
+            textAlign: it.textAlign || (spinLook && spinLook.textAlign) || 'center',
+            textColor: it.textColor || spinLook.textColor || '#ffffff',
+            textSize: it.textSize || spinLook.textSize || 'medium',
+            textFont: it.textFont || spinLook.textFont || 'sans-serif',
+            textTiming: it.textTiming || spinLook.textTiming || 'always',
+            frameStyle: effectiveFrameStyle,
+            customImage: it.customFrameImage || spinModalCustomImage
           };
-          var isDesignerFrame = (spinLook.frameStyle === 'floral_gold' || spinLook.frameStyle === 'gilded_art_deco' || spinLook.frameStyle === 'neon_cyberpunk');
-          if (spinLook.overlay) {
-            var blob = await spinMakeOverlay(dims.W, dims.H, textOpt);
+          var isDesignerFrame = (effectiveFrameStyle === 'floral_gold' || effectiveFrameStyle === 'gilded_art_deco' || effectiveFrameStyle === 'neon_cyberpunk' || effectiveFrameStyle === 'custom');
+          var needsSeparateText = textOpt.textOn && (textOpt.text1 || textOpt.text2) && (!isDesignerFrame || textOpt.textTiming === 'fade' || textOpt.textPos !== 'top' || effectiveFrameStyle === 'custom');
+          if (spinLook.overlay && effectiveFrameStyle !== 'none') {
+            var overlayOpt = Object.assign({}, textOpt, { drawTextInFrame: !needsSeparateText });
+            var blob = await spinMakeOverlay(dims.W, dims.H, overlayOpt);
             if (blob) ov = await window.pb4u.spinOverlay(new Uint8Array(await blob.arrayBuffer()));
           }
-          var needsSeparateText = textOpt.textOn && (textOpt.text1 || textOpt.text2) && (!isDesignerFrame || textOpt.textTiming === 'fade' || textOpt.textPos === 'middle' || (textOpt.textPos === 'top' && spinLook.frameStyle !== 'floral_gold'));
           if (needsSeparateText) {
             var txtBlob = await spinMakeTextOverlay(dims.W, dims.H, textOpt);
             if (txtBlob) txtOv = await window.pb4u.spinOverlay(new Uint8Array(await txtBlob.arrayBuffer()));
@@ -26922,7 +27253,7 @@
             name: it.name, label: spinPresetLabel(), overlay: ov, textOverlay: txtOv,
             options: {
               speed: spinLook.speed, rates: spinLook.rates, reverse: spinLook.reverse, smooth: spinLook.smooth, gpu: !!spinLook.gpu, orientation: spinLook.orient, quality: spinLook.quality, audio: spinLook.audio,
-              volume: spinLook.volume / 100, trimStart: it.trimA || 0, trimEnd: it.trimB || null, fx: spinLook.fx || 'none',
+              volume: spinLook.volume / 100, trimStart: it.trimA || 0, trimEnd: it.trimB || null, fx: it.fx || spinLook.fx || 'none',
               zoom: spinLook.zoom !== undefined ? !!spinLook.zoom : true,
               flash: spinLook.flash !== undefined ? !!spinLook.flash : true,
               textTiming: textOpt.textTiming
@@ -26968,6 +27299,8 @@
           if (wf) addQr(wifiQrText(wf), 'Step 1: Network', wf.ssid + (wf.pass ? ' / ' + wf.pass : ''));
           addQr(it.url, wf ? 'Step 2: Download' : '', '');
         }
+        var editBox = document.getElementById('spinModalEditBox');
+        if (editBox) editBox.style.display = (!canEdit || editing) ? 'none' : '';
         document.getElementById('spinTrim').hidden = !canEdit || editing;
         document.getElementById('spinProg').hidden = !editing;
         document.getElementById('spinBar').style.width = (it.pct || 0) + '%';
@@ -26985,23 +27318,65 @@
                     : 'Shares the ' + what + ' video.';
         btn.hidden = it.src === 'drive'; btn.disabled = it.status === 'sharing' || editing;
         btn.textContent = it.status === 'shared' || it.status === 'queued' ? 'Share again' : 'Share + QR';
+        renderSpinModalPreview();
       }
+
       function spinOpenItem(it) {
         spinCur = it;
         var v = document.getElementById('spinVideo'), src = spinSrc(it, !it.viewOrig);
         v.pause(); v.src = src || ''; v.load(); v.style.display = it.src === 'drive' ? 'none' : '';
-        document.getElementById('spinTrimA').value = it.trimA || ''; document.getElementById('spinTrimB').value = it.trimB || '';
+        v.playbackRate = 1.0;
+        document.querySelectorAll('.spin-speed-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.rate === '1.0'); });
+        var playBtn = document.getElementById('spinModalPlayBtn');
+        if (playBtn) playBtn.textContent = '▶ Play';
+
+        v.onloadedmetadata = function () {
+          var stage = document.getElementById('spinStageWrap');
+          if (stage && v.videoWidth && v.videoHeight) {
+            stage.style.aspectRatio = v.videoWidth + ' / ' + v.videoHeight;
+          }
+          renderSpinModalPreview();
+        };
+
+        document.getElementById('spinTrimA').value = it.trimA || '';
+        document.getElementById('spinTrimB').value = it.trimB || '';
+
+        var fSel = document.getElementById('spinModalFrameStyle');
+        if (fSel) fSel.value = it.frameStyle || (spinLook && spinLook.frameStyle) || 'floral_gold';
+
         if (document.getElementById('spinTrimText1')) {
-          document.getElementById('spinTrimText1').value = it.text1 || '';
-          document.getElementById('spinTrimText1').placeholder = (spinLook.text1 ? 'Override: ' + spinLook.text1 : 'Line 1 override');
+          document.getElementById('spinTrimText1').value = it.text1 != null ? it.text1 : (spinLook.text1 || '');
         }
         if (document.getElementById('spinTrimText2')) {
-          document.getElementById('spinTrimText2').value = it.text2 || '';
-          document.getElementById('spinTrimText2').placeholder = (spinLook.text2 ? 'Override: ' + spinLook.text2 : 'Line 2 override');
+          document.getElementById('spinTrimText2').value = it.text2 != null ? it.text2 : (spinLook.text2 || '');
         }
+
+        var posSel = document.getElementById('spinModalTextPos');
+        if (posSel) posSel.value = it.textPos || (spinLook && spinLook.textPos) || 'top';
+        var ySlider = document.getElementById('spinModalTextY');
+        var yVal = document.getElementById('spinModalTextYVal');
+        var defaultY = (it.textPos === 'bottom' ? 84 : (it.textPos === 'middle' ? 50 : (it.textPos === 'upper' ? 28 : (it.textPos === 'lower' ? 72 : 12))));
+        var chosenY = (it.textYPercent != null) ? it.textYPercent : ((spinLook && spinLook.textYPercent != null) ? spinLook.textYPercent : defaultY);
+        if (ySlider) ySlider.value = chosenY;
+        if (yVal) yVal.textContent = chosenY + '%';
+
+        var alignSel = document.getElementById('spinModalTextAlign');
+        if (alignSel) alignSel.value = it.textAlign || (spinLook && spinLook.textAlign) || 'center';
+
+        var fontSel = document.getElementById('spinModalTextFont');
+        if (fontSel) fontSel.value = it.textFont || (spinLook && spinLook.textFont) || 'cursive';
+
+        var colInput = document.getElementById('spinModalTextColor');
+        if (colInput) colInput.value = it.textColor || (spinLook && spinLook.textColor) || '#FFF2A8';
+
+        var fxSel = document.getElementById('spinModalFx');
+        if (fxSel) fxSel.value = it.fx || (spinLook && spinLook.fx) || 'none';
+
         document.getElementById('spinModal').hidden = false;
         spinModalUpdate();
+        renderSpinModalPreview();
       }
+
       function closeSpinModal() {
         var v = document.getElementById('spinVideo'); try { v.pause(); } catch (e) { } v.removeAttribute('src'); try { v.load(); } catch (e) { }
         document.getElementById('spinModal').hidden = true; spinCur = null;
@@ -27038,7 +27413,26 @@
         e.target.value = '';
       });
       document.getElementById('spinFile').addEventListener('change', function (e) { [].forEach.call(e.target.files || [], spinAddFile); e.target.value = ''; });
-      document.getElementById('spinClear').addEventListener('click', function () { spinQueue.forEach(function (i) { if (i.objUrl) try { URL.revokeObjectURL(i.objUrl); } catch (e) { } }); spinQueue = []; spinRender(); });
+      document.getElementById('spinClear').addEventListener('click', async function () {
+        if (!spinQueue.length) return;
+        var alsoDelete = false;
+        if (spinDesktop()) {
+          var ans = confirm('Clear all ' + spinQueue.length + ' video(s) from the list?\n\nThey will not re-appear.\n\nClick OK to clear.');
+          if (!ans) return;
+          alsoDelete = confirm('Do you also want to permanently delete the raw video files from your inbox folder on disk?\n\nOK = Delete files from disk\nCancel = Keep files on disk, only remove from app');
+        }
+        for (var i = 0; i < spinQueue.length; i++) {
+          var item = spinQueue[i];
+          if (item.key) spinDismissed[item.key] = Date.now();
+          if (item.objUrl) try { URL.revokeObjectURL(item.objUrl); } catch (e) { }
+          if (alsoDelete && item.src === 'inbox' && window.pb4u && window.pb4u.spinDelete) {
+            try { await window.pb4u.spinDelete(item.name); } catch (e) { }
+          }
+        }
+        saveSpinDismissed();
+        spinQueue = [];
+        spinRender();
+      });
       document.getElementById('spinDirBtn').addEventListener('click', async function () {
         try { var r = await window.pb4u.spinChoose(); if (r) { spinInfo = r; spinSeen = {}; spinPrev = {}; spinQueue = spinQueue.filter(function (i) { return i.src !== 'inbox'; }); spinRender(); spinSetupInfo(); } } catch (e) { }
       });
@@ -27048,14 +27442,30 @@
         if (it.status === 'editing') { if (it.job) window.pb4u.spinCancel(it.job); return; }
         var a = parseFloat(document.getElementById('spinTrimA').value), b = parseFloat(document.getElementById('spinTrimB').value);
         it.trimA = isFinite(a) && a > 0 ? a : 0; it.trimB = isFinite(b) && b > it.trimA ? b : 0;
-        if (document.getElementById('spinTrimText1')) {
-          var t1 = document.getElementById('spinTrimText1').value.trim();
-          it.text1 = t1 || null;
+
+        var t1 = document.getElementById('spinTrimText1') ? document.getElementById('spinTrimText1').value.trim() : '';
+        var t2 = document.getElementById('spinTrimText2') ? document.getElementById('spinTrimText2').value.trim() : '';
+        it.text1 = t1 || null;
+        it.text2 = t2 || null;
+
+        var fSel = document.getElementById('spinModalFrameStyle');
+        if (fSel) it.frameStyle = fSel.value;
+        var pSel = document.getElementById('spinModalTextPos');
+        if (pSel) it.textPos = pSel.value;
+        var ySl = document.getElementById('spinModalTextY');
+        if (ySl) it.textYPercent = Number(ySl.value);
+        var aSel = document.getElementById('spinModalTextAlign');
+        if (aSel) it.textAlign = aSel.value;
+        var ftSel = document.getElementById('spinModalTextFont');
+        if (ftSel) it.textFont = ftSel.value;
+        var cIn = document.getElementById('spinModalTextColor');
+        if (cIn) it.textColor = cIn.value;
+        var fxSel = document.getElementById('spinModalFx');
+        if (fxSel) it.fx = fxSel.value;
+        if (spinModalCustomImage && fSel && fSel.value === 'custom') {
+          it.customFrameImage = spinModalCustomImage;
         }
-        if (document.getElementById('spinTrimText2')) {
-          var t2 = document.getElementById('spinTrimText2').value.trim();
-          it.text2 = t2 || null;
-        }
+
         spinEdit(it);
       });
       document.getElementById('spinViewBtn').addEventListener('click', function () {
@@ -27064,8 +27474,19 @@
         var v = document.getElementById('spinVideo'); v.src = spinSrc(it, !it.viewOrig); v.load();
         spinModalUpdate();
       });
-      document.getElementById('spinRemove').addEventListener('click', function () {
+      document.getElementById('spinRemove').addEventListener('click', async function () {
         var it = spinCur; if (!it) return;
+        var alsoDelete = false;
+        if (spinDesktop() && it.src === 'inbox') {
+          alsoDelete = confirm('Do you want to permanently delete "' + it.name + '" from the folder on disk?\n\nOK = Delete from disk\nCancel = Only remove from list');
+        }
+        if (it.key) {
+          spinDismissed[it.key] = Date.now();
+          saveSpinDismissed();
+        }
+        if (alsoDelete && window.pb4u && window.pb4u.spinDelete) {
+          try { await window.pb4u.spinDelete(it.name); } catch (e) { }
+        }
         spinQueue = spinQueue.filter(function (x) { return x !== it; }); if (it.objUrl) try { URL.revokeObjectURL(it.objUrl); } catch (e) { }
         closeSpinModal(); spinRender();
       });
@@ -27073,6 +27494,87 @@
         var b = e.target.closest('.desk-item'); if (!b) return;
         var it = spinQueue.find(function (x) { return x.id === Number(b.dataset.id); });
         if (it) spinOpenItem(it);
+      });
+
+      var playBtn = document.getElementById('spinModalPlayBtn');
+      if (playBtn) {
+        playBtn.addEventListener('click', function () {
+          var v = document.getElementById('spinVideo');
+          if (!v) return;
+          if (v.paused) {
+            v.play();
+            playBtn.textContent = '⏸ Pause';
+          } else {
+            v.pause();
+            playBtn.textContent = '▶ Play';
+          }
+        });
+      }
+
+      document.querySelectorAll('.spin-speed-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var rate = parseFloat(this.dataset.rate) || 1.0;
+          var v = document.getElementById('spinVideo');
+          if (v) v.playbackRate = rate;
+          document.querySelectorAll('.spin-speed-btn').forEach(function (b) { b.classList.remove('active'); });
+          this.classList.add('active');
+        });
+      });
+
+      var customFileInput = document.getElementById('spinModalCustomFile');
+      if (customFileInput) {
+        customFileInput.addEventListener('change', function (e) {
+          var file = e.target.files && e.target.files[0];
+          if (!file) return;
+          var reader = new FileReader();
+          reader.onload = function (evt) {
+            var img = new Image();
+            img.onload = function () {
+              spinModalCustomImage = img;
+              var fSel = document.getElementById('spinModalFrameStyle');
+              if (fSel) fSel.value = 'custom';
+              if (spinCur) spinCur.customFrameImage = img;
+              renderSpinModalPreview();
+              showToast('Custom frame loaded!', 2000);
+            };
+            img.src = evt.target.result;
+          };
+          reader.readAsDataURL(file);
+          e.target.value = '';
+        });
+      }
+
+      ['spinTrimText1', 'spinTrimText2', 'spinModalTextY'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('input', function () {
+            if (id === 'spinModalTextY') {
+              var yVal = document.getElementById('spinModalTextYVal');
+              if (yVal) yVal.textContent = el.value + '%';
+              var posSel = document.getElementById('spinModalTextPos');
+              if (posSel) posSel.value = 'custom';
+            }
+            renderSpinModalPreview();
+          });
+        }
+      });
+
+      ['spinModalFrameStyle', 'spinModalTextPos', 'spinModalTextAlign', 'spinModalTextFont', 'spinModalTextColor', 'spinModalFx', 'spinModalTogglePreview'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('change', function () {
+            if (id === 'spinModalTextPos') {
+              var ySlider = document.getElementById('spinModalTextY');
+              var yVal = document.getElementById('spinModalTextYVal');
+              var targetY = el.value === 'bottom' ? 84 : (el.value === 'middle' ? 50 : (el.value === 'upper' ? 28 : (el.value === 'lower' ? 72 : 12)));
+              if (ySlider && el.value !== 'custom') {
+                ySlider.value = targetY;
+                if (yVal) yVal.textContent = targetY + '%';
+              }
+            }
+            renderSpinModalPreview();
+          });
+        }
       });
       // the look controls
       document.getElementById('spinPreset').addEventListener('change', function () {
@@ -28121,6 +28623,14 @@
           if (!LAYOUT_DEFS[k] || (k === 'framesheet' && !(myFrames && myFrames.length))) return;
           if (k === main || guestLayoutSet.indexOf(k) >= 0) keys.push(k);
         });
+        if (sessionTier === 'receipt') {
+          var rKeys = keys.filter(function (k) { return LAYOUT_DEFS[k] && LAYOUT_DEFS[k].kind === 'receipt'; });
+          if (rKeys.length) keys = rKeys;
+          else keys = ['receipt'];
+        } else if (sessionTier === 'photo') {
+          var pKeys = keys.filter(function (k) { return !LAYOUT_DEFS[k] || LAYOUT_DEFS[k].kind !== 'receipt'; });
+          if (pKeys.length) keys = pKeys;
+        }
         if (keys.length === 1 && /^frame:/.test(keys[0])) {
           activeFrameId = keys[0].slice(6);
           return [keys[0]];
@@ -28176,7 +28686,15 @@
             var fObj = isFr && typeof frameById === 'function' ? frameById(k.slice(6)) : null;
             var shots = isFr ? frameShotCount(fObj) : (LAYOUT_DEFS[k] ? LAYOUT_DEFS[k].shots : 4);
             shBadge.textContent = shots + (shots === 1 ? ' shot' : ' shots');
-            b.append(im, sp, shBadge);
+            var isRc = !isFr && LAYOUT_DEFS[k] && LAYOUT_DEFS[k].kind === 'receipt';
+            var tierTag = document.createElement('span');
+            tierTag.className = 'pick-tier-tag ' + (isRc ? 'thermal' : 'color');
+            if (payCfg && payCfg.dual) {
+              tierTag.textContent = isRc ? ('🧾 ' + payCfg.tier1.label) : ('🎨 ' + payCfg.tier2.label);
+            } else {
+              tierTag.textContent = isRc ? '🧾 B/W Thermal' : '🎨 Canon Color';
+            }
+            b.append(im, sp, shBadge, tierTag);
             b.addEventListener('click', function (e) { e.stopPropagation(); finishPick(k); });
             pickGrid.appendChild(b);
           });
@@ -28258,10 +28776,11 @@
       // prints included are saved per event with the setup. The renter's PayMongo
       // key never reaches this page: the server makes the QR and checks payment.
       var PAY_MODES = ['off', 'qr', 'voucher', 'both'];
-      var payCfg = { mode: 'off', price: 100, prints: 0 };
+      var payCfg = { mode: 'off', price: 100, prints: 0, dual: false, tier1: { label: 'Thermal 50', price: 50, tier: 'receipt' }, tier2: { label: 'Canon Color 100', price: 100, tier: 'photo' } };
+      var sessionTier = null;
       var payAcct = (function () { try { return JSON.parse(localStorage.getItem('pb_pay_acct') || 'null'); } catch (e) { return null; } })();
       var payPrintAllow = 0;
-      var payState = { resolve: null, view: '', qrId: null, exp: 0, timer: null, poll: null, idle: null, code: '', busy: false, test: false };
+      var payState = { resolve: null, view: '', qrId: null, exp: 0, timer: null, poll: null, idle: null, code: '', busy: false, test: false, tier: 'all' };
       function payOn() { return !!(window.__PB && window.__PB.payOpt); }
       function cleanPay(p) {
         p = p && typeof p === 'object' ? p : {};
@@ -28270,7 +28789,29 @@
         var noQr = DESKTOP || !!(window.__PB && window.__PB.offline);   // Android offline mode sets __PB.offline
         if (noQr && mode === 'qr') mode = 'off';            // QR payments need the internet version
         if (noQr && mode === 'both') mode = 'voucher';
-        return { mode: mode, price: price >= 20 && price <= 20000 ? price : 100, prints: Math.max(0, Math.min(5, Math.floor(Number(p.prints) || 0))) };
+        var dual = !!p.dual;
+        var t1 = p.tier1 && typeof p.tier1 === 'object' ? p.tier1 : {};
+        var t2 = p.tier2 && typeof p.tier2 === 'object' ? p.tier2 : {};
+        var p1 = Math.floor(Number(t1.price));
+        var p2 = Math.floor(Number(t2.price));
+        var tier1 = {
+          label: String(t1.label || 'Thermal 50').slice(0, 30),
+          price: p1 >= 20 && p1 <= 20000 ? p1 : 50,
+          tier: 'receipt'
+        };
+        var tier2 = {
+          label: String(t2.label || 'Canon Color 100').slice(0, 30),
+          price: p2 >= 20 && p2 <= 20000 ? p2 : 100,
+          tier: 'photo'
+        };
+        return {
+          mode: mode,
+          price: price >= 20 && price <= 20000 ? price : 100,
+          prints: Math.max(0, Math.min(5, Math.floor(Number(p.prints) || 0))),
+          dual: dual,
+          tier1: tier1,
+          tier2: tier2
+        };
       }
       function payActive() { return payOn() && payCfg.mode !== 'off'; }
       function payQrOn() { return payCfg.mode === 'qr' || payCfg.mode === 'both'; }
@@ -28283,7 +28824,7 @@
       var CREDIT_KEY = 'pb_pay_credit';
       function payCredit() { try { return JSON.parse(localStorage.getItem(CREDIT_KEY) || 'null'); } catch (e) { return null; } }
       function setPayCredit(c) { try { if (c) localStorage.setItem(CREDIT_KEY, JSON.stringify(c)); else localStorage.removeItem(CREDIT_KEY); } catch (e) { } refreshPayBadge(); }
-      function consumePayCredit() { var c = payCredit(); if (!c) return; payPrintAllow = c.prints || 0; setPayCredit(null); }
+      function consumePayCredit() { var c = payCredit(); if (!c) return; payPrintAllow = c.prints || 0; sessionTier = c.tier || null; setPayCredit(null); }
 
       // ---- welcome pill ----
       function refreshPayBadge() {
@@ -28293,7 +28834,13 @@
         if (!on) return;
         var c = payCredit();
         el.classList.toggle('credit', !!c);
-        el.innerHTML = c ? '✓ Paid session ready · <b>Tap to start</b>' : payEsc(peso(payCfg.price)) + ' per session · <b>Tap to start</b>';
+        if (c) {
+          el.innerHTML = '✓ Paid session ready · <b>Tap to start</b>';
+        } else if (payCfg.dual) {
+          el.innerHTML = payEsc(payCfg.tier1.label) + ' (' + payEsc(peso(payCfg.tier1.price)) + ') or ' + payEsc(payCfg.tier2.label) + ' (' + payEsc(peso(payCfg.tier2.price)) + ') · <b>Tap to start</b>';
+        } else {
+          el.innerHTML = payEsc(peso(payCfg.price)) + ' per session · <b>Tap to start</b>';
+        }
       }
 
       // ---- vouchers: online check, with an offline copy of this event's unused vouchers ----
@@ -28420,7 +28967,7 @@
               if (typeof renderPayBatches === 'function') renderPayBatches();
             }
             if (navigator.onLine !== false) syncVouchers();
-            return { ok: true, prints: ob.prints || 1, offline: true };
+            return { ok: true, prints: ob.prints || 1, tier: ob.tier || 'all', label: ob.label || '', offline: true };
           }
         }
 
@@ -28430,7 +28977,7 @@
             var r = await postApi('/api/pay', { action: 'redeem', code: code }, 7000);
             if (r.status === 200 && r.j.ok) {
               removeCodeFromAllCaches(code);
-              return { ok: true, prints: r.j.prints || 0 };
+              return { ok: true, prints: r.j.prints || 0, tier: r.j.tier || 'all', label: r.j.label || '' };
             }
             if (r.status === 200 && r.j.error) return { error: r.j.error };
             if (r.status === 429) return { error: 'wait' };
@@ -28456,13 +29003,15 @@
             var i = c.list.findIndex(function (x) { return x[0] === h; });
             if (i >= 0) {
               var prints = c.list[i][1] || 0;
+              var tier = c.list[i][2] || 'all';
+              var label = c.list[i][3] || '';
               c.list.splice(i, 1);
               try { localStorage.setItem(cKey, JSON.stringify(c)); } catch (e) { }
               var q2 = vQueue();
               q2.push({ code: code, at: Date.now(), ev: setupScopeEvent() });
               vQueueSet(q2);
               if (navigator.onLine !== false) syncVouchers();
-              return { ok: true, prints: prints, offline: true };
+              return { ok: true, prints: prints, tier: tier, label: label, offline: true };
             }
           }
         }
@@ -28496,11 +29045,31 @@
         if (!payActive() || payCredit()) return Promise.resolve(true);
         return new Promise(function (resolve) {
           payState.resolve = resolve;
-          document.getElementById('payTitle').textContent = peso(payCfg.price);
-          document.getElementById('paySub').textContent = payIncludes();
+          var titleEl = document.getElementById('payTitle');
+          var subEl = document.getElementById('paySub');
+          var dualBox = document.getElementById('payDualChooseBox');
+          var optQr = document.getElementById('payOptQr');
+          var optVoucher = document.getElementById('payOptVoucher');
+          if (payCfg.dual) {
+            titleEl.textContent = peso(payCfg.tier1.price) + ' / ' + peso(payCfg.tier2.price);
+            subEl.textContent = payCfg.tier1.label + ' or ' + payCfg.tier2.label;
+            if (dualBox) {
+              dualBox.style.display = '';
+              var l1 = document.getElementById('payDualOpt1Label'); if (l1) l1.textContent = payCfg.tier1.label;
+              var p1 = document.getElementById('payDualOpt1Price'); if (p1) p1.textContent = peso(payCfg.tier1.price);
+              var l2 = document.getElementById('payDualOpt2Label'); if (l2) l2.textContent = payCfg.tier2.label;
+              var p2 = document.getElementById('payDualOpt2Price'); if (p2) p2.textContent = peso(payCfg.tier2.price);
+            }
+          } else {
+            titleEl.textContent = peso(payCfg.price);
+            subEl.textContent = payIncludes();
+            if (dualBox) dualBox.style.display = 'none';
+          }
+          if (optQr) optQr.hidden = !payQrOn();
+          if (optVoucher) optVoucher.hidden = !payVoucherOn();
           paySheet.hidden = false;
           document.body.classList.add('pay-open');
-          if (payCfg.mode === 'both') payShow('payChoose');
+          if (payCfg.dual || payCfg.mode === 'both') payShow('payChoose');
           else if (payCfg.mode === 'qr') payStartQr();
           else payStartVoucher();
         });
@@ -28521,19 +29090,23 @@
         b.hidden = !retry; b.textContent = retryLabel || 'Try again';
         payShow('payProblem');
       }
-      async function payStartQr() {
+      async function payStartQr(tier, price, label) {
         payStopTimers();
         payShow('payQr');
         document.getElementById('payQrWait').hidden = false;
         document.getElementById('payQrImg').hidden = true;
+        var askPrice = (price && price >= 20) ? price : payCfg.price;
+        var askLabel = label || '1 photo session';
+        var askTier = (tier === 'receipt' || tier === 'photo') ? tier : 'all';
+        payState.tier = askTier;
         try {
-          var r = await postApi('/api/pay', { action: 'qr', amount: payCfg.price, prints: payCfg.prints, label: '1 photo session' }, 12000);
+          var r = await postApi('/api/pay', { action: 'qr', amount: askPrice, prints: payCfg.prints, tier: askTier, label: askLabel }, 12000);
           if (r.status === 200 && r.j.image) {
             payState.qrId = r.j.id; payState.exp = r.j.expiresAt || (Date.now() + 180000); payState.test = !!r.j.test;
             var img = document.getElementById('payQrImg');
             img.src = r.j.image; img.hidden = false;
             document.getElementById('payQrWait').hidden = true;
-            document.getElementById('payQrNotice').hidden = !payState.test;
+            var testEl = document.getElementById('payTestTag'); if (testEl) testEl.hidden = !payState.test;
             payPollStart();
           } else {
             payProblem((r.j && r.j.error) || 'Couldn’t make the payment QR. Please try again or ask the attendant.', true);
@@ -28552,15 +29125,16 @@
             if (r.status === 200 && r.j.status === 'paid') {
               clearInterval(payState.poll);
               document.getElementById('payDoneT').textContent = 'Payment received';
-              payPaid(payCfg.prints);
+              payPaid(payCfg.prints, r.j.tier || payState.tier);
             }
           } catch (e) { }
         }, 2500);
       }
-      function payPaid(prints) {
+      function payPaid(prints, tier, label) {
         payStopTimers();
         payPrintAllow = prints || 0;
-        setPayCredit({ at: Date.now(), prints: payPrintAllow });
+        sessionTier = (tier === 'receipt' || tier === 'photo') ? tier : null;
+        setPayCredit({ at: Date.now(), prints: payPrintAllow, tier: sessionTier });
         payShow('payDone');
         setTimeout(function () { payFinish(true); }, 1500);
       }
@@ -28586,7 +29160,11 @@
         var r = await payRedeem(payState.code);
         payState.busy = false;
         if (!payState.resolve) return;
-        if (r.ok) { document.getElementById('payDoneT').textContent = 'Voucher accepted'; payPaid(r.prints); return; }
+        if (r.ok) {
+          document.getElementById('payDoneT').textContent = (r.label && r.label !== '1 photo session' ? (r.label + ' voucher accepted') : 'Voucher accepted');
+          payPaid(r.prints, r.tier, r.label);
+          return;
+        }
         err.classList.remove('note'); err.textContent = V_ERR[r.error] || V_ERR.bad;
         var el = document.getElementById('payCode'); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
       }
@@ -28609,6 +29187,28 @@
       });
       document.getElementById('payOptQr').addEventListener('click', function () { document.getElementById('payDoneT').textContent = 'Payment received'; payStartQr(); });
       document.getElementById('payOptVoucher').addEventListener('click', function () { payStartVoucher(); });
+      var pdo1 = document.getElementById('payDualOpt1');
+      if (pdo1) pdo1.addEventListener('click', function () {
+        var lbl = (payCfg.tier1 && payCfg.tier1.label) || 'Thermal 50';
+        var prc = (payCfg.tier1 && payCfg.tier1.price) || 50;
+        if (payQrOn()) {
+          document.getElementById('payDoneT').textContent = lbl + ' payment received';
+          payStartQr('receipt', prc, lbl);
+        } else {
+          payStartVoucher();
+        }
+      });
+      var pdo2 = document.getElementById('payDualOpt2');
+      if (pdo2) pdo2.addEventListener('click', function () {
+        var lbl = (payCfg.tier2 && payCfg.tier2.label) || 'Canon Color 100';
+        var prc = (payCfg.tier2 && payCfg.tier2.price) || 100;
+        if (payQrOn()) {
+          document.getElementById('payDoneT').textContent = lbl + ' payment received';
+          payStartQr('photo', prc, lbl);
+        } else {
+          payStartVoucher();
+        }
+      });
       document.getElementById('payBack').addEventListener('click', function () { payStopTimers(); payState.qrId = null; payShow('payChoose'); });
       document.getElementById('payClose').addEventListener('click', function () { payFinish(false); });
       paySheet.addEventListener('pointerdown', function () { payIdle(); });
@@ -28626,6 +29226,25 @@
         document.querySelectorAll('#payModes .chip').forEach(function (c) { c.classList.toggle('active', c.dataset.mode === payCfg.mode); });
         var pi = document.getElementById('payPrice'); if (pi) pi.value = payCfg.price;
         var pv = document.getElementById('payPrintsVal'); if (pv) pv.textContent = payCfg.prints ? payCfg.prints + ' print' + (payCfg.prints > 1 ? 's' : '') : 'none';
+        var dt = document.getElementById('payDualToggle'); if (dt) dt.checked = !!payCfg.dual;
+        var dr = document.getElementById('payDualRows'); if (dr) dr.style.display = payCfg.dual ? '' : 'none';
+        var sr = document.getElementById('paySingleRow'); if (sr) sr.style.display = payCfg.dual ? 'none' : '';
+        var t1l = document.getElementById('payTier1Label'); if (t1l) t1l.value = (payCfg.tier1 && payCfg.tier1.label) || 'Thermal 50';
+        var t1p = document.getElementById('payTier1Price'); if (t1p) t1p.value = (payCfg.tier1 && payCfg.tier1.price) || 50;
+        var t2l = document.getElementById('payTier2Label'); if (t2l) t2l.value = (payCfg.tier2 && payCfg.tier2.label) || 'Canon Color 100';
+        var t2p = document.getElementById('payTier2Price'); if (t2p) t2p.value = (payCfg.tier2 && payCfg.tier2.price) || 100;
+        var mt = document.getElementById('payMakeTier');
+        if (mt) {
+          var curVal = mt.value;
+          var t1Label = (payCfg.tier1 && payCfg.tier1.label) || 'Thermal 50';
+          var t1Pr = (payCfg.tier1 && payCfg.tier1.price) || 50;
+          var t2Label = (payCfg.tier2 && payCfg.tier2.label) || 'Canon Color 100';
+          var t2Pr = (payCfg.tier2 && payCfg.tier2.price) || 100;
+          mt.innerHTML = '<option value="all">Any layout (' + peso(payCfg.price) + ')</option>' +
+            '<option value="tier1">' + payEsc(t1Label) + ' (' + peso(t1Pr) + ')</option>' +
+            '<option value="tier2">' + payEsc(t2Label) + ' (' + peso(t2Pr) + ')</option>';
+          if (curVal && ['all', 'tier1', 'tier2'].indexOf(curVal) >= 0) mt.value = curVal;
+        }
         var qf = document.getElementById('payQrFields'); if (qf) qf.hidden = !payQrOn();
         var vf = document.getElementById('payVoucherFields'); if (vf) vf.hidden = !payVoucherOn();
         var ac = document.getElementById('payAcctStatus');
@@ -28649,6 +29268,39 @@
       });
       document.getElementById('payPrintsMinus').addEventListener('click', function () { payCfg.prints = Math.max(0, payCfg.prints - 1); payChanged(); });
       document.getElementById('payPrintsPlus').addEventListener('click', function () { payCfg.prints = Math.min(5, payCfg.prints + 1); payChanged(); });
+      var pdt = document.getElementById('payDualToggle');
+      if (pdt) pdt.addEventListener('change', function () {
+        payCfg.dual = this.checked;
+        payChanged();
+      });
+      var pt1l = document.getElementById('payTier1Label');
+      if (pt1l) pt1l.addEventListener('input', function () {
+        if (!payCfg.tier1) payCfg.tier1 = {};
+        payCfg.tier1.label = this.value.trim().slice(0, 30) || 'Thermal 50';
+        if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+      });
+      var pt1p = document.getElementById('payTier1Price');
+      if (pt1p) pt1p.addEventListener('change', function () {
+        var v = Math.floor(Number(this.value));
+        if (!(v >= 20 && v <= 20000)) { showToast('Price must be between ₱20 and ₱20,000.', 3500); this.value = (payCfg.tier1 && payCfg.tier1.price) || 50; return; }
+        if (!payCfg.tier1) payCfg.tier1 = {};
+        payCfg.tier1.price = v;
+        payChanged();
+      });
+      var pt2l = document.getElementById('payTier2Label');
+      if (pt2l) pt2l.addEventListener('input', function () {
+        if (!payCfg.tier2) payCfg.tier2 = {};
+        payCfg.tier2.label = this.value.trim().slice(0, 30) || 'Canon Color 100';
+        if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+      });
+      var pt2p = document.getElementById('payTier2Price');
+      if (pt2p) pt2p.addEventListener('change', function () {
+        var v = Math.floor(Number(this.value));
+        if (!(v >= 20 && v <= 20000)) { showToast('Price must be between ₱20 and ₱20,000.', 3500); this.value = (payCfg.tier2 && payCfg.tier2.price) || 100; return; }
+        if (!payCfg.tier2) payCfg.tier2 = {};
+        payCfg.tier2.price = v;
+        payChanged();
+      });
 
       async function payLoadConfig() {
         if (!payOn()) { refreshPayUI(); return; }
@@ -28669,7 +29321,9 @@
           var usedCount = typeof bt.usedCount === 'number' ? bt.usedCount : (bt.codes ? bt.codes.filter(function (x) { return x.used; }).length : 0);
           var voidCount = typeof bt.voidCount === 'number' ? bt.voidCount : (bt.codes ? bt.codes.filter(function (x) { return x.voided && !x.used; }).length : 0);
           var left = Math.max(0, total - usedCount - voidCount);
-          return '<div class="pay-batch" data-id="' + payEsc(bt.id) + '"><div class="bi"><b>' + total + ' vouchers · ' + usedCount + ' used</b><small>' +
+          var tierBadge = bt.tier === 'receipt' ? ' · 🧾 Thermal' : (bt.tier === 'photo' ? ' · 🎨 Color' : '');
+          return '<div class="pay-batch" data-id="' + payEsc(bt.id) + '"><div class="bi"><b>' + total + ' vouchers' + tierBadge + ' · ' + usedCount + ' used</b><small>' +
+            (bt.label ? payEsc(bt.label) + ' · ' : '') +
             (bt.price ? payEsc(peso(bt.price)) + ' · ' : '') + 'made ' + fmtShortDate(bt.at) + (bt.by === 'admin' ? ' by photobooth4u' : '') + (voidCount ? ' · ' + voidCount + ' cancelled' : '') + '</small>' +
             '<div class="meter"><i style="width:' + Math.round((total ? usedCount / total : 0) * 100) + '%"></i></div></div>' +
             (left > 0 ? '<button type="button" class="action-btn" data-act="print">Print tickets</button><button type="button" class="action-btn" data-act="void">Cancel unused</button>' : '') + '</div>';
@@ -28697,7 +29351,8 @@
         } catch (e) { }
       }
 
-      async function makeOfflineBatch(n, prints, price, label) {
+      async function makeOfflineBatch(n, prints, price, label, tier) {
+        tier = (tier === 'receipt' || tier === 'photo') ? tier : 'all';
         // Collect all existing codes to avoid collisions
         var taken = new Set();
         var existing = loadAllOfflineBatches();
@@ -28725,7 +29380,7 @@
 
         for (var ci = 0; ci < codes.length; ci++) {
           var h = await vHash(cData.oid, codes[ci]);
-          cData.list.push([h, prints || 0]);
+          cData.list.push([h, prints || 0, tier, label || '']);
         }
         try { localStorage.setItem(key, JSON.stringify(cData)); } catch (e) { }
 
@@ -28739,6 +29394,7 @@
           evName: evName,
           price: price || 0,
           prints: prints || 1,
+          tier: tier,
           label: label || '1 photo session',
           at: Date.now(),
           total: codes.length,
@@ -28760,23 +29416,38 @@
 
       document.getElementById('payMakeBtn').addEventListener('click', async function () {
         var btn = this, n = Number(document.getElementById('payMakeCount').value) || 20;
+        var tierSel = document.getElementById('payMakeTier');
+        var selVal = (tierSel && tierSel.value) || 'all';
+        var bTier = 'all';
+        var bPrice = payCfg.price;
+        var bLabel = '1 photo session';
+        if (selVal === 'tier1') {
+          bTier = 'receipt';
+          bPrice = (payCfg.tier1 && payCfg.tier1.price) || 50;
+          bLabel = (payCfg.tier1 && payCfg.tier1.label) || 'Thermal 50';
+        } else if (selVal === 'tier2') {
+          bTier = 'photo';
+          bPrice = (payCfg.tier2 && payCfg.tier2.price) || 100;
+          bLabel = (payCfg.tier2 && payCfg.tier2.label) || 'Canon Color 100';
+        }
+
         btn.disabled = true; btn.textContent = 'Making…';
         var serverOk = false;
         try {
-          var r = await postApi('/api/pay', { action: 'batch.create', count: n, prints: payCfg.prints, price: payCfg.price, label: '1 photo session' }, 15000);
+          var r = await postApi('/api/pay', { action: 'batch.create', count: n, prints: payCfg.prints, price: bPrice, label: bLabel, tier: bTier }, 15000);
           if (r.status === 200 && r.j.batch) {
             payBatches.unshift(r.j.batch); renderPayBatches(); refreshVoucherCache();
-            showToast(n + ' vouchers ready. Tap “Print tickets”.', 4000);
+            showToast(n + ' ' + (bTier !== 'all' ? bLabel : '') + ' vouchers ready. Tap “Print tickets”.', 4000);
             serverOk = true;
           }
         } catch (e) { /* offline — fall through */ }
         if (!serverOk) {
           try {
-            var offBatch = await makeOfflineBatch(n, payCfg.prints, payCfg.price, '1 photo session');
+            var offBatch = await makeOfflineBatch(n, payCfg.prints, bPrice, bLabel, bTier);
             payBatches.unshift(offBatch);
             renderPayBatches();
             refreshVoucherCache();
-            showToast(n + ' offline vouchers ready. Tap “Print tickets”.', 4000);
+            showToast(n + ' offline ' + (bTier !== 'all' ? bLabel : '') + ' vouchers ready. Tap “Print tickets”.', 4000);
           } catch (oe) { showToast('Could not generate vouchers: ' + (oe.message || oe), 4500); }
         }
         btn.disabled = false; btn.textContent = 'Make vouchers';
@@ -28796,7 +29467,8 @@
           var pages = [];
 
           var pesoStr = function (amt) { return '₱' + Number(amt || 0).toLocaleString('en-PH'); };
-          var incStr = '1 photo session' + (data.prints ? ' · ' + data.prints + ' print' + (data.prints > 1 ? 's' : '') : '');
+          var incStr = (data.label && data.label !== '1 photo session' ? data.label : '1 photo session') + (data.prints ? ' · ' + data.prints + ' print' + (data.prints > 1 ? 's' : '') : '');
+          var tierBadge = data.tier === 'receipt' ? '🧾 THERMAL ONLY' : (data.tier === 'photo' ? '🎨 COLOR ONLY' : '');
 
           for (var p = 0; p < data.codes.length; p += perPage) {
             var cv = document.createElement('canvas');
@@ -28826,13 +29498,23 @@
               ctx.fillStyle = '#6B666C';
               ctx.font = 'bold 12px sans-serif';
               ctx.textAlign = 'left';
-              ctx.fillText('PHOTOBOOTH4U · VOUCHER', x + 24, y + 36);
+              var kickText = 'PHOTOBOOTH4U · ' + (data.tier === 'receipt' ? 'THERMAL VOUCHER' : (data.tier === 'photo' ? 'COLOR VOUCHER' : 'VOUCHER'));
+              ctx.fillText(kickText, x + 24, y + 36);
+
+              if (tierBadge) {
+                ctx.fillStyle = data.tier === 'receipt' ? '#000000' : '#0055ff';
+                ctx.font = 'bold 11px monospace';
+                ctx.textAlign = 'right';
+                ctx.fillText(tierBadge, x + cellW - 24, y + 36);
+                ctx.textAlign = 'left';
+              }
 
               // Event name
               var ev = data.event || 'Photo booth';
               if (ev.length > 24) ev = ev.slice(0, 23) + '…';
               ctx.fillStyle = '#1C1A1E';
               ctx.font = 'bold 20px Georgia, serif';
+              ctx.textAlign = 'left';
               ctx.fillText(ev, x + 24, y + 66);
 
               // Price (if set)
@@ -28890,7 +29572,7 @@
           } else {
             // Fallback for desktop / browser: localStorage + popup
             try {
-              localStorage.setItem('pb_ticket_print', JSON.stringify({ event: data.event, price: data.price, prints: data.prints, codes: data.codes, at: Date.now() }));
+              localStorage.setItem('pb_ticket_print', JSON.stringify({ event: data.event, price: data.price, prints: data.prints, tier: data.tier, label: data.label, codes: data.codes, at: Date.now() }));
             } catch (err) { }
             var w = window.open('/pay/tickets.html', '_blank');
             if (!w) showToast('Allow pop-ups to print the tickets.', 4000);
@@ -28905,7 +29587,15 @@
         var id = b.closest('.pay-batch').dataset.id, bt = payBatches.find(function (x) { return x.id === id; }); if (!bt) return;
         if (b.dataset.act === 'print') {
           var codes = bt.codes.filter(function (x) { return !x.used && !x.voided; }).map(function (x) { return x.c; });
-          var printData = { event: (labelInput.value || '').trim() || setupScopeEvent() || bt.evName || 'Photo booth', price: bt.price, prints: bt.prints, codes: codes, at: Date.now() };
+          var printData = {
+            event: (typeof labelInput !== 'undefined' && labelInput && labelInput.value ? labelInput.value.trim() : '') || setupScopeEvent() || bt.evName || 'Photo booth',
+            price: bt.price,
+            prints: bt.prints,
+            tier: bt.tier,
+            label: bt.label,
+            codes: codes,
+            at: Date.now()
+          };
           await renderVoucherTicketsForAndroid(printData);
           return;
         }
@@ -30736,7 +31426,7 @@
           myProps: myProps.slice(),
           frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet, sfDone: startFrameDone,
           frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
-          titleStyle: titleStyle, kicker: kickerText, upper: titleUpper, art: themeArt.slice(), artPal: Object.assign({}, artPal),
+          titleStyle: titleStyle, kicker: kickerText, receiptNote: receiptCustomNote, upper: titleUpper, art: themeArt.slice(), artPal: Object.assign({}, artPal),
           printPrefs: Object.assign({}, printPrefs),
           bgRep: Object.assign({}, bgRep), bgMine: bgMine.slice(),
           fx: Object.assign({}, fx),
@@ -31032,6 +31722,8 @@
           selDecor = -1;
           titleStyle = TITLE_STYLES.some(function (x) { return x[0] === s.titleStyle; }) ? s.titleStyle : 'classic';
           kickerText = typeof s.kicker === 'string' ? s.kicker.slice(0, 40) : '';
+          receiptCustomNote = typeof s.receiptNote === 'string' ? s.receiptNote.slice(0, 45) : '';
+          if (receiptNoteInput) receiptNoteInput.value = receiptCustomNote;
           titleUpper = !!s.upper; themeArt = validArt(s.art); artPal = validArtPal(s.artPal);
           refreshTitleUI();
           if (s.printPrefs) applyPrintPrefs(s.printPrefs);
@@ -31252,8 +31944,13 @@
       // ---- Themes: ready-made designs (backdrop + colors + fonts) ----
       // Picking one sets the backdrop, Polaroid color, text color, fonts and text
       // style; everything can still be fine-tuned afterwards.
-      var THEME_CATS = ['All', 'Wedding', 'Birthday', 'Debut', 'Kids Party', 'Graduation', 'Christening', 'Christmas', 'New Year', 'Corporate'];
+      var THEME_CATS = ['All', 'Receipt', 'Wedding', 'Birthday', 'Debut', 'Kids Party', 'Graduation', 'Christening', 'Christmas', 'New Year', 'Corporate'];
       var THEMES = [
+        { id: 'cafe-receipt', name: 'Classic Cafe Receipt', cats: ['Receipt', 'Corporate'], tags: 'receipt thermal coffee cafe minimalist b&w retro barcode pos', layout: 'receipt', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Courier New', monospace", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'COFFEE & GOOD VIBES' },
+        { id: 'wedding-receipt', name: 'Wedding Love Receipt', cats: ['Receipt', 'Wedding'], tags: 'receipt thermal wedding love eternal vows couple the wedding of', layout: 'receipt', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Cinzel', serif", dateFont: "'Cinzel', serif", titleStyle: 'wedding', kicker: 'The wedding of' },
+        { id: 'cinema-ticket', name: 'Vintage Cinema Ticket', cats: ['Receipt', 'Birthday', 'Corporate'], tags: 'receipt thermal ticket admit one retro movie cinema barcode 1 shot', layout: 'receipt1', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Courier New', monospace", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'ADMIT ONE · VIP ACCESS' },
+        { id: 'party-thermal-4', name: 'Party Vibes 4-Shot Receipt', cats: ['Receipt', 'Birthday', 'Kids Party'], tags: 'receipt thermal party fun memories 4 shots strip tall birthday', layout: 'receipt4', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Fredoka', sans-serif", dateFont: "'Fredoka', sans-serif", titleStyle: 'turns', kicker: 'PARTY VIBES' },
+        { id: 'color-cafe-receipt', name: 'Pastel Cafe Colour Receipt', cats: ['Receipt', 'Birthday'], tags: 'receipt colour color photo pastel cafe aesthetic', layout: 'receiptc', preset: 'none', color: '#fefbf6', elements: 'none', frame: '#ffffff', text: '#2c221e', font: "'Courier New', monospace", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'SWEET MEMORIES' },
         { id: 'gold-chevron', name: 'Gold Chevron', cats: ['Wedding', 'Debut'], tags: 'elegant ivory zigzag', preset: 'chevron', frame: '#ffffff', text: '#9c7a2e', font: "'Great Vibes', cursive", dateFont: "'Cinzel', serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
         { id: 'art-deco', name: 'Art Deco Navy', cats: ['Wedding', 'Corporate', 'New Year'], tags: 'gatsby gala geometric gold blue', preset: 'deco', frame: '#e9cf8f', text: '#f0d48c', font: "'Cinzel', serif", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false },
         { id: 'white-marble', name: 'White Marble', cats: ['Wedding', 'Christening', 'Corporate'], tags: 'minimal gold veins elegant', preset: 'marble', frame: '#ffffff', text: '#8a6d2f', font: "'Parisienne', cursive", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: true, outlineColor: '#ffffff', shadow: false },

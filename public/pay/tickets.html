@@ -54,13 +54,16 @@
     return;
   }
   var peso = function(n){ return '₱' + Number(n || 0).toLocaleString('en-PH'); };
-  var inc = '1 photo session' + (d.prints ? ' · ' + d.prints + ' print' + (d.prints > 1 ? 's' : '') : '');
-  document.getElementById('ttl').textContent = d.event + ' · ' + d.codes.length + ' vouchers';
+  var inc = (d.label && d.label !== '1 photo session' ? d.label : '1 photo session') + (d.prints ? ' · ' + d.prints + ' print' + (d.prints > 1 ? 's' : '') : '');
+  var tierName = d.tier === 'receipt' ? 'Thermal' : (d.tier === 'photo' ? 'Color' : '');
+  var kick = 'photobooth4u \u00b7 ' + (tierName ? tierName.toUpperCase() + ' VOUCHER' : 'VOUCHER');
+  var tierBadge = d.tier === 'receipt' ? '<span style="display:inline-block; font-size:7pt; font-weight:800; background:#000; color:#fff; padding:1px 5px; border-radius:3px; margin-left:4px;">🧾 THERMAL</span>' : (d.tier === 'photo' ? '<span style="display:inline-block; font-size:7pt; font-weight:800; background:#0055ff; color:#fff; padding:1px 5px; border-radius:3px; margin-left:4px;">🎨 COLOR</span>' : '');
+  document.getElementById('ttl').textContent = d.event + ' · ' + d.codes.length + ' vouchers' + (tierName ? ' (' + tierName + ')' : '');
   document.getElementById('meta').textContent = '10 per A4 page. Print at 100% (no scaling), cut along the dashed lines.';
   var per = 10, html = '';
   for(var i = 0; i < d.codes.length; i += per){
     html += '<section class="sheet">' + d.codes.slice(i, i + per).map(function(c){
-      return '<div class="t"><div class="top"><div><div class="kick">photobooth4u \u00b7 voucher</div><div class="ev">' + esc(d.event) + '</div></div>' +
+      return '<div class="t"><div class="top"><div><div class="kick">' + kick + tierBadge + '</div><div class="ev">' + esc(d.event) + '</div></div>' +
         (d.price ? '<div class="price">' + esc(peso(d.price)) + '</div>' : '') + '</div>' +
         '<div><div class="code">' + esc(c.slice(0, 4) + ' ' + c.slice(4)) + '</div><div class="inc">' + esc(inc) + '</div></div>' +
         '<div class="how">Tap the booth screen → <b>I have a voucher</b> → type the 8 digits. Works once.</div>' +

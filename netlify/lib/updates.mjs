@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.67', date: '2026-11-04' },
   { version: '1.0.66', date: '2026-11-04' },
   { version: '1.0.65', date: '2026-11-04' },
   { version: '1.0.64', date: '2026-11-04' },
@@ -112,6 +113,17 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-04', title: '360 Live Studio Preview, Custom PNG Frame Upload & Dynamic Placement', for: ['app', 'website'], app: '1.0.67',
+    items: [
+      'Live Studio Preview Stage: Real-time layered canvas preview lets you view designer frames and custom overlays overlaid over the playing video before committing to rendering.',
+      'Custom PNG Frame Upload: Upload bespoke wedding or corporate event PNG frames with instant real-time canvas rendering.',
+      'Dynamic Text Placement & Y Slider: Position text at Top (12%), Upper Third (28%), Center (50%), Lower Third (72%), Bottom (84%), or drag a 5%-95% slider with live left/center/right alignment and font choices.',
+      'Interactive Live Speed Preview: Preview 0.25x, 0.5x, 1.0x, and 2.0x playback speeds dynamically right on the player stage.',
+      'Persistent Video Dismissal & Safe Deletion: Cleared videos stay cleared across app restarts with localStorage persistence and optional file deletion from disk.',
+      'System Lag & GPU Stall Protection: CPU threads capped with below-normal process priority and an automated 10-second watchdog timer for hardware GPU mode fallback to CPU.'
+    ]
+  },
   {
     date: '2026-11-04', title: 'Wedding Floral & Gold Designer Frames, Dynamic Slow-Mo Zoom & Beat Flash', for: ['app', 'website'], app: '1.0.66',
     items: [

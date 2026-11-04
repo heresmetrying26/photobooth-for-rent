@@ -140,7 +140,7 @@ export default safe(async (req, context) => {
     const used = await usedMap(oid);
     const list = (await listJSON('vb/' + oid + '/', 1000)).filter((bt) => bt.ev === ev);
     const out = [];
-    list.forEach((bt) => { const voided = new Set(bt.voided || []); bt.codes.forEach((c) => { if (!used[c] && !voided.has(c)) out.push([voucherHash(oid, c), bt.prints || 0]); }); });
+    list.forEach((bt) => { const voided = new Set(bt.voided || []); bt.codes.forEach((c) => { if (!used[c] && !voided.has(c)) out.push([voucherHash(oid, c), bt.prints || 0, bt.tier || 'all', bt.label || '', bt.price || 0]); }); });
     return json({ ok: true, oid, ev, at: now, list: out });
   }
   if (b.action === 'sync') {
@@ -175,6 +175,7 @@ export default safe(async (req, context) => {
         prints: Math.max(0, Math.min(10, Math.floor(Number(ob.prints) || 0))),
         price: Math.max(0, Math.min(PRICE_MAX, Math.floor(Number(ob.price) || 0))),
         label: String(ob.label || '').replace(/[<>]/g, '').slice(0, 40),
+        tier: (ob.tier === 'receipt' || ob.tier === 'photo') ? ob.tier : 'all',
         codes: rawCodes,
         voided: Array.from(voidedCodes)
       };
@@ -203,7 +204,7 @@ export default safe(async (req, context) => {
     const t = await throttle('vbatch', ip + '|' + oid, 30);
     if (t.blocked) return json({ error: 'Too many batches. Please wait a few minutes.' }, 429);
     await recordFail(t);   // counts batches made
-    const bt = await createBatch(oid, { ev, evName, count: b.count, prints: b.prints, price: b.price, label: b.label, by: 'renter' });
+    const bt = await createBatch(oid, { ev, evName, count: b.count, prints: b.prints, price: b.price, label: b.label, tier: b.tier, by: 'renter' });
     return json({ ok: true, batch: batchView(bt, {}) });
   }
   if (b.action === 'batch.void') {
@@ -232,9 +233,10 @@ export default safe(async (req, context) => {
       return json({ error: e.status === 401 ? 'PayMongo rejected the saved key. Reconnect PayMongo on My Events.' : 'PayMongo: ' + e.message }, 502);
     }
     const prints = Math.max(0, Math.min(10, Math.floor(Number(b.prints) || 0)));
+    const tier = (b.tier === 'receipt' || b.tier === 'photo') ? b.tier : 'all';
     const exp = now + QR_SECONDS * 1000;
-    await store.setJSON(payKey(oid, qr.id), { id: qr.id, oid, ev, evName, amount, prints, status: 'awaiting', at: now, exp, dev, live: acct.mode === 'live', checked: now });
-    return json({ ok: true, id: qr.id, image: qr.image, expiresAt: exp, test: acct.mode !== 'live' });
+    await store.setJSON(payKey(oid, qr.id), { id: qr.id, oid, ev, evName, amount, prints, tier, status: 'awaiting', at: now, exp, dev, live: acct.mode === 'live', checked: now });
+    return json({ ok: true, id: qr.id, image: qr.image, expiresAt: exp, tier, test: acct.mode !== 'live' });
   }
   if (b.action === 'status' || b.action === 'simulate') {
     const id = String(b.id || '');
@@ -246,7 +248,7 @@ export default safe(async (req, context) => {
       const acct = await getAcct(oid);
       if (!acct || acct.mode !== 'test') return json({ error: 'Simulate only works with a PayMongo test key.' }, 403);
       if (r.status !== 'paid') { r.status = 'paid'; r.paidAt = now; r.sim = true; await store.setJSON(k, r); }
-      return json({ ok: true, status: 'paid', prints: r.prints || 0 });
+      return json({ ok: true, status: 'paid', prints: r.prints || 0, tier: r.tier || 'all' });
     }
     if (r.status === 'awaiting' && now - (r.checked || 0) > 4000) {
       // Backup to the webhook: ask PayMongo directly (at most every 4 s per QR).
@@ -260,7 +262,7 @@ export default safe(async (req, context) => {
       await store.setJSON(k, r);
     }
     const status = r.status === 'paid' ? 'paid' : (now > r.exp + 15000 ? 'expired' : 'awaiting');
-    return json({ ok: true, status, prints: r.prints || 0 });
+    return json({ ok: true, status, prints: r.prints || 0, tier: r.tier || 'all' });
   }
   return json({ error: 'Unknown action.' }, 400);
 });

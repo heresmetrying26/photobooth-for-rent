@@ -175,16 +175,17 @@ export async function usedMap(oid) {
 export function batchView(bt, used) {
   const voided = new Set(bt.voided || []);
   const codes = bt.codes.map((c) => ({ c, used: !!used[c], voided: voided.has(c) }));
-  return { id: bt.id, ev: bt.ev, evName: bt.evName || '', at: bt.at, by: bt.by, price: bt.price || 0, prints: bt.prints || 0, label: bt.label || '',
+  return { id: bt.id, ev: bt.ev, evName: bt.evName || '', at: bt.at, by: bt.by, price: bt.price || 0, prints: bt.prints || 0, label: bt.label || '', tier: bt.tier || 'all',
     total: codes.length, usedCount: codes.filter((x) => x.used).length, voidCount: codes.filter((x) => x.voided && !x.used).length, codes };
 }
-export async function createBatch(oid, { ev, evName, count, prints, price, label, by }) {
+export async function createBatch(oid, { ev, evName, count, prints, price, label, tier, by }) {
   const n = Math.max(1, Math.min(200, Math.floor(Number(count) || 0)));
   const existing = await listJSON('vb/' + oid + '/', 1000);
   const taken = new Set(); existing.forEach((b) => b.codes.forEach((c) => taken.add(c)));
+  const validTier = (tier === 'receipt' || tier === 'photo') ? tier : 'all';
   const bt = { id: newBatchId(), ev, evName: String(evName || '').slice(0, 80), at: Date.now(), by: by === 'admin' ? 'admin' : 'renter',
     prints: Math.max(0, Math.min(10, Math.floor(Number(prints) || 0))), price: Math.max(0, Math.min(PRICE_MAX, Math.floor(Number(price) || 0))),
-    label: String(label || '').replace(/[<>]/g, '').slice(0, 40), codes: newVoucherCodes(n, taken), voided: [] };
+    label: String(label || '').replace(/[<>]/g, '').slice(0, 40), tier: validTier, codes: newVoucherCodes(n, taken), voided: [] };
   await payStore().setJSON(batchKey(oid, bt.id), bt);
   return bt;
 }
@@ -200,5 +201,5 @@ export async function redeemVoucher(oid, ev, code, dev, at) {
   const prev = await st.get(uk, { type: 'json' });
   if (prev) return { error: 'used', at: prev.at };
   await st.setJSON(uk, { at: at || Date.now(), dev: dev || 0, b: bt.id });
-  return { ok: true, prints: bt.prints || 0, batch: bt.id };
+  return { ok: true, prints: bt.prints || 0, batch: bt.id, tier: bt.tier || 'all', label: bt.label || '', price: bt.price || 0 };
 }

@@ -210,7 +210,7 @@ try {
     }, fakeInfo);
     const fgSlowZF = slowZoomFlash.args[slowZoomFlash.args.indexOf('-filter_complex') + 1];
     assert(fgSlowZF.includes('eval=frame') && fgSlowZF.includes('crop=1080:1920'), 'Slow-mo includes dynamic camera punch-in zoom');
-    assert(fgSlowZF.includes('fade=t=out:st=0.0:d=0.06:color=white'), 'Slow-mo includes beat drop optical white flash');
+    assert(fgSlowZF.includes('drawbox=x=0:y=0:w=in_w:h=in_h:color=white@0.65'), 'Slow-mo includes beat drop optical white flash');
 
     // Zoom and flash can be disabled cleanly
     const noZF = buildArgs({
@@ -220,7 +220,7 @@ try {
     }, fakeInfo);
     const fgNoZF = noZF.args[noZF.args.indexOf('-filter_complex') + 1];
     assert(!fgNoZF.includes('eval=frame'), 'Zoom is omitted when disabled');
-    assert(!fgNoZF.includes('fade=t=out:st=0.0'), 'Flash is omitted when disabled');
+    assert(!fgNoZF.includes('drawbox=x=0:y=0'), 'Flash is omitted when disabled');
 
     // 1.5: Hardware encoder option
     const gpuArgs = buildArgs({

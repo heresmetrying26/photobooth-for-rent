@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.72', date: '2026-11-04' },
   { version: '1.0.71', date: '2026-11-04' },
   { version: '1.0.70', date: '2026-11-04' },
   { version: '1.0.69', date: '2026-11-04' },
@@ -82,7 +83,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.82', date: '2026-11-04', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.82/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.83', date: '2026-11-04', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.83/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -117,6 +118,25 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-04', title: 'Post-Session Guest Sticker Customisation & Print-First Mode', for: ['app', 'website'], app: '1.0.72',
+    items: [
+      'Post-Session Guest Sticker Customisation: In Setup (Extras -> Stickers), enable the new toggle to let guests decorate and personalize their photos with stickers right after taking pictures and before printing.',
+      'Touch-Friendly Guest Sticker Studio: Includes a 35-second countdown timer, drag-and-drop placement, pinch/tool resizing, rotation, duplicate, and delete controls on the preview canvas.',
+      'Non-Destructive Host Templates: Preset host stickers configured in Setup remain protected and intact, while guest stickers are safely reset between sessions.',
+      'Print First Before Showing QR: Added toggle in Print Settings (Automatic printing card) to print first, showing a clean "Printing your photo…" indicator and revealing the QR code once printing completes.',
+      'Universal Output Sync: Guest stickers automatically reflect across all physical prints, uploaded QR downloads, and saved device backups.'
+    ]
+  },
+  {
+    date: '2026-11-04', title: 'Post-Session Guest Sticker Customisation & Print-First Mode (Android)', for: ['app'], app: '1.0.83',
+    items: [
+      'Post-Session Guest Sticker Customisation: Enable the new toggle in Extras -> Stickers to let guests add stickers to their photo before printing.',
+      'Touch & Drag Placement: Interactive sticker tray with sizing, rotation, and deletion tools optimized for tablet touchscreens.',
+      'Print First Before Showing QR: Option in Print Settings to print first and reveal the QR code once printing finishes.',
+      'Isolated Guest State: Host template stickers stay untouched; guest stickers cleanly reset for each new guest.'
+    ]
+  },
   {
     date: '2026-11-04', title: 'Real-Time Text/Color WYSIWYG & Dedicated Dual-QR Output Modal', for: ['app', 'website'], app: '1.0.71',
     items: [

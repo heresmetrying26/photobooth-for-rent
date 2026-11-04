@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 280" width="100%" height="100%" style="background:#FAF7F2;border-radius:12px;font-family:'Manrope',system-ui,sans-serif;">
+  <!-- Card Background -->
+  <rect x="0" y="0" width="540" height="280" rx="12" fill="#FAF7F2" stroke="#E4DCCF" stroke-width="1"/>
+  
+  <!-- Step Header -->
+  <rect x="18" y="16" width="504" height="42" rx="8" fill="#FFFFFF" stroke="#E4DCCF" stroke-width="1"/>
+  <circle cx="40" cy="37" r="12" fill="#C93D27"/>
+  <text x="40" y="41" fill="#FFFFFF" font-size="12" font-weight="800" text-anchor="middle">3</text>
+  <text x="62" y="41" fill="#1C1A1E" font-size="14" font-weight="800">Step 3: Choose Layout &amp; Design</text>
+  <text x="502" y="41" fill="#6B666C" font-size="11" font-weight="700" text-anchor="end">Setup Mode</text>
+
+  <!-- Layout Cards Grid -->
+  <!-- Card 1: Classic Strip -->
+  <g transform="translate(24, 76)">
+    <rect width="150" height="184" rx="10" fill="#FFFFFF" stroke="#E4DCCF" stroke-width="1.5"/>
+    <rect x="52" y="14" width="46" height="120" rx="4" fill="#F0E8DD" stroke="#D5CBBF" stroke-width="1"/>
+    <!-- Strip miniature photos -->
+    <rect x="56" y="22" width="38" height="28" rx="2" fill="#8CB89F"/>
+    <rect x="56" y="54" width="38" height="28" rx="2" fill="#B88C9F"/>
+    <rect x="56" y="86" width="38" height="28" rx="2" fill="#8C9FB8"/>
+    <text x="75" y="152" fill="#1C1A1E" font-size="12" font-weight="700" text-anchor="middle">Classic Strip</text>
+    <text x="75" y="168" fill="#6B666C" font-size="10" text-anchor="middle">2×6 in · 3 shots</text>
+  </g>
+
+  <!-- Card 2: My Frame (Keychain) -->
+  <g transform="translate(195, 76)">
+    <rect width="150" height="184" rx="10" fill="#FFFFFF" stroke="#E4DCCF" stroke-width="1.5"/>
+    <rect x="50" y="12" width="50" height="124" rx="4" fill="#FDFBF7" stroke="#D4AF37" stroke-width="1.5"/>
+    <!-- Photo Cutouts -->
+    <rect x="55" y="24" width="40" height="28" rx="2" fill="#E6F4EF" stroke="#1B7358" stroke-width="1"/>
+    <text x="75" y="42" fill="#1B7358" font-size="8" font-weight="800" text-anchor="middle">CUTOUT</text>
+    <rect x="55" y="56" width="40" height="28" rx="2" fill="#E6F4EF" stroke="#1B7358" stroke-width="1"/>
+    <text x="75" y="74" fill="#1B7358" font-size="8" font-weight="800" text-anchor="middle">CUTOUT</text>
+    <rect x="55" y="88" width="40" height="28" rx="2" fill="#E6F4EF" stroke="#1B7358" stroke-width="1"/>
+    <text x="75" y="106" fill="#1B7358" font-size="8" font-weight="800" text-anchor="middle">CUTOUT</text>
+    <text x="75" y="152" fill="#1C1A1E" font-size="12" font-weight="700" text-anchor="middle">My Frame</text>
+    <rect x="18" y="160" width="114" height="16" rx="4" fill="#E6F4EF"/>
+    <text x="75" y="172" fill="#1B7358" font-size="8.5" font-weight="800" text-anchor="middle">fits 2.5×7.5 keychain ✓</text>
+  </g>
+
+  <!-- Card 3: Frame Collage (SELECTED / ACTIVE) -->
+  <g transform="translate(366, 76)">
+    <rect width="150" height="184" rx="10" fill="#FFFFFF" stroke="#C93D27" stroke-width="2.5"/>
+    <!-- Selected Badge -->
+    <rect x="36" y="-8" width="78" height="18" rx="9" fill="#C93D27"/>
+    <text x="75" y="5" fill="#FFFFFF" font-size="9" font-weight="800" text-anchor="middle">SELECTED ✓</text>
+    
+    <!-- Mini Imposition Sheet -->
+    <rect x="25" y="18" width="100" height="114" rx="4" fill="#FAF7F2" stroke="#D5CBBF" stroke-width="1"/>
+    <!-- 3 Mini strips side by side -->
+    <rect x="31" y="24" width="26" height="98" rx="2" fill="#FFFFFF" stroke="#C93D27" stroke-width="1"/>
+    <rect x="62" y="24" width="26" height="98" rx="2" fill="#FFFFFF" stroke="#C93D27" stroke-width="1"/>
+    <rect x="93" y="24" width="26" height="98" rx="2" fill="#FFFFFF" stroke="#C93D27" stroke-width="1"/>
+    
+    <text x="75" y="150" fill="#C93D27" font-size="12" font-weight="800" text-anchor="middle">Frame Collage</text>
+    <text x="75" y="168" fill="#6B666C" font-size="9.5" font-weight="600" text-anchor="middle">Multi-Keychain Sheet</text>
+  </g>
+</svg>

@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 320" width="100%" height="100%" style="background:#FAF7F2;border-radius:12px;font-family:'Manrope',system-ui,sans-serif;">
+  <rect x="0" y="0" width="540" height="320" rx="12" fill="#FAF7F2" stroke="#E4DCCF" stroke-width="1"/>
+  
+  <g transform="translate(20, 16)">
+    <text x="0" y="16" fill="#1C1A1E" font-size="14" font-weight="800">Frames on this sheet</text>
+    <text x="0" y="32" fill="#6B666C" font-size="11">Select your frame and arrange copies across the paper.</text>
+
+    <!-- Selected Frame Tile -->
+    <g transform="translate(0, 44)">
+      <rect width="180" height="54" rx="8" fill="#FFFFFF" stroke="#C93D27" stroke-width="2"/>
+      <rect x="10" y="8" width="16" height="38" rx="2" fill="#FDFBF7" stroke="#D4AF37" stroke-width="1"/>
+      <text x="34" y="26" fill="#1C1A1E" font-size="11" font-weight="800">Keychain 2.5×7.5</text>
+      <text x="34" y="40" fill="#1B7358" font-size="9.5" font-weight="700">✓ On Sheet (×3)</text>
+      <circle cx="162" cy="27" r="9" fill="#1B7358"/>
+      <text x="162" y="31" fill="#FFFFFF" font-size="10" font-weight="800" text-anchor="middle">✓</text>
+    </g>
+
+    <!-- Upload More Button -->
+    <g transform="translate(192, 44)">
+      <rect width="130" height="54" rx="8" fill="#FAF7F2" stroke="#D5CBBF" stroke-dasharray="4,3" stroke-width="1.5"/>
+      <text x="65" y="25" fill="#6B666C" font-size="16" font-weight="800" text-anchor="middle">+</text>
+      <text x="65" y="41" fill="#6B666C" font-size="10.5" font-weight="700" text-anchor="middle">Upload more</text>
+    </g>
+
+    <!-- Sheet Size Row -->
+    <g transform="translate(0, 116)">
+      <text x="0" y="14" fill="#1C1A1E" font-size="12" font-weight="800">Sheet size</text>
+      <g transform="translate(0, 22)">
+        <rect width="240" height="36" rx="6" fill="#FFFFFF" stroke="#C93D27" stroke-width="1.5"/>
+        <text x="14" y="23" fill="#1C1A1E" font-size="12" font-weight="700">A4 Paper (210 × 297 mm)</text>
+        <path d="M 215 15 L 222 23 L 229 15" fill="none" stroke="#6B666C" stroke-width="2"/>
+      </g>
+      <text x="254" y="44" fill="#6B666C" font-size="11">← Pick A4, Letter, or 8R for 2.5×7.5"</text>
+    </g>
+
+    <!-- Patterns Row -->
+    <g transform="translate(0, 192)">
+      <text x="0" y="14" fill="#1C1A1E" font-size="12" font-weight="800">Arrange them on the sheet</text>
+      
+      <!-- Pattern 1: 2 side by side -->
+      <g transform="translate(0, 24)">
+        <rect width="84" height="60" rx="6" fill="#FFFFFF" stroke="#E4DCCF" stroke-width="1"/>
+        <rect x="18" y="8" width="20" height="44" rx="1" fill="#1C1A1E"/>
+        <rect x="44" y="8" width="20" height="44" rx="1" fill="#1C1A1E"/>
+        <text x="42" y="74" fill="#6B666C" font-size="9" text-anchor="middle">2 side by side</text>
+      </g>
+
+      <!-- Pattern 2: 3 strips (ACTIVE) -->
+      <g transform="translate(96, 24)">
+        <rect width="84" height="60" rx="6" fill="#FFFFFF" stroke="#C93D27" stroke-width="2"/>
+        <rect x="12" y="8" width="16" height="44" rx="1" fill="#C93D27"/>
+        <rect x="34" y="8" width="16" height="44" rx="1" fill="#C93D27"/>
+        <rect x="56" y="8" width="16" height="44" rx="1" fill="#C93D27"/>
+        <text x="42" y="74" fill="#C93D27" font-size="9.5" font-weight="800" text-anchor="middle">3 strips ✓</text>
+      </g>
+
+      <!-- Pattern 3: 4 strips -->
+      <g transform="translate(192, 24)">
+        <rect width="84" height="60" rx="6" fill="#FFFFFF" stroke="#E4DCCF" stroke-width="1"/>
+        <rect x="10" y="8" width="12" height="44" rx="1" fill="#1C1A1E"/>
+        <rect x="27" y="8" width="12" height="44" rx="1" fill="#1C1A1E"/>
+        <rect x="44" y="8" width="12" height="44" rx="1" fill="#1C1A1E"/>
+        <rect x="61" y="8" width="12" height="44" rx="1" fill="#1C1A1E"/>
+        <text x="42" y="74" fill="#6B666C" font-size="9" text-anchor="middle">4 strips</text>
+      </g>
+
+      <!-- Action Button: Add a copy -->
+      <g transform="translate(290, 24)">
+        <rect width="110" height="34" rx="6" fill="#FFFFFF" stroke="#C93D27" stroke-width="1.5"/>
+        <text x="55" y="21" fill="#C93D27" font-size="11" font-weight="800" text-anchor="middle">+ Add a copy</text>
+        
+        <rect y="40" width="110" height="34" rx="6" fill="#C93D27"/>
+        <text x="55" y="61" fill="#FFFFFF" font-size="11" font-weight="800" text-anchor="middle">👁 Open preview</text>
+      </g>
+    </g>
+  </g>
+</svg>

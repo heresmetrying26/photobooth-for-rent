@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photobooth Keychain Printing &amp; Frame Collage Guide · photobooth4u</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F5F1EA;
+    --ink: #1C1A1E;
+    --muted: #6B666C;
+    --line: #E4DDD3;
+    --red: #C93D27;
+    --card: #FFFEFC;
+    --soft: #F0E8DD;
+    --green: #21764D;
+    --green-bg: #E6F4EF;
+    --amber: #B86C12;
+    --amber-bg: #FEF5E7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 15px/1.65 'Manrope', system-ui, sans-serif;
+  }
+  a { color: inherit; }
+  main {
+    width: min(920px, calc(100% - 36px));
+    margin: auto;
+    padding: 32px 0 80px;
+  }
+  .top-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 36px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+  .mark {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+    width: 28px;
+    height: 28px;
+  }
+  .mark i { background: var(--ink); border-radius: 4px; }
+  .mark i:nth-child(2) { background: var(--red); }
+  .word {
+    font: 700 22px/1 'Fraunces', Georgia, serif;
+    letter-spacing: -.04em;
+  }
+  .word em {
+    display: inline-block;
+    margin-left: 3px;
+    padding: 3px 6px 4px;
+    border-radius: 6px;
+    background: var(--red);
+    color: #fff;
+    font: 800 11px/1 'Manrope', sans-serif;
+    transform: rotate(-6deg);
+  }
+  
+  .hero-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    padding: clamp(24px, 5vw, 44px);
+    box-shadow: 0 10px 30px rgba(28,26,30,0.05);
+    margin-bottom: 32px;
+  }
+  .kicker {
+    color: var(--red);
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    margin: 0 0 8px;
+  }
+  h1 {
+    font: 700 clamp(30px, 5vw, 46px)/1.1 'Fraunces', Georgia, serif;
+    letter-spacing: -.03em;
+    margin: 0 0 14px;
+  }
+  .lead {
+    font-size: 16px;
+    color: var(--muted);
+    max-width: 680px;
+    margin: 0 0 24px;
+  }
+  .btn-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+  .btn-pdf {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--red);
+    color: #fff;
+    font-weight: 800;
+    text-decoration: none;
+    padding: 12px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(201,61,39,0.25);
+    transition: transform .15s, background .15s;
+  }
+  .btn-pdf:hover {
+    background: #b1311e;
+    transform: translateY(-1px);
+  }
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--soft);
+    color: var(--ink);
+    font-weight: 700;
+    text-decoration: none;
+    padding: 12px 18px;
+    border-radius: 12px;
+  }
+  .btn-secondary:hover { background: #e6dcce; }
+
+  .content-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 32px;
+    margin-bottom: 28px;
+  }
+  h2 {
+    font: 700 24px/1.2 'Fraunces', Georgia, serif;
+    letter-spacing: -.02em;
+    margin: 0 0 12px;
+  }
+  h3 {
+    font-size: 17px;
+    font-weight: 800;
+    margin: 20px 0 8px;
+  }
+
+  .pill {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .pill.green { background: var(--green-bg); color: var(--green); }
+  .pill.amber { background: var(--amber-bg); color: var(--amber); }
+
+  .table-wrap {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow-x: auto;
+    margin: 16px 0 24px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    text-align: left;
+  }
+  th {
+    background: var(--soft);
+    padding: 12px 14px;
+    font-weight: 800;
+    border-bottom: 1px solid var(--line);
+  }
+  td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #faf8f5; }
+
+  .figure {
+    margin: 20px 0;
+  }
+  .figure img {
+    width: 100%;
+    max-width: 820px;
+    display: block;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+  }
+  .caption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 8px;
+    line-height: 1.45;
+  }
+  .caption b { color: var(--ink); }
+
+  .callout-box {
+    background: #fdf5f3;
+    border-left: 4px solid var(--red);
+    padding: 14px 18px;
+    border-radius: 0 12px 12px 0;
+    margin: 18px 0;
+  }
+  .callout-box b { color: var(--red); }
+
+  .steps-ol {
+    padding-left: 24px;
+    margin: 12px 0;
+  }
+  .steps-ol li {
+    margin-bottom: 12px;
+  }
+
+  footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 50px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 13px;
+  }
+  footer a { font-weight: 700; }
+
+  @media (max-width: 640px) {
+    .content-card { padding: 22px 18px; }
+    footer { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="top-nav">
+    <a class="brand" href="/" aria-label="photobooth4u home">
+      <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="word">photobooth<em>4u</em></span>
+    </a>
+    <a href="/downloads/" style="font-size:13px; font-weight:700; color:var(--muted); text-decoration:none;">&larr; All Downloads</a>
+  </header>
+
+  <section class="hero-card">
+    <p class="kicker">Official Hardware &amp; Printing Guide</p>
+    <h1>Keychain Printing &amp; Frame Collage Guide</h1>
+    <p class="lead">Step-by-step instructions for creating, configuring, previewing, and gang-printing 1:3 keychain inserts at 100% true scale on A4, Letter, and 4R paper.</p>
+    <div class="btn-bar">
+      <a class="btn-pdf" href="/photobooth4u-keychain-printing-guide.pdf" download>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download Printable PDF Guide (A4)
+      </a>
+      <a class="btn-secondary" href="/downloads/">Back to Operator Tools</a>
+    </div>
+  </section>
+
+  <!-- SECTION 1 -->
+  <article class="content-card">
+    <h2>1. Paper Sizes vs. Keychain Scaling</h2>
+    <p>Acrylic keychain blanks feature rigid rectangular cavities that leave no room for scaling errors. If your printer shrinks the strip by 5%, it rattles inside the case; if it stretches the strip, it will not fit.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Paper Size</th>
+            <th>Dimensions</th>
+            <th>Max Keychain Size (100% Scale)</th>
+            <th>Capacity</th>
+            <th>Scaling Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>A4 Paper</b></td>
+            <td>210 &times; 297 mm (8.27 &times; 11.69 in)</td>
+            <td><b>2.5 &times; 7.5 in</b> (63.5 &times; 190.5 mm)</td>
+            <td><b>3 upright</b> (or 4 sideways)</td>
+            <td><span class="pill green">Exact 100% Scale</span></td>
+          </tr>
+          <tr>
+            <td><b>US Letter</b></td>
+            <td>216 &times; 279 mm (8.5 &times; 11 in)</td>
+            <td><b>2.5 &times; 7.5 in</b> (63.5 &times; 190.5 mm)</td>
+            <td><b>3 upright</b> side-by-side</td>
+            <td><span class="pill green">Exact 100% Scale</span></td>
+          </tr>
+          <tr>
+            <td><b>8R / 8&times;10</b></td>
+            <td>203 &times; 254 mm (8 &times; 10 in)</td>
+            <td><b>2.5 &times; 7.5 in</b> (63.5 &times; 190.5 mm)</td>
+            <td><b>3 upright</b> side-by-side</td>
+            <td><span class="pill green">Exact 100% Scale</span></td>
+          </tr>
+          <tr>
+            <td><b>4R (4&times;6 in)</b></td>
+            <td>102 &times; 152 mm (4 &times; 6 in)</td>
+            <td><b>2.0 &times; 6.0 in</b> (Mini Strip)</td>
+            <td><b>2 upright</b> side-by-side</td>
+            <td><span class="pill green">Exact 100% Scale</span></td>
+          </tr>
+          <tr>
+            <td><b>4R (4&times;6 in)</b></td>
+            <td>102 &times; 152 mm (4 &times; 6 in)</td>
+            <td>2.5 &times; 7.5 in (Requires shrinking)</td>
+            <td>1 – 2 strips</td>
+            <td><span class="pill amber">Shrunk to ~80% (2.0&times;6.0 in)</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout-box">
+      <b>Why 4R Paper Cannot Print 2.5 &times; 7.5 in at 100%:</b> Standard 4R paper is 6 inches tall, while the keychain is 7.5 inches long. To produce true 2.5 &times; 7.5 in keychains, you <b>must</b> load A4, Letter, or 8R paper. If you only have a 4R printer, purchase 2.0 &times; 6.0 in or 1.8 &times; 5.5 in keychain blanks.
+    </div>
+  </article>
+
+  <!-- SECTION 2 -->
+  <article class="content-card">
+    <h2>2. Template Design &amp; Upload (Step 3)</h2>
+    <ol class="steps-ol">
+      <li><b>Dimensions:</b> Design at <b>750 &times; 2250 px</b> for 2.5 &times; 7.5 in (or <b>600 &times; 1800 px</b> for 2.0 &times; 6.0 in) at 300 DPI. Both represent an exact 1:3 aspect ratio.</li>
+      <li><b>Photo Cutouts:</b> Leave transparent (alpha channel) or solid white boxes where guest photos should appear. The booth auto-detects these windows.</li>
+      <li><b>Safe Margins:</b> Keep text, names, and event dates 35 px inside the outer edges. Export as a transparent <b>PNG</b>.</li>
+      <li><b>Upload:</b> Go to <b>Step 3 (Layout)</b> &rarr; <b>Frames with photo spots</b> &rarr; Click <b>+ Add frame</b>.</li>
+    </ol>
+
+    <div class="figure">
+      <img src="img/1-step3-layout-grid.svg" alt="Step 3 Layout Selector">
+      <div class="caption"><b>Step 3 Layout Cards:</b> Select <b>Frame collage</b> to place multiple keychain strips together on one sheet.</div>
+    </div>
+  </article>
+
+  <!-- SECTION 3 -->
+  <article class="content-card">
+    <h2>3. Configuring Frame Collage (`framesheet`)</h2>
+    <p>In Step 3, once <b>Frame collage</b> is selected, configure the multi-strip sheet:</p>
+    <ul class="steps-ol" style="list-style-type:disc;">
+      <li><b>Frames on this sheet:</b> Tap your uploaded frame to add it to the sheet (shows ✓).</li>
+      <li><b>Sheet size:</b> Select <b>A4</b>, <b>Letter</b>, or <b>8&times;10</b> for 2.5 &times; 7.5 in keychains (or <b>4&times;6</b> for 2x6 mini strips).</li>
+      <li><b>Arrange them on the sheet:</b> Choose <b>3 strips</b> (or <b>2 side by side</b> on 4R).</li>
+      <li><b>Add copies:</b> Click <b>+ Add a copy</b> so multiple duplicate strips are laid out on the page. All strips will populate with the guest's photos!</li>
+    </ul>
+
+    <div class="figure">
+      <img src="img/2-step3-framesheet-panel.svg" alt="Frame Collage Controls">
+      <div class="caption"><b>Sheet Arrangement Panel:</b> Tap the frame, pick the sheet size, select the 3-strip pattern, and duplicate copies.</div>
+    </div>
+  </article>
+
+  <!-- SECTION 4 -->
+  <article class="content-card">
+    <h2>4. Checking the Live Preview Canvas</h2>
+    <p>Click <b>Open preview</b> (or the eye icon) to verify the imposition:</p>
+    <div class="figure">
+      <img src="img/3-step3-preview-sheet.svg" alt="Live Sheet Preview">
+      <div class="caption"><b>Preview Canvas:</b> 3 keychain strips laid out side-by-side with guest photos and dashed trimming guidelines.</div>
+    </div>
+  </article>
+
+  <!-- SECTION 5 -->
+  <article class="content-card">
+    <h2>5. Print Settings &amp; Driver Scaling (Critical)</h2>
+    <p>Open the Print settings modal (via the floating printer button or Step 4 Printer setup):</p>
+    
+    <div class="figure">
+      <img src="img/4-print-settings-modal.svg" alt="Print Settings Modal">
+      <div class="caption"><b>Print Settings:</b> Select A4 paper, toggle ON <b>Keychain strips at real size (2.5&times;7.5 in)</b>, and confirm the red hint text.</div>
+    </div>
+
+    <div class="callout-box">
+      <b>Printer Driver Scaling Rules:</b>
+      <br>&bull; <b>Scale / Page Sizing:</b> Must be set to <b>100% / Actual Size</b>. Never use "Fit to Printable Area" or "Scale to Fit".
+      <br>&bull; <b>Borderless:</b> Keep <b>OFF</b> to avoid the driver's automatic 2% to 4% bleed expansion.
+      <br>&bull; <b>Paper Stock:</b> Use 200 to 260 gsm glossy photo paper.
+    </div>
+
+    <div class="figure">
+      <img src="img/5-acrylic-assembly.svg" alt="Keychain Trimming and Assembly">
+      <div class="caption"><b>Keychain Assembly:</b> Print at 100% scale, cut along inner dashed guidelines, insert into clear casing, and snap lid shut.</div>
+    </div>
+  </article>
+
+  <footer>
+    <span>photobooth4u · Keychain Printing Manual</span>
+    <span><a href="/photobooth4u-keychain-printing-guide.pdf" download>Download PDF Version &rarr;</a></span>
+  </footer>
+</main>
+</body>
+</html>

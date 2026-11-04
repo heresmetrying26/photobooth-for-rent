@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Photobooth Keychain Printing &amp; Frame Collage Guide · photobooth4u</title>
+<style>
+@font-face{font-family:'Fraunces';src:url(../setup-guide/fonts/fraunces-latin-600-normal.woff2) format('woff2');font-weight:600;font-style:normal}
+@font-face{font-family:'Fraunces';src:url(../setup-guide/fonts/fraunces-latin-500-italic.woff2) format('woff2');font-weight:500;font-style:italic}
+@font-face{font-family:'Fraunces';src:url(../setup-guide/fonts/fraunces-latin-600-italic.woff2) format('woff2');font-weight:600;font-style:italic}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-400-normal.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-500-normal.woff2) format('woff2');font-weight:500}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-600-normal.woff2) format('woff2');font-weight:600}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-700-normal.woff2) format('woff2');font-weight:700}
+@font-face{font-family:'Manrope';src:url(../setup-guide/fonts/manrope-latin-800-normal.woff2) format('woff2');font-weight:800}
+
+:root {
+  --cream: #f5f1ea;
+  --ink: #1c1a1e;
+  --body: #3c383e;
+  --dim: #6e6670;
+  --red: #c93d27;
+  --red-soft: #fbeee9;
+  --line: #e4dccf;
+  --card: #ffffff;
+  --green: #1b7358;
+  --green-bg: #e6f4ef;
+  --amber: #b86c12;
+  --amber-bg: #fef5e7;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--body);
+  font-size: 11.5px;
+  line-height: 1.55;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+b, strong { color: var(--ink); font-weight: 700; }
+
+.page {
+  width: 210mm;
+  height: 297mm;
+  max-height: 297mm;
+  overflow: hidden;
+  padding: 42px 48px 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #fff;
+  page-break-after: always;
+  break-after: page;
+}
+.page:last-child {
+  page-break-after: auto;
+  break-after: auto;
+}
+
+.page-body {
+  flex: 1;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mark {
+  display: grid;
+  grid-template-columns: 8px 8px;
+  gap: 3px;
+}
+.mark i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--ink);
+}
+.mark i:nth-child(2) {
+  background: var(--red);
+}
+.word {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -.03em;
+  color: var(--ink);
+}
+.word em {
+  font-family: 'Manrope', sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  background: var(--red);
+  color: #fff;
+  padding: 2px 5px;
+  border-radius: 4px;
+  margin-left: 3px;
+  font-style: normal;
+}
+
+.kicker {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin: 0 0 4px;
+}
+
+h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 30px;
+  line-height: 1.15;
+  letter-spacing: -.025em;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+h2 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 21px;
+  line-height: 1.2;
+  letter-spacing: -.02em;
+  color: var(--ink);
+  margin: 0 0 10px;
+}
+
+h3 {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 0 0 5px;
+}
+
+.lead {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--body);
+  margin: 0 0 14px;
+}
+
+.pill {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.pill.red { background: var(--red-soft); color: var(--red); }
+.pill.green { background: var(--green-bg); color: var(--green); }
+.pill.amber { background: var(--amber-bg); color: var(--amber); }
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 13px 16px;
+  background: var(--card);
+  margin-bottom: 12px;
+}
+.card.cream { background: var(--cream); border-color: #ebdcc9; }
+.card.amber { background: var(--amber-bg); border-color: #f7ddb2; }
+
+.table-wrap {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 10px 0 14px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  text-align: left;
+}
+th {
+  background: var(--cream);
+  color: var(--ink);
+  font-weight: 800;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--body);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: #faf7f2; }
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.figure {
+  margin: 0 0 10px;
+}
+.figure img {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  display: block;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+}
+.caption {
+  font-size: 10px;
+  color: var(--dim);
+  margin-top: 5px;
+  line-height: 1.4;
+}
+.caption b { color: var(--ink); }
+
+.step-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: st;
+}
+.step-list > li {
+  position: relative;
+  padding-left: 32px;
+  margin-bottom: 11px;
+}
+.step-list > li::before {
+  counter-increment: st;
+  content: counter(st);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--red);
+  color: #fff;
+  font-weight: 800;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sub-bullets {
+  list-style: disc;
+  padding-left: 18px;
+  margin: 4px 0 2px;
+}
+.sub-bullets li {
+  margin-bottom: 3px;
+  color: var(--body);
+}
+
+.highlight-box {
+  background: #fdf5f3;
+  border-left: 3.5px solid var(--red);
+  padding: 9px 12px;
+  border-radius: 0 8px 8px 0;
+  margin: 8px 0 10px;
+  font-size: 11px;
+}
+.highlight-box b { color: var(--red); }
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  color: var(--dim);
+  text-transform: uppercase;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  margin-top: 12px;
+}
+</style>
+</head>
+<body>
+
+<!-- PAGE 1: OVERVIEW & SIZING MATRIX -->
+<div class="page">
+  <div class="page-body">
+    <div class="top-bar">
+      <div class="brand">
+        <span class="mark"><i></i><i></i><i></i><i></i></span>
+        <span class="word">photobooth<em>4u</em></span>
+      </div>
+      <span class="pill red">Hardware &amp; Print Manual</span>
+    </div>
+
+    <p class="kicker">Photobooth Keychain Printing System</p>
+    <h1>How to Print Keychain Strips with Frame Collage</h1>
+    <p class="lead">A complete operator guide for preparing, previewing, and gang-printing acrylic keychain inserts at 100% true scale using custom frames on 4R, A4, and Letter paper.</p>
+
+    <div class="card cream">
+      <h3>Why Exact Scaling is Critical for Keychains</h3>
+      <p style="margin:0;">Acrylic keychain casings have fixed, rigid cavities. If your print is even 1 mm too wide, it will buckle or wrinkle; if it is scaled down by a "Fit to Page" driver setting, it leaves loose gaps inside the casing. This guide walks you through setting up pixel-perfect 1:3 keychain strips (2.5 &times; 7.5 in and 2 &times; 6 in) and printing multiple copies on a single sheet.</p>
+    </div>
+
+    <h2>Paper Size vs. Keychain Sizing Matrix</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Paper Size</th>
+            <th>Paper Dimensions</th>
+            <th>Max Keychain Size (100% Scale)</th>
+            <th>Capacity per Sheet</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>A4 Paper</b></td>
+            <td>210 &times; 297 mm (8.27 &times; 11.69 in)</td>
+            <td><b>2.5 &times; 7.5 in</b> (63.5 &times; 190.5 mm)</td>
+            <td><b>3 upright</b> (or 4 sideways)</td>
+            <td><span class="pill green">Exact 100% Scale</span></td>
+          </tr>
+          <tr>
+            <td><b>US Letter</b></td>
+            <td>216 &times; 279 mm (8.5 &times; 11 in)</td>
+            <td><b>2.5 &times; 7.5 in</b> (63.5 &times; 190.5 mm)</td>
+            <td><b>3 upright</b> side-by-side</td>
+            <td><span class="pill green">Exact 100% Scale</span></td>
+          </tr>
+          <tr>
+            <td><b>8R / 8&times;10</b></td>
+            <td>203 &times; 254 mm (8 &times; 10 in)</td>
+            <td><b>2.5 &times; 7.5 in</b> (63.5 &times; 190.5 mm)</td>
+            <td><b>3 upright</b> side-by-side</td>
+            <td><span class="pill green">Exact 100% Scale</span></td>
+          </tr>
+          <tr>
+            <td><b>4R (4&times;6 in)</b></td>
+            <td>102 &times; 152 mm (4 &times; 6 in)</td>
+            <td><b>2.0 &times; 6.0 in</b> (Classic Mini Strip)</td>
+            <td><b>2 upright</b> side-by-side</td>
+            <td><span class="pill green">Exact 100% Scale</span></td>
+          </tr>
+          <tr>
+            <td><b>4R (4&times;6 in)</b></td>
+            <td>102 &times; 152 mm (4 &times; 6 in)</td>
+            <td>2.5 &times; 7.5 in (Requires shrinking)</td>
+            <td>1 – 2 strips</td>
+            <td><span class="pill amber">Shrunk to ~80% (2.0&times;6.0 in)</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="highlight-box">
+      <b>Critical Rule on 4R Paper:</b> Standard 4R paper is physically 6.0 inches tall. A 7.5 in strip physically exceeds 4R paper length. If you need true 2.5 &times; 7.5 in acrylic inserts, you <b>must</b> load A4, Letter, or 8R paper. If using 4R paper, purchase 2.0 &times; 6.0 in or 1.8 &times; 5.5 in keychain blanks.
+    </div>
+
+    <div class="card" style="margin-top: 14px; background: #faf7f2; border-color: #ebdcc9;">
+      <h3 style="margin: 0 0 6px;">Quick-Start 3-Step Summary</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; font-size: 10.5px;">
+        <div style="background: #fff; padding: 10px; border-radius: 8px; border: 1px solid var(--line);">
+          <b style="color: var(--red);">1. Template</b><br>
+          Create 750 &times; 2250 px (300 DPI) PNG with transparent photo windows.
+        </div>
+        <div style="background: #fff; padding: 10px; border-radius: 8px; border: 1px solid var(--line);">
+          <b style="color: var(--red);">2. Arrangement</b><br>
+          Pick <b>Frame collage</b> in Step 3, choose A4, and select <b>3 strips</b> pattern.
+        </div>
+        <div style="background: #fff; padding: 10px; border-radius: 8px; border: 1px solid var(--line);">
+          <b style="color: var(--red);">3. 100% Printing</b><br>
+          Toggle Keychain ON. Set driver scale to <b>100% (Actual Size)</b> and Borderless <b>OFF</b>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>photobooth4u · Keychain Printing Manual</span>
+    <span>Page 1 of 4</span>
+  </div>
+</div>
+
+<!-- PAGE 2: DESIGNING TEMPLATES & STEP 3 SETUP -->
+<div class="page">
+  <div class="page-body">
+    <div class="top-bar">
+      <div class="brand">
+        <span class="mark"><i></i><i></i><i></i><i></i></span>
+        <span class="word">photobooth<em>4u</em></span>
+      </div>
+      <span class="pill red">Frame Setup</span>
+    </div>
+
+    <p class="kicker">Step 1 &amp; Step 2</p>
+    <h2>Designing Your Template &amp; Uploading into Booth</h2>
+
+    <div class="grid-2">
+      <div>
+        <ol class="step-list">
+          <li>
+            <b>Design at 300 DPI Resolution:</b><br>
+            Create your frame canvas in Photoshop, Canva, or Illustrator:
+            <ul class="sub-bullets">
+              <li><b>2.5 &times; 7.5 in:</b> <b>750 &times; 2250 px</b> (or 1500 &times; 4500 px for 600 DPI).</li>
+              <li><b>2.0 &times; 6.0 in:</b> <b>600 &times; 1800 px</b> (for 4R photo paper).</li>
+            </ul>
+          </li>
+          <li>
+            <b>Cut Out Transparent Photo Windows:</b><br>
+            Leave 2, 3, or 4 cutout boxes where guest photos should appear. The windows must have an <b>alpha transparent background</b> or pure solid white (#FFFFFF).
+          </li>
+          <li>
+            <b>Maintain 3 mm Safe Margins:</b><br>
+            Keep names, wedding dates, and logos at least 35 px inside the cut border so trimming does not clip them. Export as a transparent <b>PNG</b>.
+          </li>
+          <li>
+            <b>Upload in Step 3 (Layout / Design):</b><br>
+            In booth setup, go to <b>Step 3</b> &rarr; <b>Frames with photo spots</b> &rarr; Click <b>+ Add frame</b>. The booth auto-detects all windows and confirms:
+            <code style="display:block; margin-top:4px; padding:3px 6px; background:#f0ece4; border-radius:4px; color:#1e8449; font-weight:700;">strip · fits 2.5x7.5 keychain ✓</code>
+          </li>
+        </ol>
+      </div>
+
+      <div>
+        <div class="figure">
+          <img src="img/1-step3-layout-grid.svg" alt="Step 3 Layout Selection">
+          <div class="caption"><b>Step 3 Layout Cards:</b> Select the <b>Frame collage</b> card to arrange multiple keychain strips on a single sheet.</div>
+        </div>
+
+        <div class="card" style="margin-top: 10px; background: #faf7f2; border-color: #ebdcc9; padding: 10px 12px;">
+          <h3 style="margin: 0 0 6px; font-size: 11.5px;">Template Checklist</h3>
+          <ul class="sub-bullets" style="margin: 0; font-size: 10px;">
+            <li><b>Aspect Ratio:</b> Exactly 1:3 vertical ratio (e.g., 750 &times; 2250 px).</li>
+            <li><b>Color Space:</b> sRGB, 8-bit PNG with transparent alpha channel.</li>
+            <li><b>Photo Windows:</b> 100% transparent cutouts or pure white (#FFFFFF).</li>
+            <li><b>Safe Margins:</b> Keep text &ge; 35 px (3 mm) away from cut lines.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="highlight-box" style="margin-top:14px;">
+      <b>Photo Window Detection:</b> The booth automatically counts transparent cutout rectangles. If your frame has 3 windows, the booth automatically programs each session to capture 3 shots.
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>photobooth4u · Keychain Printing Manual</span>
+    <span>Page 2 of 4</span>
+  </div>
+</div>
+
+<!-- PAGE 3: PREVIEW & SHEET ARRANGEMENT -->
+<div class="page">
+  <div class="page-body">
+    <div class="top-bar">
+      <div class="brand">
+        <span class="mark"><i></i><i></i><i></i><i></i></span>
+        <span class="word">photobooth<em>4u</em></span>
+      </div>
+      <span class="pill red">Sheet Arrangement</span>
+    </div>
+
+    <p class="kicker">Step 3 &amp; Step 4</p>
+    <h2>Arranging Multiple Keychains on the Sheet</h2>
+
+    <div class="grid-2">
+      <div>
+        <h3>1. Sheet Controls (Step 3)</h3>
+        <p style="margin:0 0 8px;">In the <b>Frames on this sheet</b> panel:</p>
+        <ul class="sub-bullets" style="margin-bottom:10px;">
+          <li><b>Put Frame on Sheet:</b> Tap your uploaded frame (it will show a checkmark ✓).</li>
+          <li><b>Sheet Size:</b> Choose <b>A4</b>, <b>Letter</b>, or <b>8&times;10</b> for 2.5 &times; 7.5 in keychains (or <b>4&times;6</b> for 2x6 mini strips).</li>
+          <li><b>Pattern:</b> Pick <b>3 strips</b> for A4 upright, or <b>2 side by side</b> for 4R.</li>
+          <li><b>Add Copies:</b> Tap <b>+ Add a copy</b> so duplicate strips fill all slots. Captured photos fill all strips at once!</li>
+        </ul>
+        <div class="figure">
+          <img src="img/2-step3-framesheet-panel.svg" alt="Frames on Sheet Panel">
+          <div class="caption"><b>Sheet Controls:</b> Pick the frame, set Sheet size to A4, select 3 strips, and add copies.</div>
+        </div>
+      </div>
+
+      <div>
+        <h3>2. Interactive Sheet Preview</h3>
+        <p style="margin:0 0 8px;">Click <b>Open preview</b> (eye icon) to inspect the sheet:</p>
+        <ul class="sub-bullets" style="margin-bottom:10px;">
+          <li><b>Spacing:</b> Drag any strip to fine-tune margins between cuts.</li>
+          <li><b>Photo Population:</b> All 3 strips populate with the session photos.</li>
+          <li><b>Cut Guidelines:</b> Dashed gray lines indicate where to trim.</li>
+        </ul>
+        <div class="figure">
+          <img src="img/3-step3-preview-sheet.svg" alt="Setup Preview Canvas">
+          <div class="caption"><b>Preview Canvas:</b> 3 real-size keychains laid out on A4 paper with dashed cutting lines.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="highlight-box" style="margin-top:12px;">
+      <b>Operator Tip — Test on Plain Paper:</b> Before printing on premium 260 gsm photo paper, print 1 test copy on ordinary office paper. Hold the cut paper behind an empty acrylic casing to double-check that window borders and text margins align perfectly.
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>photobooth4u · Keychain Printing Manual</span>
+    <span>Page 3 of 4</span>
+  </div>
+</div>
+
+<!-- PAGE 4: DRIVER SETTINGS, CUTTING & ASSEMBLY -->
+<div class="page">
+  <div class="page-body">
+    <div class="top-bar">
+      <div class="brand">
+        <span class="mark"><i></i><i></i><i></i><i></i></span>
+        <span class="word">photobooth<em>4u</em></span>
+      </div>
+      <span class="pill red">Printer Driver &amp; Assembly</span>
+    </div>
+
+    <p class="kicker">Step 5 &amp; Assembly</p>
+    <h2>Printer Driver Scaling &amp; Acrylic Assembly</h2>
+
+    <div class="grid-2">
+      <div>
+        <h3>1. Print Settings &amp; Keychain Mode</h3>
+        <div class="figure">
+          <img src="img/4-print-settings-modal.svg" alt="Print Settings Modal">
+          <div class="caption"><b>Print Settings UI:</b> Select A4 paper and toggle ON <b>Keychain strips at real size (2.5&times;7.5 in)</b>. The booth automatically calculates 3 strips per page at 100% scale.</div>
+        </div>
+
+        <div class="table-wrap" style="margin-top:10px; margin-bottom:0;">
+          <table>
+            <thead>
+              <tr>
+                <th>Driver Setting</th>
+                <th>Required Value</th>
+                <th>Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>Scale / Sizing</b></td>
+                <td><b>100% / Actual Size</b></td>
+                <td>Never choose "Fit to Page" or "Shrink". It distorts the 2.5 &times; 7.5 in dimensions.</td>
+              </tr>
+              <tr>
+                <td><b>Borderless</b></td>
+                <td><b>OFF (Normal Margins)</b></td>
+                <td>Borderless mode zooms the page by 2% to 4% to bleed off edges, which enlarges the strip.</td>
+              </tr>
+              <tr>
+                <td><b>Media Type</b></td>
+                <td><b>Photo Paper Glossy</b></td>
+                <td>Ensures rich contrast and droplet density.</td>
+              </tr>
+              <tr>
+                <td><b>Print Quality</b></td>
+                <td><b>High / Best</b></td>
+                <td>Produces sharp text, dates, and fine lines.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <h3>2. Trimming &amp; Acrylic Assembly</h3>
+        <div class="figure">
+          <img src="img/5-acrylic-assembly.svg" alt="Acrylic Assembly Process">
+          <div class="caption"><b>4-Step Flow:</b> Print at 100% &rarr; Trim along dashed guidelines &rarr; Slide into acrylic casing &rarr; Snap cover shut.</div>
+        </div>
+
+        <div class="card cream" style="padding:10px 12px; margin-top:10px; margin-bottom:10px;">
+          <h3 style="margin:0 0 4px; font-size:11.5px;">Assembly Best Practices</h3>
+          <ul class="sub-bullets" style="margin:0; font-size:10.5px;">
+            <li><b>Paper Weight:</b> Use <b>200 to 260 gsm</b> glossy or luster photo paper. Thinner paper curls; thicker stock prevents the lid from clicking shut.</li>
+            <li><b>Trimming:</b> Use a rotary trimmer or craft knife. Cut right along the inside of the dashed gray lines.</li>
+            <li><b>Double-Sided:</b> Place two trimmed strips back-to-back inside the casing so both sides display photos.</li>
+            <li><b>Snap Shut:</b> Press the clear acrylic lid firmly into the recess until both locking tabs click.</li>
+          </ul>
+        </div>
+
+        <div class="highlight-box" style="margin:0;">
+          <b>Summary of Dimensions:</b><br>
+          • <b>Keychain Strip (A4/Letter):</b> 750 &times; 2250 px (2.5 &times; 7.5 in)<br>
+          • <b>Mini Strip (4R Paper):</b> 600 &times; 1800 px (2.0 &times; 6.0 in)<br>
+          • <b>Resolution:</b> 300 DPI • <b>Aspect Ratio:</b> Exact 1:3 vertical
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>photobooth4u · Keychain Printing Manual</span>
+    <span>Page 4 of 4</span>
+  </div>
+</div>
+
+</body>
+</html>

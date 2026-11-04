@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 340" width="100%" height="100%" style="background:#FAF7F2;border-radius:12px;font-family:'Manrope',system-ui,sans-serif;">
+  <rect x="0" y="0" width="540" height="340" rx="12" fill="#FAF7F2" stroke="#E4DCCF" stroke-width="1"/>
+  
+  <!-- Modal Card -->
+  <g transform="translate(40, 16)">
+    <rect width="460" height="308" rx="12" fill="#FFFFFF" stroke="#E4DCCF" stroke-width="1.5" filter="drop-shadow(0 8px 24px rgba(0,0,0,0.08))"/>
+    
+    <!-- Title -->
+    <text x="24" y="32" fill="#1C1A1E" font-size="16" font-weight="800">Print settings</text>
+    <text x="436" y="32" fill="#6B666C" font-size="16" font-weight="700" text-anchor="end">✕</text>
+    <line x1="24" y1="44" x2="436" y2="44" stroke="#F0E8DD" stroke-width="1"/>
+
+    <!-- Paper Size Section -->
+    <text x="24" y="68" fill="#1C1A1E" font-size="11.5" font-weight="800">Paper size</text>
+    <g transform="translate(24, 78)">
+      <rect width="70" height="32" rx="6" fill="#FAF7F2" stroke="#E4DCCF" stroke-width="1"/>
+      <text x="35" y="20" fill="#6B666C" font-size="11" font-weight="700" text-anchor="middle">4×6 (4R)</text>
+
+      <rect x="78" width="70" height="32" rx="6" fill="#C93D27"/>
+      <text x="113" y="20" fill="#FFFFFF" font-size="11" font-weight="800" text-anchor="middle">A4 ✓</text>
+
+      <rect x="156" width="70" height="32" rx="6" fill="#FAF7F2" stroke="#E4DCCF" stroke-width="1"/>
+      <text x="191" y="20" fill="#6B666C" font-size="11" font-weight="700" text-anchor="middle">Letter</text>
+
+      <rect x="234" width="70" height="32" rx="6" fill="#FAF7F2" stroke="#E4DCCF" stroke-width="1"/>
+      <text x="269" y="20" fill="#6B666C" font-size="11" font-weight="700" text-anchor="middle">8×10 (8R)</text>
+    </g>
+
+    <!-- Keychain Toggle Row (CRITICAL) -->
+    <g transform="translate(24, 126)">
+      <rect width="412" height="42" rx="8" fill="#FDF5F3" stroke="#F2D9D2" stroke-width="1.5"/>
+      <text x="14" y="26" fill="#1C1A1E" font-size="12" font-weight="800">Keychain strips at real size (2.5×7.5 in)</text>
+      
+      <!-- Toggle Switch ON -->
+      <g transform="translate(360, 11)">
+        <rect width="38" height="20" rx="10" fill="#21764D"/>
+        <circle cx="28" cy="10" r="8" fill="#FFFFFF"/>
+      </g>
+    </g>
+
+    <!-- Dynamic Hint Callout -->
+    <g transform="translate(24, 178)">
+      <rect width="412" height="40" rx="6" fill="#FAF7F2" stroke="#E4DCCF" stroke-width="1"/>
+      <text x="14" y="24" fill="#C93D27" font-size="11" font-weight="700">3 keychains at 2.5×7.5 in, 3 per A4 page. Print at 100%.</text>
+    </g>
+
+    <!-- Borderless Switch OFF -->
+    <g transform="translate(24, 230)">
+      <text x="0" y="16" fill="#6B666C" font-size="11.5" font-weight="700">Borderless, no trimming (Leave OFF for keychains)</text>
+      <!-- Toggle Switch OFF -->
+      <g transform="translate(360, 0)">
+        <rect width="38" height="20" rx="10" fill="#D5CBBF"/>
+        <circle cx="10" cy="10" r="8" fill="#FFFFFF"/>
+      </g>
+    </g>
+
+    <!-- Print Button -->
+    <g transform="translate(24, 264)">
+      <rect width="412" height="34" rx="8" fill="#C93D27"/>
+      <text x="206" y="22" fill="#FFFFFF" font-size="13" font-weight="800" text-anchor="middle">Print 1 copy (A4 Paper)</text>
+    </g>
+  </g>
+</svg>

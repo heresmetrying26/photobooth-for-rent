@@ -2953,8 +2953,8 @@
       flex-direction: column;
       align-items: center;
       gap: 6px;
-      font: 800 20px 'Manrope', sans-serif;
-      color: #fff;
+      font: 800 18px 'Manrope', sans-serif;
+      color: var(--ink, #1c1a1e);
       margin: 0;
     }
 
@@ -2970,10 +2970,10 @@
     }
 
     .qs-qr.two em {
-      font: 600 14px 'Manrope', sans-serif;
+      font: 700 13px 'Manrope', sans-serif;
       font-style: normal;
-      color: #d9cfc6;
-      margin-top: -4px;
+      color: var(--ink-dim, #2b282c);
+      margin-top: 2px;
     }
 
     .qs-qr.two img {
@@ -2981,21 +2981,22 @@
       background: #fff;
       padding: 12px;
       border-radius: 18px;
-      box-shadow: 0 10px 28px rgba(0, 0, 0, .4);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .18);
     }
 
     .qs-qr.two small {
-      display: block;
-      font: 700 13px 'Manrope', sans-serif;
-      color: #f6f1ea;
-      background: rgba(255, 255, 255, .12);
+      display: inline-block;
+      font: 700 12px monospace, 'Manrope', sans-serif;
+      color: var(--ink, #1c1a1e);
+      background: rgba(0, 0, 0, 0.08);
       border-radius: 999px;
-      padding: 5px 12px;
+      padding: 4px 10px;
       overflow-wrap: anywhere;
+      margin-top: 4px;
     }
 
     .spin-card:has(.qs-qr.two) .qs-note {
-      color: #d9cfc6;
+      color: var(--ink-dim, #2b282c);
       text-align: center;
     }
 
@@ -3770,6 +3771,50 @@
       transform: translateY(-2px);
     }
 
+    .spin-lock-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      border-radius: 12px;
+      background: #fff8e6;
+      border: 1.5px solid #f6d899;
+      color: #7a5405;
+    }
+    .spin-lock-banner[hidden] {
+      display: none !important;
+    }
+    .spin-locked-controls {
+      opacity: 0.52;
+      pointer-events: none !important;
+      user-select: none;
+      filter: grayscale(35%);
+    }
+
+    /* High-contrast labels in sidebar and modal QR boxes */
+    #spinQrBox em,
+    .qs-qr.two em {
+      font: 700 13px 'Manrope', sans-serif !important;
+      font-style: normal !important;
+      color: #2b282c !important;
+      margin-top: 2px !important;
+    }
+    #spinQrBox small,
+    .qs-qr.two small {
+      display: inline-block !important;
+      font: 700 11px monospace, 'Manrope', sans-serif !important;
+      color: #1c1a1e !important;
+      background: rgba(0, 0, 0, 0.08) !important;
+      border-radius: 999px !important;
+      padding: 4px 10px !important;
+      margin-top: 4px !important;
+    }
+    #spinQrBox b,
+    .qs-qr.two b {
+      color: #1c1a1e !important;
+    }
+
     /* 360 Output & Share QR Modal */
     .spin-share-ov {
       position: fixed;
@@ -4104,7 +4149,9 @@
       inset: 0;
       width: 100%;
       height: 100%;
-      pointer-events: none;
+      pointer-events: auto;
+      touch-action: none;
+      cursor: default;
       object-fit: contain;
     }
 
@@ -11238,6 +11285,227 @@
         inset: 0 !important;
       }
     }
+
+    /* ---- Print first before QR ---- */
+    @keyframes pfSpin { to { transform: rotate(360deg); } }
+    .print-first-hold {
+      text-align: center;
+      padding: 22px 16px;
+      background: rgba(255, 255, 255, 0.72);
+      border-radius: 16px;
+      border: 1px dashed rgba(0, 0, 0, 0.15);
+      margin: 10px 0;
+    }
+    .print-first-hold .pf-spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-top-color: var(--brand, #C93D27);
+      border-radius: 50%;
+      margin: 0 auto 12px;
+      animation: pfSpin 0.85s linear infinite;
+    }
+
+    /* ---- In-session Guest Sticker Customisation ---- */
+    .guest-sticker-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 85;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    .guest-sticker-overlay.hidden {
+      display: none !important;
+    }
+    .gso-top {
+      pointer-events: auto;
+      background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 75%, transparent 100%);
+      padding: 12px 16px 20px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .gso-title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .gso-title {
+      font-size: clamp(16px, 2.2vw, 22px);
+      font-weight: 800;
+      margin: 0;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .gso-sub {
+      font-size: clamp(11px, 1.4vw, 13px);
+      color: rgba(255, 255, 255, 0.78);
+      margin: 0;
+    }
+    .gso-timer-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(8px);
+      padding: 6px 12px;
+      border-radius: 99px;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+    .gso-timer-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: rgba(255,255,255,0.25);
+    }
+    .gso-timer-fill {
+      height: 100%;
+      background: var(--brand, #C93D27);
+      width: 100%;
+      transition: width 0.1s linear;
+    }
+    .gso-mid {
+      flex: 1;
+      position: relative;
+      pointer-events: none;
+    }
+    .gso-tools {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: auto;
+      background: rgba(18, 20, 24, 0.94);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 99px;
+      padding: 5px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      z-index: 10;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .gso-tools button {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      border: none;
+      border-radius: 99px;
+      padding: 6px 11px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .gso-tools button:active {
+      transform: scale(0.95);
+      background: rgba(255, 255, 255, 0.28);
+    }
+    .gso-tools button.danger {
+      background: rgba(239, 68, 68, 0.32);
+      color: #fca5a5;
+    }
+    .gso-bottom {
+      pointer-events: auto;
+      background: linear-gradient(0deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.7) 80%, transparent 100%);
+      padding: 12px 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .gso-tray-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 4px 2px 8px;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+    .gso-tray-row::-webkit-scrollbar {
+      height: 4px;
+    }
+    .gso-tray-row::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 99px;
+    }
+    .gso-sticker-btn {
+      flex: 0 0 auto;
+      width: clamp(52px, 7.5vw, 66px);
+      height: clamp(52px, 7.5vw, 66px);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(8px);
+      border: 1.5px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 4px;
+      transition: transform 0.12s, background 0.12s, border-color 0.12s;
+    }
+    .gso-sticker-btn:active {
+      transform: scale(0.92);
+      background: rgba(255, 255, 255, 0.32);
+    }
+    .gso-sticker-btn canvas,
+    .gso-sticker-btn img {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+    .gso-actions-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .gso-btn-skip {
+      background: rgba(255, 255, 255, 0.14);
+      color: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 99px;
+      padding: 9px 18px;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .gso-btn-done {
+      background: var(--brand, #C93D27);
+      color: #ffffff;
+      border: none;
+      border-radius: 99px;
+      padding: 10px 24px;
+      font-size: 14.5px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(201, 61, 39, 0.4);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+    .gso-btn-done:active {
+      transform: scale(0.97);
+    }
   </style>
   <script>/* qrcode-generator 1.4.4 (MIT) — QR codes are made on this device, no outside service. */
     // Copyright (c) 2009 Kazuhiko Arase
@@ -12215,7 +12483,20 @@
               <div class="frame-pick" id="framePick"></div>
               <p class="panel-hint" id="frameChooseHint" style="display:none; margin-top:10px;"></p>
               <div id="sheetPanel" style="display:none;">
-                <p class="sub-label" style="margin-top:14px;">Sheet size</p>
+                <div class="sheet-preset-box" id="sheetPresetBox" style="margin-top:10px; margin-bottom:14px; padding:12px 14px; background:var(--panel-2, #f5f2ec); border:1px solid var(--line, #e2ddd5); border-radius:12px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span class="sub-label" style="margin:0; font-weight:800; font-size:12.5px; color:var(--ink, #1c1a1e);">Collage Presets</span>
+                    <span class="panel-hint" id="sheetPresetCount" style="margin:0; font-size:11px; font-weight:700; color:var(--brand, #c93d27);">1 preset</span>
+                  </div>
+                  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <select class="mini-select" id="sheetPresetSelect" style="flex:1; min-width:140px; font-weight:700; background:#fff; border-radius:8px; height:36px;" aria-label="Select collage preset"></select>
+                    <button type="button" class="action-btn" id="sheetPresetSave" style="width:auto; margin:0; padding:0 12px; height:36px; font-size:12px; font-weight:700;" title="Save current arrangement as a new collage preset">+ Save as…</button>
+                    <button type="button" class="action-btn" id="sheetPresetUpdate" style="width:auto; margin:0; padding:0 10px; height:36px; font-size:12px; font-weight:700;" title="Overwrite selected preset with current arrangement">Save</button>
+                    <button type="button" class="action-btn" id="sheetPresetDelete" style="width:auto; margin:0; padding:0 10px; height:36px; font-size:12px; font-weight:700; color:#c0392b;" title="Delete selected preset">✕</button>
+                  </div>
+                  <p class="panel-hint" style="margin:6px 0 0; font-size:11px; line-height:1.4;">Save different sheets (e.g. <b>Collage A</b> with 3-shot strips, <b>Collage B</b> with 4-shot strips). Turn on <b>Let guests choose layout</b> below to let guests pick!</p>
+                </div>
+                <p class="sub-label" style="margin-top:6px;">Sheet size</p>
                 <div class="sheet-size-row">
                   <select class="mini-select" id="sheetSizeSelect" aria-label="Sheet size"></select>
                   <span class="panel-hint" style="margin:0;">Choose the same paper size when you print.</span>
@@ -12362,6 +12643,9 @@
               </div>
               <label class="switch-row"><span>Check the page before the first print</span><input type="checkbox"
                   id="ppPreview"></label>
+              <label class="switch-row" id="ppPrintFirstRow"><span>Print first before showing QR</span><input type="checkbox"
+                  id="ppPrintFirst"></label>
+              <p class="panel-hint" id="ppPrintFirstHint" style="margin:4px 0 0;">Wait until printing completes before showing the QR code on screen.</p>
             </div>
 
             <details class="pp-words">
@@ -12565,6 +12849,13 @@
             </div>
             <p class="panel-hint" style="margin-top:6px;">Tap to add, then drag it on the preview.</p>
             <button class="remove-link" id="decorClear" style="display:inline;">Remove all stickers</button>
+            <div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(0,0,0,0.08);">
+              <label class="switch-row" id="guestStickersRow" style="margin:0;">
+                <span>Customise stickers post photo session</span>
+                <input type="checkbox" id="guestStickersToggle">
+              </label>
+              <p class="panel-hint" id="guestStickersHint" style="margin:4px 0 0;">When turned on, guests can add and place stickers on their photo right after taking photos, before printing.</p>
+            </div>
           </div>
 
           <div class="pane" data-pane="greenscreen" id="greenSection">
@@ -13375,6 +13666,33 @@
           </div>
           <div class="flash-overlay" id="flashOverlay"></div>
 
+          <div class="guest-sticker-overlay hidden" id="guestStickerOverlay">
+            <div class="gso-timer-bar"><div class="gso-timer-fill" id="gsoTimerFill"></div></div>
+            <div class="gso-top">
+              <div class="gso-title-wrap">
+                <p class="gso-title"><span>✨</span> Decorate your photo</p>
+                <p class="gso-sub">Tap stickers to add · drag &amp; pinch to move</p>
+              </div>
+              <div class="gso-timer-pill"><span id="gsoTimerSec">35</span>s left</div>
+            </div>
+            <div class="gso-mid">
+              <div class="gso-tools" id="gsoTools" style="display:none;">
+                <button type="button" id="gsoSizeDown" title="Make smaller">➖ Size</button>
+                <button type="button" id="gsoSizeUp" title="Make bigger">➕ Size</button>
+                <button type="button" id="gsoRotate" title="Rotate">🔄 Rotate</button>
+                <button type="button" id="gsoDup" title="Duplicate">📑 Copy</button>
+                <button type="button" class="danger" id="gsoDelete" title="Delete sticker">🗑️ Remove</button>
+              </div>
+            </div>
+            <div class="gso-bottom">
+              <div class="gso-tray-row" id="gsoTray"></div>
+              <div class="gso-actions-row">
+                <button type="button" class="gso-btn-skip" id="gsoSkipBtn">Skip stickers</button>
+                <button type="button" class="gso-btn-done" id="gsoDoneBtn">✓ Done &amp; Print</button>
+              </div>
+            </div>
+          </div>
+
           <div class="camera-error" id="cameraError">
             <p id="cameraErrorText">We need access to your camera to start the booth.</p>
             <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
@@ -13438,7 +13756,12 @@
         </div>
 
         <div class="panel-section hidden" id="qrSection">
-          <p class="panel-label">Your photo is ready</p>
+          <p class="panel-label" id="qrSectionTitle">Your photo is ready</p>
+          <div class="print-first-hold" id="printFirstHold" style="display:none;">
+            <div class="pf-spinner"></div>
+            <p style="font-weight:700; font-size:16px; margin:0 0 4px;" id="printFirstStatus">Printing your photo…</p>
+            <p class="panel-hint" style="margin:0;">Your download QR code will appear right here once printing finishes.</p>
+          </div>
           <div class="qr-results" id="qrResults"></div>
           <p class="panel-hint" id="qrHint">Scan with your phone camera to save it.</p>
           <div class="actions" id="shareSlot" style="margin-top:10px;"></div>
@@ -14002,6 +14325,7 @@
       </div>
       <div class="spin-head-nav" id="spinHeadTabs">
         <button type="button" class="spin-tab-btn active" data-tab="spinSecVideos">🎬 Videos &amp; Queue</button>
+        <button type="button" class="spin-tab-btn" data-tab="spinSecPresets">✨ Presets</button>
         <button type="button" class="spin-tab-btn" data-tab="spinSecLook">🎨 Look &amp; Frame</button>
         <button type="button" class="spin-tab-btn" data-tab="spinSecText">✍️ Text &amp; Branding</button>
         <button type="button" class="spin-tab-btn" data-tab="spinSecAudio">🎵 Audio &amp; FX</button>
@@ -14015,6 +14339,33 @@
     <div class="spin-studio-body">
       <!-- LEFT COLUMN: CONTROLS & WORKSPACE -->
       <div class="spin-studio-controls" id="spinStudioControls">
+        <!-- LOCK BANNER WHEN PROCESSING / LOCKED -->
+        <div id="spinEditLockBanner" class="spin-lock-banner" hidden>
+          <div style="display:flex;align-items:center;gap:10px;flex:1;">
+            <span style="font-size:20px;">🔒</span>
+            <div>
+              <b id="spinLockTitle" style="font-size:13px;">Editing Locked</b>
+              <div id="spinLockSub" style="font-size:12px;opacity:0.9;">Processing video changes in progress…</div>
+            </div>
+          </div>
+          <button type="button" class="desk-btn primary" id="spinUnlockEditBtn" style="padding:4px 12px;font-size:12px;margin:0;">✏️ Unlock / Edit</button>
+        </div>
+
+        <!-- SECTION 0: DESIGN PRESETS -->
+        <div class="spin-panel-card" id="spinSecPresets" style="background:#fffcf5;border-color:#ecd9b5;">
+          <div class="spin-card-title" style="margin-bottom:8px;">
+            <span>✨ Design &amp; Layout Presets</span>
+            <span class="spin-pill" style="background:#fae7c9;color:#855400;">Multi-Preset</span>
+          </div>
+          <div class="spin-row" style="gap:8px;align-items:center;">
+            <label style="font-weight:700;font-size:12px;display:flex;align-items:center;gap:6px;">Preset:
+              <select id="spinDesignPresetSelect" style="min-width:210px;font-weight:600;"></select>
+            </label>
+            <button type="button" class="desk-btn" id="spinSavePresetBtn" style="padding:5px 12px;font-size:12px;background:#fff;font-weight:700;">💾 Save As Preset</button>
+            <button type="button" class="desk-btn" id="spinDeletePresetBtn" style="padding:5px 10px;font-size:12px;" title="Delete current custom preset">🗑️ Delete</button>
+          </div>
+        </div>
+
         <!-- SECTION 1: VIDEOS & INBOX -->
         <div class="spin-panel-card" id="spinSecVideos">
           <div class="spin-card-title">
@@ -14111,6 +14462,12 @@
                   <option value="custom">Custom Uploaded Frame PNG</option>
                   <option value="none">None (Transparent / Logo only)</option>
                 </select></label>
+              <div id="spinClassicControls" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;background:#fff;padding:4px 8px;border-radius:8px;border:1px solid var(--line);">
+                <label>Border <input type="color" id="spinClassicBorderColor" value="#D4AF37" style="width:24px;height:22px;padding:0;border:none;cursor:pointer;vertical-align:middle;"></label>
+                <label class="chk"><input type="checkbox" id="spinClassicBandOn" checked> Bottom Band</label>
+                <label id="spinClassicBandColorWrap">Band Color <input type="color" id="spinClassicBandColor" value="#1C1A1E" style="width:24px;height:22px;padding:0;border:none;cursor:pointer;vertical-align:middle;"></label>
+                <label id="spinClassicBandAlphaWrap">Opacity <input type="range" id="spinClassicBandAlpha" min="0" max="100" value="85" style="width:55px"></label>
+              </div>
               <label class="desk-btn" style="padding:4px 10px;font-size:12px;cursor:pointer;margin:0;">
                 Upload Custom PNG
                 <input type="file" id="spinModalCustomFile" accept="image/png,image/webp" style="display:none">
@@ -14136,59 +14493,87 @@
         <div class="spin-panel-card" id="spinSecText">
           <div class="spin-card-title">
             <span>✍️ Text &amp; Event Branding</span>
-            <span class="spin-pill">WYSIWYG</span>
+            <span class="spin-pill">WYSIWYG &amp; Drag-to-Position</span>
           </div>
 
           <div class="spin-look" style="margin:0;">
-            <div class="spin-row">
+            <div class="spin-row" style="justify-content:space-between;">
               <label class="chk"><input type="checkbox" id="spinTextOn" checked> Enable Text Overlay</label>
+              <span class="spin-dim" style="font-size:11px;font-style:italic;">💡 Drag text or corner handle ⇲ on the preview to position &amp; resize!</span>
             </div>
-            <div class="spin-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-              <div>
-                <label style="display:block;font-size:12px;margin-bottom:3px;font-weight:700;">Line 1 (e.g. Couple / Event Name)</label>
-                <input type="text" id="spinText1" placeholder="e.g. Sarah &amp; Michael" style="width:100%;box-sizing:border-box;font-size:13px;padding:6px 10px;border-radius:8px;border:1.5px solid var(--line);">
+
+            <!-- LINE 1 CONTROLS -->
+            <div style="background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:4px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <b style="font-size:12px;color:var(--ink);">Line 1 · Heading / Names</b>
+                <span class="spin-dim" id="spinText1PosLabel" style="font-size:11px;">Y: 18%</span>
               </div>
-              <div>
-                <label style="display:block;font-size:12px;margin-bottom:3px;font-weight:700;">Line 2 (e.g. Date / Hashtag)</label>
-                <input type="text" id="spinText2" placeholder="e.g. October 24, 2026" style="width:100%;box-sizing:border-box;font-size:13px;padding:6px 10px;border-radius:8px;border:1.5px solid var(--line);">
+              <input type="text" id="spinText1" placeholder="e.g. Sarah &amp; Michael" style="width:100%;box-sizing:border-box;font-size:13px;padding:6px 10px;border-radius:8px;border:1.5px solid var(--line);margin-bottom:6px;">
+              <div class="spin-row" style="gap:6px 10px;">
+                <label>Font <select id="spinText1Font" style="max-width:140px;">
+                    <option value="cursive" selected>Alex Brush (Romantic)</option>
+                    <option value="dancing">Dancing Script (Casual)</option>
+                    <option value="serif">Cinzel (Roman Serif)</option>
+                    <option value="playfair">Playfair Display (Serif)</option>
+                    <option value="sans">Montserrat (Modern Clean)</option>
+                    <option value="impact">Bebas Neue (Bold Display)</option>
+                    <option value="oswald">Oswald (Condensed)</option>
+                    <option value="typewriter">Courier (Typewriter)</option>
+                  </select></label>
+                <label>Color <input type="color" id="spinText1Color" value="#FFF2A8" style="width:28px;height:24px;padding:0;border:none;cursor:pointer;vertical-align:middle;"></label>
+                <label>Size <input type="range" id="spinText1Size" min="16" max="120" value="52" style="width:70px"> <span id="spinText1SizeVal" style="font-size:11px;min-width:24px;font-weight:700;">52</span></label>
               </div>
             </div>
+
+            <!-- LINE 2 CONTROLS -->
+            <div style="background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:6px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <b style="font-size:12px;color:var(--ink);">Line 2 · Subtitle / Date / Hashtag</b>
+                <span class="spin-dim" id="spinText2PosLabel" style="font-size:11px;">Y: 26%</span>
+              </div>
+              <input type="text" id="spinText2" placeholder="e.g. October 24, 2026" style="width:100%;box-sizing:border-box;font-size:13px;padding:6px 10px;border-radius:8px;border:1.5px solid var(--line);margin-bottom:6px;">
+              <div class="spin-row" style="gap:6px 10px;">
+                <label>Font <select id="spinText2Font" style="max-width:140px;">
+                    <option value="serif" selected>Cinzel (Roman Serif)</option>
+                    <option value="playfair">Playfair Display (Serif)</option>
+                    <option value="cursive">Alex Brush (Romantic)</option>
+                    <option value="dancing">Dancing Script (Casual)</option>
+                    <option value="sans">Montserrat (Modern Clean)</option>
+                    <option value="impact">Bebas Neue (Bold Display)</option>
+                    <option value="oswald">Oswald (Condensed)</option>
+                    <option value="typewriter">Courier (Typewriter)</option>
+                  </select></label>
+                <label>Color <input type="color" id="spinText2Color" value="#FFFFFF" style="width:28px;height:24px;padding:0;border:none;cursor:pointer;vertical-align:middle;"></label>
+                <label>Size <input type="range" id="spinText2Size" min="12" max="90" value="26" style="width:70px"> <span id="spinText2SizeVal" style="font-size:11px;min-width:24px;font-weight:700;">26</span></label>
+              </div>
+            </div>
+
+            <!-- POSITION & TIMING ROW -->
             <div class="spin-row" style="margin-top:6px;">
-              <label>Position <select id="spinTextPos">
-                  <option value="top">Top (12%)</option>
+              <label>Position Preset <select id="spinTextPos">
+                  <option value="top">Top (15%)</option>
                   <option value="upper">Upper Third (28%)</option>
-                  <option value="middle">Center / Middle (50%)</option>
+                  <option value="middle">Center (50%)</option>
                   <option value="lower">Lower Third (72%)</option>
-                  <option value="bottom">Bottom (84%)</option>
-                  <option value="custom">Custom Y Slider</option>
+                  <option value="bottom">Bottom (86%)</option>
+                  <option value="custom">Custom (Drag on Canvas)</option>
                 </select></label>
               <label id="spinModalYWrap" style="display:inline-flex;align-items:center;gap:6px;">
-                Custom Y: <input type="range" id="spinModalTextY" min="5" max="95" value="12" step="1" style="width:85px">
-                <span id="spinModalTextYVal" style="min-width:28px;font-size:12px;font-weight:700;">12%</span>
+                Y: <input type="range" id="spinModalTextY" min="5" max="95" value="18" step="1" style="width:70px">
+                <span id="spinModalTextYVal" style="min-width:24px;font-size:11px;font-weight:700;">18%</span>
               </label>
               <label>Align <select id="spinModalTextAlign">
-                  <option value="center">Center</option>
+                  <option value="center" selected>Center</option>
                   <option value="left">Left</option>
                   <option value="right">Right</option>
                 </select></label>
-              <label>Color <input type="color" id="spinTextColor" value="#FFF2A8" style="width:30px;height:26px;padding:0;border:none;cursor:pointer;vertical-align:middle;"></label>
-              <label>Size <select id="spinTextSize">
-                  <option value="small">Small</option>
-                  <option value="medium" selected>Medium</option>
-                  <option value="large">Large</option>
-                </select></label>
-              <label>Font <select id="spinTextFont">
-                  <option value="cursive">Cursive / Script (Alex Brush)</option>
-                  <option value="serif">Serif (Cinzel)</option>
-                  <option value="sans-serif">Modern Sans-Serif</option>
-                  <option value="impact">Bold / Impact</option>
-                </select></label>
               <label>Timing <select id="spinTextTiming">
-                  <option value="always">Always on</option>
+                  <option value="always" selected>Always on</option>
                   <option value="fade">Fade in / out</option>
                 </select></label>
             </div>
           </div>
+        </div>
         </div>
 
         <!-- SECTION 4: AUDIO & PROCESSING -->
@@ -15221,6 +15606,9 @@
         grid: { w: GRID_W, contentH: GRID_H, render: renderGrid }
       };
       function shotsNeeded(layoutKey) {
+        if (/^sheet:/.test(layoutKey) && typeof presetById === 'function') {
+          return presetShotCount(presetById(layoutKey.slice(6)));
+        }
         return layoutDef(layoutKey).shots;
       }
       // A custom photo can only sit in its own band/side on layouts built for it;
@@ -19694,6 +20082,7 @@
         if (sess.pauseEnd) sess.pauseEnd();
         if (sess.readyEnd) sess.readyEnd();
         if (sess.reviewEnd) sess.reviewEnd('cancel');
+        if (sess.decoEnd) sess.decoEnd('cancel');
       }
       cancelSessionBtn.addEventListener('click', cancelSession);
       function cancelReady(e) { e.preventDefault(); e.stopPropagation(); cancelSession(); }
@@ -19758,11 +20147,254 @@
           if (sess.cancelled) return;
         }
       }
+
+      // ---- In-session Guest Stickers & Print-first State ----
+      let guestStickersOn = false;
+      let guestDecor = [];
+      let selGuestDecor = -1;
+      let printFirstHolding = false;
+
+      function willAutoPrint() {
+        return !!(autoPrint && printSize && printSettings() && printSettings().includes(printSize) && sizeFitsLayout(printSize));
+      }
+
+      function finishPrintFirst() {
+        if (!printFirstHolding) return;
+        printFirstHolding = false;
+        var hold = document.getElementById('printFirstHold');
+        if (hold) hold.style.display = 'none';
+        qrResults.style.display = '';
+        var qrHint = document.getElementById('qrHint');
+        if (qrHint) qrHint.style.display = '';
+        var title = document.getElementById('qrSectionTitle');
+        if (title) title.textContent = 'Your photo is ready';
+        updateUI();
+        guestRender();
+        scheduleResultReset();
+      }
+
+      function refreshGuestStickerControls() {
+        var tools = document.getElementById('gsoTools');
+        if (!tools) return;
+        var hasSel = selGuestDecor >= 0 && guestDecor[selGuestDecor];
+        tools.style.display = hasSel ? 'flex' : 'none';
+      }
+
+      function addGuestSticker(src, s) {
+        if (guestDecor.length >= 30) { showToast('Maximum stickers reached.', 3000); return; }
+        var n = guestDecor.length;
+        guestDecor.push({
+          src: src,
+          x: 0.5 + ((n % 3) - 1) * 0.12,
+          y: 0.38 + (Math.floor(n / 3) % 3) * 0.12,
+          s: s || 0.22,
+          r: 0
+        });
+        selGuestDecor = guestDecor.length - 1;
+        refreshGuestStickerControls();
+        renderComposite();
+      }
+
+      function buildGuestStickerTray() {
+        var tray = document.getElementById('gsoTray');
+        if (!tray) return;
+        tray.innerHTML = '';
+        if (typeof STICKERS !== 'undefined' && Array.isArray(STICKERS)) {
+          STICKERS.forEach(function (s) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'gso-sticker-btn';
+            b.title = s[1];
+            var c = document.createElement('canvas');
+            c.width = 64; c.height = 64;
+            var x = c.getContext('2d'); x.translate(32, 32);
+            drawSticker(x, s[0], s[0].indexOf('b-') === 0 ? 46 : 52);
+            b.appendChild(c);
+            b.addEventListener('click', function (e) {
+              e.stopPropagation();
+              addGuestSticker('b:' + s[0], s[0].indexOf('b-') === 0 ? 0.38 : 0.22);
+            });
+            tray.appendChild(b);
+          });
+        }
+        if (typeof myProps !== 'undefined' && Array.isArray(myProps)) {
+          myProps.forEach(function (id) {
+            if (!ASSETS[id]) return;
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'gso-sticker-btn';
+            b.title = 'Custom prop';
+            var im = document.createElement('img');
+            im.src = ASSETS[id].url;
+            b.appendChild(im);
+            b.addEventListener('click', function (e) {
+              e.stopPropagation();
+              addGuestSticker('a:' + id, 0.26);
+            });
+            tray.appendChild(b);
+          });
+        }
+      }
+
+      var gdrag = null, gdragRaf = 0;
+      function guestPreviewPoint(e) {
+        var rect = previewCanvas.getBoundingClientRect();
+        return { x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height };
+      }
+      function hitGuestDecor(pt, W, H) {
+        for (var i = guestDecor.length - 1; i >= 0; i--) {
+          var b = decorBox(guestDecor[i], W, H), a = -(guestDecor[i].r || 0) * Math.PI / 180;
+          var dx = pt.x * W - b.cx, dy = pt.y * H - b.cy;
+          var lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
+          if (Math.abs(lx) <= b.w / 2 + 14 && Math.abs(ly) <= b.h / 2 + 14) return i;
+        }
+        return -1;
+      }
+
+      function wireGuestDecorInteractions() {
+        previewCanvas.addEventListener('pointerdown', function (e) {
+          if (!sess || !sess.decorating) return;
+          var pt = guestPreviewPoint(e);
+          var i = hitGuestDecor(pt, previewCanvas.width, previewCanvas.height);
+          selGuestDecor = i;
+          refreshGuestStickerControls();
+          if (i >= 0) {
+            gdrag = { id: e.pointerId, dx: guestDecor[i].x - pt.x, dy: guestDecor[i].y - pt.y };
+            try { previewCanvas.setPointerCapture(e.pointerId); } catch (err) { }
+            e.preventDefault();
+          }
+          renderComposite();
+        });
+        previewCanvas.addEventListener('pointermove', function (e) {
+          if (!gdrag || e.pointerId !== gdrag.id || !guestDecor[selGuestDecor]) return;
+          var pt = guestPreviewPoint(e);
+          guestDecor[selGuestDecor].x = Math.max(0.02, Math.min(0.98, pt.x + gdrag.dx));
+          guestDecor[selGuestDecor].y = Math.max(0.02, Math.min(0.98, pt.y + gdrag.dy));
+          if (!gdragRaf) gdragRaf = requestAnimationFrame(function () { gdragRaf = 0; renderComposite(); });
+        });
+        function endGDrag(e) {
+          if (!gdrag || (e && e.pointerId !== gdrag.id)) return;
+          gdrag = null;
+          renderComposite();
+        }
+        previewCanvas.addEventListener('pointerup', endGDrag);
+        previewCanvas.addEventListener('pointercancel', endGDrag);
+
+        var szDown = document.getElementById('gsoSizeDown');
+        if (szDown) szDown.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (selGuestDecor >= 0 && guestDecor[selGuestDecor]) {
+            guestDecor[selGuestDecor].s = Math.max(0.06, guestDecor[selGuestDecor].s - 0.04);
+            renderComposite();
+          }
+        });
+        var szUp = document.getElementById('gsoSizeUp');
+        if (szUp) szUp.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (selGuestDecor >= 0 && guestDecor[selGuestDecor]) {
+            guestDecor[selGuestDecor].s = Math.min(0.85, guestDecor[selGuestDecor].s + 0.04);
+            renderComposite();
+          }
+        });
+        var rotBtn = document.getElementById('gsoRotate');
+        if (rotBtn) rotBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (selGuestDecor >= 0 && guestDecor[selGuestDecor]) {
+            guestDecor[selGuestDecor].r = ((guestDecor[selGuestDecor].r || 0) + 25) % 360;
+            renderComposite();
+          }
+        });
+        var dupBtn = document.getElementById('gsoDup');
+        if (dupBtn) dupBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (selGuestDecor >= 0 && guestDecor[selGuestDecor]) {
+            var cur = guestDecor[selGuestDecor];
+            guestDecor.push(Object.assign({}, cur, { x: Math.min(0.92, cur.x + 0.05), y: Math.min(0.92, cur.y + 0.05) }));
+            selGuestDecor = guestDecor.length - 1;
+            refreshGuestStickerControls();
+            renderComposite();
+          }
+        });
+        var delBtn = document.getElementById('gsoDelete');
+        if (delBtn) delBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (selGuestDecor >= 0 && guestDecor[selGuestDecor]) {
+            guestDecor.splice(selGuestDecor, 1);
+            selGuestDecor = -1;
+            refreshGuestStickerControls();
+            renderComposite();
+          }
+        });
+      }
+      setTimeout(wireGuestDecorInteractions, 0);
+
+      function guestStickersPhase() {
+        return new Promise(function (resolve) {
+          var overlay = document.getElementById('guestStickerOverlay');
+          if (!overlay) { resolve(); return; }
+          sess.decorating = true;
+          selGuestDecor = -1;
+          buildGuestStickerTray();
+          refreshGuestStickerControls();
+
+          video.style.display = 'none';
+          previewCanvas.style.display = 'block';
+          previewCanvas.style.touchAction = 'none';
+          previewCanvas.style.cursor = 'grab';
+          renderComposite();
+          overlay.classList.remove('hidden');
+
+          var totalSec = 35;
+          var leftSec = totalSec;
+          var secEl = document.getElementById('gsoTimerSec');
+          var fillEl = document.getElementById('gsoTimerFill');
+          if (secEl) secEl.textContent = String(leftSec);
+          if (fillEl) fillEl.style.width = '100%';
+
+          var timer = setInterval(function () {
+            leftSec--;
+            if (secEl) secEl.textContent = String(Math.max(0, leftSec));
+            if (fillEl) fillEl.style.width = Math.max(0, (leftSec / totalSec) * 100) + '%';
+            if (leftSec <= 0) {
+              finish();
+            }
+          }, 1000);
+
+          function finish() {
+            clearInterval(timer);
+            sess.decoEnd = null;
+            sess.decorating = false;
+            selGuestDecor = -1;
+            previewCanvas.style.touchAction = '';
+            previewCanvas.style.cursor = '';
+            overlay.classList.add('hidden');
+            renderComposite();
+            resolve();
+          }
+          sess.decoEnd = finish;
+
+          var doneBtn = document.getElementById('gsoDoneBtn');
+          if (doneBtn) doneBtn.onclick = function (e) {
+            e.stopPropagation();
+            finish();
+          };
+          var skipBtn = document.getElementById('gsoSkipBtn');
+          if (skipBtn) skipBtn.onclick = function (e) {
+            e.stopPropagation();
+            guestDecor = [];
+            finish();
+          };
+        });
+      }
+
       function endCancelledSession() {
         if (typeof stopFlipAutoPlay === 'function') stopFlipAutoPlay();
         stopGifSessionCapture(false); completedGifCapture = null;
         countingDown = false;
         hideShotReview();
+        var gso = document.getElementById('guestStickerOverlay');
+        if (gso) gso.classList.add('hidden');
+        guestDecor = []; selGuestDecor = -1;
         flashOverlay.classList.remove('flash-active');
         countdownOverlay.classList.remove('pausing');
         readyOverlay.classList.remove('ready-active');
@@ -19875,6 +20507,8 @@
         completedGifCapture = await stopGifSessionCapture(!sess.cancelled);
         if (!sess.cancelled) await reviewPhase();
         if (sess.cancelled) { endCancelledSession(); return; }
+        if (guestStickersOn && !sess.cancelled) await guestStickersPhase();
+        if (sess.cancelled) { endCancelledSession(); return; }
         countingDown = false;
         cancelSessionBtn.hidden = true;
         sess = null;
@@ -19896,7 +20530,27 @@
         } else {
           showQRForCurrentPhoto();
         }
-        scheduleResultReset();
+        var willPrint = willAutoPrint();
+        if (printPrefs.printFirst && willPrint) {
+          printFirstHolding = true;
+          var hold = document.getElementById('printFirstHold');
+          if (hold) hold.style.display = 'block';
+          qrResults.style.display = 'none';
+          var qrHint = document.getElementById('qrHint');
+          if (qrHint) qrHint.style.display = 'none';
+          var title = document.getElementById('qrSectionTitle');
+          if (title) title.textContent = 'Printing in progress…';
+          updateUI();
+          setTimeout(function () { if (printFirstHolding) finishPrintFirst(); }, 25000);
+        } else {
+          printFirstHolding = false;
+          var hold = document.getElementById('printFirstHold');
+          if (hold) hold.style.display = 'none';
+          qrResults.style.display = '';
+          var qrHint = document.getElementById('qrHint');
+          if (qrHint) qrHint.style.display = '';
+          scheduleResultReset();
+        }
         if (!LOCALSHARE) { showMultipleDownloadsHint(); if (curMode !== 'gif') saveToDevice(); }
         maybeAutoPrint();
       }
@@ -20187,27 +20841,42 @@
         var fit = Math.min(84 / (f.w / 40), 88 / (f.h / 60)), bw = f.w / 40 * fit, bh = f.h / 60 * fit, ox = (100 - bw) / 2, oy = (100 - bh) / 2;
         return f.spots.map(function (sp) { return { l: ox + sp.x * bw, t: oy + sp.y * bh, w: sp.w * bw, h: sp.h * bh }; });
       }
-      function layoutCardKey() { return currentLayout === 'myframe' && typeof activeFrameId !== 'undefined' && activeFrameId ? 'frame:' + activeFrameId : currentLayout; }
+      function presetThumbCells(p) {
+        if (!p || !p.items || !p.items.length) return [{ l: 20, t: 10, w: 60, h: 80 }];
+        return p.items.map(function (it) {
+          var w = Math.max(14, Math.min(38, (it.s || 0.3) * 60));
+          var h = Math.min(84, w * 2.8);
+          var l = Math.max(3, Math.min(97 - w, (it.cx || 0.5) * 100 - w / 2));
+          var t = Math.max(3, Math.min(97 - h, (it.cy || 0.5) * 100 - h / 2));
+          return { l: Math.round(l), t: Math.round(t), w: Math.round(w), h: Math.round(h) };
+        });
+      }
+      function layoutCardKey() {
+        if (currentLayout === 'myframe' && typeof activeFrameId !== 'undefined' && activeFrameId) return 'frame:' + activeFrameId;
+        if (currentLayout === 'framesheet' && typeof activeSheetPresetId !== 'undefined' && activeSheetPresetId && typeof sheetPresets !== 'undefined' && sheetPresets.length > 1) return 'sheet:' + activeSheetPresetId;
+        return currentLayout;
+      }
       function layoutCard(key) {
         const isFrame = /^frame:/.test(key), f = isFrame ? frameById(key.slice(6)) : null;
-        const d = isFrame ? null : LAYOUT_DEFS[key];
+        const isPreset = /^sheet:/.test(key), p = isPreset && typeof presetById === 'function' ? presetById(key.slice(6)) : null;
+        const d = isFrame || isPreset ? null : LAYOUT_DEFS[key];
         const b = document.createElement('button');
         b.type = 'button'; b.className = 'layout-btn'; b.dataset.layout = key;
         const box = document.createElement('span'); box.className = 'lt-box';
         const thumb = document.createElement('span');
-        thumb.className = 'lt lt-wait' + (!isFrame && (d.kind === 'strip' || d.kind === 'receipt') ? ' lt-strip' : '');
-        (isFrame ? frameThumbCells(f) : layoutThumbCells(key)).forEach(c => {
+        thumb.className = 'lt lt-wait' + (!isFrame && !isPreset && (d.kind === 'strip' || d.kind === 'receipt') ? ' lt-strip' : '');
+        (isFrame ? frameThumbCells(f) : isPreset ? presetThumbCells(p) : layoutThumbCells(key)).forEach(c => {
           const i = document.createElement('i');
           i.style.left = c.l + '%'; i.style.top = c.t + '%'; i.style.width = c.w + '%'; i.style.height = c.h + '%';
           thumb.appendChild(i);
         });
         box.appendChild(thumb);
         const n = document.createElement('span'); n.className = 'ln';
-        n.textContent = isFrame ? (f && f.name ? f.name : 'Frame ' + (myFrames.indexOf(f) + 1)) : d.name;
-        const shots = isFrame ? frameShotCount(f) : d.shots;
+        n.textContent = isFrame ? (f && f.name ? f.name : 'Frame ' + (myFrames.indexOf(f) + 1)) : (isPreset ? p.name : d.name);
+        const shots = isFrame ? frameShotCount(f) : (isPreset ? presetShotCount(p) : d.shots);
         const sh = document.createElement('span'); sh.className = 'ls'; sh.textContent = shots + (shots === 1 ? ' shot' : ' shots');
         const pp = document.createElement('span'); pp.className = 'lpaper';
-        var shapeLbl = isFrame ? frameShapeLabel(f).replace(/<[^>]*>/g, '') : layoutPaperText(key);
+        var shapeLbl = isFrame ? frameShapeLabel(f).replace(/<[^>]*>/g, '') : (isPreset ? ((paperFor(p.paper) && paperFor(p.paper).name) || p.paper || 'A4') : layoutPaperText(key));
         if (typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && isFrame && f && f.tier) {
           shapeLbl += (f.tier === 'receipt' ? ' · 🧾 Thermal' : (f.tier === 'photo' ? ' · 🎨 Color' : ''));
         }
@@ -20244,7 +20913,11 @@
             wrap.classList.add('lay-group-frames');
             if (hasFrames) {
               myFrames.forEach(f => grid.appendChild(layoutCard('frame:' + f.id)));
-              grid.appendChild(layoutCard('framesheet'));
+              if (typeof sheetPresets !== 'undefined' && sheetPresets.length > 1) {
+                sheetPresets.forEach(function (p) { grid.appendChild(layoutCard('sheet:' + p.id)); });
+              } else {
+                grid.appendChild(layoutCard('framesheet'));
+              }
             }
             if (!hasFrames || myFrames.length < MAX_FRAMES) grid.appendChild(addFrameCard());
             wrap.append(h, grid);
@@ -20275,6 +20948,14 @@
           activeFrameId = key.slice(6); setupActiveFrameId = activeFrameId; spotEdit = null; setupLayout = 'myframe';
           if (guestPickOn && chooseIds.indexOf(activeFrameId) < 0) chooseIds.push(activeFrameId);
           framesChanged({ layout: 'myframe' });
+          return;
+        }
+        if (/^sheet:/.test(key)) {
+          loadSheetPreset(key.slice(6));
+          setupLayout = 'framesheet';
+          setupActiveSheetPresetId = key.slice(6);
+          if (guestPickOn && guestLayoutSet.indexOf(key) < 0) guestLayoutSet.push(key);
+          framesChanged({ layout: 'framesheet' });
           return;
         }
         setupLayout = key;   // the renter's default layout (saved with the setup)
@@ -23179,13 +23860,13 @@
       const MAX_COPIES = 10;
       const PRINT_TXT = { txtPrint: 'Print', txtPrinting: 'Printing, please hold…', txtCopies: 'How many copies?', txtLimit: 'That’s all the prints for this session' };
       // Saved with the setup (every device on the code gets them).
-      let printPrefs = { guestBtn: true, auto: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
+      let printPrefs = { guestBtn: true, auto: false, printFirst: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
       function printTxt(k) { return (printPrefs[k] || '').trim() || PRINT_TXT[k]; }
       function cleanPrintPrefs(p) {
         p = p && typeof p === 'object' ? p : {};
         const txt = (v, n) => typeof v === 'string' ? v.replace(/[<>]/g, '').slice(0, n) : '';
         return {
-          guestBtn: p.guestBtn !== false, auto: !!p.auto,
+          guestBtn: p.guestBtn !== false, auto: !!p.auto, printFirst: !!p.printFirst,
           copies: Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(p.copies) || 1))), guestCopies: !!p.guestCopies, guestReq: !!p.guestReq, preview: p.preview !== false,
           fit: ['auto', 'contain', 'fill', 'size'].includes(p.fit) ? p.fit : 'auto',
           photoSize: typeof p.photoSize === 'string' && /^[0-9A-Za-z.]{1,12}$/.test(p.photoSize) ? p.photoSize : '', borderless: !!p.borderless,
@@ -23970,6 +24651,7 @@
         } finally {
           printing = false;
           refreshPrintUI();
+          if (printFirstHolding) finishPrintFirst();
           if (printLimits().ev) setTimeout(refreshPrintCount, 1500);
         }
       }
@@ -24504,8 +25186,10 @@
               const im = G.d.createElement('img'); im.src = layoutThumbUrl(k);
               const sp = G.d.createElement('span'); sp.className = 'pkn'; sp.textContent = pickName(k);
               const isFr = /^frame:/.test(k);
+              const isPr = /^sheet:/.test(k);
               const fObj = isFr && typeof frameById === 'function' ? frameById(k.slice(6)) : null;
-              const shots = isFr ? frameShotCount(fObj) : (LAYOUT_DEFS[k] ? LAYOUT_DEFS[k].shots : 4);
+              const prObj = isPr && typeof presetById === 'function' ? presetById(k.slice(6)) : null;
+              const shots = isFr ? frameShotCount(fObj) : (isPr ? presetShotCount(prObj) : (LAYOUT_DEFS[k] ? LAYOUT_DEFS[k].shots : 4));
               const sh = G.d.createElement('span'); sh.className = 'pks'; sh.textContent = shots + (shots === 1 ? ' shot' : ' shots');
               b.append(im, sp, sh);
               b.addEventListener('click', (e) => { e.stopPropagation(); finishPick(k); });
@@ -24525,7 +25209,7 @@
           G.galleryPill.classList.toggle('hide', !galleryIdle);
           if (!galleryIdle) G.galleryCard.classList.add('hide');
           if (galleryIdle) { G.galleryQr.src = document.getElementById('galleryPopQr').src; G.galleryLink.href = currentFolderLink; }
-          const reviewing = !!(sess && sess.reviewing);    // the strip is on screen until Retake / Done
+          const reviewing = !!(sess && (sess.reviewing || sess.decorating));    // the strip is on screen until Retake / Done
           G.ev.textContent = (labelInput.value || '').trim();
           G.dt.textContent = currentDateLabel();
           G.res.style.display = result || reviewing ? 'block' : 'none';
@@ -24533,7 +25217,7 @@
           if (!(state === 'capturing' && countingDown)) G.cd.style.display = 'none';
           // The guest's photo QR, copied from the result panel.
           const slots = [...qrResults.querySelectorAll('.qr-result')];
-          const showQr = result && slots.length > 0;
+          const showQr = result && slots.length > 0 && !printFirstHolding;
           G.qrw.classList.toggle('hide', !showQr);
           if (showQr) {
             const sig = slots.map(sl => sl.dataset.kind + '|' + ((sl.querySelector('.qr-img') || {}).src || 'wait')).join(',');
@@ -24597,11 +25281,16 @@
             G.msg.textContent = pickTitleText();
             G.sub.textContent = 'Tap one to start';
             G.chip.textContent = 'Pick one';
+          } else if (sess && sess.decorating) {
+            G.res.src = previewCanvas.toDataURL('image/jpeg', 0.85);
+            G.msg.textContent = 'Customising photo…';
+            G.sub.textContent = 'Add stickers on the booth screen';
+            G.chip.textContent = 'Decorate';
           } else if (result) {
             G.res.src = previewCanvas.toDataURL('image/jpeg', 0.9);
-            G.msg.textContent = 'Looking good!';
-            G.sub.textContent = showQr ? 'Scan to get your photo' : (autoPrint ? 'Printing…' : 'Your photo is ready');
-            G.chip.textContent = 'Done';
+            G.msg.textContent = printFirstHolding ? 'Printing your photos…' : 'Looking good!';
+            G.sub.textContent = printFirstHolding ? 'Your QR code will appear once printing is done' : (showQr ? 'Scan to get your photo' : (autoPrint ? 'Printing…' : 'Your photo is ready'));
+            G.chip.textContent = printFirstHolding ? 'Printing' : 'Done';
           } else if (state === 'capturing' && countingDown) {
             G.msg.textContent = 'Look at the camera';
             G.sub.textContent = shotsNeeded() + (shotsNeeded() === 1 ? ' shot' : ' shots');
@@ -25143,12 +25832,20 @@
         if (typeof stopFlipAutoPlay === 'function') stopFlipAutoPlay();
         clearTimeout(resultTimer);
         state = 'idle';
+        guestDecor = [];
+        selGuestDecor = -1;
+        if (printFirstHolding) finishPrintFirst();
+        var gso = document.getElementById('guestStickerOverlay');
+        if (gso) gso.classList.add('hidden');
         if (typeof sessionTier !== 'undefined') sessionTier = null;
         guestInfo = { name: '', line: '', q: ['', '', ''] };
         btViewBack = false; try { btFlipBtn.hidden = true; } catch (e) { }
         if (tplEdit) { tplEdit = null; try { btRenderTplEditor(); } catch (e) { } }
         if (currentLayout !== setupLayout) setLayout(setupLayout);
         if (setupLayout === 'myframe' && typeof setupActiveFrameId !== 'undefined' && setupActiveFrameId) activeFrameId = setupActiveFrameId;
+        if (setupLayout === 'framesheet' && typeof setupActiveSheetPresetId !== 'undefined' && setupActiveSheetPresetId && typeof loadSheetPreset === 'function') {
+          loadSheetPreset(setupActiveSheetPresetId, true);
+        }
         shotCanvases = new Array(shotsNeeded()).fill(null);
         qrResults.innerHTML = '';
         lastRenderedFolderUrl = null;
@@ -26380,8 +27077,208 @@
         roller: { label: 'Slow-mo roller', speed: 'custom', rates: [1, 0.25, 2, 0.5], reverse: true, smooth: false, audio: 'music', overlay: true }
       };
       var SPIN_LOOK_KEY = 'pb_spin_look';
-      var spinLook = { preset: 'classic', speed: 'slow', smooth: false, gpu: false, orient: 'portrait', quality: 1080, overlay: true, frameStyle: 'floral_gold', zoom: true, flash: true, fx: 'none', audio: 'music', volume: 80, auto: false, autoShare: false, rates: [], reverse: false, textOn: false, text1: '', text2: '', textPos: 'top', textColor: '#ffffff', textSize: 'medium', textFont: 'sans-serif', textTiming: 'always' };
-      try { var sl = JSON.parse(localStorage.getItem(SPIN_LOOK_KEY) || 'null'); if (sl && typeof sl === 'object') Object.keys(spinLook).forEach(function (k) { if (sl[k] !== undefined) spinLook[k] = sl[k]; }); } catch (e) { }
+      var SPIN_CUSTOM_PRESETS_KEY = 'pb_spin_custom_presets';
+      var spinLook = {
+        preset: 'classic', speed: 'slow', smooth: false, gpu: false, orient: 'portrait', quality: 1080,
+        overlay: true, frameStyle: 'floral_gold', zoom: true, flash: true, fx: 'none', audio: 'music', volume: 80,
+        auto: false, autoShare: false, rates: [], reverse: false,
+        textOn: true,
+        text1: '', text1Font: 'cursive', text1Color: '#FFF2A8', text1Size: 52, text1X: 50, text1Y: 18,
+        text2: '', text2Font: 'serif', text2Color: '#FFFFFF', text2Size: 26, text2X: 50, text2Y: 26,
+        textPos: 'top', textAlign: 'center', textTiming: 'always',
+        classicBorderColor: '#D4AF37', classicBandOn: true, classicBandColor: '#1C1A1E', classicBandAlpha: 85,
+        activeDesignPreset: 'wedding_floral'
+      };
+      try {
+        var sl = JSON.parse(localStorage.getItem(SPIN_LOOK_KEY) || 'null');
+        if (sl && typeof sl === 'object') {
+          Object.keys(spinLook).forEach(function (k) { if (sl[k] !== undefined) spinLook[k] = sl[k]; });
+          // Backwards compatibility migration
+          if (sl.text1Font === undefined && sl.textFont) spinLook.text1Font = sl.textFont;
+          if (sl.text2Font === undefined && sl.textFont) spinLook.text2Font = sl.textFont;
+          if (sl.text1Color === undefined && sl.textColor) spinLook.text1Color = sl.textColor;
+          if (sl.text2Color === undefined && sl.textColor) spinLook.text2Color = sl.textColor;
+          if (sl.text1Size === undefined && sl.textSize) spinLook.text1Size = sl.textSize === 'large' ? 68 : (sl.textSize === 'small' ? 34 : 52);
+          if (sl.text2Size === undefined && sl.textSize) spinLook.text2Size = sl.textSize === 'large' ? 36 : (sl.textSize === 'small' ? 20 : 26);
+          if (sl.text1Y === undefined && sl.textYPercent != null) spinLook.text1Y = Number(sl.textYPercent);
+          if (sl.text2Y === undefined && sl.textYPercent != null) spinLook.text2Y = Number(sl.textYPercent) + 8;
+        }
+      } catch (e) { }
+
+      var SPIN_BUILTIN_PRESETS = {
+        wedding_floral: {
+          name: '🌸 Wedding Floral & Gold',
+          frameStyle: 'floral_gold',
+          fx: 'gold_dust',
+          text1Font: 'cursive', text1Color: '#FFF2A8', text1Size: 52, text1X: 50, text1Y: 18,
+          text2Font: 'serif', text2Color: '#FFFFFF', text2Size: 26, text2X: 50, text2Y: 26,
+          textAlign: 'center'
+        },
+        gala_art_deco: {
+          name: '✨ VIP Gala Art Deco',
+          frameStyle: 'gilded_art_deco',
+          fx: 'sparkles',
+          text1Font: 'serif', text1Color: '#FFF2A8', text1Size: 50, text1X: 50, text1Y: 82,
+          text2Font: 'sans', text2Color: '#E5C07B', text2Size: 24, text2X: 50, text2Y: 89,
+          textAlign: 'center'
+        },
+        neon_cyberpunk: {
+          name: '⚡ Neon Cyberpunk Club',
+          frameStyle: 'neon_cyberpunk',
+          fx: 'confetti',
+          text1Font: 'impact', text1Color: '#00F0FF', text1Size: 56, text1X: 50, text1Y: 15,
+          text2Font: 'sans', text2Color: '#FF007F', text2Size: 28, text2X: 50, text2Y: 23,
+          textAlign: 'center'
+        },
+        classic_ribbon: {
+          name: '🎗️ Classic Gold & Ribbon Band',
+          frameStyle: 'classic_box',
+          classicBandColor: '#1C1A1E', classicBandAlpha: 85, classicBorderColor: '#D4AF37', classicBandOn: true,
+          fx: 'none',
+          text1Font: 'playfair', text1Color: '#FFFDF5', text1Size: 44, text1X: 50, text1Y: 90,
+          text2Font: 'sans', text2Color: '#D4AF37', text2Size: 22, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
+        minimalist: {
+          name: '🎬 Clean Minimalist',
+          frameStyle: 'none',
+          fx: 'none',
+          text1Font: 'sans', text1Color: '#FFFFFF', text1Size: 42, text1X: 50, text1Y: 14,
+          text2Font: 'sans', text2Color: '#D5CFD5', text2Size: 22, text2X: 50, text2Y: 20,
+          textAlign: 'center'
+        }
+      };
+
+      function spinGetCustomPresets() {
+        try {
+          return JSON.parse(localStorage.getItem(SPIN_CUSTOM_PRESETS_KEY) || '{}') || {};
+        } catch (e) { return {}; }
+      }
+
+      function spinPopulateDesignPresetsUI(activeKey) {
+        var sel = document.getElementById('spinDesignPresetSelect');
+        if (!sel) return;
+        sel.innerHTML = '';
+        var bGrp = document.createElement('optgroup'); bGrp.label = 'Built-in Designer Presets';
+        Object.keys(SPIN_BUILTIN_PRESETS).forEach(function (k) {
+          var p = SPIN_BUILTIN_PRESETS[k];
+          var opt = document.createElement('option'); opt.value = k; opt.textContent = p.name;
+          bGrp.appendChild(opt);
+        });
+        sel.appendChild(bGrp);
+
+        var custom = spinGetCustomPresets();
+        var cKeys = Object.keys(custom);
+        if (cKeys.length) {
+          var cGrp = document.createElement('optgroup'); cGrp.label = 'Custom Saved Presets';
+          cKeys.forEach(function (k) {
+            var opt = document.createElement('option'); opt.value = 'custom:' + k; opt.textContent = '⭐ ' + k;
+            cGrp.appendChild(opt);
+          });
+          sel.appendChild(cGrp);
+        }
+        if (activeKey) sel.value = activeKey;
+        else if (spinLook.activeDesignPreset) sel.value = spinLook.activeDesignPreset;
+      }
+
+      function spinApplyDesignPreset(key) {
+        if (!key) return;
+        var p = null;
+        if (key.startsWith('custom:')) {
+          var custom = spinGetCustomPresets();
+          p = custom[key.slice(7)];
+        } else {
+          p = SPIN_BUILTIN_PRESETS[key];
+        }
+        if (!p) return;
+        spinLook.activeDesignPreset = key;
+        if (p.frameStyle !== undefined) spinLook.frameStyle = p.frameStyle;
+        if (p.fx !== undefined) spinLook.fx = p.fx;
+        if (p.text1Font !== undefined) spinLook.text1Font = p.text1Font;
+        if (p.text1Color !== undefined) spinLook.text1Color = p.text1Color;
+        if (p.text1Size !== undefined) spinLook.text1Size = p.text1Size;
+        if (p.text1X !== undefined) spinLook.text1X = p.text1X;
+        if (p.text1Y !== undefined) spinLook.text1Y = p.text1Y;
+        if (p.text2Font !== undefined) spinLook.text2Font = p.text2Font;
+        if (p.text2Color !== undefined) spinLook.text2Color = p.text2Color;
+        if (p.text2Size !== undefined) spinLook.text2Size = p.text2Size;
+        if (p.text2X !== undefined) spinLook.text2X = p.text2X;
+        if (p.text2Y !== undefined) spinLook.text2Y = p.text2Y;
+        if (p.classicBorderColor !== undefined) spinLook.classicBorderColor = p.classicBorderColor;
+        if (p.classicBandOn !== undefined) spinLook.classicBandOn = p.classicBandOn;
+        if (p.classicBandColor !== undefined) spinLook.classicBandColor = p.classicBandColor;
+        if (p.classicBandAlpha !== undefined) spinLook.classicBandAlpha = p.classicBandAlpha;
+        if (p.textAlign !== undefined) spinLook.textAlign = p.textAlign;
+
+        spinLookToUI();
+        if (spinCur) {
+          spinCur.frameStyle = spinLook.frameStyle;
+          spinCur.text1Font = spinLook.text1Font;
+          spinCur.text1Color = spinLook.text1Color;
+          spinCur.text1Size = spinLook.text1Size;
+          spinCur.text1X = spinLook.text1X;
+          spinCur.text1Y = spinLook.text1Y;
+          spinCur.text2Font = spinLook.text2Font;
+          spinCur.text2Color = spinLook.text2Color;
+          spinCur.text2Size = spinLook.text2Size;
+          spinCur.text2X = spinLook.text2X;
+          spinCur.text2Y = spinLook.text2Y;
+          spinCur.fx = spinLook.fx;
+          if (spinCur.edited && typeof spinSwitchToDraftPreview === 'function') spinSwitchToDraftPreview(spinCur);
+        }
+        try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { }
+        renderSpinModalPreview();
+        showToast('Applied preset: ' + (p.name || key));
+      }
+
+      function spinSaveCustomPreset() {
+        var name = prompt('Enter a name for this custom design preset (e.g. "Sarah & Michael Wedding", "Birthday Gold"):');
+        if (!name || !name.trim()) return;
+        name = name.trim();
+        var custom = spinGetCustomPresets();
+        custom[name] = {
+          name: name,
+          frameStyle: spinLook.frameStyle,
+          fx: spinLook.fx,
+          text1Font: spinLook.text1Font,
+          text1Color: spinLook.text1Color,
+          text1Size: spinLook.text1Size,
+          text1X: spinLook.text1X,
+          text1Y: spinLook.text1Y,
+          text2Font: spinLook.text2Font,
+          text2Color: spinLook.text2Color,
+          text2Size: spinLook.text2Size,
+          text2X: spinLook.text2X,
+          text2Y: spinLook.text2Y,
+          classicBorderColor: spinLook.classicBorderColor,
+          classicBandOn: spinLook.classicBandOn,
+          classicBandColor: spinLook.classicBandColor,
+          classicBandAlpha: spinLook.classicBandAlpha,
+          textAlign: spinLook.textAlign
+        };
+        try { localStorage.setItem(SPIN_CUSTOM_PRESETS_KEY, JSON.stringify(custom)); } catch (e) { }
+        spinLook.activeDesignPreset = 'custom:' + name;
+        spinPopulateDesignPresetsUI('custom:' + name);
+        showToast('Preset "' + name + '" saved!');
+      }
+
+      function spinDeleteCustomPreset() {
+        var sel = document.getElementById('spinDesignPresetSelect');
+        if (!sel || !sel.value.startsWith('custom:')) {
+          showToast('Select a custom preset to delete.');
+          return;
+        }
+        var name = sel.value.slice(7);
+        if (!confirm('Delete custom preset "' + name + '"?')) return;
+        var custom = spinGetCustomPresets();
+        delete custom[name];
+        try { localStorage.setItem(SPIN_CUSTOM_PRESETS_KEY, JSON.stringify(custom)); } catch (e) { }
+        spinLook.activeDesignPreset = 'wedding_floral';
+        spinPopulateDesignPresetsUI('wedding_floral');
+        spinApplyDesignPreset('wedding_floral');
+        showToast('Preset deleted.');
+      }
+
       var spinFxCatalog = [];
       async function spinLoadFx() {
         if (!spinDesktop() || !window.pb4u || !window.pb4u.spinFxList) return;
@@ -26429,17 +27326,33 @@
         if (g('spinFlash')) g('spinFlash').checked = spinLook.flash !== undefined ? !!spinLook.flash : true;
         g('spinOrient').value = spinLook.orient; g('spinQual').value = String(spinLook.quality); g('spinOverlayOn').checked = !!spinLook.overlay;
         if (g('spinFrameStyle')) g('spinFrameStyle').value = spinLook.frameStyle || 'floral_gold';
+        var classicCtrl = g('spinClassicControls');
+        if (classicCtrl) classicCtrl.style.display = (spinLook.frameStyle === 'classic_box') ? 'inline-flex' : 'none';
+        if (g('spinClassicBorderColor')) g('spinClassicBorderColor').value = spinLook.classicBorderColor || '#D4AF37';
+        if (g('spinClassicBandOn')) g('spinClassicBandOn').checked = spinLook.classicBandOn !== undefined ? !!spinLook.classicBandOn : true;
+        if (g('spinClassicBandColor')) g('spinClassicBandColor').value = spinLook.classicBandColor || '#1C1A1E';
+        if (g('spinClassicBandAlpha')) g('spinClassicBandAlpha').value = String(spinLook.classicBandAlpha != null ? spinLook.classicBandAlpha : 85);
         if (g('spinFx')) g('spinFx').value = spinLook.fx || 'none';
         spinUpdateFxBadge();
         g('spinAudio').value = spinLook.audio; g('spinVol').value = String(spinLook.volume); g('spinAuto').checked = !!spinLook.auto; g('spinAutoShare').checked = !!spinLook.autoShare; g('spinAutoShare').disabled = !spinLook.auto;
         if (g('spinTextOn')) g('spinTextOn').checked = !!spinLook.textOn;
         if (g('spinText1')) g('spinText1').value = spinLook.text1 || '';
+        if (g('spinText1Font')) g('spinText1Font').value = spinLook.text1Font || 'cursive';
+        if (g('spinText1Color')) g('spinText1Color').value = spinLook.text1Color || '#FFF2A8';
+        if (g('spinText1Size')) { g('spinText1Size').value = spinLook.text1Size || 52; var s1v = g('spinText1SizeVal'); if (s1v) s1v.textContent = spinLook.text1Size || 52; }
+        if (g('spinText1PosLabel')) g('spinText1PosLabel').textContent = 'Y: ' + (spinLook.text1Y || 18) + '%';
+
         if (g('spinText2')) g('spinText2').value = spinLook.text2 || '';
+        if (g('spinText2Font')) g('spinText2Font').value = spinLook.text2Font || 'serif';
+        if (g('spinText2Color')) g('spinText2Color').value = spinLook.text2Color || '#FFFFFF';
+        if (g('spinText2Size')) { g('spinText2Size').value = spinLook.text2Size || 26; var s2v = g('spinText2SizeVal'); if (s2v) s2v.textContent = spinLook.text2Size || 26; }
+        if (g('spinText2PosLabel')) g('spinText2PosLabel').textContent = 'Y: ' + (spinLook.text2Y || 26) + '%';
+
         if (g('spinTextPos')) g('spinTextPos').value = spinLook.textPos || 'top';
-        if (g('spinTextColor')) g('spinTextColor').value = spinLook.textColor || '#ffffff';
-        if (g('spinTextSize')) g('spinTextSize').value = spinLook.textSize || 'medium';
-        if (g('spinTextFont')) g('spinTextFont').value = spinLook.textFont || 'sans-serif';
+        if (g('spinModalTextY')) { g('spinModalTextY').value = spinLook.text1Y || 18; var yv = g('spinModalTextYVal'); if (yv) yv.textContent = (spinLook.text1Y || 18) + '%'; }
+        if (g('spinModalTextAlign')) g('spinModalTextAlign').value = spinLook.textAlign || 'center';
         if (g('spinTextTiming')) g('spinTextTiming').value = spinLook.textTiming || 'always';
+        spinPopulateDesignPresetsUI();
         g('spinSmooth').disabled = spinLook.speed !== 'slow' && !(spinLook.speed === 'custom' && (spinLook.rates || []).some(function (r) { return r < 1; }));
       }
       function spinLookFromUI(fromPreset) {
@@ -26449,6 +27362,12 @@
         if (g('spinFlash')) spinLook.flash = g('spinFlash').checked;
         spinLook.quality = Number(g('spinQual').value) || 1080; spinLook.overlay = g('spinOverlayOn').checked;
         if (g('spinFrameStyle')) spinLook.frameStyle = g('spinFrameStyle').value || 'floral_gold';
+        var classicCtrl = g('spinClassicControls');
+        if (classicCtrl) classicCtrl.style.display = (spinLook.frameStyle === 'classic_box') ? 'inline-flex' : 'none';
+        if (g('spinClassicBorderColor')) spinLook.classicBorderColor = g('spinClassicBorderColor').value;
+        if (g('spinClassicBandOn')) spinLook.classicBandOn = g('spinClassicBandOn').checked;
+        if (g('spinClassicBandColor')) spinLook.classicBandColor = g('spinClassicBandColor').value;
+        if (g('spinClassicBandAlpha')) spinLook.classicBandAlpha = Number(g('spinClassicBandAlpha').value);
         if (g('spinFx')) spinLook.fx = g('spinFx').value || 'none';
         spinUpdateFxBadge();
         spinLook.audio = g('spinAudio').value;
@@ -26457,11 +27376,18 @@
         if (spinLook.speed !== 'custom') { spinLook.rates = []; spinLook.reverse = false; }
         g('spinPreset').value = spinLook.preset; g('spinAutoShare').disabled = !spinLook.auto;
         if (g('spinText1')) spinLook.text1 = g('spinText1').value;
+        if (g('spinText1Font')) spinLook.text1Font = g('spinText1Font').value;
+        if (g('spinText1Color')) spinLook.text1Color = g('spinText1Color').value;
+        if (g('spinText1Size')) spinLook.text1Size = Number(g('spinText1Size').value);
+
         if (g('spinText2')) spinLook.text2 = g('spinText2').value;
+        if (g('spinText2Font')) spinLook.text2Font = g('spinText2Font').value;
+        if (g('spinText2Color')) spinLook.text2Color = g('spinText2Color').value;
+        if (g('spinText2Size')) spinLook.text2Size = Number(g('spinText2Size').value);
+
         if (g('spinTextPos')) spinLook.textPos = g('spinTextPos').value;
-        if (g('spinTextColor')) spinLook.textColor = g('spinTextColor').value;
-        if (g('spinTextSize')) spinLook.textSize = g('spinTextSize').value;
-        if (g('spinTextFont')) spinLook.textFont = g('spinTextFont').value;
+        if (g('spinModalTextY')) spinLook.text1Y = Number(g('spinModalTextY').value);
+        if (g('spinModalTextAlign')) spinLook.textAlign = g('spinModalTextAlign').value;
         if (g('spinTextTiming')) spinLook.textTiming = g('spinTextTiming').value;
         var hasCaption = Boolean((spinLook.text1 || '').trim() || (spinLook.text2 || '').trim());
         if (g('spinTextOn')) {
@@ -26471,10 +27397,17 @@
         g('spinSmooth').disabled = spinLook.speed !== 'slow' && !(spinLook.speed === 'custom' && (spinLook.rates || []).some(function (r) { return r < 1; }));
         if (typeof spinCur !== 'undefined' && spinCur) {
           if (spinLook.text1 !== undefined) spinCur.text1 = spinLook.text1;
+          if (spinLook.text1Font !== undefined) spinCur.text1Font = spinLook.text1Font;
+          if (spinLook.text1Color !== undefined) spinCur.text1Color = spinLook.text1Color;
+          if (spinLook.text1Size !== undefined) spinCur.text1Size = spinLook.text1Size;
+          if (spinLook.text1X !== undefined) spinCur.text1X = spinLook.text1X;
+          if (spinLook.text1Y !== undefined) spinCur.text1Y = spinLook.text1Y;
           if (spinLook.text2 !== undefined) spinCur.text2 = spinLook.text2;
-          if (spinLook.textColor !== undefined) spinCur.textColor = spinLook.textColor;
-          if (spinLook.textFont !== undefined) spinCur.textFont = spinLook.textFont;
-          if (spinLook.textPos !== undefined) spinCur.textPos = spinLook.textPos;
+          if (spinLook.text2Font !== undefined) spinCur.text2Font = spinLook.text2Font;
+          if (spinLook.text2Color !== undefined) spinCur.text2Color = spinLook.text2Color;
+          if (spinLook.text2Size !== undefined) spinCur.text2Size = spinLook.text2Size;
+          if (spinLook.text2X !== undefined) spinCur.text2X = spinLook.text2X;
+          if (spinLook.text2Y !== undefined) spinCur.text2Y = spinLook.text2Y;
           if (spinLook.frameStyle !== undefined) spinCur.frameStyle = spinLook.frameStyle;
           if (spinCur.edited && typeof spinSwitchToDraftPreview === 'function') spinSwitchToDraftPreview(spinCur);
         }
@@ -26490,82 +27423,154 @@
         return spinLook.orient === 'landscape' ? { W: long, H: q } : { W: q, H: long };
       }
 
+      var spinTextBounds = { line1: null, line2: null };
+      var spinActiveTextLine = 1;
+      var spinTextDrag = null;
+
       function drawSpinExtraText(x, W, H, opt) {
         opt = opt || {};
         var l1 = (opt.text1 !== undefined ? opt.text1 : spinLook.text1) || '';
         var l2 = (opt.text2 !== undefined ? opt.text2 : spinLook.text2) || '';
         l1 = String(l1).trim();
         l2 = String(l2).trim();
-        if (!l1 && !l2) return;
+        if (!l1 && !l2) {
+          if (opt.isInteractive) { spinTextBounds.line1 = null; spinTextBounds.line2 = null; }
+          return;
+        }
         var active = opt.textOn !== undefined ? opt.textOn : (spinLook.textOn || !!(l1 || l2));
         if (!active) return;
 
-        var pos = (opt.textPos || (spinLook && spinLook.textPos) || 'top').toLowerCase();
-        var color = opt.textColor || (spinLook && spinLook.textColor) || '#ffffff';
-        var sizeOpt = (opt.textSize || (spinLook && spinLook.textSize) || 'medium').toLowerCase();
-        var fontOpt = (opt.textFont || (spinLook && spinLook.textFont) || 'sans-serif').toLowerCase();
-        var align = (opt.textAlign || (spinLook && spinLook.textAlign) || 'center').toLowerCase();
-        var customY = (opt.textYPercent != null) ? Number(opt.textYPercent) : (pos === 'custom' && opt.customY != null ? Number(opt.customY) : null);
-
         var fontFamilies = {
-          'sans-serif': 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Color Emoji", sans-serif',
-          'serif': '"Cinzel", "Playfair Display", Georgia, "Times New Roman", "Noto Color Emoji", serif',
-          'cursive': '"Alex Brush", "Pinyon Script", "Great Vibes", "Brush Script MT", "Segoe Script", "Apple Chancery", cursive, "Noto Color Emoji"',
-          'impact': 'Impact, "Arial Black", "Noto Color Emoji", sans-serif'
+          'cursive': '"Alex Brush", "Great Vibes", "Pinyon Script", "Brush Script MT", cursive',
+          'dancing': '"Dancing Script", "Pacifico", "Caveat", cursive',
+          'serif': '"Cinzel", "Playfair Display", "Didot", "Bodoni MT", Georgia, serif',
+          'playfair': '"Playfair Display", "Times New Roman", Georgia, serif',
+          'sans': 'Montserrat, "Segoe UI", system-ui, -apple-system, sans-serif',
+          'impact': '"Bebas Neue", Impact, "Arial Black", sans-serif',
+          'oswald': 'Oswald, "Arial Narrow", sans-serif',
+          'typewriter': '"Courier Prime", "Courier New", monospace'
         };
-        var family = fontFamilies[fontOpt] || fontFamilies['sans-serif'];
 
-        var baseScale = Math.min(W, H);
-        var sizeMultiplier = sizeOpt === 'large' ? 0.075 : (sizeOpt === 'small' ? 0.038 : 0.052);
-        var fontSize = Math.max(16, Math.round(baseScale * sizeMultiplier));
-        var lineHeight = Math.round(fontSize * 1.25);
+        var align = (opt.textAlign || (spinLook && spinLook.textAlign) || 'center').toLowerCase();
+        var baseScale = Math.min(W, H) / 1080;
 
         x.save();
-        x.font = (fontOpt === 'cursive' ? 'italic ' : 'bold ') + fontSize + 'px ' + family;
         x.textAlign = align === 'left' ? 'left' : (align === 'right' ? 'right' : 'center');
         x.textBaseline = 'middle';
 
-        var totalTextH = (l1 && l2) ? lineHeight : 0;
-        var yAnchor;
-        if (customY != null && !isNaN(customY)) {
-          yAnchor = Math.round(H * (customY / 100));
-        } else if (pos === 'top') {
-          yAnchor = Math.round(H * 0.12);
-        } else if (pos === 'upper') {
-          yAnchor = Math.round(H * 0.28);
-        } else if (pos === 'middle' || pos === 'center') {
-          yAnchor = Math.round(H * 0.5) - Math.round(totalTextH / 2);
-        } else if (pos === 'lower') {
-          yAnchor = Math.round(H * 0.72);
-        } else if (pos === 'bottom') {
-          var bandOffset = Math.round(H * 0.15);
-          yAnchor = H - bandOffset - totalTextH - Math.round(H * 0.03);
-        } else {
-          yAnchor = Math.round(H * 0.12);
+        // --- Render Line 1 ---
+        if (l1) {
+          var f1Key = opt.text1Font || spinLook.text1Font || 'cursive';
+          var f1Family = fontFamilies[f1Key] || fontFamilies['cursive'];
+          var s1Pt = Number(opt.text1Size || spinLook.text1Size || 52);
+          var fontSize1 = Math.max(14, Math.round(s1Pt * baseScale));
+          var col1 = opt.text1Color || spinLook.text1Color || '#FFF2A8';
+
+          var x1Pct = opt.text1X != null ? Number(opt.text1X) : (spinLook.text1X != null ? Number(spinLook.text1X) : 50);
+          var y1Pct = opt.text1Y != null ? Number(opt.text1Y) : (opt.textYPercent != null ? Number(opt.textYPercent) : (spinLook.text1Y != null ? Number(spinLook.text1Y) : 18));
+          var posX1 = Math.round(W * (x1Pct / 100));
+          var posY1 = Math.round(H * (y1Pct / 100));
+
+          x.font = (f1Key === 'cursive' || f1Key === 'dancing' ? 'italic 700 ' : '700 ') + fontSize1 + 'px ' + f1Family;
+
+          var m1 = x.measureText(l1);
+          var textW1 = m1.width;
+          var textH1 = fontSize1 * 1.25;
+          var bX1 = align === 'left' ? posX1 : (align === 'right' ? posX1 - textW1 : posX1 - textW1 / 2);
+          var bY1 = posY1 - textH1 / 2;
+          if (opt.isInteractive) {
+            spinTextBounds.line1 = { x: bX1, y: bY1, w: textW1, h: textH1, cx: posX1, cy: posY1 };
+          }
+
+          x.shadowColor = 'transparent';
+          x.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+          x.lineWidth = Math.max(3, Math.round(fontSize1 * 0.12));
+          x.lineJoin = 'round';
+          x.strokeText(l1, posX1, posY1);
+
+          x.shadowColor = 'rgba(0, 0, 0, 0.65)';
+          x.shadowBlur = Math.round(fontSize1 * 0.22);
+          x.shadowOffsetX = Math.round(fontSize1 * 0.04);
+          x.shadowOffsetY = Math.round(fontSize1 * 0.04);
+          x.fillStyle = col1;
+          x.fillText(l1, posX1, posY1);
+
+          if (opt.isInteractive && spinActiveTextLine === 1) {
+            x.save();
+            x.shadowColor = 'transparent';
+            x.strokeStyle = '#D4AF37';
+            x.lineWidth = 2;
+            x.setLineDash([4, 4]);
+            var pad1 = 6;
+            x.strokeRect(bX1 - pad1, bY1 - pad1, textW1 + pad1 * 2, textH1 + pad1 * 2);
+            var hSize1 = Math.max(8, Math.round(14 * baseScale));
+            var hX1 = bX1 + textW1 + pad1 - hSize1;
+            var hY1 = bY1 + textH1 + pad1 - hSize1;
+            x.fillStyle = '#D4AF37';
+            x.setLineDash([]);
+            x.fillRect(hX1, hY1, hSize1, hSize1);
+            x.restore();
+          }
+        } else if (opt.isInteractive) {
+          spinTextBounds.line1 = null;
         }
 
-        var xAnchor = align === 'left' ? Math.round(W * 0.08) : (align === 'right' ? Math.round(W * 0.92) : Math.round(W / 2));
+        // --- Render Line 2 ---
+        if (l2) {
+          var f2Key = opt.text2Font || spinLook.text2Font || 'serif';
+          var f2Family = fontFamilies[f2Key] || fontFamilies['serif'];
+          var s2Pt = Number(opt.text2Size || spinLook.text2Size || 26);
+          var fontSize2 = Math.max(12, Math.round(s2Pt * baseScale));
+          var col2 = opt.text2Color || spinLook.text2Color || '#FFFFFF';
 
-        var lines = [];
-        if (l1) lines.push(l1);
-        if (l2) lines.push(l2);
+          var x2Pct = opt.text2X != null ? Number(opt.text2X) : (spinLook.text2X != null ? Number(spinLook.text2X) : 50);
+          var y2Pct = opt.text2Y != null ? Number(opt.text2Y) : (opt.textYPercent != null ? Number(opt.textYPercent) + 8 : (spinLook.text2Y != null ? Number(spinLook.text2Y) : 26));
+          var posX2 = Math.round(W * (x2Pct / 100));
+          var posY2 = Math.round(H * (y2Pct / 100));
 
-        lines.forEach(function (line, idx) {
-          var curY = yAnchor + idx * lineHeight;
+          x.font = (f2Key === 'cursive' || f2Key === 'dancing' ? 'italic 600 ' : (f2Key === 'serif' ? '600 ' : '700 ')) + fontSize2 + 'px ' + f2Family;
+
+          var m2 = x.measureText(l2);
+          var textW2 = m2.width;
+          var textH2 = fontSize2 * 1.25;
+          var bX2 = align === 'left' ? posX2 : (align === 'right' ? posX2 - textW2 : posX2 - textW2 / 2);
+          var bY2 = posY2 - textH2 / 2;
+          if (opt.isInteractive) {
+            spinTextBounds.line2 = { x: bX2, y: bY2, w: textW2, h: textH2, cx: posX2, cy: posY2 };
+          }
+
           x.shadowColor = 'transparent';
-          x.strokeStyle = 'rgba(0, 0, 0, 0.9)';
-          x.lineWidth = Math.max(3, Math.round(fontSize * 0.12));
+          x.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+          x.lineWidth = Math.max(2.5, Math.round(fontSize2 * 0.12));
           x.lineJoin = 'round';
-          x.strokeText(line, xAnchor, curY);
+          x.strokeText(l2, posX2, posY2);
 
-          x.shadowColor = 'rgba(0, 0, 0, 0.7)';
-          x.shadowBlur = Math.round(fontSize * 0.2);
-          x.shadowOffsetX = Math.round(fontSize * 0.04);
-          x.shadowOffsetY = Math.round(fontSize * 0.04);
+          x.shadowColor = 'rgba(0, 0, 0, 0.65)';
+          x.shadowBlur = Math.round(fontSize2 * 0.22);
+          x.shadowOffsetX = Math.round(fontSize2 * 0.04);
+          x.shadowOffsetY = Math.round(fontSize2 * 0.04);
+          x.fillStyle = col2;
+          x.fillText(l2, posX2, posY2);
 
-          x.fillStyle = color;
-          x.fillText(line, xAnchor, curY);
-        });
+          if (opt.isInteractive && spinActiveTextLine === 2) {
+            x.save();
+            x.shadowColor = 'transparent';
+            x.strokeStyle = '#00F0FF';
+            x.lineWidth = 2;
+            x.setLineDash([4, 4]);
+            var pad2 = 6;
+            x.strokeRect(bX2 - pad2, bY2 - pad2, textW2 + pad2 * 2, textH2 + pad2 * 2);
+            var hSize2 = Math.max(8, Math.round(14 * baseScale));
+            var hX2 = bX2 + textW2 + pad2 - hSize2;
+            var hY2 = bY2 + textH2 + pad2 - hSize2;
+            x.fillStyle = '#00F0FF';
+            x.setLineDash([]);
+            x.fillRect(hX2, hY2, hSize2, hSize2);
+            x.restore();
+          }
+        } else if (opt.isInteractive) {
+          spinTextBounds.line2 = null;
+        }
 
         x.restore();
       }
@@ -26807,7 +27812,7 @@
         var labelVal = (typeof labelInput !== 'undefined' && labelInput && labelInput.value) ? labelInput.value : '';
         var t1 = (opt.text1 != null && String(opt.text1).trim() !== '') ? String(opt.text1).trim() : (labelVal || '').trim();
         var t2 = (opt.text2 != null && String(opt.text2).trim() !== '') ? String(opt.text2).trim() : '';
-        if (!t1 && !t2 && (!opt.textOn)) {
+        if (!t1 && !t2 && (!opt.textOn) && opt.drawTextInFrame === true) {
           t1 = 'Yustina & George';
           var now = new Date();
           t2 = String(now.getMonth() + 1).padStart(2, '0') + '.' + String(now.getDate()).padStart(2, '0') + '.' + now.getFullYear();
@@ -26851,7 +27856,7 @@
           ctx.restore();
         }
 
-        if (t2) {
+        if (opt.drawTextInFrame !== false && t2) {
           ctx.save();
           var serifFont = '"Cinzel", "Playfair Display", "Didot", "Bodoni MT", Georgia, serif';
           var dateSize = Math.max(14, Math.round(minDim * 0.030));
@@ -27012,29 +28017,58 @@
         ctx.restore();
       }
 
-      // The booth's own frame, stickers, logo and title, on a transparent picture the size of the video.
+      function drawClassicBoxFrame(ctx, W, H, opt) {
+        opt = opt || {};
+        var minDim = Math.min(W, H);
+        var margin = Math.round(minDim * 0.035);
+        var bColor = opt.classicBorderColor || (spinLook && spinLook.classicBorderColor) || '#ffffff';
+        var bWidth = Math.max(2, Math.round(minDim * 0.005));
+
+        ctx.save();
+        ctx.strokeStyle = bColor;
+        ctx.lineWidth = bWidth;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+        ctx.shadowBlur = Math.round(minDim * 0.01);
+        ctx.strokeRect(margin, margin, W - margin * 2, H - margin * 2);
+
+        var bandOn = opt.classicBandOn !== undefined ? opt.classicBandOn : ((spinLook && spinLook.classicBandOn) !== undefined ? spinLook.classicBandOn : true);
+        if (bandOn) {
+          var bandH = Math.round(H * 0.125);
+          var bandColor = opt.classicBandColor || (spinLook && spinLook.classicBandColor) || '#1C1A1E';
+          var rawAlpha = opt.classicBandAlpha !== undefined ? Number(opt.classicBandAlpha) : ((spinLook && spinLook.classicBandAlpha) !== undefined ? Number(spinLook.classicBandAlpha) : 85);
+          var alpha = rawAlpha > 1 ? rawAlpha / 100 : rawAlpha;
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, Math.min(1, isNaN(alpha) ? 0.85 : alpha));
+          ctx.fillStyle = bandColor;
+          ctx.fillRect(margin, H - margin - bandH, W - margin * 2, bandH);
+          ctx.restore();
+
+          ctx.beginPath();
+          ctx.moveTo(margin, H - margin - bandH);
+          ctx.lineTo(W - margin, H - margin - bandH);
+          ctx.strokeStyle = bColor;
+          ctx.lineWidth = Math.max(1, Math.round(bWidth * 0.6));
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // The booth's own frame, logo and title, on a transparent picture the size of the video (stickers removed for 360).
       function spinMakeOverlay(W, H, opt) {
         var c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d');
         var style = (opt && opt.frameStyle) || (spinLook && spinLook.frameStyle) || 'floral_gold';
+        var frameOpt = Object.assign({}, opt, { drawTextInFrame: false });
         if (style === 'custom' && ((opt && opt.customImage) || spinModalCustomImage)) {
           var img = (opt && opt.customImage) || spinModalCustomImage;
           try { x.drawImage(img, 0, 0, W, H); } catch (e) { }
-          try { if (typeof decor !== 'undefined' && decor && decor.length) drawDecorLayer(x, W, H); } catch (e) { }
         } else if (style === 'floral_gold') {
-          try { drawWeddingFloralFrame(x, W, H, opt); } catch (e) { }
-          try { if (typeof decor !== 'undefined' && decor && decor.length) drawDecorLayer(x, W, H); } catch (e) { }
+          try { drawWeddingFloralFrame(x, W, H, frameOpt); } catch (e) { }
         } else if (style === 'gilded_art_deco') {
-          try { drawArtDecoGalaFrame(x, W, H, opt); } catch (e) { }
-          try { if (typeof decor !== 'undefined' && decor && decor.length) drawDecorLayer(x, W, H); } catch (e) { }
+          try { drawArtDecoGalaFrame(x, W, H, frameOpt); } catch (e) { }
         } else if (style === 'neon_cyberpunk') {
-          try { drawNeonCyberpunkFrame(x, W, H, opt); } catch (e) { }
-          try { if (typeof decor !== 'undefined' && decor && decor.length) drawDecorLayer(x, W, H); } catch (e) { }
+          try { drawNeonCyberpunkFrame(x, W, H, frameOpt); } catch (e) { }
         } else if (style === 'classic_box') {
-          try { drawDecorLayer(x, W, H); } catch (e) { }
-          try { var bandH = Math.round(H * 0.13); drawLabelBand(x, W, H - bandH, bandH, labelInput.value, 0); } catch (e) { }
-        } else {
-          // 'none'
-          try { drawDecorLayer(x, W, H); } catch (e) { }
+          try { drawClassicBoxFrame(x, W, H, opt); } catch (e) { }
         }
         return new Promise(function (r) { c.toBlob(r, 'image/png'); });
       }
@@ -27161,6 +28195,7 @@
         document.getElementById('spinMusicName').textContent = spinEnv.music ? spinEnv.music : 'no music chosen';
         await spinLoadFx();
         spinLookToUI();
+        spinPopulateDesignPresetsUI();
         if (!spinTimer) spinTimer = setInterval(spinPoll, 2500);
         spinPoll();
       }
@@ -28042,11 +29077,23 @@
           textYPercent: textY,
           textAlign: textAlign,
           textFont: textFont,
-          textColor: textColor
+          textColor: textColor,
+          text1Font: spinLook.text1Font || textFont,
+          text1Color: spinLook.text1Color || textColor,
+          text1Size: spinLook.text1Size || 52,
+          text1X: spinLook.text1X != null ? spinLook.text1X : 50,
+          text1Y: spinLook.text1Y != null ? spinLook.text1Y : textY,
+          text2Font: spinLook.text2Font || 'serif',
+          text2Color: spinLook.text2Color || textColor,
+          text2Size: spinLook.text2Size || 26,
+          text2X: spinLook.text2X != null ? spinLook.text2X : 50,
+          text2Y: spinLook.text2Y != null ? spinLook.text2Y : Math.min(95, textY + 8),
+          classicBorderColor: spinLook.classicBorderColor || '#ffffff',
+          classicBandOn: spinLook.classicBandOn !== undefined ? spinLook.classicBandOn : true,
+          classicBandColor: spinLook.classicBandColor || '#1C1A1E',
+          classicBandAlpha: spinLook.classicBandAlpha !== undefined ? spinLook.classicBandAlpha : 85,
+          isInteractive: true
         };
-
-        var isDesignerFrame = (frameStyle === 'floral_gold' || frameStyle === 'gilded_art_deco' || frameStyle === 'neon_cyberpunk');
-        var needsExtraText = textOpt.textOn && (textOpt.text1 || textOpt.text2) && (!isDesignerFrame || textOpt.textPos !== 'top' || frameStyle === 'custom');
 
         var overlayCheck = document.getElementById('spinOverlayOn');
         var showOverlay = overlayCheck ? overlayCheck.checked : true;
@@ -28056,17 +29103,17 @@
             var cImg = (it && it.customFrameImage) || spinModalCustomImage;
             try { ctx.drawImage(cImg, 0, 0, vw, vh); } catch (e) { }
           } else if (frameStyle === 'floral_gold') {
-            try { drawWeddingFloralFrame(ctx, vw, vh, Object.assign({}, textOpt, { drawTextInFrame: !needsExtraText })); } catch (e) { }
+            try { drawWeddingFloralFrame(ctx, vw, vh, Object.assign({}, textOpt, { drawTextInFrame: false })); } catch (e) { }
           } else if (frameStyle === 'gilded_art_deco') {
-            try { drawArtDecoGalaFrame(ctx, vw, vh, Object.assign({}, textOpt, { drawTextInFrame: !needsExtraText })); } catch (e) { }
+            try { drawArtDecoGalaFrame(ctx, vw, vh, Object.assign({}, textOpt, { drawTextInFrame: false })); } catch (e) { }
           } else if (frameStyle === 'neon_cyberpunk') {
-            try { drawNeonCyberpunkFrame(ctx, vw, vh, Object.assign({}, textOpt, { drawTextInFrame: !needsExtraText })); } catch (e) { }
+            try { drawNeonCyberpunkFrame(ctx, vw, vh, Object.assign({}, textOpt, { drawTextInFrame: false })); } catch (e) { }
           } else if (frameStyle === 'classic_box') {
-            try { var bandH = Math.round(vh * 0.13); drawLabelBand(ctx, vw, vh - bandH, bandH, (typeof labelInput !== 'undefined' && labelInput ? labelInput.value : ''), 0); } catch (e) { }
+            try { drawClassicBoxFrame(ctx, vw, vh, textOpt); } catch (e) { }
           }
         }
 
-        if (needsExtraText) {
+        if (textOpt.textOn) {
           try { drawSpinExtraText(ctx, vw, vh, textOpt); } catch (e) { }
         }
 
@@ -28082,7 +29129,7 @@
         var curFUrl = getCachedFolderUrl();
         if (LOCALSHARE && curFUrl && !it.url) it.url = localShareUrl(curFUrl, it.targetFname) || '';
         var dims = spinDims();
-        it.status = 'editing'; it.pct = 0; it.err = ''; it.viewOrig = false; spinTagUpdate(it); spinModalUpdate();
+        it.status = 'editing'; it.pct = 0; it.err = ''; it.viewOrig = false; it.isDrafting = false; spinTagUpdate(it); spinModalUpdate();
         try {
           var ov = null, txtOv = null;
           var effectiveT1 = (it.text1 != null && String(it.text1).trim() !== '') ? String(it.text1).trim() : (spinLook.text1 || '').trim();
@@ -28099,18 +29146,30 @@
             textColor: it.textColor || spinLook.textColor || '#ffffff',
             textSize: it.textSize || spinLook.textSize || 'medium',
             textFont: it.textFont || spinLook.textFont || 'sans-serif',
+            text1Font: spinLook.text1Font || spinLook.textFont || 'cursive',
+            text1Color: spinLook.text1Color || spinLook.textColor || '#FFF2A8',
+            text1Size: spinLook.text1Size || 52,
+            text1X: spinLook.text1X != null ? spinLook.text1X : 50,
+            text1Y: spinLook.text1Y != null ? spinLook.text1Y : (spinLook.textYPercent || 18),
+            text2Font: spinLook.text2Font || 'serif',
+            text2Color: spinLook.text2Color || spinLook.textColor || '#FFFFFF',
+            text2Size: spinLook.text2Size || 26,
+            text2X: spinLook.text2X != null ? spinLook.text2X : 50,
+            text2Y: spinLook.text2Y != null ? spinLook.text2Y : Math.min(95, (spinLook.textYPercent || 18) + 8),
+            classicBorderColor: spinLook.classicBorderColor || '#ffffff',
+            classicBandOn: spinLook.classicBandOn !== undefined ? spinLook.classicBandOn : true,
+            classicBandColor: spinLook.classicBandColor || '#1C1A1E',
+            classicBandAlpha: spinLook.classicBandAlpha !== undefined ? spinLook.classicBandAlpha : 85,
             textTiming: it.textTiming || spinLook.textTiming || 'always',
             frameStyle: effectiveFrameStyle,
             customImage: it.customFrameImage || spinModalCustomImage
           };
-          var isDesignerFrame = (effectiveFrameStyle === 'floral_gold' || effectiveFrameStyle === 'gilded_art_deco' || effectiveFrameStyle === 'neon_cyberpunk' || effectiveFrameStyle === 'custom');
-          var needsSeparateText = textOpt.textOn && (textOpt.text1 || textOpt.text2) && (!isDesignerFrame || textOpt.textTiming === 'fade' || textOpt.textPos !== 'top' || effectiveFrameStyle === 'custom');
           if (spinLook.overlay && effectiveFrameStyle !== 'none') {
-            var overlayOpt = Object.assign({}, textOpt, { drawTextInFrame: !needsSeparateText });
+            var overlayOpt = Object.assign({}, textOpt, { drawTextInFrame: false });
             var blob = await spinMakeOverlay(dims.W, dims.H, overlayOpt);
             if (blob) ov = await window.pb4u.spinOverlay(new Uint8Array(await blob.arrayBuffer()));
           }
-          if (needsSeparateText) {
+          if (textOpt.textOn && (textOpt.text1 || textOpt.text2)) {
             var txtBlob = await spinMakeTextOverlay(dims.W, dims.H, textOpt);
             if (txtBlob) txtOv = await window.pb4u.spinOverlay(new Uint8Array(await txtBlob.arrayBuffer()));
           }
@@ -28148,6 +29207,10 @@
         var vb = document.getElementById('spinViewBtn');
         var rm = document.getElementById('spinRemove');
         var badge = document.getElementById('spinCurClipBadge');
+        var lockBanner = document.getElementById('spinEditLockBanner');
+        var lockTxt = document.getElementById('spinLockStatusText');
+        var controlsCol = document.getElementById('spinControlsCol');
+
         if (!it) {
           if (box) box.innerHTML = '';
           if (msg) msg.textContent = 'Previewing live with sample turntable stage. Choose or record a 360 clip to process and share.';
@@ -28155,9 +29218,22 @@
           if (eb) eb.disabled = true;
           if (vb) vb.hidden = true;
           if (rm) rm.disabled = true;
+          if (lockBanner) lockBanner.hidden = true;
+          if (controlsCol) controlsCol.classList.remove('spin-locked-controls');
           if (badge) { badge.textContent = 'Sample Demo'; badge.classList.remove('active'); }
           renderSpinModalPreview();
           return;
+        }
+
+        var isLocked = it && (it.status === 'editing' || (it.edited && !it.isDrafting));
+        if (lockBanner) lockBanner.hidden = !isLocked;
+        if (controlsCol) controlsCol.classList.toggle('spin-locked-controls', !!isLocked);
+        if (lockTxt && it) {
+          if (it.status === 'editing') {
+            lockTxt.textContent = 'Processing clip (' + (it.pct || 0) + '%). Editing options locked during render.';
+          } else if (it.edited) {
+            lockTxt.textContent = 'Video processed with saved look. Editing options locked. Click Unlock below to edit or restyle.';
+          }
         }
         if (badge) { badge.textContent = it.name || 'Active clip'; badge.classList.add('active'); }
         if (eb) eb.disabled = false;
@@ -28742,20 +29818,217 @@
         }
       });
 
+      // Presets & Unlock controls
+      var presetSel = document.getElementById('spinDesignPresetSelect');
+      if (presetSel) {
+        presetSel.addEventListener('change', function () {
+          spinApplyDesignPreset(this.value);
+        });
+      }
+      var savePresetBtn = document.getElementById('spinSavePresetBtn');
+      if (savePresetBtn) {
+        savePresetBtn.addEventListener('click', function () {
+          spinSaveCustomPreset();
+        });
+      }
+      var deletePresetBtn = document.getElementById('spinDeletePresetBtn');
+      if (deletePresetBtn) {
+        deletePresetBtn.addEventListener('click', function () {
+          spinDeleteCustomPreset();
+        });
+      }
+      var unlockEditBtn = document.getElementById('spinUnlockEditBtn');
+      if (unlockEditBtn) {
+        unlockEditBtn.addEventListener('click', function () {
+          if (spinCur) {
+            spinCur.isDrafting = true;
+            spinCur.viewOrig = true;
+            var v = document.getElementById('spinVideo');
+            if (v) {
+              var src = spinSrc(spinCur, false);
+              if (src) { v.src = src; v.load(); v.play().catch(function () { }); }
+            }
+            spinModalUpdate();
+            showToast('Editing unlocked! Make adjustments and click Process again.', 2500);
+          }
+        });
+      }
+
       // the look controls
       document.getElementById('spinPreset').addEventListener('change', function () {
         var pr = SPIN_PRESETS[this.value];
         if (pr) { spinLook.preset = this.value; spinLook.speed = pr.speed; spinLook.rates = (pr.rates || []).slice(); spinLook.reverse = !!pr.reverse; spinLook.smooth = pr.smooth; spinLook.audio = pr.audio; spinLook.overlay = pr.overlay; spinLookToUI(); spinLookFromUI(true); }
         else { spinLook.preset = 'custom'; spinLookFromUI(true); }
       });
-      ['spinSpeed', 'spinSmooth', 'spinGpu', 'spinZoom', 'spinFlash', 'spinOrient', 'spinQual', 'spinFx', 'spinOverlayOn', 'spinFrameStyle', 'spinAudio', 'spinVol', 'spinAuto', 'spinAutoShare', 'spinTextOn', 'spinText1', 'spinText2', 'spinTextPos', 'spinTextColor', 'spinTextSize', 'spinTextFont', 'spinTextTiming'].forEach(function (id) {
+      ['spinSpeed', 'spinSmooth', 'spinGpu', 'spinZoom', 'spinFlash', 'spinOrient', 'spinQual', 'spinFx', 'spinOverlayOn', 'spinFrameStyle', 'spinAudio', 'spinVol', 'spinAuto', 'spinAutoShare', 'spinTextOn', 'spinText1', 'spinText2', 'spinTextPos', 'spinTextColor', 'spinTextSize', 'spinTextFont', 'spinTextTiming',
+       'spinText1Font', 'spinText1Color', 'spinText1Size', 'spinText2Font', 'spinText2Color', 'spinText2Size',
+       'spinClassicBorderColor', 'spinClassicBandOn', 'spinClassicBandColor', 'spinClassicBandAlpha'].forEach(function (id) {
         var el = document.getElementById(id);
-        if (el) el.addEventListener('change', function () { spinLookFromUI(id === 'spinAuto' || id === 'spinAutoShare' || id === 'spinVol' || id === 'spinOrient' || id === 'spinQual' || id === 'spinFx' || id === 'spinGpu' || id === 'spinZoom' || id === 'spinFlash' || id === 'spinFrameStyle' || id.startsWith('spinText') ? true : false); });
+        if (el) el.addEventListener('change', function () {
+          spinLookFromUI(true);
+        });
       });
-      ['spinText1', 'spinText2', 'spinTextColor', 'spinModalTextColor'].forEach(function (id) {
+      ['spinText1', 'spinText2', 'spinTextColor', 'spinModalTextColor', 'spinText1Color', 'spinText1Size', 'spinText2Color', 'spinText2Size', 'spinClassicBorderColor', 'spinClassicBandColor', 'spinClassicBandAlpha'].forEach(function (id) {
         var el = document.getElementById(id);
-        if (el) el.addEventListener('input', function () { spinLookFromUI(true); });
+        if (el) el.addEventListener('input', function () {
+          spinLookFromUI(true);
+        });
       });
+
+      // ---- Canvas Drag-to-Position and Corner-Resize for 360 Text ----
+      (function () {
+        var cvs = document.getElementById('spinPreviewCanvas');
+        if (!cvs) return;
+        var dragMode = null; // 'move' | 'resize' | null
+        var dragOffsetX = 0, dragOffsetY = 0;
+        var resizeStartPx = 0, resizeStartPy = 0;
+        var initialSize = 52;
+
+        function getCoords(e) {
+          var rect = cvs.getBoundingClientRect();
+          if (!rect.width || !rect.height) return null;
+          var scaleX = cvs.width / rect.width;
+          var scaleY = cvs.height / rect.height;
+          return {
+            px: (e.clientX - rect.left) * scaleX,
+            py: (e.clientY - rect.top) * scaleY,
+            baseScale: Math.min(cvs.width, cvs.height) / 1080
+          };
+        }
+
+        function hitHandle(lineNum, px, py, baseScale) {
+          var b = spinTextBounds['line' + lineNum];
+          if (!b) return false;
+          var pad = 6;
+          var hSize = Math.max(14, Math.round(20 * baseScale));
+          var hX = b.x + b.w + pad - hSize;
+          var hY = b.y + b.h + pad - hSize;
+          return px >= hX - 6 && px <= hX + hSize + 6 && py >= hY - 6 && py <= hY + hSize + 6;
+        }
+
+        function hitBox(lineNum, px, py) {
+          var b = spinTextBounds['line' + lineNum];
+          if (!b) return false;
+          var pad = 12;
+          return px >= b.x - pad && px <= b.x + b.w + pad && py >= b.y - pad && py <= b.y + b.h + pad;
+        }
+
+        cvs.addEventListener('pointerdown', function (e) {
+          var pos = getCoords(e);
+          if (!pos) return;
+          var px = pos.px, py = pos.py, baseScale = pos.baseScale;
+
+          // Check handle hit first if a line is active
+          if (spinActiveTextLine && hitHandle(spinActiveTextLine, px, py, baseScale)) {
+            dragMode = 'resize';
+            resizeStartPx = px;
+            resizeStartPy = py;
+            initialSize = Number(spinLook['text' + spinActiveTextLine + 'Size'] || (spinActiveTextLine === 1 ? 52 : 26));
+            try { cvs.setPointerCapture(e.pointerId); } catch (err) { }
+            e.preventDefault();
+            return;
+          }
+
+          // Check text line boxes
+          if (hitBox(1, px, py)) {
+            spinActiveTextLine = 1;
+            dragMode = 'move';
+            var b1 = spinTextBounds.line1;
+            dragOffsetX = px - (b1 ? b1.cx : px);
+            dragOffsetY = py - (b1 ? b1.cy : py);
+            try { cvs.setPointerCapture(e.pointerId); } catch (err) { }
+            renderSpinModalPreview();
+            e.preventDefault();
+            return;
+          }
+
+          if (hitBox(2, px, py)) {
+            spinActiveTextLine = 2;
+            dragMode = 'move';
+            var b2 = spinTextBounds.line2;
+            dragOffsetX = px - (b2 ? b2.cx : px);
+            dragOffsetY = py - (b2 ? b2.cy : py);
+            try { cvs.setPointerCapture(e.pointerId); } catch (err) { }
+            renderSpinModalPreview();
+            e.preventDefault();
+            return;
+          }
+
+          if (spinActiveTextLine !== 0) {
+            spinActiveTextLine = 0;
+            renderSpinModalPreview();
+          }
+        });
+
+        cvs.addEventListener('pointermove', function (e) {
+          var pos = getCoords(e);
+          if (!pos) return;
+          var px = pos.px, py = pos.py, baseScale = pos.baseScale;
+
+          if (dragMode === 'move' && spinActiveTextLine) {
+            var newCx = px - dragOffsetX;
+            var newCy = py - dragOffsetY;
+            var newXPct = Math.round(Math.max(5, Math.min(95, (newCx / cvs.width) * 100)));
+            var newYPct = Math.round(Math.max(5, Math.min(95, (newCy / cvs.height) * 100)));
+
+            spinLook['text' + spinActiveTextLine + 'X'] = newXPct;
+            spinLook['text' + spinActiveTextLine + 'Y'] = newYPct;
+
+            var inY = document.getElementById('spinModalTextY');
+            if (inY && spinActiveTextLine === 1) {
+              inY.value = newYPct;
+              var lblY = document.getElementById('spinModalTextYVal');
+              if (lblY) lblY.textContent = newYPct + '%';
+            }
+            var posLabel = document.getElementById('spinText' + spinActiveTextLine + 'PosLabel');
+            if (posLabel) posLabel.textContent = 'X: ' + newXPct + '% · Y: ' + newYPct + '%';
+
+            var posSel = document.getElementById('spinTextPos');
+            if (posSel) posSel.value = 'custom';
+
+            if (spinCur && spinCur.edited) spinSwitchToDraftPreview(spinCur);
+            renderSpinModalPreview();
+            e.preventDefault();
+          } else if (dragMode === 'resize' && spinActiveTextLine) {
+            var delta = ((px - resizeStartPx) + (py - resizeStartPy)) * 0.5 / baseScale;
+            var minS = spinActiveTextLine === 1 ? 16 : 12;
+            var maxS = spinActiveTextLine === 1 ? 120 : 90;
+            var newSize = Math.round(Math.max(minS, Math.min(maxS, initialSize + delta * 0.35)));
+
+            spinLook['text' + spinActiveTextLine + 'Size'] = newSize;
+
+            var sizeSlider = document.getElementById('spinText' + spinActiveTextLine + 'Size');
+            if (sizeSlider) sizeSlider.value = newSize;
+            var sizeVal = document.getElementById('spinText' + spinActiveTextLine + 'SizeVal');
+            if (sizeVal) sizeVal.textContent = newSize;
+
+            if (spinCur && spinCur.edited) spinSwitchToDraftPreview(spinCur);
+            renderSpinModalPreview();
+            e.preventDefault();
+          } else {
+            // Update hover cursor
+            if (spinActiveTextLine && hitHandle(spinActiveTextLine, px, py, baseScale)) {
+              cvs.style.cursor = 'nwse-resize';
+            } else if (hitBox(1, px, py) || hitBox(2, px, py)) {
+              cvs.style.cursor = 'move';
+            } else {
+              cvs.style.cursor = 'default';
+            }
+          }
+        });
+
+        function endDrag(e) {
+          if (dragMode) {
+            try { cvs.releasePointerCapture(e.pointerId); } catch (err) { }
+            dragMode = null;
+            cvs.style.cursor = 'default';
+            spinLookFromUI(true);
+          }
+        }
+
+        cvs.addEventListener('pointerup', endDrag);
+        cvs.addEventListener('pointercancel', endDrag);
+      })();
       document.getElementById('spinMusicBtn').addEventListener('click', async function () {
         try { var r = await window.pb4u.spinMusic(false); if (r) { spinEnv.music = r.music; document.getElementById('spinMusicName').textContent = r.music || 'no music chosen'; } } catch (e) { }
       });
@@ -29738,7 +31011,11 @@
       var guestLayoutsEl = document.getElementById('guestLayouts');
       var guestPickHint = document.getElementById('guestPickHint');
       // The renter's main layout as a card key ("frame:<id>" for one of their frames).
-      function mainLayoutKey() { return setupLayout === 'myframe' && activeFrameId ? 'frame:' + activeFrameId : setupLayout; }
+      function mainLayoutKey() {
+        if (setupLayout === 'myframe' && activeFrameId) return 'frame:' + activeFrameId;
+        if (setupLayout === 'framesheet' && typeof sheetPresets !== 'undefined' && sheetPresets.length > 1 && activeSheetPresetId) return 'sheet:' + activeSheetPresetId;
+        return setupLayout;
+      }
       function isGuestKey(k) {
         if (k === mainLayoutKey()) return true;
         if (/^frame:/.test(k)) return chooseIds.indexOf(k.slice(6)) >= 0;
@@ -29767,7 +31044,9 @@
         if (!guestPickOn) {
           var selName = (setupLayout === 'myframe' && activeFrameId)
             ? (function () { var f = (myFrames || []).find(function (fr) { return fr.id === activeFrameId; }); return f ? 'Frame ' + ((myFrames.indexOf(f)) + 1) : 'Your frame'; })()
-            : (LAYOUT_DEFS[setupLayout] ? LAYOUT_DEFS[setupLayout].name : setupLayout);
+            : (setupLayout === 'framesheet' && typeof presetById === 'function' && activeSheetPresetId && presetById(activeSheetPresetId))
+              ? presetById(activeSheetPresetId).name
+              : (LAYOUT_DEFS[setupLayout] ? LAYOUT_DEFS[setupLayout].name : setupLayout);
           guestPickHint.innerHTML = '<b>Single layout locked (' + selName + ')</b>. Guests start directly with this layout without a choice screen. Turn on <b>Let guests choose layout</b> to offer multiple options.';
           return;
         }
@@ -29784,10 +31063,17 @@
         if (!guestPickOn) return [mainLayoutKey()];
         var main = mainLayoutKey(), keys = [];
         (myFrames || []).forEach(function (f) { var k = 'frame:' + f.id; if (k === main || chooseIds.indexOf(f.id) >= 0) keys.push(k); });
-        LAYOUT_ORDER.concat(['framesheet']).forEach(function (k) {
-          if (!LAYOUT_DEFS[k] || (k === 'framesheet' && !(myFrames && myFrames.length))) return;
-          if (k === main || guestLayoutSet.indexOf(k) >= 0) keys.push(k);
-        });
+        if (typeof sheetPresets !== 'undefined' && sheetPresets.length > 1) {
+          sheetPresets.forEach(function (p) {
+            var k = 'sheet:' + p.id;
+            if (k === main || guestLayoutSet.indexOf(k) >= 0) keys.push(k);
+          });
+        } else {
+          LAYOUT_ORDER.concat(['framesheet']).forEach(function (k) {
+            if (!LAYOUT_DEFS[k] || (k === 'framesheet' && !(myFrames && myFrames.length))) return;
+            if (k === main || guestLayoutSet.indexOf(k) >= 0) keys.push(k);
+          });
+        }
         if (typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && sessionTier) {
           if (sessionTier === 'receipt') {
             var rKeys = keys.filter(function (k) {
@@ -32786,6 +34072,7 @@
           attractPosterUrl: attractPosterUrl && !attractPosterId ? attractPosterUrl : '',
           accent: accent, overlay: overlay ? Object.assign({}, overlay) : null, logo: logo ? Object.assign({}, logo) : null,
           decor: decor.map(function (d) { return { src: d.src, x: Math.round(d.x * 1000) / 1000, y: Math.round(d.y * 1000) / 1000, s: Math.round(d.s * 1000) / 1000, r: Math.round(d.r || 0) }; }),
+          guestStickersOn: !!guestStickersOn,
           myProps: myProps.slice(),
           frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet, sfDone: startFrameDone,
           frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
@@ -33081,6 +34368,9 @@
           logo = s.logo && assetOk(s.logo.id) ? { id: s.logo.id, pos: LOGO_POS[s.logo.pos] ? s.logo.pos : 'br', size: Math.max(0.05, Math.min(0.5, Number(s.logo.size) || 0.2)) } : null;
           decor = Array.isArray(s.decor) ? s.decor.filter(function (d) { return d && typeof d.src === 'string' && (/^b:[a-z-]+$/.test(d.src) ? !!STICKER_NAMES[d.src.slice(2)] : assetOk(d.src.slice(2))); }).slice(0, 30)
             .map(function (d) { return { src: d.src, x: +d.x || 0.5, y: +d.y || 0.5, s: Math.max(0.02, Math.min(1, +d.s || 0.2)), r: +d.r || 0 }; }) : [];
+          guestStickersOn = !!s.guestStickersOn;
+          var gsTog = document.getElementById('guestStickersToggle');
+          if (gsTog) gsTog.checked = guestStickersOn;
           myProps = Array.isArray(s.myProps) ? s.myProps.filter(assetOk).slice(0, 60) : [];
           selDecor = -1;
           titleStyle = TITLE_STYLES.some(function (x) { return x[0] === s.titleStyle; }) ? s.titleStyle : 'classic';
@@ -33777,6 +35067,22 @@
           else if (b.img) ctx.drawImage(b.img, -b.w / 2, -b.h / 2, b.w, b.h);
           ctx.restore();
         });
+        if (Array.isArray(guestDecor)) {
+          guestDecor.forEach(function (d) {
+            var b = decorBox(d, W, H);
+            ctx.save(); ctx.translate(b.cx, b.cy); ctx.rotate((d.r || 0) * Math.PI / 180);
+            if (d.src.indexOf('b:') === 0) drawSticker(ctx, d.src.slice(2), b.w);
+            else if (b.img) ctx.drawImage(b.img, -b.w / 2, -b.h / 2, b.w, b.h);
+            ctx.restore();
+          });
+        }
+        if (ctx.canvas === previewCanvas && typeof sess !== 'undefined' && sess && sess.decorating && guestDecor[selGuestDecor]) {
+          var sd = guestDecor[selGuestDecor], sb = decorBox(sd, W, H);
+          ctx.save(); ctx.translate(sb.cx, sb.cy); ctx.rotate((sd.r || 0) * Math.PI / 180);
+          ctx.setLineDash([Math.max(4, W * 0.012), Math.max(3, W * 0.008)]); ctx.lineWidth = Math.max(2, W * 0.005);
+          ctx.strokeStyle = '#C93D27'; ctx.strokeRect(-sb.w / 2 - 4, -sb.h / 2 - 4, sb.w + 8, sb.h + 8);
+          ctx.restore();
+        }
         if (logo) {
           var li = assetImg(logo.id);
           if (li) {
@@ -36318,6 +37624,13 @@
         var all = propTray.classList.toggle('all');
         propMoreBtn.textContent = all ? 'Fewer stickers' : 'More stickers';
       });
+      var guestStickersToggle = document.getElementById('guestStickersToggle');
+      if (guestStickersToggle) {
+        guestStickersToggle.addEventListener('change', function () {
+          guestStickersOn = this.checked;
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
 
       // ---- Step 5: printing summary, guest Print button, auto-print, copies, wording ----
       function refreshPrintSummary() {
@@ -36333,6 +37646,8 @@
         ps.style.display = limTxt.length ? '' : 'none';
         document.getElementById('ppGuestBtn').checked = printPrefs.guestBtn;
         document.getElementById('ppAuto').checked = autoPrint;
+        var ppPf = document.getElementById('ppPrintFirst');
+        if (ppPf) ppPf.checked = !!printPrefs.printFirst;
         document.getElementById('ppGuestCopies').checked = printPrefs.guestCopies;
         document.getElementById('ppGuestReq').checked = !!printPrefs.guestReq;
         document.getElementById('ppPreview').checked = printPrefs.preview !== false;
@@ -36364,6 +37679,8 @@
       document.getElementById('ppAuto').addEventListener('change', function () { setAutoPrint(this.checked, true); printPrefsChanged(); });
       document.getElementById('ppGuestCopies').addEventListener('change', function () { printPrefs.guestCopies = this.checked; printPrefsChanged(); });
       document.getElementById('ppPreview').addEventListener('change', function () { printPrefs.preview = this.checked; printPrefsChanged(); });
+      var ppPfInput = document.getElementById('ppPrintFirst');
+      if (ppPfInput) ppPfInput.addEventListener('change', function () { printPrefs.printFirst = this.checked; printPrefsChanged(); });
       document.getElementById('ppGuestReq').addEventListener('change', function () { printPrefs.guestReq = this.checked; printPrefsChanged(); reqApply(true); });
       document.getElementById('ppCopiesMinus').addEventListener('click', function () { printPrefs.copies = Math.max(1, printPrefs.copies - 1); opCopies = printPrefs.copies; printPrefsChanged(); });
       document.getElementById('ppCopiesPlus').addEventListener('click', function () { printPrefs.copies = Math.min(MAX_COPIES, printPrefs.copies + 1); opCopies = printPrefs.copies; printPrefsChanged(); });

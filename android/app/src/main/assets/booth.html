@@ -27143,6 +27143,7 @@
         preset: 'classic', speed: 'slow', smooth: false, gpu: false, orient: 'portrait', quality: 1080,
         overlay: true, frameStyle: 'floral_gold', zoom: true, flash: true, fx: 'none', audio: 'music', volume: 80,
         auto: false, autoShare: false, rates: [], reverse: false,
+        fxMovement: 'vortex', fxSpeed: 100, fxOpacity: 85, fxScale: 100, fxWobble: 50, fxLocation: 'full',
         textOn: true,
         text1: '', text1Font: 'cursive', text1Color: '#FFF2A8', text1Size: 52, text1X: 50, text1Y: 18,
         text2: '', text2Font: 'serif', text2Color: '#FFFFFF', text2Size: 26, text2X: 50, text2Y: 26,
@@ -27163,6 +27164,11 @@
           if (sl.text2Size === undefined && sl.textSize) spinLook.text2Size = sl.textSize === 'large' ? 36 : (sl.textSize === 'small' ? 20 : 26);
           if (sl.text1Y === undefined && sl.textYPercent != null) spinLook.text1Y = Number(sl.textYPercent);
           if (sl.text2Y === undefined && sl.textYPercent != null) spinLook.text2Y = Number(sl.textYPercent) + 8;
+          var FX_ALIASES = {
+            'sparkles': 'sparkler_fountain', 'floating_hearts': 'hearts_floating', 'rose_petals': 'rose_petals_red',
+            'smoke_ring': 'stage_smoke', 'bokeh': 'bokeh_golden', 'confetti': 'confetti_multi', 'neon_glow_edge': 'neon_cyberpunk'
+          };
+          if (spinLook.fx && FX_ALIASES[spinLook.fx]) spinLook.fx = FX_ALIASES[spinLook.fx];
         }
       } catch (e) { }
 
@@ -27340,13 +27346,64 @@
         showToast('Preset deleted.');
       }
 
-      var spinFxCatalog = [];
+      var DEFAULT_SPIN_FX_CATALOG = [
+        {"id":"confetti_multi","name":"Color Confetti","category":"Celebration & Party","blend":"overlay","opacity":1},
+        {"id":"confetti_gold","name":"Metallic Gold Confetti","category":"Celebration & Party","blend":"overlay","opacity":1},
+        {"id":"streamers_party","name":"Party Streamers","category":"Celebration & Party","blend":"overlay","opacity":1},
+        {"id":"champagne_bubbles","name":"Champagne Bubbles","category":"Celebration & Party","blend":"screen","opacity":0.9},
+        {"id":"disco_mirror","name":"Disco Ball Reflections","category":"Celebration & Party","blend":"screen","opacity":0.85},
+        {"id":"rainbow_strobe","name":"Rainbow Strobe","category":"Celebration & Party","blend":"screen","opacity":0.75},
+        {"id":"fireworks_midnight","name":"Midnight Fireworks","category":"Celebration & Party","blend":"screen","opacity":0.95},
+        {"id":"balloons_pastel","name":"Celebration Balloons","category":"Celebration & Party","blend":"overlay","opacity":1},
+        {"id":"hearts_floating","name":"Floating Hearts","category":"Weddings & Romance","blend":"overlay","opacity":0.95},
+        {"id":"rose_petals_red","name":"Red Rose Petals","category":"Weddings & Romance","blend":"overlay","opacity":1},
+        {"id":"petals_white_drift","name":"White Floral Cascade","category":"Weddings & Romance","blend":"overlay","opacity":0.95},
+        {"id":"bokeh_golden","name":"Golden Bokeh Rings","category":"Weddings & Romance","blend":"screen","opacity":0.85},
+        {"id":"fairy_dust","name":"Fairy Magic Dust","category":"Weddings & Romance","blend":"screen","opacity":0.9},
+        {"id":"sunburst_warm","name":"Romantic Sunburst","category":"Weddings & Romance","blend":"screen","opacity":0.75},
+        {"id":"sparkler_fountain","name":"Sparkler Fountains","category":"Weddings & Romance","blend":"screen","opacity":0.9},
+        {"id":"gold_dust","name":"24K Gold Dust","category":"VIP & Luxury","blend":"screen","opacity":0.95},
+        {"id":"art_deco_lines","name":"Art Deco Geometry","category":"VIP & Luxury","blend":"screen","opacity":0.9},
+        {"id":"silver_shimmer","name":"Silver Shimmer","category":"VIP & Luxury","blend":"screen","opacity":0.9},
+        {"id":"spotlight_sweep","name":"Stage Spotlights","category":"VIP & Luxury","blend":"screen","opacity":0.7},
+        {"id":"ribbon_swirls_gold","name":"Golden Ribbon Swirls","category":"VIP & Luxury","blend":"overlay","opacity":0.95},
+        {"id":"galaxy_stars","name":"Twinkling Galaxy","category":"VIP & Luxury","blend":"screen","opacity":0.85},
+        {"id":"corporate_grid","name":"Hexagon Tech Grid","category":"VIP & Luxury","blend":"screen","opacity":0.8},
+        {"id":"neon_cyberpunk","name":"Cyberpunk Neon Frame","category":"Nightlife & Neon","blend":"screen","opacity":0.95},
+        {"id":"laser_beams","name":"Club Laser Rays","category":"Nightlife & Neon","blend":"screen","opacity":0.85},
+        {"id":"stage_smoke","name":"Stage Smoke & Haze","category":"Nightlife & Neon","blend":"screen","opacity":0.7},
+        {"id":"audio_equalizer","name":"Equalizer Waves","category":"Nightlife & Neon","blend":"screen","opacity":0.85},
+        {"id":"prism_leak","name":"Prism Light Leak","category":"Nightlife & Neon","blend":"screen","opacity":0.8},
+        {"id":"lightning_arcs","name":"Electric Lightning","category":"Nightlife & Neon","blend":"screen","opacity":0.9},
+        {"id":"blacklight_uv","name":"UV Glow Dust","category":"Nightlife & Neon","blend":"screen","opacity":0.85},
+        {"id":"fire_border","name":"Fire & Hot Embers","category":"Action & Retro","blend":"screen","opacity":0.95},
+        {"id":"cash_rain","name":"Dollar Bills Rain","category":"Action & Retro","blend":"overlay","opacity":1},
+        {"id":"film_8mm","name":"Vintage 8mm Film","category":"Action & Retro","blend":"screen","opacity":0.8},
+        {"id":"vhs_glitch","name":"Retro VHS Glitch","category":"Action & Retro","blend":"screen","opacity":0.8},
+        {"id":"action_speed_lines","name":"Anime Speed Lines","category":"Action & Retro","blend":"screen","opacity":0.85},
+        {"id":"diamond_prism","name":"Diamond Facets","category":"Action & Retro","blend":"screen","opacity":0.75},
+        {"id":"snow_blizzard","name":"Winter Snowstorm","category":"Holidays & Seasons","blend":"screen","opacity":0.9},
+        {"id":"nye_countdown","name":"New Year Sparklers","category":"Holidays & Seasons","blend":"screen","opacity":0.95},
+        {"id":"halloween_bats","name":"Spooky Bats & Mist","category":"Holidays & Seasons","blend":"overlay","opacity":0.95},
+        {"id":"autumn_leaves","name":"Autumn Maple Leaves","category":"Holidays & Seasons","blend":"overlay","opacity":1},
+        {"id":"summer_flare","name":"Summer Golden Flare","category":"Holidays & Seasons","blend":"screen","opacity":0.75}
+      ];
+      var spinFxCatalog = DEFAULT_SPIN_FX_CATALOG.slice();
+
       async function spinLoadFx() {
-        if (!spinDesktop() || !window.pb4u || !window.pb4u.spinFxList) return;
-        try {
-          spinFxCatalog = await window.pb4u.spinFxList() || [];
+        if (!spinDesktop() || !window.pb4u || !window.pb4u.spinFxList) {
           spinPopulateFxUI();
-        } catch (e) { }
+          return;
+        }
+        try {
+          var remoteList = await window.pb4u.spinFxList();
+          if (Array.isArray(remoteList) && remoteList.length > 0) {
+            spinFxCatalog = remoteList;
+          }
+          spinPopulateFxUI();
+        } catch (e) {
+          spinPopulateFxUI();
+        }
       }
       function spinPopulateFxUI() {
         var sel = document.getElementById('spinFx'); if (!sel) return;
@@ -27373,12 +27430,39 @@
       }
       function spinUpdateFxBadge() {
         var badge = document.getElementById('spinFxBadge'), sel = document.getElementById('spinFx');
-        if (!badge || !sel) return;
-        var val = sel.value || (spinLook && spinLook.fx) || 'none';
+        var cust = document.getElementById('spinFxCustomizer');
+        var val = (sel && sel.value) || (spinLook && spinLook.fx) || 'none';
+        if (cust) {
+          cust.style.display = (val && val !== 'none') ? 'block' : 'none';
+        }
+        if (!badge) return;
         if (val === 'none') { badge.hidden = true; badge.textContent = ''; return; }
         var item = (spinFxCatalog || []).find(function (x) { return x.id === val; });
         badge.hidden = false;
         badge.textContent = item ? (item.blend === 'screen' ? '✨ Screen' : '🎨 Alpha') : 'Active';
+      }
+      function spinUpdateStageAspect() {
+        var stage = document.getElementById('spinStageWrap');
+        var v = document.getElementById('spinVideo');
+        if (!stage) return;
+        var orient = (spinLook && spinLook.orient) || 'portrait';
+        stage.classList.remove('is-square', 'is-landscape', 'is-portrait');
+        if (orient === 'square') {
+          stage.classList.add('is-square');
+          stage.style.aspectRatio = '1 / 1';
+          stage.style.maxWidth = '48vh';
+          if (v) v.style.objectFit = 'cover';
+        } else if (orient === 'landscape') {
+          stage.classList.add('is-landscape');
+          stage.style.aspectRatio = '16 / 9';
+          stage.style.maxWidth = 'min(100%, 720px)';
+          if (v) v.style.objectFit = 'contain';
+        } else {
+          stage.classList.add('is-portrait');
+          stage.style.aspectRatio = '9 / 16';
+          stage.style.maxWidth = 'min(100%, 360px)';
+          if (v) v.style.objectFit = 'contain';
+        }
       }
       function spinLookToUI() {
         var g = function (id) { return document.getElementById(id); };
@@ -27394,6 +27478,24 @@
         if (g('spinClassicBandColor')) g('spinClassicBandColor').value = spinLook.classicBandColor || '#1C1A1E';
         if (g('spinClassicBandAlpha')) g('spinClassicBandAlpha').value = String(spinLook.classicBandAlpha != null ? spinLook.classicBandAlpha : 85);
         if (g('spinFx')) g('spinFx').value = spinLook.fx || 'none';
+        if (g('spinFxMovement')) g('spinFxMovement').value = spinLook.fxMovement || 'vortex';
+        if (g('spinFxLocation')) g('spinFxLocation').value = spinLook.fxLocation || 'full';
+        if (g('spinFxSpeed')) {
+          g('spinFxSpeed').value = spinLook.fxSpeed != null ? spinLook.fxSpeed : 100;
+          var spv = g('spinFxSpeedVal'); if (spv) spv.textContent = ((spinLook.fxSpeed != null ? spinLook.fxSpeed : 100) / 100).toFixed(1) + '×';
+        }
+        if (g('spinFxOpacity')) {
+          g('spinFxOpacity').value = spinLook.fxOpacity != null ? spinLook.fxOpacity : 85;
+          var opv = g('spinFxOpacityVal'); if (opv) opv.textContent = (spinLook.fxOpacity != null ? spinLook.fxOpacity : 85) + '%';
+        }
+        if (g('spinFxScale')) {
+          g('spinFxScale').value = spinLook.fxScale != null ? spinLook.fxScale : 100;
+          var scv = g('spinFxScaleVal'); if (scv) scv.textContent = ((spinLook.fxScale != null ? spinLook.fxScale : 100) / 100).toFixed(1) + '×';
+        }
+        if (g('spinFxWobble')) {
+          g('spinFxWobble').value = spinLook.fxWobble != null ? spinLook.fxWobble : 50;
+          var wbv = g('spinFxWobbleVal'); if (wbv) wbv.textContent = (spinLook.fxWobble != null ? spinLook.fxWobble : 50) + '%';
+        }
         spinUpdateFxBadge();
         g('spinAudio').value = spinLook.audio; g('spinVol').value = String(spinLook.volume); g('spinAuto').checked = !!spinLook.auto; g('spinAutoShare').checked = !!spinLook.autoShare; g('spinAutoShare').disabled = !spinLook.auto;
         if (g('spinTextOn')) g('spinTextOn').checked = !!spinLook.textOn;
@@ -27415,6 +27517,7 @@
         if (g('spinTextTiming')) g('spinTextTiming').value = spinLook.textTiming || 'always';
         spinPopulateDesignPresetsUI();
         g('spinSmooth').disabled = spinLook.speed !== 'slow' && !(spinLook.speed === 'custom' && (spinLook.rates || []).some(function (r) { return r < 1; }));
+        spinUpdateStageAspect();
       }
       function spinLookFromUI(fromPreset) {
         var g = function (id) { return document.getElementById(id); };
@@ -27430,6 +27533,24 @@
         if (g('spinClassicBandColor')) spinLook.classicBandColor = g('spinClassicBandColor').value;
         if (g('spinClassicBandAlpha')) spinLook.classicBandAlpha = Number(g('spinClassicBandAlpha').value);
         if (g('spinFx')) spinLook.fx = g('spinFx').value || 'none';
+        if (g('spinFxMovement')) spinLook.fxMovement = g('spinFxMovement').value;
+        if (g('spinFxLocation')) spinLook.fxLocation = g('spinFxLocation').value;
+        if (g('spinFxSpeed')) {
+          spinLook.fxSpeed = Number(g('spinFxSpeed').value);
+          var spv = g('spinFxSpeedVal'); if (spv) spv.textContent = (spinLook.fxSpeed / 100).toFixed(1) + '×';
+        }
+        if (g('spinFxOpacity')) {
+          spinLook.fxOpacity = Number(g('spinFxOpacity').value);
+          var opv = g('spinFxOpacityVal'); if (opv) opv.textContent = spinLook.fxOpacity + '%';
+        }
+        if (g('spinFxScale')) {
+          spinLook.fxScale = Number(g('spinFxScale').value);
+          var scv = g('spinFxScaleVal'); if (scv) scv.textContent = (spinLook.fxScale / 100).toFixed(1) + '×';
+        }
+        if (g('spinFxWobble')) {
+          spinLook.fxWobble = Number(g('spinFxWobble').value);
+          var wbv = g('spinFxWobbleVal'); if (wbv) wbv.textContent = spinLook.fxWobble + '%';
+        }
         spinUpdateFxBadge();
         spinLook.audio = g('spinAudio').value;
         spinLook.volume = Number(g('spinVol').value) || 0; spinLook.auto = g('spinAuto').checked; spinLook.autoShare = g('spinAutoShare').checked && spinLook.auto;
@@ -27472,6 +27593,7 @@
           if (spinLook.frameStyle !== undefined) spinCur.frameStyle = spinLook.frameStyle;
           if (spinCur.edited && typeof spinSwitchToDraftPreview === 'function') spinSwitchToDraftPreview(spinCur);
         }
+        spinUpdateStageAspect();
         try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { }
         if (typeof renderSpinModalPreview === 'function') renderSpinModalPreview();
       }

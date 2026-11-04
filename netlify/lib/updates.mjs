@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.73', date: '2026-11-04' },
   { version: '1.0.72', date: '2026-11-04' },
   { version: '1.0.71', date: '2026-11-04' },
   { version: '1.0.70', date: '2026-11-04' },
@@ -83,7 +84,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.83', date: '2026-11-04', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.83/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.84', date: '2026-11-04', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.84/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -118,6 +119,23 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-04', title: 'Multi-Collage Presets & Dynamic Guest Layout Selection', for: ['app', 'website'], app: '1.0.73',
+    items: [
+      'Collage Presets System: Operators can now save, update, and manage multiple named collage sheet arrangements (e.g. Collage A with 3-shot strips, Collage B with 4-shot strips) directly in Step 3.',
+      'Dynamic Guest Layout Selection: When multiple collage presets exist and "Let guests choose layout" is enabled, guests can choose between different collage designs. The booth automatically adjusts camera countdowns, required shot count, and sheet placement per preset.',
+      '2.5×7.5 in Keychain Compatibility: Perfect scale consistency when printing multiple keychain strip designs across A4, 4R, and other paper sizes.',
+      'Persistent Preset Storage: Presets are serialized with the event setup and restored automatically across booth reboots.'
+    ]
+  },
+  {
+    date: '2026-11-04', title: 'Multi-Collage Presets & Dynamic Guest Layout Selection (Android)', for: ['app'], app: '1.0.84',
+    items: [
+      'Multi-Collage Presets: Create and switch between multiple saved collage layouts on the tablet.',
+      'Dynamic Guest Choice: Guests can pick between different collage presets on the start screen with automatic camera countdown and shot count adjustment.',
+      'Keychain & Sheet Scaling: Flawless scaling for 2.5×7.5 in acrylic keychains when ganged on A4, 4R, and standard paper.'
+    ]
+  },
   {
     date: '2026-11-04', title: 'Post-Session Guest Sticker Customisation & Print-First Mode', for: ['app', 'website'], app: '1.0.72',
     items: [

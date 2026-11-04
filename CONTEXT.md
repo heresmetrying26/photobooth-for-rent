@@ -1,13 +1,13 @@
 # Session Context
 
-**Current Task**: Shipped v1.0.67 with 360 live studio preview, custom frame upload, dynamic text positioning, persistent dismissal, and GPU watchdog.
+**Current Task**: Released v1.0.73 (desktop) and v1.0.84 (Android) with Collage Presets and dynamic guest layout selection.
 
 **Key Decisions**:
-- Layered HTML canvas preview over video for real-time visual feedback of frames, text, speed, and positioning before rendering.
-- Replaced FFmpeg white fades with optical strobe flashes (`drawbox`) to prevent solid white covers in boomerang and speed ramp.
-- Capped CPU encode threads with below-normal process priority and implemented 10s GPU watchdog fallback.
+- Added named collage presets (Collage A, Collage B) to framesheet setup with live thumbnail cards.
+- Enabled dynamic guest choice with automatic shot count (poses) and countdown adjustment per preset.
+- Maintained exact 2.5×7.5 in keychain scaling across standard paper sizes (A4, 4R).
 
 **Next Steps**:
-- Verify GitHub Actions workflow builds the desktop installers for v1.0.67.
-- Test custom uploaded frames and live speed previews on physical station hardware.
-- Gather operator feedback on 360 booth workflow performance.
+- Verify GitHub Actions workflow completes desktop and Android release builds.
+- Test multi-collage guest selection flow on physical kiosk hardware.
+- Validate print output on A4 and 4R photo printers.

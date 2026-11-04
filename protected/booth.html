@@ -35644,6 +35644,131 @@
       var activeFrameId = null;     // the frame used by the "My frame" layout
       var startFrameDone = '';      // id of the Admin-made starting frame this setup already received
       var sheet = { pattern: 'tall-one-two-strips', items: [] };   // items: [{ f, cx, cy, s, r }] (0-1 of the sheet; s = width share)
+      var sheetPresets = [];        // [{ id, name, paper, pattern, items: [{ f, cx, cy, s, r }] }]
+      var activeSheetPresetId = null;
+      var setupActiveSheetPresetId = null;
+
+      function presetById(id) {
+        var a = sheetPresets || [];
+        for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i];
+        return null;
+      }
+      function presetShotCount(p) {
+        if (!p || !p.items || !p.items.length) return 1;
+        var n = 1;
+        p.items.forEach(function (it) {
+          var f = frameById(it.f);
+          if (f) n = Math.max(n, frameShotCount(f));
+        });
+        return n;
+      }
+      function ensureDefaultSheetPreset() {
+        if (!Array.isArray(sheetPresets) || !sheetPresets.length) {
+          var defId = 'cp_' + Math.random().toString(36).slice(2, 9);
+          sheetPresets = [{
+            id: defId,
+            name: 'Collage A',
+            paper: sheetSize || 'A4',
+            pattern: sheet.pattern || 'tall-one-two-strips',
+            items: (sheet.items || []).map(function (it) { return { f: it.f, cx: it.cx, cy: it.cy, s: it.s, r: it.r || 0 }; })
+          }];
+          activeSheetPresetId = defId;
+          setupActiveSheetPresetId = defId;
+        } else if (!activeSheetPresetId || !presetById(activeSheetPresetId)) {
+          activeSheetPresetId = sheetPresets[0].id;
+          setupActiveSheetPresetId = activeSheetPresetId;
+        }
+      }
+      function loadSheetPreset(id, skipSave) {
+        var p = presetById(id);
+        if (!p) return;
+        activeSheetPresetId = p.id;
+        setupActiveSheetPresetId = p.id;
+        if (p.paper && SHEET_SIZES.indexOf(p.paper) >= 0) sheetSize = p.paper;
+        sheet.pattern = p.pattern || 'tall-one-two-strips';
+        sheet.items = (p.items || []).map(function (it) { return { f: it.f, cx: it.cx, cy: it.cy, s: it.s, r: it.r || 0 }; });
+        var selEl = document.getElementById('sheetSizeSelect');
+        if (selEl) selEl.value = sheetSize;
+        buildSheetPatterns();
+        buildFramePick();
+        buildSheetPresetUI();
+        framesChanged({ layout: 'framesheet' });
+        if (!skipSave && typeof scheduleSetupSave === 'function') scheduleSetupSave();
+      }
+      function saveCurrentAsNewPreset(customName) {
+        ensureDefaultSheetPreset();
+        var name = (customName || '').trim();
+        if (!name) {
+          var nextChar = String.fromCharCode(65 + Math.min(25, sheetPresets.length));
+          name = 'Collage ' + nextChar;
+        }
+        var newId = 'cp_' + Math.random().toString(36).slice(2, 9);
+        var p = {
+          id: newId,
+          name: name,
+          paper: sheetSize,
+          pattern: sheet.pattern,
+          items: (sheet.items || []).map(function (it) { return { f: it.f, cx: it.cx, cy: it.cy, s: it.s, r: it.r || 0 }; })
+        };
+        sheetPresets.push(p);
+        activeSheetPresetId = newId;
+        setupActiveSheetPresetId = newId;
+        buildSheetPresetUI();
+        if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
+        if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        showToast('Saved "' + name + '" as a collage preset! ✓', 3000);
+      }
+      function updateCurrentPreset() {
+        ensureDefaultSheetPreset();
+        var p = presetById(activeSheetPresetId);
+        if (!p) return;
+        p.paper = sheetSize;
+        p.pattern = sheet.pattern;
+        p.items = (sheet.items || []).map(function (it) { return { f: it.f, cx: it.cx, cy: it.cy, s: it.s, r: it.r || 0 }; });
+        buildSheetPresetUI();
+        if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
+        if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        showToast('Updated preset "' + p.name + '"! ✓', 2500);
+      }
+      function deleteCurrentPreset() {
+        if (sheetPresets.length <= 1) {
+          showToast('Cannot delete the only collage preset.');
+          return;
+        }
+        var idx = -1;
+        for (var i = 0; i < sheetPresets.length; i++) {
+          if (sheetPresets[i].id === activeSheetPresetId) { idx = i; break; }
+        }
+        if (idx < 0) return;
+        var deletedName = sheetPresets[idx].name;
+        sheetPresets.splice(idx, 1);
+        activeSheetPresetId = sheetPresets[Math.max(0, idx - 1)].id;
+        setupActiveSheetPresetId = activeSheetPresetId;
+        loadSheetPreset(activeSheetPresetId);
+        if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
+        showToast('Deleted preset "' + deletedName + '".', 2500);
+      }
+
+      if (typeof window !== 'undefined') {
+        window.__sheetPresets = {
+          getPresets: function () { return sheetPresets; },
+          setPresets: function (v) { sheetPresets = v; },
+          ensureDefault: ensureDefaultSheetPreset,
+          loadPreset: loadSheetPreset,
+          saveAsNew: saveCurrentAsNewPreset,
+          updateCurrent: updateCurrentPreset,
+          deleteCurrent: deleteCurrentPreset,
+          presetById: presetById,
+          presetShotCount: presetShotCount,
+          getActiveId: function () { return activeSheetPresetId; },
+          setFrames: function (f) { myFrames = f; },
+          getSheet: function () { return sheet; },
+          buildUI: buildSheetPresetUI,
+          buildPicker: function () { return typeof buildLayoutPicker === 'function' ? buildLayoutPicker() : null; },
+          snapshot: function () { return framesSnapshot(); }
+        };
+      }
+
       // 2 or more frames ticked: 'choose' = guests pick one before each session,
       // 'sheet' = all of them together on one sheet of sheetSize paper.
       var frameMode = 'choose', chooseIds = [], sheetSize = '4x6';
@@ -36393,6 +36518,68 @@
           b.addEventListener('click', function () { applyPattern(p.id); framesChanged({ layout: 'framesheet' }); });
           sheetPatternsEl.appendChild(b);
         });
+        buildSheetPresetUI();
+      }
+      function buildSheetPresetUI() {
+        ensureDefaultSheetPreset();
+        var sel = document.getElementById('sheetPresetSelect');
+        var countEl = document.getElementById('sheetPresetCount');
+        if (!sel) return;
+        sel.innerHTML = '';
+        if (countEl) countEl.textContent = sheetPresets.length + (sheetPresets.length === 1 ? ' preset' : ' presets');
+        sheetPresets.forEach(function (p) {
+          var opt = document.createElement('option');
+          opt.value = p.id;
+          var sh = presetShotCount(p);
+          var pPaper = (paperFor(p.paper) && paperFor(p.paper).name) || p.paper || 'A4';
+          opt.textContent = p.name + ' (' + sh + (sh === 1 ? ' shot' : ' shots') + ', ' + pPaper + ')';
+          if (p.id === activeSheetPresetId) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        var newOpt = document.createElement('option');
+        newOpt.value = '__new__';
+        newOpt.textContent = '+ Create new collage…';
+        sel.appendChild(newOpt);
+      }
+      var sheetPresetSel = document.getElementById('sheetPresetSelect');
+      if (sheetPresetSel) {
+        sheetPresetSel.addEventListener('change', function () {
+          if (sheetPresetSel.value === '__new__') {
+            var nextChar = String.fromCharCode(65 + Math.min(25, sheetPresets.length));
+            var n = prompt('Name this collage preset (e.g. Collage B - 4 Shots):', 'Collage ' + nextChar);
+            if (n && n.trim()) {
+              saveCurrentAsNewPreset(n.trim());
+            } else {
+              sheetPresetSel.value = activeSheetPresetId;
+            }
+          } else {
+            loadSheetPreset(sheetPresetSel.value);
+          }
+        });
+      }
+      var sheetPresetSaveBtn = document.getElementById('sheetPresetSave');
+      if (sheetPresetSaveBtn) {
+        sheetPresetSaveBtn.addEventListener('click', function () {
+          var nextChar = String.fromCharCode(65 + Math.min(25, sheetPresets.length));
+          var n = prompt('Name this collage preset (e.g. Collage B - 4 Shots):', 'Collage ' + nextChar);
+          if (n && n.trim()) saveCurrentAsNewPreset(n.trim());
+        });
+      }
+      var sheetPresetUpdateBtn = document.getElementById('sheetPresetUpdate');
+      if (sheetPresetUpdateBtn) {
+        sheetPresetUpdateBtn.addEventListener('click', function () {
+          updateCurrentPreset();
+        });
+      }
+      var sheetPresetDeleteBtn = document.getElementById('sheetPresetDelete');
+      if (sheetPresetDeleteBtn) {
+        sheetPresetDeleteBtn.addEventListener('click', function () {
+          var p = presetById(activeSheetPresetId);
+          if (!p) return;
+          if (confirm('Delete collage preset "' + p.name + '"?')) {
+            deleteCurrentPreset();
+          }
+        });
       }
       document.getElementById('sheetAddFrame').addEventListener('click', function () {
         var sel = sheet.items[selItem], f = (sel && frameById(sel.f)) || frameById(sheetFrameIds()[0]) || activeFrame(); if (!f) return;
@@ -36912,7 +37099,17 @@
           frames: myFrames.map(function (f) { var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function (s) { var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; if (s.a) q.a = Math.round(s.a * 10) / 10; if (s.z) q.z = s.z; return q; }) }; if (typeof f.name === 'string' && f.name.trim()) o.name = f.name.trim().slice(0, 40); if (typeof f.copy === 'boolean') o.copy = f.copy; if (f.key) o.key = { c: f.key.c.slice(), t: f.key.t }; if (f.tier) o.tier = f.tier; return o; }),
           activeFrame: activeFrameId,
           frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
-          sheet: { pattern: sheet.pattern, items: sheet.items.map(function (it) { return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; }) }
+          sheet: { pattern: sheet.pattern, items: sheet.items.map(function (it) { return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; }) },
+          sheetPresets: (sheetPresets || []).map(function (p) {
+            return {
+              id: p.id,
+              name: (p.name || 'Collage').slice(0, 40),
+              paper: p.paper || sheetSize,
+              pattern: p.pattern || sheet.pattern,
+              items: (p.items || []).map(function (it) { return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; })
+            };
+          }),
+          activeSheetPresetId: activeSheetPresetId
         };
       }
       function applyFramesSetup(s) {
@@ -36946,8 +37143,24 @@
             return { f: it.f, cx: num(it.cx, 0, 1, 0.5), cy: num(it.cy, 0, 1, 0.5), s: num(it.s, 0.05, 1.5, 0.5), r: [0, 90, 180, 270].indexOf(it.r) >= 0 ? it.r : 0 };
           })
         };
+        var spList = Array.isArray(s.sheetPresets) ? s.sheetPresets : [];
+        sheetPresets = spList.map(function (p) {
+          return {
+            id: typeof p.id === 'string' && p.id ? p.id : ('cp_' + Math.random().toString(36).slice(2, 9)),
+            name: typeof p.name === 'string' && p.name.trim() ? p.name.trim().slice(0, 40) : 'Collage',
+            paper: SHEET_SIZES.indexOf(p.paper) >= 0 ? p.paper : (sheetSize || 'A4'),
+            pattern: SHEET_PATTERNS.some(function (pt) { return pt.id === p.pattern; }) ? p.pattern : 'tall-one-two-strips',
+            items: (Array.isArray(p.items) ? p.items : []).filter(function (it) { return it && frameById(it.f); }).map(function (it) {
+              return { f: it.f, cx: num(it.cx, 0, 1, 0.5), cy: num(it.cy, 0, 1, 0.5), s: num(it.s, 0.05, 1.5, 0.5), r: [0, 90, 180, 270].indexOf(it.r) >= 0 ? it.r : 0 };
+            })
+          };
+        });
+        activeSheetPresetId = typeof s.activeSheetPresetId === 'string' && presetById(s.activeSheetPresetId) ? s.activeSheetPresetId : (sheetPresets[0] ? sheetPresets[0].id : null);
+        setupActiveSheetPresetId = activeSheetPresetId;
+        ensureDefaultSheetPreset();
         if (!sheet.items.length && myFrames.length) applyPattern(sheet.pattern);
         selItem = -1; spotEdit = null;
+        if (typeof buildSheetPresetUI === 'function') buildSheetPresetUI();
       }
 
       // ---- Setup preview: sample photo + phone dock ----

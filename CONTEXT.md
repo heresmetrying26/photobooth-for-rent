@@ -1,13 +1,13 @@
 # Session Context
 
-**Current Task**: Implemented "Spin & Print" feature allowing physical photo strip / keychain prints directly from 360 videos.
+**Current Task**: Released v1.0.71 (Desktop v1.0.74, Android v1.0.85) featuring Square 1:1 live aspect ratio, 40 animated effects, and motion physics engine.
 
 **Key Decisions**:
-- Added `extractFrames` in FFmpeg (`spin.mjs`) and HTML5 canvas fallback for extracting hero center or multi-angle sequence frames from 360 clips.
-- Added "🖨️ Spin & Print" buttons on 360 Studio Desk and Share Modal, automatically integrating with event frames and layouts.
-- Added "and auto-print strip / keychain" option in 360 settings, returning cleanly to 360 desk upon session reset.
+- Added non-letterbox 1:1 Square live preview and continuous looping playback for Instagram.
+- Exposed all 40 professional animated overlay effects across 6 categories in 360 Studio.
+- Implemented 6 physical motion trajectories with live controls for speed, opacity, scale, wobble, and screen focus.
 
 **Next Steps**:
-- Implement Step 2 in sequence: Universal Bluetooth Remote / Pocket Shutter Clicker triggering.
-- Implement Step 3: Beat-drop auto-sync speed ramping.
-- Implement Step 4: Live TV Wall audience countdown and celebration replay.
+- Implement Universal Bluetooth Remote / Pocket Shutter Clicker triggering.
+- Implement Beat-drop auto-sync speed ramping.
+- Implement Live TV Wall audience countdown and celebration replay.

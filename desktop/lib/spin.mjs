@@ -308,7 +308,9 @@ export function normOptions(o) {
     outro: o.outro || null,
     textTiming: o.textTiming === 'fade' ? 'fade' : 'always',
     textFadeIn: o.textFadeIn != null ? Number(o.textFadeIn) : 0.6,
-    textFadeOut: o.textFadeOut != null ? Number(o.textFadeOut) : 0.6
+    textFadeOut: o.textFadeOut != null ? Number(o.textFadeOut) : 0.6,
+    dropTime: o.dropTime != null && Number(o.dropTime) > 0 ? clamp(Number(o.dropTime), 0.5, 12) : null,
+    lut: ['glam_bw', 'teal_orange', 'golden_hour', 'vibrant', 'vintage', 'none'].includes(o.lut) ? o.lut : (o.lut || 'none')
   };
 }
 // How long the finished video is.
@@ -319,7 +321,14 @@ export function outDuration(speed, d, o) {
     return o && o.reverse ? once * 2 : once;
   }
   if (speed === 'slow') return d * 2;
-  if (speed === 'ramp') return d * 1.25;
+  if (speed === 'ramp') {
+    if (o && o.dropTime != null) {
+      const t1Val = clamp(o.dropTime * 2, 0.4, Math.max(0.5, d * 0.7));
+      const t2Val = Math.min(d - 0.2, Math.max(t1Val + 0.5, d * 0.75));
+      return (t1Val / 2) + (t2Val - t1Val) * 2 + (d - t2Val) / 2;
+    }
+    return d * 1.25;
+  }
   if (speed === 'boomerang') return Math.min(d, BOOMERANG_MAX) * 2;
   return d;
 }
@@ -378,14 +387,19 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
     const flashFilter = o.flash ? ',drawbox=x=0:y=0:w=in_w:h=in_h:color=white@0.65:t=fill:enable=\'between(t,0,0.10)\'' : '';
     f.push(src + fit + ',' + (smoothSlow ? 'minterpolate=fps=60:mi_mode=blend,' : '') + 'setpts=2.0*PTS,fps=30' + zoomFilter + flashFilter + '[v0]');
   } else if (o.speed === 'ramp') {
-    const t1 = f2(D * 0.25), t2 = f2(D * 0.75);
-    const bDur = (D * 0.75 - D * 0.25) * 2;
+    let t1Val = D * 0.25;
+    if (o.dropTime != null) {
+      t1Val = clamp(o.dropTime * 2, 0.4, Math.max(0.5, D * 0.7));
+    }
+    const t2Val = Math.min(D - 0.2, Math.max(t1Val + 0.5, D * 0.75));
+    const t1 = f2(t1Val), t2 = f2(t2Val);
+    const bDur = (t2Val - t1Val) * 2;
     const bZoom = o.zoom ? ',scale=w=\'trunc(iw*(1+0.15*sin(t/' + f2(bDur) + '*PI))/2)*2\':h=\'trunc(ih*(1+0.15*sin(t/' + f2(bDur) + '*PI))/2)*2\':eval=frame,crop=' + o.W + ':' + o.H : '';
     f.push(src + fit + ',split=3[a][b][c]');
     f.push('[a]trim=0:' + t1 + ',setpts=(PTS-STARTPTS)/2[v1]');
     f.push('[b]trim=' + t1 + ':' + t2 + ',setpts=(PTS-STARTPTS)*2' + bZoom + '[v2]');
     f.push('[c]trim=' + t2 + ',setpts=(PTS-STARTPTS)/2[v3]');
-    const tDrop = (D * 0.25) / 2;
+    const tDrop = t1Val / 2;
     const rampFlash = o.flash ? ',drawbox=x=0:y=0:w=in_w:h=in_h:color=white@0.65:t=fill:enable=\'between(t,' + f2(tDrop) + ',' + f2(tDrop + 0.10) + ')\'' : '';
     f.push('[v1][v2][v3]concat=n=3:v=1:a=0,fps=30' + rampFlash + '[v0]');
   } else if (o.speed === 'custom') {
@@ -418,6 +432,24 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
     f.push(src + fit + ',fps=30[v0]');
   }
   let last = '[v0]';
+  if (o.lut && o.lut !== 'none') {
+    let lutFilter = '';
+    if (o.lut === 'glam_bw') {
+      lutFilter = ',colorchannelmixer=.3:.4:.3:0:.3:.4:.3:0:.3:.4:.3,curves=all=\'0/0 0.18/0.08 0.72/0.86 1/1\',eq=contrast=1.18:brightness=0.02';
+    } else if (o.lut === 'teal_orange') {
+      lutFilter = ',curves=r=\'0/0 0.5/0.46 1/1\':b=\'0/0 0.5/0.58 1/1\',eq=saturation=1.25:contrast=1.12';
+    } else if (o.lut === 'golden_hour') {
+      lutFilter = ',curves=r=\'0/0 0.5/0.55 1/1\':g=\'0/0 0.5/0.52 1/1\':b=\'0/0 0.5/0.45 1/1\',eq=saturation=1.16:gamma=1.04';
+    } else if (o.lut === 'vibrant') {
+      lutFilter = ',eq=saturation=1.38:contrast=1.14';
+    } else if (o.lut === 'vintage') {
+      lutFilter = ',curves=all=\'0/0.04 0.5/0.5 1/0.96\',eq=saturation=0.88:contrast=1.06';
+    }
+    if (lutFilter) {
+      f.push(last + lutFilter.slice(1) + '[v_lut]');
+      last = '[v_lut]';
+    }
+  }
   if (fxIdx >= 0) {
     // 1.3: Decode, scale, and format the short FX clip once, then loop the pre-formatted frames in memory.
     const fxSpeed = f2(o.fxSpeed || 1.0);

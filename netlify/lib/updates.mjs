@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.68', date: '2026-11-04' },
   { version: '1.0.67', date: '2026-11-04' },
   { version: '1.0.66', date: '2026-11-04' },
   { version: '1.0.65', date: '2026-11-04' },
@@ -78,7 +79,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.78', date: '2026-11-04', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.78/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.79', date: '2026-11-04', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.79/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -113,6 +114,26 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-04', title: 'Thermal Layouts, Dual Pricing, Custom Labels & Tiered Vouchers (Android)', for: ['app'], app: '1.0.79',
+    items: [
+      'Dual Option Selection & Pricing: Guests choose between Thermal (e.g. ₱50) and Canon/Dye-Sub Color (e.g. ₱100) directly on the welcome pay screen.',
+      'Fully Customizable Option Labels: Personalize labels like "Thermal 50" or "Canon Color 100", seamlessly reflected on welcome buttons, layout picker badges, and printed voucher tickets.',
+      'Tiered Vouchers & Auto-Routing: Generate separate vouchers locked to receipt or photo layouts; printer auto-switches between Bluetooth/USB thermal and dye-sub photo printers.',
+      'Expanded Thermal Layout Suite: 6 new receipt formats (Solo 1-shot, Duo 2-shot, and 4-shot strip in both B&W and Color) with dynamic receipt height calculation.',
+      'Custom Receipt Note & Ready Designs: Enter custom event messages/social handles for receipt slips, plus 5 instant ready-made thermal themes (Minimalist Cafe, Vintage Wedding, Cinema Ticket, Party Strip, and Color Cafe).'
+    ]
+  },
+  {
+    date: '2026-11-04', title: 'Dual Pricing, Custom Tier Labels, B&W & Color Thermal Layouts & Ready Designs', for: ['app', 'website'], app: '1.0.68',
+    items: [
+      'Dual Option Selection & Pricing: Guests choose between Thermal (e.g. ₱50) and Canon/Dye-Sub Color (e.g. ₱100) directly on the welcome pay screen.',
+      'Fully Customizable Option Labels: Personalize labels like "Thermal 50" or "Canon Color 100", seamlessly reflected on welcome buttons, layout picker badges, and printed voucher tickets.',
+      'Tiered Vouchers & Auto-Routing: Generate separate vouchers locked to receipt or photo layouts; printer auto-switches between Bluetooth/USB thermal and dye-sub photo printers.',
+      'Expanded Thermal Layout Suite: 6 new receipt formats (Solo 1-shot, Duo 2-shot, and 4-shot strip in both B&W and Color) with dynamic receipt height calculation.',
+      'Custom Receipt Note & Ready Designs: Enter custom event messages/social handles for receipt slips, plus 5 instant ready-made thermal themes (Minimalist Cafe, Vintage Wedding, Cinema Ticket, Party Strip, and Color Cafe).'
+    ]
+  },
   {
     date: '2026-11-04', title: '360 Live Studio Preview, Custom PNG Frame Upload & Dynamic Placement', for: ['app', 'website'], app: '1.0.67',
     items: [

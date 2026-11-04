@@ -7,17 +7,17 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FX_DIR = join(__dirname, '..', 'resources', 'spin-fx');
-const LOOPS_DIR = join(FX_DIR, 'loops');
 const THUMBS_DIR = join(FX_DIR, 'thumbs');
 const CATALOG_PATH = join(FX_DIR, 'catalog.json');
 
-const INSTALLED_DIR = 'C:\\Program Files\\photobooth4u\\resources\\app.asar.unpacked\\build\\spin-fx';
+const INSTALLED_DIR = process.env.PB4U_INSTALLED_DIR || null;
 
 // Find ffmpeg
 const FFMPEG_CANDIDATES = [
-  'C:\\Program Files\\photobooth4u\\resources\\app.asar.unpacked\\build\\ffmpeg\\ffmpeg.exe',
-  join(__dirname, '..', '..', '.claude', 'worktrees', '360-video-booth-plan-3df339', 'desktop', 'node_modules', 'ffmpeg-static', 'ffmpeg.exe'),
-  process.env.PB4U_FFMPEG || 'ffmpeg'
+  process.env.PB4U_FFMPEG,
+  join(__dirname, '..', 'build', 'ffmpeg', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'),
+  join(__dirname, '..', 'node_modules', 'ffmpeg-static', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'),
+  'ffmpeg'
 ];
 
 let FFMPEG = null;
@@ -29,11 +29,19 @@ for (const c of FFMPEG_CANDIDATES) {
 }
 if (!FFMPEG) FFMPEG = 'ffmpeg';
 
-const W = 540;
-const H = 960;
-const FPS = 25;
-const DURATION = 2; // 2 seconds seamless loop
-const FRAMES = FPS * DURATION; // 50 frames
+const args = process.argv.slice(2);
+const onlyFilter = (args.find(a => a.startsWith('--only=')) || '').slice(7) || null;
+const isSd = args.includes('--sd') || args.includes('--540p');
+const isLandscape = args.includes('--landscape');
+const is1080p = args.includes('--1080p') || !isSd;
+
+const LOOPS_DIR = isLandscape ? join(FX_DIR, 'loops', 'landscape') : join(FX_DIR, 'loops');
+
+const W = isLandscape ? (is1080p ? 1920 : 960) : (is1080p ? 1080 : 540);
+const H = isLandscape ? (is1080p ? 1080 : 540) : (is1080p ? 1920 : 960);
+const FPS = is1080p ? 30 : 25;
+const DURATION = (is1080p || args.includes('--3s')) ? 3 : 2; // 3s seamless loop for 1080p
+const FRAMES = FPS * DURATION;
 
 mkdirSync(LOOPS_DIR, { recursive: true });
 mkdirSync(THUMBS_DIR, { recursive: true });
@@ -608,8 +616,10 @@ async function renderVideo(item) {
     ffmpegArgs.push(
       '-c:v', 'libvpx-vp9',
       '-pix_fmt', 'yuva420p',
-      '-b:v', '250k',
+      '-b:v', '0',
       '-crf', '32',
+      '-deadline', 'realtime',
+      '-cpu-used', '4',
       '-auto-alt-ref', '0',
       loopPath
     );
@@ -618,7 +628,7 @@ async function renderVideo(item) {
       '-c:v', 'libx264',
       '-pix_fmt', 'yuv420p',
       '-preset', 'fast',
-      '-crf', '26',
+      '-crf', '24',
       loopPath
     );
   }
@@ -671,42 +681,50 @@ async function renderVideo(item) {
 }
 
 async function main() {
-  console.log(`Starting generation of ${catalog.length} spin-fx loops...`);
+  const items = onlyFilter
+    ? catalog.filter(c => c.id === onlyFilter || c.file.includes(onlyFilter))
+    : catalog;
+  if (!items.length) {
+    console.error(`No effect found matching --only=${onlyFilter}`);
+    process.exit(1);
+  }
+  console.log(`Starting generation of ${items.length} spin-fx loops (W=${W}, H=${H}, FPS=${FPS}, DURATION=${DURATION}s)...`);
   console.log(`Using FFmpeg at: ${FFMPEG}`);
+  console.log(`Output directory: ${LOOPS_DIR}`);
   const startTime = Date.now();
 
   let count = 0;
-  for (const item of catalog) {
+  for (const item of items) {
     const t0 = Date.now();
     await renderVideo(item);
     const dt = Date.now() - t0;
     count++;
     const loopSize = statSync(join(LOOPS_DIR, item.file)).size;
     const thumbSize = existsSync(join(THUMBS_DIR, item.thumb)) ? statSync(join(THUMBS_DIR, item.thumb)).size : 0;
-    console.log(`[${count}/${catalog.length}] ${item.file} (${(loopSize / 1024).toFixed(1)} KB, thumb: ${(thumbSize / 1024).toFixed(1)} KB) generated in ${dt}ms`);
+    console.log(`[${count}/${items.length}] ${item.file} (${(loopSize / 1024).toFixed(1)} KB, thumb: ${(thumbSize / 1024).toFixed(1)} KB) generated in ${dt}ms`);
   }
 
   const totalDt = ((Date.now() - startTime) / 1000).toFixed(1);
-  console.log(`\nSuccessfully generated all ${count} loops and thumbnails in ${totalDt}s!`);
+  console.log(`\nSuccessfully generated ${count} loops and thumbnails in ${totalDt}s!`);
 
   // Optional: Copy to installed app directory if writable
   try {
-    if (existsSync(INSTALLED_DIR)) {
+    if (INSTALLED_DIR && existsSync(INSTALLED_DIR)) {
       const instLoops = join(INSTALLED_DIR, 'loops');
       const instThumbs = join(INSTALLED_DIR, 'thumbs');
       mkdirSync(instLoops, { recursive: true });
       mkdirSync(instThumbs, { recursive: true });
 
-      for (const item of catalog) {
+      for (const item of items) {
         copyFileSync(join(LOOPS_DIR, item.file), join(instLoops, item.file));
         if (existsSync(join(THUMBS_DIR, item.thumb))) {
           copyFileSync(join(THUMBS_DIR, item.thumb), join(instThumbs, item.thumb));
         }
       }
-      console.log(`Copied ${count} loops and thumbnails directly into Program Files!`);
+      console.log(`Copied ${count} loops and thumbnails directly into ${INSTALLED_DIR}!`);
     }
   } catch (e) {
-    console.log(`Note: Local Program Files copy skipped (${e.message}). The app package will include all assets.`);
+    console.log(`Note: Installed directory copy skipped (${e.message}). The app package will include all assets.`);
   }
 }
 

@@ -120,11 +120,22 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
       return;
     }
     var gif = isGif(name), vid = isVideo(name);
-    var title = gif ? 'Your GIF' : 'Your photo';
+    var title = vid ? 'Your video' : gif ? 'Your GIF' : 'Your photo';
     document.title = title;
     wrap.appendChild(el('h1', null, title));
     wrap.appendChild(el('p', 'sub', d.name));
     var src = '/e/' + slug + '/f/' + encodeURIComponent(name);
+
+    function track(act){
+      try {
+        var x = new XMLHttpRequest();
+        x.open('POST', '/e/' + slug + '/track');
+        x.setRequestHeader('content-type', 'application/json');
+        x.send(JSON.stringify({ action: act, file: name }));
+      } catch(e){}
+    }
+    track('views');
+
     var media;
     if(vid){
       media = el('video');
@@ -136,9 +147,35 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
     }
     wrap.appendChild(media);
     var row = el('div');
-    var dl = el('a', 'btn', gif ? 'Save GIF' : 'Save photo');
+
+    if(navigator.share && window.isSecureContext){
+      var sh = el('button', 'btn', 'Share / AirDrop ↗');
+      sh.type = 'button';
+      sh.onclick = function(){
+        navigator.share({ title: title + ' - ' + d.name, url: location.href }).then(function(){ track('share'); }).catch(function(){});
+      };
+      row.appendChild(sh);
+    }
+
+    var dl = el('a', 'btn' + (navigator.share && window.isSecureContext ? ' alt' : ''), vid ? 'Save video' : gif ? 'Save GIF' : 'Save photo');
     dl.href = src + '?dl=1'; dl.setAttribute('download', name);
+    dl.onclick = function(){ track('downloads'); };
     row.appendChild(dl);
+
+    var cp = el('button', 'btn alt', 'Copy link 📋');
+    cp.type = 'button';
+    cp.onclick = function(){
+      var u = location.href.split('?')[0];
+      function done(){ cp.textContent = 'Copied ✓'; track('share'); setTimeout(function(){ cp.textContent = 'Copy link 📋'; }, 2500); }
+      if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(done).catch(fb);
+      else fb();
+      function fb(){
+        var ta = document.createElement('textarea'); ta.value = u; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); done(); }catch(e){} document.body.removeChild(ta);
+      }
+    };
+    row.appendChild(cp);
+
     if(!vid && !gif){
       var pr = el('button', 'btn alt', 'Print photo');
       pr.type = 'button';
@@ -167,7 +204,11 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
     row.appendChild(all);
     wrap.appendChild(row);
     var tip = el('p', 'tip');
-    tip.innerHTML = 'iPhone: tap <b>Save photo</b>, then <b>Save to Photos</b> (or press and hold the picture). Android: tap <b>Save photo</b>.';
+    var isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    var isAndroid = /Android/.test(navigator.userAgent);
+    if(isIos) tip.innerHTML = '<b>How to save on iPhone:</b><br>1. Tap <b>Save video</b>.<br>2. Tap the blue download arrow ⬇️ in Safari’s address bar, then tap the clip.<br>3. Tap Share &gt; <b>Save Video</b> to keep it in Photos.';
+    else if(isAndroid) tip.innerHTML = '<b>How to save on Android:</b><br>Tap <b>Save video</b>. It downloads directly to your device and appears in Google Photos / Gallery.';
+    else tip.innerHTML = 'Tap <b>Save video</b> to download directly to your device.';
     wrap.appendChild(tip);
     app.appendChild(wrap);
   }

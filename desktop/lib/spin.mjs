@@ -10,10 +10,10 @@ import { join, basename } from 'node:path';
 import { createRequire } from 'node:module';
 
 const EXE = process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
-let candidates = [], resolved = undefined, tempDir = null, fxDirectory = null;
+let candidates = [], resolved = undefined, resolvedHw = undefined, tempDir = null, fxDirectory = null;
 
 // buildDir: where prepare.mjs put build/ffmpeg (inside app.asar.unpacked when packaged).
-export function configure({ buildDir, temp, fxDir }) {
+export function configure({ buildDir, temp, fxDir, resume = false }) {
   tempDir = temp || null;
   if (fxDir) {
     fxDirectory = fxDir;
@@ -32,6 +32,10 @@ export function configure({ buildDir, temp, fxDir }) {
   try { const p = createRequire(import.meta.url)('ffmpeg-static'); if (p) candidates.push(p); } catch { /* not installed */ }
   candidates.push('ffmpeg');           // one the laptop already has
   resolved = undefined;
+  resolvedHw = undefined;
+  if (resume && tempDir) {
+    try { resumePendingJobs(); } catch { /* ignore */ }
+  }
 }
 
 export function setFxDir(dir) { fxDirectory = dir || null; }
@@ -94,9 +98,37 @@ export async function probe(file) {
     const d = await run(bin, ['-hide_banner', '-nostats', '-i', file, '-map', '0:v:0', '-f', 'null', '-'], { timeout: 120000 });
     info.duration = durationFromProgress(d.err);
     if (!info.width) Object.assign(info, { ...parseProbe(d.err), duration: info.duration });
+    // A clip recorded in a browser (WebM) has no length in its header: remux packets (-c copy) first to find out fast.
+    const fast = await run(bin, ['-hide_banner', '-nostats', '-i', file, '-map', '0:v:0', '-c', 'copy', '-f', 'null', '-'], { timeout: 20000 });
+    info.duration = durationFromProgress(fast.err);
+    if (!info.width) Object.assign(info, { ...parseProbe(fast.err), duration: info.duration });
+    if (!info.duration) {
+      const d = await run(bin, ['-hide_banner', '-nostats', '-i', file, '-map', '0:v:0', '-f', 'null', '-'], { timeout: 120000 });
+      info.duration = durationFromProgress(d.err);
+      if (!info.width) Object.assign(info, { ...parseProbe(d.err), duration: info.duration });
+    }
   }
   if (!info.duration) throw new Error('Could not read that video.');
   return info;
+}
+
+// Optional hardware H.264 encoder detection (1.5). Tested once with a 1-frame encode and cached.
+export async function findHwEncoder() {
+  if (resolvedHw !== undefined) return resolvedHw;
+  const bin = await findFfmpeg();
+  if (!bin) { resolvedHw = null; return null; }
+  const order = process.platform === 'darwin'
+    ? ['h264_videotoolbox']
+    : ['h264_nvenc', 'h264_qsv', 'h264_amf'];
+  for (const enc of order) {
+    const r = await run(bin, [
+      '-hide_banner', '-f', 'lavfi', '-i', 'color=c=black:s=128x128:r=30:d=0.1',
+      '-frames:v', '1', '-c:v', enc, '-pix_fmt', 'yuv420p', '-f', 'null', '-'
+    ], { timeout: 5000 });
+    if (r.code === 0) { resolvedHw = enc; return resolvedHw; }
+  }
+  resolvedHw = null;
+  return null;
 }
 
 // ---------- the ffmpeg command ----------
@@ -105,6 +137,15 @@ const REVERSE_MAX = 8;                       // a sequence up to twice this many
 const BOOMERANG_MAX = 5;                     // seconds of the clip that go forward then back (it is held in memory)
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const f2 = (n) => (Math.round(n * 1000) / 1000).toString();
+
+// Builds an atempo filter chain for any playback rate in [0.25, 4] (ffmpeg atempo accepts [0.5, 100]).
+function atempoChain(rate) {
+  const r = clamp(Number(rate) || 1, 0.25, 4);
+  if (Math.abs(r - 1) < 0.001) return '';
+  if (r < 0.5) return 'atempo=0.5,atempo=' + f2(r / 0.5);
+  if (r > 2) return 'atempo=2,atempo=' + f2(r / 2);
+  return 'atempo=' + f2(r);
+}
 
 export function listFx() {
   if (!fxDirectory || !existsSync(fxDirectory)) return [];
@@ -139,8 +180,9 @@ function isVp9Webm(filePath) {
   }
 }
 
-export function resolveFx(spec) {
+export function resolveFx(spec, orientation) {
   if (!spec) return null;
+  const isLandscape = orientation === 'landscape' || (typeof orientation === 'object' && orientation && (orientation.orientation === 'landscape' || orientation.landscape));
   if (typeof spec === 'object' && spec.path && isValidFxFile(spec.path)) return spec;
   const id = typeof spec === 'string' ? spec.trim() : String(spec.id || spec.file || '').trim();
   if (!id || id === 'none') return null;
@@ -149,7 +191,8 @@ export function resolveFx(spec) {
       id,
       path: id,
       blend: typeof spec === 'object' && spec.blend ? spec.blend : (/\.webm$/i.test(id) ? 'overlay' : 'screen'),
-      opacity: typeof spec === 'object' && spec.opacity != null ? Number(spec.opacity) : 1.0
+      opacity: typeof spec === 'object' && spec.opacity != null ? Number(spec.opacity) : 1.0,
+      isLandscape: /landscape/i.test(id)
     };
   }
   if (fxDirectory && existsSync(fxDirectory)) {
@@ -160,23 +203,36 @@ export function resolveFx(spec) {
         if (Array.isArray(cat)) {
           const found = cat.find((item) => item.id === id || item.file === id);
           if (found) {
-            const p1 = join(fxDirectory, 'loops', found.file || found.filename || found.path || '');
-            const p2 = join(fxDirectory, found.file || found.filename || found.path || '');
-            const actual = isValidFxFile(p1) ? p1 : (isValidFxFile(p2) ? p2 : null);
+            const fname = found.file || found.filename || found.path || '';
+            let actual = null;
+            let isLand = false;
+            if (isLandscape) {
+              const pLand = join(fxDirectory, 'loops', 'landscape', fname);
+              const pLand2 = join(fxDirectory, 'landscape', fname);
+              if (isValidFxFile(pLand)) { actual = pLand; isLand = true; }
+              else if (isValidFxFile(pLand2)) { actual = pLand2; isLand = true; }
+            }
+            if (!actual) {
+              const p1 = join(fxDirectory, 'loops', fname);
+              const p2 = join(fxDirectory, fname);
+              actual = isValidFxFile(p1) ? p1 : (isValidFxFile(p2) ? p2 : null);
+            }
             if (actual) {
               return {
                 id: found.id,
                 name: found.name || found.id,
                 path: actual,
                 blend: found.blend || (/\.webm$/i.test(actual) ? 'overlay' : 'screen'),
-                opacity: found.opacity != null ? Number(found.opacity) : 1.0
+                opacity: found.opacity != null ? Number(found.opacity) : 1.0,
+                isLandscape: isLand
               };
             }
           }
         }
       } catch { /* ignore json error */ }
     }
-    for (const sub of ['', 'loops']) {
+    const subDirs = isLandscape ? ['loops/landscape', 'landscape', 'loops', ''] : ['loops', ''];
+    for (const sub of subDirs) {
       for (const ext of ['', '.mp4', '.webm']) {
         const p = join(fxDirectory, sub, id + ext);
         if (isValidFxFile(p)) {
@@ -184,7 +240,8 @@ export function resolveFx(spec) {
             id,
             path: p,
             blend: /\.webm$/i.test(p) ? 'overlay' : 'screen',
-            opacity: 1.0
+            opacity: 1.0,
+            isLandscape: /landscape/i.test(sub) || /landscape/i.test(p)
           };
         }
       }
@@ -198,18 +255,27 @@ export function normOptions(o) {
   const speed = SPEEDS.includes(o.speed) ? o.speed : 'slow';
   const q = o.quality === 720 || speed === 'boomerang' || (speed === 'custom' && o.reverse) ? 720 : 1080;      // boomerang and backwards are kept at 720 to stay light
   const short = q, long = Math.round(q * 16 / 9 / 2) * 2;
-  const landscape = o.orientation === 'landscape';
+  const orient = o.orientation === 'landscape' ? 'landscape' : (o.orientation === 'square' ? 'square' : 'portrait');
+  const landscape = orient === 'landscape';
+  const square = orient === 'square';
+  const W = square ? q : (landscape ? long : short);
+  const H = square ? q : (landscape ? short : long);
   return {
-    speed, smooth: !!o.smooth, landscape,
+    speed, smooth: !!o.smooth, gpu: !!o.gpu, landscape, square, orientation: orient,
     // custom: the clip is cut in equal parts and each part plays at its own rate (0.25x to 4x); reverse adds the whole thing backwards
     rates: speed === 'custom' ? (Array.isArray(o.rates) ? o.rates : []).map(Number).filter((r) => r >= 0.25 && r <= 4).slice(0, 6) : [],
     reverse: speed === 'custom' && !!o.reverse,
-    W: landscape ? long : short, H: landscape ? short : long,
+    W, H,
     trimStart: clamp(Number(o.trimStart) || 0, 0, 3600),
     trimEnd: o.trimEnd == null || o.trimEnd === '' ? null : Math.max(0, Number(o.trimEnd) || 0),
     audio: ['music', 'original', 'none'].includes(o.audio) ? o.audio : 'music',
     volume: clamp(o.volume == null ? 0.8 : Number(o.volume), 0, 1),
-    fx: o.fx || null
+    fx: o.fx || null,
+    intro: o.intro || null,
+    outro: o.outro || null,
+    textTiming: o.textTiming === 'fade' ? 'fade' : 'always',
+    textFadeIn: o.textFadeIn != null ? Number(o.textFadeIn) : 0.6,
+    textFadeOut: o.textFadeOut != null ? Number(o.textFadeOut) : 0.6
   };
 }
 // How long the finished video is.
@@ -224,19 +290,23 @@ export function outDuration(speed, d, o) {
   if (speed === 'boomerang') return Math.min(d, BOOMERANG_MAX) * 2;
   return d;
 }
-// { args, duration, W, H } for one clip. overlay / fx / music are file paths or null.
-export function buildArgs({ input, output, overlay, fx, music, options }, info) {
+// { args, duration, W, H } for one clip. overlay / fx / music / intro / outro are file paths or null.
+export function buildArgs({ input, output, overlay, textOverlay, fx, music, intro, outro, options, hwEncoder }, info) {
   const o = normOptions(options);
-  const end = o.trimEnd != null && o.trimEnd > o.trimStart ? Math.min(o.trimEnd, info.duration) : info.duration;
+  const introPath = (intro || o.intro) && existsSync(intro || o.intro) ? (intro || o.intro) : null;
+  const outroPath = (outro || o.outro) && existsSync(outro || o.outro) ? (outro || o.outro) : null;
+  const inFps = Number(info && info.fps) || 0;
+  const inDur = Number(info && info.duration) || 1.0;
+  const end = o.trimEnd != null && o.trimEnd > o.trimStart ? Math.min(o.trimEnd, inDur) : inDur;
   const D = Math.max(0.5, end - o.trimStart);
   if (o.speed === 'custom' && !o.rates.length) o.rates = [1];
   // Playing backwards holds the whole sequence in memory: only for a short one.
   if (o.speed === 'custom' && o.reverse && outDuration('custom', D, { ...o, reverse: false }) > REVERSE_MAX * 2) o.reverse = false;
-  const dur = outDuration(o.speed, D, o);
+  let dur = outDuration(o.speed, D, o);
   const a = ['-hide_banner', '-y', '-nostats', '-progress', 'pipe:1'];
   a.push('-ss', f2(o.trimStart), '-t', f2(D), '-i', input);
 
-  const fxResolved = resolveFx(fx || o.fx);
+  const fxResolved = resolveFx(fx || o.fx, o.orientation);
   let fxPath = null, fxBlend = 'screen', fxOpacity = 1.0;
   if (fxResolved && fxResolved.path && existsSync(fxResolved.path)) {
     fxPath = fxResolved.path;
@@ -244,7 +314,7 @@ export function buildArgs({ input, output, overlay, fx, music, options }, info) 
     fxOpacity = clamp(Number(fxResolved.opacity != null ? fxResolved.opacity : 1.0), 0, 1);
   }
 
-  let idx = 1, fxIdx = -1, ovIdx = -1, muIdx = -1;
+  let idx = 1, fxIdx = -1, ovIdx = -1, txtIdx = -1, muIdx = -1, introIdx = -1, outroIdx = -1;
   if (fxPath) {
     a.push('-stream_loop', '-1');
     if (isVp9Webm(fxPath)) {
@@ -254,60 +324,75 @@ export function buildArgs({ input, output, overlay, fx, music, options }, info) 
     fxIdx = idx++;
   }
   if (overlay) { a.push('-i', overlay); ovIdx = idx++; }
+  if (textOverlay) { a.push('-i', textOverlay); txtIdx = idx++; }
   const useMusic = o.audio === 'music' && !!music;
   if (useMusic) { a.push('-stream_loop', '-1', '-i', music); muIdx = idx++; }
+  if (introPath) { a.push('-i', introPath); introIdx = idx++; }
+  if (outroPath) { a.push('-i', outroPath); outroIdx = idx++; }
 
+  // 1.1: Scale/crop to output dimensions first so minterpolate, split, concat, and fps operate on WxH instead of 4K.
+  // 1.2: Skip minterpolate when the source clip already has enough real frames (>=50fps for 0.5x, >=25fps after slowest rate).
   const fit = 'scale=' + o.W + ':' + o.H + ':force_original_aspect_ratio=increase,crop=' + o.W + ':' + o.H + ',setsar=1';
   const f = [];
   let src = '[0:v]';
   if (o.speed === 'slow') {
-    f.push(src + (o.smooth ? 'minterpolate=fps=60:mi_mode=blend,' : '') + 'setpts=2.0*PTS,fps=30,' + fit + '[v0]');
+    const smoothSlow = o.smooth && (inFps <= 0 || inFps < 50);
+    f.push(src + fit + ',' + (smoothSlow ? 'minterpolate=fps=60:mi_mode=blend,' : '') + 'setpts=2.0*PTS,fps=30[v0]');
   } else if (o.speed === 'ramp') {
     const t1 = f2(D * 0.25), t2 = f2(D * 0.75);
-    f.push(src + 'split=3[a][b][c]');
+    f.push(src + fit + ',split=3[a][b][c]');
     f.push('[a]trim=0:' + t1 + ',setpts=(PTS-STARTPTS)/2[v1]');
     f.push('[b]trim=' + t1 + ':' + t2 + ',setpts=(PTS-STARTPTS)*2[v2]');
     f.push('[c]trim=' + t2 + ',setpts=(PTS-STARTPTS)/2[v3]');
-    f.push('[v1][v2][v3]concat=n=3:v=1:a=0,fps=30,' + fit + '[v0]');
+    f.push('[v1][v2][v3]concat=n=3:v=1:a=0,fps=30[v0]');
   } else if (o.speed === 'custom') {
     const n = o.rates.length, part = D / n;
-    const pre = o.smooth && o.rates.some((r) => r < 1) ? 'minterpolate=fps=60:mi_mode=blend,' : '';
+    const minRate = Math.min(...o.rates);
+    const needSmooth = o.smooth && minRate < 1 && (inFps <= 0 || inFps * minRate < 25);
+    const pre = needSmooth ? 'minterpolate=fps=60:mi_mode=blend,' : '';
     if (n === 1) {
-      f.push(src + pre + 'setpts=' + f2(1 / o.rates[0]) + '*PTS,fps=30,' + fit + (o.reverse ? ',split[a][b]' : '[v0]'));
+      f.push(src + fit + ',' + pre + 'setpts=' + f2(1 / o.rates[0]) + '*PTS,fps=30' + (o.reverse ? ',split[a][b]' : '[v0]'));
     } else {
-      f.push(src + pre + 'split=' + n + o.rates.map((r, i) => '[s' + i + ']').join(''));
+      f.push(src + fit + ',' + pre + 'split=' + n + o.rates.map((r, i) => '[s' + i + ']').join(''));
       o.rates.forEach((r, i) => f.push('[s' + i + ']trim=' + f2(i * part) + ':' + f2((i + 1) * part) + ',setpts=(PTS-STARTPTS)/' + f2(r) + '[p' + i + ']'));
-      f.push(o.rates.map((r, i) => '[p' + i + ']').join('') + 'concat=n=' + n + ':v=1:a=0,fps=30,' + fit + (o.reverse ? ',split[a][b]' : '[v0]'));
+      f.push(o.rates.map((r, i) => '[p' + i + ']').join('') + 'concat=n=' + n + ':v=1:a=0,fps=30' + (o.reverse ? ',split[a][b]' : '[v0]'));
     }
     if (o.reverse) { f.push('[b]reverse[r]'); f.push('[a][r]concat=n=2:v=1:a=0[v0]'); }
   } else if (o.speed === 'boomerang') {
     const Db = f2(Math.min(D, BOOMERANG_MAX));
-    f.push(src + 'trim=0:' + Db + ',setpts=PTS-STARTPTS,fps=30,' + fit + ',split[a][b]');
+    f.push(src + 'trim=0:' + Db + ',setpts=PTS-STARTPTS,' + fit + ',fps=30,split[a][b]');
     f.push('[b]reverse[r]');
     f.push('[a][r]concat=n=2:v=1:a=0[v0]');
   } else {
-    f.push(src + 'fps=30,' + fit + '[v0]');
+    f.push(src + fit + ',fps=30[v0]');
   }
   let last = '[v0]';
   if (fxIdx >= 0) {
-    f.push('[' + fxIdx + ':v]scale=' + o.W + ':' + o.H + ':force_original_aspect_ratio=increase,crop=' + o.W + ':' + o.H + ',setsar=1,fps=30[fx_fit]');
+    // 1.3: Decode, scale, and format the short FX clip once, then loop the pre-formatted frames in memory.
+    const fxLoop = 'loop=loop=-1:size=300:start=0,setpts=N/(30*TB)';
+    // 3.2: For landscape outputs, if loop is native landscape, scale directly; if portrait loop, scale to height and pad/center to prevent 3.56x zoom cropping out 70% of particles.
+    if (o.landscape && !fxResolved?.isLandscape) {
+      f.push('[' + fxIdx + ':v]scale=-1:' + o.H + ':force_original_aspect_ratio=decrease,pad=' + o.W + ':' + o.H + ':(ow-iw)/2:(oh-ih)/2:color=' + (fxBlend === 'overlay' ? '0x00000000' : 'black') + ',setsar=1,fps=30[fx_fit]');
+    } else {
+      f.push('[' + fxIdx + ':v]scale=' + o.W + ':' + o.H + ':force_original_aspect_ratio=increase,crop=' + o.W + ':' + o.H + ',setsar=1,fps=30[fx_fit]');
+    }
     if (fxBlend === 'overlay') {
-      f.push('[fx_fit]format=rgba[fx_rgba]');
       if (fxOpacity < 0.999) {
-        f.push('[fx_rgba]colorchannelmixer=aa=' + f2(fxOpacity) + '[fx_alpha]');
-        f.push(last + '[fx_alpha]overlay=0:0:format=auto:shortest=1[v_fx]');
+        f.push('[fx_fit]format=rgba[fx_rgba]');
+        f.push('[fx_rgba]colorchannelmixer=aa=' + f2(fxOpacity) + ',format=yuva420p,' + fxLoop + '[fx_alpha]');
       } else {
-        f.push(last + '[fx_rgba]overlay=0:0:format=auto:shortest=1[v_fx]');
+        f.push('[fx_fit]format=yuva420p,' + fxLoop + '[fx_alpha]');
       }
+      f.push(last + '[fx_alpha]overlay=0:0:format=auto:shortest=1[v_fx]');
       last = '[v_fx]';
     } else if (fxBlend === 'addition') {
       f.push(last + 'format=gbrp[v_base]');
-      f.push('[fx_fit]format=gbrp[fx_rgb]');
+      f.push('[fx_fit]format=gbrp,' + fxLoop + '[fx_rgb]');
       f.push('[v_base][fx_rgb]blend=all_mode=addition' + (fxOpacity < 0.999 ? ':all_opacity=' + f2(fxOpacity) : '') + ':shortest=1[v_fx]');
       last = '[v_fx]';
     } else {
       f.push(last + 'format=gbrp[v_base]');
-      f.push('[fx_fit]format=gbrp[fx_rgb]');
+      f.push('[fx_fit]format=gbrp,' + fxLoop + '[fx_rgb]');
       f.push('[v_base][fx_rgb]blend=all_mode=screen' + (fxOpacity < 0.999 ? ':all_opacity=' + f2(fxOpacity) : '') + ':shortest=1[v_fx]');
       last = '[v_fx]';
     }
@@ -317,46 +402,214 @@ export function buildArgs({ input, output, overlay, fx, music, options }, info) 
     f.push(last + '[ov]overlay=0:0:format=auto[v1o]');
     last = '[v1o]';
   }
-  f.push(last + 'format=yuv420p[vout]');
+  if (txtIdx >= 0) {
+    if (o.textTiming === 'fade') {
+      const fadeIn = clamp(Number(o.textFadeIn) || 0.6, 0.1, 2.0);
+      const fadeOut = clamp(Number(o.textFadeOut) || 0.6, 0.1, 2.0);
+      const fadeOutStart = Math.max(0.1, dur - fadeOut - 0.2);
+      f.push('[' + txtIdx + ':v]scale=' + o.W + ':' + o.H + ',format=rgba,fade=in:st=0.3:d=' + f2(fadeIn) + ':alpha=1,fade=out:st=' + f2(fadeOutStart) + ':d=' + f2(fadeOut) + ':alpha=1[txt_fade]');
+      f.push(last + '[txt_fade]overlay=0:0:format=auto[v_txt]');
+    } else {
+      f.push('[' + txtIdx + ':v]scale=' + o.W + ':' + o.H + ',format=rgba[txt_raw]');
+      f.push(last + '[txt_raw]overlay=0:0:format=auto[v_txt]');
+    }
+    last = '[v_txt]';
+  }
+  const hasStinger = introIdx >= 0 || outroIdx >= 0;
+  const mainVLabel = hasStinger ? '[v_main]' : '[vout]';
+  f.push(last + 'format=yuv420p' + mainVLabel);
 
+  // 1.6: Audio "Original sound" supported across normal, slow, ramp, custom, and boomerang.
   let audioMap = [];
+  const mainALabel = hasStinger ? '[a_main]' : '[aout]';
   if (useMusic) {
     const fadeOut = Math.max(0, dur - 1.2);
-    f.push('[' + muIdx + ':a]atrim=0:' + f2(dur) + ',asetpts=PTS-STARTPTS,volume=' + f2(o.volume) + ',afade=t=in:st=0:d=0.6,afade=t=out:st=' + f2(fadeOut) + ':d=1.2[aout]');
+    f.push('[' + muIdx + ':a]atrim=0:' + f2(dur) + ',asetpts=PTS-STARTPTS,volume=' + f2(o.volume) + ',afade=t=in:st=0:d=0.6,afade=t=out:st=' + f2(fadeOut) + ':d=1.2' + mainALabel);
+    audioMap = ['-map', mainALabel];
+  } else if (o.audio === 'original' && info.hasAudio) {
+    if (o.speed === 'normal') {
+      if (hasStinger) {
+        f.push('[0:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,asetpts=PTS-STARTPTS' + mainALabel);
+        audioMap = ['-map', mainALabel];
+      } else {
+        audioMap = ['-map', '0:a'];
+      }
+    } else if (o.speed === 'slow') {
+      f.push('[0:a]atempo=0.5' + mainALabel);
+      audioMap = ['-map', mainALabel];
+    } else if (o.speed === 'ramp') {
+      const t1 = f2(D * 0.25), t2 = f2(D * 0.75);
+      f.push('[0:a]asplit=3[aa][ab][ac]');
+      f.push('[aa]atrim=0:' + t1 + ',asetpts=PTS-STARTPTS,atempo=2[a1]');
+      f.push('[ab]atrim=' + t1 + ':' + t2 + ',asetpts=PTS-STARTPTS,atempo=0.5[a2]');
+      f.push('[ac]atrim=' + t2 + ',asetpts=PTS-STARTPTS,atempo=2[a3]');
+      f.push('[a1][a2][a3]concat=n=3:v=0:a=1' + mainALabel);
+      audioMap = ['-map', mainALabel];
+    } else if (o.speed === 'boomerang') {
+      const Db = f2(Math.min(D, BOOMERANG_MAX));
+      f.push('[0:a]atrim=0:' + Db + ',asetpts=PTS-STARTPTS,asplit[aa][ab]');
+      f.push('[ab]areverse[ar]');
+      f.push('[aa][ar]concat=n=2:v=0:a=1' + mainALabel);
+      audioMap = ['-map', mainALabel];
+    } else if (o.speed === 'custom') {
+      const n = o.rates.length, part = D / n;
+      if (n === 1) {
+        const ac = atempoChain(o.rates[0]);
+        const chain = '[0:a]asetpts=PTS-STARTPTS' + (ac ? ',' + ac : '');
+        if (o.reverse) {
+          f.push(chain + ',asplit[aa][ab]');
+          f.push('[ab]areverse[ar]');
+          f.push('[aa][ar]concat=n=2:v=0:a=1' + mainALabel);
+        } else {
+          f.push(chain + mainALabel);
+        }
+      } else {
+        f.push('[0:a]asplit=' + n + o.rates.map((r, i) => '[as' + i + ']').join(''));
+        o.rates.forEach((r, i) => {
+          const ac = atempoChain(r);
+          f.push('[as' + i + ']atrim=' + f2(i * part) + ':' + f2((i + 1) * part) + ',asetpts=PTS-STARTPTS' + (ac ? ',' + ac : '') + '[ap' + i + ']');
+        });
+        f.push(o.rates.map((r, i) => '[ap' + i + ']').join('') + 'concat=n=' + n + ':v=0:a=1' + (o.reverse ? ',asplit[aa][ab]' : mainALabel));
+        if (o.reverse) {
+          f.push('[ab]areverse[ar]');
+          f.push('[aa][ar]concat=n=2:v=0:a=1' + mainALabel);
+        }
+      }
+      audioMap = ['-map', mainALabel];
+    }
+  } else if (hasStinger) {
+    f.push('anullsrc=r=44100:cl=stereo,atrim=0:' + f2(dur) + mainALabel);
+    audioMap = ['-map', mainALabel];
+  }
+
+  // 4.3: Concat Intro and/or Outro Stingers
+  if (hasStinger) {
+    const vSegs = [], aSegs = [];
+    let extraDur = 0;
+    if (introIdx >= 0) {
+      f.push('[' + introIdx + ':v]scale=' + o.W + ':' + o.H + ':force_original_aspect_ratio=increase,crop=' + o.W + ':' + o.H + ',setsar=1,fps=30,setpts=PTS-STARTPTS[v_intro]');
+      if (info && info.intro && info.intro.hasAudio) {
+        f.push('[' + introIdx + ':a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,asetpts=PTS-STARTPTS[a_intro]');
+      } else {
+        const inDur = f2((info && info.intro && info.intro.duration) || 2);
+        f.push('anullsrc=r=44100:cl=stereo,atrim=0:' + inDur + ',asetpts=PTS-STARTPTS[a_intro]');
+      }
+      vSegs.push('[v_intro]'); aSegs.push('[a_intro]');
+      extraDur += (info && info.intro && info.intro.duration) || 2;
+    }
+    vSegs.push('[v_main]'); aSegs.push(mainALabel);
+    if (outroIdx >= 0) {
+      f.push('[' + outroIdx + ':v]scale=' + o.W + ':' + o.H + ':force_original_aspect_ratio=increase,crop=' + o.W + ':' + o.H + ',setsar=1,fps=30,setpts=PTS-STARTPTS[v_outro]');
+      if (info && info.outro && info.outro.hasAudio) {
+        f.push('[' + outroIdx + ':a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,asetpts=PTS-STARTPTS[a_outro]');
+      } else {
+        const outDur = f2((info && info.outro && info.outro.duration) || 2);
+        f.push('anullsrc=r=44100:cl=stereo,atrim=0:' + outDur + ',asetpts=PTS-STARTPTS[a_outro]');
+      }
+      vSegs.push('[v_outro]'); aSegs.push('[a_outro]');
+      extraDur += (info && info.outro && info.outro.duration) || 2;
+    }
+    const concatInputs = [];
+    for (let i = 0; i < vSegs.length; i++) {
+      concatInputs.push(vSegs[i], aSegs[i]);
+    }
+    f.push(concatInputs.join('') + 'concat=n=' + vSegs.length + ':v=1:a=1[vout][aout]');
     audioMap = ['-map', '[aout]'];
-  } else if (o.audio === 'original' && info.hasAudio && (o.speed === 'normal' || o.speed === 'slow')) {
-    if (o.speed === 'slow') { f.push('[0:a]atempo=0.5[aout]'); audioMap = ['-map', '[aout]']; }
-    else audioMap = ['-map', '0:a'];
+    dur += extraDur;
   }
   a.push('-filter_complex', f.join(';'), '-map', '[vout]', ...audioMap);
-  a.push('-t', f2(dur), '-r', '30', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p');
+  a.push('-t', f2(dur), '-r', '30');
+  const hw = hwEncoder || (o.gpu && resolvedHw) || null;
+  if (hw === 'h264_nvenc') {
+    a.push('-c:v', 'h264_nvenc', '-preset', 'p4', '-cq', '22', '-pix_fmt', 'yuv420p');
+  } else if (hw === 'h264_videotoolbox') {
+    a.push('-c:v', 'h264_videotoolbox', '-q:v', '65', '-pix_fmt', 'yuv420p');
+  } else if (hw === 'h264_qsv') {
+    a.push('-c:v', 'h264_qsv', '-global_quality', '22', '-pix_fmt', 'yuv420p');
+  } else if (hw === 'h264_amf') {
+    a.push('-c:v', 'h264_amf', '-rc', 'cqp', '-qp_i', '22', '-qp_p', '22', '-pix_fmt', 'yuv420p');
+  } else {
+    a.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p');
+  }
   if (audioMap.length) a.push('-c:a', 'aac', '-b:a', '160k', '-ar', '44100'); else a.push('-an');
   a.push('-movflags', '+faststart', output);
   return { args: a, duration: dur, W: o.W, H: o.H };
 }
 
 // ---------- jobs ----------
+// ---------- jobs (1.7: persistent queue + pruning) ----------
 const jobs = new Map();
+const MAX_JOBS_HISTORY = 100;
 let seq = 0, chain = Promise.resolve();
+
+function queueFilePath() {
+  return tempDir ? join(tempDir, 'spin-queue.json') : null;
+}
+
+function savePendingQueue() {
+  const qf = queueFilePath();
+  if (!qf) return;
+  try {
+    mkdirSync(tempDir, { recursive: true });
+    const pending = [];
+    for (const j of jobs.values()) {
+      if ((j.state === 'queued' || j.state === 'running') && j.params) {
+        pending.push({ id: j.id, params: j.params });
+      }
+    }
+    writeFileSync(qf, JSON.stringify(pending));
+  } catch { /* ignore */ }
+}
+
+function pruneJobs() {
+  if (jobs.size <= MAX_JOBS_HISTORY) return;
+  for (const [id, j] of jobs) {
+    if (jobs.size <= MAX_JOBS_HISTORY) break;
+    if (j.state === 'done' || j.state === 'error' || j.state === 'cancelled') {
+      jobs.delete(id);
+    }
+  }
+}
+
+export function resumePendingJobs() {
+  const qf = queueFilePath();
+  if (!qf || !existsSync(qf)) return 0;
+  let list = [];
+  try { list = JSON.parse(readFileSync(qf, 'utf8')) || []; } catch { return 0; }
+  if (!Array.isArray(list) || !list.length) return 0;
+  let count = 0;
+  for (const item of list) {
+    const p = item && item.params;
+    if (!p || !p.inputPath || !existsSync(p.inputPath)) continue;
+    enqueue(p);
+    count++;
+  }
+  return count;
+}
+
 export const jobInfo = (id) => { const j = jobs.get(Number(id)); return j ? { id: j.id, state: j.state, pct: j.pct, out: j.out, error: j.error } : null; };
 export function cancelJob(id) {
   const j = jobs.get(Number(id)); if (!j) return false;
-  if (j.state === 'queued') { j.state = 'cancelled'; return true; }
-  if (j.state === 'running' && j.proc) { j.state = 'cancelled'; try { j.proc.kill(); } catch { /* gone */ } return true; }
+  if (j.state === 'queued') { j.state = 'cancelled'; savePendingQueue(); return true; }
+  if (j.state === 'running' && j.proc) { j.state = 'cancelled'; try { j.proc.kill(); } catch { /* gone */ } savePendingQueue(); return true; }
   return false;
 }
 const safeBase = (n) => basename(String(n || 'video')).replace(/\.[a-z0-9]+$/i, '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60) || 'video';
 
 // inputPath: the clip; outDir: where the finished MP4 goes; the rest as in buildArgs.
-export function enqueue({ inputPath, outDir, label, overlay, fx, music, options }) {
-  const job = { id: ++seq, state: 'queued', pct: 0, out: null, error: '', proc: null };
+export function enqueue({ inputPath, outDir, label, overlay, textOverlay, fx, music, intro, outro, options }) {
+  pruneJobs();
+  const params = { inputPath, outDir, label, overlay, textOverlay, fx, music, intro, outro, options };
+  const job = { id: ++seq, state: 'queued', pct: 0, out: null, error: '', proc: null, params };
   jobs.set(job.id, job);
-  chain = chain.then(() => runJob(job, { inputPath, outDir, label, overlay, fx, music, options })).catch(() => {});
+  savePendingQueue();
+  chain = chain.then(() => runJob(job, params)).catch(() => {});
   return { id: job.id };
 }
 async function runJob(job, p) {
-  if (job.state === 'cancelled') return;
+  if (job.state === 'cancelled') { savePendingQueue(); return; }
   job.state = 'running';
+  savePendingQueue();
   try {
     const bin = await findFfmpeg(); if (!bin) throw new Error('Video editing is not available on this laptop.');
     if (!existsSync(p.inputPath)) throw new Error('That video is no longer in the inbox.');
@@ -365,12 +618,28 @@ async function runJob(job, p) {
     let name = safeBase(p.inputPath) + (p.label ? ' ' + safeBase(p.label) : ' edited') + '.mp4', i = 2;
     while (existsSync(join(p.outDir, name))) { name = name.replace(/( \(\d+\))?\.mp4$/, ' (' + i + ').mp4'); i++; }
     const outPath = join(p.outDir, '.' + name + '.part.mp4');         // not listed until finished
-    const built = buildArgs({ input: p.inputPath, output: outPath, overlay: p.overlay, fx: p.fx, music: p.music, options: p.options }, info);
+    const introPath = p.intro || (p.options && p.options.intro) || null;
+    const outroPath = p.outro || (p.options && p.options.outro) || null;
+    const introInfo = introPath && existsSync(introPath) ? await probe(introPath).catch(() => null) : null;
+    const outroInfo = outroPath && existsSync(outroPath) ? await probe(outroPath).catch(() => null) : null;
+    const combinedInfo = { ...info, intro: introInfo, outro: outroInfo };
+    const useGpu = Boolean(p.options && p.options.gpu);
+    const hwEncoder = useGpu ? await findHwEncoder() : null;
+    let built = buildArgs({ input: p.inputPath, output: outPath, overlay: p.overlay, textOverlay: p.textOverlay, fx: p.fx, music: p.music, intro: introPath, outro: outroPath, options: p.options, hwEncoder }, combinedInfo);
     const total = built.duration;
-    const r = await run(bin, built.args, {
+    let r = await run(bin, built.args, {
       onProc: (pr) => { job.proc = pr; },
       onStdout: (t) => { const m = [...t.matchAll(/out_time_(?:us|ms)=(\d+)/g)].pop(); if (m) job.pct = clamp(Math.round(Number(m[1]) / 1e6 / total * 100), 0, 99); }
     });
+    // If GPU encoding failed at runtime, transparently fall back to libx264.
+    if (hwEncoder && job.state !== 'cancelled' && (r.code !== 0 || !existsSync(outPath))) {
+      try { unlinkSync(outPath); } catch { /* ignore */ }
+      built = buildArgs({ input: p.inputPath, output: outPath, overlay: p.overlay, textOverlay: p.textOverlay, fx: p.fx, music: p.music, intro: introPath, outro: outroPath, options: { ...p.options, gpu: false }, hwEncoder: null }, combinedInfo);
+      r = await run(bin, built.args, {
+        onProc: (pr) => { job.proc = pr; },
+        onStdout: (t) => { const m = [...t.matchAll(/out_time_(?:us|ms)=(\d+)/g)].pop(); if (m) job.pct = clamp(Math.round(Number(m[1]) / 1e6 / total * 100), 0, 99); }
+      });
+    }
     if (job.state === 'cancelled') { try { unlinkSync(outPath); } catch { /* none */ } return; }
     if (r.code !== 0 || !existsSync(outPath)) {
       const tail = r.err.split('\n').map((l) => l.trim()).filter(Boolean).slice(-4).join(' | ');
@@ -381,7 +650,10 @@ async function runJob(job, p) {
   } catch (e) {
     job.state = job.state === 'cancelled' ? 'cancelled' : 'error';
     job.error = String((e && e.message) || e);
-  } finally { job.proc = null; }
+  } finally {
+    job.proc = null;
+    savePendingQueue();
+  }
 }
 
 // The transparent PNG (frame, logo, title) the booth page drew: saved to a temp file for ffmpeg.

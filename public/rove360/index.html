@@ -45,23 +45,28 @@
 (function(){
   // The booth's upload address. It must match DRIVE_SCRIPT_URL in the booth page.
   var SCRIPT = 'https://script.google.com/macros/s/AKfycbxv0WfF9rxFY9QlseCoSjrA7vePwHE-Uc8QTURZYyN6yIzcTj4SIlktEWT6Xnaw6Pv9OA/exec';
-  var MAX_BYTES = 28 * 1024 * 1024;          // the booth's upload takes about this much per video
   var params = {};
   location.hash.replace(/^#/, '').split('&').forEach(function(p){ var i = p.indexOf('='); if(i > 0) params[p.slice(0, i)] = decodeURIComponent(p.slice(i + 1)); });
   var ticket = params.t || '';
+  var lan = params.lan || '';
+  var MAX_BYTES = lan ? (1024 * 1024 * 1024) : (28 * 1024 * 1024);          // LAN allows up to 1 GB; web takes up to 28 MB
   var $ = function(id){ return document.getElementById(id); };
   $('ev').textContent = params.e || '';
 
-  // The ticket says when it stops working.
+  // The ticket says when it stops working (unless connected directly to booth LAN).
   var exp = 0;
-  try{
-    var body = ticket.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'); while(body.length % 4) body += '=';
-    exp = JSON.parse(atob(body)).exp || 0;
-  }catch(e){}
-  function dead(why){ $('ctl').style.display = 'none'; $('dead').style.display = 'block'; if(why) $('deadWhy').textContent = why; }
-  if(!ticket || !exp) dead('The link is incomplete. Scan the QR code on the booth again.');
-  else if(exp < Date.now()) dead('This link has expired. Ask the booth to show the QR code again, then scan it.');
-  else $('until').textContent = 'This link works until ' + new Date(exp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '.';
+  if (!lan) {
+    try{
+      var body = ticket.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'); while(body.length % 4) body += '=';
+      exp = JSON.parse(atob(body)).exp || 0;
+    }catch(e){}
+    function dead(why){ $('ctl').style.display = 'none'; $('dead').style.display = 'block'; if(why) $('deadWhy').textContent = why; }
+    if(!ticket || !exp) dead('The link is incomplete. Scan the QR code on the booth again.');
+    else if(exp < Date.now()) dead('This link has expired. Ask the booth to show the QR code again, then scan it.');
+    else $('until').textContent = 'This link works until ' + new Date(exp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '.';
+  } else {
+    $('until').textContent = 'Connected directly to booth local network.';
+  }
 
   function wait(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   function stamp(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -80,7 +85,41 @@
     $('list').insertBefore(row, $('list').firstChild);
     var bar = row.querySelector('i'), st = row.querySelector('.st');
     if(!(/^video\//.test(file.type) || /\.(mp4|mov|m4v|webm)$/i.test(file.name || ''))){ st.className = 'st bad'; st.textContent = 'That is not a video.'; return; }
-    if(file.size > MAX_BYTES){ st.className = 'st bad'; st.textContent = 'This video is ' + (Math.round(file.size / 104857.6) / 10) + ' MB. The booth takes up to 28 MB: record a shorter clip or a lower quality.'; return; }
+    if(file.size > MAX_BYTES){ st.className = 'st bad'; st.textContent = 'This video is ' + (Math.round(file.size / 104857.6) / 10) + ' MB. The booth takes up to ' + (lan ? '1 GB' : '28 MB') + ': record a shorter clip or a lower quality.'; return; }
+
+    if (lan) {
+      // Direct binary streaming over local Wi-Fi to Windows/Android booth station (no base64, no memory cap)
+      var uploadUrl = lan.replace(/\/+$/, '');
+      if (!/\/upload$/.test(uploadUrl)) uploadUrl += '/upload';
+      uploadUrl += '?name=' + encodeURIComponent(file.name || ('clip-' + Date.now() + '.mp4'));
+      var x = new XMLHttpRequest();
+      x.open('POST', uploadUrl);
+      x.setRequestHeader('content-type', 'application/octet-stream');
+      x.upload.onprogress = function(p) {
+        if (p.lengthComputable) {
+          var pct = Math.round((p.loaded / p.total) * 100);
+          bar.style.width = pct + '%';
+          st.textContent = 'Sending… ' + pct + '%';
+        }
+      };
+      x.onload = function() {
+        if (x.status === 200) {
+          bar.style.width = '100%';
+          st.className = 'st ok';
+          st.textContent = 'Sent. It is on the booth station now.';
+        } else {
+          st.className = 'st bad';
+          st.textContent = 'Could not send (' + x.status + '). Try again.';
+        }
+      };
+      x.onerror = function() {
+        st.className = 'st bad';
+        st.textContent = 'No connection to the booth. Are you on the booth Wi-Fi?';
+      };
+      x.send(file);
+      return;
+    }
+
     try{
       var b64 = await toBase64(file); bar.style.width = '40%'; st.textContent = 'Sending… keep this page open.';
       var ext = (/\.(mp4|mov|m4v|webm)$/i.exec(file.name || '') || ['.mp4'])[0].toLowerCase();

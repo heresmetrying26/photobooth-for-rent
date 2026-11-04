@@ -39,6 +39,7 @@ class PBLocal(private val ctx: Context) {
     companion object {
         private const val TAG = "PBLocal"
         val IMG_RE = Regex("\\.(jpe?g|png|webp|gif|mp4|webm)$", RegexOption.IGNORE_CASE)
+        val VIDEO_RE = Regex("\\.(mp4|webm|mov|m4v)$", RegexOption.IGNORE_CASE)
         private val SESSION_RE = Regex("^(?:BONUS_)?(\\d+)_")
         private val BAD_CHARS = Regex("[\\\\/:*?\"<>|\\x00-\\x1f]")
         private val SPACES = Regex("\\s+")
@@ -302,6 +303,121 @@ class PBLocal(private val ctx: Context) {
         }
     }
 
+    fun spinDir(): File {
+        val d = File(root, "360 inbox")
+        d.mkdirs()
+        return d
+    }
+
+    /** The address a phone opens to send 360 videos here ("" when the tablet is not on a Wi-Fi network). */
+    @JavascriptInterface
+    fun spinInfo(): String {
+        val ip = lanAddress() ?: return ""
+        val port = sharePort
+        return if (port > 0) "http://$ip:$port/send/${roveToken()}" else ""
+    }
+
+    /** The 360 videos sent to this tablet, as JSON: [{name, size, mtime}]. */
+    @JavascriptInterface
+    fun spinScan(): String {
+        val arr = JSONArray()
+        try {
+            val list = spinDir().listFiles() ?: return "[]"
+            val sorted = list
+                .filter { it.isFile && !it.name.startsWith(".") && VIDEO_RE.containsMatchIn(it.name) }
+                .sortedByDescending { it.lastModified() }
+            for (f in sorted.take(300)) {
+                arr.put(JSONObject().put("name", f.name).put("size", f.length()).put("mtime", f.lastModified()))
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not list the 360 videos", e)
+        }
+        return arr.toString()
+    }
+
+    /** Copies a 360 clip from the inbox into an event folder (matching desktop PBX.spinShare). */
+    @JavascriptInterface
+    fun spinShare(name: String?, folderKey: String?, subfolder: String?, outName: String?): String {
+        val rel = name ?: ""
+        val d = if (rel.startsWith("edited/")) File(spinDir(), "edited") else spinDir()
+        val n = File(rel).name
+        if (!VIDEO_RE.containsMatchIn(n)) return err("No video")
+        val src = File(d, n)
+        if (!src.isFile) return err("That video is no longer in the inbox")
+        val f = folderFor(folderKey, subfolder)
+        val dir = dirOf(f)
+        var base = File(safeName(outName).ifEmpty { n }).name
+        if (!VIDEO_RE.containsMatchIn(base)) {
+            val ext = n.substringAfterLast('.', "mp4")
+            base += ".$ext"
+        }
+        val out: String
+        synchronized(lock) {
+            var candidate = base
+            var i = 2
+            while (File(dir, candidate).exists()) {
+                candidate = base.replace(EXT_RE, " ($i)$1")
+                i++
+            }
+            val dest = File(dir, candidate)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    android.system.Os.link(src.absolutePath, dest.absolutePath)
+                } else {
+                    src.copyTo(dest, overwrite = true)
+                }
+            } catch (_: Throwable) {
+                src.copyTo(dest, overwrite = true)
+            }
+            out = candidate
+        }
+        val folderUrl = "pb4u-local:" + f.slug
+        val shownName = if (f.sub.isNotEmpty()) f.name + " / " + f.sub else f.name
+        return JSONObject()
+            .put("ok", true)
+            .put("fileId", f.slug + "/" + out)
+            .put("downloadUrl", "pb4u-local:" + f.slug + "/" + out)
+            .put("folderUrl", folderUrl)
+            .put("folderName", shownName)
+            .put("folderPath", dir.absolutePath)
+            .toString()
+    }
+
+    /** Saves a 360 video a phone sent (up to length bytes from input); returns its file name, or null. */
+    fun saveSpinVideo(rawName: String, input: InputStream, length: Long): String? {
+        return try {
+            val want = safeName(rawName).ifEmpty { "clip-" + System.currentTimeMillis() + ".mp4" }
+            var name = File(want).name
+            if (!VIDEO_RE.containsMatchIn(name)) name = name.replace(Regex("\\.[A-Za-z0-9]{1,5}$"), "") + ".mp4"
+            val dir = spinDir()
+            var out = name
+            var i = 2
+            while (File(dir, out).exists()) {
+                out = name.replace(EXT_RE, " ($i)$1")
+                i++
+            }
+            val part = File(dir, ".$out.part")
+            var ok = true
+            part.outputStream().use { os ->
+                val buf = ByteArray(65536)
+                var left = length
+                while (left > 0) {
+                    val n = input.read(buf, 0, minOf(buf.size.toLong(), left).toInt())
+                    if (n < 0) { ok = false; break }
+                    os.write(buf, 0, n)
+                    left -= n.toLong()
+                }
+            }
+            if (!ok || !part.renameTo(File(dir, out))) {
+                part.delete()
+                null
+            } else out
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not save a 360 video", e)
+            null
+        }
+    }
+
     @JavascriptInterface
     fun guestPrintSet(on: Boolean) {
         guestPrintOn = on
@@ -425,6 +541,8 @@ class PBLocal(private val ctx: Context) {
     // ---------- folders and files (also used by the server) ----------
 
     fun folderBySlug(slug: String): Folder? = synchronized(lock) { folders[slug] }
+
+    fun latestFolder(): Folder? = synchronized(lock) { folders.values.maxByOrNull { it.at } }
 
     fun dirOf(f: Folder): File = if (f.sub.isNotEmpty()) File(File(root, f.name), f.sub) else File(root, f.name)
 

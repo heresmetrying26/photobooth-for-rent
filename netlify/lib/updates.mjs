@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.64', date: '2026-11-04' },
   { version: '1.0.63', date: '2026-11-03' },
   { version: '1.0.62', date: '2026-11-02' },
   { version: '1.0.61', date: '2026-11-02' },
@@ -109,6 +110,20 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-04', title: '360 Photo & Video Booth Overhaul: Hardware GPU Acceleration, Sharing Station & Live Wall', for: ['app', 'website'], app: '1.0.64',
+    items: [
+      'Scale-First & Hardware GPU Acceleration: Optimized FFmpeg filtergraph scales inputs first, probes for GPU encoders (NVIDIA NVENC, Apple VideoToolbox, Intel QuickSync, AMD AMF), and renders 360 spins up to 3× faster.',
+      'High-FPS Real Slow-Motion: Native support for 60 fps and 120 fps recordings — slow-motion effects use real captured frames directly without waiting for software motion interpolation.',
+      'Sharing Station (/station): Dedicated iPad/tablet kiosk view with live polling, instant QR code modals, and 35-second auto-reset countdown to keep lines moving away from the platform.',
+      'Live Wall Display (/wall): Full-screen TV and projector slideshow automatically looping newest 360 spins with smooth transitions, "New 360 Spin" notification banners, and on-screen QR codes.',
+      'Square 1:1 Video Format: Added Instagram-ready Square (1080×1080) format alongside Portrait (9:16) and Landscape (16:9) with automatic aspect-ratio padding.',
+      'Custom Text Overlays: Full-featured caption editor supporting two lines of customizable text, custom colors, sizing, drop shadows, top/center/bottom positioning, and timed fade-in/out.',
+      'Intro & Outro Video Stingers: Seamlessly attach sponsor branding clips before and after the 360 spin with automatic dimension scaling and normalized audio.',
+      'Auto-Rotating Looks & Music: Round-robin cycling automatically varies video styles, particle overlays, and soundtracks per spin so every guest gets a unique clip.',
+      'Dual Online & Offline Sharing: Automatic detection of connectivity — triggers native smartphone share sheets when online, and delivers direct high-speed downloads with offline saving guides when connected to local booth Wi-Fi.'
+    ]
+  },
   {
     date: '2026-11-04', title: 'Epson L120/L121 & Canon G1010/G3030 Direct USB Printing', for: ['app'], app: '1.0.78',
     items: [

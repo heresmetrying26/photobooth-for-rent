@@ -15,6 +15,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.io.RandomAccessFile
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -42,9 +43,14 @@ class LocalShareServer(private val store: PBLocal) {
         val PORTS = intArrayOf(47777, 47778, 47779, 47787, 47797)
         private val ROUTE = Regex("^/e/([A-Za-z0-9]{6,20})(?:/(?:(p|f|t)/([^/]+)|(list\\.json)))?/?$")
         private val FILENAME_UNSAFE = Regex("[^\\w.() -]")
-        private val SEND_ROUTE = Regex("^/send/([A-Za-z0-9]+)/(photos|photo)/?$")
+        private val SEND_ROUTE = Regex("^/send/([A-Za-z0-9]+)(?:/(photos|photo|upload|hello|file|edited)(?:/([^/]+))?)?/?$")
+        private val RANGE_RE = Regex("^bytes=(\\d*)-(\\d*)$")
         private val PRINT_ROUTE = Regex("^/e/([A-Za-z0-9]{6,20})/print/([^/]+)/?$")
         private val OWN_ROUTE = Regex("^/o/([A-Za-z0-9_-]{16,40})(?:/(f|print)/([^/]+))?/?$")
+        private val STATION_ROUTE = Regex("^/station(?:/([A-Za-z0-9_-]{6,30}))?(?:/(list|stats))?/?$")
+        private val WALL_ROUTE = Regex("^/wall(?:/([A-Za-z0-9_-]{6,30}))?(?:/(feed))?/?$")
+        private val STATS_ROUTE = Regex("^/e/([A-Za-z0-9]{6,20})/stats/?$")
+        private val TRACK_ROUTE = Regex("^/e/([A-Za-z0-9]{6,20})/track/?$")
         private const val OWN_CSS = "*{box-sizing:border-box}html,body{margin:0}" +
             "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:#F5F1EA;color:#1C1A1E;min-height:100vh}" +
             "header{padding:22px 16px 6px;text-align:center}.brand{font-weight:800;font-size:15px;letter-spacing:-.01em}" +
@@ -55,12 +61,41 @@ class LocalShareServer(private val store: PBLocal) {
             ".btn.alt{background:#fff;color:#1C1A1E;border:1.5px solid #E4DCCF}.tip{color:#6B666C;font-size:13px;line-height:1.5;margin:14px auto 0;max-width:420px;text-align:center}" +
             ".empty{text-align:center;color:#6B666C;padding:40px 16px}"
         private const val ROVE_MAX = 80L * 1024L * 1024L
+        private const val SPIN_MAX = 1024L * 1024L * 1024L
         private const val THUMB_MAX = 640
+        private const val SEND_PAGE = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Send a video</title>" +
+            "<style>body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#F6F1EA;color:#1C1A1E;padding:24px 18px;text-align:center}h1{font-size:22px;margin:6px 0}p{color:#6B666C}" +
+            "label.pick{display:inline-block;margin:18px 0 8px;padding:16px 26px;border-radius:14px;background:#C93D27;color:#fff;font-weight:800;font-size:17px}input{display:none}" +
+            ".bar{height:10px;border-radius:6px;background:#E4DCCF;overflow:hidden;margin:14px auto;max-width:420px}.bar i{display:block;height:100%;width:0;background:#2EA66B}.row{margin:6px auto;max-width:420px;text-align:left;font-size:14px}</style></head><body>" +
+            "<h1>Send a 360 video</h1><p>Pick the clip you just recorded. It goes straight to the booth tablet.</p>" +
+            "<label class=\"pick\" for=\"f\">Choose a video</label><input id=\"f\" type=\"file\" accept=\"video/*\" multiple><div id=\"list\"></div>" +
+            "<script>var T=location.pathname.replace(/[/]+$/,\"\");document.getElementById(\"f\").addEventListener(\"change\",function(e){Array.prototype.forEach.call(e.target.files,send);e.target.value=\"\"});" +
+            "function send(file){var row=document.createElement(\"div\");row.className=\"row\";row.innerHTML=\"<b></b><div class=bar><i></i></div><span></span>\";row.querySelector(\"b\").textContent=file.name;document.getElementById(\"list\").appendChild(row);" +
+            "var x=new XMLHttpRequest();x.open(\"POST\",T+\"/upload?name=\"+encodeURIComponent(file.name));x.setRequestHeader(\"content-type\",\"application/octet-stream\");" +
+            "x.upload.onprogress=function(p){if(p.lengthComputable)row.querySelector(\"i\").style.width=Math.round(p.loaded/p.total*100)+\"%\"};" +
+            "x.onload=function(){var ok=x.status===200;row.querySelector(\"span\").textContent=ok?\"Sent. It is on the tablet now.\":\"Could not send (\"+x.status+\"). Try again.\";if(ok)row.querySelector(\"i\").style.width=\"100%\"};" +
+            "x.onerror=function(){row.querySelector(\"span\").textContent=\"No connection to the tablet. Are you on the booth Wi-Fi?\"};x.send(file)}</script></body></html>"
     }
 
     @Volatile
     private var server: ServerSocket? = null
     private var pool: ExecutorService? = null
+    private val statsTotals = java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger>()
+    private val statsEvents = java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger>>()
+
+    fun recordStat(slug: String?, action: String?) {
+        if (action.isNullOrEmpty()) return
+        var a = action.lowercase()
+        if (a == "share") a = "shares"
+        if (a == "view") a = "views"
+        if (a == "download") a = "downloads"
+        statsTotals.computeIfAbsent(a) { java.util.concurrent.atomic.AtomicInteger(0) }.incrementAndGet()
+        if (!slug.isNullOrEmpty()) {
+            val ev = statsEvents.computeIfAbsent(slug) { java.util.concurrent.ConcurrentHashMap() }
+            ev.computeIfAbsent(a) { java.util.concurrent.atomic.AtomicInteger(0) }.incrementAndGet()
+        }
+    }
+
     private val thumbLock = Any()
     private var galleryHtml: ByteArray? = null
     private var roveHtml: ByteArray? = null
@@ -167,7 +202,7 @@ class LocalShareServer(private val store: PBLocal) {
 
         // A guest's own page (/o/<code>): only the files the booth saved for their session.
         val ownM = OWN_ROUTE.find(path)
-        if (ownM != null) return ownRoute(ownM, method, query, out, ip)
+        if (ownM != null) return ownRoute(ownM, method, query, out, ip, head)
         // "Guests see only their own photos": the event pages answer only this tablet itself (the operator), not a guest's phone.
         if (store.guestView == "only" && path.startsWith("/e/") && !store.isOwnAddress(ip)) {
             return sendBytes(out, 403, "Forbidden", "text/html; charset=utf-8", privatePage().toByteArray(Charsets.UTF_8), method == "HEAD", "no-store")
@@ -180,6 +215,53 @@ class LocalShareServer(private val store: PBLocal) {
         if (printM != null) return printRoute(printM, method, out, ip)
 
         if (method != "GET" && !headOnly) return sendText(out, 405, "Method Not Allowed", "Method not allowed", false)
+
+        if (path == "/stats" || path == "/api/stats") {
+            val tot = JSONObject()
+            for ((k, v) in statsTotals) tot.put(k, v.get())
+            val evs = JSONObject()
+            for ((slugKey, actMap) in statsEvents) {
+                val o = JSONObject()
+                for ((a, c) in actMap) o.put(a, c.get())
+                evs.put(slugKey, o)
+            }
+            return sendJson(out, 200, JSONObject().put("ok", true).put("stats", JSONObject().put("totals", tot).put("events", evs)).toString())
+        }
+
+        val trackM = TRACK_ROUTE.find(path)
+        if (trackM != null) {
+            val slug = trackM.groupValues[1]
+            if (method == "OPTIONS") return sendOptions(out)
+            if (method == "POST") {
+                val len = headerValue(head, "content-length")?.toIntOrNull() ?: 0
+                val bodyBytes = if (len in 1..8192) {
+                    val b = ByteArray(len); var off = 0
+                    while (off < len) { val r = input.read(b, off, len - off); if (r < 0) break; off += r }
+                    b
+                } else ByteArray(0)
+                try {
+                    val j = JSONObject(bodyBytes.toString(Charsets.UTF_8))
+                    recordStat(slug, j.optString("action", ""))
+                } catch (_: Exception) {}
+                return sendJson(out, 200, "{\"ok\":true}")
+            }
+            return sendText(out, 405, "Method Not Allowed", "Method not allowed", false)
+        }
+
+        val statsM = STATS_ROUTE.find(path)
+        if (statsM != null) {
+            val slug = statsM.groupValues[1]
+            val ev = statsEvents[slug]
+            val o = JSONObject()
+            if (ev != null) for ((a, c) in ev) o.put(a, c.get())
+            return sendJson(out, 200, JSONObject().put("ok", true).put("slug", slug).put("stats", o).toString())
+        }
+
+        val stationM = STATION_ROUTE.find(path)
+        if (stationM != null) return stationRoute(stationM, method, headOnly, out)
+
+        val wallM = WALL_ROUTE.find(path)
+        if (wallM != null) return wallRoute(wallM, method, headOnly, out)
 
         val m = ROUTE.find(path)
         if (m == null) {
@@ -218,15 +300,32 @@ class LocalShareServer(private val store: PBLocal) {
             return sendText(out, 404, "Not Found", "Not found", headOnly)
         }
         val file = File(dir, name)
-        if (!file.isFile) return sendText(out, 404, "Not Found", "Not found", headOnly)
+        if (!file.isFile) {
+            if (kind == "p") {
+                val isVid = PBLocal.VIDEO_RE.containsMatchIn(name)
+                val title = if (isVid) "Your 360 video is on its way" else "Your photo is on its way"
+                val msg = if (isVid) "We’re preparing your video. It appears here in a few seconds. You can keep this page open." else "This photo isn’t here yet. Wait a moment and refresh."
+                val body = "<div class=\"one\"><h1>$title</h1><p class=\"sub\">${esc(store.galleryTitle(folder))}</p>" +
+                    "<div style=\"margin:28px auto;width:44px;height:44px;border:4px solid #E4DCCF;border-top-color:#C93D27;border-radius:50%;animation:pbSpin 1s linear infinite\"></div>" +
+                    "<style>@keyframes pbSpin{to{transform:rotate(360deg)}}</style>" +
+                    "<p class=\"empty\" style=\"padding:10px 0 20px\">$msg</p>" +
+                    "<a class=\"btn alt\" href=\"/e/$slug/\">All photos</a></div>" +
+                    "<script>setTimeout(function(){location.reload()},3000)</script>"
+                return sendBytes(out, 200, "OK", "text/html; charset=utf-8", shell(title, body).toByteArray(Charsets.UTF_8), headOnly, "no-store")
+            }
+            return sendText(out, 404, "Not Found", "Not found", headOnly)
+        }
 
         if (kind == "t") {
             val thumb = thumbFor(dir, file)
-            if (thumb != null) return sendFile(out, thumb, "image/jpeg", headOnly, "max-age=600", null)
+            if (thumb != null) return sendFile(out, thumb, "image/jpeg", headOnly, "max-age=600", null, null)
         }
+        if (kind == "p") recordStat(slug, "views")
         val download = query.split("&").any { it == "dl=1" || it.startsWith("dl=") && it.length > 3 }
+        if (download) recordStat(slug, "downloads")
         val disposition = if (download) "attachment; filename=\"" + name.replace(FILENAME_UNSAFE, "_") + "\"" else null
-        return sendFile(out, file, contentType(name), headOnly, "max-age=600", disposition)
+        val range = headerValue(head, "range")
+        return sendFile(out, file, contentType(name), headOnly, "max-age=600", disposition, range)
     }
 
     // ---------- phone photos and print requests ----------
@@ -260,22 +359,59 @@ class LocalShareServer(private val store: PBLocal) {
         sendBytes(out, status, reason, "application/json; charset=utf-8", body.toByteArray(Charsets.UTF_8), false, "no-store")
     }
 
-    // /send/<token>/photos = the page a phone opens; /send/<token>/photo?name=... = the photo it posts
+    // /send/<token> = 360 upload page; /send/<token>/upload?name=... = 360 video uploaded
+    // /send/<token>/photos = roving photos page; /send/<token>/photo?name=... = photo posted
+    // /send/<token>/hello = booth connection check; /send/<token>/file|edited/<name> = video preview
     private fun sendRoute(m: MatchResult, method: String, head: String, input: InputStream, out: OutputStream, query: String) {
         if (m.groupValues[1] != store.roveToken()) return sendText(out, 404, "Not Found", "Not found", false)
-        if (m.groupValues[2] == "photos") {
+        val action = m.groupValues[2]
+        if (method == "OPTIONS") {
+            return sendOptions(out)
+        }
+        if (action == "photos") {
             if (method != "GET" && method != "HEAD") return sendText(out, 405, "Method Not Allowed", "Method not allowed", false)
             val html = roveHtml ?: store.readAsset("share/rove.html")?.also { roveHtml = it }
                 ?: return sendText(out, 500, "Internal Server Error", "Page missing", false)
             return sendBytes(out, 200, "OK", "text/html; charset=utf-8", html, method == "HEAD", "no-store")
         }
-        if (method != "POST") return sendJson(out, 405, "{\"ok\":false,\"error\":\"Method not allowed\"}")
-        val len = headerValue(head, "content-length")?.toLongOrNull() ?: -1L
-        if (len <= 0L || len > ROVE_MAX) return sendJson(out, 413, "{\"ok\":false,\"error\":\"Too big\"}")
-        val name = Uri.decode(queryParam(query, "name") ?: "")
-        val saved = store.saveRovePhoto(name, input, len)
-            ?: return sendJson(out, 500, "{\"ok\":false,\"error\":\"Could not save\"}")
-        sendJson(out, 200, JSONObject().put("ok", true).put("name", saved).toString())
+        if (action == "hello") {
+            return sendJson(out, 200, JSONObject().put("ok", true).put("app", "photobooth4u").put("kind", "tablet").toString())
+        }
+        if (action.isEmpty()) {
+            if (method != "GET" && method != "HEAD") return sendText(out, 405, "Method Not Allowed", "Method not allowed", false)
+            return sendBytes(out, 200, "OK", "text/html; charset=utf-8", SEND_PAGE.toByteArray(Charsets.UTF_8), method == "HEAD", "no-store")
+        }
+        if (action == "file" || action == "edited") {
+            if (method != "GET" && method != "HEAD") return sendText(out, 405, "Method Not Allowed", "Method not allowed", false)
+            val baseDir = if (action == "edited") File(store.spinDir(), "edited") else store.spinDir()
+            val name = Uri.decode(m.groupValues[3])
+            if (name.isEmpty() || name != File(name).name || name.startsWith(".") || !PBLocal.VIDEO_RE.containsMatchIn(name)) {
+                return sendText(out, 404, "Not Found", "Not found", method == "HEAD")
+            }
+            val file = File(baseDir, name)
+            if (!file.isFile) return sendText(out, 404, "Not Found", "Not found", method == "HEAD")
+            val range = headerValue(head, "range")
+            return sendFile(out, file, contentType(name), method == "HEAD", "max-age=600", null, range)
+        }
+        if (action == "photo") {
+            if (method != "POST") return sendJson(out, 405, "{\"ok\":false,\"error\":\"Method not allowed\"}")
+            val len = headerValue(head, "content-length")?.toLongOrNull() ?: -1L
+            if (len <= 0L || len > ROVE_MAX) return sendJson(out, 413, "{\"ok\":false,\"error\":\"Too big\"}")
+            val name = Uri.decode(queryParam(query, "name") ?: "")
+            val saved = store.saveRovePhoto(name, input, len)
+                ?: return sendJson(out, 500, "{\"ok\":false,\"error\":\"Could not save\"}")
+            return sendJson(out, 200, JSONObject().put("ok", true).put("name", saved).toString())
+        }
+        if (action == "upload") {
+            if (method != "POST") return sendJson(out, 405, "{\"ok\":false,\"error\":\"Method not allowed\"}")
+            val len = headerValue(head, "content-length")?.toLongOrNull() ?: -1L
+            if (len <= 0L || len > SPIN_MAX) return sendJson(out, 413, "{\"ok\":false,\"error\":\"Too big\"}")
+            val name = Uri.decode(queryParam(query, "name") ?: "")
+            val saved = store.saveSpinVideo(name, input, len)
+                ?: return sendJson(out, 500, "{\"ok\":false,\"error\":\"Could not save\"}")
+            return sendJson(out, 200, JSONObject().put("ok", true).put("name", saved).toString())
+        }
+        return sendText(out, 404, "Not Found", "Not found", false)
     }
 
     // /e/<event>/print/<photo>: a guest asks for a print
@@ -304,7 +440,7 @@ class LocalShareServer(private val store: PBLocal) {
             "<script>setTimeout(function(){location.reload()},4000)</script>")
 
     // /o/<code> = the page, /o/<code>/f/<file> = a file of theirs, /o/<code>/print/<file> = ask for a print
-    private fun ownRoute(m: MatchResult, method: String, query: String, out: OutputStream, ip: String) {
+    private fun ownRoute(m: MatchResult, method: String, query: String, out: OutputStream, ip: String, head: String) {
         val code = m.groupValues[1]
         val kind = m.groupValues[2]
         val name = Uri.decode(m.groupValues[3])
@@ -331,7 +467,8 @@ class LocalShareServer(private val store: PBLocal) {
             if (!file.isFile) return sendText(out, 404, "Not Found", "Not found", headOnly)
             val download = query.split("&").any { it == "dl=1" }
             val disposition = if (download) "attachment; filename=\"" + name.replace(FILENAME_UNSAFE, "_") + "\"" else null
-            return sendFile(out, file, contentType(name), headOnly, "max-age=600", disposition)
+            val range = headerValue(head, "range")
+            return sendFile(out, file, contentType(name), headOnly, "max-age=600", disposition, range)
         }
         val mine = c.files.filter { File(dir, it).isFile }
         val sb = StringBuilder()
@@ -420,13 +557,92 @@ class LocalShareServer(private val store: PBLocal) {
 
     // ---------- replies ----------
 
-    private fun writeHead(out: OutputStream, status: Int, reason: String, type: String, length: Long, cache: String, disposition: String?) {
+    private fun sendOptions(out: OutputStream) {
+        val s = "HTTP/1.1 204 No Content\r\n" +
+            "Access-Control-Allow-Origin: *\r\n" +
+            "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" +
+            "Access-Control-Allow-Headers: Content-Type, Range\r\n" +
+            "Access-Control-Allow-Private-Network: true\r\n" +
+            "Connection: close\r\n\r\n"
+        out.write(s.toByteArray(Charsets.ISO_8859_1))
+    }
+
+    private fun stationRoute(m: MatchResult, method: String, headOnly: Boolean, out: OutputStream) {
+        val rawSlug = m.groupValues[1]
+        val sub = m.groupValues[2]
+        val folder = (if (rawSlug.isNotEmpty()) store.folderBySlug(rawSlug) else null) ?: store.latestFolder()
+        if (sub == "list") {
+            if (folder == null) return sendJson(out, 200, "{\"ok\":true,\"slug\":null,\"files\":[]}")
+            val dir = store.dirOf(folder)
+            val arr = JSONArray()
+            for (f in store.photosIn(dir)) {
+                val isVid = PBLocal.VIDEO_RE.containsMatchIn(f.name)
+                val isGif = f.name.endsWith(".gif", ignoreCase = true)
+                val kind = if (isVid) "video" else if (isGif) "gif" else "photo"
+                arr.put(JSONObject()
+                    .put("name", f.name)
+                    .put("kind", kind)
+                    .put("url", "/e/${folder.slug}/f/" + Uri.encode(f.name))
+                    .put("thumbUrl", "/e/${folder.slug}/t/" + Uri.encode(f.name))
+                    .put("pageUrl", "/e/${folder.slug}/p/" + Uri.encode(f.name))
+                    .put("mtime", f.lastModified())
+                )
+            }
+            return sendJson(out, 200, JSONObject().put("ok", true).put("slug", folder.slug).put("name", store.galleryTitle(folder)).put("count", arr.length()).put("files", arr).toString())
+        }
+        val slug = folder?.slug ?: ""
+        val title = if (folder != null) store.galleryTitle(folder) else "Sharing Station"
+        val html = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>${esc(title)} - Sharing Station</title>" +
+            "<style>body{margin:0;font-family:system-ui,sans-serif;background:#0F0E13;color:#F0EEF5;padding:24px;text-align:center}h1{font-size:22px;margin:8px 0}.sub{color:#A49FA9;font-size:14px;margin-bottom:24px}" +
+            ".grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;max-width:1100px;margin:0 auto}.card{background:#18161D;border-radius:12px;overflow:hidden;padding:12px;border:1px solid rgba(255,255,255,0.1)}" +
+            ".card video,.card img{width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:8px}.btn{display:inline-block;margin-top:10px;padding:10px 16px;background:#C93D27;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px}</style></head><body>" +
+            "<h1>${esc(title)}</h1><p class=\"sub\">📱 Sharing Station</p><div class=\"grid\" id=\"g\"></div>" +
+            "<script>var slug='${esc(slug)}';function load(){fetch('/station/'+slug+'/list').then(function(r){return r.json()}).then(function(j){" +
+            "var g=document.getElementById('g');if(!j||!j.files||!j.files.length){g.innerHTML='<p style=\"color:#888;grid-column:1/-1\">No clips yet.</p>';return;}" +
+            "g.innerHTML=j.files.map(function(f){return '<div class=\"card\">'+(f.kind==='video'?'<video src=\"'+f.url+'\" controls playsinline></video>':'<img src=\"'+f.thumbUrl+'\">')+'<br><a class=\"btn\" href=\"'+f.pageUrl+'\">Open / Save</a></div>';}).join('');" +
+            "})}load();setInterval(load,4000);</script></body></html>"
+        return sendBytes(out, 200, "OK", "text/html; charset=utf-8", html.toByteArray(Charsets.UTF_8), headOnly, "no-store")
+    }
+
+    private fun wallRoute(m: MatchResult, method: String, headOnly: Boolean, out: OutputStream) {
+        val rawSlug = m.groupValues[1]
+        val sub = m.groupValues[2]
+        val folder = (if (rawSlug.isNotEmpty()) store.folderBySlug(rawSlug) else null) ?: store.latestFolder()
+        if (sub == "feed") {
+            if (folder == null) return sendJson(out, 200, "{\"ok\":true,\"slug\":null,\"videos\":[]}")
+            val dir = store.dirOf(folder)
+            val arr = JSONArray()
+            for (f in store.photosIn(dir)) {
+                if (!PBLocal.VIDEO_RE.containsMatchIn(f.name)) continue
+                arr.put(JSONObject()
+                    .put("name", f.name)
+                    .put("url", "/e/${folder.slug}/f/" + Uri.encode(f.name))
+                    .put("pageUrl", "/e/${folder.slug}/p/" + Uri.encode(f.name))
+                    .put("mtime", f.lastModified())
+                )
+            }
+            return sendJson(out, 200, JSONObject().put("ok", true).put("slug", folder.slug).put("name", store.galleryTitle(folder)).put("count", arr.length()).put("videos", arr).toString())
+        }
+        val slug = folder?.slug ?: ""
+        val title = if (folder != null) store.galleryTitle(folder) else "360 Live Wall"
+        val html = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>${esc(title)} - 360 Live Wall</title>" +
+            "<style>body{margin:0;background:#080709;color:#fff;font-family:sans-serif;height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center}video{max-width:96vw;max-height:94vh;object-fit:contain;border-radius:12px}</style></head><body>" +
+            "<video id=\"v\" autoplay playsinline muted></video>" +
+            "<script>var slug='${esc(slug)}',list=[],idx=0,v=document.getElementById('v');v.onended=function(){if(list.length){idx=(idx+1)%list.length;v.src=list[idx].url;v.play()}};" +
+            "function poll(){fetch('/wall/'+slug+'/feed').then(function(r){return r.json()}).then(function(j){if(j&&j.videos&&j.videos.length){var first=!list.length;list=j.videos;if(first){v.src=list[0].url;v.play()}}})}poll();setInterval(poll,4000);</script></body></html>"
+        return sendBytes(out, 200, "OK", "text/html; charset=utf-8", html.toByteArray(Charsets.UTF_8), headOnly, "no-store")
+    }
+
+    private fun writeHead(out: OutputStream, status: Int, reason: String, type: String, length: Long, cache: String, disposition: String?, contentRange: String? = null, acceptRanges: Boolean = true) {
         val sb = StringBuilder()
         sb.append("HTTP/1.1 ").append(status).append(' ').append(reason).append("\r\n")
         sb.append("Content-Type: ").append(type).append("\r\n")
         sb.append("Content-Length: ").append(length).append("\r\n")
         sb.append("Cache-Control: ").append(cache).append("\r\n")
+        sb.append("Access-Control-Allow-Origin: *\r\n")
         if (disposition != null) sb.append("Content-Disposition: ").append(disposition).append("\r\n")
+        if (contentRange != null) sb.append("Content-Range: ").append(contentRange).append("\r\n")
+        if (acceptRanges) sb.append("Accept-Ranges: bytes\r\n")
         sb.append("X-Content-Type-Options: nosniff\r\n")
         sb.append("Referrer-Policy: no-referrer\r\n")
         sb.append("Connection: close\r\n\r\n")
@@ -449,9 +665,61 @@ class LocalShareServer(private val store: PBLocal) {
         sendBytes(out, 404, "Not Found", "text/html; charset=utf-8", html.toByteArray(Charsets.UTF_8), headOnly, "no-store")
     }
 
-    private fun sendFile(out: OutputStream, f: File, type: String, headOnly: Boolean, cache: String, disposition: String?) {
-        writeHead(out, 200, "OK", type, f.length(), cache, disposition)
-        if (headOnly) return
-        FileInputStream(f).use { it.copyTo(out, 65536) }
+    private fun sendFile(out: OutputStream, f: File, type: String, headOnly: Boolean, cache: String, disposition: String?, range: String? = null) {
+        val total = f.length()
+        var start = 0L
+        var end = total - 1L
+        var isPartial = false
+
+        if (range != null && range.startsWith("bytes=")) {
+            val m = RANGE_RE.find(range.trim())
+            if (m != null) {
+                val sStr = m.groupValues[1]
+                val eStr = m.groupValues[2]
+                if (sStr.isNotEmpty() && eStr.isNotEmpty()) {
+                    start = sStr.toLongOrNull() ?: 0L
+                    end = eStr.toLongOrNull() ?: (total - 1L)
+                } else if (sStr.isNotEmpty()) {
+                    start = sStr.toLongOrNull() ?: 0L
+                    end = total - 1L
+                } else if (eStr.isNotEmpty()) {
+                    val suffix = eStr.toLongOrNull() ?: 0L
+                    start = maxOf(0L, total - suffix)
+                    end = total - 1L
+                }
+                if (start <= end && start < total) {
+                    end = minOf(end, total - 1L)
+                    isPartial = true
+                } else {
+                    writeHead(out, 416, "Range Not Satisfiable", type, 0L, "no-store", null, contentRange = "bytes */$total")
+                    return
+                }
+            }
+        }
+
+        val len = if (isPartial) (end - start + 1L) else total
+        val contentRange = if (isPartial) "bytes $start-$end/$total" else null
+        val status = if (isPartial) 206 else 200
+        val reason = if (isPartial) "Partial Content" else "OK"
+
+        writeHead(out, status, reason, type, len, cache, disposition, contentRange = contentRange, acceptRanges = true)
+        if (headOnly || len <= 0L) return
+
+        if (!isPartial) {
+            FileInputStream(f).use { it.copyTo(out, 65536) }
+        } else {
+            RandomAccessFile(f, "r").use { raf ->
+                raf.seek(start)
+                val buf = ByteArray(65536)
+                var remaining = len
+                while (remaining > 0L) {
+                    val toRead = minOf(buf.size.toLong(), remaining).toInt()
+                    val r = raf.read(buf, 0, toRead)
+                    if (r <= 0) break
+                    out.write(buf, 0, r)
+                    remaining -= r
+                }
+            }
+        }
     }
 }

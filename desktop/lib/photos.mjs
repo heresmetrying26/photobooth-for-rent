@@ -6,7 +6,7 @@
 // Every event folder gets a random id (slug). Guests' phones on the same Wi-Fi
 // open http://<this laptop's address>:47777/e/<slug>/ (all photos) or
 // /e/<slug>/p/<file> (one photo). Nothing goes to the internet.
-import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync, statSync, createReadStream, createWriteStream, renameSync, copyFileSync, unlinkSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync, statSync, createReadStream, createWriteStream, renameSync, copyFileSync, unlinkSync, linkSync, statfsSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
 import { networkInterfaces } from 'node:os';
 import { randomBytes } from 'node:crypto';
@@ -16,17 +16,85 @@ let ROOT = null, INDEX_FILE = null, index = { folders: {} }, thumbFn = null, COD
 export const SHARE_PORTS = [47777, 47778, 47779, 47787, 47797];
 let sharePort = 0;
 
+// ---------- stats tracking (views, downloads, shares, captured, rendered) ----------
+let STATS_FILE = null;
+let stats = { totals: { captured: 0, rendered: 0, views: 0, downloads: 0, shares: 0 }, events: {} };
+let statsTimer = null;
+function saveStats() {
+  clearTimeout(statsTimer);
+  statsTimer = setTimeout(() => {
+    try {
+      if (!STATS_FILE) return;
+      const t = STATS_FILE + '.tmp'; writeFileSync(t, JSON.stringify(stats, null, 1)); renameSync(t, STATS_FILE);
+    } catch { /* ignore */ }
+  }, 300);
+}
+export function recordStat(slug, action, file) {
+  if (!action) return;
+  let a = String(action).toLowerCase();
+  if (a === 'share') a = 'shares';
+  if (a === 'view') a = 'views';
+  if (a === 'download') a = 'downloads';
+  if (!stats.totals[a]) stats.totals[a] = 0;
+  stats.totals[a]++;
+  if (slug) {
+    if (!stats.events[slug]) {
+      const ev = index.folders && index.folders[slug];
+      stats.events[slug] = {
+        name: ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : slug,
+        captured: 0, rendered: 0, views: 0, downloads: 0, shares: 0,
+        byFile: {}
+      };
+    }
+    const e = stats.events[slug];
+    if (!e[a]) e[a] = 0;
+    e[a]++;
+    if (file) {
+      if (!e.byFile) e.byFile = {};
+      if (!e.byFile[file]) e.byFile[file] = { views: 0, downloads: 0, shares: 0 };
+      if (e.byFile[file][a] != null) e.byFile[file][a]++;
+    }
+  }
+  saveStats();
+}
+export function getStats(slug) {
+  if (slug) {
+    return stats.events[slug] || { captured: 0, rendered: 0, views: 0, downloads: 0, shares: 0, byFile: {} };
+  }
+  return stats;
+}
+
 export function initPhotos({ root, dataDir, makeThumb }) {
   ROOT = root; INDEX_FILE = join(dataDir, 'folders.json'); thumbFn = makeThumb || null;
   CODES_FILE = join(dataDir, 'guestcodes.json');
+  STATS_FILE = join(dataDir, 'spin-stats.json');
   mkdirSync(ROOT, { recursive: true });
   try { index = JSON.parse(readFileSync(INDEX_FILE, 'utf8')) || { folders: {} }; } catch { index = { folders: {} }; }
   if (!index.folders) index.folders = {};
   try { codes = JSON.parse(readFileSync(CODES_FILE, 'utf8')) || {}; } catch { codes = {}; }
+  try { stats = JSON.parse(readFileSync(STATS_FILE, 'utf8')) || { totals: {}, events: {} }; } catch { stats = { totals: {}, events: {} }; }
+  if (!stats.totals) stats.totals = { captured: 0, rendered: 0, views: 0, downloads: 0, shares: 0 };
+  if (!stats.events) stats.events = {};
 }
 export const photosRoot = () => ROOT;
 export function setPhotosRoot(dir) { ROOT = dir; mkdirSync(ROOT, { recursive: true }); }
 function saveIndex() { const t = INDEX_FILE + '.tmp'; writeFileSync(t, JSON.stringify(index, null, 1)); renameSync(t, INDEX_FILE); }
+
+export function resolveSlug(slug) {
+  if (slug && index.folders && index.folders[slug]) return slug;
+  const keys = Object.keys((index && index.folders) || {});
+  if (!keys.length) return null;
+  keys.sort((a, b) => (index.folders[b].at || 0) - (index.folders[a].at || 0));
+  return keys[0];
+}
+export function stationUrl(slug) {
+  const b = shareBase(), s = resolveSlug(slug);
+  return b && s ? b + '/station/' + s : (b ? b + '/station' : null);
+}
+export function wallUrl(slug) {
+  const b = shareBase(), s = resolveSlug(slug);
+  return b && s ? b + '/wall/' + s : (b ? b + '/wall' : null);
+}
 
 const safeName = (v) => String(v || '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().replace(/^[. ]+|[. ]+$/g, '').slice(0, 80);
 const IMG_RE = /\.(jpe?g|png|webp|gif|mp4|webm|mov|m4v)$/i;
@@ -68,12 +136,6 @@ function nextSession(dir) {
   return max + 1;
 }
 
-// ---------- what guests see after scanning (Setup -> Share: "After guests scan their QR") ----------
-//   'all'  the whole event (today's behaviour)     'mine' their own photos first, with a button for everyone's
-//   'only' their own photos and nothing else: the event pages answer only this laptop itself
-// A guest's own page is /o/<code>. The booth makes the code for each session and sends it with every file it saves
-// (guestCode), so the page knows which files are theirs. The code is unguessable, and the page never shows the
-// event's address, so nobody can step to the next guest's photo.
 const GCODE_RE = /^[A-Za-z0-9_-]{16,40}$/;
 let guestView = 'all', codes = {}, codesTimer = null;
 export function setGuestView(mode) { guestView = mode === 'mine' || mode === 'only' ? mode : 'all'; return guestView; }
@@ -94,7 +156,6 @@ function noteGuestFile(code, slug, file) {
   if (c.slug === slug && !c.files.includes(file) && c.files.length < 40) c.files.push(file);
   saveCodes();
 }
-// Is this request from the laptop itself (the operator), not a guest's phone?
 export function isLocalReq(req) {
   const a = String((req.socket && req.socket.remoteAddress) || '').replace(/^::ffff:/, '');
   if (a === '127.0.0.1' || a === '::1') return true;
@@ -102,7 +163,6 @@ export function isLocalReq(req) {
   return false;
 }
 
-// The booth's "Drive script" call (same request + reply shape as the Apps Script relay).
 export async function driveRequest(body) {
   if (!body || typeof body !== 'object') return { ok: false, error: 'Bad request' };
   const f = folderFor(body.folderKey, body.subfolder);
@@ -112,7 +172,6 @@ export async function driveRequest(body) {
   if (!m) return { ok: false, error: 'No photo' };
   let name = basename(safeName(body.filename) || ('photo-' + Date.now() + '.jpg'));
   if (!IMG_RE.test(name)) name += '.jpg';
-  // Never overwrite an earlier photo with the same name.
   let out = name, i = 2;
   while (existsSync(join(f.dir, out))) { out = name.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
   writeFileSync(join(f.dir, out), Buffer.from(m, 'base64'));
@@ -124,7 +183,6 @@ export function folderPathOf(folderUrl) {
   return m ? dirOf(m[1]) : null;
 }
 
-// ---------- this laptop's address on the booth Wi-Fi ----------
 const VIRTUAL = /(vEthernet|VirtualBox|VMware|Hyper-V|docker|br-|veth|utun|awdl|llw|bridge|ZeroTier|Tailscale|Loopback|vboxnet|WSL)/i;
 export function lanAddress() {
   const nets = networkInterfaces();
@@ -138,9 +196,9 @@ export function lanAddress() {
       else if (/^10\./.test(a.address)) score += 2;
       else if (/^172\.(1[6-9]|2\d|3[01])\./.test(a.address)) score += 1;
       if (/^(wi-?fi|wlan|en0|en1|wireless|local area connection\*)/i.test(name)) score += 2;
-      if (/^192\.168\.137\./.test(a.address)) score += 3;   // Windows mobile hotspot
+      if (/^192\.168\.137\./.test(a.address)) score += 3;
       if (VIRTUAL.test(name)) {
-        if (/^bridge100$/i.test(name) || (/^192\.168\.[23]\./.test(a.address) && /^bridge/i.test(name))) score += 5; // macOS internet sharing bridge
+        if (/^bridge100$/i.test(name) || (/^192\.168\.[23]\./.test(a.address) && /^bridge/i.test(name))) score += 5;
         else score -= 10;
       }
       cands.push({ ip: a.address, name, score });
@@ -155,7 +213,6 @@ export function shareBase() {
 }
 export const sharePortNow = () => sharePort;
 
-// ---------- the guests' pages ----------
 const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif', '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime', '.m4v': 'video/mp4' };
 const CSS = `*{box-sizing:border-box}html,body{margin:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:#F5F1EA;color:#1C1A1E;min-height:100vh}
@@ -167,8 +224,8 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
 .grid img{width:100%;height:100%;object-fit:cover;display:block}
 .one{max-width:560px;margin:0 auto;padding:6px 16px 40px;text-align:center}.one img,.one video{max-width:100%;max-height:72vh;border-radius:12px;background:#fff;box-shadow:0 10px 30px rgba(60,40,20,.15)}
 @media print{@page{margin:0}html,body{width:100%;height:100%;margin:0!important;background:#fff!important}body *{visibility:hidden!important}.one{position:absolute!important;inset:0!important;display:flex!important;align-items:center!important;justify-content:center!important;max-width:none!important;margin:0!important;padding:0!important}.one img{position:absolute!important;visibility:visible!important;display:block!important;max-width:100vw!important;max-height:100vh!important;width:auto!important;height:auto!important;object-fit:contain!important;border:0!important;border-radius:0!important;box-shadow:none!important}.one h1,.one .sub,.one video,.one div,.one .tip{display:none!important}}
-.btn{display:inline-block;margin:16px 6px 0;padding:14px 22px;border-radius:12px;background:#C93D27;color:#fff;font-weight:800;text-decoration:none;font-size:15px}
-.btn.alt{background:#fff;color:#1C1A1E;border:1.5px solid #E4DCCF}.tip{color:#6B666C;font-size:13px;line-height:1.5;margin:14px auto 0;max-width:420px}.empty{text-align:center;color:#6B666C;padding:40px 16px}
+.btn{display:inline-block;margin:16px 6px 0;padding:14px 22px;border-radius:12px;background:#C93D27;color:#fff;font-weight:800;text-decoration:none;font-size:15px;border:0;cursor:pointer;font-family:inherit}
+.btn.alt{background:#fff;color:#1C1A1E;border:1.5px solid #E4DCCF}.tip{color:#6B666C;font-size:13px;line-height:1.5;margin:14px auto 0;max-width:420px;text-align:left}.empty{text-align:center;color:#6B666C;padding:40px 16px}
 .tabs{display:inline-flex;background:#EAE4D9;border-radius:24px;padding:3px;margin:0 auto 16px;gap:2px}
 .tab{background:transparent;border:0;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;color:#6B666C;cursor:pointer}
 .tab.active{background:#fff;color:#1C1A1E;box-shadow:0 1px 4px rgba(60,40,20,.1)}
@@ -176,6 +233,7 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
 .grid.filter-gif [data-kind="photo"]{display:none!important}
 .grid a{position:relative}
 .grid [data-kind="gif"]::after{content:'GIF';position:absolute;bottom:6px;right:6px;background:rgba(28,26,30,.8);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}`;
+
 function page(title, body) {
   return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>' + esc(title) + '</title><style>' + CSS + '</style></head><body><header><span class="brand"><span class="mk"><i></i><i></i><i></i><i></i></span>photobooth4u</span></header>' + body + '</body></html>';
@@ -184,7 +242,7 @@ function send(res, status, type, body, extra) {
   res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', ...(extra || {}) });
   res.end(body);
 }
-// Trading cards (files named ..._card.jpg) shine and tilt on the guest's phone: tilt the phone, or move a finger.
+
 const HOLO = String.raw`<script>(function(){
 var imgs=[].filter.call(document.querySelectorAll('.one img'),function(i){return /_card(_|\.)/i.test(decodeURIComponent(i.getAttribute('src')||''));});
 if(!imgs.length)return;
@@ -196,15 +254,13 @@ var s=document.createElement('div');s.style.cssText='position:absolute;inset:0;p
 w.appendChild(s);return {w:w,s:s,im:im};});
 var last=0;
 function clamp(v){return Math.max(-1,Math.min(1,v));}
-function apply(c,nx,ny){var t='rotateY('+(nx*14)+'deg) rotateX('+(-ny*14)+'deg)';c.im.style.transform=t;c.s.style.transform=t;c.s.style.backgroundPosition=(50+nx*45)+'% '+(50+ny*45)+'%';}
+function apply(c,nx,ny){var t='rotateY('+(nx*14)+'deg) rotateX('+(-ny*14)+'deg)';c.im.style.transform=t;c.s.style.transform=t;c.s.backgroundPosition=(50+nx*45)+'% '+(50+ny*45)+'%';}
 cards.forEach(function(c){c.w.addEventListener('pointermove',function(e){var r=c.w.getBoundingClientRect();last=performance.now();apply(c,clamp((e.clientX-r.left-r.width/2)/(r.width/2)),clamp((e.clientY-r.top-r.height/2)/(r.height/2)));});});
 window.addEventListener('deviceorientation',function(e){if(e.gamma==null)return;last=performance.now();cards.forEach(function(c){apply(c,clamp(e.gamma/25),clamp(((e.beta||0)-50)/25));});});
 (function loop(n){if(n-last>1800)cards.forEach(function(c){apply(c,Math.sin(n/900)*.6,Math.cos(n/1300)*.3);});requestAnimationFrame(loop);})(0);
 })();</script>`;
 const holoFor = (names) => (names || []).some((n) => /_card(_|\.)/i.test(n)) ? HOLO : '';
-const savingTip = '<p class="tip">iPhone: tap <b>Save photo</b>, then <b>Save to Photos</b> (or press and hold the picture). Android: tap <b>Save photo</b>.</p>';
 
-// ---------- a file with Range support (phones need it to play and skip through a video) ----------
 function serveFile(req, res, full, type, extra) {
   let size;
   try { size = statSync(full).size; } catch { return send(res, 404, 'text/plain', 'Not found'); }
@@ -224,12 +280,9 @@ function serveFile(req, res, full, type, extra) {
   createReadStream(full).pipe(res);
 }
 
-// ---------- 360 videos: an inbox folder, the operator's phone send page, and sharing into an event ----------
-// The camera on the arm records with its own app. The clip reaches this laptop by being saved in the inbox
-// folder (AirDrop, USB, a cloud folder, a camera's FTP...) or sent from the phone's browser (page below).
 let spinDir = null;
 const spinToken = randomBytes(9).toString('base64url').replace(/[-_]/g, 'x');
-const SPIN_MAX = 1024 * 1024 * 1024;           // 1 GB per clip is far more than a 15 s video needs
+const SPIN_MAX = 1024 * 1024 * 1024;
 export function setSpinDir(dir) { spinDir = dir || null; }
 export function spinDirNow() {
   const d = spinDir || (ROOT ? join(ROOT, '360 inbox') : null);
@@ -246,10 +299,9 @@ export function spinList() {
     try { const st = statSync(join(d, n)); return st.isFile() ? { name: n, size: st.size, mtime: st.mtimeMs } : null; } catch { return null; }
   }).filter(Boolean).sort((a, b) => b.mtime - a.mtime).slice(0, 300);
 }
-// Copies a clip from the inbox into an event folder, in the same reply shape as driveRequest().
 export function spinShare(name, folderKey, subfolder, outName) {
   const rel = String(name || '');
-  const d = /^edited\//.test(rel) ? spinEditedDir() : spinDirNow();     // "edited/<file>" = a finished edit
+  const d = /^edited\//.test(rel) ? spinEditedDir() : spinDirNow();
   const n = basename(rel);
   if (!d || !VIDEO_RE.test(n)) return { ok: false, error: 'No video' };
   const src = join(d, n);
@@ -258,7 +310,12 @@ export function spinShare(name, folderKey, subfolder, outName) {
   let base = basename(safeName(outName) || n); if (!VIDEO_RE.test(base)) base += (/\.[a-z0-9]+$/i.exec(n) || ['.mp4'])[0].toLowerCase();
   let out = base, i = 2;
   while (existsSync(join(f.dir, out))) { out = base.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
-  copyFileSync(src, join(f.dir, out));
+  try {
+    linkSync(src, join(f.dir, out));
+  } catch {
+    copyFileSync(src, join(f.dir, out));
+  }
+  recordStat(f.slug, 'rendered', out);
   return { ok: true, fileId: f.slug + '/' + out, downloadUrl: 'pb4u-local:' + f.slug + '/' + out, folderUrl: 'pb4u-local:' + f.slug, folderName: f.name, folderPath: f.dir };
 }
 const SEND_PAGE = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Send a video</title>' +
@@ -273,9 +330,7 @@ const SEND_PAGE = '<!doctype html><html lang="en"><head><meta charset="utf-8"><m
   'x.upload.onprogress=function(p){if(p.lengthComputable)row.querySelector("i").style.width=Math.round(p.loaded/p.total*100)+"%"};' +
   'x.onload=function(){var ok=x.status===200;row.querySelector("span").textContent=ok?"Sent. It is on the laptop now.":"Could not send ("+x.status+"). Try again.";if(ok)row.querySelector("i").style.width="100%"};' +
   'x.onerror=function(){row.querySelector("span").textContent="No connection to the laptop. Are you on the booth Wi-Fi?"};x.send(file)}</script></body></html>';
-// ---------- Roving photos: a phone sends photos to this laptop; the booth picks them up from the inbox ----------
-// The photographer scans a QR code, picks or takes photos on the phone, and they land in "Roving inbox".
-// The booth page takes each one (moves it to done/), puts it in the frame and gives it a QR code.
+
 const ROVE_MAX = 80 * 1024 * 1024;
 const ROVE_RE = /\.(jpe?g|png|webp)$/i;
 export function roveDirNow() {
@@ -292,7 +347,6 @@ export function roveList() {
     try { const st = statSync(join(d, n)); return st.isFile() ? { name: n, size: st.size, mtime: st.mtimeMs } : null; } catch { return null; }
   }).filter(Boolean).sort((a, b) => a.mtime - b.mtime).slice(0, 200);
 }
-// Hands one photo to the booth page and moves it to done/ so it is never taken twice.
 export function roveTake(name) {
   const d = roveDirNow(); const n = basename(String(name || ''));
   if (!d || !n || n.startsWith('.') || !ROVE_RE.test(n)) return null;
@@ -320,18 +374,19 @@ var x=new XMLHttpRequest();x.open("POST",T+"/photo?name="+encodeURIComponent(fil
 x.upload.onprogress=function(p){if(p.lengthComputable)row.querySelector("i").style.width=Math.round(p.loaded/p.total*100)+"%"};
 x.onload=function(){var ok=x.status===200;row.querySelector("span").textContent=ok?"Sent. It is on the laptop now.":"Could not send ("+x.status+"). Try again.";if(ok)row.querySelector("i").style.width="100%"};
 x.onerror=function(){row.querySelector("span").textContent="No connection to the laptop. Are you on the booth Wi-Fi?"};x.send(file)}</script></body></html>`;
+
 function handleRovePhoto(req, res, url) {
   const cors = { 'access-control-allow-origin': '*' };
   if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'POST', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
   if (req.method !== 'POST') return send(res, 405, 'text/plain', 'Method not allowed', cors);
   const d = roveDirNow(); if (!d) return send(res, 503, 'text/plain', 'Not ready', cors);
   let name = basename(safeName(url.searchParams.get('name')) || ('photo-' + Date.now() + '.jpg'));
-  if (!ROVE_RE.test(name)) name = name.replace(/\.[a-z0-9]{1,5}$/i, '') + '.jpg';     // phones sometimes send IMG_1234.HEIC-style or no extension
+  if (!ROVE_RE.test(name)) name = name.replace(/\.[a-z0-9]{1,5}$/i, '') + '.jpg';
   name = Date.now().toString(36) + '_' + name;
   const len = Number(req.headers['content-length'] || 0);
   if (len > ROVE_MAX) return send(res, 413, 'application/json', JSON.stringify({ ok: false, error: 'Too big' }), cors);
   let out = name, i = 2; while (existsSync(join(d, out))) { out = name.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
-  const part = join(d, '.' + out + '.part');                     // not listed until it is complete
+  const part = join(d, '.' + out + '.part');
   const ws = createWriteStream(part);
   let got = 0, dead = false;
   const fail = (code, msg) => { if (dead) return; dead = true; try { ws.destroy(); unlinkSync(part); } catch { /* ignore */ } try { send(res, code, 'application/json', JSON.stringify({ ok: false, error: msg }), cors); } catch { /* closed */ } };
@@ -346,6 +401,23 @@ function handleRovePhoto(req, res, url) {
   });
   req.pipe(ws);
 }
+
+function sweepPartFiles(dir) {
+  if (!dir || !existsSync(dir)) return;
+  try {
+    const now = Date.now();
+    for (const n of readdirSync(dir)) {
+      if (n.startsWith('.') && n.endsWith('.part')) {
+        const full = join(dir, n);
+        try {
+          const st = statSync(full);
+          if (now - st.mtimeMs > 10 * 60 * 1000) unlinkSync(full);
+        } catch { /* ignore */ }
+      }
+    }
+  } catch { /* ignore */ }
+}
+
 function handleSend(req, res, url, sm) {
   const cors = { 'access-control-allow-origin': '*' };
   if (sm[1] !== spinToken) return send(res, 404, 'text/plain', 'Not found');
@@ -354,7 +426,6 @@ function handleSend(req, res, url, sm) {
     return send(res, 200, 'text/html; charset=utf-8', ROVE_PAGE);
   }
   if (sm[2] === 'photo') return handleRovePhoto(req, res, url);
-  // The 360 recording tablet checks it can reach this laptop (and the link is right) before it records.
   if (sm[2] === 'hello') {
     if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'GET', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
     return send(res, 200, 'application/json', JSON.stringify({ ok: true, app: 'photobooth4u', kind: 'laptop' }), cors);
@@ -373,13 +444,20 @@ function handleSend(req, res, url, sm) {
   }
   if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'POST', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
   if (req.method !== 'POST') return send(res, 405, 'text/plain', 'Method not allowed', cors);
+  try {
+    const st = statfsSync(d);
+    if (st && st.bavail && st.bsize && (st.bavail * st.bsize < 100 * 1024 * 1024)) {
+      return send(res, 507, 'application/json', JSON.stringify({ ok: false, error: 'Insufficient disk space on booth station' }), cors);
+    }
+  } catch { /* ignore */ }
+  sweepPartFiles(d);
   const want = safeName(url.searchParams.get('name')) || ('clip-' + Date.now() + '.mp4');
   let name = basename(want); if (!VIDEO_RE.test(name)) return send(res, 400, 'application/json', JSON.stringify({ ok: false, error: 'Only video files' }), cors);
   const len = Number(req.headers['content-length'] || 0);
   if (len > SPIN_MAX) return send(res, 413, 'application/json', JSON.stringify({ ok: false, error: 'Too big' }), cors);
   let out = name, i = 2;
   while (existsSync(join(d, out))) { out = name.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
-  const part = join(d, '.' + out + '.part');                      // not listed until it is complete
+  const part = join(d, '.' + out + '.part');
   const ws = createWriteStream(part);
   let got = 0, dead = false;
   const fail = (code, msg) => { if (dead) return; dead = true; try { ws.destroy(); unlinkSync(part); } catch { /* ignore */ } try { send(res, code, 'application/json', JSON.stringify({ ok: false, error: msg }), cors); } catch { /* closed */ } };
@@ -390,33 +468,28 @@ function handleSend(req, res, url, sm) {
   ws.on('finish', () => {
     if (dead) return;
     try { renameSync(part, join(d, out)); } catch { return fail(500, 'Could not save'); }
+    recordStat(null, 'captured', out);
     send(res, 200, 'application/json', JSON.stringify({ ok: true, name: out }), cors);
   });
   req.pipe(ws);
 }
 
-// ---------- guests ask for a print ----------
-// The booth turns this on (Setup -> Print). A guest who opened their photo from the QR code can then tap "Ask for a
-// print at the booth"; the request waits here until the attendant prints or dismisses it on the booth screen.
 let guestPrintOn = false;
-const printReqs = [];                        // { id, slug, file, event, t }
-const askedBefore = new Set();               // slug/file already asked for (a photo is only asked for once)
-const reqHits = new Map();                   // phone address -> times of its recent requests
+const printReqs = [];
+const askedBefore = new Set();
+const reqHits = new Map();
 const REQ_MAX = 200, REQ_RATE_N = 8, REQ_RATE_MS = 10 * 60000;
 export function setGuestPrint(on) { guestPrintOn = !!on; return guestPrintOn; }
 export const guestPrintNow = () => guestPrintOn;
 export const printReqList = () => printReqs.map((r) => ({ ...r }));
 export function printReqDone(id) { const i = printReqs.findIndex((r) => r.id === String(id)); if (i >= 0) printReqs.splice(i, 1); return i >= 0; }
-// The photo of a request, for the booth to print.
 export function printReqRead(id) {
   const r = printReqs.find((x) => x.id === String(id)); if (!r) return null;
   const dir = dirOf(r.slug); if (!dir) return null;
   try { return readFileSync(join(dir, r.file)); } catch { return null; }
 }
-// ---------- the operator prints an earlier photo from All photos ----------
-// Only this laptop's own browser may ask (isLocalReq), never a guest's phone. The booth takes the job and prints it
-// on the printer, paper and copies chosen in Print settings (like auto-print); the page then shows how it went.
-const printNowJobs = new Map();              // id -> { slug, file, state: 'wait' | 'taken' | 'ok' | 'fail', msg, t }
+
+const printNowJobs = new Map();
 const PRINTNOW_MAX = 20, PRINTNOW_KEEP_MS = 120000;
 export function printNowTake() {
   const out = [];
@@ -454,7 +527,6 @@ function handlePrintNowStatus(req, res, pm) {
   const j = printNowJobs.get(pm[1]);
   return j ? reply(200, { ok: true, state: j.state, msg: j.msg }) : reply(404, { ok: false, state: 'gone' });
 }
-// "Print photo" on a photo page opened on the booth laptop itself: prints now, no dialog.
 function opPrintButtonHtml(slug, file) {
   return '<button class="btn alt" id="opPrint" type="button">Print photo</button>' +
     '<script>(function(){var b=document.getElementById("opPrint");' +
@@ -480,7 +552,7 @@ function handlePrintReq(req, res, pm, only) {
   const fail = (code, error) => send(res, code, 'application/json', JSON.stringify({ ok: false, error }));
   if (!guestPrintOn) return fail(403, 'off');
   let file; try { file = decodeURIComponent(pm[2]); } catch { file = ''; }
-  if (only && !only.includes(file)) return fail(404, 'photo');       // a guest's own page: only that guest's files
+  if (only && !only.includes(file)) return fail(404, 'photo');
   const dir = dirOf(pm[1]);
   if (!dir || !existsSync(dir)) return fail(404, 'event');
   if (!file || file !== basename(file) || file.startsWith('.') || !/\.(jpe?g|png|webp)$/i.test(file) || !existsSync(join(dir, file))) return fail(404, 'photo');
@@ -498,12 +570,10 @@ function handlePrintReq(req, res, pm, only) {
   return send(res, 200, 'application/json', JSON.stringify({ ok: true, waiting: true }));
 }
 
-// A guest's own page: only the files the booth saved for their session (see noteGuestFile).
 function handleOwn(req, res, url, om) {
   const code = om[1], c = codes[code];
   if (!c) {
     if (om[2]) return send(res, 404, om[2] === 'print' ? 'application/json' : 'text/plain', om[2] === 'print' ? JSON.stringify({ ok: false, error: 'photo' }) : 'Not found');
-    // Not saved yet (or not a code of ours): the page checks again by itself, and says nothing about which codes exist.
     return send(res, 200, 'text/html; charset=utf-8', page('Your photos', '<div class="one"><h1>Your photos are on their way</h1><p class="sub">They appear here in a few seconds. You can keep this page open.</p></div><script>setTimeout(function(){location.reload()},4000)</script>'));
   }
   const dir = dirOf(c.slug);
@@ -514,12 +584,16 @@ function handleOwn(req, res, url, om) {
     let file; try { file = decodeURIComponent(om[3]); } catch { file = ''; }
     if (!c.files.includes(file) || !existsSync(join(dir, file))) return send(res, 404, 'text/plain', 'Not found');
     const extra = {};
-    if (url.searchParams.get('dl')) extra['content-disposition'] = 'attachment; filename="' + file.replace(/[^\w.() -]/g, '_') + '"';
+    if (url.searchParams.get('dl')) {
+      recordStat(c.slug, 'downloads', file);
+      extra['content-disposition'] = 'attachment; filename="' + file.replace(/[^\w.() -]/g, '_') + '"';
+    }
     return serveFile(req, res, join(dir, file), TYPES[extname(file).toLowerCase()] || 'application/octet-stream', extra);
   }
   const ev = index.folders[c.slug];
   const evName = ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : 'Your photos';
   const mine = c.files.filter((n) => existsSync(join(dir, n)));
+  mine.forEach((f) => recordStat(c.slug, 'views', f));
   const items = mine.map((file, i) => {
     const type = TYPES[extname(file).toLowerCase()] || 'application/octet-stream';
     const isGif = /\.gif$/i.test(file), isVid = VIDEO_RE.test(file);
@@ -531,11 +605,512 @@ function handleOwn(req, res, url, om) {
   });
   const others = guestView !== 'only' ? '<div class="one" style="padding-top:0"><a class="btn alt" href="/e/' + c.slug + '/">Show photos with other guests</a></div>' : '';
   const body = '<div style="text-align:center;padding:0 16px"><h1>Your photos</h1><p class="sub">' + esc(evName) + '</p></div>' +
-    (items.length ? items.join('') + savingTip : '<p class="empty">This photo isn’t here yet. Wait a moment and refresh.</p><script>setTimeout(function(){location.reload()},5000)</script>') + others;
+    (items.length ? items.join('') + savingTipHtml(null, null, evName) : '<p class="empty">This photo isn’t here yet. Wait a moment and refresh.</p><script>setTimeout(function(){location.reload()},5000)</script>') + others;
   return send(res, 200, 'text/html; charset=utf-8', page('Your photos', body + holoFor(mine)));
 }
 
-// The iPad-uses-this-laptop pages (lib/lan.mjs) answer first; they return false for everything else.
+// ---------- dual online / offline saving tips & share script ----------
+function savingTipHtml(slug, file, evName) {
+  return '<div class="tip" id="iosTip" style="display:none"><b>How to save on iPhone / iPad:</b><br>1. Tap <b>Save video</b> (or <b>Save photo</b>).<br>2. Tap the blue download arrow ⬇️ in Safari’s address bar, then tap the clip.<br>3. Tap the Share icon (square with arrow) &gt; <b>Save Video</b> to keep it in your Photos app.</div>' +
+    '<div class="tip" id="androidTip" style="display:none"><b>How to save on Android:</b><br>Tap <b>Save video</b> (or <b>Save photo</b>). It saves directly to your Downloads and shows in Google Photos or Gallery.</div>' +
+    '<div class="tip" id="genTip">Tap <b>Save video</b> (or <b>Save photo</b>) to download directly to your device.</div>' +
+    '<script>(function(){' +
+    'var isIos=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;' +
+    'var isAndroid=/Android/.test(navigator.userAgent);' +
+    'var it=document.getElementById("iosTip"),at=document.getElementById("androidTip"),gt=document.getElementById("genTip");' +
+    'if(isIos&&it){it.style.display="block";if(gt)gt.style.display="none"}' +
+    'else if(isAndroid&&at){at.style.display="block";if(gt)gt.style.display="none"}' +
+    '})()</script>';
+}
+
+function guestButtonsHtml(slug, file, isVid, isGif, type, req) {
+  const src = '/e/' + slug + '/f/' + encodeURIComponent(file);
+  const dlText = isVid ? 'Save video' : isGif ? 'Save GIF' : 'Save photo';
+  const printPart = (!/^video\//.test(type) && !isGif ? (isLocalReq(req) ? opPrintButtonHtml(slug, file) : '<button class="btn alt" type="button" onclick="window.print()">Print photo</button>') : '');
+  const reqPart = (guestPrintOn && !isVid && !isGif ? reqButtonHtml(slug, file) : '');
+  return '<div>' +
+    '<button class="btn" id="btnShare" type="button" style="display:none">Share / AirDrop ↗</button>' +
+    '<a class="btn" id="btnDl" href="' + src + '?dl=1" download="' + esc(file) + '">' + dlText + '</a>' +
+    '<button class="btn alt" id="btnCopy" type="button">Copy link 📋</button>' +
+    printPart + reqPart +
+    '<a class="btn alt" href="/e/' + slug + '/">All photos</a>' +
+    '</div>' +
+    savingTipHtml(slug, file) +
+    '<script>(function(){' +
+    'var slug=' + JSON.stringify(slug) + ',file=' + JSON.stringify(file) + ';' +
+    'function track(act){try{if(navigator.sendBeacon)navigator.sendBeacon("/e/"+slug+"/track",JSON.stringify({action:act,file:file}));else fetch("/e/"+slug+"/track",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:act,file:file})}).catch(function(){})}catch(e){}}' +
+    'var bDl=document.getElementById("btnDl");if(bDl)bDl.addEventListener("click",function(){track("download")});' +
+    'var bSh=document.getElementById("btnShare"),bCp=document.getElementById("btnCopy");' +
+    'var canNative=!!(navigator.share&&window.isSecureContext);' +
+    'if(canNative&&bSh){bSh.style.display="inline-block";bSh.addEventListener("click",function(){navigator.share({title:document.title,url:location.href}).then(function(){track("share")}).catch(function(){})})}' +
+    'if(bCp){bCp.addEventListener("click",function(){var u=location.href.split("?")[0];function ok(){bCp.textContent="Copied ✓";track("share");setTimeout(function(){bCp.textContent="Copy link 📋"},2500)}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u).then(ok).catch(fb)}else{fb()}function fb(){var ta=document.createElement("textarea");ta.value=u;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();try{document.execCommand("copy");ok()}catch(e){}document.body.removeChild(ta)}})}' +
+    '})()</script>';
+}
+
+// ---------- 4.1 Sharing Station Page HTML ----------
+function stationHtml(slug, evName) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>${esc(evName)} - Sharing Station</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:#0F0E13;color:#F0EEF5;min-height:100vh;-webkit-tap-highlight-color:transparent}
+header{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(15,14,19,0.94);backdrop-filter:blur(10px);position:sticky;top:0;z-index:20}
+.brand{font-size:14px;font-weight:800;letter-spacing:-.01em;color:#fff;display:flex;align-items:center;gap:6px}
+.brand-dot{width:10px;height:10px;background:#C93D27;border-radius:2px}
+.title-wrap{text-align:center;flex:1;padding:0 12px}
+h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{display:inline-flex;align-items:center;gap:6px;background:rgba(201,61,39,0.18);color:#FF6B55;font-size:11px;font-weight:800;padding:2px 8px;border-radius:10px;margin-top:2px;text-transform:uppercase;letter-spacing:.04em}
+.stat{display:flex;align-items:center;gap:8px;font-size:13px;color:#A49FA9;font-weight:600}
+.pulse{width:8px;height:8px;background:#2EA66B;border-radius:50%;box-shadow:0 0 8px #2EA66B;animation:pbPulse 2s infinite}
+@keyframes pbPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
+
+.controls{display:flex;align-items:center;justify-content:center;padding:12px 16px 4px}
+.tabs{display:inline-flex;background:rgba(255,255,255,0.06);border-radius:20px;padding:3px;gap:2px}
+.tab{background:transparent;border:0;border-radius:18px;padding:6px 16px;font-size:13px;font-weight:700;color:#A49FA9;cursor:pointer}
+.tab.active{background:#fff;color:#0F0E13;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;padding:16px 20px 60px;max-width:1300px;margin:0 auto}
+.card{background:rgba(255,255,255,0.05);border-radius:14px;overflow:hidden;aspect-ratio:9/16;position:relative;cursor:pointer;border:1px solid rgba(255,255,255,0.08);transition:transform .15s}
+.card:active{transform:scale(0.97)}
+.card img,.card video{width:100%;height:100%;object-fit:cover;display:block}
+.card .play-pill{position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);color:#fff;border-radius:18px;padding:4px 10px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px}
+.card .time{position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#eee;border-radius:6px;padding:3px 7px;font-size:10px;font-weight:600}
+.empty{text-align:center;color:#8E8994;padding:80px 20px;font-size:15px;grid-column:1/-1}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{background:#18161D;border:1px solid rgba(255,255,255,0.12);border-radius:24px;width:100%;max-width:920px;max-height:92vh;display:flex;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,0.7);position:relative}
+.modal-media{flex:1.2;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;min-height:360px}
+.modal-media video,.modal-media img{max-width:100%;max-height:86vh;object-fit:contain}
+.modal-share{flex:1;padding:32px 28px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:#18161D;border-left:1px solid rgba(255,255,255,0.08)}
+.modal-share h2{margin:0 0 6px;font-size:24px;font-weight:800;letter-spacing:-.02em}
+.modal-share p{color:#A49FA9;font-size:13px;line-height:1.45;margin:0 0 20px;max-width:280px}
+.qr-frame{background:#fff;padding:14px;border-radius:18px;box-shadow:0 12px 36px rgba(0,0,0,0.4);display:inline-block;margin-bottom:20px}
+.qr-frame img{display:block;width:200px;height:200px}
+.btn{display:inline-block;padding:13px 24px;border-radius:12px;background:#C93D27;color:#fff;font-weight:800;text-decoration:none;font-size:14px;border:0;cursor:pointer;width:100%;max-width:260px;margin-bottom:8px;text-align:center;font-family:inherit}
+.btn.alt{background:rgba(255,255,255,0.08);color:#fff}
+.timer-bar{width:100%;max-width:260px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;margin-top:16px}
+.timer-bar i{display:block;height:100%;width:100%;background:#C93D27;transition:width .2s linear}
+.timer-text{font-size:11px;color:#7A7580;margin-top:6px}
+.close-btn{position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.1);border:0;color:#fff;width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10}
+
+@media (max-width:768px){
+  .modal{flex-direction:column;max-height:96vh;overflow-y:auto}
+  .modal-share{border-left:0;border-top:1px solid rgba(255,255,255,0.08);padding:20px 16px}
+  .modal-media{min-height:240px;max-height:45vh}
+  .qr-frame img{width:160px;height:160px}
+}
+</style>
+<script src="/qr.js"></script>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="brand-dot"></div>photobooth4u</div>
+  <div class="title-wrap">
+    <h1>${esc(evName)}</h1>
+    <div class="badge">📱 Sharing Station</div>
+  </div>
+  <div class="stat"><span class="pulse"></span><span id="stCount">0 clips</span></div>
+</header>
+
+<div class="controls">
+  <div class="tabs">
+    <button type="button" class="tab active" data-filter="all">All</button>
+    <button type="button" class="tab" data-filter="video">360 Videos</button>
+    <button type="button" class="tab" data-filter="photo">Photos</button>
+  </div>
+</div>
+
+<div class="grid" id="stGrid"><div class="empty">Loading clips…</div></div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <button type="button" class="close-btn" id="mClose">✕</button>
+    <div class="modal-media" id="mMedia"></div>
+    <div class="modal-share">
+      <h2>Scan to save</h2>
+      <p>Point your phone’s camera at the QR code to open and save your video.</p>
+      <div class="qr-frame"><img id="mQr" alt="QR Code"></div>
+      <a class="btn" id="mDl" download>Save Video</a>
+      <button type="button" class="btn alt" id="mDone">Done (Next guest)</button>
+      <div class="timer-bar"><i id="mBar"></i></div>
+      <div class="timer-text">Auto-closing in <span id="mSec">35</span>s</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var SLUG = ${JSON.stringify(slug)};
+var files = [], currentFilter = 'all', activeItem = null, timerId = null, timeLeft = 35;
+
+function timeAgo(mtime) {
+  var s = Math.floor((Date.now() - mtime) / 1000);
+  if (s < 60) return 'Just now';
+  var m = Math.floor(s / 60);
+  if (m < 60) return m + 'm ago';
+  var h = Math.floor(m / 60);
+  return h + 'h ago';
+}
+
+function makeQr(url) {
+  try {
+    var q = qrcode(0, 'M');
+    q.addData(url);
+    q.make();
+    return q.createDataURL(6, 2);
+  } catch(e) {
+    return '';
+  }
+}
+
+function render() {
+  var g = document.getElementById('stGrid');
+  var list = files.filter(function(f){ return currentFilter === 'all' || f.kind === currentFilter; });
+  if (!list.length) {
+    g.innerHTML = '<div class="empty">No ' + (currentFilter === 'all' ? 'clips' : currentFilter + 's') + ' yet. Take a spin on the booth to get started!</div>';
+    return;
+  }
+  g.innerHTML = list.map(function(f){
+    var isVid = f.kind === 'video';
+    var thumb = isVid
+      ? '<video src="' + f.url + '#t=0.1" preload="metadata" muted playsinline></video><div class="play-pill"><i>▶</i> 360</div>'
+      : '<img src="' + f.thumbUrl + '" loading="lazy" alt="">';
+    return '<div class="card" data-name="' + f.name + '">' + thumb + '<div class="time">' + timeAgo(f.mtime) + '</div></div>';
+  }).join('');
+
+  g.querySelectorAll('.card').forEach(function(card){
+    card.addEventListener('click', function(){
+      var it = files.find(function(x){ return x.name === card.dataset.name; });
+      if (it) openModal(it);
+    });
+  });
+}
+
+function openModal(it) {
+  activeItem = it;
+  var m = document.getElementById('modal');
+  var med = document.getElementById('mMedia');
+  var qr = document.getElementById('mQr');
+  var dl = document.getElementById('mDl');
+  var pageUrl = location.origin + it.pageUrl;
+  
+  if (it.kind === 'video') {
+    med.innerHTML = '<video src="' + it.url + '" controls autoplay loop playsinline></video>';
+    dl.textContent = 'Save Video';
+  } else {
+    med.innerHTML = '<img src="' + it.url + '" alt="">';
+    dl.textContent = 'Save Photo';
+  }
+  dl.href = it.url + '?dl=1';
+  dl.setAttribute('download', it.name);
+  qr.src = makeQr(pageUrl);
+  
+  m.classList.add('open');
+  resetTimer();
+}
+
+function closeModal() {
+  var m = document.getElementById('modal');
+  m.classList.remove('open');
+  var med = document.getElementById('mMedia');
+  med.innerHTML = '';
+  activeItem = null;
+  clearInterval(timerId);
+}
+
+function resetTimer() {
+  clearInterval(timerId);
+  timeLeft = 35;
+  var bar = document.getElementById('mBar');
+  var sec = document.getElementById('mSec');
+  bar.style.width = '100%';
+  sec.textContent = '35';
+  timerId = setInterval(function(){
+    timeLeft--;
+    sec.textContent = String(timeLeft);
+    bar.style.width = Math.round((timeLeft / 35) * 100) + '%';
+    if (timeLeft <= 0) {
+      clearInterval(timerId);
+      closeModal();
+    }
+  }, 1000);
+}
+
+document.getElementById('mClose').addEventListener('click', closeModal);
+document.getElementById('mDone').addEventListener('click', closeModal);
+document.getElementById('modal').addEventListener('click', function(e){
+  if (e.target === this) closeModal();
+});
+document.getElementById('modal').addEventListener('touchstart', resetTimer, { passive: true });
+
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click', function(){
+    document.querySelectorAll('.tab').forEach(function(x){ x.classList.remove('active'); });
+    t.classList.add('active');
+    currentFilter = t.dataset.filter;
+    render();
+  });
+});
+
+async function poll() {
+  try {
+    var r = await fetch('/station/' + SLUG + '/list');
+    var j = await r.json();
+    if (j && j.ok && Array.isArray(j.files)) {
+      var changed = j.files.length !== files.length || (j.files[0] && files[0] && j.files[0].name !== files[0].name);
+      files = j.files;
+      document.getElementById('stCount').textContent = files.length + (files.length === 1 ? ' clip' : ' clips');
+      if (changed && !activeItem) render();
+    }
+  } catch(e) {}
+}
+
+poll();
+setInterval(poll, 3500);
+</script>
+</body>
+</html>`;
+}
+
+// ---------- 4.2 Live Wall Page HTML ----------
+function wallHtml(slug, evName) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(evName)} - 360 Live Wall</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080709;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center;user-select:none}
+#wallVid{max-width:96vw;max-height:94vh;object-fit:contain;border-radius:14px;box-shadow:0 30px 100px rgba(0,0,0,0.9);opacity:0;transition:opacity .4s ease}
+#wallVid.visible{opacity:1}
+.top-bar{position:fixed;top:20px;left:24px;right:24px;display:flex;align-items:center;justify-content:space-between;z-index:20;pointer-events:none;transition:opacity .6s ease}
+.top-bar.faded{opacity:0}
+.wall-title{background:rgba(18,16,22,0.75);backdrop-filter:blur(12px);padding:8px 18px;border-radius:30px;font-size:15px;font-weight:800;border:1px solid rgba(255,255,255,0.1);letter-spacing:-.01em}
+.wall-title span{color:#FF6B55;margin-left:6px;font-size:12px;font-weight:700;text-transform:uppercase}
+.wall-acts{display:flex;gap:10px;pointer-events:auto}
+.act-btn{background:rgba(18,16,22,0.75);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px 14px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer}
+
+.qr-card{position:fixed;bottom:24px;right:24px;background:rgba(18,16,22,0.85);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.12);padding:12px 14px;border-radius:18px;display:flex;align-items:center;gap:12px;box-shadow:0 16px 40px rgba(0,0,0,0.6);z-index:20}
+.qr-card img{width:80px;height:80px;border-radius:8px;background:#fff;padding:4px}
+.qr-text{text-align:left}
+.qr-text b{display:block;font-size:13px;margin-bottom:2px}
+.qr-text span{font-size:11px;color:#A49FA9}
+
+.new-badge{position:fixed;top:70px;background:#C93D27;color:#fff;padding:10px 24px;border-radius:30px;font-weight:800;font-size:16px;box-shadow:0 10px 30px rgba(201,61,39,0.5);z-index:30;animation:badgeIn .4s cubic-bezier(0.175,0.885,0.32,1.275);letter-spacing:.02em}
+@keyframes badgeIn{from{opacity:0;transform:translateY(-20px) scale(0.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+.waiting{text-align:center;color:#8E8994}
+.waiting h1{font-size:32px;color:#fff;margin:0 0 10px}
+</style>
+<script src="/qr.js"></script>
+</head>
+<body>
+<div class="top-bar" id="topBar">
+  <div class="wall-title">${esc(evName)} <span>360 Live Wall</span></div>
+  <div class="wall-acts">
+    <button type="button" class="act-btn" id="muteBtn">🔊 Unmute</button>
+    <button type="button" class="act-btn" id="fsBtn">⛶ Fullscreen</button>
+  </div>
+</div>
+
+<video id="wallVid" autoplay playsinline muted></video>
+<div class="waiting" id="waitMsg"><h1>📺 360 Live Wall</h1><p>Waiting for the first 360 spin…<br>Clips will appear here automatically.</p></div>
+<div class="new-badge" id="newBadge" style="display:none">✨ New 360 Spin!</div>
+
+<div class="qr-card">
+  <img id="wallQr" alt="QR Code">
+  <div class="qr-text">
+    <b>Scan with phone</b>
+    <span>View all event clips</span>
+  </div>
+</div>
+
+<script>
+var SLUG = ${JSON.stringify(slug)};
+var playlist = [], curIdx = 0, fadeTimer = null, seenNames = new Set();
+var vid = document.getElementById('wallVid');
+var wait = document.getElementById('waitMsg');
+var badge = document.getElementById('newBadge');
+var topBar = document.getElementById('topBar');
+var muteBtn = document.getElementById('muteBtn');
+
+function makeQr(url) {
+  try {
+    var q = qrcode(0, 'M');
+    q.addData(url);
+    q.make();
+    return q.createDataURL(4, 2);
+  } catch(e) {
+    return '';
+  }
+}
+document.getElementById('wallQr').src = makeQr(location.origin + '/e/' + SLUG + '/');
+
+function playIndex(idx) {
+  if (!playlist.length) return;
+  curIdx = (idx + playlist.length) % playlist.length;
+  var item = playlist[curIdx];
+  vid.classList.remove('visible');
+  setTimeout(function(){
+    vid.src = item.url;
+    vid.play().catch(function(){});
+    vid.classList.add('visible');
+    wait.style.display = 'none';
+  }, 200);
+}
+
+vid.addEventListener('ended', function(){
+  playIndex(curIdx + 1);
+});
+
+async function pollFeed() {
+  try {
+    var r = await fetch('/wall/' + SLUG + '/feed');
+    var j = await r.json();
+    if (j && j.ok && Array.isArray(j.videos) && j.videos.length > 0) {
+      var isFirst = playlist.length === 0;
+      var newVideos = j.videos.filter(function(v){ return !seenNames.has(v.name); });
+      j.videos.forEach(function(v){ seenNames.add(v.name); });
+      playlist = j.videos;
+      if (isFirst) {
+        playIndex(0);
+      } else if (newVideos.length > 0) {
+        // A brand new spin arrived: play it next!
+        badge.style.display = 'block';
+        setTimeout(function(){ badge.style.display = 'none'; }, 4000);
+        curIdx = 0;
+        playIndex(0);
+      }
+    }
+  } catch(e) {}
+}
+
+function wakeTop() {
+  topBar.classList.remove('faded');
+  clearTimeout(fadeTimer);
+  fadeTimer = setTimeout(function(){ topBar.classList.add('faded'); }, 3500);
+}
+window.addEventListener('mousemove', wakeTop);
+window.addEventListener('touchstart', wakeTop);
+wakeTop();
+
+muteBtn.addEventListener('click', function(){
+  vid.muted = !vid.muted;
+  muteBtn.textContent = vid.muted ? '🔊 Unmute' : '🔇 Mute';
+});
+
+document.getElementById('fsBtn').addEventListener('click', function(){
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(function(){});
+  else document.exitFullscreen().catch(function(){});
+});
+
+window.addEventListener('keydown', function(e){
+  if (e.key === 'f' || e.key === 'F') {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(function(){});
+    else document.exitFullscreen().catch(function(){});
+  } else if (e.key === 'm' || e.key === 'M') {
+    vid.muted = !vid.muted;
+    muteBtn.textContent = vid.muted ? '🔊 Unmute' : '🔇 Mute';
+  } else if (e.key === ' ' || e.key === 'ArrowRight') {
+    playIndex(curIdx + 1);
+  }
+});
+
+pollFeed();
+setInterval(pollFeed, 4000);
+</script>
+</body>
+</html>`;
+}
+
+function handleTrack(req, res, url, slug) {
+  const cors = { 'access-control-allow-origin': '*' };
+  if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'POST', 'access-control-allow-headers': 'content-type' });
+  if (req.method !== 'POST') return send(res, 405, 'text/plain', 'Method not allowed', cors);
+  let body = '';
+  req.on('data', (c) => { body += c; if (body.length > 8192) req.destroy(); });
+  req.on('end', () => {
+    try {
+      const j = JSON.parse(body || '{}');
+      if (j && j.action) recordStat(slug, j.action, j.file);
+      send(res, 200, 'application/json', JSON.stringify({ ok: true }), cors);
+    } catch {
+      send(res, 400, 'application/json', JSON.stringify({ ok: false }), cors);
+    }
+  });
+}
+
+function handleStation(req, res, url, stm) {
+  const cors = { 'access-control-allow-origin': '*' };
+  if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'GET', 'access-control-allow-headers': 'content-type' });
+  const rawSlug = stm[1] || null;
+  const slug = resolveSlug(rawSlug);
+  const sub = stm[2] || '';
+  if (sub === 'stats') {
+    return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug, stats: getStats(slug) }), cors);
+  }
+  if (sub === 'list') {
+    if (!slug) return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug: null, name: '', files: [] }), cors);
+    const dir = dirOf(slug);
+    if (!dir || !existsSync(dir)) return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug, name: '', files: [] }), cors);
+    const ev = index.folders[slug];
+    const evName = ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : '360 Booth';
+    const list = photosIn(dir);
+    const files = list.map(({ n, t }) => ({
+      name: n,
+      kind: VIDEO_RE.test(n) ? 'video' : /\.gif$/i.test(n) ? 'gif' : 'photo',
+      url: '/e/' + slug + '/f/' + encodeURIComponent(n),
+      thumbUrl: '/e/' + slug + '/t/' + encodeURIComponent(n),
+      pageUrl: '/e/' + slug + '/p/' + encodeURIComponent(n),
+      mtime: t
+    }));
+    return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug, name: evName, count: files.length, files }), cors);
+  }
+  if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
+  if (!slug) {
+    return send(res, 200, 'text/html; charset=utf-8', page('Sharing Station', '<div class="one" style="max-width:600px;margin:60px auto;text-align:center"><h1>📱 Sharing Station</h1><p class="sub">Waiting for your first photo or 360 clip…</p><p class="tip">Start a session on the booth laptop or tablet. Once finished, clips will appear here automatically for guests to scan and save.</p></div><script>setTimeout(function(){location.reload()},4000)</script>'));
+  }
+  const ev = index.folders[slug];
+  const evName = ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : '360 Booth';
+  return send(res, 200, 'text/html; charset=utf-8', stationHtml(slug, evName));
+}
+
+function handleWall(req, res, url, wlm) {
+  const cors = { 'access-control-allow-origin': '*' };
+  if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'GET', 'access-control-allow-headers': 'content-type' });
+  const rawSlug = wlm[1] || null;
+  const slug = resolveSlug(rawSlug);
+  const sub = wlm[2] || '';
+  if (sub === 'feed') {
+    if (!slug) return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug: null, name: '', videos: [] }), cors);
+    const dir = dirOf(slug);
+    if (!dir || !existsSync(dir)) return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug, name: '', videos: [] }), cors);
+    const ev = index.folders[slug];
+    const evName = ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : '360 Booth';
+    const list = photosIn(dir).filter(({ n }) => VIDEO_RE.test(n));
+    const videos = list.map(({ n, t }) => ({
+      name: n,
+      url: '/e/' + slug + '/f/' + encodeURIComponent(n),
+      pageUrl: '/e/' + slug + '/p/' + encodeURIComponent(n),
+      mtime: t
+    }));
+    return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug, name: evName, count: videos.length, videos }), cors);
+  }
+  if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
+  if (!slug) {
+    return send(res, 200, 'text/html; charset=utf-8', '<!doctype html><html><head><meta charset="utf-8"><title>Live Wall</title><style>body{background:#0b0a0e;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center}</style></head><body><div><h1>📺 360 Live Wall</h1><p style="color:#aaa">Waiting for the first 360 spin…<br>Clips will play and loop on this screen automatically.</p></div><script>setTimeout(function(){location.reload()},4000)</script></body></html>');
+  }
+  const ev = index.folders[slug];
+  const evName = ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : '360 Booth';
+  return send(res, 200, 'text/html; charset=utf-8', wallHtml(slug, evName));
+}
+
 let lanHandler = null;
 export function setLanHandler(fn) { lanHandler = fn; }
 
@@ -543,11 +1118,28 @@ async function handleShare(req, res) {
   if (lanHandler && await lanHandler(req, res)) return;
   let url;
   try { url = new URL(req.url, 'http://x'); } catch { return send(res, 400, 'text/plain', 'Bad request'); }
+  if (url.pathname === '/qr.js') {
+    const qrf = join(new URL('.', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'), 'qr.js');
+    if (existsSync(qrf)) {
+      return send(res, 200, 'application/javascript; charset=utf-8', readFileSync(qrf, 'utf8'), { 'cache-control': 'public, max-age=86400' });
+    }
+  }
+  if (url.pathname === '/stats' || url.pathname === '/api/stats') {
+    return send(res, 200, 'application/json; charset=utf-8', JSON.stringify({ ok: true, stats: getStats() }), { 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
+  }
   const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited|photos|photo|hello)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);
   if (sm) return handleSend(req, res, url, sm);
   const om = /^\/o\/([A-Za-z0-9_-]{16,40})(?:\/(f|print)\/([^/]+))?\/?$/.exec(url.pathname);
   if (om) return handleOwn(req, res, url, om);
-  // "Guests see only their own photos": the event pages answer only this laptop itself (the operator), not a guest's phone.
+  const stm = /^\/station(?:\/([A-Za-z0-9_-]{6,30}))?(?:\/(list|stats))?\/?$/.exec(url.pathname);
+  if (stm) return handleStation(req, res, url, stm);
+  const wlm = /^\/wall(?:\/([A-Za-z0-9_-]{6,30}))?(?:\/(feed))?\/?$/.exec(url.pathname);
+  if (wlm) return handleWall(req, res, url, wlm);
+  const trm = /^\/e\/([A-Za-z0-9]{6,20})\/track\/?$/.exec(url.pathname);
+  if (trm) return handleTrack(req, res, url, trm[1]);
+  const stm2 = /^\/e\/([A-Za-z0-9]{6,20})\/stats\/?$/.exec(url.pathname);
+  if (stm2) return send(res, 200, 'application/json; charset=utf-8', JSON.stringify({ ok: true, slug: stm2[1], stats: getStats(stm2[1]) }), { 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
+
   if (guestView === 'only' && /^\/e\//.test(url.pathname) && !isLocalReq(req)) {
     return send(res, 403, 'text/html; charset=utf-8', page('Private', '<p class="empty">Guests of this event see only their own photos. Scan your own QR code at the booth to open yours.</p>'));
   }
@@ -599,19 +1191,30 @@ async function handleShare(req, res) {
   if (!file || file !== basename(file) || file.startsWith('.') || !IMG_RE.test(file)) return send(res, 404, 'text/plain', 'Not found');
   const full = join(dir, file);
   if (!existsSync(full)) {
-    if (m[2] === 'p') return send(res, 404, 'text/html; charset=utf-8', page('Not ready', '<div class="one"><p class="empty">This photo isn’t here yet. Wait a moment and refresh.</p><a class="btn alt" href="/e/' + m[1] + '/">All photos</a></div>'));
+    if (m[2] === 'p') {
+      const isVid = VIDEO_RE.test(file);
+      const title = isVid ? 'Your 360 video is on its way' : 'Your photo is on its way';
+      const msg = isVid ? 'We’re applying the effects, speed ramps and music. It appears here in a few seconds. You can keep this page open.' : 'This photo isn’t here yet. Wait a moment and refresh.';
+      const body = '<div class="one"><h1>' + title + '</h1><p class="sub">' + esc(evName) + '</p>' +
+        '<div style="margin:28px auto;width:44px;height:44px;border:4px solid #E4DCCF;border-top-color:#C93D27;border-radius:50%;animation:pbSpin 1s linear infinite"></div>' +
+        '<style>@keyframes pbSpin{to{transform:rotate(360deg)}}</style>' +
+        '<p class="empty" style="padding:10px 0 20px">' + msg + '</p>' +
+        '<a class="btn alt" href="/e/' + m[1] + '/">All photos</a></div>' +
+        '<script>setTimeout(function(){location.reload()},3000)</script>';
+      return send(res, 200, 'text/html; charset=utf-8', page(title, body), { 'cache-control': 'no-store' });
+    }
     return send(res, 404, 'text/plain', 'Not found');
   }
   const type = TYPES[extname(file).toLowerCase()] || 'application/octet-stream';
   if (m[2] === 'p') {
+    recordStat(m[1], 'views', file);
     const isGif = /\.gif$/i.test(file);
     const isVid = VIDEO_RE.test(file);
     const src = '/e/' + m[1] + '/f/' + encodeURIComponent(file);
     const media = /^video\//.test(type) ? '<video src="' + src + '" controls playsinline autoplay muted loop></video>' : '<img src="' + src + '" alt="' + (isGif ? 'Your GIF' : 'Your photo') + '">';
     const itemTitle = isVid ? 'Your video' : isGif ? 'Your GIF' : 'Your photo';
-    const dlText = isVid ? 'Save video' : isGif ? 'Save GIF' : 'Save photo';
     const body = '<div class="one"><h1>' + itemTitle + '</h1><p class="sub">' + esc(evName) + '</p>' + media +
-      '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">' + dlText + '</a>' + (!/^video\//.test(type) && !isGif ? (isLocalReq(req) ? opPrintButtonHtml(m[1], file) : '<button class="btn alt" type="button" onclick="window.print()">Print photo</button>') : '') + (guestPrintOn && !isVid && !isGif ? reqButtonHtml(m[1], file) : '') + '<a class="btn alt" href="/e/' + m[1] + '/">All photos</a></div>' + savingTip + '</div>';
+      guestButtonsHtml(m[1], file, isVid, isGif, type, req) + '</div>';
     return send(res, 200, 'text/html; charset=utf-8', page(itemTitle, body + holoFor([file])));
   }
   if (m[2] === 't' && thumbFn && /^image\/(jpeg|png|webp)$/.test(type)) {
@@ -626,7 +1229,10 @@ async function handleShare(req, res) {
     } catch { /* fall back to the full photo */ }
   }
   const extra = {};
-  if (url.searchParams.get('dl')) extra['content-disposition'] = 'attachment; filename="' + file.replace(/[^\w.() -]/g, '_') + '"';
+  if (url.searchParams.get('dl')) {
+    recordStat(m[1], 'downloads', file);
+    extra['content-disposition'] = 'attachment; filename="' + file.replace(/[^\w.() -]/g, '_') + '"';
+  }
   serveFile(req, res, full, type, extra);
 }
 

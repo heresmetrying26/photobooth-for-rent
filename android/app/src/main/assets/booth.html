@@ -13399,10 +13399,12 @@
               <option value="normal">Normal</option>
               <option value="custom">Speed sequence (from the style)</option>
             </select></label>
-          <label class="chk"><input type="checkbox" id="spinSmooth"> Smoother slow motion (takes longer)</label>
+          <label class="chk" title="Tip: Record at 60 fps (or 120 fps for 0.25×) for instant real slow motion with no extra processing wait."><input type="checkbox" id="spinSmooth"> Smoother slow motion (30 fps clips; 60+ fps is smooth automatically)</label>
+          <label class="chk" id="spinGpuWrap" hidden title="Use hardware GPU video encoding when available (falls back to CPU automatically)."><input type="checkbox" id="spinGpu"> GPU fast encode</label>
           <label>Format <select id="spinOrient">
               <option value="portrait">Portrait (phones)</option>
               <option value="landscape">Landscape</option>
+              <option value="square">Square 1:1 (Instagram)</option>
             </select></label>
           <label>Quality <select id="spinQual">
               <option value="1080">1080p</option>
@@ -13426,7 +13428,45 @@
           <label class="chk"><input type="checkbox" id="spinAuto"> Edit new videos by themselves</label>
           <label class="chk"><input type="checkbox" id="spinAutoShare"> and get the QR ready</label>
         </div>
-      </div>
+        <div class="spin-row" id="spinTextRow">
+          <label class="chk"><input type="checkbox" id="spinTextOn"> Extra text overlay</label>
+          <label>Line 1 <input type="text" id="spinText1" placeholder="e.g. Happy Birthday!" style="width:140px"></label>
+          <label>Line 2 <input type="text" id="spinText2" placeholder="e.g. October 24, 2026" style="width:140px"></label>
+          <label>Pos <select id="spinTextPos">
+              <option value="top">Top</option>
+              <option value="middle">Middle</option>
+              <option value="bottom">Bottom</option>
+            </select></label>
+          <label>Color <input type="color" id="spinTextColor" value="#ffffff"></label>
+          <label>Size <select id="spinTextSize">
+              <option value="small">Small</option>
+              <option value="medium" selected>Medium</option>
+              <option value="large">Large</option>
+            </select></label>
+          <label>Font <select id="spinTextFont">
+              <option value="sans-serif">Sans-Serif</option>
+              <option value="serif">Serif</option>
+              <option value="cursive">Script / Cursive</option>
+              <option value="impact">Bold / Impact</option>
+            </select></label>
+          <label>Timing <select id="spinTextTiming">
+              <option value="always">Always on</option>
+              <option value="fade">Fade in / out</option>
+            </select></label>
+        </div>
+              <div class="spin-row" id="spinStingerRow">
+          <button type="button" class="desk-btn" id="spinIntroBtn">Intro video</button><span id="spinIntroName" class="spin-dim"></span>
+          <button type="button" class="desk-btn" id="spinOutroBtn">Outro video</button><span id="spinOutroName" class="spin-dim"></span>
+          <label class="chk" title="Automatically cycle styles per spin"><input type="checkbox" id="spinRotateOn"> Auto-rotate looks per spin</label>
+          <label>Rotate <select id="spinRotateMode"><option value="presets">Styles</option><option value="fx">Animated FX</option><option value="all">Styles + FX</option></select></label>
+          <span id="spinRotateBadge" class="spin-fx-pill" hidden></span>
+        </div>
+        <div class="spin-row" id="spinStationRow" style="align-items:center;gap:10px">
+          <a href="#" id="spinOpenStation" target="_blank" class="desk-btn" style="text-decoration:none">📱 Sharing Station</a>
+          <a href="#" id="spinOpenWall" target="_blank" class="desk-btn" style="text-decoration:none">📺 360 Live Wall</a>
+          <span id="spinStatsBadge" class="spin-fx-pill" style="background:#2EA66B;color:#fff;font-weight:700">Spins: 0 · Views: 0 · DL: 0</span>
+        </div>
+</div>
       <div class="desk-hint" id="spinNoEdit" hidden>Editing (slow motion, frame, music) is not available in this copy of
         the app, so videos are shared as they are.</div>
       <div class="desk-hint" id="spinHint"></div>
@@ -13438,7 +13478,11 @@
       <div class="qs-card spin-card">
         <video id="spinVideo" controls playsinline></video>
         <div class="spin-trim" id="spinTrim" hidden>Trim: start <input type="number" id="spinTrimA" min="0" step="0.1"
-            placeholder="0"> s &nbsp; end <input type="number" id="spinTrimB" min="0" step="0.1" placeholder="end"> s
+            placeholder="0" style="width:55px"> s &nbsp; end <input type="number" id="spinTrimB" min="0" step="0.1" placeholder="end" style="width:55px"> s
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;margin-top:6px;">
+            <span>Text this clip: <input type="text" id="spinTrimText1" placeholder="Line 1 override" style="width:130px"></span>
+            <span><input type="text" id="spinTrimText2" placeholder="Line 2 override" style="width:130px"></span>
+          </div>
         </div>
         <div class="spin-prog" id="spinProg" hidden>
           <div class="bar"><i id="spinBar"></i></div><span id="spinProgTxt"></span>
@@ -25290,14 +25334,17 @@
       // The laptop app answers these through its bridge (window.pb4u). The offline Android app has no such bridge: the same calls
       // go to the app itself (window.__PBLocal), which answers with text (JSON, or a photo as base64).
       var PBX = (function () {
-        if (window.pb4u && window.pb4u.roveScan) return window.pb4u;
+        if (window.pb4u && (window.pb4u.roveScan || window.pb4u.spinScan)) return window.pb4u;
         var L = window.__PBLocal;
-        if (!(ANDROID_LOCAL && L && typeof L.roveScan === 'function')) return null;
+        if (!(ANDROID_LOCAL && L && (typeof L.roveScan === 'function' || typeof L.spinScan === 'function'))) return null;
         var bytes = function (t) { if (!t) return null; var bin = atob(t), a = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return a; };
         return {
           roveInfo: async function () { return { sendUrl: L.roveInfo() || null }; },
           roveScan: async function () { return JSON.parse(L.roveScan() || '[]'); },
-          roveTake: async function (name) { return bytes(L.roveTake(String(name || ''))); },
+          roveTake: async function (name) { return bytes(L.roveTake ? L.roveTake(String(name || '')) : ''); },
+          spinInfo: async function () { var s = (L.spinInfo && L.spinInfo()) || ''; return { sendUrl: s || null, previewBase: s || null, dir: L.photosPath ? L.photosPath() + '/360 inbox' : '' }; },
+          spinScan: async function () { return JSON.parse((L.spinScan && L.spinScan()) || '[]'); },
+          spinShare: async function (name, folderKey, subfolder, outName) { return JSON.parse((L.spinShare && L.spinShare(name, folderKey, subfolder, outName)) || '{"ok":false}'); },
           guestPrintSet: async function (on) { L.guestPrintSet(!!on); return !!on; },
           printReqList: async function () { return JSON.parse(L.printReqList() || '[]'); },
           printReqDone: async function (id) { return L.printReqDone(String(id || '')); },
@@ -25413,7 +25460,7 @@
       var spinEnv = { ffmpeg: false, music: '' };
       var SPIN_WEB_MAX = 28 * 1024 * 1024;           // the website's upload path takes about this much per video
       var spinOverlay = document.getElementById('spinOverlay'), spinGrid = document.getElementById('spinGrid');
-      function spinDesktop() { return !!(window.pb4u && window.pb4u.spinScan); }
+      function spinDesktop() { return !!(PBX && PBX.spinScan); }
       function spinMb(n) { return (Math.round(n / 104857.6) / 10) + ' MB'; }
       // Where a clip plays from: the inbox original, or its finished edit.
       function spinSrc(it, edited) {
@@ -25435,7 +25482,7 @@
         roller: { label: 'Slow-mo roller', speed: 'custom', rates: [1, 0.25, 2, 0.5], reverse: true, smooth: false, audio: 'music', overlay: true }
       };
       var SPIN_LOOK_KEY = 'pb_spin_look';
-      var spinLook = { preset: 'classic', speed: 'slow', smooth: false, orient: 'portrait', quality: 1080, overlay: true, fx: 'none', audio: 'music', volume: 80, auto: false, autoShare: false, rates: [], reverse: false };
+      var spinLook = { preset: 'classic', speed: 'slow', smooth: false, gpu: false, orient: 'portrait', quality: 1080, overlay: true, fx: 'none', audio: 'music', volume: 80, auto: false, autoShare: false, rates: [], reverse: false, textOn: false, text1: '', text2: '', textPos: 'top', textColor: '#ffffff', textSize: 'medium', textFont: 'sans-serif', textTiming: 'always', rotateOn: false, rotateMode: 'presets' };
       try { var sl = JSON.parse(localStorage.getItem(SPIN_LOOK_KEY) || 'null'); if (sl && typeof sl === 'object') Object.keys(spinLook).forEach(function (k) { if (sl[k] !== undefined) spinLook[k] = sl[k]; }); } catch (e) { }
       var spinFxCatalog = [];
       async function spinLoadFx() {
@@ -25479,38 +25526,147 @@
       }
       function spinLookToUI() {
         var g = function (id) { return document.getElementById(id); };
-        g('spinPreset').value = spinLook.preset; g('spinSpeed').value = spinLook.speed; g('spinSmooth').checked = !!spinLook.smooth;
+        g('spinPreset').value = spinLook.preset; g('spinSpeed').value = spinLook.speed; g('spinSmooth').checked = !!spinLook.smooth; if (g('spinGpu')) g('spinGpu').checked = !!spinLook.gpu;
         g('spinOrient').value = spinLook.orient; g('spinQual').value = String(spinLook.quality); g('spinOverlayOn').checked = !!spinLook.overlay;
         if (g('spinFx')) g('spinFx').value = spinLook.fx || 'none';
         spinUpdateFxBadge();
         g('spinAudio').value = spinLook.audio; g('spinVol').value = String(spinLook.volume); g('spinAuto').checked = !!spinLook.auto; g('spinAutoShare').checked = !!spinLook.autoShare; g('spinAutoShare').disabled = !spinLook.auto;
+        if (g('spinTextOn')) g('spinTextOn').checked = !!spinLook.textOn;
+        if (g('spinText1')) g('spinText1').value = spinLook.text1 || '';
+        if (g('spinText2')) g('spinText2').value = spinLook.text2 || '';
+        if (g('spinTextPos')) g('spinTextPos').value = spinLook.textPos || 'top';
+        if (g('spinTextColor')) g('spinTextColor').value = spinLook.textColor || '#ffffff';
+        if (g('spinTextSize')) g('spinTextSize').value = spinLook.textSize || 'medium';
+        if (g('spinTextFont')) g('spinTextFont').value = spinLook.textFont || 'sans-serif';
+        if (g('spinTextTiming')) g('spinTextTiming').value = spinLook.textTiming || 'always';
+        if (g('spinRotateOn')) g('spinRotateOn').checked = !!spinLook.rotateOn;
+        if (g('spinRotateMode')) g('spinRotateMode').value = spinLook.rotateMode || 'presets';
         g('spinSmooth').disabled = spinLook.speed !== 'slow' && !(spinLook.speed === 'custom' && (spinLook.rates || []).some(function (r) { return r < 1; }));
       }
       function spinLookFromUI(fromPreset) {
         var g = function (id) { return document.getElementById(id); };
-        spinLook.speed = g('spinSpeed').value; spinLook.smooth = g('spinSmooth').checked; spinLook.orient = g('spinOrient').value;
+        spinLook.speed = g('spinSpeed').value; spinLook.smooth = g('spinSmooth').checked; if (g('spinGpu')) spinLook.gpu = g('spinGpu').checked; spinLook.orient = g('spinOrient').value;
         spinLook.quality = Number(g('spinQual').value) || 1080; spinLook.overlay = g('spinOverlayOn').checked;
         if (g('spinFx')) spinLook.fx = g('spinFx').value || 'none';
         spinUpdateFxBadge();
         spinLook.audio = g('spinAudio').value;
         spinLook.volume = Number(g('spinVol').value) || 0; spinLook.auto = g('spinAuto').checked; spinLook.autoShare = g('spinAutoShare').checked && spinLook.auto;
+        if (g('spinRotateOn')) spinLook.rotateOn = g('spinRotateOn').checked;
+        if (g('spinRotateMode')) spinLook.rotateMode = g('spinRotateMode').value || 'presets';
         if (!fromPreset) spinLook.preset = 'custom';
         if (spinLook.speed !== 'custom') { spinLook.rates = []; spinLook.reverse = false; }
         g('spinPreset').value = spinLook.preset; g('spinAutoShare').disabled = !spinLook.auto;
+        if (g('spinTextOn')) spinLook.textOn = g('spinTextOn').checked;
+        if (g('spinText1')) spinLook.text1 = g('spinText1').value;
+        if (g('spinText2')) spinLook.text2 = g('spinText2').value;
+        if (g('spinTextPos')) spinLook.textPos = g('spinTextPos').value;
+        if (g('spinTextColor')) spinLook.textColor = g('spinTextColor').value;
+        if (g('spinTextSize')) spinLook.textSize = g('spinTextSize').value;
+        if (g('spinTextFont')) spinLook.textFont = g('spinTextFont').value;
+        if (g('spinTextTiming')) spinLook.textTiming = g('spinTextTiming').value;
+        if (g('spinTextOn')) g('spinTextOn').checked = !!spinLook.textOn;
+        if (g('spinText1')) g('spinText1').value = spinLook.text1 || '';
+        if (g('spinText2')) g('spinText2').value = spinLook.text2 || '';
+        if (g('spinTextPos')) g('spinTextPos').value = spinLook.textPos || 'top';
+        if (g('spinTextColor')) g('spinTextColor').value = spinLook.textColor || '#ffffff';
+        if (g('spinTextSize')) g('spinTextSize').value = spinLook.textSize || 'medium';
+        if (g('spinTextFont')) g('spinTextFont').value = spinLook.textFont || 'sans-serif';
+        if (g('spinTextTiming')) g('spinTextTiming').value = spinLook.textTiming || 'always';
         g('spinSmooth').disabled = spinLook.speed !== 'slow' && !(spinLook.speed === 'custom' && (spinLook.rates || []).some(function (r) { return r < 1; }));
         try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { }
       }
       function spinPresetLabel() { return (SPIN_PRESETS[spinLook.preset] && SPIN_PRESETS[spinLook.preset].label) || (spinLook.speed === 'slow' ? 'slow-mo' : spinLook.speed); }
       // Output size of the picture drawn over the video (boomerang is kept at 720 to stay light).
       function spinDims() {
-        var q = (spinLook.quality === 720 || spinLook.speed === 'boomerang' || (spinLook.speed === 'custom' && spinLook.reverse)) ? 720 : 1080, long = Math.round(q * 16 / 9 / 2) * 2;
+        var q = (spinLook.quality === 720 || spinLook.speed === 'boomerang' || (spinLook.speed === 'custom' && spinLook.reverse)) ? 720 : 1080;
+        if (spinLook.orient === 'square') return { W: q, H: q };
+        var long = Math.round(q * 16 / 9 / 2) * 2;
         return spinLook.orient === 'landscape' ? { W: long, H: q } : { W: q, H: long };
       }
+
+      function drawSpinExtraText(x, W, H, opt) {
+        opt = opt || {};
+        var active = opt.textOn !== undefined ? opt.textOn : spinLook.textOn;
+        if (!active) return;
+        var l1 = (opt.text1 !== undefined ? opt.text1 : spinLook.text1) || '';
+        var l2 = (opt.text2 !== undefined ? opt.text2 : spinLook.text2) || '';
+        l1 = String(l1).trim();
+        l2 = String(l2).trim();
+        if (!l1 && !l2) return;
+
+        var pos = (opt.textPos || spinLook.textPos || 'top').toLowerCase();
+        var color = opt.textColor || spinLook.textColor || '#ffffff';
+        var sizeOpt = (opt.textSize || spinLook.textSize || 'medium').toLowerCase();
+        var fontOpt = (opt.textFont || spinLook.textFont || 'sans-serif').toLowerCase();
+
+        var fontFamilies = {
+          'sans-serif': 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Color Emoji", sans-serif',
+          'serif': 'Georgia, "Times New Roman", "Noto Color Emoji", serif',
+          'cursive': '"Brush Script MT", "Segoe Script", "Apple Chancery", cursive, "Noto Color Emoji"',
+          'impact': 'Impact, "Arial Black", "Noto Color Emoji", sans-serif'
+        };
+        var family = fontFamilies[fontOpt] || fontFamilies['sans-serif'];
+
+        var baseScale = Math.min(W, H);
+        var sizeMultiplier = sizeOpt === 'large' ? 0.075 : (sizeOpt === 'small' ? 0.038 : 0.052);
+        var fontSize = Math.max(16, Math.round(baseScale * sizeMultiplier));
+        var lineHeight = Math.round(fontSize * 1.25);
+
+        x.save();
+        x.font = 'bold ' + fontSize + 'px ' + family;
+        x.textAlign = 'center';
+        x.textBaseline = 'middle';
+
+        var totalTextH = (l1 && l2) ? lineHeight : 0;
+        var yAnchor;
+        if (pos === 'top') {
+          yAnchor = Math.round(H * 0.12);
+        } else if (pos === 'bottom') {
+          var bandOffset = Math.round(H * 0.15);
+          yAnchor = H - bandOffset - totalTextH - Math.round(H * 0.03);
+        } else {
+          yAnchor = Math.round(H * 0.5) - Math.round(totalTextH / 2);
+        }
+
+        var lines = [];
+        if (l1) lines.push(l1);
+        if (l2) lines.push(l2);
+
+        lines.forEach(function (line, idx) {
+          var curY = yAnchor + idx * lineHeight;
+          x.shadowColor = 'transparent';
+          x.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+          x.lineWidth = Math.max(3, Math.round(fontSize * 0.12));
+          x.lineJoin = 'round';
+          x.strokeText(line, W / 2, curY);
+
+          x.shadowColor = 'rgba(0, 0, 0, 0.7)';
+          x.shadowBlur = Math.round(fontSize * 0.2);
+          x.shadowOffsetX = Math.round(fontSize * 0.04);
+          x.shadowOffsetY = Math.round(fontSize * 0.04);
+
+          x.fillStyle = color;
+          x.fillText(line, W / 2, curY);
+        });
+
+        x.restore();
+      }
+
       // The booth's own frame, stickers, logo and title, on a transparent picture the size of the video.
-      function spinMakeOverlay(W, H) {
+      function spinMakeOverlay(W, H, extraOpt) {
         var c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d');
         try { drawDecorLayer(x, W, H); } catch (e) { }
         try { var bandH = Math.round(H * 0.13); drawLabelBand(x, W, H - bandH, bandH, labelInput.value, 0); } catch (e) { }
+        var timing = (extraOpt && extraOpt.textTiming) || spinLook.textTiming || 'always';
+        if (timing !== 'fade') {
+          try { drawSpinExtraText(x, W, H, extraOpt); } catch (e) { }
+        }
+        return new Promise(function (r) { c.toBlob(r, 'image/png'); });
+      }
+
+      function spinMakeTextOverlay(W, H, extraOpt) {
+        var c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d');
+        try { drawSpinExtraText(x, W, H, extraOpt); } catch (e) { }
         return new Promise(function (r) { c.toBlob(r, 'image/png'); });
       }
 
@@ -25552,7 +25708,7 @@
       }
       async function spinSendToInbox(file) {
         try {
-          if (!spinInfo || !spinInfo.previewBase) spinInfo = await window.pb4u.spinInfo();
+          if (!spinInfo || !spinInfo.previewBase) spinInfo = await PBX.spinInfo();
           showToast('Adding ' + file.name + '…', 2500);
           var r = await fetch(spinInfo.previewBase + '/upload?name=' + encodeURIComponent(file.name), { method: 'POST', headers: { 'content-type': 'text/plain' }, body: file });
           if (!r.ok) throw new Error('error ' + r.status);
@@ -25575,7 +25731,7 @@
       async function spinPoll() {
         if (!spinDesktop()) return;
         try {
-          var list = await window.pb4u.spinScan(), fresh = [];
+          var list = await PBX.spinScan(), fresh = [];
           for (var i = list.length - 1; i >= 0; i--) {
             var f = list[i], key = f.name + '|' + f.mtime;
             if (spinSeen[key]) continue;
@@ -25600,8 +25756,10 @@
       async function spinSetupInfo() {
         var box = document.getElementById('spinSend');
         if (!spinDesktop()) { box.hidden = true; document.getElementById('spinLook').hidden = true; document.getElementById('spinNoEdit').hidden = true; return; }
-        try { spinInfo = await window.pb4u.spinInfo(); } catch (e) { return; }
-        try { spinEnv = await window.pb4u.spinEnv(); } catch (e) { spinEnv = { ffmpeg: false, music: '' }; }
+        try { spinInfo = await PBX.spinInfo(); } catch (e) { return; }
+        try { spinEnv = PBX.spinEnv ? await PBX.spinEnv() : { ffmpeg: false, gpu: false, music: '' }; } catch (e) { spinEnv = { ffmpeg: false, gpu: false, music: '' }; }
+        var gw = document.getElementById('spinGpuWrap');
+        if (gw) gw.hidden = !spinEnv.gpu;
         box.hidden = false;
         var qr = document.getElementById('spinSendQr'); qr.innerHTML = '';
         if (spinInfo.sendUrl) { var im = document.createElement('img'); im.src = qrImageUrl(spinInfo.sendUrl); im.alt = 'QR code to send a video'; qr.appendChild(im); }
@@ -25611,6 +25769,9 @@
         document.getElementById('spinLook').hidden = !spinEnv.ffmpeg;
         document.getElementById('spinNoEdit').hidden = !!spinEnv.ffmpeg;
         document.getElementById('spinMusicName').textContent = spinEnv.music ? spinEnv.music : 'no music chosen';
+        if (document.getElementById('spinIntroName')) document.getElementById('spinIntroName').textContent = spinEnv.intro ? spinEnv.intro : 'no intro chosen';
+        if (document.getElementById('spinOutroName')) document.getElementById('spinOutroName').textContent = spinEnv.outro ? spinEnv.outro : 'no outro chosen';
+        spinUpdateStatsAndLinks();
         await spinLoadFx();
         spinLookToUI();
         if (!spinTimer) spinTimer = setInterval(spinPoll, 2500);
@@ -25631,7 +25792,7 @@
           if (!spinWebFolderId()) { try { await resolveDriveFolder(); } catch (e) { } }
           var until = ticketCache && ticketCache.exp ? new Date(ticketCache.exp) : null;
           var ev = ''; try { ev = (labelInput.value || '').trim(); } catch (e) { }
-          spinWebLinkUrl = location.origin + '/rove360/#t=' + ticket + (ev ? '&e=' + encodeURIComponent(ev) : '');
+          spinWebLinkUrl = location.origin + '/rove360/#t=' + ticket + (ev ? '&e=' + encodeURIComponent(ev) : '') + (spinInfo && spinInfo.sendUrl ? '&lan=' + encodeURIComponent(spinInfo.sendUrl) : '');
           var im = document.createElement('img'); im.src = qrImageUrl(spinWebLinkUrl); im.alt = 'QR code to send a video'; qr.appendChild(im);
           note.textContent = 'Scan with the phone that recorded the 360 video (any internet), then choose the video (up to 28 MB). It appears in the list below within about 10 seconds.' + (until ? ' The link works until ' + until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '.' : '');
           lnk.textContent = spinWebLinkUrl.replace(/#.*$/, '');
@@ -26136,7 +26297,7 @@
         var done = function (t) { cap.state = 'idle'; cap.last = null; capSet('✓ ' + t); capRefresh(); };
         try {
           if (DESKTOP) {
-            if (!spinInfo || !spinInfo.previewBase) spinInfo = await window.pb4u.spinInfo();
+            if (!spinInfo || !spinInfo.previewBase) spinInfo = await PBX.spinInfo();
             var r = await fetch(spinInfo.previewBase + '/upload?name=' + encodeURIComponent(name), { method: 'POST', headers: { 'content-type': 'text/plain' }, body: blob });
             if (!r.ok) throw new Error('error ' + r.status);
             try { spinPoll(); } catch (e) { }
@@ -26188,7 +26349,68 @@
       ['capLen', 'capMode', 'capSens'].forEach(function (id) { capEl(id).addEventListener('change', function () { capPrefsSave(); capRefresh(); }); });
       window.addEventListener('pb-extras-change', function () { try { refreshDeskBtn(); } catch (e) { } });
       // Edit (and, if asked, share) a new clip by itself, so the QR is ready when the guest comes over.
+      
+      var spinRotatePresets = ['classic', 'ramp', 'boomerang', 'fastslow', 'fsf', 'roller'];
+      var spinRotateIdx = 0;
+      function spinApplyNextRotation() {
+        if (!spinLook.rotateOn) return;
+        spinRotateIdx++;
+        var mode = spinLook.rotateMode || 'presets';
+        if (mode === 'presets' || mode === 'all') {
+          var p = spinRotatePresets[spinRotateIdx % spinRotatePresets.length];
+          var pr = SPIN_PRESETS[p];
+          if (pr) {
+            spinLook.preset = p;
+            spinLook.speed = pr.speed;
+            spinLook.rates = (pr.rates || []).slice();
+            spinLook.reverse = !!pr.reverse;
+            spinLook.smooth = pr.smooth;
+            spinLook.audio = pr.audio;
+            spinLook.overlay = pr.overlay;
+          }
+        }
+        if ((mode === 'fx' || mode === 'all') && spinFxCatalog && spinFxCatalog.length > 0) {
+          var fxItem = spinFxCatalog[spinRotateIdx % spinFxCatalog.length];
+          if (fxItem) spinLook.fx = fxItem.id;
+        }
+        spinLookToUI();
+        spinLookFromUI(true);
+        var badge = document.getElementById('spinRotateBadge');
+        if (badge) {
+          badge.hidden = false;
+          badge.textContent = 'Rotated: ' + (spinLook.preset || 'look') + (spinLook.fx && spinLook.fx !== 'none' ? ' + ' + spinLook.fx : '');
+        }
+      }
+
+      async function spinUpdateStatsAndLinks() {
+        if (!spinDesktop() || !window.pb4u) return;
+        try {
+          var stLink = document.getElementById('spinOpenStation');
+          var wlLink = document.getElementById('spinOpenWall');
+          var stBadge = document.getElementById('spinStatsBadge');
+          if (stLink && window.pb4u.spinStationUrl) {
+            var su = await window.pb4u.spinStationUrl();
+            if (su) { stLink.href = su; stLink.style.display = 'inline-flex'; }
+          }
+          if (wlLink && window.pb4u.spinWallUrl) {
+            var wu = await window.pb4u.spinWallUrl();
+            if (wu) { wlLink.href = wu; wlLink.style.display = 'inline-flex'; }
+          }
+          if (stBadge && window.pb4u.spinStats) {
+            var st = await window.pb4u.spinStats();
+            if (st && st.totals) {
+              stBadge.textContent = 'Spins: ' + (st.totals.rendered || 0) + ' · Views: ' + (st.totals.views || 0) + ' · DL: ' + (st.totals.downloads || 0);
+            }
+          }
+        } catch (e) { }
+      }
+
       async function spinAuto(it) {
+        spinApplyNextRotation();
+        if (!it.targetFname) it.targetFname = filePrefix() + nextSessionNumber() + '_360' + deviceTag() + '.mp4';
+        var curFUrl = getCachedFolderUrl();
+        if (LOCALSHARE && curFUrl && !it.url) it.url = localShareUrl(curFUrl, it.targetFname) || '';
+        if (spinLook.autoShare && it.url && !spinOverlay.hidden) spinOpenItem(it);
         await spinEdit(it);
         if (spinLook.autoShare && it.status === 'edited') {
           await spinDoShare(it);
@@ -26205,19 +26427,38 @@
       // ---- editing one clip ----
       async function spinEdit(it) {
         if (!spinEnv.ffmpeg || it.src !== 'inbox' || it.status === 'editing') return;
+        if (!it.targetFname) it.targetFname = filePrefix() + nextSessionNumber() + '_360' + deviceTag() + '.mp4';
+        var curFUrl = getCachedFolderUrl();
+        if (LOCALSHARE && curFUrl && !it.url) it.url = localShareUrl(curFUrl, it.targetFname) || '';
         var dims = spinDims();
         it.status = 'editing'; it.pct = 0; it.err = ''; it.viewOrig = false; spinTagUpdate(it); spinModalUpdate();
         try {
-          var ov = null;
+          var ov = null, txtOv = null;
+          var textOpt = {
+            text1: it.text1 !== undefined ? it.text1 : spinLook.text1,
+            text2: it.text2 !== undefined ? it.text2 : spinLook.text2,
+            textOn: (it.text1 || it.text2) ? true : spinLook.textOn,
+            textPos: spinLook.textPos,
+            textColor: spinLook.textColor,
+            textSize: spinLook.textSize,
+            textFont: spinLook.textFont,
+            textTiming: spinLook.textTiming
+          };
           if (spinLook.overlay) {
-            var blob = await spinMakeOverlay(dims.W, dims.H);
+            var blob = await spinMakeOverlay(dims.W, dims.H, textOpt);
             if (blob) ov = await window.pb4u.spinOverlay(new Uint8Array(await blob.arrayBuffer()));
           }
+          if (textOpt.textOn && textOpt.textTiming === 'fade') {
+            var txtBlob = await spinMakeTextOverlay(dims.W, dims.H, textOpt);
+            if (txtBlob) txtOv = await window.pb4u.spinOverlay(new Uint8Array(await txtBlob.arrayBuffer()));
+          }
           var j = await window.pb4u.spinProcess({
-            name: it.name, label: spinPresetLabel(), overlay: ov,
+            name: it.name, label: spinPresetLabel(), overlay: ov, textOverlay: txtOv,
             options: {
-              speed: spinLook.speed, rates: spinLook.rates, reverse: spinLook.reverse, smooth: spinLook.smooth, orientation: spinLook.orient, quality: spinLook.quality, audio: spinLook.audio,
-              volume: spinLook.volume / 100, trimStart: it.trimA || 0, trimEnd: it.trimB || null, fx: spinLook.fx || 'none'
+              speed: spinLook.speed, rates: spinLook.rates, reverse: spinLook.reverse, smooth: spinLook.smooth, gpu: !!spinLook.gpu, orientation: spinLook.orient, quality: spinLook.quality, audio: spinLook.audio,
+              volume: spinLook.volume / 100, trimStart: it.trimA || 0, trimEnd: it.trimB || null, fx: spinLook.fx || 'none',
+              intro: (spinEnv && spinEnv.intro) || null, outro: (spinEnv && spinEnv.outro) || null,
+              textTiming: textOpt.textTiming
             }
           });
           if (!j || j.error) throw new Error((j && j.error) || 'Could not start the editing');
@@ -26243,15 +26484,15 @@
         var box = document.getElementById('spinQrBox'), msg = document.getElementById('spinMsg'), btn = document.getElementById('spinShareBtn');
         var editing = it.status === 'editing', canEdit = spinEnv.ffmpeg && it.src === 'inbox';
         box.innerHTML = '';
-        var wf = it.url && !editing && !it.queued ? wifiInfo() : null;
+        var wf = it.url && !it.queued ? wifiInfo() : null;
         box.classList.toggle('two', !!wf);
-        if (it.url && !editing) {
+        if (it.url) {
           var addQr = function (text, label, sub) {
             var cell = wf ? document.createElement('div') : box;
             var im = document.createElement('img'); im.src = qrImageUrl(text); im.alt = label || 'QR code';
             if (wf) {
               var n = label.charAt(5), cap = document.createElement('b'); cap.dataset.n = n; cap.textContent = label.slice(8); cell.appendChild(cap);
-              var how = document.createElement('em'); how.textContent = n === '1' ? 'Join the booth Wi-Fi' : 'Open and save your video'; cell.appendChild(how);
+              var how = document.createElement('em'); how.textContent = n === '1' ? 'Join the booth Wi-Fi' : (editing ? 'Scan now · video ready in seconds' : 'Open and save your video'); cell.appendChild(how);
               cell.appendChild(im);
               if (sub) { var sm = document.createElement('small'); sm.textContent = sub; cell.appendChild(sm); }
               box.appendChild(cell);
@@ -26283,6 +26524,8 @@
         var v = document.getElementById('spinVideo'), src = spinSrc(it, !it.viewOrig);
         v.pause(); v.src = src || ''; v.load(); v.style.display = it.src === 'drive' ? 'none' : '';
         document.getElementById('spinTrimA').value = it.trimA || ''; document.getElementById('spinTrimB').value = it.trimB || '';
+        if (document.getElementById('spinTrimText1')) document.getElementById('spinTrimText1').value = it.text1 || '';
+        if (document.getElementById('spinTrimText2')) document.getElementById('spinTrimText2').value = it.text2 || '';
         document.getElementById('spinModal').hidden = false;
         spinModalUpdate();
       }
@@ -26297,9 +26540,9 @@
           var ext = (/\.[a-z0-9]+$/i.exec(it.name) || ['.mp4'])[0].toLowerCase();
           var useEdit = it.src === 'inbox' && it.edited && !it.viewOrig;
           if (useEdit) ext = '.mp4';
-          var fname = filePrefix() + nextSessionNumber() + '_360' + deviceTag() + ext;
+          var fname = it.targetFname || (filePrefix() + nextSessionNumber() + '_360' + deviceTag() + ext);
           if (it.src === 'inbox') {
-            var r = await window.pb4u.spinShare(useEdit ? it.edited : it.name, rawFolderKey(), driveSubfolder(), fname);
+            var r = await PBX.spinShare(useEdit ? it.edited : it.name, rawFolderKey(), driveSubfolder(), fname);
             if (!r || !r.ok) throw new Error((r && r.error) || 'Could not save the video');
             try { if (r.folderUrl) rememberFolderUrl(r.folderUrl); registerEvent(r.folderUrl || getCachedFolderUrl(), true); } catch (e) { }
             it.url = fileShareUrl(r.fileId) || ''; it.queued = false;
@@ -26332,6 +26575,8 @@
         if (it.status === 'editing') { if (it.job) window.pb4u.spinCancel(it.job); return; }
         var a = parseFloat(document.getElementById('spinTrimA').value), b = parseFloat(document.getElementById('spinTrimB').value);
         it.trimA = isFinite(a) && a > 0 ? a : 0; it.trimB = isFinite(b) && b > it.trimA ? b : 0;
+        if (document.getElementById('spinTrimText1')) it.text1 = document.getElementById('spinTrimText1').value;
+        if (document.getElementById('spinTrimText2')) it.text2 = document.getElementById('spinTrimText2').value;
         spinEdit(it);
       });
       document.getElementById('spinViewBtn').addEventListener('click', function () {
@@ -26356,9 +26601,28 @@
         if (pr) { spinLook.preset = this.value; spinLook.speed = pr.speed; spinLook.rates = (pr.rates || []).slice(); spinLook.reverse = !!pr.reverse; spinLook.smooth = pr.smooth; spinLook.audio = pr.audio; spinLook.overlay = pr.overlay; spinLookToUI(); spinLookFromUI(true); }
         else { spinLook.preset = 'custom'; spinLookFromUI(true); }
       });
-      ['spinSpeed', 'spinSmooth', 'spinOrient', 'spinQual', 'spinFx', 'spinOverlayOn', 'spinAudio', 'spinVol', 'spinAuto', 'spinAutoShare'].forEach(function (id) {
-        document.getElementById(id).addEventListener('change', function () { spinLookFromUI(id === 'spinAuto' || id === 'spinAutoShare' || id === 'spinVol' || id === 'spinOrient' || id === 'spinQual' || id === 'spinFx' ? true : false); });
+      ['spinSpeed', 'spinSmooth', 'spinGpu', 'spinOrient', 'spinQual', 'spinFx', 'spinOverlayOn', 'spinAudio', 'spinVol', 'spinAuto', 'spinAutoShare', 'spinTextOn', 'spinText1', 'spinText2', 'spinTextPos', 'spinTextColor', 'spinTextSize', 'spinTextFont', 'spinTextTiming'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('change', function () { spinLookFromUI(id === 'spinAuto' || id === 'spinAutoShare' || id === 'spinVol' || id === 'spinOrient' || id === 'spinQual' || id === 'spinFx' || id === 'spinGpu' || id.startsWith('spinText') ? true : false); });
       });
+      ['spinText1', 'spinText2'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', function () { spinLookFromUI(true); });
+      });
+      
+      var introBtn = document.getElementById('spinIntroBtn');
+      if (introBtn) introBtn.addEventListener('click', async function () {
+        try { var r = await window.pb4u.spinIntro(false); if (r) { spinEnv.intro = r.intro; document.getElementById('spinIntroName').textContent = r.intro || 'no intro chosen'; } } catch (e) { }
+      });
+      var outroBtn = document.getElementById('spinOutroBtn');
+      if (outroBtn) outroBtn.addEventListener('click', async function () {
+        try { var r = await window.pb4u.spinOutro(false); if (r) { spinEnv.outro = r.outro; document.getElementById('spinOutroName').textContent = r.outro || 'no outro chosen'; } } catch (e) { }
+      });
+      ['spinRotateOn', 'spinRotateMode'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('change', function () { spinLookFromUI(true); });
+      });
+
       document.getElementById('spinMusicBtn').addEventListener('click', async function () {
         try { var r = await window.pb4u.spinMusic(false); if (r) { spinEnv.music = r.music; document.getElementById('spinMusicName').textContent = r.music || 'no music chosen'; } } catch (e) { }
       });

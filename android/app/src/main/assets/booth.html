@@ -3510,7 +3510,266 @@
       justify-content: center;
     }
 
-    /* 360 desk (included extra) */
+    /* 360 desk & full-page studio (included extra) */
+    .spin-studio-ov {
+      position: fixed;
+      inset: 0;
+      z-index: 9500;
+      background: #faf7f2;
+      color: var(--ink, #1C1A1E);
+      display: flex;
+      flex-direction: column;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .spin-studio-ov[hidden] {
+      display: none !important;
+    }
+
+    .spin-studio-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 18px;
+      background: #fff;
+      border-bottom: 1.5px solid var(--line, #E8E1D9);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .03);
+      flex: none;
+      z-index: 20;
+    }
+
+    .spin-head-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .spin-back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      font-weight: 700;
+      font-size: 13px;
+      border-radius: 999px;
+      border: 1.5px solid var(--line, #E8E1D9);
+      background: #faf7f2;
+      color: var(--ink, #1C1A1E);
+      cursor: pointer;
+      transition: all .15s ease;
+      font-family: inherit;
+    }
+
+    .spin-back-btn:hover {
+      background: #f0e9df;
+      border-color: #d8cec0;
+    }
+
+    .spin-head-title-wrap {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .spin-head-title {
+      font: 800 17px 'Manrope', sans-serif;
+      margin: 0;
+      line-height: 1.2;
+      color: var(--ink, #1C1A1E);
+    }
+
+    .spin-head-sub {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ink-dim, #71697a);
+    }
+
+    .spin-head-nav {
+      display: flex;
+      gap: 4px;
+      background: #f1eae1;
+      padding: 4px;
+      border-radius: 999px;
+      border: 1px solid #e0d7cb;
+    }
+
+    .spin-tab-btn {
+      border: 0;
+      background: transparent;
+      padding: 5px 13px;
+      border-radius: 999px;
+      font: 700 12px 'Manrope', sans-serif;
+      color: #554e5c;
+      cursor: pointer;
+      transition: all .15s ease;
+      white-space: nowrap;
+    }
+
+    .spin-tab-btn:hover {
+      color: #1C1A1E;
+    }
+
+    .spin-tab-btn.active {
+      background: #fff;
+      color: #1C1A1E;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
+    }
+
+    .spin-head-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .spin-studio-body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(360px, 440px);
+      gap: 18px;
+      padding: 16px 20px;
+      overflow: hidden;
+      max-width: 1600px;
+      width: 100%;
+      margin: 0 auto;
+      box-sizing: border-box;
+      align-items: start;
+      height: calc(100vh - 58px);
+    }
+
+    @media (min-width: 1350px) {
+      .spin-studio-body {
+        grid-template-columns: minmax(0, 1.3fr) 480px;
+        gap: 24px;
+        padding: 20px 26px;
+      }
+    }
+
+    @media (max-width: 960px) {
+      .spin-studio-body {
+        display: flex;
+        flex-direction: column-reverse;
+        overflow-y: auto;
+        padding: 12px;
+        height: auto;
+      }
+      .spin-studio-preview {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+      }
+    }
+
+    .spin-studio-controls {
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding-right: 6px;
+      box-sizing: border-box;
+    }
+
+    .spin-panel-card {
+      background: #fff;
+      border: 1.5px solid var(--line, #E8E1D9);
+      border-radius: 16px;
+      padding: 16px 18px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .03);
+    }
+
+    .spin-card-title {
+      font: 800 15px 'Manrope', sans-serif;
+      color: var(--ink, #1C1A1E);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #f0e9df;
+    }
+
+    .spin-pill {
+      font: 700 11px 'Manrope', sans-serif;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: #f1eae1;
+      color: #554e5c;
+    }
+
+    .spin-pill.active {
+      background: #D4AF37;
+      color: #000;
+    }
+
+    .spin-card-foot {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 10px;
+    }
+
+    .spin-studio-preview {
+      height: 100%;
+      max-height: 100%;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+    }
+
+    .spin-preview-card {
+      background: #fff;
+      border: 1.5px solid var(--line, #E8E1D9);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .spin-preview-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #f0e9df;
+    }
+
+    .spin-timeline-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 10px;
+      background: #faf7f2;
+      border: 1px solid var(--line, #E8E1D9);
+      border-radius: 10px;
+      margin-bottom: 10px;
+    }
+
+    .spin-time-counter {
+      font: 700 11px monospace, 'Manrope', sans-serif;
+      color: #615a6b;
+      white-space: nowrap;
+    }
+
+    .spin-time-seek {
+      flex: 1;
+      accent-color: #D4AF37;
+      cursor: pointer;
+      height: 6px;
+    }
+
+    .desk-item.selected {
+      outline: 3.5px solid #D4AF37;
+      box-shadow: 0 0 14px rgba(212, 175, 55, .55);
+      transform: translateY(-2px);
+    }
+
     .desk-item video {
       width: 100%;
       height: 100%;
@@ -3543,7 +3802,7 @@
     }
 
     .spin-send {
-      margin: 10px 18px 0;
+      margin: 10px 0 0;
       display: flex;
       gap: 14px;
       align-items: center;
@@ -3574,7 +3833,8 @@
     .spin-stage-wrap {
       position: relative;
       width: 100%;
-      max-height: 44vh;
+      aspect-ratio: 9 / 16;
+      max-height: 48vh;
       background: #000;
       border-radius: 12px;
       overflow: hidden;
@@ -3582,6 +3842,7 @@
       align-items: center;
       justify-content: center;
       margin: 0 auto 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.25);
     }
 
     .spin-stage-wrap video {
@@ -3589,7 +3850,7 @@
       inset: auto;
       width: 100%;
       height: 100%;
-      max-height: 44vh;
+      max-height: 48vh;
       object-fit: contain;
       background: #000;
       border-radius: 12px;
@@ -12327,23 +12588,13 @@
                   step="10" id="payPrice" value="100" aria-label="Price per session in pesos"></label>
             </div>
             <label class="switch-row" style="margin-top:14px;">
-              <span>Dual pricing (e.g. Thermal vs Canon)</span>
+              <span>Multiple payment options (e.g. Option 1 / Option 2)</span>
               <input type="checkbox" id="payDualToggle">
             </label>
             <div id="payDualRows" style="display:none; margin-top:10px;">
-              <p class="panel-hint" style="margin:0 0 8px;">Guests choose between two print options with separate custom labels, prices and printers.</p>
-              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px;">
-                <div style="background:var(--panel-2,#f4efe7); padding:10px; border-radius:10px; border:1px solid var(--line);">
-                  <span class="lbl" style="font-size:12px; font-weight:800; color:var(--ink-dim); text-transform:uppercase;">Option 1 (Thermal)</span>
-                  <input type="text" id="payTier1Label" class="printer-input" value="Thermal 50" placeholder="e.g. Thermal 50" style="margin:6px 0 4px; width:100%; font-weight:700;">
-                  <label class="pay-price" style="margin-top:4px;"><span>₱</span><input type="number" id="payTier1Price" value="50" min="20" max="20000" step="10"></label>
-                </div>
-                <div style="background:var(--panel-2,#f4efe7); padding:10px; border-radius:10px; border:1px solid var(--line);">
-                  <span class="lbl" style="font-size:12px; font-weight:800; color:var(--ink-dim); text-transform:uppercase;">Option 2 (Color)</span>
-                  <input type="text" id="payTier2Label" class="printer-input" value="Canon Color 100" placeholder="e.g. Canon Color 100" style="margin:6px 0 4px; width:100%; font-weight:700;">
-                  <label class="pay-price" style="margin-top:4px;"><span>₱</span><input type="number" id="payTier2Price" value="100" min="20" max="20000" step="10"></label>
-                </div>
-              </div>
+              <p class="panel-hint" style="margin:0 0 8px;">Guests choose between print options with separate labels, prices and layout types.</p>
+              <div id="payOptionsList" style="display:flex; flex-direction:column; gap:10px;"></div>
+              <button type="button" class="action-btn" id="payAddOptBtn" style="margin-top:8px; width:100%; font-size:13px; font-weight:700; background:var(--panel-2,#f4efe7); color:var(--ink); border:1px dashed var(--line); border-radius:8px; padding:9px 12px; cursor:pointer;">+ Add payment option</button>
             </div>
             <div class="stepper" style="margin-top:12px;">
               <span class="lbl">Prints included</span>
@@ -13322,18 +13573,7 @@
       <div class="pay-view" id="payChoose">
         <div id="payDualChooseBox" style="display:none; margin-bottom:12px;">
           <p class="panel-hint" style="margin:0 0 8px; font-weight:700; color:var(--ink);">Choose your print:</p>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-            <button type="button" class="pay-opt" id="payDualOpt1" style="flex-direction:column; align-items:center; text-align:center; padding:12px 8px;">
-              <span class="ico" style="margin:0 0 4px;">🧾</span>
-              <b id="payDualOpt1Label">Thermal 50</b>
-              <small id="payDualOpt1Price">₱50</small>
-            </button>
-            <button type="button" class="pay-opt" id="payDualOpt2" style="flex-direction:column; align-items:center; text-align:center; padding:12px 8px;">
-              <span class="ico" style="margin:0 0 4px;">🎨</span>
-              <b id="payDualOpt2Label">Canon Color 100</b>
-              <small id="payDualOpt2Price">₱100</small>
-            </button>
-          </div>
+          <div id="payOptionsGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px;"></div>
         </div>
         <button type="button" class="pay-opt" id="payOptQr"><span class="ico">QR</span><span><b>Pay with
               QR</b><small>GCash · Maya · any bank app</small></span></button>
@@ -13506,245 +13746,303 @@
   </div>
   <div class="toast" id="toast"></div>
   <div id="printArea"></div>
-  <div class="desk-ov" id="spinOverlay" hidden role="dialog" aria-label="360 desk">
-    <div class="desk-card">
-      <div class="desk-head"><b>🎥 360 desk</b><span class="sp"></span><button type="button" class="desk-btn"
-          id="spinClose">Close</button></div>
-      <div class="desk-drop" id="spinDrop">Drop the 360 videos here, or <button type="button" class="desk-btn"
-          id="spinPick">Choose videos</button> <button type="button" class="desk-btn" id="spinPickDir">Choose
-          folder</button><input type="file" id="spinFile" accept="video/*" multiple hidden><input type="file"
-          id="spinDirFile" webkitdirectory multiple hidden></div>
-      <div class="spin-send" id="spinSend" hidden>
-        <div class="spin-qr" id="spinSendQr"></div>
-        <div class="spin-sendtxt"><b>Send from the phone that recorded</b><br>Scan this with that phone on the booth
-          Wi-Fi, then pick the video. Videos saved into the folder below also appear here by themselves.<br><span
-            id="spinDirTxt"></span> <button type="button" class="desk-btn" id="spinDirBtn">Change
-            folder</button><br><b>Recording tablet?</b> The 360 capture screen on the Android app sends its clips here.
-          Type this address into it: <span class="spin-link" id="spinSendLink"></span> <button type="button"
-            class="desk-btn" id="spinLinkCopy">Copy</button></div>
-      </div>
-      <div class="spin-send" id="spinWeb" hidden>
-        <div class="spin-qr" id="spinWebQr"></div>
-        <div class="spin-sendtxt"><b>📱 Videos from a phone</b><br><span id="spinWebNote">One moment…</span>
-          <div class="spin-link" id="spinWebLink"></div><button type="button" class="desk-btn" id="spinWebCopy">Copy
-            link</button>
+  <div class="spin-studio-ov" id="spinOverlay" hidden role="dialog" aria-label="360 desk">
+    <header class="spin-studio-head">
+      <div class="spin-head-left">
+        <button type="button" class="spin-back-btn" id="spinClose" title="Return to booth">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          Back to Booth
+        </button>
+        <div class="spin-head-title-wrap">
+          <h2 class="spin-head-title">🎥 360 Video Studio &amp; Desk</h2>
+          <span class="spin-head-sub" id="spinHeadStatus">Full-Page Live Preview &amp; Processing Studio</span>
         </div>
       </div>
-      <div class="spin-look" id="spinLook" hidden>
-        <div class="spin-row">
-          <label>Style <select id="spinPreset">
-              <option value="classic">Classic slow-mo</option>
-              <option value="ramp">Speed ramp</option>
-              <option value="boomerang">Boomerang</option>
-              <option value="plain">Original speed + frame</option>
-              <option value="super">Super slow-mo (0.25×)</option>
-              <option value="fastslow">Fast, then slow (2×, 0.5×)</option>
-              <option value="fsf">Fast, slow, fast (2×, 0.5×, 2×)</option>
-              <option value="roller">Slow-mo roller (1×, 0.25×, 2×, 0.5× and back)</option>
-              <option value="custom">Custom</option>
-            </select></label>
-          <label>Speed <select id="spinSpeed">
-              <option value="slow">Slow motion (0.5×)</option>
-              <option value="ramp">Speed ramp</option>
-              <option value="boomerang">Boomerang</option>
-              <option value="normal">Normal</option>
-              <option value="custom">Speed sequence (from the style)</option>
-            </select></label>
-          <label class="chk"
-            title="Tip: Record at 60 fps (or 120 fps for 0.25×) for instant real slow motion with no extra processing wait."><input
-              type="checkbox" id="spinSmooth"> Smoother slow motion (30 fps clips; 60+ fps is smooth
-            automatically)</label>
-          <label class="chk" id="spinGpuWrap" hidden
-            title="Use hardware GPU video encoding when available (falls back to CPU automatically)."><input
-              type="checkbox" id="spinGpu"> GPU fast encode</label>
-          <label class="chk" title="Smooth camera punch-in zoom during slow motion and speed ramps"><input
-              type="checkbox" id="spinZoom" checked> Dynamic zoom</label>
-          <label class="chk" title="Optical white flash at speed change and beat drops"><input
-              type="checkbox" id="spinFlash" checked> Beat flash</label>
-          <label>Format <select id="spinOrient">
-              <option value="portrait">Portrait (phones)</option>
-              <option value="landscape">Landscape</option>
-              <option value="square">Square 1:1 (Instagram)</option>
-            </select></label>
-          <label>Quality <select id="spinQual">
-              <option value="1080">1080p</option>
-              <option value="720">720p (faster)</option>
-            </select></label>
-        </div>
-        <div class="spin-row">
-          <label class="chk"><input type="checkbox" id="spinOverlayOn" checked> Frame & overlay</label>
-          <label>Designer frame <select id="spinFrameStyle">
-              <option value="floral_gold" selected>Wedding Floral & Gold</option>
-              <option value="gilded_art_deco">Gilded Art Deco / Gala</option>
-              <option value="neon_cyberpunk">Neon Club / Cyberpunk</option>
-              <option value="classic_box">Classic Frame & Label Band</option>
-              <option value="none">None (Transparent / Logo only)</option>
-            </select></label>
-          <label>Animated effect <select id="spinFx">
-              <option value="none">None (no effect)</option>
-            </select></label>
-          <span id="spinFxBadge" class="spin-fx-pill" hidden></span>
-          <label>Sound <select id="spinAudio">
-              <option value="music">Music</option>
-              <option value="original">Original sound</option>
-              <option value="none">No sound</option>
-            </select></label>
-          <button type="button" class="desk-btn" id="spinMusicBtn">Choose music</button><span id="spinMusicName"
-            class="spin-dim"></span>
-          <label>Volume <input type="range" id="spinVol" min="0" max="100" value="80"></label>
-          <label class="chk"><input type="checkbox" id="spinAuto"> Edit new videos by themselves</label>
-          <label class="chk"><input type="checkbox" id="spinAutoShare"> and get the QR ready</label>
-        </div>
-        <div class="spin-row" id="spinTextRow">
-          <label class="chk"><input type="checkbox" id="spinTextOn"> Extra text overlay</label>
-          <label>Line 1 <input type="text" id="spinText1" placeholder="e.g. Happy Birthday!"
-              style="width:140px"></label>
-          <label>Line 2 <input type="text" id="spinText2" placeholder="e.g. October 24, 2026"
-              style="width:140px"></label>
-          <label>Pos <select id="spinTextPos">
-              <option value="top">Top</option>
-              <option value="middle">Middle</option>
-              <option value="bottom">Bottom</option>
-            </select></label>
-          <label>Color <input type="color" id="spinTextColor" value="#ffffff"></label>
-          <label>Size <select id="spinTextSize">
-              <option value="small">Small</option>
-              <option value="medium" selected>Medium</option>
-              <option value="large">Large</option>
-            </select></label>
-          <label>Font <select id="spinTextFont">
-              <option value="sans-serif">Sans-Serif</option>
-              <option value="serif">Serif</option>
-              <option value="cursive">Script / Cursive</option>
-              <option value="impact">Bold / Impact</option>
-            </select></label>
-          <label>Timing <select id="spinTextTiming">
-              <option value="always">Always on</option>
-              <option value="fade">Fade in / out</option>
-            </select></label>
-        </div>
+      <div class="spin-head-nav" id="spinHeadTabs">
+        <button type="button" class="spin-tab-btn active" data-tab="spinSecVideos">🎬 Videos &amp; Queue</button>
+        <button type="button" class="spin-tab-btn" data-tab="spinSecLook">🎨 Look &amp; Frame</button>
+        <button type="button" class="spin-tab-btn" data-tab="spinSecText">✍️ Text &amp; Branding</button>
+        <button type="button" class="spin-tab-btn" data-tab="spinSecAudio">🎵 Audio &amp; FX</button>
       </div>
-      <div class="desk-hint" id="spinNoEdit" hidden>Editing (slow motion, frame, music) is not available in this copy of
-        the app, so videos are shared as they are.</div>
-      <div class="desk-hint" id="spinHint"></div>
-      <div class="desk-grid" id="spinGrid"></div>
-      <div class="desk-foot"><button type="button" class="desk-btn" id="spinClear">Clear list</button><span
-          class="sp"></span></div>
-    </div>
-    <div class="qs-panel" id="spinModal" hidden>
-      <div class="qs-card spin-card">
-        <div class="spin-stage-wrap" id="spinStageWrap">
-          <video id="spinVideo" playsinline loop></video>
-          <canvas id="spinPreviewCanvas"></canvas>
-        </div>
+      <div class="spin-head-right">
+        <button type="button" class="desk-btn primary" id="spinTopPick">＋ Add Videos</button>
+        <button type="button" class="desk-btn" id="spinTopFolder">📁 Folder</button>
+      </div>
+    </header>
 
-        <!-- Live playback & speed preview toolbar -->
-        <div class="spin-play-bar" style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;padding:4px 8px;background:rgba(0,0,0,0.04);border-radius:8px;margin-bottom:8px;font-size:12px;">
-          <button type="button" class="desk-btn" id="spinModalPlayBtn" style="padding:4px 10px;font-size:12px;">▶ Play</button>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <span style="opacity:0.75;">Live speed:</span>
-            <button type="button" class="desk-btn spin-speed-btn" data-rate="0.25" style="padding:3px 6px;font-size:11px;">0.25x</button>
-            <button type="button" class="desk-btn spin-speed-btn" data-rate="0.5" style="padding:3px 6px;font-size:11px;">0.5x</button>
-            <button type="button" class="desk-btn spin-speed-btn active" data-rate="1.0" style="padding:3px 6px;font-size:11px;">1x</button>
-            <button type="button" class="desk-btn spin-speed-btn" data-rate="2.0" style="padding:3px 6px;font-size:11px;">2x</button>
+    <div class="spin-studio-body">
+      <!-- LEFT COLUMN: CONTROLS & WORKSPACE -->
+      <div class="spin-studio-controls" id="spinStudioControls">
+        <!-- SECTION 1: VIDEOS & INBOX -->
+        <div class="spin-panel-card" id="spinSecVideos">
+          <div class="spin-card-title">
+            <span>🎬 360 Video Queue</span>
+            <span class="spin-pill" id="spinQueueBadge">0 videos</span>
           </div>
-          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;margin:0;">
-            <input type="checkbox" id="spinModalTogglePreview" checked> Overlay preview
-          </label>
+
+          <div class="desk-drop" id="spinDrop">Drop the 360 videos here, or <button type="button" class="desk-btn"
+              id="spinPick">Choose videos</button> <button type="button" class="desk-btn" id="spinPickDir">Choose
+              folder</button><input type="file" id="spinFile" accept="video/*" multiple hidden><input type="file"
+              id="spinDirFile" webkitdirectory multiple hidden></div>
+
+          <div class="spin-send" id="spinSend" hidden>
+            <div class="spin-qr" id="spinSendQr"></div>
+            <div class="spin-sendtxt"><b>📱 Send from the phone that recorded</b><br>Scan this with that phone on the booth
+              Wi-Fi, then pick the video. Videos saved into the folder below also appear here automatically.<br><span
+                id="spinDirTxt" style="font-size:11.5px;opacity:0.85;"></span> <button type="button" class="desk-btn" id="spinDirBtn" style="padding:2px 8px;font-size:11px;">Change
+                folder</button><br><b>Recording tablet?</b> The 360 capture screen on the Android app sends its clips here.
+              Type this address into it: <span class="spin-link" id="spinSendLink"></span> <button type="button"
+                class="desk-btn" id="spinLinkCopy" style="padding:2px 8px;font-size:11px;">Copy</button></div>
+          </div>
+
+          <div class="spin-send" id="spinWeb" hidden>
+            <div class="spin-qr" id="spinWebQr"></div>
+            <div class="spin-sendtxt"><b>📱 Videos from a phone</b><br><span id="spinWebNote">One moment…</span>
+              <div class="spin-link" id="spinWebLink"></div><button type="button" class="desk-btn" id="spinWebCopy" style="padding:2px 8px;font-size:11px;margin-top:4px;">Copy
+                link</button>
+            </div>
+          </div>
+
+          <div class="desk-hint" id="spinNoEdit" hidden>Editing (slow motion, frame, music) is not available in this copy of
+            the app, so videos are shared as they are.</div>
+          <div class="desk-hint" id="spinHint"></div>
+          <div class="desk-grid" id="spinGrid"></div>
+          <div class="desk-foot"><button type="button" class="desk-btn" id="spinClear">Clear list</button><span
+              class="sp"></span></div>
         </div>
 
-        <!-- Real-time Designer Frame & Custom Frame Upload -->
-        <div class="spin-edit-box" id="spinModalEditBox" style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-            <span style="font-weight:600;">Frame &amp; Look:</span>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <select id="spinModalFrameStyle" style="font-size:12px;padding:2px 6px;border-radius:4px;">
-                <option value="floral_gold">Wedding Floral Gold</option>
-                <option value="gilded_art_deco">Gilded Art Deco Gala</option>
-                <option value="neon_cyberpunk">Neon Cyberpunk VIP</option>
-                <option value="classic_box">Classic Bottom Band</option>
-                <option value="custom">Custom Uploaded Frame</option>
-                <option value="none">No Frame (Clean)</option>
-              </select>
-              <label class="desk-btn" style="padding:3px 8px;font-size:11px;cursor:pointer;margin:0;">
-                Upload PNG
+        <!-- SECTION 2: LOOK, STYLE & FRAMES -->
+        <div class="spin-panel-card" id="spinSecLook">
+          <div class="spin-card-title">
+            <span>🎨 Look, Speed &amp; Frames</span>
+            <span class="spin-pill active">Live Sync</span>
+          </div>
+
+          <div class="spin-look" id="spinLook">
+            <div class="spin-row">
+              <label>Style Preset <select id="spinPreset">
+                  <option value="classic">Classic slow-mo</option>
+                  <option value="ramp">Speed ramp</option>
+                  <option value="boomerang">Boomerang</option>
+                  <option value="plain">Original speed + frame</option>
+                  <option value="super">Super slow-mo (0.25×)</option>
+                  <option value="fastslow">Fast, then slow (2×, 0.5×)</option>
+                  <option value="fsf">Fast, slow, fast (2×, 0.5×, 2×)</option>
+                  <option value="roller">Slow-mo roller (1×, 0.25×, 2×, 0.5× and back)</option>
+                  <option value="custom">Custom</option>
+                </select></label>
+              <label>Motion Speed <select id="spinSpeed">
+                  <option value="slow">Slow motion (0.5×)</option>
+                  <option value="ramp">Speed ramp</option>
+                  <option value="boomerang">Boomerang</option>
+                  <option value="normal">Normal</option>
+                  <option value="custom">Speed sequence (from the style)</option>
+                </select></label>
+              <label class="chk"
+                title="Tip: Record at 60 fps (or 120 fps for 0.25×) for instant real slow motion with no extra processing wait."><input
+                  type="checkbox" id="spinSmooth"> Smoother slow motion (30 fps clips; 60+ fps is smooth
+                automatically)</label>
+              <label class="chk" id="spinGpuWrap" hidden
+                title="Use hardware GPU video encoding when available (falls back to CPU automatically)."><input
+                  type="checkbox" id="spinGpu"> GPU fast encode</label>
+              <label class="chk" title="Smooth camera punch-in zoom during slow motion and speed ramps"><input
+                  type="checkbox" id="spinZoom" checked> Dynamic zoom</label>
+              <label class="chk" title="Optical white flash at speed change and beat drops"><input
+                  type="checkbox" id="spinFlash" checked> Beat flash</label>
+              <label>Format <select id="spinOrient">
+                  <option value="portrait">Portrait (phones 9:16)</option>
+                  <option value="landscape">Landscape (16:9)</option>
+                  <option value="square">Square 1:1 (Instagram)</option>
+                </select></label>
+              <label>Quality <select id="spinQual">
+                  <option value="1080">1080p Full HD</option>
+                  <option value="720">720p (faster)</option>
+                </select></label>
+            </div>
+            <div class="spin-row">
+              <label class="chk"><input type="checkbox" id="spinOverlayOn" checked> Frame &amp; overlay</label>
+              <label>Designer frame <select id="spinFrameStyle">
+                  <option value="floral_gold" selected>Wedding Floral &amp; Gold</option>
+                  <option value="gilded_art_deco">Gilded Art Deco / Gala</option>
+                  <option value="neon_cyberpunk">Neon Club / Cyberpunk</option>
+                  <option value="classic_box">Classic Frame &amp; Label Band</option>
+                  <option value="custom">Custom Uploaded Frame PNG</option>
+                  <option value="none">None (Transparent / Logo only)</option>
+                </select></label>
+              <label class="desk-btn" style="padding:4px 10px;font-size:12px;cursor:pointer;margin:0;">
+                Upload Custom PNG
                 <input type="file" id="spinModalCustomFile" accept="image/png,image/webp" style="display:none">
               </label>
+              <label>Animated effect <select id="spinFx">
+                  <option value="none">None (no effect)</option>
+                  <option value="gold_dust">Gold Dust ✨</option>
+                  <option value="sparkles">Sparkles ✨</option>
+                  <option value="confetti">Confetti 🎨</option>
+                  <option value="bokeh">Bokeh Lights ✨</option>
+                  <option value="floating_hearts">Floating Hearts 🎨</option>
+                  <option value="rose_petals">Rose Petals 🎨</option>
+                  <option value="smoke_ring">Smoke Ring ✨</option>
+                  <option value="champagne_bubbles">Champagne Bubbles ✨</option>
+                  <option value="neon_glow_edge">Neon Glow Edge ✨</option>
+                </select></label>
+              <span id="spinFxBadge" class="spin-fx-pill" hidden></span>
             </div>
           </div>
+        </div>
 
-          <!-- Real-time Text Overlays & Dynamic Placement -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
-            <input type="text" id="spinTrimText1" placeholder="Line 1 (e.g. Sarah &amp; Michael)" style="font-size:12px;padding:4px 6px;border-radius:4px;border:1px solid #ccc;">
-            <input type="text" id="spinTrimText2" placeholder="Line 2 (e.g. October 24, 2026)" style="font-size:12px;padding:4px 6px;border-radius:4px;border:1px solid #ccc;">
+        <!-- SECTION 3: TEXT & EVENT BRANDING -->
+        <div class="spin-panel-card" id="spinSecText">
+          <div class="spin-card-title">
+            <span>✍️ Text &amp; Event Branding</span>
+            <span class="spin-pill">WYSIWYG</span>
           </div>
 
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-            <span>Pos:
-              <select id="spinModalTextPos" style="font-size:11px;padding:2px 4px;">
-                <option value="top">Top (12%)</option>
-                <option value="upper">Upper Third (28%)</option>
-                <option value="middle">Center / Middle (50%)</option>
-                <option value="lower">Lower Third (72%)</option>
-                <option value="bottom">Bottom (84%)</option>
-                <option value="custom">Custom Y Slider</option>
-              </select>
-            </span>
-            <span id="spinModalYWrap" style="display:flex;align-items:center;gap:4px;">
-              Y: <input type="range" id="spinModalTextY" min="5" max="95" value="12" step="1" style="width:70px">
-              <span id="spinModalTextYVal" style="min-width:26px;font-size:11px;">12%</span>
-            </span>
-            <span>Align:
-              <select id="spinModalTextAlign" style="font-size:11px;padding:2px 4px;">
-                <option value="center">Center</option>
-                <option value="left">Left</option>
-                <option value="right">Right</option>
-              </select>
-            </span>
-            <span>Font:
-              <select id="spinModalTextFont" style="font-size:11px;padding:2px 4px;">
-                <option value="cursive">Cursive / Script</option>
-                <option value="serif">Serif</option>
-                <option value="sans-serif">Sans-Serif</option>
-                <option value="impact">Impact</option>
-              </select>
-            </span>
-            <span>Color:
-              <input type="color" id="spinModalTextColor" value="#FFF2A8" style="width:24px;height:22px;padding:0;border:none;vertical-align:middle;cursor:pointer;">
-            </span>
+          <div class="spin-look" style="margin:0;">
+            <div class="spin-row">
+              <label class="chk"><input type="checkbox" id="spinTextOn" checked> Enable Text Overlay</label>
+            </div>
+            <div class="spin-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div>
+                <label style="display:block;font-size:12px;margin-bottom:3px;font-weight:700;">Line 1 (e.g. Couple / Event Name)</label>
+                <input type="text" id="spinText1" placeholder="e.g. Sarah &amp; Michael" style="width:100%;box-sizing:border-box;font-size:13px;padding:6px 10px;border-radius:8px;border:1.5px solid var(--line);">
+              </div>
+              <div>
+                <label style="display:block;font-size:12px;margin-bottom:3px;font-weight:700;">Line 2 (e.g. Date / Hashtag)</label>
+                <input type="text" id="spinText2" placeholder="e.g. October 24, 2026" style="width:100%;box-sizing:border-box;font-size:13px;padding:6px 10px;border-radius:8px;border:1.5px solid var(--line);">
+              </div>
+            </div>
+            <div class="spin-row" style="margin-top:6px;">
+              <label>Position <select id="spinTextPos">
+                  <option value="top">Top (12%)</option>
+                  <option value="upper">Upper Third (28%)</option>
+                  <option value="middle">Center / Middle (50%)</option>
+                  <option value="lower">Lower Third (72%)</option>
+                  <option value="bottom">Bottom (84%)</option>
+                  <option value="custom">Custom Y Slider</option>
+                </select></label>
+              <label id="spinModalYWrap" style="display:inline-flex;align-items:center;gap:6px;">
+                Custom Y: <input type="range" id="spinModalTextY" min="5" max="95" value="12" step="1" style="width:85px">
+                <span id="spinModalTextYVal" style="min-width:28px;font-size:12px;font-weight:700;">12%</span>
+              </label>
+              <label>Align <select id="spinModalTextAlign">
+                  <option value="center">Center</option>
+                  <option value="left">Left</option>
+                  <option value="right">Right</option>
+                </select></label>
+              <label>Color <input type="color" id="spinTextColor" value="#FFF2A8" style="width:30px;height:26px;padding:0;border:none;cursor:pointer;vertical-align:middle;"></label>
+              <label>Size <select id="spinTextSize">
+                  <option value="small">Small</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="large">Large</option>
+                </select></label>
+              <label>Font <select id="spinTextFont">
+                  <option value="cursive">Cursive / Script (Alex Brush)</option>
+                  <option value="serif">Serif (Cinzel)</option>
+                  <option value="sans-serif">Modern Sans-Serif</option>
+                  <option value="impact">Bold / Impact</option>
+                </select></label>
+              <label>Timing <select id="spinTextTiming">
+                  <option value="always">Always on</option>
+                  <option value="fade">Fade in / out</option>
+                </select></label>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 4: AUDIO & PROCESSING -->
+        <div class="spin-panel-card" id="spinSecAudio">
+          <div class="spin-card-title">
+            <span>🎵 Audio, Music &amp; Automation</span>
           </div>
 
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span>Effect:
-              <select id="spinModalFx" style="font-size:11px;padding:2px 4px;">
-                <option value="none">None</option>
-                <option value="gold_dust">Gold Dust</option>
-                <option value="sparkles">Sparkles</option>
-                <option value="confetti">Confetti</option>
-                <option value="bokeh">Bokeh Lights</option>
-                <option value="floating_hearts">Floating Hearts</option>
-                <option value="rose_petals">Rose Petals</option>
-                <option value="smoke_ring">Smoke Ring</option>
-                <option value="champagne_bubbles">Champagne Bubbles</option>
-                <option value="neon_glow_edge">Neon Glow Edge</option>
-              </select>
-            </span>
+          <div class="spin-look" style="margin:0;">
+            <div class="spin-row">
+              <label>Sound track <select id="spinAudio">
+                  <option value="music">Music</option>
+                  <option value="original">Original video sound</option>
+                  <option value="none">Mute (no sound)</option>
+                </select></label>
+              <button type="button" class="desk-btn" id="spinMusicBtn">Choose music track</button>
+              <span id="spinMusicName" class="spin-dim" style="font-weight:600;">no music chosen</span>
+              <label style="margin-left:auto;">Volume <input type="range" id="spinVol" min="0" max="100" value="80"></label>
+            </div>
+            <div class="spin-row" style="margin-top:6px;">
+              <label class="chk"><input type="checkbox" id="spinAuto"> Automatically process and edit incoming 360 videos</label>
+              <label class="chk"><input type="checkbox" id="spinAutoShare"> and get the QR code ready automatically</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: STICKY LIVE PREVIEW PANEL -->
+      <div class="spin-studio-preview" id="spinStudioPreview">
+        <div class="spin-preview-card">
+          <div class="spin-preview-head">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <b style="font-size:15px;color:var(--ink);">Live 360 Studio Preview</b>
+              <span class="spin-pill" id="spinCurClipBadge">Sample Demo</span>
+            </div>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;margin:0;font-weight:600;">
+              <input type="checkbox" id="spinModalTogglePreview" checked> Overlay Preview
+            </label>
+          </div>
+
+          <!-- Video & Canvas Stage -->
+          <div class="spin-stage-wrap" id="spinStageWrap">
+            <video id="spinVideo" playsinline loop></video>
+            <canvas id="spinPreviewCanvas"></canvas>
+          </div>
+
+          <!-- Interactive Timeline Scrub & Playback Controls -->
+          <div class="spin-timeline-bar">
+            <button type="button" class="desk-btn" id="spinModalPlayBtn" style="padding:5px 12px;font-size:12px;font-weight:700;">▶ Play</button>
+            <span class="spin-time-counter" id="spinTimeCounter">0:00 / 0:00</span>
+            <input type="range" class="spin-time-seek" id="spinTimeSeek" min="0" max="100" value="0" step="0.1">
+          </div>
+
+          <!-- Playback Speed & Quick Trim Bar -->
+          <div class="spin-play-bar" style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;padding:5px 8px;background:rgba(0,0,0,0.04);border-radius:8px;margin-bottom:8px;font-size:12px;">
+            <div style="display:flex;align-items:center;gap:4px;">
+              <span style="opacity:0.75;font-size:11px;">Speed:</span>
+              <button type="button" class="desk-btn spin-speed-btn" data-rate="0.25">0.25x</button>
+              <button type="button" class="desk-btn spin-speed-btn" data-rate="0.5">0.5x</button>
+              <button type="button" class="desk-btn spin-speed-btn active" data-rate="1.0">1x</button>
+              <button type="button" class="desk-btn spin-speed-btn" data-rate="2.0">2x</button>
+            </div>
             <div class="spin-trim" id="spinTrim" style="display:inline-flex;align-items:center;gap:4px;margin:0;">
-              <span>Trim: <input type="number" id="spinTrimA" min="0" step="0.1" placeholder="0" style="width:45px;font-size:11px;padding:2px 4px;"> s &ndash; <input type="number" id="spinTrimB" min="0" step="0.1" placeholder="end" style="width:45px;font-size:11px;padding:2px 4px;"> s</span>
+              <span>Trim: <input type="number" id="spinTrimA" min="0" step="0.1" placeholder="0" style="width:42px;font-size:11px;padding:2px 4px;border:1px solid #ccc;border-radius:4px;"> s &ndash; <input type="number" id="spinTrimB" min="0" step="0.1" placeholder="end" style="width:42px;font-size:11px;padding:2px 4px;border:1px solid #ccc;border-radius:4px;"> s</span>
             </div>
           </div>
-        </div>
 
-        <div class="spin-prog" id="spinProg" hidden>
-          <div class="bar"><i id="spinBar"></i></div><span id="spinProgTxt"></span>
+          <!-- Progress bar -->
+          <div class="spin-prog" id="spinProg" hidden>
+            <div class="bar"><i id="spinBar"></i></div><span id="spinProgTxt"></span>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="spin-action-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+            <button type="button" class="desk-btn primary" id="spinEditBtn" style="flex:1;min-width:130px;padding:9px 14px;font-weight:800;font-size:13px;">🎬 Edit / Process</button>
+            <button type="button" class="desk-btn" id="spinShareBtn" style="flex:1;min-width:110px;padding:9px 14px;font-weight:700;font-size:13px;background:var(--blue-deep,#1F3A52);color:#fff;">📱 Share + QR</button>
+            <button type="button" class="desk-btn" id="spinViewBtn" hidden style="padding:9px 12px;font-size:12px;">View original</button>
+            <button type="button" class="desk-btn" id="spinRemove" style="padding:9px 12px;font-size:12px;color:#c0392b;">Remove</button>
+          </div>
+
+          <!-- QR Codes for Guest Sharing -->
+          <div class="qs-qr" id="spinQrBox"></div>
+          <p class="qs-note" id="spinMsg" style="margin:4px 0 0;font-size:12px;color:var(--ink-dim);"></p>
+
+          <!-- Legacy modal compatibility stubs (hidden) -->
+          <div id="spinModal" hidden style="display:none!important;"></div>
+          <button type="button" id="spinModalClose" hidden style="display:none!important;"></button>
+          <div id="spinModalEditBox" hidden style="display:none!important;"></div>
+          <select id="spinModalFrameStyle" hidden style="display:none!important;"></select>
+          <input type="text" id="spinTrimText1" hidden style="display:none!important;">
+          <input type="text" id="spinTrimText2" hidden style="display:none!important;">
+          <select id="spinModalTextPos" hidden style="display:none!important;"></select>
+          <select id="spinModalTextFont" hidden style="display:none!important;"></select>
+          <input type="color" id="spinModalTextColor" hidden style="display:none!important;">
+          <select id="spinModalFx" hidden style="display:none!important;"></select>
         </div>
-        <div class="qs-qr" id="spinQrBox"></div>
-        <p class="qs-note" id="spinMsg"></p>
-        <div class="qs-row"><button type="button" class="desk-btn" id="spinRemove">Remove</button><button type="button"
-            class="desk-btn" id="spinEditBtn" hidden>Edit video</button><button type="button" class="desk-btn"
-            id="spinViewBtn" hidden>View original</button><button type="button" class="desk-btn primary"
-            id="spinShareBtn">Share + QR</button><button type="button" class="desk-btn"
-            id="spinModalClose">Close</button></div>
       </div>
     </div>
   </div>
@@ -25861,6 +26159,7 @@
         }
         g('spinSmooth').disabled = spinLook.speed !== 'slow' && !(spinLook.speed === 'custom' && (spinLook.rates || []).some(function (r) { return r < 1; }));
         try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { }
+        if (typeof renderSpinModalPreview === 'function') renderSpinModalPreview();
       }
       function spinPresetLabel() { return (SPIN_PRESETS[spinLook.preset] && SPIN_PRESETS[spinLook.preset].label) || (spinLook.speed === 'slow' ? 'slow-mo' : spinLook.speed); }
       // Output size of the picture drawn over the video (boomerang is kept at 720 to stay light).
@@ -26438,9 +26737,12 @@
       }
       function spinRender() {
         spinGrid.innerHTML = '';
+        var qBadge = document.getElementById('spinQueueBadge');
+        if (qBadge) qBadge.textContent = spinQueue.length + (spinQueue.length === 1 ? ' video' : ' videos');
         if (!spinQueue.length) { var e = document.createElement('div'); e.className = 'desk-empty'; e.textContent = 'Videos you add appear here.'; spinGrid.appendChild(e); }
         spinQueue.forEach(function (it) {
-          var b = document.createElement('button'); b.type = 'button'; b.className = 'desk-item' + (it.status === 'shared' ? ' used' : ''); b.dataset.id = it.id;
+          var isSel = spinCur && it.id === spinCur.id;
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'desk-item' + (it.status === 'shared' ? ' used' : '') + (isSel ? ' selected' : ''); b.dataset.id = it.id;
           var v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.playsInline = true;
           var src = spinSrc(it, !it.viewOrig); if (src) v.src = src + '#t=0.1';
           b.appendChild(v);
@@ -26593,9 +26895,24 @@
       function openSpin() {
         if (!extraOn('spin360')) return;
         if (state === 'capturing') { showToast('Finish the session first.', 3000); return; }
-        spinOverlay.hidden = false; spinNew = 0; document.getElementById('spinFab').dataset.n = '0'; spinRender(); spinSetupInfo(); spinWebShow();
+        spinOverlay.hidden = false; spinNew = 0; document.getElementById('spinFab').dataset.n = '0';
+        spinRender(); spinSetupInfo(); spinWebShow();
+        if (!spinCur && spinQueue.length) {
+          spinOpenItem(spinQueue[0]);
+        } else if (spinCur) {
+          spinOpenItem(spinCur);
+        } else {
+          spinModalUpdate();
+          renderSpinModalPreview();
+        }
+        if (typeof startSpinPreviewAnimation === 'function') startSpinPreviewAnimation();
       }
-      function closeSpin() { spinOverlay.hidden = true; closeSpinModal(); }
+      function closeSpin() {
+        spinOverlay.hidden = true;
+        var v = document.getElementById('spinVideo');
+        if (v) { try { v.pause(); } catch (e) { } }
+        closeSpinModal();
+      }
 
       // ---- Video guestbook (included extra "video"): a guest records a short message on the booth, then gets a QR for it ----
       // Kiosk: the operator opens it and hands the device over. Up to 30 seconds, and a small video (about 10 MB at most),
@@ -27134,10 +27451,184 @@
 
       var spinModalCustomImage = null;
 
+      function drawSpinSampleStage(ctx, W, H) {
+        ctx.save();
+        var bgGrad = ctx.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.1, W / 2, H * 0.45, Math.max(W, H) * 0.85);
+        bgGrad.addColorStop(0, '#262030');
+        bgGrad.addColorStop(0.5, '#14121a');
+        bgGrad.addColorStop(1, '#09080c');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, W, H);
+
+        var cy = Math.round(H * 0.65);
+        var cx = Math.round(W / 2);
+        var rx = Math.round(W * 0.38);
+        var ry = Math.round(rx * 0.35);
+
+        ctx.shadowColor = 'rgba(212, 175, 55, 0.35)';
+        ctx.shadowBlur = Math.round(W * 0.05);
+
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(212, 175, 55, 0.45)';
+        ctx.lineWidth = Math.max(2, Math.round(W * 0.003));
+        ctx.stroke();
+
+        var platH = Math.round(H * 0.05);
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + platH, rx, ry, 0, 0, Math.PI);
+        ctx.strokeStyle = 'rgba(212, 175, 55, 0.25)';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx * 0.75, ry * 0.75, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 242, 168, 0.65)';
+        ctx.lineWidth = Math.max(2, Math.round(W * 0.004));
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx * 0.74, ry * 0.74, 0, 0, Math.PI * 2);
+        var platGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rx * 0.75);
+        platGrad.addColorStop(0, '#322b3e');
+        platGrad.addColorStop(0.7, '#1b1724');
+        platGrad.addColorStop(1, '#0f0d14');
+        ctx.fillStyle = platGrad;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, Math.max(4, Math.round(W * 0.008)), 0, Math.PI * 2);
+        ctx.fillStyle = '#FFF2A8';
+        ctx.shadowColor = '#D4AF37';
+        ctx.shadowBlur = 15;
+        ctx.fill();
+
+        var armAngle = (Date.now() / 2000) % (Math.PI * 2);
+        var armX = cx + Math.cos(armAngle) * (rx * 1.15);
+        var armY = cy + Math.sin(armAngle) * (ry * 1.15);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(armX, armY);
+        ctx.strokeStyle = 'rgba(212, 175, 55, 0.75)';
+        ctx.lineWidth = Math.max(2, Math.round(W * 0.0035));
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(armX, armY, Math.max(5, Math.round(W * 0.012)), 0, Math.PI * 2);
+        ctx.fillStyle = '#FFF2A8';
+        ctx.shadowColor = '#00F0FF';
+        ctx.shadowBlur = 12;
+        ctx.fill();
+
+        ctx.shadowColor = 'transparent';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.font = '700 ' + Math.max(16, Math.round(W * 0.038)) + 'px "Manrope", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('360 Studio Live Preview', cx, Math.round(H * 0.38));
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.font = '600 ' + Math.max(12, Math.round(W * 0.024)) + 'px "Manrope", sans-serif';
+        ctx.fillText('Drop or record a clip, or customize your frame & text below', cx, Math.round(H * 0.43));
+
+        ctx.restore();
+      }
+
+      function drawSpinFxParticles(ctx, W, H, fx) {
+        if (!fx || fx === 'none') return;
+        var t = Date.now() / 1000;
+        ctx.save();
+        if (fx === 'gold_dust' || fx === 'sparkles') {
+          var count = fx === 'gold_dust' ? 32 : 22;
+          for (var i = 0; i < count; i++) {
+            var seed = i * 137.5;
+            var px = ((Math.sin(seed + t * 0.3) * 0.5 + 0.5) * W);
+            var py = (((seed * 10 - t * 45) % H + H) % H);
+            var size = (Math.sin(seed * 3 + t * 4) * 0.4 + 0.6) * (fx === 'gold_dust' ? 4 : 8);
+            var alpha = Math.sin(seed + t * 3) * 0.4 + 0.6;
+            ctx.globalAlpha = Math.max(0.1, Math.min(1, alpha));
+            if (fx === 'gold_dust') {
+              ctx.fillStyle = i % 2 === 0 ? '#FFF2A8' : '#D4AF37';
+              ctx.beginPath();
+              ctx.arc(px, py, Math.max(1.5, size), 0, Math.PI * 2);
+              ctx.fill();
+            } else {
+              ctx.strokeStyle = '#FFF2A8';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.moveTo(px - size, py); ctx.lineTo(px + size, py);
+              ctx.moveTo(px, py - size); ctx.lineTo(px, py + size);
+              ctx.stroke();
+            }
+          }
+        } else if (fx === 'confetti') {
+          var colors = ['#FF3B30', '#FFCC00', '#34C759', '#007AFF', '#AF52DE', '#FF9500'];
+          for (var c = 0; c < 30; c++) {
+            var cSeed = c * 211.3;
+            var cx = ((Math.sin(cSeed + t * 0.5) * 0.5 + 0.5) * W);
+            var cy = (((cSeed * 15 + t * 90) % H + H) % H);
+            var cRot = t * 3 + cSeed;
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(cRot);
+            ctx.fillStyle = colors[c % colors.length];
+            ctx.globalAlpha = 0.85;
+            ctx.fillRect(-5, -3, 10, 6);
+            ctx.restore();
+          }
+        } else if (fx === 'floating_hearts') {
+          for (var h = 0; h < 18; h++) {
+            var hSeed = h * 97.1;
+            var hx = ((Math.sin(hSeed + t * 0.4) * 0.5 + 0.5) * W);
+            var hy = (((hSeed * 20 - t * 40) % H + H) % H);
+            var hSize = (Math.sin(hSeed + t * 2) * 0.25 + 0.75) * 12;
+            ctx.save();
+            ctx.translate(hx, hy);
+            ctx.fillStyle = h % 2 === 0 ? 'rgba(255, 75, 110, 0.8)' : 'rgba(255, 140, 160, 0.8)';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.bezierCurveTo(-hSize / 2, -hSize / 2, -hSize, hSize / 3, 0, hSize);
+            ctx.bezierCurveTo(hSize, hSize / 3, hSize / 2, -hSize / 2, 0, 0);
+            ctx.fill();
+            ctx.restore();
+          }
+        } else if (fx === 'bokeh') {
+          for (var b = 0; b < 14; b++) {
+            var bSeed = b * 331.7;
+            var bx = ((Math.sin(bSeed + t * 0.2) * 0.5 + 0.5) * W);
+            var by = (((bSeed * 10 - t * 20) % H + H) % H);
+            var bRadius = (Math.sin(bSeed + t) * 0.3 + 0.7) * 28;
+            ctx.fillStyle = b % 2 === 0 ? 'rgba(255, 235, 175, 0.22)' : 'rgba(255, 255, 255, 0.18)';
+            ctx.beginPath();
+            ctx.arc(bx, by, bRadius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+      }
+
+      var spinAnimReq = null;
+      function startSpinPreviewAnimation() {
+        if (spinAnimReq) return;
+        function step() {
+          if (!spinOverlay || spinOverlay.hidden) {
+            spinAnimReq = null;
+            return;
+          }
+          var v = document.getElementById('spinVideo');
+          var isPlaying = v && !v.paused && !v.ended;
+          var hasFx = spinLook && spinLook.fx && spinLook.fx !== 'none';
+          var isDemo = !v || !v.src || v.style.display === 'none' || !spinCur;
+          if (isPlaying || hasFx || isDemo) {
+            renderSpinModalPreview();
+          }
+          spinAnimReq = requestAnimationFrame(step);
+        }
+        spinAnimReq = requestAnimationFrame(step);
+      }
+
       function renderSpinModalPreview() {
         var it = spinCur;
-        var modal = document.getElementById('spinModal');
-        if (!it || modal.hidden) return;
+        if (spinOverlay && spinOverlay.hidden) return;
         var cvs = document.getElementById('spinPreviewCanvas');
         if (!cvs) return;
         var showPv = document.getElementById('spinModalTogglePreview');
@@ -27145,7 +27636,7 @@
           cvs.style.display = 'none';
           return;
         }
-        if (it.edited && !it.viewOrig) {
+        if (it && it.edited && !it.viewOrig) {
           cvs.style.display = 'none';
           return;
         }
@@ -27156,32 +27647,49 @@
         var vh = (v && v.videoHeight) || 1920;
         if (vw <= 0) vw = 1080;
         if (vh <= 0) vh = 1920;
-        cvs.width = vw;
-        cvs.height = vh;
+        if (cvs.width !== vw || cvs.height !== vh) {
+          cvs.width = vw;
+          cvs.height = vh;
+        }
         var ctx = cvs.getContext('2d');
         ctx.clearRect(0, 0, vw, vh);
 
-        var frameSel = document.getElementById('spinModalFrameStyle');
-        var frameStyle = frameSel ? frameSel.value : (it.frameStyle || (spinLook && spinLook.frameStyle) || 'floral_gold');
+        var hasVideo = v && v.src && v.style.display !== 'none' && v.videoWidth > 0 && it;
+        if (!hasVideo) {
+          drawSpinSampleStage(ctx, vw, vh);
+        }
 
-        var t1 = (document.getElementById('spinTrimText1') ? document.getElementById('spinTrimText1').value : (it.text1 || spinLook.text1 || '')).trim();
-        var t2 = (document.getElementById('spinTrimText2') ? document.getElementById('spinTrimText2').value : (it.text2 || spinLook.text2 || '')).trim();
-        var posSel = document.getElementById('spinModalTextPos');
-        var textPos = posSel ? posSel.value : (it.textPos || (spinLook && spinLook.textPos) || 'top');
+        var frameSel = document.getElementById('spinFrameStyle') || document.getElementById('spinModalFrameStyle');
+        var frameStyle = (frameSel && frameSel.value) || (it && it.frameStyle) || (spinLook && spinLook.frameStyle) || 'floral_gold';
+
+        var t1El = document.getElementById('spinText1') || document.getElementById('spinTrimText1');
+        var t2El = document.getElementById('spinText2') || document.getElementById('spinTrimText2');
+        var t1 = (t1El ? t1El.value : ((it && it.text1) || spinLook.text1 || '')).trim();
+        var t2 = (t2El ? t2El.value : ((it && it.text2) || spinLook.text2 || '')).trim();
+
+        var posSel = document.getElementById('spinTextPos') || document.getElementById('spinModalTextPos');
+        var textPos = (posSel && posSel.value) || (it && it.textPos) || (spinLook && spinLook.textPos) || 'top';
+
         var ySlider = document.getElementById('spinModalTextY');
         var defaultY = (textPos === 'bottom' ? 84 : (textPos === 'middle' ? 50 : (textPos === 'upper' ? 28 : (textPos === 'lower' ? 72 : 12))));
         var textY = (ySlider && ySlider.value) ? Number(ySlider.value) : defaultY;
+
         var alignSel = document.getElementById('spinModalTextAlign');
-        var textAlign = alignSel ? alignSel.value : (it.textAlign || 'center');
-        var fontSel = document.getElementById('spinModalTextFont');
-        var textFont = fontSel ? fontSel.value : (it.textFont || 'cursive');
-        var colInput = document.getElementById('spinModalTextColor');
-        var textColor = colInput ? colInput.value : (it.textColor || '#FFF2A8');
+        var textAlign = (alignSel && alignSel.value) || (it && it.textAlign) || (spinLook && spinLook.textAlign) || 'center';
+
+        var fontSel = document.getElementById('spinTextFont') || document.getElementById('spinModalTextFont');
+        var textFont = (fontSel && fontSel.value) || (it && it.textFont) || (spinLook && spinLook.textFont) || 'cursive';
+
+        var colInput = document.getElementById('spinTextColor') || document.getElementById('spinModalTextColor');
+        var textColor = (colInput && colInput.value) || (it && it.textColor) || (spinLook && spinLook.textColor) || '#FFF2A8';
+
+        var textOnCheck = document.getElementById('spinTextOn');
+        var isTextEnabled = textOnCheck ? textOnCheck.checked : Boolean(t1 || t2);
 
         var textOpt = {
           text1: t1,
           text2: t2,
-          textOn: Boolean(t1 || t2),
+          textOn: isTextEnabled && Boolean(t1 || t2),
           textPos: textPos,
           textYPercent: textY,
           textAlign: textAlign,
@@ -27192,22 +27700,31 @@
         var isDesignerFrame = (frameStyle === 'floral_gold' || frameStyle === 'gilded_art_deco' || frameStyle === 'neon_cyberpunk');
         var needsExtraText = textOpt.textOn && (textOpt.text1 || textOpt.text2) && (!isDesignerFrame || textOpt.textPos !== 'top' || frameStyle === 'custom');
 
-        if (frameStyle === 'custom' && (it.customFrameImage || spinModalCustomImage)) {
-          var cImg = it.customFrameImage || spinModalCustomImage;
-          try { ctx.drawImage(cImg, 0, 0, vw, vh); } catch (e) { }
-        } else if (frameStyle === 'floral_gold') {
-          try { drawWeddingFloralFrame(ctx, vw, vh, Object.assign({}, textOpt, { drawTextInFrame: !needsExtraText })); } catch (e) { }
-        } else if (frameStyle === 'gilded_art_deco') {
-          try { drawArtDecoGalaFrame(ctx, vw, vh, Object.assign({}, textOpt, { drawTextInFrame: !needsExtraText })); } catch (e) { }
-        } else if (frameStyle === 'neon_cyberpunk') {
-          try { drawNeonCyberpunkFrame(ctx, vw, vh, Object.assign({}, textOpt, { drawTextInFrame: !needsExtraText })); } catch (e) { }
-        } else if (frameStyle === 'classic_box') {
-          try { var bandH = Math.round(vh * 0.13); drawLabelBand(ctx, vw, vh - bandH, bandH, (typeof labelInput !== 'undefined' && labelInput ? labelInput.value : ''), 0); } catch (e) { }
+        var overlayCheck = document.getElementById('spinOverlayOn');
+        var showOverlay = overlayCheck ? overlayCheck.checked : true;
+
+        if (showOverlay) {
+          if (frameStyle === 'custom' && ((it && it.customFrameImage) || spinModalCustomImage)) {
+            var cImg = (it && it.customFrameImage) || spinModalCustomImage;
+            try { ctx.drawImage(cImg, 0, 0, vw, vh); } catch (e) { }
+          } else if (frameStyle === 'floral_gold') {
+            try { drawWeddingFloralFrame(ctx, vw, vh, Object.assign({}, textOpt, { drawTextInFrame: !needsExtraText })); } catch (e) { }
+          } else if (frameStyle === 'gilded_art_deco') {
+            try { drawArtDecoGalaFrame(ctx, vw, vh, Object.assign({}, textOpt, { drawTextInFrame: !needsExtraText })); } catch (e) { }
+          } else if (frameStyle === 'neon_cyberpunk') {
+            try { drawNeonCyberpunkFrame(ctx, vw, vh, Object.assign({}, textOpt, { drawTextInFrame: !needsExtraText })); } catch (e) { }
+          } else if (frameStyle === 'classic_box') {
+            try { var bandH = Math.round(vh * 0.13); drawLabelBand(ctx, vw, vh - bandH, bandH, (typeof labelInput !== 'undefined' && labelInput ? labelInput.value : ''), 0); } catch (e) { }
+          }
         }
 
         if (needsExtraText) {
           try { drawSpinExtraText(ctx, vw, vh, textOpt); } catch (e) { }
         }
+
+        var fxSel = document.getElementById('spinFx') || document.getElementById('spinModalFx');
+        var curFx = (fxSel && fxSel.value) || (it && it.fx) || (spinLook && spinLook.fx) || 'none';
+        try { drawSpinFxParticles(ctx, vw, vh, curFx); } catch (e) { }
       }
 
       // ---- editing one clip ----
@@ -27275,16 +27792,33 @@
         if (it === spinCur && it.edited) { var v = document.getElementById('spinVideo'); v.src = spinSrc(it, true); v.load(); }
       }
 
-      // ---- the player window ----
+      // ---- the player window & preview sidebar ----
       function spinModalUpdate() {
-        var it = spinCur, modal = document.getElementById('spinModal');
-        if (!it || modal.hidden) return;
+        var it = spinCur;
         var box = document.getElementById('spinQrBox'), msg = document.getElementById('spinMsg'), btn = document.getElementById('spinShareBtn');
+        var eb = document.getElementById('spinEditBtn');
+        var vb = document.getElementById('spinViewBtn');
+        var rm = document.getElementById('spinRemove');
+        var badge = document.getElementById('spinCurClipBadge');
+        if (!it) {
+          if (box) box.innerHTML = '';
+          if (msg) msg.textContent = 'Previewing live with sample turntable stage. Choose or record a 360 clip to process and share.';
+          if (btn) btn.disabled = true;
+          if (eb) eb.disabled = true;
+          if (vb) vb.hidden = true;
+          if (rm) rm.disabled = true;
+          if (badge) { badge.textContent = 'Sample Demo'; badge.classList.remove('active'); }
+          renderSpinModalPreview();
+          return;
+        }
+        if (badge) { badge.textContent = it.name || 'Active clip'; badge.classList.add('active'); }
+        if (eb) eb.disabled = false;
+        if (rm) rm.disabled = false;
         var editing = it.status === 'editing', canEdit = spinEnv.ffmpeg && it.src === 'inbox';
-        box.innerHTML = '';
+        if (box) box.innerHTML = '';
         var wf = it.url && !it.queued ? wifiInfo() : null;
-        box.classList.toggle('two', !!wf);
-        if (it.url) {
+        if (box) box.classList.toggle('two', !!wf);
+        if (it.url && box) {
           var addQr = function (text, label, sub) {
             var cell = wf ? document.createElement('div') : box;
             var im = document.createElement('img'); im.src = qrImageUrl(text); im.alt = label || 'QR code';
@@ -27301,23 +27835,36 @@
         }
         var editBox = document.getElementById('spinModalEditBox');
         if (editBox) editBox.style.display = (!canEdit || editing) ? 'none' : '';
-        document.getElementById('spinTrim').hidden = !canEdit || editing;
-        document.getElementById('spinProg').hidden = !editing;
-        document.getElementById('spinBar').style.width = (it.pct || 0) + '%';
-        document.getElementById('spinProgTxt').textContent = 'Editing… ' + (it.pct || 0) + '%';
-        var eb = document.getElementById('spinEditBtn');
-        eb.hidden = !canEdit; eb.textContent = editing ? 'Cancel editing' : (it.edited ? 'Edit again' : 'Edit video: ' + spinPresetLabel());
-        var vb = document.getElementById('spinViewBtn'); vb.hidden = !(it.edited && !editing); vb.textContent = it.viewOrig ? 'View edited' : 'View original';
+        var trimEl = document.getElementById('spinTrim');
+        if (trimEl) trimEl.hidden = !canEdit || editing;
+        var progEl = document.getElementById('spinProg');
+        if (progEl) progEl.hidden = !editing;
+        var barEl = document.getElementById('spinBar');
+        if (barEl) barEl.style.width = (it.pct || 0) + '%';
+        var progTxt = document.getElementById('spinProgTxt');
+        if (progTxt) progTxt.textContent = 'Editing… ' + (it.pct || 0) + '%';
+        if (eb) {
+          eb.hidden = !canEdit;
+          eb.textContent = editing ? 'Cancel editing' : (it.edited ? 'Edit again' : 'Edit video: ' + spinPresetLabel());
+        }
+        if (vb) {
+          vb.hidden = !(it.edited && !editing);
+          vb.textContent = it.viewOrig ? 'View edited' : 'View original';
+        }
         var what = it.edited && !it.viewOrig ? 'edited' : 'original';
-        msg.textContent = it.status === 'shared' ? (wf ? 'Shared. Guest scans Step 1 to join the Wi-Fi, then Step 2 to watch and save the video.' : 'Shared. The guest scans this to watch and save the video.')
-          : it.status === 'queued' ? 'Saved on this device. It uploads when there is internet; the QR opens the event gallery.'
-            : it.status === 'sharing' ? 'Sharing… this takes a few seconds.'
-              : editing ? 'Editing takes about as long as the video. You can keep using the booth.'
-                : it.status === 'error' ? (it.err || 'Could not do that.') + ' You can try again.'
-                  : it.src === 'file' && !spinDesktop() ? 'Shares the original video (up to 28 MB' + (ANDROID_LOCAL ? ' on this tablet).' : ' on the website).')
-                    : 'Shares the ' + what + ' video.';
-        btn.hidden = it.src === 'drive'; btn.disabled = it.status === 'sharing' || editing;
-        btn.textContent = it.status === 'shared' || it.status === 'queued' ? 'Share again' : 'Share + QR';
+        if (msg) {
+          msg.textContent = it.status === 'shared' ? (wf ? 'Shared. Guest scans Step 1 to join the Wi-Fi, then Step 2 to watch and save the video.' : 'Shared. The guest scans this to watch and save the video.')
+            : it.status === 'queued' ? 'Saved on this device. It uploads when there is internet; the QR opens the event gallery.'
+              : it.status === 'sharing' ? 'Sharing… this takes a few seconds.'
+                : editing ? 'Editing takes about as long as the video. You can keep using the booth.'
+                  : it.status === 'error' ? (it.err || 'Could not do that.') + ' You can try again.'
+                    : it.src === 'file' && !spinDesktop() ? 'Shares the original video (up to 28 MB' + (ANDROID_LOCAL ? ' on this tablet).' : ' on the website).')
+                      : 'Shares the ' + what + ' video.';
+        }
+        if (btn) {
+          btn.hidden = it.src === 'drive'; btn.disabled = it.status === 'sharing' || editing;
+          btn.textContent = it.status === 'shared' || it.status === 'queued' ? 'Share again' : 'Share + QR';
+        }
         renderSpinModalPreview();
       }
 
@@ -27337,21 +27884,28 @@
           }
           renderSpinModalPreview();
         };
+        v.play().then(function () {
+          if (playBtn) playBtn.textContent = '⏸ Pause';
+        }).catch(function () { });
 
-        document.getElementById('spinTrimA').value = it.trimA || '';
-        document.getElementById('spinTrimB').value = it.trimB || '';
+        var trimA = document.getElementById('spinTrimA');
+        if (trimA) trimA.value = it.trimA || '';
+        var trimB = document.getElementById('spinTrimB');
+        if (trimB) trimB.value = it.trimB || '';
 
-        var fSel = document.getElementById('spinModalFrameStyle');
+        var fSel = document.getElementById('spinFrameStyle') || document.getElementById('spinModalFrameStyle');
         if (fSel) fSel.value = it.frameStyle || (spinLook && spinLook.frameStyle) || 'floral_gold';
+        var fSelM = document.getElementById('spinModalFrameStyle');
+        if (fSelM && fSel) fSelM.value = fSel.value;
 
-        if (document.getElementById('spinTrimText1')) {
-          document.getElementById('spinTrimText1').value = it.text1 != null ? it.text1 : (spinLook.text1 || '');
-        }
-        if (document.getElementById('spinTrimText2')) {
-          document.getElementById('spinTrimText2').value = it.text2 != null ? it.text2 : (spinLook.text2 || '');
-        }
+        var t1 = it.text1 != null ? it.text1 : (spinLook.text1 || '');
+        var t2 = it.text2 != null ? it.text2 : (spinLook.text2 || '');
+        if (document.getElementById('spinText1')) document.getElementById('spinText1').value = t1;
+        if (document.getElementById('spinTrimText1')) document.getElementById('spinTrimText1').value = t1;
+        if (document.getElementById('spinText2')) document.getElementById('spinText2').value = t2;
+        if (document.getElementById('spinTrimText2')) document.getElementById('spinTrimText2').value = t2;
 
-        var posSel = document.getElementById('spinModalTextPos');
+        var posSel = document.getElementById('spinTextPos') || document.getElementById('spinModalTextPos');
         if (posSel) posSel.value = it.textPos || (spinLook && spinLook.textPos) || 'top';
         var ySlider = document.getElementById('spinModalTextY');
         var yVal = document.getElementById('spinModalTextYVal');
@@ -27363,26 +27917,29 @@
         var alignSel = document.getElementById('spinModalTextAlign');
         if (alignSel) alignSel.value = it.textAlign || (spinLook && spinLook.textAlign) || 'center';
 
-        var fontSel = document.getElementById('spinModalTextFont');
+        var fontSel = document.getElementById('spinTextFont') || document.getElementById('spinModalTextFont');
         if (fontSel) fontSel.value = it.textFont || (spinLook && spinLook.textFont) || 'cursive';
 
-        var colInput = document.getElementById('spinModalTextColor');
+        var colInput = document.getElementById('spinTextColor') || document.getElementById('spinModalTextColor');
         if (colInput) colInput.value = it.textColor || (spinLook && spinLook.textColor) || '#FFF2A8';
 
-        var fxSel = document.getElementById('spinModalFx');
+        var fxSel = document.getElementById('spinFx') || document.getElementById('spinModalFx');
         if (fxSel) fxSel.value = it.fx || (spinLook && spinLook.fx) || 'none';
 
-        document.getElementById('spinModal').hidden = false;
+        document.querySelectorAll('#spinGrid .desk-item').forEach(function (tile) {
+          tile.classList.toggle('selected', Number(tile.dataset.id) === it.id);
+        });
+
         spinModalUpdate();
         renderSpinModalPreview();
       }
 
       function closeSpinModal() {
-        var v = document.getElementById('spinVideo'); try { v.pause(); } catch (e) { } v.removeAttribute('src'); try { v.load(); } catch (e) { }
-        document.getElementById('spinModal').hidden = true; spinCur = null;
+        var v = document.getElementById('spinVideo'); try { v.pause(); } catch (e) { }
       }
+
       async function spinDoShare(it) {
-        if (it.src === 'drive' || it.status === 'sharing' || it.status === 'editing') return;      // a phone's video is already in the event folder
+        if (it.src === 'drive' || it.status === 'sharing' || it.status === 'editing') return;
         it.status = 'sharing'; it.err = ''; spinRender(); spinModalUpdate();
         try {
           var ext = (/\.[a-z0-9]+$/i.exec(it.name) || ['.mp4'])[0].toLowerCase();
@@ -27403,16 +27960,24 @@
         } catch (e) { it.status = 'error'; it.err = (e && e.message) || 'Failed'; }
         spinRender(); spinModalUpdate();
       }
+
       document.getElementById('spinClose').addEventListener('click', closeSpin);
-      document.getElementById('spinModalClose').addEventListener('click', closeSpinModal);
+      var spinModalCloseBtn = document.getElementById('spinModalClose');
+      if (spinModalCloseBtn) spinModalCloseBtn.addEventListener('click', closeSpinModal);
       document.getElementById('spinPick').addEventListener('click', function () { document.getElementById('spinFile').click(); });
       document.getElementById('spinPickDir').addEventListener('click', function () { document.getElementById('spinDirFile').click(); });
+      var topPick = document.getElementById('spinTopPick');
+      if (topPick) topPick.addEventListener('click', function () { document.getElementById('spinFile').click(); });
+      var topDir = document.getElementById('spinTopFolder');
+      if (topDir) topDir.addEventListener('click', function () { document.getElementById('spinDirFile').click(); });
+
       document.getElementById('spinDirFile').addEventListener('change', function (e) {
         var vids = [].filter.call(e.target.files || [], function (f) { return /^video\//.test(f.type) || /\.(mp4|mov|m4v|webm)$/i.test(f.name || ''); });
         if (!vids.length) showToast('No videos in that folder.', 3500); else { vids.sort(function (a, b) { return a.name < b.name ? -1 : 1; }).forEach(spinAddFile); showToast(vids.length + ' video' + (vids.length === 1 ? '' : 's') + ' added.', 2500); }
         e.target.value = '';
       });
       document.getElementById('spinFile').addEventListener('change', function (e) { [].forEach.call(e.target.files || [], spinAddFile); e.target.value = ''; });
+
       document.getElementById('spinClear').addEventListener('click', async function () {
         if (!spinQueue.length) return;
         var alsoDelete = false;
@@ -27431,36 +27996,43 @@
         }
         saveSpinDismissed();
         spinQueue = [];
+        spinCur = null;
+        var v = document.getElementById('spinVideo');
+        if (v) { try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) { } }
         spinRender();
+        spinModalUpdate();
+        renderSpinModalPreview();
       });
+
       document.getElementById('spinDirBtn').addEventListener('click', async function () {
         try { var r = await window.pb4u.spinChoose(); if (r) { spinInfo = r; spinSeen = {}; spinPrev = {}; spinQueue = spinQueue.filter(function (i) { return i.src !== 'inbox'; }); spinRender(); spinSetupInfo(); } } catch (e) { }
       });
       document.getElementById('spinShareBtn').addEventListener('click', function () { if (spinCur) spinDoShare(spinCur); });
+
       document.getElementById('spinEditBtn').addEventListener('click', function () {
         var it = spinCur; if (!it) return;
         if (it.status === 'editing') { if (it.job) window.pb4u.spinCancel(it.job); return; }
         var a = parseFloat(document.getElementById('spinTrimA').value), b = parseFloat(document.getElementById('spinTrimB').value);
         it.trimA = isFinite(a) && a > 0 ? a : 0; it.trimB = isFinite(b) && b > it.trimA ? b : 0;
 
-        var t1 = document.getElementById('spinTrimText1') ? document.getElementById('spinTrimText1').value.trim() : '';
-        var t2 = document.getElementById('spinTrimText2') ? document.getElementById('spinTrimText2').value.trim() : '';
-        it.text1 = t1 || null;
-        it.text2 = t2 || null;
+        var t1El = document.getElementById('spinText1') || document.getElementById('spinTrimText1');
+        var t2El = document.getElementById('spinText2') || document.getElementById('spinTrimText2');
+        it.text1 = t1El ? t1El.value.trim() : null;
+        it.text2 = t2El ? t2El.value.trim() : null;
 
-        var fSel = document.getElementById('spinModalFrameStyle');
+        var fSel = document.getElementById('spinFrameStyle') || document.getElementById('spinModalFrameStyle');
         if (fSel) it.frameStyle = fSel.value;
-        var pSel = document.getElementById('spinModalTextPos');
+        var pSel = document.getElementById('spinTextPos') || document.getElementById('spinModalTextPos');
         if (pSel) it.textPos = pSel.value;
         var ySl = document.getElementById('spinModalTextY');
         if (ySl) it.textYPercent = Number(ySl.value);
         var aSel = document.getElementById('spinModalTextAlign');
         if (aSel) it.textAlign = aSel.value;
-        var ftSel = document.getElementById('spinModalTextFont');
+        var ftSel = document.getElementById('spinTextFont') || document.getElementById('spinModalTextFont');
         if (ftSel) it.textFont = ftSel.value;
-        var cIn = document.getElementById('spinModalTextColor');
+        var cIn = document.getElementById('spinTextColor') || document.getElementById('spinModalTextColor');
         if (cIn) it.textColor = cIn.value;
-        var fxSel = document.getElementById('spinModalFx');
+        var fxSel = document.getElementById('spinFx') || document.getElementById('spinModalFx');
         if (fxSel) it.fx = fxSel.value;
         if (spinModalCustomImage && fSel && fSel.value === 'custom') {
           it.customFrameImage = spinModalCustomImage;
@@ -27468,12 +28040,14 @@
 
         spinEdit(it);
       });
+
       document.getElementById('spinViewBtn').addEventListener('click', function () {
         var it = spinCur; if (!it) return;
         it.viewOrig = !it.viewOrig;
         var v = document.getElementById('spinVideo'); v.src = spinSrc(it, !it.viewOrig); v.load();
         spinModalUpdate();
       });
+
       document.getElementById('spinRemove').addEventListener('click', async function () {
         var it = spinCur; if (!it) return;
         var alsoDelete = false;
@@ -27488,8 +28062,18 @@
           try { await window.pb4u.spinDelete(it.name); } catch (e) { }
         }
         spinQueue = spinQueue.filter(function (x) { return x !== it; }); if (it.objUrl) try { URL.revokeObjectURL(it.objUrl); } catch (e) { }
-        closeSpinModal(); spinRender();
+        spinCur = spinQueue.length ? spinQueue[0] : null;
+        if (spinCur) {
+          spinOpenItem(spinCur);
+        } else {
+          var v = document.getElementById('spinVideo');
+          if (v) { try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) { } }
+          spinModalUpdate();
+          renderSpinModalPreview();
+        }
+        spinRender();
       });
+
       spinGrid.addEventListener('click', function (e) {
         var b = e.target.closest('.desk-item'); if (!b) return;
         var it = spinQueue.find(function (x) { return x.id === Number(b.dataset.id); });
@@ -27521,6 +28105,44 @@
         });
       });
 
+      var vSpin = document.getElementById('spinVideo');
+      var timeSeek = document.getElementById('spinTimeSeek');
+      var timeDisp = document.getElementById('spinTimeCounter');
+      if (vSpin) {
+        vSpin.addEventListener('timeupdate', function () {
+          if (vSpin.duration) {
+            if (timeSeek && !timeSeek.matches(':active')) {
+              timeSeek.value = (vSpin.currentTime / vSpin.duration) * 100;
+            }
+            if (timeDisp) {
+              timeDisp.textContent = formatSpinTime(vSpin.currentTime) + ' / ' + formatSpinTime(vSpin.duration);
+            }
+          }
+        });
+      }
+      if (timeSeek) {
+        timeSeek.addEventListener('input', function () {
+          if (vSpin && vSpin.duration) {
+            vSpin.currentTime = (parseFloat(timeSeek.value) / 100) * vSpin.duration;
+          }
+        });
+      }
+      function formatSpinTime(sec) {
+        if (!sec || isNaN(sec)) return '0:00';
+        var m = Math.floor(sec / 60);
+        var s = Math.floor(sec % 60);
+        return m + ':' + (s < 10 ? '0' : '') + s;
+      }
+
+      document.querySelectorAll('#spinHeadTabs .spin-tab-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('#spinHeadTabs .spin-tab-btn').forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          var target = document.getElementById(btn.dataset.tab);
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+
       var customFileInput = document.getElementById('spinModalCustomFile');
       if (customFileInput) {
         customFileInput.addEventListener('change', function (e) {
@@ -27531,8 +28153,10 @@
             var img = new Image();
             img.onload = function () {
               spinModalCustomImage = img;
-              var fSel = document.getElementById('spinModalFrameStyle');
+              var fSel = document.getElementById('spinFrameStyle');
               if (fSel) fSel.value = 'custom';
+              var fSelM = document.getElementById('spinModalFrameStyle');
+              if (fSelM) fSelM.value = 'custom';
               if (spinCur) spinCur.customFrameImage = img;
               renderSpinModalPreview();
               showToast('Custom frame loaded!', 2000);
@@ -27544,38 +28168,84 @@
         });
       }
 
-      ['spinTrimText1', 'spinTrimText2', 'spinModalTextY'].forEach(function (id) {
+      ['spinTrimText1', 'spinTrimText2', 'spinText1', 'spinText2', 'spinModalTextY'].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) {
           el.addEventListener('input', function () {
-            if (id === 'spinModalTextY') {
+            if (id === 'spinText1' || id === 'spinTrimText1') {
+              var s1 = document.getElementById(id === 'spinText1' ? 'spinTrimText1' : 'spinText1');
+              if (s1) s1.value = el.value;
+              if (spinCur) spinCur.text1 = el.value;
+              spinLook.text1 = el.value;
+            } else if (id === 'spinText2' || id === 'spinTrimText2') {
+              var s2 = document.getElementById(id === 'spinText2' ? 'spinTrimText2' : 'spinText2');
+              if (s2) s2.value = el.value;
+              if (spinCur) spinCur.text2 = el.value;
+              spinLook.text2 = el.value;
+            } else if (id === 'spinModalTextY') {
               var yVal = document.getElementById('spinModalTextYVal');
               if (yVal) yVal.textContent = el.value + '%';
-              var posSel = document.getElementById('spinModalTextPos');
+              var posSel = document.getElementById('spinTextPos');
               if (posSel) posSel.value = 'custom';
+              var posSelM = document.getElementById('spinModalTextPos');
+              if (posSelM) posSelM.value = 'custom';
+              if (spinCur) spinCur.textYPercent = Number(el.value);
+              spinLook.textYPercent = Number(el.value);
             }
             renderSpinModalPreview();
           });
         }
       });
 
-      ['spinModalFrameStyle', 'spinModalTextPos', 'spinModalTextAlign', 'spinModalTextFont', 'spinModalTextColor', 'spinModalFx', 'spinModalTogglePreview'].forEach(function (id) {
+      ['spinFrameStyle', 'spinModalFrameStyle', 'spinTextPos', 'spinModalTextPos', 'spinModalTextAlign', 'spinTextFont', 'spinModalTextFont', 'spinTextColor', 'spinModalTextColor', 'spinFx', 'spinModalFx', 'spinModalTogglePreview', 'spinTextOn', 'spinOverlayOn'].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) {
           el.addEventListener('change', function () {
-            if (id === 'spinModalTextPos') {
+            if (id === 'spinFrameStyle' || id === 'spinModalFrameStyle') {
+              var alt = document.getElementById(id === 'spinFrameStyle' ? 'spinModalFrameStyle' : 'spinFrameStyle');
+              if (alt) alt.value = el.value;
+              if (spinCur) spinCur.frameStyle = el.value;
+              spinLook.frameStyle = el.value;
+            } else if (id === 'spinTextPos' || id === 'spinModalTextPos') {
+              var altPos = document.getElementById(id === 'spinTextPos' ? 'spinModalTextPos' : 'spinTextPos');
+              if (altPos) altPos.value = el.value;
               var ySlider = document.getElementById('spinModalTextY');
               var yVal = document.getElementById('spinModalTextYVal');
               var targetY = el.value === 'bottom' ? 84 : (el.value === 'middle' ? 50 : (el.value === 'upper' ? 28 : (el.value === 'lower' ? 72 : 12)));
               if (ySlider && el.value !== 'custom') {
                 ySlider.value = targetY;
                 if (yVal) yVal.textContent = targetY + '%';
+                if (spinCur) spinCur.textYPercent = targetY;
+                spinLook.textYPercent = targetY;
               }
+              if (spinCur) spinCur.textPos = el.value;
+              spinLook.textPos = el.value;
+            } else if (id === 'spinTextFont' || id === 'spinModalTextFont') {
+              var altFt = document.getElementById(id === 'spinTextFont' ? 'spinModalTextFont' : 'spinTextFont');
+              if (altFt) altFt.value = el.value;
+              if (spinCur) spinCur.textFont = el.value;
+              spinLook.textFont = el.value;
+            } else if (id === 'spinTextColor' || id === 'spinModalTextColor') {
+              var altCol = document.getElementById(id === 'spinTextColor' ? 'spinModalTextColor' : 'spinTextColor');
+              if (altCol) altCol.value = el.value;
+              if (spinCur) spinCur.textColor = el.value;
+              spinLook.textColor = el.value;
+            } else if (id === 'spinFx' || id === 'spinModalFx') {
+              var altFx = document.getElementById(id === 'spinFx' ? 'spinModalFx' : 'spinFx');
+              if (altFx) altFx.value = el.value;
+              if (spinCur) spinCur.fx = el.value;
+              spinLook.fx = el.value;
+              spinUpdateFxBadge();
+            } else if (id === 'spinTextOn') {
+              spinLook.textOn = el.checked;
+            } else if (id === 'spinOverlayOn') {
+              spinLook.overlay = el.checked;
             }
             renderSpinModalPreview();
           });
         }
       });
+
       // the look controls
       document.getElementById('spinPreset').addEventListener('change', function () {
         var pr = SPIN_PRESETS[this.value];
@@ -27597,7 +28267,6 @@
       ['dragenter', 'dragover'].forEach(function (t) { spinDrop.addEventListener(t, function (e) { e.preventDefault(); spinDrop.classList.add('over'); }); });
       ['dragleave', 'drop'].forEach(function (t) { spinDrop.addEventListener(t, function (e) { e.preventDefault(); spinDrop.classList.remove('over'); }); });
       spinDrop.addEventListener('drop', function (e) { if (e.dataTransfer) [].forEach.call(e.dataTransfer.files || [], spinAddFile); });
-      spinOverlay.addEventListener('click', function (e) { if (e.target === spinOverlay) closeSpin(); });
 
       // ---- Welcome screen (between guests) ----
       var welcomeOverlay = document.getElementById('welcomeOverlay');
@@ -28776,7 +29445,18 @@
       // prints included are saved per event with the setup. The renter's PayMongo
       // key never reaches this page: the server makes the QR and checks payment.
       var PAY_MODES = ['off', 'qr', 'voucher', 'both'];
-      var payCfg = { mode: 'off', price: 100, prints: 0, dual: false, tier1: { label: 'Thermal 50', price: 50, tier: 'receipt' }, tier2: { label: 'Canon Color 100', price: 100, tier: 'photo' } };
+      var payCfg = {
+        mode: 'off',
+        price: 100,
+        prints: 0,
+        dual: false,
+        options: [
+          { id: 'opt_1', label: 'Option 1', placeholder: 'Thermal', price: 50, tier: 'receipt' },
+          { id: 'opt_2', label: 'Option 2', placeholder: 'Coloured', price: 100, tier: 'photo' }
+        ],
+        tier1: { id: 'opt_1', label: 'Option 1', placeholder: 'Thermal', price: 50, tier: 'receipt' },
+        tier2: { id: 'opt_2', label: 'Option 2', placeholder: 'Coloured', price: 100, tier: 'photo' }
+      };
       var sessionTier = null;
       var payAcct = (function () { try { return JSON.parse(localStorage.getItem('pb_pay_acct') || 'null'); } catch (e) { return null; } })();
       var payPrintAllow = 0;
@@ -28790,25 +29470,45 @@
         if (noQr && mode === 'qr') mode = 'off';            // QR payments need the internet version
         if (noQr && mode === 'both') mode = 'voucher';
         var dual = !!p.dual;
-        var t1 = p.tier1 && typeof p.tier1 === 'object' ? p.tier1 : {};
-        var t2 = p.tier2 && typeof p.tier2 === 'object' ? p.tier2 : {};
-        var p1 = Math.floor(Number(t1.price));
-        var p2 = Math.floor(Number(t2.price));
-        var tier1 = {
-          label: String(t1.label || 'Thermal 50').slice(0, 30),
-          price: p1 >= 20 && p1 <= 20000 ? p1 : 50,
-          tier: 'receipt'
-        };
-        var tier2 = {
-          label: String(t2.label || 'Canon Color 100').slice(0, 30),
-          price: p2 >= 20 && p2 <= 20000 ? p2 : 100,
-          tier: 'photo'
-        };
+
+        var rawOpts = Array.isArray(p.options) && p.options.length ? p.options : null;
+        if (!rawOpts && (p.tier1 || p.tier2)) {
+          rawOpts = [];
+          if (p.tier1) rawOpts.push(p.tier1);
+          if (p.tier2) rawOpts.push(p.tier2);
+        }
+        if (!rawOpts || !rawOpts.length) {
+          rawOpts = [
+            { id: 'opt_1', label: 'Option 1', placeholder: 'Thermal', price: 50, tier: 'receipt' },
+            { id: 'opt_2', label: 'Option 2', placeholder: 'Coloured', price: 100, tier: 'photo' }
+          ];
+        }
+
+        var options = rawOpts.map(function (o, idx) {
+          o = o && typeof o === 'object' ? o : {};
+          var pr = Math.floor(Number(o.price));
+          var t = (o.tier === 'receipt' || o.tier === 'photo' || o.tier === 'all') ? o.tier : (idx === 0 ? 'receipt' : 'photo');
+          var ph = o.placeholder || (idx === 0 ? 'Thermal' : (idx === 1 ? 'Coloured' : 'Any layout'));
+          var defLbl = 'Option ' + (idx + 1);
+          var lbl = String(o.label != null && o.label !== '' ? o.label : defLbl).slice(0, 30);
+          return {
+            id: String(o.id || ('opt_' + (idx + 1))),
+            label: lbl,
+            placeholder: ph,
+            price: (pr >= 20 && pr <= 20000) ? pr : (idx === 0 ? 50 : 100),
+            tier: t
+          };
+        });
+
+        var tier1 = options[0] || { id: 'opt_1', label: 'Option 1', placeholder: 'Thermal', price: 50, tier: 'receipt' };
+        var tier2 = options[1] || tier1;
+
         return {
           mode: mode,
           price: price >= 20 && price <= 20000 ? price : 100,
           prints: Math.max(0, Math.min(5, Math.floor(Number(p.prints) || 0))),
           dual: dual,
+          options: options,
           tier1: tier1,
           tier2: tier2
         };
@@ -28836,8 +29536,12 @@
         el.classList.toggle('credit', !!c);
         if (c) {
           el.innerHTML = '✓ Paid session ready · <b>Tap to start</b>';
-        } else if (payCfg.dual) {
-          el.innerHTML = payEsc(payCfg.tier1.label) + ' (' + payEsc(peso(payCfg.tier1.price)) + ') or ' + payEsc(payCfg.tier2.label) + ' (' + payEsc(peso(payCfg.tier2.price)) + ') · <b>Tap to start</b>';
+        } else if (payCfg.dual && payCfg.options && payCfg.options.length) {
+          var parts = payCfg.options.map(function (o, i) {
+            var lbl = o.label || ('Option ' + (i + 1));
+            return payEsc(lbl) + ' (' + payEsc(peso(o.price)) + ')';
+          });
+          el.innerHTML = parts.join(' or ') + ' · <b>Tap to start</b>';
         } else {
           el.innerHTML = payEsc(peso(payCfg.price)) + ' per session · <b>Tap to start</b>';
         }
@@ -29050,20 +29754,34 @@
           var dualBox = document.getElementById('payDualChooseBox');
           var optQr = document.getElementById('payOptQr');
           var optVoucher = document.getElementById('payOptVoucher');
-          if (payCfg.dual) {
-            titleEl.textContent = peso(payCfg.tier1.price) + ' / ' + peso(payCfg.tier2.price);
-            subEl.textContent = payCfg.tier1.label + ' or ' + payCfg.tier2.label;
+          if (payCfg.dual && payCfg.options && payCfg.options.length) {
+            var prices = payCfg.options.map(function (o) { return peso(o.price); });
+            titleEl.textContent = prices.join(' / ');
+            var labels = payCfg.options.map(function (o, i) { return o.label || ('Option ' + (i + 1)); });
+            subEl.textContent = labels.join(' or ');
             if (dualBox) {
               dualBox.style.display = '';
-              var l1 = document.getElementById('payDualOpt1Label'); if (l1) l1.textContent = payCfg.tier1.label;
-              var p1 = document.getElementById('payDualOpt1Price'); if (p1) p1.textContent = peso(payCfg.tier1.price);
-              var l2 = document.getElementById('payDualOpt2Label'); if (l2) l2.textContent = payCfg.tier2.label;
-              var p2 = document.getElementById('payDualOpt2Price'); if (p2) p2.textContent = peso(payCfg.tier2.price);
+              var grid = document.getElementById('payOptionsGrid');
+              if (grid) {
+                grid.innerHTML = payCfg.options.map(function (opt, idx) {
+                  var ico = opt.tier === 'receipt' ? '🧾' : (opt.tier === 'photo' ? '🎨' : '✨');
+                  var lbl = opt.label || ('Option ' + (idx + 1));
+                  var ph = opt.placeholder || (idx === 0 ? 'Thermal' : (idx === 1 ? 'Coloured' : ''));
+                  return '<button type="button" class="pay-opt pay-dyn-opt" data-idx="' + idx + '" style="flex-direction:column; align-items:center; text-align:center; padding:12px 8px;">' +
+                    '<span class="ico" style="margin:0 0 4px; font-size:22px;">' + ico + '</span>' +
+                    '<b style="font-size:14px; line-height:1.2;">' + payEsc(lbl) + '</b>' +
+                    '<small style="font-weight:700; font-size:13px; color:var(--red,#C93D27); margin-top:2px;">' + payEsc(peso(opt.price)) + '</small>' +
+                    (ph ? '<span style="font-size:10px; color:var(--ink-dim); text-transform:uppercase; font-weight:700; margin-top:2px;">' + payEsc(ph) + '</span>' : '') +
+                  '</button>';
+                }).join('');
+              }
             }
+            if (optQr) optQr.hidden = true;
           } else {
             titleEl.textContent = peso(payCfg.price);
             subEl.textContent = payIncludes();
             if (dualBox) dualBox.style.display = 'none';
+            if (optQr) optQr.hidden = !payQrOn();
           }
           if (optQr) optQr.hidden = !payQrOn();
           if (optVoucher) optVoucher.hidden = !payVoucherOn();
@@ -29187,28 +29905,25 @@
       });
       document.getElementById('payOptQr').addEventListener('click', function () { document.getElementById('payDoneT').textContent = 'Payment received'; payStartQr(); });
       document.getElementById('payOptVoucher').addEventListener('click', function () { payStartVoucher(); });
-      var pdo1 = document.getElementById('payDualOpt1');
-      if (pdo1) pdo1.addEventListener('click', function () {
-        var lbl = (payCfg.tier1 && payCfg.tier1.label) || 'Thermal 50';
-        var prc = (payCfg.tier1 && payCfg.tier1.price) || 50;
-        if (payQrOn()) {
-          document.getElementById('payDoneT').textContent = lbl + ' payment received';
-          payStartQr('receipt', prc, lbl);
-        } else {
-          payStartVoucher();
-        }
-      });
-      var pdo2 = document.getElementById('payDualOpt2');
-      if (pdo2) pdo2.addEventListener('click', function () {
-        var lbl = (payCfg.tier2 && payCfg.tier2.label) || 'Canon Color 100';
-        var prc = (payCfg.tier2 && payCfg.tier2.price) || 100;
-        if (payQrOn()) {
-          document.getElementById('payDoneT').textContent = lbl + ' payment received';
-          payStartQr('photo', prc, lbl);
-        } else {
-          payStartVoucher();
-        }
-      });
+      var pog = document.getElementById('payOptionsGrid');
+      if (pog) {
+        pog.addEventListener('click', function (e) {
+          var btn = e.target.closest('.pay-dyn-opt');
+          if (!btn) return;
+          var idx = Number(btn.dataset.idx);
+          if (isNaN(idx) || !payCfg.options || !payCfg.options[idx]) return;
+          var opt = payCfg.options[idx];
+          var lbl = opt.label || ('Option ' + (idx + 1));
+          var prc = opt.price || payCfg.price;
+          var tier = opt.tier || 'all';
+          if (payQrOn()) {
+            document.getElementById('payDoneT').textContent = lbl + ' payment received';
+            payStartQr(tier, prc, lbl);
+          } else {
+            payStartVoucher('Enter ' + lbl + ' voucher:');
+          }
+        });
+      }
       document.getElementById('payBack').addEventListener('click', function () { payStopTimers(); payState.qrId = null; payShow('payChoose'); });
       document.getElementById('payClose').addEventListener('click', function () { payFinish(false); });
       paySheet.addEventListener('pointerdown', function () { payIdle(); });

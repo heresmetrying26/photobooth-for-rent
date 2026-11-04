@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.69', date: '2026-11-04' },
   { version: '1.0.68', date: '2026-11-04' },
   { version: '1.0.67', date: '2026-11-04' },
   { version: '1.0.66', date: '2026-11-04' },
@@ -79,7 +80,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.79', date: '2026-11-04', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.79/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.80', date: '2026-11-04', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.80/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -114,6 +115,26 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-04', title: 'Full-Page 360 Studio Desk with Sticky Live Side Preview & Turntable Simulation', for: ['app', 'website'], app: '1.0.69',
+    items: [
+      'Full-Page 360 Studio Interface: Redesigned the 360 booth desk from a modal prompt into a dedicated full-page studio workspace with quick-jump navigation tabs.',
+      'Sticky Real-Time Side Preview: WYSIWYG canvas pinned beside controls updates instantly as you customize frames, text lines, fonts, colors, and vertical placement.',
+      'Turntable Simulation Stage: Live preview stage renders an animated rotating 360 platform and camera rig when no video is loaded, enabling instant branding preview.',
+      'Interactive Playback & Timeline Scrubber: Seek bar with live timecode counter and multi-speed controls (0.25x, 0.5x, 1.0x, 2.0x) for precise video inspection.',
+      'Animated Particle FX Simulation: Live particle preview simulates gold dust, confetti, hearts, and bokeh directly on stage.'
+    ]
+  },
+  {
+    date: '2026-11-04', title: 'Full-Page 360 Studio Desk with Sticky Live Side Preview & Turntable Simulation (Android)', for: ['app'], app: '1.0.80',
+    items: [
+      'Full-Page 360 Studio Interface: Redesigned the 360 booth desk from a modal prompt into a dedicated full-page studio workspace with quick-jump navigation tabs.',
+      'Sticky Real-Time Side Preview: WYSIWYG canvas pinned beside controls updates instantly as you customize frames, text lines, fonts, colors, and vertical placement.',
+      'Turntable Simulation Stage: Live preview stage renders an animated rotating 360 platform and camera rig when no video is loaded, enabling instant branding preview.',
+      'Interactive Playback & Timeline Scrubber: Seek bar with live timecode counter and multi-speed controls (0.25x, 0.5x, 1.0x, 2.0x) for precise video inspection.',
+      'Animated Particle FX Simulation: Live particle preview simulates gold dust, confetti, hearts, and bokeh directly on stage.'
+    ]
+  },
   {
     date: '2026-11-04', title: 'Thermal Layouts, Dual Pricing, Custom Labels & Tiered Vouchers (Android)', for: ['app'], app: '1.0.79',
     items: [

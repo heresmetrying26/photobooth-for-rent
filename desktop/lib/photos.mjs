@@ -96,6 +96,17 @@ export function wallUrl(slug) {
   return b && s ? b + '/wall/' + s : (b ? b + '/wall' : null);
 }
 
+let wallCue = { action: 'idle', text: '', expiresAt: 0 };
+export function setWallCue(action, text = '', durationMs = 4000) {
+  wallCue = { action: String(action || 'idle'), text: String(text || ''), expiresAt: Date.now() + Math.max(500, durationMs || 4000) };
+}
+export function getWallCue() {
+  if (wallCue.expiresAt && Date.now() > wallCue.expiresAt) {
+    wallCue = { action: 'idle', text: '', expiresAt: 0 };
+  }
+  return wallCue;
+}
+
 const safeName = (v) => String(v || '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().replace(/^[. ]+|[. ]+$/g, '').slice(0, 80);
 const IMG_RE = /\.(jpe?g|png|webp|gif|mp4|webm|mov|m4v)$/i;
 const VIDEO_RE = /\.(mp4|webm|mov|m4v)$/i;
@@ -292,12 +303,29 @@ export function spinDirNow() {
 export function spinSendUrl() { const b = shareBase(); return b ? b + '/send/' + spinToken : null; }
 export function spinPreviewBase() { return sharePort ? 'http://127.0.0.1:' + sharePort + '/send/' + spinToken : null; }
 export const spinEditedDir = () => { const d = spinDirNow(); return d ? join(d, 'edited') : null; };
-export function spinList() {
+export function spinList(opts = {}) {
   const d = spinDirNow(); if (!d) return [];
   let names = []; try { names = readdirSync(d); } catch { return []; }
-  return names.filter((n) => VIDEO_RE.test(n) && !n.startsWith('.')).map((n) => {
-    try { const st = statSync(join(d, n)); return st.isFile() ? { name: n, size: st.size, mtime: st.mtimeMs } : null; } catch { return null; }
-  }).filter(Boolean).sort((a, b) => b.mtime - a.mtime).slice(0, 300);
+  const now = Date.now();
+  const minAgeMs = typeof opts.minAgeMs === 'number' ? opts.minAgeMs : 600;
+  const minSize = typeof opts.minSize === 'number' ? opts.minSize : 10240; // 10KB minimum
+  return names
+    .filter((n) => VIDEO_RE.test(n) && !n.startsWith('.') && !/\.(tmp|part|crdownload)$/i.test(n))
+    .map((n) => {
+      try {
+        const st = statSync(join(d, n));
+        if (!st.isFile()) return null;
+        // Smart Inbox Watcher: ignore empty and actively writing files from slow transfers
+        if (!opts.includePending) {
+          if (st.size < minSize) return null;
+          if (now - st.mtimeMs < minAgeMs) return null;
+        }
+        return { name: n, size: st.size, mtime: st.mtimeMs };
+      } catch { return null; }
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.mtime - a.mtime)
+    .slice(0, 300);
 }
 export function spinShare(name, folderKey, subfolder, outName) {
   const rel = String(name || '');
@@ -907,6 +935,14 @@ body{margin:0;background:#080709;color:#fff;font-family:-apple-system,BlinkMacSy
 
 .waiting{text-align:center;color:#8E8994}
 .waiting h1{font-size:32px;color:#fff;margin:0 0 10px}
+
+.cue-overlay{position:fixed;inset:0;background:rgba(8,7,9,0.85);backdrop-filter:blur(24px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50;transition:opacity .25s ease;pointer-events:none}
+.cue-pulse-ring{position:absolute;width:300px;height:300px;border-radius:50%;border:4px solid rgba(255,107,85,0.7);animation:cueRing 1.2s infinite ease-out}
+@keyframes cueRing{0%{transform:scale(0.7);opacity:1}100%{transform:scale(1.7);opacity:0}}
+.cue-text{font-size:120px;font-weight:900;letter-spacing:-.03em;color:#fff;text-shadow:0 0 50px rgba(255,107,85,0.9),0 10px 40px rgba(0,0,0,0.9);animation:cuePop .35s cubic-bezier(0.175,0.885,0.32,1.275)}
+@keyframes cuePop{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
+.cue-sub{font-size:24px;font-weight:800;color:#FF6B55;text-transform:uppercase;letter-spacing:.15em;margin-top:14px;text-shadow:0 2px 12px rgba(0,0,0,0.8)}
+.celebrate-glow{box-shadow:0 0 120px rgba(255,107,85,0.85),0 0 60px rgba(255,215,0,0.7) !important;border:3px solid rgba(255,215,0,0.9) !important}
 </style>
 <script src="/qr.js"></script>
 </head>
@@ -922,6 +958,12 @@ body{margin:0;background:#080709;color:#fff;font-family:-apple-system,BlinkMacSy
 <video id="wallVid" autoplay playsinline muted></video>
 <div class="waiting" id="waitMsg"><h1>📺 360 Live Wall</h1><p>Waiting for the first 360 spin…<br>Clips will appear here automatically.</p></div>
 <div class="new-badge" id="newBadge" style="display:none">✨ New 360 Spin!</div>
+
+<div class="cue-overlay" id="cueOverlay" style="display:none">
+  <div class="cue-pulse-ring"></div>
+  <div class="cue-text" id="cueText">3</div>
+  <div class="cue-sub" id="cueSub">GET READY TO JUMP!</div>
+</div>
 
 <div class="qr-card">
   <img id="wallQr" alt="QR Code">
@@ -939,6 +981,19 @@ var wait = document.getElementById('waitMsg');
 var badge = document.getElementById('newBadge');
 var topBar = document.getElementById('topBar');
 var muteBtn = document.getElementById('muteBtn');
+var cueOverlay = document.getElementById('cueOverlay');
+var cueText = document.getElementById('cueText');
+var cueSub = document.getElementById('cueSub');
+
+function renderCue(cue) {
+  if (!cue || !cue.action || cue.action === 'idle') {
+    cueOverlay.style.display = 'none';
+    return;
+  }
+  cueOverlay.style.display = 'flex';
+  cueText.textContent = cue.text || '3';
+  cueSub.textContent = cue.action === 'recording' ? 'RECORDING 🌀' : (cue.action === 'celebrate' ? 'NEW 360 CLIP READY! 🎉' : 'GET READY! 🚀');
+}
 
 function makeQr(url) {
   try {
@@ -973,6 +1028,7 @@ async function pollFeed() {
   try {
     var r = await fetch('/wall/' + SLUG + '/feed');
     var j = await r.json();
+    if (j && j.cue) renderCue(j.cue);
     if (j && j.ok && Array.isArray(j.videos) && j.videos.length > 0) {
       var isFirst = playlist.length === 0;
       var newVideos = j.videos.filter(function(v){ return !seenNames.has(v.name); });
@@ -981,13 +1037,26 @@ async function pollFeed() {
       if (isFirst) {
         playIndex(0);
       } else if (newVideos.length > 0) {
-        // A brand new spin arrived: play it next!
+        // A brand new spin arrived: celebrate & play immediately!
+        badge.textContent = '✨ New 360 Spin Ready!';
         badge.style.display = 'block';
-        setTimeout(function(){ badge.style.display = 'none'; }, 4000);
+        vid.classList.add('celebrate-glow');
+        setTimeout(function(){
+          badge.style.display = 'none';
+          vid.classList.remove('celebrate-glow');
+        }, 6000);
         curIdx = 0;
         playIndex(0);
       }
     }
+  } catch(e) {}
+}
+
+async function pollCue() {
+  try {
+    var r = await fetch('/wall/' + SLUG + '/cue');
+    var j = await r.json();
+    if (j && j.ok && j.cue) renderCue(j.cue);
   } catch(e) {}
 }
 
@@ -1023,7 +1092,8 @@ window.addEventListener('keydown', function(e){
 });
 
 pollFeed();
-setInterval(pollFeed, 4000);
+setInterval(pollFeed, 3000);
+setInterval(pollCue, 700);
 </script>
 </body>
 </html>`;
@@ -1087,10 +1157,13 @@ function handleWall(req, res, url, wlm) {
   const rawSlug = wlm[1] || null;
   const slug = resolveSlug(rawSlug);
   const sub = wlm[2] || '';
+  if (sub === 'cue') {
+    return send(res, 200, 'application/json', JSON.stringify({ ok: true, cue: getWallCue() }), cors);
+  }
   if (sub === 'feed') {
-    if (!slug) return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug: null, name: '', videos: [] }), cors);
+    if (!slug) return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug: null, name: '', cue: getWallCue(), videos: [] }), cors);
     const dir = dirOf(slug);
-    if (!dir || !existsSync(dir)) return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug, name: '', videos: [] }), cors);
+    if (!dir || !existsSync(dir)) return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug, name: '', cue: getWallCue(), videos: [] }), cors);
     const ev = index.folders[slug];
     const evName = ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : '360 Booth';
     const list = photosIn(dir).filter(({ n }) => VIDEO_RE.test(n));
@@ -1100,7 +1173,7 @@ function handleWall(req, res, url, wlm) {
       pageUrl: '/e/' + slug + '/p/' + encodeURIComponent(n),
       mtime: t
     }));
-    return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug, name: evName, count: videos.length, videos }), cors);
+    return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug, name: evName, cue: getWallCue(), count: videos.length, videos }), cors);
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
   if (!slug) {
@@ -1133,7 +1206,7 @@ async function handleShare(req, res) {
   if (om) return handleOwn(req, res, url, om);
   const stm = /^\/station(?:\/([A-Za-z0-9_-]{6,30}))?(?:\/(list|stats))?\/?$/.exec(url.pathname);
   if (stm) return handleStation(req, res, url, stm);
-  const wlm = /^\/wall(?:\/([A-Za-z0-9_-]{6,30}))?(?:\/(feed))?\/?$/.exec(url.pathname);
+  const wlm = /^\/wall(?:\/([A-Za-z0-9_-]{6,30}))?(?:\/(feed|cue))?\/?$/.exec(url.pathname);
   if (wlm) return handleWall(req, res, url, wlm);
   const trm = /^\/e\/([A-Za-z0-9]{6,20})\/track\/?$/.exec(url.pathname);
   if (trm) return handleTrack(req, res, url, trm[1]);

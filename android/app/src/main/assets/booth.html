@@ -14474,6 +14474,15 @@
                   <option value="1080">1080p Full HD</option>
                   <option value="720">720p (faster)</option>
                 </select></label>
+              <label title="Cinematic color grading filter applied to the video">Color Grade <select id="spinLut">
+                  <option value="none" selected>Natural (Original)</option>
+                  <option value="glam_bw">Glamour B&amp;W (Kardashian style)</option>
+                  <option value="teal_orange">Blockbuster Teal &amp; Orange</option>
+                  <option value="golden_hour">Golden Hour Warm Glow</option>
+                  <option value="vibrant">Vibrant Pop</option>
+                  <option value="vintage">Vintage Film</option>
+                </select></label>
+              <label title="Seconds into video where the slow motion speed ramp and flash hits (0 or empty = automatic middle)">Beat drop (s) <input type="number" id="spinDropTime" min="0" max="30" step="0.1" placeholder="Auto" style="width:58px;padding:3px 6px;font-size:12px;border-radius:6px;border:1.5px solid var(--line);"></label>
             </div>
             <div class="spin-row">
               <label class="chk"><input type="checkbox" id="spinOverlayOn" checked> Frame &amp; overlay</label>
@@ -20047,7 +20056,11 @@
             const vn = Math.min(cap, Math.max(1, Math.ceil((left - VOICE_LEAD) / 1000)));
             if (!early && left <= earlyMs) { early = true; try { onEarly(); } catch (e) { } }   // camera with a shutter lag: fire before the countdown ends
             if (left > 0 && vn !== voiced) { voiced = vn; try { voiceNumber(vn); } catch (e) { } }
-            if (n !== shown) { shown = n; popNum(n, false); try { fxTick(n); } catch (e) { } }
+            if (n !== shown) {
+              shown = n; popNum(n, false);
+              try { fxTick(n); } catch (e) { }
+              try { if (window.pb4u && window.pb4u.setWallCue) window.pb4u.setWallCue('countdown', String(n), 1200); } catch (e) { }
+            }
             guestCall('tick', String(n), false, frac, cdShot.textContent);
             if (left <= 0) { clearInterval(timer); resolve(); }
           };
@@ -20069,6 +20082,7 @@
         await runCountdown(timerSec + extra, index, lead > 600 ? lead - 600 : 0, fireNow);
         if (sess && sess.cancelled) return;
         popNum('Pose', true);
+        try { if (window.pb4u && window.pb4u.setWallCue) window.pb4u.setWallCue('countdown', 'JUMP! 🎬', 1800); } catch (e) { }
         cdBar.style.strokeDashoffset = '100';
         guestCall('tick', 'Pose', true, 0, cdShot.textContent);
         try { if (!voiceSmile()) fxPose(); } catch (e) { }
@@ -20627,6 +20641,93 @@
       }
 
       startBtn.addEventListener('click', () => beginGuestFlow(false));
+
+      // ---- Universal Bluetooth Remote / Pocket Shutter Clicker & Gamepad Engine ----
+      function triggerRemoteShutter(e) {
+        var isInput = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+        if (isInput && e && (e.key === ' ' || e.key === 'Enter')) return;
+
+        // 1. Welcome Screen
+        var wel = document.getElementById('welcomeOverlay');
+        if (wel && !wel.hidden && wel.style.display !== 'none') {
+          if (typeof triggerWelcomeTap === 'function') { triggerWelcomeTap(e); return; }
+        }
+
+        // 2. Start Screen
+        var ss = document.getElementById('startScreen');
+        if (ss && !ss.hidden && ss.style.display !== 'none') {
+          if (typeof leaveStartScreen === 'function') { leaveStartScreen(); return; }
+        }
+
+        // 3. Ready Overlay (during countdown start)
+        var ro = document.getElementById('readyOverlay');
+        if (ro && !ro.hidden && ro.style.display !== 'none') {
+          var rsb = document.getElementById('readyStartBtn');
+          if (rsb) { rsb.click(); return; }
+        }
+
+        // 4. Inter-shot Pause (pausing countdown in session)
+        if (sess && sess.pauseEnd) {
+          sess.pauseEnd();
+          return;
+        }
+
+        // 5. Result Screen -> Next Guest
+        if (state === 'result') {
+          if (typeof resetForNextGuest === 'function') { resetForNextGuest(); return; }
+        }
+
+        // 6. 360 Studio Desk Active
+        var spinDesk = document.getElementById('spinStudioWrap') || document.getElementById('spinOverlay');
+        var spinIsOpen = spinDesk && (!spinDesk.hidden && spinDesk.style.display !== 'none');
+        if (spinIsOpen) {
+          var editBtn = document.getElementById('spinEditBtn');
+          if (editBtn && !editBtn.hidden && !editBtn.disabled) { editBtn.click(); return; }
+        }
+
+        // 7. Normal Photo Session Idle -> Start
+        if (state !== 'capturing') {
+          if (typeof beginGuestFlow === 'function') { beginGuestFlow(false); return; }
+        }
+      }
+
+      window.addEventListener('keydown', function (e) {
+        var k = e.key;
+        if (k === ' ' || k === 'Enter' || k === 'PageDown' || k === 'PageUp' || k === 'ArrowRight' || k === 'AudioVolumeUp' || k === 'AudioVolumeDown' || k === 'VolumeUp' || k === 'VolumeDown') {
+          var printMod = document.getElementById('printModal');
+          if (printMod && !printMod.hidden) return;
+          var tplMod = document.getElementById('tplModal');
+          if (tplMod && !tplMod.hidden) return;
+          var ppv = document.getElementById('ppvOverlay');
+          if (ppv && !ppv.hidden) return;
+          if (k === ' ') e.preventDefault();
+          triggerRemoteShutter(e);
+        }
+      }, false);
+
+      // HTML5 Gamepad API Poller (for wireless pocket gamepads, Bluetooth pedals)
+      (function setupGamepadRemote() {
+        var prevButtons = {};
+        function pollGamepads() {
+          try {
+            var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+            for (var i = 0; i < pads.length; i++) {
+              var pad = pads[i];
+              if (!pad) continue;
+              var prev = prevButtons[pad.index] || [];
+              for (var b = 0; b < pad.buttons.length; b++) {
+                var pressed = pad.buttons[b].pressed;
+                if (pressed && !prev[b] && (b === 0 || b === 1 || b === 2 || b === 3 || b === 6 || b === 7 || b === 9)) {
+                  triggerRemoteShutter();
+                  break;
+                }
+              }
+              prevButtons[pad.index] = pad.buttons.map(function (btn) { return btn.pressed; });
+            }
+          } catch (e) { }
+        }
+        setInterval(pollGamepads, 120);
+      })();
       // Result card: the guest's Print button lives next to Done, under the QR.
       (function () {
         var acts = document.getElementById('resultActions'), pq = document.getElementById('printQuickBtn');
@@ -27474,12 +27575,27 @@
           stage.style.maxWidth = 'min(100%, 360px)';
           if (v) v.style.objectFit = 'contain';
         }
+        var lutFilters = {
+          glam_bw: 'grayscale(100%) contrast(125%) brightness(105%)',
+          teal_orange: 'contrast(115%) saturate(120%) hue-rotate(-10deg)',
+          golden_hour: 'sepia(25%) saturate(125%) brightness(105%)',
+          vibrant: 'saturate(140%) contrast(110%)',
+          vintage: 'sepia(35%) contrast(90%) brightness(95%)',
+          none: 'none'
+        };
+        var lut = (spinLook && spinLook.lut) || 'none';
+        var filt = lutFilters[lut] || 'none';
+        if (v) v.style.filter = (filt !== 'none') ? filt : '';
+        var c = document.getElementById('spinPreviewCanvas');
+        if (c) c.style.filter = (filt !== 'none') ? filt : '';
       }
       function spinLookToUI() {
         var g = function (id) { return document.getElementById(id); };
         g('spinPreset').value = spinLook.preset; g('spinSpeed').value = spinLook.speed; g('spinSmooth').checked = !!spinLook.smooth; if (g('spinGpu')) g('spinGpu').checked = !!spinLook.gpu;
         if (g('spinZoom')) g('spinZoom').checked = spinLook.zoom !== undefined ? !!spinLook.zoom : true;
         if (g('spinFlash')) g('spinFlash').checked = spinLook.flash !== undefined ? !!spinLook.flash : true;
+        if (g('spinLut')) g('spinLut').value = spinLook.lut || 'none';
+        if (g('spinDropTime')) g('spinDropTime').value = (spinLook.dropTime != null && spinLook.dropTime > 0) ? String(spinLook.dropTime) : '';
         g('spinOrient').value = spinLook.orient; g('spinQual').value = String(spinLook.quality); g('spinOverlayOn').checked = !!spinLook.overlay;
         if (g('spinFrameStyle')) g('spinFrameStyle').value = spinLook.frameStyle || 'floral_gold';
         var classicCtrl = g('spinClassicControls');
@@ -27537,6 +27653,11 @@
         spinLook.speed = g('spinSpeed').value; spinLook.smooth = g('spinSmooth').checked; if (g('spinGpu')) spinLook.gpu = g('spinGpu').checked; spinLook.orient = g('spinOrient').value;
         if (g('spinZoom')) spinLook.zoom = g('spinZoom').checked;
         if (g('spinFlash')) spinLook.flash = g('spinFlash').checked;
+        if (g('spinLut')) spinLook.lut = g('spinLut').value || 'none';
+        if (g('spinDropTime')) {
+          var dt = parseFloat(g('spinDropTime').value);
+          spinLook.dropTime = (isFinite(dt) && dt > 0) ? dt : null;
+        }
         spinLook.quality = Number(g('spinQual').value) || 1080; spinLook.overlay = g('spinOverlayOn').checked;
         if (g('spinFrameStyle')) spinLook.frameStyle = g('spinFrameStyle').value || 'floral_gold';
         var classicCtrl = g('spinClassicControls');
@@ -29600,6 +29721,7 @@
             var txtBlob = await spinMakeTextOverlay(dims.W, dims.H, textOpt);
             if (txtBlob) txtOv = await window.pb4u.spinOverlay(new Uint8Array(await txtBlob.arrayBuffer()));
           }
+          try { if (window.pb4u && window.pb4u.setWallCue) window.pb4u.setWallCue('recording', '360 SPINNING! 🌀', 5000); } catch (e) { }
           var j = await window.pb4u.spinProcess({
             name: it.name, label: spinPresetLabel(), overlay: ov, textOverlay: txtOv,
             options: {
@@ -29610,6 +29732,8 @@
               fxLocation: spinLook.fxLocation || 'full',
               zoom: spinLook.zoom !== undefined ? !!spinLook.zoom : true,
               flash: spinLook.flash !== undefined ? !!spinLook.flash : true,
+              dropTime: (spinLook.dropTime != null && spinLook.dropTime > 0) ? Number(spinLook.dropTime) : null,
+              lut: spinLook.lut || 'none',
               textTiming: textOpt.textTiming
             }
           });
@@ -29620,7 +29744,12 @@
             var st = await window.pb4u.spinJob(j.id);
             if (!st) throw new Error('The editing stopped unexpectedly');
             it.pct = st.pct || 0; spinTagUpdate(it); spinModalUpdate();
-            if (st.state === 'done') { it.edited = st.out; it.status = 'edited'; if (it.key) spinDoneSet(it.key, st.out); break; }
+            if (st.state === 'done') {
+              it.edited = st.out; it.status = 'edited';
+              if (it.key) spinDoneSet(it.key, st.out);
+              try { if (window.pb4u && window.pb4u.setWallCue) window.pb4u.setWallCue('celebrate', '✨ FRESH OFF THE 360! ✨', 6000); } catch (e) { }
+              break;
+            }
             if (st.state === 'error') throw new Error(st.error || 'The video could not be edited');
             if (st.state === 'cancelled') { it.status = 'new'; it.job = null; spinRender(); spinModalUpdate(); return; }
           }
@@ -30453,7 +30582,7 @@
         if (pr) { spinLook.preset = this.value; spinLook.speed = pr.speed; spinLook.rates = (pr.rates || []).slice(); spinLook.reverse = !!pr.reverse; spinLook.smooth = pr.smooth; spinLook.audio = pr.audio; spinLook.overlay = pr.overlay; spinLookToUI(); spinLookFromUI(true); }
         else { spinLook.preset = 'custom'; spinLookFromUI(true); }
       });
-      ['spinSpeed', 'spinSmooth', 'spinGpu', 'spinZoom', 'spinFlash', 'spinOrient', 'spinQual', 'spinFx', 'spinFxMovement', 'spinFxLocation', 'spinFxSpeed', 'spinFxOpacity', 'spinFxScale', 'spinFxWobble', 'spinOverlayOn', 'spinFrameStyle', 'spinAudio', 'spinVol', 'spinAuto', 'spinAutoShare', 'spinAutoPrint', 'spinPrintMode', 'spinTextOn', 'spinText1', 'spinText2', 'spinTextPos', 'spinTextColor', 'spinTextSize', 'spinTextFont', 'spinTextTiming',
+      ['spinSpeed', 'spinSmooth', 'spinGpu', 'spinZoom', 'spinFlash', 'spinLut', 'spinDropTime', 'spinOrient', 'spinQual', 'spinFx', 'spinFxMovement', 'spinFxLocation', 'spinFxSpeed', 'spinFxOpacity', 'spinFxScale', 'spinFxWobble', 'spinOverlayOn', 'spinFrameStyle', 'spinAudio', 'spinVol', 'spinAuto', 'spinAutoShare', 'spinAutoPrint', 'spinPrintMode', 'spinTextOn', 'spinText1', 'spinText2', 'spinTextPos', 'spinTextColor', 'spinTextSize', 'spinTextFont', 'spinTextTiming',
        'spinText1Font', 'spinText1Color', 'spinText1Size', 'spinText2Font', 'spinText2Color', 'spinText2Size',
        'spinClassicBorderColor', 'spinClassicBandOn', 'spinClassicBandColor', 'spinClassicBandAlpha'].forEach(function (id) {
         var el = document.getElementById(id);
@@ -30461,7 +30590,7 @@
           spinLookFromUI(true);
         });
       });
-      ['spinText1', 'spinText2', 'spinTextColor', 'spinModalTextColor', 'spinText1Color', 'spinText1Size', 'spinText2Color', 'spinText2Size', 'spinClassicBorderColor', 'spinClassicBandColor', 'spinClassicBandAlpha', 'spinFxSpeed', 'spinFxOpacity', 'spinFxScale', 'spinFxWobble'].forEach(function (id) {
+      ['spinText1', 'spinText2', 'spinDropTime', 'spinTextColor', 'spinModalTextColor', 'spinText1Color', 'spinText1Size', 'spinText2Color', 'spinText2Size', 'spinClassicBorderColor', 'spinClassicBandColor', 'spinClassicBandAlpha', 'spinFxSpeed', 'spinFxOpacity', 'spinFxScale', 'spinFxWobble'].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener('input', function () {
           spinLookFromUI(true);

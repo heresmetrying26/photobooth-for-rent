@@ -1,13 +1,12 @@
 # Session Context
 
-**Current Task**: Released v1.0.71 (Desktop v1.0.74, Android v1.0.85) featuring Square 1:1 live aspect ratio, 40 animated effects, and motion physics engine.
+**Current Task**: Release v1.0.72 (Desktop v1.0.75, Android v1.0.86) featuring Spin & Print, Universal Remote, Beat-Drop Ramping, 3D LUTs, Live TV Wall Sync, and Smart Inbox Watcher.
 
 **Key Decisions**:
-- Added non-letterbox 1:1 Square live preview and continuous looping playback for Instagram.
-- Exposed all 40 professional animated overlay effects across 6 categories in 360 Studio.
-- Implemented 6 physical motion trajectories with live controls for speed, opacity, scale, wobble, and screen focus.
+- Implemented Spin & Print: extract hero or multi-angle frames directly to physical strips/keychains with auto-print.
+- Built Universal Remote & Gamepad Clicker: supports selfie remotes, presentation clickers, and HTML5 Gamepad pedals.
+- Added Beat-Drop Speed Ramping, 3D LUT Color Engine, Smart Inbox Watcher, and Live TV Audience Sync.
 
 **Next Steps**:
-- Implement Universal Bluetooth Remote / Pocket Shutter Clicker triggering.
-- Implement Beat-drop auto-sync speed ramping.
-- Implement Live TV Wall audience countdown and celebration replay.
+- Automated CI/CD builds desktop and Android installers on GitHub Actions.
+- Release verified and ready for live production use.

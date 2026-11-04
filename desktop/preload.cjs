@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld('pb4u', {
   spinCancel: (id) => ipcRenderer.invoke('pb4u:spinCancel', id),
   spinExtractFrames: (req) => ipcRenderer.invoke('pb4u:spinExtractFrames', req),
   spinDelete: (name) => ipcRenderer.invoke('pb4u:spinDelete', name),
+  setWallCue: (action, text, durationMs) => ipcRenderer.invoke('pb4u:setWallCue', action, text, durationMs),
   spinShare: (name, folderKey, subfolder, outName) => ipcRenderer.invoke('pb4u:spinShare', String(name || ''), String(folderKey || ''), String(subfolder || ''), String(outName || '')),
   spinStationUrl: (slug) => ipcRenderer.invoke('pb4u:spinStationUrl', slug ? String(slug) : ''),
   spinWallUrl: (slug) => ipcRenderer.invoke('pb4u:spinWallUrl', slug ? String(slug) : ''),

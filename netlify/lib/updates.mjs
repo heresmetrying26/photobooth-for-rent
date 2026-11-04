@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.75', date: '2026-11-05' },
   { version: '1.0.74', date: '2026-11-04' },
   { version: '1.0.73', date: '2026-11-04' },
   { version: '1.0.72', date: '2026-11-04' },
@@ -85,7 +86,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.84', date: '2026-11-04', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.84/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.86', date: '2026-11-05', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.86/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -120,6 +121,25 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-05', title: 'Universal Bluetooth Remote, Beat-Drop Speed Ramping, 3D LUTs & Live TV Audience Sync', for: ['app', 'website'], app: '1.0.75',
+    items: [
+      'Spin & Print: High-resolution frame extraction for 3-shot photo strips, keychains, and 4R physical prints directly from 360 videos, with QR codes linking back to the clip.',
+      'Universal Bluetooth Remote & Gamepad Shutter: Hands-free triggering via wireless selfie remotes (VolumeUp/Down), presentation clickers (PageDown/ArrowRight), foot pedals, and pocket gamepads (HTML5 Gamepad API).',
+      'Beat-Drop Sync Speed Ramping: Custom beat drop timestamp synchronization switching from 2× speed to 0.25×/0.5× slow motion with coordinated optical white flash and dynamic punch-in zoom.',
+      'Cinematic 3D LUT Color Engine: Professional color grading filters (Glamour B&W, Blockbuster Teal & Orange, Golden Hour, Vibrant Pop, Vintage Film) with live interactive preview.',
+      'Live TV Audience Sync: /wall screen features synchronized crowd countdowns ("3... 2... 1... JUMP! 🎬") and instant celebration replay banners ("✨ New 360 Spin Ready!") when new clips land.',
+      'Smart Inbox Watcher: Defensive file stability checking guarding against incomplete or truncated video processing during slow SD card or Wi-Fi transfers.'
+    ]
+  },
+  {
+    date: '2026-11-05', title: 'Universal Bluetooth Remote, Beat-Drop Speed Ramping, 3D LUTs & Live TV Audience Sync (Android)', for: ['app'], app: '1.0.86',
+    items: [
+      'Spin & Print Integration: Automatic photo strip generation and keychain printing from 360 clips on tablet.',
+      'Universal Remote Triggering: Pocket Bluetooth selfie clickers and volume button triggering support.',
+      'Cinematic Color LUTs & Beat-Drop Ramping: Real-time look grading and synchronized speed transitions.'
+    ]
+  },
   {
     date: '2026-11-04', title: 'Square 1:1 Live Aspect, 40 Animated FX & Multi-Trajectory Motion Engine', for: ['app', 'website'], app: '1.0.74',
     items: [

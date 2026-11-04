@@ -4130,6 +4130,7 @@
       justify-content: center;
       margin: 0 auto 10px;
       box-shadow: 0 4px 16px rgba(0,0,0,.25);
+      transition: aspect-ratio 0.2s ease, max-width 0.2s ease;
     }
 
     .spin-stage-wrap video {
@@ -4142,6 +4143,28 @@
       background: #000;
       border-radius: 12px;
       display: block;
+    }
+
+    .spin-stage-wrap.is-square {
+      aspect-ratio: 1 / 1;
+      max-width: 48vh;
+    }
+    .spin-stage-wrap.is-square video {
+      object-fit: cover;
+    }
+    .spin-stage-wrap.is-landscape {
+      aspect-ratio: 16 / 9;
+      max-width: min(100%, 720px);
+    }
+    .spin-stage-wrap.is-landscape video {
+      object-fit: contain;
+    }
+    .spin-stage-wrap.is-portrait {
+      aspect-ratio: 9 / 16;
+      max-width: min(100%, 360px);
+    }
+    .spin-stage-wrap.is-portrait video {
+      object-fit: contain;
     }
 
     .spin-stage-wrap canvas {
@@ -14474,17 +14497,55 @@
               </label>
               <label>Animated effect <select id="spinFx">
                   <option value="none">None (no effect)</option>
-                  <option value="gold_dust">Gold Dust ✨</option>
-                  <option value="sparkles">Sparkles ✨</option>
-                  <option value="confetti">Confetti 🎨</option>
-                  <option value="bokeh">Bokeh Lights ✨</option>
-                  <option value="floating_hearts">Floating Hearts 🎨</option>
-                  <option value="rose_petals">Rose Petals 🎨</option>
-                  <option value="smoke_ring">Smoke Ring ✨</option>
-                  <option value="champagne_bubbles">Champagne Bubbles ✨</option>
-                  <option value="neon_glow_edge">Neon Glow Edge ✨</option>
                 </select></label>
               <span id="spinFxBadge" class="spin-fx-pill" hidden></span>
+            </div>
+
+            <!-- Effect Movement & Live Physics Customizer -->
+            <div id="spinFxCustomizer" style="display:none;margin-top:6px;padding:8px 10px;background:#fff;border-radius:10px;border:1.5px solid var(--line);box-shadow:0 1px 4px rgba(0,0,0,.04);">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <b style="font-size:12px;color:var(--ink);">✨ Effect Motion &amp; Behavior</b>
+                <span class="spin-pill" style="font-size:10px;">Live Physics</span>
+              </div>
+              <div class="spin-row" style="gap:8px 12px;flex-wrap:wrap;">
+                <label style="font-size:12px;display:flex;align-items:center;gap:4px;">
+                  Trajectory
+                  <select id="spinFxMovement" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid var(--line);">
+                    <option value="vortex" selected>🌀 Vortex Orbit (360° Spin)</option>
+                    <option value="fall">⬇️ Falling Cascade</option>
+                    <option value="rise">⬆️ Rising Float</option>
+                    <option value="burst">💥 Radial Burst</option>
+                    <option value="beat_pulse">🎵 Beat Pulse</option>
+                    <option value="drift">💨 Wind Drift</option>
+                  </select>
+                </label>
+                <label style="font-size:12px;display:flex;align-items:center;gap:4px;">
+                  Location
+                  <select id="spinFxLocation" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid var(--line);">
+                    <option value="full" selected>Full Screen</option>
+                    <option value="center">Center Turntable</option>
+                    <option value="edges">Perimeter / Edges</option>
+                    <option value="top">Top Half</option>
+                    <option value="bottom">Bottom Half</option>
+                  </select>
+                </label>
+                <label style="font-size:12px;display:flex;align-items:center;gap:4px;">
+                  Speed <input type="range" id="spinFxSpeed" min="20" max="300" value="100" style="width:65px">
+                  <span id="spinFxSpeedVal" style="font-size:11px;min-width:32px;">1.0×</span>
+                </label>
+                <label style="font-size:12px;display:flex;align-items:center;gap:4px;">
+                  Opacity <input type="range" id="spinFxOpacity" min="10" max="100" value="85" style="width:60px">
+                  <span id="spinFxOpacityVal" style="font-size:11px;min-width:28px;">85%</span>
+                </label>
+                <label style="font-size:12px;display:flex;align-items:center;gap:4px;">
+                  Size <input type="range" id="spinFxScale" min="40" max="250" value="100" style="width:60px">
+                  <span id="spinFxScaleVal" style="font-size:11px;min-width:28px;">1.0×</span>
+                </label>
+                <label style="font-size:12px;display:flex;align-items:center;gap:4px;">
+                  Wobble <input type="range" id="spinFxWobble" min="0" max="100" value="50" style="width:55px">
+                  <span id="spinFxWobbleVal" style="font-size:11px;min-width:24px;">50%</span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -27082,6 +27143,7 @@
         preset: 'classic', speed: 'slow', smooth: false, gpu: false, orient: 'portrait', quality: 1080,
         overlay: true, frameStyle: 'floral_gold', zoom: true, flash: true, fx: 'none', audio: 'music', volume: 80,
         auto: false, autoShare: false, rates: [], reverse: false,
+        fxMovement: 'vortex', fxSpeed: 100, fxOpacity: 85, fxScale: 100, fxWobble: 50, fxLocation: 'full',
         textOn: true,
         text1: '', text1Font: 'cursive', text1Color: '#FFF2A8', text1Size: 52, text1X: 50, text1Y: 18,
         text2: '', text2Font: 'serif', text2Color: '#FFFFFF', text2Size: 26, text2X: 50, text2Y: 26,
@@ -27102,6 +27164,11 @@
           if (sl.text2Size === undefined && sl.textSize) spinLook.text2Size = sl.textSize === 'large' ? 36 : (sl.textSize === 'small' ? 20 : 26);
           if (sl.text1Y === undefined && sl.textYPercent != null) spinLook.text1Y = Number(sl.textYPercent);
           if (sl.text2Y === undefined && sl.textYPercent != null) spinLook.text2Y = Number(sl.textYPercent) + 8;
+          var FX_ALIASES = {
+            'sparkles': 'sparkler_fountain', 'floating_hearts': 'hearts_floating', 'rose_petals': 'rose_petals_red',
+            'smoke_ring': 'stage_smoke', 'bokeh': 'bokeh_golden', 'confetti': 'confetti_multi', 'neon_glow_edge': 'neon_cyberpunk'
+          };
+          if (spinLook.fx && FX_ALIASES[spinLook.fx]) spinLook.fx = FX_ALIASES[spinLook.fx];
         }
       } catch (e) { }
 

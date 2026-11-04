@@ -301,6 +301,9 @@ export function normOptions(o) {
     audio: ['music', 'original', 'none'].includes(o.audio) ? o.audio : 'music',
     volume: clamp(o.volume == null ? 0.8 : Number(o.volume), 0, 1),
     fx: o.fx || null,
+    fxSpeed: o.fxSpeed != null ? clamp(Number(o.fxSpeed), 0.2, 3.0) : 1.0,
+    fxOpacity: o.fxOpacity != null ? clamp(Number(o.fxOpacity), 0.05, 1.0) : null,
+    fxLocation: o.fxLocation || 'full',
     intro: o.intro || null,
     outro: o.outro || null,
     textTiming: o.textTiming === 'fade' ? 'fade' : 'always',
@@ -342,6 +345,9 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
     fxPath = fxResolved.path;
     fxBlend = ['overlay', 'screen', 'addition'].includes(fxResolved.blend) ? fxResolved.blend : (/\.webm$/i.test(fxPath) ? 'overlay' : 'screen');
     fxOpacity = clamp(Number(fxResolved.opacity != null ? fxResolved.opacity : 1.0), 0, 1);
+  }
+  if (o.fxOpacity != null) {
+    fxOpacity = o.fxOpacity;
   }
 
   let idx = 1, fxIdx = -1, ovIdx = -1, txtIdx = -1, muIdx = -1, introIdx = -1, outroIdx = -1;
@@ -414,7 +420,10 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
   let last = '[v0]';
   if (fxIdx >= 0) {
     // 1.3: Decode, scale, and format the short FX clip once, then loop the pre-formatted frames in memory.
-    const fxLoop = 'loop=loop=-1:size=300:start=0,setpts=N/(30*TB)';
+    const fxSpeed = f2(o.fxSpeed || 1.0);
+    const fxLoop = (o.fxSpeed && o.fxSpeed !== 1.0)
+      ? 'loop=loop=-1:size=300:start=0,setpts=N/(30*TB*' + fxSpeed + ')'
+      : 'loop=loop=-1:size=300:start=0,setpts=N/(30*TB)';
     // 3.2: For landscape outputs, if loop is native landscape, scale directly; if portrait loop, scale to height and pad/center to prevent 3.56x zoom cropping out 70% of particles.
     if (o.landscape && !fxResolved?.isLandscape) {
       f.push('[' + fxIdx + ':v]scale=-1:' + o.H + ':force_original_aspect_ratio=decrease,pad=' + o.W + ':' + o.H + ':(ow-iw)/2:(oh-ih)/2:color=' + (fxBlend === 'overlay' ? '0x00000000' : 'black') + ',setsar=1,fps=30[fx_fit]');

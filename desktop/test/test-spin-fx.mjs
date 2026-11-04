@@ -232,6 +232,33 @@ try {
     assert(gpuArgs.args.includes('h264_nvenc'), '1.5: hwEncoder=h264_nvenc emits -c:v h264_nvenc');
   }
 
+  console.log('\n--- Test 6: Square 1:1 Aspect Ratio (Instagram format) ---');
+  {
+    const sq = buildArgs({
+      input: dummyInput,
+      output: dummyOutput,
+      overlay: dummyOverlay,
+      options: { speed: 'slow', orientation: 'square', quality: 1080 }
+    }, fakeInfo);
+    assert(sq.W === 1080 && sq.H === 1080, 'Square dimensions are 1080x1080');
+    const fgSq = sq.args[sq.args.indexOf('-filter_complex') + 1];
+    assert(fgSq.includes('scale=1080:1080:force_original_aspect_ratio=increase,crop=1080:1080'), 'Scales and center-crops into 1:1 square');
+  }
+
+  console.log('\n--- Test 7: Custom Animated FX Speed, Opacity & Physics Multipliers ---');
+  {
+    const customFx = buildArgs({
+      input: dummyInput,
+      output: dummyOutput,
+      fx: { path: dummyFxMp4, blend: 'screen', opacity: 0.9 },
+      options: { speed: 'slow', orientation: 'square', fxSpeed: 1.5, fxOpacity: 0.55 }
+    }, fakeInfo);
+    assert(customFx.W === 1080 && customFx.H === 1080, 'Custom FX in square format has 1080x1080');
+    const fgCustom = customFx.args[customFx.args.indexOf('-filter_complex') + 1];
+    assert(fgCustom.includes('setpts=N/(30*TB*1.5'), 'FX loop setpts incorporates 1.5x speed');
+    assert(fgCustom.includes('blend=all_mode=screen:all_opacity=0.55'), 'FX screen blend incorporates custom 0.55 opacity');
+  }
+
 } finally {
   try { rmSync(testDir, { recursive: true, force: true }); } catch { /* ignore */ }
 }

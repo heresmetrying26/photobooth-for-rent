@@ -10493,6 +10493,7 @@
 
     /* ---- Android tablet / device portrait layout adjustments ---- */
     @media (orientation: portrait) {
+
       .app-shell,
       .app-shell.has-qr,
       body.in-session .app-shell:not(.capturing) {
@@ -10507,11 +10508,11 @@
         margin: 0 auto !important;
       }
 
-      .setup-shell > * {
+      .setup-shell>* {
         grid-column: auto !important;
       }
 
-      .setup-shell > #previewSection:not(.docked) {
+      .setup-shell>#previewSection:not(.docked) {
         display: none !important;
       }
 
@@ -10669,7 +10670,7 @@
         margin: 10px 0 0 !important;
       }
 
-      .result-actions > button {
+      .result-actions>button {
         min-height: 50px !important;
         font-size: 15.5px !important;
       }
@@ -11799,8 +11800,7 @@
 
             <div class="fb-card">
               <p class="sub-label">Automatic printing</p>
-              <label class="switch-row"><span>Print after each session</span><input type="checkbox"
-                  id="ppAuto"></label>
+              <label class="switch-row"><span>Print after each session</span><input type="checkbox" id="ppAuto"></label>
               <p class="panel-hint" id="ppAutoHint" style="margin:4px 0 0;"></p>
               <div class="copies-row"><span>Copies each time</span>
                 <span class="stepper"><button type="button" id="ppCopiesMinus"
@@ -11862,14 +11862,16 @@
                     <option value="5">5 s</option>
                     <option value="6" selected>6 s</option>
                     <option value="7">7 s</option>
-                  </select></div>
+                  </select>
+                </div>
                 <div class="fb-row"><span class="lbl">Frames in the book</span>
                   <select id="flipFramesSelect" class="pillify" aria-label="Frames in the book">
                     <option value="16">16</option>
                     <option value="24" selected>24</option>
                     <option value="30">30</option>
                     <option value="40">40</option>
-                  </select></div>
+                  </select>
+                </div>
                 <label class="switch-row"><span>Show motion prompts while recording</span><input type="checkbox"
                     id="flipCuesToggle" checked></label>
               </div>
@@ -11883,7 +11885,8 @@
                     <option value="title" selected>Logo + title</option>
                     <option value="photo">Clip photo</option>
                     <option value="custom">Your image</option>
-                  </select></div>
+                  </select>
+                </div>
                 <div id="flipCoverCustomWrap" class="fb-sub" style="display:none;">
                   <div class="bg-row">
                     <img class="bg-thumb" id="flipCoverThumb" alt="Cover"
@@ -11902,7 +11905,8 @@
                       id="flipBackQrToggle" checked></label>
                   <div class="fb-row"><span class="lbl">Caption under the QR</span>
                     <input type="text" class="label-input" id="flipBackTextInput" maxlength="60"
-                      placeholder="Scan to view &amp; share"></div>
+                      placeholder="Scan to view &amp; share">
+                  </div>
                 </div>
               </div>
 
@@ -11912,7 +11916,8 @@
                   <select id="flipCollationSelect" class="pillify" aria-label="Card order">
                     <option value="stack" selected>Stack-cut</option>
                     <option value="grid">In order</option>
-                  </select></div>
+                  </select>
+                </div>
                 <p class="panel-hint" style="margin:6px 0 0;">Stack-cut: cut the sheets as one stack and the piles
                   come out already in order.</p>
                 <div class="fb-row"><span class="lbl">Cards per sheet</span>
@@ -11920,7 +11925,8 @@
                     <option value="auto" selected>Auto</option>
                     <option value="6up">6 per sheet</option>
                     <option value="8up">8 per sheet</option>
-                  </select></div>
+                  </select>
+                </div>
                 <label class="switch-row"><span>Binding margin and staple dots</span><input type="checkbox"
                     id="flipGutterToggle" checked></label>
                 <label class="switch-row"><span>Page numbers in the margin</span><input type="checkbox"
@@ -11933,12 +11939,15 @@
                 <div class="fb-row"><span class="lbl">Second printer</span>
                   <select id="flipPrinterPoolSelect" class="mini-select" aria-label="Second printer">
                     <option value="" selected>None (single printer)</option>
-                  </select></div>
-                <div class="fb-row" id="flipPoolModeWrap" style="display:none;"><span class="lbl">Share the work by</span>
+                  </select>
+                </div>
+                <div class="fb-row" id="flipPoolModeWrap" style="display:none;"><span class="lbl">Share the work
+                    by</span>
                   <select id="flipPoolModeSelect" class="pillify" aria-label="Share the work by">
                     <option value="pages" selected>Sheets</option>
                     <option value="copies">Copies</option>
-                  </select></div>
+                  </select>
+                </div>
                 <p class="panel-hint" id="flipPoolHint" style="display:none; margin:6px 0 0;">Splits the work between
                   two printers so guests wait about half as long.</p>
               </div>
@@ -11951,7 +11960,8 @@
                     <option value="solo" selected>Solo layout</option>
                     <option value="follow">Chosen layout</option>
                     <option value="raw">Plain camera</option>
-                  </select></div>
+                  </select>
+                </div>
                 <p class="panel-hint" id="gifLayoutHint" style="margin:6px 0 0;">The GIF sits in the one-photo Solo
                   layout with your frame and title. Guests should stand in the middle.</p>
                 <p class="panel-hint" style="margin:6px 0 0;">It follows the first run of shots. Speed is automatic.
@@ -12394,22 +12404,26 @@
             </div>
             <p class="panel-hint" id="attractHint" style="margin:6px 0 0;">Auto-generates a branded welcome card with
               your event title, date, 3-step guest instructions, and a sample photo print.</p>
-            <div id="welcomeCardCustomBlock" style="margin-top:12px; padding:12px; background:var(--panel-2); border-radius:12px; border:1px solid var(--line);">
-              <label class="switch-row" style="margin-top:0;"><span>Personalize welcome card text &amp; font</span><input
-                  type="checkbox" id="welcomeCustomToggle"></label>
-              <p class="panel-hint" style="margin:4px 0 0;">Separate what guests see on the welcome card from your photo print text.</p>
+            <div id="welcomeCardCustomBlock"
+              style="margin-top:12px; padding:12px; background:var(--panel-2); border-radius:12px; border:1px solid var(--line);">
+              <label class="switch-row" style="margin-top:0;"><span>Personalize welcome card text &amp;
+                  font</span><input type="checkbox" id="welcomeCustomToggle"></label>
+              <p class="panel-hint" style="margin:4px 0 0;">Separate what guests see on the welcome card from your photo
+                print text.</p>
               <div id="welcomeCustomFields" style="display:none; margin-top:12px;">
                 <div style="margin-bottom:10px;">
                   <p class="sub-label" style="margin:0 0 4px;">Greeting line</p>
-                  <input type="text" class="label-input" id="welcomeGreetingInput" placeholder="Welcome to" maxlength="40"
-                    style="font-family:'Manrope',sans-serif; font-size:14px;">
-                  <p class="panel-hint" style="margin:2px 0 0;">e.g. &ldquo;Welcome to&rdquo;, &ldquo;Welcome to the wedding of&rdquo;, or leave empty.</p>
+                  <input type="text" class="label-input" id="welcomeGreetingInput" placeholder="Welcome to"
+                    maxlength="40" style="font-family:'Manrope',sans-serif; font-size:14px;">
+                  <p class="panel-hint" style="margin:2px 0 0;">e.g. &ldquo;Welcome to&rdquo;, &ldquo;Welcome to the
+                    wedding of&rdquo;, or leave empty.</p>
                 </div>
                 <div style="margin-bottom:10px;">
                   <p class="sub-label" style="margin:0 0 4px;">Headline / Event name</p>
-                  <input type="text" class="label-input" id="welcomeTitleInput" placeholder="Sofia's 7th Birthday" maxlength="60"
-                    style="font-family:'Manrope',sans-serif; font-size:14px;">
-                  <p class="panel-hint" style="margin:2px 0 0;">Custom title on the welcome screen (not linked to Text 02).</p>
+                  <input type="text" class="label-input" id="welcomeTitleInput" placeholder="Sofia's 7th Birthday"
+                    maxlength="60" style="font-family:'Manrope',sans-serif; font-size:14px;">
+                  <p class="panel-hint" style="margin:2px 0 0;">Custom title on the welcome screen (not linked to Text
+                    02).</p>
                 </div>
                 <div style="margin-bottom:10px;">
                   <p class="sub-label" style="margin:0 0 4px;">Welcome headline font</p>
@@ -12421,18 +12435,20 @@
                 </div>
                 <div style="margin-bottom:10px;">
                   <p class="sub-label" style="margin:0 0 4px;">Subtitle / Date line</p>
-                  <input type="text" class="label-input" id="welcomeSubInput" placeholder="Leave empty to use date from Step 2" maxlength="60"
+                  <input type="text" class="label-input" id="welcomeSubInput"
+                    placeholder="Leave empty to use date from Step 2" maxlength="60"
                     style="font-family:'Manrope',sans-serif; font-size:14px;">
                 </div>
                 <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--line);">
                   <label class="switch-row" style="margin-top:0;"><span>Show 3-step guest instructions</span><input
                       type="checkbox" id="welcomeStepsToggle" checked></label>
                   <div id="welcomeStepsBlock" style="margin-top:8px;">
-                    <input type="text" class="label-input" id="welcomeStep1Input" placeholder="1. Tap the screen" maxlength="40"
-                      style="font-family:'Manrope',sans-serif; font-size:13px; margin-bottom:6px;">
-                    <input type="text" class="label-input" id="welcomeStep2Input" placeholder="2. Strike a pose" maxlength="40"
-                      style="font-family:'Manrope',sans-serif; font-size:13px; margin-bottom:6px;">
-                    <input type="text" class="label-input" id="welcomeStep3Input" placeholder="3. Scan the QR for your photos" maxlength="40"
+                    <input type="text" class="label-input" id="welcomeStep1Input" placeholder="1. Tap the screen"
+                      maxlength="40" style="font-family:'Manrope',sans-serif; font-size:13px; margin-bottom:6px;">
+                    <input type="text" class="label-input" id="welcomeStep2Input" placeholder="2. Strike a pose"
+                      maxlength="40" style="font-family:'Manrope',sans-serif; font-size:13px; margin-bottom:6px;">
+                    <input type="text" class="label-input" id="welcomeStep3Input"
+                      placeholder="3. Scan the QR for your photos" maxlength="40"
                       style="font-family:'Manrope',sans-serif; font-size:13px;">
                   </div>
                 </div>
@@ -12441,20 +12457,27 @@
             <div id="attractPosterRow" style="display:none; margin-top:10px;">
               <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
                 <p class="sub-label" style="margin:0;">Sponsor / Media slides</p>
-                <span id="playlistCountBadge" class="chip" style="font-size:11px; padding:2px 8px; display:none; background:var(--panel-2);"></span>
+                <span id="playlistCountBadge" class="chip"
+                  style="font-size:11px; padding:2px 8px; display:none; background:var(--panel-2);"></span>
               </div>
 
               <!-- Playlist slides grid / reel -->
-              <div id="attractPlaylistGrid" style="display:none; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
+              <div id="attractPlaylistGrid" style="display:none; flex-direction:column; gap:6px; margin-bottom:10px;">
+              </div>
 
               <div class="bg-row">
-                <label class="upload-btn" for="attractPosterInput" style="display:inline-flex; align-items:center; gap:6px;">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M12 5v14M5 12h14"/></svg>
+                <label class="upload-btn" for="attractPosterInput"
+                  style="display:inline-flex; align-items:center; gap:6px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    style="width:16px;height:16px;">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
                   <span>Add slides (Image, Video, or GIF)</span>
                 </label>
                 <input type="file" id="attractPosterInput" accept="image/*,video/mp4,video/webm,video/*" multiple>
               </div>
-              <button class="remove-link" id="attractPlaylistClearAll" style="display:none; margin-top:6px;">Clear all slides</button>
+              <button class="remove-link" id="attractPlaylistClearAll" style="display:none; margin-top:6px;">Clear all
+                slides</button>
 
               <div class="stepper" style="margin-top:10px;"><span class="lbl">Media fit</span><span class="ctl"><select
                     id="attractPosterFit">
@@ -12463,8 +12486,8 @@
                     <option value="stretch">Stretch to fill the screen</option>
                   </select></span></div>
 
-              <div class="stepper" id="attractSlideDurationRow" style="margin-top:8px; display:none;"><span class="lbl">Image slide duration</span><span class="ctl"><select
-                    id="attractSlideDuration">
+              <div class="stepper" id="attractSlideDurationRow" style="margin-top:8px; display:none;"><span
+                  class="lbl">Image slide duration</span><span class="ctl"><select id="attractSlideDuration">
                     <option value="4">4 seconds</option>
                     <option value="6" selected>6 seconds</option>
                     <option value="8">8 seconds</option>
@@ -12472,7 +12495,9 @@
                     <option value="15">15 seconds</option>
                   </select></span></div>
 
-              <p class="panel-hint" style="margin:4px 0 0;">Upload multiple videos and graphics to create an automated billboard sponsor loop between guests. Videos play in full; graphics advance based on your slide duration.</p>
+              <p class="panel-hint" style="margin:4px 0 0;">Upload multiple videos and graphics to create an automated
+                billboard sponsor loop between guests. Videos play in full; graphics advance based on your slide
+                duration.</p>
             </div>
             <div id="welcomeBtnBlock" style="margin-top:12px;">
               <label class="switch-row" style="margin-top:0;"><span>Show "Tap to start" button</span><input
@@ -12490,12 +12515,24 @@
                 <div id="welcomeBtnColorRow" style="margin-top:10px;">
                   <p class="sub-label" style="margin:0 0 6px;">Button color</p>
                   <div class="chip-row" id="welcomeBtnColorChips">
-                    <button type="button" class="chip active" data-color="#C93D27" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#C93D27;display:inline-block;"></i>Red</button>
-                    <button type="button" class="chip" data-color="#C5A059" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#C5A059;display:inline-block;"></i>Gold</button>
-                    <button type="button" class="chip" data-color="#1C1A1E" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#1C1A1E;border:1px solid rgba(255,255,255,.2);display:inline-block;"></i>Black</button>
-                    <button type="button" class="chip" data-color="#FFFFFF" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(0,0,0,.2);display:inline-block;"></i>White</button>
-                    <button type="button" class="chip" data-color="#1B4D3E" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#1B4D3E;display:inline-block;"></i>Emerald</button>
-                    <button type="button" class="chip" data-color="#D87080" style="display:inline-flex; align-items:center; gap:6px;"><i style="width:12px;height:12px;border-radius:50%;background:#D87080;display:inline-block;"></i>Rose</button>
+                    <button type="button" class="chip active" data-color="#C93D27"
+                      style="display:inline-flex; align-items:center; gap:6px;"><i
+                        style="width:12px;height:12px;border-radius:50%;background:#C93D27;display:inline-block;"></i>Red</button>
+                    <button type="button" class="chip" data-color="#C5A059"
+                      style="display:inline-flex; align-items:center; gap:6px;"><i
+                        style="width:12px;height:12px;border-radius:50%;background:#C5A059;display:inline-block;"></i>Gold</button>
+                    <button type="button" class="chip" data-color="#1C1A1E"
+                      style="display:inline-flex; align-items:center; gap:6px;"><i
+                        style="width:12px;height:12px;border-radius:50%;background:#1C1A1E;border:1px solid rgba(255,255,255,.2);display:inline-block;"></i>Black</button>
+                    <button type="button" class="chip" data-color="#FFFFFF"
+                      style="display:inline-flex; align-items:center; gap:6px;"><i
+                        style="width:12px;height:12px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(0,0,0,.2);display:inline-block;"></i>White</button>
+                    <button type="button" class="chip" data-color="#1B4D3E"
+                      style="display:inline-flex; align-items:center; gap:6px;"><i
+                        style="width:12px;height:12px;border-radius:50%;background:#1B4D3E;display:inline-block;"></i>Emerald</button>
+                    <button type="button" class="chip" data-color="#D87080"
+                      style="display:inline-flex; align-items:center; gap:6px;"><i
+                        style="width:12px;height:12px;border-radius:50%;background:#D87080;display:inline-block;"></i>Rose</button>
                   </div>
                 </div>
                 <div id="welcomeBtnPosRow" style="margin-top:10px;">
@@ -12886,50 +12923,63 @@
                   style="width:auto;margin:0;">Preview</button>
               </div>
             </div>
-                        <!-- Lightness & Colour Correction (Thermal & Photo printing) -->
-            <div class="color-adj-box" style="margin-top:14px; padding:12px 14px; background:var(--panel-2, #faf6f0); border:1px solid var(--line); border-radius:12px;">
+            <!-- Lightness & Colour Correction (Thermal & Photo printing) -->
+            <div class="color-adj-box"
+              style="margin-top:14px; padding:12px 14px; background:var(--panel-2, #faf6f0); border:1px solid var(--line); border-radius:12px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <p class="panel-label" style="margin:0; font-size:13px; font-weight:700;">Lightness &amp; Colour Correction</p>
-                <button type="button" class="link-btn" id="btnResetColorAdj" style="font-size:12px; color:var(--ink-dim); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0;">Reset</button>
+                <p class="panel-label" style="margin:0; font-size:13px; font-weight:700;">Lightness &amp; Colour
+                  Correction</p>
+                <button type="button" class="link-btn" id="btnResetColorAdj"
+                  style="font-size:12px; color:var(--ink-dim); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0;">Reset</button>
               </div>
-              <p class="panel-hint" style="margin:0 0 10px; font-size:11.5px; line-height:1.4;">Adjust exposure and RGB balance for prints. If thermal prints are too dark, increase lightness (+20 to +40). Changes apply to the preview and the next print.</p>
-              
+              <p class="panel-hint" style="margin:0 0 10px; font-size:11.5px; line-height:1.4;">Adjust exposure and RGB
+                balance for prints. If thermal prints are too dark, increase lightness (+20 to +40). Changes apply to
+                the preview and the next print.</p>
+
               <div style="display:flex; flex-direction:column; gap:8px;">
                 <div>
-                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
+                  <div
+                    style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
                     <span>Lightness / Exposure</span>
                     <b id="valAdjBrightness">0</b>
                   </div>
-                  <input type="range" id="sliderAdjBrightness" min="-100" max="100" value="0" style="width:100%; cursor:pointer;">
+                  <input type="range" id="sliderAdjBrightness" min="-100" max="100" value="0"
+                    style="width:100%; cursor:pointer;">
                 </div>
 
                 <div>
-                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
+                  <div
+                    style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
                     <span style="color:#b91c1c;">Red balance</span>
                     <b id="valAdjRed" style="color:#b91c1c;">0</b>
                   </div>
-                  <input type="range" id="sliderAdjRed" min="-100" max="100" value="0" style="width:100%; cursor:pointer; accent-color:#b91c1c;">
+                  <input type="range" id="sliderAdjRed" min="-100" max="100" value="0"
+                    style="width:100%; cursor:pointer; accent-color:#b91c1c;">
                 </div>
 
                 <div>
-                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
+                  <div
+                    style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
                     <span style="color:#15803d;">Green balance</span>
                     <b id="valAdjGreen" style="color:#15803d;">0</b>
                   </div>
-                  <input type="range" id="sliderAdjGreen" min="-100" max="100" value="0" style="width:100%; cursor:pointer; accent-color:#15803d;">
+                  <input type="range" id="sliderAdjGreen" min="-100" max="100" value="0"
+                    style="width:100%; cursor:pointer; accent-color:#15803d;">
                 </div>
 
                 <div>
-                  <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
+                  <div
+                    style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:2px;">
                     <span style="color:#1d4ed8;">Blue balance</span>
                     <b id="valAdjBlue" style="color:#1d4ed8;">0</b>
                   </div>
-                  <input type="range" id="sliderAdjBlue" min="-100" max="100" value="0" style="width:100%; cursor:pointer; accent-color:#1d4ed8;">
+                  <input type="range" id="sliderAdjBlue" min="-100" max="100" value="0"
+                    style="width:100%; cursor:pointer; accent-color:#1d4ed8;">
                 </div>
               </div>
             </div>
 
-<div class="copies-row"><span>Copies</span>
+            <div class="copies-row"><span>Copies</span>
               <span class="stepper"><button type="button" id="copiesMinus" aria-label="Fewer copies">&minus;</button><b
                   id="copiesVal">1</b><button type="button" id="copiesPlus" aria-label="More copies">+</button></span>
             </div>
@@ -12978,10 +13028,12 @@
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
                   <input type="text" id="netPrinterIp" class="printer-input" inputmode="decimal"
                     placeholder="Not listed? Type its IP, e.g. 192.168.1.50" style="flex:1;min-width:180px;">
-                  <button type="button" class="action-btn" id="netPrinterIpBtn" style="width:auto;margin:0;">Search</button>
+                  <button type="button" class="action-btn" id="netPrinterIpBtn"
+                    style="width:auto;margin:0;">Search</button>
                 </div>
               </div>
-              <p class="panel-hint" style="margin:6px 0 0;">For desktop Bluetooth printers: pair the printer in system settings, then refresh and select it here.</p>
+              <p class="panel-hint" style="margin:6px 0 0;">For desktop Bluetooth printers: pair the printer in system
+                settings, then refresh and select it here.</p>
               <button type="button" class="action-btn" id="printerSetupBtn"
                 style="display:none;width:auto;margin:8px 0 0;">Configure printer</button>
               <div id="printerOptionsBox" style="display:none;margin-top:8px;"></div>
@@ -12989,14 +13041,16 @@
               <datalist id="printerList"></datalist>
               <p class="panel-hint" id="printerHelperHint" style="margin:4px 0 10px;"></p>
               <div id="secondPrinterBox" hidden>
-                <label class="sub-label" for="secondPrinterSelect" style="display:block; margin:8px 0 4px;">Second printer (optional)</label>
+                <label class="sub-label" for="secondPrinterSelect" style="display:block; margin:8px 0 4px;">Second
+                  printer (optional)</label>
                 <select id="secondPrinterSelect" class="printer-input"></select>
                 <div class="print-size-row" id="secondModeRow" style="margin-top:6px;" hidden>
                   <button type="button" class="print-size-btn" data-sm="share">Share the work</button>
                   <button type="button" class="print-size-btn" data-sm="extra">Also print another size</button>
                 </div>
                 <div id="secondSizeRow" hidden style="margin-top:6px;">
-                  <label class="sub-label" for="secondSizeSelect" style="display:block; margin:0 0 4px;">Paper on the second printer</label>
+                  <label class="sub-label" for="secondSizeSelect" style="display:block; margin:0 0 4px;">Paper on the
+                    second printer</label>
                   <select id="secondSizeSelect" class="printer-input"></select>
                 </div>
                 <p class="panel-hint" id="secondHint" style="margin:4px 0 10px;"></p>
@@ -13007,10 +13061,14 @@
                 <span>Bluetooth thermal receipt printer</span>
                 <input type="checkbox" id="btThermalToggle">
               </label>
-              <p class="panel-hint" style="margin:2px 0 8px;">Direct printing for 58 mm and 80 mm Bluetooth thermal receipt printers without a print dialog.</p>
+              <p class="panel-hint" style="margin:2px 0 8px;">Direct printing for 58 mm and 80 mm Bluetooth thermal
+                receipt printers without a print dialog.</p>
               <div id="btThermalControls" style="margin-top:8px;">
-                <p class="panel-hint" id="btThermalWarnHint" style="display:none;color:#b91c1c;font-weight:600;margin:0 0 8px;"></p>
-                <p class="panel-hint" id="btThermalPaperHint" style="display:none;color:#856404;background:#fff3cd;padding:6px 10px;border-radius:4px;margin:0 0 8px;"></p>
+                <p class="panel-hint" id="btThermalWarnHint"
+                  style="display:none;color:#b91c1c;font-weight:600;margin:0 0 8px;"></p>
+                <p class="panel-hint" id="btThermalPaperHint"
+                  style="display:none;color:#856404;background:#fff3cd;padding:6px 10px;border-radius:4px;margin:0 0 8px;">
+                </p>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                   <button type="button" class="action-btn" id="btThermalConnectBtn"
                     style="width:auto;margin:0 0 8px 0;">Connect Bluetooth Printer</button>
@@ -13022,12 +13080,15 @@
                     style="display:none;width:auto;margin:0 0 8px 0;">Disconnect</button>
                 </div>
                 <p class="panel-hint" id="btThermalStatusHint" style="margin:4px 0 6px;"></p>
-                <p class="panel-hint" style="margin:4px 0 6px; font-size:12px; color:var(--ink-dim);">Thermal print too dark? Increase <b>Lightness / Exposure</b> (+20 to +40) in Print settings above to lighten the output.</p>
+                <p class="panel-hint" style="margin:4px 0 6px; font-size:12px; color:var(--ink-dim);">Thermal print too
+                  dark? Increase <b>Lightness / Exposure</b> (+20 to +40) in Print settings above to lighten the output.
+                </p>
               </div>
             </div>
             <div class="printer-pick" id="wifiPrinterRow" style="display:none;margin-top:10px;">
               <label class="sub-label" style="display:block; margin:6px 0 2px;">Wi-Fi &amp; USB Printers</label>
-              <p class="panel-hint" style="margin:2px 0 8px;">Automatically detects connected USB and local network printers for direct driverless printing.</p>
+              <p class="panel-hint" style="margin:2px 0 8px;">Automatically detects connected USB and local network
+                printers for direct driverless printing.</p>
               <button type="button" class="action-btn" id="wifiPrinterFindBtn"
                 style="width:auto;margin:0 8px 8px 0;">Find Wi-Fi &amp; USB printers</button>
               <button type="button" class="action-btn" id="wifiPrinterTestBtn"
@@ -13039,7 +13100,8 @@
               <p class="panel-hint" id="wifiPrinterStatus" style="margin:4px 0 6px;"></p>
               <details id="wifiDiag" style="display:none;margin:0 0 8px;">
                 <summary>Colour diagnostics (advanced)</summary>
-                <p class="panel-hint" style="margin:4px 0 6px;">Prints diagnostic test patterns to calibrate color output.</p>
+                <p class="panel-hint" style="margin:4px 0 6px;">Prints diagnostic test patterns to calibrate color
+                  output.</p>
                 <label class="sub-label" for="wifiDiagK" style="display:block;margin:4px 0 2px;">Colour-mode
                   command</label>
                 <select id="wifiDiagK" class="printer-input">
@@ -13399,8 +13461,13 @@
               <option value="normal">Normal</option>
               <option value="custom">Speed sequence (from the style)</option>
             </select></label>
-          <label class="chk" title="Tip: Record at 60 fps (or 120 fps for 0.25×) for instant real slow motion with no extra processing wait."><input type="checkbox" id="spinSmooth"> Smoother slow motion (30 fps clips; 60+ fps is smooth automatically)</label>
-          <label class="chk" id="spinGpuWrap" hidden title="Use hardware GPU video encoding when available (falls back to CPU automatically)."><input type="checkbox" id="spinGpu"> GPU fast encode</label>
+          <label class="chk"
+            title="Tip: Record at 60 fps (or 120 fps for 0.25×) for instant real slow motion with no extra processing wait."><input
+              type="checkbox" id="spinSmooth"> Smoother slow motion (30 fps clips; 60+ fps is smooth
+            automatically)</label>
+          <label class="chk" id="spinGpuWrap" hidden
+            title="Use hardware GPU video encoding when available (falls back to CPU automatically)."><input
+              type="checkbox" id="spinGpu"> GPU fast encode</label>
           <label>Format <select id="spinOrient">
               <option value="portrait">Portrait (phones)</option>
               <option value="landscape">Landscape</option>
@@ -13430,8 +13497,10 @@
         </div>
         <div class="spin-row" id="spinTextRow">
           <label class="chk"><input type="checkbox" id="spinTextOn"> Extra text overlay</label>
-          <label>Line 1 <input type="text" id="spinText1" placeholder="e.g. Happy Birthday!" style="width:140px"></label>
-          <label>Line 2 <input type="text" id="spinText2" placeholder="e.g. October 24, 2026" style="width:140px"></label>
+          <label>Line 1 <input type="text" id="spinText1" placeholder="e.g. Happy Birthday!"
+              style="width:140px"></label>
+          <label>Line 2 <input type="text" id="spinText2" placeholder="e.g. October 24, 2026"
+              style="width:140px"></label>
           <label>Pos <select id="spinTextPos">
               <option value="top">Top</option>
               <option value="middle">Middle</option>
@@ -13454,19 +13523,7 @@
               <option value="fade">Fade in / out</option>
             </select></label>
         </div>
-              <div class="spin-row" id="spinStingerRow">
-          <button type="button" class="desk-btn" id="spinIntroBtn">Intro video</button><span id="spinIntroName" class="spin-dim"></span>
-          <button type="button" class="desk-btn" id="spinOutroBtn">Outro video</button><span id="spinOutroName" class="spin-dim"></span>
-          <label class="chk" title="Automatically cycle styles per spin"><input type="checkbox" id="spinRotateOn"> Auto-rotate looks per spin</label>
-          <label>Rotate <select id="spinRotateMode"><option value="presets">Styles</option><option value="fx">Animated FX</option><option value="all">Styles + FX</option></select></label>
-          <span id="spinRotateBadge" class="spin-fx-pill" hidden></span>
-        </div>
-        <div class="spin-row" id="spinStationRow" style="align-items:center;gap:10px">
-          <a href="#" id="spinOpenStation" target="_blank" class="desk-btn" style="text-decoration:none">📱 Sharing Station</a>
-          <a href="#" id="spinOpenWall" target="_blank" class="desk-btn" style="text-decoration:none">📺 360 Live Wall</a>
-          <span id="spinStatsBadge" class="spin-fx-pill" style="background:#2EA66B;color:#fff;font-weight:700">Spins: 0 · Views: 0 · DL: 0</span>
-        </div>
-</div>
+      </div>
       <div class="desk-hint" id="spinNoEdit" hidden>Editing (slow motion, frame, music) is not available in this copy of
         the app, so videos are shared as they are.</div>
       <div class="desk-hint" id="spinHint"></div>
@@ -13478,9 +13535,11 @@
       <div class="qs-card spin-card">
         <video id="spinVideo" controls playsinline></video>
         <div class="spin-trim" id="spinTrim" hidden>Trim: start <input type="number" id="spinTrimA" min="0" step="0.1"
-            placeholder="0" style="width:55px"> s &nbsp; end <input type="number" id="spinTrimB" min="0" step="0.1" placeholder="end" style="width:55px"> s
+            placeholder="0" style="width:55px"> s &nbsp; end <input type="number" id="spinTrimB" min="0" step="0.1"
+            placeholder="end" style="width:55px"> s
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;margin-top:6px;">
-            <span>Text this clip: <input type="text" id="spinTrimText1" placeholder="Line 1 override" style="width:130px"></span>
+            <span>Text this clip: <input type="text" id="spinTrimText1" placeholder="Line 1 override"
+                style="width:130px"></span>
             <span><input type="text" id="spinTrimText2" placeholder="Line 2 override" style="width:130px"></span>
           </div>
         </div>
@@ -23120,7 +23179,7 @@
         const btPaperHint = document.getElementById('btThermalPaperHint');
         if (btRow) {
           const showBt = (isMobileOS() || !helperOn || (window._btThermal && window._btThermal.isNativeAndroid()))
-                         && isBtThermalAvailable() && !useStation();
+            && isBtThermalAvailable() && !useStation();
           btRow.style.display = showBt ? '' : 'none';
           if (btToggle) btToggle.checked = btThermalOn;
           const conn = !!(window._btThermal && window._btThermal.btPrinter.connected);
@@ -25482,7 +25541,7 @@
         roller: { label: 'Slow-mo roller', speed: 'custom', rates: [1, 0.25, 2, 0.5], reverse: true, smooth: false, audio: 'music', overlay: true }
       };
       var SPIN_LOOK_KEY = 'pb_spin_look';
-      var spinLook = { preset: 'classic', speed: 'slow', smooth: false, gpu: false, orient: 'portrait', quality: 1080, overlay: true, fx: 'none', audio: 'music', volume: 80, auto: false, autoShare: false, rates: [], reverse: false, textOn: false, text1: '', text2: '', textPos: 'top', textColor: '#ffffff', textSize: 'medium', textFont: 'sans-serif', textTiming: 'always', rotateOn: false, rotateMode: 'presets' };
+      var spinLook = { preset: 'classic', speed: 'slow', smooth: false, gpu: false, orient: 'portrait', quality: 1080, overlay: true, fx: 'none', audio: 'music', volume: 80, auto: false, autoShare: false, rates: [], reverse: false, textOn: false, text1: '', text2: '', textPos: 'top', textColor: '#ffffff', textSize: 'medium', textFont: 'sans-serif', textTiming: 'always' };
       try { var sl = JSON.parse(localStorage.getItem(SPIN_LOOK_KEY) || 'null'); if (sl && typeof sl === 'object') Object.keys(spinLook).forEach(function (k) { if (sl[k] !== undefined) spinLook[k] = sl[k]; }); } catch (e) { }
       var spinFxCatalog = [];
       async function spinLoadFx() {
@@ -25539,8 +25598,6 @@
         if (g('spinTextSize')) g('spinTextSize').value = spinLook.textSize || 'medium';
         if (g('spinTextFont')) g('spinTextFont').value = spinLook.textFont || 'sans-serif';
         if (g('spinTextTiming')) g('spinTextTiming').value = spinLook.textTiming || 'always';
-        if (g('spinRotateOn')) g('spinRotateOn').checked = !!spinLook.rotateOn;
-        if (g('spinRotateMode')) g('spinRotateMode').value = spinLook.rotateMode || 'presets';
         g('spinSmooth').disabled = spinLook.speed !== 'slow' && !(spinLook.speed === 'custom' && (spinLook.rates || []).some(function (r) { return r < 1; }));
       }
       function spinLookFromUI(fromPreset) {
@@ -25551,12 +25608,9 @@
         spinUpdateFxBadge();
         spinLook.audio = g('spinAudio').value;
         spinLook.volume = Number(g('spinVol').value) || 0; spinLook.auto = g('spinAuto').checked; spinLook.autoShare = g('spinAutoShare').checked && spinLook.auto;
-        if (g('spinRotateOn')) spinLook.rotateOn = g('spinRotateOn').checked;
-        if (g('spinRotateMode')) spinLook.rotateMode = g('spinRotateMode').value || 'presets';
         if (!fromPreset) spinLook.preset = 'custom';
         if (spinLook.speed !== 'custom') { spinLook.rates = []; spinLook.reverse = false; }
         g('spinPreset').value = spinLook.preset; g('spinAutoShare').disabled = !spinLook.auto;
-        if (g('spinTextOn')) spinLook.textOn = g('spinTextOn').checked;
         if (g('spinText1')) spinLook.text1 = g('spinText1').value;
         if (g('spinText2')) spinLook.text2 = g('spinText2').value;
         if (g('spinTextPos')) spinLook.textPos = g('spinTextPos').value;
@@ -25564,14 +25618,11 @@
         if (g('spinTextSize')) spinLook.textSize = g('spinTextSize').value;
         if (g('spinTextFont')) spinLook.textFont = g('spinTextFont').value;
         if (g('spinTextTiming')) spinLook.textTiming = g('spinTextTiming').value;
-        if (g('spinTextOn')) g('spinTextOn').checked = !!spinLook.textOn;
-        if (g('spinText1')) g('spinText1').value = spinLook.text1 || '';
-        if (g('spinText2')) g('spinText2').value = spinLook.text2 || '';
-        if (g('spinTextPos')) g('spinTextPos').value = spinLook.textPos || 'top';
-        if (g('spinTextColor')) g('spinTextColor').value = spinLook.textColor || '#ffffff';
-        if (g('spinTextSize')) g('spinTextSize').value = spinLook.textSize || 'medium';
-        if (g('spinTextFont')) g('spinTextFont').value = spinLook.textFont || 'sans-serif';
-        if (g('spinTextTiming')) g('spinTextTiming').value = spinLook.textTiming || 'always';
+        var hasCaption = Boolean((spinLook.text1 || '').trim() || (spinLook.text2 || '').trim());
+        if (g('spinTextOn')) {
+          spinLook.textOn = g('spinTextOn').checked || hasCaption;
+          g('spinTextOn').checked = !!spinLook.textOn;
+        }
         g('spinSmooth').disabled = spinLook.speed !== 'slow' && !(spinLook.speed === 'custom' && (spinLook.rates || []).some(function (r) { return r < 1; }));
         try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { }
       }
@@ -25586,13 +25637,13 @@
 
       function drawSpinExtraText(x, W, H, opt) {
         opt = opt || {};
-        var active = opt.textOn !== undefined ? opt.textOn : spinLook.textOn;
-        if (!active) return;
         var l1 = (opt.text1 !== undefined ? opt.text1 : spinLook.text1) || '';
         var l2 = (opt.text2 !== undefined ? opt.text2 : spinLook.text2) || '';
         l1 = String(l1).trim();
         l2 = String(l2).trim();
         if (!l1 && !l2) return;
+        var active = opt.textOn !== undefined ? opt.textOn : (spinLook.textOn || !!(l1 || l2));
+        if (!active) return;
 
         var pos = (opt.textPos || spinLook.textPos || 'top').toLowerCase();
         var color = opt.textColor || spinLook.textColor || '#ffffff';
@@ -25653,14 +25704,10 @@
       }
 
       // The booth's own frame, stickers, logo and title, on a transparent picture the size of the video.
-      function spinMakeOverlay(W, H, extraOpt) {
+      function spinMakeOverlay(W, H) {
         var c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d');
         try { drawDecorLayer(x, W, H); } catch (e) { }
         try { var bandH = Math.round(H * 0.13); drawLabelBand(x, W, H - bandH, bandH, labelInput.value, 0); } catch (e) { }
-        var timing = (extraOpt && extraOpt.textTiming) || spinLook.textTiming || 'always';
-        if (timing !== 'fade') {
-          try { drawSpinExtraText(x, W, H, extraOpt); } catch (e) { }
-        }
         return new Promise(function (r) { c.toBlob(r, 'image/png'); });
       }
 
@@ -25769,9 +25816,6 @@
         document.getElementById('spinLook').hidden = !spinEnv.ffmpeg;
         document.getElementById('spinNoEdit').hidden = !!spinEnv.ffmpeg;
         document.getElementById('spinMusicName').textContent = spinEnv.music ? spinEnv.music : 'no music chosen';
-        if (document.getElementById('spinIntroName')) document.getElementById('spinIntroName').textContent = spinEnv.intro ? spinEnv.intro : 'no intro chosen';
-        if (document.getElementById('spinOutroName')) document.getElementById('spinOutroName').textContent = spinEnv.outro ? spinEnv.outro : 'no outro chosen';
-        spinUpdateStatsAndLinks();
         await spinLoadFx();
         spinLookToUI();
         if (!spinTimer) spinTimer = setInterval(spinPoll, 2500);
@@ -26349,64 +26393,7 @@
       ['capLen', 'capMode', 'capSens'].forEach(function (id) { capEl(id).addEventListener('change', function () { capPrefsSave(); capRefresh(); }); });
       window.addEventListener('pb-extras-change', function () { try { refreshDeskBtn(); } catch (e) { } });
       // Edit (and, if asked, share) a new clip by itself, so the QR is ready when the guest comes over.
-      
-      var spinRotatePresets = ['classic', 'ramp', 'boomerang', 'fastslow', 'fsf', 'roller'];
-      var spinRotateIdx = 0;
-      function spinApplyNextRotation() {
-        if (!spinLook.rotateOn) return;
-        spinRotateIdx++;
-        var mode = spinLook.rotateMode || 'presets';
-        if (mode === 'presets' || mode === 'all') {
-          var p = spinRotatePresets[spinRotateIdx % spinRotatePresets.length];
-          var pr = SPIN_PRESETS[p];
-          if (pr) {
-            spinLook.preset = p;
-            spinLook.speed = pr.speed;
-            spinLook.rates = (pr.rates || []).slice();
-            spinLook.reverse = !!pr.reverse;
-            spinLook.smooth = pr.smooth;
-            spinLook.audio = pr.audio;
-            spinLook.overlay = pr.overlay;
-          }
-        }
-        if ((mode === 'fx' || mode === 'all') && spinFxCatalog && spinFxCatalog.length > 0) {
-          var fxItem = spinFxCatalog[spinRotateIdx % spinFxCatalog.length];
-          if (fxItem) spinLook.fx = fxItem.id;
-        }
-        spinLookToUI();
-        spinLookFromUI(true);
-        var badge = document.getElementById('spinRotateBadge');
-        if (badge) {
-          badge.hidden = false;
-          badge.textContent = 'Rotated: ' + (spinLook.preset || 'look') + (spinLook.fx && spinLook.fx !== 'none' ? ' + ' + spinLook.fx : '');
-        }
-      }
-
-      async function spinUpdateStatsAndLinks() {
-        if (!spinDesktop() || !window.pb4u) return;
-        try {
-          var stLink = document.getElementById('spinOpenStation');
-          var wlLink = document.getElementById('spinOpenWall');
-          var stBadge = document.getElementById('spinStatsBadge');
-          if (stLink && window.pb4u.spinStationUrl) {
-            var su = await window.pb4u.spinStationUrl();
-            if (su) { stLink.href = su; stLink.style.display = 'inline-flex'; }
-          }
-          if (wlLink && window.pb4u.spinWallUrl) {
-            var wu = await window.pb4u.spinWallUrl();
-            if (wu) { wlLink.href = wu; wlLink.style.display = 'inline-flex'; }
-          }
-          if (stBadge && window.pb4u.spinStats) {
-            var st = await window.pb4u.spinStats();
-            if (st && st.totals) {
-              stBadge.textContent = 'Spins: ' + (st.totals.rendered || 0) + ' · Views: ' + (st.totals.views || 0) + ' · DL: ' + (st.totals.downloads || 0);
-            }
-          }
-        } catch (e) { }
-      }
-
       async function spinAuto(it) {
-        spinApplyNextRotation();
         if (!it.targetFname) it.targetFname = filePrefix() + nextSessionNumber() + '_360' + deviceTag() + '.mp4';
         var curFUrl = getCachedFolderUrl();
         if (LOCALSHARE && curFUrl && !it.url) it.url = localShareUrl(curFUrl, it.targetFname) || '';
@@ -26434,21 +26421,24 @@
         it.status = 'editing'; it.pct = 0; it.err = ''; it.viewOrig = false; spinTagUpdate(it); spinModalUpdate();
         try {
           var ov = null, txtOv = null;
+          var effectiveT1 = (it.text1 != null && String(it.text1).trim() !== '') ? String(it.text1).trim() : (spinLook.text1 || '').trim();
+          var effectiveT2 = (it.text2 != null && String(it.text2).trim() !== '') ? String(it.text2).trim() : (spinLook.text2 || '').trim();
+          var hasText = Boolean(effectiveT1 || effectiveT2);
           var textOpt = {
-            text1: it.text1 !== undefined ? it.text1 : spinLook.text1,
-            text2: it.text2 !== undefined ? it.text2 : spinLook.text2,
-            textOn: (it.text1 || it.text2) ? true : spinLook.textOn,
-            textPos: spinLook.textPos,
-            textColor: spinLook.textColor,
-            textSize: spinLook.textSize,
-            textFont: spinLook.textFont,
-            textTiming: spinLook.textTiming
+            text1: effectiveT1,
+            text2: effectiveT2,
+            textOn: hasText || !!spinLook.textOn,
+            textPos: spinLook.textPos || 'top',
+            textColor: spinLook.textColor || '#ffffff',
+            textSize: spinLook.textSize || 'medium',
+            textFont: spinLook.textFont || 'sans-serif',
+            textTiming: spinLook.textTiming || 'always'
           };
           if (spinLook.overlay) {
-            var blob = await spinMakeOverlay(dims.W, dims.H, textOpt);
+            var blob = await spinMakeOverlay(dims.W, dims.H);
             if (blob) ov = await window.pb4u.spinOverlay(new Uint8Array(await blob.arrayBuffer()));
           }
-          if (textOpt.textOn && textOpt.textTiming === 'fade') {
+          if (textOpt.textOn && (textOpt.text1 || textOpt.text2)) {
             var txtBlob = await spinMakeTextOverlay(dims.W, dims.H, textOpt);
             if (txtBlob) txtOv = await window.pb4u.spinOverlay(new Uint8Array(await txtBlob.arrayBuffer()));
           }
@@ -26457,7 +26447,6 @@
             options: {
               speed: spinLook.speed, rates: spinLook.rates, reverse: spinLook.reverse, smooth: spinLook.smooth, gpu: !!spinLook.gpu, orientation: spinLook.orient, quality: spinLook.quality, audio: spinLook.audio,
               volume: spinLook.volume / 100, trimStart: it.trimA || 0, trimEnd: it.trimB || null, fx: spinLook.fx || 'none',
-              intro: (spinEnv && spinEnv.intro) || null, outro: (spinEnv && spinEnv.outro) || null,
               textTiming: textOpt.textTiming
             }
           });
@@ -26524,8 +26513,14 @@
         var v = document.getElementById('spinVideo'), src = spinSrc(it, !it.viewOrig);
         v.pause(); v.src = src || ''; v.load(); v.style.display = it.src === 'drive' ? 'none' : '';
         document.getElementById('spinTrimA').value = it.trimA || ''; document.getElementById('spinTrimB').value = it.trimB || '';
-        if (document.getElementById('spinTrimText1')) document.getElementById('spinTrimText1').value = it.text1 || '';
-        if (document.getElementById('spinTrimText2')) document.getElementById('spinTrimText2').value = it.text2 || '';
+        if (document.getElementById('spinTrimText1')) {
+          document.getElementById('spinTrimText1').value = it.text1 || '';
+          document.getElementById('spinTrimText1').placeholder = (spinLook.text1 ? 'Override: ' + spinLook.text1 : 'Line 1 override');
+        }
+        if (document.getElementById('spinTrimText2')) {
+          document.getElementById('spinTrimText2').value = it.text2 || '';
+          document.getElementById('spinTrimText2').placeholder = (spinLook.text2 ? 'Override: ' + spinLook.text2 : 'Line 2 override');
+        }
         document.getElementById('spinModal').hidden = false;
         spinModalUpdate();
       }
@@ -26575,8 +26570,14 @@
         if (it.status === 'editing') { if (it.job) window.pb4u.spinCancel(it.job); return; }
         var a = parseFloat(document.getElementById('spinTrimA').value), b = parseFloat(document.getElementById('spinTrimB').value);
         it.trimA = isFinite(a) && a > 0 ? a : 0; it.trimB = isFinite(b) && b > it.trimA ? b : 0;
-        if (document.getElementById('spinTrimText1')) it.text1 = document.getElementById('spinTrimText1').value;
-        if (document.getElementById('spinTrimText2')) it.text2 = document.getElementById('spinTrimText2').value;
+        if (document.getElementById('spinTrimText1')) {
+          var t1 = document.getElementById('spinTrimText1').value.trim();
+          it.text1 = t1 || null;
+        }
+        if (document.getElementById('spinTrimText2')) {
+          var t2 = document.getElementById('spinTrimText2').value.trim();
+          it.text2 = t2 || null;
+        }
         spinEdit(it);
       });
       document.getElementById('spinViewBtn').addEventListener('click', function () {
@@ -26609,20 +26610,6 @@
         var el = document.getElementById(id);
         if (el) el.addEventListener('input', function () { spinLookFromUI(true); });
       });
-      
-      var introBtn = document.getElementById('spinIntroBtn');
-      if (introBtn) introBtn.addEventListener('click', async function () {
-        try { var r = await window.pb4u.spinIntro(false); if (r) { spinEnv.intro = r.intro; document.getElementById('spinIntroName').textContent = r.intro || 'no intro chosen'; } } catch (e) { }
-      });
-      var outroBtn = document.getElementById('spinOutroBtn');
-      if (outroBtn) outroBtn.addEventListener('click', async function () {
-        try { var r = await window.pb4u.spinOutro(false); if (r) { spinEnv.outro = r.outro; document.getElementById('spinOutroName').textContent = r.outro || 'no outro chosen'; } } catch (e) { }
-      });
-      ['spinRotateOn', 'spinRotateMode'].forEach(function (id) {
-        var el = document.getElementById(id);
-        if (el) el.addEventListener('change', function () { spinLookFromUI(true); });
-      });
-
       document.getElementById('spinMusicBtn').addEventListener('click', async function () {
         try { var r = await window.pb4u.spinMusic(false); if (r) { spinEnv.music = r.music; document.getElementById('spinMusicName').textContent = r.music || 'no music chosen'; } } catch (e) { }
       });
@@ -26943,7 +26930,7 @@
                 if (typeof dbDo === 'function' && removed && removed.id) {
                   await dbDo('kv', 'readwrite', function (st) { return st.delete('attract_blob:' + removed.id); });
                 }
-              } catch (e) {}
+              } catch (e) { }
               if (attractPlaylist.length > 0) {
                 attractPlayIndex = 0;
                 attractPosterUrl = attractPlaylist[0].url;
@@ -26968,13 +26955,13 @@
                 if (typeof dbDo === 'function' && attractPlaylist[i].id) {
                   await dbDo('kv', 'readwrite', function (st) { return st.delete('attract_blob:' + attractPlaylist[i].id); });
                 }
-              } catch (e) {}
+              } catch (e) { }
             }
             try {
               if (typeof dbDo === 'function') {
                 await dbDo('kv', 'readwrite', function (st) { return st.delete('attract_poster_blob'); });
               }
-            } catch (e) {}
+            } catch (e) { }
             attractPlaylist = [];
             window._loadAttractPosterMedia('', 'image', '');
             if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
@@ -27541,7 +27528,7 @@
               welcomeVid.onended = null;
             }
             var p = welcomeVid.play();
-            if (p && p.catch) p.catch(function () {});
+            if (p && p.catch) p.catch(function () { });
           }
         } else {
           // Image or GIF
@@ -27585,7 +27572,7 @@
             if (v.paused || v.ended) {
               if (v.ended) v.currentTime = 0;
               var p = v.play();
-              if (p && p.catch) p.catch(function () {});
+              if (p && p.catch) p.catch(function () { });
             }
           }
         }
@@ -30488,7 +30475,7 @@
                       u = URL.createObjectURL(b);
                     }
                   }
-                } catch (e) {}
+                } catch (e) { }
                 if (!u && it.id && typeof ASSETS !== 'undefined' && ASSETS[it.id]) {
                   u = ASSETS[it.id].url;
                 }
@@ -30521,7 +30508,7 @@
                   return;
                 }
               }
-            } catch (e) {}
+            } catch (e) { }
 
             if (typeof window._loadAttractPosterMedia === 'function') {
               window._loadAttractPosterMedia(pUrl, attractPosterType, pId);

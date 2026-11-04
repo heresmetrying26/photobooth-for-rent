@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.65', date: '2026-11-04' },
   { version: '1.0.64', date: '2026-11-04' },
   { version: '1.0.63', date: '2026-11-03' },
   { version: '1.0.62', date: '2026-11-02' },
@@ -110,6 +111,17 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-04', title: 'High-Fidelity 1080p Spin-FX Overlays & Text Overlay Fix', for: ['app', 'website'], app: '1.0.65',
+    items: [
+      'Redesigned 1080p Animated Spin-FX: Upgraded all 40 particle and overlay loops from low-resolution specks to rich, high-definition 1080p graphics.',
+      'Iconic Dollar Bills Rain: Realistic 3D hundred-dollar banknotes with intaglio borders, portrait oval vignettes, holographic security ribbon, corner cartouches, and 3D tumbling physics.',
+      'Commercial-Grade Confetti & Streamers: Heavy metallic foil rectangles with 2D yaw rotation, 3D tumbling, specular light sheen, and twisting party streamers.',
+      'Festive Balloons & Satin Hearts: 180-280px party balloons with spherical shading, tied knot, and wavy string; large 3D glossy hearts with mathematical cardiac curves.',
+      'Organic Rose Petals & Optical Bokeh: Teardrop velvety crimson rose petals with flutter physics; 180-440px prime lens optical bokeh discs with spherical aberration rims.',
+      'Text Overlay Bug Fix: Resolved issue where empty modal input cleared global Line 1 text, decoupled text rendering from static frame borders, and enabled automatic text overlay generation.'
+    ]
+  },
   {
     date: '2026-11-04', title: '360 Photo & Video Booth Overhaul: Hardware GPU Acceleration, Sharing Station & Live Wall', for: ['app', 'website'], app: '1.0.64',
     items: [

@@ -16,7 +16,7 @@ import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
 import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
-import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, stationUrl, wallUrl, getStats, recordStat } from './lib/photos.mjs';
+import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { detectWifi } from './lib/wifi.mjs';
@@ -297,43 +297,14 @@ function wireIpc() {
   });
   ipcMain.handle('pb4u:spinScan', () => spinList());
   ipcMain.handle('pb4u:spinShare', (e, name, folderKey, subfolder, outName) => spinShare(name, folderKey, subfolder, outName));
-  ipcMain.handle('pb4u:spinStationUrl', (e, slug) => stationUrl(slug));
-  ipcMain.handle('pb4u:spinWallUrl', (e, slug) => wallUrl(slug));
-  ipcMain.handle('pb4u:spinStats', (e, slug) => getStats(slug));
   // Editing (ffmpeg): environment, one job per clip, progress, cancel, the music file, the overlay picture
-  ipcMain.handle('pb4u:spinEnv', async () => ({
-    ffmpeg: await SPIN.hasFfmpeg(),
-    gpu: !!(await SPIN.findHwEncoder()),
-    music: settings.spinMusic ? basename(settings.spinMusic) : '',
-    intro: settings.spinIntro ? basename(settings.spinIntro) : '',
-    outro: settings.spinOutro ? basename(settings.spinOutro) : ''
-  }));
+  ipcMain.handle('pb4u:spinEnv', async () => ({ ffmpeg: await SPIN.hasFfmpeg(), gpu: !!(await SPIN.findHwEncoder()), music: settings.spinMusic ? basename(settings.spinMusic) : '' }));
   ipcMain.handle('pb4u:spinMusic', async (e, clear) => {
     if (clear) { delete settings.spinMusic; saveSettings(); return { music: '' }; }
     const r = await dialog.showOpenDialog(win, { title: 'Music for the 360 videos', properties: ['openFile'], filters: [{ name: 'Audio', extensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'flac'] }] });
     if (r.canceled || !r.filePaths[0]) return null;
     settings.spinMusic = r.filePaths[0]; saveSettings();
     return { music: basename(settings.spinMusic) };
-  });
-  ipcMain.handle('pb4u:spinIntro', async () => {
-    const r = await dialog.showOpenDialog({
-      title: 'Choose intro video clip (MP4 / MOV)',
-      filters: [{ name: 'Videos', extensions: ['mp4', 'mov', 'webm'] }],
-      properties: ['openFile']
-    });
-    if (r.canceled || !r.filePaths[0]) return { intro: settings.spinIntro ? basename(settings.spinIntro) : null };
-    settings.spinIntro = r.filePaths[0]; saveSettings();
-    return { intro: basename(settings.spinIntro), path: settings.spinIntro };
-  });
-  ipcMain.handle('pb4u:spinOutro', async () => {
-    const r = await dialog.showOpenDialog({
-      title: 'Choose outro video clip (MP4 / MOV)',
-      filters: [{ name: 'Videos', extensions: ['mp4', 'mov', 'webm'] }],
-      properties: ['openFile']
-    });
-    if (r.canceled || !r.filePaths[0]) return { outro: settings.spinOutro ? basename(settings.spinOutro) : null };
-    settings.spinOutro = r.filePaths[0]; saveSettings();
-    return { outro: basename(settings.spinOutro), path: settings.spinOutro };
   });
   ipcMain.handle('pb4u:spinFxList', () => SPIN.listFx());
   ipcMain.handle('pb4u:spinOverlay', (e, bytes) => SPIN.saveOverlay(bytes));
@@ -342,8 +313,6 @@ function wireIpc() {
     if (!d || !n || !/\.(mp4|webm|mov|m4v)$/i.test(n)) return { error: 'No video' };
     const music = settings.spinMusic && existsSync(settings.spinMusic) ? settings.spinMusic : null;
     const options = (req && req.options) || {};
-    const intro = (options.intro && existsSync(options.intro)) ? options.intro : (settings.spinIntro && existsSync(settings.spinIntro) ? settings.spinIntro : null);
-    const outro = (options.outro && existsSync(options.outro)) ? options.outro : (settings.spinOutro && existsSync(settings.spinOutro) ? settings.spinOutro : null);
     const fx = SPIN.resolveFx((options && options.fx) || (options && options.fxId) || (req && req.fx), options.orientation);
     return SPIN.enqueue({
       inputPath: join(d, n),
@@ -353,8 +322,6 @@ function wireIpc() {
       textOverlay: SPIN.overlayPath(req && req.textOverlay),
       fx,
       music,
-      intro,
-      outro,
       options
     });
   });
@@ -376,7 +343,7 @@ function wireIpc() {
     saveSettings();
     return ipadInfo();
   });
-  ipcMain.handle('pb4u:copy',(e, t) => { clipboard.writeText(String(t || '')); return true; });
+  ipcMain.handle('pb4u:copy', (e, t) => { clipboard.writeText(String(t || '')); return true; });
   ipcMain.handle('pb4u:openUrl', (e, u) => { openOutside(String(u || '')); return true; });
   ipcMain.handle('pb4u:quit', () => { app.quit(); return true; });
   // Mac: let go of the camera macOS grabbed (its camera service, Image Capture) so the booth can use it.
@@ -426,7 +393,8 @@ app.whenReady().then(async () => {
     makeThumb: async (f) => { const im = nativeImage.createFromPath(f); if (im.isEmpty()) return null; const s = im.getSize(); return im.resize(s.width > s.height ? { height: 360, quality: 'good' } : { width: 360, quality: 'good' }).toJPEG(72); }
   });
   setSpinDir(settings.spinDir || null);
-  const fxResDir = existsSync(join(HERE, 'resources', 'spin-fx')) ? join(HERE, 'resources', 'spin-fx') : null;
+  const userFxDir = join(dataDir(), 'spin-fx');
+  const fxResDir = (existsSync(userFxDir) && existsSync(join(userFxDir, 'catalog.json'))) ? userFxDir : (existsSync(join(HERE, 'resources', 'spin-fx')) ? join(HERE, 'resources', 'spin-fx') : null);
   SPIN.configure({ buildDir: BUILD, temp: join(app.getPath('temp'), 'photobooth4u'), fxDir: fxResDir, resume: true });
   // Camera and printer messages also go to camera.log in the app's data folder (%APPDATA%\photobooth4u), so a camera that
   // hangs can be diagnosed afterwards. It starts over when it passes 512 KB.
@@ -459,9 +427,11 @@ app.whenReady().then(async () => {
   createWindow();
   blocker = powerSaveBlocker.start('prevent-display-sleep');
   // Renew / pick up Admin changes in the background, and keep the clock check fresh.
-  checkinNow(true).catch(() => {});                      // every start-up, when online
-  U.initUpdater({ server: L.SERVER, version: VERSION, log: (m) => console.log('[update] ' + m),
-    notify: (i) => { if (win && !win.isDestroyed()) win.webContents.send('pb4u:update', i); } });
-  clockTimer = setInterval(() => { L.touchClock(); refreshRecord().catch(() => {}); }, 5 * 60000);
-  checkinTimer = setInterval(() => { checkinNow(false).catch(() => {}); }, 2 * 60000);   // checks in every 10 min (see licence.mjs)
+  checkinNow(true).catch(() => { });                      // every start-up, when online
+  U.initUpdater({
+    server: L.SERVER, version: VERSION, log: (m) => console.log('[update] ' + m),
+    notify: (i) => { if (win && !win.isDestroyed()) win.webContents.send('pb4u:update', i); }
+  });
+  clockTimer = setInterval(() => { L.touchClock(); refreshRecord().catch(() => { }); }, 5 * 60000);
+  checkinTimer = setInterval(() => { checkinNow(false).catch(() => { }); }, 2 * 60000);   // checks in every 10 min (see licence.mjs)
 });

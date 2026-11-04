@@ -25611,7 +25611,6 @@
         if (!fromPreset) spinLook.preset = 'custom';
         if (spinLook.speed !== 'custom') { spinLook.rates = []; spinLook.reverse = false; }
         g('spinPreset').value = spinLook.preset; g('spinAutoShare').disabled = !spinLook.auto;
-        if (g('spinTextOn')) spinLook.textOn = g('spinTextOn').checked;
         if (g('spinText1')) spinLook.text1 = g('spinText1').value;
         if (g('spinText2')) spinLook.text2 = g('spinText2').value;
         if (g('spinTextPos')) spinLook.textPos = g('spinTextPos').value;
@@ -25619,14 +25618,11 @@
         if (g('spinTextSize')) spinLook.textSize = g('spinTextSize').value;
         if (g('spinTextFont')) spinLook.textFont = g('spinTextFont').value;
         if (g('spinTextTiming')) spinLook.textTiming = g('spinTextTiming').value;
-        if (g('spinTextOn')) g('spinTextOn').checked = !!spinLook.textOn;
-        if (g('spinText1')) g('spinText1').value = spinLook.text1 || '';
-        if (g('spinText2')) g('spinText2').value = spinLook.text2 || '';
-        if (g('spinTextPos')) g('spinTextPos').value = spinLook.textPos || 'top';
-        if (g('spinTextColor')) g('spinTextColor').value = spinLook.textColor || '#ffffff';
-        if (g('spinTextSize')) g('spinTextSize').value = spinLook.textSize || 'medium';
-        if (g('spinTextFont')) g('spinTextFont').value = spinLook.textFont || 'sans-serif';
-        if (g('spinTextTiming')) g('spinTextTiming').value = spinLook.textTiming || 'always';
+        var hasCaption = Boolean((spinLook.text1 || '').trim() || (spinLook.text2 || '').trim());
+        if (g('spinTextOn')) {
+          spinLook.textOn = g('spinTextOn').checked || hasCaption;
+          g('spinTextOn').checked = !!spinLook.textOn;
+        }
         g('spinSmooth').disabled = spinLook.speed !== 'slow' && !(spinLook.speed === 'custom' && (spinLook.rates || []).some(function (r) { return r < 1; }));
         try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { }
       }
@@ -25641,13 +25637,13 @@
 
       function drawSpinExtraText(x, W, H, opt) {
         opt = opt || {};
-        var active = opt.textOn !== undefined ? opt.textOn : spinLook.textOn;
-        if (!active) return;
         var l1 = (opt.text1 !== undefined ? opt.text1 : spinLook.text1) || '';
         var l2 = (opt.text2 !== undefined ? opt.text2 : spinLook.text2) || '';
         l1 = String(l1).trim();
         l2 = String(l2).trim();
         if (!l1 && !l2) return;
+        var active = opt.textOn !== undefined ? opt.textOn : (spinLook.textOn || !!(l1 || l2));
+        if (!active) return;
 
         var pos = (opt.textPos || spinLook.textPos || 'top').toLowerCase();
         var color = opt.textColor || spinLook.textColor || '#ffffff';
@@ -25708,14 +25704,10 @@
       }
 
       // The booth's own frame, stickers, logo and title, on a transparent picture the size of the video.
-      function spinMakeOverlay(W, H, extraOpt) {
+      function spinMakeOverlay(W, H) {
         var c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d');
         try { drawDecorLayer(x, W, H); } catch (e) { }
         try { var bandH = Math.round(H * 0.13); drawLabelBand(x, W, H - bandH, bandH, labelInput.value, 0); } catch (e) { }
-        var timing = (extraOpt && extraOpt.textTiming) || spinLook.textTiming || 'always';
-        if (timing !== 'fade') {
-          try { drawSpinExtraText(x, W, H, extraOpt); } catch (e) { }
-        }
         return new Promise(function (r) { c.toBlob(r, 'image/png'); });
       }
 
@@ -26429,21 +26421,24 @@
         it.status = 'editing'; it.pct = 0; it.err = ''; it.viewOrig = false; spinTagUpdate(it); spinModalUpdate();
         try {
           var ov = null, txtOv = null;
+          var effectiveT1 = (it.text1 != null && String(it.text1).trim() !== '') ? String(it.text1).trim() : (spinLook.text1 || '').trim();
+          var effectiveT2 = (it.text2 != null && String(it.text2).trim() !== '') ? String(it.text2).trim() : (spinLook.text2 || '').trim();
+          var hasText = Boolean(effectiveT1 || effectiveT2);
           var textOpt = {
-            text1: it.text1 !== undefined ? it.text1 : spinLook.text1,
-            text2: it.text2 !== undefined ? it.text2 : spinLook.text2,
-            textOn: (it.text1 || it.text2) ? true : spinLook.textOn,
-            textPos: spinLook.textPos,
-            textColor: spinLook.textColor,
-            textSize: spinLook.textSize,
-            textFont: spinLook.textFont,
-            textTiming: spinLook.textTiming
+            text1: effectiveT1,
+            text2: effectiveT2,
+            textOn: hasText || !!spinLook.textOn,
+            textPos: spinLook.textPos || 'top',
+            textColor: spinLook.textColor || '#ffffff',
+            textSize: spinLook.textSize || 'medium',
+            textFont: spinLook.textFont || 'sans-serif',
+            textTiming: spinLook.textTiming || 'always'
           };
           if (spinLook.overlay) {
-            var blob = await spinMakeOverlay(dims.W, dims.H, textOpt);
+            var blob = await spinMakeOverlay(dims.W, dims.H);
             if (blob) ov = await window.pb4u.spinOverlay(new Uint8Array(await blob.arrayBuffer()));
           }
-          if (textOpt.textOn && textOpt.textTiming === 'fade') {
+          if (textOpt.textOn && (textOpt.text1 || textOpt.text2)) {
             var txtBlob = await spinMakeTextOverlay(dims.W, dims.H, textOpt);
             if (txtBlob) txtOv = await window.pb4u.spinOverlay(new Uint8Array(await txtBlob.arrayBuffer()));
           }
@@ -26518,8 +26513,14 @@
         var v = document.getElementById('spinVideo'), src = spinSrc(it, !it.viewOrig);
         v.pause(); v.src = src || ''; v.load(); v.style.display = it.src === 'drive' ? 'none' : '';
         document.getElementById('spinTrimA').value = it.trimA || ''; document.getElementById('spinTrimB').value = it.trimB || '';
-        if (document.getElementById('spinTrimText1')) document.getElementById('spinTrimText1').value = it.text1 || '';
-        if (document.getElementById('spinTrimText2')) document.getElementById('spinTrimText2').value = it.text2 || '';
+        if (document.getElementById('spinTrimText1')) {
+          document.getElementById('spinTrimText1').value = it.text1 || '';
+          document.getElementById('spinTrimText1').placeholder = (spinLook.text1 ? 'Override: ' + spinLook.text1 : 'Line 1 override');
+        }
+        if (document.getElementById('spinTrimText2')) {
+          document.getElementById('spinTrimText2').value = it.text2 || '';
+          document.getElementById('spinTrimText2').placeholder = (spinLook.text2 ? 'Override: ' + spinLook.text2 : 'Line 2 override');
+        }
         document.getElementById('spinModal').hidden = false;
         spinModalUpdate();
       }
@@ -26569,8 +26570,14 @@
         if (it.status === 'editing') { if (it.job) window.pb4u.spinCancel(it.job); return; }
         var a = parseFloat(document.getElementById('spinTrimA').value), b = parseFloat(document.getElementById('spinTrimB').value);
         it.trimA = isFinite(a) && a > 0 ? a : 0; it.trimB = isFinite(b) && b > it.trimA ? b : 0;
-        if (document.getElementById('spinTrimText1')) it.text1 = document.getElementById('spinTrimText1').value;
-        if (document.getElementById('spinTrimText2')) it.text2 = document.getElementById('spinTrimText2').value;
+        if (document.getElementById('spinTrimText1')) {
+          var t1 = document.getElementById('spinTrimText1').value.trim();
+          it.text1 = t1 || null;
+        }
+        if (document.getElementById('spinTrimText2')) {
+          var t2 = document.getElementById('spinTrimText2').value.trim();
+          it.text2 = t2 || null;
+        }
         spinEdit(it);
       });
       document.getElementById('spinViewBtn').addEventListener('click', function () {

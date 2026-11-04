@@ -727,3 +727,35 @@ export function saveOverlay(bytes) {
   return name;
 }
 export function overlayPath(name) { return tempDir && OV_RE.test(String(name || '')) && existsSync(join(tempDir, name)) ? join(tempDir, name) : null; }
+
+// Spin & Print: extract 1 or more still frames from a 360 video clip for instant photo strip / keychain printing.
+export async function extractFrames({ inputPath, times = [1.0] }) {
+  const bin = await findFfmpeg();
+  if (!bin) throw new Error('FFmpeg not available');
+  if (!existsSync(inputPath)) throw new Error('Input video not found: ' + inputPath);
+  let dur = 5;
+  try {
+    const info = await probe(inputPath);
+    if (info && info.duration) dur = info.duration;
+  } catch { /* use fallback duration */ }
+  const tArr = Array.isArray(times) && times.length ? times : [dur * 0.5];
+  const results = [];
+  const dir = tempDir || os.tmpdir();
+  mkdirSync(dir, { recursive: true });
+  for (let i = 0; i < tArr.length; i++) {
+    const t = clamp(Number(tArr[i]) || (dur * 0.5), 0, Math.max(0, dur - 0.05));
+    const out = join(dir, 'frame_' + Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2, 7) + '.jpg');
+    const r = await run(bin, [
+      '-hide_banner', '-y', '-ss', f2(t), '-i', inputPath,
+      '-vframes', '1', '-q:v', '2', out
+    ], { timeout: 15000 });
+    if (r.code === 0 && existsSync(out)) {
+      try {
+        const data = readFileSync(out);
+        try { unlinkSync(out); } catch { /* ignore */ }
+        results.push('data:image/jpeg;base64,' + data.toString('base64'));
+      } catch { /* ignore read failure */ }
+    }
+  }
+  return results;
+}

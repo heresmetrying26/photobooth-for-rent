@@ -1,13 +1,13 @@
 # Session Context
 
-**Current Task**: Released v1.0.73 (desktop) and v1.0.84 (Android) with Collage Presets and dynamic guest layout selection.
+**Current Task**: Implemented "Spin & Print" feature allowing physical photo strip / keychain prints directly from 360 videos.
 
 **Key Decisions**:
-- Added named collage presets (Collage A, Collage B) to framesheet setup with live thumbnail cards.
-- Enabled dynamic guest choice with automatic shot count (poses) and countdown adjustment per preset.
-- Maintained exact 2.5×7.5 in keychain scaling across standard paper sizes (A4, 4R).
+- Added `extractFrames` in FFmpeg (`spin.mjs`) and HTML5 canvas fallback for extracting hero center or multi-angle sequence frames from 360 clips.
+- Added "🖨️ Spin & Print" buttons on 360 Studio Desk and Share Modal, automatically integrating with event frames and layouts.
+- Added "and auto-print strip / keychain" option in 360 settings, returning cleanly to 360 desk upon session reset.
 
 **Next Steps**:
-- Verify GitHub Actions workflow completes desktop and Android release builds.
-- Test multi-collage guest selection flow on physical kiosk hardware.
-- Validate print output on A4 and 4R photo printers.
+- Implement Step 2 in sequence: Universal Bluetooth Remote / Pocket Shutter Clicker triggering.
+- Implement Step 3: Beat-drop auto-sync speed ramping.
+- Implement Step 4: Live TV Wall audience countdown and celebration replay.

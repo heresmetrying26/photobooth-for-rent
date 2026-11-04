@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.74', date: '2026-11-04' },
   { version: '1.0.73', date: '2026-11-04' },
   { version: '1.0.72', date: '2026-11-04' },
   { version: '1.0.71', date: '2026-11-04' },
@@ -119,6 +120,24 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-04', title: 'Square 1:1 Live Aspect, 40 Animated FX & Multi-Trajectory Motion Engine', for: ['app', 'website'], app: '1.0.74',
+    items: [
+      'Square 1:1 Live Aspect Ratio: Added non-letterboxed 1:1 Instagram square format with object-fit cover fill and continuous live looping.',
+      'Full 40 Animated Effects Catalog: Unlocked all 40 professional animated particle overlays across 6 categories (Celebration, Weddings, VIP, Nightlife, Action, and Holidays).',
+      'Live Physics & Motion Trajectories: Added real-time trajectory controls (360° Vortex Orbit, Falling Cascade, Rising Float, Radial Burst, Beat Pulse, Wind Drift).',
+      'Motion Customizer Controls: Interactive sliders for effect speed (0.2x-3.0x), opacity (10%-100%), scale (0.4x-2.5x), turbulence/wobble, and screen focus areas.',
+      'Spin & Print Hero Frame Extraction: Native high-res video frame extraction for multi-shot acrylic keychain strips and physical prints.'
+    ]
+  },
+  {
+    date: '2026-11-04', title: 'Square 1:1 Live Aspect, 40 Animated FX & Multi-Trajectory Motion Engine (Android)', for: ['app'], app: '1.0.85',
+    items: [
+      'Square 1:1 Live Aspect Ratio: Instant square format with continuous looping preview without freezing.',
+      'Full 40 Animated Effects Catalog: Complete access to all 40 overlay effects across 6 categories directly on tablet.',
+      'Live Physics Motion Engine: 6 selectable movement paths with live customizable speed, opacity, scale, and focus zones.'
+    ]
+  },
   {
     date: '2026-11-04', title: 'Multi-Collage Presets & Dynamic Guest Layout Selection', for: ['app', 'website'], app: '1.0.73',
     items: [

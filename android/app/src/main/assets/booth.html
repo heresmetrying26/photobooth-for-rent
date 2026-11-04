@@ -14654,9 +14654,17 @@
               <span id="spinMusicName" class="spin-dim" style="font-weight:600;">no music chosen</span>
               <label style="margin-left:auto;">Volume <input type="range" id="spinVol" min="0" max="100" value="80"></label>
             </div>
-            <div class="spin-row" style="margin-top:6px;">
+            <div class="spin-row" style="margin-top:6px;gap:12px;flex-wrap:wrap;">
               <label class="chk"><input type="checkbox" id="spinAuto"> Automatically process and edit incoming 360 videos</label>
               <label class="chk"><input type="checkbox" id="spinAutoShare"> and get the QR code ready automatically</label>
+              <label class="chk"><input type="checkbox" id="spinAutoPrint"> and 🖨️ auto-print strip / keychain</label>
+              <label style="margin-left:auto;font-size:12px;display:flex;align-items:center;gap:6px;">
+                Print mode
+                <select id="spinPrintMode" style="padding:3px 8px;font-size:12px;border-radius:6px;">
+                  <option value="sequence">Multi-angle sequence (matches strip)</option>
+                  <option value="solo">Solo (1 hero frame)</option>
+                </select>
+              </label>
             </div>
           </div>
         </div>
@@ -14711,6 +14719,7 @@
           <div class="spin-action-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
             <button type="button" class="desk-btn primary" id="spinEditBtn" style="flex:1;min-width:130px;padding:9px 14px;font-weight:800;font-size:13px;">🎬 Edit / Process</button>
             <button type="button" class="desk-btn" id="spinShareBtn" style="flex:1;min-width:110px;padding:9px 14px;font-weight:700;font-size:13px;background:var(--blue-deep,#1F3A52);color:#fff;">📱 Share + QR</button>
+            <button type="button" class="desk-btn" id="spinPrintBtn" style="flex:1;min-width:110px;padding:9px 14px;font-weight:700;font-size:13px;background:#2E5A44;color:#fff;" title="Extract photo from 360 video and print strip / keychain">🖨️ Spin &amp; Print</button>
             <button type="button" class="desk-btn" id="spinViewBtn" hidden style="padding:9px 12px;font-size:12px;">View original</button>
             <button type="button" class="desk-btn" id="spinRemove" style="padding:9px 12px;font-size:12px;color:#c0392b;">Remove</button>
           </div>
@@ -14790,6 +14799,7 @@
       <div class="spin-share-foot">
         <p class="spin-share-note" id="spinShareNote">Guests scan Step 1 to join the booth Wi-Fi, then Step 2 to save their 360 video.</p>
         <div class="spin-share-actions">
+          <button type="button" class="desk-btn" id="spinSharePrintBtn" style="font-weight:700;background:#2E5A44;color:#fff;" title="Print photo strip or keychain from this 360 clip">🖨️ Spin &amp; Print</button>
           <button type="button" class="desk-btn" id="spinShareCopyBtn">📋 Copy Link</button>
           <button type="button" class="desk-btn primary" id="spinShareDoneBtn">Back to Studio</button>
         </div>
@@ -26847,6 +26857,7 @@
         restoreSoloPaper();
         if (wasResult) restoreGuestLook();      // the next guest starts with the look chosen in Setup
         if (back === 'req') openReq();         // the list of print requests comes back
+        else if (back === 'spin') openSpin();  // return to 360 studio desk
         else if (back) openDesk();
       };
       // Desktop app: watch a folder the photographer's photos are saved to.
@@ -27142,7 +27153,7 @@
       var spinLook = {
         preset: 'classic', speed: 'slow', smooth: false, gpu: false, orient: 'portrait', quality: 1080,
         overlay: true, frameStyle: 'floral_gold', zoom: true, flash: true, fx: 'none', audio: 'music', volume: 80,
-        auto: false, autoShare: false, rates: [], reverse: false,
+        auto: false, autoShare: false, autoPrint: false, printSolo: false, rates: [], reverse: false,
         fxMovement: 'vortex', fxSpeed: 100, fxOpacity: 85, fxScale: 100, fxWobble: 50, fxLocation: 'full',
         textOn: true,
         text1: '', text1Font: 'cursive', text1Color: '#FFF2A8', text1Size: 52, text1X: 50, text1Y: 18,
@@ -27498,6 +27509,8 @@
         }
         spinUpdateFxBadge();
         g('spinAudio').value = spinLook.audio; g('spinVol').value = String(spinLook.volume); g('spinAuto').checked = !!spinLook.auto; g('spinAutoShare').checked = !!spinLook.autoShare; g('spinAutoShare').disabled = !spinLook.auto;
+        if (g('spinAutoPrint')) { g('spinAutoPrint').checked = !!spinLook.autoPrint; g('spinAutoPrint').disabled = !spinLook.auto; }
+        if (g('spinPrintMode')) g('spinPrintMode').value = spinLook.printSolo ? 'solo' : 'sequence';
         if (g('spinTextOn')) g('spinTextOn').checked = !!spinLook.textOn;
         if (g('spinText1')) g('spinText1').value = spinLook.text1 || '';
         if (g('spinText1Font')) g('spinText1Font').value = spinLook.text1Font || 'cursive';
@@ -27554,9 +27567,12 @@
         spinUpdateFxBadge();
         spinLook.audio = g('spinAudio').value;
         spinLook.volume = Number(g('spinVol').value) || 0; spinLook.auto = g('spinAuto').checked; spinLook.autoShare = g('spinAutoShare').checked && spinLook.auto;
+        if (g('spinAutoPrint')) spinLook.autoPrint = g('spinAutoPrint').checked && spinLook.auto;
+        if (g('spinPrintMode')) spinLook.printSolo = (g('spinPrintMode').value === 'solo');
         if (!fromPreset) spinLook.preset = 'custom';
         if (spinLook.speed !== 'custom') { spinLook.rates = []; spinLook.reverse = false; }
         g('spinPreset').value = spinLook.preset; g('spinAutoShare').disabled = !spinLook.auto;
+        if (g('spinAutoPrint')) g('spinAutoPrint').disabled = !spinLook.auto;
         if (g('spinText1')) spinLook.text1 = g('spinText1').value;
         if (g('spinText1Font')) spinLook.text1Font = g('spinText1Font').value;
         if (g('spinText1Color')) spinLook.text1Color = g('spinText1Color').value;
@@ -28979,6 +28995,9 @@
           await spinDoShare(it);
           if (it.url) { if (!spinOverlay.hidden) spinOpenItem(it); else showToast('A 360 video is ready: open the 360 desk for its QR code.', 7000); }
         }
+        if (spinLook.autoPrint && it.status === 'edited') {
+          spinPrintItem(it, { auto: true });
+        }
       }
       document.getElementById('spinLinkCopy').addEventListener('click', function () {
         var t = (spinInfo && spinInfo.sendUrl) || ''; if (!t) return;
@@ -29071,74 +29090,300 @@
         ctx.restore();
       }
 
-      function drawSpinFxParticles(ctx, W, H, fx) {
+      function drawSpinFxParticles(ctx, W, H, fx, fxOpt) {
         if (!fx || fx === 'none') return;
+        fxOpt = fxOpt || {};
+        var movement = fxOpt.fxMovement || fxOpt.movement || (spinLook && spinLook.fxMovement) || 'vortex';
+        var speedVal = Number(fxOpt.fxSpeed != null ? fxOpt.fxSpeed : (fxOpt.speed != null ? fxOpt.speed : (spinLook && spinLook.fxSpeed != null ? spinLook.fxSpeed : 100)));
+        var opacityVal = Number(fxOpt.fxOpacity != null ? fxOpt.fxOpacity : (fxOpt.opacity != null ? fxOpt.opacity : (spinLook && spinLook.fxOpacity != null ? spinLook.fxOpacity : 85)));
+        var scaleVal = Number(fxOpt.fxScale != null ? fxOpt.fxScale : (fxOpt.scale != null ? fxOpt.scale : (spinLook && spinLook.fxScale != null ? spinLook.fxScale : 100)));
+        var wobbleVal = Number(fxOpt.fxWobble != null ? fxOpt.fxWobble : (fxOpt.wobble != null ? fxOpt.wobble : (spinLook && spinLook.fxWobble != null ? spinLook.fxWobble : 50)));
+        var locationVal = fxOpt.fxLocation || fxOpt.location || (spinLook && spinLook.fxLocation) || 'full';
+
         var t = Date.now() / 1000;
+        var speedMult = Math.max(0.2, Math.min(3.0, speedVal / 100));
+        var baseAlpha = Math.max(0.05, Math.min(1.0, opacityVal / 100));
+        var scaleMult = Math.max(0.4, Math.min(2.5, scaleVal / 100)) * (Math.min(W, H) / 1080);
+        var wobbleAmount = wobbleVal / 100;
+        var mt = t * speedMult;
+
         ctx.save();
-        if (fx === 'gold_dust' || fx === 'sparkles') {
-          var count = fx === 'gold_dust' ? 32 : 22;
+        if (locationVal === 'top') {
+          ctx.beginPath(); ctx.rect(0, 0, W, H * 0.52); ctx.clip();
+        } else if (locationVal === 'bottom') {
+          ctx.beginPath(); ctx.rect(0, H * 0.48, W, H * 0.52); ctx.clip();
+        }
+
+        function getPos(seed) {
+          var px = 0, py = 0;
+          var cx = W / 2, cy = H * 0.55;
+          if (locationVal === 'top') cy = H * 0.3;
+          else if (locationVal === 'bottom') cy = H * 0.72;
+
+          if (movement === 'vortex') {
+            var baseR = (0.16 + ((seed % 100) / 100) * 0.40) * Math.min(W, H);
+            if (locationVal === 'center') baseR *= 0.55;
+            else if (locationVal === 'edges') baseR = (0.38 + ((seed % 100) / 100) * 0.18) * Math.min(W, H);
+            var ang = (seed + mt * 1.8 + Math.sin(seed + mt * 0.6) * wobbleAmount * 0.4) % (Math.PI * 2);
+            var rTurb = Math.sin(seed * 2.1 + mt * 2.8) * (wobbleAmount * 22 * scaleMult);
+            px = cx + Math.cos(ang) * (baseR + rTurb);
+            py = cy + Math.sin(ang) * ((baseR + rTurb) * 0.68);
+          } else if (movement === 'rise') {
+            var rx = ((Math.sin(seed + mt * 0.4) * wobbleAmount * 0.2 + ((seed * 7) % 100) / 100) * W);
+            var ry = ((H + 80 - ((seed * 29 + mt * 130) % (H + 120))) - 40);
+            if (locationVal === 'center') rx = cx + (rx - cx) * 0.45;
+            else if (locationVal === 'edges') rx = (rx < cx) ? rx * 0.4 : W - (W - rx) * 0.4;
+            px = rx; py = ry;
+          } else if (movement === 'burst') {
+            var cycle = ((mt * 0.85 + (seed % 10) * 0.25) % 2.4) / 2.4;
+            var bAng = (seed * 11.3) % (Math.PI * 2);
+            var maxDist = Math.max(W, H) * (locationVal === 'center' ? 0.35 : 0.65);
+            var dist = cycle * maxDist;
+            px = cx + Math.cos(bAng) * dist + Math.sin(seed + mt) * wobbleAmount * 15;
+            py = cy + Math.sin(bAng) * dist + Math.cos(seed + mt) * wobbleAmount * 15;
+          } else if (movement === 'beat_pulse') {
+            var beat = Math.abs(Math.sin(mt * 4.4));
+            var bx = (((seed * 13) % 100) / 100 * W);
+            var by = (((seed * 29) % 100) / 100 * H);
+            if (locationVal === 'center') { bx = cx + (bx - cx) * 0.4; by = cy + (by - cy) * 0.4; }
+            px = bx + Math.cos(seed + mt * 2) * beat * wobbleAmount * 35;
+            py = by + Math.sin(seed + mt * 3) * beat * wobbleAmount * 35;
+          } else if (movement === 'drift') {
+            var dx = (((seed * 23 + mt * 160) % (W + 140)) - 70);
+            var dy = (((seed * 17 + mt * 95) % (H + 140)) - 70) + Math.sin(seed + mt * 1.8) * wobbleAmount * 30;
+            if (locationVal === 'center') dx = cx + (dx - cx) * 0.5;
+            px = dx; py = dy;
+          } else { // default 'fall'
+            var fxPos = ((Math.sin(seed + mt * 0.45) * wobbleAmount * 0.25 + ((seed * 11) % 100) / 100) * W);
+            var fyPos = (((seed * 31 + mt * 150) % (H + 120)) - 60);
+            if (locationVal === 'center') fxPos = cx + (fxPos - cx) * 0.45;
+            else if (locationVal === 'edges') fxPos = (fxPos < cx) ? fxPos * 0.4 : W - (W - fxPos) * 0.4;
+            px = fxPos; py = fyPos;
+          }
+          return { x: px, y: py };
+        }
+
+        if (fx === 'confetti_multi' || fx === 'confetti_gold' || fx === 'streamers_party' || fx === 'confetti') {
+          var isGold = fx === 'confetti_gold';
+          var palette = isGold ? ['#FFD700', '#FFF2A8', '#D4AF37', '#F5E6AB', '#C59B27'] : ['#FF3B30', '#FFCC00', '#34C759', '#007AFF', '#AF52DE', '#FF9500', '#FF2D55'];
+          var count = fx === 'streamers_party' ? 24 : 36;
           for (var i = 0; i < count; i++) {
-            var seed = i * 137.5;
-            var px = ((Math.sin(seed + t * 0.3) * 0.5 + 0.5) * W);
-            var py = (((seed * 10 - t * 45) % H + H) % H);
-            var size = (Math.sin(seed * 3 + t * 4) * 0.4 + 0.6) * (fx === 'gold_dust' ? 4 : 8);
-            var alpha = Math.sin(seed + t * 3) * 0.4 + 0.6;
-            ctx.globalAlpha = Math.max(0.1, Math.min(1, alpha));
-            if (fx === 'gold_dust') {
-              ctx.fillStyle = i % 2 === 0 ? '#FFF2A8' : '#D4AF37';
-              ctx.beginPath();
-              ctx.arc(px, py, Math.max(1.5, size), 0, Math.PI * 2);
-              ctx.fill();
+            var seed = i * 211.3;
+            var pos = getPos(seed);
+            var rot = mt * 2.8 + seed;
+            var cAlpha = (Math.sin(seed + mt * 2) * 0.2 + 0.8) * baseAlpha;
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            ctx.rotate(rot);
+            ctx.scale(Math.cos(seed + mt * 3.5), 1);
+            ctx.fillStyle = palette[i % palette.length];
+            ctx.globalAlpha = Math.max(0.05, Math.min(1, cAlpha));
+            if (fx === 'streamers_party') {
+              ctx.fillRect(-3 * scaleMult, -14 * scaleMult, 6 * scaleMult, 28 * scaleMult);
             } else {
-              ctx.strokeStyle = '#FFF2A8';
+              ctx.fillRect(-6 * scaleMult, -4 * scaleMult, 12 * scaleMult, 8 * scaleMult);
+            }
+            ctx.restore();
+          }
+        } else if (fx === 'champagne_bubbles' || fx === 'balloons_pastel') {
+          var isBalloons = fx === 'balloons_pastel';
+          var count = isBalloons ? 16 : 28;
+          var bPalette = isBalloons ? ['#FFB6C1', '#B0E0E6', '#FFDAB9', '#E6E6FA', '#D4EDDA'] : null;
+          for (var b = 0; b < count; b++) {
+            var seed = b * 173.1;
+            var pos = getPos(seed);
+            var r = (Math.sin(seed + mt) * 0.3 + 0.7) * (isBalloons ? 24 : 10) * scaleMult;
+            ctx.save();
+            ctx.globalAlpha = (Math.sin(seed + mt * 2) * 0.2 + 0.75) * baseAlpha;
+            if (isBalloons) {
+              ctx.fillStyle = bPalette[b % bPalette.length];
+              ctx.beginPath();
+              ctx.ellipse(pos.x, pos.y, r, r * 1.25, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(pos.x, pos.y + r * 1.25);
+              ctx.lineTo(pos.x + Math.sin(mt * 2 + seed) * 4, pos.y + r * 1.25 + 16 * scaleMult);
+              ctx.stroke();
+            } else {
+              ctx.strokeStyle = 'rgba(255, 240, 180, 0.85)';
+              ctx.fillStyle = 'rgba(255, 230, 150, 0.18)';
               ctx.lineWidth = 1.5;
               ctx.beginPath();
-              ctx.moveTo(px - size, py); ctx.lineTo(px + size, py);
-              ctx.moveTo(px, py - size); ctx.lineTo(px, py + size);
+              ctx.arc(pos.x, pos.y, Math.max(2, r), 0, Math.PI * 2);
+              ctx.fill();
               ctx.stroke();
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+              ctx.beginPath();
+              ctx.arc(pos.x - r * 0.35, pos.y - r * 0.35, Math.max(1, r * 0.25), 0, Math.PI * 2);
+              ctx.fill();
             }
-          }
-        } else if (fx === 'confetti') {
-          var colors = ['#FF3B30', '#FFCC00', '#34C759', '#007AFF', '#AF52DE', '#FF9500'];
-          for (var c = 0; c < 30; c++) {
-            var cSeed = c * 211.3;
-            var cx = ((Math.sin(cSeed + t * 0.5) * 0.5 + 0.5) * W);
-            var cy = (((cSeed * 15 + t * 90) % H + H) % H);
-            var cRot = t * 3 + cSeed;
-            ctx.save();
-            ctx.translate(cx, cy);
-            ctx.rotate(cRot);
-            ctx.fillStyle = colors[c % colors.length];
-            ctx.globalAlpha = 0.85;
-            ctx.fillRect(-5, -3, 10, 6);
             ctx.restore();
           }
-        } else if (fx === 'floating_hearts') {
-          for (var h = 0; h < 18; h++) {
-            var hSeed = h * 97.1;
-            var hx = ((Math.sin(hSeed + t * 0.4) * 0.5 + 0.5) * W);
-            var hy = (((hSeed * 20 - t * 40) % H + H) % H);
-            var hSize = (Math.sin(hSeed + t * 2) * 0.25 + 0.75) * 12;
+        } else if (fx === 'hearts_floating' || fx === 'floating_hearts' || fx === 'sunburst_warm') {
+          var count = 20;
+          for (var h = 0; h < count; h++) {
+            var seed = h * 97.1;
+            var pos = getPos(seed);
+            var hSize = (Math.sin(seed + mt * 2) * 0.25 + 0.75) * 14 * scaleMult;
             ctx.save();
-            ctx.translate(hx, hy);
-            ctx.fillStyle = h % 2 === 0 ? 'rgba(255, 75, 110, 0.8)' : 'rgba(255, 140, 160, 0.8)';
+            ctx.translate(pos.x, pos.y);
+            ctx.globalAlpha = (Math.sin(seed + mt * 1.8) * 0.2 + 0.8) * baseAlpha;
+            if (fx === 'sunburst_warm') {
+              ctx.fillStyle = h % 2 === 0 ? 'rgba(255, 200, 80, 0.7)' : 'rgba(255, 120, 60, 0.6)';
+              ctx.beginPath();
+              ctx.arc(0, 0, hSize * 1.2, 0, Math.PI * 2);
+              ctx.fill();
+            } else {
+              ctx.fillStyle = h % 3 === 0 ? 'rgba(255, 75, 110, 0.85)' : (h % 3 === 1 ? 'rgba(255, 140, 160, 0.85)' : 'rgba(255, 192, 203, 0.85)');
+              ctx.beginPath();
+              ctx.moveTo(0, 0);
+              ctx.bezierCurveTo(-hSize / 2, -hSize / 2, -hSize, hSize / 3, 0, hSize);
+              ctx.bezierCurveTo(hSize, hSize / 3, hSize / 2, -hSize / 2, 0, 0);
+              ctx.fill();
+            }
+            ctx.restore();
+          }
+        } else if (fx === 'rose_petals_red' || fx === 'rose_petals' || fx === 'petals_white_drift' || fx === 'autumn_leaves') {
+          var count = 22;
+          for (var p = 0; p < count; p++) {
+            var seed = p * 127.3;
+            var pos = getPos(seed);
+            var pSize = (Math.sin(seed + mt) * 0.2 + 0.8) * 16 * scaleMult;
+            var pRot = seed + mt * 1.5;
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            ctx.rotate(pRot);
+            ctx.globalAlpha = baseAlpha * 0.9;
+            if (fx === 'autumn_leaves') {
+              ctx.fillStyle = p % 2 === 0 ? '#E65100' : '#D84315';
+            } else if (fx === 'petals_white_drift') {
+              ctx.fillStyle = p % 2 === 0 ? 'rgba(255, 255, 255, 0.92)' : 'rgba(255, 240, 245, 0.85)';
+            } else {
+              ctx.fillStyle = p % 2 === 0 ? '#C2185B' : '#880E4F';
+            }
             ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.bezierCurveTo(-hSize / 2, -hSize / 2, -hSize, hSize / 3, 0, hSize);
-            ctx.bezierCurveTo(hSize, hSize / 3, hSize / 2, -hSize / 2, 0, 0);
+            ctx.ellipse(0, 0, pSize * 0.5, pSize, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
           }
-        } else if (fx === 'bokeh') {
-          for (var b = 0; b < 14; b++) {
-            var bSeed = b * 331.7;
-            var bx = ((Math.sin(bSeed + t * 0.2) * 0.5 + 0.5) * W);
-            var by = (((bSeed * 10 - t * 20) % H + H) % H);
-            var bRadius = (Math.sin(bSeed + t) * 0.3 + 0.7) * 28;
-            ctx.fillStyle = b % 2 === 0 ? 'rgba(255, 235, 175, 0.22)' : 'rgba(255, 255, 255, 0.18)';
+        } else if (fx === 'cash_rain') {
+          var count = 20;
+          for (var m = 0; m < count; m++) {
+            var seed = m * 149.7;
+            var pos = getPos(seed);
+            var rot = seed + mt * 2.2;
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            ctx.rotate(rot);
+            ctx.scale(Math.cos(seed + mt * 3), 1);
+            ctx.globalAlpha = baseAlpha;
+            ctx.fillStyle = '#85bb65';
+            ctx.fillRect(-14 * scaleMult, -8 * scaleMult, 28 * scaleMult, 16 * scaleMult);
+            ctx.strokeStyle = '#2e7d32';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(-14 * scaleMult, -8 * scaleMult, 28 * scaleMult, 16 * scaleMult);
+            ctx.fillStyle = '#1b5e20';
+            ctx.font = '700 ' + Math.max(7, Math.round(9 * scaleMult)) + 'px sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('$', 0, 0);
+            ctx.restore();
+          }
+        } else if (fx === 'snow_blizzard') {
+          var count = 35;
+          for (var s = 0; s < count; s++) {
+            var seed = s * 89.3;
+            var pos = getPos(seed);
+            var sz = (Math.sin(seed + mt * 2) * 0.3 + 0.7) * 4 * scaleMult;
+            ctx.save();
+            ctx.globalAlpha = (Math.sin(seed + mt) * 0.25 + 0.75) * baseAlpha;
+            ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            ctx.arc(bx, by, bRadius, 0, Math.PI * 2);
+            ctx.arc(pos.x, pos.y, Math.max(1.5, sz), 0, Math.PI * 2);
             ctx.fill();
+            ctx.restore();
+          }
+        } else if (fx === 'laser_beams' || fx === 'neon_cyberpunk' || fx === 'audio_equalizer' || fx === 'lightning_arcs' || fx === 'blacklight_uv') {
+          var count = 10;
+          for (var l = 0; l < count; l++) {
+            var seed = l * 71.3;
+            var pos = getPos(seed);
+            ctx.save();
+            ctx.globalAlpha = (Math.sin(seed + mt * 3) * 0.3 + 0.7) * baseAlpha;
+            ctx.strokeStyle = l % 2 === 0 ? '#00f0ff' : '#ff0077';
+            ctx.lineWidth = Math.max(2, 3.5 * scaleMult);
+            ctx.shadowColor = ctx.strokeStyle;
+            ctx.shadowBlur = 12 * scaleMult;
+            ctx.beginPath();
+            if (fx === 'audio_equalizer') {
+              var barH = Math.abs(Math.sin(seed + mt * 5)) * 45 * scaleMult;
+              ctx.moveTo(pos.x, pos.y - barH); ctx.lineTo(pos.x, pos.y + barH);
+            } else {
+              var rayLen = 40 * scaleMult;
+              var rayAng = seed + mt * 2;
+              ctx.moveTo(pos.x - Math.cos(rayAng) * rayLen, pos.y - Math.sin(rayAng) * rayLen);
+              ctx.lineTo(pos.x + Math.cos(rayAng) * rayLen, pos.y + Math.sin(rayAng) * rayLen);
+            }
+            ctx.stroke();
+            ctx.restore();
+          }
+        } else if (fx === 'stage_smoke' || fx === 'smoke_ring' || fx === 'fire_border') {
+          var count = 18;
+          for (var sm = 0; sm < count; sm++) {
+            var seed = sm * 157.9;
+            var pos = getPos(seed);
+            var rad = (Math.sin(seed + mt) * 0.3 + 0.7) * 32 * scaleMult;
+            ctx.save();
+            ctx.globalAlpha = (Math.sin(seed + mt * 1.5) * 0.15 + 0.35) * baseAlpha;
+            if (fx === 'fire_border') {
+              ctx.fillStyle = sm % 2 === 0 ? '#ff5722' : '#ff9800';
+            } else {
+              ctx.fillStyle = 'rgba(230, 230, 240, 0.45)';
+            }
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, Math.max(4, rad), 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        } else if (fx === 'bokeh_golden' || fx === 'bokeh' || fx === 'disco_mirror' || fx === 'diamond_prism' || fx === 'summer_flare' || fx === 'prism_leak') {
+          var count = 16;
+          for (var bk = 0; bk < count; bk++) {
+            var seed = bk * 331.7;
+            var pos = getPos(seed);
+            var bRadius = (Math.sin(seed + mt) * 0.3 + 0.7) * 30 * scaleMult;
+            ctx.save();
+            ctx.globalAlpha = (Math.sin(seed + mt * 1.2) * 0.12 + 0.28) * baseAlpha;
+            ctx.fillStyle = bk % 2 === 0 ? 'rgba(255, 225, 140, 0.65)' : 'rgba(255, 255, 255, 0.55)';
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, Math.max(5, bRadius), 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        } else {
+          var isSparkle = fx === 'sparkles' || fx === 'sparkler_fountain' || fx === 'fireworks_midnight' || fx === 'nye_countdown';
+          var count = isSparkle ? 24 : 36;
+          for (var i = 0; i < count; i++) {
+            var seed = i * 137.5;
+            var pos = getPos(seed);
+            var size = (Math.sin(seed * 3 + mt * 4) * 0.4 + 0.6) * (isSparkle ? 9 : 5) * scaleMult;
+            var alpha = (Math.sin(seed + mt * 3) * 0.35 + 0.65) * baseAlpha;
+            ctx.save();
+            ctx.globalAlpha = Math.max(0.05, Math.min(1, alpha));
+            if (isSparkle) {
+              ctx.strokeStyle = '#FFF2A8';
+              ctx.lineWidth = Math.max(1, 1.6 * scaleMult);
+              ctx.beginPath();
+              ctx.moveTo(pos.x - size, pos.y); ctx.lineTo(pos.x + size, pos.y);
+              ctx.moveTo(pos.x, pos.y - size); ctx.lineTo(pos.x, pos.y + size);
+              ctx.stroke();
+            } else {
+              ctx.fillStyle = i % 2 === 0 ? '#FFF2A8' : '#D4AF37';
+              ctx.beginPath();
+              ctx.arc(pos.x, pos.y, Math.max(1.5, size), 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.restore();
           }
         }
         ctx.restore();
@@ -29209,10 +29454,9 @@
         cvs.style.display = 'block';
 
         var v = document.getElementById('spinVideo');
-        var vw = (v && v.videoWidth) || 1080;
-        var vh = (v && v.videoHeight) || 1920;
-        if (vw <= 0) vw = 1080;
-        if (vh <= 0) vh = 1920;
+        var dims = spinDims();
+        var vw = dims.W;
+        var vh = dims.H;
         if (cvs.width !== vw || cvs.height !== vh) {
           cvs.width = vw;
           cvs.height = vh;
@@ -29302,7 +29546,7 @@
 
         var fxSel = document.getElementById('spinFx') || document.getElementById('spinModalFx');
         var curFx = (fxSel && fxSel.value) || (it && it.fx) || (spinLook && spinLook.fx) || 'none';
-        try { drawSpinFxParticles(ctx, vw, vh, curFx); } catch (e) { }
+        try { drawSpinFxParticles(ctx, vw, vh, curFx, spinLook); } catch (e) { }
       }
 
       // ---- editing one clip ----
@@ -29361,6 +29605,9 @@
             options: {
               speed: spinLook.speed, rates: spinLook.rates, reverse: spinLook.reverse, smooth: spinLook.smooth, gpu: !!spinLook.gpu, orientation: spinLook.orient, quality: spinLook.quality, audio: spinLook.audio,
               volume: spinLook.volume / 100, trimStart: it.trimA || 0, trimEnd: it.trimB || null, fx: it.fx || spinLook.fx || 'none',
+              fxSpeed: (spinLook.fxSpeed != null ? spinLook.fxSpeed : 100) / 100,
+              fxOpacity: (spinLook.fxOpacity != null ? spinLook.fxOpacity : 85) / 100,
+              fxLocation: spinLook.fxLocation || 'full',
               zoom: spinLook.zoom !== undefined ? !!spinLook.zoom : true,
               flash: spinLook.flash !== undefined ? !!spinLook.flash : true,
               textTiming: textOpt.textTiming
@@ -29379,7 +29626,13 @@
           }
         } catch (e) { it.status = 'error'; it.err = (e && e.message) || 'Failed'; }
         it.job = null; spinRender(); spinModalUpdate();
-        if (it === spinCur && it.edited) { var v = document.getElementById('spinVideo'); v.src = spinSrc(it, true); v.load(); }
+        if (it === spinCur && it.edited) {
+          var v = document.getElementById('spinVideo');
+          v.src = spinSrc(it, true);
+          v.load();
+          v.loop = true;
+          v.play().catch(function () { });
+        }
       }
 
       // ---- the player window & preview sidebar ----
@@ -29480,15 +29733,14 @@
         var v = document.getElementById('spinVideo'), src = spinSrc(it, !it.viewOrig);
         v.pause(); v.src = src || ''; v.load(); v.style.display = it.src === 'drive' ? 'none' : '';
         v.playbackRate = 1.0;
+        v.loop = true;
+        spinUpdateStageAspect();
         document.querySelectorAll('.spin-speed-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.rate === '1.0'); });
         var playBtn = document.getElementById('spinModalPlayBtn');
         if (playBtn) playBtn.textContent = '▶ Play';
 
         v.onloadedmetadata = function () {
-          var stage = document.getElementById('spinStageWrap');
-          if (stage && v.videoWidth && v.videoHeight) {
-            stage.style.aspectRatio = v.videoWidth + ' / ' + v.videoHeight;
-          }
+          spinUpdateStageAspect();
           renderSpinModalPreview();
         };
         v.play().then(function () {
@@ -29721,6 +29973,161 @@
         });
       }
 
+      // Spin & Print: extract 1 or N frames from a 360 video and trigger physical photo strip / keychain printing
+      function extractSpinFramesInBrowser(src, count) {
+        return new Promise(function (resolve, reject) {
+          var v = document.createElement('video');
+          if (!src.startsWith('blob:') && !src.startsWith('data:')) v.crossOrigin = 'anonymous';
+          v.muted = true;
+          v.playsInline = true;
+          v.preload = 'auto';
+          var timer = setTimeout(function () {
+            try { v.removeAttribute('src'); v.load(); } catch (e) { }
+            reject(new Error('Video loading timed out'));
+          }, 20000);
+
+          v.onloadedmetadata = async function () {
+            try {
+              var dur = v.duration && isFinite(v.duration) && v.duration > 0 ? v.duration : 6;
+              var w = v.videoWidth || 1920;
+              var h = v.videoHeight || 1080;
+              var times = [];
+              if (count === 1) {
+                times = [dur * 0.5];
+              } else {
+                for (var i = 0; i < count; i++) {
+                  times.push(dur * ((i + 1) / (count + 1)));
+                }
+              }
+              var canvases = [];
+              for (var j = 0; j < times.length; j++) {
+                var targetTime = Math.max(0.1, Math.min(dur - 0.1, times[j]));
+                await new Promise(function (rSeek) {
+                  var onSeeked = function () {
+                    v.removeEventListener('seeked', onSeeked);
+                    rSeek();
+                  };
+                  v.addEventListener('seeked', onSeeked);
+                  v.currentTime = targetTime;
+                });
+                var cv = document.createElement('canvas');
+                cv.width = w;
+                cv.height = h;
+                var ctx = cv.getContext('2d');
+                ctx.drawImage(v, 0, 0, w, h);
+                canvases.push(cv);
+              }
+              clearTimeout(timer);
+              try { v.removeAttribute('src'); v.load(); } catch (e) { }
+              resolve(canvases);
+            } catch (err) {
+              clearTimeout(timer);
+              try { v.removeAttribute('src'); v.load(); } catch (e) { }
+              reject(err);
+            }
+          };
+          v.onerror = function () {
+            clearTimeout(timer);
+            try { v.removeAttribute('src'); v.load(); } catch (e) { }
+            reject(new Error('Could not decode video stream'));
+          };
+          v.src = src;
+        });
+      }
+
+      async function spinPrintItem(it, opts) {
+        opts = opts || {};
+        if (!it) it = spinCur;
+        if (!it) { showToast('Select a 360 video first.', 2500); return; }
+        if (!printSettings()) {
+          showToast('Printing is not turned on. Enable printing in Print settings.', 4000);
+          return;
+        }
+        var soloMode = spinLook && spinLook.printSolo !== undefined ? !!spinLook.printSolo : false;
+        var need = soloMode ? 1 : shotsNeeded();
+        showToast('Extracting ' + (need > 1 ? need + ' photos' : 'photo') + ' from 360 spin…', 2200);
+
+        var canvases = [];
+        // 1. Try Desktop FFmpeg frame extraction if available
+        if (window.pb4u && window.pb4u.spinExtractFrames && it.src === 'inbox') {
+          try {
+            var dur = 6;
+            var vEl = document.getElementById('spinVideo');
+            if (vEl && vEl.duration && isFinite(vEl.duration) && vEl.duration > 0) dur = vEl.duration;
+            var times = [];
+            if (need === 1) {
+              times = [dur * 0.5];
+            } else {
+              for (var i = 0; i < need; i++) {
+                times.push(dur * ((i + 1) / (need + 1)));
+              }
+            }
+            var res = await window.pb4u.spinExtractFrames({ name: it.name, edited: !!it.edited, times: times });
+            if (res && res.ok && Array.isArray(res.frames) && res.frames.length >= need) {
+              for (var f = 0; f < res.frames.length; f++) {
+                var img = new Image();
+                await new Promise(function (resolveImg, rejectImg) {
+                  img.onload = resolveImg;
+                  img.onerror = rejectImg;
+                  img.src = res.frames[f];
+                });
+                var cv = document.createElement('canvas');
+                cv.width = img.naturalWidth || 1920;
+                cv.height = img.naturalHeight || 1080;
+                var ctx = cv.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                canvases.push(cv);
+              }
+            }
+          } catch (e) {
+            console.warn('Desktop FFmpeg frame extraction fallback:', e);
+          }
+        }
+
+        // 2. Fallback to HTML5 video element extraction (universal)
+        if (!canvases.length || canvases.length < need) {
+          try {
+            var src = spinSrc(it, !it.viewOrig);
+            if (!src && it.objUrl) src = it.objUrl;
+            if (!src) throw new Error('No video source available for this clip.');
+            canvases = await extractSpinFramesInBrowser(src, need);
+          } catch (err) {
+            console.error('Frame extraction failed:', err);
+            showToast('Could not extract photo from 360 video: ' + (err.message || err), 4500);
+            return;
+          }
+        }
+
+        if (!canvases.length) {
+          showToast('Could not extract photo from 360 video.', 4000);
+          return;
+        }
+
+        closeSpinShareModal();
+        closeSpin();
+
+        startDeskResult(canvases, {
+          solo: soloMode,
+          back: 'spin',
+          qrUrl: it.url || null
+        });
+      }
+
+      var spinPrintBtn = document.getElementById('spinPrintBtn');
+      if (spinPrintBtn) {
+        spinPrintBtn.addEventListener('click', function () {
+          if (!spinCur) { showToast('Select a 360 video first.', 2500); return; }
+          spinPrintItem(spinCur, { auto: false });
+        });
+      }
+      var spinSharePrintBtn = document.getElementById('spinSharePrintBtn');
+      if (spinSharePrintBtn) {
+        spinSharePrintBtn.addEventListener('click', function () {
+          if (!spinCur) return;
+          spinPrintItem(spinCur, { auto: false });
+        });
+      }
+
       document.getElementById('spinEditBtn').addEventListener('click', function () {
         var it = spinCur; if (!it) return;
         if (it.status === 'editing') { if (it.job) window.pb4u.spinCancel(it.job); return; }
@@ -29757,6 +30164,9 @@
         var it = spinCur; if (!it) return;
         it.viewOrig = !it.viewOrig;
         var v = document.getElementById('spinVideo'); v.src = spinSrc(it, !it.viewOrig); v.load();
+        v.loop = true;
+        v.play().catch(function () { });
+        spinUpdateStageAspect();
         spinModalUpdate();
       });
 
@@ -30043,7 +30453,7 @@
         if (pr) { spinLook.preset = this.value; spinLook.speed = pr.speed; spinLook.rates = (pr.rates || []).slice(); spinLook.reverse = !!pr.reverse; spinLook.smooth = pr.smooth; spinLook.audio = pr.audio; spinLook.overlay = pr.overlay; spinLookToUI(); spinLookFromUI(true); }
         else { spinLook.preset = 'custom'; spinLookFromUI(true); }
       });
-      ['spinSpeed', 'spinSmooth', 'spinGpu', 'spinZoom', 'spinFlash', 'spinOrient', 'spinQual', 'spinFx', 'spinOverlayOn', 'spinFrameStyle', 'spinAudio', 'spinVol', 'spinAuto', 'spinAutoShare', 'spinTextOn', 'spinText1', 'spinText2', 'spinTextPos', 'spinTextColor', 'spinTextSize', 'spinTextFont', 'spinTextTiming',
+      ['spinSpeed', 'spinSmooth', 'spinGpu', 'spinZoom', 'spinFlash', 'spinOrient', 'spinQual', 'spinFx', 'spinFxMovement', 'spinFxLocation', 'spinFxSpeed', 'spinFxOpacity', 'spinFxScale', 'spinFxWobble', 'spinOverlayOn', 'spinFrameStyle', 'spinAudio', 'spinVol', 'spinAuto', 'spinAutoShare', 'spinAutoPrint', 'spinPrintMode', 'spinTextOn', 'spinText1', 'spinText2', 'spinTextPos', 'spinTextColor', 'spinTextSize', 'spinTextFont', 'spinTextTiming',
        'spinText1Font', 'spinText1Color', 'spinText1Size', 'spinText2Font', 'spinText2Color', 'spinText2Size',
        'spinClassicBorderColor', 'spinClassicBandOn', 'spinClassicBandColor', 'spinClassicBandAlpha'].forEach(function (id) {
         var el = document.getElementById(id);
@@ -30051,7 +30461,7 @@
           spinLookFromUI(true);
         });
       });
-      ['spinText1', 'spinText2', 'spinTextColor', 'spinModalTextColor', 'spinText1Color', 'spinText1Size', 'spinText2Color', 'spinText2Size', 'spinClassicBorderColor', 'spinClassicBandColor', 'spinClassicBandAlpha'].forEach(function (id) {
+      ['spinText1', 'spinText2', 'spinTextColor', 'spinModalTextColor', 'spinText1Color', 'spinText1Size', 'spinText2Color', 'spinText2Size', 'spinClassicBorderColor', 'spinClassicBandColor', 'spinClassicBandAlpha', 'spinFxSpeed', 'spinFxOpacity', 'spinFxScale', 'spinFxWobble'].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener('input', function () {
           spinLookFromUI(true);

@@ -327,6 +327,20 @@ function wireIpc() {
   });
   ipcMain.handle('pb4u:spinJob', (e, id) => SPIN.jobInfo(id));
   ipcMain.handle('pb4u:spinCancel', (e, id) => SPIN.cancelJob(id));
+  ipcMain.handle('pb4u:spinExtractFrames', async (e, req) => {
+    const d = spinDirNow(); const ed = spinEditedDir();
+    const n = basename(String((req && req.name) || ''));
+    if (!d || !n) return { ok: false, error: 'No video name' };
+    const useEdited = req && req.edited;
+    const targetFile = (useEdited && existsSync(join(ed, n))) ? join(ed, n) : join(d, n);
+    if (!existsSync(targetFile)) return { ok: false, error: 'Video file not found' };
+    try {
+      const frames = await SPIN.extractFrames({ inputPath: targetFile, times: req.times });
+      return { ok: true, frames };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  });
   ipcMain.handle('pb4u:spinDelete', (e, name) => {
     const d = spinDirNow(); const n = basename(String(name || ''));
     if (!d || !n) return { ok: false, error: 'No video name' };

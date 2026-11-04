@@ -19903,7 +19903,11 @@
         const shots = isFrame ? frameShotCount(f) : d.shots;
         const sh = document.createElement('span'); sh.className = 'ls'; sh.textContent = shots + (shots === 1 ? ' shot' : ' shots');
         const pp = document.createElement('span'); pp.className = 'lpaper';
-        pp.textContent = isFrame ? frameShapeLabel(f).replace(/<[^>]*>/g, '') : layoutPaperText(key);
+        var shapeLbl = isFrame ? frameShapeLabel(f).replace(/<[^>]*>/g, '') : layoutPaperText(key);
+        if (isFrame && f && f.tier) {
+          shapeLbl += (f.tier === 'receipt' ? ' · 🧾 Thermal' : (f.tier === 'photo' ? ' · 🎨 Color' : ''));
+        }
+        pp.textContent = shapeLbl;
         const tk = document.createElement('span'); tk.className = 'lt-tick'; tk.dataset.tick = key; tk.textContent = '✓';
         tk.setAttribute('role', 'checkbox'); tk.setAttribute('aria-label', 'Guests can pick ' + n.textContent);
         b.append(tk, box, n, sh, pp);
@@ -20006,7 +20010,9 @@
         updateReadySub();
         renderComposite();
         renderSetupPreview();
-        if (layoutDef(key).kind === 'receipt') {
+        var fObj = (/^frame:/.test(key) && typeof frameById === 'function') ? frameById(key.slice(6)) : (key === 'myframe' && typeof activeFrame === 'function' ? activeFrame() : null);
+        var isRc = (fObj && fObj.tier === 'receipt') || (!fObj && layoutDef(key).kind === 'receipt');
+        if (isRc) {
           if (typeof isReceiptPaper === 'function' && !isReceiptPaper(printSize)) {
             const usable = (printSettings() || []).filter(isReceiptPaper);
             if (usable.length) printSize = usable.includes('receipt80') ? 'receipt80' : usable[0];
@@ -29293,11 +29299,23 @@
           if (k === main || guestLayoutSet.indexOf(k) >= 0) keys.push(k);
         });
         if (sessionTier === 'receipt') {
-          var rKeys = keys.filter(function (k) { return LAYOUT_DEFS[k] && LAYOUT_DEFS[k].kind === 'receipt'; });
+          var rKeys = keys.filter(function (k) {
+            if (/^frame:/.test(k)) {
+              var f = typeof frameById === 'function' ? frameById(k.slice(6)) : null;
+              return f && (f.tier === 'receipt' || f.tier === 'all');
+            }
+            return LAYOUT_DEFS[k] && LAYOUT_DEFS[k].kind === 'receipt';
+          });
           if (rKeys.length) keys = rKeys;
           else keys = ['receipt'];
         } else if (sessionTier === 'photo') {
-          var pKeys = keys.filter(function (k) { return !LAYOUT_DEFS[k] || LAYOUT_DEFS[k].kind !== 'receipt'; });
+          var pKeys = keys.filter(function (k) {
+            if (/^frame:/.test(k)) {
+              var f = typeof frameById === 'function' ? frameById(k.slice(6)) : null;
+              return !f || f.tier === 'photo' || f.tier === 'all' || !f.tier;
+            }
+            return !LAYOUT_DEFS[k] || LAYOUT_DEFS[k].kind !== 'receipt';
+          });
           if (pKeys.length) keys = pKeys;
         }
         if (keys.length === 1 && /^frame:/.test(keys[0])) {
@@ -29355,7 +29373,7 @@
             var fObj = isFr && typeof frameById === 'function' ? frameById(k.slice(6)) : null;
             var shots = isFr ? frameShotCount(fObj) : (LAYOUT_DEFS[k] ? LAYOUT_DEFS[k].shots : 4);
             shBadge.textContent = shots + (shots === 1 ? ' shot' : ' shots');
-            var isRc = !isFr && LAYOUT_DEFS[k] && LAYOUT_DEFS[k].kind === 'receipt';
+            var isRc = (fObj && fObj.tier === 'receipt') || (!isFr && LAYOUT_DEFS[k] && LAYOUT_DEFS[k].kind === 'receipt');
             var tierTag = document.createElement('span');
             tierTag.className = 'pick-tier-tag ' + (isRc ? 'thermal' : 'color');
             if (payCfg && payCfg.dual) {
@@ -30118,9 +30136,11 @@
           var usedCount = typeof bt.usedCount === 'number' ? bt.usedCount : (bt.codes ? bt.codes.filter(function (x) { return x.used; }).length : 0);
           var voidCount = typeof bt.voidCount === 'number' ? bt.voidCount : (bt.codes ? bt.codes.filter(function (x) { return x.voided && !x.used; }).length : 0);
           var left = Math.max(0, total - usedCount - voidCount);
-          var tierBadge = bt.tier === 'receipt' ? ' · 🧾 Thermal' : (bt.tier === 'photo' ? ' · 🎨 Color' : '');
-          return '<div class="pay-batch" data-id="' + payEsc(bt.id) + '"><div class="bi"><b>' + total + ' vouchers' + tierBadge + ' · ' + usedCount + ' used</b><small>' +
-            (bt.label ? payEsc(bt.label) + ' · ' : '') +
+          var optMatch = payCfg.options && payCfg.options.find(function (o) { return (bt.label && o.label === bt.label) || o.tier === bt.tier; });
+          var optTitle = (optMatch && optMatch.label) || bt.label || (bt.tier === 'receipt' ? 'Thermal' : (bt.tier === 'photo' ? 'Coloured' : ''));
+          var tierBadge = bt.tier === 'receipt' ? (' · 🧾 ' + (optTitle || 'Thermal')) : (bt.tier === 'photo' ? (' · 🎨 ' + (optTitle || 'Coloured')) : (optTitle ? (' · ' + optTitle) : ''));
+          return '<div class="pay-batch" data-id="' + payEsc(bt.id) + '"><div class="bi"><b>' + total + ' vouchers' + payEsc(tierBadge) + ' · ' + usedCount + ' used</b><small>' +
+            (optTitle ? payEsc(optTitle) + ' · ' : '') +
             (bt.price ? payEsc(peso(bt.price)) + ' · ' : '') + 'made ' + fmtShortDate(bt.at) + (bt.by === 'admin' ? ' by photobooth4u' : '') + (voidCount ? ' · ' + voidCount + ' cancelled' : '') + '</small>' +
             '<div class="meter"><i style="width:' + Math.round((total ? usedCount / total : 0) * 100) + '%"></i></div></div>' +
             (left > 0 ? '<button type="button" class="action-btn" data-act="print">Print tickets</button><button type="button" class="action-btn" data-act="void">Cancel unused</button>' : '') + '</div>';
@@ -30272,8 +30292,10 @@
           var pages = [];
 
           var pesoStr = function (amt) { return '₱' + Number(amt || 0).toLocaleString('en-PH'); };
-          var incStr = (data.label && data.label !== '1 photo session' ? data.label : '1 photo session') + (data.prints ? ' · ' + data.prints + ' print' + (data.prints > 1 ? 's' : '') : '');
-          var tierBadge = data.tier === 'receipt' ? '🧾 THERMAL ONLY' : (data.tier === 'photo' ? '🎨 COLOR ONLY' : '');
+          var optMatch = payCfg.options && payCfg.options.find(function (o) { return (data.label && o.label === data.label) || o.tier === data.tier; });
+          var optName = data.label || (optMatch && optMatch.label) || (data.tier === 'receipt' ? 'Thermal' : (data.tier === 'photo' ? 'Coloured' : ''));
+          var incStr = (optName && optName !== '1 photo session' ? optName : '1 photo session') + (data.prints ? ' · ' + data.prints + ' print' + (data.prints > 1 ? 's' : '') : '');
+          var tierBadge = data.tier === 'receipt' ? ('🧾 ' + (optName ? optName.toUpperCase() : 'THERMAL') + ' ONLY') : (data.tier === 'photo' ? ('🎨 ' + (optName ? optName.toUpperCase() : 'COLOR') + ' ONLY') : (optName ? (optName.toUpperCase() + ' ONLY') : ''));
 
           for (var p = 0; p < data.codes.length; p += perPage) {
             var cv = document.createElement('canvas');
@@ -30303,7 +30325,7 @@
               ctx.fillStyle = '#6B666C';
               ctx.font = 'bold 12px sans-serif';
               ctx.textAlign = 'left';
-              var kickText = 'PHOTOBOOTH4U · ' + (data.tier === 'receipt' ? 'THERMAL VOUCHER' : (data.tier === 'photo' ? 'COLOR VOUCHER' : 'VOUCHER'));
+              var kickText = 'PHOTOBOOTH4U · ' + (optName ? optName.toUpperCase() + ' ' : '') + 'VOUCHER';
               ctx.fillText(kickText, x + 24, y + 36);
 
               if (tierBadge) {
@@ -34370,7 +34392,22 @@
           var subText = document.createElement('span');
           subText.style.cssText = 'font-size:12px;color:var(--muted);';
           subText.innerHTML = f.spots.length + ' photo spot' + (f.spots.length === 1 ? '' : 's') + (framePairs(f) ? ' · ' + frameShotCount(f) + ' shots, copied' : '') + ' · ' + frameShapeLabel(f);
+          var tierSel = document.createElement('select');
+          tierSel.className = 'mini-select pillify frame-tier-select';
+          tierSel.style.cssText = 'font:700 12px/1.3 Manrope,sans-serif;padding:3px 8px;border-radius:8px;border:1.5px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;';
+          tierSel.innerHTML = '<option value="all">✨ Any layout (Thermal or Color)</option>' +
+            '<option value="photo"' + (f.tier === 'photo' ? ' selected' : '') + '>🎨 Normal / Coloured only</option>' +
+            '<option value="receipt"' + (f.tier === 'receipt' ? ' selected' : '') + '>🧾 Thermal / Receipt only</option>';
+          tierSel.value = (f.tier === 'receipt' || f.tier === 'photo') ? f.tier : 'all';
+          tierSel.title = 'Link this frame to Thermal option, Coloured option, or Any layout';
+          tierSel.addEventListener('change', function () {
+            f.tier = tierSel.value;
+            buildLayoutPicker();
+            if (typeof refreshGuestLayoutChoices === 'function') refreshGuestLayoutChoices();
+            scheduleSetupSave();
+          });
           nameRow.appendChild(nameInput);
+          nameRow.appendChild(tierSel);
           info.append(nameRow, subText);
           top.append(th, info);
           var btns = document.createElement('div'); btns.className = 'frame-ctx-btns';
@@ -34799,7 +34836,9 @@
               if (myFrames.length >= MAX_FRAMES) { showToast('Up to ' + MAX_FRAMES + ' frames — remove one first.', 4000); break; }
               var id = await addAsset(url);
               var initName = (files[i].name || '').replace(/\.[^/.]+$/, '').trim().slice(0, 40) || ('Frame ' + (myFrames.length + 1));
-              myFrames.push({ id: id, name: initName, w: img.width, h: img.height, spots: spots });
+              var isTallReceipt = (img.height / img.width >= 2.2);
+              var autoTier = isTallReceipt || /thermal|receipt|b&w|bw/i.test(initName) ? 'receipt' : 'all';
+              myFrames.push({ id: id, name: initName, w: img.width, h: img.height, spots: spots, tier: autoTier });
               added.push(myFrames[myFrames.length - 1]);
               if (needPick) added[added.length - 1]._pick = true;
             } else {
@@ -35002,7 +35041,7 @@
       function framesSnapshot() {
         var r4 = function (v) { return Math.round(v * 10000) / 10000; };
         return {
-          frames: myFrames.map(function (f) { var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function (s) { var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; if (s.a) q.a = Math.round(s.a * 10) / 10; if (s.z) q.z = s.z; return q; }) }; if (typeof f.name === 'string' && f.name.trim()) o.name = f.name.trim().slice(0, 40); if (typeof f.copy === 'boolean') o.copy = f.copy; if (f.key) o.key = { c: f.key.c.slice(), t: f.key.t }; return o; }),
+          frames: myFrames.map(function (f) { var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function (s) { var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; if (s.a) q.a = Math.round(s.a * 10) / 10; if (s.z) q.z = s.z; return q; }) }; if (typeof f.name === 'string' && f.name.trim()) o.name = f.name.trim().slice(0, 40); if (typeof f.copy === 'boolean') o.copy = f.copy; if (f.key) o.key = { c: f.key.c.slice(), t: f.key.t }; if (f.tier) o.tier = f.tier; return o; }),
           activeFrame: activeFrameId,
           frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
           sheet: { pattern: sheet.pattern, items: sheet.items.map(function (it) { return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; }) }
@@ -35021,7 +35060,8 @@
               else { var x = num(p.x, 0, 1, 0), y = num(p.y, 0, 1, 0); o = { x: x, y: y, w: num(p.w, 0.01, 1 - x, 0.3), h: num(p.h, 0.01, 1 - y, 0.3) }; }
               if (z) o.z = z;
               return o;
-            }), copy: typeof f.copy === 'boolean' ? f.copy : undefined
+            }), copy: typeof f.copy === 'boolean' ? f.copy : undefined,
+            tier: (f.tier === 'receipt' || f.tier === 'photo' || f.tier === 'all') ? f.tier : undefined
           };
         });
         startFrameDone = okId(s.sfDone) ? s.sfDone : '';

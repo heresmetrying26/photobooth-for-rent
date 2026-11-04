@@ -30218,14 +30218,22 @@
         var bTier = 'all';
         var bPrice = payCfg.price;
         var bLabel = '1 photo session';
-        if (selVal === 'tier1') {
-          bTier = 'receipt';
+        if (selVal.startsWith('opt_')) {
+          var oIdx = Number(selVal.slice(4));
+          if (payCfg.options && payCfg.options[oIdx]) {
+            var opt = payCfg.options[oIdx];
+            bTier = opt.tier || 'all';
+            bPrice = opt.price || payCfg.price;
+            bLabel = opt.label || ('Option ' + (oIdx + 1));
+          }
+        } else if (selVal === 'tier1') {
+          bTier = (payCfg.tier1 && payCfg.tier1.tier) || 'receipt';
           bPrice = (payCfg.tier1 && payCfg.tier1.price) || 50;
-          bLabel = (payCfg.tier1 && payCfg.tier1.label) || 'Thermal 50';
+          bLabel = (payCfg.tier1 && payCfg.tier1.label) || 'Option 1';
         } else if (selVal === 'tier2') {
-          bTier = 'photo';
+          bTier = (payCfg.tier2 && payCfg.tier2.tier) || 'photo';
           bPrice = (payCfg.tier2 && payCfg.tier2.price) || 100;
-          bLabel = (payCfg.tier2 && payCfg.tier2.label) || 'Canon Color 100';
+          bLabel = (payCfg.tier2 && payCfg.tier2.label) || 'Option 2';
         }
 
         btn.disabled = true; btn.textContent = 'Making…';
@@ -32229,7 +32237,7 @@
           fx: Object.assign({}, fx),
           guestView: gvMode,
           brand: JSON.parse(JSON.stringify(brand)),
-          pay: Object.assign({}, payCfg),
+          pay: JSON.parse(JSON.stringify(payCfg)),
           androidOrientation: (typeof _androidOrientationChoice === 'string') ? _androidOrientationChoice : 'landscape'
         };
       }

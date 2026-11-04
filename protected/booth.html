@@ -32237,7 +32237,7 @@
           fx: Object.assign({}, fx),
           guestView: gvMode,
           brand: JSON.parse(JSON.stringify(brand)),
-          pay: Object.assign({}, payCfg),
+          pay: JSON.parse(JSON.stringify(payCfg)),
           androidOrientation: (typeof _androidOrientationChoice === 'string') ? _androidOrientationChoice : 'landscape'
         };
       }

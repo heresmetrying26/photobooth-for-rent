@@ -74,7 +74,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.77', date: '2026-11-04', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.77/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.78', date: '2026-11-04', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.78/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -109,6 +109,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-04', title: 'Epson L120/L121 & Canon G1010/G3030 Direct USB Printing', for: ['app'], app: '1.0.78',
+    items: [
+      'Added hardcoded direct USB support for Epson L120 and L121 with default color printing.',
+      'Added hardcoded USB support and auto-attach permissions for Canon PIXMA G1010 and G3030 family.',
+      'Improved background helper printing dispatch and color density tuning.'
+    ]
+  },
   {
     date: '2026-11-04', title: 'UI Professionalization, Streamlined Printer Badges & Toast Error Cleanup', for: ['app', 'website'], app: '1.0.77',
     items: [

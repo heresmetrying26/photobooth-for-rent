@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>photobooth4u Starter Guide · Complete All-in-One Manual</title>
+<style>
+  @font-face {
+    font-family: 'Fraunces';
+    src: url(../setup-guide/fonts/fraunces-latin-600-normal.woff2) format('woff2');
+    font-weight: 600;
+    font-style: normal;
+  }
+  @font-face {
+    font-family: 'Fraunces';
+    src: url(../setup-guide/fonts/fraunces-latin-500-italic.woff2) format('woff2');
+    font-weight: 500;
+    font-style: italic;
+  }
+  @font-face {
+    font-family: 'Fraunces';
+    src: url(../setup-guide/fonts/fraunces-latin-600-italic.woff2) format('woff2');
+    font-weight: 600;
+    font-style: italic;
+  }
+  @font-face {
+    font-family: 'Manrope';
+    src: url(../setup-guide/fonts/manrope-latin-400-normal.woff2) format('woff2');
+    font-weight: 400;
+  }
+  @font-face {
+    font-family: 'Manrope';
+    src: url(../setup-guide/fonts/manrope-latin-500-normal.woff2) format('woff2');
+    font-weight: 500;
+  }
+  @font-face {
+    font-family: 'Manrope';
+    src: url(../setup-guide/fonts/manrope-latin-600-normal.woff2) format('woff2');
+    font-weight: 600;
+  }
+  @font-face {
+    font-family: 'Manrope';
+    src: url(../setup-guide/fonts/manrope-latin-700-normal.woff2) format('woff2');
+    font-weight: 700;
+  }
+  @font-face {
+    font-family: 'Manrope';
+    src: url(../setup-guide/fonts/manrope-latin-800-normal.woff2) format('woff2');
+    font-weight: 800;
+  }
+
+  :root {
+    --cream: #f6f2ea;
+    --ink: #1b171c;
+    --body: #3e3840;
+    --dim: #6b636d;
+    --red: #c83924;
+    --red-soft: #faeee9;
+    --line: #e3dacd;
+    --card: #ffffff;
+    --purple: #583ca3;
+    --purple-bg: #ece5f8;
+    --green: #186e55;
+    --green-bg: #e5f4ee;
+    --amber: #b0650e;
+    --amber-bg: #fdf4e4;
+    --blue: #1a6ca8;
+    --blue-bg: #e8f2fa;
+    --mono: 'SF Mono', Consolas, Menlo, monospace;
+  }
+
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+  }
+
+  body {
+    font-family: 'Manrope', -apple-system, system-ui, sans-serif;
+    color: var(--body);
+    font-size: 11px;
+    line-height: 1.48;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  b, strong { color: var(--ink); font-weight: 700; }
+
+  h1, h2, h3, h4 {
+    color: var(--ink);
+    font-family: 'Fraunces', Georgia, serif;
+    letter-spacing: -.02em;
+    margin: 0;
+  }
+
+  .page {
+    width: 210mm;
+    height: 297mm;
+    position: relative;
+    overflow: hidden;
+    padding: 38px 46px 34px;
+    background: #fff;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  .page.cover {
+    background: var(--cream);
+    padding: 44px 48px 36px;
+  }
+
+  .foot {
+    position: absolute;
+    left: 46px;
+    right: 46px;
+    bottom: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    color: var(--dim);
+    text-transform: uppercase;
+    border-top: 1px solid var(--line);
+    padding-top: 6px;
+  }
+
+  .foot span.brand-tag { color: var(--ink); font-weight: 800; }
+  .foot span.page-num { color: var(--red); font-weight: 800; }
+
+  /* Kicker & Title */
+  .kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 8.5px;
+    font-weight: 800;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin: 0 0 3px;
+  }
+  .kicker::before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 2px;
+    background: currentColor;
+  }
+
+  h2.title {
+    font-size: 22px;
+    line-height: 1.15;
+    margin: 0 0 4px;
+  }
+
+  .lead {
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--dim);
+    margin: 0 0 12px;
+  }
+
+  /* Pills & Tags */
+  .pill {
+    display: inline-block;
+    font-size: 7.6px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #fff;
+    border-radius: 999px;
+    padding: 2.5px 8px;
+    background: var(--ink);
+  }
+  .pill.red { background: var(--red); }
+  .pill.green { background: var(--green); }
+  .pill.purple { background: var(--purple); }
+  .pill.blue { background: var(--blue); }
+  .pill.amber { background: var(--amber); }
+
+  /* Cards */
+  .card {
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: var(--card);
+    border: 1px solid var(--line);
+  }
+  .card.cream { background: var(--cream); }
+  .card.purple { background: var(--purple-bg); border-color: #ded5f2; }
+  .card.green { background: var(--green-bg); border-color: #c9e8dc; }
+  .card.amber { background: var(--amber-bg); border-color: #f7e1bf; }
+  .card.blue { background: var(--blue-bg); border-color: #d1e4f4; }
+  .card.red { background: var(--red-soft); border-color: #f3d4cb; }
+
+  /* Grids */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 9px;
+  }
+  .grid-4 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 8px;
+  }
+
+  /* Numbered Steps */
+  ol.steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  ol.steps li {
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: 9px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 7px 10px;
+    align-items: start;
+  }
+  ol.steps .n {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--red);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  ol.steps h4 {
+    font-size: 11.5px;
+    font-weight: 700;
+    margin: 1px 0 2px;
+    font-family: 'Manrope', sans-serif;
+  }
+  ol.steps p { margin: 0; font-size: 10.2px; color: var(--dim); line-height: 1.4; }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10.2px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 6px 0;
+  }
+  th, td {
+    padding: 6px 9px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: #f1ece4;
+    font-weight: 800;
+    font-size: 8.8px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--dim);
+  }
+  tr:last-child td { border-bottom: none; }
+
+  code, .kbd {
+    font-family: var(--mono);
+    font-size: 9.6px;
+    background: #ede7dc;
+    border: 1px solid #ddd3c3;
+    border-radius: 3px;
+    padding: 1px 4px;
+    color: var(--ink);
+  }
+
+  /* Callout box */
+  .callout {
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 8px 0;
+    border: 1px solid var(--line);
+    background: var(--card);
+  }
+  .callout.green { background: var(--green-bg); border-color: #c9e8dc; }
+  .callout.amber { background: var(--amber-bg); border-color: #f7e1bf; }
+  .callout.red { background: var(--red-soft); border-color: #f3d4cb; }
+  .callout.blue { background: var(--blue-bg); border-color: #d1e4f4; }
+  .callout h4 { font-size: 11.2px; font-weight: 700; margin: 0 0 2px; }
+  .callout p { margin: 0; font-size: 10px; color: var(--body); }
+
+  /* Cover Styles */
+  .logo-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .brand-mark {
+    display: grid;
+    grid-template-columns: 8px 8px;
+    gap: 3px;
+  }
+  .brand-mark i {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--ink);
+  }
+  .brand-mark i:nth-child(2) { background: var(--red); }
+  .brand-badge {
+    background: var(--red);
+    color: #fff;
+    font-family: 'Manrope', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 5px;
+    transform: rotate(-6deg) translateY(-8px);
+  }
+
+  .cover-title {
+    font-size: 42px;
+    line-height: 1.05;
+    letter-spacing: -.03em;
+    margin: 0 0 10px;
+    color: var(--ink);
+  }
+  .cover-title em {
+    font-style: italic;
+    color: var(--red);
+  }
+
+  .cover-sub {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--dim);
+    margin: 0 0 24px;
+    max-width: 90%;
+  }
+
+  .cover-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 20px 0 24px;
+  }
+  .cover-item {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .cover-item .num {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 22px;
+    color: var(--red);
+    line-height: 1;
+    margin-bottom: 4px;
+    display: block;
+  }
+  .cover-item h3 { font-size: 13px; font-family: 'Fraunces', Georgia, serif; margin: 0 0 3px; }
+  .cover-item p { margin: 0; font-size: 10.2px; color: var(--dim); line-height: 1.4; }
+
+  .rules-box {
+    background: #fff;
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 18px;
+  }
+  .rules-box h3 { font-size: 13px; margin: 0 0 8px; color: var(--ink); }
+  .rules-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .rules-list li {
+    font-size: 10px;
+    line-height: 1.4;
+    color: var(--dim);
+  }
+  .rules-list li b { display: block; color: var(--ink); font-size: 10.8px; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ========================================== -->
+<!-- PAGE 1: COVER & ROADMAP                    -->
+<!-- ========================================== -->
+<div class="page cover">
+  <div class="logo-bar">
+    <div class="brand-logo">
+      <div class="brand-mark"><i></i><i></i><i></i><i></i></div>
+      photobooth<span class="brand-badge">4u</span>
+    </div>
+    <span class="pill red" style="margin-left:auto">Master Starter Guide · Edition 2026</span>
+  </div>
+
+  <p class="kicker">Official Handbook</p>
+  <h1 class="cover-title">The Complete Photo Booth<br><em>Starter Guide</em></h1>
+  <p class="cover-sub">Your definitive manual to running photobooth4u across laptops, tablets, professional photo printers, and vintage thermal receipt booths &mdash; online or 100% offline.</p>
+
+  <div class="cover-grid">
+    <div class="cover-item">
+      <span class="num">01</span>
+      <h3>Laptop: Online &amp; Offline</h3>
+      <p>Windows &amp; Mac Desktop App running 100% offline with local hotspot QR downloads, plus the Online Chrome booth with live cloud sync.</p>
+    </div>
+    <div class="cover-item">
+      <span class="num">02</span>
+      <h3>Tablet Kiosk Apps</h3>
+      <p>Android APK with native USB OTG Epson drivers, and iPad running fullscreen kiosk mode with direct Apple AirPrint.</p>
+    </div>
+    <div class="cover-item">
+      <span class="num">03</span>
+      <h3>Photo Printing Masterclass</h3>
+      <p>High-speed commercial dye-sub 2&times;6 strip auto-cutting, ultra-low-cost EcoTanks, and wireless Laptop Print Station setup.</p>
+    </div>
+    <div class="cover-item">
+      <span class="num">04</span>
+      <h3>Vintage Receipt Booth</h3>
+      <p>Instant retro black-and-white strips on continuous thermal rolls with Vozy, Epson, Bluetooth, and automated razor cuts.</p>
+    </div>
+  </div>
+
+  <div class="rules-box">
+    <h3>&star; The 3 Golden Rules for Flawless Events</h3>
+    <ul class="rules-list">
+      <li>
+        <b>1. Always Run a Test Session</b>
+        Take 1 full photo session on-site before guests arrive. Verify camera focus, flash exposure, guest QR download, and physical print cut.
+      </li>
+      <li>
+        <b>2. Lock Power &amp; Cables</b>
+        Keep laptop and tablet plugged into mains power. Use a camera dummy battery (AC adapter) so DSLR cameras never power off mid-event.
+      </li>
+      <li>
+        <b>3. Trust Your Offline Setup</b>
+        Never rely solely on venue Wi-Fi. The Offline Desktop App and Android APK work 100% without internet. Guests download photos locally!
+      </li>
+    </ul>
+  </div>
+
+  <div class="foot">
+    <span class="brand-tag">photobooth4u Starter Guide</span>
+    <span>Part 0 · Quick Start Roadmap</span>
+    <span class="page-num">Page 1 of 6</span>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- PAGE 2: PART 1 · LAPTOP ONLINE & OFFLINE   -->
+<!-- ========================================== -->
+<div class="page">
+  <p class="kicker">Part 1 · Laptop Guide</p>
+  <h2 class="title">Running on a Laptop: Online &amp; Offline</h2>
+  <p class="lead">The laptop is the powerhouse of professional event booths: supporting DSLR tethering, dual-screen HDMI mirror displays, and direct USB connection to commercial high-speed printers.</p>
+
+  <div class="grid-2" style="margin-bottom:10px">
+    <!-- OFFLINE APP -->
+    <div class="card cream">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+        <h3 style="font-size:14px">Laptop Desktop App (Offline)</h3>
+        <span class="pill red">100% No Internet</span>
+      </div>
+      <p style="font-size:10px; color:var(--dim); margin-bottom:8px">Available for Windows 10/11 (.exe) and macOS 11+ (.dmg). Built specifically for remote venues, outdoor weddings, basements, and venues with zero Wi-Fi.</p>
+      
+      <ol class="steps">
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px">1</span>
+          <div>
+            <h4>Local Booth Wi-Fi Hotspot</h4>
+            <p>The laptop turns on a mobile hotspot (or connects to an offline portable router). Guests join that Wi-Fi network.</p>
+          </div>
+        </li>
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px">2</span>
+          <div>
+            <h4>Instant Local QR Downloads</h4>
+            <p>At session end, the guest scans the on-screen QR. Their phone downloads the high-res photo straight from the laptop &mdash; zero internet or data required!</p>
+          </div>
+        </li>
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px">3</span>
+          <div>
+            <h4>Built-in Background Printing</h4>
+            <p>Talks directly to Windows and Mac print spoolers. Prints silently in the background with no pop-ups, no helper tools, and no internet.</p>
+          </div>
+        </li>
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px">4</span>
+          <div>
+            <h4>DSLR Tethering &amp; Dual Screen</h4>
+            <p>Connect Canon, Nikon, or Sony via USB. Press <kbd>Win + P</kbd> &rarr; <b>Extend</b> to display a live countdown mirror on a TV facing the guests.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <!-- ONLINE BOOTH -->
+    <div class="card blue">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+        <h3 style="font-size:14px">Chrome Web Booth (Online)</h3>
+        <span class="pill blue">Cloud Galleries</span>
+      </div>
+      <p style="font-size:10px; color:var(--dim); margin-bottom:8px">Open <b>photobooth4u.netlify.app</b> in Google Chrome on any computer. Perfect for venues with reliable Wi-Fi where instant cloud galleries are desired.</p>
+      
+      <ol class="steps">
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px; background:var(--blue)">1</span>
+          <div>
+            <h4>Live Online Cloud Gallery</h4>
+            <p>Photos upload instantly to your secured cloud event album. Guests scan the QR to open their private online link.</p>
+          </div>
+        </li>
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px; background:var(--blue)">2</span>
+          <div>
+            <h4>The Print Helper Utility</h4>
+            <p>Open <b>photobooth4u-print-helper.exe</b> in the background. It intercepts print commands, eliminating Chrome's print dialog for true 1-click silent auto-printing.</p>
+          </div>
+        </li>
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px; background:var(--blue)">3</span>
+          <div>
+            <h4>Smart Offline Protection</h4>
+            <p>If venue Wi-Fi stumbles during the event, the web app automatically queues photos in browser memory and syncs them to the cloud the moment internet returns.</p>
+          </div>
+        </li>
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px; background:var(--blue)">4</span>
+          <div>
+            <h4>Remote Monitor &amp; Share Station</h4>
+            <p>Any secondary device can open your event's live gallery URL to act as an iPad sharing station or slideshow kiosk.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </div>
+
+  <h3 style="font-size:13px; margin:8px 0 4px">Feature Comparison Matrix</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:22%">Feature</th>
+        <th style="width:39%">Laptop Desktop App (Offline)</th>
+        <th style="width:39%">Chrome Web Booth (Online)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>Venue Internet</b></td>
+        <td><b>Zero required.</b> Operates 100% offline in isolated locations.</td>
+        <td>Requires Wi-Fi (with built-in offline queue safety net).</td>
+      </tr>
+      <tr>
+        <td><b>Guest QR Delivery</b></td>
+        <td><b>Direct Local Wi-Fi:</b> Served instantly from laptop over local IP.</td>
+        <td><b>Cloud URL:</b> Served via public internet link to event album.</td>
+      </tr>
+      <tr>
+        <td><b>Silent Auto-Print</b></td>
+        <td><b>Built-in natively.</b> No extra applications needed.</td>
+        <td>Requires running the lightweight <b>Print Helper</b> in background.</td>
+      </tr>
+      <tr>
+        <td><b>Camera Support</b></td>
+        <td>Webcams, DSLR tethering (Canon/Nikon/Sony), and HDMI capture cards.</td>
+        <td>Webcams, USB capture cards, and virtual DSLR camera drivers.</td>
+      </tr>
+      <tr>
+        <td><b>Best Use Case</b></td>
+        <td>Weddings in mountains/beaches, convention halls, ticketed kiosks.</td>
+        <td>Corporate launches, venues with solid Wi-Fi, live cloud albums.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="foot">
+    <span class="brand-tag">photobooth4u Starter Guide</span>
+    <span>Part 1 · Laptop Master Guide</span>
+    <span class="page-num">Page 2 of 6</span>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- PAGE 3: PART 2 · TABLETS (ANDROID & IPAD)  -->
+<!-- ========================================== -->
+<div class="page">
+  <p class="kicker">Part 2 · Tablet &amp; Mobile Guide</p>
+  <h2 class="title">Using with Tablets: Android APK &amp; iPad</h2>
+  <p class="lead">Tablets provide an ultra-sleek, portable kiosk enclosure. Run fully autonomous guest sessions with front-facing cameras or connect external cameras and printers.</p>
+
+  <div class="grid-2" style="margin-bottom:12px">
+    <!-- ANDROID APP -->
+    <div class="card green">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+        <h3 style="font-size:14px">Android Tablet App (APK)</h3>
+        <span class="pill green">Native USB &amp; BT</span>
+      </div>
+      <p style="font-size:10px; color:#185b46; margin-bottom:8px">Download the APK directly from <b>photobooth4u.netlify.app/downloads/</b>. Works on Android tablets running Android 7.0 or newer.</p>
+      
+      <ol class="steps">
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px; background:var(--green)">1</span>
+          <div>
+            <h4>Activate Once with Lifetime Code</h4>
+            <p>Connect to Wi-Fi once to activate your code. The app is then permanently authorized and runs 100% offline.</p>
+          </div>
+        </li>
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px; background:var(--green)">2</span>
+          <div>
+            <h4>Direct Wi-Fi Mopria &amp; AirPrint</h4>
+            <p>Go to <b>Print settings &rarr; Wi-Fi printer &rarr; Find Wi-Fi printers</b>. The tablet discovers network printers and prints without popup dialogs.</p>
+          </div>
+        </li>
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px; background:var(--green)">3</span>
+          <div>
+            <h4>Native USB OTG Ink-Tank Printing</h4>
+            <p>Plug an OTG cable directly from the tablet into Epson L8050, L3210, etc. Built-in ESC/P2 drivers print borderless photos with no extra apps!</p>
+          </div>
+        </li>
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px; background:var(--green)">4</span>
+          <div>
+            <h4>Direct Bluetooth Thermal Printing</h4>
+            <p>Pair thermal printers (Vozy, MPT, XP-80) via Bluetooth. The app prints retro receipt strips instantly with zero print dialogs.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <!-- IPAD KIOSK -->
+    <div class="card purple">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+        <h3 style="font-size:14px">iPad Kiosk (iOS Web App)</h3>
+        <span class="pill purple">AirPrint Ready</span>
+      </div>
+      <p style="font-size:10px; color:var(--dim); margin-bottom:8px">Runs cleanly on iPad Air, Pro, or standard 10.2" iPad using Safari's native standalone Progressive Web App (PWA) container.</p>
+      
+      <ol class="steps">
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px; background:var(--purple)">1</span>
+          <div>
+            <h4>Create Fullscreen Web App</h4>
+            <p>Open Safari, visit <b>photobooth4u.netlify.app</b>, tap the Share icon &rarr; <b>Add to Home Screen</b>. Launches with no browser bars!</p>
+          </div>
+        </li>
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px; background:var(--purple)">2</span>
+          <div>
+            <h4>Native Apple AirPrint</h4>
+            <p>In Print settings, choose AirPrint. Wirelessly prints directly to Canon SELPHY CP1300/1500, Epson, Brother, and HP on the same Wi-Fi.</p>
+          </div>
+        </li>
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px; background:var(--purple)">3</span>
+          <div>
+            <h4>Enable Guided Access Mode</h4>
+            <p>In iOS Settings &rarr; Accessibility &rarr; <b>Guided Access</b>. Triple-click the top power button to lock guests out of exiting the photo booth!</p>
+          </div>
+        </li>
+        <li>
+          <span class="n" style="width:20px; height:20px; font-size:9px; background:var(--purple)">4</span>
+          <div>
+            <h4>High-End iPad Camera Sensor</h4>
+            <p>Take advantage of Apple's Center Stage front cameras or rear 12MP Ultra-Wide lens for crisp, sharp photo strip captures.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- LAPTOP PRINT STATION BRIDGE -->
+  <div class="card red" style="margin-top:4px">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px">
+      <h3 style="font-size:13.5px">The Bridge: Printing from Tablets to Commercial Dye-Sub Printers</h3>
+      <span class="pill red">Laptop Print Station</span>
+    </div>
+    <p style="font-size:10.5px; line-height:1.45; color:var(--body); margin:0 0 8px">
+      <b>The Challenge:</b> Commercial dye-sub printers (DNP, HiTi, Citizen, Mitsubishi, Fuji) require specialized Windows or Mac USB drivers and cannot plug directly into an iPad or standard Android tablet.<br>
+      <b>The Solution &mdash; Laptop Print Station:</b>
+    </p>
+    <div class="grid-3" style="font-size:10px">
+      <div style="background:#fff; padding:7px 10px; border-radius:6px; border:1px solid #f1cfc5">
+        <b>1. Connect Printer to Laptop</b><br>
+        Plug your DNP or HiTi into a laptop with USB. Open <b>photobooth4u.netlify.app/print-station/</b> in Google Chrome.
+      </div>
+      <div style="background:#fff; padding:7px 10px; border-radius:6px; border:1px solid #f1cfc5">
+        <b>2. Connect Both to Same Wi-Fi</b><br>
+        Ensure your iPad/Android tablet and laptop are on the same Wi-Fi network (or portable router).
+      </div>
+      <div style="background:#fff; padding:7px 10px; border-radius:6px; border:1px solid #f1cfc5">
+        <b>3. Auto-Print Wirelessly!</b><br>
+        On the tablet, select <i>Send prints to &rarr; Laptop Print Station</i>. Every photo taken on the tablet prints instantly on the laptop's dye-sub!
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span class="brand-tag">photobooth4u Starter Guide</span>
+    <span>Part 2 · Tablet &amp; Mobile Guide</span>
+    <span class="page-num">Page 3 of 6</span>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- PAGE 4: PART 3 · PHOTO PRINTING PROCESS    -->
+<!-- ========================================== -->
+<div class="page">
+  <p class="kicker">Part 3 · Photo Printing</p>
+  <h2 class="title">The Complete Printing Process</h2>
+  <p class="lead">How photo printing works: choosing between high-speed commercial dye-subs and ultra-low-cost continuous ink tanks, configuring 2&times;6 strip razor cuts, and setting up hands-free auto-print.</p>
+
+  <div class="grid-2" style="margin-bottom:10px">
+    <!-- DYE-SUB -->
+    <div class="card cream">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px">
+        <h3 style="font-size:13.5px">Commercial Dye-Sub Printers</h3>
+        <span class="pill red">12s &middot; Auto-Cut</span>
+      </div>
+      <p style="font-size:10px; color:var(--dim); margin:0 0 6px"><b>Models:</b> DNP (DS620, RX1HS), HiTi (P525L), Citizen (CX-02), Mitsubishi, Fuji ASK-300, Kodak 305.</p>
+      <ul style="margin:0 0 8px; padding-left:16px; font-size:10px; color:var(--body); line-height:1.4">
+        <li><b>High-Speed Event Duty:</b> 8 to 14 seconds per print. Prints drop out 100% dry and smudge-proof with a protective clear coat.</li>
+        <li><b>Roll Capacity:</b> 400 to 700 prints per roll &mdash; run entire weddings without reloading paper or ink!</li>
+        <li><b>Internal Strip Slicing:</b> Built-in razor blades automatically slice two 2&times;6 strips down the middle with zero manual trimming.</li>
+      </ul>
+      <div class="callout amber" style="margin:0; padding:6px 10px">
+        <h4 style="font-size:10.5px">Pro-Tip: Add Printer Twice in Windows</h4>
+        <p style="font-size:9.5px">Install the driver twice: name one <i>"DNP - 4x6 Postcard"</i> (standard cut) and the other <i>"DNP - 2x6 Strips"</i> (2-inch cut enabled). Assign each in booth settings!</p>
+      </div>
+    </div>
+
+    <!-- INK-TANK -->
+    <div class="card green">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px">
+        <h3 style="font-size:13.5px">Continuous Ink-Tank Printers</h3>
+        <span class="pill green">&lt;₱0.50 per print</span>
+      </div>
+      <p style="font-size:10px; color:#185b46; margin:0 0 6px"><b>Models:</b> Epson EcoTank Photo (6-color L8050, L18050), EcoTank (L3210, L3250), Canon MegaTank G620.</p>
+      <ul style="margin:0 0 8px; padding-left:16px; font-size:10px; color:var(--body); line-height:1.4">
+        <li><b>Unbeatable Profit Margins:</b> Less than ₱0.50 ($0.01) ink cost per photo. Thousands of prints from single refill bottles.</li>
+        <li><b>6-Color Photo Quality:</b> Models like the L8050 deliver laboratory-grade color reproduction and skin tones.</li>
+        <li><b>Android USB OTG Direct:</b> Plug USB straight into your Android tablet for automated driverless photo printing!</li>
+      </ul>
+      <div class="callout green" style="margin:0; padding:6px 10px">
+        <h4 style="font-size:10.5px">Glossy Photo Paper Settings</h4>
+        <p style="font-size:9.5px">Always load premium inkjet glossy photo paper (180&ndash;260 gsm) and set driver paper type to <i>Epson Premium Glossy</i> for rich, non-smudging prints.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="font-size:13px; margin:8px 0 6px">How 2&times;6 Photo Strip Auto-Cutting Works</h3>
+  <div class="card" style="margin-bottom:10px">
+    <div class="grid-3" style="font-size:10.2px">
+      <div>
+        <b style="color:var(--red)">1. Layout Generation</b><br>
+        The booth automatically places two duplicate 2&times;6 strips side-by-side onto a single 4&times;6 (4R) digital canvas.
+      </div>
+      <div>
+        <b style="color:var(--red)">2. 2-Inch Cut Signal</b><br>
+        In Windows/Mac Printing Preferences, enable <b>2-inch cut</b>. The driver signals the printer's internal cutter.
+      </div>
+      <div>
+        <b style="color:var(--red)">3. Sliced Down the Middle</b><br>
+        During the final lamination pass, the razor cuts precisely at the 2-inch mark, dropping two finished strips!
+      </div>
+    </div>
+  </div>
+
+  <h3 style="font-size:13px; margin:8px 0 6px">Configuring 100% Hands-Free Auto-Print</h3>
+  <ol class="steps">
+    <li>
+      <span class="n">1</span>
+      <div>
+        <h4>Open Print Settings</h4>
+        <p>In the booth, tap <b>Photo Session &rarr; Print settings</b> (or <b>Setup &rarr; 4 Camera &amp; printer</b>).</p>
+      </div>
+    </li>
+    <li>
+      <span class="n">2</span>
+      <div>
+        <h4>Assign Printer per Paper Size</h4>
+        <p>Tap your event's paper size (e.g. <b>4&times;6 in (4R)</b> or <b>2&times;6 in strip</b>) and pick your printer from the list. The app saves this choice.</p>
+      </div>
+    </li>
+    <li>
+      <span class="n">3</span>
+      <div>
+        <h4>Run a Test Print &amp; Verify</h4>
+        <p>Tap <b>Test print</b>. Confirm that the print size is correct, colors are vibrant, and edges are borderless with no white trim.</p>
+      </div>
+    </li>
+    <li>
+      <span class="n">4</span>
+      <div>
+        <h4>Enable Auto-Print Every Session</h4>
+        <p>Check <b>Auto-print every session</b>. As soon as guests finish their photos, the physical print starts automatically &mdash; no operator clicks needed!</p>
+      </div>
+    </li>
+  </ol>
+
+  <div class="foot">
+    <span class="brand-tag">photobooth4u Starter Guide</span>
+    <span>Part 3 · Photo Printing Process</span>
+    <span class="page-num">Page 4 of 6</span>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- PAGE 5: PART 4 · RECEIPT PHOTOBOOTH        -->
+<!-- ========================================== -->
+<div class="page">
+  <p class="kicker">Part 4 · Thermal Receipt Guide</p>
+  <h2 class="title">Vintage Receipt Photobooth (Thermal)</h2>
+  <p class="lead">The surging retro photo booth trend: instant 1&ndash;2 second black-and-white dithered strips printed on continuous thermal paper rolls. Zero ink cartridges, zero ribbons, and pennies per roll.</p>
+
+  <div class="grid-2" style="margin-bottom:10px">
+    <!-- 80MM DESKTOP -->
+    <div class="card purple">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px">
+        <h3 style="font-size:13.5px">80 mm Desktop POS (Auto-Cut)</h3>
+        <span class="pill purple">Automatic Cutter</span>
+      </div>
+      <p style="font-size:10px; color:var(--dim); margin:0 0 6px"><b>Featured Models:</b> Vozy G80, Epson TM-T20III / TM-T88, Star Micronics TSP143, Munbyn ITPP047, Xprinter XP-N160II.</p>
+      <ul style="margin:0; padding-left:16px; font-size:10px; line-height:1.4; color:var(--body)">
+        <li><b>Paper Width:</b> 80 mm roll (~3.15 inches wide). Wide canvas for large, clear 3-photo vertical layouts.</li>
+        <li><b>Automated Razor Cut:</b> The printer's motorized guillotine cutter slices the receipt right below the QR code!</li>
+        <li><b>Connectivity:</b> USB to laptop, or Bluetooth / Network to Android tablet app.</li>
+      </ul>
+    </div>
+
+    <!-- 58MM PORTABLE -->
+    <div class="card amber">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px">
+        <h3 style="font-size:13.5px">58 mm Mobile Bluetooth (Battery)</h3>
+        <span class="pill amber">Battery Powered</span>
+      </div>
+      <p style="font-size:10px; color:var(--dim); margin:0 0 6px"><b>Featured Models:</b> Vozy MP210 (battery), Vozy 50, MPT-II, PT-210, Goojprt, PeriPage, Phomemo.</p>
+      <ul style="margin:0; padding-left:16px; font-size:10px; line-height:1.4; color:var(--body)">
+        <li><b>Pocket Size:</b> Handheld mini printer with rechargeable lithium battery &mdash; perfect for mobile roaming booths (Rove).</li>
+        <li><b>Paper Width:</b> 58 mm roll (~2.28 inches wide) with serrated manual tear bar.</li>
+        <li><b>Bluetooth SPP:</b> Pairs wirelessly with Android tablet or phone with zero extra equipment.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="font-size:13px; margin:8px 0 6px">Step-by-Step Android Bluetooth Setup (Zero Dialogs)</h3>
+  <ol class="steps">
+    <li>
+      <span class="n">1</span>
+      <div>
+        <h4>Pair Printer in Android Bluetooth Settings</h4>
+        <p>Turn on the thermal printer. On the tablet, open <b>Settings &rarr; Connected devices &rarr; Bluetooth &rarr; Pair new device</b>. Tap your printer (named like <code>Vozy</code>, <code>G80</code>, <code>MP210</code>, <code>POS-80</code>, or <code>Printer001</code>). Enter PIN <code>0000</code> or <code>1234</code>.</p>
+      </div>
+    </li>
+    <li>
+      <span class="n">2</span>
+      <div>
+        <h4>Select Receipt Layout in the App</h4>
+        <p>In photobooth4u, go to <b>Setup &rarr; Layout</b> and choose <b>Receipt</b>. The booth converts live camera frames into retro halftone black-and-white dithered graphics engineered for thermal paper.</p>
+      </div>
+    </li>
+    <li>
+      <span class="n">3</span>
+      <div>
+        <h4>Configure Thermal Printing</h4>
+        <p>In <b>Print settings</b>, choose <b>Receipt 80 mm</b> or <b>Receipt 58 mm</b>. Enable <b>Bluetooth thermal receipt printer</b>, tap <b>Connect</b>, and select your paired Vozy/POS printer from the list.</p>
+      </div>
+    </li>
+    <li>
+      <span class="n">4</span>
+      <div>
+        <h4>Test Print &amp; Auto-Print</h4>
+        <p>Tap <b>Test print</b> &mdash; the printer feeds and prints a test header in 1 second! Tick <b>Auto-print every session</b>. Each guest receives a retro receipt strip instantly.</p>
+      </div>
+    </li>
+  </ol>
+
+  <!-- RECEIPT CUSTOMIZATION BOX -->
+  <div class="card cream" style="margin-top:10px">
+    <h4 style="font-size:11.5px; margin-bottom:4px">Customizing the Receipt Branding</h4>
+    <div class="grid-3" style="font-size:10px">
+      <div>
+        <b>Header &amp; Monogram</b><br>
+        Add the couple's names, event title, custom date, or venue name in bold retro monospace.
+      </div>
+      <div>
+        <b>Photo Halftones</b><br>
+        Booth renders 3 or 4 photos using Floyd-Steinberg dithering for sharp, distinct facial features.
+      </div>
+      <div>
+        <b>Digital QR Code</b><br>
+        A sharp QR code is printed at the footer so guests can scan to download the original full-color digital file!
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span class="brand-tag">photobooth4u Starter Guide</span>
+    <span>Part 4 · Thermal Receipt Guide</span>
+    <span class="page-num">Page 5 of 6</span>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- PAGE 6: PART 5 · EVENT CHECKLIST & FIXES   -->
+<!-- ========================================== -->
+<div class="page">
+  <p class="kicker">Part 5 · Event Day Checklist</p>
+  <h2 class="title">Event-Day Checklist &amp; Troubleshooting</h2>
+  <p class="lead">Follow this pre-flight checklist before opening your booth to guests, and use these field solutions to quickly handle unexpected issues.</p>
+
+  <div class="grid-2" style="margin-bottom:10px">
+    <!-- CHECKLIST -->
+    <div class="card cream">
+      <h3 style="font-size:13.5px; margin-bottom:6px">&check; 10-Minute Pre-Flight Checklist</h3>
+      <ul style="margin:0; padding-left:16px; font-size:10px; line-height:1.5; color:var(--body)">
+        <li><b>Hardware Power:</b> Laptop charger plugged into reliable outlet. Tablet connected to mains power (or high-capacity power bank).</li>
+        <li><b>Camera Power:</b> DSLR plugged into AC dummy battery adapter &mdash; disable camera's "Auto Power Off" in menu.</li>
+        <li><b>Camera Focus:</b> Autofocus (AF) on guests initially, then switch lens switch to <b>Manual Focus (MF)</b> so focus never hunts.</li>
+        <li><b>Paper &amp; Ribbon:</b> Ensure media is freshly loaded with at least 1 spare box in your event kit. Empty scrap cut bin!</li>
+        <li><b>Lighting Check:</b> Position ring light or studio flash strobe slightly above eye level. Take test photo to verify exposure.</li>
+        <li><b>Test Print Run:</b> Run 1 full guest session. Test the QR code scan on your phone and verify physical print cutting.</li>
+      </ul>
+    </div>
+
+    <!-- FIELD FIXES -->
+    <div class="card line">
+      <h3 style="font-size:13.5px; margin-bottom:6px">&star; Top 6 Quick Field Fixes</h3>
+      <div style="display:flex; flex-direction:column; gap:6px; font-size:9.8px">
+        <div>
+          <b style="color:var(--red)">1. Guest phone says "Wi-Fi Has No Internet"</b><br>
+          <span style="color:var(--dim)">Normal on offline booths! Tell guests to tap <i>"Keep connection"</i> or <i>"Connect anyway"</i>. The phone downloads photos directly from the booth over local Wi-Fi.</span>
+        </div>
+        <div>
+          <b style="color:var(--red)">2. Chrome Print Preview Dialog Appears</b><br>
+          <span style="color:var(--dim)">Open <b>photobooth4u-print-helper.exe</b> in the background. It intercepts print commands so prints occur silently with zero dialogs.</span>
+        </div>
+        <div>
+          <b style="color:var(--red)">3. 2&times;6 Strips Not Slicing in Two</b><br>
+          <span style="color:var(--dim)">Open Windows/Mac Printing Preferences for your dye-sub printer. Ensure the <b>2-inch cut</b> setting is enabled and saved as default.</span>
+        </div>
+        <div>
+          <b style="color:var(--red)">4. Receipt Print Appears Too Faint</b><br>
+          <span style="color:var(--dim)">Increase contrast in booth layout settings. On thermal printers, slow down the speed setting in preferences for darker, richer heat transfer.</span>
+        </div>
+        <div>
+          <b style="color:var(--red)">5. Bluetooth Printer Disconnects</b><br>
+          <span style="color:var(--dim)">Keep the tablet within 5 meters of the printer. In tablet settings, disable battery saver mode for Bluetooth services. Tap Reconnect in Print settings.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIRECTORY LINKS BOX -->
+  <div class="card green" style="margin-top:6px; padding:12px 14px">
+    <h4 style="font-size:12px; margin-bottom:4px; color:#14523e">Dedicated Technical Guides &amp; Resources</h4>
+    <p style="font-size:10.2px; line-height:1.45; color:var(--body); margin:0">
+      Need deep-dive instructions for a specific printer brand or tablet configuration? Visit our dedicated guides online:<br>
+      &bull; <b>DNP Guide:</b> <a href="https://photobooth4u.netlify.app/how-to-print-dnp/" style="color:var(--red)">photobooth4u.netlify.app/how-to-print-dnp/</a><br>
+      &bull; <b>HiTi Guide:</b> <a href="https://photobooth4u.netlify.app/how-to-print-hiti/" style="color:var(--red)">photobooth4u.netlify.app/how-to-print-hiti/</a><br>
+      &bull; <b>Thermal Receipt Guide:</b> <a href="https://photobooth4u.netlify.app/how-to-print-thermal/" style="color:var(--red)">photobooth4u.netlify.app/how-to-print-thermal/</a><br>
+      &bull; <b>All Printers Directory:</b> <a href="https://photobooth4u.netlify.app/printers/" style="color:var(--red)">photobooth4u.netlify.app/printers/</a><br>
+      &bull; <b>Laptop Print Station:</b> <a href="https://photobooth4u.netlify.app/print-station/" style="color:var(--red)">photobooth4u.netlify.app/print-station/</a>
+    </p>
+  </div>
+
+  <div class="callout red" style="margin-top:8px">
+    <h4>Need Fast Support During an Event?</h4>
+    <p>Message us directly on Facebook Messenger at <b>m.me/roktetnachi</b> with your device model and error screen. Our technical team is ready to assist you!</p>
+  </div>
+
+  <div class="foot">
+    <span class="brand-tag">photobooth4u Starter Guide</span>
+    <span>Part 5 · Event Day Checklist</span>
+    <span class="page-num">Page 6 of 6</span>
+  </div>
+</div>
+
+</body>
+</html>

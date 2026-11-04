@@ -3770,6 +3770,248 @@
       transform: translateY(-2px);
     }
 
+    /* 360 Output & Share QR Modal */
+    .spin-share-ov {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    .spin-share-ov[hidden] {
+      display: none !important;
+    }
+    .spin-share-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(14, 13, 18, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .spin-share-card {
+      position: relative;
+      z-index: 2;
+      background: radial-gradient(120% 90% at 50% 0%, #2f252b 0%, #151317 65%);
+      color: #f6f1ea;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 24px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+      width: min(1060px, 96vw);
+      max-height: 94vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: spinSharePop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes spinSharePop {
+      0% { opacity: 0; transform: scale(0.96) translateY(10px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .spin-share-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 24px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .spin-share-badge {
+      display: inline-block;
+      font: 800 10px monospace, sans-serif;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      background: rgba(39, 174, 96, 0.2);
+      color: #2ecc71;
+      border: 1px solid rgba(46, 204, 113, 0.3);
+      border-radius: 999px;
+      margin-bottom: 4px;
+    }
+    .spin-share-title {
+      font: 700 clamp(18px, 2.4vw, 24px) 'Fraunces', Georgia, serif;
+      color: #fff;
+      margin: 0;
+    }
+    .spin-share-head-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .spin-share-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font: 700 12px 'Manrope', sans-serif;
+      padding: 7px 15px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      color: #f6f1ea;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      cursor: pointer;
+      transition: background 0.18s, transform 0.18s;
+    }
+    .spin-share-toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+      transform: translateY(-1px);
+    }
+    .spin-share-close-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #fff;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.18s;
+    }
+    .spin-share-close-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+    .spin-share-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr);
+      gap: 16px 24px;
+      align-items: center;
+      padding: 20px 24px;
+      overflow-y: auto;
+      flex: 1;
+      transition: all 0.3s ease;
+    }
+    .spin-share-body.no-wifi {
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    }
+    .spin-share-card.qr-hidden .spin-share-body {
+      grid-template-columns: 1fr;
+      justify-items: center;
+    }
+    .spin-share-card.qr-hidden .spin-share-col.left,
+    .spin-share-card.qr-hidden .spin-share-col.right {
+      display: none !important;
+    }
+    .spin-share-card.qr-hidden .spin-share-stage video {
+      max-height: 72vh;
+    }
+    .spin-share-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .spin-qr-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 16px 14px;
+      width: 100%;
+      max-width: 250px;
+      box-sizing: border-box;
+    }
+    .spin-qr-step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #c93d27;
+      color: #fff;
+      font: 800 16px/32px 'Manrope', sans-serif;
+      box-shadow: 0 4px 12px rgba(201, 61, 39, .45);
+    }
+    .spin-qr-title {
+      font: 800 16px 'Manrope', sans-serif;
+      color: #fff;
+      margin-top: 2px;
+    }
+    .spin-qr-subtitle {
+      font: 500 11px 'Manrope', sans-serif;
+      color: #d9cfc6;
+    }
+    .spin-qr-img-frame {
+      background: #fff;
+      padding: 10px;
+      border-radius: 14px;
+      margin: 6px 0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      line-height: 0;
+    }
+    .spin-qr-img-frame img {
+      width: min(180px, 45vw);
+      height: min(180px, 45vw);
+      display: block;
+      object-fit: contain;
+    }
+    .spin-qr-meta, .spin-qr-meta-url {
+      font: 700 11px monospace, 'Manrope', sans-serif;
+      color: #f6f1ea;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      padding: 4px 10px;
+      max-width: 90%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .spin-share-stage {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+    .spin-share-stage video {
+      max-height: 58vh;
+      max-width: 100%;
+      border-radius: 18px;
+      border: 3.5px solid #f6f1ea;
+      box-shadow: 0 16px 45px rgba(0, 0, 0, 0.65), 0 0 0 6px rgba(255, 255, 255, 0.08);
+      background: #000;
+      object-fit: contain;
+      transition: max-height 0.3s ease;
+    }
+    .spin-share-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px 24px 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.2);
+    }
+    .spin-share-note {
+      font: 500 12px 'Manrope', sans-serif;
+      color: #d9cfc6;
+      margin: 0;
+      flex: 1;
+      min-width: 220px;
+    }
+    .spin-share-actions {
+      display: flex;
+      gap: 8px;
+    }
+    @media (max-width: 768px) {
+      .spin-share-body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .spin-share-stage video {
+        max-height: 42vh;
+      }
+      .spin-share-foot {
+        justify-content: center;
+        text-align: center;
+      }
+    }
+
     .desk-item video {
       width: 100%;
       height: 100%;
@@ -14046,6 +14288,68 @@
       </div>
     </div>
   </div>
+
+  <!-- 360 Output & Share QR Modal Prompt -->
+  <div class="spin-share-ov" id="spinShareModal" hidden role="dialog" aria-label="360 Output and QR Code">
+    <div class="spin-share-backdrop" id="spinShareBackdrop"></div>
+    <div class="spin-share-card" id="spinShareCard">
+      <div class="spin-share-head">
+        <div class="spin-share-head-left">
+          <div class="spin-share-badge">READY TO SHARE</div>
+          <h3 class="spin-share-title" id="spinShareTitle">✨ Your 360 Video is Ready</h3>
+        </div>
+        <div class="spin-share-head-right">
+          <button type="button" class="spin-share-toggle-btn" id="spinShareToggleQr" title="Toggle QR codes to view full final video">
+            <span id="spinShareToggleQrIcon">👁️</span> <span id="spinShareToggleQrText">Hide QR Codes</span>
+          </button>
+          <button type="button" class="spin-share-close-btn" id="spinShareClose" title="Close modal">✕</button>
+        </div>
+      </div>
+
+      <div class="spin-share-body" id="spinShareBody">
+        <!-- Left: Step 1 (Join Booth Wi-Fi) -->
+        <div class="spin-share-col left" id="spinShareColWifi">
+          <div class="spin-qr-box">
+            <div class="spin-qr-step-num">1</div>
+            <b class="spin-qr-title">Join Booth Wi-Fi</b>
+            <span class="spin-qr-subtitle">Connect phone to download directly</span>
+            <div class="spin-qr-img-frame">
+              <img id="spinShareWifiQrImg" alt="Booth Wi-Fi QR">
+            </div>
+            <div class="spin-qr-meta" id="spinShareWifiMeta">SSID: Photobooth4U</div>
+          </div>
+        </div>
+
+        <!-- Center: Video Output -->
+        <div class="spin-share-col center" id="spinShareColVideo">
+          <div class="spin-share-stage">
+            <video id="spinShareVideo" playsinline loop autoplay controls></video>
+          </div>
+        </div>
+
+        <!-- Right: Step 2 (Scan to Download / Gallery) -->
+        <div class="spin-share-col right" id="spinShareColDownload">
+          <div class="spin-qr-box">
+            <div class="spin-qr-step-num">2</div>
+            <b class="spin-qr-title" id="spinShareDlTitle">Scan to Save</b>
+            <span class="spin-qr-subtitle" id="spinShareDlSub">Watch &amp; save video to camera roll</span>
+            <div class="spin-qr-img-frame">
+              <img id="spinShareDlQrImg" alt="Guest Download QR">
+            </div>
+            <div class="spin-qr-meta-url" id="spinShareDlUrl">photobooth4u.com</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spin-share-foot">
+        <p class="spin-share-note" id="spinShareNote">Guests scan Step 1 to join the booth Wi-Fi, then Step 2 to save their 360 video.</p>
+        <div class="spin-share-actions">
+          <button type="button" class="desk-btn" id="spinShareCopyBtn">📋 Copy Link</button>
+          <button type="button" class="desk-btn primary" id="spinShareDoneBtn">Back to Studio</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="desk-ov" id="reqOverlay" hidden role="dialog" aria-label="Print requests">
     <div class="desk-card">
       <div class="desk-head"><b>&#128424; Print requests</b><span class="sp"></span><button type="button"
@@ -19904,7 +20208,7 @@
         const sh = document.createElement('span'); sh.className = 'ls'; sh.textContent = shots + (shots === 1 ? ' shot' : ' shots');
         const pp = document.createElement('span'); pp.className = 'lpaper';
         var shapeLbl = isFrame ? frameShapeLabel(f).replace(/<[^>]*>/g, '') : layoutPaperText(key);
-        if (isFrame && f && f.tier) {
+        if (typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && isFrame && f && f.tier) {
           shapeLbl += (f.tier === 'receipt' ? ' · 🧾 Thermal' : (f.tier === 'photo' ? ' · 🎨 Color' : ''));
         }
         pp.textContent = shapeLbl;
@@ -24839,6 +25143,7 @@
         if (typeof stopFlipAutoPlay === 'function') stopFlipAutoPlay();
         clearTimeout(resultTimer);
         state = 'idle';
+        if (typeof sessionTier !== 'undefined') sessionTier = null;
         guestInfo = { name: '', line: '', q: ['', '', ''] };
         btViewBack = false; try { btFlipBtn.hidden = true; } catch (e) { }
         if (tplEdit) { tplEdit = null; try { btRenderTplEditor(); } catch (e) { } }
@@ -26164,6 +26469,15 @@
           g('spinTextOn').checked = !!spinLook.textOn;
         }
         g('spinSmooth').disabled = spinLook.speed !== 'slow' && !(spinLook.speed === 'custom' && (spinLook.rates || []).some(function (r) { return r < 1; }));
+        if (typeof spinCur !== 'undefined' && spinCur) {
+          if (spinLook.text1 !== undefined) spinCur.text1 = spinLook.text1;
+          if (spinLook.text2 !== undefined) spinCur.text2 = spinLook.text2;
+          if (spinLook.textColor !== undefined) spinCur.textColor = spinLook.textColor;
+          if (spinLook.textFont !== undefined) spinCur.textFont = spinLook.textFont;
+          if (spinLook.textPos !== undefined) spinCur.textPos = spinLook.textPos;
+          if (spinLook.frameStyle !== undefined) spinCur.frameStyle = spinLook.frameStyle;
+          if (spinCur.edited && typeof spinSwitchToDraftPreview === 'function') spinSwitchToDraftPreview(spinCur);
+        }
         try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { }
         if (typeof renderSpinModalPreview === 'function') renderSpinModalPreview();
       }
@@ -27632,6 +27946,34 @@
         spinAnimReq = requestAnimationFrame(step);
       }
 
+      function spinSwitchToDraftPreview(it) {
+        if (!it) it = spinCur;
+        if (!it) return;
+        it.isDrafting = true;
+        it.viewOrig = true;
+        var v = document.getElementById('spinVideo');
+        if (v && spinInfo && spinInfo.previewBase && it.src === 'inbox') {
+          var rawSrc = spinSrc(it, false);
+          if (rawSrc && v.src !== rawSrc) {
+            var curTime = v.currentTime || 0;
+            v.src = rawSrc;
+            v.currentTime = curTime;
+            v.play().catch(function () { });
+          }
+        }
+        var vb = document.getElementById('spinViewBtn');
+        if (vb && it.edited) {
+          vb.hidden = false;
+          vb.textContent = 'View rendered';
+        }
+        var eb = document.getElementById('spinEditBtn');
+        if (eb && it.edited) {
+          eb.textContent = '⚡ Process changes';
+        }
+        var cvs = document.getElementById('spinPreviewCanvas');
+        if (cvs) cvs.style.display = 'block';
+      }
+
       function renderSpinModalPreview() {
         var it = spinCur;
         if (spinOverlay && spinOverlay.hidden) return;
@@ -27642,7 +27984,7 @@
           cvs.style.display = 'none';
           return;
         }
-        if (it && it.edited && !it.viewOrig) {
+        if (it && it.edited && !it.viewOrig && !it.isDrafting) {
           cvs.style.display = 'none';
           return;
         }
@@ -27926,8 +28268,11 @@
         var fontSel = document.getElementById('spinTextFont') || document.getElementById('spinModalTextFont');
         if (fontSel) fontSel.value = it.textFont || (spinLook && spinLook.textFont) || 'cursive';
 
-        var colInput = document.getElementById('spinTextColor') || document.getElementById('spinModalTextColor');
-        if (colInput) colInput.value = it.textColor || (spinLook && spinLook.textColor) || '#FFF2A8';
+        var colVal = it.textColor || (spinLook && spinLook.textColor) || '#FFF2A8';
+        var colInput = document.getElementById('spinTextColor');
+        if (colInput) colInput.value = colVal;
+        var colM = document.getElementById('spinModalTextColor');
+        if (colM) colM.value = colVal;
 
         var fxSel = document.getElementById('spinFx') || document.getElementById('spinModalFx');
         if (fxSel) fxSel.value = it.fx || (spinLook && spinLook.fx) || 'none';
@@ -27965,6 +28310,69 @@
           it.status = it.queued ? 'queued' : 'shared';
         } catch (e) { it.status = 'error'; it.err = (e && e.message) || 'Failed'; }
         spinRender(); spinModalUpdate();
+        if (it && it.url && it.status !== 'error') {
+          openSpinShareModal(it);
+        }
+      }
+
+      function openSpinShareModal(it) {
+        if (!it) it = spinCur;
+        if (!it) return;
+        var modal = document.getElementById('spinShareModal');
+        if (!modal) return;
+        var card = document.getElementById('spinShareCard');
+        if (card) card.classList.remove('qr-hidden');
+        var toggleText = document.getElementById('spinShareToggleQrText');
+        if (toggleText) toggleText.textContent = 'Hide QR Codes';
+        var toggleIcon = document.getElementById('spinShareToggleQrIcon');
+        if (toggleIcon) toggleIcon.textContent = '👁️';
+
+        var v = document.getElementById('spinShareVideo');
+        if (v) {
+          var src = spinSrc(it, !it.viewOrig);
+          if (v.src !== src) {
+            v.src = src || '';
+            v.load();
+          }
+          v.play().catch(function () { });
+        }
+
+        var wf = it.url && !it.queued ? wifiInfo() : null;
+        var colWifi = document.getElementById('spinShareColWifi');
+        var body = document.getElementById('spinShareBody');
+        if (body) body.classList.toggle('no-wifi', !wf);
+
+        if (wf && colWifi) {
+          colWifi.style.display = '';
+          var wifiImg = document.getElementById('spinShareWifiQrImg');
+          if (wifiImg) wifiImg.src = qrImageUrl(wifiQrText(wf));
+          var wifiMeta = document.getElementById('spinShareWifiMeta');
+          if (wifiMeta) wifiMeta.textContent = 'Wi-Fi: ' + wf.ssid + (wf.pass ? ' / ' + wf.pass : '');
+        } else if (colWifi) {
+          colWifi.style.display = 'none';
+        }
+
+        var dlImg = document.getElementById('spinShareDlQrImg');
+        if (dlImg && it.url) dlImg.src = qrImageUrl(it.url);
+
+        var dlUrl = document.getElementById('spinShareDlUrl');
+        if (dlUrl) dlUrl.textContent = it.url ? it.url.replace(/^https?:\/\//i, '') : 'Ready to download';
+
+        var note = document.getElementById('spinShareNote');
+        if (note) {
+          note.textContent = it.status === 'shared'
+            ? (wf ? 'Step 1 connects your guest to the booth Wi-Fi, then Step 2 opens and downloads the video.' : 'Scan the QR code with your phone camera to watch and save the video.')
+            : (it.status === 'queued' ? 'Saved on this device. Uploads when connected; QR code opens the event gallery.' : 'Your 360 video is ready.');
+        }
+
+        modal.hidden = false;
+      }
+
+      function closeSpinShareModal() {
+        var modal = document.getElementById('spinShareModal');
+        if (modal) modal.hidden = true;
+        var v = document.getElementById('spinShareVideo');
+        if (v) { try { v.pause(); } catch (e) { } }
       }
 
       document.getElementById('spinClose').addEventListener('click', closeSpin);
@@ -28013,7 +28421,46 @@
       document.getElementById('spinDirBtn').addEventListener('click', async function () {
         try { var r = await window.pb4u.spinChoose(); if (r) { spinInfo = r; spinSeen = {}; spinPrev = {}; spinQueue = spinQueue.filter(function (i) { return i.src !== 'inbox'; }); spinRender(); spinSetupInfo(); } } catch (e) { }
       });
-      document.getElementById('spinShareBtn').addEventListener('click', function () { if (spinCur) spinDoShare(spinCur); });
+      document.getElementById('spinShareBtn').addEventListener('click', function () {
+        if (!spinCur) return;
+        if (spinCur.url && (spinCur.status === 'shared' || spinCur.status === 'queued')) {
+          openSpinShareModal(spinCur);
+        } else {
+          spinDoShare(spinCur);
+        }
+      });
+
+      var toggleQrBtn = document.getElementById('spinShareToggleQr');
+      if (toggleQrBtn) {
+        toggleQrBtn.addEventListener('click', function () {
+          var card = document.getElementById('spinShareCard');
+          if (!card) return;
+          var isHidden = card.classList.toggle('qr-hidden');
+          var textEl = document.getElementById('spinShareToggleQrText');
+          var iconEl = document.getElementById('spinShareToggleQrIcon');
+          if (textEl) textEl.textContent = isHidden ? 'Show QR Codes' : 'Hide QR Codes';
+          if (iconEl) iconEl.textContent = isHidden ? '📱' : '👁️';
+        });
+      }
+      var closeShareBtn = document.getElementById('spinShareClose');
+      if (closeShareBtn) closeShareBtn.addEventListener('click', closeSpinShareModal);
+      var doneShareBtn = document.getElementById('spinShareDoneBtn');
+      if (doneShareBtn) doneShareBtn.addEventListener('click', closeSpinShareModal);
+      var backdropShare = document.getElementById('spinShareBackdrop');
+      if (backdropShare) backdropShare.addEventListener('click', closeSpinShareModal);
+      var copyShareBtn = document.getElementById('spinShareCopyBtn');
+      if (copyShareBtn) {
+        copyShareBtn.addEventListener('click', function () {
+          if (spinCur && spinCur.url) {
+            try {
+              navigator.clipboard.writeText(spinCur.url);
+              showToast('Share link copied to clipboard!', 2200);
+            } catch (e) {
+              prompt('Copy link:', spinCur.url);
+            }
+          }
+        });
+      }
 
       document.getElementById('spinEditBtn').addEventListener('click', function () {
         var it = spinCur; if (!it) return;
@@ -28174,20 +28621,34 @@
         });
       }
 
-      ['spinTrimText1', 'spinTrimText2', 'spinText1', 'spinText2', 'spinModalTextY'].forEach(function (id) {
+      ['spinTrimText1', 'spinTrimText2', 'spinText1', 'spinText2', 'spinModalTextY', 'spinTextColor', 'spinModalTextColor'].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) {
           el.addEventListener('input', function () {
             if (id === 'spinText1' || id === 'spinTrimText1') {
               var s1 = document.getElementById(id === 'spinText1' ? 'spinTrimText1' : 'spinText1');
               if (s1) s1.value = el.value;
-              if (spinCur) spinCur.text1 = el.value;
+              if (spinCur) {
+                spinCur.text1 = el.value;
+                if (spinCur.edited) spinSwitchToDraftPreview(spinCur);
+              }
               spinLook.text1 = el.value;
             } else if (id === 'spinText2' || id === 'spinTrimText2') {
               var s2 = document.getElementById(id === 'spinText2' ? 'spinTrimText2' : 'spinText2');
               if (s2) s2.value = el.value;
-              if (spinCur) spinCur.text2 = el.value;
+              if (spinCur) {
+                spinCur.text2 = el.value;
+                if (spinCur.edited) spinSwitchToDraftPreview(spinCur);
+              }
               spinLook.text2 = el.value;
+            } else if (id === 'spinTextColor' || id === 'spinModalTextColor') {
+              var altCol = document.getElementById(id === 'spinTextColor' ? 'spinModalTextColor' : 'spinTextColor');
+              if (altCol) altCol.value = el.value;
+              if (spinCur) {
+                spinCur.textColor = el.value;
+                if (spinCur.edited) spinSwitchToDraftPreview(spinCur);
+              }
+              spinLook.textColor = el.value;
             } else if (id === 'spinModalTextY') {
               var yVal = document.getElementById('spinModalTextYVal');
               if (yVal) yVal.textContent = el.value + '%';
@@ -28195,7 +28656,10 @@
               if (posSel) posSel.value = 'custom';
               var posSelM = document.getElementById('spinModalTextPos');
               if (posSelM) posSelM.value = 'custom';
-              if (spinCur) spinCur.textYPercent = Number(el.value);
+              if (spinCur) {
+                spinCur.textYPercent = Number(el.value);
+                if (spinCur.edited) spinSwitchToDraftPreview(spinCur);
+              }
               spinLook.textYPercent = Number(el.value);
             }
             renderSpinModalPreview();
@@ -28210,7 +28674,10 @@
             if (id === 'spinFrameStyle' || id === 'spinModalFrameStyle') {
               var alt = document.getElementById(id === 'spinFrameStyle' ? 'spinModalFrameStyle' : 'spinFrameStyle');
               if (alt) alt.value = el.value;
-              if (spinCur) spinCur.frameStyle = el.value;
+              if (spinCur) {
+                spinCur.frameStyle = el.value;
+                if (spinCur.edited) spinSwitchToDraftPreview(spinCur);
+              }
               spinLook.frameStyle = el.value;
             } else if (id === 'spinTextPos' || id === 'spinModalTextPos') {
               var altPos = document.getElementById(id === 'spinTextPos' ? 'spinModalTextPos' : 'spinTextPos');
@@ -28221,31 +28688,54 @@
               if (ySlider && el.value !== 'custom') {
                 ySlider.value = targetY;
                 if (yVal) yVal.textContent = targetY + '%';
-                if (spinCur) spinCur.textYPercent = targetY;
+                if (spinCur) {
+                  spinCur.textYPercent = targetY;
+                  if (spinCur.edited) spinSwitchToDraftPreview(spinCur);
+                }
                 spinLook.textYPercent = targetY;
               }
-              if (spinCur) spinCur.textPos = el.value;
+              if (spinCur) {
+                spinCur.textPos = el.value;
+                if (spinCur.edited) spinSwitchToDraftPreview(spinCur);
+              }
               spinLook.textPos = el.value;
+            } else if (id === 'spinModalTextAlign') {
+              if (spinCur) {
+                spinCur.textAlign = el.value;
+                if (spinCur.edited) spinSwitchToDraftPreview(spinCur);
+              }
+              spinLook.textAlign = el.value;
             } else if (id === 'spinTextFont' || id === 'spinModalTextFont') {
               var altFt = document.getElementById(id === 'spinTextFont' ? 'spinModalTextFont' : 'spinTextFont');
               if (altFt) altFt.value = el.value;
-              if (spinCur) spinCur.textFont = el.value;
+              if (spinCur) {
+                spinCur.textFont = el.value;
+                if (spinCur.edited) spinSwitchToDraftPreview(spinCur);
+              }
               spinLook.textFont = el.value;
             } else if (id === 'spinTextColor' || id === 'spinModalTextColor') {
               var altCol = document.getElementById(id === 'spinTextColor' ? 'spinModalTextColor' : 'spinTextColor');
               if (altCol) altCol.value = el.value;
-              if (spinCur) spinCur.textColor = el.value;
+              if (spinCur) {
+                spinCur.textColor = el.value;
+                if (spinCur.edited) spinSwitchToDraftPreview(spinCur);
+              }
               spinLook.textColor = el.value;
             } else if (id === 'spinFx' || id === 'spinModalFx') {
               var altFx = document.getElementById(id === 'spinFx' ? 'spinModalFx' : 'spinFx');
               if (altFx) altFx.value = el.value;
-              if (spinCur) spinCur.fx = el.value;
+              if (spinCur) {
+                spinCur.fx = el.value;
+                if (spinCur.edited) spinSwitchToDraftPreview(spinCur);
+              }
               spinLook.fx = el.value;
               spinUpdateFxBadge();
             } else if (id === 'spinTextOn') {
               spinLook.textOn = el.checked;
+              if (spinCur && spinCur.edited) spinSwitchToDraftPreview(spinCur);
             } else if (id === 'spinOverlayOn') {
               spinLook.overlay = el.checked;
+              if (spinCur && spinCur.edited) spinSwitchToDraftPreview(spinCur);
             }
             renderSpinModalPreview();
           });
@@ -28262,7 +28752,7 @@
         var el = document.getElementById(id);
         if (el) el.addEventListener('change', function () { spinLookFromUI(id === 'spinAuto' || id === 'spinAutoShare' || id === 'spinVol' || id === 'spinOrient' || id === 'spinQual' || id === 'spinFx' || id === 'spinGpu' || id === 'spinZoom' || id === 'spinFlash' || id === 'spinFrameStyle' || id.startsWith('spinText') ? true : false); });
       });
-      ['spinText1', 'spinText2'].forEach(function (id) {
+      ['spinText1', 'spinText2', 'spinTextColor', 'spinModalTextColor'].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener('input', function () { spinLookFromUI(true); });
       });
@@ -29298,25 +29788,27 @@
           if (!LAYOUT_DEFS[k] || (k === 'framesheet' && !(myFrames && myFrames.length))) return;
           if (k === main || guestLayoutSet.indexOf(k) >= 0) keys.push(k);
         });
-        if (sessionTier === 'receipt') {
-          var rKeys = keys.filter(function (k) {
-            if (/^frame:/.test(k)) {
-              var f = typeof frameById === 'function' ? frameById(k.slice(6)) : null;
-              return f && (f.tier === 'receipt' || f.tier === 'all');
-            }
-            return LAYOUT_DEFS[k] && LAYOUT_DEFS[k].kind === 'receipt';
-          });
-          if (rKeys.length) keys = rKeys;
-          else keys = ['receipt'];
-        } else if (sessionTier === 'photo') {
-          var pKeys = keys.filter(function (k) {
-            if (/^frame:/.test(k)) {
-              var f = typeof frameById === 'function' ? frameById(k.slice(6)) : null;
-              return !f || f.tier === 'photo' || f.tier === 'all' || !f.tier;
-            }
-            return !LAYOUT_DEFS[k] || LAYOUT_DEFS[k].kind !== 'receipt';
-          });
-          if (pKeys.length) keys = pKeys;
+        if (typeof payActive === 'function' && payActive() && payCfg && payCfg.dual && sessionTier) {
+          if (sessionTier === 'receipt') {
+            var rKeys = keys.filter(function (k) {
+              if (/^frame:/.test(k)) {
+                var f = typeof frameById === 'function' ? frameById(k.slice(6)) : null;
+                return f && (f.tier === 'receipt' || f.tier === 'all');
+              }
+              return LAYOUT_DEFS[k] && LAYOUT_DEFS[k].kind === 'receipt';
+            });
+            if (rKeys.length) keys = rKeys;
+            else keys = ['receipt'];
+          } else if (sessionTier === 'photo') {
+            var pKeys = keys.filter(function (k) {
+              if (/^frame:/.test(k)) {
+                var f = typeof frameById === 'function' ? frameById(k.slice(6)) : null;
+                return !f || f.tier === 'photo' || f.tier === 'all' || !f.tier;
+              }
+              return !LAYOUT_DEFS[k] || LAYOUT_DEFS[k].kind !== 'receipt';
+            });
+            if (pKeys.length) keys = pKeys;
+          }
         }
         if (keys.length === 1 && /^frame:/.test(keys[0])) {
           activeFrameId = keys[0].slice(6);
@@ -29374,15 +29866,14 @@
             var shots = isFr ? frameShotCount(fObj) : (LAYOUT_DEFS[k] ? LAYOUT_DEFS[k].shots : 4);
             shBadge.textContent = shots + (shots === 1 ? ' shot' : ' shots');
             var isRc = (fObj && fObj.tier === 'receipt') || (!isFr && LAYOUT_DEFS[k] && LAYOUT_DEFS[k].kind === 'receipt');
-            var tierTag = document.createElement('span');
-            tierTag.className = 'pick-tier-tag ' + (isRc ? 'thermal' : 'color');
-            if (payCfg && payCfg.dual) {
+            b.append(im, sp, shBadge);
+            if (typeof payActive === 'function' && payActive() && payCfg && payCfg.dual) {
+              var tierTag = document.createElement('span');
+              tierTag.className = 'pick-tier-tag ' + (isRc ? 'thermal' : 'color');
               var matchingOpt = payCfg.options && payCfg.options.find(function (o) { return o.tier === (isRc ? 'receipt' : 'photo'); });
               tierTag.textContent = matchingOpt ? ((isRc ? '🧾 ' : '🎨 ') + matchingOpt.label) : (isRc ? ('🧾 ' + (payCfg.tier1 ? payCfg.tier1.label : 'Thermal')) : ('🎨 ' + (payCfg.tier2 ? payCfg.tier2.label : 'Coloured')));
-            } else {
-              tierTag.textContent = isRc ? '🧾 Thermal' : '🎨 Coloured';
+              b.append(tierTag);
             }
-            b.append(im, sp, shBadge, tierTag);
             b.addEventListener('click', function (e) { e.stopPropagation(); finishPick(k); });
             pickGrid.appendChild(b);
           });
@@ -30040,10 +30531,19 @@
         refreshPayBadge();
       }
       function payChanged() { refreshPayUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); if (payVoucherOn()) { refreshVoucherCache(); payLoadBatches(); } }
-      function applyPaySetup(p) { payCfg = cleanPay(p); refreshPayUI(); if (payVoucherOn()) setTimeout(function () { refreshVoucherCache(); payLoadBatches(); }, 800); }
+      function applyPaySetup(p) {
+        payCfg = cleanPay(p);
+        if (!payActive()) { sessionTier = null; setPayCredit(null); }
+        refreshPayUI();
+        if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
+        if (payVoucherOn()) setTimeout(function () { refreshVoucherCache(); payLoadBatches(); }, 800);
+      }
       document.getElementById('payModes').addEventListener('click', function (e) {
         var b = e.target.closest('.chip[data-mode]'); if (!b) return;
-        payCfg.mode = b.dataset.mode; payChanged();
+        payCfg.mode = b.dataset.mode;
+        if (!payActive()) { sessionTier = null; setPayCredit(null); }
+        payChanged();
+        if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
       });
       document.getElementById('payPrice').addEventListener('change', function () {
         var v = Math.floor(Number(this.value));
@@ -30055,7 +30555,9 @@
       var pdt = document.getElementById('payDualToggle');
       if (pdt) pdt.addEventListener('change', function () {
         payCfg.dual = this.checked;
+        if (!payCfg.dual) { sessionTier = null; }
         payChanged();
+        if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
       });
       var paob = document.getElementById('payAddOptBtn');
       if (paob) paob.addEventListener('click', function () {
@@ -30143,7 +30645,8 @@
             (optTitle ? payEsc(optTitle) + ' · ' : '') +
             (bt.price ? payEsc(peso(bt.price)) + ' · ' : '') + 'made ' + fmtShortDate(bt.at) + (bt.by === 'admin' ? ' by photobooth4u' : '') + (voidCount ? ' · ' + voidCount + ' cancelled' : '') + '</small>' +
             '<div class="meter"><i style="width:' + Math.round((total ? usedCount / total : 0) * 100) + '%"></i></div></div>' +
-            (left > 0 ? '<button type="button" class="action-btn" data-act="print">Print tickets</button><button type="button" class="action-btn" data-act="void">Cancel unused</button>' : '') + '</div>';
+            (left > 0 ? '<button type="button" class="action-btn" data-act="print">Print tickets</button><button type="button" class="action-btn" data-act="void">Cancel unused</button>' : '') +
+            '<button type="button" class="action-btn" data-act="del" style="color:#e05252; margin-left:auto;" title="Delete this voucher batch">Delete</button></div>';
         }).join('');
       }
 
@@ -30458,6 +30961,39 @@
               }
             } catch (err) { showToast('No internet. Try again.', 4000); }
           }
+        }
+        if (b.dataset.act === 'del') {
+          if (!b.classList.contains('confirm')) {
+            b.classList.add('confirm');
+            b.textContent = 'Tap again to delete';
+            setTimeout(function () {
+              if (b.isConnected) {
+                b.classList.remove('confirm');
+                b.textContent = 'Delete';
+              }
+            }, 4000);
+            return;
+          }
+          var offBatches = loadAllOfflineBatches().filter(function (ob) { return ob.id !== id; });
+          saveAllOfflineBatches(offBatches);
+          try {
+            var cData = JSON.parse(localStorage.getItem(vCacheKey()) || 'null');
+            if (cData && cData.oid && cData.list && bt.codes) {
+              var allCodes = bt.codes.map(function (c) { return c.c || c; });
+              var allHashes = await Promise.all(allCodes.map(function (vc) { return vHash(cData.oid, vc); }));
+              var hSet = new Set(allHashes);
+              cData.list = cData.list.filter(function (entry) { return !hSet.has(entry[0]); });
+              localStorage.setItem(vCacheKey(), JSON.stringify(cData));
+            }
+          } catch (_de) { }
+          payBatches = payBatches.filter(function (x) { return x.id !== id; });
+          renderPayBatches();
+          refreshVoucherCache();
+          if (navigator.onLine !== false) {
+            try { await postApi('/api/pay', { action: 'batch.delete', id: id }, 8000); } catch (e) { }
+          }
+          showToast('Voucher batch deleted.');
+          return;
         }
       });
       window.addEventListener('pb-pay-change', function () { payLoadConfig(); if (payOn() && payVoucherOn()) { payLoadBatches(); refreshVoucherCache(); } });

@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.70', date: '2026-11-04' },
   { version: '1.0.69', date: '2026-11-04' },
   { version: '1.0.68', date: '2026-11-04' },
   { version: '1.0.67', date: '2026-11-04' },
@@ -80,7 +81,7 @@ export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.80', date: '2026-11-04', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.80/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: '1.0.81', date: '2026-11-04', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.81/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -115,6 +116,26 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-04', title: 'Real-Time Text/Color WYSIWYG & Dedicated Dual-QR Output Modal', for: ['app', 'website'], app: '1.0.70',
+    items: [
+      'Instant Live Text & Color Updates: Text inputs and real-time color picker update the preview canvas live on input, without needing to re-edit.',
+      'Live Draft Mode for Rendered Videos: Changing styling on previously processed clips automatically switches to raw looping footage with live overlays on top.',
+      'Dedicated Output & Share Modal: Clicking Share + QR opens a presentation modal featuring Booth Wi-Fi (Step 1), finished video, and Guest Download QR (Step 2).',
+      'QR Code Visibility Toggle: Toggle between dual QR sharing and full-screen clean video preview with the "Hide QR Codes" switch.',
+      'One-Click Share Link Copy: Easily copy the guest download link to clipboard directly from the share modal.'
+    ]
+  },
+  {
+    date: '2026-11-04', title: 'Real-Time Text/Color WYSIWYG & Dedicated Dual-QR Output Modal (Android)', for: ['app'], app: '1.0.81',
+    items: [
+      'Instant Live Text & Color Updates: Text inputs and real-time color picker update the preview canvas live on input, without needing to re-edit.',
+      'Live Draft Mode for Rendered Videos: Changing styling on previously processed clips automatically switches to raw looping footage with live overlays on top.',
+      'Dedicated Output & Share Modal: Clicking Share + QR opens a presentation modal featuring Booth Wi-Fi (Step 1), finished video, and Guest Download QR (Step 2).',
+      'QR Code Visibility Toggle: Toggle between dual QR sharing and full-screen clean video preview with the "Hide QR Codes" switch.',
+      'One-Click Share Link Copy: Easily copy the guest download link to clipboard directly from the share modal.'
+    ]
+  },
   {
     date: '2026-11-04', title: 'Full-Page 360 Studio Desk with Sticky Live Side Preview & Turntable Simulation', for: ['app', 'website'], app: '1.0.69',
     items: [

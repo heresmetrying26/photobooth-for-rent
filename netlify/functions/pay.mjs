@@ -216,6 +216,14 @@ export default safe(async (req, context) => {
     return json({ ok: true, batch: batchView(bt, used) });
   }
 
+  if (b.action === 'batch.delete') {
+    const bt = await store.get(batchKey(oid, String(b.id || '')), { type: 'json' });
+    if (bt && bt.ev === ev) {
+      await store.delete(batchKey(oid, bt.id));
+    }
+    return json({ ok: true, deleted: true });
+  }
+
   if (b.action === 'qr') {
     const acct = await getAcct(oid);
     if (!acct || !acct.enc) return json({ error: 'PayMongo isn’t connected. Connect it on the My Events page.', notConnected: true }, 409);

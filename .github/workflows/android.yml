@@ -27,9 +27,21 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - name: Setup Gradle
+        id: setup-gradle
+        continue-on-error: true      # services.gradle.org / the cache service sometimes answer 504; the next step then uses a mirror
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.5'
+      - name: Setup Gradle (fallback download)
+        if: steps.setup-gradle.outcome != 'success'
+        working-directory: .
+        run: |
+          echo "::warning::Gradle setup action failed; downloading Gradle 8.5 from GitHub's gradle-distributions instead"
+          curl -fL --retry 6 --retry-delay 10 --retry-all-errors -o "$RUNNER_TEMP/gradle-8.5-bin.zip" \
+            https://github.com/gradle/gradle-distributions/releases/download/v8.5.0/gradle-8.5-bin.zip
+          unzip -q "$RUNNER_TEMP/gradle-8.5-bin.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gradle-8.5/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/gradle-8.5/bin/gradle" --version
       - name: Accept Android SDK licenses
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true

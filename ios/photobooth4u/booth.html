@@ -14009,17 +14009,29 @@
               </div>
             </div>
             <!-- Lightness & Colour Correction (Thermal & Photo printing) -->
-            <div class="color-adj-box"
+            <div class="color-adj-box" id="colorAdjBox"
               style="margin-top:14px; padding:12px 14px; background:var(--panel-2, #faf6f0); border:1px solid var(--line); border-radius:12px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <p class="panel-label" style="margin:0; font-size:13px; font-weight:700;">Lightness &amp; Colour
-                  Correction</p>
+              <p class="sub-label" style="margin:0 0 6px;">Printer profile</p>
+              <div class="print-size-row" id="pfChips" role="group" aria-label="Printer profile"></div>
+              <p class="panel-hint" id="colorAdjFor" style="margin:6px 0 8px; font-size:11.5px;"></p>
+              <div style="display:flex; align-items:center; gap:8px; border-top:1px solid var(--line); padding-top:8px;">
+                <button type="button" id="colorAdjToggle" aria-expanded="false" aria-controls="colorAdjBody"
+                  style="flex:1; display:flex; align-items:center; gap:8px; background:none; border:none; padding:0; text-align:left; cursor:pointer; color:inherit; font:inherit;">
+                  <span id="colorAdjChev" aria-hidden="true" style="display:inline-block; transition:transform .15s; font-size:14px;">&#9656;</span>
+                  <span>
+                    <span class="panel-label" style="display:block; margin:0; font-size:13px; font-weight:700;">Lightness &amp; Colour Correction</span>
+                    <span id="colorAdjSub" class="panel-hint" style="display:block; margin:0; font-size:11.5px;">No adjustments</span>
+                  </span>
+                </button>
+                <span id="colorAdjDot" title="Adjusted" aria-label="Adjusted" hidden
+                  style="width:8px; height:8px; border-radius:50%; background:#d97706; display:inline-block;"></span>
                 <button type="button" class="link-btn" id="btnResetColorAdj"
                   style="font-size:12px; color:var(--ink-dim); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0;">Reset</button>
               </div>
+              <div id="colorAdjBody" hidden style="margin-top:8px;">
               <p class="panel-hint" style="margin:0 0 10px; font-size:11.5px; line-height:1.4;">Adjust exposure and RGB
                 balance for prints. If thermal prints are too dark, increase lightness (+20 to +40). Changes apply to
-                the preview and the next print.</p>
+                the next print on the selected printer.</p>
 
               <div style="display:flex; flex-direction:column; gap:8px;">
                 <div>
@@ -14061,6 +14073,9 @@
                   <input type="range" id="sliderAdjBlue" min="-100" max="100" value="0"
                     style="width:100%; cursor:pointer; accent-color:#1d4ed8;">
                 </div>
+              </div>
+              <button type="button" class="link-btn" id="btnCopyColorAdj"
+                style="margin-top:10px; font-size:12px; color:var(--ink-dim); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0;" hidden></button>
               </div>
             </div>
 
@@ -23634,6 +23649,7 @@
       });
       function refreshPrinterHint() {
         const name = printerFor(printSize);
+        try { if (window._syncColorAdjToPrinter) window._syncColorAdjToPrinter(); } catch (e) { }
         if (printSize) printerPickSize.textContent = paperFor(printSize).name + (printerKey(printSize) !== printSize ? ' \u00b7 strip layouts (2 strips, cut)' : '');
         if (printerSetupBtn) {
           const canOpen = DESKTOP || (helperOn && helper.ok && helperAtLeast('1.1.7') && !!name && helper.printers.includes(name));
@@ -26024,69 +26040,189 @@
         }
       }
 
-      function updateColorAdjUI() {
-        var sB = document.getElementById('sliderAdjBrightness');
-        var sR = document.getElementById('sliderAdjRed');
-        var sG = document.getElementById('sliderAdjGreen');
-        var sU = document.getElementById('sliderAdjBlue');
-        var vB = document.getElementById('valAdjBrightness');
-        var vR = document.getElementById('valAdjRed');
-        var vG = document.getElementById('valAdjGreen');
-        var vU = document.getElementById('valAdjBlue');
-        if (sB) sB.value = colorAdj.brightness || 0;
-        if (sR) sR.value = colorAdj.red || 0;
-        if (sG) sG.value = colorAdj.green || 0;
-        if (sU) sU.value = colorAdj.blue || 0;
-        if (vB) vB.textContent = (colorAdj.brightness > 0 ? '+' : '') + (colorAdj.brightness || 0);
-        if (vR) vR.textContent = (colorAdj.red > 0 ? '+' : '') + (colorAdj.red || 0);
-        if (vG) vG.textContent = (colorAdj.green > 0 ? '+' : '') + (colorAdj.green || 0);
-        if (vU) vU.textContent = (colorAdj.blue > 0 ? '+' : '') + (colorAdj.blue || 0);
+      function zeroAdj() { return { brightness: 0, red: 0, green: 0, blue: 0 }; }
+      function adjIsSet(a) { return !!(a && (a.brightness || a.red || a.green || a.blue)); }
+      function adjSummary(a) {
+        if (!adjIsSet(a)) return 'No adjustments';
+        var s = [], sg = function (n) { return (n > 0 ? '+' : '') + n; };
+        if (a.brightness) s.push('Light ' + sg(a.brightness));
+        if (a.red) s.push('R ' + sg(a.red));
+        if (a.green) s.push('G ' + sg(a.green));
+        if (a.blue) s.push('B ' + sg(a.blue));
+        return s.join(', ');
       }
 
+      // ---- Printer profiles: every printer keeps its own colour correction and photo layout ----
+      var COLOR_ADJ_MAP_KEY = 'pb_color_adj_by_printer', PRINT_OPTS_MAP_KEY = 'pb_print_opts_by_printer';
+      var colorAdjMap = {}, printOptsMap = {};
+      try { colorAdjMap = JSON.parse(localStorage.getItem(COLOR_ADJ_MAP_KEY) || '{}') || {}; } catch (e) { colorAdjMap = {}; }
+      try { printOptsMap = JSON.parse(localStorage.getItem(PRINT_OPTS_MAP_KEY) || '{}') || {}; } catch (e) { printOptsMap = {}; }
+      var colorAdjKeyNow = null;   // printer the live camera / prints use (null until known)
+      var colorAdjView = null;     // printer chip being edited (null = the live one)
+      function safeCall(fn) { try { fn(); } catch (e) { } }
+      function colorAdjPrinter() {
+        try { return (typeof printSize !== 'undefined' && printSize && typeof printerFor === 'function') ? (printerFor(printSize) || '') : ''; } catch (e) { return ''; }
+      }
+      function liveKey() { return colorAdjKeyNow === null ? colorAdjPrinter() : colorAdjKeyNow; }
+      function viewKey() { return colorAdjView === null ? liveKey() : colorAdjView; }
+      function viewingLive() { return viewKey() === liveKey(); }
+      function viewAdj() { return viewingLive() ? colorAdj : Object.assign(zeroAdj(), colorAdjMap[viewKey()] || {}); }
+      function saveProfileMaps() {
+        try { localStorage.setItem(COLOR_ADJ_MAP_KEY, JSON.stringify(colorAdjMap)); } catch (e) { }
+        try { localStorage.setItem(PRINT_OPTS_MAP_KEY, JSON.stringify(printOptsMap)); } catch (e) { }
+      }
+      function profilePrinters() {
+        var out = [], add = function (n) { if (n && out.indexOf(n) < 0) out.push(n); };
+        try { Object.keys(printerMap).forEach(function (k) { add(printerMap[k]); }); } catch (e) { }
+        add(liveKey());
+        return out.sort();
+      }
+      function liveRefresh() {
+        safeCall(applyLiveFilter); safeCall(reapplyFiltersToShots); safeCall(renderSetupPreview);
+        safeCall(schedulePrintThumb); safeCall(refreshStep4Printer);
+      }
+      function savePrintOptsForPrinter() {
+        try {
+          var k = liveKey();
+          printOptsMap[k] = { fit: printPrefs.fit || 'auto', photoSize: printPrefs.photoSize || '', borderless: !!printPrefs.borderless };
+          saveProfileMaps();
+        } catch (e) { }
+      }
+      function loadPrintOptsForPrinter(k) {
+        try {
+          var o = printOptsMap[k] || { fit: 'auto', photoSize: '', borderless: false };
+          printPrefs.fit = o.fit || 'auto'; printPrefs.photoSize = o.photoSize || ''; printPrefs.borderless = !!o.borderless;
+          refreshPhotoFitUI();
+        } catch (e) { }
+      }
+      function updateColorAdjUI() {
+        var a = viewAdj();
+        var set = function (sid, vid, v) {
+          var s = document.getElementById(sid), t = document.getElementById(vid);
+          if (s) s.value = v || 0;
+          if (t) t.textContent = (v > 0 ? '+' : '') + (v || 0);
+        };
+        set('sliderAdjBrightness', 'valAdjBrightness', a.brightness);
+        set('sliderAdjRed', 'valAdjRed', a.red);
+        set('sliderAdjGreen', 'valAdjGreen', a.green);
+        set('sliderAdjBlue', 'valAdjBlue', a.blue);
+        var sub = document.getElementById('colorAdjSub'), dot = document.getElementById('colorAdjDot');
+        if (sub) sub.textContent = adjSummary(a);
+        if (dot) dot.hidden = !adjIsSet(a);
+        var names = profilePrinters(), vk = viewKey(), lk = liveKey();
+        var chips = document.getElementById('pfChips');
+        if (chips) {
+          chips.hidden = names.length < 2;
+          if (chips.previousElementSibling) chips.previousElementSibling.hidden = names.length < 2;
+          chips.innerHTML = '';
+          names.forEach(function (n) {
+            var b = document.createElement('button');
+            b.type = 'button'; b.className = 'print-size-btn' + (n === vk ? ' active' : ''); b.dataset.printer = n;
+            var mk = n === lk ? colorAdj : (colorAdjMap[n] || {});
+            b.textContent = n + (n === lk ? ' · in use' : '') + (adjIsSet(mk) ? ' •' : '');
+            chips.appendChild(b);
+          });
+        }
+        var lbl = document.getElementById('colorAdjFor');
+        if (lbl) lbl.textContent = viewingLive()
+          ? (lk ? 'Applies to ' + lk + ', the printer for this paper size.' : 'Applies to the printer chosen for this paper size.')
+          : 'Editing ' + vk + ', which this paper size does not use. The preview and camera still show ' + (lk || 'the printer in use') + '.';
+        var cp = document.getElementById('btnCopyColorAdj');
+        if (cp) {
+          var src = viewingLive() ? names.filter(function (n) { return n !== lk; })[0] : lk;
+          cp.hidden = !src || names.length < 2;
+          cp.dataset.src = src || '';
+          cp.textContent = src ? 'Copy colour from ' + src : '';
+        }
+      }
+      function commitViewAdj(a) {
+        a = Object.assign(zeroAdj(), a);
+        colorAdjMap[viewKey()] = Object.assign({}, a);
+        if (viewingLive()) {
+          colorAdj = a;
+          window._colorAdj = colorAdj;
+          try { localStorage.setItem(COLOR_ADJ_KEY, JSON.stringify(colorAdj)); } catch (e) { }
+        }
+        saveProfileMaps();
+        updateColorAdjUI();
+        if (viewingLive()) liveRefresh();
+        if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+      }
       function setupColorAdjListeners() {
         var sB = document.getElementById('sliderAdjBrightness');
         var sR = document.getElementById('sliderAdjRed');
         var sG = document.getElementById('sliderAdjGreen');
         var sU = document.getElementById('sliderAdjBlue');
-        var btnReset = document.getElementById('btnResetColorAdj');
         var onInput = function () {
-          colorAdj.brightness = parseInt(sB.value, 10) || 0;
-          colorAdj.red = parseInt(sR.value, 10) || 0;
-          colorAdj.green = parseInt(sG.value, 10) || 0;
-          colorAdj.blue = parseInt(sU.value, 10) || 0;
-          window._colorAdj = colorAdj;
-          updateColorAdjUI();
-          try { localStorage.setItem(COLOR_ADJ_KEY, JSON.stringify(colorAdj)); } catch (e) { }
-          applyLiveFilter();
-          reapplyFiltersToShots();
-          renderSetupPreview();
-          try { schedulePrintThumb(); } catch (e) { }
-          try { refreshStep4Printer(); } catch (e) { }
-          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+          commitViewAdj({
+            brightness: parseInt(sB.value, 10) || 0, red: parseInt(sR.value, 10) || 0,
+            green: parseInt(sG.value, 10) || 0, blue: parseInt(sU.value, 10) || 0
+          });
         };
         [sB, sR, sG, sU].forEach(function (el) {
-          if (el) {
-            el.addEventListener('input', onInput);
-            el.addEventListener('change', onInput);
-          }
+          if (el) { el.addEventListener('input', onInput); el.addEventListener('change', onInput); }
         });
-        if (btnReset) {
-          btnReset.addEventListener('click', function () {
-            colorAdj = { brightness: 0, red: 0, green: 0, blue: 0 };
-            window._colorAdj = colorAdj;
-            updateColorAdjUI();
-            try { localStorage.setItem(COLOR_ADJ_KEY, JSON.stringify(colorAdj)); } catch (e) { }
-            applyLiveFilter();
-            reapplyFiltersToShots();
-            renderSetupPreview();
-            try { schedulePrintThumb(); } catch (e) { }
-            try { refreshStep4Printer(); } catch (e) { }
-            if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
-          });
-        }
+        var btnReset = document.getElementById('btnResetColorAdj');
+        if (btnReset) btnReset.addEventListener('click', function () { commitViewAdj(zeroAdj()); });
+        var tg = document.getElementById('colorAdjToggle');
+        if (tg) tg.addEventListener('click', function () {
+          var body = document.getElementById('colorAdjBody'), open = body.hidden;
+          body.hidden = !open;
+          tg.setAttribute('aria-expanded', open ? 'true' : 'false');
+          document.getElementById('colorAdjChev').style.transform = open ? 'rotate(90deg)' : '';
+        });
+        var chips = document.getElementById('pfChips');
+        if (chips) chips.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-printer]');
+          if (!b) return;
+          colorAdjView = b.dataset.printer === liveKey() ? null : b.dataset.printer;
+          updateColorAdjUI();
+        });
+        var cp = document.getElementById('btnCopyColorAdj');
+        if (cp) cp.addEventListener('click', function () {
+          var src = cp.dataset.src;
+          if (!src) return;
+          commitViewAdj(src === liveKey() ? colorAdj : (colorAdjMap[src] || zeroAdj()));
+        });
         updateColorAdjUI();
       }
       setTimeout(setupColorAdjListeners, 0);
+
+      // The printer for the current paper size changed: load that printer's profile.
+      function syncColorAdjToPrinter() {
+        var key = colorAdjPrinter();
+        if (key === colorAdjKeyNow || (key === '' && colorAdjKeyNow === null)) { updateColorAdjUI(); return; }
+        var prev = colorAdjKeyNow;
+        colorAdjKeyNow = key; colorAdjView = null;
+        if ((prev === null || prev === '') && key && !colorAdjMap[key]) {
+          // First time a printer is known: it keeps the values already in use (existing adjustment is kept).
+          colorAdjMap[key] = Object.assign({}, colorAdj);
+          savePrintOptsForPrinter();
+          saveProfileMaps();
+        } else {
+          colorAdj = Object.assign(zeroAdj(), colorAdjMap[key] || {});
+          window._colorAdj = colorAdj;
+          try { localStorage.setItem(COLOR_ADJ_KEY, JSON.stringify(colorAdj)); } catch (e) { }
+          loadPrintOptsForPrinter(key);
+          liveRefresh();
+        }
+        updateColorAdjUI();
+      }
+      window._syncColorAdjToPrinter = syncColorAdjToPrinter;
+      window._pfSaveOpts = savePrintOptsForPrinter;
+      window._pfExport = function () { return { colour: JSON.parse(JSON.stringify(colorAdjMap)), opts: JSON.parse(JSON.stringify(printOptsMap)) }; };
+      window._pfImport = function (o) {
+        if (!o || typeof o !== 'object') return;
+        var clean = function (m) { var r = {}; Object.keys(m || {}).slice(0, 40).forEach(function (k) { if (m[k] && typeof m[k] === 'object') r[String(k).slice(0, 120)] = m[k]; }); return r; };
+        colorAdjMap = clean(o.colour); printOptsMap = clean(o.opts);
+        saveProfileMaps();
+        colorAdjKeyNow = colorAdjPrinter(); colorAdjView = null;
+        colorAdj = Object.assign(zeroAdj(), colorAdjMap[colorAdjKeyNow] || {});
+        window._colorAdj = colorAdj;
+        try { localStorage.setItem(COLOR_ADJ_KEY, JSON.stringify(colorAdj)); } catch (e) { }
+        updateColorAdjUI(); liveRefresh();
+      };
+      setTimeout(syncColorAdjToPrinter, 0);
       var filterChips = document.getElementById('filterChips');
       if (!extraOn('vintage')) {
         [...filterChips.querySelectorAll('[data-vintage]')].forEach(function (c) { c.remove(); });
@@ -35553,6 +35689,7 @@
           frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
           titleStyle: titleStyle, kicker: kickerText, receiptNote: receiptCustomNote, upper: titleUpper, art: themeArt.slice(), artPal: Object.assign({}, artPal),
           printPrefs: Object.assign({}, printPrefs),
+          printerProfiles: (window._pfExport ? window._pfExport() : null),
           bgRep: Object.assign({}, bgRep), bgMine: bgMine.slice(),
           fx: Object.assign({}, fx),
           guestView: gvMode,
@@ -35856,6 +35993,7 @@
           if (receiptNoteInput) receiptNoteInput.value = receiptCustomNote;
           titleUpper = !!s.upper; themeArt = validArt(s.art); artPal = validArtPal(s.artPal);
           refreshTitleUI();
+          if (s.printerProfiles && window._pfImport) window._pfImport(s.printerProfiles);
           if (s.printPrefs) applyPrintPrefs(s.printPrefs);
           applyBgRepSetup(s.bgRep, s.bgMine);
           if (s.fx) applyFxSetup(s.fx);
@@ -39638,10 +39776,12 @@
         autoPrint = printPrefs.auto;
         opCopies = printPrefs.copies;
         try { refreshPrintSummary(); refreshPrintUI(); } catch (e) { }
+        try { if (window._pfSaveOpts) window._pfSaveOpts(); } catch (e) { }
         try { reqApply(); } catch (e) { }
       }
       function printPrefsChanged() {
         try { refreshPrintSummary(); refreshPrintUI(); } catch (e) { }
+        try { if (window._pfSaveOpts) window._pfSaveOpts(); } catch (e) { }
         if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
       }
       document.getElementById('ppGuestBtn').addEventListener('change', function () { printPrefs.guestBtn = this.checked; printPrefsChanged(); });

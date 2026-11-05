@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.81', date: '2026-11-05' },
   { version: '1.0.80', date: '2026-11-05' },
   { version: '1.0.79', date: '2026-11-05' },
   { version: '1.0.78', date: '2026-11-05' },
@@ -126,6 +127,23 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-05', title: 'Separate Colour and Photo Layout for Each Printer, with Printer Profile Chips', for: ['app', 'website'], app: '1.0.81',
+    items: [
+      'Each printer now keeps its own Lightness and Red, Green and Blue correction. Use it when a thermal printer prints too dark but a photo printer does not. Choosing a printer, or a paper size mapped to another printer, loads the values saved for that printer.',
+      'Printer profile chips: tap a printer to edit its colour without changing the paper size. The printer in use is tagged, and a dot marks printers with custom colour. Copy colour from another printer in one tap.',
+      'The Lightness & Colour Correction section is collapsed by default. Its header shows the current values (for example Light +25, R -5) and a dot when something is adjusted; Reset stays in the header.',
+      'Photo size on paper and Borderless are also remembered per printer and switch with the paper size.',
+      'Your existing adjustment stays with the printer you use now; other printers start at 0. Per-printer values are included in the saved setup, so they carry over when you restore it.'
+    ]
+  },
+  {
+    date: '2026-11-05', title: 'Separate Colour and Photo Layout for Each Printer (Android)', for: ['app'], app: '1.0.92',
+    items: [
+      'Each printer keeps its own Lightness and Red, Green and Blue correction, plus its own photo size on paper and Borderless setting. Printer profile chips let you edit another printer without changing the paper size.',
+      'Lightness & Colour Correction is collapsed by default and shows its current values in the header.'
+    ]
+  },
   {
     date: '2026-11-05', title: 'Animated 360 Effects Now Really Move, with Trajectory, Size, Wobble & Location', for: ['app', 'website'], app: '1.0.80',
     items: [

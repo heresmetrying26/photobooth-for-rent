@@ -64,6 +64,8 @@ try {
     Say @{ ok = $true }
   }
   elseif ($Mode -eq 'start') {
+    $Ssid = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($Ssid))
+    $Pass = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($Pass))
     $m = GetMgr
     $cfg = $m.GetCurrentAccessPointConfiguration()
     $same = ($cfg.Ssid -eq $Ssid -and $cfg.Passphrase -eq $Pass)
@@ -162,7 +164,9 @@ async function tether(mode, ssid, pass, timeout) {
     dir = mkdtempSync(join(tmpdir(), 'pb4u-hotspot-'));
     const ps1 = join(dir, 'hotspot.ps1');
     writeFileSync(ps1, '﻿' + TETHER_PS);
-    const r = await runPs([...PS, '-File', ps1, '-Mode', mode, ...(ssid ? ['-Ssid', ssid, '-Pass', pass] : [])], timeout);
+    // The name and password go over as base64 so any character (a leading "-", quotes, spaces) arrives unchanged.
+    const b64 = (s) => Buffer.from(String(s), 'utf8').toString('base64');
+    const r = await runPs([...PS, '-File', ps1, '-Mode', mode, ...(ssid ? ['-Ssid', b64(ssid), '-Pass', b64(pass)] : [])], timeout);
     return lastJson(r.out) || { ok: false, error: (r.err || r.out || 'no answer').trim().slice(0, 300) };
   } catch (e) { return { ok: false, error: String(e && e.message || e) }; }
   finally { if (dir) { try { rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ } } }
@@ -228,8 +232,40 @@ export function hotspotInfo() {
   const c = cfgStore.get();
   return {
     supported: IS_WIN || IS_MAC, ssid: c.ssid || '', pass: c.pass || '', auto: !!c.auto,
-    on: (IS_WIN || IS_MAC) && hotspotUp(), wanted: !!c.on, busy: st.busy, error: st.error, needsSetup: st.needsSetup
+    on: (IS_WIN || IS_MAC) && hotspotUp(), wanted: !!c.on, busy: st.busy, error: st.error, needsSetup: st.needsSetup,
+    // Windows applies the name and password itself, so the operator can choose them. On a Mac, Internet Sharing keeps
+    // its own name and password (System Settings → Sharing → Wi-Fi Options), so the app doesn't know the real ones.
+    canCustom: IS_WIN, external: IS_MAC
   };
+}
+
+// A booth Wi-Fi name (1–32 characters) and password (8–63 characters): plain keyboard characters only, so every phone
+// reads the Join QR the same way. Returns '' when fine, else the message to show.
+export function checkCreds(ssid, pass) {
+  const plain = /^[\x20-\x7e]+$/;
+  if (!ssid) return 'Type a Wi-Fi name.';
+  if (ssid.length > 32) return 'The Wi-Fi name can be 32 characters at most.';
+  if (!plain.test(ssid)) return 'Use only letters, numbers and keyboard symbols in the Wi-Fi name.';
+  if (pass.length < 8) return 'The password needs at least 8 characters.';
+  if (pass.length > 63) return 'The password can be 63 characters at most.';
+  if (!plain.test(pass)) return 'Use only letters, numbers and keyboard symbols in the password.';
+  return '';
+}
+
+// Saves the operator's own booth Wi-Fi name and password. When the hotspot is on, it restarts with the new ones.
+export async function hotspotSetCreds(ssidIn, passIn) {
+  if (!IS_WIN) return { ok: false, error: 'This laptop sets its own Wi-Fi name in System Settings → Sharing.', info: hotspotInfo() };
+  const ssid = String(ssidIn == null ? '' : ssidIn).trim();
+  const pass = String(passIn == null ? '' : passIn);
+  const bad = checkCreds(ssid, pass);
+  if (bad) return { ok: false, error: bad, info: hotspotInfo() };
+  if (st.busy) return { ok: false, error: 'The Wi-Fi is busy. Try again in a few seconds.', info: hotspotInfo() };
+  const c = cfgStore.get();
+  const changed = c.ssid !== ssid || c.pass !== pass;
+  c.ssid = ssid; c.pass = pass; cfgStore.save();
+  if (changed && (c.on || hotspotUp())) await hotspotStart();   // stops, reconfigures and starts it again with the new name
+  const info = hotspotInfo();
+  return { ok: !info.error, error: info.error || '', info };
 }
 
 function explain(error) {

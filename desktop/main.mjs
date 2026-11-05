@@ -20,7 +20,7 @@ import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareSer
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { detectWifi } from './lib/wifi.mjs';
-import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetup } from './lib/hotspot.mjs';
+import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetup, hotspotSetCreds } from './lib/hotspot.mjs';
 import { freeCamera, guardCamera, stopGuardCamera } from './lib/camfree.mjs';
 import { scanUsb } from './lib/usbscan.mjs';
 import * as U from './lib/updater.mjs';
@@ -220,6 +220,7 @@ function wireIpc() {
   ipcMain.handle('pb4u:hotspot', () => hotspotInfo());
   ipcMain.handle('pb4u:hotspotSet', (e, on) => (on ? hotspotStart() : hotspotStop()));
   ipcMain.handle('pb4u:hotspotAuto', (e, on) => hotspotSetAuto(!!on));
+  ipcMain.handle('pb4u:hotspotCreds', (e, ssid, pass) => hotspotSetCreds(String(ssid || ''), String(pass || '')));
   ipcMain.handle('pb4u:hotspotSetup', async () => { const r = await hotspotSetup(); return { ...r, info: hotspotInfo() }; });
   ipcMain.handle('pb4u:info', async () => ({
     licence: L.info(), version: VERSION, update: U.info(), photos: photosRoot(), share: shareBase(), lanIp: lanAddress(), port: sharePortNow(), server: L.SERVER

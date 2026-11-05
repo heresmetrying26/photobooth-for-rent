@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.84', date: '2026-11-05' },
   { version: '1.0.83', date: '2026-11-05' },
   { version: '1.0.82', date: '2026-11-05' },
   { version: '1.0.81', date: '2026-11-05' },
@@ -131,6 +132,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-05', title: 'Choose Your Own Booth Wi-Fi Name and Password', for: ['app'], app: '1.0.84',
+    items: [
+      'Windows laptop: the booth Wi-Fi (the laptop making its own network, no router needed) now has a name and password you choose in Setup. Press "Save name & password"; if the booth Wi-Fi is on, it restarts with the new ones. It still needs no internet.',
+      'Android tablet (Android 10 and newer): you can set the booth Wi-Fi password and the end of its name (Android always starts it with DIRECT-pb-). If Android makes its own network instead, Setup tells you the name it used and the Join QR uses that one.',
+      'Android tablet: a new "Use the phone\'s own Hotspot instead" button opens Android\'s Hotspot settings, where any name and password can be chosen; type the same ones in the Wi-Fi boxes so the Join QR matches. The app no longer shows a made-up name when the phone\'s own Hotspot is on.',
+      'Mac: Setup now explains that the name and password are set in System Settings > Sharing, and no longer locks the Wi-Fi boxes to a name the Mac is not using.'
+    ]
+  },
   {
     date: '2026-11-05', title: 'Insta360 and USB Camera Help, Epson L-Series Printing (Android)', for: ['app'], app: '1.0.95',
     items: [

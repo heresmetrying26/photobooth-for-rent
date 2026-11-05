@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.wifi.WifiManager
@@ -46,6 +47,10 @@ class BoothWifi(private val activity: Activity, private val local: PBLocal) {
         private const val K_AUTO = "booth_wifi_auto"
         private const val ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"
         private const val KEEP_MS = 15000L
+        // Android only accepts a Wi-Fi Direct group name that starts with "DIRECT-" and two letters or digits.
+        private const val PREFIX = "DIRECT-pb-"
+        private val DIRECT_NAME = Regex("^DIRECT-[A-Za-z0-9]{2}.*")
+        private val PLAIN = Regex("^[\\u0020-\\u007e]+$")
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -68,14 +73,14 @@ class BoothWifi(private val activity: Activity, private val local: PBLocal) {
     @Volatile private var livePass = ""
     @Volatile private var address = ""
 
-    // Made once per tablet (not one name and password shared by every booth).
-    private val wantSsid: String
-    private val wantPass: String
+    // Made once per tablet (not one name and password shared by every booth), or the operator's own (setCreds).
+    @Volatile private var wantSsid: String
+    @Volatile private var wantPass: String
 
     init {
         var s = prefs.getString(K_SSID, "") ?: ""
         var p = prefs.getString(K_PASS, "") ?: ""
-        if (s.length < 12 || p.length < 8) {
+        if (s.length > 32 || !DIRECT_NAME.matches(s) || p.length < 8) {
             s = "DIRECT-pb-photobooth4u-" + random(4)
             p = random(10)
             prefs.edit().putString(K_SSID, s).putString(K_PASS, p).apply()
@@ -95,21 +100,82 @@ class BoothWifi(private val activity: Activity, private val local: PBLocal) {
 
     // ---------- what the booth page calls (window.__PBWifi) ----------
 
-    /** { supported, on, wanted, busy, auto, ssid, pass, address, mode, error } as JSON text. */
+    /**
+     * { supported, on, wanted, busy, auto, ssid, pass, address, mode, error, canCustom, prefix, wantSsid, wantPass, external }
+     * as JSON text. [external] is true when the phone's own Hotspot (made in Android settings) is the network: its real
+     * name and password are not known to the app, so [ssid] and [pass] are empty and the operator types them.
+     */
     @JavascriptInterface
     fun info(): String {
         val o = JSONObject()
+        val external = mode == "hotspot" && liveSsid.isEmpty()
         o.put("supported", supported())
         o.put("on", mode.isNotEmpty() && address.isNotEmpty())
         o.put("wanted", wanted)
         o.put("busy", busy)
         o.put("auto", prefs.getBoolean(K_AUTO, false))
-        o.put("ssid", if (liveSsid.isNotEmpty()) liveSsid else wantSsid)
-        o.put("pass", if (livePass.isNotEmpty()) livePass else wantPass)
+        o.put("ssid", if (external) "" else if (liveSsid.isNotEmpty()) liveSsid else wantSsid)
+        o.put("pass", if (external) "" else if (livePass.isNotEmpty()) livePass else wantPass)
         o.put("address", address)
         o.put("mode", mode)
         o.put("error", error)
+        o.put("external", external)
+        o.put("canCustom", Build.VERSION.SDK_INT >= 29)   // Android 9 and older ignore a chosen name and password
+        o.put("prefix", PREFIX)
+        o.put("wantSsid", wantSsid)
+        o.put("wantPass", wantPass)
         return o.toString()
+    }
+
+    /**
+     * Saves the operator's own booth Wi-Fi name and password. [name] is what comes after "DIRECT-pb-" (a full
+     * "DIRECT-xx-…" name is accepted too). While the booth Wi-Fi is on it restarts with the new ones.
+     * Returns { ok, error, info } as JSON text.
+     */
+    @JavascriptInterface
+    fun setCreds(name: String, pass: String): String {
+        val o = JSONObject()
+        val n = name.trim()
+        val full = if (n.startsWith("DIRECT-", ignoreCase = true)) n else PREFIX + n
+        val bad = when {
+            n.isEmpty() -> "Type a Wi-Fi name."
+            !PLAIN.matches(n) -> "Use only letters, numbers and keyboard symbols in the Wi-Fi name."
+            !DIRECT_NAME.matches(full) -> "A name that starts with DIRECT- needs two letters or digits next, like DIRECT-ab-Booth."
+            full.length > 32 -> "The Wi-Fi name is too long: " + (32 - PREFIX.length) + " characters after DIRECT-pb- at most."
+            pass.length < 8 -> "The password needs at least 8 characters."
+            pass.length > 63 -> "The password can be 63 characters at most."
+            !PLAIN.matches(pass) -> "Use only letters, numbers and keyboard symbols in the password."
+            else -> ""
+        }
+        if (bad.isNotEmpty()) {
+            o.put("ok", false); o.put("error", bad); o.put("info", JSONObject(info()))
+            return o.toString()
+        }
+        prefs.edit().putString(K_SSID, full).putString(K_PASS, pass).apply()
+        val changed = full != wantSsid || pass != wantPass
+        wantSsid = full
+        wantPass = pass
+        // Our own group is running: start it again so the new name and password are the ones guests join.
+        if (changed && (mode == "direct" || (wanted && busy))) {
+            main.post { stopNow(); main.postDelayed({ startNow() }, 900) }
+        }
+        o.put("ok", true); o.put("error", ""); o.put("info", JSONObject(info()))
+        return o.toString()
+    }
+
+    /** Opens Android's own Hotspot settings, where any name and password can be chosen. */
+    @JavascriptInterface
+    fun openHotspotSettings() {
+        main.post {
+            val tries = listOf(
+                Intent().setClassName("com.android.settings", "com.android.settings.TetherSettings"),
+                Intent(Settings.ACTION_WIRELESS_SETTINGS),
+                Intent(Settings.ACTION_SETTINGS)
+            )
+            for (i in tries) {
+                try { activity.startActivity(i); break } catch (e: Exception) { Log.w(TAG, "Hotspot settings did not open", e) }
+            }
+        }
     }
 
     @JavascriptInterface

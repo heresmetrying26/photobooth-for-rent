@@ -13252,6 +13252,24 @@
               <div class="desk-row" id="deskHotspotSetupRow" style="display:none;"><button type="button"
                   class="action-btn" id="deskHotspotSetup" style="width:auto; margin:0;">Set up (one time)</button>
               </div>
+              <div id="deskHotspotCreds" style="display:none; margin-top:10px;">
+                <p class="sub-label" style="margin:0 0 4px;">Name and password for the booth Wi-Fi</p>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span class="panel-hint" id="deskHotspotPrefix"
+                    style="display:none; margin:0; white-space:nowrap;"></span>
+                  <input type="text" class="label-input" id="deskHotspotName" placeholder="Booth Wi-Fi name"
+                    maxlength="32" autocomplete="off" spellcheck="false" style="flex:1; min-width:0;">
+                </div>
+                <input type="text" class="label-input" id="deskHotspotPass"
+                  placeholder="Booth Wi-Fi password (8 or more characters)" maxlength="63" autocomplete="off"
+                  spellcheck="false" style="margin-top:8px;">
+                <div class="desk-row" style="margin-top:8px;"><button type="button" class="action-btn"
+                    id="deskHotspotSave" style="width:auto; margin:0;">Save name &amp; password</button></div>
+                <p class="panel-hint" id="deskHotspotCredHint" style="margin:6px 0 0;"></p>
+              </div>
+              <div class="desk-row" id="deskHotspotPhoneRow" style="display:none; margin-top:8px;"><button
+                  type="button" class="action-btn" id="deskHotspotPhone" style="width:auto; margin:0;">Use the
+                  phone&rsquo;s own Hotspot instead</button></div>
             </div>
             <input type="text" class="label-input" id="deskWifiName" placeholder="Wi-Fi name" maxlength="32"
               autocomplete="off" spellcheck="false">
@@ -17154,6 +17172,43 @@
       function saveWifiInfo(ssid, pass) {
         try { if (ssid) localStorage.setItem(WIFI_KEY, JSON.stringify({ ssid: ssid, pass: pass })); else localStorage.removeItem(WIFI_KEY); } catch (e) { }
         refreshWifiUI();
+      }
+      // The booth Wi-Fi's own name and password, chosen by the operator (laptop and Android apps).
+      // cfg.save(name, pass) -> Promise of { ok, error, info }; cfg.after(info) runs with the fresh info once it is saved.
+      // Returns null on a page without the boxes; .render(info) fills them in from the app's booth Wi-Fi info.
+      function hotspotCredsUI(cfg) {
+        var wrap = document.getElementById('deskHotspotCreds'), nm = document.getElementById('deskHotspotName'), pw = document.getElementById('deskHotspotPass');
+        var pre = document.getElementById('deskHotspotPrefix'), btn = document.getElementById('deskHotspotSave'), hint = document.getElementById('deskHotspotCredHint');
+        if (!(wrap && nm && pw && pre && btn && hint)) return null;
+        var dirty = false, msg = '';
+        function say(t, bad) { hint.className = 'panel-hint' + (bad ? ' bad' : ''); hint.textContent = t; }
+        function typed() { dirty = true; msg = ''; }
+        nm.addEventListener('input', typed); pw.addEventListener('input', typed);
+        btn.addEventListener('click', function () {
+          btn.disabled = true; msg = 'Saving…'; say(msg, false);
+          var done = function (r) {
+            btn.disabled = false;
+            if (r && r.ok) { dirty = false; msg = 'Saved ✓'; say(msg, false); setTimeout(function () { msg = ''; }, 4000); }
+            else { msg = (r && r.error) || 'Couldn’t save. Try again.'; say(msg, true); }
+            if (r && r.info && cfg.after) cfg.after(r.info);
+          };
+          try { Promise.resolve(cfg.save(nm.value.trim(), pw.value)).then(done, function () { done(null); }); } catch (e) { done(null); }
+        });
+        return {
+          render: function (i) {
+            if (!i || !i.canCustom) { wrap.style.display = 'none'; return; }
+            wrap.style.display = '';
+            var pfx = i.prefix || '';
+            pre.style.display = pfx ? '' : 'none'; pre.textContent = pfx;
+            var s = String(i.wantSsid != null ? i.wantSsid : (i.ssid || '')), p = String(i.wantPass != null ? i.wantPass : (i.pass || ''));
+            if (pfx && s.indexOf(pfx) === 0) s = s.slice(pfx.length);
+            if (!dirty && document.activeElement !== nm && document.activeElement !== pw) { nm.value = s; pw.value = p; }
+            if (msg) return;
+            // Android sometimes makes its own network (older Android, or when it can't use the chosen name).
+            if (i.on && !i.external && i.wantSsid != null && i.ssid && (i.ssid !== i.wantSsid || i.pass !== i.wantPass)) say('Android made its own Wi-Fi “' + i.ssid + '” this time, not the name and password above. The Join QR uses it.', true);
+            else say('', false);
+          }
+        };
       }
       // Booth Wi-Fi QR: in Share & start (with the sign button) and behind the Wi-Fi button in the dock.
       function refreshWifiUI() {
@@ -24919,6 +24974,7 @@
         const p = printer || wifiPrinter, st = wifiOptsFor(p);
         const o = { color: st.color || '', quality: st.quality || '', media: st.media || '' };
         if (p && p.escp2 && !o.color) o.color = 'color';   // L120 / L121: colour enabled by default
+        if (!pbDebug() && /^r(normal|best)$/.test(o.quality)) o.quality = '';         // beta qualities are debug only
         o.thermalQuality = (printPrefs && printPrefs.thermalQuality) || 'normal';   // for receipt printers on Wi-Fi / USB
         o.cal = wifiCal;
         o.borderless = !!(printPrefs && printPrefs.borderless && window.__PBNet) && !(epsonLBorderlessModel(p) && !epsonLBorderlessOk(printSize));   // not on paper this Epson cannot print borderless
@@ -24948,7 +25004,10 @@
           const qs = p.qualities || [];
           if (p.escp2) qualCh = [['normal', 'Normal'], ['draft', 'Draft (fast)']];
           else if (p.canon) qualCh = [['normal', 'Normal'], ['draft', 'Draft (saves ink)'], ['high', 'Best (600 dpi, beta)']];
-          else if (p.epsonL) qualCh = [['normal', 'Normal (360 dpi)'], ['draft', 'Draft (fast)']];
+          else if (p.epsonL) {
+            qualCh = [['normal', 'Normal (360 dpi)'], ['draft', 'Draft (fast)']];
+            if (pbDebug()) qualCh.push(['rnormal', 'Normal 720 dpi (beta, 4\u00d76 glossy)'], ['rbest', 'Best 1440 dpi (beta, 4\u00d76 glossy)']);
+          }
           else if (qs.some(q => q >= 3 && q <= 5)) qualCh = [['', 'Printer default']].concat([['draft', 'Draft (fast)'], ['normal', 'Normal'], ['high', 'High (best)']].filter((c, i) => qs.includes(3 + i)));
           const mt = p.mediaTypes || [];
           const plain = mt.some(m => m.indexOf('stationery') === 0), photo = mt.some(m => m.indexOf('photographic') === 0);
@@ -25161,6 +25220,165 @@
           wifiDiagBusy = false;
         }
       }
+      // ==== epson-raster-beta begin ====
+      // Epson L-series "Normal" (720 x 720 dpi) and "Best" (1440 x 720 dpi) quality for 4x6 in glossy photo paper, borderless OFF.
+      // Builds the same kind of print job the Windows driver writes (Epson raster language) from a picture. DEBUG ONLY: it is offered
+      // only when Admin has turned the debug option on, and it has not been tried on a printer yet. Source and notes: tools/epson-raster/.
+      const PB_EPR_TABLES = {"standard":{"v":720,"h":720,"xstep":2,"top":320,"adv":[26,25],"y0":112,"KK":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,2,2,3,4,5,6,6,7,8,9,10,11,12,14,15,16,17,18,20,21,22,24,25,26,28,29,31,32,34,35,37,39,40,42,43,45,47,49,50,52,54,56,57,59,61,63,65,67,69,71,73,75,77,79,81,83,85,87,89,91,93,96,98,100,102,104,107,109,111,113,116,118,120,123,125,127,130,132,135,137,140,142,144,147,149,152,155,157,160,162,165,167,170,173,175,178,181,183,186,189,191,194,197,200,202,205,208,211,214,217,219,222,225,228,231,234,237,240,243,246,249,252,255],"UM":[0,0,0,1,1,2,2,2,3,3,4,4,4,5,5,6,6,6,7,7,8,8,8,9,9,10,10,10,11,11,12,12,12,13,13,14,14,14,15,15,16,16,16,17,17,18,18,18,19,19,20,20,20,21,21,22,22,22,23,23,24,24,24,25,25,26,26,26,27,27,28,28,28,29,29,30,30,30,31,31,32,32,32,33,33,34,34,34,35,35,36,36,36,37,37,38,38,38,39,39,40,40,40,41,41,42,42,42,43,43,44,44,44,45,45,46,46,46,47,47,48,48,48,49,49,50,50,50,51,51,52,52,52,53,53,54,54,54,55,55,56,56,56,57,57,58,58,58,59,59,60,60,60,61,61,62,62,62,63,63,64,64,64,65,65,66,66,66,67,67,68,68,68,69,69,70,70,70,71,71,72,72,72,73,73,74,74,74,75,75,76,76,76,77,77,78,78,78,79,79,80,80,80,81,81,82,82,82,83,83,84,84,84,85,85,86,86,86,87,87,88,88,88,89,89,90,90,90,91,91,92,92,92,93,93,94,94,94,95,95,96,96,96,97,97,98,98,98,99,99,100,100,100,101,101,102],"UY":[0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4,5,5,5,5,5,6,6,6,6,6,7,7,7,7,7,8,8,8,8,8,9,9,9,9,9,10,10,10,10,10,11,11,11,11,11,12,12,12,12,12,13,13,13,13,13,14,14,14,14,14,15,15,15,15,15,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,19,19,19,19,19,20,20,20,20,20,21,21,21,21,21,22,22,22,22,22,23,23,23,23,23,24,24,24,24,24,25,25,25,25,25,26,26,26,26,26,27,27,27,27,27,28,28,28,28,28,29,29,29,29,29,30,30,30,30,30,31,31,31,31,31,32,32,32,32,32,33,33,33,33,33,34,34,34,34,34,35,35,35,35,35,36,36,36,36,36,37,37,37,37,37,38,38,38,38,38,39,39,39,39,39,40,40,40,40,40,41,41,41,41,41,42,42,42,42,42,43,43,43,43,43,44,44,44,44,44,45,45,45,45,45,46,46,46,46,46,47,47,47,47,47,48,48,48,48,48,49,49,49,49,49,50,50,50,50,50,51],"LC":[0,0,1,1,1,2,2,2,3,3,4,4,4,5,5,5,6,6,6,7,7,7,8,8,8,9,9,10,10,10,11,11,11,12,12,13,13,13,14,14,15,15,15,16,16,16,17,17,18,18,18,19,19,20,20,20,21,21,21,22,22,23,23,23,24,24,25,25,25,26,26,27,27,28,28,29,29,29,30,30,31,31,32,32,33,33,33,34,34,35,35,36,36,36,37,37,38,38,39,39,40,40,40,41,41,42,42,43,43,44,44,44,45,45,46,46,47,47,48,48,48,49,49,50,50,51,51,51,52,52,52,53,53,53,54,54,55,55,55,56,56,56,57,57,57,58,58,58,59,59,60,60,60,61,61,61,62,62,62,63,63,64,64,64,65,65,65,66,66,66,67,67,67,68,68,69,69,69,70,70,70,71,71,71,72,72,72,72,72,72,72,72,72,72,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,73,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,74,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,76,76,76,76,76,76,76,76],"LM":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,3,3,3,3,4,4,4,5,5,5,5,6,6,6,7,7,7,7,8,8,8,9,9,10,10,11,12,12,13,13,14,15,15,16,17,17,18,19,19,20,21,21,22,23,23,24,25,25,26,27,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,61,62,63,64,66,67,68,69,71,72,73,74,76,77,78,79,81,82,83,84,86,87,88,89,91,92,93,94,96,97,98,99,101,102,103,105,106,107,108,110,111,112,113,115,116,117,118,119,120,121,121,122,123,124,125,126,127,127,128,129,130,131,132,133,133,134,135,136,137,138,139,140,140,141,142,143,144,145,146,146,147,148,149,150,151,152,152,153,154,155,156,157,158,159,159,160,161,162,163,164,165,165,166,167,168,169,170,171,171,172,173,174,175,176,177,178,178,179,180,181,182,183,184,184,185,186,187],"LY":[0,0,0,0,1,1,1,1,1,1,1,2,2,2,2,3,3,3,4,4,4,4,5,5,5,6,6,6,6,7,7,7,7,8,8,8,9,9,9,9,10,10,10,11,11,11,11,12,12,12,12,13,13,13,14,14,14,14,15,15,15,15,16,16,16,17,17,17,17,18,18,18,19,19,20,20,21,21,21,22,22,23,23,23,24,24,25,25,26,26,26,27,27,28,28,29,29,29,30,30,31,31,31,32,32,33,33,34,34,34,35,35,36,36,37,37,37,38,38,39,39,40,40,40,41,41,42,42,42,43,43,44,44,45,46,46,47,47,48,49,49,50,50,51,52,52,53,53,54,54,55,56,56,57,57,58,59,59,60,60,61,62,62,63,63,64,64,65,66,66,67,67,68,69,69,70,70,71,72,72,73,73,74,74,75,76,76,77,77,78,79,79,80,81,82,82,83,84,85,85,86,87,87,88,89,90,90,91,92,93,93,94,95,96,96,97,98,99,99,100,101,102,102,103,104,105,105,106,107,108,108,109,109,110,111,111,112,112,113,114,114,115,115,116,117,117,118,118,119,120,120,121,121,122,123,123],"LK":[0,0,1,1,1,1,2,2,2,3,3,3,4,4,4,4,5,5,5,6,6,6,6,7,7,7,8,8,8,9,9,9,9,10,10,10,11,11,11,11,12,12,12,13,13,13,13,14,14,14,15,15,15,16,16,16,16,17,17,17,18,18,18,18,19,19,19,20,20,20,21,21,21,21,22,22,22,23,23,23,23,24,24,24,25,25,25,26,26,26,26,27,27,27,28,28,28,28,29,29,29,30,30,30,31,31,31,31,32,32,32,33,33,33,33,34,34,34,35,35,35,35,36,36,36,37,37,37,38,38,38,38,39,39,39,40,40,40,40,41,41,41,42,42,42,43,43,43,43,44,44,44,45,45,45,45,46,46,46,47,47,47,48,48,48,48,49,49,49,50,50,50,50,51,51,51,52,52,52,53,53,53,53,54,54,54,55,55,55,55,56,56,56,57,57,57,57,58,58,58,59,59,59,60,60,60,60,61,61,61,62,62,62,62,63,63,63,64,64,64,65,65,65,65,66,66,66,67,67,67,67,68,68,68,69,69,69,70,70,70,70,71,71,71,72,72,72,72,73,73,73,74,74,74,75,75],"head":[[0,0,0,27,1,64,69,74,76,32,49,50,56,52,46,52,10,64,69,74,76,32,32,32,32,32,10,27,64,27,64,27,40,82,8,0,0,82,69,77,79,84,69,49,84,73,8,0,0,7,234,11,5,22,18,12,85,83,3,0,0,8,1,74,83,4,0,0,0,0,0,74,72,12,0,0,1,42,47,146,43,60,33,156,85,132,108,72,68,3,0,0,3,2,27,0,0,0,27,40,100,255,127],32767,[27,40,100,255,127],32770,[27,1,64,69,74,76,32,49,50,56,52,46,52,10,64,69,74,76,32,32,32,32,32,10,27,64,27,64,27,40,82,8,0,0,82,69,77,79,84,69,49,84,73,8,0,0,7,234,11,5,22,18,13,80,77,2,0,0,0,68,80,2,0,0,0,83,78,1,0,0,77,73,4,0,0,1,52,10,85,83,3,0,0,0,1,85,83,3,0,0,1,0,85,83,3,0,0,2,0,85,83,3,0,0,7,0,85,83,3,0,0,8,1,70,80,3,0,0,0,0,80,80,3,0,0,1,0,27,0,0,0,27,40,65,9,0,0,0,0,0,0,0,0,0,0,27,40,71,1,0,1,27,40,85,5,0,2,2,2,160,5,27,85,0,27,40,105,1,0,0,27,40,67,4,0,224,16,0,0,27,40,99,8,0,52,253,255,255,108,18,0,0,27,40,83,8,0,64,11,0,0,224,16,0,0,27,40,75,2,0,0,2,27,40,75,2,0,2,2,27,40,68,4,0,64,56,80,40,27,40,109,1,0,82,27,40,101,2,0,0,18]],"tail":[12,27,64,27,40,82,8,0,0,82,69,77,79,84,69,49,76,68,0,0,27,0,0,0,27,64,27,40,82,8,0,0,82,69,77,79,84,69,49,76,68,0,0,74,69,1,0,0,27,0,0,0]},"high":{"v":720,"h":1440,"xstep":4,"top":320,"adv":[14,13],"y0":100,"KK":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,2,2,3,4,5,6,6,7,8,9,10,11,12,14,15,16,17,18,20,21,22,24,25,26,28,29,31,32,34,35,37,39,40,42,43,45,47,49,50,52,54,56,57,59,61,63,65,67,69,71,73,75,77,79,81,83,85,87,89,91,93,96,98,100,102,104,107,109,111,113,116,118,120,123,125,127,130,132,135,137,140,142,144,147,149,152,155,157,160,162,165,167,170,173,175,178,181,183,186,189,191,194,197,200,202,205,208,211,214,217,219,222,225,228,231,234,237,240,243,246,249,252,255],"UM":[0,0,0,1,1,2,2,2,3,3,4,4,4,5,5,6,6,6,7,7,8,8,8,9,9,10,10,10,11,11,12,12,12,13,13,14,14,14,15,15,16,16,16,17,17,18,18,18,19,19,20,20,20,21,21,22,22,22,23,23,24,24,24,25,25,26,26,26,27,27,28,28,28,29,29,30,30,30,31,31,32,32,32,33,33,34,34,34,35,35,36,36,36,37,37,38,38,38,39,39,40,40,40,41,41,42,42,42,43,43,44,44,44,45,45,46,46,46,47,47,48,48,48,49,49,50,50,50,51,51,52,52,52,53,53,54,54,54,55,55,56,56,56,57,57,58,58,58,59,59,60,60,60,61,61,62,62,62,63,63,64,64,64,65,65,66,66,66,67,67,68,68,68,69,69,70,70,70,71,71,72,72,72,73,73,74,74,74,75,75,76,76,76,77,77,78,78,78,79,79,80,80,80,81,81,82,82,82,83,83,84,84,84,85,85,86,86,86,87,87,88,88,88,89,89,90,90,90,91,91,92,92,92,93,93,94,94,94,95,95,96,96,96,97,97,98,98,98,99,99,100,100,100,101,101,102],"UY":[0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4,5,5,5,5,5,6,6,6,6,6,7,7,7,7,7,8,8,8,8,8,9,9,9,9,9,10,10,10,10,10,11,11,11,11,11,12,12,12,12,12,13,13,13,13,13,14,14,14,14,14,15,15,15,15,15,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,19,19,19,19,19,20,20,20,20,20,21,21,21,21,21,22,22,22,22,22,23,23,23,23,23,24,24,24,24,24,25,25,25,25,25,26,26,26,26,26,27,27,27,27,27,28,28,28,28,28,29,29,29,29,29,30,30,30,30,30,31,31,31,31,31,32,32,32,32,32,33,33,33,33,33,34,34,34,34,34,35,35,35,35,35,36,36,36,36,36,37,37,37,37,37,38,38,38,38,38,39,39,39,39,39,40,40,40,40,40,41,41,41,41,41,42,42,42,42,42,43,43,43,43,43,44,44,44,44,44,45,45,45,45,45,46,46,46,46,46,47,47,47,47,47,48,48,48,48,48,49,49,49,49,49,50,50,50,50,50,51],"LC":[0,0,0,1,1,1,1,1,1,2,2,2,2,2,2,3,3,3,3,3,4,4,4,4,4,4,5,5,5,5,5,6,6,6,6,6,7,7,7,7,7,7,8,8,8,8,8,9,9,9,9,9,10,10,10,10,10,11,11,11,11,11,11,12,12,12,12,13,13,13,13,13,14,14,14,14,14,15,15,15,15,16,16,16,16,16,17,17,17,17,18,18,18,18,18,19,19,19,19,20,20,20,20,20,21,21,21,21,22,22,22,22,22,23,23,23,23,24,24,24,24,24,25,25,25,25,25,26,26,26,26,26,27,27,27,27,27,27,28,28,28,28,28,29,29,29,29,29,29,30,30,30,30,30,31,31,31,31,31,31,32,32,32,32,32,32,33,33,33,33,33,34,34,34,34,34,34,35,35,35,35,35,36,36,36,36,36,36,36,36,36,36,36,36,36,36,36,36,36,36,36,36,36,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,38,38,38,38,38,38,38,38,38,38,38,38,38],"LM":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4,5,5,5,6,6,6,7,7,7,8,8,8,9,9,9,10,10,10,11,11,11,12,12,12,13,13,13,14,14,15,15,16,16,17,17,18,18,19,19,20,20,21,21,22,22,23,23,24,24,25,25,26,26,27,27,28,28,29,30,30,31,32,32,33,33,34,35,35,36,37,37,38,38,39,40,40,41,42,42,43,43,44,45,45,46,47,47,48,48,49,50,50,51,52,52,53,54,54,55,55,56,57,57,58,59,59,59,60,60,61,61,62,62,62,63,63,64,64,65,65,65,66,66,67,67,68,68,68,69,69,70,70,71,71,71,72,72,73,73,74,74,75,75,75,76,76,77,77,78,78,78,79,79,80,80,81,81,81,82,82,83,83,84,84,84,85,85,86,86,87,87,87,88,88,89,89,90,90,90,91,91,92,92,93,93,94],"LY":[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4,5,5,5,5,5,5,5,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,9,9,9,9,9,9,10,10,10,10,10,11,11,11,11,12,12,12,12,12,13,13,13,13,13,14,14,14,14,14,15,15,15,15,16,16,16,16,16,17,17,17,17,17,18,18,18,18,18,19,19,19,19,20,20,20,20,20,21,21,21,21,21,22,22,22,23,23,23,23,24,24,24,25,25,25,25,26,26,26,27,27,27,28,28,28,28,29,29,29,30,30,30,30,31,31,31,32,32,32,33,33,33,33,34,34,34,35,35,35,35,36,36,36,37,37,37,38,38,38,38,39,39,39,40,40,40,41,41,42,42,42,43,43,43,44,44,44,45,45,46,46,46,47,47,47,48,48,49,49,49,50,50,50,51,51,52,52,52,53,53,53,54,54,54,55,55,55,56,56,56,57,57,57,57,58,58,58,59,59,59,60,60,60,60,61,61,61,62],"LK":[0,0,0,0,1,1,1,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3,3,3,4,4,4,4,4,4,4,5,5,5,5,5,5,5,6,6,6,6,6,6,6,7,7,7,7,7,7,7,8,8,8,8,8,8,9,9,9,9,9,9,9,10,10,10,10,10,10,10,11,11,11,11,11,11,11,12,12,12,12,12,12,12,13,13,13,13,13,13,13,14,14,14,14,14,14,15,15,15,15,15,15,15,16,16,16,16,16,16,16,17,17,17,17,17,17,17,18,18,18,18,18,18,18,19,19,19,19,19,19,20,20,20,20,20,20,20,21,21,21,21,21,21,21,22,22,22,22,22,22,22,23,23,23,23,23,23,23,24,24,24,24,24,24,24,25,25,25,25,25,25,26,26,26,26,26,26,26,27,27,27,27,27,27,27,28,28,28,28,28,28,28,29,29,29,29,29,29,29,30,30,30,30,30,30,31,31,31,31,31,31,31,32,32,32,32,32,32,32,33,33,33,33,33,33,33,34,34,34,34,34,34,34,35,35,35,35,35,35,35,36,36,36,36,36,36,37,37,37,37,37,37,37],"head":[[0,0,0,27,1,64,69,74,76,32,49,50,56,52,46,52,10,64,69,74,76,32,32,32,32,32,10,27,64,27,64,27,40,82,8,0,0,82,69,77,79,84,69,49,84,73,8,0,0,7,234,11,5,22,17,51,85,83,3,0,0,8,1,74,83,4,0,0,0,0,0,74,72,12,0,0,1,58,201,145,43,60,33,156,85,132,108,72,68,3,0,0,3,2,27,0,0,0,27,40,100,255,127],32767,[27,40,100,255,127],32770,[27,1,64,69,74,76,32,49,50,56,52,46,52,10,64,69,74,76,32,32,32,32,32,10,27,64,27,64,27,40,82,8,0,0,82,69,77,79,84,69,49,84,73,8,0,0,7,234,11,5,22,17,52,80,77,2,0,0,0,68,80,2,0,0,0,83,78,1,0,0,77,73,4,0,0,1,52,10,85,83,3,0,0,0,1,85,83,3,0,0,1,0,85,83,3,0,0,2,0,85,83,3,0,0,7,0,85,83,3,0,0,8,1,70,80,3,0,0,0,0,80,80,3,0,0,1,0,27,0,0,0,27,40,65,9,0,0,0,0,0,0,0,0,0,0,27,40,71,1,0,1,27,40,85,5,0,2,2,1,160,5,27,85,0,27,40,105,1,0,0,27,40,67,4,0,224,16,0,0,27,40,99,8,0,52,253,255,255,108,18,0,0,27,40,83,8,0,64,11,0,0,224,16,0,0,27,40,75,2,0,0,2,27,40,75,2,0,2,2,27,40,68,4,0,64,56,80,40,27,40,109,1,0,112,27,40,101,2,0,0,19]],"tail":[12,27,64,27,40,82,8,0,0,82,69,77,79,84,69,49,76,68,0,0,27,0,0,0,27,64,27,40,82,8,0,0,82,69,77,79,84,69,49,76,68,0,0,74,69,1,0,0,27,0,0,0]}};
+      const PBEpsonRaster = (function () {
+        const N = 59, PITCH = 4, DY = { 0: 0, 2: 0, 1: -60, 4: -120 };
+        const AREA_W_IN = 3.767, AREA_H_IN = 5.767;                       // printable area of a 4x6 sheet with borders
+        let TILE = null;
+        function tile() {
+          if (TILE) return TILE;
+          TILE = new Uint8Array(65536); let s = 12345;
+          for (let i = 0; i < 65536; i++) { s = (Math.imul(s, 1103515245) + 12345) & 0x7fffffff; TILE[i] = (s >>> 16) & 255; }
+          return TILE;
+        }
+        function geom(mode) {
+          const t = PB_EPR_TABLES[mode];
+          return { t: t, cols: Math.round(AREA_W_IN * t.h), rows: Math.round(AREA_H_IN * t.v) };
+        }
+        function Sink() { this.buf = new Uint8Array(1 << 22); this.n = 0; }
+        Sink.prototype.need = function (k) {
+          if (this.n + k <= this.buf.length) return;
+          let c = this.buf.length; while (c < this.n + k) c *= 2;
+          const nb = new Uint8Array(c); nb.set(this.buf.subarray(0, this.n)); this.buf = nb;
+        };
+        Sink.prototype.byte = function (b) { this.need(1); this.buf[this.n++] = b; };
+        Sink.prototype.bytes = function (a) { this.need(a.length); this.buf.set(a, this.n); this.n += a.length; };
+        Sink.prototype.u32 = function (v) { this.need(4); this.buf[this.n++] = v & 255; this.buf[this.n++] = (v >>> 8) & 255; this.buf[this.n++] = (v >>> 16) & 255; this.buf[this.n++] = (v >>> 24) & 255; };
+        Sink.prototype.u16 = function (v) { this.byte(v & 255); this.byte((v >>> 8) & 255); };
+        function packbits(row, sink) {
+          let i = 0; const n = row.length;
+          while (i < n) {
+            let j = i;
+            while (j + 1 < n && row[j + 1] === row[i] && j - i < 127) j++;
+            const run = j - i + 1;
+            if (run >= 2) { sink.byte(257 - run); sink.byte(row[i]); i = j + 1; }
+            else {
+              let k = i;
+              while (k < n && k - i < 128 && !(k + 1 < n && row[k] === row[k + 1])) k++;
+              if (k === i) k = i + 1;
+              sink.byte(k - i - 1); sink.bytes(row.subarray(i, k)); i = k;
+            }
+          }
+        }
+        function pack2(v) {
+          const out = new Uint8Array(v.length >> 2);
+          for (let i = 0, o = 0; i < v.length; i += 4, o++) out[o] = (v[i] << 6) | (v[i + 1] << 4) | (v[i + 2] << 2) | v[i + 3];
+          return out;
+        }
+        function dot(d, th) { const lvl = (d / 85) | 0, frac = Math.min(255, (d % 85) * 3); return lvl + (frac > th ? 1 : 0); }
+        // getRow(y) -> Uint8Array(cols * 3) RGB of target grid row y. Returns the whole job as a Uint8Array.
+        function build(mode, getRow) {
+          const g = geom(mode), t = g.t, cols = g.cols, rows = g.rows, xstep = t.xstep, TL = tile();
+          const cache = new Map();
+          function planesRow(y) {
+            let c = cache.get(y); if (c) return c;
+            const rgb = getRow(y), pc = new Uint8Array(cols), pm = new Uint8Array(cols), py = new Uint8Array(cols), pk = new Uint8Array(cols);
+            const tb = (y & 255) << 8;
+            for (let x = 0; x < cols; x++) {
+              const ac = 255 - rgb[x * 3], am = 255 - rgb[x * 3 + 1], ay = 255 - rgb[x * 3 + 2];
+              const kmin = Math.min(ac, am, ay), kk = t.KK[kmin], th = TL[tb | (x & 255)];
+              pc[x] = dot(t.LC[ac], th);
+              pm[x] = dot(t.LM[Math.max(0, am - t.UM[kk])], th);
+              py[x] = dot(t.LY[Math.max(0, ay - t.UY[kk])], th);
+              pk[x] = dot(t.LK[kk], th);
+            }
+            c = { 2: pc, 1: pm, 4: py, 0: pk }; cache.set(y, c); return c;
+          }
+          const sink = new Sink();
+          for (const seg of t.head) { if (typeof seg === 'number') { sink.need(seg); sink.n += seg; } else sink.bytes(Uint8Array.from(seg)); }
+          sink.bytes(Uint8Array.of(0x1b, 0x28, 0x76, 4, 0)); sink.u32(t.y0);
+          let Y = t.y0; const yEnd = t.top + rows + 480 + 240;
+          const printed = { 0: new Uint8Array(rows), 1: new Uint8Array(rows), 2: new Uint8Array(rows), 4: new Uint8Array(rows) };
+          const classCount = {}; let p = 0, lastEnd = sink.n;
+          const wb = ((cols / xstep | 0) + 3) >> 2;
+          while (Y <= yEnd) {
+            const cls = Y % PITCH, xo = (classCount[cls] || 0) % xstep; classCount[cls] = (classCount[cls] || 0) + 1;
+            const minKeep = Y + PITCH * DY[4] - t.top - 8;
+            for (const k of cache.keys()) if (k < minKeep) cache.delete(k);
+            for (const c of [2, 1, 4, 0]) {
+              const bandRows = []; let nonzero = false;
+              for (let n = 0; n < N; n++) {
+                const yrow = Y + PITCH * (n + DY[c]) - t.top;
+                if (yrow >= 0 && yrow < rows && !((printed[c][yrow] >> xo) & 1)) {
+                  printed[c][yrow] |= 1 << xo;
+                  const pr = planesRow(yrow)[c], len = cols / xstep | 0, vals = new Uint8Array(len + ((4 - len % 4) % 4));
+                  for (let i = 0; i < len; i++) { const v = pr[xo + i * xstep]; vals[i] = v; if (v) nonzero = true; }
+                  bandRows.push(vals);
+                } else bandRows.push(null);
+              }
+              if (!nonzero) continue;
+              const zero = new Uint8Array(wb);
+              const blob = new Sink();
+              for (const vr of bandRows) packbits(vr ? pack2(vr) : zero, blob);
+              if (xo) { sink.bytes(Uint8Array.of(0x1b, 0x28, 0x24, 4, 0)); sink.u32(xo); }
+              sink.bytes(Uint8Array.of(0x1b, 0x69, c, 1, 2)); sink.u16(wb); sink.u16(N); sink.bytes(blob.buf.subarray(0, blob.n)); sink.byte(13);
+              lastEnd = sink.n;
+            }
+            const adv = t.adv[p % t.adv.length]; p++;
+            if (Y + adv > yEnd) break;
+            Y += adv; sink.bytes(Uint8Array.of(0x1b, 0x28, 0x76, 4, 0)); sink.u32(adv);
+          }
+          sink.n = lastEnd; sink.bytes(Uint8Array.from(t.tail));
+          return sink.buf.slice(0, sink.n);
+        }
+        // Row provider for a canvas/image: cover-fits it to the printable area (by inches), scales it in strips of 64 grid rows.
+        function canvasRows(mode, src, srcW, srcH) {
+          const g = geom(mode), cols = g.cols, rows = g.rows, want = AREA_W_IN / AREA_H_IN;
+          let sx = 0, sy = 0, sw = srcW, sh = srcH;
+          if (srcW / srcH > want) { sw = Math.round(srcH * want); sx = Math.floor((srcW - sw) / 2); }
+          else { sh = Math.round(srcW / want); sy = Math.floor((srcH - sh) / 2); }
+          const STRIP = 64, cv = document.createElement('canvas'); cv.width = cols; cv.height = STRIP;
+          const cx = cv.getContext('2d', { willReadFrequently: true }); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+          let cur = -1, data = null;
+          return function (y) {
+            const s = (y / STRIP) | 0;
+            if (s !== cur) {
+              cur = s; cx.fillStyle = '#fff'; cx.fillRect(0, 0, cols, STRIP);
+              const y0 = s * STRIP, h = Math.min(STRIP, rows - y0);
+              cx.drawImage(src, sx, sy + (y0 / rows) * sh, sw, (h / rows) * sh, 0, 0, cols, h);
+              data = cx.getImageData(0, 0, cols, STRIP).data;
+            }
+            const out = new Uint8Array(cols * 3), o = (y % STRIP) * cols * 4;
+            for (let x = 0; x < cols; x++) { out[x * 3] = data[o + x * 4]; out[x * 3 + 1] = data[o + x * 4 + 1]; out[x * 3 + 2] = data[o + x * 4 + 2]; }
+            return out;
+          };
+        }
+        return { build: build, canvasRows: canvasRows, geom: geom };
+      })();
+      // ==== epson-raster-beta end ====
+
+      // ---- Epson L-series Normal / Best (beta, debug only): see tools/epson-raster/ ----
+      function pbBytesToB64(u8) {
+        let s = '';
+        for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+        return btoa(s);
+      }
+      async function printEpsonRaster(all, paper, p, wo) {
+        const mode = wo.quality === 'rbest' ? 'high' : 'standard';
+        const w = Math.min(paper.w, paper.h), h = Math.max(paper.w, paper.h);
+        if (Math.abs(w - 101.6) > 2 || Math.abs(h - 152.4) > 2) {
+          throw new Error('Epson beta quality is for 4×6 in photo paper only. Choose the 4×6 paper size, or pick Normal or Draft.');
+        }
+        if (wo.borderless) showToast('Epson beta quality prints with a border for now.', 3500);
+        const CH = 1 << 21;                                   // send the job in 2 MB pieces
+        for (const cv of all) {
+          let src = cv;
+          if (cv.width > cv.height) {                         // the sheet comes out portrait
+            src = document.createElement('canvas'); src.width = cv.height; src.height = cv.width;
+            const c2 = src.getContext('2d'); c2.translate(src.width, 0); c2.rotate(Math.PI / 2); c2.drawImage(cv, 0, 0);
+          }
+          await new Promise(r => setTimeout(r, 30));          // let the screen update before the heavy part
+          const job = PBEpsonRaster.build(mode, PBEpsonRaster.canvasRows(mode, src, src.width, src.height));
+          for (let off = 0; off < job.length; off += CH) {
+            const b64 = pbBytesToB64(job.subarray(off, off + CH));
+            await wifiJob(id => window.__PBNet.printRaw(id, p.ip, b64));
+          }
+        }
+      }
       async function printViaWifi(all, paper, printer, wopts) {
         const p = printer || wifiPrinter;
         const wo = wopts || wifiOpts(p);               // the printer's own colour / quality / paper type
@@ -25198,6 +25416,7 @@
           await wifiJob(id => window.__PBNet.printEscp2(id, p.ip, paper.w, paper.h, 1, JSON.stringify(pics2), JSON.stringify(wo)));
           return;
         }
+        if (p.epsonL && /^r(normal|best)$/.test(wo.quality || '')) { await printEpsonRaster(all, paper, p, wo); return; }
         if (p.epsonL) {
           // Hardcoded Epson L-series: L8050 (photo 6-ink), L3210, L3276 — direct USB ESC/P-R printing.
           const picsL = all.map(cv => cv.toDataURL('image/jpeg', 0.95));
@@ -27637,9 +27856,9 @@
       function refreshDeskBtn() {
         var off = !extraOn('roving') || state === 'capturing';
         if (deskFab) deskFab.hidden = off;
-        // Android phones (shorter screen side under 600 dp, the usual tablet cut-off) don't get Record 360 or the 360 desk.
+        // The Android app (phones and tablets) doesn't get Record 360 or the 360 desk: they are for the laptop app and the website.
         var onPhone = false;
-        try { onPhone = /PB4uAndroid/.test(navigator.userAgent || '') && Math.min(screen.width, screen.height) < 600; } catch (e) { }
+        try { onPhone = /PB4uAndroid/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.android); } catch (e) { }
         var spinFab = document.getElementById('spinFab');
         if (spinFab) spinFab.hidden = onPhone || !extraOn('spin360') || state === 'capturing';
         var capFab = document.getElementById('capFab');
@@ -40295,10 +40514,24 @@
           if (!(W && typeof W.info === 'function')) return;
           var box = document.getElementById('deskHotspotBox'), on = document.getElementById('deskHotspotOn'), auto = document.getElementById('deskHotspotAuto');
           var hint = document.getElementById('deskHotspotHint'), lbl = document.getElementById('deskHotspotLabel');
+          var phoneRow = document.getElementById('deskHotspotPhoneRow'), phoneBtn = document.getElementById('deskHotspotPhone');
           if (!(box && on && auto && hint)) return;
           if (lbl) lbl.textContent = 'Make this tablet the booth Wi-Fi (no router needed)';
-          var wasOn = false;
+          var wasLocked = false;
           function read() { try { return JSON.parse(W.info()); } catch (e) { return null; } }
+          // Name and password the operator chooses (Android 10 and newer; the name always starts with DIRECT-pb-).
+          var creds = hotspotCredsUI({
+            save: function (n, p) { return JSON.parse(W.setCreds(n, p)); },
+            after: function () { setTimeout(render, 300); }
+          });
+          if (phoneRow && phoneBtn && typeof W.openHotspotSettings === 'function') {
+            phoneRow.style.display = '';
+            phoneBtn.addEventListener('click', function () {
+              try { W.openHotspotSettings(); } catch (e) { }
+              hint.className = 'panel-hint';
+              hint.textContent = 'In Android’s Hotspot settings choose any name and password and turn Hotspot on. Then type the same name and password in the Wi-Fi boxes below so the Join QR matches.';
+            });
+          }
           function render() {
             var i = read();
             if (!i || !i.supported) { box.style.display = 'none'; return; }
@@ -40306,19 +40539,23 @@
             on.checked = !!(i.on || (i.wanted && i.busy));
             on.disabled = !!i.busy;
             auto.checked = !!i.auto;
+            if (creds) creds.render(i);
             if (i.busy) { hint.className = 'panel-hint'; hint.textContent = 'Starting the booth Wi-Fi… allow “Nearby devices” or Location if Android asks.'; }
+            else if (i.on && i.external) { hint.className = 'panel-hint'; hint.textContent = 'Using this phone’s own Hotspot. Type its name and password in the Wi-Fi boxes below so the Join QR matches.'; }
             else if (i.on) { hint.className = 'panel-hint'; hint.textContent = 'The booth Wi-Fi is on ✓ Guests scan the Join QR below, then their photo QR. Their phone may say “no internet”: they should stay connected. While it is on, this tablet may not use other Wi-Fi.'; }
             else if (i.error) { hint.className = 'panel-hint bad'; hint.textContent = i.error; }
             else { hint.className = 'panel-hint'; hint.textContent = 'Off. Turn it on and this tablet makes its own Wi-Fi for guests. Switch this tablet’s Wi-Fi on first (it doesn’t need to join anything).'; }
-            if (i.on) {
+            // Locked and filled in only when the app knows the real name and password (not for the phone's own Hotspot).
+            var locked = !!(i.on && !i.external);
+            if (locked) {
               wn.readOnly = wp.readOnly = true;
               var cur = wifiInfo();
               if (!cur || cur.ssid !== i.ssid || cur.pass !== i.pass) { wn.value = i.ssid; wp.value = i.pass; saveWifiInfo(i.ssid, i.pass); }
             } else {
               wn.readOnly = wp.readOnly = false;
-              if (wasOn) { wn.value = ''; wp.value = ''; saveWifiInfo('', ''); }
+              if (wasLocked) { wn.value = ''; wp.value = ''; saveWifiInfo('', ''); }
             }
-            wasOn = !!i.on;
+            wasLocked = locked;
           }
           on.addEventListener('change', function () {
             on.disabled = true;
@@ -40480,27 +40717,35 @@
           if (!api.hotspot) return;
           var box = document.getElementById('deskHotspotBox'), on = document.getElementById('deskHotspotOn'), auto = document.getElementById('deskHotspotAuto');
           var hint = document.getElementById('deskHotspotHint'), setupRow = document.getElementById('deskHotspotSetupRow'), setupBtn = document.getElementById('deskHotspotSetup');
+          // Name and password the operator chooses (Windows). A Mac keeps its own in System Settings → Sharing.
+          var creds = api.hotspotCreds ? hotspotCredsUI({
+            save: function (n, p) { return api.hotspotCreds(n, p); },
+            after: function (info) { render(info); }
+          }) : null;
           function render(i) {
             if (!i || !i.supported) { box.style.display = 'none'; return; }
-            var wasOn = !!hs.on;
+            var wasLocked = !!hs.locked;
             hs = i;
+            i.locked = !!(i.on && !i.external);   // the app knows the real name and password
             box.style.display = '';
             on.checked = !!(i.on || (i.wanted && i.busy));
             on.disabled = !!i.busy;
             auto.checked = !!i.auto;
             setupRow.style.display = i.needsSetup ? '' : 'none';
+            if (creds) creds.render(i);
             if (i.busy) { hint.className = 'panel-hint'; hint.textContent = 'Working on it… this can take up to a minute.'; }
+            else if (i.on && i.external) { hint.className = 'panel-hint'; hint.textContent = 'Internet Sharing is on ✓ Its name and password are the ones in System Settings → Sharing → Wi-Fi Options. Type them in the Wi-Fi boxes below so the Join QR matches.'; }
             else if (i.on) { hint.className = 'panel-hint'; hint.textContent = 'The booth Wi-Fi is on ✓ Guests scan the Join QR below, then their photo QR. Their phone may say “no internet”: they should stay connected.'; }
             else if (i.error) { hint.className = 'panel-hint bad'; hint.textContent = i.error; }
             else { hint.className = 'panel-hint'; hint.textContent = 'Off. Turn it on and this laptop makes its own Wi-Fi for guests. Then the laptop has no internet unless it also uses a cable.'; }
-            if (i.on) {
+            if (i.locked) {
               wn.readOnly = wp.readOnly = true;
               var cur = wifiInfo();
               if (!cur || cur.ssid !== i.ssid || cur.pass !== i.pass) { wn.value = i.ssid; wp.value = i.pass; saveWifiInfo(i.ssid, i.pass); }
               wHint.className = 'panel-hint'; wHint.textContent = 'Using the booth Wi-Fi this laptop is making ✓';
             } else {
               wn.readOnly = wp.readOnly = false;
-              if (wasOn) { wn.value = ''; wp.value = ''; saveWifiInfo('', ''); wHint.textContent = ''; lastSsid = null; detectWifi(false); }
+              if (wasLocked) { wn.value = ''; wp.value = ''; saveWifiInfo('', ''); wHint.textContent = ''; lastSsid = null; detectWifi(false); }
             }
           }
           function refresh() { api.hotspot().then(render).catch(function () { }); }

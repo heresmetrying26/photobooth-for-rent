@@ -173,6 +173,20 @@ console.log('\nTest 7: Dedicated Share & QR Code Modal');
   assert(html.includes('id="spinShareToggleQr"'), 'Toggle/Hide QR codes button exists');
 }
 
+// ---- Follow-up fixes: in-page dialogs, in-place tiles, preset placeholder, text size, re-pick spinner ----
+console.log('\nTest 7b: In-page dialogs, in-place tiles, preset placeholder, text size, re-pick spinner');
+{
+  const spinCode = html.slice(html.indexOf("document.getElementById('spinClear').addEventListener"), html.indexOf("document.getElementById('spinViewBtn').addEventListener"));
+  assert(!/confirm\(/.test(spinCode), 'Clear list / Remove use no blocking confirm() pop-ups in the 360 studio');
+  assert(html.includes('function pbChoose') && html.includes('id="pbChoice"') && html.includes("focus Cancel, so Enter"), 'In-page choice box that focuses Cancel by default');
+  assert(html.includes('.pb-choice, #askSheet { z-index: 10100; }'), 'Dialogs and the name box open above the 360 studio');
+  assert(html.includes('async function spinSaveCustomPreset') && html.includes("await askText({ title: 'Name this design preset'") && !/prompt\('Enter a name for this custom design preset/.test(html), 'Save as preset uses the in-page name box (the laptop app has no prompt())');
+  assert(html.includes('Tiles are updated in place') && html.includes("v.dataset.want !== want"), 'Queue tiles update in place, so thumbnails do not reload during a render');
+  assert(html.includes("'Current look (not a saved preset)'"), 'Preset dropdown shows "Current look" instead of a blank box');
+  assert(/text2Size: 34, text2X: 50, text2Y: 26/.test(html) && html.includes('id="spinText2Size" min="12" max="90" value="34"'), 'Line 2 text defaults to a readable size (34)');
+  assert(html.includes('function spinPpBusy') && html.includes('id="spinPpBusy"') && html.includes('spinPpBusy(true);'), 'Re-pick / mode change shows a spinner and locks the controls');
+}
+
 // ---- Sticker packages, decorate timer, resize / rotate handles ----
 console.log('\nTest 8: Sticker packages, decorate timer and box handles');
 {

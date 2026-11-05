@@ -4188,6 +4188,11 @@
     .spin-pp-mode select { padding: 6px 8px; border-radius: 8px; font-size: 13px; }
     .spin-pp-sub { font: 500 12px 'Manrope', sans-serif; color: #d9cfc6; margin: 10px 0 0; }
     .spin-pp-left, .spin-pp-right { min-width: 0; }
+    .spin-pp-busy { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 8px 14px; background: #fff8e6; color: #7a5405; font: 700 13px 'Manrope', sans-serif; border-bottom: 1px solid #f6d899; }
+    .spin-pp-busy[hidden] { display: none; }
+    .spin-pp-busy i { width: 16px; height: 16px; border: 2.5px solid #e8c777; border-top-color: #7a5405; border-radius: 50%; animation: spinPpSpin 0.8s linear infinite; }
+    @keyframes spinPpSpin { to { transform: rotate(360deg); } }
+    .spin-pp-body.busy { opacity: 0.55; pointer-events: none; }
     @media (max-width: 768px) { .spin-pp-body { grid-template-columns: minmax(0, 1fr); overflow-x: hidden; } .spin-pp-page img { max-height: 42vh; } }
 
     .desk-item video {
@@ -7306,6 +7311,15 @@
       background: var(--panel-2);
     }
 
+    /* In-page choice box: sits above the 360 studio (z-index 9500) */
+    .pb-choice, #askSheet { z-index: 10100; }       /* the name box also opens from inside the studio (Save as preset) */
+    .pb-choice .cs-title { margin-bottom: 8px; }
+    .pb-choice .cs-left { margin: 0 0 4px; font-size: 13.5px; line-height: 1.45; color: var(--ink-dim, #6B666C); }
+    .pb-choice-btns { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+    .pb-choice-btn { border: 1.5px solid var(--line, #E4DCCF); background: #fff; color: var(--ink, #1C1A1E); border-radius: 14px; padding: 13px 14px; font: 700 14.5px 'Manrope', sans-serif; cursor: pointer; min-height: 46px; }
+    .pb-choice-btn.go { background: var(--blue-deep, #C93D27); border-color: var(--blue-deep, #C93D27); color: #fff; }
+    .pb-choice-btn.danger { border-color: #c0392b; color: #c0392b; }
+    .pb-choice-btn:focus-visible { outline: 3px solid #D4AF37; outline-offset: 2px; }
     .pack-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
     .pack-check { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1.5px solid var(--line, #E4DCCF); border-radius: 12px; background: #fff; cursor: pointer; font-size: 13px; font-weight: 700; }
     .pack-check.on { border-color: var(--blue-deep, #C93D27); background: var(--tint, #FBEDEA); }
@@ -14307,6 +14321,13 @@
           id="askGo">Save</button></div>
     </form>
   </div>
+  <div class="copies-sheet pb-choice" id="pbChoice" hidden>
+    <div class="cs-card" role="alertdialog" aria-modal="true" aria-labelledby="pbChoiceTitle">
+      <p class="cs-title" id="pbChoiceTitle"></p>
+      <p class="cs-left" id="pbChoiceBody"></p>
+      <div class="pb-choice-btns" id="pbChoiceBtns"></div>
+    </div>
+  </div>
   <div class="printing-note" id="printingNote" role="status" aria-live="polite" hidden></div>
   <div class="pay-badge" id="payBadge" aria-hidden="true"></div>
   <div class="pay-sheet" id="paySheet" role="dialog" aria-modal="true" aria-labelledby="payTitle" hidden>
@@ -14775,7 +14796,7 @@
                     <option value="typewriter">Courier (Typewriter)</option>
                   </select></label>
                 <label>Color <input type="color" id="spinText2Color" value="#FFFFFF" style="width:28px;height:24px;padding:0;border:none;cursor:pointer;vertical-align:middle;"></label>
-                <label>Size <input type="range" id="spinText2Size" min="12" max="90" value="26" style="width:70px"> <span id="spinText2SizeVal" style="font-size:11px;min-width:24px;font-weight:700;">26</span></label>
+                <label>Size <input type="range" id="spinText2Size" min="12" max="90" value="34" style="width:70px"> <span id="spinText2SizeVal" style="font-size:11px;min-width:24px;font-weight:700;">34</span></label>
               </div>
             </div>
 
@@ -14996,6 +15017,7 @@
           <button type="button" class="spin-share-close-btn" id="spinPpClose" title="Back to studio">✕</button>
         </div>
       </div>
+      <div class="spin-pp-busy" id="spinPpBusy" role="status" aria-live="polite" hidden><i aria-hidden="true"></i> Taking the frames again…</div>
       <div class="spin-pp-body">
         <div class="spin-pp-left">
           <div class="spin-pp-page"><img id="spinPpImg" alt="How the print will look"></div>
@@ -27539,7 +27561,7 @@
         fxMovement: 'vortex', fxSpeed: 100, fxOpacity: 85, fxScale: 100, fxWobble: 50, fxLocation: 'full',
         textOn: true,
         text1: '', text1Font: 'cursive', text1Color: '#FFF2A8', text1Size: 52, text1X: 50, text1Y: 18,
-        text2: '', text2Font: 'serif', text2Color: '#FFFFFF', text2Size: 26, text2X: 50, text2Y: 26,
+        text2: '', text2Font: 'serif', text2Color: '#FFFFFF', text2Size: 34, text2X: 50, text2Y: 26,
         textPos: 'top', textAlign: 'center', textTiming: 'always',
         classicBorderColor: '#D4AF37', classicBandOn: true, classicBandColor: '#1C1A1E', classicBandAlpha: 85,
         activeDesignPreset: 'wedding_floral'
@@ -27571,7 +27593,7 @@
           frameStyle: 'floral_gold',
           fx: 'gold_dust',
           text1Font: 'cursive', text1Color: '#FFF2A8', text1Size: 52, text1X: 50, text1Y: 18,
-          text2Font: 'serif', text2Color: '#FFFFFF', text2Size: 26, text2X: 50, text2Y: 26,
+          text2Font: 'serif', text2Color: '#FFFFFF', text2Size: 34, text2X: 50, text2Y: 26,
           textAlign: 'center'
         },
         gala_art_deco: {
@@ -27619,6 +27641,7 @@
         var sel = document.getElementById('spinDesignPresetSelect');
         if (!sel) return;
         sel.innerHTML = '';
+        var none = document.createElement('option'); none.value = ''; none.textContent = 'Current look (not a saved preset)'; sel.appendChild(none);   // never a blank dropdown
         var bGrp = document.createElement('optgroup'); bGrp.label = 'Built-in Designer Presets';
         Object.keys(SPIN_BUILTIN_PRESETS).forEach(function (k) {
           var p = SPIN_BUILTIN_PRESETS[k];
@@ -27639,6 +27662,7 @@
         }
         if (activeKey) sel.value = activeKey;
         else if (spinLook.activeDesignPreset) sel.value = spinLook.activeDesignPreset;
+        if (!sel.value) sel.value = '';       // the saved preset no longer exists: show "Current look"
       }
 
       function spinApplyDesignPreset(key) {
@@ -27691,8 +27715,9 @@
         showToast('Applied preset: ' + (p.name || key));
       }
 
-      function spinSaveCustomPreset() {
-        var name = prompt('Enter a name for this custom design preset (e.g. "Sarah & Michael Wedding", "Birthday Gold"):');
+      async function spinSaveCustomPreset() {
+        // in-page name box: the laptop app has no prompt(), so the old Save As Preset did nothing there
+        var name = await askText({ title: 'Name this design preset', hint: 'For example “Sarah & Michael Wedding” or “Birthday Gold”.', placeholder: 'Preset name', ok: 'Save preset', max: 40 });
         if (!name || !name.trim()) return;
         name = name.trim();
         var custom = spinGetCustomPresets();
@@ -27722,14 +27747,15 @@
         showToast('Preset "' + name + '" saved!');
       }
 
-      function spinDeleteCustomPreset() {
+      async function spinDeleteCustomPreset() {
         var sel = document.getElementById('spinDesignPresetSelect');
         if (!sel || !sel.value.startsWith('custom:')) {
           showToast('Select a custom preset to delete.');
           return;
         }
         var name = sel.value.slice(7);
-        if (!confirm('Delete custom preset "' + name + '"?')) return;
+        var del = await pbChoose({ title: 'Delete preset “' + name + '”?', body: 'Videos you already made are not affected.', buttons: [{ label: 'Delete preset', value: 'yes', kind: 'danger' }, { label: 'Keep it', value: null }] });
+        if (!del) return;
         var custom = spinGetCustomPresets();
         delete custom[name];
         try { localStorage.setItem(SPIN_CUSTOM_PRESETS_KEY, JSON.stringify(custom)); } catch (e) { }
@@ -27920,7 +27946,7 @@
         if (g('spinText2')) g('spinText2').value = spinLook.text2 || '';
         if (g('spinText2Font')) g('spinText2Font').value = spinLook.text2Font || 'serif';
         if (g('spinText2Color')) g('spinText2Color').value = spinLook.text2Color || '#FFFFFF';
-        if (g('spinText2Size')) { g('spinText2Size').value = spinLook.text2Size || 26; var s2v = g('spinText2SizeVal'); if (s2v) s2v.textContent = spinLook.text2Size || 26; }
+        if (g('spinText2Size')) { g('spinText2Size').value = spinLook.text2Size || 34; var s2v = g('spinText2SizeVal'); if (s2v) s2v.textContent = spinLook.text2Size || 34; }
         if (g('spinText2PosLabel')) g('spinText2PosLabel').textContent = 'Y: ' + (spinLook.text2Y || 26) + '%';
 
         if (g('spinTextPos')) g('spinTextPos').value = spinLook.textPos || 'top';
@@ -28122,7 +28148,7 @@
         if (l2) {
           var f2Key = opt.text2Font || spinLook.text2Font || 'serif';
           var f2Family = fontFamilies[f2Key] || fontFamilies['serif'];
-          var s2Pt = Number(opt.text2Size || spinLook.text2Size || 26);
+          var s2Pt = Number(opt.text2Size || spinLook.text2Size || 34);
           var fontSize2 = Math.max(12, Math.round(s2Pt * baseScale));
           var col2 = opt.text2Color || spinLook.text2Color || '#FFFFFF';
 
@@ -28693,21 +28719,36 @@
           : it.status === 'editing' ? ['Editing ' + (it.pct || 0) + '%', 'wait'] : it.status === 'edited' ? ['Edited', ''] : it.status === 'error' ? ['Failed', 'err'] : null;
       }
       function spinRender() {
-        spinGrid.innerHTML = '';
+        // Tiles are updated in place (matched by clip id), so a thumbnail's <video> is only reloaded when its source really changes.
         var qBadge = document.getElementById('spinQueueBadge');
         if (qBadge) qBadge.textContent = spinQueue.length + (spinQueue.length === 1 ? ' video' : ' videos');
-        if (!spinQueue.length) { var e = document.createElement('div'); e.className = 'desk-empty'; e.textContent = 'Videos you add appear here.'; spinGrid.appendChild(e); }
-        spinQueue.forEach(function (it) {
+        var emptyEl = spinGrid.querySelector('.desk-empty');
+        if (!spinQueue.length) {
+          if (!emptyEl) { spinGrid.innerHTML = ''; var e = document.createElement('div'); e.className = 'desk-empty'; e.textContent = 'Videos you add appear here.'; spinGrid.appendChild(e); }
+        } else if (emptyEl) emptyEl.remove();
+        var existing = {};
+        [].forEach.call(spinGrid.querySelectorAll('.desk-item'), function (el) { existing[el.dataset.id] = el; });
+        var seenIds = {};
+        spinQueue.forEach(function (it, idx) {
           var isSel = spinCur && it.id === spinCur.id;
-          var b = document.createElement('button'); b.type = 'button'; b.className = 'desk-item' + (it.status === 'shared' ? ' used' : '') + (isSel ? ' selected' : ''); b.dataset.id = it.id;
-          var v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.playsInline = true;
-          var src = spinSrc(it, !it.viewOrig); if (src) v.src = src + '#t=0.1';
-          b.appendChild(v);
-          var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = it.name + (it.size ? ' · ' + spinMb(it.size) : ''); b.appendChild(nm);
-          var tag = spinTag(it);
-          if (tag) { var dn = document.createElement('span'); dn.className = 'done ' + tag[1]; dn.textContent = tag[0]; b.appendChild(dn); }
-          spinGrid.appendChild(b);
+          var b = existing[it.id];
+          if (!b) {
+            b = document.createElement('button'); b.type = 'button'; b.dataset.id = it.id;
+            var nv = document.createElement('video'); nv.preload = 'metadata'; nv.muted = true; nv.playsInline = true; b.appendChild(nv);
+            var nn = document.createElement('span'); nn.className = 'nm'; b.appendChild(nn);
+          }
+          b.className = 'desk-item' + (it.status === 'shared' ? ' used' : '') + (isSel ? ' selected' : '');
+          var v = b.querySelector('video'), src = spinSrc(it, !it.viewOrig), want = src ? src + '#t=0.1' : '';
+          if (v && v.dataset.want !== want) { v.dataset.want = want; if (want) v.src = want; else v.removeAttribute('src'); }
+          var nm = b.querySelector('.nm'), nmTxt = it.name + (it.size ? ' · ' + spinMb(it.size) : '');
+          if (nm && nm.textContent !== nmTxt) nm.textContent = nmTxt;
+          var tag = spinTag(it), dn = b.querySelector('.done');
+          if (tag) { if (!dn) { dn = document.createElement('span'); b.appendChild(dn); } dn.className = 'done ' + tag[1]; if (dn.textContent !== tag[0]) dn.textContent = tag[0]; }
+          else if (dn) dn.remove();
+          if (spinGrid.children[idx] !== b) spinGrid.insertBefore(b, spinGrid.children[idx] || null);
+          seenIds[it.id] = true;
         });
+        Object.keys(existing).forEach(function (id) { if (!seenIds[id]) existing[id].remove(); });
         spinHint();
         // Nothing selected yet (first clip just arrived): open it so the preview and buttons work straight away.
         if (!spinCur && spinQueue.length && spinOverlay && !spinOverlay.hidden) spinOpenItem(spinQueue[0]);
@@ -29944,7 +29985,7 @@
           text1Y: spinLook.text1Y != null ? spinLook.text1Y : textY,
           text2Font: spinLook.text2Font || 'serif',
           text2Color: spinLook.text2Color || textColor,
-          text2Size: spinLook.text2Size || 26,
+          text2Size: spinLook.text2Size || 34,
           text2X: spinLook.text2X != null ? spinLook.text2X : 50,
           text2Y: spinLook.text2Y != null ? spinLook.text2Y : Math.min(95, textY + 8),
           classicBorderColor: spinLook.classicBorderColor || '#ffffff',
@@ -30012,7 +30053,7 @@
             text1Y: spinLook.text1Y != null ? spinLook.text1Y : (spinLook.textYPercent || 18),
             text2Font: spinLook.text2Font || 'serif',
             text2Color: spinLook.text2Color || spinLook.textColor || '#FFFFFF',
-            text2Size: spinLook.text2Size || 26,
+            text2Size: spinLook.text2Size || 34,
             text2X: spinLook.text2X != null ? spinLook.text2X : 50,
             text2Y: spinLook.text2Y != null ? spinLook.text2Y : Math.min(95, (spinLook.textYPercent || 18) + 8),
             classicBorderColor: spinLook.classicBorderColor || '#ffffff',
@@ -30457,11 +30498,22 @@
       document.getElementById('spinClear').addEventListener('click', async function () {
         if (!spinQueue.length) return;
         var alsoDelete = false;
-        if (spinDesktop()) {
-          var ans = confirm('Clear all ' + spinQueue.length + ' video(s) from the list?\n\nThey will not re-appear.\n\nClick OK to clear.');
-          if (!ans) return;
-          alsoDelete = confirm('Do you also want to permanently delete the raw video files from your inbox folder on disk?\n\nOK = Delete files from disk\nCancel = Keep files on disk, only remove from app');
-        }
+        var nClear = spinQueue.length;
+        var pick = await pbChoose(spinDesktop() ? {
+          title: 'Clear ' + nClear + ' video' + (nClear === 1 ? '' : 's') + '?',
+          body: 'They leave this list and will not come back. Choose whether the original files in your inbox folder stay on this computer.',
+          buttons: [
+            { label: 'Clear list, keep the files', value: 'list', kind: 'go' },
+            { label: 'Clear list and delete the files', value: 'delete', kind: 'danger' },
+            { label: 'Cancel', value: null }
+          ]
+        } : {
+          title: 'Clear ' + nClear + ' video' + (nClear === 1 ? '' : 's') + '?',
+          body: 'They will be removed from this list.',
+          buttons: [{ label: 'Clear list', value: 'list', kind: 'go' }, { label: 'Cancel', value: null }]
+        });
+        if (!pick) return;
+        alsoDelete = pick === 'delete';
         for (var i = 0; i < spinQueue.length; i++) {
           var item = spinQueue[i];
           if (item.key) spinDismissed[item.key] = Date.now();
@@ -30612,6 +30664,7 @@
         var soloMode = opts.solo !== undefined ? !!opts.solo : (spinLook && spinLook.printSolo !== undefined ? !!spinLook.printSolo : false);
         var need = soloMode ? 1 : shotsNeeded();
         showToast('Extracting ' + (need > 1 ? need + ' photos' : 'photo') + ' from 360 spin…', 2200);
+        spinPpBusy(true);      // when the preview is already open (re-pick / mode change) show a spinner instead of looking frozen
 
         var canvases = [];
         // 1. Try Desktop FFmpeg frame extraction if available
@@ -30653,12 +30706,14 @@
             canvases = await extractSpinFramesInBrowser(src, need, opts.offset);
           } catch (err) {
             console.error('Frame extraction failed:', err);
+            spinPpBusy(false);
             showToast('Could not extract photo from 360 video: ' + (err.message || err), 4500);
             return;
           }
         }
 
         if (!canvases.length) {
+          spinPpBusy(false);
           showToast('Could not extract photo from 360 video.', 4000);
           return;
         }
@@ -30686,6 +30741,15 @@
 
       // ---- Spin & Print preview: see the strip / keychain layout inside the 360 booth before the print screen ----
       var spinPp = { it: null, canvases: [], solo: false, pages: [], urls: [], i: 0 };
+      // Spinner + locked controls while the frames are being taken again (only shown when the preview is already open).
+      function spinPpBusy(on) {
+        var ov = document.getElementById('spinPrintPv'), b = document.getElementById('spinPpBusy');
+        if (!ov || !b) return;
+        var show = !!on && !ov.hidden;
+        b.hidden = !show;
+        var body = ov.querySelector('.spin-pp-body'); if (body) body.classList.toggle('busy', show);
+        var go = document.getElementById('spinPpPrint'); if (go) go.disabled = show;
+      }
 
       // Build the real print pages for these frames by briefly swapping the booth's session state, then putting it back.
       function spinBuildPrintPages(canvases, solo) {
@@ -30795,6 +30859,7 @@
         spinPpUpdateSub();
         spinPpFillPaper();
         spinPpShow(0);
+        spinPpBusy(false);
         closeSpinShareModal(true);        // never leave the QR modal stacked behind
         ov.hidden = false;
         try { var v = document.getElementById('spinVideo'); if (v) v.pause(); } catch (e) { }
@@ -30803,6 +30868,7 @@
       function closeSpinPrintPreview() {
         var ov = document.getElementById('spinPrintPv');
         if (ov) ov.hidden = true;
+        spinPpBusy(false);
         spinPp.canvases = []; spinPp.pages = []; spinPp.urls = [];
       }
 
@@ -30932,7 +30998,17 @@
         var it = spinCur; if (!it) return;
         var alsoDelete = false;
         if (spinDesktop() && it.src === 'inbox') {
-          alsoDelete = confirm('Do you want to permanently delete "' + it.name + '" from the folder on disk?\n\nOK = Delete from disk\nCancel = Only remove from list');
+          var rp = await pbChoose({
+            title: 'Remove this video?',
+            body: '“' + it.name + '” leaves the list. Choose whether the original file stays in your inbox folder.',
+            buttons: [
+              { label: 'Remove from list, keep the file', value: 'list', kind: 'go' },
+              { label: 'Remove and delete the file', value: 'delete', kind: 'danger' },
+              { label: 'Cancel', value: null }
+            ]
+          });
+          if (!rp) return;
+          alsoDelete = rp === 'delete';
         }
         if (it.key) {
           spinDismissed[it.key] = Date.now();
@@ -37192,8 +37268,30 @@
           sh.addEventListener('click', onBack); document.addEventListener('keydown', onKey, true);
         });
       }
+      // An in-page choice box (above the 360 studio too): buttons = [{ label, value, kind: 'go' | 'danger' | '' }]. Resolves the value, or null on Cancel / Esc / tap outside.
+      function pbChoose(o) {
+        return new Promise(function (resolve) {
+          var sh = document.getElementById('pbChoice'), box = document.getElementById('pbChoiceBtns');
+          if (!sh) { resolve(window.confirm((o.title || '') + '\n\n' + (o.body || '')) ? (o.buttons.filter(function (b) { return b.value; })[0] || {}).value || null : null); return; }
+          document.getElementById('pbChoiceTitle').textContent = o.title || '';
+          document.getElementById('pbChoiceBody').textContent = o.body || '';
+          box.innerHTML = '';
+          var done = function (v) { sh.hidden = true; document.removeEventListener('keydown', onKey, true); sh.removeEventListener('click', onBack); resolve(v); };
+          var onKey = function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(null); } };
+          var onBack = function (e) { if (e.target === sh) done(null); };
+          var firstSafe = null;
+          (o.buttons || []).forEach(function (b) {
+            var el = document.createElement('button'); el.type = 'button'; el.className = 'pb-choice-btn' + (b.kind ? ' ' + b.kind : ''); el.textContent = b.label;
+            el.addEventListener('click', function (e) { e.stopPropagation(); done(b.value === undefined ? null : b.value); });
+            box.appendChild(el);
+            if (!firstSafe && b.value === null) firstSafe = el;        // focus Cancel, so Enter / a stray tap never deletes anything
+          });
+          sh.hidden = false; document.addEventListener('keydown', onKey, true); sh.addEventListener('click', onBack);
+          setTimeout(function () { try { (firstSafe || box.firstChild).focus(); } catch (e) { } }, 30);
+        });
+      }
       // ---- My themes (save the current design and reuse it) ----
-      var DESIGN_KEYS = ['backdropPreset', 'backdropColor', 'elementsChoice', 'accent', 'frameColorChoice', 'photoPlacement', 'cropFocus',
+      var DESIGN_KEYS =['backdropPreset', 'backdropColor', 'elementsChoice', 'accent', 'frameColorChoice', 'photoPlacement', 'cropFocus',
         'textColor', 'font', 'dateFont', 'titleSize', 'titleBg', 'titleBgColor', 'outline', 'outlineColor', 'shadow',
         'filter', 'softSkin', 'dateStamp', 'overlay', 'logo', 'decor', 'myProps', 'titleStyle', 'kicker', 'upper', 'art', 'artPal'];
       function myThemesKey() { var pb = window.__PB || {}; return 'pb_mythemes:' + (pb.folderPrefix || pb.folderKey || 'local'); }

@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.79', date: '2026-11-05' },
   { version: '1.0.78', date: '2026-11-05' },
   { version: '1.0.77', date: '2026-11-05' },
   { version: '1.0.76', date: '2026-11-05' },
@@ -124,6 +125,22 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-05', title: 'Safer 360 Studio Dialogs, Working Save-as-Preset, Smoother Thumbnails & Re-pick Spinner', for: ['app', 'website'], app: '1.0.79',
+    items: [
+      'In-page confirmations: Clear list and Remove now open an on-screen box (Cancel is selected by default) and ask whether to keep or delete the original files.',
+      'Save as preset now opens a proper name box. The old pop-up does not exist in the laptop app, so naming a preset could fail.',
+      'Smoother queue: thumbnails no longer reload while a video renders.',
+      'Preset list shows “Current look” instead of a blank box, and Line 2 text now starts at a more readable size.',
+      'Spin & Print preview shows a spinner and locks the controls while it takes the frames again after a re-pick.'
+    ]
+  },
+  {
+    date: '2026-11-05', title: 'Safer 360 Studio Dialogs, Save-as-Preset & Re-pick Spinner (Android)', for: ['app'], app: '1.0.90',
+    items: [
+      'On-screen confirmations for Clear list and Remove, a working Save as preset name box, steadier thumbnails, and a spinner while Spin & Print re-picks frames.'
+    ]
+  },
   {
     date: '2026-11-05', title: 'Sticker Packages, Decorate Timer, Resize & Rotate Handles & a Fixed Live Preview', for: ['app', 'website'], app: '1.0.78',
     items: [

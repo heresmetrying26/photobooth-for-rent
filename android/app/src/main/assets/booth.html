@@ -3619,6 +3619,15 @@
       box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
     }
 
+    .spin-preview-tab-btn {
+      display: none !important;
+    }
+    @media (max-width: 760px) {
+      .spin-preview-tab-btn {
+        display: inline-block !important;
+      }
+    }
+
     .spin-head-right {
       display: flex;
       align-items: center;
@@ -3628,38 +3637,46 @@
     .spin-studio-body {
       flex: 1;
       display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(360px, 440px);
-      gap: 18px;
-      padding: 16px 20px;
+      grid-template-columns: minmax(320px, 1.25fr) minmax(300px, 440px);
+      gap: 16px;
+      padding: 14px 18px;
       overflow: hidden;
-      max-width: 1600px;
+      max-width: 1680px;
       width: 100%;
       margin: 0 auto;
       box-sizing: border-box;
-      align-items: start;
-      height: calc(100vh - 58px);
+      align-items: stretch;
+      height: calc(100vh - 56px);
     }
 
-    @media (min-width: 1350px) {
+    @media (min-width: 1400px) {
       .spin-studio-body {
         grid-template-columns: minmax(0, 1.3fr) 480px;
-        gap: 24px;
-        padding: 20px 26px;
+        gap: 22px;
+        padding: 18px 24px;
       }
     }
 
-    @media (max-width: 960px) {
+    @media (max-width: 760px) {
       .spin-studio-body {
         display: flex;
-        flex-direction: column-reverse;
+        flex-direction: column;
         overflow-y: auto;
-        padding: 12px;
+        padding: 10px;
         height: auto;
+        gap: 14px;
       }
       .spin-studio-preview {
-        position: sticky;
-        top: 0;
-        z-index: 5;
+        position: relative !important;
+        top: auto !important;
+        z-index: 1 !important;
+        width: 100%;
+        max-height: none;
+      }
+      .spin-studio-controls {
+        height: auto;
+        overflow-y: visible;
+        padding-right: 0;
       }
     }
 
@@ -3719,17 +3736,19 @@
       display: flex;
       flex-direction: column;
       box-sizing: border-box;
+      position: relative;
     }
 
     .spin-preview-card {
       background: #fff;
       border: 1.5px solid var(--line, #E8E1D9);
       border-radius: 18px;
-      padding: 16px;
+      padding: 14px 16px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
       display: flex;
       flex-direction: column;
       flex: 1;
+      min-height: 0;
     }
 
     .spin-preview-head {
@@ -3790,6 +3809,14 @@
       pointer-events: none !important;
       user-select: none;
       filter: grayscale(35%);
+    }
+    .spin-locked-controls .spin-lock-banner {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      filter: none !important;
+    }
+    .spin-locked-controls .spin-lock-banner * {
+      pointer-events: auto !important;
     }
 
     /* High-contrast labels in sidebar and modal QR boxes */
@@ -4121,7 +4148,7 @@
       position: relative;
       width: 100%;
       aspect-ratio: 9 / 16;
-      max-height: 48vh;
+      max-height: clamp(160px, 40vh, 460px);
       background: #000;
       border-radius: 12px;
       overflow: hidden;
@@ -4138,7 +4165,7 @@
       inset: auto;
       width: 100%;
       height: 100%;
-      max-height: 48vh;
+      max-height: clamp(160px, 40vh, 460px);
       object-fit: contain;
       background: #000;
       border-radius: 12px;
@@ -4147,7 +4174,7 @@
 
     .spin-stage-wrap.is-square {
       aspect-ratio: 1 / 1;
-      max-width: 48vh;
+      max-width: clamp(160px, 40vh, 460px);
     }
     .spin-stage-wrap.is-square video {
       object-fit: cover;
@@ -14352,6 +14379,7 @@
         <button type="button" class="spin-tab-btn" data-tab="spinSecLook">🎨 Look &amp; Frame</button>
         <button type="button" class="spin-tab-btn" data-tab="spinSecText">✍️ Text &amp; Branding</button>
         <button type="button" class="spin-tab-btn" data-tab="spinSecAudio">🎵 Audio &amp; FX</button>
+        <button type="button" class="spin-tab-btn spin-preview-tab-btn" data-tab="spinStudioPreview">👁️ Live Preview</button>
       </div>
       <div class="spin-head-right">
         <button type="button" class="desk-btn primary" id="spinTopPick">＋ Add Videos</button>
@@ -14372,21 +14400,6 @@
             </div>
           </div>
           <button type="button" class="desk-btn primary" id="spinUnlockEditBtn" style="padding:4px 12px;font-size:12px;margin:0;">✏️ Unlock / Edit</button>
-        </div>
-
-        <!-- SECTION 0: DESIGN PRESETS -->
-        <div class="spin-panel-card" id="spinSecPresets" style="background:#fffcf5;border-color:#ecd9b5;">
-          <div class="spin-card-title" style="margin-bottom:8px;">
-            <span>✨ Design &amp; Layout Presets</span>
-            <span class="spin-pill" style="background:#fae7c9;color:#855400;">Multi-Preset</span>
-          </div>
-          <div class="spin-row" style="gap:8px;align-items:center;">
-            <label style="font-weight:700;font-size:12px;display:flex;align-items:center;gap:6px;">Preset:
-              <select id="spinDesignPresetSelect" style="min-width:210px;font-weight:600;"></select>
-            </label>
-            <button type="button" class="desk-btn" id="spinSavePresetBtn" style="padding:5px 12px;font-size:12px;background:#fff;font-weight:700;">💾 Save As Preset</button>
-            <button type="button" class="desk-btn" id="spinDeletePresetBtn" style="padding:5px 10px;font-size:12px;" title="Delete current custom preset">🗑️ Delete</button>
-          </div>
         </div>
 
         <!-- SECTION 1: VIDEOS & INBOX -->
@@ -14425,6 +14438,21 @@
           <div class="desk-grid" id="spinGrid"></div>
           <div class="desk-foot"><button type="button" class="desk-btn" id="spinClear">Clear list</button><span
               class="sp"></span></div>
+        </div>
+
+        <!-- SECTION 2: DESIGN PRESETS -->
+        <div class="spin-panel-card" id="spinSecPresets" style="background:#fffcf5;border-color:#ecd9b5;">
+          <div class="spin-card-title" style="margin-bottom:8px;">
+            <span>✨ Design &amp; Layout Presets</span>
+            <span class="spin-pill" style="background:#fae7c9;color:#855400;">Multi-Preset</span>
+          </div>
+          <div class="spin-row" style="gap:8px;align-items:center;">
+            <label style="font-weight:700;font-size:12px;display:flex;align-items:center;gap:6px;">Preset:
+              <select id="spinDesignPresetSelect" style="min-width:210px;font-weight:600;"></select>
+            </label>
+            <button type="button" class="desk-btn" id="spinSavePresetBtn" style="padding:5px 12px;font-size:12px;background:#fff;font-weight:700;">💾 Save As Preset</button>
+            <button type="button" class="desk-btn" id="spinDeletePresetBtn" style="padding:5px 10px;font-size:12px;" title="Delete current custom preset">🗑️ Delete</button>
+          </div>
         </div>
 
         <!-- SECTION 2: LOOK, STYLE & FRAMES -->
@@ -14644,7 +14672,6 @@
             </div>
           </div>
         </div>
-        </div>
 
         <!-- SECTION 4: AUDIO & PROCESSING -->
         <div class="spin-panel-card" id="spinSecAudio">
@@ -14748,6 +14775,11 @@
           <select id="spinModalTextFont" hidden style="display:none!important;"></select>
           <input type="color" id="spinModalTextColor" hidden style="display:none!important;">
           <select id="spinModalFx" hidden style="display:none!important;"></select>
+          <select id="spinTextFont" hidden style="display:none!important;"></select>
+          <input type="color" id="spinTextColor" hidden style="display:none!important;">
+          <span id="spinLockStatusText" hidden style="display:none!important;"></span>
+          <div id="spinControlsCol" hidden style="display:none!important;"></div>
+          <div id="spinStudioWrap" hidden style="display:none!important;"></div>
         </div>
       </div>
     </div>
@@ -29773,8 +29805,8 @@
         var rm = document.getElementById('spinRemove');
         var badge = document.getElementById('spinCurClipBadge');
         var lockBanner = document.getElementById('spinEditLockBanner');
-        var lockTxt = document.getElementById('spinLockStatusText');
-        var controlsCol = document.getElementById('spinControlsCol');
+        var lockTxt = document.getElementById('spinLockSub') || document.getElementById('spinLockStatusText');
+        var controlsCol = document.getElementById('spinStudioControls') || document.getElementById('spinControlsCol');
 
         if (!it) {
           if (box) box.innerHTML = '';
@@ -30390,7 +30422,15 @@
           document.querySelectorAll('#spinHeadTabs .spin-tab-btn').forEach(function (b) { b.classList.remove('active'); });
           btn.classList.add('active');
           var target = document.getElementById(btn.dataset.tab);
-          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          if (target) {
+            var sc = document.getElementById('spinStudioControls');
+            if (sc && sc.contains(target)) {
+              var top = target.offsetTop - sc.offsetTop - 12;
+              sc.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+            } else {
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }
         });
       });
 

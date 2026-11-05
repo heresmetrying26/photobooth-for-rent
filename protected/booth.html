@@ -4437,6 +4437,15 @@
       margin: 4px 0 10px;
     }
 
+    /* Android app: calmer screens. Static helper sentences shrink to one line (tap to read), advanced print options sit behind "More options". */
+    .pb-android .panel-hint:not([id]):not(.hidden):not([hidden]):not(.web-only) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; cursor: pointer; }
+    .pb-android .panel-hint:not([id]).pb-tip-open { display: block; -webkit-line-clamp: unset; }
+    .pb-more { margin-top: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; }
+    .pb-more > summary { cursor: pointer; padding: 12px 0; font-size: 13px; font-weight: 700; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+    .pb-more > summary::-webkit-details-marker { display: none; }
+    .pb-more > summary::after { content: '\25BE'; transition: transform .15s; }
+    .pb-more[open] > summary::after { transform: rotate(180deg); }
+    .pb-more[open] { padding-bottom: 12px; }
     .print-size-btn {
       background: var(--panel-2);
       border: 1.5px solid var(--line);
@@ -11774,44 +11783,74 @@
         return new Uint8Array(this._buf);
       };
 
-      function toReceiptCanvas(src, dotW, brightness) {
+      // quality: 'best' (sharpened, dot-gain corrected, Atkinson dithering: crisp and not too dark),
+      //          'normal' (Floyd-Steinberg, the original look), 'draft' (coarse ordered dots: fast, light, saves heat).
+      function toReceiptCanvas(src, dotW, brightness, quality) {
         dotW = dotW || 576;
+        var q = (quality === 'best' || quality === 'draft') ? quality : 'normal';
         var scale = dotW / src.width;
         var dotH = Math.max(1, Math.round(src.height * scale));
         var dst = document.createElement('canvas');
         dst.width = dotW; dst.height = dotH;
         var ctx = dst.getContext('2d');
-
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, dotW, dotH);
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(src, 0, 0, dotW, dotH);
-
         var id = ctx.getImageData(0, 0, dotW, dotH), d = id.data;
-        var curErr = new Float32Array(dotW);
-        var nextErr = new Float32Array(dotW);
-
         // brightness: -100 (darker) to +100 (lighter) offset for thermal dithering
         var bOffset = (typeof brightness === 'number') ? brightness * 1.28 : ((typeof window !== 'undefined' && window._colorAdj && window._colorAdj.brightness) ? window._colorAdj.brightness * 1.28 : ((typeof colorAdj !== 'undefined' && colorAdj && colorAdj.brightness) ? colorAdj.brightness * 1.28 : 0));
-
-        for (var y = 0; y < dotH; y++) {
-          nextErr.fill(0);
-          for (var x = 0; x < dotW; x++) {
-            var i4 = (y * dotW + x) * 4;
-            var lum = 0.299 * d[i4] + 0.587 * d[i4 + 1] + 0.114 * d[i4 + 2] + curErr[x] + bOffset;
-            var v = lum < 128 ? 0 : 255;
-            var e = lum - v;
-            d[i4] = d[i4 + 1] = d[i4 + 2] = v;
-            d[i4 + 3] = 255;
-
-            if (x + 1 < dotW) curErr[x + 1] += e * 7 / 16;
-            if (x > 0) nextErr[x - 1] += e * 3 / 16;
-            nextErr[x] += e * 5 / 16;
-            if (x + 1 < dotW) nextErr[x + 1] += e * 1 / 16;
+        var n = dotW * dotH, lum = new Float32Array(n), x, y, i;
+        for (i = 0; i < n; i++) lum[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+        if (q === 'best') {
+          // A light sharpen (so faces and text stay crisp) and a gentle lift of the mid-tones (thermal dots print bigger than they are).
+          var blur = new Float32Array(n);
+          for (y = 0; y < dotH; y++) for (x = 0; x < dotW; x++) {
+            var sum = 0, cnt = 0, yy, xx;
+            for (yy = Math.max(0, y - 1); yy <= Math.min(dotH - 1, y + 1); yy++) for (xx = Math.max(0, x - 1); xx <= Math.min(dotW - 1, x + 1); xx++) { sum += lum[yy * dotW + xx]; cnt++; }
+            blur[y * dotW + x] = sum / cnt;
           }
-          var tmp = curErr;
-          curErr = nextErr;
-          nextErr = tmp;
+          for (i = 0; i < n; i++) {
+            var sh = lum[i] + 0.7 * (lum[i] - blur[i]);
+            sh = Math.max(0, Math.min(255, sh));
+            lum[i] = 255 * Math.pow(sh / 255, 0.8);
+          }
         }
+        var out = new Uint8Array(n);
+        if (q === 'draft') {
+          // 2x2 blocks with a 4x4 ordered pattern: half the detail, but quick and gentle on the print head.
+          var bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+          for (y = 0; y < dotH; y++) for (x = 0; x < dotW; x++) {
+            var t = (bayer[((y >> 1) & 3) * 4 + ((x >> 1) & 3)] + 0.5) / 16 * 255;
+            out[y * dotW + x] = (lum[y * dotW + x] + bOffset) < t ? 0 : 255;
+          }
+        } else {
+          var curErr = new Float32Array(dotW + 4), nextErr = new Float32Array(dotW + 4), next2 = new Float32Array(dotW + 4), tmp;
+          for (y = 0; y < dotH; y++) {
+            if (q !== 'best') nextErr.fill(0);          // Atkinson keeps the carried-over rows
+            for (x = 0; x < dotW; x++) {
+              var l = lum[y * dotW + x] + curErr[x] + bOffset;
+              var v = l < 128 ? 0 : 255, e = l - v;
+              out[y * dotW + x] = v;
+              if (q === 'best') {
+                // Atkinson: pass on 6/8 of the error to six neighbours; keeps highlights and shadows clean.
+                var e8 = e / 8;
+                curErr[x + 1] += e8; curErr[x + 2] += e8;
+                if (x > 0) nextErr[x - 1] += e8;
+                nextErr[x] += e8; nextErr[x + 1] += e8;
+                next2[x] += e8;
+              } else {
+                if (x + 1 < dotW) curErr[x + 1] += e * 7 / 16;
+                if (x > 0) nextErr[x - 1] += e * 3 / 16;
+                nextErr[x] += e * 5 / 16;
+                if (x + 1 < dotW) nextErr[x + 1] += e * 1 / 16;
+              }
+            }
+            tmp = curErr; curErr = nextErr;
+            if (q === 'best') { nextErr = next2; next2 = tmp; next2.fill(0); } else { nextErr = tmp; }
+          }
+        }
+        for (i = 0; i < n; i++) { d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = out[i]; d[i * 4 + 3] = 255; }
         ctx.putImageData(id, 0, 0);
         return dst;
       }
@@ -12023,7 +12062,7 @@
         var feed = opts.feed != null ? opts.feed : 3;
         if (!this._mode) return Promise.reject(new Error('Printer not connected'));
 
-        var mono = toReceiptCanvas(canvas, this._paperWidth, opts.brightness);
+        var mono = toReceiptCanvas(canvas, this._paperWidth, opts.brightness, opts.quality);
         var enc = new EscPosEncoder(this._paperWidth);
         enc.initialize().image(mono).feed(feed);
         if (cut) enc.cut();
@@ -13992,6 +14031,15 @@
               <span>Keychain strips at real size (2.5×7.5 in)</span>
               <input type="checkbox" id="keychainToggle">
             </label>
+            <div id="thermalQualityBox" class="hidden">
+              <p class="sub-label" style="margin:10px 0 6px;">Print quality</p>
+              <div class="print-size-row" id="thermalQualityRow">
+                <button type="button" class="print-size-btn" data-tq="best">Best</button>
+                <button type="button" class="print-size-btn" data-tq="normal">Normal</button>
+                <button type="button" class="print-size-btn" data-tq="draft">Draft</button>
+              </div>
+              <p class="panel-hint" id="thermalQualityHint" style="margin:2px 0 6px;"></p>
+            </div>
             <div id="photoFitBox">
               <p class="sub-label" style="margin:10px 0 6px;">Photo size on the paper</p>
               <div class="print-size-row" id="photoSizeRow"></div>
@@ -14029,9 +14077,9 @@
                   style="font-size:12px; color:var(--ink-dim); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0;">Reset</button>
               </div>
               <div id="colorAdjBody" hidden style="margin-top:8px;">
-              <p class="panel-hint" style="margin:0 0 10px; font-size:11.5px; line-height:1.4;">Adjust exposure and RGB
-                balance for prints. If thermal prints are too dark, increase lightness (+20 to +40). Changes apply to
-                the next print on the selected printer.</p>
+              <p class="panel-hint" style="margin:0 0 10px; font-size:11.5px; line-height:1.4;">Changes the printed photo
+                and the print preview only. The guests' camera and on-screen photos stay as they are. If a print is too
+                dark, raise Lightness (+20 to +40).</p>
 
               <div style="display:flex; flex-direction:column; gap:8px;">
                 <div>
@@ -23821,7 +23869,7 @@
       async function printExtraSheet(sec) {
         try {
           let ep = paperFor(sec.size);
-          const c = buildPrintCanvas(sec.size);
+          const c = printAdjust(buildPrintCanvas(sec.size));
           if (ep.receipt) ep = Object.assign({}, ep, { h: Math.round(c.height / RECEIPT_DPI * 254) / 10 });
           const ok = await printViaHelper([c], ep, sec.name);
           if (!ok) showToast('The second printer (' + sec.name + ') did not print.', 5000);
@@ -24180,6 +24228,19 @@
         if (!box) return;
         const paper = printSize ? paperFor(printSize) : null;
         const show = !!paper && !isReceiptPaper(printSize);
+        try {
+          const tqBox = document.getElementById('thermalQualityBox');
+          if (tqBox) {
+            tqBox.classList.toggle('hidden', !(paper && isReceiptPaper(printSize)));
+            const tq = printPrefs.thermalQuality || 'normal';
+            [...document.querySelectorAll('#thermalQualityRow [data-tq]')].forEach(b => b.classList.toggle('active', b.dataset.tq === tq));
+            document.getElementById('thermalQualityHint').textContent = {
+              best: 'Sharper and balanced darkness. Slower to prepare. Use this for photos on a thermal printer.',
+              normal: 'The standard look.',
+              draft: 'Coarse dots: quick, light, and gentle on the print head. Good for tests.'
+            }[tq];
+          }
+        } catch (e) { }
         box.classList.toggle('hidden', !show);
         if (!show) return;
         const sizes = photoSizeChoices();
@@ -24212,6 +24273,12 @@
         const v = b.dataset.pick || 'auto';
         if (v.indexOf('size:') === 0) { printPrefs.fit = 'size'; printPrefs.photoSize = v.slice(5); }
         else printPrefs.fit = v;
+        printPrefsChanged();
+      });
+      document.getElementById('thermalQualityRow').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-tq]');
+        if (!b) return;
+        printPrefs.thermalQuality = b.dataset.tq;
         printPrefsChanged();
       });
       borderlessToggle.addEventListener('change', () => { printPrefs.borderless = borderlessToggle.checked; printPrefsChanged(); });
@@ -24349,7 +24416,7 @@
       const MAX_COPIES = 10;
       const PRINT_TXT = { txtPrint: 'Print', txtPrinting: 'Printing, please hold…', txtCopies: 'How many copies?', txtLimit: 'That’s all the prints for this session' };
       // Saved with the setup (every device on the code gets them).
-      let printPrefs = { guestBtn: true, auto: false, printFirst: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
+      let printPrefs = { guestBtn: true, auto: false, printFirst: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'normal', txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
       function printTxt(k) { return (printPrefs[k] || '').trim() || PRINT_TXT[k]; }
       function cleanPrintPrefs(p) {
         p = p && typeof p === 'object' ? p : {};
@@ -24359,6 +24426,7 @@
           copies: Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(p.copies) || 1))), guestCopies: !!p.guestCopies, guestReq: !!p.guestReq, preview: p.preview !== false,
           fit: ['auto', 'contain', 'fill', 'size'].includes(p.fit) ? p.fit : 'auto',
           photoSize: typeof p.photoSize === 'string' && /^[0-9A-Za-z.]{1,12}$/.test(p.photoSize) ? p.photoSize : '', borderless: !!p.borderless,
+          thermalQuality: ['best', 'normal', 'draft'].includes(p.thermalQuality) ? p.thermalQuality : 'normal',
           txtPrint: txt(p.txtPrint, 24), txtPrinting: txt(p.txtPrinting, 60), txtCopies: txt(p.txtCopies, 40), txtLimit: txt(p.txtLimit, 70)
         };
       }
@@ -24554,7 +24622,7 @@
       }
       function printPreviewPages() {
         const pages = flipbookResult ? buildFlipbookPages(paperFor(printSize)) : keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)];
-        return pages;
+        return printAdjustAll(pages);
       }
       function closePrintPreview() { document.getElementById('ppvOverlay').hidden = true; ppv.pages = []; ppv.urls = []; }
       // Look at every page: arrows, numbered buttons, swipe, or the left / right keys. Pages are turned into pictures only when looked at.
@@ -24680,10 +24748,8 @@
         if (wifiPrinter && wifiPrinter.escp2 && !o.color) o.color = 'color';   // L120 / L121: colour enabled by default
         o.cal = wifiCal;
         o.borderless = !!(printPrefs && printPrefs.borderless && window.__PBNet);
-        o.brightness = (typeof colorAdj !== 'undefined' && colorAdj.brightness) ? colorAdj.brightness : 0;
-        o.red = (typeof colorAdj !== 'undefined' && colorAdj.red) ? colorAdj.red : 0;
-        o.green = (typeof colorAdj !== 'undefined' && colorAdj.green) ? colorAdj.green : 0;
-        o.blue = (typeof colorAdj !== 'undefined' && colorAdj.blue) ? colorAdj.blue : 0;
+        // Lightness / colour correction is already in the page (printAdjust); the printer code must not add it again.
+        o.brightness = 0; o.red = 0; o.green = 0; o.blue = 0;
         return o;
       }
       function wifiOptsUI() {
@@ -24739,10 +24805,10 @@
         if (window.__PBPrint && typeof window.__PBPrint.print === 'function') {
           const bd = document.createElement('button');
           bd.type = 'button'; bd.className = 'action-btn'; bd.style.cssText = 'width:auto;margin:0;text-align:left;';
-          bd.textContent = (wifiPrinter && wifiPrinter.dialog ? '\u2713 ' : '') + 'System Print Dialog · All available printers';
+          bd.textContent = (wifiPrinter && wifiPrinter.dialog ? '\u2713 ' : '') + 'Android print screen · any printer';
           bd.addEventListener('click', () => {
             wifiSave({ ip: 'android:dialog', name: 'Android print dialog', dialog: true });
-            showToast('Prints will open the Android print dialog.', 3500);
+            showToast('Prints will open the Android print screen.', 3500);
             wifiRenderList(wifiList());
             refreshPrintUI();
           });
@@ -24817,7 +24883,7 @@
         try { wifiOptsUI(); } catch (e) { }
         const dg = document.getElementById('wifiDiag');
         if (dg) dg.style.display = pbDebug() && wifiPrinter && wifiPrinter.escp2 ? '' : 'none';
-        if (st && wifiPrinter && wifiPrinter.dialog) st.textContent = 'Prints open the Android print dialog: pick the printer there. Printers that need a print service show up after you switch it on in Android print settings.';
+        if (st && wifiPrinter && wifiPrinter.dialog) st.textContent = 'Android opens its own print screen: pick the printer there. For a thermal receipt printer, use Bluetooth or the printer marked Receipt instead: the print screen gives rough photos.';
         else if (st && wifiPrinter) st.textContent = 'Printing to: ' + wifiPrinter.name + (wifiPrinter.usb ? ' [USB connected]' : ' [Wi-Fi ' + wifiPrinter.ip + ']');
         else if (st && !wifiScanTimer) st.textContent = '';
       }
@@ -24894,9 +24960,9 @@
         }
         if (paper.receipt && p.raw && window._btThermal && window._btThermal.EscPosEncoder) {
           const dotW = paper.w <= 55 ? 384 : 576;
-          const bVal = (typeof colorAdj !== 'undefined' && colorAdj && colorAdj.brightness) ? colorAdj.brightness : 0;
+          const bVal = 0;          // already in the page (printAdjust)
           for (const cv of all) {
-            const bytes = new window._btThermal.EscPosEncoder(dotW).initialize().image(window._btThermal.toReceiptCanvas(cv, dotW, bVal)).cut().getBuffer();
+            const bytes = new window._btThermal.EscPosEncoder(dotW).initialize().image(window._btThermal.toReceiptCanvas(cv, dotW, bVal, printPrefs.thermalQuality || 'normal')).cut().getBuffer();
             await wifiJob(id => window.__PBNet.printRaw(id, p.ip, wifiBytesToB64(bytes)));
           }
           return;
@@ -25002,7 +25068,7 @@
           sessPrinted += per * n;
           showPrintingNote(printTxt('txtPrinting'), 4000);
           let paper = paperFor(printSize);
-          const pages = flipbookResult ? buildFlipbookPages(paper) : keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)];
+          const pages = printAdjustAll(flipbookResult ? buildFlipbookPages(paper) : keychainMode(printSize) ? buildKeychainSheets(printSize) : stripPagesMode(printSize) ? buildStripPages(printSize) : [buildPrintCanvas(printSize)]);
           // Receipt rolls: the "page" is as long as the receipt.
           if (paper.receipt) paper = Object.assign({}, paper, { h: Math.round(pages[0].height / RECEIPT_DPI * 254) / 10 });
           const label = (n > 1 ? n + ' copies, ' : '') + paper.name;
@@ -25026,7 +25092,7 @@
             try {
               showPrintingNote(printTxt('txtPrinting'), 8000);
               const rollW = (paper.w && paper.w <= 55) ? '58mm' : '80mm';
-              const btOpts = { brightness: (typeof colorAdj !== 'undefined' && colorAdj && colorAdj.brightness) ? colorAdj.brightness : 0 };
+              const btOpts = { brightness: 0, quality: printPrefs.thermalQuality || 'normal' };          // colour already in the page (printAdjust)
               await window._btThermal.printViaBluetooth(pages[0], rollW, btOpts);
               // If n > 1 copies, print the rest
               for (let ci = 1; ci < all.length; ci++) await window._btThermal.printViaBluetooth(all[ci], rollW, btOpts);
@@ -25939,10 +26005,7 @@
       function liveFilterCss() {
         var f = FILTERS[filterKey] || '';
         if (softSkin) f += ' brightness(1.04) contrast(.94)';
-        if (colorAdj.brightness) {
-          var bMul = Math.max(0, 1 + (colorAdj.brightness / 100));
-          f += ' brightness(' + bMul.toFixed(2) + ')';
-        }
+        // Lightness / colour correction is for the printed photo only (see printAdjust): the guest's camera stays natural.
         return f.trim();
       }
       function applyLiveFilter() {
@@ -25954,8 +26017,8 @@
       // Per-look grain strength, vignette strength and light leak for the vintage looks.
       var VINTAGE_FX = { film: { grain: 16, vig: .35 }, faded: { grain: 6, vig: .15 }, retro: { grain: 10, vig: .4, leak: true }, instant: { grain: 8, vig: .3, leak: true }, noir: { grain: 22, vig: .5 } };
       function applyFilterToCanvas(c) {
-        var withAdj = hasColorAdj();
-        if (filterKey === 'none' && !softSkin && !dateStamp && !withAdj) return;
+        var withAdj = false;          // colour correction is applied to prints only (printAdjust), never to the shots
+        if (filterKey === 'none' && !softSkin && !dateStamp) return;
         var ctx = c.getContext('2d'), w = c.width, h = c.height;
         if (softSkin) {
           // A softly blurred copy laid lightly on top smooths skin and evens tone.
@@ -26025,6 +26088,21 @@
         }
       }
 
+      // Lightness and colour correction, applied once to the page that goes to the printer and to the print preview.
+      // Every page is a fresh canvas, so it is changed in place. The camera, the screen and the digital copies are untouched.
+      function printAdjust(c) {
+        if (!c || !hasColorAdj()) return c;
+        var ctx = c.getContext('2d'), w = c.width, h = c.height;
+        if (!w || !h) return c;
+        var img = ctx.getImageData(0, 0, w, h), d = img.data, i;
+        var bOff = (colorAdj.brightness || 0) * 2.55;
+        var rOff = bOff + (colorAdj.red || 0) * 2.55, gOff = bOff + (colorAdj.green || 0) * 2.55, uOff = bOff + (colorAdj.blue || 0) * 2.55;
+        for (i = 0; i < d.length; i += 4) { d[i] += rOff; d[i + 1] += gOff; d[i + 2] += uOff; }   // Uint8ClampedArray clamps + rounds
+        ctx.putImageData(img, 0, 0);
+        return c;
+      }
+      function printAdjustAll(pages) { (pages || []).forEach(printAdjust); return pages; }
+
       function reapplyFiltersToShots() {
         if (!Array.isArray(shotCanvases)) return;
         shotCanvases.forEach(function (c) {
@@ -26084,14 +26162,15 @@
       function savePrintOptsForPrinter() {
         try {
           var k = liveKey();
-          printOptsMap[k] = { fit: printPrefs.fit || 'auto', photoSize: printPrefs.photoSize || '', borderless: !!printPrefs.borderless };
+          printOptsMap[k] = { fit: printPrefs.fit || 'auto', photoSize: printPrefs.photoSize || '', borderless: !!printPrefs.borderless, thermalQuality: printPrefs.thermalQuality || 'normal' };
           saveProfileMaps();
         } catch (e) { }
       }
       function loadPrintOptsForPrinter(k) {
         try {
-          var o = printOptsMap[k] || { fit: 'auto', photoSize: '', borderless: false };
+          var o = printOptsMap[k] || { fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'normal' };
           printPrefs.fit = o.fit || 'auto'; printPrefs.photoSize = o.photoSize || ''; printPrefs.borderless = !!o.borderless;
+          printPrefs.thermalQuality = ['best', 'normal', 'draft'].indexOf(o.thermalQuality) >= 0 ? o.thermalQuality : 'normal';
           refreshPhotoFitUI();
         } catch (e) { }
       }
@@ -26126,7 +26205,7 @@
         var lbl = document.getElementById('colorAdjFor');
         if (lbl) lbl.textContent = viewingLive()
           ? (lk ? 'Applies to ' + lk + ', the printer for this paper size.' : 'Applies to the printer chosen for this paper size.')
-          : 'Editing ' + vk + ', which this paper size does not use. The preview and camera still show ' + (lk || 'the printer in use') + '.';
+          : 'Editing ' + vk + ', which this paper size does not use. Its colour is used when you print on it.';
         var cp = document.getElementById('btnCopyColorAdj');
         if (cp) {
           var src = viewingLive() ? names.filter(function (n) { return n !== lk; })[0] : lk;
@@ -29284,7 +29363,7 @@
         try {
           var res = await reservePrints(n);
           if (!res.ok) { limitReached(); return { ok: false, error: 'No prints left for this event.' }; }
-          var pages = [buildPlainPrint(printSize, cv)];
+          var pages = printAdjustAll([buildPlainPrint(printSize, cv)]);
           if (paper.receipt) paper = Object.assign({}, paper, { h: Math.round(pages[0].height / RECEIPT_DPI * 254) / 10 });
           var label = (n > 1 ? n + ' copies, ' : '') + paper.name;
           if (viaStation) { await sendToStation(pages, paper, n); showToast('Sent to the print station (' + label + ').', 4000); return { ok: true }; }
@@ -33917,8 +33996,10 @@
       // the code; cached here so a locked booth still unlocks offline).
       // Trials: the PIN and the lock belong to that trial only (its expiry time).
       var PIN_CACHE_KEY = 'pb4u.lockPin.code';
-      function isTrialLock() { return !!(window.__PB && window.__PB.type === 'trial'); }
-      function trialTag() { return window.__PB ? String(window.__PB.exp || '') : ''; }
+      // Android offline app: no web session (no pb_token) and often no internet, so its PIN lives on the tablet only, like a trial's.
+      function isAndroidKioskLock() { return !!(window.__PB && window.__PB.android && window.__PB.offline); }
+      function isTrialLock() { return !!(window.__PB && (window.__PB.type === 'trial' || isAndroidKioskLock())); }
+      function trialTag() { return isAndroidKioskLock() ? 'android' : (window.__PB ? String(window.__PB.exp || '') : ''); }   // the tablet keeps its PIN when the code is renewed
       var codePin = isTrialLock() ? null : lockRead(PIN_CACHE_KEY);
       if (codePin && !codePin.h) codePin = null;
       var seenReset = ((lockRead(PIN_CACHE_KEY) || {}).reset) || 0;
@@ -33969,7 +34050,7 @@
         document.getElementById('lockPinLabel').textContent = has ? 'Change the 4-digit PIN' : 'Set your own 4-digit PIN';
         document.getElementById('lockFab').hidden = !lockAllowed();
         var note = document.getElementById('lockPinNote');
-        if (!note.dataset.msg) note.textContent = has ? (isTrialLock() ? 'Your PIN is set for this trial.' : 'Your PIN is set for this code (every device using it).') : '';
+        if (!note.dataset.msg) note.textContent = has ? (isAndroidKioskLock() ? 'Your PIN is set on this tablet.' : isTrialLock() ? 'Your PIN is set for this trial.' : 'Your PIN is set for this code (every device using it).') : '';
         document.getElementById('lockTestNote').style.display = has ? 'none' : '';
       }
       document.getElementById('lockPinSave').addEventListener('click', async function () {
@@ -33992,7 +34073,7 @@
           } catch (err) { note.textContent = 'Couldn’t save the PIN. Check the internet and try again.'; setTimeout(function () { delete note.dataset.msg; }, 5000); return; }
         }
         a.value = ''; b.value = '';
-        note.textContent = isTrialLock() ? 'PIN saved for this trial.' : 'PIN saved. It works on every device using this code.';
+        note.textContent = isAndroidKioskLock() ? 'PIN saved on this tablet.' : isTrialLock() ? 'PIN saved for this trial.' : 'PIN saved. It works on every device using this code.';
         setTimeout(function () { delete note.dataset.msg; }, 4000);
         refreshLockSetup();
       });
@@ -40156,6 +40237,31 @@
           refreshSetupNav();
         });
       })();
+    })();
+  </script>
+  <script>
+    // Android app only: fewer words and buttons on screen (see the .pb-android rules in the page style).
+    (function () {
+      function isAndroidApp() { try { return /PB4uAndroid/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.android); } catch (e) { return false; } }
+      function declutter() {
+        if (document.documentElement.classList.contains('pb-android')) return;
+        document.documentElement.classList.add('pb-android');
+        document.addEventListener('click', function (e) {
+          var h = e.target && e.target.closest ? e.target.closest('.panel-hint:not([id])') : null;
+          if (h) h.classList.toggle('pb-tip-open');
+        });
+        var fit = document.getElementById('photoFitBox'), col = document.getElementById('colorAdjBox');
+        var copies = document.querySelector('#printSection .copies-row');
+        if (fit && col && copies && copies.parentNode && !document.getElementById('pbMoreOptions')) {
+          var d = document.createElement('details'); d.className = 'pb-more'; d.id = 'pbMoreOptions';
+          var sm = document.createElement('summary'); sm.textContent = 'More options: photo size, borderless, colour';
+          d.appendChild(sm);
+          copies.parentNode.insertBefore(d, copies);
+          d.appendChild(fit); d.appendChild(col);
+        }
+      }
+      window._pbDeclutter = declutter;
+      if (isAndroidApp()) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', declutter); else declutter(); }
     })();
   </script>
 </body>

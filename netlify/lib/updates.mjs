@@ -136,8 +136,9 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-05', title: 'Animated 360 Effects Now Really Move (Android)', for: ['app'], app: '1.0.91',
+    date: '2026-11-05', title: 'Animated 360 Effects Now Really Move, and No 360 Buttons on Phones (Android)', for: ['app'], app: '1.0.91',
     items: [
+      'Record 360 and 360 desk are no longer shown on Android phones; they stay on tablets (and in the laptop app).',
       'Matches the laptop app version for the 360 desk. Effects are applied by the laptop app, which now renders them with real motion and the Trajectory, Size, Wobble and Location settings.'
     ]
   },

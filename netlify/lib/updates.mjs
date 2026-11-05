@@ -133,6 +133,13 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-05', title: 'No 360 Buttons on Android, Epson Borderless Test Mode (Android)', for: ['app'], app: '1.0.97',
+    items: [
+      'The 360 desk and Record 360 buttons no longer show in the Android app (phones and tablets). They stay in the laptop app and on the website.',
+      'For testing only (hidden unless Admin turns the debug option on): the Epson L-series built-in Epson mode has Normal 720 dpi and Best 1440 dpi test qualities for 4x6 glossy photo paper, now with borderless as well. It has not been tried on every printer, so the normal printing choices stay as they are.'
+    ]
+  },
+  {
     date: '2026-11-05', title: 'Choose Your Own Booth Wi-Fi Name and Password', for: ['app'], app: '1.0.84',
     items: [
       'Windows laptop: the booth Wi-Fi (the laptop making its own network, no router needed) now has a name and password you choose in Setup. Press "Save name & password"; if the booth Wi-Fi is on, it restarts with the new ones. It still needs no internet.',

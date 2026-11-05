@@ -7,6 +7,7 @@
 //      GitHub Actions builds the installers and attaches them to the release "desktop-v1.0.3".
 //   That's all: the site only offers a version once its 3 installers are on GitHub (checked
 //   below), so /app/ and the laptops' "update" prompt switch over by themselves after the build.
+import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
@@ -92,8 +93,9 @@ export const APP_RELEASES = [
 export const APP = APP_RELEASES[0];
 export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
-// offer to download it when theirs is older. Change it together with versionName in android/app/build.gradle.
-export const ANDROID = { version: '1.0.86', date: '2026-11-05', url: 'https://github.com/' + REPO + '/releases/download/android-v1.0.86/photobooth4u-kiosk-android.apk' };
+// offer to download it when theirs is older. The version is taken from versionName in android/app/build.gradle
+// (scripts/build-booth.mjs writes android-version.mjs on every build), so there is nothing to change here.
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-05', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';

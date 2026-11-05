@@ -20,3 +20,14 @@ if (existsSync(iosAsset)) {
   copyFileSync(src, iosAsset);
   console.log('Synced to ios/photobooth4u/booth.html');
 }
+
+// The newest Android app version offered to tablets comes from versionName in android/app/build.gradle,
+// so it can never be left behind when a new APK is released (netlify/lib/updates.mjs reads this file).
+const gradle = new URL('../android/app/build.gradle', import.meta.url);
+if (existsSync(gradle)) {
+  const m = /versionName\s+"([0-9.]+)"/.exec(readFileSync(gradle, 'utf8'));
+  if (m) {
+    writeFileSync(new URL('../netlify/lib/android-version.mjs', import.meta.url), "export default '" + m[1] + "';\n");
+    console.log('Android app version ' + m[1] + ' -> netlify/lib/android-version.mjs');
+  }
+}

@@ -67,12 +67,68 @@ console.log('\nTest 3: Processing Lock Banner & UI Controls Dimming');
   assert(html.includes('id="spinEditLockBanner"'), '#spinEditLockBanner is defined');
   assert(html.includes('id="spinUnlockEditBtn"'), '#spinUnlockEditBtn is defined');
   assert(html.includes('.spin-locked-controls'), '.spin-locked-controls CSS class exists');
-  assert(html.includes('.spin-locked-controls .spin-lock-banner'), 'Locked controls override allows banner interactions');
-  assert(html.includes('.spin-locked-controls .spin-lock-banner *'), 'Locked controls override allows unlock button clicks');
+  // The scroll area itself must stay live: only the cards are made unclickable, never the whole column
+  const lockCss = html.slice(html.indexOf('.spin-locked-controls'), html.indexOf('.spin-locked-controls') + 600);
+  assert(/\.spin-locked-controls \.spin-panel-card:not\(#spinSecVideos\)\s*\{[^}]*pointer-events:\s*none/.test(lockCss), 'Locked cards are unclickable but the column still scrolls');
+  assert(!/\.spin-locked-controls\s*\{[^}]*pointer-events/.test(html), 'Locked column itself keeps pointer events (scroll wheel / scrollbar work)');
+  assert(html.includes('function spinSetCardsInert'), 'Locked cards are made inert so Tab cannot reach them');
 
   // Check spinModalUpdate lock logic
   assert(html.includes("var controlsCol = document.getElementById('spinStudioControls')"), 'spinModalUpdate targets #spinStudioControls for locking');
   assert(html.includes("controlsCol.classList.toggle('spin-locked-controls', !!isLocked)"), 'Locks/unlocks controls column dynamically');
+}
+
+// Test 3b: bug fixes - share QR, typing, rendered preview, mute, Spin & Print preview
+console.log('\nTest 3b: Share QR, typing, rendered preview, mute and Spin & Print preview');
+{
+  const shareVideoStart = html.indexOf('\n    .spin-share-stage video {');
+  const shareVideoCss = html.slice(shareVideoStart, shareVideoStart + 300);
+  assert(/position:\s*static/.test(shareVideoCss), 'Share video no longer inherits the global absolute video rule (QR codes stay visible)');
+
+  const kd = html.slice(html.indexOf("window.addEventListener('keydown', function (e) {\n        var k = e.key;"), html.indexOf("window.addEventListener('keydown', function (e) {\n        var k = e.key;") + 700);
+  assert(/INPUT/.test(kd) && /TEXTAREA/.test(kd) && kd.indexOf('INPUT') < kd.indexOf("k === ' '"), 'Remote-shutter key handler ignores typing in text fields (space works)');
+
+  assert(html.includes('function spinRefreshStudio'), 'Studio preview is refreshed when the share modal closes');
+  assert(/function closeSpinShareModal\(noRefresh\)[\s\S]{0,400}spinRefreshStudio\(\)/.test(html), 'Back to Studio re-attaches the preview');
+  assert(html.includes('function spinShowRendered'), 'Finished renders show the rendered video by default');
+  assert(/it\.status === 'edited'\)\s*\{[\s\S]{0,200}spinShowRendered\(it\)/.test(html), 'spinEdit switches to the rendered video when done');
+  assert(/spinSetOverlayPreview\(false\)/.test(html), 'Overlay Preview is switched off once the video is rendered');
+
+  assert(html.includes('id="spinMuteBtn"') && html.includes("localStorage.setItem('pb_spin_muted'"), 'Mute / unmute button for the preview (remembered)');
+  assert(html.includes('v.muted = !!spinMuted'), 'Mute state applies to each opened clip');
+
+  assert(html.includes('id="spinPrintPv"') && html.includes('function openSpinPrintPreview'), 'Spin & Print preview overlay exists');
+  assert(/if \(!opts\.auto && !opts\.skipPreview\)\s*\{\s*openSpinPrintPreview/.test(html), 'Manual Spin & Print shows the preview first; auto-print skips it');
+  // Top-3 UX improvements
+  assert(html.includes('function spinSetEditBtn') && /#spinEditBtn small\s*\{/.test(html) && html.includes("'🎬 Edit video', spinPresetLabel()"), 'Edit button: one-line label with the preset as a subtitle (no mid-word wrapping)');
+  assert(html.includes('id="spinStateBadge"') && html.includes("'✓ Rendered'") && html.includes("'✎ Draft preview'"), 'Rendered / Draft badge on the live preview');
+  assert(html.includes('function spinUnlockEditing') && /it\.edited && !it\.isDrafting\) \{ spinUnlockEditing\(\)/.test(html) && html.includes("'✏️ Edit again'"), 'Edit again button unlocks a rendered clip in one click');
+  assert(html.includes('function spinFrameTimes') && html.includes('id="spinPpOffset"') && /spinPrintItem\(spinPp\.it, \{ auto: false, solo: spinPp\.solo, offset:/.test(html), 'Spin & Print preview can re-pick moments (earlier / later slider)');
+  assert(html.includes('figcaption') && html.includes('canvases.times'), 'Preview frames show the time they were taken from');
+  // Improvements 4-8
+  assert(html.includes('function spinPwText') && html.includes('id="spinShareWifiReveal"') && !/'Wi-Fi: ' \+ wf\.ssid \+ \(wf\.pass \? ' \/ ' \+ wf\.pass/.test(html), 'Wi-Fi password is hidden until "Show password" / a tap');
+  assert(/id="spinText1" maxlength="60"/.test(html) && /id="spinText2" maxlength="80"/.test(html) && html.includes('function spinUpdateTextHints') && html.includes('Too wide for the video'), 'Text lines have a length limit and a too-wide warning');
+  assert(html.includes('Click "Process changes" to apply them to the video.'), 'Draft hint tells the user changes need Process');
+  assert(html.includes('id="spinPpPaper"') && html.includes('function spinPpFillPaper') && html.includes('spinPp.origSize'), 'Print preview has a paper-size picker that Back to Studio undoes');
+  assert(html.includes('Full-screen video') && !html.includes('Hide QR Codes') && html.includes('v.muted = !!spinMuted;          // follows') && html.includes("'✓ Copied'"), 'Share modal: clearer toggle label, follows mute, visible Copy confirmation');
+  assert(/@media \(max-width: 900px\)[\s\S]{0,300}\.spin-studio-preview \{ order: -1/.test(html) && html.includes('@media (pointer: coarse)') && html.includes('sc.scrollHeight > sc.clientHeight'), 'Tablet portrait stacks with preview first; touch targets are finger-sized; tabs still scroll when stacked');
+  // Found by simulating the flow in a browser
+  assert(html.includes('#spinEditBtn[hidden] { display: none; }'), 'Edit button stays hidden when editing is unavailable (display:flex must not beat [hidden])');
+  assert(html.includes('if (!spinCur && spinQueue.length && spinOverlay && !spinOverlay.hidden) spinOpenItem(spinQueue[0]);'), 'The first clip added is selected automatically');
+  assert(html.includes('var capH = Math.max(200') && html.includes("Math.round(capH * 9 / 16)"), 'Preview stage is exactly as wide as its aspect ratio needs (no wide black box)');
+  assert(html.includes('.spin-pp-page[hidden]') && html.includes('var pick0 = ps0.filter'), 'Print preview still draws when no paper was chosen yet, and never shows a broken image');
+  assert(html.includes("stepNum.textContent = wf ? '2' : '1'"), 'A lone download QR is labelled step 1');
+  assert(html.includes('.spin-lock-banner { position: sticky; top: 0; z-index: 3; }') && html.includes('#spinCurClipBadge { max-width: 190px'), 'Lock banner stays visible; long clip names are truncated');
+  assert(html.includes('.spin-head-title-wrap { display: none; }') && html.includes('.spin-time-seek { flex: 1 1 100%'), 'Narrow (phone) header and timeline fit the screen');
+  // spinFrameTimes sanity (pure function copied from the page)
+  {
+    const m = html.match(/function spinFrameTimes\([\s\S]*?\n      \}/);
+    const fn = new Function(m[0] + '; return spinFrameTimes;')();
+    const t3 = fn(10, 3, 0), tSolo = fn(10, 1, 0.4), tEdge = fn(10, 3, -0.4);
+    assert(Math.abs(t3[0] - 2.5) < 1e-9 && Math.abs(t3[2] - 7.5) < 1e-9, 'Frame times: 3 frames at 25% / 50% / 75% by default');
+    assert(Math.abs(tSolo[0] - 9) < 1e-9 && tEdge[0] >= 0.5 - 1e-9, 'Frame times: offset moves frames and is clamped inside the clip');
+  }
+  assert(html.includes('function spinFinishPrint') && /spinPpPrint[\s\S]{0,400}spinFinishPrint/.test(html), '"Continue to print" hands off to the print screen');
 }
 
 // Test 4: Live Aspect Ratio & WYSIWYG Stage

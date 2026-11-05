@@ -3804,19 +3804,13 @@
     .spin-lock-banner[hidden] {
       display: none !important;
     }
-    .spin-locked-controls {
+    /* Locked while a clip is rendered: the scroll area itself stays live (wheel, scrollbar, top tabs),
+       only the option cards are dimmed and unclickable. The video queue card stays usable. */
+    .spin-locked-controls .spin-panel-card:not(#spinSecVideos) {
       opacity: 0.52;
       pointer-events: none !important;
       user-select: none;
       filter: grayscale(35%);
-    }
-    .spin-locked-controls .spin-lock-banner {
-      opacity: 1 !important;
-      pointer-events: auto !important;
-      filter: none !important;
-    }
-    .spin-locked-controls .spin-lock-banner * {
-      pointer-events: auto !important;
     }
 
     /* High-contrast labels in sidebar and modal QR boxes */
@@ -4039,6 +4033,10 @@
       width: 100%;
     }
     .spin-share-stage video {
+      position: static;
+      inset: auto;
+      width: auto;
+      height: auto;
       max-height: 58vh;
       max-width: 100%;
       border-radius: 18px;
@@ -4083,6 +4081,98 @@
         text-align: center;
       }
     }
+
+    /* Tablets in portrait / narrow windows: live preview on top and compact, one column, no cramped two-column grid */
+    @media (max-width: 900px) {
+      .spin-studio-body { display: flex; flex-direction: column; overflow-y: auto; height: auto; padding: 10px 12px; gap: 14px; }
+      .spin-studio-preview { order: -1; position: relative !important; top: auto !important; height: auto; max-height: none; overflow: visible; width: 100%; }
+      .spin-studio-controls { height: auto; overflow: visible; padding-right: 0; }
+      .spin-stage-wrap { max-height: 38vh; }
+      .spin-stage-wrap video { max-height: 38vh; }
+    }
+    /* Touch screens: finger-sized targets in the 360 studio, share modal and print preview */
+    @media (pointer: coarse) {
+      #spinOverlay .desk-btn, #spinShareModal .desk-btn, #spinPrintPv .desk-btn { min-height: 44px; }
+      #spinOverlay .spin-tab-btn { min-height: 40px; padding: 8px 14px; }
+      #spinOverlay select, #spinOverlay input[type=text], #spinOverlay input[type=number], #spinPrintPv select { min-height: 40px; }
+      #spinOverlay input[type=range], #spinPrintPv input[type=range] { height: 30px; }
+      .spin-share-toggle-btn { min-height: 44px; }
+      .spin-share-close-btn { width: 44px; height: 44px; }
+    }
+
+    .spin-pp-page[hidden], .spin-pp-page img[hidden] { display: none; }
+    /* the "Edit again" banner stays visible while the locked options scroll under it */
+    .spin-lock-banner { position: sticky; top: 0; z-index: 3; }
+    /* long clip names and the Rendered / Draft badge never push the title into 3 lines */
+    .spin-preview-head { flex-wrap: wrap; gap: 6px 10px; }
+    #spinCurClipBadge { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* narrow header (phone / small window): one tidy row + a scrollable tab strip */
+    @media (max-width: 760px) {
+      .spin-studio-head { flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
+      .spin-head-sub { display: none; }
+      .spin-head-title { font-size: 15px; white-space: nowrap; }
+      .spin-back-btn { white-space: nowrap; padding: 6px 12px; }
+      .spin-head-left { flex: 1; min-width: 0; }
+      .spin-head-nav { order: 3; width: 100%; overflow-x: auto; }
+      .spin-head-title-wrap { min-width: 0; }
+      .spin-head-title { overflow: hidden; text-overflow: ellipsis; }
+      .spin-head-right { gap: 6px; flex: none; }
+      .spin-head-right .desk-btn { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+    }
+    @media (max-width: 520px) {
+      .spin-head-title-wrap { display: none; }      /* the Back button and the tabs say where you are */
+      .spin-timeline-bar { flex-wrap: wrap; }
+      .spin-time-seek { flex: 1 1 100%; min-width: 0; width: 100%; order: 3; }
+      .spin-speed-btn { padding: 5px 9px !important; font-size: 12px !important; }
+      .spin-preview-card { padding: 12px; }
+    }
+
+    /* Action row: label on one line, the preset name as a small subtitle (no mid-word wrapping) */
+    #spinEditBtn { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.15; }
+    #spinEditBtn[hidden] { display: none; }
+    #spinEditBtn span { white-space: nowrap; }
+    #spinEditBtn small { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-size: 10.5px; opacity: .85; margin-top: 2px; }
+    .spin-action-row .desk-btn { white-space: nowrap; }
+    .spin-text-hint { font: 600 11px 'Manrope', sans-serif; color: #b45309; margin: -2px 0 6px; }
+    .spin-text-hint[hidden] { display: none; }
+    .spin-pw-btn { background: transparent; color: #d9cfc6; border: 1px solid rgba(255,255,255,.25); border-radius: 999px; font: 700 11px 'Manrope', sans-serif; padding: 3px 10px; cursor: pointer; margin-top: 2px; }
+    .spin-pw-btn[hidden] { display: none; }
+    .spin-state-pill.rendered { background: #2E5A44; color: #fff; }
+    .spin-state-pill.draft { background: #fff3cd; color: #7a5405; }
+
+    /* Spin & Print preview (sits above the share modal) */
+    .spin-pp-ov { z-index: 10020; }
+    .spin-pp-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      gap: 18px 24px;
+      align-items: start;
+      padding: 20px 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .spin-pp-page {
+      background: #fff;
+      border-radius: 10px;
+      padding: 8px;
+      display: flex;
+      justify-content: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .spin-pp-page img { max-width: 100%; max-height: 56vh; object-fit: contain; display: block; }
+    .spin-pp-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 10px; font-size: 12px; color: #d9cfc6; }
+    .spin-pp-h { display: block; font: 800 13px 'Manrope', sans-serif; margin-bottom: 8px; color: #fff; }
+    .spin-pp-frames { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .spin-pp-frames figure { margin: 0; text-align: center; }
+    .spin-pp-frames img { width: 96px; height: auto; border-radius: 8px; border: 2px solid rgba(255, 255, 255, 0.28); background: #000; display: block; }
+    .spin-pp-frames figcaption { font: 700 10px monospace, sans-serif; color: #d9cfc6; margin-top: 3px; }
+    .spin-pp-slide { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 600; font-size: 11px; }
+    .spin-pp-slide input[type=range] { flex: 1; min-width: 110px; }
+    .spin-pp-mode { display: flex; flex-direction: column; gap: 4px; font: 700 12px 'Manrope', sans-serif; color: #f6f1ea; }
+    .spin-pp-mode select { padding: 6px 8px; border-radius: 8px; font-size: 13px; }
+    .spin-pp-sub { font: 500 12px 'Manrope', sans-serif; color: #d9cfc6; margin: 10px 0 0; }
+    .spin-pp-left, .spin-pp-right { min-width: 0; }
+    @media (max-width: 768px) { .spin-pp-body { grid-template-columns: minmax(0, 1fr); overflow-x: hidden; } .spin-pp-page img { max-height: 42vh; } }
 
     .desk-item video {
       width: 100%;
@@ -4148,7 +4238,7 @@
       position: relative;
       width: 100%;
       aspect-ratio: 9 / 16;
-      max-height: clamp(160px, 40vh, 460px);
+      max-height: clamp(200px, 50vh, 560px);
       background: #000;
       border-radius: 12px;
       overflow: hidden;
@@ -4165,7 +4255,7 @@
       inset: auto;
       width: 100%;
       height: 100%;
-      max-height: clamp(160px, 40vh, 460px);
+      max-height: clamp(200px, 50vh, 560px);
       object-fit: contain;
       background: #000;
       border-radius: 12px;
@@ -4174,7 +4264,7 @@
 
     .spin-stage-wrap.is-square {
       aspect-ratio: 1 / 1;
-      max-width: clamp(160px, 40vh, 460px);
+      max-width: clamp(200px, 50vh, 560px);
     }
     .spin-stage-wrap.is-square video {
       object-fit: cover;
@@ -14606,7 +14696,8 @@
                 <b style="font-size:12px;color:var(--ink);">Line 1 · Heading / Names</b>
                 <span class="spin-dim" id="spinText1PosLabel" style="font-size:11px;">Y: 18%</span>
               </div>
-              <input type="text" id="spinText1" placeholder="e.g. Sarah &amp; Michael" style="width:100%;box-sizing:border-box;font-size:13px;padding:6px 10px;border-radius:8px;border:1.5px solid var(--line);margin-bottom:6px;">
+              <input type="text" id="spinText1" maxlength="60" placeholder="e.g. Sarah &amp; Michael" style="width:100%;box-sizing:border-box;font-size:13px;padding:6px 10px;border-radius:8px;border:1.5px solid var(--line);margin-bottom:6px;">
+              <div class="spin-text-hint" id="spinText1Hint" hidden></div>
               <div class="spin-row" style="gap:6px 10px;">
                 <label>Font <select id="spinText1Font" style="max-width:140px;">
                     <option value="cursive" selected>Alex Brush (Romantic)</option>
@@ -14629,7 +14720,8 @@
                 <b style="font-size:12px;color:var(--ink);">Line 2 · Subtitle / Date / Hashtag</b>
                 <span class="spin-dim" id="spinText2PosLabel" style="font-size:11px;">Y: 26%</span>
               </div>
-              <input type="text" id="spinText2" placeholder="e.g. October 24, 2026" style="width:100%;box-sizing:border-box;font-size:13px;padding:6px 10px;border-radius:8px;border:1.5px solid var(--line);margin-bottom:6px;">
+              <input type="text" id="spinText2" maxlength="80" placeholder="e.g. October 24, 2026" style="width:100%;box-sizing:border-box;font-size:13px;padding:6px 10px;border-radius:8px;border:1.5px solid var(--line);margin-bottom:6px;">
+              <div class="spin-text-hint" id="spinText2Hint" hidden></div>
               <div class="spin-row" style="gap:6px 10px;">
                 <label>Font <select id="spinText2Font" style="max-width:140px;">
                     <option value="serif" selected>Cinzel (Roman Serif)</option>
@@ -14713,6 +14805,7 @@
             <div style="display:flex;align-items:center;gap:8px;">
               <b style="font-size:15px;color:var(--ink);">Live 360 Studio Preview</b>
               <span class="spin-pill" id="spinCurClipBadge">Sample Demo</span>
+              <span class="spin-pill spin-state-pill" id="spinStateBadge" hidden></span>
             </div>
             <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;margin:0;font-weight:600;">
               <input type="checkbox" id="spinModalTogglePreview" checked> Overlay Preview
@@ -14728,6 +14821,7 @@
           <!-- Interactive Timeline Scrub & Playback Controls -->
           <div class="spin-timeline-bar">
             <button type="button" class="desk-btn" id="spinModalPlayBtn" style="padding:5px 12px;font-size:12px;font-weight:700;">▶ Play</button>
+            <button type="button" class="desk-btn" id="spinMuteBtn" title="Mute / unmute the preview sound" aria-label="Mute or unmute preview" style="padding:5px 9px;font-size:13px;">🔊</button>
             <span class="spin-time-counter" id="spinTimeCounter">0:00 / 0:00</span>
             <input type="range" class="spin-time-seek" id="spinTimeSeek" min="0" max="100" value="0" step="0.1">
           </div>
@@ -14753,7 +14847,7 @@
 
           <!-- Action buttons -->
           <div class="spin-action-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-            <button type="button" class="desk-btn primary" id="spinEditBtn" style="flex:1;min-width:130px;padding:9px 14px;font-weight:800;font-size:13px;">🎬 Edit / Process</button>
+            <button type="button" class="desk-btn primary" id="spinEditBtn" style="flex:1;min-width:130px;padding:9px 14px;font-weight:800;font-size:13px;"><span>🎬 Edit / Process</span></button>
             <button type="button" class="desk-btn" id="spinShareBtn" style="flex:1;min-width:110px;padding:9px 14px;font-weight:700;font-size:13px;background:var(--blue-deep,#1F3A52);color:#fff;">📱 Share + QR</button>
             <button type="button" class="desk-btn" id="spinPrintBtn" style="flex:1;min-width:110px;padding:9px 14px;font-weight:700;font-size:13px;background:#2E5A44;color:#fff;" title="Extract photo from 360 video and print strip / keychain">🖨️ Spin &amp; Print</button>
             <button type="button" class="desk-btn" id="spinViewBtn" hidden style="padding:9px 12px;font-size:12px;">View original</button>
@@ -14795,8 +14889,8 @@
           <h3 class="spin-share-title" id="spinShareTitle">✨ Your 360 Video is Ready</h3>
         </div>
         <div class="spin-share-head-right">
-          <button type="button" class="spin-share-toggle-btn" id="spinShareToggleQr" title="Toggle QR codes to view full final video">
-            <span id="spinShareToggleQrIcon">👁️</span> <span id="spinShareToggleQrText">Hide QR Codes</span>
+          <button type="button" class="spin-share-toggle-btn" id="spinShareToggleQr" title="Hide the QR codes and watch the video bigger">
+            <span id="spinShareToggleQrIcon">👁️</span> <span id="spinShareToggleQrText">Full-screen video</span>
           </button>
           <button type="button" class="spin-share-close-btn" id="spinShareClose" title="Close modal">✕</button>
         </div>
@@ -14813,6 +14907,7 @@
               <img id="spinShareWifiQrImg" alt="Booth Wi-Fi QR">
             </div>
             <div class="spin-qr-meta" id="spinShareWifiMeta">SSID: Photobooth4U</div>
+            <button type="button" class="spin-pw-btn" id="spinShareWifiReveal" hidden>Show password</button>
           </div>
         </div>
 
@@ -14843,6 +14938,58 @@
           <button type="button" class="desk-btn" id="spinSharePrintBtn" style="font-weight:700;background:#2E5A44;color:#fff;" title="Print photo strip or keychain from this 360 clip">🖨️ Spin &amp; Print</button>
           <button type="button" class="desk-btn" id="spinShareCopyBtn">📋 Copy Link</button>
           <button type="button" class="desk-btn primary" id="spinShareDoneBtn">Back to Studio</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Spin & Print preview: look at the strip / keychain here, in the 360 booth, before the print screen -->
+  <div class="spin-share-ov spin-pp-ov" id="spinPrintPv" hidden role="dialog" aria-label="Spin and Print preview">
+    <div class="spin-share-backdrop" id="spinPpBackdrop"></div>
+    <div class="spin-share-card">
+      <div class="spin-share-head">
+        <div class="spin-share-head-left">
+          <div class="spin-share-badge">PRINT PREVIEW</div>
+          <h3 class="spin-share-title">🖨️ Spin &amp; Print preview</h3>
+        </div>
+        <div class="spin-share-head-right">
+          <button type="button" class="spin-share-close-btn" id="spinPpClose" title="Back to studio">✕</button>
+        </div>
+      </div>
+      <div class="spin-pp-body">
+        <div class="spin-pp-left">
+          <div class="spin-pp-page"><img id="spinPpImg" alt="How the print will look"></div>
+          <div class="spin-pp-nav" id="spinPpNav" hidden>
+            <button type="button" class="desk-btn" data-go="-1" aria-label="Previous page">‹</button>
+            <span id="spinPpPageNote"></span>
+            <button type="button" class="desk-btn" data-go="1" aria-label="Next page">›</button>
+          </div>
+        </div>
+        <div class="spin-pp-right">
+          <b class="spin-pp-h">Frames taken from the 360 video</b>
+          <div class="spin-pp-frames" id="spinPpFrames"></div>
+          <label class="spin-pp-mode">Print mode
+            <select id="spinPpMode">
+              <option value="sequence">Multi-angle sequence (matches strip)</option>
+              <option value="solo">Solo (1 hero frame)</option>
+            </select>
+          </label>
+          <label class="spin-pp-mode" style="margin-top:12px;">Paper size
+            <select id="spinPpPaper" aria-label="Paper size for this print"></select>
+          </label>
+          <label class="spin-pp-mode" style="margin-top:12px;">Re-pick moments
+            <span class="spin-pp-slide"><span>earlier</span>
+              <input type="range" id="spinPpOffset" min="-40" max="40" step="2" value="0" aria-label="Move all frames earlier or later in the clip">
+              <span>later</span> <b id="spinPpOffsetVal">0%</b>
+              <button type="button" class="desk-btn" id="spinPpOffsetReset" style="padding:3px 9px;font-size:11px;">Reset</button></span>
+          </label>
+          <p class="spin-pp-sub" id="spinPpSub"></p>
+        </div>
+      </div>
+      <div class="spin-share-foot">
+        <p class="spin-share-note">Nothing is printed yet. Check the layout, then continue. You choose the number of copies on the next screen.</p>
+        <div class="spin-share-actions">
+          <button type="button" class="desk-btn" id="spinPpBack">Back to Studio</button>
+          <button type="button" class="desk-btn primary" id="spinPpPrint" style="background:#2E5A44;color:#fff;">Continue to print</button>
         </div>
       </div>
     </div>
@@ -20725,6 +20872,11 @@
 
       window.addEventListener('keydown', function (e) {
         var k = e.key;
+        var tgt = e.target;
+        if (tgt && tgt.nodeType === 1) {
+          var tg = (tgt.tagName || '').toUpperCase();
+          if (tg === 'INPUT' || tg === 'TEXTAREA' || tg === 'SELECT' || tgt.isContentEditable) return;   // typing: never treat keys as the remote shutter
+        }
         if (k === ' ' || k === 'Enter' || k === 'PageDown' || k === 'PageUp' || k === 'ArrowRight' || k === 'AudioVolumeUp' || k === 'AudioVolumeDown' || k === 'VolumeUp' || k === 'VolumeDown') {
           var printMod = document.getElementById('printModal');
           if (printMod && !printMod.hidden) return;
@@ -20732,6 +20884,10 @@
           if (tplMod && !tplMod.hidden) return;
           var ppv = document.getElementById('ppvOverlay');
           if (ppv && !ppv.hidden) return;
+          var spp = document.getElementById('spinPrintPv');
+          if (spp && !spp.hidden) return;
+          var ssm = document.getElementById('spinShareModal');
+          if (ssm && !ssm.hidden) return;
           if (k === ' ') e.preventDefault();
           triggerRemoteShutter(e);
         }
@@ -27258,6 +27414,8 @@
       // ──────────────────────────────────────────────────────────────────
       var spinQueue = [], spinSeq = 0, spinTimer = null, spinSeen = {}, spinPrev = {}, spinInfo = null, spinCur = null;
       var spinEnv = { ffmpeg: false, music: '' };
+      var spinMuted = false;
+      try { spinMuted = localStorage.getItem('pb_spin_muted') === '1'; } catch (e) { }
       var SPIN_WEB_MAX = 28 * 1024 * 1024;           // the website's upload path takes about this much per video
       var spinOverlay = document.getElementById('spinOverlay'), spinGrid = document.getElementById('spinGrid');
       function spinDesktop() { return !!(PBX && PBX.spinScan); }
@@ -27590,21 +27748,23 @@
         var v = document.getElementById('spinVideo');
         if (!stage) return;
         var orient = (spinLook && spinLook.orient) || 'portrait';
+        // The stage is as tall as the height cap and exactly as wide as its aspect ratio needs, so a portrait clip is not boxed in a wide black stage.
+        var capH = Math.max(200, Math.min(560, Math.round(window.innerHeight * (window.innerWidth <= 900 ? 0.38 : 0.5))));
         stage.classList.remove('is-square', 'is-landscape', 'is-portrait');
         if (orient === 'square') {
           stage.classList.add('is-square');
           stage.style.aspectRatio = '1 / 1';
-          stage.style.maxWidth = '48vh';
+          stage.style.maxWidth = 'min(100%, ' + capH + 'px)';
           if (v) v.style.objectFit = 'cover';
         } else if (orient === 'landscape') {
           stage.classList.add('is-landscape');
           stage.style.aspectRatio = '16 / 9';
-          stage.style.maxWidth = 'min(100%, 720px)';
+          stage.style.maxWidth = 'min(100%, 720px, ' + Math.round(capH * 16 / 9) + 'px)';
           if (v) v.style.objectFit = 'contain';
         } else {
           stage.classList.add('is-portrait');
           stage.style.aspectRatio = '9 / 16';
-          stage.style.maxWidth = 'min(100%, 360px)';
+          stage.style.maxWidth = 'min(100%, ' + Math.round(capH * 9 / 16) + 'px)';
           if (v) v.style.objectFit = 'contain';
         }
         var lutFilters = {
@@ -28458,6 +28618,8 @@
           spinGrid.appendChild(b);
         });
         spinHint();
+        // Nothing selected yet (first clip just arrived): open it so the preview and buttons work straight away.
+        if (!spinCur && spinQueue.length && spinOverlay && !spinOverlay.hidden) spinOpenItem(spinQueue[0]);
       }
       function spinTagUpdate(it) {     // progress only: don't rebuild the tiles (their pictures would reload)
         var d = spinGrid.querySelector('.desk-item[data-id="' + it.id + '"] .done');
@@ -29562,9 +29724,34 @@
         spinAnimReq = requestAnimationFrame(step);
       }
 
+      // The live "Overlay Preview" box only makes sense on an un-rendered clip: a rendered video already has the frame/text burned in.
+      function spinSetOverlayPreview(on) {
+        var c = document.getElementById('spinModalTogglePreview');
+        if (c) c.checked = !!on;
+      }
+
+      // Show the finished (rendered) video: no canvas overlay, controls locked until the user unlocks.
+      function spinShowRendered(it) {
+        if (!it || !it.edited) return;
+        it.viewOrig = false;
+        it.isDrafting = false;
+        spinSetOverlayPreview(false);
+        var v = document.getElementById('spinVideo');
+        if (v) {
+          var rs = spinSrc(it, true);
+          if (rs && v.getAttribute('src') !== rs) { v.src = rs; v.load(); }
+          v.loop = true;
+          v.play().catch(function () { });
+        }
+        var pb = document.getElementById('spinModalPlayBtn');
+        if (pb) pb.textContent = '⏸ Pause';
+        spinUpdateStageAspect();
+      }
+
       function spinSwitchToDraftPreview(it) {
         if (!it) it = spinCur;
         if (!it) return;
+        if (!it.isDrafting) spinSetOverlayPreview(true);
         it.isDrafting = true;
         it.viewOrig = true;
         var v = document.getElementById('spinVideo');
@@ -29584,7 +29771,7 @@
         }
         var eb = document.getElementById('spinEditBtn');
         if (eb && it.edited) {
-          eb.textContent = '⚡ Process changes';
+          spinSetEditBtn(eb, '⚡ Process changes', spinPresetLabel());
         }
         var cvs = document.getElementById('spinPreviewCanvas');
         if (cvs) cvs.style.display = 'block';
@@ -29593,6 +29780,7 @@
       function renderSpinModalPreview() {
         var it = spinCur;
         if (spinOverlay && spinOverlay.hidden) return;
+        try { spinUpdateTextHints(); } catch (e) { }
         var cvs = document.getElementById('spinPreviewCanvas');
         if (!cvs) return;
         var showPv = document.getElementById('spinModalTogglePreview');
@@ -29787,13 +29975,67 @@
           }
         } catch (e) { it.status = 'error'; it.err = (e && e.message) || 'Failed'; }
         it.job = null; spinRender(); spinModalUpdate();
-        if (it === spinCur && it.edited) {
-          var v = document.getElementById('spinVideo');
-          v.src = spinSrc(it, true);
-          v.load();
-          v.loop = true;
-          v.play().catch(function () { });
+        if (it === spinCur && it.edited && it.status === 'edited') {
+          // done: show the rendered result by default, overlay preview off (it is already burned in)
+          spinShowRendered(it);
+          spinModalUpdate();
         }
+      }
+
+      // Warn when a text line is wider than the video, so it won't be clipped in the render.
+      var spinHintCtx = null;
+      function spinUpdateTextHints() {
+        var W = 1080;
+        try { W = spinDims().W || 1080; } catch (e) { }
+        if (!spinHintCtx) spinHintCtx = document.createElement('canvas').getContext('2d');
+        [1, 2].forEach(function (n) {
+          var inp = document.getElementById('spinText' + n), hint = document.getElementById('spinText' + n + 'Hint');
+          if (!inp || !hint) return;
+          var txt = (inp.value || '').trim(), msg = '';
+          var max = Number(inp.getAttribute('maxlength')) || 0;
+          if (txt) {
+            var fontSel = document.getElementById('spinText' + n + 'Font'), sizeEl = document.getElementById('spinText' + n + 'Size');
+            var size = Number(sizeEl && sizeEl.value) || (n === 1 ? 52 : 26), key = (fontSel && fontSel.value) || 'sans';
+            var wpx = 0;
+            var fam = { cursive: '"Alex Brush", cursive', dancing: '"Dancing Script", cursive', serif: 'Cinzel, serif', playfair: '"Playfair Display", serif', sans: 'Montserrat, sans-serif', impact: '"Bebas Neue", Impact, sans-serif', oswald: 'Oswald, sans-serif', typewriter: '"Courier New", monospace' }[key] || 'sans-serif';
+            try { spinHintCtx.font = size + 'px ' + fam; wpx = spinHintCtx.measureText(txt).width; } catch (e) { }
+            if (wpx > W * 0.94) msg = 'Too wide for the video: shorten it or lower the size.';
+          }
+          if (!msg && max && txt.length >= max - 8) msg = (max - txt.length) + ' characters left.';
+          hint.hidden = !msg; hint.textContent = msg;
+        });
+      }
+
+      function spinPwText(wf, show) { return wf.ssid + (wf.pass ? ' / ' + (show ? wf.pass : '••••••') : ''); }
+
+      function spinSetEditBtn(eb, main, sub) {
+        eb.textContent = '';
+        var s = document.createElement('span'); s.textContent = main; eb.appendChild(s);
+        if (sub) { var m = document.createElement('small'); m.textContent = sub; eb.appendChild(m); }
+      }
+
+      // Open a rendered clip for editing again: show the original with the live overlay and unlock the options.
+      function spinUnlockEditing() {
+        var it = spinCur; if (!it) return;
+        it.isDrafting = true;
+        it.viewOrig = true;
+        spinSetOverlayPreview(true);
+        var v = document.getElementById('spinVideo');
+        if (v) {
+          var src = spinSrc(it, false);
+          if (src) { v.src = src; v.load(); v.play().catch(function () { }); }
+        }
+        spinModalUpdate();
+        showToast('Editing unlocked! Make adjustments and click Process again.', 2500);
+      }
+
+      // Locked cards are also made inert so keyboard Tab can't reach their fields; the scroll area itself is not inert.
+      function spinSetCardsInert(col, on) {
+        col.querySelectorAll('.spin-panel-card').forEach(function (c) {
+          if (c.id === 'spinSecVideos') return;
+          c.inert = !!on;
+          if (on) c.setAttribute('aria-disabled', 'true'); else c.removeAttribute('aria-disabled');
+        });
       }
 
       // ---- the player window & preview sidebar ----
@@ -29816,7 +30058,7 @@
           if (vb) vb.hidden = true;
           if (rm) rm.disabled = true;
           if (lockBanner) lockBanner.hidden = true;
-          if (controlsCol) controlsCol.classList.remove('spin-locked-controls');
+          if (controlsCol) { controlsCol.classList.remove('spin-locked-controls'); spinSetCardsInert(controlsCol, false); }
           if (badge) { badge.textContent = 'Sample Demo'; badge.classList.remove('active'); }
           renderSpinModalPreview();
           return;
@@ -29824,7 +30066,7 @@
 
         var isLocked = it && (it.status === 'editing' || (it.edited && !it.isDrafting));
         if (lockBanner) lockBanner.hidden = !isLocked;
-        if (controlsCol) controlsCol.classList.toggle('spin-locked-controls', !!isLocked);
+        if (controlsCol) { controlsCol.classList.toggle('spin-locked-controls', !!isLocked); spinSetCardsInert(controlsCol, !!isLocked); }
         if (lockTxt && it) {
           if (it.status === 'editing') {
             lockTxt.textContent = 'Processing clip (' + (it.pct || 0) + '%). Editing options locked during render.';
@@ -29847,7 +30089,15 @@
               var n = label.charAt(5), cap = document.createElement('b'); cap.dataset.n = n; cap.textContent = label.slice(8); cell.appendChild(cap);
               var how = document.createElement('em'); how.textContent = n === '1' ? 'Join the booth Wi-Fi' : (editing ? 'Scan now · video ready in seconds' : 'Open and save your video'); cell.appendChild(how);
               cell.appendChild(im);
-              if (sub) { var sm = document.createElement('small'); sm.textContent = sub; cell.appendChild(sm); }
+              if (sub) {
+                var sm = document.createElement('small'); sm.textContent = sub;
+                if (n === '1' && wf.pass) {   // Wi-Fi password stays hidden until staff tap the label
+                  var pwShown = false;
+                  sm.textContent = spinPwText(wf, false); sm.style.cursor = 'pointer'; sm.title = 'Tap to show / hide the Wi-Fi password';
+                  sm.addEventListener('click', function () { pwShown = !pwShown; sm.textContent = spinPwText(wf, pwShown); });
+                }
+                cell.appendChild(sm);
+              }
               box.appendChild(cell);
             } else cell.appendChild(im);
           };
@@ -29866,7 +30116,17 @@
         if (progTxt) progTxt.textContent = 'Editing… ' + (it.pct || 0) + '%';
         if (eb) {
           eb.hidden = !canEdit;
-          eb.textContent = editing ? 'Cancel editing' : (it.edited ? 'Edit again' : 'Edit video: ' + spinPresetLabel());
+          if (editing) spinSetEditBtn(eb, 'Cancel editing', '');
+          else if (it.edited && !it.isDrafting) spinSetEditBtn(eb, '✏️ Edit again', 'unlock the options');
+          else if (it.edited) spinSetEditBtn(eb, '⚡ Process changes', spinPresetLabel());
+          else spinSetEditBtn(eb, '🎬 Edit video', spinPresetLabel());
+        }
+        var stB = document.getElementById('spinStateBadge');
+        if (stB) {
+          var stTxt = '', stCls = '';
+          if (!editing && it.edited && !it.isDrafting && !it.viewOrig) { stTxt = '✓ Rendered'; stCls = 'rendered'; }
+          else if (!editing && it.edited && it.isDrafting) { stTxt = '✎ Draft preview'; stCls = 'draft'; }
+          stB.hidden = !stTxt; stB.textContent = stTxt; stB.classList.remove('rendered', 'draft'); if (stCls) stB.classList.add(stCls);
         }
         if (vb) {
           vb.hidden = !(it.edited && !editing);
@@ -29874,7 +30134,8 @@
         }
         var what = it.edited && !it.viewOrig ? 'edited' : 'original';
         if (msg) {
-          msg.textContent = it.status === 'shared' ? (wf ? 'Shared. Guest scans Step 1 to join the Wi-Fi, then Step 2 to watch and save the video.' : 'Shared. The guest scans this to watch and save the video.')
+          msg.textContent = (it.edited && it.isDrafting && !editing) ? 'Draft: the live preview shows your changes. Click "Process changes" to apply them to the video.'
+            : it.status === 'shared' ? (wf ? 'Shared. Guest scans Step 1 to join the Wi-Fi, then Step 2 to watch and save the video.' : 'Shared. The guest scans this to watch and save the video.')
             : it.status === 'queued' ? 'Saved on this device. It uploads when there is internet; the QR opens the event gallery.'
               : it.status === 'sharing' ? 'Sharing… this takes a few seconds.'
                 : editing ? 'Editing takes about as long as the video. You can keep using the booth.'
@@ -29891,10 +30152,12 @@
 
       function spinOpenItem(it) {
         spinCur = it;
+        if (it.edited && it.status !== 'editing') { it.isDrafting = false; it.viewOrig = false; }   // rendered clips open as the rendered video
         var v = document.getElementById('spinVideo'), src = spinSrc(it, !it.viewOrig);
         v.pause(); v.src = src || ''; v.load(); v.style.display = it.src === 'drive' ? 'none' : '';
         v.playbackRate = 1.0;
         v.loop = true;
+        v.muted = !!spinMuted;
         spinUpdateStageAspect();
         document.querySelectorAll('.spin-speed-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.rate === '1.0'); });
         var playBtn = document.getElementById('spinModalPlayBtn');
@@ -29953,6 +30216,9 @@
           tile.classList.toggle('selected', Number(tile.dataset.id) === it.id);
         });
 
+        // an already-rendered clip opens as the rendered video with the overlay preview off
+        spinSetOverlayPreview(!(it.edited && it.status !== 'editing' && !it.viewOrig && !it.isDrafting));
+
         spinModalUpdate();
         renderSpinModalPreview();
       }
@@ -29995,10 +30261,11 @@
         var card = document.getElementById('spinShareCard');
         if (card) card.classList.remove('qr-hidden');
         var toggleText = document.getElementById('spinShareToggleQrText');
-        if (toggleText) toggleText.textContent = 'Hide QR Codes';
+        if (toggleText) toggleText.textContent = 'Full-screen video';
         var toggleIcon = document.getElementById('spinShareToggleQrIcon');
         if (toggleIcon) toggleIcon.textContent = '👁️';
 
+        try { var studioV = document.getElementById('spinVideo'); if (studioV) studioV.pause(); } catch (e) { }   // no double audio behind the modal
         var v = document.getElementById('spinShareVideo');
         if (v) {
           var src = spinSrc(it, !it.viewOrig);
@@ -30006,6 +30273,7 @@
             v.src = src || '';
             v.load();
           }
+          v.muted = !!spinMuted;          // follows the studio's mute setting
           v.play().catch(function () { });
         }
 
@@ -30019,11 +30287,22 @@
           var wifiImg = document.getElementById('spinShareWifiQrImg');
           if (wifiImg) wifiImg.src = qrImageUrl(wifiQrText(wf));
           var wifiMeta = document.getElementById('spinShareWifiMeta');
-          if (wifiMeta) wifiMeta.textContent = 'Wi-Fi: ' + wf.ssid + (wf.pass ? ' / ' + wf.pass : '');
+          var pwBtn = document.getElementById('spinShareWifiReveal'), pwOn = false;
+          if (wifiMeta) wifiMeta.textContent = 'Wi-Fi: ' + spinPwText(wf, false);
+          if (pwBtn) {
+            pwBtn.hidden = !wf.pass; pwBtn.textContent = 'Show password';
+            pwBtn.onclick = function () {
+              pwOn = !pwOn;
+              if (wifiMeta) wifiMeta.textContent = 'Wi-Fi: ' + spinPwText(wf, pwOn);
+              pwBtn.textContent = pwOn ? 'Hide password' : 'Show password';
+            };
+          }
         } else if (colWifi) {
           colWifi.style.display = 'none';
         }
 
+        var stepNum = document.querySelector('#spinShareColDownload .spin-qr-step-num');
+        if (stepNum) stepNum.textContent = wf ? '2' : '1';          // a lone QR is step 1, not "2"
         var dlImg = document.getElementById('spinShareDlQrImg');
         if (dlImg && it.url) dlImg.src = qrImageUrl(it.url);
 
@@ -30040,11 +30319,31 @@
         modal.hidden = false;
       }
 
-      function closeSpinShareModal() {
+      window.addEventListener('resize', function () { if (spinOverlay && !spinOverlay.hidden) { try { spinUpdateStageAspect(); renderSpinModalPreview(); } catch (e) { } } });
+
+      // Re-attach the studio's own preview (video + stage size + canvas) after the share modal or print preview was on top.
+      function spinRefreshStudio() {
+        var it = spinCur, v = document.getElementById('spinVideo');
+        if (!it || !v || (spinOverlay && spinOverlay.hidden)) return;
+        var want = spinSrc(it, !it.viewOrig);
+        if (want && v.getAttribute('src') !== want) { v.src = want; v.load(); }
+        v.style.display = it.src === 'drive' ? 'none' : '';
+        v.loop = true;
+        v.muted = !!spinMuted;
+        v.play().then(function () {
+          var pb = document.getElementById('spinModalPlayBtn'); if (pb) pb.textContent = '⏸ Pause';
+        }).catch(function () { });
+        spinUpdateStageAspect();
+        spinModalUpdate();
+        renderSpinModalPreview();
+      }
+
+      function closeSpinShareModal(noRefresh) {
         var modal = document.getElementById('spinShareModal');
         if (modal) modal.hidden = true;
         var v = document.getElementById('spinShareVideo');
         if (v) { try { v.pause(); } catch (e) { } }
+        if (noRefresh !== true) spinRefreshStudio();
       }
 
       document.getElementById('spinClose').addEventListener('click', closeSpin);
@@ -30110,7 +30409,7 @@
           var isHidden = card.classList.toggle('qr-hidden');
           var textEl = document.getElementById('spinShareToggleQrText');
           var iconEl = document.getElementById('spinShareToggleQrIcon');
-          if (textEl) textEl.textContent = isHidden ? 'Show QR Codes' : 'Hide QR Codes';
+          if (textEl) textEl.textContent = isHidden ? 'Show QR codes' : 'Full-screen video';
           if (iconEl) iconEl.textContent = isHidden ? '📱' : '👁️';
         });
       }
@@ -30120,13 +30419,23 @@
       if (doneShareBtn) doneShareBtn.addEventListener('click', closeSpinShareModal);
       var backdropShare = document.getElementById('spinShareBackdrop');
       if (backdropShare) backdropShare.addEventListener('click', closeSpinShareModal);
+      document.addEventListener('keydown', function (e) {
+        var sm = document.getElementById('spinShareModal'), pp = document.getElementById('spinPrintPv');
+        if (e.key === 'Escape' && sm && !sm.hidden && !(pp && !pp.hidden)) { e.stopPropagation(); closeSpinShareModal(); }
+      }, true);
       var copyShareBtn = document.getElementById('spinShareCopyBtn');
       if (copyShareBtn) {
         copyShareBtn.addEventListener('click', function () {
           if (spinCur && spinCur.url) {
-            try {
-              navigator.clipboard.writeText(spinCur.url);
+            var flash = function () {
               showToast('Share link copied to clipboard!', 2200);
+              var old = copyShareBtn.getAttribute('data-label') || copyShareBtn.textContent;
+              copyShareBtn.setAttribute('data-label', old);
+              copyShareBtn.textContent = '✓ Copied';
+              setTimeout(function () { copyShareBtn.textContent = old; }, 1800);
+            };
+            try {
+              navigator.clipboard.writeText(spinCur.url).then(flash, function () { prompt('Copy link:', spinCur.url); });
             } catch (e) {
               prompt('Copy link:', spinCur.url);
             }
@@ -30135,7 +30444,18 @@
       }
 
       // Spin & Print: extract 1 or N frames from a 360 video and trigger physical photo strip / keychain printing
-      function extractSpinFramesInBrowser(src, count) {
+      // Moments (seconds) to take frames from. offset (-0.4..0.4) slides every moment earlier / later in the clip ("re-pick").
+      function spinFrameTimes(dur, count, offset) {
+        var off = Number(offset) || 0, times = [];
+        for (var i = 0; i < count; i++) {
+          var base = count === 1 ? 0.5 : (i + 1) / (count + 1);
+          times.push(Math.max(0.05, Math.min(0.95, base + off)) * dur);
+        }
+        return times;
+      }
+      function spinFmtSec(s) { s = Math.max(0, Number(s) || 0); var m = Math.floor(s / 60); return m + ':' + ('0' + (s - m * 60).toFixed(1)).slice(-4); }
+
+      function extractSpinFramesInBrowser(src, count, offset) {
         return new Promise(function (resolve, reject) {
           var v = document.createElement('video');
           if (!src.startsWith('blob:') && !src.startsWith('data:')) v.crossOrigin = 'anonymous';
@@ -30152,15 +30472,9 @@
               var dur = v.duration && isFinite(v.duration) && v.duration > 0 ? v.duration : 6;
               var w = v.videoWidth || 1920;
               var h = v.videoHeight || 1080;
-              var times = [];
-              if (count === 1) {
-                times = [dur * 0.5];
-              } else {
-                for (var i = 0; i < count; i++) {
-                  times.push(dur * ((i + 1) / (count + 1)));
-                }
-              }
+              var times = spinFrameTimes(dur, count, offset);
               var canvases = [];
+              canvases.times = times;
               for (var j = 0; j < times.length; j++) {
                 var targetTime = Math.max(0.1, Math.min(dur - 0.1, times[j]));
                 await new Promise(function (rSeek) {
@@ -30204,7 +30518,7 @@
           showToast('Printing is not turned on. Enable printing in Print settings.', 4000);
           return;
         }
-        var soloMode = spinLook && spinLook.printSolo !== undefined ? !!spinLook.printSolo : false;
+        var soloMode = opts.solo !== undefined ? !!opts.solo : (spinLook && spinLook.printSolo !== undefined ? !!spinLook.printSolo : false);
         var need = soloMode ? 1 : shotsNeeded();
         showToast('Extracting ' + (need > 1 ? need + ' photos' : 'photo') + ' from 360 spin…', 2200);
 
@@ -30215,16 +30529,10 @@
             var dur = 6;
             var vEl = document.getElementById('spinVideo');
             if (vEl && vEl.duration && isFinite(vEl.duration) && vEl.duration > 0) dur = vEl.duration;
-            var times = [];
-            if (need === 1) {
-              times = [dur * 0.5];
-            } else {
-              for (var i = 0; i < need; i++) {
-                times.push(dur * ((i + 1) / (need + 1)));
-              }
-            }
+            var times = spinFrameTimes(dur, need, opts.offset);
             var res = await window.pb4u.spinExtractFrames({ name: it.name, edited: !!it.edited, times: times });
             if (res && res.ok && Array.isArray(res.frames) && res.frames.length >= need) {
+              canvases.times = times;
               for (var f = 0; f < res.frames.length; f++) {
                 var img = new Image();
                 await new Promise(function (resolveImg, rejectImg) {
@@ -30251,7 +30559,7 @@
             var src = spinSrc(it, !it.viewOrig);
             if (!src && it.objUrl) src = it.objUrl;
             if (!src) throw new Error('No video source available for this clip.');
-            canvases = await extractSpinFramesInBrowser(src, need);
+            canvases = await extractSpinFramesInBrowser(src, need, opts.offset);
           } catch (err) {
             console.error('Frame extraction failed:', err);
             showToast('Could not extract photo from 360 video: ' + (err.message || err), 4500);
@@ -30264,7 +30572,18 @@
           return;
         }
 
-        closeSpinShareModal();
+        // Manual Spin & Print: look at the print here in the 360 booth first. Auto-print skips straight to printing.
+        if (!opts.auto && !opts.skipPreview) {
+          openSpinPrintPreview(it, canvases, soloMode, opts.offset || 0);
+          return;
+        }
+        spinFinishPrint(it, canvases, soloMode);
+      }
+
+      // Hand the extracted frames to the normal photo result screen (frame, QR, Print button).
+      function spinFinishPrint(it, canvases, soloMode) {
+        closeSpinPrintPreview();
+        closeSpinShareModal(true);
         closeSpin();
 
         startDeskResult(canvases, {
@@ -30273,6 +30592,190 @@
           qrUrl: it.url || null
         });
       }
+
+      // ---- Spin & Print preview: see the strip / keychain layout inside the 360 booth before the print screen ----
+      var spinPp = { it: null, canvases: [], solo: false, pages: [], urls: [], i: 0 };
+
+      // Build the real print pages for these frames by briefly swapping the booth's session state, then putting it back.
+      function spinBuildPrintPages(canvases, solo) {
+        var sv = { shots: shotCanvases, layout: currentLayout, flip: flipbookResult, plain: plainResult };
+        try {
+          shotCanvases = canvases; flipbookResult = null; plainResult = null;
+          if (solo) currentLayout = 'solo';
+          return printPreviewPages() || [];
+        } catch (e) {
+          console.warn('Spin & Print layout preview failed:', e);
+          return [];
+        } finally {
+          shotCanvases = sv.shots; currentLayout = sv.layout; flipbookResult = sv.flip; plainResult = sv.plain;
+        }
+      }
+
+      function spinPpShow(i) {
+        var n = spinPp.pages.length;
+        var img = document.getElementById('spinPpImg'), nav = document.getElementById('spinPpNav'), cap = document.getElementById('spinPpPageNote');
+        if (!img) return;
+        var pageBox = img.parentNode; if (pageBox) pageBox.hidden = !n;
+        if (!n) { img.removeAttribute('src'); img.hidden = true; if (cap) cap.textContent = 'Layout preview is not available here. The frames below are what will be printed.'; if (nav) nav.hidden = true; return; }
+        i = Math.max(0, Math.min(n - 1, i)); spinPp.i = i;
+        if (!spinPp.urls[i]) spinPp.urls[i] = spinPp.pages[i].toDataURL('image/jpeg', 0.85);
+        img.hidden = false; img.src = spinPp.urls[i];
+        if (img.parentNode) img.parentNode.hidden = false;
+        if (cap) cap.textContent = n > 1 ? 'Page ' + (i + 1) + ' of ' + n : '';
+        if (nav) {
+          nav.hidden = n < 2;
+          var pv = nav.querySelector('[data-go="-1"]'), nx = nav.querySelector('[data-go="1"]');
+          if (pv) pv.disabled = i === 0;
+          if (nx) nx.disabled = i === n - 1;
+        }
+      }
+
+      function spinPpUpdateSub() {
+        var sub = document.getElementById('spinPpSub');
+        if (!sub) return;
+        var paper = '', pname = '';
+        try { paper = paperFor(printSize).name; pname = activePrinterName() || printerFor(printSize); } catch (e) { }
+        sub.textContent = (spinPp.solo ? 'Solo · 1 hero frame' : 'Multi-angle sequence · ' + spinPp.canvases.length + ' frames') + (paper ? ' · ' + paper : '') + (pname ? ' · Printer: ' + pname : '');
+      }
+
+      // Does this paper suit the layout the frames will print in (solo layout vs the event's layout)?
+      function spinPpFits(key) {
+        var sv = { layout: currentLayout, flip: flipbookResult };
+        try { flipbookResult = null; if (spinPp.solo) currentLayout = 'solo'; return !!sizeFitsLayout(key); }
+        catch (e) { return true; }
+        finally { currentLayout = sv.layout; flipbookResult = sv.flip; }
+      }
+
+      function spinPpFillPaper() {
+        var sel = document.getElementById('spinPpPaper');
+        if (!sel) return;
+        var sizes = [];
+        try { sizes = printSettings() || []; } catch (e) { }
+        sel.innerHTML = '';
+        sizes.forEach(function (k) {
+          var p = paperFor(k); if (!p) return;
+          var o = document.createElement('option'); o.value = k; o.textContent = p.name;
+          if (!spinPpFits(k)) { o.disabled = true; o.textContent += ' (too narrow)'; }
+          sel.appendChild(o);
+        });
+        if (printSize) sel.value = printSize;
+        sel.disabled = sizes.length < 2;
+      }
+
+      function spinPpRebuild() {
+        spinPp.pages = spinBuildPrintPages(spinPp.canvases, spinPp.solo); spinPp.urls = [];
+        spinPpUpdateSub();
+        spinPpShow(0);
+      }
+
+      function openSpinPrintPreview(it, canvases, soloMode, offset) {
+        var ov = document.getElementById('spinPrintPv');
+        if (!ov) { spinFinishPrint(it, canvases, soloMode); return; }   // no preview UI in this build: behave as before
+        if (ov.hidden) spinPp.origSize = printSize;                      // paper chosen here is undone if the user goes back
+        spinPp.it = it; spinPp.canvases = canvases; spinPp.solo = !!soloMode; spinPp.offset = Number(offset) || 0;
+        var offEl = document.getElementById('spinPpOffset'), offVal = document.getElementById('spinPpOffsetVal');
+        if (offEl) offEl.value = Math.round(spinPp.offset * 100);
+        if (offVal) offVal.textContent = (spinPp.offset > 0 ? '+' : '') + Math.round(spinPp.offset * 100) + '%';
+        // No paper picked yet (printSize still empty): use the first size that suits the layout so the preview can still be drawn.
+        if (!printSize || !paperFor(printSize)) {
+          var ps0 = []; try { ps0 = printSettings() || []; } catch (e) { }
+          var pick0 = ps0.filter(function (k) { return paperFor(k) && spinPpFits(k); })[0] || ps0.filter(paperFor)[0];
+          if (pick0) printSize = pick0;
+        }
+        spinPp.pages = spinBuildPrintPages(canvases, !!soloMode); spinPp.urls = []; spinPp.i = 0;
+
+        var fr = document.getElementById('spinPpFrames');
+        if (fr) {
+          fr.innerHTML = '';
+          canvases.forEach(function (c, k) {
+            var fig = document.createElement('figure');
+            var im = document.createElement('img');
+            im.alt = 'Frame ' + (k + 1);
+            try { im.src = c.toDataURL('image/jpeg', 0.7); } catch (e) { }
+            fig.appendChild(im);
+            if (canvases.times && canvases.times[k] != null) {
+              var cp = document.createElement('figcaption'); cp.textContent = spinFmtSec(canvases.times[k]); fig.appendChild(cp);
+            }
+            fr.appendChild(fig);
+          });
+        }
+        var modeSel = document.getElementById('spinPpMode');
+        if (modeSel) modeSel.value = soloMode ? 'solo' : 'sequence';
+        spinPpUpdateSub();
+        spinPpFillPaper();
+        spinPpShow(0);
+        closeSpinShareModal(true);        // never leave the QR modal stacked behind
+        ov.hidden = false;
+        try { var v = document.getElementById('spinVideo'); if (v) v.pause(); } catch (e) { }
+      }
+
+      function closeSpinPrintPreview() {
+        var ov = document.getElementById('spinPrintPv');
+        if (ov) ov.hidden = true;
+        spinPp.canvases = []; spinPp.pages = []; spinPp.urls = [];
+      }
+
+      // Back to the studio from the preview: nothing printed, preview of the clip comes back.
+      function spinPpBack() {
+        if (spinPp.origSize !== undefined && printSize !== spinPp.origSize) {
+          printSize = spinPp.origSize;
+          try { refreshPrintUI(); } catch (e) { }
+        }
+        spinPp.origSize = undefined;
+        closeSpinPrintPreview();
+        spinRefreshStudio();
+      }
+
+      (function () {
+        var b = document.getElementById('spinPpBack'), x = document.getElementById('spinPpClose'), bd = document.getElementById('spinPpBackdrop');
+        var go = document.getElementById('spinPpPrint'), mode = document.getElementById('spinPpMode'), nav = document.getElementById('spinPpNav');
+        if (b) b.addEventListener('click', spinPpBack);
+        if (x) x.addEventListener('click', spinPpBack);
+        if (bd) bd.addEventListener('click', spinPpBack);
+        if (go) go.addEventListener('click', function () {
+          if (spinPp.it && spinPp.canvases.length) spinFinishPrint(spinPp.it, spinPp.canvases, spinPp.solo);
+        });
+        if (mode) mode.addEventListener('change', function () {
+          var it = spinPp.it; if (!it) return;
+          var solo = mode.value === 'solo';
+          spinLook.printSolo = solo;
+          var ps = document.getElementById('spinPrintMode'); if (ps) ps.value = solo ? 'solo' : 'sequence';
+          try { spinLookFromUI(true); } catch (e) { }
+          spinPrintItem(it, { auto: false, solo: solo, offset: spinPp.offset || 0 });   // re-extract the right number of frames and show them again
+        });
+        // Re-pick: slide every frame earlier / later in the clip, then take them again (on release, so it is not re-extracted while dragging)
+        var offEl = document.getElementById('spinPpOffset'), offVal = document.getElementById('spinPpOffsetVal'), offReset = document.getElementById('spinPpOffsetReset');
+        if (offEl) {
+          offEl.addEventListener('input', function () { if (offVal) offVal.textContent = (Number(offEl.value) > 0 ? '+' : '') + offEl.value + '%'; });
+          offEl.addEventListener('change', function () {
+            if (!spinPp.it) return;
+            spinPrintItem(spinPp.it, { auto: false, solo: spinPp.solo, offset: Number(offEl.value) / 100 });
+          });
+        }
+        if (offReset) offReset.addEventListener('click', function () {
+          if (!spinPp.it) return;
+          spinPrintItem(spinPp.it, { auto: false, solo: spinPp.solo, offset: 0 });
+        });
+        var paperSel = document.getElementById('spinPpPaper');
+        if (paperSel) paperSel.addEventListener('change', function () {
+          if (!paperSel.value || !paperFor(paperSel.value)) return;
+          printSize = paperSel.value;          // used for this print; Back to Studio puts the previous paper back
+          spinPpRebuild();
+        });
+        if (nav) nav.addEventListener('click', function (e) {
+          var bt = e.target.closest('button'); if (!bt || !bt.dataset.go) return;
+          spinPpShow(spinPp.i + Number(bt.dataset.go));
+        });
+        document.addEventListener('keydown', function (e) {
+          var ov = document.getElementById('spinPrintPv');
+          if (!ov || ov.hidden) return;
+          if (e.key === 'Escape') { e.stopPropagation(); spinPpBack(); }
+          else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            var t = e.target && e.target.tagName; if (t === 'SELECT' || t === 'INPUT') return;
+            e.stopPropagation(); spinPpShow(spinPp.i + (e.key === 'ArrowRight' ? 1 : -1));
+          }
+        }, true);
+      })();
 
       var spinPrintBtn = document.getElementById('spinPrintBtn');
       if (spinPrintBtn) {
@@ -30292,6 +30795,7 @@
       document.getElementById('spinEditBtn').addEventListener('click', function () {
         var it = spinCur; if (!it) return;
         if (it.status === 'editing') { if (it.job) window.pb4u.spinCancel(it.job); return; }
+        if (it.edited && !it.isDrafting) { spinUnlockEditing(); return; }   // rendered + locked: this button is "Edit again"
         var a = parseFloat(document.getElementById('spinTrimA').value), b = parseFloat(document.getElementById('spinTrimB').value);
         it.trimA = isFinite(a) && a > 0 ? a : 0; it.trimB = isFinite(b) && b > it.trimA ? b : 0;
 
@@ -30324,6 +30828,8 @@
       document.getElementById('spinViewBtn').addEventListener('click', function () {
         var it = spinCur; if (!it) return;
         it.viewOrig = !it.viewOrig;
+        if (!it.viewOrig && it.edited) it.isDrafting = false;   // back on the rendered video
+        spinSetOverlayPreview(it.viewOrig);                      // overlay preview only while looking at the original
         var v = document.getElementById('spinVideo'); v.src = spinSrc(it, !it.viewOrig); v.load();
         v.loop = true;
         v.play().catch(function () { });
@@ -30378,6 +30884,25 @@
         });
       }
 
+      var spinMuteBtn = document.getElementById('spinMuteBtn');
+      function spinApplyMute() {
+        var v = document.getElementById('spinVideo');
+        if (v) v.muted = !!spinMuted;
+        if (spinMuteBtn) {
+          spinMuteBtn.textContent = spinMuted ? '🔇' : '🔊';
+          spinMuteBtn.setAttribute('aria-pressed', spinMuted ? 'true' : 'false');
+          spinMuteBtn.title = spinMuted ? 'Unmute the preview sound' : 'Mute the preview sound';
+        }
+      }
+      if (spinMuteBtn) {
+        spinMuteBtn.addEventListener('click', function () {
+          spinMuted = !spinMuted;
+          try { localStorage.setItem('pb_spin_muted', spinMuted ? '1' : '0'); } catch (e) { }
+          spinApplyMute();
+        });
+        spinApplyMute();
+      }
+
       document.querySelectorAll('.spin-speed-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var rate = parseFloat(this.dataset.rate) || 1.0;
@@ -30424,7 +30949,7 @@
           var target = document.getElementById(btn.dataset.tab);
           if (target) {
             var sc = document.getElementById('spinStudioControls');
-            if (sc && sc.contains(target)) {
+            if (sc && sc.contains(target) && sc.scrollHeight > sc.clientHeight + 2) {   // only when the controls column scrolls on its own (not when the page stacks)
               var top = target.offsetTop - sc.offsetTop - 12;
               sc.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
             } else {
@@ -30601,19 +31126,7 @@
       }
       var unlockEditBtn = document.getElementById('spinUnlockEditBtn');
       if (unlockEditBtn) {
-        unlockEditBtn.addEventListener('click', function () {
-          if (spinCur) {
-            spinCur.isDrafting = true;
-            spinCur.viewOrig = true;
-            var v = document.getElementById('spinVideo');
-            if (v) {
-              var src = spinSrc(spinCur, false);
-              if (src) { v.src = src; v.load(); v.play().catch(function () { }); }
-            }
-            spinModalUpdate();
-            showToast('Editing unlocked! Make adjustments and click Process again.', 2500);
-          }
-        });
+        unlockEditBtn.addEventListener('click', spinUnlockEditing);
       }
 
       // the look controls

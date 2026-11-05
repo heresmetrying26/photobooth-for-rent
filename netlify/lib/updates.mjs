@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.77', date: '2026-11-05' },
   { version: '1.0.76', date: '2026-11-05' },
   { version: '1.0.75', date: '2026-11-05' },
   { version: '1.0.74', date: '2026-11-04' },
@@ -122,6 +123,24 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-05', title: '360 Studio Polish: Working Share QR, Rendered Preview, Spin & Print Preview & Tablet Layout', for: ['app', 'website'], app: '1.0.77',
+    items: [
+      'Share + QR fixed: both QR codes show again next to the video, the Wi-Fi password stays hidden until you tap Show, and Back to Studio brings the live preview back.',
+      'Rendered preview: a finished video opens as the rendered result with a Rendered badge, the overlay preview switches itself off, and one tap on Edit again unlocks the options.',
+      'Spin & Print preview: see the strip or keychain layout and the frames in the 360 booth first, re-pick moments, switch Solo or Multi-angle, choose the paper, then continue to print.',
+      'Typing fixed: spaces now work in every text line (the remote-shutter key no longer steals them), with length limits and a too-wide warning.',
+      'Easier studio: mute button for the preview, locked options still scroll, the first clip is selected automatically, and a bigger preview that matches the clip shape.',
+      'Tablets and phones: stacked layout with the preview on top, finger-sized buttons, and a header and timeline that fit narrow screens.'
+    ]
+  },
+  {
+    date: '2026-11-05', title: '360 Studio Polish: Share QR, Rendered Preview, Spin & Print Preview & Tablet Layout (Android)', for: ['app'], app: '1.0.88',
+    items: [
+      'Working Share + QR, rendered preview with Edit again, mute button, and the Spin & Print preview with re-pick and paper size.',
+      'Stacked tablet layout with the live preview on top and finger-sized buttons for the Samsung tablet in portrait.'
+    ]
+  },
   {
     date: '2026-11-05', title: 'Seamless Side-by-Side 360 Studio Desk, Tab Alignment & Controls Lock Engine', for: ['app', 'website'], app: '1.0.76',
     items: [

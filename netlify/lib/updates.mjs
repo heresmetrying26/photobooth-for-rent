@@ -132,6 +132,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-05', title: 'Insta360 and USB Camera Help, Epson L-Series Printing (Android)', for: ['app'], app: '1.0.95',
+    items: [
+      'If an Insta360 (or another USB camera) is plugged into the tablet and does not show as a webcam, the Camera panel and the camera error now say why: for example that it is in phone-control, picture-transfer or USB-drive mode and needs its USB mode set to Webcam on the camera, or that Android still needs your OK to use it. Every USB device the tablet sees is also written to the camera log (Copy camera log).',
+      'Epson L3210, L3200, L3230, L1210, L1230 and L1250 printers now warn when a paper size cannot print borderless (these printers do borderless only on 4x6 in, 3.5x5 in, 16:9 wide and 100x148 mm) and print with a normal border on other sizes.',
+      'Epson L8050, L3210 and L3276 over USB can be switched to the app\'s own Epson mode (Normal / Draft quality, colour mode, borderless) from the printer list. The default stays driverless printing.'
+    ]
+  },
+  {
     date: '2026-11-05', title: 'Link Vouchers to Printers, Print Quality for Each Printer, More Thermal Printers', for: ['app', 'website'], app: '1.0.83',
     items: [
       'New optional switch in Camera & printer: Link vouchers to printers. When it is on, each payment option in Setup gets a Printer choice, and guests who pay or use a voucher for that option print on that printer, with that printer\'s own colour, brightness and quality. It is off by default, and a device that does not have the linked printer prints the normal way, by paper size.',

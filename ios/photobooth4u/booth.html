@@ -12810,6 +12810,7 @@
             <p class="panel-hint" id="webcamResNote"></p>
           </div>
           <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
+          <p class="panel-hint" id="usbWhyNote" style="display:none; font-weight:600;"></p>
           <button type="button" class="action-btn" id="usbLogBtn" style="display:none; width:auto; margin:6px 0 0;">Copy
             camera log</button>
           <button type="button" class="action-btn" id="usbCheckBtn"
@@ -18498,10 +18499,49 @@
         const origEnum = md.enumerateDevices.bind(md);
         const origGum = md.getUserMedia.bind(md);
         let present = null;   // { name } when the app has a webcam to offer
+        let usbSeen = '';
+        // Plain-language reason an Insta360 that is plugged into the tablet is (or is not) usable as a webcam, from what Android
+        // reports about it. vid 0x2e1a = Insta360. Interface classes: 14 = webcam, 6 = picture transfer, 8 = USB drive, 255 = maker's own.
+        function insta360Why(j) {
+          const list = (j && Array.isArray(j.usb)) ? j.usb : [];
+          const d = list.find(x => x.vid === 0x2e1a || /insta\s*360/i.test(x.name || ''));
+          if (!d) return '';
+          const ifs = Array.isArray(d.ifaces) ? d.ifaces : [];
+          const nm = (d.name || 'Insta360') + ' (' + (d.vid || 0).toString(16) + ':' + (d.pid || 0).toString(16) + ')';
+          if (ifs.includes(14)) {
+            if (j.native) return nm + ' is a webcam and Android is already offering it to the booth: pick it in the Camera menu.';
+            if (!d.perm) return nm + ' is plugged in as a webcam, but Android has not allowed the app to use it yet. Pick "USB webcam" in the Camera menu and tap OK (tick Always) when Android asks.';
+            return nm + ' is plugged in as a webcam. Pick "USB webcam" in the Camera menu. If the picture does not start, use a powered USB-C hub (the camera needs more power than a tablet port gives) and keep the camera switched on.';
+          }
+          const how = ' On the camera set the USB mode to Webcam (camera screen > Settings > USB mode), then unplug and replug it.';
+          if (ifs.includes(6)) return nm + ' is in picture-transfer mode, so the tablet cannot see it as a webcam.' + how;
+          if (ifs.includes(8)) return nm + ' is in USB drive (storage) mode, so the tablet cannot see it as a webcam.' + how;
+          return nm + ' is in its own Android / phone-control mode: the tablet sees it, but not as a webcam, so it cannot appear in the Camera menu.' + how;
+        }
         async function probe() {
           try {
             const j = await (await fetch(BASE, { cache: 'no-store', signal: AbortSignal.timeout(4000) })).json();
             if (j && j.ok) window.__pbUvcInfo = j;
+            try {
+              const why = (j && j.ok) ? insta360Why(j) : '';
+              if (why !== (window.__pbUsbWhy || '')) {
+                window.__pbUsbWhy = why;
+                const el = document.getElementById('usbWhyNote');
+                if (el) { el.textContent = why; el.style.display = why ? '' : 'none'; }
+                if (why && typeof usbLog === 'function') usbLog('insta360', { why: why });
+              }
+            } catch (x) { }
+            // Note every USB device the tablet sees in the camera log (once per change), so a camera that is plugged in but not
+            // offered as a webcam can be explained from "Copy camera log": vid/pid are in hex, ifaces are USB interface classes (14 = webcam).
+            if (j && j.ok && Array.isArray(j.usb)) {
+              const sig = JSON.stringify(j.usb);
+              if (sig !== usbSeen) {
+                usbSeen = sig;
+                if (j.usb.length && typeof usbLog === 'function') {
+                  usbLog('usb-devices', { devices: j.usb.map(d => ({ id: (d.vid || 0).toString(16) + ':' + (d.pid || 0).toString(16), name: d.name || '', ifaces: d.ifaces, perm: !!d.perm })), webcamSeen: !!(j.devices && j.devices.length), native: !!j.native });
+                }
+              }
+            }
             const d = j && j.ok && !j.native && j.devices && j.devices[0];
             return d ? { name: d.name || 'USB webcam' } : null;
           } catch (e) { return null; }
@@ -18801,8 +18841,10 @@
 
       // Plain-language reason the camera didn't start, with Mac-specific steps.
       function cameraErrorMessage(err) {
-        if (err && err.uvcMsg) return err.uvcMsg;
+        const usbWhy = (typeof window !== 'undefined' && window.__pbUsbWhy) ? ' ' + window.__pbUsbWhy : '';   // Android: why a plugged-in Insta360 is not a webcam
+        if (err && err.uvcMsg) return err.uvcMsg + usbWhy;
         const name = (err && err.name) || '';
+        if (usbWhy && (name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError')) return 'No camera found.' + usbWhy;
         const isMac = /Mac/i.test(navigator.platform || navigator.userAgent) && !(navigator.maxTouchPoints > 1);
         if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || name === 'SecurityError') {
           return isMac
@@ -24305,6 +24347,13 @@
         borderlessToggle.checked = !!printPrefs.borderless;
         let hint = 'Prints edge-to-edge without margins or scaling on supported photo printers.';
         try { if (wifiPrinter && (wifiPrinter.escp2 || wifiPrinter.canon)) hint = 'This printer requires standard page margins; borderless mode is not supported by this model.'; } catch (e) { }
+        try {
+          if (wifiPrinter && epsonLBorderlessModel(wifiPrinter)) {
+            hint = epsonLBorderlessOk(printSize)
+              ? 'This Epson can print borderless on this paper size.'
+              : 'This Epson prints borderless only on 4\u00d76 in, 3.5\u00d75 in, 16:9 wide (102\u00d7181 mm) and 100\u00d7148 mm paper. ' + (paper ? paper.name : 'This paper') + ' will print with a normal border.';
+          }
+        } catch (e) { }
         borderlessHint.textContent = hint;
         schedulePrintThumb();
       }
@@ -24730,7 +24779,10 @@
         const notes = [];
         if (stripTwoUp(printSize) && !sizedPhoto()) notes.push('Two strips side by side: cut down the middle.');
         if (sizedPhoto()) notes.push('The photo is printed at real ' + paperFor(printPrefs.photoSize).name + ' size, in the middle of the paper.');
-        if (printPrefs.borderless && window.__PBNet) notes.push('Borderless: printed edge to edge with no trimming (Wi-Fi and driverless USB printers).');
+        if (printPrefs.borderless && window.__PBNet) {
+          if (wifiPrinter && epsonLBorderlessModel(wifiPrinter) && !epsonLBorderlessOk(printSize)) notes.push('This Epson cannot print borderless on this paper size, so it prints with a normal border. Borderless works on 4\u00d76 in, 3.5\u00d75 in, 16:9 wide and 100\u00d7148 mm.');
+          else notes.push('Borderless: printed edge to edge with no trimming (Wi-Fi and driverless USB printers).');
+        }
         if (auto === true) notes.push('After this, auto-print sends photos without asking.');
         ppv.pages = pages; ppv.urls = []; ppv.notes = notes.join(' ');
         ppvBuildNav();
@@ -24787,6 +24839,17 @@
       try { wifiOptsMap = JSON.parse(localStorage.getItem(WIFI_OPTS_MAP_KEY) || '{}') || {}; } catch (e) { wifiOptsMap = {}; }
       // Keyed by the printer's name, not its address: a USB printer gets a new address each time it is plugged in and a Wi-Fi
       // printer can get a new one from the router, but "Epson L3210 (USB)" stays the same, so its settings are still there.
+      // Epson L-series models the app can also drive itself over USB (vendor 0x04B8 = 1208): product id -> model.
+      const EPSON_L_PIDS = { 2150: 'L8050', 58993: 'L3210', 17498: 'L3276' };
+      // Epson's own settings file for the L3200 / L3210 / L3230 / L1210 / L1230 / L1250 allows borderless only on these paper sizes (mm).
+      const EPSON_L_BORDERLESS = [[101.6, 152.4], [88.9, 127], [102, 181], [100, 148]];
+      function epsonLBorderlessModel(p) { return !!(p && /L(3200|3210|3230|1210|1230|1250)\b/i.test(p.name || '')); }
+      function epsonLBorderlessOk(size) {
+        const pp = size && paperFor(size);
+        if (!pp) return true;
+        const a = Math.min(pp.w, pp.h), b = Math.max(pp.w, pp.h);
+        return EPSON_L_BORDERLESS.some(([w, h]) => Math.abs(a - w) <= 2 && Math.abs(b - h) <= 2);
+      }
       function wifiPKey(p) { return p ? String(p.name || p.ip || '') : ''; }
       function wifiOptsFor(p) { return Object.assign({}, wifiOptsShared, (p && (wifiOptsMap[wifiPKey(p)] || wifiOptsMap[p.ip])) || {}); }
       function wifiOptsSet(p, key, val) {
@@ -24858,7 +24921,7 @@
         if (p && p.escp2 && !o.color) o.color = 'color';   // L120 / L121: colour enabled by default
         o.thermalQuality = (printPrefs && printPrefs.thermalQuality) || 'normal';   // for receipt printers on Wi-Fi / USB
         o.cal = wifiCal;
-        o.borderless = !!(printPrefs && printPrefs.borderless && window.__PBNet);
+        o.borderless = !!(printPrefs && printPrefs.borderless && window.__PBNet) && !(epsonLBorderlessModel(p) && !epsonLBorderlessOk(printSize));   // not on paper this Epson cannot print borderless
         // Lightness / colour correction is already in the page (printAdjust); the printer code must not add it again.
         o.brightness = 0; o.red = 0; o.green = 0; o.blue = 0;
         return o;
@@ -24937,7 +25000,7 @@
           if (wifiPrinter && wifiPrinter.ip === p.ip) { wifiPrinter.qualities = p.qualities || []; wifiPrinter.colorModes = p.colorModes || []; wifiPrinter.mediaTypes = p.mediaTypes || []; }
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
-          const sel = wifiPrinter && wifiPrinter.ip === p.ip;
+          const sel = wifiPrinter && wifiPrinter.ip === p.ip && !(p.ipp && wifiPrinter.epsonLForced);
           var tag = p.needsPermission ? ' · Tap to allow USB access' : p.noDriver ? (p.usb ? (wifiPrinter && wifiPrinter.forcedRaw && wifiPrinter.ip === p.ip ? ' · Receipt (tried manually)' : ' · Unknown model · tap to try as a thermal printer') : ' · No driver') : p.raw ? ' · Receipt' : p.escp2 ? ' · Photo (' + (p.epsonModel ? 'Epson ' + p.epsonModel : 'Photo') + ')' : p.epsonL ? ' · Photo (' + (p.epsonModel || 'Photo') + ')' : p.selphy ? ' · Photo (SELPHY)' : p.canon ? ' · Photo (' + (p.canonModel ? 'Canon ' + p.canonModel : 'Canon') + ')' : (p.ipp || p.escpr) ? ' · Photo' : '';
           var connTag = (p.name && p.name.indexOf('(USB)') >= 0) ? '' : (p.usb ? ' · USB' : (p.ip ? ' · Wi-Fi' : ''));
           b.textContent = (sel ? '✓ ' : '') + p.name + connTag + tag;
@@ -24975,6 +25038,22 @@
             refreshPrintUI();
           });
           box.appendChild(b);
+          // Epson L-series photo printers that also offer driverless printing (IPP) are used that way by default. For these
+          // models the app has its own Epson mode too, which gives Normal / Draft quality, colour mode and borderless.
+          const lModel = (p.usb && p.ipp && p.vid === 1208) ? EPSON_L_PIDS[p.pid] : '';
+          if (lModel) {
+            const b2 = document.createElement('button');
+            b2.type = 'button'; b2.className = 'action-btn'; b2.style.cssText = 'width:auto;margin:0;text-align:left;';
+            const sel2 = !!(wifiPrinter && wifiPrinter.ip === p.ip && wifiPrinter.epsonLForced);
+            b2.textContent = (sel2 ? '✓ ' : '') + 'Epson ' + lModel + ' · built-in Epson mode (Normal / Draft)';
+            b2.addEventListener('click', () => {
+              wifiSave({ ip: p.ip, name: p.name, ipp: false, raw: false, usb: true, escpr: true, escp2: false, canon: false, canonModel: '', selphy: false, epsonL: true, epsonLForced: true, epsonModel: lModel, borderless: true, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: [], colorModes: [], mediaTypes: [] });
+              showToast('Epson ' + lModel + ' will print with the app\'s own Epson mode. Tap Test print to check it. If nothing prints, tap the other ' + lModel + ' entry to go back.', 8000);
+              wifiRenderList(wifiList());
+              refreshPrintUI();
+            });
+            box.appendChild(b2);
+          }
         });
         if (st && !wifiPrinter) {
           const prog = d.total ? ' ' + Math.min(d.checked || 0, d.total) + ' of ' + d.total + ' addresses checked.' : '';

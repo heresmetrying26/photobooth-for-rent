@@ -138,7 +138,19 @@ class UvcWebcam(private val ctx: Context) {
         val arr = JSONArray()
         if (!native) for (d in webcams()) arr.put(JSONObject().put("name", d.productName ?: "USB webcam").put("maker", d.manufacturerName ?: ""))
         val s = size
-        return JSONObject().put("devices", arr).put("native", native).put("open", opened)
+        // Every USB device the tablet sees (vendor / product id, interface classes), so a camera that is not recognised as a
+        // webcam can be looked at afterwards in the camera log. 14 = USB Video class (a normal webcam).
+        val all = JSONArray()
+        try {
+            for (d in usb.deviceList.values) {
+                val classes = JSONArray()
+                for (i in 0 until d.interfaceCount) classes.put(d.getInterface(i).interfaceClass)
+                val nm = try { d.productName ?: "" } catch (_: Exception) { "" }
+                all.put(JSONObject().put("vid", d.vendorId).put("pid", d.productId).put("devClass", d.deviceClass)
+                    .put("ifaces", classes).put("name", nm).put("perm", usb.hasPermission(d)))
+            }
+        } catch (_: Exception) { }
+        return JSONObject().put("devices", arr).put("usb", all).put("native", native).put("open", opened)
             .put("size", if ((opened || switching) && s != null) "${s.width}x${s.height}" else "")
             .put("max", maxLabel)
             .put("preview", activePref)

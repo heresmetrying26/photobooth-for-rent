@@ -309,11 +309,14 @@ function wireIpc() {
   });
   ipcMain.handle('pb4u:spinFxList', () => SPIN.listFx());
   ipcMain.handle('pb4u:spinOverlay', (e, bytes) => SPIN.saveOverlay(bytes));
+  ipcMain.handle('pb4u:spinFxBake', (e, bytes) => SPIN.saveFxBake(bytes));
   ipcMain.handle('pb4u:spinProcess', (e, req) => {
     const d = spinDirNow(); const n = basename(String((req && req.name) || ''));
     if (!d || !n || !/\.(mp4|webm|mov|m4v)$/i.test(n)) return { error: 'No video' };
     const music = settings.spinMusic && existsSync(settings.spinMusic) ? settings.spinMusic : null;
-    const options = (req && req.options) || {};
+    const options = { ...((req && req.options) || {}) };
+    options.fxBakeDir = SPIN.fxBakePath(options.fxBake);     // only a folder this app made (by name), never a path from the page
+    delete options.fxBake;
     const fx = SPIN.resolveFx((options && options.fx) || (options && options.fxId) || (req && req.fx), options.orientation);
     return SPIN.enqueue({
       inputPath: join(d, n),

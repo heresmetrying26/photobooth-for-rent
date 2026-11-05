@@ -30288,7 +30288,7 @@
         var wobbleVal = Number(fxOpt.fxWobble != null ? fxOpt.fxWobble : (fxOpt.wobble != null ? fxOpt.wobble : (spinLook && spinLook.fxWobble != null ? spinLook.fxWobble : 50)));
         var locationVal = fxOpt.fxLocation || fxOpt.location || (spinLook && spinLook.fxLocation) || 'full';
 
-        var t = Date.now() / 1000;
+        var t = fxOpt.time != null && isFinite(Number(fxOpt.time)) ? Number(fxOpt.time) : Date.now() / 1000;     // time given = a baked frame for the render
         var speedMult = Math.max(0.2, Math.min(3.0, speedVal / 100));
         var baseAlpha = Math.max(0.05, Math.min(1.0, opacityVal / 100));
         var scaleMult = Math.max(0.4, Math.min(2.5, scaleVal / 100)) * (Math.min(W, H) / 1080);
@@ -30577,6 +30577,62 @@
         ctx.restore();
       }
 
+      // The render uses the live preview's own particle engine: the effect is drawn here frame by frame (same code, same Effect Motion & Behavior
+      // settings) and handed to the desktop app, which lays those frames over the clip. So the video moves exactly like the preview.
+      // Only the particle effects (the ones the Effect Motion panel controls); border / light / strobe effects keep their pre-made loops.
+      var SPIN_FX_BAKEABLE = { confetti_multi: 1, confetti_gold: 1, streamers_party: 1, champagne_bubbles: 1, balloons_pastel: 1, hearts_floating: 1, rose_petals_red: 1,
+        petals_white_drift: 1, bokeh_golden: 1, fairy_dust: 1, sparkler_fountain: 1, gold_dust: 1, silver_shimmer: 1, ribbon_swirls_gold: 1, galaxy_stars: 1, cash_rain: 1,
+        snow_blizzard: 1, halloween_bats: 1, autumn_leaves: 1, fireworks_midnight: 1, nye_countdown: 1 };
+      var spinFxBakeCache = null;
+      function spinOutSeconds(it) {       // about how long the finished video is (a little more is fine: the frames simply repeat if it is longer)
+        var v = document.getElementById('spinVideo');
+        var base = it && it.trimB > (it.trimA || 0) ? it.trimB - (it.trimA || 0)
+          : (v && spinCur === it && v.duration && isFinite(v.duration) ? v.duration - (it.trimA || 0) : 10);
+        var m = 1, sp = spinLook.speed;
+        if (sp === 'slow' || sp === 'boomerang') m = 2;
+        else if (sp === 'ramp') m = 1.3;
+        else if (sp === 'custom') {
+          var rs = (spinLook.rates || []).map(Number).filter(function (r) { return r >= 0.25 && r <= 4; });
+          m = rs.length ? rs.reduce(function (a, r) { return a + 1 / r; }, 0) / rs.length : 1;
+          if (spinLook.reverse) m *= 2;
+        }
+        return Math.max(4, Math.min(20, base * m + 1));
+      }
+      async function spinBakeFx(fxId, dims, seconds, onPct) {
+        try {
+          if (!SPIN_FX_BAKEABLE[fxId] || !window.pb4u || !window.pb4u.spinFxBake) return null;
+          var k = Math.min(1, 720 / Math.min(dims.W, dims.H));
+          var W = Math.max(2, Math.round(dims.W * k / 2) * 2), H = Math.max(2, Math.round(dims.H * k / 2) * 2);
+          var fps = 30, n = Math.ceil(seconds * fps);
+          var opt = {
+            fxMovement: spinLook.fxMovement || 'vortex', fxSpeed: spinLook.fxSpeed != null ? spinLook.fxSpeed : 100,
+            fxOpacity: spinLook.fxOpacity != null ? spinLook.fxOpacity : 85, fxScale: spinLook.fxScale != null ? spinLook.fxScale : 100,
+            fxWobble: spinLook.fxWobble != null ? spinLook.fxWobble : 50, fxLocation: spinLook.fxLocation || 'full'
+          };
+          var key = [fxId, W, H, n, JSON.stringify(opt)].join('|');
+          if (spinFxBakeCache && spinFxBakeCache.key === key) return spinFxBakeCache.token;
+          var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+          var ctx = cv.getContext('2d');
+          var parts = [], total = 0;
+          for (var i = 0; i < n; i++) {
+            ctx.clearRect(0, 0, W, H);
+            drawSpinFxParticles(ctx, W, H, fxId, Object.assign({}, opt, { time: i / fps }));
+            var blob = await new Promise(function (res) { cv.toBlob(res, 'image/png'); });
+            if (!blob) return null;
+            var png = new Uint8Array(await blob.arrayBuffer());
+            var head = new Uint8Array(4); new DataView(head.buffer).setUint32(0, png.length, true);
+            parts.push(head, png); total += 4 + png.length;
+            if (onPct && i % 10 === 0) onPct(Math.round(i / n * 100));
+          }
+          var all = new Uint8Array(total), pos = 0;
+          for (var q = 0; q < parts.length; q++) { all.set(parts[q], pos); pos += parts[q].length; }
+          var r = await window.pb4u.spinFxBake(all);
+          if (!r || !r.token) return null;
+          spinFxBakeCache = { key: key, token: r.token };
+          return r.token;
+        } catch (e) { return null; }      // no baked effect: the render falls back to the pre-made loop
+      }
+
       var spinAnimReq = null;
       function startSpinPreviewAnimation() {
         if (spinAnimReq) return;
@@ -30815,6 +30871,7 @@
             if (txtBlob) txtOv = await window.pb4u.spinOverlay(new Uint8Array(await txtBlob.arrayBuffer()));
           }
           try { if (window.pb4u && window.pb4u.setWallCue) window.pb4u.setWallCue('recording', '360 SPINNING! 🌀', 5000); } catch (e) { }
+          var fxBakeToken = await spinBakeFx(it.fx || spinLook.fx || 'none', dims, spinOutSeconds(it), function (p) { it.pct = Math.min(p, 99) / 20; spinTagUpdate(it); });
           var j = await window.pb4u.spinProcess({
             name: it.name, label: spinPresetLabel(), overlay: ov, textOverlay: txtOv,
             options: {
@@ -30826,6 +30883,7 @@
               fxMovement: spinLook.fxMovement || 'vortex',      // the Trajectory / Size / Wobble the live preview shows are now applied in the render too
               fxScale: spinLook.fxScale != null ? spinLook.fxScale : 100,
               fxWobble: spinLook.fxWobble != null ? spinLook.fxWobble : 50,
+              fxBake: fxBakeToken || null,                       // the effect drawn by the live preview's own engine (see spinBakeFx)
               zoom: spinLook.zoom !== undefined ? !!spinLook.zoom : true,
               flash: spinLook.flash !== undefined ? !!spinLook.flash : true,
               dropTime: (spinLook.dropTime != null && spinLook.dropTime > 0) ? Number(spinLook.dropTime) : null,

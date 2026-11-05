@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.85', date: '2026-11-05' },
   { version: '1.0.84', date: '2026-11-05' },
   { version: '1.0.83', date: '2026-11-05' },
   { version: '1.0.82', date: '2026-11-05' },
@@ -132,6 +133,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-05', title: '360 Desk: Rendered Effects Move Exactly Like the Live Preview', for: ['app', 'website'], app: '1.0.85',
+    items: [
+      'The 360 desk now draws the particle effect for the finished video with the same engine as the live preview, frame by frame, using your Effect Motion & Behavior settings (Trajectory, Speed, Opacity, Size, Wobble, Location). What moves in the preview now moves the same way in the rendered video.',
+      'This covers the particle effects (confetti, hearts, petals, bubbles, snow, dust, stars and so on). Border, light and strobe effects keep their own look.',
+      'Rendering a clip with an effect takes a few seconds longer while the effect is drawn. If it cannot be drawn, the video is still made with the previous effect loop.'
+    ]
+  },
   {
     date: '2026-11-05', title: 'No 360 Buttons on Android, Epson Borderless Test Mode (Android)', for: ['app'], app: '1.0.97',
     items: [

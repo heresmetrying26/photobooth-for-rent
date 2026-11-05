@@ -5,7 +5,7 @@
 // ramp, boomerang), cropped to portrait or landscape, with the event's frame / logo / title drawn over it
 // (a transparent PNG made by the booth page) and optional music. Jobs run one at a time.
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync, readdirSync, statSync, unlinkSync, renameSync, readFileSync, openSync, readSync, closeSync, copyFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readdirSync, statSync, unlinkSync, rmSync, renameSync, readFileSync, openSync, readSync, closeSync, copyFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { join, basename } from 'node:path';
 import { createRequire } from 'node:module';
@@ -348,6 +348,9 @@ export function normOptions(o) {
     fxMovement: ['vortex', 'fall', 'rise', 'burst', 'beat_pulse', 'drift'].includes(o.fxMovement) ? o.fxMovement : 'none',
     fxScale: o.fxScale != null && Number(o.fxScale) > 0 ? clamp(Number(o.fxScale) / 100, 0.5, 2.5) : 1,      // the panel sends percent (40..250)
     fxWobble: o.fxWobble != null ? clamp(Number(o.fxWobble) / 100, 0, 1) : 0,
+    // Folder of f0001.png, f0002.png ... the booth page drew with the very same particle engine as the live preview (see saveFxBake).
+    // When it is there the effect layer in the render IS the preview, frame for frame.
+    fxBakeDir: typeof o.fxBakeDir === 'string' && o.fxBakeDir ? o.fxBakeDir : null,
     intro: o.intro || null,
     outro: o.outro || null,
     textTiming: o.textTiming === 'fade' ? 'fade' : 'always',
@@ -456,7 +459,16 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
     fxOpacity = o.fxOpacity;
   }
 
-  let idx = 1, fxIdx = -1, ovIdx = -1, txtIdx = -1, muIdx = -1, introIdx = -1, outroIdx = -1;
+  // The effect drawn by the live preview's own engine, baked frame by frame: used instead of the pre-made loop for particle effects.
+  const bakeId = fxResolved && fxResolved.id ? fxResolved.id : (typeof (fx || o.fx) === 'string' ? String(fx || o.fx) : '');
+  const bakeDir = o.fxBakeDir && FX_MOTION.has(bakeId) && existsSync(join(o.fxBakeDir, 'f0001.png')) ? o.fxBakeDir : null;
+  let idx = 1, fxIdx = -1, bakeIdx = -1, ovIdx = -1, txtIdx = -1, muIdx = -1, introIdx = -1, outroIdx = -1;
+  if (bakeDir) {
+    // endless: the frames repeat if the finished video is longer than what was baked
+    a.push('-framerate', '30', '-stream_loop', '-1', '-i', join(bakeDir, 'f%04d.png'));
+    bakeIdx = idx++;
+    fxPath = null;
+  }
   if (fxPath) {
     a.push('-stream_loop', '-1');
     if (isVp9Webm(fxPath)) {
@@ -547,7 +559,12 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
       last = '[v_lut]';
     }
   }
-  if (fxIdx >= 0) {
+  if (bakeIdx >= 0) {
+    // Already has the speed, opacity, size, trajectory, wobble and location of the panel in it, so nothing else is applied: just lay it on the clip.
+    f.push('[' + bakeIdx + ':v]scale=' + o.W + ':' + o.H + ':flags=bicubic,format=rgba,setsar=1,fps=30[fx_baked]');
+    f.push(last + '[fx_baked]overlay=0:0:format=auto:shortest=1[v_fx]');
+    last = '[v_fx]';
+  } else if (fxIdx >= 0) {
     // 1.3: Decode, scale, and format the short FX clip once, then loop the pre-formatted frames in memory.
     const fxSpeed = f2(o.fxSpeed || 1.0);
     const fxLoop = (o.fxSpeed && o.fxSpeed !== 1.0)
@@ -863,6 +880,37 @@ export function saveOverlay(bytes) {
   return name;
 }
 export function overlayPath(name) { return tempDir && OV_RE.test(String(name || '')) && existsSync(join(tempDir, name)) ? join(tempDir, name) : null; }
+
+// The effect layer baked by the booth page: the live preview's own particle engine drawn once per frame, so the render moves exactly like the preview.
+// bytes = for every frame a 4-byte little-endian length followed by that frame's transparent PNG. Saved as <tempDir>/pb4u-fxbake-<n>/f0001.png ...
+const BAKE_RE = /^pb4u-fxbake-\d+-\d+$/;
+const BAKE_MAX_BYTES = 400 * 1024 * 1024, BAKE_MAX_FRAMES = 900;
+export function saveFxBake(bytes) {
+  if (!tempDir || !bytes || !bytes.length || bytes.length > BAKE_MAX_BYTES) return null;
+  const buf = ArrayBuffer.isView(bytes) ? Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength) : Buffer.from(bytes);
+  mkdirSync(tempDir, { recursive: true });
+  try {   // tidy up old ones
+    for (const n of readdirSync(tempDir)) if (BAKE_RE.test(n) && Date.now() - statSync(join(tempDir, n)).mtimeMs > 6 * 3600000) rmSync(join(tempDir, n), { recursive: true, force: true });
+  } catch { /* ignore */ }
+  const name = 'pb4u-fxbake-' + Date.now() + '-' + (++seq), dir = join(tempDir, name);
+  let pos = 0, n = 0;
+  try {
+    mkdirSync(dir, { recursive: true });
+    while (pos + 4 <= buf.length && n < BAKE_MAX_FRAMES) {
+      const len = buf.readUInt32LE(pos); pos += 4;
+      if (!len || pos + len > buf.length) break;
+      n++;
+      writeFileSync(join(dir, 'f' + String(n).padStart(4, '0') + '.png'), buf.subarray(pos, pos + len));
+      pos += len;
+    }
+  } catch { n = 0; }
+  if (n < 2) { try { rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ } return null; }
+  return { token: name, frames: n };
+}
+export function fxBakePath(token) {
+  const t = String(token || '');
+  return tempDir && BAKE_RE.test(t) && existsSync(join(tempDir, t, 'f0001.png')) ? join(tempDir, t) : null;
+}
 
 // Spin & Print: extract 1 or more still frames from a 360 video clip for instant photo strip / keychain printing.
 export async function extractFrames({ inputPath, times = [1.0] }) {

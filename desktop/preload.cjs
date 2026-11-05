@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('pb4u', {
   spinIntro: (clear) => ipcRenderer.invoke('pb4u:spinIntro', !!clear),
   spinOutro: (clear) => ipcRenderer.invoke('pb4u:spinOutro', !!clear),
   spinOverlay: (bytes) => ipcRenderer.invoke('pb4u:spinOverlay', bytes),
+  spinFxBake: (bytes) => ipcRenderer.invoke('pb4u:spinFxBake', bytes),
   spinProcess: (req) => ipcRenderer.invoke('pb4u:spinProcess', req),
   spinJob: (id) => ipcRenderer.invoke('pb4u:spinJob', id),
   spinCancel: (id) => ipcRenderer.invoke('pb4u:spinCancel', id),

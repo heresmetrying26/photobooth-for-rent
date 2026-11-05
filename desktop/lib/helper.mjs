@@ -282,16 +282,17 @@ async function isAirPrintQueue(printer) {
   const r = await run('lpstat', ['-v', printer]);
   return /^device for [^:]+:\s*(?:ipps?|dnssd|mdns|ippusb):/im.test(r.out || '');
 }
-async function airPrintQualityOptions(printer) {
+async function airPrintQualityOptions(printer, want) {
   try {
     if (!(await isAirPrintQueue(printer))) return [];
     const opts = await cupsPrinterOptions(printer);
     const out = [], notes = [];
     const quality = opts.find((o) => /^(?:cups)?print-?quality$/i.test(o.key));
     if (quality) {
-      const best = quality.choices.find((c) => /^(?:5|high|best|photo)/i.test(c.value)) || quality.choices.find((c) => /^(?:4|normal)/i.test(c.value));
+      const rank = want === 'draft' ? [/^(?:3|draft|fast)/i, /^(?:4|normal)/i] : want === 'normal' ? [/^(?:4|normal)/i] : [/^(?:5|high|best|photo)/i, /^(?:4|normal)/i];
+      let best = null; for (const re of rank) { best = quality.choices.find((c) => re.test(c.value)); if (best) break; }
       if (best) { out.push('-o', quality.key + '=' + best.value); notes.push(quality.key + '=' + best.value); }
-    } else { out.push('-o', 'print-quality=5'); notes.push('print-quality=5'); }
+    } else { const pq = want === 'draft' ? 3 : want === 'normal' ? 4 : 5; out.push('-o', 'print-quality=' + pq); notes.push('print-quality=' + pq); }
     const type = opts.find((o) => /^media-?type$/i.test(o.key));
     if (type && !type.choices.some((c) => c.selected && /photo|glossy/i.test(c.value))) {
       const photo = type.choices.find((c) => /photo.*gloss|glossy/i.test(c.value)) || type.choices.find((c) => /photo/i.test(c.value));
@@ -303,7 +304,7 @@ async function airPrintQualityOptions(printer) {
 }
 
 const WIN_PRINT_PS = String.raw`
-param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName)
+param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best')
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $files = @(Get-Content -LiteralPath $ListFile -Encoding UTF8 | Where-Object { $_ })
@@ -322,7 +323,9 @@ try {
   $tn.AddNamespace('psf', 'http://schemas.microsoft.com/windows/2003/08/printing/printschemaframework')
   $cx = [xml]([IO.StreamReader]::new($pq.GetPrintCapabilitiesAsXml()).ReadToEnd())
   $qo = @($cx.SelectNodes("//*[local-name()='Feature' and @name='psk:PageOutputQuality']/*[local-name()='Option']") | ForEach-Object { $_.name })
-  $best = $qo | Where-Object { $_ -match 'HighQuality|Best|Photographic' } | Select-Object -First 1
+  # Best (the default), Normal or Draft, set per printer in the booth. Only an option the driver really lists is used.
+  $qpat = switch ($Quality) { 'draft' { 'Draft|Fast|Economy' } 'normal' { 'Normal|Standard' } default { 'HighQuality|Best|Photographic' } }
+  $best = $qo | Where-Object { $_ -match $qpat } | Select-Object -First 1
   $qf = $tx.SelectSingleNode("//psf:Feature[@name='psk:PageOutputQuality']/psf:Option", $tn)
   if ($best -and $qf -and $qf.GetAttribute('name') -ne $best) {
     $qf.SetAttribute('name', $best)
@@ -395,7 +398,7 @@ $doc.add_PrintPage({
 $doc.Print()
 'ok'
 `;
-async function printPages(printer, pngBuffers, fit, widthMm, heightMm) {
+async function printPages(printer, pngBuffers, fit, widthMm, heightMm, quality) {
   const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
   try {
     const files = [];
@@ -407,14 +410,14 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm) {
       await writeFile(list, files.join('\r\n'), 'utf8');
       const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
       if (pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
-      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && !pick.keep ? ['-PaperName', pick.key] : [])]);
+      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && !pick.keep ? ['-PaperName', pick.key] : [])]);
     } else {
       const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
       if (pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
       const media = fit === 'width' && widthMm > 0 && heightMm > 0 ? ['-o', 'media=Custom.' + Math.round(widthMm) + 'x' + Math.round(heightMm) + 'mm']
         : pick && !pick.keep ? ['-o', (pick.opt === 'media' ? 'media=' : 'PageSize=') + pick.key] : [];
-      const quality = await airPrintQualityOptions(printer);
-      r = await run('lp', ['-d', printer, ...media, ...quality, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
+      const qopts = await airPrintQualityOptions(printer, quality);
+      r = await run('lp', ['-d', printer, ...media, ...qopts, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
     }
     if (r.code !== 0) throw new Error((r.err || r.out || ('exit ' + r.code)).trim().slice(0, 300));
     for (const line of String(r.out || '').split(/\r?\n/)) if (line.startsWith('info|')) log('Page: ' + line.slice(5));
@@ -677,7 +680,8 @@ export async function handleHelper(req, path, search) {
     }
     const fit = body.fit === 'width' ? 'width' : '';
     const prev = getPrintQueue(name);
-    const job = prev.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0));
+    const quality = ['draft', 'normal', 'best'].includes(body.quality) ? body.quality : '';
+    const job = prev.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0, quality));
     printQueues.set(name, job.catch(() => { }));
     try { await job; log('Printed ' + buffers.length + ' page(s) on ' + name); return json({ ok: true }); }
     catch (e) { log('Print failed on ' + name + ': ' + (e && e.message || e)); return json({ ok: false, error: String(e && e.message || e) }, 500); }

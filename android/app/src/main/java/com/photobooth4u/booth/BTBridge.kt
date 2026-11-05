@@ -38,6 +38,8 @@ import java.util.concurrent.TimeUnit
  *     - VOZY G80                   (BT name starts with "VOZY" or "G80")
  *     - VOZY P50                   (BT name starts with "VOZY" or "P50")
  *     - VOZY MP210                 (BT name starts with "MP" — already covered — or "VOZY")
+ *     - Rongta RP30 / RPP30 / RP326 / RP80 / RPP300 / RPP02N (BT name starts with "RP" or "Rongta")
+ *     - HPRT, Gprinter, iDPRT      (BT name starts with "HPRT", "Gprinter" / "GP-", "iDPRT")
  *   USB (handled by NetPrintBridge / raw ESC/POS):
  *     - Xprinter XP-T80Q, XP-P300 (VID 0x28e9)
  *     - Epson TM-T82X-II           (VID 0x04B8, PID 0x0E27 printer-class / 0x0202 vendor-class)
@@ -69,6 +71,8 @@ class BTBridge(
         "PT", "ZJ", "NT", "Netum", "Printer", "MTP", "MPT",
         "Inner", "Qsprinter", "Goojprt", "GOOJPRT", "Munbyn", "Milestone",
         "HOIN", "Sunmi", "Imin", "Diyep",
+        // Rongta RP / RPP series (RP30, RPP30, RP326, RP80, RPP300, RPP02N ...) advertise as "RP..." or "RPP..."; also HPRT, Gprinter, iDPRT
+        "RP", "Rongta", "HPRT", "Gprinter", "GP-", "iDPRT", "ArcticBreeze", "Arctic",
         // Star TSP143IIIBi advertises itself as "TSP143III" (no "Star" prefix)
         "TSP",
         // Xprinter XP-P300 sometimes advertises as "P300" on older firmware

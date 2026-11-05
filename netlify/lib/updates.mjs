@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.83', date: '2026-11-05' },
   { version: '1.0.82', date: '2026-11-05' },
   { version: '1.0.81', date: '2026-11-05' },
   { version: '1.0.80', date: '2026-11-05' },
@@ -130,6 +131,24 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-05', title: 'Link Vouchers to Printers, Print Quality for Each Printer, More Thermal Printers', for: ['app', 'website'], app: '1.0.83',
+    items: [
+      'New optional switch in Camera & printer: Link vouchers to printers. When it is on, each payment option in Setup gets a Printer choice, and guests who pay or use a voucher for that option print on that printer, with that printer\'s own colour, brightness and quality. It is off by default, and a device that does not have the linked printer prints the normal way, by paper size.',
+      'Print quality (Best, Normal, Draft) for each printer set up through the Print Helper or the laptop app. Best is the default, as before, and is only used if the printer driver offers it. It is saved per printer.',
+      'More thermal receipt printers are listed and recognised: Rongta RP and RPP series (RP30, RPP30, RP326, RP80, RPP300), ArcticBreeze RP30, HPRT, Gprinter and iDPRT.'
+    ]
+  },
+  {
+    date: '2026-11-05', title: 'Print Queue, Separate Settings for Each Printer, Vouchers Linked to Printers and RP30 Thermal Printer (Android)', for: ['app'], app: '1.0.94',
+    items: [
+      'Print queue: while a printer is still printing, the next guest\'s print waits in line instead of the Print button staying on "Printing, please hold". Each printer has its own line, so a Canon SELPHY and a Bluetooth thermal printer print at the same time. The button shows how many prints are in the queue. If a queued print fails, the Android print screen opens so the sheet is not lost.',
+      'Each printer now keeps its own colour, brightness, photo layout and print quality (Wi-Fi and USB quality, colour mode and paper type too). They are remembered by printer name, so a USB printer that is unplugged and plugged in again finds its settings, and the Bluetooth printer keeps its own settings by its Bluetooth name.',
+      'Use two Wi-Fi or USB printers: pick the printer for each paper size, for example the Brother for A4 and the Epson for 4x6.',
+      'Optional Link vouchers to printers switch (Camera & printer): each payment option can print on its own printer.',
+      'Thermal printers: RP30 / RP30A-UB, Rongta RP and RPP series, ArcticBreeze, HPRT, Gprinter and iDPRT are recognised over Bluetooth and USB. A USB printer the app does not know, including one that only calls itself "USB Printer Port", can now be tried as a thermal receipt printer: choose a Receipt paper size, then tap it in the printer list.'
+    ]
+  },
   {
     date: '2026-11-05', title: 'Colour Correction for Prints Only, Thermal Print Quality (Best, Normal, Draft)', for: ['app', 'website'], app: '1.0.82',
     items: [

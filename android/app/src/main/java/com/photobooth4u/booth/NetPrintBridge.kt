@@ -1158,6 +1158,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         StarReceiptModels.match(d)?.let { return "Star $it" }
         // VOZY receipt printers (G80, P50, MP210) — name from product descriptor when available.
         if (VozyReceiptModels.isKnown(d)) return VozyReceiptModels.modelName(d)
+        // Rongta RP / RPP series (RP30, RPP30, RP326, RP80 ...) — any vendor ID, recognised by the name in the USB descriptor.
+        usbProduct(d)?.let { p -> if (rongtaNameRx.containsMatchIn(p)) return if (p.contains("rongta", true)) p else "Rongta $p" }
         // Xprinter (GigaDevice VID) — model name from USB descriptor when available.
         if (XprinterModels.isKnown(d)) {
             val prod = usbProduct(d)
@@ -1171,12 +1173,24 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         return if (maker.isNotEmpty() && !prod.contains(maker, true)) "$maker $prod" else prod
     }
 
+    /**
+     * Receipt printers recognised by the name in their USB descriptor (works for any vendor ID once USB access is allowed):
+     * Rongta RP / RPP series (RP30, RPP30, RP326, RP80, RPP300 ...), HPRT, Gprinter, iDPRT, Zjiang, Goojprt, Munbyn, Netum.
+     */
+    private val receiptNameRx = Regex("(?i)(^|[^a-z])rpp?[- ]?\\d|rongta|hprt|gprinter|idprt|zjiang|goojprt|munbyn|netum|arcticbreeze")
+    // Many white-label 80 mm POS printers (ArcticBreeze RP30 and others) only call themselves "USB Printer Port" over USB.
+    // Treated as a receipt printer unless the maker is a known inkjet / laser brand (Epson, Canon, HP, Brother), which have their own paths.
+    private val genericPortNameRx = Regex("(?i)^usb[ -]?printer[ -]?port$")
+    private val inkjetVendors = setOf(0x04b8, 0x04a9, 0x03f0, 0x04f9)
+    private val rongtaNameRx = Regex("(?i)(^|[^a-z])rpp?[- ]?\\d|rongta")
+
     private fun usbLooksLikeReceipt(d: UsbDevice): Boolean =
         d.vendorId in thermalVendors ||
         EpsonReceiptModels.isKnown(d) ||
         StarReceiptModels.isKnown(d) ||
         XprinterModels.isKnown(d) ||
-            (usbProduct(d)?.let { Regex("(?i)(^|[^a-z])tm[- ]?[a-z]?\\d|pos|receipt|thermal").containsMatchIn(it) } ?: false)
+            (usbProduct(d)?.let { Regex("(?i)(^|[^a-z])tm[- ]?[a-z]?\\d|pos|receipt|thermal").containsMatchIn(it) || receiptNameRx.containsMatchIn(it) ||
+                (d.vendorId !in inkjetVendors && genericPortNameRx.containsMatchIn(it.trim())) } ?: false)
 
     private fun usbPermIntent(): PendingIntent = PendingIntent.getBroadcast(
         activity, 0, Intent(usbPermAction).setPackage(activity.packageName),

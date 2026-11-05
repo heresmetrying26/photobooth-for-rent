@@ -11887,7 +11887,8 @@
         { namePrefix: 'Printer' }, { namePrefix: 'MTP' }, { namePrefix: 'MPT' },
         { namePrefix: 'BlueTooth' }, { namePrefix: 'Inner' }, { namePrefix: 'Qsprinter' },
         { namePrefix: 'VOZY' }, { namePrefix: 'G80' }, { namePrefix: 'P50' },
-        { namePrefix: 'TSP' }, { namePrefix: 'P300' }
+        { namePrefix: 'TSP' }, { namePrefix: 'P300' },
+        { namePrefix: 'RP' }, { namePrefix: 'Rongta' }, { namePrefix: 'HPRT' }, { namePrefix: 'Gprinter' }, { namePrefix: 'iDPRT' }, { namePrefix: 'ArcticBreeze' }, { namePrefix: 'Arctic' }
       ];
 
       function BtThermal(opts) {
@@ -12853,6 +12854,13 @@
                   their phone</span><input type="checkbox" id="ppGuestReq"></label>
               <p class="panel-hint" id="ppGuestReqHint" style="margin:4px 0 0; display:none;">Their photo page gets an
                 &ldquo;Ask for a print&rdquo; button. Requests show under <b>Print requests</b> in the dock.</p>
+            </div>
+
+            <div class="fb-card" id="ppVoucherCard" style="display:none;">
+              <p class="sub-label">Vouchers &amp; payments</p>
+              <label class="switch-row"><span>Link vouchers to printers</span><input type="checkbox"
+                  id="ppVoucherPrinter"></label>
+              <p class="panel-hint" id="ppVoucherPrinterHint" style="margin:4px 0 0;">Off: prints go to the printer for the paper size. On: each payment option in Setup gets a <b>Printer</b> choice, and guests who pay or use a voucher for that option print on that printer (with its own colour and quality settings). Needs two payment options (the &ldquo;two prices&rdquo; switch) to be on.</p>
             </div>
 
             <div class="fb-card">
@@ -14039,6 +14047,15 @@
                 <button type="button" class="print-size-btn" data-tq="draft">Draft</button>
               </div>
               <p class="panel-hint" id="thermalQualityHint" style="margin:2px 0 6px;"></p>
+            </div>
+            <div id="printerQualityBox" class="hidden">
+              <p class="sub-label" style="margin:10px 0 6px;">Print quality (this printer)</p>
+              <div class="print-size-row" id="printerQualityRow">
+                <button type="button" class="print-size-btn" data-pq="best">Best</button>
+                <button type="button" class="print-size-btn" data-pq="normal">Normal</button>
+                <button type="button" class="print-size-btn" data-pq="draft">Draft</button>
+              </div>
+              <p class="panel-hint" id="printerQualityHint" style="margin:2px 0 6px;"></p>
             </div>
             <div id="photoFitBox">
               <p class="sub-label" style="margin:10px 0 6px;">Photo size on the paper</p>
@@ -23697,6 +23714,7 @@
       });
       function refreshPrinterHint() {
         const name = printerFor(printSize);
+        try { wifiSyncForSize(); } catch (e) { }        // Android: the Wi-Fi / USB printer chosen for this paper size
         try { if (window._syncColorAdjToPrinter) window._syncColorAdjToPrinter(); } catch (e) { }
         if (printSize) printerPickSize.textContent = paperFor(printSize).name + (printerKey(printSize) !== printSize ? ' \u00b7 strip layouts (2 strips, cut)' : '');
         if (printerSetupBtn) {
@@ -23916,6 +23934,14 @@
         refreshSecondPrinterUI();
       });
       document.getElementById('secondSizeSelect').addEventListener('change', (e) => { saveSecond(Object.assign(secondStore(), { size: e.target.value })); refreshSecondPrinterUI(); });
+      // The quality chosen for this printer (the one in use now, or the one saved in its profile).
+      function helperQualityFor(name) {
+        try {
+          const ok = (v) => ['best', 'normal', 'draft'].includes(v) ? v : 'best';
+          if (name === liveKey()) return ok(printPrefs.printerQuality);
+          return ok((printOptsMap[name] || {}).printerQuality);
+        } catch (e) { return 'best'; }
+      }
       async function printViaHelper(pages, paper, name) {
         const h = await checkHelper(true);
         if (!h.ok) return false;
@@ -23925,7 +23951,7 @@
           return false;
         }
         try {
-          const body = JSON.stringify({ printer: name, widthMm: paper.w, heightMm: paper.h, fit: paper.receipt ? 'width' : undefined, pages: pages.map(c => c.toDataURL('image/png')) });
+          const body = JSON.stringify({ printer: name, quality: helperQualityFor(name), widthMm: paper.w, heightMm: paper.h, fit: paper.receipt ? 'width' : undefined, pages: pages.map(c => c.toDataURL('image/png')) });
           const r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
           const j = await r.json().catch(() => ({}));
           if (r.ok && j.ok) return true;
@@ -24241,6 +24267,21 @@
             }[tq];
           }
         } catch (e) { }
+        try {
+          // Windows / Mac laptop app: the driver's own quality setting for the printer chosen for this paper size.
+          const pqBox = document.getElementById('printerQualityBox');
+          if (pqBox) {
+            const usesHelper = !!(paper && helperOn && printerFor(printSize));
+            pqBox.classList.toggle('hidden', !usesHelper);
+            const pq = printPrefs.printerQuality || 'best';
+            [...document.querySelectorAll('#printerQualityRow [data-pq]')].forEach(b => b.classList.toggle('active', b.dataset.pq === pq));
+            document.getElementById('printerQualityHint').textContent = {
+              best: 'The driver’s best quality (slowest, most ink). This is how the app has always printed.',
+              normal: 'The driver’s normal quality: faster and uses less ink.',
+              draft: 'The driver’s draft quality: quickest and lightest. Good for tests.'
+            }[pq] + ' Used only if the printer’s driver offers it.';
+          }
+        } catch (e) { }
         box.classList.toggle('hidden', !show);
         if (!show) return;
         const sizes = photoSizeChoices();
@@ -24279,6 +24320,12 @@
         const b = e.target.closest('[data-tq]');
         if (!b) return;
         printPrefs.thermalQuality = b.dataset.tq;
+        printPrefsChanged();
+      });
+      document.getElementById('printerQualityRow').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-pq]');
+        if (!b) return;
+        printPrefs.printerQuality = b.dataset.pq;
         printPrefsChanged();
       });
       borderlessToggle.addEventListener('change', () => { printPrefs.borderless = borderlessToggle.checked; printPrefsChanged(); });
@@ -24416,7 +24463,7 @@
       const MAX_COPIES = 10;
       const PRINT_TXT = { txtPrint: 'Print', txtPrinting: 'Printing, please hold…', txtCopies: 'How many copies?', txtLimit: 'That’s all the prints for this session' };
       // Saved with the setup (every device on the code gets them).
-      let printPrefs = { guestBtn: true, auto: false, printFirst: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'normal', txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
+      let printPrefs = { guestBtn: true, auto: false, printFirst: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'normal', printerQuality: 'best', voucherPrinter: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
       function printTxt(k) { return (printPrefs[k] || '').trim() || PRINT_TXT[k]; }
       function cleanPrintPrefs(p) {
         p = p && typeof p === 'object' ? p : {};
@@ -24427,6 +24474,8 @@
           fit: ['auto', 'contain', 'fill', 'size'].includes(p.fit) ? p.fit : 'auto',
           photoSize: typeof p.photoSize === 'string' && /^[0-9A-Za-z.]{1,12}$/.test(p.photoSize) ? p.photoSize : '', borderless: !!p.borderless,
           thermalQuality: ['best', 'normal', 'draft'].includes(p.thermalQuality) ? p.thermalQuality : 'normal',
+          printerQuality: ['best', 'normal', 'draft'].includes(p.printerQuality) ? p.printerQuality : 'best',
+          voucherPrinter: !!p.voucherPrinter,
           txtPrint: txt(p.txtPrint, 24), txtPrinting: txt(p.txtPrinting, 60), txtCopies: txt(p.txtCopies, 40), txtLimit: txt(p.txtLimit, 70)
         };
       }
@@ -24610,6 +24659,8 @@
       var printPreviewOk = {};
       const ppv = { auto: false, copies: 1, pages: [], urls: [], i: 0, notes: '' };
       function activePrinterName() {
+        const fp = typeof forcedPrinterName === 'function' ? forcedPrinterName() : '';
+        if (fp) return fp;               // a voucher / payment option linked to a printer
         if (window.__PBNet && wifiPrinter) {
           return wifiPrinter.name || wifiPrinter.ip || 'android';
         }
@@ -24709,6 +24760,7 @@
       const WIFI_PRINTER_KEY = 'pb_wifi_printer';
       let wifiPrinter = null;
       try { wifiPrinter = JSON.parse(localStorage.getItem(WIFI_PRINTER_KEY) || 'null'); } catch (e) { }
+      let wifiDefault = wifiPrinter;                 // the last printer picked: used for every paper size that has none of its own
       let wifiScanTimer = null;
       const wifiJobs = {};
       window.__PBNetResult = function (r) {
@@ -24727,9 +24779,66 @@
         });
       }
       // Print settings for the picked printer: only the ones it says it supports are shown.
-      const WIFI_OPTS_KEY = 'pb_wifi_print_opts';
-      let wifiOptsState = { color: '', quality: '', media: '' };
-      try { wifiOptsState = Object.assign(wifiOptsState, JSON.parse(localStorage.getItem(WIFI_OPTS_KEY) || '{}')); } catch (e) { }
+      // Each printer keeps its own colour / quality / paper type. A printer that has not been set yet starts from the one
+      // setting the app used to share between all printers (so nothing changes until you change it).
+      const WIFI_OPTS_KEY = 'pb_wifi_print_opts', WIFI_OPTS_MAP_KEY = 'pb_wifi_print_opts_by_printer';
+      let wifiOptsShared = { color: '', quality: '', media: '' }, wifiOptsMap = {};
+      try { wifiOptsShared = Object.assign(wifiOptsShared, JSON.parse(localStorage.getItem(WIFI_OPTS_KEY) || '{}')); } catch (e) { }
+      try { wifiOptsMap = JSON.parse(localStorage.getItem(WIFI_OPTS_MAP_KEY) || '{}') || {}; } catch (e) { wifiOptsMap = {}; }
+      // Keyed by the printer's name, not its address: a USB printer gets a new address each time it is plugged in and a Wi-Fi
+      // printer can get a new one from the router, but "Epson L3210 (USB)" stays the same, so its settings are still there.
+      function wifiPKey(p) { return p ? String(p.name || p.ip || '') : ''; }
+      function wifiOptsFor(p) { return Object.assign({}, wifiOptsShared, (p && (wifiOptsMap[wifiPKey(p)] || wifiOptsMap[p.ip])) || {}); }
+      function wifiOptsSet(p, key, val) {
+        if (!p) return;
+        const k = wifiPKey(p);
+        wifiOptsMap[k] = Object.assign(wifiOptsFor(p), { [key]: val });
+        try { localStorage.setItem(WIFI_OPTS_MAP_KEY, JSON.stringify(wifiOptsMap)); } catch (e) { }
+      }
+      // The printer chosen for each paper size (Android). Sizes without their own printer use the last one picked.
+      const WIFI_SIZE_MAP_KEY = 'pb_wifi_printer_by_size';
+      let wifiSizeMap = {};
+      try { wifiSizeMap = JSON.parse(localStorage.getItem(WIFI_SIZE_MAP_KEY) || '{}') || {}; } catch (e) { wifiSizeMap = {}; }
+      function wifiSizeKey() { try { return printSize ? String(printerKey(printSize)) : ''; } catch (e) { return ''; } }
+      function wifiForSize(size) { try { const k = size ? String(printerKey(size)) : ''; return (k && wifiSizeMap[k]) || wifiDefault || null; } catch (e) { return wifiDefault || null; } }
+      function wifiByName(n) {
+        if (!n) return null;
+        let found = null;
+        try {
+          Object.keys(wifiSizeMap).forEach(k => { if (!found && wifiSizeMap[k] && wifiSizeMap[k].name === n) found = wifiSizeMap[k]; });
+          if (!found && wifiDefault && wifiDefault.name === n) found = wifiDefault;
+        } catch (e) { }
+        return found;
+      }
+      function wifiSyncForSize() {
+        const want = wifiForSize(printSize);
+        if (want && wifiPrinter && want.ip === wifiPrinter.ip && want.name === wifiPrinter.name) return;
+        if (!want && !wifiPrinter) return;
+        wifiPrinter = want;
+      }
+      // A USB printer that was unplugged and plugged in again has a new address. Find it by name among the printers the tablet
+      // sees now and point the saved printer at it, so its choices (paper size, colour, quality) carry on without picking it again.
+      function wifiRelink(d) {
+        try {
+          if (!wifiNetAvailable()) return;
+          d = d || wifiList();
+          const list = (d && d.printers) || [];
+          let changed = false;
+          const fix = (sp) => {
+            if (!sp || !sp.usb || !sp.name) return;
+            const same = list.filter(q => q.usb && q.name === sp.name);
+            if (same.length === 1 && same[0].ip && same[0].ip !== sp.ip) {
+              sp.ip = same[0].ip; sp.vid = same[0].vid || sp.vid; sp.pid = same[0].pid || sp.pid; changed = true;
+            }
+          };
+          Object.keys(wifiSizeMap).forEach(k => fix(wifiSizeMap[k]));
+          fix(wifiDefault); fix(wifiPrinter);
+          if (changed) {
+            try { localStorage.setItem(WIFI_SIZE_MAP_KEY, JSON.stringify(wifiSizeMap)); } catch (e) { }
+            try { if (wifiDefault) localStorage.setItem(WIFI_PRINTER_KEY, JSON.stringify(wifiDefault)); } catch (e) { }
+          }
+        } catch (e) { }
+      }
       // Debug-only extras (printer IDs, colour test strips, "experimental" wording): off unless Admin turns them on for this code.
       function pbDebug() { return !!(window.__PB && window.__PB.debugOpt); }
       // Colour calibration for the Epson L120 family (set on the debug screen, used for every colour print on this tablet).
@@ -24743,9 +24852,11 @@
           const el = document.getElementById(id); if (el) el.value = String(wifiCal[key]);
         });
       }
-      function wifiOpts() {
-        const o = { color: wifiOptsState.color || '', quality: wifiOptsState.quality || '', media: wifiOptsState.media || '' };
-        if (wifiPrinter && wifiPrinter.escp2 && !o.color) o.color = 'color';   // L120 / L121: colour enabled by default
+      function wifiOpts(printer) {
+        const p = printer || wifiPrinter, st = wifiOptsFor(p);
+        const o = { color: st.color || '', quality: st.quality || '', media: st.media || '' };
+        if (p && p.escp2 && !o.color) o.color = 'color';   // L120 / L121: colour enabled by default
+        o.thermalQuality = (printPrefs && printPrefs.thermalQuality) || 'normal';   // for receipt printers on Wi-Fi / USB
         o.cal = wifiCal;
         o.borderless = !!(printPrefs && printPrefs.borderless && window.__PBNet);
         // Lightness / colour correction is already in the page (printAdjust); the printer code must not add it again.
@@ -24755,7 +24866,7 @@
       function wifiOptsUI() {
         const box = document.getElementById('wifiOptions');
         if (!box) return;
-        const p = wifiPrinter;
+        const p = wifiPrinter, ost = wifiOptsFor(p);
         const fill = (id, lblId, choices, key) => {
           const sel = document.getElementById(id), lbl = document.getElementById(lblId);
           if (!sel) return;
@@ -24764,7 +24875,7 @@
           if (!show) return;
           sel.textContent = '';
           choices.forEach(c => { const o = document.createElement('option'); o.value = c[0]; o.textContent = c[1]; sel.appendChild(o); });
-          sel.value = choices.some(c => c[0] === wifiOptsState[key]) ? wifiOptsState[key] : choices[0][0];
+          sel.value = choices.some(c => c[0] === ost[key]) ? ost[key] : choices[0][0];
         };
         let colorCh = [], qualCh = [], mediaCh = [];
         if (p) {
@@ -24789,7 +24900,13 @@
         box.style.display = (colorCh.length > 1 || qualCh.length > 1 || mediaCh.length > 1) ? '' : 'none';
       }
       function wifiSave(p) {
+        // The printer is picked for the paper size on screen (so Brother can do A4 while the Epson does 4x6); the last one
+        // picked also covers every size that has no printer of its own. Forgetting clears this size and the shared one.
+        const sk = wifiSizeKey();
+        if (p) { if (sk) wifiSizeMap[sk] = p; wifiDefault = p; }
+        else { if (sk) delete wifiSizeMap[sk]; wifiDefault = null; }
         wifiPrinter = p || null;
+        try { localStorage.setItem(WIFI_SIZE_MAP_KEY, JSON.stringify(wifiSizeMap)); } catch (e) { }
         try { if (p) localStorage.setItem(WIFI_PRINTER_KEY, JSON.stringify(p)); else localStorage.removeItem(WIFI_PRINTER_KEY); } catch (e) { }
         try { if (typeof printPreviewOk !== 'undefined') delete printPreviewOk[printPreviewKey()]; printPrefs.preview = true; } catch (e) { }
         if (p && p.borderless) { printPrefs.borderless = true; try { borderlessToggle.checked = true; } catch (e) { } }
@@ -24801,6 +24918,7 @@
       function wifiRenderList(d) {
         const box = document.getElementById('wifiPrinterList'), st = document.getElementById('wifiPrinterStatus');
         if (!box) return;
+        wifiRelink(d);
         box.textContent = '';
         if (window.__PBPrint && typeof window.__PBPrint.print === 'function') {
           const bd = document.createElement('button');
@@ -24820,7 +24938,7 @@
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
           const sel = wifiPrinter && wifiPrinter.ip === p.ip;
-          var tag = p.needsPermission ? ' · Tap to allow USB access' : p.noDriver ? ' · No driver' : p.raw ? ' · Receipt' : p.escp2 ? ' · Photo (' + (p.epsonModel ? 'Epson ' + p.epsonModel : 'Photo') + ')' : p.epsonL ? ' · Photo (' + (p.epsonModel || 'Photo') + ')' : p.selphy ? ' · Photo (SELPHY)' : p.canon ? ' · Photo (' + (p.canonModel ? 'Canon ' + p.canonModel : 'Canon') + ')' : (p.ipp || p.escpr) ? ' · Photo' : '';
+          var tag = p.needsPermission ? ' · Tap to allow USB access' : p.noDriver ? (p.usb ? (wifiPrinter && wifiPrinter.forcedRaw && wifiPrinter.ip === p.ip ? ' · Receipt (tried manually)' : ' · Unknown model · tap to try as a thermal printer') : ' · No driver') : p.raw ? ' · Receipt' : p.escp2 ? ' · Photo (' + (p.epsonModel ? 'Epson ' + p.epsonModel : 'Photo') + ')' : p.epsonL ? ' · Photo (' + (p.epsonModel || 'Photo') + ')' : p.selphy ? ' · Photo (SELPHY)' : p.canon ? ' · Photo (' + (p.canonModel ? 'Canon ' + p.canonModel : 'Canon') + ')' : (p.ipp || p.escpr) ? ' · Photo' : '';
           var connTag = (p.name && p.name.indexOf('(USB)') >= 0) ? '' : (p.usb ? ' · USB' : (p.ip ? ' · Wi-Fi' : ''));
           b.textContent = (sel ? '✓ ' : '') + p.name + connTag + tag;
           b.addEventListener('click', () => {
@@ -24833,7 +24951,22 @@
               return;
             }
             if (p.noDriver) {
-              showToast(p.name + ' is detected, but requires the System Print Dialog or Print Station.' + (pbDebug() && p.usb ? ' [USB ' + (p.vid || 0).toString(16) + ':' + (p.pid || 0).toString(16) + (p.info ? ' ' + p.info : '') + ']' : ''), pbDebug() ? 10000 : 5000);
+              const idTxt = (pbDebug() && p.usb ? ' [USB ' + (p.vid || 0).toString(16) + ':' + (p.pid || 0).toString(16) + (p.info ? ' ' + p.info : '') + ']' : '');
+              if (p.usb) {
+                // A USB printer the app does not know by model (for example a thermal printer that only calls itself "USB Printer Port").
+                // The operator can try it as a thermal (ESC/POS) receipt printer: the same plain text-and-picture language almost every
+                // receipt printer understands. It is only offered for a Receipt paper size, and nothing is changed until it is tapped.
+                if (!(printSize && paperFor(printSize) && paperFor(printSize).receipt)) {
+                  showToast(p.name + ' is not a model the app knows. If it is a thermal receipt printer, choose a Receipt paper size above first, then tap it again to try it.' + idTxt, pbDebug() ? 10000 : 8000);
+                  return;
+                }
+                wifiSave({ ip: p.ip, name: p.name, ipp: false, raw: true, forcedRaw: true, usb: true, escpr: false, escp2: false, canon: false, canonModel: '', selphy: false, epsonL: false, epsonModel: '', borderless: false, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: [], colorModes: [], mediaTypes: [] });
+                showToast(p.name + ' will be tried as a thermal receipt printer. Tap "Test print" to check it. If nothing prints, use the Android print screen instead.' + idTxt, pbDebug() ? 10000 : 8000);
+                wifiRenderList(wifiList());
+                refreshPrintUI();
+                return;
+              }
+              showToast(p.name + ' is detected, but requires the System Print Dialog or Print Station.' + idTxt, pbDebug() ? 10000 : 5000);
               return;
             }
             wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
@@ -24871,6 +25004,7 @@
         tick();
       }
       function wifiPrinterUI() {
+        try { wifiSyncForSize(); } catch (e) { }
         const row = document.getElementById('wifiPrinterRow');
         if (!row) return;
         row.style.display = wifiNetAvailable() && printSize && !useStation() ? '' : 'none';
@@ -24884,7 +25018,7 @@
         const dg = document.getElementById('wifiDiag');
         if (dg) dg.style.display = pbDebug() && wifiPrinter && wifiPrinter.escp2 ? '' : 'none';
         if (st && wifiPrinter && wifiPrinter.dialog) st.textContent = 'Android opens its own print screen: pick the printer there. For a thermal receipt printer, use Bluetooth or the printer marked Receipt instead: the print screen gives rough photos.';
-        else if (st && wifiPrinter) st.textContent = 'Printing to: ' + wifiPrinter.name + (wifiPrinter.usb ? ' [USB connected]' : ' [Wi-Fi ' + wifiPrinter.ip + ']');
+        else if (st && wifiPrinter) st.textContent = 'Printing ' + (printSize && paperFor(printSize) ? paperFor(printSize).name + ' ' : '') + 'to: ' + wifiPrinter.name + (wifiPrinter.usb ? ' [USB connected]' : ' [Wi-Fi ' + wifiPrinter.ip + ']') + '. Pick a different paper size above to use another printer for it. Quality and colour below are saved for this printer only.';
         else if (st && !wifiScanTimer) st.textContent = '';
       }
       (function () {
@@ -24905,8 +25039,7 @@
         [['wifiOptColor', 'color'], ['wifiOptQuality', 'quality'], ['wifiOptMedia', 'media']].forEach(([id, key]) => {
           const el = document.getElementById(id);
           if (el) el.addEventListener('change', () => {
-            wifiOptsState[key] = el.value;
-            try { localStorage.setItem(WIFI_OPTS_KEY, JSON.stringify(wifiOptsState)); } catch (e) { }
+            wifiOptsSet(wifiPrinter, key, el.value);          // saved for this printer only
           });
         });
         // A USB printer plugged in (or out) while this panel is open shows up without pressing anything.
@@ -24949,8 +25082,9 @@
           wifiDiagBusy = false;
         }
       }
-      async function printViaWifi(all, paper) {
-        const p = wifiPrinter;
+      async function printViaWifi(all, paper, printer, wopts) {
+        const p = printer || wifiPrinter;
+        const wo = wopts || wifiOpts(p);               // the printer's own colour / quality / paper type
         if (p.dialog) {
           // The Android print dialog: the tablet lists every printer its print services can reach.
           const dlg = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
@@ -24962,7 +25096,7 @@
           const dotW = paper.w <= 55 ? 384 : 576;
           const bVal = 0;          // already in the page (printAdjust)
           for (const cv of all) {
-            const bytes = new window._btThermal.EscPosEncoder(dotW).initialize().image(window._btThermal.toReceiptCanvas(cv, dotW, bVal, printPrefs.thermalQuality || 'normal')).cut().getBuffer();
+            const bytes = new window._btThermal.EscPosEncoder(dotW).initialize().image(window._btThermal.toReceiptCanvas(cv, dotW, bVal, wo.thermalQuality || 'normal')).cut().getBuffer();
             await wifiJob(id => window.__PBNet.printRaw(id, p.ip, wifiBytesToB64(bytes)));
           }
           return;
@@ -24970,39 +25104,39 @@
         if (p.selphy) {
           // Direct Canon SELPHY dye-sub photo printing over USB (CP820 / CP910 / CP1000 / CP1200 / CP1300 / CP1500)
           const picsS = all.map(cv => cv.toDataURL('image/jpeg', 0.95));
-          await wifiJob(id => window.__PBNet.printSelphy(id, p.ip, paper.w, paper.h, 1, JSON.stringify(picsS), JSON.stringify(wifiOpts())));
+          await wifiJob(id => window.__PBNet.printSelphy(id, p.ip, paper.w, paper.h, 1, JSON.stringify(picsS), JSON.stringify(wo)));
           return;
         }
         if (p.canon) {
           // Experimental Canon G-series path over USB: 300 dpi, plain paper, 4x6 / A4 / Letter.
           const picsC = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
-          await wifiJob(id => window.__PBNet.printCanon(id, p.ip, paper.w, paper.h, 1, JSON.stringify(picsC), JSON.stringify(wifiOpts())));
+          await wifiJob(id => window.__PBNet.printCanon(id, p.ip, paper.w, paper.h, 1, JSON.stringify(picsC), JSON.stringify(wo)));
           return;
         }
         if (p.escp2) {
           // Experimental Epson ESC/P2 path (Epson L120 family over USB): black and white, 360 dpi, 3 mm side borders.
           const pics2 = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
-          await wifiJob(id => window.__PBNet.printEscp2(id, p.ip, paper.w, paper.h, 1, JSON.stringify(pics2), JSON.stringify(wifiOpts())));
+          await wifiJob(id => window.__PBNet.printEscp2(id, p.ip, paper.w, paper.h, 1, JSON.stringify(pics2), JSON.stringify(wo)));
           return;
         }
         if (p.epsonL) {
           // Hardcoded Epson L-series: L8050 (photo 6-ink), L3210, L3276 — direct USB ESC/P-R printing.
           const picsL = all.map(cv => cv.toDataURL('image/jpeg', 0.95));
-          const isBl = !!(p.borderless && (printPrefs.borderless !== false));
-          const epsonLOpts = Object.assign({}, wifiOpts(), { borderless: isBl });
+          const isBl = !!(p.borderless && (wo.borderless !== false));
+          const epsonLOpts = Object.assign({}, wo, { borderless: isBl });
           await wifiJob(id => window.__PBNet.printEpsonL(id, p.ip, paper.w, paper.h, 1, JSON.stringify(picsL), JSON.stringify(epsonLOpts)));
           return;
         }
         if (p.escpr) {
           // Epson ESC/P-R path (Epson L120 / L210 and similar over USB): plain colour, 3 mm borders.
           const pics = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
-          await wifiJob(id => window.__PBNet.printEscpr(id, p.ip, paper.w, paper.h, 1, JSON.stringify(pics), JSON.stringify(wifiOpts())));
+          await wifiJob(id => window.__PBNet.printEscpr(id, p.ip, paper.w, paper.h, 1, JSON.stringify(pics), JSON.stringify(wo)));
           return;
         }
         if (!p.ipp) throw new Error(p.name + ' only takes receipts. Pick a photo printer.');
         if (p.usb) showToast('Allow USB access on the tablet if it asks.', 3000);
         const imgs = all.map(cv => cv.toDataURL('image/jpeg', 0.92));
-        await wifiJob(id => window.__PBNet.printIpp(id, p.ip, paper.w, paper.h, 1, JSON.stringify(imgs), JSON.stringify(wifiOpts())));
+        await wifiJob(id => window.__PBNet.printIpp(id, p.ip, paper.w, paper.h, 1, JSON.stringify(imgs), JSON.stringify(wo)));
       }
 
       // One test sheet at the chosen paper size: not counted as a guest print and never starts auto-print,
@@ -25046,7 +25180,35 @@
         }
       }
 
+      // ---- Print queue (Android tablet app) ----
+      // A photo printer needs a while to finish a sheet. The next guest's print waits in line behind it (one line per printer,
+      // so two different printers work at the same time) instead of the Print button being stuck on "Printing, please hold…".
+      const printQueues = {};
+      let printQueued = 0;                  // prints running or waiting
+      function androidQueueOn() {
+        try { return !!(window.__PBNet || (window._btThermal && typeof window._btThermal.isNativeAndroid === 'function' && window._btThermal.isNativeAndroid())); } catch (e) { return false; }
+      }
+      function enqueuePrint(key, job) {
+        printQueued++;
+        try { refreshGuestPrintBtn(); } catch (e) { }
+        const run = (printQueues[key] || Promise.resolve()).then(job);
+        printQueues[key] = run.catch(() => { });
+        const done = () => { printQueued = Math.max(0, printQueued - 1); try { refreshGuestPrintBtn(); } catch (e) { } };
+        run.then(done, done);
+        return run;
+      }
+      // A queued print that failed: say so, and open Android's own print screen so the sheet is not lost.
+      function queuedPrintFailed(why, all, paper) {
+        showToast(why + ' Opening the Android print screen instead.', 6500);
+        try {
+          if (window.__PBPrint && typeof window.__PBPrint.print === 'function') {
+            window.__PBPrint.print('Photobooth ' + (paper.name || ''), paper.w, paper.h, JSON.stringify(all.map(cv => cv.toDataURL('image/jpeg', 0.92))));
+          }
+        } catch (e) { }
+      }
+
       async function printCurrentPhoto(auto, copies) {
+        try { wifiRelink(); wifiSyncForSize(); } catch (e) { }
         if (printing || !printSize || !(state === 'result' && shotCanvases.every(Boolean))) return false;
         const per = sheetsPerCopy(printSize);
         let n = Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(copies) || printPrefs.copies || 1)));
@@ -25088,14 +25250,30 @@
 
           // ---- Bluetooth thermal printer path (tablet / Android / iOS) ----
           const btConnected = !!(window._btThermal && window._btThermal.btPrinter && window._btThermal.btPrinter.connected);
-          if ((isMobileOS() || !helperOn) && btThermalOn && paper.receipt && isBtThermalAvailable()) {
+          // A voucher / payment option linked to a printer sends this guest's prints there (when this device has it).
+          const fp = forcedPrinterName();
+          const fpHelper = !!fp && helperOn && !!helper && Array.isArray(helper.printers) && helper.printers.includes(fp);
+          const fpBt = !!fp && !fpHelper && btThermalOn && fp === btProfileName();
+          const fpWifi = (fp && !fpHelper && !fpBt) ? wifiByName(fp) : null;
+          if ((isMobileOS() || !helperOn) && btThermalOn && paper.receipt && isBtThermalAvailable() && (!fp || fpBt)) {
             try {
-              showPrintingNote(printTxt('txtPrinting'), 8000);
               const rollW = (paper.w && paper.w <= 55) ? '58mm' : '80mm';
               const btOpts = { brightness: 0, quality: printPrefs.thermalQuality || 'normal' };          // colour already in the page (printAdjust)
-              await window._btThermal.printViaBluetooth(pages[0], rollW, btOpts);
-              // If n > 1 copies, print the rest
-              for (let ci = 1; ci < all.length; ci++) await window._btThermal.printViaBluetooth(all[ci], rollW, btOpts);
+              const btRun = async () => { for (const cv of all) await window._btThermal.printViaBluetooth(cv, rollW, btOpts); };
+              if (androidQueueOn() && !printFirstHolding) {
+                // Line up behind any print the thermal printer is still doing; the booth is free for the next guest at once.
+                const ahead = printQueued;
+                enqueuePrint('bt', btRun).catch((btErr) => {
+                  try { window._btThermal.btPrinter.disconnect(); } catch (_) { }
+                  try { refreshPrintUI(); } catch (_) { }
+                  queuedPrintFailed('Bluetooth print failed: ' + (btErr.message || btErr) + '.', all, paper);
+                });
+                showToast(ahead > 0 ? 'Added to the print queue (' + ahead + ' ahead): ' + label + '.' : (auto === true ? 'Auto-printing via Bluetooth (' : 'Printing via Bluetooth (') + label + ').');
+                armAutoPrintAfterFirst(auto === true);
+                return true;
+              }
+              showPrintingNote(printTxt('txtPrinting'), 8000);
+              await btRun();
               showToast((auto === true ? 'Auto-printed via Bluetooth (' : 'Printed via Bluetooth (') + label + ').');
               armAutoPrintAfterFirst(auto === true);
               return true;
@@ -25108,12 +25286,12 @@
             }
           }
 
-          const pname = printerFor(printSize);
-          if (helperOn && pname) {
+          const pname = fpHelper ? fp : printerFor(printSize);
+          if (helperOn && pname && !fpBt && !fpWifi) {
             let sent = true;
-            const sec = secondPrinter();
+            const sec = fp ? null : secondPrinter();       // a linked printer prints on its own
             const extraJob = sec && sec.mode === 'extra' ? printExtraSheet(sec) : null;       // e.g. a receipt strip on the second printer, at the same time
-            if (flipbookResult && flipPrinterPool && flipPrinterPool !== pname && helper && Array.isArray(helper.printers) && helper.printers.indexOf(flipPrinterPool) >= 0) {
+            if (!fp && flipbookResult && flipPrinterPool && flipPrinterPool !== pname && helper && Array.isArray(helper.printers) && helper.printers.indexOf(flipPrinterPool) >= 0) {
               const p1 = pname, p2 = flipPrinterPool;
               const p1Pages = [], p2Pages = [];
               if (flipPoolMode === 'copies' && n > 1) {
@@ -25147,11 +25325,22 @@
             }
           }
           // Android tablet app with a Wi-Fi printer picked: the app finds it and prints straight to it.
-          if (wifiPrinter && !wifiPrinter.dialog && wifiNetAvailable()) {
+          const wf = fpWifi || wifiPrinter;
+          if (wf && !wf.dialog && wifiNetAvailable()) {
             try {
+              const wp = wf, wo = wifiOpts(wp);      // this printer and its own settings, fixed now (the paper size may change while the sheet waits)
+              if (androidQueueOn() && !printFirstHolding) {
+                const ahead = printQueued;
+                enqueuePrint('w:' + wifiPKey(wp), () => printViaWifi(all, paper, wp, wo)).catch((wErr) => {
+                  queuedPrintFailed('Wi-Fi print failed: ' + (wErr.message || wErr), all, paper);
+                });
+                showToast(ahead > 0 ? 'Added to the print queue (' + ahead + ' ahead): ' + label + '.' : (auto === true ? 'Auto-printing on ' : 'Printing on ') + wp.name + ' (' + label + ').');
+                armAutoPrintAfterFirst(auto === true);
+                return true;
+              }
               showPrintingNote(printTxt('txtPrinting'), 8000);
-              await printViaWifi(all, paper);
-              showToast((auto === true ? 'Auto-printing on ' : 'Printing on ') + wifiPrinter.name + ' (' + label + ').');
+              await printViaWifi(all, paper, wp, wo);
+              showToast((auto === true ? 'Auto-printing on ' : 'Printing on ') + wp.name + ' (' + label + ').');
               armAutoPrintAfterFirst(auto === true);
               return true;
             } catch (wErr) {
@@ -25350,6 +25539,7 @@
         pq.disabled = printing || out;
         let small = '';
         if (out) small = 'limit reached';
+        else if (printQueued > 0) small = printQueued + (printQueued === 1 ? ' print' : ' prints') + ' in the queue';
         else if (lim.se || lim.ev) small = (left >= MAX_COPIES ? MAX_COPIES + '+' : left) + (left === 1 ? ' print left' : ' prints left');
         pq.innerHTML = ICON('printer') + ' ' + escHtml(printing ? printTxt('txtPrinting') : printTxt('txtPrint')) + (small && !printing ? '<small>' + small + '</small>' : '');
       }
@@ -26138,8 +26328,42 @@
       var colorAdjKeyNow = null;   // printer the live camera / prints use (null until known)
       var colorAdjView = null;     // printer chip being edited (null = the live one)
       function safeCall(fn) { try { fn(); } catch (e) { } }
+      // The tablet app has no Print Helper printer list: its printers are the Wi-Fi / USB printer picked for each paper size and the
+      // Bluetooth thermal printer (used for receipt rolls). Name them so each one gets its own colour and layout profile.
+      var BT_PROFILE_NAME = 'Bluetooth thermal printer', BT_LAST_KEY = 'pb_bt_last_name';
+      // The Bluetooth printer's own name once it has connected (remembered, so its profile is back after a restart).
+      function btProfileName() {
+        try {
+          var bp = window._btThermal && window._btThermal.btPrinter;
+          if (bp && bp.connected && bp.name) { localStorage.setItem(BT_LAST_KEY, bp.name); return bp.name; }
+          return localStorage.getItem(BT_LAST_KEY) || BT_PROFILE_NAME;
+        } catch (e) { return BT_PROFILE_NAME; }
+      }
+      function tabletPrinterName(size) {
+        try {
+          if (!size) return '';
+          var paper = paperFor(size);
+          if ((isMobileOS() || !helperOn) && btThermalOn && paper && paper.receipt && isBtThermalAvailable()) return btProfileName();
+          if (wifiNetAvailable()) { var wp = wifiForSize(size); if (wp && wp.name) return wp.name; }
+        } catch (e) { }
+        return '';
+      }
+      function tabletPrinterNames() {
+        var out = [];
+        try {
+          Object.keys(wifiSizeMap).forEach(function (k) { if (wifiSizeMap[k] && wifiSizeMap[k].name) out.push(wifiSizeMap[k].name); });
+          if (wifiDefault && wifiDefault.name) out.push(wifiDefault.name);
+          if (btThermalOn) out.push(btProfileName());
+        } catch (e) { }
+        return out;
+      }
       function colorAdjPrinter() {
-        try { return (typeof printSize !== 'undefined' && printSize && typeof printerFor === 'function') ? (printerFor(printSize) || '') : ''; } catch (e) { return ''; }
+        try {
+          if (!(typeof printSize !== 'undefined' && printSize)) return '';
+          var fp = typeof forcedPrinterName === 'function' ? forcedPrinterName() : '';
+          if (fp) return fp;                 // a voucher / payment option linked to a printer: its own profile applies
+          return (typeof printerFor === 'function' ? (printerFor(printSize) || '') : '') || tabletPrinterName(printSize);
+        } catch (e) { return ''; }
       }
       function liveKey() { return colorAdjKeyNow === null ? colorAdjPrinter() : colorAdjKeyNow; }
       function viewKey() { return colorAdjView === null ? liveKey() : colorAdjView; }
@@ -26152,6 +26376,7 @@
       function profilePrinters() {
         var out = [], add = function (n) { if (n && out.indexOf(n) < 0) out.push(n); };
         try { Object.keys(printerMap).forEach(function (k) { add(printerMap[k]); }); } catch (e) { }
+        try { tabletPrinterNames().forEach(add); } catch (e) { }
         add(liveKey());
         return out.sort();
       }
@@ -26162,15 +26387,16 @@
       function savePrintOptsForPrinter() {
         try {
           var k = liveKey();
-          printOptsMap[k] = { fit: printPrefs.fit || 'auto', photoSize: printPrefs.photoSize || '', borderless: !!printPrefs.borderless, thermalQuality: printPrefs.thermalQuality || 'normal' };
+          printOptsMap[k] = { fit: printPrefs.fit || 'auto', photoSize: printPrefs.photoSize || '', borderless: !!printPrefs.borderless, thermalQuality: printPrefs.thermalQuality || 'normal', printerQuality: printPrefs.printerQuality || 'best' };
           saveProfileMaps();
         } catch (e) { }
       }
       function loadPrintOptsForPrinter(k) {
         try {
-          var o = printOptsMap[k] || { fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'normal' };
+          var o = printOptsMap[k] || { fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'normal', printerQuality: 'best' };
           printPrefs.fit = o.fit || 'auto'; printPrefs.photoSize = o.photoSize || ''; printPrefs.borderless = !!o.borderless;
           printPrefs.thermalQuality = ['best', 'normal', 'draft'].indexOf(o.thermalQuality) >= 0 ? o.thermalQuality : 'normal';
+          printPrefs.printerQuality = ['best', 'normal', 'draft'].indexOf(o.printerQuality) >= 0 ? o.printerQuality : 'best';
           refreshPhotoFitUI();
         } catch (e) { }
       }
@@ -26526,6 +26752,7 @@
         var gso = document.getElementById('guestStickerOverlay');
         if (gso) gso.classList.add('hidden');
         if (typeof sessionTier !== 'undefined') sessionTier = null;
+        if (typeof sessionPrinter !== 'undefined' && sessionPrinter) { sessionPrinter = ''; try { refreshPrintUI(); } catch (e) { } }
         guestInfo = { name: '', line: '', q: ['', '', ''] };
         btViewBack = false; try { btFlipBtn.hidden = true; } catch (e) { }
         if (tplEdit) { tplEdit = null; try { btRenderTplEditor(); } catch (e) { } }
@@ -32943,9 +33170,10 @@
         tier2: { id: 'opt_2', label: 'Option 2', placeholder: 'Coloured', price: 100, tier: 'photo' }
       };
       var sessionTier = null;
+      var sessionPrinter = '';             // printer linked to the payment option this guest paid for / used a voucher of (only when "Link vouchers to printers" is on)
       var payAcct = (function () { try { return JSON.parse(localStorage.getItem('pb_pay_acct') || 'null'); } catch (e) { return null; } })();
       var payPrintAllow = 0;
-      var payState = { resolve: null, view: '', qrId: null, exp: 0, timer: null, poll: null, idle: null, code: '', busy: false, test: false, tier: 'all' };
+      var payState = { resolve: null, view: '', qrId: null, exp: 0, timer: null, poll: null, idle: null, code: '', busy: false, test: false, tier: 'all', label: '' };
       function payOn() { return !!(window.__PB && window.__PB.payOpt); }
       function cleanPay(p) {
         p = p && typeof p === 'object' ? p : {};
@@ -32981,7 +33209,8 @@
             label: lbl,
             placeholder: ph,
             price: (pr >= 20 && pr <= 20000) ? pr : (idx === 0 ? 50 : 100),
-            tier: t
+            tier: t,
+            printer: typeof o.printer === 'string' ? o.printer.replace(/[<>]/g, '').slice(0, 80) : ''
           };
         });
 
@@ -33009,7 +33238,46 @@
       var CREDIT_KEY = 'pb_pay_credit';
       function payCredit() { try { return JSON.parse(localStorage.getItem(CREDIT_KEY) || 'null'); } catch (e) { return null; } }
       function setPayCredit(c) { try { if (c) localStorage.setItem(CREDIT_KEY, JSON.stringify(c)); else localStorage.removeItem(CREDIT_KEY); } catch (e) { } refreshPayBadge(); }
-      function consumePayCredit() { var c = payCredit(); if (!c) return; payPrintAllow = c.prints || 0; sessionTier = c.tier || null; setPayCredit(null); }
+      function consumePayCredit() {
+        var c = payCredit(); if (!c) return;
+        payPrintAllow = c.prints || 0; sessionTier = c.tier || null;
+        var prevP = sessionPrinter; sessionPrinter = (printPrefs.voucherPrinter && c.printer) ? String(c.printer) : '';
+        setPayCredit(null);
+        if (prevP !== sessionPrinter) { try { refreshPrintUI(); } catch (e) { } }
+      }
+      // The printer linked to a payment option (found by the option's label, which every voucher and QR payment carries).
+      function payOptionPrinter(label) {
+        try {
+          if (!(printPrefs.voucherPrinter && payCfg.dual && label && Array.isArray(payCfg.options))) return '';
+          var o = payCfg.options.find(function (x) { return x.label === label; });
+          return (o && o.printer) || '';
+        } catch (e) { return ''; }
+      }
+      // The linked printer for this guest, only if this device has it (otherwise prints go the normal way, by paper size).
+      function forcedPrinterName() {
+        try {
+          if (!(printPrefs.voucherPrinter && payCfg.dual && sessionPrinter)) return '';
+          var n = sessionPrinter;
+          if (helperOn && helper && Array.isArray(helper.printers) && helper.printers.indexOf(n) >= 0) return n;
+          if (typeof wifiByName === 'function' && wifiByName(n)) return n;
+          if (btThermalOn && n === btProfileName()) return n;
+        } catch (e) { }
+        return '';
+      }
+      // Printers this device knows, for the Printer choice on each payment option.
+      function voucherPrinterChoices() {
+        var out = [], add = function (n) { if (n && out.indexOf(n) < 0) out.push(n); };
+        try { (helper.printers || []).forEach(add); } catch (e) { }
+        try { Object.keys(printerMap).forEach(function (k) { add(printerMap[k]); }); } catch (e) { }
+        try { tabletPrinterNames().forEach(add); } catch (e) { }
+        return out.sort();
+      }
+      function voucherPrinterOptionsHtml(sel) {
+        var names = voucherPrinterChoices(), h = '<option value="">Automatic (by paper size)</option>';
+        names.forEach(function (n) { h += '<option value="' + payEsc(n) + '"' + (n === sel ? ' selected' : '') + '>' + payEsc(n) + '</option>'; });
+        if (sel && names.indexOf(sel) < 0) h += '<option value="' + payEsc(sel) + '" selected>' + payEsc(sel) + ' (not on this device)</option>';
+        return h;
+      }
 
       // ---- welcome pill ----
       function refreshPayBadge() {
@@ -33301,7 +33569,7 @@
         var askPrice = (price && price >= 20) ? price : payCfg.price;
         var askLabel = label || '1 photo session';
         var askTier = (tier === 'receipt' || tier === 'photo') ? tier : 'all';
-        payState.tier = askTier;
+        payState.tier = askTier; payState.label = askLabel;
         try {
           var r = await postApi('/api/pay', { action: 'qr', amount: askPrice, prints: payCfg.prints, tier: askTier, label: askLabel }, 12000);
           if (r.status === 200 && r.j.image) {
@@ -33328,7 +33596,7 @@
             if (r.status === 200 && r.j.status === 'paid') {
               clearInterval(payState.poll);
               document.getElementById('payDoneT').textContent = 'Payment received';
-              payPaid(payCfg.prints, r.j.tier || payState.tier);
+              payPaid(payCfg.prints, r.j.tier || payState.tier, payState.label);
             }
           } catch (e) { }
         }, 2500);
@@ -33337,7 +33605,9 @@
         payStopTimers();
         payPrintAllow = prints || 0;
         sessionTier = (tier === 'receipt' || tier === 'photo') ? tier : null;
-        setPayCredit({ at: Date.now(), prints: payPrintAllow, tier: sessionTier });
+        sessionPrinter = payOptionPrinter(label);
+        setPayCredit({ at: Date.now(), prints: payPrintAllow, tier: sessionTier, printer: sessionPrinter });
+        try { refreshPrintUI(); } catch (e) { }
         payShow('payDone');
         setTimeout(function () { payFinish(true); }, 1500);
       }
@@ -33458,8 +33728,18 @@
                 '<option value="all"' + (opt.tier === 'all' ? ' selected' : '') + '>✨ Any layout</option>' +
               '</select>' +
             '</div>' +
+            (printPrefs.voucherPrinter ? '<div>' +
+              '<label style="display:block; font-size:11px; color:var(--muted); margin-bottom:2px;">Printer for this option</label>' +
+              '<select class="mini-select pay-opt-printer" data-idx="' + idx + '" style="width:100%; box-sizing:border-box;">' + voucherPrinterOptionsHtml(opt.printer || '') + '</select>' +
+            '</div>' : '') +
           '</div>';
         }).join('');
+        if (printPrefs.voucherPrinter) {
+          var lbls = payCfg.options.map(function (o) { return o.label; });
+          if (payCfg.options.some(function (o) { return lbls.filter(function (l) { return l === o.label; }).length > 1; })) {
+            box.innerHTML += '<p class="panel-hint" style="margin:6px 0 0;color:#e05252;">Two options have the same label. Give each option its own label so its printer can be told apart.</p>';
+          }
+        }
       }
       function updatePayMakeTier() {
         var mt = document.getElementById('payMakeTier');
@@ -33508,7 +33788,7 @@
       function payChanged() { refreshPayUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); if (payVoucherOn()) { refreshVoucherCache(); payLoadBatches(); } }
       function applyPaySetup(p) {
         payCfg = cleanPay(p);
-        if (!payActive()) { sessionTier = null; setPayCredit(null); }
+        if (!payActive()) { sessionTier = null; sessionPrinter = ''; setPayCredit(null); }
         refreshPayUI();
         if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
         if (payVoucherOn()) setTimeout(function () { refreshVoucherCache(); payLoadBatches(); }, 800);
@@ -33516,7 +33796,7 @@
       document.getElementById('payModes').addEventListener('click', function (e) {
         var b = e.target.closest('.chip[data-mode]'); if (!b) return;
         payCfg.mode = b.dataset.mode;
-        if (!payActive()) { sessionTier = null; setPayCredit(null); }
+        if (!payActive()) { sessionTier = null; sessionPrinter = ''; setPayCredit(null); }
         payChanged();
         if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
       });
@@ -33530,7 +33810,7 @@
       var pdt = document.getElementById('payDualToggle');
       if (pdt) pdt.addEventListener('change', function () {
         payCfg.dual = this.checked;
-        if (!payCfg.dual) { sessionTier = null; }
+        if (!payCfg.dual) { sessionTier = null; sessionPrinter = ''; }
         payChanged();
         if (typeof buildLayoutPicker === 'function') buildLayoutPicker();
       });
@@ -33580,6 +33860,9 @@
             payChanged();
           } else if (target.classList.contains('pay-opt-tier')) {
             payCfg.options[idx].tier = target.value;
+            payChanged();
+          } else if (target.classList.contains('pay-opt-printer')) {
+            payCfg.options[idx].printer = target.value;
             payChanged();
           }
         });
@@ -39838,6 +40121,9 @@
         if (ppPf) ppPf.checked = !!printPrefs.printFirst;
         document.getElementById('ppGuestCopies').checked = printPrefs.guestCopies;
         document.getElementById('ppGuestReq').checked = !!printPrefs.guestReq;
+        var vpCard = document.getElementById('ppVoucherCard'), vpIn = document.getElementById('ppVoucherPrinter');
+        if (vpCard) vpCard.style.display = (typeof payOn === 'function' && payOn()) ? '' : 'none';
+        if (vpIn) vpIn.checked = !!printPrefs.voucherPrinter;
         document.getElementById('ppPreview').checked = printPrefs.preview !== false;
         document.getElementById('ppGuestReqRow').style.display = reqAvailable() ? '' : 'none'; document.getElementById('ppGuestReqHint').style.display = reqAvailable() ? '' : 'none';
         document.getElementById('ppCopiesVal').textContent = String(printPrefs.copies);
@@ -39868,6 +40154,13 @@
       document.getElementById('ppGuestBtn').addEventListener('change', function () { printPrefs.guestBtn = this.checked; printPrefsChanged(); });
       document.getElementById('ppAuto').addEventListener('change', function () { setAutoPrint(this.checked, true); printPrefsChanged(); });
       document.getElementById('ppGuestCopies').addEventListener('change', function () { printPrefs.guestCopies = this.checked; printPrefsChanged(); });
+      var ppVpInput = document.getElementById('ppVoucherPrinter');
+      if (ppVpInput) ppVpInput.addEventListener('change', function () {
+        printPrefs.voucherPrinter = this.checked;
+        if (!this.checked) sessionPrinter = '';
+        printPrefsChanged();
+        try { renderPayOptionsEditor(); } catch (e) { }
+      });
       document.getElementById('ppPreview').addEventListener('change', function () { printPrefs.preview = this.checked; printPrefsChanged(); });
       var ppPfInput = document.getElementById('ppPrintFirst');
       if (ppPfInput) ppPfInput.addEventListener('change', function () { printPrefs.printFirst = this.checked; printPrefsChanged(); });

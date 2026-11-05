@@ -4437,6 +4437,15 @@
       margin: 4px 0 10px;
     }
 
+    /* Android app: calmer screens. Static helper sentences shrink to one line (tap to read), advanced print options sit behind "More options". */
+    .pb-android .panel-hint:not([id]):not(.hidden):not([hidden]):not(.web-only) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; cursor: pointer; }
+    .pb-android .panel-hint:not([id]).pb-tip-open { display: block; -webkit-line-clamp: unset; }
+    .pb-more { margin-top: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; }
+    .pb-more > summary { cursor: pointer; padding: 12px 0; font-size: 13px; font-weight: 700; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+    .pb-more > summary::-webkit-details-marker { display: none; }
+    .pb-more > summary::after { content: '\25BE'; transition: transform .15s; }
+    .pb-more[open] > summary::after { transform: rotate(180deg); }
+    .pb-more[open] { padding-bottom: 12px; }
     .print-size-btn {
       background: var(--panel-2);
       border: 1.5px solid var(--line);
@@ -40228,6 +40237,31 @@
           refreshSetupNav();
         });
       })();
+    })();
+  </script>
+  <script>
+    // Android app only: fewer words and buttons on screen (see the .pb-android rules in the page style).
+    (function () {
+      function isAndroidApp() { try { return /PB4uAndroid/.test(navigator.userAgent || '') || !!(window.__PB && window.__PB.android); } catch (e) { return false; } }
+      function declutter() {
+        if (document.documentElement.classList.contains('pb-android')) return;
+        document.documentElement.classList.add('pb-android');
+        document.addEventListener('click', function (e) {
+          var h = e.target && e.target.closest ? e.target.closest('.panel-hint:not([id])') : null;
+          if (h) h.classList.toggle('pb-tip-open');
+        });
+        var fit = document.getElementById('photoFitBox'), col = document.getElementById('colorAdjBox');
+        var copies = document.querySelector('#printSection .copies-row');
+        if (fit && col && copies && copies.parentNode && !document.getElementById('pbMoreOptions')) {
+          var d = document.createElement('details'); d.className = 'pb-more'; d.id = 'pbMoreOptions';
+          var sm = document.createElement('summary'); sm.textContent = 'More options: photo size, borderless, colour';
+          d.appendChild(sm);
+          copies.parentNode.insertBefore(d, copies);
+          d.appendChild(fit); d.appendChild(col);
+        }
+      }
+      window._pbDeclutter = declutter;
+      if (isAndroidApp()) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', declutter); else declutter(); }
     })();
   </script>
 </body>

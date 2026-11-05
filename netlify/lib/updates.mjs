@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.82', date: '2026-11-05' },
   { version: '1.0.81', date: '2026-11-05' },
   { version: '1.0.80', date: '2026-11-05' },
   { version: '1.0.79', date: '2026-11-05' },
@@ -127,6 +128,23 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-05', title: 'Colour Correction for Prints Only, Thermal Print Quality (Best, Normal, Draft)', for: ['app', 'website'], app: '1.0.82',
+    items: [
+      'Lightness and Red, Green and Blue correction now change only the printed photo and the print preview. The guests\' camera, the photos on screen and the digital copies stay natural.',
+      'Thermal printers: new Print quality choice (Best, Normal, Draft) when a receipt paper is selected. Best is sharper with balanced darkness, Normal is the standard look, Draft uses coarse dots for quick tests. It is remembered for each printer.',
+      'The old "System Print Dialog · All available printers" button is now "Android print screen · any printer", with a note to use Bluetooth or a Receipt printer for thermal photos.'
+    ]
+  },
+  {
+    date: '2026-11-05', title: 'Colour for Prints Only, Thermal Quality, Calmer Print Settings and Lock PIN Fix (Android)', for: ['app'], app: '1.0.93',
+    items: [
+      'Lightness and colour correction now change only the print and the print preview, not the guests\' camera or screen.',
+      'Print quality for thermal printers: Best, Normal or Draft.',
+      'Calmer screens: helper sentences show as one line (tap to read it all), and photo size, borderless and colour correction sit behind one "More options" row in Print settings.',
+      'Fixed: saving the lock PIN in the Android offline app no longer fails with "Check the internet". The PIN stays on the tablet and survives a code renewal.'
+    ]
+  },
   {
     date: '2026-11-05', title: 'Separate Colour and Photo Layout for Each Printer, with Printer Profile Chips', for: ['app', 'website'], app: '1.0.81',
     items: [

@@ -1,6 +1,6 @@
 # Session Context
 
-**Current Task**: Release v1.0.83 / android v1.0.98: per-option prints ("no print" softcopy option), thermal darkness (Lightness now works on receipt layouts + test strip), Bluetooth 58mm gibberish fixes (paced writes, Compatibility mode, GZM5803L).
+**Current Task**: Release v1.0.83 / desktop v1.0.86 / android v1.0.98 (desktop bundles its own booth page, so it needs its own release): per-option prints ("no print" softcopy option), thermal darkness (Lightness now works on receipt layouts + test strip), Bluetooth 58mm gibberish fixes (paced writes, Compatibility mode, GZM5803L).
 
 **Key Decisions**:
 - Each payment option has `prints` (null = default, 0 = softcopy only, 1-5). Found by label (labels forced unique); no server change. `noPrintSession()` hides the guest Print button / auto-print.

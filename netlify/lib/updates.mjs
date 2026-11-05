@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.86', date: '2026-11-06' },
   { version: '1.0.85', date: '2026-11-05' },
   { version: '1.0.84', date: '2026-11-05' },
   { version: '1.0.83', date: '2026-11-05' },
@@ -134,7 +135,7 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
-    date: '2026-11-06', title: 'Prints per Payment Option (Softcopy Only), Thermal Darkness Test, Bluetooth Printer Fixes', for: ['app', 'website'], app: '1.0.98',
+    date: '2026-11-06', title: 'Prints per Payment Option (Softcopy Only), Thermal Darkness Test, Bluetooth Printer Fixes', for: ['app', 'website'], app: '1.0.86',
     items: [
       'Each payment option now has its own Prints choice: the default, No print (softcopy only), or 1 to 5 prints. A softcopy-only option still gives the QR, download and GIF you set in Extras, but the guest gets no paper print (no Print button, no auto-print). Guests see "Softcopy only, no print" or "1 print included" under each option, and voucher tickets show it too. Options must have different labels; a repeated label is numbered automatically.',
       'Thermal prints too dark: the Lightness setting now works on black and white receipt layouts (it used to have no effect on their photos). New Print a darkness test strip button under Print quality prints five Lightness levels on one strip; tap the one that looks best and it is saved for that printer.',

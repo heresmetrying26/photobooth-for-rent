@@ -1,13 +1,13 @@
 # Session Context
 
-**Current Task**: Release v1.0.74 (Desktop v1.0.77, Android v1.0.88): 360 studio polish found by simulating the full flow (share QR, rendered preview, Spin & Print preview, tablet layout).
+**Current Task**: Release v1.0.75 (Desktop v1.0.78, Android v1.0.89): sticker packages, decorate timer, resize/rotate handles, guest Preview, and the 360 live-preview collapse fix.
 
 **Key Decisions**:
-- Share modal video no longer inherits the global absolute `video` rule; QRs show, password is hidden until tapped.
-- Rendered clips open as the rendered video (badge, overlay preview off, one-tap Edit again); locked cards stay scrollable.
-- Spin & Print shows a layout preview first (re-pick moments, mode, paper); auto-print still skips it.
-- Space key no longer hijacked by the remote shutter inside text fields.
+- Six sticker packages (Usual, Birthday, Christmas, Debut, Party, Christening); operator ticks which guests can use, saved as `stickerPacks`.
+- Decorate time is `guestStickerSec` (0 = no timer, guest taps Done); default stays 35 s.
+- Selection box with corner + rotate handles (`drawDecorBox`/`hitDecorHandle`), measured in screen pixels; box never prints.
+- 360 preview card no longer shrinks the video stage (flex-shrink fix); sidebar QR codes use compact styling.
 
 **Next Steps**:
-- GitHub Actions packages installers on tag push (v1.0.74, desktop-v1.0.77, android-v1.0.88).
-- Test real render, Wi-Fi share and printing on the laptop and tablet before the event.
+- GitHub Actions packages installers on tag push (v1.0.75, desktop-v1.0.78, android-v1.0.89).
+- Test handles and the sticker screen with real touch on the Samsung tablet before the event.

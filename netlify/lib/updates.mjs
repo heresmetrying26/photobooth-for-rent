@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.78', date: '2026-11-05' },
   { version: '1.0.77', date: '2026-11-05' },
   { version: '1.0.76', date: '2026-11-05' },
   { version: '1.0.75', date: '2026-11-05' },
@@ -123,6 +124,23 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-05', title: 'Sticker Packages, Decorate Timer, Resize & Rotate Handles & a Fixed Live Preview', for: ['app', 'website'], app: '1.0.78',
+    items: [
+      'Sticker packages: Usual, Birthday, Christmas, Debut, Party and Christening (27 new stickers and banners). Tick which packages guests can use; guests switch between them with tabs.',
+      'Decorate timer: choose 15 seconds to 2 minutes, or No timer so guests take their time and tap Done when finished.',
+      'Resize and rotate in the sticker’s own box: drag a corner to resize and the round handle to turn, on the guest screen and the Setup preview.',
+      'Preview button on the guest sticker screen shows the final photo without the box or handles.',
+      'Live 360 preview no longer disappears once the Share QR or progress bar appears, and the guest QR codes under it are compact side-by-side cards.'
+    ]
+  },
+  {
+    date: '2026-11-05', title: 'Sticker Packages, Decorate Timer & Resize / Rotate Handles (Android)', for: ['app'], app: '1.0.89',
+    items: [
+      'Six sticker packages the operator can tick for guests, a selectable decorate timer (or none), and drag-handle resize and rotate on the guest sticker screen.',
+      'Fixed the 360 live preview collapsing when the QR codes or progress bar appear.'
+    ]
+  },
   {
     date: '2026-11-05', title: '360 Studio Polish: Working Share QR, Rendered Preview, Spin & Print Preview & Tablet Layout', for: ['app', 'website'], app: '1.0.77',
     items: [

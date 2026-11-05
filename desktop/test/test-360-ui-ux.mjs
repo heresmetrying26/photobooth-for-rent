@@ -120,6 +120,9 @@ console.log('\nTest 3b: Share QR, typing, rendered preview, mute and Spin & Prin
   assert(html.includes("stepNum.textContent = wf ? '2' : '1'"), 'A lone download QR is labelled step 1');
   assert(html.includes('.spin-lock-banner { position: sticky; top: 0; z-index: 3; }') && html.includes('#spinCurClipBadge { max-width: 190px'), 'Lock banner stays visible; long clip names are truncated');
   assert(html.includes('.spin-head-title-wrap { display: none; }') && html.includes('.spin-time-seek { flex: 1 1 100%'), 'Narrow (phone) header and timeline fit the screen');
+  // Reported on the real app: the preview vanished once the QR block / progress bar made the panel taller than the window
+  assert(html.includes('.spin-preview-card { flex: 1 0 auto; min-height: auto; }') && html.includes('.spin-preview-card > * { flex-shrink: 0; }') && html.includes('.spin-stage-wrap { flex: 0 0 auto; }'), 'Live preview stage can never be squashed to 0 height (the panel scrolls instead)');
+  assert(html.includes('#spinQrBox { display: flex !important; flex-wrap: wrap;') && html.includes('#spinQrBox > div { grid-column: auto !important'), 'Sidebar QR codes are compact side-by-side cards, not the big TV-card styling');
   // spinFrameTimes sanity (pure function copied from the page)
   {
     const m = html.match(/function spinFrameTimes\([\s\S]*?\n      \}/);
@@ -168,6 +171,33 @@ console.log('\nTest 7: Dedicated Share & QR Code Modal');
   assert(html.includes('id="spinShareVideo"'), 'Center video preview player exists');
   assert(html.includes('id="spinShareDlQrImg"'), 'Step 2 Download QR code image container exists');
   assert(html.includes('id="spinShareToggleQr"'), 'Toggle/Hide QR codes button exists');
+}
+
+// ---- Sticker packages, decorate timer, resize / rotate handles ----
+console.log('\nTest 8: Sticker packages, decorate timer and box handles');
+{
+  const stickersBlock = html.slice(html.indexOf('var STICKERS = ['), html.indexOf('var STICKER_NAMES'));
+  const keys = [...stickersBlock.matchAll(/\['([a-z-]+)',/g)].map(m => m[1]);
+  assert(keys.length >= 45 && new Set(keys).size === keys.length, `${keys.length} unique stickers defined`);
+  assert(keys.every(k => /^[a-z-]+$/.test(k)), 'Every sticker key is letters/hyphen only (saved designs validate /^b:[a-z-]+$/)');
+
+  const drawFn = html.slice(html.indexOf('function drawSticker(ctx, k, S)'), html.indexOf('// ---- The decoration layer'));
+  const missing = keys.filter(k => !k.startsWith('b-') && !new RegExp(`case '${k}'`).test(drawFn));
+  assert(missing.length === 0, 'Every non-banner sticker has a drawing' + (missing.length ? ' (missing: ' + missing.join(', ') + ')' : ''));
+
+  const packsBlock = html.slice(html.indexOf('var STICKER_PACKS = ['), html.indexOf('var stickerPacksOn'));
+  const packIds = [...packsBlock.matchAll(/id: '([a-z]+)'/g)].map(m => m[1]);
+  assert(['usual', 'birthday', 'christmas', 'debut', 'party', 'christening'].every(id => packIds.includes(id)), 'Packages: usual, birthday, christmas, debut, party, christening');
+  const packItems = [...packsBlock.matchAll(/items: \[([^\]]*)\]/g)].flatMap(m => [...m[1].matchAll(/'([a-z-]+)'/g)].map(x => x[1]));
+  assert(packItems.every(k => keys.includes(k)), 'Every package item is a defined sticker');
+  assert(keys.every(k => packItems.includes(k)), 'Every sticker belongs to at least one package (nothing the booth had before is lost)');
+
+  assert(html.includes('id="packChecks"') && html.includes('stickerPacks: stickerPacksOn.slice()') && html.includes('s.stickerPacks.indexOf(id)'), 'Operator ticks packages; the choice is saved and restored');
+  assert(html.includes('id="guestStickerSec"') && html.includes('[0, \'No timer (until Done)\']') && html.includes('var totalSec = guestStickerSec;'), 'Decorate time is selectable, including no timer');
+  assert(/var timer = totalSec > 0 \? setInterval/.test(html), 'No interval runs when the timer is off, so the guest decides when they are done');
+  assert(html.includes('id="gsoPacks"') && html.includes('packRow.hidden = views.length < 2'), 'Guests get package tabs (hidden when only one package is open)');
+  assert(html.includes('function drawDecorBox') && html.includes('function hitDecorHandle') && html.includes("decorGestureMove(guestDecor[selGuestDecor]") && html.includes('decorGestureMove(decor[selDecor]'), 'Resize + rotate handles on both the guest screen and the Setup preview');
+  assert(html.includes('!sess.decoPreview && guestDecor[selGuestDecor]') && html.includes('id="gsoPreviewBtn"'), 'Preview hides the selection box so the guest sees the final look');
 }
 
 console.log('\n====================================================');

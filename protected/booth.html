@@ -4100,6 +4100,22 @@
       .spin-share-close-btn { width: 44px; height: 44px; }
     }
 
+    /* The live preview must never be squashed to nothing: when the panel is shorter than its content (QR codes, progress bar,
+       short window), the panel scrolls instead of the video stage shrinking to 0 height. */
+    .spin-preview-card { flex: 1 0 auto; min-height: auto; }
+    .spin-preview-card > * { flex-shrink: 0; }
+    .spin-stage-wrap { flex: 0 0 auto; }
+
+    /* Guest QR codes under the preview: compact side-by-side cards (the big TV-card styling is for the result screen only) */
+    #spinQrBox { display: flex !important; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: flex-start; margin: 10px 0 0; padding: 12px; background: #faf7f2; border: 1px solid var(--line, #E8E1D9); border-radius: 14px; }
+    #spinQrBox:empty { display: none !important; }
+    #spinQrBox > div { grid-column: auto !important; grid-row: auto !important; margin-top: 0 !important; flex: 1 1 130px; max-width: 180px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+    #spinQrBox img { width: min(140px, 100%) !important; padding: 6px !important; border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,.12) !important; background: #fff; }
+    #spinQrBox:not(.two) img { width: min(170px, 100%) !important; }
+    #spinQrBox b { font-size: 13px !important; gap: 4px !important; }
+    #spinQrBox b::before { width: 26px !important; height: 26px !important; font: 800 14px/26px 'Manrope', sans-serif !important; box-shadow: 0 3px 8px rgba(201,61,39,.4) !important; }
+    #spinQrBox em { font-size: 12px !important; }
+    #spinQrBox small { font-size: 10.5px !important; max-width: 100%; overflow-wrap: anywhere; }
     .spin-pp-page[hidden], .spin-pp-page img[hidden] { display: none; }
     /* the "Edit again" banner stays visible while the locked options scroll under it */
     .spin-lock-banner { position: sticky; top: 0; z-index: 3; }
@@ -7290,6 +7306,13 @@
       background: var(--panel-2);
     }
 
+    .pack-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+    .pack-check { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1.5px solid var(--line, #E4DCCF); border-radius: 12px; background: #fff; cursor: pointer; font-size: 13px; font-weight: 700; }
+    .pack-check.on { border-color: var(--blue-deep, #C93D27); background: var(--tint, #FBEDEA); }
+    .pack-check input { width: 18px; height: 18px; flex: none; accent-color: var(--blue-deep, #C93D27); }
+    .pack-check .pc-name { flex: 1; }
+    .pack-check small { color: var(--ink-dim, #6B666C); font-weight: 600; font-size: 11px; }
+    .pack-chips { margin-bottom: 8px; flex-wrap: wrap; }
     .prop-tray {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
@@ -11618,6 +11641,13 @@
       justify-content: space-between;
       gap: 12px;
     }
+    .gso-packs { display: flex; gap: 6px; overflow-x: auto; padding: 0 2px; -webkit-overflow-scrolling: touch; }
+    .gso-packs[hidden] { display: none; }
+    .gso-pack { flex: 0 0 auto; border: 1.5px solid rgba(255, 255, 255, 0.25); background: rgba(255, 255, 255, 0.1); color: #fff; border-radius: 99px; padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    .gso-pack.on { background: #fff; color: #1c1a1e; border-color: #fff; }
+    /* Preview: only the photo, the timer and the preview / done buttons stay; no box, handles, trays or tools */
+    .guest-sticker-overlay.previewing .gso-mid, .guest-sticker-overlay.previewing .gso-tray-row, .guest-sticker-overlay.previewing .gso-packs, .guest-sticker-overlay.previewing .gso-btn-skip:not(#gsoPreviewBtn), .guest-sticker-overlay.previewing .gso-title-wrap .gso-sub { display: none !important; }
+    .guest-sticker-overlay.previewing .gso-top { background: linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 100%); }
     .gso-btn-skip {
       background: rgba(255, 255, 255, 0.14);
       color: rgba(255, 255, 255, 0.9);
@@ -12981,13 +13011,14 @@
           </div>
 
           <div class="pane" data-pane="stickers">
+            <div class="chip-row pack-chips" id="packChips" role="tablist" aria-label="Sticker packages"></div>
             <div class="prop-tray" id="propTray"></div>
             <button type="button" class="link-btn" id="propMore" style="margin-top:8px;">More stickers</button>
             <div class="bg-row" style="margin-top:10px;">
               <label class="upload-btn" for="propInput">+ Upload your own (PNG)</label>
               <input type="file" id="propInput" accept="image/*" multiple>
             </div>
-            <p class="panel-hint" style="margin-top:6px;">Tap to add, then drag it on the preview.</p>
+            <p class="panel-hint" style="margin-top:6px;">Tap to add, then drag it on the preview. Drag a corner of its box to resize and the round handle to turn it. Tap an empty spot to hide the box and see the final look.</p>
             <button class="remove-link" id="decorClear" style="display:inline;">Remove all stickers</button>
             <div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(0,0,0,0.08);">
               <label class="switch-row" id="guestStickersRow" style="margin:0;">
@@ -12995,6 +13026,14 @@
                 <input type="checkbox" id="guestStickersToggle">
               </label>
               <p class="panel-hint" id="guestStickersHint" style="margin:4px 0 0;">When turned on, guests can add and place stickers on their photo right after taking photos, before printing.</p>
+              <div id="guestStickerOpts" style="margin-top:10px;">
+                <p class="sub-label" style="margin:0 0 6px;">Sticker packages guests can use</p>
+                <div class="pack-checks" id="packChecks"></div>
+                <p class="panel-hint" id="packHint" style="margin:4px 0 0;"></p>
+                <label class="stepper" style="margin-top:10px; gap:8px; align-items:center;"><span class="lbl">Time to decorate</span>
+                  <select id="guestStickerSec" style="padding:6px 8px; border-radius:8px; border:1.5px solid var(--line);"></select></label>
+                <p class="panel-hint" id="guestStickerSecHint" style="margin:4px 0 0;"></p>
+              </div>
             </div>
           </div>
 
@@ -13825,9 +13864,11 @@
               </div>
             </div>
             <div class="gso-bottom">
+              <div class="gso-packs" id="gsoPacks" hidden></div>
               <div class="gso-tray-row" id="gsoTray"></div>
               <div class="gso-actions-row">
                 <button type="button" class="gso-btn-skip" id="gsoSkipBtn">Skip stickers</button>
+                <button type="button" class="gso-btn-skip" id="gsoPreviewBtn" title="See how your photo will look">👁 Preview</button>
                 <button type="button" class="gso-btn-done" id="gsoDoneBtn">✓ Done &amp; Print</button>
               </div>
             </div>
@@ -20416,6 +20457,7 @@
       let guestStickersOn = false;
       let guestDecor = [];
       let selGuestDecor = -1;
+      let gsoPack = '';           // package tab open on the guest sticker screen
       let printFirstHolding = false;
 
       function willAutoPrint() {
@@ -20463,8 +20505,27 @@
         var tray = document.getElementById('gsoTray');
         if (!tray) return;
         tray.innerHTML = '';
+        // Packages the operator ticked (none ticked = everything), plus "My props" when the operator uploaded some.
+        var packs = STICKER_PACKS.filter(function (p) { return stickerPacksOn.indexOf(p.id) >= 0; });
+        var hasMine = Array.isArray(myProps) && myProps.some(function (id) { return ASSETS[id]; });
+        var views = packs.map(function (p) { return { id: p.id, label: p.icon + ' ' + p.name, items: stickerPackItems(p.id) }; });
+        if (!views.length && !hasMine) views = [{ id: 'all', label: '✨ All', items: STICKERS }];
+        if (hasMine) views.push({ id: 'mine', label: '🖼 My props', items: [] });
+        if (!views.some(function (v) { return v.id === gsoPack; })) gsoPack = views[0].id;
+        var packRow = document.getElementById('gsoPacks');
+        if (packRow) {
+          packRow.innerHTML = '';
+          packRow.hidden = views.length < 2;                       // one package only: no tabs needed
+          views.forEach(function (v) {
+            var c = document.createElement('button'); c.type = 'button'; c.className = 'gso-pack' + (v.id === gsoPack ? ' on' : ''); c.textContent = v.label; c.dataset.pack = v.id;
+            c.addEventListener('click', function (e) { e.stopPropagation(); gsoPack = v.id; buildGuestStickerTray(); });
+            packRow.appendChild(c);
+          });
+        }
+        var curView = views.filter(function (v) { return v.id === gsoPack; })[0] || views[0];
+        tray.scrollLeft = 0;
         if (typeof STICKERS !== 'undefined' && Array.isArray(STICKERS)) {
-          STICKERS.forEach(function (s) {
+          curView.items.forEach(function (s) {
             var b = document.createElement('button');
             b.type = 'button';
             b.className = 'gso-sticker-btn';
@@ -20481,7 +20542,7 @@
             tray.appendChild(b);
           });
         }
-        if (typeof myProps !== 'undefined' && Array.isArray(myProps)) {
+        if (curView.id === 'mine' && typeof myProps !== 'undefined' && Array.isArray(myProps)) {
           myProps.forEach(function (id) {
             if (!ASSETS[id]) return;
             var b = document.createElement('button');
@@ -20517,8 +20578,15 @@
 
       function wireGuestDecorInteractions() {
         previewCanvas.addEventListener('pointerdown', function (e) {
-          if (!sess || !sess.decorating) return;
+          if (!sess || !sess.decorating || sess.decoPreview) return;
           var pt = guestPreviewPoint(e);
+          var GW = previewCanvas.width, GH = previewCanvas.height;
+          var ghnd = hitDecorHandle(guestDecor[selGuestDecor], pt.x * GW, pt.y * GH, GW, GH, previewCanvas);
+          if (ghnd) {      // resize / rotate by the box handles
+            gdrag = { id: e.pointerId, gesture: decorGestureStart(guestDecor[selGuestDecor], ghnd === 'rot' ? 'rotate' : 'resize', pt.x * GW, pt.y * GH, GW, GH) };
+            try { previewCanvas.setPointerCapture(e.pointerId); } catch (err) { }
+            e.preventDefault(); return;
+          }
           var i = hitGuestDecor(pt, previewCanvas.width, previewCanvas.height);
           selGuestDecor = i;
           refreshGuestStickerControls();
@@ -20532,6 +20600,12 @@
         previewCanvas.addEventListener('pointermove', function (e) {
           if (!gdrag || e.pointerId !== gdrag.id || !guestDecor[selGuestDecor]) return;
           var pt = guestPreviewPoint(e);
+          if (gdrag.gesture) {
+            var mW = previewCanvas.width, mH = previewCanvas.height;
+            decorGestureMove(guestDecor[selGuestDecor], gdrag.gesture, pt.x * mW, pt.y * mH, mW, mH, 0.06, 0.85);
+            if (!gdragRaf) gdragRaf = requestAnimationFrame(function () { gdragRaf = 0; renderComposite(); });
+            return;
+          }
           guestDecor[selGuestDecor].x = Math.max(0.02, Math.min(0.98, pt.x + gdrag.dx));
           guestDecor[selGuestDecor].y = Math.max(0.02, Math.min(0.98, pt.y + gdrag.dy));
           if (!gdragRaf) gdragRaf = requestAnimationFrame(function () { gdragRaf = 0; renderComposite(); });
@@ -20608,24 +20682,41 @@
           renderComposite();
           overlay.classList.remove('hidden');
 
-          var totalSec = 35;
+          var totalSec = guestStickerSec;                 // set in Setup; 0 = no timer, the guest taps Done when finished
           var leftSec = totalSec;
           var secEl = document.getElementById('gsoTimerSec');
           var fillEl = document.getElementById('gsoTimerFill');
+          var pillEl = overlay.querySelector('.gso-timer-pill'), barEl = overlay.querySelector('.gso-timer-bar');
+          if (pillEl) pillEl.style.display = totalSec > 0 ? '' : 'none';
+          if (barEl) barEl.style.display = totalSec > 0 ? '' : 'none';
           if (secEl) secEl.textContent = String(leftSec);
           if (fillEl) fillEl.style.width = '100%';
+          sess.decoPreview = false; overlay.classList.remove('previewing');
+          var pvBtn = document.getElementById('gsoPreviewBtn');
+          if (pvBtn) pvBtn.textContent = '👁 Preview';
 
-          var timer = setInterval(function () {
+          var timer = totalSec > 0 ? setInterval(function () {
             leftSec--;
             if (secEl) secEl.textContent = String(Math.max(0, leftSec));
             if (fillEl) fillEl.style.width = Math.max(0, (leftSec / totalSec) * 100) + '%';
             if (leftSec <= 0) {
               finish();
             }
-          }, 1000);
+          }, 1000) : 0;
+
+          // "Preview": hide the box, handles and trays so the guest sees the photo exactly as it will print.
+          if (pvBtn) pvBtn.onclick = function (e) {
+            e.stopPropagation();
+            sess.decoPreview = !sess.decoPreview;
+            overlay.classList.toggle('previewing', sess.decoPreview);
+            pvBtn.textContent = sess.decoPreview ? '✏️ Keep decorating' : '👁 Preview';
+            if (sess.decoPreview) { selGuestDecor = -1; refreshGuestStickerControls(); }
+            renderComposite();
+          };
 
           function finish() {
-            clearInterval(timer);
+            if (timer) clearInterval(timer);
+            sess.decoPreview = false; overlay.classList.remove('previewing');
             sess.decoEnd = null;
             sess.decorating = false;
             selGuestDecor = -1;
@@ -35374,6 +35465,7 @@
           accent: accent, overlay: overlay ? Object.assign({}, overlay) : null, logo: logo ? Object.assign({}, logo) : null,
           decor: decor.map(function (d) { return { src: d.src, x: Math.round(d.x * 1000) / 1000, y: Math.round(d.y * 1000) / 1000, s: Math.round(d.s * 1000) / 1000, r: Math.round(d.r || 0) }; }),
           guestStickersOn: !!guestStickersOn,
+          stickerPacks: stickerPacksOn.slice(), guestStickerSec: guestStickerSec,
           myProps: myProps.slice(),
           frames: framesSnapshot().frames, activeFrame: activeFrameId, sheet: framesSnapshot().sheet, sfDone: startFrameDone,
           frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
@@ -35670,6 +35762,8 @@
           decor = Array.isArray(s.decor) ? s.decor.filter(function (d) { return d && typeof d.src === 'string' && (/^b:[a-z-]+$/.test(d.src) ? !!STICKER_NAMES[d.src.slice(2)] : assetOk(d.src.slice(2))); }).slice(0, 30)
             .map(function (d) { return { src: d.src, x: +d.x || 0.5, y: +d.y || 0.5, s: Math.max(0.02, Math.min(1, +d.s || 0.2)), r: +d.r || 0 }; }) : [];
           guestStickersOn = !!s.guestStickersOn;
+          stickerPacksOn = Array.isArray(s.stickerPacks) ? STICKER_PACKS.map(function (p) { return p.id; }).filter(function (id) { return s.stickerPacks.indexOf(id) >= 0; }) : STICKER_PACKS.map(function (p) { return p.id; });
+          guestStickerSec = [0, 15, 25, 35, 60, 90, 120].indexOf(Number(s.guestStickerSec)) >= 0 ? Number(s.guestStickerSec) : 35;
           var gsTog = document.getElementById('guestStickersToggle');
           if (gsTog) gsTog.checked = guestStickersOn;
           myProps = Array.isArray(s.myProps) ? s.myProps.filter(assetOk).slice(0, 60) : [];
@@ -36228,9 +36322,32 @@
         ['heart', 'Heart'], ['star', 'Star'], ['crown', 'Crown'], ['sparkle', 'Sparkle'], ['bow', 'Bow'],
         ['balloon', 'Balloon'], ['partyhat', 'Party hat'], ['shades', 'Sunglasses'], ['mustache', 'Mustache'], ['lips', 'Lips'],
         ['gradcap', 'Grad cap'], ['diploma', 'Diploma'], ['dove', 'Dove'], ['cross', 'Cross'],
-        ['b-cheers', 'Cheers!'], ['b-married', 'Just Married'], ['b-bday', 'Happy Birthday!'], ['b-class', 'Class of ' + new Date().getFullYear()], ['b-best', 'Best Day Ever']
+        ['b-cheers', 'Cheers!'], ['b-married', 'Just Married'], ['b-bday', 'Happy Birthday!'], ['b-class', 'Class of ' + new Date().getFullYear()], ['b-best', 'Best Day Ever'],
+        // new packages (keys use letters and "-" only, so saved designs stay valid)
+        ['cake', 'Cake'], ['gift', 'Gift'], ['balloons', 'Balloons'], ['b-wish', 'Make a Wish!'],
+        ['christmastree', 'Christmas tree'], ['santahat', 'Santa hat'], ['snowflake', 'Snowflake'], ['candycane', 'Candy cane'], ['ornament', 'Ornament'], ['b-xmas', 'Merry Christmas!'], ['b-hohoho', 'Ho Ho Ho!'],
+        ['tiara', 'Tiara'], ['butterfly', 'Butterfly'], ['rose', 'Rose'], ['champagne', 'Champagne'], ['eighteen', 'Eighteen'], ['b-debut', 'Debut Night'], ['b-fabulous', 'Fabulous at 18!'],
+        ['discoball', 'Disco ball'], ['confetti', 'Confetti'], ['musicnote', 'Music'], ['b-party', 'Let’s Party!'],
+        ['halo', 'Halo'], ['wings', 'Angel wings'], ['cloud', 'Cloud'], ['b-blessed', 'God Bless!'], ['b-welcomebaby', 'Welcome Baby']
       ];
       var STICKER_NAMES = {}; STICKERS.forEach(function (s) { STICKER_NAMES[s[0]] = s[1]; });
+      // Sticker packages: the operator ticks which ones guests can use. "Usual" keeps every sticker the booth already had.
+      var STICKER_PACKS = [
+        { id: 'usual', name: 'Usual', icon: '⭐', items: ['heart', 'star', 'sparkle', 'crown', 'bow', 'shades', 'mustache', 'lips', 'b-cheers', 'b-best', 'b-married', 'gradcap', 'diploma', 'b-class'] },
+        { id: 'birthday', name: 'Birthday', icon: '🎂', items: ['b-bday', 'cake', 'gift', 'balloon', 'balloons', 'partyhat', 'b-wish', 'star'] },
+        { id: 'christmas', name: 'Christmas', icon: '🎄', items: ['b-xmas', 'christmastree', 'santahat', 'snowflake', 'candycane', 'ornament', 'b-hohoho', 'star'] },
+        { id: 'debut', name: 'Debut', icon: '👑', items: ['b-debut', 'b-fabulous', 'tiara', 'crown', 'butterfly', 'rose', 'champagne', 'eighteen', 'sparkle'] },
+        { id: 'party', name: 'Party', icon: '🎉', items: ['b-party', 'b-cheers', 'discoball', 'confetti', 'musicnote', 'partyhat', 'balloon', 'champagne', 'shades', 'mustache'] },
+        { id: 'christening', name: 'Christening', icon: '🕊️', items: ['b-blessed', 'b-welcomebaby', 'dove', 'cross', 'halo', 'wings', 'cloud', 'bow'] }
+      ];
+      var stickerPacksOn = STICKER_PACKS.map(function (p) { return p.id; });   // packages guests can use (all, until the operator unticks some)
+      var stickerView = 'all';                                                 // which package the Setup tray shows
+      var guestStickerSec = 35;                                                // time to decorate; 0 = no timer, the guest taps Done
+      var GUEST_STICKER_TIMES = [[15, '15 seconds'], [25, '25 seconds'], [35, '35 seconds'], [60, '1 minute'], [90, '1.5 minutes'], [120, '2 minutes'], [0, 'No timer (until Done)']];
+      function stickerPackItems(id) {
+        var p = STICKER_PACKS.filter(function (x) { return x.id === id; })[0];
+        return p ? p.items.filter(function (k) { return STICKER_NAMES[k]; }).map(function (k) { return [k, STICKER_NAMES[k]]; }) : [];
+      }
       function starPath(ctx, r, n, inner) {
         ctx.beginPath();
         for (var i = 0; i < n * 2; i++) {
@@ -36340,6 +36457,134 @@
             ctx.fillStyle = gold; ctx.fillRect(-r * 0.12, -r * 0.9, r * 0.24, r * 1.8); ctx.fillRect(-r * 0.55, -r * 0.45, r * 1.1, r * 0.24);
             ctx.strokeStyle = 'rgba(120,80,20,.45)'; ctx.lineWidth = S * 0.015; ctx.strokeRect(-r * 0.12, -r * 0.9, r * 0.24, r * 1.8); ctx.strokeRect(-r * 0.55, -r * 0.45, r * 1.1, r * 0.24);
             break;
+          // ---- Birthday ----
+          case 'cake':
+            ctx.fillStyle = '#d9d2c5'; ctx.beginPath(); ctx.ellipse(0, r * 0.78, r * 0.95, r * 0.13, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#f4a9c4'; ctx.fillRect(-r * 0.8, r * 0.12, r * 1.6, r * 0.62);
+            ctx.fillStyle = '#fff4f8'; ctx.fillRect(-r * 0.55, -r * 0.3, r * 1.1, r * 0.42);
+            ctx.fillStyle = '#e56b9a'; for (var ci = -3; ci <= 3; ci++) { ctx.beginPath(); ctx.arc(ci * r * 0.22, r * 0.12, r * 0.11, 0, Math.PI); ctx.fill(); }
+            for (var cj = -2; cj <= 2; cj++) { ctx.beginPath(); ctx.arc(cj * r * 0.22, -r * 0.3, r * 0.11, 0, Math.PI); ctx.fill(); }
+            ctx.fillStyle = '#4f9fd6'; ctx.fillRect(-r * 0.05, -r * 0.7, r * 0.1, r * 0.4);
+            ctx.fillStyle = '#ffb02e'; ctx.beginPath(); ctx.ellipse(0, -r * 0.82, r * 0.09, r * 0.15, 0, 0, Math.PI * 2); ctx.fill();
+            break;
+          case 'gift':
+            ctx.fillStyle = '#d9473f'; ctx.fillRect(-r * 0.7, -r * 0.2, r * 1.4, r * 0.95);
+            ctx.fillStyle = '#b8352f'; ctx.fillRect(-r * 0.78, -r * 0.45, r * 1.56, r * 0.3);
+            ctx.fillStyle = gold; ctx.fillRect(-r * 0.1, -r * 0.45, r * 0.2, r * 1.2);
+            ctx.beginPath(); ctx.ellipse(-r * 0.24, -r * 0.6, r * 0.24, r * 0.15, -0.5, 0, Math.PI * 2); ctx.ellipse(r * 0.24, -r * 0.6, r * 0.24, r * 0.15, 0.5, 0, Math.PI * 2); ctx.fill();
+            break;
+          case 'balloons':
+            [[-0.45, -0.1, 0.4, '#e5485d'], [0.45, -0.15, 0.4, '#4f9fd6'], [0, -0.45, 0.42, '#f3c64a']].forEach(function (bl) {
+              ctx.strokeStyle = '#666'; ctx.lineWidth = S * 0.012; ctx.beginPath(); ctx.moveTo(bl[0] * r, (bl[1] + bl[2] * 1.2) * r); ctx.quadraticCurveTo(0, r * 0.7, 0, r * 0.95); ctx.stroke();
+              ctx.fillStyle = bl[3]; ctx.beginPath(); ctx.ellipse(bl[0] * r, bl[1] * r, bl[2] * r * 0.82, bl[2] * r, 0, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.beginPath(); ctx.ellipse(bl[0] * r - bl[2] * r * 0.3, bl[1] * r - bl[2] * r * 0.35, bl[2] * r * 0.12, bl[2] * r * 0.2, -0.4, 0, Math.PI * 2); ctx.fill();
+            });
+            break;
+          // ---- Christmas ----
+          case 'christmastree':
+            ctx.fillStyle = '#6b4226'; ctx.fillRect(-r * 0.12, r * 0.6, r * 0.24, r * 0.32);
+            ctx.fillStyle = '#2e8b57';
+            [[-0.45, 0.65, 0.78], [-0.1, 0.35, 0.58], [-0.65, 0.05, 0.4]].forEach(function (t) { ctx.beginPath(); ctx.moveTo(0, r * t[0] - r * 0.15); ctx.lineTo(r * t[2] + r * 0.1, r * t[1] + r * 0.2); ctx.lineTo(-r * t[2] - r * 0.1, r * t[1] + r * 0.2); ctx.closePath(); ctx.fill(); });
+            ctx.fillStyle = gold; ctx.save(); ctx.translate(0, -r * 0.82); starPath(ctx, r * 0.2, 5, 0.45); ctx.fill(); ctx.restore();
+            [['#e5485d', -0.25, 0.45], ['#f3c64a', 0.3, 0.3], ['#4f9fd6', 0, 0.05], ['#e5485d', 0.4, 0.62], ['#f3c64a', -0.4, 0.68]].forEach(function (o) { ctx.fillStyle = o[0]; ctx.beginPath(); ctx.arc(o[1] * r, o[2] * r, r * 0.07, 0, Math.PI * 2); ctx.fill(); });
+            break;
+          case 'santahat':
+            ctx.fillStyle = '#d6303a'; ctx.beginPath(); ctx.moveTo(-r * 0.8, r * 0.35); ctx.bezierCurveTo(-r * 0.7, -r * 0.6, r * 0.1, -r * 0.9, r * 0.6, -r * 0.35); ctx.bezierCurveTo(r * 0.8, -r * 0.1, r * 0.85, r * 0.15, r * 0.8, r * 0.35); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#ffffff'; roundRectPath(ctx, -r * 0.95, r * 0.3, r * 1.9, r * 0.35, r * 0.17); ctx.fill();
+            ctx.beginPath(); ctx.arc(r * 0.62, -r * 0.42, r * 0.17, 0, Math.PI * 2); ctx.fill();
+            break;
+          case 'snowflake':
+            ctx.strokeStyle = '#9fd3ff'; ctx.lineWidth = S * 0.06; ctx.lineCap = 'round';
+            for (var sf = 0; sf < 6; sf++) { ctx.save(); ctx.rotate(sf * Math.PI / 3); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -r * 0.95); ctx.moveTo(0, -r * 0.55); ctx.lineTo(-r * 0.22, -r * 0.78); ctx.moveTo(0, -r * 0.55); ctx.lineTo(r * 0.22, -r * 0.78); ctx.stroke(); ctx.restore(); }
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = S * 0.025;
+            for (var sg = 0; sg < 6; sg++) { ctx.save(); ctx.rotate(sg * Math.PI / 3); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -r * 0.9); ctx.stroke(); ctx.restore(); }
+            break;
+          case 'candycane':
+            ctx.beginPath(); ctx.moveTo(r * 0.25, r * 0.9); ctx.lineTo(r * 0.25, -r * 0.3); ctx.arc(0, -r * 0.3, r * 0.25, 0, Math.PI, true); ctx.lineTo(-r * 0.25, -r * 0.12);
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = r * 0.3; ctx.lineCap = 'round'; ctx.stroke();
+            ctx.strokeStyle = '#d6303a'; ctx.lineCap = 'butt'; ctx.setLineDash([r * 0.13, r * 0.2]); ctx.stroke(); ctx.setLineDash([]);
+            break;
+          case 'ornament':
+            ctx.fillStyle = gold; ctx.fillRect(-r * 0.12, -r * 0.82, r * 0.24, r * 0.16);
+            ctx.strokeStyle = gold; ctx.lineWidth = S * 0.02; ctx.beginPath(); ctx.arc(0, -r * 0.9, r * 0.09, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = '#d6303a'; ctx.beginPath(); ctx.arc(0, r * 0.1, r * 0.7, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.beginPath(); ctx.ellipse(-r * 0.25, -r * 0.2, r * 0.14, r * 0.24, -0.5, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = gold; ctx.lineWidth = S * 0.03; ctx.beginPath(); ctx.arc(0, r * 0.1, r * 0.5, 0.3, Math.PI - 0.3); ctx.stroke();
+            break;
+          // ---- Debut ----
+          case 'tiara':
+            ctx.fillStyle = gold; ctx.beginPath(); ctx.moveTo(-r * 0.95, r * 0.5);
+            ctx.lineTo(-r * 0.8, -r * 0.1); ctx.lineTo(-r * 0.5, r * 0.15); ctx.lineTo(-r * 0.25, -r * 0.45); ctx.lineTo(0, r * 0.1); ctx.lineTo(r * 0.25, -r * 0.45); ctx.lineTo(r * 0.5, r * 0.15); ctx.lineTo(r * 0.8, -r * 0.1); ctx.lineTo(r * 0.95, r * 0.5); ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = 'rgba(120,80,20,.5)'; ctx.lineWidth = S * 0.02; ctx.stroke();
+            [[0, -r * 0.2, 0.12, '#e5485d'], [-r * 0.25, -r * 0.5, 0.08, '#ffffff'], [r * 0.25, -r * 0.5, 0.08, '#ffffff'], [-r * 0.8, -r * 0.15, 0.07, '#ffffff'], [r * 0.8, -r * 0.15, 0.07, '#ffffff']].forEach(function (g) { ctx.fillStyle = g[3]; ctx.beginPath(); ctx.arc(g[0], g[1], r * g[2], 0, Math.PI * 2); ctx.fill(); });
+            break;
+          case 'butterfly':
+            [-1, 1].forEach(function (sd) {
+              ctx.fillStyle = '#b57af0'; ctx.beginPath(); ctx.ellipse(sd * r * 0.45, -r * 0.3, r * 0.45, r * 0.5, sd * 0.5, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = '#f08ac6'; ctx.beginPath(); ctx.ellipse(sd * r * 0.35, r * 0.4, r * 0.32, r * 0.36, -sd * 0.4, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(sd * r * 0.5, -r * 0.35, r * 0.12, 0, Math.PI * 2); ctx.fill();
+            });
+            ctx.fillStyle = '#3a2416'; ctx.beginPath(); ctx.ellipse(0, 0, r * 0.07, r * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#3a2416'; ctx.lineWidth = S * 0.015; ctx.beginPath(); ctx.moveTo(0, -r * 0.5); ctx.quadraticCurveTo(-r * 0.15, -r * 0.85, -r * 0.3, -r * 0.8); ctx.moveTo(0, -r * 0.5); ctx.quadraticCurveTo(r * 0.15, -r * 0.85, r * 0.3, -r * 0.8); ctx.stroke();
+            break;
+          case 'rose':
+            ctx.fillStyle = '#3c9a5f'; ctx.beginPath(); ctx.ellipse(-r * 0.5, r * 0.55, r * 0.4, r * 0.17, 0.5, 0, Math.PI * 2); ctx.ellipse(r * 0.5, r * 0.55, r * 0.4, r * 0.17, -0.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#d6223f'; ctx.beginPath(); ctx.arc(0, -r * 0.05, r * 0.65, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#8f1027'; ctx.lineWidth = S * 0.025;
+            [0.5, 0.34, 0.18].forEach(function (rr, i) { ctx.beginPath(); ctx.arc(0, -r * 0.05, r * rr, i * 1.3, i * 1.3 + 4.6); ctx.stroke(); });
+            break;
+          case 'champagne':
+            ctx.save(); ctx.rotate(-0.25);
+            ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.strokeStyle = '#9fb3c8'; ctx.lineWidth = S * 0.02;
+            ctx.beginPath(); ctx.moveTo(-r * 0.3, -r * 0.85); ctx.lineTo(r * 0.3, -r * 0.85); ctx.lineTo(r * 0.2, r * 0.2); ctx.quadraticCurveTo(0, r * 0.35, -r * 0.2, r * 0.2); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#f3d27a'; ctx.beginPath(); ctx.moveTo(-r * 0.27, -r * 0.55); ctx.lineTo(r * 0.27, -r * 0.55); ctx.lineTo(r * 0.19, r * 0.18); ctx.quadraticCurveTo(0, r * 0.32, -r * 0.19, r * 0.18); ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = '#9fb3c8'; ctx.beginPath(); ctx.moveTo(0, r * 0.3); ctx.lineTo(0, r * 0.75); ctx.moveTo(-r * 0.3, r * 0.8); ctx.lineTo(r * 0.3, r * 0.8); ctx.stroke();
+            ctx.fillStyle = '#fff'; [[-0.08, 0], [0.08, -0.2], [0, -0.38]].forEach(function (b) { ctx.beginPath(); ctx.arc(b[0] * r, b[1] * r, r * 0.04, 0, Math.PI * 2); ctx.fill(); });
+            ctx.restore(); break;
+          case 'eighteen':
+            ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#fff3c4'; ctx.lineWidth = S * 0.03; ctx.beginPath(); ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = '#7a4a10'; ctx.font = '900 ' + Math.round(S * 0.46) + 'px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('18', 0, S * 0.02);
+            break;
+          // ---- Party ----
+          case 'discoball':
+            ctx.strokeStyle = '#888'; ctx.lineWidth = S * 0.015; ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(0, -r * 0.62); ctx.stroke();
+            var dg = ctx.createLinearGradient(-r * 0.6, -r * 0.6, r * 0.6, r * 0.7); dg.addColorStop(0, '#f2f2f2'); dg.addColorStop(0.5, '#9aa5b5'); dg.addColorStop(1, '#5c6675');
+            ctx.fillStyle = dg; ctx.beginPath(); ctx.arc(0, r * 0.05, r * 0.68, 0, Math.PI * 2); ctx.fill();
+            ctx.save(); ctx.beginPath(); ctx.arc(0, r * 0.05, r * 0.68, 0, Math.PI * 2); ctx.clip();
+            ctx.strokeStyle = 'rgba(30,40,60,.45)'; ctx.lineWidth = S * 0.01;
+            for (var dk = -3; dk <= 3; dk++) { ctx.beginPath(); ctx.moveTo(dk * r * 0.2, -r); ctx.lineTo(dk * r * 0.2, r); ctx.moveTo(-r, r * 0.05 + dk * r * 0.2); ctx.lineTo(r, r * 0.05 + dk * r * 0.2); ctx.stroke(); }
+            ctx.restore();
+            ctx.fillStyle = '#fff'; [[-0.3, -0.25], [0.3, 0.2], [0.05, -0.5]].forEach(function (sp) { ctx.save(); ctx.translate(sp[0] * r, sp[1] * r); starPath(ctx, r * 0.14, 4, 0.25); ctx.fill(); ctx.restore(); });   // translate first, then build the path
+            break;
+          case 'confetti':
+            [['#e5485d', -0.6, -0.5, 0.3], ['#4f9fd6', 0.5, -0.6, 1.2], ['#f3c64a', 0.1, -0.1, 0.7], ['#4fb98a', -0.5, 0.3, 2.1], ['#9a7ad6', 0.6, 0.35, 0.2], ['#f07aa0', -0.1, 0.7, 1.7], ['#f3c64a', -0.8, 0.05, 1.0], ['#4f9fd6', 0.8, 0.0, 2.4], ['#e5485d', 0.3, 0.75, 0.9]].forEach(function (c, i) {
+              ctx.save(); ctx.translate(c[1] * r, c[2] * r); ctx.rotate(c[3]); ctx.fillStyle = c[0];
+              if (i % 3 === 2) { ctx.beginPath(); ctx.arc(0, 0, r * 0.1, 0, Math.PI * 2); ctx.fill(); } else ctx.fillRect(-r * 0.16, -r * 0.07, r * 0.32, r * 0.14);
+              ctx.restore();
+            });
+            break;
+          case 'musicnote':
+            ctx.fillStyle = '#6b4de6'; ctx.strokeStyle = '#6b4de6'; ctx.lineWidth = S * 0.06; ctx.lineCap = 'butt';
+            ctx.beginPath(); ctx.ellipse(-r * 0.45, r * 0.55, r * 0.26, r * 0.2, -0.4, 0, Math.PI * 2); ctx.ellipse(r * 0.45, r * 0.4, r * 0.26, r * 0.2, -0.4, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(-r * 0.22, r * 0.5); ctx.lineTo(-r * 0.22, -r * 0.6); ctx.moveTo(r * 0.68, r * 0.35); ctx.lineTo(r * 0.68, -r * 0.75); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-r * 0.22, -r * 0.6); ctx.lineTo(r * 0.68, -r * 0.75); ctx.lineTo(r * 0.68, -r * 0.5); ctx.lineTo(-r * 0.22, -r * 0.35); ctx.closePath(); ctx.fill();
+            break;
+          // ---- Christening ----
+          case 'halo':
+            ctx.strokeStyle = gold; ctx.lineWidth = S * 0.09; ctx.beginPath(); ctx.ellipse(0, 0, r * 0.85, r * 0.3, 0, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,255,255,.65)'; ctx.lineWidth = S * 0.025; ctx.beginPath(); ctx.ellipse(0, -r * 0.03, r * 0.85, r * 0.3, 0, Math.PI * 1.1, Math.PI * 1.7); ctx.stroke();
+            break;
+          case 'wings':
+            [-1, 1].forEach(function (sd) {
+              ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#9fb3c8'; ctx.lineWidth = S * 0.02;
+              for (var f = 0; f < 4; f++) { ctx.beginPath(); ctx.ellipse(sd * (r * 0.3 + f * r * 0.14), -r * 0.35 + f * r * 0.22, r * 0.55 - f * r * 0.06, r * 0.18, sd * (-0.5 + f * 0.1), 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+            });
+            break;
+          case 'cloud':
+            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#a9c8e8'; ctx.lineWidth = S * 0.025;
+            ctx.beginPath(); ctx.arc(-r * 0.45, r * 0.15, r * 0.35, Math.PI * 0.5, Math.PI * 1.5); ctx.arc(-r * 0.1, -r * 0.2, r * 0.4, Math.PI, Math.PI * 1.95); ctx.arc(r * 0.4, -r * 0.05, r * 0.33, Math.PI * 1.3, Math.PI * 0.5 + 0.2); ctx.arc(r * 0.1, r * 0.5, 0.01, 0, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+            break;
         }
       }
 
@@ -36350,6 +36595,56 @@
         var size = d.s * W, img = d.src.indexOf('a:') === 0 ? assetImg(d.src.slice(2)) : null;
         var aspect = img ? img.height / img.width : (d.src.indexOf('b:b-') === 0 ? 0.55 : 1);
         return { cx: d.x * W, cy: d.y * H, w: size, h: size * aspect, img: img };
+      }
+      // Selection box with handles: drag a corner to resize, drag the round handle to rotate. Sizes follow the sticker's own box.
+      // Everything is measured in on-screen pixels (u = canvas pixels per screen pixel), so handles stay finger-sized on a small Setup preview too.
+      function decorUnit(cv) { var r = cv && cv.getBoundingClientRect && cv.getBoundingClientRect(); return r && r.width > 0 && r.height > 0 ? Math.max(cv.width / r.width, cv.height / r.height) : 1; }   // max() = the scale of a letterboxed (object-fit: contain) canvas
+      function decorHandles(d, W, H, u) {
+        u = u || 1;
+        var b = decorBox(d, W, H), pad = 4 * u, hw = b.w / 2 + pad, hh = b.h / 2 + pad, a = (d.r || 0) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+        var up = 26 * u;
+        var loc = { tl: [-hw, -hh], tr: [hw, -hh], br: [hw, hh], bl: [-hw, hh], rot: [0, -hh - up] }, pts = {};
+        Object.keys(loc).forEach(function (k) { pts[k] = { x: b.cx + loc[k][0] * ca - loc[k][1] * sa, y: b.cy + loc[k][0] * sa + loc[k][1] * ca }; });
+        return { b: b, hw: hw, hh: hh, up: up, pts: pts };
+      }
+      function drawDecorBox(ctx, d, W, H) {
+        var u = decorUnit(ctx.canvas), g = decorHandles(d, W, H, u), b = g.b, hr = 6 * u;
+        ctx.save(); ctx.translate(b.cx, b.cy); ctx.rotate((d.r || 0) * Math.PI / 180);
+        ctx.setLineDash([5 * u, 4 * u]); ctx.lineWidth = 1.6 * u;
+        ctx.strokeStyle = '#C93D27'; ctx.strokeRect(-g.hw, -g.hh, g.hw * 2, g.hh * 2);
+        ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(0, -g.hh); ctx.lineTo(0, -g.hh - g.up); ctx.stroke();
+        ctx.restore();
+        ['tl', 'tr', 'br', 'bl'].forEach(function (k) {
+          var p = g.pts[k]; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate((d.r || 0) * Math.PI / 180);
+          ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#C93D27'; ctx.lineWidth = 1.8 * u;
+          ctx.fillRect(-hr, -hr, hr * 2, hr * 2); ctx.strokeRect(-hr, -hr, hr * 2, hr * 2); ctx.restore();
+        });
+        var rp = g.pts.rot; ctx.save(); ctx.fillStyle = '#C93D27'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.8 * u;
+        ctx.beginPath(); ctx.arc(rp.x, rp.y, hr * 1.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5 * u; ctx.beginPath(); ctx.arc(rp.x, rp.y, hr * 0.6, -0.3, Math.PI * 1.45); ctx.stroke(); ctx.restore();
+      }
+      // Which handle is under the pointer (px, py in canvas pixels)? 'rot' | 'tl' | 'tr' | 'br' | 'bl' | ''
+      function hitDecorHandle(d, px, py, W, H, cv) {
+        if (!d) return '';
+        var u = decorUnit(cv), g = decorHandles(d, W, H, u), r = 17 * u, order = ['rot', 'tl', 'tr', 'br', 'bl'];
+        for (var i = 0; i < order.length; i++) { var p = g.pts[order[i]]; if (Math.hypot(px - p.x, py - p.y) <= r) return order[i]; }
+        return '';
+      }
+      // Start / update a resize or rotate gesture on decor item d (shared by the Setup preview and the guest screen).
+      function decorGestureStart(d, mode, px, py, W, H) {
+        var b = decorBox(d, W, H);
+        return { mode: mode, s0: d.s, dist0: Math.max(1, Math.hypot(px - b.cx, py - b.cy)) };
+      }
+      function decorGestureMove(d, gst, px, py, W, H, minS, maxS) {
+        var b = decorBox(d, W, H);
+        if (gst.mode === 'resize') {
+          d.s = Math.max(minS, Math.min(maxS, gst.s0 * Math.hypot(px - b.cx, py - b.cy) / gst.dist0));
+        } else if (gst.mode === 'rotate') {
+          var deg = Math.atan2(py - b.cy, px - b.cx) * 180 / Math.PI + 90;
+          deg = ((deg % 360) + 360) % 360;
+          var snap = Math.round(deg / 15) * 15; if (Math.abs(deg - snap) < 4) deg = snap;   // click into place at 0, 15, 30 ... degrees
+          d.r = Math.round(deg) % 360;
+        }
       }
       function drawDecorLayer(ctx, W, H) {
         if (overlay) {
@@ -36377,12 +36672,8 @@
             ctx.restore();
           });
         }
-        if (ctx.canvas === previewCanvas && typeof sess !== 'undefined' && sess && sess.decorating && guestDecor[selGuestDecor]) {
-          var sd = guestDecor[selGuestDecor], sb = decorBox(sd, W, H);
-          ctx.save(); ctx.translate(sb.cx, sb.cy); ctx.rotate((sd.r || 0) * Math.PI / 180);
-          ctx.setLineDash([Math.max(4, W * 0.012), Math.max(3, W * 0.008)]); ctx.lineWidth = Math.max(2, W * 0.005);
-          ctx.strokeStyle = '#C93D27'; ctx.strokeRect(-sb.w / 2 - 4, -sb.h / 2 - 4, sb.w + 8, sb.h + 8);
-          ctx.restore();
+        if (ctx.canvas === previewCanvas && typeof sess !== 'undefined' && sess && sess.decorating && !sess.decoPreview && guestDecor[selGuestDecor]) {
+          drawDecorBox(ctx, guestDecor[selGuestDecor], W, H);      // box + handles only while editing, never in the final or print
         }
         if (logo) {
           var li = assetImg(logo.id);
@@ -36690,15 +36981,18 @@
       var STICKER_SHOWN = 8;   // the rest sit behind "More stickers"
       function buildPropTray() {
         propTray.innerHTML = '';
-        STICKERS.forEach(function (s, i) {
-          var b = document.createElement('button'); b.type = 'button'; b.className = 'prop-btn' + (i >= STICKER_SHOWN ? ' extra' : ''); b.title = s[1];
+        var viewAll = stickerView === 'all', viewMine = stickerView === 'mine';
+        if (!viewAll && !viewMine && !stickerPackItems(stickerView).length) { stickerView = 'all'; viewAll = true; }
+        var trayList = viewAll ? STICKERS : (viewMine ? [] : stickerPackItems(stickerView));
+        trayList.forEach(function (s, i) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'prop-btn' + (viewAll && i >= STICKER_SHOWN ? ' extra' : ''); b.title = s[1];
           var c = document.createElement('canvas'); c.width = 72; c.height = 72;
           var x = c.getContext('2d'); x.translate(36, 36); drawSticker(x, s[0], s[0].indexOf('b-') === 0 ? 54 : 60);
           b.appendChild(c);
           b.addEventListener('click', function () { addDecor('b:' + s[0], s[0].indexOf('b-') === 0 ? 0.42 : 0.2); });
           propTray.appendChild(b);
         });
-        myProps.forEach(function (id) {
+        (viewAll || viewMine ? myProps : []).forEach(function (id) {
           var b = document.createElement('button'); b.type = 'button'; b.className = 'prop-btn mine'; b.title = 'Your prop';
           var im = document.createElement('img'); im.alt = ''; if (ASSETS[id]) im.src = ASSETS[id].url;
           var x = document.createElement('span'); x.className = 'prop-x'; x.textContent = '×'; x.title = 'Remove from your props';
@@ -36707,7 +37001,54 @@
           b.addEventListener('click', function () { addDecor('a:' + id, 0.25); });
           propTray.appendChild(b);
         });
+        var moreB = document.getElementById('propMore');
+        if (moreB) moreB.style.display = viewAll && STICKERS.length > STICKER_SHOWN ? '' : 'none';
+        buildPackUI();
       }
+      // Package chips above the tray (which stickers to look at) + the tick list (which packages guests can use) + the decorate timer.
+      function buildPackUI() {
+        var chips = document.getElementById('packChips'), checks = document.getElementById('packChecks');
+        if (chips) {
+          chips.innerHTML = '';
+          var addChip = function (id, label) {
+            var c = document.createElement('button'); c.type = 'button'; c.className = 'chip' + (stickerView === id ? ' active' : ''); c.dataset.pack = id; c.textContent = label;
+            c.setAttribute('role', 'tab'); c.setAttribute('aria-selected', stickerView === id ? 'true' : 'false'); chips.appendChild(c);
+          };
+          addChip('all', 'All');
+          STICKER_PACKS.forEach(function (p) { addChip(p.id, p.icon + ' ' + p.name); });
+          if (myProps.length) addChip('mine', 'My props');
+        }
+        if (checks) {
+          checks.innerHTML = '';
+          STICKER_PACKS.forEach(function (p) {
+            var on = stickerPacksOn.indexOf(p.id) >= 0;
+            var l = document.createElement('label'); l.className = 'pack-check' + (on ? ' on' : '');
+            var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = on; cb.dataset.pack = p.id;
+            var sp = document.createElement('span'); sp.className = 'pc-name'; sp.textContent = p.icon + ' ' + p.name;
+            var ct = document.createElement('small'); ct.textContent = stickerPackItems(p.id).length + ' stickers';
+            l.append(cb, sp, ct); checks.appendChild(l);
+          });
+          var hint = document.getElementById('packHint');
+          if (hint) hint.textContent = stickerPacksOn.length ? stickerPacksOn.length + ' of ' + STICKER_PACKS.length + ' packages open for guests. Guests switch between them with tabs.' : 'No package ticked: guests will see every sticker. Tick at least one to limit them.';
+        }
+        var sel = document.getElementById('guestStickerSec');
+        if (sel) {
+          if (!sel.options.length) GUEST_STICKER_TIMES.forEach(function (t) { var o = document.createElement('option'); o.value = String(t[0]); o.textContent = t[1]; sel.appendChild(o); });
+          sel.value = String(guestStickerSec);
+          var sh = document.getElementById('guestStickerSecHint');
+          if (sh) sh.textContent = guestStickerSec === 0 ? 'No countdown: guests take as long as they like and tap Done & Print when finished.' : 'The guest screen counts down from ' + guestStickerSec + ' seconds, then continues by itself. Done & Print can be tapped earlier.';
+        }
+      }
+      (function () {
+        var chips = document.getElementById('packChips'), checks = document.getElementById('packChecks'), sel = document.getElementById('guestStickerSec');
+        if (chips) chips.addEventListener('click', function (e) { var c = e.target.closest('[data-pack]'); if (!c) return; stickerView = c.dataset.pack; buildPropTray(); });
+        if (checks) checks.addEventListener('change', function (e) {
+          var cb = e.target.closest('input[data-pack]'); if (!cb) return;
+          stickerPacksOn = STICKER_PACKS.map(function (p) { return p.id; }).filter(function (id) { return id === cb.dataset.pack ? cb.checked : stickerPacksOn.indexOf(id) >= 0; });
+          buildPackUI(); scheduleSetupSave();
+        });
+        if (sel) sel.addEventListener('change', function () { guestStickerSec = Math.max(0, Number(sel.value) || 0); buildPackUI(); scheduleSetupSave(); });
+      })();
       propInput.addEventListener('change', async function () {
         var files = [...propInput.files]; propInput.value = '';
         for (var i = 0; i < files.length && i < 8; i++) {
@@ -36739,7 +37080,7 @@
         setupPreviewCanvas.style.cursor = decor.length ? 'grab' : '';
         if (!d) return;
         selSize.value = Math.round(d.s * 100);
-        selRot.value = Math.round(d.r || 0);
+        selRot.value = (((Math.round(d.r || 0) + 180) % 360) + 360) % 360 - 180;     // the slider runs -180..180
       }
       selSize.addEventListener('input', function () { var d = decor[selDecor]; if (d) { d.s = Number(selSize.value) / 100; redrawAll(); } });
       selRot.addEventListener('input', function () { var d = decor[selDecor]; if (d) { d.r = Number(selRot.value); redrawAll(); } });
@@ -36766,7 +37107,13 @@
       }
       setupPreviewCanvas.addEventListener('pointerdown', function (e) {
         if (!decor.length) return;
-        var pt = previewPoint(e), i = hitDecor(pt);
+        var pt = previewPoint(e), SW = setupPreviewCanvas.width, SH = setupPreviewCanvas.height;
+        var hnd = hitDecorHandle(decor[selDecor], pt.x * SW, pt.y * SH, SW, SH, setupPreviewCanvas);
+        if (hnd) {      // resize / rotate the selected sticker by its handles
+          drag = { id: e.pointerId, gesture: decorGestureStart(decor[selDecor], hnd === 'rot' ? 'rotate' : 'resize', pt.x * SW, pt.y * SH, SW, SH) };
+          setupPreviewCanvas.setPointerCapture(e.pointerId); e.preventDefault(); return;
+        }
+        var i = hitDecor(pt);
         selDecor = i;
         refreshSelControls();
         if (i >= 0) {
@@ -36781,6 +37128,13 @@
       setupPreviewCanvas.addEventListener('pointermove', function (e) {
         if (!drag || e.pointerId !== drag.id || !decor[selDecor]) return;
         var pt = previewPoint(e);
+        if (drag.gesture) {
+          var gW = setupPreviewCanvas.width, gH = setupPreviewCanvas.height;
+          decorGestureMove(decor[selDecor], drag.gesture, pt.x * gW, pt.y * gH, gW, gH, 0.04, 0.9);
+          refreshSelControls();
+          if (!dragRaf) dragRaf = requestAnimationFrame(function () { dragRaf = 0; renderSetupPreview(); });
+          return;
+        }
         decor[selDecor].x = Math.max(0, Math.min(1, pt.x + drag.dx));
         decor[selDecor].y = Math.max(0, Math.min(1, pt.y + drag.dy));
         if (!dragRaf) dragRaf = requestAnimationFrame(function () { dragRaf = 0; renderSetupPreview(); });
@@ -36795,11 +37149,8 @@
       // Selection outline, on the Setup preview only (never on the real photo).
       function drawDecorSelection() {
         var d = decor[selDecor]; if (!d) return;
-        var ctx = setupPreviewCanvas.getContext('2d'), W = setupPreviewCanvas.width, H = setupPreviewCanvas.height, b = decorBox(d, W, H);
-        ctx.save(); ctx.translate(b.cx, b.cy); ctx.rotate((d.r || 0) * Math.PI / 180);
-        ctx.setLineDash([Math.max(4, W * 0.012), Math.max(3, W * 0.008)]); ctx.lineWidth = Math.max(2, W * 0.005);
-        ctx.strokeStyle = '#C93D27'; ctx.strokeRect(-b.w / 2 - 4, -b.h / 2 - 4, b.w + 8, b.h + 8);
-        ctx.restore();
+        var ctx = setupPreviewCanvas.getContext('2d'), W = setupPreviewCanvas.width, H = setupPreviewCanvas.height;
+        drawDecorBox(ctx, d, W, H);
       }
 
       // ---- Pattern (accent) color for the theme artwork ----

@@ -11779,9 +11779,65 @@
         return this;
       };
 
+      // Older "ESC *" bit image, 24 dots tall per line. Slower than GS v 0, but nearly every ESC/POS printer
+      // takes it, so it is the fallback for a printer that garbles or ignores the raster command.
+      EscPosEncoder.prototype.imageStar = function (canvas) {
+        var ctx = canvas.getContext('2d');
+        var W = canvas.width, H = canvas.height;
+        var d = ctx.getImageData(0, 0, W, H).data;
+        this._byte(ESC, 0x33, 24);                               // line spacing 24 dots: the bands butt together
+        for (var y0 = 0; y0 < H; y0 += 24) {
+          this._byte(ESC, 0x2A, 33, W & 0xFF, (W >> 8) & 0xFF);  // 24-dot bit image, W columns
+          for (var x = 0; x < W; x++) {
+            for (var k = 0; k < 3; k++) {
+              var b = 0;
+              for (var bit = 0; bit < 8; bit++) {
+                var y = y0 + k * 8 + bit;
+                if (y < H && d[(y * W + x) * 4] < 128) b |= (0x80 >> bit);
+              }
+              this._buf.push(b);
+            }
+          }
+          this._buf.push(LF);
+        }
+        return this._byte(ESC, 0x32);                            // back to the default line spacing
+      };
+
+      // Plain ASCII text (a quick check that the printer understands us at all).
+      EscPosEncoder.prototype.text = function (s) {
+        s = String(s == null ? '' : s);
+        for (var i = 0; i < s.length; i++) {
+          var c = s.charCodeAt(i);
+          this._buf.push(c === 10 || (c >= 32 && c < 127) ? c : 63);
+        }
+        return this;
+      };
+
       EscPosEncoder.prototype.getBuffer = function () {
         return new Uint8Array(this._buf);
       };
+
+      // How a job is sent over Bluetooth. A small mobile printer (58mm) has a tiny buffer and no flow control over
+      // Bluetooth serial: a job sent in one burst overruns it, bytes go missing, and the rest of the picture is read as
+      // text (a hex dump / gibberish). So jobs go out in small pieces with a short pause, and in short image bands.
+      var BT_PROFILE_KEY = 'pb_bt_profile';
+      function btProfile() {
+        var p = { speed: 'auto', cmd: 'raster' };
+        try {
+          var j = JSON.parse(localStorage.getItem(BT_PROFILE_KEY) || '{}');
+          if (j && (j.speed === 'safe' || j.speed === 'fast')) p.speed = j.speed;
+          if (j && j.cmd === 'star') p.cmd = 'star';
+        } catch (_) { }
+        return p;
+      }
+      function btSetProfile(p) {
+        try { localStorage.setItem(BT_PROFILE_KEY, JSON.stringify({ speed: p && p.speed, cmd: p && p.cmd })); } catch (_) { }
+      }
+      function btPacing(paperDots, speed) {
+        if (speed === 'fast') return { chunk: 512, delay: 2, band: 256 };
+        if (speed === 'safe') return { chunk: 48, delay: 8, band: 32 };
+        return paperDots <= 384 ? { chunk: 96, delay: 8, band: 64 } : { chunk: 512, delay: 6, band: 256 };
+      }
 
       // quality: 'best' (sharpened, dot-gain corrected, Atkinson dithering: crisp and not too dark),
       //          'normal' (Floyd-Steinberg, the original look), 'draft' (coarse ordered dots: fast, light, saves heat).
@@ -12009,10 +12065,17 @@
         });
       };
 
-      BtThermal.prototype.disconnect = function () {
+      // keepPrinter: close the link but remember which printer was chosen (a failed print must not make the tablet forget it).
+      BtThermal.prototype.disconnect = function (keepPrinter) {
         this._mode = null; this._char = null;
         try { if (this._server && this._server.connected) this._server.disconnect(); } catch (_) { }
-        try { if (global.__BTBridge && typeof global.__BTBridge.disconnect === 'function') global.__BTBridge.disconnect(); } catch (_) { }
+        try {
+          var B = global.__BTBridge;
+          if (B) {
+            if (keepPrinter === true && typeof B.release === 'function') B.release();
+            else if (typeof B.disconnect === 'function') B.disconnect();
+          }
+        } catch (_) { }
         this._server = null; this._device = null;
         if (typeof this.onDisconnect === 'function') this.onDisconnect();
       };
@@ -12022,19 +12085,36 @@
         if (typeof this.onDisconnect === 'function') this.onDisconnect();
       };
 
-      BtThermal.prototype.write = function (data) {
+      BtThermal.prototype.write = function (data, pace) {
         if (!this._mode) return Promise.reject(new Error('Printer not connected'));
 
         if (this._mode === 'bridge') {
-          var b64 = uint8ToBase64(data);
-          return Promise.resolve(global.__BTBridge.write(b64))
-            .then(function (res) {
-              var r = res;
-              if (typeof r === 'string') {
-                try { r = JSON.parse(r); } catch (_) { }
-              }
-              if (r && r.ok === false) throw new Error(r.error || 'Write failed');
-            });
+          var B = global.__BTBridge;
+          var check = function (res) {
+            var r = res;
+            if (typeof r === 'string') {
+              try { r = JSON.parse(r); } catch (_) { }
+            }
+            if (r && r.ok === false) throw new Error(r.error || 'Write failed');
+          };
+          if (pace && pace.chunk) {
+            // Newer Android app: the tablet app sends the pieces itself (steady timing, off the page's thread).
+            if (typeof B.writePaced === 'function') {
+              return Promise.resolve(B.writePaced(uint8ToBase64(data), pace.chunk, pace.delay)).then(check);
+            }
+            // Older app: the page sends the pieces.
+            var offB = 0;
+            var stepB = function () {
+              if (offB >= data.length) return Promise.resolve();
+              var piece = data.subarray(offB, offB + pace.chunk);
+              offB += pace.chunk;
+              return Promise.resolve(B.write(uint8ToBase64(piece))).then(check).then(function () {
+                if (offB < data.length) return new Promise(function (r) { setTimeout(r, pace.delay); }).then(stepB);
+              });
+            };
+            return stepB();
+          }
+          return Promise.resolve(B.write(uint8ToBase64(data))).then(check);
         }
 
         var self = this;
@@ -12063,15 +12143,43 @@
         var feed = opts.feed != null ? opts.feed : 3;
         if (!this._mode) return Promise.reject(new Error('Printer not connected'));
 
+        var prof = btProfile(), pace = btPacing(this._paperWidth, prof.speed);
         var mono = toReceiptCanvas(canvas, this._paperWidth, opts.brightness, opts.quality);
         var enc = new EscPosEncoder(this._paperWidth);
-        enc.initialize().image(mono).feed(feed);
-        if (cut) enc.cut();
-        return this.write(enc.getBuffer());
+        enc.initialize();
+        if (prof.cmd === 'star') enc.imageStar(mono); else enc.image(mono, pace.band);
+        enc.feed(feed);
+        // 58mm mobile printers have no cutter: skip the cut command (some read it as text) and leave room to tear.
+        if (cut && this._paperWidth > 384) enc.cut(); else if (cut) enc.feed(2);
+        return this.write(enc.getBuffer(), pace);
+      };
+
+      // Step 1 of the printer check: plain text only. If this prints, the link and the printer are fine.
+      BtThermal.prototype.testText = function () {
+        if (!this._mode) return Promise.reject(new Error('Printer not connected'));
+        var enc = new EscPosEncoder(this._paperWidth);
+        enc.initialize().text('PHOTOBOOTH4U\nText test OK\n' + (this._name || 'Bluetooth printer') + '\n').feed(3);
+        return this.write(enc.getBuffer(), btPacing(this._paperWidth, btProfile().speed));
+      };
+
+      // Step 2: a short picture (64 rows). If text works but this garbles, the printer needs the Compatibility image mode.
+      BtThermal.prototype.testSmall = function () {
+        var dotW = this._paperWidth || 576;
+        var cvs = document.createElement('canvas');
+        cvs.width = dotW; cvs.height = 64;
+        var ctx = cvs.getContext('2d');
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, dotW, 64);
+        ctx.fillStyle = '#000000';
+        for (var x = -64; x < dotW; x += 16) { ctx.beginPath(); ctx.moveTo(x, 64); ctx.lineTo(x + 8, 64); ctx.lineTo(x + 72, 0); ctx.lineTo(x + 64, 0); ctx.fill(); }
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(dotW / 2 - 110, 18, 220, 28);
+        ctx.fillStyle = '#000000'; ctx.textAlign = 'center'; ctx.font = 'bold 20px sans-serif';
+        ctx.fillText('SMALL PICTURE OK', dotW / 2, 40);
+        return this.printCanvas(cvs, { feed: 3, cut: true, quality: 'normal' });
       };
 
       BtThermal.prototype.testPrint = function (paper) {
         var dotW = PAPER_WIDTHS[paper || '80mm'] || 576;
+        this._paperWidth = dotW;          // the job must be as wide as this paper (a 58mm printer fed 80mm rows prints garbage)
         var cvs = document.createElement('canvas');
         cvs.width = dotW;
         cvs.height = 360;
@@ -12137,6 +12245,8 @@
         btPrinter: btPrinter,
         isBtAvailable: isBtAvailable,
         isNativeAndroid: isNativeAndroid,
+        btProfile: btProfile,
+        btSetProfile: btSetProfile,
         isBtEnabled: isBtEnabled,
         openBtSettings: openBtSettings,
         printViaBluetooth: printViaBluetooth,
@@ -13389,7 +13499,7 @@
               <button type="button" class="action-btn" id="payAddOptBtn" style="margin-top:8px; width:100%; font-size:13px; font-weight:700; background:var(--panel-2,#f4efe7); color:var(--ink); border:1px dashed var(--line); border-radius:8px; padding:9px 12px; cursor:pointer;">+ Add payment option</button>
             </div>
             <div class="stepper" style="margin-top:12px;">
-              <span class="lbl">Prints included</span>
+              <span class="lbl" id="payPrintsLbl">Prints included</span>
               <span class="ctl">
                 <button type="button" class="step-btn" id="payPrintsMinus" aria-label="One print less">−</button>
                 <span class="step-val" id="payPrintsVal">Use print settings</span>
@@ -14066,6 +14176,16 @@
                 <button type="button" class="print-size-btn" data-tq="draft">Draft</button>
               </div>
               <p class="panel-hint" id="thermalQualityHint" style="margin:2px 0 6px;"></p>
+              <p class="sub-label" style="margin:10px 0 4px;">Too dark or too light?</p>
+              <p class="panel-hint" style="margin:0 0 6px;">Prints one strip at five Lightness levels. Pick the one that looks best and it is saved as this printer&rsquo;s Lightness (also in Lightness &amp; Colour Correction).</p>
+              <button type="button" class="action-btn" id="thermalDarkTestBtn" style="width:auto;margin:0 0 6px;">Print a darkness test strip</button>
+              <div class="print-size-row" id="thermalDarkPick" hidden>
+                <button type="button" class="print-size-btn" data-lite="0">0</button>
+                <button type="button" class="print-size-btn" data-lite="15">+15</button>
+                <button type="button" class="print-size-btn" data-lite="30">+30</button>
+                <button type="button" class="print-size-btn" data-lite="45">+45</button>
+                <button type="button" class="print-size-btn" data-lite="60">+60</button>
+              </div>
             </div>
             <div id="printerQualityBox" class="hidden">
               <p class="sub-label" style="margin:10px 0 6px;">Print quality (this printer)</p>
@@ -14264,6 +14384,31 @@
                     style="display:none;width:auto;margin:0 0 8px 0;">Disconnect</button>
                 </div>
                 <p class="panel-hint" id="btThermalStatusHint" style="margin:4px 0 6px;"></p>
+                <details id="btThermalFixBox" style="margin:4px 0 8px;">
+                  <summary style="cursor:pointer;font-weight:700;font-size:13px;">Prints gibberish, strange text or gaps?</summary>
+                  <p class="panel-hint" style="margin:6px 0;">Small mobile printers (58mm) can lose data if it arrives too fast. Run the checks in order and stop at the first one that goes wrong.</p>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" class="action-btn" id="btCheckText" style="width:auto;margin:0;">1 · Text only</button>
+                    <button type="button" class="action-btn" id="btCheckSmall" style="width:auto;margin:0;">2 · Small picture</button>
+                    <button type="button" class="action-btn" id="btCheckFull" style="width:auto;margin:0;">3 · Full test strip</button>
+                  </div>
+                  <p class="panel-hint" style="margin:6px 0 2px;">Text fine but the picture garbles? Pick <b>Slow and safe</b> and <b>Compatibility</b> below, then check again. Nothing prints at all? Power the printer off and on (do not hold FEED), then try 1 again.</p>
+                  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px;">
+                    <label style="font-size:12px;">Speed
+                      <select class="mini-select" id="btProfSpeed">
+                        <option value="auto">Automatic</option>
+                        <option value="safe">Slow and safe</option>
+                        <option value="fast">Fast</option>
+                      </select>
+                    </label>
+                    <label style="font-size:12px;">Picture mode
+                      <select class="mini-select" id="btProfCmd">
+                        <option value="raster">Standard</option>
+                        <option value="star">Compatibility</option>
+                      </select>
+                    </label>
+                  </div>
+                </details>
                 <p class="panel-hint" style="margin:4px 0 6px; font-size:12px; color:var(--ink-dim);">Thermal print too
                   dark? Increase <b>Lightness / Exposure</b> (+20 to +40) in Print settings above to lighten the output.
                 </p>
@@ -20660,6 +20805,7 @@
       let printFirstHolding = false;
 
       function willAutoPrint() {
+        if (typeof noPrintSession === 'function' && noPrintSession()) return false;     // a "no print" payment option: softcopy only
         return !!(autoPrint && printSize && printSettings() && printSettings().includes(printSize) && sizeFitsLayout(printSize));
       }
 
@@ -21036,6 +21182,7 @@
         updateUI();
 
         payPrintAllow = 0;
+        if (typeof sessionNoPrint !== 'undefined') sessionNoPrint = false;
         if (skipReady !== true) await waitForReadyTap();
         if (sess.cancelled) { endCancelledSession(); return; }
         consumePayCredit();          // the paid session is used once the countdown starts (Cancel at Get ready keeps it)
@@ -23132,9 +23279,13 @@
       function ditherRegion(ctx, x, y, w, h) {
         x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
         const im = ctx.getImageData(x, y, w, h), d = im.data, g = new Float32Array(w * h);
+        // The printer's Lightness setting has to act here: the photo turns into black dots now, so the later
+        // lightness step (printAdjust) can no longer lighten it. Positive = lighter dots, negative = darker.
+        const adjB = (typeof colorAdj !== 'undefined' && colorAdj && Number(colorAdj.brightness)) || 0;
         for (let i = 0, j = 0; i < d.length; i += 4, j++) {
           let v = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
           v = (v - 128) * 1.18 + 136;                       // a little more contrast + lift: faces stay readable
+          if (adjB) { v = Math.max(0, Math.min(255, v + adjB * 1.28)); v = 255 * Math.pow(v / 255, 1 - adjB / 220); }
           g[j] = v;
         }
         for (let yy = 0; yy < h; yy++) {
@@ -23766,6 +23917,30 @@
           }
         });
       }
+      // Printer check for gibberish: text, then a small picture, then the full strip; plus the speed / picture mode choices.
+      (function () {
+        const btp = () => (window._btThermal && window._btThermal.btPrinter) || null;
+        const setWidth = () => { const b = btp(); if (b) b._paperWidth = (printSize && paperFor(printSize).w <= 55) ? 384 : 576; };
+        const run = async (btn, label, fn) => {
+          if (!btn) return;
+          if (!btp() || !btp().connected) { showToast('Connect the Bluetooth printer first.', 3500); return; }
+          const old = btn.textContent; btn.disabled = true; btn.textContent = 'Printing…';
+          try { setWidth(); await fn(btp()); showToast(label + ' sent. Check the paper.', 4000); }
+          catch (err) { showToast(label + ' failed: ' + (err.message || err), 5500); }
+          finally { btn.disabled = false; btn.textContent = old; }
+        };
+        const t1 = document.getElementById('btCheckText'), t2 = document.getElementById('btCheckSmall'), t3 = document.getElementById('btCheckFull');
+        if (t1) t1.addEventListener('click', () => run(t1, 'Text check', b => b.testText()));
+        if (t2) t2.addEventListener('click', () => run(t2, 'Small picture check', b => b.testSmall()));
+        if (t3) t3.addEventListener('click', () => run(t3, 'Test strip', b => b.testPrint((printSize && paperFor(printSize).w <= 55) ? '58mm' : '80mm')));
+        const sp = document.getElementById('btProfSpeed'), cm = document.getElementById('btProfCmd');
+        const bp = window._btThermal && window._btThermal.btProfile ? window._btThermal.btProfile() : { speed: 'auto', cmd: 'raster' };
+        if (sp) { sp.value = bp.speed; }
+        if (cm) { cm.value = bp.cmd; }
+        const save = () => { try { window._btThermal.btSetProfile({ speed: sp.value, cmd: cm.value }); showToast('Saved. Run the checks again.', 2500); } catch (e) { } };
+        if (sp) sp.addEventListener('change', save);
+        if (cm) cm.addEventListener('change', save);
+      })();
       if (btThermalDisconnectBtn) {
         btThermalDisconnectBtn.addEventListener('click', function () {
           if (window._btThermal && window._btThermal.btPrinter) {
@@ -24520,6 +24695,9 @@
           rx.fillStyle = '#ffffff'; rx.fillRect(0, 0, rc.width, rc.height);
           rx.imageSmoothingEnabled = rc.width !== src.width;
           rx.drawImage(src, 0, 0, rc.width, rc.height);
+          // A black & white receipt layout already took the printer's Lightness when its photos were turned into dots
+          // (ditherRegion); adding it again here would grey the black dots until a high setting wipes them out.
+          try { const ld = layoutDef(currentLayout); if (ld.kind === 'receipt' && !ld.color) rc._pbToneDone = true; } catch (e) { }
           return rc;
         }
         // A sideways (landscape) layout on portrait paper prints turned 90°.
@@ -25476,6 +25654,76 @@
         }
       }
 
+      // ---- Darkness test strip (thermal rolls) ----
+      // Every printer burns a little differently, so one strip shows five Lightness levels (the same lift the real print uses):
+      // the operator taps the one that looks best and it becomes this printer's Lightness.
+      const DARK_TEST_STEPS = [0, 15, 30, 45, 60];
+      function thermalDarkStrip(W) {
+        const SEC = 190, TOP = 60;
+        const cv = document.createElement('canvas');
+        cv.width = W; cv.height = TOP + SEC * DARK_TEST_STEPS.length;
+        const g = cv.getContext('2d');
+        g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+        g.fillStyle = '#000'; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.font = '700 26px sans-serif';
+        g.fillText('DARKNESS TEST', W / 2, 38);
+        DARK_TEST_STEPS.forEach((b, i) => {
+          const sec = document.createElement('canvas'); sec.width = W; sec.height = SEC;
+          const s = sec.getContext('2d');
+          s.fillStyle = '#fff'; s.fillRect(0, 0, W, SEC);
+          const ramp = s.createLinearGradient(20, 0, W - 20, 0); ramp.addColorStop(0, '#000'); ramp.addColorStop(1, '#fff');
+          s.fillStyle = ramp; s.fillRect(20, 40, W - 40, 34);
+          const pw = (W - 40) / 5;
+          [0.15, 0.3, 0.5, 0.7, 0.85].forEach((t, k) => { s.fillStyle = 'hsl(0,0%,' + Math.round(t * 100) + '%)'; s.fillRect(20 + k * pw, 82, pw - 6, 40); });
+          const rg = s.createRadialGradient(W / 2, 156, 3, W / 2, 156, 30);
+          rg.addColorStop(0, '#f0d4bd'); rg.addColorStop(0.7, '#a07858'); rg.addColorStop(1, '#4a3626');
+          s.fillStyle = rg; s.beginPath(); s.arc(W / 2, 156, 30, 0, Math.PI * 2); s.fill();
+          if (b) {                                         // the lift printAdjust gives the real page
+            const im = s.getImageData(0, 0, W, SEC), d = im.data, off = b * 2.55;
+            for (let k = 0; k < d.length; k += 4) { d[k] += off; d[k + 1] += off; d[k + 2] += off; }
+            s.putImageData(im, 0, 0);
+          }
+          s.fillStyle = '#000'; s.textAlign = 'left'; s.font = '700 24px sans-serif';
+          s.fillText('Lightness ' + (b > 0 ? '+' : '') + b, 20, 28);
+          g.drawImage(sec, 0, TOP + i * SEC);
+        });
+        return cv;
+      }
+      let thermalDarkTesting = false;
+      async function thermalDarkTest() {
+        if (thermalDarkTesting) return;
+        if (!printSize || !isReceiptPaper(printSize)) { showToast('Choose a thermal roll as the paper size first.', 3500); return; }
+        thermalDarkTesting = true;
+        try {
+          const cv = thermalDarkStrip(RECEIPT_W);
+          const paper = Object.assign({}, paperFor(printSize), { h: Math.round(cv.height / RECEIPT_DPI * 254) / 10 });
+          const rollW = (paper.w && paper.w <= 55) ? '58mm' : '80mm';
+          showToast('Printing the darkness test strip…', 4000);
+          if ((isMobileOS() || !helperOn) && btThermalOn && isBtThermalAvailable()) {
+            await window._btThermal.printViaBluetooth(cv, rollW, { brightness: 0, quality: printPrefs.thermalQuality || 'normal' });
+          } else if (wifiPrinter && !wifiPrinter.dialog && wifiNetAvailable()) {
+            await printViaWifi([cv], paper, wifiPrinter, wifiOpts(wifiPrinter));
+          } else if (helperOn && printerFor(printSize)) {
+            if (!(await printSheets([cv], paper, printerFor(printSize)))) throw new Error('The print helper did not accept the strip.');
+          } else {
+            showToast('Connect a thermal printer first (Bluetooth, USB / Wi-Fi, or the Windows print helper).', 5000);
+            return;
+          }
+          document.getElementById('thermalDarkPick').hidden = false;
+          showToast('Test strip sent. Tap the Lightness that looks best.', 6000);
+        } catch (e) {
+          showToast('Test strip failed: ' + (e.message || e), 6000);
+        } finally {
+          thermalDarkTesting = false;
+        }
+      }
+      document.getElementById('thermalDarkTestBtn').addEventListener('click', thermalDarkTest);
+      document.getElementById('thermalDarkPick').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-lite]'); if (!b) return;
+        const n = Number(b.dataset.lite) || 0;
+        try { commitViewAdj(Object.assign({ brightness: 0, red: 0, green: 0, blue: 0 }, viewAdj(), { brightness: n })); } catch (err) { }
+        showToast('Lightness set to ' + (n > 0 ? '+' : '') + n + ' for this printer.', 3500);
+      });
+
       // ---- Print queue (Android tablet app) ----
       // A photo printer needs a while to finish a sheet. The next guest's print waits in line behind it (one line per printer,
       // so two different printers work at the same time) instead of the Print button being stuck on "Printing, please hold…".
@@ -25560,7 +25808,7 @@
                 // Line up behind any print the thermal printer is still doing; the booth is free for the next guest at once.
                 const ahead = printQueued;
                 enqueuePrint('bt', btRun).catch((btErr) => {
-                  try { window._btThermal.btPrinter.disconnect(); } catch (_) { }
+                  try { window._btThermal.btPrinter.disconnect(true); } catch (_) { }
                   try { refreshPrintUI(); } catch (_) { }
                   queuedPrintFailed('Bluetooth print failed: ' + (btErr.message || btErr) + '.', all, paper);
                 });
@@ -25576,7 +25824,7 @@
             } catch (btErr) {
               showToast('Bluetooth print failed: ' + (btErr.message || btErr) + '. Opening print dialog instead.', 6000);
               // Disconnect so next attempt triggers a fresh connect picker
-              try { window._btThermal.btPrinter.disconnect(); } catch (_) { }
+              try { window._btThermal.btPrinter.disconnect(true); } catch (_) { }
               try { refreshPrintUI(); } catch (_) { }
               // fall through to AirPrint / window.print()
             }
@@ -25820,6 +26068,7 @@
       document.getElementById('copiesSheetGo').addEventListener('click', () => { copiesSheet.hidden = true; printCurrentPhoto(false, sheetCopies); });
       function guestPrintTap() {
         if (printing) return;
+        if (typeof noPrintSession === 'function' && noPrintSession()) { showToast('This option is a softcopy only: scan the QR to get your photo.', 3500); return; }
         const max = maxCopies(printSize);
         if (max < 1) { limitReached(); return; }
         if (printPrefs.guestCopies && max > 1) openCopiesSheet(max);
@@ -25828,7 +26077,7 @@
       function refreshGuestPrintBtn() {
         const pq = document.getElementById('printQuickBtn');
         if (!pq) return;
-        const on = state === 'result' && !printSection.classList.contains('hidden') && printPrefs.guestBtn && !!printSize;
+        const on = state === 'result' && !printSection.classList.contains('hidden') && printPrefs.guestBtn && !!printSize && !(typeof noPrintSession === 'function' && noPrintSession());
         pq.hidden = !on;
         if (!on) { copiesSheet.hidden = true; return; }
         const lim = printLimits(), left = maxCopies(printSize), out = left < 1;
@@ -25907,6 +26156,7 @@
       }
       function maybeAutoPrint() {
         if (!autoPrint || !printSize || !printSettings()) return;
+        if (typeof noPrintSession === 'function' && noPrintSession()) return;
         if (!printSettings().includes(printSize) || !sizeFitsLayout(printSize)) return;
         setTimeout(() => printCurrentPhoto(true, printPrefs.copies), 500);
       }
@@ -26577,7 +26827,7 @@
       // Lightness and colour correction, applied once to the page that goes to the printer and to the print preview.
       // Every page is a fresh canvas, so it is changed in place. The camera, the screen and the digital copies are untouched.
       function printAdjust(c) {
-        if (!c || !hasColorAdj()) return c;
+        if (!c || c._pbToneDone || !hasColorAdj()) return c;
         var ctx = c.getContext('2d'), w = c.width, h = c.height;
         if (!w || !h) return c;
         var img = ctx.getImageData(0, 0, w, h), d = img.data, i;
@@ -27048,6 +27298,7 @@
         var gso = document.getElementById('guestStickerOverlay');
         if (gso) gso.classList.add('hidden');
         if (typeof sessionTier !== 'undefined') sessionTier = null;
+        if (typeof sessionNoPrint !== 'undefined' && sessionNoPrint) { sessionNoPrint = false; try { refreshPrintUI(); } catch (e) { } }
         if (typeof sessionPrinter !== 'undefined' && sessionPrinter) { sessionPrinter = ''; try { refreshPrintUI(); } catch (e) { } }
         guestInfo = { name: '', line: '', q: ['', '', ''] };
         btViewBack = false; try { btFlipBtn.hidden = true; } catch (e) { }
@@ -33525,6 +33776,25 @@
       };
       var sessionTier = null;
       var sessionPrinter = '';             // printer linked to the payment option this guest paid for / used a voucher of (only when "Link vouchers to printers" is on)
+      var sessionNoPrint = false;          // this guest paid for / used a voucher of a "no print" option: softcopy only (QR, download, GIF), no paper
+      function noPrintSession() { return !!(sessionNoPrint && payActive() && payCfg.dual); }
+      // What a payment option includes for printing: null = follow the default (the Prints included setting),
+      // 0 = no print (softcopy only), 1-5 = that many prints.
+      // Found by the option's label, which every voucher and QR payment carries (same as the linked printer).
+      function payOptionPrintsOf(label) {
+        try {
+          if (!(payCfg.dual && label && Array.isArray(payCfg.options))) return null;
+          var o = payCfg.options.find(function (x) { return x.label === label; });
+          return (o && typeof o.prints === 'number') ? o.prints : null;
+        } catch (e) { return null; }
+      }
+      // Short guest-facing line for an option: "Softcopy only", "2 prints included" or '' (follows the event's print settings).
+      function payOptionNote(opt) {
+        var p = (opt && typeof opt.prints === 'number') ? opt.prints : null;
+        if (p === 0) return 'Softcopy only, no print';
+        if (p > 0) return p + ' print' + (p > 1 ? 's' : '') + ' included';
+        return payCfg.prints ? payCfg.prints + ' print' + (payCfg.prints > 1 ? 's' : '') + ' included' : '';
+      }
       var payAcct = (function () { try { return JSON.parse(localStorage.getItem('pb_pay_acct') || 'null'); } catch (e) { return null; } })();
       var payPrintAllow = 0;
       var payState = { resolve: null, view: '', qrId: null, exp: 0, timer: null, poll: null, idle: null, code: '', busy: false, test: false, tier: 'all', label: '' };
@@ -33558,15 +33828,27 @@
           var ph = o.placeholder || (idx === 0 ? 'Thermal' : (idx === 1 ? 'Coloured' : 'Any layout'));
           var defLbl = 'Option ' + (idx + 1);
           var lbl = String(o.label != null && o.label !== '' ? o.label : defLbl).slice(0, 30);
+          // prints: null = follow the default Prints included; 0 = softcopy only (no print); 1-5 = prints included
+          var pn = (o.prints === null || o.prints === undefined || o.prints === '') ? NaN : Math.floor(Number(o.prints));
           return {
             id: String(o.id || ('opt_' + (idx + 1))),
             label: lbl,
             placeholder: ph,
             price: (pr >= 20 && pr <= 20000) ? pr : (idx === 0 ? 50 : 100),
             tier: t,
+            prints: (pn >= 0 && pn <= 5) ? pn : null,
             printer: typeof o.printer === 'string' ? o.printer.replace(/[<>]/g, '').slice(0, 80) : ''
           };
         });
+        // Each option needs its own label: a voucher or QR payment finds its option (prints, printer) by the label.
+        (function () {
+          var seen = {};
+          options.forEach(function (o, i) {
+            var base = o.label, n = 2;
+            while (seen[o.label.toLowerCase()]) { o.label = (base.slice(0, 26) + ' ' + n).trim(); n++; }
+            seen[o.label.toLowerCase()] = true;
+          });
+        })();
 
         var tier1 = options[0] || { id: 'opt_1', label: 'Option 1', placeholder: 'Thermal', price: 50, tier: 'receipt' };
         var tier2 = options[1] || tier1;
@@ -33594,10 +33876,10 @@
       function setPayCredit(c) { try { if (c) localStorage.setItem(CREDIT_KEY, JSON.stringify(c)); else localStorage.removeItem(CREDIT_KEY); } catch (e) { } refreshPayBadge(); }
       function consumePayCredit() {
         var c = payCredit(); if (!c) return;
-        payPrintAllow = c.prints || 0; sessionTier = c.tier || null;
+        payPrintAllow = c.prints || 0; sessionTier = c.tier || null; sessionNoPrint = !!c.np;
         var prevP = sessionPrinter; sessionPrinter = (printPrefs.voucherPrinter && c.printer) ? String(c.printer) : '';
         setPayCredit(null);
-        if (prevP !== sessionPrinter) { try { refreshPrintUI(); } catch (e) { } }
+        if (prevP !== sessionPrinter || sessionNoPrint) { try { refreshPrintUI(); } catch (e) { } }
       }
       // The printer linked to a payment option (found by the option's label, which every voucher and QR payment carries).
       function payOptionPrinter(label) {
@@ -33878,6 +34160,7 @@
                     '<span class="ico" style="margin:0 0 4px; font-size:22px;">' + ico + '</span>' +
                     '<b style="font-size:14px; line-height:1.2;">' + payEsc(lbl) + '</b>' +
                     '<small style="font-weight:700; font-size:13px; color:var(--red,#C93D27); margin-top:2px;">' + payEsc(peso(opt.price)) + '</small>' +
+                    (payOptionNote(opt) ? '<span style="font-size:11px; color:var(--ink-dim); font-weight:600; margin-top:3px; line-height:1.25;">' + payEsc(payOptionNote(opt)) + '</span>' : '') +
                     (ph ? '<span style="font-size:10px; color:var(--ink-dim); text-transform:uppercase; font-weight:700; margin-top:2px;">' + payEsc(ph) + '</span>' : '') +
                   '</button>';
                 }).join('');
@@ -33957,10 +34240,12 @@
       }
       function payPaid(prints, tier, label) {
         payStopTimers();
-        payPrintAllow = prints || 0;
+        // The option's own Prints setting wins over the voucher's / the default count; 0 means softcopy only.
+        var optPrints = payOptionPrintsOf(label), np = optPrints === 0;
+        payPrintAllow = np ? 0 : (optPrints > 0 ? optPrints : (prints || 0));
         sessionTier = (tier === 'receipt' || tier === 'photo') ? tier : null;
-        sessionPrinter = payOptionPrinter(label);
-        setPayCredit({ at: Date.now(), prints: payPrintAllow, tier: sessionTier, printer: sessionPrinter });
+        sessionPrinter = np ? '' : payOptionPrinter(label);
+        setPayCredit({ at: Date.now(), prints: payPrintAllow, tier: sessionTier, printer: sessionPrinter, np: np });
         try { refreshPrintUI(); } catch (e) { }
         payShow('payDone');
         setTimeout(function () { payFinish(true); }, 1500);
@@ -34075,25 +34360,40 @@
               '</div>' +
             '</div>' +
             '<div>' +
-              '<label style="display:block; font-size:11px; color:var(--muted); margin-bottom:2px;">Linked Layouts &amp; Printer</label>' +
+              '<label style="display:block; font-size:11px; color:var(--muted); margin-bottom:2px;">Prints</label>' +
+              '<select class="mini-select pay-opt-prints" data-idx="' + idx + '" style="width:100%; box-sizing:border-box;">' + payOptionPrintsHtml(opt.prints) + '</select>' +
+              (opt.prints === 0 ? '<p class="panel-hint" style="margin:4px 0 0;">Guests get the QR, download and GIF set in Extras, but no paper print. The Print button and auto-print stay off for them.</p>' : '') +
+            '</div>' +
+            '<div>' +
+              '<label style="display:block; font-size:11px; color:var(--muted); margin-bottom:2px;">Layouts allowed</label>' +
               '<select class="mini-select pay-opt-tier" data-idx="' + idx + '" style="width:100%; box-sizing:border-box;">' +
                 '<option value="receipt"' + (opt.tier === 'receipt' ? ' selected' : '') + '>🧾 Thermal / Receipt layouts only</option>' +
                 '<option value="photo"' + (opt.tier === 'photo' ? ' selected' : '') + '>🎨 Normal / Coloured photo layouts only</option>' +
                 '<option value="all"' + (opt.tier === 'all' ? ' selected' : '') + '>✨ Any layout</option>' +
               '</select>' +
+              (opt.prints === 0 && opt.tier === 'receipt' ? '<p class="panel-hint" style="margin:4px 0 0;color:#e05252;">Receipt layouts are made for printing. For a softcopy-only option, Normal / Coloured or Any layout fits better.</p>' : '') +
             '</div>' +
-            (printPrefs.voucherPrinter ? '<div>' +
+            (printPrefs.voucherPrinter && opt.prints !== 0 ? '<div>' +
               '<label style="display:block; font-size:11px; color:var(--muted); margin-bottom:2px;">Printer for this option</label>' +
               '<select class="mini-select pay-opt-printer" data-idx="' + idx + '" style="width:100%; box-sizing:border-box;">' + voucherPrinterOptionsHtml(opt.printer || '') + '</select>' +
             '</div>' : '') +
           '</div>';
         }).join('');
-        if (printPrefs.voucherPrinter) {
-          var lbls = payCfg.options.map(function (o) { return o.label; });
-          if (payCfg.options.some(function (o) { return lbls.filter(function (l) { return l === o.label; }).length > 1; })) {
-            box.innerHTML += '<p class="panel-hint" style="margin:6px 0 0;color:#e05252;">Two options have the same label. Give each option its own label so its printer can be told apart.</p>';
-          }
+        var lbls = payCfg.options.map(function (o) { return (o.label || '').toLowerCase(); });
+        if (payCfg.options.some(function (o) { return lbls.filter(function (l) { return l === (o.label || '').toLowerCase(); }).length > 1; })) {
+          box.innerHTML += '<p class="panel-hint" style="margin:6px 0 0;color:#e05252;">Two options have the same label. Give each option its own label: vouchers and payments find their prints and printer by the label.</p>';
         }
+        if (!printPrefs.voucherPrinter) {
+          box.innerHTML += '<p class="panel-hint" style="margin:6px 0 0;">Want an option to print on its own printer? Turn on <b>Link vouchers to printers</b> in <a href="#" class="pay-goto-print">Camera &amp; printer</a>.</p>';
+        }
+      }
+      // The Prints choice on an option: same as the default, no print (softcopy only), or 1-5 prints.
+      function payOptionPrintsHtml(sel) {
+        var def = payCfg.prints ? payCfg.prints + (payCfg.prints > 1 ? ' prints' : ' print') : 'the event’s print settings';
+        var h = '<option value=""' + (typeof sel !== 'number' ? ' selected' : '') + '>Same as default (' + payEsc(def) + ')</option>' +
+          '<option value="0"' + (sel === 0 ? ' selected' : '') + '>No print: softcopy only</option>';
+        for (var n = 1; n <= 5; n++) h += '<option value="' + n + '"' + (sel === n ? ' selected' : '') + '>' + n + (n > 1 ? ' prints' : ' print') + ' included</option>';
+        return h;
       }
       function updatePayMakeTier() {
         var mt = document.getElementById('payMakeTier');
@@ -34105,7 +34405,7 @@
             var lbl = opt.label || ('Option ' + (idx + 1));
             var prc = opt.price || payCfg.price;
             var tierBadge = opt.tier === 'receipt' ? '🧾 Thermal' : (opt.tier === 'photo' ? '🎨 Coloured' : '✨ Any');
-            optsHtml += '<option value="opt_' + idx + '">' + payEsc(lbl) + ' (' + peso(prc) + ') · ' + tierBadge + '</option>';
+            optsHtml += '<option value="opt_' + idx + '">' + payEsc(lbl) + ' (' + peso(prc) + ') · ' + tierBadge + (opt.prints === 0 ? ' · no print' : '') + '</option>';
           });
         }
         mt.innerHTML = optsHtml;
@@ -34124,6 +34424,7 @@
         document.querySelectorAll('#payModes .chip').forEach(function (c) { c.classList.toggle('active', c.dataset.mode === payCfg.mode); });
         var pi = document.getElementById('payPrice'); if (pi) pi.value = payCfg.price;
         var pv = document.getElementById('payPrintsVal'); if (pv) pv.textContent = payCfg.prints ? payCfg.prints + ' print' + (payCfg.prints > 1 ? 's' : '') : 'none';
+        var pvl = document.getElementById('payPrintsLbl'); if (pvl) pvl.textContent = payCfg.dual ? 'Default prints included' : 'Prints included';
         var dt = document.getElementById('payDualToggle'); if (dt) dt.checked = !!payCfg.dual;
         var dr = document.getElementById('payDualRows'); if (dr) dr.style.display = payCfg.dual ? '' : 'none';
         var sr = document.getElementById('paySingleRow'); if (sr) sr.style.display = payCfg.dual ? 'none' : '';
@@ -34215,12 +34516,26 @@
           } else if (target.classList.contains('pay-opt-tier')) {
             payCfg.options[idx].tier = target.value;
             payChanged();
+          } else if (target.classList.contains('pay-opt-prints')) {
+            payCfg.options[idx].prints = target.value === '' ? null : Math.max(0, Math.min(5, Math.floor(Number(target.value))));
+            if (payCfg.options[idx].prints === 0) payCfg.options[idx].printer = '';
+            payChanged();
+          } else if (target.classList.contains('pay-opt-label')) {
+            // Two options with the same label can't be told apart by a voucher: number the later one.
+            var lab = (target.value || '').trim().slice(0, 30) || ('Option ' + (idx + 1));
+            var taken = payCfg.options.map(function (o, i) { return i === idx ? '' : (o.label || '').toLowerCase(); });
+            var base = lab, n = 2;
+            while (taken.indexOf(lab.toLowerCase()) >= 0) { lab = base.slice(0, 26) + ' ' + n; n++; }
+            payCfg.options[idx].label = lab;
+            payChanged();
           } else if (target.classList.contains('pay-opt-printer')) {
             payCfg.options[idx].printer = target.value;
             payChanged();
           }
         });
         pol.addEventListener('click', function (e) {
+          var go = e.target.closest('.pay-goto-print');
+          if (go) { e.preventDefault(); try { switchTab('setup'); if (typeof goStep === 'function') goStep(4); } catch (err) { } return; }
           var delBtn = e.target.closest('.pay-opt-del');
           if (!delBtn) return;
           var idx = Number(delBtn.dataset.idx);
@@ -34409,7 +34724,9 @@
           var pesoStr = function (amt) { return '₱' + Number(amt || 0).toLocaleString('en-PH'); };
           var optMatch = payCfg.options && payCfg.options.find(function (o) { return (data.label && o.label === data.label) || o.tier === data.tier; });
           var optName = data.label || (optMatch && optMatch.label) || (data.tier === 'receipt' ? 'Thermal' : (data.tier === 'photo' ? 'Coloured' : ''));
-          var incStr = (optName && optName !== '1 photo session' ? optName : '1 photo session') + (data.prints ? ' · ' + data.prints + ' print' + (data.prints > 1 ? 's' : '') : '');
+          var optPr = optMatch && typeof optMatch.prints === 'number' ? optMatch.prints : null;        // the option's own Prints setting wins over the batch's
+          var tkPrints = optPr === null ? data.prints : optPr;
+          var incStr = (optName && optName !== '1 photo session' ? optName : '1 photo session') + (optPr === 0 ? ' · softcopy only' : (tkPrints ? ' · ' + tkPrints + ' print' + (tkPrints > 1 ? 's' : '') : ''));
           var tierBadge = data.tier === 'receipt' ? ('🧾 ' + (optName ? optName.toUpperCase() : 'THERMAL') + ' ONLY') : (data.tier === 'photo' ? ('🎨 ' + (optName ? optName.toUpperCase() : 'COLOR') + ' ONLY') : (optName ? (optName.toUpperCase() + ' ONLY') : ''));
 
           for (var p = 0; p < data.codes.length; p += perPage) {

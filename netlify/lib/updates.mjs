@@ -134,6 +134,15 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-06', title: 'Prints per Payment Option (Softcopy Only), Thermal Darkness Test, Bluetooth Printer Fixes', for: ['app', 'website'], app: '1.0.98',
+    items: [
+      'Each payment option now has its own Prints choice: the default, No print (softcopy only), or 1 to 5 prints. A softcopy-only option still gives the QR, download and GIF you set in Extras, but the guest gets no paper print (no Print button, no auto-print). Guests see "Softcopy only, no print" or "1 print included" under each option, and voucher tickets show it too. Options must have different labels; a repeated label is numbered automatically.',
+      'Thermal prints too dark: the Lightness setting now works on black and white receipt layouts (it used to have no effect on their photos). New Print a darkness test strip button under Print quality prints five Lightness levels on one strip; tap the one that looks best and it is saved for that printer.',
+      'Small 58mm Bluetooth printers that printed gibberish, hex text or gaps: jobs are now sent in small pieces with short pauses, in shorter image bands, with no cut command on 58mm. The Test print now uses the right 58mm width. New "Prints gibberish?" checks in the Bluetooth printer settings (text, small picture, full strip) with Speed and Picture mode (Compatibility) choices. The GZQIANJI GZM5803L printer is recognised.',
+      'Android app: the tablet now sends Bluetooth print data in paced pieces itself, and a failed print no longer makes the tablet forget the chosen printer.'
+    ]
+  },
+  {
     date: '2026-11-05', title: '360 Desk: Rendered Effects Move Exactly Like the Live Preview', for: ['app', 'website'], app: '1.0.85',
     items: [
       'The 360 desk now draws the particle effect for the finished video with the same engine as the live preview, frame by frame, using your Effect Motion & Behavior settings (Trajectory, Speed, Opacity, Size, Wobble, Location). What moves in the preview now moves the same way in the rendered video.',

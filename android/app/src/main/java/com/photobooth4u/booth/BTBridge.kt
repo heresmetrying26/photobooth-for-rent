@@ -80,7 +80,9 @@ class BTBridge(
         // VOZY receipt printers: G80 (80mm), P50 (58mm portable), MP210 (58mm mini) — all ESC/POS
         // MP210 BT name is usually "MP210" which is already caught by "MP" above,
         // but "VOZY" covers any model that advertises the brand name first.
-        "VOZY", "G80", "P50"
+        "VOZY", "G80", "P50",
+        // GZQIANJI GZM5803L-BL mini 58mm printer (advertises as "GZM5803L..." or similar)
+        "GZ", "GZM", "GZQIANJI"
     )
 
     private var activeSocket: BluetoothSocket? = null
@@ -363,7 +365,7 @@ class BTBridge(
     }
 
     private fun connectToDevice(device: BluetoothDevice): String {
-        disconnect() // Close existing connection first
+        closeConnection() // Close existing connection first (the saved printer stays remembered)
 
         // Always cancel discovery before connecting (critical for RFCOMM SPP reliability)
         try {
@@ -453,7 +455,7 @@ class BTBridge(
             res.put("ok", true)
             res.toString()
         } catch (e: Exception) {
-            disconnect()
+            closeConnection()          // keep the chosen printer remembered
             val res = JSONObject()
             res.put("ok", false)
             res.put("error", e.message ?: "Write failed")
@@ -462,10 +464,59 @@ class BTBridge(
     }
 
     /**
-     * Closes the Bluetooth connection.
+     * Writes raw bytes in small pieces with a short pause after each one.
+     * Small mobile printers (58mm) have a tiny buffer and no flow control over Bluetooth serial: a job sent in one
+     * burst overruns them, bytes go missing and the rest of the picture is printed as text (a hex dump / gibberish).
+     * chunkSize is bytes per piece, delayMs the pause after each piece. The call returns when the last piece is out.
      */
     @JavascriptInterface
-    fun disconnect(): String {
+    fun writePaced(base64Data: String, chunkSize: Int, delayMs: Int): String {
+        val out = activeOutputStream ?: run {
+            val res = JSONObject()
+            res.put("ok", false)
+            res.put("error", "Printer not connected.")
+            return res.toString()
+        }
+
+        return try {
+            val bytes = Base64.decode(base64Data, Base64.DEFAULT)
+            val piece = chunkSize.coerceIn(16, 4096)
+            val pause = delayMs.coerceIn(0, 500).toLong()
+            var off = 0
+            while (off < bytes.size) {
+                val n = minOf(piece, bytes.size - off)
+                out.write(bytes, off, n)
+                out.flush()
+                off += n
+                if (pause > 0 && off < bytes.size) Thread.sleep(pause)
+            }
+            // Let the printer finish taking the last piece before the page asks for anything else.
+            if (pause > 0) Thread.sleep(pause * 4)
+
+            val res = JSONObject()
+            res.put("ok", true)
+            res.toString()
+        } catch (e: Exception) {
+            closeConnection()          // a failed write ends the link, but the chosen printer is remembered
+            val res = JSONObject()
+            res.put("ok", false)
+            res.put("error", e.message ?: "Write failed")
+            res.toString()
+        }
+    }
+
+    /**
+     * Closes the link but keeps the chosen printer remembered (used after a failed print).
+     */
+    @JavascriptInterface
+    fun release(): String {
+        closeConnection()
+        val res = JSONObject()
+        res.put("ok", true)
+        return res.toString()
+    }
+
+    private fun closeConnection() {
         try {
             activeOutputStream?.close()
         } catch (_: Exception) {}
@@ -477,6 +528,14 @@ class BTBridge(
         activeSocket = null
         connectedDeviceName = null
         connectedDeviceAddress = null
+    }
+
+    /**
+     * Closes the Bluetooth connection.
+     */
+    @JavascriptInterface
+    fun disconnect(): String {
+        closeConnection()
 
         // Clear saved printer preference so user can choose a different device next time
         try {

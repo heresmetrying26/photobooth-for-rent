@@ -1,13 +1,12 @@
 # Session Context
 
-**Current Task**: Release v1.0.76 (Desktop v1.0.79, Android v1.0.90): in-page dialogs, working Save-as-preset, in-place queue tiles, preset placeholder, bigger Line 2 default, re-pick spinner.
+**Current Task**: Release v1.0.77 (Desktop v1.0.80, Android v1.0.91): animated 360 effects now truly move, and the motion settings apply in the render.
 
 **Key Decisions**:
-- `pbChoose` in-page choice box replaces confirm() in the 360 studio (Cancel focused); `askText` and the choice box sit above the studio (z-index 10100).
-- Save as preset uses `askText` because the laptop app has no `prompt()`.
-- Queue tiles are updated in place by clip id; video thumbnails reload only when their source changes.
-- Line 2 default size is 34; re-pick shows a spinner and locks the preview controls.
+- Root cause of "static" effects: generator reused one frame buffer on a pipe without draining, so loops froze after a few frames. Fixed; all 40 loops (portrait + landscape) regenerated at 540p/30fps, ~27 MB total.
+- `spin.mjs` applies Trajectory/Size/Wobble/Location to particle effects (`FX_MOTION`); frame-style effects ignore them.
+- `refreshUserFx` + `loops.version` update the data-folder copy of the loops on start (operator loops kept). Bump `loops.version` whenever loops change.
 
 **Next Steps**:
-- GitHub Actions packages installers on tag push (v1.0.76, desktop-v1.0.79, android-v1.0.90).
-- Still to test on real hardware: render progress/cancel/errors, Wi-Fi sharing, Epson/Canon printing.
+- GitHub Actions packages installers on tag push (v1.0.77, desktop-v1.0.80, android-v1.0.91).
+- Check the larger installer size and render time with effects on the real laptop; verify other effects visually.

@@ -5,7 +5,8 @@
 // ramp, boomerang), cropped to portrait or landscape, with the event's frame / logo / title drawn over it
 // (a transparent PNG made by the booth page) and optional music. Jobs run one at a time.
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync, readdirSync, statSync, unlinkSync, renameSync, readFileSync, openSync, readSync, closeSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readdirSync, statSync, unlinkSync, renameSync, readFileSync, openSync, readSync, closeSync, copyFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { join, basename } from 'node:path';
 import { createRequire } from 'node:module';
 import os from 'node:os';
@@ -41,6 +42,45 @@ export function configure({ buildDir, temp, fxDir, resume = false }) {
 
 export function setFxDir(dir) { fxDirectory = dir || null; }
 export function getFxDir() { return fxDirectory; }
+
+// Where the effect loops that ship with this app live (same lookup as configure()).
+export function bundledFxDir(buildDir) {
+  if (!buildDir) return null;
+  const unpacked = join(buildDir.replace(/app\.asar(?![.\w])/, 'app.asar.unpacked'), 'spin-fx');
+  return existsSync(unpacked) ? unpacked : join(buildDir, 'spin-fx');
+}
+function fxStamp(dir) { try { return readFileSync(join(dir, 'loops.version'), 'utf8').trim(); } catch { return ''; } }
+// The app prefers a spin-fx folder in the data directory (operators can drop their own loops there). That copy used to be written once
+// and never updated, so loops fixed in a new release never reached it. When this release carries a newer loops.version, the built-in
+// loops, landscape variants and thumbnails are copied over it; the operator's own loops and catalog entries are kept.
+export function refreshUserFx(userDir, bundledDir) {
+  try {
+    if (!userDir || !bundledDir || !existsSync(join(userDir, 'catalog.json')) || !existsSync(join(bundledDir, 'catalog.json'))) return false;
+    const want = fxStamp(bundledDir);
+    if (!want || want === fxStamp(userDir)) return false;
+    const bundled = JSON.parse(readFileSync(join(bundledDir, 'catalog.json'), 'utf8'));
+    if (!Array.isArray(bundled)) return false;
+    const copy = (rel) => {
+      const from = join(bundledDir, rel), to = join(userDir, rel);
+      if (!existsSync(from)) return;
+      mkdirSync(dirname(to), { recursive: true });
+      try { copyFileSync(from, to); } catch { writeFileSync(to, readFileSync(from)); }
+    };
+    for (const item of bundled) {
+      const file = item.file || item.filename;
+      if (file) { copy(join('loops', file)); copy(join('loops', 'landscape', file)); }
+      if (item.thumb) copy(join('thumbs', item.thumb));
+    }
+    let custom = [];
+    try {
+      const mine = JSON.parse(readFileSync(join(userDir, 'catalog.json'), 'utf8'));
+      if (Array.isArray(mine)) custom = mine.filter((m) => m && !bundled.some((b) => b.id === m.id));
+    } catch { /* keep none */ }
+    writeFileSync(join(userDir, 'catalog.json'), JSON.stringify([...bundled, ...custom], null, 2));
+    writeFileSync(join(userDir, 'loops.version'), want);
+    return true;
+  } catch { return false; }
+}
 
 function run(bin, args, { timeout = 0, watchdogMs = 0, onStdout, onProc } = {}) {
   return new Promise((resolve) => {
@@ -303,7 +343,11 @@ export function normOptions(o) {
     fx: o.fx || null,
     fxSpeed: o.fxSpeed != null ? clamp(Number(o.fxSpeed), 0.2, 3.0) : 1.0,
     fxOpacity: o.fxOpacity != null ? clamp(Number(o.fxOpacity), 0.05, 1.0) : null,
-    fxLocation: o.fxLocation || 'full',
+    fxLocation: ['full', 'center', 'edges', 'top', 'bottom'].includes(o.fxLocation) ? o.fxLocation : 'full',
+    // Trajectory / Size / Wobble from the "Effect Motion & Behavior" panel (the live preview already shows them; the render now does too)
+    fxMovement: ['vortex', 'fall', 'rise', 'burst', 'beat_pulse', 'drift'].includes(o.fxMovement) ? o.fxMovement : 'none',
+    fxScale: o.fxScale != null && Number(o.fxScale) > 0 ? clamp(Number(o.fxScale) / 100, 0.5, 2.5) : 1,      // the panel sends percent (40..250)
+    fxWobble: o.fxWobble != null ? clamp(Number(o.fxWobble) / 100, 0, 1) : 0,
     intro: o.intro || null,
     outro: o.outro || null,
     textTiming: o.textTiming === 'fade' ? 'fade' : 'always',
@@ -312,6 +356,59 @@ export function normOptions(o) {
     dropTime: o.dropTime != null && Number(o.dropTime) > 0 ? clamp(Number(o.dropTime), 0.5, 12) : null,
     lut: ['glam_bw', 'teal_orange', 'golden_hour', 'vibrant', 'vintage', 'none'].includes(o.lut) ? o.lut : (o.lut || 'none')
   };
+}
+// Particle-type effects take the Trajectory / Size / Wobble / Location settings. Frame-like effects (borders, grids, strobes, lasers, light leaks...)
+// keep their own look, so the settings are not applied to them.
+export const FX_MOTION = new Set(['confetti_multi', 'confetti_gold', 'streamers_party', 'champagne_bubbles', 'balloons_pastel', 'hearts_floating', 'rose_petals_red',
+  'petals_white_drift', 'bokeh_golden', 'fairy_dust', 'sparkler_fountain', 'gold_dust', 'silver_shimmer', 'ribbon_swirls_gold', 'galaxy_stars', 'cash_rain',
+  'snow_blizzard', 'halloween_bats', 'autumn_leaves', 'fireworks_midnight', 'nye_countdown']);
+
+// Does this effect + these options change the effect layer at all? (default options: no, so the old filter graph is unchanged)
+export function fxNeedsShape(o, fxId) {
+  if (!fxId || !FX_MOTION.has(fxId)) return false;
+  return o.fxMovement !== 'none' || o.fxWobble > 0.001 || Math.abs(o.fxScale - 1) > 0.02 || o.fxLocation !== 'full';
+}
+
+// Moves / resizes / limits the effect layer. Pushes filter lines into f, reading label `inLabel`, writing label `outLabel`.
+// kind: 'rgba' (alpha overlay, empty = transparent) or 'gbrp' (screen / addition blend, empty = black).
+export function fxShapeFilters(f, inLabel, outLabel, o, kind) {
+  const W = o.W, H = o.H, clear = kind === 'rgba' ? '0x00000000' : 'black';
+  let cur = inLabel, n = 0;
+  const add = (flt) => { const out = '[fxs' + (n++) + ']'; f.push(cur + flt + out); cur = out; };
+  const centerCrop = () => 'crop=' + W + ':' + H;
+  // Size: bigger = zoom in on the layer; smaller = four smaller copies side by side (so the whole frame is still covered)
+  const s = o.fxScale;
+  if (s > 1.02) { add('scale=iw*' + f2(s) + ':ih*' + f2(s) + ':flags=bilinear,' + centerCrop()); }
+  else if (s < 0.98) {
+    const k = n++;
+    f.push(cur + 'scale=iw*' + f2(s) + ':ih*' + f2(s) + ':flags=bilinear,split=2[fxa' + k + '][fxb' + k + ']');
+    f.push('[fxa' + k + '][fxb' + k + ']hstack[fxh' + k + ']');
+    f.push('[fxh' + k + ']split=2[fxc' + k + '][fxd' + k + ']');
+    const out = '[fxs' + k + ']'; f.push('[fxc' + k + '][fxd' + k + ']vstack,' + centerCrop() + out); cur = out;
+  }
+  // Trajectory
+  switch (o.fxMovement) {
+    case 'rise': add('vflip'); break;                                                     // falling things float upwards
+    case 'drift': add('scroll=horizontal=' + f2(0.0035 * o.fxSpeed)); break;               // wind: the layer slides sideways and wraps round
+    case 'vortex': add('scale=iw*1.5:ih*1.5:flags=bilinear,rotate=a=\'' + f2(0.45 * o.fxSpeed) + '*t\':ow=iw:oh=ih:c=' + clear + ',' + centerCrop()); break;
+    case 'burst': add('scale=w=\'iw*(1+0.9*mod(t,2.4)/2.4)\':h=\'ih*(1+0.9*mod(t,2.4)/2.4)\':eval=frame:flags=bilinear,' + centerCrop()); break;
+    case 'beat_pulse': add('scale=w=\'iw*(1+0.07*abs(sin(t*4.4)))\':h=\'ih*(1+0.07*abs(sin(t*4.4)))\':eval=frame:flags=bilinear,' + centerCrop()); break;
+    default: break;                                                                        // 'fall' / none: the loop already falls
+  }
+  // Wobble: a gentle sideways sway
+  if (o.fxWobble > 0.001) {
+    const z = 1 + 0.12 * o.fxWobble;
+    add('scale=iw*' + f2(z) + ':ih*' + f2(z) + ':flags=bilinear,crop=' + W + ':' + H + ':x=\'(iw-' + W + ')/2*(1+sin(2*PI*0.35*t*' + f2(o.fxSpeed) + '))\':y=\'(ih-' + H + ')/2\'');
+  }
+  // Location
+  switch (o.fxLocation) {
+    case 'top': add('crop=' + W + ':' + Math.round(H * 0.52) + ':0:0,pad=' + W + ':' + H + ':0:0:color=' + clear); break;
+    case 'bottom': add('crop=' + W + ':' + Math.round(H * 0.52) + ':0:' + Math.round(H * 0.48) + ',pad=' + W + ':' + H + ':0:' + Math.round(H * 0.48) + ':color=' + clear); break;
+    case 'center': add('scale=iw*0.6:ih*0.6:flags=bilinear,pad=' + W + ':' + H + ':(ow-iw)/2:(oh-ih)/2:color=' + clear); break;
+    case 'edges': add('drawbox=x=' + Math.round(W * 0.18) + ':y=' + Math.round(H * 0.2) + ':w=' + Math.round(W * 0.64) + ':h=' + Math.round(H * 0.6) + ':color=' + clear + ':t=fill' + (kind === 'rgba' ? ':replace=1' : '')); break;
+    default: break;
+  }
+  f.push(cur + 'null' + outLabel);      // hand the result to the caller under the label it expects
 }
 // How long the finished video is.
 export function outDuration(speed, d, o) {
@@ -462,8 +559,13 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
     } else {
       f.push('[' + fxIdx + ':v]scale=' + o.W + ':' + o.H + ':force_original_aspect_ratio=increase,crop=' + o.W + ':' + o.H + ',setsar=1,fps=30[fx_fit]');
     }
+    const shape = fxNeedsShape(o, fxResolved && fxResolved.id);     // Trajectory / Size / Wobble / Location from the panel
     if (fxBlend === 'overlay') {
-      if (fxOpacity < 0.999) {
+      if (shape) {
+        f.push('[fx_fit]format=rgba' + (fxOpacity < 0.999 ? ',colorchannelmixer=aa=' + f2(fxOpacity) : '') + ',' + fxLoop + '[fx_pre]');
+        fxShapeFilters(f, '[fx_pre]', '[fx_shaped]', o, 'rgba');
+        f.push('[fx_shaped]format=yuva420p[fx_alpha]');
+      } else if (fxOpacity < 0.999) {
         f.push('[fx_fit]format=rgba[fx_rgba]');
         f.push('[fx_rgba]colorchannelmixer=aa=' + f2(fxOpacity) + ',format=yuva420p,' + fxLoop + '[fx_alpha]');
       } else {
@@ -473,12 +575,14 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
       last = '[v_fx]';
     } else if (fxBlend === 'addition') {
       f.push(last + 'format=gbrp[v_base]');
-      f.push('[fx_fit]format=gbrp,' + fxLoop + '[fx_rgb]');
+      if (shape) { f.push('[fx_fit]format=gbrp,' + fxLoop + '[fx_pre]'); fxShapeFilters(f, '[fx_pre]', '[fx_rgb]', o, 'gbrp'); }
+      else f.push('[fx_fit]format=gbrp,' + fxLoop + '[fx_rgb]');
       f.push('[v_base][fx_rgb]blend=all_mode=addition' + (fxOpacity < 0.999 ? ':all_opacity=' + f2(fxOpacity) : '') + ':shortest=1[v_fx]');
       last = '[v_fx]';
     } else {
       f.push(last + 'format=gbrp[v_base]');
-      f.push('[fx_fit]format=gbrp,' + fxLoop + '[fx_rgb]');
+      if (shape) { f.push('[fx_fit]format=gbrp,' + fxLoop + '[fx_pre]'); fxShapeFilters(f, '[fx_pre]', '[fx_rgb]', o, 'gbrp'); }
+      else f.push('[fx_fit]format=gbrp,' + fxLoop + '[fx_rgb]');
       f.push('[v_base][fx_rgb]blend=all_mode=screen' + (fxOpacity < 0.999 ? ':all_opacity=' + f2(fxOpacity) : '') + ':shortest=1[v_fx]');
       last = '[v_fx]';
     }

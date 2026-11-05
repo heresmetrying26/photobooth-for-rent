@@ -5,10 +5,10 @@ This directory contains the curated library of **40 animated video overlay loops
 ## Directory Structure
 
 * `catalog.json`: Manifest of all 40 effects with category, display title, blend mode, and default opacity.
-* `loops/`: 1080×1920 (9:16 vertical) seamless 3-second looping video files (30 fps).
+* `loops/`: 540×960 (9:16 vertical) 3-second looping video files (30 fps). Compact on purpose: the render scales them up, and full 1080p loops were ~3 MB each. Regenerate with `--sd`.
   * `.mp4` (H.264): Used with `blend: "screen"` on pure `#000000` black backgrounds (sparks, light leaks, bokeh, fire, laser beams).
   * `.webm` (VP9 `yuva420p`): Used with `blend: "overlay"` with pre-keyed alpha channel transparency (confetti, petals, balloons, money).
-* `loops/landscape/`: 1920×1080 (16:9 horizontal) native landscape variants of all 40 loops for landscape and widescreen video compositions.
+* `loops/landscape/`: 960×540 (16:9 horizontal) native landscape variants of all 40 loops for landscape and widescreen video compositions.
 * `thumbs/`: 150×266 animated WebP thumbnails for the visual picker in the 360 Desk.
 
 ## Blend Modes & Composition
@@ -74,3 +74,10 @@ Operators can add their own custom animations:
    }
    ```
 4. Re-run `npm run prepare-app` (or restart the desktop app).
+
+
+## loops.version
+
+`loops.version` is a stamp for the built-in loops. When the app starts and the data folder (`%APPDATA%/photobooth4u/spin-fx`) has an older or no stamp, the built-in loops, landscape variants and thumbnails there are replaced with this release's; operator-added loops are kept. **Bump the number whenever you regenerate or change the loops**, or installed apps keep the old copy.
+
+> Generator note: a pipe write keeps a reference to the buffer. The generator must wait for the pipe to drain before reusing its frame buffer, otherwise most frames of a loop end up identical (a frozen, "static" effect). `desktop/test/test-spin-fx-motion.mjs` checks that every loop really moves.

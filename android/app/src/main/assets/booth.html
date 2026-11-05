@@ -27116,10 +27116,13 @@
       function refreshDeskBtn() {
         var off = !extraOn('roving') || state === 'capturing';
         if (deskFab) deskFab.hidden = off;
+        // Android phones (shorter screen side under 600 dp, the usual tablet cut-off) don't get Record 360 or the 360 desk.
+        var onPhone = false;
+        try { onPhone = /PB4uAndroid/.test(navigator.userAgent || '') && Math.min(screen.width, screen.height) < 600; } catch (e) { }
         var spinFab = document.getElementById('spinFab');
-        if (spinFab) spinFab.hidden = !extraOn('spin360') || state === 'capturing';
+        if (spinFab) spinFab.hidden = onPhone || !extraOn('spin360') || state === 'capturing';
         var capFab = document.getElementById('capFab');
-        if (capFab) capFab.hidden = !capAvailable() || state === 'capturing';
+        if (capFab) capFab.hidden = onPhone || !capAvailable() || state === 'capturing';
         var reqFab = document.getElementById('reqFab');
         if (reqFab) reqFab.hidden = !reqOn() || state === 'capturing';
         var vgFab = document.getElementById('vgFab');
@@ -30082,6 +30085,9 @@
               fxSpeed: (spinLook.fxSpeed != null ? spinLook.fxSpeed : 100) / 100,
               fxOpacity: (spinLook.fxOpacity != null ? spinLook.fxOpacity : 85) / 100,
               fxLocation: spinLook.fxLocation || 'full',
+              fxMovement: spinLook.fxMovement || 'vortex',      // the Trajectory / Size / Wobble the live preview shows are now applied in the render too
+              fxScale: spinLook.fxScale != null ? spinLook.fxScale : 100,
+              fxWobble: spinLook.fxWobble != null ? spinLook.fxWobble : 50,
               zoom: spinLook.zoom !== undefined ? !!spinLook.zoom : true,
               flash: spinLook.flash !== undefined ? !!spinLook.flash : true,
               dropTime: (spinLook.dropTime != null && spinLook.dropTime > 0) ? Number(spinLook.dropTime) : null,

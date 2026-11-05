@@ -421,6 +421,8 @@ app.whenReady().then(async () => {
   });
   setSpinDir(settings.spinDir || null);
   const userFxDir = join(dataDir(), 'spin-fx');
+  // a copy in the data folder wins over the bundled one; bring its built-in loops up to date when this release has newer ones
+  try { SPIN.refreshUserFx(userFxDir, [SPIN.bundledFxDir(BUILD), join(HERE, 'resources', 'spin-fx')].find((d) => d && existsSync(join(d, 'catalog.json')))); } catch (e) { console.error('spin-fx refresh', e); }
   const fxResDir = (existsSync(userFxDir) && existsSync(join(userFxDir, 'catalog.json'))) ? userFxDir : (existsSync(join(HERE, 'resources', 'spin-fx')) ? join(HERE, 'resources', 'spin-fx') : null);
   SPIN.configure({ buildDir: BUILD, temp: join(app.getPath('temp'), 'photobooth4u'), fxDir: fxResDir, resume: true });
   // Camera and printer messages also go to camera.log in the app's data folder (%APPDATA%\photobooth4u), so a camera that

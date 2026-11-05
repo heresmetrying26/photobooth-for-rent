@@ -41,7 +41,7 @@ const LOOPS_DIR = isLandscape ? join(FX_DIR, 'loops', 'landscape') : join(FX_DIR
 
 const W = isLandscape ? (is1080p ? 1920 : 960) : (is1080p ? 1080 : 540);
 const H = isLandscape ? (is1080p ? 1080 : 540) : (is1080p ? 1920 : 960);
-const FPS = is1080p ? 30 : 25;
+const FPS = 30;   // the render runs at 30 fps, so loops are made at 30 (25 would stutter)
 const DURATION = 3; // 3s seamless loop for 1080p
 const FRAMES = FPS * DURATION;
 
@@ -1077,9 +1077,9 @@ async function renderVideo(item) {
       '-c:v', 'libvpx-vp9',
       '-pix_fmt', 'yuva420p',
       '-b:v', '0',
-      '-crf', '32',
-      '-deadline', 'realtime',
-      '-cpu-used', '4',
+      '-crf', isSd ? '50' : '32',
+      '-deadline', isSd ? 'good' : 'realtime',
+      '-cpu-used', isSd ? '2' : '4', '-row-mt', '1',
       '-auto-alt-ref', '0',
       loopPath
     );
@@ -1088,7 +1088,7 @@ async function renderVideo(item) {
       '-c:v', 'libx264',
       '-pix_fmt', 'yuv420p',
       '-preset', 'fast',
-      '-crf', '24',
+      '-crf', isSd ? '30' : '24',
       loopPath
     );
   }
@@ -1104,7 +1104,10 @@ async function renderVideo(item) {
     frameBuf.fill(0);
     const t = f / FRAMES;
     renderer(frameBuf, t);
-    proc.stdin.write(frameBuf);
+    // A pipe write keeps a reference to the buffer, it does not copy it. Reusing frameBuf for the next frame before ffmpeg has
+    // taken this one made every queued frame the same picture (the loop animated for a few frames, then froze = "static" effects).
+    // Wait for the pipe to drain so each frame is read before frameBuf is cleared and redrawn.
+    if (!proc.stdin.write(frameBuf)) await new Promise((resolve) => proc.stdin.once('drain', resolve));
 
     if (f === 15) {
       thumbBuf = Buffer.from(frameBuf);

@@ -10,6 +10,7 @@
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.80', date: '2026-11-05' },
   { version: '1.0.79', date: '2026-11-05' },
   { version: '1.0.78', date: '2026-11-05' },
   { version: '1.0.77', date: '2026-11-05' },
@@ -125,6 +126,21 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-05', title: 'Animated 360 Effects Now Really Move, with Trajectory, Size, Wobble & Location', for: ['app', 'website'], app: '1.0.80',
+    items: [
+      'Fixed static effects: most of the 40 animated effect loops froze after a few frames, so effects looked like a still picture in the finished video. All loops are rebuilt and now move through the whole clip.',
+      'Effect Motion & Behavior now applies in the render, not only in the preview: Trajectory (vortex, falling, rising, burst, beat pulse, wind drift), Size, Wobble and Location (full screen, centre, edges, top, bottom). Frame-style effects such as neon and fire borders keep their own look.',
+      'Updated effects reach existing installs: the app refreshes its built-in effect library on start, and keeps any effects you added yourself.',
+      'The effect library is a little larger (about 20 MB) because the loops are now truly animated.'
+    ]
+  },
+  {
+    date: '2026-11-05', title: 'Animated 360 Effects Now Really Move (Android)', for: ['app'], app: '1.0.91',
+    items: [
+      'Matches the laptop app version for the 360 desk. Effects are applied by the laptop app, which now renders them with real motion and the Trajectory, Size, Wobble and Location settings.'
+    ]
+  },
   {
     date: '2026-11-05', title: 'Safer 360 Studio Dialogs, Working Save-as-Preset, Smoother Thumbnails & Re-pick Spinner', for: ['app', 'website'], app: '1.0.79',
     items: [

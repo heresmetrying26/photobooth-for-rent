@@ -3525,11 +3525,11 @@
     .st-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
     .st-h { margin: 0; font: 800 14px 'Manrope', sans-serif; color: var(--ink); }
     .st-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    .st-row .desk-btn, .st-seg .desk-btn { padding: 6px 12px; font-size: 13px; }
-    .st-seg { display: inline-flex; gap: 6px; }
+    .st-row[hidden] { display: none; }
+    .st-row .desk-btn { padding: 6px 12px; font-size: 13px; }
     .st-row select, .st-row input[type=number] { font: 600 13px 'Manrope', sans-serif; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); max-width: 100%; }
     .st-row input[type=number] { width: 70px; }
-    .st-row label { font: 700 12.5px 'Manrope', sans-serif; color: var(--ink-dim); display: inline-flex; align-items: center; gap: 6px; }
+    .st-row label { font: 700 12.5px 'Manrope', sans-serif; color: var(--ink-dim); display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .st-l { font: 800 12px 'Manrope', sans-serif; color: var(--ink-dim); min-width: 40px; }
     .st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; max-height: 58vh; overflow: auto; padding: 2px; }
     .st-tile { position: relative; padding: 0; border: 2px solid transparent; border-radius: 8px; background: #efece7; aspect-ratio: 1 / 2; overflow: hidden; cursor: pointer; }
@@ -3553,6 +3553,13 @@
     .st-pg span { display: block; margin-top: 4px; text-align: center; font: 600 12px 'Manrope', sans-serif; color: var(--ink-dim); }
     .st-cv { width: 100%; height: auto; display: block; border: 1px solid var(--line); background: #fff; touch-action: none; cursor: grab; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); }
     .st-info { margin: 0; font: 700 13px 'Manrope', sans-serif; color: var(--ink); }
+    .st-status { padding: 8px 12px; border-radius: 10px; background: var(--tint, #f6f4f0); }
+    /* crop editor sits above the Arrange & Print screen */
+    .st-crop-ov { z-index: 9600; }
+    .st-crop-card { width: min(920px, 100%); }
+    .st-crop-pad { padding: 10px 18px 0; }
+    .st-crop-stage { display: flex; justify-content: center; padding: 12px 18px; background: #2a2730; }
+    #stCropCv { display: block; touch-action: none; cursor: crosshair; max-width: 100%; }
 
     /* 360 capture: the tablet or phone on the arm records the spin */
     .cap-ov {
@@ -11666,13 +11673,6 @@
       animation: pfSpin 0.85s linear infinite;
     }
 
-    /* ---- In-session Guest Sticker Customisation ---- */
-    /* ---- Guest sticker editor: full screen. The photo gets its own area (as big as it fits, nothing on top of it);
-       the stickers sit beside it (landscape) or in a sheet under it (portrait) that the guest can pull up or down. ---- */
-    .guest-sticker-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 9000;
     /* ---- QR pop-up after a session (Step 7 "Show the QR code in a pop-up") ----
        1. "wait": the finished photo on its own for a few seconds. Upright screens get it almost full screen
           (the copy in #qrPopPhoto); sideways screens keep the normal photo, with the QR card hidden.
@@ -11728,6 +11728,13 @@
     #qrPopOv #qrSection .result-actions { display: flex !important; margin-top: 18px !important; }
     #qrPopOv #qrSection .result-timer { margin: 14px 6px 0 !important; }
 
+    /* ---- In-session Guest Sticker Customisation ---- */
+    /* ---- Guest sticker editor: full screen. The photo gets its own area (as big as it fits, nothing on top of it);
+       the stickers sit beside it (landscape) or in a sheet under it (portrait) that the guest can pull up or down. ---- */
+    .guest-sticker-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
       background: radial-gradient(120% 90% at 35% 40%, #1d232b 0%, #0b0e12 70%);
       color: #ffffff;
       display: grid;
@@ -14088,13 +14095,6 @@
               <option value="0" selected>Until tap</option>
             </select>
           </details>
-        </div>
-        <div class="panel-section" id="paySection" style="display:none;">
-          <p class="panel-label">Guest payment</p>
-          <p class="panel-hint step-lead">Guests pay before each session: scan a QR with GCash, Maya or any bank app, or
-            type a voucher you sell at the booth. <a href="/lifetime/photobooth4u-setup-guide.pdf#page=9"
-              target="_blank" rel="noopener">How it works (guide, page 9)</a></p>
-          <div class="pay-modes" id="payModes" role="radiogroup" aria-label="How guests pay">
           <p class="sub-label" style="margin-top:16px;">After the photos</p>
           <label class="toggle-row" style="margin-top:4px;"><input type="checkbox" id="qrPopToggle"> Show the QR
             code in a pop-up</label>
@@ -14113,6 +14113,13 @@
             shown on its own (almost the whole screen when the screen is upright), then a pop-up shows a big QR code.
             With <b>Print first before showing QR</b> (step 4) on, the pop-up says Printing and the QR code appears
             when the print is done.</p>
+        </div>
+        <div class="panel-section" id="paySection" style="display:none;">
+          <p class="panel-label">Guest payment</p>
+          <p class="panel-hint step-lead">Guests pay before each session: scan a QR with GCash, Maya or any bank app, or
+            type a voucher you sell at the booth. <a href="/lifetime/photobooth4u-setup-guide.pdf#page=9"
+              target="_blank" rel="noopener">How it works (guide, page 9)</a></p>
+          <div class="pay-modes" id="payModes" role="radiogroup" aria-label="How guests pay">
             <button type="button" class="chip" data-mode="off">Free</button>
             <button type="button" class="chip web-only" data-mode="qr">QR payment</button>
             <button type="button" class="chip" data-mode="voucher">Vouchers</button>
@@ -15196,6 +15203,11 @@
       <div id="camModalBody"></div>
     </div>
   </div>
+  <!-- QR pop-up after a session: the finished photo first, then the result card (#qrSection is moved in here) -->
+  <div class="qrpop-ov" id="qrPopOv" hidden>
+    <canvas class="qrpop-photo" id="qrPopPhoto" aria-hidden="true"></canvas>
+    <div class="qrpop-slot" id="qrPopSlot"></div>
+  </div>
   <div class="copies-sheet" id="copiesSheet" hidden>
     <div class="cs-card" role="dialog" aria-labelledby="copiesSheetTitle">
       <p class="cs-title" id="copiesSheetTitle">How many copies?</p>
@@ -15203,11 +15215,6 @@
           id="copiesSheetVal">1</b><button type="button" data-d="1" aria-label="More">+</button></span>
       <p class="cs-left" id="copiesSheetLeft"></p>
       <div class="cs-btns"><button type="button" id="copiesSheetCancel">Cancel</button><button type="button" class="go"
-  <!-- QR pop-up after a session: the finished photo first, then the result card (#qrSection is moved in here) -->
-  <div class="qrpop-ov" id="qrPopOv" hidden>
-    <canvas class="qrpop-photo" id="qrPopPhoto" aria-hidden="true"></canvas>
-    <div class="qrpop-slot" id="qrPopSlot"></div>
-  </div>
           id="copiesSheetGo">Print</button></div>
     </div>
   </div>
@@ -16027,11 +16034,17 @@
             <label>Margin <input type="number" id="stMargin" min="0" max="40" step="0.5"> mm</label>
             <label class="st-chk"><input type="checkbox" id="stCut" checked> Cut lines</label>
           </div>
+          <div class="st-row" id="stPrinterRow" hidden>
+            <label>Printer for <span id="stPrinterFor"></span> <select id="stPrinter" aria-label="Printer"></select></label>
+          </div>
           <div class="st-chips" id="stChips"></div>
           <p class="st-hint" id="stChipsHint">Tap strips on the left. Tap one again to take it off.</p>
           <div class="st-row"><button type="button" class="desk-btn" id="stClear" hidden>Clear all</button></div>
           <div class="st-edit" id="stEdit" hidden>
             <div class="st-edit-h"><b id="stEName"></b><span class="st-q" id="stEQ"></span></div>
+            <div class="st-row">
+              <button type="button" class="desk-btn primary" id="stCrop">&#9986; Crop&hellip;</button>
+              <button type="button" class="desk-btn" id="stFit">Show whole picture</button></div>
             <div class="st-row"><span class="st-l">Size</span>
               <button type="button" class="desk-btn" data-pw="2.5" data-ph="7.5">Keychain 2.5&times;7.5</button>
               <button type="button" class="desk-btn" data-pw="2" data-ph="6">2&times;6</button>
@@ -16039,26 +16052,35 @@
             <div class="st-row">
               <label>Width <input type="number" id="stW" min="0.5" max="40" step="0.05"> in</label>
               <label>Height <input type="number" id="stH" min="0.5" max="40" step="0.05"> in</label>
-              <label class="st-chk"><input type="checkbox" id="stKeep" checked> Keep shape</label></div>
-            <div class="st-row">
-              <label>Zoom <input type="range" id="stZ" min="100" max="300" value="100"></label>
               <label>Copies <input type="number" id="stC" min="1" max="20" value="1"></label></div>
             <div class="st-row">
-              <button type="button" class="desk-btn" id="stFit">Fit whole picture</button>
-              <button type="button" class="desk-btn" id="stReset">Reset crop</button>
               <button type="button" class="desk-btn" id="stSame">Same size for all</button>
               <button type="button" class="desk-btn" id="stDel">Remove</button></div>
           </div>
-          <div class="st-row"><span class="st-l">Drag</span>
-            <span class="st-seg" id="stMode"><button type="button" class="desk-btn primary" data-mode="move">Move</button><button type="button" class="desk-btn" data-mode="crop">Crop</button></span>
-            <button type="button" class="desk-btn" id="stAuto">Auto-arrange</button></div>
-          <p class="st-hint"><b>Move</b> puts a strip somewhere else on its sheet. <b>Crop</b> slides the picture inside its strip. Untick <b>Keep shape</b> to crop to any shape.</p>
+          <div class="st-row"><button type="button" class="desk-btn" id="stAuto">Auto-arrange</button></div>
+          <p class="st-hint">Drag a strip in the preview to move it on its sheet. <b>Crop</b> trims a strip to any shape; the size buttons then fit it to Keychain, 2&times;6 or 4&times;6.</p>
           <div class="st-pages" id="stPages"></div>
           <p class="st-info" id="stInfo"></p>
           <div class="st-row"><label>Print each sheet <input type="number" id="stSheets" min="1" max="10" value="1"> time(s)</label>
             <span class="sp" style="flex:1"></span><button type="button" class="desk-btn primary" id="stPrint" disabled>Print</button></div>
+          <p class="st-info st-status" id="stStatus" role="status" hidden></p>
         </div>
       </div>
+    </div>
+  </div>
+  <div class="desk-ov st-crop-ov" id="stCropOv" hidden role="dialog" aria-label="Crop picture">
+    <div class="desk-card st-crop-card">
+      <div class="desk-head"><b>&#9986; Crop</b><span class="sp"></span><button type="button" class="desk-btn" id="stCropCancel">Cancel</button><button type="button" class="desk-btn primary" id="stCropOk">Done</button></div>
+      <div class="st-row st-crop-pad" id="stCropRatios">
+        <span class="st-l">Shape</span>
+        <button type="button" class="desk-btn primary" data-t="0">Free</button>
+        <button type="button" class="desk-btn" data-t="0.3333333">Strip / keychain 1:3</button>
+        <button type="button" class="desk-btn" data-t="0.6666667">4&times;6 2:3</button>
+        <button type="button" class="desk-btn" data-t="1">Square</button>
+        <button type="button" class="desk-btn" data-t="orig">Original</button>
+      </div>
+      <div class="st-crop-stage"><canvas id="stCropCv"></canvas></div>
+      <p class="st-hint st-crop-pad"><span id="stCropInfo"></span> &middot; Drag the edges or corners to crop. Drag inside the box to move it.</p>
     </div>
   </div>
   <div class="qs-ov vg-ov" id="vgOverlay" hidden role="dialog" aria-label="Video guestbook">
@@ -21099,6 +21121,7 @@
 
         const showQr = hasAllShots && !isCapturing;
         qrSection.classList.toggle('hidden', !showQr);
+        if (!showQr && typeof qrPopEnd === 'function') qrPopEnd();
         appShell.classList.toggle('has-qr', showQr);
         try { refreshPanelSolo(); refreshPrintFab(); } catch (e) { }
         guestRender();
@@ -21121,7 +21144,6 @@
         frames.forEach((frame, i) => {
           const shot = shotCanvases[i];
           frame.classList.toggle('filled', !!shot);
-        if (!showQr && typeof qrPopEnd === 'function') qrPopEnd();
           frame.classList.toggle('pickable', !!(sess && sess.reviewing && shot && retakesAllowed()));
           frame.classList.toggle('picked', !!(sess && sess.reviewing && sess.pick === i && retakesAllowed()));
           frame.dataset.i = i;
@@ -22211,6 +22233,7 @@
         }
         if (!LOCALSHARE) { showMultipleDownloadsHint(); if (curMode !== 'gif') saveToDevice(); }
         maybeAutoPrint();
+        if (qrPopOn) qrPopBegin();
       }
 
       startBtn.addEventListener('click', () => beginGuestFlow(false));
@@ -22233,7 +22256,6 @@
         }
         var spinDesk = document.getElementById('spinStudioWrap') || document.getElementById('spinOverlay');
         var spinIsOpen = spinDesk && (!spinDesk.hidden && spinDesk.style.display !== 'none');
-        if (qrPopOn) qrPopBegin();
         if (spinIsOpen) {
           var editBtn = document.getElementById('spinEditBtn');
           if (editBtn && !editBtn.hidden && !editBtn.disabled) { editBtn.click(); return; }
@@ -28085,6 +28107,8 @@
       var welcomeMsg = '';
       var reviewEach = true;       // show each photo during the pause between shots
       var resultReviewSec = 0;     // 0 = finished photo stays until the next tap
+      var qrPopOn = false;         // Step 7: QR code in a pop-up, after the finished photo is shown on its own
+      var qrPopDelay = 3;          // seconds the photo is shown before the pop-up
       var guestPickOn = false;
       var guestLayoutSet = [];     // extra layouts guests may pick (besides setupLayout)
       var themeId = null;
@@ -28107,8 +28131,6 @@
         noir: 'grayscale(1) contrast(1.4) brightness(.94)'
       };
       var VINTAGE_KEYS = ['film', 'faded', 'retro', 'instant', 'noir'];
-      var qrPopOn = false;         // Step 7: QR code in a pop-up, after the finished photo is shown on its own
-      var qrPopDelay = 3;          // seconds the photo is shown before the pop-up
       // Extras every package includes (admin can switch one off per client). Missing = on.
       function extraOn(name) { return !(window.__PB && window.__PB.extras && window.__PB.extras[name] === false); }
       if (!extraOn('vintage')) VINTAGE_KEYS.forEach(function (k) { delete FILTERS[k]; });
@@ -28638,28 +28660,6 @@
       reviewEachToggle.addEventListener('change', function () { reviewEach = reviewEachToggle.checked; });
       var resultReviewSelect = document.getElementById('resultReviewSelect');
       resultReviewSelect.addEventListener('change', function () { resultReviewSec = Number(resultReviewSelect.value) || 0; });
-      function showShotReview(i) {
-        if (!shotCanvases[i]) return;
-        var url = shotReviewUrl(shotCanvases[i]);
-        shotReview.src = url; shotReview.classList.add('on');
-        guestCall('review', url);
-      }
-      function hideShotReview() {
-        shotReview.classList.remove('on');
-        guestCall('reviewEnd');
-      }
-      // After the finished photo has been on screen for the chosen time, go back
-      // to the start for the next guests (waiting for any print to finish).
-      var resultTimer = null;
-      // The thin bar under Done empties until the booth goes back to the welcome screen.
-      function runResultTimerBar(sec) {
-        var wrap = document.getElementById('resultTimer'), bar = document.getElementById('resultTimerBar');
-        if (!wrap || !bar) return;
-        wrap.style.visibility = sec ? '' : 'hidden';
-        bar.style.transition = 'none'; bar.style.width = '100%';
-        if (!sec) return;
-        void bar.offsetWidth;
-        bar.style.transition = 'width ' + sec + 's linear'; bar.style.width = '0%';
       var qrPopToggle = document.getElementById('qrPopToggle'), qrPopDelaySelect = document.getElementById('qrPopDelaySelect');
       function refreshQrPopUI() {
         qrPopToggle.checked = qrPopOn;
@@ -28726,6 +28726,28 @@
         try { refreshPanelSolo(); applyStageAspect(); } catch (e) { }
       }
       window.addEventListener('resize', function () { if (qrPop.phase) qrPopDrawPhoto(); });
+      function showShotReview(i) {
+        if (!shotCanvases[i]) return;
+        var url = shotReviewUrl(shotCanvases[i]);
+        shotReview.src = url; shotReview.classList.add('on');
+        guestCall('review', url);
+      }
+      function hideShotReview() {
+        shotReview.classList.remove('on');
+        guestCall('reviewEnd');
+      }
+      // After the finished photo has been on screen for the chosen time, go back
+      // to the start for the next guests (waiting for any print to finish).
+      var resultTimer = null;
+      // The thin bar under Done empties until the booth goes back to the welcome screen.
+      function runResultTimerBar(sec) {
+        var wrap = document.getElementById('resultTimer'), bar = document.getElementById('resultTimerBar');
+        if (!wrap || !bar) return;
+        wrap.style.visibility = sec ? '' : 'hidden';
+        bar.style.transition = 'none'; bar.style.width = '100%';
+        if (!sec) return;
+        void bar.offsetWidth;
+        bar.style.transition = 'width ' + sec + 's linear'; bar.style.width = '0%';
       }
       function scheduleResultReset() {
         clearTimeout(resultTimer);
@@ -29528,6 +29550,7 @@
         showQRForCurrentGIF();
         scheduleResultReset();
         maybeAutoPrint();
+        if (qrPopOn) qrPopBegin();
       }
 
       // ──────────────────────────────────────────────────────────────────
@@ -29550,7 +29573,6 @@
       extrasFab.addEventListener('click', function (e) { e.stopPropagation(); extrasPop.hidden = !extrasPop.hidden; extrasFab.setAttribute('aria-expanded', extrasPop.hidden ? 'false' : 'true'); });
       extrasPop.addEventListener('click', function (e) { if (e.target.closest('.dock-btn')) closeExtras(); });
       document.addEventListener('click', function (e) { if (!extrasPop.hidden && !e.target.closest('#extrasPop') && !e.target.closest('#extrasFab')) closeExtras(); });
-        if (qrPopOn) qrPopBegin();
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !extrasPop.hidden) closeExtras(); });
       try { var extrasObs = new MutationObserver(function () { refreshExtrasBtn(); }); EXTRA_IDS.forEach(function (id) { extrasObs.observe(document.getElementById(id), { attributes: true, attributeFilter: ['hidden', 'data-n'] }); }); } catch (e) { }
       function refreshDeskBtn() {
@@ -31682,7 +31704,9 @@
       // The operator picks finished strips (saved on this computer, in the event gallery, or files added by hand), crops and resizes
       // them, and packs them onto a paper size. It is in the operator dock, which is hidden while the booth is locked, so it
       // opens only behind the lock PIN. Prints use the printer, colour and quality chosen for the paper size, like any print.
-      var ST = { src: '', folders: [], folder: '', list: [], items: [], sel: -1, paper: '', gap: 2, margin: 4, cut: true, sheets: 1, mode: 'move', pos: {}, pages: [], cv: [], dpi: 40, busy: false, uid: 0, seq: 0, show: 60, err: '', loading: false, urls: [], io: null, drag: null };
+      // Every picture keeps the part of the original that is kept (r, in the picture's own pixels) and its width on paper in mm (mw);
+      // its height always follows the crop, so nothing is ever stretched.
+      var ST = { src: '', folders: [], folder: '', list: [], items: [], sel: -1, paper: '', gap: 2, margin: 4, cut: true, sheets: 1, pos: {}, pages: [], cv: [], dpi: 40, busy: false, uid: 0, seq: 0, show: 60, err: '', loading: false, urls: [], io: null, drag: null };
       var stOverlay = document.getElementById('studioOverlay');
       var ST_MAX_ITEMS = 40;
       function studioOn() { try { return !!printSettings(); } catch (e) { return false; } }
@@ -31690,6 +31714,14 @@
       function stInch(mm) { return Math.round(mm / 25.4 * 100) / 100; }
       function stMm(inch) { return inch * 25.4; }
       function stClamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+      function stW(it) { return it.mw; }
+      function stH(it) { return it.mw * it.r.h / it.r.w; }
+      function stIsCropped(it) { return it.r.w < it.iw - 0.5 || it.r.h < it.ih - 0.5; }
+      // The messages are shown here, inside the screen: the booth's own pop-up messages sit underneath it.
+      function stSay(msg, bad) {
+        var el = stEl('stStatus'); el.textContent = msg || ''; el.hidden = !msg; el.classList.toggle('st-warn', !!bad);
+        if (msg) { try { showToast(msg, 4000); } catch (e) { } }
+      }
       function stSources() {
         var a = [];
         if (PBX && PBX.studioList) a.push(['local', 'This computer']);
@@ -31796,12 +31828,12 @@
 
       // ---- The picked strips ----
       async function stAddBlob(key, name, blob) {
-        if (ST.items.length >= ST_MAX_ITEMS) { showToast('Up to ' + ST_MAX_ITEMS + ' pictures on the sheets.', 3500); return; }
+        if (ST.items.length >= ST_MAX_ITEMS) { stSay('Up to ' + ST_MAX_ITEMS + ' pictures on the sheets.', true); return; }
         var bmp;
-        try { bmp = await createImageBitmap(blob, { imageOrientation: 'from-image' }); } catch (e) { try { bmp = await createImageBitmap(blob); } catch (e2) { showToast('Could not open ' + name + '.', 4000); return; } }
-        var it = { id: ++ST.uid, key: key, name: name, img: bmp, iw: bmp.width, ih: bmp.height, w: 0, h: 0, z: 1, px: 0.5, py: 0.5, copies: 1 };
-        var strip = it.iw / it.ih < 0.45, s = Math.min((strip ? 50.8 : 101.6) / it.iw, 152.4 / it.ih);   // a strip starts at 2x6 in, a photo fits 4x6 in
-        it.w = Math.round(it.iw * s * 10) / 10; it.h = Math.round(it.ih * s * 10) / 10;
+        try { bmp = await createImageBitmap(blob, { imageOrientation: 'from-image' }); } catch (e) { try { bmp = await createImageBitmap(blob); } catch (e2) { stSay('Could not open ' + name + '.', true); return; } }
+        var it = { id: ++ST.uid, key: key, name: name, img: bmp, iw: bmp.width, ih: bmp.height, r: { x: 0, y: 0, w: bmp.width, h: bmp.height }, mw: 0, copies: 1 };
+        var strip = it.iw / it.ih < 0.45;     // a strip starts at 2 in wide, a photo fits inside 4x6 in
+        it.mw = Math.round((strip ? 50.8 : Math.min(101.6, 152.4 * it.iw / it.ih)) * 10) / 10;
         ST.items.push(it); ST.sel = ST.items.length - 1; ST.pos = {};
         stRefresh(); stMarkTiles();
       }
@@ -31820,13 +31852,19 @@
           if (f.src) { var r = await fetch(f.src); if (!r.ok) throw new Error('x'); blob = await r.blob(); }
           else { var b = await PBX.studioRead(f.slug, f.name); if (!b) throw new Error('x'); blob = new Blob([b]); }
           await stAddBlob(f.id, f.name, blob);
-        } catch (e) { showToast('Could not open that picture.', 3500); }
+        } catch (e) { stSay('Could not open that picture.', true); }
+      }
+      // The largest part of the kept picture with the shape t (width / height), centred on it: the "Keychain" and "2x6" buttons.
+      function stTrimToRatio(it, t) {
+        var r = it.r, w = r.w, h = r.h;
+        if (w / h > t) w = h * t; else h = w / t;
+        it.r = { x: r.x + (r.w - w) / 2, y: r.y + (r.h - h) / 2, w: w, h: h };
       }
 
       // ---- Packing: as many as fit, turned sideways when that saves paper ----
       function stPieces() {
         var out = [];
-        ST.items.forEach(function (it, i) { for (var c = 0; c < it.copies; c++) out.push({ i: i, id: it.id + ':' + c, w: it.w, h: it.h }); });
+        ST.items.forEach(function (it, i) { for (var c = 0; c < it.copies; c++) out.push({ i: i, id: it.id + ':' + c, w: stW(it), h: stH(it) }); });
         return out;
       }
       function stPack(pieces, P, mode) {
@@ -31872,11 +31910,9 @@
 
       // ---- Drawing (preview and the print itself) ----
       function stDrawPiece(ctx, it, q, f) {
-        var k = Math.max(q.bw / it.iw, q.bh / it.ih) * it.z, sw = q.bw / k, sh = q.bh / k;
-        var sx = (it.iw - sw) * it.px, sy = (it.ih - sh) * it.py;
         ctx.save();
         if (q.rot) { ctx.translate((q.x + q.fw) * f, q.y * f); ctx.rotate(Math.PI / 2); } else ctx.translate(q.x * f, q.y * f);
-        ctx.drawImage(it.img, sx, sy, sw, sh, 0, 0, q.bw * f, q.bh * f);
+        ctx.drawImage(it.img, it.r.x, it.r.y, it.r.w, it.r.h, 0, 0, q.bw * f, q.bh * f);
         ctx.restore();
       }
       function stRenderPage(pi, dpi, preview) {
@@ -31916,8 +31952,8 @@
         var box = stEl('stChips'); box.innerHTML = '';
         ST.items.forEach(function (it, i) {
           var d = document.createElement('div'); d.className = 'st-chip' + (i === ST.sel ? ' on' : ''); d.dataset.i = String(i); d.title = it.name;
-          var c = document.createElement('canvas'), s = Math.min(34 / it.iw, 56 / it.ih); c.width = Math.max(8, Math.round(it.iw * s)); c.height = Math.max(8, Math.round(it.ih * s));
-          try { c.getContext('2d').drawImage(it.img, 0, 0, c.width, c.height); } catch (e) { }
+          var c = document.createElement('canvas'), s = Math.min(34 / it.r.w, 56 / it.r.h); c.width = Math.max(8, Math.round(it.r.w * s)); c.height = Math.max(8, Math.round(it.r.h * s));
+          try { c.getContext('2d').drawImage(it.img, it.r.x, it.r.y, it.r.w, it.r.h, 0, 0, c.width, c.height); } catch (e) { }
           d.appendChild(c);
           var x = document.createElement('button'); x.type = 'button'; x.className = 'st-x'; x.dataset.del = String(i); x.setAttribute('aria-label', 'Remove'); x.textContent = '×'; d.appendChild(x);
           box.appendChild(d);
@@ -31925,18 +31961,13 @@
         stEl('stChipsHint').hidden = ST.items.length > 0;
         stEl('stClear').hidden = ST.items.length === 0;
       }
-      function stDpiOf(it) { return 25.4 / (Math.max(it.w / it.iw, it.h / it.ih) * it.z); }
+      function stDpiOf(it) { return it.r.w / (it.mw / 25.4); }
       function stEditUI() {
         var it = ST.items[ST.sel], box = stEl('stEdit'); box.hidden = !it; if (!it) return;
         stEl('stEName').textContent = it.name;
-        stEl('stW').value = stInch(it.w); stEl('stH').value = stInch(it.h);
-        stEl('stZ').value = Math.round(it.z * 100); stEl('stC').value = it.copies;
-        stQuality(it);
-      }
-      function stQuality(it) {
+        stEl('stW').value = stInch(stW(it)); stEl('stH').value = stInch(stH(it)); stEl('stC').value = it.copies;
         var d = Math.round(stDpiOf(it)), q = stEl('stEQ');
-        var cropped = Math.abs((it.w / it.h) / (it.iw / it.ih) - 1) > 0.02 || it.z > 1.001;
-        q.textContent = d + ' dpi' + (cropped ? ' · cropped' : '') + (d < 150 ? ' · soft' : '');
+        q.textContent = d + ' dpi' + (stIsCropped(it) ? ' · cropped' : '') + (d < 150 ? ' · soft' : '');
         q.classList.toggle('st-warn', d < 150);
       }
       function stInfo() {
@@ -31948,12 +31979,24 @@
         el.textContent = txt; el.classList.toggle('st-warn', !!(P && n && (ST.pages.shrunk || soft)));
         btn.disabled = !P || !n || ST.busy;
         btn.textContent = ST.busy ? 'Printing…' : (n ? 'Print ' + total + (total === 1 ? ' sheet' : ' sheets') : 'Print');
-        [].forEach.call(document.querySelectorAll('#stMode button'), function (b) { b.classList.toggle('primary', b.dataset.mode === ST.mode); });
       }
       function stRefresh() { stLayout(); stPreview(); stChips(); stEditUI(); stInfo(); }
-      function stSized() {          // a size changed: the arrangement starts again
-        var it = ST.items[ST.sel]; if (it) { it.w = stClamp(it.w, 12, 1000); it.h = stClamp(it.h, 12, 1000); }
+      function stSized() {          // a size or a crop changed: the arrangement starts again
+        var it = ST.items[ST.sel]; if (it) it.mw = stClamp(it.mw, 12, 1000);
         ST.pos = {}; stRefresh();
+      }
+      // The printer for this paper size, chosen here too so a print never waits on another screen.
+      function stFillPrinter() {
+        var row = stEl('stPrinterRow'), sel = stEl('stPrinter'), P = stPaper();
+        var live = !!(P && helperOn && helper && helper.ok);
+        row.hidden = !live; if (!live) return;
+        stEl('stPrinterFor').textContent = P.name;
+        var cur = printerFor(ST.paper) || ''; sel.innerHTML = '';
+        var add = function (v, t) { var o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
+        add('', '— Choose a printer —');
+        (helper.printers || []).forEach(function (n) { add(n, n); });
+        if (cur && (helper.printers || []).indexOf(cur) < 0) add(cur, cur + ' (not found)');
+        sel.value = cur;
       }
       function stFillPaper() {
         var sizes = stSizes(), sel = stEl('stPaper'); sel.innerHTML = '';
@@ -31966,47 +32009,119 @@
         if (!studioOn()) return;
         if (state === 'capturing') { showToast('Finish the session first.', 3000); return; }
         try { closeGalleryPop(); } catch (e) { }
-        stOverlay.hidden = false; stFillPaper();
+        stOverlay.hidden = false; stFillPaper(); stSay('');
         var srcs = stSources(); if (!srcs.some(function (s) { return s[0] === ST.src; })) ST.src = srcs[0][0];
-        stRefresh(); stSetSource(ST.src);
+        stRefresh(); stSetSource(ST.src); stFillPrinter();
+        try { checkHelper(true).then(stFillPrinter).catch(function () { }); } catch (e) { }
       }
-      function stClose() { stOverlay.hidden = true; ST.drag = null; }
+      function stClose() { stCropClose(); stOverlay.hidden = true; ST.drag = null; }
+
+      // ---- Crop editor: drag the edges or corners of the box; drag inside it to move it ----
+      var STC = { it: null, r: null, t: 0, sc: 1, drag: null };
+      function stCropOpen() {
+        var it = ST.items[ST.sel]; if (!it) return;
+        STC.it = it; STC.r = { x: it.r.x, y: it.r.y, w: it.r.w, h: it.r.h }; STC.t = 0; STC.drag = null;
+        stEl('stCropOv').hidden = false; stCropRatios(); stCropSize(); stCropDraw();
+      }
+      function stCropClose() { var o = stEl('stCropOv'); if (o) o.hidden = true; STC.drag = null; STC.it = null; }
+      function stCropSize() {
+        var it = STC.it, cv = stEl('stCropCv');
+        var maxW = Math.max(160, Math.min(window.innerWidth - 70, 860)), maxH = Math.max(160, window.innerHeight - 250);
+        STC.sc = Math.min(maxW / it.iw, maxH / it.ih);          // screen pixels per picture pixel
+        cv.width = Math.max(1, Math.round(it.iw * STC.sc)); cv.height = Math.max(1, Math.round(it.ih * STC.sc));
+        cv.style.width = cv.width + 'px'; cv.style.height = cv.height + 'px';
+      }
+      function stCropRatios() {
+        [].forEach.call(document.querySelectorAll('#stCropRatios [data-t]'), function (b) {
+          var t = b.dataset.t === 'orig' ? (STC.it ? STC.it.iw / STC.it.ih : 0) : Number(b.dataset.t);
+          b.classList.toggle('primary', Math.abs(t - STC.t) < 0.0005);
+        });
+      }
+      function stHandles(x, y, w, h) {
+        return [{ m: 'nw', x: x, y: y }, { m: 'n', x: x + w / 2, y: y }, { m: 'ne', x: x + w, y: y }, { m: 'e', x: x + w, y: y + h / 2 },
+          { m: 'se', x: x + w, y: y + h }, { m: 's', x: x + w / 2, y: y + h }, { m: 'sw', x: x, y: y + h }, { m: 'w', x: x, y: y + h / 2 }];
+      }
+      function stCropDraw() {
+        var it = STC.it; if (!it) return;
+        var cv = stEl('stCropCv'), ctx = cv.getContext('2d'), s = STC.sc, r = STC.r;
+        ctx.clearRect(0, 0, cv.width, cv.height); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(it.img, 0, 0, cv.width, cv.height);
+        var x = r.x * s, y = r.y * s, w = r.w * s, h = r.h * s;
+        ctx.fillStyle = 'rgba(0,0,0,.55)';
+        ctx.fillRect(0, 0, cv.width, y); ctx.fillRect(0, y + h, cv.width, cv.height - y - h); ctx.fillRect(0, y, x, h); ctx.fillRect(x + w, y, cv.width - x - w, h);
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+        ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.beginPath();
+        for (var i = 1; i < 3; i++) { ctx.moveTo(x + w * i / 3, y); ctx.lineTo(x + w * i / 3, y + h); ctx.moveTo(x, y + h * i / 3); ctx.lineTo(x + w, y + h * i / 3); }
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#2f6fed'; ctx.lineWidth = 2;
+        stHandles(x, y, w, h).forEach(function (p) { ctx.fillRect(p.x - 7, p.y - 7, 14, 14); ctx.strokeRect(p.x - 7, p.y - 7, 14, 14); });
+        stEl('stCropInfo').textContent = 'Kept: ' + Math.round(r.w) + ' × ' + Math.round(r.h) + ' px of ' + it.iw + ' × ' + it.ih;
+      }
+      // The box after a drag: m is the handle held ('n', 'se', ... or 'move'), t the locked shape (0 = free).
+      function stCropDrag(m, r0, dx, dy, iw, ih, t) {
+        var minS = Math.max(16, 0.04 * Math.max(iw, ih)), L = r0.x, T = r0.y, R = r0.x + r0.w, B = r0.y + r0.h;
+        if (m === 'move') return { x: stClamp(r0.x + dx, 0, iw - r0.w), y: stClamp(r0.y + dy, 0, ih - r0.h), w: r0.w, h: r0.h };
+        var hasW = m.indexOf('w') >= 0, hasE = m.indexOf('e') >= 0, hasN = m.indexOf('n') >= 0, hasS = m.indexOf('s') >= 0;
+        if (hasW) L = stClamp(L + dx, 0, R - minS);
+        if (hasE) R = stClamp(R + dx, L + minS, iw);
+        if (hasN) T = stClamp(T + dy, 0, B - minS);
+        if (hasS) B = stClamp(B + dy, T + minS, ih);
+        var r = { x: L, y: T, w: R - L, h: B - T };
+        if (!t) return r;
+        var cx = r0.x + r0.w / 2, cy = r0.y + r0.h / 2, w, h;
+        var availW = hasW ? r0.x + r0.w : iw - r0.x, availH = hasN ? r0.y + r0.h : ih - r0.y;
+        if ((hasW || hasE) && (hasN || hasS)) {          // a corner: the width leads, the opposite corner stays
+          w = Math.max(minS, Math.min(r.w, availW, availH * t)); h = w / t;
+          return { x: hasW ? r0.x + r0.w - w : r0.x, y: hasN ? r0.y + r0.h - h : r0.y, w: w, h: h };
+        }
+        if (hasW || hasE) {          // a side: the box grows or shrinks around its middle
+          w = Math.max(minS, Math.min(r.w, availW, 2 * Math.min(cy, ih - cy) * t)); h = w / t;
+          return { x: hasW ? r0.x + r0.w - w : r0.x, y: cy - h / 2, w: w, h: h };
+        }
+        h = Math.max(minS / t, Math.min(r.h, availH, 2 * Math.min(cx, iw - cx) / t)); w = h * t;
+        return { x: cx - w / 2, y: hasN ? r0.y + r0.h - h : r0.y, w: w, h: h };
+      }
+      function stCropApply() {
+        var it = STC.it, r = STC.r; if (!it || !r) { stCropClose(); return; }
+        var k = it.mw / it.r.w;          // mm per picture pixel stays: a smaller box gives a smaller strip
+        it.r = { x: r.x, y: r.y, w: r.w, h: r.h }; it.mw = Math.max(12, r.w * k);
+        stCropClose(); ST.pos = {}; stRefresh();
+      }
 
       // ---- Printing ----
       async function stPrint() {
-        if (ST.busy || printing) { if (printing) showToast('The booth is busy printing. Try again in a moment.', 3500); return; }
+        if (ST.busy || printing) { if (printing) stSay('The booth is busy printing. Try again in a moment.', true); return; }
         var P = stPaper(); if (!P || !ST.items.length) return;
         var key = ST.paper, sheets = ST.sheets, total = ST.pages.length * sheets, oldSize = printSize;
-        ST.busy = true; printing = true; stInfo(); try { refreshPrintUI(); } catch (e) { }
+        stSay(''); ST.busy = true; printing = true; stInfo(); try { refreshPrintUI(); } catch (e) { }
         try {
           printSize = key;          // the printer, colour and quality chosen for this paper size apply
           try { wifiRelink(); wifiSyncForSize(); } catch (e) { }
           var viaStation = useStation(), pname = printerFor(key);
-          if (!viaStation && DESKTOP && !pname) { showToast('Choose a printer for ' + P.name + ' in Print settings first.', 5000); return; }
+          if (!viaStation && DESKTOP && !pname) { stSay('Choose the printer for ' + P.name + ' above first.', true); return; }
           var lim = printLimits(), left = lim.ev && printCount && printCount.left != null ? printCount.left : Infinity;
-          if (left < total) { showToast(left < 1 ? 'No prints left for this event.' : 'Only ' + left + ' print' + (left === 1 ? '' : 's') + ' left for this event, and this needs ' + total + '.', 5000); return; }
-          var res = await reservePrints(total); if (!res.ok) { limitReached(); return; }
+          if (left < total) { stSay(left < 1 ? 'No prints left for this event.' : 'Only ' + left + ' print' + (left === 1 ? '' : 's') + ' left for this event, and this needs ' + total + '.', true); return; }
+          var res = await reservePrints(total); if (!res.ok) { limitReached(); stSay('No prints left for this event.', true); return; }
           showPrintingNote(printTxt('txtPrinting'), 4000);
           var pages = []; for (var i = 0; i < ST.pages.length; i++) pages.push(stRenderPage(i, PRINT_DPI, false));
           printAdjustAll(pages);
           var label = total + (total === 1 ? ' sheet' : ' sheets') + ', ' + P.name;
-          if (viaStation) { await sendToStation(pages, P, sheets); showToast('Sent to the print station (' + label + ').', 4500); return; }
+          if (viaStation) { await sendToStation(pages, P, sheets); stSay('Sent to the print station (' + label + ').'); return; }
           var all = []; for (var c = 0; c < sheets; c++) all.push.apply(all, pages);
           if (helperOn && pname) {
-            if (await printSheets(all, P, pname)) { showToast('Printing on ' + pname + ' (' + label + ').'); return; }
-            if (DESKTOP) { showToast('The printer didn’t take the sheets. Check it is on and try again.', 5000); return; }
+            if (await printSheets(all, P, pname)) { stSay('Printing on ' + pname + ' (' + label + ').'); return; }
+            if (DESKTOP) { stSay('The printer didn’t take the sheets. Check it is on and try again.', true); return; }
           }
           var wf = wifiPrinter;
           if (wf && !wf.dialog && wifiNetAvailable()) {
-            try { await printViaWifi(all, P, wf, wifiOpts(wf)); showToast('Printing on ' + wf.name + ' (' + label + ').'); return; }
-            catch (wErr) { showToast('Wi-Fi print failed: ' + (wErr.message || wErr) + ' Opening the print dialog instead.', 6000); }
+            try { await printViaWifi(all, P, wf, wifiOpts(wf)); stSay('Printing on ' + wf.name + ' (' + label + ').'); return; }
+            catch (wErr) { stSay('Wi-Fi print failed: ' + (wErr.message || wErr) + ' Opening the print dialog instead.', true); }
           }
           if (window.__PBPrint && typeof window.__PBPrint.print === 'function') {
             var imgs = all.map(function (cv) { return cv.toDataURL('image/jpeg', 0.92); });
             var r = JSON.parse(window.__PBPrint.print('Photobooth ' + P.name, P.w, P.h, JSON.stringify(imgs)) || '{}');
-            showToast(r.ok ? 'Choose your printer to print (' + label + ').' : 'Couldn’t open printing: ' + (r.error || 'unknown error'), 5000); return;
+            stSay(r.ok ? 'Choose your printer to print (' + label + ').' : 'Couldn’t open printing: ' + (r.error || 'unknown error'), !r.ok); return;
           }
-          if (isMobileOS() || DESKTOP) { showToast('Choose a printer in Print settings first.', 5000); return; }
+          if (isMobileOS() || DESKTOP) { stSay('Choose a printer in Print settings first.', true); return; }
           var urls = []; printArea.innerHTML = '';
           for (var k = 0; k < all.length; k++) {
             var blob = await new Promise(function (r2) { all[k].toBlob(r2, 'image/png'); });
@@ -32019,9 +32134,9 @@
           printPageStyle.textContent = '@page { size: ' + P.w + 'mm ' + P.h + 'mm; margin: 0; }';
           window.print();
           setTimeout(function () { printArea.innerHTML = ''; urls.forEach(function (u) { URL.revokeObjectURL(u); }); }, 2000);
-          showToast('Sent to the printer (' + label + ').');
+          stSay('Sent to the printer (' + label + ').');
         } catch (e) {
-          console.error('Arrange & Print failed:', e); showToast('Couldn’t print. Try again.', 4500);
+          console.error('Arrange & Print failed:', e); stSay('Couldn’t print: ' + ((e && e.message) || 'try again') + '.', true);
         } finally {
           printSize = oldSize; printing = false; ST.busy = false; stInfo(); try { refreshPrintUI(); } catch (e) { }
           if (printLimits().ev) setTimeout(refreshPrintCount, 1500);
@@ -32032,7 +32147,10 @@
       stEl('studioFab').addEventListener('click', stOpen);
       stEl('stClose').addEventListener('click', stClose);
       stOverlay.addEventListener('click', function (e) { if (e.target === stOverlay) stClose(); });
-      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !stOverlay.hidden && pinModal && pinModal.hidden) stClose(); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape' || stOverlay.hidden || (typeof pinModal !== 'undefined' && pinModal && !pinModal.hidden)) return;
+        if (!stEl('stCropOv').hidden) stCropClose(); else stClose();
+      });
       stEl('stTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-src]'); if (b) stSetSource(b.dataset.src); });
       stEl('stSrcBar').addEventListener('click', function (e) {
         var b = e.target.closest('button'); if (!b) return;
@@ -32057,36 +32175,74 @@
         ST.items.forEach(function (it) { try { it.img.close(); } catch (e) { } });
         ST.items = []; ST.sel = -1; ST.pos = {}; stRefresh(); stMarkTiles();
       });
-      stEl('stPaper').addEventListener('change', function (e) { ST.paper = e.target.value; try { localStorage.setItem('pb_studio_paper', ST.paper); } catch (er) { } ST.pos = {}; stRefresh(); });
+      stEl('stPaper').addEventListener('change', function (e) { ST.paper = e.target.value; try { localStorage.setItem('pb_studio_paper', ST.paper); } catch (er) { } ST.pos = {}; stRefresh(); stFillPrinter(); });
+      stEl('stPrinter').addEventListener('change', function (e) {
+        var v = e.target.value, k = printerKey(ST.paper);
+        if (v) printerMap[k] = v; else delete printerMap[k];
+        savePrinterMap(); try { fillPrinterSelect(); refreshPrinterHint(); } catch (er) { }
+      });
       stEl('stGap').addEventListener('change', function (e) { ST.gap = stClamp(Number(e.target.value) || 0, 0, 30); e.target.value = ST.gap; ST.pos = {}; stRefresh(); });
       stEl('stMargin').addEventListener('change', function (e) { ST.margin = stClamp(Number(e.target.value) || 0, 0, 40); e.target.value = ST.margin; ST.pos = {}; stRefresh(); });
       stEl('stCut').addEventListener('change', function (e) { ST.cut = e.target.checked; stRedrawAll(); });
       stEl('stSheets').addEventListener('change', function (e) { ST.sheets = stClamp(Math.round(Number(e.target.value)) || 1, 1, 10); e.target.value = ST.sheets; stInfo(); });
       stEl('stAuto').addEventListener('click', function () { ST.pos = {}; stRefresh(); });
-      stEl('stMode').addEventListener('click', function (e) { var b = e.target.closest('[data-mode]'); if (b) { ST.mode = b.dataset.mode; stInfo(); } });
       stEl('stPrint').addEventListener('click', stPrint);
-      // The selected strip: size, crop, copies
+      // The selected strip: size, crop, copies. Its shape follows the crop, so width and height change together.
       stEl('stW').addEventListener('change', function (e) {
-        var it = ST.items[ST.sel]; if (!it) return; var w = stMm(stClamp(Number(e.target.value) || 0.5, 0.5, 40));
-        if (stEl('stKeep').checked) it.h = it.h * w / it.w; it.w = w; stSized();
+        var it = ST.items[ST.sel]; if (!it) return; it.mw = stMm(stClamp(Number(e.target.value) || 0.5, 0.5, 40)); stSized();
       });
       stEl('stH').addEventListener('change', function (e) {
-        var it = ST.items[ST.sel]; if (!it) return; var h = stMm(stClamp(Number(e.target.value) || 0.5, 0.5, 40));
-        if (stEl('stKeep').checked) it.w = it.w * h / it.h; it.h = h; stSized();
+        var it = ST.items[ST.sel]; if (!it) return; it.mw = stMm(stClamp(Number(e.target.value) || 0.5, 0.5, 40)) * it.r.w / it.r.h; stSized();
       });
       stEl('stEdit').addEventListener('click', function (e) {
         var it = ST.items[ST.sel]; if (!it) return;
         var p = e.target.closest('[data-pw]');
-        if (p) { it.w = stMm(Number(p.dataset.pw)); it.h = stMm(Number(p.dataset.ph)); it.z = 1; it.px = it.py = 0.5; stSized(); return; }
+        if (p) { var pw = Number(p.dataset.pw), ph = Number(p.dataset.ph); stTrimToRatio(it, pw / ph); it.mw = stMm(pw); stSized(); return; }
         var b = e.target.closest('button'); if (!b) return;
-        if (b.id === 'stFit') { it.h = it.w * it.ih / it.iw; it.z = 1; it.px = it.py = 0.5; stSized(); }
-        else if (b.id === 'stReset') { it.z = 1; it.px = it.py = 0.5; stEditUI(); stRedrawAll(); }
-        else if (b.id === 'stSame') { ST.items.forEach(function (o) { o.w = it.w; o.h = it.h; }); ST.pos = {}; stRefresh(); showToast('All pictures are now ' + stInch(it.w) + ' × ' + stInch(it.h) + ' in.', 3000); }
+        if (b.id === 'stCrop') stCropOpen();
+        else if (b.id === 'stFit') { it.r = { x: 0, y: 0, w: it.iw, h: it.ih }; stSized(); }
+        else if (b.id === 'stSame') {
+          var t = it.r.w / it.r.h; ST.items.forEach(function (o) { if (o !== it) { stTrimToRatio(o, t); o.mw = it.mw; } });
+          ST.pos = {}; stRefresh(); stSay('All pictures are now ' + stInch(stW(it)) + ' × ' + stInch(stH(it)) + ' in.');
+        }
         else if (b.id === 'stDel') stRemove(ST.sel);
       });
-      stEl('stZ').addEventListener('input', function (e) { var it = ST.items[ST.sel]; if (!it) return; it.z = stClamp(Number(e.target.value) / 100, 1, 3); stQuality(it); stRedrawAll(); stInfo(); });
       stEl('stC').addEventListener('change', function (e) { var it = ST.items[ST.sel]; if (!it) return; it.copies = stClamp(Math.round(Number(e.target.value)) || 1, 1, 20); e.target.value = it.copies; ST.pos = {}; stRefresh(); });
-      // Drag in the preview: Move puts a strip somewhere else on its sheet; Crop slides the picture inside its strip.
+      // Crop editor
+      stEl('stCropCancel').addEventListener('click', stCropClose);
+      stEl('stCropOk').addEventListener('click', stCropApply);
+      stEl('stCropOv').addEventListener('click', function (e) { if (e.target === stEl('stCropOv')) stCropClose(); });
+      stEl('stCropRatios').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-t]'); if (!b || !STC.it) return;
+        var it = STC.it, t = b.dataset.t === 'orig' ? it.iw / it.ih : Number(b.dataset.t); STC.t = t;
+        if (t) {          // fit the box to this shape, around its middle, as large as it can be
+          var r = STC.r, cx = r.x + r.w / 2, cy = r.y + r.h / 2, w = r.w, h = r.h;
+          if (w / h > t) w = h * t; else h = w / t;
+          w = Math.min(w, 2 * Math.min(cx, it.iw - cx), 2 * Math.min(cy, it.ih - cy) * t); h = w / t;
+          STC.r = { x: cx - w / 2, y: cy - h / 2, w: w, h: h };
+        }
+        stCropRatios(); stCropDraw();
+      });
+      stEl('stCropCv').addEventListener('pointerdown', function (e) {
+        var it = STC.it; if (!it) return;
+        var cv = e.currentTarget, rc = cv.getBoundingClientRect(), s = STC.sc, kx = cv.width / rc.width, ky = cv.height / rc.height;
+        var px = (e.clientX - rc.left) * kx, py = (e.clientY - rc.top) * ky, r = STC.r;
+        var x = r.x * s, y = r.y * s, w = r.w * s, h = r.h * s, mode = '', best = 22 * Math.max(kx, ky);
+        stHandles(x, y, w, h).forEach(function (hd) { var d = Math.max(Math.abs(hd.x - px), Math.abs(hd.y - py)); if (d < best) { best = d; mode = hd.m; } });
+        if (!mode && px >= x && px <= x + w && py >= y && py <= y + h) mode = 'move';
+        if (!mode) return;
+        e.preventDefault(); STC.drag = { m: mode, px: px, py: py, r0: { x: r.x, y: r.y, w: r.w, h: r.h } };
+        try { cv.setPointerCapture(e.pointerId); } catch (er) { }
+      });
+      stEl('stCropCv').addEventListener('pointermove', function (e) {
+        var d = STC.drag, it = STC.it; if (!d || !it) return;
+        var cv = e.currentTarget, rc = cv.getBoundingClientRect(), s = STC.sc;
+        var px = (e.clientX - rc.left) * cv.width / rc.width, py = (e.clientY - rc.top) * cv.height / rc.height;
+        STC.r = stCropDrag(d.m, d.r0, (px - d.px) / s, (py - d.py) / s, it.iw, it.ih, STC.t); stCropDraw();
+      });
+      stEl('stCropCv').addEventListener('pointerup', function () { STC.drag = null; });
+      stEl('stCropCv').addEventListener('pointercancel', function () { STC.drag = null; });
+      // Drag in the preview: puts a strip somewhere else on its sheet.
       stEl('stPages').addEventListener('pointerdown', function (e) {
         var c = e.target.closest('canvas'), P = stPaper(); if (!c || !P) return;
         var pi = Number(c.dataset.pi), r = c.getBoundingClientRect(), mx = (e.clientX - r.left) / r.width * P.w, my = (e.clientY - r.top) / r.height * P.h;
@@ -32101,17 +32257,8 @@
       stEl('stPages').addEventListener('pointermove', function (e) {
         var d = ST.drag, P = stPaper(); if (!d || !P) return;
         var r = d.c.getBoundingClientRect(), mx = (e.clientX - r.left) / r.width * P.w, my = (e.clientY - r.top) / r.height * P.h, q = d.q;
-        if (ST.mode === 'move') {
-          q.x = stClamp(d.ox + mx - d.mx, 0, P.w - q.fw); q.y = stClamp(d.oy + my - d.my, 0, P.h - q.fh);
-          ST.pos[q.p.id] = { x: q.x, y: q.y }; stRedraw(d.pi);
-        } else {
-          var it = ST.items[q.p.i], dx = mx - d.mx, dy = my - d.my; d.mx = mx; d.my = my;
-          var lx = q.rot ? dy : dx, ly = q.rot ? -dx : dy;          // along the strip's own sides
-          var k = Math.max(q.bw / it.iw, q.bh / it.ih) * it.z, sw = q.bw / k, sh = q.bh / k;
-          if (it.iw - sw > 0.5) it.px = stClamp(it.px - lx / k / (it.iw - sw), 0, 1);
-          if (it.ih - sh > 0.5) it.py = stClamp(it.py - ly / k / (it.ih - sh), 0, 1);
-          stRedrawAll();
-        }
+        q.x = stClamp(d.ox + mx - d.mx, 0, P.w - q.fw); q.y = stClamp(d.oy + my - d.my, 0, P.h - q.fh);
+        ST.pos[q.p.id] = { x: q.x, y: q.y }; stRedraw(d.pi);
       });
       function stDragEnd() { ST.drag = null; }
       stEl('stPages').addEventListener('pointerup', stDragEnd);
@@ -38721,6 +38868,8 @@
           if (typeof s.betweenSec === 'number') { betweenSec = s.betweenSec; setSelectValue('betweenSelect', s.betweenSec); }
           if (s.advanceMode === 'tap' || s.advanceMode === 'auto') { advanceMode = s.advanceMode; setSelectValue('advanceSelect', s.advanceMode); refreshAdvanceUI(); }
           if (typeof s.reviewEach === 'boolean') { reviewEach = s.reviewEach; reviewEachToggle.checked = s.reviewEach; }
+          if (typeof s.qrPop === 'boolean') { qrPopOn = s.qrPop; refreshQrPopUI(); }
+          if (typeof s.qrPopDelay === 'number') { qrPopDelay = Math.max(0, Math.min(15, s.qrPopDelay)); setSelectValue('qrPopDelaySelect', qrPopDelay); }
           if (typeof s.allowRetake === 'boolean') { allowRetake = s.allowRetake; try { refreshRetakeUI(); } catch (e) { } }
           if (s.colorAdj && typeof s.colorAdj === 'object') {
             colorAdj = {
@@ -38868,8 +39017,6 @@
                   }
                 } catch (e) { }
                 if (!u && it.id && typeof ASSETS !== 'undefined') {
-          if (typeof s.qrPop === 'boolean') { qrPopOn = s.qrPop; refreshQrPopUI(); }
-          if (typeof s.qrPopDelay === 'number') { qrPopDelay = Math.max(0, Math.min(15, s.qrPopDelay)); setSelectValue('qrPopDelaySelect', qrPopDelay); }
                   if (!ASSETS[it.id]) { try { await ensureAssets([it.id]); } catch (e) { } }
                   if (ASSETS[it.id]) u = ASSETS[it.id].url;
                 }

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.95', date: '2026-11-06' },
   { version: '1.0.94', date: '2026-11-06' },
   { version: '1.0.93', date: '2026-11-06' },
   { version: '1.0.92', date: '2026-11-06' },
@@ -142,6 +143,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-06', title: 'Arrange & Print: crop, merge and print strips on any paper', for: ['app', 'website'], app: '1.0.95',
+    items: [
+      'New operator button "Arrange & Print" (it is hidden while the booth is locked, so it opens only after the PIN): pick finished strips from this computer, the event gallery or files, put as many as fit on A4, Letter and other paper, and print.',
+      'Crop any strip with the new crop window (drag the edges or corners, or lock the shape to 1:3, 2:3 or square), then tap Keychain 2.5×7.5, 2×6 or 4×6 to fit it to that size. Drag strips in the preview to move them.',
+      'Fixed: the Print button seemed to do nothing because its messages were hidden behind the screen. They now show under the button, and you can choose the printer for the paper right there.'
+    ]
+  },
   {
     date: '2026-11-06', title: 'Android Tablet Updates Download Inside the App', for: ['website'],
     items: [

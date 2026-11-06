@@ -38729,12 +38729,39 @@
       // 3 boxes) needs only one strip's worth of shots: the right-hand boxes repeat
       // the left-hand ones. Returns, per spot, which shot goes in it (or null).
       var PAIR_CACHE = {};
-      // f.rep = N: only N photos are taken; spot 1..N show photos 1..N and every later spot repeats them
-      // (spot N+1 = photo 1, and so on). Beats the two-strip pairing below. Ignored unless it is fewer than the spots.
+      // f.rep = N: only N photos are taken and every strip repeats them. The spots are grouped into strips (columns);
+      // going down a strip, the 1st box shows photo 1, the 2nd photo 2 ... and after N it starts again at photo 1
+      // (a sheet with two strips stacked in one column therefore repeats too). Beats the two-strip pairing below.
+      // Ignored unless it is fewer than the spots.
       function frameRepeat(f) { var n = f && Math.floor(Number(f.rep)); return n >= 1 && f.spots && n < f.spots.length ? n : 0; }
+      // Per spot: its place going down its strip (0 = top box), and the strips' boxes counted in one column.
+      function frameStripRanks(f) {
+        var ix = f.spots.map(function (s, i) { return i; }), cx = function (i) { var s = f.spots[i]; return s.x + s.w / 2; }, cy = function (i) { var s = f.spots[i]; return s.y + s.h / 2; };
+        ix.sort(function (a, b) { return cx(a) - cx(b) || a - b; });
+        var cols = [];
+        ix.forEach(function (i) {
+          var c = cols[cols.length - 1];
+          if (c && cx(i) - cx(c[0]) <= 0.5 * Math.min(f.spots[c[0]].w, f.spots[i].w)) c.push(i); else cols.push([i]);
+        });
+        var rank = new Array(f.spots.length);
+        cols.forEach(function (c) { c.sort(function (a, b) { return cy(a) - cy(b) || a - b; }); c.forEach(function (i, k) { rank[i] = k; }); });
+        return { rank: rank, cols: cols };
+      }
+      // A good guess for "photos per strip": the boxes in the first column, halved while its upper and lower halves
+      // are the same sizes (two strips stacked in one column).
+      function frameStripGuess(f) {
+        var c = frameStripRanks(f).cols[0] || [], n = c.length;
+        while (n >= 4 && n % 2 === 0) {
+          var ok = true;
+          for (var k = 0; k < n / 2; k++) { var a = f.spots[c[k]], b = f.spots[c[k + n / 2]]; if (Math.abs(a.h - b.h) > 0.03 || Math.abs(a.w - b.w) > 0.03) { ok = false; break; } }
+          if (!ok) break;
+          n /= 2;
+        }
+        return Math.max(1, Math.min(n, f.spots.length - 1));
+      }
       function framePairs(f) {
         var rep = frameRepeat(f);
-        if (rep) return f.spots.map(function (s, i) { return i % rep; });
+        if (rep) { var rk = frameStripRanks(f).rank; return f.spots.map(function (s, i) { return rk[i] % rep; }); }
         var map = framePairsGeom(f);
         if (!map || f.copy === false) return null;
         if (f.copy === true) return map;
@@ -39339,7 +39366,7 @@
             rp.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:12.5px;font-weight:600;margin-top:8px;cursor:pointer;';
             var rcb = document.createElement('input'); rcb.type = 'checkbox'; rcb.checked = !!frameRepeat(f);
             var rin = document.createElement('input'); rin.type = 'number'; rin.min = 1; rin.max = f.spots.length - 1; rin.step = 1;
-            rin.value = frameRepeat(f) || Math.min(4, f.spots.length - 1); rin.style.cssText = 'width:56px;padding:3px 6px;';
+            rin.value = frameRepeat(f) || frameStripGuess(f); rin.style.cssText = 'width:56px;padding:3px 6px;';
             var applyRep = function () {
               var n = Math.max(1, Math.min(f.spots.length - 1, Math.round(Number(rin.value)) || 1));
               f.rep = rcb.checked ? n : undefined;
@@ -39347,7 +39374,7 @@
             };
             rcb.addEventListener('change', applyRep);
             rin.addEventListener('change', function () { if (rcb.checked) applyRep(); });
-            rp.append(rcb, document.createTextNode('Take only the first '), rin, document.createTextNode(' photos; every other spot repeats them'));
+            rp.append(rcb, document.createTextNode('Every strip repeats the same '), rin, document.createTextNode(' photos, top to bottom (take only that many)'));
             ctx.appendChild(rp);
           }
           if (!frameRepeat(f) && framePairsGeom(f)) {
@@ -39990,6 +40017,7 @@
           var art0 = spotShowWin && frameArt(f), mk = art0 && frameMasks(f, art0);
           if (mk && mk.tint) { ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(mk.tint, 0, 0, W, H); ctx.restore(); }
           ctx.save();
+          var repMap = frameRepeat(f) ? framePairs(f) : null;   // repeating: each box shows the photo it takes
           spotOrder(f).forEach(function (i) {
             var s = f.spots[i];
             var on = i === spotEdit.sel, g = spotPx(s, W, H), x = -g.w / 2, y = -g.h / 2, w = g.w, h = g.h, u = Math.max(W, H);
@@ -40002,7 +40030,7 @@
             ctx.setLineDash([]); ctx.fillStyle = on ? '#C93D27' : '#1C1A1E';
             ctx.beginPath(); ctx.arc(x + r * 1.4, y + r * 1.4, r, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#fff'; ctx.font = '700 ' + Math.round(r * 1.15) + 'px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(String(frameRepeat(f) ? (i % frameRepeat(f)) + 1 : i + 1), x + r * 1.4, y + r * 1.45);   // repeating spots show the photo they take
+            ctx.fillText(String(repMap ? repMap[i] + 1 : i + 1), x + r * 1.4, y + r * 1.45);
             ctx.fillStyle = on ? '#C93D27' : '#1C1A1E'; ctx.fillRect(x + w - r * 0.9, y + h - r * 0.9, r * 0.9, r * 0.9);   // resize handle
             // tilt handle: a round "turn" button at the bottom middle
             var th = spotTiltHandle(g, u, H);

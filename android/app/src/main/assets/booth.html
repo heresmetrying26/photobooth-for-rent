@@ -922,6 +922,37 @@
       text-align: left !important;
     }
 
+    /* Saved profiles (the whole setup, saved under a name) */
+    .prof-card { width: min(480px, 100%) !important; max-height: min(86vh, 640px); display: flex; flex-direction: column; text-align: left !important; }
+    .prof-card .cs-title { margin-bottom: 4px; }
+    .prof-card .cs-left { margin: 0 0 12px; }
+    .prof-new { width: 100%; min-height: 50px; border-radius: 14px; border: 0; background: var(--blue-deep); color: #fff; font: 800 15px 'Manrope', sans-serif; cursor: pointer; }
+    .prof-list { margin: 12px -4px 8px; padding: 0 4px; overflow-y: auto; flex: 1 1 auto; min-height: 0; }
+    .prof-empty { margin: 14px 0 6px; font-size: 13.5px; color: var(--ink-dim); text-align: center; }
+    .prof-row { border: 1.5px solid var(--line); border-radius: 14px; padding: 11px 12px; margin-bottom: 8px; background: #fff; display: flex; gap: 11px; align-items: flex-start; }
+    .prof-row.on { border-color: var(--blue-deep); }
+    .prof-thumb { width: 46px; flex: none; border-radius: 6px; border: 1px solid var(--line); background: #eee; }
+    .prof-main { flex: 1; min-width: 0; }
+    .prof-undo { width: 100%; margin-top: 10px; min-height: 44px; border-radius: 12px; border: 1.5px dashed var(--blue-deep); background: #fff; color: var(--blue-deep); font: 800 13.5px 'Manrope', sans-serif; cursor: pointer; }
+    .prof-undo[hidden] { display: none; }
+    .prof-tools { display: flex; gap: 8px; margin-top: 4px; }
+    .prof-tools button { flex: 1; min-height: 40px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: 700 13px 'Manrope', sans-serif; cursor: pointer; }
+    .prof-note { margin: 6px 2px 0; font-size: 11.5px; color: var(--ink-dim); }
+    .prof-ask { display: flex; align-items: center; gap: 8px; margin: 10px 2px 0; font-size: 13px; color: var(--ink); cursor: pointer; }
+    .prof-chip { border: 0; background: #eef3ea; color: #2f5d2a; border-radius: 999px; padding: 3px 10px; font: 800 11.5px 'Manrope', sans-serif; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .prof-chip.changed { background: #fbf0d9; color: #8a5a0b; }
+    .prof-chip[hidden] { display: none; }
+    /* Phones: no room next to Start. Profiles stay in the ⋯ menu, the "Profile: …" label opens them, and Start asks to save. */
+    @media (max-width: 520px) { #profilesBtn { display: none; } .prof-chip { flex: 0 1 auto; min-width: 0; } }
+    .prof-row b { display: block; font: 800 15px 'Manrope', sans-serif; color: var(--ink); overflow-wrap: anywhere; }
+    .prof-row small { display: block; margin-top: 2px; font-size: 12px; color: var(--ink-dim); }
+    .prof-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+    .prof-acts button { flex: 1 1 auto; min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: 700 13px 'Manrope', sans-serif; cursor: pointer; }
+    .prof-acts .go { background: var(--blue-deep); border-color: var(--blue-deep); color: #fff; }
+    .prof-acts .danger { color: #c0392b; border-color: #e3b9b3; }
+    .prof-acts button:focus-visible, .prof-new:focus-visible { outline: 3px solid #D4AF37; outline-offset: 2px; }
+    .prof-card .cs-btns { margin-top: 14px; }
+
     .ask-card .cs-title {
       font-size: 20px;
       text-align: left;
@@ -12801,12 +12832,20 @@
                 <label>Width % <input type="number" id="spotW" min="2" max="100" step="0.5" style="width:64px;"></label>
                 <label>Height % <input type="number" id="spotH" min="2" max="100" step="0.5"
                     style="width:64px;"></label>
+                <label title="Boxes with the same photo number show the same photo">Photo # <input type="number" id="spotShot" min="1" max="40" step="1" style="width:64px;"></label>
                 <label>Tilt ° <input type="number" id="spotA" min="-45" max="45" step="0.5" style="width:64px;"></label>
                 <button type="button" class="action-btn" id="spotTurnL" style="width:auto; margin:0;"
                   title="Tilt 1° left">&#8634; 1°</button>
                 <button type="button" class="action-btn" id="spotTurnR" style="width:auto; margin:0;"
                   title="Tilt 1° right">1° &#8635;</button>
               </div>
+              <p class="sub-label" style="margin:10px 0 4px;">Link photos by hand</p>
+              <div class="decor-btns"><button type="button" class="action-btn" id="spotCopyStrip"
+                  title="Make the selected box's strip show the same photos as another strip">Copy a strip's photos&hellip;</button><button
+                  type="button" class="action-btn" id="spotShotAuto">Back to automatic</button></div>
+              <p class="panel-hint" style="margin:6px 0 0;">Boxes with the same <b>Photo #</b> show the same photo, so a
+                guest only takes as many photos as the highest number. To make a strip a copy of another: tap a box in
+                it, tap <b>Copy a strip's photos</b>, then tap a box in the strip to copy from.</p>
             </div>
             <div class="frames-box" id="myFramesPanel" style="display:none; margin-top:12px;">
               <p class="sub-label" style="margin-top:0;">Frames on this sheet</p>
@@ -13923,13 +13962,16 @@
         </button>
         <div class="start-info">
           <div class="start-row"><span class="start-status" id="startStatus"></span><span id="setupChipSlot"></span>
+            <button type="button" class="prof-chip" id="profChip" hidden></button>
           </div><span class="start-save" id="startSave"></span>
         </div>
         <div class="start-actions">
+          <button type="button" class="action-btn" id="profilesBtn" title="Save this setup under a name, or bring one back">Profiles</button>
           <div class="menu-wrap">
             <button type="button" class="menu-btn" id="setupMenuBtn" aria-label="More" aria-haspopup="true">⋯</button>
             <div class="menu" id="setupMenu" hidden>
               <button type="button" id="menuMyEvents" hidden>My Events ↗ (links, payments, printing)</button>
+              <button type="button" id="menuProfiles">Saved profiles…</button>
               <button type="button" id="menuWhatsNew">What’s new</button>
               <button type="button" id="menuFullscreen">Full screen (hide tabs)</button>
               <button type="button" id="resetSetupBtn" class="danger">Reset setup</button>
@@ -14565,6 +14607,23 @@
       <div class="cs-btns"><button type="button" id="askCancel">Cancel</button><button type="submit" class="go"
           id="askGo">Save</button></div>
     </form>
+  </div>
+  <div class="copies-sheet" id="profilesSheet" hidden>
+    <div class="cs-card prof-card" role="dialog" aria-modal="true" aria-labelledby="profTitle">
+      <p class="cs-title" id="profTitle">Saved profiles</p>
+      <p class="cs-left">Save your whole setup under a name (e.g. “Wedding – Santos”). Bring it back any time with one tap.</p>
+      <button type="button" class="prof-new" id="profSaveNew">＋ Save current setup as a profile</button>
+      <button type="button" class="prof-undo" id="profUndo" hidden></button>
+      <div class="prof-list" id="profList"></div>
+      <div class="prof-tools">
+        <button type="button" id="profExport">Export file</button>
+        <button type="button" id="profImport">Import file</button>
+        <input type="file" id="profImportFile" accept=".json,application/json" hidden>
+      </div>
+      <p class="prof-note">A file keeps your overlays and logos tied to your account, so importing works best on the same code.</p>
+      <label class="prof-ask"><input type="checkbox" id="profAsk" checked> Ask me to save when I press Start</label>
+      <div class="cs-btns"><button type="button" id="profClose">Close</button></div>
+    </div>
   </div>
   <div class="copies-sheet pb-choice" id="pbChoice" hidden>
     <div class="cs-card" role="alertdialog" aria-modal="true" aria-labelledby="pbChoiceTitle">
@@ -26671,6 +26730,9 @@
       var attractPosterId = '';
       var attractPosterType = 'image';      // image | gif | video
       var attractPosterFit = 'cover';       // cover | contain | stretch
+      // While a saved poster list is still being loaded (device store / server), saving keeps the saved list
+      // so a quick auto-save can't overwrite the poster with an empty one.
+      var attractRestoreHold = null, attractRestoreSeq = 0;
       var attractPlaylist = [];             // [{ id, url, type, name }]
       var attractPlayIndex = 0;
       var attractSlideDuration = 6;         // seconds for image/gif slides
@@ -32839,6 +32901,7 @@
             if (!btn) return;
             var idx = Number(btn.dataset.delSlide);
             if (idx >= 0 && idx < attractPlaylist.length) {
+              attractRestoreHold = null;
               var removed = attractPlaylist.splice(idx, 1)[0];
               try {
                 if (typeof dbDo === 'function' && removed && removed.id) {
@@ -32864,6 +32927,7 @@
 
         if (playlistClear) {
           playlistClear.addEventListener('click', async function () {
+            attractRestoreHold = null;
             for (var i = 0; i < attractPlaylist.length; i++) {
               try {
                 if (typeof dbDo === 'function' && attractPlaylist[i].id) {
@@ -32892,6 +32956,9 @@
         if (posterInput) posterInput.addEventListener('change', async function () {
           var files = [].slice.call(posterInput.files || []);
           if (!files.length) return;
+          attractRestoreHold = null;       // the operator is changing the list now
+          // Ask the browser to keep this device's files (otherwise it may clear them overnight when storage runs low).
+          try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { }
 
           for (var i = 0; i < files.length; i++) {
             var f = files[i];
@@ -32917,17 +32984,28 @@
                 } catch (dbErr) { console.warn('IDB blob store failed', dbErr); }
 
                 url = URL.createObjectURL(f);
-
-                // If small (<= 4MB), also create DataURL for cloud sync
-                if (f.size <= 4 * 1024 * 1024) {
-                  var dataUrl = await new Promise(function (res, rej) {
-                    var r = new FileReader(); r.onload = function () { res(r.result); }; r.onerror = rej; r.readAsDataURL(f);
-                  });
-                  if (typeof addAsset === 'function') await addAsset(dataUrl);
+                // A small animated GIF is also kept on the server, so it comes back on the other devices of this code.
+                // Videos and big GIFs stay on this device only: say so, so nobody is surprised.
+                var gifSynced = false;
+                if (isGif && f.size <= 2.4 * 1024 * 1024 && typeof addAsset === 'function') {
+                  try {
+                    var gifData = await new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { res(r.result); }; r.onerror = rej; r.readAsDataURL(f); });
+                    if (gifData.length <= 3400000) { await addAsset(gifData, id); gifSynced = true; }
+                  } catch (gErr) { }
+                }
+                if (!gifSynced && typeof canSyncServer === 'function' && canSyncServer() && typeof showToast === 'function') {
+                  showToast((f.name || 'This file') + ' is kept on this device only (not on your other devices). Use a PNG or JPG, or a GIF under 2 MB, to have it everywhere.', 7000);
                 }
               } else {
                 url = typeof readImageFile === 'function' ? await readImageFile(f, 1800) : await (new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { res(r.result); }; r.onerror = rej; r.readAsDataURL(f); }));
-                if (typeof addAsset === 'function') await addAsset(url);
+                // Keep it under the SAME id the setup saves, so it comes back tomorrow (and on the other devices of this code).
+                try {
+                  if (typeof dbDo === 'function') {
+                    var imgBlob = await (await fetch(url)).blob();
+                    await dbDo('kv', 'readwrite', function (st) { return st.put(imgBlob, 'attract_blob:' + id); });
+                  }
+                } catch (dbErr2) { console.warn('IDB image store failed', dbErr2); }
+                if (typeof addAsset === 'function') await addAsset(url, id);
               }
 
               attractPlaylist.push({
@@ -33126,6 +33204,15 @@
           // Sample print of their layout (drawn people, never a real guest's photo)
           var sample = document.createElement('canvas');
           try { composeCanvas(currentLayout, sample, buildPlaceholderShots(300, shotsNeeded(currentLayout))); } catch (e) { sample = null; }
+          // A frame whose strips all repeat the same photos: show one strip, not the whole sheet of copies.
+          try {
+            var cf = sample && currentLayout === 'myframe' ? activeFrame() : null, cr = cf && frameFirstStripCrop(cf);
+            if (cr) {
+              var sc = document.createElement('canvas'); sc.width = Math.max(1, Math.round(sample.width * cr.w)); sc.height = Math.max(1, Math.round(sample.height * cr.h));
+              sc.getContext('2d').drawImage(sample, Math.round(sample.width * cr.x), 0, sc.width, sc.height, 0, 0, sc.width, sc.height);
+              sample = sc;
+            }
+          } catch (e) { }
 
           // Card with the event name and how it works
           var cardColor = titleBgEnabled ? titleBgColor : '#ffffff';
@@ -34416,6 +34503,7 @@
           mt.value = curVal;
           if (!mt.value) mt.value = 'all';
         }
+        if (typeof mt._pillRefresh === 'function') mt._pillRefresh();   // redraw the pills for the new option list
       }
       function refreshPayUI() {
         var sec = document.getElementById('paySection'); if (!sec) return;
@@ -36703,12 +36791,14 @@
           attractMode: attractMode,
           attractPosterFit: attractPosterFit,
           attractPosterType: attractPosterType || 'image',
-          attractPlaylist: attractPlaylist.map(function (it) {
+          // Only the id is saved (the picture itself lives in the device store / the server's image store).
+          // A blob: or data: address would be dead or too big for the server by the next day.
+          attractPlaylist: attractRestoreHold ? attractRestoreHold.slice() : attractPlaylist.map(function (it) {
             return {
               id: it.id,
               type: it.type,
               name: it.name || '',
-              url: (it.url && it.url.length <= 4 * 1024 * 1024) ? it.url : ''
+              url: /^https?:/i.test(it.url || '') ? it.url : ''
             };
           }),
           attractSlideDuration: attractSlideDuration || 6,
@@ -36927,13 +37017,19 @@
           var durSelectEl = document.getElementById('attractSlideDuration');
           if (durSelectEl) durSelectEl.value = String(attractSlideDuration);
 
-          // Restore playlist checking IndexedDB binary blobs
+          // Restore the poster list: device store first, then the image store (this device's copy or the server's).
+          var restoreSeq = ++attractRestoreSeq;
+          var savedList = (Array.isArray(s.attractPlaylist) ? s.attractPlaylist : []).filter(function (x) { return x && typeof x.id === 'string' && x.id; }).map(function (x) {
+            return { id: x.id, type: x.type, name: x.name || '', url: /^https?:/i.test(x.url || '') ? x.url : '' };
+          });
+          attractRestoreHold = savedList.length ? savedList : null;
           (async function () {
+            try {
             var restored = [];
             if (Array.isArray(s.attractPlaylist) && s.attractPlaylist.length) {
               for (var i = 0; i < s.attractPlaylist.length; i++) {
                 var it = s.attractPlaylist[i];
-                var u = it.url || '';
+                var u = (it.url && !/^blob:/i.test(it.url)) ? it.url : '';       // a blob: address from an earlier session is dead
                 try {
                   if (typeof dbDo === 'function' && it.id) {
                     var b = await dbDo('kv', 'readonly', function (st) { return st.get('attract_blob:' + it.id); });
@@ -36942,9 +37038,11 @@
                     }
                   }
                 } catch (e) { }
-                if (!u && it.id && typeof ASSETS !== 'undefined' && ASSETS[it.id]) {
-                  u = ASSETS[it.id].url;
+                if (!u && it.id && typeof ASSETS !== 'undefined') {
+                  if (!ASSETS[it.id]) { try { await ensureAssets([it.id]); } catch (e) { } }
+                  if (ASSETS[it.id]) u = ASSETS[it.id].url;
                 }
+                if (restoreSeq !== attractRestoreSeq) return;                      // a newer load took over
                 if (u) {
                   restored.push({ id: it.id, url: u, type: it.type, name: it.name });
                 }
@@ -36953,9 +37051,13 @@
 
             if (restored.length) {
               attractPlaylist = restored;
-              attractPosterUrl = attractPlaylist[0].url;
-              attractPosterType = attractPlaylist[0].type;
-              attractPosterId = attractPlaylist[0].id;
+              if (typeof window._loadAttractPosterMedia === 'function') {
+                window._loadAttractPosterMedia(restored[0].url, restored[0].type, restored[0].id);   // also loads the picture for the welcome screen
+              } else {
+                attractPosterUrl = attractPlaylist[0].url;
+                attractPosterType = attractPlaylist[0].type;
+                attractPosterId = attractPlaylist[0].id;
+              }
               if (typeof window._renderPlaylistGridUI === 'function') window._renderPlaylistGridUI();
               renderWelcome(); refreshWelcome(); guestRender();
               return;
@@ -36978,6 +37080,10 @@
 
             if (typeof window._loadAttractPosterMedia === 'function') {
               window._loadAttractPosterMedia(pUrl, attractPosterType, pId);
+            }
+            } finally {
+              // Loaded: normal saving takes over. Not found (offline, other device): keep the saved list until the operator changes it.
+              if (restoreSeq === attractRestoreSeq && attractPlaylist.length) attractRestoreHold = null;
             }
           })();
           setFrameColorUI(s.frameColorChoice === 'auto' || isHex(s.frameColorChoice) ? s.frameColorChoice : 'auto');
@@ -37125,7 +37231,16 @@
         } catch (e) {
           if (sendImage) imageDirty = true;
           lastSavedJson = null;   // try again on the next change
-          setSaveNote('Saved on this device. It syncs when you’re back online.', 'warn');
+          var em = String((e && e.message) || '');
+          if (/too large/i.test(em)) {
+            // Not a connection problem: the setup itself is over the server's size limit, so it will never sync until something is removed.
+            setSaveNote('Saved on this device only: the setup is too big to sync. Remove some stickers, props or extra frames.', 'warn');
+            if (!window._setupBigShown) { window._setupBigShown = true; showToast('Your setup is too big to sync to your other devices. Remove some stickers, props or extra frames.', 7000); }
+          } else if (em && !/fetch|network|load failed|failed to load|json/i.test(em)) {
+            setSaveNote('Saved on this device. Couldn’t sync: ' + em.slice(0, 90), 'warn');
+          } else {
+            setSaveNote('Saved on this device. It syncs when you’re back online.', 'warn');
+          }
         }
       }
       async function fetchServerSetup() {
@@ -37171,6 +37286,7 @@
           lastSavedJson = null; setupReady = true; saveSetupNow();
         }
         setupReady = true;
+        setTimeout(function () { try { refreshProfChip(); } catch (e) { } }, 1500);   // the saved setup is in now: compare with the profile
         if (sfOffer && setupLoadedKey === key) await applyStartFrame(sfOffer, sfFresh);
       }
       // A frame Admin made for this renter: added once to Your frames (and used as the layout on a brand-new setup).
@@ -37511,8 +37627,8 @@
           return true;
         } catch (e) { return false; }
       }
-      async function addAsset(url) {
-        var id = newAssetId();
+      async function addAsset(url, wantedId) {
+        var id = wantedId || newAssetId();
         registerAsset(id, url); cacheAssetLocal(id, url);
         await pushAsset(id, url);
         return id;
@@ -38537,6 +38653,373 @@
         saveMyThemes(); buildThemeCats(); buildThemeGrid();
       }
 
+      // ---- Saved profiles: the whole setup (design, timers, printing, payments...) saved under a name ----
+      // Kept on this device, and on the server for rental / lifetime codes (merged, so two devices never overwrite each other).
+      var setupProfiles = [], profileTomb = {}, profActive = null, profUndo = null;
+      var PROFILE_MAX = 12, PROFILE_TOMB_MAX = 60;
+      // Things that belong to the device (printers, payments, screen turn), kept when only the design is loaded.
+      var PROFILE_DEVICE_KEYS = ['printerProfiles', 'printPrefs', 'pay', 'androidOrientation', 'colorAdj', 'flipPrinterPool', 'flipPoolMode'];
+      function profScope() { var pb = window.__PB || {}; return pb.folderPrefix || pb.folderKey || 'local'; }
+      function profilesKey() { return 'pb_profiles:' + profScope(); }
+      function strHash(str) { str = String(str || ''); var h = 0; for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return str.length + ':' + h; }
+      function newProfileId() { return 'pf-' + newAssetId().slice(1, 11).toLowerCase(); }
+      // Joins two copies of the list (this device + server): the newer save of each profile wins, and a delete beats an older save.
+      function profileMerge(a, ta, b, tb) {
+        var tomb = {};
+        [ta, tb].forEach(function (t) { Object.keys(t || {}).forEach(function (k) { tomb[k] = Math.max(tomb[k] || 0, +t[k] || 0); }); });
+        var tk = Object.keys(tomb).sort(function (x, y) { return tomb[y] - tomb[x]; }).slice(0, PROFILE_TOMB_MAX), tomb2 = {};
+        tk.forEach(function (k) { tomb2[k] = tomb[k]; });
+        var byId = {};
+        (a || []).concat(b || []).forEach(function (p) {
+          if (!p || typeof p.id !== 'string' || !p.settings) return;
+          var o = byId[p.id];
+          if (!o || (+p.savedAt || 0) > (+o.savedAt || 0)) byId[p.id] = p;
+        });
+        var list = Object.keys(byId).map(function (k) { return byId[k]; }).filter(function (p) { return !(tomb2[p.id] >= (+p.savedAt || 0)); });
+        list.sort(function (x, y) { return (y.savedAt || 0) - (x.savedAt || 0); });
+        return { list: list.slice(0, PROFILE_MAX), tomb: tomb2 };
+      }
+      function profilesReadLocal() {
+        var o = null; try { o = JSON.parse(localStorage.getItem(profilesKey()) || 'null'); } catch (e) { }
+        if (Array.isArray(o)) o = { profiles: o, del: {} };
+        return { list: (o && Array.isArray(o.profiles)) ? o.profiles : [], tomb: (o && o.del && typeof o.del === 'object') ? o.del : {} };
+      }
+      function profilesCacheLocal() { try { localStorage.setItem(profilesKey(), JSON.stringify({ profiles: setupProfiles, del: profileTomb })); } catch (e) { } }
+      function profIdAt(p) { return p.id + '@' + (p.savedAt || 0); }
+      async function loadProfiles() {
+        var loc = profilesReadLocal();
+        setupProfiles = loc.list; profileTomb = loc.tomb;
+        try { profUndo = JSON.parse(localStorage.getItem('pb_profile_undo:' + profScope()) || 'null'); } catch (e) { profUndo = null; }
+        try { profActive = JSON.parse(localStorage.getItem('pb_profile_active:' + profScope()) || 'null'); } catch (e) { profActive = null; }
+        renderProfiles(); refreshProfChip();
+        if (!canSyncServer()) return;
+        try {
+          var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'profiles-get' }) });
+          var j = await r.json();
+          if (r.ok && Array.isArray(j.profiles)) {
+            var m = profileMerge(setupProfiles, profileTomb, j.profiles, j.deleted);
+            var srv = j.profiles.map(profIdAt).sort().join('|'), mine = m.list.map(profIdAt).sort().join('|');
+            setupProfiles = m.list; profileTomb = m.tomb; profilesCacheLocal();
+            if (srv !== mine) saveProfiles();          // this device had newer / extra ones: send them
+          }
+        } catch (e) { }
+        renderProfiles(); refreshProfChip();
+      }
+      async function saveProfiles() {
+        profilesCacheLocal();
+        if (!canSyncServer()) return true;
+        try {
+          var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'profiles-save', profiles: setupProfiles, deleted: profileTomb }) });
+          var j = await r.json().catch(function () { return {}; });
+          if (!r.ok) { showToast((j.error || 'Couldn’t save to the server.') + ' Kept on this device.', 4500); return false; }
+          if (Array.isArray(j.profiles)) {
+            var m = profileMerge(setupProfiles, profileTomb, j.profiles, j.deleted);
+            setupProfiles = m.list; profileTomb = m.tomb; profilesCacheLocal();
+          }
+          return true;
+        } catch (e) { return false; }
+      }
+      function profileWhen(t) {
+        try { return 'Saved ' + new Date(t).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; }
+      }
+      function bgSig(u) { return strHash(u); }
+      function profileThumb() {
+        var big = document.createElement('canvas');
+        composeCanvas('hero', big, buildPlaceholderShots(260, 4));
+        var th = document.createElement('canvas'); th.width = 120; th.height = Math.max(1, Math.round(120 * big.height / big.width));
+        th.getContext('2d').drawImage(big, 0, 0, th.width, th.height);
+        return th.toDataURL('image/jpeg', 0.7);
+      }
+      // prev: the profile being updated (its backdrop picture is reused when it hasn't changed).
+      async function snapshotProfile(name, prev) {
+        var p = { id: prev ? prev.id : newProfileId(), name: name, savedAt: Date.now(), settings: snapshotSetup() };
+        if (bgImageDataUrl) {
+          var sig = bgSig(bgImageDataUrl);
+          if (prev && prev.bgAssetId && prev.bgSig === sig) { p.bgAssetId = prev.bgAssetId; p.bgSig = sig; }
+          else { try { p.bgAssetId = await addAsset(bgImageDataUrl); p.bgSig = sig; } catch (e) { } }
+        }
+        try { p.thumb = profileThumb(); } catch (e) { }
+        return p;
+      }
+      // Removes a backdrop picture saved for a profile once nothing uses it any more.
+      async function profileReleaseAsset(id) {
+        if (!id) return;
+        if (setupProfiles.some(function (x) { return x.bgAssetId === id; }) || (profUndo && profUndo.bgAssetId === id)) return;
+        try { localStorage.removeItem('pb_asset:' + id); } catch (e) { }
+        if (!canSyncServer()) return;
+        try { await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'asset-delete', id: id }) }); } catch (e) { }
+      }
+      function profileById(id) { for (var i = 0; i < setupProfiles.length; i++) if (setupProfiles[i].id === id) return setupProfiles[i]; return null; }
+      function uniqueProfileName(n) {
+        var base = n, k = 2;
+        while (setupProfiles.some(function (x) { return x.name.toLowerCase() === n.toLowerCase(); })) n = base.slice(0, 34) + ' (' + (k++) + ')';
+        return n;
+      }
+
+      // ---- Which profile is loaded, and whether it was changed since ----
+      function profSigNow() { try { return JSON.stringify(snapshotSetup()); } catch (e) { return ''; } }      function profChanged() { return !profActive || strHash(profSigNow()) !== profActive.h; }
+      function markActiveProfile(id) {
+        setTimeout(function () {
+          profActive = id ? { id: id, h: strHash(profSigNow()) } : null;
+          try { if (profActive) localStorage.setItem('pb_profile_active:' + profScope(), JSON.stringify(profActive)); else localStorage.removeItem('pb_profile_active:' + profScope()); } catch (e) { }
+          refreshProfChip();
+        }, 1300);
+      }
+      function refreshProfChip() {
+        var chip = document.getElementById('profChip'); if (!chip) return;
+        var p = profActive && profileById(profActive.id);
+        if (!p) { chip.hidden = true; return; }
+        var ch = profChanged();
+        chip.hidden = false; chip.className = 'prof-chip' + (ch ? ' changed' : '');
+        chip.textContent = 'Profile: ' + p.name + (ch ? ' · changed' : '');
+        chip.title = ch ? 'You changed this setup since you saved the profile. Tap to update it.' : 'This setup matches the saved profile.';
+      }
+      var profChipTimer = null;
+      ['input', 'change', 'click'].forEach(function (type) {
+        tabSetup.addEventListener(type, function () { clearTimeout(profChipTimer); profChipTimer = setTimeout(refreshProfChip, 700); }, true);
+      });
+      document.getElementById('profChip').addEventListener('click', function () { openProfiles(); });
+
+      // ---- The list ----
+      function renderProfiles() {
+        var list = document.getElementById('profList');
+        if (!list) return;
+        list.textContent = '';
+        var ub = document.getElementById('profUndo');
+        if (ub) { ub.hidden = !profUndo; if (profUndo) ub.textContent = '↩ Undo last load (back to “' + String(profUndo.name || '').replace(/^Before “|”$/g, '') + '”)'; }
+        var ask = document.getElementById('profAsk');
+        if (ask) { try { ask.checked = localStorage.getItem('pb_prof_noask') !== '1'; } catch (e) { } }
+        if (!setupProfiles.length) {
+          var em = document.createElement('p'); em.className = 'prof-empty';
+          em.textContent = 'Nothing saved yet. Finish your setup, then tap “Save current setup”.';
+          list.appendChild(em);
+          return;
+        }
+        setupProfiles.forEach(function (p) {
+          var row = document.createElement('div'); row.className = 'prof-row' + (profActive && profActive.id === p.id ? ' on' : '');
+          if (typeof p.thumb === 'string' && /^data:image\/jpeg;base64,/.test(p.thumb)) {
+            var im = document.createElement('img'); im.className = 'prof-thumb'; im.alt = ''; im.src = p.thumb; row.appendChild(im);
+          }
+          var main = document.createElement('div'); main.className = 'prof-main';
+          var nm = document.createElement('b'); nm.textContent = p.name;
+          var sm = document.createElement('small'); sm.textContent = profileWhen(p.savedAt);
+          var acts = document.createElement('div'); acts.className = 'prof-acts';
+          [['use', 'Use', 'go'], ['update', 'Update', ''], ['rename', 'Rename', ''], ['del', 'Delete', 'danger']].forEach(function (a) {
+            var b = document.createElement('button'); b.type = 'button'; b.textContent = a[1]; if (a[2]) b.className = a[2];
+            b.addEventListener('click', function () { profileAction(a[0], p.id); });
+            acts.appendChild(b);
+          });
+          main.appendChild(nm); main.appendChild(sm); main.appendChild(acts);
+          row.appendChild(main);
+          list.appendChild(row);
+        });
+      }
+
+      // ---- Actions ----
+      // Returns true when a profile was saved.
+      async function profileSaveNew() {
+        if (setupProfiles.length >= PROFILE_MAX) { showToast('You can keep up to ' + PROFILE_MAX + ' profiles. Delete one first.', 4000); return false; }
+        var name = ((await askText({ title: 'Name this profile', placeholder: 'e.g. Wedding – Santos', hint: 'Saves everything in Setup as it is now.', ok: 'Save profile', max: 40 })) || '').trim().slice(0, 40);
+        if (!name) return false;
+        var dup = setupProfiles.filter(function (x) { return x.name.toLowerCase() === name.toLowerCase(); })[0];
+        if (dup) {
+          var ov = await pbChoose({ title: 'Replace “' + dup.name + '”?', body: 'A profile with this name already exists. Replace it with your current setup?', buttons: [{ label: 'Replace it', value: 'yes', kind: 'go' }, { label: 'Cancel', value: null }] });
+          if (ov !== 'yes') return false;
+          await profileUpdate(dup.id, true);
+          return true;
+        }
+        var p = await snapshotProfile(name, null);
+        setupProfiles.unshift(p);
+        delete profileTomb[p.id];
+        await saveProfiles(); renderProfiles();
+        markActiveProfile(p.id);
+        showToast('Profile “' + name + '” saved ✓');
+        return true;
+      }
+      async function profileUpdate(id, skipAsk) {
+        var p = profileById(id); if (!p) return;
+        if (!skipAsk) {
+          var c = await pbChoose({ title: 'Update “' + p.name + '”?', body: 'It will be replaced with your current setup.', buttons: [{ label: 'Update profile', value: 'yes', kind: 'go' }, { label: 'Cancel', value: null }] });
+          if (c !== 'yes') return;
+        }
+        var np = await snapshotProfile(p.name, p);
+        setupProfiles = setupProfiles.map(function (x) { return x.id === p.id ? np : x; });
+        await saveProfiles(); renderProfiles();
+        if (p.bgAssetId && p.bgAssetId !== np.bgAssetId) profileReleaseAsset(p.bgAssetId);
+        markActiveProfile(np.id);
+        showToast('Profile “' + p.name + '” updated ✓');
+      }
+      async function profileStoreUndo(label) {
+        var old = profUndo;
+        var u = await snapshotProfile(label, null);
+        u.id = 'undo'; u.prevActive = profActive ? profActive.id : null;
+        profUndo = u;
+        try { localStorage.setItem('pb_profile_undo:' + profScope(), JSON.stringify(u)); } catch (e) { }
+        if (old && old.bgAssetId && old.bgAssetId !== u.bgAssetId) profileReleaseAsset(old.bgAssetId);
+      }
+      // mode: 'all' = everything, 'design' = keep this device's printers, payments and screen turn.
+      async function profileApply(p, mode) {
+        var bg = null;
+        if (p.bgAssetId) { await ensureAssets([p.bgAssetId]); bg = ASSETS[p.bgAssetId] ? ASSETS[p.bgAssetId].url : null; }
+        var st = Object.assign({}, p.settings || {});
+        if (mode === 'design') {
+          var cur = snapshotSetup();
+          PROFILE_DEVICE_KEYS.forEach(function (k) { if (k in cur) st[k] = cur[k]; else delete st[k]; });
+        }
+        applySetup(st, bg);
+        bgImageDataUrl = bg; imageDirty = true;
+        lastSavedJson = null; scheduleSetupSave();
+      }
+      async function profileUse(id) {
+        var p = profileById(id); if (!p) return;
+        if (state === 'capturing') { showToast('Finish the photo session first.', 3500); return; }
+        var c = await pbChoose({
+          title: 'Use “' + p.name + '”?',
+          body: 'This replaces the current setup. You can undo it right after from Saved profiles. “Design only” keeps this device’s printers, payments and screen turn.',
+          buttons: [{ label: 'Use everything', value: 'all', kind: 'go' }, { label: 'Design only (keep my printers & payments)', value: 'design' }, { label: 'Cancel', value: null }]
+        });
+        if (c !== 'all' && c !== 'design') return;
+        try { await profileStoreUndo('Before “' + p.name + '”'); } catch (e) { }
+        await profileApply(p, c);
+        markActiveProfile(p.id);
+        closeProfiles();
+        showToast('Profile “' + p.name + '” loaded ✓ (Undo is in Saved profiles)', 4500);
+      }
+      async function profileUndoLoad() {
+        var u = profUndo; if (!u) return;
+        if (state === 'capturing') { showToast('Finish the photo session first.', 3500); return; }
+        await profileApply(u, 'all');
+        markActiveProfile(u.prevActive && profileById(u.prevActive) ? u.prevActive : null);
+        profUndo = null;
+        try { localStorage.removeItem('pb_profile_undo:' + profScope()); } catch (e) { }
+        if (u.bgAssetId) profileReleaseAsset(u.bgAssetId);
+        closeProfiles();
+        showToast('Back to how it was ✓');
+      }
+      async function profileRename(id) {
+        var p = profileById(id); if (!p) return;
+        var name = ((await askText({ title: 'Rename profile', value: p.name, hint: '', ok: 'Rename', max: 40 })) || '').trim().slice(0, 40);
+        if (!name || name === p.name) return;
+        p.name = name; p.savedAt = Date.now();         // newer, so it wins over other devices' older copy
+        await saveProfiles(); renderProfiles(); refreshProfChip();
+      }
+      async function profileDelete(id) {
+        var p = profileById(id); if (!p) return;
+        var c = await pbChoose({ title: 'Delete “' + p.name + '”?', body: 'The saved profile is removed. Your current setup is not changed.', buttons: [{ label: 'Delete profile', value: 'yes', kind: 'danger' }, { label: 'Cancel', value: null }] });
+        if (c !== 'yes') return;
+        setupProfiles = setupProfiles.filter(function (x) { return x.id !== id; });
+        profileTomb[id] = Date.now();
+        if (profActive && profActive.id === id) markActiveProfile(null);
+        await saveProfiles(); renderProfiles(); refreshProfChip();
+        profileReleaseAsset(p.bgAssetId);
+      }
+      function profileAction(act, id) {
+        if (act === 'use') profileUse(id); else if (act === 'update') profileUpdate(id); else if (act === 'rename') profileRename(id); else if (act === 'del') profileDelete(id);
+      }
+
+      // ---- Ask before starting a session ----
+      var profAskedHash = '', profStartBusy = false;
+      async function profileStartCheck() {
+        try { if (localStorage.getItem('pb_prof_noask') === '1') return true; } catch (e) { }
+        if (!setupReady || profStartBusy) return true;
+        var h = strHash(profSigNow());
+        if (profActive && profileById(profActive.id) && h === profActive.h) return true;          // saved and unchanged
+        if (h === profAskedHash) return true;                                                      // already asked for this exact setup
+        if (DEFAULT_SETUP && h === strHash(JSON.stringify(DEFAULT_SETUP))) return true;           // nothing set up yet
+        profStartBusy = true;
+        try {
+          var act = profActive && profileById(profActive.id);
+          var btns = [{ label: 'Save as a new profile', value: 'new', kind: 'go' }];
+          if (act) btns.push({ label: 'Update “' + act.name + '”', value: 'upd' });
+          btns.push({ label: 'Start without saving', value: 'skip' }, { label: 'Don’t ask again', value: 'never' }, { label: 'Cancel', value: null });
+          var c = await pbChoose({
+            title: 'Save this setup before you start?',
+            body: act ? 'You changed it since you saved “' + act.name + '”. Save it so you can bring it back for your next event.' : 'Save it as a profile so you can bring it back for your next event.',
+            buttons: btns
+          });
+          if (c === null || c === undefined) return false;
+          if (c === 'new') { if (!(await profileSaveNew())) return false; }
+          else if (c === 'upd') await profileUpdate(act.id, true);
+          else if (c === 'never') { try { localStorage.setItem('pb_prof_noask', '1'); } catch (e) { } showToast('OK. You can turn this back on in Saved profiles.', 4000); }
+          profAskedHash = h;
+          return true;
+        } finally { profStartBusy = false; }
+      }
+      document.getElementById('startBarBtn').addEventListener('click', async function () {
+        if (await profileStartCheck()) goToSessionBtn.click();
+      });
+
+      // ---- Export / import (a backup file, or to move profiles to another tablet) ----
+      async function profileExport() {
+        if (!setupProfiles.length) { showToast('Nothing to export yet.', 3000); return; }
+        await ensureAssets(setupProfiles.map(function (p) { return p.bgAssetId; }).filter(Boolean));
+        var out = { pb4uProfiles: 1, exportedAt: Date.now(), profiles: setupProfiles.map(function (p) {
+          var e = { name: p.name, savedAt: p.savedAt, settings: p.settings };
+          if (p.bgAssetId && ASSETS[p.bgAssetId]) e.bgData = ASSETS[p.bgAssetId].url;
+          if (p.thumb) e.thumb = p.thumb;
+          return e;
+        }) };
+        var blob = new Blob([JSON.stringify(out)], { type: 'application/json' });
+        var file = 'photobooth-profiles-' + new Date().toISOString().slice(0, 10) + '.json';
+        try {
+          var f = new File([blob], file, { type: 'application/json' });
+          if (isMobileOS() && navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: 'Photo booth profiles' }); return; }
+        } catch (e) { if (e && e.name === 'AbortError') return; }
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file; document.body.appendChild(a); a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 3000);
+        showToast('Profiles exported ✓');
+      }
+      async function profileImportFile(file) {
+        var data = null;
+        try { data = JSON.parse(await file.text()); } catch (e) { }
+        if (!data || data.pb4uProfiles !== 1 || !Array.isArray(data.profiles)) { showToast('That isn’t a profiles file.', 4000); return; }
+        var added = 0;
+        for (var i = 0; i < data.profiles.length; i++) {
+          if (setupProfiles.length >= PROFILE_MAX) break;
+          var e = data.profiles[i];
+          if (!e || typeof e.name !== 'string' || !e.settings || typeof e.settings !== 'object' || Array.isArray(e.settings)) continue;
+          if (JSON.stringify(e.settings).length > 40000) continue;
+          var p = { id: newProfileId(), name: uniqueProfileName(e.name.trim().slice(0, 40) || 'Imported'), savedAt: Date.now(), settings: e.settings };
+          if (typeof e.bgData === 'string' && e.bgData.length <= 3500000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(e.bgData)) {
+            try { p.bgAssetId = await addAsset(e.bgData); p.bgSig = bgSig(e.bgData); } catch (err) { }
+          }
+          if (typeof e.thumb === 'string' && e.thumb.length < 20000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(e.thumb)) p.thumb = e.thumb;
+          setupProfiles.unshift(p); added++;
+        }
+        if (added) { await saveProfiles(); renderProfiles(); }
+        showToast(added ? added + (added === 1 ? ' profile' : ' profiles') + ' imported ✓' : 'No profiles could be imported.', 4000);
+      }
+
+      // ---- The window ----
+      var profilesSheet = document.getElementById('profilesSheet');
+      function profilesOnKey(e) {
+        if (e.key !== 'Escape') return;
+        var ask = document.getElementById('askSheet'), ch = document.getElementById('pbChoice');
+        if ((ask && !ask.hidden) || (ch && !ch.hidden)) return;       // those close themselves first
+        e.preventDefault(); closeProfiles();
+      }
+      function openProfiles() {
+        profilesSheet.hidden = false;
+        document.addEventListener('keydown', profilesOnKey, true);
+        loadProfiles();
+        setTimeout(function () { try { document.getElementById('profSaveNew').focus(); } catch (e) { } }, 30);
+      }
+      function closeProfiles() { profilesSheet.hidden = true; document.removeEventListener('keydown', profilesOnKey, true); }
+      document.getElementById('profilesBtn').addEventListener('click', openProfiles);
+      document.getElementById('menuProfiles').addEventListener('click', openProfiles);
+      document.getElementById('profSaveNew').addEventListener('click', profileSaveNew);
+      document.getElementById('profClose').addEventListener('click', closeProfiles);
+      document.getElementById('profUndo').addEventListener('click', profileUndoLoad);
+      document.getElementById('profExport').addEventListener('click', profileExport);
+      var profImportFile = document.getElementById('profImportFile');
+      document.getElementById('profImport').addEventListener('click', function () { profImportFile.click(); });
+      profImportFile.addEventListener('change', function () { var f = profImportFile.files && profImportFile.files[0]; profImportFile.value = ''; if (f) profileImportFile(f); });
+      document.getElementById('profAsk').addEventListener('change', function (e) {
+        try { if (e.target.checked) localStorage.removeItem('pb_prof_noask'); else localStorage.setItem('pb_prof_noask', '1'); } catch (err) { }
+      });
+      profilesSheet.addEventListener('click', function (e) { if (e.target === profilesSheet) closeProfiles(); });
+      loadProfiles();       // so the "Profile: …" label shows from the start
+
       // =====================================================================
       // Frames with photo spots ("My frame") and a 4R sheet of several frames
       // ("My frames sheet"). An uploaded frame is scanned for its photo spots:
@@ -38759,7 +39242,88 @@
         }
         return Math.max(1, Math.min(n, f.spots.length - 1));
       }
+      // Boxes the user numbered by hand (spot.s = photo number): boxes with the same number show the same photo.
+      function frameManual(f) { return !!(f && f.spots && f.spots.some(function (s) { return s.s >= 1; })); }
+      // The strips: each column's boxes cut where there is a big vertical gap (e.g. two strips stacked in one column).
+      // Each strip lists its spot indexes top to bottom; strips go left to right, then top to bottom.
+      function frameStrips(f) {
+        var out = [];
+        frameStripRanks(f).cols.forEach(function (c) {
+          var gaps = [], avgH = 0, k;
+          c.forEach(function (i) { avgH += f.spots[i].h; }); avgH /= c.length;
+          for (k = 1; k < c.length; k++) { var a = f.spots[c[k - 1]], b = f.spots[c[k]]; gaps.push(b.y - (a.y + a.h)); }
+          var sorted = gaps.slice().sort(function (x, y) { return x - y; }), med = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
+          var cur = [c[0]];
+          for (k = 1; k < c.length; k++) {
+            if (gaps[k - 1] > Math.max(med, 0) + avgH * 0.6) { out.push(cur); cur = []; }
+            cur.push(c[k]);
+          }
+          out.push(cur);
+        });
+        return out;
+      }
+      // Start numbering by hand: with "every strip repeats" on, keep those numbers; otherwise each strip gets
+      // its own run of numbers (1-3, 4-6, ...) so strips can then be linked to each other.
+      function frameManualize(f) {
+        if (frameManual(f)) return;
+        if (frameRepeat(f)) { var m = framePairs(f); f.spots.forEach(function (sp, i) { sp.s = m[i] + 1; }); return; }
+        var n = 1; frameStrips(f).forEach(function (st) { st.forEach(function (i) { f.spots[i].s = n++; }); });
+      }
+      // No gaps in the numbers: 1, 3, 5 becomes 1, 2, 3 (a guest never takes a photo that is not used).
+      function frameCompact(f) {
+        var vals = [];
+        f.spots.forEach(function (sp) { if (sp.s >= 1 && vals.indexOf(sp.s) < 0) vals.push(sp.s); });
+        vals.sort(function (a, b) { return a - b; });
+        f.spots.forEach(function (sp) { if (sp.s >= 1) sp.s = vals.indexOf(sp.s) + 1; });
+      }
+      // Make the strip holding spot `dst` show the same photos as the strip holding spot `src` (top to bottom).
+      function frameCopyStrip(f, dst, src) {
+        var strips = frameStrips(f), sd = null, ss = null;
+        strips.forEach(function (st) { if (st.indexOf(dst) >= 0) sd = st; if (st.indexOf(src) >= 0) ss = st; });
+        if (!sd || !ss || sd === ss) return false;
+        frameManualize(f);
+        var nums = ss.map(function (i) { return f.spots[i].s; });
+        sd.forEach(function (i, k) { f.spots[i].s = nums[k % nums.length]; });
+        frameCompact(f);
+        return true;
+      }
+      // When the user chose "every strip repeats", linked boxes by hand, or "same photos on both strips" and every strip
+      // shows the same photos, the first strip stands for all of them. Returns its area as fractions of the frame
+      // ({ w, h }, from the top-left corner), or null to show the whole frame.
+      function frameFirstStripCrop(f) {
+        if (f.one === false) return null;                       // switched off for this frame
+        var c = frameStripCropBase(f); if (!c) return null;
+        // trims in fractions of the frame (+ = cut more off, - = show more): left, right, bottom
+        var x = Math.max(0, Math.min(0.9, f.tl || 0)), r = Math.max(x + 0.05, Math.min(1, c.w - (f.tr || 0))), b = Math.max(0.05, Math.min(1, c.h - (f.tb || 0)));
+        return { x: x, y: 0, w: r - x, h: b };
+      }
+      function frameStripCropBase(f) {
+        if (!(frameRepeat(f) || frameManual(f) || f.copy === true)) return null;
+        var strips = frameStrips(f), m = framePairs(f);
+        if (strips.length < 2 || !m) return null;
+        var seq = function (st) { return st.map(function (i) { return m[i]; }).join(','); }, first = seq(strips[0]);
+        for (var k = 1; k < strips.length; k++) if (seq(strips[k]) !== first) return null;
+        var box = function (st) {
+          var b = { x0: 9, y0: 9, x1: -9, y1: -9 };
+          st.forEach(function (i) { var s = f.spots[i]; b.x0 = Math.min(b.x0, s.x); b.y0 = Math.min(b.y0, s.y); b.x1 = Math.max(b.x1, s.x + s.w); b.y1 = Math.max(b.y1, s.y + s.h); });
+          return b;
+        };
+        var b0 = box(strips[0]), bw = b0.x1 - b0.x0, right = 1, bottom = 1;
+        strips.slice(1).forEach(function (st) {
+          var b = box(st), same = Math.abs((b.x0 + b.x1) / 2 - (b0.x0 + b0.x1) / 2) < bw * 0.5;
+          if (same) { if (b.y0 >= b0.y1) bottom = Math.min(bottom, (b0.y1 + b.y0) / 2); }
+          else if (b.x0 >= b0.x1 - bw * 0.25) right = Math.min(right, (b0.x1 + b.x0) / 2);
+        });
+        return { w: right, h: bottom };
+      }
       function framePairs(f) {
+        if (frameManual(f)) {
+          var base = framePairsAuto(f);
+          return f.spots.map(function (sp, i) { return sp.s >= 1 ? sp.s - 1 : (base ? base[i] : i); });
+        }
+        return framePairsAuto(f);
+      }
+      function framePairsAuto(f) {
         var rep = frameRepeat(f);
         if (rep) { var rk = frameStripRanks(f).rank; return f.spots.map(function (s, i) { return rk[i] % rep; }); }
         var map = framePairsGeom(f);
@@ -38785,7 +39349,11 @@
         PAIR_CACHE[f.id] = { key: key, map: map };
         return map;
       }
-      function frameShotCount(f) { var rep = frameRepeat(f); if (rep) return rep; var m = framePairs(f); return m ? f.spots.length / 2 : f.spots.length; }
+      function frameShotCount(f) {
+        if (frameManual(f)) { var mx = 0; framePairs(f).forEach(function (v) { if (v > mx) mx = v; }); return mx + 1; }
+        var rep = frameRepeat(f); if (rep) return rep;
+        var m = framePairs(f); return m ? f.spots.length / 2 : f.spots.length;
+      }
       function isFrameLayout(key) { var k = key || currentLayout; return k === 'myframe' || k === 'framesheet'; }
 
       // ---- Finding the photo spots ----
@@ -39360,7 +39928,14 @@
           });
           btns.append(ed, prevBtn, rm);
           ctx.append(top, btns);
-          if (f.spots.length >= 2) {
+          if (frameManual(f)) {
+            var mn = document.createElement('div');
+            mn.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12.5px;font-weight:600;margin-top:8px;';
+            var mt = document.createElement('span'); mt.textContent = 'Photos linked by hand: ' + frameShotCount(f) + ' photo' + (frameShotCount(f) === 1 ? '' : 's') + ' taken for ' + f.spots.length + ' spots.';
+            var mb = document.createElement('button'); mb.type = 'button'; mb.className = 'action-btn mini'; mb.textContent = 'Back to automatic';
+            mb.addEventListener('click', function () { f.spots.forEach(function (sp) { delete sp.s; }); framesChanged(); if (isFrameLayout()) setLayout(currentLayout); });
+            mn.append(mt, mb); ctx.appendChild(mn);
+          } else if (f.spots.length >= 2) {
             // Many spots, few photos: only the first N photos are taken, every later spot repeats them.
             var rp = document.createElement('label');
             rp.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:12.5px;font-weight:600;margin-top:8px;cursor:pointer;';
@@ -39377,13 +39952,39 @@
             rp.append(rcb, document.createTextNode('Every strip repeats the same '), rin, document.createTextNode(' photos, top to bottom (take only that many)'));
             ctx.appendChild(rp);
           }
-          if (!frameRepeat(f) && framePairsGeom(f)) {
+          if (!frameManual(f) && !frameRepeat(f) && framePairsGeom(f)) {
             var cp = document.createElement('label');
             cp.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;margin-top:8px;cursor:pointer;';
             var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!framePairs(f);
             cb.addEventListener('change', function () { f.copy = cb.checked; framesChanged(); if (isFrameLayout()) setLayout(currentLayout); });
             cp.append(cb, document.createTextNode('Same photos on both strips (' + (f.spots.length / 2) + ' shots instead of ' + f.spots.length + ')'));
             ctx.appendChild(cp);
+          }
+          if (frameStripCropBase(f)) {
+            // Every strip shows the same photos: the welcome screen can show one strip instead of the whole sheet.
+            var wl = document.createElement('label');
+            wl.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;margin-top:8px;cursor:pointer;';
+            var wcb = document.createElement('input'); wcb.type = 'checkbox'; wcb.checked = f.one !== false;
+            var wRefresh = function () { framesChanged(); try { renderWelcome(); } catch (e) { } };
+            wcb.addEventListener('change', function () { f.one = wcb.checked ? undefined : false; wRefresh(); });
+            wl.append(wcb, document.createTextNode('Show one strip on the welcome screen (not the whole sheet)'));
+            ctx.appendChild(wl);
+            if (f.one !== false) {
+              var wt = document.createElement('div');
+              wt.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12px;font-weight:600;margin-top:6px;';
+              wt.appendChild(document.createTextNode('Fine-tune the cut (% of the frame, + cuts more off, − shows more):'));
+              [['tl', 'Left'], ['tr', 'Right'], ['tb', 'Bottom']].forEach(function (d) {
+                var lb = document.createElement('label'), inp = document.createElement('input');
+                inp.type = 'number'; inp.min = -10; inp.max = 10; inp.step = 0.5; inp.style.cssText = 'width:60px;padding:3px 6px;';
+                inp.value = Math.round((f[d[0]] || 0) * 1000) / 10;
+                inp.addEventListener('change', function () {
+                  var v = Math.max(-10, Math.min(10, Number(inp.value) || 0)) / 100;
+                  f[d[0]] = v || undefined; wRefresh();
+                });
+                lb.append(document.createTextNode(d[1] + ' '), inp); wt.appendChild(lb);
+              });
+              ctx.appendChild(wt);
+            }
           }
         }
         buildFramePick();
@@ -39590,7 +40191,9 @@
       document.getElementById('spotAdd').addEventListener('click', function () {
         var f = spotEdit && frameById(spotEdit.f); if (!f) return;
         if (f.spots.length >= MAX_SPOTS) { showToast('Up to ' + MAX_SPOTS + ' photo spots.'); return; }
-        f.spots.push({ x: 0.3, y: 0.35, w: 0.4, h: 0.25 }); spotEdit.sel = f.spots.length - 1; framesChanged({ layout: 'myframe' });
+        var nsp = { x: 0.3, y: 0.35, w: 0.4, h: 0.25 };
+        if (frameManual(f)) nsp.s = Math.min(MAX_SPOTS, Math.max.apply(null, f.spots.map(function (o) { return o.s || 0; })) + 1);   // numbered by hand: a new box is a new photo
+        f.spots.push(nsp); spotEdit.sel = f.spots.length - 1; framesChanged({ layout: 'myframe' });
       });
       // Copy the selected box (same size, tilt and layer), nudged a little so you can see it; it becomes the next shot.
       document.getElementById('spotCopy').addEventListener('click', function () {
@@ -39600,6 +40203,7 @@
         var c = { x: src.x, y: src.y, w: src.w, h: src.h };
         if (src.a) c.a = src.a;
         if (src.z) c.z = src.z;
+        if (src.s) c.s = src.s;   // numbered by hand: the copy shows the same photo
         var dx = 0.03, dy = 0.02;
         if (!c.a) {   // an upright box must stay inside the frame: nudge the other way at the edge
           c.x = c.x + c.w + dx <= 1 ? c.x + dx : Math.max(0, c.x - dx);
@@ -39637,6 +40241,7 @@
         for (var r = 0; r < ny; r++) for (var c = 0; c < nx; c++) {
           var lx = -g.w / 2 + g.w * (c + 0.5) / nx, ly = -g.h / 2 + g.h * (r + 0.5) / ny, part = { a: sp.a || 0 };
           if (sp.z) part.z = sp.z;
+          if (sp.s) part.s = sp.s;
           setSpotPx(part, f, g.cx + lx * ca - ly * sa, g.cy + lx * sa + ly * ca, g.w / nx, g.h / ny);
           if (!part.a) delete part.a;
           parts.push(part);
@@ -39672,7 +40277,31 @@
         if (!sp) return;
         Object.keys(spotNum).forEach(function (k) { var el = document.getElementById(spotNum[k]); if (document.activeElement !== el) el.value = Math.round(sp[k] * 1000) / 10; });
         var ae = document.getElementById('spotA'); if (ae && document.activeElement !== ae) ae.value = sp.a || 0;
+        var pe = document.getElementById('spotShot');
+        if (pe && document.activeElement !== pe) { var pm = framePairs(f); pe.value = (pm ? pm[spotEdit.sel] : spotEdit.sel) + 1; }
+        var cb2 = document.getElementById('spotCopyStrip'); if (cb2) cb2.classList.toggle('primary', !!spotEdit.copyFrom);
       }
+      // Photo # of the selected box: boxes with the same number show the same photo.
+      document.getElementById('spotShot').addEventListener('change', function (e) {
+        var f = spotEdit && frameById(spotEdit.f), sp = f && f.spots[spotEdit.sel]; if (!sp) return;
+        var n = Math.max(1, Math.min(MAX_SPOTS, Math.round(Number(e.target.value)) || 1));
+        frameManualize(f); sp.s = n; frameCompact(f);
+        framesChanged({ layout: 'myframe' });
+        showToast('Photos to take: ' + frameShotCount(f) + '.', 2200);
+      });
+      document.getElementById('spotCopyStrip').addEventListener('click', function () {
+        var f = spotEdit && frameById(spotEdit.f); if (!f) return;
+        if (!f.spots[spotEdit.sel]) { showToast('Tap a box in the strip you want to change first.'); return; }
+        spotEdit.copyFrom = !spotEdit.copyFrom; refreshSpotSize();
+        if (spotEdit.copyFrom) showToast('Now tap a box in the strip to copy the photos from.', 4000);
+      });
+      document.getElementById('spotShotAuto').addEventListener('click', function () {
+        var f = spotEdit && frameById(spotEdit.f); if (!f) return;
+        if (!frameManual(f)) { showToast('Photo numbers are already automatic.'); return; }
+        f.spots.forEach(function (sp) { delete sp.s; }); spotEdit.copyFrom = false;
+        framesChanged({ layout: 'myframe' });
+        showToast('Back to automatic photo numbers.', 2500);
+      });
       Object.keys(spotNum).forEach(function (k) {
         document.getElementById(spotNum[k]).addEventListener('change', function (e) {
           var f = spotEdit && frameById(spotEdit.f), sp = f && f.spots[spotEdit.sel]; if (!sp) return;
@@ -39945,6 +40574,14 @@
             refreshKeyUI();
             return;
           }
+          if (spotEdit.copyFrom) {   // "Copy a strip's photos": this tap picks the strip to copy from
+            e.preventDefault();
+            var srcHit = spotAt(f, pt); spotEdit.copyFrom = false;
+            if (!srcHit) { showToast('No box there. Tap Copy a strip’s photos again.'); refreshSpotSize(); return; }
+            if (frameCopyStrip(f, spotEdit.sel, srcHit.i)) { framesChanged({ layout: 'myframe' }); showToast('Copied. Photos to take: ' + frameShotCount(f) + '.', 3000); }
+            else { showToast('That is the same strip. Tap a box in a different strip.'); refreshSpotSize(); }
+            return;
+          }
           var hit = spotAt(f, pt);
           spotEdit.sel = hit ? hit.i : -1;
           if (hit) {
@@ -40017,7 +40654,7 @@
           var art0 = spotShowWin && frameArt(f), mk = art0 && frameMasks(f, art0);
           if (mk && mk.tint) { ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(mk.tint, 0, 0, W, H); ctx.restore(); }
           ctx.save();
-          var repMap = frameRepeat(f) ? framePairs(f) : null;   // repeating: each box shows the photo it takes
+          var repMap = frameRepeat(f) || frameManual(f) ? framePairs(f) : null;   // repeating / numbered by hand: each box shows the photo it takes
           spotOrder(f).forEach(function (i) {
             var s = f.spots[i];
             var on = i === spotEdit.sel, g = spotPx(s, W, H), x = -g.w / 2, y = -g.h / 2, w = g.w, h = g.h, u = Math.max(W, H);
@@ -40066,7 +40703,7 @@
       function framesSnapshot() {
         var r4 = function (v) { return Math.round(v * 10000) / 10000; };
         return {
-          frames: myFrames.map(function (f) { var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function (s) { var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; if (s.a) q.a = Math.round(s.a * 10) / 10; if (s.z) q.z = s.z; return q; }) }; if (typeof f.name === 'string' && f.name.trim()) o.name = f.name.trim().slice(0, 40); if (typeof f.copy === 'boolean') o.copy = f.copy; if (frameRepeat(f)) o.rep = frameRepeat(f); if (f.key) o.key = { c: f.key.c.slice(), t: f.key.t }; if (f.tier) o.tier = f.tier; return o; }),
+          frames: myFrames.map(function (f) { var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function (s) { var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; if (s.a) q.a = Math.round(s.a * 10) / 10; if (s.z) q.z = s.z; if (s.s >= 1) q.s = s.s; return q; }) }; if (typeof f.name === 'string' && f.name.trim()) o.name = f.name.trim().slice(0, 40); if (typeof f.copy === 'boolean') o.copy = f.copy; if (frameRepeat(f)) o.rep = frameRepeat(f); if (f.one === false) o.one = false; if (f.tl) o.tl = r4(f.tl); if (f.tr) o.tr = r4(f.tr); if (f.tb) o.tb = r4(f.tb); if (f.key) o.key = { c: f.key.c.slice(), t: f.key.t }; if (f.tier) o.tier = f.tier; return o; }),
           activeFrame: activeFrameId,
           frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
           sheet: { pattern: sheet.pattern, items: sheet.items.map(function (it) { return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; }) },
@@ -40094,9 +40731,12 @@
               if (a) { var tw = num(p.w, 0.01, 1, 0.3), th = num(p.h, 0.01, 1, 0.3); o = { x: num(p.x, -0.5, 1, 0), y: num(p.y, -0.5, 1, 0), w: tw, h: th, a: a }; }
               else { var x = num(p.x, 0, 1, 0), y = num(p.y, 0, 1, 0); o = { x: x, y: y, w: num(p.w, 0.01, 1 - x, 0.3), h: num(p.h, 0.01, 1 - y, 0.3) }; }
               if (z) o.z = z;
+              var sn = Math.round(num(p.s, 0, MAX_SPOTS, 0)); if (sn >= 1) o.s = sn;
               return o;
             }), copy: typeof f.copy === 'boolean' ? f.copy : undefined,
             rep: Math.round(num(f.rep, 0, MAX_SPOTS, 0)) || undefined,
+            one: f.one === false ? false : undefined,
+            tl: Math.round(num(f.tl, -0.1, 0.1, 0) * 10000) / 10000 || undefined, tr: Math.round(num(f.tr, -0.1, 0.1, 0) * 10000) / 10000 || undefined, tb: Math.round(num(f.tb, -0.1, 0.1, 0) * 10000) / 10000 || undefined,
             tier: (f.tier === 'receipt' || f.tier === 'photo' || f.tier === 'all') ? f.tier : undefined
           };
         });
@@ -40360,7 +41000,7 @@
       ['input', 'change', 'click'].forEach(function (type) { tabSetup.addEventListener(type, scheduleSetupNav); });
 
       // ---- Start bar ----
-      document.getElementById('startBarBtn').addEventListener('click', function () { goToSessionBtn.click(); });
+      // (The Start button is wired up with the saved profiles, which ask to save first.)
       // My Events (event links, guest payments, printing) opens signed in with this booth's own login: nothing to type.
       (function () {
         var rental = !!(window.__PB && window.__PB.type === 'rental');
@@ -40693,11 +41333,17 @@
       var pillSyncs = [];
       function pillify(sel) {
         var row = document.createElement('div'); row.className = 'pills'; row.setAttribute('role', 'group');
-        [].forEach.call(sel.options, function (o) {
-          var b = document.createElement('button'); b.type = 'button'; b.className = 'pill'; b.textContent = o.textContent; b.dataset.v = o.value;
-          row.appendChild(b);
-        });
+        function build() {
+          row.textContent = '';
+          [].forEach.call(sel.options, function (o) {
+            var b = document.createElement('button'); b.type = 'button'; b.className = 'pill'; b.textContent = o.textContent; b.dataset.v = o.value;
+            row.appendChild(b);
+          });
+        }
+        build();
         function sync() { [].forEach.call(row.children, function (b) { var on = b.dataset.v === sel.value; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); }); }
+        // Selects whose options are rewritten later (e.g. the voucher list, one per payment option) call this to redraw their pills.
+        sel._pillRefresh = function () { build(); sync(); };
         row.addEventListener('click', function (e) {
           var b = e.target.closest('.pill'); if (!b) return;
           sel.value = b.dataset.v; sel.dispatchEvent(new Event('change', { bubbles: true })); sync();

@@ -1,4 +1,5 @@
 import { safe, json, checkLicense, verifyToken, licenses, setupsStore, cleanEventName, setupKeyFor as keyFor } from '../lib/core.mjs';
+import { mergeProfiles } from '../lib/profiles-merge.mjs';
 
 // Saves and loads the booth's Setup (layout, theme, backdrop, event name,
 // fonts, timers, filters...) on the server, so it survives refreshes, restarts
@@ -14,7 +15,9 @@ const MAX_SETTINGS = 40000;          // bytes of setup JSON
 const MAX_IMAGE = 3500000;           // characters of one image (data URL)
 const MAX_THEMES_JSON = 400000;      // all of a customer's saved themes (incl. small thumbnails)
 const MAX_THEMES = 40;
+const MAX_PROFILES_JSON = 1000000;   // all of a customer's saved profiles (each is one setup, up to 40 KB, plus a small thumbnail)
 const IMAGE_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+const ASSET_IMAGE_RE = /^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/;   // uploaded pictures may also be small animated GIFs
 // Own shutter / countdown sounds: the booth trims them to a short WAV before uploading.
 const MAX_SOUND = 600000;
 const SOUND_RE = /^data:audio\/wav;base64,[A-Za-z0-9+/=]+$/;
@@ -75,9 +78,16 @@ export default safe(async (req) => {
       const data = String(b.data || '');
       if (!ASSET_ID_RE.test(aid)) return json({ error: 'Bad image id' }, 400);
       const isSound = SOUND_RE.test(data);
-      if (isSound ? data.length > MAX_SOUND : (data.length > MAX_IMAGE || !IMAGE_RE.test(data))) return json({ error: isSound ? 'That sound is too long.' : 'That image is too large or not a PNG/JPEG.' }, 413);
+      if (isSound ? data.length > MAX_SOUND : (data.length > MAX_IMAGE || !ASSET_IMAGE_RE.test(data))) return json({ error: isSound ? 'That sound is too long.' : 'That image is too large or not a PNG/JPEG/GIF.' }, 413);
       await store.set(ownerId + '_a_' + aid, data);
       return json({ ok: true, id: aid });
+    }
+    // Only used for a profile's own backdrop picture, once no profile uses it any more.
+    case 'asset-delete': {
+      const aid = String(b.id || '');
+      if (!ASSET_ID_RE.test(aid)) return json({ error: 'Bad image id' }, 400);
+      await store.delete(ownerId + '_a_' + aid);
+      return json({ ok: true });
     }
     case 'asset-get': {
       const ids = (Array.isArray(b.ids) ? b.ids : []).map(String).filter((x) => ASSET_ID_RE.test(x)).slice(0, 12);
@@ -114,6 +124,26 @@ export default safe(async (req) => {
       if (raw.length > MAX_THEMES_JSON) return json({ error: 'Too many saved themes — delete a few first.' }, 413);
       await store.setJSON(ownerId + '_themes', { themes: JSON.parse(raw).themes, updatedAt: Date.now() });
       return json({ ok: true });
+    }
+
+    // ---- Saved profiles: whole setups saved under a name, shared by all of this customer's events ----
+    case 'profiles-get': {
+      const doc = await store.get(ownerId + '_profiles', { type: 'json' });
+      return json({ ok: true, profiles: doc && Array.isArray(doc.profiles) ? doc.profiles : [], deleted: doc && doc.deleted ? doc.deleted : {} });
+    }
+    // The device sends its list; it is merged with the server's (newer save wins, a delete beats an older save)
+    // and the merged list is sent back, so two tablets never overwrite each other.
+    case 'profiles-save': {
+      if (!Array.isArray(b.profiles)) return json({ error: 'Bad profiles' }, 400);
+      for (const p of b.profiles) {
+        if (p && p.settings && JSON.stringify(p.settings).length > MAX_SETTINGS) return json({ error: 'A profile is too large to save.' }, 413);
+      }
+      const old = await store.get(ownerId + '_profiles', { type: 'json' });
+      const merged = mergeProfiles(old && old.profiles, old && old.deleted, b.profiles, b.deleted);
+      const raw = JSON.stringify(merged);
+      if (raw.length > MAX_PROFILES_JSON) return json({ error: 'Too many saved profiles — delete a few first.' }, 413);
+      await store.setJSON(ownerId + '_profiles', { profiles: merged.profiles, deleted: merged.deleted, updatedAt: Date.now() });
+      return json({ ok: true, profiles: merged.profiles, deleted: merged.deleted });
     }
 
     default:

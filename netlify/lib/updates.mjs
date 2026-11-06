@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.90', date: '2026-11-06' },
   { version: '1.0.89', date: '2026-11-06' },
   { version: '1.0.88', date: '2026-11-06' },
   { version: '1.0.87', date: '2026-11-06' },
@@ -137,6 +138,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-06', title: 'Vouchers: Every Payment Option Now Shows Up, Including Option 3', for: ['app', 'website'], app: '1.0.90',
+    items: [
+      'Fixed: when you added a third (or fourth) payment option, it was missing from the voucher picker next to "Make vouchers", so you could not make or print vouchers for it. Every option now appears as soon as you add, rename or remove it.',
+      'Also in this release: named Saved profiles (save a whole setup under a name and load it on any device on your code), and small animated GIFs can be used as pictures.'
+    ]
+  },
   {
     date: '2026-11-06', title: 'Many Photo Spots, Few Photos: Every Strip Repeats the Same Photos', for: ['app', 'website'], app: '1.0.89',
     items: [

@@ -48,6 +48,10 @@
         android:usesPermissionFlags="neverForLocation"
         tools:targetApi="s" />
 
+    <!-- In-app updates (AppUpdater): the app downloads the new APK itself and hands it to Android's installer.
+         The first time, Android asks to allow "Install unknown apps" for photobooth4u. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <!-- The spoken countdown asks the tablet's text-to-speech engine (needed to see it on Android 11+) -->
     <queries>
         <intent>
@@ -94,6 +98,17 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
+
+        <!-- Shares the downloaded update APK (cache/updates/) with Android's package installer -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_paths" />
+        </provider>
     </application>
 
 </manifest>

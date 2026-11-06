@@ -102,7 +102,9 @@ class MainActivity : AppCompatActivity() {
     // ---- New version prompt ----
     // At launch, when the app comes back to the front, and every 5 minutes while it is open (like the laptop app),
     // ask the site for the newest tablet app; when this one is older, offer the download. "Later" hides that
-    // version for a day. "Update" opens the APK in the browser, and Android then offers to install it over this app.
+    // version for a day. "Update" downloads the APK inside the app with a progress bar (AppUpdater), and Android
+    // then offers to install it over this app.
+    private val updater by lazy { AppUpdater(this) }
     private val updateHandler = Handler(Looper.getMainLooper())
     private val updateLoop = object : Runnable {
         override fun run() { checkForAppUpdate(); updateHandler.postDelayed(this, 5 * 60_000L) }
@@ -127,11 +129,11 @@ class MainActivity : AppCompatActivity() {
                 if (latest.isEmpty() || !url.startsWith("https://") || !versionNewer(latest, mine)) return@Thread
                 if (now < prefs.getLong("update_snooze_" + latest, 0L)) return@Thread
                 runOnUiThread {
-                    if (isFinishing || isDestroyed || updateDialog?.isShowing == true) return@runOnUiThread
+                    if (isFinishing || isDestroyed || updateDialog?.isShowing == true || updater.busy) return@runOnUiThread
                     updateDialog = AlertDialog.Builder(this)
                         .setTitle("New version available")
                         .setMessage("photobooth4u " + latest + " is ready (this tablet has " + mine + "). Update between events, not during a session.")
-                        .setPositiveButton("Update") { _, _ -> try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (e: Exception) { } }
+                        .setPositiveButton("Update") { _, _ -> updater.start(url, latest) }
                         .setNegativeButton("Later") { _, _ -> prefs.edit().putLong("update_snooze_" + latest, System.currentTimeMillis() + 24 * 3600_000L).apply() }
                         .show()
                 }
@@ -244,6 +246,11 @@ class MainActivity : AppCompatActivity() {
         // a network right now — otherwise there's no point waiting on a request that can
         // only fail, so go straight to the offline booth.
         bootWithLicence()
+        // Delete update APKs this app has already reached (they are ~30 MB each)
+        try {
+            val mine = packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+            updater.cleanUp { v -> versionNewer(v, mine) }
+        } catch (e: Exception) { }
         updateHandler.postDelayed(updateLoop, 20_000L)
         checkinHandler.postDelayed(checkinLoop, 10 * 60_000L)
     }
@@ -427,6 +434,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         hideSystemBars()
+        updater.onResume()      // back from "Install unknown apps": carry on with the update
         checkForAppUpdate()
     }
 
@@ -447,6 +455,7 @@ class MainActivity : AppCompatActivity() {
         cameraHelper?.stop()
         checkinHandler.removeCallbacksAndMessages(null)
         updateHandler.removeCallbacksAndMessages(null)
+        updater.cancel()
     }
 
     private fun hideSystemBars() {

@@ -11673,6 +11673,61 @@
       position: fixed;
       inset: 0;
       z-index: 9000;
+    /* ---- QR pop-up after a session (Step 7 "Show the QR code in a pop-up") ----
+       1. "wait": the finished photo on its own for a few seconds. Upright screens get it almost full screen
+          (the copy in #qrPopPhoto); sideways screens keep the normal photo, with the QR card hidden.
+       2. "show": the result card (#qrSection, moved into #qrPopSlot) as a pop-up with a big QR code. */
+    body.qrpop-wait #qrSection { display: none !important; }
+    .qrpop-ov[hidden] { display: none !important; }
+    .qrpop-ov {
+      position: fixed;
+      inset: 0;
+      z-index: 250;           /* under the copies sheet (280), printing note (275) and PIN box (270) */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+      background: transparent;
+      pointer-events: none;
+      transition: background .3s ease;
+    }
+    .qrpop-ov.show { background: rgba(14, 11, 16, .62); pointer-events: auto; }
+    .qrpop-photo { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 6px; box-shadow: 0 18px 60px rgba(0, 0, 0, .55); transition: opacity .3s ease, filter .3s ease; }
+    @media (orientation: portrait) {
+      .qrpop-ov.wait, .qrpop-ov.show { background: #0b0e12; pointer-events: auto; }
+      .qrpop-ov .qrpop-photo { display: block; }
+      .qrpop-ov.show .qrpop-photo { opacity: .42; filter: blur(1px); }
+    }
+    .qrpop-slot { position: relative; display: flex; justify-content: center; max-width: 100%; max-height: 100%; }
+    @keyframes qrPopIn { from { opacity: 0; transform: translateY(18px) scale(.96); } to { opacity: 1; transform: none; } }
+    #qrPopOv #qrSection:not(.hidden) {
+      display: block !important;
+      width: min(640px, 94vw) !important;
+      max-height: calc(100vh - 24px);
+      overflow: auto;
+      margin: 0 !important;
+      padding: 26px 26px 20px !important;
+      background: var(--panel, #fff);
+      color: var(--ink, #1C1A1E);
+      border: 0;
+      border-radius: 26px;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, .5);
+      text-align: center !important;
+      animation: qrPopIn .3s ease-out;
+    }
+    #qrPopOv #qrSection .panel-label { font-size: clamp(22px, 3.4vw, 30px) !important; text-align: center; margin: 0 0 6px !important; }
+    #qrPopOv #qrSection .qr-results { display: flex; flex-wrap: wrap;   /* not !important: "Print first" hides it with an inline style */ justify-content: center !important; gap: 18px; margin: 12px 0 0 !important; }
+    #qrPopOv #qrSection .qr-result { align-items: center !important; text-align: center; }
+    #qrPopOv #qrSection .qr-box { width: min(340px, 74vw, 46vh) !important; height: min(340px, 74vw, 46vh) !important; }
+    #qrPopOv #qrSection .qr-results:has(.qr-result + .qr-result) .qr-box { width: min(260px, 42vw, 36vh) !important; height: min(260px, 42vw, 36vh) !important; }
+    #qrPopOv #qrSection .qr-caption { font-size: 15px !important; }
+    #qrPopOv #qrSection #qrHint { font-size: 15px; margin: 12px 0 0 !important; text-align: center; }
+    #qrPopOv #qrSection .print-first-hold { padding: 34px 20px; margin: 14px 0 4px; }
+    #qrPopOv #qrSection .print-first-hold .pf-spinner { width: 64px; height: 64px; border-width: 6px; }
+    #qrPopOv #qrSection #printFirstStatus { font-size: 20px !important; }
+    #qrPopOv #qrSection .result-actions { display: flex !important; margin-top: 18px !important; }
+    #qrPopOv #qrSection .result-timer { margin: 14px 6px 0 !important; }
+
       background: radial-gradient(120% 90% at 35% 40%, #1d232b 0%, #0b0e12 70%);
       color: #ffffff;
       display: grid;
@@ -14040,6 +14095,24 @@
             type a voucher you sell at the booth. <a href="/lifetime/photobooth4u-setup-guide.pdf#page=9"
               target="_blank" rel="noopener">How it works (guide, page 9)</a></p>
           <div class="pay-modes" id="payModes" role="radiogroup" aria-label="How guests pay">
+          <p class="sub-label" style="margin-top:16px;">After the photos</p>
+          <label class="toggle-row" style="margin-top:4px;"><input type="checkbox" id="qrPopToggle"> Show the QR
+            code in a pop-up</label>
+          <div class="opt-row" id="qrPopDelayRow">
+            <span class="lbl">Show the photo first for</span>
+            <select class="mini-select pillify" id="qrPopDelaySelect">
+              <option value="0">No wait</option>
+              <option value="2">2s</option>
+              <option value="3" selected>3s</option>
+              <option value="4">4s</option>
+              <option value="5">5s</option>
+              <option value="8">8s</option>
+            </select>
+          </div>
+          <p class="panel-hint" id="qrPopHint" style="margin:2px 0 0;">After the last photo the finished picture is
+            shown on its own (almost the whole screen when the screen is upright), then a pop-up shows a big QR code.
+            With <b>Print first before showing QR</b> (step 4) on, the pop-up says Printing and the QR code appears
+            when the print is done.</p>
             <button type="button" class="chip" data-mode="off">Free</button>
             <button type="button" class="chip web-only" data-mode="qr">QR payment</button>
             <button type="button" class="chip" data-mode="voucher">Vouchers</button>
@@ -15130,6 +15203,11 @@
           id="copiesSheetVal">1</b><button type="button" data-d="1" aria-label="More">+</button></span>
       <p class="cs-left" id="copiesSheetLeft"></p>
       <div class="cs-btns"><button type="button" id="copiesSheetCancel">Cancel</button><button type="button" class="go"
+  <!-- QR pop-up after a session: the finished photo first, then the result card (#qrSection is moved in here) -->
+  <div class="qrpop-ov" id="qrPopOv" hidden>
+    <canvas class="qrpop-photo" id="qrPopPhoto" aria-hidden="true"></canvas>
+    <div class="qrpop-slot" id="qrPopSlot"></div>
+  </div>
           id="copiesSheetGo">Print</button></div>
     </div>
   </div>
@@ -20889,7 +20967,7 @@
           var cardH = 0;
           try {
             var qs = document.getElementById('qrSection');
-            if (state === 'result' && qs && qs.offsetParent !== null && qs.parentElement.getBoundingClientRect().top > sw.getBoundingClientRect().top + 20) cardH = qs.offsetHeight + 18;
+            if (state === 'result' && qs && qs.offsetParent !== null && !qs.closest('#qrPopOv') && qs.parentElement.getBoundingClientRect().top > sw.getBoundingClientRect().top + 20) cardH = qs.offsetHeight + 18;
           } catch (e) { }
           var isShoot = document.body.classList.contains('shooting');
           var Hn = isShoot ? Math.max(220, vh - (ctrlH ? ctrlH + 8 : 46)) : Math.max(220, vh - top - ctrlH - filmH - btnH - cardH - 14);
@@ -21043,6 +21121,7 @@
         frames.forEach((frame, i) => {
           const shot = shotCanvases[i];
           frame.classList.toggle('filled', !!shot);
+        if (!showQr && typeof qrPopEnd === 'function') qrPopEnd();
           frame.classList.toggle('pickable', !!(sess && sess.reviewing && shot && retakesAllowed()));
           frame.classList.toggle('picked', !!(sess && sess.reviewing && sess.pick === i && retakesAllowed()));
           frame.dataset.i = i;
@@ -22154,6 +22233,7 @@
         }
         var spinDesk = document.getElementById('spinStudioWrap') || document.getElementById('spinOverlay');
         var spinIsOpen = spinDesk && (!spinDesk.hidden && spinDesk.style.display !== 'none');
+        if (qrPopOn) qrPopBegin();
         if (spinIsOpen) {
           var editBtn = document.getElementById('spinEditBtn');
           if (editBtn && !editBtn.hidden && !editBtn.disabled) { editBtn.click(); return; }
@@ -28027,6 +28107,8 @@
         noir: 'grayscale(1) contrast(1.4) brightness(.94)'
       };
       var VINTAGE_KEYS = ['film', 'faded', 'retro', 'instant', 'noir'];
+      var qrPopOn = false;         // Step 7: QR code in a pop-up, after the finished photo is shown on its own
+      var qrPopDelay = 3;          // seconds the photo is shown before the pop-up
       // Extras every package includes (admin can switch one off per client). Missing = on.
       function extraOn(name) { return !(window.__PB && window.__PB.extras && window.__PB.extras[name] === false); }
       if (!extraOn('vintage')) VINTAGE_KEYS.forEach(function (k) { delete FILTERS[k]; });
@@ -28578,6 +28660,72 @@
         if (!sec) return;
         void bar.offsetWidth;
         bar.style.transition = 'width ' + sec + 's linear'; bar.style.width = '0%';
+      var qrPopToggle = document.getElementById('qrPopToggle'), qrPopDelaySelect = document.getElementById('qrPopDelaySelect');
+      function refreshQrPopUI() {
+        qrPopToggle.checked = qrPopOn;
+        document.getElementById('qrPopDelayRow').style.display = qrPopOn ? '' : 'none';
+      }
+      qrPopToggle.addEventListener('change', function () { qrPopOn = qrPopToggle.checked; refreshQrPopUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+      qrPopDelaySelect.addEventListener('change', function () { qrPopDelay = Math.max(0, Math.min(15, Number(qrPopDelaySelect.value) || 0)); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
+      refreshQrPopUI();
+
+      // ---- QR pop-up after a session (see the CSS "QR pop-up after a session") ----
+      // qrPopBegin: the finished photo on its own for qrPopDelay seconds; then qrPopShow moves the result card
+      // (#qrSection: QR, Print, Done, the timer) into a pop-up. With "Print first" the card shows Printing
+      // until finishPrintFirst. qrPopEnd puts the card back; updateUI calls it when the result screen ends.
+      var qrPop = { phase: '', timer: 0, draw: 0, home: null, next: null };
+      function qrPopDrawPhoto() {
+        var cv = document.getElementById('qrPopPhoto');
+        if (!cv || !previewCanvas || !previewCanvas.width || !previewCanvas.height) return;
+        var W = window.innerWidth * 0.96, H = window.innerHeight * 0.94, a = previewCanvas.width / previewCanvas.height;
+        var w = Math.min(W, H * a), h = w / a;
+        var dpr = Math.min(2, window.devicePixelRatio || 1);
+        var pw = Math.round(w * dpr), ph = Math.round(h * dpr);
+        if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
+        cv.style.width = Math.round(w) + 'px'; cv.style.height = Math.round(h) + 'px';
+        try { cv.getContext('2d').drawImage(previewCanvas, 0, 0, pw, ph); } catch (e) { }
+      }
+      function qrPopBegin() {
+        qrPopEnd();
+        if (!qrPopOn || state !== 'result') return;
+        var ov = document.getElementById('qrPopOv');
+        qrPop.phase = 'wait';
+        clearTimeout(resultTimer); runResultTimerBar(0);     // the "next guest" timer starts with the pop-up
+        document.body.classList.add('qrpop-wait');
+        ov.className = 'qrpop-ov wait'; ov.hidden = false;
+        qrPopDrawPhoto();
+        qrPop.draw = setInterval(function () { if (window.matchMedia('(orientation: portrait)').matches) qrPopDrawPhoto(); }, 500);   // the photo may still be finishing
+        try { applyStageAspect(); } catch (e) { }
+        qrPop.timer = setTimeout(qrPopShow, Math.max(0, qrPopDelay) * 1000);
+      }
+      function qrPopShow() {
+        qrPop.timer = 0;
+        if (qrPop.phase !== 'wait' || state !== 'result') return;
+        var ov = document.getElementById('qrPopOv'), slot = document.getElementById('qrPopSlot');
+        qrPop.phase = 'show';
+        qrPop.home = qrSection.parentNode; qrPop.next = qrSection.nextSibling;
+        slot.appendChild(qrSection);
+        document.body.classList.remove('qrpop-wait');
+        ov.className = 'qrpop-ov show';
+        qrPopDrawPhoto();
+        if (!printFirstHolding) scheduleResultReset();
+        try { refreshPanelSolo(); applyStageAspect(); } catch (e) { }
+      }
+      function qrPopEnd() {
+        if (!qrPop.phase) return;
+        clearTimeout(qrPop.timer); clearInterval(qrPop.draw);
+        qrPop.timer = 0; qrPop.draw = 0; qrPop.phase = '';
+        if (qrPop.home && qrSection.parentNode !== qrPop.home) {
+          if (qrPop.next && qrPop.next.parentNode === qrPop.home) qrPop.home.insertBefore(qrSection, qrPop.next);
+          else qrPop.home.appendChild(qrSection);
+        }
+        qrPop.home = qrPop.next = null;
+        document.body.classList.remove('qrpop-wait');
+        var ov = document.getElementById('qrPopOv');
+        if (ov) { ov.hidden = true; ov.className = 'qrpop-ov'; }
+        try { refreshPanelSolo(); applyStageAspect(); } catch (e) { }
+      }
+      window.addEventListener('resize', function () { if (qrPop.phase) qrPopDrawPhoto(); });
       }
       function scheduleResultReset() {
         clearTimeout(resultTimer);
@@ -29402,6 +29550,7 @@
       extrasFab.addEventListener('click', function (e) { e.stopPropagation(); extrasPop.hidden = !extrasPop.hidden; extrasFab.setAttribute('aria-expanded', extrasPop.hidden ? 'false' : 'true'); });
       extrasPop.addEventListener('click', function (e) { if (e.target.closest('.dock-btn')) closeExtras(); });
       document.addEventListener('click', function (e) { if (!extrasPop.hidden && !e.target.closest('#extrasPop') && !e.target.closest('#extrasFab')) closeExtras(); });
+        if (qrPopOn) qrPopBegin();
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !extrasPop.hidden) closeExtras(); });
       try { var extrasObs = new MutationObserver(function () { refreshExtrasBtn(); }); EXTRA_IDS.forEach(function (id) { extrasObs.observe(document.getElementById(id), { attributes: true, attributeFilter: ['hidden', 'data-n'] }); }); } catch (e) { }
       function refreshDeskBtn() {
@@ -38446,7 +38595,7 @@
           guestPick: guestPickOn, guestLayouts: guestLayoutSet.slice(),
           boothType: boothType, btCfg: JSON.parse(JSON.stringify(btCfg)), tpls: tplsSnapshot(),
           timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
-          reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake,
+          reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake, qrPop: qrPopOn, qrPopDelay: qrPopDelay,
           outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipNumbers: flipNumbers, flipCues: flipCues, flipGridPreset: flipGridPreset, flipPrinterPool: flipPrinterPool, flipPoolMode: flipPoolMode, flipCoverStyle: flipCoverStyle, flipCoverAssetId: flipCoverAssetId, flipBackQr: flipBackQr, flipBackText: flipBackText,
           backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
           frameColorChoice: frameColorChoice, photoPlacement: photoPlacement, cropFocus: cropFocus,
@@ -38719,6 +38868,8 @@
                   }
                 } catch (e) { }
                 if (!u && it.id && typeof ASSETS !== 'undefined') {
+          if (typeof s.qrPop === 'boolean') { qrPopOn = s.qrPop; refreshQrPopUI(); }
+          if (typeof s.qrPopDelay === 'number') { qrPopDelay = Math.max(0, Math.min(15, s.qrPopDelay)); setSelectValue('qrPopDelaySelect', qrPopDelay); }
                   if (!ASSETS[it.id]) { try { await ensureAssets([it.id]); } catch (e) { } }
                   if (ASSETS[it.id]) u = ASSETS[it.id].url;
                 }
@@ -43042,7 +43193,7 @@
       var ltCache = { sig: '', urls: {} }, ltQueue = [], ltDirty = true, ltTimer = null, ltBusy = false;
       function layoutDesignSig() {
         var s = snapshotSetup();
-        ['layout', 'activeFrame', 'chooseIds', 'frameMode', 'guestPick', 'guestLayouts', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview', 'allowRetake'].forEach(function (k) { delete s[k]; });
+        ['layout', 'activeFrame', 'chooseIds', 'frameMode', 'guestPick', 'guestLayouts', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview', 'allowRetake', 'qrPop', 'qrPopDelay'].forEach(function (k) { delete s[k]; });
         return JSON.stringify(s) + '|' + (backgroundImg ? backgroundImg.src.length : 0) + '|' + labelInput.value;
       }
       function setLayoutThumb(btn, url) {

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.93', date: '2026-11-06' },
   { version: '1.0.92', date: '2026-11-06' },
   { version: '1.0.91', date: '2026-11-06' },
   { version: '1.0.90', date: '2026-11-06' },
@@ -140,6 +141,17 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-06', title: 'Bigger Sticker Screen, Printers That Reconnect by Themselves, and Arrange & Print', for: ['app', 'website'], app: '1.0.93',
+    items: [
+      'Stickers: the Decorate screen now fills the whole screen. The photo is as big as it fits and nothing covers it; stickers sit beside it (landscape) or in a sheet under it that guests can pull up or down (portrait). Bigger sticker buttons, and Smaller / Bigger / Turn / Copy / Remove appear right next to the selected sticker.',
+      'Stickers: zoom in to place small stickers (the + / Fit / − buttons, a two-finger pinch on the photo, or a double-tap). Pinch a sticker to resize and turn it.',
+      'Bluetooth receipt printer (Android app 1.0.104): the tablet no longer forgets the printer when it is switched off or the app is closed. It links to it again by itself when it is switched back on, and a print sent while it was off waits and goes out when it is back, instead of opening the print screen.',
+      'USB SELPHY and other USB printers (Android app): switched off and on again, or unplugged and plugged back in, the booth finds the printer again by itself and keeps its paper, colour and quality settings. Prints sent while it was off wait for it.',
+      'New Printer status chip in the operator dock: green when ready, amber while reconnecting, red when a printer is off (with how many prints are waiting). Tap it to reconnect now, send a test print, clear waiting prints or open Print settings. Guests never see it on a locked booth.',
+      'Laptop app: Arrange & Print lets you browse the pictures already saved on this laptop (this event first, then older ones) and print them.'
+    ]
+  },
   {
     date: '2026-11-06', title: 'Laptop App Opens Again (Fix for 1.0.90 and 1.0.91)', for: ['app'], app: '1.0.92',
     items: [

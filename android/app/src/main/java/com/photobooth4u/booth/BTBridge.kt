@@ -8,8 +8,10 @@ import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
@@ -24,7 +26,9 @@ import java.io.IOException
 import java.io.OutputStream
 import java.util.UUID
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * BTBridge — Injected into WebView as window.__BTBridge.
@@ -89,6 +93,61 @@ class BTBridge(
     private var activeOutputStream: OutputStream? = null
     private var connectedDeviceName: String? = null
     private var connectedDeviceAddress: String? = null
+
+    // Quiet reconnect (the page asks for it in the background): one attempt at a time, off the page's thread.
+    private val reconnecting = AtomicBoolean(false)
+    private val worker = Executors.newSingleThreadExecutor()
+    private var linkReceiver: BroadcastReceiver? = null
+
+    init {
+        // Tell the page when the printer's link drops or comes back, and when Bluetooth is switched off / on.
+        val rx = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                val i = intent ?: return
+                val act = i.action ?: return
+                if (act == BluetoothAdapter.ACTION_STATE_CHANGED) {
+                    val st = i.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)
+                    if (st == BluetoothAdapter.STATE_OFF || st == BluetoothAdapter.STATE_TURNING_OFF) closeConnection()
+                    if (st == BluetoothAdapter.STATE_ON || st == BluetoothAdapter.STATE_OFF) {
+                        emit(JSONObject().put("type", "adapter").put("on", st == BluetoothAdapter.STATE_ON))
+                    }
+                    return
+                }
+                @Suppress("DEPRECATION")
+                val d: BluetoothDevice = (if (Build.VERSION.SDK_INT >= 33) i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+                    else i.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)) ?: return
+                val addr = d.address ?: return
+                val mine = addr.equals(connectedDeviceAddress, true) || addr.equals(savedAddress(), true)
+                if (!mine) return
+                if (act == BluetoothDevice.ACTION_ACL_DISCONNECTED) {
+                    if (addr.equals(connectedDeviceAddress, true)) closeConnection()       // the printer stays remembered
+                    emit(JSONObject().put("type", "link").put("on", false).put("address", addr))
+                } else if (act == BluetoothDevice.ACTION_ACL_CONNECTED) {
+                    emit(JSONObject().put("type", "link").put("on", true).put("address", addr))
+                }
+            }
+        }
+        try {
+            val f = IntentFilter().apply {
+                addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
+                addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+                addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
+            }
+            if (Build.VERSION.SDK_INT >= 33) activity.registerReceiver(rx, f, Context.RECEIVER_NOT_EXPORTED)
+            else activity.registerReceiver(rx, f)
+            linkReceiver = rx
+        } catch (_: Exception) {}
+    }
+
+    private fun savedAddress(): String? = try {
+        activity.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE).getString("last_printer_address", null)
+    } catch (_: Exception) { null }
+
+    /** Sends an event to the page: window.__BTEvent({ type: ..., ... }). */
+    private fun emit(o: JSONObject) {
+        val js = "window.__BTEvent && window.__BTEvent(" + o.toString() + ");"
+        try { activity.runOnUiThread { try { webView.evaluateJavascript(js, null) } catch (_: Exception) {} } } catch (_: Exception) {}
+    }
 
     /**
      * Identifies devices that are clearly NOT thermal printers (keyboards, mice, headphones, etc.).
@@ -300,8 +359,8 @@ class BTBridge(
                 val connRes = connectToDevice(savedDevice)
                 val isOk = try { JSONObject(connRes).optBoolean("ok", false) } catch (_: Exception) { false }
                 if (isOk) return connRes
-                // If saved device failed, clear it and fall through to picker
-                prefs.edit().remove("last_printer_address").apply()
+                // The saved printer did not answer (probably switched off). Keep it remembered and show the picker,
+                // so another printer can be chosen; the booth reconnects to the saved one by itself when it is back.
             }
         }
 
@@ -553,5 +612,68 @@ class BTBridge(
     @JavascriptInterface
     fun getConnectedDeviceName(): String? {
         return connectedDeviceName
+    }
+
+    /** True while a link to the printer is open. */
+    @JavascriptInterface
+    fun isConnected(): Boolean = activeSocket?.isConnected == true && activeOutputStream != null
+
+    /** The remembered printer: { address, name, connected } (address is "" when none was chosen yet). */
+    @JavascriptInterface
+    fun savedPrinter(): String {
+        val addr = savedAddress() ?: ""
+        var name = ""
+        if (addr.isNotEmpty()) {
+            try {
+                val d = bluetoothAdapter?.bondedDevices?.find { it.address.equals(addr, true) }
+                name = d?.name ?: ""
+            } catch (_: SecurityException) {}
+        }
+        return JSONObject().put("address", addr).put("name", name)
+            .put("connected", isConnected() && addr.equals(connectedDeviceAddress, true)).toString()
+    }
+
+    /**
+     * Reconnects to the remembered printer without asking anything: no picker, and the printer is never forgotten.
+     * Runs off the page's thread; the result arrives as window.__BTEvent({ type: "reconnect", ok, name, address, error }).
+     * Returns at once: { ok: true, started | busy | connected } or { ok: false, none: true } when no printer was chosen yet.
+     */
+    @JavascriptInterface
+    fun connectSaved(): String {
+        val addr = savedAddress()
+        if (addr.isNullOrBlank()) return JSONObject().put("ok", false).put("none", true).toString()
+        if (isConnected() && addr.equals(connectedDeviceAddress, true)) {
+            return JSONObject().put("ok", true).put("connected", true).put("name", connectedDeviceName ?: "").put("address", addr).toString()
+        }
+        if (!reconnecting.compareAndSet(false, true)) return JSONObject().put("ok", true).put("busy", true).toString()
+        try {
+            worker.execute {
+                val res = try { quietConnect(addr) } catch (e: Exception) {
+                    JSONObject().put("ok", false).put("error", e.message ?: "Could not connect")
+                } finally { reconnecting.set(false) }
+                emit(res.put("type", "reconnect").put("address", addr))
+            }
+        } catch (e: Exception) {
+            reconnecting.set(false)
+            return JSONObject().put("ok", false).put("error", e.message ?: "Could not start").toString()
+        }
+        return JSONObject().put("ok", true).put("started", true).toString()
+    }
+
+    private fun quietConnect(addr: String): JSONObject {
+        if (!hasBluetoothPermission()) return JSONObject().put("ok", false).put("error", "Bluetooth permission needed")
+        val adapter = bluetoothAdapter ?: return JSONObject().put("ok", false).put("error", "No Bluetooth on this device")
+        if (!adapter.isEnabled) return JSONObject().put("ok", false).put("adapterOff", true).put("error", "Bluetooth is turned off")
+        val device = try { adapter.bondedDevices?.find { it.address.equals(addr, true) } } catch (_: SecurityException) { null }
+            ?: return JSONObject().put("ok", false).put("unpaired", true).put("error", "The printer is no longer paired")
+        return try { JSONObject(connectToDevice(device)) } catch (_: Exception) { JSONObject().put("ok", false).put("error", "Could not connect") }
+    }
+
+    /** App closing: close the link and stop listening, but keep the chosen printer for next time. */
+    fun shutdown() {
+        closeConnection()
+        try { linkReceiver?.let { activity.unregisterReceiver(it) } } catch (_: Exception) {}
+        linkReceiver = null
+        try { worker.shutdownNow() } catch (_: Exception) {}
     }
 }

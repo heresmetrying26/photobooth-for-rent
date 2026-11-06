@@ -517,6 +517,29 @@ export function printReqRead(id) {
   try { return readFileSync(join(dir, r.file)); } catch { return null; }
 }
 
+// Arrange & Print: the operator browses the pictures already saved on this laptop (this event first, then older events).
+const STUDIO_IMG_RE = /\.(jpe?g|png|webp)$/i;
+export function studioFolders(folderKey, subfolder) {
+  const name = safeName(folderKey) || ('Photobooth ' + today()), sub = safeName(subfolder);
+  const curId = (name + (sub ? '/' + sub : '')).toLowerCase();
+  const out = [];
+  for (const slug of Object.keys(index.folders)) {
+    const f = index.folders[slug], dir = dirOf(slug);
+    if (!dir || !existsSync(dir)) continue;
+    out.push({ slug, name: f.sub ? f.name + ' / ' + f.sub : f.name, at: f.at || 0, current: f.id === curId && f.root === ROOT });
+  }
+  return out.sort((a, b) => (b.current - a.current) || (b.at - a.at)).slice(0, 60);
+}
+export function studioList(slug) {
+  const dir = dirOf(String(slug || '')); if (!dir) return [];
+  return photosIn(dir).filter((p) => STUDIO_IMG_RE.test(p.n)).slice(0, 600).map((p) => ({ name: p.n, t: p.t }));
+}
+export function studioRead(slug, name) {
+  const dir = dirOf(String(slug || '')), n = basename(String(name || ''));
+  if (!dir || !STUDIO_IMG_RE.test(n) || n.startsWith('.')) return null;
+  try { return readFileSync(join(dir, n)); } catch { return null; }
+}
+
 const printNowJobs = new Map();
 const PRINTNOW_MAX = 20, PRINTNOW_KEEP_MS = 120000;
 export function printNowTake() {

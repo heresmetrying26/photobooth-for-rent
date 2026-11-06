@@ -16,7 +16,7 @@ import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
 import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
-import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone } from './lib/photos.mjs';
+import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { detectWifi } from './lib/wifi.mjs';
@@ -307,6 +307,10 @@ function wireIpc() {
   ipcMain.handle('pb4u:printReqList', () => printReqList());
   ipcMain.handle('pb4u:printReqDone', (e, id) => printReqDone(id));
   ipcMain.handle('pb4u:printReqRead', (e, id) => printReqRead(id));
+  // Arrange & Print: browse and read the pictures saved on this laptop
+  ipcMain.handle('pb4u:studioFolders', (e, key, sub) => studioFolders(String(key || ''), String(sub || '')));
+  ipcMain.handle('pb4u:studioList', (e, slug) => studioList(slug));
+  ipcMain.handle('pb4u:studioRead', (e, slug, name) => studioRead(slug, name));
   ipcMain.handle('pb4u:spinChoose', async () => {
     const r = await dialog.showOpenDialog(win, { title: 'Folder the 360 videos are saved to', defaultPath: spinDirNow() || photosRoot(), properties: ['openDirectory', 'createDirectory'] });
     if (r.canceled || !r.filePaths[0]) return null;

@@ -439,6 +439,113 @@
       display: none;
     }
 
+    /* Printer status chip (dock) + its pop-up */
+    .pstat-fab .pstat-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #22a05a;
+      box-shadow: 0 0 0 3px rgba(34, 160, 90, .18);
+      flex: none;
+    }
+    .pstat-fab[data-state="reconnecting"] .pstat-dot {
+      background: #e0a100;
+      box-shadow: 0 0 0 3px rgba(224, 161, 0, .2);
+      animation: pstatPulse 1.1s ease-in-out infinite;
+    }
+    .pstat-fab[data-state="off"] {
+      border-color: #e7b3aa;
+      color: #a3261a;
+    }
+    .pstat-fab[data-state="off"] .pstat-dot {
+      background: #d23b2a;
+      box-shadow: 0 0 0 3px rgba(210, 59, 42, .2);
+    }
+    @keyframes pstatPulse {
+      50% { opacity: .35; }
+    }
+    .pstat-pop {
+      padding-top: 14px;
+    }
+    .pstat-pop .bp-btns .action-btn[hidden] {
+      display: none;
+    }
+    .pstat-close {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--ink-dim);
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .pstat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 8px 0 10px;
+    }
+    .pstat-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #f6f2ee;
+    }
+    .pstat-row i {
+      width: 11px;
+      height: 11px;
+      margin-top: 4px;
+      border-radius: 50%;
+      background: #22a05a;
+      flex: none;
+    }
+    .pstat-row[data-state="reconnecting"] i {
+      background: #e0a100;
+      animation: pstatPulse 1.1s ease-in-out infinite;
+    }
+    .pstat-row[data-state="off"] i {
+      background: #d23b2a;
+    }
+    .pstat-row div {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .pstat-row b {
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+    .pstat-row span {
+      font-size: 13px;
+      color: var(--ink-dim);
+    }
+    .pstat-row em {
+      font-style: normal;
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #a3261a;
+    }
+    .pstat-auto {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 13.5px;
+      line-height: 1.4;
+      cursor: pointer;
+    }
+    .pstat-auto input {
+      margin-top: 2px;
+      flex: none;
+    }
+
     .backup-pop .bp-title {
       margin: 0 0 4px;
       font: 600 19px 'Fraunces', Georgia, serif;
@@ -3410,6 +3517,42 @@
       min-height: 38px;
       padding: 0 8px;
     }
+
+    /* Arrange & Print (operator) */
+    .st-card { width: min(1180px, 100%); }
+    .st-body { display: grid; grid-template-columns: minmax(240px, 32%) minmax(0, 1fr); gap: 18px; padding: 12px 18px 18px; align-items: start; }
+    @media (max-width: 860px) { .st-body { grid-template-columns: 1fr; } }
+    .st-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .st-h { margin: 0; font: 800 14px 'Manrope', sans-serif; color: var(--ink); }
+    .st-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .st-row .desk-btn, .st-seg .desk-btn { padding: 6px 12px; font-size: 13px; }
+    .st-seg { display: inline-flex; gap: 6px; }
+    .st-row select, .st-row input[type=number] { font: 600 13px 'Manrope', sans-serif; padding: 6px 8px; border: 1.5px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); max-width: 100%; }
+    .st-row input[type=number] { width: 70px; }
+    .st-row label { font: 700 12.5px 'Manrope', sans-serif; color: var(--ink-dim); display: inline-flex; align-items: center; gap: 6px; }
+    .st-l { font: 800 12px 'Manrope', sans-serif; color: var(--ink-dim); min-width: 40px; }
+    .st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; max-height: 58vh; overflow: auto; padding: 2px; }
+    .st-tile { position: relative; padding: 0; border: 2px solid transparent; border-radius: 8px; background: #efece7; aspect-ratio: 1 / 2; overflow: hidden; cursor: pointer; }
+    .st-tile img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .st-tile.on { border-color: var(--blue-deep); }
+    .st-tile.on::after { content: '\2713'; position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--blue-deep); color: #fff; font: 800 12px/20px 'Manrope', sans-serif; text-align: center; }
+    .st-empty { grid-column: 1 / -1; margin: 6px 0; font: 600 13px 'Manrope', sans-serif; color: var(--ink-dim); }
+    .st-hint { margin: 0; font: 600 12px 'Manrope', sans-serif; color: var(--ink-dim); }
+    .st-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .st-chip { position: relative; padding: 4px; border: 2px solid var(--line); border-radius: 8px; background: #fff; cursor: pointer; line-height: 0; }
+    .st-chip.on { border-color: var(--blue-deep); }
+    .st-chip canvas { display: block; }
+    .st-x { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; border-radius: 50%; border: 0; background: #c0392b; color: #fff; font: 800 12px/18px 'Manrope', sans-serif; padding: 0; cursor: pointer; }
+    .st-edit { border: 1.5px solid var(--line); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; background: var(--tint, #f6f4f0); }
+    .st-edit[hidden], .st-hint[hidden], .st-info[hidden] { display: none; }
+    .st-edit-h { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font: 700 13px 'Manrope', sans-serif; }
+    .st-edit-h b { overflow-wrap: anywhere; }
+    .st-q { font: 700 12px 'Manrope', sans-serif; color: var(--ink-dim); }
+    .st-warn { color: #b3541e; }
+    .st-pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+    .st-pg span { display: block; margin-top: 4px; text-align: center; font: 600 12px 'Manrope', sans-serif; color: var(--ink-dim); }
+    .st-cv { width: 100%; height: auto; display: block; border: 1px solid var(--line); background: #fff; touch-action: none; cursor: grab; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); }
+    .st-info { margin: 0; font: 700 13px 'Manrope', sans-serif; color: var(--ink); }
 
     /* 360 capture: the tablet or phone on the arm records the spin */
     .cap-ov {
@@ -11524,36 +11667,99 @@
     }
 
     /* ---- In-session Guest Sticker Customisation ---- */
+    /* ---- Guest sticker editor: full screen. The photo gets its own area (as big as it fits, nothing on top of it);
+       the stickers sit beside it (landscape) or in a sheet under it (portrait) that the guest can pull up or down. ---- */
     .guest-sticker-overlay {
-      position: absolute;
+      position: fixed;
       inset: 0;
-      z-index: 85;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      pointer-events: none;
-      transition: opacity 0.25s ease;
+      z-index: 9000;
+      background: radial-gradient(120% 90% at 35% 40%, #1d232b 0%, #0b0e12 70%);
+      color: #ffffff;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) clamp(290px, 31vw, 420px);
+      grid-template-rows: minmax(0, 1fr);
+      padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+      overscroll-behavior: contain;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: 'Manrope', 'Segoe UI', Arial, sans-serif;
     }
     .guest-sticker-overlay.hidden {
       display: none !important;
     }
-    .gso-top {
-      pointer-events: auto;
-      background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 75%, transparent 100%);
-      padding: 12px 16px 20px;
-      color: #ffffff;
+    body.decorating {
+      overflow: hidden;
+    }
+    body.decorating .toast {
+      z-index: 9100;
+    }
+    .gso-stage {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      touch-action: none;
+    }
+    .gso-canvas-box {
+      position: absolute;
+      inset: clamp(10px, 2.4vmin, 26px);
+    }
+    .guest-sticker-overlay #previewCanvas {
+      display: block !important;
+      position: absolute;
+      inset: auto;
+      left: 0;
+      top: 0;
+      object-fit: fill;
+      background: transparent;
+      border-radius: 6px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+    .gso-panel {
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 0;
+      min-height: 0;
+      background: rgba(18, 21, 26, 0.97);
+      border-left: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 16px 16px 14px;
+    }
+    .gso-grab {
+      display: none;
+      align-self: center;
+      width: 72px;
+      padding: 8px 0 6px;
+      margin: -4px 0 -6px;
+      border: none;
+      background: none;
+      cursor: grab;
+      touch-action: none;
+    }
+    .gso-grab::before {
+      content: '';
+      display: block;
+      height: 5px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, 0.35);
+    }
+    .gso-top {
+      display: flex;
+      align-items: flex-start;
       justify-content: space-between;
       gap: 12px;
+      flex: 0 0 auto;
     }
     .gso-title-wrap {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 3px;
+      min-width: 0;
     }
     .gso-title {
-      font-size: clamp(16px, 2.2vw, 22px);
+      font-size: clamp(18px, 2.3vw, 24px);
       font-weight: 800;
       margin: 0;
       letter-spacing: -0.01em;
@@ -11562,30 +11768,32 @@
       gap: 6px;
     }
     .gso-sub {
-      font-size: clamp(11px, 1.4vw, 13px);
-      color: rgba(255, 255, 255, 0.78);
+      font-size: clamp(12px, 1.4vw, 14px);
+      color: rgba(255, 255, 255, 0.72);
       margin: 0;
     }
     .gso-timer-pill {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      background: rgba(255, 255, 255, 0.18);
-      backdrop-filter: blur(8px);
-      padding: 6px 12px;
+      background: rgba(255, 255, 255, 0.14);
+      padding: 7px 13px;
       border-radius: 99px;
-      font-weight: 700;
-      font-size: 13px;
+      font-weight: 800;
+      font-size: 14px;
       letter-spacing: 0.02em;
       white-space: nowrap;
+      flex: 0 0 auto;
+      transition: background 0.2s;
+    }
+    .gso-timer-pill.low {
+      background: rgba(239, 68, 68, 0.45);
     }
     .gso-timer-bar {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
+      flex: 0 0 auto;
       height: 4px;
-      background: rgba(255,255,255,0.25);
+      border-radius: 99px;
+      background: rgba(255, 255, 255, 0.14);
+      overflow: hidden;
     }
     .gso-timer-fill {
       height: 100%;
@@ -11593,142 +11801,312 @@
       width: 100%;
       transition: width 0.1s linear;
     }
-    .gso-mid {
-      flex: 1;
-      position: relative;
-      pointer-events: none;
-    }
-    .gso-tools {
-      position: absolute;
-      bottom: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      pointer-events: auto;
-      background: rgba(18, 20, 24, 0.94);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 99px;
-      padding: 5px 12px;
+    .gso-packs {
       display: flex;
-      align-items: center;
       gap: 6px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-      z-index: 10;
-      flex-wrap: wrap;
-      justify-content: center;
+      overflow-x: auto;
+      flex: 0 0 auto;
+      padding: 0 2px 2px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
     }
-    .gso-tools button {
-      background: rgba(255, 255, 255, 0.14);
+    .gso-packs[hidden] {
+      display: none;
+    }
+    .gso-pack {
+      flex: 0 0 auto;
+      border: 1.5px solid rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.08);
       color: #ffffff;
-      border: none;
       border-radius: 99px;
-      padding: 6px 11px;
-      font-size: 12.5px;
+      padding: 9px 16px;
+      font-size: 14px;
       font-weight: 700;
       cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      transition: background 0.15s, transform 0.1s;
+      white-space: nowrap;
     }
-    .gso-tools button:active {
-      transform: scale(0.95);
-      background: rgba(255, 255, 255, 0.28);
-    }
-    .gso-tools button.danger {
-      background: rgba(239, 68, 68, 0.32);
-      color: #fca5a5;
-    }
-    .gso-bottom {
-      pointer-events: auto;
-      background: linear-gradient(0deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.7) 80%, transparent 100%);
-      padding: 12px 14px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+    .gso-pack.on {
+      background: #ffffff;
+      color: #1c1a1e;
+      border-color: #ffffff;
     }
     .gso-tray-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      overflow-x: auto;
-      padding: 4px 2px 8px;
-      scroll-behavior: smooth;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(clamp(72px, 9vmin, 96px), 1fr));
+      gap: 10px;
+      align-content: start;
+      padding: 2px 2px 6px;
       -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
     }
     .gso-tray-row::-webkit-scrollbar {
-      height: 4px;
+      width: 4px;
     }
     .gso-tray-row::-webkit-scrollbar-thumb {
       background: rgba(255, 255, 255, 0.25);
       border-radius: 99px;
     }
     .gso-sticker-btn {
-      flex: 0 0 auto;
-      width: clamp(52px, 7.5vw, 66px);
-      height: clamp(52px, 7.5vw, 66px);
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.14);
-      backdrop-filter: blur(8px);
-      border: 1.5px solid rgba(255, 255, 255, 0.2);
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.09);
+      border: 1.5px solid rgba(255, 255, 255, 0.15);
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      padding: 4px;
+      padding: 6px;
       transition: transform 0.12s, background 0.12s, border-color 0.12s;
     }
     .gso-sticker-btn:active {
       transform: scale(0.92);
-      background: rgba(255, 255, 255, 0.32);
+      background: rgba(255, 255, 255, 0.3);
     }
     .gso-sticker-btn canvas,
     .gso-sticker-btn img {
-      max-width: 90%;
-      max-height: 90%;
+      width: 84%;
+      height: 84%;
       object-fit: contain;
       pointer-events: none;
     }
     .gso-actions-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      flex: 0 0 auto;
     }
-    .gso-packs { display: flex; gap: 6px; overflow-x: auto; padding: 0 2px; -webkit-overflow-scrolling: touch; }
-    .gso-packs[hidden] { display: none; }
-    .gso-pack { flex: 0 0 auto; border: 1.5px solid rgba(255, 255, 255, 0.25); background: rgba(255, 255, 255, 0.1); color: #fff; border-radius: 99px; padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-    .gso-pack.on { background: #fff; color: #1c1a1e; border-color: #fff; }
-    /* Preview: only the photo, the timer and the preview / done buttons stay; no box, handles, trays or tools */
-    .guest-sticker-overlay.previewing .gso-mid, .guest-sticker-overlay.previewing .gso-tray-row, .guest-sticker-overlay.previewing .gso-packs, .guest-sticker-overlay.previewing .gso-btn-skip:not(#gsoPreviewBtn), .guest-sticker-overlay.previewing .gso-title-wrap .gso-sub { display: none !important; }
-    .guest-sticker-overlay.previewing .gso-top { background: linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 100%); }
     .gso-btn-skip {
-      background: rgba(255, 255, 255, 0.14);
-      color: rgba(255, 255, 255, 0.9);
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      border-radius: 99px;
-      padding: 9px 18px;
-      font-size: 13.5px;
+      background: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 14.5px;
       font-weight: 700;
       cursor: pointer;
+      white-space: nowrap;
     }
     .gso-btn-done {
+      grid-column: 1 / -1;
       background: var(--brand, #C93D27);
       color: #ffffff;
       border: none;
-      border-radius: 99px;
-      padding: 10px 24px;
-      font-size: 14.5px;
+      border-radius: 16px;
+      padding: 15px 22px;
+      font-size: 17px;
       font-weight: 800;
       cursor: pointer;
-      box-shadow: 0 4px 16px rgba(201, 61, 39, 0.4);
+      box-shadow: 0 6px 20px rgba(201, 61, 39, 0.4);
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
-      margin-left: auto;
+      white-space: nowrap;
     }
     .gso-btn-done:active {
       transform: scale(0.97);
+    }
+    /* Size / turn / copy / remove: a bar that follows the selected sticker */
+    .gso-tools {
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      gap: 6px;
+      padding: 6px;
+      background: rgba(18, 20, 24, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .gso-tools button {
+      min-width: 58px;
+      min-height: 54px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      border: none;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      font: 700 12px 'Manrope', 'Segoe UI', Arial, sans-serif;
+      cursor: pointer;
+      padding: 6px 9px;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .gso-tools button .ico {
+      font-size: 20px;
+      line-height: 1;
+    }
+    .gso-tools button:active {
+      transform: scale(0.94);
+      background: rgba(255, 255, 255, 0.28);
+    }
+    .gso-tools button.danger {
+      background: rgba(239, 68, 68, 0.3);
+      color: #fecaca;
+    }
+    /* Zoom in to place small stickers precisely */
+    .gso-zoom {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      z-index: 4;
+      display: flex;
+      gap: 6px;
+      padding: 5px;
+      background: rgba(18, 20, 24, 0.86);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 99px;
+    }
+    .gso-zoom button {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      font: 800 22px/1 'Manrope', 'Segoe UI', Arial, sans-serif;
+      cursor: pointer;
+    }
+    .gso-zoom button.fit {
+      width: auto;
+      padding: 0 14px;
+      border-radius: 99px;
+      font-size: 13px;
+    }
+    .gso-zoom button:disabled {
+      opacity: 0.35;
+    }
+    /* Preview: only the photo, the timer and the preview / done buttons stay; no box, handles, trays or tools */
+    .guest-sticker-overlay.previewing .gso-tools,
+    .guest-sticker-overlay.previewing .gso-zoom,
+    .guest-sticker-overlay.previewing .gso-tray-row,
+    .guest-sticker-overlay.previewing .gso-packs,
+    .guest-sticker-overlay.previewing .gso-grab,
+    .guest-sticker-overlay.previewing .gso-btn-skip:not(#gsoPreviewBtn),
+    .guest-sticker-overlay.previewing .gso-sub {
+      display: none !important;
+    }
+    .guest-sticker-overlay.previewing .gso-panel {
+      justify-content: space-between;
+    }
+    /* Portrait (phones, upright tablets): photo on top, a sheet of stickers under it */
+    @media (max-aspect-ratio: 1/1) {
+      .guest-sticker-overlay {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) auto;
+      }
+      .gso-panel {
+        border-left: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 22px 22px 0 0;
+        padding: 6px 14px 12px;
+        gap: 10px;
+        box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.45);
+      }
+      .gso-grab {
+        display: block;
+      }
+      .gso-title {
+        font-size: 18px;
+      }
+      .gso-sub {
+        font-size: 12px;
+      }
+      .gso-tray-row {
+        flex: 0 0 auto;
+        max-height: var(--gso-tray-h, 190px);
+        grid-template-columns: repeat(auto-fill, minmax(clamp(64px, 17vw, 92px), 1fr));
+        gap: 8px;
+        transition: max-height 0.2s ease;
+      }
+      .gso-panel[data-size="s"] .gso-tray-row {
+        --gso-tray-h: 96px;
+      }
+      .gso-panel[data-size="l"] .gso-tray-row {
+        --gso-tray-h: 48vh;
+      }
+      .gso-actions-row {
+        grid-template-columns: auto auto minmax(0, 1fr);
+      }
+      .gso-btn-done {
+        grid-column: auto;
+        padding: 13px 16px;
+        font-size: 16px;
+      }
+      .gso-btn-skip {
+        padding: 12px 12px;
+        font-size: 13.5px;
+      }
+      .gso-tools button {
+        min-width: 52px;
+        min-height: 50px;
+        padding: 5px 7px;
+      }
+      /* zoom: a small column at the top right, clear of most of the photo */
+      .gso-zoom {
+        top: 10px;
+        right: 10px;
+        bottom: auto;
+        flex-direction: column;
+        gap: 4px;
+        padding: 4px;
+        border-radius: 24px;
+      }
+      .gso-zoom button {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+      }
+      .gso-zoom button.fit {
+        width: 40px;
+        padding: 0;
+        font-size: 12px;
+      }
+    }
+    /* Narrow phones: Done gets a row of its own, full width, under Skip / Preview */
+    @media (max-aspect-ratio: 1/1) and (max-width: 460px) {
+      .gso-actions-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .gso-btn-done {
+        grid-column: 1 / -1;
+      }
+      .gso-btn-skip {
+        padding: 10px 10px;
+      }
+      .gso-sub {
+        display: none;
+      }
+    }
+    /* Short landscape screens (phones on their side): a narrower panel */
+    @media (min-aspect-ratio: 1/1) and (max-height: 520px) {
+      .guest-sticker-overlay {
+        grid-template-columns: minmax(0, 1fr) clamp(240px, 36vw, 320px);
+      }
+      .gso-panel {
+        padding: 10px 12px;
+        gap: 8px;
+      }
+      .gso-sub {
+        display: none;
+      }
+      .gso-btn-done {
+        padding: 11px 16px;
+        font-size: 15px;
+      }
     }
   </style>
   <script>/* qrcode-generator 1.4.4 (MIT) — QR codes are made on this device, no outside service. */
@@ -11864,10 +12242,17 @@
       function btSetProfile(p) {
         try { localStorage.setItem(BT_PROFILE_KEY, JSON.stringify({ speed: p && p.speed, cmd: p && p.cmd })); } catch (_) { }
       }
+      // A printer that gets data slower than it prints stops and restarts, and each stop leaves a faint line across
+      // the picture; each image band is also its own print command, with a seam where it ends. So "Slow and safe"
+      // is for tiny 58mm mobile printers only (1 row per piece, 4mm bands). On 80mm paper it ran ~8x slower than
+      // Automatic with a seam every 4mm (lines on a Vozy G80), so 80mm printers always get Automatic for it, an older
+      // saved choice included, and the Speed list hides it on 80mm.
       function btPacing(paperDots, speed) {
         if (speed === 'fast') return { chunk: 512, delay: 2, band: 256 };
-        if (speed === 'safe') return { chunk: 48, delay: 8, band: 32 };
-        return paperDots <= 384 ? { chunk: 96, delay: 8, band: 64 } : { chunk: 512, delay: 6, band: 256 };
+        if (paperDots <= 384) {
+          return speed === 'safe' ? { chunk: 48, delay: 8, band: 32 } : { chunk: 96, delay: 8, band: 64 };
+        }
+        return { chunk: 512, delay: 6, band: 256 };
       }
 
       // quality: 'best' (sharpened, dot-gain corrected, Atkinson dithering: crisp and not too dark),
@@ -12047,6 +12432,7 @@
           .then(function (c) {
             self._char = c;
             self._mode = 'le';
+            try { localStorage.setItem('pb_bt_web_name', self._name || ''); } catch (_) { }
             return self._name;
           });
       };
@@ -12107,8 +12493,84 @@
             else if (typeof B.disconnect === 'function') B.disconnect();
           }
         } catch (_) { }
-        this._server = null; this._device = null;
+        this._server = null;
+        if (keepPrinter !== true) {
+          this._device = null;
+          try { localStorage.removeItem('pb_bt_web_name'); } catch (_) { }
+        }
         if (typeof this.onDisconnect === 'function') this.onDisconnect();
+      };
+
+      // ---- Reconnect by itself ----
+      // Android app (v1.0.104+): the tablet remembers the printer and links to it again in the background (no picker).
+      // Chrome (Web Bluetooth): the printer picked in this visit, or the one Chrome still allows from an earlier visit.
+      BtThermal.prototype.canReconnect = function () {
+        var B = global.__BTBridge;
+        if (B && typeof B.connectSaved === 'function') return true;
+        if (B) return false;                                   // older Android app: only the Connect button can link
+        if (this._device && this._device.gatt) return true;
+        var saved = ''; try { saved = localStorage.getItem('pb_bt_web_name') || ''; } catch (_) { }
+        return !!(saved && typeof navigator !== 'undefined' && navigator.bluetooth && typeof navigator.bluetooth.getDevices === 'function');
+      };
+      var btReconnectWaiters = [];
+      // Events from the Android app: { type: 'reconnect' | 'link' | 'adapter', ... }
+      global.__BTEvent = function (ev) {
+        try {
+          if (!ev) return;
+          if (ev.type === 'reconnect') {
+            if (ev.ok) { btPrinter._mode = 'bridge'; btPrinter._name = ev.name || btPrinter._name || 'Bluetooth Printer'; }
+            btReconnectWaiters.splice(0).forEach(function (f) { try { f(ev); } catch (_) { } });
+          } else if ((ev.type === 'link' || ev.type === 'adapter') && ev.on === false) {
+            if (btPrinter._mode === 'bridge') btPrinter._onDisconnect();
+          }
+          if (typeof global.__pbBtEvent === 'function') global.__pbBtEvent(ev);
+        } catch (_) { }
+      };
+      function btErr(msg, extra) { var e = new Error(msg); if (extra) for (var k in extra) e[k] = extra[k]; return e; }
+      // Links to the remembered printer without asking anything. Resolves with its name.
+      BtThermal.prototype.reconnect = function () {
+        var self = this, B = global.__BTBridge;
+        if (B && typeof B.connectSaved === 'function') {
+          var r;
+          try { r = JSON.parse(B.connectSaved() || '{}'); } catch (e) { r = { ok: false, error: String((e && e.message) || e) }; }
+          if (r.connected) { self._mode = 'bridge'; self._name = r.name || self._name || 'Bluetooth Printer'; return Promise.resolve(self._name); }
+          if (!r.ok) return Promise.reject(btErr(r.none ? 'No Bluetooth printer chosen yet' : (r.error || 'Could not connect'), { none: !!r.none }));
+          return new Promise(function (res, rej) {
+            var cb = function (ev) {
+              clearTimeout(to);
+              if (ev.ok) res(self._name);
+              else rej(btErr(ev.error || 'The printer did not answer', { adapterOff: !!ev.adapterOff, unpaired: !!ev.unpaired }));
+            };
+            var to = setTimeout(function () {
+              var i = btReconnectWaiters.indexOf(cb); if (i >= 0) btReconnectWaiters.splice(i, 1);
+              rej(btErr('The printer did not answer'));
+            }, 45000);
+            btReconnectWaiters.push(cb);
+          });
+        }
+        if (B) return Promise.reject(btErr('Update the Android app to reconnect by itself', { none: true }));
+        var findDevice = self._device ? Promise.resolve(self._device) : (function () {
+          var saved = ''; try { saved = localStorage.getItem('pb_bt_web_name') || ''; } catch (_) { }
+          if (!saved || !navigator.bluetooth || typeof navigator.bluetooth.getDevices !== 'function') return Promise.reject(btErr('No Bluetooth printer chosen yet', { none: true }));
+          return navigator.bluetooth.getDevices().then(function (list) {
+            var d = (list || []).filter(function (x) { return x && x.name === saved; })[0];
+            if (!d) throw btErr('Chrome no longer has this printer. Tap Connect once.', { none: true });
+            self._device = d; self._name = d.name || saved;
+            d.addEventListener('gattserverdisconnected', function () { self._onDisconnect(); });
+            return d;
+          });
+        })();
+        return findDevice.then(function (d) {
+          var link = d.gatt.connect();
+          var slow = new Promise(function (_, rej) { setTimeout(function () { rej(btErr('The printer did not answer')); }, 20000); });
+          return Promise.race([link, slow]);
+        }).then(function (server) {
+          self._server = server;
+          return self._findWritableChar(server);
+        }).then(function (c) {
+          self._char = c; self._mode = 'le';
+          return self._name;
+        });
       };
 
       BtThermal.prototype._onDisconnect = function () {
@@ -12260,12 +12722,22 @@
         return false;
       }
 
+      // Prints one page. Not linked: links to the remembered printer quietly (the picker only when none was chosen yet).
+      // The send fails (a stale link after the printer was switched off and on): links again once and sends it again.
       function printViaBluetooth(canvas, paper, opts) {
         btPrinter._paperWidth = PAPER_WIDTHS[paper || '80mm'] || 576;
-        var p = btPrinter.connected
-          ? Promise.resolve()
-          : btPrinter.connect();
-        return p.then(function () { return btPrinter.printCanvas(canvas, opts); });
+        var link = function () {
+          if (btPrinter.connected) return Promise.resolve();
+          if (btPrinter.canReconnect()) return btPrinter.reconnect().catch(function (e) { if (e && e.none) return btPrinter.connect(); throw e; });
+          return btPrinter.connect();
+        };
+        return link().then(function () {
+          return btPrinter.printCanvas(canvas, opts).catch(function (err) {
+            if (!btPrinter.canReconnect()) throw err;
+            try { btPrinter.disconnect(true); } catch (_) { }
+            return btPrinter.reconnect().then(function () { return btPrinter.printCanvas(canvas, opts); });
+          });
+        });
       }
 
       global._btThermal = {
@@ -14078,25 +14550,33 @@
           </div>
           <div class="flash-overlay" id="flashOverlay"></div>
 
+          <!-- Full-screen sticker editor. Moved to <body> when it opens; the photo canvas is moved into gsoCanvasBox while it is open. -->
           <div class="guest-sticker-overlay hidden" id="guestStickerOverlay">
-            <div class="gso-timer-bar"><div class="gso-timer-fill" id="gsoTimerFill"></div></div>
-            <div class="gso-top">
-              <div class="gso-title-wrap">
-                <p class="gso-title"><span>✨</span> Decorate your photo</p>
-                <p class="gso-sub">Tap stickers to add · drag &amp; pinch to move</p>
-              </div>
-              <div class="gso-timer-pill"><span id="gsoTimerSec">35</span>s left</div>
-            </div>
-            <div class="gso-mid">
+            <div class="gso-stage" id="gsoStage">
+              <div class="gso-canvas-box" id="gsoCanvasBox"></div>
               <div class="gso-tools" id="gsoTools" style="display:none;">
-                <button type="button" id="gsoSizeDown" title="Make smaller">➖ Size</button>
-                <button type="button" id="gsoSizeUp" title="Make bigger">➕ Size</button>
-                <button type="button" id="gsoRotate" title="Rotate">🔄 Rotate</button>
-                <button type="button" id="gsoDup" title="Duplicate">📑 Copy</button>
-                <button type="button" class="danger" id="gsoDelete" title="Delete sticker">🗑️ Remove</button>
+                <button type="button" id="gsoSizeDown" title="Make smaller"><span class="ico">➖</span>Smaller</button>
+                <button type="button" id="gsoSizeUp" title="Make bigger"><span class="ico">➕</span>Bigger</button>
+                <button type="button" id="gsoRotate" title="Rotate"><span class="ico">🔄</span>Turn</button>
+                <button type="button" id="gsoDup" title="Duplicate"><span class="ico">📑</span>Copy</button>
+                <button type="button" class="danger" id="gsoDelete" title="Delete sticker"><span class="ico">🗑️</span>Remove</button>
+              </div>
+              <div class="gso-zoom" id="gsoZoom">
+                <button type="button" id="gsoZoomOut" title="Zoom out" aria-label="Zoom out">−</button>
+                <button type="button" class="fit" id="gsoZoomFit" title="Show the whole photo">Fit</button>
+                <button type="button" id="gsoZoomIn" title="Zoom in" aria-label="Zoom in">+</button>
               </div>
             </div>
-            <div class="gso-bottom">
+            <div class="gso-panel" id="gsoPanel" data-size="m">
+              <button type="button" class="gso-grab" id="gsoGrab" aria-label="Show more or fewer stickers"></button>
+              <div class="gso-top">
+                <div class="gso-title-wrap">
+                  <p class="gso-title"><span>✨</span> Decorate your photo</p>
+                  <p class="gso-sub">Tap a sticker to add it · drag to move · pinch to resize</p>
+                </div>
+                <div class="gso-timer-pill"><span id="gsoTimerSec">35</span>s left</div>
+              </div>
+              <div class="gso-timer-bar"><div class="gso-timer-fill" id="gsoTimerFill"></div></div>
               <div class="gso-packs" id="gsoPacks" hidden></div>
               <div class="gso-tray-row" id="gsoTray"></div>
               <div class="gso-actions-row">
@@ -14427,6 +14907,9 @@
                     style="display:none;width:auto;margin:0 0 8px 0;">Disconnect</button>
                 </div>
                 <p class="panel-hint" id="btThermalStatusHint" style="margin:4px 0 6px;"></p>
+                <label class="pstat-auto" style="margin:2px 0 2px;"><input type="checkbox" id="btAutoReconnect" checked> Reconnect
+                  automatically when the printer is switched back on</label>
+                <p class="panel-hint" id="btAutoNote" style="margin:0 0 8px;"></p>
                 <details id="btThermalFixBox" style="margin:4px 0 8px;">
                   <summary style="cursor:pointer;font-weight:700;font-size:13px;">Prints gibberish, strange text or gaps?</summary>
                   <p class="panel-hint" style="margin:6px 0;">Small mobile printers (58mm) can lose data if it arrives too fast. Run the checks in order and stop at the first one that goes wrong.</p>
@@ -14435,7 +14918,7 @@
                     <button type="button" class="action-btn" id="btCheckSmall" style="width:auto;margin:0;">2 · Small picture</button>
                     <button type="button" class="action-btn" id="btCheckFull" style="width:auto;margin:0;">3 · Full test strip</button>
                   </div>
-                  <p class="panel-hint" style="margin:6px 0 2px;">Text fine but the picture garbles? Pick <b>Slow and safe</b> and <b>Compatibility</b> below, then check again. Nothing prints at all? Power the printer off and on (do not hold FEED), then try 1 again.</p>
+                  <p class="panel-hint" style="margin:6px 0 2px;">Text fine but the picture garbles? Pick <b>Slow and safe</b> (58 mm paper only) and <b>Compatibility</b> below, then check again. If the picture already prints right, keep <b>Automatic</b> and <b>Standard</b>: the slower settings can leave faint lines across it. Nothing prints at all? Power the printer off and on (do not hold FEED), then try 1 again.</p>
                   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px;">
                     <label style="font-size:12px;">Speed
                       <select class="mini-select" id="btProfSpeed">
@@ -14701,6 +15184,8 @@
           <rect x="3" y="9" width="18" height="8" rx="2" />
           <path d="M7 14h10v7H7z" />
         </svg><span>Printer</span></button>
+      <button type="button" class="dock-btn pstat-fab" id="pstatFab" hidden aria-label="Printer status" aria-expanded="false"
+        data-state="ready"><i class="pstat-dot" aria-hidden="true"></i><span class="pstat-txt">Printer ready</span></button>
       <button type="button" class="dock-btn" id="backupFab" hidden aria-label="Backup folder" aria-expanded="false"
         aria-controls="backupPop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -14765,6 +15250,12 @@
           <rect x="3" y="9" width="18" height="9" rx="2" />
           <path d="M7 14h10v7H7z" />
         </svg><span>Print requests</span></button>
+      <button type="button" class="dock-btn" id="studioFab" hidden aria-label="Arrange and print"><svg viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          aria-hidden="true">
+          <rect x="3" y="3" width="7" height="18" rx="1.5" />
+          <rect x="14" y="3" width="7" height="18" rx="1.5" />
+        </svg><span>Arrange &amp; Print</span></button>
       <button type="button" class="dock-btn" id="vgFab" hidden aria-label="Video guestbook"><svg viewBox="0 0 24 24"
           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
           aria-hidden="true">
@@ -14774,6 +15265,16 @@
     </div>
     <div class="dock-pwr" id="dockPwr" hidden>Powered by <span class="pm"
         aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>photobooth<em>4u</em></b></div>
+  </div>
+  <div class="backup-pop pstat-pop" id="pstatPop" role="dialog" aria-label="Printers" hidden>
+    <button type="button" class="pstat-close" id="pstatPopClose" aria-label="Close">&#215;</button>
+    <p class="bp-title">Printers</p>
+    <div class="pstat-list" id="pstatList"></div>
+    <label class="pstat-auto"><input type="checkbox" id="pstatAuto" checked> Reconnect automatically when a printer is switched back on</label>
+    <div class="bp-btns"><button type="button" class="action-btn primary" id="pstatReconnect">Reconnect now</button><button
+        type="button" class="action-btn" id="pstatTest" hidden>Test print</button><button type="button" class="action-btn"
+        id="pstatSettings">Print settings</button><button type="button" class="action-btn" id="pstatClear" hidden>Clear
+        waiting</button></div>
   </div>
   <div class="backup-pop" id="backupPop" role="dialog" aria-label="Backup folder" hidden>
     <p class="bp-title">Backup folder</p>
@@ -15367,6 +15868,59 @@
           class="desk-btn" id="reqClose">Close</button></div>
       <div class="desk-hint" id="reqHint"></div>
       <div class="desk-grid" id="reqGrid"></div>
+    </div>
+  </div>
+  <div class="desk-ov" id="studioOverlay" hidden role="dialog" aria-label="Arrange and print">
+    <div class="desk-card st-card">
+      <div class="desk-head"><b>&#9638; Arrange &amp; Print</b><span class="sp"></span><button type="button" class="desk-btn" id="stClose">Close</button></div>
+      <div class="st-body">
+        <div class="st-col">
+          <p class="st-h">1 &middot; Pick strips</p>
+          <div class="st-row" id="stTabs"></div>
+          <div class="st-row" id="stSrcBar"></div>
+          <div class="st-grid" id="stGrid"></div>
+          <input type="file" id="stFiles" accept="image/png,image/jpeg,image/webp" multiple hidden>
+        </div>
+        <div class="st-col">
+          <p class="st-h">2 &middot; Paper and arrangement</p>
+          <div class="st-row">
+            <label>Paper <select id="stPaper" aria-label="Paper size"></select></label>
+            <label>Gap <input type="number" id="stGap" min="0" max="30" step="0.5"> mm</label>
+            <label>Margin <input type="number" id="stMargin" min="0" max="40" step="0.5"> mm</label>
+            <label class="st-chk"><input type="checkbox" id="stCut" checked> Cut lines</label>
+          </div>
+          <div class="st-chips" id="stChips"></div>
+          <p class="st-hint" id="stChipsHint">Tap strips on the left. Tap one again to take it off.</p>
+          <div class="st-row"><button type="button" class="desk-btn" id="stClear" hidden>Clear all</button></div>
+          <div class="st-edit" id="stEdit" hidden>
+            <div class="st-edit-h"><b id="stEName"></b><span class="st-q" id="stEQ"></span></div>
+            <div class="st-row"><span class="st-l">Size</span>
+              <button type="button" class="desk-btn" data-pw="2.5" data-ph="7.5">Keychain 2.5&times;7.5</button>
+              <button type="button" class="desk-btn" data-pw="2" data-ph="6">2&times;6</button>
+              <button type="button" class="desk-btn" data-pw="4" data-ph="6">4&times;6</button></div>
+            <div class="st-row">
+              <label>Width <input type="number" id="stW" min="0.5" max="40" step="0.05"> in</label>
+              <label>Height <input type="number" id="stH" min="0.5" max="40" step="0.05"> in</label>
+              <label class="st-chk"><input type="checkbox" id="stKeep" checked> Keep shape</label></div>
+            <div class="st-row">
+              <label>Zoom <input type="range" id="stZ" min="100" max="300" value="100"></label>
+              <label>Copies <input type="number" id="stC" min="1" max="20" value="1"></label></div>
+            <div class="st-row">
+              <button type="button" class="desk-btn" id="stFit">Fit whole picture</button>
+              <button type="button" class="desk-btn" id="stReset">Reset crop</button>
+              <button type="button" class="desk-btn" id="stSame">Same size for all</button>
+              <button type="button" class="desk-btn" id="stDel">Remove</button></div>
+          </div>
+          <div class="st-row"><span class="st-l">Drag</span>
+            <span class="st-seg" id="stMode"><button type="button" class="desk-btn primary" data-mode="move">Move</button><button type="button" class="desk-btn" data-mode="crop">Crop</button></span>
+            <button type="button" class="desk-btn" id="stAuto">Auto-arrange</button></div>
+          <p class="st-hint"><b>Move</b> puts a strip somewhere else on its sheet. <b>Crop</b> slides the picture inside its strip. Untick <b>Keep shape</b> to crop to any shape.</p>
+          <div class="st-pages" id="stPages"></div>
+          <p class="st-info" id="stInfo"></p>
+          <div class="st-row"><label>Print each sheet <input type="number" id="stSheets" min="1" max="10" value="1"> time(s)</label>
+            <span class="sp" style="flex:1"></span><button type="button" class="desk-btn primary" id="stPrint" disabled>Print</button></div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="qs-ov vg-ov" id="vgOverlay" hidden role="dialog" aria-label="Video guestbook">
@@ -20179,7 +20733,7 @@
         if (!document.body.classList.contains('in-session') || document.body.classList.contains('booth-locked')) return false;
         var chip = document.getElementById('pbTimeChip');
         var chipOn = !!(chip && chip.parentNode && chip.parentNode.id === 'dockChipSlot' && chip.style.display !== 'none');
-        return !document.getElementById('camFab').hidden || !document.getElementById('printFab').hidden || !document.getElementById('backupFab').hidden ||
+        return !document.getElementById('camFab').hidden || !document.getElementById('printFab').hidden || !document.getElementById('pstatFab').hidden || !document.getElementById('backupFab').hidden ||
           !document.getElementById('galleryFab').hidden || !document.getElementById('wifiFab').hidden || !document.getElementById('lockFab').hidden || !document.getElementById('deskFab').hidden || !document.getElementById('spinFab').hidden || !document.getElementById('capFab').hidden || !document.getElementById('reqFab').hidden || !document.getElementById('vgFab').hidden ||
           !document.getElementById('dockPwr').hidden || chipOn;
       }
@@ -20901,21 +21455,131 @@
         if (!tools) return;
         var hasSel = selGuestDecor >= 0 && guestDecor[selGuestDecor];
         tools.style.display = hasSel ? 'flex' : 'none';
+        gsoPlaceTools();
+      }
+
+      // ---- Full-screen sticker editor ----
+      // While the guest decorates, the editor is moved to <body> (full screen, above everything) and the photo canvas is moved
+      // into it, sized to the photo's own shape so nothing covers it. Both go back when the guest is done.
+      var gsoHome = null;                                      // where the photo canvas normally lives (parent + next sibling)
+      var gsoView = { z: 1, tx: 0, ty: 0, w: 0, h: 0, bw: 0, bh: 0 };    // zoom and pan inside the editor (screen pixels)
+      var gsoRO = null;
+      var GSO_MAX_ZOOM = 4;
+      function gsoBox() { return document.getElementById('gsoCanvasBox'); }
+      function gsoMounted() { var b = gsoBox(); return !!(b && previewCanvas.parentNode === b); }
+      function gsoMount() {
+        var ov = document.getElementById('guestStickerOverlay'), box = gsoBox();
+        if (!ov || !box) return;
+        if (ov.parentNode !== document.body) document.body.appendChild(ov);
+        if (previewCanvas.parentNode !== box) {
+          gsoHome = { parent: previewCanvas.parentNode, next: previewCanvas.nextSibling };
+          box.appendChild(previewCanvas);
+        }
+        document.body.classList.add('decorating');
+        gsoView.z = 1; gsoView.tx = 0; gsoView.ty = 0;
+        gsoLayout();
+        if (window.ResizeObserver) {
+          if (!gsoRO) gsoRO = new ResizeObserver(function () { gsoLayout(); });
+          gsoRO.observe(box);
+        } else window.addEventListener('resize', gsoLayout);
+      }
+      function gsoUnmount() {
+        if (gsoRO) { try { gsoRO.disconnect(); } catch (e) { } }
+        window.removeEventListener('resize', gsoLayout);
+        document.body.classList.remove('decorating');
+        if (gsoHome && gsoHome.parent) {
+          var nx = gsoHome.next && gsoHome.next.parentNode === gsoHome.parent ? gsoHome.next : null;
+          try { gsoHome.parent.insertBefore(previewCanvas, nx); } catch (e) { gsoHome.parent.appendChild(previewCanvas); }
+        }
+        gsoHome = null;
+        gPtrs = {}; gpinch = null; gpan = null; gdrag = null;
+        var st = previewCanvas.style;
+        st.width = ''; st.height = ''; st.left = ''; st.top = ''; st.transform = '';
+      }
+      // Fit the photo in its area (keeping its shape), then apply the zoom / pan.
+      function gsoLayout() {
+        var box = gsoBox();
+        if (!box || previewCanvas.parentNode !== box) return;
+        var bw = box.clientWidth, bh = box.clientHeight, cw = previewCanvas.width || 1, ch = previewCanvas.height || 1;
+        if (!bw || !bh) return;
+        var sc = Math.min(bw / cw, bh / ch), w = Math.max(1, Math.round(cw * sc)), h = Math.max(1, Math.round(ch * sc));
+        gsoView.w = w; gsoView.h = h; gsoView.bw = bw; gsoView.bh = bh;
+        previewCanvas.style.width = w + 'px'; previewCanvas.style.height = h + 'px';
+        previewCanvas.style.left = ((bw - w) / 2) + 'px'; previewCanvas.style.top = ((bh - h) / 2) + 'px';
+        gsoApplyView();
+      }
+      // Keep the zoomed photo filling its area (no dragging it off screen), centred when it is smaller than the area.
+      function gsoApplyView() {
+        var v = gsoView;
+        v.z = Math.max(1, Math.min(GSO_MAX_ZOOM, v.z || 1));
+        var ox = (v.bw - v.w) / 2, oy = (v.bh - v.h) / 2, W = v.w * v.z, H = v.h * v.z;
+        if (W <= v.bw) v.tx = (v.bw - W) / 2 - ox; else v.tx = Math.min(-ox, Math.max(v.bw - W - ox, v.tx));
+        if (H <= v.bh) v.ty = (v.bh - H) / 2 - oy; else v.ty = Math.min(-oy, Math.max(v.bh - H - oy, v.ty));
+        previewCanvas.style.transform = v.z === 1 ? '' : 'translate(' + v.tx.toFixed(1) + 'px,' + v.ty.toFixed(1) + 'px) scale(' + v.z.toFixed(3) + ')';
+        var zi = document.getElementById('gsoZoomIn'), zo = document.getElementById('gsoZoomOut'), zf = document.getElementById('gsoZoomFit');
+        if (zi) zi.disabled = v.z >= GSO_MAX_ZOOM - 0.01;
+        if (zo) zo.disabled = v.z <= 1.001;
+        if (zf) zf.disabled = v.z <= 1.001;
+        gsoPlaceTools();
+      }
+      // Zoom to z, keeping the point (fx, fy) of the photo area where it is (default: the middle).
+      function gsoZoomAt(z, fx, fy) {
+        var v = gsoView, ox = (v.bw - v.w) / 2, oy = (v.bh - v.h) / 2;
+        if (fx == null) { fx = v.bw / 2; fy = v.bh / 2; }
+        var u = (fx - ox - v.tx) / v.z, q = (fy - oy - v.ty) / v.z;
+        v.z = Math.max(1, Math.min(GSO_MAX_ZOOM, z));
+        v.tx = fx - ox - v.z * u; v.ty = fy - oy - v.z * q;
+        gsoApplyView();
+      }
+      // Where in the photo area the selected sticker is (zoom buttons zoom towards it).
+      function gsoSelFocus() {
+        var d = guestDecor[selGuestDecor], box = gsoBox();
+        if (!d || !box) return null;
+        var br = box.getBoundingClientRect(), cr = previewCanvas.getBoundingClientRect();
+        return { x: cr.left - br.left + d.x * cr.width, y: cr.top - br.top + d.y * cr.height };
+      }
+      // The middle of what the guest sees now, in photo coordinates (0..1): new stickers land there when zoomed in.
+      function gsoVisibleCenter() {
+        if (!gsoMounted() || gsoView.z <= 1.001) return null;
+        var box = gsoBox(), br = box.getBoundingClientRect(), cr = previewCanvas.getBoundingClientRect();
+        if (!cr.width || !cr.height) return null;
+        return { x: (br.left + br.width / 2 - cr.left) / cr.width, y: (br.top + br.height / 2 - cr.top) / cr.height };
+      }
+      // The Size / Turn / Copy / Remove bar sits just under the selected sticker (or above it when there is no room).
+      function gsoPlaceTools() {
+        var tools = document.getElementById('gsoTools'), stage = document.getElementById('gsoStage');
+        if (!tools || !stage || tools.style.display === 'none' || !gsoMounted()) return;
+        var d = guestDecor[selGuestDecor];
+        if (!d) return;
+        var cr = previewCanvas.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+        var k = cr.width / (previewCanvas.width || 1), b = decorBox(d, previewCanvas.width, previewCanvas.height);
+        var rad = Math.hypot(b.w, b.h) / 2 * k;          // a turned sticker: use its circle so the bar never covers it
+        var cx = cr.left - sr.left + b.cx * k, cy = cr.top - sr.top + b.cy * k;
+        var tw = tools.offsetWidth, th = tools.offsetHeight, gap = 14;
+        var below = cy + rad + gap, above = cy - rad - gap - th - 26;     // 26: clear of the round turn handle
+        var y = below + th <= sr.height - 8 ? below : (above >= 8 ? above : sr.height - th - 8);
+        var x = Math.max(8, Math.min(sr.width - tw - 8, cx - tw / 2));
+        tools.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
+      }
+      function gsoRedraw() {
+        renderComposite();
+        gsoPlaceTools();
       }
 
       function addGuestSticker(src, s) {
         if (guestDecor.length >= 30) { showToast('Maximum stickers reached.', 3000); return; }
-        var n = guestDecor.length;
+        var n = guestDecor.length, vc = gsoVisibleCenter();
+        var bx = vc ? vc.x : 0.5, by = vc ? vc.y - 0.12 / gsoView.z : 0.38, step = 0.12 / (vc ? gsoView.z : 1);
         guestDecor.push({
           src: src,
-          x: 0.5 + ((n % 3) - 1) * 0.12,
-          y: 0.38 + (Math.floor(n / 3) % 3) * 0.12,
+          x: Math.max(0.04, Math.min(0.96, bx + ((n % 3) - 1) * step)),
+          y: Math.max(0.04, Math.min(0.96, by + (Math.floor(n / 3) % 3) * step)),
           s: s || 0.22,
           r: 0
         });
         selGuestDecor = guestDecor.length - 1;
         refreshGuestStickerControls();
-        renderComposite();
+        gsoRedraw();
       }
 
       function buildGuestStickerTray() {
@@ -20940,7 +21604,7 @@
           });
         }
         var curView = views.filter(function (v) { return v.id === gsoPack; })[0] || views[0];
-        tray.scrollLeft = 0;
+        tray.scrollTop = 0; tray.scrollLeft = 0;
         if (typeof STICKERS !== 'undefined' && Array.isArray(STICKERS)) {
           curView.items.forEach(function (s) {
             var b = document.createElement('button');
@@ -20948,9 +21612,9 @@
             b.className = 'gso-sticker-btn';
             b.title = s[1];
             var c = document.createElement('canvas');
-            c.width = 64; c.height = 64;
-            var x = c.getContext('2d'); x.translate(32, 32);
-            drawSticker(x, s[0], s[0].indexOf('b-') === 0 ? 46 : 52);
+            c.width = 96; c.height = 96;                           // drawn at the bigger button size so it stays sharp
+            var x = c.getContext('2d'); x.translate(48, 48);
+            drawSticker(x, s[0], s[0].indexOf('b-') === 0 ? 69 : 78);
             b.appendChild(c);
             b.addEventListener('click', function (e) {
               e.stopPropagation();
@@ -20979,107 +21643,184 @@
       }
 
       var gdrag = null, gdragRaf = 0;
+      var gPtrs = {}, gpinch = null, gpan = null, gLastTap = null;      // fingers on the photo, two-finger pinch, one-finger pan when zoomed
+      // Pointer position in photo coordinates (0..1). Works for a letterboxed (object-fit: contain) canvas too.
       function guestPreviewPoint(e) {
-        var rect = previewCanvas.getBoundingClientRect();
-        return { x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height };
+        var r = previewCanvas.getBoundingClientRect(), cw = previewCanvas.width || 1, ch = previewCanvas.height || 1;
+        var sc = Math.min(r.width / cw, r.height / ch) || 1, w = cw * sc, h = ch * sc;
+        var l = r.left + (r.width - w) / 2, t = r.top + (r.height - h) / 2;
+        return { x: (e.clientX - l) / w, y: (e.clientY - t) / h };
       }
       function hitGuestDecor(pt, W, H) {
+        var pad = 14 * decorUnit(previewCanvas);                  // about 14 screen pixels of slack around each sticker
         for (var i = guestDecor.length - 1; i >= 0; i--) {
           var b = decorBox(guestDecor[i], W, H), a = -(guestDecor[i].r || 0) * Math.PI / 180;
           var dx = pt.x * W - b.cx, dy = pt.y * H - b.cy;
           var lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
-          if (Math.abs(lx) <= b.w / 2 + 14 && Math.abs(ly) <= b.h / 2 + 14) return i;
+          if (Math.abs(lx) <= b.w / 2 + pad && Math.abs(ly) <= b.h / 2 + pad) return i;
         }
         return -1;
       }
+      function gPtrList() { return Object.keys(gPtrs).map(function (k) { return gPtrs[k]; }); }
+      function gRedrawSoon() { if (!gdragRaf) gdragRaf = requestAnimationFrame(function () { gdragRaf = 0; gsoRedraw(); }); }
 
       function wireGuestDecorInteractions() {
+        function pinchStart(ps) {
+          var d = guestDecor[selGuestDecor] || null, box = gsoBox(), br = box ? box.getBoundingClientRect() : { left: 0, top: 0 };
+          gpinch = {
+            dist: Math.max(10, Math.hypot(ps[1].x - ps[0].x, ps[1].y - ps[0].y)),
+            ang: Math.atan2(ps[1].y - ps[0].y, ps[1].x - ps[0].x),
+            d: d, s0: d ? d.s : 0, r0: d ? (d.r || 0) : 0,
+            z0: gsoView.z, tx0: gsoView.tx, ty0: gsoView.ty,
+            mx: (ps[0].x + ps[1].x) / 2 - br.left, my: (ps[0].y + ps[1].y) / 2 - br.top
+          };
+        }
         previewCanvas.addEventListener('pointerdown', function (e) {
           if (!sess || !sess.decorating || sess.decoPreview) return;
+          gPtrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+          try { previewCanvas.setPointerCapture(e.pointerId); } catch (err) { }
+          e.preventDefault();
+          var ps = gPtrList();
+          if (ps.length === 2) {         // second finger: pinch the selected sticker, or zoom the photo when none is selected
+            gdrag = null; gpan = null; gLastTap = null;
+            pinchStart(ps);
+            return;
+          }
+          if (ps.length > 2) return;
           var pt = guestPreviewPoint(e);
           var GW = previewCanvas.width, GH = previewCanvas.height;
           var ghnd = hitDecorHandle(guestDecor[selGuestDecor], pt.x * GW, pt.y * GH, GW, GH, previewCanvas);
           if (ghnd) {      // resize / rotate by the box handles
             gdrag = { id: e.pointerId, gesture: decorGestureStart(guestDecor[selGuestDecor], ghnd === 'rot' ? 'rotate' : 'resize', pt.x * GW, pt.y * GH, GW, GH) };
-            try { previewCanvas.setPointerCapture(e.pointerId); } catch (err) { }
-            e.preventDefault(); return;
+            return;
           }
-          var i = hitGuestDecor(pt, previewCanvas.width, previewCanvas.height);
+          var i = hitGuestDecor(pt, GW, GH);
           selGuestDecor = i;
           refreshGuestStickerControls();
           if (i >= 0) {
             gdrag = { id: e.pointerId, dx: guestDecor[i].x - pt.x, dy: guestDecor[i].y - pt.y };
-            try { previewCanvas.setPointerCapture(e.pointerId); } catch (err) { }
-            e.preventDefault();
+            gLastTap = null;
+          } else if (gsoMounted()) {
+            if (gsoView.z > 1.001) gpan = { id: e.pointerId, x: e.clientX, y: e.clientY, tx: gsoView.tx, ty: gsoView.ty };
+            // Double-tap the photo: zoom in there, or back to the whole photo.
+            var now = Date.now();
+            if (gLastTap && now - gLastTap.t < 330 && Math.hypot(e.clientX - gLastTap.x, e.clientY - gLastTap.y) < 34) {
+              gLastTap = null; gpan = null;
+              var br = gsoBox().getBoundingClientRect();
+              gsoZoomAt(gsoView.z > 1.001 ? 1 : 2.2, e.clientX - br.left, e.clientY - br.top);
+            } else gLastTap = { t: now, x: e.clientX, y: e.clientY };
           }
-          renderComposite();
+          gsoRedraw();
         });
         previewCanvas.addEventListener('pointermove', function (e) {
+          if (gPtrs[e.pointerId]) { gPtrs[e.pointerId].x = e.clientX; gPtrs[e.pointerId].y = e.clientY; }
+          if (gpinch) {
+            var ps = gPtrList();
+            if (ps.length < 2) return;
+            var k = Math.hypot(ps[1].x - ps[0].x, ps[1].y - ps[0].y) / gpinch.dist;
+            if (gpinch.d && guestDecor.indexOf(gpinch.d) >= 0) {
+              gpinch.d.s = Math.max(0.06, Math.min(0.85, gpinch.s0 * k));
+              var deg = gpinch.r0 + (Math.atan2(ps[1].y - ps[0].y, ps[1].x - ps[0].x) - gpinch.ang) * 180 / Math.PI;
+              deg = ((deg % 360) + 360) % 360;
+              var snap = Math.round(deg / 15) * 15; if (Math.abs(deg - snap) < 4) deg = snap;
+              gpinch.d.r = Math.round(deg) % 360;
+              gRedrawSoon();
+            } else if (gsoMounted()) {
+              var br = gsoBox().getBoundingClientRect();
+              var mx = (ps[0].x + ps[1].x) / 2 - br.left, my = (ps[0].y + ps[1].y) / 2 - br.top;
+              gsoView.z = gpinch.z0; gsoView.tx = gpinch.tx0; gsoView.ty = gpinch.ty0;
+              gsoZoomAt(gpinch.z0 * k, gpinch.mx, gpinch.my);
+              gsoView.tx += mx - gpinch.mx; gsoView.ty += my - gpinch.my;
+              gsoApplyView();
+            }
+            return;
+          }
+          if (gpan && e.pointerId === gpan.id) {
+            gsoView.tx = gpan.tx + (e.clientX - gpan.x); gsoView.ty = gpan.ty + (e.clientY - gpan.y);
+            gsoApplyView();
+            return;
+          }
           if (!gdrag || e.pointerId !== gdrag.id || !guestDecor[selGuestDecor]) return;
           var pt = guestPreviewPoint(e);
           if (gdrag.gesture) {
             var mW = previewCanvas.width, mH = previewCanvas.height;
             decorGestureMove(guestDecor[selGuestDecor], gdrag.gesture, pt.x * mW, pt.y * mH, mW, mH, 0.06, 0.85);
-            if (!gdragRaf) gdragRaf = requestAnimationFrame(function () { gdragRaf = 0; renderComposite(); });
+            gRedrawSoon();
             return;
           }
           guestDecor[selGuestDecor].x = Math.max(0.02, Math.min(0.98, pt.x + gdrag.dx));
           guestDecor[selGuestDecor].y = Math.max(0.02, Math.min(0.98, pt.y + gdrag.dy));
-          if (!gdragRaf) gdragRaf = requestAnimationFrame(function () { gdragRaf = 0; renderComposite(); });
+          gRedrawSoon();
         });
         function endGDrag(e) {
+          if (e) delete gPtrs[e.pointerId];
+          if (gpinch) {                  // the other finger does nothing until it is lifted too
+            if (gPtrList().length < 2) { gpinch = null; gsoRedraw(); }
+            return;
+          }
+          if (gpan && (!e || e.pointerId === gpan.id)) gpan = null;
           if (!gdrag || (e && e.pointerId !== gdrag.id)) return;
           gdrag = null;
-          renderComposite();
+          gsoRedraw();
         }
         previewCanvas.addEventListener('pointerup', endGDrag);
         previewCanvas.addEventListener('pointercancel', endGDrag);
 
+        function withSel(fn) {
+          return function (e) {
+            e.stopPropagation();
+            if (selGuestDecor >= 0 && guestDecor[selGuestDecor]) { fn(guestDecor[selGuestDecor]); gsoRedraw(); }
+          };
+        }
         var szDown = document.getElementById('gsoSizeDown');
-        if (szDown) szDown.addEventListener('click', function (e) {
-          e.stopPropagation();
-          if (selGuestDecor >= 0 && guestDecor[selGuestDecor]) {
-            guestDecor[selGuestDecor].s = Math.max(0.06, guestDecor[selGuestDecor].s - 0.04);
-            renderComposite();
-          }
-        });
+        if (szDown) szDown.addEventListener('click', withSel(function (d) { d.s = Math.max(0.06, d.s - 0.04); }));
         var szUp = document.getElementById('gsoSizeUp');
-        if (szUp) szUp.addEventListener('click', function (e) {
-          e.stopPropagation();
-          if (selGuestDecor >= 0 && guestDecor[selGuestDecor]) {
-            guestDecor[selGuestDecor].s = Math.min(0.85, guestDecor[selGuestDecor].s + 0.04);
-            renderComposite();
-          }
-        });
+        if (szUp) szUp.addEventListener('click', withSel(function (d) { d.s = Math.min(0.85, d.s + 0.04); }));
         var rotBtn = document.getElementById('gsoRotate');
-        if (rotBtn) rotBtn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          if (selGuestDecor >= 0 && guestDecor[selGuestDecor]) {
-            guestDecor[selGuestDecor].r = ((guestDecor[selGuestDecor].r || 0) + 25) % 360;
-            renderComposite();
-          }
-        });
+        if (rotBtn) rotBtn.addEventListener('click', withSel(function (d) { d.r = ((d.r || 0) + 25) % 360; }));
         var dupBtn = document.getElementById('gsoDup');
-        if (dupBtn) dupBtn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          if (selGuestDecor >= 0 && guestDecor[selGuestDecor]) {
-            var cur = guestDecor[selGuestDecor];
-            guestDecor.push(Object.assign({}, cur, { x: Math.min(0.92, cur.x + 0.05), y: Math.min(0.92, cur.y + 0.05) }));
-            selGuestDecor = guestDecor.length - 1;
-            refreshGuestStickerControls();
-            renderComposite();
-          }
-        });
+        if (dupBtn) dupBtn.addEventListener('click', withSel(function (cur) {
+          guestDecor.push(Object.assign({}, cur, { x: Math.min(0.92, cur.x + 0.05), y: Math.min(0.92, cur.y + 0.05) }));
+          selGuestDecor = guestDecor.length - 1;
+          refreshGuestStickerControls();
+        }));
         var delBtn = document.getElementById('gsoDelete');
-        if (delBtn) delBtn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          if (selGuestDecor >= 0 && guestDecor[selGuestDecor]) {
-            guestDecor.splice(selGuestDecor, 1);
-            selGuestDecor = -1;
-            refreshGuestStickerControls();
-            renderComposite();
-          }
-        });
+        if (delBtn) delBtn.addEventListener('click', withSel(function () {
+          guestDecor.splice(selGuestDecor, 1);
+          selGuestDecor = -1;
+          refreshGuestStickerControls();
+        }));
+
+        // Zoom buttons: towards the selected sticker, or the middle of the photo.
+        function zoomBy(f) {
+          return function (e) {
+            e.stopPropagation();
+            var fc = gsoSelFocus();
+            gsoZoomAt(f ? gsoView.z * f : 1, fc ? fc.x : null, fc ? fc.y : null);
+          };
+        }
+        var zIn = document.getElementById('gsoZoomIn'), zOut = document.getElementById('gsoZoomOut'), zFit = document.getElementById('gsoZoomFit');
+        if (zIn) zIn.addEventListener('click', zoomBy(1.5));
+        if (zOut) zOut.addEventListener('click', zoomBy(1 / 1.5));
+        if (zFit) zFit.addEventListener('click', zoomBy(0));
+
+        // Portrait: the sticker sheet has three heights. Tap the handle to step through them, or drag it up / down.
+        var grab = document.getElementById('gsoGrab'), panel = document.getElementById('gsoPanel');
+        if (grab && panel) {
+          var order = ['s', 'm', 'l'], gy = null;
+          var setSize = function (sz) { panel.dataset.size = sz; try { localStorage.setItem('pb_gso_sheet', sz); } catch (err) { } };
+          try { var saved = localStorage.getItem('pb_gso_sheet'); if (order.indexOf(saved) >= 0) panel.dataset.size = saved; } catch (err) { }
+          grab.addEventListener('pointerdown', function (e) { gy = e.clientY; try { grab.setPointerCapture(e.pointerId); } catch (err) { } });
+          grab.addEventListener('pointerup', function (e) {
+            if (gy == null) return;
+            var dy = e.clientY - gy, i = order.indexOf(panel.dataset.size || 'm');
+            gy = null;
+            if (i < 0) i = 1;
+            if (dy < -24) i = Math.min(2, i + 1); else if (dy > 24) i = Math.max(0, i - 1); else i = (i + 1) % 3;
+            setSize(order[i]);
+          });
+          grab.addEventListener('pointercancel', function () { gy = null; });
+        }
       }
       setTimeout(wireGuestDecorInteractions, 0);
 
@@ -21098,6 +21839,7 @@
           previewCanvas.style.cursor = 'grab';
           renderComposite();
           overlay.classList.remove('hidden');
+          gsoMount();                                     // full screen: the photo moves into the editor, as big as it fits
 
           var totalSec = guestStickerSec;                 // set in Setup; 0 = no timer, the guest taps Done when finished
           var leftSec = totalSec;
@@ -21108,6 +21850,7 @@
           if (barEl) barEl.style.display = totalSec > 0 ? '' : 'none';
           if (secEl) secEl.textContent = String(leftSec);
           if (fillEl) fillEl.style.width = '100%';
+          if (pillEl) pillEl.classList.remove('low');
           sess.decoPreview = false; overlay.classList.remove('previewing');
           var pvBtn = document.getElementById('gsoPreviewBtn');
           if (pvBtn) pvBtn.textContent = '👁 Preview';
@@ -21116,6 +21859,7 @@
             leftSec--;
             if (secEl) secEl.textContent = String(Math.max(0, leftSec));
             if (fillEl) fillEl.style.width = Math.max(0, (leftSec / totalSec) * 100) + '%';
+            if (pillEl) pillEl.classList.toggle('low', leftSec <= 5);
             if (leftSec <= 0) {
               finish();
             }
@@ -21127,8 +21871,8 @@
             sess.decoPreview = !sess.decoPreview;
             overlay.classList.toggle('previewing', sess.decoPreview);
             pvBtn.textContent = sess.decoPreview ? '✏️ Keep decorating' : '👁 Preview';
-            if (sess.decoPreview) { selGuestDecor = -1; refreshGuestStickerControls(); }
-            renderComposite();
+            if (sess.decoPreview) { selGuestDecor = -1; refreshGuestStickerControls(); gsoZoomAt(1); }      // the preview shows the whole photo
+            gsoRedraw();
           };
 
           function finish() {
@@ -21140,6 +21884,7 @@
             previewCanvas.style.touchAction = '';
             previewCanvas.style.cursor = '';
             overlay.classList.add('hidden');
+            gsoUnmount();
             renderComposite();
             resolve();
           }
@@ -21166,6 +21911,7 @@
         hideShotReview();
         var gso = document.getElementById('guestStickerOverlay');
         if (gso) gso.classList.add('hidden');
+        if (gsoMounted() || document.body.classList.contains('decorating')) gsoUnmount();
         guestDecor = []; selGuestDecor = -1;
         flashOverlay.classList.remove('flash-active');
         countdownOverlay.classList.remove('pausing');
@@ -23922,6 +24668,7 @@
             }
           } catch (_) { }
           setBtThermalOn(false);
+          try { clearTimeout(pw.bt.timer); pw.bt.held = []; pwSet('bt', 'none'); } catch (e) { }
           showToast('Bluetooth printer disconnected.', 3000);
           refreshPrintUI();
         });
@@ -23929,6 +24676,7 @@
       if (btThermalToggle) {
         btThermalToggle.addEventListener('change', function () {
           setBtThermalOn(btThermalToggle.checked);
+          try { if (btThermalOn) pwBtKick(300); else { clearTimeout(pw.bt.timer); pwSet('bt', 'none'); } } catch (e) { }
           refreshPrintUI();
         });
       }
@@ -23947,6 +24695,7 @@
           try {
             const name = await window._btThermal.btPrinter.connect();
             setBtThermalOn(true);
+            try { pwSet('bt', 'ready'); pwFlush('bt'); } catch (e) { }
             showToast('Connected to ' + (name || 'Bluetooth printer') + '!');
           } catch (err) {
             var msg = String((err && err.message) || err || '');
@@ -24009,6 +24758,16 @@
         const bp = window._btThermal && window._btThermal.btProfile ? window._btThermal.btProfile() : { speed: 'auto', cmd: 'raster' };
         if (sp) { sp.value = bp.speed; }
         if (cm) { cm.value = bp.cmd; }
+        // "Slow and safe" is only offered on 58mm paper (see btPacing). Re-run whenever the paper size changes.
+        window.__pbSyncBtSpeed = () => {
+          if (!sp) return;
+          const small = !!(printSize && paperFor(printSize).w <= 55);
+          const o = sp.querySelector('option[value="safe"]');
+          if (o) { o.hidden = !small; o.disabled = !small; }
+          const cur = (window._btThermal && window._btThermal.btProfile ? window._btThermal.btProfile() : bp).speed;
+          sp.value = (cur === 'safe' && !small) ? 'auto' : cur;
+        };
+        window.__pbSyncBtSpeed();
         const save = () => { try { window._btThermal.btSetProfile({ speed: sp.value, cmd: cm.value }); showToast('Saved. Run the checks again.', 2500); } catch (e) { } };
         if (sp) sp.addEventListener('change', save);
         if (cm) cm.addEventListener('change', save);
@@ -24456,6 +25215,7 @@
         const show = !printSection.classList.contains('hidden') && document.body.classList.contains('in-session') && state !== 'capturing' && !(typeof pickOpen !== 'undefined' && pickOpen);
         printFab.hidden = !show;
         scheduleDock();
+        try { pwRender(); } catch (e) { }
         try { refreshGuestPrintBtn(); } catch (e) { }
         if (!show && state === 'capturing') closePrintModal();
       }
@@ -24493,6 +25253,7 @@
         const ready = state === 'result' && shotCanvases.every(Boolean);
         try { refreshPhotoFitUI(); } catch (e) { }
         try { refreshStep4Printer(); } catch (e) { }
+        try { if (window.__pbSyncBtSpeed) window.__pbSyncBtSpeed(); } catch (e) { }
         printBtn.disabled = !ready || !printSize || printing;
         if (!printSize) {
           printHint.textContent = 'Pick a paper size above to print.';
@@ -25194,7 +25955,12 @@
           let changed = false;
           const fix = (sp) => {
             if (!sp || !sp.usb || !sp.name) return;
-            const same = list.filter(q => q.usb && q.name === sp.name);
+            if (list.some(q => q.usb && q.ip === sp.ip)) return;          // still at the same address
+            let same = list.filter(q => q.usb && q.name === sp.name);
+            // Until Android allows USB access again, a replugged printer has no model name yet (a SELPHY shows as
+            // "Canon printer"), so find it by its USB vendor + product id instead. The saved name is kept: its settings
+            // (paper size, colour, quality) are filed under it.
+            if (same.length !== 1 && sp.vid && sp.pid) same = list.filter(q => q.usb && q.vid === sp.vid && q.pid === sp.pid);
             if (same.length === 1 && same[0].ip && same[0].ip !== sp.ip) {
               sp.ip = same[0].ip; sp.vid = same[0].vid || sp.vid; sp.pid = same[0].pid || sp.pid; changed = true;
             }
@@ -25823,6 +26589,316 @@
         } catch (e) { }
       }
 
+      // ---- Printers that come back by themselves (Android app, Chrome) ----
+      // The Bluetooth receipt printer and a USB photo printer (SELPHY ...) are remembered. When one is switched off, prints for
+      // it wait here instead of failing; when it is back they go out in order. Bluetooth: the booth links to the printer again
+      // by itself (at once when Android says it is back, otherwise every few seconds). USB: Android tells the app when it is
+      // plugged in or switched on, and a check every 10 s while the booth is in use catches the rest.
+      // The Printer status chip in the dock (operator only, never on a locked guest screen) shows how things stand.
+      const PW_AUTO_KEY = 'pb_printer_autoreconnect';
+      let pwAuto = true;
+      try { pwAuto = localStorage.getItem(PW_AUTO_KEY) !== '0'; } catch (e) { }
+      const PW_MAX_HELD = 30, PW_MAX_TRIES = 3;
+      const pw = {
+        bt: { state: 'none', last: 0, err: '', held: [], timer: 0, tries: 0, wasOff: false, busy: false },
+        usb: { state: 'none', last: 0, err: '', held: [], timer: 0, wasOff: false, name: '' }
+      };
+      function pwLocked() { return document.body.classList.contains('booth-locked'); }
+      function pwToast(msg, ms) { if (!pwLocked()) showToast(msg, ms || 4500); }        // never on a locked guest screen
+      function pwBt() { return (window._btThermal && window._btThermal.btPrinter) || null; }
+      function pwBtCan() { const P = pwBt(); return !!(P && typeof P.canReconnect === 'function' && P.canReconnect()); }
+      function pwBtName() {
+        const P = pwBt();
+        if (P && P.name) return P.name;
+        try { const B = window.__BTBridge; if (B && typeof B.savedPrinter === 'function') { const r = JSON.parse(B.savedPrinter() || '{}'); if (r.name) return r.name; } } catch (e) { }
+        try { const w = localStorage.getItem('pb_bt_web_name'); if (w) return w; } catch (e) { }
+        return 'Bluetooth printer';
+      }
+      function pwSet(kind, state, err) {
+        const s = pw[kind], was = s.state;
+        s.state = state; s.err = err || '';
+        if (state === 'ready') {
+          s.last = Date.now();
+          if (s.held.length) setTimeout(() => pwFlush(kind), 0);
+          if (s.wasOff && was !== 'ready') pwToast((kind === 'bt' ? pwBtName() : (s.name || 'USB printer')) + ' is back ✓', 3500);
+          s.wasOff = false;
+        } else if (state === 'off') s.wasOff = true;
+        pwRender();
+      }
+      function pwAgo(t) {
+        if (!t) return '';
+        const sec = Math.round((Date.now() - t) / 1000);
+        return sec < 60 ? 'just now' : sec < 3600 ? Math.round(sec / 60) + ' min ago' : Math.round(sec / 3600) + ' h ago';
+      }
+
+      // -- waiting prints --
+      function pwHold(kind, job) {
+        const s = pw[kind];
+        if (s.held.length >= PW_MAX_HELD) return false;
+        job.tries = job.tries || 0;
+        s.held.push(job);
+        pwRender();
+        return true;
+      }
+      function pwFlush(kind) {
+        const s = pw[kind];
+        if (!s.held.length) return;
+        const jobs = s.held.splice(0);
+        pwToast('Printing ' + jobs.length + ' waiting print' + (jobs.length > 1 ? 's' : '') + '.', 4000);
+        jobs.forEach(job => {
+          job.tries++;
+          enqueuePrint(job.key, job.run).catch(err => {
+            if (job.tries < PW_MAX_TRIES && pwHold(kind, job)) {
+              pwSet(kind, 'off', (err && err.message) || '');
+              if (kind === 'bt') pwBtKick(4000);
+            } else if (job.fail) job.fail(err);
+          });
+        });
+        pwRender();
+      }
+      function pwClearHeld() {
+        const n = pw.bt.held.length + pw.usb.held.length;
+        pw.bt.held = []; pw.usb.held = [];
+        if (n) showToast(n + ' waiting print' + (n > 1 ? 's' : '') + ' cleared.', 3500);
+        pwRender();
+      }
+
+      // -- Bluetooth --
+      function pwBtKick(ms) {
+        const s = pw.bt;
+        clearTimeout(s.timer); s.timer = 0;
+        if (!btThermalOn || !pwBt()) { pwSet('bt', 'none'); return; }
+        s.timer = setTimeout(() => { pwBtTry(false); }, Math.max(0, ms || 0));
+      }
+      async function pwBtTry(manual) {
+        const s = pw.bt, P = pwBt();
+        clearTimeout(s.timer); s.timer = 0;
+        if (!P || !btThermalOn) { pwSet('bt', 'none'); return false; }
+        if (P.connected) { pwSet('bt', 'ready'); pwFlush('bt'); return true; }
+        if (!pwBtCan()) { pwSet('bt', 'off', 'Tap Connect in Print settings'); return false; }
+        if (!pwAuto && !manual && !s.held.length) { pwSet('bt', 'off'); return false; }
+        if (s.busy) return false;
+        s.busy = true; pwSet('bt', 'reconnecting');
+        try {
+          await P.reconnect();
+          s.tries = 0;
+          pwSet('bt', 'ready');
+          try { refreshPrintUI(); } catch (e) { }
+          pwFlush('bt');
+          return true;
+        } catch (e) {
+          s.busy = false;
+          if (e && e.none) { pwSet('bt', 'none'); return false; }
+          s.tries++;
+          pwSet('bt', 'off', e && e.adapterOff ? 'Bluetooth is turned off on this tablet' : e && e.unpaired ? 'The printer is no longer paired' : '');
+          if (manual) pwToast(pwBtName() + ' did not answer. Is it switched on and close by?', 5000);
+          if (pwAuto) s.timer = setTimeout(() => { pwBtTry(false); }, document.hidden ? 30000 : (s.tries < 5 ? 8000 : 15000));
+          return false;
+        } finally { s.busy = false; }
+      }
+      // Android app events: the printer's link dropped / came back, Bluetooth switched off / on.
+      window.__pbBtEvent = function (ev) {
+        if (!ev || !btThermalOn) return;
+        if (ev.type === 'link') {
+          if (ev.on) pwBtKick(400);
+          else { pwSet('bt', 'off'); if (pwAuto) pwBtKick(2500); }
+        } else if (ev.type === 'adapter') {
+          if (ev.on) pwBtKick(1500);
+          else pwSet('bt', 'off', 'Bluetooth is turned off on this tablet');
+        }
+        try { refreshPrintUI(); } catch (e) { }
+      };
+      // A Bluetooth print could not go out: keep it for when the printer is back. False = this booth can't wait for it.
+      function pwHoldBt(label, run, fail) {
+        if (!pwAuto || !pwBtCan()) return false;
+        if (!pwHold('bt', { key: 'bt', label: label, run: run, fail: fail })) return false;
+        pwSet('bt', 'off');
+        pwBtKick(3000);
+        const n = pw.bt.held.length;
+        pwToast(pwBtName() + ' is off or out of range. The print will go out when it is back (' + n + ' waiting).', 6000);
+        return true;
+      }
+
+      // -- USB (SELPHY and other USB printers on the Android app) --
+      function pwUsbSaved() {
+        const out = [];
+        const add = p => { if (p && p.usb && p.name && out.indexOf(p) < 0) out.push(p); };
+        try { Object.keys(wifiSizeMap).forEach(k => add(wifiSizeMap[k])); } catch (e) { }
+        add(wifiDefault); add(wifiPrinter);
+        return out;
+      }
+      function pwUsbPresent(sp, list) {
+        return (list || []).some(q => q && q.usb && (q.ip === sp.ip || q.name === sp.name || (sp.vid && q.vid === sp.vid && q.pid === sp.pid)));
+      }
+      function pwUsbCheck() {
+        if (!wifiNetAvailable()) { if (pw.usb.state !== 'none') pwSet('usb', 'none'); return true; }
+        const saved = pwUsbSaved();
+        if (!saved.length) { if (pw.usb.state !== 'none' || pw.usb.held.length) { pw.usb.held = []; pwSet('usb', 'none'); } return true; }
+        const d = wifiList();
+        try { wifiRelink(d); wifiSyncForSize(); } catch (e) { }
+        const list = (d && d.printers) || [];
+        const missing = saved.filter(sp => !pwUsbPresent(sp, list));
+        pw.usb.name = saved.map(p => String(p.name).replace(/\s*\(USB\)$/, '')).join(', ');
+        if (missing.length) {
+          if (pw.usb.state !== 'off') pwSet('usb', 'off', missing.length < saved.length ? String(missing[0].name).replace(/\s*\(USB\)$/, '') + ' is not connected' : '');
+          return false;
+        }
+        if (pw.usb.state !== 'ready') pwSet('usb', 'ready');
+        pwFlush('usb');
+        return true;
+      }
+      function pwUsbHere(wp) { if (!wp || !wp.usb || !wifiNetAvailable()) return true; pwUsbCheck(); return pwUsbPresent(wp, (wifiList() || {}).printers); }
+      // A USB print for a printer that is unplugged or switched off: keep it for when it is back.
+      function pwHoldUsb(wp, label, run, fail) {
+        if (!pwAuto || !wp || !wp.usb) return false;
+        if (!pwHold('usb', { key: 'w:' + wifiPKey(wp), label: label, run: run, fail: fail })) return false;
+        pwSet('usb', 'off');
+        const nm = String(wp.name || 'The USB printer').replace(/\s*\(USB\)$/, '');
+        pwToast(nm + ' is off or unplugged. The print will go out when it is back (' + pw.usb.held.length + ' waiting).', 6000);
+        return true;
+      }
+      // Plugged in / switched on: Android needs a moment to list it (and may ask to allow access).
+      window.addEventListener('pb-usb-attached', () => { setTimeout(pwUsbCheck, 1200); setTimeout(pwUsbCheck, 4000); });
+      setInterval(() => {
+        if (document.hidden) return;
+        const busy = document.body.classList.contains('in-session') || pw.usb.held.length || pw.bt.held.length;
+        if (!busy) return;
+        try { pwUsbCheck(); } catch (e) { }
+        // Bluetooth: a link that dropped without Android telling us (no event) shows here.
+        try {
+          const B = window.__BTBridge, P = pwBt();
+          if (btThermalOn && P && P.connected && P.mode === 'bridge' && B && typeof B.isConnected === 'function' && !B.isConnected()) {
+            P._onDisconnect(); pwSet('bt', 'off'); if (pwAuto) pwBtKick(500);
+          }
+        } catch (e) { }
+        pwRender();
+      }, 10000);
+      setTimeout(() => {
+        try { pwUsbCheck(); } catch (e) { }
+        if (btThermalOn && pwBtCan() && pwAuto) pwBtKick(0);        // the app was restarted: link to the printer again
+        pwRender();
+      }, 1500);
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) return;
+        if (btThermalOn && pwAuto && pw.bt.state === 'off') pwBtKick(300);
+        try { pwUsbCheck(); } catch (e) { }
+      });
+
+      // -- the status chip and its pop-up --
+      function pwItems() {
+        const out = [], P = pwBt();
+        if (btThermalOn && P && (P.connected || pwBtCan() || pw.bt.held.length)) {
+          const st = P.connected ? 'ready' : (pw.bt.state === 'reconnecting' ? 'reconnecting' : 'off');
+          out.push({ kind: 'bt', name: pwBtName(), state: st, held: pw.bt.held.length, err: pw.bt.err, last: pw.bt.last });
+        }
+        if (pw.usb.state !== 'none') out.push({ kind: 'usb', name: pw.usb.name || 'USB printer', state: pw.usb.state, held: pw.usb.held.length, err: pw.usb.err, last: pw.usb.last });
+        return out;
+      }
+      function pwRender() {
+        const fab = document.getElementById('pstatFab');
+        if (!fab) return;
+        const items = pwItems();
+        const show = items.length > 0 && !document.getElementById('printFab').hidden;
+        if (fab.hidden !== !show) { fab.hidden = !show; try { scheduleDock(); } catch (e) { } }
+        const held = items.reduce((n, i) => n + i.held, 0);
+        const worst = items.some(i => i.state === 'off') ? 'off' : items.some(i => i.state === 'reconnecting') ? 'reconnecting' : 'ready';
+        fab.dataset.state = worst;
+        const txt = worst === 'ready' ? (held ? 'Printing ' + held + '…' : 'Printer ready') : worst === 'reconnecting' ? 'Reconnecting…' : 'Printer off' + (held ? ' · ' + held + ' waiting' : '');
+        const lab = fab.querySelector('.pstat-txt');
+        if (lab && lab.textContent !== txt) lab.textContent = txt;
+        fab.title = items.map(i => i.name + ': ' + (i.state === 'ready' ? 'ready' : i.state === 'reconnecting' ? 'reconnecting' : 'off')).join(' · ');
+        const pop = document.getElementById('pstatPop');
+        if (pop && !pop.hidden) pwRenderPop(items);
+        if (!show && pop && !pop.hidden) closePstatPop();
+        const note = document.getElementById('btAutoNote');
+        if (note) {
+          const P = pwBt();
+          note.textContent = !btThermalOn ? '' : P && P.connected ? 'Linked' + (pw.bt.last ? ' · last connected ' + pwAgo(pw.bt.last) : '') :
+            pw.bt.state === 'reconnecting' ? 'Reconnecting…' : pwBtCan() ? 'Not linked now' + (pwAuto ? ' · the booth keeps trying' : '') + (pw.bt.last ? ' · last connected ' + pwAgo(pw.bt.last) : '') : '';
+        }
+        const auto = document.getElementById('btAutoReconnect');
+        if (auto) auto.checked = pwAuto;
+      }
+      function pwRenderPop(items) {
+        items = items || pwItems();
+        const list = document.getElementById('pstatList');
+        if (!list) return;
+        list.textContent = '';
+        items.forEach(i => {
+          const row = document.createElement('div'); row.className = 'pstat-row'; row.dataset.state = i.state;
+          const dot = document.createElement('i'); dot.setAttribute('aria-hidden', 'true');
+          const box = document.createElement('div');
+          const nm = document.createElement('b'); nm.textContent = (i.kind === 'bt' ? 'Bluetooth · ' : 'USB · ') + i.name;
+          const sub = document.createElement('span');
+          sub.textContent = i.state === 'ready' ? 'Ready' + (i.last ? ' · connected ' + pwAgo(i.last) : '') :
+            i.state === 'reconnecting' ? 'Reconnecting…' :
+              (i.err || (i.kind === 'bt' ? 'Off or out of range' : 'Off or unplugged')) + (pwAuto ? ' · will reconnect by itself' : '');
+          box.appendChild(nm); box.appendChild(sub);
+          if (i.held) { const h = document.createElement('em'); h.textContent = i.held + ' print' + (i.held > 1 ? 's' : '') + ' waiting'; box.appendChild(h); }
+          row.appendChild(dot); row.appendChild(box);
+          list.appendChild(row);
+        });
+        const held = items.reduce((n, i) => n + i.held, 0);
+        const clr = document.getElementById('pstatClear');
+        if (clr) { clr.hidden = !held; clr.textContent = 'Clear waiting (' + held + ')'; }
+        const test = document.getElementById('pstatTest');
+        if (test) test.hidden = !items.some(i => i.kind === 'bt' && i.state === 'ready');
+        const re = document.getElementById('pstatReconnect');
+        if (re) { re.disabled = items.some(i => i.state === 'reconnecting'); re.textContent = re.disabled ? 'Reconnecting…' : 'Reconnect now'; }
+        const auto = document.getElementById('pstatAuto');
+        if (auto) auto.checked = pwAuto;
+      }
+      function closePstatPop() {
+        const pop = document.getElementById('pstatPop'), fab = document.getElementById('pstatFab');
+        if (!pop || pop.hidden) return;
+        pop.hidden = true;
+        if (fab) fab.setAttribute('aria-expanded', 'false');
+      }
+      function openPstatPop() {
+        const pop = document.getElementById('pstatPop'), fab = document.getElementById('pstatFab');
+        if (!pop || !fab) return;
+        pwRenderPop();
+        pop.hidden = false; fab.setAttribute('aria-expanded', 'true');
+        const r = fab.getBoundingClientRect();
+        pop.style.left = Math.max(12, Math.min(r.left, window.innerWidth - pop.offsetWidth - 12)) + 'px';
+        pop.style.bottom = (window.innerHeight - r.top + 10) + 'px';
+      }
+      function pwSetAuto(on) {
+        pwAuto = !!on;
+        try { localStorage.setItem(PW_AUTO_KEY, pwAuto ? '1' : '0'); } catch (e) { }
+        if (pwAuto && btThermalOn && pw.bt.state !== 'ready') pwBtKick(300);
+        pwRender();
+      }
+      (function () {
+        const fab = document.getElementById('pstatFab');
+        if (!fab) return;
+        fab.addEventListener('click', (e) => { e.stopPropagation(); const pop = document.getElementById('pstatPop'); if (pop && !pop.hidden) closePstatPop(); else openPstatPop(); });
+        document.addEventListener('pointerdown', (e) => {
+          const pop = document.getElementById('pstatPop');
+          if (!pop || pop.hidden || pop.contains(e.target) || fab.contains(e.target)) return;
+          closePstatPop();
+        });
+        const on = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+        on('pstatPopClose', closePstatPop);
+        on('pstatReconnect', async () => {
+          const items = pwItems();
+          if (items.some(i => i.kind === 'usb')) { if (pwUsbCheck()) pwToast((pw.usb.name || 'USB printer') + ' is connected ✓', 3000); else pwToast((pw.usb.name || 'The USB printer') + ' is not plugged in or not switched on.', 5000); }
+          if (items.some(i => i.kind === 'bt')) await pwBtTry(true);
+          pwRenderPop();
+        });
+        on('pstatTest', async () => {
+          const P = pwBt();
+          if (!P || !P.connected) return;
+          try { await P.testText(); pwToast('Test sent to ' + pwBtName() + '.', 3000); } catch (err) { pwToast('Test failed: ' + ((err && err.message) || err), 5000); try { P.disconnect(true); } catch (e) { } pwBtKick(1000); }
+        });
+        on('pstatSettings', () => { closePstatPop(); try { openPrintModal(); } catch (e) { } });
+        on('pstatClear', () => { pwClearHeld(); pwRenderPop(); });
+        const a1 = document.getElementById('pstatAuto'), a2 = document.getElementById('btAutoReconnect');
+        if (a1) a1.addEventListener('change', () => pwSetAuto(a1.checked));
+        if (a2) a2.addEventListener('change', () => pwSetAuto(a2.checked));
+        pwRender();
+      })();
+
       async function printCurrentPhoto(auto, copies) {
         try { wifiRelink(); wifiSyncForSize(); } catch (e) { }
         if (printing || !printSize || !(state === 'result' && shotCanvases.every(Boolean))) return false;
@@ -25875,27 +26951,46 @@
             try {
               const rollW = (paper.w && paper.w <= 55) ? '58mm' : '80mm';
               const btOpts = { brightness: 0, quality: printPrefs.thermalQuality || 'normal' };          // colour already in the page (printAdjust)
-              const btRun = async () => { for (const cv of all) await window._btThermal.printViaBluetooth(cv, rollW, btOpts); };
+              let btDone = 0;          // pages already out: a print that waited for the printer carries on from the next one
+              const btRun = async () => { for (; btDone < all.length; btDone++) await window._btThermal.printViaBluetooth(all[btDone], rollW, btOpts); };
+              const btFail = (btErr) => queuedPrintFailed('Bluetooth print failed: ' + ((btErr && btErr.message) || btErr) + '.', all, paper);
+              // The printer is known to be off: wait for it straight away (a link attempt would only hold up the queue).
+              if (pwAuto && pw.bt.state === 'off' && !(window._btThermal.btPrinter.connected) && pwHoldBt(label, btRun, btFail)) {
+                armAutoPrintAfterFirst(auto === true);
+                return true;
+              }
               if (androidQueueOn() && !printFirstHolding) {
                 // Line up behind any print the thermal printer is still doing; the booth is free for the next guest at once.
                 const ahead = printQueued;
-                enqueuePrint('bt', btRun).catch((btErr) => {
+                enqueuePrint('bt', btRun).then(() => { pwSet('bt', 'ready'); }, (btErr) => {
                   try { window._btThermal.btPrinter.disconnect(true); } catch (_) { }
                   try { refreshPrintUI(); } catch (_) { }
-                  queuedPrintFailed('Bluetooth print failed: ' + (btErr.message || btErr) + '.', all, paper);
+                  if (pwHoldBt(label, btRun, btFail)) return;          // switched off: prints when it is back
+                  btFail(btErr);
                 });
                 showToast(ahead > 0 ? 'Added to the print queue (' + ahead + ' ahead): ' + label + '.' : (auto === true ? 'Auto-printing via Bluetooth (' : 'Printing via Bluetooth (') + label + ').');
                 armAutoPrintAfterFirst(auto === true);
                 return true;
               }
               showPrintingNote(printTxt('txtPrinting'), 8000);
-              await btRun();
+              try {
+                await btRun();
+              } catch (btErr) {
+                try { window._btThermal.btPrinter.disconnect(true); } catch (_) { }
+                try { refreshPrintUI(); } catch (_) { }
+                if (pwHoldBt(label, btRun, (e2) => showToast('Bluetooth print failed: ' + ((e2 && e2.message) || e2) + '.', 6000))) {
+                  armAutoPrintAfterFirst(auto === true);
+                  return true;
+                }
+                throw btErr;
+              }
+              pwSet('bt', 'ready');
               showToast((auto === true ? 'Auto-printed via Bluetooth (' : 'Printed via Bluetooth (') + label + ').');
               armAutoPrintAfterFirst(auto === true);
               return true;
             } catch (btErr) {
               showToast('Bluetooth print failed: ' + (btErr.message || btErr) + '. Opening print dialog instead.', 6000);
-              // Disconnect so next attempt triggers a fresh connect picker
+              // The link is closed; the printer stays remembered
               try { window._btThermal.btPrinter.disconnect(true); } catch (_) { }
               try { refreshPrintUI(); } catch (_) { }
               // fall through to AirPrint / window.print()
@@ -25945,10 +27040,17 @@
           if (wf && !wf.dialog && wifiNetAvailable()) {
             try {
               const wp = wf, wo = wifiOpts(wp);      // this printer and its own settings, fixed now (the paper size may change while the sheet waits)
+              const wRun = () => printViaWifi(all, paper, wp, wo);       // wp is the saved printer: a replugged USB printer's new address is filled in
+              const wFail = (wErr) => queuedPrintFailed((wp.usb ? 'USB' : 'Wi-Fi') + ' print failed: ' + ((wErr && wErr.message) || wErr), all, paper);
+              if (wp.usb && pwAuto && !pwUsbHere(wp) && pwHoldUsb(wp, label, wRun, wFail)) {
+                armAutoPrintAfterFirst(auto === true);
+                return true;
+              }
               if (androidQueueOn() && !printFirstHolding) {
                 const ahead = printQueued;
-                enqueuePrint('w:' + wifiPKey(wp), () => printViaWifi(all, paper, wp, wo)).catch((wErr) => {
-                  queuedPrintFailed('Wi-Fi print failed: ' + (wErr.message || wErr), all, paper);
+                enqueuePrint('w:' + wifiPKey(wp), wRun).catch((wErr) => {
+                  if (wp.usb && !pwUsbHere(wp) && pwHoldUsb(wp, label, wRun, wFail)) return;     // switched off / unplugged while it printed
+                  wFail(wErr);
                 });
                 showToast(ahead > 0 ? 'Added to the print queue (' + ahead + ' ahead): ' + label + '.' : (auto === true ? 'Auto-printing on ' : 'Printing on ') + wp.name + ' (' + label + ').');
                 armAutoPrintAfterFirst(auto === true);
@@ -27372,6 +28474,7 @@
         if (printFirstHolding) finishPrintFirst();
         var gso = document.getElementById('guestStickerOverlay');
         if (gso) gso.classList.add('hidden');
+        if (gsoMounted() || document.body.classList.contains('decorating')) gsoUnmount();
         if (typeof sessionTier !== 'undefined') sessionTier = null;
         if (typeof sessionNoPrint !== 'undefined' && sessionNoPrint) { sessionNoPrint = false; try { refreshPrintUI(); } catch (e) { } }
         if (typeof sessionPrinter !== 'undefined' && sessionPrinter) { sessionPrinter = ''; try { refreshPrintUI(); } catch (e) { } }
@@ -28162,7 +29265,7 @@
       var deskOverlay = document.getElementById('deskOverlay'), deskGrid = document.getElementById('deskGrid');
       var deskFab = document.getElementById('deskFab'), deskMakeBtn = document.getElementById('deskMake'), deskOrigBtn = document.getElementById('deskOrig');
       // ---- the Extras menu: the dock keeps Camera, Printer, All photos and Lock; every extra is one tap away in here ----
-      var EXTRA_IDS = ['deskFab', 'spinFab', 'capFab', 'reqFab', 'vgFab'];
+      var EXTRA_IDS = ['deskFab', 'spinFab', 'capFab', 'reqFab', 'studioFab', 'vgFab'];
       var extrasFab = document.getElementById('extrasFab'), extrasPop = document.getElementById('extrasPop');
       function closeExtras() { extrasPop.hidden = true; extrasFab.setAttribute('aria-expanded', 'false'); }
       function refreshExtrasBtn() {
@@ -28189,6 +29292,8 @@
         if (capFab) capFab.hidden = onPhone || !capAvailable() || state === 'capturing';
         var reqFab = document.getElementById('reqFab');
         if (reqFab) reqFab.hidden = !reqOn() || state === 'capturing';
+        var studioFab = document.getElementById('studioFab');
+        if (studioFab) studioFab.hidden = !studioOn() || state === 'capturing';
         var vgFab = document.getElementById('vgFab');
         if (vgFab) vgFab.hidden = !vgAvailable() || state === 'capturing';
         try { refreshExtrasBtn(); } catch (e) { }
@@ -30299,6 +31404,445 @@
       });
       window.addEventListener('pb-extras-change', function () { try { refreshDeskBtn(); } catch (e) { } });
       setTimeout(function () { try { reqApply(); } catch (e) { } }, 1500);
+
+      // ---- Arrange & Print (operator only) ----
+      // The operator picks finished strips (saved on this computer, in the event gallery, or files added by hand), crops and resizes
+      // them, and packs them onto a paper size. It is in the operator dock, which is hidden while the booth is locked, so it
+      // opens only behind the lock PIN. Prints use the printer, colour and quality chosen for the paper size, like any print.
+      var ST = { src: '', folders: [], folder: '', list: [], items: [], sel: -1, paper: '', gap: 2, margin: 4, cut: true, sheets: 1, mode: 'move', pos: {}, pages: [], cv: [], dpi: 40, busy: false, uid: 0, seq: 0, show: 60, err: '', loading: false, urls: [], io: null, drag: null };
+      var stOverlay = document.getElementById('studioOverlay');
+      var ST_MAX_ITEMS = 40;
+      function studioOn() { try { return !!printSettings(); } catch (e) { return false; } }
+      function stEl(id) { return document.getElementById(id); }
+      function stInch(mm) { return Math.round(mm / 25.4 * 100) / 100; }
+      function stMm(inch) { return inch * 25.4; }
+      function stClamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+      function stSources() {
+        var a = [];
+        if (PBX && PBX.studioList) a.push(['local', 'This computer']);
+        if (!LOCALSHARE && roveFolderId()) a.push(['web', 'Event gallery']);
+        a.push(['file', 'Add files']);
+        return a;
+      }
+      function stSizes() { return (printSettings() || []).filter(function (k) { return paperFor(k) && !isReceiptPaper(k); }); }
+      function stPaper() { return ST.paper && paperFor(ST.paper) ? paperFor(ST.paper) : null; }
+
+      // ---- Pictures to choose from ----
+      function stRenderTabs() {
+        var box = stEl('stTabs'); box.innerHTML = '';
+        stSources().forEach(function (s) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'desk-btn' + (ST.src === s[0] ? ' primary' : '');
+          b.dataset.src = s[0]; b.textContent = s[1]; box.appendChild(b);
+        });
+      }
+      function stRenderBar() {
+        var bar = stEl('stSrcBar'); bar.innerHTML = '';
+        if (ST.src === 'local') {
+          var sel = document.createElement('select'); sel.id = 'stFolder'; sel.setAttribute('aria-label', 'Event folder');
+          ST.folders.forEach(function (f) { var o = document.createElement('option'); o.value = f.slug; o.textContent = f.name + (f.current ? ' (this event)' : ''); if (f.slug === ST.folder) o.selected = true; sel.appendChild(o); });
+          bar.appendChild(sel);
+        }
+        if (ST.src === 'local' || ST.src === 'web') {
+          var r = document.createElement('button'); r.type = 'button'; r.className = 'desk-btn'; r.id = 'stRefresh'; r.textContent = 'Refresh'; bar.appendChild(r);
+        }
+        if (ST.src === 'file') {
+          var p = document.createElement('button'); p.type = 'button'; p.className = 'desk-btn primary'; p.id = 'stChoose'; p.textContent = 'Choose pictures…'; bar.appendChild(p);
+        }
+      }
+      async function stSetSource(src) {
+        ST.src = src; ST.show = 60; stRenderTabs(); stRenderBar();
+        if (src === 'local') await stLoadLocal();
+        else if (src === 'web') await stLoadWeb();
+        else { ST.list = []; ST.err = ''; ST.loading = false; stRenderGrid(); }
+      }
+      async function stLoadLocal() {
+        var seq = ++ST.seq; ST.err = ''; ST.list = []; ST.loading = true; stRenderGrid();
+        try {
+          if (!ST.folders.length) {
+            ST.folders = (await PBX.studioFolders(rawFolderKey(), driveSubfolder())) || [];
+            var cur = ST.folders.find(function (f) { return f.current; }) || ST.folders[0];
+            if (cur && !ST.folders.some(function (f) { return f.slug === ST.folder; })) ST.folder = cur.slug;
+            stRenderBar();
+          }
+          var l = ST.folder ? await PBX.studioList(ST.folder) : [];
+          if (seq !== ST.seq) return;
+          ST.list = (l || []).map(function (f) { return { id: 'l:' + ST.folder + '|' + f.name, slug: ST.folder, name: f.name, t: f.t }; });
+        } catch (e) { if (seq !== ST.seq) return; ST.err = 'Could not read the pictures saved on this computer.'; }
+        ST.loading = false; stRenderGrid();
+      }
+      async function stLoadWeb() {
+        var seq = ++ST.seq; ST.err = ''; ST.list = []; ST.loading = true; stRenderGrid();
+        try {
+          var fid = roveFolderId(), k = ''; try { k = localStorage.getItem('pb_gvk:' + fid) || ''; } catch (e) { }
+          var r = await fetch('/api/gallery?f=' + encodeURIComponent(fid) + (k ? '&k=' + encodeURIComponent(k) : '') + '&v=' + Date.now());
+          var j = await r.json().catch(function () { return {}; });
+          if (seq !== ST.seq) return;
+          if (!r.ok || !j.ok) throw new Error(j.error === 'private' ? 'This event’s gallery is private on this device.' : 'Could not open the event gallery.');
+          ST.list = (j.files || []).filter(function (f) { return f.src && /^image\/(png|jpeg|webp)$/.test(f.mime || ''); }).sort(function (a, b) { return b.t - a.t; })
+            .map(function (f) { return { id: 'w:' + f.id, name: f.name, t: f.t, src: f.src }; });
+        } catch (e) {
+          if (seq !== ST.seq) return;
+          ST.err = (e && e.message && !/fetch|network/i.test(e.message)) ? e.message : 'Could not reach the event gallery. Check the internet, or use pictures from this computer.';
+        }
+        ST.loading = false; stRenderGrid();
+      }
+      function stRenderGrid() {
+        var g = stEl('stGrid'); ST.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) { } }); ST.urls = [];
+        if (ST.io) { try { ST.io.disconnect(); } catch (e) { } ST.io = null; }
+        g.innerHTML = '';
+        var msg = function (t) { var p = document.createElement('p'); p.className = 'st-empty'; p.textContent = t; g.appendChild(p); };
+        if (ST.src === 'file') { msg('Choose strip or photo files from this computer (for example from your backup folder). They are added to the sheet.'); return; }
+        if (ST.loading) { msg('Loading…'); return; }
+        if (ST.err) { msg(ST.err); return; }
+        if (!ST.list.length) { msg(ST.src === 'local' ? 'No pictures saved in this folder yet.' : 'No pictures in the event gallery yet.'); return; }
+        if (ST.src === 'local' && 'IntersectionObserver' in window) {
+          ST.io = new IntersectionObserver(function (es) {
+            es.forEach(function (en) {
+              if (!en.isIntersecting) return;
+              var t = en.target; ST.io.unobserve(t); var f = t._f, im = t.querySelector('img'); if (!f || !im) return;
+              PBX.studioRead(f.slug, f.name).then(function (b) { if (b && im.isConnected) { var u = URL.createObjectURL(new Blob([b])); ST.urls.push(u); im.src = u; } }).catch(function () { });
+            });
+          }, { root: g, rootMargin: '200px' });
+        }
+        ST.list.slice(0, ST.show).forEach(function (f, i) {
+          var d = document.createElement('button'); d.type = 'button'; d.className = 'st-tile'; d.dataset.i = String(i); d.title = f.name;
+          var im = document.createElement('img'); im.alt = f.name; im.decoding = 'async';
+          if (f.src) { im.loading = 'lazy'; im.src = f.src; } else { d._f = f; if (ST.io) ST.io.observe(d); }
+          d.appendChild(im); g.appendChild(d);
+        });
+        if (ST.list.length > ST.show) {
+          var m = document.createElement('button'); m.type = 'button'; m.className = 'desk-btn'; m.id = 'stMore'; m.textContent = 'Show more (' + (ST.list.length - ST.show) + ')'; m.style.gridColumn = '1 / -1'; g.appendChild(m);
+        }
+        stMarkTiles();
+      }
+      function stMarkTiles() {
+        [].forEach.call(stEl('stGrid').querySelectorAll('.st-tile'), function (t) {
+          var f = ST.list[Number(t.dataset.i)]; t.classList.toggle('on', !!f && ST.items.some(function (it) { return it.key === f.id; }));
+        });
+      }
+
+      // ---- The picked strips ----
+      async function stAddBlob(key, name, blob) {
+        if (ST.items.length >= ST_MAX_ITEMS) { showToast('Up to ' + ST_MAX_ITEMS + ' pictures on the sheets.', 3500); return; }
+        var bmp;
+        try { bmp = await createImageBitmap(blob, { imageOrientation: 'from-image' }); } catch (e) { try { bmp = await createImageBitmap(blob); } catch (e2) { showToast('Could not open ' + name + '.', 4000); return; } }
+        var it = { id: ++ST.uid, key: key, name: name, img: bmp, iw: bmp.width, ih: bmp.height, w: 0, h: 0, z: 1, px: 0.5, py: 0.5, copies: 1 };
+        var strip = it.iw / it.ih < 0.45, s = Math.min((strip ? 50.8 : 101.6) / it.iw, 152.4 / it.ih);   // a strip starts at 2x6 in, a photo fits 4x6 in
+        it.w = Math.round(it.iw * s * 10) / 10; it.h = Math.round(it.ih * s * 10) / 10;
+        ST.items.push(it); ST.sel = ST.items.length - 1; ST.pos = {};
+        stRefresh(); stMarkTiles();
+      }
+      function stRemove(i) {
+        var it = ST.items[i]; if (!it) return;
+        try { it.img.close(); } catch (e) { }
+        ST.items.splice(i, 1); ST.pos = {};
+        ST.sel = ST.items.length ? Math.min(ST.sel > i ? ST.sel - 1 : ST.sel, ST.items.length - 1) : -1;
+        stRefresh(); stMarkTiles();
+      }
+      async function stTileTap(f) {
+        var at = ST.items.findIndex(function (it) { return it.key === f.id; });
+        if (at >= 0) { stRemove(at); return; }
+        try {
+          var blob;
+          if (f.src) { var r = await fetch(f.src); if (!r.ok) throw new Error('x'); blob = await r.blob(); }
+          else { var b = await PBX.studioRead(f.slug, f.name); if (!b) throw new Error('x'); blob = new Blob([b]); }
+          await stAddBlob(f.id, f.name, blob);
+        } catch (e) { showToast('Could not open that picture.', 3500); }
+      }
+
+      // ---- Packing: as many as fit, turned sideways when that saves paper ----
+      function stPieces() {
+        var out = [];
+        ST.items.forEach(function (it, i) { for (var c = 0; c < it.copies; c++) out.push({ i: i, id: it.id + ':' + c, w: it.w, h: it.h }); });
+        return out;
+      }
+      function stPack(pieces, P, mode) {
+        var m = ST.margin, g = ST.gap, AW = P.w - 2 * m, AH = P.h - 2 * m, shrunk = 0;
+        var list = pieces.map(function (p) { var r = mode === 'turn' ? true : mode === 'tall' ? p.w > p.h : mode === 'wide' ? p.h > p.w : false; return { p: p, rot: r, w: r ? p.h : p.w, h: r ? p.w : p.h }; });
+        list.forEach(function (q) {
+          if ((q.w > AW || q.h > AH) && q.h <= AW && q.w <= AH) { q.rot = !q.rot; var t = q.w; q.w = q.h; q.h = t; }
+          var k = Math.min(1, AW / q.w, AH / q.h); if (k < 1) { q.w *= k; q.h *= k; shrunk++; }
+        });
+        list.sort(function (a, b) { return b.h - a.h; });
+        var pages = [], pg = null, x = 0, y = 0, rowH = 0;
+        function newPage() { pg = { items: [], h: 0 }; pages.push(pg); x = 0; y = 0; rowH = 0; }
+        newPage();
+        list.forEach(function (q) {
+          var ox = x > 0 ? x + g : 0;
+          if (x > 0 && ox + q.w > AW + 0.01) { y += rowH + g; x = 0; rowH = 0; ox = 0; }
+          if (y + q.h > AH + 0.01 && pg.items.length) { newPage(); ox = 0; }
+          pg.items.push({ p: q.p, rot: q.rot, x: ox, y: y, fw: q.w, fh: q.h, bw: q.rot ? q.h : q.w, bh: q.rot ? q.w : q.h });
+          x = ox + q.w; rowH = Math.max(rowH, q.h);
+        });
+        pages.forEach(function (p) {
+          var mx = 0, my = 0; p.items.forEach(function (q) { mx = Math.max(mx, q.x + q.fw); my = Math.max(my, q.y + q.fh); });
+          var dx = m + (AW - mx) / 2, dy = m + (AH - my) / 2;
+          p.items.forEach(function (q) { q.x += dx; q.y += dy; }); p.h = my;
+        });
+        pages.shrunk = shrunk;
+        return pages;
+      }
+      function stScore(pages) {          // fewest sheets first, then fewest pieces turned sideways, then the least height used
+        var turned = 0; pages.forEach(function (p) { p.items.forEach(function (q) { if (q.rot) turned++; }); });
+        return pages.length * 1e6 + turned * 1000 + pages.reduce(function (t, p) { return t + p.h; }, 0);
+      }
+      function stLayout() {
+        var P = stPaper(); ST.pages = [{ items: [], h: 0 }];
+        if (!P || !ST.items.length) return;
+        var pieces = stPieces(), pick = null;          // try a few ways of turning the pieces and keep the one that uses the least paper
+        ['same', 'turn', 'tall', 'wide'].forEach(function (m) { var r = stPack(pieces, P, m); if (!pick || stScore(r) < stScore(pick)) pick = r; });
+        pick.forEach(function (pg) {          // pieces moved by hand stay where they were put
+          pg.items.forEach(function (q) { var o = ST.pos[q.p.id]; if (o) { q.x = stClamp(o.x, 0, P.w - q.fw); q.y = stClamp(o.y, 0, P.h - q.fh); } });
+        });
+        ST.pages = pick;
+      }
+
+      // ---- Drawing (preview and the print itself) ----
+      function stDrawPiece(ctx, it, q, f) {
+        var k = Math.max(q.bw / it.iw, q.bh / it.ih) * it.z, sw = q.bw / k, sh = q.bh / k;
+        var sx = (it.iw - sw) * it.px, sy = (it.ih - sh) * it.py;
+        ctx.save();
+        if (q.rot) { ctx.translate((q.x + q.fw) * f, q.y * f); ctx.rotate(Math.PI / 2); } else ctx.translate(q.x * f, q.y * f);
+        ctx.drawImage(it.img, sx, sy, sw, sh, 0, 0, q.bw * f, q.bh * f);
+        ctx.restore();
+      }
+      function stRenderPage(pi, dpi, preview) {
+        var P = stPaper(), f = dpi / 25.4, pg = ST.pages[pi];
+        var c = document.createElement('canvas'); c.width = Math.round(P.w * f); c.height = Math.round(P.h * f);
+        var ctx = c.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height); ctx.imageSmoothingQuality = 'high';
+        pg.items.forEach(function (q) { stDrawPiece(ctx, ST.items[q.p.i], q, f); });
+        if (ST.cut) {
+          ctx.strokeStyle = '#b5b5b5'; ctx.lineWidth = Math.max(1, dpi / 150); var pad = Math.max(0.5, dpi / 300);
+          pg.items.forEach(function (q) { ctx.strokeRect(q.x * f - pad, q.y * f - pad, q.fw * f + 2 * pad, q.fh * f + 2 * pad); });
+        }
+        if (preview && ST.sel >= 0) {
+          ctx.strokeStyle = '#2f6fed'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+          pg.items.forEach(function (q) { if (q.p.i === ST.sel) ctx.strokeRect(q.x * f, q.y * f, q.fw * f, q.fh * f); });
+        }
+        return c;
+      }
+      function stPreview() {
+        var box = stEl('stPages'), P = stPaper(); box.innerHTML = ''; ST.cv = [];
+        if (!P) { var e = document.createElement('p'); e.className = 'st-empty'; e.textContent = 'Choose a paper size.'; box.appendChild(e); return; }
+        ST.dpi = ST.pages.length > 4 ? 26 : 40;
+        ST.pages.forEach(function (pg, pi) {
+          var wrap = document.createElement('div'); wrap.className = 'st-pg';
+          var c = stRenderPage(pi, ST.dpi, true); c.className = 'st-cv'; c.dataset.pi = String(pi); wrap.appendChild(c);
+          var lb = document.createElement('span'); lb.textContent = (ST.pages.length > 1 ? 'Sheet ' + (pi + 1) + ' of ' + ST.pages.length + ' · ' : '') + P.name; wrap.appendChild(lb);
+          box.appendChild(wrap); ST.cv[pi] = c;
+        });
+      }
+      function stRedraw(pi) {
+        var c = ST.cv[pi]; if (!c || !stPaper()) return;
+        var n = stRenderPage(pi, ST.dpi, true), ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height); ctx.drawImage(n, 0, 0);
+      }
+      function stRedrawAll() { for (var i = 0; i < ST.pages.length; i++) stRedraw(i); }
+
+      // ---- Screen refresh ----
+      function stChips() {
+        var box = stEl('stChips'); box.innerHTML = '';
+        ST.items.forEach(function (it, i) {
+          var d = document.createElement('div'); d.className = 'st-chip' + (i === ST.sel ? ' on' : ''); d.dataset.i = String(i); d.title = it.name;
+          var c = document.createElement('canvas'), s = Math.min(34 / it.iw, 56 / it.ih); c.width = Math.max(8, Math.round(it.iw * s)); c.height = Math.max(8, Math.round(it.ih * s));
+          try { c.getContext('2d').drawImage(it.img, 0, 0, c.width, c.height); } catch (e) { }
+          d.appendChild(c);
+          var x = document.createElement('button'); x.type = 'button'; x.className = 'st-x'; x.dataset.del = String(i); x.setAttribute('aria-label', 'Remove'); x.textContent = '×'; d.appendChild(x);
+          box.appendChild(d);
+        });
+        stEl('stChipsHint').hidden = ST.items.length > 0;
+        stEl('stClear').hidden = ST.items.length === 0;
+      }
+      function stDpiOf(it) { return 25.4 / (Math.max(it.w / it.iw, it.h / it.ih) * it.z); }
+      function stEditUI() {
+        var it = ST.items[ST.sel], box = stEl('stEdit'); box.hidden = !it; if (!it) return;
+        stEl('stEName').textContent = it.name;
+        stEl('stW').value = stInch(it.w); stEl('stH').value = stInch(it.h);
+        stEl('stZ').value = Math.round(it.z * 100); stEl('stC').value = it.copies;
+        stQuality(it);
+      }
+      function stQuality(it) {
+        var d = Math.round(stDpiOf(it)), q = stEl('stEQ');
+        var cropped = Math.abs((it.w / it.h) / (it.iw / it.ih) - 1) > 0.02 || it.z > 1.001;
+        q.textContent = d + ' dpi' + (cropped ? ' · cropped' : '') + (d < 150 ? ' · soft' : '');
+        q.classList.toggle('st-warn', d < 150);
+      }
+      function stInfo() {
+        var P = stPaper(), n = stPieces().length, el = stEl('stInfo'), btn = stEl('stPrint');
+        var total = ST.pages.length * ST.sheets, soft = ST.items.some(function (it) { return stDpiOf(it) < 150; });
+        var txt = !P ? 'Choose a paper size.' : !n ? 'Pick strips on the left to start.' : n + (n === 1 ? ' piece' : ' pieces') + ' on ' + ST.pages.length + (ST.pages.length === 1 ? ' sheet' : ' sheets') + ' of ' + P.name + (ST.sheets > 1 ? ', ' + ST.sheets + ' of each (' + total + ' prints)' : '') + '.';
+        if (P && n && ST.pages.shrunk) txt += ' Some pieces are bigger than the paper and were shrunk to fit.';
+        if (soft) txt += ' Some pictures are small for this size and will print soft.';
+        el.textContent = txt; el.classList.toggle('st-warn', !!(P && n && (ST.pages.shrunk || soft)));
+        btn.disabled = !P || !n || ST.busy;
+        btn.textContent = ST.busy ? 'Printing…' : (n ? 'Print ' + total + (total === 1 ? ' sheet' : ' sheets') : 'Print');
+        [].forEach.call(document.querySelectorAll('#stMode button'), function (b) { b.classList.toggle('primary', b.dataset.mode === ST.mode); });
+      }
+      function stRefresh() { stLayout(); stPreview(); stChips(); stEditUI(); stInfo(); }
+      function stSized() {          // a size changed: the arrangement starts again
+        var it = ST.items[ST.sel]; if (it) { it.w = stClamp(it.w, 12, 1000); it.h = stClamp(it.h, 12, 1000); }
+        ST.pos = {}; stRefresh();
+      }
+      function stFillPaper() {
+        var sizes = stSizes(), sel = stEl('stPaper'); sel.innerHTML = '';
+        var saved = ''; try { saved = localStorage.getItem('pb_studio_paper') || ''; } catch (e) { }
+        if (sizes.indexOf(ST.paper) < 0) ST.paper = sizes.indexOf(saved) >= 0 ? saved : (sizes.indexOf('A4') >= 0 ? 'A4' : (sizes[0] || ''));
+        sizes.forEach(function (k) { var o = document.createElement('option'); o.value = k; o.textContent = paperFor(k).name; if (k === ST.paper) o.selected = true; sel.appendChild(o); });
+        stEl('stGap').value = ST.gap; stEl('stMargin').value = ST.margin; stEl('stCut').checked = ST.cut; stEl('stSheets').value = ST.sheets;
+      }
+      function stOpen() {
+        if (!studioOn()) return;
+        if (state === 'capturing') { showToast('Finish the session first.', 3000); return; }
+        try { closeGalleryPop(); } catch (e) { }
+        stOverlay.hidden = false; stFillPaper();
+        var srcs = stSources(); if (!srcs.some(function (s) { return s[0] === ST.src; })) ST.src = srcs[0][0];
+        stRefresh(); stSetSource(ST.src);
+      }
+      function stClose() { stOverlay.hidden = true; ST.drag = null; }
+
+      // ---- Printing ----
+      async function stPrint() {
+        if (ST.busy || printing) { if (printing) showToast('The booth is busy printing. Try again in a moment.', 3500); return; }
+        var P = stPaper(); if (!P || !ST.items.length) return;
+        var key = ST.paper, sheets = ST.sheets, total = ST.pages.length * sheets, oldSize = printSize;
+        ST.busy = true; printing = true; stInfo(); try { refreshPrintUI(); } catch (e) { }
+        try {
+          printSize = key;          // the printer, colour and quality chosen for this paper size apply
+          try { wifiRelink(); wifiSyncForSize(); } catch (e) { }
+          var viaStation = useStation(), pname = printerFor(key);
+          if (!viaStation && DESKTOP && !pname) { showToast('Choose a printer for ' + P.name + ' in Print settings first.', 5000); return; }
+          var lim = printLimits(), left = lim.ev && printCount && printCount.left != null ? printCount.left : Infinity;
+          if (left < total) { showToast(left < 1 ? 'No prints left for this event.' : 'Only ' + left + ' print' + (left === 1 ? '' : 's') + ' left for this event, and this needs ' + total + '.', 5000); return; }
+          var res = await reservePrints(total); if (!res.ok) { limitReached(); return; }
+          showPrintingNote(printTxt('txtPrinting'), 4000);
+          var pages = []; for (var i = 0; i < ST.pages.length; i++) pages.push(stRenderPage(i, PRINT_DPI, false));
+          printAdjustAll(pages);
+          var label = total + (total === 1 ? ' sheet' : ' sheets') + ', ' + P.name;
+          if (viaStation) { await sendToStation(pages, P, sheets); showToast('Sent to the print station (' + label + ').', 4500); return; }
+          var all = []; for (var c = 0; c < sheets; c++) all.push.apply(all, pages);
+          if (helperOn && pname) {
+            if (await printSheets(all, P, pname)) { showToast('Printing on ' + pname + ' (' + label + ').'); return; }
+            if (DESKTOP) { showToast('The printer didn’t take the sheets. Check it is on and try again.', 5000); return; }
+          }
+          var wf = wifiPrinter;
+          if (wf && !wf.dialog && wifiNetAvailable()) {
+            try { await printViaWifi(all, P, wf, wifiOpts(wf)); showToast('Printing on ' + wf.name + ' (' + label + ').'); return; }
+            catch (wErr) { showToast('Wi-Fi print failed: ' + (wErr.message || wErr) + ' Opening the print dialog instead.', 6000); }
+          }
+          if (window.__PBPrint && typeof window.__PBPrint.print === 'function') {
+            var imgs = all.map(function (cv) { return cv.toDataURL('image/jpeg', 0.92); });
+            var r = JSON.parse(window.__PBPrint.print('Photobooth ' + P.name, P.w, P.h, JSON.stringify(imgs)) || '{}');
+            showToast(r.ok ? 'Choose your printer to print (' + label + ').' : 'Couldn’t open printing: ' + (r.error || 'unknown error'), 5000); return;
+          }
+          if (isMobileOS() || DESKTOP) { showToast('Choose a printer in Print settings first.', 5000); return; }
+          var urls = []; printArea.innerHTML = '';
+          for (var k = 0; k < all.length; k++) {
+            var blob = await new Promise(function (r2) { all[k].toBlob(r2, 'image/png'); });
+            var url = URL.createObjectURL(blob); urls.push(url);
+            var img = new Image(); img.src = url; await img.decode();
+            var pg = document.createElement('div'); pg.className = 'print-page'; pg.style.width = P.w + 'mm'; pg.style.height = (P.h - 0.4) + 'mm';
+            if (k < all.length - 1) pg.style.breakAfter = 'page';
+            pg.appendChild(img); printArea.appendChild(pg);
+          }
+          printPageStyle.textContent = '@page { size: ' + P.w + 'mm ' + P.h + 'mm; margin: 0; }';
+          window.print();
+          setTimeout(function () { printArea.innerHTML = ''; urls.forEach(function (u) { URL.revokeObjectURL(u); }); }, 2000);
+          showToast('Sent to the printer (' + label + ').');
+        } catch (e) {
+          console.error('Arrange & Print failed:', e); showToast('Couldn’t print. Try again.', 4500);
+        } finally {
+          printSize = oldSize; printing = false; ST.busy = false; stInfo(); try { refreshPrintUI(); } catch (e) { }
+          if (printLimits().ev) setTimeout(refreshPrintCount, 1500);
+        }
+      }
+
+      // ---- Wiring ----
+      stEl('studioFab').addEventListener('click', stOpen);
+      stEl('stClose').addEventListener('click', stClose);
+      stOverlay.addEventListener('click', function (e) { if (e.target === stOverlay) stClose(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !stOverlay.hidden && pinModal && pinModal.hidden) stClose(); });
+      stEl('stTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-src]'); if (b) stSetSource(b.dataset.src); });
+      stEl('stSrcBar').addEventListener('click', function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        if (b.id === 'stRefresh') { if (ST.src === 'local') { ST.folders = []; } stSetSource(ST.src); }
+        else if (b.id === 'stChoose') stEl('stFiles').click();
+      });
+      stEl('stSrcBar').addEventListener('change', function (e) { if (e.target.id === 'stFolder') { ST.folder = e.target.value; ST.show = 60; stLoadLocal(); } });
+      stEl('stFiles').addEventListener('change', async function (e) {
+        var fs = [].slice.call(e.target.files || []); e.target.value = '';
+        for (var i = 0; i < fs.length; i++) await stAddBlob('f:' + fs[i].name + ':' + fs[i].size + ':' + fs[i].lastModified, fs[i].name, fs[i]);
+      });
+      stEl('stGrid').addEventListener('click', function (e) {
+        if (e.target.closest('#stMore')) { ST.show += 60; stRenderGrid(); return; }
+        var t = e.target.closest('.st-tile'); if (!t) return;
+        var f = ST.list[Number(t.dataset.i)]; if (f) stTileTap(f);
+      });
+      stEl('stChips').addEventListener('click', function (e) {
+        var d = e.target.closest('[data-del]'); if (d) { stRemove(Number(d.dataset.del)); return; }
+        var c = e.target.closest('.st-chip'); if (c) { ST.sel = Number(c.dataset.i); stChips(); stEditUI(); stRedrawAll(); }
+      });
+      stEl('stClear').addEventListener('click', function () {
+        ST.items.forEach(function (it) { try { it.img.close(); } catch (e) { } });
+        ST.items = []; ST.sel = -1; ST.pos = {}; stRefresh(); stMarkTiles();
+      });
+      stEl('stPaper').addEventListener('change', function (e) { ST.paper = e.target.value; try { localStorage.setItem('pb_studio_paper', ST.paper); } catch (er) { } ST.pos = {}; stRefresh(); });
+      stEl('stGap').addEventListener('change', function (e) { ST.gap = stClamp(Number(e.target.value) || 0, 0, 30); e.target.value = ST.gap; ST.pos = {}; stRefresh(); });
+      stEl('stMargin').addEventListener('change', function (e) { ST.margin = stClamp(Number(e.target.value) || 0, 0, 40); e.target.value = ST.margin; ST.pos = {}; stRefresh(); });
+      stEl('stCut').addEventListener('change', function (e) { ST.cut = e.target.checked; stRedrawAll(); });
+      stEl('stSheets').addEventListener('change', function (e) { ST.sheets = stClamp(Math.round(Number(e.target.value)) || 1, 1, 10); e.target.value = ST.sheets; stInfo(); });
+      stEl('stAuto').addEventListener('click', function () { ST.pos = {}; stRefresh(); });
+      stEl('stMode').addEventListener('click', function (e) { var b = e.target.closest('[data-mode]'); if (b) { ST.mode = b.dataset.mode; stInfo(); } });
+      stEl('stPrint').addEventListener('click', stPrint);
+      // The selected strip: size, crop, copies
+      stEl('stW').addEventListener('change', function (e) {
+        var it = ST.items[ST.sel]; if (!it) return; var w = stMm(stClamp(Number(e.target.value) || 0.5, 0.5, 40));
+        if (stEl('stKeep').checked) it.h = it.h * w / it.w; it.w = w; stSized();
+      });
+      stEl('stH').addEventListener('change', function (e) {
+        var it = ST.items[ST.sel]; if (!it) return; var h = stMm(stClamp(Number(e.target.value) || 0.5, 0.5, 40));
+        if (stEl('stKeep').checked) it.w = it.w * h / it.h; it.h = h; stSized();
+      });
+      stEl('stEdit').addEventListener('click', function (e) {
+        var it = ST.items[ST.sel]; if (!it) return;
+        var p = e.target.closest('[data-pw]');
+        if (p) { it.w = stMm(Number(p.dataset.pw)); it.h = stMm(Number(p.dataset.ph)); it.z = 1; it.px = it.py = 0.5; stSized(); return; }
+        var b = e.target.closest('button'); if (!b) return;
+        if (b.id === 'stFit') { it.h = it.w * it.ih / it.iw; it.z = 1; it.px = it.py = 0.5; stSized(); }
+        else if (b.id === 'stReset') { it.z = 1; it.px = it.py = 0.5; stEditUI(); stRedrawAll(); }
+        else if (b.id === 'stSame') { ST.items.forEach(function (o) { o.w = it.w; o.h = it.h; }); ST.pos = {}; stRefresh(); showToast('All pictures are now ' + stInch(it.w) + ' × ' + stInch(it.h) + ' in.', 3000); }
+        else if (b.id === 'stDel') stRemove(ST.sel);
+      });
+      stEl('stZ').addEventListener('input', function (e) { var it = ST.items[ST.sel]; if (!it) return; it.z = stClamp(Number(e.target.value) / 100, 1, 3); stQuality(it); stRedrawAll(); stInfo(); });
+      stEl('stC').addEventListener('change', function (e) { var it = ST.items[ST.sel]; if (!it) return; it.copies = stClamp(Math.round(Number(e.target.value)) || 1, 1, 20); e.target.value = it.copies; ST.pos = {}; stRefresh(); });
+      // Drag in the preview: Move puts a strip somewhere else on its sheet; Crop slides the picture inside its strip.
+      stEl('stPages').addEventListener('pointerdown', function (e) {
+        var c = e.target.closest('canvas'), P = stPaper(); if (!c || !P) return;
+        var pi = Number(c.dataset.pi), r = c.getBoundingClientRect(), mx = (e.clientX - r.left) / r.width * P.w, my = (e.clientY - r.top) / r.height * P.h;
+        var items = ST.pages[pi].items, hit = null;
+        for (var i = items.length - 1; i >= 0; i--) { var q = items[i]; if (mx >= q.x && mx <= q.x + q.fw && my >= q.y && my <= q.y + q.fh) { hit = q; break; } }
+        if (!hit) return;
+        e.preventDefault(); ST.sel = hit.p.i;
+        ST.drag = { pi: pi, q: hit, c: c, mx: mx, my: my, ox: hit.x, oy: hit.y };
+        try { c.setPointerCapture(e.pointerId); } catch (er) { }
+        stChips(); stEditUI(); stRedrawAll();
+      });
+      stEl('stPages').addEventListener('pointermove', function (e) {
+        var d = ST.drag, P = stPaper(); if (!d || !P) return;
+        var r = d.c.getBoundingClientRect(), mx = (e.clientX - r.left) / r.width * P.w, my = (e.clientY - r.top) / r.height * P.h, q = d.q;
+        if (ST.mode === 'move') {
+          q.x = stClamp(d.ox + mx - d.mx, 0, P.w - q.fw); q.y = stClamp(d.oy + my - d.my, 0, P.h - q.fh);
+          ST.pos[q.p.id] = { x: q.x, y: q.y }; stRedraw(d.pi);
+        } else {
+          var it = ST.items[q.p.i], dx = mx - d.mx, dy = my - d.my; d.mx = mx; d.my = my;
+          var lx = q.rot ? dy : dx, ly = q.rot ? -dx : dy;          // along the strip's own sides
+          var k = Math.max(q.bw / it.iw, q.bh / it.ih) * it.z, sw = q.bw / k, sh = q.bh / k;
+          if (it.iw - sw > 0.5) it.px = stClamp(it.px - lx / k / (it.iw - sw), 0, 1);
+          if (it.ih - sh > 0.5) it.py = stClamp(it.py - ly / k / (it.ih - sh), 0, 1);
+          stRedrawAll();
+        }
+      });
+      function stDragEnd() { ST.drag = null; }
+      stEl('stPages').addEventListener('pointerup', stDragEnd);
+      stEl('stPages').addEventListener('pointercancel', stDragEnd);
 
       // ---- 360 capture: the tablet or phone on the arm records the spin itself (laptop app and Android app) ----
       // The arm still turns by its own motor (or by hand); this screen only records. It starts with the button, or by itself

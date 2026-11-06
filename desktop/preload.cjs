@@ -57,6 +57,9 @@ contextBridge.exposeInMainWorld('pb4u', {
   printReqList: () => ipcRenderer.invoke('pb4u:printReqList'),
   printReqDone: (id) => ipcRenderer.invoke('pb4u:printReqDone', String(id || '')),
   printReqRead: (id) => ipcRenderer.invoke('pb4u:printReqRead', String(id || '')),
+  studioFolders: (key, sub) => ipcRenderer.invoke('pb4u:studioFolders', String(key || ''), String(sub || '')),
+  studioList: (slug) => ipcRenderer.invoke('pb4u:studioList', String(slug || '')),
+  studioRead: (slug, name) => ipcRenderer.invoke('pb4u:studioRead', String(slug || ''), String(name || '')),
   // Photographer desk folder watching
   deskFolder: () => ipcRenderer.invoke('pb4u:deskFolder'),
   deskChoose: () => ipcRenderer.invoke('pb4u:deskChoose'),

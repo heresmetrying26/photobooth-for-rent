@@ -440,7 +440,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         netPrintBridge?.shutdown()
-        btBridge.disconnect()
+        btBridge.shutdown()          // keeps the chosen printer (disconnect() would forget it)
         voiceBridge?.shutdown()
         shareServer?.stop()
         boothWifi?.shutdown()

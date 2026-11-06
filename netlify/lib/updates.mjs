@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.92', date: '2026-11-06' },
   { version: '1.0.91', date: '2026-11-06' },
   { version: '1.0.90', date: '2026-11-06' },
   { version: '1.0.89', date: '2026-11-06' },
@@ -139,6 +140,12 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-06', title: 'Laptop App Opens Again (Fix for 1.0.90 and 1.0.91)', for: ['app'], app: '1.0.92',
+    items: [
+      'Laptop app versions 1.0.90 and 1.0.91 could stay stuck in the background without opening a window. This version fixes it. Because the stuck app cannot update itself, download and install this version from the app download page (/app/). Your settings, photos and licence are kept.'
+    ]
+  },
   {
     date: '2026-11-06', title: 'Laptop App: Choose Where to Save the Wi-Fi Sign', for: ['app', 'website'], app: '1.0.91',
     items: [

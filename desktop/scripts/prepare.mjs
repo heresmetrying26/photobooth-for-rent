@@ -7,7 +7,7 @@
 // Run from desktop/:  node scripts/prepare.mjs
 // The public key comes from (first found): env PB4U_LICENSE_PUB, env PB_LICENSE_KEY
 // (derived), desktop/license-pubkey.txt, or https://photobooth4u.netlify.app/api/license?pub=1.
-import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCipheriv, createHash, randomBytes, createPrivateKey, createPublicKey } from 'node:crypto';
@@ -95,7 +95,16 @@ copyServer('functions/app.mjs', 'functions/app.mjs', [
   ["import booth from '../lib/booth.mjs';\n", ''],
   ['let html = booth;', "let html = globalThis.__pb4uBooth || '';"]
 ]);
+copyServer('lib/profiles-merge.mjs', 'lib/profiles-merge.mjs', []);
 for (const f of ['verify', 'setup', 'pay', 'prints']) copyServer('functions/' + f + '.mjs', 'functions/' + f + '.mjs', []);
+// A server file importing a lib that wasn't copied above stops the app from opening (desktop v1.0.90-1.0.91), so check every import.
+for (const sub of ['lib', 'functions']) {
+  for (const f of readdirSync(join(OUT, 'server', sub)).filter((n) => n.endsWith('.mjs'))) {
+    for (const m of readText(join(OUT, 'server', sub, f)).matchAll(/from\s+'(\.{1,2}\/[^']+)'/g)) {
+      must(existsSync(join(OUT, 'server', sub, m[1])), 'server/' + sub + '/' + f + ' imports ' + m[1] + ', which is not copied into the app. Add it to copyServer in scripts/prepare.mjs.');
+    }
+  }
+}
 
 // ---------- files the booth loads ----------
 const pub = (p) => join(ROOT, 'public', p);

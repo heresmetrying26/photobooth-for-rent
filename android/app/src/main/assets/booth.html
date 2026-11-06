@@ -12758,6 +12758,7 @@
               <p class="panel-hint" style="margin:0 0 8px;">Tap a box to select it, then drag to move or drag its corner
                 to resize. The numbers are the photo order (1 = first shot).</p>
               <div class="decor-btns"><button type="button" class="action-btn" id="spotAdd">+ Add spot</button><button
+                  type="button" class="action-btn" id="spotCopy" title="Make another box the same size and tilt as the selected one">Copy spot</button><button
                   type="button" class="action-btn" id="spotDel" style="color:#c0392b;">Remove spot</button><button
                   type="button" class="action-btn" id="spotRedetect">Find again</button><button type="button"
                   class="action-btn primary" id="spotDone">Done</button></div>
@@ -38684,7 +38685,7 @@
       var selItem = -1;             // selected frame on the sheet (Setup preview)
       var spotEdit = null;          // { f: frameId, sel: index } while fixing a frame's photo spots
       var FRAME_CACHE = {};         // frameId -> { img, key, punched }
-      var MAX_FRAMES = 8, MAX_SPOTS = 8, MAX_SHEET_ITEMS = 10;
+      var MAX_FRAMES = 8, MAX_SPOTS = 40, MAX_SHEET_ITEMS = 10;
       var SHEET_PATTERNS = [
         { id: 'one', name: 'One', cells: [[0, 0, 1, 1]] },
         { id: 'two-strips', name: '2 side by side', cells: [[0, 0, .5, 1], [.5, 0, .5, 1]] },
@@ -39541,6 +39542,22 @@
         var f = spotEdit && frameById(spotEdit.f); if (!f) return;
         if (f.spots.length >= MAX_SPOTS) { showToast('Up to ' + MAX_SPOTS + ' photo spots.'); return; }
         f.spots.push({ x: 0.3, y: 0.35, w: 0.4, h: 0.25 }); spotEdit.sel = f.spots.length - 1; framesChanged({ layout: 'myframe' });
+      });
+      // Copy the selected box (same size, tilt and layer), nudged a little so you can see it; it becomes the next shot.
+      document.getElementById('spotCopy').addEventListener('click', function () {
+        var f = spotEdit && frameById(spotEdit.f); if (!f) return;
+        var src = f.spots[spotEdit.sel]; if (!src) { showToast('Tap a box first, then Copy spot.'); return; }
+        if (f.spots.length >= MAX_SPOTS) { showToast('Up to ' + MAX_SPOTS + ' photo spots.'); return; }
+        var c = { x: src.x, y: src.y, w: src.w, h: src.h };
+        if (src.a) c.a = src.a;
+        if (src.z) c.z = src.z;
+        var dx = 0.03, dy = 0.02;
+        if (!c.a) {   // an upright box must stay inside the frame: nudge the other way at the edge
+          c.x = c.x + c.w + dx <= 1 ? c.x + dx : Math.max(0, c.x - dx);
+          c.y = c.y + c.h + dy <= 1 ? c.y + dy : Math.max(0, c.y - dy);
+        } else { c.x += dx; c.y += dy; }
+        f.spots.push(c); spotEdit.sel = f.spots.length - 1; framesChanged({ layout: 'myframe' });
+        showToast('Copied as photo ' + f.spots.length + '. Drag it where you want it.', 2200);
       });
       document.getElementById('spotDel').addEventListener('click', function () {
         var f = spotEdit && frameById(spotEdit.f); if (!f || spotEdit.sel < 0) { showToast('Tap a box first.'); return; }

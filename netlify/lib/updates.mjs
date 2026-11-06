@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.87', date: '2026-11-06' },
   { version: '1.0.86', date: '2026-11-06' },
   { version: '1.0.85', date: '2026-11-05' },
   { version: '1.0.84', date: '2026-11-05' },
@@ -134,6 +135,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-06', title: 'Up to 40 Photo Spots per Frame and a Copy Spot Button', for: ['app', 'website'], app: '1.0.87',
+    items: [
+      'Your own frames can now have up to 40 photo spots (it was 8), for big sheets with many small pictures. Add spot, Split and Find again all use the new limit.',
+      'New Copy spot button in Edit photo spots: select a box and tap Copy spot to make another with the same size and tilt, then drag it into place. The copy becomes the next photo in the order.'
+    ]
+  },
   {
     date: '2026-11-06', title: 'Prints per Payment Option (Softcopy Only), Thermal Darkness Test, Bluetooth Printer Fixes', for: ['app', 'website'], app: '1.0.86',
     items: [

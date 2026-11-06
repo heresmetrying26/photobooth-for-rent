@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.91', date: '2026-11-06' },
   { version: '1.0.90', date: '2026-11-06' },
   { version: '1.0.89', date: '2026-11-06' },
   { version: '1.0.88', date: '2026-11-06' },
@@ -138,6 +139,12 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-06', title: 'Laptop App: Choose Where to Save the Wi-Fi Sign', for: ['app', 'website'], app: '1.0.91',
+    items: [
+      'The Wi-Fi sign now opens a Save As box (File Explorer on Windows, Finder on Mac) so you pick the folder. It starts in the folder you used last time. If you cancel, nothing is saved and the app says so.'
+    ]
+  },
   {
     date: '2026-11-06', title: 'Vouchers: Every Payment Option Now Shows Up, Including Option 3', for: ['app', 'website'], app: '1.0.90',
     items: [

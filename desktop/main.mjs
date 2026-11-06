@@ -253,6 +253,23 @@ function wireIpc() {
     setPhotosRoot(dir); settings.photos = dir; saveSettings();
     return dir;
   });
+  // Printable signs (Wi-Fi sign...): always ask where to save, starting in the folder used last time.
+  ipcMain.handle('pb4u:saveFile', async (e, name, bytes) => {
+    const SAVE_EXT = { png: 'PNG image', jpg: 'JPG image', jpeg: 'JPG image', pdf: 'PDF document' };
+    const clean = basename(String(name || 'file.png')).replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').slice(0, 120) || 'file.png';
+    const ext = extname(clean).slice(1).toLowerCase();
+    if (!SAVE_EXT[ext]) return { ok: false, error: 'That file type can’t be saved here.' };
+    let data; try { data = Buffer.from(bytes); } catch { return { ok: false, error: 'Nothing to save.' }; }
+    if (!data.length || data.length > 60 * 1024 * 1024) return { ok: false, error: 'Nothing to save.' };
+    let start; try { start = (settings.saveDir && existsSync(settings.saveDir)) ? settings.saveDir : app.getPath('downloads'); } catch { start = photosRoot(); }
+    const r = await dialog.showSaveDialog(win, { title: 'Save', defaultPath: join(start, clean), filters: [{ name: SAVE_EXT[ext], extensions: [ext] }, { name: 'All files', extensions: ['*'] }] });
+    if (r.canceled || !r.filePath) return null;
+    try {
+      writeFileSync(r.filePath, data);
+      settings.saveDir = dirname(r.filePath); saveSettings();
+      return { ok: true, path: r.filePath, dir: dirname(r.filePath) };
+    } catch (err) { return { ok: false, error: 'Couldn’t save there: ' + String((err && err.message) || err).slice(0, 120) }; }
+  });
   // Photographer desk: a folder the photographer's photos arrive in (camera software, FTP or Wi-Fi tool saves there).
   // The page only ever reads image files directly inside the folder the operator picked.
   const DESK_EXT = /\.(jpe?g|png|webp)$/i;

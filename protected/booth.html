@@ -17535,6 +17535,18 @@
       async function saveSignPng(c, base, name, title) {
         const blob = await new Promise(r => c.toBlob(r, 'image/png'));
         const file = base + (name ? '-' + name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() : '') + '.png';
+        // Laptop app: a Save As box (File Explorer / Finder) that starts in the folder you used last time.
+        if (window.pb4u && window.pb4u.saveFile) {
+          try {
+            const r = await window.pb4u.saveFile(file, new Uint8Array(await blob.arrayBuffer()));
+            if (r === null) { showToast('Not saved.'); return; }
+            if (r && r.ok) {
+              showToast(title + ' saved in ' + String(r.dir || '').split(/[\\/]/).filter(Boolean).pop() + '. Print it on A5 or bigger.', 6000);
+              return;
+            }
+            if (r && r.error) { showToast(r.error, 5000); return; }
+          } catch (e) { /* an older app: use the normal download below */ }
+        }
         try {
           const f = new File([blob], file, { type: 'image/png' });
           if (isMobileOS() && navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: title }); return; }

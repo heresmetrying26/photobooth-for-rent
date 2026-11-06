@@ -21,7 +21,8 @@ contextBridge.exposeInMainWorld('pb4u', {
   deactivate: () => ipcRenderer.invoke('pb4u:deactivate'),
   openPhotos: (folderUrl) => ipcRenderer.invoke('pb4u:openPhotos', folderUrl ? String(folderUrl) : ''),
   choosePhotos: () => ipcRenderer.invoke('pb4u:choosePhotos'),
-  // 360 videos
+  // Save a file the booth made (e.g. the Wi-Fi sign) with a Save As box: null when cancelled, else { ok, path, dir } / { ok:false, error }
+  saveFile: (name, bytes) => ipcRenderer.invoke('pb4u:saveFile', String(name || ''), bytes),  // 360 videos
   spinInfo: () => ipcRenderer.invoke('pb4u:spinInfo'),
   spinChoose: () => ipcRenderer.invoke('pb4u:spinChoose'),
   spinScan: () => ipcRenderer.invoke('pb4u:spinScan'),

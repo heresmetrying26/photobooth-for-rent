@@ -12154,6 +12154,12 @@
         this.feed(3);
         return this._byte(GS, 0x56, partial ? 0x42 : 0x41, 0x00);
       };
+      // Asks the printer to print at its slowest speed (ESC/POS GS ( K, function 50, level 1), so a slow Bluetooth link
+      // keeps up and the paper never stops mid-picture. Not every printer knows it: it is only sent for tune choice 4,
+      // which the operator picks from the smooth-print test strip after seeing it print cleanly.
+      EscPosEncoder.prototype.slowPrint = function () {
+        return this._byte(GS, 0x28, 0x4B, 0x02, 0x00, 0x32, 0x01);
+      };
 
       EscPosEncoder.prototype.image = function (canvas, maxBandHeight) {
         var ctx = canvas.getContext('2d');
@@ -12253,6 +12259,44 @@
           return speed === 'safe' ? { chunk: 48, delay: 8, band: 32 } : { chunk: 96, delay: 8, band: 64 };
         }
         return { chunk: 512, delay: 6, band: 256 };
+      }
+
+      // ---- Smooth-print tune (one choice per printer) ----
+      // No list of brands can say how big a picture a printer takes in one go or how fast it can be fed, so the operator
+      // prints one test strip in 4 ways and taps the cleanest; it is saved under the printer's name ("bt:" Bluetooth,
+      // "raw:" USB / Wi-Fi). 1 Careful, 2 Standard (the defaults above), 3 Smooth (bigger bands, faster feed: fewer
+      // seams and stops), 4 Smooth + slow printing (3 plus slowPrint, so the paper never outruns the data).
+      var TUNE_KEY = 'pb_thermal_tune', TUNE_WHOLE = 2000;   // "whole picture": 2000 rows (25 cm); Epson caps a raster at 2303
+      var TUNE_NAMES = ['', 'Careful', 'Standard', 'Smooth', 'Smooth + slow printing'];
+      function tuneMap() {
+        try { return JSON.parse(localStorage.getItem(TUNE_KEY) || '{}') || {}; } catch (_) { return {}; }
+      }
+      function tuneGet(key) {
+        var v = key ? Number(tuneMap()[key]) : 0;
+        return v >= 1 && v <= 4 ? v : 0;
+      }
+      function tuneSet(key, level) {
+        if (!key) return;
+        var m = tuneMap();
+        if (level >= 1 && level <= 4) m[key] = level; else delete m[key];
+        try { localStorage.setItem(TUNE_KEY, JSON.stringify(m)); } catch (_) { }
+      }
+      // Bluetooth: how each tune choice is sent.
+      function btTunePacing(paperDots, level) {
+        var p = paperDots <= 384
+          ? [null, { chunk: 48, delay: 8, band: 32 }, { chunk: 96, delay: 8, band: 64 }, { chunk: 192, delay: 8, band: 192 }, { chunk: 192, delay: 8, band: 192 }]
+          : [null, { chunk: 288, delay: 8, band: 128 }, { chunk: 512, delay: 6, band: 256 }, { chunk: 1024, delay: 6, band: 1024 }, { chunk: 1024, delay: 6, band: 1024 }];
+        var r = p[level] || p[2];
+        return { chunk: r.chunk, delay: r.delay, band: r.band, slow: level === 4 };
+      }
+      // USB / Wi-Fi: the link itself makes the tablet wait for the printer, so only the band size (and slow printing) changes.
+      function rawTuneBand(level) { return [256, 128, 256, TUNE_WHOLE, TUNE_WHOLE][level] || 256; }
+      // The pacing a Bluetooth job uses: Fast / Slow and safe when picked; otherwise this printer's tune, else the default.
+      function btPaceFor(printer) {
+        var dots = printer._paperWidth || 576, sp = btProfile().speed;
+        if (sp === 'safe' && dots > 384) sp = 'auto';
+        var lv = sp === 'auto' ? tuneGet('bt:' + (printer._name || '')) : 0;
+        return lv ? btTunePacing(dots, lv) : btPacing(dots, sp);
       }
 
       // quality: 'best' (sharpened, dot-gain corrected, Atkinson dithering: crisp and not too dark),
@@ -12636,10 +12680,11 @@
         var feed = opts.feed != null ? opts.feed : 3;
         if (!this._mode) return Promise.reject(new Error('Printer not connected'));
 
-        var prof = btProfile(), pace = btPacing(this._paperWidth, prof.speed);
+        var prof = btProfile(), pace = opts.pace || btPaceFor(this);   // opts.pace: the smooth-print test strip
         var mono = toReceiptCanvas(canvas, this._paperWidth, opts.brightness, opts.quality);
         var enc = new EscPosEncoder(this._paperWidth);
         enc.initialize();
+        if (pace.slow) enc.slowPrint();
         if (prof.cmd === 'star') enc.imageStar(mono); else enc.image(mono, pace.band);
         enc.feed(feed);
         // 58mm mobile printers have no cutter: skip the cut command (some read it as text) and leave room to tear.
@@ -12652,7 +12697,7 @@
         if (!this._mode) return Promise.reject(new Error('Printer not connected'));
         var enc = new EscPosEncoder(this._paperWidth);
         enc.initialize().text('PHOTOBOOTH4U\nText test OK\n' + (this._name || 'Bluetooth printer') + '\n').feed(3);
-        return this.write(enc.getBuffer(), btPacing(this._paperWidth, btProfile().speed));
+        return this.write(enc.getBuffer(), btPaceFor(this));
       };
 
       // Step 2: a short picture (64 rows). If text works but this garbles, the printer needs the Compatibility image mode.
@@ -12750,6 +12795,11 @@
         isNativeAndroid: isNativeAndroid,
         btProfile: btProfile,
         btSetProfile: btSetProfile,
+        tuneGet: tuneGet,
+        tuneSet: tuneSet,
+        TUNE_NAMES: TUNE_NAMES,
+        btTunePacing: btTunePacing,
+        rawTuneBand: rawTuneBand,
         isBtEnabled: isBtEnabled,
         openBtSettings: openBtSettings,
         printViaBluetooth: printViaBluetooth,
@@ -14709,6 +14759,16 @@
                 <button type="button" class="print-size-btn" data-lite="45">+45</button>
                 <button type="button" class="print-size-btn" data-lite="60">+60</button>
               </div>
+              <p class="sub-label" style="margin:10px 0 4px;">Lines across the picture?</p>
+              <p class="panel-hint" style="margin:0 0 6px;">For Bluetooth, USB and Wi-Fi receipt printers. Prints one strip in four ways. Pick the one with no lines and no strange text; it is saved for this printer only. Then print a real strip to check a long picture.</p>
+              <button type="button" class="action-btn" id="thermalSmoothTestBtn" style="width:auto;margin:0 0 6px;">Print a smooth-print test strip</button>
+              <div class="print-size-row" id="thermalSmoothPick" hidden>
+                <button type="button" class="print-size-btn" data-smooth="1">1 · Careful</button>
+                <button type="button" class="print-size-btn" data-smooth="2">2 · Standard</button>
+                <button type="button" class="print-size-btn" data-smooth="3">3 · Smooth</button>
+                <button type="button" class="print-size-btn" data-smooth="4">4 · Smooth + slow</button>
+              </div>
+              <p class="panel-hint" id="thermalSmoothHint" style="margin:2px 0 6px;"></p>
             </div>
             <div id="printerQualityBox" class="hidden">
               <p class="sub-label" style="margin:10px 0 6px;">Print quality (this printer)</p>
@@ -22077,52 +22137,28 @@
       startBtn.addEventListener('click', () => beginGuestFlow(false));
 
       // ---- Universal Bluetooth Remote / Pocket Shutter Clicker & Gamepad Engine ----
+      // Volume keys and gamepads / Bluetooth pedals. (Space, Enter, PageDown ... are handled once, by onTriggerKey.)
+      // The screens are shown with classes (welcome "on", start "gone", get ready "ready-active"), so ask boothTrigger,
+      // which knows them: it skips the wait between photos, answers Get ready, or starts the next guest. Checking
+      // hidden / style.display here made every press look like a tap on the welcome screen, so during a session each
+      // press only said "Getting the camera ready… one moment".
       function triggerRemoteShutter(e) {
         var isInput = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
         if (isInput && e && (e.key === ' ' || e.key === 'Enter')) return;
-
-        // 1. Welcome Screen
         var wel = document.getElementById('welcomeOverlay');
-        if (wel && !wel.hidden && wel.style.display !== 'none') {
+        if (wel && wel.classList.contains('on') && !wel.classList.contains('dismissing') && !flowBusy && state !== 'capturing') {
           if (typeof triggerWelcomeTap === 'function') { triggerWelcomeTap(e); return; }
         }
-
-        // 2. Start Screen
-        var ss = document.getElementById('startScreen');
-        if (ss && !ss.hidden && ss.style.display !== 'none') {
-          if (typeof leaveStartScreen === 'function') { leaveStartScreen(); return; }
-        }
-
-        // 3. Ready Overlay (during countdown start)
-        var ro = document.getElementById('readyOverlay');
-        if (ro && !ro.hidden && ro.style.display !== 'none') {
-          var rsb = document.getElementById('readyStartBtn');
-          if (rsb) { rsb.click(); return; }
-        }
-
-        // 4. Inter-shot Pause (pausing countdown in session)
-        if (sess && sess.pauseEnd) {
-          sess.pauseEnd();
-          return;
-        }
-
-        // 5. Result Screen -> Next Guest
-        if (state === 'result') {
+        if (state === 'result' && !(sess && (sess.reviewEnd || sess.pauseEnd))) {
           if (typeof resetForNextGuest === 'function') { resetForNextGuest(); return; }
         }
-
-        // 6. 360 Studio Desk Active
         var spinDesk = document.getElementById('spinStudioWrap') || document.getElementById('spinOverlay');
         var spinIsOpen = spinDesk && (!spinDesk.hidden && spinDesk.style.display !== 'none');
         if (spinIsOpen) {
           var editBtn = document.getElementById('spinEditBtn');
           if (editBtn && !editBtn.hidden && !editBtn.disabled) { editBtn.click(); return; }
         }
-
-        // 7. Normal Photo Session Idle -> Start
-        if (state !== 'capturing') {
-          if (typeof beginGuestFlow === 'function') { beginGuestFlow(false); return; }
-        }
+        if (typeof boothTrigger === 'function') boothTrigger(false);
       }
 
       window.addEventListener('keydown', function (e) {
@@ -22132,7 +22168,7 @@
           var tg = (tgt.tagName || '').toUpperCase();
           if (tg === 'INPUT' || tg === 'TEXTAREA' || tg === 'SELECT' || tgt.isContentEditable) return;   // typing: never treat keys as the remote shutter
         }
-        if (k === ' ' || k === 'Enter' || k === 'PageDown' || k === 'PageUp' || k === 'ArrowRight' || k === 'AudioVolumeUp' || k === 'AudioVolumeDown' || k === 'VolumeUp' || k === 'VolumeDown') {
+        if (k === 'AudioVolumeUp' || k === 'AudioVolumeDown' || k === 'VolumeUp' || k === 'VolumeDown') {      // the other keys: onTriggerKey
           var printMod = document.getElementById('printModal');
           if (printMod && !printMod.hidden) return;
           var tplMod = document.getElementById('tplModal');
@@ -25370,6 +25406,7 @@
               normal: 'The standard look.',
               draft: 'Coarse dots: quick, light, and gentle on the print head. Good for tests.'
             }[tq];
+            try { thermalSmoothUI(); } catch (e) { }
           }
         } catch (e) { }
         try {
@@ -26406,8 +26443,14 @@
         if (paper.receipt && p.raw && window._btThermal && window._btThermal.EscPosEncoder) {
           const dotW = paper.w <= 55 ? 384 : 576;
           const bVal = 0;          // already in the page (printAdjust)
+          const T = window._btThermal;
+          const lv = (wo.tune >= 1 && wo.tune <= 4) ? wo.tune : (T.tuneGet ? T.tuneGet('raw:' + wifiPKey(p)) : 0);
           for (const cv of all) {
-            const bytes = new window._btThermal.EscPosEncoder(dotW).initialize().image(window._btThermal.toReceiptCanvas(cv, dotW, bVal, wo.thermalQuality || 'normal')).cut().getBuffer();
+            const enc = new T.EscPosEncoder(dotW).initialize();
+            if (lv === 4) enc.slowPrint();
+            enc.image(T.toReceiptCanvas(cv, dotW, bVal, wo.thermalQuality || 'normal'), T.rawTuneBand ? T.rawTuneBand(lv) : 256);
+            if (wo.noCut) enc.feed(wo.feed || 1); else enc.cut();
+            const bytes = enc.getBuffer();
             await wifiJob(id => window.__PBNet.printRaw(id, p.ip, wifiBytesToB64(bytes)));
           }
           return;
@@ -26560,6 +26603,87 @@
         const n = Number(b.dataset.lite) || 0;
         try { commitViewAdj(Object.assign({ brightness: 0, red: 0, green: 0, blue: 0 }, viewAdj(), { brightness: n })); } catch (err) { }
         showToast('Lightness set to ' + (n > 0 ? '+' : '') + n + ' for this printer.', 3500);
+      });
+
+      // ---- Smooth-print test strip (thermal rolls on Bluetooth, USB or Wi-Fi) ----
+      // Lines across a thermal print are seams between picture bands, or the paper stopping because data came in slower
+      // than the printer prints. One strip prints the same picture in the 4 tune choices (see btTunePacing / rawTuneBand);
+      // the operator taps the cleanest one and it is saved for that printer only.
+      function thermalTarget() {
+        if ((isMobileOS() || !helperOn) && btThermalOn && isBtThermalAvailable()) return { kind: 'bt' };
+        if (wifiPrinter && !wifiPrinter.dialog && wifiPrinter.raw && wifiNetAvailable()) return { kind: 'raw', p: wifiPrinter };
+        return null;
+      }
+      function thermalTuneKey(t) {
+        if (!t) return '';
+        if (t.kind === 'bt') { const b = window._btThermal && window._btThermal.btPrinter; return b && b.name ? 'bt:' + b.name : ''; }
+        return 'raw:' + wifiPKey(t.p);
+      }
+      function smoothSection(W, lv, name) {
+        const cv = document.createElement('canvas');
+        cv.width = W; cv.height = 300;
+        const g = cv.getContext('2d');
+        g.fillStyle = '#fff'; g.fillRect(0, 0, W, 300);
+        g.fillStyle = '#000'; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.font = '700 26px sans-serif';
+        g.fillText(lv + ' · ' + name, 12, 32);
+        const ramp = g.createLinearGradient(12, 0, W - 12, 0); ramp.addColorStop(0, '#111'); ramp.addColorStop(1, '#eee');
+        g.fillStyle = ramp; g.fillRect(12, 46, W - 24, 170);       // every row the same: a seam or a stop shows as a line across
+        g.fillStyle = '#777'; g.fillRect(12, 222, W - 24, 70);
+        return cv;
+      }
+      let thermalSmoothTesting = false, thermalSmoothKey = '';
+      function thermalSmoothUI() {
+        const hint = document.getElementById('thermalSmoothHint');
+        if (!hint || !window._btThermal || !window._btThermal.tuneGet) return;
+        const key = thermalTuneKey(thermalTarget()) || thermalSmoothKey;
+        const lv = key ? window._btThermal.tuneGet(key) : 0;
+        document.querySelectorAll('#thermalSmoothPick [data-smooth]').forEach(b => b.classList.toggle('active', Number(b.dataset.smooth) === lv));
+        const name = key ? key.slice(key.indexOf(':') + 1) : '';
+        hint.textContent = !key ? 'Connect the printer to see its setting.'
+          : lv ? name + ': ' + lv + ' · ' + window._btThermal.TUNE_NAMES[lv] + '.'
+            : name + ': not tested yet (uses 2 · Standard).';
+      }
+      async function thermalSmoothTest() {
+        if (thermalSmoothTesting) return;
+        if (!printSize || !isReceiptPaper(printSize)) { showToast('Choose a thermal roll as the paper size first.', 3500); return; }
+        const t = thermalTarget();
+        if (!t) { showToast('Connect a Bluetooth, USB or Wi-Fi receipt printer first. A printer on the Windows print helper prints through its own driver.', 6000); return; }
+        thermalSmoothTesting = true;
+        try {
+          const T = window._btThermal, paper = paperFor(printSize);
+          const W = paper.w <= 55 ? 384 : 576, rollW = W === 384 ? '58mm' : '80mm';
+          showToast('Printing the smooth-print test strip (4 parts)…', 5000);
+          for (let lv = 1; lv <= 4; lv++) {
+            const sec = smoothSection(W, lv, T.TUNE_NAMES[lv]), last = lv === 4;
+            if (t.kind === 'bt') {
+              await T.printViaBluetooth(sec, rollW, { brightness: 0, quality: printPrefs.thermalQuality || 'normal', pace: T.btTunePacing(W, lv), cut: last, feed: last ? 4 : 1 });
+            } else {
+              const pp = Object.assign({}, paper, { h: Math.round(sec.height / RECEIPT_DPI * 254) / 10 });
+              await printViaWifi([sec], pp, t.p, Object.assign(wifiOpts(t.p), { tune: lv, noCut: !last, feed: 1 }));
+            }
+          }
+          thermalSmoothKey = thermalTuneKey(t);
+          document.getElementById('thermalSmoothPick').hidden = false;
+          showToast('Test strip sent. Tap the part with no lines and no strange text.', 6000);
+        } catch (e) {
+          showToast('Test strip failed: ' + (e.message || e), 6000);
+        } finally {
+          thermalSmoothTesting = false;
+          thermalSmoothUI();
+        }
+      }
+      document.getElementById('thermalSmoothTestBtn').addEventListener('click', thermalSmoothTest);
+      document.getElementById('thermalSmoothPick').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-smooth]'); if (!b) return;
+        const lv = Number(b.dataset.smooth) || 0, T = window._btThermal;
+        const key = thermalSmoothKey || thermalTuneKey(thermalTarget());
+        if (!key || !T || !T.tuneSet) { showToast('Connect the printer first.', 3000); return; }
+        T.tuneSet(key, lv);
+        if (key.indexOf('bt:') === 0) {                 // the tune is used on Automatic: undo Fast / Slow and safe
+          try { T.btSetProfile({ speed: 'auto', cmd: T.btProfile().cmd }); if (window.__pbSyncBtSpeed) window.__pbSyncBtSpeed(); } catch (err) { }
+        }
+        showToast(lv + ' · ' + T.TUNE_NAMES[lv] + ' saved for ' + key.slice(key.indexOf(':') + 1) + '.', 4000);
+        thermalSmoothUI();
       });
 
       // ---- Print queue (Android tablet app) ----

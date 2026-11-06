@@ -144,8 +144,9 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
-    date: '2026-11-06', title: 'Arrange & Print: crop, merge and print strips on any paper', for: ['app', 'website'], app: '1.0.95',
+    date: '2026-11-06', title: 'Arrange & Print, and the QR code in a pop-up', for: ['app', 'website'], app: '1.0.95',
     items: [
+      'New in Setup, step 7 Session, "After the photos": Show the QR code in a pop-up. After the last photo the finished picture is shown on its own for a few seconds (almost the whole screen on an upright tablet), then a pop-up shows a big QR code with Print and Done. With "Print first before showing QR" on, the pop-up says Printing and the QR code appears when the print is done. Also on the Android tablet app 1.0.107.',
       'New operator button "Arrange & Print" (it is hidden while the booth is locked, so it opens only after the PIN): pick finished strips from this computer, the event gallery or files, put as many as fit on A4, Letter and other paper, and print.',
       'Crop any strip with the new crop window (drag the edges or corners, or lock the shape to 1:3, 2:3 or square), then tap Keychain 2.5×7.5, 2×6 or 4×6 to fit it to that size. Drag strips in the preview to move them.',
       'Fixed: the Print button seemed to do nothing because its messages were hidden behind the screen. They now show under the button, and you can choose the printer for the paper right there.'

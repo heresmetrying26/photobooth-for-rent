@@ -93,3 +93,21 @@ When the user signals they are done (e.g. "bye", "done", "wrap up", "end session
 
 Keep ``CONTEXT.md`` under 20 lines total. Do NOT summarize the full conversation  -  only what's needed to resume next session.
 
+# Release SOP: the app must open (check every release)
+
+Desktop v1.0.90 and v1.0.91 never opened a window. `setup.mjs` imported a new file (`lib/profiles-merge.mjs`) that `desktop/scripts/prepare.mjs` did not copy into the app. Start-up stopped before the window and the auto-updater, so every stuck laptop had to reinstall by hand. Do all of these before pushing a release tag.
+
+## Desktop (`desktop-v*` tag)
+1. A new or renamed file under `netlify/lib` or `netlify/functions` that `setup` / `verify` / `pay` / `prints` / `app` imports must also be copied by `copyServer` in `desktop/scripts/prepare.mjs`. `prepare.mjs` now fails the build when a copied file imports one that wasn't copied. Never remove or skip that check.
+2. Build: `cd desktop && npm run dist:win`.
+3. Start-up check, required: `powershell -ExecutionPolicy Bypass -File scripts\smoke-test.ps1` (from `desktop/`). It must print `PASS`. On `FAIL`, do not tag: fix it and build again. The script refuses to run while photobooth4u is open. Ask the user before closing a booth that may be in use.
+4. Release only finished work. If the working tree has unfinished changes, `git stash push -- <those files>` first, build and check the release from the clean tree, then `git stash pop`.
+5. After the GitHub Actions run, check that the release has all 3 installers and that `https://photobooth4u.netlify.app/api/updates` reports the new `app.version`.
+6. Mac builds can't be checked on this laptop. Say so in the summary to the user, and ask them to open the `.dmg` build on a Mac if the release touched start-up code (`main.mjs`, `preload.cjs`, `lib/`, `prepare.mjs`).
+
+## Website and Android (`android-v*` tag)
+- After a Netlify deploy: `/` returns 200, and `POST /api/setup` returns 401, not 5xx. A 5xx means a server function fails to load.
+- Before an Android tag: run `npm run build` so `android/app/src/main/assets/booth.html` matches `protected/booth.html`. The tablet uses that copy when offline. If a tablet is connected (`adb devices`), install the APK, open it online, then with Wi-Fi off.
+
+## If the app won't open on a client's laptop
+A stuck copy keeps running with no window, and new launches give way to it. Tell them to End task on photobooth4u in Task Manager (or restart), then install the fixed version from `/downloads`. Their licence code, settings and photos are kept (they are stored in `%APPDATA%\photobooth4u`). To see the start-up error on this laptop, close the app, set `ELECTRON_ENABLE_LOGGING=1` and start the exe with stderr redirected to a file.

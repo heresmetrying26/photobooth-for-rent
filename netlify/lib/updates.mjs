@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.88', date: '2026-11-06' },
   { version: '1.0.87', date: '2026-11-06' },
   { version: '1.0.86', date: '2026-11-06' },
   { version: '1.0.85', date: '2026-11-05' },
@@ -135,6 +136,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-06', title: 'Many Photo Spots, Few Photos: Repeat the First Shots in Every Other Spot', for: ['app', 'website'], app: '1.0.88',
+    items: [
+      'New option under your own frame: "Take only the first N photos; every other spot repeats them". With 40 photo spots and N = 4, guests take just 4 photos and spot 5 shows photo 1, spot 6 shows photo 2, and so on. Spots you add later repeat too.',
+      'In Edit photo spots, the number on each box shows which photo it uses. The setting is saved with the frame and shared with other devices on the same code.'
+    ]
+  },
   {
     date: '2026-11-06', title: 'Up to 40 Photo Spots per Frame and a Copy Spot Button', for: ['app', 'website'], app: '1.0.87',
     items: [

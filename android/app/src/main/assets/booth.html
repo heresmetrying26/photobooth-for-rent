@@ -38729,7 +38729,12 @@
       // 3 boxes) needs only one strip's worth of shots: the right-hand boxes repeat
       // the left-hand ones. Returns, per spot, which shot goes in it (or null).
       var PAIR_CACHE = {};
+      // f.rep = N: only N photos are taken; spot 1..N show photos 1..N and every later spot repeats them
+      // (spot N+1 = photo 1, and so on). Beats the two-strip pairing below. Ignored unless it is fewer than the spots.
+      function frameRepeat(f) { var n = f && Math.floor(Number(f.rep)); return n >= 1 && f.spots && n < f.spots.length ? n : 0; }
       function framePairs(f) {
+        var rep = frameRepeat(f);
+        if (rep) return f.spots.map(function (s, i) { return i % rep; });
         var map = framePairsGeom(f);
         if (!map || f.copy === false) return null;
         if (f.copy === true) return map;
@@ -38753,7 +38758,7 @@
         PAIR_CACHE[f.id] = { key: key, map: map };
         return map;
       }
-      function frameShotCount(f) { var m = framePairs(f); return m ? f.spots.length / 2 : f.spots.length; }
+      function frameShotCount(f) { var rep = frameRepeat(f); if (rep) return rep; var m = framePairs(f); return m ? f.spots.length / 2 : f.spots.length; }
       function isFrameLayout(key) { var k = key || currentLayout; return k === 'myframe' || k === 'framesheet'; }
 
       // ---- Finding the photo spots ----
@@ -39328,7 +39333,24 @@
           });
           btns.append(ed, prevBtn, rm);
           ctx.append(top, btns);
-          if (framePairsGeom(f)) {
+          if (f.spots.length >= 2) {
+            // Many spots, few photos: only the first N photos are taken, every later spot repeats them.
+            var rp = document.createElement('label');
+            rp.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:12.5px;font-weight:600;margin-top:8px;cursor:pointer;';
+            var rcb = document.createElement('input'); rcb.type = 'checkbox'; rcb.checked = !!frameRepeat(f);
+            var rin = document.createElement('input'); rin.type = 'number'; rin.min = 1; rin.max = f.spots.length - 1; rin.step = 1;
+            rin.value = frameRepeat(f) || Math.min(4, f.spots.length - 1); rin.style.cssText = 'width:56px;padding:3px 6px;';
+            var applyRep = function () {
+              var n = Math.max(1, Math.min(f.spots.length - 1, Math.round(Number(rin.value)) || 1));
+              f.rep = rcb.checked ? n : undefined;
+              framesChanged(); if (isFrameLayout()) setLayout(currentLayout);
+            };
+            rcb.addEventListener('change', applyRep);
+            rin.addEventListener('change', function () { if (rcb.checked) applyRep(); });
+            rp.append(rcb, document.createTextNode('Take only the first '), rin, document.createTextNode(' photos; every other spot repeats them'));
+            ctx.appendChild(rp);
+          }
+          if (!frameRepeat(f) && framePairsGeom(f)) {
             var cp = document.createElement('label');
             cp.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;margin-top:8px;cursor:pointer;';
             var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!framePairs(f);
@@ -39980,7 +40002,7 @@
             ctx.setLineDash([]); ctx.fillStyle = on ? '#C93D27' : '#1C1A1E';
             ctx.beginPath(); ctx.arc(x + r * 1.4, y + r * 1.4, r, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#fff'; ctx.font = '700 ' + Math.round(r * 1.15) + 'px Manrope, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(String(i + 1), x + r * 1.4, y + r * 1.45);
+            ctx.fillText(String(frameRepeat(f) ? (i % frameRepeat(f)) + 1 : i + 1), x + r * 1.4, y + r * 1.45);   // repeating spots show the photo they take
             ctx.fillStyle = on ? '#C93D27' : '#1C1A1E'; ctx.fillRect(x + w - r * 0.9, y + h - r * 0.9, r * 0.9, r * 0.9);   // resize handle
             // tilt handle: a round "turn" button at the bottom middle
             var th = spotTiltHandle(g, u, H);
@@ -40016,7 +40038,7 @@
       function framesSnapshot() {
         var r4 = function (v) { return Math.round(v * 10000) / 10000; };
         return {
-          frames: myFrames.map(function (f) { var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function (s) { var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; if (s.a) q.a = Math.round(s.a * 10) / 10; if (s.z) q.z = s.z; return q; }) }; if (typeof f.name === 'string' && f.name.trim()) o.name = f.name.trim().slice(0, 40); if (typeof f.copy === 'boolean') o.copy = f.copy; if (f.key) o.key = { c: f.key.c.slice(), t: f.key.t }; if (f.tier) o.tier = f.tier; return o; }),
+          frames: myFrames.map(function (f) { var o = { id: f.id, w: f.w, h: f.h, spots: f.spots.map(function (s) { var q = { x: r4(s.x), y: r4(s.y), w: r4(s.w), h: r4(s.h) }; if (s.a) q.a = Math.round(s.a * 10) / 10; if (s.z) q.z = s.z; return q; }) }; if (typeof f.name === 'string' && f.name.trim()) o.name = f.name.trim().slice(0, 40); if (typeof f.copy === 'boolean') o.copy = f.copy; if (frameRepeat(f)) o.rep = frameRepeat(f); if (f.key) o.key = { c: f.key.c.slice(), t: f.key.t }; if (f.tier) o.tier = f.tier; return o; }),
           activeFrame: activeFrameId,
           frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
           sheet: { pattern: sheet.pattern, items: sheet.items.map(function (it) { return { f: it.f, cx: r4(it.cx), cy: r4(it.cy), s: r4(it.s), r: it.r || 0 }; }) },
@@ -40046,6 +40068,7 @@
               if (z) o.z = z;
               return o;
             }), copy: typeof f.copy === 'boolean' ? f.copy : undefined,
+            rep: Math.round(num(f.rep, 0, MAX_SPOTS, 0)) || undefined,
             tier: (f.tier === 'receipt' || f.tier === 'photo' || f.tier === 'all') ? f.tier : undefined
           };
         });

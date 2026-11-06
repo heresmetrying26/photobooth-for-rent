@@ -107,7 +107,7 @@ export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. The version is taken from versionName in android/app/build.gradle
 // (scripts/build-booth.mjs writes android-version.mjs on every build), so there is nothing to change here.
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-05', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-06', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -142,6 +142,13 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-06', title: 'Android Tablet Updates Download Inside the App', for: ['website'],
+    items: [
+      'Android tablet app 1.0.106: from the next version on, tapping "Update" downloads it inside the app with a progress bar (no browser, no GitHub page), then Android asks "Update this app?".',
+      'The first time, Android asks once to allow photobooth4u to install apps ("Allow from this source"); the update then carries on by itself. If the Wi-Fi drops, tap "Try again".'
+    ]
+  },
   {
     date: '2026-11-06', title: 'Clicker Fix and Smooth Thermal Prints', for: ['app', 'website'], app: '1.0.94',
     items: [

@@ -9,12 +9,13 @@
 //   - no offline booth fallback (the Rush station needs the internet for its code check)
 // Every edit must match exactly once, or the build stops with a message, so a change to the booth code is never missed silently.
 //
-// Usage: node android/scripts/make-rush-variant.mjs [projectRoot]      env: RUSH_VERSION_CODE, RUSH_VERSION_NAME
+// Usage: node android/scripts/make-rush-variant.mjs [androidProjectDir]      env: RUSH_VERSION_CODE, RUSH_VERSION_NAME
+// The default is the android/ folder this script sits in (it holds app/ and build.gradle).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = resolve(process.argv[2] || join(fileURLToPath(new URL('.', import.meta.url)), '..', '..'));
+const ROOT = resolve(process.argv[2] || join(fileURLToPath(new URL('.', import.meta.url)), '..'));
 const code = Math.max(1, parseInt(process.env.RUSH_VERSION_CODE || '1', 10) || 1);
 const nameRaw = String(process.env.RUSH_VERSION_NAME || '').replace(/^rushid-v/, '');
 const name = /^[0-9][0-9A-Za-z.\-]*$/.test(nameRaw) ? nameRaw : '1.0.0-dev';

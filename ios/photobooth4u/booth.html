@@ -7268,6 +7268,13 @@
       background: transparent !important;
     }
 
+    /* Save power while waiting: black veil over everything; one touch wakes it */
+    .saver-veil { position: fixed; inset: 0; z-index: 2147483000; background: #000; opacity: 0; display: none; transition: opacity .8s ease; touch-action: none; }
+    .saver-veil.on { display: block; }
+    .saver-veil.dim { opacity: .78; }
+    .saver-veil.off { opacity: 1; cursor: none; }
+    .saver-veil.fade { opacity: 0; transition-duration: .25s; }
+
     body.attract-camera .welcome-overlay img,
     body.attract-camera .welcome-overlay video {
       object-fit: cover;
@@ -14472,6 +14479,19 @@
                   </div>
                 </div>
               </div>
+            </div>
+            <div id="saverBlock" style="margin-top:14px;">
+              <p class="sub-label" style="margin:0 0 6px;">Save power while waiting</p>
+              <div class="stepper"><span class="lbl">Dim the screen after</span><span class="ctl"><select id="saverDimMin">
+                    <option value="0">Never</option><option value="1">1 minute</option><option value="2">2 minutes</option>
+                    <option value="3">3 minutes</option><option value="5">5 minutes</option><option value="10">10 minutes</option>
+                    <option value="15">15 minutes</option><option value="30">30 minutes</option></select></span></div>
+              <div class="stepper" style="margin-top:6px;"><span class="lbl">Turn the display off after</span><span class="ctl"><select id="saverOffMin">
+                    <option value="0">Never</option><option value="2">2 minutes</option><option value="3">3 minutes</option>
+                    <option value="5">5 minutes</option><option value="10">10 minutes</option><option value="15">15 minutes</option>
+                    <option value="30">30 minutes</option><option value="60">60 minutes</option></select></span></div>
+              <p class="panel-hint" style="margin:4px 0 0;">Counts from the last touch while the welcome screen is showing. The screen goes dim, then black; one
+                touch wakes it (that touch does not start a session). On the Android tablet the tablet's own brightness is lowered too.</p>
             </div>
             <div class="welcome-pv-card" id="welcomePvCard" style="margin-top:14px;">
               <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
@@ -28402,7 +28422,8 @@
       }
       function brandFit(asp, h, maxW) { var w = h * asp; if (maxW && w > maxW) { w = maxW; h = w / asp; } return { w: w, h: h }; }
       var welcomeMsg = '';
-      var reviewEach = true;       // show each photo during the pause between shots
+      var saverDimMin = 0, saverOffMin = 0;   // Setup → Welcome screen → "Save power while waiting" (minutes; 0 = never)
+      var reviewEach = true;     // show each photo during the pause between shots
       var resultReviewSec = 0;     // 0 = finished photo stays until the next tap
       var qrPopOn = false;         // Step 7: QR code in a pop-up, after the finished photo is shown on its own
       var qrPopDelay = 3;          // seconds the photo is shown before the pop-up
@@ -35913,6 +35934,59 @@
       var ctaBtnEl = document.getElementById('welcomeCtaBtn');
       if (ctaBtnEl) ctaBtnEl.addEventListener('click', triggerWelcomeTap);
 
+      // ---- Save power while waiting: dim, then black, after the welcome screen has sat untouched ----
+      // A black veil over the whole booth (works on the laptop, Android and iPad). On the Android tablet the app also lowers the
+      // tablet's own brightness (window.__PBScreen). One touch wakes it and that touch is swallowed, so it never starts a session by accident.
+      var saverVeil = document.createElement('div');
+      saverVeil.className = 'saver-veil';
+      saverVeil.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(saverVeil);
+      var saverStage = 0, saverIdleSince = Date.now(), saverWakeTimer = null;
+      function saverNative(level) { try { if (window.__PBScreen && window.__PBScreen.setBrightness) window.__PBScreen.setBrightness(level); } catch (e) { } }
+      function saverSet(stage) {
+        if (stage === saverStage) return;
+        saverStage = stage;
+        clearTimeout(saverWakeTimer);
+        saverVeil.classList.remove('fade');
+        saverVeil.classList.toggle('on', stage > 0);
+        saverVeil.classList.toggle('dim', stage === 1);
+        saverVeil.classList.toggle('off', stage === 2);
+        saverNative(stage === 0 ? -1 : stage === 1 ? 20 : 1);
+      }
+      function saverWake() {
+        saverIdleSince = Date.now();
+        if (!saverStage) return;
+        saverVeil.classList.add('fade');
+        saverNative(-1);
+        clearTimeout(saverWakeTimer);
+        saverWakeTimer = setTimeout(function () { saverSet(0); }, 450);   // the veil keeps catching the rest of this touch, then goes
+      }
+      function saverTick() {
+        var waiting = welcomeOverlay.classList.contains('on') && !welcomeDismissing;
+        if (!waiting) { saverIdleSince = Date.now(); if (saverStage) saverSet(0); return; }
+        if (saverVeil.classList.contains('fade')) return;
+        var mins = (Date.now() - saverIdleSince) / 60000;
+        if (saverOffMin > 0 && mins >= saverOffMin) saverSet(2);
+        else if (saverDimMin > 0 && mins >= saverDimMin) saverSet(1);
+        else saverSet(0);
+      }
+      setInterval(saverTick, 4000);
+      ['pointerdown', 'touchstart', 'mousedown'].forEach(function (ev) {
+        saverVeil.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); saverWake(); }, { passive: false });
+      });
+      saverVeil.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); });
+      document.addEventListener('pointerdown', function () { if (!saverStage) saverIdleSince = Date.now(); }, { capture: true, passive: true });
+      document.addEventListener('keydown', function (e) { if (saverStage) { e.preventDefault(); e.stopPropagation(); saverWake(); } else saverIdleSince = Date.now(); }, true);
+      ['saverDimMin', 'saverOffMin'].forEach(function (id) {
+        var sel = document.getElementById(id);
+        if (!sel) return;
+        sel.addEventListener('change', function () {
+          if (id === 'saverDimMin') saverDimMin = parseFloat(sel.value) || 0; else saverOffMin = parseFloat(sel.value) || 0;
+          saverIdleSince = Date.now();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      });
+
       // ---- Sponsor Playlist Carousel Engine ----
       function startPlaylistPlayback() {
         clearTimeout(attractPlaylistTimer);
@@ -39226,6 +39300,7 @@
           guestLooks: guestLooksOn, guestLookSet: guestLookSet.slice(),
           welcomeOn: welcomeOn,
           welcomeMsg: welcomeMsg,
+          saverDimMin: saverDimMin, saverOffMin: saverOffMin,
           welcomeBtnOn: welcomeBtnOn,
           welcomeCustomOn: welcomeCustomOn,
           welcomeGreeting: welcomeGreeting,
@@ -39412,6 +39487,11 @@
           if (typeof s.welcomeMsg === 'string') {
             welcomeMsg = s.welcomeMsg;
             if (welcomeMsgInput) welcomeMsgInput.value = welcomeMsg;
+          }
+          if (typeof s.saverDimMin === 'number' || typeof s.saverOffMin === 'number') {
+            saverDimMin = Math.max(0, Math.floor(s.saverDimMin) || 0); saverOffMin = Math.max(0, Math.floor(s.saverOffMin) || 0);
+            var sdEl = document.getElementById('saverDimMin'), soEl = document.getElementById('saverOffMin');
+            if (sdEl) sdEl.value = String(saverDimMin); if (soEl) soEl.value = String(saverOffMin);
           }
           if (typeof s.welcomeBtnOn === 'boolean') {
             welcomeBtnOn = s.welcomeBtnOn;

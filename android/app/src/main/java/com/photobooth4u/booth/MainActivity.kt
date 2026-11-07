@@ -132,6 +132,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Setup → Welcome screen → "Save power": the booth page asks for the tablet's own screen brightness (window.__PBScreen).
+    // level 0..100 = percent of full brightness; -1 = back to the tablet's normal brightness.
+    inner class ScreenBridge {
+        @android.webkit.JavascriptInterface fun setBrightness(level: Int) {
+            runOnUiThread {
+                try {
+                    val lp = window.attributes
+                    lp.screenBrightness = if (level < 0) WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE else (level.coerceIn(1, 100) / 100f)
+                    window.attributes = lp
+                } catch (_: Exception) { }
+            }
+        }
+    }
+
     private fun checkForAppUpdate(manual: Boolean = false) {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
@@ -237,6 +251,7 @@ class MainActivity : AppCompatActivity() {
         wifi.autoStart()
         // Setup → App updates: check for a new version by hand (window.__PBUpdate).
         webView.addJavascriptInterface(UpdateBridge(), "__PBUpdate")
+        webView.addJavascriptInterface(ScreenBridge(), "__PBScreen")
 
         // 5b2. A Nikon camera on the USB port: WebView has no WebUSB, so the app talks to it and the booth
         // reaches it on 127.0.0.1:17321 (same calls as the Windows Helper; the booth page recognises "PB4uAndroid").

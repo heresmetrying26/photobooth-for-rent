@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.102', date: '2026-11-07' },
   { version: '1.0.101', date: '2026-11-07' },
   { version: '1.0.100', date: '2026-11-07' },
   { version: '1.0.99', date: '2026-11-07' },
@@ -149,6 +150,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-07', title: 'Save power on the welcome screen: dim, then turn the display off', for: ['website', 'app'], app: '1.0.102',
+    items: [
+      'New in Setup → Welcome screen → "Save power while waiting": choose after how many minutes without a touch the booth dims the screen, and after how many minutes it goes fully black. Both default to Never, so nothing changes until you set them.',
+      'One touch wakes the screen. That first touch only wakes it, so a guest bumping the screen never starts a session by accident. Dimming only happens while the welcome screen is showing, never during a session.',
+      'On the Android tablet (app 1.1.13) the tablet\'s own brightness is lowered too, then restored on wake. On a laptop the screen goes dark through the booth itself (the monitor backlight stays on).'
+    ]
+  },
   {
     date: '2026-11-07', title: 'Canon over USB: reconnects by itself after the camera went to sleep', for: ['website', 'app'], app: '1.0.101',
     items: [

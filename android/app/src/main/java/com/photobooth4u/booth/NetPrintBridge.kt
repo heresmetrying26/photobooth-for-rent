@@ -72,6 +72,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         @Volatile var qualities: List<Int> = emptyList()       // print-quality-supported: 3 draft, 4 normal, 5 high
         @Volatile var colorModes: List<String> = emptyList()   // print-color-mode-supported: color, monochrome...
         @Volatile var mediaTypes: List<String> = emptyList()   // media-type-supported: stationery, photographic-glossy...
+        @Volatile var mediaReady: List<String> = emptyList()   // media-ready: the paper loaded now, e.g. "jpn_hagaki_100x148mm"
+        @Volatile var mediaSupported: List<String> = emptyList() // media-supported: every paper size it names
         @Volatile var pwgRes: List<Int> = emptyList()          // pwg-raster-document-resolution-supported (dpi)
         @Volatile var pwgTypes: List<String> = emptyList()     // pwg-raster-document-type-supported: srgb_8, sgray_8...
         @Volatile var usbDev: UsbDevice? = null                // set for a printer on the USB port
@@ -1465,6 +1467,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val mediaTypes = ArrayList<String>()
                 val pwgRes = ArrayList<Int>()
                 val pwgTypes = ArrayList<String>()
+                val mediaReady = ArrayList<String>()
+                val mediaSupported = ArrayList<String>()
                 var model = ""
                 parseIpp(r.body) { name, tag, raw ->
                     val value = String(raw, Charsets.UTF_8)
@@ -1474,6 +1478,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                     if (name == "print-color-mode-supported" && tag == 0x44) colorModes.add(value)
                     if (name == "media-type-supported" && tag == 0x44) mediaTypes.add(value)
                     if (name == "pwg-raster-document-type-supported" && tag == 0x44) pwgTypes.add(value)
+                    if (name == "media-ready" && (tag == 0x44 || tag == 0x42)) mediaReady.add(value)
+                    if (name == "media-supported" && (tag == 0x44 || tag == 0x42)) mediaSupported.add(value)
                     // resolution value: 4 bytes across, 4 bytes down, 1 byte units (3 = dots per inch)
                     if (name == "pwg-raster-document-resolution-supported" && tag == 0x32 && raw.size == 9 && raw[8].toInt() == 3) {
                         pwgRes.add(((raw[0].toInt() and 0xFF) shl 24) or ((raw[1].toInt() and 0xFF) shl 16) or ((raw[2].toInt() and 0xFF) shl 8) or (raw[3].toInt() and 0xFF))
@@ -1485,6 +1491,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 e.mediaTypes = mediaTypes
                 e.pwgRes = pwgRes
                 e.pwgTypes = pwgTypes
+                e.mediaReady = mediaReady
+                e.mediaSupported = mediaSupported
                 if (model.isNotBlank()) { e.model = model; if (e.name.isBlank()) e.name = model }
                 e.ippPath = path
                 e.attrsTried = true
@@ -1545,13 +1553,18 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         }
         var lastErr = "The printer didn't accept the job."
         // Try with the page size and settings first, then drop them one at a time if the printer refuses.
-        val attempts = if (hasOpts) listOf(true to true, false to true, true to false, false to false) else listOf(true to false, false to false)
+        val base = if (hasOpts) listOf(true to true, false to true, true to false, false to false) else listOf(true to false, false to false)
+        // A Canon SELPHY has only a few fixed papers (postcard, L, card) and often refuses a custom size such as 101.6 x 152.4 mm,
+        // so name the loaded paper itself first ("jpn_hagaki_100x148mm") and fall back to the custom size after that.
+        val named = if (isSelphy(e)) selphyMedia(e, wMm, hMm) else null
+        val attempts = (if (named != null) listOf(Triple(true, true, named), Triple(true, false, named)) else emptyList()) +
+            base.map { Triple(it.first, it.second, "") }
         for ((format, make) in candidates) {
             val data = try { make() } catch (ex: Exception) { lastErr = ex.message ?: lastErr; continue }
-            for ((withMedia, withOpts) in attempts) {
+            for ((withMedia, withOpts, mediaName) in attempts) {
                 for (path in ippPaths(e)) {
                     val body = ippPrintJob(ippUri(e, path), job, format, data, if (withMedia) wMm else 0.0, hMm,
-                        if (withOpts) qv else 0, if (withOpts) cm else "", if (withOpts) mt else "", if (opts.borderless) "none" else "fill")
+                        if (withOpts) qv else 0, if (withOpts) cm else "", if (withOpts) mt else "", if (opts.borderless) "none" else "fill", mediaName)
                     val r = doPost(e, path, body)
                     when {
                         r.http == 200 && r.ipp in 0..2 -> return
@@ -1564,6 +1577,32 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             }
         }
         throw IllegalStateException(lastErr)
+    }
+
+    private fun isSelphy(e: Entry) = (e.model + " " + e.name).contains("selphy", true)
+
+    /**
+     * The paper the SELPHY names (loaded paper first, then everything it supports) that is closest to the sheet asked for,
+     * or null when none is within 6 mm. Names carry their own size: "jpn_hagaki_100x148mm", "na_index-4x6_4x6in".
+     */
+    private fun selphyMedia(e: Entry, wMm: Double, hMm: Double): String? {
+        if (wMm <= 0 || hMm <= 0) return null
+        val want = listOf(minOf(wMm, hMm), maxOf(wMm, hMm))
+        val re = Regex("_(\\d+(?:\\.\\d+)?)x(\\d+(?:\\.\\d+)?)(mm|in)$")
+        fun pick(names: List<String>): String? {
+            var best: String? = null
+            var bestDiff = 6.0
+            for (n in names) {
+                val m = re.find(n) ?: continue
+                val k = if (m.groupValues[3] == "in") 25.4 else 1.0
+                val a = m.groupValues[1].toDouble() * k
+                val b = m.groupValues[2].toDouble() * k
+                val d = maxOf(Math.abs(minOf(a, b) - want[0]), Math.abs(maxOf(a, b) - want[1]))
+                if (d <= bestDiff) { bestDiff = d; best = n }
+            }
+            return best
+        }
+        return pick(e.mediaReady) ?: pick(e.mediaSupported)
     }
 
     /** One PWG Raster page for printers that list image/pwg-raster: 300 dpi when offered, colour unless grey is asked for or all they list. */
@@ -1622,7 +1661,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         attr(0x45, "printer-uri", uri)
         attr(0x44, "requested-attributes", "printer-make-and-model")
         for (n in listOf("document-format-supported", "print-quality-supported", "print-color-mode-supported", "media-type-supported",
-            "pwg-raster-document-resolution-supported", "pwg-raster-document-type-supported")) {
+            "pwg-raster-document-resolution-supported", "pwg-raster-document-type-supported", "media-ready", "media-supported")) {
             u8(0x44); u16(0); str(n)
         }
         u8(0x03)
@@ -1681,7 +1720,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         if (e.usbDev != null) usbPost(e.usbDev!!, path, body) else post(e.ip, e.ippPort, path, body)
 
     private fun ippPrintJob(uri: String, job: String, format: String, doc: ByteArray, wMm: Double, hMm: Double,
-                            quality: Int = 0, colorMode: String = "", mediaType: String = "", scaling: String = "fill"): ByteArray {
+                            quality: Int = 0, colorMode: String = "", mediaType: String = "", scaling: String = "fill",
+                            mediaName: String = ""): ByteArray {
         val o = ByteArrayOutputStream()
         fun u8(v: Int) = o.write(v and 0xFF)
         fun u16(v: Int) { u8(v shr 8); u8(v) }
@@ -1701,7 +1741,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         attr(0x42, "job-name", job)
         attr(0x49, "document-format", format)
         u8(0x02)                                                // job attributes
-        if (wMm > 0) {
+        if (mediaName.isNotEmpty()) {
+            attr(0x44, "media", mediaName)                      // a paper the printer itself lists
+        } else if (wMm > 0) {
             u8(0x34); str("media-col"); u16(0)                  // begCollection
             member("media-size")
             u8(0x34); u16(0); u16(0)                            // nested begCollection

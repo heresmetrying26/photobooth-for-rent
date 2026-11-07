@@ -48,6 +48,7 @@ class UvcWebcam(private val ctx: Context) {
         private const val VS_FRAME_MJPEG = UVCCamera.UVC_VS_FRAME_MJPEG
         private const val FIRST_FRAME_MS = 3200L      // a mode that sends nothing in this time is skipped
         private const val WARMUP_FRAME_MS = 5500L     // the very first mode gets longer: the camera is still waking up
+        private const val BAD_MODE_DAYS = 3L          // a mode that reset the webcam is skipped for this long
         private const val MAX_TRIES = 8               // modes tried in one open, so a failing webcam is reported in ~30 s, not 90
         private const val STALL_MS = 6500L            // open but silent this long = lost (power / cable)
         private const val STILL_WAIT_MS = 2600L       // max wait per high-res mode when capturing a still
@@ -75,6 +76,10 @@ class UvcWebcam(private val ctx: Context) {
     @Volatile private var size: Size? = null
     private var busyRetries = 0
     private val failedStillKeys = HashSet<String>()
+
+    private val prefs = ctx.getSharedPreferences("pb_uvc", Context.MODE_PRIVATE)
+    @Volatile private var crashedDuringOpen = false   // the webcam dropped off USB while a mode was being started
+    @Volatile private var modeStartedAt = 0L
 
     private var openLatch: CountDownLatch? = null
     private var cameraOpenLatch: CountDownLatch? = null
@@ -104,6 +109,57 @@ class UvcWebcam(private val ctx: Context) {
         }
     }
     private fun traceJson(): JSONArray = JSONArray().also { a -> synchronized(traceLines) { traceLines.forEach { a.put(it) } } }
+
+    // ---------------------------------------------------------------- modes that reset the webcam / modes that worked
+
+    private fun devKey(): String = device?.let { "${it.vendorId}:${it.productId}" } ?: "none"
+
+    private fun badEntries(): Map<String, Long> {
+        val now = System.currentTimeMillis()
+        val out = HashMap<String, Long>()
+        for (e in prefs.getStringSet("bad:" + devKey(), emptySet()) ?: emptySet()) {
+            val i = e.lastIndexOf('|')
+            val at = if (i > 0) e.substring(i + 1).toLongOrNull() else null
+            if (at != null && now - at < BAD_MODE_DAYS * 86_400_000L) out[e.substring(0, i)] = at
+        }
+        return out
+    }
+
+    /** Modes that made this webcam reset itself or send nothing (too much USB bandwidth / power for this tablet port or hub). */
+    private fun badKeys(): Set<String> = badEntries().keys
+
+    // Modes that failed during the current open() call only (so "Max" and a forced size are never skipped on a later try).
+    private val sessionBad = HashSet<String>()
+    private fun sessionBadKeys(): Set<String> = synchronized(sessionBad) { HashSet(sessionBad) }
+
+    private fun markBad(s: Size, why: String) {
+        if (activePref.startsWith("x:")) { tr("keeping forced size ${describe(s)} ($why)"); return }
+        synchronized(sessionBad) { sessionBad.add(sizeKey(s)) }
+        if (activePref == "max") { tr("skipping ${describe(s)} for this try only ($why)"); return }
+        val m = HashMap(badEntries())
+        m[sizeKey(s)] = System.currentTimeMillis()
+        prefs.edit().putStringSet("bad:" + devKey(), m.map { "${it.key}|${it.value}" }.toSet()).apply()
+        tr("will skip ${describe(s)} from now on ($why)")
+    }
+
+    private fun clearBad() { prefs.edit().remove("bad:" + devKey()).apply() }
+
+    private fun markGood(s: Size) {
+        prefs.edit().putString("good:" + devKey() + ":" + activePref, "${s.type}:${s.width}:${s.height}:${s.fps}").apply()
+    }
+
+    /** The mode that gave a picture last time on this webcam goes first, so a good setup opens at once. */
+    private fun lastGoodFirst(list: List<Size>, raw: List<Size>): List<Size> {
+        if (activePref == "max" || activePref.startsWith("x:")) return list
+        val g =prefs.getString("good:" + devKey() + ":" + activePref, null)?.split(':') ?: return list
+        if (g.size != 4) return list
+        val type = g[0].toIntOrNull(); val w = g[1].toIntOrNull(); val h = g[2].toIntOrNull(); val fps = g[3].toIntOrNull()
+        if (type == null || w == null || h == null || fps == null) return list
+        val base = raw.firstOrNull { it.type == type && it.width == w && it.height == h } ?: return list
+        val good = if (base.fps == fps) base else Size(base.type, w, h, fps, base.fpsList)
+        if (badKeys().contains(sizeKey(good))) return list
+        return listOf(good) + list.filter { sizeKey(it) != sizeKey(good) }.take(MAX_TRIES - 1)
+    }
 
     // ---------------------------------------------------------------- devices
 
@@ -142,7 +198,7 @@ class UvcWebcam(private val ctx: Context) {
         if (query.isEmpty()) return ""
         for (part in query.split('&')) {
             val eq = part.indexOf('=')
-            if (eq > 0 && part.substring(0, eq) == key) return part.substring(eq + 1).lowercase()
+            if (eq > 0 && part.substring(0, eq) == key) return try { java.net.URLDecoder.decode(part.substring(eq + 1), "UTF-8").lowercase() } catch (_: Exception) { part.substring(eq + 1).lowercase() }
         }
         return ""
     }
@@ -173,6 +229,7 @@ class UvcWebcam(private val ctx: Context) {
             .put("preview", activePref)
             .put("note", lastError)
             .put("trace", traceJson())
+            .put("modes", if (allSizes.isNotEmpty()) modesFrom(allSizes) else cachedModes())
     }
 
     private fun frameReply(): Reply {
@@ -201,8 +258,9 @@ class UvcWebcam(private val ctx: Context) {
 
     // ---------------------------------------------------------------- open / close
 
+    /** `auto` | `max` | `1080` | `720` | `480`, or `x:<type>:<w>:<h>:<fps>` = one exact size picked by the operator (forced, no fallback). */
     private fun normalizePref(raw: String): String =
-        if (raw == "max" || raw == "1080" || raw == "720" || raw == "480") raw else "auto"
+        if (raw == "max" || raw == "1080" || raw == "720" || raw == "480" || Regex("x:\\d+:\\d+:\\d+:\\d+").matches(raw)) raw else "auto"
 
     private fun open(rawPref: String): JSONObject = synchronized(opLock) {
         val pref = normalizePref(rawPref)
@@ -226,6 +284,33 @@ class UvcWebcam(private val ctx: Context) {
             if (opened) return status()
         }
 
+        synchronized(sessionBad) { sessionBad.clear() }
+        for (attempt in 1..4) {
+            crashedDuringOpen = false
+            try {
+                return openFresh(pref)
+            } catch (e: IllegalStateException) {
+                if (!crashedDuringOpen) throw e
+                // The webcam dropped off USB while a mode was starting (not enough power / bandwidth). It comes back by itself in a
+                // moment: wait for it, then carry on with the next mode (the one that reset it is now skipped).
+                tr("webcam reset while starting (attempt $attempt); waiting for it to come back")
+                if (!waitForWebcam(15000L)) break
+                try { Thread.sleep(900) } catch (_: InterruptedException) { }
+            }
+        }
+        throw IllegalStateException("The webcam keeps resetting itself while starting. Plug it into a powered USB hub (the tablet port cannot power it at this size), then tap Try Again.")
+    }
+
+    private fun waitForWebcam(ms: Long): Boolean {
+        val end = System.currentTimeMillis() + ms
+        while (System.currentTimeMillis() < end) {
+            if (webcams().isNotEmpty()) return true
+            try { Thread.sleep(300) } catch (_: InterruptedException) { return false }
+        }
+        return false
+    }
+
+    private fun openFresh(pref: String): JSONObject {
         closeLocked()
         val d = webcams().firstOrNull() ?: throw IllegalStateException("No USB webcam found. Plug it in (USB-C OTG adapter or hub) and try again.")
         gone = false; lastError = ""; activePref = pref
@@ -408,6 +493,17 @@ class UvcWebcam(private val ctx: Context) {
      * - Modes within the chosen cap come first (largest to smallest), with smaller modes as automatic fallback.
      */
     private fun orderSizes(all: List<Size>, pref: String): List<Size> {
+        if (pref.startsWith("x:")) {   // forced: exactly this size, nothing else is tried
+            val g = pref.split(':')
+            val type = g.getOrNull(1)?.toIntOrNull(); val w = g.getOrNull(2)?.toIntOrNull()
+            val h = g.getOrNull(3)?.toIntOrNull(); val fps = g.getOrNull(4)?.toIntOrNull()
+            if (type != null && w != null && h != null && fps != null) {
+                val base = all.firstOrNull { it.type == type && it.width == w && it.height == h }
+                if (base != null) return listOf(if (base.fps == fps) base else Size(type, w, h, fps, base.fpsList))
+            }
+            tr("forced size $pref is not offered by this webcam; using Auto instead")
+            return orderSizes(all, "auto")
+        }
         val uniq = all.distinctBy { "${it.type}:${it.width}x${it.height}" }
         val (maxW, maxH) = when (pref) {
             "480" -> 854 to 480
@@ -422,8 +518,11 @@ class UvcWebcam(private val ctx: Context) {
                 else -> 0
             }
         }
+        // Standard sizes (720p, 480p...) before the odd ones some webcams list (1184x656, 752x416...), unless "Max" was asked for.
+        val common = setOf("1920x1080", "1280x720", "1024x576", "960x540", "848x480", "800x600", "640x480", "640x360", "320x240")
+        val isCommon: (Size) -> Int = { if (pref != "max" && common.contains("${it.width}x${it.height}")) 1 else 0 }
         val withinCap = uniq.filter { it.width <= maxW && it.height <= maxH }
-            .sortedWith(compareByDescending(mjpegOrSmallYuyv).thenByDescending { it.width * it.height })
+            .sortedWith(compareByDescending(mjpegOrSmallYuyv).thenByDescending(isCommon).thenByDescending { it.width * it.height })
 
         val expanded = ArrayList<Size>()
         for (s in withinCap) {
@@ -440,6 +539,28 @@ class UvcWebcam(private val ctx: Context) {
         return thinCandidates(expanded + aboveCap, pref)
     }
 
+    /** Every size this webcam offers, for the booth's "Exact size" menu (MJPEG, plus small uncompressed ones; two frame rates each). */
+    private fun modesFrom(raw: List<Size>): JSONArray {
+        val a = JSONArray()
+        val seen = HashSet<String>()
+        val list = raw.filter { it.type == VS_FRAME_MJPEG || (it.width <= 1280 && it.height <= 720) }.ifEmpty { raw }
+            .sortedWith(compareByDescending<Size> { it.width * it.height }.thenByDescending { it.type == VS_FRAME_MJPEG })
+        for (s in list) {
+            for (v in listOfNotNull(s, previewLowFps(s))) {
+                val value = "x:${v.type}:${v.width}:${v.height}:${v.fps}"
+                if (!seen.add(value)) continue
+                a.put(JSONObject().put("v", value)
+                    .put("label", "${v.width}×${v.height} ${if (v.type == VS_FRAME_MJPEG) "MJPEG" else "YUYV"} @${v.fps} fps"))
+            }
+        }
+        return a
+    }
+
+    private fun cachedModes(): JSONArray = try {
+        val d = webcams().firstOrNull()
+        if (d == null) JSONArray() else JSONArray(prefs.getString("modes:${d.vendorId}:${d.productId}", "[]"))
+    } catch (_: Exception) { JSONArray() }
+
     /** A lower frame rate of the same mode (>= 10 fps): asks the camera for less USB bandwidth, which weak tablet ports need. */
     private fun previewLowFps(s: Size): Size? {
         val list = s.fpsList ?: return null
@@ -453,18 +574,22 @@ class UvcWebcam(private val ctx: Context) {
      * for the first two sizes (weak USB ports), and never try more than [MAX_TRIES] in all.
      */
     private fun thinCandidates(list: List<Size>, pref: String): List<Size> {
+        // Modes that reset this webcam (or sent nothing) before are not tried again; "Max" only skips what failed in this try.
+        val bad = if (pref == "max") sessionBadKeys() else badKeys() + sessionBadKeys()
         val out = ArrayList<Size>()
         var lastArea = 0L
         var tiers = 0
+        fun add(s: Size) { if (!bad.contains(sizeKey(s)) && out.none { sizeKey(it) == sizeKey(s) }) out.add(s) }
         for (s in list) {
             val area = s.width.toLong() * s.height
-            if (tiers > 0 && lastArea == area) { out.add(s); continue }   // the "max" low-fps variant that orderSizes put right after its mode
+            if (tiers > 0 && lastArea == area) { add(s); continue }   // the "max" low-fps variant that orderSizes put right after its mode
             val far = tiers == 0 || area * 3 <= lastArea * 2 || area * 2 >= lastArea * 3
             if (!far) continue
-            out.add(s); lastArea = area; tiers++
-            if (pref != "max" && tiers <= 2) previewLowFps(s)?.let { out.add(it) }
+            add(s); lastArea = area; tiers++
+            if (pref != "max" && tiers <= 2) previewLowFps(s)?.let { add(it) }
             if (out.size >= MAX_TRIES) break
         }
+        if (out.isEmpty()) { clearBad(); return list.take(MAX_TRIES) }   // everything was marked bad: forget that and start over
         return out.take(MAX_TRIES)
     }
 
@@ -482,7 +607,8 @@ class UvcWebcam(private val ctx: Context) {
         val s = candidates[candIdx++]
         size = s
         modeFrameCount = 0
-        tr("try ${candIdx}/${candidates.size}: ${describe(s)} (pref=$activePref)")
+        modeStartedAt = System.currentTimeMillis()
+        tr("try${candIdx}/${candidates.size}: ${describe(s)} (pref=$activePref)")
         try {
             if (h.isCameraOpened) {
                 h.stopPreview()
@@ -510,6 +636,7 @@ class UvcWebcam(private val ctx: Context) {
         main.postDelayed({
             if (!opened && !switching && size === tried && helper != null && (openLatch?.count ?: 0L) > 0L) {
                 tr("no frames at ${describe(tried)} (frames seen: $modeFrameCount), trying next")
+                if (candIdx > 1 && modeFrameCount == 0) markBad(tried, "no picture")
                 try { helper?.stopPreview() } catch (_: Exception) { }
                 main.postDelayed({ tryNextSize() }, 250L)
             }
@@ -546,6 +673,7 @@ class UvcWebcam(private val ctx: Context) {
         } else if (!opened) {
             opened = true
             tr("first picture at ${s.width}x${s.height}")
+            markGood(s)
             openLatch?.countDown()
         }
     }
@@ -580,9 +708,10 @@ class UvcWebcam(private val ctx: Context) {
             if (allSizes.isEmpty()) {
                 val raw = try { h.supportedSizeList ?: emptyList() } catch (_: Exception) { emptyList<Size>() }
                 allSizes = raw
+                try { prefs.edit().putString("modes:" + devKey(), modesFrom(raw).toString()).apply() } catch (_: Exception) { }
                 val biggest = raw.maxByOrNull { it.width * it.height }
                 maxLabel = if (biggest != null) "${biggest.width}\u00d7${biggest.height}" else ""
-                candidates = orderSizes(raw, activePref)
+                candidates = lastGoodFirst(orderSizes(raw, activePref), raw)
                 candIdx = 0
                 tr("camera opened: ${raw.size} modes, max=$maxLabel; will try " + candidates.joinToString(", ") { describe(it) })
                 if (candidates.isEmpty()) {
@@ -613,8 +742,15 @@ class UvcWebcam(private val ctx: Context) {
 
         override fun onDetach(device: UsbDevice?) {
             if (device != null && device.deviceName == this@UvcWebcam.device?.deviceName) {
+                val starting = (openLatch?.count ?: 0L) > 0L && !opened
+                val tried = size
+                val soon = System.currentTimeMillis() - modeStartedAt < 8000L    // it dropped off right after this mode was started
                 gone = true; opened = false; switching = false
                 tr("webcam detached (unplugged or lost power)")
+                if (tried != null && soon) {
+                    if (starting) crashedDuringOpen = true
+                    markBad(tried, "the webcam reset itself")
+                }
                 lastError = "The webcam was unplugged."
                 openLatch?.countDown()
                 cameraOpenLatch?.countDown()

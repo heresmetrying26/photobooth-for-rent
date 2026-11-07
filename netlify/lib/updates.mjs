@@ -149,6 +149,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-07', title: 'Android tablet: USB webcam that resets itself no longer stays black', for: ['website'],
+    items: [
+      'The Android app (1.1.12) remembers webcam sizes that make the webcam reset itself (a weak tablet port or unpowered hub) and skips them next time. If the webcam drops out while starting, the app waits for it to come back and continues with the next size.',
+      'Standard sizes (720p, 480p) are tried before odd ones, and the size that worked last time is tried first. For a webcam on a tablet, a powered USB hub is still the most reliable setup.',
+      'New: under USB webcam preview you can pick one exact size from the list the webcam reports (for example 1280×960). The booth then uses only that size and shows an error instead of falling back. Max no longer skips sizes that reset the webcam before.'
+    ]
+  },
+  {
     date: '2026-11-07', title: 'Android tablet: USB webcam no longer stays black', for: ['website'],
     items: [
       'The Android app (1.1.11) now tries only a short list of sensible webcam sizes, including a lower frame rate for weak tablet USB ports, so a webcam that cannot start at full speed falls back in about 30 seconds instead of staying black.',

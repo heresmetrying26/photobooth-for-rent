@@ -13581,6 +13581,7 @@
               <option value="720">720p</option>
               <option value="480">480p (smoothest, GIF / boomerang)</option>
             </select>
+            <p class="panel-hint" style="margin-top:4px;">Need one exact size? Open the list and pick one under "Exact size (forced)". The booth then uses only that size and shows an error instead of falling back to a smaller one. If the webcam resets, use a powered USB hub.</p>
             <p class="panel-label" style="margin-top:6px;">USB webcam photo</p>
             <select class="cam-select" id="webcamPhotoRes">
               <option value="preview">Same as preview (instant)</option>
@@ -19538,16 +19539,46 @@
       const webcamRes = (function () {
         let v = null; try { v = JSON.parse(localStorage.getItem(WEBCAM_RES_KEY) || 'null'); } catch (e) { }
         v = v || {};
-        return { preview: ['auto', 'max', '1080', '720', '480'].includes(v.preview) ? v.preview : 'auto', photo: v.photo === 'max' ? 'max' : 'preview' };
+        return { preview: (['auto', 'max', '1080', '720', '480'].includes(v.preview) || /^x:\d+:\d+:\d+:\d+$/.test(String(v.preview))) ? v.preview : 'auto', photo: v.photo === 'max' ? 'max' : 'preview' };
       })();
       function saveWebcamRes() { try { localStorage.setItem(WEBCAM_RES_KEY, JSON.stringify(webcamRes)); } catch (e) { } }
       // getUserMedia size for an external USB webcam (Android Path 1 or browser)
       function webcamGumSize() {
         const p = webcamRes.preview;
+        const ex = /^x:(\d+):(\d+):(\d+):(\d+)$/.exec(String(p));
+        if (ex) return { width: { ideal: +ex[2] }, height: { ideal: +ex[3] } };
         if (p === 'max') return { width: { ideal: 3840 }, height: { ideal: 2160 } };
         if (p === '720') return { width: { ideal: 1280 }, height: { ideal: 720 } };
         if (p === '480') return { width: { ideal: 640 }, height: { ideal: 480 } };
         return { width: { ideal: 1920 }, height: { ideal: 1080 } };
+      }
+      // "Exact size" menu: the sizes the app reported for the webcam (kept in this browser so the menu is there before the webcam opens).
+      const WEBCAM_MODES_KEY = 'pb4u.webcamModes';
+      function cacheWebcamModes(j) {
+        try { if (j && Array.isArray(j.modes) && j.modes.length) localStorage.setItem(WEBCAM_MODES_KEY, JSON.stringify(j.modes)); } catch (e) { }
+      }
+      function exactModeLabel(v) {
+        const g = String(v).split(':');
+        return (g[2] || '?') + '×' + (g[3] || '?') + ' ' + (g[1] === '6' ? 'MJPEG' : 'YUYV') + ' @' + (g[4] || '?') + ' fps';
+      }
+      function fillExactModes() {
+        const sel = document.getElementById('webcamPreviewRes');
+        if (!sel) return;
+        let modes = (window.__pbUvcInfo && Array.isArray(window.__pbUvcInfo.modes) && window.__pbUvcInfo.modes.length) ? window.__pbUvcInfo.modes : null;
+        if (!modes) { try { modes = JSON.parse(localStorage.getItem(WEBCAM_MODES_KEY) || '[]'); } catch (e) { modes = []; } }
+        modes = (modes || []).slice();
+        if (/^x:/.test(webcamRes.preview) && !modes.some(m => m.v === webcamRes.preview)) modes.unshift({ v: webcamRes.preview, label: exactModeLabel(webcamRes.preview) });
+        const sig = JSON.stringify(modes);
+        if (sel.dataset.modesSig === sig) return;
+        sel.dataset.modesSig = sig;
+        const old = sel.querySelector('optgroup[data-exact]');
+        if (old) old.remove();
+        if (!modes.length) return;
+        const g = document.createElement('optgroup');
+        g.label = 'Exact size (forced, no fallback)';
+        g.setAttribute('data-exact', '1');
+        modes.forEach(m => { const o = document.createElement('option'); o.value = m.v; o.textContent = m.label; g.appendChild(o); });
+        sel.appendChild(g);
       }
       function isUsbWebcamOption(id, label) {
         if (!id || id === 'usb-remote') return false;
@@ -19586,7 +19617,7 @@
         async function probe() {
           try {
             const j = await (await fetch(BASE, { cache: 'no-store', signal: AbortSignal.timeout(4000) })).json();
-            if (j && j.ok) window.__pbUvcInfo = j;
+            if (j && j.ok) { window.__pbUvcInfo = j; cacheWebcamModes(j); }
             try {
               const why = (j && j.ok) ? insta360Why(j) : '';
               if (why !== (window.__pbUsbWhy || '')) {
@@ -19638,11 +19669,14 @@
           if (!r.ok || !j.ok) {
             const e = new Error((j && j.error) || 'The USB webcam did not start.');
             e.name = 'NotReadableError';
-            e.uvcMsg = e.message;
+            // Show what the app tried (last steps) so a screenshot of this message is enough to see why the webcam failed.
+            const tail = (j && Array.isArray(j.trace)) ? j.trace.slice(-5).join(' | ') : '';
+            e.uvcMsg = e.message + (tail ? ' [' + tail + ']' : '');
             try { if (typeof usbLog === 'function') usbLog('uvc-open-failed', { error: e.message, trace: (j && j.trace) || undefined }); } catch (x) { }
             throw e;
           }
-          window.__pbUvcInfo = j;
+          window.__pbUvcInfo = j; cacheWebcamModes(j);
+          try { if (typeof usbLog === 'function') usbLog('uvc-open-ok', { size: j.size, max: j.max, trace: j.trace }); } catch (x) { }
           const [w, h] = String(j.size || '1280x720').split('x').map(Number);
           const canvas = document.createElement('canvas');
           canvas.width = w || 1280; canvas.height = h || 720;
@@ -19657,8 +19691,15 @@
             alive = false; origStop();
             fetch(BASE + '/close', { method: 'POST', cache: 'no-store' }).catch(() => { });
           };
+          let drawn = 0, closedSeen = 0;
+          // Why did the picture end or never show? Ask the app for its step-by-step trace and keep it in the camera log.
+          const logWhy = kind => fetch(BASE, { cache: 'no-store', signal: AbortSignal.timeout(3000) }).then(r => r.json())
+            .then(st => { try { if (typeof usbLog === 'function') usbLog(kind, { drawn: drawn, open: st.open, size: st.size, note: st.note, trace: st.trace }); } catch (x) { } })
+            .catch(() => { try { if (typeof usbLog === 'function') usbLog(kind, { drawn: drawn, trace: 'app did not answer' }); } catch (x) { } });
+          setTimeout(() => { if (alive && drawn === 0) logWhy('uvc-no-picture'); }, 8000);
           const lost = () => {
             if (!alive) return;
+            logWhy('uvc-lost');
             alive = false; origStop();
             try { track.dispatchEvent(new Event('ended')); } catch (e) { }   // the booth's "Reconnecting…" takes over
           };
@@ -19671,8 +19712,13 @@
                   const bmp = await createImageBitmap(await fr.blob());
                   if (bmp.width !== canvas.width || bmp.height !== canvas.height) { canvas.width = bmp.width; canvas.height = bmp.height; }
                   g.drawImage(bmp, 0, 0); bmp.close && bmp.close();
+                  drawn++;
                   fails = 0;
-                } else { await wait(30); }
+                } else {
+                  // 409 = the app closed the webcam under us: say so (Reconnecting…) instead of showing black for ever
+                  if (fr.status === 409 && ++closedSeen > 100) { lost(); return; }
+                  await wait(30);
+                }
               } catch (e) {
                 if (++fails > 20) { lost(); return; }
                 await wait(150);
@@ -19696,6 +19742,7 @@
       function refreshWebcamResUI() {
         if (!webcamResBox) return;
         webcamResBox.style.display = usbWebcamSelected() ? '' : 'none';
+        fillExactModes();
         webcamPreviewRes.value = webcamRes.preview;
         webcamPhotoRes.value = webcamRes.photo;
         const note = document.getElementById('webcamResNote');

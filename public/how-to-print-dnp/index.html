@@ -94,7 +94,7 @@
     <a href="#fixes"><b>Help</b><span>Fixes &amp; Tips</span></a>
     <a href="#ipad"><b>Tablet</b><span>iPad / Tablet Station</span></a>
   </nav>
-  <div class="callout"><h3>Using the Android tablet app?</h3><p>The Android app prints to <b>Bluetooth thermal receipt printers</b> (see the <a href="/how-to-print-thermal/">thermal printer guide</a>). A DNP needs a Windows or Mac laptop running the laptop app or the Print Helper, so use a laptop for DNP prints.</p></div>
+  <div class="callout"><h3>Using the Android tablet app?</h3><p>The Android app prints to Bluetooth thermal receipt printers and to USB / Wi-Fi printers such as Canon SELPHY and Epson (see the <a href="/how-to-print-android/">Android printing guide</a>), but it <b>can't print to a DNP by itself</b>. For DNP prints, either run the booth on a Windows or Mac laptop with the desktop app, or send the tablet's prints to a laptop with the DNP plugged in (<a href="#ipad">Laptop print station</a>, needs internet, so not in offline mode).</p></div>
 
   <section class="part" id="install">
     <p class="kicker">Part 1 · First time setup</p>
@@ -175,7 +175,7 @@
     <div class="check">
       <div><b>1</b><h3>Test 4R (4×6)</h3><p>Take a test session with a 4R layout and hit Print. Verify a crisp, full-bleed 4×6 photo ejects without white borders.</p></div>
       <div><b>2</b><h3>Test 2×6 Strips</h3><p>Switch to a classic 3-photo or 4-photo strip layout and hit Print. The DNP will print and automatically slice it into two 2×6 strips.</p></div>
-      <div><b>3</b><h3>Turn on Auto-Print</h3><p>Tick <b>"Auto-print every session"</b> in Print Settings. Now, every guest session automatically prints as soon as photos are taken!</p></div>
+      <div><b>3</b><h3>Turn on Auto-Print</h3><p>In <b>Setup &rarr; 4 Camera &amp; printer</b> &rarr; <b>Automatic printing</b>, turn on <b>Print after each session</b>. Now every guest session prints by itself as soon as the photos are taken.</p></div>
     </div>
   </section>
 
@@ -186,7 +186,7 @@
       <tr><th>Symptom</th><th>Quick Solution</th></tr>
       <tr><td><b>Strips print on 4×6 but aren't cut</b></td><td>The strip layout is printing to <code>DNP 4x6</code> instead of <code>DNP 2x6 Strips</code>, or the 2-inch cut option wasn't saved in preferences. Go to booth Print Settings and ensure <i>4R strip layouts</i> is assigned to <code>DNP 2x6 Strips</code>.</td></tr>
       <tr><td><b>Flashing Red LED on DNP</b></td><td>Flashing red means ribbon or paper issue: open the front hatch, tighten the ribbon spools (remove any slack), ensure the paper roll's scrap box is emptied, and snap the lever back firmly.</td></tr>
-      <tr><td><b>Thin white border on edge</b></td><td>In DNP printing preferences, check <b>Overscan / Borderless</b> to ensure full-bleed printing is activated.</td></tr>
+      <tr><td><b>Thin white border on edge</b></td><td>In DNP printing preferences, check <b>Overscan / Borderless</b> to ensure full-bleed printing is activated. If a thin line is still left on one side, open the booth's <b>Print settings &rarr; Edges (this printer)</b> and press <b>+</b> on that side.</td></tr>
       <tr><td><b>Printer says "Paused" or "Offline"</b></td><td>Unplug and re-plug the USB cable, or restart the DNP. Check Windows / Mac print queue to resume.</td></tr>
     </table>
   </section>
@@ -195,13 +195,14 @@
     <p class="kicker">iPad &amp; Tablet Operators</p>
     <h2>Using DNP with an iPad / Tablet Booth</h2>
     <div class="callout" style="background:var(--card); border:1px solid var(--line);">
-      <h3 style="color:var(--ink);">How to print from iPad to DNP (No AirPrint needed!)</h3>
+      <h3 style="color:var(--ink);">How to print from an iPad or Android tablet to a DNP (No AirPrint needed!)</h3>
       <p style="margin:0 0 10px; color:var(--dim);">DNP printers do not natively have Apple AirPrint. But photobooth4u has a built-in <b>Laptop Print Station</b>:</p>
       <ol style="margin:0; padding-left:20px; color:var(--dim);">
-        <li style="margin-bottom:6px;">Plug the DNP printer into any laptop (Windows or Mac) via USB.</li>
-        <li style="margin-bottom:6px;">Open the photobooth4u app (or Print Helper) on that laptop.</li>
-        <li style="margin-bottom:6px;">Connect both the laptop and the iPad to the same booth Wi-Fi router (or the laptop's mobile hotspot).</li>
-        <li>On the iPad booth, go to <b>Print settings</b> → select the laptop as the <b>Print Station</b>. Every print from the iPad sends instantly over Wi-Fi and silently prints to the DNP!</li>
+        <li style="margin-bottom:6px;">Plug the DNP printer into any laptop (Windows or Mac) via USB and set up its driver (Parts 1 and 2 above).</li>
+        <li style="margin-bottom:6px;">On that laptop, start the <a href="/downloads/">Print Helper</a> so prints go out with no print pop-up.</li>
+        <li style="margin-bottom:6px;">In Chrome on the laptop, open <b>photobooth4u.netlify.app/print-station</b> and sign in with your booth code. Pick <b>DNP 4x6</b> and <b>DNP 2x6 Strips</b> for the paper sizes there.</li>
+        <li style="margin-bottom:6px;">On the iPad or Android tablet booth, open <b>Setup &rarr; 4 Camera &amp; printer</b> &rarr; <b>Send prints to</b> &rarr; <b>Laptop print station</b>. The booth shows <b>Print station is on</b> when the laptop is connected.</li>
+        <li>Prints are sent through photobooth4u online, so <b>both the tablet and the laptop need internet</b> (they don't need to be on the same Wi-Fi). It doesn't work in the Android app's offline mode.</li>
       </ol>
     </div>
   </section>

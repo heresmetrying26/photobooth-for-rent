@@ -1751,10 +1751,13 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         widthMm: Double,
         heightMm: Double,
         pagesArr: JSONArray,
-        fit: String?
+        fit: String?,
+        receipt: JSONObject? = null
     ): String? {
         try {
             val m = usb ?: throw IllegalStateException("USB service unavailable.")
+            // Optional receipt tuning (dithering, bands, slow print). Absent: the receipt bytes are what they always were.
+            val receiptOpt = ReceiptRaster.Options.fromJson(receipt)
             val cleanName = printerName.trim()
 
             // 1. Check if matching USB printer exists
@@ -1877,7 +1880,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                                 ?: throw IllegalStateException("Couldn't decode photo for printing.")
                             try {
                                 val rollW = if (widthMm <= 55.0) 384 else 576
-                                val escpos = ReceiptRaster.build(bmp, rollW)
+                                val escpos = ReceiptRaster.build(bmp, rollW, receiptOpt)
                                 usbRaw(id, escpos)
                             } finally {
                                 try { bmp.recycle() } catch (_: Exception) {}
@@ -1911,7 +1914,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                             ?: throw IllegalStateException("Couldn't decode photo for printing.")
                         try {
                             val rollW = if (widthMm <= 55.0) 384 else 576
-                            val escpos = ReceiptRaster.build(bmp, rollW)
+                            val escpos = ReceiptRaster.build(bmp, rollW, receiptOpt)
                             newSocket(netMatch.ip).use { s ->
                                 s.connect(InetSocketAddress(netMatch.ip, netMatch.rawPort), 5000)
                                 s.soTimeout = 15000

@@ -18,6 +18,7 @@ import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
 import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
+import { makeShrinkPage } from './lib/pageshrink.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { detectWifi } from './lib/wifi.mjs';
 import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetup, hotspotSetCreds } from './lib/hotspot.mjs';
@@ -455,6 +456,7 @@ app.whenReady().then(async () => {
   const camLog = join(dataDir(), 'camera.log');
   initHelper({
     workerPath: join(BUILD, 'camera-worker.ps1'),
+    shrinkPage: makeShrinkPage(nativeImage),
     logger: (m) => {
       console.log('[helper] ' + m);
       try {

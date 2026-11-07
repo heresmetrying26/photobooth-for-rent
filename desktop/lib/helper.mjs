@@ -17,9 +17,11 @@ const IS_MAC = platform() === 'darwin' || process.env.PB_TEST_MAC_CAMERA === '1'
 const PS = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass'];
 let WORKER_PS = '';
 let log = (m) => console.log('[helper] ' + m);
+let shrinkPage = null;   // (png Buffer, scale) -> png Buffer of the same size, the picture smaller in the middle on white. Given by the app (Electron).
 
-export function initHelper({ workerPath, logger }) {
+export function initHelper({ workerPath, logger, shrinkPage: shrink }) {
   if (logger) log = logger;
+  if (typeof shrink === 'function') shrinkPage = shrink;
   try { WORKER_PS = readFileSync(workerPath, 'utf8'); } catch { WORKER_PS = ''; }
   refreshPrinters();
   if (IS_WIN && WORKER_PS) camStart().catch((e) => log(String(e && e.message || e)));
@@ -303,6 +305,21 @@ async function airPrintQualityOptions(printer, want) {
   } catch { return []; }
 }
 
+// ---------- borderless on AirPrint ink-tank printers (Mac) ----------
+// An inkjet (Canon G3030, Epson ...) printing borderless enlarges the picture a little past the paper edge so no
+// white line shows. Over AirPrint the Mac has no setting for how much, and a Canon G3030 trimmed about 2.5% off
+// every side (the title, the footer and the characters at the edges). So on those queues the page is sent
+// 4% smaller on white. Two G3030 prints measured against the booth preview were enlarged about 4-5%, so this
+// brings the page back to the layout's own size on the paper, edge to edge: at most about 0.4 mm trimmed, and
+// no white line (0.95 would leave about 0.6 mm of white when the printer enlarges only 4%).
+// Dye-sub printers (SELPHY, DNP, HiTi ...) print borderless without enlarging, so their pages are left as they are.
+const MAC_BORDERLESS_SCALE = 0.96;
+const DYE_SUB = /selphy|(?<![a-z])cp[\s_-]?d?\d{2,4}(?![0-9])|(?<![a-z])dnp(?![a-z])|(?<![a-z])ds[\s_-]?(?:rx|\d)|hiti|mitsubishi|kodak|citizen|sinfonia|shinko|dye/i;
+async function macBorderlessScale(printer, pick) {
+  if (!shrinkPage || !pick || !pick.borderless || DYE_SUB.test(printer)) return 1;
+  try { return (await isAirPrintQueue(printer)) ? MAC_BORDERLESS_SCALE : 1; } catch { return 1; }
+}
+
 const WIN_PRINT_PS = String.raw`
 param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best')
 $ErrorActionPreference = 'Stop'
@@ -414,6 +431,14 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm, quality) 
     } else {
       const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
       if (pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
+      const scale = fit === 'width' ? 1 : await macBorderlessScale(printer, pick);
+      if (scale < 1) {
+        let done = 0;
+        for (let i = 0; i < files.length; i++) {
+          try { const b = await shrinkPage(pngBuffers[i], scale); if (b && b.length) { await writeFile(files[i], b); done++; } } catch (e) { log('Borderless shrink failed: ' + (e && e.message || e)); }
+        }
+        if (done) log('Borderless: page sent at ' + Math.round(scale * 100) + '% so the printer\'s enlargement does not trim the edges');
+      }
       const media = fit === 'width' && widthMm > 0 && heightMm > 0 ? ['-o', 'media=Custom.' + Math.round(widthMm) + 'x' + Math.round(heightMm) + 'mm']
         : pick && !pick.keep ? ['-o', (pick.opt === 'media' ? 'media=' : 'PageSize=') + pick.key] : [];
       const qopts = await airPrintQualityOptions(printer, quality);

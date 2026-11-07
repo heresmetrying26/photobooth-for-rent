@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.96', date: '2026-11-07' },
   { version: '1.0.95', date: '2026-11-06' },
   { version: '1.0.94', date: '2026-11-06' },
   { version: '1.0.93', date: '2026-11-06' },
@@ -143,6 +144,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-07', title: 'Borderless prints on Mac no longer cut off (Canon G3030 and other ink-tank printers)', for: ['app'], app: '1.0.96',
+    items: [
+      'On a Mac, Canon G-series, Epson and other ink-tank printers added over AirPrint enlarge a borderless picture a little past the paper edge, which trimmed the title, the footer and the characters at the sides. The app now sends the page slightly smaller, so after the printer enlarges it the whole layout fills the paper edge to edge.',
+      'SELPHY, DNP, HiTi and other dye-sub printers do not enlarge, so their prints are unchanged. Windows printing is unchanged.',
+      'Tip: keep text about 3 mm in from the edges of a frame design. Borderless paper can sit up to about 1 mm off-centre in any inkjet printer.'
+    ]
+  },
   {
     date: '2026-11-06', title: 'Arrange & Print, and the QR code in a pop-up', for: ['app', 'website'], app: '1.0.95',
     items: [

@@ -538,6 +538,41 @@ class PBLocal(private val ctx: Context) {
     @JavascriptInterface
     fun photosPath(): String = root.absolutePath
 
+    /**
+     * A picture the booth page made (the Wi-Fi sign ...), saved in the Gallery under Pictures/photobooth4u.
+     * The WebView cannot download a blob: link, so without this the sign never reached the tablet.
+     * Android 10+ only (no storage permission needed there); older tablets get ok=false and the page says so.
+     */
+    @JavascriptInterface
+    fun saveImage(fileName: String?, base64: String?): String {
+        val out = JSONObject()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return out.put("ok", false).put("error", "old-android").toString()
+        val name = (fileName ?: "").replace(Regex("[^A-Za-z0-9._ -]"), "_").take(80).ifEmpty { "photobooth4u.png" }
+        val mime = when (name.substringAfterLast('.', "").lowercase(Locale.ROOT)) {
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            else -> return out.put("ok", false).put("error", "Only PNG or JPEG pictures can be saved.").toString()
+        }
+        return try {
+            val bytes = Base64.decode(base64 ?: "", Base64.DEFAULT)
+            if (bytes.isEmpty()) throw IllegalArgumentException("The picture is empty.")
+            val values = ContentValues()
+            values.put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+            values.put(MediaStore.MediaColumns.MIME_TYPE, mime)
+            values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/photobooth4u")
+            val resolver = ctx.contentResolver
+            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                ?: throw IllegalStateException("The Gallery did not accept the picture.")
+            val os = resolver.openOutputStream(uri)
+            if (os == null) { resolver.delete(uri, null, null); throw IllegalStateException("The Gallery did not accept the picture.") }
+            os.use { it.write(bytes) }
+            out.put("ok", true).put("dir", "Pictures/photobooth4u").toString()
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not save $name to the Gallery", e)
+            out.put("ok", false).put("error", e.message ?: "Could not save the picture.").toString()
+        }
+    }
+
     // ---------- folders and files (also used by the server) ----------
 
     fun folderBySlug(slug: String): Folder? = synchronized(lock) { folders[slug] }

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.98', date: '2026-11-07' },
   { version: '1.0.97', date: '2026-11-07' },
   { version: '1.0.96', date: '2026-11-07' },
   { version: '1.0.95', date: '2026-11-06' },
@@ -110,7 +111,7 @@ export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. The version is taken from versionName in android/app/build.gradle
 // (scripts/build-booth.mjs writes android-version.mjs on every build), so there is nothing to change here.
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-06', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-07', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -145,6 +146,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-07', title: 'Check for updates by hand, cleaner receipt photos, stickers that match the filter', for: ['website', 'app'], app: '1.0.98',
+    items: [
+      'New in Setup › Share: App updates, with a Check for updates button on the laptop app and the tablet. Use it any time, also after you chose Later or Close on an update. Windows downloads and installs it, a Mac downloads it for you to drag into Applications, and the tablet asks Android to install it. It needs the internet.',
+      'Receipt printers: photos are turned into dots once, at exactly the printer’s width, so they come out cleaner and sharper (before, they were dotted twice and looked grainy). The print preview shows the real dots. For the best result choose Print quality: Best.',
+      'Stickers now take on the photo’s look in the saved photo, the QR copy and the print: black & white on a B&W photo, sepia on sepia, and so on. While guests place them they keep their colours; Preview shows the final look. They also print on receipts (as dots on a B&W receipt) and on keychain and strip sheets.',
+      'Tablet: the Wi-Fi and QR signs are saved to the Gallery (Pictures › photobooth4u) so you can print them.'
+    ]
+  },
   {
     date: '2026-11-07', title: 'Edges: fix a printer that cuts off or leaves white at a side', for: ['website', 'app'], app: '1.0.97',
     items: [

@@ -20,6 +20,7 @@ const IS_MAC = process.platform === 'darwin';
 let cfg = { server: '', version: '', log: () => {}, notify: () => {} };
 let st = { latest: '', notes: '', date: '', state: 'idle', progress: 0, error: '', file: '' };
 let launched = false, timer = null;
+let lastCheck = { at: 0, offline: false };   // Setup → App updates: when the server last answered
 
 const parse = (v) => String(v || '').split('.').map((n) => Number(n) || 0);
 export function newer(a, b) { const x = parse(a), y = parse(b); for (let i = 0; i < 3; i++) { if (x[i] !== y[i]) return x[i] > y[i]; } return false; }
@@ -32,7 +33,7 @@ function updDir() { const d = IS_MAC ? app.getPath('downloads') : join(app.getPa
 function tell() { try { cfg.notify(info()); } catch { /* window gone */ } }
 
 export function info() {
-  return { latest: st.latest, date: st.date, state: st.state, progress: st.progress, error: st.error, os: IS_WIN ? 'win' : IS_MAC ? 'mac' : 'other', current: cfg.version };
+  return { latest: st.latest, date: st.date, state: st.state, progress: st.progress, error: st.error, os: IS_WIN ? 'win' : IS_MAC ? 'mac' : 'other', current: cfg.version, checked: lastCheck.at, offline: lastCheck.offline };
 }
 
 // A finished download really is an installer (Windows: an .exe; Mac: a disk image).
@@ -72,7 +73,8 @@ export async function check() {
     const r = await net.fetch(cfg.server + '/api/updates', { cache: 'no-store' });
     const j = await r.json();
     v = String(j && j.app && j.app.version || ''); date = String(j && j.app && j.app.date || '');
-  } catch { return info(); }   // offline
+    lastCheck = { at: Date.now(), offline: false };
+  } catch { lastCheck.offline = true; return info(); }   // offline
   if (!/^\d+\.\d+\.\d+$/.test(v) || !newer(v, cfg.version)) return info();
   if (st.latest !== v) st = { latest: v, date, state: 'available', progress: 0, error: '', file: '' };
   // Windows downloads by itself, but only starts once per version (a failed download retries on its own timer).

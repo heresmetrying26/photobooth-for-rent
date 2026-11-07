@@ -111,23 +111,52 @@ class MainActivity : AppCompatActivity() {
     }
     @Volatile private var updateChecking = false
     private var updateDialog: AlertDialog? = null
+    @Volatile private var foundUpdate: Pair<String, String>? = null   // (url, version) of the newest app the site offers
 
-    private fun checkForAppUpdate() {
+    private fun myVersion(): String = try { packageManager.getPackageInfo(packageName, 0).versionName ?: "" } catch (e: Exception) { "" }
+
+    /** Setup → App updates: tells the booth page what the last manual check found (window.__PBUpdateEvent). */
+    private fun reportUpdate(state: String, latest: String = "") {
+        val j = JSONObject().put("state", state).put("latest", latest).put("current", myVersion()).toString()
+        runOnUiThread {
+            try { webView.evaluateJavascript("window.__PBUpdateEvent&&window.__PBUpdateEvent($j)", null) } catch (e: Exception) { }
+        }
+    }
+
+    /** window.__PBUpdate: the "Check for updates" button in Setup (works even after "Later"). */
+    inner class UpdateBridge {
+        @android.webkit.JavascriptInterface fun version(): String = myVersion()
+        @android.webkit.JavascriptInterface fun check() { runOnUiThread { checkForAppUpdate(manual = true) } }
+        @android.webkit.JavascriptInterface fun start() {
+            runOnUiThread { val f = foundUpdate; if (f != null) updater.start(f.first, f.second) else checkForAppUpdate(manual = true) }
+        }
+    }
+
+    private fun checkForAppUpdate(manual: Boolean = false) {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
-        if (updateChecking || now - prefs.getLong("update_checked", 0L) < 4 * 60_000L || !isNetworkAvailable()) return
-        updateChecking = true
+        if (manual) {
+            if (!isNetworkAvailable()) { reportUpdate("offline"); return }
+            reportUpdate("checking")
+        } else {
+            if (updateChecking || now - prefs.getLong("update_checked", 0L) < 4 * 60_000L || !isNetworkAvailable()) return
+            updateChecking = true
+        }
         Thread {
             try {
                 val c = URL(BASE_URL + "api/updates").openConnection() as HttpURLConnection
-                c.connectTimeout = 6000; c.readTimeout = 6000
+                c.connectTimeout = if (manual) 10000 else 6000; c.readTimeout = if (manual) 10000 else 6000
                 val body = c.inputStream.bufferedReader().use { it.readText() }
                 prefs.edit().putLong("update_checked", now).apply()
-                val a = JSONObject(body).optJSONObject("android") ?: return@Thread
+                val a = JSONObject(body).optJSONObject("android")
+                if (a == null) { if (manual) reportUpdate("error"); return@Thread }
                 val latest = a.optString("version"); val url = a.optString("url")
                 val mine = packageManager.getPackageInfo(packageName, 0).versionName ?: return@Thread
-                if (latest.isEmpty() || !url.startsWith("https://") || !versionNewer(latest, mine)) return@Thread
-                if (now < prefs.getLong("update_snooze_" + latest, 0L)) return@Thread
+                if (latest.isEmpty() || !url.startsWith("https://") || !versionNewer(latest, mine)) { if (manual) reportUpdate("latest"); return@Thread }
+                foundUpdate = url to latest
+                if (manual) reportUpdate("available", latest)
+                // A check by hand always asks; the automatic one respects "Later" for a day.
+                if (!manual && now < prefs.getLong("update_snooze_" + latest, 0L)) return@Thread
                 runOnUiThread {
                     if (isFinishing || isDestroyed || updateDialog?.isShowing == true || updater.busy) return@runOnUiThread
                     updateDialog = AlertDialog.Builder(this)
@@ -137,8 +166,8 @@ class MainActivity : AppCompatActivity() {
                         .setNegativeButton("Later") { _, _ -> prefs.edit().putLong("update_snooze_" + latest, System.currentTimeMillis() + 24 * 3600_000L).apply() }
                         .show()
                 }
-            } catch (e: Exception) { /* offline or the site is down: try again in 5 minutes */ }
-            finally { updateChecking = false }
+            } catch (e: Exception) { if (manual) reportUpdate("offline") /* offline or the site is down: try again in 5 minutes */ }
+            finally { if (!manual) updateChecking = false }
         }.start()
     }
 
@@ -206,6 +235,8 @@ class MainActivity : AppCompatActivity() {
         boothWifi = wifi
         webView.addJavascriptInterface(wifi, "__PBWifi")
         wifi.autoStart()
+        // Setup → App updates: check for a new version by hand (window.__PBUpdate).
+        webView.addJavascriptInterface(UpdateBridge(), "__PBUpdate")
 
         // 5b2. A Nikon camera on the USB port: WebView has no WebUSB, so the app talks to it and the booth
         // reaches it on 127.0.0.1:17321 (same calls as the Windows Helper; the booth page recognises "PB4uAndroid").

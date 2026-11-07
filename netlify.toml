@@ -1,7 +1,7 @@
 [build]
   # Re-bundles protected/booth.html into the server function every deploy,
   # so you only ever edit protected/booth.html.
-  command = "node scripts/build-booth.mjs"
+  command = "node scripts/build-booth.mjs && node scripts/build-rush.mjs"
   publish = "public"
   functions = "netlify/functions"
 
@@ -39,6 +39,34 @@
   [headers.values]
     Cache-Control = "public, max-age=604800"
     Cross-Origin-Resource-Policy = "same-origin"
+
+# Rush ID & Photo Print station: /rush/ is the code lock screen; the app itself comes from /api/rush (see netlify/functions/rush.mjs).
+[[redirects]]
+  from = "/rush"
+  to = "/rush/"
+  status = 301
+
+# The phone opens /rush/u/<CODE> after scanning the station's QR code
+[[redirects]]
+  from = "/rush/u/*"
+  to = "/rush/upload.html"
+  status = 200
+
+# The booth engine runs here (station mode), so /rush/ needs what "/" has: cross-origin isolation for the USB camera
+# (remote control) mode. "credentialless" keeps outside files loading normally.
+[[headers]]
+  for = "/rush/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-cache"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "credentialless"
+
+# AI files for the station (MediaPipe + models): big and rarely change
+[[headers]]
+  for = "/rush/vendor/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
 
 # Laptop print station page
 [[headers]]

@@ -1,0 +1,48 @@
+[build]
+  # No build step: plain HTML/JS in public/, one function in netlify/functions.
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Phone upload page: the kiosk's QR code points to /u/<CODE>.
+[[redirects]]
+  from = "/u/*"
+  to = "/upload.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    # The kiosk needs the camera; the phone page needs it too (selfie button).
+    Permissions-Policy = "camera=(self), microphone=()"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+# AI files (MediaPipe + models): big and rarely change. Browsers keep them for a week.
+[[headers]]
+  for = "/vendor/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"

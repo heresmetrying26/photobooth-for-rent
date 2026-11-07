@@ -15549,6 +15549,9 @@
   </div>
   <div class="toast" id="toast"></div>
   <div id="printArea"></div>
+  <!-- Rush ID & Photo Print station: only used at /rush/ (see "Rush ID & Photo Print station" in the script) -->
+  <div id="rushStation" hidden><iframe id="rushFrame" title="Rush ID & Photo Print" allow="camera; clipboard-write"></iframe></div>
+  <button type="button" id="rushBack" hidden>&larr; Back to Rush station</button>
   <div class="spin-studio-ov" id="spinOverlay" hidden role="dialog" aria-label="360 desk">
     <header class="spin-studio-head">
       <div class="spin-head-left">
@@ -16242,6 +16245,16 @@
     </div>
   </div>
   <style id="printPageStyle"></style>
+  <style id="rushCss">
+    #rushStation { position: fixed; inset: 0; z-index: 9400; background: #10161c; }
+    #rushStation[hidden], #rushBack[hidden] { display: none; }
+    #rushFrame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #f4f2ec; }
+    #rushStation.loading #rushFrame { visibility: hidden; }
+    #rushStation .rush-err { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; color: #fff; font: 600 18px system-ui, sans-serif; text-align: center; }
+    #rushStation .rush-err button { min-height: 52px; padding: 0 24px; border: 0; border-radius: 14px; background: #2fb3ab; color: #06201f; font: 700 17px system-ui, sans-serif; cursor: pointer; }
+    #rushBack { position: fixed; top: 10px; right: 10px; z-index: 9600; min-height: 46px; padding: 0 18px; border: 0; border-radius: 999px; background: #0b6e6e; color: #fff; font: 700 15px system-ui, sans-serif; box-shadow: 0 6px 20px rgba(0, 0, 0, .35); cursor: pointer; }
+    html.rush-station .toast { z-index: 9700; }
+  </style>
 
   <!-- Laptop app: "a new version is out" on the Tap to start screen. This is its own script on purpose: if the booth
        script below ever fails to start (as in 1.0.53), the start screen stays up and the owner can still update. -->
@@ -32519,6 +32532,126 @@
           printSize = oldSize; printing = false; ST.busy = false; stInfo(); try { refreshPrintUI(); } catch (e) { }
           if (printLimits().ev) setTimeout(refreshPrintCount, 1500);
         }
+      }
+
+      // ---- Rush ID & Photo Print station (opened at /rush/) ----
+      // /rush/ opens this booth page in "station mode": the booth keeps every camera and printer (the same Setup, and the same
+      // Print Helper / Wi-Fi / USB / Android / Bluetooth routes), and the Rush screens (sent by /api/rush only to a code that Admin
+      // switched "Rush ID station" on for) sit on top of it in a frame. The frame reaches the booth only through window.__PBHW below:
+      // the camera's live picture and photo, the paper sizes this code may print, and a print that follows the same routes as
+      // Arrange & Print. Everything here stays idle unless the page is at /rush/, so a normal booth is untouched.
+      var RUSH = /^\/rush(\/|$)/.test(location.pathname);
+      var rushEl = document.getElementById('rushStation'), rushFrame = document.getElementById('rushFrame'), rushBack = document.getElementById('rushBack');
+      function rushAllowed() { return !!(window.__PB && window.__PB.rushOpt); }
+      function rushHeaders() { return { 'Authorization': 'Bearer ' + (localStorage.getItem('pb_token') || ''), 'X-Device-Id': localStorage.getItem('pb_device') || '' }; }
+      // The paper sizes Admin allows for this code (the same list Arrange & Print offers).
+      function rushPapers() {
+        return (printSettings() || []).filter(function (k) { return paperFor(k) && !isReceiptPaper(k); })
+          .map(function (k) { var p = paperFor(k); return { key: k, name: p.name, w: p.w, h: p.h }; });
+      }
+      // Print finished sheets (canvases made by the Rush screens) on `key` paper, `sheets` copies of each. Same routes, same printer,
+      // colour and quality as Arrange & Print. Returns { ok, msg } instead of showing messages itself.
+      async function rushPrint(srcPages, key, sheets) {
+        if (printing) return { ok: false, msg: 'The printer is busy. Try again in a moment.' };
+        var P = paperFor(key); if (!P || !srcPages || !srcPages.length) return { ok: false, msg: 'Nothing to print.' };
+        sheets = Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(sheets) || 1)));
+        var total = srcPages.length * sheets, oldSize = printSize;
+        printing = true; try { refreshPrintUI(); } catch (e) { }
+        try {
+          printSize = key;          // the printer, colour and quality chosen for this paper size apply
+          try { wifiRelink(); wifiSyncForSize(); } catch (e) { }
+          var viaStation = useStation(), pname = printerFor(key);
+          if (!viaStation && DESKTOP && !pname) return { ok: false, msg: 'Staff: choose the printer for ' + P.name + ' in Setup first.' };
+          var lim = printLimits(), left = lim.ev && printCount && printCount.left != null ? printCount.left : Infinity;
+          if (left < total) return { ok: false, msg: left < 1 ? 'No prints left for this event.' : 'Only ' + left + ' print' + (left === 1 ? '' : 's') + ' left, and this needs ' + total + '.' };
+          var res = await reservePrints(total); if (!res.ok) { limitReached(); return { ok: false, msg: 'No prints left for this event.' }; }
+          showPrintingNote(printTxt('txtPrinting'), 4000);
+          // Copies, so the colour correction below never changes the sheets the Rush screens still show.
+          var pages = srcPages.map(function (c) { var n = document.createElement('canvas'); n.width = c.width; n.height = c.height; n.getContext('2d').drawImage(c, 0, 0); return n; });
+          printAdjustAll(pages);
+          var label = total + (total === 1 ? ' sheet' : ' sheets') + ', ' + P.name;
+          if (viaStation) { await sendToStation(pages, P, sheets); return { ok: true, msg: 'Sent to the print station (' + label + ').' }; }
+          var all = []; for (var c = 0; c < sheets; c++) all.push.apply(all, pages);
+          if (helperOn && pname) {
+            if (await printSheets(all, P, pname)) return { ok: true, msg: 'Printing on ' + pname + ' (' + label + ').' };
+            if (DESKTOP) return { ok: false, msg: 'The printer did not take the sheets. Check it is on and try again.' };
+          }
+          var wf = wifiPrinter;
+          if (wf && !wf.dialog && wifiNetAvailable()) {
+            try { await printViaWifi(all, P, wf, wifiOpts(wf)); return { ok: true, msg: 'Printing on ' + wf.name + ' (' + label + ').' }; }
+            catch (wErr) { showToast('Wi-Fi print failed: ' + (wErr.message || wErr) + ' Opening the print dialog instead.', 6500); }
+          }
+          if (window.__PBPrint && typeof window.__PBPrint.print === 'function') {
+            var imgs = all.map(function (cv) { return cv.toDataURL('image/jpeg', 0.92); });
+            var r = JSON.parse(window.__PBPrint.print('Rush ID ' + P.name, P.w, P.h, JSON.stringify(imgs)) || '{}');
+            return r.ok ? { ok: true, msg: 'Choose your printer to print (' + label + ').' } : { ok: false, msg: 'Could not open printing: ' + (r.error || 'unknown error') };
+          }
+          if (isMobileOS() || DESKTOP) return { ok: false, msg: 'Staff: choose a printer in Setup first.' };
+          var urls = []; printArea.innerHTML = '';
+          for (var k = 0; k < all.length; k++) {
+            var blob = await new Promise(function (r2) { all[k].toBlob(r2, 'image/png'); });
+            var url = URL.createObjectURL(blob); urls.push(url);
+            var img = new Image(); img.src = url; await img.decode();
+            var pg = document.createElement('div'); pg.className = 'print-page'; pg.style.width = P.w + 'mm'; pg.style.height = (P.h - 0.4) + 'mm';
+            if (k < all.length - 1) pg.style.breakAfter = 'page';
+            pg.appendChild(img); printArea.appendChild(pg);
+          }
+          printPageStyle.textContent = '@page { size: ' + P.w + 'mm ' + P.h + 'mm; margin: 0; }';
+          window.print();
+          setTimeout(function () { printArea.innerHTML = ''; urls.forEach(function (u) { URL.revokeObjectURL(u); }); }, 2000);
+          return { ok: true, msg: 'Sent to the printer (' + label + ').' };
+        } catch (e) {
+          console.error('Rush print failed:', e); return { ok: false, msg: 'Could not print: ' + ((e && e.message) || 'try again') + '.' };
+        } finally {
+          printSize = oldSize; printing = false; try { refreshPrintUI(); } catch (e) { }
+          if (printLimits().ev) setTimeout(refreshPrintCount, 1500);
+        }
+      }
+      var rushHW = {
+        version: 1,
+        video: video,                                   // the live picture of whichever camera is selected in Setup (webcam, USB DSLR, helper, Android...)
+        camera: function () { return { ok: !!video.videoWidth, w: video.videoWidth || 0, h: video.videoHeight || 0 }; },
+        mirror: function () { try { return !!mirrorPreview(); } catch (e) { return false; } },
+        // A photo from the selected camera, the booth's own way (a DSLR gives its real photo), as an un-mirrored canvas without booth filters.
+        capture: async function () {
+          if (!video.videoWidth) throw new Error('The camera is not ready.');
+          var keep = shotCanvases[0];
+          try {
+            await captureShot(0);
+            var c = shotCanvases[0]; if (!c) throw new Error('The camera did not give a photo.');
+            var src = c._raw || c, out = document.createElement('canvas'); out.width = src.width; out.height = src.height;
+            var x = out.getContext('2d');
+            if (mirrorPreview()) { x.translate(out.width, 0); x.scale(-1, 1); }       // captureShot mirrors like the live view; an ID photo should not be
+            x.drawImage(src, 0, 0);
+            return out;
+          } finally { shotCanvases[0] = keep; }
+        },
+        papers: rushPapers,
+        print: rushPrint,
+        // Staff: show the booth's own Setup (cameras, printers) instead of the station until they tap "Back to Rush station".
+        openSetup: function () { rushEl.hidden = true; rushBack.hidden = false; try { leaveStartScreen(); } catch (e) { } },
+        toast: function (m, ms) { try { showToast(m, ms || 4000); } catch (e) { } }
+      };
+      function rushLock(reason) { try { sessionStorage.setItem('pb_notice', reason); } catch (e) { } location.reload(); }
+      async function rushStart() {
+        try { leaveStartScreen(); } catch (e) { }
+        if (!rushAllowed()) { rushLock('no-rush'); return; }
+        rushEl.hidden = false; rushEl.classList.add('loading');
+        try {
+          var r = await fetch('/api/rush', { headers: rushHeaders(), cache: 'no-store' });
+          if (!r.ok) { var j = await r.json().catch(function () { return {}; }); rushLock(j.reason || 'invalid'); return; }
+          rushFrame.addEventListener('load', function () { rushEl.classList.remove('loading'); }, { once: true });
+          rushFrame.srcdoc = await r.text();
+        } catch (e) {
+          rushEl.innerHTML = '<div class="rush-err"><b>Can’t reach the server.</b><p>Check the internet connection.</p><button type="button" onclick="location.reload()">Try again</button></div>';
+        }
+      }
+      if (RUSH) {
+        window.__PBHW = rushHW;
+        document.documentElement.classList.add('rush-station');
+        rushBack.addEventListener('click', function () { rushBack.hidden = true; rushEl.hidden = false; });
+        window.addEventListener('pb-rush-change', function () { if (!rushAllowed()) rushLock('no-rush'); });     // Admin switched it off
+        rushStart();
       }
 
       // ---- Wiring ----

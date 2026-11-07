@@ -107,6 +107,7 @@ Desktop v1.0.90 and v1.0.91 never opened a window. `setup.mjs` imported a new fi
 
 ## Website and Android (`android-v*` tag)
 - After a Netlify deploy: `/` returns 200, and `POST /api/setup` returns 401, not 5xx. A 5xx means a server function fails to load.
+- Rush ID station (`/rush/`, source in `rush-id/`, see `rush-id/README.md`): also check `/rush/` returns 200 and `GET /api/rush` with no code returns 401 (not 5xx). It runs on the booth page (`window.__PBHW` section in `protected/booth.html`), so after any change to camera or print code, open `/rush/` once with a code that has "Rush ID station" on. Its Android app is a separate workflow (`rushid-android.yml`, tag `rushid-v*`) that patches a CI copy and never changes the booth's build files.
 - Before an Android tag: run `npm run build` so `android/app/src/main/assets/booth.html` matches `protected/booth.html`. The tablet uses that copy when offline. If a tablet is connected (`adb devices`), install the APK, open it online, then with Wi-Fi off.
 
 ## If the app won't open on a client's laptop

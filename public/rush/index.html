@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Rush ID &amp; Photo Print</title>
+<style>
+  :root{--bg:#f4f2ec;--card:#fff;--ink:#15202b;--dim:#5b6874;--line:#dcd8cd;--accent:#0b6e6e;--accent-ink:#fff;--warn:#b3261e;--ok:#12724a}
+  @media (prefers-color-scheme: dark){:root{--bg:#10161c;--card:#19222b;--ink:#eef2f5;--dim:#9aa8b5;--line:#2b3743;--accent:#2fb3ab;--accent-ink:#06201f;--warn:#ff8a80;--ok:#5fd6a0}}
+  *{box-sizing:border-box} html,body{margin:0;min-height:100%}
+  body{min-height:100vh;display:grid;place-items:center;padding:20px;background:var(--bg);color:var(--ink);font:17px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px 24px 24px;text-align:center;box-shadow:0 18px 40px rgba(0,0,0,.12)}
+  .ic{width:64px;height:64px;border-radius:18px;background:var(--accent);margin:0 auto 14px;display:grid;place-items:center}
+  .ic svg{width:38px;height:38px;fill:var(--accent-ink)}
+  h1{font-size:26px;margin:0 0 4px} .sub{color:var(--dim);margin:0 0 20px;font-size:15px}
+  input{width:100%;padding:14px;font-size:18px;text-align:center;letter-spacing:1px;border:1.5px solid var(--line);border-radius:14px;background:var(--bg);color:var(--ink)}
+  button{width:100%;margin-top:12px;min-height:56px;border:0;border-radius:14px;background:var(--accent);color:var(--accent-ink);font:700 18px system-ui;cursor:pointer}
+  button:disabled{opacity:.5} .msg{min-height:24px;margin:12px 0 0;font-size:15px;font-weight:600}
+  .msg.error,.msg.warn{color:var(--warn)} .msg.ok{color:var(--ok)}
+  body.loading .card{opacity:.6;pointer-events:none}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="ic"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="22" r="11"/><path d="M10 56c2-13 11-20 22-20s20 7 22 20z"/></svg></div>
+  <h1>Rush ID &amp; Photo Print</h1>
+  <p class="sub">Enter your code to open the station</p>
+  <input id="code" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" placeholder="Your code" aria-label="Code">
+  <button id="open">Open</button>
+  <p id="msg" class="msg" role="status"></p>
+</main>
+<script>
+(function(){
+  // Same sign-in as the booth (same keys, same device id), so one laptop uses one slot of a code. A code opens the station only
+  // when Admin has switched "Rush ID station" on for it. The page that opens is the booth itself, in station mode: it keeps all
+  // the booth's cameras and printers, and the Rush screens sit on top of it.
+  var TOKEN_KEY = 'pb_token', DEV_KEY = 'pb_device';
+  var MESSAGES = {
+    'expired': 'This code has expired. Enter a new code.',
+    'trial-ended': 'The trial has ended. Enter a code.',
+    'trial-disabled': 'The trial is no longer available. Enter a code.',
+    'bonus-ended': 'This bonus time has ended.',
+    'revoked': 'This code has been disabled. Please contact the owner.',
+    'device-removed': 'This device was removed from the code. Enter the code again, or contact the owner.',
+    'offline-only': 'This code is for the offline app and cannot open the station.',
+    'no-rush': 'This code does not include the Rush ID station. Please contact the owner to have it switched on.',
+    'invalid': 'Please enter your code to continue.'
+  };
+  var msg = document.getElementById('msg'), codeEl = document.getElementById('code'), btn = document.getElementById('open');
+  function show(t, k){ msg.textContent = t || ''; msg.className = 'msg ' + (k || ''); }
+  function busy(on){ document.body.classList.toggle('loading', on); }
+  function deviceId(){
+    var d = localStorage.getItem(DEV_KEY);
+    if(!d){ d = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (String(Math.random()).slice(2) + Date.now()); localStorage.setItem(DEV_KEY, d); }
+    return d;
+  }
+  // Is this code allowed to use the station? (the server decides; the booth page is never sent to a code that is not allowed here)
+  async function allowed(token){
+    var r = await fetch('/api/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: token, deviceId: deviceId() }) });
+    var j = await r.json().catch(function(){ return {}; });
+    if(j.valid === false) return j.reason || 'invalid';
+    if(!j.valid) return 'invalid';
+    return j.rushOpt ? '' : 'no-rush';
+  }
+  async function openApp(token){
+    busy(true);
+    try{
+      var why = await allowed(token);
+      if(why){ localStorage.removeItem(TOKEN_KEY); busy(false); show(MESSAGES[why] || MESSAGES.invalid, 'warn'); return false; }
+      var r = await fetch('/api/app', { headers: { 'Authorization': 'Bearer ' + token, 'X-Device-Id': deviceId() }, cache: 'no-store' });
+      if(!r.ok){
+        var j = {}; try{ j = await r.json(); }catch(e){}
+        localStorage.removeItem(TOKEN_KEY); busy(false); show(MESSAGES[j.reason] || MESSAGES.invalid, 'warn'); return false;
+      }
+      var fresh = r.headers.get('x-refreshed-token'); if(fresh) localStorage.setItem(TOKEN_KEY, fresh);
+      var html = await r.text(); document.open(); document.write(html); document.close(); return true;
+    }catch(e){ busy(false); show("Can't reach the server. Check the internet connection and try again.", 'warn'); return false; }
+  }
+  async function unlock(){
+    var code = codeEl.value.trim();
+    if(!code){ show('Please enter your code.', 'error'); return; }
+    btn.disabled = true; show('');
+    try{
+      var r = await fetch('/api/redeem', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ code: code, deviceId: deviceId(), dk: /Windows/.test(navigator.userAgent) ? 'Windows computer' : /Android/.test(navigator.userAgent) ? 'Android tablet' : /Macintosh/.test(navigator.userAgent) ? 'Mac' : '' }) });
+      var j = await r.json();
+      if(!r.ok){ show(j.error || 'Something went wrong. Please try again.', 'error'); btn.disabled = false; return; }
+      localStorage.setItem(TOKEN_KEY, j.token);
+      show('Unlocked', 'ok');
+      var ok = await openApp(j.token); if(!ok) btn.disabled = false;
+    }catch(e){ show("Can't reach the server. Check the internet connection and try again.", 'warn'); btn.disabled = false; }
+  }
+  btn.addEventListener('click', unlock);
+  codeEl.addEventListener('keydown', function(e){ if(e.key === 'Enter') unlock(); });
+  (async function boot(){
+    var notice = null;
+    try{ notice = sessionStorage.getItem('pb_notice'); sessionStorage.removeItem('pb_notice'); }catch(e){}
+    if(notice){ localStorage.removeItem(TOKEN_KEY); show(MESSAGES[notice] || MESSAGES.invalid, 'warn'); return; }
+    var token = localStorage.getItem(TOKEN_KEY);
+    if(token) openApp(token);
+  })();
+})();
+</script>
+</body>
+</html>

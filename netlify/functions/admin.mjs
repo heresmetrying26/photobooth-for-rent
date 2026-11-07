@@ -275,7 +275,7 @@ export default safe(async (req, context) => {
         // Keep a dedicated Drive folder name. If neither field was supplied,
         // fall back to the code so the renter never has to configure Drive.
         const _allowedOr = ['landscape', 'portrait', 'either'];
-        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, gifOpt: b.gifOpt !== false, extras: normExtras(b.extras), retakeOpt: b.retakeOpt !== false, typesOpt: !!b.typesOpt, lockOpt: b.lockOpt !== false, payOpt: b.payOpt !== false, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, orientation: _allowedOr.includes(b.orientation) ? b.orientation : 'landscape', status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
+        const rec = { key, code: displayCode(key), kind: 'rental', label: label || displayCode(key), folderName: folderName || displayCode(key), days, lifetime, maxDevices, defaultTheme: cleanTheme(b.defaultTheme), startsAt: start.value, print, traditional: !!b.traditional, gifOpt: b.gifOpt !== false, rushOpt: !!b.rushOpt, extras: normExtras(b.extras), retakeOpt: b.retakeOpt !== false, typesOpt: !!b.typesOpt, lockOpt: b.lockOpt !== false, payOpt: b.payOpt !== false, offlineOpt: !!(b.offlineOpt || b.offlineOnly), offlineOnly: !!b.offlineOnly, orientation: _allowedOr.includes(b.orientation) ? b.orientation : 'landscape', status: 'unused', createdAt: Date.now(), redeemedAt: null, expiresAt: null, deviceId: null, email: email || null };
         // A hand-made Lifetime code (for example a Messenger sale): Admin ticks that the buyer replied "I agree".
         if (lifetime && b.agreementAccepted) rec.agreement = { version: AGREEMENT_VERSION, acceptedAt: Date.now(), by: 'admin' };
         await putLicense(store, key, rec);
@@ -727,6 +727,14 @@ export default safe(async (req, context) => {
       bt.voided = bt.codes.filter((c) => !used[c]);
       await payStore().setJSON(batchKey(oid, bt.id), bt);
       return json({ ok: true, batch: batchView(bt, used) });
+    }
+
+    case 'rushopt': { // Rush ID & Photo Print station (/rush) on/off for this code; takes effect at the station's next code check
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      rec.rushOpt = typeof b.rushOpt === 'boolean' ? b.rushOpt : !rec.rushOpt;
+      await putLicense(store, key, rec);
+      return json({ ok: true, rushOpt: rec.rushOpt });
     }
 
     case 'gifopt': { // GIF output mode (animated GIF & Photo + GIF options); applies to an open booth within ~5 minutes

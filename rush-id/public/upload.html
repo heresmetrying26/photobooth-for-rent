@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Send photos to the kiosk</title>
+<style>
+:root{--bg:#f4f2ec;--card:#fff;--ink:#15202b;--dim:#5b6874;--line:#dcd8cd;--accent:#0b6e6e;--accent-ink:#fff;--ok:#12724a;--warn:#b3261e}
+@media (prefers-color-scheme: dark){:root{--bg:#10161c;--card:#19222b;--ink:#eef2f5;--dim:#9aa8b5;--line:#2b3743;--accent:#2fb3ab;--accent-ink:#06201f;--ok:#5fd6a0;--warn:#ff8a80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:20px 16px 40px}
+main{max-width:480px;margin:0 auto}
+h1{font-size:26px;margin:6px 0 4px}
+p{color:var(--dim);margin:6px 0 16px}
+.code{display:inline-block;font:800 20px ui-monospace,Consolas,monospace;letter-spacing:.18em;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:2px 12px}
+button,label.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:60px;margin:10px 0;border-radius:16px;border:2px solid var(--line);background:var(--card);color:var(--ink);font:700 18px system-ui;cursor:pointer}
+button.primary,label.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button:disabled{opacity:.5}
+ul{list-style:none;padding:0;margin:18px 0}
+li{display:flex;align-items:center;gap:12px;padding:10px;border-radius:14px;background:var(--card);border:1px solid var(--line);margin:8px 0}
+li img{width:52px;height:52px;object-fit:cover;border-radius:10px;background:#0001}
+li span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
+li b{font-size:14px}.st-ok{color:var(--ok)}.st-err{color:var(--warn)}
+.bad{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+input[type=file]{display:none}
+</style>
+</head>
+<body>
+<main id="m">
+  <h1>Send photos to the kiosk</h1>
+  <p>Session <span class="code" id="code">······</span></p>
+  <div id="ok" hidden>
+    <label class="btn primary">📁 Choose photos<input id="pick" type="file" accept="image/*" multiple></label>
+    <label class="btn">🤳 Take a photo<input id="cam" type="file" accept="image/*" capture="user"></label>
+    <ul id="list"></ul>
+    <p id="done" hidden>✅ Sent! Your photos will appear on the kiosk screen in a few seconds. You can send more.</p>
+  </div>
+  <div id="bad" class="bad" hidden><b>This link has expired.</b><p>Please scan the QR code on the kiosk screen again.</p></div>
+</main>
+<script>
+const code = (location.pathname.split('/').filter(Boolean).pop() || '').toUpperCase();
+const $ = (id) => document.getElementById(id);
+$('code').textContent = code;
+
+fetch('/api/session?code=' + encodeURIComponent(code)).then((r) => { $(r.ok ? 'ok' : 'bad').hidden = false; }).catch(() => { $('bad').hidden = false; });
+
+// Phones take 12 MP+ photos; the kiosk only needs ~2600 px. Shrink first so it uploads fast on mobile data.
+async function shrink(file) {
+  const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  const k = Math.min(1, 2600 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); bmp.close && bmp.close();
+  return { blob: await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9)), thumb: c };
+}
+
+async function send(files) {
+  for (const f of files) {
+    const li = document.createElement('li'); li.innerHTML = '<img alt=""><span></span><b>Sending…</b>';
+    li.querySelector('span').textContent = f.name; $('list').prepend(li);
+    const st = li.querySelector('b');
+    try {
+      const { blob, thumb } = await shrink(f);
+      li.querySelector('img').src = thumb.toDataURL('image/jpeg', 0.4);
+      const r = await fetch('/api/session?code=' + encodeURIComponent(code) + '&name=' + encodeURIComponent(f.name.replace(/\.[^.]+$/, '') + '.jpg'), { method: 'POST', headers: { 'content-type': 'image/jpeg' }, body: blob });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(r.status === 404 ? 'Link expired' : j.error || 'Failed'); }
+      st.textContent = '✓ Sent'; st.className = 'st-ok'; $('done').hidden = false;
+    } catch (e) { st.textContent = e.message && e.message.length < 40 ? e.message : 'Could not send'; st.className = 'st-err'; }
+  }
+}
+for (const id of ['pick', 'cam']) $(id).addEventListener('change', (e) => { const fs = [...e.target.files]; e.target.value = ''; send(fs); });
+</script>
+</body>
+</html>

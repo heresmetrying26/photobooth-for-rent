@@ -233,6 +233,7 @@
       </div>
       <div class="modebox">
         <label class="toggle"><input type="checkbox" id="newGif" checked> GIF mode (animated GIF &amp; Photo + GIF options)</label>
+        <label class="toggle"><input type="checkbox" id="newRush"> Rush ID &amp; Photo Print station (opens at /rush)</label>
         <div class="meta" style="margin:0;">Enables animated GIF recording in the booth: guests can get a GIF or both photo strip + GIF with separate QR codes.</div>
       </div>
       <div class="modebox">
@@ -897,6 +898,7 @@
     var ors = ['landscape','portrait','either'], oi = ors.indexOf(l.orientation || 'landscape'), nextOr = ors[(oi+1) % 3], orLabel = {landscape:'Landscape',portrait:'Portrait',either:'Either (renter picks)'}[l.orientation || 'landscape'];
     acts += '<button class="small" data-a="orientationopt" data-or="' + nextOr + '" data-c="' + c + '" title="Android only. Landscape = always landscape. Portrait = always portrait. Either = renter chooses in Setup.">Android orientation: ' + orLabel + '</button>';
     acts += '<button class="small" data-a="gifopt" data-c="' + c + '">' + (l.gifOpt ? 'Hide GIF mode' : 'Give GIF mode') + '</button>';
+    acts += '<button class="small" data-a="rushopt" data-c="' + c + '" title="Self-service ID photo + photo printing station at /rush. The renter opens /rush and enters this same code.">' + (l.rushOpt ? 'Turn off Rush ID station' : 'Turn on Rush ID station') + '</button>';
     acts += '<button class="small" data-a="lockopt" data-c="' + c + '">' + (l.lockOpt ? 'Hide lock booth' : 'Give lock booth') + '</button>';
     if(l.offlineOpt || l.offlineOnly) acts += '<button class="small" data-a="ipadopt" data-c="' + c + '" title="Lets an iPad use the laptop app\'s camera over Wi-Fi (Setup → Share &amp; start)">' + (l.ipadOpt ? 'Turn off iPad camera' : 'Turn on iPad camera') + '</button>';
     [['vintage', 'vintage looks'], ['roving', 'photographer desk'], ['flipbook', 'flipbook'], ['video', 'video guestbook'], ['spin360', '360 video desk']].forEach(function(x){
@@ -934,7 +936,7 @@
       (l.paymentReview ? '<span style="color:#b3261e;font-weight:700;">&#9888; Payment ' + esc(l.paymentReview.reason) + ' on ' + fmtDate(l.paymentReview.at) + ' &mdash; review this code (Disable it if the money was not kept).</span><br>' : '') +
       (l.lifetime && !bonus ? 'Agreement: <b>' + (l.agreement ? 'v' + esc(l.agreement) + ' accepted' + (l.agreementAt ? ' (' + fmtDate(l.agreementAt) + ')' : '') : 'not recorded') + '</b><br>' : '');
     return '<div class="meta">' + (l.label ? '<b>' + esc(l.label) + '</b><br>' : '') + flags + (l.email ? 'Email: <b>' + esc(l.email) + '</b><br>' : '') + 'Drive folder: <b>' + folder + '</b><br>' + printSummary(l.print) +
-      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>GIF mode: <b>' + (l.gifOpt ? 'Yes (Photo + GIF &amp; GIF-only options)' : 'No (Photo only)') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Card &amp; certificate booths: <b>' + (l.typesOpt ? 'Yes (Booth type switch in Setup)' : 'No') + '</b><br>Debug tools (Android printer IDs, colour tests): <b>' + (l.debugOpt ? 'On' : 'Off') + '</b><br>Android screen orientation: <b>' + (l.orientation === 'portrait' ? 'Portrait' : l.orientation === 'either' ? 'Either (renter picks in Setup)' : 'Landscape') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? (l.offlineOnly ? 'Laptop app only' : 'Yes') + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
+      '<br>Mode: <b>' + (l.traditional ? 'Traditional (laptop + guest screen)' : 'Tablet') + '</b><br>GIF mode: <b>' + (l.gifOpt ? 'Yes (Photo + GIF &amp; GIF-only options)' : 'No (Photo only)') + '</b><br>Rush ID &amp; Photo Print station (/rush): <b>' + (l.rushOpt ? 'On' : 'Off') + '</b><br>Retake switch in Setup: <b>' + (l.retakeOpt ? 'Yes (renter can turn retakes off)' : 'No (retakes always on)') + '</b><br>Lock booth: <b>' + (l.lockOpt ? 'Yes (guest-only screen with a PIN)' : 'No') + '</b><br>Card &amp; certificate booths: <b>' + (l.typesOpt ? 'Yes (Booth type switch in Setup)' : 'No') + '</b><br>Debug tools (Android printer IDs, colour tests): <b>' + (l.debugOpt ? 'On' : 'Off') + '</b><br>Android screen orientation: <b>' + (l.orientation === 'portrait' ? 'Portrait' : l.orientation === 'either' ? 'Either (renter picks in Setup)' : 'Landscape') + '</b><br>Guest payments: <b>' + (l.payOpt ? 'Yes (QR via their PayMongo, vouchers)' : 'No') + '</b>' + (bonus ? '' : '<br>Offline app (Windows / Mac): <b>' + (l.offlineOpt ? (l.offlineOnly ? 'Laptop app only' : 'Yes') + (appCount(devs) ? ' · ' + appCount(devs) + ' laptop' + (appCount(devs) === 1 ? '' : 's') + ' activated' : ' · none activated yet') : 'No') + '</b>') + '<br>' + infoLine(l, st, parentEnd) +
       '<br><span style="font-size:11.5px;">Created ' + fmtDate(l.createdAt) + '</span>' +
       (devs.length ? '<div class="devlist">' + devs.map(function(d){ return '<span class="devchip">Device ' + d.no + (d.kind ? ' · ' + esc(d.kind) : '') + (d.app && d.app.name ? ' · ' + esc(d.app.name) : '') + appVerChip(d) + (d.at ? ' · ' + new Date(d.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + (d.app && d.app.seen ? ' · checked in ' + new Date(d.app.seen).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '') + '<button class="small danger" data-a="rmdev" data-n="' + d.no + '" data-c="' + c + '" title="' + (d.app ? 'Deactivate this laptop (stops at its next check-in)' : 'Remove this device') + '">' + (d.app ? 'Deactivate' : 'Remove') + '</button></span>'; }).join('') + '</div>' : '') +
       '</div>' +
@@ -1377,6 +1379,13 @@
         refresh();
         return;
       }
+      if(a === 'rushopt'){
+        var ru = !(LIC[code] && LIC[code].rushOpt);
+        await api({ action: 'rushopt', code: code, rushOpt: ru });
+        toast((ru ? 'Rush ID station turned on' : 'Rush ID station turned off') + ' for this code — it applies the next time the station checks the code (within ~5 minutes)');
+        refresh();
+        return;
+      }
       if(a === 'gifopt'){
         var go = !(LIC[code] && LIC[code].gifOpt);
         await api({ action: 'gifopt', code: code, gifOpt: go });
@@ -1426,7 +1435,7 @@
     try{
       var np = readPrint($('newPrint'));
       var startsAt = readStartInputs($('newStartDate'), $('newStartTime'));
-      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, agreementAccepted: $('newAgreed').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, typesOpt: $('newTypes').checked, lockOpt: $('newLock').checked, extras: { vintage: $('newXVintage').checked, roving: $('newXRoving').checked, flipbook: $('newXFlipbook').checked, video: $('newXVideo').checked, spin360: $('newXSpin').checked }, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null, orientation: (document.querySelector('[name="newOrientation"]:checked') || {}).value || 'landscape' };
+      var createBody = { action: 'create', label: $('newLabel').value, folderName: $('newFolderName').value, days: $('newDays').value, count: $('newCount').value, startsAt: startsAt, lifetime: $('newLifetime').checked, agreementAccepted: $('newAgreed').checked, maxDevices: $('newDevices').value, email: $('newEmail').value.trim(), retakeOpt: $('newRetake').checked, typesOpt: $('newTypes').checked, rushOpt: $('newRush').checked, lockOpt: $('newLock').checked, extras: { vintage: $('newXVintage').checked, roving: $('newXRoving').checked, flipbook: $('newXFlipbook').checked, video: $('newXVideo').checked, spin360: $('newXSpin').checked }, payOpt: $('newPay').checked, printEnabled: np.enabled, printSizes: np.sizes, printEventLimit: np.eventLimit, printSessionLimit: np.sessionLimit, traditional: $('newTraditional').checked, gifOpt: $('newGif').checked, offlineOpt: $('newOffline').checked || $('newOfflineOnly').checked, offlineOnly: $('newOfflineOnly').checked, defaultTheme: $('newTheme').value || null, orientation: (document.querySelector('[name="newOrientation"]:checked') || {}).value || 'landscape' };
       var j;
       try{ j = await api(createBody); }
       catch(e1){

@@ -1,0 +1,6 @@
+Third-party files used by Rush ID & Photo Print. Everything runs on the device; no photo is sent to an AI service.
+
+- vision_bundle.mjs, wasm/*: MediaPipe Tasks Vision 1.0.1 (@mediapipe/tasks-vision), Google LLC, Apache License 2.0.
+- selfie_segmenter.tflite: MediaPipe Selfie Segmentation model (Apache 2.0), with TFLite metadata added so MediaPipe Tasks can load it. Used to make the ID background plain.
+- blaze_face_short_range.tflite: MediaPipe BlazeFace short-range face detector (Apache 2.0). Used to centre the face in the ID frame.
+- qrcode.min.js: qrcode-generator by Kazuhiko Arase, MIT License. Draws the phone-upload QR code.

@@ -10,3 +10,11 @@ public/downloads/*.exe
 .codex/
 AGENTS.md
 
+# Built from rush-id/ by scripts/build-rush.mjs
+public/rush/vendor/
+public/rush/upload.html
+
+# esbuild is a build tool (scripts/build-rush.mjs); Netlify installs it from package.json
+node_modules/esbuild/
+node_modules/@esbuild/
+node_modules/.bin/

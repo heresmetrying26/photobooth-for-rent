@@ -1,0 +1,120 @@
+# Builds the Rush ID Station Android APK: the booth's Android project (same cameras, USB, Bluetooth and printer code)
+# patched in this CI checkout only (android/scripts/make-rush-variant.mjs) to open https://photobooth4u.netlify.app/rush/.
+# The booth's own build (android.yml) is not touched. Run it from the Actions tab ("Rush ID Station Android app" -> Run workflow),
+# or push a tag like rushid-v1.0.0 to attach the APK to a GitHub release.
+name: Rush ID Station Android app
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['rushid-v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        id: setup-gradle
+        continue-on-error: true      # services.gradle.org / the cache service sometimes answer 504; the next step then uses a mirror
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.5'
+      - name: Setup Gradle (fallback download)
+        if: steps.setup-gradle.outcome != 'success'
+        working-directory: .
+        run: |
+          echo "::warning::Gradle setup action failed; downloading Gradle 8.5 from GitHub's gradle-distributions instead"
+          curl -fL --retry 6 --retry-delay 10 --retry-all-errors -o "$RUNNER_TEMP/gradle-8.5-bin.zip" \
+            https://github.com/gradle/gradle-distributions/releases/download/v8.5.0/gradle-8.5-bin.zip
+          unzip -q "$RUNNER_TEMP/gradle-8.5-bin.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gradle-8.5/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/gradle-8.5/bin/gradle" --version
+      - name: Accept Android SDK licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+      - name: Bundle latest booth page into assets
+        working-directory: .
+        run: |
+          mkdir -p android/app/src/main/assets
+          cp protected/booth.html android/app/src/main/assets/booth.html
+      - name: Generate launcher icons from source
+        working-directory: .
+        run: |
+          pip install Pillow --quiet
+          python android/scripts/gen_icons.py android/resources/icon_source.png
+      - name: Make the Rush ID Station variant (own app id, opens /rush/)
+        working-directory: .
+        env:
+          RUSH_VERSION_CODE: ${{ github.run_number }}
+          RUSH_VERSION_NAME: ${{ github.ref_name }}
+        run: node android/scripts/make-rush-variant.mjs
+      - name: Load the signing key (when the secrets are set)
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/photobooth4u.keystore"
+            echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/photobooth4u.keystore" >> "$GITHUB_ENV"
+            echo "Signing with the fixed release key"
+          else
+            echo "No signing secrets: using a throwaway debug key (updates will need an uninstall first)"
+          fi
+      - name: Check the signing key
+        if: env.ANDROID_KEYSTORE_FILE != ''
+        env:
+          KS_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PW: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          # Says which secret is wrong (never prints their values), so a bad one is easy to fix.
+          f="$ANDROID_KEYSTORE_FILE"
+          [ -z "$KS_PW" ] && { echo "::error::Secret ANDROID_KEYSTORE_PASSWORD is empty or missing"; exit 1; }
+          [ -z "$KS_ALIAS" ] && { echo "::error::Secret ANDROID_KEY_ALIAS is empty or missing"; exit 1; }
+          [ -z "$KEY_PW" ] && { echo "::error::Secret ANDROID_KEY_PASSWORD is empty or missing"; exit 1; }
+          echo "::notice::Keystore file: $(stat -c %s "$f") bytes, sha256 $(sha256sum "$f" | cut -c1-16); password length ${#KS_PW}; has whitespace: $(printf %s "$KS_PW" | grep -c '[[:space:]]'); contains '=': $(printf %s "$KS_PW" | grep -c '=')"
+          if ! keytool -list -keystore "$f" -storepass "$KS_PW" > "$RUNNER_TEMP/ks.txt" 2>&1; then
+            echo "::error::Cannot open the keystore: ANDROID_KEYSTORE_BASE64 is not the full keystore text, or ANDROID_KEYSTORE_PASSWORD is wrong ($(head -c 120 "$RUNNER_TEMP/ks.txt" | tr -s '[:space:]' ' '))"; exit 1
+          fi
+          aliases=$(grep -E ', PrivateKeyEntry' "$RUNNER_TEMP/ks.txt" | cut -d, -f1 | tr -s '[:space:]' ' ')
+          echo "$aliases" | grep -qw -- "$KS_ALIAS" || { echo "::error::ANDROID_KEY_ALIAS does not match. The keystore has: $aliases"; exit 1; }
+          # A PKCS12 keystore uses one password for the store and the key.
+          [ "$KEY_PW" = "$KS_PW" ] || { echo "::error::ANDROID_KEY_PASSWORD must be the same value as ANDROID_KEYSTORE_PASSWORD"; exit 1; }
+          echo "::notice::Signing key OK (alias $KS_ALIAS)"
+      - name: Build Debug APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log || {
+            echo "::error title=Gradle Build Error::$(tail -n 25 build.log | tr '\n' ' ')"
+            exit 1
+          }
+      - name: Stage APK for release
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk dist/rush-id-station-android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rush-id-station-apk
+          path: android/dist/rush-id-station-android.apk
+      - if: startsWith(github.ref, 'refs/tags/rushid-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: android/dist/rush-id-station-android.apk
+          make_latest: false

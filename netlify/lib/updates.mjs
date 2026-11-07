@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.100', date: '2026-11-07' },
   { version: '1.0.99', date: '2026-11-07' },
   { version: '1.0.98', date: '2026-11-07' },
   { version: '1.0.97', date: '2026-11-07' },
@@ -147,6 +148,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-07', title: '360 Desk: Redrawn Effects (Fire, Diamonds, Bats, Lightning and More)', for: ['website', 'app'], app: '1.0.100',
+    items: [
+      'Fire & Hot Embers now has real flames along the bottom and glowing embers in every shade rising up the frame, not plain red and orange circles.',
+      'Diamond Facets are now cut gems whose facets flash as they tumble. Spooky Bats are flapping bat shapes over low mist. Electric Lightning is branching bolts that flash and fade. Twinkling Galaxy has spiked stars, glow and shooting stars.',
+      'Also redrawn: Prism Light Leak, Rainbow Strobe, Art Deco, Hexagon Grid, Neon Frame, Stage Spotlights, Summer Flare, Film 8mm, Retro VHS, Midnight Fireworks (real bursts), New Year Sparklers, Stage Smoke, Disco Ball and UV Glow. Soft glows are now really soft instead of flat discs.',
+      'In the 360 desk preview, border, light, lightning, fire and firework effects now play the real effect, so the preview matches the finished video.'
+    ]
+  },
   {
     date: '2026-11-07', title: 'Receipt printers: colour receipts print cleanly, stickers show, fewer lines', for: ['website', 'app'], app: '1.0.99',
     items: [

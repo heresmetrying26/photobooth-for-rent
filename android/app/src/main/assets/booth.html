@@ -32837,9 +32837,55 @@
         ctx.restore();
       }
 
+      // Effects that are not drawn by the particle engine below (borders, lights, lightning, fire, fireworks...) show the very loop video the
+      // render lays over the clip, so the preview is the real thing and not a sketch of it. Needs the desktop app (it serves /spin-fx/).
+      var spinFxPv = { el: null, src: '', ready: false };
+      function spinFxLoopFrame(fx, W, H) {
+        if (typeof spinDesktop !== 'function' || !spinDesktop() || SPIN_FX_BAKEABLE[fx]) return null;
+        var item = (spinFxCatalog || []).find(function (x) { return x.id === fx; });
+        if (!item || !item.file || !/\.mp4$/i.test(item.file)) return null;
+        var src = '/spin-fx/loops/' + (W > H ? 'landscape/' : '') + item.file;
+        if (!spinFxPv.el) {
+          var v = document.createElement('video');
+          v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto'; v.style.display = 'none';
+          v.addEventListener('canplay', function () { spinFxPv.ready = true; });
+          v.addEventListener('error', function () { spinFxPv.ready = false; spinFxPv.src = 'failed:' + spinFxPv.src; });
+          document.body.appendChild(v);
+          spinFxPv.el = v;
+        }
+        if (spinFxPv.src !== src) {
+          if (spinFxPv.src === 'failed:' + src) return null;
+          spinFxPv.src = src; spinFxPv.ready = false;
+          // loaded as a blob: the laptop's file server has no byte ranges, which a looping <video> needs
+          fetch(src).then(function (r) { if (!r.ok) throw new Error('no loop'); return r.blob(); }).then(function (b) {
+            if (spinFxPv.src !== src) return;
+            if (spinFxPv.blobUrl) { try { URL.revokeObjectURL(spinFxPv.blobUrl); } catch (e) { } }
+            spinFxPv.blobUrl = URL.createObjectURL(b);
+            spinFxPv.el.src = spinFxPv.blobUrl;
+            try { spinFxPv.el.play().catch(function () { }); } catch (e) { }
+          }).catch(function () { if (spinFxPv.src === src) spinFxPv.src = 'failed:' + src; });
+        }
+        if (!spinFxPv.ready || spinFxPv.el.readyState < 2 || !spinFxPv.el.videoWidth) return null;
+        if (spinFxPv.el.paused) { try { spinFxPv.el.play().catch(function () { }); } catch (e) { } }
+        return { v: spinFxPv.el, blend: item.blend };
+      }
+
       function drawSpinFxParticles(ctx, W, H, fx, fxOpt) {
         if (!fx || fx === 'none') return;
         fxOpt = fxOpt || {};
+        if (fxOpt.time == null) {
+          var loopFrame = spinFxLoopFrame(fx, W, H);
+          if (loopFrame) {
+            var lv = loopFrame.v, lk = Math.max(W / lv.videoWidth, H / lv.videoHeight), lw = lv.videoWidth * lk, lh = lv.videoHeight * lk;
+            var lop = Number(fxOpt.fxOpacity != null ? fxOpt.fxOpacity : (spinLook && spinLook.fxOpacity != null ? spinLook.fxOpacity : 85));
+            ctx.save();
+            ctx.globalAlpha = Math.max(0.05, Math.min(1, lop / 100));
+            ctx.globalCompositeOperation = loopFrame.blend === 'screen' ? 'screen' : 'source-over';     // the same "screen" the render uses: black is see-through
+            ctx.drawImage(lv, (W - lw) / 2, (H - lh) / 2, lw, lh);
+            ctx.restore();
+            return;
+          }
+        }
         var movement = fxOpt.fxMovement || fxOpt.movement || (spinLook && spinLook.fxMovement) || 'vortex';
         var speedVal = Number(fxOpt.fxSpeed != null ? fxOpt.fxSpeed : (fxOpt.speed != null ? fxOpt.speed : (spinLook && spinLook.fxSpeed != null ? spinLook.fxSpeed : 100)));
         var opacityVal = Number(fxOpt.fxOpacity != null ? fxOpt.fxOpacity : (fxOpt.opacity != null ? fxOpt.opacity : (spinLook && spinLook.fxOpacity != null ? spinLook.fxOpacity : 85)));
@@ -32910,7 +32956,100 @@
           return { x: px, y: py };
         }
 
-        if (fx === 'confetti_multi' || fx === 'confetti_gold' || fx === 'streamers_party' || fx === 'confetti') {
+        if (fx === 'halloween_bats') {
+          // flapping bat silhouettes (wing edge with points, ears, glowing red eyes)
+          for (var bi = 0; bi < 11; bi++) {
+            var seed = bi * 113.7;
+            var pos = getPos(seed);
+            var bs = (62 + ((Math.floor(seed) * 7) % 10) * 5.2) * scaleMult;
+            var bf = Math.sin(mt * 14 + seed);
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            ctx.globalAlpha = Math.min(1, baseAlpha + 0.1);
+            ctx.fillStyle = '#160e20';
+            var wingPts = [[0.08, -0.12], [0.5, -0.30 - 0.30 * bf], [1.0, -0.12 - 0.62 * bf], [0.86, 0.16 - 0.30 * bf], [0.74, 0.05 - 0.12 * bf], [0.66, 0.30 - 0.14 * bf], [0.50, 0.16 - 0.05 * bf], [0.34, 0.36 - 0.03 * bf], [0.20, 0.20], [0.08, 0.30]];
+            for (var sd = -1; sd <= 1; sd += 2) {
+              ctx.beginPath();
+              for (var wi = 0; wi < wingPts.length; wi++) { var wx = sd * wingPts[wi][0] * bs, wy = wingPts[wi][1] * bs; if (wi) ctx.lineTo(wx, wy); else ctx.moveTo(wx, wy); }
+              ctx.closePath(); ctx.fill();
+            }
+            ctx.beginPath(); ctx.ellipse(0, 0.02 * bs, 0.17 * bs, 0.30 * bs, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(0, -0.34 * bs, 0.12 * bs, 0.11 * bs, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(-0.11 * bs, -0.38 * bs); ctx.lineTo(-0.10 * bs, -0.56 * bs); ctx.lineTo(-0.02 * bs, -0.42 * bs); ctx.closePath(); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(0.11 * bs, -0.38 * bs); ctx.lineTo(0.10 * bs, -0.56 * bs); ctx.lineTo(0.02 * bs, -0.42 * bs); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#ff4632';
+            ctx.beginPath(); ctx.arc(-0.05 * bs, -0.35 * bs, Math.max(1.2, 0.022 * bs), 0, Math.PI * 2); ctx.arc(0.05 * bs, -0.35 * bs, Math.max(1.2, 0.022 * bs), 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+          }
+        } else if (fx === 'diamond_prism') {
+          // cut gems: a table, 8 crown facets and 8 star facets that flash as a light passes round, tumbling as they go
+          var gemTints = [[160, 215, 255], [255, 175, 230], [170, 255, 225], [255, 235, 170], [190, 165, 255]];
+          for (var gi = 0; gi < 15; gi++) {
+            var seed = gi * 151.3;
+            var pos = getPos(seed);
+            var gR = (52 + (Math.floor(seed) % 62)) * scaleMult * 0.8;
+            var gSq = 0.62 + 0.38 * Math.abs(Math.cos(mt * 1.1 + seed));
+            var gRot = seed + mt * 0.6;
+            var gLight = mt * 2.2 + seed;
+            var gO = [], gT = [];
+            for (var k = 0; k < 8; k++) {
+              var a1 = gRot + k * Math.PI / 4, a2 = a1 + Math.PI / 8;
+              gO.push([pos.x + Math.cos(a1) * gR * gSq, pos.y + Math.sin(a1) * gR]);
+              gT.push([pos.x + Math.cos(a2) * gR * 0.5 * gSq, pos.y + Math.sin(a2) * gR * 0.5]);
+            }
+            var tri = function (p, q, r, rgb, br) {
+              ctx.fillStyle = 'rgb(' + Math.round((255 + (rgb[0] - 255) * 0.65) * br) + ',' + Math.round((255 + (rgb[1] - 255) * 0.65) * br) + ',' + Math.round((255 + (rgb[2] - 255) * 0.65) * br) + ')';
+              ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.lineTo(r[0], r[1]); ctx.closePath(); ctx.fill();
+            };
+            ctx.save();
+            ctx.globalAlpha = baseAlpha;
+            var halo = ctx.createRadialGradient(pos.x, pos.y, gR * 0.4, pos.x, pos.y, gR * 1.5);
+            halo.addColorStop(0, 'rgba(190,220,255,0.28)'); halo.addColorStop(1, 'rgba(190,220,255,0)');
+            ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(pos.x, pos.y, gR * 1.5, 0, Math.PI * 2); ctx.fill();
+            for (var k = 0; k < 8; k++) {
+              var a1 = gRot + k * Math.PI / 4;
+              var tint = gemTints[(gi + k) % gemTints.length];
+              tri(gO[k], gO[(k + 1) % 8], gT[k], tint, 0.30 + 0.70 * Math.pow(0.5 + 0.5 * Math.cos(a1 + Math.PI / 8 - gLight), 2));
+              tri(gT[(k + 7) % 8], gT[k], gO[k], tint, 0.25 + 0.75 * Math.pow(0.5 + 0.5 * Math.cos(a1 + 0.8 - gLight), 2));
+            }
+            ctx.fillStyle = 'rgb(225,240,255)';
+            ctx.beginPath(); gT.forEach(function (p, i) { if (i) ctx.lineTo(p[0], p[1]); else ctx.moveTo(p[0], p[1]); }); ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = Math.max(1, 2 * scaleMult);
+            ctx.beginPath(); gO.forEach(function (p, i) { if (i) ctx.lineTo(p[0], p[1]); else ctx.moveTo(p[0], p[1]); }); ctx.closePath(); ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = Math.max(1, 1.4 * scaleMult);
+            ctx.beginPath(); gT.forEach(function (p, i) { if (i) ctx.lineTo(p[0], p[1]); else ctx.moveTo(p[0], p[1]); }); ctx.closePath(); ctx.stroke();
+            for (var k = 0; k < 8; k++) { ctx.beginPath(); ctx.moveTo(gO[k][0], gO[k][1]); ctx.lineTo(gT[k][0], gT[k][1]); ctx.stroke(); }
+            var gGl = Math.pow(Math.max(0, Math.sin(mt * 3 + seed)), 8);
+            if (gGl > 0.02) {                                                     // a sparkle on one corner
+              var gx = gO[gi % 8][0], gy = gO[gi % 8][1], gL = gR * 0.9 * gGl;
+              ctx.strokeStyle = 'rgba(255,255,255,' + (0.9 * gGl) + ')'; ctx.lineWidth = Math.max(1.5, 3 * scaleMult);
+              ctx.beginPath(); ctx.moveTo(gx - gL, gy); ctx.lineTo(gx + gL, gy); ctx.moveTo(gx, gy - gL); ctx.lineTo(gx, gy + gL); ctx.stroke();
+            }
+            ctx.restore();
+          }
+        } else if (fx === 'galaxy_stars') {
+          // a star field: soft glow, a hard core, and cross spikes on the bigger ones; colours white / blue / gold / violet
+          var starCols = ['255,255,255', '175,205,255', '255,232,175', '210,180,255'];
+          for (var si = 0; si < 110; si++) {
+            var seed = si * 53.9;
+            var pos = getPos(seed);
+            var sr = (1.4 + Math.pow(((Math.floor(seed) * 7) % 100) / 100, 3) * 5.5) * scaleMult * 1.2;
+            var stw = 0.3 + 0.7 * Math.pow(Math.abs(Math.sin(seed + mt * 1.4)), 1.5);
+            var sc = starCols[si % starCols.length];
+            ctx.save();
+            ctx.globalAlpha = Math.min(1, stw * baseAlpha);
+            var sg = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, sr * 3.2);
+            sg.addColorStop(0, 'rgba(' + sc + ',0.8)'); sg.addColorStop(1, 'rgba(' + sc + ',0)');
+            ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(pos.x, pos.y, sr * 3.2, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(pos.x, pos.y, Math.max(1, sr * 0.7), 0, Math.PI * 2); ctx.fill();
+            if (sr > 3.4 * scaleMult * 1.2) {
+              var sl = sr * 4.5 * stw;
+              ctx.strokeStyle = 'rgba(' + sc + ',0.85)'; ctx.lineWidth = Math.max(1, 1.4 * scaleMult);
+              ctx.beginPath(); ctx.moveTo(pos.x - sl, pos.y); ctx.lineTo(pos.x + sl, pos.y); ctx.moveTo(pos.x, pos.y - sl); ctx.lineTo(pos.x, pos.y + sl); ctx.stroke();
+            }
+            ctx.restore();
+          }
+        } else if (fx === 'confetti_multi' || fx === 'confetti_gold' || fx === 'streamers_party' || fx === 'confetti') {
           var isGold = fx === 'confetti_gold';
           var palette = isGold ? ['#FFD700', '#FFF2A8', '#D4AF37', '#F5E6AB', '#C59B27'] : ['#FF3B30', '#FFCC00', '#34C759', '#007AFF', '#AF52DE', '#FF9500', '#FF2D55'];
           var count = fx === 'streamers_party' ? 24 : 36;
@@ -33141,7 +33280,7 @@
       // Only the particle effects (the ones the Effect Motion panel controls); border / light / strobe effects keep their pre-made loops.
       var SPIN_FX_BAKEABLE = { confetti_multi: 1, confetti_gold: 1, streamers_party: 1, champagne_bubbles: 1, balloons_pastel: 1, hearts_floating: 1, rose_petals_red: 1,
         petals_white_drift: 1, bokeh_golden: 1, fairy_dust: 1, sparkler_fountain: 1, gold_dust: 1, silver_shimmer: 1, ribbon_swirls_gold: 1, galaxy_stars: 1, cash_rain: 1,
-        snow_blizzard: 1, halloween_bats: 1, autumn_leaves: 1, fireworks_midnight: 1, nye_countdown: 1 };
+        snow_blizzard: 1, halloween_bats: 1, autumn_leaves: 1, diamond_prism: 1 };
       var spinFxBakeCache = null;
       function spinOutSeconds(it) {       // about how long the finished video is (a little more is fine: the frames simply repeat if it is longer)
         var v = document.getElementById('spinVideo');

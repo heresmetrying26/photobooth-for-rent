@@ -364,7 +364,7 @@ export function normOptions(o) {
 // keep their own look, so the settings are not applied to them.
 export const FX_MOTION = new Set(['confetti_multi', 'confetti_gold', 'streamers_party', 'champagne_bubbles', 'balloons_pastel', 'hearts_floating', 'rose_petals_red',
   'petals_white_drift', 'bokeh_golden', 'fairy_dust', 'sparkler_fountain', 'gold_dust', 'silver_shimmer', 'ribbon_swirls_gold', 'galaxy_stars', 'cash_rain',
-  'snow_blizzard', 'halloween_bats', 'autumn_leaves', 'fireworks_midnight', 'nye_countdown']);
+  'snow_blizzard', 'halloween_bats', 'autumn_leaves', 'diamond_prism']);
 
 // Does this effect + these options change the effect layer at all? (default options: no, so the old filter graph is unchanged)
 export function fxNeedsShape(o, fxId) {

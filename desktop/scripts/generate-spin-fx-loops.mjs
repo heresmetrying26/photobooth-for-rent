@@ -544,9 +544,466 @@ function createRng(seed = 1234567) {
   };
 }
 
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Art for the effects that used to fall back to plain circles (or were drawn crudely). Sizes are in "1080p pixels" times SC so the
+// 540p loops and the 1080p loops look the same. Every motion repeats a whole number of times per loop, so the 3 s loop is seamless.
+// ---------------------------------------------------------------------------------------------------------------------------------
+const SC = Math.min(W, H) / 1080;
+const TAU = Math.PI * 2;
+const frac = (v) => v - Math.floor(v);
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const smooth = (a, b, v) => { const k = clamp01((v - a) / (b - a)); return k * k * (3 - 2 * k); };
+const lerp = (a, b, k) => a + (b - a) * k;
+
+function hsv(h, s, v, out) {
+  h = frac(h) * 6; const i = Math.floor(h), f = h - i, p = v * (1 - s), q = v * (1 - s * f), t2 = v * (1 - s * (1 - f));
+  let r, g, b;
+  switch (i % 6) { case 0: r = v; g = t2; b = p; break; case 1: r = q; g = v; b = p; break; case 2: r = p; g = v; b = t2; break; case 3: r = p; g = q; b = v; break; case 4: r = t2; g = p; b = v; break; default: r = v; g = p; b = q; }
+  out[0] = r * 255; out[1] = g * 255; out[2] = b * 255;
+}
+
+// Filled polygon (even-odd scanline), points are [x, y]
+function fillPoly(buf, pts, r, g, b, a = 255) {
+  const n = pts.length; if (n < 3 || a <= 0) return;
+  let minY = Infinity, maxY = -Infinity;
+  for (const p of pts) { if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; }
+  const y0 = Math.max(0, Math.floor(minY)), y1 = Math.min(H - 1, Math.ceil(maxY));
+  const xs = [];
+  for (let y = y0; y <= y1; y++) {
+    xs.length = 0; const yc = y + 0.5;
+    for (let i = 0; i < n; i++) {
+      const p = pts[i], q = pts[(i + 1) % n];
+      if ((p[1] <= yc && q[1] > yc) || (q[1] <= yc && p[1] > yc)) xs.push(p[0] + (yc - p[1]) / (q[1] - p[1]) * (q[0] - p[0]));
+    }
+    xs.sort((m, k) => m - k);
+    for (let i = 0; i + 1 < xs.length; i += 2) {
+      const xa = Math.max(0, Math.ceil(xs[i] - 0.5)), xb = Math.min(W - 1, Math.floor(xs[i + 1] - 0.5));
+      const row = y * W * 4;
+      for (let x = xa; x <= xb; x++) blendPixel(buf, row + x * 4, r, g, b, a);
+    }
+  }
+}
+function polyline(buf, pts, closed, r, g, b, a, th) {
+  for (let i = 0; i + 1 < pts.length; i++) drawLine(buf, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], r, g, b, a, th);
+  if (closed && pts.length > 2) drawLine(buf, pts[pts.length - 1][0], pts[pts.length - 1][1], pts[0][0], pts[0][1], r, g, b, a, th);
+}
+// A round glow: bright in the middle, falling off smoothly (not a flat disc)
+function glow(buf, cx, cy, rad, r, g, b, a, power = 2) {
+  const irad = Math.ceil(rad); if (irad <= 0 || a <= 0) return;
+  const x0 = Math.max(0, Math.floor(cx) - irad), x1 = Math.min(W - 1, Math.floor(cx) + irad);
+  const y0 = Math.max(0, Math.floor(cy) - irad), y1 = Math.min(H - 1, Math.floor(cy) + irad);
+  for (let y = y0; y <= y1; y++) {
+    const row = y * W * 4, dy = y - cy;
+    for (let x = x0; x <= x1; x++) {
+      const d = Math.hypot(x - cx, dy) / rad; if (d >= 1) continue;
+      blendPixel(buf, row + x * 4, r, g, b, Math.floor(a * Math.pow(1 - d, power)));
+    }
+  }
+}
+// Shade every pixel: fn(x, y, out) fills out[0..2] with a colour and returns the alpha (0..255)
+function perPixel(buf, fn) {
+  const out = [0, 0, 0];
+  for (let y = 0; y < H; y++) {
+    const row = y * W * 4;
+    for (let x = 0; x < W; x++) { const a = fn(x, y, out); if (a > 0.5) blendPixel(buf, row + x * 4, out[0], out[1], out[2], a > 255 ? 255 : Math.floor(a)); }
+  }
+}
+function roundedRectPts(inset, rad, steps = 8) {
+  const x0 = inset, y0 = inset, x1 = W - inset, y1 = H - inset, pts = [];
+  const corner = (cx, cy, a0) => { for (let i = 0; i <= steps; i++) { const a = a0 + (i / steps) * Math.PI / 2; pts.push([cx + Math.cos(a) * rad, cy + Math.sin(a) * rad]); } };
+  corner(x1 - rad, y0 + rad, -Math.PI / 2); corner(x1 - rad, y1 - rad, 0); corner(x0 + rad, y1 - rad, Math.PI / 2); corner(x0 + rad, y0 + rad, Math.PI);
+  return pts;
+}
+
+// A jagged bolt: midpoint displacement, plus forks
+function boltPoints(rngB, x0, y0, x1, y1, rough) {
+  let pts = [[x0, y0], [x1, y1]];
+  let amp = Math.hypot(x1 - x0, y1 - y0) * rough;
+  for (let lvl = 0; lvl < 6; lvl++) {
+    const next = [pts[0]];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i], b = pts[i + 1], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+      const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, off = (rngB() - 0.5) * 2 * amp;
+      next.push([mx - dy / len * off, my + dx / len * off], b);
+    }
+    pts = next; amp *= 0.55;
+  }
+  return pts;
+}
+
+function drawBat(buf, x, y, s, f, r, g, b, a) {
+  const P = (px, py) => [x + px * s, y + py * s];
+  const wing = (m) => [[0.08, -0.12], [0.5, -0.30 - 0.30 * f], [1.0, -0.12 - 0.62 * f], [0.86, 0.16 - 0.30 * f], [0.74, 0.05 - 0.12 * f], [0.66, 0.30 - 0.14 * f],
+    [0.50, 0.16 - 0.05 * f], [0.34, 0.36 - 0.03 * f], [0.20, 0.20], [0.08, 0.30]].map((p) => P(p[0] * m, p[1]));
+  fillPoly(buf, wing(1), r, g, b, a); fillPoly(buf, wing(-1), r, g, b, a);
+  const body = []; for (let i = 0; i < 14; i++) { const an = i / 14 * TAU; body.push(P(Math.cos(an) * 0.17, 0.02 + Math.sin(an) * 0.30)); }
+  fillPoly(buf, body, r, g, b, a);
+  const head = []; for (let i = 0; i < 12; i++) { const an = i / 12 * TAU; head.push(P(Math.cos(an) * 0.12, -0.34 + Math.sin(an) * 0.11)); }
+  fillPoly(buf, head, r, g, b, a);
+  fillPoly(buf, [P(-0.11, -0.38), P(-0.10, -0.56), P(-0.02, -0.42)], r, g, b, a);          // ears
+  fillPoly(buf, [P(0.11, -0.38), P(0.10, -0.56), P(0.02, -0.42)], r, g, b, a);
+  drawCircle(buf, x - 0.05 * s, y - 0.35 * s, Math.max(1.2, 0.022 * s), 255, 70, 50, a);     // glowing red eyes
+  drawCircle(buf, x + 0.05 * s, y - 0.35 * s, Math.max(1.2, 0.022 * s), 255, 70, 50, a);
+}
+function drawGem(buf, cx, cy, R, rot, squash, t, tintSeed, glint) {
+  const O = [], T = [];
+  for (let i = 0; i < 8; i++) {
+    const a1 = rot + i * TAU / 8, a2 = a1 + TAU / 16;
+    O.push([cx + Math.cos(a1) * R * squash, cy + Math.sin(a1) * R]);
+    T.push([cx + Math.cos(a2) * R * 0.5 * squash, cy + Math.sin(a2) * R * 0.5]);
+  }
+  const tints = [[160, 215, 255], [255, 175, 230], [170, 255, 225], [255, 235, 170], [190, 165, 255]];
+  const light = TAU * 0.125 + t * TAU;      // a light that circles the gem, so the facets flash
+  for (let i = 0; i < 8; i++) {
+    const a1 = rot + i * TAU / 8;
+    const tint = tints[(tintSeed + i) % tints.length];
+    const bMain = 0.30 + 0.70 * Math.pow(0.5 + 0.5 * Math.cos(a1 + TAU / 16 - light), 2);
+    fillPoly(buf, [O[i], O[(i + 1) % 8], T[i]], lerp(255, tint[0], 0.55) * bMain, lerp(255, tint[1], 0.55) * bMain, lerp(255, tint[2], 0.55) * bMain, 235);
+    const bStar = 0.25 + 0.75 * Math.pow(0.5 + 0.5 * Math.cos(a1 + 0.8 - light), 2);
+    fillPoly(buf, [T[(i + 7) % 8], T[i], O[i]], lerp(255, tint[0], 0.8) * bStar, lerp(255, tint[1], 0.8) * bStar, lerp(255, tint[2], 0.8) * bStar, 235);
+  }
+  fillPoly(buf, T, 225, 240, 255, 235);                                  // the flat top (table)
+  polyline(buf, O, true, 255, 255, 255, 230, Math.max(1.5, 2.2 * SC));
+  polyline(buf, T, true, 255, 255, 255, 170, Math.max(1, 1.6 * SC));
+  for (let i = 0; i < 8; i++) drawLine(buf, O[i][0], O[i][1], T[i][0], T[i][1], 255, 255, 255, 130, Math.max(1, 1.4 * SC));
+  if (glint > 0.02) {                                                    // a sparkle on one corner
+    const gx = O[tintSeed % 8][0], gy = O[tintSeed % 8][1], L = R * 0.9 * glint;
+    drawLine(buf, gx - L, gy, gx + L, gy, 255, 255, 255, 230 * glint, Math.max(1.5, 3 * SC));
+    drawLine(buf, gx, gy - L, gx, gy + L, 255, 255, 255, 230 * glint, Math.max(1.5, 3 * SC));
+    glow(buf, gx, gy, L * 0.7, 255, 255, 255, 200 * glint, 2);
+  }
+}
+function flameTongue(buf, x, y0, w, h, lean, r, g, b, a) {
+  const N = 12, Lp = [], Rp = [];
+  for (let i = 0; i <= N; i++) {
+    const u = i / N, hw = (w / 2) * Math.pow(1 - u, 0.85) * (1 + 0.3 * Math.sin(u * Math.PI)), cx = x + lean * u * u, yy = y0 - h * u;
+    Lp.push([cx - hw, yy]); Rp.push([cx + hw, yy]);
+  }
+  fillPoly(buf, Lp.concat(Rp.reverse()), r, g, b, a);
+}
+
+function artRenderer(id, rng) {
+  const seedOf = (k) => createRng(k * 7919 + id.length * 104729);
+  // ---- Diamond Facets: tumbling cut gems that flash as a light passes over their facets
+  if (id === 'diamond_prism') {
+    const gems = Array.from({ length: 15 }, (_, i) => ({
+      x: rng() * W, y: rng() * H, R: (52 + rng() * 62) * SC, rot: rng() * TAU, spin: 1 + Math.floor(rng() * 2) * (rng() > 0.5 ? 1 : -1),
+      tilt: 1 + Math.floor(rng() * 2), ph: rng(), sway: (20 + rng() * 30) * SC, vY: 1, tint: i, gl: Math.floor(rng() * 3)
+    }));
+    return (buf, t) => {
+      for (const g of gems) {
+        const y = (g.y + t * g.vY * H) % H, x = (g.x + Math.sin(TAU * (t + g.ph)) * g.sway + W) % W;
+        const squash = 0.62 + 0.38 * Math.abs(Math.cos(TAU * (t * g.tilt + g.ph)));
+        const glint = Math.pow(Math.max(0, Math.sin(TAU * (t * 2 + g.ph + g.gl / 3))), 8);
+        glow(buf, x, y, g.R * 1.5, 190, 220, 255, 70, 2);
+        drawGem(buf, x, y, g.R, g.rot + t * TAU * g.spin * 0.5, squash, t + g.ph, g.tint, glint);
+      }
+    };
+  }
+  // ---- Spooky Bats & Mist: flapping bat silhouettes with a wing edge, flying across low mist
+  if (id === 'halloween_bats') {
+    const bats = Array.from({ length: 11 }, () => ({
+      x: rng() * W, y: (0.08 + rng() * 0.75) * H, s: (62 + rng() * 52) * SC, vx: 1, ph: rng(), fl: 3 + Math.floor(rng() * 3), bob: (30 + rng() * 40) * SC, dir: rng() > 0.35 ? -1 : 1
+    }));
+    const mist = Array.from({ length: 9 }, () => ({ x: rng() * W, y: H * (0.78 + rng() * 0.22), rad: (190 + rng() * 150) * SC, v: 1 }));
+    return (buf, t) => {
+      for (const m of mist) { const x = (m.x + t * m.v * W) % W; glow(buf, x, m.y, m.rad, 150, 140, 170, 55, 1.3); glow(buf, x - W, m.y, m.rad, 150, 140, 170, 55, 1.3); }
+      for (const b of bats) {
+        const mar = b.s * 1.3, span = W + 2 * mar;
+        const x = (((b.x + b.dir * t * span) % span) + span) % span - mar;
+        const y = b.y + Math.sin(TAU * (t * 2 + b.ph)) * b.bob;
+        const f = Math.sin(TAU * (t * b.fl * 4 + b.ph));
+        drawBat(buf, x, y, b.s, f, 22, 14, 32, 252);
+      }
+    };
+  }
+  // ---- Fire & Hot Embers: flames along the bottom and glowing embers of every shade rising up the frame
+  if (id === 'fire_border') {
+    const tongues = Array.from({ length: 22 }, (_, i) => ({ x: (i + 0.5) / 22, k: 2 + Math.floor(rng() * 3), ph: rng(), hh: 0.15 + rng() * 0.12, k2: 1 + Math.floor(rng() * 2), ph2: rng(), row: i % 2 }));
+    const embers = Array.from({ length: 110 }, () => ({ x: rng() * W, ph: rng(), vy: 1 + Math.floor(rng() * 2), sz: (3.2 + rng() * 8) * SC, sw: (14 + rng() * 40) * SC, f: 1 + Math.floor(rng() * 3), fl: 2 + Math.floor(rng() * 5) }));
+    return (buf, t) => {
+      const heat = 0.85 + 0.15 * Math.sin(TAU * t * 3);
+      perPixel(buf, (x, y, out) => {                                          // heat glow along the bottom and up the sides
+        const al = 0.34 * Math.pow(clamp01(1 - (H - y) / (H * 0.2)), 2) + 0.2 * Math.pow(clamp01(1 - Math.min(x, W - x) / (W * 0.1)), 2) * smooth(0.3, 1, y / H);
+        if (al < 0.01) return 0; out[0] = 255; out[1] = 85; out[2] = 12; return 255 * al * heat;
+      });
+      for (const row of [0, 1]) for (const f of tongues) {
+        if (f.row !== row) continue;
+        const flick = 0.75 + 0.25 * Math.sin(TAU * (t * f.k + f.ph));
+        const h = H * f.hh * flick * (row ? 0.75 : 1), w = (W / 22) * (row ? 2.0 : 2.5), lean = Math.sin(TAU * (t * f.k2 + f.ph2)) * w * 0.7;
+        const x = W * f.x;
+        flameTongue(buf, x, H + 6 * SC, w, h * 1.0, lean, 210, 35, 10, 215);
+        flameTongue(buf, x, H + 6 * SC, w * 0.72, h * 0.78, lean * 0.8, 255, 125, 20, 235);
+        flameTongue(buf, x, H + 6 * SC, w * 0.42, h * 0.5, lean * 0.6, 255, 225, 100, 245);
+      }
+      for (const e of embers) {
+        const p = frac(t * e.vy + e.ph), y = H * 0.98 - p * H * 1.05, x = e.x + Math.sin(TAU * (t * e.f + e.ph)) * e.sw + p * 30 * SC;
+        const life = Math.pow(1 - p, 0.9), flick = 0.6 + 0.4 * Math.sin(TAU * (t * e.fl + e.ph * 3));
+        const col = p < 0.35 ? [255, lerp(225, 150, p / 0.35), lerp(110, 40, p / 0.35)] : [lerp(255, 200, (p - 0.35) / 0.65), lerp(150, 45, (p - 0.35) / 0.65), lerp(40, 15, (p - 0.35) / 0.65)];
+        const a = 255 * life * flick, rad = e.sz * (1 - p * 0.55);
+        glow(buf, x, y, rad * 5, col[0], col[1], col[2], a * 0.6, 2);
+        drawCircle(buf, x, y, rad * 1.15, col[0], col[1], col[2], a);
+        drawCircle(buf, x, y, rad * 0.45, 255, 245, 200, a);
+      }
+    };
+  }
+  // ---- Electric Lightning: branching bolts that flash, flicker and fade
+  if (id === 'lightning_arcs') {
+    const starts = [0.12, 0.45, 0.785];
+    return (buf, t) => {
+      for (let k = 0; k < 3; k++) {
+        const q = frac(t - starts[k]), life = 0.13;
+        if (q >= life) continue;
+        const e = q / life;
+        const I = Math.pow(1 - e, 1.4) * (e > 0.22 && e < 0.36 ? 0.45 : 1);           // flickers once, then dies away
+        const rb = seedOf(k + 1);
+        const x0 = W * (0.2 + rb() * 0.6), x1 = x0 + (rb() - 0.5) * W * 0.5, y1 = H * (0.72 + rb() * 0.28);
+        const main = boltPoints(rb, x0, -10, x1, y1, 0.13);
+        const segs = [main];
+        for (let f = 0; f < 5; f++) {
+          const at = main[Math.floor(main.length * (0.12 + rb() * 0.65))], ex = at[0] + (rb() - 0.5) * W * 0.5, ey = at[1] + H * (0.12 + rb() * 0.2);
+          segs.push(boltPoints(rb, at[0], at[1], ex, ey, 0.16));
+        }
+        drawRect(buf, 0, 0, W, H, 150, 170, 255, Math.floor(26 * I));                    // the whole sky lights up
+        for (let s = 0; s < segs.length; s++) {
+          const w = s === 0 ? 1 : 0.5;
+          polyline(buf, segs[s], false, 90, 110, 255, 50 * I, 42 * SC * w);
+          polyline(buf, segs[s], false, 130, 190, 255, 150 * I, 16 * SC * w);
+          polyline(buf, segs[s], false, 255, 255, 255, 255 * I, Math.max(2, 5.5 * SC * w));
+        }
+        glow(buf, x0, 0, 160 * SC, 190, 210, 255, 150 * I, 2);                          // and where it strikes
+        glow(buf, x1, y1, 120 * SC, 190, 210, 255, 140 * I, 2);
+      }
+    };
+  }
+  // ---- Twinkling Galaxy: a field of stars with spikes on the big ones, nebula glow and shooting stars
+  if (id === 'galaxy_stars') {
+    const cols = [[255, 255, 255], [175, 205, 255], [255, 232, 175], [210, 180, 255]];
+    const stars = Array.from({ length: 190 }, () => ({ x: rng() * W, y: rng() * H, r: (1.4 + Math.pow(rng(), 3) * 5.5) * SC, f: 1 + Math.floor(rng() * 3), ph: rng(), c: cols[Math.floor(rng() * cols.length)] }));
+    const neb = [[0.25, 0.3, 280, [120, 60, 200]], [0.78, 0.55, 320, [50, 90, 200]], [0.4, 0.82, 260, [170, 60, 160]], [0.7, 0.12, 220, [70, 120, 220]]];
+    const shoot = [{ off: 0.0, x: 0.85, y: 0.12 }, { off: 0.34, x: 0.65, y: 0.5 }, { off: 0.68, x: 0.95, y: 0.72 }];
+    return (buf, t) => {
+      for (const n of neb) glow(buf, n[0] * W, n[1] * H, n[2] * SC * 1.4, n[3][0], n[3][1], n[3][2], 60, 1.5);
+      for (const s of stars) {
+        const tw = 0.3 + 0.7 * Math.pow(Math.abs(Math.sin(TAU * (t * s.f / 2 + s.ph))), 1.5), a = 255 * tw;
+        glow(buf, s.x, s.y, s.r * 3, s.c[0], s.c[1], s.c[2], a * 0.5, 2);
+        drawCircle(buf, s.x, s.y, Math.max(1, s.r * 0.7), 255, 255, 255, a);
+        if (s.r > 3.4 * SC) { const L = s.r * 4.5 * tw; drawLine(buf, s.x - L, s.y, s.x + L, s.y, s.c[0], s.c[1], s.c[2], a * 0.8, Math.max(1, 1.4 * SC)); drawLine(buf, s.x, s.y - L, s.x, s.y + L, s.c[0], s.c[1], s.c[2], a * 0.8, Math.max(1, 1.4 * SC)); }
+      }
+      for (const sh of shoot) {
+        const p = frac(t + sh.off) / 0.2; if (p >= 1) continue;
+        const dx = -0.8, dy = 0.6, L = 190 * SC, hx = (sh.x + dx * p * 0.5) * W, hy = (sh.y + dy * p * 0.5) * H;
+        for (let i = 0; i < 14; i++) { const k = i / 14; glow(buf, hx - dx * L * k * 0.9 / 1.0 * 0.6, hy - dy * L * k * 0.9 * 0.6, (7 - 5 * k) * SC, 220, 235, 255, 230 * (1 - k) * (1 - p * 0.6), 1.5); }
+        glow(buf, hx, hy, 16 * SC, 255, 255, 255, 255 * (1 - p * 0.5), 2);
+      }
+    };
+  }
+  // ---- Prism Light Leak: a rainbow light leak bleeding in from the corner and slowly sweeping
+  if (id === 'prism_leak') {
+    const diag = Math.hypot(W, H);
+    return (buf, t) => {
+      perPixel(buf, (x, y, out) => {
+        const d = Math.hypot(W - x, y) / diag, m = clamp01(1 - d / 1.0);
+        const d2 = Math.hypot(x, H - y) / diag, m2 = clamp01(1 - d2 / 0.75) * 0.85;
+        const mask = Math.max(Math.pow(m, 0.9), Math.pow(m2, 0.9));
+        if (mask < 0.01) return 0;
+        const u = (x * 0.75 + y * 0.66) / diag * 1.3 - t;
+        hsv(u, 0.85, 1, out);
+        return 255 * mask * (0.8 + 0.2 * Math.sin(TAU * t));
+      });
+    };
+  }
+  // ---- Rainbow Strobe: a rainbow that spins round the edges and pulses on the beat
+  if (id === 'rainbow_strobe') {
+    const cx = W / 2, cy = H / 2, rmax = Math.hypot(cx, cy);
+    return (buf, t) => {
+      const beat = Math.pow(0.5 + 0.5 * Math.sin(TAU * t * 4), 3);
+      perPixel(buf, (x, y, out) => {
+        const r = Math.hypot(x - cx, y - cy) / rmax, edge = smooth(0.42, 1.0, r);
+        if (edge < 0.01) return 0;
+        hsv(Math.atan2(y - cy, x - cx) / TAU + t, 0.9, 1, out);
+        return 255 * edge * (0.28 + 0.72 * beat);
+      });
+    };
+  }
+  // ---- Art Deco Geometry: golden fans in the corners and a double line frame
+  if (id === 'art_deco_lines') {
+    return (buf, t) => {
+      const pulse = 0.72 + 0.28 * Math.sin(TAU * t), al = 235 * pulse, m = Math.min(W, H);
+      const corners = [[0, 0, 0], [W, 0, Math.PI / 2], [W, H, Math.PI], [0, H, Math.PI * 1.5]];
+      for (const c of corners) {
+        for (let k = 1; k <= 5; k++) {
+          const pts = []; for (let i = 0; i <= 18; i++) { const a = c[2] + (i / 18) * Math.PI / 2; pts.push([c[0] + Math.cos(a) * m * 0.055 * k * 1.0, c[1] + Math.sin(a) * m * 0.055 * k]); }
+          polyline(buf, pts, false, 240, 200, 90, al * (k % 2 ? 1 : 0.6), (k === 5 ? 4 : 2.5) * SC);
+        }
+        for (let i = 0; i <= 8; i++) { const a = c[2] + (i / 8) * Math.PI / 2; drawLine(buf, c[0] + Math.cos(a) * m * 0.06, c[1] + Math.sin(a) * m * 0.06, c[0] + Math.cos(a) * m * 0.3, c[1] + Math.sin(a) * m * 0.3, 240, 200, 90, al * 0.7, 2.2 * SC); }
+      }
+      for (const inset of [26 * SC, 40 * SC]) polyline(buf, [[inset, inset], [W - inset, inset], [W - inset, H - inset], [inset, H - inset]], true, 240, 200, 90, al * (inset > 30 * SC ? 0.55 : 1), 2.4 * SC);
+      for (const [px, py] of [[W / 2, 26 * SC], [W / 2, H - 26 * SC]]) polyline(buf, [[px - 46 * SC, py], [px, py - 22 * SC], [px + 46 * SC, py], [px, py + 22 * SC]], true, 255, 225, 120, al, 3 * SC);
+    };
+  }
+  // ---- Hexagon Tech Grid: a honeycomb along the edges with a glow that travels round it
+  if (id === 'corporate_grid') {
+    const rad = 52 * SC, hw = rad * Math.sqrt(3), band = Math.min(W, H) * 0.17;
+    const cells = [];
+    for (let row = -1; row * rad * 1.5 < H + rad * 2; row++) for (let col = -1; col * hw < W + hw * 2; col++) {
+      const cx = col * hw + (row & 1 ? hw / 2 : 0), cy = row * rad * 1.5, d = Math.min(cx, W - cx, cy, H - cy);
+      if (d < band) cells.push([cx, cy, 1 - d / band]);
+    }
+    return (buf, t) => {
+      for (const c of cells) {
+        const wave = 0.5 + 0.5 * Math.sin(TAU * (t - (c[0] / W + c[1] / H) / 2)), a = 255 * (0.18 + 0.82 * wave * wave) * (0.35 + 0.65 * c[2]);
+        const pts = []; for (let i = 0; i < 6; i++) { const an = Math.PI / 6 + i * TAU / 6; pts.push([c[0] + Math.cos(an) * rad * 0.94, c[1] + Math.sin(an) * rad * 0.94]); }
+        polyline(buf, pts, true, 110, 195, 255, a, 2.4 * SC);
+        if (wave > 0.85) fillPoly(buf, pts, 110, 195, 255, 70 * (wave - 0.85) / 0.15 * c[2]);
+      }
+    };
+  }
+  // ---- Cyberpunk Neon Frame: two glowing tubes, magenta and cyan, with a flicker
+  if (id === 'neon_cyberpunk') {
+    const outer = roundedRectPts(30 * SC, 56 * SC), inner = roundedRectPts(66 * SC, 36 * SC);
+    return (buf, t) => {
+      const fl = (0.82 + 0.18 * Math.sin(TAU * t * 3)) * (t > 0.40 && t < 0.43 ? 0.25 : 1) * (t > 0.70 && t < 0.72 ? 0.5 : 1);
+      for (const [pts, c] of [[outer, [255, 40, 190]], [inner, [30, 235, 255]]]) {
+        polyline(buf, pts, true, c[0], c[1], c[2], 28 * fl, 46 * SC);
+        polyline(buf, pts, true, c[0], c[1], c[2], 70 * fl, 26 * SC);
+        polyline(buf, pts, true, c[0], c[1], c[2], 170 * fl, 11 * SC);
+        polyline(buf, pts, true, Math.min(255, c[0] + 110), Math.min(255, c[1] + 110), Math.min(255, c[2] + 110), 255 * fl, 4 * SC);
+      }
+    };
+  }
+  // ---- Stage Spotlights: two soft beams that sweep across
+  if (id === 'spotlight_sweep') {
+    const src = [[W * 0.12, -20, 0.35, 0.0], [W * 0.88, -20, -0.35, 0.5]];
+    return (buf, t) => {
+      perPixel(buf, (x, y, out) => {
+        let best = 0;
+        for (const s of src) {
+          const dx = x - s[0], dy = y - s[1]; if (dy <= 0) continue;
+          const ang = Math.atan2(dx, dy), centre = s[2] + 0.5 * Math.sin(TAU * (t + s[3]));
+          const k = Math.exp(-Math.pow((ang - centre) / 0.1, 2)) * clamp01(1 - Math.hypot(dx, dy) / (H * 1.25));
+          if (k > best) best = k;
+        }
+        if (best < 0.01) return 0;
+        out[0] = 255; out[1] = 246; out[2] = 225;
+        return 190 * best;
+      });
+    };
+  }
+  // ---- Summer Golden Flare: a low sun in the corner with a streak and lens ghosts
+  if (id === 'summer_flare') {
+    const ghosts = [[0.22, 70, [255, 150, 60]], [0.38, 46, [90, 210, 255]], [0.52, 100, [255, 110, 190]], [0.7, 58, [150, 255, 170]], [0.86, 130, [255, 200, 90]]];
+    return (buf, t) => {
+      const sx = W * (0.86 + 0.03 * Math.sin(TAU * t)), sy = H * (0.1 + 0.02 * Math.cos(TAU * t)), ex = W - sx, ey = H - sy;
+      glow(buf, sx, sy, W * 0.62, 255, 190, 80, 190, 1.6);
+      glow(buf, sx, sy, W * 0.22, 255, 235, 170, 235, 1.8);
+      glow(buf, sx, sy, W * 0.07, 255, 255, 255, 255, 1.2);
+      for (let k = -9; k <= 9; k++) drawRect(buf, 0, sy + k, W, 1, 255, 220, 130, Math.floor(70 * Math.exp(-k * k / 24)));
+      for (const g of ghosts) glow(buf, lerp(sx, ex, g[0]), lerp(sy, ey, g[0]), g[1] * SC * 1.6, g[2][0], g[2][1], g[2][2], 120 * (0.75 + 0.25 * Math.sin(TAU * (t + g[0]))), 0.7);
+    };
+  }
+  // ---- Vintage 8mm Film: grain, scratches, dust and projector flicker
+  if (id === 'film_8mm') {
+    return (buf, t, f) => {
+      const r2 = createRng(f * 31337 + 17);
+      drawRect(buf, 0, 0, W, H, 255, 205, 130, Math.floor(10 + r2() * 12));
+      for (let i = 0; i < 1100; i++) { const x = r2() * W, y = r2() * H, a = 35 + r2() * 80; drawRect(buf, x, y, (1 + r2() * 1.5) * SC + 1, (1 + r2() * 1.5) * SC + 1, 255, 245, 225, a); }
+      for (let i = 0; i < 3; i++) if (r2() > 0.35) { const x = r2() * W, y0 = r2() * H * 0.5, L = H * (0.25 + r2() * 0.5); drawLine(buf, x, y0, x + (r2() - 0.5) * 14, y0 + L, 255, 245, 225, 70 + r2() * 60, 1.3 * SC + 0.4); }
+      for (let i = 0; i < 4; i++) if (r2() > 0.5) { const x = r2() * W, y = r2() * H, pts = []; for (let k = 0; k < 6; k++) pts.push([x + k * 5 * SC, y + Math.sin(k + r2() * 3) * 8 * SC]); polyline(buf, pts, false, 255, 245, 225, 110, 1.5 * SC + 0.3); }
+      for (let i = 0; i < 6; i++) { const y0 = (i + 0.5) * H / 6; drawRect(buf, 6 * SC, y0, 16 * SC, 26 * SC, 255, 240, 215, 35); drawRect(buf, W - 22 * SC, y0, 16 * SC, 26 * SC, 255, 240, 215, 35); }   // sprocket holes
+    };
+  }
+  // ---- Retro VHS Glitch: scanlines, a rolling tracking band and torn colour bars
+  if (id === 'vhs_glitch') {
+    return (buf, t, f) => {
+      const r2 = createRng(f * 7717 + 5);
+      for (let y = 0; y < H; y += Math.max(3, Math.round(4 * SC * 2))) drawRect(buf, 0, y, W, Math.max(1, Math.round(SC * 2)), 70, 70, 95, 70);
+      const band = (t * 2 % 1) * (H + 160 * SC) - 80 * SC;
+      drawRect(buf, 0, band, W, 46 * SC, 190, 225, 255, 70); drawRect(buf, 0, band + 46 * SC, W, 10 * SC, 255, 255, 255, 110);
+      if (f % 9 < 3) for (let i = 0; i < 3; i++) { const y = r2() * H, h = (10 + r2() * 40) * SC, off = (r2() - 0.5) * 70 * SC; drawRect(buf, off, y, W, h, 0, 255, 255, 95); drawRect(buf, -off, y + 3 * SC, W, h, 255, 0, 110, 95); }
+      for (let i = 0; i < 40; i++) drawRect(buf, r2() * W, r2() * H, (20 + r2() * 90) * SC, Math.max(1, SC * 2), 255, 255, 255, 80 + r2() * 90);
+    };
+  }
+  // ---- Midnight Fireworks: rockets that burst into rings of sparks
+  if (id === 'fireworks_midnight') {
+    const pal = [[255, 205, 90], [255, 80, 190], [80, 225, 255], [190, 255, 150]];
+    const shows = [0, 1, 2, 3].map((k) => ({ t0: k * 0.25, x: 0.2 + rng() * 0.6, y: 0.16 + rng() * 0.3, c: pal[k % pal.length], rot: rng() * TAU }));
+    return (buf, t) => {
+      for (const s of shows) {
+        const q = frac(t - s.t0), cx = s.x * W, cy = s.y * H;
+        if (q < 0.07) { const p = q / 0.07, y = lerp(H, cy, 1 - Math.pow(1 - p, 2)); for (let i = 0; i < 9; i++) glow(buf, cx + Math.sin(i + p * 9) * 3 * SC, y + i * 11 * SC, (7 - i * 0.6) * SC, 255, 220, 150, 220 * (1 - i / 9), 1.5); continue; }
+        if (q > 0.4) continue;
+        const p = (q - 0.07) / 0.33, a = Math.pow(1 - p, 0.8);
+        for (let i = 0; i < 96; i++) {
+          const an = s.rot + i / 96 * TAU + ((i * 13) % 7) * 0.02, vf = 0.38 + 0.62 * (((i * 37) % 11) / 10), d = 330 * SC * vf * (1 - Math.pow(1 - Math.min(1, p * 1.25), 2.2)) * 1.1;
+          const x = cx + Math.cos(an) * d, y = cy + Math.sin(an) * d + p * p * 150 * SC * vf;
+          const px = cx + Math.cos(an) * d * 0.84, py = cy + Math.sin(an) * d * 0.84 + p * p * 150 * SC * vf * 0.7;
+          const c = i % 4 === 0 ? [255, 255, 255] : s.c;
+          drawLine(buf, px, py, x, y, c[0], c[1], c[2], 255 * a, Math.max(2, 5 * SC));
+          glow(buf, x, y, 16 * SC, c[0], c[1], c[2], 255 * a * (0.65 + 0.35 * Math.sin(i + p * 30)), 2);
+        }
+        glow(buf, cx, cy, 120 * SC * (1 - p), s.c[0], s.c[1], s.c[2], 120 * (1 - p), 2);
+      }
+    };
+  }
+  // ---- New Year Sparklers: gold and silver glitter falling, with sparkler fountains at the bottom
+  if (id === 'nye_countdown') {
+    const glitter = Array.from({ length: 80 }, () => ({ x: rng() * W, y: rng() * H, r: (5 + rng() * 11) * SC, ph: rng(), f: 1 + Math.floor(rng() * 3), vy: 1 + Math.floor(rng() * 2), c: rng() > 0.45 ? [255, 215, 90] : [225, 232, 245], sw: (15 + rng() * 30) * SC }));
+    const sparks = Array.from({ length: 120 }, () => ({ x0: rng() > 0.5 ? W * 0.16 : W * 0.84, a: (rng() * 0.85 - 0.425) * Math.PI * 0.8, v: (330 + rng() * 520) * SC, life: rng(), c: rng() > 0.3 ? [255, 215, 90] : [255, 255, 255] }));
+    return (buf, t) => {
+      for (const g of glitter) {
+        const y = (g.y + t * g.vy * H) % H, x = (g.x + Math.sin(TAU * (t * g.f + g.ph)) * g.sw + W) % W, tw = Math.pow(Math.abs(Math.sin(TAU * (t * g.f * 2 + g.ph))), 2);
+        glow(buf, x, y, g.r * 2.2, g.c[0], g.c[1], g.c[2], 120 * tw, 2);
+        const L = g.r * (0.5 + tw);
+        drawLine(buf, x - L, y, x + L, y, g.c[0], g.c[1], g.c[2], 80 + 175 * tw, Math.max(1, 1.8 * SC)); drawLine(buf, x, y - L, x, y + L, g.c[0], g.c[1], g.c[2], 80 + 175 * tw, Math.max(1, 1.8 * SC));
+      }
+      for (const s of sparks) {
+        const p = frac(t * 2 + s.life), d = p * s.v, x = s.x0 + Math.sin(s.a) * d, y = H * 0.97 - Math.cos(s.a) * d + p * p * 260 * SC, a = Math.floor(255 * (1 - p));
+        const tl = 34 * SC * (1 - p); drawLine(buf, x - Math.sin(s.a) * tl, y + Math.cos(s.a) * tl, x, y, s.c[0], s.c[1], s.c[2], a, Math.max(1.5, 3 * SC));
+        drawCircle(buf, x, y, Math.max(1.5, 3.5 * SC), 255, 255, 255, a);
+      }
+    };
+  }
+  // ---- Stage Smoke & Haze: many soft puffs drifting
+  if (id === 'stage_smoke') {
+    const puffs = Array.from({ length: 34 }, () => ({ x: rng() * W, y: H * (0.55 + rng() * 0.45), rad: (170 + rng() * 170) * SC, v: 1, ph: rng(), a: 26 + rng() * 22 }));
+    return (buf, t) => {
+      for (const p of puffs) for (const o of [0, -W]) glow(buf, (p.x + t * p.v * W) % W + o, p.y + Math.sin(TAU * (t + p.ph)) * 26 * SC, p.rad, 205, 215, 235, p.a, 1.1);
+    };
+  }
+  // ---- Disco Ball Reflections: coloured mirror-tile spots that drift and twinkle
+  if (id === 'disco_mirror') {
+    const spots = Array.from({ length: 46 }, () => ({ x: rng() * W, y: rng() * H, r: (16 + rng() * 34) * SC, s: 1 + Math.floor(rng() * 2), h: rng(), f: 1 + Math.floor(rng() * 3), ph: rng() }));
+    return (buf, t) => {
+      for (const s of spots) {
+        const y = (s.y + t * s.s * H * 0.5) % H, x = (s.x + Math.sin(TAU * (t * s.s + s.ph)) * 45 * SC + W) % W, tw = Math.pow(Math.abs(Math.sin(TAU * (t * s.f + s.ph))), 1.5);
+        const c = [0, 0, 0]; hsv(s.h, 0.7, 1, c);
+        glow(buf, x, y, s.r * 2.6, c[0], c[1], c[2], 170 * tw, 2);
+        fillPoly(buf, [[x - s.r * 0.55, y - s.r * 0.55], [x + s.r * 0.55, y - s.r * 0.55], [x + s.r * 0.55, y + s.r * 0.55], [x - s.r * 0.55, y + s.r * 0.55]], c[0] * 0.35 + 165, c[1] * 0.35 + 165, c[2] * 0.35 + 165, 110 + 145 * tw);
+      }
+    };
+  }
+  // ---- UV Glow Dust: neon paint splatter glowing under black light
+  if (id === 'blacklight_uv') {
+    const cols = [[255, 60, 200], [60, 240, 255], [170, 90, 255], [170, 255, 70]];
+    const dots = Array.from({ length: 95 }, () => ({ x: rng() * W, y: rng() * H, r: (3 + rng() * 11) * SC, c: cols[Math.floor(rng() * cols.length)], f: 1 + Math.floor(rng() * 3), ph: rng(), sw: (10 + rng() * 25) * SC }));
+    return (buf, t) => {
+      for (const d of dots) {
+        const y = (d.y + t * H) % H, x = (d.x + Math.sin(TAU * (t * d.f + d.ph)) * d.sw + W) % W, tw = 0.5 + 0.5 * Math.sin(TAU * (t * d.f * 2 + d.ph));
+        glow(buf, x, y, d.r * 3.4, d.c[0], d.c[1], d.c[2], 140 * (0.4 + 0.6 * tw), 2);
+        drawCircle(buf, x, y, d.r, d.c[0], d.c[1], d.c[2], 255 * (0.55 + 0.45 * tw), true);
+        drawCircle(buf, x, y, d.r * 0.35, 255, 255, 255, 230 * tw);
+      }
+    };
+  }
+  return null;
+}
+
 // Generate the frame data generator for each effect
 function createEffectRenderer(id, isWebm) {
   const rng = createRng(id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 100));
+  const art = artRenderer(id, rng);
+  if (art) return art;
 
   // 1. CASH RAIN (Realistic 100-Dollar Bills from Money Gun)
   if (id.includes('cash_rain')) {
@@ -1038,7 +1495,8 @@ function createEffectRenderer(id, isWebm) {
     };
   }
 
-  // Fallback pleasant particle drift
+  // Fallback pleasant particle drift. An effect that lands here has no art of its own and looks like generic orange circles: give it a renderer above.
+  console.warn('WARNING: effect "' + id + '" has no dedicated art, drawing the generic particle fallback');
   const P = 50;
   const parts = Array.from({ length: P }, () => ({
     x: rng() * W,
@@ -1103,7 +1561,17 @@ async function renderVideo(item) {
   for (let f = 0; f < FRAMES; f++) {
     frameBuf.fill(0);
     const t = f / FRAMES;
-    renderer(frameBuf, t);
+    renderer(frameBuf, t, f);
+    // The .mp4 loops have no alpha channel: they are laid on the video with a "screen" blend, where black is see-through. The effect was
+    // drawn with alpha on an empty (transparent) picture, so put it on black first. Without this every soft glow became a hard flat disc
+    // and every faint wash a solid colour (the encoder just drops alpha).
+    if (!isWebm) {
+      for (let i = 0; i < frameBuf.length; i += 4) {
+        const a = frameBuf[i + 3];
+        if (a === 255) continue;
+        frameBuf[i] = (frameBuf[i] * a / 255) | 0; frameBuf[i + 1] = (frameBuf[i + 1] * a / 255) | 0; frameBuf[i + 2] = (frameBuf[i + 2] * a / 255) | 0; frameBuf[i + 3] = 255;
+      }
+    }
     // A pipe write keeps a reference to the buffer, it does not copy it. Reusing frameBuf for the next frame before ffmpeg has
     // taken this one made every queued frame the same picture (the loop animated for a few frames, then froze = "static" effects).
     // Wait for the pipe to drain so each frame is read before frameBuf is cleared and redrawn.

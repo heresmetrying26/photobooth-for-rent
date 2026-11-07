@@ -60,6 +60,14 @@
     <usb-device vendor-id="1208" product-id="514" />    <!-- Epson TM / EU-m30 (vendor-defined) -->
     <usb-device vendor-id="1208" product-id="3630" />   <!-- Epson EU-m30 (printer class) -->
 
+    <!--
+        DNP dye-sub photo printers (printed straight over USB by DnpJob.kt)
+          - DS40 / DS80 / DS-RX1 / RX1HS use Citizen's vendor id 0x1343 (4931)
+          - DS620 / DS620A / DS820 use DNP's vendor id 0x1452 (5202)
+    -->
+    <usb-device vendor-id="4931" />
+    <usb-device vendor-id="5202" />
+
     <!-- General printer class (class 7 = USB printer: Epson, Canon SELPHY, thermal receipt, etc.) -->
     <usb-device class="7" />
     <usb-device vendor-id="1208" />   <!-- Epson (all models, catch-all) -->

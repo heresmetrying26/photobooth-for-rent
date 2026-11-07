@@ -26366,6 +26366,8 @@
         o.borderless = !!(printPrefs && printPrefs.borderless && window.__PBNet) && !(epsonLBorderlessModel(p) && !epsonLBorderlessOk(printSize));   // not on paper this Epson cannot print borderless
         // Lightness / colour correction is already in the page (printAdjust); the printer code must not add it again.
         o.brightness = 0; o.red = 0; o.green = 0; o.blue = 0;
+        // Two 2x6 strips side by side on the sheet: a DNP cuts it in half (2-inch cut).
+        try { o.stripCut = !!(printSize && stripTwoUp(printSize) && !sizedPhoto()); } catch (e) { o.stripCut = false; }
         return o;
       }
       function wifiOptsUI() {
@@ -26400,6 +26402,7 @@
           if (p.escp2) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper (glossy)'], ['matte', 'Matte / inkjet paper']];
           else if (p.canon) mediaCh = [['', 'Plain paper'], ['photo', 'Photo paper, glossy (beta)'], ['matte', 'Matte photo paper (beta)']];
           else if (p.epsonL) mediaCh = [['plain', 'Plain paper'], ['photo', 'Photo paper (glossy)']];
+          else if (p.dnp) mediaCh = [['', 'Glossy finish'], ['matte', 'Matte finish']];
           else if (plain || photo) mediaCh = [['', 'Printer default']].concat(plain ? [['plain', 'Plain paper']] : [], photo ? [['photo', 'Photo paper']] : []);
         }
         fill('wifiOptColor', 'wifiOptColorLbl', colorCh, 'color');
@@ -26446,7 +26449,7 @@
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'action-btn'; b.style.cssText = 'width:auto;margin:0;text-align:left;';
           const sel = wifiPrinter && wifiPrinter.ip === p.ip && !(p.ipp && wifiPrinter.epsonLForced);
-          var tag = p.needsPermission ? ' · Tap to allow USB access' : p.noDriver ? (p.usb ? (wifiPrinter && wifiPrinter.forcedRaw && wifiPrinter.ip === p.ip ? ' · Receipt (tried manually)' : ' · Unknown model · tap to try as a thermal printer') : ' · No driver') : p.raw ? ' · Receipt' : p.escp2 ? ' · Photo (' + (p.epsonModel ? 'Epson ' + p.epsonModel : 'Photo') + ')' : p.epsonL ? ' · Photo (' + (p.epsonModel || 'Photo') + ')' : p.selphy ? ' · Photo (SELPHY)' : p.canon ? ' · Photo (' + (p.canonModel ? 'Canon ' + p.canonModel : 'Canon') + ')' : (p.ipp || p.escpr) ? ' · Photo' : '';
+          var tag = p.needsPermission ? ' · Tap to allow USB access' : p.noDriver ? (p.usb ? (wifiPrinter && wifiPrinter.forcedRaw && wifiPrinter.ip === p.ip ? ' · Receipt (tried manually)' : ' · Unknown model · tap to try as a thermal printer') : ' · No driver') : p.raw ? ' · Receipt' : p.dnp ? ' · Photo (DNP' + (p.dnpModel ? ' ' + p.dnpModel : '') + ')' : p.escp2 ? ' · Photo (' + (p.epsonModel ? 'Epson ' + p.epsonModel : 'Photo') + ')' : p.epsonL ? ' · Photo (' + (p.epsonModel || 'Photo') + ')' : p.selphy ? ' · Photo (SELPHY)' : p.canon ? ' · Photo (' + (p.canonModel ? 'Canon ' + p.canonModel : 'Canon') + ')' : (p.ipp || p.escpr) ? ' · Photo' : '';
           var connTag = (p.name && p.name.indexOf('(USB)') >= 0) ? '' : (p.usb ? ' · USB' : (p.ip ? ' · Wi-Fi' : ''));
           b.textContent = (sel ? '✓ ' : '') + p.name + connTag + tag;
           b.addEventListener('click', () => {
@@ -26477,7 +26480,7 @@
               showToast(p.name + ' is detected, but requires the System Print Dialog or Print Station.' + idTxt, pbDebug() ? 10000 : 5000);
               return;
             }
-            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
+            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, dnp: !!p.dnp, dnpModel: p.dnpModel || '', epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
             showToast('Printer selected: ' + p.name, 3000);
             wifiRenderList(wifiList());
             refreshPrintUI();
@@ -26786,6 +26789,13 @@
             const bytes = enc.getBuffer();
             await wifiJob(id => window.__PBNet.printRaw(id, p.ip, wifiBytesToB64(bytes)));
           }
+          return;
+        }
+        if (p.dnp) {
+          // Direct DNP dye-sub photo printing over USB (DS-RX1 / RX1HS, DS620, DS40): no driver, 2x6 strips cut by the printer.
+          if (typeof window.__PBNet.printDnp !== 'function') throw new Error('Update the photobooth4u app to print on a DNP printer.');
+          const picsD = all.map(cv => cv.toDataURL('image/jpeg', 0.95));
+          await wifiJob(id => window.__PBNet.printDnp(id, p.ip, paper.w, paper.h, 1, JSON.stringify(picsD), JSON.stringify(wo)));
           return;
         }
         if (p.selphy) {

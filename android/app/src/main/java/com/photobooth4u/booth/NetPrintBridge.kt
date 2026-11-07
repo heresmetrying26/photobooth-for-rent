@@ -619,7 +619,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     private fun usbIfaces(d: UsbDevice): List<UsbInterface> = (0 until d.interfaceCount).map { d.getInterface(it) }
     private fun usbIsPrinter(d: UsbDevice) = usbIfaces(d).any { it.interfaceClass == UsbConstants.USB_CLASS_PRINTER } ||
-        (d.vendorId == CanonSelphyJob.VENDOR_ID && (d.productId in CanonSelphyJob.PRODUCT_IDS || (d.productName ?: "").contains("SELPHY", true)))
+        (d.vendorId == CanonSelphyJob.VENDOR_ID && (d.productId in CanonSelphyJob.PRODUCT_IDS || (d.productName ?: "").contains("SELPHY", true))) ||
+        DnpJob.isKnown(d)
     /** True when this interface (alternate setting) has both a bulk OUT and a bulk IN endpoint. */
     private fun hasBulkPair(i: UsbInterface): Boolean {
         var out = false
@@ -924,6 +925,64 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         return "started"
     }
 
+    /** DNP dye-sub photo printers (DS-RX1 / RX1HS, DS620 / DS620A, DS40), found by USB vendor + product id. */
+    private fun usbDnpModel(d: UsbDevice): String? = DnpJob.match(d, usbProduct(d))
+
+    /** Interface for a DNP: the printer-class one with a bulk pair, else any bulk pair. */
+    private fun usbDnpIface(d: UsbDevice): UsbInterface =
+        usbIfaces(d).firstOrNull { it.interfaceClass == UsbConstants.USB_CLASS_PRINTER && hasBulkPair(it) }
+            ?: usbRawIface(d)
+            ?: usbIfaces(d).firstOrNull { hasBulkPair(it) }
+            ?: throw IllegalStateException("This DNP printer has no USB data interface.")
+
+    /** Builds and sends DNP jobs for JPEG pages (base64 or data URLs). Blocks until the last sheet is printed. */
+    private fun dnpPrint(d: UsbDevice, widthMm: Double, heightMm: Double, copies: Int, pages: JSONArray, opt: JSONObject) {
+        val model = usbDnpModel(d) ?: throw IllegalStateException("This device is not a recognized DNP photo printer.")
+        DnpJob.unsupportedReason(model)?.let { throw IllegalStateException(it) }
+        val matte = opt.optString("media", "") == "matte"
+        val stripCut = opt.optBoolean("stripCut", false)
+        val adj = PrintColorAdj.from(opt)
+        val jobs = ArrayList<ByteArray>()
+        for (i in 0 until pages.length()) {
+            val jpeg = decode(pages.getString(i))
+            val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+                ?: throw IllegalStateException("Couldn't decode photo for printing.")
+            try {
+                jobs.add(DnpJob.build(bmp, widthMm, heightMm, copies, matte, stripCut, adj))
+            } finally {
+                try { bmp.recycle() } catch (_: Exception) {}
+            }
+        }
+        Log.i(TAG, "dnp print model=$model pages=${jobs.size} %04x:%04x".format(d.vendorId, d.productId))
+        usbSession(d, usbDnpIface(d)) { conn, out, inn ->
+            DnpJob.send(conn, out, inn, jobs) { usbWrite(conn, out, it) }
+        }
+    }
+
+    /**
+     * Prints photos straight to a DNP dye-sub printer over USB (no driver). Options: media "matte" (else glossy),
+     * stripCut true = the page is two 2x6 strips side by side, so the sheet is cut in half.
+     * Result arrives as window.__PBNetResult.
+     */
+    @JavascriptInterface
+    fun printDnp(job: String, id: String, widthMm: Double, heightMm: Double, copies: Int, pagesJson: String, optionsJson: String): String {
+        pool.execute {
+            val r = JSONObject().put("job", job)
+            try {
+                val d = usbFind(id)
+                usbEnsure(d)
+                val opt = try { JSONObject(optionsJson) } catch (_: Exception) { JSONObject() }
+                dnpPrint(d, widthMm, heightMm, copies, JSONArray(pagesJson), opt)
+                r.put("ok", true)
+            } catch (ex: Exception) {
+                Log.w(TAG, "dnp print failed", ex)
+                r.put("ok", false).put("error", ex.message ?: "Couldn't print to the DNP printer.")
+            }
+            deliver(r)
+        }
+        return "started"
+    }
+
     /**
      * EXPERIMENTAL: prints JPEG pages to a Canon PIXMA G-series USB printer (G1000 / G1010 family), 300 dpi.
      * Result arrives as window.__PBNetResult.
@@ -1146,6 +1205,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     }
 
     private fun usbName(d: UsbDevice): String {
+        // DNP dye-sub photo printers (DS-RX1, DS620, DS40).
+        usbDnpModel(d)?.let { return "DNP $it" }
         // Hardcoded Epson L-series inkjet: return the exact marketing name immediately.
         EpsonLModels.match(d)?.let { return "Epson $it" }
         // Hardcoded Epson ESC/P2 inkjet (L120, L121).
@@ -1209,8 +1270,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         for (d in m.deviceList.values) {
             if (!usbIsPrinter(d)) continue
             if (!m.hasPermission(d)) usbAsk(d)
-            val ipp = usbIppIface(d) != null
-            val raw = !ipp && usbRawIface(d) != null && usbLooksLikeReceipt(d)
+            // DNP dye-sub printers are known by vendor + product id, so they need no USB access to be listed.
+            val dnpModel = usbDnpModel(d)
+            val dnp = dnpModel != null
+            val ipp = !dnp && usbIppIface(d) != null
+            val raw = !dnp && !ipp && usbRawIface(d) != null && usbLooksLikeReceipt(d)
             // Hardcoded Epson L-series check first — no USB control transfer required,
             // so the printer appears in the list the moment permission is granted.
             val epsonL = !ipp && !raw && EpsonLModels.isKnown(d)
@@ -1240,8 +1304,10 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 .put("canon", canon)
                 .put("canonModel", canonModelName)
                 .put("selphy", selphy)
-                .put("noDriver", perm && !ipp && !raw && !epsonL && !escpr && !escp2 && !canon && !selphy)
-                .put("needsPermission", !perm && !ipp && !raw && !selphy)
+                .put("dnp", dnp)
+                .put("dnpModel", dnpModel ?: "")
+                .put("noDriver", perm && !dnp && !ipp && !raw && !epsonL && !escpr && !escp2 && !canon && !selphy)
+                .put("needsPermission", !perm && !dnp && !ipp && !raw && !selphy)
                 .put("qualities", JSONArray(ippEntry?.qualities ?: emptyList<Int>()))
                 .put("colorModes", JSONArray(ippEntry?.colorModes ?: emptyList<String>()))
                 .put("mediaTypes", JSONArray(ippEntry?.mediaTypes ?: emptyList<String>()))
@@ -1704,6 +1770,11 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val d = matchedUsb
                 val id = "usb:" + d.deviceName
                 usbEnsure(d)
+
+                if (usbDnpModel(d) != null) {
+                    dnpPrint(d, widthMm, heightMm, 1, pagesArr, JSONObject())
+                    return null
+                }
 
                 val ipp = usbIppIface(d) != null
                 val raw = !ipp && usbRawIface(d) != null && usbLooksLikeReceipt(d)

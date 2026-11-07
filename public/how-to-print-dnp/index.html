@@ -94,7 +94,14 @@
     <a href="#fixes"><b>Help</b><span>Fixes &amp; Tips</span></a>
     <a href="#ipad"><b>Tablet</b><span>iPad / Tablet Station</span></a>
   </nav>
-  <div class="callout"><h3>Using the Android tablet app?</h3><p>The Android app prints to Bluetooth thermal receipt printers and to USB / Wi-Fi printers such as Canon SELPHY and Epson (see the <a href="/how-to-print-android/">Android printing guide</a>), but it <b>can't print to a DNP by itself</b>. For DNP prints, either run the booth on a Windows or Mac laptop with the desktop app, or send the tablet's prints to a laptop with the DNP plugged in (<a href="#ipad">Laptop print station</a>, needs internet, so not in offline mode).</p></div>
+  <div class="callout" id="android"><h3>Using the Android tablet app? (beta)</h3><p>From Android app <b>1.1.10</b>, the tablet prints straight to a <b>DNP DS-RX1 / RX1HS, DS620 / DS620A or DS40</b> over USB, with no driver and no laptop. It also works offline.</p>
+    <ol style="margin:8px 0 0; padding-left:20px; color:var(--dim);">
+      <li>Plug the DNP's USB cable into the tablet with a <b>USB OTG adapter</b> (USB-C to USB-B, or a hub). Turn the printer on.</li>
+      <li>Open <b>Setup &rarr; 4 Camera &amp; printer</b> and pick the paper size that matches the paper and ribbon loaded (for example <b>4R (4&times;6)</b>). Under the printer list, tap <b>DNP DS-RX1 (USB) &middot; Photo (DNP DS-RX1)</b>. Tap <b>Allow</b> when Android asks for USB access.</li>
+      <li>Choose <b>Glossy finish</b> or <b>Matte finish</b>, then tap <b>Test print</b>.</li>
+      <li><b>2&times;6 strips:</b> with a strip layout on 4&times;6 paper, the two strips are printed side by side and the DNP cuts the sheet in half. You don't need a second &ldquo;2x6&rdquo; printer like on Windows. If you choose 2&times;6 paper, each strip is printed twice on one sheet.</li>
+    </ol>
+    <p style="margin-top:8px;">The DS80, DS820 and QW410 aren't supported on the tablet yet. For those, run the booth on a Windows or Mac laptop with the desktop app, or send the tablet's prints to a laptop with the DNP plugged in (<a href="#ipad">Laptop print station</a>, needs internet, so not in offline mode).</p></div>
 
   <section class="part" id="install">
     <p class="kicker">Part 1 · First time setup</p>

@@ -524,7 +524,9 @@ namespace Pb4uCam
         {
             if (ptp != null)
             {
-                try { Alive(); return InfoJson(); } catch { }
+                // A camera that went to sleep can still be listed and answer "alive" with a dead session. When the booth asks
+                // for a clean start (recoverNext), always close and connect again instead of trusting it.
+                if (!recoverNext) { try { Alive(); return InfoJson(); } catch { } }
                 CloseCamera();
             }
             var all = ListDevs();
@@ -990,7 +992,8 @@ namespace Pb4uCam
         static void CanonKeep()
         {
             if (!pollSw.IsRunning || pollSw.ElapsedMilliseconds > 2000) CanonPoll();
-            if (keepSw.ElapsedMilliseconds > 20000 && Has(0x911D)) { ptp.Op(0x911D); keepSw.Restart(); }
+            // Not only when the camera lists KeepDeviceOn: some older EOS (60D) don't list it but still stay awake when it is sent.
+            if (keepSw.ElapsedMilliseconds > 10000) { try { ptp.Op(0x911D); } catch (GoneException) { throw; } catch { } keepSw.Restart(); }
         }
 
         static void CanonLiveOn()

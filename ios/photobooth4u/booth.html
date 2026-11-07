@@ -19855,7 +19855,9 @@
       let muteTimer = null;
       function showReconnecting() {
         if (cameraSelect && cameraSelect.value === USB_CAM_ID) {
-          cameraErrorText.textContent = (usbCam.viaHelper && usbCam.lastMsg) ? usbCam.lastMsg : 'Camera disconnected. Reconnecting… Check the camera is on and its USB cable is plugged in.';
+          cameraErrorText.textContent = (usbCam.viaHelper && usbCam.lastMsg) ? usbCam.lastMsg
+            : (usbCam.viaHelper && (usbCam.dropWhy === 'stalled' || usbCam.dropWhy === 'giveup')) ? 'Camera stopped sending live view (it may have gone to sleep). Reconnecting… If it stays like this, switch the camera off and on.'
+            : 'Camera disconnected. Reconnecting… Check the camera is on and its USB cable is plugged in.';
         } else {
           cameraErrorText.textContent = 'Camera disconnected. Reconnecting…';
         }
@@ -20048,6 +20050,7 @@
         camera: null, name: '', active: false, gen: 0, libGen: 0, vfOn: false, initing: null,
         canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null,
         lastFrameAt: 0, shooting: false, stallShown: false, devId: '',
+        freshNext: false, dropWhy: '',                           // helper cameras: after a drop the next connect starts a clean session (a camera that slept keeps a dead one)
         shutterLagMs: 0, graceUntil: 0                           // learned delay from shutter command to exposure; live view may pause until graceUntil after a photo
       };
 
@@ -20144,7 +20147,9 @@
           throw err;
         }
         async connect() {
-          const r = await this.req('/camera/open', { method: 'POST' }, 70000);
+          // After a drop the camera may still be listed by Windows with a dead session (it went to sleep): ask for a clean one.
+          const fresh = usbCam.freshNext; usbCam.freshNext = false;
+          const r = await this.req('/camera/open' + (fresh ? '?fresh=1' : ''), { method: 'POST' }, 70000);
           this.info = await r.json();
           this.name = this.info.name || 'USB camera';
           try { localStorage.setItem(CAM_HELPER_SEEN_KEY, '1'); } catch (e) { }
@@ -20698,6 +20703,8 @@
         usbCam.camera = null;
         usbStopLive();
         usbCam.stallShown = false;
+        usbCam.dropWhy = why;
+        if (usbCam.viaHelper) usbCam.freshNext = true;
         usbReleaseCamera(cam, why);
         if (wasLive) cameraLost();      // shows "Reconnecting…" and keeps retrying
       }

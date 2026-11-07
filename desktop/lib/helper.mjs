@@ -662,6 +662,7 @@ export async function handleHelper(req, path, search) {
       if (method === 'GET' && path === '/camera/diag' && IS_MAC) { const r = await camCall('diag', '', 8000); return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) })); }
       if (method === 'GET' && path === '/camera') { const r = await camCall('list', '', 20000); return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) })); }
       if (method === 'POST' && path === '/camera/open') {
+        if (search.get('fresh') === '1') cam.recover = true;   // the booth lost the picture: start a clean camera session
         const r = await camCall('open', cam.recover ? 'recover' : '', 60000);
         cam.recover = false;
         return send(r, () => { cam.open = JSON.parse(r.body.toString('utf8')); log('Camera connected: ' + cam.open.name); return json({ ok: true, ...cam.open }); });

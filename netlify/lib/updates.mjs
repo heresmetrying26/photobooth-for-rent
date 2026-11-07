@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.101', date: '2026-11-07' },
   { version: '1.0.100', date: '2026-11-07' },
   { version: '1.0.99', date: '2026-11-07' },
   { version: '1.0.98', date: '2026-11-07' },
@@ -148,6 +149,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-07', title: 'Canon over USB: reconnects by itself after the camera went to sleep', for: ['website', 'app'], app: '1.0.101',
+    items: [
+      'A Canon (for example the 60D) left idle for a long time could go to sleep and then stay on "Camera disconnected. Reconnecting…" even though it was still plugged in. The booth now starts a clean camera session after a drop, so it comes back by itself without unplugging the camera.',
+      'The app now also sends the camera its "stay awake" signal every 10 seconds, including on older EOS models that do not list it.',
+      'The message now says when live view stopped (the camera may have gone to sleep) and to switch the camera off and on if it stays that way. On the camera, setting Auto power off to Disable is still the most reliable setup.'
+    ]
+  },
   {
     date: '2026-11-07', title: 'Android tablet: USB webcam that resets itself no longer stays black', for: ['website'],
     items: [

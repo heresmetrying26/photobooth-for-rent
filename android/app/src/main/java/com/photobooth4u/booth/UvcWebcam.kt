@@ -46,7 +46,9 @@ class UvcWebcam(private val ctx: Context) {
     companion object {
         private const val TAG = "PBUvc"
         private const val VS_FRAME_MJPEG = UVCCamera.UVC_VS_FRAME_MJPEG
-        private const val FIRST_FRAME_MS = 3800L      // a mode that sends nothing in this time is skipped
+        private const val FIRST_FRAME_MS = 3200L      // a mode that sends nothing in this time is skipped
+        private const val WARMUP_FRAME_MS = 5500L     // the very first mode gets longer: the camera is still waking up
+        private const val MAX_TRIES = 8               // modes tried in one open, so a failing webcam is reported in ~30 s, not 90
         private const val STALL_MS = 6500L            // open but silent this long = lost (power / cable)
         private const val STILL_WAIT_MS = 2600L       // max wait per high-res mode when capturing a still
     }
@@ -90,6 +92,19 @@ class UvcWebcam(private val ctx: Context) {
     private var jpegSeq = -1L
     private var jpeg: ByteArray? = null
 
+    // ---------------------------------------------------------------- trace (shown in the booth's "Copy camera log")
+
+    private val traceLines = ArrayDeque<String>()
+    private val t0 = System.currentTimeMillis()
+    private fun tr(msg: String) {
+        Log.i(TAG, msg)
+        synchronized(traceLines) {
+            traceLines.addLast("+${(System.currentTimeMillis() - t0) / 1000.0}s $msg")
+            while (traceLines.size > 60) traceLines.removeFirst()
+        }
+    }
+    private fun traceJson(): JSONArray = JSONArray().also { a -> synchronized(traceLines) { traceLines.forEach { a.put(it) } } }
+
     // ---------------------------------------------------------------- devices
 
     private fun isUvc(d: UsbDevice): Boolean {
@@ -118,7 +133,9 @@ class UvcWebcam(private val ctx: Context) {
         }
     } catch (e: Exception) {
         Log.w(TAG, "uvc call $path failed", e)
-        Reply(409, "application/json", err("ERROR", e.message ?: e.javaClass.simpleName))
+        tr("call $path failed: ${e.message}")
+        Reply(409, "application/json", JSONObject().put("ok", false).put("code", "ERROR")
+            .put("error", e.message ?: e.javaClass.simpleName).put("trace", traceJson()).toString().toByteArray())
     }
 
     private fun parseParam(query: String, key: String): String {
@@ -155,6 +172,7 @@ class UvcWebcam(private val ctx: Context) {
             .put("max", maxLabel)
             .put("preview", activePref)
             .put("note", lastError)
+            .put("trace", traceJson())
     }
 
     private fun frameReply(): Reply {
@@ -213,6 +231,7 @@ class UvcWebcam(private val ctx: Context) {
         gone = false; lastError = ""; activePref = pref
         if (device?.deviceName != d.deviceName) failedStillKeys.clear()
         device = d
+        tr("open: ${d.productName} ${Integer.toHexString(d.vendorId)}:${Integer.toHexString(d.productId)} permission=${usb.hasPermission(d)} preview=$pref hw=${android.os.Build.HARDWARE} sdk=${android.os.Build.VERSION.SDK_INT}")
         busyRetries = 0
         allSizes = emptyList()
         candidates = emptyList()
@@ -418,21 +437,52 @@ class UvcWebcam(private val ctx: Context) {
         // Fallback if camera has no mode at or below the cap (e.g. unusual capture card with only 1080p when 720p asked)
         val aboveCap = uniq.filter { it.width > maxW || it.height > maxH }
             .sortedWith(compareByDescending(mjpegOrSmallYuyv).thenBy { it.width * it.height })
-        return expanded + aboveCap
+        return thinCandidates(expanded + aboveCap, pref)
     }
+
+    /** A lower frame rate of the same mode (>= 10 fps): asks the camera for less USB bandwidth, which weak tablet ports need. */
+    private fun previewLowFps(s: Size): Size? {
+        val list = s.fpsList ?: return null
+        val low = list.filter { it in 10 until s.fps }.maxOrNull() ?: return null
+        return Size(s.type, s.width, s.height, low, list)
+    }
+
+    /**
+     * A webcam can list 20+ modes. Trying each one for several seconds took longer than the booth waits (the picture stayed
+     * black, then the app gave up and closed the camera). Keep one mode per clearly different size, add a lower frame rate
+     * for the first two sizes (weak USB ports), and never try more than [MAX_TRIES] in all.
+     */
+    private fun thinCandidates(list: List<Size>, pref: String): List<Size> {
+        val out = ArrayList<Size>()
+        var lastArea = 0L
+        var tiers = 0
+        for (s in list) {
+            val area = s.width.toLong() * s.height
+            if (tiers > 0 && lastArea == area) { out.add(s); continue }   // the "max" low-fps variant that orderSizes put right after its mode
+            val far = tiers == 0 || area * 3 <= lastArea * 2 || area * 2 >= lastArea * 3
+            if (!far) continue
+            out.add(s); lastArea = area; tiers++
+            if (pref != "max" && tiers <= 2) previewLowFps(s)?.let { out.add(it) }
+            if (out.size >= MAX_TRIES) break
+        }
+        return out.take(MAX_TRIES)
+    }
+
+    private fun describe(s: Size) = "${s.width}x${s.height}@${s.fps}${if (s.type == VS_FRAME_MJPEG) " mjpeg" else " yuyv"}"
 
     private fun tryNextSize() {
         val h = helper ?: return
         if (gone || (openLatch?.count ?: 0L) == 0L) return
         if (candIdx >= candidates.size) {
-            lastError = "The webcam opened but sent no picture at any size. Try a powered USB-C hub or another cable."
+            lastError = "The webcam turned on but sent no picture at any size. Use a powered USB-C hub (the tablet port may not give it enough power), a short data cable, then tap Try Again."
+            tr("gave up: no picture in any of ${candidates.size} modes")
             openLatch?.countDown()
             return
         }
         val s = candidates[candIdx++]
         size = s
         modeFrameCount = 0
-        Log.i(TAG, "trying preview ${s.width}x${s.height}@${s.fps} type=${s.type} (pref=$activePref)")
+        tr("try ${candIdx}/${candidates.size}: ${describe(s)} (pref=$activePref)")
         try {
             if (h.isCameraOpened) {
                 h.stopPreview()
@@ -442,7 +492,7 @@ class UvcWebcam(private val ctx: Context) {
                 // If CameraInternal.setPreviewSize rejected this mode on mAsyncHandler, it destroys mUVCCamera; skip quickly
                 main.postDelayed({
                     if (!opened && !switching && size === s && helper != null && !h.isCameraOpened && (openLatch?.count ?: 0L) > 0L) {
-                        Log.i(TAG, "mode ${s.width}x${s.height} rejected by camera/bus, trying next")
+                        tr("mode ${describe(s)} rejected by camera/bus, trying next")
                         tryNextSize()
                     }
                 }, 400L)
@@ -459,11 +509,11 @@ class UvcWebcam(private val ctx: Context) {
     private fun armFirstFrameTimeout(tried: Size) {
         main.postDelayed({
             if (!opened && !switching && size === tried && helper != null && (openLatch?.count ?: 0L) > 0L) {
-                Log.i(TAG, "no frames at ${tried.width}x${tried.height}, trying next")
+                tr("no frames at ${describe(tried)} (frames seen: $modeFrameCount), trying next")
                 try { helper?.stopPreview() } catch (_: Exception) { }
                 main.postDelayed({ tryNextSize() }, 250L)
             }
-        }, FIRST_FRAME_MS)
+        }, if (candIdx <= 1) WARMUP_FRAME_MS else FIRST_FRAME_MS)
     }
 
     // ---------------------------------------------------------------- callbacks
@@ -472,7 +522,11 @@ class UvcWebcam(private val ctx: Context) {
         val s = size ?: return@IFrameCallback
         val n = buf.remaining()
         val need = s.width * s.height * 3 / 2
-        if (n < need) return@IFrameCallback
+        if (n < need) {
+            if (modeFrameCount == 0) tr("frame too small: got $n bytes, need $need for ${s.width}x${s.height}")
+            modeFrameCount++
+            return@IFrameCallback
+        }
         synchronized(frameLock) {
             var a = nv21
             if (a == null || a.size != need) { a = ByteArray(need); nv21 = a }
@@ -491,6 +545,7 @@ class UvcWebcam(private val ctx: Context) {
             }
         } else if (!opened) {
             opened = true
+            tr("first picture at ${s.width}x${s.height}")
             openLatch?.countDown()
         }
     }
@@ -499,6 +554,7 @@ class UvcWebcam(private val ctx: Context) {
         override fun onAttach(device: UsbDevice?) { }
 
         override fun onDeviceOpen(device: UsbDevice?, isFirstOpen: Boolean) {
+            tr("USB device opened (first=$isFirstOpen)")
             try {
                 helper?.openCamera(UVCParam(null, UVCCamera.getRecommendedPlatformQuirks()))
             } catch (e: Exception) {
@@ -528,7 +584,7 @@ class UvcWebcam(private val ctx: Context) {
                 maxLabel = if (biggest != null) "${biggest.width}\u00d7${biggest.height}" else ""
                 candidates = orderSizes(raw, activePref)
                 candIdx = 0
-                Log.i(TAG, "webcam ${device?.productName}: ${raw.size} modes, max=$maxLabel")
+                tr("camera opened: ${raw.size} modes, max=$maxLabel; will try " + candidates.joinToString(", ") { describe(it) })
                 if (candidates.isEmpty()) {
                     val cur = try { h.previewSize } catch (_: Exception) { null }
                     if (cur != null) size = cur
@@ -558,6 +614,7 @@ class UvcWebcam(private val ctx: Context) {
         override fun onDetach(device: UsbDevice?) {
             if (device != null && device.deviceName == this@UvcWebcam.device?.deviceName) {
                 gone = true; opened = false; switching = false
+                tr("webcam detached (unplugged or lost power)")
                 lastError = "The webcam was unplugged."
                 openLatch?.countDown()
                 cameraOpenLatch?.countDown()
@@ -572,7 +629,7 @@ class UvcWebcam(private val ctx: Context) {
         }
 
         override fun onError(device: UsbDevice?, e: CameraException?) {
-            Log.w(TAG, "webcam error code=${e?.code} msg=${e?.message}")
+            tr("webcam error code=${e?.code} msg=${e?.message}")
             val cLatch = cameraOpenLatch
             if (cLatch != null && cLatch.count > 0L) {
                 cLatch.countDown()

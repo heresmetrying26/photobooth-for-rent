@@ -149,6 +149,13 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-07', title: 'Android tablet: USB webcam no longer stays black', for: ['website'],
+    items: [
+      'The Android app (1.1.11) now tries only a short list of sensible webcam sizes, including a lower frame rate for weak tablet USB ports, so a webcam that cannot start at full speed falls back in about 30 seconds instead of staying black.',
+      'If the webcam still sends no picture, the message now points to a powered USB-C hub, and "Copy camera log" lists every step the app tried so we can see why.'
+    ]
+  },
+  {
     date: '2026-11-07', title: 'Android tablet: print straight to a DNP photo printer over USB (beta)', for: ['website'],
     items: [
       'The Android app (1.1.10) now prints to a DNP DS-RX1 / RX1HS, DS620 / DS620A or DS40 plugged into the tablet with a USB OTG cable. No driver, no laptop, and it works offline.',

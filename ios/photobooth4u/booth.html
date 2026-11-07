@@ -19639,7 +19639,7 @@
             const e = new Error((j && j.error) || 'The USB webcam did not start.');
             e.name = 'NotReadableError';
             e.uvcMsg = e.message;
-            try { if (typeof usbLog === 'function') usbLog('uvc-open-failed', { error: e.message }); } catch (x) { }
+            try { if (typeof usbLog === 'function') usbLog('uvc-open-failed', { error: e.message, trace: (j && j.trace) || undefined }); } catch (x) { }
             throw e;
           }
           window.__pbUvcInfo = j;

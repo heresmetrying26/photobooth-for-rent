@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>How to print on DNP Photo Printers (RX1, RX1HS, DS620, QW410) · photobooth4u</title>
+<title>How to print on DNP Photo Printers (RX1, RX1HS, DS620, DS40, QW410) · Windows, Mac &amp; Android · photobooth4u</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500..700;1,500..700&family=Manrope:wght@400..800&display=swap">
 <style>
@@ -26,7 +26,7 @@
   .hero-btns{display:flex; flex-wrap:wrap; gap:10px;}
   .btn{display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:10px 18px; border-radius:999px; font-weight:800; font-size:15px; text-decoration:none;}
   .btn.primary{background:var(--red); color:#fff;} .btn.ghost{border:1.5px solid #5a5056; color:#f6f1ea;}
-  nav.toc{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:-22px 0 8px; position:relative;}
+  nav.toc{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:-22px 0 8px; position:relative;}
   nav.toc a{display:block; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; text-decoration:none; color:var(--ink); box-shadow:0 8px 20px rgba(70,45,25,.08);}
   nav.toc b{display:block; color:var(--red); font-size:12px; letter-spacing:.14em; text-transform:uppercase;} nav.toc span{font-weight:700; font-size:15px;}
   section.part{padding:34px 0 6px; scroll-margin-top:12px;}
@@ -75,11 +75,12 @@
 <header class="hero">
   <div class="wrap">
     <a class="brand" href="/"><span class="mark"><i></i><i></i><i></i><i></i></span>photobooth<span class="badge">4u</span></a>
-    <p class="eyebrow">DNP Printing Guide · Windows &amp; Mac</p>
+    <p class="eyebrow">DNP Printing Guide · Windows, Mac &amp; Android</p>
     <h1>How to print on<br><em>DNP Printers</em></h1>
-    <p class="lead">Compatible with <b>DNP DS-RX1 / RX1HS, DS620 / DS620A, DS40, and QW410</b>. Set up once in 10 minutes: 4×6 (4R) photos print in ~12 seconds, and 2×6 photo strips are automatically sliced down the middle by the DNP's built-in cutter.</p>
+    <p class="lead">Compatible with <b>DNP DS-RX1 / RX1HS, DS620 / DS620A, DS40, and QW410</b>. 4×6 (4R) photos print in ~12 seconds, and 2×6 photo strips are automatically sliced down the middle by the DNP's built-in cutter. <b>New:</b> the Android tablet app (1.1.10 or newer) prints to the DNP over a USB cable, with no driver and no laptop.</p>
     <div class="hero-btns">
       <a class="btn primary" href="/">Open Photo Booth</a>
+      <a class="btn ghost" href="#android">Android tablet steps</a>
       <a class="btn ghost" href="/downloads/">Get Print Helper / Desktop App</a>
     </div>
   </div>
@@ -91,17 +92,11 @@
     <a href="#strips"><b>Part 2</b><span>Set Up 2x6 Cut</span></a>
     <a href="#booth"><b>Part 3</b><span>Choose In Booth</span></a>
     <a href="#test"><b>Part 4</b><span>Test &amp; Auto-print</span></a>
+    <a href="#android"><b>Android</b><span>Plug into the tablet</span></a>
+    <a href="#ipad"><b>iPad</b><span>Laptop print station</span></a>
     <a href="#fixes"><b>Help</b><span>Fixes &amp; Tips</span></a>
-    <a href="#ipad"><b>Tablet</b><span>iPad / Tablet Station</span></a>
   </nav>
-  <div class="callout" id="android"><h3>Using the Android tablet app? (beta)</h3><p>From Android app <b>1.1.10</b>, the tablet prints straight to a <b>DNP DS-RX1 / RX1HS, DS620 / DS620A or DS40</b> over USB, with no driver and no laptop. It also works offline.</p>
-    <ol style="margin:8px 0 0; padding-left:20px; color:var(--dim);">
-      <li>Plug the DNP's USB cable into the tablet with a <b>USB OTG adapter</b> (USB-C to USB-B, or a hub). Turn the printer on.</li>
-      <li>Open <b>Setup &rarr; 4 Camera &amp; printer</b> and pick the paper size that matches the paper and ribbon loaded (for example <b>4R (4&times;6)</b>). Under the printer list, tap <b>DNP DS-RX1 (USB) &middot; Photo (DNP DS-RX1)</b>. Tap <b>Allow</b> when Android asks for USB access.</li>
-      <li>Choose <b>Glossy finish</b> or <b>Matte finish</b>, then tap <b>Test print</b>.</li>
-      <li><b>2&times;6 strips:</b> with a strip layout on 4&times;6 paper, the two strips are printed side by side and the DNP cuts the sheet in half. You don't need a second &ldquo;2x6&rdquo; printer like on Windows. If you choose 2&times;6 paper, each strip is printed twice on one sheet.</li>
-    </ol>
-    <p style="margin-top:8px;">The DS80, DS820 and QW410 aren't supported on the tablet yet. For those, run the booth on a Windows or Mac laptop with the desktop app, or send the tablet's prints to a laptop with the DNP plugged in (<a href="#ipad">Laptop print station</a>, needs internet, so not in offline mode).</p></div>
+  <div class="callout"><h3>Which steps are for you?</h3><p><b>Windows or Mac laptop booth:</b> Parts 1 to 4. &nbsp;<b>Android tablet booth:</b> skip the driver and go straight to <a href="#android">Android: plug the DNP into the tablet</a>. &nbsp;<b>iPad booth</b> (or a DS80, DS820 or QW410 on Android): use a <a href="#ipad">laptop print station</a>.</p></div>
 
   <section class="part" id="install">
     <p class="kicker">Part 1 · First time setup</p>
@@ -186,6 +181,36 @@
     </div>
   </section>
 
+  <section class="part" id="android">
+    <p class="kicker">Android tablet app · 1.1.10 or newer · Beta</p>
+    <h2>Plug the DNP straight into the Android tablet</h2>
+    <p class="why">The app sends prints to the DNP by itself: no driver, no laptop, no second &ldquo;2x6&rdquo; printer, and no internet needed (it works in offline mode). Works with the <b>DS-RX1 / RX1HS, DS620 / DS620A and DS40</b>. You can skip Parts 1 and 2.</p>
+    <ol class="steps">
+      <li><span class="n">1</span><div><h3>Update the app</h3><p>On the tablet, open <b>Setup › Share › App updates</b> and tap <b>Check for updates</b> until it shows <b>1.1.10</b> or newer. On older versions, install the new APK from the <a href="/downloads/">downloads page</a> over the old one. Your activation, designs and photos stay.</p></div></li>
+      <li><span class="n">2</span><div><h3>Connect the DNP</h3><p>Use the DNP's own USB cable with a <b>USB OTG adapter</b> (USB-C to USB-B, or a USB-C hub with a USB-A port). Load paper and ribbon, then turn the printer on. If the tablet charges through the same port, use a hub with power pass-through.</p></div></li>
+      <li><span class="n">3</span><div><h3>Pick the paper size</h3><p>Open <b>Setup &rarr; 4 Camera &amp; printer</b> and choose the paper size that matches the paper loaded, for example <b>4R (4×6)</b> for 4×6 media.</p></div></li>
+      <li><span class="n">4</span><div><h3>Choose the DNP</h3><p>Under <b>Find Wi-Fi &amp; USB printers</b>, tap <b>DNP DS-RX1 (USB) · Photo (DNP DS-RX1)</b> (the name shows your model). When Android asks to allow photobooth4u to use the printer, tap <b>OK</b>. Tick <b>Always open</b> first so it doesn't ask again.</p></div></li>
+      <li><span class="n">5</span><div><h3>Glossy or matte</h3><p>Under <b>Paper type</b>, pick <b>Glossy finish</b> or <b>Matte finish</b> to match the look you want. Both use the same DNP paper and ribbon.</p></div></li>
+      <li><span class="n">6</span><div><h3>Test print, then Auto-print</h3><p>Tap <b>Test print</b>, then print one real session with a 4R layout and one with a strip layout (see the table below). When both look right, turn on <b>Print after each session</b> as in <a href="#test">Part 4</a>.</p></div></li>
+    </ol>
+    <table style="margin-top:14px;">
+      <tr><th>What you print on the tablet</th><th>What the DNP does</th></tr>
+      <tr><td>4R (4×6), photo layout</td><td>One full 4×6 photo, edge to edge, no cut</td></tr>
+      <tr><td>4R (4×6), strip layout</td><td>Two strips side by side, cut into two 2×6 strips</td></tr>
+      <tr><td>2×6 strip paper size</td><td>The strip twice on one 4×6 sheet, cut into two identical 2×6 strips</td></tr>
+      <tr><td>3.5×5, 5×7, 6×8 or 6×9</td><td>Prints that size if your model and the paper loaded support it. Otherwise the booth shows <i>Paper definition error</i></td></tr>
+    </table>
+    <div class="win">
+      <h3>Good to know</h3>
+      <ol>
+        <li>If the printer is switched off or unplugged, prints wait on the tablet and go out by themselves when it's back.</li>
+        <li>Paper end, ribbon end, an open door or the wrong paper show as a message on the booth, so you don't have to watch the printer's lights.</li>
+        <li>Not supported on the tablet yet: <b>DS80, DS820 and QW410</b>. For these, use a laptop with the DNP driver (Parts 1 to 4) or a <a href="#ipad">laptop print station</a>.</li>
+        <li>This is a beta. Run a test print before every event. If colours look wrong, the picture is reversed, or the strips are cut in the wrong place, message us a photo of the print.</li>
+      </ol>
+    </div>
+  </section>
+
   <section class="part" id="fixes">
     <p class="kicker">Troubleshooting</p>
     <h2>DNP Quick Fixes</h2>
@@ -195,15 +220,19 @@
       <tr><td><b>Flashing Red LED on DNP</b></td><td>Flashing red means ribbon or paper issue: open the front hatch, tighten the ribbon spools (remove any slack), ensure the paper roll's scrap box is emptied, and snap the lever back firmly.</td></tr>
       <tr><td><b>Thin white border on edge</b></td><td>In DNP printing preferences, check <b>Overscan / Borderless</b> to ensure full-bleed printing is activated. If a thin line is still left on one side, open the booth's <b>Print settings &rarr; Edges (this printer)</b> and press <b>+</b> on that side.</td></tr>
       <tr><td><b>Printer says "Paused" or "Offline"</b></td><td>Unplug and re-plug the USB cable, or restart the DNP. Check Windows / Mac print queue to resume.</td></tr>
+      <tr><td><b>Android: the DNP isn't in the printer list</b></td><td>Check the app is 1.1.10 or newer, the printer is on, and the OTG adapter works (some cables only charge; try another one or a hub). Then tap <b>Refresh printer list</b>. If it only shows as an unknown USB printer, message us a screenshot.</td></tr>
+      <tr><td><b>Android: "Tap to allow USB access"</b></td><td>Tap the DNP in the list and tap <b>OK</b> in Android's pop-up. If the pop-up doesn't appear, unplug the USB cable and plug it back in.</td></tr>
+      <tr><td><b>Android: "Paper definition error"</b></td><td>The paper size picked in the booth doesn't match the paper in the printer. Choose the size that matches the paper loaded (4R for 4×6 media).</td></tr>
+      <tr><td><b>Android: "Paper end", "Ribbon end" or "Cover open"</b></td><td>Load a new paper roll or ribbon, or close the door firmly. Then print again.</td></tr>
     </table>
   </section>
 
   <section class="part" id="ipad">
-    <p class="kicker">iPad &amp; Tablet Operators</p>
-    <h2>Using DNP with an iPad / Tablet Booth</h2>
+    <p class="kicker">iPad · Laptop print station</p>
+    <h2>Using DNP with an iPad booth</h2>
     <div class="callout" style="background:var(--card); border:1px solid var(--line);">
-      <h3 style="color:var(--ink);">How to print from an iPad or Android tablet to a DNP (No AirPrint needed!)</h3>
-      <p style="margin:0 0 10px; color:var(--dim);">DNP printers do not natively have Apple AirPrint. But photobooth4u has a built-in <b>Laptop Print Station</b>:</p>
+      <h3 style="color:var(--ink);">How to print from an iPad to a DNP (No AirPrint needed!)</h3>
+      <p style="margin:0 0 10px; color:var(--dim);">DNP printers don't have Apple AirPrint, and an iPad can't drive a USB printer. Instead, photobooth4u has a built-in <b>Laptop Print Station</b>. Use it on an Android tablet too if your DNP is a DS80, DS820 or QW410. For the RX1, DS620 and DS40, <a href="#android">plug the DNP into the Android tablet</a> instead.</p>
       <ol style="margin:0; padding-left:20px; color:var(--dim);">
         <li style="margin-bottom:6px;">Plug the DNP printer into any laptop (Windows or Mac) via USB and set up its driver (Parts 1 and 2 above).</li>
         <li style="margin-bottom:6px;">On that laptop, start the <a href="/downloads/">Print Helper</a> so prints go out with no print pop-up.</li>
@@ -222,7 +251,7 @@
       </div>
       <a class="btn primary" href="https://m.me/roktetnachi" target="_blank" rel="noopener">Message us on Messenger →</a>
     </div>
-    photobooth4u · DNP Photo Printer Guide (RX1HS, DS620, DS40, QW410)
+    photobooth4u · DNP Photo Printer Guide (RX1HS, DS620, DS40, QW410) · Windows, Mac &amp; Android
   </footer>
 </main>
 

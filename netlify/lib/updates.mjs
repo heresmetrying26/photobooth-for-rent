@@ -167,6 +167,14 @@ export const NOTES = [
     ]
   },
   {
+    date: '2026-11-08', title: 'Android tablet: USB webcams that only work uncompressed (YUYV)', for: ['website'],
+    items: [
+      'The Android app (1.1.14) now tries the same size as uncompressed YUYV right after MJPEG, before it steps down to a much smaller size. Some webcams show no picture in MJPEG on a weak tablet port or hub but work in YUYV (for example 1280×720). Uncompressed video is limited by USB, so the frame rate is lower (often about 10 fps at 720p).',
+      'New under USB webcam preview: "Max YUYV" starts from the biggest uncompressed size the webcam lists. The Exact size list now shows every MJPEG and YUYV size, including bigger YUYV sizes (for a Logitech Brio on a fast USB port).',
+      'If a size is rejected or makes the webcam reset, the app now tries that size once more with the USB library\'s bandwidth fix, and remembers it for that webcam if it gives a picture.'
+    ]
+  },
+  {
     date: '2026-11-07', title: 'Android tablet: USB webcam that resets itself no longer stays black', for: ['website'],
     items: [
       'The Android app (1.1.12) remembers webcam sizes that make the webcam reset itself (a weak tablet port or unpowered hub) and skips them next time. If the webcam drops out while starting, the app waits for it to come back and continues with the next size.',

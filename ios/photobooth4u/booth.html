@@ -13584,6 +13584,7 @@
             <select class="cam-select" id="webcamPreviewRes">
               <option value="auto">Auto (best that works, up to 1080p)</option>
               <option value="max">Max (camera's full resolution)</option>
+              <option value="yuyv">Max YUYV (biggest uncompressed size, lower fps)</option>
               <option value="1080">1080p</option>
               <option value="720">720p</option>
               <option value="480">480p (smoothest, GIF / boomerang)</option>
@@ -19559,7 +19560,7 @@
       const webcamRes = (function () {
         let v = null; try { v = JSON.parse(localStorage.getItem(WEBCAM_RES_KEY) || 'null'); } catch (e) { }
         v = v || {};
-        return { preview: (['auto', 'max', '1080', '720', '480'].includes(v.preview) || /^x:\d+:\d+:\d+:\d+$/.test(String(v.preview))) ? v.preview : 'auto', photo: v.photo === 'max' ? 'max' : 'preview' };
+        return { preview: (['auto', 'max', 'yuyv', '1080', '720', '480'].includes(v.preview) || /^x:\d+:\d+:\d+:\d+$/.test(String(v.preview))) ? v.preview : 'auto', photo: v.photo === 'max' ? 'max' : 'preview' };
       })();
       function saveWebcamRes() { try { localStorage.setItem(WEBCAM_RES_KEY, JSON.stringify(webcamRes)); } catch (e) { } }
       // getUserMedia size for an external USB webcam (Android Path 1 or browser)
@@ -19567,7 +19568,7 @@
         const p = webcamRes.preview;
         const ex = /^x:(\d+):(\d+):(\d+):(\d+)$/.exec(String(p));
         if (ex) return { width: { ideal: +ex[2] }, height: { ideal: +ex[3] } };
-        if (p === 'max') return { width: { ideal: 3840 }, height: { ideal: 2160 } };
+        if (p === 'max' || p === 'yuyv') return { width: { ideal: 3840 }, height: { ideal: 2160 } };
         if (p === '720') return { width: { ideal: 1280 }, height: { ideal: 720 } };
         if (p === '480') return { width: { ideal: 640 }, height: { ideal: 480 } };
         return { width: { ideal: 1920 }, height: { ideal: 1080 } };
@@ -19579,7 +19580,7 @@
       }
       function exactModeLabel(v) {
         const g = String(v).split(':');
-        return (g[2] || '?') + '×' + (g[3] || '?') + ' ' + (g[1] === '6' ? 'MJPEG' : 'YUYV') + ' @' + (g[4] || '?') + ' fps';
+        return (g[2] || '?') + '×' + (g[3] || '?') + ' ' + (g[1] === '6' || g[1] === '7' ? 'MJPEG' : 'YUYV') + ' @' + (g[4] || '?') + ' fps';
       }
       function fillExactModes() {
         const sel = document.getElementById('webcamPreviewRes');

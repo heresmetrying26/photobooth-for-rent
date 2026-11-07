@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.99', date: '2026-11-07' },
   { version: '1.0.98', date: '2026-11-07' },
   { version: '1.0.97', date: '2026-11-07' },
   { version: '1.0.96', date: '2026-11-07' },
@@ -146,6 +147,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-07', title: 'Receipt printers: colour receipts print cleanly, stickers show, fewer lines', for: ['website', 'app'], app: '1.0.99',
+    items: [
+      'Colour receipts on a thermal printer now print like the black & white ones: the text stays solid black (before, Lightness greyed it and letters like the “1” in “1x SMILES” broke up), and the wall behind the guests, light clothes and faces keep their shading instead of turning white.',
+      'Print quality Best no longer washes out receipt photos: it still sharpens, but keeps the light greys.',
+      'Stickers on receipts print dark enough to see (a gold star or a pink bow used to come out almost blank).',
+      'Fewer lines across the photos: a thermal print is sent in pieces, and each piece now ends in white paper (the gap between photos) where the printer’s short stop cannot be seen. Works for Bluetooth, and for USB and Wi-Fi printers on the tablet. If you still see a line, choose Smooth + slow printing (4) in the smooth-print test.',
+      'Lightness for receipts now changes the photos only. Print the darkness test strip again to pick the level that suits your printer.'
+    ]
+  },
   {
     date: '2026-11-07', title: 'Check for updates by hand, cleaner receipt photos, stickers that match the filter', for: ['website', 'app'], app: '1.0.98',
     items: [

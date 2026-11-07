@@ -12251,8 +12251,26 @@
 
         var imgData = ctx.getImageData(0, 0, W, H).data;
 
-        for (var startY = 0; startY < H; startY += maxBandHeight) {
+        // Rows with no black dot. The printer stops for a moment between bands and that leaves a line across the picture
+        // (a band of 1024 rows ended right across the second photo of a receipt), so each band ends on two blank rows when
+        // there are some in its last three quarters: the stop then falls in white paper (the gap between photos) and
+        // cannot be seen. Bands never get bigger than asked, so the printer's buffer is no worse off.
+        var blank = new Uint8Array(H);
+        for (var ry = 0; ry < H; ry++) {
+          var white = 1;
+          for (var rx = 0, ri = ry * W * 4; rx < W; rx++, ri += 4) {
+            if (0.299 * imgData[ri] + 0.587 * imgData[ri + 1] + 0.114 * imgData[ri + 2] < 128) { white = 0; break; }
+          }
+          blank[ry] = white;
+        }
+
+        for (var startY = 0; startY < H; startY += bandH) {
           var bandH = Math.min(maxBandHeight, H - startY);
+          if (startY + bandH < H) {
+            for (var e = startY + bandH; e > startY + Math.max(8, bandH >> 2); e--) {
+              if (blank[e - 1] && blank[e]) { bandH = e - startY; break; }
+            }
+          }
           this._byte(GS, 0x76, 0x30, 0x00);
           this._byte(byteW & 0xFF, (byteW >> 8) & 0xFF);
           this._byte(bandH & 0xFF, (bandH >> 8) & 0xFF);
@@ -12400,6 +12418,9 @@
         var bOffset = (typeof brightness === 'number') ? brightness * 1.28 : ((typeof window !== 'undefined' && window._colorAdj && window._colorAdj.brightness) ? window._colorAdj.brightness * 1.28 : ((typeof colorAdj !== 'undefined' && colorAdj && colorAdj.brightness) ? colorAdj.brightness * 1.28 : 0));
         var n = dotW * dotH, lum = new Float32Array(n), x, y, i;
         for (i = 0; i < n; i++) lum[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+        // A black & white receipt layout has already given its photos their tone (lift + contrast, and Lightness): lifting the
+        // mid-tones again here washed faces out and turned light backgrounds and stickers white.
+        var lift = src && src._pbToneDone ? 1 : 0.8;
         if (q === 'best') {
           // A light sharpen (so faces and text stay crisp) and a gentle lift of the mid-tones (thermal dots print bigger than they are).
           var blur = new Float32Array(n);
@@ -12411,7 +12432,7 @@
           for (i = 0; i < n; i++) {
             var sh = lum[i] + 0.7 * (lum[i] - blur[i]);
             sh = Math.max(0, Math.min(255, sh));
-            lum[i] = 255 * Math.pow(sh / 255, 0.8);
+            lum[i] = lift === 1 ? sh : 255 * Math.pow(sh / 255, lift);
           }
         }
         var out = new Uint8Array(n);
@@ -12424,13 +12445,17 @@
           }
         } else {
           var curErr = new Float32Array(dotW + 4), nextErr = new Float32Array(dotW + 4), next2 = new Float32Array(dotW + 4), tmp;
+          // Atkinson drops a quarter of the error, so light greys go white: on a black & white receipt the wall behind the
+          // guests and light clothes vanished and faces floated on white. Those keep the receipt's own dots (Floyd-Steinberg,
+          // as on the screen and in the QR copy); Best still sharpens them.
+          var atk = q === 'best' && !(src && src._pbToneDone);
           for (y = 0; y < dotH; y++) {
-            if (q !== 'best') nextErr.fill(0);          // Atkinson keeps the carried-over rows
+            if (!atk) nextErr.fill(0);          // Atkinson keeps the carried-over rows
             for (x = 0; x < dotW; x++) {
               var l = lum[y * dotW + x] + curErr[x] + bOffset;
               var v = l < 128 ? 0 : 255, e = l - v;
               out[y * dotW + x] = v;
-              if (q === 'best') {
+              if (atk) {
                 // Atkinson: pass on 6/8 of the error to six neighbours; keeps highlights and shadows clean.
                 var e8 = e / 8;
                 curErr[x + 1] += e8; curErr[x + 2] += e8;
@@ -12445,7 +12470,7 @@
               }
             }
             tmp = curErr; curErr = nextErr;
-            if (q === 'best') { nextErr = next2; next2 = tmp; next2.fill(0); } else { nextErr = tmp; }
+            if (atk) { nextErr = next2; next2 = tmp; next2.fill(0); } else { nextErr = tmp; }
           }
         }
         for (i = 0; i < n; i++) { d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = out[i]; d[i * 4 + 3] = 255; }
@@ -24373,7 +24398,9 @@
           const py = y + i * (ph + gap);
           ctx.fillStyle = '#ffffff'; ctx.fillRect(M, py, inner, ph);
           if (shots[i]) drawImageCover(ctx, shots[i], M, py, inner, ph);
-          if (!color) ditherRegion(ctx, M, py, inner, ph);
+          // On a thermal roll the colour receipt prints like the black & white one: grey photos with the thermal tone and
+          // Lightness (else the wall, light clothes and faces went white and Lightness greyed the text into broken dots).
+          if (!color || receiptPrintGrey) ditherRegion(ctx, M, py, inner, ph);
         }
         ctx.fillStyle = '#000000';
         y += n * ph + (n - 1) * gap + 12;
@@ -24399,7 +24426,7 @@
         // The guest's stickers and the logo (a plain overlay frame would cover the receipt, so not that).
         // Black & white receipt: stickers become dots like the photos (grey when printing: the printer step makes the dots).
         const ov = overlay; overlay = null;
-        try { if (typeof drawDecorLayer === 'function') drawDecorLayer(ctx, W, H, color ? '' : (receiptPrintGrey ? 'grey' : 'dots')); } finally { overlay = ov; }
+        try { if (typeof drawDecorLayer === 'function') drawDecorLayer(ctx, W, H, receiptPrintGrey ? 'grey' : (color ? '' : 'dots')); } finally { overlay = ov; }
         return targetCanvas;
       }
 
@@ -25856,7 +25883,9 @@
           rx.drawImage(src, 0, 0, rc.width, rc.height);
           // A black & white receipt layout already took the printer's Lightness when its photos were turned into dots
           // (ditherRegion); adding it again here would grey the black dots until a high setting wipes them out.
-          try { const ld = layoutDef(currentLayout); if (ld.kind === 'receipt' && !ld.color) rc._pbToneDone = true; } catch (e) { }
+          // Receipt layouts (black & white or colour) already put the Lightness into their photos above; adding it to the whole
+          // page again would grey the black text and the printer would break it into dots ("1x" printed as "_x").
+          try { const ld = layoutDef(currentLayout); if (ld.kind === 'receipt') rc._pbToneDone = true; } catch (e) { }
           return rc;
         }
         // A sideways (landscape) layout on portrait paper prints turned 90°.
@@ -27679,7 +27708,9 @@
       function refreshGuestPrintBtn() {
         const pq = document.getElementById('printQuickBtn');
         if (!pq) return;
-        const on = state === 'result' && !printSection.classList.contains('hidden') && printPrefs.guestBtn && !!printSize && !(typeof noPrintSession === 'function' && noPrintSession());
+        // QR pop-up + "Print first before showing QR": the photo is printed by itself before the QR shows, so no Print button.
+        const printedFirst = qrPopOn && printPrefs.printFirst && willAutoPrint();
+        const on = state === 'result' && !printSection.classList.contains('hidden') && printPrefs.guestBtn && !!printSize && !(typeof noPrintSession === 'function' && noPrintSession()) && !printedFirst;
         pq.hidden = !on;
         if (!on) { copiesSheet.hidden = true; return; }
         const lim = printLimits(), left = maxCopies(printSize), out = left < 1;
@@ -40265,7 +40296,9 @@
         var im = x.getImageData(0, 0, c.width, c.height), p = im.data, n = c.width * c.height, i, fc = [0, 0, 0];
         if (tone === 'grey' || dots) {
           var g = new Float32Array(n);
-          for (i = 0; i < n; i++) g[i] = 0.299 * p[i * 4] + 0.587 * p[i * 4 + 1] + 0.114 * p[i * 4 + 2];
+          // Darkened (gamma 2.2): a gold star or a pastel sticker is a light grey, which a thermal printer leaves almost blank.
+          // White stays white and black stays black, so the sticker keeps its shape and highlights.
+          for (i = 0; i < n; i++) g[i] = 255 * Math.pow((0.299 * p[i * 4] + 0.587 * p[i * 4 + 1] + 0.114 * p[i * 4 + 2]) / 255, 2.2);
           if (dots) {                                                      // the same dots as the photos (Floyd-Steinberg)
             var w = c.width;
             for (i = 0; i < n; i++) {

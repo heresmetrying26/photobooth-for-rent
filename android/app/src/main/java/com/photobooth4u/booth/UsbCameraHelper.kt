@@ -115,6 +115,7 @@ class UsbCameraHelper(private val ctx: Context) {
     private val canonNew = ArrayList<LongArray>()      // new files: { handle, event, format, size }
     private var liveAt = 0L
     private var keepAt = 0L
+    private var recoverNext = false      // the booth asked for a clean start: the Canon leaves remote mode before it is switched on again
     private var pollAt = -1L
     private var gotFrame = false
 
@@ -247,7 +248,7 @@ class UsbCameraHelper(private val ctx: Context) {
             method == "GET" && path == "/printer/discover" -> json(out, printerDiscoverJson())
             method == "POST" && path == "/print" -> printJson(out, body)
             method == "GET" && path == "/camera" -> json(out, listJson())
-            method == "POST" && path == "/camera/open" -> json(out, openCamera())
+            method == "POST" && path == "/camera/open" -> json(out, openCamera(query.contains("fresh=1")))
             method == "POST" && path == "/camera/live" -> { setLive(!query.contains("on=0")); json(out, JSONObject()) }
             method == "GET" && path == "/camera/frame" -> {
                 val f = frame()
@@ -577,10 +578,13 @@ class UsbCameraHelper(private val ctx: Context) {
         closeUsb()
     }
 
-    private fun openCamera(): JSONObject = synchronized(lock) {
+    // fresh: the booth lost the picture. A camera that went to sleep can still be listed and answer "alive" with a dead
+    // session, so close it and connect again (leaving remote mode first) instead of trusting it.
+    private fun openCamera(fresh: Boolean = false): JSONObject = synchronized(lock) {
+        if (fresh) recoverNext = true
         if (conn != null) {
             val d = dev
-            if (d != null && usb.deviceList.containsKey(d.deviceName)) {
+            if (!fresh && d != null && usb.deviceList.containsKey(d.deviceName)) {
                 try { alive(); return@synchronized infoJson() } catch (_: Exception) { }
             }
             closeCamera()
@@ -985,6 +989,14 @@ class UsbCameraHelper(private val ctx: Context) {
     private fun prepareCanon() {
         setupNote = ""
         eosVals.clear(); canonNew.clear(); gotFrame = false; pollAt = -1L
+        if (recoverNext) {
+            // The last session ended without a goodbye: leave remote mode before going in again.
+            recoverNext = false
+            try { op(0x9115, 0) } catch (e: CamErr) { throw e } catch (_: Exception) { }
+            try { op(0x9114, 0) } catch (e: CamErr) { throw e } catch (_: Exception) { }
+            log("Reset the camera's remote mode before connecting")
+            Thread.sleep(600)
+        }
         val r = opRetry(0x9114, 1)         // remote mode on
         log("SetRemoteMode: ${hex(r)}")
         val r2 = opRetry(0x9115, 1)        // send events when asked
@@ -1002,7 +1014,8 @@ class UsbCameraHelper(private val ctx: Context) {
     /** Every few seconds: read news (keeps the camera's list short) and keep it awake. */
     private fun canonKeep() {
         if (pollAt < 0 || now() - pollAt > 2000) canonPoll()
-        if (now() - keepAt > 20000 && has(0x911D)) { op(0x911D); keepAt = now() }
+        // Not only when the camera lists KeepDeviceOn: some older EOS (60D) don't list it but still stay awake when it is sent.
+        if (now() - keepAt > 10000) { try { op(0x911D) } catch (e: CamErr) { throw e } catch (_: Exception) { }; keepAt = now() }
     }
 
     private fun canonLiveOn() {
@@ -1011,6 +1024,8 @@ class UsbCameraHelper(private val ctx: Context) {
         val mode = eosVals[0xD1B1]
         if (mode != null && mode != 1L) setEos(0xD1B1, 1)            // live view mode
         val r = setEos(0xD1B0, 2)                                    // live view to the computer (mirror up)
+        // Still saving the last photo: not an error, the next frame asks again.
+        if (r != OK && !started && (r == BUSY || r == NOTREADY)) { live = false; log("Live view: camera still busy (${hex(r)}), will ask again"); return }
         if (r != OK && !started)
             throw CamErr("LIVEVIEW", "The camera refused live view (${hex(r)}). On the camera: Menu, Live View shoot: Enable; close the menu; mode dial on P, Tv, Av or M. Then try again.")
         live = true; gotFrame = false; liveAt = now()
@@ -1037,10 +1052,11 @@ class UsbCameraHelper(private val ctx: Context) {
     }
 
     private fun canonFrame(): ByteArray? {
-        if (!live) canonLiveOn()
+        if (!live) { canonLiveOn(); if (!live) { Thread.sleep(400); return null } }     // camera still busy: no picture yet, ask again
         val t0 = now()
         var last = 0
         var kicked = false
+        var rearmed = false
         while (now() - t0 < 3000) {
             canonKeep()
             val r = opRead(0x9153, 0x00100000)
@@ -1048,7 +1064,17 @@ class UsbCameraHelper(private val ctx: Context) {
             if (r.code == OK) {
                 val j = eosJpeg(r.data)
                 if (j != null) { gotFrame = true; return j }
-            } else if (r.code != BUSY && r.code != NOTREADY) break
+            } else if (r.code != BUSY && r.code != NOTREADY) {
+                // The camera ended live view by itself (heat, its time limit, sleep): switch it back on once.
+                if (gotFrame && !rearmed) {
+                    rearmed = true
+                    log("Live view was stopped by the camera (${hex(r.code)}): switching it back on")
+                    try { canonLiveOn() } catch (e: CamErr) { if (e.code == "GONE") throw e } catch (_: Exception) { }
+                    Thread.sleep(150)
+                    continue
+                }
+                break
+            }
             // Some models leave live view after a photo: switch it back on once.
             if (!kicked && now() - t0 > 1200 && now() - liveAt > 4000) { kicked = true; setEos(0xD1B0, 2) }
             Thread.sleep(50)

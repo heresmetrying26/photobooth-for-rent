@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.103', date: '2026-11-08' },
   { version: '1.0.102', date: '2026-11-07' },
   { version: '1.0.101', date: '2026-11-07' },
   { version: '1.0.100', date: '2026-11-07' },
@@ -150,6 +151,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-08', title: 'Canon over USB: no more "Camera disconnected" between photos', for: ['website', 'app'], app: '1.0.103',
+    items: [
+      'A Canon (for example the 60D) is still saving the photo when the next live view is asked for, and refuses it for a moment. The booth used to treat that as a lost camera and show "Camera disconnected. Reconnecting…" between shots even though the photo was saved. It now waits (up to 45 seconds), asks the camera for live view again every few seconds, and shows the last picture meanwhile.',
+      'While a photo is being taken the booth no longer queues live view requests behind it, and a request that only timed out while the camera was busy saving no longer counts as a lost camera. A cable pulled or a camera switched off is still noticed at once.',
+      'The camera log now records "live-back" with how long live view took to return after each photo. Same fix on the Android tablet (app 1.1.15).'
+    ]
+  },
   {
     date: '2026-11-07', title: 'Save power on the welcome screen: dim, then turn the display off', for: ['website', 'app'], app: '1.0.102',
     items: [

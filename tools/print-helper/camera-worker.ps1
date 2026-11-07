@@ -1002,6 +1002,8 @@ namespace Pb4uCam
             if (Has(0x9151)) { uint ri = OpRetry(0x9151); Log("InitiateViewfinder: " + H(ri)); started = ri == Ptp.OK; }
             if (eosVals.ContainsKey(0xD1B1) && eosVals[0xD1B1] != 1) SetEos(0xD1B1, 1);   // live view mode
             uint r = SetEos(0xD1B0, 2);   // live view to the computer (mirror up)
+            // Still saving the last photo (a RAW + JPEG on a slow card can take several seconds): not an error, the next frame asks again.
+            if (r != Ptp.OK && !started && (r == Ptp.BUSY || r == NOTREADY)) { live = false; Log("Live view: camera still busy (" + H(r) + "), will ask again"); return; }
             if (r != Ptp.OK && !started)
                 throw new CamException("LIVEVIEW The camera refused live view (" + H(r) + "). On the camera: Menu, Live View shoot: Enable; close the menu; mode dial on P, Tv, Av or M. Then try again.");
             live = true; gotFrame = false; liveSw.Restart();
@@ -1051,7 +1053,7 @@ namespace Pb4uCam
 
         static byte[] CanonFrame()
         {
-            if (!live) CanonLiveOn();
+            if (!live) { CanonLiveOn(); if (!live) { Thread.Sleep(400); return null; } }   // camera still busy: no picture yet, ask again
             var sw = Stopwatch.StartNew();
             uint last = 0;
             bool kicked = false, rearmed = false;

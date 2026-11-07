@@ -20071,7 +20071,8 @@
         camera: null, name: '', active: false, gen: 0, libGen: 0, vfOn: false, initing: null,
         canvas: null, ctx: null, stream: null, hasFrame: false, lastErr: null,
         lastFrameAt: 0, shooting: false, stallShown: false, devId: '',
-        freshNext: false, dropWhy: '',                           // helper cameras: after a drop the next connect starts a clean session (a camera that slept keeps a dead one)
+        frameAt: 0, shotAt: 0, kickAt: 0,                        // real time of the last picture / of the last photo (while live view is still to come back) / of the last "live view again" request
+        freshNext: false, dropWhy: '',                          // helper cameras: after a drop the next connect starts a clean session (a camera that slept keeps a dead one)
         shutterLagMs: 0, graceUntil: 0                           // learned delay from shutter command to exposure; live view may pause until graceUntil after a photo
       };
 
@@ -20588,6 +20589,9 @@
         const fast = !usbCam.viaHelper;   // the Windows helper keeps its own, slower timing
         usbCam.lastFrameAt = Date.now();
         while (usbCam.active && usbCam.gen === gen && usbCam.camera) {
+          // While the camera takes and sends a photo, don't queue live view requests behind it: they would wait out the whole
+          // photo and could time out ("Camera disconnected" between shots even though the photo was saved).
+          if (usbCam.shooting && usbCam.viaHelper) { await new Promise(r => setTimeout(r, 100)); continue; }
           try {
             const blob = await usbCam.camera.capturePreviewAsBlob();
             const bmp = await createImageBitmap(blob);
@@ -20598,6 +20602,8 @@
             usbCam.ctx.drawImage(bmp, 0, 0); bmp.close();
             usbCam.hasFrame = true; fails = 0;
             usbCam.lastFrameAt = Date.now();
+            usbCam.frameAt = usbCam.lastFrameAt;   // the real time of the last picture (lastFrameAt is held back during the after-photo grace)
+            if (usbCam.shotAt) { usbLog('live-back', { afterShotMs: usbCam.frameAt - usbCam.shotAt, camera: usbCam.name }); usbCam.shotAt = 0; }
             usbCam.kicked = false;
             if (usbCam.stallShown) { usbCam.stallShown = false; cameraError.style.display = 'none'; usbLog('stall-over', { camera: usbCam.name }); }
             await new Promise(r => setTimeout(r, 30));
@@ -20605,7 +20611,9 @@
             // This loop was stopped meanwhile (the camera was replaced or reported lost): not a new failure.
             if (usbCam.gen !== gen || !usbCam.active) return;
             usbCam.lastErr = err;
-            if (usbIsCritical(err)) { usbDead(err, 'critical'); return; }
+            // A request that merely timed out while a photo was being taken or just after it (the camera is busy saving) is not a lost camera.
+            const busyTimeout = usbCam.viaHelper && err && err.code === 'TIMEOUT' && (usbCam.shooting || Date.now() < usbCam.graceUntil);
+            if (usbIsCritical(err) && !busyTimeout) { usbDead(err, 'critical'); return; }
             fails++;
             if (fails === 1 || fails % 10 === 0) usbLog('frame-fail', Object.assign({ fails: fails, sinceFrameMs: Date.now() - usbCam.lastFrameAt }, usbErrInfo(err)));
             // Before the first frame a camera may need a while to start live view: keep the patient timing then.
@@ -20615,9 +20623,15 @@
               if (fails >= 2 && (await usbDevicePresent()) === false) { if (usbCam.gen === gen) usbDead(err, 'unplugged'); return; }
               if (usbCam.gen !== gen) return;
             }
-            if (fails >= 20 || (quick && Date.now() - usbCam.lastFrameAt > USB_STALL_MS)) { usbDead(err, 'giveup'); return; }
+            if ((fails >= 20 && Date.now() >= usbCam.graceUntil) || (quick && Date.now() - usbCam.lastFrameAt > USB_STALL_MS)) { usbDead(err, 'giveup'); return; }
             if (quick ? (fails === 3 || fails === 8) : (fails === 4 || fails === 12)) {
-              try { await usbViewfinderOn(); } catch (e) { if (usbCam.gen === gen) usbDead(e, 'viewfinder'); return; }
+              // Right after a photo the camera may refuse live view while it saves: a plain refusal then is not a lost camera.
+              try { await usbViewfinderOn(); }
+              catch (e) {
+                if (usbCam.gen !== gen) return;
+                if (usbIsCritical(e) || Date.now() >= usbCam.graceUntil) { usbDead(e, 'viewfinder'); return; }
+                await new Promise(r => setTimeout(r, 1000));
+              }
               if (usbCam.gen !== gen) return;
             } else {
               await new Promise(r => setTimeout(r, quick ? USB_RETRY_MS : 1000));
@@ -20632,7 +20646,15 @@
         if (!usbCam.active || !usbCam.camera || !usbCam.hasFrame || usbCam.shooting) return;
         if (document.hidden) { usbCam.lastFrameAt = Date.now(); return; }
         // Right after a photo the camera takes a few seconds to bring live view back: not a stall, so no "Reconnecting".
-        if (Date.now() < usbCam.graceUntil) { usbCam.lastFrameAt = Math.max(usbCam.lastFrameAt, Date.now() - 1000); return; }
+        if (Date.now() < usbCam.graceUntil) {
+          usbCam.lastFrameAt = Math.max(usbCam.lastFrameAt, Date.now() - 1000);
+          // A Canon that is still saving the photo refuses live view for a while: keep asking every 4 s until it comes back.
+          if (usbCam.viaHelper && Date.now() - (usbCam.frameAt || 0) > 4000 && Date.now() - (usbCam.kickAt || 0) > 4000) {
+            usbCam.kickAt = Date.now();
+            usbViewfinderOn().catch(function () { });
+          }
+          return;
+        }
         const gap = Date.now() - usbCam.lastFrameAt, helper = usbCam.viaHelper;
         if (helper && gap > USB_HELPER_KICK_MS && !usbCam.kicked) {
           usbCam.kicked = true;
@@ -21383,7 +21405,7 @@
       // goes in first (so a failed shot never leaves a gap), then the camera's
       // real photo replaces it, cropped like the live view and sized for print.
       const USB_CAPTURE_MAX_MS = 25000;   // longest wait for the camera's photo before the live view frame is used (a photo this late is the wrong moment anyway)
-      const USB_GRACE_MS = 10000;         // after a photo, live view may take this long to come back without "Reconnecting"
+      const USB_GRACE_MS = 45000;         // after a photo, live view may take this long to come back without "Reconnecting" (a Canon saving a big file can take a while; a real unplug is still noticed at once)
       const USB_LEAD_MAX = 1500;          // the shutter is fired at most this much before "Pose"
       const USB_SHOT_MAX = 3000;   // longest side in px: a full 4R box at 300 dpi even after the box's crop
       // After a photo (helper cameras): hide any "Reconnecting" for a while, ask for live view again at once (a Canon leaves
@@ -21391,6 +21413,7 @@
       function usbAfterShot() {
         if (!usbCam.viaHelper) return;
         usbCam.graceUntil = Date.now() + USB_GRACE_MS;
+        usbCam.shotAt = Date.now(); usbCam.frameAt = 0; usbCam.kickAt = 0;
         if (usbCam.stallShown) { usbCam.stallShown = false; cameraError.style.display = 'none'; }
         try { usbCam.kicked = true; Promise.resolve(usbViewfinderOn()).catch(function () { }); } catch (e) { }
         fetch(CAM_HELPER + '/camera', { cache: 'no-store', signal: AbortSignal.timeout(8000) }).then(r => r.json()).then(j => {

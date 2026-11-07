@@ -149,6 +149,15 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-07', title: 'Android tablet: print straight to a DNP photo printer over USB (beta)', for: ['website'],
+    items: [
+      'The Android app (1.1.10) now prints to a DNP DS-RX1 / RX1HS, DS620 / DS620A or DS40 plugged into the tablet with a USB OTG cable. No driver, no laptop, and it works offline.',
+      '4×6, 3.5×5, 5×7, 6×8 and 6×9, to match the paper loaded, with a Glossy or Matte finish. Strip layouts on 4×6 paper are cut into two 2×6 strips by the printer.',
+      'Paper end, ribbon end, an open door or the wrong paper show as a message on the booth.',
+      'This is a beta: run a Test print before your event. See the DNP printing guide for the steps.'
+    ]
+  },
+  {
     date: '2026-11-07', title: '360 Desk: Redrawn Effects (Fire, Diamonds, Bats, Lightning and More)', for: ['website', 'app'], app: '1.0.100',
     items: [
       'Fire & Hot Embers now has real flames along the bottom and glowing embers in every shade rising up the frame, not plain red and orange circles.',

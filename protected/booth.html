@@ -14866,6 +14866,12 @@
               <label class="switch-row" id="borderlessRow" style="margin:8px 0 2px;"><span>Borderless, no
                   trimming</span><input type="checkbox" id="borderlessToggle"></label>
               <p class="panel-hint" id="borderlessHint" style="margin:2px 0 8px;"></p>
+              <div id="edgeAdjBox">
+                <p class="sub-label" style="margin:10px 0 6px;">Edges (this printer)</p>
+                <div id="edgeAdjGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 12px;max-width:380px;"></div>
+                <p class="panel-hint" id="edgeAdjHint" style="margin:4px 0 6px;"></p>
+                <button type="button" class="action-btn" id="edgeTestBtn" style="width:auto;margin:0 0 6px;">Print edge test</button>
+              </div>
               <div style="display:flex;gap:10px;align-items:center;margin:6px 0 8px;">
                 <img id="ppThumb" alt="How the page will look" hidden
                   style="max-height:140px;border:1px solid #bbb;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25);">
@@ -25557,8 +25563,124 @@
           }
         } catch (e) { }
         borderlessHint.textContent = hint;
+        try { refreshEdgeAdjUI(); } catch (e) { }
         schedulePrintThumb();
       }
+      // Edges (this printer): − / + for each side of the picture, 0.5 mm a step.
+      const EDGE_SIDES = [['t', 'Top'], ['b', 'Bottom'], ['l', 'Left'], ['r', 'Right']];
+      function refreshEdgeAdjUI() {
+        const grid = document.getElementById('edgeAdjGrid');
+        if (!grid) return;
+        const e = printPrefs.edges = cleanEdges(printPrefs.edges);
+        const fmt = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1) + ' mm';
+        if (!grid.children.length) {
+          EDGE_SIDES.forEach(([k, name]) => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;gap:6px;';
+            row.innerHTML = '<span style="flex:1;min-width:52px;">' + name + '</span>'
+              + '<button type="button" class="print-size-btn" data-edge="' + k + '" data-step="-0.5" aria-label="' + name + ': picture out by 0.5 mm" style="min-width:38px;margin:0;">−</button>'
+              + '<span data-edgeval="' + k + '" style="min-width:64px;text-align:center;font-variant-numeric:tabular-nums;"></span>'
+              + '<button type="button" class="print-size-btn" data-edge="' + k + '" data-step="0.5" aria-label="' + name + ': picture in by 0.5 mm" style="min-width:38px;margin:0;">+</button>';
+            grid.appendChild(row);
+          });
+          const reset = document.createElement('button');
+          reset.type = 'button'; reset.className = 'print-size-btn'; reset.id = 'edgeAdjReset'; reset.textContent = 'Reset to 0';
+          reset.style.cssText = 'justify-self:start;margin:0;';
+          grid.appendChild(reset);
+        }
+        EDGE_SIDES.forEach(([k]) => { const s = grid.querySelector('[data-edgeval="' + k + '"]'); if (s) s.textContent = fmt(e[k]); });
+        const reset = document.getElementById('edgeAdjReset');
+        if (reset) reset.hidden = !(e.t || e.b || e.l || e.r);
+        document.getElementById('edgeAdjHint').textContent = 'The preview shows the page the app sends. A borderless printer then enlarges it a little, which the preview cannot show, so use Print edge test: it prints a scale on every side, and the first bar you can see on a side is the number to set there. A side cut off: press +. A thin white line: press −. Each press is 0.5 mm.';
+      }
+      // Edge test sheet: on every side a row of bars, each 0.5 mm longer than the one before, starting at the paper edge.
+      // The printer trims some of them; the first bar still visible on a side carries the Edges value for that side.
+      // Drawn the way the layout prints (a sideways layout is turned onto the paper like buildPrintCanvas does), so
+      // Top / Bottom / Left / Right match the guests' prints. Sent without the Edges settings, through the same printer path.
+      function edgeTestSheet(paper, printerName) {
+        let sideways = false;
+        try { const s = document.createElement('canvas'); composeCanvas(currentLayout, s, shotCanvases); sideways = (s.width > s.height) !== (paper.w > paper.h); } catch (e) { sideways = false; }
+        const PW = Math.round(paper.w / 25.4 * PRINT_DPI), PH = Math.round(paper.h / 25.4 * PRINT_DPI);
+        const W = sideways ? PH : PW, H = sideways ? PW : PH;
+        const mmW = sideways ? paper.h : paper.w, ppm = W / mmW;
+        const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+        const g = cv.getContext('2d');
+        g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+        const sides = [['TOP', 0, 0, 0, W], ['RIGHT', W, 0, Math.PI / 2, H], ['BOTTOM', W, H, Math.PI, W], ['LEFT', 0, H, -Math.PI / 2, H]];
+        sides.forEach(([name, tx, ty, rot, len]) => {
+          g.save(); g.translate(tx, ty); g.rotate(rot);
+          const barW = 3 * ppm, gap = 1.6 * ppm, n = 12, rowW = n * barW + (n - 1) * gap, x0 = (len - rowW) / 2;
+          for (let i = 0; i < n; i++) {
+            const x = x0 + i * (barW + gap), depth = (i + 1) * 0.5 * ppm;
+            g.fillStyle = i % 2 ? '#c2185b' : '#1565c0';
+            g.fillRect(x, 0, barW, depth);
+            g.fillStyle = '#000'; g.textAlign = 'center'; g.textBaseline = 'top';
+            g.font = '600 ' + Math.round(2.2 * ppm) + 'px sans-serif';
+            g.fillText(String(i * 0.5), x + barW / 2, 7 * ppm);
+          }
+          // a thin full-length line at the edge, so a white gap is easy to spot
+          g.fillStyle = '#000'; g.fillRect(0, 0, len, Math.max(1, 0.15 * ppm));
+          g.font = '700 ' + Math.round(3 * ppm) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
+          g.fillText(name, len / 2, 11 * ppm);
+          g.restore();
+        });
+        g.fillStyle = '#000'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        const lines = [
+          ['700', 5, 'Edge test'],
+          ['400', 2.6, (printerName || '') + ' · ' + paper.name],
+          ['400', 2.4, 'On each side, find the first coloured bar you can see.'],
+          ['400', 2.4, 'Its number is how many mm the printer cuts off there.'],
+          ['400', 2.4, 'In Print settings > Edges, set that side to + that number.'],
+          ['400', 2.4, 'White between the paper edge and the bars instead? Set that side to −,'],
+          ['400', 2.4, 'about as wide as the white (each bar is 0.5 mm longer than the last).']
+        ];
+        let y = H / 2 - 16 * ppm;
+        lines.forEach(([w, mm, t], i) => { g.font = w + ' ' + Math.round(mm * ppm) + 'px sans-serif'; g.fillText(t, W / 2, y, W - 40 * ppm); y += (i === 0 ? 8 : 4.6) * ppm; });
+        if (!sideways) { cv._pbEdgeDone = true; return cv; }
+        const r = document.createElement('canvas'); r.width = PW; r.height = PH;
+        const rx = r.getContext('2d'); rx.translate(r.width, 0); rx.rotate(Math.PI / 2); rx.drawImage(cv, 0, 0);
+        r._pbEdgeDone = true;
+        return r;
+      }
+      let edgeTesting = false;
+      document.getElementById('edgeTestBtn').addEventListener('click', async () => {
+        if (edgeTesting) return;
+        if (!printSize || isReceiptPaper(printSize)) { showToast('Choose a photo paper size first.', 3500); return; }
+        const paper = paperFor(printSize);
+        edgeTesting = true;
+        try {
+          try { wifiRelink(); wifiSyncForSize(); } catch (e) { }
+          const pname = printerFor(printSize);
+          if (useStation()) { await sendToStation([edgeTestSheet(paper, 'Print station')], paper, 1); showToast('Edge test sent to the print station.', 4500); return; }
+          if (helperOn && pname) {
+            const ok = await printViaHelper([edgeTestSheet(paper, pname)], paper, pname);
+            if (ok) showToast('Edge test sent to ' + pname + '. Read the first bar you can see on each side, then set Edges.', 7000);
+            return;
+          }
+          const wf = wifiPrinter;
+          if (wf && !wf.dialog && wifiNetAvailable()) {
+            await printViaWifi([edgeTestSheet(paper, wf.name)], paper, wf, wifiOpts(wf));
+            showToast('Edge test sent to ' + wf.name + '. Read the first bar you can see on each side, then set Edges.', 7000);
+            return;
+          }
+          showToast('Choose the printer for ' + paper.name + ' first, then print the edge test.', 5000);
+        } catch (e) {
+          showToast('Edge test failed: ' + (e.message || e), 6000);
+        } finally { edgeTesting = false; }
+      });
+      document.getElementById('edgeAdjGrid').addEventListener('click', (ev) => {
+        const b = ev.target.closest('button');
+        if (!b) return;
+        if (b.id === 'edgeAdjReset') printPrefs.edges = cleanEdges({});
+        else {
+          const k = b.dataset.edge, e = cleanEdges(printPrefs.edges);
+          if (!k) return;
+          e[k] = e[k] + Number(b.dataset.step || 0);
+          printPrefs.edges = cleanEdges(e);
+        }
+        printPrefsChanged();
+        refreshEdgeAdjUI();
+      });
       photoSizeRow.addEventListener('click', (e) => {
         const b = e.target.closest('.print-size-btn');
         if (!b) return;
@@ -25673,7 +25795,8 @@
           return rc;
         }
         // A sideways (landscape) layout on portrait paper prints turned 90°.
-        if (src.width > src.height !== paper.w > paper.h) {
+        const turned = src.width > src.height !== paper.w > paper.h;
+        if (turned) {
           const r = document.createElement('canvas'); r.width = src.height; r.height = src.width;
           const rx = r.getContext('2d'); rx.translate(r.width, 0); rx.rotate(Math.PI / 2); rx.drawImage(src, 0, 0);
           src = r;
@@ -25681,6 +25804,7 @@
         const c = document.createElement('canvas');
         c.width = Math.round(paper.w / 25.4 * PRINT_DPI);
         c.height = Math.round(paper.h / 25.4 * PRINT_DPI);
+        c._pbTurned = turned;           // turned 90° clockwise: the Edges settings follow the picture, not the sheet
         const ctx = c.getContext('2d');
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, c.width, c.height);
@@ -25717,7 +25841,14 @@
       const MAX_COPIES = 10;
       const PRINT_TXT = { txtPrint: 'Print', txtPrinting: 'Printing, please hold…', txtCopies: 'How many copies?', txtLimit: 'That’s all the prints for this session' };
       // Saved with the setup (every device on the code gets them).
-      let printPrefs = { guestBtn: true, auto: false, printFirst: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'normal', printerQuality: 'best', voucherPrinter: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
+      let printPrefs = { guestBtn: true, auto: false, printFirst: false, copies: 1, guestCopies: false, guestReq: false, preview: true, fit: 'auto', photoSize: '', borderless: false, thermalQuality: 'normal', printerQuality: 'best', edges: { t: 0, b: 0, l: 0, r: 0 }, voucherPrinter: false, txtPrint: '', txtPrinting: '', txtCopies: '', txtLimit: '' };
+      // Edges (per printer), in mm: + moves the picture in from that edge (for a printer that cuts it off), − moves it out (for a white line).
+      const EDGE_MAX = 10, EDGE_MIN = -5;
+      function cleanEdges(e) {
+        e = e && typeof e === 'object' ? e : {};
+        const v = (x) => { x = Math.round((Number(x) || 0) * 2) / 2; return Math.max(EDGE_MIN, Math.min(EDGE_MAX, x)); };
+        return { t: v(e.t), b: v(e.b), l: v(e.l), r: v(e.r) };
+      }
       function printTxt(k) { return (printPrefs[k] || '').trim() || PRINT_TXT[k]; }
       function cleanPrintPrefs(p) {
         p = p && typeof p === 'object' ? p : {};
@@ -25729,6 +25860,7 @@
           photoSize: typeof p.photoSize === 'string' && /^[0-9A-Za-z.]{1,12}$/.test(p.photoSize) ? p.photoSize : '', borderless: !!p.borderless,
           thermalQuality: ['best', 'normal', 'draft'].includes(p.thermalQuality) ? p.thermalQuality : 'normal',
           printerQuality: ['best', 'normal', 'draft'].includes(p.printerQuality) ? p.printerQuality : 'best',
+          edges: cleanEdges(p.edges),
           voucherPrinter: !!p.voucherPrinter,
           txtPrint: txt(p.txtPrint, 24), txtPrinting: txt(p.txtPrinting, 60), txtCopies: txt(p.txtCopies, 40), txtLimit: txt(p.txtLimit, 70)
         };
@@ -28232,6 +28364,7 @@
       // Lightness and colour correction, applied once to the page that goes to the printer and to the print preview.
       // Every page is a fresh canvas, so it is changed in place. The camera, the screen and the digital copies are untouched.
       function printAdjust(c) {
+        try { edgeAdjust(c); } catch (e) { }
         if (!c || c._pbToneDone || !hasColorAdj()) return c;
         var ctx = c.getContext('2d'), w = c.width, h = c.height;
         if (!w || !h) return c;
@@ -28243,6 +28376,31 @@
         return c;
       }
       function printAdjustAll(pages) { (pages || []).forEach(printAdjust); return pages; }
+      // Edges (Print settings, per printer): the page is redrawn so the picture starts that many mm in from each edge
+      // (or past it, for a minus value). For a printer that trims a side, or leaves a white line there. Receipts are left alone.
+      function edgeAdjust(c) {
+        var e = cleanEdges(printPrefs.edges);
+        if (!c || c._pbEdgeDone || !(e.t || e.b || e.l || e.r)) return c;
+        if (!printSize || isReceiptPaper(printSize)) return c;
+        var paper = paperFor(printSize), w = c.width, h = c.height;
+        if (!paper || !w || !h) return c;
+        var ppm = Math.max(w, h) / Math.max(paper.w, paper.h);          // page pixels per mm
+        // A sideways layout turned 90° clockwise onto the sheet: its top is on the sheet's right, its left on the sheet's top.
+        var T = e.t, R = e.r, B = e.b, L = e.l;
+        if (c._pbTurned) { T = e.l; R = e.t; B = e.r; L = e.b; }
+        var x = L * ppm, y = T * ppm, dw = w - (L + R) * ppm, dh = h - (T + B) * ppm;
+        if (dw < w * 0.5 || dh < h * 0.5) return c;
+        var tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+        tmp.getContext('2d').drawImage(c, 0, 0);
+        var ctx = c.getContext('2d');
+        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(tmp, x, y, dw, dh);
+        ctx.restore();
+        c._pbEdgeDone = true;
+        return c;
+      }
 
       function reapplyFiltersToShots() {
         if (!Array.isArray(shotCanvases)) return;
@@ -28338,7 +28496,7 @@
       function savePrintOptsForPrinter() {
         try {
           var k = liveKey();
-          printOptsMap[k] = { fit: printPrefs.fit || 'auto', photoSize: printPrefs.photoSize || '', borderless: !!printPrefs.borderless, thermalQuality: printPrefs.thermalQuality || 'normal', printerQuality: printPrefs.printerQuality || 'best' };
+          printOptsMap[k] = { fit: printPrefs.fit || 'auto', photoSize: printPrefs.photoSize || '', borderless: !!printPrefs.borderless, thermalQuality: printPrefs.thermalQuality || 'normal', printerQuality: printPrefs.printerQuality || 'best', edges: cleanEdges(printPrefs.edges) };
           saveProfileMaps();
         } catch (e) { }
       }
@@ -28348,6 +28506,7 @@
           printPrefs.fit = o.fit || 'auto'; printPrefs.photoSize = o.photoSize || ''; printPrefs.borderless = !!o.borderless;
           printPrefs.thermalQuality = ['best', 'normal', 'draft'].indexOf(o.thermalQuality) >= 0 ? o.thermalQuality : 'normal';
           printPrefs.printerQuality = ['best', 'normal', 'draft'].indexOf(o.printerQuality) >= 0 ? o.printerQuality : 'best';
+          printPrefs.edges = cleanEdges(o.edges);
           refreshPhotoFitUI();
         } catch (e) { }
       }

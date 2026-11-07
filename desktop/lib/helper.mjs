@@ -309,11 +309,11 @@ async function airPrintQualityOptions(printer, want) {
 // An inkjet (Canon G3030, Epson ...) printing borderless enlarges the picture a little past the paper edge so no
 // white line shows. Over AirPrint the Mac has no setting for how much, and a Canon G3030 trimmed about 2.5% off
 // every side (the title, the footer and the characters at the edges). So on those queues the page is sent
-// 4% smaller on white. Two G3030 prints measured against the booth preview were enlarged about 4-5%, so this
-// brings the page back to the layout's own size on the paper, edge to edge: at most about 0.4 mm trimmed, and
-// no white line (0.95 would leave about 0.6 mm of white when the printer enlarges only 4%).
+// 2% smaller on white. At 100% a G3030 trimmed about 2.5 mm a side; at 96% it left about 2 mm of white, so 98% is
+// close to edge to edge. Each printer and paper differs a little: the booth's Print settings > Edges (per printer)
+// moves each side in or out from there.
 // Dye-sub printers (SELPHY, DNP, HiTi ...) print borderless without enlarging, so their pages are left as they are.
-const MAC_BORDERLESS_SCALE = 0.96;
+const MAC_BORDERLESS_SCALE = 0.98;
 const DYE_SUB = /selphy|(?<![a-z])cp[\s_-]?d?\d{2,4}(?![0-9])|(?<![a-z])dnp(?![a-z])|(?<![a-z])ds[\s_-]?(?:rx|\d)|hiti|mitsubishi|kodak|citizen|sinfonia|shinko|dye/i;
 async function macBorderlessScale(printer, pick) {
   if (!shrinkPage || !pick || !pick.borderless || DYE_SUB.test(printer)) return 1;

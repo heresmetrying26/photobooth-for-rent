@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.97', date: '2026-11-07' },
   { version: '1.0.96', date: '2026-11-07' },
   { version: '1.0.95', date: '2026-11-06' },
   { version: '1.0.94', date: '2026-11-06' },
@@ -144,6 +145,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-07', title: 'Edges: fix a printer that cuts off or leaves white at a side', for: ['website', 'app'], app: '1.0.97',
+    items: [
+      'New in Print settings: Edges (this printer). Move the picture in or out on the top, bottom, left and right, 0.5 mm a press. Saved for each printer, and used for every print on the laptop app, the tablet and the website.',
+      'New: Print edge test. It prints a scale of coloured bars on every side. The first bar you can see on a side is the number to set there, so you do not have to guess: the preview cannot show how much a borderless printer enlarges the picture.',
+      'Mac: borderless prints on Canon G-series and other AirPrint ink-tank printers are now sent at 98% (96% left a thin white line on a Canon G3030). Fine-tune any side with Edges.'
+    ]
+  },
   {
     date: '2026-11-07', title: 'Borderless prints on Mac no longer cut off (Canon G3030 and other ink-tank printers)', for: ['app'], app: '1.0.96',
     items: [

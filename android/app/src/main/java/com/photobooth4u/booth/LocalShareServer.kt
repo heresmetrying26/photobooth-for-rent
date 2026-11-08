@@ -303,7 +303,8 @@ class LocalShareServer(private val store: PBLocal) {
         if (!file.isFile) {
             if (kind == "p") {
                 val isVid = PBLocal.VIDEO_RE.containsMatchIn(name)
-                val title = if (isVid) "Your 360 video is on its way" else "Your photo is on its way"
+                val isSolo = Regex("_solo_\\d+", RegexOption.IGNORE_CASE).containsMatchIn(name)
+                val title = if (isVid) "Your 360 video is on its way" else if (isSolo) "Your solo photo is on its way" else "Your photo is on its way"
                 val msg = if (isVid) "We’re preparing your video. It appears here in a few seconds. You can keep this page open." else "This photo isn’t here yet. Wait a moment and refresh."
                 val body = "<div class=\"one\"><h1>$title</h1><p class=\"sub\">${esc(store.galleryTitle(folder))}</p>" +
                     "<div style=\"margin:28px auto;width:44px;height:44px;border:4px solid #E4DCCF;border-top-color:#C93D27;border-radius:50%;animation:pbSpin 1s linear infinite\"></div>" +
@@ -486,11 +487,12 @@ class LocalShareServer(private val store: PBLocal) {
             val type = contentType(f)
             val isVid = type.startsWith("video/")
             val isGif = type == "image/gif"
+            val isSolo = Regex("_solo_\\d+", RegexOption.IGNORE_CASE).containsMatchIn(f)
             sb.append("<div class=\"one\" style=\"padding-bottom:6px\">")
             if (isVid) sb.append("<video src=\"").append(src).append("\" controls playsinline autoplay muted loop></video>")
-            else sb.append("<img src=\"").append(src).append("\" alt=\"").append(if (isGif) "Your GIF" else "Your photo").append("\">")
+            else sb.append("<img src=\"").append(src).append("\" alt=\"").append(if (isGif) "Your GIF" else if (isSolo) "Solo photo" else "Your photo").append("\">")
             sb.append("<div><a class=\"btn\" href=\"").append(src).append("?dl=1\" download=\"").append(esc(f)).append("\">")
-                .append(if (isVid) "Save video" else if (isGif) "Save GIF" else "Save photo").append("</a>")
+                .append(if (isVid) "Save video" else if (isGif) "Save GIF" else if (isSolo) "Save solo photo" else "Save photo").append("</a>")
             if (store.guestPrintOn && !isVid && !isGif) {
                 anyPrint = true
                 val post = "/o/" + code + "/print/" + Uri.encode(f)
@@ -578,7 +580,8 @@ class LocalShareServer(private val store: PBLocal) {
             for (f in store.photosIn(dir)) {
                 val isVid = PBLocal.VIDEO_RE.containsMatchIn(f.name)
                 val isGif = f.name.endsWith(".gif", ignoreCase = true)
-                val kind = if (isVid) "video" else if (isGif) "gif" else "photo"
+                val isSolo = Regex("_solo_\\d+", RegexOption.IGNORE_CASE).containsMatchIn(f.name)
+                val kind = if (isVid) "video" else if (isGif) "gif" else if (isSolo) "solo" else "photo"
                 arr.put(JSONObject()
                     .put("name", f.name)
                     .put("kind", kind)

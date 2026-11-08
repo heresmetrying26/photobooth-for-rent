@@ -18,10 +18,12 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
 .tabs{display:inline-flex;background:#EAE4D9;border-radius:24px;padding:3px;margin:0 auto 16px;gap:2px}
 .tab{background:transparent;border:0;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;color:#6B666C;cursor:pointer}
 .tab.active{background:#fff;color:#1C1A1E;box-shadow:0 1px 4px rgba(60,40,20,.1)}
-.grid.filter-photo [data-kind="gif"]{display:none!important}
-.grid.filter-gif [data-kind="photo"]{display:none!important}
+.grid.filter-photo > [data-kind]:not([data-kind="photo"]){display:none!important}
+.grid.filter-solo > [data-kind]:not([data-kind="solo"]){display:none!important}
+.grid.filter-gif > [data-kind]:not([data-kind="gif"]){display:none!important}
 .grid a{position:relative}
-.grid [data-kind="gif"]::after{content:'GIF';position:absolute;bottom:6px;right:6px;background:rgba(28,26,30,.8);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}</style>
+.grid [data-kind="gif"]::after{content:'GIF';position:absolute;bottom:6px;right:6px;background:rgba(28,26,30,.8);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}
+.grid [data-kind="solo"]::after{content:'SOLO';position:absolute;bottom:6px;right:6px;background:rgba(201,61,39,.85);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}</style>
 </head>
 <body>
 <header><span class="brand"><span class="mk"><i></i><i></i><i></i><i></i></span>photobooth4u</span></header>
@@ -42,6 +44,8 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
   }
   function isGif(n){ return /\.gif$/i.test(n); }
   function isVideo(n){ return /\.(mp4|webm)$/i.test(n); }
+  function isSolo(n){ return /_solo_\d+/i.test(n); }
+  function kindOf(n){ return isVideo(n) ? 'video' : isGif(n) ? 'gif' : isSolo(n) ? 'solo' : 'photo'; }
   function showMessage(msg, title){
     document.title = title || 'Not found';
     app.innerHTML = '';
@@ -53,18 +57,23 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
   if(m[2]){ try{ file = decodeURIComponent(m[2]); }catch(e){ file = ''; } }
 
   function renderList(d){
-    var files = d.files || [], gifs = 0, i;
-    for(i = 0; i < files.length; i++) if(isGif(files[i].n)) gifs++;
-    var photos = files.length - gifs;
+    var files = d.files || [], gifs = 0, solos = 0, i;
+    for(i = 0; i < files.length; i++){
+      if(isGif(files[i].n)) gifs++;
+      else if(isSolo(files[i].n)) solos++;
+    }
+    var photos = files.length - gifs - solos;
     document.title = d.name + ' photos';
     app.innerHTML = '';
 
     var head = el('div');
     head.style.cssText = 'text-align:center;padding:0 16px';
     head.appendChild(el('h1', null, d.name));
-    var count = (photos > 0 && gifs > 0)
-      ? photos + ' photo' + (photos === 1 ? '' : 's') + ' · ' + gifs + ' GIF' + (gifs === 1 ? '' : 's')
-      : files.length + ' photo' + (files.length === 1 ? '' : 's');
+    var countParts = [];
+    if(photos > 0) countParts.push(photos + (solos > 0 ? ' print' : ' photo') + (photos === 1 ? '' : 's'));
+    if(solos > 0) countParts.push(solos + ' solo photo' + (solos === 1 ? '' : 's'));
+    if(gifs > 0) countParts.push(gifs + ' GIF' + (gifs === 1 ? '' : 's'));
+    var count = countParts.join(' · ') || (files.length + ' photo' + (files.length === 1 ? '' : 's'));
     head.appendChild(el('p', 'sub', count + ' · tap one to save it'));
     app.appendChild(head);
 
@@ -74,10 +83,14 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
     }
 
     var grid = el('div', 'grid');
-    if(photos > 0 && gifs > 0){
+    var kindsCount = (photos > 0 ? 1 : 0) + (solos > 0 ? 1 : 0) + (gifs > 0 ? 1 : 0);
+    if(kindsCount > 1){
       var holder = el('div'); holder.style.textAlign = 'center';
       var tabs = el('div', 'tabs');
-      var defs = [['all', 'All (' + files.length + ')'], ['photo', 'Photos (' + photos + ')'], ['gif', 'GIFs (' + gifs + ')']];
+      var defs = [['all', 'All (' + files.length + ')')];
+      if(photos > 0) defs.push(['photo', (solos > 0 ? 'Prints (' : 'Photos (') + photos + ')']);
+      if(solos > 0) defs.push(['solo', 'Solo Photos (' + solos + ')']);
+      if(gifs > 0) defs.push(['gif', 'GIFs (' + gifs + ')']);
       defs.forEach(function(def, idx){
         var b = el('button', 'tab' + (idx === 0 ? ' active' : ''), def[1]);
         b.type = 'button';
@@ -95,7 +108,7 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
     files.forEach(function(f){
       var a = el('a');
       a.href = '/e/' + slug + '/p/' + encodeURIComponent(f.n);
-      a.setAttribute('data-kind', isGif(f.n) ? 'gif' : 'photo');
+      a.setAttribute('data-kind', kindOf(f.n));
       var img = el('img');
       img.loading = 'lazy'; img.alt = '';
       img.src = '/e/' + slug + '/t/' + encodeURIComponent(f.n);
@@ -119,8 +132,8 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
       app.appendChild(wrap);
       return;
     }
-    var gif = isGif(name), vid = isVideo(name);
-    var title = vid ? 'Your video' : gif ? 'Your GIF' : 'Your photo';
+    var gif = isGif(name), vid = isVideo(name), solo = isSolo(name);
+    var title = vid ? 'Your video' : gif ? 'Your GIF' : solo ? 'Solo photo' : 'Your photo';
     document.title = title;
     wrap.appendChild(el('h1', null, title));
     wrap.appendChild(el('p', 'sub', d.name));
@@ -157,7 +170,7 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
       row.appendChild(sh);
     }
 
-    var dl = el('a', 'btn' + (navigator.share && window.isSecureContext ? ' alt' : ''), vid ? 'Save video' : gif ? 'Save GIF' : 'Save photo');
+    var dl = el('a', 'btn' + (navigator.share && window.isSecureContext ? ' alt' : ''), vid ? 'Save video' : gif ? 'Save GIF' : solo ? 'Save solo photo' : 'Save photo');
     dl.href = src + '?dl=1'; dl.setAttribute('download', name);
     dl.onclick = function(){ track('downloads'); };
     row.appendChild(dl);

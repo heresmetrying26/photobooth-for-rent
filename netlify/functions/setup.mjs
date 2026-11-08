@@ -11,11 +11,11 @@ import { mergeProfiles } from '../lib/profiles-merge.mjs';
 //   assets  -> uploaded frame overlays, logos and props (images), and own shutter / countdown sounds (short WAV)
 //   themes  -> "My themes" saved from the booth
 // Trials keep everything on the device only.
-const MAX_SETTINGS = 40000;          // bytes of setup JSON
+const MAX_SETTINGS = 120000;         // bytes of setup JSON
 const MAX_IMAGE = 3500000;           // characters of one image (data URL)
 const MAX_THEMES_JSON = 400000;      // all of a customer's saved themes (incl. small thumbnails)
 const MAX_THEMES = 40;
-const MAX_PROFILES_JSON = 1000000;   // all of a customer's saved profiles (each is one setup, up to 40 KB, plus a small thumbnail)
+const MAX_PROFILES_JSON = 3000000;   // all of a customer's saved profiles (each is one setup, up to 40 KB, plus a small thumbnail)
 const IMAGE_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 const ASSET_IMAGE_RE = /^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/;   // uploaded pictures may also be small animated GIFs
 // Own shutter / countdown sounds: the booth trims them to a short WAV before uploading.

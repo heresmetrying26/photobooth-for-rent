@@ -18544,11 +18544,12 @@
         if (!dbPromise) {
           dbPromise = new Promise((resolve, reject) => {
             if (!('indexedDB' in window)) return reject(new Error('No IndexedDB'));
-            const req = indexedDB.open('pb4u-booth', 1);
+            const req = indexedDB.open('pb4u-booth', 2);
             req.onupgradeneeded = () => {
               const d = req.result;
               if (!d.objectStoreNames.contains('uploads')) d.createObjectStore('uploads', { keyPath: 'id' });
               if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv');
+              if (!d.objectStoreNames.contains('assets')) d.createObjectStore('assets');   // uploaded frames / logos / props (can be big: localStorage runs out)
             };
             req.onsuccess = () => resolve(req.result);
             req.onerror = () => reject(req.error);
@@ -40428,7 +40429,30 @@
         for (var i = 0; i < 18; i++) s += a[Math.floor(Math.random() * a.length)];
         return s;
       }
-      function cacheAssetLocal(id, url) { try { localStorage.setItem('pb_asset:' + id, url); } catch (e) { } }
+      // Uploaded pictures are kept on the device in IndexedDB (room for many big frames, also offline). localStorage only keeps
+      // small ones as a quick copy: it holds about 5 MB in all, and a full one used to drop frame pictures without a word.
+      var ASSET_LS_MAX = 150000;
+      function idbAssetPut(id, url) {
+        return dbDo('assets', 'readwrite', function (st) { return st.put(url, id); }).then(function () { return true; }, function () { return false; });
+      }
+      async function idbAssetGet(ids) {
+        var out = {};
+        try {
+          var d = await boothDb();
+          await new Promise(function (res) {
+            var tx = d.transaction('assets', 'readonly'), st = tx.objectStore('assets');
+            ids.forEach(function (id) { var r = st.get(id); r.onsuccess = function () { if (typeof r.result === 'string') out[id] = r.result; }; });
+            tx.oncomplete = res; tx.onerror = res; tx.onabort = res;
+          });
+        } catch (e) { }
+        return out;
+      }
+      function cacheAssetLocal(id, url) {
+        if (typeof url === 'string' && url.length <= ASSET_LS_MAX) { try { localStorage.setItem('pb_asset:' + id, url); } catch (e) { } }
+        else { try { localStorage.removeItem('pb_asset:' + id); } catch (e) { } }
+        idbAssetPut(id, url);
+      }
+      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { }   // ask the browser not to clear them when space is low
       function registerAsset(id, url) {
         if (ASSETS[id] && ASSETS[id].url === url) return ASSETS[id];
         var rec = { url: url, img: null };
@@ -40461,12 +40485,21 @@
         ids.forEach(function (id) {
           if (!id || ASSETS[id]) return;
           var local = null; try { local = localStorage.getItem('pb_asset:' + id); } catch (e) { }
-          if (local) registerAsset(id, local); else missing.push(id);
+          if (local) {
+            registerAsset(id, local);
+            // A big picture an older version left in localStorage: move it to IndexedDB, then free the space.
+            if (local.length > ASSET_LS_MAX) idbAssetPut(id, local).then(function (ok) { if (ok) { try { localStorage.removeItem('pb_asset:' + id); } catch (e) { } } });
+          } else missing.push(id);
         });
+        if (missing.length) {
+          var got = await idbAssetGet(missing), still = [];
+          missing.forEach(function (id) { if (got[id]) registerAsset(id, got[id]); else still.push(id); });
+          missing = still;
+        }
         if (!missing.length || !canSyncServer()) return;
-        for (var i = 0; i < missing.length; i += 12) {
+        for (var i = 0; i < missing.length; i += 3) {
           try {
-            var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'asset-get', ids: missing.slice(i, i + 12) }) });
+            var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'asset-get', ids: missing.slice(i, i + 3) }) });
             var j = await r.json();
             Object.keys(j.assets || {}).forEach(function (id) { registerAsset(id, j.assets[id]); cacheAssetLocal(id, j.assets[id]); });
           } catch (e) { }
@@ -41739,6 +41772,7 @@
         if (!id) return;
         if (setupProfiles.some(function (x) { return x.bgAssetId === id; }) || (profUndo && profUndo.bgAssetId === id)) return;
         try { localStorage.removeItem('pb_asset:' + id); } catch (e) { }
+        try { dbDo('assets', 'readwrite', function (st) { return st.delete(id); }).catch(function () { }); } catch (e) { }
         if (!canSyncServer()) return;
         try { await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'asset-delete', id: id }) }); } catch (e) { }
       }
@@ -41981,7 +42015,7 @@
           if (setupProfiles.length >= PROFILE_MAX) break;
           var e = data.profiles[i];
           if (!e || typeof e.name !== 'string' || !e.settings || typeof e.settings !== 'object' || Array.isArray(e.settings)) continue;
-          if (JSON.stringify(e.settings).length > 40000) continue;
+          if (JSON.stringify(e.settings).length > 120000) continue;
           var p = { id: newProfileId(), name: uniqueProfileName(e.name.trim().slice(0, 40) || 'Imported'), savedAt: Date.now(), settings: e.settings };
           if (typeof e.bgData === 'string' && e.bgData.length <= 3500000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(e.bgData)) {
             try { p.bgAssetId = await addAsset(e.bgData); p.bgSig = bgSig(e.bgData); } catch (err) { }
@@ -42173,7 +42207,7 @@
       var selItem = -1;             // selected frame on the sheet (Setup preview)
       var spotEdit = null;          // { f: frameId, sel: index } while fixing a frame's photo spots
       var FRAME_CACHE = {};         // frameId -> { img, key, punched }
-      var MAX_FRAMES = 8, MAX_SPOTS = 40, MAX_SHEET_ITEMS = 10;
+      var MAX_FRAMES = 100, MAX_SPOTS = 40, MAX_SHEET_ITEMS = 10;
       var SHEET_PATTERNS = [
         { id: 'one', name: 'One', cells: [[0, 0, 1, 1]] },
         { id: 'two-strips', name: '2 side by side', cells: [[0, 0, .5, 1], [.5, 0, .5, 1]] },

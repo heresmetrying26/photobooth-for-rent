@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.105', date: '2026-11-08' },
   { version: '1.0.104', date: '2026-11-08' },
   { version: '1.0.103', date: '2026-11-08' },
   { version: '1.0.102', date: '2026-11-07' },
@@ -177,6 +178,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-08', title: 'My frames: uploaded frames now stay after a restart, and you can keep up to 100', for: ['website', 'app'], app: '1.0.105',
+    items: [
+      'Fixed: frames you uploaded could show up white (design missing) or not save after the app was restarted, especially offline. The pictures were kept in a small storage that fills up after a few big frames. They are now kept in the larger on-device storage, and pictures saved the old way are moved over the first time they load. Android app 1.1.18 has the same fix.',
+      'My frames now holds up to 100 frames (it was 8). Big frame pictures are also downloaded a few at a time, so a new tablet can get them all back from your account.',
+      'Frames that already lost their picture cannot be rebuilt by the update. If they were saved to your account, open the booth online once and they come back; otherwise upload them again.'
+    ]
+  },
   {
     date: '2026-11-08', title: 'Android tablet: your saved layouts, profiles and themes are back after the 1.1.16 update', for: ['website'],
     items: [

@@ -702,10 +702,12 @@ class MainActivity : AppCompatActivity() {
                     append("window.__PB.traditional=").append(traditional).append(";")
                     append("window.__PB.orientation=").append(jsStr(orientationOpt)).append(";")
                     // Folder key/prefix for offline vouchers (required for offlineOnly codes)
-                    val folderKey = feat?.optString("folderKey", "") ?: ""
-                    val folderPrefix = feat?.optString("folderPrefix", "") ?: ""
+                    // org.json's optString turns a JSON null into the text "null": use isNull so a missing folder stays empty
+                    val folderKey = if (feat == null || feat.isNull("folderKey")) "" else feat.optString("folderKey", "").trim()
+                    val folderPrefix = if (feat == null || feat.isNull("folderPrefix")) "" else feat.optString("folderPrefix", "").trim()
                     append("window.__PB.folderKey=").append(jsStr(folderKey)).append(";")
                     append("window.__PB.folderPrefix=").append(jsStr(folderPrefix)).append(";")
+                    append("window.__PB.lockFolder=").append(folderKey.isNotEmpty()).append(";")   // like online: a fixed folder is not typed
                     // Same flags the online booth gets, so Setup, paper sizes and file names behave the same offline as online
                     append("window.__PB.lifetime=").append(activeLifetime).append(";")
                     append("window.__PB.deviceNo=").append(feat?.optInt("deviceNo", 1) ?: 1).append(";")

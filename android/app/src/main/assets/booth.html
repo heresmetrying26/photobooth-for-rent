@@ -16364,6 +16364,8 @@
     (function () {
       // Windows / Mac app (desktop/): photos save on this laptop, guests get them
       // over the booth Wi-Fi, and printing + the Windows camera are built in.
+      // An empty folder name must never arrive as the text "null" (an older Android app sent that), or it shows up as the event name.
+      try { ['folderKey', 'folderPrefix', 'subfolder', 'filePrefix', 'defaultTheme'].forEach(function (k) { if (window.__PB && (window.__PB[k] === 'null' || window.__PB[k] === 'undefined')) window.__PB[k] = null; }); } catch (e) { }
       const DESKTOP = !!(window.pb4u && window.pb4u.desktop && window.__PB && window.__PB.desktop);
       // Android tablet app (android/): an offline kiosk. Photos are saved on the tablet through the app (window.__PBLocal)
       // and guests on the same Wi-Fi open them from the tablet, like the laptop app does.
@@ -28397,7 +28399,7 @@
         const ev = (labelInput.value || '').trim() || (pb.type === 'rental' && pb.folderKey ? pb.folderKey : '');
         document.getElementById('ssEvent').textContent = ev;
         document.getElementById('ssDate').textContent = currentDateLabel() || (pb.type === 'trial' ? 'TRIAL' : '');
-        document.getElementById('ssStatus').textContent = isTraditional() ? 'Ready · Traditional booth' : 'Ready';
+        document.getElementById('ssStatus').textContent = 'Ready';
       }
       function leaveStartScreen() {
         if (startScreen.classList.contains('gone')) return;

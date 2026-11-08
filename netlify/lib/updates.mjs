@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.104', date: '2026-11-08' },
   { version: '1.0.103', date: '2026-11-08' },
   { version: '1.0.102', date: '2026-11-07' },
   { version: '1.0.101', date: '2026-11-07' },
@@ -116,7 +117,7 @@ export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // The newest Android tablet app (tag android-v<version> on GitHub). Tablets ask /api/updates at launch and
 // offer to download it when theirs is older. The version is taken from versionName in android/app/build.gradle
 // (scripts/build-booth.mjs writes android-version.mjs on every build), so there is nothing to change here.
-export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-07', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
+export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-08', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
@@ -151,6 +152,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-08', title: 'Saved profiles keep your vouchers, and offline no longer changes your payment mode', for: ['website', 'app'], app: '1.0.104',
+    items: [
+      'A saved profile now includes the event’s voucher batches (which codes are unused, used or cancelled). Tap "Use everything" to bring them back; vouchers already used here stay used. "Design only" leaves vouchers alone.',
+      'Profiles also remember your paper size, your own paper sizes, keychain printing and the photographer’s one-big-print setting. These load with "Use everything" too, and are included when you export or import profiles.',
+      'Fixed: going offline (Android offline mode or the laptop app) used to switch QR payments off and save that. Your chosen payment mode is now kept; offline just skips QR for the moment.',
+      'Fixed: a setup changed while offline is now sent to the server when the tablet is back online, instead of the older copy coming back on other devices. Android app 1.1.16 also gives the offline booth the same Lifetime options as online.',
+      'Fixed: the start screen showed the word "null" under the button on the Android tablet when the code has no fixed folder name, and the top corner said "Ready · Traditional booth". It now shows just "Ready", and no "null".'
+    ]
+  },
   {
     date: '2026-11-08', title: 'Canon over USB: no more "Camera disconnected" between photos', for: ['website', 'app'], app: '1.0.103',
     items: [

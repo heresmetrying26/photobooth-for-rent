@@ -94,6 +94,27 @@
     </div>
   </section>
 
+  <section id="rush-station">
+    <div class="section-head"><h2>Rush ID Station</h2><p>Self-service rush ID photos and photo printing, as its own app.</p></div>
+    <div class="helper" style="background:#f1f8f8;border-color:#cfe6e6;">
+      <div>
+        <span class="tag" id="rushTag" style="background:#dff1ef;color:#0b6e6e;">New &middot; Tablet app &middot; version 1.0.1</span>
+        <h3>Rush ID Station for tablets</h3>
+        <p>Customers take or bring their own photo (USB drive, SD card, Bluetooth or a phone QR code), get a plain-background ID photo in the size they need (1&times;1, 2&times;2, passport and more), and print it. Its cameras and printers are the same as the booth&rsquo;s: webcams, DSLR and mirrorless over USB, and the same printer connections.</p>
+        <p><b>Needs a code with Rush ID station switched on.</b> Ask us to turn it on for your access code, then enter that same code in the app. It also needs an internet connection to check the code. Printing must be switched on for your code too (paper sizes are set in the same place as for the booth).</p>
+        <p><b>No tablet?</b> On a laptop, open <a href="/rush/" style="color:var(--red);font-weight:800;">photobooth4u.netlify.app/rush</a> and enter your code.</p>
+      </div>
+      <a class="download" id="rushApk" style="background:#0b6e6e;" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/rushid-v1.0.1/rush-id-station-android.apk">Download APK</a>
+    </div>
+    <div class="install">
+      <div class="callout">
+        <b>Installing</b>
+        <p>Download the APK on your tablet, tap it in your notifications or Files app, and choose <b>Install</b>. If prompted, allow &ldquo;Install unknown apps&rdquo; for your browser or file manager. It installs beside the photobooth app and does not replace it.</p>
+        <p><b>Updating:</b> download and install the newest APK from this page over the old one. Your settings stay.</p>
+      </div>
+    </div>
+  </section>
+
   <section id="guides">
     <div class="section-head"><h2>Guides &amp; manuals</h2><p>Printable PDF references and step-by-step setup walkthroughs.</p></div>
     <div class="platforms" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));">
@@ -173,6 +194,14 @@
       });
     }
     fetch('/api/updates').then(r => r.json()).then(j => { if(j && j.app && j.app.version) applyVersion(j.app.version); if(j) applyAndroid(j.android); }).catch(() => {});
+    // The Rush ID Station app has its own releases (tags rushid-v*), so this finds the newest one. The link above works if this fails.
+    fetch('https://api.github.com/repos/heresmetrying26/photobooth-for-rent/releases?per_page=30').then(r => r.json()).then(function(rs){
+      const r = (Array.isArray(rs) ? rs : []).filter(function(x){ return /^rushid-v/.test(x.tag_name) && !x.draft; })[0];
+      const a = r && (r.assets || []).filter(function(x){ return x.name === 'rush-id-station-android.apk'; })[0];
+      if(!a) return;
+      document.getElementById('rushApk').href = a.browser_download_url;
+      const t = document.getElementById('rushTag'); if(t) t.innerHTML = t.innerHTML.replace(/\d+\.\d+\.\d+/, r.tag_name.replace(/^rushid-v/, ''));
+    }).catch(() => {});
     if(isIPad){
       hero.href = "/";
       title.textContent = "Online booth";

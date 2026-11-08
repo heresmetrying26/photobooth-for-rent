@@ -107,9 +107,9 @@ export function renderSheets(sheets, paint, { cutGuides = true, guideStyle = 'li
     x.fillStyle = '#fff'; x.fillRect(0, 0, s.W, s.H);
     for (const it of s.items) paint(x, it, it.x, it.y);
     if (cutGuides && s.items.length > 1) {
-      x.strokeStyle = 'rgba(120,120,120,.65)'; x.lineWidth = Math.max(1, 1 / scale);
+      x.strokeStyle = 'rgba(150,150,150,.45)'; x.lineWidth = Math.max(1, 1 / scale);
       if (guideStyle === 'corners') {
-        const len = Math.max(10, Math.min(22, Math.round(px(0.08))));
+        const len = Math.max(6, Math.min(14, Math.round(px(0.045))));
         for (const it of s.items) {
           const x0 = it.x + 0.5, y0 = it.y + 0.5, x1 = it.x + it.w - 0.5, y1 = it.y + it.h - 0.5;
           x.beginPath();
@@ -216,13 +216,13 @@ export function renderTestSheet(paper = PAPERS[0]) {
 
   // CMYK / RGB Color Swatches
   const colors = [
-    { name: 'Cyan', c: '#00ffff' },
-    { name: 'Magenta', c: '#ff00ff' },
-    { name: 'Yellow', c: '#ffff00' },
-    { name: 'Black', c: '#000000' },
-    { name: 'Red', c: '#ff0000' },
-    { name: 'Green', c: '#00ff00' },
-    { name: 'Blue', c: '#0000ff' },
+    { name: 'Cyan (C)', c: '#00ffff' },
+    { name: 'Magenta (M)', c: '#ff00ff' },
+    { name: 'Yellow (Y)', c: '#ffff00' },
+    { name: 'Black (K)', c: '#000000' },
+    { name: 'Photo Red', c: '#dc2626' },
+    { name: 'Photo Blue', c: '#0284c7' },
+    { name: 'Passport Blue', c: '#0038a8' },
     { name: 'Skin 1', c: '#f5d0b5' },
     { name: 'Skin 2', c: '#c68642' }
   ];
@@ -237,7 +237,7 @@ export function renderTestSheet(paper = PAPERS[0]) {
     ctx.lineWidth = 1;
     ctx.strokeRect(bx, barY, barW, barH);
     ctx.fillStyle = '#0f172a';
-    ctx.font = '600 ' + Math.round(px(0.05)) + 'px system-ui, sans-serif';
+    ctx.font = '600 ' + Math.round(px(0.048)) + 'px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(colors[i].name, bx + barW / 2, barY + barH + px(0.08));
   }
@@ -273,10 +273,29 @@ export function renderTestSheet(paper = PAPERS[0]) {
     curTY += px(f.pt / 72 * 1.5) + 6;
   }
 
+  // Diagnostics & Calibration Quick Help Box
+  const boxY = curTY + px(0.10);
+  const boxH = px(0.70);
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(m35 + px(0.05), boxY, c.width - 2 * m35 - px(0.10), boxH);
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(m35 + px(0.05), boxY, c.width - 2 * m35 - px(0.10), boxH);
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = 'bold ' + Math.round(px(0.065)) + 'px system-ui, sans-serif';
+  ctx.fillText('\u26a0\ufe0f TROUBLESHOOTING GUIDE:', m35 + px(0.15), boxY + px(0.12));
+
+  ctx.font = '500 ' + Math.round(px(0.052)) + 'px system-ui, sans-serif';
+  ctx.fillStyle = '#334155';
+  ctx.fillText('1. Red is Orange or Blue is Purple \u2192 Run "Head Cleaning" in driver Maintenance tab to clear clogged Cyan/Magenta nozzles.', m35 + px(0.15), boxY + px(0.25));
+  ctx.fillText('2. Horizontal Lines across print \u2192 In driver More Options, turn OFF "High Speed", and set Quality to "High".', m35 + px(0.15), boxY + px(0.38));
+  ctx.fillText('3. Too many cutting lines \u2192 On Rush ID Review screen, set "Cutting Lines" to "Corners" or "None".', m35 + px(0.15), boxY + px(0.51));
+
   // Center crosshairs for cutter calibration
   const cx = c.width / 2;
-  const cy = c.height / 2 + px(0.35);
-  const chLen = px(0.30);
+  const cy = boxY + boxH + px(0.30);
+  const chLen = px(0.20);
   ctx.strokeStyle = '#0f172a';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -284,14 +303,14 @@ export function renderTestSheet(paper = PAPERS[0]) {
   ctx.moveTo(cx, cy - chLen); ctx.lineTo(cx, cy + chLen);
   ctx.stroke();
   ctx.beginPath();
-  ctx.arc(cx, cy, px(0.15), 0, Math.PI * 2);
+  ctx.arc(cx, cy, px(0.10), 0, Math.PI * 2);
   ctx.stroke();
 
   // Bottom footer timestamp
   ctx.textAlign = 'center';
-  ctx.font = '500 ' + Math.round(px(0.065)) + 'px system-ui, sans-serif';
+  ctx.font = '500 ' + Math.round(px(0.06)) + 'px system-ui, sans-serif';
   ctx.fillStyle = '#64748b';
-  ctx.fillText('Generated ' + new Date().toLocaleString() + ' \u00b7 photobooth4u Rush ID Station', c.width / 2, c.height - m35 - px(0.06));
+  ctx.fillText('Generated ' + new Date().toLocaleString() + ' \u00b7 photobooth4u Rush ID Station', c.width / 2, c.height - m35 - px(0.05));
 
   return c;
 }

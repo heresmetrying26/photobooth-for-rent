@@ -80,19 +80,19 @@ export function pack(items, paperW, paperH, gap = 0, margin = 0) {
 }
 
 // paint(ctx, item, x, y) draws one item at (x, y). Returns portrait canvases (paperW x paperH).
-export function renderSheets(sheets, paint, { cutGuides = true } = {}) {
+export function renderSheets(sheets, paint, { cutGuides = true, scale = 1 } = {}) {
   return sheets.map((s) => {
-    const c = document.createElement('canvas'); c.width = s.W; c.height = s.H;
-    const x = c.getContext('2d');
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(s.W * scale)); c.height = Math.max(1, Math.round(s.H * scale));
+    const x = c.getContext('2d'); x.setTransform(scale, 0, 0, scale, 0, 0);
     x.fillStyle = '#fff'; x.fillRect(0, 0, s.W, s.H);
     for (const it of s.items) paint(x, it, it.x, it.y);
     if (cutGuides && s.items.length > 1) {
-      x.strokeStyle = 'rgba(120,120,120,.55)'; x.lineWidth = 1;
+      x.strokeStyle = 'rgba(120,120,120,.55)'; x.lineWidth = Math.max(1, 1 / scale);
       for (const it of s.items) x.strokeRect(it.x + 0.5, it.y + 0.5, it.w - 1, it.h - 1);
     }
     if (!s.rot) return c;
-    const o = document.createElement('canvas'); o.width = s.H; o.height = s.W;
-    const ox = o.getContext('2d'); ox.translate(s.H, 0); ox.rotate(Math.PI / 2); ox.drawImage(c, 0, 0);
+    const o = document.createElement('canvas'); o.width = c.height; o.height = c.width;
+    const ox = o.getContext('2d'); ox.translate(o.width, 0); ox.rotate(Math.PI / 2); ox.drawImage(c, 0, 0);
     return o;
   });
 }

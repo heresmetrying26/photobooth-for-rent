@@ -29,7 +29,8 @@ http.createServer(async (req, res) => {
     const file = path.join(root, p);
     if (!file.startsWith(root)) { res.writeHead(403); return res.end(); }
     await stat(file);
-    res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
+    // Same isolation headers as the booth site's /rush/ (needed for multi-threaded AI and USB cameras).
+    res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-store', 'cross-origin-opener-policy': 'same-origin', 'cross-origin-embedder-policy': 'credentialless' });
     res.end(await readFile(file));
   } catch (e) {
     res.writeHead(e.code === 'ENOENT' ? 404 : 500); res.end(String(e.code === 'ENOENT' ? 'Not found' : e));

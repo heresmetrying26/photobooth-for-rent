@@ -16254,6 +16254,7 @@
     #rushStation .rush-err button { min-height: 52px; padding: 0 24px; border: 0; border-radius: 14px; background: #2fb3ab; color: #06201f; font: 700 17px system-ui, sans-serif; cursor: pointer; }
     #rushBack { position: fixed; top: 10px; right: 10px; z-index: 9600; min-height: 46px; padding: 0 18px; border: 0; border-radius: 999px; background: #0b6e6e; color: #fff; font: 700 15px system-ui, sans-serif; box-shadow: 0 6px 20px rgba(0, 0, 0, .35); cursor: pointer; }
     html.rush-station .toast { z-index: 9700; }
+    html.rush-station, html.rush-station body { overflow: hidden; }          /* the station fills the window; the booth page behind it must not scroll */
   </style>
 
   <!-- Laptop app: "a new version is out" on the Tap to start screen. This is its own script on purpose: if the booth
@@ -32696,7 +32697,7 @@
           else if (wifiPrinter && !wifiPrinter.dialog && wifiNetAvailable()) mode = 'wifi';
           else if (window.__PBPrint && typeof window.__PBPrint.print === 'function') mode = 'android';
           else mode = 'browser';
-          return { mode: mode, current: printerFor(key) || (mode === 'wifi' ? wifiPrinter.name : ''), options: live ? h.printers.slice() : [] };
+          return { mode: mode, current: printerFor(key) || (mode === 'wifi' ? wifiPrinter.name : ''), options: live ? h.printers.slice() : [], android: wifiNetAvailable() ? rushHW.androidPrinters() : null };
         },
         setPrinter: function (key, name) {
           // The booth keeps a separate slot for strip layouts printed two-up; set both so this choice always wins.
@@ -32704,10 +32705,36 @@
           savePrinterMap(); try { fillPrinterSelect(); } catch (e) { }
         },
         // Android app: turn the screen between portrait and landscape (the app's own setting, remembered).
+        // Android app: the Wi-Fi / USB printers the app found, and choosing one for `key` paper (the booth's own choice, same as Setup).
+        androidPrinters: function () {
+          if (!wifiNetAvailable()) return { ok: false, items: [], scanning: false };
+          var d = wifiList(), items = d.printers.map(function (p) {
+            var conn = (p.name && p.name.indexOf('(USB)') >= 0) ? '' : (p.usb ? ' \u00b7 USB' : (p.ip ? ' \u00b7 Wi-Fi' : ''));
+            var note = p.needsPermission ? ' \u00b7 tap to allow USB' : p.noDriver ? ' \u00b7 needs Setup' : p.dnp ? ' \u00b7 DNP' : p.selphy ? ' \u00b7 SELPHY' : '';
+            return { id: p.ip, name: p.name + conn + note, selected: !!(wifiPrinter && wifiPrinter.ip === p.ip), kind: p.needsPermission ? 'permission' : p.noDriver ? 'nodriver' : 'ok' };
+          });
+          if (window.__PBPrint && typeof window.__PBPrint.print === 'function') items.unshift({ id: 'android:dialog', name: 'Android print screen \u00b7 any printer', selected: !!(wifiPrinter && wifiPrinter.dialog), kind: 'ok' });
+          return { ok: true, items: items, scanning: !!d.scanning };
+        },
+        scanPrinters: function () { try { wifiScan(); } catch (e) { } },
+        choosePrinter: function (key, id) {
+          var old = printSize; printSize = key;
+          try {
+            try { wifiSyncForSize(); } catch (e) { }
+            if (id === 'android:dialog') { wifiSave({ ip: 'android:dialog', name: 'Android print dialog', dialog: true }); return { ok: true, msg: 'Prints will open the Android print screen.' }; }
+            var p = wifiList().printers.filter(function (x) { return x.ip === id; })[0];
+            if (!p) return { ok: false, msg: 'That printer is not listed any more. Tap Find printers.' };
+            if (p.needsPermission) { try { window.__PBNet.usbAllow(p.id); } catch (e) { } return { ok: false, msg: 'Allow USB access in the prompt, then tap the printer again.' }; }
+            if (p.noDriver) return { ok: false, msg: p.name + ' needs the booth Setup (Printer settings) to choose how to print.' };
+            wifiSave({ ip: p.ip, name: p.name, ipp: !!p.ipp, raw: !!p.raw, usb: !!p.usb, escpr: !!p.escpr, escp2: !!p.escp2, canon: !!p.canon, canonModel: p.canonModel || '', selphy: !!p.selphy, dnp: !!p.dnp, dnpModel: p.dnpModel || '', epsonL: !!p.epsonL, epsonModel: p.epsonModel || '', borderless: !!p.borderless, info: p.info || '', vid: p.vid || 0, pid: p.pid || 0, qualities: p.qualities || [], colorModes: p.colorModes || [], mediaTypes: p.mediaTypes || [] });
+            try { refreshPrintUI(); } catch (e) { }
+            return { ok: true, msg: 'Printer selected: ' + p.name };
+          } finally { printSize = old; }
+        },
         canRotate: function () { return !!(window.__PBLocal && typeof window.__PBLocal.setOrientation === 'function'); },
         setOrientation: function (mode) { try { window.__PBLocal.setOrientation(mode === 'portrait' ? 'portrait' : 'landscape'); } catch (e) { } },
         // Staff: show the booth's own Setup (cameras, printers) instead of the station until they tap "Back to Rush station".
-        openSetup: function () { rushEl.hidden = true; rushBack.hidden = false; try { leaveStartScreen(); } catch (e) { } },
+        openSetup: function (step) { rushEl.hidden = true; rushBack.hidden = false; try { leaveStartScreen(); } catch (e) { } try { if (step) goStep(step); } catch (e) { } },
         toast: function (m, ms) { try { showToast(m, ms || 4000); } catch (e) { } }
       };
       function rushLock(reason) { try { sessionStorage.setItem('pb_notice', reason); } catch (e) { } location.reload(); }

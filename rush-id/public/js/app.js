@@ -3,6 +3,7 @@ import * as L from './layout.js';
 import * as P from './print.js';
 import * as S from './sources.js';
 import hw from './hw.js';
+import * as H from './history.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -11,7 +12,7 @@ const nextFrame = () => new Promise((r) => { let d = false; const go = () => { i
 
 // ---------- settings (kept on this computer only) ----------
 const DEFAULTS = {
-  shop: 'Rush ID & Photo Print', currency: '₱', pin: '1234', idle: 180,
+  shop: 'Rush ID & Photo Print', currency: '₱', pin: '1234', idle: 180, keepDays: 30,
   idPaper: '4x6', gapMm: 0, marginMm: 0, cutGuides: true,
   prices: { idSheet: 0, '4x6': 0, '5x7': 0, '6x8': 0, '2x3': 0, '2x6': 0 },
 };
@@ -33,8 +34,9 @@ const noPrint = () => !!hw && !L.PAPERS.length;
 const NO_PRINT_MSG = 'Printing is not switched on for this code. Please ask the owner.';
 
 // ---------- state ----------
-const freshId = () => ({ qty: { ...L.PACKAGES[0].qty }, pkg: 'p1', bg: '#ffffff', bgMode: 'color', brightness: 0, contrast: 0, edge: 0, crop: null, cropFor: null, guides: true, flip: false, tab: 'size' });
-const state = { screen: 'home', mode: 'id', photos: [], sel: null, id: freshId(), photo: { size: '4x6', fit: 'fill' }, sets: 1, out: null };
+const freshId = () => ({ qty: { ...L.PACKAGES[0].qty }, pkg: 'p1', bg: '#ffffff', bgMode: 'color', brightness: 0, contrast: 0, edge: 0, crop: null, cropFor: null, guides: true, flip: false, tab: 'size', tool: 'move', brush: 22 });
+const freshPhoto = () => ({ size: '4x6', fit: 'fill', tab: 'photos', sel: null, sheet: 0 });
+const state = { screen: 'home', mode: 'id', photos: [], sel: null, id: freshId(), photo: freshPhoto(), sets: 1, out: null, orders: [], pinNext: 'settings' };
 let idWork = null;          // the full-size working copy of the photo being framed
 let phone = null;           // phone (QR) session
 let stopWatch = null;       // folder watcher (Bluetooth)
@@ -102,7 +104,8 @@ function resetAll() {
   if (stopWatch) { stopWatch(); stopWatch = null; }
   if (phone) { phone.stop(); phone = null; }
   state.photos.forEach((p) => URL.revokeObjectURL(p.thumb));
-  Object.assign(state, { screen: 'home', photos: [], sel: null, id: freshId(), photo: { size: '4x6', fit: 'fill' }, sets: 1, out: null });
+  state.orders.forEach((o) => URL.revokeObjectURL(o.url));
+  Object.assign(state, { screen: 'home', photos: [], sel: null, id: freshId(), photo: freshPhoto(), sets: 1, out: null, orders: [] });
   idWork = null; busy('');
   render();
 }
@@ -110,15 +113,19 @@ function resetAll() {
 // ---------- screens ----------
 const STEPS = { id: ['Photo', 'Frame', 'Print'], photo: ['Photos', 'Size', 'Print'] };
 // Android app: turn the screen between portrait and landscape.
-const rotBtn = () => (hw && hw.canRotate && hw.canRotate() ? '<button class="btn ghost sm icon" data-act="rot" title="Turn the screen: portrait or landscape" aria-label="Turn the screen">⟳</button>' : '');
+const isPortrait = () => innerHeight > innerWidth;
+const rotBtn = () => (hw && hw.canRotate && hw.canRotate()
+  ? '<button class="btn ghost sm rot" data-act="rot" title="Turn the screen between portrait and landscape" aria-label="Turn the screen"><i class="orient ' + (isPortrait() ? 'land' : 'port') + '"></i><span>' + (isPortrait() ? 'Landscape' : 'Portrait') + '</span></button>' : '');
+const prnBtn = () => (hw ? '<button class="btn ghost sm" data-act="printer-modal" title="Printer and paper settings" aria-label="Printer and paper settings">🖨️ <span class="lbl">Printer</span></button>' : '');
+function refreshRot() { document.querySelectorAll('.rot').forEach((b) => { b.innerHTML = '<i class="orient ' + (isPortrait() ? 'land' : 'port') + '"></i><span>' + (isPortrait() ? 'Landscape' : 'Portrait') + '</span>'; }); }
 function header() {
   const idx = { add: 0, id: 1, photos: 1, review: 2 }[state.screen];
   const steps = STEPS[state.mode].map((t, i) => '<li class="' + (i === idx ? 'on' : i < idx ? 'done' : '') + '"><b>' + (i + 1) + '</b>' + t + '</li>').join('');
-  return '<header class="top"><div class="brand" data-act="brand">' + esc(cfg.shop) + '</div><ol class="steps">' + steps + '</ol>' + rotBtn() + '<button class="btn ghost sm" data-act="reset">Start over</button></header>';
+  return '<header class="top"><div class="brand" data-act="brand">' + esc(cfg.shop) + '</div><ol class="steps">' + steps + '</ol>' + prnBtn() + rotBtn() + '<button class="btn ghost sm" data-act="reset">Start over</button></header>';
 }
 
 function homeHTML() {
-  return '<main class="home"><div class="corner">' + rotBtn() + '</div><div class="brand big" data-act="brand">' + esc(cfg.shop) + '</div>' +
+  return '<main class="home"><div class="corner">' + prnBtn() + rotBtn() + '<button class="btn ghost sm" data-act="orders-open" title="Past orders (staff)">🗂️ <span class="lbl">Orders</span></button></div><div class="brand big" data-act="brand">' + esc(cfg.shop) + '</div>' +
     '<p class="lead">Self-service · no staff needed</p>' +
     '<div class="tiles">' +
     '<button class="tile" data-act="start" data-mode="id"><span class="ic">🪪</span><b>Rush ID photo</b><small>Passport, 2×2, 1×1 and more. Plain background.</small></button>' +
@@ -140,10 +147,17 @@ function addHTML() {
     '</main><footer class="bar"><button class="btn ghost" data-act="reset">Back</button><button class="btn primary big" data-act="next-add"' + (ok ? '' : ' disabled') + '>Next →</button></footer>';
 }
 
+// Touch up: paint over the cut-out to erase leftovers or bring back parts that were cut by mistake.
+function toolsHTML() {
+  const on = state.id.tool !== 'move';
+  return '<div class="tools" id="tools"' + (on ? '' : ' hidden') + '><div class="seg2"><button class="' + (state.id.tool === 'erase' ? 'on' : '') + '" data-act="tool" data-id="erase">Erase</button><button class="' + (state.id.tool === 'restore' ? 'on' : '') + '" data-act="tool" data-id="restore">Restore</button></div>' +
+    '<label class="brush"><span>Brush</span><input type="range" min="6" max="80" value="' + state.id.brush + '" data-in="brush" aria-label="Brush size"></label>' +
+    '<button class="btn ghost sm" data-act="undo-edit">Undo</button><button class="btn ghost sm" data-act="reset-edits">Reset</button><button class="btn primary sm" data-act="tool-done">Done</button></div>';
+}
 function idHTML() {
   const t = (act, on, label) => '<button class="tb' + (on ? ' on' : '') + '" data-act="' + act + '">' + label + '</button>';
-  return '<main class="editor"><div class="stagecol"><div class="stagewrap" id="stagewrap"><div class="stagebox" id="stagebox"><canvas id="stage"></canvas><canvas id="guide"></canvas></div></div>' +
-    '<div class="toolbar">' + t('flip', state.id.flip, '↔ Mirror') + t('autofit', false, '◎ Auto-fit') + t('guide', state.id.guides, '◌ Guide') + t('retake', false, '📷 Retake') + '</div>' +
+  return '<main class="editor"><div class="stagecol"><div class="stagewrap" id="stagewrap"><div class="stagebox" id="stagebox"><canvas id="stage"></canvas><canvas id="guide"></canvas><div id="brushcur" hidden></div></div></div>' +
+    '<div class="toolbar">' + t('flip', state.id.flip, '↔ Mirror') + t('autofit', false, '◎ Auto-fit') + t('guide', state.id.guides, '◌ Guide') + t('touchup', state.id.tool !== 'move', '✎ Touch up') + t('retake', false, '📷 Retake') + '</div>' + toolsHTML() +
     '<div class="zoomrow" title="Drag the photo to move it. Pinch or use the slider to zoom."><span>−</span><input type="range" id="zoom" min="0" max="100" value="40" data-in="zoom" aria-label="Zoom"><span>＋</span></div></div>' +
     '<div class="panel" id="panel"></div></main>' +
     '<footer class="bar"><button class="btn ghost" data-act="to-add">← Photos</button><button class="btn primary big" data-act="id-preview">See my print →</button></footer>';
@@ -174,14 +188,116 @@ function idPanelHTML() {
   return '<div class="tabs">' + TABS.map(([k, n]) => '<button class="tab' + (tab === k ? ' on' : '') + '" data-act="tab" data-id="' + k + '">' + n + '</button>').join('') + '</div><div class="tabbody">' + body + '</div>';
 }
 
+// ---------- photo prints: live sheet preview with zoom, pan and mirror per photo ----------
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const selPhoto = () => photoById(state.photo.sel) || state.photos[0] || null;
+// where a photo sits inside its print cell: base scale (fit or fill) x its own zoom, then its pan (-1..1 of the spare room)
+function photoGeom(it) {
+  const src = it.work.img, iw = src.width, ih = src.height, rot = it.full && iw > ih, ew = rot ? ih : iw, eh = rot ? iw : ih;
+  const k0 = it.fit === 'fit' ? Math.min(it.w / ew, it.h / eh) : Math.max(it.w / ew, it.h / eh), k = k0 * (it.zoom || 1);
+  const dw = ew * k, dh = eh * k;
+  return { rot, dw, dh, mx: Math.max(0, (dw - it.w) / 2), my: Math.max(0, (dh - it.h) / 2) };
+}
+function paintPhoto(ctx, it, x, y) {
+  const src = it.work.img, w = it.w, h = it.h, g = photoGeom(it);
+  const dx = x + (w - g.dw) / 2 + clamp(it.ox || 0, -1, 1) * g.mx, dy = y + (h - g.dh) / 2 + clamp(it.oy || 0, -1, 1) * g.my;
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.imageSmoothingQuality = 'high';
+  if (it.flip) { ctx.translate(2 * x + w, 0); ctx.scale(-1, 1); }          // mirror about the middle of this print
+  if (g.rot) { ctx.translate(dx + g.dw, dy); ctx.rotate(Math.PI / 2); ctx.drawImage(src, 0, 0, g.dh, g.dw); }
+  else ctx.drawImage(src, dx, dy, g.dw, g.dh);
+  ctx.restore();
+}
+// Every print of every photo, packed on sheets of the chosen size.
+function photoLayout() {
+  const size = L.PHOTO_SIZES.find((s) => s.id === state.photo.size) || L.PHOTO_SIZES[0]; if (!size) return null;
+  state.photo.size = size.id;
+  const paper = L.paperById(size.paper), items = [];
+  for (const p of state.photos) {
+    if (!p.work) continue;
+    for (let c = 0; c < p.copies; c++) for (let d = 0; d < (size.dup || 1); d++) items.push({ w: L.px(size.w), h: L.px(size.h), work: p.work, pid: p.id, full: !!size.full, fit: state.photo.fit, flip: !!p.flip, zoom: p.zoom || 1, ox: p.ox || 0, oy: p.oy || 0 });
+  }
+  return { size, paper, items, sheets: L.pack(items, L.px(paper.w), L.px(paper.h), 0, 0) };
+}
+// A print's rectangle on the finished (upright) sheet; sheets packed sideways are turned a quarter.
+const itemRectFinal = (s, it) => (s.rot ? { x: s.H - (it.y + it.h), y: it.x, w: it.h, h: it.w } : { x: it.x, y: it.y, w: it.w, h: it.h });
+
+function ppanelHTML() {
+  const tab = state.photo.tab, sel = selPhoto();
+  let body = '';
+  if (tab === 'photos') {
+    const cards = state.photos.map((p) => '<div class="pcard' + (sel && sel.id === p.id ? ' sel' : '') + '" data-act="psel" data-id="' + p.id + '"><div class="thumb"><img class="' + (p.flip ? 'flip' : '') + '" src="' + p.thumb + '" alt=""><button class="fl' + (p.flip ? ' on' : '') + '" data-act="pflip" data-id="' + p.id + '" aria-label="Mirror this photo" title="Mirror">↔</button><button class="x" data-act="rm" data-id="' + p.id + '" aria-label="Remove">×</button></div>' +
+      '<div class="stepper"><button data-act="copies" data-id="' + p.id + '" data-d="-1">−</button><b>' + p.copies + '</b><button data-act="copies" data-id="' + p.id + '" data-d="1">＋</button></div></div>').join('');
+    body = '<div class="pgrid">' + cards + '</div><button class="btn ghost sm" data-act="to-add">＋ Add more photos</button><p class="hint">Tap a photo to adjust it on the sheet. The number under it is how many copies.</p>';
+  } else {
+    const sizes = L.PHOTO_SIZES.map((s) => '<button class="opt' + (state.photo.size === s.id ? ' on' : '') + '" data-act="psize" data-id="' + s.id + '"><b>' + s.label + '</b>' + (s.hint ? '<small>' + s.hint + '</small>' : '') + (cfg.prices[s.id] ? '<em>' + money(cfg.prices[s.id]) + ' each</em>' : '') + '</button>').join('');
+    body = '<div class="opts">' + sizes + '</div><h3>How should it fit?</h3><div class="seg"><button class="' + (state.photo.fit === 'fill' ? 'on' : '') + '" data-act="pfit" data-id="fill">Fill the page<small>trims the edges</small></button><button class="' + (state.photo.fit === 'fit' ? 'on' : '') + '" data-act="pfit" data-id="fit">Whole photo<small>white borders</small></button></div>' +
+      (hw ? '<h3>Printer</h3><div class="printerbox"><p class="paper">Looking for printers…</p></div>' : '');
+  }
+  return '<div class="tabs two"><button class="tab' + (tab === 'photos' ? ' on' : '') + '" data-act="ptab" data-id="photos">Photos &amp; copies</button><button class="tab' + (tab === 'size' ? ' on' : '') + '" data-act="ptab" data-id="size">Size &amp; fit</button></div><div class="tabbody">' + body + '</div>';
+}
 function photosHTML() {
-  const cards = state.photos.map((p) => '<div class="pcard"><div class="thumb"><img class="' + (p.flip ? 'flip' : '') + '" src="' + p.thumb + '" alt=""><button class="fl' + (p.flip ? ' on' : '') + '" data-act="pflip" data-id="' + p.id + '" aria-label="Mirror this photo" title="Mirror">↔</button><button class="x" data-act="rm" data-id="' + p.id + '" aria-label="Remove">×</button></div>' +
-    '<div class="stepper"><button data-act="copies" data-id="' + p.id + '" data-d="-1">−</button><b>' + p.copies + '</b><button data-act="copies" data-id="' + p.id + '" data-d="1">＋</button></div></div>').join('');
-  const sizes = L.PHOTO_SIZES.map((s) => '<button class="opt' + (state.photo.size === s.id ? ' on' : '') + '" data-act="psize" data-id="' + s.id + '"><b>' + s.label + '</b>' + (s.hint ? '<small>' + s.hint + '</small>' : '') + (cfg.prices[s.id] ? '<em>' + money(cfg.prices[s.id]) + ' each</em>' : '') + '</button>').join('');
-  return '<main class="photos"><div class="pl"><h3>Copies of each photo</h3><div class="pgrid">' + cards + '</div><button class="btn ghost sm" data-act="to-add">＋ Add more photos</button></div>' +
-    '<div class="pr"><h3>Print size</h3><div class="opts">' + sizes + '</div>' +
-    '<h3>How should it fit?</h3><div class="seg"><button class="' + (state.photo.fit === 'fill' ? 'on' : '') + '" data-act="pfit" data-id="fill">Fill the page<small>trims the edges</small></button><button class="' + (state.photo.fit === 'fit' ? 'on' : '') + '" data-act="pfit" data-id="fit">Whole photo<small>white borders</small></button></div></div></main>' +
+  return '<main class="photos2"><div class="pcol"><div class="pwrap" id="pwrap"><canvas id="pprev"></canvas></div>' +
+    '<div class="ptools"><div class="sheetnav" id="sheetnav" hidden><button class="tb" data-act="sheet-nav" data-d="-1" aria-label="Previous sheet">‹</button><span id="sheetlbl"></span><button class="tb" data-act="sheet-nav" data-d="1" aria-label="Next sheet">›</button></div>' +
+    '<div class="zoomrow" title="Zoom the photo you selected. Drag it on the sheet to move it."><span>−</span><input type="range" id="pzoom" min="100" max="400" value="100" data-in="pzoom" aria-label="Zoom"><span>＋</span></div>' +
+    '<button class="tb" data-act="pflip-sel" id="pflipsel">↔ Mirror</button><button class="tb" data-act="preset-photo">Reset</button></div></div>' +
+    '<div class="panel" id="ppanel">' + ppanelHTML() + '</div></main>' +
     '<footer class="bar"><button class="btn ghost" data-act="to-add">← Photos</button><button class="btn primary big" data-act="photo-preview">See my print →</button></footer>';
+}
+function renderPPanel() { const p = $('#ppanel'); if (p) { p.innerHTML = ppanelHTML(); fillPrinterBox(); } }
+
+let pLayout = null, pDrawT = 0;
+function schedulePreview() { if (pDrawT) return; pDrawT = setTimeout(() => { pDrawT = 0; drawPhotoPreview(); }, 30); }
+function drawPhotoPreview() {
+  const cv = $('#pprev'), wrap = $('#pwrap'); if (!cv || !wrap) return;
+  const lay = photoLayout(); pLayout = lay;
+  if (!lay || !lay.sheets) { toast('That size does not fit on the paper.'); return; }
+  const n = lay.sheets.length; state.photo.sheet = clamp(state.photo.sheet, 0, n - 1);
+  const pw = L.px(lay.paper.w), ph = L.px(lay.paper.h), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const css = Math.max(0.02, Math.min((wrap.clientWidth - 20) / pw, (wrap.clientHeight - 20) / ph));
+  const cw = Math.floor(pw * css), ch = Math.floor(ph * css);
+  cv.style.width = cw + 'px'; cv.style.height = ch + 'px'; cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+  const sc = cv.width / pw; lay.css = cw / pw;
+  const sheet = lay.sheets[state.photo.sheet];
+  const x = cv.getContext('2d');
+  x.drawImage(L.renderSheets([sheet], paintPhoto, { cutGuides: !lay.size.full, scale: sc })[0], 0, 0, cv.width, cv.height);
+  x.lineWidth = Math.max(3, cv.width / 200); x.strokeStyle = '#0b6e6e';
+  for (const it of sheet.items) if (it.pid === state.photo.sel) { const r = itemRectFinal(sheet, it); x.strokeRect(r.x * sc + x.lineWidth / 2, r.y * sc + x.lineWidth / 2, r.w * sc - x.lineWidth, r.h * sc - x.lineWidth); }
+  const nav = $('#sheetnav'); if (nav) { nav.hidden = n < 2; $('#sheetlbl').textContent = 'Sheet ' + (state.photo.sheet + 1) + ' of ' + n; }
+  const p = selPhoto(), z = $('#pzoom'); if (z && p) z.value = Math.round((p.zoom || 1) * 100);
+  const fb = $('#pflipsel'); if (fb && p) fb.classList.toggle('on', !!p.flip);
+}
+async function mountPhotos() {
+  if (!state.photos.length) { go('add'); return; }
+  if (!selPhoto()) state.photo.sel = null; if (!state.photo.sel) state.photo.sel = state.photos[0].id;
+  if (state.photos.some((p) => !p.work)) {
+    await busy('Preparing photos…');
+    try { for (const p of state.photos) p.work = await getWork(p); } catch (e) { await busy(''); toast(e.message); go('add'); return; }
+    await busy('');
+    if (state.screen !== 'photos') return;
+  }
+  const cv = $('#pprev'); if (!cv) return;
+  let drag = null;
+  cv.onpointerdown = (e) => {
+    if (!pLayout || !pLayout.sheets) return;
+    const r = cv.getBoundingClientRect(), fx = (e.clientX - r.left) / pLayout.css, fy = (e.clientY - r.top) / pLayout.css, sheet = pLayout.sheets[state.photo.sheet];
+    const hit = [...sheet.items].reverse().find((it) => { const q = itemRectFinal(sheet, it); return fx >= q.x && fx <= q.x + q.w && fy >= q.y && fy <= q.y + q.h; });
+    if (!hit) return;
+    if (state.photo.sel !== hit.pid) { state.photo.sel = hit.pid; const pn = $('#ppanel'); if (pn && state.photo.tab === 'photos') renderPPanel(); }
+    try { cv.setPointerCapture(e.pointerId); } catch (err) { /* not an active pointer */ } drag = { x: e.clientX, y: e.clientY, sheet }; schedulePreview();
+  };
+  cv.onpointermove = (e) => {
+    if (!drag) return;
+    const p = selPhoto(), it = pLayout.items.find((q) => q.pid === p.id); if (!it) return;
+    const dxF = (e.clientX - drag.x) / pLayout.css, dyF = (e.clientY - drag.y) / pLayout.css; drag.x = e.clientX; drag.y = e.clientY;
+    const g = photoGeom(it), pdx = drag.sheet.rot ? dyF : dxF, pdy = drag.sheet.rot ? -dxF : dyF;     // finished-sheet movement -> the cell's own axes
+    if (g.mx > 0) p.ox = clamp((p.ox || 0) + pdx / g.mx, -1, 1);
+    if (g.my > 0) p.oy = clamp((p.oy || 0) + pdy / g.my, -1, 1);
+    schedulePreview();
+  };
+  const end = () => { drag = null; };
+  cv.onpointerup = end; cv.onpointercancel = end;
+  cv.onwheel = (e) => { const p = selPhoto(); if (!p) return; e.preventDefault(); p.zoom = clamp((p.zoom || 1) * (1 - e.deltaY * 0.0012), 1, 4); schedulePreview(); };
+  drawPhotoPreview();
 }
 
 function reviewHTML() {
@@ -194,34 +310,57 @@ function reviewHTML() {
     : '<p class="paper">Paper: <b>' + esc(o.paper.label) + '</b></p>';
   return '<main class="review"><div class="prev">' + prev + '</div><div class="sum"><h3>Your print</h3><ul>' + o.lines.map((l) => '<li>' + esc(l) + '</li>').join('') + '</ul>' +
     '<p class="paper">' + o.canvases.length + (o.canvases.length === 1 ? ' sheet' : ' sheets') + '</p>' + paper +
-    (hw ? '<div class="fld" id="printerBox"><span>Printer</span><p class="paper">Looking for printers…</p></div>' : '') +
+    (hw ? '<div class="fld"><span>Printer</span><div class="printerbox"><p class="paper">Looking for printers…</p></div></div>' : '') +
     '<div class="qrow"><span>How many sets?</span><div class="stepper"><button data-act="sets" data-d="-1">−</button><b>' + state.sets + '</b><button data-act="sets" data-d="1">＋</button></div></div>' +
     (total ? '<p class="total">Total <b>' + money(total) + '</b></p>' : '') +
-    '<button class="btn primary big wide" data-act="print">🖨️ Print</button>' +
-    '<button class="btn ghost wide" data-act="save">Save as JPG</button></div></main>' +
-    '<footer class="bar"><button class="btn ghost" data-act="back-review">← Change something</button><span></span></footer>';
+    '</div></main>' +
+    '<footer class="bar"><button class="btn ghost" data-act="back-review">← Change</button><span class="grow"></span><button class="btn ghost" data-act="save">Save JPG</button><button class="btn primary big" data-act="print">🖨️ Print</button></footer>';
 }
 
-// Which printer this paper prints on (the booth's per-paper printer). With the Print Helper every installed printer is listed.
-async function fillPrinterBox() {
-  const box = $('#printerBox'); if (!box || !hw || !state.out) return;
-  let info; try { info = await hw.printers(state.out.paper.id); } catch (e) { return; }
-  const b = $('#printerBox'); if (!b) return;
+// The paper a print will use right now (the sheet being reviewed, the photo size chosen, or the ID paper).
+function currentPaperKey() {
+  if (state.out && state.out.paper) return state.out.paper.id;
+  if (state.mode === 'photo') { const z = L.PHOTO_SIZES.find((x) => x.id === state.photo.size); if (z) return z.paper; }
+  return L.paperById(cfg.idPaper).id;
+}
+// Which printer this paper prints on (the booth's per-paper printer). With the Print Helper every installed printer is listed;
+// the Android app lists the Wi-Fi / USB printers it found; otherwise it says how the print will go.
+function printerControlHTML(info) {
   if (info.options.length) {
     const opts = info.options.slice(); if (info.current && !opts.includes(info.current)) opts.unshift(info.current);
-    b.innerHTML = '<span>Printer</span><select data-in="printer"><option value="">Choose a printer…</option>' + opts.map((n) => '<option value="' + esc(n) + '"' + (n === info.current ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</select>';
-  } else {
-    const t = { station: 'Print station', wifi: 'Wi-Fi printer: ' + (info.current || ''), android: 'Android print screen (choose the printer when it opens)', browser: info.current || 'This device’s print dialog' }[info.mode] || '';
-    b.innerHTML = '<span>Printer</span><p class="paper">' + esc(t) + '</p>';
+    return '<select data-in="printer"><option value="">Choose a printer…</option>' + opts.map((n) => '<option value="' + esc(n) + '"' + (n === info.current ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</select>';
   }
+  if (info.android && info.android.ok) {
+    const a = info.android;
+    return '<div class="plist">' + (a.items.length ? a.items.map((i) => '<button class="pi' + (i.selected ? ' on' : '') + '" data-act="apr" data-id="' + esc(i.id) + '">' + (i.selected ? '✓ ' : '') + esc(i.name) + '</button>').join('') : '<p class="paper">No printers found yet.</p>') + '</div>' +
+      '<button class="btn ghost sm" data-act="apr-scan">' + (a.scanning ? 'Searching…' : 'Find printers') + '</button>';
+  }
+  const t = { station: 'Print station', wifi: 'Wi-Fi printer: ' + (info.current || ''), android: 'Android print screen (choose the printer when it opens)', browser: info.current || 'This device’s print dialog' }[info.mode] || '';
+  return '<p class="paper">' + esc(t) + '</p>';
+}
+async function fillPrinterBox() {
+  const boxes = [...document.querySelectorAll('.printerbox')]; if (!boxes.length || !hw) return;
+  let info; try { info = await hw.printers(currentPaperKey()); } catch (e) { return; }
+  const html = printerControlHTML(info);
+  document.querySelectorAll('.printerbox').forEach((b) => { b.innerHTML = html; });
+}
+function printerModal() {
+  const idMode = state.mode === 'id' && L.PAPERS.length > 1;
+  const paper = idMode
+    ? '<label class="fld"><span>Paper for ID sheets</span><select data-in="paper">' + L.PAPERS.map((p) => '<option value="' + esc(p.id) + '"' + (p.id === currentPaperKey() ? ' selected' : '') + '>' + esc(p.label) + '</option>').join('') + '</select></label>'
+    : '<p class="paper">Paper: <b>' + esc((L.paperById(currentPaperKey()) || {}).label || '') + '</b></p>';
+  openModal('<h2>Printer &amp; paper</h2>' + paper + '<div class="fld"><span>Printer</span><div class="printerbox"><p class="paper">Looking for printers…</p></div></div>' +
+    '<div class="mcol"><button class="btn" data-act="hw-printer-setup">More printer settings (booth Setup)</button><button class="btn primary big" data-act="close">Done</button></div>');
+  fillPrinterBox();
 }
 
 function render() {
   const s = state.screen, app = $('#app');
   app.className = 's-' + s;
-  app.innerHTML = s === 'home' ? homeHTML() : header() + ({ add: addHTML, id: idHTML, photos: photosHTML, review: reviewHTML }[s])();
+  app.innerHTML = s === 'home' ? homeHTML() : s === 'orders' ? ordersHTML() : header() + ({ add: addHTML, id: idHTML, photos: photosHTML, review: reviewHTML }[s])();
   if (s === 'id') mountId();
-  if (s === 'review') fillPrinterBox();
+  if (s === 'review' || s === 'photos') fillPrinterBox();
+  if (s === 'photos') mountPhotos();
 }
 function go(s) { state.screen = s; render(); }
 
@@ -230,7 +369,7 @@ const idAspect = () => {
   const act = L.ID_SIZES.filter((s) => (state.id.qty[s.id] || 0) > 0).sort((a, b) => b.w * b.h - a.w * a.h)[0] || L.ID_SIZES[2];
   return act.w / act.h;
 };
-const idOpts = () => ({ crop: state.id.crop, bg: state.id.bgMode === 'original' ? null : state.id.bg, brightness: state.id.brightness, contrast: state.id.contrast, flip: state.id.flip });
+const idOpts = () => ({ crop: state.id.crop, bg: state.id.bgMode === 'original' ? null : (state.id.tool !== 'move' ? 'checker' : state.id.bg), brightness: state.id.brightness, contrast: state.id.contrast, flip: state.id.flip });
 const hRange = () => ({ min: idWork.h * 0.15, max: Math.max(idWork.h, idWork.w / idAspect()) * 1.8 });
 const clampH = (h) => { const r = hRange(); return Math.min(r.max, Math.max(r.min, h)); };
 
@@ -266,12 +405,48 @@ function drawStage() {
 }
 function renderIdPanel() { const p = $('#panel'); if (p) p.innerHTML = idPanelHTML(); }
 
+// ----- touch-up brush -----
+let stroke = null, recutT = 0;
+function paintReady() { return state.id.tool !== 'move' && idWork && idWork.matte && idWork.edits; }
+function gridPoint(e) {
+  const box = $('#stagebox'), r = box.getBoundingClientRect(), cr = state.id.crop, M = idWork.matte;
+  const H = cr.h, W = H * r.width / r.height;
+  let u = (e.clientX - r.left) / r.width; if (state.id.flip) u = 1 - u;
+  const v = (e.clientY - r.top) / r.height;
+  const k = M.gw / idWork.w;
+  return { gx: (cr.cx - W / 2 + u * W) * k, gy: (cr.cy - H / 2 + v * H) * (M.gh / idWork.h), rad: state.id.brush / r.height * H * k };
+}
+function dab(e) {
+  const g = gridPoint(e), M = idWork.matte;
+  if (stroke.last) {                           // fill the gap between two pointer events
+    const dx = g.gx - stroke.last.gx, dy = g.gy - stroke.last.gy, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / Math.max(1, g.rad * 0.35)));
+    for (let i = 1; i <= n; i++) I.paintDab(idWork.edits, M.gw, M.gh, stroke.last.gx + dx * i / n, stroke.last.gy + dy * i / n, g.rad, state.id.tool);
+  } else I.paintDab(idWork.edits, M.gw, M.gh, g.gx, g.gy, g.rad, state.id.tool);
+  stroke.last = g;
+  if (!recutT) recutT = setTimeout(() => { recutT = 0; recut(); drawStage(); }, 45);
+}
+function moveBrushCursor(e) {
+  const c = $('#brushcur'), box = $('#stagebox'); if (!c || !box) return;
+  const r = box.getBoundingClientRect(); c.hidden = state.id.tool === 'move';
+  c.style.width = c.style.height = (state.id.brush * 2) + 'px'; c.style.left = (e.clientX - r.left) + 'px'; c.style.top = (e.clientY - r.top) + 'px';
+}
+function renderTools() {
+  const t = $('#tools'); if (t) { t.hidden = state.id.tool === 'move'; t.querySelectorAll('[data-act=tool]').forEach((b) => b.classList.toggle('on', b.dataset.id === state.id.tool)); }
+  const b = $('[data-act=touchup]'); if (b) b.classList.toggle('on', state.id.tool !== 'move');
+  const box = $('#stagebox'); if (box) box.classList.toggle('paint', state.id.tool !== 'move');
+  const c = $('#brushcur'); if (c && state.id.tool === 'move') c.hidden = true;
+}
+
 function mountId() {
-  renderIdPanel(); sizeStage();
+  renderIdPanel(); sizeStage(); renderTools();
   const box = $('#stagebox'), ptrs = new Map(); let pinch = null;
   const dist = () => { const [a, b] = [...ptrs.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
-  box.onpointerdown = (e) => { box.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptrs.size === 2 && state.id.crop) pinch = { d: dist(), h: state.id.crop.h }; };
+  box.onpointerdown = (e) => {
+    if (paintReady()) { try { box.setPointerCapture(e.pointerId); } catch (err) { /* not an active pointer */ } I.snapshotEdits(idWork.edits); stroke = { last: null }; dab(e); moveBrushCursor(e); return; }
+    try { box.setPointerCapture(e.pointerId); } catch (err) { /* not an active pointer */ } ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptrs.size === 2 && state.id.crop) pinch = { d: dist(), h: state.id.crop.h };
+  };
   box.onpointermove = (e) => {
+    if (paintReady()) { moveBrushCursor(e); if (stroke) dab(e); return; }
     if (!ptrs.has(e.pointerId) || !state.id.crop) return;
     const p = ptrs.get(e.pointerId), dx = e.clientX - p.x, dy = e.clientY - p.y; ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const cr = state.id.crop;
@@ -279,8 +454,9 @@ function mountId() {
     else if (pinch) { cr.h = clampH(pinch.h * pinch.d / dist()); syncZoom(); }
     drawStage();
   };
-  const up = (e) => { ptrs.delete(e.pointerId); pinch = null; };
+  const up = (e) => { if (stroke) { stroke = null; clearTimeout(recutT); recutT = 0; recut(); drawStage(); } ptrs.delete(e.pointerId); pinch = null; };
   box.onpointerup = up; box.onpointercancel = up;
+  box.onpointerleave = () => { const c = $('#brushcur'); if (c) c.hidden = true; };
   box.onwheel = (e) => { if (!state.id.crop) return; e.preventDefault(); state.id.crop.h = clampH(state.id.crop.h * (1 + e.deltaY * 0.0012)); syncZoom(); drawStage(); };
   openId();
 }
@@ -306,10 +482,23 @@ async function openId() {
   await busy('');
 }
 
+// Re-make the cut-out from the matte (after the edge slider or a brush stroke).
+function recut() {
+  if (!idWork) return;
+  if (idWork.matte) idWork.cut = I.buildCutout(idWork, state.id.edge, idWork.edits);
+  else if (idWork.conf) idWork.cut = I.makeCutout(idWork.img, idWork.conf, state.id.edge);
+}
 async function ensureCut() {
   const w = idWork; if (!w || w.cut) return true;
   await busy('Making the background plain…');
-  try { w.conf = await I.personConfidence(w.img); w.cut = I.makeCutout(w.img, w.conf, state.id.edge); return true; }
+  try {
+    try { w.matte = await I.computeMatte(w.img); w.edits = I.newEdits(w.matte); w.cut = I.buildCutout(w, state.id.edge, w.edits); }
+    catch (e1) {
+      console.error('Portrait matting could not run, using the basic cut-out', e1);
+      w.matte = null; w.edits = null; w.conf = await I.personConfidence(w.img); w.cut = I.makeCutout(w.img, w.conf, state.id.edge);
+    }
+    return true;
+  }
   catch (e) { console.error(e); toast('Could not change the background. Using your original.'); state.id.bgMode = 'original'; renderIdPanel(); return false; }
   finally { await busy(''); }
 }
@@ -333,40 +522,23 @@ async function buildId() {
     if (!sheets) { toast('That size does not fit on the ' + paper.label + ' paper.'); return; }
     state.out = {
       kind: 'id', paper, canvases: L.renderSheets(sheets, (ctx, it, x, y) => ctx.drawImage(cache[it.size], x, y), { cutGuides: cfg.cutGuides }),
-      lines: sizes.map((s) => state.id.qty[s.id] + ' × ' + s.label), unitPrice: 0,
+      lines: sizes.map((s) => state.id.qty[s.id] + ' × ' + s.label), unitPrice: 0, saved: false,
     };
     state.out.unitPrice = cfg.prices.idSheet ? cfg.prices.idSheet * state.out.canvases.length : 0;
     state.sets = 1; go('review');
   } finally { await busy(''); }
 }
 
-function paintPhoto(ctx, it, x, y) {
-  const src = it.work.img, iw = src.width, ih = src.height, w = it.w, h = it.h;
-  const rot = it.full && iw > ih, ew = rot ? ih : iw, eh = rot ? iw : ih;
-  const k = it.fit === 'fit' ? Math.min(w / ew, h / eh) : Math.max(w / ew, h / eh);
-  const dw = ew * k, dh = eh * k, dx = x + (w - dw) / 2, dy = y + (h - dh) / 2;
-  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.imageSmoothingQuality = 'high';
-  if (it.flip) { ctx.translate(2 * x + w, 0); ctx.scale(-1, 1); }          // mirror about the middle of this print
-  if (rot) { ctx.translate(dx + dw, dy); ctx.rotate(Math.PI / 2); ctx.drawImage(src, 0, 0, dh, dw); }
-  else ctx.drawImage(src, dx, dy, dw, dh);
-  ctx.restore();
-}
-
 async function buildPhotos() {
-  const size = L.PHOTO_SIZES.find((s) => s.id === state.photo.size), paper = L.paperById(size.paper);
-  const items = []; let n = 0, prints = 0;
   try {
-    for (const p of state.photos) {
-      await busy('Preparing photo ' + (++n) + ' of ' + state.photos.length + '…');
-      const work = await getWork(p);
-      for (let c = 0; c < p.copies; c++) for (let d = 0; d < (size.dup || 1); d++) items.push({ w: L.px(size.w), h: L.px(size.h), work, full: !!size.full, fit: state.photo.fit, flip: !!p.flip });
-      prints += p.copies;
-    }
-    const sheets = L.pack(items, L.px(paper.w), L.px(paper.h), 0, 0);
-    if (!sheets) { toast('That size does not fit on the paper.'); return; }
+    await busy('Preparing your print…');
+    for (const p of state.photos) if (!p.work) p.work = await getWork(p);
+    const lay = photoLayout();
+    if (!lay || !lay.sheets) { toast('That size does not fit on the paper.'); return; }
+    const prints = state.photos.reduce((a, p) => a + p.copies, 0);
     state.out = {
-      kind: 'photo', paper, canvases: L.renderSheets(sheets, paintPhoto, { cutGuides: !size.full }),
-      lines: [prints + ' × ' + size.label + (state.photos.length > 1 ? ' (' + state.photos.length + ' photos)' : '')], unitPrice: (cfg.prices[size.id] || 0) * prints,
+      kind: 'photo', paper: lay.paper, canvases: L.renderSheets(lay.sheets, paintPhoto, { cutGuides: !lay.size.full }), saved: false,
+      lines: [prints + ' × ' + lay.size.label + (state.photos.length > 1 ? ' (' + state.photos.length + ' photos)' : '')], unitPrice: (cfg.prices[lay.size.id] || 0) * prints,
     };
     state.sets = 1; go('review');
   } catch (e) { toast(e.message || 'Could not prepare the photos.'); }
@@ -499,11 +671,48 @@ async function openQR() {
   } catch (e) { const b = $('#qrbox'); if (b) b.innerHTML = '<p class="err">Could not start. Check the internet connection and try again.</p>'; phone = null; }
 }
 
+// ---------- past orders (staff only): the finished sheets, kept on this device, with reprint / save / delete ----------
+const fmtDate = (t) => { try { return new Date(t).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); } catch (e) { return ''; } };
+function ordersHTML() {
+  const cards = state.orders.map((o) => '<div class="ocard"><button class="othumb" data-act="order-view" data-id="' + o.id + '" aria-label="View"><img src="' + o.url + '" alt=""></button>' +
+    '<div class="ometa"><b>' + esc(o.lines.join(' · ')) + '</b><small>' + esc(fmtDate(o.t)) + ' · ' + esc(o.paper.label) + ' · ' + o.n + (o.n === 1 ? ' sheet' : ' sheets') + '</small></div>' +
+    '<div class="oact"><button class="btn sm" data-act="order-reprint" data-id="' + o.id + '">🖨️ Reprint</button><button class="btn ghost sm" data-act="order-save" data-id="' + o.id + '">Save</button><button class="btn ghost sm del" data-act="order-del" data-id="' + o.id + '">Delete</button></div></div>').join('');
+  return '<header class="top"><div class="brand">Past orders</div><span class="hint grow">' + (cfg.keepDays ? 'Kept on this device for ' + cfg.keepDays + ' days, then removed.' : 'Not being kept (set days in Settings).') + '</span>' +
+    (state.orders.length ? '<button class="btn ghost sm del" data-act="orders-clear">Delete all</button>' : '') + '<button class="btn primary sm" data-act="orders-back">Back</button></header>' +
+    '<main class="orders">' + (cards ? '<div class="ogrid">' + cards + '</div>' : '<p class="hint empty">No past orders yet. Finished prints and saves appear here.</p>') + '</main>';
+}
+async function loadOrders() {
+  try { await H.prune(cfg.keepDays); } catch (e) { /* storage not available */ }
+  let rows = []; try { rows = await H.listOrders(); } catch (e) { toast('Past orders are not available on this device.'); }
+  state.orders.forEach((o) => URL.revokeObjectURL(o.url));
+  state.orders = rows.map((o) => ({ ...o, url: URL.createObjectURL(o.thumb) }));
+}
+async function saveOrderOnce() {
+  const o = state.out; if (!o || o.saved || !cfg.keepDays) return;
+  o.saved = true;
+  try {
+    const t = document.createElement('canvas'), c0 = o.canvases[0], k = 360 / c0.height; t.width = Math.round(c0.width * k); t.height = 360; t.getContext('2d').drawImage(c0, 0, 0, t.width, t.height);
+    const thumb = await I.canvasToBlob(t, 'image/jpeg', 0.8), blobs = [];
+    for (const c of o.canvases) blobs.push(await I.canvasToBlob(c, 'image/jpeg', 0.92));
+    await H.saveOrder({ kind: o.kind, lines: o.lines, paper: { id: o.paper.id, label: o.paper.label, w: o.paper.w, h: o.paper.h }, sets: state.sets, thumb }, blobs);
+    H.prune(cfg.keepDays).catch(() => {});
+  } catch (e) { console.error('Could not keep this order', e); o.saved = false; }
+}
+async function orderCanvases(id) { const out = []; for (const b of await H.getSheets(id)) out.push(await I.decodeFile(b, 6000)); return out; }
+function confirmModal(title, text, act, id) {
+  openModal('<h2>' + esc(title) + '</h2><p>' + esc(text) + '</p><div class="mrow"><button class="btn ghost" data-act="close">Cancel</button><button class="btn primary big del" data-act="' + act + '" data-id="' + esc(id || '') + '">Delete</button></div>');
+}
+
 // ---------- settings (hidden: tap the shop name 5 times) ----------
 let taps = 0, tapT = 0;
+function pinModal(next) {
+  state.pinNext = next;
+  openModal('<h2>Staff only</h2><p>Enter the PIN.</p><div class="mcol"><input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN"><button class="btn primary big" data-act="pin-ok">' + (next === 'orders' ? 'Open past orders' : 'Open settings') + '</button><button class="btn ghost" data-act="close">Cancel</button></div>');
+  setTimeout(() => $('#pin') && $('#pin').focus(), 50);
+}
 function brandTap() {
   clearTimeout(tapT); tapT = setTimeout(() => { taps = 0; }, 2500);
-  if (++taps >= 5) { taps = 0; openModal('<h2>Staff only</h2><p>Enter the PIN.</p><div class="mcol"><input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN"><button class="btn primary big" data-act="pin-ok">Open settings</button><button class="btn ghost" data-act="close">Cancel</button></div>'); setTimeout(() => $('#pin') && $('#pin').focus(), 50); }
+  if (++taps >= 5) { taps = 0; pinModal('settings'); }
 }
 function openSettings() {
   const pr = cfg.prices, pap = L.PAPERS.map((p) => '<option value="' + p.id + '"' + (cfg.idPaper === p.id ? ' selected' : '') + '>' + p.label + '</option>').join('');
@@ -513,6 +722,7 @@ function openSettings() {
     '<label>Currency symbol<input data-k="currency" value="' + esc(cfg.currency) + '" maxlength="4"></label>' +
     '<label>Staff PIN<input data-k="pin" value="' + esc(cfg.pin) + '"></label>' +
     '<label>Clear photos after idle (seconds, 0 = never)' + num('idle', cfg.idle) + '</label>' +
+    '<label>Keep past orders for (days, 0 = keep nothing)' + num('keepDays', cfg.keepDays) + '</label>' +
     '<label>Paper for ID sheets<select data-k="idPaper">' + pap + '</select></label>' +
     '<label>Gap between ID photos (mm)' + num('gapMm', cfg.gapMm) + '</label>' +
     '<label>Paper margin (mm)' + num('marginMm', cfg.marginMm) + '</label>' +
@@ -520,7 +730,7 @@ function openSettings() {
     '<h3>Prices (0 = do not show)</h3>' +
     '<label>Per ID sheet' + num('p.idSheet', pr.idSheet) + '</label>' +
     L.PHOTO_SIZES.map((s) => '<label>Photo ' + s.label + ' (each)' + num('p.' + s.id, pr[s.id] || 0) + '</label>').join('') +
-    '</div>' + (hw ? '<div class="mcol"><button class="btn" data-act="hw-setup">Cameras &amp; printers: open the booth Setup</button></div>' : '') +
+    '</div><div class="mcol"><button class="btn" data-act="orders-open-staff">Past orders…</button></div>' + (hw ? '<div class="mcol"><button class="btn" data-act="hw-setup">Cameras &amp; printers: open the booth Setup</button></div>' : '') +
     '<div class="mrow"><button class="btn primary big" data-act="save-cfg">Save</button><button class="btn ghost" data-act="close">Cancel</button></div>');
 }
 function saveSettings() {
@@ -553,10 +763,10 @@ const acts = {
   brand: brandTap,
   close: () => { delete $('#modal').dataset.idle; closeModal(); },
   reset: () => { if (!state.photos.length || confirm('Clear everything and start over?')) resetAll(); },
-  start: (b) => { if (noPrint()) { toast(NO_PRINT_MSG, 6000); return; } state.mode = b.dataset.mode; state.screen = 'add'; I.preload(); render(); },
+  start: (b) => { if (noPrint()) { toast(NO_PRINT_MSG, 6000); return; } state.mode = b.dataset.mode; state.screen = 'add'; I.preload(); if (state.mode === 'id') I.preloadMatting(); render(); },
   pick: (b) => { if (state.mode === 'id') { state.sel = b.dataset.id; render(); } },
   rm: (b, e) => { e.stopPropagation(); removePhoto(b.dataset.id); if (!state.photos.length && state.screen === 'photos') go('add'); else render(); },
-  'next-add': () => { if (state.mode === 'id') { state.id.cropFor = null; go('id'); } else go('photos'); },
+  'next-add': () => { if (state.mode === 'id') { state.id.cropFor = null; go('id'); } else { state.photo.sel = state.photos[0] ? state.photos[0].id : null; go('photos'); } },
   'to-add': () => go('add'),
   'src-cam': () => (hw ? openCameraHW() : openCamera()), 'src-usb': openUsb, 'src-bt': openBluetooth, 'src-qr': openQR,
   snap: () => (hw ? snapHW() : snap()),
@@ -603,13 +813,46 @@ const acts = {
     } else {
       try { await P.printSheets(o.canvases, o.paper, state.sets); } catch (e) { toast('Could not print: ' + (e.message || e)); return; }
     }
+    saveOrderOnce();
     openModal('<h2>Printing…</h2><p>Check the printer. When you have your prints, clear your photos from this screen.</p><div class="mrow"><button class="btn" data-act="close">Print again</button><button class="btn primary big" data-act="finish">Finish &amp; clear my photos</button></div>');
   },
   finish: () => resetAll(),
-  save: async () => { await P.downloadSheets(state.out.canvases, state.mode === 'id' ? 'id-photo' : 'photo-print'); toast('Saved'); },
-  'pin-ok': () => { if ($('#pin').value === String(cfg.pin)) openSettings(); else { $('#pin').value = ''; toast('Wrong PIN'); } },
+  save: async () => { await P.downloadSheets(state.out.canvases, state.mode === 'id' ? 'id-photo' : 'photo-print'); saveOrderOnce(); toast('Saved'); },
+  'pin-ok': async () => {
+    if ($('#pin').value !== String(cfg.pin)) { $('#pin').value = ''; toast('Wrong PIN'); return; }
+    if (state.pinNext === 'orders') { closeModal(); await loadOrders(); go('orders'); } else openSettings();
+  },
+  'orders-open': () => pinModal('orders'),
+  'orders-open-staff': async () => { closeModal(); await loadOrders(); go('orders'); },
+  'orders-back': () => { state.orders.forEach((o) => URL.revokeObjectURL(o.url)); state.orders = []; go('home'); },
+  'order-view': async (b) => {
+    const o = state.orders.find((x) => x.id === b.dataset.id); if (!o) return;
+    await busy('Opening…'); const blobs = await H.getSheets(o.id); await busy('');
+    const urls = blobs.map((x) => URL.createObjectURL(x));
+    openModal('<h2>' + esc(o.lines.join(' · ')) + '</h2><p class="hint">' + esc(fmtDate(o.t)) + '</p><div class="oview">' + urls.map((u) => '<img src="' + u + '" alt="">').join('') + '</div><div class="mrow"><button class="btn primary" data-act="close">Close</button></div>', () => urls.forEach((u) => URL.revokeObjectURL(u)));
+  },
+  'order-reprint': async (b) => {
+    const o = state.orders.find((x) => x.id === b.dataset.id); if (!o) return;
+    await busy('Preparing…'); let cs; try { cs = await orderCanvases(o.id); } catch (e) { await busy(''); toast('Could not open that order.'); return; } await busy('');
+    if (hw) { const r = await hw.print(cs, o.paper.id, 1); toast(r.msg, 6000); }
+    else { try { await P.printSheets(cs, { w: o.paper.w, h: o.paper.h }, 1); } catch (e) { toast('Could not print: ' + (e.message || e)); } }
+  },
+  'order-save': async (b) => { const o = state.orders.find((x) => x.id === b.dataset.id); if (!o) return; await P.downloadSheets(await orderCanvases(o.id), 'order-' + o.id); toast('Saved'); },
+  'order-del': (b) => confirmModal('Delete this order?', 'The photos in it are removed from this device. This cannot be undone.', 'order-del-yes', b.dataset.id),
+  'order-del-yes': async (b) => { await H.deleteOrder(b.dataset.id); closeModal(); await loadOrders(); render(); toast('Deleted'); },
+  'orders-clear': () => confirmModal('Delete all past orders?', 'Every saved order is removed from this device. This cannot be undone.', 'orders-clear-yes', ''),
+  'orders-clear-yes': async () => { await H.clearOrders(); closeModal(); await loadOrders(); render(); toast('All past orders deleted'); },
+  psel: (b) => { state.photo.sel = b.dataset.id; renderPPanel(); schedulePreview(); },
+  ptab: (b) => { state.photo.tab = b.dataset.id; renderPPanel(); },
+  'sheet-nav': (b) => { state.photo.sheet += Number(b.dataset.d); schedulePreview(); },
+  'pflip-sel': () => { const p = selPhoto(); if (p) { p.flip = !p.flip; renderPPanel(); schedulePreview(); } },
+  'preset-photo': () => { const p = selPhoto(); if (p) { p.zoom = 1; p.ox = 0; p.oy = 0; schedulePreview(); } },
   'save-cfg': saveSettings,
   'hw-setup': () => { closeModal(); hw.openSetup(); },
+  'printer-modal': printerModal,
+  'hw-printer-setup': () => { closeModal(); hw.openSetup(4); },
+  apr: (b) => { const r = hw.choosePrinter(currentPaperKey(), b.dataset.id); toast(r.msg, 4500); fillPrinterBox(); },
+  'apr-scan': () => { hw.scanPrinters(); let n = 0; const t = setInterval(() => { fillPrinterBox(); if (++n > 40 || !document.querySelector('.printerbox')) clearInterval(t); }, 1200); },
   tab: (b) => { state.id.tab = b.dataset.id; renderIdPanel(); },
   flip: (b) => { state.id.flip = !state.id.flip; b.classList.toggle('on', state.id.flip); drawStage(); },
   guide: (b) => { state.id.guides = !state.id.guides; b.classList.toggle('on', state.id.guides); drawStage(); },
@@ -617,9 +860,18 @@ const acts = {
   pflip: (b, e) => { e.stopPropagation(); const p = photoById(b.dataset.id); if (p) { p.flip = !p.flip; render(); } },
   'reset-fine': () => {
     state.id.brightness = 0; state.id.contrast = 0; state.id.edge = 0;
-    if (idWork && idWork.conf) idWork.cut = I.makeCutout(idWork.img, idWork.conf, 0);
+    recut();
     renderIdPanel(); drawStage();
   },
+  touchup: (b) => {
+    if (state.id.bgMode === 'original') { toast('Pick a background colour first. Touch up fixes the cut-out.'); return; }
+    if (!idWork || !idWork.matte) { toast(idWork && idWork.cut ? 'Touch up is not available for this photo.' : 'Wait for the background to finish first.'); return; }
+    state.id.tool = state.id.tool === 'move' ? 'erase' : 'move'; renderTools(); drawStage();
+  },
+  tool: (b) => { state.id.tool = b.dataset.id; renderTools(); drawStage(); },
+  'tool-done': () => { state.id.tool = 'move'; renderTools(); drawStage(); },
+  'undo-edit': () => { if (idWork && idWork.edits && I.undoEdits(idWork.edits)) { recut(); drawStage(); } else toast('Nothing to undo.'); },
+  'reset-edits': () => { if (idWork && idWork.edits) { I.clearEdits(idWork.edits); recut(); drawStage(); toast('Touch-ups cleared'); } },
   rot: () => { if (hw && hw.canRotate && hw.canRotate()) { const next = innerHeight > innerWidth ? 'landscape' : 'portrait'; hw.setOrientation(next); toast(next === 'portrait' ? 'Portrait' : 'Landscape', 1500); } },
 };
 
@@ -630,15 +882,17 @@ const ins = {
   guides: (el) => { state.id.guides = el.checked; drawStage(); },
   edge: (el) => {
     state.id.edge = Number(el.value) / 10;
-    if (idWork && idWork.conf) { idWork.cut = I.makeCutout(idWork.img, idWork.conf, state.id.edge); drawStage(); }
+    recut(); drawStage();
   },
   camsel: (el) => startCamera(el.value),
+  brush: (el) => { state.id.brush = Number(el.value); },
+  pzoom: (el) => { const p = selPhoto(); if (p) { p.zoom = Number(el.value) / 100; schedulePreview(); } },
   custombg: (el) => {
     state.id.bg = el.value; state.id.bgMode = 'color';
     const i = el.closest('i'); if (i) i.style.setProperty('--c', el.value);
     drawStage(); if (idWork && !idWork.cut) ensureCut().then(drawStage);
   },
-  paper: async (el) => { cfg.idPaper = el.value; saveCfg(); await buildId(); },
+  paper: async (el) => { cfg.idPaper = el.value; saveCfg(); if (state.screen === 'review' && state.mode === 'id' && idWork) await buildId(); fillPrinterBox(); },
   printer: (el) => { if (hw && state.out) { hw.setPrinter(state.out.paper.id, el.value); toast(el.value ? 'Printer: ' + el.value : 'Using the booth’s default printer', 2500); } },
 };
 const CHANGE_ONLY = ['edge', 'camsel', 'paper', 'printer'];      // selects and the edge slider act when released, not on every move
@@ -653,7 +907,8 @@ document.addEventListener('change', (e) => {
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); if (e.key === 'Enter' && $('#pin') && document.activeElement === $('#pin')) acts['pin-ok'](); });
 addEventListener('dragover', (e) => e.preventDefault());
 addEventListener('drop', (e) => { e.preventDefault(); if (state.screen === 'add' || state.screen === 'photos') addFiles([...e.dataTransfer.files]); });
-addEventListener('resize', () => { if (state.screen === 'id') { sizeStage(); drawStage(); } });
+addEventListener('resize', () => { refreshRot(); if (state.screen === 'id') { sizeStage(); drawStage(); } });
 addEventListener('beforeunload', () => { if (phone) phone.stop(); });
 
+H.prune(cfg.keepDays).catch(() => {});          // past orders older than the keep-days setting go on start-up
 render();

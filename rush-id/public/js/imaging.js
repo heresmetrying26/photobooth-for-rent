@@ -106,6 +106,124 @@ export function makeCutout(work, conf, edge = 0) {
   return out;
 }
 
+// ---------- Better cut-out: MODNet portrait matting (ONNX Runtime web, on the device) ----------
+// MODNet gives a soft alpha matte (hair, shoulders), much finer than the small segmentation model above.
+// Steps: matte at ~512 px -> blown up to a 1280 px grid -> guided filter (edges snap to the real photo edges, hair strands stay)
+// -> levels -> applied to the full-size photo. A touch-up brush keeps its strokes in `edits` (erase / restore) on the same grid.
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('Could not load ' + src));
+    document.head.appendChild(s);
+  });
+}
+let modnetP = null;
+function modnet() {
+  if (!modnetP) {
+    modnetP = (async () => {
+      await loadScript(BASE + 'ort/ort.wasm.min.js');
+      const ort = window.ort;
+      ort.env.wasm.wasmPaths = BASE + 'ort/'; ort.env.wasm.numThreads = 1;      // (more threads barely help this model)
+      const session = await ort.InferenceSession.create(BASE + 'modnet.onnx', { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
+      return { ort, session };
+    })();
+    modnetP.catch(() => { modnetP = null; });
+  }
+  return modnetP;
+}
+export function preloadMatting() { modnet().catch(() => {}); }
+export const mattingReady = () => { let r = false; modnetP && modnetP.then(() => { r = true; }); return r; };
+
+// Running mean over a (2r+1) box, edges averaged over what exists. In: Float32Array w*h.
+function boxMean(src, w, h, r) {
+  const tmp = new Float32Array(w * h), out = new Float32Array(w * h), P = new Float64Array(Math.max(w, h) + 1);
+  for (let y = 0; y < h; y++) {
+    const o = y * w; P[0] = 0; for (let x = 0; x < w; x++) P[x + 1] = P[x] + src[o + x];
+    for (let x = 0; x < w; x++) { const a = Math.max(0, x - r), b = Math.min(w, x + r + 1); tmp[o + x] = (P[b] - P[a]) / (b - a); }
+  }
+  for (let x = 0; x < w; x++) {
+    P[0] = 0; for (let y = 0; y < h; y++) P[y + 1] = P[y] + tmp[y * w + x];
+    for (let y = 0; y < h; y++) { const a = Math.max(0, y - r), b = Math.min(h, y + r + 1); out[y * w + x] = (P[b] - P[a]) / (b - a); }
+  }
+  return out;
+}
+// Guided filter (He et al.): q follows p, but its edges follow the guide I.
+function guidedFilter(I, p, w, h, r, eps) {
+  const n = w * h, Ip = new Float32Array(n), II = new Float32Array(n);
+  for (let i = 0; i < n; i++) { Ip[i] = I[i] * p[i]; II[i] = I[i] * I[i]; }
+  const mI = boxMean(I, w, h, r), mP = boxMean(p, w, h, r), mIp = boxMean(Ip, w, h, r), mII = boxMean(II, w, h, r);
+  const a = new Float32Array(n), b = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const v = mII[i] - mI[i] * mI[i], c = mIp[i] - mI[i] * mP[i]; a[i] = c / (v + eps); b[i] = mP[i] - a[i] * mI[i]; }
+  const mA = boxMean(a, w, h, r), mB = boxMean(b, w, h, r), q = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const v = mA[i] * I[i] + mB[i]; q[i] = v < 0 ? 0 : v > 1 ? 1 : v; }
+  return q;
+}
+
+// Returns { gw, gh, alpha: Float32Array(gw*gh) in 0..1 } for the photo `img` (a canvas).
+export async function computeMatte(img, ref = 384) {
+  const T = { t0: performance.now() };
+  const { ort, session } = await modnet(); T.load = performance.now() - T.t0;
+  const k = ref / Math.min(img.width, img.height);
+  const iw = Math.max(32, Math.round(img.width * k / 32) * 32), ih = Math.max(32, Math.round(img.height * k / 32) * 32);
+  const c = document.createElement('canvas'); c.width = iw; c.height = ih;
+  const x = c.getContext('2d', { willReadFrequently: true }); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, iw, ih);
+  const d = x.getImageData(0, 0, iw, ih).data, n = iw * ih, t = new Float32Array(3 * n);
+  for (let i = 0; i < n; i++) { t[i] = d[i * 4] / 127.5 - 1; t[n + i] = d[i * 4 + 1] / 127.5 - 1; t[2 * n + i] = d[i * 4 + 2] / 127.5 - 1; }
+  T.prep = performance.now() - T.t0 - T.load; const tr = performance.now();
+  const out = await session.run({ [session.inputNames[0]]: new ort.Tensor('float32', t, [1, 3, ih, iw]) });
+  const a = out[session.outputNames[0]].data; T.model = performance.now() - tr;
+  // matte -> 1280 px grid (smooth blow-up through a canvas)
+  const G = Math.min(1, 1280 / Math.max(img.width, img.height)), gw = Math.max(8, Math.round(img.width * G)), gh = Math.max(8, Math.round(img.height * G));
+  const mc = document.createElement('canvas'); mc.width = iw; mc.height = ih;
+  const mx = mc.getContext('2d'), mid = mx.createImageData(iw, ih);
+  for (let i = 0; i < n; i++) { const v = Math.max(0, Math.min(1, a[i])) * 255; mid.data[i * 4] = v; mid.data[i * 4 + 1] = v; mid.data[i * 4 + 2] = v; mid.data[i * 4 + 3] = 255; }
+  mx.putImageData(mid, 0, 0);
+  const gc = document.createElement('canvas'); gc.width = gw; gc.height = gh;
+  const gx = gc.getContext('2d', { willReadFrequently: true }); gx.imageSmoothingQuality = 'high';
+  gx.drawImage(mc, 0, 0, gw, gh); const up = gx.getImageData(0, 0, gw, gh).data;
+  const P = new Float32Array(gw * gh); for (let i = 0; i < P.length; i++) P[i] = up[i * 4] / 255;
+  gx.drawImage(img, 0, 0, gw, gh); const im = gx.getImageData(0, 0, gw, gh).data;       // the photo itself, as the guide
+  const I = new Float32Array(gw * gh); for (let i = 0; i < I.length; i++) I[i] = (0.299 * im[i * 4] + 0.587 * im[i * 4 + 1] + 0.114 * im[i * 4 + 2]) / 255;
+  const r = Math.max(4, Math.round(gw / 150)), tg = performance.now();
+  const alpha = guidedFilter(I, P, gw, gh, r, 4e-4); T.guided = performance.now() - tg;
+  return { gw, gh, alpha, raw: P, timing: T };
+}
+
+// Touch-up strokes: E = erased, R = restored (0..255 per matte pixel).
+export const newEdits = (m) => ({ E: new Uint8Array(m.gw * m.gh), R: new Uint8Array(m.gw * m.gh), undo: [] });
+export function snapshotEdits(ed) { ed.undo.push([ed.E.slice(), ed.R.slice()]); if (ed.undo.length > 12) ed.undo.shift(); }
+export function undoEdits(ed) { const s = ed.undo.pop(); if (!s) return false; ed.E.set(s[0]); ed.R.set(s[1]); return true; }
+export function clearEdits(ed) { ed.E.fill(0); ed.R.fill(0); ed.undo.length = 0; }
+// One soft round dab at (gx, gy) with radius rad (matte pixels). mode 'erase' | 'restore'.
+export function paintDab(ed, gw, gh, gx, gy, rad, mode) {
+  const x0 = Math.max(0, Math.floor(gx - rad)), x1 = Math.min(gw - 1, Math.ceil(gx + rad)), y0 = Math.max(0, Math.floor(gy - rad)), y1 = Math.min(gh - 1, Math.ceil(gy + rad));
+  const own = mode === 'erase' ? ed.E : ed.R, other = mode === 'erase' ? ed.R : ed.E;
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const dd = Math.hypot(x - gx, y - gy); if (dd > rad) continue;
+    const w = Math.min(1, (1 - dd / rad) * 2.2), i = y * gw + x, v = w * 255;
+    if (v > own[i]) own[i] = v;
+    other[i] = other[i] * (1 - w);
+  }
+}
+
+// The photo with the background removed, same size as the photo. edge: -1 (keeps more) .. +1 (removes more).
+export function buildCutout(work, edge = 0, edits = null) {
+  const M = work.matte, gw = M.gw, gh = M.gh, lo = 0.10 + 0.2 * edge, hi = 0.90 + 0.05 * edge;
+  const ac = document.createElement('canvas'); ac.width = gw; ac.height = gh;
+  const ax = ac.getContext('2d'), id = ax.createImageData(gw, gh), d = id.data, E = edits && edits.E, R = edits && edits.R;
+  for (let i = 0, n = gw * gh; i < n; i++) {
+    let v = (M.alpha[i] - lo) / (hi - lo); v = v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v);
+    if (E) { if (E[i]) v *= 1 - E[i] / 255; if (R[i]) v += (1 - v) * R[i] / 255; }
+    d[i * 4 + 3] = v * 255;
+  }
+  ax.putImageData(id, 0, 0);
+  const out = document.createElement('canvas'); out.width = work.img.width; out.height = work.img.height;
+  const ox = out.getContext('2d');
+  ox.drawImage(work.img, 0, 0);
+  ox.globalCompositeOperation = 'destination-in'; ox.imageSmoothingQuality = 'high';
+  ox.drawImage(ac, 0, 0, out.width, out.height);
+  return out;
+}
+
 // ---------- ID cropping ----------
 // crop = { cx, cy, h } : centre of the frame and frame height, in work-image pixels.
 // The frame width follows the size being drawn, so every size of a package keeps the head the same height.
@@ -126,8 +244,9 @@ export function autoCrop(face, w, h, aspect) {
 // Draw the framed photo into ctx at (0,0,outW,outH).
 export function drawId(ctx, work, o, outW, outH) {
   ctx.save();
-  ctx.fillStyle = o.bg || '#ffffff';
+  ctx.fillStyle = o.bg === 'checker' ? '#ffffff' : (o.bg || '#ffffff');
   ctx.fillRect(0, 0, outW, outH);
+  if (o.bg === 'checker') { const q = Math.max(8, Math.round(outW / 28)); ctx.fillStyle = '#c9c9c9'; for (let y = 0; y * q < outH; y++) for (let x = (y % 2); x * q < outW; x += 2) ctx.fillRect(x * q, y * q, q, q); }
   const src = o.bg && work.cut ? work.cut : work.img;
   const H = o.crop.h, W = H * outW / outH;
   ctx.imageSmoothingQuality = 'high';

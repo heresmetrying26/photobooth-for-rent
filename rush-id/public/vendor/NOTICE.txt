@@ -4,3 +4,5 @@ Third-party files used by Rush ID & Photo Print. Everything runs on the device; 
 - selfie_segmenter.tflite: MediaPipe Selfie Segmentation model (Apache 2.0), with TFLite metadata added so MediaPipe Tasks can load it. Used to make the ID background plain.
 - blaze_face_short_range.tflite: MediaPipe BlazeFace short-range face detector (Apache 2.0). Used to centre the face in the ID frame.
 - qrcode.min.js: qrcode-generator by Kazuhiko Arase, MIT License. Draws the phone-upload QR code.
+- modnet.onnx: MODNet portrait matting (ZHKKKe/MODNet, Apache License 2.0), ONNX export from Xenova/modnet. Used to cut the person out of an ID photo.
+- ort/ort.wasm.min.js, ort/ort-wasm-simd.wasm: ONNX Runtime Web 1.17.3, Microsoft, MIT License (ort/LICENSE). Runs modnet.onnx in the browser.

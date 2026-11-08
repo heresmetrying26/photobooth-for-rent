@@ -20,6 +20,11 @@ The bridge between the two is `window.__PBHW` (in `protected/booth.html`, sectio
 - **Live view.** *Take a photo* opens a large live picture of the booth's selected camera (DSLR live view included), with a 3-2-1 countdown. **📷 Retake** in the ID editor opens it again.
 - **Paper and printer.** On the print screen: **Paper** (for an ID; only the sizes Admin allows for the code) and **Printer**. With the Print Helper the printer list shows every installed printer, and the choice is the booth's own per-paper-size printer (also visible in Setup). Without the helper it says how the print will go (print station, Wi-Fi printer, Android print screen, or the device's print dialog).
 - **Background colour:** White, Light blue, Blue, Red, Gray, **Custom** (any colour), or Keep mine.
+- **Background removal:** MODNet portrait matting (about 26 MB, runs on the device, kept by the browser after the first use), refined so edges follow the real photo, then a **Touch up** brush: **Erase** leftovers, **Restore** parts cut by mistake, Undo, Reset. A checkerboard shows while touching up. If the model cannot run, it falls back to the basic cut-out.
+- **Photo prints:** the sheet is shown live. Tap a photo on it, then **zoom** (slider or wheel), **drag** to move it inside its print, **Mirror**, **Reset**; *Fill the page* or *Whole photo*; sheet arrows when there is more than one.
+- **Printer & paper:** the **🖨 Printer** button on every screen (and on the print screens) opens printer and paper settings. Print Helper: pick any installed printer. Android: the Wi-Fi/USB printers the app found (**Find printers**); printers that need special handling say so and **More printer settings** opens the booth Setup at *Camera & printer*.
+- **Past orders (staff):** finished prints and saves are kept on this device (default 30 days; Settings → *Keep past orders*, 0 = keep nothing). **Orders** on the home screen, behind the staff PIN: view, **Reprint**, **Save**, **Delete** one or **Delete all**. Customers' photos stay out of sight; the idle timer still clears the working screen.
+- **Android rotate:** a button that shows the shape it will turn to (**Portrait** / **Landscape**).
 - **Android:** a **⟳** button (top right) turns the screen between portrait and landscape; the choice is remembered. Without it the screen follows the tablet.
 
 ## Admin switch and codes
@@ -37,7 +42,7 @@ The bridge between the two is `window.__PBHW` (in `protected/booth.html`, sectio
 | **Camera** | The booth's selected camera (see above). 3-2-1 countdown, oval guide for ID. |
 | **USB / SD card** | "Choose photos…" (any browser) or "Browse the whole drive / SD card…" (Chrome/Edge): finds photos in `DCIM/100XXXXX`, thumbnails, tick the ones to add. |
 | **Bluetooth** | A web page cannot receive Bluetooth files. The phone sends the file with *Share → Bluetooth* to the computer, Windows saves it in a folder, and the station **watches that folder** and adds new photos (Chrome/Edge). |
-| **Phone (QR)** | The station shows a QR code; the phone opens `/rush/u/<CODE>`, picks photos, they appear in seconds. No app. Photos are deleted from the server as soon as the station has them (leftovers after 3 hours). Starting a session needs a valid code with the switch on. |
+| **Phone (QR)** | The station shows a QR code (needs the internet: the phone sends the photo through the site); the phone opens `/rush/u/<CODE>`, picks photos, they appear in seconds. No app. Photos are deleted from the server as soon as the station has them (leftovers after 3 hours). Starting a session needs a valid code with the switch on. |
 
 ## Android app (separate APK)
 

@@ -13,7 +13,7 @@ const nextFrame = () => new Promise((r) => { let d = false; const go = () => { i
 // ---------- settings (kept on this computer only) ----------
 const DEFAULTS = {
   shop: 'Rush ID & Photo Print', currency: '₱', pin: '1234', idle: 180, keepDays: 30,
-  idPaper: '4x6', gapMm: 0, marginMm: 0, cutGuides: true,
+  idPaper: '4x6', gapMm: 0, marginMm: 0, cutGuides: true, guideStyle: 'lines',
   prices: { idSheet: 0, '4x6': 0, '5x7': 0, '6x8': 0, '2x3': 0, '2x6': 0 },
 };
 function loadCfg() {
@@ -34,7 +34,29 @@ const noPrint = () => !!hw && !L.PAPERS.length;
 const NO_PRINT_MSG = 'Printing is not switched on for this code. Please ask the owner.';
 
 // ---------- state ----------
-const freshId = () => ({ qty: { ...L.PACKAGES[0].qty }, pkg: 'p1', bg: '#ffffff', bgMode: 'color', brightness: 0, contrast: 0, edge: 0, crop: null, cropFor: null, guides: true, flip: false, tab: 'size', tool: 'move', brush: 22 });
+const freshId = () => ({
+  qty: { ...L.PACKAGES[0].qty },
+  pkg: 'p1',
+  preset: null,
+  bg: '#ffffff',
+  bgMode: 'color',
+  brightness: 0,
+  contrast: 0,
+  autoEnhance: false,
+  skinSmooth: 0,
+  edge: 0,
+  crop: null,
+  cropFor: null,
+  guides: true,
+  flip: false,
+  tab: 'size',
+  tool: 'move',
+  brush: 22,
+  attire: 'none',
+  attireY: 0,
+  attireScale: 1,
+  nameTag: { on: false, text: '', sub: '' },
+});
 const freshPhoto = () => ({ size: '4x6', fit: 'fill', tab: 'photos', sel: null, sheet: 0 });
 const state = { screen: 'home', mode: 'id', photos: [], sel: null, id: freshId(), photo: freshPhoto(), sets: 1, out: null, orders: [], pinNext: 'settings' };
 let idWork = null;          // the full-size working copy of the photo being framed
@@ -116,8 +138,15 @@ const STEPS = { id: ['Photo', 'Frame', 'Print'], photo: ['Photos', 'Size', 'Prin
 const isPortrait = () => innerHeight > innerWidth;
 const rotBtn = () => (hw && hw.canRotate && hw.canRotate()
   ? '<button class="btn ghost sm rot" data-act="rot" title="Turn the screen between portrait and landscape" aria-label="Turn the screen"><i class="orient ' + (isPortrait() ? 'land' : 'port') + '"></i><span>' + (isPortrait() ? 'Landscape' : 'Portrait') + '</span></button>' : '');
-const prnBtn = () => (hw ? '<button class="btn ghost sm" data-act="printer-modal" title="Printer and paper settings" aria-label="Printer and paper settings">🖨️ <span class="lbl">Printer</span></button>' : '');
-function refreshRot() { document.querySelectorAll('.rot').forEach((b) => { b.innerHTML = '<i class="orient ' + (isPortrait() ? 'land' : 'port') + '"></i><span>' + (isPortrait() ? 'Landscape' : 'Portrait') + '</span>'; }); }
+const prnBtn = () => '<button class="btn ghost sm" data-act="printer-modal" title="Printer and camera settings" aria-label="Printer and camera settings">🖨️ / 📷 <span class="lbl">Hardware</span></button>';
+function refreshRot() {
+  document.documentElement.classList.toggle('portrait', isPortrait());
+  document.documentElement.classList.toggle('landscape', !isPortrait());
+  document.querySelectorAll('.rot').forEach((b) => { b.innerHTML = '<i class="orient ' + (isPortrait() ? 'land' : 'port') + '"></i><span>' + (isPortrait() ? 'Landscape' : 'Portrait') + '</span>'; });
+}
+window.addEventListener('resize', refreshRot);
+window.addEventListener('orientationchange', refreshRot);
+refreshRot();
 function header() {
   const idx = { add: 0, id: 1, photos: 1, review: 2 }[state.screen];
   const steps = STEPS[state.mode].map((t, i) => '<li class="' + (i === idx ? 'on' : i < idx ? 'done' : '') + '"><b>' + (i + 1) + '</b>' + t + '</li>').join('');
@@ -154,9 +183,23 @@ function toolsHTML() {
     '<label class="brush"><span>Brush</span><input type="range" min="6" max="80" value="' + state.id.brush + '" data-in="brush" aria-label="Brush size"></label>' +
     '<button class="btn ghost sm" data-act="undo-edit">Undo</button><button class="btn ghost sm" data-act="reset-edits">Reset</button><button class="btn primary sm" data-act="tool-done">Done</button></div>';
 }
+function multiStripHTML() {
+  if (state.photos.length <= 1) return '';
+  const items = state.photos.map((p, i) =>
+    '<button class="mthumb' + (p.id === state.sel ? ' sel' : '') + '" data-act="sel-id-photo" data-id="' + p.id + '">' +
+    '<img src="' + p.thumb + '" alt=""><span class="lbl">Person ' + (i + 1) + '</span>' +
+    '</button>'
+  ).join('');
+  return '<div class="multistrip">' + items +
+    '<button class="mthumb add" data-act="to-add" title="Add another photo / person"><i>＋</i><span class="lbl">Add person</span></button>' +
+    '</div>';
+}
+
 function idHTML() {
   const t = (act, on, label) => '<button class="tb' + (on ? ' on' : '') + '" data-act="' + act + '">' + label + '</button>';
-  return '<main class="editor"><div class="stagecol"><div class="stagewrap" id="stagewrap"><div class="stagebox" id="stagebox"><canvas id="stage"></canvas><canvas id="guide"></canvas><div id="brushcur" hidden></div></div></div>' +
+  return '<main class="editor"><div class="stagecol">' +
+    multiStripHTML() +
+    '<div class="stagewrap" id="stagewrap"><div class="stagebox" id="stagebox"><canvas id="stage"></canvas><canvas id="guide"></canvas><div id="brushcur" hidden></div></div></div>' +
     '<div class="toolbar">' + t('flip', state.id.flip, '↔ Mirror') + t('autofit', false, '◎ Auto-fit') + t('guide', state.id.guides, '◌ Guide') + t('touchup', state.id.tool !== 'move', '✎ Touch up') + t('retake', false, '📷 Retake') + '</div>' + toolsHTML() +
     '<div class="zoomrow" title="Drag the photo to move it. Pinch or use the slider to zoom."><span>−</span><input type="range" id="zoom" min="0" max="100" value="40" data-in="zoom" aria-label="Zoom"><span>＋</span></div></div>' +
     '<div class="panel" id="panel"></div></main>' +
@@ -164,26 +207,77 @@ function idHTML() {
 }
 
 const SWATCHES = [['#ffffff', 'White'], ['#cfe5f7', 'Light blue'], ['#2457b8', 'Blue'], ['#c8202b', 'Red'], ['#d9d9d9', 'Gray']];
-const TABS = [['size', 'Size & copies'], ['bg', 'Background'], ['fine', 'Fine-tune']];
+const TABS = [
+  ['size', 'Size & Presets'],
+  ['bg', 'Background'],
+  ['attire', 'Formal Attire'],
+  ['tag', 'Name Tag'],
+  ['fine', 'Fine-tune & Skin']
+];
+
 function idPanelHTML() {
   const tab = state.id.tab, q = state.id.qty;
   let body = '';
   if (tab === 'size') {
-    const chips = L.PACKAGES.map((p) => '<button class="chip' + (state.id.pkg === p.id ? ' on' : '') + '" data-act="pkg" data-id="' + p.id + '">' + p.label + '</button>').join('');
-    const cells = L.ID_SIZES.map((s) => '<div class="qcell"><span>' + s.label + '</span><div class="stepper"><button data-act="qty" data-id="' + s.id + '" data-d="-1" aria-label="Fewer">−</button><b' + ((q[s.id] || 0) > 0 ? ' class="on"' : '') + '>' + (q[s.id] || 0) + '</b><button data-act="qty" data-id="' + s.id + '" data-d="1" aria-label="More">＋</button></div></div>').join('');
-    body = '<div class="chips">' + chips + '</div><div class="qgrid">' + cells + '</div>';
+    const presets = '<div class="subhdr"><span>Government &amp; Visa Profiles</span></div><div class="preset-grid">' +
+      L.GOV_PRESETS.map((p) =>
+        '<button class="preset-chip' + (state.id.preset === p.id ? ' on' : '') + '" data-act="gov-preset" data-id="' + p.id + '">' +
+        '<b>' + p.label + '</b><small>' + p.desc + '</small></button>'
+      ).join('') + '</div>';
+
+    const chips = '<div class="subhdr"><span>Print Packages</span></div><div class="chips">' +
+      L.PACKAGES.map((p) => '<button class="chip' + (state.id.pkg === p.id ? ' on' : '') + '" data-act="pkg" data-id="' + p.id + '">' + p.label + '</button>').join('') +
+      '<button class="chip autofill-chip' + (state.id.pkg === 'autofill' ? ' on' : '') + '" data-act="autofill" title="Auto-fill 1 sheet with chosen sizes">⚡ Auto-fill page</button></div>';
+
+    const cells = '<div class="subhdr"><span>Custom Quantities</span></div><div class="qgrid">' +
+      L.ID_SIZES.map((s) => '<div class="qcell">' +
+        '<div class="qcell-hdr"><span>' + s.label + '</span><button class="fill-btn" data-act="fill-size" data-id="' + s.id + '" title="Auto-fill 1 sheet with ' + s.label + '">Fill page</button></div>' +
+        '<div class="stepper"><button data-act="qty" data-id="' + s.id + '" data-d="-1" aria-label="Fewer">−</button><b' + ((q[s.id] || 0) > 0 ? ' class="on"' : '') + '>' + (q[s.id] || 0) + '</b><button data-act="qty" data-id="' + s.id + '" data-d="1" aria-label="More">＋</button></div>' +
+        '</div>').join('') + '</div>';
+
+    body = presets + chips + cells;
   } else if (tab === 'bg') {
     const preset = SWATCHES.some(([c]) => c === state.id.bg.toLowerCase());
     body = '<div class="swatches">' + SWATCHES.map(([c, n]) => '<button class="sw' + (state.id.bgMode === 'color' && state.id.bg.toLowerCase() === c ? ' on' : '') + '" style="--c:' + c + '" data-act="bg" data-c="' + c + '" title="' + n + '"><i></i><small>' + n + '</small></button>').join('') +
       '<label class="sw custom' + (state.id.bgMode === 'color' && !preset ? ' on' : '') + '" title="Pick any colour"><i style="--c:' + state.id.bg + '"><input type="color" value="' + state.id.bg + '" data-in="custombg" aria-label="Custom colour"></i><small>Custom</small></label>' +
       '<button class="sw orig' + (state.id.bgMode === 'original' ? ' on' : '') + '" data-act="bg" data-c="original"><i>🏞️</i><small>Keep mine</small></button></div>' +
       '<p class="hint">The background is made plain automatically. Pick the colour your ID needs.</p>';
+  } else if (tab === 'attire') {
+    const curAttire = state.id.attire || 'none';
+    const attireCards = '<div class="attire-grid">' +
+      I.ATTIRES.map((a) =>
+        '<button class="attire-card' + (curAttire === a.id ? ' on' : '') + '" data-act="attire-sel" data-id="' + a.id + '">' +
+        '<b>' + a.label + '</b><small>' + a.desc + '</small></button>'
+      ).join('') + '</div>';
+
+    let attireCtrls = '';
+    if (curAttire !== 'none') {
+      attireCtrls = '<div class="attire-ctrls">' +
+        '<div class="subhdr"><span>Adjust Attire Fit</span></div>' +
+        '<label class="sl"><span>Vertical Position (up / down)</span><input type="range" min="-25" max="25" value="' + (state.id.attireY || 0) + '" data-in="attire-y"></label>' +
+        '<label class="sl"><span>Shoulder Width (scale)</span><input type="range" min="80" max="130" value="' + Math.round((state.id.attireScale || 1) * 100) + '" data-in="attire-scale"></label>' +
+        '<button class="btn ghost sm" data-act="reset-attire">Reset fit</button>' +
+        '</div>';
+    }
+    body = attireCards + attireCtrls;
+  } else if (tab === 'tag') {
+    const nt = state.id.nameTag || { on: false, text: '', sub: '' };
+    body = '<div class="nametag-box">' +
+      '<label class="chk" style="font-weight:700;font-size:16px"><input type="checkbox" data-in="tag-on"' + (nt.on ? ' checked' : '') + '> Add Name Tag banner</label>' +
+      '<p class="hint">Clean white nameplate banner at the bottom. Required for PRC, Civil Service, Police &amp; military IDs.</p>' +
+      '<label class="fld"><span>Full Name</span><input type="text" placeholder="SURNAME, FIRST NAME, M.I." value="' + esc(nt.text || '') + '" data-in="tag-text" autocomplete="off"></label>' +
+      '<label class="fld"><span>Subtitle / Agency (optional)</span><input type="text" placeholder="Agency, ID No., or Date" value="' + esc(nt.sub || '') + '" data-in="tag-sub" autocomplete="off"></label>' +
+      '</div>';
   } else {
     const cut = state.id.bgMode !== 'original';
-    body = '<label class="sl"><span>Brightness</span><input type="range" min="-30" max="30" value="' + state.id.brightness + '" data-in="brightness"></label>' +
+    body = '<div class="finerow">' +
+      '<button class="btn' + (state.id.autoEnhance ? ' primary' : ' ghost') + ' sm" data-act="toggle-enhance">✨ ' + (state.id.autoEnhance ? 'Auto-Enhance: ON' : 'Auto-Enhance Lighting &amp; Color') + '</button>' +
+      '</div>' +
+      '<label class="sl"><span>✨ Skin Smoothing &amp; Blemish Softening</span><input type="range" min="0" max="100" value="' + (state.id.skinSmooth || 0) + '" data-in="skin-smooth"></label>' +
+      '<label class="sl"><span>Brightness</span><input type="range" min="-30" max="30" value="' + state.id.brightness + '" data-in="brightness"></label>' +
       '<label class="sl"><span>Contrast</span><input type="range" min="-30" max="30" value="' + state.id.contrast + '" data-in="contrast"></label>' +
       (cut ? '<label class="sl"><span>Edge clean-up (hair and shoulders)</span><input type="range" min="-10" max="10" value="' + Math.round(state.id.edge * 10) + '" data-in="edge"></label>' : '') +
-      '<button class="btn ghost sm" data-act="reset-fine">Reset</button>';
+      '<button class="btn ghost sm" data-act="reset-fine">Reset all</button>';
   }
   return '<div class="tabs">' + TABS.map(([k, n]) => '<button class="tab' + (tab === k ? ' on' : '') + '" data-act="tab" data-id="' + k + '">' + n + '</button>').join('') + '</div><div class="tabbody">' + body + '</div>';
 }
@@ -259,7 +353,7 @@ function drawPhotoPreview() {
   const sc = cv.width / pw; lay.css = cw / pw;
   const sheet = lay.sheets[state.photo.sheet];
   const x = cv.getContext('2d');
-  x.drawImage(L.renderSheets([sheet], paintPhoto, { cutGuides: !lay.size.full, scale: sc })[0], 0, 0, cv.width, cv.height);
+  x.drawImage(L.renderSheets([sheet], paintPhoto, { cutGuides: !lay.size.full && cfg.cutGuides, guideStyle: cfg.guideStyle || 'lines', scale: sc })[0], 0, 0, cv.width, cv.height);
   x.lineWidth = Math.max(3, cv.width / 200); x.strokeStyle = '#0b6e6e';
   for (const it of sheet.items) if (it.pid === state.photo.sel) { const r = itemRectFinal(sheet, it); x.strokeRect(r.x * sc + x.lineWidth / 2, r.y * sc + x.lineWidth / 2, r.w * sc - x.lineWidth, r.h * sc - x.lineWidth); }
   const nav = $('#sheetnav'); if (nav) { nav.hidden = n < 2; $('#sheetlbl').textContent = 'Sheet ' + (state.photo.sheet + 1) + ' of ' + n; }
@@ -314,7 +408,7 @@ function reviewHTML() {
     '<div class="qrow"><span>How many sets?</span><div class="stepper"><button data-act="sets" data-d="-1">−</button><b>' + state.sets + '</b><button data-act="sets" data-d="1">＋</button></div></div>' +
     (total ? '<p class="total">Total <b>' + money(total) + '</b></p>' : '') +
     '</div></main>' +
-    '<footer class="bar"><button class="btn ghost" data-act="back-review">← Change</button><span class="grow"></span><button class="btn ghost" data-act="save">Save JPG</button><button class="btn primary big" data-act="print">🖨️ Print</button></footer>';
+    '<footer class="bar"><button class="btn ghost" data-act="back-review">← Change</button><span class="grow"></span><button class="btn ghost" data-act="qr-dl" title="Send soft copy to your phone via QR code">📱 Soft copy (QR)</button><button class="btn ghost" data-act="save">Save JPG</button><button class="btn primary big" data-act="print">🖨️ Print</button></footer>';
 }
 
 // The paper a print will use right now (the sheet being reviewed, the photo size chosen, or the ID paper).
@@ -326,31 +420,69 @@ function currentPaperKey() {
 // Which printer this paper prints on (the booth's per-paper printer). With the Print Helper every installed printer is listed;
 // the Android app lists the Wi-Fi / USB printers it found; otherwise it says how the print will go.
 function printerControlHTML(info) {
-  if (info.options.length) {
+  let body = '';
+  if (info.options && info.options.length) {
     const opts = info.options.slice(); if (info.current && !opts.includes(info.current)) opts.unshift(info.current);
-    return '<select data-in="printer"><option value="">Choose a printer…</option>' + opts.map((n) => '<option value="' + esc(n) + '"' + (n === info.current ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</select>';
-  }
-  if (info.android && info.android.ok) {
+    body = '<select data-in="printer"><option value="">Choose a printer…</option>' + opts.map((n) => '<option value="' + esc(n) + '"' + (n === info.current ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</select>';
+  } else if (info.android && info.android.ok) {
     const a = info.android;
-    return '<div class="plist">' + (a.items.length ? a.items.map((i) => '<button class="pi' + (i.selected ? ' on' : '') + '" data-act="apr" data-id="' + esc(i.id) + '">' + (i.selected ? '✓ ' : '') + esc(i.name) + '</button>').join('') : '<p class="paper">No printers found yet.</p>') + '</div>' +
+    body = '<div class="plist">' + (a.items.length ? a.items.map((i) => '<button class="pi' + (i.selected ? ' on' : '') + '" data-act="apr" data-id="' + esc(i.id) + '">' + (i.selected ? '✓ ' : '') + esc(i.name) + '</button>').join('') : '<p class="paper">No printers found yet.</p>') + '</div>' +
       '<button class="btn ghost sm" data-act="apr-scan">' + (a.scanning ? 'Searching…' : 'Find printers') + '</button>';
+  } else {
+    const t = { station: 'Print station', wifi: 'Wi-Fi printer: ' + (info.current || ''), android: 'Android print screen (choose the printer when it opens)', browser: info.current || 'This device’s print dialog' }[info.mode] || '';
+    body = '<p class="paper">' + esc(t) + '</p>';
   }
-  const t = { station: 'Print station', wifi: 'Wi-Fi printer: ' + (info.current || ''), android: 'Android print screen (choose the printer when it opens)', browser: info.current || 'This device’s print dialog' }[info.mode] || '';
-  return '<p class="paper">' + esc(t) + '</p>';
+  const canCfg = hw && hw.configurePrinter && info.current && info.options && info.options.includes(info.current);
+  const actions = '<div class="prn-actions">' +
+    '<button class="btn ghost sm" data-act="prn-refresh" title="Re-scan system and Print Helper printers">🔄 Refresh list</button>' +
+    (canCfg ? '<button class="btn ghost sm" data-act="prn-cfg" title="Open printer driver preferences">⚙️ Configure</button>' : '') +
+    '</div>';
+  return body + actions;
 }
 async function fillPrinterBox() {
-  const boxes = [...document.querySelectorAll('.printerbox')]; if (!boxes.length || !hw) return;
-  let info; try { info = await hw.printers(currentPaperKey()); } catch (e) { return; }
-  const html = printerControlHTML(info);
-  document.querySelectorAll('.printerbox').forEach((b) => { b.innerHTML = html; });
+  const boxes = [...document.querySelectorAll('.printerbox')]; if (!boxes.length) return;
+  if (hw && hw.printers) {
+    let info; try { info = await hw.printers(currentPaperKey()); } catch (e) { return; }
+    const html = printerControlHTML(info);
+    boxes.forEach((b) => { b.innerHTML = html; });
+  } else {
+    boxes.forEach((b) => { b.innerHTML = '<p class="paper">Using browser print dialog</p>'; });
+  }
 }
-function printerModal() {
+async function printerModal() {
   const idMode = state.mode === 'id' && L.PAPERS.length > 1;
   const paper = idMode
     ? '<label class="fld"><span>Paper for ID sheets</span><select data-in="paper">' + L.PAPERS.map((p) => '<option value="' + esc(p.id) + '"' + (p.id === currentPaperKey() ? ' selected' : '') + '>' + esc(p.label) + '</option>').join('') + '</select></label>'
     : '<p class="paper">Paper: <b>' + esc((L.paperById(currentPaperKey()) || {}).label || '') + '</b></p>';
-  openModal('<h2>Printer &amp; paper</h2>' + paper + '<div class="fld"><span>Printer</span><div class="printerbox"><p class="paper">Looking for printers…</p></div></div>' +
-    '<div class="mcol"><button class="btn" data-act="hw-printer-setup">More printer settings (booth Setup)</button><button class="btn primary big" data-act="close">Done</button></div>');
+  
+  let camHTML = '';
+  if (hw && hw.cameras) {
+    try {
+      const cams = await hw.cameras();
+      const curCam = hw.currentCamera ? hw.currentCamera() : '';
+      if (cams.length) {
+        camHTML = '<label class="fld"><span>Camera</span><select data-in="camsel" class="cam-select">' +
+          cams.map((c) => '<option value="' + esc(c.id) + '"' + (c.id === curCam ? ' selected' : '') + '>' + esc(c.label) + '</option>').join('') +
+          '</select></label>';
+      }
+    } catch (e) { }
+  } else if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices.filter((d) => d.kind === 'videoinput');
+      if (cams.length) {
+        camHTML = '<label class="fld"><span>Camera</span><select data-in="camsel" class="cam-select">' +
+          cams.map((c, i) => '<option value="' + esc(c.deviceId) + '">' + esc(c.label || 'Camera ' + (i + 1)) + '</option>').join('') +
+          '</select></label>';
+      }
+    } catch (e) { }
+  }
+
+  openModal('<h2>Printers &amp; Cameras</h2>' +
+    camHTML +
+    paper +
+    '<div class="fld"><span>Printer</span><div class="printerbox"><p class="paper">Looking for printers…</p></div></div>' +
+    '<div class="mcol"><button class="btn primary big" data-act="close">Done</button></div>');
   fillPrinterBox();
 }
 
@@ -369,7 +501,19 @@ const idAspect = () => {
   const act = L.ID_SIZES.filter((s) => (state.id.qty[s.id] || 0) > 0).sort((a, b) => b.w * b.h - a.w * a.h)[0] || L.ID_SIZES[2];
   return act.w / act.h;
 };
-const idOpts = () => ({ crop: state.id.crop, bg: state.id.bgMode === 'original' ? null : (state.id.tool !== 'move' ? 'checker' : state.id.bg), brightness: state.id.brightness, contrast: state.id.contrast, flip: state.id.flip });
+const idOpts = () => ({
+  crop: state.id.crop,
+  bg: state.id.bgMode === 'original' ? null : (state.id.tool !== 'move' ? 'checker' : state.id.bg),
+  brightness: state.id.brightness,
+  contrast: state.id.contrast,
+  autoEnhance: !!state.id.autoEnhance,
+  skinSmooth: state.id.skinSmooth || 0,
+  attire: state.id.attire || 'none',
+  attireY: state.id.attireY || 0,
+  attireScale: state.id.attireScale || 1,
+  nameTag: state.id.nameTag || { on: false },
+  flip: state.id.flip,
+});
 const hRange = () => ({ min: idWork.h * 0.15, max: Math.max(idWork.h, idWork.w / idAspect()) * 1.8 });
 const clampH = (h) => { const r = hRange(); return Math.min(r.max, Math.max(r.min, h)); };
 
@@ -461,6 +605,33 @@ function mountId() {
   openId();
 }
 
+function saveCurrentIdState() {
+  if (state.sel) {
+    const p = photoById(state.sel);
+    if (p) p.idState = JSON.parse(JSON.stringify(state.id));
+  }
+}
+
+function loadIdState(p) {
+  if (!p) return;
+  if (p.idState) {
+    state.id = JSON.parse(JSON.stringify(p.idState));
+  } else {
+    state.id = freshId();
+    p.idState = JSON.parse(JSON.stringify(state.id));
+  }
+}
+
+async function switchIdPhoto(id) {
+  if (!id || id === state.sel) return;
+  saveCurrentIdState();
+  state.sel = id;
+  const p = photoById(id);
+  loadIdState(p);
+  await openId();
+  render();
+}
+
 async function openId() {
   const p = photoById(state.sel); if (!p) { go('add'); return; }
   const live = () => state.screen === 'id' && state.sel === p.id;
@@ -474,11 +645,15 @@ async function openId() {
       try { idWork.face = await I.findFace(idWork.img); } catch (e) { console.error(e); idWork.face = null; }
       if (!live()) { await busy(''); return; }
     }
-    state.id.crop = I.autoCrop(idWork.face, idWork.w, idWork.h, idAspect()); state.id.cropFor = p.id;
+    const preset = L.GOV_PRESETS.find((x) => x.id === state.id.preset);
+    state.id.crop = I.autoCrop(idWork.face, idWork.w, idWork.h, idAspect(), preset ? preset.head : undefined);
+    state.id.cropFor = p.id;
     if (!idWork.face) toast('We could not find a face. Move and zoom the photo to line it up.');
   }
   syncZoom(); drawStage();
-  if (state.id.bgMode !== 'original') { await ensureCut(); if (live()) drawStage(); }
+  if (state.id.bgMode !== 'original' || (state.id.attire && state.id.attire !== 'none')) {
+    await ensureCut(); if (live()) drawStage();
+  }
   await busy('');
 }
 
@@ -506,27 +681,235 @@ async function ensureCut() {
 // ---------- building the sheets ----------
 const gapPx = () => Math.round(cfg.gapMm / 25.4 * L.DPI), marginPx = () => Math.round(cfg.marginMm / 25.4 * L.DPI);
 
+function applyAutoFill(targetSizeId) {
+  const paper = L.paperById(cfg.idPaper);
+  const paperW = L.px(paper.w), paperH = L.px(paper.h);
+  const gap = gapPx(), margin = marginPx();
+  let chosen = [];
+  let initialQty = {};
+  
+  if (targetSizeId) {
+    chosen = [targetSizeId];
+    initialQty = { [targetSizeId]: 1 };
+  } else {
+    chosen = L.ID_SIZES.filter((s) => (state.id.qty[s.id] || 0) > 0).map((s) => s.id);
+    if (!chosen.length) chosen = ['2x2'];
+    initialQty = { ...state.id.qty };
+  }
+  
+  const filled = L.calcAutoFill(chosen, paperW, paperH, gap, margin, initialQty);
+  if (!filled || Object.values(filled).every((v) => v === 0)) {
+    toast('Cannot fit that size on ' + paper.label + ' paper.');
+    return;
+  }
+  
+  L.ID_SIZES.forEach((s) => {
+    state.id.qty[s.id] = filled[s.id] || 0;
+  });
+  state.id.pkg = 'autofill';
+  renderIdPanel();
+  sizeStage();
+  drawStage();
+  
+  const summary = Object.entries(filled)
+    .filter(([, count]) => count > 0)
+    .map(([id, count]) => count + ' × ' + ((L.ID_SIZES.find((x) => x.id === id) || {}).label || id))
+    .join(', ');
+  toast('Page filled: ' + summary + ' (' + paper.label + ')', 2500);
+}
+
+async function applyPreset(presetId) {
+  const p = L.GOV_PRESETS.find((x) => x.id === presetId);
+  if (!p) return;
+  state.id.preset = p.id;
+  
+  if (p.size) {
+    L.ID_SIZES.forEach((s) => { state.id.qty[s.id] = (s.id === p.size ? 6 : 0); });
+    state.id.pkg = 'preset-' + p.id;
+  }
+  
+  if (p.bg) {
+    state.id.bg = p.bg;
+    state.id.bgMode = 'color';
+    if (idWork && !idWork.cut) ensureCut().then(drawStage);
+  }
+  
+  if (p.nameTag) {
+    if (!state.id.nameTag) state.id.nameTag = { on: false, text: '', sub: '' };
+    state.id.nameTag.on = true;
+  }
+  
+  if (p.head && idWork) {
+    state.id.crop = I.autoCrop(idWork.face, idWork.w, idWork.h, idAspect(), p.head);
+    syncZoom();
+  }
+  
+  renderIdPanel();
+  sizeStage();
+  drawStage();
+  toast('Applied: ' + p.label + ' (' + p.desc + ')', 3000);
+}
+
 async function buildId() {
-  const sizes = L.ID_SIZES.filter((s) => (state.id.qty[s.id] || 0) > 0);
-  if (!sizes.length) { toast('Choose at least one photo size.'); return; }
-  if (state.id.bgMode !== 'original' && !(await ensureCut())) { drawStage(); }
+  saveCurrentIdState();
+  const activePhotos = state.photos.filter((p) => {
+    const q = (p.idState && p.idState.qty) || (p.id === state.sel ? state.id.qty : {});
+    return Object.values(q).some((v) => v > 0);
+  });
+  if (!activePhotos.length) { toast('Choose at least one photo size.'); return; }
+
   await busy('Preparing your print…');
   try {
-    const paper = L.paperById(cfg.idPaper), items = [], cache = {};
-    for (const s of sizes) {
-      const w = L.px(s.w), h = L.px(s.h), c = document.createElement('canvas'); c.width = w; c.height = h;
-      I.drawId(c.getContext('2d'), idWork, idOpts(), w, h); cache[s.id] = c;
-      for (let i = 0; i < state.id.qty[s.id]; i++) items.push({ w, h, size: s.id });
+    const paper = L.paperById(cfg.idPaper), items = [];
+    const summaryLines = [];
+
+    for (let pi = 0; pi < activePhotos.length; pi++) {
+      const p = activePhotos[pi];
+      const pIdState = p.idState || (p.id === state.sel ? state.id : freshId());
+      const pSizes = L.ID_SIZES.filter((s) => (pIdState.qty[s.id] || 0) > 0);
+      if (!pSizes.length) continue;
+
+      const pWork = await getWork(p);
+      if ((pIdState.bgMode !== 'original' || (pIdState.attire && pIdState.attire !== 'none')) && !pWork.cut) {
+        try {
+          pWork.matte = await I.computeMatte(pWork.img);
+          pWork.edits = I.newEdits(pWork.matte);
+          pWork.cut = I.buildCutout(pWork, pIdState.edge || 0, pWork.edits);
+        } catch (e) {
+          try {
+            pWork.conf = await I.personConfidence(pWork.img);
+            pWork.cut = I.makeCutout(pWork.img, pWork.conf, pIdState.edge || 0);
+          } catch (e2) {
+            pIdState.bgMode = 'original';
+          }
+        }
+      }
+
+      if (!pIdState.crop) {
+        if (pWork.face === undefined) {
+          try { pWork.face = await I.findFace(pWork.img); } catch (e) { pWork.face = null; }
+        }
+        const a = L.ID_SIZES.filter((s) => (pIdState.qty[s.id] || 0) > 0).sort((a, b) => b.w * b.h - a.w * a.h)[0] || L.ID_SIZES[2];
+        const preset = L.GOV_PRESETS.find((x) => x.id === pIdState.preset);
+        pIdState.crop = I.autoCrop(pWork.face, pWork.w, pWork.h, a.w / a.h, preset ? preset.head : undefined);
+      }
+
+      const pOpts = {
+        crop: pIdState.crop,
+        bg: pIdState.bgMode === 'original' ? null : pIdState.bg,
+        brightness: pIdState.brightness || 0,
+        contrast: pIdState.contrast || 0,
+        autoEnhance: !!pIdState.autoEnhance,
+        skinSmooth: pIdState.skinSmooth || 0,
+        attire: pIdState.attire || 'none',
+        attireY: pIdState.attireY || 0,
+        attireScale: pIdState.attireScale || 1,
+        nameTag: pIdState.nameTag || { on: false },
+        flip: !!pIdState.flip
+      };
+
+      const personLabel = activePhotos.length > 1 ? ' (Person ' + (state.photos.indexOf(p) + 1) + ')' : '';
+
+      for (const s of pSizes) {
+        const count = pIdState.qty[s.id];
+        const w = L.px(s.w), h = L.px(s.h);
+        const c = document.createElement('canvas');
+        c.width = w;
+        c.height = h;
+        I.drawId(c.getContext('2d'), pWork, pOpts, w, h);
+        summaryLines.push(count + ' × ' + s.label + personLabel);
+        for (let i = 0; i < count; i++) {
+          items.push({ w, h, size: s.id, canvas: c });
+        }
+      }
     }
+
     const sheets = L.pack(items, L.px(paper.w), L.px(paper.h), gapPx(), marginPx());
     if (!sheets) { toast('That size does not fit on the ' + paper.label + ' paper.'); return; }
+
     state.out = {
-      kind: 'id', paper, canvases: L.renderSheets(sheets, (ctx, it, x, y) => ctx.drawImage(cache[it.size], x, y), { cutGuides: cfg.cutGuides }),
-      lines: sizes.map((s) => state.id.qty[s.id] + ' × ' + s.label), unitPrice: 0, saved: false,
+      kind: 'id',
+      paper,
+      canvases: L.renderSheets(sheets, (ctx, it, x, y) => ctx.drawImage(it.canvas, x, y), {
+        cutGuides: cfg.cutGuides,
+        guideStyle: cfg.guideStyle || 'lines'
+      }),
+      lines: summaryLines,
+      unitPrice: 0,
+      saved: false,
     };
     state.out.unitPrice = cfg.prices.idSheet ? cfg.prices.idSheet * state.out.canvases.length : 0;
-    state.sets = 1; go('review');
-  } finally { await busy(''); }
+    state.sets = 1;
+    go('review');
+  } finally {
+    await busy('');
+  }
+}
+
+async function openSoftCopyQR() {
+  if (!state.out || !state.out.canvases || !state.out.canvases.length) return;
+  await busy('Preparing soft copy…');
+  try {
+    let dlBlob;
+    if (state.mode === 'id' && idWork) {
+      const c = document.createElement('canvas');
+      const actSize = L.ID_SIZES.filter((s) => (state.id.qty[s.id] || 0) > 0)[0] || L.ID_SIZES[2];
+      c.width = L.px(actSize.w);
+      c.height = L.px(actSize.h);
+      I.drawId(c.getContext('2d'), idWork, idOpts(), c.width, c.height);
+      dlBlob = await I.canvasToBlob(c, 'image/jpeg', 0.96);
+    } else {
+      dlBlob = await I.canvasToBlob(state.out.canvases[0], 'image/jpeg', 0.95);
+    }
+
+    const previewUrl = URL.createObjectURL(dlBlob);
+    let onlineOk = false;
+
+    try {
+      if (!phone || !phone.code) {
+        phone = new S.PhoneSession(() => {}, () => {});
+        await phone.start();
+      }
+      if (phone && phone.code) {
+        await phone.sendSoftCopy(dlBlob, state.mode === 'id' ? 'rush-id-photo.jpg' : 'photo-print.jpg');
+        onlineOk = true;
+      }
+    } catch (netErr) {
+      console.warn('PhoneSession cloud start failed (offline):', netErr);
+      onlineOk = false;
+    }
+
+    if (onlineOk && phone && phone.code) {
+      openModal(
+        '<h2>📱 Save to Phone (Soft Copy)</h2>' +
+        '<div class="qrbox" id="qrbox">' + qrSvg(phone.url) +
+        '<p class="code">' + phone.code + '</p>' +
+        '<p class="hint">' + esc(phone.url.replace(/^https?:\/\//, '')) + '</p></div>' +
+        '<div class="soft-prev"><img src="' + previewUrl + '" alt="Soft Copy Preview"><p>Scan the QR code with your phone camera to download your high-resolution photo directly to your phone gallery.</p></div>' +
+        '<div class="mrow">' +
+        (navigator.share ? '<button class="btn ghost" data-act="web-share">Share…</button>' : '') +
+        '<button class="btn primary big" data-act="close">Done</button></div>',
+        () => URL.revokeObjectURL(previewUrl)
+      );
+    } else {
+      // Offline fallback: direct wireless share (AirDrop/Quick Share) or save to USB
+      openModal(
+        '<h2>📱 Save Soft Copy to Phone</h2>' +
+        '<div class="soft-prev"><img src="' + previewUrl + '" alt="Soft Copy Preview">' +
+        '<p class="hint" style="color:var(--warn);font-weight:600">Offline Mode (No Internet Connection)</p>' +
+        '<p class="hint">Cloud QR code requires active internet. You can still save or transfer your high-resolution photo instantly below:</p></div>' +
+        '<div class="mcol">' +
+        (navigator.share ? '<button class="btn primary big" data-act="web-share">📲 Share to Phone (AirDrop / Quick Share)</button>' : '') +
+        '<button class="btn big" data-act="save">💾 Save JPG to Drive / USB</button>' +
+        '<button class="btn ghost" data-act="close">Close</button></div>',
+        () => URL.revokeObjectURL(previewUrl)
+      );
+    }
+  } catch (e) {
+    toast('Could not prepare soft copy: ' + ((e && e.message) || e), 4500);
+  } finally {
+    await busy('');
+  }
 }
 
 async function buildPhotos() {
@@ -537,7 +920,7 @@ async function buildPhotos() {
     if (!lay || !lay.sheets) { toast('That size does not fit on the paper.'); return; }
     const prints = state.photos.reduce((a, p) => a + p.copies, 0);
     state.out = {
-      kind: 'photo', paper: lay.paper, canvases: L.renderSheets(lay.sheets, paintPhoto, { cutGuides: !lay.size.full }), saved: false,
+      kind: 'photo', paper: lay.paper, canvases: L.renderSheets(lay.sheets, paintPhoto, { cutGuides: !lay.size.full && cfg.cutGuides, guideStyle: cfg.guideStyle || 'lines' }), saved: false,
       lines: [prints + ' × ' + lay.size.label + (state.photos.length > 1 ? ' (' + state.photos.length + ' photos)' : '')], unitPrice: (cfg.prices[lay.size.id] || 0) * prints,
     };
     state.sets = 1; go('review');
@@ -560,15 +943,29 @@ async function startCamera(deviceId) {
 }
 // Inside the booth: the live picture is the booth's own (whichever camera is chosen in its Setup), and the photo is taken the booth's way.
 let camTimer = 0;
-function openCameraHW() {
+async function openCameraHW() {
   openModal('<h2>Take a photo</h2><div class="camwrap"><canvas id="camv"></canvas>' + (state.mode === 'id' ? '<div class="camguide"></div>' : '') + '<div id="camcount"></div></div><p id="camerr" class="err"></p>' +
-    '<div class="mrow"><button class="btn primary big" data-act="snap">📸 Take photo</button><button class="btn ghost" data-act="close">Close</button></div>', () => clearInterval(camTimer), 'cam');
+    '<div class="mrow"><select id="camsel" data-in="camsel" class="cam-select" style="display:none"></select><button class="btn primary big" data-act="snap">📸 Take photo</button><button class="btn ghost" data-act="close">Close</button></div>', () => clearInterval(camTimer), 'cam');
   const cv = $('#camv'), v = hw.video, x = cv.getContext('2d');
   if (hw.mirror()) cv.style.transform = 'scaleX(-1)';
+
+  // Populate camera choices
+  if (hw.cameras) {
+    try {
+      const cams = await hw.cameras();
+      const sel = $('#camsel');
+      if (sel && cams.length) {
+        const cur = hw.currentCamera ? hw.currentCamera() : '';
+        sel.innerHTML = cams.map((c) => '<option value="' + esc(c.id) + '"' + (c.id === cur ? ' selected' : '') + '>' + esc(c.label) + '</option>').join('');
+        sel.style.display = cams.length > 1 ? '' : 'none';
+      }
+    } catch (e) { }
+  }
+
   const draw = () => {
     const err = $('#camerr'); if (!cv.isConnected) return;
     if (v.videoWidth) { if (cv.width !== v.videoWidth) { cv.width = v.videoWidth; cv.height = v.videoHeight; } x.drawImage(v, 0, 0); if (err) err.textContent = ''; }
-    else if (err) err.textContent = 'The camera is not ready. Staff: choose it in Setup (tap the shop name 5 times, then the Setup button).';
+    else if (err) err.textContent = 'The camera is not ready. Choose a camera below or check connection.';
   };
   clearInterval(camTimer); camTimer = setInterval(draw, 40); draw();
 }
@@ -591,7 +988,7 @@ async function snapHW() {
 }
 function openCamera() {
   openModal('<h2>Take a photo</h2><div class="camwrap"><video id="camv" autoplay playsinline muted></video>' + (state.mode === 'id' ? '<div class="camguide"></div>' : '') + '<div id="camcount"></div></div><p id="camerr" class="err"></p>' +
-    '<div class="mrow"><select id="camsel" data-in="camsel" style="display:none"></select><button class="btn primary big" data-act="snap">📸 Take photo</button><button class="btn ghost" data-act="close">Close</button></div>', stopCamera, 'cam');
+    '<div class="mrow"><select id="camsel" data-in="camsel" class="cam-select" style="display:none"></select><button class="btn primary big" data-act="snap">📸 Take photo</button><button class="btn ghost" data-act="close">Close</button></div>', stopCamera, 'cam');
   startCamera();
 }
 async function snap() {
@@ -668,7 +1065,18 @@ async function openQR() {
     }
     $('#qrbox').innerHTML = qrSvg(phone.url) + '<p class="code">' + phone.code + '</p><p class="hint">' + esc(phone.url.replace(/^https?:\/\//, '')) + '</p>';
     $('#qrstat').textContent = phone.count ? phone.count + ' photos received' : 'Waiting for your photos…'; $('#qrstat').className = 'ok';
-  } catch (e) { const b = $('#qrbox'); if (b) b.innerHTML = '<p class="err">Could not start. Check the internet connection and try again.</p>'; phone = null; }
+  } catch (e) {
+    const b = $('#qrbox');
+    if (b) {
+      b.innerHTML = '<p class="err" style="margin-bottom:8px">No internet connection for cloud QR code.</p>' +
+        '<p class="hint" style="margin-bottom:12px">Use these offline options to get photos from your phone without internet:</p>' +
+        '<div class="mcol" style="gap:8px">' +
+        '<button class="btn primary" data-act="src-bt">🔵 Send via Bluetooth (100% Offline)</button>' +
+        '<button class="btn" data-act="src-usb">💾 Plug in USB Drive / SD Card</button>' +
+        '</div>';
+    }
+    phone = null;
+  }
 }
 
 // ---------- past orders (staff only): the finished sheets, kept on this device, with reprint / save / delete ----------
@@ -746,7 +1154,11 @@ function openSettings() {
     '<label>Paper for ID sheets<select data-k="idPaper">' + pap + '</select></label>' +
     '<label>Gap between ID photos (mm)' + num('gapMm', cfg.gapMm) + '</label>' +
     '<label>Paper margin (mm)' + num('marginMm', cfg.marginMm) + '</label>' +
-    '<label class="chk"><input type="checkbox" data-k="cutGuides"' + (cfg.cutGuides ? ' checked' : '') + '> Draw thin cutting lines between ID photos</label>' +
+    '<label class="chk"><input type="checkbox" data-k="cutGuides"' + (cfg.cutGuides ? ' checked' : '') + '> Draw cutting guides between ID photos</label>' +
+    '<label>Cutting guide style<select data-k="guideStyle">' +
+    '<option value="lines"' + (cfg.guideStyle === 'lines' ? ' selected' : '') + '>Full border lines</option>' +
+    '<option value="corners"' + (cfg.guideStyle === 'corners' ? ' selected' : '') + '>Corner tick marks (cutter marks)</option>' +
+    '</select></label>' +
     '<h3>Prices (0 = do not show)</h3>' +
     '<label>Per ID sheet' + num('p.idSheet', pr.idSheet) + '</label>' +
     L.PHOTO_SIZES.map((s) => '<label>Photo ' + s.label + ' (each)' + num('p.' + s.id, pr[s.id] || 0) + '</label>').join('') +
@@ -836,8 +1248,40 @@ const acts = {
       try { await P.printSheets(o.canvases, o.paper, state.sets); } catch (e) { toast('Could not print: ' + (e.message || e)); return; }
     }
     saveOrderOnce();
-    openModal('<h2>Printing…</h2><p>Check the printer. When you have your prints, clear your photos from this screen.</p><div class="mrow"><button class="btn" data-act="close">Print again</button><button class="btn primary big" data-act="finish">Finish &amp; clear my photos</button></div>');
+    openModal('<h2>Printing…</h2><p>Check the printer. When you have your prints, clear your photos from this screen.</p><div class="mrow"><button class="btn" data-act="qr-dl">📱 Send to Phone (QR)</button><button class="btn" data-act="close">Print again</button><button class="btn primary big" data-act="finish">Finish &amp; clear my photos</button></div>');
   },
+  'qr-dl': openSoftCopyQR,
+  'web-share': async () => {
+    if (!navigator.share || !state.out || !state.out.canvases) return;
+    try {
+      const blob = await I.canvasToBlob(state.out.canvases[0], 'image/jpeg', 0.95);
+      const file = new File([blob], 'id-photo.jpg', { type: 'image/jpeg' });
+      await navigator.share({ files: [file], title: 'Rush ID Photo', text: 'My ID Photo' });
+    } catch (e) { /* cancelled */ }
+  },
+  'gov-preset': (b) => applyPreset(b.dataset.id),
+  'attire-sel': async (b) => {
+    state.id.attire = b.dataset.id;
+    renderIdPanel();
+    drawStage();
+    if (state.id.attire !== 'none' && idWork && !idWork.cut) {
+      await ensureCut();
+      drawStage();
+    }
+  },
+  'reset-attire': () => {
+    state.id.attireY = 0;
+    state.id.attireScale = 1;
+    renderIdPanel();
+    drawStage();
+  },
+  'toggle-enhance': () => {
+    state.id.autoEnhance = !state.id.autoEnhance;
+    renderIdPanel();
+    drawStage();
+    toast(state.id.autoEnhance ? 'Auto-Enhance: ON' : 'Auto-Enhance: OFF', 1500);
+  },
+  'sel-id-photo': (b) => switchIdPhoto(b.dataset.id),
   finish: () => resetAll(),
   save: async () => { await P.downloadSheets(state.out.canvases, state.mode === 'id' ? 'id-photo' : 'photo-print'); saveOrderOnce(); toast('Saved'); },
   'pin-ok': async () => {
@@ -873,6 +1317,38 @@ const acts = {
   'hw-setup': () => { closeModal(); hw.openSetup(); },
   'printer-modal': printerModal,
   'hw-printer-setup': () => { closeModal(); hw.openSetup(4); },
+  'prn-refresh': async () => {
+    await busy('Refreshing printers…');
+    try {
+      if (hw && hw.refreshPrinters) await hw.refreshPrinters(currentPaperKey());
+      toast('Printer list refreshed', 1500);
+      fillPrinterBox();
+    } catch (e) {
+      toast('Refresh failed: ' + ((e && e.message) || e), 3500);
+    } finally {
+      await busy('');
+    }
+  },
+  'prn-cfg': async () => {
+    if (!hw || !hw.configurePrinter) return;
+    let cur = '';
+    try {
+      const info = await hw.printers(currentPaperKey());
+      cur = info && info.current;
+    } catch (e) { }
+    if (!cur) { toast('Pick a printer first.', 2500); return; }
+    await busy('Opening printer settings…');
+    try {
+      const r = await hw.configurePrinter(cur);
+      toast(r.msg, 4000);
+    } catch (e) {
+      toast('Could not open settings: ' + ((e && e.message) || e), 4000);
+    } finally {
+      await busy('');
+    }
+  },
+  autofill: () => { applyAutoFill(); },
+  'fill-size': (b) => { applyAutoFill(b.dataset.id); },
   apr: (b) => { const r = hw.choosePrinter(currentPaperKey(), b.dataset.id); toast(r.msg, 4500); fillPrinterBox(); },
   'apr-scan': () => { hw.scanPrinters(); let n = 0; const t = setInterval(() => { fillPrinterBox(); if (++n > 40 || !document.querySelector('.printerbox')) clearInterval(t); }, 1200); },
   'upd-check': () => { startUpdateCheck(); },
@@ -884,6 +1360,7 @@ const acts = {
   pflip: (b, e) => { e.stopPropagation(); const p = photoById(b.dataset.id); if (p) { p.flip = !p.flip; render(); } },
   'reset-fine': () => {
     state.id.brightness = 0; state.id.contrast = 0; state.id.edge = 0;
+    state.id.autoEnhance = false; state.id.skinSmooth = 0;
     recut();
     renderIdPanel(); drawStage();
   },
@@ -901,6 +1378,12 @@ const acts = {
 
 const ins = {
   zoom: (el) => { if (!state.id.crop) return; const r = hRange(); state.id.crop.h = r.max * Math.pow(r.min / r.max, el.value / 100); drawStage(); },
+  'attire-y': (el) => { state.id.attireY = Number(el.value); drawStage(); },
+  'attire-scale': (el) => { state.id.attireScale = Number(el.value) / 100; drawStage(); },
+  'tag-on': (el) => { if (!state.id.nameTag) state.id.nameTag = { on: false, text: '', sub: '' }; state.id.nameTag.on = el.checked; drawStage(); },
+  'tag-text': (el) => { if (!state.id.nameTag) state.id.nameTag = { on: true, text: '', sub: '' }; state.id.nameTag.text = el.value; drawStage(); },
+  'tag-sub': (el) => { if (!state.id.nameTag) state.id.nameTag = { on: true, text: '', sub: '' }; state.id.nameTag.sub = el.value; drawStage(); },
+  'skin-smooth': (el) => { state.id.skinSmooth = Number(el.value); drawStage(); },
   brightness: (el) => { state.id.brightness = Number(el.value); drawStage(); },
   contrast: (el) => { state.id.contrast = Number(el.value); drawStage(); },
   guides: (el) => { state.id.guides = el.checked; drawStage(); },
@@ -908,7 +1391,21 @@ const ins = {
     state.id.edge = Number(el.value) / 10;
     recut(); drawStage();
   },
-  camsel: (el) => startCamera(el.value),
+  camsel: async (el) => {
+    if (hw && hw.setCamera) {
+      await busy('Switching camera…');
+      try {
+        await hw.setCamera(el.value);
+        toast('Camera switched', 1500);
+      } catch (e) {
+        toast('Could not switch camera: ' + ((e && e.message) || e), 3500);
+      } finally {
+        await busy('');
+      }
+    } else {
+      startCamera(el.value);
+    }
+  },
   brush: (el) => { state.id.brush = Number(el.value); },
   pzoom: (el) => { const p = selPhoto(); if (p) { p.zoom = Number(el.value) / 100; schedulePreview(); } },
   custombg: (el) => {
@@ -916,15 +1413,25 @@ const ins = {
     const i = el.closest('i'); if (i) i.style.setProperty('--c', el.value);
     drawStage(); if (idWork && !idWork.cut) ensureCut().then(drawStage);
   },
-  paper: async (el) => { cfg.idPaper = el.value; saveCfg(); if (state.screen === 'review' && state.mode === 'id' && idWork) await buildId(); fillPrinterBox(); },
-  printer: (el) => { if (hw && state.out) { hw.setPrinter(state.out.paper.id, el.value); toast(el.value ? 'Printer: ' + el.value : 'Using the booth’s default printer', 2500); } },
+  paper: async (el) => {
+    cfg.idPaper = el.value; saveCfg();
+    if (state.id.pkg === 'autofill') applyAutoFill();
+    if (state.screen === 'review' && state.mode === 'id' && idWork) await buildId();
+    fillPrinterBox();
+  },
+  printer: (el) => {
+    if (hw) {
+      hw.setPrinter(currentPaperKey(), el.value);
+      toast(el.value ? 'Printer: ' + el.value : 'Using default printer', 2500);
+    }
+  },
 };
 const CHANGE_ONLY = ['edge', 'camsel', 'paper', 'printer'];      // selects and the edge slider act when released, not on every move
 
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b && acts[b.dataset.act]) acts[b.dataset.act](b, e); });
 document.addEventListener('input', (e) => { const el = e.target.closest('[data-in]'); if (el && ins[el.dataset.in] && !CHANGE_ONLY.includes(el.dataset.in)) ins[el.dataset.in](el); });
 document.addEventListener('change', (e) => {
-  const el = e.target.closest('[data-in]'); if (el && CHANGE_ONLY.includes(el.dataset.in)) ins[el.dataset.in](el);
+  const el = e.target.closest('[data-in]'); if (el && (CHANGE_ONLY.includes(el.dataset.in) || el.type === 'checkbox')) ins[el.dataset.in](el);
   if (el && el.dataset.in === 'custombg') renderIdPanel();
   if (e.target.id === 'files') { const fs = [...e.target.files]; closeModal(); addFiles(fs); }
 });

@@ -87,6 +87,15 @@ export class PhoneSession {
     } catch (e) { this.onStatus('offline'); }
     finally { this.busy = false; }
   }
+  async sendSoftCopy(blob, filename = 'id-photo.jpg') {
+    const buffer = await blob.arrayBuffer();
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    const base64 = btoa(binary);
+    const r = await this.call({ action: 'put_dl', name: filename, data: base64 });
+    return r.ok;
+  }
   stop() {
     clearInterval(this.timer); this.timer = null;
     if (this.code) { const body = JSON.stringify({ action: 'close', code: this.code, secret: this.secret }); this.code = null; fetch(apiUrl(), { method: 'POST', headers: jsonHeaders(), body, keepalive: true }).catch(() => {}); }

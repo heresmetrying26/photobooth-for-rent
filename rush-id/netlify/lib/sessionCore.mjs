@@ -41,8 +41,10 @@ async function getSession(db, code) {
 
 async function wipe(db, code) {
   const st = db();
-  const { blobs } = await st.list({ prefix: 'p/' + code + '/' });
-  await Promise.all(blobs.map((b) => st.delete(b.key)));
+  const { blobs: pBlobs } = await st.list({ prefix: 'p/' + code + '/' });
+  await Promise.all(pBlobs.map((b) => st.delete(b.key)));
+  const { blobs: dlBlobs } = await st.list({ prefix: 'dl/' + code + '/' });
+  await Promise.all(dlBlobs.map((b) => st.delete(b.key)));
   await st.delete('s/' + code);
 }
 
@@ -66,7 +68,28 @@ export const makeHandler = ({ db, authorize = async () => true }) => async (req)
   // ---------- phone ----------
   if (req.method === 'GET') {
     const s = await getSession(db, qcode);
-    return s ? json({ ok: true }) : json({ error: 'expired' }, 404);
+    if (!s) return json({ error: 'expired' }, 404);
+    const dlId = url.searchParams.get('dl');
+    if (dlId) {
+      if (!/^[a-z0-9-]{6,40}$/.test(dlId)) return json({ error: 'Bad request' }, 400);
+      const st = db();
+      const r = await st.getWithMetadata('dl/' + qcode + '/' + dlId, { type: 'arrayBuffer' });
+      if (!r) return json({ error: 'gone' }, 404);
+      return new Response(r.data, {
+        headers: {
+          'content-type': r.metadata?.type || 'image/jpeg',
+          'content-disposition': 'attachment; filename="' + encodeURIComponent(r.metadata?.name || 'id-photo.jpg') + '"',
+          'cache-control': 'no-store'
+        }
+      });
+    }
+    const st = db();
+    const { blobs } = await st.list({ prefix: 'dl/' + qcode + '/' });
+    const downloads = blobs.map((x) => ({
+      id: x.key.split('/')[2],
+      name: x.metadata?.name || 'id-photo.jpg'
+    }));
+    return json({ ok: true, downloads });
   }
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
@@ -123,6 +146,16 @@ export const makeHandler = ({ db, authorize = async () => true }) => async (req)
     const id = String(b.id || '');
     if (/^[a-z0-9-]{6,40}$/.test(id)) await st.delete('p/' + code + '/' + id);
     return json({ ok: true });
+  }
+  if (b.action === 'put_dl') {
+    const name = String(b.name || 'id-photo.jpg').slice(0, 80);
+    const dataBase64 = String(b.data || '');
+    if (!dataBase64) return json({ error: 'No data' }, 400);
+    const buf = Buffer.from(dataBase64, 'base64');
+    if (buf.byteLength > MAX_BYTES) return json({ error: 'too big' }, 413);
+    const id = Date.now().toString(36) + '-' + randomBytes(3).toString('hex');
+    await st.set('dl/' + code + '/' + id, buf, { metadata: { type: 'image/jpeg', name } });
+    return json({ ok: true, id });
   }
   if (b.action === 'close') { await wipe(db, code); return json({ ok: true }); }
   return json({ error: 'Bad request' }, 400);

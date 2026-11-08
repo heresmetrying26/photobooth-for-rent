@@ -32673,6 +32673,22 @@
         video: video,                                   // the live picture of whichever camera is selected in Setup (webcam, USB DSLR, helper, Android...)
         camera: function () { return { ok: !!video.videoWidth, w: video.videoWidth || 0, h: video.videoHeight || 0 }; },
         mirror: function () { try { return !!mirrorPreview(); } catch (e) { return false; } },
+        cameras: async function () {
+          try { await enumerateCameras(); } catch (e) { }
+          return Array.from(cameraSelect.options).map(function (o) {
+            return { id: o.value, label: o.textContent || o.text || 'Camera' };
+          });
+        },
+        currentCamera: function () {
+          return cameraSelect.value || (cameraSelect.options[cameraSelect.selectedIndex] ? cameraSelect.options[cameraSelect.selectedIndex].value : '');
+        },
+        setCamera: async function (id) {
+          cameraSelect.value = id;
+          saveCamera();
+          await initCamera(id);
+          try { scheduleSetupNav(); } catch (e) { }
+          return { ok: true, id: cameraSelect.value };
+        },
         // A photo from the selected camera, the booth's own way (a DSLR gives its real photo), as an un-mirrored canvas without booth filters.
         capture: async function () {
           if (!video.videoWidth) throw new Error('The camera is not ready.');
@@ -32692,13 +32708,52 @@
         // Which way a print on `key` paper will go, and (with the Print Helper) every printer it can use. The choice is the booth's own
         // per-paper-size printer, the same as in Setup.
         printers: async function (key) {
-          var h = helperOn ? await checkHelper(!helper.ok) : { ok: false, printers: [] }, live = helperOn && h.ok, mode;      // look again if the last look failed (the helper may have been started since)
+          var h = { ok: false, printers: [] };
+          try {
+            h = await checkHelper(true);
+            if (h && h.ok && !helperOn) {
+              helperOn = true;
+              try { localStorage.setItem(HELPER_KEY, '1'); } catch (e) { }
+            }
+          } catch (e) { }
+          var live = helperOn && h.ok, mode;
           if (useStation()) mode = 'station';
           else if (live) mode = 'helper';
           else if (wifiPrinter && !wifiPrinter.dialog && wifiNetAvailable()) mode = 'wifi';
           else if (window.__PBPrint && typeof window.__PBPrint.print === 'function') mode = 'android';
           else mode = 'browser';
-          return { mode: mode, current: printerFor(key) || (mode === 'wifi' ? wifiPrinter.name : ''), options: live ? h.printers.slice() : [], android: wifiNetAvailable() ? rushHW.androidPrinters() : null };
+          return {
+            mode: mode,
+            current: printerFor(key) || (mode === 'wifi' ? wifiPrinter.name : ''),
+            options: (h && h.printers) ? h.printers.slice() : [],
+            helperOn: !!helperOn,
+            helperOk: !!(h && h.ok),
+            android: wifiNetAvailable() ? rushHW.androidPrinters() : null
+          };
+        },
+        refreshPrinters: async function (key) {
+          helper = { ok: false, printers: [], checked: 0 };
+          return await rushHW.printers(key || printSize || '4x6');
+        },
+        configurePrinter: async function (name) {
+          if (!name) return { ok: false, msg: 'No printer selected.' };
+          try {
+            var rr = await fetch(HELPER_URL + '/printer/configure', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ printer: name })
+            });
+            var jj = await rr.json();
+            if (!rr.ok || !jj.ok) throw new Error(jj.error || 'Could not open printer settings.');
+            return { ok: true, msg: jj.message || 'Printer settings opened.' };
+          } catch (e) {
+            return { ok: false, msg: e.message || 'Could not open printer settings.' };
+          }
+        },
+        setHelperDirect: function (on) {
+          helperOn = !!on;
+          try { localStorage.setItem(HELPER_KEY, helperOn ? '1' : '0'); } catch (e) { }
+          helper = { ok: false, printers: [], checked: 0 };
         },
         setPrinter: function (key, name) {
           // The booth keeps a separate slot for strip layouts printed two-up; set both so this choice always wins.

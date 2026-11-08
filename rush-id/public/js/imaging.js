@@ -61,7 +61,7 @@ function faceDetector() {
 }
 
 // Warm both up while the customer is choosing, so the editor opens fast.
-export function preload() { segmenter().catch(() => {}); faceDetector().catch(() => {}); }
+export function preload() { segmenter().catch(() => { }); faceDetector().catch(() => { }); }
 
 // Person confidence mask: { w, h, data: Float32Array } (0..1)
 export async function personConfidence(canvas) {
@@ -130,7 +130,7 @@ function modnet() {
   }
   return modnetP;
 }
-export function preloadMatting() { modnet().catch(() => {}); }
+export function preloadMatting() { modnet().catch(() => { }); }
 export const mattingReady = () => { let r = false; modnetP && modnetP.then(() => { r = true; }); return r; };
 
 // Running mean over a (2r+1) box, edges averaged over what exists. In: Float32Array w*h.
@@ -229,16 +229,414 @@ export function buildCutout(work, edge = 0, edits = null) {
 // The frame width follows the size being drawn, so every size of a package keeps the head the same height.
 export const HEAD_TARGET = { top: 0.10, chin: 0.78 };   // head fills 10% .. 78% of the photo height
 
-export function autoCrop(face, w, h, aspect) {
+export function autoCrop(face, w, h, aspect, headTarget = HEAD_TARGET) {
+  const target = headTarget || HEAD_TARGET;
   if (!face) {
     const fh = Math.min(h, w / aspect);
     return { cx: w / 2, cy: h / 2, h: fh };
   }
   const headH = face.h * 1.42;                                   // detector box is brow-to-chin; add hair
-  const H = headH / (HEAD_TARGET.chin - HEAD_TARGET.top);
+  const H = headH / (target.chin - target.top);
   const chinY = face.y + face.h * 1.02;
-  const top = chinY - headH - HEAD_TARGET.top * H;
+  const top = chinY - headH - target.top * H;
   return { cx: face.x + face.w / 2, cy: top + H / 2, h: H };
+}
+
+// Draw the framed photo into ctx at (0,0,outW,outH).
+export const ATTIRES = [
+  { id: 'none', label: 'None (Original)', desc: 'Keep your own clothes' },
+  { id: 'suit-black', label: 'Black Suit', desc: 'Formal black suit, white shirt & dark tie' },
+  { id: 'suit-navy', label: 'Navy Blazer', desc: 'Navy blue blazer, white shirt & red tie' },
+  { id: 'barong', label: 'Barong Tagalog', desc: 'Formal Philippine embroidered Barong' },
+  { id: 'blazer-women', label: "Women's Blazer", desc: 'Professional blazer & scoop blouse' },
+  { id: 'polo-white', label: 'White Polo', desc: 'Clean white collared polo shirt' },
+];
+
+export function applySkinEnhance(ctx, outW, outH, { smoothing = 0 } = {}) {
+  if (!smoothing || smoothing <= 0) return;
+  const k = Math.min(1, Math.max(0, smoothing / 100));
+  const rad = Math.max(2, Math.round(outH * 0.012 * k));
+  const tmp = document.createElement('canvas');
+  tmp.width = outW;
+  tmp.height = outH;
+  const tx = tmp.getContext('2d');
+  try {
+    tx.filter = 'blur(' + rad + 'px)';
+  } catch (e) {
+    return;
+  }
+  tx.drawImage(ctx.canvas, 0, 0);
+  ctx.save();
+  ctx.globalAlpha = 0.38 * k;
+  ctx.drawImage(tmp, 0, 0);
+  ctx.restore();
+}
+
+export function drawNameTag(ctx, nameTag, outW, outH) {
+  if (!nameTag || !nameTag.on || !nameTag.text) return;
+  const tagH = Math.max(24, Math.round(outH * 0.16));
+  const tagY = outH - tagH;
+  const text = String(nameTag.text).trim().toUpperCase();
+  const sub = String(nameTag.sub || '').trim().toUpperCase();
+  if (!text) return;
+
+  ctx.save();
+  // Solid white banner with crisp border
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, tagY, outW, tagH);
+  ctx.lineWidth = Math.max(1, Math.round(outH * 0.005));
+  ctx.strokeStyle = '#1e293b';
+  ctx.strokeRect(0, tagY, outW, tagH);
+
+  // Auto-measure text size
+  const pad = Math.round(outW * 0.04);
+  const maxW = outW - pad * 2;
+  let fontSize = Math.round(tagH * (sub ? 0.44 : 0.58));
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.font = 'bold ' + fontSize + 'px system-ui, -apple-system, sans-serif';
+  while (ctx.measureText(text).width > maxW && fontSize > 8) {
+    fontSize--;
+    ctx.font = 'bold ' + fontSize + 'px system-ui, -apple-system, sans-serif';
+  }
+
+  ctx.fillStyle = '#0f172a';
+  if (sub) {
+    ctx.fillText(text, outW / 2, tagY + tagH * 0.36);
+    let subSize = Math.max(7, Math.round(fontSize * 0.65));
+    ctx.font = '600 ' + subSize + 'px system-ui, -apple-system, sans-serif';
+    while (ctx.measureText(sub).width > maxW && subSize > 6) {
+      subSize--;
+      ctx.font = '600 ' + subSize + 'px system-ui, -apple-system, sans-serif';
+    }
+    ctx.fillStyle = '#475569';
+    ctx.fillText(sub, outW / 2, tagY + tagH * 0.74);
+  } else {
+    ctx.fillText(text, outW / 2, tagY + tagH * 0.52);
+  }
+  ctx.restore();
+}
+
+export function drawAttire(ctx, attireId, outW, outH, { yOffset = 0, scale = 1 } = {}) {
+  if (!attireId || attireId === 'none') return;
+  const baseY = outH * (0.74 + yOffset * 0.12);
+  const cx = outW / 2;
+
+  ctx.save();
+  ctx.translate(cx, baseY);
+  ctx.scale(scale, scale);
+  ctx.translate(-cx, -baseY);
+
+  if (attireId === 'suit-black' || attireId === 'suit-navy') {
+    const isNavy = attireId === 'suit-navy';
+    const coatColor = isNavy ? '#0f172a' : '#18181b';
+    const lapelColor = isNavy ? '#1e293b' : '#27272a';
+    const lapelHighlight = isNavy ? '#334155' : 'rgba(255,255,255,0.12)';
+    const tieColor = isNavy ? '#881337' : '#1c1917';
+    const tieKnot = isNavy ? '#9f1239' : '#292524';
+
+    // 1. Inner white dress shirt collar base
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.moveTo(cx - outW * 0.12, baseY);
+    ctx.lineTo(cx, baseY + outH * 0.04);
+    ctx.lineTo(cx + outW * 0.12, baseY);
+    ctx.lineTo(cx + outW * 0.07, baseY + outH * 0.10);
+    ctx.lineTo(cx - outW * 0.07, baseY + outH * 0.10);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Left collar flap
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(cx - outW * 0.13, baseY);
+    ctx.lineTo(cx - outW * 0.04, baseY + outH * 0.095);
+    ctx.lineTo(cx - outW * 0.01, baseY + outH * 0.04);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+    ctx.lineWidth = Math.max(1, outW * 0.003);
+    ctx.stroke();
+
+    // 3. Right collar flap
+    ctx.beginPath();
+    ctx.moveTo(cx + outW * 0.13, baseY);
+    ctx.lineTo(cx + outW * 0.04, baseY + outH * 0.095);
+    ctx.lineTo(cx + outW * 0.01, baseY + outH * 0.04);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 4. Necktie knot & tie body
+    ctx.fillStyle = tieKnot;
+    ctx.beginPath();
+    ctx.moveTo(cx - outW * 0.035, baseY + outH * 0.04);
+    ctx.lineTo(cx + outW * 0.035, baseY + outH * 0.04);
+    ctx.lineTo(cx + outW * 0.025, baseY + outH * 0.088);
+    ctx.lineTo(cx - outW * 0.025, baseY + outH * 0.088);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = tieColor;
+    ctx.beginPath();
+    ctx.moveTo(cx - outW * 0.025, baseY + outH * 0.088);
+    ctx.lineTo(cx + outW * 0.025, baseY + outH * 0.088);
+    ctx.lineTo(cx + outW * 0.07, outH + 15);
+    ctx.lineTo(cx - outW * 0.07, outH + 15);
+    ctx.closePath();
+    ctx.fill();
+
+    // Tie center highlight / stripes
+    ctx.fillStyle = isNavy ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)';
+    ctx.fillRect(cx - outW * 0.008, baseY + outH * 0.088, outW * 0.016, outH);
+
+    // 5. Suit coat body & shoulders
+    ctx.fillStyle = coatColor;
+    // Left shoulder
+    ctx.beginPath();
+    ctx.moveTo(cx - outW * 0.13, baseY);
+    ctx.lineTo(-outW * 0.1, baseY + outH * 0.14);
+    ctx.lineTo(-outW * 0.1, outH + 15);
+    ctx.lineTo(cx - outW * 0.02, outH + 15);
+    ctx.lineTo(cx - outW * 0.02, baseY + outH * 0.22);
+    ctx.lineTo(cx - outW * 0.07, baseY + outH * 0.09);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right shoulder
+    ctx.beginPath();
+    ctx.moveTo(cx + outW * 0.13, baseY);
+    ctx.lineTo(outW * 1.1, baseY + outH * 0.14);
+    ctx.lineTo(outW * 1.1, outH + 15);
+    ctx.lineTo(cx + outW * 0.02, outH + 15);
+    ctx.lineTo(cx + outW * 0.02, baseY + outH * 0.22);
+    ctx.lineTo(cx + outW * 0.07, baseY + outH * 0.09);
+    ctx.closePath();
+    ctx.fill();
+
+    // 6. Notched Lapels
+    ctx.fillStyle = lapelColor;
+    // Left lapel
+    ctx.beginPath();
+    ctx.moveTo(cx - outW * 0.13, baseY);
+    ctx.lineTo(cx - outW * 0.18, baseY + outH * 0.07);
+    ctx.lineTo(cx - outW * 0.14, baseY + outH * 0.08);
+    ctx.lineTo(cx - outW * 0.02, baseY + outH * 0.22);
+    ctx.lineTo(cx - outW * 0.07, baseY + outH * 0.09);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = lapelHighlight;
+    ctx.lineWidth = Math.max(1, outW * 0.002);
+    ctx.stroke();
+
+    // Right lapel
+    ctx.beginPath();
+    ctx.moveTo(cx + outW * 0.13, baseY);
+    ctx.lineTo(cx + outW * 0.18, baseY + outH * 0.07);
+    ctx.lineTo(cx + outW * 0.14, baseY + outH * 0.08);
+    ctx.lineTo(cx + outW * 0.02, baseY + outH * 0.22);
+    ctx.lineTo(cx + outW * 0.07, baseY + outH * 0.09);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Single suit coat button closure
+    ctx.fillStyle = '#09090b';
+    ctx.beginPath();
+    ctx.arc(cx, baseY + outH * 0.25, Math.max(2, outW * 0.012), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#52525b';
+    ctx.stroke();
+  } else if (attireId === 'barong') {
+    // 1. Base cream piña/jusi fabric
+    ctx.fillStyle = '#faf6ee';
+    ctx.beginPath();
+    ctx.moveTo(cx - outW * 0.12, baseY);
+    ctx.lineTo(-outW * 0.1, baseY + outH * 0.14);
+    ctx.lineTo(-outW * 0.1, outH + 15);
+    ctx.lineTo(outW * 1.1, outH + 15);
+    ctx.lineTo(outW * 1.1, baseY + outH * 0.14);
+    ctx.lineTo(cx + outW * 0.12, baseY);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Traditional Mandarin collar
+    ctx.fillStyle = '#f3ebe0';
+    ctx.beginPath();
+    ctx.moveTo(cx - outW * 0.13, baseY);
+    ctx.quadraticCurveTo(cx, baseY + outH * 0.03, cx + outW * 0.13, baseY);
+    ctx.lineTo(cx + outW * 0.12, baseY + outH * 0.045);
+    ctx.quadraticCurveTo(cx, baseY + outH * 0.075, cx - outW * 0.12, baseY + outH * 0.045);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#c4a675';
+    ctx.lineWidth = Math.max(1, outW * 0.004);
+    ctx.stroke();
+
+    // 3. Embroidered U-shaped Pechera
+    ctx.fillStyle = '#f5ede0';
+    ctx.beginPath();
+    ctx.moveTo(cx - outW * 0.11, baseY + outH * 0.05);
+    ctx.lineTo(cx - outW * 0.11, baseY + outH * 0.22);
+    ctx.quadraticCurveTo(cx - outW * 0.11, baseY + outH * 0.28, cx, baseY + outH * 0.28);
+    ctx.quadraticCurveTo(cx + outW * 0.11, baseY + outH * 0.28, cx + outW * 0.11, baseY + outH * 0.22);
+    ctx.lineTo(cx + outW * 0.11, baseY + outH * 0.05);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Inner embroidery border
+    ctx.strokeStyle = '#d7bea0';
+    ctx.lineWidth = Math.max(1, outW * 0.002);
+    ctx.beginPath();
+    ctx.moveTo(cx - outW * 0.085, baseY + outH * 0.06);
+    ctx.lineTo(cx - outW * 0.085, baseY + outH * 0.21);
+    ctx.quadraticCurveTo(cx - outW * 0.085, baseY + outH * 0.25, cx, baseY + outH * 0.25);
+    ctx.quadraticCurveTo(cx + outW * 0.085, baseY + outH * 0.25, cx + outW * 0.085, baseY + outH * 0.21);
+    ctx.lineTo(cx + outW * 0.085, baseY + outH * 0.06);
+    ctx.stroke();
+
+    // 4. Center placket
+    ctx.fillStyle = '#ece3d2';
+    ctx.fillRect(cx - outW * 0.02, baseY + outH * 0.05, outW * 0.04, outH);
+    ctx.strokeStyle = '#c4a675';
+    ctx.strokeRect(cx - outW * 0.02, baseY + outH * 0.05, outW * 0.04, outH);
+
+    // 5. Pearl buttons
+    for (let i = 0; i < 4; i++) {
+      const by = baseY + outH * (0.08 + i * 0.055);
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(cx, by, Math.max(2, outW * 0.012), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#b89968';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // 6. Vertical decorative pin-tucks
+    ctx.strokeStyle = 'rgba(196,166,117,0.35)';
+    ctx.lineWidth = 1;
+    for (const dx of [-0.06, -0.04, 0.04, 0.06]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + outW * dx, baseY + outH * 0.07);
+      ctx.lineTo(cx + outW * dx, baseY + outH * 0.23);
+      ctx.stroke();
+    }
+  } else if (attireId === 'blazer-women') {
+    // 1. Inner blouse scoop neckline
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(cx - outW * 0.12, baseY);
+    ctx.quadraticCurveTo(cx, baseY + outH * 0.16, cx + outW * 0.12, baseY);
+    ctx.lineTo(cx + outW * 0.12, outH + 15);
+    ctx.lineTo(cx - outW * 0.12, outH + 15);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Blazer shoulders & coat
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.moveTo(cx - outW * 0.11, baseY);
+    ctx.lineTo(-outW * 0.1, baseY + outH * 0.14);
+    ctx.lineTo(-outW * 0.1, outH + 15);
+    ctx.lineTo(cx - outW * 0.01, outH + 15);
+    ctx.lineTo(cx - outW * 0.01, baseY + outH * 0.24);
+    ctx.quadraticCurveTo(cx - outW * 0.10, baseY + outH * 0.14, cx - outW * 0.11, baseY);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(cx + outW * 0.11, baseY);
+    ctx.lineTo(outW * 1.1, baseY + outH * 0.14);
+    ctx.lineTo(outW * 1.1, outH + 15);
+    ctx.lineTo(cx + outW * 0.01, outH + 15);
+    ctx.lineTo(cx + outW * 0.01, baseY + outH * 0.24);
+    ctx.quadraticCurveTo(cx + outW * 0.10, baseY + outH * 0.14, cx + outW * 0.11, baseY);
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. Curved shawl lapels
+    ctx.fillStyle = '#334155';
+    // Left shawl
+    ctx.beginPath();
+    ctx.moveTo(cx - outW * 0.11, baseY);
+    ctx.quadraticCurveTo(cx - outW * 0.15, baseY + outH * 0.10, cx - outW * 0.01, baseY + outH * 0.24);
+    ctx.quadraticCurveTo(cx - outW * 0.08, baseY + outH * 0.14, cx - outW * 0.11, baseY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.lineWidth = Math.max(1, outW * 0.003);
+    ctx.stroke();
+
+    // Right shawl
+    ctx.beginPath();
+    ctx.moveTo(cx + outW * 0.11, baseY);
+    ctx.quadraticCurveTo(cx + outW * 0.15, baseY + outH * 0.10, cx + outW * 0.01, baseY + outH * 0.24);
+    ctx.quadraticCurveTo(cx + outW * 0.08, baseY + outH * 0.14, cx + outW * 0.11, baseY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Button
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(cx, baseY + outH * 0.27, Math.max(2, outW * 0.014), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#64748b';
+    ctx.stroke();
+  } else if (attireId === 'polo-white') {
+    // 1. Shirt body
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.moveTo(cx - outW * 0.12, baseY);
+    ctx.lineTo(-outW * 0.1, baseY + outH * 0.14);
+    ctx.lineTo(-outW * 0.1, outH + 15);
+    ctx.lineTo(outW * 1.1, outH + 15);
+    ctx.lineTo(outW * 1.1, baseY + outH * 0.14);
+    ctx.lineTo(cx + outW * 0.12, baseY);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Center placket
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(cx - outW * 0.035, baseY + outH * 0.05, outW * 0.07, outH);
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = Math.max(1, outW * 0.003);
+    ctx.strokeRect(cx - outW * 0.035, baseY + outH * 0.05, outW * 0.07, outH);
+
+    // 3. Collar wings
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(cx - outW * 0.13, baseY);
+    ctx.lineTo(cx - outW * 0.05, baseY + outH * 0.11);
+    ctx.lineTo(cx - outW * 0.01, baseY + outH * 0.05);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(cx + outW * 0.13, baseY);
+    ctx.lineTo(cx + outW * 0.05, baseY + outH * 0.11);
+    ctx.lineTo(cx + outW * 0.01, baseY + outH * 0.05);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 4. Buttons
+    for (let i = 0; i < 3; i++) {
+      const by = baseY + outH * (0.09 + i * 0.06);
+      ctx.fillStyle = '#f1f5f9';
+      ctx.beginPath();
+      ctx.arc(cx, by, Math.max(2, outW * 0.012), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }
 
 // Draw the framed photo into ctx at (0,0,outW,outH).
@@ -253,8 +651,28 @@ export function drawId(ctx, work, o, outW, outH) {
   const f = [];
   if (o.brightness) f.push('brightness(' + (1 + o.brightness / 100) + ')');
   if (o.contrast) f.push('contrast(' + (1 + o.contrast / 100) + ')');
+  if (o.autoEnhance) {
+    f.push('brightness(1.04)');
+    f.push('contrast(1.05)');
+    f.push('saturate(1.08)');
+  }
   if (f.length) { try { ctx.filter = f.join(' '); } catch (e) { /* unsupported browser: no adjustment */ } }
   if (o.flip) { ctx.translate(outW, 0); ctx.scale(-1, 1); }                    // mirror the photo (about the middle of the frame)
   ctx.drawImage(src, o.crop.cx - W / 2, o.crop.cy - H / 2, W, H, 0, 0, outW, outH);
   ctx.restore();
+
+  // Skin smoothing pass
+  if (o.skinSmooth) {
+    applySkinEnhance(ctx, outW, outH, { smoothing: o.skinSmooth });
+  }
+
+  // Formal attire overlay
+  if (o.attire && o.attire !== 'none') {
+    drawAttire(ctx, o.attire, outW, outH, { yOffset: o.attireY || 0, scale: o.attireScale || 1 });
+  }
+
+  // Name Tag banner overlay
+  if (o.nameTag && o.nameTag.on) {
+    drawNameTag(ctx, o.nameTag, outW, outH);
+  }
 }

@@ -122,7 +122,7 @@ export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-08', url: 'htt
 // The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
 // /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new
 // release shows up by itself; RUSH_FALLBACK is only used if GitHub cannot be reached and has nothing cached.
-export const RUSH_FALLBACK = { version: '1.0.3', url: 'https://github.com/' + REPO + '/releases/download/rushid-v1.0.3/rush-id-station-android.apk' };
+export const RUSH_FALLBACK = { version: '1.0.6', url: 'https://github.com/' + REPO + '/releases/download/rushid-v1.0.6/rush-id-station-android.apk' };
 const verParts = (v) => String(v).split('.').map((n) => parseInt(n, 10) || 0);
 const verNewer = (a, b) => { const x = verParts(a), y = verParts(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { const p = x[i] || 0, q = y[i] || 0; if (p !== q) return p > q; } return false; };
 let liveR = { at: 0, ttl: 0, v: null };
@@ -177,6 +177,17 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-08', title: 'Rush ID Station 1.0.6: Epson L120 photo boost, printer diagnostics & instant cutting line controls', for: ['website'],
+    items: [
+      'Added Photo Paper & Ink-Tank Boost (+6% contrast, vibrant colors) and 3.5 mm safe margin guard for Epson L120 and L-series printers.',
+      'New "Configure Printer" and "Run Head Cleaning" buttons in Review and Settings directly open Windows printer preferences and maintenance.',
+      'Instant cutting line control on the Review screen: switch between None (borderless), subtle corner tick marks, and full borders with 1 tap.',
+      'Calibration Test Print sheet with CMYK bars, 16-step grayscale ramp, and text sharpness targets.',
+      '1-Tap popular Philippine ID combo packages (Combos A through E: Standard Job, Passport + 2×2, Universal Mix, Student Set, Executive 2×2).',
+      'Daily print count and revenue tally in Staff Settings.'
+    ]
+  },
   {
     date: '2026-11-08', title: 'Android app 1.1.19: Auto-open on boot and Kiosk Home Launcher mode', for: ['website'],
     items: [

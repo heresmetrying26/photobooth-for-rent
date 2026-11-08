@@ -773,6 +773,10 @@
     }
 
     .plan-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
       flex: none;
       background: none;
       border: 1.5px solid currentColor;
@@ -886,247 +890,6 @@
       font-size: 14px;
       color: var(--muted);
     }
-
-    /* PayMongo QR subscription dialog */
-    .sub-dialog {
-      border: none;
-      padding: 0;
-      border-radius: 24px;
-      background: #fff;
-      color: var(--ink);
-      width: min(460px, calc(100vw - 32px));
-      box-shadow: 0 24px 60px rgba(28, 26, 30, .25);
-      overflow: hidden;
-      margin: auto;
-    }
-
-    .sub-dialog:not([open]) {
-      display: none;
-    }
-
-    .sub-dialog[open] {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      margin: 0;
-      z-index: 99999;
-      display: block;
-    }
-
-    .sub-dialog::backdrop {
-      background: rgba(28, 26, 30, .65);
-      backdrop-filter: blur(6px);
-    }
-
-    .sd-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 20px;
-      background: var(--paper);
-      border-bottom: 1px solid var(--line);
-    }
-
-    .sd-head h3 {
-      margin: 0;
-      font-family: 'Fraunces', Georgia, serif;
-      font-weight: 600;
-      font-size: 18px;
-    }
-
-    .sd-close {
-      background: none;
-      border: none;
-      font-size: 24px;
-      line-height: 1;
-      cursor: pointer;
-      color: var(--muted);
-      padding: 4px 8px;
-      border-radius: 8px;
-    }
-
-    .sd-close:hover {
-      color: var(--ink);
-      background: rgba(0, 0, 0, .06);
-    }
-
-    .sd-body {
-      padding: 22px;
-    }
-
-    .sd-plan-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 14px;
-      border-radius: 999px;
-      background: var(--tint);
-      color: var(--red);
-      font-weight: 800;
-      font-size: 13px;
-      margin-bottom: 16px;
-    }
-
-    .sd-group {
-      margin-bottom: 14px;
-      text-align: left;
-    }
-
-    .sd-group label {
-      display: block;
-      font-size: 12.5px;
-      font-weight: 700;
-      color: var(--muted);
-      margin-bottom: 5px;
-    }
-
-    .sd-group input {
-      width: 100%;
-      padding: 12px 14px;
-      border: 1.5px solid var(--line);
-      border-radius: 12px;
-      font: inherit;
-      font-size: 14.5px;
-      background: #FAF7F2;
-      color: var(--ink);
-      outline: none;
-    }
-
-    .sd-group input:focus {
-      border-color: var(--red);
-      background: #fff;
-    }
-
-    .sd-toggle {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--muted);
-      margin: 8px 0 14px;
-      cursor: pointer;
-    }
-
-    .sd-qr-box {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    }
-
-    .sd-qr-frame {
-      padding: 12px;
-      border-radius: 18px;
-      border: 2px solid var(--line);
-      background: #fff;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, .06);
-      margin-bottom: 10px;
-    }
-
-    .sd-qr-frame img {
-      width: 220px;
-      height: 220px;
-      display: block;
-      border-radius: 8px;
-      object-fit: contain;
-    }
-
-    .sd-qr-amount {
-      font-family: 'Fraunces', Georgia, serif;
-      font-weight: 600;
-      font-size: 28px;
-      color: var(--ink);
-      margin: 4px 0;
-    }
-
-    .sd-qr-timer {
-      font-size: 12.5px;
-      font-weight: 700;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .sd-qr-status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      font-weight: 700;
-      color: #1e8449;
-    }
-
-    .sd-spin {
-      width: 14px;
-      height: 14px;
-      border: 2px solid #b7dfca;
-      border-top-color: #1e8449;
-      border-radius: 50%;
-      animation: spin .8s linear infinite;
-    }
-
-    .sd-code-box {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 16px;
-      border-radius: 14px;
-      background: var(--paper);
-      border: 2px dashed var(--red);
-      margin: 14px 0 12px;
-    }
-
-    .sd-code-box .code-val {
-      font-family: ui-monospace, Menlo, Consolas, monospace;
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: 1px;
-      color: var(--ink);
-    }
-
-    .sd-guides {
-      margin: 14px 0;
-      display: grid;
-      gap: 8px;
-      text-align: left;
-    }
-
-    .sd-guides a {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      border-radius: 12px;
-      background: #FAF7F2;
-      border: 1.5px solid var(--line);
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--ink);
-      transition: .2s;
-    }
-
-    .sd-guides a:hover {
-      border-color: var(--red);
-      color: var(--red);
-      background: #fff;
-    }
-
-    .sd-msg {
-      font-size: 13px;
-      margin: 8px 0;
-      min-height: 18px;
-    }
-
-    .sd-msg.err {
-      color: #c0392b;
-    }
-
-    .sd-msg.ok {
-      color: #1e8449;
-    }
-
 
     /* guides */
     .guides {
@@ -1839,8 +1602,8 @@
 
     <section class="block" id="packages" aria-labelledby="pk">
       <h2 id="pk">Pricing</h2>
-      <p class="sub">Pick a plan, scan the PayMongo QR to pay, and your access code + setup guide are unlocked
-        immediately.</p>
+      <p class="sub">Pick a plan and message us on Messenger to avail. We'll send your access code + setup guide right
+        away.</p>
 
       <div class="pkg-divider first">
         <h3>Monthly</h3>
@@ -1859,7 +1622,7 @@
           </ul>
           <div class="plan-footer">
             <p class="price">&#8369;799 <small>/ month</small></p>
-            <button class="plan-cta" type="button" data-sub="online" data-price="799" data-name="Online">Pay with QR &rarr;</button>
+            <a class="plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer" data-plan="Monthly Online (₱799/mo)">Message to Avail &rarr;</a>
           </div>
         </article>
 
@@ -1875,7 +1638,7 @@
           </ul>
           <div class="plan-footer">
             <p class="price">&#8369;999 <small>/ month</small></p>
-            <button class="plan-cta" type="button" data-sub="offline" data-price="999" data-name="Offline (laptop + Android)">Pay with QR &rarr;</button>
+            <a class="plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer" data-plan="Monthly Offline (₱999/mo)">Message to Avail &rarr;</a>
           </div>
         </article>
 
@@ -1891,15 +1654,14 @@
           </ul>
           <div class="plan-footer">
             <p class="price">&#8369;1,399 <small>/ month</small></p>
-            <button class="plan-cta" type="button" data-sub="both" data-price="1399" data-name="Online + Offline">Pay with QR &rarr;</button>
+            <a class="plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer" data-plan="Monthly Online + Offline (₱1,399/mo)">Message to Avail &rarr;</a>
           </div>
         </article>
       </div>
 
       <div class="renew-banner">
         <span>Already have an active monthly code?</span>
-        <button type="button" class="renew-link" id="renewModalBtn">Renew or extend your existing code (+30 days)
-          &rarr;</button>
+        <a class="renew-link" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer" data-plan="Renewal / Extension (+30 days)">Renew or extend your existing code (+30 days) &rarr;</a>
       </div>
 
       <div class="pkg-divider">
@@ -1913,7 +1675,7 @@
           <p class="for">Tablet or laptop in the browser &middot; every event &middot; never expires</p>
           <div class="plan-footer">
             <p class="price">&#8369;3,299 <small>one-time</small></p>
-            <button class="plan-cta" type="button" data-sub="lifeonline" data-price="3299" data-name="Lifetime Online">Pay with QR &rarr;</button>
+            <a class="plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer" data-plan="Lifetime Online (₱3,299)">Message to Avail &rarr;</a>
           </div>
         </article>
         <article class="plan">
@@ -1922,7 +1684,7 @@
           <p class="for">The Windows / Mac / Android app, works with no internet &middot; every event &middot; never expires</p>
           <div class="plan-footer">
             <p class="price">&#8369;3,999 <small>one-time</small></p>
-            <button class="plan-cta" type="button" data-sub="lifeoffline" data-price="3999" data-name="Lifetime Offline">Pay with QR &rarr;</button>
+            <a class="plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer" data-plan="Lifetime Offline (₱3,999)">Message to Avail &rarr;</a>
           </div>
         </article>
         <article class="plan life">
@@ -1931,9 +1693,9 @@
           <p class="for">Both: the online booth and the offline app that works with no internet</p>
           <div class="plan-footer">
             <p class="price">&#8369;4,999 <small>one-time</small></p>
-            <button class="plan-cta" type="button" data-sub="lifetime" data-price="4999" data-name="Lifetime Online + Offline">Pay with QR &rarr;</button>
+            <a class="plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer" data-plan="Lifetime Online + Offline (₱4,999)">Message to Avail &rarr;</a>
           </div>
-          <p class="life-link" style="margin-top:8px;"><a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Message us on Messenger &rarr;</a></p>
+          <p class="life-link" style="margin-top:8px;"><a href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer">Message us on Messenger &rarr;</a></p>
         </article>
       </div>
       <p class="life-terms" style="margin:12px 0 0;font-size:13.5px;line-height:1.55;color:var(--muted);">
@@ -1949,13 +1711,13 @@
             <span class="ad-ic" aria-hidden="true">+</span>
             <span class="ad-txt"><b>Add Offline later</b><small>For Lifetime Online owners: the Windows / Mac / Android app</small></span>
             <span class="ad-price">&#8369;2,200</span>
-            <button class="addon-cta plan-cta" type="button" data-sub="addon_offline" data-price="2200" data-name="Add Offline App later">Pay with QR &rarr;</button>
+            <a class="addon-cta plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer" data-plan="Add Offline App later (₱2,200)">Message to Avail &rarr;</a>
           </div>
           <div class="addon">
             <span class="ad-ic" aria-hidden="true">+</span>
             <span class="ad-txt"><b>Add Online later</b><small>For Lifetime Offline owners: the online booth</small></span>
             <span class="ad-price">&#8369;1,500</span>
-            <button class="addon-cta plan-cta" type="button" data-sub="addon_online" data-price="1500" data-name="Add Online Booth later">Pay with QR &rarr;</button>
+            <a class="addon-cta plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer" data-plan="Add Online Booth later (₱1,500)">Message to Avail &rarr;</a>
           </div>
         </div>
       </details>
@@ -1971,7 +1733,7 @@
           <p class="for">Use it on a tablet or a laptop &middot; guest screen, auto-print &middot; online or offline app</p>
           <div class="plan-footer">
             <p class="price">&#8369;599 <small>/ event</small></p>
-            <button class="plan-cta" type="button" data-sub="laptop" data-price="599" data-name="Event Pass">Pay with QR &rarr;</button>
+            <a class="plan-cta" href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer" data-plan="Event Pass (₱599)">Message to Avail &rarr;</a>
           </div>
         </article>
       </div>
@@ -2179,7 +1941,7 @@
           <p class="sub">Copy the form, send it on Messenger, and we'll send your codes.</p>
         </div>
         <div class="actions">
-          <a class="btn primary" id="messengerBtn" href="https://m.me/roktetnachi" target="_blank"
+          <a class="btn primary" id="messengerBtn" href="https://web.facebook.com/roktetnachi/" target="_blank"
             rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true">
               <path fill="currentColor"
                 d="M12 2C6.36 2 2 6.13 2 11.7c0 2.91 1.2 5.42 3.14 7.16.16.15.26.35.27.57l.05 1.78a.8.8 0 0 0 1.12.71l1.98-.87a.8.8 0 0 1 .53-.04c.91.25 1.88.39 2.91.39 5.64 0 10-4.13 10-9.7S17.64 2 12 2Zm6 7.46-2.94 4.66a1.5 1.5 0 0 1-2.17.4l-2.34-1.75a.6.6 0 0 0-.72 0l-3.16 2.4c-.42.32-.97-.18-.69-.63l2.94-4.66a1.5 1.5 0 0 1 2.17-.4l2.34 1.75a.6.6 0 0 0 .72 0l3.16-2.4c.42-.32.97.18.69.63Z" />
@@ -2206,7 +1968,7 @@ Event Date:</pre>
         <a href="/downloads/">Helper &amp; printer guides</a>
         <a href="/app/">Laptop app</a>
         <a href="/updates/">What’s new</a>
-        <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Messenger</a>
+        <a href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer">Messenger</a>
       </nav>
     </footer>
   </div>
@@ -2240,437 +2002,44 @@ Event Date:</pre>
   <script>
     (function () {
       var form = document.getElementById('availForm'), note = document.getElementById('copiedNote'), t;
+      function showNote(msg) {
+        if (!note) return;
+        note.textContent = msg;
+        note.classList.add('show');
+        clearTimeout(t);
+        t = setTimeout(function () { note.classList.remove('show'); }, 4000);
+      }
       function copyForm() {
         var text = 'Hi! I\'d like to avail of photobooth4u.\n\n' + form.textContent;
-        function done() { note.classList.add('show'); clearTimeout(t); t = setTimeout(function () { note.classList.remove('show'); }, 4000); }
-        try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, function () { }); return; } } catch (e) { }
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () { showNote('Copied! Paste it in Messenger.'); }, function () { });
+            return;
+          }
+        } catch (e) { }
         try {
           var ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', '');
           ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
-          if (document.execCommand('copy')) done(); document.body.removeChild(ta);
+          if (document.execCommand('copy')) showNote('Copied! Paste it in Messenger.');
+          document.body.removeChild(ta);
         } catch (e) { }
       }
       document.getElementById('copyFormBtn').addEventListener('click', copyForm);
       document.getElementById('messengerBtn').addEventListener('click', copyForm);
-    })();
-  </script>
-  <script>
-    // Messenger links: m.me opens the Messenger app on phones, but on a
-    // computer it often fails. There, use Facebook's web inbox instead.
-    // Change these two lines if the account name ever changes.
-    (function () {
-      var MOBILE = 'https://m.me/roktetnachi';
-      var DESKTOP = 'https://www.facebook.com/messages/t/roktetnachi';
-      var ua = navigator.userAgent || '';
-      var isPhoneOrTablet = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua));
-      if (isPhoneOrTablet) return;
-      Array.prototype.forEach.call(document.querySelectorAll('a[href^="' + MOBILE + '"]'), function (a) { a.href = DESKTOP; });
-    })();
-  </script>
 
-  <!-- PayMongo Subscription Modal Dialog -->
-  <dialog id="subModal" class="sub-dialog" aria-labelledby="subModalTitle">
-    <div class="sd-head">
-      <h3 id="subModalTitle">Monthly Subscription</h3>
-      <button class="sd-close" id="subModalClose" type="button" aria-label="Close dialog">×</button>
-    </div>
-
-    <div class="sd-body">
-      <!-- Step 1: Customer Details -->
-      <div id="subStepForm">
-        <div class="sd-plan-tag" id="subPlanBadge">Online · ₱799 / month</div>
-
-        <div class="sd-group">
-          <label for="subCustName">Full Name or Event Business</label>
-          <input type="text" id="subCustName" autocomplete="name" placeholder="e.g. Maria Santos / Stellar Photobooth"
-            required>
-        </div>
-
-        <div class="sd-group">
-          <label for="subCustEmail">Email address (for code &amp; receipts)</label>
-          <input type="email" id="subCustEmail" autocomplete="email" placeholder="e.g. maria@gmail.com" required>
-        </div>
-
-        <label class="sd-toggle">
-          <input type="checkbox" id="subRenewToggle">
-          <span>I'm renewing or extending an existing code (+30 days)</span>
-        </label>
-
-        <div class="sd-group" id="subRenewBox" style="display:none;">
-          <label for="subExistingCode">Your Existing Access Code</label>
-          <input type="text" id="subExistingCode" placeholder="PB-XXXX-XXXX-XXXX" autocapitalize="characters">
-        </div>
-
-        <label class="sd-toggle" id="subAgreeRow" style="display:none;">
-          <input type="checkbox" id="subAgree">
-          <span>I have read and accept the <a href="/agreement/" target="_blank" rel="noopener">Lifetime Access Agreement</a>
-            (see also the <a href="/faq/" target="_blank" rel="noopener">FAQ</a>).</span>
-        </label>
-
-        <div class="sd-msg" id="subFormMsg"></div>
-
-        <button type="button" class="btn red" id="subSubmitBtn" style="width:100%;margin-top:6px;">Generate PayMongo QR
-          →</button>
-        <p style="text-align:center;margin:12px 0 0;font-size:13px;color:var(--muted);">
-          Questions first? <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer"
-            style="color:var(--ink);font-weight:700;">Chat with us on Messenger →</a>
-        </p>
-      </div>
-
-      <!-- Step 2: QR Ph Display & Status Check -->
-      <div id="subStepQr" style="display:none;">
-        <div class="sd-qr-box">
-          <div class="sd-plan-tag" id="subQrPlanTag">Online · ₱799</div>
-          <div class="sd-qr-amount" id="subQrAmount">₱799.00</div>
-          <div class="sd-qr-frame">
-            <img id="subQrImg" src="" alt="PayMongo QR Ph Code">
-          </div>
-          <div class="sd-qr-timer" id="subQrTimer">QR expires in 10:00</div>
-          <p style="font-size:13px;color:var(--muted);margin:0 0 10px;">Scan with <b>GCash, Maya, ShopeePay</b> or any
-            banking app.</p>
-          <div class="sd-qr-status">
-            <span class="sd-spin"></span>
-            <span id="subQrStatusText">Checking payment automatically…</span>
-          </div>
-
-          <div style="margin-top:16px;display:flex;gap:8px;width:100%;justify-content:center;">
-            <button type="button" class="btn" id="subQrBackBtn" style="font-size:13px;padding:8px 16px;">Back</button>
-            <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer" class="btn"
-              style="font-size:13px;padding:8px 16px;">Need help? Messenger</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 3: Success & Onboarding -->
-      <div id="subStepSuccess" style="display:none;text-align:center;">
-        <div
-          style="width:48px;height:48px;border-radius:50%;background:#e3f6ea;color:#1e8449;display:grid;place-items:center;margin:0 auto 12px;font-size:24px;">
-          ✓</div>
-        <h3 style="margin:0 0 4px;font-family:'Fraunces',Georgia,serif;font-size:22px;">Payment Successful!</h3>
-        <p id="subSuccessSubtitle" style="font-size:14px;color:var(--muted);margin:0 0 14px;">Your access is
-          unlocked and recorded in the system.</p>
-
-        <div class="sd-code-box">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:4px;width:100%;">Your Access Code:</div>
-          <span class="code-val" id="subFinalCode">PB-XXXX-XXXX-XXXX</span>
-          <button type="button" class="btn small" id="subCopyCodeBtn">Copy code</button>
-        </div>
-
-        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 16px;" id="subCodeTip">Save this code. Once entered on your device, it
-          stays unlocked. Timer counts down from your first event use.</p>
-
-        <div class="sd-guides" id="subDynamicGuides">
-          <p style="font-size:13px;font-weight:800;margin:0 0 8px;">Your Setup Guides &amp; Downloads:</p>
-          <div id="subDeliverablesList" style="display:flex;flex-direction:column;gap:6px;">
-            <a href="/lifetime/photobooth4u-setup-guide.pdf" target="_blank" download>
-              <span>📄 Complete Setup Guide (PDF)</span>
-              <span style="color:var(--red);">Download ↓</span>
-            </a>
-          </div>
-        </div>
-
-        <a class="btn red" id="subGoBoothBtn" href="/" style="width:100%;margin-top:12px;">Open Photo Booth Now →</a>
-        <a class="btn" href="/lifetime/" style="width:100%;margin-top:8px;">My Events (Links &amp; Photos)</a>
-        <p style="margin:12px 0 0;font-size:13px;color:var(--muted);">
-          Questions or assistance? <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer"
-            style="color:var(--ink);font-weight:700;">Message us on Messenger →</a>
-        </p>
-      </div>
-    </div>
-  </dialog>
-
-  <script>
-    (function () {
-      var modal = document.getElementById('subModal');
-      var closeBtn = document.getElementById('subModalClose');
-      var formView = document.getElementById('subStepForm');
-      var qrView = document.getElementById('subStepQr');
-      var successView = document.getElementById('subStepSuccess');
-      var planBadge = document.getElementById('subPlanBadge');
-      var submitBtn = document.getElementById('subSubmitBtn');
-      var formMsg = document.getElementById('subFormMsg');
-      var renewToggle = document.getElementById('subRenewToggle');
-      var renewBox = document.getElementById('subRenewBox');
-      var renewInput = document.getElementById('subExistingCode');
-      var agreeRow = document.getElementById('subAgreeRow');
-      var agreeBox = document.getElementById('subAgree');
-      var AGREEMENT_VERSION = '3.3';
-      var qrBackBtn = document.getElementById('subQrBackBtn');
-      var copyCodeBtn = document.getElementById('subCopyCodeBtn');
-      var goBoothBtn = document.getElementById('subGoBoothBtn');
-
-      var currentPlan = 'online', currentPrice = 799, currentOrderId = null;
-      var pollTimer = null, countdownTimer = null;
-
-      function openModal(planKey, price, planName, isRenew) {
-        currentPlan = planKey || 'online';
-        currentPrice = price || 799;
-        currentOrderId = null;
-        clearInterval(pollTimer);
-        clearInterval(countdownTimer);
-
-        var titleEl = document.getElementById('subModalTitle');
-        if (titleEl) {
-          if (currentPlan.startsWith('life')) titleEl.textContent = 'Lifetime Access';
-          else if (currentPlan.startsWith('addon')) titleEl.textContent = 'Lifetime Add-on';
-          else if (currentPlan === 'tablet' || currentPlan === 'laptop') titleEl.textContent = 'Per Event Booking';
-          else titleEl.textContent = 'Monthly Subscription';
-        }
-
-        var priceStr = currentPrice.toLocaleString('en-PH');
-        var suffix = (currentPlan.startsWith('life') || currentPlan.startsWith('addon')) ? ' one-time' : (currentPlan === 'tablet' || currentPlan === 'laptop') ? ' / event' : ' / month';
-        planBadge.textContent = (planName || 'Plan') + ' · ₱' + priceStr + suffix;
-        formMsg.textContent = '';
-        formMsg.className = 'sd-msg';
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Generate PayMongo QR · ₱' + priceStr;
-
-        var isAddon = currentPlan.startsWith('addon');
-        // Lifetime plans and Lifetime add-ons are bought under the Lifetime Access Agreement.
-        agreeRow.style.display = (currentPlan.startsWith('life') || isAddon) ? 'flex' : 'none';
-        agreeBox.checked = false;
-        var toggleSpan = renewToggle.parentElement.querySelector('span');
-        var codeLabel = document.querySelector('label[for="subExistingCode"]');
-
-        if (isAddon) {
-          renewToggle.checked = true;
-          renewBox.style.display = 'block';
-          if (toggleSpan) toggleSpan.textContent = 'Apply this add-on to my existing Lifetime code';
-          if (codeLabel) codeLabel.textContent = 'Your Existing Lifetime Code (PB-XXXX-XXXX-XXXX)';
-          setTimeout(function () { renewInput.focus(); }, 100);
-        } else if (isRenew) {
-          renewToggle.checked = true;
-          renewBox.style.display = 'block';
-          if (toggleSpan) toggleSpan.textContent = "I'm renewing or extending an existing code (+30 days)";
-          if (codeLabel) codeLabel.textContent = 'Your Existing Access Code';
-          setTimeout(function () { renewInput.focus(); }, 100);
-        } else {
-          renewToggle.checked = false;
-          renewBox.style.display = 'none';
-          if (toggleSpan) toggleSpan.textContent = "I'm renewing or extending an existing code (+30 days)";
-          if (codeLabel) codeLabel.textContent = 'Your Existing Access Code';
-        }
-
-        formView.style.display = 'block';
-        qrView.style.display = 'none';
-        successView.style.display = 'none';
-
-        if (typeof modal.showModal === 'function') {
-          try { modal.showModal(); } catch (e) { modal.setAttribute('open', ''); }
-        } else {
-          modal.setAttribute('open', '');
-        }
-      }
-
-      function closeModal() {
-        clearInterval(pollTimer);
-        clearInterval(countdownTimer);
-        if (typeof modal.close === 'function') {
-          try { modal.close(); } catch (e) { modal.removeAttribute('open'); }
-        } else {
-          modal.removeAttribute('open');
-        }
-      }
-
-      closeBtn.addEventListener('click', closeModal);
-      modal.addEventListener('click', function (e) {
-        if (e.target === modal) closeModal();
-      });
-
-      renewToggle.addEventListener('change', function () {
-        renewBox.style.display = renewToggle.checked ? 'block' : 'none';
-        if (renewToggle.checked) renewInput.focus();
-      });
-
-      // Bind all "Pay with QR" and "Subscribe with QR" buttons
-      Array.prototype.forEach.call(document.querySelectorAll('button[data-sub]'), function (btn) {
-        btn.addEventListener('click', function (e) {
-          if (e) e.preventDefault();
-          openModal(btn.getAttribute('data-sub'), Number(btn.getAttribute('data-price')), btn.getAttribute('data-name'), false);
-        });
-      });
-
-      var renewModalBtn = document.getElementById('renewModalBtn');
-      if (renewModalBtn) {
-        renewModalBtn.addEventListener('click', function (e) {
-          if (e) e.preventDefault();
-          openModal('online', 799, 'Renew Monthly Subscription', true);
-        });
-      }
-
-      // Step 1: Submit Form & Generate PayMongo QR
-      submitBtn.addEventListener('click', async function () {
-        var name = document.getElementById('subCustName').value.trim();
-        var email = document.getElementById('subCustEmail').value.trim();
-        var renewCode = renewToggle.checked ? renewInput.value.trim() : '';
-        var isAddon = currentPlan.startsWith('addon');
-
-        if (!name) {
-          formMsg.textContent = 'Please enter your name.';
-          formMsg.className = 'sd-msg err';
-          return;
-        }
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          formMsg.textContent = 'Please enter a valid email address.';
-          formMsg.className = 'sd-msg err';
-          return;
-        }
-        if (renewToggle.checked && !renewCode) {
-          formMsg.textContent = isAddon
-            ? 'Please enter your existing Lifetime code to apply this add-on.'
-            : 'Please enter the existing code you wish to renew.';
-          formMsg.className = 'sd-msg err';
-          renewInput.focus();
-          return;
-        }
-        var needsAgreement = currentPlan.startsWith('life') || isAddon;
-        if (needsAgreement && !agreeBox.checked) {
-          formMsg.textContent = 'Please tick the box to accept the Lifetime Access Agreement.';
-          formMsg.className = 'sd-msg err';
-          return;
-        }
-
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Connecting to PayMongo…';
-        formMsg.textContent = '';
-
-        try {
-          var resp = await fetch('/api/subscribe', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              action: 'create',
-              plan: currentPlan,
-              name: name,
-              email: email,
-              renewCode: renewCode,
-              agreementVersion: needsAgreement && agreeBox.checked ? AGREEMENT_VERSION : ''
-            })
-          });
-          var data = await resp.json();
-          if (!resp.ok || !data.ok) {
-            formMsg.textContent = data.error || 'Failed to create payment QR. Please try again.';
-            formMsg.className = 'sd-msg err';
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Generate PayMongo QR →';
-            return;
-          }
-
-          // Show QR View
-          currentOrderId = data.id;
-          document.getElementById('subQrPlanTag').textContent = data.planTitle || 'Order Checkout';
-          document.getElementById('subQrAmount').textContent = '₱' + Number(data.amount || currentPrice).toLocaleString('en-PH') + '.00';
-          document.getElementById('subQrImg').src = data.qrImage;
-          formView.style.display = 'none';
-          qrView.style.display = 'block';
-
-          // Countdown Timer
-          var expiresAt = data.expiresAt || (Date.now() + 600000);
-          var timerEl = document.getElementById('subQrTimer');
-          function updateTimer() {
-            var diff = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
-            var m = Math.floor(diff / 60), s = diff % 60;
-            timerEl.textContent = 'QR expires in ' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
-            if (diff <= 0) {
-              clearInterval(countdownTimer);
-              clearInterval(pollTimer);
-              timerEl.textContent = 'QR expired. Please go back to generate a new QR.';
+      // Copy plan template on click of plan-cta or renew-link
+      Array.prototype.forEach.call(document.querySelectorAll('a.plan-cta, a.renew-link'), function (a) {
+        a.addEventListener('click', function () {
+          var plan = a.getAttribute('data-plan') || '';
+          var text = "Hi! I'd like to avail of photobooth4u.\nPlan: " + plan + "\n\nName:\nSetup Type: " + plan + "\nEvent Date:";
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text);
+              showNote('Order details copied! Opening Messenger…');
             }
-          }
-          updateTimer();
-          countdownTimer = setInterval(updateTimer, 1000);
-
-          // Polling check
-          pollTimer = setInterval(checkStatus, 3000);
-        } catch (e) {
-          formMsg.textContent = 'Could not reach payment server. Check your connection.';
-          formMsg.className = 'sd-msg err';
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Generate PayMongo QR →';
-        }
+          } catch (e) { }
+        });
       });
-
-      qrBackBtn.addEventListener('click', function () {
-        clearInterval(pollTimer);
-        clearInterval(countdownTimer);
-        qrView.style.display = 'none';
-        formView.style.display = 'block';
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Generate PayMongo QR · ₱' + currentPrice.toLocaleString('en-PH');
-      });
-
-      // Poll server for payment completion
-      async function checkStatus() {
-        if (!currentOrderId) return;
-        try {
-          var resp = await fetch('/api/subscribe', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ action: 'status', id: currentOrderId })
-          });
-          var data = await resp.json();
-          if (data.ok && data.status === 'paid') {
-            showSuccess(data);
-          }
-        } catch (e) { }
-      }
-
-      function showSuccess(data) {
-        clearInterval(pollTimer);
-        clearInterval(countdownTimer);
-        qrView.style.display = 'none';
-        formView.style.display = 'none';
-        successView.style.display = 'block';
-
-        var code = data.code || 'PB-XXXX-XXXX-XXXX';
-        document.getElementById('subFinalCode').textContent = code;
-
-        var subTitle = document.getElementById('subSuccessSubtitle');
-        var tipEl = document.getElementById('subCodeTip');
-        if (data.renewed) {
-          subTitle.textContent = 'Your existing access code has been updated / extended!';
-          tipEl.textContent = 'Your code stays active. Check your My Events portal for updated validity.';
-        } else if (data.plan === 'tablet' || data.plan === 'laptop') {
-          subTitle.textContent = 'Your 24-hour event code is active and ready.';
-          tipEl.textContent = 'Save this code. Enter it on your event day; it stays unlocked for 24 hours from first use.';
-        } else if (data.plan && (data.plan.startsWith('life') || data.plan.startsWith('addon'))) {
-          subTitle.textContent = 'Your lifetime access is unlocked for up to 5 devices!';
-          tipEl.textContent = 'This code never expires and unlocks up to 5 devices simultaneously.';
-        } else {
-          subTitle.textContent = 'Your 30-day access code is active and recorded in Admin.';
-          tipEl.textContent = 'Save this code. Once entered on your device, it stays unlocked for 30 days from first event use.';
-        }
-
-        // Render tailored deliverables (guides & app downloads)
-        var filesBox = document.getElementById('subDeliverablesList');
-        if (filesBox) {
-          filesBox.innerHTML = '';
-          var filesToRender = Array.isArray(data.files) && data.files.length ? data.files : [
-            { name: 'Complete Setup Guide (PDF)', url: '/lifetime/photobooth4u-setup-guide.pdf' }
-          ];
-          filesToRender.forEach(function (f) {
-            var a = document.createElement('a');
-            a.href = f.url;
-            a.target = '_blank';
-            a.download = '';
-            a.innerHTML = '<span>📄 ' + f.name + '</span><span style="color:var(--red);font-weight:700;">Download ↓</span>';
-            filesBox.appendChild(a);
-          });
-        }
-
-        // Set up launch link to auto-fill code if opened
-        goBoothBtn.href = '/?code=' + encodeURIComponent(code);
-
-        copyCodeBtn.onclick = function () {
-          navigator.clipboard.writeText(code).then(function () {
-            copyCodeBtn.textContent = 'Copied!';
-            setTimeout(function () { copyCodeBtn.textContent = 'Copy code'; }, 2000);
-          }).catch(function () {
-            copyCodeBtn.textContent = 'Copied!';
-          });
-        };
-
-      }
     })();
   </script>
   <script>

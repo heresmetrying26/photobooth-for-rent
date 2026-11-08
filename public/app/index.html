@@ -632,7 +632,7 @@
         <a href="/downloads/">Helper &amp; printer guides</a>
         <a href="/app/">Laptop app</a>
         <a href="/updates/">What’s new</a>
-        <a href="https://m.me/roktetnachi" target="_blank" rel="noopener noreferrer">Messenger</a>
+        <a href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener noreferrer">Messenger</a>
       </nav>
     </footer>
   </div>
@@ -665,7 +665,7 @@
       if (d.hasApp) plan.push('Laptops with the app: <b>' + d.devices.apps + '</b> · devices in use <b>' + d.devices.used + ' of ' + d.devices.max + '</b>');
       $('resPlan').innerHTML = plan.filter(Boolean).join('<span aria-hidden="true">·</span>');
       if (!d.hasApp) {
-        $('resBody').innerHTML = '<div class="tips"><p><b>This code doesn’t include the laptop app.</b> It works in the online booth: open <a href="/">photobooth4u.netlify.app</a> on your tablet or laptop, and see your events in <a href="/lifetime/">My events</a>.</p><p>Want the app too, for events with no internet? <a href="https://m.me/roktetnachi" target="_blank" rel="noopener">Message us</a>.</p></div>';
+        $('resBody').innerHTML = '<div class="tips"><p><b>This code doesn’t include the laptop app.</b> It works in the online booth: open <a href="/">photobooth4u.netlify.app</a> on your tablet or laptop, and see your events in <a href="/lifetime/">My events</a>.</p><p>Want the app too, for events with no internet? <a href="https://web.facebook.com/roktetnachi/" target="_blank" rel="noopener">Message us</a>.</p></div>';
         return;
       }
       var dl = d.downloads, v = esc(dl.version), when = d.app && d.app.date ? ' · ' + esc(fmtDate(d.app.date)) : '';

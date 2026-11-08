@@ -153,6 +153,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-08', title: 'Android tablet: your saved layouts, profiles and themes are back after the 1.1.16 update', for: ['website'],
+    items: [
+      'Android app 1.1.16 fixed a bug that showed the word "null" on the start screen, but on tablets running offline with a normal rental code it also looked for the saved setup in a new place, so uploaded layouts, profiles and My themes seemed to be gone.',
+      'Android app 1.1.17 copies them over from the old place the first time it opens, and keeps the old copies. If you already saved something since the update, that is kept and the uploaded layouts you had before are added back to it.',
+      'Only tablets running offline with a normal (not Lifetime) rental code were affected. The website and the laptop app were not.'
+    ]
+  },
+  {
     date: '2026-11-08', title: 'Saved profiles keep your vouchers, and offline no longer changes your payment mode', for: ['website', 'app'], app: '1.0.104',
     items: [
       'A saved profile now includes the event’s voucher batches (which codes are unused, used or cancelled). Tap "Use everything" to bring them back; vouchers already used here stay used. "Design only" leaves vouchers alone.',

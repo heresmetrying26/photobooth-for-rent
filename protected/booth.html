@@ -16366,6 +16366,63 @@
       // over the booth Wi-Fi, and printing + the Windows camera are built in.
       // An empty folder name must never arrive as the text "null" (an older Android app sent that), or it shows up as the event name.
       try { ['folderKey', 'folderPrefix', 'subfolder', 'filePrefix', 'defaultTheme'].forEach(function (k) { if (window.__PB && (window.__PB[k] === 'null' || window.__PB[k] === 'undefined')) window.__PB[k] = null; }); } catch (e) { }
+      // One time: the Android offline booth used to treat a code without a folder prefix as having the prefix "null", so its saved
+      // setup, profiles, themes and offline voucher list were stored under "...null..." keys. Now that the scope is the real folder
+      // name, copy those over (the old copies are kept) so nothing looks gone.
+      try {
+        (function () {
+          var pb = window.__PB, ls = window.localStorage;
+          if (!pb || pb.type !== 'rental' || pb.folderPrefix || !pb.folderKey || !ls) return;
+          var flag = 'pb_mig_null1:' + pb.folderKey;
+          if (ls.getItem(flag)) return;
+          var keys = [], i;
+          for (i = 0; i < ls.length; i++) keys.push(ls.key(i));
+          // Setup: the newest copy found under a "null" scope, unless this scope already has one.
+          var setupKey = 'pb_setup:' + pb.folderKey, best = null, bestKey = null, cur = null;
+          try { cur = JSON.parse(ls.getItem(setupKey) || 'null'); } catch (e) { }
+          keys.forEach(function (k) {
+            if (k.indexOf('pb_setup:null|') !== 0 || /#img$/.test(k)) return;
+            try { var o = JSON.parse(ls.getItem(k) || 'null'); if (o && o.settings && (!best || (o.updatedAt || 0) > (best.updatedAt || 0))) { best = o; bestKey = k; } } catch (e) { }
+          });
+          if (best && (!cur || !cur.settings || (best.updatedAt || 0) > (cur.updatedAt || 0))) {
+            ls.setItem(setupKey, JSON.stringify(best));
+            var img = ls.getItem(bestKey + '#img'); if (img) ls.setItem(setupKey + '#img', img);
+          } else if (best && cur && cur.settings) {
+            // The booth already saved something under the new scope since the update: keep that, but bring back the uploaded
+            // layouts (frames) that the old copy had and this one doesn't.
+            var cs = cur.settings, bs = best.settings || {}, have = {}, added = 0;
+            if (!Array.isArray(cs.frames)) cs.frames = [];
+            if (!Array.isArray(cs.chooseIds)) cs.chooseIds = [];
+            cs.frames.forEach(function (f) { if (f && f.id) have[f.id] = 1; });
+            (Array.isArray(bs.frames) ? bs.frames : []).forEach(function (f) {
+              if (!f || !f.id || have[f.id] || cs.frames.length >= 8) return;
+              cs.frames.push(f); have[f.id] = 1; added++;
+              if (cs.chooseIds.indexOf(f.id) < 0) cs.chooseIds.push(f.id);
+            });
+            if (added) { cur.updatedAt = Date.now(); ls.setItem(setupKey, JSON.stringify(cur)); }
+          }
+          // Profiles, My themes: only when this scope has none yet.
+          [['pb_profiles:null', 'pb_profiles:' + pb.folderKey], ['pb_mythemes:null', 'pb_mythemes:' + pb.folderKey],
+            ['pb_profile_active:null', 'pb_profile_active:' + pb.folderKey], ['pb_profile_undo:null', 'pb_profile_undo:' + pb.folderKey]].forEach(function (m) {
+            var v = ls.getItem(m[0]); if (v && !ls.getItem(m[1])) ls.setItem(m[1], v);
+          });
+          // Offline voucher list (hashes), joined into this scope's list.
+          var vNew = 'pb_vcache:' + pb.folderKey + '|_', vc = null;
+          try { vc = JSON.parse(ls.getItem(vNew) || 'null'); } catch (e) { }
+          keys.forEach(function (k) {
+            if (k.indexOf('pb_vcache:null|') !== 0) return;
+            try {
+              var o = JSON.parse(ls.getItem(k) || 'null'); if (!o || !Array.isArray(o.list)) return;
+              if (!vc || !Array.isArray(vc.list)) vc = { oid: o.oid, at: o.at || Date.now(), list: [] };
+              if (vc.oid && o.oid && vc.oid !== o.oid) return;   // hashes made with another owner id can't be joined
+              var seen = {}; vc.list.forEach(function (x) { seen[x[0]] = 1; });
+              o.list.forEach(function (x) { if (!seen[x[0]]) { seen[x[0]] = 1; vc.list.push(x); } });
+            } catch (e) { }
+          });
+          if (vc) ls.setItem(vNew, JSON.stringify(vc));
+          ls.setItem(flag, '1');
+        })();
+      } catch (e) { }
       const DESKTOP = !!(window.pb4u && window.pb4u.desktop && window.__PB && window.__PB.desktop);
       // Android tablet app (android/): an offline kiosk. Photos are saved on the tablet through the app (window.__PBLocal)
       // and guests on the same Wi-Fi open them from the tablet, like the laptop app does.

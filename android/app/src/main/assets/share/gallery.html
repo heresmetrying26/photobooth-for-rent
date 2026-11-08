@@ -21,9 +21,11 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
 .grid.filter-photo > [data-kind]:not([data-kind="photo"]){display:none!important}
 .grid.filter-solo > [data-kind]:not([data-kind="solo"]){display:none!important}
 .grid.filter-gif > [data-kind]:not([data-kind="gif"]){display:none!important}
+.grid.filter-video > [data-kind]:not([data-kind="video"]){display:none!important}
 .grid a{position:relative}
 .grid [data-kind="gif"]::after{content:'GIF';position:absolute;bottom:6px;right:6px;background:rgba(28,26,30,.8);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}
-.grid [data-kind="solo"]::after{content:'SOLO';position:absolute;bottom:6px;right:6px;background:rgba(201,61,39,.85);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}</style>
+.grid [data-kind="solo"]::after{content:'SOLO';position:absolute;bottom:6px;right:6px;background:rgba(201,61,39,.85);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}
+.grid [data-kind="video"]::after{content:'▶ 360';position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.75);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}</style>
 </head>
 <body>
 <header><span class="brand"><span class="mk"><i></i><i></i><i></i><i></i></span>photobooth4u</span></header>
@@ -57,12 +59,13 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
   if(m[2]){ try{ file = decodeURIComponent(m[2]); }catch(e){ file = ''; } }
 
   function renderList(d){
-    var files = d.files || [], gifs = 0, solos = 0, i;
+    var files = d.files || [], gifs = 0, solos = 0, videos = 0, i;
     for(i = 0; i < files.length; i++){
       if(isGif(files[i].n)) gifs++;
       else if(isSolo(files[i].n)) solos++;
+      else if(isVideo(files[i].n)) videos++;
     }
-    var photos = files.length - gifs - solos;
+    var photos = files.length - gifs - solos - videos;
     document.title = d.name + ' photos';
     app.innerHTML = '';
 
@@ -73,6 +76,7 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
     if(photos > 0) countParts.push(photos + (solos > 0 ? ' print' : ' photo') + (photos === 1 ? '' : 's'));
     if(solos > 0) countParts.push(solos + ' solo photo' + (solos === 1 ? '' : 's'));
     if(gifs > 0) countParts.push(gifs + ' GIF' + (gifs === 1 ? '' : 's'));
+    if(videos > 0) countParts.push(videos + ' video' + (videos === 1 ? '' : 's'));
     var count = countParts.join(' · ') || (files.length + ' photo' + (files.length === 1 ? '' : 's'));
     head.appendChild(el('p', 'sub', count + ' · tap one to save it'));
     app.appendChild(head);
@@ -83,7 +87,7 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
     }
 
     var grid = el('div', 'grid');
-    var kindsCount = (photos > 0 ? 1 : 0) + (solos > 0 ? 1 : 0) + (gifs > 0 ? 1 : 0);
+    var kindsCount = (photos > 0 ? 1 : 0) + (solos > 0 ? 1 : 0) + (gifs > 0 ? 1 : 0) + (videos > 0 ? 1 : 0);
     if(kindsCount > 1){
       var holder = el('div'); holder.style.textAlign = 'center';
       var tabs = el('div', 'tabs');
@@ -91,6 +95,7 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
       if(photos > 0) defs.push(['photo', (solos > 0 ? 'Prints (' : 'Photos (') + photos + ')']);
       if(solos > 0) defs.push(['solo', 'Solo Photos (' + solos + ')']);
       if(gifs > 0) defs.push(['gif', 'GIFs (' + gifs + ')']);
+      if(videos > 0) defs.push(['video', 'Videos (' + videos + ')']);
       defs.forEach(function(def, idx){
         var b = el('button', 'tab' + (idx === 0 ? ' active' : ''), def[1]);
         b.type = 'button';
@@ -108,11 +113,20 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
     files.forEach(function(f){
       var a = el('a');
       a.href = '/e/' + slug + '/p/' + encodeURIComponent(f.n);
-      a.setAttribute('data-kind', kindOf(f.n));
-      var img = el('img');
-      img.loading = 'lazy'; img.alt = '';
-      img.src = '/e/' + slug + '/t/' + encodeURIComponent(f.n);
-      a.appendChild(img);
+      var k = kindOf(f.n);
+      a.setAttribute('data-kind', k);
+      if(k === 'video'){
+        var vid = el('video');
+        vid.preload = 'metadata'; vid.muted = true;
+        vid.setAttribute('playsinline', '');
+        vid.src = '/e/' + slug + '/f/' + encodeURIComponent(f.n) + '#t=0.1';
+        a.appendChild(vid);
+      } else {
+        var img = el('img');
+        img.loading = 'lazy'; img.alt = '';
+        img.src = '/e/' + slug + '/t/' + encodeURIComponent(f.n);
+        a.appendChild(img);
+      }
       grid.appendChild(a);
     });
     app.appendChild(grid);

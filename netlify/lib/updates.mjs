@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.107', date: '2026-11-08' },
   { version: '1.0.106', date: '2026-11-08' },
   { version: '1.0.105', date: '2026-11-08' },
   { version: '1.0.104', date: '2026-11-08' },
@@ -178,6 +179,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-08', title: 'Creative Live Motion GIFs, Radiant K-Film filter & Gallery enhancements', for: ['website', 'app'], app: '1.0.107',
+    items: [
+      'Multi-Box Boomerang GIF: each layout box records guests\' live motion before each photo snap and loops seamlessly together in strip and grid layouts.',
+      'Flexible animation styles in Setup → Extras: choose between Multi-Box Boomerang, Story Replay (sequential 1 → 2 → 3 → 4), or Full Session.',
+      'Radiant / K-Film filter: clean, aesthetic skin tones and crisp whites for modern booth shots in setup and live quick filters.',
+      'Ultra-smooth looping: endpoint de-duplication removes pause stutter, and 6-frame palette sampling ensures high color fidelity.',
+      'Gallery & Offline Sharing: guest personal QR view displays files in exact sequence (1st Print -> 2nd GIF -> 3rd Solo Shots) with solo & GIF badges and one-click "All Media" batch download.'
+    ]
+  },
   {
     date: '2026-11-08', title: 'Solo photos & roving: high-quality individual raw shots in gallery and dual roving uploads', for: ['website', 'app'], app: '1.0.106',
     items: [

@@ -119,6 +119,20 @@ try {
   assert(galleryHtml.includes('filter-solo'), 'Gallery CSS filter rules should include filter-solo');
   console.log('PASS: Gallery page HTML includes Solo Photos tab and correct data-kind attributes');
 
+  // Test Sharing Station HTML (/station/:slug/)
+  const stationHtml = await new Promise((resolve, reject) => {
+    http.get(`http://127.0.0.1:${port}/station/${slug}/`, (res) => {
+      let data = '';
+      res.on('data', (c) => { data += c; });
+      res.on('end', () => resolve(data));
+    }).on('error', reject);
+  });
+  assert(stationHtml.includes('data-filter="gif">GIFs</button>'), 'Station page should include GIFs filter button');
+  assert(stationHtml.includes('data-filter="solo">Solo Photos</button>'), 'Station page should include Solo Photos filter button');
+  assert(stationHtml.includes('data-filter="photo">Prints</button>'), 'Station page should include Prints filter button');
+  assert(stationHtml.includes('data-filter="all">All</button>'), 'Station page should include All filter button');
+  console.log('PASS: Sharing Station HTML has complete filter tabs (All, Prints, Solo Photos, GIFs)');
+
   // 5. Test solo photo viewing page (/e/:slug/p/:file)
   const soloPageHtml = await new Promise((resolve, reject) => {
     http.get(`http://127.0.0.1:${port}/e/${slug}/p/1_solo_1.jpg`, (res) => {
@@ -142,6 +156,10 @@ try {
   });
 
   assert(guestPageHtml.includes('Save solo photo'), 'Guest personal page should include Save solo photo button');
+  assert(guestPageHtml.includes('Template Print'), 'Guest personal page should include "Template Print" badge');
+  assert(guestPageHtml.includes('GIF'), 'Guest personal page should include "GIF" badge');
+  assert(guestPageHtml.includes('Solo Shot 1'), 'Guest personal page should include "Solo Shot 1" badge');
+  assert(guestPageHtml.includes('Solo Shot 2'), 'Guest personal page should include "Solo Shot 2" badge');
   const idxStrip = guestPageHtml.indexOf('1_strip.jpg');
   const idxGif = guestPageHtml.indexOf('1_gif.gif');
   const idxSolo1 = guestPageHtml.indexOf('1_solo_1.jpg');

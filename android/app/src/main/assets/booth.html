@@ -14112,17 +14112,17 @@
                 
                 <div class="fb-row" style="margin-top:10px;"><span class="lbl">Animation style</span>
                   <select id="gifMotionStyleSelect" class="pillify" aria-label="GIF animation style">
-                    <option value="multibox" selected>✨ Life4Cuts Boomerang (Each box moves)</option>
+                    <option value="multibox" selected>✨ Multi-Box Boomerang (Each box moves)</option>
                     <option value="sequential">🎬 Story Replay (Box 1 → 2 → 3 → 4)</option>
                     <option value="session">🎞️ Full Session (Single continuous clip)</option>
                   </select>
                 </div>
-                <p class="panel-hint" id="gifMotionStyleHint" style="margin:6px 0 0; color:var(--ink-dim);">Korean Life4Cuts style: Each box records its own motion before the shot, and all boxes animate together in a boomerang loop.</p>
+                <p class="panel-hint" id="gifMotionStyleHint" style="margin:6px 0 0; color:var(--ink-dim);">Live Motion: Each box records its own motion before the shot, and all boxes animate together in a boomerang loop.</p>
                 
                 <div class="fb-row" style="margin-top:10px;"><span class="lbl">Clip length</span>
                   <select id="gifClipSecSelect" class="pillify" aria-label="Motion clip length">
                     <option value="1.5">1.5 s (Snappy)</option>
-                    <option value="1.8" selected>1.8 s (Standard Life4Cuts)</option>
+                    <option value="1.8" selected>1.8 s (Standard)</option>
                     <option value="2.2">2.2 s (Longer)</option>
                   </select>
                 </div>
@@ -14235,7 +14235,7 @@
           <div class="pane" data-pane="filter" id="effectsSection">
             <div class="chip-row" id="filterChips">
               <button type="button" class="chip active" data-filter="none">None</button>
-              <button type="button" class="chip" data-filter="korean">✨ Korean / Life4Cuts</button>
+              <button type="button" class="chip" data-filter="korean">✨ Radiant / K-Film</button>
               <button type="button" class="chip" data-filter="bw">B&amp;W</button>
               <button type="button" class="chip" data-filter="sepia">Sepia</button>
               <button type="button" class="chip" data-filter="warm">Warm</button>
@@ -19643,7 +19643,7 @@
       var flipAutoPlaying = false;  // auto-flipping state
       var flipPlayTimer = null;     // auto-play interval
       var gifLayoutMode = 'follow';  // 'follow' | 'solo' | 'raw': what the GIF frames are placed in
-      var gifMotionStyle = 'multibox'; // 'multibox' (Life4Cuts each box moves) | 'sequential' | 'session'
+      var gifMotionStyle = 'multibox'; // 'multibox' (each box moves) | 'sequential' | 'session'
       var gifClipSec = 1.8;          // seconds of motion before each shot (1.5, 1.8, 2.2)
       var gifLoopMode = 'boomerang'; // 'boomerang' (ping-pong) | 'forward'
       function refreshGifLayoutUI() {
@@ -19655,7 +19655,7 @@
 
         var mSel = document.getElementById('gifMotionStyleSelect'), mh = document.getElementById('gifMotionStyleHint');
         if (mSel) mSel.value = gifMotionStyle;
-        if (mh) mh.textContent = gifMotionStyle === 'multibox' ? 'Korean Life4Cuts style: Each box records its own motion before the shot, and all boxes animate together in a boomerang loop.'
+        if (mh) mh.textContent = gifMotionStyle === 'multibox' ? 'Live Motion: Each box records its own motion before the shot, and all boxes animate together in a boomerang loop.'
           : gifMotionStyle === 'sequential' ? 'Story Replay: Each box animates one by one in sequence (Box 1 → 2 → 3 → 4), then pauses on the completed photo strip.'
           : 'Full Session: Single continuous clip recorded across the entire session.';
 
@@ -19827,22 +19827,24 @@
         if (poolHint) poolHint.style.display = hasPool ? 'block' : 'none';
       }
 
-      // Per-shot live motion buffers for Korean Life4Cuts / multi-box boomerang GIF
+      // Per-shot live motion buffers for multi-box boomerang GIF
       var shotMotionClips = [];
       var activeShotMotion = null;
 
       function startShotMotionCapture(shotIdx) {
         if (!shotMotionClips[shotIdx]) shotMotionClips[shotIdx] = [];
         else shotMotionClips[shotIdx].length = 0;
-        var maxFrames = Math.max(6, Math.min(18, Math.round((gifClipSec || 1.8) * 6))); // ~6 fps -> ~10-12 frames
-        var intervalMs = 150;
+        var intervalMs = 90; // ~11 fps for fluid, seamless boomerang motion
+        var maxFrames = Math.max(8, Math.min(24, Math.round((gifClipSec || 1.8) * 11)));
         var canvas = document.createElement('canvas');
         var videoWidth = video.videoWidth || 640;
         var videoHeight = video.videoHeight || 480;
-        var scale = Math.min(1, 640 / videoWidth, 480 / videoHeight);
+        var scale = Math.min(1, 960 / videoWidth, 720 / videoHeight);
         canvas.width = Math.max(1, Math.round(videoWidth * scale));
         canvas.height = Math.max(1, Math.round(videoHeight * scale));
         var ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
 
         var busy = false;
         var timer = setInterval(function () {
@@ -19862,7 +19864,7 @@
               if (clip.length >= maxFrames) clip.shift();
               clip.push({ blob: blob, time: performance.now() });
             }
-          }, 'image/jpeg', 0.85);
+          }, 'image/jpeg', 0.92);
         }, intervalMs);
 
         activeShotMotion = { shotIdx: shotIdx, timer: timer };
@@ -19941,11 +19943,14 @@
         // 1. Build a single global palette from representative sampled frames.
         // Bilinear downscaling via a compact sample canvas lets the GPU sample colors
         // instantly and keeps quantize() under ~15ms instead of 200ms per frame.
-        var sW = Math.min(320, width);
-        var sH = Math.min(180, Math.round(sW * (height / width)));
-        var sampleIndices = [0];
-        if (frames.length > 2) sampleIndices.push(Math.floor(frames.length / 2));
-        if (frames.length > 5) sampleIndices.push(frames.length - 1);
+        var sW = Math.min(360, width);
+        var sH = Math.min(240, Math.round(sW * (height / width)));
+        var sampleIndices = [];
+        var numSamples = Math.min(6, frames.length);
+        for (var s = 0; s < numSamples; s++) {
+          var sIdx = Math.floor(s * (frames.length - 1) / Math.max(1, numSamples - 1));
+          if (sampleIndices.indexOf(sIdx) < 0) sampleIndices.push(sIdx);
+        }
 
         var sampleCanvas = document.createElement('canvas');
         sampleCanvas.width = sW;
@@ -20034,7 +20039,8 @@
         var k = Math.min(1, 900 / Math.max(box.width, box.height));
         var ow = Math.max(1, Math.round(box.width * k)), oh = Math.max(1, Math.round(box.height * k));
         var small = document.createElement('canvas'); small.width = ow; small.height = oh;
-        var sx = small.getContext('2d', { willReadFrequently: true }); sx.imageSmoothingQuality = 'high';
+        var sx = small.getContext('2d', { willReadFrequently: true });
+        sx.imageSmoothingEnabled = true; sx.imageSmoothingQuality = 'high';
 
         var outFrames = [];
 
@@ -20043,17 +20049,18 @@
           for (var i = 0; i < n; i++) {
             if (shotSeqs[i].length > maxFrames) maxFrames = shotSeqs[i].length;
           }
-          maxFrames = Math.min(24, Math.max(6, maxFrames));
+          maxFrames = Math.min(32, Math.max(8, maxFrames));
 
           for (var t = 0; t < maxFrames; t++) {
             (function (frameIdx) {
               outFrames.push({
-                time: frameIdx * 100,
+                time: frameIdx * 90,
                 make: async function () {
                   for (var sIdx = 0; sIdx < n; sIdx++) {
                     var seq = shotSeqs[sIdx];
                     var sc = slotCanvases[sIdx];
                     var sCtx = sc.getContext('2d');
+                    sCtx.imageSmoothingEnabled = true; sCtx.imageSmoothingQuality = 'high';
                     sCtx.clearRect(0, 0, sc.width, sc.height);
                     if (seq && seq.length > 0) {
                       var item = seq[frameIdx % seq.length];
@@ -20085,11 +20092,12 @@
             for (var t = 0; t < count; t++) {
               (function (targetSlot, stepIdx) {
                 outFrames.push({
-                  time: outFrames.length * 100,
+                  time: outFrames.length * 90,
                   make: async function () {
                     for (var sIdx = 0; sIdx < n; sIdx++) {
                       var sc = slotCanvases[sIdx];
                       var sCtx = sc.getContext('2d');
+                      sCtx.imageSmoothingEnabled = true; sCtx.imageSmoothingQuality = 'high';
                       sCtx.clearRect(0, 0, sc.width, sc.height);
                       if (sIdx === targetSlot && shotSeqs[sIdx] && shotSeqs[sIdx].length > 0) {
                         var item = shotSeqs[sIdx][stepIdx % shotSeqs[sIdx].length];
@@ -20116,11 +20124,12 @@
             }
           }
           outFrames.push({
-            time: outFrames.length * 100 + 800,
+            time: outFrames.length * 90 + 900,
             make: async function () {
               for (var sIdx = 0; sIdx < n; sIdx++) {
                 var sc = slotCanvases[sIdx];
                 var sCtx = sc.getContext('2d');
+                sCtx.imageSmoothingEnabled = true; sCtx.imageSmoothingQuality = 'high';
                 sCtx.clearRect(0, 0, sc.width, sc.height);
                 if (shotCanvases[sIdx]) sCtx.drawImage(shotCanvases[sIdx], 0, 0, sc.width, sc.height);
               }
@@ -20138,7 +20147,7 @@
           frames: outFrames,
           width: ow,
           height: oh,
-          durationMs: outFrames.length * 100,
+          durationMs: outFrames.length * 90,
           speed: 1
         };
       }
@@ -22090,7 +22099,11 @@
         qrSection.classList.toggle('hidden', !showQr);
         if (!showQr && typeof qrPopEnd === 'function') qrPopEnd();
         appShell.classList.toggle('has-qr', showQr);
-        try { refreshPanelSolo(); refreshPrintFab(); } catch (e) { }
+        try {
+          refreshPanelSolo(); refreshPrintFab();
+          var resCust = document.getElementById('resultCustomizeBtn');
+          if (resCust) resCust.style.display = guestStickersOn ? 'inline-flex' : 'none';
+        } catch (e) { }
         guestRender();
         if (typeof refreshWelcome === 'function') refreshWelcome();
       }
@@ -22398,8 +22411,12 @@
         const lead = usbShutterLead();
         let shot = null;
         const fireNow = () => { if (!shot) shot = captureShot(index); };   // webcam: instant; USB camera: fires the real shutter
+        var isGif = isGifAllowed() && (outputMode === 'gif' || outputMode === 'both');
+        if (isGif && gifMotionStyle !== 'session') {
+          startShotMotionCapture(index);
+        }
         await runCountdown(timerSec + extra, index, lead > 600 ? lead - 600 : 0, fireNow);
-        if (sess && sess.cancelled) return;
+        if (sess && sess.cancelled) { stopShotMotionCapture(index); return; }
         popNum('Pose', true);
         try { if (window.pb4u && window.pb4u.setWallCue) window.pb4u.setWallCue('countdown', 'JUMP! 🎬', 1800); } catch (e) { }
         cdBar.style.strokeDashoffset = '100';
@@ -22409,14 +22426,15 @@
         // camera has time to adjust to the extra light on the faces.
         const lit = fx.flash;
         const leadTimer = lead > 0 && lead <= 600 ? setTimeout(fireNow, 600 - lead) : null;
-        if (lit) { await wait(250); if (sess && sess.cancelled) { clearTimeout(leadTimer); return; } screenFlashOn(); await wait(350); }
+        if (lit) { await wait(250); if (sess && sess.cancelled) { clearTimeout(leadTimer); stopShotMotionCapture(index); return; } screenFlashOn(); await wait(350); }
         else await wait(600);
         clearTimeout(leadTimer);
-        if (sess && sess.cancelled) { if (lit) screenFlashOff(); return; }
+        if (sess && sess.cancelled) { if (lit) screenFlashOff(); stopShotMotionCapture(index); return; }
         try { fxShutter(); } catch (e) { }
         flashOverlay.classList.add('flash-active');
         guestCall('flash');
         fireNow();   // already fired above when the camera has a shutter lag
+        stopShotMotionCapture(index);
         await wait(180);
         flashOverlay.classList.remove('flash-active');
         if (lit) setTimeout(screenFlashOff, 120);
@@ -22650,6 +22668,13 @@
         if (tp) tp.classList.toggle('hidden', gsoMode !== 'text');
         if (cp) cp.classList.toggle('hidden', gsoMode !== 'crop');
 
+        var sub = document.querySelector('.gso-sub');
+        if (sub) {
+          if (gsoMode === 'crop') sub.textContent = 'Tap photo to select · drag to pan · pinch to zoom';
+          else if (gsoMode === 'text') sub.textContent = 'Type caption · choose font, color & style';
+          else sub.textContent = 'Tap a sticker to add it · drag to move · pinch to resize';
+        }
+
         if (gsoMode === 'crop') {
           selGuestDecor = -1;
           refreshGuestStickerControls();
@@ -22776,6 +22801,15 @@
           });
         }
 
+        if (input && addBtn) {
+          input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addBtn.click();
+            }
+          });
+        }
+
         if (addBtn) {
           addBtn.addEventListener('click', function () {
             var txt = (input && input.value || '').trim();
@@ -22875,7 +22909,7 @@
           try { gsoHome.parent.insertBefore(previewCanvas, nx); } catch (e) { gsoHome.parent.appendChild(previewCanvas); }
         }
         gsoHome = null;
-        gPtrs = {}; gpinch = null; gpan = null; gdrag = null;
+        gPtrs = {}; gpinch = null; gpan = null; gdrag = null; gCropDrag = null; gCropPinch = null;
         var st = previewCanvas.style;
         st.width = ''; st.height = ''; st.left = ''; st.top = ''; st.transform = '';
       }
@@ -22946,6 +22980,9 @@
       }
       function gsoRedraw() {
         renderComposite();
+        if (gsoMode === 'crop' && typeof sess !== 'undefined' && sess && sess.decorating && !sess.decoPreview) {
+          drawCropSlotIndicator(previewCanvas.getContext('2d'));
+        }
         gsoPlaceTools();
       }
 
@@ -23063,6 +23100,43 @@
           gPtrs[e.pointerId] = { x: e.clientX, y: e.clientY };
           try { previewCanvas.setPointerCapture(e.pointerId); } catch (err) { }
           e.preventDefault();
+          if (gsoMode === 'crop') {
+            var ps = gPtrList();
+            if (ps.length === 2) {
+              gCropDrag = null;
+              gCropPinch = {
+                dist: Math.max(10, Math.hypot(ps[1].x - ps[0].x, ps[1].y - ps[0].y)),
+                z0: (shotCrops[selCropShot] && shotCrops[selCropShot].zoom) || 1
+              };
+              return;
+            }
+            if (ps.length > 2) return;
+            var pt = guestPreviewPoint(e);
+            var hit = hitShotSlot(pt.x * previewCanvas.width, pt.y * previewCanvas.height);
+            if (hit >= 0) {
+              selCropShot = hit;
+            }
+            if (!shotCrops[selCropShot]) {
+              shotCrops[selCropShot] = { zoom: 1, panX: 0, panY: 0 };
+            }
+            var b = shotSlotBoxes[selCropShot];
+            var cr = previewCanvas.getBoundingClientRect();
+            var sc = cr.width / (previewCanvas.width || 1);
+            var slotW = (b ? b.w : previewCanvas.width * 0.4) * sc;
+            var slotH = (b ? b.h : previewCanvas.height * 0.4) * sc;
+            gCropDrag = {
+              id: e.pointerId,
+              startX: e.clientX,
+              startY: e.clientY,
+              panX0: shotCrops[selCropShot].panX || 0,
+              panY0: shotCrops[selCropShot].panY || 0,
+              slotW: Math.max(40, slotW),
+              slotH: Math.max(40, slotH)
+            };
+            refreshCropUI();
+            gsoRedraw();
+            return;
+          }
           var ps = gPtrList();
           if (ps.length === 2) {         // second finger: pinch the selected sticker, or zoom the photo when none is selected
             gdrag = null; gpan = null; gLastTap = null;
@@ -23097,6 +23171,33 @@
         });
         previewCanvas.addEventListener('pointermove', function (e) {
           if (gPtrs[e.pointerId]) { gPtrs[e.pointerId].x = e.clientX; gPtrs[e.pointerId].y = e.clientY; }
+          if (gsoMode === 'crop') {
+            if (gCropPinch) {
+              var ps = gPtrList();
+              if (ps.length < 2) return;
+              var curDist = Math.hypot(ps[1].x - ps[0].x, ps[1].y - ps[0].y);
+              var ratio = curDist / (gCropPinch.dist || 1);
+              if (!shotCrops[selCropShot]) shotCrops[selCropShot] = { zoom: 1, panX: 0, panY: 0 };
+              var newZ = Math.max(1.0, Math.min(2.5, Math.round(gCropPinch.z0 * ratio * 100) / 100));
+              shotCrops[selCropShot].zoom = newZ;
+              refreshCropUI();
+              gRedrawSoon();
+              return;
+            }
+            if (gCropDrag && e.pointerId === gCropDrag.id) {
+              var dx = e.clientX - gCropDrag.startX;
+              var dy = e.clientY - gCropDrag.startY;
+              var dPanX = -dx / (gCropDrag.slotW * 0.6 || 100);
+              var dPanY = -dy / (gCropDrag.slotH * 0.6 || 100);
+              if (!shotCrops[selCropShot]) shotCrops[selCropShot] = { zoom: 1, panX: 0, panY: 0 };
+              shotCrops[selCropShot].panX = Math.max(-1, Math.min(1, Math.round((gCropDrag.panX0 + dPanX) * 100) / 100));
+              shotCrops[selCropShot].panY = Math.max(-1, Math.min(1, Math.round((gCropDrag.panY0 + dPanY) * 100) / 100));
+              refreshCropUI();
+              gRedrawSoon();
+              return;
+            }
+            return;
+          }
           if (gpinch) {
             var ps = gPtrList();
             if (ps.length < 2) return;
@@ -23137,6 +23238,15 @@
         });
         function endGDrag(e) {
           if (e) delete gPtrs[e.pointerId];
+          if (gCropPinch) {
+            if (gPtrList().length < 2) { gCropPinch = null; gsoRedraw(); }
+            return;
+          }
+          if (gCropDrag && (!e || e.pointerId === gCropDrag.id)) {
+            gCropDrag = null;
+            gsoRedraw();
+            return;
+          }
           if (gpinch) {                  // the other finger does nothing until it is lifted too
             if (gPtrList().length < 2) { gpinch = null; gsoRedraw(); }
             return;
@@ -23213,6 +23323,11 @@
           if (!overlay) { resolve(); return; }
           sess.decorating = true;
           selGuestDecor = -1;
+          wireGsoModeTabs();
+          wireTextControls();
+          wireCropControls();
+          gsoSetMode('stickers');
+          refreshCropUI();
           buildGuestStickerTray();
           refreshGuestStickerControls();
 
@@ -23264,6 +23379,8 @@
             sess.decoEnd = null;
             sess.decorating = false;
             selGuestDecor = -1;
+            gCropDrag = null;
+            gCropPinch = null;
             previewCanvas.style.touchAction = '';
             previewCanvas.style.cursor = '';
             overlay.classList.add('hidden');
@@ -23290,12 +23407,13 @@
       function endCancelledSession() {
         if (typeof stopFlipAutoPlay === 'function') stopFlipAutoPlay();
         stopGifSessionCapture(false); completedGifCapture = null;
+        stopShotMotionCapture(); shotMotionClips = [];
         countingDown = false;
         hideShotReview();
         var gso = document.getElementById('guestStickerOverlay');
         if (gso) gso.classList.add('hidden');
         if (gsoMounted() || document.body.classList.contains('decorating')) gsoUnmount();
-        guestDecor = []; selGuestDecor = -1; shotCrops = {};
+        guestDecor = []; selGuestDecor = -1; shotCrops = {}; gCropDrag = null; gCropPinch = null;
         flashOverlay.classList.remove('flash-active');
         countdownOverlay.classList.remove('pausing');
         readyOverlay.classList.remove('ready-active');
@@ -23373,6 +23491,7 @@
         stageShot = 0;
         sess = { cancelled: false, retake: false, pick: null };
         shotCanvases = new Array(shotsNeeded()).fill(null);
+        shotMotionClips = [];
         qrResults.innerHTML = '';
         lastRenderedFolderUrl = null;
         retakeBtn.hidden = true;
@@ -23401,6 +23520,7 @@
           if (sess.retake) {                         // redo this photo
             sess.retake = false;
             shotCanvases[i] = null;
+            if (shotMotionClips[i]) shotMotionClips[i] = [];
             updateFilmTrack(); guestCall('shots');
             continue;
           }
@@ -23548,6 +23668,9 @@
             await guestStickersPhase();
             renderComposite();
             updateUI();
+            var curMode = isGifAllowed() ? outputMode : 'photo';
+            if (curMode !== 'gif') showQRForCurrentPhoto();
+            scheduleResultReset();
           }
         });
       })();
@@ -29561,6 +29684,7 @@
       // is processed pixel by pixel, which also works on older iPads.
       var FILTERS = {
         none: '',
+        korean: 'contrast(1.06) brightness(1.06) saturate(1.08)',
         bw: 'grayscale(1) contrast(1.08)',
         sepia: 'sepia(.85) contrast(1.05) brightness(1.03)',
         warm: 'sepia(.2) saturate(1.18) brightness(1.04)',
@@ -29605,6 +29729,11 @@
       function filterColour(key, r, g, b, out) {
         var y;
         if (key === 'bw') { y = (0.299 * r + 0.587 * g + 0.114 * b - 128) * 1.08 + 128; r = g = b = y; }
+        else if (key === 'korean') {
+          r = Math.min(255, (r - 128) * 1.06 + 135);
+          g = Math.min(255, (g - 128) * 1.05 + 134);
+          b = Math.min(255, (b - 128) * 1.04 + 135);
+        }
         else if (key === 'sepia') {
           var tr = 0.393 * r + 0.769 * g + 0.189 * b, tg = 0.349 * r + 0.686 * g + 0.168 * b, tb = 0.272 * r + 0.534 * g + 0.131 * b;
           r = ((r * 0.15 + tr * 0.85) - 128) * 1.05 + 131; g = ((g * 0.15 + tg * 0.85) - 128) * 1.05 + 131; b = ((b * 0.15 + tb * 0.85) - 128) * 1.05 + 131;
@@ -29972,7 +30101,7 @@
         filterKey = c.dataset.filter; markFilterChips(); applyLiveFilter(); renderSetupPreview();
       });
       // Quick filter chips under the live view (same filters as Setup → Extras).
-      var FILTER_LABELS = { none: 'Normal', bw: 'B&W', sepia: 'Sepia', warm: 'Warm', cool: 'Cool', film: 'Film', faded: 'Faded', retro: '70s', instant: 'Instant', noir: 'Noir' };
+      var FILTER_LABELS = { none: 'Normal', korean: 'Korean', bw: 'B&W', sepia: 'Sepia', warm: 'Warm', cool: 'Cool', film: 'Film', faded: 'Faded', retro: '70s', instant: 'Instant', noir: 'Noir' };
       var quickFilters = document.getElementById('quickFilters');
       Object.keys(FILTERS).forEach(function (k) {
         var b = document.createElement('button'); b.type = 'button'; b.className = 'sc-filter'; b.dataset.filter = k;
@@ -40658,7 +40787,7 @@
           boothType: boothType, btCfg: JSON.parse(JSON.stringify(btCfg)), tpls: tplsSnapshot(),
           timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
           reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake, qrPop: qrPopOn, qrPopDelay: qrPopDelay,
-          outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipNumbers: flipNumbers, flipCues: flipCues, flipGridPreset: flipGridPreset, flipPrinterPool: flipPrinterPool, flipPoolMode: flipPoolMode, flipCoverStyle: flipCoverStyle, flipCoverAssetId: flipCoverAssetId, flipBackQr: flipBackQr, flipBackText: flipBackText,
+          outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, gifMotionStyle: gifMotionStyle, gifClipSec: gifClipSec, gifLoopMode: gifLoopMode, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipNumbers: flipNumbers, flipCues: flipCues, flipGridPreset: flipGridPreset, flipPrinterPool: flipPrinterPool, flipPoolMode: flipPoolMode, flipCoverStyle: flipCoverStyle, flipCoverAssetId: flipCoverAssetId, flipBackQr: flipBackQr, flipBackText: flipBackText,
           backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
           frameColorChoice: frameColorChoice, photoPlacement: photoPlacement, cropFocus: cropFocus,
           label: labelInput.value, font: currentFont, dateFont: currentDateFont, dateOn: dateOn, date: dateInput.value,
@@ -40801,7 +40930,11 @@
           }
           if (s.outputMode === 'flipbook') { outputMode = extraOn('flipbook') ? 'flipbook' : 'photo'; }
           else if (s.outputMode === 'gif' || s.outputMode === 'both' || s.outputMode === 'photo') { outputMode = isGifAllowed() ? s.outputMode : 'photo'; }
-          if (s.gifLayout === 'solo' || s.gifLayout === 'follow' || s.gifLayout === 'raw') { gifLayoutMode = s.gifLayout; refreshGifLayoutUI(); }
+          if (s.gifLayout === 'solo' || s.gifLayout === 'follow' || s.gifLayout === 'raw') { gifLayoutMode = s.gifLayout; }
+          if (s.gifMotionStyle === 'multibox' || s.gifMotionStyle === 'sequential' || s.gifMotionStyle === 'session') { gifMotionStyle = s.gifMotionStyle; }
+          if ([1.5, 1.8, 2.2].indexOf(Number(s.gifClipSec)) >= 0) { gifClipSec = Number(s.gifClipSec); }
+          if (s.gifLoopMode === 'boomerang' || s.gifLoopMode === 'forward') { gifLoopMode = s.gifLoopMode; }
+          refreshGifLayoutUI();
           if ([4, 5, 6, 7].indexOf(Number(s.flipSec)) >= 0) { flipSec = Number(s.flipSec); var fsEl = document.getElementById('flipSecSelect'); if (fsEl) fsEl.value = String(flipSec); }
           if ([16, 24, 30, 40].indexOf(Number(s.flipFrames)) >= 0) { flipFrames = Number(s.flipFrames); var ffEl = document.getElementById('flipFramesSelect'); if (ffEl) ffEl.value = String(flipFrames); }
           if (typeof s.flipCover === 'boolean') { flipCover = s.flipCover; var fcEl = document.getElementById('flipCoverToggle'); if (fcEl) fcEl.checked = flipCover; }

@@ -499,7 +499,11 @@ class LocalShareServer(private val store: PBLocal) {
             val isVid = type.startsWith("video/")
             val isGif = type == "image/gif"
             val isSolo = Regex("_solo_\\d+", RegexOption.IGNORE_CASE).containsMatchIn(f)
-            sb.append("<div class=\"one\" style=\"padding-bottom:6px\">")
+            val soloMatch = Regex("_solo_(\\d+)", RegexOption.IGNORE_CASE).find(f)
+            val badgeLabel = if (isVid) "360 Video" else if (isGif) "GIF" else if (isSolo) "Solo Shot " + (soloMatch?.groupValues?.get(1) ?: "") else "Template Print"
+            val badgeColor = if (isSolo) "background:rgba(201,61,39,0.12);color:#C93D27;" else if (isGif) "background:rgba(28,26,30,0.08);color:#1C1A1E;" else "background:rgba(46,125,50,0.12);color:#2E7D32;"
+            sb.append("<div class=\"one\" style=\"padding-bottom:12px\">")
+            sb.append("<div style=\"text-align:center\"><span style=\"display:inline-block;margin:0 auto 10px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;").append(badgeColor).append("\">").append(badgeLabel).append("</span></div>")
             if (isVid) sb.append("<video src=\"").append(src).append("\" controls playsinline autoplay muted loop></video>")
             else sb.append("<img src=\"").append(src).append("\" alt=\"").append(if (isGif) "Your GIF" else if (isSolo) "Solo photo" else "Your photo").append("\">")
             sb.append("<div><a class=\"btn\" href=\"").append(src).append("?dl=1\" download=\"").append(esc(f)).append("\">")

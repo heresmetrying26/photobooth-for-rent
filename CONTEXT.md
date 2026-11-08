@@ -1,11 +1,12 @@
 # Session Context
 
-**Current Task**: Released desktop v1.0.106: Solo photos in gallery, Setup -> Share toggle, and roving photoman dual-upload.
+**Current Task**: UI/UX seamless navigation audit and enhancements across all guest & sharing interfaces.
 
 **Key Decisions**:
-- Solo raw photos saved without template design at JPEG 0.95 with filename `${session}_solo_${i+1}.jpg`.
-- Online and offline galleries have separate "Solo Photos" tab, badge filters, and batch download.
-- Roving photoman uploads both high-quality raw solo photo and composite print with template design.
+- Added media badges (Template Print, GIF, Solo Shot 1..N) to guest QR views for clear item distinction.
+- Added unified All tab and 1-click bulk download in web gallery (/p/<code>) so guests see all session files without tab hopping.
+- Fixed Sharing Station GIFs tab and enabled video filter/preview navigation in Android offline gallery.
 
 **Next Steps**:
-- Verify GitHub Actions desktop-v1.0.106 release build finishes and installers attach to release.
+- Commit and package release.
+- Deploy web gallery and booth updates.

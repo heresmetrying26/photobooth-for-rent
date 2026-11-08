@@ -712,10 +712,13 @@ function handleOwn(req, res, url, om) {
   const items = mine.map((file, i) => {
     const type = TYPES[extname(file).toLowerCase()] || 'application/octet-stream';
     const isGif = /\.gif$/i.test(file), isVid = VIDEO_RE.test(file), isSoloPhoto = /_solo_\d+/i.test(file);
+    const soloMatch = /_solo_(\d+)/i.exec(file);
+    const badgeLabel = isVid ? '360 Video' : isGif ? 'GIF' : isSoloPhoto ? ('Solo Shot ' + (soloMatch ? soloMatch[1] : '')) : 'Template Print';
+    const badgeStyle = 'display:inline-block;margin:0 auto 10px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;background:' + (isSoloPhoto ? 'rgba(201,61,39,0.12);color:#C93D27' : isGif ? 'rgba(28,26,30,0.08);color:#1C1A1E' : 'rgba(46,125,50,0.12);color:#2E7D32') + ';';
     const src = '/o/' + code + '/f/' + encodeURIComponent(file);
     const media = /^video\//.test(type) ? '<video src="' + src + '" controls playsinline autoplay muted loop></video>' : '<img src="' + src + '" alt="' + (isGif ? 'Your GIF' : isSoloPhoto ? 'Your solo photo' : 'Your photo') + '">';
     const dlText = isVid ? 'Save video' : isGif ? 'Save GIF' : isSoloPhoto ? 'Save solo photo' : 'Save photo';
-    return '<div class="one" style="padding-bottom:6px">' + media + '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">' + dlText + '</a>' +
+    return '<div class="one" style="padding-bottom:12px"><div style="text-align:center"><span style="' + badgeStyle + '">' + badgeLabel + '</span></div>' + media + '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">' + dlText + '</a>' +
       (guestPrintOn && !isVid && !isGif ? reqButtonHtml(c.slug, file, '/o/' + code + '/print/' + encodeURIComponent(file), String(i)) : '') + '</div></div>';
   });
   const others = guestView !== 'only' ? '<div class="one" style="padding-top:0"><a class="btn alt" href="/e/' + c.slug + '/">Show photos with other guests</a></div>' : '';
@@ -838,8 +841,8 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
     <button type="button" class="tab active" data-filter="all">All</button>
     <button type="button" class="tab" data-filter="photo">Prints</button>
     <button type="button" class="tab" data-filter="solo">Solo Photos</button>
+    <button type="button" class="tab" data-filter="gif">GIFs</button>
     <button type="button" class="tab" data-filter="video">360 Videos</button>
-    <button type="button" class="tab" data-filter="photo">Photos</button>
   </div>
 </div>
 
@@ -922,6 +925,9 @@ function openModal(it) {
   } else if (it.kind === 'solo') {
     med.innerHTML = '<img src="' + it.url + '" alt="">';
     dl.textContent = 'Save Solo Photo';
+  } else if (it.kind === 'gif') {
+    med.innerHTML = '<img src="' + it.url + '" alt="">';
+    dl.textContent = 'Save GIF';
   } else {
     med.innerHTML = '<img src="' + it.url + '" alt="">';
     dl.textContent = 'Save Photo';

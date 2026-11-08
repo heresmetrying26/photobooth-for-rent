@@ -45,7 +45,7 @@ edit('app/src/main/res/values/strings.xml', [
 edit('app/src/main/java/com/photobooth4u/booth/MainActivity.kt', [
   // Start: skip the offline activation gate and open the online Rush station.
   ['    private fun bootWithLicence() {\n        val st = licence.status()',
-   '    private fun bootWithLicence() {\n        // Rush ID Station build: the code lock screen on the site decides who may use it.\n        if (isNetworkAvailable()) webView.loadUrl(BASE_URL + "rush/") else webView.loadData("<body style=\'font-family:sans-serif;padding:24px;background:black;color:white\'><h2>No internet connection</h2><p>Connect to Wi-Fi, then close and reopen the app.</p></body>", "text/html", "UTF-8")\n        if (true) return\n        val st = licence.status()',
+   '    private fun bootWithLicence() {\n        // Rush ID Station build: the code lock screen on the site decides who may use it.\n        // The screen follows the tablet until portrait or landscape is chosen with the app\'s rotate button; that choice is remembered.\n        applyOrientation(getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString("pref_orientation", "either") ?: "either")\n        if (isNetworkAvailable()) webView.loadUrl(BASE_URL + "rush/") else webView.loadData("<body style=\'font-family:sans-serif;padding:24px;background:black;color:white\'><h2>No internet connection</h2><p>Connect to Wi-Fi, then close and reopen the app.</p></body>", "text/html", "UTF-8")\n        if (true) return\n        val st = licence.status()',
    'bootWithLicence()'],
   // No "new booth version" prompt.
   ['    private fun checkForAppUpdate(manual: Boolean = false) {\n',

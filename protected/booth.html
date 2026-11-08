@@ -32628,6 +32628,25 @@
         },
         papers: rushPapers,
         print: rushPrint,
+        // Which way a print on `key` paper will go, and (with the Print Helper) every printer it can use. The choice is the booth's own
+        // per-paper-size printer, the same as in Setup.
+        printers: async function (key) {
+          var h = helperOn ? await checkHelper(!helper.ok) : { ok: false, printers: [] }, live = helperOn && h.ok, mode;      // look again if the last look failed (the helper may have been started since)
+          if (useStation()) mode = 'station';
+          else if (live) mode = 'helper';
+          else if (wifiPrinter && !wifiPrinter.dialog && wifiNetAvailable()) mode = 'wifi';
+          else if (window.__PBPrint && typeof window.__PBPrint.print === 'function') mode = 'android';
+          else mode = 'browser';
+          return { mode: mode, current: printerFor(key) || (mode === 'wifi' ? wifiPrinter.name : ''), options: live ? h.printers.slice() : [] };
+        },
+        setPrinter: function (key, name) {
+          // The booth keeps a separate slot for strip layouts printed two-up; set both so this choice always wins.
+          [key, printerKey(key)].forEach(function (k) { if (name) printerMap[k] = String(name); else delete printerMap[k]; });
+          savePrinterMap(); try { fillPrinterSelect(); } catch (e) { }
+        },
+        // Android app: turn the screen between portrait and landscape (the app's own setting, remembered).
+        canRotate: function () { return !!(window.__PBLocal && typeof window.__PBLocal.setOrientation === 'function'); },
+        setOrientation: function (mode) { try { window.__PBLocal.setOrientation(mode === 'portrait' ? 'portrait' : 'landscape'); } catch (e) { } },
         // Staff: show the booth's own Setup (cameras, printers) instead of the station until they tap "Back to Rush station".
         openSetup: function () { rushEl.hidden = true; rushBack.hidden = false; try { leaveStartScreen(); } catch (e) { } },
         toast: function (m, ms) { try { showToast(m, ms || 4000); } catch (e) { } }

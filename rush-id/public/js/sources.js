@@ -63,7 +63,8 @@ export class PhoneSession {
     this.timer = setInterval(() => this.poll(), 2500);
     return this;
   }
-  get url() { return location.origin + (RC().uploadPath || '/u/') + this.code; }
+  // location.origin is "null" inside the booth's frame (srcdoc), so build the link from the page's real address.
+  get url() { let o = ''; try { o = new URL(document.baseURI).origin; } catch (e) { /* fall through */ } if (!o || o === 'null') o = (location.origin && location.origin !== 'null') ? location.origin : 'https://photobooth4u.netlify.app'; return o + (RC().uploadPath || '/u/') + this.code; }
   async poll() {
     if (this.busy || !this.code) return;
     this.busy = true;

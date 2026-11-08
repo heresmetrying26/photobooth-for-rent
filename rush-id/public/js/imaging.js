@@ -135,6 +135,7 @@ export function drawId(ctx, work, o, outW, outH) {
   if (o.brightness) f.push('brightness(' + (1 + o.brightness / 100) + ')');
   if (o.contrast) f.push('contrast(' + (1 + o.contrast / 100) + ')');
   if (f.length) { try { ctx.filter = f.join(' '); } catch (e) { /* unsupported browser: no adjustment */ } }
+  if (o.flip) { ctx.translate(outW, 0); ctx.scale(-1, 1); }                    // mirror the photo (about the middle of the frame)
   ctx.drawImage(src, o.crop.cx - W / 2, o.crop.cy - H / 2, W, H, 0, 0, outW, outH);
   ctx.restore();
 }

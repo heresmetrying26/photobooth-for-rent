@@ -13,6 +13,15 @@ The station is **not** a separate camera/printer program. `https://photobooth4u.
 
 The bridge between the two is `window.__PBHW` (in `protected/booth.html`, section "Rush ID & Photo Print station"). It does nothing unless the page is at `/rush/`, so a normal booth is unchanged.
 
+## On the screen
+
+- **No scrolling.** Every screen fits the window (laptop, kiosk, tablet upright or sideways, phone). The ID editor keeps its controls in three tabs (*Size & copies*, *Background*, *Fine-tune*); only a long list of photos scrolls inside its own box.
+- **Mirror.** ID editor: **↔ Mirror** under the photo. Photo printing: a **↔** button on each photo. (Photos from the camera come out un-mirrored even if the booth's live view is mirrored; this button is for flipping them on purpose.)
+- **Live view.** *Take a photo* opens a large live picture of the booth's selected camera (DSLR live view included), with a 3-2-1 countdown. **📷 Retake** in the ID editor opens it again.
+- **Paper and printer.** On the print screen: **Paper** (for an ID; only the sizes Admin allows for the code) and **Printer**. With the Print Helper the printer list shows every installed printer, and the choice is the booth's own per-paper-size printer (also visible in Setup). Without the helper it says how the print will go (print station, Wi-Fi printer, Android print screen, or the device's print dialog).
+- **Background colour:** White, Light blue, Blue, Red, Gray, **Custom** (any colour), or Keep mine.
+- **Android:** a **⟳** button (top right) turns the screen between portrait and landscape; the choice is remembered. Without it the screen follows the tablet.
+
 ## Admin switch and codes
 
 - **Admin → a code → "Turn on Rush ID station"** (or tick the box when creating codes). **Off by default.** Only codes with it on can open the station.
@@ -34,6 +43,7 @@ The bridge between the two is `window.__PBHW` (in `protected/booth.html`, sectio
 
 A separate **Rush ID Station** app (id `com.photobooth4u.rushstation`) installs beside the booth app. It is the booth's Android project, so the native USB, Bluetooth, UVC webcam and printer code comes with it.
 
+- It follows the tablet's rotation, with the **⟳** button to force portrait or landscape (remembered).
 - Build: GitHub → **Actions → "Rush ID Station Android app" → Run workflow**, or push a tag like **`rushid-v1.0.0`** (attaches `rush-id-station-android.apk` to a release). It is its own workflow: the booth's `android.yml` and build files are untouched.
 - `android/scripts/make-rush-variant.mjs` patches the CI checkout only: own app id and name, opens `https://photobooth4u.netlify.app/rush/`, skips the booth's offline activation gate (the code lock screen on the site decides), no booth-update prompt, no offline fallback. It stops with a clear message if the booth code it patches ever changes.
 - The Android Rush app **needs the internet** (code check). It uses the same client code, with "Rush ID station" on.
@@ -60,7 +70,7 @@ Shop name, currency, PIN, idle seconds before a customer's photos are cleared (d
 
 ## Known limits
 
-- **Verified here (browser, simulated webcam, stubbed print):** the lock and Admin switch, station mode, the booth's webcam path, un-mirrored capture, paper list from Admin, print routing to the booth's browser-print route (page size, copies), Setup round trip, the normal booth at `/` unchanged. **Not verified (no hardware / Gradle here):** DSLR over USB, the Print Helper, Wi-Fi/USB/Bluetooth printers, DNP/HITI/SELPHY output, the Android APK build and the Android camera/printer bridges. They run through the booth's own code, but test each on the real device before relying on them.
+- **Verified here (browser, simulated webcam, mocked Print Helper, stubbed print):** the lock and Admin switch, station mode, the booth's webcam path, un-mirrored capture, mirror, paper list from Admin, paper change, printer choice (the print goes to the chosen printer at the right size and copies), the QR link, screens at laptop / tablet / phone / large sizes with no page scroll, Setup round trip, the normal booth at `/` unchanged. **Not verified (no hardware / Gradle here):** DSLR over USB, the Print Helper, Wi-Fi/USB/Bluetooth printers, DNP/HITI/SELPHY output, the Android APK build and the Android camera/printer bridges. They run through the booth's own code, but test each on the real device before relying on them.
 - The Windows/Mac **desktop** app (offline) has no Rush entry yet; use `/rush/` in a browser, or the Android Rush app.
 - Staff Setup shows the whole booth Setup (design, text, layout...); only *Camera & printer* matters for the station.
 - iPhone HEIC files on a USB/SD card cannot be opened by Chrome; the QR route converts them on the phone.

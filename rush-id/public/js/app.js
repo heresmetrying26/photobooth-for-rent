@@ -33,7 +33,7 @@ const noPrint = () => !!hw && !L.PAPERS.length;
 const NO_PRINT_MSG = 'Printing is not switched on for this code. Please ask the owner.';
 
 // ---------- state ----------
-const freshId = () => ({ qty: { ...L.PACKAGES[0].qty }, pkg: 'p1', bg: '#ffffff', bgMode: 'color', brightness: 0, contrast: 0, edge: 0, crop: null, cropFor: null, guides: true });
+const freshId = () => ({ qty: { ...L.PACKAGES[0].qty }, pkg: 'p1', bg: '#ffffff', bgMode: 'color', brightness: 0, contrast: 0, edge: 0, crop: null, cropFor: null, guides: true, flip: false, tab: 'size' });
 const state = { screen: 'home', mode: 'id', photos: [], sel: null, id: freshId(), photo: { size: '4x6', fit: 'fill' }, sets: 1, out: null };
 let idWork = null;          // the full-size working copy of the photo being framed
 let phone = null;           // phone (QR) session
@@ -54,9 +54,9 @@ async function busy(msg) {
   if (!msg) { l.classList.remove('on'); return; }
   l.querySelector('span').textContent = msg; l.classList.add('on'); await nextFrame();
 }
-function openModal(html, onClose) {
+function openModal(html, onClose, cls) {
   closeModal();
-  const m = $('#modal'); m.innerHTML = '<div class="back" data-act="close"></div><div class="mod">' + html + '</div>'; m.classList.add('on');
+  const m = $('#modal'); m.innerHTML = '<div class="back" data-act="close"></div><div class="mod' + (cls ? ' ' + cls : '') + '">' + html + '</div>'; m.classList.add('on');
   m._onClose = onClose || null;
 }
 function closeModal() {
@@ -108,67 +108,74 @@ function resetAll() {
 }
 
 // ---------- screens ----------
-const STEPS = { id: ['Your photo', 'Frame it', 'Print'], photo: ['Your photos', 'Choose size', 'Print'] };
+const STEPS = { id: ['Photo', 'Frame', 'Print'], photo: ['Photos', 'Size', 'Print'] };
+// Android app: turn the screen between portrait and landscape.
+const rotBtn = () => (hw && hw.canRotate && hw.canRotate() ? '<button class="btn ghost sm icon" data-act="rot" title="Turn the screen: portrait or landscape" aria-label="Turn the screen">⟳</button>' : '');
 function header() {
   const idx = { add: 0, id: 1, photos: 1, review: 2 }[state.screen];
-  const steps = STEPS[state.mode].map((t, i) => '<li class="' + (i === idx ? 'on' : i < idx ? 'done' : '') + '"><b>' + (i + 1) + '</b> ' + t + '</li>').join('');
-  return '<header class="top"><div class="brand" data-act="brand">' + esc(cfg.shop) + '</div><ol class="steps">' + steps + '</ol><button class="btn ghost sm" data-act="reset">Start over</button></header>';
+  const steps = STEPS[state.mode].map((t, i) => '<li class="' + (i === idx ? 'on' : i < idx ? 'done' : '') + '"><b>' + (i + 1) + '</b>' + t + '</li>').join('');
+  return '<header class="top"><div class="brand" data-act="brand">' + esc(cfg.shop) + '</div><ol class="steps">' + steps + '</ol>' + rotBtn() + '<button class="btn ghost sm" data-act="reset">Start over</button></header>';
 }
 
 function homeHTML() {
-  return '<main class="home"><div class="brand big" data-act="brand">' + esc(cfg.shop) + '</div>' +
+  return '<main class="home"><div class="corner">' + rotBtn() + '</div><div class="brand big" data-act="brand">' + esc(cfg.shop) + '</div>' +
     '<p class="lead">Self-service · no staff needed</p>' +
     '<div class="tiles">' +
-    '<button class="tile" data-act="start" data-mode="id"><span class="ic">🪪</span><b>Rush ID photo</b><small>Passport, 2×2, 1×1 and more. Plain background, ready in minutes.</small></button>' +
+    '<button class="tile" data-act="start" data-mode="id"><span class="ic">🪪</span><b>Rush ID photo</b><small>Passport, 2×2, 1×1 and more. Plain background.</small></button>' +
     '<button class="tile" data-act="start" data-mode="photo"><span class="ic">🖼️</span><b>Print photos</b><small>4×6, 5×7, 6×8, wallet and strips.</small></button>' +
     '</div>' +
-    '<p class="hint">Bring your photos on a <b>USB drive</b>, <b>SD card</b>, by <b>Bluetooth</b>, or send them from your phone with a <b>QR code</b>. Or take a picture right here.</p></main>';
+    '<p class="hint">Bring photos on a <b>USB drive</b>, <b>SD card</b>, by <b>Bluetooth</b>, or send them from your phone with a <b>QR code</b>. Or take a picture here.</p></main>';
 }
 
 function addHTML() {
   const id = state.mode === 'id';
   const thumbs = state.photos.map((p) => '<div class="thumb' + (id && state.sel === p.id ? ' sel' : '') + '" data-act="pick" data-id="' + p.id + '"><img src="' + p.thumb + '" alt=""><button class="x" data-act="rm" data-id="' + p.id + '" aria-label="Remove">×</button></div>').join('');
   const ok = id ? !!state.sel : state.photos.length > 0;
+  const src = (act, ic, t, s) => '<button class="src" data-act="' + act + '"><span class="ic">' + ic + '</span><span class="t"><b>' + t + '</b><small>' + s + '</small></span></button>';
   return '<main class="add">' +
     '<h2>' + (id ? 'Choose the photo for your ID' : 'Add the photos you want to print') + '</h2>' +
-    '<div class="sources">' +
-    '<button class="src" data-act="src-cam"><span class="ic">📷</span><b>Take a photo</b><small>Use this camera</small></button>' +
-    '<button class="src" data-act="src-usb"><span class="ic">💾</span><b>USB / SD card</b><small>Flash drive or card reader</small></button>' +
-    '<button class="src" data-act="src-bt"><span class="ic">🔵</span><b>Bluetooth</b><small>Send from your phone</small></button>' +
-    '<button class="src" data-act="src-qr"><span class="ic">📱</span><b>Phone (QR)</b><small>Scan and upload</small></button>' +
-    '</div>' +
-    '<div class="trayhead"><b>' + (state.photos.length ? state.photos.length + (state.photos.length === 1 ? ' photo' : ' photos') : 'No photos yet') + '</b>' + (id && state.photos.length > 1 ? '<span>Tap the one to use</span>' : '') + '</div>' +
+    '<div class="sources">' + src('src-cam', '📷', 'Take a photo', 'Use this camera') + src('src-usb', '💾', 'USB / SD card', 'Drive or card reader') + src('src-bt', '🔵', 'Bluetooth', 'Send from your phone') + src('src-qr', '📱', 'Phone (QR)', 'Scan and upload') + '</div>' +
+    '<div class="trayhead"><b>' + (state.photos.length ? state.photos.length + (state.photos.length === 1 ? ' photo' : ' photos') : 'No photos yet') + '</b>' + (id && state.photos.length > 1 ? '<span class="hint">Tap the one to use</span>' : '') + '</div>' +
     '<div class="tray' + (thumbs ? '' : ' empty') + '">' + (thumbs || '<p>Your photos will show up here.</p>') + '</div>' +
     '</main><footer class="bar"><button class="btn ghost" data-act="reset">Back</button><button class="btn primary big" data-act="next-add"' + (ok ? '' : ' disabled') + '>Next →</button></footer>';
 }
 
 function idHTML() {
-  return '<main class="editor"><div class="stagecol"><div class="stagebox" id="stagebox"><canvas id="stage"></canvas><canvas id="guide"></canvas></div>' +
-    '<div class="zoomrow"><span>−</span><input type="range" id="zoom" min="0" max="100" value="40" data-in="zoom" aria-label="Zoom"><span>＋</span></div>' +
-    '<p class="hint">Drag the photo to move it. Pinch or use the slider to zoom. Line the face up with the guide.</p></div>' +
+  const t = (act, on, label) => '<button class="tb' + (on ? ' on' : '') + '" data-act="' + act + '">' + label + '</button>';
+  return '<main class="editor"><div class="stagecol"><div class="stagewrap" id="stagewrap"><div class="stagebox" id="stagebox"><canvas id="stage"></canvas><canvas id="guide"></canvas></div></div>' +
+    '<div class="toolbar">' + t('flip', state.id.flip, '↔ Mirror') + t('autofit', false, '◎ Auto-fit') + t('guide', state.id.guides, '◌ Guide') + t('retake', false, '📷 Retake') + '</div>' +
+    '<div class="zoomrow" title="Drag the photo to move it. Pinch or use the slider to zoom."><span>−</span><input type="range" id="zoom" min="0" max="100" value="40" data-in="zoom" aria-label="Zoom"><span>＋</span></div></div>' +
     '<div class="panel" id="panel"></div></main>' +
     '<footer class="bar"><button class="btn ghost" data-act="to-add">← Photos</button><button class="btn primary big" data-act="id-preview">See my print →</button></footer>';
 }
 
 const SWATCHES = [['#ffffff', 'White'], ['#cfe5f7', 'Light blue'], ['#2457b8', 'Blue'], ['#c8202b', 'Red'], ['#d9d9d9', 'Gray']];
+const TABS = [['size', 'Size & copies'], ['bg', 'Background'], ['fine', 'Fine-tune']];
 function idPanelHTML() {
-  const q = state.id.qty;
-  const chips = L.PACKAGES.map((p) => '<button class="chip' + (state.id.pkg === p.id ? ' on' : '') + '" data-act="pkg" data-id="' + p.id + '">' + p.label + '</button>').join('');
-  const rows = L.ID_SIZES.map((s) => '<div class="qrow"><span>' + s.label + '</span><div class="stepper"><button data-act="qty" data-id="' + s.id + '" data-d="-1">−</button><b>' + (q[s.id] || 0) + '</b><button data-act="qty" data-id="' + s.id + '" data-d="1">＋</button></div></div>').join('');
-  const sw = SWATCHES.map(([c, n]) => '<button class="sw' + (state.id.bgMode === 'color' && state.id.bg.toLowerCase() === c ? ' on' : '') + '" style="--c:' + c + '" data-act="bg" data-c="' + c + '" title="' + n + '"><i></i><small>' + n + '</small></button>').join('') +
-    '<button class="sw orig' + (state.id.bgMode === 'original' ? ' on' : '') + '" data-act="bg" data-c="original"><i>🏞️</i><small>Keep mine</small></button>';
-  const cut = state.id.bgMode !== 'original';
-  return '<h3>1 · Size &amp; copies</h3><div class="chips">' + chips + '</div><div class="qrows">' + rows + '</div>' +
-    '<h3>2 · Background</h3><div class="swatches">' + sw + '</div>' +
-    '<h3>3 · Fine tune</h3>' +
-    '<label class="sl"><span>Brightness</span><input type="range" min="-30" max="30" value="' + state.id.brightness + '" data-in="brightness"></label>' +
-    '<label class="sl"><span>Contrast</span><input type="range" min="-30" max="30" value="' + state.id.contrast + '" data-in="contrast"></label>' +
-    (cut ? '<label class="sl"><span>Edge clean-up</span><input type="range" min="-10" max="10" value="' + Math.round(state.id.edge * 10) + '" data-in="edge"></label>' : '') +
-    '<div class="row2"><button class="btn ghost sm" data-act="autofit">Auto-fit my face</button><label class="chk"><input type="checkbox" data-in="guides"' + (state.id.guides ? ' checked' : '') + '> Show guide</label></div>';
+  const tab = state.id.tab, q = state.id.qty;
+  let body = '';
+  if (tab === 'size') {
+    const chips = L.PACKAGES.map((p) => '<button class="chip' + (state.id.pkg === p.id ? ' on' : '') + '" data-act="pkg" data-id="' + p.id + '">' + p.label + '</button>').join('');
+    const cells = L.ID_SIZES.map((s) => '<div class="qcell"><span>' + s.label + '</span><div class="stepper"><button data-act="qty" data-id="' + s.id + '" data-d="-1" aria-label="Fewer">−</button><b' + ((q[s.id] || 0) > 0 ? ' class="on"' : '') + '>' + (q[s.id] || 0) + '</b><button data-act="qty" data-id="' + s.id + '" data-d="1" aria-label="More">＋</button></div></div>').join('');
+    body = '<div class="chips">' + chips + '</div><div class="qgrid">' + cells + '</div>';
+  } else if (tab === 'bg') {
+    const preset = SWATCHES.some(([c]) => c === state.id.bg.toLowerCase());
+    body = '<div class="swatches">' + SWATCHES.map(([c, n]) => '<button class="sw' + (state.id.bgMode === 'color' && state.id.bg.toLowerCase() === c ? ' on' : '') + '" style="--c:' + c + '" data-act="bg" data-c="' + c + '" title="' + n + '"><i></i><small>' + n + '</small></button>').join('') +
+      '<label class="sw custom' + (state.id.bgMode === 'color' && !preset ? ' on' : '') + '" title="Pick any colour"><i style="--c:' + state.id.bg + '"><input type="color" value="' + state.id.bg + '" data-in="custombg" aria-label="Custom colour"></i><small>Custom</small></label>' +
+      '<button class="sw orig' + (state.id.bgMode === 'original' ? ' on' : '') + '" data-act="bg" data-c="original"><i>🏞️</i><small>Keep mine</small></button></div>' +
+      '<p class="hint">The background is made plain automatically. Pick the colour your ID needs.</p>';
+  } else {
+    const cut = state.id.bgMode !== 'original';
+    body = '<label class="sl"><span>Brightness</span><input type="range" min="-30" max="30" value="' + state.id.brightness + '" data-in="brightness"></label>' +
+      '<label class="sl"><span>Contrast</span><input type="range" min="-30" max="30" value="' + state.id.contrast + '" data-in="contrast"></label>' +
+      (cut ? '<label class="sl"><span>Edge clean-up (hair and shoulders)</span><input type="range" min="-10" max="10" value="' + Math.round(state.id.edge * 10) + '" data-in="edge"></label>' : '') +
+      '<button class="btn ghost sm" data-act="reset-fine">Reset</button>';
+  }
+  return '<div class="tabs">' + TABS.map(([k, n]) => '<button class="tab' + (tab === k ? ' on' : '') + '" data-act="tab" data-id="' + k + '">' + n + '</button>').join('') + '</div><div class="tabbody">' + body + '</div>';
 }
 
 function photosHTML() {
-  const cards = state.photos.map((p) => '<div class="pcard"><div class="thumb"><img src="' + p.thumb + '" alt=""><button class="x" data-act="rm" data-id="' + p.id + '" aria-label="Remove">×</button></div>' +
+  const cards = state.photos.map((p) => '<div class="pcard"><div class="thumb"><img class="' + (p.flip ? 'flip' : '') + '" src="' + p.thumb + '" alt=""><button class="fl' + (p.flip ? ' on' : '') + '" data-act="pflip" data-id="' + p.id + '" aria-label="Mirror this photo" title="Mirror">↔</button><button class="x" data-act="rm" data-id="' + p.id + '" aria-label="Remove">×</button></div>' +
     '<div class="stepper"><button data-act="copies" data-id="' + p.id + '" data-d="-1">−</button><b>' + p.copies + '</b><button data-act="copies" data-id="' + p.id + '" data-d="1">＋</button></div></div>').join('');
   const sizes = L.PHOTO_SIZES.map((s) => '<button class="opt' + (state.photo.size === s.id ? ' on' : '') + '" data-act="psize" data-id="' + s.id + '"><b>' + s.label + '</b>' + (s.hint ? '<small>' + s.hint + '</small>' : '') + (cfg.prices[s.id] ? '<em>' + money(cfg.prices[s.id]) + ' each</em>' : '') + '</button>').join('');
   return '<main class="photos"><div class="pl"><h3>Copies of each photo</h3><div class="pgrid">' + cards + '</div><button class="btn ghost sm" data-act="to-add">＋ Add more photos</button></div>' +
@@ -179,10 +186,15 @@ function photosHTML() {
 
 function reviewHTML() {
   const o = state.out; if (!o) return '';
-  const prev = o.canvases.map((c, i) => '<figure><img src="' + c.toDataURL('image/jpeg', 0.7) + '" alt="Sheet ' + (i + 1) + '"><figcaption>Sheet ' + (i + 1) + ' of ' + o.canvases.length + '</figcaption></figure>').join('');
+  const prev = o.canvases.map((c, i) => '<figure><img src="' + c.toDataURL('image/jpeg', 0.7) + '" alt="Sheet ' + (i + 1) + '"><figcaption>' + (o.canvases.length > 1 ? 'Sheet ' + (i + 1) + ' of ' + o.canvases.length : 'Sheet') + '</figcaption></figure>').join('');
   const total = o.unitPrice ? o.unitPrice * state.sets : 0;
+  // Paper can be changed here for an ID (a photo's paper follows its size). Inside the booth only the papers Admin allows are listed.
+  const paper = state.mode === 'id' && L.PAPERS.length > 1
+    ? '<label class="fld"><span>Paper</span><select data-in="paper">' + L.PAPERS.map((p) => '<option value="' + esc(p.id) + '"' + (p.id === o.paper.id ? ' selected' : '') + '>' + esc(p.label) + '</option>').join('') + '</select></label>'
+    : '<p class="paper">Paper: <b>' + esc(o.paper.label) + '</b></p>';
   return '<main class="review"><div class="prev">' + prev + '</div><div class="sum"><h3>Your print</h3><ul>' + o.lines.map((l) => '<li>' + esc(l) + '</li>').join('') + '</ul>' +
-    '<p class="paper">Paper: <b>' + o.paper.label + '</b> · ' + o.canvases.length + (o.canvases.length === 1 ? ' sheet' : ' sheets') + '</p>' +
+    '<p class="paper">' + o.canvases.length + (o.canvases.length === 1 ? ' sheet' : ' sheets') + '</p>' + paper +
+    (hw ? '<div class="fld" id="printerBox"><span>Printer</span><p class="paper">Looking for printers…</p></div>' : '') +
     '<div class="qrow"><span>How many sets?</span><div class="stepper"><button data-act="sets" data-d="-1">−</button><b>' + state.sets + '</b><button data-act="sets" data-d="1">＋</button></div></div>' +
     (total ? '<p class="total">Total <b>' + money(total) + '</b></p>' : '') +
     '<button class="btn primary big wide" data-act="print">🖨️ Print</button>' +
@@ -190,20 +202,35 @@ function reviewHTML() {
     '<footer class="bar"><button class="btn ghost" data-act="back-review">← Change something</button><span></span></footer>';
 }
 
+// Which printer this paper prints on (the booth's per-paper printer). With the Print Helper every installed printer is listed.
+async function fillPrinterBox() {
+  const box = $('#printerBox'); if (!box || !hw || !state.out) return;
+  let info; try { info = await hw.printers(state.out.paper.id); } catch (e) { return; }
+  const b = $('#printerBox'); if (!b) return;
+  if (info.options.length) {
+    const opts = info.options.slice(); if (info.current && !opts.includes(info.current)) opts.unshift(info.current);
+    b.innerHTML = '<span>Printer</span><select data-in="printer"><option value="">Choose a printer…</option>' + opts.map((n) => '<option value="' + esc(n) + '"' + (n === info.current ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</select>';
+  } else {
+    const t = { station: 'Print station', wifi: 'Wi-Fi printer: ' + (info.current || ''), android: 'Android print screen (choose the printer when it opens)', browser: info.current || 'This device’s print dialog' }[info.mode] || '';
+    b.innerHTML = '<span>Printer</span><p class="paper">' + esc(t) + '</p>';
+  }
+}
+
 function render() {
   const s = state.screen, app = $('#app');
   app.className = 's-' + s;
   app.innerHTML = s === 'home' ? homeHTML() : header() + ({ add: addHTML, id: idHTML, photos: photosHTML, review: reviewHTML }[s])();
   if (s === 'id') mountId();
+  if (s === 'review') fillPrinterBox();
 }
-function go(s) { state.screen = s; render(); window.scrollTo(0, 0); }
+function go(s) { state.screen = s; render(); }
 
 // ---------- ID editor ----------
 const idAspect = () => {
   const act = L.ID_SIZES.filter((s) => (state.id.qty[s.id] || 0) > 0).sort((a, b) => b.w * b.h - a.w * a.h)[0] || L.ID_SIZES[2];
   return act.w / act.h;
 };
-const idOpts = () => ({ crop: state.id.crop, bg: state.id.bgMode === 'original' ? null : state.id.bg, brightness: state.id.brightness, contrast: state.id.contrast });
+const idOpts = () => ({ crop: state.id.crop, bg: state.id.bgMode === 'original' ? null : state.id.bg, brightness: state.id.brightness, contrast: state.id.contrast, flip: state.id.flip });
 const hRange = () => ({ min: idWork.h * 0.15, max: Math.max(idWork.h, idWork.w / idAspect()) * 1.8 });
 const clampH = (h) => { const r = hRange(); return Math.min(r.max, Math.max(r.min, h)); };
 
@@ -212,10 +239,11 @@ function syncZoom() {
   const r = hRange(); z.value = Math.round(100 * Math.log(state.id.crop.h / r.max) / Math.log(r.min / r.max));
 }
 function sizeStage() {
-  const c = $('#stage'), g = $('#guide'); if (!c) return;
+  const c = $('#stage'), g = $('#guide'), wrap = $('#stagewrap'); if (!c || !wrap) return;
   const a = idAspect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const maxH = Math.max(260, innerHeight - 290), maxW = Math.min(520, innerWidth > 900 ? innerWidth * 0.45 : innerWidth - 32);
-  let h = maxH, w = h * a; if (w > maxW) { w = maxW; h = w / a; }
+  const aw = Math.max(120, wrap.clientWidth - 6), ah = Math.max(120, wrap.clientHeight - 6);
+  let h = ah, w = h * a; if (w > aw) { w = aw; h = w / a; }
+  w = Math.floor(w); h = Math.floor(h);
   for (const el of [c, g]) { el.style.width = w + 'px'; el.style.height = h + 'px'; el.width = Math.round(w * dpr); el.height = Math.round(h * dpr); }
   $('#stagebox').style.width = w + 'px'; $('#stagebox').style.height = h + 'px';
 }
@@ -247,7 +275,7 @@ function mountId() {
     if (!ptrs.has(e.pointerId) || !state.id.crop) return;
     const p = ptrs.get(e.pointerId), dx = e.clientX - p.x, dy = e.clientY - p.y; ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const cr = state.id.crop;
-    if (ptrs.size === 1) { const k = cr.h / box.clientHeight; cr.cx -= dx * k; cr.cy -= dy * k; }
+    if (ptrs.size === 1) { const k = cr.h / box.clientHeight; cr.cx -= dx * k * (state.id.flip ? -1 : 1); cr.cy -= dy * k; }
     else if (pinch) { cr.h = clampH(pinch.h * pinch.d / dist()); syncZoom(); }
     drawStage();
   };
@@ -318,6 +346,7 @@ function paintPhoto(ctx, it, x, y) {
   const k = it.fit === 'fit' ? Math.min(w / ew, h / eh) : Math.max(w / ew, h / eh);
   const dw = ew * k, dh = eh * k, dx = x + (w - dw) / 2, dy = y + (h - dh) / 2;
   ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.imageSmoothingQuality = 'high';
+  if (it.flip) { ctx.translate(2 * x + w, 0); ctx.scale(-1, 1); }          // mirror about the middle of this print
   if (rot) { ctx.translate(dx + dw, dy); ctx.rotate(Math.PI / 2); ctx.drawImage(src, 0, 0, dh, dw); }
   else ctx.drawImage(src, dx, dy, dw, dh);
   ctx.restore();
@@ -330,7 +359,7 @@ async function buildPhotos() {
     for (const p of state.photos) {
       await busy('Preparing photo ' + (++n) + ' of ' + state.photos.length + '…');
       const work = await getWork(p);
-      for (let c = 0; c < p.copies; c++) for (let d = 0; d < (size.dup || 1); d++) items.push({ w: L.px(size.w), h: L.px(size.h), work, full: !!size.full, fit: state.photo.fit });
+      for (let c = 0; c < p.copies; c++) for (let d = 0; d < (size.dup || 1); d++) items.push({ w: L.px(size.w), h: L.px(size.h), work, full: !!size.full, fit: state.photo.fit, flip: !!p.flip });
       prints += p.copies;
     }
     const sheets = L.pack(items, L.px(paper.w), L.px(paper.h), 0, 0);
@@ -361,7 +390,7 @@ async function startCamera(deviceId) {
 let camTimer = 0;
 function openCameraHW() {
   openModal('<h2>Take a photo</h2><div class="camwrap"><canvas id="camv"></canvas>' + (state.mode === 'id' ? '<div class="camguide"></div>' : '') + '<div id="camcount"></div></div><p id="camerr" class="err"></p>' +
-    '<div class="mrow"><button class="btn primary big" data-act="snap">📸 Take photo</button><button class="btn ghost" data-act="close">Close</button></div>', () => clearInterval(camTimer));
+    '<div class="mrow"><button class="btn primary big" data-act="snap">📸 Take photo</button><button class="btn ghost" data-act="close">Close</button></div>', () => clearInterval(camTimer), 'cam');
   const cv = $('#camv'), v = hw.video, x = cv.getContext('2d');
   if (hw.mirror()) cv.style.transform = 'scaleX(-1)';
   const draw = () => {
@@ -371,6 +400,11 @@ function openCameraHW() {
   };
   clearInterval(camTimer); camTimer = setInterval(draw, 40); draw();
 }
+// After a photo is taken on the ID screen (Retake), open it in the editor.
+function afterSnap(ok) {
+  if (!ok) return;
+  if (state.mode === 'id') { closeModal(); toast('Photo taken'); if (state.screen === 'id') { state.id.cropFor = null; render(); } } else toast('Photo added. Take another or close.');
+}
 async function snapHW() {
   const cc = $('#camcount'), btn = $('[data-act=snap]'); if (!cc || !btn || btn.disabled) return;
   btn.disabled = true;
@@ -379,14 +413,13 @@ async function snapHW() {
   try {
     const c = await hw.capture();
     const blob = await I.canvasToBlob(c, 'image/jpeg', 0.95);
-    const ok = await addFile(new File([blob], 'camera-' + Date.now() + '.jpg', { type: 'image/jpeg' }));
-    if (ok && state.mode === 'id') { closeModal(); toast('Photo taken'); } else if (ok) { toast('Photo added. Take another or close.'); }
+    afterSnap(await addFile(new File([blob], 'camera-' + Date.now() + '.jpg', { type: 'image/jpeg' })));
   } catch (e) { toast((e && e.message) || 'The camera could not take the photo.', 5000); }
   const b2 = $('[data-act=snap]'); if (b2) b2.disabled = false;
 }
 function openCamera() {
   openModal('<h2>Take a photo</h2><div class="camwrap"><video id="camv" autoplay playsinline muted></video>' + (state.mode === 'id' ? '<div class="camguide"></div>' : '') + '<div id="camcount"></div></div><p id="camerr" class="err"></p>' +
-    '<div class="mrow"><select id="camsel" data-in="camsel" style="display:none"></select><button class="btn primary big" data-act="snap">📸 Take photo</button><button class="btn ghost" data-act="close">Close</button></div>', stopCamera);
+    '<div class="mrow"><select id="camsel" data-in="camsel" style="display:none"></select><button class="btn primary big" data-act="snap">📸 Take photo</button><button class="btn ghost" data-act="close">Close</button></div>', stopCamera, 'cam');
   startCamera();
 }
 async function snap() {
@@ -397,8 +430,7 @@ async function snap() {
   const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0);
   const blob = await I.canvasToBlob(c, 'image/jpeg', 0.95);
   btn.disabled = false;
-  const ok = await addFile(new File([blob], 'camera-' + Date.now() + '.jpg', { type: 'image/jpeg' }));
-  if (ok && state.mode === 'id') { closeModal(); toast('Photo taken'); } else if (ok) toast('Photo added. Take another or close.');
+  afterSnap(await addFile(new File([blob], 'camera-' + Date.now() + '.jpg', { type: 'image/jpeg' })));
 }
 
 // ---------- USB / SD / Bluetooth / QR ----------
@@ -578,6 +610,17 @@ const acts = {
   'pin-ok': () => { if ($('#pin').value === String(cfg.pin)) openSettings(); else { $('#pin').value = ''; toast('Wrong PIN'); } },
   'save-cfg': saveSettings,
   'hw-setup': () => { closeModal(); hw.openSetup(); },
+  tab: (b) => { state.id.tab = b.dataset.id; renderIdPanel(); },
+  flip: (b) => { state.id.flip = !state.id.flip; b.classList.toggle('on', state.id.flip); drawStage(); },
+  guide: (b) => { state.id.guides = !state.id.guides; b.classList.toggle('on', state.id.guides); drawStage(); },
+  retake: () => (hw ? openCameraHW() : openCamera()),
+  pflip: (b, e) => { e.stopPropagation(); const p = photoById(b.dataset.id); if (p) { p.flip = !p.flip; render(); } },
+  'reset-fine': () => {
+    state.id.brightness = 0; state.id.contrast = 0; state.id.edge = 0;
+    if (idWork && idWork.conf) idWork.cut = I.makeCutout(idWork.img, idWork.conf, 0);
+    renderIdPanel(); drawStage();
+  },
+  rot: () => { if (hw && hw.canRotate && hw.canRotate()) { const next = innerHeight > innerWidth ? 'landscape' : 'portrait'; hw.setOrientation(next); toast(next === 'portrait' ? 'Portrait' : 'Landscape', 1500); } },
 };
 
 const ins = {
@@ -590,12 +633,21 @@ const ins = {
     if (idWork && idWork.conf) { idWork.cut = I.makeCutout(idWork.img, idWork.conf, state.id.edge); drawStage(); }
   },
   camsel: (el) => startCamera(el.value),
+  custombg: (el) => {
+    state.id.bg = el.value; state.id.bgMode = 'color';
+    const i = el.closest('i'); if (i) i.style.setProperty('--c', el.value);
+    drawStage(); if (idWork && !idWork.cut) ensureCut().then(drawStage);
+  },
+  paper: async (el) => { cfg.idPaper = el.value; saveCfg(); await buildId(); },
+  printer: (el) => { if (hw && state.out) { hw.setPrinter(state.out.paper.id, el.value); toast(el.value ? 'Printer: ' + el.value : 'Using the booth’s default printer', 2500); } },
 };
+const CHANGE_ONLY = ['edge', 'camsel', 'paper', 'printer'];      // selects and the edge slider act when released, not on every move
 
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b && acts[b.dataset.act]) acts[b.dataset.act](b, e); });
-document.addEventListener('input', (e) => { const el = e.target.closest('[data-in]'); if (el && ins[el.dataset.in] && !['edge', 'camsel'].includes(el.dataset.in)) ins[el.dataset.in](el); });
+document.addEventListener('input', (e) => { const el = e.target.closest('[data-in]'); if (el && ins[el.dataset.in] && !CHANGE_ONLY.includes(el.dataset.in)) ins[el.dataset.in](el); });
 document.addEventListener('change', (e) => {
-  const el = e.target.closest('[data-in]'); if (el && ['edge', 'camsel'].includes(el.dataset.in)) ins[el.dataset.in](el);
+  const el = e.target.closest('[data-in]'); if (el && CHANGE_ONLY.includes(el.dataset.in)) ins[el.dataset.in](el);
+  if (el && el.dataset.in === 'custombg') renderIdPanel();
   if (e.target.id === 'files') { const fs = [...e.target.files]; closeModal(); addFiles(fs); }
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); if (e.key === 'Enter' && $('#pin') && document.activeElement === $('#pin')) acts['pin-ok'](); });

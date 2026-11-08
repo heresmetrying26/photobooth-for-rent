@@ -36,7 +36,9 @@ jobs:
         if: steps.setup-gradle.outcome != 'success'
         working-directory: .
         run: |
-          echo "::warning::Gradle setup action failed; downloading Gradle 8.5 from GitHub's gradle-distributions instead"
+          echo "::warning::Gradle setup action failed; downloading Gradle 8.5 from mirror instead"
+          curl -fL --retry 6 --retry-delay 10 --retry-all-errors -o "$RUNNER_TEMP/gradle-8.5-bin.zip" \
+            https://mirrors.cloud.tencent.com/gradle/gradle-8.5-bin.zip || \
           curl -fL --retry 6 --retry-delay 10 --retry-all-errors -o "$RUNNER_TEMP/gradle-8.5-bin.zip" \
             https://github.com/gradle/gradle-distributions/releases/download/v8.5.0/gradle-8.5-bin.zip
           unzip -q "$RUNNER_TEMP/gradle-8.5-bin.zip" -d "$RUNNER_TEMP"

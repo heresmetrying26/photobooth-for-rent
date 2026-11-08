@@ -179,6 +179,15 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-08', title: 'Android app 1.1.19: Auto-open on boot and Kiosk Home Launcher mode', for: ['website'],
+    items: [
+      'The Android tablet app (v1.1.19) now includes an auto-start feature: when the tablet powers on or restarts, photobooth4u can open automatically.',
+      'Long-press anywhere on the screen to open the new Operator Menu and toggle "Auto-Open on Boot: ON / OFF" with a single tap.',
+      'For dedicated event booths, "Kiosk Home Launcher" can be enabled in the Operator Menu to set photobooth4u as the tablet\'s default Home app, launching straight into the booth and preventing guests from exiting with the Home button. To access tablet settings or Wi-Fi, tap Exit → Tablet Settings.',
+      'Updated the PDF Tablet Guide (page 6 & 9) with step-by-step instructions for kiosk operation and auto-boot setup.'
+    ]
+  },
+  {
     date: '2026-11-08', title: 'My frames: uploaded frames now stay after a restart, and you can keep up to 100', for: ['website', 'app'], app: '1.0.105',
     items: [
       'Fixed: frames you uploaded could show up white (design missing) or not save after the app was restarted, especially offline. The pictures were kept in a small storage that fills up after a few big frames. They are now kept in the larger on-device storage, and pictures saved the old way are moved over the first time they load. Android app 1.1.18 has the same fix.',

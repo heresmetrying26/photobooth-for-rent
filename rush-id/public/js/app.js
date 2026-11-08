@@ -54,7 +54,11 @@ const freshId = () => ({
   brush: 22,
   attire: 'none',
   attireY: 0,
+  attireX: 0,
   attireScale: 1,
+  attireAngle: 0,
+  attireCollar: 1,
+  attireCleanNeck: true,
   nameTag: { on: false, text: '', sub: '' },
 });
 const freshPhoto = () => ({ size: '4x6', fit: 'fill', tab: 'photos', sel: null, sheet: 0 });
@@ -253,10 +257,23 @@ function idPanelHTML() {
     let attireCtrls = '';
     if (curAttire !== 'none') {
       attireCtrls = '<div class="attire-ctrls">' +
-        '<div class="subhdr"><span>Adjust Attire Fit</span></div>' +
-        '<label class="sl"><span>Vertical Position (up / down)</span><input type="range" min="-25" max="25" value="' + (state.id.attireY || 0) + '" data-in="attire-y"></label>' +
-        '<label class="sl"><span>Shoulder Width (scale)</span><input type="range" min="80" max="130" value="' + Math.round((state.id.attireScale || 1) * 100) + '" data-in="attire-scale"></label>' +
-        '<button class="btn ghost sm" data-act="reset-attire">Reset fit</button>' +
+        '<div class="subhdr"><span>Studio Attire Fitting &amp; Alignment</span></div>' +
+        '<div class="grid-2">' +
+        '<label class="sl"><span>Horizontal (X)</span><input type="range" min="-25" max="25" value="' + (state.id.attireX || 0) + '" data-in="attire-x"></label>' +
+        '<label class="sl"><span>Vertical (Y)</span><input type="range" min="-25" max="25" value="' + (state.id.attireY || 0) + '" data-in="attire-y"></label>' +
+        '</div>' +
+        '<div class="grid-2">' +
+        '<label class="sl"><span>Shoulder Width</span><input type="range" min="75" max="135" value="' + Math.round((state.id.attireScale || 1) * 100) + '" data-in="attire-scale"></label>' +
+        '<label class="sl"><span>Posture Tilt</span><input type="range" min="-15" max="15" value="' + (state.id.attireAngle || 0) + '" data-in="attire-angle"></label>' +
+        '</div>' +
+        '<div class="grid-2">' +
+        '<label class="sl"><span>Collar Fit</span><input type="range" min="85" max="115" value="' + Math.round((state.id.attireCollar || 1) * 100) + '" data-in="attire-collar"></label>' +
+        '<label class="chk" style="align-self:center;margin-top:14px;font-size:13px"><input type="checkbox" data-in="attire-clean"' + (state.id.attireCleanNeck !== false ? ' checked' : '') + '> Hide old collar</label>' +
+        '</div>' +
+        '<div class="fit-actions">' +
+        '<span class="hint" style="margin:0;font-size:12px">Snapped to detected chin &amp; shoulders</span>' +
+        '<button class="btn ghost sm" data-act="reset-attire">Reset fitting</button>' +
+        '</div>' +
         '</div>';
     }
     body = attireCards + attireCtrls;
@@ -510,7 +527,11 @@ const idOpts = () => ({
   skinSmooth: state.id.skinSmooth || 0,
   attire: state.id.attire || 'none',
   attireY: state.id.attireY || 0,
+  attireX: state.id.attireX || 0,
   attireScale: state.id.attireScale || 1,
+  attireAngle: state.id.attireAngle || 0,
+  attireCollar: state.id.attireCollar || 1,
+  attireCleanNeck: state.id.attireCleanNeck !== false,
   nameTag: state.id.nameTag || { on: false },
   flip: state.id.flip,
 });
@@ -803,7 +824,11 @@ async function buildId() {
         skinSmooth: pIdState.skinSmooth || 0,
         attire: pIdState.attire || 'none',
         attireY: pIdState.attireY || 0,
+        attireX: pIdState.attireX || 0,
         attireScale: pIdState.attireScale || 1,
+        attireAngle: pIdState.attireAngle || 0,
+        attireCollar: pIdState.attireCollar || 1,
+        attireCleanNeck: pIdState.attireCleanNeck !== false,
         nameTag: pIdState.nameTag || { on: false },
         flip: !!pIdState.flip
       };
@@ -1197,7 +1222,7 @@ const acts = {
   brand: brandTap,
   close: () => { delete $('#modal').dataset.idle; closeModal(); },
   reset: () => { if (!state.photos.length || confirm('Clear everything and start over?')) resetAll(); },
-  start: (b) => { if (noPrint()) { toast(NO_PRINT_MSG, 6000); return; } state.mode = b.dataset.mode; state.screen = 'add'; I.preload(); if (state.mode === 'id') I.preloadMatting(); render(); },
+  start: (b) => { if (noPrint()) { toast(NO_PRINT_MSG, 6000); return; } state.mode = b.dataset.mode; state.screen = 'add'; I.preload(); if (state.mode === 'id') { I.preloadMatting(); I.preloadAttires(() => { if (state.screen === 'id') drawStage(); }); } render(); },
   pick: (b) => { if (state.mode === 'id') { state.sel = b.dataset.id; render(); } },
   rm: (b, e) => { e.stopPropagation(); removePhoto(b.dataset.id); if (!state.photos.length && state.screen === 'photos') go('add'); else render(); },
   'next-add': () => { if (state.mode === 'id') { state.id.cropFor = null; go('id'); } else { state.photo.sel = state.photos[0] ? state.photos[0].id : null; go('photos'); } },
@@ -1262,6 +1287,9 @@ const acts = {
   'gov-preset': (b) => applyPreset(b.dataset.id),
   'attire-sel': async (b) => {
     state.id.attire = b.dataset.id;
+    I.getAttireImage(state.id.attire, () => {
+      if (state.screen === 'id') drawStage();
+    });
     renderIdPanel();
     drawStage();
     if (state.id.attire !== 'none' && idWork && !idWork.cut) {
@@ -1270,8 +1298,12 @@ const acts = {
     }
   },
   'reset-attire': () => {
+    state.id.attireX = 0;
     state.id.attireY = 0;
     state.id.attireScale = 1;
+    state.id.attireAngle = 0;
+    state.id.attireCollar = 1;
+    state.id.attireCleanNeck = true;
     renderIdPanel();
     drawStage();
   },
@@ -1378,8 +1410,12 @@ const acts = {
 
 const ins = {
   zoom: (el) => { if (!state.id.crop) return; const r = hRange(); state.id.crop.h = r.max * Math.pow(r.min / r.max, el.value / 100); drawStage(); },
+  'attire-x': (el) => { state.id.attireX = Number(el.value); drawStage(); },
   'attire-y': (el) => { state.id.attireY = Number(el.value); drawStage(); },
   'attire-scale': (el) => { state.id.attireScale = Number(el.value) / 100; drawStage(); },
+  'attire-angle': (el) => { state.id.attireAngle = Number(el.value); drawStage(); },
+  'attire-collar': (el) => { state.id.attireCollar = Number(el.value) / 100; drawStage(); },
+  'attire-clean': (el) => { state.id.attireCleanNeck = el.checked; drawStage(); },
   'tag-on': (el) => { if (!state.id.nameTag) state.id.nameTag = { on: false, text: '', sub: '' }; state.id.nameTag.on = el.checked; drawStage(); },
   'tag-text': (el) => { if (!state.id.nameTag) state.id.nameTag = { on: true, text: '', sub: '' }; state.id.nameTag.text = el.value; drawStage(); },
   'tag-sub': (el) => { if (!state.id.nameTag) state.id.nameTag = { on: true, text: '', sub: '' }; state.id.nameTag.sub = el.value; drawStage(); },

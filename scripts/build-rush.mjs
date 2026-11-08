@@ -30,6 +30,10 @@ try {
   mkdirSync(dest, { recursive: true });
   rmSync(join(dest, 'vendor'), { recursive: true, force: true });
   cpSync(join(SRC, 'vendor'), join(dest, 'vendor'), { recursive: true });
+  if (existsSync(join(SRC, 'attire'))) {
+    rmSync(join(dest, 'attire'), { recursive: true, force: true });
+    cpSync(join(SRC, 'attire'), join(dest, 'attire'), { recursive: true });
+  }
   const up = readFileSync(join(SRC, 'upload.html'), 'utf8');
   if (!up.includes('/api/session')) throw new Error('rush-id/public/upload.html changed: cannot find /api/session');
   writeFileSync(join(dest, 'upload.html'), up.split('/api/session').join('/api/rush/session'));

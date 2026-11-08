@@ -2,6 +2,7 @@ package com.photobooth4u.booth
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -634,9 +635,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Secret operator gesture: Long press with 2 fingers or header hold to change booth URL
+        // Secret operator gesture: Long press with 2 fingers or header hold to change booth URL / kiosk settings
         webView.setOnLongClickListener {
-            showUrlConfigDialog()
+            showOperatorMenu()
             true
         }
     }
@@ -839,6 +840,88 @@ class MainActivity : AppCompatActivity() {
         prefs.edit().putString(PREF_URL, url).apply()
     }
 
+    private val PREF_AUTO_BOOT = "pref_auto_boot"
+
+    private fun isAutoBootEnabled(): Boolean {
+        return getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getBoolean(PREF_AUTO_BOOT, true)
+    }
+
+    private fun setAutoBootEnabled(enabled: Boolean) {
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putBoolean(PREF_AUTO_BOOT, enabled).apply()
+        Toast.makeText(this, "Auto-open on startup: ${if (enabled) "ENABLED" else "DISABLED"}", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun isKioskHomeEnabled(): Boolean {
+        val component = ComponentName(this, "${packageName}.KioskHomeLauncher")
+        val state = packageManager.getComponentEnabledSetting(component)
+        return state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+    }
+
+    private fun setKioskHomeEnabled(enabled: Boolean) {
+        val component = ComponentName(this, "${packageName}.KioskHomeLauncher")
+        val newState = if (enabled) {
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        } else {
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        }
+        packageManager.setComponentEnabledSetting(component, newState, PackageManager.DONT_KILL_APP)
+        if (enabled) {
+            Toast.makeText(this, "Kiosk Home Launcher ENABLED", Toast.LENGTH_SHORT).show()
+            openHomeAppPicker()
+        } else {
+            Toast.makeText(this, "Kiosk Home Launcher DISABLED (Standard launcher restored)", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun openHomeAppPicker() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val roleManager = getSystemService(Context.ROLE_SERVICE) as? android.app.role.RoleManager
+                if (roleManager?.isRoleAvailable(android.app.role.RoleManager.ROLE_HOME) == true &&
+                    !roleManager.isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) {
+                    val intent = roleManager.createRequestRoleIntent(android.app.role.RoleManager.ROLE_HOME)
+                    startActivity(intent)
+                    return
+                }
+            }
+            val intent = Intent(android.provider.Settings.ACTION_HOME_SETTINGS)
+            startActivity(intent)
+        } catch (e: Exception) {
+            openTabletSettings()
+        }
+    }
+
+    private fun showOperatorMenu() {
+        val autoBootStatus = if (isAutoBootEnabled()) "ON" else "OFF"
+        val kioskStatus = if (isKioskHomeEnabled()) "ON" else "OFF"
+
+        val items = arrayOf(
+            "🌐 Booth Mode & URL (Online / Offline)",
+            "🚀 Auto-Open on Boot: $autoBootStatus",
+            "🔒 Kiosk Home Launcher: $kioskStatus",
+            "⚙️ Open Tablet Settings"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("Operator Menu")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> showUrlConfigDialog()
+                    1 -> {
+                        setAutoBootEnabled(!isAutoBootEnabled())
+                        showOperatorMenu()
+                    }
+                    2 -> {
+                        setKioskHomeEnabled(!isKioskHomeEnabled())
+                        showOperatorMenu()
+                    }
+                    3 -> openTabletSettings()
+                }
+            }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
     private fun showUrlConfigDialog() {
         val input = EditText(this)
         input.setText(getSavedUrl())
@@ -875,8 +958,19 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Exit") { _, _ ->
                 finish()
             }
+            .setNeutralButton("Tablet Settings") { _, _ ->
+                openTabletSettings()
+            }
             .setNegativeButton("Stay", null)
             .show()
+    }
+
+    private fun openTabletSettings() {
+        try {
+            startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+        } catch (e: Exception) {
+            Toast.makeText(this, "Could not open settings", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onNewIntent(intent: Intent?) {

@@ -52,6 +52,10 @@
          The first time, Android asks to allow "Install unknown apps" for photobooth4u. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Auto-start on device power-on / boot for Kiosk & dedicated tablet operation -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
     <!-- The spoken countdown asks the tablet's text-to-speech engine (needed to see it on Android 11+) -->
     <queries>
         <intent>
@@ -92,12 +96,40 @@
                 android:resource="@xml/usb_device_filter" />
         </activity>
 
+        <!-- Kiosk Home Launcher alias: disabled by default so personal tablets don't get the Home prompt.
+             Enabled when the operator toggles 'Kiosk Home Launcher' in settings. -->
+        <activity-alias
+            android:name=".KioskHomeLauncher"
+            android:targetActivity=".MainActivity"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity-alias>
+
         <!-- Foreground service for 127.0.0.1:17321 Print & Camera Helper -->
         <service
             android:name=".PrintHelperService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
+
+        <!-- Auto-launch receiver: opens photobooth4u when device powers on or restarts -->
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </receiver>
 
         <!-- Shares the downloaded update APK (cache/updates/) with Android's package installer -->
         <provider

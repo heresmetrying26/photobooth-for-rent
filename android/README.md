@@ -13,9 +13,11 @@ A dedicated Android native wrapper for **photobooth4u** designed for tablets (Sa
    - Slices ESC/POS raster bit-images into 256-line bands to prevent buffer overflow on low-memory receipt printers.
 
 2. **Kiosk & Event Mode**
+   - **Auto-Boot on Power-On**: Automatically starts the photobooth when the tablet powers on or restarts via `BootReceiver` (`RECEIVE_BOOT_COMPLETED`).
+   - **Dedicated Home Launcher Mode**: Can be selected as the tablet's **Default Home app** (`CATEGORY_HOME` in Android Settings → Apps → Default Apps → Home app). When set as Home, Android boots directly into the booth and disables the Home button from returning to the Android desktop.
    - **Screen Keep-Awake**: Prevents the tablet screen from timing out, dimming, or sleeping during event operations (`FLAG_KEEP_SCREEN_ON`).
    - **Immersive Full-Screen**: Automatically hides system navigation bars and status bars with sticky transient swipe behavior.
-   - **Back Button Protection**: Intercepts accidental back button presses with a confirmation dialog so guests cannot exit the photo booth.
+   - **Back Button Protection & Settings**: Intercepts accidental back button presses with a confirmation dialog so guests cannot exit the photo booth, with an operator option to jump directly to Android Settings.
    - **Camera Auto-Grant**: WebChromeClient automatically grants camera/microphone permissions without repeated browser pop-ups.
 
 3. **Activation (`AppLicence.kt`)**

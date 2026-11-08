@@ -93,6 +93,8 @@ main{flex:1;min-height:0;overflow:hidden;padding:12px 16px;width:100%;max-width:
 .attire-card small{font-size:12px;color:var(--dim);line-height:1.2}
 .attire-card.on{border-color:var(--accent);background:var(--accent-soft)}
 .attire-ctrls{display:flex;flex-direction:column;gap:8px;padding:10px 12px;background:var(--bg);border-radius:14px;border:1px solid var(--line);margin-top:8px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fit-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line)}
 .nametag-box{display:flex;flex-direction:column;gap:8px}
 .nametag-box input[type=text]{min-height:44px;padding:8px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);font-size:15px;font-weight:600;width:100%}
 .finerow{display:flex;gap:8px;margin-bottom:10px}

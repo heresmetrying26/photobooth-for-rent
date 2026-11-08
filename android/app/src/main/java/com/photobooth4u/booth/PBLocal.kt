@@ -538,6 +538,19 @@ class PBLocal(private val ctx: Context) {
     @JavascriptInterface
     fun photosPath(): String = root.absolutePath
 
+    /** Returns true if auto-open on device boot is enabled */
+    @JavascriptInterface
+    fun isAutoBootEnabled(): Boolean {
+        return ctx.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE).getBoolean("pref_auto_boot", true)
+    }
+
+    /** Enables or disables auto-open on device boot */
+    @JavascriptInterface
+    fun setAutoBootEnabled(enabled: Boolean): Boolean {
+        ctx.getSharedPreferences("photobooth_prefs", Context.MODE_PRIVATE).edit().putBoolean("pref_auto_boot", enabled).apply()
+        return true
+    }
+
     /**
      * A picture the booth page made (the Wi-Fi sign ...), saved in the Gallery under Pictures/photobooth4u.
      * The WebView cannot download a blob: link, so without this the sign never reached the tablet.

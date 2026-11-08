@@ -244,13 +244,45 @@ export function autoCrop(face, w, h, aspect, headTarget = HEAD_TARGET) {
 
 // Draw the framed photo into ctx at (0,0,outW,outH).
 export const ATTIRES = [
-  { id: 'none', label: 'None (Original)', desc: 'Keep your own clothes' },
-  { id: 'suit-black', label: 'Black Suit', desc: 'Formal black suit, white shirt & dark tie' },
-  { id: 'suit-navy', label: 'Navy Blazer', desc: 'Navy blue blazer, white shirt & red tie' },
-  { id: 'barong', label: 'Barong Tagalog', desc: 'Formal Philippine embroidered Barong' },
-  { id: 'blazer-women', label: "Women's Blazer", desc: 'Professional blazer & scoop blouse' },
-  { id: 'polo-white', label: 'White Polo', desc: 'Clean white collared polo shirt' },
+  { id: 'none', label: 'None (Original)', desc: 'Keep your own clothes', notchY: 0.12 },
+  { id: 'suit-black', label: 'Black Suit', desc: 'Formal black suit, white shirt & dark tie', notchY: 0.117 },
+  { id: 'suit-navy', label: 'Navy Blazer', desc: 'Navy blue blazer, white shirt & burgundy tie', notchY: 0.119 },
+  { id: 'barong', label: 'Barong Tagalog', desc: 'Authentic Philippine embroidered Barong', notchY: 0.138 },
+  { id: 'blazer-women', label: "Women's Blazer", desc: 'Tailored dark blazer & white scoop blouse', notchY: 0.180 },
+  { id: 'polo-white', label: 'White Polo', desc: 'Crisp white collared pique polo', notchY: 0.120 },
 ];
+
+const ATTIRE_CACHE = new Map();
+
+export function getAttireImage(id, onReady = null) {
+  if (!id || id === 'none') return null;
+  if (ATTIRE_CACHE.has(id)) {
+    const cached = ATTIRE_CACHE.get(id);
+    if (onReady && !cached.complete) cached.addEventListener('load', onReady, { once: true });
+    return cached;
+  }
+  if (typeof Image === 'undefined') return null;
+  const img = new Image();
+  const basePath = typeof window !== 'undefined' && window.location && window.location.pathname.startsWith('/rush') ? '/rush/attire/' : 'attire/';
+  img.src = basePath + id + '.png';
+  img.onerror = () => {
+    if (!img.src.includes('/rush/attire/')) {
+      img.src = '/rush/attire/' + id + '.png';
+    } else {
+      img.src = 'attire/' + id + '.png';
+    }
+  };
+  if (onReady) img.addEventListener('load', onReady, { once: true });
+  ATTIRE_CACHE.set(id, img);
+  return img;
+}
+
+export function preloadAttires(onAnyReady = null) {
+  if (typeof window === 'undefined') return;
+  for (const a of ATTIRES) {
+    if (a.id !== 'none') getAttireImage(a.id, onAnyReady);
+  }
+}
 
 export function applySkinEnhance(ctx, outW, outH, { smoothing = 0 } = {}) {
   if (!smoothing || smoothing <= 0) return;
@@ -318,14 +350,112 @@ export function drawNameTag(ctx, nameTag, outW, outH) {
   ctx.restore();
 }
 
-export function drawAttire(ctx, attireId, outW, outH, { yOffset = 0, scale = 1 } = {}) {
+export function drawAttire(ctx, attireId, outW, outH, {
+  yOffset = 0,
+  xOffset = 0,
+  scale = 1,
+  angle = 0,
+  collarSpread = 1,
+  cleanNeck = true
+} = {}, work = null, o = null) {
   if (!attireId || attireId === 'none') return;
-  const baseY = outH * (0.74 + yOffset * 0.12);
-  const cx = outW / 2;
+
+  const attireMeta = ATTIRES.find((a) => a.id === attireId) || ATTIRES[1];
+
+  // 1. Calculate dynamic chin and neck anchor
+  let chinCanvasX = outW / 2;
+  let chinCanvasY = outH * 0.69;
+  let faceCanvasW = outW * 0.38;
+
+  if (work && work.face && o && o.crop) {
+    const H = o.crop.h;
+    const W = (H * outW) / outH;
+    const scaleRatio = outH / H;
+    const cropLeft = o.crop.cx - W / 2;
+    const cropTop = o.crop.cy - H / 2;
+
+    let faceCenterX = work.face.x + work.face.w / 2;
+    if (o.flip) {
+      faceCenterX = (work.img ? work.img.width : outW) - faceCenterX;
+    }
+    const chinY = work.face.y + work.face.h * 1.02;
+
+    chinCanvasX = (faceCenterX - cropLeft) * scaleRatio;
+    chinCanvasY = (chinY - cropTop) * scaleRatio;
+    faceCanvasW = work.face.w * scaleRatio;
+  }
+
+  // Anchor position adjusted by user X and Y nudges
+  const anchorX = chinCanvasX + (xOffset || 0) * outW * 0.15;
+  const anchorY = chinCanvasY + (yOffset || 0) * outH * 0.15;
+  const angleRad = ((angle || 0) * Math.PI) / 180;
+
+  // 2. Try drawing high-resolution photographic studio template
+  const img = getAttireImage(attireId);
+  if (img && img.complete && img.naturalWidth > 0) {
+    // Proportional shoulder width based on detected face width or frame width
+    const baseW = Math.max(outW * 0.88, Math.min(outW * 1.35, faceCanvasW * 2.85));
+    const drawW = baseW * (scale || 1) * (collarSpread || 1);
+    const drawH = (drawW / img.naturalWidth) * img.naturalHeight;
+    const notchX = drawW / 2;
+    const notchY = drawH * (attireMeta.notchY || 0.12);
+
+    // 2a. Under-collar clean neck backing (covers casual t-shirt collars)
+    if (cleanNeck) {
+      ctx.save();
+      ctx.translate(anchorX, anchorY);
+      ctx.rotate(angleRad);
+      const shieldW = drawW * 0.22;
+      const shieldH = outH * 0.12;
+      ctx.beginPath();
+      ctx.moveTo(-shieldW / 2, -outH * 0.015);
+      ctx.quadraticCurveTo(0, shieldH * 0.85, shieldW / 2, -outH * 0.015);
+      ctx.lineTo(shieldW / 2, shieldH);
+      ctx.lineTo(-shieldW / 2, shieldH);
+      ctx.closePath();
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 2b. Soft ambient contact shadow on the neck
+    ctx.save();
+    ctx.translate(anchorX, anchorY);
+    ctx.rotate(angleRad);
+    const shadowH = outH * 0.04 * (scale || 1);
+    const shadowW = outW * 0.20 * (scale || 1);
+    const sGrad = ctx.createRadialGradient(0, shadowH * 0.25, outH * 0.005, 0, shadowH * 0.25, shadowW);
+    sGrad.addColorStop(0, 'rgba(0,0,0,0.26)');
+    sGrad.addColorStop(0.5, 'rgba(0,0,0,0.08)');
+    sGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = sGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, shadowH * 0.25, shadowW, shadowH, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 2c. Photographic attire with lighting harmonization
+    ctx.save();
+    ctx.translate(anchorX, anchorY);
+    ctx.rotate(angleRad);
+    if (o && (o.brightness || o.contrast || o.autoEnhance)) {
+      const b = 1 + (o.brightness || 0) / 180 + (o.autoEnhance ? 0.03 : 0);
+      const c = 1 + (o.contrast || 0) / 220 + (o.autoEnhance ? 0.04 : 0);
+      try { ctx.filter = 'brightness(' + b.toFixed(2) + ') contrast(' + c.toFixed(2) + ')'; } catch (e) {}
+    }
+    ctx.drawImage(img, -notchX, -notchY, drawW, drawH);
+    ctx.restore();
+    return;
+  }
+
+  // 3. Fallback: Procedural vector drawing with chin anchoring and tilt
+  const baseY = anchorY;
+  const cx = anchorX;
 
   ctx.save();
   ctx.translate(cx, baseY);
-  ctx.scale(scale, scale);
+  ctx.rotate(angleRad);
+  ctx.scale(scale * (collarSpread || 1), scale);
   ctx.translate(-cx, -baseY);
 
   if (attireId === 'suit-black' || attireId === 'suit-navy') {
@@ -668,7 +798,14 @@ export function drawId(ctx, work, o, outW, outH) {
 
   // Formal attire overlay
   if (o.attire && o.attire !== 'none') {
-    drawAttire(ctx, o.attire, outW, outH, { yOffset: o.attireY || 0, scale: o.attireScale || 1 });
+    drawAttire(ctx, o.attire, outW, outH, {
+      yOffset: o.attireY || 0,
+      xOffset: o.attireX || 0,
+      scale: o.attireScale || 1,
+      angle: o.attireAngle || 0,
+      collarSpread: o.attireCollar || 1,
+      cleanNeck: o.attireCleanNeck !== false
+    }, work, o);
   }
 
   // Name Tag banner overlay

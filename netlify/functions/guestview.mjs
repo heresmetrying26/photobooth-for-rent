@@ -49,10 +49,20 @@ export default safe(async (req) => {
     if (doc.exp <= now) return json({ ok: false, error: 'expired' }, 410);
     const mode = await guestViewMode(doc.folder);
     const canAll = mode !== 'only';
+    function fileRank(name) {
+      const n = String(name || '');
+      if (/_solo_\d+/i.test(n)) return 3;
+      if (/\.gif$/i.test(n) || /_gif\./i.test(n) || /\.(mp4|mov|webm)$/i.test(n) || /^360_/i.test(n)) return 2;
+      return 1;
+    }
     const files = (doc.files || []).filter((x) => ID_RE.test(x.id)).map((x) => ({
       id: x.id, name: x.name, mime: x.mime, t: x.t,
       src: /^video\//.test(x.mime || '') ? '' : '/api/gallery?img=' + x.id + '&s=' + sigOf(x.id)
-    })).sort((a, b) => b.t - a.t);
+    })).sort((a, b) => {
+      const ra = fileRank(a.name), rb = fileRank(b.name);
+      if (ra !== rb) return ra - rb;
+      return (a.name || '').localeCompare(b.name || '', undefined, { numeric: true });
+    });
     return json({
       ok: true, name: doc.name || 'Your photos', files, canAll,
       folder: canAll ? doc.folder : undefined,

@@ -319,6 +319,14 @@
     $('live').classList.toggle('on', newest > Date.now() - 3 * 3600000);
     var known = {}; files.forEach(function(f){ known[f.id] = true; });
     var freshFiles = firstLoad ? [] : j.files.filter(function(f){ return !known[f.id]; });
+    if(CODE && j.files){
+      j.files.sort(function(a, b){
+        var ra = isSolo(a) ? 3 : (isGif(a) || isVideo(a)) ? 2 : 1;
+        var rb = isSolo(b) ? 3 : (isGif(b) || isVideo(b)) ? 2 : 1;
+        if(ra !== rb) return ra - rb;
+        return (a.name || '').localeCompare(b.name || '', undefined, { numeric: true });
+      });
+    }
     files = j.files;
     if(CODE && firstLoad && j.files.length === 1) WANT = { id: j.files[0].id };     // one photo: open it straight away, like a guest's own QR always did
     refreshCategoryUI();

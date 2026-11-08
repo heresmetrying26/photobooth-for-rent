@@ -299,8 +299,8 @@ class LocalShareServer(private val store: PBLocal) {
         if (name.isEmpty() || name != File(name).name || name.startsWith(".") || !PBLocal.IMG_RE.containsMatchIn(name)) {
             return sendText(out, 404, "Not Found", "Not found", headOnly)
         }
-        val file = File(dir, name)
-        if (!file.isFile) {
+        val file = store.findFile(dir, name)
+        if (file == null || !file.isFile) {
             if (kind == "p") {
                 val isVid = PBLocal.VIDEO_RE.containsMatchIn(name)
                 val isSolo = Regex("_solo_\\d+", RegexOption.IGNORE_CASE).containsMatchIn(name)
@@ -464,14 +464,25 @@ class LocalShareServer(private val store: PBLocal) {
         if (folder == null || dir == null || !dir.isDirectory) return notFoundPage(out, "This event isn’t on this booth anymore.", headOnly)
         if (kind == "f") {
             if (!c.files.contains(name)) return sendText(out, 404, "Not Found", "Not found", headOnly)
-            val file = File(dir, name)
-            if (!file.isFile) return sendText(out, 404, "Not Found", "Not found", headOnly)
+            val file = store.findFile(dir, name)
+            if (file == null || !file.isFile) return sendText(out, 404, "Not Found", "Not found", headOnly)
             val download = query.split("&").any { it == "dl=1" }
             val disposition = if (download) "attachment; filename=\"" + name.replace(FILENAME_UNSAFE, "_") + "\"" else null
             val range = headerValue(head, "range")
             return sendFile(out, file, contentType(name), headOnly, "max-age=600", disposition, range)
         }
-        val mine = c.files.filter { File(dir, it).isFile }
+        val fileRank = { fname: String ->
+            if (Regex("_solo_\\d+", RegexOption.IGNORE_CASE).containsMatchIn(fname)) 3
+            else if (fname.endsWith(".gif", ignoreCase = true) || PBLocal.VIDEO_RE.containsMatchIn(fname)) 2
+            else 1
+        }
+        val mine = c.files
+            .filter { store.findFile(dir, it) != null }
+            .sortedWith(Comparator { a, b ->
+                val ra = fileRank(a)
+                val rb = fileRank(b)
+                if (ra != rb) ra.compareTo(rb) else a.compareTo(b, ignoreCase = true)
+            })
         val sb = StringBuilder()
         sb.append("<div style=\"text-align:center;padding:0 16px\"><h1>Your photos</h1><p class=\"sub\">").append(esc(store.galleryTitle(folder))).append("</p></div>")
         if (mine.isEmpty()) {

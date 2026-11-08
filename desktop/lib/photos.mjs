@@ -133,13 +133,54 @@ function dirOf(slug) {
   if (!f) return null;
   return f.sub ? join(f.root, f.name, f.sub) : join(f.root, f.name);
 }
+const SUBDIRS = ['Prints', 'Solo Shots', 'GIFs', '360 Videos'];
+
+function categoryOf(name) {
+  const n = String(name || '');
+  if (VIDEO_RE.test(n) || /^360_|_360\./i.test(n)) return '360 Videos';
+  if (/\.gif$/i.test(n) || /_gif\./i.test(n)) return 'GIFs';
+  if (/_solo_\d+/i.test(n) || /_solo\./i.test(n)) return 'Solo Shots';
+  return 'Prints';
+}
+
+function findFileInDir(dir, name) {
+  if (!dir || !name || name !== basename(name) || name.startsWith('.')) return null;
+  const rootPath = join(dir, name);
+  if (existsSync(rootPath)) return rootPath;
+  const catPath = join(dir, categoryOf(name), name);
+  if (existsSync(catPath)) return catPath;
+  for (const sub of SUBDIRS) {
+    const p = join(dir, sub, name);
+    if (existsSync(p)) return p;
+  }
+  return null;
+}
+
 function photosIn(dir) {
-  let names = [];
-  try { names = readdirSync(dir); } catch { return []; }
-  return names.filter((n) => IMG_RE.test(n) && !n.startsWith('.')).map((n) => {
-    let t = 0; try { t = statSync(join(dir, n)).mtimeMs; } catch { /* gone */ }
-    return { n, t };
-  }).sort((a, b) => b.t - a.t);
+  const files = [];
+  const seen = new Set();
+  const scan = (d) => {
+    let entries = [];
+    try { entries = readdirSync(d); } catch { return; }
+    for (const n of entries) {
+      if (n.startsWith('.') || n === 'done' || n === '.thumbs') continue;
+      const full = join(d, n);
+      let isD = false;
+      try { isD = statSync(full).isDirectory(); } catch { continue; }
+      if (isD) {
+        if (d === dir && SUBDIRS.includes(n)) scan(full);
+      } else if (IMG_RE.test(n)) {
+        if (!seen.has(n)) {
+          seen.add(n);
+          let t = 0;
+          try { t = statSync(full).mtimeMs; } catch {}
+          files.push({ n, t });
+        }
+      }
+    }
+  };
+  scan(dir);
+  return files.sort((a, b) => b.t - a.t);
 }
 function nextSession(dir) {
   let max = 0;
@@ -183,9 +224,12 @@ export async function driveRequest(body) {
   if (!m) return { ok: false, error: 'No photo' };
   let name = basename(safeName(body.filename) || ('photo-' + Date.now() + '.jpg'));
   if (!IMG_RE.test(name)) name += '.jpg';
+  const cat = categoryOf(name);
+  const targetDir = join(f.dir, cat);
+  mkdirSync(targetDir, { recursive: true });
   let out = name, i = 2;
-  while (existsSync(join(f.dir, out))) { out = name.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
-  writeFileSync(join(f.dir, out), Buffer.from(m, 'base64'));
+  while (existsSync(join(targetDir, out)) || existsSync(join(f.dir, out))) { out = name.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
+  writeFileSync(join(targetDir, out), Buffer.from(m, 'base64'));
   noteGuestFile(body.guestCode, f.slug, out);
   return { ok: true, fileId: f.slug + '/' + out, downloadUrl: 'pb4u-local:' + f.slug + '/' + out, folderUrl, folderName: f.name, folderPath: f.dir };
 }
@@ -519,7 +563,8 @@ export function printReqDone(id) { const i = printReqs.findIndex((r) => r.id ===
 export function printReqRead(id) {
   const r = printReqs.find((x) => x.id === String(id)); if (!r) return null;
   const dir = dirOf(r.slug); if (!dir) return null;
-  try { return readFileSync(join(dir, r.file)); } catch { return null; }
+  const p = findFileInDir(dir, r.file);
+  try { return p ? readFileSync(p) : null; } catch { return null; }
 }
 
 // Arrange & Print: the operator browses the pictures already saved on this laptop (this event first, then older events).
@@ -542,7 +587,8 @@ export function studioList(slug) {
 export function studioRead(slug, name) {
   const dir = dirOf(String(slug || '')), n = basename(String(name || ''));
   if (!dir || !STUDIO_IMG_RE.test(n) || n.startsWith('.')) return null;
-  try { return readFileSync(join(dir, n)); } catch { return null; }
+  const p = findFileInDir(dir, n);
+  try { return p ? readFileSync(p) : null; } catch { return null; }
 }
 
 const printNowJobs = new Map();
@@ -553,7 +599,8 @@ export function printNowTake() {
     if (Date.now() - j.t > PRINTNOW_KEEP_MS) { printNowJobs.delete(id); continue; }
     if (j.state !== 'wait') continue;
     const dir = dirOf(j.slug); let bytes = null;
-    try { bytes = dir ? readFileSync(join(dir, j.file)) : null; } catch { /* gone */ }
+    const target = dir ? findFileInDir(dir, j.file) : null;
+    try { bytes = target ? readFileSync(target) : null; } catch { /* gone */ }
     if (!bytes) { j.state = 'fail'; j.msg = 'That photo is no longer on this laptop.'; continue; }
     j.state = 'taken'; out.push({ id, file: j.file, bytes });
   }
@@ -570,7 +617,7 @@ function handlePrintNow(req, res, pm) {
   if (!isLocalReq(req)) return reply(403, { ok: false, error: 'Only the booth laptop can print from here.' });
   let file; try { file = decodeURIComponent(pm[2]); } catch { file = ''; }
   const dir = dirOf(pm[1]);
-  if (!dir || !file || file !== basename(file) || file.startsWith('.') || !/\.(jpe?g|png|webp)$/i.test(file) || !existsSync(join(dir, file))) return reply(404, { ok: false, error: 'Photo not found' });
+  if (!dir || !file || file !== basename(file) || file.startsWith('.') || !/\.(jpe?g|png|webp)$/i.test(file) || !findFileInDir(dir, file)) return reply(404, { ok: false, error: 'Photo not found' });
   let live = 0; for (const j of printNowJobs.values()) if (j.state === 'wait' || j.state === 'taken') live++;
   if (live >= PRINTNOW_MAX) return reply(429, { ok: false, error: 'The booth is busy printing. Try again in a moment.' });
   const id = randomBytes(6).toString('hex');
@@ -611,7 +658,7 @@ function handlePrintReq(req, res, pm, only) {
   if (only && !only.includes(file)) return fail(404, 'photo');
   const dir = dirOf(pm[1]);
   if (!dir || !existsSync(dir)) return fail(404, 'event');
-  if (!file || file !== basename(file) || file.startsWith('.') || !/\.(jpe?g|png|webp)$/i.test(file) || !existsSync(join(dir, file))) return fail(404, 'photo');
+  if (!file || file !== basename(file) || file.startsWith('.') || !/\.(jpe?g|png|webp)$/i.test(file) || !findFileInDir(dir, file)) return fail(404, 'photo');
   const key = pm[1] + '/' + file;
   if (printReqs.some((r) => r.slug === pm[1] && r.file === file)) return send(res, 200, 'application/json', JSON.stringify({ ok: true, waiting: true }));
   if (askedBefore.has(key)) return send(res, 200, 'application/json', JSON.stringify({ ok: true, done: true }));
@@ -638,17 +685,29 @@ function handleOwn(req, res, url, om) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
   if (om[2] === 'f') {
     let file; try { file = decodeURIComponent(om[3]); } catch { file = ''; }
-    if (!c.files.includes(file) || !existsSync(join(dir, file))) return send(res, 404, 'text/plain', 'Not found');
+    const target = findFileInDir(dir, file);
+    if (!c.files.includes(file) || !target) return send(res, 404, 'text/plain', 'Not found');
     const extra = {};
     if (url.searchParams.get('dl')) {
       recordStat(c.slug, 'downloads', file);
       extra['content-disposition'] = 'attachment; filename="' + file.replace(/[^\w.() -]/g, '_') + '"';
     }
-    return serveFile(req, res, join(dir, file), TYPES[extname(file).toLowerCase()] || 'application/octet-stream', extra);
+    return serveFile(req, res, target, TYPES[extname(file).toLowerCase()] || 'application/octet-stream', extra);
   }
   const ev = index.folders[c.slug];
   const evName = ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : 'Your photos';
-  const mine = c.files.filter((n) => existsSync(join(dir, n)));
+  const rankOf = (n) => {
+    if (/_solo_\d+/i.test(n)) return 3;
+    if (/\.gif$/i.test(n) || VIDEO_RE.test(n)) return 2;
+    return 1;
+  };
+  const mine = c.files
+    .filter((n) => findFileInDir(dir, n))
+    .sort((a, b) => {
+      const ra = rankOf(a), rb = rankOf(b);
+      if (ra !== rb) return ra - rb;
+      return a.localeCompare(b, undefined, { numeric: true });
+    });
   mine.forEach((f) => recordStat(c.slug, 'views', f));
   const items = mine.map((file, i) => {
     const type = TYPES[extname(file).toLowerCase()] || 'application/octet-stream';
@@ -1306,8 +1365,8 @@ async function handleShare(req, res) {
   let file;
   try { file = decodeURIComponent(m[3]); } catch { file = ''; }
   if (!file || file !== basename(file) || file.startsWith('.') || !IMG_RE.test(file)) return send(res, 404, 'text/plain', 'Not found');
-  const full = join(dir, file);
-  if (!existsSync(full)) {
+  const full = findFileInDir(dir, file);
+  if (!full) {
     if (m[2] === 'p') {
       const isVid = VIDEO_RE.test(file);
       const title = isVid ? 'Your 360 video is on its way' : 'Your photo is on its way';

@@ -61,6 +61,22 @@ try {
 
   const slug = r1.folderUrl.replace('pb4u-local:', '');
 
+  // Verify subfolder organization on disk in File Explorer / Finder
+  assert(existsSync(join(r1.folderPath, 'Prints', '1_strip.jpg')), 'Print layout should be auto-saved in Prints/ subfolder');
+  assert(existsSync(join(rSolo1.folderPath, 'Solo Shots', '1_solo_1.jpg')), 'Solo shot 1 should be auto-saved in Solo Shots/ subfolder');
+  console.log('PASS: Subfolders auto-created in File Explorer: Prints/ and Solo Shots/');
+
+  // Add GIF to guestCode to test 3-way sequence (Print -> GIF -> Solo shots)
+  const rGif = await driveRequest({
+    folderKey,
+    filename: '1_gif.gif',
+    imageBase64: dummyPixelJpgBase64,
+    guestCode: 'guest-code-abc1234567890xyz'
+  });
+  assert(rGif.ok, 'GIF should be saved');
+  assert(existsSync(join(rGif.folderPath, 'GIFs', '1_gif.gif')), 'GIF should be auto-saved in GIFs/ subfolder');
+  console.log('PASS: Subfolders auto-created in File Explorer: GIFs/');
+
   // 2. Test nextSession: make sure 1_solo_1, 1_solo_2, etc. don't inflate nextSession number
   const rResolve = await driveRequest({
     folderKey,
@@ -79,12 +95,14 @@ try {
   });
 
   assert(stationList.ok, 'Station list should succeed');
-  assert.equal(stationList.files.length, 4, 'Should list 4 files total');
+  assert.equal(stationList.files.length, 5, 'Should list 5 files total');
   const soloFiles = stationList.files.filter((f) => f.kind === 'solo');
   const printFiles = stationList.files.filter((f) => f.kind === 'photo');
+  const gifFiles = stationList.files.filter((f) => f.kind === 'gif');
   assert.equal(soloFiles.length, 3, 'Should identify 3 solo photos');
   assert.equal(printFiles.length, 1, 'Should identify 1 print photo');
-  console.log('PASS: Station list distinguishes solo photos (kind="solo") and prints (kind="photo")');
+  assert.equal(gifFiles.length, 1, 'Should identify 1 gif');
+  console.log('PASS: Station list distinguishes solo photos (kind="solo"), prints (kind="photo"), and gifs (kind="gif")');
 
   // 4. Test gallery HTML (/e/:slug/)
   const galleryHtml = await new Promise((resolve, reject) => {
@@ -124,7 +142,15 @@ try {
   });
 
   assert(guestPageHtml.includes('Save solo photo'), 'Guest personal page should include Save solo photo button');
-  console.log('PASS: Guest personal page includes solo photos with "Save solo photo" button');
+  const idxStrip = guestPageHtml.indexOf('1_strip.jpg');
+  const idxGif = guestPageHtml.indexOf('1_gif.gif');
+  const idxSolo1 = guestPageHtml.indexOf('1_solo_1.jpg');
+  const idxSolo2 = guestPageHtml.indexOf('1_solo_2.jpg');
+  assert(idxStrip !== -1 && idxGif !== -1 && idxSolo1 !== -1 && idxSolo2 !== -1, 'All files should be present in guest page');
+  assert(idxStrip < idxGif, 'Print photo (in template) must appear 1st before GIF');
+  assert(idxGif < idxSolo1, 'GIF must appear 2nd before solo shots');
+  assert(idxSolo1 < idxSolo2, 'Solo shots must appear 3rd in numerical order');
+  console.log('PASS: Guest personal page displays files in exact sequence: 1st Photo (Print) -> 2nd GIF -> 3rd Solo Shots');
 
   // 7. Test roving photoman session (both designed print 2_solo.jpg and raw solo photo 2_solo_1.jpg)
   const rRovingDesign = await driveRequest({

@@ -12077,9 +12077,298 @@
     .gso-zoom button:disabled {
       opacity: 0.35;
     }
+    /* Mode Tabs: Stickers | Text | Crop/Framing */
+    .gso-mode-tabs {
+      display: flex;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 4px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      flex: 0 0 auto;
+    }
+    .gso-mode-tab {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.72);
+      font: 700 13px/1.2 'Manrope', 'Segoe UI', sans-serif;
+      padding: 9px 6px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.14s ease;
+      white-space: nowrap;
+    }
+    .gso-mode-tab:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .gso-mode-tab.on {
+      background: #ffffff;
+      color: #12151a;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+    }
+    .gso-mode-pane {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+    }
+    .gso-mode-pane.hidden {
+      display: none !important;
+    }
+
+    /* Crop / Framing Panel Styles */
+    .gso-crop-pane {
+      overflow-y: auto;
+      padding: 2px 4px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .gso-crop-slots {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 2px 0;
+      scrollbar-width: none;
+    }
+    .gso-slot-btn {
+      flex: 1;
+      min-width: 64px;
+      padding: 9px 8px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1.5px solid rgba(255, 255, 255, 0.18);
+      color: #ffffff;
+      font: 700 12.5px 'Manrope', sans-serif;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.12s;
+      white-space: nowrap;
+    }
+    .gso-slot-btn.on {
+      background: rgba(0, 229, 255, 0.18);
+      border-color: #00e5ff;
+      color: #00e5ff;
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
+    }
+    .gso-ctrl-card {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .gso-ctrl-title {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.65);
+      margin: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .gso-zoom-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .gso-zoom-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 18px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gso-zoom-slider {
+      flex: 1;
+      height: 6px;
+      accent-color: #00e5ff;
+      cursor: pointer;
+    }
+    .gso-nudge-pad {
+      display: grid;
+      grid-template-columns: repeat(3, 44px);
+      gap: 6px;
+      justify-content: center;
+      align-items: center;
+      margin: 4px auto;
+    }
+    .gso-nudge-btn {
+      width: 44px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.09);
+      color: #ffffff;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .gso-nudge-btn:active {
+      background: rgba(255, 255, 255, 0.25);
+    }
+    .gso-reset-btn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: rgba(255, 255, 255, 0.85);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font: 700 12.5px 'Manrope', sans-serif;
+      cursor: pointer;
+      align-self: center;
+      margin-top: 2px;
+    }
+    .gso-crop-hint {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+      text-align: center;
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    /* Custom Text Panel Styles */
+    .gso-text-pane {
+      overflow-y: auto;
+      padding: 2px 4px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .gso-text-input-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .gso-text-input {
+      width: 100%;
+      box-sizing: border-box;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1.5px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 11px 14px;
+      color: #ffffff;
+      font: 700 14.5px 'Manrope', sans-serif;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .gso-text-input:focus {
+      border-color: #ffffff;
+      background: rgba(255, 255, 255, 0.12);
+    }
+    .gso-trend-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      max-height: 90px;
+      overflow-y: auto;
+      padding-bottom: 2px;
+    }
+    .gso-trend-chip {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: rgba(255, 255, 255, 0.9);
+      border-radius: 99px;
+      padding: 5px 10px;
+      font: 700 12px 'Manrope', sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.12s;
+    }
+    .gso-trend-chip:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+    .gso-font-chips, .gso-style-chips {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .gso-font-chip, .gso-style-chip {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #ffffff;
+      border-radius: 10px;
+      padding: 6px 11px;
+      font-size: 12.5px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .gso-font-chip.on, .gso-style-chip.on {
+      background: #ffffff;
+      color: #12151a;
+      border-color: #ffffff;
+      font-weight: 800;
+    }
+    .gso-color-swatches {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 4px 2px;
+    }
+    .gso-swatch {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      flex: 0 0 auto;
+      transition: transform 0.12s;
+    }
+    .gso-swatch.on {
+      border-color: #ffffff;
+      transform: scale(1.18);
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+    }
+    .gso-add-text-btn {
+      width: 100%;
+      background: #ffffff;
+      color: #12151a;
+      border: none;
+      border-radius: 14px;
+      padding: 12px;
+      font: 800 14.5px 'Manrope', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 2px;
+    }
+    .gso-add-text-btn:active {
+      transform: scale(0.97);
+    }
+
     /* Preview: only the photo, the timer and the preview / done buttons stay; no box, handles, trays or tools */
     .guest-sticker-overlay.previewing .gso-tools,
     .guest-sticker-overlay.previewing .gso-zoom,
+    .guest-sticker-overlay.previewing .gso-mode-tabs,
+    .guest-sticker-overlay.previewing .gso-mode-pane,
     .guest-sticker-overlay.previewing .gso-tray-row,
     .guest-sticker-overlay.previewing .gso-packs,
     .guest-sticker-overlay.previewing .gso-grab,
@@ -13811,18 +14100,39 @@
             </div>
             <div id="gifOptions" class="fb-opts" style="display:none;">
               <div class="fb-card">
-                <p class="sub-label">GIF</p>
+                <p class="sub-label">GIF &amp; Live Motion</p>
                 <div class="fb-row"><span class="lbl">Picture frame</span>
                   <select id="gifLayoutSelect" class="pillify" aria-label="GIF picture frame">
-                    <option value="solo" selected>Solo layout</option>
-                    <option value="follow">Chosen layout</option>
-                    <option value="raw">Plain camera</option>
+                    <option value="follow" selected>Chosen layout (Strip, Grid, etc.)</option>
+                    <option value="solo">Solo layout (1 large frame)</option>
+                    <option value="raw">Plain camera (no frame)</option>
                   </select>
                 </div>
-                <p class="panel-hint" id="gifLayoutHint" style="margin:6px 0 0;">The GIF sits in the one-photo Solo
-                  layout with your frame and title. Guests should stand in the middle.</p>
-                <p class="panel-hint" style="margin:6px 0 0;">It follows the first run of shots. Speed is automatic.
-                </p>
+                <p class="panel-hint" id="gifLayoutHint" style="margin:6px 0 0;">The GIF uses your event layout (e.g. 4-cut strip or 2×2 grid) with your branding and design.</p>
+                
+                <div class="fb-row" style="margin-top:10px;"><span class="lbl">Animation style</span>
+                  <select id="gifMotionStyleSelect" class="pillify" aria-label="GIF animation style">
+                    <option value="multibox" selected>✨ Life4Cuts Boomerang (Each box moves)</option>
+                    <option value="sequential">🎬 Story Replay (Box 1 → 2 → 3 → 4)</option>
+                    <option value="session">🎞️ Full Session (Single continuous clip)</option>
+                  </select>
+                </div>
+                <p class="panel-hint" id="gifMotionStyleHint" style="margin:6px 0 0; color:var(--ink-dim);">Korean Life4Cuts style: Each box records its own motion before the shot, and all boxes animate together in a boomerang loop.</p>
+                
+                <div class="fb-row" style="margin-top:10px;"><span class="lbl">Clip length</span>
+                  <select id="gifClipSecSelect" class="pillify" aria-label="Motion clip length">
+                    <option value="1.5">1.5 s (Snappy)</option>
+                    <option value="1.8" selected>1.8 s (Standard Life4Cuts)</option>
+                    <option value="2.2">2.2 s (Longer)</option>
+                  </select>
+                </div>
+                
+                <div class="fb-row" style="margin-top:10px;"><span class="lbl">Loop mode</span>
+                  <select id="gifLoopModeSelect" class="pillify" aria-label="GIF loop mode">
+                    <option value="boomerang" selected>Boomerang (Forward + Reverse)</option>
+                    <option value="forward">Forward only</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -13925,6 +14235,7 @@
           <div class="pane" data-pane="filter" id="effectsSection">
             <div class="chip-row" id="filterChips">
               <button type="button" class="chip active" data-filter="none">None</button>
+              <button type="button" class="chip" data-filter="korean">✨ Korean / Life4Cuts</button>
               <button type="button" class="chip" data-filter="bw">B&amp;W</button>
               <button type="button" class="chip" data-filter="sepia">Sepia</button>
               <button type="button" class="chip" data-filter="warm">Warm</button>
@@ -14792,8 +15103,84 @@
                 <div class="gso-timer-pill"><span id="gsoTimerSec">35</span>s left</div>
               </div>
               <div class="gso-timer-bar"><div class="gso-timer-fill" id="gsoTimerFill"></div></div>
-              <div class="gso-packs" id="gsoPacks" hidden></div>
-              <div class="gso-tray-row" id="gsoTray"></div>
+              <!-- Mode Tabs -->
+              <div class="gso-mode-tabs" id="gsoModeTabs">
+                <button type="button" class="gso-mode-tab on" data-mode="stickers">✨ Stickers</button>
+                <button type="button" class="gso-mode-tab" data-mode="text">🔤 Add Text</button>
+                <button type="button" class="gso-mode-tab" data-mode="crop">✂️ Photo Framing</button>
+              </div>
+
+              <!-- 1. Stickers Pane -->
+              <div class="gso-mode-pane" id="gsoStickersPane">
+                <div class="gso-packs" id="gsoPacks" hidden></div>
+                <div class="gso-tray-row" id="gsoTray"></div>
+              </div>
+
+              <!-- 2. Custom Text Pane -->
+              <div class="gso-mode-pane gso-text-pane hidden" id="gsoTextPane">
+                <div class="gso-text-input-wrap">
+                  <input type="text" class="gso-text-input" id="gsoCustomTextInput" placeholder="Type custom caption / names..." maxlength="45">
+                </div>
+                <div>
+                  <p class="gso-ctrl-title" style="margin-bottom:6px;">Trend Phrases (Tap to use)</p>
+                  <div class="gso-trend-chips" id="gsoTrendChips"></div>
+                </div>
+                <div>
+                  <p class="gso-ctrl-title" style="margin-bottom:6px;">Font</p>
+                  <div class="gso-font-chips" id="gsoFontChips">
+                    <button type="button" class="gso-font-chip on" data-font="manrope">Modern Bold</button>
+                    <button type="button" class="gso-font-chip" data-font="handwriting">Handwriting</button>
+                    <button type="button" class="gso-font-chip" data-font="serif">Chic Serif</button>
+                    <button type="button" class="gso-font-chip" data-font="bubble">Cute Bubble</button>
+                    <button type="button" class="gso-font-chip" data-font="mono">Retro Y2K</button>
+                  </div>
+                </div>
+                <div>
+                  <p class="gso-ctrl-title" style="margin-bottom:6px;">Color</p>
+                  <div class="gso-color-swatches" id="gsoColorSwatches"></div>
+                </div>
+                <div>
+                  <p class="gso-ctrl-title" style="margin-bottom:6px;">Style</p>
+                  <div class="gso-style-chips" id="gsoStyleChips">
+                    <button type="button" class="gso-style-chip on" data-style="pill">Pill Badge</button>
+                    <button type="button" class="gso-style-chip" data-style="outline">Outline</button>
+                    <button type="button" class="gso-style-chip" data-style="neon">Neon Glow</button>
+                  </div>
+                </div>
+                <button type="button" class="gso-add-text-btn" id="gsoAddTextBtn">➕ Add Text to Photo</button>
+              </div>
+
+              <!-- 3. Crop / Framing Pane -->
+              <div class="gso-mode-pane gso-crop-pane hidden" id="gsoCropPane">
+                <div>
+                  <p class="gso-ctrl-title" style="margin-bottom:6px;">Select Photo</p>
+                  <div class="gso-crop-slots" id="gsoCropSlots"></div>
+                </div>
+                <div class="gso-ctrl-card">
+                  <div class="gso-ctrl-title"><span>Zoom In / Out</span><span id="gsoZoomVal">1.0×</span></div>
+                  <div class="gso-zoom-row">
+                    <button type="button" class="gso-zoom-btn" id="gsoCropZoomOut">−</button>
+                    <input type="range" class="gso-zoom-slider" id="gsoCropZoomSlider" min="1.0" max="2.5" step="0.05" value="1.0">
+                    <button type="button" class="gso-zoom-btn" id="gsoCropZoomIn">+</button>
+                  </div>
+                </div>
+                <div class="gso-ctrl-card">
+                  <div class="gso-ctrl-title"><span>Reposition / Pan</span></div>
+                  <div class="gso-nudge-pad">
+                    <div></div>
+                    <button type="button" class="gso-nudge-btn" id="gsoNudgeUp" title="Move Up">⬆️</button>
+                    <div></div>
+                    <button type="button" class="gso-nudge-btn" id="gsoNudgeLeft" title="Move Left">⬅️</button>
+                    <button type="button" class="gso-nudge-btn" id="gsoNudgeReset" title="Center" style="font-size:12px; font-weight:800;">●</button>
+                    <button type="button" class="gso-nudge-btn" id="gsoNudgeRight" title="Move Right">➡️</button>
+                    <div></div>
+                    <button type="button" class="gso-nudge-btn" id="gsoNudgeDown" title="Move Down">⬇️</button>
+                    <div></div>
+                  </div>
+                  <button type="button" class="gso-reset-btn" id="gsoCropResetBtn">↺ Reset to Default</button>
+                </div>
+                <p class="gso-crop-hint">💡 Tip: You can also tap and drag directly on any photo above to adjust framing!</p>
+              </div>
               <div class="gso-actions-row">
                 <button type="button" class="gso-btn-skip" id="gsoSkipBtn">Skip stickers</button>
                 <button type="button" class="gso-btn-skip" id="gsoPreviewBtn" title="See how your photo will look">👁 Preview</button>
@@ -14875,6 +15262,7 @@
           <p class="panel-hint" id="qrHint">Scan with your phone camera to save it.</p>
           <div class="actions" id="shareSlot" style="margin-top:10px;"></div>
           <div class="result-actions" id="resultActions">
+            <button type="button" class="result-customize" id="resultCustomizeBtn" style="display:inline-flex; align-items:center; gap:6px; background:rgba(0,0,0,0.06); border:1.5px solid var(--line); border-radius:12px; padding:10px 16px; font-weight:700; cursor:pointer;">✂️ Adjust Framing &amp; Design</button>
             <button type="button" class="result-done" id="resultDoneBtn">Done</button>
           </div>
           <div class="result-timer" id="resultTimer" aria-hidden="true"><i id="resultTimerBar"></i></div>
@@ -18788,12 +19176,21 @@
         pop.style.left = Math.max(12, Math.min(r.left, window.innerWidth - pop.offsetWidth - 12)) + 'px';
         pop.style.bottom = (window.innerHeight - r.top + 10) + 'px';
       }
+      function fileCategory(filename) {
+        var n = String(filename || '');
+        if (/\.(mp4|mov|webm)$/i.test(n) || /^360_|_360\./i.test(n)) return '360 Videos';
+        if (/\.gif$/i.test(n) || /_gif\./i.test(n)) return 'GIFs';
+        if (/_solo_\d+/i.test(n) || /_solo\./i.test(n)) return 'Solo Shots';
+        return 'Prints';
+      }
       async function saveToBackupFolder(blob, filename) {
         if (!backupDir || !backupOk) return false;
         try {
           let dir = await backupDir.getDirectoryHandle(backupEventFolderName(), { create: true });
           const sub = safeFileName(driveSubfolder());
           if (sub) dir = await dir.getDirectoryHandle(sub, { create: true });
+          const cat = fileCategory(filename);
+          if (cat) dir = await dir.getDirectoryHandle(cat, { create: true });
           const fh = await dir.getFileHandle(filename, { create: true });
           const w = await fh.createWritable();
           await w.write(blob);
@@ -19159,17 +19556,14 @@
         qrResults.innerHTML = '';
         lastRenderedFolderUrl = null;
         const isBoth = (outputMode === 'both');
-        var soloShotsSnapshot = shotCanvases.map(function (c) {
+        var soloShotsSnapshot = (saveSoloPhotos && shotCanvases) ? shotCanvases.map(function (c) {
           if (!c) return null;
           var clone = document.createElement('canvas');
           clone.width = c.width; clone.height = c.height;
           clone.getContext('2d').drawImage(c, 0, 0);
           return clone;
-        });
+        }) : null;
         var soloSessionNum = sessionNumber || 1;
-        if (saveSoloPhotos && soloShotsSnapshot.length) {
-          saveSoloPhotosAsync(soloSessionNum, soloShotsSnapshot);
-        }
         qrSlot('photo', isBoth ? 'Your photo & GIF' : 'Your photo', isBoth ? 'Saving your photo & GIF…' : 'Saving your photo…');
         // Guests get a working QR straight away: the event's All photos page,
         // swapped for their own photo's QR as soon as the upload finishes. (The offline app has no extra
@@ -19191,6 +19585,11 @@
         catch (err) { lastError = err; console.error('Photo upload failed:', err); }
         clearTimeout(slowTimer);
         if (myGeneration !== qrGeneration) return null;
+
+        // Save solo photos AFTER the composite print layout has uploaded and registered its link
+        if (saveSoloPhotos && soloShotsSnapshot && soloShotsSnapshot.length) {
+          saveSoloPhotosAsync(soloSessionNum, soloShotsSnapshot);
+        }
         if (!result && lastError && lastError.queued && !isPermanentUploadError(lastError)) {
           // Kept on this device; it uploads later. Give the guest the event's
           // All photos QR instead, where their photo will appear.
@@ -19243,13 +19642,28 @@
       var flipCurrentCard = 0;      // current card index in interactive flip player
       var flipAutoPlaying = false;  // auto-flipping state
       var flipPlayTimer = null;     // auto-play interval
-      var gifLayoutMode = 'solo';  // 'solo' | 'follow' | 'raw': what the GIF frames are placed in
+      var gifLayoutMode = 'follow';  // 'follow' | 'solo' | 'raw': what the GIF frames are placed in
+      var gifMotionStyle = 'multibox'; // 'multibox' (Life4Cuts each box moves) | 'sequential' | 'session'
+      var gifClipSec = 1.8;          // seconds of motion before each shot (1.5, 1.8, 2.2)
+      var gifLoopMode = 'boomerang'; // 'boomerang' (ping-pong) | 'forward'
       function refreshGifLayoutUI() {
         var sel = document.getElementById('gifLayoutSelect'), gh = document.getElementById('gifLayoutHint');
         if (sel) sel.value = gifLayoutMode;
         if (gh) gh.textContent = gifLayoutMode === 'raw' ? 'The GIF is the plain camera view, without your frame or title.'
-          : gifLayoutMode === 'follow' ? 'The GIF uses the layout chosen for the photos, with the same picture in every spot.'
-            : 'The GIF sits in the one-photo Solo layout with your frame, title and design, even when the photos use a strip. Guests should stand in the middle of the picture.';
+          : gifLayoutMode === 'follow' ? 'The GIF uses your event layout (e.g. 4-cut strip or 2×2 grid) with your branding and design.'
+            : 'The GIF sits in the one-photo Solo layout with your frame, title and design, even when the photos use a strip.';
+
+        var mSel = document.getElementById('gifMotionStyleSelect'), mh = document.getElementById('gifMotionStyleHint');
+        if (mSel) mSel.value = gifMotionStyle;
+        if (mh) mh.textContent = gifMotionStyle === 'multibox' ? 'Korean Life4Cuts style: Each box records its own motion before the shot, and all boxes animate together in a boomerang loop.'
+          : gifMotionStyle === 'sequential' ? 'Story Replay: Each box animates one by one in sequence (Box 1 → 2 → 3 → 4), then pauses on the completed photo strip.'
+          : 'Full Session: Single continuous clip recorded across the entire session.';
+
+        var cSel = document.getElementById('gifClipSecSelect');
+        if (cSel) cSel.value = String(gifClipSec);
+
+        var lSel = document.getElementById('gifLoopModeSelect');
+        if (lSel) lSel.value = gifLoopMode;
       }
       var gifSpeed = 0;            // 0 chooses 2x or 3x automatically from the recorded session length
       var gifSessionCapture = null;
@@ -19308,6 +19722,22 @@
         if (gls) gls.addEventListener('change', function () {
           gifLayoutMode = (gls.value === 'follow' || gls.value === 'raw') ? gls.value : 'solo';
           refreshGifLayoutUI();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+        var gms = document.getElementById('gifMotionStyleSelect');
+        if (gms) gms.addEventListener('change', function () {
+          gifMotionStyle = (gms.value === 'sequential' || gms.value === 'session') ? gms.value : 'multibox';
+          refreshGifLayoutUI();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+        var gcs = document.getElementById('gifClipSecSelect');
+        if (gcs) gcs.addEventListener('change', function () {
+          gifClipSec = Number(gcs.value) || 1.8;
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+        var glm = document.getElementById('gifLoopModeSelect');
+        if (glm) glm.addEventListener('change', function () {
+          gifLoopMode = glm.value === 'forward' ? 'forward' : 'boomerang';
           if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
         });
         var fcol = document.getElementById('flipCollationSelect');
@@ -19395,6 +19825,54 @@
         var hasPool = !!(flipPrinterPool);
         if (modeWrap) modeWrap.style.display = hasPool ? 'flex' : 'none';
         if (poolHint) poolHint.style.display = hasPool ? 'block' : 'none';
+      }
+
+      // Per-shot live motion buffers for Korean Life4Cuts / multi-box boomerang GIF
+      var shotMotionClips = [];
+      var activeShotMotion = null;
+
+      function startShotMotionCapture(shotIdx) {
+        if (!shotMotionClips[shotIdx]) shotMotionClips[shotIdx] = [];
+        else shotMotionClips[shotIdx].length = 0;
+        var maxFrames = Math.max(6, Math.min(18, Math.round((gifClipSec || 1.8) * 6))); // ~6 fps -> ~10-12 frames
+        var intervalMs = 150;
+        var canvas = document.createElement('canvas');
+        var videoWidth = video.videoWidth || 640;
+        var videoHeight = video.videoHeight || 480;
+        var scale = Math.min(1, 640 / videoWidth, 480 / videoHeight);
+        canvas.width = Math.max(1, Math.round(videoWidth * scale));
+        canvas.height = Math.max(1, Math.round(videoHeight * scale));
+        var ctx = canvas.getContext('2d');
+
+        var busy = false;
+        var timer = setInterval(function () {
+          if (!activeShotMotion || activeShotMotion.shotIdx !== shotIdx || busy) return;
+          busy = true;
+          ctx.save();
+          if (typeof mirrorPreview === 'function' && mirrorPreview()) {
+            ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
+          }
+          try { ctx.drawImage(video, 0, 0, canvas.width, canvas.height); } catch (e) { }
+          ctx.restore();
+          try { if (typeof applyFilterToCanvas === 'function') applyFilterToCanvas(canvas); } catch (e) { }
+          canvas.toBlob(function (blob) {
+            busy = false;
+            if (blob && activeShotMotion && activeShotMotion.shotIdx === shotIdx) {
+              var clip = shotMotionClips[shotIdx];
+              if (clip.length >= maxFrames) clip.shift();
+              clip.push({ blob: blob, time: performance.now() });
+            }
+          }, 'image/jpeg', 0.85);
+        }, intervalMs);
+
+        activeShotMotion = { shotIdx: shotIdx, timer: timer };
+      }
+
+      function stopShotMotionCapture(shotIdx) {
+        if (activeShotMotion && (shotIdx === undefined || activeShotMotion.shotIdx === shotIdx)) {
+          clearInterval(activeShotMotion.timer);
+          activeShotMotion = null;
+        }
       }
 
       // Capture compressed HD source frames while keeping memory bounded for long sessions.
@@ -19518,14 +19996,174 @@
         return new Blob([gif.bytes()], { type: 'image/gif' });
       }
 
+      async function gifIntoLayoutMultiBox(key, n, framesObj) {
+        var shotSeqs = [];
+        for (var s = 0; s < n; s++) {
+          var clip = shotMotionClips[s] || [];
+          if (!clip.length && shotCanvases[s]) {
+            shotSeqs.push([{ isCanvas: true, canvas: shotCanvases[s] }]);
+          } else if (clip.length) {
+            var seq = clip.slice();
+            if (gifLoopMode === 'boomerang' && seq.length > 2) {
+              for (var r = seq.length - 2; r > 0; r--) {
+                seq.push(seq[r]);
+              }
+            }
+            shotSeqs.push(seq);
+          } else {
+            shotSeqs.push([]);
+          }
+        }
+
+        var sampleW = framesObj && framesObj.width ? framesObj.width : 640;
+        var sampleH = framesObj && framesObj.height ? framesObj.height : 480;
+        var dummyShots = [];
+        var slotCanvases = [];
+        for (var d = 0; d < n; d++) {
+          var dc = document.createElement('canvas');
+          dc.width = sampleW; dc.height = sampleH; dc._isShot = true;
+          dummyShots.push(dc);
+
+          var sc = document.createElement('canvas');
+          sc.width = sampleW; sc.height = sampleH; sc._isShot = true;
+          slotCanvases.push(sc);
+        }
+
+        var box = document.createElement('canvas');
+        composeCanvas(key, box, dummyShots);
+        var k = Math.min(1, 900 / Math.max(box.width, box.height));
+        var ow = Math.max(1, Math.round(box.width * k)), oh = Math.max(1, Math.round(box.height * k));
+        var small = document.createElement('canvas'); small.width = ow; small.height = oh;
+        var sx = small.getContext('2d', { willReadFrequently: true }); sx.imageSmoothingQuality = 'high';
+
+        var outFrames = [];
+
+        if (gifMotionStyle === 'multibox') {
+          var maxFrames = 1;
+          for (var i = 0; i < n; i++) {
+            if (shotSeqs[i].length > maxFrames) maxFrames = shotSeqs[i].length;
+          }
+          maxFrames = Math.min(24, Math.max(6, maxFrames));
+
+          for (var t = 0; t < maxFrames; t++) {
+            (function (frameIdx) {
+              outFrames.push({
+                time: frameIdx * 100,
+                make: async function () {
+                  for (var sIdx = 0; sIdx < n; sIdx++) {
+                    var seq = shotSeqs[sIdx];
+                    var sc = slotCanvases[sIdx];
+                    var sCtx = sc.getContext('2d');
+                    sCtx.clearRect(0, 0, sc.width, sc.height);
+                    if (seq && seq.length > 0) {
+                      var item = seq[frameIdx % seq.length];
+                      if (item.isCanvas) {
+                        sCtx.drawImage(item.canvas, 0, 0, sc.width, sc.height);
+                      } else if (item.blob) {
+                        var bmp = await createImageBitmap(item.blob);
+                        sCtx.drawImage(bmp, 0, 0, sc.width, sc.height);
+                        if (bmp.close) bmp.close();
+                      }
+                    } else if (shotCanvases[sIdx]) {
+                      sCtx.drawImage(shotCanvases[sIdx], 0, 0, sc.width, sc.height);
+                    }
+                  }
+                  composeCanvas(key, box, slotCanvases);
+                  stampTrialMark(box);
+                  sx.fillStyle = currentFrameColor || '#ffffff';
+                  sx.fillRect(0, 0, ow, oh);
+                  sx.drawImage(box, 0, 0, ow, oh);
+                  return small;
+                }
+              });
+            })(t);
+          }
+        } else if (gifMotionStyle === 'sequential') {
+          for (var sTarget = 0; sTarget < n; sTarget++) {
+            var seq = shotSeqs[sTarget] || [];
+            var count = Math.max(1, seq.length);
+            for (var t = 0; t < count; t++) {
+              (function (targetSlot, stepIdx) {
+                outFrames.push({
+                  time: outFrames.length * 100,
+                  make: async function () {
+                    for (var sIdx = 0; sIdx < n; sIdx++) {
+                      var sc = slotCanvases[sIdx];
+                      var sCtx = sc.getContext('2d');
+                      sCtx.clearRect(0, 0, sc.width, sc.height);
+                      if (sIdx === targetSlot && shotSeqs[sIdx] && shotSeqs[sIdx].length > 0) {
+                        var item = shotSeqs[sIdx][stepIdx % shotSeqs[sIdx].length];
+                        if (item.isCanvas) {
+                          sCtx.drawImage(item.canvas, 0, 0, sc.width, sc.height);
+                        } else if (item.blob) {
+                          var bmp = await createImageBitmap(item.blob);
+                          sCtx.drawImage(bmp, 0, 0, sc.width, sc.height);
+                          if (bmp.close) bmp.close();
+                        }
+                      } else if (shotCanvases[sIdx]) {
+                        sCtx.drawImage(shotCanvases[sIdx], 0, 0, sc.width, sc.height);
+                      }
+                    }
+                    composeCanvas(key, box, slotCanvases);
+                    stampTrialMark(box);
+                    sx.fillStyle = currentFrameColor || '#ffffff';
+                    sx.fillRect(0, 0, ow, oh);
+                    sx.drawImage(box, 0, 0, ow, oh);
+                    return small;
+                  }
+                });
+              })(sTarget, t);
+            }
+          }
+          outFrames.push({
+            time: outFrames.length * 100 + 800,
+            make: async function () {
+              for (var sIdx = 0; sIdx < n; sIdx++) {
+                var sc = slotCanvases[sIdx];
+                var sCtx = sc.getContext('2d');
+                sCtx.clearRect(0, 0, sc.width, sc.height);
+                if (shotCanvases[sIdx]) sCtx.drawImage(shotCanvases[sIdx], 0, 0, sc.width, sc.height);
+              }
+              composeCanvas(key, box, slotCanvases);
+              stampTrialMark(box);
+              sx.fillStyle = currentFrameColor || '#ffffff';
+              sx.fillRect(0, 0, ow, oh);
+              sx.drawImage(box, 0, 0, ow, oh);
+              return small;
+            }
+          });
+        }
+
+        return {
+          frames: outFrames,
+          width: ow,
+          height: oh,
+          durationMs: outFrames.length * 100,
+          speed: 1
+        };
+      }
+
       // Puts every GIF frame inside the booth's frame, so the GIF carries the event's title and design.
       // Solo (one big photo) by default, even when the photos use a strip. The camera view fills the photo spot.
       // The frames are drawn one at a time while the GIF is encoded (each has a make() that returns the framed picture),
       // so nothing big is kept in memory and no extra JPEG step slows it down.
       async function gifIntoLayout(framesObj) {
         var key = gifLayoutMode === 'follow' ? currentLayout : 'solo';
-        if (!LAYOUT_DEFS[key] || !framesObj.frames.length) return framesObj;
-        var n = Math.max(1, shotsNeeded(key)), box = document.createElement('canvas'), src = document.createElement('canvas');
+        if (!LAYOUT_DEFS[key]) return framesObj;
+        var n = Math.max(1, shotsNeeded(key));
+
+        var hasMulti = Array.isArray(shotMotionClips) && shotMotionClips.some(function (c) { return c && c.length > 0; });
+        if (hasMulti && (gifMotionStyle === 'multibox' || gifMotionStyle === 'sequential') && gifLayoutMode !== 'raw') {
+          try {
+            var mbRes = await gifIntoLayoutMultiBox(key, n, framesObj);
+            if (mbRes && mbRes.frames && mbRes.frames.length) return mbRes;
+          } catch (mbErr) {
+            console.error('Multi-clip GIF layout error, falling back to session recording:', mbErr);
+          }
+        }
+
+        if (!framesObj || !framesObj.frames || !framesObj.frames.length) return framesObj;
+        var box = document.createElement('canvas'), src = document.createElement('canvas');
         src.width = framesObj.width; src.height = framesObj.height; src._isShot = true;
         var sc = src.getContext('2d');
         composeCanvas(key, box, new Array(n).fill(src));                     // the layout's size does not depend on the picture
@@ -19540,7 +20178,7 @@
               sc.clearRect(0, 0, src.width, src.height); sc.drawImage(bmp, 0, 0, src.width, src.height); bmp.close();
               composeCanvas(key, box, new Array(n).fill(src));
               stampTrialMark(box);
-              sx.fillStyle = '#ffffff'; sx.fillRect(0, 0, ow, oh); sx.drawImage(box, 0, 0, ow, oh);
+              sx.fillStyle = currentFrameColor || '#ffffff'; sx.fillRect(0, 0, ow, oh); sx.drawImage(box, 0, 0, ow, oh);
               return small;
             }
           };
@@ -19572,7 +20210,11 @@
         try {
           framesObj = completedGifCapture;
           completedGifCapture = null;
-          if (!framesObj) throw new Error('No session GIF was recorded');
+          var hasMulti = Array.isArray(shotMotionClips) && shotMotionClips.some(function (c) { return c && c.length > 0; });
+          if (!framesObj && !hasMulti) throw new Error('No session GIF was recorded');
+          if (!framesObj) {
+            framesObj = { frames: [], width: 640, height: 480, durationMs: 2000, speed: 1 };
+          }
         } catch (e) {
           console.error('GIF capture failed:', e);
           var w = qrResults.querySelector('.qr-result[data-kind="gif"] .qr-wait');
@@ -21910,12 +22552,266 @@
         }
       }
 
-      // ---- In-session Guest Stickers & Print-first State ----
+      // ---- In-session Guest Stickers, Text & Photo Framing State ----
       let guestStickersOn = false;
       let guestDecor = [];
       let selGuestDecor = -1;
       let gsoPack = '';           // package tab open on the guest sticker screen
       let printFirstHolding = false;
+      let gsoMode = 'stickers';   // 'stickers' | 'text' | 'crop'
+      let selCropShot = 0;        // photo slot selected for framing (0..n)
+      let customTextState = { font: 'manrope', color: '#ffffff', style: 'pill' };
+      let gCropDrag = null, gCropPinch = null;
+
+      function hitShotSlot(cx, cy) {
+        for (var k in shotSlotBoxes) {
+          var b = shotSlotBoxes[k];
+          if (b && cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+            return Number(k);
+          }
+        }
+        return -1;
+      }
+
+      function drawCropSlotIndicator(ctx) {
+        if (gsoMode !== 'crop') return;
+        var b = shotSlotBoxes[selCropShot];
+        if (!b) return;
+        ctx.save();
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = Math.max(4, Math.round(previewCanvas.width * 0.005));
+        ctx.shadowColor = 'rgba(0, 229, 255, 0.7)';
+        ctx.shadowBlur = 14;
+        roundRectPath(ctx, b.x, b.y, b.w, b.h, Math.max(6, Math.round(b.w * 0.02)));
+        ctx.stroke();
+
+        var badgeTxt = 'Photo ' + (selCropShot + 1);
+        ctx.font = '800 ' + Math.max(14, Math.round(b.w * 0.055)) + 'px Manrope, sans-serif';
+        var bw = ctx.measureText(badgeTxt).width + 20, bh = Math.max(26, Math.round(b.w * 0.075));
+        ctx.fillStyle = '#00e5ff';
+        roundRectPath(ctx, b.x + 8, b.y + 8, bw, bh, bh / 2);
+        ctx.fill();
+        ctx.fillStyle = '#12151a';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(badgeTxt, b.x + 8 + bw / 2, b.y + 8 + bh / 2);
+        ctx.restore();
+      }
+
+      function refreshCropUI() {
+        var slotsContainer = document.getElementById('gsoCropSlots');
+        if (slotsContainer) {
+          slotsContainer.innerHTML = '';
+          var count = (Array.isArray(shotCanvases) && shotCanvases.filter(Boolean).length) || shotsNeeded() || 4;
+          for (var i = 0; i < count; i++) {
+            (function (idx) {
+              var btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'gso-slot-btn' + (idx === selCropShot ? ' on' : '');
+              btn.textContent = 'Photo ' + (idx + 1);
+              btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                selCropShot = idx;
+                refreshCropUI();
+                gsoRedraw();
+              });
+              slotsContainer.appendChild(btn);
+            })(i);
+          }
+        }
+        var curCrop = shotCrops[selCropShot] || { zoom: 1, panX: 0, panY: 0 };
+        var zSlider = document.getElementById('gsoCropZoomSlider');
+        var zVal = document.getElementById('gsoZoomVal');
+        if (zSlider) zSlider.value = String(curCrop.zoom || 1.0);
+        if (zVal) zVal.textContent = (curCrop.zoom || 1.0).toFixed(2) + '×';
+      }
+
+      var gsoTabsWired = false;
+      function wireGsoModeTabs() {
+        if (gsoTabsWired) return;
+        gsoTabsWired = true;
+        var tabs = document.querySelectorAll('.gso-mode-tab');
+        tabs.forEach(function (t) {
+          t.addEventListener('click', function () {
+            gsoSetMode(t.dataset.mode);
+          });
+        });
+      }
+
+      function gsoSetMode(mode) {
+        gsoMode = mode || 'stickers';
+        document.querySelectorAll('.gso-mode-tab').forEach(function (t) {
+          t.classList.toggle('on', t.dataset.mode === gsoMode);
+        });
+        var sp = document.getElementById('gsoStickersPane');
+        var tp = document.getElementById('gsoTextPane');
+        var cp = document.getElementById('gsoCropPane');
+        if (sp) sp.classList.toggle('hidden', gsoMode !== 'stickers');
+        if (tp) tp.classList.toggle('hidden', gsoMode !== 'text');
+        if (cp) cp.classList.toggle('hidden', gsoMode !== 'crop');
+
+        if (gsoMode === 'crop') {
+          selGuestDecor = -1;
+          refreshGuestStickerControls();
+          refreshCropUI();
+        }
+        gsoRedraw();
+      }
+
+      var cropControlsWired = false;
+      function wireCropControls() {
+        if (cropControlsWired) return;
+        cropControlsWired = true;
+        var zSlider = document.getElementById('gsoCropZoomSlider');
+        var zIn = document.getElementById('gsoCropZoomIn');
+        var zOut = document.getElementById('gsoCropZoomOut');
+        var rBtn = document.getElementById('gsoCropResetBtn');
+        var nUp = document.getElementById('gsoNudgeUp');
+        var nDown = document.getElementById('gsoNudgeDown');
+        var nLeft = document.getElementById('gsoNudgeLeft');
+        var nRight = document.getElementById('gsoNudgeRight');
+        var nCenter = document.getElementById('gsoNudgeReset');
+
+        function setCrop(fn) {
+          shotCrops[selCropShot] = shotCrops[selCropShot] || { zoom: 1, panX: 0, panY: 0 };
+          fn(shotCrops[selCropShot]);
+          refreshCropUI();
+          gsoRedraw();
+        }
+
+        if (zSlider) zSlider.addEventListener('input', function () {
+          setCrop(function (c) { c.zoom = Math.max(1, Math.min(2.5, Number(zSlider.value) || 1)); });
+        });
+        if (zIn) zIn.addEventListener('click', function () {
+          setCrop(function (c) { c.zoom = Math.min(2.5, Math.round(((c.zoom || 1) + 0.1) * 100) / 100); });
+        });
+        if (zOut) zOut.addEventListener('click', function () {
+          setCrop(function (c) { c.zoom = Math.max(1.0, Math.round(((c.zoom || 1) - 0.1) * 100) / 100); });
+        });
+        if (nUp) nUp.addEventListener('click', function () {
+          setCrop(function (c) { c.panY = Math.max(-1, Math.round(((c.panY || 0) - 0.1) * 100) / 100); });
+        });
+        if (nDown) nDown.addEventListener('click', function () {
+          setCrop(function (c) { c.panY = Math.min(1, Math.round(((c.panY || 0) + 0.1) * 100) / 100); });
+        });
+        if (nLeft) nLeft.addEventListener('click', function () {
+          setCrop(function (c) { c.panX = Math.max(-1, Math.round(((c.panX || 0) - 0.1) * 100) / 100); });
+        });
+        if (nRight) nRight.addEventListener('click', function () {
+          setCrop(function (c) { c.panX = Math.min(1, Math.round(((c.panX || 0) + 0.1) * 100) / 100); });
+        });
+        if (nCenter) nCenter.addEventListener('click', function () {
+          setCrop(function (c) { c.panX = 0; c.panY = 0; });
+        });
+        if (rBtn) rBtn.addEventListener('click', function () {
+          setCrop(function (c) { c.zoom = 1; c.panX = 0; c.panY = 0; });
+        });
+      }
+
+      var textControlsWired = false;
+      var TREND_PHRASES = [
+        'SLAY ✨', 'BESTIES 👯‍♀️', 'Main Character', 'Pure Vibes ✌️', 'IT GIRL 💅',
+        'So Aesthetic ☁️', 'Photo Dump 📸', 'ICONIC 💎', 'XOXO 💋', 'Date Night ❤️',
+        'Cute AF 🎀', 'Best Life ✨', 'Forever & Always', 'Cheers! 🥂'
+      ];
+      var TEXT_COLORS = [
+        '#ffffff', '#111111', '#ff7597', '#ffea79', '#b185db', '#70e000', '#00b4d8', '#e63946'
+      ];
+
+      function wireTextControls() {
+        if (textControlsWired) return;
+        textControlsWired = true;
+        var tc = document.getElementById('gsoTrendChips');
+        var sc = document.getElementById('gsoColorSwatches');
+        var fc = document.getElementById('gsoFontChips');
+        var stc = document.getElementById('gsoStyleChips');
+        var input = document.getElementById('gsoCustomTextInput');
+        var addBtn = document.getElementById('gsoAddTextBtn');
+
+        if (tc) {
+          tc.innerHTML = '';
+          TREND_PHRASES.forEach(function (ph) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'gso-trend-chip';
+            b.textContent = ph;
+            b.addEventListener('click', function () {
+              if (input) { input.value = ph; input.focus(); }
+            });
+            tc.appendChild(b);
+          });
+        }
+
+        if (sc) {
+          sc.innerHTML = '';
+          TEXT_COLORS.forEach(function (col, i) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'gso-swatch' + (i === 0 ? ' on' : '');
+            b.style.background = col;
+            b.dataset.color = col;
+            b.addEventListener('click', function () {
+              customTextState.color = col;
+              sc.querySelectorAll('.gso-swatch').forEach(function (s) { s.classList.toggle('on', s === b); });
+            });
+            sc.appendChild(b);
+          });
+        }
+
+        if (fc) {
+          fc.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-font]');
+            if (!b) return;
+            customTextState.font = b.dataset.font;
+            fc.querySelectorAll('.gso-font-chip').forEach(function (c) { c.classList.toggle('on', c === b); });
+          });
+        }
+
+        if (stc) {
+          stc.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-style]');
+            if (!b) return;
+            customTextState.style = b.dataset.style;
+            stc.querySelectorAll('.gso-style-chip').forEach(function (c) { c.classList.toggle('on', c === b); });
+          });
+        }
+
+        if (addBtn) {
+          addBtn.addEventListener('click', function () {
+            var txt = (input && input.value || '').trim();
+            if (!txt) {
+              showToast('Please type some text or tap a trend phrase.', 2500);
+              return;
+            }
+            addCustomTextDecor(txt, customTextState.font, customTextState.color, customTextState.style);
+            if (input) input.value = '';
+          });
+        }
+      }
+
+      function addCustomTextDecor(text, fontKey, color, styleKey) {
+        if (guestDecor.length >= 30) { showToast('Maximum decorations reached.', 3000); return; }
+        var vc = gsoVisibleCenter();
+        var bx = vc ? vc.x : 0.5, by = vc ? vc.y : 0.45;
+        var dataObj = {
+          t: text.slice(0, 45),
+          f: fontKey || 'manrope',
+          c: color || '#ffffff',
+          st: styleKey || 'pill'
+        };
+        var src = 't:' + encodeURIComponent(JSON.stringify(dataObj));
+        guestDecor.push({
+          src: src,
+          x: Math.max(0.08, Math.min(0.92, bx)),
+          y: Math.max(0.08, Math.min(0.92, by)),
+          s: 0.35,
+          r: 0
+        });
+        selGuestDecor = guestDecor.length - 1;
+        refreshGuestStickerControls();
+        gsoRedraw();
+        showToast('Text added! Drag, resize or rotate.', 2500);
+      }
 
       function willAutoPrint() {
         if (typeof noPrintSession === 'function' && noPrintSession()) return false;     // a "no print" payment option: softcopy only
@@ -22399,7 +23295,7 @@
         var gso = document.getElementById('guestStickerOverlay');
         if (gso) gso.classList.add('hidden');
         if (gsoMounted() || document.body.classList.contains('decorating')) gsoUnmount();
-        guestDecor = []; selGuestDecor = -1;
+        guestDecor = []; selGuestDecor = -1; shotCrops = {};
         flashOverlay.classList.remove('flash-active');
         countdownOverlay.classList.remove('pausing');
         readyOverlay.classList.remove('ready-active');
@@ -22642,6 +23538,17 @@
         document.getElementById('resultDoneBtn').addEventListener('click', function (e) {
           e.stopPropagation();
           if (state === 'result' && typeof resetForNextGuest === 'function') resetForNextGuest();
+        });
+        var resCust = document.getElementById('resultCustomizeBtn');
+        if (resCust) resCust.addEventListener('click', async function (e) {
+          e.stopPropagation();
+          if (state === 'result' && Array.isArray(shotCanvases) && shotCanvases.some(Boolean)) {
+            clearTimeout(resultTimer);
+            if (!sess) sess = { cancelled: false, decorating: false };
+            await guestStickersPhase();
+            renderComposite();
+            updateUI();
+          }
         });
       })();
 
@@ -23093,6 +24000,24 @@
         if (typeof frameListEl !== 'undefined' && frameListEl) refreshFrameUI();
       }
 
+      var shotCrops = {};
+      var shotSlotBoxes = {};
+      function recordShotSlotBox(idx, ctx, x, y, w, h) {
+        try {
+          var m = ctx.getTransform();
+          var x0 = m.a * x + m.c * y + m.e;
+          var y0 = m.b * x + m.d * y + m.f;
+          var x1 = m.a * (x + w) + m.c * (y + h) + m.e;
+          var y1 = m.b * (x + w) + m.d * (y + h) + m.f;
+          shotSlotBoxes[idx] = {
+            x: Math.min(x0, x1),
+            y: Math.min(y0, y1),
+            w: Math.abs(x1 - x0),
+            h: Math.abs(y1 - y0)
+          };
+        } catch (e) { }
+      }
+
       // ---- Canvas compositing ----
       function drawImageCover(ctx, img, x, y, w, h, focus) {
         if (BOX_PROBE && BOX_PROBE.set.has(img)) { if (!BOX_PROBE.aspect) BOX_PROBE.aspect = w / h; if (BOX_PROBE.per && !BOX_PROBE.per.has(img)) BOX_PROBE.per.set(img, w / h); }
@@ -23116,6 +24041,25 @@
           else if (focus === 'bottom') sy = ih - sh;
           else sy = (ih - sh) / 2;
           sx = 0;
+        }
+        var crop = (img && img._crop) || (typeof img._shotIndex === 'number' && shotCrops[img._shotIndex]) || null;
+        if (crop && !BOX_PROBE) {
+          var z = Math.max(1, Math.min(3, Number(crop.zoom) || 1));
+          var px = Math.max(-1, Math.min(1, Number(crop.panX) || 0));
+          var py = Math.max(-1, Math.min(1, Number(crop.panY) || 0));
+          var sw_z = sw / z;
+          var sh_z = sh / z;
+          var maxShiftX = (iw - sw_z) / 2;
+          var maxShiftY = (ih - sh_z) / 2;
+          var new_cx = (iw / 2) + px * maxShiftX;
+          var new_cy = (ih / 2) + py * maxShiftY;
+          sx = Math.max(0, Math.min(iw - sw_z, new_cx - sw_z / 2));
+          sy = Math.max(0, Math.min(ih - sh_z, new_cy - sh_z / 2));
+          sw = sw_z;
+          sh = sh_z;
+        }
+        if (img && typeof img._shotIndex === 'number' && !BOX_PROBE && ctx.canvas === previewCanvas) {
+          recordShotSlotBox(img._shotIndex, ctx, x, y, w, h);
         }
         ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
       }
@@ -24004,6 +24948,14 @@
       // ---- Shared composite builder, used for both the real result and the
       // Setup tab's live preview, so they never fall out of sync. ----
       function composeCanvas(layoutKey, targetCanvas, shots) {
+        if (Array.isArray(shots)) {
+          for (var si = 0; si < shots.length; si++) {
+            if (shots[si]) {
+              shots[si]._shotIndex = si;
+              if (shotCrops && shotCrops[si]) shots[si]._crop = shotCrops[si];
+            }
+          }
+        }
         if (layoutDef(layoutKey).kind === 'frame') return composeFrameCanvas(layoutKey, targetCanvas, shots);
         if (layoutDef(layoutKey).kind === 'landscape') return composeLandscape(layoutKey, targetCanvas, shots);
         if (layoutDef(layoutKey).kind === 'card') return composeCard(layoutKey, targetCanvas, shots);
@@ -29292,6 +30244,7 @@
         state = 'idle';
         guestDecor = [];
         selGuestDecor = -1;
+        shotCrops = {};
         if (printFirstHolding) finishPrintFirst();
         var gso = document.getElementById('guestStickerOverlay');
         if (gso) gso.classList.add('hidden');
@@ -40676,13 +41629,34 @@
         renderComposite(); renderSetupPreview();
       }
 
-      // ---- Built-in stickers (vector, so they stay sharp in print) ----
+      // ---- Built-in stickers (vector & emoji, sharp in print) ----
+      var STICKER_EMOJIS = {
+        'e-sparkle': '✨', 'e-sparkheart': '💖', 'e-ribbon': '🎀', 'e-butterfly': '🦋',
+        'e-cherry': '🍒', 'e-tulip': '🌷', 'e-kiss': '💋', 'e-nail': '💅',
+        'e-angel': '👼', 'e-ring': '💍', 'e-bouquet': '💐', 'e-champagne': '🥂',
+        'e-partyface': '🥳', 'e-popper': '🎉', 'e-camera': '📸', 'e-trophy': '🏆'
+      };
+
       var STICKERS = [
         ['heart', 'Heart'], ['star', 'Star'], ['crown', 'Crown'], ['sparkle', 'Sparkle'], ['bow', 'Bow'],
         ['balloon', 'Balloon'], ['partyhat', 'Party hat'], ['shades', 'Sunglasses'], ['mustache', 'Mustache'], ['lips', 'Lips'],
         ['gradcap', 'Grad cap'], ['diploma', 'Diploma'], ['dove', 'Dove'], ['cross', 'Cross'],
         ['b-cheers', 'Cheers!'], ['b-married', 'Just Married'], ['b-bday', 'Happy Birthday!'], ['b-class', 'Class of ' + new Date().getFullYear()], ['b-best', 'Best Day Ever'],
-        // new packages (keys use letters and "-" only, so saved designs stay valid)
+        // Trend & Y2K texts
+        ['b-slay', 'SLAY ✨'], ['b-besties', 'BESTIES 👯‍♀️'], ['b-mainchar', 'Main Character'], ['b-vibes', 'Pure Vibes ✌️'],
+        ['b-itgirl', 'IT GIRL 💅'], ['b-aesthetic', 'Aesthetic ☁️'], ['b-photodump', 'Photo Dump 📸'], ['b-iconic', 'ICONIC 💎'],
+        ['b-xoxo', 'XOXO 💋'], ['b-cute', 'Cute AF 🎀'], ['b-datenight', 'Date Night ❤️'], ['b-forever', 'Forever & Always'],
+        ['b-living', 'Best Life ✨'], ['b-love', 'All My Love'], ['b-queen', 'Queen Vibes 👑'], ['b-grad', 'Congrats Grad! 🎓'],
+        // Trend vectors
+        ['y2kstar', 'Y2K Star'], ['pinkbow', 'Pink Bow'], ['cherries', 'Cherries'], ['flame', 'Fire Flame'],
+        ['cyberheart', 'Cyber Heart'], ['cat-ears', 'Cat Ears'], ['bunny-ears', 'Bunny Ears'], ['blush', 'Anime Blush'],
+        ['heartshades', 'Heart Shades'], ['pixshades', 'Pixel Shades'], ['filmstamp', 'Film Stamp'],
+        // Emojis
+        ['e-sparkle', 'Sparkles ✨'], ['e-sparkheart', 'Sparkling Heart 💖'], ['e-ribbon', 'Ribbon 🎀'], ['e-butterfly', 'Butterfly 🦋'],
+        ['e-cherry', 'Cherries 🍒'], ['e-tulip', 'Tulip 🌷'], ['e-kiss', 'Kiss Mark 💋'], ['e-nail', 'Nails 💅'],
+        ['e-angel', 'Angel 👼'], ['e-ring', 'Diamond Ring 💍'], ['e-bouquet', 'Bouquet 💐'], ['e-champagne', 'Cheers 🥂'],
+        ['e-partyface', 'Party Face 🥳'], ['e-popper', 'Party Popper 🎉'], ['e-camera', 'Retro Camera 📸'], ['e-trophy', 'Trophy 🏆'],
+        // Classic party & events
         ['cake', 'Cake'], ['gift', 'Gift'], ['balloons', 'Balloons'], ['b-wish', 'Make a Wish!'],
         ['christmastree', 'Christmas tree'], ['santahat', 'Santa hat'], ['snowflake', 'Snowflake'], ['candycane', 'Candy cane'], ['ornament', 'Ornament'], ['b-xmas', 'Merry Christmas!'], ['b-hohoho', 'Ho Ho Ho!'],
         ['tiara', 'Tiara'], ['butterfly', 'Butterfly'], ['rose', 'Rose'], ['champagne', 'Champagne'], ['eighteen', 'Eighteen'], ['b-debut', 'Debut Night'], ['b-fabulous', 'Fabulous at 18!'],
@@ -40690,13 +41664,17 @@
         ['halo', 'Halo'], ['wings', 'Angel wings'], ['cloud', 'Cloud'], ['b-blessed', 'God Bless!'], ['b-welcomebaby', 'Welcome Baby']
       ];
       var STICKER_NAMES = {}; STICKERS.forEach(function (s) { STICKER_NAMES[s[0]] = s[1]; });
-      // Sticker packages: the operator ticks which ones guests can use. "Usual" keeps every sticker the booth already had.
+      // Sticker packages: the operator ticks which ones guests can use.
       var STICKER_PACKS = [
-        { id: 'usual', name: 'Usual', icon: '⭐', items: ['heart', 'star', 'sparkle', 'crown', 'bow', 'shades', 'mustache', 'lips', 'b-cheers', 'b-best', 'b-married', 'gradcap', 'diploma', 'b-class'] },
-        { id: 'birthday', name: 'Birthday', icon: '🎂', items: ['b-bday', 'cake', 'gift', 'balloon', 'balloons', 'partyhat', 'b-wish', 'star'] },
+        { id: 'trend', name: 'Trend & Y2K', icon: '🔥', items: ['b-slay', 'b-besties', 'b-mainchar', 'b-vibes', 'b-itgirl', 'b-photodump', 'b-iconic', 'b-cute', 'y2kstar', 'pinkbow', 'cherries', 'flame', 'cyberheart', 'cat-ears', 'blush', 'heartshades', 'pixshades', 'filmstamp', 'sparkle'] },
+        { id: 'aesthetic', name: 'Aesthetic', icon: '💖', items: ['b-aesthetic', 'b-xoxo', 'pinkbow', 'cherries', 'y2kstar', 'e-sparkle', 'e-sparkheart', 'e-butterfly', 'e-tulip', 'e-kiss', 'e-nail', 'e-angel', 'blush', 'heart', 'cloud'] },
+        { id: 'party', name: 'Party', icon: '🎉', items: ['b-party', 'b-cheers', 'b-vibes', 'e-partyface', 'e-popper', 'discoball', 'confetti', 'musicnote', 'partyhat', 'balloon', 'champagne', 'shades', 'mustache', 'cat-ears', 'bunny-ears'] },
+        { id: 'wedding', name: 'Wedding & Love', icon: '💍', items: ['b-married', 'b-best', 'b-forever', 'b-datenight', 'b-love', 'e-ring', 'e-bouquet', 'e-champagne', 'rose', 'dove', 'heart', 'champagne', 'sparkle'] },
+        { id: 'birthday', name: 'Birthday', icon: '🎂', items: ['b-bday', 'cake', 'gift', 'balloon', 'balloons', 'partyhat', 'b-wish', 'e-partyface', 'e-popper', 'star'] },
+        { id: 'debut', name: 'Debut & 18', icon: '👑', items: ['b-debut', 'b-fabulous', 'b-queen', 'tiara', 'crown', 'butterfly', 'rose', 'champagne', 'eighteen', 'sparkle', 'pinkbow'] },
+        { id: 'grad', name: 'Graduation', icon: '🎓', items: ['b-grad', 'b-class', 'gradcap', 'diploma', 'e-trophy', 'star', 'sparkle'] },
+        { id: 'usual', name: 'Classic', icon: '⭐', items: ['heart', 'star', 'sparkle', 'crown', 'bow', 'shades', 'mustache', 'lips', 'b-cheers', 'b-best', 'b-married', 'gradcap', 'diploma', 'b-class'] },
         { id: 'christmas', name: 'Christmas', icon: '🎄', items: ['b-xmas', 'christmastree', 'santahat', 'snowflake', 'candycane', 'ornament', 'b-hohoho', 'star'] },
-        { id: 'debut', name: 'Debut', icon: '👑', items: ['b-debut', 'b-fabulous', 'tiara', 'crown', 'butterfly', 'rose', 'champagne', 'eighteen', 'sparkle'] },
-        { id: 'party', name: 'Party', icon: '🎉', items: ['b-party', 'b-cheers', 'discoball', 'confetti', 'musicnote', 'partyhat', 'balloon', 'champagne', 'shades', 'mustache'] },
         { id: 'christening', name: 'Christening', icon: '🕊️', items: ['b-blessed', 'b-welcomebaby', 'dove', 'cross', 'halo', 'wings', 'cloud', 'bow'] }
       ];
       var stickerPacksOn = STICKER_PACKS.map(function (p) { return p.id; });   // packages guests can use (all, until the operator unticks some)
@@ -40725,16 +41703,45 @@
       function drawSticker(ctx, k, S) {
         var r = S / 2, gold = goldGrad(ctx, -r, -r, r, r);
         ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+        if (typeof STICKER_EMOJIS !== 'undefined' && STICKER_EMOJIS[k]) {
+          var emo = STICKER_EMOJIS[k];
+          ctx.font = Math.round(S * 0.72) + 'px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(emo, 0, S * 0.04);
+          return;
+        }
         if (k.indexOf('b-') === 0) {
-          var text = STICKER_NAMES[k];
+          var text = STICKER_NAMES[k] || k.slice(2);
           ctx.font = '800 ' + Math.round(S * 0.16) + 'px Manrope, sans-serif';
-          var tw = ctx.measureText(text).width, bw = Math.max(S * 0.7, tw + S * 0.2), bh = S * 0.34;
-          ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1c1a1e'; ctx.lineWidth = Math.max(2, S * 0.025);
-          roundRectPath(ctx, -bw / 2, -bh / 2, bw, bh, bh / 2);
-          ctx.fill(); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(-bw * 0.18, bh / 2 - 1); ctx.lineTo(-bw * 0.3, bh / 2 + S * 0.13); ctx.lineTo(-bw * 0.04, bh / 2 - 1); ctx.closePath(); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = '#ffffff'; ctx.fillRect(-bw * 0.17, bh / 2 - ctx.lineWidth * 1.5, bw * 0.12, ctx.lineWidth * 2);
-          ctx.fillStyle = '#C93D27'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, 0, S * 0.005);
+          var tw = ctx.measureText(text).width, bw = Math.max(S * 0.75, tw + S * 0.25), bh = S * 0.36;
+          if (k === 'b-slay' || k === 'b-itgirl' || k === 'b-cute') {
+            var grad = ctx.createLinearGradient(-bw / 2, 0, bw / 2, 0);
+            grad.addColorStop(0, '#ff6584'); grad.addColorStop(1, '#ff8fa3');
+            ctx.fillStyle = grad;
+            ctx.shadowColor = 'rgba(255, 101, 132, 0.45)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 2;
+            roundRectPath(ctx, -bw / 2, -bh / 2, bw, bh, bh / 2);
+            ctx.fill();
+            ctx.shadowColor = 'transparent';
+            ctx.fillStyle = '#ffffff';
+          } else if (k === 'b-mainchar' || k === 'b-iconic' || k === 'b-photodump') {
+            ctx.fillStyle = '#1c1a1e';
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1.5, S * 0.015);
+            ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
+            roundRectPath(ctx, -bw / 2, -bh / 2, bw, bh, bh / 2);
+            ctx.fill(); ctx.stroke();
+            ctx.shadowColor = 'transparent';
+            ctx.fillStyle = '#ffffff';
+          } else {
+            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1c1a1e'; ctx.lineWidth = Math.max(2, S * 0.025);
+            ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
+            roundRectPath(ctx, -bw / 2, -bh / 2, bw, bh, bh / 2);
+            ctx.fill(); ctx.stroke();
+            ctx.shadowColor = 'transparent';
+            ctx.beginPath(); ctx.moveTo(-bw * 0.18, bh / 2 - 1); ctx.lineTo(-bw * 0.3, bh / 2 + S * 0.13); ctx.lineTo(-bw * 0.04, bh / 2 - 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(-bw * 0.17, bh / 2 - ctx.lineWidth * 1.5, bw * 0.12, ctx.lineWidth * 2);
+            ctx.fillStyle = (k === 'b-vibes' || k === 'b-besties' || k === 'b-datenight' || k === 'b-forever') ? '#1c1a1e' : '#C93D27';
+          }
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, 0, S * 0.005);
           return;
         }
         switch (k) {
@@ -40815,6 +41822,118 @@
           case 'cross':
             ctx.fillStyle = gold; ctx.fillRect(-r * 0.12, -r * 0.9, r * 0.24, r * 1.8); ctx.fillRect(-r * 0.55, -r * 0.45, r * 1.1, r * 0.24);
             ctx.strokeStyle = 'rgba(120,80,20,.45)'; ctx.lineWidth = S * 0.015; ctx.strokeRect(-r * 0.12, -r * 0.9, r * 0.24, r * 1.8); ctx.strokeRect(-r * 0.55, -r * 0.45, r * 1.1, r * 0.24);
+            break;
+          // ---- Trend & Y2K Vectors ----
+          case 'y2kstar':
+            ctx.fillStyle = gold; starPath(ctx, r * 0.95, 4, 0.16); ctx.fill();
+            ctx.fillStyle = '#ffffff'; starPath(ctx, r * 0.45, 4, 0.2); ctx.fill();
+            [-0.5, 0.5].forEach(function(dx) {
+              [-0.5, 0.5].forEach(function(dy) {
+                ctx.save(); ctx.translate(r * dx, r * dy);
+                ctx.fillStyle = '#fff7da'; starPath(ctx, r * 0.22, 4, 0.25); ctx.fill();
+                ctx.restore();
+              });
+            });
+            break;
+          case 'pinkbow':
+            ctx.fillStyle = '#ff7597';
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.bezierCurveTo(-r * 0.5, -r * 0.75, -r * 1.1, -r * 0.5, -r * 0.95, 0); ctx.bezierCurveTo(-r * 1.1, r * 0.5, -r * 0.5, r * 0.75, 0, 0); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.bezierCurveTo(r * 0.5, -r * 0.75, r * 1.1, -r * 0.5, r * 0.95, 0); ctx.bezierCurveTo(r * 1.1, r * 0.5, r * 0.5, r * 0.75, 0, 0); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(-r * 0.1, r * 0.1); ctx.lineTo(-r * 0.65, r * 0.95); ctx.lineTo(-r * 0.45, r * 0.95); ctx.lineTo(0, r * 0.2); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(r * 0.1, r * 0.1); ctx.lineTo(r * 0.65, r * 0.95); ctx.lineTo(r * 0.45, r * 0.95); ctx.lineTo(0, r * 0.2); ctx.fill();
+            ctx.fillStyle = '#e85d82'; ctx.beginPath(); ctx.ellipse(0, 0, r * 0.22, r * 0.26, 0, 0, Math.PI * 2); ctx.fill();
+            break;
+          case 'cherries':
+            ctx.strokeStyle = '#4a7c2c'; ctx.lineWidth = S * 0.04; ctx.beginPath();
+            ctx.moveTo(-r * 0.35, r * 0.2); ctx.quadraticCurveTo(-r * 0.2, -r * 0.7, 0, -r * 0.85);
+            ctx.moveTo(r * 0.35, r * 0.35); ctx.quadraticCurveTo(r * 0.1, -r * 0.5, 0, -r * 0.85);
+            ctx.stroke();
+            ctx.fillStyle = '#5ca237'; ctx.beginPath();
+            ctx.ellipse(r * 0.3, -r * 0.8, r * 0.32, r * 0.14, 0.4, 0, Math.PI * 2); ctx.fill();
+            [[-r * 0.4, r * 0.35], [r * 0.35, r * 0.48]].forEach(function(pt) {
+              ctx.fillStyle = '#d90429'; ctx.beginPath(); ctx.arc(pt[0], pt[1], r * 0.42, 0, Math.PI * 2); ctx.fill();
+              ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.ellipse(pt[0] - r * 0.12, pt[1] - r * 0.14, r * 0.12, r * 0.08, -0.6, 0, Math.PI * 2); ctx.fill();
+            });
+            break;
+          case 'flame':
+            ctx.fillStyle = '#ff7b00'; ctx.beginPath();
+            ctx.moveTo(0, -r * 0.95);
+            ctx.bezierCurveTo(r * 0.5, -r * 0.4, r * 0.9, 0, r * 0.6, r * 0.65);
+            ctx.bezierCurveTo(r * 0.3, r * 0.95, -r * 0.3, r * 0.95, -r * 0.6, r * 0.65);
+            ctx.bezierCurveTo(-r * 0.9, 0, -r * 0.5, -r * 0.4, 0, -r * 0.95); ctx.fill();
+            ctx.fillStyle = '#ffdd00'; ctx.beginPath();
+            ctx.moveTo(0, -r * 0.4);
+            ctx.bezierCurveTo(r * 0.3, -r * 0.1, r * 0.5, r * 0.2, r * 0.35, r * 0.6);
+            ctx.bezierCurveTo(r * 0.2, r * 0.85, -r * 0.2, r * 0.85, -r * 0.35, r * 0.6);
+            ctx.bezierCurveTo(-r * 0.5, r * 0.2, -r * 0.3, -r * 0.1, 0, -r * 0.4); ctx.fill();
+            break;
+          case 'cyberheart':
+            ctx.fillStyle = '#222222'; heartPath(ctx, r * 0.9); ctx.fill();
+            ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = S * 0.04; ctx.stroke();
+            ctx.fillStyle = '#00e5ff'; starPath(ctx, r * 0.4, 4, 0.2); ctx.fill();
+            break;
+          case 'cat-ears':
+            ctx.fillStyle = '#222222';
+            ctx.beginPath(); ctx.moveTo(-r * 0.85, r * 0.4); ctx.lineTo(-r * 0.75, -r * 0.8); ctx.lineTo(-r * 0.15, r * 0.1); ctx.closePath(); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(r * 0.85, r * 0.4); ctx.lineTo(r * 0.75, -r * 0.8); ctx.lineTo(r * 0.15, r * 0.1); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#ff7597';
+            ctx.beginPath(); ctx.moveTo(-r * 0.75, r * 0.3); ctx.lineTo(-r * 0.7, -r * 0.6); ctx.lineTo(-r * 0.28, r * 0.05); ctx.closePath(); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(r * 0.75, r * 0.3); ctx.lineTo(r * 0.7, -r * 0.6); ctx.lineTo(r * 0.28, r * 0.05); ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = '#222222'; ctx.lineWidth = S * 0.035;
+            ctx.beginPath(); ctx.arc(0, r * 0.6, r * 0.7, -Math.PI * 0.85, -Math.PI * 0.15); ctx.stroke();
+            break;
+          case 'bunny-ears':
+            ctx.fillStyle = '#ffffff'; ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = S * 0.02;
+            [[-r * 0.45, -0.15], [r * 0.45, 0.15]].forEach(function(ear) {
+              ctx.save(); ctx.translate(ear[0], -r * 0.1); ctx.rotate(ear[1]);
+              ctx.beginPath(); ctx.ellipse(0, 0, r * 0.24, r * 0.8, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+              ctx.fillStyle = '#ffadc6';
+              ctx.beginPath(); ctx.ellipse(0, 0, r * 0.12, r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+              ctx.restore();
+            });
+            break;
+          case 'blush':
+            ctx.fillStyle = 'rgba(255, 117, 151, 0.55)';
+            [[-r * 0.55, 0], [r * 0.55, 0]].forEach(function(pt) {
+              ctx.beginPath(); ctx.ellipse(pt[0], pt[1], r * 0.38, r * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+              ctx.strokeStyle = '#e84a75'; ctx.lineWidth = S * 0.02;
+              for (var li = -1; li <= 1; li++) {
+                ctx.beginPath(); ctx.moveTo(pt[0] + li * r * 0.12 - r * 0.08, pt[1] - r * 0.1); ctx.lineTo(pt[0] + li * r * 0.12 + r * 0.08, pt[1] + r * 0.1); ctx.stroke();
+              }
+            });
+            break;
+          case 'heartshades':
+            ctx.fillStyle = '#e63946';
+            [[-r * 0.48, 0], [r * 0.48, 0]].forEach(function(pt) {
+              ctx.save(); ctx.translate(pt[0], pt[1]);
+              heartPath(ctx, r * 0.48); ctx.fill();
+              ctx.fillStyle = '#111111'; heartPath(ctx, r * 0.36); ctx.fill();
+              ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.ellipse(-r * 0.12, -r * 0.14, r * 0.08, r * 0.05, -0.6, 0, Math.PI * 2); ctx.fill();
+              ctx.restore();
+            });
+            ctx.strokeStyle = '#e63946'; ctx.lineWidth = S * 0.04; ctx.beginPath(); ctx.moveTo(-r * 0.15, -r * 0.05); ctx.lineTo(r * 0.15, -r * 0.05); ctx.stroke();
+            break;
+          case 'pixshades':
+            ctx.fillStyle = '#111111';
+            ctx.fillRect(-r * 0.9, -r * 0.25, r * 1.8, r * 0.12);
+            ctx.fillRect(-r * 0.8, -r * 0.15, r * 0.65, r * 0.45);
+            ctx.fillRect(r * 0.15, -r * 0.15, r * 0.65, r * 0.45);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-r * 0.72, -r * 0.08, r * 0.1, r * 0.1);
+            ctx.fillRect(-r * 0.62, 0, r * 0.1, r * 0.1);
+            ctx.fillRect(r * 0.23, -r * 0.08, r * 0.1, r * 0.1);
+            ctx.fillRect(r * 0.33, 0, r * 0.1, r * 0.1);
+            break;
+          case 'filmstamp':
+            var yr = String(new Date().getFullYear()).slice(2);
+            var mo = String(new Date().getMonth() + 1).padStart(2, '0');
+            var dy = String(new Date().getDate()).padStart(2, '0');
+            var stampText = "'" + yr + ' ' + mo + ' ' + dy;
+            ctx.fillStyle = '#ff7b00';
+            ctx.font = '800 ' + Math.round(S * 0.28) + 'px "Courier New", monospace';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.shadowColor = 'rgba(255, 123, 0, 0.8)'; ctx.shadowBlur = 8;
+            ctx.fillText(stampText, 0, 0);
             break;
           // ---- Birthday ----
           case 'cake':
@@ -40952,7 +42071,7 @@
       var LOGO_POS = { tl: [0, 0], tc: [0.5, 0], tr: [1, 0], bl: [0, 1], bc: [0.5, 1], br: [1, 1] };
       function decorBox(d, W, H) {
         var size = d.s * W, img = d.src.indexOf('a:') === 0 ? assetImg(d.src.slice(2)) : null;
-        var aspect = img ? img.height / img.width : (d.src.indexOf('b:b-') === 0 ? 0.55 : 1);
+        var aspect = img ? img.height / img.width : (d.src.indexOf('b:b-') === 0 ? 0.45 : (d.src.indexOf('t:') === 0 ? (d.aspect || 0.38) : 1));
         return { cx: d.x * W, cy: d.y * H, w: size, h: size * aspect, img: img };
       }
       // Selection box with handles: drag a corner to resize, drag the round handle to rotate. Sizes follow the sticker's own box.
@@ -41066,14 +42185,66 @@
       function stickersInColour(ctx) {
         return ctx.canvas === previewCanvas && typeof sess !== 'undefined' && !!sess && !!sess.decorating && !sess.decoPreview;
       }
+      function drawCustomTextDecorItem(ctx, d, b) {
+        var data = null;
+        try { data = JSON.parse(decodeURIComponent(d.src.slice(2))); } catch (e) { }
+        if (!data || !data.t) return;
+        var text = data.t, font = data.f || 'manrope', color = data.c || '#ffffff', style = data.st || 'pill';
+        var fs = Math.max(16, Math.round(b.w * 0.16));
+        var fontStr = '800 ' + fs + 'px "Manrope", sans-serif';
+        if (font === 'handwriting') fontStr = '800 ' + Math.round(fs * 1.25) + 'px "Caveat", "Brush Script MT", cursive, sans-serif';
+        else if (font === 'serif') fontStr = '700 ' + Math.round(fs * 1.05) + 'px "Playfair Display", "Georgia", serif';
+        else if (font === 'mono') fontStr = '700 ' + Math.round(fs * 0.95) + 'px "Courier New", monospace';
+        else if (font === 'bubble') fontStr = '900 ' + Math.round(fs * 1.1) + 'px "Arial Rounded MT Bold", "Manrope", sans-serif';
+
+        ctx.font = fontStr;
+        var tw = ctx.measureText(text).width;
+        var padX = fs * 0.55, padY = fs * 0.35;
+        var bw = Math.max(b.w, tw + padX * 2);
+        var bh = fs * 1.3 + padY * 2;
+        d.aspect = bh / bw;
+
+        ctx.save();
+        if (style === 'pill') {
+          var isLight = (color === '#ffffff' || color === '#ffea79');
+          ctx.fillStyle = isLight ? '#1c1a1e' : '#ffffff';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+          ctx.shadowBlur = 10;
+          ctx.shadowOffsetY = 3;
+          roundRectPath(ctx, -bw / 2, -bh / 2, bw, bh, bh / 2);
+          ctx.fill();
+          ctx.shadowColor = 'transparent';
+          ctx.fillStyle = color;
+        } else if (style === 'outline') {
+          var isDark = (color === '#111111');
+          ctx.lineWidth = Math.max(3, fs * 0.2);
+          ctx.strokeStyle = isDark ? '#ffffff' : '#000000';
+          ctx.lineJoin = 'round';
+          ctx.strokeText(text, 0, fs * 0.05);
+          ctx.fillStyle = color;
+        } else if (style === 'neon') {
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 18;
+          ctx.fillStyle = color;
+        } else {
+          ctx.fillStyle = color;
+        }
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, 0, fs * 0.05);
+        ctx.restore();
+      }
+
       function drawDecorItem(ctx, d, W, H, mono) {
         var b = decorBox(d, W, H), tone = stickersInColour(ctx) ? '' : stickerTone(mono), t = null;
-        if (tone) { try { t = tonedSticker(d, b, tone); } catch (e) { t = null; } }
+        if (tone && d.src.indexOf('t:') !== 0) { try { t = tonedSticker(d, b, tone); } catch (e) { t = null; } }
         ctx.save(); ctx.translate(b.cx, b.cy); ctx.rotate((d.r || 0) * Math.PI / 180);
         if (t) {
           if (tone === 'dots' && !(d.r % 360)) ctx.imageSmoothingEnabled = false;      // keep the dots crisp
           ctx.drawImage(t, -t._w / 2, -t._h / 2, t._w, t._h);
         }
+        else if (d.src.indexOf('t:') === 0) drawCustomTextDecorItem(ctx, d, b);
         else if (d.src.indexOf('b:') === 0) drawSticker(ctx, d.src.slice(2), b.w);
         else if (b.img) ctx.drawImage(b.img, -b.w / 2, -b.h / 2, b.w, b.h);
         ctx.restore();

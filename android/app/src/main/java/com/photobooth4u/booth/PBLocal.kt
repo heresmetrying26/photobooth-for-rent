@@ -40,6 +40,16 @@ class PBLocal(private val ctx: Context) {
         private const val TAG = "PBLocal"
         val IMG_RE = Regex("\\.(jpe?g|png|webp|gif|mp4|webm)$", RegexOption.IGNORE_CASE)
         val VIDEO_RE = Regex("\\.(mp4|webm|mov|m4v)$", RegexOption.IGNORE_CASE)
+        val SOLO_RE = Regex("_solo_\\d+", RegexOption.IGNORE_CASE)
+        val SUBDIRS = listOf("Prints", "Solo Shots", "GIFs", "360 Videos")
+
+        fun categoryOf(name: String): String {
+            if (VIDEO_RE.containsMatchIn(name) || name.startsWith("360_", ignoreCase = true)) return "360 Videos"
+            if (name.endsWith(".gif", ignoreCase = true) || name.contains("_gif.", ignoreCase = true)) return "GIFs"
+            if (SOLO_RE.containsMatchIn(name)) return "Solo Shots"
+            return "Prints"
+        }
+
         private val SESSION_RE = Regex("^(?:BONUS_)?(\\d+)_")
         private val BAD_CHARS = Regex("[\\\\/:*?\"<>|\\x00-\\x1f]")
         private val SPACES = Regex("\\s+")
@@ -597,12 +607,37 @@ class PBLocal(private val ctx: Context) {
     /** The name shown for the event on the guests' pages. */
     fun galleryTitle(f: Folder): String = if (f.sub.isNotEmpty()) f.name + " · " + f.sub else f.name
 
+    /** Finds a file in the event folder (root or category subfolder). */
+    fun findFile(dir: File, name: String): File? {
+        if (name.isEmpty() || name != File(name).name || name.startsWith(".")) return null
+        val rootFile = File(dir, name)
+        if (rootFile.isFile) return rootFile
+        val catFile = File(File(dir, categoryOf(name)), name)
+        if (catFile.isFile) return catFile
+        for (sub in SUBDIRS) {
+            val f = File(File(dir, sub), name)
+            if (f.isFile) return f
+        }
+        return null
+    }
+
     /** The photos, GIFs and videos in an event folder, newest first. */
     fun photosIn(dir: File): List<File> {
-        val list = dir.listFiles() ?: return emptyList()
-        return list
-            .filter { it.isFile && !it.name.startsWith(".") && IMG_RE.containsMatchIn(it.name) }
-            .sortedByDescending { it.lastModified() }
+        val out = mutableListOf<File>()
+        val seen = mutableSetOf<String>()
+        fun scan(d: File) {
+            val list = d.listFiles() ?: return
+            for (f in list) {
+                if (f.name.startsWith(".") || f.name == "done" || f.name == ".thumbs") continue
+                if (f.isDirectory) {
+                    if (d == dir && SUBDIRS.contains(f.name)) scan(f)
+                } else if (f.isFile && IMG_RE.containsMatchIn(f.name)) {
+                    if (seen.add(f.name)) out.add(f)
+                }
+            }
+        }
+        scan(dir)
+        return out.sortedByDescending { it.lastModified() }
     }
 
     fun readAsset(name: String): ByteArray? {
@@ -685,20 +720,24 @@ class PBLocal(private val ctx: Context) {
         var name = File(safeName(str(o, "filename")).ifEmpty { "photo-" + System.currentTimeMillis() + ".jpg" }).name
         if (!IMG_RE.containsMatchIn(name)) name += ".jpg"
 
+        val cat = categoryOf(name)
+        val targetDir = File(dir, cat)
+        targetDir.mkdirs()
+
         val out: String
         synchronized(lock) {
             // Never overwrite an earlier photo with the same name.
             var candidate = name
             var i = 2
-            while (File(dir, candidate).exists()) {
+            while (File(targetDir, candidate).exists() || File(dir, candidate).exists()) {
                 candidate = name.replace(EXT_RE, " ($i)$1")
                 i++
             }
-            File(dir, candidate).writeBytes(bytes)
+            File(targetDir, candidate).writeBytes(bytes)
             out = candidate
         }
         noteGuestFile(str(o, "guestCode"), f.slug, out)
-        copyToGallery(out, f.name, bytes)
+        copyToGallery(out, f.name, bytes, cat)
 
         return JSONObject()
             .put("ok", true)
@@ -711,7 +750,7 @@ class PBLocal(private val ctx: Context) {
     }
 
     // Android 10+: also put a copy in the shared Pictures folder, so the operator finds every photo in the Gallery.
-    private fun copyToGallery(fileName: String, eventDir: String, bytes: ByteArray) {
+    private fun copyToGallery(fileName: String, eventDir: String, bytes: ByteArray, category: String = "Prints") {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
         val mime = when (fileName.substringAfterLast('.', "").lowercase(Locale.ROOT)) {
             "jpg", "jpeg" -> "image/jpeg"
@@ -724,7 +763,7 @@ class PBLocal(private val ctx: Context) {
             val values = ContentValues()
             values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
             values.put(MediaStore.MediaColumns.MIME_TYPE, mime)
-            values.put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/photobooth4u/$eventDir")
+            values.put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/photobooth4u/$eventDir/$category")
             val resolver = ctx.contentResolver
             val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return
             resolver.openOutputStream(uri)?.use { it.write(bytes) }

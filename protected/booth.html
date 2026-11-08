@@ -13992,6 +13992,11 @@
             </select>
             <p class="panel-hint" id="gvHint" style="margin-top:6px;"></p>
           </div>
+          <div class="sub-group" id="soloBox">
+            <p class="sub-label">Solo photos & roving</p>
+            <label class="switch-row"><span>Include solo shots in gallery</span><input type="checkbox" id="saveSoloToggle" checked></label>
+            <p class="panel-hint" style="margin-top:6px;">Saves high-quality individual raw shots without template design into the event folder for booth sessions and roving photoman, and displays them in the gallery under the Solo Photos tab. For roving photoman, the version with template design is also uploaded.</p>
+          </div>
           <div class="sub-group web-only" id="backupBox">
             <p class="sub-label">Backup on this computer</p>
             <p class="panel-hint" id="backupStatus" style="margin:0;"></p>
@@ -18893,6 +18898,9 @@
         // Bonus sessions: "BONUS_1_strip.jpg", so they stand apart from event-day files.
         // Multi-device codes: "3_strip_cam2.jpg".
         const filename = filePrefix() + (sessionNumber || 1) + '_' + layoutKey + deviceTag() + '.jpg';
+        if (backupDir && backupOk && plainResult) {
+          try { await saveToBackupFolder(blob, filename); } catch (e) { }
+        }
 
         if (driveReady() || LOCALSHARE) {
           // Weak venue internet: try 3 times, then keep the photo on this device
@@ -18932,6 +18940,62 @@
       // A guest's own page is a link made from a random code per session (website: /p/<code>, laptop app: /o/<code>), so it never
       // contains the event folder or a photo number. Website with a rental code, and the laptop app.
       var gvMode = 'all', gvLinkQ = [], gvSent = {};
+      var saveSoloPhotos = true;
+      function refreshSoloUI() {
+        var t = document.getElementById('saveSoloToggle');
+        if (t) t.checked = !!saveSoloPhotos;
+      }
+      (function () {
+        var t = document.getElementById('saveSoloToggle');
+        if (!t) return;
+        t.addEventListener('change', function () {
+          saveSoloPhotos = !!t.checked;
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      })();
+
+      async function saveSoloPhotosAsync(sessNum, shots) {
+        if (!saveSoloPhotos || !shots || !shots.length) return;
+        var num = sessNum || sessionNumber || 1;
+        var dest = { folderKey: rawFolderKey(), subfolder: driveSubfolder() };
+        for (var i = 0; i < shots.length; i++) {
+          var sc = shots[i];
+          if (!sc) continue;
+          try {
+            var flat = document.createElement('canvas');
+            flat.width = sc.width; flat.height = sc.height;
+            var fctx = flat.getContext('2d');
+            fctx.fillStyle = '#ffffff';
+            fctx.fillRect(0, 0, flat.width, flat.height);
+            fctx.drawImage(sc, 0, 0);
+            var blob = await new Promise(function (res) { flat.toBlob(res, 'image/jpeg', 0.95); });
+            if (!blob) continue;
+            var soloFilename = filePrefix() + num + '_solo_' + (i + 1) + deviceTag() + '.jpg';
+
+            if (backupDir && backupOk) {
+              try { await saveToBackupFolder(blob, soloFilename); } catch (e) { }
+            }
+
+            if (driveReady() || LOCALSHARE) {
+              var online = LOCALSHARE || navigator.onLine !== false;
+              var uploaded = false;
+              if (online) {
+                try {
+                  await uploadToDrive(blob, soloFilename, dest);
+                  uploaded = true;
+                } catch (err) {
+                  console.warn('Solo photo direct upload failed, will queue:', err);
+                }
+              }
+              if (!uploaded) {
+                try { await queueUpload(blob, soloFilename, dest); } catch (e) { console.error('Queue solo photo failed:', e); }
+              }
+            }
+          } catch (err) {
+            console.warn('Failed saving solo photo ' + (i + 1) + ':', err);
+          }
+        }
+      }
       var GV_CODE_RE = /^[A-Za-z0-9_-]{16,40}$/;
       // The website: a rental code, and also the free trial (its own photos stay private too).
       function gvServer() { var pb = window.__PB; return !!(pb && (pb.type === 'rental' || pb.type === 'trial')); }
@@ -19095,6 +19159,17 @@
         qrResults.innerHTML = '';
         lastRenderedFolderUrl = null;
         const isBoth = (outputMode === 'both');
+        var soloShotsSnapshot = shotCanvases.map(function (c) {
+          if (!c) return null;
+          var clone = document.createElement('canvas');
+          clone.width = c.width; clone.height = c.height;
+          clone.getContext('2d').drawImage(c, 0, 0);
+          return clone;
+        });
+        var soloSessionNum = sessionNumber || 1;
+        if (saveSoloPhotos && soloShotsSnapshot.length) {
+          saveSoloPhotosAsync(soloSessionNum, soloShotsSnapshot);
+        }
         qrSlot('photo', isBoth ? 'Your photo & GIF' : 'Your photo', isBoth ? 'Saving your photo & GIF…' : 'Saving your photo…');
         // Guests get a working QR straight away: the event's All photos page,
         // swapped for their own photo's QR as soon as the upload finishes. (The offline app has no extra
@@ -39683,6 +39758,7 @@
           bgRep: Object.assign({}, bgRep), bgMine: bgMine.slice(),
           fx: Object.assign({}, fx),
           guestView: gvMode,
+          saveSolo: saveSoloPhotos,
           brand: JSON.parse(JSON.stringify(brand)),
           pay: JSON.parse(JSON.stringify(payCfg)),
           androidOrientation: (typeof _androidOrientationChoice === 'string') ? _androidOrientationChoice : 'landscape'
@@ -40011,6 +40087,7 @@
           applyBgRepSetup(s.bgRep, s.bgMine);
           if (s.fx) applyFxSetup(s.fx);
           applyGvSetup(s.guestView);
+          if (s.saveSolo !== undefined) { saveSoloPhotos = s.saveSolo !== false; refreshSoloUI(); }
           brand = cleanBrand(s.brand);
           applyPaySetup(s.pay);
           applyFramesSetup(s);

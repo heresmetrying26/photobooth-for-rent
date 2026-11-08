@@ -242,8 +242,13 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
 .tab.active{background:#fff;color:#1C1A1E;box-shadow:0 1px 4px rgba(60,40,20,.1)}
 .grid.filter-photo [data-kind="gif"]{display:none!important}
 .grid.filter-gif [data-kind="photo"]{display:none!important}
+.grid.filter-photo > [data-kind]:not([data-kind="photo"]){display:none!important}
+.grid.filter-solo > [data-kind]:not([data-kind="solo"]){display:none!important}
+.grid.filter-gif > [data-kind]:not([data-kind="gif"]){display:none!important}
+.grid.filter-video > [data-kind]:not([data-kind="video"]){display:none!important}
 .grid a{position:relative}
-.grid [data-kind="gif"]::after{content:'GIF';position:absolute;bottom:6px;right:6px;background:rgba(28,26,30,.8);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}`;
+.grid [data-kind="gif"]::after{content:'GIF';position:absolute;bottom:6px;right:6px;background:rgba(28,26,30,.8);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}
+.grid [data-kind="solo"]::after{content:'SOLO';position:absolute;bottom:6px;right:6px;background:rgba(201,61,39,.85);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}`;
 
 function page(title, body) {
   return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -647,10 +652,10 @@ function handleOwn(req, res, url, om) {
   mine.forEach((f) => recordStat(c.slug, 'views', f));
   const items = mine.map((file, i) => {
     const type = TYPES[extname(file).toLowerCase()] || 'application/octet-stream';
-    const isGif = /\.gif$/i.test(file), isVid = VIDEO_RE.test(file);
+    const isGif = /\.gif$/i.test(file), isVid = VIDEO_RE.test(file), isSoloPhoto = /_solo_\d+/i.test(file);
     const src = '/o/' + code + '/f/' + encodeURIComponent(file);
-    const media = /^video\//.test(type) ? '<video src="' + src + '" controls playsinline autoplay muted loop></video>' : '<img src="' + src + '" alt="' + (isGif ? 'Your GIF' : 'Your photo') + '">';
-    const dlText = isVid ? 'Save video' : isGif ? 'Save GIF' : 'Save photo';
+    const media = /^video\//.test(type) ? '<video src="' + src + '" controls playsinline autoplay muted loop></video>' : '<img src="' + src + '" alt="' + (isGif ? 'Your GIF' : isSoloPhoto ? 'Your solo photo' : 'Your photo') + '">';
+    const dlText = isVid ? 'Save video' : isGif ? 'Save GIF' : isSoloPhoto ? 'Save solo photo' : 'Save photo';
     return '<div class="one" style="padding-bottom:6px">' + media + '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(file) + '">' + dlText + '</a>' +
       (guestPrintOn && !isVid && !isGif ? reqButtonHtml(c.slug, file, '/o/' + code + '/print/' + encodeURIComponent(file), String(i)) : '') + '</div></div>';
   });
@@ -676,7 +681,8 @@ function savingTipHtml(slug, file, evName) {
 
 function guestButtonsHtml(slug, file, isVid, isGif, type, req) {
   const src = '/e/' + slug + '/f/' + encodeURIComponent(file);
-  const dlText = isVid ? 'Save video' : isGif ? 'Save GIF' : 'Save photo';
+  const isSoloPhoto = /_solo_\d+/i.test(file);
+  const dlText = isVid ? 'Save video' : isGif ? 'Save GIF' : isSoloPhoto ? 'Save solo photo' : 'Save photo';
   const printPart = (!/^video\//.test(type) && !isGif ? (isLocalReq(req) ? opPrintButtonHtml(slug, file) : '<button class="btn alt" type="button" onclick="window.print()">Print photo</button>') : '');
   const reqPart = (guestPrintOn && !isVid && !isGif ? reqButtonHtml(slug, file) : '');
   return '<div>' +
@@ -771,6 +777,8 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
 <div class="controls">
   <div class="tabs">
     <button type="button" class="tab active" data-filter="all">All</button>
+    <button type="button" class="tab" data-filter="photo">Prints</button>
+    <button type="button" class="tab" data-filter="solo">Solo Photos</button>
     <button type="button" class="tab" data-filter="video">360 Videos</button>
     <button type="button" class="tab" data-filter="photo">Photos</button>
   </div>
@@ -852,6 +860,9 @@ function openModal(it) {
   if (it.kind === 'video') {
     med.innerHTML = '<video src="' + it.url + '" controls autoplay loop playsinline></video>';
     dl.textContent = 'Save Video';
+  } else if (it.kind === 'solo') {
+    med.innerHTML = '<img src="' + it.url + '" alt="">';
+    dl.textContent = 'Save Solo Photo';
   } else {
     med.innerHTML = '<img src="' + it.url + '" alt="">';
     dl.textContent = 'Save Photo';
@@ -1155,9 +1166,11 @@ function handleStation(req, res, url, stm) {
     const ev = index.folders[slug];
     const evName = ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : '360 Booth';
     const list = photosIn(dir);
+    const isSolo = (n) => /_solo_\d+/i.test(n);
     const files = list.map(({ n, t }) => ({
       name: n,
       kind: VIDEO_RE.test(n) ? 'video' : /\.gif$/i.test(n) ? 'gif' : 'photo',
+      kind: VIDEO_RE.test(n) ? 'video' : /\.gif$/i.test(n) ? 'gif' : isSolo(n) ? 'solo' : 'photo',
       url: '/e/' + slug + '/f/' + encodeURIComponent(n),
       thumbUrl: '/e/' + slug + '/t/' + encodeURIComponent(n),
       pageUrl: '/e/' + slug + '/p/' + encodeURIComponent(n),
@@ -1254,21 +1267,29 @@ async function handleShare(req, res) {
   const evName = ev.sub ? ev.name + ' · ' + ev.sub : ev.name;
   if (!m[2]) {
     const list = photosIn(dir);
-    const kindOf = (n) => (VIDEO_RE.test(n) ? 'video' : /\.gif$/i.test(n) ? 'gif' : 'photo');
+    const isSolo = (n) => /_solo_\d+/i.test(n);
+    const kindOf = (n) => (VIDEO_RE.test(n) ? 'video' : /\.gif$/i.test(n) ? 'gif' : isSolo(n) ? 'solo' : 'photo');
     const videoCount = list.filter(({ n }) => kindOf(n) === 'video').length;
     const gifCount = list.filter(({ n }) => kindOf(n) === 'gif').length;
-    const photoCount = list.length - videoCount - gifCount;
-    const kinds = [photoCount > 0, gifCount > 0, videoCount > 0].filter(Boolean).length;
+    const soloCount = list.filter(({ n }) => kindOf(n) === 'solo').length;
+    const photoCount = list.filter(({ n }) => kindOf(n) === 'photo').length;
+    const kinds = [photoCount > 0, soloCount > 0, gifCount > 0, videoCount > 0].filter(Boolean).length;
     let tabsHtml = '';
     if (kinds > 1) {
       tabsHtml = '<div style="text-align:center"><div class="tabs">' +
         '<button type="button" class="tab active" onclick="setTab(\'all\',this)">All (' + list.length + ')</button>' +
-        (photoCount ? '<button type="button" class="tab" onclick="setTab(\'photo\',this)">Photos (' + photoCount + ')</button>' : '') +
+        (photoCount ? '<button type="button" class="tab" onclick="setTab(\'photo\',this)">' + (soloCount ? 'Prints (' + photoCount + ')' : 'Photos (' + photoCount + ')') + '</button>' : '') +
+        (soloCount ? '<button type="button" class="tab" onclick="setTab(\'solo\',this)">Solo Photos (' + soloCount + ')</button>' : '') +
         (gifCount ? '<button type="button" class="tab" onclick="setTab(\'gif\',this)">GIFs (' + gifCount + ')</button>' : '') +
         (videoCount ? '<button type="button" class="tab" onclick="setTab(\'video\',this)">Videos (' + videoCount + ')</button>' : '') +
         '</div></div>';
     }
-    const countSub = [photoCount && (photoCount + ' photo' + (photoCount === 1 ? '' : 's')), gifCount && (gifCount + ' GIF' + (gifCount === 1 ? '' : 's')), videoCount && (videoCount + ' video' + (videoCount === 1 ? '' : 's'))].filter(Boolean).join(' · ') || '0 photos';
+    const countSub = [
+      photoCount && (photoCount + (soloCount ? ' print' : ' photo') + (photoCount === 1 ? '' : 's')),
+      soloCount && (soloCount + ' solo photo' + (soloCount === 1 ? '' : 's')),
+      gifCount && (gifCount + ' GIF' + (gifCount === 1 ? '' : 's')),
+      videoCount && (videoCount + ' video' + (videoCount === 1 ? '' : 's'))
+    ].filter(Boolean).join(' · ') || '0 photos';
     const tabScript = '<script>function setTab(k,b){document.querySelectorAll(".tab").forEach(function(t){t.classList.remove("active")});b.classList.add("active");var g=document.querySelector(".grid");if(g)g.className="grid"+(k==="all"?"":" filter-"+k);}</script>';
     const body = '<div style="text-align:center;padding:0 16px"><h1>' + esc(evName) + '</h1><p class="sub">' + countSub + ' · tap one to save it</p></div>' +
       tabsHtml +
@@ -1306,9 +1327,10 @@ async function handleShare(req, res) {
     recordStat(m[1], 'views', file);
     const isGif = /\.gif$/i.test(file);
     const isVid = VIDEO_RE.test(file);
+    const isSoloPhoto = /_solo_\d+/i.test(file);
     const src = '/e/' + m[1] + '/f/' + encodeURIComponent(file);
-    const media = /^video\//.test(type) ? '<video src="' + src + '" controls playsinline autoplay muted loop></video>' : '<img src="' + src + '" alt="' + (isGif ? 'Your GIF' : 'Your photo') + '">';
-    const itemTitle = isVid ? 'Your video' : isGif ? 'Your GIF' : 'Your photo';
+    const media = /^video\//.test(type) ? '<video src="' + src + '" controls playsinline autoplay muted loop></video>' : '<img src="' + src + '" alt="' + (isGif ? 'Your GIF' : isSoloPhoto ? 'Solo photo' : 'Your photo') + '">';
+    const itemTitle = isVid ? 'Your video' : isGif ? 'Your GIF' : isSoloPhoto ? 'Solo photo' : 'Your photo';
     const body = '<div class="one"><h1>' + itemTitle + '</h1><p class="sub">' + esc(evName) + '</p>' + media +
       guestButtonsHtml(m[1], file, isVid, isGif, type, req) + '</div>';
     return send(res, 200, 'text/html; charset=utf-8', page(itemTitle, body + holoFor([file])));

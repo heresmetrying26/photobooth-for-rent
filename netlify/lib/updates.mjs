@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.106', date: '2026-11-08' },
   { version: '1.0.105', date: '2026-11-08' },
   { version: '1.0.104', date: '2026-11-08' },
   { version: '1.0.103', date: '2026-11-08' },
@@ -177,6 +178,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-08', title: 'Solo photos & roving: high-quality individual raw shots in gallery and dual roving uploads', for: ['website', 'app'], app: '1.0.106',
+    items: [
+      'New "Include solo shots in gallery" switch in Setup → Share (ON by default): saves high-quality individual raw shots without template design into the event folder for regular booth sessions and roving photoman.',
+      'Dedicated "Solo Photos" tab in online and offline event galleries with solo badges, instant filtering, and one-click batch download.',
+      'Roving photographer dual-upload: roving shots processed in the Photographer Desk now upload both the high-quality raw solo photo and the composite print with template design, ready for sharing and printing.'
+    ]
+  },
   {
     date: '2026-11-08', title: 'Rush ID Station 1.0.6: Epson L120 photo boost, printer diagnostics & instant cutting line controls', for: ['website'],
     items: [

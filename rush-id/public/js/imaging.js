@@ -787,9 +787,9 @@ export function drawId(ctx, work, o, outW, outH) {
     f.push('saturate(1.08)');
   }
   if (o.inkBoost) {
-    f.push('contrast(1.06)');
-    f.push('saturate(1.10)');
-    f.push('brightness(1.02)');
+    f.push('contrast(1.04)');
+    f.push('saturate(1.05)');
+    f.push('brightness(1.01)');
   }
   if (f.length) { try { ctx.filter = f.join(' '); } catch (e) { /* unsupported browser: no adjustment */ } }
   if (o.flip) { ctx.translate(outW, 0); ctx.scale(-1, 1); }                    // mirror the photo (about the middle of the frame)

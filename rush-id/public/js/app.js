@@ -13,7 +13,7 @@ const nextFrame = () => new Promise((r) => { let d = false; const go = () => { i
 // ---------- settings (kept on this computer only) ----------
 const DEFAULTS = {
   shop: 'Rush ID & Photo Print', currency: '₱', pin: '1234', idle: 180, keepDays: 30,
-  idPaper: '4x6', gapMm: 0, marginMm: 0, cutGuides: true, guideStyle: 'lines',
+  idPaper: '4x6', gapMm: 0, marginMm: 0, cutGuides: true, guideStyle: 'corners',
   inkBoost: true, l120Safe: true,
   prices: { idSheet: 0, '4x6': 0, '5x7': 0, '6x8': 0, '2x3': 0, '2x6': 0 },
 };
@@ -450,6 +450,12 @@ function reviewHTML() {
     (hw ? '<div class="fld"><span>Printer</span><div class="printerbox"><p class="paper">Looking for printers…</p></div></div>' : '') +
     '<div class="qrow"><span>How many sets?</span><div class="stepper"><button data-act="sets" data-d="-1">−</button><b>' + state.sets + '</b><button data-act="sets" data-d="1">＋</button></div></div>' +
     '<label class="chk" style="margin:10px 0 6px;font-size:13.5px;font-weight:600;"><input type="checkbox" data-in="toggle-inkboost"' + (cfg.inkBoost ? ' checked' : '') + '> ⚡ Photo Paper / Ink-Tank Boost (vibrant colors for Epson L-series)</label>' +
+    '<div class="fld" style="margin:8px 0;"><span>✂️ Cutting Lines (Guide Marks)</span>' +
+    '<div class="seg" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">' +
+    '<button type="button" class="' + (!cfg.cutGuides ? 'on' : '') + '" data-act="set-guides" data-val="none">None<small style="display:block;font-size:11px;font-weight:normal;">No lines</small></button>' +
+    '<button type="button" class="' + (cfg.cutGuides && cfg.guideStyle === 'corners' ? 'on' : '') + '" data-act="set-guides" data-val="corners">Corners<small style="display:block;font-size:11px;font-weight:normal;">Clean ticks</small></button>' +
+    '<button type="button" class="' + (cfg.cutGuides && cfg.guideStyle === 'lines' ? 'on' : '') + '" data-act="set-guides" data-val="lines">Full borders<small style="display:block;font-size:11px;font-weight:normal;">Box each</small></button>' +
+    '</div></div>' +
     (total ? '<p class="total">Total <b>' + money(total) + '</b></p>' : '') +
     '</div></main>' +
     '<footer class="bar"><button class="btn ghost" data-act="back-review">← Change</button><span class="grow"></span><button class="btn ghost" data-act="qr-dl" title="Send soft copy to your phone via QR code">📱 Soft copy (QR)</button><button class="btn ghost" data-act="save">Save JPG</button><button class="btn primary big" data-act="print">🖨️ Print</button></footer>';
@@ -480,6 +486,7 @@ function printerControlHTML(info) {
   const actions = '<div class="prn-actions">' +
     '<button class="btn ghost sm" data-act="prn-refresh" title="Re-scan system and Print Helper printers">🔄 Refresh list</button>' +
     (curName ? '<button class="btn ghost sm" data-act="prn-cfg" title="Open printer driver preferences for ' + esc(curName) + '">⚙️ Configure</button>' : '') +
+    (curName ? '<button class="btn ghost sm" data-act="prn-clean" title="Open printer maintenance to run Head Cleaning &amp; Nozzle Check">🧹 Head Cleaning</button>' : '') +
     '<button class="btn ghost sm" data-act="prn-test" title="Print a diagnostic test sheet with color bars, alignment grid and margin check">🖨️ Test Print</button>' +
     '</div>';
   return body + actions;
@@ -1209,6 +1216,7 @@ function openSettings() {
     '<div class="subhdr" style="margin-top:0;"><span>Printer Setup &amp; Diagnostics</span></div>' +
     '<div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;">' +
     '<button type="button" class="btn ghost sm" data-act="prn-cfg">⚙️ Open Printer Preferences</button>' +
+    '<button type="button" class="btn ghost sm" data-act="prn-clean">🧹 Run Head Cleaning</button>' +
     '<button type="button" class="btn ghost sm" data-act="prn-test">🖨️ Print Test Sheet</button>' +
     (hw && hw.openSetup ? '<button type="button" class="btn ghost sm" data-act="open-booth-setup">🔧 Full Booth Setup</button>' : '') +
     '</div>' +
@@ -1446,6 +1454,40 @@ const acts = {
     } finally {
       await busy('');
     }
+  },
+  'prn-clean': async () => {
+    if (!hw || !hw.configurePrinter) {
+      toast('Printer preferences can be opened directly on the photobooth kiosk or Windows computer.', 4500);
+      return;
+    }
+    let cur = '';
+    try {
+      const info = await hw.printers(currentPaperKey());
+      cur = info && info.current;
+    } catch (e) { }
+    if (!cur) { toast('Pick a printer first.', 2500); return; }
+    await busy('Opening printer maintenance…');
+    try {
+      const r = await hw.configurePrinter(cur);
+      toast('Maintenance opened! Switch to "Maintenance" tab and click "Head Cleaning".', 6000);
+    } catch (e) {
+      toast('Could not open settings: ' + ((e && e.message) || e), 4000);
+    } finally {
+      await busy('');
+    }
+  },
+  'set-guides': async (b) => {
+    const v = b.dataset.val;
+    if (v === 'none') {
+      cfg.cutGuides = false;
+    } else {
+      cfg.cutGuides = true;
+      cfg.guideStyle = v;
+    }
+    saveCfg();
+    if (state.screen === 'review' && state.mode === 'id') await buildId();
+    else render();
+    toast(v === 'none' ? 'Cutting lines: OFF' : v === 'corners' ? 'Cutting lines: Corner marks' : 'Cutting lines: Full borders', 2000);
   },
   'prn-test': async () => {
     const paper = L.paperById(currentPaperKey());

@@ -14,6 +14,7 @@ const nextFrame = () => new Promise((r) => { let d = false; const go = () => { i
 const DEFAULTS = {
   shop: 'Rush ID & Photo Print', currency: '₱', pin: '1234', idle: 180, keepDays: 30,
   idPaper: '4x6', gapMm: 0, marginMm: 0, cutGuides: true, guideStyle: 'lines',
+  inkBoost: true, l120Safe: true,
   prices: { idSheet: 0, '4x6': 0, '5x7': 0, '6x8': 0, '2x3': 0, '2x6': 0 },
 };
 function loadCfg() {
@@ -22,6 +23,24 @@ function loadCfg() {
 }
 let cfg = loadCfg();
 const saveCfg = () => { try { localStorage.setItem('rushid.cfg', JSON.stringify(cfg)); } catch (e) { /* private mode */ } };
+
+function getDailyStats() {
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const raw = localStorage.getItem('rush_daily_' + today);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return { date: today, sheets: 0, revenue: 0, orders: 0 };
+}
+function recordDailyPrint(sheets, rev) {
+  const st = getDailyStats();
+  st.sheets += (sheets || 1);
+  st.revenue += (rev || 0);
+  st.orders += 1;
+  try {
+    localStorage.setItem('rush_daily_' + st.date, JSON.stringify(st));
+  } catch (e) {}
+}
 
 // ---------- inside the booth (/rush/): its cameras and printers ----------
 // The paper sizes are the ones Admin allows for this code; a photo size is offered only if its paper is allowed.
@@ -229,6 +248,12 @@ function idPanelHTML() {
         '<b>' + p.label + '</b><small>' + p.desc + '</small></button>'
       ).join('') + '</div>';
 
+    const combos = '<div class="subhdr"><span>Popular ID Combos (1-Tap Sheet Fill)</span></div><div class="combo-grid">' +
+      L.ID_COMBOS.map((c) =>
+        '<button class="combo-chip" data-act="combo-sel" data-id="' + c.id + '">' +
+        '<b>' + esc(c.label) + '</b><small>' + esc(c.desc) + '</small></button>'
+      ).join('') + '</div>';
+
     const chips = '<div class="subhdr"><span>Print Packages</span></div><div class="chips">' +
       L.PACKAGES.map((p) => '<button class="chip' + (state.id.pkg === p.id ? ' on' : '') + '" data-act="pkg" data-id="' + p.id + '">' + p.label + '</button>').join('') +
       '<button class="chip autofill-chip' + (state.id.pkg === 'autofill' ? ' on' : '') + '" data-act="autofill" title="Auto-fill 1 sheet with chosen sizes">⚡ Auto-fill page</button></div>';
@@ -239,7 +264,7 @@ function idPanelHTML() {
         '<div class="stepper"><button data-act="qty" data-id="' + s.id + '" data-d="-1" aria-label="Fewer">−</button><b' + ((q[s.id] || 0) > 0 ? ' class="on"' : '') + '>' + (q[s.id] || 0) + '</b><button data-act="qty" data-id="' + s.id + '" data-d="1" aria-label="More">＋</button></div>' +
         '</div>').join('') + '</div>';
 
-    body = presets + chips + cells;
+    body = presets + combos + chips + cells;
   } else if (tab === 'bg') {
     const preset = SWATCHES.some(([c]) => c === state.id.bg.toLowerCase());
     body = '<div class="swatches">' + SWATCHES.map(([c, n]) => '<button class="sw' + (state.id.bgMode === 'color' && state.id.bg.toLowerCase() === c ? ' on' : '') + '" style="--c:' + c + '" data-act="bg" data-c="' + c + '" title="' + n + '"><i></i><small>' + n + '</small></button>').join('') +
@@ -294,6 +319,7 @@ function idPanelHTML() {
       '<label class="sl"><span>Brightness</span><input type="range" min="-30" max="30" value="' + state.id.brightness + '" data-in="brightness"></label>' +
       '<label class="sl"><span>Contrast</span><input type="range" min="-30" max="30" value="' + state.id.contrast + '" data-in="contrast"></label>' +
       (cut ? '<label class="sl"><span>Edge clean-up (hair and shoulders)</span><input type="range" min="-10" max="10" value="' + Math.round(state.id.edge * 10) + '" data-in="edge"></label>' : '') +
+      '<label class="chk" style="margin:8px 0;font-weight:600;font-size:13.5px"><input type="checkbox" data-in="toggle-inkboost"' + (cfg.inkBoost ? ' checked' : '') + '> ⚡ Photo Paper / Ink-Tank Boost (vibrant colors for Epson L-series)</label>' +
       '<button class="btn ghost sm" data-act="reset-fine">Reset all</button>';
   }
   return '<div class="tabs">' + TABS.map(([k, n]) => '<button class="tab' + (tab === k ? ' on' : '') + '" data-act="tab" data-id="' + k + '">' + n + '</button>').join('') + '</div><div class="tabbody">' + body + '</div>';
@@ -423,6 +449,7 @@ function reviewHTML() {
     '<p class="paper">' + o.canvases.length + (o.canvases.length === 1 ? ' sheet' : ' sheets') + '</p>' + paper +
     (hw ? '<div class="fld"><span>Printer</span><div class="printerbox"><p class="paper">Looking for printers…</p></div></div>' : '') +
     '<div class="qrow"><span>How many sets?</span><div class="stepper"><button data-act="sets" data-d="-1">−</button><b>' + state.sets + '</b><button data-act="sets" data-d="1">＋</button></div></div>' +
+    '<label class="chk" style="margin:10px 0 6px;font-size:13.5px;font-weight:600;"><input type="checkbox" data-in="toggle-inkboost"' + (cfg.inkBoost ? ' checked' : '') + '> ⚡ Photo Paper / Ink-Tank Boost (vibrant colors for Epson L-series)</label>' +
     (total ? '<p class="total">Total <b>' + money(total) + '</b></p>' : '') +
     '</div></main>' +
     '<footer class="bar"><button class="btn ghost" data-act="back-review">← Change</button><span class="grow"></span><button class="btn ghost" data-act="qr-dl" title="Send soft copy to your phone via QR code">📱 Soft copy (QR)</button><button class="btn ghost" data-act="save">Save JPG</button><button class="btn primary big" data-act="print">🖨️ Print</button></footer>';
@@ -449,10 +476,11 @@ function printerControlHTML(info) {
     const t = { station: 'Print station', wifi: 'Wi-Fi printer: ' + (info.current || ''), android: 'Android print screen (choose the printer when it opens)', browser: info.current || 'This device’s print dialog' }[info.mode] || '';
     body = '<p class="paper">' + esc(t) + '</p>';
   }
-  const canCfg = hw && hw.configurePrinter && info.current && info.options && info.options.includes(info.current);
+  const curName = info.current || '';
   const actions = '<div class="prn-actions">' +
     '<button class="btn ghost sm" data-act="prn-refresh" title="Re-scan system and Print Helper printers">🔄 Refresh list</button>' +
-    (canCfg ? '<button class="btn ghost sm" data-act="prn-cfg" title="Open printer driver preferences">⚙️ Configure</button>' : '') +
+    (curName ? '<button class="btn ghost sm" data-act="prn-cfg" title="Open printer driver preferences for ' + esc(curName) + '">⚙️ Configure</button>' : '') +
+    '<button class="btn ghost sm" data-act="prn-test" title="Print a diagnostic test sheet with color bars, alignment grid and margin check">🖨️ Test Print</button>' +
     '</div>';
   return body + actions;
 }
@@ -532,6 +560,7 @@ const idOpts = () => ({
   attireAngle: state.id.attireAngle || 0,
   attireCollar: state.id.attireCollar || 1,
   attireCleanNeck: state.id.attireCleanNeck !== false,
+  inkBoost: !!cfg.inkBoost,
   nameTag: state.id.nameTag || { on: false },
   flip: state.id.flip,
 });
@@ -700,7 +729,7 @@ async function ensureCut() {
 }
 
 // ---------- building the sheets ----------
-const gapPx = () => Math.round(cfg.gapMm / 25.4 * L.DPI), marginPx = () => Math.round(cfg.marginMm / 25.4 * L.DPI);
+const gapPx = () => Math.round(cfg.gapMm / 25.4 * L.DPI), marginPx = () => Math.round(Math.max(cfg.marginMm || 0, cfg.l120Safe ? L.EPSON_L120_SAFE_MARGIN_MM : 0) / 25.4 * L.DPI);
 
 function applyAutoFill(targetSizeId) {
   const paper = L.paperById(cfg.idPaper);
@@ -829,6 +858,7 @@ async function buildId() {
         attireAngle: pIdState.attireAngle || 0,
         attireCollar: pIdState.attireCollar || 1,
         attireCleanNeck: pIdState.attireCleanNeck !== false,
+        inkBoost: !!cfg.inkBoost,
         nameTag: pIdState.nameTag || { on: false },
         flip: !!pIdState.flip
       };
@@ -1170,7 +1200,29 @@ function startUpdateCheck() {
 function openSettings() {
   const pr = cfg.prices, pap = L.PAPERS.map((p) => '<option value="' + p.id + '"' + (cfg.idPaper === p.id ? ' selected' : '') + '>' + p.label + '</option>').join('');
   const num = (k, v) => '<input type="number" min="0" step="any" data-k="' + k + '" value="' + v + '">';
-  openModal('<h2>Settings</h2><div class="form">' +
+  const daily = getDailyStats();
+  const statsHtml = '<div class="stat-badge" style="background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:14px;padding:12px 14px;margin-bottom:12px;">' +
+    '<b style="font-size:15px;color:var(--ink);display:block;margin-bottom:2px;">📊 Today’s Output (' + esc(daily.date) + '): ' + daily.sheets + (daily.sheets === 1 ? ' sheet' : ' sheets') + ' · ' + (cfg.currency || '₱') + Number(daily.revenue || 0).toLocaleString() + '</b>' +
+    '<small style="color:var(--dim);font-size:12.5px;">' + daily.orders + ' customer print orders recorded locally on this station</small></div>';
+
+  const printerDiagnostics = '<div class="guide-card" style="background:var(--bg);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;margin:12px 0;">' +
+    '<div class="subhdr" style="margin-top:0;"><span>Printer Setup &amp; Diagnostics</span></div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;">' +
+    '<button type="button" class="btn ghost sm" data-act="prn-cfg">⚙️ Open Printer Preferences</button>' +
+    '<button type="button" class="btn ghost sm" data-act="prn-test">🖨️ Print Test Sheet</button>' +
+    (hw && hw.openSetup ? '<button type="button" class="btn ghost sm" data-act="open-booth-setup">🔧 Full Booth Setup</button>' : '') +
+    '</div>' +
+    '<label class="chk" style="font-weight:600;font-size:13.5px;margin-top:6px;"><input type="checkbox" data-k="inkBoost"' + (cfg.inkBoost ? ' checked' : '') + '> ⚡ Photo Paper / Ink-Tank Boost (vibrant colors &amp; +6% contrast)</label>' +
+    '<label class="chk" style="font-weight:600;font-size:13.5px;"><input type="checkbox" data-k="l120Safe"' + (cfg.l120Safe ? ' checked' : '') + '> 🛡️ Epson L120 / L-Series 3.5 mm Safe Margin Guard</label>' +
+    '<details style="margin-top:8px;font-size:12.5px;color:var(--dim);cursor:pointer;background:var(--card);padding:8px 10px;border-radius:10px;border:1px solid var(--line);">' +
+    '<summary style="font-weight:700;color:var(--ink);">💡 Epson L120 Photo Quality Guide (Click to expand)</summary>' +
+    '<div style="padding-top:6px;line-height:1.45;color:var(--ink);">' +
+    '<p><b>1. Unlock Glossy Photo Quality:</b> Install the official <i>Epson L210 driver</i> on Windows. In Printer Properties → Ports, point the L210 to your L120 USB port. In Preferences select <b>Epson Premium Glossy</b> and <b>High Quality</b>.</p>' +
+    '<p><b>2. Remove Banding Lines:</b> In L120 driver Printing Preferences under More Options, turn <b>OFF "High Speed"</b> (bi-directional printing). The printer will print in single-pass mode, making name tags and small text 2× sharper.</p>' +
+    '<p><b>3. Unprintable Margins:</b> The L120 hardware requires a 3 mm roller margin. Keep the 3.5 mm Safe Margin Guard ON so edge photos never get clipped by the rollers.</p>' +
+    '</div></details></div>';
+
+  openModal('<h2>Settings</h2>' + statsHtml + printerDiagnostics + '<div class="form">' +
     '<label>Shop name<input data-k="shop" value="' + esc(cfg.shop) + '"></label>' +
     '<label>Currency symbol<input data-k="currency" value="' + esc(cfg.currency) + '" maxlength="4"></label>' +
     '<label>Staff PIN<input data-k="pin" value="' + esc(cfg.pin) + '"></label>' +
@@ -1247,6 +1299,17 @@ const acts = {
   },
   'bt-stop': () => { if (stopWatch) { stopWatch(); stopWatch = null; } openBluetooth(); },
   pkg: (b) => { const p = L.PACKAGES.find((x) => x.id === b.dataset.id); state.id.qty = { ...p.qty }; state.id.pkg = p.id; renderIdPanel(); sizeStage(); drawStage(); },
+  'combo-sel': (b) => {
+    const c = L.ID_COMBOS.find((x) => x.id === b.dataset.id);
+    if (!c) return;
+    Object.keys(state.id.qty).forEach((k) => { state.id.qty[k] = 0; });
+    Object.assign(state.id.qty, c.qty);
+    state.id.pkg = 'custom';
+    renderIdPanel();
+    sizeStage();
+    drawStage();
+    toast(c.label + ' selected', 2500);
+  },
   qty: (b) => { const id = b.dataset.id; state.id.qty[id] = Math.min(30, Math.max(0, (state.id.qty[id] || 0) + Number(b.dataset.d))); state.id.pkg = 'custom'; renderIdPanel(); sizeStage(); drawStage(); },
   bg: async (b) => {
     const c = b.dataset.c;
@@ -1272,6 +1335,8 @@ const acts = {
     } else {
       try { await P.printSheets(o.canvases, o.paper, state.sets); } catch (e) { toast('Could not print: ' + (e.message || e)); return; }
     }
+    const total = o.unitPrice ? o.unitPrice * state.sets : 0;
+    recordDailyPrint(o.canvases.length * state.sets, total);
     saveOrderOnce();
     openModal('<h2>Printing…</h2><p>Check the printer. When you have your prints, clear your photos from this screen.</p><div class="mrow"><button class="btn" data-act="qr-dl">📱 Send to Phone (QR)</button><button class="btn" data-act="close">Print again</button><button class="btn primary big" data-act="finish">Finish &amp; clear my photos</button></div>');
   },
@@ -1362,7 +1427,10 @@ const acts = {
     }
   },
   'prn-cfg': async () => {
-    if (!hw || !hw.configurePrinter) return;
+    if (!hw || !hw.configurePrinter) {
+      toast('Printer preferences can be opened directly on the photobooth kiosk or Windows computer.', 4500);
+      return;
+    }
     let cur = '';
     try {
       const info = await hw.printers(currentPaperKey());
@@ -1377,6 +1445,31 @@ const acts = {
       toast('Could not open settings: ' + ((e && e.message) || e), 4000);
     } finally {
       await busy('');
+    }
+  },
+  'prn-test': async () => {
+    const paper = L.paperById(currentPaperKey());
+    await busy('Generating calibration test sheet…');
+    try {
+      const testCanvas = L.renderTestSheet(paper);
+      await busy('Sending test sheet to printer…');
+      if (hw) {
+        const r = await hw.print([testCanvas], paper.id, 1);
+        toast(r.msg || 'Test sheet sent to printer', 5000);
+      } else {
+        await P.printSheets([testCanvas], paper, 1);
+        toast('Test sheet sent to printer', 4000);
+      }
+    } catch (e) {
+      toast('Could not print test sheet: ' + ((e && e.message) || e), 5000);
+    } finally {
+      await busy('');
+    }
+  },
+  'open-booth-setup': () => {
+    if (hw && hw.openSetup) {
+      closeModal();
+      hw.openSetup(4);
     }
   },
   autofill: () => { applyAutoFill(); },
@@ -1460,6 +1553,13 @@ const ins = {
       hw.setPrinter(currentPaperKey(), el.value);
       toast(el.value ? 'Printer: ' + el.value : 'Using default printer', 2500);
     }
+  },
+  'toggle-inkboost': (el) => {
+    cfg.inkBoost = el.checked;
+    saveCfg();
+    if (state.screen === 'id') drawStage();
+    else if (state.screen === 'review') buildId();
+    toast(cfg.inkBoost ? '⚡ Ink-Tank Boost ON (+6% contrast, vibrant colors)' : 'Ink Boost OFF', 2000);
   },
 };
 const CHANGE_ONLY = ['edge', 'camsel', 'paper', 'printer'];      // selects and the edge slider act when released, not on every move

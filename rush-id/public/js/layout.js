@@ -20,6 +20,16 @@ export const PACKAGES = [
   { id: 'p5', label: 'Combo · 2×2 ×3 + 1×1 ×6', qty: { '2x2': 3, '1x1': 6 } },
 ];
 
+export const ID_COMBOS = [
+  { id: 'combo-a', label: 'Combo A (Standard Job)', desc: '2×2 (2 pcs) + 1×1 (8 pcs)', qty: { '2x2': 2, '1x1': 8 } },
+  { id: 'combo-b', label: 'Combo B (Passport + 2×2)', desc: 'Passport (4 pcs) + 2×2 (4 pcs)', qty: { '35x45': 4, '2x2': 4 } },
+  { id: 'combo-c', label: 'Combo C (Universal Mix)', desc: 'Passport (2) + 2×2 (2) + 1×1 (4)', qty: { '35x45': 2, '2x2': 2, '1x1': 4 } },
+  { id: 'combo-d', label: 'Combo D (Student Set)', desc: '1×1 (12 pcs)', qty: { '1x1': 12 } },
+  { id: 'combo-e', label: 'Combo E (Executive 2×2)', desc: '2×2 (6 pcs)', qty: { '2x2': 6 } },
+];
+
+export const EPSON_L120_SAFE_MARGIN_MM = 3.5;
+
 export const GOV_PRESETS = [
   { id: 'ph-passport', label: '🇵🇭 PH Passport / DFA', size: '35x45', bg: '#0038a8', head: { top: 0.08, chin: 0.82 }, desc: '35×45 mm · Royal Blue bg' },
   { id: 'us-visa', label: '🇺🇸 US Visa', size: '2x2', bg: '#ffffff', head: { top: 0.15, chin: 0.75 }, desc: '2×2" · Plain White bg' },
@@ -167,4 +177,121 @@ export function calcAutoFill(chosenSizeIds, paperW, paperH, gap = 0, margin = 0,
     }
   }
   return counts;
+}
+
+// Diagnostic test sheet for printer alignment, CMYK evaluation, and Epson L120 margin verification
+export function renderTestSheet(paper = PAPERS[0]) {
+  const c = document.createElement('canvas');
+  c.width = px(paper.w);
+  c.height = px(paper.h);
+  const ctx = c.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, c.width, c.height);
+
+  // Outer border & 3.5mm L120 margin line
+  ctx.lineWidth = Math.max(1, Math.round(px(0.005)));
+  ctx.strokeStyle = '#0f172a';
+  ctx.strokeRect(10, 10, c.width - 20, c.height - 20);
+
+  // Epson L120 3.5mm physical roller margin limit (red dashed line)
+  const m35 = Math.round(mm(EPSON_L120_SAFE_MARGIN_MM) * DPI);
+  ctx.save();
+  ctx.strokeStyle = '#ef4444';
+  ctx.lineWidth = Math.max(1, Math.round(px(0.004)));
+  ctx.setLineDash([8, 6]);
+  ctx.strokeRect(m35, m35, c.width - 2 * m35, c.height - 2 * m35);
+  ctx.restore();
+
+  // Header Title
+  ctx.fillStyle = '#0f172a';
+  ctx.font = 'bold ' + Math.round(px(0.12)) + 'px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('RUSH ID STATION \u2014 PRINTER TEST & CALIBRATION', c.width / 2, m35 + px(0.20));
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = '500 ' + Math.round(px(0.075)) + 'px system-ui, sans-serif';
+  ctx.fillText('Paper: ' + paper.label + ' (' + c.width + ' \u00d7 ' + c.height + ' px at ' + DPI + ' DPI) \u00b7 Red dashed line = 3.5 mm safe margin', c.width / 2, m35 + px(0.32));
+
+  // CMYK / RGB Color Swatches
+  const colors = [
+    { name: 'Cyan', c: '#00ffff' },
+    { name: 'Magenta', c: '#ff00ff' },
+    { name: 'Yellow', c: '#ffff00' },
+    { name: 'Black', c: '#000000' },
+    { name: 'Red', c: '#ff0000' },
+    { name: 'Green', c: '#00ff00' },
+    { name: 'Blue', c: '#0000ff' },
+    { name: 'Skin 1', c: '#f5d0b5' },
+    { name: 'Skin 2', c: '#c68642' }
+  ];
+  const barY = m35 + px(0.44);
+  const barH = px(0.30);
+  const barW = (c.width - 2 * m35 - px(0.08) * (colors.length - 1)) / colors.length;
+  for (let i = 0; i < colors.length; i++) {
+    const bx = m35 + i * (barW + px(0.08));
+    ctx.fillStyle = colors[i].c;
+    ctx.fillRect(bx, barY, barW, barH);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx, barY, barW, barH);
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '600 ' + Math.round(px(0.05)) + 'px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(colors[i].name, bx + barW / 2, barY + barH + px(0.08));
+  }
+
+  // 16-Step Grayscale Ramp
+  const rampY = barY + barH + px(0.14);
+  const rampH = px(0.22);
+  const rampSteps = 16;
+  const stepW = (c.width - 2 * m35) / rampSteps;
+  for (let s = 0; s < rampSteps; s++) {
+    const v = Math.round((s / (rampSteps - 1)) * 255);
+    ctx.fillStyle = 'rgb(' + v + ',' + v + ',' + v + ')';
+    ctx.fillRect(m35 + s * stepW, rampY, stepW + 1, rampH);
+  }
+  ctx.strokeStyle = '#0f172a';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(m35, rampY, c.width - 2 * m35, rampH);
+
+  // Text Sharpness target (6pt, 8pt, 10pt, 12pt)
+  const textY = rampY + rampH + px(0.20);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#0f172a';
+  const fonts = [
+    { pt: 6, text: '6pt: Clean crisp name tags, government text and passport dates.' },
+    { pt: 8, text: '8pt: Standard Philippine ID subtitle text, PRC license numbers.' },
+    { pt: 10, text: '10pt: Full nameplate banner, applicant surname.' },
+    { pt: 12, text: '12pt: Primary ID Heading & Agency Identification' }
+  ];
+  let curTY = textY;
+  for (const f of fonts) {
+    ctx.font = '600 ' + Math.round(px(f.pt / 72)) + 'px system-ui, sans-serif';
+    ctx.fillText(f.text, m35 + px(0.1), curTY);
+    curTY += px(f.pt / 72 * 1.5) + 6;
+  }
+
+  // Center crosshairs for cutter calibration
+  const cx = c.width / 2;
+  const cy = c.height / 2 + px(0.35);
+  const chLen = px(0.30);
+  ctx.strokeStyle = '#0f172a';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx - chLen, cy); ctx.lineTo(cx + chLen, cy);
+  ctx.moveTo(cx, cy - chLen); ctx.lineTo(cx, cy + chLen);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, px(0.15), 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Bottom footer timestamp
+  ctx.textAlign = 'center';
+  ctx.font = '500 ' + Math.round(px(0.065)) + 'px system-ui, sans-serif';
+  ctx.fillStyle = '#64748b';
+  ctx.fillText('Generated ' + new Date().toLocaleString() + ' \u00b7 photobooth4u Rush ID Station', c.width / 2, c.height - m35 - px(0.06));
+
+  return c;
 }

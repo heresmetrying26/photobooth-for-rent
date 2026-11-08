@@ -55,8 +55,7 @@ class BootReceiver : BroadcastReceiver() {
         // 1. Direct launch (works directly on Android 9 and below, or when app has overlay/kiosk permission)
         try {
             context.startActivity(launchIntent)
-            Log.i(TAG, "Successfully started MainActivity from boot broadcast")
-            return
+            Log.i(TAG, "Attempted direct startActivity from boot broadcast")
         } catch (e: Exception) {
             Log.w(TAG, "Direct startActivity on boot restricted by OS: ${e.message}")
         }

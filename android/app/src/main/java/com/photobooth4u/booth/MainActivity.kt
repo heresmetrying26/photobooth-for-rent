@@ -16,6 +16,7 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.os.Handler
 import android.os.Looper
 import android.text.InputType
@@ -851,25 +852,17 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "Auto-open on startup: ${if (enabled) "ENABLED" else "DISABLED"}", Toast.LENGTH_SHORT).show()
     }
 
-    private fun isKioskHomeEnabled(): Boolean {
-        val component = ComponentName(this, "${packageName}.KioskHomeLauncher")
-        val state = packageManager.getComponentEnabledSetting(component)
-        return state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+    private fun isCurrentDefaultHome(): Boolean {
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        val resolveInfo = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        return resolveInfo?.activityInfo?.packageName == packageName
     }
 
-    private fun setKioskHomeEnabled(enabled: Boolean) {
-        val component = ComponentName(this, "${packageName}.KioskHomeLauncher")
-        val newState = if (enabled) {
-            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+    private fun hasOverlayPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Settings.canDrawOverlays(this)
         } else {
-            PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-        }
-        packageManager.setComponentEnabledSetting(component, newState, PackageManager.DONT_KILL_APP)
-        if (enabled) {
-            Toast.makeText(this, "Kiosk Home Launcher ENABLED", Toast.LENGTH_SHORT).show()
-            openHomeAppPicker()
-        } else {
-            Toast.makeText(this, "Kiosk Home Launcher DISABLED (Standard launcher restored)", Toast.LENGTH_SHORT).show()
+            true
         }
     }
 
@@ -891,14 +884,42 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun requestOverlayPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            AlertDialog.Builder(this)
+                .setTitle("Allow Auto-Open on Startup")
+                .setMessage("To allow photobooth4u to launch automatically when the tablet turns on without replacing your home screen, Android requires the \"Appear on top\" (Draw over other apps) permission.\n\nTurn on \"Allow permission\" on the next screen.")
+                .setPositiveButton("Open Settings") { _, _ ->
+                    try {
+                        startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+                    } catch (e: Exception) {
+                        openTabletSettings()
+                    }
+                }
+                .setNegativeButton("Cancel") { _, _ ->
+                    showOperatorMenu()
+                }
+                .show()
+        }
+    }
+
     private fun showOperatorMenu() {
-        val autoBootStatus = if (isAutoBootEnabled()) "ON" else "OFF"
-        val kioskStatus = if (isKioskHomeEnabled()) "ON" else "OFF"
+        val isHome = isCurrentDefaultHome()
+        val hasOverlay = hasOverlayPermission()
+        val autoBootPref = isAutoBootEnabled()
+
+        val autoBootStatus = when {
+            !autoBootPref -> "OFF"
+            isHome || hasOverlay -> "ON (Ready)"
+            else -> "ON (Requires Permission - tap to fix)"
+        }
+
+        val kioskStatus = if (isHome) "ACTIVE (Default Home App)" else "NOT SET (Tap to set as Home App)"
 
         val items = arrayOf(
             "🌐 Booth Mode & URL (Online / Offline)",
             "🚀 Auto-Open on Boot: $autoBootStatus",
-            "🔒 Kiosk Home Launcher: $kioskStatus",
+            "🔒 Kiosk Home App: $kioskStatus",
             "⚙️ Open Tablet Settings"
         )
 
@@ -908,12 +929,25 @@ class MainActivity : AppCompatActivity() {
                 when (which) {
                     0 -> showUrlConfigDialog()
                     1 -> {
-                        setAutoBootEnabled(!isAutoBootEnabled())
-                        showOperatorMenu()
+                        val next = !autoBootPref
+                        setAutoBootEnabled(next)
+                        if (next && !hasOverlay && !isHome) {
+                            requestOverlayPermission()
+                        } else {
+                            showOperatorMenu()
+                        }
                     }
                     2 -> {
-                        setKioskHomeEnabled(!isKioskHomeEnabled())
-                        showOperatorMenu()
+                        AlertDialog.Builder(this)
+                            .setTitle("Set as Kiosk Home App")
+                            .setMessage("Setting photobooth4u as the tablet's Default Home app ensures that whenever the tablet powers on or unlocks, it boots straight into the booth and guests cannot exit.\n\nOn the next screen, tap \"Home app\" and choose photobooth4u.")
+                            .setPositiveButton("Open Settings") { _, _ ->
+                                openHomeAppPicker()
+                            }
+                            .setNegativeButton("Cancel") { _, _ ->
+                                showOperatorMenu()
+                            }
+                            .show()
                     }
                     3 -> openTabletSettings()
                 }

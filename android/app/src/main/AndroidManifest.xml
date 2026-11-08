@@ -55,6 +55,7 @@
     <!-- Auto-start on device power-on / boot for Kiosk & dedicated tablet operation -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <!-- The spoken countdown asks the tablet's text-to-speech engine (needed to see it on Android 11+) -->
     <queries>
@@ -96,12 +97,11 @@
                 android:resource="@xml/usb_device_filter" />
         </activity>
 
-        <!-- Kiosk Home Launcher alias: disabled by default so personal tablets don't get the Home prompt.
-             Enabled when the operator toggles 'Kiosk Home Launcher' in settings. -->
+        <!-- Kiosk Home Launcher: Allows setting photobooth4u as the tablet's default Home app -->
         <activity-alias
             android:name=".KioskHomeLauncher"
             android:targetActivity=".MainActivity"
-            android:enabled="false"
+            android:enabled="true"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

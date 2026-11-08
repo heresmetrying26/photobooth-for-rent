@@ -714,6 +714,26 @@ function brandTap() {
   clearTimeout(tapT); tapT = setTimeout(() => { taps = 0; }, 2500);
   if (++taps >= 5) { taps = 0; pinModal('settings'); }
 }
+// ---------- app updates (Android app): the app's own updater downloads and installs the newer Rush ID Station ----------
+const canUpdate = () => !!(hw && hw.update && hw.update.available());
+function updatesBlock() {
+  if (!canUpdate()) return '';
+  return '<h3>App updates</h3><div class="fld"><p id="updstat" class="paper">Installed version ' + esc(hw.update.version() || '?') + '</p></div>' +
+    '<div class="mrow"><button class="btn" data-act="upd-check">Check for updates</button><button class="btn primary" data-act="upd-start" id="updstart" hidden>Update now</button></div>';
+}
+let updListening = false;
+function showUpdate(r) {
+  const el = $('#updstat'), btn = $('#updstart'); if (!el) return;
+  const cur = r.current || hw.update.version();
+  const t = { checking: 'Checking for updates…', available: 'Version ' + (r.latest || '') + ' is ready (installed ' + cur + ').', latest: 'You have the latest version (' + cur + ').', offline: 'No internet connection. Connect to Wi-Fi and try again.', error: 'Could not check for updates. Try again later.' }[r.state];
+  if (t) { el.textContent = t; el.className = 'paper' + (r.state === 'available' ? ' ok' : r.state === 'offline' || r.state === 'error' ? ' err' : ''); }
+  if (btn) btn.hidden = r.state !== 'available';
+}
+function startUpdateCheck() {
+  if (!canUpdate()) return;
+  if (!updListening) { updListening = true; hw.update.onEvent(showUpdate); }
+  hw.update.check();
+}
 function openSettings() {
   const pr = cfg.prices, pap = L.PAPERS.map((p) => '<option value="' + p.id + '"' + (cfg.idPaper === p.id ? ' selected' : '') + '>' + p.label + '</option>').join('');
   const num = (k, v) => '<input type="number" min="0" step="any" data-k="' + k + '" value="' + v + '">';
@@ -731,7 +751,9 @@ function openSettings() {
     '<label>Per ID sheet' + num('p.idSheet', pr.idSheet) + '</label>' +
     L.PHOTO_SIZES.map((s) => '<label>Photo ' + s.label + ' (each)' + num('p.' + s.id, pr[s.id] || 0) + '</label>').join('') +
     '</div><div class="mcol"><button class="btn" data-act="orders-open-staff">Past orders…</button></div>' + (hw ? '<div class="mcol"><button class="btn" data-act="hw-setup">Cameras &amp; printers: open the booth Setup</button></div>' : '') +
+    updatesBlock() +
     '<div class="mrow"><button class="btn primary big" data-act="save-cfg">Save</button><button class="btn ghost" data-act="close">Cancel</button></div>');
+  startUpdateCheck();
 }
 function saveSettings() {
   document.querySelectorAll('#modal [data-k]').forEach((el) => {
@@ -853,6 +875,8 @@ const acts = {
   'hw-printer-setup': () => { closeModal(); hw.openSetup(4); },
   apr: (b) => { const r = hw.choosePrinter(currentPaperKey(), b.dataset.id); toast(r.msg, 4500); fillPrinterBox(); },
   'apr-scan': () => { hw.scanPrinters(); let n = 0; const t = setInterval(() => { fillPrinterBox(); if (++n > 40 || !document.querySelector('.printerbox')) clearInterval(t); }, 1200); },
+  'upd-check': () => { startUpdateCheck(); },
+  'upd-start': () => { toast('Downloading the update. Android will ask you to confirm the install.', 6000); hw.update.start(); },
   tab: (b) => { state.id.tab = b.dataset.id; renderIdPanel(); },
   flip: (b) => { state.id.flip = !state.id.flip; b.classList.toggle('on', state.id.flip); drawStage(); },
   guide: (b) => { state.id.guides = !state.id.guides; b.classList.toggle('on', state.id.guides); drawStage(); },

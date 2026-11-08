@@ -119,6 +119,31 @@ export const HELPER = { version: '1.1.10', date: '2026-10-28' };
 // (scripts/build-booth.mjs writes android-version.mjs on every build), so there is nothing to change here.
 export const ANDROID = { version: ANDROID_VERSION, date: '2026-11-08', url: 'https://github.com/' + REPO + '/releases/download/android-v' + ANDROID_VERSION + '/photobooth4u-kiosk-android.apk' };
 
+// The newest Rush ID Station tablet app (tag rushid-v<version> on GitHub, asset rush-id-station-android.apk). The Rush app asks
+// /api/updates and offers to download it when its own version is older. Found on GitHub when asked (cached 10 minutes), so a new
+// release shows up by itself; RUSH_FALLBACK is only used if GitHub cannot be reached and has nothing cached.
+export const RUSH_FALLBACK = { version: '1.0.3', url: 'https://github.com/' + REPO + '/releases/download/rushid-v1.0.3/rush-id-station-android.apk' };
+const verParts = (v) => String(v).split('.').map((n) => parseInt(n, 10) || 0);
+const verNewer = (a, b) => { const x = verParts(a), y = verParts(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { const p = x[i] || 0, q = y[i] || 0; if (p !== q) return p > q; } return false; };
+let liveR = { at: 0, ttl: 0, v: null };
+export async function liveRush() {
+  if (liveR.v && Date.now() - liveR.at < liveR.ttl) return liveR.v;
+  try {
+    const r = await fetch('https://api.github.com/repos/' + REPO + '/releases?per_page=30', { headers: { accept: 'application/vnd.github+json', 'user-agent': 'photobooth4u-site' }, signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      let best = null;
+      for (const rel of await r.json()) {
+        const m = /^rushid-v(\d+(?:\.\d+)*)$/.exec(rel.tag_name || ''); if (!m || rel.draft) continue;
+        const a = (rel.assets || []).find((x) => x.name === 'rush-id-station-android.apk'); if (!a || !/^https:\/\//.test(a.browser_download_url || '')) continue;
+        if (!best || verNewer(m[1], best.version)) best = { version: m[1], url: a.browser_download_url };
+      }
+      if (best) { liveR = { at: Date.now(), ttl: 10 * 60000, v: best }; return best; }
+    }
+  } catch { /* offline / rate limited: keep what we had */ }
+  liveR = { at: Date.now(), ttl: 2 * 60000, v: liveR.v || RUSH_FALLBACK };       // look again in 2 minutes
+  return liveR.v;
+}
+
 export function appDownloads(v = APP.version) {
   const base = 'https://github.com/' + REPO + '/releases/download/desktop-v' + v + '/';
   return {

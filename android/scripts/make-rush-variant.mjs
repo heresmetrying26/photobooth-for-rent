@@ -5,7 +5,7 @@
 //   - its own app id and name, so it installs beside the booth app
 //   - no offline activation gate: it opens https://photobooth4u.netlify.app/rush/ and the code lock screen there decides
 //     (the code must have "Rush ID station" switched on in Admin)
-//   - no "new booth version" prompt (that would offer the booth APK)
+//   - updates itself in the app from the Rush ID Station releases (rushid-v*), never the booth app
 //   - no offline booth fallback (the Rush station needs the internet for its code check)
 // Every edit must match exactly once, or the build stops with a message, so a change to the booth code is never missed silently.
 //
@@ -47,10 +47,11 @@ edit('app/src/main/java/com/photobooth4u/booth/MainActivity.kt', [
   ['    private fun bootWithLicence() {\n        val st = licence.status()',
    '    private fun bootWithLicence() {\n        // Rush ID Station build: the code lock screen on the site decides who may use it.\n        // The screen follows the tablet until portrait or landscape is chosen with the app\'s rotate button; that choice is remembered.\n        applyOrientation(getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString("pref_orientation", "either") ?: "either")\n        if (isNetworkAvailable()) webView.loadUrl(BASE_URL + "rush/") else webView.loadData("<body style=\'font-family:sans-serif;padding:24px;background:black;color:white\'><h2>No internet connection</h2><p>Connect to Wi-Fi, then close and reopen the app.</p></body>", "text/html", "UTF-8")\n        if (true) return\n        val st = licence.status()',
    'bootWithLicence()'],
-  // No "new booth version" prompt.
-  ['    private fun checkForAppUpdate(manual: Boolean = false) {\n',
-   '    private fun checkForAppUpdate(manual: Boolean = false) {\n        if (true) return          // Rush ID Station build: the booth update would be offered here\n',
-   'checkForAppUpdate()'],
+  // Updates: the booth's own in-app updater (check, "New version available", download with a progress bar, Android installer),
+  // pointed at the Rush ID Station release instead of the booth app.
+  ['val a = JSONObject(body).optJSONObject("android")', 'val a = JSONObject(body).optJSONObject("rush")', 'the update feed entry'],
+  ['.setMessage("photobooth4u " + latest + " is ready (this tablet has " + mine + "). Update between events, not during a session.")',
+   '.setMessage("Rush ID Station " + latest + " is ready (this tablet has " + mine + "). Update when no customer is using it.")', 'the update message'],
   // No offline booth page.
   ['    private fun loadOfflineBooth() {\n        offlineLoaded = true',
    '    private fun loadOfflineBooth() {\n        if (true) { runOnUiThread { webView.loadData("<body style=\'font-family:sans-serif;padding:24px;background:black;color:white\'><h2>No internet connection</h2><p>The Rush ID Station needs the internet. Connect to Wi-Fi, then close and reopen the app.</p></body>", "text/html", "UTF-8") }; return }\n        offlineLoaded = true',

@@ -32735,8 +32735,24 @@
         setOrientation: function (mode) { try { window.__PBLocal.setOrientation(mode === 'portrait' ? 'portrait' : 'landscape'); } catch (e) { } },
         // Staff: show the booth's own Setup (cameras, printers) instead of the station until they tap "Back to Rush station".
         openSetup: function (step) { rushEl.hidden = true; rushBack.hidden = false; try { leaveStartScreen(); } catch (e) { } try { if (step) goStep(step); } catch (e) { } },
+        // Android app: its own updater (window.__PBUpdate): installed version, check, and download + install inside the app.
+        update: {
+          available: function () { return !!(window.__PBUpdate && typeof window.__PBUpdate.check === 'function'); },
+          version: function () { try { return String(window.__PBUpdate.version() || ''); } catch (e) { return ''; } },
+          check: function () { try { window.__PBUpdate.check(); } catch (e) { } },
+          start: function () { try { window.__PBUpdate.start(); } catch (e) { } },
+          // The app answers through window.__PBUpdateEvent (the booth's own Setup uses it too), so listen alongside it.
+          onEvent: function (cb) {
+            if (!rushUpdWrapped) {
+              var prev = window.__PBUpdateEvent; rushUpdWrapped = true;
+              window.__PBUpdateEvent = function (r) { try { if (prev) prev(r); } catch (e) { } rushUpdListeners.forEach(function (f) { try { f(r); } catch (e) { } }); };
+            }
+            rushUpdListeners.push(cb);
+          }
+        },
         toast: function (m, ms) { try { showToast(m, ms || 4000); } catch (e) { } }
       };
+      var rushUpdWrapped = false, rushUpdListeners = [];
       function rushLock(reason) { try { sessionStorage.setItem('pb_notice', reason); } catch (e) { } location.reload(); }
       async function rushStart() {
         try { leaveStartScreen(); } catch (e) { }

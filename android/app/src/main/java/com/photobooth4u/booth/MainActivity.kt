@@ -95,6 +95,7 @@ class MainActivity : AppCompatActivity() {
     private val BASE_URL   = "https://photobooth4u.netlify.app/"
     private val ASSET_BOOTH = "booth.html"
     private var offlineLoaded = false
+    private var activeLifetime = false      // this tablet's code is a Lifetime code (the booth shows the same options as online)
     private var pageErrorToasts = 0
 
     private val REQ_CAMERA_PERMISSION = 2001
@@ -313,6 +314,7 @@ class MainActivity : AppCompatActivity() {
         }
         hideActivationGate()
         activeFeat = st.payload?.optJSONObject("feat")
+        activeLifetime = st.payload?.optBoolean("lifetime", false) ?: false
         activeExp = if (st.payload != null && st.payload.has("exp") && !st.payload.isNull("exp")) st.payload.optLong("exp") else null
         val adminOrientation = activeFeat?.optString("orientation", "landscape") ?: "landscape"
         val savedPref = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString("pref_orientation", null)
@@ -704,6 +706,10 @@ class MainActivity : AppCompatActivity() {
                     val folderPrefix = feat?.optString("folderPrefix", "") ?: ""
                     append("window.__PB.folderKey=").append(jsStr(folderKey)).append(";")
                     append("window.__PB.folderPrefix=").append(jsStr(folderPrefix)).append(";")
+                    // Same flags the online booth gets, so Setup, paper sizes and file names behave the same offline as online
+                    append("window.__PB.lifetime=").append(activeLifetime).append(";")
+                    append("window.__PB.deviceNo=").append(feat?.optInt("deviceNo", 1) ?: 1).append(";")
+                    append("window.__PB.multiDevice=").append(feat?.optBoolean("multiDevice", false) ?: false).append(";")
                     append("window.__PB.watermark=false;")
                     append("window.__PB.exp=").append(expMs).append(";")   // this rental code's own expiry, not a fixed local grant
                     append("window.__PB.print={enabled:").append(printEnabled).append(",sizes:[").append(printSizesJs).append("]};")

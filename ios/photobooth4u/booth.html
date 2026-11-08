@@ -36589,9 +36589,8 @@
         p = p && typeof p === 'object' ? p : {};
         var price = Math.floor(Number(p.price));
         var mode = PAY_MODES.indexOf(p.mode) >= 0 ? p.mode : 'off';
-        var noQr = DESKTOP || !!(window.__PB && window.__PB.offline);   // Android offline mode sets __PB.offline
-        if (noQr && mode === 'qr') mode = 'off';            // QR payments need the internet version
-        if (noQr && mode === 'both') mode = 'voucher';
+        // The chosen mode is kept as it is (also offline / on the desktop app), so it is still there, and saved, when the
+        // tablet goes back online. What QR payments can do right now is worked out in payEffMode().
         var dual = !!p.dual;
 
         var rawOpts = Array.isArray(p.options) && p.options.length ? p.options : null;
@@ -36649,9 +36648,17 @@
           tier2: tier2
         };
       }
-      function payActive() { return payOn() && payCfg.mode !== 'off'; }
-      function payQrOn() { return payCfg.mode === 'qr' || payCfg.mode === 'both'; }
-      function payVoucherOn() { return payCfg.mode === 'voucher' || payCfg.mode === 'both'; }
+      // The mode in use right now. QR payments need the internet version, so offline (Android offline mode, desktop app)
+      // 'qr' acts as 'off' and 'both' as 'voucher', without changing what is saved in the setup.
+      function payEffMode() {
+        var mode = payCfg.mode, noQr = DESKTOP || !!(window.__PB && window.__PB.offline);
+        if (noQr && mode === 'qr') return 'off';
+        if (noQr && mode === 'both') return 'voucher';
+        return mode;
+      }
+      function payActive() { return payOn() && payEffMode() !== 'off'; }
+      function payQrOn() { var m = payEffMode(); return m === 'qr' || m === 'both'; }
+      function payVoucherOn() { var m = payEffMode(); return m === 'voucher' || m === 'both'; }
       function peso(n) { return '₱' + Number(n || 0).toLocaleString('en-PH'); }
       function payIncludes() { return '1 photo session' + (payCfg.prints ? ' · ' + payCfg.prints + ' print' + (payCfg.prints > 1 ? 's' : '') + ' included' : ''); }
       function payEsc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -36916,7 +36923,7 @@
       function payShow(view) {
         payState.view = view;
         ['payChoose', 'payQr', 'payVoucher', 'payDone', 'payProblem'].forEach(function (id) { document.getElementById(id).hidden = id !== view; });
-        document.getElementById('payBack').hidden = !(payCfg.mode === 'both' && view !== 'payChoose' && view !== 'payDone');
+        document.getElementById('payBack').hidden = !(payEffMode() === 'both' && view !== 'payChoose' && view !== 'payDone');
         document.getElementById('payClose').hidden = view === 'payDone';
         payIdle();
       }
@@ -36963,8 +36970,8 @@
           if (optVoucher) optVoucher.hidden = !payVoucherOn();
           paySheet.hidden = false;
           document.body.classList.add('pay-open');
-          if (payCfg.dual || payCfg.mode === 'both') payShow('payChoose');
-          else if (payCfg.mode === 'qr') payStartQr();
+          if (payCfg.dual || payEffMode() === 'both') payShow('payChoose');
+          else if (payEffMode() === 'qr') payStartQr();
           else payStartVoucher();
         });
       }
@@ -39986,6 +39993,13 @@
               lastSavedJson = null;
               setupReady = true;
               saveSetupNow();   // first time on the server: upload what this device has
+            } else if (j.settings && local && (local.updatedAt || 0) > (j.updatedAt || 0)) {
+              // Changed while offline (or the last save didn't get through): this device's copy is newer, so send it up
+              // instead of leaving the server on the old one (which would win again on the next device).
+              imageDirty = !!localImg;
+              lastSavedJson = null;
+              setupReady = true;
+              saveSetupNow();
             }
           } catch (e) { /* offline: keep the device copy */ }
         } else if (!local && carryOver) {
@@ -41424,6 +41438,7 @@
       var setupProfiles = [], profileTomb = {}, profActive = null, profUndo = null;
       var PROFILE_MAX = 12, PROFILE_TOMB_MAX = 60;
       // Things that belong to the device (printers, payments, screen turn), kept when only the design is loaded.
+      // (Voucher batches and the print choices in p.device are only loaded by "Use everything", never by "Design only".)
       var PROFILE_DEVICE_KEYS = ['printerProfiles', 'printPrefs', 'pay', 'androidOrientation', 'colorAdj', 'flipPrinterPool', 'flipPoolMode'];
       function profScope() { var pb = window.__PB || {}; return pb.folderPrefix || pb.folderKey || 'local'; }
       function profilesKey() { return 'pb_profiles:' + profScope(); }
@@ -41496,9 +41511,119 @@
         th.getContext('2d').drawImage(big, 0, 0, th.width, th.height);
         return th.toDataURL('image/jpeg', 0.7);
       }
+      // ---- What a profile keeps besides the setup ----
+      // Voucher batches (the codes, and which are used / cancelled) are not part of the setup: they live in the
+      // server's voucher store for the event and on this tablet. A profile carries a copy, so loading it brings them back.
+      // Codes are saved as "12345678" (unused), "12345678u" (used) or "12345678v" (cancelled).
+      var PROFILE_VOUCHER_CODES_MAX = 1500;
+      async function profileVoucherSnapshot() {
+        if (!payOn()) return [];
+        try { await payLoadBatches(); } catch (e) { }
+        var all = (typeof payBatches !== 'undefined' && Array.isArray(payBatches)) ? payBatches.slice() : [];
+        try { loadAllOfflineBatches().forEach(function (ob) { if (!all.some(function (x) { return x.id === ob.id; })) all.push(ob); }); } catch (e) { }
+        all.sort(function (x, y) { return (y.at || 0) - (x.at || 0); });
+        var out = [], total = 0;
+        for (var i = 0; i < all.length; i++) {
+          var b = all[i];
+          if (!b || !b.id || !Array.isArray(b.codes) || !b.codes.length) continue;
+          if (total + b.codes.length > PROFILE_VOUCHER_CODES_MAX) continue;
+          var codes = b.codes.map(function (c) {
+            var o = (c && typeof c === 'object') ? c : { c: String(c) };
+            return /^\d{8}$/.test(String(o.c)) ? String(o.c) + (o.used ? 'u' : (o.voided ? 'v' : '')) : null;
+          }).filter(Boolean);
+          if (!codes.length) continue;
+          total += codes.length;
+          out.push({ id: String(b.id).slice(0, 60), label: String(b.label || '').slice(0, 40), tier: (b.tier === 'receipt' || b.tier === 'photo') ? b.tier : 'all',
+            price: Math.max(0, Math.floor(Number(b.price) || 0)), prints: Math.max(0, Math.floor(Number(b.prints) || 0)), at: Number(b.at) || Date.now(), codes: codes });
+        }
+        return out;
+      }
+      // Puts the profile's voucher batches back for the current event. A batch already here (same id) is left alone, so
+      // vouchers used since the profile was saved stay used. Returns how many batches were added.
+      async function profileVoucherRestore(list) {
+        if (!payOn() || !Array.isArray(list) || !list.length) return 0;
+        var have = {}, taken = {};
+        var note = function (b) { if (!b) return; have[b.id] = true; (b.codes || []).forEach(function (c) { taken[(c && c.c) || c] = b.id; }); };
+        (typeof payBatches !== 'undefined' && Array.isArray(payBatches) ? payBatches : []).forEach(note);
+        try { loadAllOfflineBatches().forEach(note); } catch (e) { }
+        var ev = setupScopeEvent() || '';
+        var evName = (typeof labelInput !== 'undefined' && labelInput && labelInput.value ? labelInput.value.trim() : '') || ev || 'Photo booth';
+        var add = [];
+        list.forEach(function (x) {
+          if (!x || typeof x.id !== 'string' || have[x.id] || !Array.isArray(x.codes)) return;
+          var codes = x.codes.map(function (s) {
+            var m = /^(\d{8})([uv]?)$/.exec(String(s));
+            return m ? { c: m[1], used: m[2] === 'u', voided: m[2] === 'v' } : null;
+          }).filter(function (c) { return c && !taken[c.c]; });
+          if (!codes.length) return;
+          codes.forEach(function (c) { taken[c.c] = x.id; });
+          add.push({ id: x.id, ev: ev, evName: evName, at: Number(x.at) || Date.now(), price: Number(x.price) || 0, prints: Number(x.prints) || 0,
+            tier: x.tier, label: x.label || '', total: codes.length,
+            usedCount: codes.filter(function (c) { return c.used; }).length, voidCount: codes.filter(function (c) { return c.voided; }).length, codes: codes });
+        });
+        if (!add.length) return 0;
+        var saved = false;
+        if (navigator.onLine !== false) {
+          try { var r = await postApi('/api/pay', { action: 'batch.sync', batches: add.slice(0, 50) }, 15000); saved = r.status === 200 && r.j && r.j.ok; } catch (e) { }
+        }
+        if (!saved) {
+          // No internet (or the server said no): keep them on this tablet, they go up with the next sync.
+          add.forEach(function (b) { b.offlineOnly = true; });
+          var keep = loadAllOfflineBatches();
+          saveAllOfflineBatches(add.concat(keep));
+          try {
+            var key = vCacheKey(), cData = null;
+            try { cData = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { }
+            if (!cData || !cData.oid) { var pb = window.__PB || {}; cData = { oid: (pb.folderPrefix || pb.folderKey || 'offline'), at: Date.now(), list: [] }; }
+            for (var i = 0; i < add.length; i++) {
+              for (var j = 0; j < add[i].codes.length; j++) {
+                var c = add[i].codes[j]; if (c.used || c.voided) continue;
+                cData.list.push([await vHash(cData.oid, c.c), add[i].prints || 0, add[i].tier || 'all', add[i].label || '', add[i].price || 0]);
+              }
+            }
+            localStorage.setItem(key, JSON.stringify(cData));
+          } catch (e) { }
+        }
+        try { payBatches = add.concat(payBatches || []); renderPayBatches(); } catch (e) { }
+        if (saved) { try { await payLoadBatches(); } catch (e) { } }
+        try { refreshVoucherCache(); } catch (e) { }
+        return add.length;
+      }
+      // Print choices that live on this device rather than in the setup: paper size, own paper sizes, keychain printing, photographer's one big print.
+      function profileDeviceSnapshot() {
+        var d = {};
+        try { if (printSize) d.paper = String(printSize); } catch (e) { }
+        try { var os = ownSizes(); if (os.length) d.ownSizes = os.slice(0, OWN_MAX); } catch (e) { }
+        try { d.keychain = !!keychainOn; } catch (e) { }
+        try { d.deskSolo = !!deskSoloOn; } catch (e) { }
+        return d;
+      }
+      function profileDeviceApply(d) {
+        if (!d || typeof d !== 'object') return;
+        try {
+          if (Array.isArray(d.ownSizes) && window.__PB && window.__PB.lifetime) {
+            var cur = ownSizes();
+            saveOwnSizes(cur.concat(d.ownSizes.filter(function (k) { return typeof k === 'string' && cur.indexOf(k) < 0; })).slice(0, OWN_MAX));
+          }
+        } catch (e) { }
+        try { if (typeof d.keychain === 'boolean') { keychainOn = d.keychain; localStorage.setItem('pb_keychain_print', keychainOn ? '1' : '0'); } } catch (e) { }
+        try {
+          if (typeof d.deskSolo === 'boolean') {
+            deskSoloOn = d.deskSolo; localStorage.setItem('pb_desk_solo', deskSoloOn ? '1' : '0');
+            var dsb = document.getElementById('deskSolo'); if (dsb) dsb.checked = deskSoloOn;
+          }
+        } catch (e) { }
+        try {
+          if (typeof d.paper === 'string' && d.paper) { localStorage.setItem('pb_print_paper', d.paper); printSize = null; }   // refreshPrintUI picks it when this layout / code allows it
+        } catch (e) { }
+        try { refreshPrintUI(); } catch (e) { }
+      }
+
       // prev: the profile being updated (its backdrop picture is reused when it hasn't changed).
       async function snapshotProfile(name, prev) {
         var p = { id: prev ? prev.id : newProfileId(), name: name, savedAt: Date.now(), settings: snapshotSetup() };
+        try { var vb = await profileVoucherSnapshot(); if (vb.length) p.vouchers = vb; } catch (e) { }
+        try { p.device = profileDeviceSnapshot(); } catch (e) { }
         if (bgImageDataUrl) {
           var sig = bgSig(bgImageDataUrl);
           if (prev && prev.bgAssetId && prev.bgSig === sig) { p.bgAssetId = prev.bgAssetId; p.bgSig = sig; }
@@ -41635,6 +41760,14 @@
         applySetup(st, bg);
         bgImageDataUrl = bg; imageDirty = true;
         lastSavedJson = null; scheduleSetupSave();
+        if (mode !== 'design') {
+          // "Use everything" also brings back the vouchers and the print choices saved with the profile.
+          try { profileDeviceApply(p.device); } catch (e) { }
+          try {
+            var nv = await profileVoucherRestore(p.vouchers);
+            if (nv) showToast(nv + ' voucher batch' + (nv > 1 ? 'es' : '') + ' restored from the profile ✓', 4000);
+          } catch (e) { }
+        }
       }
       async function profileUse(id) {
         var p = profileById(id); if (!p) return;
@@ -41723,6 +41856,8 @@
           var e = { name: p.name, savedAt: p.savedAt, settings: p.settings };
           if (p.bgAssetId && ASSETS[p.bgAssetId]) e.bgData = ASSETS[p.bgAssetId].url;
           if (p.thumb) e.thumb = p.thumb;
+          if (p.vouchers) e.vouchers = p.vouchers;
+          if (p.device) e.device = p.device;
           return e;
         }) };
         var blob = new Blob([JSON.stringify(out)], { type: 'application/json' });
@@ -41750,6 +41885,8 @@
             try { p.bgAssetId = await addAsset(e.bgData); p.bgSig = bgSig(e.bgData); } catch (err) { }
           }
           if (typeof e.thumb === 'string' && e.thumb.length < 20000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(e.thumb)) p.thumb = e.thumb;
+          if (Array.isArray(e.vouchers) && JSON.stringify(e.vouchers).length < 60000) p.vouchers = e.vouchers;
+          if (e.device && typeof e.device === 'object' && !Array.isArray(e.device)) p.device = e.device;
           setupProfiles.unshift(p); added++;
         }
         if (added) { await saveProfiles(); renderProfiles(); }

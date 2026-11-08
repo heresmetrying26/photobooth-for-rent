@@ -20,7 +20,45 @@ export function cleanProfiles(list) {
       ...(ASSET_ID_RE.test(String(p.bgAssetId || '')) ? { bgAssetId: p.bgAssetId } : {}),
       ...(typeof p.bgSig === 'string' ? { bgSig: p.bgSig.slice(0, 40) } : {}),
       ...(typeof p.thumb === 'string' && p.thumb.length < 20000 && THUMB_RE.test(p.thumb) ? { thumb: p.thumb } : {}),
+      ...(cleanVouchers(p.vouchers).length ? { vouchers: cleanVouchers(p.vouchers) } : {}),
+      ...(cleanDevice(p.device) ? { device: cleanDevice(p.device) } : {}),
     }));
+}
+
+// Voucher batches saved with a profile: [{ id, label, tier, price, prints, at, codes: ['12345678', '12345678u', '12345678v'] }]
+export const MAX_VOUCHER_CODES = 1500;
+const CODE_RE = /^\d{8}[uv]?$/;
+export function cleanVouchers(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  let total = 0;
+  for (const b of list.slice(0, 40)) {
+    if (!b || typeof b !== 'object' || typeof b.id !== 'string' || b.id.length > 60 || !Array.isArray(b.codes)) continue;
+    const codes = b.codes.filter((c) => typeof c === 'string' && CODE_RE.test(c));
+    if (!codes.length || total + codes.length > MAX_VOUCHER_CODES) continue;
+    total += codes.length;
+    out.push({
+      id: b.id,
+      label: String(b.label || '').replace(/[<>]/g, '').slice(0, 40),
+      tier: b.tier === 'receipt' || b.tier === 'photo' ? b.tier : 'all',
+      price: Math.max(0, Math.min(20000, Math.floor(Number(b.price) || 0))),
+      prints: Math.max(0, Math.min(10, Math.floor(Number(b.prints) || 0))),
+      at: Number(b.at) || 0,
+      codes,
+    });
+  }
+  return out;
+}
+
+// Print choices kept on the device (paper size, own sizes, keychain printing, photographer's big print).
+export function cleanDevice(d) {
+  if (!d || typeof d !== 'object' || Array.isArray(d)) return null;
+  const out = {};
+  if (typeof d.paper === 'string' && d.paper.length <= 24) out.paper = d.paper;
+  if (Array.isArray(d.ownSizes)) out.ownSizes = d.ownSizes.filter((k) => typeof k === 'string' && k.length <= 24).slice(0, 6);
+  if (typeof d.keychain === 'boolean') out.keychain = d.keychain;
+  if (typeof d.deskSolo === 'boolean') out.deskSolo = d.deskSolo;
+  return Object.keys(out).length ? out : null;
 }
 
 export function cleanTombs(t) {

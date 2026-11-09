@@ -561,36 +561,19 @@ class RovingBridgeActivity : AppCompatActivity() {
             Log.i(TAG, "Roving bridge worker started")
             while (isRunning.get()) {
                 try {
-                    val cam = UsbCameraHelper.activeInstance
-                    if (cam != null) {
-                        val isOpen = cam.isCameraOpen()
-                        if (!isOpen) {
-                            cam.ensureOpen()
-                        }
                     val cam = getCameraHelper()
-                    val isOpen = cam.isCameraOpen()
-                    if (!isOpen) {
+                    if (!cam.isCameraOpen()) {
                         cam.ensureOpen()
                     }
 
-                        val connected = cam.isCameraOpen()
-                        val camName = if (connected) cam.cameraName() else "No DSLR Connected"
-                        val battery = if (connected) cam.cameraBattery() else -1
                     val connected = cam.isCameraOpen()
                     val camName = if (connected) cam.cameraName() else "No DSLR Connected"
                     val battery = if (connected) cam.cameraBattery() else -1
 
-                        mainHandler.post {
-                            updateCameraStatus(connected, camName, battery)
-                        }
                     mainHandler.post {
                         updateCameraStatus(connected, camName, battery)
                     }
 
-                        if (connected) {
-                            // Check for newly captured photo from physical shutter press
-                            val jpegBytes = cam.pollNewPhoto()
-                            if (jpegBytes != null && jpegBytes.isNotEmpty()) {
                     if (connected) {
                         // Check for newly captured photo from physical shutter press
                         val jpegBytes = cam.pollNewPhoto()
@@ -599,16 +582,11 @@ class RovingBridgeActivity : AppCompatActivity() {
                                 handlePhotoCaptured(jpegBytes)
                             }
                         }
-                    } else {
-                        mainHandler.post {
-                            updateCameraStatus(false, "Camera helper offline", -1)
-                        }
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "Error in worker loop: ${e.message}")
                 }
 
-                try { Thread.sleep(300) } catch (_: InterruptedException) { break }
                 try { Thread.sleep(250) } catch (_: InterruptedException) { break }
             }
             Log.i(TAG, "Roving bridge worker stopped")
@@ -775,8 +753,6 @@ class RovingBridgeActivity : AppCompatActivity() {
     }
 
     private fun testShutterTrigger() {
-        val cam = UsbCameraHelper.activeInstance
-        if (cam == null || !cam.isCameraOpen()) {
         val cam = getCameraHelper()
         if (!cam.isCameraOpen()) {
             Toast.makeText(this, "DSLR is not connected", Toast.LENGTH_SHORT).show()
@@ -792,7 +768,6 @@ class RovingBridgeActivity : AppCompatActivity() {
                     triggerButton.isEnabled = true
                     triggerButton.text = "📸 Test Shutter"
                     if (bytes != null && bytes.isNotEmpty()) {
-                        handlePhotoCaptured(bytes)
                         uploadExecutor.execute {
                             handlePhotoCaptured(bytes)
                         }

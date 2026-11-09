@@ -33,6 +33,12 @@ const ORIGIN = 'app://booth';
 const VERSION = app.getVersion();
 const KEY_A = 'pb4u·desk·7f3c1e9a';
 
+// Hardware acceleration & GPU streaming flags for smooth zero-lag camera preview and capture
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecoder,CanvasOopRasterization');
+
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
 
 protocol.registerSchemesAsPrivileged([{

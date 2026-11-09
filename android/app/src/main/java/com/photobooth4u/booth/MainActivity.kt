@@ -199,7 +199,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         // 1. Keep tablet screen awake during the event
+        // 1. Keep tablet screen awake during the event and ensure hardware acceleration
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+            WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
+        )
 
         // 2. Hide system navigation and status bars for Kiosk mode
         hideSystemBars()
@@ -210,6 +215,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(root)
 
         webView = WebView(this)
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
         root.addView(
             webView,
             FrameLayout.LayoutParams(
@@ -539,7 +545,10 @@ class MainActivity : AppCompatActivity() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             s.safeBrowsingEnabled = false
+            webView.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
         }
+        @Suppress("DEPRECATION")
+        s.setRenderPriority(WebSettings.RenderPriority.HIGH)
 
         webView.isVerticalScrollBarEnabled = false
         webView.isHorizontalScrollBarEnabled = false

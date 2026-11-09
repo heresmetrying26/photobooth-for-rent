@@ -1542,6 +1542,10 @@
 
     video {
       background: #050505;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
     }
 
     #previewCanvas {
@@ -13869,17 +13873,17 @@
           </select>
           <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
           <div id="webcamResBox" style="display:none; margin-top:8px;">
-            <p class="panel-label" style="margin-top:6px;">USB webcam preview</p>
+            <p class="panel-label" style="margin-top:6px;">Camera preview resolution</p>
             <select class="cam-select" id="webcamPreviewRes">
-              <option value="auto">Auto (best that works, up to 1080p)</option>
+              <option value="auto">Auto (smoothest 30fps, 720p on tablet)</option>
               <option value="max">Max (camera's full resolution)</option>
               <option value="yuyv">Max YUYV (biggest uncompressed size, lower fps)</option>
               <option value="1080">1080p</option>
-              <option value="720">720p</option>
+              <option value="720">720p (recommended for smooth live view)</option>
               <option value="480">480p (smoothest, GIF / boomerang)</option>
             </select>
             <p class="panel-hint" style="margin-top:4px;">Need one exact size? Open the list and pick one under "Exact size (forced)". The booth then uses only that size and shows an error instead of falling back to a smaller one. If the webcam resets, use a powered USB hub.</p>
-            <p class="panel-label" style="margin-top:6px;">USB webcam photo</p>
+            <p class="panel-label" style="margin-top:6px;">Camera photo resolution</p>
             <select class="cam-select" id="webcamPhotoRes">
               <option value="preview">Same as preview (instant)</option>
               <option value="max">Max resolution (switches at capture, ~1–2 s)</option>
@@ -19858,17 +19862,16 @@
       function startShotMotionCapture(shotIdx) {
         if (!shotMotionClips[shotIdx]) shotMotionClips[shotIdx] = [];
         else shotMotionClips[shotIdx].length = 0;
-        var intervalMs = 90; // ~11 fps for fluid, seamless boomerang motion
-        var maxFrames = Math.max(8, Math.min(24, Math.round((gifClipSec || 1.8) * 11)));
+        var intervalMs = 100; // ~10 fps for fluid, smooth boomerang motion without main-thread starvation
+        var maxFrames = Math.max(8, Math.min(20, Math.round((gifClipSec || 1.8) * 10)));
         var canvas = document.createElement('canvas');
         var videoWidth = video.videoWidth || 640;
         var videoHeight = video.videoHeight || 480;
-        var scale = Math.min(1, 960 / videoWidth, 720 / videoHeight);
+        var scale = Math.min(1, 640 / videoWidth, 480 / videoHeight);
         canvas.width = Math.max(1, Math.round(videoWidth * scale));
         canvas.height = Math.max(1, Math.round(videoHeight * scale));
         var ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
 
         var busy = false;
         var timer = setInterval(function () {
@@ -19880,7 +19883,7 @@
           }
           try { ctx.drawImage(video, 0, 0, canvas.width, canvas.height); } catch (e) { }
           ctx.restore();
-          try { if (typeof applyFilterToCanvas === 'function') applyFilterToCanvas(canvas); } catch (e) { }
+          // Filter applied during GIF compilation to keep live camera view silky smooth during countdown
           canvas.toBlob(function (blob) {
             busy = false;
             if (blob && activeShotMotion && activeShotMotion.shotIdx === shotIdx) {
@@ -19888,7 +19891,7 @@
               if (clip.length >= maxFrames) clip.shift();
               clip.push({ blob: blob, time: performance.now() });
             }
-          }, 'image/jpeg', 0.92);
+          }, 'image/jpeg', 0.82);
         }, intervalMs);
 
         activeShotMotion = { shotIdx: shotIdx, timer: timer };
@@ -19901,12 +19904,12 @@
         }
       }
 
-      // Capture compressed HD source frames while keeping memory bounded for long sessions.
+      // Capture compressed source frames while keeping memory and CPU bounded for long sessions.
       function captureGifFrame(capture, timeMs) {
         if (capture.busy) return;
         var videoWidth = video.videoWidth || 640;
         var videoHeight = video.videoHeight || 480;
-        var scale = Math.min(1, 1280 / videoWidth, 720 / videoHeight);
+        var scale = Math.min(1, 640 / videoWidth, 480 / videoHeight);
         var width = Math.max(1, Math.round(videoWidth * scale));
         var height = Math.max(1, Math.round(videoHeight * scale));
         if (!capture.canvas) {
@@ -19919,8 +19922,6 @@
         if (typeof mirrorPreview === 'function' && mirrorPreview()) { ctx.translate(capture.canvas.width, 0); ctx.scale(-1, 1); }
         try { ctx.drawImage(video, 0, 0, capture.canvas.width, capture.canvas.height); } catch (e) { }
         ctx.restore();
-        // The chosen look (filter, vintage look, soft skin, date stamp) goes on every GIF frame too, like the photos.
-        try { if (typeof applyFilterToCanvas === 'function') applyFilterToCanvas(capture.canvas); } catch (e) { }
         capture.busy = true;
         capture.pending = new Promise(function (resolve) {
           capture.canvas.toBlob(function (blob) {
@@ -19929,7 +19930,7 @@
               capture.frames.push({ blob: blob, time: timeMs });
             }
             capture.busy = false; resolve();
-          }, 'image/jpeg', 0.88);
+          }, 'image/jpeg', 0.82);
         });
       }
       function startGifSessionCapture() {
@@ -20096,6 +20097,7 @@
                         var bmp = await createImageBitmap(item.blob);
                         sCtx.drawImage(bmp, 0, 0, sc.width, sc.height);
                         if (bmp.close) bmp.close();
+                        try { if (typeof applyFilterToCanvas === 'function') applyFilterToCanvas(sc); } catch (e) { }
                       }
                     } else if (shotCanvases[sIdx]) {
                       sCtx.drawImage(shotCanvases[sIdx], 0, 0, sc.width, sc.height);
@@ -20134,6 +20136,7 @@
                           var bmp = await createImageBitmap(item.blob);
                           sCtx.drawImage(bmp, 0, 0, sc.width, sc.height);
                           if (bmp.close) bmp.close();
+                          try { if (typeof applyFilterToCanvas === 'function') applyFilterToCanvas(sc); } catch (e) { }
                         }
                       } else if (shotCanvases[sIdx]) {
                         sCtx.drawImage(shotCanvases[sIdx], 0, 0, sc.width, sc.height);
@@ -20394,14 +20397,17 @@
         return { preview: (['auto', 'max', 'yuyv', '1080', '720', '480'].includes(v.preview) || /^x:\d+:\d+:\d+:\d+$/.test(String(v.preview))) ? v.preview : 'auto', photo: v.photo === 'max' ? 'max' : 'preview' };
       })();
       function saveWebcamRes() { try { localStorage.setItem(WEBCAM_RES_KEY, JSON.stringify(webcamRes)); } catch (e) { } }
-      // getUserMedia size for an external USB webcam (Android Path 1 or browser)
+      // getUserMedia size for any webcam or built-in camera
       function webcamGumSize() {
         const p = webcamRes.preview;
         const ex = /^x:(\d+):(\d+):(\d+):(\d+)$/.exec(String(p));
         if (ex) return { width: { ideal: +ex[2] }, height: { ideal: +ex[3] } };
         if (p === 'max' || p === 'yuyv') return { width: { ideal: 3840 }, height: { ideal: 2160 } };
+        if (p === '1080') return { width: { ideal: 1920 }, height: { ideal: 1080 } };
         if (p === '720') return { width: { ideal: 1280 }, height: { ideal: 720 } };
         if (p === '480') return { width: { ideal: 640 }, height: { ideal: 480 } };
+        const isMobileOrTablet = IS_ANDROID_APP || /Android|iPad|iPhone/i.test(navigator.userAgent || '');
+        if (isMobileOrTablet) return { width: { ideal: 1280 }, height: { ideal: 720 } };
         return { width: { ideal: 1920 }, height: { ideal: 1080 } };
       }
       // "Exact size" menu: the sizes the app reported for the webcam (kept in this browser so the menu is there before the webcam opens).
@@ -20593,7 +20599,8 @@
       }
       function refreshWebcamResUI() {
         if (!webcamResBox) return;
-        webcamResBox.style.display = usbWebcamSelected() ? '' : 'none';
+        const hasCam = cameraSelect && cameraSelect.value && cameraSelect.value !== USB_CAM_ID;
+        webcamResBox.style.display = hasCam ? '' : 'none';
         fillExactModes();
         webcamPreviewRes.value = webcamRes.preview;
         webcamPhotoRes.value = webcamRes.photo;
@@ -20603,13 +20610,13 @@
         const vh = (typeof video !== 'undefined' && video && video.videoHeight) ? video.videoHeight : 0;
         const now = vw ? vw + '\u00d7' + vh : '';
         const softWarn = (vh > 0 && vh <= 480 && webcamRes.photo !== 'max') ? '480p is smooth for GIFs/boomerangs, but soft for 4R prints \u2014 pick 720p+ or Max photo for sharper prints. ' : '';
-        const usb2Hint = IS_ANDROID_APP ? 'USB 2.0 tablet ports may limit 4K preview; standard resolution is recommended for live view.' : '';
-        if (note) note.textContent = ((now ? 'Now: ' + now + '. ' : '') + (info && info.max ? 'Camera max: ' + info.max + '. ' : '') + softWarn + usb2Hint).trim();
+        const tabletHint = IS_ANDROID_APP ? '720p is recommended for smooth, lag-free live view on tablets.' : '';
+        if (note) note.textContent = ((now ? 'Now: ' + now + '. ' : '') + (info && info.max ? 'Camera max: ' + info.max + '. ' : '') + softWarn + tabletHint).trim();
       }
       if (webcamResBox) {
         webcamPreviewRes.addEventListener('change', () => {
           webcamRes.preview = webcamPreviewRes.value; saveWebcamRes();
-          if (usbWebcamSelected() && cameraSelect.value) { try { initCamera(cameraSelect.value); } catch (e) { } }   // reopen at the new size
+          if (cameraSelect.value && cameraSelect.value !== USB_CAM_ID) { try { initCamera(cameraSelect.value); } catch (e) { } }   // reopen at the new size
         });
         webcamPhotoRes.addEventListener('change', () => { webcamRes.photo = webcamPhotoRes.value; saveWebcamRes(); });
         cameraSelect.addEventListener('change', () => setTimeout(refreshWebcamResUI, 0));
@@ -20843,13 +20850,23 @@
       // A busy or blocked camera is never swapped for a different one.
       async function openCameraStream(deviceId) {
         const selOpt = deviceId && Array.from(cameraSelect.options).find(o => o.value === deviceId);
-        const size = (selOpt && isUsbWebcamOption(deviceId, selOpt.textContent)) ? webcamGumSize() : { width: { ideal: 1920 }, height: { ideal: 1080 } };
+        const baseSize = webcamGumSize();
+        const sizeWithFps = Object.assign({}, baseSize, { frameRate: { ideal: 30, min: 20 } });
         const gum = video => navigator.mediaDevices.getUserMedia({ video, audio: false });
         const stop = e => e && (e.uvcMsg || e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e.name === 'SecurityError');
         let lastErr = null;
         const tries = deviceId
-          ? [Object.assign({ deviceId: { exact: deviceId } }, size), { deviceId: { exact: deviceId } }]
-          : [Object.assign({ facingMode: 'user' }, size), size];
+          ? [
+              Object.assign({ deviceId: { exact: deviceId } }, sizeWithFps),
+              Object.assign({ deviceId: { exact: deviceId } }, baseSize),
+              { deviceId: { exact: deviceId } }
+            ]
+          : [
+              Object.assign({ facingMode: 'user' }, sizeWithFps),
+              Object.assign({ facingMode: 'user' }, baseSize),
+              sizeWithFps,
+              baseSize
+            ];
         for (const v of tries) {
           try { return await gum(v); }
           catch (e) {
@@ -20861,7 +20878,7 @@
             if (stop(e)) throw e;
           }
         }
-        for (const v of [size, true]) {
+        for (const v of [baseSize, true]) {
           try { return await gum(v); }
           catch (e) {
             lastErr = e;
@@ -21863,9 +21880,10 @@
         if (!box || !sv) return;
         var b = document.body, on = false;
         try {
+          var isMobileOrTablet = IS_ANDROID_APP || /Android|iPhone|iPad/i.test(navigator.userAgent || '');
           var sh = document.querySelector('.app-shell'), picking = false;
           try { picking = !!pickOpen || btdOpen; } catch (e) { }
-          on = b.classList.contains('stage-full') && !b.classList.contains('stage-review') && !b.classList.contains('welcome-on') && !picking &&
+          on = !isMobileOrTablet && b.classList.contains('stage-full') && !b.classList.contains('stage-review') && !b.classList.contains('welcome-on') && !picking &&
             !b.classList.contains('stage-shoot') &&
             (state === 'capturing' || !!(sh && sh.classList.contains('getting-ready'))) &&
             streamActive && !!video.srcObject && !!video.videoWidth && video.style.display !== 'none' &&
@@ -23539,7 +23557,7 @@
         consumePayCredit();          // the paid session is used once the countdown starts (Cancel at Get ready keeps it)
         countingDown = true;
         if (flipbookActive()) { await runFlipbookSession(); return; }
-        if (isGifAllowed() && (outputMode === 'gif' || outputMode === 'both')) startGifSessionCapture();
+        if (isGifAllowed() && (outputMode === 'gif' || outputMode === 'both') && gifMotionStyle === 'session') startGifSessionCapture();
         stageShot = 0;
         try { applyStageAspect(); } catch (e) { }
         guestRender();

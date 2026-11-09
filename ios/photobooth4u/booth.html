@@ -46653,7 +46653,11 @@
         var live = !!stream && !!video.videoWidth && streamActive, err = cameraError.style.display === 'flex';
         scpEmpty.hidden = live && !err;
         scpEmpty.textContent = err ? cameraErrorText.textContent : 'Waiting for the camera…';
-        scpInfo.textContent = live ? video.videoWidth + ' × ' + video.videoHeight + (layout ? ' · cropped to the layout' : ' · full camera frame') : '';
+        var isDslr = currentDeviceId === USB_CAM_ID;
+        var infoText = live ? (isDslr
+          ? 'Live view: ' + video.videoWidth + ' × ' + video.videoHeight + ' (DSLR viewfinder) · Photos: full DSLR resolution (up to 3000px HD)'
+          : video.videoWidth + ' × ' + video.videoHeight + (layout ? ' · cropped to the layout' : ' · full camera frame')) : '';
+        scpInfo.textContent = infoText;
         [].forEach.call(document.querySelectorAll('#scpFitChips .chip'), function (c) { c.classList.toggle('active', c.dataset.fit === scpFit); });
       }
       document.getElementById('scpFitChips').addEventListener('click', function (e) {

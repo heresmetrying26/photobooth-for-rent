@@ -52,7 +52,7 @@
     </div>
     <div class="install"><div class="callout"><b>Opening on macOS</b><p>If macOS blocks the app, Control-click (or right-click) it and choose <b>Open</b>. If needed, go to System Settings → Privacy &amp; Security → Open Anyway.</p></div><div class="callout"><b>Opening on Windows</b><p>If SmartScreen appears, choose <b>More info → Run anyway</b> after confirming you downloaded the installer from this photobooth4u page.</p></div></div>
     <div class="callout" style="margin-top:14px"><b>Already installed? Update from the app</b><p>From version 1.0.98, open <b>Setup › Share › App updates</b> and choose <b>Check for updates</b>. Windows installs it and reopens the app; a Mac downloads it for you to drag into Applications. Your activation, designs and photos stay. Older versions: install the new version from this page over the old one.</p></div>
-    <details class="checks"><summary>Checksums and release details</summary><div class="checks-content"><p>SHA-256 values are shown when GitHub publishes them for these release assets. If no digest is available, use the linked GitHub release page to confirm the asset and version.</p><ul id="checksumList"><li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/android-v1.0.109">Android Tablet Kiosk release v1.0.109</a><span class="digest wait">Loading published asset digests…</span></li><li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/desktop-v1.0.98">Desktop app release v1.0.98</a><span class="digest wait">Loading published asset digests…</span></li><li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/print-helper-v1.1.10">Print Helper release v1.1.10</a><span class="digest wait">Loading published asset digests…</span></li></ul></div></details>
+    <details class="checks"><summary>Checksums and release details</summary><div class="checks-content"><p>SHA-256 values are shown when GitHub publishes them for these release assets. If no digest is available, use the linked GitHub release page to confirm the asset and version.</p><ul id="checksumList"><li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/android-v1.1.25">Android Tablet Kiosk release v1.1.25</a><span class="digest wait">Loading published asset digests…</span></li><li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/desktop-v1.0.98">Desktop app release v1.0.98</a><span class="digest wait">Loading published asset digests…</span></li><li><a href="https://github.com/heresmetrying26/photobooth-for-rent/releases/tag/print-helper-v1.1.10">Print Helper release v1.1.10</a><span class="digest wait">Loading published asset digests…</span></li></ul></div></details>
   </section>
   <section>
     <div class="section-head"><h2>Print Helper</h2><p>Optional companion for this computer.</p></div>
@@ -72,14 +72,14 @@
     <div class="section-head"><h2>Android tablet app</h2><p>Works without internet and prints straight from the tablet.</p></div>
     <div class="helper" style="background:#f4fbf7;border-color:#d4eedd;">
       <div>
-        <span class="tag" style="background:#e0f5e8;color:#21764d;">Android 7.0+ · Tablet APK · version 1.0.109</span>
+        <span class="tag" style="background:#e0f5e8;color:#21764d;">Android 7.0+ · Tablet APK · version 1.1.25</span>
         <h3>Run the booth on an Android tablet</h3>
         <p>The booth runs full screen and works without internet at the venue. The tablet stays awake and the camera opens without asking each time. Unlock it with your normal access code.</p>
         <p><b>Orientation:</b> Lock to landscape or portrait in Admin, or allow either so renters can choose orientation directly on the tablet booth setup.</p>
         <p><b>Printing:</b> the tablet finds your printer by itself, over Wi-Fi or a USB cable, and prints without a pop-up. It works with most Wi-Fi printers from Epson, Canon, HP and Brother (any that support AirPrint or Mopria, which most recent models do), receipt printers, and some older Epson and Canon USB printers. You can choose colour or black and white, quality and paper type. Any other printer can print through Android&rsquo;s own print screen. A few printers (some older USB-only inkjets, DNP and HiTi) still need a laptop. <a href="/how-to-print-android/">Printing guide</a> &bull; <a href="/keychain-guide/" style="color:var(--red);font-weight:800;">Keychain guide</a> &bull; <a href="/photobooth4u-keychain-printing-guide.pdf" download style="color:var(--green);font-weight:800;">Keychain PDF</a> &bull; <a href="/photobooth4u-receipt-photobooth-guide.pdf" download style="color:var(--green);font-weight:800;">Receipt booth PDF guide</a> &bull; <a href="/downloads/samsung-tab-a-canon-selphy-guide.html" target="_blank" style="color:var(--red);font-weight:800;">Samsung Tab A + Canon SELPHY guide →</a></p>
         <p><b>Camera:</b> plug a Nikon, Canon EOS or Sony Alpha camera, or a USB webcam (Logitech Brio 4K, C270, C920 and other UVC webcams), into the tablet with a USB cable and pick it in the Camera list. (Sony: set USB Connection to PC Remote. Canon and Nikon: use PTP / remote mode.) &bull; <a href="/photobooth4u-roving-dslr-guide.pdf" target="_blank" style="color:var(--red);font-weight:800;">Roving DSLR Guide (PDF) →</a></p>
       </div>
-      <a class="download" style="background:#21764d;" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/android-v1.0.109/photobooth4u-kiosk-android.apk">Download APK</a>
+      <a class="download" style="background:#21764d;" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/android-v1.1.25/photobooth4u-kiosk-android.apk">Download APK</a>
     </div>
     <div class="install">
       <div class="callout">
@@ -218,9 +218,9 @@
       text.textContent = "Open the booth";
       detected.textContent = "Detected iPad · the booth runs right in Safari";
     } else if(isAndroid){
-      hero.href = 'https://github.com/heresmetrying26/photobooth-for-rent/releases/download/android-v1.0.109/photobooth4u-kiosk-android.apk';
+      hero.href = 'https://github.com/heresmetrying26/photobooth-for-rent/releases/download/android-v1.1.25/photobooth4u-kiosk-android.apk';
       title.textContent = 'Android tablet app';
-      document.getElementById('heroVersion').textContent = 'Version 1.0.109 · Android tablet';
+      document.getElementById('heroVersion').textContent = 'Version 1.1.25 · Android tablet';
       text.textContent = 'Download APK for Android';
       detected.textContent = 'Detected Android device · Wi-Fi, USB and Bluetooth printing ready';
     } else if(isMac){

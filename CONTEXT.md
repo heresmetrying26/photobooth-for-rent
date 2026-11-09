@@ -1,11 +1,11 @@
 # Session Context
 
-**Current Task**: Author and bundle printable 4-page Roving DSLR Photoman Guide PDF.
+**Current Task**: Release Android v1.1.25 with multi-entry Roving DSLR Bridge.
 
 **Key Decisions**:
-- Generated 4-page print-ready A4 PDF guide with camera settings, wiring, pocket mode, and queue workflow.
-- Bundled PDF in desktop app (`app://booth/`) with offline viewer support via `shell.openPath`.
-- Linked PDF in booth Photographer Desk, Android bridge top bar, and downloads page.
+- Added standalone launcher icon for Roving DSLR Bridge in Android App Drawer / Home Screen.
+- Integrated Roving Bridge button into Extras dock, Setup Camera, and Photographer Desk.
+- Cleaned duplicate code in RovingBridgeActivity and UsbCameraHelper, resolved Kotlin compilation issues.
 
 **Next Steps**:
 - Verify roving DSLR OTG bridge with physical cameras (Canon, Nikon, Sony).

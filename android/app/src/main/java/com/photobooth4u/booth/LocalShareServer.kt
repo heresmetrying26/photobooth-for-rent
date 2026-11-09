@@ -41,16 +41,16 @@ class LocalShareServer(private val store: PBLocal) {
     companion object {
         private const val TAG = "PBShare"
         val PORTS = intArrayOf(47777, 47778, 47779, 47787, 47797)
-        private val ROUTE = Regex("^/e/([A-Za-z0-9]{6,20})(?:/(?:(p|f|t)/([^/]+)|(list\\.json)))?/?$")
+        private val ROUTE = Regex("^/e/([A-Za-z0-9_-]{6,40})(?:/(?:(p|f|t)/([^/]+)|(list\\.json)))?/?$")
         private val FILENAME_UNSAFE = Regex("[^\\w.() -]")
-        private val SEND_ROUTE = Regex("^/send/([A-Za-z0-9]+)(?:/(photos|photo|upload|hello|file|edited)(?:/([^/]+))?)?/?$")
+        private val SEND_ROUTE = Regex("^/send/([A-Za-z0-9_-]+)(?:/(photos|photo|upload|hello|file|edited)(?:/([^/]+))?)?/?$")
         private val RANGE_RE = Regex("^bytes=(\\d*)-(\\d*)$")
-        private val PRINT_ROUTE = Regex("^/e/([A-Za-z0-9]{6,20})/print/([^/]+)/?$")
+        private val PRINT_ROUTE = Regex("^/e/([A-Za-z0-9_-]{6,40})/print/([^/]+)/?$")
         private val OWN_ROUTE = Regex("^/o/([A-Za-z0-9_-]{16,40})(?:/(f|print)/([^/]+))?/?$")
         private val STATION_ROUTE = Regex("^/station(?:/([A-Za-z0-9_-]{6,30}))?(?:/(list|stats))?/?$")
         private val WALL_ROUTE = Regex("^/wall(?:/([A-Za-z0-9_-]{6,30}))?(?:/(feed))?/?$")
-        private val STATS_ROUTE = Regex("^/e/([A-Za-z0-9]{6,20})/stats/?$")
-        private val TRACK_ROUTE = Regex("^/e/([A-Za-z0-9]{6,20})/track/?$")
+        private val STATS_ROUTE = Regex("^/e/([A-Za-z0-9_-]{6,40})/stats/?$")
+        private val TRACK_ROUTE = Regex("^/e/([A-Za-z0-9_-]{6,40})/track/?$")
         private const val OWN_CSS = "*{box-sizing:border-box}html,body{margin:0}" +
             "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:#F5F1EA;color:#1C1A1E;min-height:100vh}" +
             "header{padding:22px 16px 6px;text-align:center}.brand{font-weight:800;font-size:15px;letter-spacing:-.01em}" +
@@ -167,7 +167,7 @@ class LocalShareServer(private val store: PBLocal) {
             route(head, input, out, s.inetAddress?.hostAddress ?: "")
             out.flush()
         } catch (e: Exception) {
-            // the phone went away or timed out: nothing to do
+            Log.w(TAG, "Share server request error: ${e.message}")
         } finally {
             try { s.close() } catch (_: Exception) { }
         }

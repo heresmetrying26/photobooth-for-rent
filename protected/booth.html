@@ -13957,6 +13957,15 @@
           </label>
           <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos
             match the preview.</p>
+          <div id="androidRoveBridgeBox" style="display:none; margin-top:14px; padding:12px 14px; border-radius:12px; background:#eaf7ef; border:1px solid #2ea66b40;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div>
+                <b style="color:#1d6f45; font-size:13.5px; display:block;">📷 Roving DSLR Bridge</b>
+                <span style="color:#4a7a5e; font-size:12px;">Wire this Android device to your DSLR via USB OTG to stream photos to the laptop.</span>
+              </div>
+              <button type="button" class="action-btn" id="androidOpenBridgeBtn" style="width:auto; margin:0; padding:6px 14px; background:#2ea66b; color:#fff; border:0; border-radius:8px; font-weight:700; font-size:12.5px;">Launch Bridge →</button>
+            </div>
+          </div>
         </div>
         <div class="panel-section hidden" id="step4Printer">
           <p class="panel-label">Printing</p>
@@ -15943,6 +15952,13 @@
           <rect x="3" y="6" width="13" height="12" rx="2" />
           <path d="m16 10 5-3v10l-5-3z" />
         </svg><span>Video guestbook</span></button>
+      <button type="button" class="dock-btn" id="roveBridgeFab" hidden aria-label="Roving DSLR Bridge"><svg viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          aria-hidden="true">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+          <path d="m19 5 2 2"/>
+        </svg><span>Roving DSLR</span></button>
     </div>
     <div class="dock-pwr" id="dockPwr" hidden>Powered by <span class="pm"
         aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>photobooth<em>4u</em></b></div>
@@ -16687,7 +16703,7 @@
           class="desk-btn" id="deskWatchBtn">Choose folder</button></div>
       <div class="desk-watch" id="deskSoloRow"><label><input type="checkbox" id="deskSolo"> One photo per print (Solo
           layout, even when the event uses a strip)</label></div>
-      <div class="desk-watch" id="deskQueueInfoRow" style="margin-top:4px; font-size:12.5px; color:#6B666C; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;"><span>📥 Incoming roving DSLR photos land in this queue for review before printing.</span><a href="/photobooth4u-roving-dslr-guide.pdf" target="_blank" rel="noopener" style="color:#C93D27; font-weight:700; text-decoration:underline;">📖 Roving DSLR Guide (PDF)</a></div>
+      <div class="desk-watch" id="deskQueueInfoRow" style="margin-top:4px; font-size:12.5px; color:#6B666C; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;"><span>📥 Incoming roving DSLR photos land in this queue for review before printing.</span><div style="display:flex; align-items:center; gap:8px;"><button type="button" class="desk-btn" id="deskOpenBridgeBtn" hidden style="background:#2EA66B; color:#fff; font-weight:700; border:0; border-radius:999px; padding:3px 10px; font-size:11.5px;">📷 Open Roving Bridge</button><a href="/photobooth4u-roving-dslr-guide.pdf" target="_blank" rel="noopener" style="color:#C93D27; font-weight:700; text-decoration:underline;">📖 Roving DSLR Guide (PDF)</a></div></div>
       <div class="desk-hint" id="deskHint"></div>
       <div class="desk-grid" id="deskGrid"></div>
       <div class="desk-foot"><button type="button" class="desk-btn" id="deskClear">Clear list</button><span
@@ -31272,7 +31288,7 @@
       var deskOverlay = document.getElementById('deskOverlay'), deskGrid = document.getElementById('deskGrid');
       var deskFab = document.getElementById('deskFab'), deskMakeBtn = document.getElementById('deskMake'), deskOrigBtn = document.getElementById('deskOrig');
       // ---- the Extras menu: the dock keeps Camera, Printer, All photos and Lock; every extra is one tap away in here ----
-      var EXTRA_IDS = ['deskFab', 'spinFab', 'capFab', 'reqFab', 'studioFab', 'vgFab'];
+      var EXTRA_IDS = ['deskFab', 'spinFab', 'capFab', 'reqFab', 'studioFab', 'vgFab', 'roveBridgeFab'];
       var extrasFab = document.getElementById('extrasFab'), extrasPop = document.getElementById('extrasPop');
       function closeExtras() { extrasPop.hidden = true; extrasFab.setAttribute('aria-expanded', 'false'); }
       function refreshExtrasBtn() {
@@ -31303,6 +31319,13 @@
         if (studioFab) studioFab.hidden = !studioOn() || state === 'capturing';
         var vgFab = document.getElementById('vgFab');
         if (vgFab) vgFab.hidden = !vgAvailable() || state === 'capturing';
+        var roveBridgeOn = !!(window.__PBLocal && typeof window.__PBLocal.openRoveBridge === 'function');
+        var roveBridgeFab = document.getElementById('roveBridgeFab');
+        if (roveBridgeFab) roveBridgeFab.hidden = !roveBridgeOn || state === 'capturing';
+        var deskOpenBridgeBtn = document.getElementById('deskOpenBridgeBtn');
+        if (deskOpenBridgeBtn) deskOpenBridgeBtn.hidden = !roveBridgeOn;
+        var roveBox = document.getElementById('androidRoveBridgeBox');
+        if (roveBox) roveBox.style.display = roveBridgeOn ? 'block' : 'none';
         try { refreshExtrasBtn(); } catch (e) { }
         try { scheduleDock(); } catch (e) { }
       }
@@ -31480,6 +31503,30 @@
         } catch (e) { }
       });
       deskFab.addEventListener('click', openDesk);
+      var roveBridgeFab = document.getElementById('roveBridgeFab');
+      if (roveBridgeFab) {
+        roveBridgeFab.addEventListener('click', function () {
+          if (window.__PBLocal && typeof window.__PBLocal.openRoveBridge === 'function') {
+            window.__PBLocal.openRoveBridge();
+          }
+        });
+      }
+      var deskOpenBridgeBtn = document.getElementById('deskOpenBridgeBtn');
+      if (deskOpenBridgeBtn) {
+        deskOpenBridgeBtn.addEventListener('click', function () {
+          if (window.__PBLocal && typeof window.__PBLocal.openRoveBridge === 'function') {
+            window.__PBLocal.openRoveBridge();
+          }
+        });
+      }
+      var androidOpenBridgeBtn = document.getElementById('androidOpenBridgeBtn');
+      if (androidOpenBridgeBtn) {
+        androidOpenBridgeBtn.addEventListener('click', function () {
+          if (window.__PBLocal && typeof window.__PBLocal.openRoveBridge === 'function') {
+            window.__PBLocal.openRoveBridge();
+          }
+        });
+      }
       document.getElementById('spinFab').addEventListener('click', function () { openSpin(); });
       document.getElementById('deskClose').addEventListener('click', closeDesk);
       document.getElementById('deskPick').addEventListener('click', function () { document.getElementById('deskFile').click(); });

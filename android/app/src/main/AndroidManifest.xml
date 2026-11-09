@@ -116,9 +116,16 @@
             android:name=".RovingBridgeActivity"
             android:exported="true"
             android:launchMode="singleTask"
+            android:label="Roving DSLR Bridge"
+            android:icon="@mipmap/ic_launcher"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="unspecified"
-            android:windowSoftInputMode="adjustResize" />
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
         <!-- Foreground service for 127.0.0.1:17321 Print & Camera Helper -->
         <service

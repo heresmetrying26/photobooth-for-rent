@@ -16447,6 +16447,32 @@
     </div>
   </div>
 
+  <!-- 360 Desk Desktop-Only Notice Modal for Web -->
+  <div class="spin-share-ov" id="spinWebNoticeModal" hidden role="dialog" aria-label="360 Desk Desktop Requirement">
+    <div class="spin-share-backdrop" id="spinWebNoticeBackdrop"></div>
+    <div class="spin-share-card" style="max-width:520px;text-align:center;padding:0;background:radial-gradient(120% 90% at 50% 0%, #2f252b 0%, #151317 75%);border-radius:24px;">
+      <div class="spin-share-head" style="justify-content:center;position:relative;border-bottom:1px solid rgba(255,255,255,0.08);padding:14px 20px;">
+        <div class="spin-share-badge" style="background:#C93D27;color:#fff;letter-spacing:0.08em;font-weight:800;font-size:11px;padding:3px 10px;border-radius:6px;">DESKTOP APP ONLY</div>
+        <button type="button" class="spin-share-close-btn" id="spinWebNoticeClose" style="position:absolute;right:16px;top:12px;background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:4px 8px;" title="Close">✕</button>
+      </div>
+      <div style="padding:28px 24px 30px;">
+        <div style="font-size:46px;margin-bottom:14px;line-height:1;">🌀💻</div>
+        <h3 style="font-size:22px;margin:0 0 10px;font-family:'Fraunces',Georgia,serif;color:#fff;letter-spacing:-0.02em;">360 desk can only operate on the offline desktop app</h3>
+        <p style="color:#d5cfcf;font-size:14px;line-height:1.6;margin:0 0 24px;text-align:center;">
+          Slow-motion speed ramping, boomerangs, branded frames, design presets, and background music are powered by your computer&rsquo;s GPU and FFmpeg, which run exclusively in the <b>Photobooth4u Desktop App</b> (Windows &amp; macOS).
+        </p>
+        <div style="display:flex;flex-direction:column;gap:10px;align-items:center;">
+          <a href="/downloads/" target="_blank" class="desk-btn primary" style="padding:14px 24px;font-size:15px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:8px;border-radius:12px;background:#C93D27;color:#fff;width:100%;justify-content:center;box-sizing:border-box;">
+            ⬇️ Download or Open Desktop App
+          </a>
+          <button type="button" class="desk-btn" id="spinWebNoticeDismiss" style="padding:10px 20px;font-size:13px;background:transparent;color:#bbb;border:1px solid rgba(255,255,255,0.18);border-radius:10px;width:100%;cursor:pointer;">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 360 Output & Share QR Modal Prompt -->
   <div class="spin-share-ov" id="spinShareModal" hidden role="dialog" aria-label="360 Output and QR Code">
     <div class="spin-share-backdrop" id="spinShareBackdrop"></div>
@@ -33090,7 +33116,17 @@
       }
       async function spinSetupInfo() {
         var box = document.getElementById('spinSend');
-        if (!spinDesktop()) { box.hidden = true; document.getElementById('spinLook').hidden = true; document.getElementById('spinNoEdit').hidden = true; return; }
+        if (!spinDesktop()) {
+          box.hidden = true;
+          document.getElementById('spinLook').hidden = true;
+          var noEdit = document.getElementById('spinNoEdit');
+          if (noEdit) {
+            noEdit.hidden = false;
+            noEdit.innerHTML = '🎬 <b>360 Video Studio &amp; Effects:</b> Design layout presets, speed ramps, slow-motion, branded frames, and background music are powered by the <b>Photobooth4U Desktop App</b> (Windows &amp; Mac) using your laptop&rsquo;s GPU and FFmpeg.<br><br>' +
+              'In the web browser, clips are shared as raw videos without editing. <b><a href="/downloads/" target="_blank" style="color:var(--red);font-weight:800;text-decoration:underline;">Open or Download the Desktop App →</a></b> to unlock all design presets, 1 GB clip support, and instant 3-second Wi-Fi uploads.';
+          }
+          return;
+        }
         try { spinInfo = await PBX.spinInfo(); } catch (e) { return; }
         try { spinEnv = PBX.spinEnv ? await PBX.spinEnv() : { ffmpeg: false, gpu: false, music: '' }; } catch (e) { spinEnv = { ffmpeg: false, gpu: false, music: '' }; }
         var gw = document.getElementById('spinGpuWrap');
@@ -33125,9 +33161,12 @@
           if (!spinWebFolderId()) { try { await resolveDriveFolder(); } catch (e) { } }
           var until = ticketCache && ticketCache.exp ? new Date(ticketCache.exp) : null;
           var ev = ''; try { ev = (labelInput.value || '').trim(); } catch (e) { }
+          if (!spinInfo && typeof PBX !== 'undefined' && PBX && PBX.spinInfo) {
+            try { spinInfo = await PBX.spinInfo(); } catch (e) { }
+          }
           spinWebLinkUrl = location.origin + '/rove360/#t=' + ticket + (ev ? '&e=' + encodeURIComponent(ev) : '') + (spinInfo && spinInfo.sendUrl ? '&lan=' + encodeURIComponent(spinInfo.sendUrl) : '');
           var im = document.createElement('img'); im.src = qrImageUrl(spinWebLinkUrl); im.alt = 'QR code to send a video'; qr.appendChild(im);
-          note.textContent = 'Scan with the phone that recorded the 360 video (any internet), then choose the video (up to 28 MB). It appears in the list below within about 10 seconds.' + (until ? ' The link works until ' + until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '.' : '');
+          note.textContent = 'Scan with the phone that recorded the 360 video' + (spinInfo && spinInfo.sendUrl ? ' (booth Wi-Fi up to 1 GB, or web up to 28 MB)' : ' (any internet, up to 28 MB)') + '. It appears in the list below within about 10 seconds.' + (until ? ' The link works until ' + until.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '.' : '');
           lnk.textContent = spinWebLinkUrl.replace(/#.*$/, '');
           spinWebSchedule();
         }).catch(function () { note.textContent = 'Could not get permission to receive videos. Check the internet and try again.'; });
@@ -33161,6 +33200,11 @@
       function openSpin() {
         if (!extraOn('spin360')) return;
         if (state === 'capturing') { showToast('Finish the session first.', 3000); return; }
+        if (!spinDesktop()) {
+          showToast('360 desk can only operate on the offline desktop app.', 4500);
+          openSpinWebNotice();
+          return;
+        }
         spinOverlay.hidden = false; spinNew = 0; document.getElementById('spinFab').dataset.n = '0';
         spinRender(); spinSetupInfo(); spinWebShow();
         if (!spinCur && spinQueue.length) {
@@ -33173,6 +33217,20 @@
         }
         if (typeof startSpinPreviewAnimation === 'function') startSpinPreviewAnimation();
       }
+      function openSpinWebNotice() {
+        var m = document.getElementById('spinWebNoticeModal');
+        if (m) m.hidden = false;
+      }
+      function closeSpinWebNotice() {
+        var m = document.getElementById('spinWebNoticeModal');
+        if (m) m.hidden = true;
+      }
+      var swnClose = document.getElementById('spinWebNoticeClose');
+      if (swnClose) swnClose.addEventListener('click', closeSpinWebNotice);
+      var swnDismiss = document.getElementById('spinWebNoticeDismiss');
+      if (swnDismiss) swnDismiss.addEventListener('click', closeSpinWebNotice);
+      var swnBackdrop = document.getElementById('spinWebNoticeBackdrop');
+      if (swnBackdrop) swnBackdrop.addEventListener('click', closeSpinWebNotice);
       function closeSpin() {
         spinOverlay.hidden = true;
         var v = document.getElementById('spinVideo');

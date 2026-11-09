@@ -73,10 +73,28 @@
   function toBase64(blob){
     return new Promise(function(res, rej){ var r = new FileReader(); r.onloadend = function(){ res(String(r.result).split(',')[1] || ''); }; r.onerror = rej; r.readAsDataURL(blob); });
   }
-  async function post(name, mime, b64){
-    var r = await fetch(SCRIPT, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ filename: name, mimeType: mime, imageBase64: b64, ticket: ticket }) });
-    var j = await r.json();
-    if(!j || !j.ok) throw new Error((j && j.error) || 'Upload failed');
+  function post(name, mime, b64, onProgress){
+    return new Promise(function(resolve, reject){
+      var x = new XMLHttpRequest();
+      x.open('POST', SCRIPT);
+      x.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
+      if (x.upload && onProgress) {
+        x.upload.onprogress = function(p) {
+          if (p.lengthComputable) onProgress(p.loaded, p.total);
+        };
+      }
+      x.onload = function(){
+        try {
+          var j = JSON.parse(x.responseText);
+          if (j && j.ok) resolve(j);
+          else reject(new Error((j && j.error) || 'Upload failed'));
+        } catch(e) {
+          reject(new Error('Upload failed (' + x.status + ')'));
+        }
+      };
+      x.onerror = function(){ reject(new Error('Network error. Check internet connection.')); };
+      x.send(JSON.stringify({ filename: name, mimeType: mime, imageBase64: b64, ticket: ticket }));
+    });
   }
   async function send(file){
     var row = document.createElement('div'); row.className = 'row';
@@ -85,7 +103,15 @@
     $('list').insertBefore(row, $('list').firstChild);
     var bar = row.querySelector('i'), st = row.querySelector('.st');
     if(!(/^video\//.test(file.type) || /\.(mp4|mov|m4v|webm)$/i.test(file.name || ''))){ st.className = 'st bad'; st.textContent = 'That is not a video.'; return; }
-    if(file.size > MAX_BYTES){ st.className = 'st bad'; st.textContent = 'This video is ' + (Math.round(file.size / 104857.6) / 10) + ' MB. The booth takes up to ' + (lan ? '1 GB' : '28 MB') + ': record a shorter clip or a lower quality.'; return; }
+    if(file.size > MAX_BYTES){
+      st.className = 'st bad';
+      var mb = (Math.round(file.size / 104857.6) / 10);
+      st.innerHTML = 'This video is <b>' + mb + ' MB</b>. The web limit is <b>28 MB</b>.<br><br>' +
+        '<b>🚀 To send up to 1 GB & upload 10x faster:</b><br>' +
+        '• Connect this phone to the <b>Booth Wi-Fi / Hotspot</b><br>' +
+        '• Or set Camera to <b>1080p at 30 fps</b> (under 20 MB & uploads 4x faster)';
+      return;
+    }
 
     if (lan) {
       // Direct binary streaming over local Wi-Fi to Windows/Android booth station (no base64, no memory cap)
@@ -99,14 +125,16 @@
         if (p.lengthComputable) {
           var pct = Math.round((p.loaded / p.total) * 100);
           bar.style.width = pct + '%';
-          st.textContent = 'Sending… ' + pct + '%';
+          var mbLoaded = (Math.round(p.loaded / 104857.6) / 10).toFixed(1);
+          var mbTotal = (Math.round(p.total / 104857.6) / 10).toFixed(1);
+          st.textContent = 'Sending over Wi-Fi… ' + pct + '% (' + mbLoaded + ' / ' + mbTotal + ' MB)';
         }
       };
       x.onload = function() {
         if (x.status === 200) {
           bar.style.width = '100%';
           st.className = 'st ok';
-          st.textContent = 'Sent. It is on the booth station now.';
+          st.textContent = 'Sent! It is on the booth station now.';
         } else {
           st.className = 'st bad';
           st.textContent = 'Could not send (' + x.status + '). Try again.';
@@ -121,19 +149,39 @@
     }
 
     try{
-      var b64 = await toBase64(file); bar.style.width = '40%'; st.textContent = 'Sending… keep this page open.';
+      bar.style.width = '15%'; st.textContent = 'Preparing video…';
+      var b64 = await toBase64(file);
+      bar.style.width = '25%'; st.textContent = 'Connecting…';
       var ext = (/\.(mp4|mov|m4v|webm)$/i.exec(file.name || '') || ['.mp4'])[0].toLowerCase();
       var mime = /^video\/(mp4|quicktime|webm|x-m4v)$/.test(file.type) ? file.type : (ext === '.mov' ? 'video/quicktime' : ext === '.webm' ? 'video/webm' : 'video/mp4');
       var name = 'spin_' + stamp() + ext, err = null;
       for(var a = 0; a < 3; a++){
-        try{ await post(name, mime, b64); err = null; break; }
-        catch(e){ err = e; if(/ticket|not allowed|expired|too large/i.test(String(e.message))) break; await wait(a ? 4000 : 1500); }
+        try{
+          await post(name, mime, b64, function(loaded, total){
+            var pct = Math.round((loaded / total) * 100);
+            bar.style.width = Math.max(25, pct) + '%';
+            if (pct >= 100) {
+              st.textContent = 'Saving to event gallery…';
+            } else {
+              var mbLoaded = (Math.round(loaded / 104857.6) / 10).toFixed(1);
+              var mbTotal = (Math.round(total / 104857.6) / 10).toFixed(1);
+              st.textContent = 'Uploading… ' + pct + '% (' + mbLoaded + ' / ' + mbTotal + ' MB)';
+            }
+          });
+          err = null;
+          break;
+        }
+        catch(e){
+          err = e;
+          if(/ticket|not allowed|expired|too large/i.test(String(e.message))) break;
+          await wait(a ? 4000 : 1500);
+        }
       }
       if(err) throw err;
       bar.style.width = '100%'; st.className = 'st ok'; st.textContent = 'Sent. It will appear on the booth in a few seconds.';
     }catch(e){
       st.className = 'st bad';
-      st.textContent = /too large/i.test(String(e && e.message)) ? 'This video is too big for the booth. Record a shorter clip or a lower quality.' : /ticket|not allowed|expired/i.test(String(e && e.message)) ? 'This link has expired. Ask the booth to show the QR code again.' : 'Could not send. Check the internet and try again.';
+      st.textContent = /too large/i.test(String(e && e.message)) ? 'This video is too big for the web relay. Record a shorter clip or connect to booth Wi-Fi.' : /ticket|not allowed|expired/i.test(String(e && e.message)) ? 'This link has expired. Ask the booth to show the QR code again.' : 'Could not send. Check the internet and try again.';
     }
   }
   function pick(e){ Array.prototype.forEach.call(e.target.files, send); e.target.value = ''; }

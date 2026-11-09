@@ -46258,6 +46258,9 @@
           row.textContent = '';
           [].forEach.call(sel.options, function (o) {
             var b = document.createElement('button'); b.type = 'button'; b.className = 'pill'; b.textContent = o.textContent; b.dataset.v = o.value;
+            if (o.dataset.tipTitle) b.dataset.tipTitle = o.dataset.tipTitle;
+            if (o.dataset.tipTag) b.dataset.tipTag = o.dataset.tipTag;
+            if (o.dataset.tipDesc) b.dataset.tipDesc = o.dataset.tipDesc;
             row.appendChild(b);
           });
         }
@@ -46278,6 +46281,94 @@
       }
       function pillSyncAll() { pillSyncs.forEach(function (f) { f(); }); }
       [].forEach.call(document.querySelectorAll('#tabSetup select.pillify'), pillify);
+
+      // Pill hover tooltips (e.g. for animation style and loop mode)
+      var pillTipEl = document.createElement('div');
+      pillTipEl.className = 'pill-tip-popup';
+      pillTipEl.innerHTML = '<div class="pill-tip-header"><span class="pill-tip-title"></span><span class="pill-tip-badge"></span></div><div class="pill-tip-desc"></div><div class="pill-tip-arrow"></div>';
+      document.body.appendChild(pillTipEl);
+      var activePillTipTarget = null;
+      var pillTipTimer = null;
+
+      function showPillTip(btn) {
+        if (!btn || !btn.dataset.tipTitle) return;
+        activePillTipTarget = btn;
+        var titleEl = pillTipEl.querySelector('.pill-tip-title');
+        var badgeEl = pillTipEl.querySelector('.pill-tip-badge');
+        var descEl = pillTipEl.querySelector('.pill-tip-desc');
+        var arrowEl = pillTipEl.querySelector('.pill-tip-arrow');
+
+        titleEl.textContent = btn.dataset.tipTitle || '';
+        if (btn.dataset.tipTag) {
+          badgeEl.textContent = btn.dataset.tipTag;
+          badgeEl.style.display = 'inline-block';
+        } else {
+          badgeEl.style.display = 'none';
+        }
+        descEl.textContent = btn.dataset.tipDesc || '';
+
+        pillTipEl.style.display = 'block';
+        var rect = btn.getBoundingClientRect();
+        var tipW = pillTipEl.offsetWidth || 260;
+        var tipH = pillTipEl.offsetHeight || 90;
+
+        var spaceAbove = rect.top;
+        var showBelow = spaceAbove < (tipH + 16);
+
+        var top = showBelow
+          ? (rect.bottom + window.scrollY + 8)
+          : (rect.top + window.scrollY - tipH - 8);
+
+        var left = rect.left + window.scrollX + (rect.width - tipW) / 2;
+        var minLeft = window.scrollX + 12;
+        var maxLeft = window.scrollX + document.documentElement.clientWidth - tipW - 12;
+        left = Math.max(minLeft, Math.min(maxLeft, left));
+
+        pillTipEl.style.top = top + 'px';
+        pillTipEl.style.left = left + 'px';
+
+        var btnCenter = rect.left + window.scrollX + rect.width / 2;
+        var arrowLeft = Math.max(12, Math.min(tipW - 20, btnCenter - left - 4));
+        arrowEl.style.left = arrowLeft + 'px';
+        if (showBelow) {
+          arrowEl.style.top = '-5px';
+          arrowEl.style.bottom = 'auto';
+          arrowEl.style.transform = 'rotate(45deg)';
+        } else {
+          arrowEl.style.top = 'auto';
+          arrowEl.style.bottom = '-5px';
+          arrowEl.style.transform = 'rotate(225deg)';
+        }
+
+        requestAnimationFrame(function () {
+          if (activePillTipTarget === btn) pillTipEl.classList.add('visible');
+        });
+      }
+
+      function hidePillTip() {
+        activePillTipTarget = null;
+        pillTipEl.classList.remove('visible');
+        clearTimeout(pillTipTimer);
+        pillTipTimer = setTimeout(function () {
+          if (!activePillTipTarget) pillTipEl.style.display = 'none';
+        }, 200);
+      }
+
+      document.addEventListener('mouseover', function (e) {
+        var btn = e.target.closest('.pill[data-tip-title]');
+        if (btn) {
+          clearTimeout(pillTipTimer);
+          showPillTip(btn);
+        } else if (activePillTipTarget) {
+          hidePillTip();
+        }
+      });
+      document.addEventListener('mouseleave', function () {
+        if (activePillTipTarget) hidePillTip();
+      });
+      window.addEventListener('scroll', function () {
+        if (activePillTipTarget) hidePillTip();
+      }, { passive: true });
 
       // ---- Step 3: layout cards show your design ----
       var ltCache = { sig: '', urls: {} }, ltQueue = [], ltDirty = true, ltTimer = null, ltBusy = false;

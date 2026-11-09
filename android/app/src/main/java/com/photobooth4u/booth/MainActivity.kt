@@ -639,10 +639,40 @@ class MainActivity : AppCompatActivity() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val uri = request?.url ?: return false
                 val host = uri.host ?: ""
-                // Keep booth and sub-paths in WebView; open external links in browser
-                if (host.contains("photobooth4u.netlify.app") || host.contains("localhost") || host.contains("127.0.0.1")) {
+                val port = uri.port
+                val path = uri.path ?: ""
+
+                // Keep booth live web and sub-paths in WebView
+                if (host.contains("photobooth4u.netlify.app")) {
                     return false
                 }
+
+                // If targeting local share server (e.g. operator tapping 'Open gallery'), keep it in
+                // the WebView and route via loopback (127.0.0.1) to avoid Wi-Fi router isolation/NAT hangs.
+                val isSharePath = path.startsWith("/e/") || path.startsWith("/o/") ||
+                                  path.startsWith("/station") || path.startsWith("/wall")
+                val isSharePort = (::pbLocal.isInitialized && pbLocal.sharePort > 0 && port == pbLocal.sharePort) ||
+                                  (port in LocalShareServer.PORTS)
+                val isShareHost = host.isEmpty() || host == "127.0.0.1" || host == "localhost" ||
+                                  (::pbLocal.isInitialized && pbLocal.isOwnAddress(host))
+
+                if (isSharePath && (isSharePort || isShareHost)) {
+                    val localPort = if (::pbLocal.isInitialized && pbLocal.sharePort > 0) pbLocal.sharePort else (if (port > 0) port else 47777)
+                    val q = uri.query
+                    val localUrl = "http://127.0.0.1:$localPort$path" + (if (!q.isNullOrEmpty()) "?$q" else "")
+                    view?.loadUrl(localUrl)
+                    return true
+                }
+
+                if ((host == "127.0.0.1" || host == "localhost") && (path == "/" || path == "/booth" || path.isEmpty())) {
+                    bootWithLicence()
+                    return true
+                }
+
+                if (host.contains("localhost") || host.contains("127.0.0.1")) {
+                    return false
+                }
+
                 return try {
                     val intent = Intent(Intent.ACTION_VIEW, uri)
                     startActivity(intent)

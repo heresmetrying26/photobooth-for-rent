@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>photobooth4u</title>
 <style>*{box-sizing:border-box}html,body{margin:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:#F5F1EA;color:#1C1A1E;min-height:100vh}
-header{padding:22px 16px 6px;text-align:center}.brand{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:15px;letter-spacing:-.01em;color:#1C1A1E;text-decoration:none}
+header{position:relative;padding:22px 16px 6px;text-align:center}.brand{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:15px;letter-spacing:-.01em;color:#1C1A1E;text-decoration:none}
+.back-btn{position:absolute;left:16px;top:16px;background:#fff;border:1.5px solid #E4DCCF;border-radius:10px;padding:6px 14px;font-size:13px;font-weight:700;color:#1C1A1E;cursor:pointer;display:none;box-shadow:0 1px 4px rgba(60,40,20,.08);text-decoration:none}
+.back-btn:active{background:#F5F1EA}
 .mk{display:grid;grid-template-columns:1fr 1fr;gap:2px;width:18px;height:18px}.mk i{background:#1C1A1E;border-radius:3px}.mk i:nth-child(2){background:#C93D27}
 h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spacing:-.02em}.sub{color:#6B666C;font-size:13px;margin:0 0 14px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;padding:8px 12px 40px;max-width:1100px;margin:0 auto}
@@ -28,7 +30,10 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
 .grid [data-kind="video"]::after{content:'▶ 360';position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.75);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}</style>
 </head>
 <body>
-<header><span class="brand"><span class="mk"><i></i><i></i><i></i><i></i></span>photobooth4u</span></header>
+<header>
+  <button type="button" class="back-btn" id="backToBooth" aria-label="Back to booth">← Back to booth</button>
+  <span class="brand"><span class="mk"><i></i><i></i><i></i><i></i></span>photobooth4u</span>
+</header>
 <div id="app"><p class="empty">Loading&hellip;</p></div>
 <script>
 /* The guests' page for one booth event, served by the tablet itself (LocalShareServer).
@@ -36,7 +41,20 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
    Same look as the page the Windows / Mac app serves. */
 (function(){
   var app = document.getElementById('app');
-  var m = /^\/e\/([A-Za-z0-9]+)(?:\/p\/([^\/]+))?\/?$/.exec(location.pathname);
+  var m = /^\/e\/([A-Za-z0-9_-]+)(?:\/p\/([^\/]+))?\/?$/.exec(location.pathname);
+
+  var isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost' || /PB4uAndroid/i.test(navigator.userAgent);
+  var backBtn = document.getElementById('backToBooth');
+  if(backBtn && (isLocal || window.history.length > 1)){
+    backBtn.style.display = 'inline-block';
+    backBtn.onclick = function(){
+      if(window.history.length > 1) {
+        window.history.back();
+      } else {
+        location.href = '/';
+      }
+    };
+  }
 
   function el(tag, cls, text){
     var e = document.createElement(tag);
@@ -242,6 +260,10 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
 
   var xhr = new XMLHttpRequest();
   xhr.open('GET', '/e/' + slug + '/list.json?t=' + Date.now());
+  xhr.timeout = 10000;
+  xhr.ontimeout = function(){
+    showMessage('Connection timed out. Pull down to refresh or check connection to the booth.', 'Photos');
+  };
   xhr.onload = function(){
     if(xhr.status === 404){ showMessage('This event isn’t on this booth anymore.'); return; }
     var data = null;
@@ -249,7 +271,7 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
     if(xhr.status !== 200 || !data){ showMessage('Couldn’t load the photos. Pull down to refresh.', 'Photos'); return; }
     if(file === null) renderList(data); else renderOne(data, file);
   };
-  xhr.onerror = function(){ showMessage('Couldn’t reach the booth. Check your phone is on the booth Wi-Fi.', 'Photos'); };
+  xhr.onerror = function(){ showMessage('Couldn’t reach the booth. Check your connection to the booth Wi-Fi.', 'Photos'); };
   xhr.send();
 })();
 </script>

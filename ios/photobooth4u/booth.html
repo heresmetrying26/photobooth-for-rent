@@ -18699,9 +18699,23 @@
       // Windows / Mac app: photos live on this laptop ("pb4u-local:<id>"); guests'
       // phones on the same Wi-Fi open http://<laptop address>:<port>/e/<id>/.
       function localShareUrl(folderUrl, file) {
-        var m = /^pb4u-local:([A-Za-z0-9]+)/.exec(String(folderUrl || ''));
+        var m = /^pb4u-local:([A-Za-z0-9_-]+)/.exec(String(folderUrl || ''));
         if (!m) return null;
         var base = lanBaseNow();
+        return base ? base + '/e/' + m[1] + '/' + (file ? 'p/' + encodeURIComponent(file) : '') : null;
+      }
+      function localBaseNow() {
+        try {
+          if (ANDROID_LOCAL && window.__PBLocal && window.__PBLocal.localBase) {
+            return window.__PBLocal.localBase() || '';
+          }
+          return '';
+        } catch (e) { return ''; }
+      }
+      function localDeviceShareUrl(folderUrl, file) {
+        var m = /^pb4u-local:([A-Za-z0-9_-]+)/.exec(String(folderUrl || ''));
+        if (!m) return null;
+        var base = localBaseNow() || lanBaseNow();
         return base ? base + '/e/' + m[1] + '/' + (file ? 'p/' + encodeURIComponent(file) : '') : null;
       }
       const NO_LAN_TEXT = 'Saved on this ' + LOCAL_DEVICE + '. Connect the ' + LOCAL_DEVICE + ' to the booth Wi-Fi to show the QR.';
@@ -18799,11 +18813,17 @@
       function showLocalFolderPreview(folderUrl, name) {
         localFolderUrl = folderUrl; if (name) localFolderName = name;
         var url = shareUrlFor(folderUrl);
-        currentFolderLink = url || '';
+        var opUrl = localDeviceShareUrl(folderUrl) || url;
+        currentFolderLink = url || opUrl || '';
         refreshGalleryUI();
         var open = document.getElementById('driveFolderOpen');
-        open.style.display = url ? '' : 'none';
-        if (url) { open.href = url; open.textContent = 'Open gallery'; }
+        var viewUrl = opUrl || url;
+        open.style.display = viewUrl ? '' : 'none';
+        if (viewUrl) {
+          open.href = viewUrl;
+          open.textContent = 'Open gallery';
+          if (ANDROID_LOCAL) open.removeAttribute('target');
+        }
         document.getElementById('driveFolderCopy').style.display = url ? '' : 'none';
         var dl = document.getElementById('driveFolderDrive');
         if (dl) { dl.href = '#'; dl.textContent = 'Open folder'; dl.style.display = ANDROID_LOCAL ? 'none' : ''; }

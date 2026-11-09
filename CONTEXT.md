@@ -1,12 +1,12 @@
 # Session Context
 
-**Current Task**: Released desktop-v1.0.112 and android-v1.1.29 with 360 upload speed and size improvements.
+**Current Task**: Release desktop v1.1.13 and android v1.1.30 with dynamic GIF duration, fast-forwarding, and interactive tooltips.
 
 **Key Decisions**:
-- Bumped desktop app to `1.0.112` and Android app to `1.1.29` (versionCode 131).
-- Pushed release tags `desktop-v1.0.112` and `android-v1.1.29` to trigger GitHub Actions builds.
-- Added desktop-only notice for 360 desk on web and real-time 1 GB LAN upload pipeline.
+- Bumped desktop app version to `1.1.13` (replacing `1.0.113`) and Android app to `1.1.30` (versionCode 132).
+- Added release notes to `netlify/lib/updates.mjs` and updated download references in `public/downloads/index.html`.
+- Prepared release tags `desktop-v1.1.13` and `android-v1.1.30` for GitHub Actions.
 
 **Next Steps**:
-- Monitor GitHub Actions release builds for Windows/Mac and Android.
-- Verify download links and release notes on website.
+- Commit changes and push tags to trigger GitHub Actions release builds.
+- Verify desktop and Android release artifacts.

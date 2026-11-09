@@ -8,5 +8,5 @@
 - Added request timeout handling and "← Back to booth" button in `gallery.html` for kiosk workflow.
 
 **Next Steps**:
-- Push commits and tag `android-v1.1.27` to build APK on GitHub Actions.
+- Push commits and tag `android-v1.1.28` to build APK on GitHub Actions.
 - Test "Open gallery" on Android tablet in offline mode and on Wi-Fi.

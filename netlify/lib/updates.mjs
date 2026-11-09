@@ -184,6 +184,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-09', title: 'Android app 1.1.28: Offline in-app gallery preview & instant Back to booth', for: ['website', 'app'], app: '1.1.28',
+    items: [
+      '⚡ In-app gallery preview: tapping "Open gallery" on the tablet now opens the event gallery directly inside the app over loopback, avoiding router client isolation and connection hangs.',
+      'Offline gallery access: browse all photos saved on the tablet during the event even when completely offline without Wi-Fi.',
+      'Kiosk Back button: added "← Back to booth" in the gallery header to instantly return to the camera without disrupting kiosk mode.'
+    ]
+  },
+  {
     date: '2026-11-09', title: 'Full resolution live viewfinder with downsize options & hardware acceleration', for: ['website', 'app'], app: '1.0.111',
     items: [
       '⚡ Crisp full-resolution live viewfinder: camera preview now runs at full camera sensor resolution (1080p+) by default on Android tablet and Desktop apps.',

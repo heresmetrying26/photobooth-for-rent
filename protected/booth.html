@@ -46663,7 +46663,7 @@
         var isDslr = currentDeviceId === USB_CAM_ID;
         var infoText = live ? (isDslr
           ? 'Live view: ' + video.videoWidth + ' × ' + video.videoHeight + ' (DSLR viewfinder) · Photos: full DSLR resolution (up to 3000px HD)'
-          : video.videoWidth + ' × ' + video.videoHeight + (layout ? ' · cropped to the layout' : ' · full camera frame')) : '';
+          : video.videoWidth + ' × ' + video.videoHeight + (layout ? ' · cropped to layout' : ' · full camera frame') + (webcamRes.photo === 'max' ? ' · Photos: full camera resolution' : '')) : '';
         scpInfo.textContent = infoText;
         [].forEach.call(document.querySelectorAll('#scpFitChips .chip'), function (c) { c.classList.toggle('active', c.dataset.fit === scpFit); });
       }

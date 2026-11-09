@@ -22400,7 +22400,7 @@
       }
       async function captureShot(index) {
         captureFrame(index);
-        if (webcamRes.photo === 'max' && currentDeviceId !== USB_CAM_ID && usbWebcamSelected()) return webcamMaxShot(index);
+        if (webcamRes.photo === 'max' && currentDeviceId !== USB_CAM_ID && (usbWebcamSelected() || typeof ImageCapture !== 'undefined' || currentDeviceId === UVC_ID)) return webcamMaxShot(index);
         if (!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
         const shots = shotCanvases;
         try {
@@ -22563,7 +22563,7 @@
         await wait(180);
         flashOverlay.classList.remove('flash-active');
         if (lit) setTimeout(screenFlashOff, 120);
-        if ((usbCam.active && currentDeviceId === USB_CAM_ID) || (webcamRes.photo === 'max' && currentDeviceId !== USB_CAM_ID && usbWebcamSelected())) {
+        if ((usbCam.active && currentDeviceId === USB_CAM_ID) || (webcamRes.photo === 'max' && currentDeviceId !== USB_CAM_ID && (usbWebcamSelected() || typeof ImageCapture !== 'undefined' || currentDeviceId === UVC_ID))) {
           popNum('Saving', true);
           guestCall('tick', 'Saving', true, 0, cdShot.textContent);
         }
@@ -46663,7 +46663,7 @@
         var isDslr = currentDeviceId === USB_CAM_ID;
         var infoText = live ? (isDslr
           ? 'Live view: ' + video.videoWidth + ' × ' + video.videoHeight + ' (DSLR viewfinder) · Photos: full DSLR resolution (up to 3000px HD)'
-          : video.videoWidth + ' × ' + video.videoHeight + (layout ? ' · cropped to the layout' : ' · full camera frame')) : '';
+          : video.videoWidth + ' × ' + video.videoHeight + (layout ? ' · cropped to layout' : ' · full camera frame') + (webcamRes.photo === 'max' ? ' · Photos: full camera resolution' : '')) : '';
         scpInfo.textContent = infoText;
         [].forEach.call(document.querySelectorAll('#scpFitChips .chip'), function (c) { c.classList.toggle('active', c.dataset.fit === scpFit); });
       }

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.111', date: '2026-11-09' },
   { version: '1.0.110', date: '2026-11-09' },
   { version: '1.0.109', date: '2026-11-09' },
   { version: '1.0.108', date: '2026-11-09' },
@@ -182,6 +183,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-09', title: 'Full resolution live viewfinder with downsize options & hardware acceleration', for: ['website', 'app'], app: '1.0.111',
+    items: [
+      '⚡ Crisp full-resolution live viewfinder: camera preview now runs at full camera sensor resolution (1080p+) by default on Android tablet and Desktop apps.',
+      'Flexible viewfinder downsize controls: added explicit option in Setup → Camera to downsize the live viewfinder (to 720p or 480p) to eliminate live view lag on slower tablets while keeping photos at full camera resolution.',
+      'Hardware GPU acceleration: enabled hardware composition, 3D CSS transforms, and Chromium zero-copy GPU video rasterization for silky smooth live view rendering.',
+      'Always-sharp photo captures: camera stills and prints always capture and print at maximum sensor resolution regardless of viewfinder preview downsize.',
+      'Optimized countdown capture: eliminated synchronous pixel loop bottlenecks during live countdown sampling.'
+    ]
+  },
   {
     date: '2026-11-09', title: 'Roving DSLR Bridge: Wired DSLR to Android phone streaming wirelessly to Laptop booth', for: ['website', 'app'], app: '1.0.110',
     items: [

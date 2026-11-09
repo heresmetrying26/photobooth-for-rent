@@ -152,6 +152,13 @@ class PBLocal(private val ctx: Context) {
         return if (ip != null && port > 0) "http://$ip:$port" else ""
     }
 
+    /** "http://127.0.0.1:<port>" for the tablet itself (operator loopback), available even offline without Wi-Fi. */
+    @JavascriptInterface
+    fun localBase(): String {
+        val port = sharePort
+        return if (port > 0) "http://127.0.0.1:$port" else ""
+    }
+
     /** Returns true if this tablet has an active validated internet connection. */
     @JavascriptInterface
     fun isOnline(): Boolean {
@@ -468,12 +475,14 @@ class PBLocal(private val ctx: Context) {
     fun isOwnAddress(ip: String): Boolean {
         if (ip.isEmpty()) return false
         try {
-            val clean = ip.substringBefore('%')
+            val clean = ip.trimStart('/').substringBefore('%').removePrefix("::ffff:")
+            if (clean == "127.0.0.1" || clean == "::1" || clean == "localhost") return true
             if (java.net.InetAddress.getByName(clean).isLoopbackAddress) return true   // a literal address: no name lookup
             val nets = NetworkInterface.getNetworkInterfaces() ?: return false
             for (ni in Collections.list(nets)) {
                 for (ia in Collections.list(ni.inetAddresses)) {
-                    if (ia.hostAddress?.substringBefore('%') == clean) return true
+                    val host = ia.hostAddress?.trimStart('/')?.substringBefore('%')?.removePrefix("::ffff:")
+                    if (host == clean) return true
                 }
             }
         } catch (e: Exception) {

@@ -41217,7 +41217,7 @@
           boothType: boothType, btCfg: JSON.parse(JSON.stringify(btCfg)), tpls: tplsSnapshot(),
           timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
           reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake, qrPop: qrPopOn, qrPopDelay: qrPopDelay,
-          outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, gifMotionStyle: gifMotionStyle, gifClipSec: gifClipSec, gifLoopMode: gifLoopMode, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipNumbers: flipNumbers, flipCues: flipCues, flipGridPreset: flipGridPreset, flipPrinterPool: flipPrinterPool, flipPoolMode: flipPoolMode, flipCoverStyle: flipCoverStyle, flipCoverAssetId: flipCoverAssetId, flipBackQr: flipBackQr, flipBackText: flipBackText,
+          outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, gifMotionStyle: gifMotionStyle, gifLoopMode: gifLoopMode, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipNumbers: flipNumbers, flipCues: flipCues, flipGridPreset: flipGridPreset, flipPrinterPool: flipPrinterPool, flipPoolMode: flipPoolMode, flipCoverStyle: flipCoverStyle, flipCoverAssetId: flipCoverAssetId, flipBackQr: flipBackQr, flipBackText: flipBackText,
           backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
           frameColorChoice: frameColorChoice, photoPlacement: photoPlacement, cropFocus: cropFocus,
           label: labelInput.value, font: currentFont, dateFont: currentDateFont, dateOn: dateOn, date: dateInput.value,
@@ -41362,7 +41362,6 @@
           else if (s.outputMode === 'gif' || s.outputMode === 'both' || s.outputMode === 'photo') { outputMode = isGifAllowed() ? s.outputMode : 'photo'; }
           if (s.gifLayout === 'solo' || s.gifLayout === 'follow' || s.gifLayout === 'raw') { gifLayoutMode = s.gifLayout; }
           if (s.gifMotionStyle === 'auto' || s.gifMotionStyle === 'multibox' || s.gifMotionStyle === 'sequential' || s.gifMotionStyle === 'session') { gifMotionStyle = s.gifMotionStyle; }
-          if ([1.5, 1.8, 2.2].indexOf(Number(s.gifClipSec)) >= 0) { gifClipSec = Number(s.gifClipSec); }
           if (s.gifLoopMode === 'boomerang' || s.gifLoopMode === 'forward') { gifLoopMode = s.gifLoopMode; }
           refreshGifLayoutUI();
           if ([4, 5, 6, 7].indexOf(Number(s.flipSec)) >= 0) { flipSec = Number(s.flipSec); var fsEl = document.getElementById('flipSecSelect'); if (fsEl) fsEl.value = String(flipSec); }

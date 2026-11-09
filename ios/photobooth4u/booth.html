@@ -20229,23 +20229,28 @@
         return new Blob([gif.bytes()], { type: 'image/gif' });
       }
 
+      function sampleClipFrames(clip, targetCount) {
+        if (!clip || !clip.length) return [];
+        if (clip.length <= targetCount) return clip.slice();
+        var res = [];
+        for (var i = 0; i < targetCount; i++) {
+          var idx = Math.floor(i * (clip.length - 1) / Math.max(1, targetCount - 1));
+          res.push(clip[idx]);
+        }
+        return res;
+      }
+
       async function gifIntoLayoutMultiBox(key, n, framesObj, styleOverride) {
         var motionStyle = styleOverride || resolveGifMotionStyle(key);
-        var shotSeqs = [];
+        var rawShotClips = [];
         for (var s = 0; s < n; s++) {
           var clip = shotMotionClips[s] || [];
           if (!clip.length && shotCanvases[s]) {
-            shotSeqs.push([{ isCanvas: true, canvas: shotCanvases[s] }]);
+            rawShotClips.push([{ isCanvas: true, canvas: shotCanvases[s] }]);
           } else if (clip.length) {
-            var seq = clip.slice();
-            if (gifLoopMode === 'boomerang' && seq.length > 2) {
-              for (var r = seq.length - 2; r > 0; r--) {
-                seq.push(seq[r]);
-              }
-            }
-            shotSeqs.push(seq);
+            rawShotClips.push(clip.slice());
           } else {
-            shotSeqs.push([]);
+            rawShotClips.push([]);
           }
         }
 
@@ -20275,16 +20280,44 @@
         var totalDurationMs = 0;
 
         if (motionStyle === 'multibox') {
+          var maxRaw = 1;
+          for (var i = 0; i < n; i++) {
+            if (rawShotClips[i].length > maxRaw) maxRaw = rawShotClips[i].length;
+          }
+
+          // Dynamically adjust forward frames and boomerang ping-pong
+          var targetForward = (gifLoopMode === 'boomerang')
+            ? Math.min(26, Math.max(10, Math.round(maxRaw * 0.75)))
+            : Math.min(36, Math.max(12, maxRaw));
+
+          var shotSeqs = [];
+          for (var s = 0; s < n; s++) {
+            var raw = rawShotClips[s] || [];
+            if (!raw.length) { shotSeqs.push([]); continue; }
+            if (raw[0] && raw[0].isCanvas) { shotSeqs.push(raw); continue; }
+            var sampled = sampleClipFrames(raw, targetForward);
+            if (gifLoopMode === 'boomerang' && sampled.length > 2) {
+              var fwdCount = sampled.length;
+              for (var r = fwdCount - 2; r > 0; r--) {
+                sampled.push(sampled[r]);
+              }
+            }
+            shotSeqs.push(sampled);
+          }
+
           var maxFrames = 1;
           for (var i = 0; i < n; i++) {
             if (shotSeqs[i].length > maxFrames) maxFrames = shotSeqs[i].length;
           }
-          maxFrames = Math.min(32, Math.max(8, maxFrames));
+
+          // Target ~3.8s to 4.6s total loop duration
+          var targetDurationMs = (gifLoopMode === 'boomerang') ? 4200 : 3800;
+          var frameDelayMs = Math.max(55, Math.min(115, Math.round(targetDurationMs / maxFrames)));
 
           for (var t = 0; t < maxFrames; t++) {
             (function (frameIdx) {
               outFrames.push({
-                time: frameIdx * 90,
+                time: frameIdx * frameDelayMs,
                 make: async function () {
                   for (var sIdx = 0; sIdx < n; sIdx++) {
                     var seq = shotSeqs[sIdx];
@@ -20316,27 +20349,51 @@
               });
             })(t);
           }
-          totalDurationMs = outFrames.length * 90;
+          totalDurationMs = outFrames.length * frameDelayMs;
+
         } else if (motionStyle === 'sequential') {
+          var pauseHoldMs = 1200; // Pause at the end on the completed strip
+          var activeBudgetMs = (gifLoopMode === 'boomerang') ? 4800 : 4200;
+          var slotBudgetMs = Math.max(900, Math.round(activeBudgetMs / n));
+
           for (var sTarget = 0; sTarget < n; sTarget++) {
-            var seq = shotSeqs[sTarget] || [];
-            var count = Math.max(1, seq.length);
+            var raw = rawShotClips[sTarget] || [];
+            var sampled;
+            if (!raw.length || (raw[0] && raw[0].isCanvas)) {
+              sampled = raw;
+            } else {
+              var targetF = (gifLoopMode === 'boomerang')
+                ? Math.min(14, Math.max(7, Math.round(raw.length * 0.6)))
+                : Math.min(20, Math.max(9, raw.length));
+              sampled = sampleClipFrames(raw, targetF);
+              if (gifLoopMode === 'boomerang' && sampled.length > 2) {
+                var fwdLen = sampled.length;
+                for (var r = fwdLen - 2; r > 0; r--) {
+                  sampled.push(sampled[r]);
+                }
+              }
+            }
+
+            var count = Math.max(1, sampled.length);
+            var stepDelayMs = Math.max(50, Math.min(110, Math.round(slotBudgetMs / count)));
+
             for (var t = 0; t < count; t++) {
-              (function (targetSlot, stepIdx) {
+              (function (targetSlot, stepItem) {
+                var curTime = totalDurationMs;
+                totalDurationMs += stepDelayMs;
                 outFrames.push({
-                  time: outFrames.length * 90,
+                  time: curTime,
                   make: async function () {
                     for (var sIdx = 0; sIdx < n; sIdx++) {
                       var sc = slotCanvases[sIdx];
                       var sCtx = sc.getContext('2d');
                       sCtx.imageSmoothingEnabled = true; sCtx.imageSmoothingQuality = 'high';
                       sCtx.clearRect(0, 0, sc.width, sc.height);
-                      if (sIdx === targetSlot && shotSeqs[sIdx] && shotSeqs[sIdx].length > 0) {
-                        var item = shotSeqs[sIdx][stepIdx % shotSeqs[sIdx].length];
-                        if (item.isCanvas) {
-                          sCtx.drawImage(item.canvas, 0, 0, sc.width, sc.height);
-                        } else if (item.blob) {
-                          var bmp = await createImageBitmap(item.blob);
+                      if (sIdx === targetSlot && stepItem) {
+                        if (stepItem.isCanvas) {
+                          sCtx.drawImage(stepItem.canvas, 0, 0, sc.width, sc.height);
+                        } else if (stepItem.blob) {
+                          var bmp = await createImageBitmap(stepItem.blob);
                           sCtx.drawImage(bmp, 0, 0, sc.width, sc.height);
                           if (bmp.close) bmp.close();
                           try { if (typeof applyFilterToCanvas === 'function') applyFilterToCanvas(sc); } catch (e) { }
@@ -20353,13 +20410,13 @@
                     return small;
                   }
                 });
-              })(sTarget, t);
+              })(sTarget, sampled[t]);
             }
           }
-          var animTimeMs = outFrames.length * 90;
-          var pauseHoldMs = 1000;
+
+          // Final hold frame showing the completed strip
           outFrames.push({
-            time: animTimeMs,
+            time: totalDurationMs,
             make: async function () {
               for (var sIdx = 0; sIdx < n; sIdx++) {
                 var sc = slotCanvases[sIdx];
@@ -20376,7 +20433,7 @@
               return small;
             }
           });
-          totalDurationMs = animTimeMs + pauseHoldMs;
+          totalDurationMs += pauseHoldMs;
         }
 
         return {
@@ -20417,9 +20474,23 @@
         var ow = Math.max(1, Math.round(box.width * k)), oh = Math.max(1, Math.round(box.height * k));
         var small = document.createElement('canvas'); small.width = ow; small.height = oh;
         var sx = small.getContext('2d', { willReadFrequently: true }); sx.imageSmoothingQuality = 'high';
-        var frames = framesObj.frames.map(function (f) {
+
+        // Full session: dynamically fast-forward across session duration, with optional boomerang reverse
+        var baseFrames = framesObj.frames || [];
+        var seq = baseFrames.slice();
+        if (gifLoopMode === 'boomerang' && seq.length > 2) {
+          var fLen = seq.length;
+          for (var r = fLen - 2; r > 0; r--) {
+            seq.push(seq[r]);
+          }
+        }
+        var targetTotalMs = (gifLoopMode === 'boomerang') ? 5000 : 4500;
+        var frameDelayMs = Math.max(30, Math.min(120, Math.round(targetTotalMs / Math.max(1, seq.length))));
+
+        var frames = seq.map(function (f, idx) {
           return {
-            time: f.time, make: async function () {
+            time: idx * frameDelayMs,
+            make: async function () {
               var bmp = await createImageBitmap(f.blob);
               sc.clearRect(0, 0, src.width, src.height); sc.drawImage(bmp, 0, 0, src.width, src.height); bmp.close();
               composeCanvas(key, box, new Array(n).fill(src));
@@ -20429,7 +20500,7 @@
             }
           };
         });
-        return Object.assign({}, framesObj, { frames: frames, width: ow, height: oh });
+        return { frames: frames, width: ow, height: oh, durationMs: frames.length * frameDelayMs, speed: 1 };
       }
       function gifFrameSource(fr) { return fr.make ? fr.make() : createImageBitmap(fr.blob); }
 
@@ -20476,6 +20547,18 @@
           catch (e) { console.error('GIF framing failed, using the plain camera view:', e); }
           if (myGen !== gifGeneration) return;
           statusEl = document.getElementById('gifStatusMsg');
+        } else if (gifLayoutMode === 'raw' && gifLoopMode === 'boomerang' && framesObj && framesObj.frames && framesObj.frames.length > 2) {
+          var baseF = framesObj.frames.slice();
+          for (var r = baseF.length - 2; r > 0; r--) {
+            baseF.push(baseF[r]);
+          }
+          var targetRawMs = 5000;
+          var rawDelayMs = Math.max(30, Math.min(120, Math.round(targetRawMs / baseF.length)));
+          framesObj.frames = baseF.map(function (f, idx) {
+            return { blob: f.blob, time: idx * rawDelayMs };
+          });
+          framesObj.speed = 1;
+          framesObj.durationMs = baseF.length * rawDelayMs;
         }
         if (statusEl) statusEl.textContent = 'Creating your GIF, please wait…';
 
@@ -41134,7 +41217,7 @@
           boothType: boothType, btCfg: JSON.parse(JSON.stringify(btCfg)), tpls: tplsSnapshot(),
           timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
           reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake, qrPop: qrPopOn, qrPopDelay: qrPopDelay,
-          outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, gifMotionStyle: gifMotionStyle, gifClipSec: gifClipSec, gifLoopMode: gifLoopMode, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipNumbers: flipNumbers, flipCues: flipCues, flipGridPreset: flipGridPreset, flipPrinterPool: flipPrinterPool, flipPoolMode: flipPoolMode, flipCoverStyle: flipCoverStyle, flipCoverAssetId: flipCoverAssetId, flipBackQr: flipBackQr, flipBackText: flipBackText,
+          outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, gifMotionStyle: gifMotionStyle, gifLoopMode: gifLoopMode, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipNumbers: flipNumbers, flipCues: flipCues, flipGridPreset: flipGridPreset, flipPrinterPool: flipPrinterPool, flipPoolMode: flipPoolMode, flipCoverStyle: flipCoverStyle, flipCoverAssetId: flipCoverAssetId, flipBackQr: flipBackQr, flipBackText: flipBackText,
           backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
           frameColorChoice: frameColorChoice, photoPlacement: photoPlacement, cropFocus: cropFocus,
           label: labelInput.value, font: currentFont, dateFont: currentDateFont, dateOn: dateOn, date: dateInput.value,
@@ -41279,7 +41362,6 @@
           else if (s.outputMode === 'gif' || s.outputMode === 'both' || s.outputMode === 'photo') { outputMode = isGifAllowed() ? s.outputMode : 'photo'; }
           if (s.gifLayout === 'solo' || s.gifLayout === 'follow' || s.gifLayout === 'raw') { gifLayoutMode = s.gifLayout; }
           if (s.gifMotionStyle === 'auto' || s.gifMotionStyle === 'multibox' || s.gifMotionStyle === 'sequential' || s.gifMotionStyle === 'session') { gifMotionStyle = s.gifMotionStyle; }
-          if ([1.5, 1.8, 2.2].indexOf(Number(s.gifClipSec)) >= 0) { gifClipSec = Number(s.gifClipSec); }
           if (s.gifLoopMode === 'boomerang' || s.gifLoopMode === 'forward') { gifLoopMode = s.gifLoopMode; }
           refreshGifLayoutUI();
           if ([4, 5, 6, 7].indexOf(Number(s.flipSec)) >= 0) { flipSec = Number(s.flipSec); var fsEl = document.getElementById('flipSecSelect'); if (fsEl) fsEl.value = String(flipSec); }

@@ -113,3 +113,15 @@ jobs:
           tag_name: ${{ github.ref_name }}
           files: android/dist/photobooth4u-kiosk-android.apk
           make_latest: false
+      - if: startsWith(github.ref, 'refs/tags/android-v')
+        name: Deploy APK to Netlify CDN
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          mkdir -p public/downloads
+          cp android/dist/photobooth4u-kiosk-android.apk public/downloads/photobooth4u-kiosk-android.apk
+          git add public/downloads/photobooth4u-kiosk-android.apk
+          git commit -m "Deploy Android ${{ github.ref_name }} APK to Netlify CDN for in-app updates" || echo "No changes to commit"
+          git push origin main

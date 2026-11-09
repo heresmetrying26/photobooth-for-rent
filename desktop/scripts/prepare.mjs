@@ -108,7 +108,7 @@ for (const sub of ['lib', 'functions']) {
 
 // ---------- files the booth loads ----------
 const pub = (p) => join(ROOT, 'public', p);
-for (const p of ['bg', 'camera-test/build', 'pay']) {
+for (const p of ['bg', 'camera-test/build', 'pay', 'photobooth4u-roving-dslr-guide.pdf']) {
   if (existsSync(pub(p))) cpSync(pub(p), join(OUT, 'public', p), { recursive: true });
   else log('warning: public/' + p + ' is missing (' + (p === 'camera-test/build' ? 'USB camera on Mac won’t work' : 'part of the booth won’t work') + ')');
 }

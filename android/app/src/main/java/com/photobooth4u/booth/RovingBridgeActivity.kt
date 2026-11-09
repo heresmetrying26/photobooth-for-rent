@@ -3,6 +3,8 @@ package com.photobooth4u.booth
 import android.annotation.SuppressLint
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
@@ -199,6 +201,26 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
         titleCol.addView(sub)
         topBar.addView(titleCol)
+
+        val guideBtn = Button(this).apply {
+            text = "📖 Guide"
+            textSize = 12f
+            setTextColor(Color.parseColor("#C93D27"))
+            typeface = Typeface.DEFAULT_BOLD
+            background = makeCard(Color.parseColor("#FCE8E6"), 16f)
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(38))
+            lp.rightMargin = dp(8)
+            layoutParams = lp
+            setOnClickListener {
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://photobooth4u.netlify.app/photobooth4u-roving-dslr-guide.pdf"))
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(this@RovingBridgeActivity, "Could not open guide: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        topBar.addView(guideBtn)
 
         val closeBtn = Button(this).apply {
             text = "✕"

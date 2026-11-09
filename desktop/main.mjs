@@ -76,7 +76,7 @@ async function checkinNow(force) {
 }
 
 // ---------- static files ----------
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.json': 'application/json', '.tflite': 'application/octet-stream', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain', '.webp': 'image/webp', '.mp4': 'video/mp4', '.webm': 'video/webm' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.json': 'application/json', '.tflite': 'application/octet-stream', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain', '.webp': 'image/webp', '.mp4': 'video/mp4', '.webm': 'video/webm', '.pdf': 'application/pdf' };
 const LOCAL_STATIC = ['/bg/', '/camera-test/build/', '/pay/', '/fonts/', '/img/'];
 function fileResponse(base, rel, extra) {
   const f = normalize(join(base, rel));
@@ -128,7 +128,7 @@ async function handle(req) {
       const fxDir = SPIN.getFxDir() || (existsSync(join(HERE, 'resources', 'spin-fx')) ? join(HERE, 'resources', 'spin-fx') : join(BUILD, 'spin-fx'));
       return fileResponse(fxDir, p.slice(9));
     }
-    if (LOCAL_STATIC.some((x) => p.startsWith(x))) return fileResponse(join(BUILD, 'public'), p.slice(1));
+    if (LOCAL_STATIC.some((x) => p.startsWith(x)) || p.endsWith('.pdf')) return fileResponse(join(BUILD, 'public'), p.slice(1));
   } catch (e) {
     console.error(e);
     return jsonRes({ ok: false, error: String(e && e.message || e) }, 500);
@@ -140,6 +140,10 @@ async function handle(req) {
 function openOutside(u) {
   try {
     const url = new URL(u);
+    if (url.protocol === 'app:' && url.pathname.endsWith('.pdf')) {
+      const localPdf = join(BUILD, 'public', url.pathname.slice(1));
+      if (existsSync(localPdf)) { shell.openPath(localPdf); return; }
+    }
     if (url.protocol === 'app:') { shell.openExternal(L.SERVER + url.pathname + url.search + url.hash); return; }
     if (url.protocol === 'https:' || url.protocol === 'http:' || url.protocol === 'mailto:') shell.openExternal(url.href);
   } catch { /* ignore */ }

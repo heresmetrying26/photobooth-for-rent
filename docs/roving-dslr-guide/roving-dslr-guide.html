@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Roving DSLR Photobooth Setup Guide · photobooth4u</title>
+  <!--
+    photobooth4u Roving DSLR Photoman Guide
+    Covers:
+    - Wired DSLR to Pocket Android Wireless Bridge Architecture
+    - Canon, Nikon & Sony DSLR/Mirrorless Menu Configurations
+    - Android Bridge App Zero-License Setup & Pocket Lock Mode
+    - Laptop Base Station Photographer Desk Queue & Solo Framing
+    - On-Demand Dye-Sub Printing & Instant Local Wi-Fi QR Delivery
+  -->
+  <style>
+    @font-face {
+      font-family: 'Fraunces';
+      src: url(../setup-guide/fonts/fraunces-latin-600-normal.woff2) format('woff2');
+      font-weight: 600;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Fraunces';
+      src: url(../setup-guide/fonts/fraunces-latin-500-italic.woff2) format('woff2');
+      font-weight: 500;
+      font-style: italic;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url(../setup-guide/fonts/manrope-latin-400-normal.woff2) format('woff2');
+      font-weight: 400;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url(../setup-guide/fonts/manrope-latin-500-normal.woff2) format('woff2');
+      font-weight: 500;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url(../setup-guide/fonts/manrope-latin-600-normal.woff2) format('woff2');
+      font-weight: 600;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url(../setup-guide/fonts/manrope-latin-700-normal.woff2) format('woff2');
+      font-weight: 700;
+    }
+    @font-face {
+      font-family: 'Manrope';
+      src: url(../setup-guide/fonts/manrope-latin-800-normal.woff2) format('woff2');
+      font-weight: 800;
+    }
+
+    :root {
+      --cream: #f6f2ea;
+      --ink: #1a171c;
+      --body: #423d44;
+      --dim: #6e6670;
+      --red: #c83924;
+      --red-soft: #fbeee9;
+      --line: #e2dad0;
+      --card: #ffffff;
+      --purple: #583ca3;
+      --purple-bg: #ede7f7;
+      --green: #1b7358;
+      --green-bg: #e6f4ef;
+      --amber: #b86c12;
+      --amber-bg: #fef5e7;
+      --blue: #1d6fa5;
+      --blue-bg: #eaf3fa;
+      --mono: 'SF Mono', Consolas, Menlo, monospace;
+    }
+
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #fff; }
+    body {
+      font-family: 'Manrope', -apple-system, system-ui, sans-serif;
+      color: var(--body);
+      font-size: 11px;
+      line-height: 1.5;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    b, strong { color: var(--ink); font-weight: 700; }
+    h1, h2, h3, h4 { color: var(--ink); font-family: 'Fraunces', Georgia, serif; letter-spacing: -.02em; }
+
+    .page {
+      width: 210mm;
+      height: 297mm;
+      position: relative;
+      overflow: hidden;
+      padding: 42px 48px 38px;
+      background: #fff;
+      page-break-after: always;
+      break-after: page;
+    }
+    .page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+
+    /* Top bar */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-mark {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5px;
+      width: 18px;
+      height: 18px;
+    }
+    .brand-mark i {
+      background: var(--ink);
+      border-radius: 2.5px;
+    }
+    .brand-mark i:nth-child(2) {
+      background: var(--red);
+    }
+    .brand-word {
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -.03em;
+      color: var(--ink);
+    }
+    .brand-word em {
+      display: inline-block;
+      margin-left: 2px;
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: var(--red);
+      color: #fff;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 800;
+      font-size: 8px;
+      font-style: normal;
+      transform: rotate(-5deg);
+    }
+    .top-tag {
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: .15em;
+      color: var(--dim);
+      text-transform: uppercase;
+    }
+
+    /* Footer */
+    .foot {
+      position: absolute;
+      left: 48px;
+      right: 48px;
+      bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      color: var(--dim);
+      text-transform: uppercase;
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+    }
+
+    /* Headings */
+    .title-group {
+      margin-bottom: 14px;
+    }
+    .kicker {
+      font-size: 8.5px;
+      font-weight: 800;
+      letter-spacing: .16em;
+      color: var(--red);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    h1.hero-title {
+      font-size: 25px;
+      line-height: 1.15;
+      margin: 0 0 6px;
+      font-weight: 600;
+    }
+    .hero-sub {
+      font-size: 11.5px;
+      color: var(--dim);
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    /* Layout Grids */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+
+    /* Cards */
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: var(--card);
+    }
+    .card.cream { background: var(--cream); border-color: #dfd7cc; }
+    .card.green { background: var(--green-bg); border-color: #b9e0d2; }
+    .card.blue { background: var(--blue-bg); border-color: #bfe0f2; }
+    .card.purple { background: var(--purple-bg); border-color: #d8ccee; }
+    .card.amber { background: var(--amber-bg); border-color: #f7dfbe; }
+
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      margin: 0 0 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Architecture / Flow diagram */
+    .flow-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--cream);
+      border: 1px solid #dfd7cc;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin: 12px 0 16px;
+    }
+    .flow-step {
+      text-align: center;
+      flex: 1;
+    }
+    .flow-icon {
+      font-size: 20px;
+      margin-bottom: 2px;
+    }
+    .flow-name {
+      font-weight: 800;
+      font-size: 10.5px;
+      color: var(--ink);
+    }
+    .flow-detail {
+      font-size: 8.5px;
+      color: var(--dim);
+    }
+    .flow-arrow {
+      color: var(--red);
+      font-size: 14px;
+      font-weight: 800;
+      padding: 0 4px;
+    }
+
+    /* Badges & Pills */
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 8.5px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .badge.red { background: var(--red-soft); color: var(--red); }
+    .badge.green { background: var(--green-bg); color: var(--green); }
+    .badge.blue { background: var(--blue-bg); color: var(--blue); }
+    .badge.purple { background: var(--purple-bg); color: var(--purple); }
+
+    /* Tables */
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.5px;
+      margin: 8px 0;
+    }
+    table.data-table th, table.data-table td {
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      text-align: left;
+    }
+    table.data-table th {
+      background: var(--cream);
+      color: var(--ink);
+      font-weight: 800;
+    }
+    table.data-table tr:nth-child(even) td {
+      background: #faf8f5;
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: 9.5px;
+      background: #f0ebe2;
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: var(--ink);
+    }
+
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      background: var(--red);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      border-radius: 50%;
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+
+    ul.clean-list {
+      margin: 4px 0;
+      padding-left: 16px;
+    }
+    ul.clean-list li {
+      margin-bottom: 4px;
+    }
+
+    .callout {
+      border-left: 3px solid var(--red);
+      background: var(--red-soft);
+      padding: 8px 12px;
+      border-radius: 0 6px 6px 0;
+      margin: 10px 0;
+      font-size: 10px;
+    }
+    .callout.green { border-color: var(--green); background: var(--green-bg); }
+    .callout.blue { border-color: var(--blue); background: var(--blue-bg); }
+  </style>
+</head>
+<body>
+
+  <!-- ================================================================= PAGE 1 -->
+  <section class="page">
+    <div class="top-bar">
+      <div class="brand">
+        <div class="brand-mark"><i></i><i></i><i></i><i></i></div>
+        <div class="brand-word">photobooth4u<em>ROVE</em></div>
+      </div>
+      <div class="top-tag">Hardware &amp; Camera Tethering Guide</div>
+    </div>
+
+    <div class="title-group">
+      <div class="kicker">Roving Photographer System Architecture</div>
+      <h1 class="hero-title">Wired DSLR to Pocket Android Wireless Bridge</h1>
+      <p class="hero-sub">How to tether any Canon, Nikon, or Sony DSLR via USB OTG to a pocket Android phone and stream roving guest photos wirelessly in real time to the laptop base station for review and on-demand printing.</p>
+    </div>
+
+    <!-- Visual Architecture Flow Diagram -->
+    <div class="flow-bar">
+      <div class="flow-step">
+        <div class="flow-icon">📷</div>
+        <div class="flow-name">DSLR Camera</div>
+        <div class="flow-detail">Canon / Nikon / Sony</div>
+      </div>
+      <div class="flow-arrow">➔</div>
+      <div class="flow-step">
+        <div class="flow-icon">🔌</div>
+        <div class="flow-name">USB OTG Cable</div>
+        <div class="flow-detail">High-speed PTP Tether</div>
+      </div>
+      <div class="flow-arrow">➔</div>
+      <div class="flow-step">
+        <div class="flow-icon">📱</div>
+        <div class="flow-name">Android Phone</div>
+        <div class="flow-detail">Pocket Transmitter Mode</div>
+      </div>
+      <div class="flow-arrow">➔</div>
+      <div class="flow-step">
+        <div class="flow-icon">📶</div>
+        <div class="flow-name">Local 5GHz Wi-Fi</div>
+        <div class="flow-detail">Sub-second Stream (&lt;0.5s)</div>
+      </div>
+      <div class="flow-arrow">➔</div>
+      <div class="flow-step">
+        <div class="flow-icon">💻</div>
+        <div class="flow-name">Laptop Base Station</div>
+        <div class="flow-detail">Photographer Desk Queue</div>
+      </div>
+      <div class="flow-arrow">➔</div>
+      <div class="flow-step">
+        <div class="flow-icon">🖨️</div>
+        <div class="flow-name">Dye-Sub Printer</div>
+        <div class="flow-detail">DNP / HiTi / SELPHY</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- HARDWARE CHECKLIST -->
+      <div class="card cream">
+        <h4 class="card-title">📦 Required Hardware Checklist</h4>
+        <ul class="clean-list" style="font-size:10px;">
+          <li><b>1. DSLR / Mirrorless Body:</b> Canon EOS (Rebel, 60D, 70D, 80D, 5D, R-series), Nikon (D3000, D5000, D7000, Z-series), or Sony Alpha (A6000, A7-series in PC Remote).</li>
+          <li><b>2. USB OTG Cable or Adapter:</b> USB-C to Camera Mini-USB/Micro-USB or USB-C. Ensure the <i>Host/OTG</i> side plugs into the Android phone.</li>
+          <li><b>3. Android Phone (Transmitter):</b> Any phone running Android 8.0 or newer with USB OTG. <b>Zero license required</b>: operates free from the app activation screen!</li>
+          <li><b>4. Laptop Base Station:</b> Windows 10/11 or macOS running photobooth4u (v1.0.110+).</li>
+          <li><b>5. Venue Wi-Fi or Pocket Router:</b> 5GHz Wi-Fi router or the laptop's built-in Mobile Hotspot. <b>100% offline</b>: no internet connection required.</li>
+        </ul>
+      </div>
+
+      <!-- KEY ARCHITECTURAL ADVANTAGES -->
+      <div class="card green">
+        <h4 class="card-title" style="color:var(--green);">⚡ Why This Pipeline Beats Wi-Fi SD &amp; Cam Apps</h4>
+        <ul class="clean-list" style="font-size:10px;">
+          <li><b>Native Physical Shutter Polling:</b> The phone's background helper detects the exact millisecond you press the camera shutter button on the body. No touchscreen tapping needed.</li>
+          <li><b>Sub-Second Beaming (&lt;500ms):</b> USB transfer into phone memory happens at 480 Mbps; local Wi-Fi transmission to laptop takes only ~300ms.</li>
+          <li><b>Pocket Mode &amp; Haptic Buzz:</b> Screen dims to 5% brightness and ignores pocket touch friction; the phone vibrates in your pocket to confirm successful delivery.</li>
+          <li><b>Decoupled FIFO Buffer:</b> Shoot rapid 2-3 shot bursts without stalling. Shots queue safely in phone RAM and upload sequentially.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- CAMERA SETTINGS TABLE -->
+    <h3 style="font-size:14px;margin:14px 0 6px;">Camera Menu Configuration (Set Before Connecting)</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:18%;">Brand</th>
+          <th style="width:24%;">Dial &amp; Focus Mode</th>
+          <th style="width:28%;">Image Quality / Format</th>
+          <th style="width:30%;">Required Camera Menu Settings</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Canon EOS</b><br><span style="color:var(--dim);font-size:8.5px;">Rebel, 60D-90D, 5D, R-series</span></td>
+          <td><b>M</b>, <b>Av</b>, <b>Tv</b>, or <b>P</b><br>Single-point One-Shot AF</td>
+          <td><b>JPEG (Large / Fine)</b><br><span style="color:var(--dim);font-size:8.5px;">RAW + JPEG also supported (JPEG is automatically selected)</span></td>
+          <td>
+            • Turn <b>Wi-Fi / Bluetooth OFF</b> in camera settings.<br>
+            • Ensure camera mode dial is NOT set to Movie/Video.<br>
+            • Insert an SD card with free space.
+          </td>
+        </tr>
+        <tr>
+          <td><b>Nikon DSLR / Z</b><br><span style="color:var(--dim);font-size:8.5px;">D3200-D7500, D610-D850, Z5/6/7</span></td>
+          <td><b>M</b>, <b>A</b>, <b>S</b>, or <b>P</b><br>AF-S (Single Servo)</td>
+          <td><b>JPEG Fine or Normal</b><br><span style="color:var(--dim);font-size:8.5px;">Bridge fetches camera memory buffer &amp; SDRAM object</span></td>
+          <td>
+            • Turn <b>Airplane mode ON</b> (or disable SnapBridge Wi-Fi).<br>
+            • In USB settings, select <b>MTP/PTP</b> if asked.<br>
+            • Close in-camera menus before tethering.
+          </td>
+        </tr>
+        <tr>
+          <td><b>Sony Alpha</b><br><span style="color:var(--dim);font-size:8.5px;">A6000-A6700, A7 II / III / IV, A7R</span></td>
+          <td><b>M</b>, <b>A</b>, or <b>S</b><br>AF-S or Manual Focus (MF)</td>
+          <td><b>File Format: JPEG</b><br><span style="color:var(--dim);font-size:8.5px;">Set JPEG Quality to Fine</span></td>
+          <td>
+            • <b>USB Connection: PC Remote</b> (Setup &gt; USB).<br>
+            • <b>Still Img. Save Dest.: PC + Camera</b> (Setup &gt; USB).<br>
+            • <b>Release w/o Card: Enable</b>.<br>
+            • Turn off Smartphone Connection / Imaging Edge.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="foot">
+      <span>photobooth4u · Roving DSLR Photoman System Guide</span>
+      <span>Page 1 of 4 · Hardware &amp; Camera Tethering</span>
+    </div>
+  </section>
+
+
+  <!-- ================================================================= PAGE 2 -->
+  <section class="page">
+    <div class="top-bar">
+      <div class="brand">
+        <div class="brand-mark"><i></i><i></i><i></i><i></i></div>
+        <div class="brand-word">photobooth4u<em>ROVE</em></div>
+      </div>
+      <div class="top-tag">Android Transmitter App Operation</div>
+    </div>
+
+    <div class="title-group">
+      <div class="kicker">Operator Step-by-Step Instructions</div>
+      <h1 class="hero-title">Android Bridge App &amp; Pocket Mode Setup</h1>
+      <p class="hero-sub">Step-by-step pairing to your laptop base station, physical shutter confirmation, and battery-saving pocket mode.</p>
+    </div>
+
+    <div class="grid-2">
+      <!-- STEP 1 & 2 -->
+      <div class="card">
+        <h4 class="card-title"><span class="step-num">1</span> Launch the Free Roving Bridge</h4>
+        <p style="margin:0 0 6px;">Install the photobooth4u Android app (v1.1.24+) on your phone. You <b>do not</b> need to enter a rental code:</p>
+        <ul class="clean-list" style="font-size:10px;">
+          <li>Open the app on the phone.</li>
+          <li>On the initial activation screen, look below the license code box.</li>
+          <li>Tap the green button: <b>"📷 Roving DSLR Bridge"</b>.</li>
+          <li>The dedicated bridge transmitter interface opens instantly.</li>
+        </ul>
+        <div class="callout green" style="margin:6px 0 0;font-size:9.5px;">
+          <b>Zero extra license fee:</b> Any spare Android phone acts as an unlimited transmitter.
+        </div>
+      </div>
+
+      <div class="card">
+        <h4 class="card-title"><span class="step-num">2</span> Connect to Laptop Base Station</h4>
+        <p style="margin:0 0 6px;">Connect your phone to the base station laptop via the local Wi-Fi network:</p>
+        <ul class="clean-list" style="font-size:10px;">
+          <li>Ensure the phone is on the same Wi-Fi as the laptop.</li>
+          <li><b>Option A (1-Tap Paste):</b> Copy the send URL from the laptop's Photographer Desk, open the bridge app, and tap <b>"📋 Paste"</b>.</li>
+          <li><b>Option B (Type IP):</b> Enter the laptop IP and port (e.g. <code>http://192.168.1.105:47777</code>).</li>
+          <li>Tap <b>"Save &amp; Test Connection"</b>. A green toast confirms: <code>✅ Connected! Laptop ready.</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top:12px;">
+      <!-- STEP 3 & 4 -->
+      <div class="card">
+        <h4 class="card-title"><span class="step-num">3</span> Plug in DSLR via USB OTG</h4>
+        <p style="margin:0 0 6px;">Connect the USB OTG cable from the phone's charging port to the camera's digital USB port:</p>
+        <ul class="clean-list" style="font-size:10px;">
+          <li>Turn on your camera body.</li>
+          <li>If Android shows a popup asking <i>"Allow photobooth4u to access USB device?"</i>, check <b>"Always allow"</b> and tap <b>OK</b>.</li>
+          <li>The Camera Status Card immediately updates from <code>● WAITING</code> to <code>● READY</code> with camera model and battery percentage.</li>
+          <li>Tap <b>"📸 Test Shutter"</b> to verify camera firing and transmission.</li>
+        </ul>
+      </div>
+
+      <div class="card purple">
+        <h4 class="card-title" style="color:var(--purple);"><span class="step-num">4</span> Engage Pocket Lock Mode</h4>
+        <p style="margin:0 0 6px;">Before slipping the phone into your pocket or belt holster:</p>
+        <ul class="clean-list" style="font-size:10px;">
+          <li>Tap the dark button: <b>"🔒 Pocket Mode"</b>.</li>
+          <li>The screen displays a black lock screen and dims to minimum brightness (0.05) to conserve phone battery all night.</li>
+          <li>All accidental touch inputs in your pocket are safely blocked.</li>
+          <li><b>Shutter remains 100% LIVE</b>: the background helper keeps polling your camera's shutter button continuously.</li>
+          <li><b>To Unlock:</b> Tap the unlock button <b>3 times</b> to return to UI.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ROVING PHOTOGRAPHER WORKFLOW IN ACTION -->
+    <h3 style="font-size:14px;margin:16px 0 8px;">Shooting the Crowd: Real-Time Feedback Loop</h3>
+    <div class="card cream" style="padding:14px 16px;">
+      <div class="grid-3" style="text-align:center;">
+        <div>
+          <div style="font-size:24px;margin-bottom:4px;">🎯</div>
+          <b style="font-size:11px;">1. Frame &amp; Click</b>
+          <p style="font-size:9.5px;color:var(--dim);margin:2px 0 0;">Approach event guests and press your camera shutter button normally. Camera focuses and snaps the photo.</p>
+        </div>
+        <div>
+          <div style="font-size:24px;margin-bottom:4px;">📳</div>
+          <b style="font-size:11px;">2. Pocket Haptic Buzz</b>
+          <p style="font-size:9.5px;color:var(--dim);margin:2px 0 0;">Within ~0.5s, the phone vibrates in your pocket with a crisp haptic pulse. You know with 100% certainty the photo reached the laptop!</p>
+        </div>
+        <div>
+          <div style="font-size:24px;margin-bottom:4px;">📥</div>
+          <b style="font-size:11px;">3. Queued at Desk</b>
+          <p style="font-size:9.5px;color:var(--dim);margin:2px 0 0;">Photo lands instantly in the Photographer Desk queue at the base station, ready for review and printing.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- UI CHEAT SHEET DIAGRAM -->
+    <div class="card blue" style="margin-top:12px;">
+      <h4 class="card-title" style="color:var(--blue);">📱 Android Bridge UI Indicator Quick Reference</h4>
+      <div class="grid-3" style="font-size:9.5px;margin-top:4px;">
+        <div>
+          <span class="badge green">● READY</span><br>
+          DSLR is connected, recognized, and shutter polling is live. Ready to shoot.
+        </div>
+        <div>
+          <span class="badge red">● DISCONNECTED</span><br>
+          Camera is powered off, cable unplugged, or USB OTG permission needed.
+        </div>
+        <div>
+          <span class="badge blue">Last photo sent (480ms)</span><br>
+          Live round-trip benchmark showing millisecond upload time to laptop.
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>photobooth4u · Roving DSLR Photoman System Guide</span>
+      <span>Page 2 of 4 · Android Bridge Transmitter Setup</span>
+    </div>
+  </section>
+
+
+  <!-- ================================================================= PAGE 3 -->
+  <section class="page">
+    <div class="top-bar">
+      <div class="brand">
+        <div class="brand-mark"><i></i><i></i><i></i><i></i></div>
+        <div class="brand-word">photobooth4u<em>ROVE</em></div>
+      </div>
+      <div class="top-tag">Base Station &amp; Printing Workflow</div>
+    </div>
+
+    <div class="title-group">
+      <div class="kicker">Laptop Base Station Operator Workflow</div>
+      <h1 class="hero-title">Photographer Desk Queue &amp; On-Demand Printing</h1>
+      <p class="hero-sub">How incoming roving photos land in the Photographer Desk queue, how to review and apply custom event frames, and how to print on demand without disrupting the main photobooth.</p>
+    </div>
+
+    <div class="grid-2">
+      <!-- PHOTOGRAPHER DESK OVERVIEW -->
+      <div class="card white">
+        <h4 class="card-title">🖥️ Accessing the Photographer Desk</h4>
+        <p style="font-size:10px;margin:0 0 6px;">The Photographer Desk is the command center at your base station laptop:</p>
+        <ul class="clean-list" style="font-size:10px;">
+          <li>In the desktop booth app, look for the floating camera button (<code>deskFab</code>) at the top or open the side menu and click <b>Photographer Desk</b>.</li>
+          <li><b>Unseen Photo Badge:</b> When the roving photographer snaps photos in the crowd, a red counter badge (e.g. <code>[ 3 ]</code>) appears on the icon and a toast banner pops up: <i>"📷 Roving photo queued in Photographer desk (3 waiting)"</i>.</li>
+          <li>Click the button to open the Photographer Desk overlay.</li>
+        </ul>
+      </div>
+
+      <!-- QUEUE VS AUTO-PRINT PHILOSOPHY -->
+      <div class="card cream">
+        <h4 class="card-title">🛡️ Why Photos Are Queued (Not Auto-Printed)</h4>
+        <p style="font-size:10px;margin:0 0 6px;">Unlike fixed kiosk booths that auto-print immediately, roving crowd photography requires quality control:</p>
+        <ul class="clean-list" style="font-size:10px;">
+          <li><b>Zero Paper Waste:</b> If a guest blinked, turned away, or if you took test shots while walking, unwanted photos will never be printed.</li>
+          <li><b>No Printer Bottlenecks:</b> Dye-sub printers print at ~12 seconds per 4x6 print. Queuing prevents long print spooler queues.</li>
+          <li><b>Guest Selection:</b> When guests come to the booth to claim their roving picture, the operator selects their favorite shot and prints it in 1 click.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- WORKFLOW BREAKDOWN -->
+    <h3 style="font-size:14px;margin:14px 0 6px;">Review, Frame, and Print in 3 Easy Steps</h3>
+    <div class="grid-3">
+      <div class="card">
+        <div style="font-size:18px;margin-bottom:4px;">🔍</div>
+        <b style="font-size:11px;">Step 1: Inspect Thumbnail</b>
+        <p style="font-size:9.5px;color:var(--dim);margin:4px 0 0;">New photos appear in chronological order in the Photographer Desk grid. Click any thumbnail to expand high-resolution preview.</p>
+      </div>
+      <div class="card">
+        <div style="font-size:18px;margin-bottom:4px;">🖼️</div>
+        <b style="font-size:11px;">Step 2: Choose Solo or Strip</b>
+        <p style="font-size:9.5px;color:var(--dim);margin:4px 0 0;">Toggle <b>"One photo per print (Solo layout)"</b>. Roving portraits fit beautifully as full 4x6 or 2x6 single shots even if the booth uses 3-photo strips.</p>
+      </div>
+      <div class="card">
+        <div style="font-size:18px;margin-bottom:4px;">🖨️</div>
+        <b style="font-size:11px;">Step 3: Print On Demand</b>
+        <p style="font-size:9.5px;color:var(--dim);margin:4px 0 0;">Click <b>"Print"</b>. The app composites your custom event frame, overlay graphics, and branding, then sends it to the dye-sub spooler.</p>
+      </div>
+    </div>
+
+    <!-- PRINTER INTEGRATION & SIZING -->
+    <div class="grid-2" style="margin-top:12px;">
+      <div class="card green">
+        <h4 class="card-title" style="color:var(--green);">🖨️ Dye-Sub &amp; Inkjet Printer Support</h4>
+        <p style="font-size:9.5px;margin:0 0 6px;">photobooth4u prints silently to any Windows or macOS printer driver:</p>
+        <ul class="clean-list" style="font-size:9.5px;">
+          <li><b>DNP Dye-Sub:</b> DS-RX1HS, DS620A, DS40, QW410 with native 2x6 dual cut or full 4x6 / 6x8.</li>
+          <li><b>HiTi Commercial:</b> P525L, P510S, P720L with ultra-high-speed roll printing.</li>
+          <li><b>Canon SELPHY:</b> CP1300, CP1500 compact dye-sub printers via USB or Wi-Fi.</li>
+          <li><b>Epson / HP Inkjet:</b> L8050, PictureMate PM-520, or standard borderless 4R photo paper.</li>
+        </ul>
+      </div>
+
+      <div class="card blue">
+        <h4 class="card-title" style="color:var(--blue);">📲 Instant Local QR Sharing for Guests</h4>
+        <p style="font-size:9.5px;margin:0 0 6px;">Guests don't have to wait for prints to get their photos on their phones:</p>
+        <ul class="clean-list" style="font-size:9.5px;">
+          <li>Every roving photo uploaded to the desk is automatically served on the local gallery server (port <code>47777</code>).</li>
+          <li>Display the <b>QR Sharing Screen</b> on an iPad or secondary tablet at your booth table.</li>
+          <li>Guests scan the QR code to view and download their high-res roving photo instantly over the booth Wi-Fi with <b>zero data plan needed</b>.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card amber" style="margin-top:12px;">
+      <h4 class="card-title" style="color:var(--amber);">💡 Pro Operator Tip: Two Roving Photographers on One Laptop</h4>
+      <p style="margin:0;font-size:9.5px;">You can connect <b>multiple roving photographers</b> simultaneously to the same base station! Each photographer simply points their phone bridge to the same laptop URL (<code>http://&lt;laptop-ip&gt;:47777</code>). Both streams merge seamlessly into the single Photographer Desk queue with individual timestamps.</p>
+    </div>
+
+    <div class="foot">
+      <span>photobooth4u · Roving DSLR Photoman System Guide</span>
+      <span>Page 3 of 4 · Base Station &amp; Queue Management</span>
+    </div>
+  </section>
+
+
+  <!-- ================================================================= PAGE 4 -->
+  <section class="page">
+    <div class="top-bar">
+      <div class="brand">
+        <div class="brand-mark"><i></i><i></i><i></i><i></i></div>
+        <div class="brand-word">photobooth4u<em>ROVE</em></div>
+      </div>
+      <div class="top-tag">Pro Tips &amp; Troubleshooting</div>
+    </div>
+
+    <div class="title-group">
+      <div class="kicker">Field Operations &amp; Reliability Guide</div>
+      <h1 class="hero-title">Pro Techniques, Wi-Fi Range &amp; Troubleshooting</h1>
+      <p class="hero-sub">Field-tested solutions for venue interference, battery optimization, rapid shooting, and common operator mistakes.</p>
+    </div>
+
+    <!-- PRO FIELD TECHNIQUES -->
+    <div class="grid-2">
+      <div class="card cream">
+        <h4 class="card-title">🔋 Battery &amp; Rig Ergonomics</h4>
+        <ul class="clean-list" style="font-size:9.5px;">
+          <li><b>Cable Management:</b> Use a 0.5-meter coiled USB cable. Wrap it once around your camera neck strap so accidental tugs pull against the strap, not your camera's USB port.</li>
+          <li><b>Phone Battery Life:</b> In <b>Pocket Lock Mode</b>, screen brightness drops to 5%, yielding <b>6–8 hours</b> of continuous shooting on a single charge.</li>
+          <li><b>Camera Battery:</b> Camera internal battery powers the sensor and shutter. Bring 2 spare camera batteries for a 4-hour event.</li>
+          <li><b>Phone Holster:</b> Carry the phone in a running armband or front pocket with the USB port facing upwards for free cable movement.</li>
+        </ul>
+      </div>
+
+      <div class="card white">
+        <h4 class="card-title">📶 5GHz Wi-Fi Range Optimization</h4>
+        <ul class="clean-list" style="font-size:9.5px;">
+          <li><b>Always Use 5GHz Band:</b> Crowded hotel ballrooms and convention centers are flooded with 2.4GHz interference. 5GHz provides clear channels with sub-second speeds.</li>
+          <li><b>Dedicated Pocket Router:</b> Place a pocket router (GL.iNet GL-MT3000 or TP-Link AC750) elevated on a light stand at your booth base station for 40+ meter range.</li>
+          <li><b>Laptop Mobile Hotspot:</b> If you don't have an external router, turn on Windows 10/11 or macOS <i>Mobile Hotspot</i> on 5GHz. Connect the roving phone directly to the laptop.</li>
+          <li><b>100% Offline:</b> The router requires NO internet or SIM card. All photo streaming is local LAN.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- TROUBLESHOOTING MATRIX TABLE -->
+    <h3 style="font-size:14px;margin:14px 0 6px;">Field Troubleshooting Matrix</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:25%;">Symptom</th>
+          <th style="width:30%;">Probable Cause</th>
+          <th style="width:45%;">Exact Remediation Step</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>"No DSLR Connected"</b><br><span style="color:var(--dim);font-size:8.5px;">Phone stays on WAITING</span></td>
+          <td>• OTG cable plugged in backwards.<br>• Camera menu open.<br>• Sony USB not in PC Remote.</td>
+          <td>
+            1. Unplug the USB cable. Ensure the <b>Host/OTG</b> end is in the phone.<br>
+            2. Turn camera power switch off, wait 3 seconds, turn on.<br>
+            3. On Sony, verify: <i>Menu &gt; USB Connection &gt; PC Remote</i>.<br>
+            4. On Canon, close all menus; dial must be on P/Av/Tv/M.
+          </td>
+        </tr>
+        <tr>
+          <td><b>"Could not reach laptop"</b><br><span style="color:var(--dim);font-size:8.5px;">Save &amp; Test fails (Red ❌)</span></td>
+          <td>• Phone and laptop on different Wi-Fi.<br>• Windows Defender Firewall blocking.<br>• Wrong IP address entered.</td>
+          <td>
+            1. Verify phone and laptop Wi-Fi network names (SSID) match exactly.<br>
+            2. In laptop Photographer Desk, check displayed URL and re-paste.<br>
+            3. On laptop, set your Wi-Fi network profile to <b>Private Network</b>.<br>
+            4. Test URL in phone Chrome browser: <code>http://&lt;laptop-ip&gt;:47777/hello</code>.
+          </td>
+        </tr>
+        <tr>
+          <td><b>"Camera saved a RAW photo"</b><br><span style="color:var(--dim);font-size:8.5px;">Shutter clicked but transfer failed</span></td>
+          <td>Camera image quality set to RAW only (CR2, CR3, NEF, ARW).</td>
+          <td>
+            1. Open camera menu and change <b>Image Quality to JPEG</b> (or RAW+JPEG).<br>
+            2. The bridge extracts the high-resolution JPEG for instant printing.<br>
+            3. For maximum speed, set JPEG size to <b>Medium (approx. 4MB–6MB)</b>.
+          </td>
+        </tr>
+        <tr>
+          <td><b>Haptic buzz didn't fire</b><br><span style="color:var(--dim);font-size:8.5px;">Photo took &gt;3s to appear</span></td>
+          <td>Weak Wi-Fi signal at far edge of venue or heavy channel interference.</td>
+          <td>
+            1. Move 5–10 steps closer to the booth or elevate your Wi-Fi router.<br>
+            2. The app's FIFO executor buffers the photo in memory and will re-stream as soon as signal recovers. No photos are lost.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- PRE-EVENT CHECKLIST -->
+    <h3 style="font-size:14px;margin:14px 0 6px;">Event-Day Pre-Flight Checklist (Print &amp; Keep in Camera Bag)</h3>
+    <div class="card white" style="border:1.5px solid var(--ink);padding:10px 14px;">
+      <div class="grid-2" style="margin:0;">
+        <div>
+          <b style="font-size:10.5px;color:var(--red);">Roving Photographer Rig:</b>
+          <ul class="clean-list" style="font-size:9.5px;margin-top:2px;">
+            <li>[ ] DSLR camera battery charged + 1 spare in pocket.</li>
+            <li>[ ] Camera set to M or Av mode, JPEG Fine (or RAW+JPEG).</li>
+            <li>[ ] Speedlight flash fresh batteries installed.</li>
+            <li>[ ] USB OTG cable tested and wrapped to camera strap.</li>
+            <li>[ ] Phone bridge app connected: green <code>● READY</code> confirmed.</li>
+            <li>[ ] Pocket Lock Mode engaged before walking the floor.</li>
+          </ul>
+        </div>
+        <div>
+          <b style="font-size:10.5px;color:var(--red);">Base Station Laptop &amp; Printer:</b>
+          <ul class="clean-list" style="font-size:9.5px;margin-top:2px;">
+            <li>[ ] Laptop on 5GHz Wi-Fi or pocket hotspot.</li>
+            <li>[ ] photobooth4u app running with Photographer Desk open.</li>
+            <li>[ ] Event overlay frame &amp; branding verified.</li>
+            <li>[ ] Dye-sub photo printer loaded with fresh roll/ribbon.</li>
+            <li>[ ] Test shot taken on camera: confirmed haptic buzz &amp; desk badge.</li>
+            <li>[ ] Test print executed from Photographer Desk in &lt;15 seconds.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>photobooth4u · Roving DSLR Photoman System Guide</span>
+      <span>Page 4 of 4 · Pro Tips &amp; Field Troubleshooting</span>
+    </div>
+  </section>
+
+</body>
+</html>

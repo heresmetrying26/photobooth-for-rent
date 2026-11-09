@@ -33,11 +33,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: desktop/package-lock.json
-      - run: npm ci || npm install
+      - name: Install dependencies
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm ci || {
+            echo "::warning::npm ci failed; clearing node_modules and running npm install"
+            rm -rf node_modules
+            npm install --no-audit
+          }
       # The 360 desk's video editor (a separate program, not saved in package.json). See resources/ffmpeg-NOTICE.txt.
       - run: npm install --no-save ffmpeg-static || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Gathers the booth, its server code, fonts and the licence PUBLIC key
       # (from photobooth4u.netlify.app/api/license?pub=1, or the optional
       # PB4U_LICENSE_PUB repository secret).
@@ -46,6 +54,7 @@ jobs:
           PB4U_LICENSE_PUB: ${{ secrets.PB4U_LICENSE_PUB }}
       - run: npx electron-builder ${{ matrix.target }} --publish never
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Not code-signed yet (see desktop/README.md). The Mac app is ad-hoc signed.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       # The Mac app drives Canon cameras itself through the "usb" package: make sure it loads here and shipped inside the app.

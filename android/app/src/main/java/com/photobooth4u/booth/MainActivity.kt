@@ -103,18 +103,36 @@ class MainActivity : AppCompatActivity() {
     private val REQ_CAMERA_PERMISSION = 2001
 
     // ---- New version prompt ----
-    // At launch, when the app comes back to the front, and every 5 minutes while it is open (like the laptop app),
-    // ask the site for the newest tablet app; when this one is older, offer the download. "Later" hides that
-    // version for a day. "Update" downloads the APK inside the app with a progress bar (AppUpdater), and Android
+    // By default, the app will not pop up update prompts automatically (operators prefer manual checks in Step 6 Share).
+    // If enabled in settings, it checks at launch, onResume, and periodically while open.
+    // "Update" downloads the APK inside the app with a progress bar (AppUpdater), and Android
     // then offers to install it over this app.
+    private val PREF_AUTO_UPDATE_POPUP = "pref_auto_update_popup"
     private val updater by lazy { AppUpdater(this) }
     private val updateHandler = Handler(Looper.getMainLooper())
     private val updateLoop = object : Runnable {
-        override fun run() { checkForAppUpdate(); updateHandler.postDelayed(this, 5 * 60_000L) }
+        override fun run() {
+            if (isAutoUpdatePopupEnabled()) {
+                checkForAppUpdate()
+                updateHandler.postDelayed(this, 5 * 60_000L)
+            }
+        }
     }
     @Volatile private var updateChecking = false
     private var updateDialog: AlertDialog? = null
     @Volatile private var foundUpdate: Pair<String, String>? = null   // (url, version) of the newest app the site offers
+
+    private fun isAutoUpdatePopupEnabled(): Boolean {
+        return getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getBoolean(PREF_AUTO_UPDATE_POPUP, false)
+    }
+
+    private fun setAutoUpdatePopupEnabled(enabled: Boolean) {
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putBoolean(PREF_AUTO_UPDATE_POPUP, enabled).apply()
+        updateHandler.removeCallbacks(updateLoop)
+        if (enabled) {
+            updateHandler.postDelayed(updateLoop, 20_000L)
+        }
+    }
 
     private fun myVersion(): String = try { packageManager.getPackageInfo(packageName, 0).versionName ?: "" } catch (e: Exception) { "" }
 
@@ -133,6 +151,8 @@ class MainActivity : AppCompatActivity() {
         @android.webkit.JavascriptInterface fun start() {
             runOnUiThread { val f = foundUpdate; if (f != null) updater.start(f.first, f.second) else checkForAppUpdate(manual = true) }
         }
+        @android.webkit.JavascriptInterface fun isAutoPopup(): Boolean = isAutoUpdatePopupEnabled()
+        @android.webkit.JavascriptInterface fun setAutoPopup(enabled: Boolean) { runOnUiThread { setAutoUpdatePopupEnabled(enabled) } }
     }
 
     // Setup → Welcome screen → "Save power": the booth page asks for the tablet's own screen brightness (window.__PBScreen).
@@ -156,7 +176,7 @@ class MainActivity : AppCompatActivity() {
             if (!isNetworkAvailable()) { reportUpdate("offline"); return }
             reportUpdate("checking")
         } else {
-            if (updateChecking || now - prefs.getLong("update_checked", 0L) < 4 * 60_000L || !isNetworkAvailable()) return
+            if (!isAutoUpdatePopupEnabled() || updateChecking || now - prefs.getLong("update_checked", 0L) < 4 * 60_000L || !isNetworkAvailable()) return
             updateChecking = true
         }
         Thread {
@@ -172,6 +192,8 @@ class MainActivity : AppCompatActivity() {
                 if (latest.isEmpty() || !url.startsWith("https://") || !versionNewer(latest, mine)) { if (manual) reportUpdate("latest"); return@Thread }
                 foundUpdate = url to latest
                 if (manual) reportUpdate("available", latest)
+                // When auto-popup is disabled (the default), no dialog is shown. In manual mode, the user updates via Step 6 Share UI.
+                if (!isAutoUpdatePopupEnabled()) return@Thread
                 // A check by hand always asks; the automatic one respects "Later" for a day.
                 if (!manual && now < prefs.getLong("update_snooze_" + latest, 0L)) return@Thread
                 runOnUiThread {
@@ -306,7 +328,9 @@ class MainActivity : AppCompatActivity() {
             val mine = packageManager.getPackageInfo(packageName, 0).versionName ?: ""
             updater.cleanUp { v -> versionNewer(v, mine) }
         } catch (e: Exception) { }
-        updateHandler.postDelayed(updateLoop, 20_000L)
+        if (isAutoUpdatePopupEnabled()) {
+            updateHandler.postDelayed(updateLoop, 20_000L)
+        }
         checkinHandler.postDelayed(checkinLoop, 10 * 60_000L)
     }
 
@@ -511,7 +535,9 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         hideSystemBars()
         updater.onResume()      // back from "Install unknown apps": carry on with the update
-        checkForAppUpdate()
+        if (isAutoUpdatePopupEnabled()) {
+            checkForAppUpdate()
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

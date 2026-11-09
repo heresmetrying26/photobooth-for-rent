@@ -301,7 +301,20 @@
 
     .op-dock.bar .dock-btn {
       box-shadow: none;
-      min-height: 42px;
+      min-height: 38px;
+      padding: 6px 14px 6px 10px;
+      font-size: 13px;
+      gap: 6px;
+    }
+
+    @media (max-width: 860px) {
+      .op-dock.bar .dock-btn span:not(.pstat-txt) {
+        display: none;
+      }
+      .op-dock.bar .dock-btn {
+        padding: 8px 10px;
+        min-height: 36px;
+      }
     }
 
     .op-dock.bar .dock-chip-slot {
@@ -1801,8 +1814,14 @@
       margin-top: 8px;
     }
 
-    /* Choosing a layout: guests tap a card; no Start button under it. */
-    body.picking #startBtn {
+    /* Choosing a layout: guests tap a card; clean, focused view without crowded docks or toolbars */
+    body.picking #startBtn,
+    body.picking #opDock,
+    body.picking #pbTimeChip,
+    body.picking .brandbar,
+    body.picking .topbar,
+    body.picking .tab-bar,
+    body.picking #sessionControls {
       display: none !important;
     }
 
@@ -7393,8 +7412,8 @@
       width: 100%;
       max-width: 960px;
       padding: 6px 4px 14px;
-      max-height: calc(var(--vh) - 140px);
-      max-height: calc(100dvh - 140px);
+      max-height: calc(var(--vh) - 180px);
+      max-height: calc(100dvh - 180px);
       overflow-y: auto;
       scrollbar-width: thin;
     }
@@ -7477,6 +7496,38 @@
     .pick-tier-tag.color {
       background: #e0f2fe;
       color: #0369a1;
+    }
+
+    .pick-cancel-btn {
+      align-self: center;
+      min-height: 46px;
+      padding: 0 32px;
+      border: 1.5px solid rgba(255, 255, 255, 0.35);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+      font: 700 15px 'Manrope', -apple-system, sans-serif;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.16s ease;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      margin-top: 6px;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .pick-cancel-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+      border-color: rgba(255, 255, 255, 0.7);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    }
+
+    .pick-cancel-btn:active {
+      transform: scale(0.97);
     }
 
     /* ---- Frame, logo, stickers, pattern color, my themes ---- */
@@ -15021,6 +15072,7 @@
               <p class="pick-sub" id="pickSub">Tap a design to start your session</p>
             </div>
             <div class="pick-grid" id="pickGrid"></div>
+            <button type="button" class="pick-cancel-btn" id="pickCancelBtn">&#10005; Cancel</button>
           </div>
           <div class="pick-overlay bt-details" id="btDetailsOverlay" aria-label="Your details">
             <div class="bt-form-wrap">
@@ -31604,7 +31656,7 @@
         if (!roveLaptop() && !roveWebOn) { try { var rid = roveFolderId(); if (rid && localStorage.getItem('pb_rove_on_' + rid) === '1') roveWebOn = true; } catch (e) { } }
         if (!roveLaptop() && !roveWebOn) return;
         var open = !deskOverlay.hidden;
-        var ms = roveLaptop() ? (open ? 2500 : 6000) : (open ? 8000 : 30000);
+        var ms = roveLaptop() ? (open ? 1200 : 1800) : (open ? 8000 : 30000);
         roveTimer = setTimeout(async function () { await roveNow(); roveSchedule(); }, ms);
       }
       // The phone-upload QR code in the Photographer desk.
@@ -37864,6 +37916,22 @@
         guestRender();
         if (r) r(k);
       }
+      var pickCancelBtn = document.getElementById('pickCancelBtn');
+      if (pickCancelBtn) {
+        pickCancelBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          finishPick(null);
+        });
+      }
+      pickOverlay.addEventListener('click', function (e) {
+        if (e.target === pickOverlay) e.stopPropagation();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && pickOpen) {
+          e.stopPropagation();
+          finishPick(null);
+        }
+      }, true);
       // Starts the next guest's turn: (layout picker) -> countdown.
       var flowBusy = false;
       var flowStartedAt = 0;
@@ -37890,6 +37958,10 @@
           if (!(await payGate())) return;
           var keys = guestChoiceKeys();
           var key = keys.length > 1 ? await pickLayout(keys) : (keys[0] || setupLayout);
+          if (!key) {
+            resetForNextGuest();
+            return;
+          }
           if (/^frame:/.test(key)) { activeFrameId = key.slice(6); key = 'myframe'; setLayout(key); }   // the guest's frame, this session
           else if (/^sheet:/.test(key)) {
             if (typeof loadSheetPreset === 'function') loadSheetPreset(key.slice(6), true);

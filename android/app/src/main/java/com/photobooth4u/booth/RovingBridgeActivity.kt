@@ -1,6 +1,7 @@
 package com.photobooth4u.booth
 
 import android.annotation.SuppressLint
+import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -35,6 +36,8 @@ import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -54,6 +57,8 @@ class RovingBridgeActivity : AppCompatActivity() {
     private val isRunning = AtomicBoolean(false)
     private var workerThread: Thread? = null
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val uploadExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    private var localCameraHelper: UsbCameraHelper? = null
 
     private var targetUrl: String = ""
     private var vibrateOnSend: Boolean = true
@@ -98,9 +103,25 @@ class RovingBridgeActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         stopWorker()
+        try { uploadExecutor.shutdownNow() } catch (_: Exception) { }
+        try {
+            localCameraHelper?.stop()
+            localCameraHelper = null
+        } catch (_: Exception) { }
         lastPhotoBitmap?.recycle()
         lastPhotoBitmap = null
         super.onDestroy()
+    }
+
+    private fun getCameraHelper(): UsbCameraHelper {
+        var cam = UsbCameraHelper.activeInstance
+        if (cam == null) {
+            if (localCameraHelper == null) {
+                localCameraHelper = UsbCameraHelper(applicationContext).also { it.start() }
+            }
+            cam = localCameraHelper
+        }
+        return cam!!
     }
 
     private fun loadPrefs() {
@@ -309,6 +330,19 @@ class RovingBridgeActivity : AppCompatActivity() {
             setOnClickListener { testConnection() }
         }
         btnRow.addView(saveBtn)
+
+        val pasteBtn = Button(this).apply {
+            text = "📋 Paste"
+            textSize = 13f
+            setTextColor(Color.parseColor("#1C1A1E"))
+            background = makeCard(Color.parseColor("#E4DCCF"), 10f)
+            val lp = LinearLayout.LayoutParams(dp(86), dp(42)).apply {
+                leftMargin = dp(8)
+            }
+            layoutParams = lp
+            setOnClickListener { pasteFromClipboard() }
+        }
+        btnRow.addView(pasteBtn)
         lapCard.addView(btnRow)
 
         connectionStatusText = TextView(this).apply {
@@ -505,38 +539,34 @@ class RovingBridgeActivity : AppCompatActivity() {
             Log.i(TAG, "Roving bridge worker started")
             while (isRunning.get()) {
                 try {
-                    val cam = UsbCameraHelper.activeInstance
-                    if (cam != null) {
-                        val isOpen = cam.isCameraOpen()
-                        if (!isOpen) {
-                            cam.ensureOpen()
-                        }
+                    val cam = getCameraHelper()
+                    val isOpen = cam.isCameraOpen()
+                    if (!isOpen) {
+                        cam.ensureOpen()
+                    }
 
-                        val connected = cam.isCameraOpen()
-                        val camName = if (connected) cam.cameraName() else "No DSLR Connected"
-                        val battery = if (connected) cam.cameraBattery() else -1
+                    val connected = cam.isCameraOpen()
+                    val camName = if (connected) cam.cameraName() else "No DSLR Connected"
+                    val battery = if (connected) cam.cameraBattery() else -1
 
-                        mainHandler.post {
-                            updateCameraStatus(connected, camName, battery)
-                        }
+                    mainHandler.post {
+                        updateCameraStatus(connected, camName, battery)
+                    }
 
-                        if (connected) {
-                            // Check for newly captured photo from physical shutter press
-                            val jpegBytes = cam.pollNewPhoto()
-                            if (jpegBytes != null && jpegBytes.isNotEmpty()) {
+                    if (connected) {
+                        // Check for newly captured photo from physical shutter press
+                        val jpegBytes = cam.pollNewPhoto()
+                        if (jpegBytes != null && jpegBytes.isNotEmpty()) {
+                            uploadExecutor.execute {
                                 handlePhotoCaptured(jpegBytes)
                             }
-                        }
-                    } else {
-                        mainHandler.post {
-                            updateCameraStatus(false, "Camera helper offline", -1)
                         }
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "Error in worker loop: ${e.message}")
                 }
 
-                try { Thread.sleep(300) } catch (_: InterruptedException) { break }
+                try { Thread.sleep(250) } catch (_: InterruptedException) { break }
             }
             Log.i(TAG, "Roving bridge worker stopped")
         }, "roving-bridge-worker").apply {
@@ -687,9 +717,23 @@ class RovingBridgeActivity : AppCompatActivity() {
         }, "test-connection").start()
     }
 
+    private fun pasteFromClipboard() {
+        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        val clip = cm?.primaryClip
+        if (clip != null && clip.itemCount > 0) {
+            val text = clip.getItemAt(0).text?.toString()?.trim() ?: ""
+            if (text.isNotEmpty()) {
+                laptopInput.setText(text)
+                testConnection()
+                return
+            }
+        }
+        Toast.makeText(this, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+    }
+
     private fun testShutterTrigger() {
-        val cam = UsbCameraHelper.activeInstance
-        if (cam == null || !cam.isCameraOpen()) {
+        val cam = getCameraHelper()
+        if (!cam.isCameraOpen()) {
             Toast.makeText(this, "DSLR is not connected", Toast.LENGTH_SHORT).show()
             return
         }
@@ -703,7 +747,9 @@ class RovingBridgeActivity : AppCompatActivity() {
                     triggerButton.isEnabled = true
                     triggerButton.text = "📸 Test Shutter"
                     if (bytes != null && bytes.isNotEmpty()) {
-                        handlePhotoCaptured(bytes)
+                        uploadExecutor.execute {
+                            handlePhotoCaptured(bytes)
+                        }
                         Toast.makeText(this, "Photo snapped & beaming to laptop!", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(this, "Shutter refused or no photo returned", Toast.LENGTH_SHORT).show()

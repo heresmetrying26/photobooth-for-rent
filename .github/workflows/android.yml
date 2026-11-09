@@ -95,6 +95,7 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          set -eo pipefail
           gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log || {
             echo "::error title=Gradle Build Error::$(tail -n 25 build.log | tr '\n' ' ')"
             exit 1

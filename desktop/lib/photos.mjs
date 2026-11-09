@@ -1301,6 +1301,14 @@ async function handleShare(req, res) {
   if (url.pathname === '/stats' || url.pathname === '/api/stats') {
     return send(res, 200, 'application/json; charset=utf-8', JSON.stringify({ ok: true, stats: getStats() }), { 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
   }
+  if (url.pathname === '/hello' || url.pathname === '/rove/hello') {
+    const cors = { 'access-control-allow-origin': '*' };
+    if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'GET,POST', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
+    return send(res, 200, 'application/json', JSON.stringify({ ok: true, app: 'photobooth4u', kind: 'laptop' }), cors);
+  }
+  if (url.pathname === '/photo' || url.pathname === '/rove/photo') {
+    return handleRovePhoto(req, res, url);
+  }
   const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited|photos|photo|hello)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);
   if (sm) return handleSend(req, res, url, sm);
   const om = /^\/o\/([A-Za-z0-9_-]{16,40})(?:\/(f|print)\/([^/]+))?\/?$/.exec(url.pathname);

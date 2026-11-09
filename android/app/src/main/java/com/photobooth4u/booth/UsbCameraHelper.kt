@@ -912,21 +912,7 @@ class UsbCameraHelper(private val ctx: Context) {
             Thread.sleep(100)
         }
         if (handles.isEmpty()) handles.add(SDRAM_HANDLE)                  // the photo in the camera's memory
-        var pick = handles[0]
-        if (handles.size > 1) {
-            // RAW + JPEG: take the JPEG
-            for (h in handles) {
-                try {
-                    val oi = opRead(0x1008, h)
-                    val b = oi.bytes
-                    if (oi.code == OK && b.size > 6 && le16(b, 4) == 0x3801) { pick = h; break }
-                } catch (e: CamErr) { throw e } catch (_: Exception) { }
-            }
-        }
         val cd = StringBuilder("handles " + handles.joinToString(",") { Integer.toHexString(it).uppercase() })
-        val img = downloadObject(pick, 0, cd)
-        log("Photo download: $cd")
-        if (img.size < 4) throw CamErr("CAPTURE", "The photo didn't come through from the camera ($cd).")
         val img = nikonDownloadHandles(handles)
         if (img == null || img.size < 4) throw CamErr("CAPTURE", "The photo didn't come through from the camera ($cd).")
         if (!(img[0] == 0xFF.toByte() && img[1] == 0xD8.toByte())) throw CamErr("CAPTURE", "The camera saved a RAW photo. Set Image quality to JPEG on the camera.")
@@ -1201,27 +1187,11 @@ class UsbCameraHelper(private val ctx: Context) {
         if (files.isEmpty())
             throw CamErr("FOCUS", "The camera didn't take a photo. It may not have focused: point it at something with detail, or set the lens to MF (manual focus). Also check there's an SD card in the camera and it isn't full or locked.")
         val cd = StringBuilder("files " + files.joinToString(",") { java.lang.Long.toHexString(it[0]).uppercase() + "/" + java.lang.Long.toHexString(it[2]).uppercase() })
-        // JPEG first, then anything else that isn't RAW (CRW / CR2 / CR3).
-        val order = ArrayList<LongArray>()
-        for (o in files) if (o[2] == 0x3801L) order.add(o)
-        for (o in files) if (o[2] != 0x3801L && o[2] != 0xB101L && o[2] != 0xB103L && o[2] != 0xB108L) order.add(o)
-        var img: ByteArray? = null
-        try {
-            for (o in order) {
-                val b = downloadObject(o[0].toInt(), o[3].toInt(), cd)
-                if (b.size > 4 && b[0] == 0xFF.toByte() && b[1] == 0xD8.toByte()) { img = b; break }
-            }
-        } finally {
-            // Photos waiting in the camera's memory: tell it we're done so it frees them.
-            for (o in files) if (o[1] == 0xC186L) { try { op(0x9117, o[0].toInt()) } catch (_: Exception) { } }
-        }
-        log("Photo download: $cd")
         val img = canonDownloadFiles(files)
         if (img == null) {
-            val order = files.filter { it[2] != 0xB101L && it[2] != 0xB103L && it[2] != 0xB108L }
-            if (order.isEmpty()) throw CamErr("CAPTURE", "The camera saved a RAW photo. Set Image quality to JPEG on the camera (L, M or S; RAW + JPEG also works).")
+            val nonRaw = files.filter { it[2] != 0xB101L && it[2] != 0xB103L && it[2] != 0xB108L }
+            if (nonRaw.isEmpty()) throw CamErr("CAPTURE", "The camera saved a RAW photo. Set Image quality to JPEG on the camera (L, M or S; RAW + JPEG also works).")
             throw CamErr("CAPTURE", "The photo didn't come through from the camera ($cd).")
-            throw CamErr("CAPTURE", "The photo didn't come through from the camera.")
         }
         log("Photo ${img.size / 1024} KB in ${now() - t0} ms")
         return img

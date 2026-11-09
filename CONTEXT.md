@@ -1,12 +1,12 @@
 # Session Context
 
-**Current Task**: Release Desktop v1.0.109 and Android v1.1.23 with camera performance optimizations.
+**Current Task**: Fix CI release steps for Desktop v1.0.109 and Android v1.1.23.
 
 **Key Decisions**:
-- Bumped Desktop app to v1.0.109 and Android tablet app to v1.1.23 (versionCode 125).
-- Bundled camera live view & capture performance optimizations from commit c24522b into release.
-- Added automated CI step to deploy built Android APK to Netlify CDN on tag push.
+- Fixed working-directory in android.yml for Netlify CDN deploy step.
+- Updated desktop package-lock.json to match v1.0.109 for Windows CI npm ci.
+- Deployed compiled v1.1.23 APK directly into public/downloads/ for Netlify CDN.
 
 **Next Steps**:
-- Push release tags desktop-v1.0.109 and android-v1.1.23 to trigger GitHub Actions builds.
-- Verify in-app updater on Android tablet and desktop apps.
+- Push fixes to main and update release tags.
+- Verify GitHub Actions workflow completions.

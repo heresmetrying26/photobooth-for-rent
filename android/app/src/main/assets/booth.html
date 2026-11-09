@@ -14112,12 +14112,13 @@
                 
                 <div class="fb-row" style="margin-top:10px;"><span class="lbl">Animation style</span>
                   <select id="gifMotionStyleSelect" class="pillify" aria-label="GIF animation style">
-                    <option value="multibox" selected>✨ Multi-Box Boomerang (Each box moves)</option>
+                    <option value="auto" selected>⚡ Auto (Smart Layout Match)</option>
+                    <option value="multibox">✨ Multi-Box Boomerang (Each box moves)</option>
                     <option value="sequential">🎬 Story Replay (Box 1 → 2 → 3 → 4)</option>
                     <option value="session">🎞️ Full Session (Single continuous clip)</option>
                   </select>
                 </div>
-                <p class="panel-hint" id="gifMotionStyleHint" style="margin:6px 0 0; color:var(--ink-dim);">Live Motion: Each box records its own motion before the shot, and all boxes animate together in a boomerang loop.</p>
+                <p class="panel-hint" id="gifMotionStyleHint" style="margin:6px 0 0; color:var(--ink-dim);">Auto Match: Automatically chooses the best motion style (Story Replay for strips, Multi-Box for grids).</p>
                 
                 <div class="fb-row" style="margin-top:10px;"><span class="lbl">Clip length</span>
                   <select id="gifClipSecSelect" class="pillify" aria-label="Motion clip length">
@@ -19643,9 +19644,23 @@
       var flipAutoPlaying = false;  // auto-flipping state
       var flipPlayTimer = null;     // auto-play interval
       var gifLayoutMode = 'follow';  // 'follow' | 'solo' | 'raw': what the GIF frames are placed in
-      var gifMotionStyle = 'multibox'; // 'multibox' (each box moves) | 'sequential' | 'session'
+      var gifMotionStyle = 'auto'; // 'auto' (smart layout match) | 'multibox' | 'sequential' | 'session'
       var gifClipSec = 1.8;          // seconds of motion before each shot (1.5, 1.8, 2.2)
       var gifLoopMode = 'boomerang'; // 'boomerang' (ping-pong) | 'forward'
+
+      function resolveGifMotionStyle(layoutKey) {
+        if (gifMotionStyle && gifMotionStyle !== 'auto') return gifMotionStyle;
+        var key = layoutKey || currentLayout || 'strip4';
+        var def = LAYOUT_DEFS[key] || {};
+        var lk = String(key).toLowerCase();
+        // Vertical strips and receipt-style strips match sequential Story Replay (Box 1 -> 2 -> 3 -> 4)
+        if (def.kind === 'strip' || lk.indexOf('strip') >= 0 || lk.indexOf('receipt') >= 0) {
+          return 'sequential';
+        }
+        // Grids, polaroid sheets, 2x2, hero, and multi-cut sheets match simultaneous Multi-Box Boomerang
+        return 'multibox';
+      }
+
       function refreshGifLayoutUI() {
         var sel = document.getElementById('gifLayoutSelect'), gh = document.getElementById('gifLayoutHint');
         if (sel) sel.value = gifLayoutMode;
@@ -19655,9 +19670,18 @@
 
         var mSel = document.getElementById('gifMotionStyleSelect'), mh = document.getElementById('gifMotionStyleHint');
         if (mSel) mSel.value = gifMotionStyle;
-        if (mh) mh.textContent = gifMotionStyle === 'multibox' ? 'Live Motion: Each box records its own motion before the shot, and all boxes animate together in a boomerang loop.'
-          : gifMotionStyle === 'sequential' ? 'Story Replay: Each box animates one by one in sequence (Box 1 → 2 → 3 → 4), then pauses on the completed photo strip.'
-          : 'Full Session: Single continuous clip recorded across the entire session.';
+        if (mh) {
+          var matched = resolveGifMotionStyle(currentLayout);
+          var matchedDesc = matched === 'sequential' ? 'Story Replay (Box 1 → 2 → 3 → 4)' : 'Multi-Box Boomerang (All boxes move)';
+          var curLayoutName = LAYOUT_DEFS[currentLayout] ? LAYOUT_DEFS[currentLayout].name : 'chosen layout';
+          mh.textContent = gifMotionStyle === 'auto'
+            ? '⚡ Auto Match: ' + curLayoutName + ' automatically uses ' + matchedDesc + '.'
+            : gifMotionStyle === 'multibox'
+              ? 'Live Motion: Each box records its own motion before the shot, and all boxes animate together in a boomerang loop.'
+              : gifMotionStyle === 'sequential'
+                ? 'Story Replay: Each box animates one by one in sequence (Box 1 → 2 → 3 → 4), then pauses on the completed photo strip.'
+                : 'Full Session: Single continuous clip recorded across the entire session.';
+        }
 
         var cSel = document.getElementById('gifClipSecSelect');
         if (cSel) cSel.value = String(gifClipSec);
@@ -19726,7 +19750,7 @@
         });
         var gms = document.getElementById('gifMotionStyleSelect');
         if (gms) gms.addEventListener('change', function () {
-          gifMotionStyle = (gms.value === 'sequential' || gms.value === 'session') ? gms.value : 'multibox';
+          gifMotionStyle = (gms.value === 'multibox' || gms.value === 'sequential' || gms.value === 'session') ? gms.value : 'auto';
           refreshGifLayoutUI();
           if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
         });
@@ -20001,7 +20025,8 @@
         return new Blob([gif.bytes()], { type: 'image/gif' });
       }
 
-      async function gifIntoLayoutMultiBox(key, n, framesObj) {
+      async function gifIntoLayoutMultiBox(key, n, framesObj, styleOverride) {
+        var motionStyle = styleOverride || resolveGifMotionStyle(key);
         var shotSeqs = [];
         for (var s = 0; s < n; s++) {
           var clip = shotMotionClips[s] || [];
@@ -20043,8 +20068,9 @@
         sx.imageSmoothingEnabled = true; sx.imageSmoothingQuality = 'high';
 
         var outFrames = [];
+        var totalDurationMs = 0;
 
-        if (gifMotionStyle === 'multibox') {
+        if (motionStyle === 'multibox') {
           var maxFrames = 1;
           for (var i = 0; i < n; i++) {
             if (shotSeqs[i].length > maxFrames) maxFrames = shotSeqs[i].length;
@@ -20085,7 +20111,8 @@
               });
             })(t);
           }
-        } else if (gifMotionStyle === 'sequential') {
+          totalDurationMs = outFrames.length * 90;
+        } else if (motionStyle === 'sequential') {
           for (var sTarget = 0; sTarget < n; sTarget++) {
             var seq = shotSeqs[sTarget] || [];
             var count = Math.max(1, seq.length);
@@ -20123,8 +20150,10 @@
               })(sTarget, t);
             }
           }
+          var animTimeMs = outFrames.length * 90;
+          var pauseHoldMs = 1000;
           outFrames.push({
-            time: outFrames.length * 90 + 900,
+            time: animTimeMs,
             make: async function () {
               for (var sIdx = 0; sIdx < n; sIdx++) {
                 var sc = slotCanvases[sIdx];
@@ -20141,13 +20170,14 @@
               return small;
             }
           });
+          totalDurationMs = animTimeMs + pauseHoldMs;
         }
 
         return {
           frames: outFrames,
           width: ow,
           height: oh,
-          durationMs: outFrames.length * 90,
+          durationMs: totalDurationMs,
           speed: 1
         };
       }
@@ -20161,10 +20191,11 @@
         if (!LAYOUT_DEFS[key]) return framesObj;
         var n = Math.max(1, shotsNeeded(key));
 
+        var effectiveStyle = resolveGifMotionStyle(key);
         var hasMulti = Array.isArray(shotMotionClips) && shotMotionClips.some(function (c) { return c && c.length > 0; });
-        if (hasMulti && (gifMotionStyle === 'multibox' || gifMotionStyle === 'sequential') && gifLayoutMode !== 'raw') {
+        if (hasMulti && (effectiveStyle === 'multibox' || effectiveStyle === 'sequential') && gifLayoutMode !== 'raw') {
           try {
-            var mbRes = await gifIntoLayoutMultiBox(key, n, framesObj);
+            var mbRes = await gifIntoLayoutMultiBox(key, n, framesObj, effectiveStyle);
             if (mbRes && mbRes.frames && mbRes.frames.length) return mbRes;
           } catch (mbErr) {
             console.error('Multi-clip GIF layout error, falling back to session recording:', mbErr);
@@ -24121,6 +24152,7 @@
         refreshPrintUI();
         if (typeof refreshDecorUI === 'function' && typeof overlaySizeHint !== 'undefined' && overlaySizeHint) refreshDecorUI();
         if (typeof frameListEl !== 'undefined' && frameListEl) refreshFrameUI();
+        if (typeof refreshGifLayoutUI === 'function') refreshGifLayoutUI();
       }
 
       var shotCrops = {};
@@ -40931,7 +40963,7 @@
           if (s.outputMode === 'flipbook') { outputMode = extraOn('flipbook') ? 'flipbook' : 'photo'; }
           else if (s.outputMode === 'gif' || s.outputMode === 'both' || s.outputMode === 'photo') { outputMode = isGifAllowed() ? s.outputMode : 'photo'; }
           if (s.gifLayout === 'solo' || s.gifLayout === 'follow' || s.gifLayout === 'raw') { gifLayoutMode = s.gifLayout; }
-          if (s.gifMotionStyle === 'multibox' || s.gifMotionStyle === 'sequential' || s.gifMotionStyle === 'session') { gifMotionStyle = s.gifMotionStyle; }
+          if (s.gifMotionStyle === 'auto' || s.gifMotionStyle === 'multibox' || s.gifMotionStyle === 'sequential' || s.gifMotionStyle === 'session') { gifMotionStyle = s.gifMotionStyle; }
           if ([1.5, 1.8, 2.2].indexOf(Number(s.gifClipSec)) >= 0) { gifClipSec = Number(s.gifClipSec); }
           if (s.gifLoopMode === 'boomerang' || s.gifLoopMode === 'forward') { gifLoopMode = s.gifLoopMode; }
           refreshGifLayoutUI();

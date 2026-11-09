@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.108', date: '2026-11-09' },
   { version: '1.0.107', date: '2026-11-08' },
   { version: '1.0.106', date: '2026-11-08' },
   { version: '1.0.105', date: '2026-11-08' },
@@ -179,6 +180,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-09', title: 'Auto Smart Match for Live Motion GIFs & seamless story replay pause', for: ['website', 'app'], app: '1.0.108',
+    items: [
+      '⚡ Auto Smart Match: booth automatically pairs chosen layouts with their optimal motion style (vertical strips automatically use Story Replay Box 1 → 2 → 3 → 4, while 2×2 grids and multi-cut sheets use simultaneous Multi-Box Boomerang).',
+      'Seamless Story Replay pause: added calibrated 1.0-second hold on the completed photo strip before repeating, allowing guests to admire the finished print.',
+      'Dynamic operator feedback: Setup → Extras dynamically explains the auto-matched motion style whenever a layout is chosen.',
+      'Full cross-platform synchronization across Desktop, Android, iOS, and Web.'
+    ]
+  },
   {
     date: '2026-11-08', title: 'Creative Live Motion GIFs, Radiant K-Film filter & Gallery enhancements', for: ['website', 'app'], app: '1.0.107',
     items: [

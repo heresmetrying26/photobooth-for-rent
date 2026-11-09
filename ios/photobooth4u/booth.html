@@ -14475,6 +14475,7 @@
               <button type="button" class="action-btn primary" id="appUpdGo"
                 style="width:auto; margin:0; display:none;"></button>
             </div>
+            <label class="switch-row" id="appUpdAutoPopupRow" style="display:none; margin-top:8px;"><span>Pop up automatically when an update is available</span><input type="checkbox" id="appUpdAutoPopup"></label>
             <p class="panel-hint" style="margin:6px 0 0;">Needs the internet. Update before the event, not during a session. Your activation, designs and photos stay.</p>
           </div>
         </div>
@@ -16691,7 +16692,7 @@
           id="deskClose">Close</button></div>
       <div class="desk-phone" id="deskPhone" hidden>
         <div class="qr" id="deskPhoneQr"></div>
-        <div><b>📱 Photos from a phone</b><br><span id="deskPhoneNote">One moment…</span>
+        <div><b>📱 Roving DSLR / Phone Live Streaming</b><br><span id="deskPhoneNote">One moment…</span>
           <div class="lnk" id="deskPhoneLink"></div><button type="button" class="desk-btn" id="deskPhoneCopy">Copy
             link</button>
         </div>
@@ -31725,7 +31726,7 @@
         if (roveLaptop()) {
           note.textContent = 'One moment…';
           PBX.roveInfo().then(function (info) {
-            if (info && info.sendUrl) show(info.sendUrl, 'Scan with the Android app (in Roving DSLR Bridge mode) or phone. Every shot taken on the DSLR or phone appears here instantly.');
+            if (info && info.sendUrl) show(info.sendUrl, 'Scan with the Roving DSLR Bridge Android app (tap 📷 Scan QR Code) or phone camera. Every shot taken on the DSLR streams directly into this queue.');
             else note.textContent = NO_LAN_TEXT;
           }).catch(function () { note.textContent = 'Could not get the link. Try again.'; });
           return;
@@ -46337,6 +46338,14 @@
         if (!box) return;
         box.hidden = false;
         var txt = document.getElementById('appUpdText'), chk = document.getElementById('appUpdCheck'), go = document.getElementById('appUpdGo');
+        var autoRow = document.getElementById('appUpdAutoPopupRow'), autoChk = document.getElementById('appUpdAutoPopup');
+        if (autoRow && autoChk && typeof bridge.isAutoPopup === 'function' && typeof bridge.setAutoPopup === 'function') {
+          autoRow.style.display = '';
+          try { autoChk.checked = !!bridge.isAutoPopup(); } catch (e) { autoChk.checked = false; }
+          autoChk.addEventListener('change', function () {
+            try { bridge.setAutoPopup(autoChk.checked); } catch (e) { }
+          });
+        }
         var cur = ''; try { cur = String(bridge.version() || ''); } catch (e) { }
         var base = function () { return 'This tablet has version ' + (cur || '?') + '.'; };
         var ready = function () { chk.disabled = false; chk.textContent = 'Check for updates'; };

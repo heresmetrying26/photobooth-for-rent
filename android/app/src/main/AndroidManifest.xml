@@ -120,12 +120,7 @@
             android:icon="@mipmap/ic_launcher"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="unspecified"
-            android:windowSoftInputMode="adjustResize">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- Foreground service for 127.0.0.1:17321 Print & Camera Helper -->
         <service

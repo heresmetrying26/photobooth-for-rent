@@ -1,9 +1,11 @@
 package com.photobooth4u.booth
 
 import android.annotation.SuppressLint
+import android.Manifest
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -31,7 +33,11 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.URL
@@ -80,6 +86,43 @@ class RovingBridgeActivity : AppCompatActivity() {
     private lateinit var pocketLockOverlay: FrameLayout
 
     private var lastPhotoBitmap: Bitmap? = null
+
+    private val qrScanLauncher = registerForActivityResult(ScanContract()) { result ->
+        val raw = result.contents?.trim()
+        if (!raw.isNullOrEmpty()) {
+            targetUrl = cleanUrl(raw)
+            laptopInput.setText(targetUrl)
+            savePrefs()
+            testConnection()
+        }
+    }
+
+    private val cameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            launchQrScanner()
+        } else {
+            Toast.makeText(this, "Camera permission needed to scan the QR code", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun startQrScanner() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            launchQrScanner()
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    private fun launchQrScanner() {
+        val options = ScanOptions().apply {
+            setPrompt("Point camera at Photographer Desk QR on your laptop")
+            setBeepEnabled(true)
+            setOrientationLocked(false)
+            setBarcodeImageEnabled(false)
+            setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+        }
+        qrScanLauncher.launch(options)
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -140,7 +183,9 @@ class RovingBridgeActivity : AppCompatActivity() {
     }
 
     private fun cleanUrl(raw: String): String {
-        var u = raw.trim().replace(Regex("/+photos$"), "").replace(Regex("/+$"), "")
+        var u = raw.trim()
+            .replace(Regex("/+(?:photos|photo)/?$"), "")
+            .replace(Regex("/+$"), "")
         if (u.isNotEmpty() && !u.startsWith("http://") && !u.startsWith("https://")) {
             u = "http://$u"
         }
@@ -304,7 +349,7 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
 
         val lapLabel = TextView(this).apply {
-            text = "🎯 Target Laptop URL"
+            text = "🎯 Base Station Connection"
             textSize = 14f
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(Color.parseColor("#1C1A1E"))
@@ -312,7 +357,7 @@ class RovingBridgeActivity : AppCompatActivity() {
         lapCard.addView(lapLabel)
 
         val lapHint = TextView(this).apply {
-            text = "Enter the send link from the Photographer Desk on your laptop:"
+            text = "Point camera at the Photographer Desk QR on your laptop to connect in 1 second:"
             textSize = 12f
             setTextColor(Color.parseColor("#8E8884"))
             val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -321,15 +366,40 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
         lapCard.addView(lapHint)
 
+        // Instant Camera QR Code Scanner button
+        val scanQrBtn = Button(this).apply {
+            text = "📷 Scan QR Code on Laptop"
+            textSize = 14f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            background = makeCard(Color.parseColor("#C93D27"), 12f)
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48))
+            lp.topMargin = dp(10)
+            layoutParams = lp
+            setOnClickListener { startQrScanner() }
+        }
+        lapCard.addView(scanQrBtn)
+
+        val manualDivider = TextView(this).apply {
+            text = "— or enter laptop address manually —"
+            textSize = 11f
+            setTextColor(Color.parseColor("#A39DA6"))
+            gravity = Gravity.CENTER_HORIZONTAL
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lp.topMargin = dp(10)
+            layoutParams = lp
+        }
+        lapCard.addView(manualDivider)
+
         laptopInput = EditText(this).apply {
-            hint = "http://192.168.1.100:47777/send/..."
+            hint = "http://192.168.1.100:49152/send/..."
             setText(targetUrl)
             textSize = 13f
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             setPadding(dp(12), dp(10), dp(12), dp(10))
             background = makeCard(Color.parseColor("#F5F1EA"), 8f)
             val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            lp.topMargin = dp(10)
+            lp.topMargin = dp(6)
             layoutParams = lp
         }
         lapCard.addView(laptopInput)
@@ -338,7 +408,7 @@ class RovingBridgeActivity : AppCompatActivity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            lp.topMargin = dp(10)
+            lp.topMargin = dp(8)
             layoutParams = lp
         }
 

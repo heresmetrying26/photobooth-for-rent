@@ -115,6 +115,31 @@
     </div>
   </section>
 
+  <section id="roving-bridge">
+    <div class="section-head"><h2>Roving DSLR Bridge</h2><p>Dedicated companion app for roaming photographers with a DSLR or mirrorless camera.</p></div>
+    <div class="helper" style="background:#fef7f6;border-color:#f8dcd8;">
+      <div>
+        <span class="tag" id="rovingTag" style="background:#fce8e6;color:var(--red);">Standalone Companion &middot; version 1.0.0</span>
+        <h3>Roving DSLR Bridge for Android phones</h3>
+        <p>Wire your Android phone to your Canon EOS, Nikon, or Sony Alpha DSLR via a USB OTG cable. Every shot taken with your camera’s physical shutter streams instantly to the laptop base station’s Photographer Desk over local Wi-Fi.</p>
+        <p><b>1-Second Instant QR Pairing:</b> Tap <b>📷 Scan QR Code</b> in the app and point your phone at the Photographer Desk screen on your laptop. No typing or link copying needed.</p>
+        <p><b>No booth license needed on the phone:</b> This is a dedicated utility app that installs independently beside the photobooth kiosk app. It requires zero license activation codes, no webview, and features Pocket Lock to prevent accidental touches while roaming.</p>
+      </div>
+      <a class="download" id="rovingApk" style="background:var(--red);" href="https://github.com/heresmetrying26/photobooth-for-rent/releases/download/roving-v1.0.0/roving-dslr-bridge-android.apk">Download APK</a>
+    </div>
+    <div class="install">
+      <div class="callout">
+        <b>Quick Setup</b>
+        <p>1. Open Photographer Desk on the laptop (base station).<br>2. Open Roving DSLR Bridge on your Android phone and tap <b>📷 Scan QR Code</b>.<br>3. Point phone at the laptop screen. When it flashes green, connect your DSLR via USB and shoot away!</p>
+      </div>
+      <div class="callout">
+        <b>Installing on Android</b>
+        <p>Download the APK on your phone, tap it in your notifications or Files app, and choose <b>Install</b>. It installs as a separate app labeled <b>Roving DSLR Bridge</b>.</p>
+        <p><a href="/photobooth4u-roving-dslr-guide.pdf" target="_blank" style="color:var(--red);font-weight:800;">Download 4-page Roving DSLR PDF Guide →</a></p>
+      </div>
+    </div>
+  </section>
+
   <section id="guides">
     <div class="section-head"><h2>Guides &amp; manuals</h2><p>Printable PDF references and step-by-step setup walkthroughs.</p></div>
     <div class="platforms" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));">
@@ -203,13 +228,21 @@
       });
     }
     fetch('/api/updates').then(r => r.json()).then(j => { if(j && j.app && j.app.version) applyVersion(j.app.version); if(j) applyAndroid(j.android); }).catch(() => {});
-    // The Rush ID Station app has its own releases (tags rushid-v*), so this finds the newest one. The link above works if this fails.
+    // Standalone companion apps have their own releases (tags rushid-v*, roving-v*)
     fetch('https://api.github.com/repos/heresmetrying26/photobooth-for-rent/releases?per_page=30').then(r => r.json()).then(function(rs){
-      const r = (Array.isArray(rs) ? rs : []).filter(function(x){ return /^rushid-v/.test(x.tag_name) && !x.draft; })[0];
+      const rList = Array.isArray(rs) ? rs : [];
+      const r = rList.filter(function(x){ return /^rushid-v/.test(x.tag_name) && !x.draft; })[0];
       const a = r && (r.assets || []).filter(function(x){ return x.name === 'rush-id-station-android.apk'; })[0];
-      if(!a) return;
-      document.getElementById('rushApk').href = a.browser_download_url;
-      const t = document.getElementById('rushTag'); if(t) t.innerHTML = t.innerHTML.replace(/\d+\.\d+\.\d+/, r.tag_name.replace(/^rushid-v/, ''));
+      if(a){
+        document.getElementById('rushApk').href = a.browser_download_url;
+        const t = document.getElementById('rushTag'); if(t) t.innerHTML = t.innerHTML.replace(/\d+\.\d+\.\d+/, r.tag_name.replace(/^rushid-v/, ''));
+      }
+      const rv = rList.filter(function(x){ return /^roving-v/.test(x.tag_name) && !x.draft; })[0];
+      const ra = rv && (rv.assets || []).filter(function(x){ return x.name === 'roving-dslr-bridge-android.apk'; })[0];
+      if(ra){
+        const el = document.getElementById('rovingApk'); if(el) el.href = ra.browser_download_url;
+        const rt = document.getElementById('rovingTag'); if(rt) rt.innerHTML = rt.innerHTML.replace(/\d+\.\d+\.\d+/, rv.tag_name.replace(/^roving-v/, ''));
+      }
     }).catch(() => {});
     if(isIPad){
       hero.href = "/";

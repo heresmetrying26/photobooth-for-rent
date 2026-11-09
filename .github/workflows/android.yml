@@ -97,7 +97,8 @@ jobs:
         run: |
           set -eo pipefail
           gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log || {
-            echo "::error title=Gradle Build Error::$(tail -n 25 build.log | tr '\n' ' ')"
+            errs=$(grep -E '(e: .*|error: .*|FAILURE: .*)' build.log | head -n 10 | tr '\n' ' ')
+            echo "::error title=Gradle Build Error::${errs:-$(tail -n 30 build.log | tr '\n' ' ')}"
             exit 1
           }
       - name: Stage APK for release

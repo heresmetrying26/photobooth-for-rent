@@ -13924,20 +13924,20 @@
           </select>
           <p class="panel-hint" id="cameraHint">Switch cameras any time before starting.</p>
           <div id="webcamResBox" style="display:none; margin-top:8px;">
-            <p class="panel-label" style="margin-top:6px;">Camera preview resolution</p>
+            <p class="panel-label" style="margin-top:6px;">Live viewfinder resolution</p>
             <select class="cam-select" id="webcamPreviewRes">
-              <option value="auto">Auto (smoothest 30fps, 720p on tablet)</option>
-              <option value="max">Max (camera's full resolution)</option>
+              <option value="auto">Full / Max resolution (Default · crispest live view)</option>
+              <option value="720">Downsize viewfinder: 720p (smoother preview if tablet lags)</option>
+              <option value="480">Downsize viewfinder: 480p (smoothest preview)</option>
+              <option value="1080">1080p (Full HD)</option>
+              <option value="max">Max (camera sensor maximum / 4K)</option>
               <option value="yuyv">Max YUYV (biggest uncompressed size, lower fps)</option>
-              <option value="1080">1080p</option>
-              <option value="720">720p (recommended for smooth live view)</option>
-              <option value="480">480p (smoothest, GIF / boomerang)</option>
             </select>
-            <p class="panel-hint" style="margin-top:4px;">Need one exact size? Open the list and pick one under "Exact size (forced)". The booth then uses only that size and shows an error instead of falling back to a smaller one. If the webcam resets, use a powered USB hub.</p>
+            <p class="panel-hint" style="margin-top:4px;">Downsizing only affects the live viewfinder to keep preview smooth and lag-free. Captured photos and prints always save at full maximum camera resolution.</p>
             <p class="panel-label" style="margin-top:6px;">Camera photo resolution</p>
             <select class="cam-select" id="webcamPhotoRes">
-              <option value="preview">Same as preview (instant)</option>
-              <option value="max">Max resolution (switches at capture, ~1–2 s)</option>
+              <option value="max">Full camera resolution (Recommended · sharpest prints)</option>
+              <option value="preview">Fast capture from viewfinder (instant)</option>
             </select>
             <p class="panel-hint" id="webcamResNote"></p>
           </div>
@@ -20463,7 +20463,10 @@
       const webcamRes = (function () {
         let v = null; try { v = JSON.parse(localStorage.getItem(WEBCAM_RES_KEY) || 'null'); } catch (e) { }
         v = v || {};
-        return { preview: (['auto', 'max', 'yuyv', '1080', '720', '480'].includes(v.preview) || /^x:\d+:\d+:\d+:\d+$/.test(String(v.preview))) ? v.preview : 'auto', photo: v.photo === 'max' ? 'max' : 'preview' };
+        return {
+          preview: (['auto', 'max', 'yuyv', '1080', '720', '480'].includes(v.preview) || /^x:\d+:\d+:\d+:\d+$/.test(String(v.preview))) ? v.preview : 'auto',
+          photo: v.photo === 'preview' ? 'preview' : 'max'
+        };
       })();
       function saveWebcamRes() { try { localStorage.setItem(WEBCAM_RES_KEY, JSON.stringify(webcamRes)); } catch (e) { } }
       // getUserMedia size for any webcam or built-in camera
@@ -20475,8 +20478,7 @@
         if (p === '1080') return { width: { ideal: 1920 }, height: { ideal: 1080 } };
         if (p === '720') return { width: { ideal: 1280 }, height: { ideal: 720 } };
         if (p === '480') return { width: { ideal: 640 }, height: { ideal: 480 } };
-        const isMobileOrTablet = IS_ANDROID_APP || /Android|iPad|iPhone/i.test(navigator.userAgent || '');
-        if (isMobileOrTablet) return { width: { ideal: 1280 }, height: { ideal: 720 } };
+        // Default ('auto'): Full / Max camera resolution (1080p+)
         return { width: { ideal: 1920 }, height: { ideal: 1080 } };
       }
       // "Exact size" menu: the sizes the app reported for the webcam (kept in this browser so the menu is there before the webcam opens).
@@ -20677,10 +20679,15 @@
         const info = window.__pbUvcInfo;
         const vw = (typeof video !== 'undefined' && video && video.videoWidth) ? video.videoWidth : 0;
         const vh = (typeof video !== 'undefined' && video && video.videoHeight) ? video.videoHeight : 0;
-        const now = vw ? vw + '\u00d7' + vh : '';
-        const softWarn = (vh > 0 && vh <= 480 && webcamRes.photo !== 'max') ? '480p is smooth for GIFs/boomerangs, but soft for 4R prints \u2014 pick 720p+ or Max photo for sharper prints. ' : '';
-        const tabletHint = IS_ANDROID_APP ? '720p is recommended for smooth, lag-free live view on tablets.' : '';
-        if (note) note.textContent = ((now ? 'Now: ' + now + '. ' : '') + (info && info.max ? 'Camera max: ' + info.max + '. ' : '') + softWarn + tabletHint).trim();
+        const now = vw ? vw + ' × ' + vh : '';
+        const isDownsized = webcamRes.preview === '720' || webcamRes.preview === '480' || (vh > 0 && vh <= 720 && webcamRes.preview !== 'auto' && webcamRes.preview !== '1080' && webcamRes.preview !== 'max');
+        let noteText = (now ? 'Viewfinder: ' + now + '. ' : '') + (info && info.max ? 'Camera max: ' + info.max + '. ' : '');
+        if (isDownsized) {
+          noteText += 'Viewfinder downsized for smoother performance — photos save at full camera resolution.';
+        } else {
+          noteText += 'Viewfinder running at full resolution. If live view lags on slower tablets, select "Downsize viewfinder: 720p".';
+        }
+        if (note) note.textContent = noteText.trim();
       }
       if (webcamResBox) {
         webcamPreviewRes.addEventListener('change', () => {
@@ -22393,7 +22400,7 @@
       }
       async function captureShot(index) {
         captureFrame(index);
-        if (webcamRes.photo === 'max' && currentDeviceId !== USB_CAM_ID && usbWebcamSelected()) return webcamMaxShot(index);
+        if (webcamRes.photo === 'max' && currentDeviceId !== USB_CAM_ID && (usbWebcamSelected() || typeof ImageCapture !== 'undefined' || currentDeviceId === UVC_ID)) return webcamMaxShot(index);
         if (!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
         const shots = shotCanvases;
         try {
@@ -22556,7 +22563,7 @@
         await wait(180);
         flashOverlay.classList.remove('flash-active');
         if (lit) setTimeout(screenFlashOff, 120);
-        if ((usbCam.active && currentDeviceId === USB_CAM_ID) || (webcamRes.photo === 'max' && currentDeviceId !== USB_CAM_ID && usbWebcamSelected())) {
+        if ((usbCam.active && currentDeviceId === USB_CAM_ID) || (webcamRes.photo === 'max' && currentDeviceId !== USB_CAM_ID && (usbWebcamSelected() || typeof ImageCapture !== 'undefined' || currentDeviceId === UVC_ID))) {
           popNum('Saving', true);
           guestCall('tick', 'Saving', true, 0, cdShot.textContent);
         }

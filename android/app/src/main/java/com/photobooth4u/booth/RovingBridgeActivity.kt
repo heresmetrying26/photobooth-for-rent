@@ -206,7 +206,7 @@ class RovingBridgeActivity : AppCompatActivity() {
             text = "📖 Guide"
             textSize = 12f
             setTextColor(Color.parseColor("#C93D27"))
-            typeface = Typeface.DEFAULT_BOLD
+            setTypeface(typeface, Typeface.BOLD)
             background = makeCard(Color.parseColor("#FCE8E6"), 16f)
             val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(38))
             lp.rightMargin = dp(8)

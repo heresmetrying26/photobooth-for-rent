@@ -452,6 +452,26 @@ class MainActivity : AppCompatActivity() {
         note.layoutParams = np
         container.addView(note)
 
+        val roveBtn = Button(this).apply {
+            text = "📷 Roving DSLR Bridge"
+            textSize = 13f
+            setTextColor(Color.parseColor("#2EA66B"))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = px(10).toFloat()
+                setColor(Color.parseColor("#EAF7EF"))
+                setStroke(px(1), Color.parseColor("#2EA66B"))
+            }
+            val rp = LinearLayout.LayoutParams(px(240), px(44)).apply {
+                topMargin = px(18)
+            }
+            layoutParams = rp
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, RovingBridgeActivity::class.java))
+            }
+        }
+        container.addView(roveBtn)
+
         return container
     }
 

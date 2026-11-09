@@ -11,8 +11,8 @@ android {
         applicationId "com.photobooth4u.booth"
         minSdk 24
         targetSdk 34
-        versionCode 125
-        versionName "1.1.23"
+        versionCode 126
+        versionName "1.1.24"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

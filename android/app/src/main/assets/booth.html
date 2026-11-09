@@ -16635,6 +16635,7 @@
           class="desk-btn" id="deskWatchBtn">Choose folder</button></div>
       <div class="desk-watch" id="deskSoloRow"><label><input type="checkbox" id="deskSolo"> One photo per print (Solo
           layout, even when the event uses a strip)</label></div>
+      <div class="desk-watch" id="deskQueueInfoRow" style="margin-top:4px; font-size:12.5px; color:#6B666C;"><span>📥 Incoming roving DSLR photos land in this queue for review before printing.</span></div>
       <div class="desk-hint" id="deskHint"></div>
       <div class="desk-grid" id="deskGrid"></div>
       <div class="desk-foot"><button type="button" class="desk-btn" id="deskClear">Clear list</button><span
@@ -31559,7 +31560,11 @@
       // A photo a phone sent goes into the Photographer desk's list, like one from the memory card.
       function roveArrive(blob, name) {
         deskAdd(blob, name, true);
-        if (deskOverlay.hidden) { roveUnseen++; deskFab.dataset.n = String(roveUnseen); }
+        if (deskOverlay.hidden) {
+          roveUnseen++;
+          deskFab.dataset.n = String(roveUnseen);
+          showToast('📷 Roving photo queued in Photographer desk (' + roveUnseen + ' waiting)', 3000);
+        }
       }
       async function rovePollLaptop() {
         var list = await PBX.roveScan();
@@ -31614,7 +31619,7 @@
         if (roveLaptop()) {
           note.textContent = 'One moment…';
           PBX.roveInfo().then(function (info) {
-            if (info && info.sendUrl) show(info.sendUrl, 'The photographer joins this device’s Wi-Fi, scans this code, then takes or chooses photos. Each one appears in the list below by itself.');
+            if (info && info.sendUrl) show(info.sendUrl, 'Scan with the Android app (in Roving DSLR Bridge mode) or phone. Every shot taken on the DSLR or phone appears here instantly.');
             else note.textContent = NO_LAN_TEXT;
           }).catch(function () { note.textContent = 'Could not get the link. Try again.'; });
           return;

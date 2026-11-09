@@ -17,6 +17,7 @@
 
     <!-- Screen keep-awake for Kiosk / Tablet operation -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- Background helper service on 127.0.0.1:17321 for mobile Chrome & Web Booth -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -109,6 +110,15 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity-alias>
+
+        <!-- Roving DSLR Bridge Activity: Connects DSLR via USB and streams to Desktop Booth -->
+        <activity
+            android:name=".RovingBridgeActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- Foreground service for 127.0.0.1:17321 Print & Camera Helper -->
         <service

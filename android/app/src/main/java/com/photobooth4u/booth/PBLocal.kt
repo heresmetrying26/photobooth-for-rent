@@ -829,4 +829,17 @@ class PBLocal(private val ctx: Context) {
         }
         return pickLanAddress(found)
     }
+
+    /** Opens the dedicated Roving DSLR Bridge activity */
+    @JavascriptInterface
+    fun openRoveBridge() {
+        try {
+            val i = android.content.Intent(ctx, RovingBridgeActivity::class.java).apply {
+                flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            ctx.startActivity(i)
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not open RovingBridgeActivity", e)
+        }
+    }
 }

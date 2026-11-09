@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.110', date: '2026-11-09' },
   { version: '1.0.109', date: '2026-11-09' },
   { version: '1.0.108', date: '2026-11-09' },
   { version: '1.0.107', date: '2026-11-08' },
@@ -181,6 +182,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-09', title: 'Roving DSLR Bridge: Wired DSLR to Android phone streaming wirelessly to Laptop booth', for: ['website', 'app'], app: '1.0.110',
+    items: [
+      '📷 Roving DSLR Bridge on Android: connect any Canon, Nikon, or Sony DSLR via USB OTG to an Android phone in your pocket and stream photos wirelessly to your laptop booth in real time.',
+      'Physical Shutter Detection: UsbCameraHelper automatically detects when the photographer presses the shutter button on the camera body and downloads the JPEG in ~0.5s.',
+      'Pocket Lock Mode & Haptic Feedback: dim screen to save battery and lock touches while keeping the camera shutter live; vibrates on successful photo delivery.',
+      'Photographer Desk Queue: incoming roving photos queue automatically in the Photographer Desk section at the base station for review, selection, and on-demand printing with event frames.',
+      'Zero-license Transmitter: Android activation gate includes a direct "📷 Roving DSLR Bridge" launcher so any spare Android phone can act as a wireless bridge without burning an extra rental code.'
+    ]
+  },
   {
     date: '2026-11-09', title: 'High-speed camera live view & capture pipeline performance', for: ['website', 'app'], app: '1.0.109',
     items: [

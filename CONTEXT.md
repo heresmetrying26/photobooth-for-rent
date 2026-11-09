@@ -1,12 +1,12 @@
 # Session Context
 
-**Current Task**: Disable automatic Android update popups; allow manual checks in Step 6 Share.
+**Current Task**: Fix Android tablet gallery loading hang by routing local gallery requests via loopback.
 
 **Key Decisions**:
-- Disabled automatic Android update popup dialogs by default via `pref_auto_update_popup`.
-- Kept in-app manual update checks in Step 6 Share with an opt-in toggle switch.
-- Supported loopback gallery navigation and tagged release `android-v1.1.27`.
+- Intercepted local share gallery requests in `MainActivity.kt` to load directly via `127.0.0.1` inside WebView.
+- Added `localBase()` loopback endpoint to `PBLocal.kt` and supported base64url slugs in `LocalShareServer.kt`.
+- Added request timeout handling and "← Back to booth" button in `gallery.html` for kiosk workflow.
 
 **Next Steps**:
 - Push commits and tag `android-v1.1.27` to build APK on GitHub Actions.
-- Test manual update check in Step 6 Share on Android tablet.
+- Test "Open gallery" on Android tablet in offline mode and on Wi-Fi.

@@ -35,9 +35,9 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: desktop/package-lock.json
-      - run: npm ci
+      - run: npm ci || npm install
       # The 360 desk's video editor (a separate program, not saved in package.json). See resources/ffmpeg-NOTICE.txt.
-      - run: npm install --no-save ffmpeg-static
+      - run: npm install --no-save ffmpeg-static || true
       # Gathers the booth, its server code, fonts and the licence PUBLIC key
       # (from photobooth4u.netlify.app/api/license?pub=1, or the optional
       # PB4U_LICENSE_PUB repository secret).

@@ -410,7 +410,7 @@
         <ul class="clean-list" style="font-size:10px;">
           <li><b>1. DSLR / Mirrorless Body:</b> Canon EOS (Rebel, 60D, 70D, 80D, 5D, R-series), Nikon (D3000, D5000, D7000, Z-series), or Sony Alpha (A6000, A7-series in PC Remote).</li>
           <li><b>2. USB OTG Cable or Adapter:</b> USB-C to Camera Mini-USB/Micro-USB or USB-C. Ensure the <i>Host/OTG</i> side plugs into the Android phone.</li>
-          <li><b>3. Android Phone (Transmitter):</b> Any phone running Android 8.0 or newer with USB OTG. <b>Zero license required</b>: operates free from the app activation screen!</li>
+          <li><b>3. Android Phone (Transmitter):</b> Any phone running Android 7.0 or newer with USB OTG. Free standalone <b>Roving DSLR Bridge</b> app (zero license fee, no booth code needed).</li>
           <li><b>4. Laptop Base Station:</b> Windows 10/11 or macOS running photobooth4u (v1.0.110+).</li>
           <li><b>5. Venue Wi-Fi or Pocket Router:</b> 5GHz Wi-Fi router or the laptop's built-in Mobile Hotspot. <b>100% offline</b>: no internet connection required.</li>
         </ul>
@@ -500,27 +500,28 @@
     <div class="grid-2">
       <!-- STEP 1 & 2 -->
       <div class="card">
-        <h4 class="card-title"><span class="step-num">1</span> Launch the Free Roving Bridge</h4>
-        <p style="margin:0 0 6px;">Install the photobooth4u Android app (v1.1.24+) on your phone. You <b>do not</b> need to enter a rental code:</p>
+        <h4 class="card-title"><span class="step-num">1</span> Install &amp; Launch Standalone Bridge</h4>
+        <p style="margin:0 0 6px;">Install the dedicated <b>Roving DSLR Bridge</b> app on the photographer's Android phone:</p>
         <ul class="clean-list" style="font-size:10px;">
-          <li>Open the app on the phone.</li>
-          <li>On the initial activation screen, look below the license code box.</li>
-          <li>Tap the green button: <b>"📷 Roving DSLR Bridge"</b>.</li>
-          <li>The dedicated bridge transmitter interface opens instantly.</li>
+          <li><b>Scan &amp; Install:</b> Scan the download QR code on the laptop Downloads page (<code>/downloads/#roving-bridge</code>) or download <code>roving-dslr-bridge-android.apk</code>.</li>
+          <li>Tap the downloaded APK on the phone and choose <b>Install</b>.</li>
+          <li>Open the app: tap <b>"📷 Roving DSLR Bridge"</b> on your home screen or app drawer.</li>
+          <li>Opens directly to the bridge transmitter—<b>no rental code, no kiosk lock, no license fees!</b></li>
         </ul>
         <div class="callout green" style="margin:6px 0 0;font-size:9.5px;">
-          <b>Zero extra license fee:</b> Any spare Android phone acts as an unlimited transmitter.
+          <b>Zero extra license fee:</b> Dedicated standalone app installs cleanly beside any other apps.
         </div>
       </div>
 
       <div class="card">
-        <h4 class="card-title"><span class="step-num">2</span> Connect to Laptop Base Station</h4>
-        <p style="margin:0 0 6px;">Connect your phone to the base station laptop via the local Wi-Fi network:</p>
+        <h4 class="card-title"><span class="step-num">2</span> Instant 1-Second Camera QR Pairing</h4>
+        <p style="margin:0 0 6px;">Connect your phone to the base station laptop via local Wi-Fi with zero typing:</p>
         <ul class="clean-list" style="font-size:10px;">
-          <li>Ensure the phone is on the same Wi-Fi as the laptop.</li>
-          <li><b>Option A (1-Tap Paste):</b> Copy the send URL from the laptop's Photographer Desk, open the bridge app, and tap <b>"📋 Paste"</b>.</li>
-          <li><b>Option B (Type IP):</b> Enter the laptop IP and port (e.g. <code>http://192.168.1.105:47777</code>).</li>
-          <li>Tap <b>"Save &amp; Test Connection"</b>. A green toast confirms: <code>✅ Connected! Laptop ready.</code></li>
+          <li>Ensure the phone is on the same Wi-Fi or hotspot as the laptop.</li>
+          <li>On the laptop, open <b>Photographer Desk</b> (the pairing QR appears on screen).</li>
+          <li>In the phone app, tap the red button: <b>"📷 Scan QR Code on Laptop"</b>.</li>
+          <li>Point phone camera at the laptop screen. It auto-configures, tests the connection, and flashes: <code>✅ Connected! Base station ready.</code></li>
+          <li><i>(Optional manual entry: paste or type the URL and tap "Save &amp; Test Connection").</i></li>
         </ul>
       </div>
     </div>
@@ -532,7 +533,7 @@
         <p style="margin:0 0 6px;">Connect the USB OTG cable from the phone's charging port to the camera's digital USB port:</p>
         <ul class="clean-list" style="font-size:10px;">
           <li>Turn on your camera body.</li>
-          <li>If Android shows a popup asking <i>"Allow photobooth4u to access USB device?"</i>, check <b>"Always allow"</b> and tap <b>OK</b>.</li>
+          <li>If Android shows a popup asking <i>"Open Roving DSLR Bridge when this USB device is connected?"</i>, check <b>"Always allow"</b> and tap <b>OK</b>.</li>
           <li>The Camera Status Card immediately updates from <code>● WAITING</code> to <code>● READY</code> with camera model and battery percentage.</li>
           <li>Tap <b>"📸 Test Shutter"</b> to verify camera firing and transmission.</li>
         </ul>
@@ -760,7 +761,7 @@
           <td>• Phone and laptop on different Wi-Fi.<br>• Windows Defender Firewall blocking.<br>• Wrong IP address entered.</td>
           <td>
             1. Verify phone and laptop Wi-Fi network names (SSID) match exactly.<br>
-            2. In laptop Photographer Desk, check displayed URL and re-paste.<br>
+            2. In phone app, tap <b>"📷 Scan QR Code"</b> and point at laptop Photographer Desk.<br>
             3. On laptop, set your Wi-Fi network profile to <b>Private Network</b>.<br>
             4. Test URL in phone Chrome browser: <code>http://&lt;laptop-ip&gt;:47777/hello</code>.
           </td>

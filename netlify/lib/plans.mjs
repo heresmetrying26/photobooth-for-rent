@@ -1,6 +1,6 @@
 import {
   newCode, displayCode, normCode, DAY, MIN, LIFETIME_EXP, MAX_DEVICES, BONUS_SUBFOLDER, PAPER_SIZES,
-  putLicense, sendMail, codeEmail, EMAIL_RE
+  putLicense, sendMail, codeEmail, EMAIL_RE, normExtras
 } from './core.mjs';
 
 export const ALL_PLANS = {
@@ -85,13 +85,14 @@ export const ALL_PLANS = {
     category: 'lifetime',
     price: 3999,
     priceStr: '₱3,999 one-time',
-    description: 'The Windows / Mac / Android app, works with no internet · every event · never expires · 5 devices',
+    description: 'The Windows / Mac / Android app, works with no internet · every event · never expires · 5 devices (excluding 360 booth)',
     days: 1,
     lifetime: true,
     devices: 5,
     traditional: true,
     offlineOpt: true,
-    offlineOnly: true
+    offlineOnly: true,
+    spin360: false
   },
   lifetime: {
     id: 'lifetime',
@@ -99,16 +100,26 @@ export const ALL_PLANS = {
     category: 'lifetime',
     price: 4999,
     priceStr: '₱4,999 one-time',
-    description: 'Both: online booth & offline Windows / Mac / Android app · never expires · 5 devices',
+    description: 'Both: online booth & offline Windows / Mac / Android app · never expires · 5 devices (excluding 360 booth)',
     days: 1,
     lifetime: true,
     devices: 5,
     traditional: true,
     offlineOpt: true,
-    offlineOnly: false
+    offlineOnly: false,
+    spin360: false
   },
 
   // Add-ons for existing Lifetime owners
+  addon_spin360: {
+    id: 'addon_spin360',
+    title: 'Add 360 Video Desk',
+    category: 'addon',
+    price: 1500,
+    priceStr: '₱1,500 one-time',
+    description: 'Optional add-on: unlocks 360 video recording, studio, slow-mo, music & QR sharing',
+    spin360: true
+  },
   addon_offline: {
     id: 'addon_offline',
     title: 'Add Offline App Later',
@@ -212,12 +223,14 @@ export function getPlanDeliverables(planKey, code) {
     url: '/how-to-extras/',
     desc: 'Vintage looks, photographer desk, print preview and the printed flipbook'
   });
-  links.push({
-    id: 'spin-guide',
-    name: '360 Video Guide',
-    url: '/how-to-360/',
-    desc: 'Record, send, edit and share 360 videos: camera settings, the 360 desk and its looks'
-  });
+  if (p.spin360 !== false) {
+    links.push({
+      id: 'spin-guide',
+      name: '360 Video Guide',
+      url: '/how-to-360/',
+      desc: 'Record, send, edit and share 360 videos: camera settings, the 360 desk and its looks'
+    });
+  }
   links.push({
     id: 'printers-list',
     name: 'Which Printers Work',
@@ -276,6 +289,9 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
           existing.offlineOnly = false;
         } else if (planCfg.id === 'addon_online') {
           existing.offlineOnly = false;
+        } else if (planCfg.id === 'addon_spin360') {
+          existing.extras = normExtras(existing.extras);
+          existing.extras.spin360 = true;
         }
       } else if (planCfg.category === 'lifetime') {
         existing.lifetime = true;
@@ -284,6 +300,10 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
         if (planCfg.offlineOpt) existing.offlineOpt = true;
         if (planCfg.offlineOnly) existing.offlineOnly = true;
         if (!planCfg.offlineOnly) existing.offlineOnly = false;
+        if (planCfg.spin360 === false && (!existing.extras || existing.extras.spin360 === undefined)) {
+          existing.extras = normExtras(existing.extras);
+          existing.extras.spin360 = false;
+        }
       } else if (planCfg.category === 'monthly') {
         existing.expiresAt = Math.max(existing.expiresAt || 0, now) + 30 * DAY;
         existing.status = 'active';
@@ -330,6 +350,7 @@ export async function fulfillPlanPayment({ store, planKey, name, email, renewCod
       gifOpt: true,
       offlineOpt: !!planCfg.offlineOpt,
       offlineOnly: !!planCfg.offlineOnly,
+      extras: normExtras(planCfg.spin360 === false ? { spin360: false } : null),
       // Automatically enable all booth feature switches for every paid plan:
       retakeOpt: true,   // Give retake switch
       payOpt: true,      // Guest payment (vouchers; the GCash / Maya QR part needs the internet)

@@ -1,12 +1,11 @@
 # Session Context
 
-**Current Task**: Fix Android tablet gallery loading hang by routing local gallery requests via loopback.
+**Current Task**: Separate 360 Video Desk into optional ₱1,500 add-on and exclude from base Lifetime packages.
 
 **Key Decisions**:
-- Intercepted local share gallery requests in `MainActivity.kt` to load directly via `127.0.0.1` inside WebView.
-- Added `localBase()` loopback endpoint to `PBLocal.kt` and supported base64url slugs in `LocalShareServer.kt`.
-- Added request timeout handling and "← Back to booth" button in `gallery.html` for kiosk workflow.
+- Lifetime Offline (₱3,999) & Online+Offline (₱4,999) now exclude 360 booth by default (`spin360: false`).
+- Added `addon_spin360` (₱1,500 one-time) in `plans.mjs` and updated pricing/marketing/agreement pages.
+- Bundled and synchronized `protected/booth.html` to mobile assets and Netlify libraries.
 
 **Next Steps**:
-- Push commits and tag `android-v1.1.28` to build APK on GitHub Actions.
-- Test "Open gallery" on Android tablet in offline mode and on Wi-Fi.
+- Push commits to `origin/main` to deploy to Netlify and build desktop/Android releases.

@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.0.112', date: '2026-11-09' },
   { version: '1.0.111', date: '2026-11-09' },
   { version: '1.0.110', date: '2026-11-09' },
   { version: '1.0.109', date: '2026-11-09' },
@@ -183,6 +184,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-09', title: '360 Video: 1 GB high-speed Wi-Fi upload pipeline & real-time upload progress', for: ['website', 'app'], app: '1.0.112',
+    items: [
+      '⚡ Direct 1 GB high-speed Wi-Fi upload: automatic local network / hotspot detection (&lan=) allows recording phones to stream 360 clips up to 1 GB directly to the booth station in 2–3 seconds over local Wi-Fi.',
+      'Real-time upload progress tracking: replaced static progress indicators with live percentage and transferred/total MB counters during video uploads.',
+      'Desktop requirement guide on web: clicking 360 desk on the web interface now presents an informative modal explaining GPU & FFmpeg requirements for speed ramps and presets, with one-click desktop app download.',
+      'Actionable large-file guidance: clear camera setting recommendations (1080p 30fps) to keep clips under 20 MB when uploading through web relays.'
+    ]
+  },
   {
     date: '2026-11-09', title: 'Android app 1.1.28: Offline in-app gallery preview & instant Back to booth', for: ['website', 'app'], app: '1.1.28',
     items: [

@@ -8949,6 +8949,74 @@
       color: #fff;
     }
 
+    /* Pill popover / hover tooltip */
+    .pill-tip-popup {
+      position: absolute;
+      z-index: 10000;
+      pointer-events: none;
+      background: var(--dark-2, #27242B);
+      color: #F5F1EA;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.18);
+      border-radius: 12px;
+      padding: 10px 14px;
+      max-width: 290px;
+      width: max-content;
+      font: 500 12px/1.45 'Manrope', sans-serif;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.18s cubic-bezier(0.2, 0.9, 0.3, 1), transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1);
+      display: none;
+    }
+
+    .pill-tip-popup.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .pill-tip-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .pill-tip-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: #fff;
+    }
+
+    .pill-tip-badge {
+      display: inline-block;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      color: #E7B9AE;
+      white-space: nowrap;
+    }
+
+    .pill-tip-desc {
+      color: rgba(245, 241, 234, 0.88);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .pill-tip-arrow {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: var(--dark-2, #27242B);
+      border-top: 1px solid rgba(255, 255, 255, 0.16);
+      border-left: 1px solid rgba(255, 255, 255, 0.16);
+      transform: rotate(45deg);
+      pointer-events: none;
+    }
+
     /* Setup option cards (flipbook / GIF settings, guest printing): one small card per topic, a choice per row */
     .fb-opts,
     .pr-opts {
@@ -14167,35 +14235,54 @@
                 <p class="sub-label">GIF &amp; Live Motion</p>
                 <div class="fb-row"><span class="lbl">Picture frame</span>
                   <select id="gifLayoutSelect" class="pillify" aria-label="GIF picture frame">
-                    <option value="follow" selected>Chosen layout (Strip, Grid, etc.)</option>
-                    <option value="solo">Solo layout (1 large frame)</option>
-                    <option value="raw">Plain camera (no frame)</option>
+                    <option value="follow" selected
+                      data-tip-title="🖼️ Event Layout"
+                      data-tip-tag="Full Design"
+                      data-tip-desc="Places the motion inside your event layout (strip, 2×2 grid, polaroid, etc.) complete with your custom branding and text.">Chosen layout (Strip, Grid, etc.)</option>
+                    <option value="solo"
+                      data-tip-title="📷 Solo Frame"
+                      data-tip-tag="1-Photo Card"
+                      data-tip-desc="Places the motion into a single large 1-photo frame with your event title and branding, even when photos use a strip.">Solo layout (1 large frame)</option>
+                    <option value="raw"
+                      data-tip-title="🎥 Plain Camera"
+                      data-tip-tag="Raw Video"
+                      data-tip-desc="Pure camera view without borders, event title, or frame overlays.">Plain camera (no frame)</option>
                   </select>
                 </div>
                 <p class="panel-hint" id="gifLayoutHint" style="margin:6px 0 0;">The GIF uses your event layout (e.g. 4-cut strip or 2×2 grid) with your branding and design.</p>
                 
                 <div class="fb-row" style="margin-top:10px;"><span class="lbl">Animation style</span>
                   <select id="gifMotionStyleSelect" class="pillify" aria-label="GIF animation style">
-                    <option value="auto" selected>⚡ Auto (Smart Layout Match)</option>
-                    <option value="multibox">✨ Multi-Box Boomerang (Each box moves)</option>
-                    <option value="sequential">🎬 Story Replay (Box 1 → 2 → 3 → 4)</option>
-                    <option value="session">🎞️ Full Session (Single continuous clip)</option>
+                    <option value="auto" selected
+                      data-tip-title="⚡ Auto (Smart Layout Match)"
+                      data-tip-tag="Recommended"
+                      data-tip-desc="Automatically chooses the best motion style based on your chosen layout. Photo strips use sequential Story Replay; grids and multi-cut sheets use Multi-Box Boomerang. Duration dynamically adapts to your session.">⚡ Auto (Smart Match)</option>
+                    <option value="multibox"
+                      data-tip-title="✨ Multi-Box Boomerang"
+                      data-tip-tag="High Energy"
+                      data-tip-desc="Live motion captured during the countdown before each photo. In the final GIF, every box animates simultaneously in a synchronized boomerang loop.">✨ Multi-Box Boomerang</option>
+                    <option value="sequential"
+                      data-tip-title="🎬 Story Replay"
+                      data-tip-tag="Classic Strip Replay"
+                      data-tip-desc="Tells the story of your session one photo at a time (Box 1 → 2 → 3 → 4), then pauses on the completed photo strip. Perfect for photo strips!">🎬 Story Replay</option>
+                    <option value="session"
+                      data-tip-title="🎞️ Full Session"
+                      data-tip-tag="Fast-Forward Timelapse"
+                      data-tip-desc="Continuous recording across your entire session (all poses and laughter in between), automatically fast-forwarded into a smooth 4–5 second recap.">🎞️ Full Session</option>
                   </select>
                 </div>
                 <p class="panel-hint" id="gifMotionStyleHint" style="margin:6px 0 0; color:var(--ink-dim);">Auto Match: Automatically chooses the best motion style (Story Replay for strips, Multi-Box for grids).</p>
                 
-                <div class="fb-row" style="margin-top:10px;"><span class="lbl">Clip length</span>
-                  <select id="gifClipSecSelect" class="pillify" aria-label="Motion clip length">
-                    <option value="1.5">1.5 s (Snappy)</option>
-                    <option value="1.8" selected>1.8 s (Standard)</option>
-                    <option value="2.2">2.2 s (Longer)</option>
-                  </select>
-                </div>
-                
                 <div class="fb-row" style="margin-top:10px;"><span class="lbl">Loop mode</span>
                   <select id="gifLoopModeSelect" class="pillify" aria-label="GIF loop mode">
-                    <option value="boomerang" selected>Boomerang (Forward + Reverse)</option>
-                    <option value="forward">Forward only</option>
+                    <option value="boomerang" selected
+                      data-tip-title="🔄 Boomerang"
+                      data-tip-tag="Ping-Pong Loop"
+                      data-tip-desc="Plays forward to the final pose, then smoothly reverses backward in an endless, seamless bounce loop.">Boomerang (Forward + Reverse)</option>
+                    <option value="forward"
+                      data-tip-title="▶️ Forward Only"
+                      data-tip-tag="Continuous Loop"
+                      data-tip-desc="Plays straight through from start to the pose, then restarts from the beginning. Pacing automatically fast-forwards so it never feels cut short.">Forward only</option>
                   </select>
                 </div>
               </div>
@@ -19772,7 +19859,6 @@
       var flipPlayTimer = null;     // auto-play interval
       var gifLayoutMode = 'follow';  // 'follow' | 'solo' | 'raw': what the GIF frames are placed in
       var gifMotionStyle = 'auto'; // 'auto' (smart layout match) | 'multibox' | 'sequential' | 'session'
-      var gifClipSec = 1.8;          // seconds of motion before each shot (1.5, 1.8, 2.2)
       var gifLoopMode = 'boomerang'; // 'boomerang' (ping-pong) | 'forward'
 
       function resolveGifMotionStyle(layoutKey) {
@@ -19802,16 +19888,13 @@
           var matchedDesc = matched === 'sequential' ? 'Story Replay (Box 1 → 2 → 3 → 4)' : 'Multi-Box Boomerang (All boxes move)';
           var curLayoutName = LAYOUT_DEFS[currentLayout] ? LAYOUT_DEFS[currentLayout].name : 'chosen layout';
           mh.textContent = gifMotionStyle === 'auto'
-            ? '⚡ Auto Match: ' + curLayoutName + ' automatically uses ' + matchedDesc + '.'
+            ? '⚡ Auto Match: ' + curLayoutName + ' automatically uses ' + matchedDesc + '. Motion is dynamically fast-forwarded based on your session length.'
             : gifMotionStyle === 'multibox'
-              ? 'Live Motion: Each box records its own motion before the shot, and all boxes animate together in a boomerang loop.'
+              ? '✨ Multi-Box Boomerang: All boxes animate together in a synchronized loop. Motion captured before each shot is dynamically fast-forwarded.'
               : gifMotionStyle === 'sequential'
-                ? 'Story Replay: Each box animates one by one in sequence (Box 1 → 2 → 3 → 4), then pauses on the completed photo strip.'
-                : 'Full Session: Single continuous clip recorded across the entire session.';
+                ? '🎬 Story Replay: Each box animates one by one in sequence (Box 1 → 2 → 3 → 4), then pauses on the completed photo strip.'
+                : '🎞️ Full Session: Captures your entire session and dynamically fast-forwards it into a smooth 4–5 second recap timelapse.';
         }
-
-        var cSel = document.getElementById('gifClipSecSelect');
-        if (cSel) cSel.value = String(gifClipSec);
 
         var lSel = document.getElementById('gifLoopModeSelect');
         if (lSel) lSel.value = gifLoopMode;
@@ -19879,11 +19962,6 @@
         if (gms) gms.addEventListener('change', function () {
           gifMotionStyle = (gms.value === 'multibox' || gms.value === 'sequential' || gms.value === 'session') ? gms.value : 'auto';
           refreshGifLayoutUI();
-          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
-        });
-        var gcs = document.getElementById('gifClipSecSelect');
-        if (gcs) gcs.addEventListener('change', function () {
-          gifClipSec = Number(gcs.value) || 1.8;
           if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
         });
         var glm = document.getElementById('gifLoopModeSelect');
@@ -19985,8 +20063,8 @@
       function startShotMotionCapture(shotIdx) {
         if (!shotMotionClips[shotIdx]) shotMotionClips[shotIdx] = [];
         else shotMotionClips[shotIdx].length = 0;
-        var intervalMs = 100; // ~10 fps for fluid, smooth boomerang motion without main-thread starvation
-        var maxFrames = Math.max(8, Math.min(20, Math.round((gifClipSec || 1.8) * 10)));
+        var intervalMs = 90; // ~11 fps for fluid, smooth live motion without dropping camera frames
+        var maxFrames = 60;  // Captures up to ~5.4s of countdown motion before the shot (dynamically fast-forwarded later)
         var canvas = document.createElement('canvas');
         var videoWidth = video.videoWidth || 640;
         var videoHeight = video.videoHeight || 480;
@@ -20072,7 +20150,9 @@
         var durationMs = Math.max(1, performance.now() - capture.startedAt);
         if (keepFrames) { captureGifFrame(capture, durationMs); await capture.pending; }
         if (!keepFrames || !capture.frames.length) return null;
-        var speed = (gifSpeed === 2 || gifSpeed === 3) ? gifSpeed : (durationMs > 24000 ? 3 : 2);
+        // Dynamically fast-forward the session into a satisfying ~4.0 to 5.0 second GIF based on session length
+        var targetSec = (gifLoopMode === 'boomerang') ? 2.8 : 4.5;
+        var speed = Math.max(1.5, Math.min(12, durationMs / (targetSec * 1000)));
         return { frames: capture.frames, width: capture.canvas.width, height: capture.canvas.height, durationMs: durationMs, speed: speed };
       }
 
@@ -20149,23 +20229,28 @@
         return new Blob([gif.bytes()], { type: 'image/gif' });
       }
 
+      function sampleClipFrames(clip, targetCount) {
+        if (!clip || !clip.length) return [];
+        if (clip.length <= targetCount) return clip.slice();
+        var res = [];
+        for (var i = 0; i < targetCount; i++) {
+          var idx = Math.floor(i * (clip.length - 1) / Math.max(1, targetCount - 1));
+          res.push(clip[idx]);
+        }
+        return res;
+      }
+
       async function gifIntoLayoutMultiBox(key, n, framesObj, styleOverride) {
         var motionStyle = styleOverride || resolveGifMotionStyle(key);
-        var shotSeqs = [];
+        var rawShotClips = [];
         for (var s = 0; s < n; s++) {
           var clip = shotMotionClips[s] || [];
           if (!clip.length && shotCanvases[s]) {
-            shotSeqs.push([{ isCanvas: true, canvas: shotCanvases[s] }]);
+            rawShotClips.push([{ isCanvas: true, canvas: shotCanvases[s] }]);
           } else if (clip.length) {
-            var seq = clip.slice();
-            if (gifLoopMode === 'boomerang' && seq.length > 2) {
-              for (var r = seq.length - 2; r > 0; r--) {
-                seq.push(seq[r]);
-              }
-            }
-            shotSeqs.push(seq);
+            rawShotClips.push(clip.slice());
           } else {
-            shotSeqs.push([]);
+            rawShotClips.push([]);
           }
         }
 
@@ -20195,16 +20280,44 @@
         var totalDurationMs = 0;
 
         if (motionStyle === 'multibox') {
+          var maxRaw = 1;
+          for (var i = 0; i < n; i++) {
+            if (rawShotClips[i].length > maxRaw) maxRaw = rawShotClips[i].length;
+          }
+
+          // Dynamically adjust forward frames and boomerang ping-pong
+          var targetForward = (gifLoopMode === 'boomerang')
+            ? Math.min(26, Math.max(10, Math.round(maxRaw * 0.75)))
+            : Math.min(36, Math.max(12, maxRaw));
+
+          var shotSeqs = [];
+          for (var s = 0; s < n; s++) {
+            var raw = rawShotClips[s] || [];
+            if (!raw.length) { shotSeqs.push([]); continue; }
+            if (raw[0] && raw[0].isCanvas) { shotSeqs.push(raw); continue; }
+            var sampled = sampleClipFrames(raw, targetForward);
+            if (gifLoopMode === 'boomerang' && sampled.length > 2) {
+              var fwdCount = sampled.length;
+              for (var r = fwdCount - 2; r > 0; r--) {
+                sampled.push(sampled[r]);
+              }
+            }
+            shotSeqs.push(sampled);
+          }
+
           var maxFrames = 1;
           for (var i = 0; i < n; i++) {
             if (shotSeqs[i].length > maxFrames) maxFrames = shotSeqs[i].length;
           }
-          maxFrames = Math.min(32, Math.max(8, maxFrames));
+
+          // Target ~3.8s to 4.6s total loop duration
+          var targetDurationMs = (gifLoopMode === 'boomerang') ? 4200 : 3800;
+          var frameDelayMs = Math.max(55, Math.min(115, Math.round(targetDurationMs / maxFrames)));
 
           for (var t = 0; t < maxFrames; t++) {
             (function (frameIdx) {
               outFrames.push({
-                time: frameIdx * 90,
+                time: frameIdx * frameDelayMs,
                 make: async function () {
                   for (var sIdx = 0; sIdx < n; sIdx++) {
                     var seq = shotSeqs[sIdx];
@@ -20236,27 +20349,51 @@
               });
             })(t);
           }
-          totalDurationMs = outFrames.length * 90;
+          totalDurationMs = outFrames.length * frameDelayMs;
+
         } else if (motionStyle === 'sequential') {
+          var pauseHoldMs = 1200; // Pause at the end on the completed strip
+          var activeBudgetMs = (gifLoopMode === 'boomerang') ? 4800 : 4200;
+          var slotBudgetMs = Math.max(900, Math.round(activeBudgetMs / n));
+
           for (var sTarget = 0; sTarget < n; sTarget++) {
-            var seq = shotSeqs[sTarget] || [];
-            var count = Math.max(1, seq.length);
+            var raw = rawShotClips[sTarget] || [];
+            var sampled;
+            if (!raw.length || (raw[0] && raw[0].isCanvas)) {
+              sampled = raw;
+            } else {
+              var targetF = (gifLoopMode === 'boomerang')
+                ? Math.min(14, Math.max(7, Math.round(raw.length * 0.6)))
+                : Math.min(20, Math.max(9, raw.length));
+              sampled = sampleClipFrames(raw, targetF);
+              if (gifLoopMode === 'boomerang' && sampled.length > 2) {
+                var fwdLen = sampled.length;
+                for (var r = fwdLen - 2; r > 0; r--) {
+                  sampled.push(sampled[r]);
+                }
+              }
+            }
+
+            var count = Math.max(1, sampled.length);
+            var stepDelayMs = Math.max(50, Math.min(110, Math.round(slotBudgetMs / count)));
+
             for (var t = 0; t < count; t++) {
-              (function (targetSlot, stepIdx) {
+              (function (targetSlot, stepItem) {
+                var curTime = totalDurationMs;
+                totalDurationMs += stepDelayMs;
                 outFrames.push({
-                  time: outFrames.length * 90,
+                  time: curTime,
                   make: async function () {
                     for (var sIdx = 0; sIdx < n; sIdx++) {
                       var sc = slotCanvases[sIdx];
                       var sCtx = sc.getContext('2d');
                       sCtx.imageSmoothingEnabled = true; sCtx.imageSmoothingQuality = 'high';
                       sCtx.clearRect(0, 0, sc.width, sc.height);
-                      if (sIdx === targetSlot && shotSeqs[sIdx] && shotSeqs[sIdx].length > 0) {
-                        var item = shotSeqs[sIdx][stepIdx % shotSeqs[sIdx].length];
-                        if (item.isCanvas) {
-                          sCtx.drawImage(item.canvas, 0, 0, sc.width, sc.height);
-                        } else if (item.blob) {
-                          var bmp = await createImageBitmap(item.blob);
+                      if (sIdx === targetSlot && stepItem) {
+                        if (stepItem.isCanvas) {
+                          sCtx.drawImage(stepItem.canvas, 0, 0, sc.width, sc.height);
+                        } else if (stepItem.blob) {
+                          var bmp = await createImageBitmap(stepItem.blob);
                           sCtx.drawImage(bmp, 0, 0, sc.width, sc.height);
                           if (bmp.close) bmp.close();
                           try { if (typeof applyFilterToCanvas === 'function') applyFilterToCanvas(sc); } catch (e) { }
@@ -20273,13 +20410,13 @@
                     return small;
                   }
                 });
-              })(sTarget, t);
+              })(sTarget, sampled[t]);
             }
           }
-          var animTimeMs = outFrames.length * 90;
-          var pauseHoldMs = 1000;
+
+          // Final hold frame showing the completed strip
           outFrames.push({
-            time: animTimeMs,
+            time: totalDurationMs,
             make: async function () {
               for (var sIdx = 0; sIdx < n; sIdx++) {
                 var sc = slotCanvases[sIdx];
@@ -20296,7 +20433,7 @@
               return small;
             }
           });
-          totalDurationMs = animTimeMs + pauseHoldMs;
+          totalDurationMs += pauseHoldMs;
         }
 
         return {
@@ -20337,9 +20474,23 @@
         var ow = Math.max(1, Math.round(box.width * k)), oh = Math.max(1, Math.round(box.height * k));
         var small = document.createElement('canvas'); small.width = ow; small.height = oh;
         var sx = small.getContext('2d', { willReadFrequently: true }); sx.imageSmoothingQuality = 'high';
-        var frames = framesObj.frames.map(function (f) {
+
+        // Full session: dynamically fast-forward across session duration, with optional boomerang reverse
+        var baseFrames = framesObj.frames || [];
+        var seq = baseFrames.slice();
+        if (gifLoopMode === 'boomerang' && seq.length > 2) {
+          var fLen = seq.length;
+          for (var r = fLen - 2; r > 0; r--) {
+            seq.push(seq[r]);
+          }
+        }
+        var targetTotalMs = (gifLoopMode === 'boomerang') ? 5000 : 4500;
+        var frameDelayMs = Math.max(30, Math.min(120, Math.round(targetTotalMs / Math.max(1, seq.length))));
+
+        var frames = seq.map(function (f, idx) {
           return {
-            time: f.time, make: async function () {
+            time: idx * frameDelayMs,
+            make: async function () {
               var bmp = await createImageBitmap(f.blob);
               sc.clearRect(0, 0, src.width, src.height); sc.drawImage(bmp, 0, 0, src.width, src.height); bmp.close();
               composeCanvas(key, box, new Array(n).fill(src));
@@ -20349,7 +20500,7 @@
             }
           };
         });
-        return Object.assign({}, framesObj, { frames: frames, width: ow, height: oh });
+        return { frames: frames, width: ow, height: oh, durationMs: frames.length * frameDelayMs, speed: 1 };
       }
       function gifFrameSource(fr) { return fr.make ? fr.make() : createImageBitmap(fr.blob); }
 
@@ -20396,6 +20547,18 @@
           catch (e) { console.error('GIF framing failed, using the plain camera view:', e); }
           if (myGen !== gifGeneration) return;
           statusEl = document.getElementById('gifStatusMsg');
+        } else if (gifLayoutMode === 'raw' && gifLoopMode === 'boomerang' && framesObj && framesObj.frames && framesObj.frames.length > 2) {
+          var baseF = framesObj.frames.slice();
+          for (var r = baseF.length - 2; r > 0; r--) {
+            baseF.push(baseF[r]);
+          }
+          var targetRawMs = 5000;
+          var rawDelayMs = Math.max(30, Math.min(120, Math.round(targetRawMs / baseF.length)));
+          framesObj.frames = baseF.map(function (f, idx) {
+            return { blob: f.blob, time: idx * rawDelayMs };
+          });
+          framesObj.speed = 1;
+          framesObj.durationMs = baseF.length * rawDelayMs;
         }
         if (statusEl) statusEl.textContent = 'Creating your GIF, please wait…';
 

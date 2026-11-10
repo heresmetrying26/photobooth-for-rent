@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.15', date: '2026-11-10' },
   { version: '1.1.14', date: '2026-11-10' },
   { version: '1.1.13', date: '2026-11-09' },
   { version: '1.0.112', date: '2026-11-09' },
@@ -186,6 +187,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-10', title: 'Desktop 1.1.15 + Android 1.1.32: Live on-screen layout & resize editor with instant preview', for: ['website', 'app'], app: '1.1.15',
+    items: [
+      '📐 Live On-Screen Layout Editor: new Resize UI floating tool on the Photo Session dock allows real-time scaling of countdown, buttons, and side photo strip with zero back-and-forth.',
+      '👁️ Interactive Live Preview Overlays: temporarily simulates sample countdown, start button, and side film track right over the live camera view while editing.',
+      '✓ One-Tap Done Editing: locks in monitor-specific sizes to localStorage and returns seamlessly to shooting mode.',
+      '🖥️ Step 7 Live Jump: "Live Resize on Screen" button in Session setup switches directly to camera stage and opens the editor.'
+    ]
+  },
   {
     date: '2026-11-10', title: 'Desktop 1.1.14 + Android 1.1.31: Monitor & display scaling, prominent guest countdown & side photos auto-fit', for: ['website', 'app'], app: '1.1.14',
     items: [

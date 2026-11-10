@@ -266,6 +266,10 @@ class LocalShareServer(private val store: PBLocal) {
         val m = ROUTE.find(path)
         if (m == null) {
             if (path == "/") return sendText(out, 200, "OK", "photobooth4u booth", headOnly)
+            if (path == "/qr.js") {
+                val js = store.readAsset("share/qr.js")
+                if (js != null) return sendBytes(out, 200, "OK", "application/javascript; charset=utf-8", js, headOnly, "public, max-age=86400")
+            }
             return notFoundPage(out, "This link isn’t on this booth.", headOnly)
         }
         val slug = m.groupValues[1]
@@ -610,15 +614,13 @@ class LocalShareServer(private val store: PBLocal) {
         }
         val slug = folder?.slug ?: ""
         val title = if (folder != null) store.galleryTitle(folder) else "Sharing Station"
-        val html = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>${esc(title)} - Sharing Station</title>" +
-            "<style>body{margin:0;font-family:system-ui,sans-serif;background:#0F0E13;color:#F0EEF5;padding:24px;text-align:center}h1{font-size:22px;margin:8px 0}.sub{color:#A49FA9;font-size:14px;margin-bottom:24px}" +
-            ".grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;max-width:1100px;margin:0 auto}.card{background:#18161D;border-radius:12px;overflow:hidden;padding:12px;border:1px solid rgba(255,255,255,0.1)}" +
-            ".card video,.card img{width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:8px}.btn{display:inline-block;margin-top:10px;padding:10px 16px;background:#C93D27;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px}</style></head><body>" +
-            "<h1>${esc(title)}</h1><p class=\"sub\">📱 Sharing Station</p><div class=\"grid\" id=\"g\"></div>" +
-            "<script>var slug='${esc(slug)}';function load(){fetch('/station/'+slug+'/list').then(function(r){return r.json()}).then(function(j){" +
-            "var g=document.getElementById('g');if(!j||!j.files||!j.files.length){g.innerHTML='<p style=\"color:#888;grid-column:1/-1\">No clips yet.</p>';return;}" +
-            "g.innerHTML=j.files.map(function(f){return '<div class=\"card\">'+(f.kind==='video'?'<video src=\"'+f.url+'\" controls playsinline></video>':'<img src=\"'+f.thumbUrl+'\">')+'<br><a class=\"btn\" href=\"'+f.pageUrl+'\">Open / Save</a></div>';}).join('');" +
-            "})}load();setInterval(load,4000);</script></body></html>"
+        val assetBytes = store.readAsset("share/station.html")
+        val html = if (assetBytes != null) {
+            val template = String(assetBytes, Charsets.UTF_8)
+            template.replace("__SLUG__", slug).replace("__TITLE__", esc(title))
+        } else {
+            "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>${esc(title)} - Sharing Station</title></head><body><h1>${esc(title)}</h1><p>Sharing Station ready.</p></body></html>"
+        }
         return sendBytes(out, 200, "OK", "text/html; charset=utf-8", html.toByteArray(Charsets.UTF_8), headOnly, "no-store")
     }
 

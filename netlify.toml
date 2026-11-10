@@ -142,6 +142,23 @@
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-cache"
 
+# Dedicated Sharing Station page: /station and /station/*
+[[redirects]]
+  from = "/station"
+  to = "/station/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/station/*"
+  to = "/station/index.html"
+  status = 200
+
+[[headers]]
+  for = "/station/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-cache"
+
 # USB camera test page: the camera library (web-gphoto2) needs a
 # cross-origin-isolated page, which only these two headers give.
 [[headers]]

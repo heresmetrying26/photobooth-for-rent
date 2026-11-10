@@ -11880,6 +11880,29 @@
     #qrPopOv #qrSection .result-actions { display: flex !important; margin-top: 18px !important; }
     #qrPopOv #qrSection .result-timer { margin: 14px 6px 0 !important; }
 
+    /* ---- Separate Sharing Station hand-off overlay ---- */
+    .share-handoff-ov[hidden] { display: none !important; }
+    .share-handoff-ov {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(12, 10, 15, 0.9); backdrop-filter: blur(18px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px; animation: shFadeIn .25s ease-out;
+    }
+    @keyframes shFadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+    .share-handoff-card {
+      background: #18161E; border: 1.5px solid rgba(255,255,255,0.16); border-radius: 28px;
+      padding: 38px 32px 30px; max-width: 480px; width: 100%; text-align: center; color: #fff;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.65);
+    }
+    .share-handoff-icon { font-size: 50px; margin-bottom: 12px; animation: shBounce 1s infinite alternate ease-in-out; }
+    @keyframes shBounce { from { transform: translateX(0); } to { transform: translateX(8px); } }
+    .share-handoff-title { font-family: 'Fraunces', Georgia, serif; font-size: clamp(28px, 4vw, 36px); font-weight: 700; margin-bottom: 8px; color: #fff; }
+    .share-handoff-sub { font-size: 16px; line-height: 1.5; color: #D2CED6; margin-bottom: 24px; }
+    .share-handoff-sub b { color: #FF7B66; }
+    .share-handoff-bar-wrap { width: 100%; height: 6px; background: rgba(255,255,255,0.12); border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
+    .share-handoff-bar { width: 100%; height: 100%; background: #C93D27; transition: width linear; }
+    .share-handoff-note { font-size: 13px; color: #9A94A0; font-weight: 600; }
+
     /* ---- In-session Guest Sticker Customisation ---- */
     /* ---- Guest sticker editor: full screen. The photo gets its own area (as big as it fits, nothing on top of it);
        the stickers sit beside it (landscape) or in a sheet under it (portrait) that the guest can pull up or down. ---- */
@@ -12668,13 +12691,48 @@
     /* Scalable buttons (Touch-friendly & vertical-space optimized) */
     .shutter-btn {
       font-size: calc(16px * var(--ui-btn-scale, 1)) !important;
-      padding: calc(14px * var(--ui-btn-scale, 1)) calc(28px * var(--ui-btn-scale, 1)) !important;
-      min-height: calc(44px * var(--ui-btn-scale, 1)) !important;
+      padding: calc(13px * var(--ui-btn-scale, 1)) calc(28px * var(--ui-btn-scale, 1)) !important;
+      min-height: calc(46px * var(--ui-btn-scale, 1)) !important;
     }
     body.in-session .shutter-btn {
-      font-size: calc(18px * var(--ui-btn-scale, 1)) !important;
-      padding: 0 calc(38px * var(--ui-btn-scale, 1)) !important;
-      min-height: calc(58px * var(--ui-btn-scale, 1)) !important;
+      font-size: calc(17px * var(--ui-btn-scale, 1)) !important;
+      padding: 0 calc(34px * var(--ui-btn-scale, 1)) !important;
+      min-height: calc(52px * var(--ui-btn-scale, 1)) !important;
+    }
+    .ready-cancel {
+      min-height: calc(52px * var(--ui-btn-scale, 1)) !important;
+      padding: 0 calc(24px * var(--ui-btn-scale, 1)) !important;
+      font-size: calc(15px * var(--ui-btn-scale, 1)) !important;
+      line-height: calc(50px * var(--ui-btn-scale, 1)) !important;
+      border: 2px solid rgba(255, 255, 255, .8);
+      border-radius: 999px;
+      background: rgba(28, 26, 30, .78);
+      color: #fff;
+      font-weight: 800;
+      cursor: pointer;
+      pointer-events: auto;
+      touch-action: manipulation;
+    }
+    .ready-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: calc(14px * var(--ui-btn-scale, 1));
+      pointer-events: auto;
+      opacity: var(--ui-btn-opacity, 1);
+    }
+    /* Result screen buttons (Print, Done, Adjust) scaled UI-wise */
+    .result-actions>button,
+    #qrSection #printQuickBtn,
+    .result-done,
+    .result-customize {
+      min-height: calc(50px * var(--ui-btn-scale, 1)) !important;
+      font-size: calc(16px * var(--ui-btn-scale, 1)) !important;
+      padding: calc(8px * var(--ui-btn-scale, 1)) calc(18px * var(--ui-btn-scale, 1)) !important;
+    }
+    #qrSection #printQuickBtn {
+      border-radius: 999px !important;
+      box-shadow: 0 6px 20px rgba(201, 61, 39, .35) !important;
     }
     body.stage-full .cd-shot {
       font-size: calc(clamp(15px, 2vmin, 20px) * var(--ui-cd-scale, 1)) !important;
@@ -12921,36 +12979,83 @@
     body.layout-editing .welcome-overlay {
       display: none !important;
     }
-    /* Keep the real Start / Print buttons on screen while editing, right where
-       guests will actually see them (horizontally centered under camera, not crammed in side). */
-    body.layout-editing .start-btn-wrap,
-    body.layout-editing .app-shell:not(.result) .start-btn-wrap {
+    /* Hide the idle start-btn-wrap while editing: we show the actual Get Ready action row instead */
+    body.layout-editing .start-btn-wrap {
+      display: none !important;
+    }
+    /* Show the real Get Ready overlay inside the camera frame */
+    body.layout-editing .ready-overlay.edit-preview {
       display: flex !important;
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 55 !important;
+      pointer-events: auto !important;
+      background: rgba(0, 0, 0, 0.18) !important;
+    }
+    body.layout-editing .ready-overlay .ready-actions.edit-preview {
+      display: inline-flex !important;
       position: relative !important;
-      grid-column: 1 / -1 !important;
-      justify-content: center !important;
       align-items: center !important;
-      margin: 16px auto 0 !important;
-      left: auto !important;
-      right: auto !important;
-      bottom: auto !important;
-      width: 100% !important;
-      z-index: 60;
+      justify-content: center !important;
+      margin: 0 auto 16px !important;
+      padding: 10px 18px !important;
+      border-radius: 999px !important;
+      background: rgba(0, 0, 0, 0.45) !important;
+      backdrop-filter: blur(8px) !important;
+      -webkit-backdrop-filter: blur(8px) !important;
     }
-    /* Sticker-style resize: each highlighted section is grabbed and dragged
-       directly. Children ignore the pointer so a drag never presses Start. */
-    body.layout-editing .countdown-overlay.edit-preview,
-    body.layout-editing .film-track.edit-preview,
-    body.layout-editing .start-btn-wrap.edit-preview {
-      outline: 2px dashed #7cc4ff;
-      outline-offset: 4px;
-      border-radius: 12px;
-      cursor: grab;
+
+    /* 4 Corner Sticker-Style Resize Handles */
+    .leb-resizable {
+      position: relative !important;
+      outline: 2px dashed #7cc4ff !important;
+      outline-offset: 4px !important;
+      user-select: none;
+    }
+    .leb-handle {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      background: #ffffff;
+      border: 2.5px solid #2f6fed;
+      border-radius: 3px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+      z-index: 120;
+      pointer-events: auto !important;
       touch-action: none;
+      box-sizing: border-box;
+      transition: transform 0.1s ease, background 0.1s ease;
     }
-    body.layout-editing .countdown-overlay.edit-preview *,
-    body.layout-editing .film-track.edit-preview *,
-    body.layout-editing .start-btn-wrap.edit-preview * {
+    .leb-handle:hover,
+    .leb-handle:active {
+      background: #7cc4ff;
+      border-color: #ffffff;
+      transform: scale(1.3);
+    }
+    .leb-h-tl {
+      top: -8px;
+      left: -8px;
+      cursor: nwse-resize;
+    }
+    .leb-h-tr {
+      top: -8px;
+      right: -8px;
+      cursor: nesw-resize;
+    }
+    .leb-h-bl {
+      bottom: -8px;
+      left: -8px;
+      cursor: nesw-resize;
+    }
+    .leb-h-br {
+      bottom: -8px;
+      right: -8px;
+      cursor: nwse-resize;
+    }
+    /* Children ignore clicks while editing so dragging handles doesn't trigger buttons */
+    body.layout-editing .countdown-overlay.edit-preview > *:not(.leb-handle),
+    body.layout-editing .film-track.edit-preview > *:not(.leb-handle),
+    body.layout-editing .ready-actions.edit-preview > *:not(.leb-handle) {
       pointer-events: none !important;
     }
     body.layout-editing .film-frame.sample-frame {
@@ -15042,6 +15147,30 @@
             shown on its own (almost the whole screen when the screen is upright), then a pop-up shows a big QR code.
             With <b>Print first before showing QR</b> (step 4) on, the pop-up says Printing and the QR code appears
             when the print is done.</p>
+
+          <label class="toggle-row" style="margin-top:14px;"><input type="checkbox" id="shareStationToggle"> Show QR on a separate Sharing Station</label>
+          <div id="shareStationOptions" style="display:none;margin-top:8px;">
+            <div class="opt-row">
+              <span class="lbl">Booth screen after photos</span>
+              <select class="mini-select pillify" id="shareStationHandoffSelect">
+                <option value="handoff2" selected>Show 2s note & arrow 👉</option>
+                <option value="photo3">Show photo 3s</option>
+                <option value="immediate">Return to Start immediately</option>
+              </select>
+            </div>
+            <div class="opt-row" style="margin-top:8px;">
+              <span class="lbl">Station privacy</span>
+              <select class="mini-select pillify" id="shareStationPrivacySelect">
+                <option value="only" selected>Only show current session</option>
+                <option value="all">Allow browsing event gallery</option>
+              </select>
+            </div>
+            <button type="button" class="btn alt" id="shareStationPairBtn" style="margin-top:10px;width:100%;font-size:13px;padding:9px 14px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+              <span>Pair Sharing Station (Scan QR)</span>
+            </button>
+            <p class="panel-hint" style="margin:6px 0 0;">Mount a separate phone or tablet on a stand. Guests scan their QR and save photos there, freeing the booth to start the next session immediately.</p>
+          </div>
         </div>
         <div class="panel-section" id="paySection" style="display:none;">
           <p class="panel-label">Guest payment</p>
@@ -16233,6 +16362,32 @@
   <div class="qrpop-ov" id="qrPopOv" hidden>
     <canvas class="qrpop-photo" id="qrPopPhoto" aria-hidden="true"></canvas>
     <div class="qrpop-slot" id="qrPopSlot"></div>
+  </div>
+  <!-- Sharing Station hand-off overlay on booth screen -->
+  <div class="share-handoff-ov" id="shareStationHandoffOverlay" hidden>
+    <div class="share-handoff-card">
+      <div class="share-handoff-icon">📱 👉</div>
+      <div class="share-handoff-title">Photos Ready!</div>
+      <div class="share-handoff-sub">Scan the QR code & save your photos at the <b>Sharing Station</b></div>
+      <div class="share-handoff-bar-wrap"><div id="shareStationHandoffBar" class="share-handoff-bar"></div></div>
+      <div class="share-handoff-note">Ready for next guest in <span id="shareStationHandoffSec">2</span>s</div>
+    </div>
+  </div>
+  <!-- Sharing Station pairing modal -->
+  <div class="copies-sheet" id="shareStationModal" hidden>
+    <div class="cs-card" style="max-width:440px;text-align:center;" role="dialog" aria-modal="true">
+      <p class="cs-title" style="margin-bottom:6px;">📱 Sharing Station Setup</p>
+      <p class="cs-left" style="margin-bottom:14px;">Scan with your separate phone or tablet to open the live Sharing Station.</p>
+      <div style="background:#fff;padding:12px;border-radius:16px;display:inline-block;box-shadow:0 8px 24px rgba(0,0,0,0.12);margin-bottom:14px;">
+        <img id="shareStationModalQr" alt="Sharing Station QR Code" style="display:block;width:190px;height:190px;margin:0 auto;">
+      </div>
+      <p id="shareStationModalUrl" style="font-size:12px;font-weight:700;word-break:break-all;color:var(--muted,#6B666C);margin:0 0 14px;padding:6px 10px;background:rgba(0,0,0,0.04);border-radius:8px;"></p>
+      <div class="cs-btns">
+        <button type="button" id="shareStationCopyUrlBtn">Copy Link</button>
+        <button type="button" class="go" id="shareStationOpenTabBtn">Open Station</button>
+        <button type="button" id="shareStationModalClose">Close</button>
+      </div>
+    </div>
   </div>
   <div class="copies-sheet" id="copiesSheet" hidden>
     <div class="cs-card" role="dialog" aria-labelledby="copiesSheetTitle">
@@ -23309,8 +23464,12 @@
         }
 
         // Switch to Photo Session tab so operator sees live camera stage
-        var tabSession = document.getElementById('tabBtnSession');
-        if (tabSession && !tabSession.classList.contains('active')) tabSession.click();
+        if (typeof switchTab === 'function') {
+          switchTab('session');
+        } else {
+          var tabSession = document.getElementById('tabBtnSession');
+          if (tabSession && !tabSession.classList.contains('active')) tabSession.click();
+        }
 
         // Show sample live countdown overlay so operator can inspect countdown size
         var cd = document.getElementById('countdownOverlay');
@@ -23321,6 +23480,7 @@
           if (num) num.textContent = '3';
           var shot = document.getElementById('cdShot');
           if (shot) shot.textContent = 'Photo 1 of 4';
+          attachCornerResize(cd, 'cd');
         }
 
         // Show sample film track so operator can inspect side strip size
@@ -23336,12 +23496,20 @@
               ft.appendChild(f);
             }
           }
+          attachCornerResize(ft, 'film');
         }
 
-        // The real Start / Print buttons double as the "Buttons" preview; the
-        // branded welcome card is hidden by CSS while body.layout-editing is on.
-        var sw = document.querySelector('.start-btn-wrap');
-        if (sw) sw.classList.add('edit-preview');
+        // Show the real Get Ready overlay with Cancel and Start
+        var ro = document.getElementById('readyOverlay');
+        if (ro) {
+          ro.classList.add('edit-preview', 'ready-active');
+          ro.style.display = 'flex';
+          var ra = ro.querySelector('.ready-actions');
+          if (ra) {
+            ra.classList.add('edit-preview');
+            attachCornerResize(ra, 'btn');
+          }
+        }
 
         updateLebLabels();
         if (typeof applyStageAspect === 'function') applyStageAspect();
@@ -23362,6 +23530,18 @@
           }
         }
 
+        // Restore ready overlay
+        var ro = document.getElementById('readyOverlay');
+        if (ro) {
+          ro.classList.remove('edit-preview');
+          if (typeof gettingReady === 'undefined' || !gettingReady) {
+            ro.classList.remove('ready-active');
+            ro.style.display = '';
+          }
+          var ra = ro.querySelector('.ready-actions');
+          if (ra) ra.classList.remove('edit-preview');
+        }
+
         // Remove sample frames if real session hasn't started
         var ft = document.getElementById('filmTrack');
         if (ft) {
@@ -23371,9 +23551,6 @@
             ft.querySelectorAll('.sample-frame').forEach(function(el) { el.remove(); });
           }
         }
-
-        var sw = document.querySelector('.start-btn-wrap');
-        if (sw) sw.classList.remove('edit-preview');
 
         if (typeof applyStageAspect === 'function') applyStageAspect();
         if (typeof showToast === 'function') showToast('✓ Layout saved for this monitor', 2500);
@@ -23431,12 +23608,22 @@
         });
       }
 
-      // Sticker-style resize: grab a highlighted section and drag away from its
-      // centre to grow it, toward the centre to shrink it. Works with touch and
-      // mouse; while editing, the section's own buttons ignore the pointer.
-      function attachLebResize(el, which) {
+      // 4-Corner Sticker Resize Handles (like adding stickers post photo session)
+      function attachCornerResize(el, which) {
         if (!el) return;
-        el.addEventListener('pointerdown', function (e) {
+        el.classList.add('leb-resizable');
+        // Ensure the 4 corner handles exist
+        if (!el.querySelector('.leb-h-tl')) {
+          ['tl', 'tr', 'bl', 'br'].forEach(function(corner) {
+            var h = document.createElement('div');
+            h.className = 'leb-handle leb-h-' + corner;
+            h.dataset.corner = corner;
+            h.title = 'Drag corner to resize';
+            el.appendChild(h);
+          });
+        }
+
+        function startCornerDrag(e) {
           if (!layoutEditorActive) return;
           e.preventDefault();
           e.stopPropagation();
@@ -23445,27 +23632,45 @@
           var d0 = Math.max(24, Math.hypot(e.clientX - cx, e.clientY - cy));
           var key = which === 'cd' ? UI_CD_SCALE_KEY : (which === 'btn' ? UI_BTN_SCALE_KEY : UI_FILM_SCALE_KEY);
           var s0 = parseFloat(localStorage.getItem(key)) || 1;
-          try { el.setPointerCapture(e.pointerId); } catch (err) {}
+          var target = e.currentTarget || el;
+          try { target.setPointerCapture(e.pointerId); } catch (err) {}
+
           function onMove(ev) {
             var d = Math.max(12, Math.hypot(ev.clientX - cx, ev.clientY - cy));
             setLebScale(which, s0 * d / d0);
           }
           function onUp(ev) {
-            try { el.releasePointerCapture(ev.pointerId); } catch (err) {}
-            el.removeEventListener('pointermove', onMove);
-            el.removeEventListener('pointerup', onUp);
-            el.removeEventListener('pointercancel', onUp);
+            try { target.releasePointerCapture(ev.pointerId); } catch (err) {}
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
           }
-          el.addEventListener('pointermove', onMove);
-          el.addEventListener('pointerup', onUp);
-          el.addEventListener('pointercancel', onUp);
+          window.addEventListener('pointermove', onMove);
+          window.addEventListener('pointerup', onUp);
+          window.addEventListener('pointercancel', onUp);
+        }
+
+        // Attach drag to the 4 corner handles
+        el.querySelectorAll('.leb-handle').forEach(function(h) {
+          if (!h._lebBound) {
+            h._lebBound = true;
+            h.addEventListener('pointerdown', startCornerDrag);
+          }
         });
-        // While editing, swallow the click that follows a drag so nothing fires.
-        el.addEventListener('click', function (e) {
-          if (!layoutEditorActive) return;
-          e.preventDefault();
-          e.stopPropagation();
-        }, true);
+
+        // Also allow dragging the border
+        if (!el._lebBorderBound) {
+          el._lebBorderBound = true;
+          el.addEventListener('pointerdown', function(e) {
+            if (e.target.classList.contains('leb-handle')) return;
+            startCornerDrag(e);
+          });
+          el.addEventListener('click', function(e) {
+            if (!layoutEditorActive) return;
+            e.preventDefault();
+            e.stopPropagation();
+          }, true);
+        }
       }
 
       function initUiScale() {
@@ -23546,10 +23751,11 @@
           if (e.key === 'Escape' && layoutEditorActive) { e.stopPropagation(); closeLayoutEditor(); }
         }, true);
 
-        // Drag the sections themselves to resize, like stickers
-        attachLebResize(document.getElementById('countdownOverlay'), 'cd');
-        attachLebResize(document.querySelector('.start-btn-wrap'), 'btn');
-        attachLebResize(document.getElementById('filmTrack'), 'film');
+        // 4-corner sticker resize handles
+        attachCornerResize(document.getElementById('countdownOverlay'), 'cd');
+        var readyAct = document.querySelector('#readyOverlay .ready-actions');
+        if (readyAct) attachCornerResize(readyAct, 'btn');
+        attachCornerResize(document.getElementById('filmTrack'), 'film');
 
         // Opacity sliders (see-through)
         [['lebCdOp', 'cd'], ['lebBtnOp', 'btn'], ['lebFilmOp', 'film']].forEach(function (pair) {
@@ -24103,7 +24309,8 @@
         if (title) title.textContent = 'Your photo is ready';
         updateUI();
         guestRender();
-        scheduleResultReset();
+        if (shareStationOn) triggerShareStationHandoff();
+        else scheduleResultReset();
       }
 
       function refreshGuestStickerControls() {
@@ -24810,11 +25017,12 @@
           qrResults.style.display = '';
           var qrHint = document.getElementById('qrHint');
           if (qrHint) qrHint.style.display = '';
-          scheduleResultReset();
+          if (shareStationOn) triggerShareStationHandoff();
+          else scheduleResultReset();
         }
         if (!LOCALSHARE) { showMultipleDownloadsHint(); if (curMode !== 'gif') saveToDevice(); }
         maybeAutoPrint();
-        if (qrPopOn) qrPopBegin();
+        if (!shareStationOn && qrPopOn) qrPopBegin();
       }
 
       startBtn.addEventListener('click', () => beginGuestFlow(false));
@@ -31537,6 +31745,154 @@
       qrPopDelaySelect.addEventListener('change', function () { qrPopDelay = Math.max(0, Math.min(15, Number(qrPopDelaySelect.value) || 0)); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
       refreshQrPopUI();
 
+      // ---- Separate Sharing Station ----
+      var shareStationOn = false;
+      var shareStationHandoff = 'handoff2';
+      var shareStationPrivacy = 'only';
+      var shareStationHandoffTimer = null;
+
+      var shareStationToggle = document.getElementById('shareStationToggle');
+      var shareStationOptions = document.getElementById('shareStationOptions');
+      var shareStationHandoffSelect = document.getElementById('shareStationHandoffSelect');
+      var shareStationPrivacySelect = document.getElementById('shareStationPrivacySelect');
+      var shareStationPairBtn = document.getElementById('shareStationPairBtn');
+
+      function refreshShareStationUI() {
+        if (shareStationToggle) shareStationToggle.checked = shareStationOn;
+        if (shareStationOptions) shareStationOptions.style.display = shareStationOn ? 'block' : 'none';
+      }
+      if (shareStationToggle) {
+        shareStationToggle.addEventListener('change', function () {
+          shareStationOn = shareStationToggle.checked;
+          refreshShareStationUI();
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      if (shareStationHandoffSelect) {
+        shareStationHandoffSelect.addEventListener('change', function () {
+          shareStationHandoff = shareStationHandoffSelect.value;
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      if (shareStationPrivacySelect) {
+        shareStationPrivacySelect.addEventListener('change', function () {
+          shareStationPrivacy = shareStationPrivacySelect.value;
+          if (typeof scheduleSetupSave === 'function') scheduleSetupSave();
+        });
+      }
+      refreshShareStationUI();
+
+      function getShareStationUrl() {
+        var priv = (shareStationPrivacy === 'only') ? 'privacy=only' : '';
+        if (LOCALSHARE) {
+          var base = lanBaseNow();
+          if (!base && typeof window !== 'undefined' && location.origin && /^http/i.test(location.origin)) {
+            base = location.origin;
+          }
+          return (base || '') + '/station' + (priv ? ('?' + priv) : '');
+        }
+        var fKey = (typeof driveFolderKeyInput !== 'undefined' && driveFolderKeyInput) ? driveFolderKeyInput.value.trim() : '';
+        if (!fKey) {
+          try {
+            var fu = getCachedFolderUrl();
+            if (fu) {
+              var m = /[?&]id=([A-Za-z0-9_-]+)/.exec(fu) || /\/folders\/([A-Za-z0-9_-]+)/.exec(fu);
+              if (m) fKey = m[1];
+            }
+          } catch (e) { }
+        }
+        var baseOnline = location.origin || 'https://photobooth4u.com';
+        var q = [];
+        if (fKey) q.push('f=' + encodeURIComponent(fKey));
+        if (priv) q.push(priv);
+        return baseOnline + '/station/' + (q.length ? ('?' + q.join('&')) : '');
+      }
+
+      function openShareStationModal() {
+        var modal = document.getElementById('shareStationModal');
+        var qrImg = document.getElementById('shareStationModalQr');
+        var urlEl = document.getElementById('shareStationModalUrl');
+        if (!modal) return;
+        var url = getShareStationUrl();
+        if (urlEl) urlEl.textContent = url || 'No address yet. Ensure booth Wi-Fi is on.';
+        if (qrImg && url && typeof qrcode === 'function') {
+          try {
+            var q = qrcode(0, 'M');
+            q.addData(url);
+            q.make();
+            qrImg.src = q.createDataURL(6, 2);
+          } catch (e) { qrImg.src = ''; }
+        }
+        modal.hidden = false;
+      }
+
+      if (shareStationPairBtn) shareStationPairBtn.addEventListener('click', openShareStationModal);
+      var shareStationClose = document.getElementById('shareStationModalClose');
+      if (shareStationClose) {
+        shareStationClose.addEventListener('click', function () {
+          var m = document.getElementById('shareStationModal');
+          if (m) m.hidden = true;
+        });
+      }
+      var shareStationCopy = document.getElementById('shareStationCopyUrlBtn');
+      if (shareStationCopy) {
+        shareStationCopy.addEventListener('click', function () {
+          var url = getShareStationUrl();
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(function () {
+              shareStationCopy.textContent = 'Copied! ✓';
+              setTimeout(function () { shareStationCopy.textContent = 'Copy Link'; }, 2000);
+            });
+          }
+        });
+      }
+      var shareStationTab = document.getElementById('shareStationOpenTabBtn');
+      if (shareStationTab) {
+        shareStationTab.addEventListener('click', function () {
+          var url = getShareStationUrl();
+          if (url) window.open(url, '_blank');
+        });
+      }
+
+      function triggerShareStationHandoff() {
+        clearTimeout(shareStationHandoffTimer);
+        maybeAutoPrint();
+        if (shareStationHandoff === 'immediate') {
+          shareStationHandoffTimer = setTimeout(function () {
+            if (state === 'result') resetForNextGuest();
+          }, 450);
+          return;
+        }
+        if (shareStationHandoff === 'photo3') {
+          shareStationHandoffTimer = setTimeout(function () {
+            if (state === 'result') resetForNextGuest();
+          }, 3000);
+          return;
+        }
+        // 'handoff2'
+        var ov = document.getElementById('shareStationHandoffOverlay');
+        var bar = document.getElementById('shareStationHandoffBar');
+        var secEl = document.getElementById('shareStationHandoffSec');
+        if (ov && bar) {
+          ov.hidden = false;
+          bar.style.transition = 'none';
+          bar.style.width = '100%';
+          void bar.offsetWidth;
+          var dur = 2.4;
+          bar.style.transition = 'width ' + dur + 's linear';
+          bar.style.width = '0%';
+          if (secEl) secEl.textContent = '2';
+          shareStationHandoffTimer = setTimeout(function () {
+            ov.hidden = true;
+            if (state === 'result') resetForNextGuest();
+          }, dur * 1000);
+        } else {
+          shareStationHandoffTimer = setTimeout(function () {
+            if (state === 'result') resetForNextGuest();
+          }, 2400);
+        }
+      }
+
       // ---- QR pop-up after a session (see the CSS "QR pop-up after a session") ----
       // qrPopBegin: the finished photo on its own for qrPopDelay seconds; then qrPopShow moves the result card
       // (#qrSection: QR, Print, Done, the timer) into a pop-up. With "Print first" the card shows Printing
@@ -31630,6 +31986,9 @@
       function resetForNextGuest() {
         if (typeof stopFlipAutoPlay === 'function') stopFlipAutoPlay();
         clearTimeout(resultTimer);
+        clearTimeout(shareStationHandoffTimer);
+        var sso = document.getElementById('shareStationHandoffOverlay');
+        if (sso) sso.hidden = true;
         state = 'idle';
         guestDecor = [];
         selGuestDecor = -1;
@@ -32417,9 +32776,12 @@
         sessionNumber = nextSessionNumber();
         renderComposite(); updateUI();
         showQRForCurrentGIF();
-        scheduleResultReset();
-        maybeAutoPrint();
-        if (qrPopOn) qrPopBegin();
+        if (shareStationOn) triggerShareStationHandoff();
+        else {
+          scheduleResultReset();
+          maybeAutoPrint();
+          if (qrPopOn) qrPopBegin();
+        }
       }
 
       // ──────────────────────────────────────────────────────────────────
@@ -42134,6 +42496,7 @@
           boothType: boothType, btCfg: JSON.parse(JSON.stringify(btCfg)), tpls: tplsSnapshot(),
           timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
           reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake, qrPop: qrPopOn, qrPopDelay: qrPopDelay,
+          shareStation: shareStationOn, shareStationHandoff: shareStationHandoff, shareStationPrivacy: shareStationPrivacy,
           outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, gifMotionStyle: gifMotionStyle, gifLoopMode: gifLoopMode, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipNumbers: flipNumbers, flipCues: flipCues, flipGridPreset: flipGridPreset, flipPrinterPool: flipPrinterPool, flipPoolMode: flipPoolMode, flipCoverStyle: flipCoverStyle, flipCoverAssetId: flipCoverAssetId, flipBackQr: flipBackQr, flipBackText: flipBackText,
           backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
           frameColorChoice: frameColorChoice, photoPlacement: photoPlacement, cropFocus: cropFocus,
@@ -42263,6 +42626,9 @@
           if (typeof s.reviewEach === 'boolean') { reviewEach = s.reviewEach; reviewEachToggle.checked = s.reviewEach; }
           if (typeof s.qrPop === 'boolean') { qrPopOn = s.qrPop; refreshQrPopUI(); }
           if (typeof s.qrPopDelay === 'number') { qrPopDelay = Math.max(0, Math.min(15, s.qrPopDelay)); setSelectValue('qrPopDelaySelect', qrPopDelay); }
+          if (typeof s.shareStation === 'boolean') { shareStationOn = s.shareStation; refreshShareStationUI(); }
+          if (typeof s.shareStationHandoff === 'string') { shareStationHandoff = s.shareStationHandoff; setSelectValue('shareStationHandoffSelect', s.shareStationHandoff); }
+          if (typeof s.shareStationPrivacy === 'string') { shareStationPrivacy = s.shareStationPrivacy; setSelectValue('shareStationPrivacySelect', s.shareStationPrivacy); }
           if (typeof s.allowRetake === 'boolean') { allowRetake = s.allowRetake; try { refreshRetakeUI(); } catch (e) { } }
           if (s.colorAdj && typeof s.colorAdj === 'object') {
             colorAdj = {
@@ -47291,7 +47657,7 @@
       var ltCache = { sig: '', urls: {} }, ltQueue = [], ltDirty = true, ltTimer = null, ltBusy = false;
       function layoutDesignSig() {
         var s = snapshotSetup();
-        ['layout', 'activeFrame', 'chooseIds', 'frameMode', 'guestPick', 'guestLayouts', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview', 'allowRetake', 'qrPop', 'qrPopDelay'].forEach(function (k) { delete s[k]; });
+        ['layout', 'activeFrame', 'chooseIds', 'frameMode', 'guestPick', 'guestLayouts', 'timerSec', 'firstExtraSec', 'betweenSec', 'reviewEach', 'resultReview', 'allowRetake', 'qrPop', 'qrPopDelay', 'shareStation', 'shareStationHandoff', 'shareStationPrivacy'].forEach(function (k) { delete s[k]; });
         return JSON.stringify(s) + '|' + (backgroundImg ? backgroundImg.src.length : 0) + '|' + labelInput.value;
       }
       function setLayoutThumb(btn, url) {

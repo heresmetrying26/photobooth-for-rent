@@ -800,6 +800,14 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
 .card .time{position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#eee;border-radius:6px;padding:3px 7px;font-size:10px;font-weight:600}
 .empty{text-align:center;color:#8E8994;padding:80px 20px;font-size:15px;grid-column:1/-1}
 
+/* Standby screen for Privacy / Single-Session mode */
+.standby-wrap{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:75vh;padding:32px 20px;text-align:center}
+.standby-card{max-width:440px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:36px 28px;box-shadow:0 20px 50px rgba(0,0,0,0.5)}
+.standby-icon{font-size:46px;margin-bottom:12px;animation:stBounce 1.6s infinite alternate ease-in-out}
+@keyframes stBounce{from{transform:translateY(0)}to{transform:translateY(-8px)}}
+.standby-card h2{margin:0 0 10px;font-size:24px;font-weight:800;letter-spacing:-.02em;color:#fff}
+.standby-card p{margin:0;color:#A49FA9;font-size:14.5px;line-height:1.55}
+
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s}
 .modal-overlay.open{opacity:1;pointer-events:auto}
 .modal{background:#18161D;border:1px solid rgba(255,255,255,0.12);border-radius:24px;width:100%;max-width:920px;max-height:92vh;display:flex;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,0.7);position:relative}
@@ -821,7 +829,7 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
   .modal{flex-direction:column;max-height:96vh;overflow-y:auto}
   .modal-share{border-left:0;border-top:1px solid rgba(255,255,255,0.08);padding:20px 16px}
   .modal-media{min-height:240px;max-height:45vh}
-  .qr-frame img{width:160px;height:160px}
+  .qr-frame img{width:170px;height:170px}
 }
 </style>
 <script src="/qr.js"></script>
@@ -833,10 +841,10 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
     <h1>${esc(evName)}</h1>
     <div class="badge">📱 Sharing Station</div>
   </div>
-  <div class="stat"><span class="pulse"></span><span id="stCount">0 clips</span></div>
+  <div class="stat"><span class="pulse"></span><span id="stCount">0 items</span></div>
 </header>
 
-<div class="controls">
+<div class="controls" id="stControls">
   <div class="tabs">
     <button type="button" class="tab active" data-filter="all">All</button>
     <button type="button" class="tab" data-filter="photo">Prints</button>
@@ -846,7 +854,15 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
   </div>
 </div>
 
-<div class="grid" id="stGrid"><div class="empty">Loading clips…</div></div>
+<div class="grid" id="stGrid"><div class="empty">Loading items…</div></div>
+
+<div class="standby-wrap" id="standbyView">
+  <div class="standby-card">
+    <div class="standby-icon">✨ 📸</div>
+    <h2>Ready for your photos!</h2>
+    <p>Step up to the booth to start your session. Your photos and QR code will appear here automatically.</p>
+  </div>
+</div>
 
 <div class="modal-overlay" id="modal">
   <div class="modal">
@@ -854,9 +870,9 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
     <div class="modal-media" id="mMedia"></div>
     <div class="modal-share">
       <h2>Scan to save</h2>
-      <p>Point your phone’s camera at the QR code to open and save your video.</p>
+      <p>Point your phone’s camera at the QR code to open and save your photo.</p>
       <div class="qr-frame"><img id="mQr" alt="QR Code"></div>
-      <a class="btn" id="mDl" download>Save Video</a>
+      <a class="btn" id="mDl" download>Save Photo</a>
       <button type="button" class="btn alt" id="mDone">Done (Next guest)</button>
       <div class="timer-bar"><i id="mBar"></i></div>
       <div class="timer-text">Auto-closing in <span id="mSec">35</span>s</div>
@@ -867,6 +883,34 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
 <script>
 var SLUG = ${JSON.stringify(slug)};
 var files = [], currentFilter = 'all', activeItem = null, timerId = null, timeLeft = 35;
+var privacyOnly = /[?&]privacy=only\b/i.test(location.search);
+var hasLoaded = false, lastKnownTop = null;
+
+if (privacyOnly) {
+  document.getElementById('stControls').style.display = 'none';
+  document.getElementById('stGrid').style.display = 'none';
+  document.getElementById('standbyView').style.display = 'flex';
+}
+
+function playChime() {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+    var notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach(function(freq, i) {
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.08);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.45);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + i * 0.08);
+      osc.stop(ctx.currentTime + i * 0.08 + 0.45);
+    });
+  } catch(e) {}
+}
 
 function timeAgo(mtime) {
   var s = Math.floor((Date.now() - mtime) / 1000);
@@ -889,10 +933,11 @@ function makeQr(url) {
 }
 
 function render() {
+  if (privacyOnly) return;
   var g = document.getElementById('stGrid');
   var list = files.filter(function(f){ return currentFilter === 'all' || f.kind === currentFilter; });
   if (!list.length) {
-    g.innerHTML = '<div class="empty">No ' + (currentFilter === 'all' ? 'clips' : currentFilter + 's') + ' yet. Take a spin on the booth to get started!</div>';
+    g.innerHTML = '<div class="empty">No ' + (currentFilter === 'all' ? 'items' : currentFilter + 's') + ' yet. Take a shot on the booth to get started!</div>';
     return;
   }
   g.innerHTML = list.map(function(f){
@@ -988,16 +1033,28 @@ async function poll() {
     var r = await fetch('/station/' + SLUG + '/list');
     var j = await r.json();
     if (j && j.ok && Array.isArray(j.files)) {
+      var isFirst = !hasLoaded;
       var changed = j.files.length !== files.length || (j.files[0] && files[0] && j.files[0].name !== files[0].name);
+      var newest = j.files[0];
       files = j.files;
-      document.getElementById('stCount').textContent = files.length + (files.length === 1 ? ' clip' : ' clips');
-      if (changed && !activeItem) render();
+      hasLoaded = true;
+      document.getElementById('stCount').textContent = files.length + (files.length === 1 ? ' item' : ' items');
+      if (changed) {
+        if (!privacyOnly && !activeItem) render();
+        if (newest && (!lastKnownTop || newest.name !== lastKnownTop)) {
+          lastKnownTop = newest.name;
+          if (!isFirst) {
+            playChime();
+            openModal(newest);
+          }
+        }
+      }
     }
   } catch(e) {}
 }
 
 poll();
-setInterval(poll, 3500);
+setInterval(poll, 1800);
 </script>
 </body>
 </html>`;

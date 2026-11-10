@@ -31785,22 +31785,31 @@
       function getShareStationUrl() {
         var priv = (shareStationPrivacy === 'only') ? 'privacy=only' : '';
         if (LOCALSHARE) {
+          // Offline (Desktop/Android): server auto-resolves latest event via resolveSlug().
+          // Never embed a folder ID in the URL — that would pin it to an old event.
           var base = lanBaseNow();
           if (!base && typeof window !== 'undefined' && location.origin && /^http/i.test(location.origin)) {
             base = location.origin;
           }
           return (base || '') + '/station' + (priv ? ('?' + priv) : '');
         }
-        var fKey = (typeof driveFolderKeyInput !== 'undefined' && driveFolderKeyInput) ? driveFolderKeyInput.value.trim() : '';
-        if (!fKey) {
-          try {
+        // Online: prefer the live folder key from the input field (current event),
+        // then fall back to the cached folder URL only if the input is blank.
+        var fKey = '';
+        try {
+          // rawFolderKey() reads driveFolderKeyInput directly — always up-to-date.
+          var liveKey = typeof rawFolderKey === 'function' ? rawFolderKey() : '';
+          if (liveKey) {
+            fKey = liveKey;
+          } else {
+            // Fallback: extract Drive folder ID from cached URL.
             var fu = getCachedFolderUrl();
             if (fu) {
               var m = /[?&]id=([A-Za-z0-9_-]+)/.exec(fu) || /\/folders\/([A-Za-z0-9_-]+)/.exec(fu);
               if (m) fKey = m[1];
             }
-          } catch (e) { }
-        }
+          }
+        } catch (e) { }
         var baseOnline = location.origin || 'https://photobooth4u.com';
         var q = [];
         if (fKey) q.push('f=' + encodeURIComponent(fKey));

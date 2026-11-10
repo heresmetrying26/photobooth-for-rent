@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.20', date: '2026-11-10' },
   { version: '1.1.19', date: '2026-11-10' },
   { version: '1.1.18', date: '2026-11-10' },
   { version: '1.1.17', date: '2026-11-10' },
@@ -191,6 +192,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-10', title: 'Desktop 1.1.20 + Android 1.1.37: Sharing Station — fix wrong event on separate phone', for: ['website', 'app'], app: '1.1.20',
+    items: [
+      '🔧 Fixed: Scanning the Sharing Station QR on a separate phone no longer opens an old/previous event. The pairing QR is now always generated from the currently active event folder.',
+      '🔄 "Seeing wrong event?" button: if the station phone is showing a different event\'s photos, a "⟳ Reload to resync" button appears on the standby screen after ~15 seconds so you can recover without re-scanning.',
+      '📲 Offline (Desktop/Android): station URL no longer embeds a folder ID — the server always auto-resolves to the latest event, so a stale QR scan cannot pin you to an old folder.',
+      '🌐 Online: the pairing QR now reads the live event name from the booth\'s folder input field rather than a cached/stale localStorage value.'
+    ]
+  },
   {
     date: '2026-11-10', title: 'Desktop 1.1.19 + Android 1.1.36: Separate Sharing Station with live auto-pop, audio chime & fast booth hand-off', for: ['website', 'app'], app: '1.1.19',
     items: [

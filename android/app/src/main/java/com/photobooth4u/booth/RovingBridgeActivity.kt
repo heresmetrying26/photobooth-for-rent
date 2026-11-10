@@ -40,6 +40,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.io.OutputStream
 import java.net.HttpURLConnection
@@ -103,6 +105,11 @@ class RovingBridgeActivity : AppCompatActivity() {
     private lateinit var galleryTitleText: TextView
     private lateinit var photoPreviewOverlay: FrameLayout
     private var galleryAdapter: GalleryGridAdapter? = null
+
+    // Updates & Changelog Overlay
+    private lateinit var updatesOverlay: FrameLayout
+    private lateinit var updatesStatusText: TextView
+    private lateinit var updatesDownloadBtn: Button
 
     private val sessionPhotos = mutableListOf<SessionPhoto>()
     private var lastPhotoBitmap: Bitmap? = null
@@ -169,6 +176,10 @@ class RovingBridgeActivity : AppCompatActivity() {
 
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
+        if (::updatesOverlay.isInitialized && updatesOverlay.visibility == View.VISIBLE) {
+            hideUpdatesOverlay()
+            return
+        }
         if (::photoPreviewOverlay.isInitialized && photoPreviewOverlay.visibility == View.VISIBLE) {
             photoPreviewOverlay.visibility = View.GONE
             return
@@ -278,15 +289,18 @@ class RovingBridgeActivity : AppCompatActivity() {
 
         val versionStr = try {
             val pInfo = packageManager.getPackageInfo(packageName, 0)
-            "v" + (pInfo.versionName ?: "1.1.0")
+            "v" + (pInfo.versionName ?: "1.1.1")
         } catch (_: Exception) {
-            "v1.1.0"
+            "v1.1.1"
         }
 
         val sub = TextView(this).apply {
             text = "$versionStr • Wired DSLR ➔ Wireless Streamer"
             textSize = 12f
             setTextColor(Color.parseColor("#8E8884"))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { showUpdatesOverlay() }
         }
         titleCol.addView(sub)
         topBar.addView(titleCol)
@@ -324,6 +338,18 @@ class RovingBridgeActivity : AppCompatActivity() {
             }
         }
         topBar.addView(guideBtn)
+
+        val updatesTopBtn = Button(this).apply {
+            text = "✨"
+            textSize = 14f
+            background = makeCard(Color.parseColor("#FEF5E7"), 16f)
+            val lp = LinearLayout.LayoutParams(dp(38), dp(38)).apply {
+                rightMargin = dp(8)
+            }
+            layoutParams = lp
+            setOnClickListener { showUpdatesOverlay() }
+        }
+        topBar.addView(updatesTopBtn)
 
         val closeBtn = Button(this).apply {
             text = "✕"
@@ -618,6 +644,58 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
         content.addView(galleryBtn)
 
+        val updatesCard = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background = makeCard(Color.WHITE, 14f)
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            gravity = Gravity.CENTER_VERTICAL
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(10)
+            }
+            layoutParams = lp
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { showUpdatesOverlay() }
+        }
+
+        val updCol = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            layoutParams = lp
+        }
+
+        val updTitle = TextView(this).apply {
+            text = "✨ Version $versionStr • What's New"
+            textSize = 13f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.parseColor("#1C1A1E"))
+        }
+        updCol.addView(updTitle)
+
+        val updSub = TextView(this).apply {
+            text = "Check online updates & release changelog"
+            textSize = 11f
+            setTextColor(Color.parseColor("#8E8884"))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(2)
+            }
+            layoutParams = lp
+        }
+        updCol.addView(updSub)
+        updatesCard.addView(updCol)
+
+        val updBtn = Button(this).apply {
+            text = "Updates ➔"
+            textSize = 12f
+            setTextColor(Color.parseColor("#1D6FA5"))
+            setTypeface(typeface, Typeface.BOLD)
+            background = makeCard(Color.parseColor("#EAF3FA"), 10f)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(34))
+            setOnClickListener { showUpdatesOverlay() }
+        }
+        updatesCard.addView(updBtn)
+        content.addView(updatesCard)
+
         scroll.addView(content)
         rootLayout.addView(scroll)
 
@@ -630,6 +708,9 @@ class RovingBridgeActivity : AppCompatActivity() {
 
         buildPhotoPreviewOverlay()
         rootLayout.addView(photoPreviewOverlay)
+
+        buildUpdatesOverlay()
+        rootLayout.addView(updatesOverlay)
 
         setContentView(rootLayout)
     }
@@ -943,6 +1024,324 @@ class RovingBridgeActivity : AppCompatActivity() {
         card.addView(btnRow)
 
         photoPreviewOverlay.addView(card)
+    }
+
+    // ================================================================ UPDATES & CHANGELOG OVERLAY
+
+    private fun buildUpdatesOverlay() {
+        updatesOverlay = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#F5F1EA"))
+            visibility = View.GONE
+            isClickable = true
+            isFocusable = true
+        }
+
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+        }
+
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            setPadding(dp(16), dp(20), dp(16), dp(32))
+        }
+
+        // Top bar
+        val bar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+
+        val title = TextView(this).apply {
+            text = "✨ App Updates & What's New"
+            textSize = 18f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.parseColor("#1C1A1E"))
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        bar.addView(title)
+
+        val closeBtn = Button(this).apply {
+            text = "✕"
+            textSize = 16f
+            setTextColor(Color.parseColor("#6B666C"))
+            background = makeCard(Color.parseColor("#E4DCCF"), 19f)
+            layoutParams = LinearLayout.LayoutParams(dp(38), dp(38))
+            setOnClickListener { hideUpdatesOverlay() }
+        }
+        bar.addView(closeBtn)
+        container.addView(bar)
+
+        // Version & Live Check Card
+        val checkCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = makeCard(Color.WHITE, 16f)
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(16)
+            }
+            layoutParams = lp
+        }
+
+        val curVerText = TextView(this).apply {
+            text = "Installed Version: v${getCurrentVersionName()}"
+            textSize = 15f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.parseColor("#1C1A1E"))
+        }
+        checkCard.addView(curVerText)
+
+        updatesStatusText = TextView(this).apply {
+            text = "Tap 'Check Online' to verify the latest release on GitHub."
+            textSize = 12f
+            setTextColor(Color.parseColor("#6B666C"))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(4)
+            }
+            layoutParams = lp
+        }
+        checkCard.addView(updatesStatusText)
+
+        val btnRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(12)
+            }
+            layoutParams = lp
+        }
+
+        val checkBtn = Button(this).apply {
+            text = "🔄 Check Online"
+            textSize = 13f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            background = makeCard(Color.parseColor("#1C1A1E"), 10f)
+            val lp = LinearLayout.LayoutParams(0, dp(42), 1f).apply {
+                rightMargin = dp(8)
+            }
+            layoutParams = lp
+            setOnClickListener { checkOnlineUpdates(updatesStatusText, updatesDownloadBtn) }
+        }
+        btnRow.addView(checkBtn)
+
+        val webBtn = Button(this).apply {
+            text = "🌐 Downloads Page"
+            textSize = 12f
+            setTextColor(Color.parseColor("#1D6FA5"))
+            setTypeface(typeface, Typeface.BOLD)
+            background = makeCard(Color.parseColor("#EAF3FA"), 10f)
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(42))
+            layoutParams = lp
+            setOnClickListener {
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://photobooth4u.netlify.app/downloads/#roving-bridge")))
+                } catch (e: Exception) {
+                    Toast.makeText(this@RovingBridgeActivity, "Could not open browser: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        btnRow.addView(webBtn)
+        checkCard.addView(btnRow)
+
+        updatesDownloadBtn = Button(this).apply {
+            text = "📥 Download Update"
+            textSize = 13f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            background = makeCard(Color.parseColor("#2EA66B"), 10f)
+            visibility = View.GONE
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(44)).apply {
+                topMargin = dp(10)
+            }
+            layoutParams = lp
+        }
+        checkCard.addView(updatesDownloadBtn)
+        container.addView(checkCard)
+
+        // Changelog section title
+        val changelogTitle = TextView(this).apply {
+            text = "📜 Release Notes & Changelog"
+            textSize = 15f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.parseColor("#1C1A1E"))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(20)
+                bottomMargin = dp(8)
+            }
+            layoutParams = lp
+        }
+        container.addView(changelogTitle)
+
+        // Card v1.1.0
+        val card110 = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = makeCard(Color.WHITE, 14f)
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = dp(12)
+            }
+            layoutParams = lp
+        }
+
+        val header110 = TextView(this).apply {
+            text = "Version 1.1.0 (Current Release)"
+            textSize = 14f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.parseColor("#1B7358"))
+        }
+        card110.addView(header110)
+
+        val notes110 = TextView(this).apply {
+            text = "• 📸 In-App Session Photos Gallery: View all captured shots in a 3-column chronological grid.\n" +
+                   "• 🔍 Fullscreen Preview: Tap any thumbnail to view an enlarged preview with file size and timestamp.\n" +
+                   "• 🖥️ Instant Laptop Queue: Tap the new 🖥️ Queue button to open the laptop base station queue in your browser over Wi-Fi.\n" +
+                   "• ⚡ Zero-Lag Micro-Caching: 30KB thumbnail generation on a background thread that keeps shooting at 100% full speed.\n" +
+                   "• ✨ In-App Updates Center: Check for new releases online with direct download link and changelog."
+            textSize = 12f
+            setTextColor(Color.parseColor("#423D44"))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(6)
+            }
+            layoutParams = lp
+        }
+        card110.addView(notes110)
+        container.addView(card110)
+
+        // Card v1.0.0
+        val card100 = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = makeCard(Color.WHITE, 14f)
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            layoutParams = lp
+        }
+
+        val header100 = TextView(this).apply {
+            text = "Version 1.0.0 (Initial Release)"
+            textSize = 14f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(Color.parseColor("#1C1A1E"))
+        }
+        card100.addView(header100)
+
+        val notes100 = TextView(this).apply {
+            text = "• 🚀 Standalone Android Companion: Dedicated app with no booth license code or kiosk mode required.\n" +
+                   "• 🔌 Wired DSLR USB OTG: Native PTP support for Canon EOS, Nikon, and Sony Alpha cameras.\n" +
+                   "• 🎯 1-Second QR Pairing: Point camera at the laptop Photographer Desk to connect instantly.\n" +
+                   "• 🔒 Pocket Lock Mode: Dims screen to 5% and blocks touches while keeping physical shutter live.\n" +
+                   "• 📳 Haptic Vibration Feedback: Confirms successful delivery to the laptop directly in your pocket."
+            textSize = 12f
+            setTextColor(Color.parseColor("#6B666C"))
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(6)
+            }
+            layoutParams = lp
+        }
+        card100.addView(notes100)
+        container.addView(card100)
+
+        scroll.addView(container)
+        updatesOverlay.addView(scroll)
+    }
+
+    private fun showUpdatesOverlay() {
+        updatesOverlay.visibility = View.VISIBLE
+        checkOnlineUpdates(updatesStatusText, updatesDownloadBtn)
+    }
+
+    private fun hideUpdatesOverlay() {
+        updatesOverlay.visibility = View.GONE
+    }
+
+    private fun checkOnlineUpdates(statusView: TextView, actionBtn: Button) {
+        statusView.text = "Checking GitHub for updates…"
+        statusView.setTextColor(Color.parseColor("#6B666C"))
+        actionBtn.visibility = View.GONE
+
+        Thread({
+            var latestTag = ""
+            var downloadUrl = ""
+            try {
+                val url = URL("https://api.github.com/repos/heresmetrying26/photobooth-for-rent/releases?per_page=15")
+                val conn = url.openConnection() as HttpURLConnection
+                conn.connectTimeout = 5000
+                conn.readTimeout = 5000
+                conn.setRequestProperty("User-Agent", "photobooth4u-roving-bridge")
+                conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
+                if (conn.responseCode in 200..299) {
+                    val jsonStr = conn.inputStream.bufferedReader().use { it.readText() }
+                    val arr = JSONArray(jsonStr)
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
+                        val tag = obj.optString("tag_name", "")
+                        if (tag.startsWith("roving-v")) {
+                            latestTag = tag.replace("roving-v", "")
+                            val assets = obj.optJSONArray("assets")
+                            if (assets != null) {
+                                for (j in 0 until assets.length()) {
+                                    val asset = assets.getJSONObject(j)
+                                    if (asset.optString("name") == "roving-dslr-bridge-android.apk") {
+                                        downloadUrl = asset.optString("browser_download_url")
+                                        break
+                                    }
+                                }
+                            }
+                            break
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Update check failed: ${e.message}")
+            }
+
+            mainHandler.post {
+                val currentVer = getCurrentVersionName()
+                if (latestTag.isNotEmpty()) {
+                    val isNewer = compareVersions(latestTag, currentVer) > 0
+                    if (isNewer) {
+                        statusView.text = "🚀 New version v$latestTag is available!"
+                        statusView.setTextColor(Color.parseColor("#2EA66B"))
+                        actionBtn.text = "📥 Download v$latestTag APK"
+                        actionBtn.visibility = View.VISIBLE
+                        actionBtn.setOnClickListener {
+                            val target = downloadUrl.ifEmpty { "https://photobooth4u.netlify.app/downloads/#roving-bridge" }
+                            try {
+                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
+                            } catch (e: Exception) {
+                                Toast.makeText(this, "Could not open browser: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } else {
+                        statusView.text = "✅ You're up to date (v$currentVer is the latest)."
+                        statusView.setTextColor(Color.parseColor("#2EA66B"))
+                    }
+                } else {
+                    statusView.text = "Could not check online (offline or no internet)."
+                    statusView.setTextColor(Color.parseColor("#6B666C"))
+                }
+            }
+        }, "update-check").start()
+    }
+
+    private fun compareVersions(v1: String, v2: String): Int {
+        val p1 = v1.trim().removePrefix("v").split(".").mapNotNull { it.toIntOrNull() }
+        val p2 = v2.trim().removePrefix("v").split(".").mapNotNull { it.toIntOrNull() }
+        val maxLen = maxOf(p1.size, p2.size)
+        for (i in 0 until maxLen) {
+            val num1 = p1.getOrElse(i) { 0 }
+            val num2 = p2.getOrElse(i) { 0 }
+            if (num1 != num2) return num1.compareTo(num2)
+        }
+        return 0
+    }
+
+    private fun getCurrentVersionName(): String {
+        return try {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.1.1"
+        } catch (_: Exception) {
+            "1.1.1"
+        }
     }
 
     private fun showGalleryOverlay() {

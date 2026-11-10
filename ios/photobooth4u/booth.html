@@ -28039,6 +28039,16 @@
           const rollPick = layoutDef().kind === 'receipt' ? (usable.includes(saved) && (layoutDef().color || isReceiptPaper(saved)) ? saved : (layoutDef().color ? null : usable.find(isReceiptPaper))) : null;
           printSize = rollPick || (saved && usable.includes(saved) ? saved : null) || tabletPick || usable[0] || null;
         }
+        // Fix: if the resolved printSize is receipt80 but the active printer name contains "58"
+        // (e.g. MP58C7), automatically upgrade to receipt58 so the client never prints a
+        // 576-dot image on a 384-dot head — even when receipt80 was saved from a previous session.
+        if (printSize === 'receipt80' && usable.includes('receipt58')) {
+          const _pn58 = typeof activePrinterName === 'function' ? activePrinterName() : '';
+          if (/58/.test(_pn58)) {
+            printSize = 'receipt58';
+            try { localStorage.setItem('pb_print_paper', 'receipt58'); } catch (e) { }
+          }
+        }
         printSizeRow.innerHTML = '';
         document.getElementById('customSizeRow').classList.toggle('hidden', !(window.__PB && window.__PB.lifetime) || isTrialBooth());
         const own = ownSizes();

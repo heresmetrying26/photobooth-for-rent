@@ -1,12 +1,12 @@
 # Session Context
 
-**Current Task**: Release desktop v1.1.16 and android v1.1.33 with camera anti-glitch & truncation protection.
+**Current Task**: Resolve photo session lag on VOVE Pad 9 Ultra / Android tablets.
 
 **Key Decisions**:
-- Bumped desktop app version to `1.1.16` and Android app to `1.1.33` (versionCode 135).
-- Added JPEG truncation (missing EOI) check and bottom scanline streak detection with clean viewfinder fallback in booth.html.
-- Prepared release tags `desktop-v1.1.16` and `android-v1.1.33` for GitHub Actions.
+- Fixed `webcamMaxShot` bypass on built-in tablet cameras (`isBuiltInCamera`) so frames are captured instantly from viewfinder.
+- Switched `MainActivity.kt` WebView layer to `LAYER_TYPE_NONE` to eliminate offscreen FBO copy bottlenecks.
+- Optimized Android tablet default viewfinder resolution to 720p for smooth 30fps and added countdown GPU compositing layers.
 
 **Next Steps**:
-- Verify builds and smoke tests.
-- Push release tags to trigger GitHub Actions release builds.
+- Verify tablet performance during live photo session on VOVE Pad 9 Ultra.
+- Test external USB webcams and built-in front/rear tablet cameras.

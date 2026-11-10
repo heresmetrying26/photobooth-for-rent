@@ -237,7 +237,10 @@ class MainActivity : AppCompatActivity() {
         setContentView(root)
 
         webView = WebView(this)
-        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        // LAYER_TYPE_NONE allows Chromium to composite directly into the hardware-accelerated window surface.
+        // Forcing LAYER_TYPE_HARDWARE on a WebView forces an expensive offscreen FBO copy on every single frame,
+        // which causes heavy stuttering and frame drops on budget tablet GPUs (e.g. VOVE Pad 9 Ultra).
+        webView.setLayerType(View.LAYER_TYPE_NONE, null)
         root.addView(
             webView,
             FrameLayout.LayoutParams(

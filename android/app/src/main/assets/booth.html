@@ -1623,6 +1623,8 @@
       font-size: clamp(56px, 14vw, 88px);
       color: #ffffff;
       text-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+      will-change: transform, opacity;
+      transform: translateZ(0);
     }
 
     .countdown-num.pulse {
@@ -12706,57 +12708,114 @@
     }
 
   
-    /* --- On-Screen Layout & Resize Editor Bar --- */
+    /* --- On-Screen Layout & Resize Editor Floating Dock (Minimizable & Movable) --- */
     .layout-edit-bar {
       position: fixed;
-      bottom: max(16px, env(safe-area-inset-bottom));
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 100;
+      top: max(12px, env(safe-area-inset-top));
+      right: max(16px, env(safe-area-inset-right));
+      left: auto;
+      bottom: auto;
+      transform: none;
+      z-index: 1000;
       background: rgba(18, 14, 22, 0.94);
       -webkit-backdrop-filter: blur(16px);
       backdrop-filter: blur(16px);
       border: 1.5px solid rgba(255, 255, 255, 0.28);
-      border-radius: 22px;
+      border-radius: 18px;
       box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-      padding: 10px 16px;
+      padding: 10px 14px;
       color: #ffffff;
       width: max-content;
-      max-width: min(720px, calc(100vw - 20px));
+      max-width: min(440px, calc(100vw - 24px));
       display: flex;
       flex-direction: column;
       gap: 8px;
       box-sizing: border-box;
-      animation: lebSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      animation: lebFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
     }
-    @keyframes lebSlideUp {
-      from { transform: translate(-50%, 20px); opacity: 0; }
-      to { transform: translate(-50%, 0); opacity: 1; }
+    @keyframes lebFadeIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     .layout-edit-bar[hidden] {
       display: none !important;
+    }
+    .layout-edit-bar.is-minimized {
+      padding: 6px 12px;
+      border-radius: 999px;
+      max-width: max-content;
+      gap: 0;
+      background: rgba(18, 14, 22, 0.96);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      cursor: pointer;
+    }
+    .layout-edit-bar.is-minimized .leb-body {
+      display: none !important;
+    }
+    .layout-edit-bar.is-minimized .leb-min-icon {
+      display: none !important;
+    }
+    .layout-edit-bar.is-minimized .leb-expand-text {
+      display: inline !important;
     }
     .leb-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
+      cursor: grab;
+      touch-action: none;
+    }
+    .leb-header:active {
+      cursor: grabbing;
+    }
+    .leb-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .leb-drag-handle {
+      cursor: grab;
+      font-size: 14px;
+      opacity: 0.65;
+      letter-spacing: -2px;
+      margin-right: 4px;
+      user-select: none;
     }
     .leb-title {
-      font: 800 13px 'Manrope', sans-serif;
+      font: 800 12.5px 'Manrope', sans-serif;
       display: flex;
       align-items: center;
       gap: 6px;
       color: #ffffff;
       letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+    .leb-min-btn {
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      color: #ffffff;
+      border-radius: 999px;
+      padding: 3px 10px;
+      font: 700 11px 'Manrope', sans-serif;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.12s ease;
+      white-space: nowrap;
+    }
+    .leb-min-btn:hover {
+      background: rgba(255, 255, 255, 0.28);
     }
     .leb-done-btn {
       background: #2EA66B;
       color: #ffffff;
-      font: 800 12.5px 'Manrope', sans-serif;
+      font: 800 12px 'Manrope', sans-serif;
       border: none;
       border-radius: 999px;
-      padding: 6px 16px;
+      padding: 5px 14px;
       cursor: pointer;
       box-shadow: 0 4px 14px rgba(46, 166, 107, 0.4);
       transition: transform 0.12s ease, background 0.12s ease;
@@ -12768,9 +12827,8 @@
     }
     .leb-body {
       display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
+      flex-direction: column;
+      gap: 8px;
     }
     .leb-presets {
       display: flex;
@@ -12796,53 +12854,31 @@
       background: var(--blue-deep, #1f4166);
       border-color: rgba(255, 255, 255, 0.45);
       color: #ffffff;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
     }
     .leb-controls {
       display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
+      flex-direction: column;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 6px 10px;
+      border-radius: 12px;
     }
     .leb-row {
       display: flex;
       align-items: center;
-      gap: 5px;
-      background: rgba(255, 255, 255, 0.08);
-      padding: 3px 7px;
-      border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      gap: 8px;
     }
     .leb-lbl {
-      font: 700 11px 'Manrope', sans-serif;
+      font: 700 11.5px 'Manrope', sans-serif;
       color: rgba(255, 255, 255, 0.85);
-      white-space: nowrap;
-    }
-    .leb-btn {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.18);
-      border: none;
-      color: #ffffff;
-      font: 800 13px 'Manrope', sans-serif;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      line-height: 1;
-      transition: background 0.12s ease, transform 0.12s ease;
-      padding: 0;
-    }
-    .leb-btn:hover {
-      background: rgba(255, 255, 255, 0.32);
-      transform: scale(1.08);
+      min-width: 96px;
     }
     .leb-val {
       font: 800 11.5px 'Manrope', monospace;
-      color: #ffffff;
-      min-width: 36px;
-      text-align: center;
+      color: #7cc4ff;
+      min-width: 38px;
+      text-align: right;
     }
     .leb-op {
       width: 74px;
@@ -12858,8 +12894,9 @@
     }
     .leb-hint {
       margin: 0;
-      font: 600 10.5px 'Manrope', sans-serif;
+      font: 600 10px 'Manrope', sans-serif;
       color: rgba(255, 255, 255, 0.62);
+      line-height: 1.35;
     }
 
     /* While layout-editing is active on body: show sample preview overlays */
@@ -12867,22 +12904,37 @@
       display: flex !important;
       pointer-events: auto;
     }
-    body.layout-editing .film-track.edit-preview {
+    body.layout-editing .film-track.edit-preview,
+    body.layout-editing .film-track {
       display: flex !important;
+      grid-column: 3 !important;
+      grid-row: 1 !important;
+      align-self: start !important;
+      flex-direction: column !important;
+      align-items: stretch !important;
+      justify-content: flex-start !important;
+      margin-top: 0 !important;
+      max-height: calc(var(--vh, 100vh) - 80px) !important;
+      overflow-y: auto !important;
+      scrollbar-width: thin;
     }
-    /* The branded welcome card would sit on top of the stage and hide the live
-       buttons, so it steps aside while the operator is editing the layout. */
     body.layout-editing .welcome-overlay {
       display: none !important;
     }
-    /* Keep the real Start / Print buttons on screen while editing, even if the
-       session state would normally hide them. The second selector outranks
-       body.welcome-on .app-shell:not(.result) .start-btn-wrap, which is what
-       hides the buttons under the branded welcome card. */
+    /* Keep the real Start / Print buttons on screen while editing, right where
+       guests will actually see them (horizontally centered under camera, not crammed in side). */
     body.layout-editing .start-btn-wrap,
     body.layout-editing .app-shell:not(.result) .start-btn-wrap {
       display: flex !important;
-      position: relative;
+      position: relative !important;
+      grid-column: 1 / -1 !important;
+      justify-content: center !important;
+      align-items: center !important;
+      margin: 16px auto 0 !important;
+      left: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      width: 100% !important;
       z-index: 60;
     }
     /* Sticker-style resize: each highlighted section is grabbed and dragged
@@ -12903,10 +12955,10 @@
     }
     body.layout-editing .film-frame.sample-frame {
       display: flex !important;
-      background: rgba(255, 255, 255, 0.15);
-      border: 2px dashed rgba(255, 255, 255, 0.45);
+      background: rgba(255, 255, 255, 0.18);
+      border: 2px dashed rgba(255, 255, 255, 0.5);
       color: #fff;
-      font: 800 15px 'Manrope', sans-serif;
+      font: 800 16px 'Manrope', sans-serif;
       align-items: center;
       justify-content: center;
     }
@@ -14964,7 +15016,9 @@
               <select class="mini-select pillify" id="uiFilmScaleSelect">
                 <option value="0.85">Compact fit</option>
                 <option value="1" selected>Auto-fit (All visible)</option>
-                <option value="1.2">Larger preview</option>
+                <option value="1.25">Large preview</option>
+                <option value="1.6">Extra large</option>
+                <option value="2.0">Maximum size</option>
               </select>
             </div>
           </details>
@@ -16395,13 +16449,19 @@
     <div class="dock-pwr" id="dockPwr" hidden>Powered by <span class="pm"
         aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>photobooth<em>4u</em></b></div>
   </div>
-  <!-- On-Screen Layout & Resize Editor (Zero Back-and-Forth) -->
+  <!-- On-Screen Live Layout & Resize Editor Floating Dock (Minimizable & Movable) -->
   <div class="layout-edit-bar" id="layoutEditBar" hidden>
-    <div class="leb-header">
-      <span class="leb-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v6h6"/><path d="M9 21v-6H3"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg> Resize Layout (Live Screen)</span>
-      <button type="button" class="leb-done-btn" id="lebDoneBtn">✓ Done Editing</button>
+    <div class="leb-header" id="lebHeader">
+      <span class="leb-title"><span class="leb-drag-handle" title="Drag to move toolbar">⋮⋮</span> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v6h6"/><path d="M9 21v-6H3"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg> Resize Layout</span>
+      <div class="leb-header-actions">
+        <button type="button" class="leb-min-btn" id="lebMinBtn" aria-label="Minimize or expand layout editor" title="Minimize / Expand toolbar">
+          <span class="leb-min-icon">−</span>
+          <span class="leb-expand-text" style="display:none;">Expand ↗</span>
+        </button>
+        <button type="button" class="leb-done-btn" id="lebDoneBtn">✓ Done</button>
+      </div>
     </div>
-    <div class="leb-body">
+    <div class="leb-body" id="lebBody">
       <div class="leb-presets">
         <button type="button" class="leb-chip" data-scale="compact">11.5" Mini</button>
         <button type="button" class="leb-chip" data-scale="normal">Standard</button>
@@ -16427,7 +16487,7 @@
           <span class="leb-opval" id="lebFilmOpVal">100%</span>
         </div>
       </div>
-      <p class="leb-hint">👆 Drag a highlighted section right on the screen to resize it — like a sticker. Sliders set see-through.</p>
+      <p class="leb-hint">👆 Drag a highlighted section on screen to resize it like a sticker. Sliders set opacity.</p>
     </div>
   </div>
 
@@ -21062,7 +21122,7 @@
         v = v || {};
         return {
           preview: (['auto', 'max', 'yuyv', '1080', '720', '480'].includes(v.preview) || /^x:\d+:\d+:\d+:\d+$/.test(String(v.preview))) ? v.preview : 'auto',
-          photo: v.photo === 'preview' ? 'preview' : 'max'
+          photo: (['preview', 'max'].includes(v.photo)) ? v.photo : (IS_ANDROID_APP ? 'preview' : 'max')
         };
       })();
       function saveWebcamRes() { try { localStorage.setItem(WEBCAM_RES_KEY, JSON.stringify(webcamRes)); } catch (e) { } }
@@ -21075,7 +21135,9 @@
         if (p === '1080') return { width: { ideal: 1920 }, height: { ideal: 1080 } };
         if (p === '720') return { width: { ideal: 1280 }, height: { ideal: 720 } };
         if (p === '480') return { width: { ideal: 640 }, height: { ideal: 480 } };
-        // Default ('auto'): Full / Max camera resolution (1080p+)
+        // Default ('auto'): On Android tablets (especially budget models like VOVE Pad 9 Ultra),
+        // 720p provides a smooth 30fps viewfinder without ISP overload or thermal frame drops.
+        if (IS_ANDROID_APP) return { width: { ideal: 1280 }, height: { ideal: 720 } };
         return { width: { ideal: 1920 }, height: { ideal: 1080 } };
       }
       // "Exact size" menu: the sizes the app reported for the webcam (kept in this browser so the menu is there before the webcam opens).
@@ -21265,6 +21327,21 @@
         const o = cameraSelect && cameraSelect.options[cameraSelect.selectedIndex];
         return !!(o && isUsbWebcamOption(o.value, o.textContent));
       }
+      function isBuiltInCamera() {
+        const o = cameraSelect && cameraSelect.options[cameraSelect.selectedIndex];
+        const l = String(o ? o.textContent : '').toLowerCase();
+        if (/facetime|macbook|imac|built-in|integrated|isight|facing (front|back)|\b(front|back|rear) camera\b/i.test(l)) return true;
+        const trk = currentStream && currentStream.getVideoTracks()[0];
+        const fm = trk && trk.getSettings ? trk.getSettings().facingMode : null;
+        if (fm === 'user' || fm === 'environment') return true;
+        return false;
+      }
+      function isMaxWebcamShotEligible() {
+        if (currentDeviceId === USB_CAM_ID) return false;
+        if (currentDeviceId === UVC_ID) return true;
+        if (isBuiltInCamera()) return false;
+        return usbWebcamSelected() || typeof ImageCapture !== 'undefined';
+      }
       function refreshWebcamResUI() {
         if (!webcamResBox) return;
         const hasCam = cameraSelect && cameraSelect.value && cameraSelect.value !== USB_CAM_ID;
@@ -21279,8 +21356,8 @@
         const now = vw ? vw + ' × ' + vh : '';
         const isDownsized = webcamRes.preview === '720' || webcamRes.preview === '480' || (vh > 0 && vh <= 720 && webcamRes.preview !== 'auto' && webcamRes.preview !== '1080' && webcamRes.preview !== 'max');
         let noteText = (now ? 'Viewfinder: ' + now + '. ' : '') + (info && info.max ? 'Camera max: ' + info.max + '. ' : '');
-        if (isDownsized) {
-          noteText += 'Viewfinder downsized for smoother performance — photos save at full camera resolution.';
+        if (isDownsized || (IS_ANDROID_APP && (webcamRes.preview === 'auto' || webcamRes.preview === '720'))) {
+          noteText += 'Viewfinder optimized (720p) for smoother performance on tablet.';
         } else {
           noteText += 'Viewfinder running at full resolution. If live view lags on slower tablets, select "Downsize viewfinder: 720p".';
         }
@@ -22652,7 +22729,8 @@
         if (!sf || !ft || !shell) return;
         var sw = sf.parentElement;
         if (!sw || sw.offsetParent === null) return;               // Photo Session tab hidden: size it when shown
-        var capturing = shell.classList.contains('capturing');
+        var isEditing = typeof layoutEditorActive !== 'undefined' && layoutEditorActive;
+        var capturing = shell.classList.contains('capturing') || isEditing;
         var side = capturing && window.innerWidth > 760 && window.innerWidth > window.innerHeight * 1.05;
         shell.classList.toggle('film-below', capturing && !side);
         // Tall pictures (2x6 strips) on wide screens: the buttons under them spread
@@ -22699,22 +22777,23 @@
         }
         shell.classList.remove('btn-beside');
         var isShoot = document.body.classList.contains('shooting');
-        var hasShots = Array.isArray(shotCanvases) && shotCanvases.some(Boolean);
+        var hasShots = (Array.isArray(shotCanvases) && shotCanvases.some(Boolean)) || isEditing;
         var filmScale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-film-scale')) || 1;
+        var effFilmScale = Math.min(2.5, Math.max(0.6, filmScale));
         var shotCount = frames.length || (typeof shotsNeeded === 'function' ? shotsNeeded() : 4);
         var n = Math.max(3, shotCount), g = 10, gap = 16;
         var W = Math.max(shell.clientWidth - 4, window.innerWidth - 32);
         var Hmax = isShoot ? Math.max(260, vh - (ctrlH ? ctrlH + 8 : 46)) : Math.max(260, Math.min(vh * 0.94, vh - top - ctrlH - 12));
-        var boxFactor = 2 * box * Math.min(1.2, filmScale);
+        var boxFactor = 2 * box * effFilmScale;
         var hFit = hasShots ? ((W - 2 * gap + boxFactor * g * (n - 1) / n) / (sa + boxFactor / n)) : (W / sa);
         var h = Math.max(200, Math.min(Hmax, hFit));
-        var fh = ((h - g * (n - 1)) / n) * Math.min(1.2, filmScale), fw = Math.round(fh * box), stw = Math.round(h * sa);
+        var fh = ((h - g * (n - 1)) / n) * effFilmScale, fw = Math.round(fh * box), stw = Math.round(h * sa);
         if (hasShots) {
           var maxTotalW = window.innerWidth - 32;
           if (2 * fw + 2 * gap + stw > maxTotalW) {
             stw = Math.max(200, maxTotalW - 2 * fw - 2 * gap);
             h = Math.round(stw / sa);
-            fh = ((h - g * (n - 1)) / n) * Math.min(1.2, filmScale);
+            fh = ((h - g * (n - 1)) / n) * effFilmScale;
             fw = Math.round(fh * box);
           }
           sw.style.gridTemplateColumns = fw + 'px ' + stw + 'px ' + fw + 'px';
@@ -23071,7 +23150,7 @@
       }
       async function captureShot(index) {
         captureFrame(index);
-        if (webcamRes.photo === 'max' && currentDeviceId !== USB_CAM_ID && (usbWebcamSelected() || typeof ImageCapture !== 'undefined' || currentDeviceId === UVC_ID)) return webcamMaxShot(index);
+        if (webcamRes.photo === 'max' && isMaxWebcamShotEligible()) return webcamMaxShot(index);
         if (!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
         const shots = shotCanvases;
         try {
@@ -23224,7 +23303,10 @@
         layoutEditorActive = true;
         document.body.classList.add('layout-editing');
         var bar = document.getElementById('layoutEditBar');
-        if (bar) bar.hidden = false;
+        if (bar) {
+          bar.hidden = false;
+          bar.classList.remove('is-minimized');
+        }
 
         // Switch to Photo Session tab so operator sees live camera stage
         var tabSession = document.getElementById('tabBtnSession');
@@ -23298,8 +23380,8 @@
       }
 
       function setLebScale(which, value) {
-        var min = 0.7;
-        var max = which === 'cd' ? 2.2 : 1.4;
+        var min = which === 'btn' ? 0.6 : 0.7;
+        var max = which === 'cd' ? 2.5 : (which === 'film' ? 2.5 : 1.6);
         var updated = Math.round(value * 100) / 100;
         if (updated < min) updated = min;
         if (updated > max) updated = max;
@@ -23308,6 +23390,45 @@
         var film = which === 'film' ? updated : (parseFloat(localStorage.getItem(UI_FILM_SCALE_KEY)) || 1);
         applyUiScale(cd, btn, film, 'custom');
         updateLebLabels();
+      }
+
+      function initLebDockDrag() {
+        var bar = document.getElementById('layoutEditBar');
+        var handle = document.getElementById('lebHeader');
+        if (!bar || !handle) return;
+        var startX = 0, startY = 0, origX = 0, origY = 0, isDragging = false;
+        handle.addEventListener('pointerdown', function(e) {
+          if (e.target.closest('button') || e.target.closest('input')) return;
+          isDragging = true;
+          try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+          var rect = bar.getBoundingClientRect();
+          origX = rect.left;
+          origY = rect.top;
+          startX = e.clientX;
+          startY = e.clientY;
+          function onMove(ev) {
+            if (!isDragging) return;
+            var dx = ev.clientX - startX;
+            var dy = ev.clientY - startY;
+            var nx = Math.max(8, Math.min(window.innerWidth - bar.offsetWidth - 8, origX + dx));
+            var ny = Math.max(8, Math.min(window.innerHeight - bar.offsetHeight - 8, origY + dy));
+            bar.style.left = nx + 'px';
+            bar.style.top = ny + 'px';
+            bar.style.right = 'auto';
+            bar.style.bottom = 'auto';
+            bar.style.transform = 'none';
+          }
+          function onUp(ev) {
+            isDragging = false;
+            try { handle.releasePointerCapture(ev.pointerId); } catch (err) {}
+            handle.removeEventListener('pointermove', onMove);
+            handle.removeEventListener('pointerup', onUp);
+            handle.removeEventListener('pointercancel', onUp);
+          }
+          handle.addEventListener('pointermove', onMove);
+          handle.addEventListener('pointerup', onUp);
+          handle.addEventListener('pointercancel', onUp);
+        });
       }
 
       // Sticker-style resize: grab a highlighted section and drag away from its
@@ -23402,6 +23523,24 @@
 
         var lebDoneBtn = document.getElementById('lebDoneBtn');
         if (lebDoneBtn) lebDoneBtn.addEventListener('click', closeLayoutEditor);
+
+        initLebDockDrag();
+        var lebMinBtn = document.getElementById('lebMinBtn');
+        if (lebMinBtn) {
+          lebMinBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var bar = document.getElementById('layoutEditBar');
+            if (bar) bar.classList.toggle('is-minimized');
+          });
+        }
+        var barEl = document.getElementById('layoutEditBar');
+        if (barEl) {
+          barEl.addEventListener('click', function(e) {
+            if (barEl.classList.contains('is-minimized') && !e.target.closest('button')) {
+              barEl.classList.remove('is-minimized');
+            }
+          });
+        }
 
         document.addEventListener('keydown', function (e) {
           if (e.key === 'Escape' && layoutEditorActive) { e.stopPropagation(); closeLayoutEditor(); }
@@ -23538,7 +23677,7 @@
         await wait(180);
         flashOverlay.classList.remove('flash-active');
         if (lit) setTimeout(screenFlashOff, 120);
-        if ((usbCam.active && currentDeviceId === USB_CAM_ID) || (webcamRes.photo === 'max' && currentDeviceId !== USB_CAM_ID && (usbWebcamSelected() || typeof ImageCapture !== 'undefined' || currentDeviceId === UVC_ID))) {
+        if ((usbCam.active && currentDeviceId === USB_CAM_ID) || (webcamRes.photo === 'max' && isMaxWebcamShotEligible())) {
           popNum('Saving', true);
           guestCall('tick', 'Saving', true, 0, cdShot.textContent);
         }

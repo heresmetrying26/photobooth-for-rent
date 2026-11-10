@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.21', date: '2026-11-10' },
   { version: '1.1.20', date: '2026-11-10' },
   { version: '1.1.19', date: '2026-11-10' },
   { version: '1.1.18', date: '2026-11-10' },
@@ -192,6 +193,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-10', title: 'Desktop 1.1.21 + Android 1.1.38: Live Layout Editor — sticker corner handles, dummy guest photos & top bar clearance', for: ['website', 'app'], app: '1.1.21',
+    items: [
+      '🎯 Scoped Resize Handles: the 4 sticker corner handles and dashed outlines now strictly only show when actively inside "Resize Layout" mode, with zero handle leakage into live guest sessions.',
+      '🖼️ Realistic Dummy Guest Photos: empty film track slots in the layout preview now render 4 colorful guest portraits with smiling cartoon avatars and "Photo 1"–"Photo 4" badges, providing an accurate, beautiful preview of side photo strips.',
+      '📏 4th Photo Resizing & Viewport Clearance: each photo frame (including the 4th photo) has its own 4 corner handles and bottom breathing room, allowing operators to easily grab and resize the strip from any photo.',
+      '📐 Top Bar Offset Clearance: countdown preview overlay is positioned below the header tabs so top corner handles are 100% visible, unobstructed, and clickable.'
+    ]
+  },
   {
     date: '2026-11-10', title: 'Desktop 1.1.20 + Android 1.1.37: Sharing Station — fix wrong event on separate phone', for: ['website', 'app'], app: '1.1.20',
     items: [

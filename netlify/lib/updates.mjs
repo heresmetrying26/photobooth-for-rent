@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.17', date: '2026-11-10' },
   { version: '1.1.16', date: '2026-11-10' },
   { version: '1.1.15', date: '2026-11-10' },
   { version: '1.1.14', date: '2026-11-10' },
@@ -188,6 +189,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-10', title: 'Desktop 1.1.17 + Android 1.1.34: Minimizable floating layout dock, supersized side photos & budget tablet 0ms lag optimization (VOVE Pad 9 Ultra)', for: ['website', 'app'], app: '1.1.17',
+    items: [
+      '🚀 Budget Tablet 0ms Lag Optimization: eliminated photo capture delay on generic & budget tablets (VOVE Pad 9 Ultra) by capturing directly from active viewfinder and switching WebView rendering to direct compositor.',
+      '⚡ 720p Tablet Viewfinder & GPU Layers: optimized default tablet camera stream to 1280x720 @ 30fps and isolated countdown animations into dedicated GPU compositing layers for rock-solid 30-60fps smoothness.',
+      '📐 Minimizable Floating Layout Dock: replaced the bottom bar with a sleek, movable floating dock at top-right with one-tap minimize/expand so Start button sits naturally and unobstructed.',
+      '📸 Supersized Side Photos: lifted film track scaling cap to 2.5x (250%) with smooth scrolling, letting session thumbnails grow way bigger on widescreen & 11.5" monitors.'
+    ]
+  },
   {
     date: '2026-11-10', title: 'Desktop 1.1.16 + Android 1.1.33: Anti-glitch safeguard for camera capture & Surface tablets', for: ['website', 'app'], app: '1.1.16',
     items: [

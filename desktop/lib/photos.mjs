@@ -807,6 +807,9 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
 @keyframes stBounce{from{transform:translateY(0)}to{transform:translateY(-8px)}}
 .standby-card h2{margin:0 0 10px;font-size:24px;font-weight:800;letter-spacing:-.02em;color:#fff}
 .standby-card p{margin:0;color:#A49FA9;font-size:14.5px;line-height:1.55}
+.wrong-event-bar{margin-top:20px}
+.wrong-event-btn{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.14);color:#A49FA9;font-size:12px;font-weight:700;border-radius:10px;padding:7px 16px;cursor:pointer;font-family:inherit;transition:background .15s}
+.wrong-event-btn:hover{background:rgba(255,255,255,0.14);color:#fff}
 
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s}
 .modal-overlay.open{opacity:1;pointer-events:auto}
@@ -861,6 +864,9 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
     <div class="standby-icon">✨ 📸</div>
     <h2>Ready for your photos!</h2>
     <p>Step up to the booth to start your session. Your photos and QR code will appear here automatically.</p>
+    <div class="wrong-event-bar" id="wrongEventBar" style="display:none">
+      <button type="button" class="wrong-event-btn" onclick="location.reload()">⟳ Seeing wrong event? Reload to resync</button>
+    </div>
   </div>
 </div>
 
@@ -885,11 +891,17 @@ var SLUG = ${JSON.stringify(slug)};
 var files = [], currentFilter = 'all', activeItem = null, timerId = null, timeLeft = 35;
 var privacyOnly = /[?&]privacy=only\b/i.test(location.search);
 var hasLoaded = false, lastKnownTop = null;
+var emptyPollCount = 0;
 
 if (privacyOnly) {
   document.getElementById('stControls').style.display = 'none';
   document.getElementById('stGrid').style.display = 'none';
   document.getElementById('standbyView').style.display = 'flex';
+  // Show "reload to resync" if the first poll returns empty (stale URL from old QR).
+  setTimeout(function() {
+    var b = document.getElementById('wrongEventBar');
+    if (b && !hasLoaded) b.style.display = 'block';
+  }, 15000);
 }
 
 function playChime() {
@@ -1039,6 +1051,18 @@ async function poll() {
       files = j.files;
       hasLoaded = true;
       document.getElementById('stCount').textContent = files.length + (files.length === 1 ? ' item' : ' items');
+      // Show "reload to resync" button after 5 consecutive empty polls (~9 s).
+      if (files.length === 0) {
+        emptyPollCount++;
+        if (emptyPollCount >= 5) {
+          var b = document.getElementById('wrongEventBar');
+          if (b) b.style.display = 'block';
+        }
+      } else {
+        emptyPollCount = 0;
+        var b2 = document.getElementById('wrongEventBar');
+        if (b2) b2.style.display = 'none';
+      }
       if (changed) {
         if (!privacyOnly && !activeItem) render();
         if (newest && (!lastKnownTop || newest.name !== lastKnownTop)) {

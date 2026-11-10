@@ -1,14 +1,13 @@
 # Session Context
 
-**Current Task**: Release desktop v1.1.17 and android v1.1.34 with minimizable floating layout dock, supersized side photos, and budget tablet 0ms lag optimization (VOVE Pad 9 Ultra).
+**Current Task**: Release Desktop v1.1.19 and Android v1.1.36 with Separate Sharing Station (live auto-pop, audio chime, fast booth handoff & privacy mode).
 
 **Key Decisions**:
-- Bumped desktop app version to `1.1.17` and Android app to `1.1.34` (versionCode 136).
-- Replaced bottom layout bar with a minimizable floating dock (movable by header, collapsible to pill) so Start button sits centered and unobstructed in its true position.
-- Raised side film track photo scaling limit to 2.5x (250%) with smooth vertical scrolling.
-- Integrated commit `3e6bef4` perf optimizations (bypassing takePhoto latency on built-in tablet cameras, switching WebView layer to LAYER_TYPE_NONE, defaulting to 720p viewfinder, and hardware compositing for countdown).
-- Prepared release tags `desktop-v1.1.17` and `android-v1.1.34` for GitHub Actions.
+- Bumped desktop app version to `1.1.19` and Android app to `1.1.36` (versionCode 138).
+- Implemented Separate Sharing Station across Desktop (`desktop/lib/photos.mjs`), Android (`LocalShareServer.kt`), and Web (`public/station/index.html`).
+- Added live auto-pop, offline Web Audio melodic chime, countdown timer bar, and privacy mode (single session vs gallery).
+- Added "Show QR on a separate Sharing Station" toggle with 2s animated handoff overlay and pairing QR in `protected/booth.html`.
+- Prepared release tags `desktop-v1.1.19` and `android-v1.1.36` for GitHub Actions.
 
 **Next Steps**:
-- Verify builds and smoke tests.
-- Push release tags to trigger GitHub Actions release builds.
+- Push main branch and release tags (`git push origin main --tags`) to trigger GitHub Actions release builds.

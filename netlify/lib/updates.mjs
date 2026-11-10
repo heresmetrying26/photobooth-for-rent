@@ -190,6 +190,15 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-10', title: 'Android 1.1.34: 58mm thermal printer — fix cut-off sides, blank paper feed, and bottom glitch', for: ['website', 'app'],
+    items: [
+      '🖨️ 58mm Right-Side Cutoff Fixed: receipt layouts and custom 2×6 strips now automatically select "Receipt 58mm" paper when a 58mm printer (e.g. MP58C7) is detected, preventing the 576-dot canvas from being clipped by the 384-dot print head.',
+      '📄 Blank Paper Feed Fixed: 58mm mobile printers have no auto-cutter — the app now feeds 3 lines instead of sending a cut command, eliminating the endless blank paper scroll after each print.',
+      '🔧 Bottom Glitch / Repeating Strip Fixed: reduced ESC/POS image band size from 256 rows (~12 KB) to 32 rows for 58mm printers, preventing buffer overflow on devices with 2–4 KB RAM buffers.',
+      '✅ 80mm and all other thermal/photo printers are completely unaffected by these changes.'
+    ]
+  },
+  {
     date: '2026-11-10', title: 'Desktop 1.1.17 + Android 1.1.34: Minimizable floating layout dock, supersized side photos & budget tablet 0ms lag optimization (VOVE Pad 9 Ultra)', for: ['website', 'app'], app: '1.1.17',
     items: [
       '🚀 Budget Tablet 0ms Lag Optimization: eliminated photo capture delay on generic & budget tablets (VOVE Pad 9 Ultra) by capturing directly from active viewfinder and switching WebView rendering to direct compositor.',

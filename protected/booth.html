@@ -12690,6 +12690,166 @@
       }
     }
 
+  
+    /* --- On-Screen Layout & Resize Editor Bar --- */
+    .layout-edit-bar {
+      position: fixed;
+      bottom: max(16px, env(safe-area-inset-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      background: rgba(18, 14, 22, 0.94);
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+      border: 1.5px solid rgba(255, 255, 255, 0.28);
+      border-radius: 22px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      padding: 10px 16px;
+      color: #ffffff;
+      width: max-content;
+      max-width: min(720px, calc(100vw - 20px));
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-sizing: border-box;
+      animation: lebSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes lebSlideUp {
+      from { transform: translate(-50%, 20px); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
+    }
+    .layout-edit-bar[hidden] {
+      display: none !important;
+    }
+    .leb-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .leb-title {
+      font: 800 13px 'Manrope', sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #ffffff;
+      letter-spacing: 0.01em;
+    }
+    .leb-done-btn {
+      background: #2EA66B;
+      color: #ffffff;
+      font: 800 12.5px 'Manrope', sans-serif;
+      border: none;
+      border-radius: 999px;
+      padding: 6px 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(46, 166, 107, 0.4);
+      transition: transform 0.12s ease, background 0.12s ease;
+      white-space: nowrap;
+    }
+    .leb-done-btn:hover {
+      background: #34b777;
+      transform: scale(1.03);
+    }
+    .leb-body {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .leb-presets {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+    .leb-chip {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.9);
+      font: 700 11px 'Manrope', sans-serif;
+      padding: 4px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.12s ease;
+    }
+    .leb-chip:hover {
+      background: rgba(255, 255, 255, 0.22);
+      color: #ffffff;
+    }
+    .leb-chip.active {
+      background: var(--blue-deep, #1f4166);
+      border-color: rgba(255, 255, 255, 0.45);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    .leb-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .leb-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 3px 7px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .leb-lbl {
+      font: 700 11px 'Manrope', sans-serif;
+      color: rgba(255, 255, 255, 0.85);
+      white-space: nowrap;
+    }
+    .leb-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.18);
+      border: none;
+      color: #ffffff;
+      font: 800 13px 'Manrope', sans-serif;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      transition: background 0.12s ease, transform 0.12s ease;
+      padding: 0;
+    }
+    .leb-btn:hover {
+      background: rgba(255, 255, 255, 0.32);
+      transform: scale(1.08);
+    }
+    .leb-val {
+      font: 800 11.5px 'Manrope', monospace;
+      color: #ffffff;
+      min-width: 36px;
+      text-align: center;
+    }
+
+    /* While layout-editing is active on body: show sample preview overlays */
+    body.layout-editing .countdown-overlay.edit-preview {
+      display: flex !important;
+      opacity: 0.95;
+      pointer-events: auto;
+    }
+    body.layout-editing .film-track.edit-preview {
+      display: flex !important;
+      opacity: 0.95;
+    }
+    body.layout-editing .film-frame.sample-frame {
+      display: flex !important;
+      background: rgba(255, 255, 255, 0.15);
+      border: 2px dashed rgba(255, 255, 255, 0.45);
+      color: #fff;
+      font: 800 15px 'Manrope', sans-serif;
+      align-items: center;
+      justify-content: center;
+    }
+
   </style>
   <script>/* qrcode-generator 1.4.4 (MIT) — QR codes are made on this device, no outside service. */
     // Copyright (c) 2009 Kazuhiko Arase
@@ -14747,6 +14907,8 @@
               </select>
             </div>
           </details>
+          <button type="button" class="action-btn" id="openLiveScaleBtn" style="margin-top:10px; width:100%;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:6px;" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v6h6"/><path d="M9 21v-6H3"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>Live Resize on Screen (Zero Back-and-Forth)</button>
+          
           <p class="sub-label" style="margin-top:16px;">After the photos</p>
           <label class="toggle-row" style="margin-top:4px;"><input type="checkbox" id="qrPopToggle"> Show the QR
             code in a pop-up</label>
@@ -16109,6 +16271,11 @@
           <path d="M9 16a5 5 0 0 1 6 0" />
           <path d="M12 19.5h.01" />
         </svg><span>Wi-Fi</span></button>
+      <button type="button" class="dock-btn" id="scaleFab" aria-label="Resize UI"><svg viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M15 3v6h6"/><path d="M9 21v-6H3"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/>
+        </svg><span>Resize UI</span></button>
       <button type="button" class="dock-btn" id="lockFab" hidden aria-label="Lock booth"><svg viewBox="0 0 24 24"
           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
           aria-hidden="true">
@@ -16167,6 +16334,41 @@
     <div class="dock-pwr" id="dockPwr" hidden>Powered by <span class="pm"
         aria-hidden="true"><i></i><i></i><i></i><i></i></span><b>photobooth<em>4u</em></b></div>
   </div>
+  <!-- On-Screen Layout & Resize Editor (Zero Back-and-Forth) -->
+  <div class="layout-edit-bar" id="layoutEditBar" hidden>
+    <div class="leb-header">
+      <span class="leb-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v6h6"/><path d="M9 21v-6H3"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg> Resize Layout (Live Screen)</span>
+      <button type="button" class="leb-done-btn" id="lebDoneBtn">✓ Done Editing</button>
+    </div>
+    <div class="leb-body">
+      <div class="leb-presets">
+        <button type="button" class="leb-chip" data-scale="compact">11.5" Mini</button>
+        <button type="button" class="leb-chip" data-scale="normal">Standard</button>
+        <button type="button" class="leb-chip" data-scale="large">Large / TV</button>
+      </div>
+      <div class="leb-controls">
+        <div class="leb-row">
+          <span class="leb-lbl">⏱️ Countdown:</span>
+          <button type="button" class="leb-btn" id="lebCdMinus" aria-label="Countdown smaller">−</button>
+          <span class="leb-val" id="lebCdVal">150%</span>
+          <button type="button" class="leb-btn" id="lebCdPlus" aria-label="Countdown larger">+</button>
+        </div>
+        <div class="leb-row">
+          <span class="leb-lbl">🔘 Buttons:</span>
+          <button type="button" class="leb-btn" id="lebBtnMinus" aria-label="Buttons smaller">−</button>
+          <span class="leb-val" id="lebBtnVal">88%</span>
+          <button type="button" class="leb-btn" id="lebBtnPlus" aria-label="Buttons larger">+</button>
+        </div>
+        <div class="leb-row">
+          <span class="leb-lbl">📸 Side Strip:</span>
+          <button type="button" class="leb-btn" id="lebFilmMinus" aria-label="Side strip smaller">−</button>
+          <span class="leb-val" id="lebFilmVal">95%</span>
+          <button type="button" class="leb-btn" id="lebFilmPlus" aria-label="Side strip larger">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="backup-pop pstat-pop" id="pstatPop" role="dialog" aria-label="Printers" hidden>
     <button type="button" class="pstat-close" id="pstatPopClose" aria-label="Close">&#215;</button>
     <p class="bp-title">Printers</p>
@@ -22327,7 +22529,7 @@
         if (!document.body.classList.contains('in-session') || document.body.classList.contains('booth-locked')) return false;
         var chip = document.getElementById('pbTimeChip');
         var chipOn = !!(chip && chip.parentNode && chip.parentNode.id === 'dockChipSlot' && chip.style.display !== 'none');
-        return !document.getElementById('camFab').hidden || !document.getElementById('printFab').hidden || !document.getElementById('pstatFab').hidden || !document.getElementById('backupFab').hidden ||
+        return (document.getElementById('scaleFab') && !document.getElementById('scaleFab').hidden) || !document.getElementById('camFab').hidden || !document.getElementById('printFab').hidden || !document.getElementById('pstatFab').hidden || !document.getElementById('backupFab').hidden ||
           !document.getElementById('galleryFab').hidden || !document.getElementById('wifiFab').hidden || !document.getElementById('lockFab').hidden || !document.getElementById('deskFab').hidden || !document.getElementById('spinFab').hidden || !document.getElementById('capFab').hidden || !document.getElementById('reqFab').hidden || !document.getElementById('vgFab').hidden ||
           !document.getElementById('dockPwr').hidden || chipOn;
       }
@@ -22839,6 +23041,111 @@
         if (typeof applyStageAspect === 'function') applyStageAspect();
       }
 
+      
+      // ---- On-Screen Live Layout & Resize Editor ----
+      var layoutEditorActive = false;
+
+      function updateLebLabels() {
+        var cd = parseFloat(localStorage.getItem(UI_CD_SCALE_KEY)) || 1;
+        var btn = parseFloat(localStorage.getItem(UI_BTN_SCALE_KEY)) || 1;
+        var film = parseFloat(localStorage.getItem(UI_FILM_SCALE_KEY)) || 1;
+        var cdEl = document.getElementById('lebCdVal');
+        var btnEl = document.getElementById('lebBtnVal');
+        var filmEl = document.getElementById('lebFilmVal');
+        if (cdEl) cdEl.textContent = Math.round(cd * 100) + '%';
+        if (btnEl) btnEl.textContent = Math.round(btn * 100) + '%';
+        if (filmEl) filmEl.textContent = Math.round(film * 100) + '%';
+
+        var preset = localStorage.getItem(UI_SCALE_KEY) || 'custom';
+        document.querySelectorAll('.leb-chip').forEach(function(c) {
+          c.classList.toggle('active', c.dataset.scale === preset);
+        });
+      }
+
+      function openLayoutEditor() {
+        layoutEditorActive = true;
+        document.body.classList.add('layout-editing');
+        var bar = document.getElementById('layoutEditBar');
+        if (bar) bar.hidden = false;
+
+        // Switch to Photo Session tab so operator sees live camera stage
+        var tabSession = document.getElementById('tabBtnSession');
+        if (tabSession && !tabSession.classList.contains('active')) tabSession.click();
+
+        // Show sample live countdown overlay so operator can inspect countdown size
+        var cd = document.getElementById('countdownOverlay');
+        if (cd) {
+          cd.classList.add('edit-preview');
+          cd.style.display = 'flex';
+          var num = document.getElementById('countdownNum');
+          if (num) num.textContent = '3';
+          var shot = document.getElementById('cdShot');
+          if (shot) shot.textContent = 'Photo 1 of 4';
+        }
+
+        // Show sample film track so operator can inspect side strip size
+        var ft = document.getElementById('filmTrack');
+        if (ft) {
+          ft.classList.add('edit-preview');
+          if (ft.children.length === 0) {
+            var n = typeof shotsNeeded === 'function' ? shotsNeeded() : 4;
+            for (var i = 0; i < n; i++) {
+              var f = document.createElement('div');
+              f.className = 'film-frame sample-frame';
+              f.textContent = String(i + 1);
+              ft.appendChild(f);
+            }
+          }
+        }
+
+        updateLebLabels();
+        if (typeof applyStageAspect === 'function') applyStageAspect();
+      }
+
+      function closeLayoutEditor() {
+        layoutEditorActive = false;
+        document.body.classList.remove('layout-editing');
+        var bar = document.getElementById('layoutEditBar');
+        if (bar) bar.hidden = true;
+
+        // Restore countdown overlay
+        var cd = document.getElementById('countdownOverlay');
+        if (cd) {
+          cd.classList.remove('edit-preview');
+          if (typeof state === 'undefined' || state !== 'capturing') {
+            cd.style.display = 'none';
+          }
+        }
+
+        // Remove sample frames if real session hasn't started
+        var ft = document.getElementById('filmTrack');
+        if (ft) {
+          ft.classList.remove('edit-preview');
+          var hasRealShots = Array.isArray(shotCanvases) && shotCanvases.some(Boolean);
+          if (!hasRealShots && (typeof state === 'undefined' || state !== 'capturing')) {
+            ft.querySelectorAll('.sample-frame').forEach(function(el) { el.remove(); });
+          }
+        }
+
+        if (typeof applyStageAspect === 'function') applyStageAspect();
+        if (typeof showToast === 'function') showToast('✓ Layout saved for this monitor', 2500);
+      }
+
+      function nudgeScale(which, delta) {
+        var key = which === 'cd' ? UI_CD_SCALE_KEY : (which === 'btn' ? UI_BTN_SCALE_KEY : UI_FILM_SCALE_KEY);
+        var current = parseFloat(localStorage.getItem(key)) || 1;
+        var min = 0.7;
+        var max = which === 'cd' ? 2.2 : 1.4;
+        var updated = Math.round((current + delta) * 100) / 100;
+        if (updated < min) updated = min;
+        if (updated > max) updated = max;
+        var cd = which === 'cd' ? updated : (parseFloat(localStorage.getItem(UI_CD_SCALE_KEY)) || 1);
+        var btn = which === 'btn' ? updated : (parseFloat(localStorage.getItem(UI_BTN_SCALE_KEY)) || 1);
+        var film = which === 'film' ? updated : (parseFloat(localStorage.getItem(UI_FILM_SCALE_KEY)) || 1);
+        applyUiScale(cd, btn, film, 'custom');
+        updateLebLabels();
+      }
+
       function initUiScale() {
         var savedPreset = null, savedCd = null, savedBtn = null, savedFilm = null;
         try {
@@ -22881,6 +23188,48 @@
         if (filmSel) filmSel.addEventListener('change', function () {
           applyUiScale(parseFloat(localStorage.getItem(UI_CD_SCALE_KEY)) || 1, parseFloat(localStorage.getItem(UI_BTN_SCALE_KEY)) || 1, parseFloat(filmSel.value) || 1, 'custom');
         });
+        // Live On-Screen Layout Editor listeners
+        var scaleFab = document.getElementById('scaleFab');
+        if (scaleFab) scaleFab.addEventListener('click', function() {
+          if (layoutEditorActive) closeLayoutEditor(); else openLayoutEditor();
+        });
+
+        var openLiveBtn = document.getElementById('openLiveScaleBtn');
+        if (openLiveBtn) openLiveBtn.addEventListener('click', function() {
+          openLayoutEditor();
+        });
+
+        var lebDoneBtn = document.getElementById('lebDoneBtn');
+        if (lebDoneBtn) lebDoneBtn.addEventListener('click', closeLayoutEditor);
+
+        var lebCdMinus = document.getElementById('lebCdMinus');
+        if (lebCdMinus) lebCdMinus.addEventListener('click', function() { nudgeScale('cd', -0.1); });
+        var lebCdPlus = document.getElementById('lebCdPlus');
+        if (lebCdPlus) lebCdPlus.addEventListener('click', function() { nudgeScale('cd', 0.1); });
+
+        var lebBtnMinus = document.getElementById('lebBtnMinus');
+        if (lebBtnMinus) lebBtnMinus.addEventListener('click', function() { nudgeScale('btn', -0.05); });
+        var lebBtnPlus = document.getElementById('lebBtnPlus');
+        if (lebBtnPlus) lebBtnPlus.addEventListener('click', function() { nudgeScale('btn', 0.05); });
+
+        var lebFilmMinus = document.getElementById('lebFilmMinus');
+        if (lebFilmMinus) lebFilmMinus.addEventListener('click', function() { nudgeScale('film', -0.05); });
+        var lebFilmPlus = document.getElementById('lebFilmPlus');
+        if (lebFilmPlus) lebFilmPlus.addEventListener('click', function() { nudgeScale('film', 0.05); });
+
+        document.querySelectorAll('.leb-chip').forEach(function(chip) {
+          chip.addEventListener('click', function() {
+            var pr = chip.dataset.scale;
+            if (UI_SCALE_PRESETS[pr]) {
+              applyUiScale(UI_SCALE_PRESETS[pr].cd, UI_SCALE_PRESETS[pr].btn, UI_SCALE_PRESETS[pr].film, pr);
+              updateLebLabels();
+            }
+          });
+        });
+
+        // Also update labels whenever applyUiScale runs
+        updateLebLabels();
+
       }
 
       initUiScale();

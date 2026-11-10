@@ -12960,21 +12960,32 @@
     /* While layout-editing is active on body: show sample preview overlays */
     body.layout-editing .countdown-overlay.edit-preview {
       display: flex !important;
-      pointer-events: auto;
+      position: fixed !important;
+      top: 74px !important;
+      left: 50% !important;
+      right: auto !important;
+      bottom: auto !important;
+      transform: translateX(-50%) !important;
+      z-index: 2000 !important;
+      pointer-events: auto !important;
     }
     body.layout-editing .film-track.edit-preview,
     body.layout-editing .film-track {
       display: flex !important;
       grid-column: 3 !important;
       grid-row: 1 !important;
-      align-self: start !important;
+      align-self: center !important;
       flex-direction: column !important;
-      align-items: stretch !important;
-      justify-content: flex-start !important;
-      margin-top: 0 !important;
+      align-items: center !important;
+      justify-content: center !important;
+      margin: auto 0 !important;
+      gap: 10px !important;
+      padding: 12px 14px 28px !important;
       max-height: calc(var(--vh, 100vh) - 80px) !important;
       overflow-y: auto !important;
+      overflow-x: visible !important;
       scrollbar-width: thin;
+      box-sizing: border-box;
     }
     body.layout-editing .welcome-overlay {
       display: none !important;
@@ -13006,25 +13017,28 @@
     }
 
     /* 4 Corner Sticker-Style Resize Handles */
-    .leb-resizable {
-      position: relative !important;
-      outline: 2px dashed #7cc4ff !important;
-      outline-offset: 4px !important;
-      user-select: none;
-    }
     .leb-handle {
+      display: none !important;
+    }
+    body.layout-editing .leb-handle {
+      display: block !important;
       position: absolute;
-      width: 15px;
-      height: 15px;
+      width: 16px;
+      height: 16px;
       background: #ffffff;
       border: 2.5px solid #2f6fed;
-      border-radius: 3px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
-      z-index: 120;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.75);
+      z-index: 10001 !important;
       pointer-events: auto !important;
       touch-action: none;
       box-sizing: border-box;
       transition: transform 0.1s ease, background 0.1s ease;
+    }
+    body:not(.layout-editing) .leb-handle {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
     }
     .leb-handle:hover,
     .leb-handle:active {
@@ -13052,6 +13066,17 @@
       right: -8px;
       cursor: nwse-resize;
     }
+    .leb-resizable {
+      user-select: none;
+    }
+    body.layout-editing .leb-resizable {
+      position: relative !important;
+      outline: 2px dashed #7cc4ff !important;
+      outline-offset: 4px !important;
+    }
+    body:not(.layout-editing) .leb-resizable {
+      outline: none !important;
+    }
     /* Children ignore clicks while editing so dragging handles doesn't trigger buttons */
     body.layout-editing .countdown-overlay.edit-preview > *:not(.leb-handle),
     body.layout-editing .film-track.edit-preview > *:not(.leb-handle),
@@ -13060,12 +13085,40 @@
     }
     body.layout-editing .film-frame.sample-frame {
       display: flex !important;
-      background: rgba(255, 255, 255, 0.18);
-      border: 2px dashed rgba(255, 255, 255, 0.5);
-      color: #fff;
-      font: 800 16px 'Manrope', sans-serif;
-      align-items: center;
+      position: relative !important;
+      border-radius: 12px !important;
+      overflow: visible !important;
+      border: 2px solid rgba(255, 255, 255, 0.85) !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+      background: #18151f !important;
+      padding: 0 !important;
+      width: calc(clamp(64px, 9vmin, 120px) * var(--ui-film-scale, 1)) !important;
+      aspect-ratio: var(--box-aspect, 0.8) !important;
+      flex-shrink: 0 !important;
       justify-content: center;
+      align-items: center;
+    }
+    body.layout-editing .film-frame.sample-frame .sample-svg-wrap {
+      width: 100%;
+      height: 100%;
+      border-radius: 10px;
+      overflow: hidden;
+      display: block;
+    }
+    body.layout-editing .film-frame.sample-frame .sample-badge {
+      position: absolute;
+      bottom: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.72);
+      color: #ffffff;
+      font: 800 11px 'Manrope', sans-serif;
+      padding: 2px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      z-index: 5;
     }
 
   </style>
@@ -23454,6 +23507,13 @@
         });
       }
 
+      var SAMPLE_PORTRAITS = [
+        '<svg viewBox="0 0 200 250" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;"><defs><linearGradient id="sg1" x1="0" y1="0" x2="200" y2="250" gradientUnits="userSpaceOnUse"><stop stop-color="#FF6B6B"/><stop offset="1" stop-color="#FFE66D"/></linearGradient></defs><rect width="200" height="250" fill="url(#sg1)"/><circle cx="100" cy="95" r="42" fill="#FFE0BD"/><path d="M68 85 C68 55 132 55 132 85 C132 60 120 48 100 48 C80 48 68 60 68 85 Z" fill="#4A2E18"/><ellipse cx="88" cy="96" rx="4" ry="5" fill="#2C3437"/><ellipse cx="112" cy="96" rx="4" ry="5" fill="#2C3437"/><path d="M90 114 Q100 126 110 114" stroke="#D1495B" stroke-width="3.5" stroke-linecap="round" fill="none"/><circle cx="82" cy="107" r="5" fill="#FF8A8A" opacity="0.6"/><circle cx="118" cy="107" r="5" fill="#FF8A8A" opacity="0.6"/><path d="M40 215 C45 160 70 148 100 148 C130 148 155 160 160 215 Z" fill="#2E4057"/><path d="M85 148 L100 170 L115 148 Z" fill="#FFE0BD"/></svg>',
+        '<svg viewBox="0 0 200 250" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;"><defs><linearGradient id="sg2" x1="0" y1="0" x2="200" y2="250" gradientUnits="userSpaceOnUse"><stop stop-color="#4E65FF"/><stop offset="1" stop-color="#92EFFD"/></linearGradient></defs><rect width="200" height="250" fill="url(#sg2)"/><circle cx="100" cy="96" r="40" fill="#FCD5B5"/><path d="M66 84 C66 50 134 50 134 84 C134 52 118 42 100 42 C82 42 66 52 66 84 Z" fill="#1D2A44"/><rect x="76" y="88" width="20" height="15" rx="3" stroke="#1D2A44" stroke-width="3" fill="none"/><rect x="104" y="88" width="20" height="15" rx="3" stroke="#1D2A44" stroke-width="3" fill="none"/><line x1="96" y1="95" x2="104" y2="95" stroke="#1D2A44" stroke-width="3"/><path d="M92 116 Q100 126 108 116" stroke="#C34A47" stroke-width="3" stroke-linecap="round" fill="none"/><path d="M35 215 C42 158 68 145 100 145 C132 145 158 158 165 215 Z" fill="#F45B69"/><circle cx="100" cy="180" r="4" fill="#FFFFFF" opacity="0.8"/></svg>',
+        '<svg viewBox="0 0 200 250" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;"><defs><linearGradient id="sg3" x1="0" y1="0" x2="200" y2="250" gradientUnits="userSpaceOnUse"><stop stop-color="#11998e"/><stop offset="1" stop-color="#38ef7d"/></linearGradient></defs><rect width="200" height="250" fill="url(#sg3)"/><circle cx="100" cy="95" r="41" fill="#E8B898"/><path d="M64 92 C60 55 140 55 136 92 C140 50 122 40 100 40 C78 40 60 50 64 92 Z" fill="#6B4226"/><circle cx="88" cy="95" r="4" fill="#1C1917"/><circle cx="112" cy="95" r="4" fill="#1C1917"/><path d="M88 112 Q100 128 112 112 Z" fill="#B91C1C"/><circle cx="45" cy="40" r="3" fill="#FFF" opacity="0.7"/><circle cx="160" cy="55" r="4" fill="#FFF" opacity="0.6"/><circle cx="150" cy="130" r="3" fill="#FFF" opacity="0.7"/><path d="M38 215 C44 158 70 146 100 146 C130 146 156 158 162 215 Z" fill="#3B82F6"/><path d="M92 146 L100 162 L108 146 Z" fill="#E8B898"/></svg>',
+        '<svg viewBox="0 0 200 250" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;"><defs><linearGradient id="sg4" x1="0" y1="0" x2="200" y2="250" gradientUnits="userSpaceOnUse"><stop stop-color="#8A2387"/><stop offset="0.5" stop-color="#E94057"/><stop offset="1" stop-color="#F27121"/></linearGradient></defs><rect width="200" height="250" fill="url(#sg4)"/><polygon points="100,24 82,60 118,60" fill="#FBBF24"/><circle cx="100" cy="22" r="5" fill="#F43F5E"/><circle cx="100" cy="98" r="40" fill="#FCD5B5"/><path d="M68 96 C64 64 136 64 132 96 C136 68 120 58 100 58 C80 58 64 68 68 96 Z" fill="#18181B"/><circle cx="89" cy="98" r="4" fill="#18181B"/><circle cx="111" cy="98" r="4" fill="#18181B"/><path d="M90 116 Q100 128 110 116" stroke="#E11D48" stroke-width="3" stroke-linecap="round" fill="none"/><circle cx="82" cy="108" r="4" fill="#FB7185" opacity="0.6"/><circle cx="118" cy="108" r="4" fill="#FB7185" opacity="0.6"/><path d="M38 215 C45 160 70 148 100 148 C130 148 155 160 162 215 Z" fill="#10B981"/></svg>'
+      ];
+
       function openLayoutEditor() {
         layoutEditorActive = true;
         document.body.classList.add('layout-editing');
@@ -23483,20 +23543,29 @@
           attachCornerResize(cd, 'cd');
         }
 
-        // Show sample film track so operator can inspect side strip size
+        // Show sample film track with realistic dummy guest photos
         var ft = document.getElementById('filmTrack');
         if (ft) {
           ft.classList.add('edit-preview');
-          if (ft.children.length === 0) {
+          var hasRealShots = Array.isArray(shotCanvases) && shotCanvases.some(Boolean);
+          if (!hasRealShots) {
+            ft.innerHTML = '';
             var n = typeof shotsNeeded === 'function' ? shotsNeeded() : 4;
             for (var i = 0; i < n; i++) {
               var f = document.createElement('div');
               f.className = 'film-frame sample-frame';
-              f.textContent = String(i + 1);
+              f.dataset.shot = String(i + 1);
+              var svgHtml = SAMPLE_PORTRAITS[i % SAMPLE_PORTRAITS.length];
+              f.innerHTML = '<div class="sample-svg-wrap">' + svgHtml + '</div>' +
+                            '<span class="sample-badge">Photo ' + (i + 1) + '</span>';
               ft.appendChild(f);
+              attachCornerResize(f, 'film');
             }
+          } else {
+            ft.querySelectorAll('.film-frame').forEach(function(fr) {
+              attachCornerResize(fr, 'film');
+            });
           }
-          attachCornerResize(ft, 'film');
         }
 
         // Show the real Get Ready overlay with Cancel and Start
@@ -23520,6 +23589,14 @@
         document.body.classList.remove('layout-editing');
         var bar = document.getElementById('layoutEditBar');
         if (bar) bar.hidden = true;
+
+        // Clean up all resize handles and resizable markers everywhere
+        document.querySelectorAll('.leb-handle').forEach(function(h) { h.remove(); });
+        document.querySelectorAll('.leb-resizable').forEach(function(el) {
+          el.classList.remove('leb-resizable');
+          delete el._lebBound;
+          delete el._lebBorderBound;
+        });
 
         // Restore countdown overlay
         var cd = document.getElementById('countdownOverlay');
@@ -23550,6 +23627,7 @@
           if (!hasRealShots && (typeof state === 'undefined' || state !== 'capturing')) {
             ft.querySelectorAll('.sample-frame').forEach(function(el) { el.remove(); });
           }
+          if (typeof updateFilmTrack === 'function') updateFilmTrack();
         }
 
         if (typeof applyStageAspect === 'function') applyStageAspect();
@@ -23750,12 +23828,6 @@
         document.addEventListener('keydown', function (e) {
           if (e.key === 'Escape' && layoutEditorActive) { e.stopPropagation(); closeLayoutEditor(); }
         }, true);
-
-        // 4-corner sticker resize handles
-        attachCornerResize(document.getElementById('countdownOverlay'), 'cd');
-        var readyAct = document.querySelector('#readyOverlay .ready-actions');
-        if (readyAct) attachCornerResize(readyAct, 'btn');
-        attachCornerResize(document.getElementById('filmTrack'), 'film');
 
         // Opacity sliders (see-through)
         [['lebCdOp', 'cd'], ['lebBtnOp', 'btn'], ['lebFilmOp', 'film']].forEach(function (pair) {

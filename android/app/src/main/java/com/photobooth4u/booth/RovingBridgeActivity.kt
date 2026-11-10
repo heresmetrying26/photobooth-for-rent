@@ -276,8 +276,15 @@ class RovingBridgeActivity : AppCompatActivity() {
         }
         titleCol.addView(title)
 
+        val versionStr = try {
+            val pInfo = packageManager.getPackageInfo(packageName, 0)
+            "v" + (pInfo.versionName ?: "1.1.0")
+        } catch (_: Exception) {
+            "v1.1.0"
+        }
+
         val sub = TextView(this).apply {
-            text = "Wired DSLR ➔ Wireless Laptop Streamer"
+            text = "$versionStr • Wired DSLR ➔ Wireless Streamer"
             textSize = 12f
             setTextColor(Color.parseColor("#8E8884"))
         }

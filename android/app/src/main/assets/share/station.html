@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>__TITLE__ - Sharing Station</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:#0F0E13;color:#F0EEF5;min-height:100vh;-webkit-tap-highlight-color:transparent}
+header{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(15,14,19,0.94);backdrop-filter:blur(10px);position:sticky;top:0;z-index:20}
+.brand{font-size:14px;font-weight:800;letter-spacing:-.01em;color:#fff;display:flex;align-items:center;gap:6px}
+.brand-dot{width:10px;height:10px;background:#C93D27;border-radius:2px}
+.title-wrap{text-align:center;flex:1;padding:0 12px}
+h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{display:inline-flex;align-items:center;gap:6px;background:rgba(201,61,39,0.18);color:#FF6B55;font-size:11px;font-weight:800;padding:2px 8px;border-radius:10px;margin-top:2px;text-transform:uppercase;letter-spacing:.04em}
+.stat{display:flex;align-items:center;gap:8px;font-size:13px;color:#A49FA9;font-weight:600}
+.pulse{width:8px;height:8px;background:#2EA66B;border-radius:50%;box-shadow:0 0 8px #2EA66B;animation:pbPulse 2s infinite}
+@keyframes pbPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
+
+.controls{display:flex;align-items:center;justify-content:center;padding:12px 16px 4px}
+.tabs{display:inline-flex;background:rgba(255,255,255,0.06);border-radius:20px;padding:3px;gap:2px}
+.tab{background:transparent;border:0;border-radius:18px;padding:6px 16px;font-size:13px;font-weight:700;color:#A49FA9;cursor:pointer}
+.tab.active{background:#fff;color:#0F0E13;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;padding:16px 20px 60px;max-width:1300px;margin:0 auto}
+.card{background:rgba(255,255,255,0.05);border-radius:14px;overflow:hidden;aspect-ratio:9/16;position:relative;cursor:pointer;border:1px solid rgba(255,255,255,0.08);transition:transform .15s}
+.card:active{transform:scale(0.97)}
+.card img,.card video{width:100%;height:100%;object-fit:cover;display:block}
+.card .play-pill{position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);color:#fff;border-radius:18px;padding:4px 10px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px}
+.card .time{position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#eee;border-radius:6px;padding:3px 7px;font-size:10px;font-weight:600}
+.empty{text-align:center;color:#8E8994;padding:80px 20px;font-size:15px;grid-column:1/-1}
+
+/* Standby screen for Privacy / Single-Session mode */
+.standby-wrap{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:75vh;padding:32px 20px;text-align:center}
+.standby-card{max-width:440px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:36px 28px;box-shadow:0 20px 50px rgba(0,0,0,0.5)}
+.standby-icon{font-size:46px;margin-bottom:12px;animation:stBounce 1.6s infinite alternate ease-in-out}
+@keyframes stBounce{from{transform:translateY(0)}to{transform:translateY(-8px)}}
+.standby-card h2{margin:0 0 10px;font-size:24px;font-weight:800;letter-spacing:-.02em;color:#fff}
+.standby-card p{margin:0;color:#A49FA9;font-size:14.5px;line-height:1.55}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{background:#18161D;border:1px solid rgba(255,255,255,0.12);border-radius:24px;width:100%;max-width:920px;max-height:92vh;display:flex;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,0.7);position:relative}
+.modal-media{flex:1.2;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;min-height:360px}
+.modal-media video,.modal-media img{max-width:100%;max-height:86vh;object-fit:contain}
+.modal-share{flex:1;padding:32px 28px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:#18161D;border-left:1px solid rgba(255,255,255,0.08)}
+.modal-share h2{margin:0 0 6px;font-size:24px;font-weight:800;letter-spacing:-.02em}
+.modal-share p{color:#A49FA9;font-size:13px;line-height:1.45;margin:0 0 20px;max-width:280px}
+.qr-frame{background:#fff;padding:14px;border-radius:18px;box-shadow:0 12px 36px rgba(0,0,0,0.4);display:inline-block;margin-bottom:20px}
+.qr-frame img{display:block;width:200px;height:200px}
+.btn{display:inline-block;padding:13px 24px;border-radius:12px;background:#C93D27;color:#fff;font-weight:800;text-decoration:none;font-size:14px;border:0;cursor:pointer;width:100%;max-width:260px;margin-bottom:8px;text-align:center;font-family:inherit}
+.btn.alt{background:rgba(255,255,255,0.08);color:#fff}
+.timer-bar{width:100%;max-width:260px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;margin-top:16px}
+.timer-bar i{display:block;height:100%;width:100%;background:#C93D27;transition:width .2s linear}
+.timer-text{font-size:11px;color:#7A7580;margin-top:6px}
+.close-btn{position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.1);border:0;color:#fff;width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10}
+
+@media (max-width:768px){
+  .modal{flex-direction:column;max-height:96vh;overflow-y:auto}
+  .modal-share{border-left:0;border-top:1px solid rgba(255,255,255,0.08);padding:20px 16px}
+  .modal-media{min-height:240px;max-height:45vh}
+  .qr-frame img{width:170px;height:170px}
+}
+</style>
+<script src="/qr.js"></script>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="brand-dot"></div>photobooth4u</div>
+  <div class="title-wrap">
+    <h1>__TITLE__</h1>
+    <div class="badge">📱 Sharing Station</div>
+  </div>
+  <div class="stat"><span class="pulse"></span><span id="stCount">0 items</span></div>
+</header>
+
+<div class="controls" id="stControls">
+  <div class="tabs">
+    <button type="button" class="tab active" data-filter="all">All</button>
+    <button type="button" class="tab" data-filter="photo">Prints</button>
+    <button type="button" class="tab" data-filter="solo">Solo Photos</button>
+    <button type="button" class="tab" data-filter="gif">GIFs</button>
+    <button type="button" class="tab" data-filter="video">360 Videos</button>
+  </div>
+</div>
+
+<div class="grid" id="stGrid"><div class="empty">Loading items…</div></div>
+
+<div class="standby-wrap" id="standbyView">
+  <div class="standby-card">
+    <div class="standby-icon">✨ 📸</div>
+    <h2>Ready for your photos!</h2>
+    <p>Step up to the booth to start your session. Your photos and QR code will appear here automatically.</p>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <button type="button" class="close-btn" id="mClose">✕</button>
+    <div class="modal-media" id="mMedia"></div>
+    <div class="modal-share">
+      <h2>Scan to save</h2>
+      <p>Point your phone’s camera at the QR code to open and save your photo.</p>
+      <div class="qr-frame"><img id="mQr" alt="QR Code"></div>
+      <a class="btn" id="mDl" download>Save Photo</a>
+      <button type="button" class="btn alt" id="mDone">Done (Next guest)</button>
+      <div class="timer-bar"><i id="mBar"></i></div>
+      <div class="timer-text">Auto-closing in <span id="mSec">35</span>s</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var SLUG = "__SLUG__";
+var files = [], currentFilter = 'all', activeItem = null, timerId = null, timeLeft = 35;
+var privacyOnly = /[?&]privacy=only\b/i.test(location.search);
+var hasLoaded = false, lastKnownTop = null;
+
+if (privacyOnly) {
+  document.getElementById('stControls').style.display = 'none';
+  document.getElementById('stGrid').style.display = 'none';
+  document.getElementById('standbyView').style.display = 'flex';
+}
+
+function playChime() {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+    var notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach(function(freq, i) {
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.08);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.45);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + i * 0.08);
+      osc.stop(ctx.currentTime + i * 0.08 + 0.45);
+    });
+  } catch(e) {}
+}
+
+function timeAgo(mtime) {
+  var s = Math.floor((Date.now() - mtime) / 1000);
+  if (s < 60) return 'Just now';
+  var m = Math.floor(s / 60);
+  if (m < 60) return m + 'm ago';
+  var h = Math.floor(m / 60);
+  return h + 'h ago';
+}
+
+function makeQr(url) {
+  try {
+    var q = qrcode(0, 'M');
+    q.addData(url);
+    q.make();
+    return q.createDataURL(6, 2);
+  } catch(e) {
+    return '';
+  }
+}
+
+function render() {
+  if (privacyOnly) return;
+  var g = document.getElementById('stGrid');
+  var list = files.filter(function(f){ return currentFilter === 'all' || f.kind === currentFilter; });
+  if (!list.length) {
+    g.innerHTML = '<div class="empty">No ' + (currentFilter === 'all' ? 'items' : currentFilter + 's') + ' yet. Take a shot on the booth to get started!</div>';
+    return;
+  }
+  g.innerHTML = list.map(function(f){
+    var isVid = f.kind === 'video';
+    var thumb = isVid
+      ? '<video src="' + f.url + '#t=0.1" preload="metadata" muted playsinline></video><div class="play-pill"><i>▶</i> 360</div>'
+      : '<img src="' + f.thumbUrl + '" loading="lazy" alt="">';
+    return '<div class="card" data-name="' + f.name + '">' + thumb + '<div class="time">' + timeAgo(f.mtime) + '</div></div>';
+  }).join('');
+
+  g.querySelectorAll('.card').forEach(function(card){
+    card.addEventListener('click', function(){
+      var it = files.find(function(x){ return x.name === card.dataset.name; });
+      if (it) openModal(it);
+    });
+  });
+}
+
+function openModal(it) {
+  activeItem = it;
+  var m = document.getElementById('modal');
+  var med = document.getElementById('mMedia');
+  var qr = document.getElementById('mQr');
+  var dl = document.getElementById('mDl');
+  var pageUrl = location.origin + it.pageUrl;
+  
+  if (it.kind === 'video') {
+    med.innerHTML = '<video src="' + it.url + '" controls autoplay loop playsinline></video>';
+    dl.textContent = 'Save Video';
+  } else if (it.kind === 'solo') {
+    med.innerHTML = '<img src="' + it.url + '" alt="">';
+    dl.textContent = 'Save Solo Photo';
+  } else if (it.kind === 'gif') {
+    med.innerHTML = '<img src="' + it.url + '" alt="">';
+    dl.textContent = 'Save GIF';
+  } else {
+    med.innerHTML = '<img src="' + it.url + '" alt="">';
+    dl.textContent = 'Save Photo';
+  }
+  dl.href = it.url + '?dl=1';
+  dl.setAttribute('download', it.name);
+  qr.src = makeQr(pageUrl);
+  
+  m.classList.add('open');
+  resetTimer();
+}
+
+function closeModal() {
+  var m = document.getElementById('modal');
+  m.classList.remove('open');
+  var med = document.getElementById('mMedia');
+  med.innerHTML = '';
+  activeItem = null;
+  clearInterval(timerId);
+}
+
+function resetTimer() {
+  clearInterval(timerId);
+  timeLeft = 35;
+  var bar = document.getElementById('mBar');
+  var sec = document.getElementById('mSec');
+  bar.style.width = '100%';
+  sec.textContent = '35';
+  timerId = setInterval(function(){
+    timeLeft--;
+    sec.textContent = String(timeLeft);
+    bar.style.width = Math.round((timeLeft / 35) * 100) + '%';
+    if (timeLeft <= 0) {
+      clearInterval(timerId);
+      closeModal();
+    }
+  }, 1000);
+}
+
+document.getElementById('mClose').addEventListener('click', closeModal);
+document.getElementById('mDone').addEventListener('click', closeModal);
+document.getElementById('modal').addEventListener('click', function(e){
+  if (e.target === this) closeModal();
+});
+document.getElementById('modal').addEventListener('touchstart', resetTimer, { passive: true });
+
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click', function(){
+    document.querySelectorAll('.tab').forEach(function(x){ x.classList.remove('active'); });
+    t.classList.add('active');
+    currentFilter = t.dataset.filter;
+    render();
+  });
+});
+
+async function poll() {
+  try {
+    var r = await fetch('/station/' + SLUG + '/list');
+    var j = await r.json();
+    if (j && j.ok && Array.isArray(j.files)) {
+      var isFirst = !hasLoaded;
+      var changed = j.files.length !== files.length || (j.files[0] && files[0] && j.files[0].name !== files[0].name);
+      var newest = j.files[0];
+      files = j.files;
+      hasLoaded = true;
+      document.getElementById('stCount').textContent = files.length + (files.length === 1 ? ' item' : ' items');
+      if (changed) {
+        if (!privacyOnly && !activeItem) render();
+        if (newest && (!lastKnownTop || newest.name !== lastKnownTop)) {
+          lastKnownTop = newest.name;
+          if (!isFirst) {
+            playChime();
+            openModal(newest);
+          }
+        }
+      }
+    }
+  } catch(e) {}
+}
+
+poll();
+setInterval(poll, 1800);
+</script>
+</body>
+</html>

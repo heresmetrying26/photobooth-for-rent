@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.19', date: '2026-11-10' },
   { version: '1.1.18', date: '2026-11-10' },
   { version: '1.1.17', date: '2026-11-10' },
   { version: '1.1.16', date: '2026-11-10' },
@@ -190,6 +191,17 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-10', title: 'Desktop 1.1.19 + Android 1.1.36: Separate Sharing Station with live auto-pop, audio chime & fast booth hand-off', for: ['website', 'app'], app: '1.1.19',
+    items: [
+      '📱 Separate Sharing Station: display your QR codes and photos on a separate phone or tablet stand, freeing the camera booth to start the next session immediately.',
+      '⚡ 2-Second Fast Booth Handoff: skips the long 20–30s result wait on the main booth screen with an on-screen prompt directing guests to the sharing stand.',
+      '✨ Live Auto-Pop on Phone: incoming photo strips automatically pop up full-screen on the phone with a large, high-contrast QR code for instant camera roll download.',
+      '🔔 Melodic Web Audio Chime: plays a clean synthesizer chime on the sharing stand whenever a session finishes — 100% offline, zero audio files required.',
+      '🔒 Privacy Mode: option to show only the current session (hides the past event gallery and auto-clears after 35s) for privacy-conscious weddings and corporate events.',
+      '📴 Works 100% Offline & Online: fully supported via local booth Wi-Fi (port 47777) on Desktop & Android tablets, and via cloud sync on the web version.'
+    ]
+  },
   {
     date: '2026-11-10', title: 'Desktop 1.1.18 + Android 1.1.35: 58mm thermal printer — fix cut-off sides, blank paper feed, and bottom glitch', for: ['website', 'app'], app: '1.1.18',
     items: [

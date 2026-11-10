@@ -12609,6 +12609,87 @@
         font-size: 15px;
       }
     }
+  
+    /* ==========================================================================
+       DISPLAY & MONITOR SCALING (11.5" Mini Monitor, Standard, Large TV)
+       Allows resizing buttons, making the countdown prominently visible to guests,
+       and adapting side session photos so all photos fit cleanly on small screens.
+       ========================================================================== */
+    :root {
+      --ui-cd-scale: 1;
+      --ui-btn-scale: 1;
+      --ui-film-scale: 1;
+    }
+
+    /* Scalable Countdown (Viewable by guests across distances) */
+    .cd-wrap {
+      width: calc(clamp(76px, 12vmin, 116px) * var(--ui-cd-scale, 1)) !important;
+    }
+    .cd-wrap .countdown-num {
+      font-size: calc(clamp(40px, 7vmin, 66px) * var(--ui-cd-scale, 1)) !important;
+    }
+    .cd-wrap .countdown-num.word {
+      font-size: calc(clamp(13px, 2vmin, 19px) * var(--ui-cd-scale, 1)) !important;
+    }
+
+    /* Countdown in Full-Screen photo session (Guest View) */
+    body.stage-full .countdown-overlay {
+      gap: calc(12px * var(--ui-cd-scale, 1)) !important;
+      padding: calc(10px * var(--ui-cd-scale, 1)) calc(22px * var(--ui-cd-scale, 1)) calc(10px * var(--ui-cd-scale, 1)) calc(10px * var(--ui-cd-scale, 1)) !important;
+      border-radius: 999px !important;
+    }
+    body.stage-full .cd-wrap {
+      width: calc(clamp(56px, 8vmin, 84px) * var(--ui-cd-scale, 1)) !important;
+    }
+    body.stage-full .cd-wrap .countdown-num {
+      font-size: calc(clamp(30px, 4.6vmin, 48px) * var(--ui-cd-scale, 1)) !important;
+    }
+    body.stage-full .cd-wrap .countdown-num.word {
+      font-size: calc(clamp(13px, 1.8vmin, 18px) * var(--ui-cd-scale, 1)) !important;
+    }
+
+    /* Scalable buttons (Touch-friendly & vertical-space optimized) */
+    .shutter-btn {
+      font-size: calc(16px * var(--ui-btn-scale, 1)) !important;
+      padding: calc(14px * var(--ui-btn-scale, 1)) calc(28px * var(--ui-btn-scale, 1)) !important;
+      min-height: calc(44px * var(--ui-btn-scale, 1)) !important;
+    }
+    body.in-session .shutter-btn {
+      font-size: calc(18px * var(--ui-btn-scale, 1)) !important;
+      padding: 0 calc(38px * var(--ui-btn-scale, 1)) !important;
+      min-height: calc(58px * var(--ui-btn-scale, 1)) !important;
+    }
+    body.stage-full .cd-shot {
+      font-size: calc(clamp(15px, 2vmin, 20px) * var(--ui-cd-scale, 1)) !important;
+    }
+    .sc-btn {
+      font-size: calc(13.5px * var(--ui-btn-scale, 1)) !important;
+      min-height: calc(40px * var(--ui-btn-scale, 1)) !important;
+      padding: calc(7px * var(--ui-btn-scale, 1)) calc(16px * var(--ui-btn-scale, 1)) !important;
+    }
+    body.stage-full .app-shell .session-controls .sc-btn {
+      font-size: calc(14px * var(--ui-btn-scale, 1)) !important;
+      min-height: calc(44px * var(--ui-btn-scale, 1)) !important;
+      padding: calc(8px * var(--ui-btn-scale, 1)) calc(18px * var(--ui-btn-scale, 1)) !important;
+    }
+
+    /* Scalable side photos per session (Film Track) */
+    body.stage-full .app-shell .film-track .film-frame {
+      width: calc(clamp(64px, 9vmin, 120px) * var(--ui-film-scale, 1)) !important;
+    }
+    body.stage-full .app-shell .film-track {
+      max-height: calc(var(--vh) - 100px) !important;
+      scrollbar-width: thin;
+    }
+    @media (orientation: portrait) {
+      body.stage-full .app-shell .film-track .film-frame,
+      body.stage-review .app-shell .film-track .film-frame,
+      body.in-session .app-shell.capturing .film-track .film-frame,
+      body.in-session .app-shell .film-track .film-frame {
+        width: calc(clamp(54px, 12vw, 84px) * var(--ui-film-scale, 1)) !important;
+      }
+    }
+
   </style>
   <script>/* qrcode-generator 1.4.4 (MIT) — QR codes are made on this device, no outside service. */
     // Copyright (c) 2009 Kazuhiko Arase
@@ -14630,6 +14711,41 @@
             <select id="resultReviewSelect" hidden>
               <option value="0" selected>Until tap</option>
             </select>
+          </details>
+          <p class="sub-label" style="margin-top:16px;">Display &amp; Monitor Scaling</p>
+          <p class="panel-hint" style="margin:2px 0 8px;">Adapt buttons, countdown visibility for guests, and side session photos for small (11.5") or large monitors.</p>
+          <div class="chip-row" id="uiScaleChips" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+            <button type="button" class="chip" data-scale="compact">Compact (11.5")</button>
+            <button type="button" class="chip active" data-scale="normal">Standard</button>
+            <button type="button" class="chip" data-scale="large">Large / TV</button>
+          </div>
+          <details class="more" id="uiScaleDetails" style="margin-top:8px;">
+            <summary>Fine-tune sizes &amp; side photos</summary>
+            <div class="opt-row">
+              <span class="lbl">Countdown size for guests</span>
+              <select class="mini-select pillify" id="uiCdScaleSelect">
+                <option value="1">Standard</option>
+                <option value="1.25">Large</option>
+                <option value="1.5">Extra Large (High visibility)</option>
+                <option value="1.8">Hero / Giant</option>
+              </select>
+            </div>
+            <div class="opt-row" style="margin-top:8px;">
+              <span class="lbl">Buttons size</span>
+              <select class="mini-select pillify" id="uiBtnScaleSelect">
+                <option value="0.88">Compact (Saves vertical space)</option>
+                <option value="1" selected>Standard</option>
+                <option value="1.15">Large</option>
+              </select>
+            </div>
+            <div class="opt-row" style="margin-top:8px;">
+              <span class="lbl">Side photos per session</span>
+              <select class="mini-select pillify" id="uiFilmScaleSelect">
+                <option value="0.85">Compact fit</option>
+                <option value="1" selected>Auto-fit (All visible)</option>
+                <option value="1.2">Larger preview</option>
+              </select>
+            </div>
           </details>
           <p class="sub-label" style="margin-top:16px;">After the photos</p>
           <label class="toggle-row" style="margin-top:4px;"><input type="checkbox" id="qrPopToggle"> Show the QR
@@ -22320,18 +22436,21 @@
         shell.classList.remove('btn-beside');
         var isShoot = document.body.classList.contains('shooting');
         var hasShots = Array.isArray(shotCanvases) && shotCanvases.some(Boolean);
-        var n = Math.max(5, frames.length), g = 10, gap = 16;
+        var filmScale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-film-scale')) || 1;
+        var shotCount = frames.length || (typeof shotsNeeded === 'function' ? shotsNeeded() : 4);
+        var n = Math.max(3, shotCount), g = 10, gap = 16;
         var W = Math.max(shell.clientWidth - 4, window.innerWidth - 32);
         var Hmax = isShoot ? Math.max(260, vh - (ctrlH ? ctrlH + 8 : 46)) : Math.max(260, Math.min(vh * 0.94, vh - top - ctrlH - 12));
-        var hFit = hasShots ? ((W - 2 * gap + 2 * box * g * (n - 1) / n) / (sa + 2 * box / n)) : (W / sa);
+        var boxFactor = 2 * box * Math.min(1.2, filmScale);
+        var hFit = hasShots ? ((W - 2 * gap + boxFactor * g * (n - 1) / n) / (sa + boxFactor / n)) : (W / sa);
         var h = Math.max(200, Math.min(Hmax, hFit));
-        var fh = (h - g * (n - 1)) / n, fw = Math.round(fh * box), stw = Math.round(h * sa);
+        var fh = ((h - g * (n - 1)) / n) * Math.min(1.2, filmScale), fw = Math.round(fh * box), stw = Math.round(h * sa);
         if (hasShots) {
           var maxTotalW = window.innerWidth - 32;
           if (2 * fw + 2 * gap + stw > maxTotalW) {
             stw = Math.max(200, maxTotalW - 2 * fw - 2 * gap);
             h = Math.round(stw / sa);
-            fh = (h - g * (n - 1)) / n;
+            fh = ((h - g * (n - 1)) / n) * Math.min(1.2, filmScale);
             fw = Math.round(fh * box);
           }
           sw.style.gridTemplateColumns = fw + 'px ' + stw + 'px ' + fw + 'px';
@@ -22679,6 +22798,93 @@
         [...timerChips.children].forEach(c => c.classList.toggle('active', Number(c.dataset.sec) === timerSec));
         updateReadySub();
       }
+      
+      // ---- Display & Monitor Scaling (for 11.5" small screens, standard & large displays) ----
+      var UI_SCALE_KEY = 'pb_ui_scale_preset';
+      var UI_CD_SCALE_KEY = 'pb_ui_cd_scale';
+      var UI_BTN_SCALE_KEY = 'pb_ui_btn_scale';
+      var UI_FILM_SCALE_KEY = 'pb_ui_film_scale';
+
+      var UI_SCALE_PRESETS = {
+        compact: { cd: 1.5, btn: 0.88, film: 0.95 },   // Tailored for 11.5" monitors: big countdown for guests, snug buttons, optimal side frames
+        normal:  { cd: 1.0, btn: 1.0,  film: 1.0 },    // Standard 13"-16"
+        large:   { cd: 1.3, btn: 1.15, film: 1.15 }    // Large displays / TV
+      };
+
+      function applyUiScale(cd, btn, film, preset) {
+        var root = document.documentElement;
+        root.style.setProperty('--ui-cd-scale', String(cd));
+        root.style.setProperty('--ui-btn-scale', String(btn));
+        root.style.setProperty('--ui-film-scale', String(film));
+        try {
+          localStorage.setItem(UI_CD_SCALE_KEY, String(cd));
+          localStorage.setItem(UI_BTN_SCALE_KEY, String(btn));
+          localStorage.setItem(UI_FILM_SCALE_KEY, String(film));
+          if (preset) localStorage.setItem(UI_SCALE_KEY, preset);
+        } catch (e) {}
+
+        var cdSel = document.getElementById('uiCdScaleSelect');
+        var btnSel = document.getElementById('uiBtnScaleSelect');
+        var filmSel = document.getElementById('uiFilmScaleSelect');
+        if (cdSel) cdSel.value = String(cd);
+        if (btnSel) btnSel.value = String(btn);
+        if (filmSel) filmSel.value = String(film);
+
+        var chips = document.getElementById('uiScaleChips');
+        if (chips) {
+          chips.querySelectorAll('.chip').forEach(function (c) {
+            c.classList.toggle('active', c.dataset.scale === (preset || 'custom'));
+          });
+        }
+        if (typeof applyStageAspect === 'function') applyStageAspect();
+      }
+
+      function initUiScale() {
+        var savedPreset = null, savedCd = null, savedBtn = null, savedFilm = null;
+        try {
+          savedPreset = localStorage.getItem(UI_SCALE_KEY);
+          savedCd = localStorage.getItem(UI_CD_SCALE_KEY);
+          savedBtn = localStorage.getItem(UI_BTN_SCALE_KEY);
+          savedFilm = localStorage.getItem(UI_FILM_SCALE_KEY);
+        } catch (e) {}
+
+        // Smart auto-detection on first run: if on a small screen (<=1366x768 or <=11.6")
+        if (!savedPreset && window.innerWidth <= 1366 && window.innerHeight <= 768) {
+          savedPreset = 'compact';
+        }
+        var p = UI_SCALE_PRESETS[savedPreset || 'normal'] || UI_SCALE_PRESETS.normal;
+        var cd = savedCd ? parseFloat(savedCd) : p.cd;
+        var btn = savedBtn ? parseFloat(savedBtn) : p.btn;
+        var film = savedFilm ? parseFloat(savedFilm) : p.film;
+        applyUiScale(cd, btn, film, savedPreset || 'normal');
+
+        var chips = document.getElementById('uiScaleChips');
+        if (chips) {
+          chips.addEventListener('click', function (e) {
+            var c = e.target.closest('.chip');
+            if (!c) return;
+            var pr = c.dataset.scale;
+            if (UI_SCALE_PRESETS[pr]) {
+              applyUiScale(UI_SCALE_PRESETS[pr].cd, UI_SCALE_PRESETS[pr].btn, UI_SCALE_PRESETS[pr].film, pr);
+            }
+          });
+        }
+        var cdSel = document.getElementById('uiCdScaleSelect');
+        if (cdSel) cdSel.addEventListener('change', function () {
+          applyUiScale(parseFloat(cdSel.value) || 1, parseFloat(localStorage.getItem(UI_BTN_SCALE_KEY)) || 1, parseFloat(localStorage.getItem(UI_FILM_SCALE_KEY)) || 1, 'custom');
+        });
+        var btnSel = document.getElementById('uiBtnScaleSelect');
+        if (btnSel) btnSel.addEventListener('change', function () {
+          applyUiScale(parseFloat(localStorage.getItem(UI_CD_SCALE_KEY)) || 1, parseFloat(btnSel.value) || 1, parseFloat(localStorage.getItem(UI_FILM_SCALE_KEY)) || 1, 'custom');
+        });
+        var filmSel = document.getElementById('uiFilmScaleSelect');
+        if (filmSel) filmSel.addEventListener('change', function () {
+          applyUiScale(parseFloat(localStorage.getItem(UI_CD_SCALE_KEY)) || 1, parseFloat(localStorage.getItem(UI_BTN_SCALE_KEY)) || 1, parseFloat(filmSel.value) || 1, 'custom');
+        });
+      }
+
+      initUiScale();
+
       timerChips.addEventListener('click', (e) => {
         const c = e.target.closest('.chip');
         if (c) setTimer(Number(c.dataset.sec));

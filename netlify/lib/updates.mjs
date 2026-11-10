@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.16', date: '2026-11-10' },
   { version: '1.1.15', date: '2026-11-10' },
   { version: '1.1.14', date: '2026-11-10' },
   { version: '1.1.13', date: '2026-11-09' },
@@ -187,6 +188,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-10', title: 'Desktop 1.1.16 + Android 1.1.33: Anti-glitch safeguard for camera capture & Surface tablets', for: ['website', 'app'], app: '1.1.16',
+    items: [
+      '📸 Truncated JPEG Stream Guard: automatically detects incomplete camera driver buffers and missing End-of-Image markers on webcams and tablet cameras.',
+      '🛡️ Anti-Smear Protection: prevents scanline duplication and bottom streak distortion (common on Microsoft Surface tablets) by safely falling back to the pristine live viewfinder frame.',
+      '🔄 Unconstrained Still Retry: re-attempts photo capture unconstrained if driver-specific max resolution dimensions cause buffer overflow.',
+      '✨ Flawless Collages: guarantees printed and saved photos remain sharp and glitch-free across all devices.'
+    ]
+  },
   {
     date: '2026-11-10', title: 'Desktop 1.1.15 + Android 1.1.32: Live on-screen layout & resize editor with instant preview', for: ['website', 'app'], app: '1.1.15',
     items: [

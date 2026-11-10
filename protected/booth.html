@@ -12619,6 +12619,21 @@
       --ui-cd-scale: 1;
       --ui-btn-scale: 1;
       --ui-film-scale: 1;
+      --ui-cd-opacity: 1;
+      --ui-btn-opacity: 1;
+      --ui-film-opacity: 1;
+    }
+
+    /* Per-section see-through (set from the live layout editor, saved per monitor) */
+    .countdown-overlay {
+      opacity: var(--ui-cd-opacity, 1);
+    }
+    .start-btn-wrap,
+    .session-controls .sc-row {
+      opacity: var(--ui-btn-opacity, 1);
+    }
+    .film-track {
+      opacity: var(--ui-film-opacity, 1);
     }
 
     /* Scalable Countdown (Viewable by guests across distances) */
@@ -12829,16 +12844,62 @@
       min-width: 36px;
       text-align: center;
     }
+    .leb-op {
+      width: 74px;
+      height: 18px;
+      accent-color: #7cc4ff;
+      cursor: pointer;
+    }
+    .leb-opval {
+      font: 800 11px 'Manrope', monospace;
+      color: rgba(255, 255, 255, 0.8);
+      min-width: 32px;
+      text-align: center;
+    }
+    .leb-hint {
+      margin: 0;
+      font: 600 10.5px 'Manrope', sans-serif;
+      color: rgba(255, 255, 255, 0.62);
+    }
 
     /* While layout-editing is active on body: show sample preview overlays */
     body.layout-editing .countdown-overlay.edit-preview {
       display: flex !important;
-      opacity: 0.95;
       pointer-events: auto;
     }
     body.layout-editing .film-track.edit-preview {
       display: flex !important;
-      opacity: 0.95;
+    }
+    /* The branded welcome card would sit on top of the stage and hide the live
+       buttons, so it steps aside while the operator is editing the layout. */
+    body.layout-editing .welcome-overlay {
+      display: none !important;
+    }
+    /* Keep the real Start / Print buttons on screen while editing, even if the
+       session state would normally hide them. The second selector outranks
+       body.welcome-on .app-shell:not(.result) .start-btn-wrap, which is what
+       hides the buttons under the branded welcome card. */
+    body.layout-editing .start-btn-wrap,
+    body.layout-editing .app-shell:not(.result) .start-btn-wrap {
+      display: flex !important;
+      position: relative;
+      z-index: 60;
+    }
+    /* Sticker-style resize: each highlighted section is grabbed and dragged
+       directly. Children ignore the pointer so a drag never presses Start. */
+    body.layout-editing .countdown-overlay.edit-preview,
+    body.layout-editing .film-track.edit-preview,
+    body.layout-editing .start-btn-wrap.edit-preview {
+      outline: 2px dashed #7cc4ff;
+      outline-offset: 4px;
+      border-radius: 12px;
+      cursor: grab;
+      touch-action: none;
+    }
+    body.layout-editing .countdown-overlay.edit-preview *,
+    body.layout-editing .film-track.edit-preview *,
+    body.layout-editing .start-btn-wrap.edit-preview * {
+      pointer-events: none !important;
     }
     body.layout-editing .film-frame.sample-frame {
       display: flex !important;
@@ -16349,23 +16410,24 @@
       <div class="leb-controls">
         <div class="leb-row">
           <span class="leb-lbl">⏱️ Countdown:</span>
-          <button type="button" class="leb-btn" id="lebCdMinus" aria-label="Countdown smaller">−</button>
           <span class="leb-val" id="lebCdVal">150%</span>
-          <button type="button" class="leb-btn" id="lebCdPlus" aria-label="Countdown larger">+</button>
+          <input type="range" class="leb-op" id="lebCdOp" min="25" max="100" step="5" value="100" aria-label="Countdown opacity">
+          <span class="leb-opval" id="lebCdOpVal">100%</span>
         </div>
         <div class="leb-row">
           <span class="leb-lbl">🔘 Buttons:</span>
-          <button type="button" class="leb-btn" id="lebBtnMinus" aria-label="Buttons smaller">−</button>
           <span class="leb-val" id="lebBtnVal">88%</span>
-          <button type="button" class="leb-btn" id="lebBtnPlus" aria-label="Buttons larger">+</button>
+          <input type="range" class="leb-op" id="lebBtnOp" min="25" max="100" step="5" value="100" aria-label="Buttons opacity">
+          <span class="leb-opval" id="lebBtnOpVal">100%</span>
         </div>
         <div class="leb-row">
           <span class="leb-lbl">📸 Side Strip:</span>
-          <button type="button" class="leb-btn" id="lebFilmMinus" aria-label="Side strip smaller">−</button>
           <span class="leb-val" id="lebFilmVal">95%</span>
-          <button type="button" class="leb-btn" id="lebFilmPlus" aria-label="Side strip larger">+</button>
+          <input type="range" class="leb-op" id="lebFilmOp" min="25" max="100" step="5" value="100" aria-label="Side strip opacity">
+          <span class="leb-opval" id="lebFilmOpVal">100%</span>
         </div>
       </div>
+      <p class="leb-hint">👆 Drag a highlighted section right on the screen to resize it — like a sticker. Sliders set see-through.</p>
     </div>
   </div>
 
@@ -22896,7 +22958,54 @@
       }
       // USB webcam set to "Max resolution" photos: the full-size still replaces the live-view frame
       // (app webcam: /uvc/capture switches the webcam to its biggest mode for the shot; Android-listed webcam: ImageCapture).
-      async function webcamMaxStill() {
+      async function isJpegTruncated(blob) {
+        if (!blob || blob.size < 100) return true;
+        try {
+          const sliceSize = Math.min(blob.size, 512);
+          const buf = await blob.slice(blob.size - sliceSize).arrayBuffer();
+          const bytes = new Uint8Array(buf);
+          for (let i = 0; i < bytes.length - 1; i++) {
+            if (bytes[i] === 0xff && bytes[i + 1] === 0xd9) return false;
+          }
+          const headBuf = await blob.slice(0, 4).arrayBuffer();
+          const head = new Uint8Array(headBuf);
+          if (head[0] === 0xff && head[1] === 0xd8) return true;
+        } catch (e) { }
+        return false;
+      }
+      function hasBottomStreakArtifact(ctx, w, h) {
+        if (!ctx || w < 80 || h < 80) return false;
+        try {
+          const checkRows = Math.min(45, Math.max(16, Math.floor(h * 0.05)));
+          const imgData = ctx.getImageData(0, h - checkRows, w, checkRows).data;
+          const cols = [
+            Math.floor(w * 0.15),
+            Math.floor(w * 0.35),
+            Math.floor(w * 0.50),
+            Math.floor(w * 0.65),
+            Math.floor(w * 0.85)
+          ];
+          let smearedCount = 0;
+          for (let ci = 0; ci < cols.length; ci++) {
+            const col = cols[ci];
+            const baseIdx = ((checkRows - 1) * w + col) * 4;
+            const r0 = imgData[baseIdx], g0 = imgData[baseIdx + 1], b0 = imgData[baseIdx + 2];
+            let same = true;
+            for (let r = 0; r < checkRows - 1; r++) {
+              const idx = (r * w + col) * 4;
+              if (imgData[idx] !== r0 || imgData[idx + 1] !== g0 || imgData[idx + 2] !== b0) {
+                same = false;
+                break;
+              }
+            }
+            if (same) smearedCount++;
+          }
+          return smearedCount >= 3;
+        } catch (e) {
+          return false;
+        }
+      }
+      async function webcamMaxStill(allowOpts) {
         if (currentDeviceId === UVC_ID) {
           const r = await fetch('http://127.0.0.1:17321/uvc/capture?mode=max', { method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(15000) });
           if (r.status !== 200) throw new Error('webcam still failed (' + r.status + ')');
@@ -22906,13 +23015,30 @@
         if (!trk || typeof ImageCapture === 'undefined') throw new Error('no ImageCapture');
         const ic = new ImageCapture(trk);
         let opts = {};
-        try { const caps = await ic.getPhotoCapabilities(); if (caps && caps.imageWidth && caps.imageWidth.max) opts = { imageWidth: caps.imageWidth.max, imageHeight: caps.imageHeight.max }; } catch (e) { }
+        if (allowOpts !== false) {
+          try {
+            const caps = await ic.getPhotoCapabilities();
+            if (caps && caps.imageWidth && caps.imageWidth.max) {
+              opts = { imageWidth: caps.imageWidth.max, imageHeight: caps.imageHeight.max };
+            }
+          } catch (e) { }
+        }
         return await ic.takePhoto(opts);
       }
       async function webcamMaxShot(index) {
         const shots = shotCanvases;
         try {
-          const bmp = await createImageBitmap(await webcamMaxStill());
+          let blob = await webcamMaxStill(true);
+          if (await isJpegTruncated(blob)) {
+            console.warn('Webcam max photo returned truncated JPEG, retrying unconstrained…');
+            try { blob = await webcamMaxStill(false); } catch (e) { }
+            if (await isJpegTruncated(blob)) {
+              console.warn('Webcam max photo still truncated, keeping clean live frame.');
+              try { usbLog('webcam-truncated-jpeg', { msg: 'Truncated JPEG detected; kept live frame' }); } catch (e) { }
+              return;
+            }
+          }
+          const bmp = await createImageBitmap(blob);
           if (bmp.width <= (video.videoWidth || 0)) { bmp.close(); return; }   // not bigger than the live view: keep the instant frame
           const k = Math.min(1, USB_SHOT_MAX / Math.max(bmp.width, bmp.height));
           const c = document.createElement('canvas');
@@ -22922,6 +23048,13 @@
           if (mirrorPreview()) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
           ctx.drawImage(bmp, 0, 0, c.width, c.height);
           bmp.close();
+
+          if (hasBottomStreakArtifact(ctx, c.width, c.height)) {
+            console.warn('Webcam max photo has bottom streak artifact, keeping clean live frame.');
+            try { usbLog('webcam-bottom-smear', { msg: 'Bottom streak artifact detected; kept live frame' }); } catch (e) { }
+            return;
+          }
+
           ctx.setTransform(1, 0, 0, 1, 0, 0);
           applyBgReplace(c);
           var rawW = document.createElement('canvas');
@@ -23006,6 +23139,9 @@
       var UI_CD_SCALE_KEY = 'pb_ui_cd_scale';
       var UI_BTN_SCALE_KEY = 'pb_ui_btn_scale';
       var UI_FILM_SCALE_KEY = 'pb_ui_film_scale';
+      var UI_CD_OP_KEY = 'pb_ui_cd_opacity';
+      var UI_BTN_OP_KEY = 'pb_ui_btn_opacity';
+      var UI_FILM_OP_KEY = 'pb_ui_film_opacity';
 
       var UI_SCALE_PRESETS = {
         compact: { cd: 1.5, btn: 0.88, film: 0.95 },   // Tailored for 11.5" monitors: big countdown for guests, snug buttons, optimal side frames
@@ -23041,7 +23177,25 @@
         if (typeof applyStageAspect === 'function') applyStageAspect();
       }
 
-      
+      function getUiOpacity(which) {
+        var key = which === 'cd' ? UI_CD_OP_KEY : (which === 'btn' ? UI_BTN_OP_KEY : UI_FILM_OP_KEY);
+        var v = parseFloat(localStorage.getItem(key));
+        if (!(v > 0)) v = 1;
+        return Math.min(1, Math.max(0.25, v));
+      }
+
+      function applyUiOpacity(which, value) {
+        value = Math.min(1, Math.max(0.25, value));
+        var key = which === 'cd' ? UI_CD_OP_KEY : (which === 'btn' ? UI_BTN_OP_KEY : UI_FILM_OP_KEY);
+        document.documentElement.style.setProperty('--ui-' + which + '-opacity', String(value));
+        try { localStorage.setItem(key, String(value)); } catch (e) {}
+        var slider = document.getElementById(which === 'cd' ? 'lebCdOp' : (which === 'btn' ? 'lebBtnOp' : 'lebFilmOp'));
+        var lbl = document.getElementById(which === 'cd' ? 'lebCdOpVal' : (which === 'btn' ? 'lebBtnOpVal' : 'lebFilmOpVal'));
+        if (slider) slider.value = String(Math.round(value * 100));
+        if (lbl) lbl.textContent = Math.round(value * 100) + '%';
+      }
+
+
       // ---- On-Screen Live Layout & Resize Editor ----
       var layoutEditorActive = false;
 
@@ -23055,6 +23209,10 @@
         if (cdEl) cdEl.textContent = Math.round(cd * 100) + '%';
         if (btnEl) btnEl.textContent = Math.round(btn * 100) + '%';
         if (filmEl) filmEl.textContent = Math.round(film * 100) + '%';
+
+        applyUiOpacity('cd', getUiOpacity('cd'));
+        applyUiOpacity('btn', getUiOpacity('btn'));
+        applyUiOpacity('film', getUiOpacity('film'));
 
         var preset = localStorage.getItem(UI_SCALE_KEY) || 'custom';
         document.querySelectorAll('.leb-chip').forEach(function(c) {
@@ -23098,6 +23256,11 @@
           }
         }
 
+        // The real Start / Print buttons double as the "Buttons" preview; the
+        // branded welcome card is hidden by CSS while body.layout-editing is on.
+        var sw = document.querySelector('.start-btn-wrap');
+        if (sw) sw.classList.add('edit-preview');
+
         updateLebLabels();
         if (typeof applyStageAspect === 'function') applyStageAspect();
       }
@@ -23127,16 +23290,17 @@
           }
         }
 
+        var sw = document.querySelector('.start-btn-wrap');
+        if (sw) sw.classList.remove('edit-preview');
+
         if (typeof applyStageAspect === 'function') applyStageAspect();
         if (typeof showToast === 'function') showToast('✓ Layout saved for this monitor', 2500);
       }
 
-      function nudgeScale(which, delta) {
-        var key = which === 'cd' ? UI_CD_SCALE_KEY : (which === 'btn' ? UI_BTN_SCALE_KEY : UI_FILM_SCALE_KEY);
-        var current = parseFloat(localStorage.getItem(key)) || 1;
+      function setLebScale(which, value) {
         var min = 0.7;
         var max = which === 'cd' ? 2.2 : 1.4;
-        var updated = Math.round((current + delta) * 100) / 100;
+        var updated = Math.round(value * 100) / 100;
         if (updated < min) updated = min;
         if (updated > max) updated = max;
         var cd = which === 'cd' ? updated : (parseFloat(localStorage.getItem(UI_CD_SCALE_KEY)) || 1);
@@ -23144,6 +23308,43 @@
         var film = which === 'film' ? updated : (parseFloat(localStorage.getItem(UI_FILM_SCALE_KEY)) || 1);
         applyUiScale(cd, btn, film, 'custom');
         updateLebLabels();
+      }
+
+      // Sticker-style resize: grab a highlighted section and drag away from its
+      // centre to grow it, toward the centre to shrink it. Works with touch and
+      // mouse; while editing, the section's own buttons ignore the pointer.
+      function attachLebResize(el, which) {
+        if (!el) return;
+        el.addEventListener('pointerdown', function (e) {
+          if (!layoutEditorActive) return;
+          e.preventDefault();
+          e.stopPropagation();
+          var r = el.getBoundingClientRect();
+          var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+          var d0 = Math.max(24, Math.hypot(e.clientX - cx, e.clientY - cy));
+          var key = which === 'cd' ? UI_CD_SCALE_KEY : (which === 'btn' ? UI_BTN_SCALE_KEY : UI_FILM_SCALE_KEY);
+          var s0 = parseFloat(localStorage.getItem(key)) || 1;
+          try { el.setPointerCapture(e.pointerId); } catch (err) {}
+          function onMove(ev) {
+            var d = Math.max(12, Math.hypot(ev.clientX - cx, ev.clientY - cy));
+            setLebScale(which, s0 * d / d0);
+          }
+          function onUp(ev) {
+            try { el.releasePointerCapture(ev.pointerId); } catch (err) {}
+            el.removeEventListener('pointermove', onMove);
+            el.removeEventListener('pointerup', onUp);
+            el.removeEventListener('pointercancel', onUp);
+          }
+          el.addEventListener('pointermove', onMove);
+          el.addEventListener('pointerup', onUp);
+          el.addEventListener('pointercancel', onUp);
+        });
+        // While editing, swallow the click that follows a drag so nothing fires.
+        el.addEventListener('click', function (e) {
+          if (!layoutEditorActive) return;
+          e.preventDefault();
+          e.stopPropagation();
+        }, true);
       }
 
       function initUiScale() {
@@ -23202,20 +23403,22 @@
         var lebDoneBtn = document.getElementById('lebDoneBtn');
         if (lebDoneBtn) lebDoneBtn.addEventListener('click', closeLayoutEditor);
 
-        var lebCdMinus = document.getElementById('lebCdMinus');
-        if (lebCdMinus) lebCdMinus.addEventListener('click', function() { nudgeScale('cd', -0.1); });
-        var lebCdPlus = document.getElementById('lebCdPlus');
-        if (lebCdPlus) lebCdPlus.addEventListener('click', function() { nudgeScale('cd', 0.1); });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && layoutEditorActive) { e.stopPropagation(); closeLayoutEditor(); }
+        }, true);
 
-        var lebBtnMinus = document.getElementById('lebBtnMinus');
-        if (lebBtnMinus) lebBtnMinus.addEventListener('click', function() { nudgeScale('btn', -0.05); });
-        var lebBtnPlus = document.getElementById('lebBtnPlus');
-        if (lebBtnPlus) lebBtnPlus.addEventListener('click', function() { nudgeScale('btn', 0.05); });
+        // Drag the sections themselves to resize, like stickers
+        attachLebResize(document.getElementById('countdownOverlay'), 'cd');
+        attachLebResize(document.querySelector('.start-btn-wrap'), 'btn');
+        attachLebResize(document.getElementById('filmTrack'), 'film');
 
-        var lebFilmMinus = document.getElementById('lebFilmMinus');
-        if (lebFilmMinus) lebFilmMinus.addEventListener('click', function() { nudgeScale('film', -0.05); });
-        var lebFilmPlus = document.getElementById('lebFilmPlus');
-        if (lebFilmPlus) lebFilmPlus.addEventListener('click', function() { nudgeScale('film', 0.05); });
+        // Opacity sliders (see-through)
+        [['lebCdOp', 'cd'], ['lebBtnOp', 'btn'], ['lebFilmOp', 'film']].forEach(function (pair) {
+          var slider = document.getElementById(pair[0]);
+          if (slider) slider.addEventListener('input', function () {
+            applyUiOpacity(pair[1], (parseFloat(slider.value) || 100) / 100);
+          });
+        });
 
         document.querySelectorAll('.leb-chip').forEach(function(chip) {
           chip.addEventListener('click', function() {

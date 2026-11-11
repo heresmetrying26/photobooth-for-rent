@@ -25632,8 +25632,8 @@
             if (usable.length) {
               const _last58 = (() => { try { return localStorage.getItem('pb_print_paper'); } catch(e){ return null; }})();
               const _pName = typeof activePrinterName === 'function' ? activePrinterName() : '';
-              if ((usable.includes('receipt58') || usable.includes('receipt58_10')) && (!usable.includes('receipt80') || _last58 === 'receipt58' || _last58 === 'receipt58_10' || /58/.test(_pName)))
-                printSize = usable.includes(_last58) ? _last58 : 'receipt58';
+              if (usable.includes('receipt58') && (!usable.includes('receipt80') || _last58 === 'receipt58' || /58/.test(_pName)))
+                printSize = 'receipt58';
               else
                 printSize = usable.includes('receipt80') ? 'receipt80' : usable[0];
             } else printSize = 'receipt80';
@@ -27549,8 +27549,7 @@
         'Letter': { name: 'Letter', w: 215.9, h: 279.4 },
         // Thermal receipt rolls: w = the printable width; the length follows the picture.
         'receipt80': { name: 'Receipt 80 mm', w: 72, h: 290, receipt: true },
-        'receipt58': { name: 'Receipt 58 mm', w: 48, h: 195, receipt: true },
-        'receipt58_10': { name: 'Receipt 58 mm (10 cm)', w: 48, h: 100, receipt: true, maxH: 100 }
+        'receipt58': { name: 'Receipt 58 mm', w: 48, h: 195, receipt: true }
       };
       function isReceiptPaper(key) { return !!(PAPER[key] && PAPER[key].receipt); }
       const PRINT_DPI = 300;
@@ -28161,11 +28160,11 @@
         const p = window.__PB && window.__PB.print;
         if (isTrialBooth()) {
           if (p && p.enabled && Array.isArray(p.sizes) && p.sizes.length) {
-            const merged = Array.from(new Set([...p.sizes, 'receipt80', 'receipt58', 'receipt58_10']));
+            const merged = Array.from(new Set([...p.sizes, 'receipt80', 'receipt58']));
             const sizes = merged.filter(k => paperFor(k));
             if (sizes.length) return sizes;
           }
-          return ['receipt80', 'receipt58', 'receipt58_10', '4x6', '2x6'];
+          return ['receipt80', 'receipt58', '4x6', '2x6'];
         }
         if (!p || !p.enabled || !Array.isArray(p.sizes)) return null;
         const sizes = Array.from(new Set(p.sizes.concat(ownSizes()))).filter(k => paperFor(k));
@@ -28323,12 +28322,11 @@
         // Fix: if the resolved printSize is receipt80 but the active printer name contains "58"
         // (e.g. MP58C7), automatically upgrade to receipt58 so the client never prints a
         // 576-dot image on a 384-dot head — even when receipt80 was saved from a previous session.
-        if (printSize === 'receipt80' && (usable.includes('receipt58') || usable.includes('receipt58_10'))) {
+        if (printSize === 'receipt80' && usable.includes('receipt58')) {
           const _pn58 = typeof activePrinterName === 'function' ? activePrinterName() : '';
           if (/58/.test(_pn58)) {
-            const _saved = (() => { try { return localStorage.getItem('pb_print_paper'); } catch (e) { return null; } })();
-            printSize = (usable.includes(_saved)) ? _saved : 'receipt58';
-            try { localStorage.setItem('pb_print_paper', printSize); } catch (e) { }
+            printSize = 'receipt58';
+            try { localStorage.setItem('pb_print_paper', 'receipt58'); } catch (e) { }
           }
         }
         printSizeRow.innerHTML = '';
@@ -28734,20 +28732,14 @@
         src = btPrintCanvas(src, paper);          // card booth: front + back on one sheet
         if (paper.receipt) {
           // Exactly the printer's dots across (80 mm roll: 576, 58 mm: 384), so the receipt is never resized on the way;
-          // 72 mm x 203 dpi used to round to 575. As long as the receipt is (or fitted into maxH if specified, e.g. 10 cm).
+          // 72 mm x 203 dpi used to round to 575. As long as the receipt is.
           const rc = document.createElement('canvas');
           rc.width = paper.w <= 55 ? 384 : RECEIPT_W;
-          const targetH = paper.maxH ? Math.round(paper.maxH / 25.4 * (paper.w <= 55 ? 203 : RECEIPT_DPI)) : 0;
-          rc.height = targetH > 0 ? targetH : Math.round(src.height * rc.width / src.width);
+          rc.height = Math.round(src.height * rc.width / src.width);
           const rx = rc.getContext('2d');
           rx.fillStyle = '#ffffff'; rx.fillRect(0, 0, rc.width, rc.height);
-          rx.imageSmoothingEnabled = true;
-          rx.imageSmoothingQuality = 'high';
-          if (targetH > 0) {
-            drawFitted(rx, src, 0, 0, rc.width, rc.height);
-          } else {
-            rx.drawImage(src, 0, 0, rc.width, rc.height);
-          }
+          rx.imageSmoothingEnabled = rc.width !== src.width;
+          rx.drawImage(src, 0, 0, rc.width, rc.height);
           // A black & white receipt layout already took the printer's Lightness when its photos were turned into dots
           // (ditherRegion); adding it again here would grey the black dots until a high setting wipes them out.
           // Receipt layouts (black & white or colour) already put the Lightness into their photos above; adding it to the whole

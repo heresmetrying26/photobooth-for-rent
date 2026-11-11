@@ -196,12 +196,12 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
-    date: '2026-11-11', title: 'Desktop 1.1.23 + Android 1.1.40: 58mm mobile printer USB flow pacing, multi-copy protection & 10 cm compact receipt size', for: ['website', 'app'], app: '1.1.23',
+    date: '2026-11-11', title: 'Desktop 1.1.23 + Android 1.1.40: 58mm mobile printer USB flow pacing, multi-copy protection & zero-waste tear feed', for: ['website', 'app'], app: '1.1.23',
     items: [
       '🚀 USB Flow Control Pacing: implemented 256-byte paced transfers with 8ms inter-chunk delay and 1.5s mechanical completion wait in NetPrintBridge.kt, preventing USB buffer overflow and ring-buffer wrap-around on cheap mobile thermal printers (MP58C7 / POS-58).',
       '🛡️ Multi-Copy & Sequential Print Protection: added automatic 2-second inter-copy delay to prevent subsequent prints from colliding with or resetting the mechanical print head mid-print.',
-      '📏 New "Receipt 58 mm (10 cm)" Paper Size: provides a dedicated compact 10 cm (~100 mm) roll size that neatly fits 3-shot strips, custom frames, or receipts without excessive bottom paper roll waste.',
-      '✂️ Tightened Tear-Bar Feed: reduced trailing feed to 2 lines (~8 mm) on 58mm roll printing to align with the tear bar without runaway blank paper.'
+      '✂️ Zero-Waste Tear-Bar Feed: tightened 58mm trailing paper feed to 2 lines (~8 mm) so the print stops right at the tear bar, completely eliminating excess bottom margin and runaway paper.',
+      '🖨️ Zero-Configuration: all 58mm optimizations apply automatically when a 58mm printer is detected — keeping the UI simple with standard "Receipt 58 mm".'
     ]
   },
   {

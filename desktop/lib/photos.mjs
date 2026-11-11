@@ -10,7 +10,16 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync, statSy
 import { join, extname, basename } from 'node:path';
 import { networkInterfaces } from 'node:os';
 import { randomBytes } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import http from 'node:http';
+
+const QR_JS_PATH = fileURLToPath(new URL('qr.js', import.meta.url));
+let QR_JS_CODE = '';
+try {
+  QR_JS_CODE = readFileSync(QR_JS_PATH, 'utf8');
+} catch (e) {
+  console.warn('[photos] Failed to read qr.js:', e.message);
+}
 
 let ROOT = null, INDEX_FILE = null, index = { folders: {} }, thumbFn = null, CODES_FILE = null;
 export const SHARE_PORTS = [47777, 47778, 47779, 47787, 47797];
@@ -841,7 +850,7 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
   .qr-frame img{width:170px;height:170px}
 }
 </style>
-<script src="/qr.js"></script>
+${QR_JS_CODE ? `<script>${QR_JS_CODE}</script>` : `<script src="/qr.js"></script>`}
 </head>
 <body>
 <header>
@@ -949,7 +958,9 @@ function timeAgo(mtime) {
 
 function makeQr(url) {
   try {
-    var q = qrcode(0, 'M');
+    var qrFn = (typeof qrcode !== 'undefined') ? qrcode : (window.qrcode || globalThis.qrcode);
+    if (!qrFn) return '';
+    var q = qrFn(0, 'M');
     q.addData(url);
     q.make();
     return q.createDataURL(6, 2);
@@ -1014,7 +1025,19 @@ function openModal(it, sessionItems) {
   }
   dl.href = it.url + (it.url.indexOf('?') >= 0 ? '&dl=1' : '?dl=1');
   dl.setAttribute('download', it.name);
-  qr.src = makeQr(pageUrl);
+  var qrData = makeQr(pageUrl);
+  if (qrData) {
+    qr.src = qrData;
+    qr.style.display = 'block';
+  } else {
+    setTimeout(function() {
+      var retry = makeQr(pageUrl);
+      if (retry) {
+        qr.src = retry;
+        qr.style.display = 'block';
+      }
+    }, 200);
+  }
 
   // Multi-item session support (e.g. print strip + solo photos or GIF)
   if (pillsBox) {
@@ -1190,7 +1213,7 @@ body{margin:0;background:#080709;color:#fff;font-family:-apple-system,BlinkMacSy
 .cue-sub{font-size:24px;font-weight:800;color:#FF6B55;text-transform:uppercase;letter-spacing:.15em;margin-top:14px;text-shadow:0 2px 12px rgba(0,0,0,0.8)}
 .celebrate-glow{box-shadow:0 0 120px rgba(255,107,85,0.85),0 0 60px rgba(255,215,0,0.7) !important;border:3px solid rgba(255,215,0,0.9) !important}
 </style>
-<script src="/qr.js"></script>
+${QR_JS_CODE ? `<script>${QR_JS_CODE}</script>` : `<script src="/qr.js"></script>`}
 </head>
 <body>
 <div class="top-bar" id="topBar">
@@ -1440,7 +1463,10 @@ async function handleShare(req, res) {
   let url;
   try { url = new URL(req.url, 'http://x'); } catch { return send(res, 400, 'text/plain', 'Bad request'); }
   if (url.pathname === '/qr.js') {
-    const qrf = join(new URL('.', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'), 'qr.js');
+    if (QR_JS_CODE) {
+      return send(res, 200, 'application/javascript; charset=utf-8', QR_JS_CODE, { 'cache-control': 'public, max-age=86400' });
+    }
+    const qrf = fileURLToPath(new URL('qr.js', import.meta.url));
     if (existsSync(qrf)) {
       return send(res, 200, 'application/javascript; charset=utf-8', readFileSync(qrf, 'utf8'), { 'cache-control': 'public, max-age=86400' });
     }

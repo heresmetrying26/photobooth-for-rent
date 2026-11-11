@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.28', date: '2026-11-11' },
   { version: '1.1.27', date: '2026-11-11' },
   { version: '1.1.26', date: '2026-11-11' },
   { version: '1.1.25', date: '2026-11-11' },
@@ -199,6 +200,16 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-11', title: 'Desktop 1.1.28: camera rests when not in use, guest Wi-Fi page, 360 presets', for: ['app'], app: '1.1.28',
+    items: [
+      'Camera battery saver: a webcam stops completely (its light goes off) and a Nikon or Canon switches its live view off. This happens on the Touch to Start screen, on the result and QR screens, and in Setup outside the Camera & Printer step. The camera wakes in about a second when a guest taps Start. Turn it off in Setup > Camera.',
+      'Setup: the camera only runs on the Camera & Printer step, and pauses after 2 minutes without a touch.',
+      'Sony cameras can not switch live view off over USB, so after 10 idle minutes the booth now lets go of the camera so it can rest, and reconnects when a guest touches the screen (a few seconds). Turn this off in Setup > Camera if your Sony switches itself off.',
+      'New guest Wi-Fi page (/wifi or /join on the booth address) with a QR code to join the booth Wi-Fi, and an operator guide (/guide).',
+      '360 desk: a gallery of ready-made looks, one-tap auto-edit and quick colour, motion, text and effect controls.'
+    ]
+  },
   {
     date: '2026-11-11', title: 'Desktop 1.1.27: safer booth Wi-Fi and graphics on older laptops', for: ['app'], app: '1.1.27',
     items: [

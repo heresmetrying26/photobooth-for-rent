@@ -3929,6 +3929,41 @@
       color: #000;
     }
 
+    /* Preset gallery, one-tap auto-edit and quick customise (360 desk) */
+    .spin-preset-lead { margin: 0 0 8px; font: 500 12.5px 'Manrope', sans-serif; color: var(--ink-dim, #6B666C); }
+    .spin-chip-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .spin-chip {
+      font: 700 12px 'Manrope', sans-serif; padding: 5px 11px; border-radius: 999px; cursor: pointer;
+      border: 1.5px solid #e3d6c0; background: #fff; color: #4a444d;
+    }
+    .spin-chip:hover { border-color: #c9a655; }
+    .spin-chip.on { background: #1C1A1E; border-color: #1C1A1E; color: #fff; }
+    .spin-preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; margin: 8px 0 10px; }
+    .spin-preset-tile {
+      display: flex; flex-direction: column; align-items: stretch; gap: 0; padding: 0; overflow: hidden; text-align: left; cursor: pointer;
+      border: 2px solid #e6dccb; border-radius: 12px; background: #fff; font-family: 'Manrope', sans-serif; color: var(--ink, #1C1A1E);
+      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+    .spin-preset-tile:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(0, 0, 0, .1); border-color: #c9a655; }
+    .spin-preset-tile:focus-visible { outline: 3px solid #D4AF37; outline-offset: 1px; }
+    .spin-preset-tile.on { border-color: #1C1A1E; box-shadow: 0 0 0 2px #D4AF37; }
+    .spin-preset-tile .sw { position: relative; height: 58px; display: flex; align-items: center; justify-content: center; font-size: 26px; line-height: 1; }
+    .spin-preset-tile .sw::after { content: ''; position: absolute; inset: 5px; border: 2px solid var(--acc, #D4AF37); border-radius: 7px; opacity: .9; pointer-events: none; }
+    .spin-preset-tile .sw.noframe::after { border-style: dashed; opacity: .35; }
+    .spin-preset-tile .tick { position: absolute; top: 4px; right: 5px; font-size: 11px; font-weight: 800; background: #D4AF37; color: #000; border-radius: 999px; padding: 1px 6px; z-index: 1; }
+    .spin-preset-tile b { font-size: 12px; font-weight: 800; padding: 6px 8px 0; line-height: 1.25; }
+    .spin-preset-tile small { font-size: 10.5px; font-weight: 600; color: var(--ink-dim, #6B666C); padding: 2px 8px 7px; line-height: 1.3; }
+    .spin-preset-empty { grid-column: 1 / -1; font: 600 12px 'Manrope', sans-serif; color: var(--ink-dim, #6B666C); padding: 10px 4px; }
+    .spin-preset-auto { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-top: 10px; padding: 10px; border-radius: 12px; background: #fff; border: 1.5px solid #ecd9b5; }
+    .spin-preset-auto .chk { font-size: 12px; }
+    .spin-quick { margin-top: 10px; padding: 10px; border-radius: 12px; background: #fff; border: 1.5px solid var(--line, #E8E1D9); }
+    .spin-quick > b { display: block; font: 800 12.5px 'Manrope', sans-serif; margin-bottom: 6px; }
+    .spin-quick-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+    .spin-quick-row > span:first-child { font: 700 11.5px 'Manrope', sans-serif; color: var(--ink-dim, #6B666C); min-width: 92px; }
+    .spin-swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1.5px #cfc5b5; cursor: pointer; padding: 0; }
+    .spin-swatch:hover, .spin-swatch.on { box-shadow: 0 0 0 2.5px #1C1A1E; }
+    @media (pointer: coarse) { .spin-chip { padding: 9px 14px; } .spin-swatch { width: 34px; height: 34px; } }
+
     .spin-card-foot {
       display: flex;
       justify-content: flex-end;
@@ -4018,6 +4053,8 @@
       user-select: none;
       filter: grayscale(35%);
     }
+    /* A rendered clip keeps the preset card usable: picking another look starts a new draft straight away. */
+    .spin-locked-controls.spin-lock-rendered #spinSecPresets { opacity: 1; pointer-events: auto !important; user-select: auto; filter: none; }
 
     /* High-contrast labels in sidebar and modal QR boxes */
     #spinQrBox em,
@@ -14541,12 +14578,18 @@
             match the preview.</p>
           <div id="camSaveRow" style="display:none; margin-top:10px;">
             <label class="switch-row">
-              <span>Save camera battery (live view only when needed)</span>
+              <span>Save camera battery &amp; heat (camera idle when not in use)</span>
               <input type="checkbox" id="camSaveToggle" checked>
             </label>
-            <p class="panel-hint" id="camSaveHint">Live view keeps the camera's mirror up and sensor running, which drains the battery and heats the camera.
-              On: it runs only during a guest's session and on this Camera step, and switches off on the welcome screen (back in about a second
+            <p class="panel-hint" id="camSaveHint">Keeps the camera sensor, light and mirror idle when not in use to save power and prevent heating.
+              On: the camera runs only during a guest's session and on this Camera step, and stays idle on the welcome screen (wakes in about a second
               when a guest taps Start). The preview here pauses after 2 minutes without a touch; touch the screen to resume. Off: always on.</p>
+            <label class="switch-row" id="sonyDeepRow" style="display:none;">
+              <span>Sony: disconnect after 10 idle minutes</span>
+              <input type="checkbox" id="sonyDeepToggle" checked>
+            </label>
+            <p class="panel-hint" id="sonyDeepHint" style="display:none;">A Sony can't switch its live view off over USB, so after 10 minutes with no guest the booth lets go of it and the camera can rest.
+              It reconnects when someone touches the screen (about 3&ndash;5 seconds). If your Sony switches itself off after that, turn this off or raise its Power Save time.</p>
             <p class="panel-hint" id="camSaveState" style="font-weight:600;"></p>
           </div>
           <div id="usbCamFocusBox" style="display:none; margin-top:14px; padding:12px 14px; border-radius:12px; background:#fff; border:1px solid var(--line);">
@@ -16890,14 +16933,70 @@
         <div class="spin-panel-card" id="spinSecPresets" style="background:#fffcf5;border-color:#ecd9b5;">
           <div class="spin-card-title" style="margin-bottom:8px;">
             <span>✨ Design &amp; Layout Presets</span>
-            <span class="spin-pill" style="background:#fae7c9;color:#855400;">Multi-Preset</span>
+            <span class="spin-pill" id="spinPresetState" style="background:#fae7c9;color:#855400;">Multi-Preset</span>
           </div>
+          <p class="spin-preset-lead">Pick a look. One tap sets the frame, animated effect, text style, speed and colour.</p>
+          <div class="spin-chip-row" id="spinPresetCats" role="tablist" aria-label="Preset categories"></div>
+          <div class="spin-preset-grid" id="spinPresetGrid"></div>
           <div class="spin-row" style="gap:8px;align-items:center;">
             <label style="font-weight:700;font-size:12px;display:flex;align-items:center;gap:6px;">Preset:
-              <select id="spinDesignPresetSelect" style="min-width:210px;font-weight:600;"></select>
+              <select id="spinDesignPresetSelect" style="min-width:190px;font-weight:600;"></select>
             </label>
             <button type="button" class="desk-btn" id="spinSavePresetBtn" style="padding:5px 12px;font-size:12px;background:#fff;font-weight:700;">💾 Save As Preset</button>
             <button type="button" class="desk-btn" id="spinDeletePresetBtn" style="padding:5px 10px;font-size:12px;" title="Delete current custom preset">🗑️ Delete</button>
+            <button type="button" class="desk-btn" id="spinResetPresetBtn" style="padding:5px 10px;font-size:12px;" title="Undo your changes and go back to the preset as it was">↺ Reset</button>
+            <button type="button" class="desk-btn" id="spinSurpriseBtn" style="padding:5px 10px;font-size:12px;" title="Try a random preset">🎲 Surprise me</button>
+          </div>
+          <label class="chk" style="font-size:12px;margin-top:6px;display:inline-flex;" title="Off: a preset only changes the frame, effect and text, and keeps your own speed and colour grade"><input type="checkbox" id="spinPresetMotion" checked> Presets also set the speed and colour grade</label>
+
+          <!-- One-tap auto edit: the preset is the template, the app does the editing -->
+          <div class="spin-preset-auto">
+            <button type="button" class="desk-btn primary" id="spinAutoEditBtn" style="padding:7px 14px;font-size:12.5px;font-weight:800;">⚡ Auto-edit this video</button>
+            <button type="button" class="desk-btn" id="spinAutoEditAllBtn" style="padding:7px 14px;font-size:12.5px;font-weight:700;">⚡ Auto-edit all videos</button>
+            <label class="chk" title="As soon as you tap a preset, the selected video is edited with it"><input type="checkbox" id="spinOneTap"> One-tap: picking a preset edits the selected video right away</label>
+          </div>
+
+          <!-- Quick customise: the few things people change most, without opening the other tabs -->
+          <div class="spin-quick" id="spinQuick">
+            <b>🎛️ Quick customise</b>
+            <div class="spin-quick-row">
+              <span>Accent colour</span>
+              <button type="button" class="spin-swatch" data-accent="#FFF2A8" style="background:#FFF2A8" title="Soft gold" aria-label="Soft gold"></button>
+              <button type="button" class="spin-swatch" data-accent="#D4AF37" style="background:#D4AF37" title="Gold" aria-label="Gold"></button>
+              <button type="button" class="spin-swatch" data-accent="#FFFFFF" style="background:#FFFFFF" title="White" aria-label="White"></button>
+              <button type="button" class="spin-swatch" data-accent="#FFB3C7" style="background:#FFB3C7" title="Blush pink" aria-label="Blush pink"></button>
+              <button type="button" class="spin-swatch" data-accent="#FF4D8D" style="background:#FF4D8D" title="Hot pink" aria-label="Hot pink"></button>
+              <button type="button" class="spin-swatch" data-accent="#00F0FF" style="background:#00F0FF" title="Neon cyan" aria-label="Neon cyan"></button>
+              <button type="button" class="spin-swatch" data-accent="#7CFF6B" style="background:#7CFF6B" title="Lime" aria-label="Lime"></button>
+              <button type="button" class="spin-swatch" data-accent="#FF7A00" style="background:#FF7A00" title="Orange" aria-label="Orange"></button>
+              <label style="font-size:11.5px;display:inline-flex;align-items:center;gap:4px;">Own <input type="color" id="spinQuickAccent" value="#FFF2A8" style="width:28px;height:24px;padding:0;border:none;cursor:pointer;"></label>
+            </div>
+            <div class="spin-quick-row" id="spinQuickStyles">
+              <span>Motion</span>
+              <button type="button" class="spin-chip" data-style="classic">🐢 Slow-mo</button>
+              <button type="button" class="spin-chip" data-style="super">🧊 Super slow</button>
+              <button type="button" class="spin-chip" data-style="ramp">⚡ Speed ramp</button>
+              <button type="button" class="spin-chip" data-style="fsf">🎢 Fast-slow-fast</button>
+              <button type="button" class="spin-chip" data-style="boomerang">🔁 Boomerang</button>
+              <button type="button" class="spin-chip" data-style="plain">▶ Original</button>
+            </div>
+            <div class="spin-quick-row">
+              <span>Text</span>
+              <button type="button" class="spin-chip" data-place="top">⬆ Top</button>
+              <button type="button" class="spin-chip" data-place="middle">↕ Middle</button>
+              <button type="button" class="spin-chip" data-place="bottom">⬇ Bottom</button>
+              <button type="button" class="spin-chip" data-tsize="-1" title="Smaller text">A−</button>
+              <button type="button" class="spin-chip" data-tsize="1" title="Bigger text">A+</button>
+            </div>
+            <div class="spin-quick-row" id="spinQuickFx">
+              <span>Effect</span>
+              <button type="button" class="spin-chip" data-fxamt="off">Off</button>
+              <button type="button" class="spin-chip" data-fxamt="subtle">Subtle</button>
+              <button type="button" class="spin-chip" data-fxamt="normal">Normal</button>
+              <button type="button" class="spin-chip" data-fxamt="bold">Bold</button>
+              <button type="button" class="spin-chip" id="spinFxShuffle" title="Try another animated effect">🎲 Shuffle effect</button>
+              <span id="spinQuickFxName" style="font:600 11.5px 'Manrope',sans-serif;color:var(--ink-dim,#6B666C);"></span>
+            </div>
           </div>
         </div>
 
@@ -17811,7 +17910,8 @@
         if (toSession) {
           // Option 1: tell the app a session is starting so it can wake the hotspot if idle.
           try { if (window.pb4u && window.pb4u.hotspotWake) window.pb4u.hotspotWake(); } catch (e) { }
-        }
+          if (typeof camWantLive === 'function' && !camWantLive()) { try { camSleepNow(); } catch (e) { } }
+        } else { if (typeof curStep !== 'undefined' && curStep === 4) { try { camEnsureLive(); } catch (e) { } } else { try { camSleepNow(); } catch (e) { } } }
       }
       tabBtnSetup.addEventListener('click', () => switchTab('setup'));
       tabBtnSession.addEventListener('click', () => switchTab('session'));
@@ -21891,6 +21991,7 @@
             const before = currentDeviceId;
             try { await enumerateCameras(); } catch (e) { return; }
             if (reconnectTimer) return;                         // the retry loop handles it
+            if (camSleeping) return;                            // idle on purpose (battery saver): the next guest wakes it; a device change must not reopen the camera
             if (!streamActive) { if (cameraSelect.value) initCamera(cameraSelect.value); return; }
             const saved = savedCamera();
             const preferred = saved && Array.from(cameraSelect.options).find(o => o.value === saved.id || o.textContent === saved.label);
@@ -22618,12 +22719,13 @@
         }
       }, 500);
       // ---- USB camera battery saver ----
-      // Live view keeps the camera's mirror up and its sensor running: that is what drains the battery and heats the body
-      // (a Nikon D5300 hot and nearly empty within 20 minutes of idling on the welcome screen). So live view is only ON while
-      // someone needs the picture: a guest's session (from the tap on the welcome screen to the last photo), the Camera step in
-      // Setup, or a welcome screen that itself shows the camera (Live camera style / wave or smile to start). Everywhere else it
-      // is switched off after a short pause and comes back in about a second when needed. Turn it off in Setup > Camera.
-      const USB_IDLE_SLEEP_MS = 10000;      // not needed for this long: switch live view off
+      // ---- Camera idle & battery saver ----
+      // Live view keeps the DSLR mirror up and sensor running (draining battery and heating the body), and keeps webcams
+      // actively streaming with their hardware lights on. Live view is only ON while someone needs the picture: a guest's
+      // session (from tap on welcome screen to the last photo), Camera step in Setup, or when the welcome screen explicitly
+      // shows the live camera (attractMode === 'camera' or hands-free wave/smile). Everywhere else the camera is really idle
+      // and asleep (webcam stream tracks stopped, DSLR mirror down). Wakes up instantly when needed. Turn off in Setup > Camera.
+      const USB_IDLE_SLEEP_MS = 2500;      // not needed for this long: switch live view off
       const USB_SAVE_KEY = 'pb_cam_save';
       function usbSaveOn() { try { return localStorage.getItem(USB_SAVE_KEY) !== 'off'; } catch (e) { return true; } }
       let usbWantAt = Date.now(), usbPowerBusy = false, usbKeepAt = 0, usbTouchAt = Date.now();
@@ -22633,106 +22735,223 @@
         document.addEventListener(ev, function () { usbTouchAt = Date.now(); }, true);
       });
       usbCam.sleeping = false; usbCam.shotsDone = false; usbCam.waking = null;
+      var camSleeping = false;
+      var camWaking = null;
+      // Sony deep sleep: a Sony body has no "live view off" command over USB (frames just come while it is in PC Remote mode),
+      // so after a long idle the booth lets go of the camera completely and reconnects when a guest comes (about 3-5 s).
+      // Only a Sony through the app's camera part (Windows / Mac app, tablet app); Nikon and Canon really stop live view already.
+      const SONY_DEEP_SLEEP_MS = 10 * 60 * 1000;
+      const SONY_DEEP_KEY = 'pb_cam_deep';
+      function sonyDeepOn() { try { return localStorage.getItem(SONY_DEEP_KEY) !== 'off'; } catch (e) { return true; } }
+      var camSleptAt = 0, camDeep = false;
+      function camIsSony() {
+        const i = (usbCam.camera && usbCam.camera.info) || {};
+        return /sony|\bILC[AEX]|\bILME|\bZV-|\bDSC-|α/i.test([usbCam.name, i.name, i.brand, i.vendor, i.maker].join(' '));
+      }
       function usbSetupStep() { const t = document.querySelector('#stepBar .step-tab.on'); return t && t.dataset ? String(t.dataset.step) : ''; }
-      function usbWantLive() {
+      function camWantLive() {
         if (!usbSaveOn()) return true;
         if (usbCam.shooting) return true;
         if (state === 'capturing') return !usbCam.shotsDone;
-        if (document.hidden) return false;                                     // minimised / screen off: nobody is looking                 // get ready, countdown, between photos (not the review / stickers after the last one)
-        if (!tabSetup.classList.contains('hidden')) {                          // Setup: only the Camera step shows the picture
+        if (document.hidden) return false;
+        // Start screen splash: definitely idle
+        const ss = document.getElementById('startScreen');
+        if (ss && !ss.classList.contains('gone') && ss.style.display !== 'none') return false;
+        // Setup: only the Camera step shows the picture, or step 7 if hands-free is enabled
+        if (!tabSetup.classList.contains('hidden')) {
           const st = usbSetupStep();
           return (st === '4' || (st === '7' && fx.hands !== 'off')) && Date.now() - usbTouchAt < USB_SETUP_LIVE_MS;
         }
         if (state === 'result') return false;                                  // QR, print, share: the guest is done
         if (pickOpen || (typeof btPickOpen !== 'undefined' && btPickOpen)) return false; // keep camera asleep while choosing layout/template
         if (flowBusy) return true;                                             // countdown and shooting session
+        const wel = document.getElementById('welcomeOverlay');
+        const welShowing = wel && wel.classList.contains('on') && !wel.classList.contains('dismissing');
+        if (welShowing) {
+          if (attractMode === 'camera') return Date.now() - usbTouchAt < USB_SCREEN_LIVE_MS;
+          if (fx.hands !== 'off') return true;
+          return false;
+        }
         if (!welcomeOn) return Date.now() - usbTouchAt < USB_SCREEN_LIVE_MS;     // no welcome screen: the camera is the screen (while someone is around)
         if (attractMode === 'camera') return Date.now() - usbTouchAt < USB_SCREEN_LIVE_MS;   // the welcome screen shows the live camera (while someone is around)
         if (fx.hands !== 'off') return true;                                   // wave / smile to start needs the picture
         return false;
       }
-      async function usbLiveSleep() {
-        if (usbCam.sleeping || usbCam.shooting || usbPowerBusy) return;
+      var usbWantLive = camWantLive;
+
+      async function camLiveSleep() {
+        if (camSleeping || usbCam.shooting || usbPowerBusy) return;
         usbPowerBusy = true;
         try {
+          camSleeping = true;
           usbCam.sleeping = true;
-          // Blank the picture: the next guest must not see the last one, and the stream stops changing.
-          try { usbCam.ctx.fillStyle = '#000'; usbCam.ctx.fillRect(0, 0, usbCam.canvas.width, usbCam.canvas.height); } catch (e) { }
-          try { video.pause(); } catch (e) { }
-          usbLog('live-sleep', { camera: usbCam.name });
-          try { await usbCam.camera.setConfigValue('viewfinder', 0); }
-          catch (e) { if (usbIsCritical(e)) throw e; }
-          usbCam.vfOn = false;
+          if (currentDeviceId === USB_CAM_ID) {
+            // DSLR / Mirrorless: turn off live viewfinder
+            try { if (usbCam.ctx) { usbCam.ctx.fillStyle = '#000'; usbCam.ctx.fillRect(0, 0, usbCam.canvas.width, usbCam.canvas.height); } } catch (e) { }
+            try { video.pause(); } catch (e) { }
+            usbLog('live-sleep', { camera: usbCam.name });
+            try { if (usbCam.camera) await usbCam.camera.setConfigValue('viewfinder', 0); }
+            catch (e) { if (usbIsCritical(e)) throw e; }
+            usbCam.vfOn = false;
+            camSleptAt = Date.now();
+          } else {
+            // Webcam: stop tracks so physical hardware LED indicator turns OFF and sensor is idle
+            if (currentStream && currentStream !== usbCam.stream) {
+              try { currentStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { }
+            }
+            currentStream = null;
+            streamActive = false;
+            if (video) {
+              try { video.pause(); } catch (e) { }
+              video.srcObject = null;
+            }
+          }
+          if (recDot) recDot.style.display = 'none';
         } catch (e) {
+          camSleeping = false;
           usbCam.sleeping = false;
-          if (usbCam.active && usbCam.camera) usbDead(e, 'sleep');
+          if (currentDeviceId === USB_CAM_ID && usbCam.active && usbCam.camera) usbDead(e, 'sleep');
         } finally { usbPowerBusy = false; }
       }
-      function usbLiveWake() {
-        if (!usbCam.sleeping) return Promise.resolve(true);
-        if (usbCam.waking) return usbCam.waking;
-        usbCam.waking = (async function () {
+      var usbLiveSleep = camLiveSleep;
+
+      function camLiveWake() {
+        if (!camSleeping && streamActive) return Promise.resolve(true);
+        if (camWaking) return camWaking;
+        camWaking = (async function () {
           usbPowerBusy = true;
           try {
-            usbLog('live-wake', { camera: usbCam.name });
-            usbCam.graceUntil = Date.now() + 20000;      // no "Reconnecting" while it starts
-            await usbViewfinderOn();
-            usbCam.frameAt = 0; usbCam.kicked = false; usbCam.lastFrameAt = Date.now();
-            usbCam.sleeping = false;
-            try { const pp = video.play(); if (pp && pp.catch) pp.catch(function () { }); } catch (e) { }
-            const t0 = Date.now();
-            while (!usbCam.frameAt && usbCam.active && Date.now() - t0 < 10000) await new Promise(r => setTimeout(r, 80));
-            return !!usbCam.frameAt;
+            if (currentDeviceId === USB_CAM_ID) {
+              if (!usbCam.active || !usbCam.camera) {
+                // Deep sleep (Sony): the camera was let go, so connect again from scratch.
+                if (camDeep) usbLog('deep-wake', { camera: usbCam.name });
+                try { return await initCamera(USB_CAM_ID); }
+                finally { camDeep = false; }
+              }
+              usbLog('live-wake', { camera: usbCam.name });
+              usbCam.graceUntil = Date.now() + 20000;      // no "Reconnecting" while it starts
+              await usbViewfinderOn();
+              usbCam.frameAt = 0; usbCam.kicked = false; usbCam.lastFrameAt = Date.now();
+              usbCam.sleeping = false;
+              camSleeping = false;
+              try { const pp = video.play(); if (pp && pp.catch) pp.catch(function () { }); } catch (e) { }
+              const t0 = Date.now();
+              while (!usbCam.frameAt && usbCam.active && Date.now() - t0 < 10000) await new Promise(r => setTimeout(r, 80));
+              if (recDot) recDot.style.display = 'flex';
+              return !!usbCam.frameAt;
+            } else {
+              // Webcam: re-open camera stream cleanly
+              camSleeping = false;
+              usbCam.sleeping = false;
+              const targetId = (cameraSelect && cameraSelect.value && cameraSelect.value !== USB_CAM_ID) ? cameraSelect.value : (currentDeviceId || null);
+              const ok = await initCamera(targetId);
+              return ok;
+            }
           } catch (e) {
+            camSleeping = false;
             usbCam.sleeping = false;
-            if (usbIsCritical(e) && usbCam.active && usbCam.camera) usbDead(e, 'viewfinder');
+            if (currentDeviceId === USB_CAM_ID && usbIsCritical(e) && usbCam.active && usbCam.camera) usbDead(e, 'viewfinder');
             return false;
-          } finally { usbPowerBusy = false; usbCam.waking = null; }
+          } finally { usbPowerBusy = false; camWaking = null; }
         })();
-        return usbCam.waking;
+        return camWaking;
       }
-      // The guest's photos are all taken and recorded: switch live view off now (usbWantLive would only notice after the idle pause).
-      function usbSleepNow() {
-        try { if (usbSaveOn() && usbCam.shotsDone && currentDeviceId === USB_CAM_ID && usbCam.active && usbCam.camera) usbLiveSleep(); } catch (e) { }
-      }
-      // Called before anything that needs the picture (a guest starts, a countdown, a photo): waits until live view is back.
-      async function usbEnsureLive() {
+      var usbLiveWake = camLiveWake;
+
+      // Lets go of a Sony completely (after a long idle, see SONY_DEEP_SLEEP_MS). camLiveWake() reconnects it.
+      async function camDeepSleep() {
+        if (camDeep || usbPowerBusy || usbCam.shooting || !usbCam.camera || !usbCam.viaHelper) return;
+        usbPowerBusy = true;
         try {
-          if (currentDeviceId !== USB_CAM_ID || !usbCam.camera) return;
+          usbLog('deep-sleep', { camera: usbCam.name, idleMs: Date.now() - camSleptAt });
+          usbStopLive();
+          usbCam.camera = null;
+          usbCam.vfOn = false;
+          usbCam.stallShown = false;
+          camDeep = true;
+          try { await fetch(CAM_HELPER + '/camera/close', { method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(10000) }); } catch (e) { }
+        } finally { usbPowerBusy = false; }
+      }
+      // A guest touches the screen while the Sony is disconnected: start reconnecting now so it is ready by the time they press Start.
+      ['pointerdown', 'touchstart'].forEach(function (ev) {
+        document.addEventListener(ev, function () {
+          if (!camDeep || camWaking || usbPowerBusy || document.hidden) return;
+          usbWantAt = Date.now() + 15000;       // stay awake ~15 s for the guest to press Start
+          camLiveWake();
+        }, true);
+      });
+
+      // The guest's photos are all taken and recorded, or session reset/cancelled: switch live view off immediately.
+      function camSleepNow() {
+        try { if (usbSaveOn()) camLiveSleep(); } catch (e) { }
+      }
+      var usbSleepNow = camSleepNow;
+
+      // Called before anything that needs the picture (a guest starts, a countdown, a photo): waits until live view is back.
+      async function camEnsureLive() {
+        try {
           usbWantAt = Date.now(); usbCam.shotsDone = false;
-          if (usbCam.sleeping) await usbLiveWake();
+          if (camSleeping || !streamActive) await camLiveWake();
         } catch (e) { }
       }
+      var usbEnsureLive = camEnsureLive;
+
       setInterval(async function () {
         try {
           const row = document.getElementById('camSaveRow');
-          if (row) row.style.display = currentDeviceId === USB_CAM_ID ? '' : 'none';
+          const hasCam = !!(cameraSelect && cameraSelect.value);
+          if (row) row.style.display = hasCam ? '' : 'none';
           const stEl = document.getElementById('camSaveState');
-          if (stEl && row && row.style.display !== 'none') stEl.textContent = !usbSaveOn() ? 'Saver off: live view always on.' : usbCam.sleeping ? 'Camera live view: asleep (saving battery).' : 'Camera live view: on.';
+          if (stEl && row && row.style.display !== 'none') {
+            stEl.textContent = !usbSaveOn()
+              ? 'Saver off: camera always on.'
+              : camDeep
+                ? 'Camera: disconnected to rest (reconnects when needed).'
+                : camSleeping
+                  ? 'Camera: asleep (idle).'
+                  : 'Camera: on.';
+          }
+          const sdRow = document.getElementById('sonyDeepRow'), sdHint = document.getElementById('sonyDeepHint');
+          if (sdRow && sdHint) {
+            const showSd = !!(row && row.style.display !== 'none' && usbSaveOn() && currentDeviceId === USB_CAM_ID && usbCam.viaHelper && (camDeep || camIsSony()));
+            sdRow.style.display = showSd ? '' : 'none'; sdHint.style.display = showSd ? '' : 'none';
+          }
           const focusBox = document.getElementById('usbCamFocusBox');
           if (focusBox) focusBox.style.display = currentDeviceId === USB_CAM_ID ? 'block' : 'none';
-          if (usbPowerBusy || currentDeviceId !== USB_CAM_ID || !usbCam.active || !usbCam.camera || !streamActive) return;
-          if (usbWantLive()) {
+          if (usbPowerBusy) return;
+          const want = camWantLive();
+          if (want) {
             usbWantAt = Date.now();
-            if (usbCam.sleeping) await usbLiveWake();
+            if (camSleeping || !streamActive) await camLiveWake();
             return;
           }
-          if (!usbCam.sleeping) {
-            if (Date.now() - usbWantAt > USB_IDLE_SLEEP_MS) await usbLiveSleep();
-          } else if (usbCam.viaHelper && Date.now() - usbKeepAt > 25000) {
+          if (!camSleeping && streamActive) {
+            if (Date.now() - usbWantAt > USB_IDLE_SLEEP_MS) await camLiveSleep();
+          } else if (camSleeping && !camDeep && currentDeviceId === USB_CAM_ID && usbCam.viaHelper && usbCam.camera && sonyDeepOn() && camSleptAt && Date.now() - camSleptAt > SONY_DEEP_SLEEP_MS && camIsSony()) {
+            await camDeepSleep();
+          } else if (!camDeep && currentDeviceId === USB_CAM_ID && usbCam.viaHelper && Date.now() - usbKeepAt > 25000) {
             // Asleep, but still connected: a quiet question now and then keeps the camera from powering itself off.
             usbKeepAt = Date.now();
             fetch(CAM_HELPER + '/camera', { cache: 'no-store', signal: AbortSignal.timeout(8000) }).catch(function () { });
           }
         } catch (e) { }
-      }, 1000);
+      }, 500);
       (function () {
         const t = document.getElementById('camSaveToggle');
         if (!t) return;
         t.checked = usbSaveOn();
         t.addEventListener('change', function () {
           try { localStorage.setItem(USB_SAVE_KEY, t.checked ? 'on' : 'off'); } catch (e) { }
-          if (!t.checked && usbCam.sleeping) usbLiveWake();
+          if (!t.checked && camSleeping) camLiveWake();
+        });
+      })();
+      (function () {
+        const t = document.getElementById('sonyDeepToggle');
+        if (!t) return;
+        t.checked = sonyDeepOn();
+        t.addEventListener('change', function () {
+          try { localStorage.setItem(SONY_DEEP_KEY, t.checked ? 'on' : 'off'); } catch (e) { }
+          if (!t.checked && camDeep) camLiveWake();
         });
       })();
       (function () {
@@ -22945,6 +23164,8 @@
           guestCall('camera');
           cameraError.style.display = 'none';
           recDot.style.display = 'flex';
+          camSleeping = false;
+          if (!camWantLive() && !camWaking) { try { camLiveSleep(); } catch (e) { } }
           return true;
         } catch (err) {
           console.error('USB camera failed:', err);
@@ -23023,6 +23244,8 @@
           }
           cameraError.style.display = 'none';
           recDot.style.display = 'flex';
+          camSleeping = false;
+          if (!camWantLive() && !camWaking) { try { camLiveSleep(); } catch (e) { } }
           return true;
         } catch (err) {
           console.error('Camera failed:', err);
@@ -25292,6 +25515,7 @@
         updateUI();
         guestCall('reviewEnd');
         guestRender();
+        try { camSleepNow(); } catch (e) { }
         showToast('Session cancelled \u2014 nothing was saved.');
       }
 
@@ -25341,11 +25565,11 @@
       async function startSession(skipReady) {
         if (state === 'capturing') return;
         closeGalleryPop();
-        if (!streamActive) {
-          const ok = await initCamera(cameraSelect.value || null);
+        if (!streamActive || camSleeping) {
+          const ok = await camLiveWake();
           if (!ok) return;
         }
-        await usbEnsureLive();   // live view is only on while a guest is using the booth (battery saver)
+        await camEnsureLive();   // live view is only on while a guest is using the booth (battery saver)
         // Show live feed again if we're coming from result state
         video.style.display = 'block';
         previewCanvas.style.display = 'none';
@@ -32485,6 +32709,7 @@
         previewCanvas.style.display = 'none';
         updateFilmTrack();
         updateUI();
+        try { camSleepNow(); } catch (e) { }
       }
 
       // ──────────────────────────────────────────────────────────────────
@@ -33763,8 +33988,14 @@
         text2: '', text2Font: 'serif', text2Color: '#FFFFFF', text2Size: 34, text2X: 50, text2Y: 26,
         textPos: 'top', textAlign: 'center', textTiming: 'always',
         classicBorderColor: '#D4AF37', classicBandOn: true, classicBandColor: '#1C1A1E', classicBandAlpha: 85,
-        activeDesignPreset: 'wedding_floral'
+        activeDesignPreset: 'wedding_floral', presetMotion: true, oneTap: false
       };
+      // Effects were renamed once. An old name has no option in the effect list and no loop in the app, so the render came out with no effect.
+      var SPIN_FX_ALIASES = {
+        'sparkles': 'sparkler_fountain', 'floating_hearts': 'hearts_floating', 'rose_petals': 'rose_petals_red',
+        'smoke_ring': 'stage_smoke', 'bokeh': 'bokeh_golden', 'confetti': 'confetti_multi', 'neon_glow_edge': 'neon_cyberpunk'
+      };
+      function spinFxNorm(id) { id = String(id || 'none'); return SPIN_FX_ALIASES[id] || id; }
       try {
         var sl = JSON.parse(localStorage.getItem(SPIN_LOOK_KEY) || 'null');
         if (sl && typeof sl === 'object') {
@@ -33778,41 +34009,48 @@
           if (sl.text2Size === undefined && sl.textSize) spinLook.text2Size = sl.textSize === 'large' ? 36 : (sl.textSize === 'small' ? 20 : 26);
           if (sl.text1Y === undefined && sl.textYPercent != null) spinLook.text1Y = Number(sl.textYPercent);
           if (sl.text2Y === undefined && sl.textYPercent != null) spinLook.text2Y = Number(sl.textYPercent) + 8;
-          var FX_ALIASES = {
-            'sparkles': 'sparkler_fountain', 'floating_hearts': 'hearts_floating', 'rose_petals': 'rose_petals_red',
-            'smoke_ring': 'stage_smoke', 'bokeh': 'bokeh_golden', 'confetti': 'confetti_multi', 'neon_glow_edge': 'neon_cyberpunk'
-          };
-          if (spinLook.fx && FX_ALIASES[spinLook.fx]) spinLook.fx = FX_ALIASES[spinLook.fx];
+          spinLook.fx = spinFxNorm(spinLook.fx);
         }
       } catch (e) { }
 
+      // A preset is a whole look: frame, animated effect (and how it moves), text style, plus the speed style and colour grade.
+      // style = a key of SPIN_PRESETS. cat = gallery tab. sw = the two colours of its gallery tile. Effect ids must be in the effect catalog.
       var SPIN_BUILTIN_PRESETS = {
         wedding_floral: {
-          name: '🌸 Wedding Floral & Gold',
+          name: '🌸 Wedding Floral & Gold', cat: 'wedding', sw: ['#3d2f25', '#8a6a3c'], style: 'classic', lut: 'none',
           frameStyle: 'floral_gold',
-          fx: 'gold_dust',
+          fx: 'gold_dust', fxMovement: 'vortex',
           text1Font: 'cursive', text1Color: '#FFF2A8', text1Size: 52, text1X: 50, text1Y: 18,
           text2Font: 'serif', text2Color: '#FFFFFF', text2Size: 34, text2X: 50, text2Y: 26,
           textAlign: 'center'
         },
+        wedding_petals: {
+          name: '🤍 White Petals Romance', cat: 'wedding', sw: ['#6b5a4e', '#e9dccb'], style: 'classic', lut: 'golden_hour',
+          frameStyle: 'floral_gold',
+          fx: 'petals_white_drift', fxMovement: 'fall', fxSpeed: 80,
+          text1Font: 'cursive', text1Color: '#FFFFFF', text1Size: 54, text1X: 50, text1Y: 80,
+          text2Font: 'serif', text2Color: '#F5E6C8', text2Size: 26, text2X: 50, text2Y: 88,
+          textAlign: 'center', textTiming: 'fade'
+        },
+        debut_rose: {
+          name: '👑 Debut Rose Gold', cat: 'wedding', sw: ['#5A2A3C', '#E8B4B8'], style: 'ramp', lut: 'golden_hour',
+          frameStyle: 'classic_box',
+          classicBandColor: '#5A2A3C', classicBandAlpha: 82, classicBorderColor: '#E8B4B8', classicBandOn: true,
+          fx: 'rose_petals_red', fxMovement: 'fall',
+          text1Font: 'dancing', text1Color: '#FFE3E8', text1Size: 50, text1X: 50, text1Y: 90,
+          text2Font: 'sans', text2Color: '#E8B4B8', text2Size: 22, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
         gala_art_deco: {
-          name: '✨ VIP Gala Art Deco',
+          name: '✨ VIP Gala Art Deco', cat: 'corporate', sw: ['#141210', '#6e5a2a'], style: 'ramp', lut: 'none',
           frameStyle: 'gilded_art_deco',
-          fx: 'sparkles',
+          fx: 'sparkler_fountain', fxMovement: 'rise',
           text1Font: 'serif', text1Color: '#FFF2A8', text1Size: 50, text1X: 50, text1Y: 82,
           text2Font: 'sans', text2Color: '#E5C07B', text2Size: 24, text2X: 50, text2Y: 89,
           textAlign: 'center'
         },
-        neon_cyberpunk: {
-          name: '⚡ Neon Cyberpunk Club',
-          frameStyle: 'neon_cyberpunk',
-          fx: 'confetti',
-          text1Font: 'impact', text1Color: '#00F0FF', text1Size: 56, text1X: 50, text1Y: 15,
-          text2Font: 'sans', text2Color: '#FF007F', text2Size: 28, text2X: 50, text2Y: 23,
-          textAlign: 'center'
-        },
         classic_ribbon: {
-          name: '🎗️ Classic Gold & Ribbon Band',
+          name: '🎗️ Classic Gold & Ribbon Band', cat: 'corporate', sw: ['#1C1A1E', '#4a4034'], style: 'classic', lut: 'none',
           frameStyle: 'classic_box',
           classicBandColor: '#1C1A1E', classicBandAlpha: 85, classicBorderColor: '#D4AF37', classicBandOn: true,
           fx: 'none',
@@ -33820,20 +34058,223 @@
           text2Font: 'sans', text2Color: '#D4AF37', text2Size: 22, text2X: 50, text2Y: 95,
           textAlign: 'center'
         },
+        graduation_gold: {
+          name: '🎓 Graduation Gold', cat: 'corporate', sw: ['#0E2444', '#27508c'], style: 'ramp', lut: 'none',
+          frameStyle: 'classic_box',
+          classicBandColor: '#0E2444', classicBandAlpha: 90, classicBorderColor: '#D4AF37', classicBandOn: true,
+          fx: 'confetti_gold', fxMovement: 'fall',
+          text1Font: 'serif', text1Color: '#FFE9A8', text1Size: 46, text1X: 50, text1Y: 90,
+          text2Font: 'sans', text2Color: '#FFFFFF', text2Size: 22, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
+        corporate_clean: {
+          name: '💼 Corporate Clean', cat: 'corporate', sw: ['#12263A', '#3d6385'], style: 'ramp', lut: 'none', flash: false,
+          frameStyle: 'classic_box',
+          classicBandColor: '#12263A', classicBandAlpha: 92, classicBorderColor: '#FFFFFF', classicBandOn: true,
+          fx: 'none',
+          text1Font: 'sans', text1Color: '#FFFFFF', text1Size: 40, text1X: 50, text1Y: 90,
+          text2Font: 'sans', text2Color: '#9FC3E6', text2Size: 20, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
         minimalist: {
-          name: '🎬 Clean Minimalist',
+          name: '🎬 Clean Minimalist', cat: 'corporate', sw: ['#2b2a2e', '#77737c'], style: 'classic', lut: 'none',
           frameStyle: 'none',
           fx: 'none',
           text1Font: 'sans', text1Color: '#FFFFFF', text1Size: 42, text1X: 50, text1Y: 14,
           text2Font: 'sans', text2Color: '#D5CFD5', text2Size: 22, text2X: 50, text2Y: 20,
           textAlign: 'center'
+        },
+        birthday_pop: {
+          name: '🎂 Birthday Confetti Pop', cat: 'party', sw: ['#2B1B4A', '#FF4D8D'], style: 'fsf', lut: 'vibrant',
+          frameStyle: 'classic_box',
+          classicBandColor: '#2B1B4A', classicBandAlpha: 88, classicBorderColor: '#FF4D8D', classicBandOn: true,
+          fx: 'confetti_multi', fxMovement: 'fall',
+          text1Font: 'impact', text1Color: '#FFE14D', text1Size: 56, text1X: 50, text1Y: 90,
+          text2Font: 'sans', text2Color: '#FFFFFF', text2Size: 22, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
+        kids_balloons: {
+          name: '🎈 Kids Party Balloons', cat: 'party', sw: ['#4DC3FF', '#FFD9E6'], style: 'classic', lut: 'vibrant',
+          frameStyle: 'classic_box',
+          classicBandColor: '#FFFFFF', classicBandAlpha: 90, classicBorderColor: '#4DC3FF', classicBandOn: true,
+          fx: 'balloons_pastel', fxMovement: 'rise',
+          text1Font: 'dancing', text1Color: '#FF4D8D', text1Size: 50, text1X: 50, text1Y: 90,
+          text2Font: 'sans', text2Color: '#2B6CB0', text2Size: 22, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
+        christening_soft: {
+          name: '🕊️ Christening Soft Blue', cat: 'party', sw: ['#BFD9EE', '#ffffff'], style: 'classic', lut: 'none', flash: false,
+          frameStyle: 'classic_box',
+          classicBandColor: '#DCEBF7', classicBandAlpha: 90, classicBorderColor: '#FFFFFF', classicBandOn: true,
+          fx: 'bokeh_golden', fxMovement: 'drift', fxOpacity: 60,
+          text1Font: 'cursive', text1Color: '#2F4A66', text1Size: 50, text1X: 50, text1Y: 90,
+          text2Font: 'serif', text2Color: '#4A6A8A', text2Size: 22, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
+        christmas_snow: {
+          name: '🎄 Christmas Snow', cat: 'season', sw: ['#14452F', '#C62828'], style: 'classic', lut: 'none',
+          frameStyle: 'classic_box',
+          classicBandColor: '#14452F', classicBandAlpha: 90, classicBorderColor: '#C62828', classicBandOn: true,
+          fx: 'snow_blizzard', fxMovement: 'fall',
+          text1Font: 'cursive', text1Color: '#FFFFFF', text1Size: 52, text1X: 50, text1Y: 90,
+          text2Font: 'serif', text2Color: '#F4D58D', text2Size: 22, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
+        new_year: {
+          name: '🎆 New Year Countdown', cat: 'season', sw: ['#0b0b1c', '#7a5b12'], style: 'fsf', lut: 'none',
+          frameStyle: 'gilded_art_deco',
+          fx: 'fireworks_midnight',
+          text1Font: 'serif', text1Color: '#FFF2A8', text1Size: 50, text1X: 50, text1Y: 82,
+          text2Font: 'oswald', text2Color: '#FFFFFF', text2Size: 26, text2X: 50, text2Y: 89,
+          textAlign: 'center'
+        },
+        halloween_night: {
+          name: '🎃 Halloween Night', cat: 'season', sw: ['#0D0A12', '#FF7A00'], style: 'ramp', lut: 'vintage',
+          frameStyle: 'classic_box',
+          classicBandColor: '#0D0A12', classicBandAlpha: 92, classicBorderColor: '#FF7A00', classicBandOn: true,
+          fx: 'halloween_bats', fxMovement: 'drift',
+          text1Font: 'typewriter', text1Color: '#FF9A2E', text1Size: 46, text1X: 50, text1Y: 90,
+          text2Font: 'sans', text2Color: '#C9B8E8', text2Size: 20, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
+        neon_cyberpunk: {
+          name: '⚡ Neon Cyberpunk Club', cat: 'night', sw: ['#0a0620', '#5b1a8a'], style: 'fsf', lut: 'vibrant',
+          frameStyle: 'neon_cyberpunk',
+          fx: 'confetti_multi', fxMovement: 'fall',
+          text1Font: 'impact', text1Color: '#00F0FF', text1Size: 56, text1X: 50, text1Y: 15,
+          text2Font: 'sans', text2Color: '#FF007F', text2Size: 28, text2X: 50, text2Y: 23,
+          textAlign: 'center'
+        },
+        retro_disco: {
+          name: '🪩 Retro Disco', cat: 'night', sw: ['#3a0a5c', '#FF5AC8'], style: 'roller', lut: 'vibrant',
+          frameStyle: 'none',
+          fx: 'disco_mirror',
+          text1Font: 'impact', text1Color: '#FF5AC8', text1Size: 60, text1X: 50, text1Y: 14,
+          text2Font: 'oswald', text2Color: '#FFE14D', text2Size: 28, text2X: 50, text2Y: 22,
+          textAlign: 'center'
+        },
+        glam_bw: {
+          name: '🖤 Hollywood Glam B&W', cat: 'night', sw: ['#0c0c0c', '#8c8c8c'], style: 'super', lut: 'glam_bw',
+          frameStyle: 'none',
+          fx: 'silver_shimmer', fxMovement: 'drift', fxOpacity: 70,
+          text1Font: 'playfair', text1Color: '#FFFFFF', text1Size: 48, text1X: 50, text1Y: 84,
+          text2Font: 'sans', text2Color: '#D9D9D9', text2Size: 22, text2X: 50, text2Y: 90,
+          textAlign: 'center', textTiming: 'fade'
+        },
+        money_rain: {
+          name: '💸 Hype Money Rain', cat: 'night', sw: ['#06261a', '#1f8a4c'], style: 'fastslow', lut: 'teal_orange',
+          frameStyle: 'neon_cyberpunk',
+          fx: 'cash_rain', fxMovement: 'fall', fxSpeed: 130,
+          text1Font: 'impact', text1Color: '#7CFF6B', text1Size: 58, text1X: 50, text1Y: 15,
+          text2Font: 'sans', text2Color: '#FFFFFF', text2Size: 26, text2X: 50, text2Y: 23,
+          textAlign: 'center'
         }
       };
+      var SPIN_PRESET_CATS = [['all', 'All'], ['wedding', 'Wedding & Debut'], ['party', 'Birthday & Family'], ['corporate', 'Corporate & School'], ['season', 'Holidays'], ['night', 'Nightlife'], ['mine', '⭐ My presets']];
+      var SPIN_PRESET_DESIGN_KEYS = ['frameStyle', 'fx', 'fxMovement', 'fxLocation', 'fxSpeed', 'fxOpacity', 'fxScale', 'fxWobble',
+        'text1Font', 'text1Color', 'text1Size', 'text1X', 'text1Y', 'text2Font', 'text2Color', 'text2Size', 'text2X', 'text2Y', 'textAlign', 'textTiming',
+        'classicBorderColor', 'classicBandOn', 'classicBandColor', 'classicBandAlpha'];
+      var SPIN_PRESET_MOTION_KEYS = ['preset', 'speed', 'rates', 'reverse', 'smooth', 'lut', 'zoom', 'flash'];
+      var spinPresetCat = 'all';
 
       function spinGetCustomPresets() {
         try {
           return JSON.parse(localStorage.getItem(SPIN_CUSTOM_PRESETS_KEY) || '{}') || {};
         } catch (e) { return {}; }
+      }
+      function spinPresetGet(key) {
+        if (!key) return null;
+        if (String(key).indexOf('custom:') === 0) return spinGetCustomPresets()[String(key).slice(7)] || null;
+        return SPIN_BUILTIN_PRESETS[key] || null;
+      }
+      // Everything a preset sets, as spinLook values. Built-in presets are complete looks, so what they leave out goes back to the standard value
+      // (otherwise the effect motion of the preset before would leak into the next one). A saved preset only sets what was saved in it.
+      function spinPresetResolve(key) {
+        var p = spinPresetGet(key); if (!p) return null;
+        var builtin = String(key).indexOf('custom:') !== 0, out = {};
+        SPIN_PRESET_DESIGN_KEYS.forEach(function (k) { if (p[k] !== undefined) out[k] = p[k]; });
+        if (out.fx !== undefined) out.fx = spinFxNorm(out.fx);
+        if (builtin) {
+          var std = { fxMovement: 'vortex', fxLocation: 'full', fxSpeed: 100, fxOpacity: 85, fxScale: 100, fxWobble: 50, textTiming: 'always' };
+          Object.keys(std).forEach(function (k) { if (out[k] === undefined) out[k] = std[k]; });
+        }
+        if (spinLook.presetMotion !== false) {
+          var st = p.style && SPIN_PRESETS[p.style];
+          if (st) { out.preset = p.style; out.speed = st.speed; out.rates = (st.rates || []).slice(); out.reverse = !!st.reverse; out.smooth = !!st.smooth; }
+          SPIN_PRESET_MOTION_KEYS.forEach(function (k) { if (p[k] !== undefined) out[k] = Array.isArray(p[k]) ? p[k].slice() : p[k]; });
+          if (builtin) { if (out.lut === undefined) out.lut = 'none'; if (out.zoom === undefined) out.zoom = true; if (out.flash === undefined) out.flash = true; }
+        }
+        return out;
+      }
+      function spinPresetModified() {
+        var out = spinPresetResolve(spinLook.activeDesignPreset); if (!out) return false;
+        return Object.keys(out).some(function (k) {
+          var a = spinLook[k], b = out[k];
+          if (k === 'lut') { a = a || 'none'; b = b || 'none'; }
+          return JSON.stringify(a) !== JSON.stringify(b);
+        });
+      }
+      function spinFxName(id) {
+        if (!id || id === 'none') return 'No effect';
+        var item = (typeof spinFxCatalog !== 'undefined' && spinFxCatalog || []).find(function (x) { return x.id === id; });
+        return item ? item.name : id;
+      }
+      // The tiles of the preset gallery (built-in looks by category, plus the operator's own saved ones).
+      function spinRenderPresetGallery() {
+        var cats = document.getElementById('spinPresetCats'), grid = document.getElementById('spinPresetGrid');
+        if (!cats || !grid) return;
+        var custom = spinGetCustomPresets();
+        cats.textContent = '';
+        SPIN_PRESET_CATS.forEach(function (c) {
+          if (c[0] === 'mine' && !Object.keys(custom).length && spinPresetCat !== 'mine') return;
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'spin-chip' + (spinPresetCat === c[0] ? ' on' : '');
+          b.dataset.cat = c[0]; b.textContent = c[1]; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', spinPresetCat === c[0] ? 'true' : 'false');
+          cats.appendChild(b);
+        });
+        grid.textContent = '';
+        var items = [];
+        Object.keys(SPIN_BUILTIN_PRESETS).forEach(function (k) {
+          var p = SPIN_BUILTIN_PRESETS[k];
+          if (spinPresetCat === 'all' || spinPresetCat === p.cat) items.push({ key: k, p: p, builtin: true });
+        });
+        if (spinPresetCat === 'all' || spinPresetCat === 'mine') Object.keys(custom).forEach(function (k) { items.push({ key: 'custom:' + k, p: custom[k] || {}, builtin: false }); });
+        if (!items.length) {
+          var em = document.createElement('div'); em.className = 'spin-preset-empty';
+          em.textContent = 'No saved presets yet. Set up a look you like, then click “Save As Preset”.';
+          grid.appendChild(em);
+        }
+        items.forEach(function (o) {
+          var p = o.p, name = String(p.name || o.key.replace(/^custom:/, ''));
+          var m = /^(\S+)\s+(.*)$/.exec(name), icon = o.builtin && m ? m[1] : '⭐', title = o.builtin && m ? m[2] : name;
+          var sw = p.sw || [p.classicBandColor || '#2b282c', p.text1Color || '#8a7f70'];
+          var styleKey = p.style || p.preset, st = SPIN_PRESETS[styleKey];
+          var t = document.createElement('button'); t.type = 'button'; t.className = 'spin-preset-tile' + (spinLook.activeDesignPreset === o.key ? ' on' : '');
+          t.dataset.key = o.key; t.title = 'Use “' + title + '”';
+          var s = document.createElement('span'); s.className = 'sw' + (p.frameStyle === 'none' ? ' noframe' : '');
+          s.style.background = 'linear-gradient(135deg, ' + sw[0] + ', ' + sw[1] + ')';
+          s.style.setProperty('--acc', p.classicBorderColor && p.frameStyle === 'classic_box' ? p.classicBorderColor : (p.text1Color || '#D4AF37'));
+          s.textContent = icon;
+          if (spinLook.activeDesignPreset === o.key) { var tk = document.createElement('i'); tk.className = 'tick'; tk.style.fontStyle = 'normal'; tk.textContent = '✓'; s.appendChild(tk); }
+          var b = document.createElement('b'); b.textContent = title;
+          var sm = document.createElement('small'); sm.textContent = (st ? st.label + ' · ' : '') + spinFxName(spinFxNorm(p.fx));
+          t.appendChild(s); t.appendChild(b); t.appendChild(sm);
+          grid.appendChild(t);
+        });
+        spinRefreshPresetState();
+      }
+      // The small things that follow the current look: "edited" pill, which motion chip is on, the effect name, the two checkboxes.
+      function spinRefreshPresetState() {
+        var pill = document.getElementById('spinPresetState');
+        if (pill) {
+          var p = spinPresetGet(spinLook.activeDesignPreset);
+          pill.textContent = !p ? 'Your own look' : (spinPresetModified() ? '✎ Edited' : '✓ Preset applied');
+        }
+        document.querySelectorAll('#spinQuickStyles .spin-chip').forEach(function (c) { c.classList.toggle('on', c.dataset.style === spinLook.preset); });
+        var fxn = document.getElementById('spinQuickFxName'); if (fxn) fxn.textContent = spinFxName(spinLook.fx);
+        var acc = document.getElementById('spinQuickAccent'); if (acc && /^#[0-9a-f]{6}$/i.test(spinLook.text1Color || '')) acc.value = spinLook.text1Color;
+        document.querySelectorAll('#spinQuick .spin-swatch').forEach(function (c) { c.classList.toggle('on', String(c.dataset.accent).toLowerCase() === String(spinLook.text1Color || '').toLowerCase()); });
+        var mo = document.getElementById('spinPresetMotion'); if (mo) mo.checked = spinLook.presetMotion !== false;
+        var ot = document.getElementById('spinOneTap'); if (ot) ot.checked = !!spinLook.oneTap;
       }
 
       function spinPopulateDesignPresetsUI(activeKey) {
@@ -33864,54 +34305,37 @@
         if (!sel.value) sel.value = '';       // the saved preset no longer exists: show "Current look"
       }
 
-      function spinApplyDesignPreset(key) {
-        if (!key) return;
-        var p = null;
-        if (key.startsWith('custom:')) {
-          var custom = spinGetCustomPresets();
-          p = custom[key.slice(7)];
-        } else {
-          p = SPIN_BUILTIN_PRESETS[key];
-        }
-        if (!p) return;
+      // Apply a preset: set the look, refresh every control, and make the live preview (and the next render) use it.
+      // opts.keepFx: leave the animated effect as it is (the quick customise buttons).
+      function spinApplyDesignPreset(key, opts) {
+        opts = opts || {};
+        if (!key) return false;
+        var out = spinPresetResolve(key), p = spinPresetGet(key);
+        if (!out || !p) return false;
         spinLook.activeDesignPreset = key;
-        if (p.frameStyle !== undefined) spinLook.frameStyle = p.frameStyle;
-        if (p.fx !== undefined) spinLook.fx = p.fx;
-        if (p.text1Font !== undefined) spinLook.text1Font = p.text1Font;
-        if (p.text1Color !== undefined) spinLook.text1Color = p.text1Color;
-        if (p.text1Size !== undefined) spinLook.text1Size = p.text1Size;
-        if (p.text1X !== undefined) spinLook.text1X = p.text1X;
-        if (p.text1Y !== undefined) spinLook.text1Y = p.text1Y;
-        if (p.text2Font !== undefined) spinLook.text2Font = p.text2Font;
-        if (p.text2Color !== undefined) spinLook.text2Color = p.text2Color;
-        if (p.text2Size !== undefined) spinLook.text2Size = p.text2Size;
-        if (p.text2X !== undefined) spinLook.text2X = p.text2X;
-        if (p.text2Y !== undefined) spinLook.text2Y = p.text2Y;
-        if (p.classicBorderColor !== undefined) spinLook.classicBorderColor = p.classicBorderColor;
-        if (p.classicBandOn !== undefined) spinLook.classicBandOn = p.classicBandOn;
-        if (p.classicBandColor !== undefined) spinLook.classicBandColor = p.classicBandColor;
-        if (p.classicBandAlpha !== undefined) spinLook.classicBandAlpha = p.classicBandAlpha;
-        if (p.textAlign !== undefined) spinLook.textAlign = p.textAlign;
-
+        Object.keys(out).forEach(function (k) { spinLook[k] = out[k]; });
+        // The effect must be one the effect list really has; otherwise the dropdown goes blank and the effect is lost on the next sync.
+        var known = (spinFxCatalog || []).some(function (x) { return x.id === spinLook.fx; });
+        if (spinLook.fx !== 'none' && !known && spinFxCatalog && spinFxCatalog.length) spinLook.fx = 'none';
+        spinLook.overlay = spinLook.frameStyle !== 'none' ? true : spinLook.overlay;
         spinLookToUI();
+        // Clips waiting in the queue must not keep an effect / frame picked for an earlier look; the open one follows the preset.
+        spinQueue.forEach(function (q) {
+          if (q.status === 'editing') return;
+          delete q.fx; delete q.frameStyle;
+        });
         if (spinCur) {
-          spinCur.frameStyle = spinLook.frameStyle;
-          spinCur.text1Font = spinLook.text1Font;
-          spinCur.text1Color = spinLook.text1Color;
-          spinCur.text1Size = spinLook.text1Size;
-          spinCur.text1X = spinLook.text1X;
-          spinCur.text1Y = spinLook.text1Y;
-          spinCur.text2Font = spinLook.text2Font;
-          spinCur.text2Color = spinLook.text2Color;
-          spinCur.text2Size = spinLook.text2Size;
-          spinCur.text2X = spinLook.text2X;
-          spinCur.text2Y = spinLook.text2Y;
-          spinCur.fx = spinLook.fx;
+          spinCur.frameStyle = spinLook.frameStyle; spinCur.fx = spinLook.fx;
+          ['text1Font', 'text1Color', 'text1Size', 'text1X', 'text1Y', 'text2Font', 'text2Color', 'text2Size', 'text2X', 'text2Y', 'textAlign', 'textTiming'].forEach(function (k) { spinCur[k] = spinLook[k]; });
           if (spinCur.edited && typeof spinSwitchToDraftPreview === 'function') spinSwitchToDraftPreview(spinCur);
+          if (typeof spinModalUpdate === 'function') spinModalUpdate();
         }
+        spinFxBakeCache = null;
         try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { }
         renderSpinModalPreview();
-        showToast('Applied preset: ' + (p.name || key));
+        spinRenderPresetGallery();
+        if (!opts.quiet) showToast('Applied: ' + String(p.name || key).replace(/^custom:/, '') + (spinLook.fx !== 'none' ? ' · ' + spinFxName(spinLook.fx) : ''));
+        return true;
       }
 
       async function spinSaveCustomPreset() {
@@ -33920,29 +34344,14 @@
         if (!name || !name.trim()) return;
         name = name.trim();
         var custom = spinGetCustomPresets();
-        custom[name] = {
-          name: name,
-          frameStyle: spinLook.frameStyle,
-          fx: spinLook.fx,
-          text1Font: spinLook.text1Font,
-          text1Color: spinLook.text1Color,
-          text1Size: spinLook.text1Size,
-          text1X: spinLook.text1X,
-          text1Y: spinLook.text1Y,
-          text2Font: spinLook.text2Font,
-          text2Color: spinLook.text2Color,
-          text2Size: spinLook.text2Size,
-          text2X: spinLook.text2X,
-          text2Y: spinLook.text2Y,
-          classicBorderColor: spinLook.classicBorderColor,
-          classicBandOn: spinLook.classicBandOn,
-          classicBandColor: spinLook.classicBandColor,
-          classicBandAlpha: spinLook.classicBandAlpha,
-          textAlign: spinLook.textAlign
-        };
+        var saved = { name: name };
+        SPIN_PRESET_DESIGN_KEYS.concat(SPIN_PRESET_MOTION_KEYS).forEach(function (k) { if (spinLook[k] !== undefined) saved[k] = Array.isArray(spinLook[k]) ? spinLook[k].slice() : spinLook[k]; });
+        saved.fx = spinFxNorm(saved.fx);
+        custom[name] = saved;
         try { localStorage.setItem(SPIN_CUSTOM_PRESETS_KEY, JSON.stringify(custom)); } catch (e) { }
         spinLook.activeDesignPreset = 'custom:' + name;
         spinPopulateDesignPresetsUI('custom:' + name);
+        spinRenderPresetGallery();
         showToast('Preset "' + name + '" saved!');
       }
 
@@ -33960,7 +34369,7 @@
         try { localStorage.setItem(SPIN_CUSTOM_PRESETS_KEY, JSON.stringify(custom)); } catch (e) { }
         spinLook.activeDesignPreset = 'wedding_floral';
         spinPopulateDesignPresetsUI('wedding_floral');
-        spinApplyDesignPreset('wedding_floral');
+        spinApplyDesignPreset('wedding_floral', { quiet: true });
         showToast('Preset deleted.');
       }
 
@@ -34025,7 +34434,8 @@
       }
       function spinPopulateFxUI() {
         var sel = document.getElementById('spinFx'); if (!sel) return;
-        var cur = spinLook.fx || 'none';
+        var cur = spinFxNorm(spinLook.fx || 'none');
+        spinLook.fx = cur;
         sel.innerHTML = '<option value="none">None (no effect)</option>';
         var byCat = {};
         (spinFxCatalog || []).forEach(function (item) {
@@ -34153,6 +34563,7 @@
         if (g('spinModalTextAlign')) g('spinModalTextAlign').value = spinLook.textAlign || 'center';
         if (g('spinTextTiming')) g('spinTextTiming').value = spinLook.textTiming || 'always';
         spinPopulateDesignPresetsUI();
+        try { spinRenderPresetGallery(); } catch (e) { }
         g('spinSmooth').disabled = spinLook.speed !== 'slow' && !(spinLook.speed === 'custom' && (spinLook.rates || []).some(function (r) { return r < 1; }));
         spinUpdateStageAspect();
       }
@@ -34241,6 +34652,7 @@
         spinUpdateStageAspect();
         try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { }
         if (typeof renderSpinModalPreview === 'function') renderSpinModalPreview();
+        try { spinRefreshPresetState(); } catch (e) { }
       }
       function spinPresetLabel() { return (SPIN_PRESETS[spinLook.preset] && SPIN_PRESETS[spinLook.preset].label) || (spinLook.speed === 'slow' ? 'slow-mo' : spinLook.speed); }
       // Output size of the picture drawn over the video (boomerang is kept at 720 to stay light).
@@ -37396,6 +37808,7 @@
       function spinSetCardsInert(col, on) {
         col.querySelectorAll('.spin-panel-card').forEach(function (c) {
           if (c.id === 'spinSecVideos') return;
+          if (c.id === 'spinSecPresets' && spinCur && spinCur.status !== 'editing') { c.inert = false; c.removeAttribute('aria-disabled'); return; }   // picking a look on a rendered clip starts a new draft
           c.inert = !!on;
           if (on) c.setAttribute('aria-disabled', 'true'); else c.removeAttribute('aria-disabled');
         });
@@ -37429,7 +37842,7 @@
 
         var isLocked = it && (it.status === 'editing' || (it.edited && !it.isDrafting));
         if (lockBanner) lockBanner.hidden = !isLocked;
-        if (controlsCol) { controlsCol.classList.toggle('spin-locked-controls', !!isLocked); spinSetCardsInert(controlsCol, !!isLocked); }
+        if (controlsCol) { controlsCol.classList.toggle('spin-locked-controls', !!isLocked); controlsCol.classList.toggle('spin-lock-rendered', !!isLocked && it.status !== 'editing'); spinSetCardsInert(controlsCol, !!isLocked); }
         if (lockTxt && it) {
           if (it.status === 'editing') {
             lockTxt.textContent = 'Processing clip (' + (it.pct || 0) + '%). Editing options locked during render.';
@@ -38522,6 +38935,111 @@
           spinDeleteCustomPreset();
         });
       }
+
+      // ---- Preset gallery, one-tap auto edit and quick customise ----
+      function spinLookChanged() {      // after code (not a control) changed spinLook: sync the controls, the open clip, the preview
+        spinLookToUI();
+        if (spinCur) {
+          spinCur.frameStyle = spinLook.frameStyle; spinCur.fx = spinLook.fx;
+          ['text1Font', 'text1Color', 'text1Size', 'text1X', 'text1Y', 'text2Font', 'text2Color', 'text2Size', 'text2X', 'text2Y'].forEach(function (k) { spinCur[k] = spinLook[k]; });
+          if (spinCur.edited && typeof spinSwitchToDraftPreview === 'function') spinSwitchToDraftPreview(spinCur);
+          spinModalUpdate();
+        }
+        spinFxBakeCache = null;
+        try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { }
+        renderSpinModalPreview();
+        spinRenderPresetGallery();
+      }
+      // Edit the open clip with the current look, in one go (what the "Edit / Process" button does, without visiting the other tabs).
+      async function spinAutoEditCurrent() {
+        var it = spinCur;
+        if (!it) { showToast('Add or choose a 360 video first.', 3000); return; }
+        if (!spinEnv.ffmpeg || it.src !== 'inbox') { showToast('Editing needs the desktop app and a clip from the inbox.', 4000); return; }
+        if (it.status === 'editing') { showToast('This video is already being edited.', 2500); return; }
+        if (it.edited && !it.isDrafting) spinUnlockEditing();
+        document.getElementById('spinEditBtn').click();
+      }
+      async function spinAutoEditAll() {
+        if (!spinEnv.ffmpeg) { showToast('Editing needs the desktop app.', 4000); return; }
+        var todo = spinQueue.filter(function (q) { return q.src === 'inbox' && q.status !== 'editing' && !q.edited; });
+        if (!todo.length) { showToast('Every video in the list is already edited.', 3500); return; }
+        showToast('Editing ' + todo.length + ' video' + (todo.length > 1 ? 's' : '') + ' with this look…', 4000);
+        for (var i = 0; i < todo.length; i++) await spinEdit(todo[i]);
+        showToast('Done: ' + todo.length + ' video' + (todo.length > 1 ? 's' : '') + ' edited.', 4000);
+      }
+      function spinPickPreset(key) {
+        if (!spinApplyDesignPreset(key)) return;
+        if (spinLook.oneTap && spinCur && spinEnv.ffmpeg && spinCur.src === 'inbox' && spinCur.status !== 'editing') spinAutoEditCurrent();
+      }
+      (function () {
+        var cats = document.getElementById('spinPresetCats'), grid = document.getElementById('spinPresetGrid');
+        if (cats) cats.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-cat]'); if (!b) return;
+          spinPresetCat = b.dataset.cat; spinRenderPresetGallery();
+        });
+        if (grid) grid.addEventListener('click', function (e) {
+          var t = e.target.closest('.spin-preset-tile'); if (t) spinPickPreset(t.dataset.key);
+        });
+        var on = function (id, fn) { var el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+        on('spinResetPresetBtn', function () {
+          if (!spinPresetGet(spinLook.activeDesignPreset)) { showToast('Pick a preset first.', 2500); return; }
+          spinApplyDesignPreset(spinLook.activeDesignPreset);
+        });
+        on('spinSurpriseBtn', function () {
+          var keys = Object.keys(SPIN_BUILTIN_PRESETS).filter(function (k) { return k !== spinLook.activeDesignPreset; });
+          spinPickPreset(keys[Math.floor(Math.random() * keys.length)]);
+        });
+        on('spinAutoEditBtn', spinAutoEditCurrent);
+        on('spinAutoEditAllBtn', spinAutoEditAll);
+        var mo = document.getElementById('spinPresetMotion');
+        if (mo) mo.addEventListener('change', function () { spinLook.presetMotion = mo.checked; try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { } });
+        var ot = document.getElementById('spinOneTap');
+        if (ot) ot.addEventListener('change', function () { spinLook.oneTap = ot.checked; try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { } });
+
+        var q = document.getElementById('spinQuick'); if (!q) return;
+        function setAccent(c) { spinLook.text1Color = c; spinLook.classicBorderColor = c; spinLookChanged(); }
+        q.addEventListener('click', function (e) {
+          var sw = e.target.closest('[data-accent]'); if (sw) { setAccent(sw.dataset.accent); return; }
+          var st = e.target.closest('[data-style]');
+          if (st) {
+            var pr = SPIN_PRESETS[st.dataset.style];
+            if (pr) { spinLook.preset = st.dataset.style; spinLook.speed = pr.speed; spinLook.rates = (pr.rates || []).slice(); spinLook.reverse = !!pr.reverse; spinLook.smooth = !!pr.smooth; spinLookChanged(); }
+            return;
+          }
+          var pl = e.target.closest('[data-place]');
+          if (pl) {
+            var ys = { top: [14, 22], middle: [46, 54], bottom: [88, 94] }[pl.dataset.place];
+            spinLook.text1Y = ys[0]; spinLook.text2Y = ys[1]; spinLook.textPos = pl.dataset.place; spinLookChanged(); return;
+          }
+          var ts = e.target.closest('[data-tsize]');
+          if (ts) {
+            var d = Number(ts.dataset.tsize);
+            spinLook.text1Size = Math.max(16, Math.min(120, (spinLook.text1Size || 52) + d * 6));
+            spinLook.text2Size = Math.max(12, Math.min(90, (spinLook.text2Size || 34) + d * 4));
+            spinLookChanged(); return;
+          }
+          var fa = e.target.closest('[data-fxamt]');
+          if (fa) {
+            var a = fa.dataset.fxamt;
+            if (a === 'off') { if (spinLook.fx !== 'none') spinLook.lastFx = spinLook.fx; spinLook.fx = 'none'; }
+            else {
+              if (spinLook.fx === 'none') {
+                var back = spinLook.lastFx || (spinPresetGet(spinLook.activeDesignPreset) || {}).fx;
+                spinLook.fx = spinFxNorm(back && back !== 'none' ? back : 'confetti_multi');
+              }
+              var lv = { subtle: [45, 80], normal: [85, 100], bold: [100, 150] }[a];
+              spinLook.fxOpacity = lv[0]; spinLook.fxScale = lv[1];
+            }
+            spinLookChanged(); return;
+          }
+          if (e.target.closest('#spinFxShuffle')) {
+            var pool = (spinFxCatalog || []).filter(function (x) { return x.id !== spinLook.fx; });
+            if (pool.length) { spinLook.fx = pool[Math.floor(Math.random() * pool.length)].id; spinLookChanged(); showToast('Effect: ' + spinFxName(spinLook.fx), 2200); }
+          }
+        });
+        var qa = document.getElementById('spinQuickAccent');
+        if (qa) qa.addEventListener('input', function () { setAccent(qa.value); });
+      })();
       var unlockEditBtn = document.getElementById('spinUnlockEditBtn');
       if (unlockEditBtn) {
         unlockEditBtn.addEventListener('click', spinUnlockEditing);
@@ -47589,6 +48107,9 @@
         try { await enumerateCameras(); } catch (e) { console.error('Listing cameras failed:', e); }
         await initCamera(cameraSelect.value || null);
         updateUI();
+        if (typeof camWantLive === 'function' && !camWantLive()) {
+          try { camSleepNow(); } catch (e) { }
+        }
       })();
       // Keep the screen from dimming or sleeping while the booth is open.
       // Browsers drop the lock when the tab is hidden, so take it again on return.
@@ -47687,7 +48208,8 @@
         if (n === 3) queueLayoutThumbs();
         else prewarmLayoutThumbs();
         if (n === 6) refreshPrintSummary();
-        if (n === 4) { try { refreshStep4Printer(); } catch (e) { } }
+        if (n === 4) { try { refreshStep4Printer(); } catch (e) { } try { camEnsureLive(); } catch (e) { } }
+        else if (n !== 7 || (typeof fx !== 'undefined' && fx.hands === 'off')) { try { camSleepNow(); } catch (e) { } }
         refreshSetupNav();
         if (typeof scpRefresh === 'function') scpRefresh();
         if (!(opts && opts.noScroll)) {

@@ -16,7 +16,7 @@ import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
 import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
-import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead } from './lib/photos.mjs';
+import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import { makeShrinkPage } from './lib/pageshrink.mjs';
 import * as SPIN from './lib/spin.mjs';
@@ -249,13 +249,20 @@ function buildMenu() {
 // ---------- IPC (preload.cjs) ----------
 function wireIpc() {
   ipcMain.on('pb4u:lan', (e) => { e.returnValue = shareBase(); });
-  ipcMain.handle('pb4u:wifi', (e, force) => detectWifi(!!force));
+  ipcMain.handle('pb4u:wifi', async (e, force) => {
+    const w = await detectWifi(!!force);
+    if (w && w.ssid) setExternalWifi(w.ssid, w.pass);
+    return w;
+  });
   // The booth's own Wi-Fi (Windows' Mobile hotspot, see lib/hotspot.mjs)
   ipcMain.handle('pb4u:hotspot', () => hotspotInfo());
   ipcMain.handle('pb4u:hotspotWake', () => { hotspotWake(); return hotspotInfo(); });   // Option 1: UI signals session start
   ipcMain.handle('pb4u:hotspotSet', (e, on) => (on ? hotspotStart() : hotspotStop()));
   ipcMain.handle('pb4u:hotspotAuto', (e, on) => hotspotSetAuto(!!on));
-  ipcMain.handle('pb4u:hotspotCreds', (e, ssid, pass) => hotspotSetCreds(String(ssid || ''), String(pass || '')));
+  ipcMain.handle('pb4u:hotspotCreds', (e, ssid, pass) => {
+    setExternalWifi(ssid, pass);
+    return hotspotSetCreds(String(ssid || ''), String(pass || ''));
+  });
   ipcMain.handle('pb4u:hotspotSetup', async () => { const r = await hotspotSetup(); return { ...r, info: hotspotInfo() }; });
   ipcMain.handle('pb4u:info', async () => ({
     licence: L.info(), version: VERSION, update: U.info(), photos: photosRoot(), share: shareBase(), lanIp: lanAddress(), port: sharePortNow(), server: L.SERVER
@@ -514,6 +521,7 @@ app.whenReady().then(async () => {
     // The page hears about every change (on, off, locked), so its Join QR stays right without polling.
     onChange: (i) => { if (win && !win.isDestroyed()) win.webContents.send('pb4u:hotspotChanged', i); }
   });
+  if (settings.hotspot && settings.hotspot.ssid) setExternalWifi(settings.hotspot.ssid, settings.hotspot.pass);
   // Never sleep with the hotspot running (a common cause of Wi-Fi driver crashes on wake); it comes back after wake.
   powerMonitor.on('suspend', () => { try { hotspotSuspend(); } catch { /* ignore */ } });
   powerMonitor.on('resume', () => { try { hotspotResume(); } catch { /* ignore */ } });

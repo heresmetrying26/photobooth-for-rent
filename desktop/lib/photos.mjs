@@ -12,6 +12,7 @@ import { networkInterfaces } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
+import { hotspotInfo } from './hotspot.mjs';
 
 const QR_JS_PATH = fileURLToPath(new URL('qr.js', import.meta.url));
 let QR_JS_CODE = '';
@@ -1469,6 +1470,292 @@ function handleWall(req, res, url, wlm) {
   return send(res, 200, 'text/html; charset=utf-8', wallHtml(slug, evName));
 }
 
+// The Wi-Fi the laptop is on (or hosts), told to us by main.mjs. Used by the /wifi page when the booth's own hotspot is not running.
+let externalWifi = { ssid: '', pass: '' };
+export function setExternalWifi(ssid, pass) {
+  externalWifi = { ssid: String(ssid || '').slice(0, 64), pass: String(pass || '').slice(0, 128) };
+}
+
+// ---------- 4.3 Booth Wi-Fi Connect Page HTML (/wifi, /join, /connect) ----------
+function wifiHtml(ssid, pass) {
+  const safeSsid = esc(ssid || 'photobooth4u');
+  const safePass = esc(pass || '');
+  const wifiPayload = `WIFI:T:WPA;S:${ssid || ''};P:${pass || ''};;`;
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Connect to Booth Wi-Fi</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:#0F0E13;color:#F0EEF5;min-height:100vh;-webkit-tap-highlight-color:transparent;display:flex;flex-direction:column;align-items:center;padding:24px 16px 40px}
+.header{text-align:center;margin-bottom:20px}
+.brand{font-size:13px;font-weight:800;letter-spacing:-.01em;color:#A49FA9;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px}
+.brand-dot{width:8px;height:8px;background:#C93D27;border-radius:2px}
+h1{margin:0 0 6px;font-size:24px;font-weight:800;letter-spacing:-.02em;color:#fff}
+.sub{margin:0;font-size:14px;color:#A49FA9}
+.card{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:24px;width:100%;max-width:440px;text-align:center;box-shadow:0 12px 36px rgba(0,0,0,0.4);margin-bottom:18px}
+.qr-frame{background:#fff;padding:14px;border-radius:16px;display:inline-block;box-shadow:0 8px 24px rgba(0,0,0,0.25);margin-bottom:18px}
+.qr-frame img{display:block;width:200px;height:200px}
+.net-info{background:rgba(0,0,0,0.3);border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,0.08);margin-bottom:16px;text-align:left}
+.net-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0}
+.net-row:not(:last-child){border-bottom:1px solid rgba(255,255,255,0.06)}
+.net-label{font-size:12px;color:#8E8994;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.net-val{font-size:14px;color:#fff;font-weight:700;font-family:monospace}
+.copy-btn{background:rgba(255,255,255,0.12);color:#fff;border:0;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;transition:background .2s}
+.copy-btn:hover{background:rgba(255,255,255,0.2)}
+.steps{text-align:left;margin-top:8px}
+.step-item{display:flex;gap:12px;margin-bottom:14px}
+.step-num{width:24px;height:24px;border-radius:50%;background:#C93D27;color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.step-text{font-size:13.5px;color:#D8D5DE;line-height:1.45}
+.step-text b{color:#fff}
+.alert-box{background:rgba(201,61,39,0.15);border:1px solid rgba(201,61,39,0.35);border-radius:12px;padding:12px 14px;font-size:13px;color:#FFB4A8;line-height:1.4;margin-top:14px;text-align:left}
+.nav-btns{display:flex;flex-direction:column;gap:10px;width:100%;max-width:440px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;border-radius:12px;font-weight:800;font-size:14.5px;text-decoration:none;border:0;cursor:pointer;transition:transform .1s,opacity .2s}
+.btn:active{transform:scale(0.98)}
+.btn-primary{background:#C93D27;color:#fff}
+.btn-secondary{background:rgba(255,255,255,0.08);color:#F0EEF5;border:1px solid rgba(255,255,255,0.12)}
+</style>
+${QR_JS_CODE ? `<script>${QR_JS_CODE}</script>` : `<script src="/qr.js"></script>`}
+</head>
+<body>
+<div class="header">
+  <div class="brand"><span class="brand-dot"></span>photobooth4u</div>
+  <h1>📶 Join Booth Wi-Fi</h1>
+  <p class="sub">Connect to download your photos &amp; videos</p>
+</div>
+
+<div class="card">
+  <div class="qr-frame">
+    <img id="wifiQr" alt="Wi-Fi QR Code">
+  </div>
+  <div class="net-info">
+    <div class="net-row">
+      <span class="net-label">Network (SSID)</span>
+      <span class="net-val">${safeSsid}</span>
+    </div>
+    <div class="net-row">
+      <span class="net-label">Password</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="net-val">${safePass ? safePass : '<i>None (Open)</i>'}</span>
+        ${safePass ? `<button type="button" class="copy-btn" id="cpBtn" onclick="copyPw('${safePass}')">Copy</button>` : ''}
+      </div>
+    </div>
+  </div>
+
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div class="step-text"><b>Scan or Join:</b> Point camera at QR code above, or join <b>${safeSsid}</b> in Wi-Fi settings.</div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div class="step-text"><b>Stay Connected:</b> If your phone alerts <i>“No internet access”</i>, tap <b>“Keep Connection / Stay Connected”</b>. (The booth operates offline).</div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div class="step-text"><b>Scan Photo QR:</b> Once connected, scan your session QR on the booth or Sharing Station!</div>
+    </div>
+  </div>
+
+  <div class="alert-box">
+    ⚠️ <b>Before scanning your photo QR:</b> Your phone must be on this booth Wi-Fi. Photos are hosted locally on this laptop and cannot be reached via mobile data (4G/5G).
+  </div>
+</div>
+
+<div class="nav-btns">
+  <a class="btn btn-primary" href="/station">📱 Open Sharing Station</a>
+  <a class="btn btn-secondary" href="/guide">📖 View Booth &amp; Wi-Fi Guide</a>
+  <a class="btn btn-secondary" href="/e">🖼️ View Event Gallery</a>
+</div>
+
+<script>
+(function() {
+  var payload = ${JSON.stringify(wifiPayload)};
+  var qrEl = document.getElementById('wifiQr');
+  if (qrEl && typeof qrcode === 'function') {
+    try {
+      var q = qrcode(0, 'M');
+      q.addData(payload);
+      q.make();
+      qrEl.src = q.createDataURL(6, 2);
+    } catch(e) {}
+  }
+})();
+function copyPw(pw) {
+  var btn = document.getElementById('cpBtn');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(pw).then(function() {
+      if (btn) { btn.textContent = 'Copied ✓'; setTimeout(function(){ btn.textContent = 'Copy'; }, 2000); }
+    });
+  }
+}
+</script>
+</body>
+</html>`;
+}
+
+// ---------- 4.4 Operational Guide HTML (/guide, /help, /instructions) ----------
+function guideHtml() {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Photobooth Wi-Fi &amp; Station Guide</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:#0F0E13;color:#F0EEF5;min-height:100vh;-webkit-tap-highlight-color:transparent;padding:24px 16px 50px}
+.wrap{max-width:680px;margin:0 auto}
+header{text-align:center;margin-bottom:28px}
+.brand{font-size:13px;font-weight:800;letter-spacing:-.01em;color:#A49FA9;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px}
+.brand-dot{width:8px;height:8px;background:#C93D27;border-radius:2px}
+h1{margin:0 0 6px;font-size:26px;font-weight:800;letter-spacing:-.02em;color:#fff}
+.sub{margin:0;font-size:14.5px;color:#A49FA9}
+.card{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:24px;margin-bottom:20px;box-shadow:0 8px 30px rgba(0,0,0,0.35)}
+.card-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.card-icon{font-size:26px;width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.card-title{font-size:18px;font-weight:800;color:#fff;margin:0}
+.tag{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.tag-red{background:rgba(201,61,39,0.2);color:#FF6B55}
+.tag-green{background:rgba(46,166,107,0.2);color:#34D399}
+.tag-blue{background:rgba(59,130,246,0.2);color:#60A5FA}
+p{color:#D8D5DE;font-size:14px;line-height:1.6;margin:0 0 12px}
+ul,ol{margin:0 0 14px;padding-left:20px;color:#D8D5DE;font-size:14px;line-height:1.6}
+li{margin-bottom:6px}
+code{background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:6px;font-family:monospace;font-size:13px;color:#FFB4A8}
+.callout{background:rgba(201,61,39,0.12);border-left:4px solid #C93D27;padding:12px 14px;border-radius:0 12px 12px 0;margin:12px 0;font-size:13.5px;color:#FFB4A8;line-height:1.5}
+.slug-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px}
+.slug-table th{text-align:left;padding:8px 10px;background:rgba(255,255,255,0.08);color:#fff;font-weight:700;border-radius:6px 6px 0 0}
+.slug-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.06);color:#D8D5DE}
+.slug-table td a{color:#FF6B55;text-decoration:none;font-weight:700}
+.slug-table td a:hover{text-decoration:underline}
+.nav-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:12px 18px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;border:0;cursor:pointer}
+.btn-primary{background:#C93D27;color:#fff}
+.btn-secondary{background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.12)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><span class="brand-dot"></span>photobooth4u</div>
+    <h1>📖 Booth Wi-Fi &amp; Stations Guide</h1>
+    <p class="sub">Operational steps for booth Wi-Fi, scanning, and separate QR stations</p>
+  </header>
+
+  <!-- Section 1 -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-icon">💻</div>
+      <div>
+        <h2 class="card-title">1. Make This Laptop the Booth Wi-Fi</h2>
+        <span class="tag tag-green">Zero Hardware Needed</span>
+      </div>
+    </div>
+    <p>Turns the Windows laptop into its own Wi-Fi hotspot so guest phones can connect directly to download photos without an external router or pocket Wi-Fi.</p>
+    <ul>
+      <li><b>When to use:</b> Venues with no Wi-Fi or cellular service, remote/outdoor gigs, or minimalist single-bag setups.</li>
+      <li><b>When NOT to use:</b> When you need live internet features (Google Drive live sync, online GCash/Maya QR payments) or massive crowd concurrency (50+ simultaneous users; use a router instead).</li>
+      <li><b>How to enable:</b> In Setup &rarr; <b>Step 6: Share &amp; start</b> &rarr; check <code>Make this laptop the booth Wi-Fi (no router needed)</code>.</li>
+      <li><b>One-time setup:</b> If shown, click <code>Set up (one time)</code> and grant Windows Admin permission once to configure the loopback adapter and firewall.</li>
+      <li><b>Keep active:</b> Check <code>Turn it on whenever the app opens</code> to start hosting at launch.</li>
+    </ul>
+  </div>
+
+  <!-- Section 2 -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-icon">📱</div>
+      <div>
+        <h2 class="card-title">2. Before Scanning Guest QR: Golden Rule</h2>
+        <span class="tag tag-red">Crucial Guest Step</span>
+      </div>
+    </div>
+    <div class="callout">
+      ⚠️ <b>Guest phones MUST join the Booth Wi-Fi FIRST before scanning their photo QR code.</b>
+    </div>
+    <p>Because photos are served locally from this laptop (<code>http://192.168.137.1:47777</code>), scanning on mobile data (4G/5G) or venue Wi-Fi will fail with <i>"Site unreachable"</i>.</p>
+    <ol>
+      <li><b>Connect:</b> Have guests scan the printed <b>WIFI QR Sign</b> or join the booth Wi-Fi network.</li>
+      <li><b>Stay Connected:</b> When the phone alerts <i>“Wi-Fi has no internet access. Stay connected?”</i>, guests <b>MUST tap "Keep / Stay Connected"</b>.</li>
+      <li><b>Scan Photo QR:</b> Now the guest scans the QR code on the booth screen to instantly view &amp; save their photos/videos.</li>
+    </ol>
+    <p><i>Operator Tip:</i> Tap the <b>Wi-Fi button</b> in the bottom dock of the booth anytime to pop up the Wi-Fi QR on screen for guests.</p>
+  </div>
+
+  <!-- Section 3 -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-icon">🚀</div>
+      <div>
+        <h2 class="card-title">3. Using a Separate QR Station (Sharing Station)</h2>
+        <span class="tag tag-blue">Eliminates Booth Lines</span>
+      </div>
+    </div>
+    <p>Using a separate iPad or tablet as a Sharing Station lets guests step away to scan and download, immediately freeing the camera booth for the next group.</p>
+    <ul>
+      <li><b>Setup:</b> In Setup &rarr; Step 6, check <code>Show QR on a separate Sharing Station</code>.</li>
+      <li><b>Tablet Connection:</b> Connect the tablet/iPad to the <b>Booth Wi-Fi</b>.</li>
+      <li><b>Pairing:</b> Click <code>Pair Sharing Station</code> in setup, or open <code>/station</code> (or <code>/qr</code>) on the tablet browser.</li>
+      <li><b>Handoff Flow:</b> When a guest session finishes at the booth, the main screen shows <i>"Photos Ready! 👉 Scan at Sharing Station"</i> and resets in 2s. The tablet chimes and auto-pops the photos with download QR!</li>
+    </ul>
+  </div>
+
+  <!-- Section 4 -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-icon">🔗</div>
+      <div>
+        <h2 class="card-title">Quick Booth URL Slugs</h2>
+        <span class="tag tag-green">Direct Shortcuts</span>
+      </div>
+    </div>
+    <table class="slug-table">
+      <thead>
+        <tr><th>URL Slug</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><a href="/wifi"><code>/wifi</code></a>, <code>/join</code></td><td>Guest Wi-Fi connect page with live scannable QR code</td></tr>
+        <tr><td><a href="/station"><code>/station</code></a>, <a href="/qr"><code>/qr</code></a>, <code>/share</code></td><td>Live Sharing Station (auto-pops latest session &amp; QR)</td></tr>
+        <tr><td><a href="/guide"><code>/guide</code></a>, <code>/help</code></td><td>This operational guide &amp; instructions</td></tr>
+        <tr><td><a href="/e"><code>/e</code></a>, <code>/gallery</code></td><td>Active event photo gallery (all prints &amp; videos)</td></tr>
+        <tr><td><a href="/stats"><code>/stats</code></a></td><td>Live session, view, print, and download statistics</td></tr>
+      </tbody>
+    </table>
+    <div class="nav-row">
+      <a class="btn btn-primary" href="/wifi">📶 Open Wi-Fi Connect Page</a>
+      <a class="btn btn-secondary" href="/station">📱 Open Sharing Station</a>
+      <a class="btn btn-secondary" href="/e">🖼️ Open Gallery</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+function handleWifi(req, res, url) {
+  const cors = {};   // no cross-site access: it carries the Wi-Fi password, and the page and its JSON are same-origin
+  if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'GET', 'access-control-allow-headers': 'content-type' });
+  let hs = null;
+  try { hs = hotspotInfo(); } catch { }
+  // The booth's own hotspot when it is running; otherwise the Wi-Fi this laptop is on; otherwise the saved hotspot name.
+  const useHs = !!(hs && hs.on && hs.ssid);
+  const ssid = useHs ? hs.ssid : (externalWifi.ssid || (hs && hs.ssid) || 'photobooth4u');
+  const pass = useHs ? (hs.pass || '') : (externalWifi.ssid ? externalWifi.pass : (hs && hs.pass) || '');
+  if (url.pathname === '/wifi/json' || url.pathname === '/api/wifi') {
+    return send(res, 200, 'application/json; charset=utf-8', JSON.stringify({ ok: true, ssid, pass, on: hs ? hs.on : false, lan: lanAddress() }), { ...cors, 'cache-control': 'no-store' });
+  }
+  return send(res, 200, 'text/html; charset=utf-8', wifiHtml(ssid, pass));
+}
+
+function handleGuide(req, res, url) {
+  const cors = { 'access-control-allow-origin': '*' };
+  if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'GET', 'access-control-allow-headers': 'content-type' });
+  return send(res, 200, 'text/html; charset=utf-8', guideHtml());
+}
+
 let lanHandler = null;
 export function setLanHandler(fn) { lanHandler = fn; }
 
@@ -1496,11 +1783,24 @@ async function handleShare(req, res) {
   if (url.pathname === '/photo' || url.pathname === '/rove/photo') {
     return handleRovePhoto(req, res, url);
   }
+  if (url.pathname === '/wifi' || url.pathname === '/wifi/' || url.pathname === '/join' || url.pathname === '/join/' || url.pathname === '/connect' || url.pathname === '/connect/' || url.pathname === '/wifi/json' || url.pathname === '/api/wifi') {
+    return handleWifi(req, res, url);
+  }
+  if (url.pathname === '/guide' || url.pathname === '/guide/' || url.pathname === '/help' || url.pathname === '/help/' || url.pathname === '/instructions' || url.pathname === '/instructions/') {
+    return handleGuide(req, res, url);
+  }
+  if (url.pathname === '/e' || url.pathname === '/e/' || url.pathname === '/gallery' || url.pathname === '/gallery/' || url.pathname === '/photos' || url.pathname === '/photos/') {
+    const s = resolveSlug();
+    if (s) {
+      res.writeHead(302, { 'location': '/e/' + s + '/', 'cache-control': 'no-store' });
+      return res.end();
+    }
+  }
   const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited|photos|photo|hello)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);
   if (sm) return handleSend(req, res, url, sm);
   const om = /^\/o\/([A-Za-z0-9_-]{16,40})(?:\/(f|print)\/([^/]+))?\/?$/.exec(url.pathname);
   if (om) return handleOwn(req, res, url, om);
-  const stm = /^\/station(?:\/([A-Za-z0-9_-]{6,30}))?(?:\/(list|stats))?\/?$/.exec(url.pathname);
+  const stm = /^\/(?:station|qr|share)(?:\/([A-Za-z0-9_-]{6,30}))?(?:\/(list|stats))?\/?$/.exec(url.pathname);
   if (stm) return handleStation(req, res, url, stm);
   const wlm = /^\/wall(?:\/([A-Za-z0-9_-]{6,30}))?(?:\/(feed|cue))?\/?$/.exec(url.pathname);
   if (wlm) return handleWall(req, res, url, wlm);

@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld('pb4u', {
   hotspot: () => ipcRenderer.invoke('pb4u:hotspot'),
   hotspotSet: (on) => ipcRenderer.invoke('pb4u:hotspotSet', !!on),
   hotspotAuto: (on) => ipcRenderer.invoke('pb4u:hotspotAuto', !!on),
+  // Option 1: notify the app that a photo session has begun (wakes hotspot from idle if needed).
+  hotspotWake: () => ipcRenderer.invoke('pb4u:hotspotWake'),
+  // The app calls fn(info) whenever the hotspot changes (on, off, locked), so the page doesn't have to poll.
+  onHotspot: (fn) => { ipcRenderer.on('pb4u:hotspotChanged', (e, info) => { try { fn(info); } catch (err) { /* ignore */ } }); },
   // Saves the operator's own booth Wi-Fi name and password (Windows): { ok, error, info }
   hotspotCreds: (ssid, pass) => ipcRenderer.invoke('pb4u:hotspotCreds', String(ssid || ''), String(pass || '')),
   hotspotSetup: () => ipcRenderer.invoke('pb4u:hotspotSetup'),

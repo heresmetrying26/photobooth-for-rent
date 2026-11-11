@@ -6,7 +6,7 @@
 // saved in Pictures/photobooth4u and guests get them by QR over the booth Wi-Fi.
 // The internet is only needed to activate (or paste an offline key) and, for a
 // lifetime code, once every few weeks to renew the licence.
-import { app, BrowserWindow, protocol, session, ipcMain, shell, dialog, Menu, net, nativeImage, powerSaveBlocker, screen, clipboard } from 'electron';
+import { app, BrowserWindow, protocol, session, ipcMain, shell, dialog, Menu, net, nativeImage, powerSaveBlocker, powerMonitor, screen, clipboard } from 'electron';
 import { readFileSync, existsSync, statSync, createReadStream, writeFileSync, appendFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, dirname, normalize, extname, sep, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,7 +21,7 @@ import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import { makeShrinkPage } from './lib/pageshrink.mjs';
 import * as SPIN from './lib/spin.mjs';
 import { detectWifi } from './lib/wifi.mjs';
-import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetup, hotspotSetCreds } from './lib/hotspot.mjs';
+import { initHotspot, hotspotInfo, hotspotStart, hotspotStop, hotspotStopOnQuit, hotspotSetAuto, hotspotSetup, hotspotSetCreds, hotspotWake, hotspotSuspend, hotspotResume } from './lib/hotspot.mjs';
 import { freeCamera, guardCamera, stopGuardCamera } from './lib/camfree.mjs';
 import { scanUsb } from './lib/usbscan.mjs';
 import * as U from './lib/updater.mjs';
@@ -33,11 +33,33 @@ const ORIGIN = 'app://booth';
 const VERSION = app.getVersion();
 const KEY_A = 'pb4u·desk·7f3c1e9a';
 
-// Hardware acceleration & GPU streaming flags for smooth zero-lag camera preview and capture
-app.commandLine.appendSwitch('ignore-gpu-blocklist');
-app.commandLine.appendSwitch('enable-gpu-rasterization');
-app.commandLine.appendSwitch('enable-zero-copy');
-app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecoder,CanvasOopRasterization');
+// Graphics. Chromium keeps its own list of graphics drivers that crash or glitch and switches the risky features
+// off for them, so the app no longer overrides that list (ignore-gpu-blocklist) or forces zero-copy: an old laptop
+// with a bad driver draws a little slower instead of crashing, and good laptops keep full acceleration.
+// (Also gone: VaapiVideoDecoder, which is Linux-only, and CanvasOopRasterization, which hangs old Intel HD drivers.)
+// Safe graphics: when the graphics process crashes twice within a week, that is remembered in graphics.json (next
+// to settings.json) and the app starts with acceleration off on this laptop for 30 days, then tries again (a driver
+// update may have fixed it). Deleting graphics.json turns acceleration back on at once.
+const gfxFile = () => join(app.getPath('userData'), 'graphics.json');
+const DAY = 24 * 60 * 60 * 1000;
+let gfx = {};
+try { gfx = JSON.parse(readFileSync(gfxFile(), 'utf8')) || {}; } catch { gfx = {}; }
+const SAFE_GFX = !!gfx.safeAt && Date.now() - gfx.safeAt < 30 * DAY;
+if (SAFE_GFX) { app.disableHardwareAcceleration(); console.log('[graphics] safe graphics: acceleration is off on this laptop'); }
+else app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.on('child-process-gone', (e, d) => {
+  if (!d || d.type !== 'GPU' || d.reason === 'clean-exit' || d.reason === 'killed') return;
+  console.log('[graphics] the graphics process stopped: ' + d.reason);
+  if (SAFE_GFX) return;
+  try {
+    const now = Date.now();
+    gfx.crashes = (Array.isArray(gfx.crashes) ? gfx.crashes : []).filter((t) => now - t < 7 * DAY).concat(now);
+    if (gfx.crashes.length >= 2) { gfx.safeAt = now; gfx.crashes = []; console.log('[graphics] crashed twice: safe graphics from the next start'); }
+    writeFileSync(gfxFile(), JSON.stringify(gfx));
+  } catch { /* ignore */ }
+});
+app.commandLine.appendSwitch('force-color-profile', 'srgb');
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
 
@@ -121,6 +143,7 @@ async function handle(req) {
     if (p === '/local/drive' && req.method === 'POST') {
       if (!L.status().ok) return jsonRes({ ok: false, error: 'This laptop’s licence isn’t active.' }, 401);
       const body = JSON.parse(await req.text());
+      hotspotWake();   // Option 1: photo saved = session active, wake hotspot if idle
       return jsonRes(await driveRequest(body));
     }
     if (p.startsWith('/helper/') || p === '/helper') return await handleHelper(req, p.slice(7) || '/', url.searchParams);
@@ -229,6 +252,7 @@ function wireIpc() {
   ipcMain.handle('pb4u:wifi', (e, force) => detectWifi(!!force));
   // The booth's own Wi-Fi (Windows' Mobile hotspot, see lib/hotspot.mjs)
   ipcMain.handle('pb4u:hotspot', () => hotspotInfo());
+  ipcMain.handle('pb4u:hotspotWake', () => { hotspotWake(); return hotspotInfo(); });   // Option 1: UI signals session start
   ipcMain.handle('pb4u:hotspotSet', (e, on) => (on ? hotspotStart() : hotspotStop()));
   ipcMain.handle('pb4u:hotspotAuto', (e, on) => hotspotSetAuto(!!on));
   ipcMain.handle('pb4u:hotspotCreds', (e, ssid, pass) => hotspotSetCreds(String(ssid || ''), String(pass || '')));
@@ -484,7 +508,15 @@ app.whenReady().then(async () => {
     setGuestView
   }));
   await startShareServer();
-  initHotspot({ get: () => (settings.hotspot = settings.hotspot || {}), save: saveSettings, logger: (m) => console.log('[hotspot] ' + m) });
+  initHotspot({
+    get: () => (settings.hotspot = settings.hotspot || {}), save: saveSettings, logger: (m) => console.log('[hotspot] ' + m),
+    dir: app.getPath('userData'),   // where the "hotspot is starting" crash marker lives
+    // The page hears about every change (on, off, locked), so its Join QR stays right without polling.
+    onChange: (i) => { if (win && !win.isDestroyed()) win.webContents.send('pb4u:hotspotChanged', i); }
+  });
+  // Never sleep with the hotspot running (a common cause of Wi-Fi driver crashes on wake); it comes back after wake.
+  powerMonitor.on('suspend', () => { try { hotspotSuspend(); } catch { /* ignore */ } });
+  powerMonitor.on('resume', () => { try { hotspotResume(); } catch { /* ignore */ } });
   protocol.handle('app', handle);
   setupSession();
   buildMenu();

@@ -17808,6 +17808,10 @@
         if (toSession && typeof applyStageAspect === 'function') requestAnimationFrame(function () { applyStageAspect(); });
         try { refreshPrintFab(); refreshPanelSolo(); } catch (e) { }
         try { placeTimeChip(); scheduleDock(); } catch (e) { }
+        if (toSession) {
+          // Option 1: tell the app a session is starting so it can wake the hotspot if idle.
+          try { if (window.pb4u && window.pb4u.hotspotWake) window.pb4u.hotspotWake(); } catch (e) { }
+        }
       }
       tabBtnSetup.addEventListener('click', () => switchTab('setup'));
       tabBtnSession.addEventListener('click', () => switchTab('session'));
@@ -48721,7 +48725,11 @@
           wBtn.style.display = '';
           wBtn.addEventListener('click', function () { detectWifi(true); });
           detectWifi(false);
-          setInterval(function () { detectWifi(false); }, 6000);
+          setInterval(function () {
+            if (document.body.classList.contains('in-session')) return;
+            if (typeof curStep !== 'undefined' && curStep !== 6) return;
+            detectWifi(false);
+          }, 10000);
         }
         // Windows: this laptop makes the booth Wi-Fi itself (Mobile hotspot), so no router or phone hotspot is needed.
         // While it is on, its name and password fill the Join QR; the fields can't be edited then.
@@ -48735,11 +48743,20 @@
             after: function (info) { render(info); }
           }) : null;
           function render(i) {
-            if (!i || !i.supported) { box.style.display = 'none'; return; }
+            if (!i || (!i.supported && !i.driverUnsupported)) { box.style.display = 'none'; return; }
             var wasLocked = !!hs.locked;
             hs = i;
             i.locked = !!(i.on && !i.external);   // the app knows the real name and password
             box.style.display = '';
+            if (i.driverUnsupported) {
+              on.checked = false;
+              on.disabled = true;
+              auto.disabled = true;
+              setupRow.style.display = 'none';
+              hint.className = 'panel-hint bad';
+              hint.textContent = i.error || 'This laptop\u2019s Wi-Fi adapter can\u2019t host a hotspot. Connect the laptop to a pocket Wi-Fi router or a phone hotspot instead.';
+              return;
+            }
             on.checked = !!(i.on || (i.wanted && i.busy));
             on.disabled = !!i.busy;
             auto.checked = !!i.auto;
@@ -48784,7 +48801,14 @@
             }).catch(function () { setupBtn.disabled = false; setupBtn.textContent = 'Set up (one time)'; });
           });
           refresh();
-          setInterval(refresh, 5000);
+          // The app tells the page when the hotspot changes (started, woken, dropped, locked), also during a
+          // session or on another step, so the Join QR always has the right name and password.
+          if (api.onHotspot) api.onHotspot(function (i) { try { render(i); } catch (e) { } });
+          setInterval(function () {
+            if (document.body.classList.contains('in-session')) return;
+            if (typeof curStep !== 'undefined' && curStep !== 6) return;
+            refresh();
+          }, 8000);
         })();
         document.getElementById('deskCheckBtn').addEventListener('click', function () {
           var b = this; b.disabled = true; b.textContent = 'Checking\u2026';

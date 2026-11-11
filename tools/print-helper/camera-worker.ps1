@@ -598,7 +598,21 @@ namespace Pb4uCam
 
         static int Battery()
         {
-            if (canon || sony || !props.Contains(0x5001)) return -1;   // Sony reports battery in steps, not percent
+            if (canon)
+            {
+                // EOS battery arrives as property 0xD111 in the event stream: quarter steps (1=Low 6=25% 2=50% 5=75% 3=100%) on most bodies, a percent on some.
+                try { if (!pollSw.IsRunning || pollSw.ElapsedMilliseconds > 2000) CanonPoll(); } catch (GoneException) { throw; } catch { }
+                uint v;
+                if (!eosVals.TryGetValue(0xD111, out v)) return -1;
+                if (v == 1) return 10;
+                if (v == 6) return 25;
+                if (v == 2) return 50;
+                if (v == 5) return 75;
+                if (v == 3) return 100;
+                if (v >= 7 && v <= 100) return (int)v;
+                return -1;
+            }
+            if (sony || !props.Contains(0x5001)) return -1;   // Sony reports battery in steps, not percent
             try { byte[] b; uint r = ptp.OpRead(0x1015, out b, 0x5001); return r == Ptp.OK && b.Length > 0 ? b[0] : -1; }
             catch (GoneException) { throw; }
             catch { return -1; }

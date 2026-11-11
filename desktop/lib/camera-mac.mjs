@@ -87,6 +87,16 @@ async function poll() {
   }
 }
 
+// EOS battery arrives as property 0xD111 in the event stream: quarter steps (1=Low 6=25% 2=50% 5=75% 3=100%) on most bodies, a percent on some.
+async function canonBattery() {
+  try { if (Date.now() - s.pollAt > 2000) await poll(); } catch (e) { if (e instanceof GoneError) throw e; }
+  const v = s.eosVals.get(0xD111);
+  if (v === undefined) return -1;
+  const map = { 1: 10, 6: 25, 2: 50, 5: 75, 3: 100 };
+  if (map[v] !== undefined) return map[v];
+  return v >= 7 && v <= 100 ? v : -1;
+}
+
 async function readInfo() {
   const { resp, data } = await s.ptp.opRead(0x1001);
   if (resp !== OK || !data.length) return false;
@@ -335,6 +345,7 @@ async function open(recover) {
         s.name = 'Canon ' + s.model.replace(/Canon/i, '').trim();
         log('Opened ' + s.name);
         await prepare();
+        s.battery = await canonBattery();
       } else {
         s.name = entry.vendor === SONY ? sonyName(s.model) : 'Nikon ' + s.model.replace(/nikon/gi, '').trim();
         log('Opened ' + s.name);
@@ -384,7 +395,7 @@ export async function call(cmd, arg) {
     if (cmd === 'open') return reply('OK', 'J', await open(arg === 'recover'));
     if (!s.ptp) throw new GoneError('NOCAMERA The camera isn’t connected.');
     if (cmd === 'info') return reply('OK', 'J', infoJson());
-    if (cmd === 'battery') { if (s.drv) s.battery = await s.drv.battery(); return reply('OK', 'J', JSON.stringify({ battery: s.battery })); }
+    if (cmd === 'battery') { if (s.drv) s.battery = await s.drv.battery(); else if (s.brand === 'canon') s.battery = await canonBattery(); return reply('OK', 'J', JSON.stringify({ battery: s.battery })); }
     if (cmd === 'af') {
       if (s.drv && typeof s.drv.af === 'function') await s.drv.af();
       else if (s.brand === 'canon') {

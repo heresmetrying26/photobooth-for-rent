@@ -666,7 +666,16 @@ class UsbCameraHelper(private val ctx: Context) {
         .put("vendor", vendor).put("liveview", live).put("battery", batteryNow()).put("note", setupNote).put("diag", diag)
 
     private fun batteryNow(): Int {
-        if (canon || sony || !props.contains(0x5001)) return -1    // Sony reports battery in steps, not percent
+        if (canon) {
+            // EOS battery arrives as property 0xD111 in the event stream: quarter steps (1=Low 6=25% 2=50% 5=75% 3=100%) on most bodies, a percent on some.
+            try { if (pollAt < 0 || now() - pollAt > 2000) canonPoll() } catch (e: CamErr) { throw e } catch (_: Exception) { }
+            return when (val v = (eosVals[0xD111] ?: -1L).toInt()) {
+                1 -> 10; 6 -> 25; 2 -> 50; 5 -> 75; 3 -> 100
+                in 7..100 -> v
+                else -> -1
+            }
+        }
+        if (sony || !props.contains(0x5001)) return -1    // Sony reports battery in steps, not percent
         return try {
             val r = opRead(0x1015, 0x5001)
             val d = r.data

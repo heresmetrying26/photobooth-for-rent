@@ -22736,6 +22736,12 @@
         if (afBtn) {
           afBtn.addEventListener('click', async function () {
             if (afBtn.disabled) return;
+            // Sony has no separate focus command over USB: it half-presses (and focuses) by itself at every shot.
+            var afBrand = (usbCam.camera && usbCam.camera.info && usbCam.camera.info.brand) || '';
+            if (afBrand === 'sony' || (!afBrand && /sony/i.test(usbCam.name || ''))) {
+              showToast('Sony cameras focus by themselves at each shot — use Take Test Shot to check sharpness.', 6000);
+              return;
+            }
             afBtn.disabled = true;
             const orig = afBtn.textContent;
             afBtn.textContent = 'Focusing lens…';
@@ -22820,7 +22826,7 @@
       }
 
       // ---- USB camera battery: checked every 3 minutes while it's in use ----
-      // Shown under the Camera menu; a warning pops up below 25% (or "Low"),
+      // Shown under the Camera menu; a warning pops up at 25% or less (or "Low"),
       // repeated every 10 minutes, so the battery is swapped before it dies.
       const USB_BATT_LOW = 25;
       let usbBattTimer = null, usbBattWarnedAt = 0;
@@ -22841,7 +22847,7 @@
           if (!v) return;
           const m = /(\d+)\s*%/.exec(v);
           const pct = m ? Number(m[1]) : null;
-          const low = pct !== null ? pct < USB_BATT_LOW : /low|empty|exhaust/i.test(v);
+          const low = pct !== null ? pct <= USB_BATT_LOW : /low|empty|exhaust/i.test(v);   // Canon quarter steps report exactly 25%
           usbCamNote('Camera battery: ' + v + (low ? ' — swap it or plug in mains power soon.' : ''), low);
           if (low && Date.now() - usbBattWarnedAt > 10 * 60 * 1000) {
             usbBattWarnedAt = Date.now();

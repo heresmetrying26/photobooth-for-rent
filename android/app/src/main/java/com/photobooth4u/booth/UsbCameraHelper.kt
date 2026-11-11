@@ -261,6 +261,7 @@ class UsbCameraHelper(private val ctx: Context) {
                 if (f == null) reply(out, 204, "image/jpeg", ByteArray(0)) else reply(out, 200, "image/jpeg", f)
             }
             method == "POST" && path == "/camera/capture" -> reply(out, 200, "image/jpeg", capture())
+            method == "POST" && path == "/camera/af" -> json(out, autoFocus())
             method == "GET" && path == "/camera/battery" -> json(out, JSONObject().put("battery", battery()))
             method == "POST" && path == "/camera/close" -> { synchronized(lock) { closeCamera() }; json(out, JSONObject()) }
             method == "POST" && path == "/camera/free" -> json(out, JSONObject())
@@ -715,6 +716,27 @@ class UsbCameraHelper(private val ctx: Context) {
 
     private fun battery(): Int = synchronized(lock) { needCamera(); batteryNow() }
 
+    private fun autoFocus(): JSONObject = synchronized(lock) {
+        needCamera()
+        var afOk = true
+        if (nikon) {
+            if (!live) setLive(true)
+            val afR = op(0x90C1)
+            val t0 = now()
+            while (now() - t0 < 1400) {
+                Thread.sleep(80)
+                try { nikonEvents() } catch (_: Exception) { }
+            }
+            afOk = (afR == OK)
+        } else if (canon) {
+            val afR = opRetry(0x9128, 1, 0)
+            Thread.sleep(800)
+            try { opRetry(0x9129, 1) } catch (_: Exception) { }
+            afOk = (afR == OK)
+        }
+        JSONObject().put("ok", afOk)
+    }
+
     // ================================================================ Nikon
 
     private fun waitReady(ms: Int): Boolean {
@@ -888,7 +910,13 @@ class UsbCameraHelper(private val ctx: Context) {
         var r: Int
         // Focus first while in live view (contrast AF); a miss is fine, the shot decides.
         if (live && has(0x90C1)) {
-            try { r = op(0x90C1); if (r == OK) waitReady(3000) } catch (e: CamErr) { throw e } catch (_: Exception) { }
+            try {
+                r = op(0x90C1)
+                if (r == OK) {
+                    Thread.sleep(1200)
+                    waitReady(2000)
+                }
+            } catch (e: CamErr) { throw e } catch (_: Exception) { }
         }
         try { nikonEvents() } catch (e: CamErr) { throw e } catch (_: Exception) { }      // drain old events
         r = if (has(0x90C0)) op(0x90C0, ALL_ONES) else op(0x100E, 0, 0)              // InitiateCaptureRecInSdram / InitiateCapture

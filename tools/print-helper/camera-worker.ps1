@@ -767,7 +767,16 @@ namespace Pb4uCam
             // Focus first while in live view (contrast AF); a miss is fine, the shot decides.
             if (live && Has(0x90C1))
             {
-                try { r = ptp.Op(0x90C1); if (r == Ptp.OK) WaitReady(3000); } catch (GoneException) { throw; } catch { }
+                try
+                {
+                    r = ptp.Op(0x90C1);
+                    if (r == Ptp.OK)
+                    {
+                        var afSw = Stopwatch.StartNew();
+                        while (afSw.ElapsedMilliseconds < 1200) { Thread.Sleep(80); DrainEvents(); }
+                    }
+                }
+                catch (GoneException) { throw; } catch { }
             }
             DrainEvents();
             if (Has(0x90C0)) r = ptp.Op(0x90C0, 0xFFFFFFFF);    // InitiateCaptureRecInSdram
@@ -1500,6 +1509,28 @@ namespace Pb4uCam
                         case "open": recoverNext = arg == "recover"; kind = "J"; body = Encoding.UTF8.GetBytes(Open()); break;
                         case "info": Need(); kind = "J"; body = Encoding.UTF8.GetBytes(InfoJson()); break;
                         case "battery": Need(); kind = "J"; body = Encoding.UTF8.GetBytes("{\"battery\":" + Battery() + "}"); break;
+                        case "af":
+                            Need();
+                            if (nikon)
+                            {
+                                if (!live) StartLive();
+                                uint afR = ptp.Op(0x90C1);
+                                var afSw = Stopwatch.StartNew();
+                                while (afSw.ElapsedMilliseconds < 1400) { Thread.Sleep(80); DrainEvents(); }
+                                kind = "J"; body = Encoding.UTF8.GetBytes("{\"ok\":" + (afR == Ptp.OK ? "true" : "false") + "}");
+                            }
+                            else if (canon)
+                            {
+                                uint afR = OpRetry(0x9128, 1, 0);
+                                Thread.Sleep(800);
+                                try { OpRetry(0x9129, 1); } catch { }
+                                kind = "J"; body = Encoding.UTF8.GetBytes("{\"ok\":" + (afR == Ptp.OK ? "true" : "false") + "}");
+                            }
+                            else
+                            {
+                                kind = "J"; body = Encoding.UTF8.GetBytes("{\"ok\":true}");
+                            }
+                            break;
                         case "live":
                             Need();
                             if (arg == "off") { if (canon) CanonLiveOff(); else if (sony) live = false; else StopLive(); }

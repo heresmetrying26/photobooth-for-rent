@@ -13285,10 +13285,11 @@
       // Automatic with a seam every 4mm (lines on a Vozy G80), so 80mm printers always get Automatic for it, an older
       // saved choice included, and the Speed list hides it on 80mm.
       function btPacing(paperDots, speed) {
-        if (speed === 'fast') return { chunk: 512, delay: 2, band: 256 };
         if (paperDots <= 384) {
+          if (speed === 'fast') return { chunk: 128, delay: 4, band: 64 };
           return speed === 'safe' ? { chunk: 48, delay: 8, band: 32 } : { chunk: 96, delay: 8, band: 64 };
         }
+        if (speed === 'fast') return { chunk: 512, delay: 2, band: 256 };
         return { chunk: 512, delay: 6, band: 256 };
       }
 
@@ -13315,7 +13316,7 @@
       // Bluetooth: how each tune choice is sent.
       function btTunePacing(paperDots, level) {
         var p = paperDots <= 384
-          ? [null, { chunk: 48, delay: 8, band: 32 }, { chunk: 96, delay: 8, band: 64 }, { chunk: 192, delay: 8, band: 192 }, { chunk: 192, delay: 8, band: 192 }]
+          ? [null, { chunk: 48, delay: 8, band: 32 }, { chunk: 96, delay: 8, band: 64 }, { chunk: 128, delay: 8, band: 64 }, { chunk: 128, delay: 8, band: 64 }]
           : [null, { chunk: 288, delay: 8, band: 128 }, { chunk: 512, delay: 6, band: 256 }, { chunk: 1024, delay: 6, band: 1024 }, { chunk: 1024, delay: 6, band: 1024 }];
         var r = p[level] || p[2];
         return { chunk: r.chunk, delay: r.delay, band: r.band, slow: level === 4 };
@@ -13346,12 +13347,13 @@
         ctx.drawImage(src, 0, 0, dotW, dotH);
         var id = ctx.getImageData(0, 0, dotW, dotH), d = id.data;
         // brightness: -100 (darker) to +100 (lighter) offset for thermal dithering
-        var bOffset = (typeof brightness === 'number') ? brightness * 1.28 : ((typeof window !== 'undefined' && window._colorAdj && window._colorAdj.brightness) ? window._colorAdj.brightness * 1.28 : ((typeof colorAdj !== 'undefined' && colorAdj && colorAdj.brightness) ? colorAdj.brightness * 1.28 : 0));
+        var bOffset = (typeof brightness === 'number' && brightness !== 0) ? brightness * 1.28 : ((typeof window !== 'undefined' && window._colorAdj && typeof window._colorAdj.brightness === 'number' && window._colorAdj.brightness !== 0) ? window._colorAdj.brightness * 1.28 : ((typeof colorAdj !== 'undefined' && colorAdj && typeof colorAdj.brightness === 'number' && colorAdj.brightness !== 0) ? colorAdj.brightness * 1.28 : 0));
         var n = dotW * dotH, lum = new Float32Array(n), x, y, i;
         for (i = 0; i < n; i++) lum[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
         // A black & white receipt layout has already given its photos their tone (lift + contrast, and Lightness): lifting the
         // mid-tones again here washed faces out and turned light backgrounds and stickers white.
-        var lift = src && src._pbToneDone ? 1 : 0.8;
+        // On 58mm mobile printers (384 dots), thermal heads heat rapidly with high dot-gain; lift mid-tones slightly more so photos don't bleed dark.
+        var lift = src && src._pbToneDone ? 1 : (dotW <= 384 ? 0.74 : 0.8);
         if (q === 'best') {
           // A light sharpen (so faces and text stay crisp) and a gentle lift of the mid-tones (thermal dots print bigger than they are).
           var blur = new Float32Array(n);
@@ -14537,6 +14539,50 @@
           </label>
           <p class="panel-hint" id="mirrorHint">On: guests see themselves like in a mirror. Saved and printed photos
             match the preview.</p>
+          <div id="camSaveRow" style="display:none; margin-top:10px;">
+            <label class="switch-row">
+              <span>Save camera battery (live view only when needed)</span>
+              <input type="checkbox" id="camSaveToggle" checked>
+            </label>
+            <p class="panel-hint" id="camSaveHint">Live view keeps the camera's mirror up and sensor running, which drains the battery and heats the camera.
+              On: it runs only during a guest's session and on this Camera step, and switches off on the welcome screen (back in about a second
+              when a guest taps Start). The preview here pauses after 2 minutes without a touch; touch the screen to resume. Off: always on.</p>
+            <p class="panel-hint" id="camSaveState" style="font-weight:600;"></p>
+          </div>
+          <div id="usbCamFocusBox" style="display:none; margin-top:14px; padding:12px 14px; border-radius:12px; background:#fff; border:1px solid var(--line);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+              <b style="font-size:13.5px; color:var(--ink);">🎯 Focus Setup &amp; Test Shot</b>
+              <span class="pill ok" style="font-size:11px;">dslrBooth style</span>
+            </div>
+            <p class="panel-hint" style="margin:0 0 10px; font-size:12px; line-height:1.5;">
+              <b>1.</b> Set lens switch to <b>AF</b> (Auto Focus).<br>
+              <b>2.</b> Have someone stand in position, then tap <b>Auto-Focus Lens</b> or <b>Take Test Shot</b>.<br>
+              <b>3.</b> Once sharp, switch lens switch to <b>MF</b> (Manual Focus) so every event shot fires instantly with zero delay!
+            </p>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" class="action-btn" id="usbCamAfBtn" style="flex:1; min-width:130px; margin:0; padding:8px 12px; font-size:13px; font-weight:700;">🔍 Auto-Focus Lens</button>
+              <button type="button" class="action-btn" id="usbCamTestShotBtn" style="flex:1; min-width:130px; margin:0; padding:8px 12px; font-size:13px; font-weight:700; background:var(--ink); color:#fff;">📸 Take Test Shot</button>
+            </div>
+            <div id="usbTestShotBox" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:12px; font-weight:700; color:var(--ink);" id="usbTestShotTitle">Test Shot Result</span>
+                <button type="button" class="action-btn" id="usbTestShotClose" style="width:auto; margin:0; padding:2px 8px; font-size:11px; background:none; border:none; color:var(--ink-dim); cursor:pointer;">✕ Close</button>
+              </div>
+              <img id="usbTestShotImg" alt="Test shot preview" style="width:100%; max-height:260px; object-fit:contain; border-radius:8px; background:#111; display:block;">
+              <p class="panel-hint" id="usbTestShotMeta" style="margin:4px 0 0; font-size:11.5px;"></p>
+            </div>
+            <details style="margin-top:10px; font-size:12px; color:var(--ink-dim); background:#f8f9fa; border-radius:8px; padding:8px 10px; border:1px solid var(--line);">
+              <summary style="font-weight:700; cursor:pointer; color:var(--ink);">🔋 Camera Battery &amp; Heat Tips (Nikon D5300 &amp; DSLRs)</summary>
+              <ul style="margin:6px 0 2px 18px; padding:0; line-height:1.6;">
+                <li><b>Lens VR switch: OFF</b> — Turn off Vibration Reduction on the lens. VR stabilization gyros run constantly during Live View on a tripod and drain ~30% more battery.</li>
+                <li><b>Lens Focus switch: MF</b> — Once focused using the button above, set the lens to MF so focus motors never hunt or draw power.</li>
+                <li><b>Fold Screen Inward</b> — Flip the D5300's swivel screen facing the camera body to completely shut off the rear LCD panel and backlight.</li>
+                <li><b>In Camera Menu:</b> Turn <i>Image review</i> to <b>OFF</b>, and turn <i>Wi-Fi</i> and <i>Location data (GPS)</i> to <b>OFF</b>.</li>
+                <li><b>Custom Setting c2:</b> Set <i>Auto off timers</i> to <b>Short</b> (6s standby) so the exposure meter sleeps immediately between sessions.</li>
+                <li><b>Mode Dial: M (Manual)</b> — Set shutter to 1/125s, f/8, ISO 200/400 (with flash/strobe) so the camera doesn't compute auto-exposure continuously.</li>
+              </ul>
+            </details>
+          </div>
           <div id="androidRoveBridgeBox" style="display:none; margin-top:14px; padding:12px 14px; border-radius:12px; background:#eaf7ef; border:1px solid #2ea66b40;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
               <div>
@@ -15207,7 +15253,12 @@
               <span class="lbl">Booth screen after photos</span>
               <select class="mini-select pillify" id="shareStationHandoffSelect">
                 <option value="handoff2" selected>Show 2s note & arrow 👉</option>
+                <option value="photo2">Show photo 2s</option>
                 <option value="photo3">Show photo 3s</option>
+                <option value="photo5">Show photo 5s</option>
+                <option value="photo7">Show photo 7s</option>
+                <option value="photo10">Show photo 10s</option>
+                <option value="photo15">Show photo 15s</option>
                 <option value="immediate">Return to Start immediately</option>
               </select>
             </div>
@@ -21995,6 +22046,9 @@
           if (r.status === 204) throw new Error('no live view frame yet');
           return await r.blob();
         }
+        async autoFocus() {
+          await this.req('/camera/af', { method: 'POST' }, 20000);
+        }
         async captureImageAsFile() {
           const r = await this.req('/camera/capture', { method: 'POST' }, 50000);
           return new File([await r.blob()], 'photo.jpg', { type: 'image/jpeg' });
@@ -22398,8 +22452,11 @@
           // While the camera takes and sends a photo, don't queue live view requests behind it: they would wait out the whole
           // photo and could time out ("Camera disconnected" between shots even though the photo was saved).
           if (usbCam.shooting && usbCam.viaHelper) { await new Promise(r => setTimeout(r, 100)); continue; }
+          if (usbCam.sleeping) { await new Promise(r => setTimeout(r, 300)); usbCam.lastFrameAt = Date.now(); continue; }   // live view is off on purpose (battery saver)
           try {
+            const frameT0 = performance.now();
             const blob = await usbCam.camera.capturePreviewAsBlob();
+            if (usbCam.sleeping) continue;   // live view was switched off while this picture was on its way
             const bmp = await createImageBitmap(blob);
             if (usbCam.gen !== gen) { bmp.close(); return; }
             if (usbCam.canvas.width !== bmp.width || usbCam.canvas.height !== bmp.height) {
@@ -22412,10 +22469,11 @@
             if (usbCam.shotAt) { usbLog('live-back', { afterShotMs: usbCam.frameAt - usbCam.shotAt, camera: usbCam.name }); usbCam.shotAt = 0; }
             usbCam.kicked = false;
             if (usbCam.stallShown) { usbCam.stallShown = false; cameraError.style.display = 'none'; usbLog('stall-over', { camera: usbCam.name }); }
-            await new Promise(r => setTimeout(r, 30));
+            await new Promise(r => setTimeout(r, usbCam.viaHelper ? Math.max(10, 55 - (performance.now() - frameT0)) : 45));
           } catch (err) {
             // This loop was stopped meanwhile (the camera was replaced or reported lost): not a new failure.
             if (usbCam.gen !== gen || !usbCam.active) return;
+            if (usbCam.sleeping) { fails = 0; continue; }   // live view was switched off on purpose: not a failure
             usbCam.lastErr = err;
             // A request that merely timed out while a photo was being taken or just after it (the camera is busy saving) is not a lost camera.
             const busyTimeout = usbCam.viaHelper && err && err.code === 'TIMEOUT' && (usbCam.shooting || Date.now() < usbCam.graceUntil);
@@ -22450,6 +22508,7 @@
       // Not while a photo is being taken (live view legitimately pauses then) or while the page is in the background.
       setInterval(function () {
         if (!usbCam.active || !usbCam.camera || !usbCam.hasFrame || usbCam.shooting) return;
+        if (usbCam.sleeping) { usbCam.lastFrameAt = Date.now(); return; }
         if (document.hidden) { usbCam.lastFrameAt = Date.now(); return; }
         // Right after a photo the camera takes a few seconds to bring live view back: not a stall, so no "Reconnecting".
         if (Date.now() < usbCam.graceUntil) {
@@ -22475,6 +22534,192 @@
           cameraError.style.display = 'flex';
         }
       }, 500);
+      // ---- USB camera battery saver ----
+      // Live view keeps the camera's mirror up and its sensor running: that is what drains the battery and heats the body
+      // (a Nikon D5300 hot and nearly empty within 20 minutes of idling on the welcome screen). So live view is only ON while
+      // someone needs the picture: a guest's session (from the tap on the welcome screen to the last photo), the Camera step in
+      // Setup, or a welcome screen that itself shows the camera (Live camera style / wave or smile to start). Everywhere else it
+      // is switched off after a short pause and comes back in about a second when needed. Turn it off in Setup > Camera.
+      const USB_IDLE_SLEEP_MS = 10000;      // not needed for this long: switch live view off
+      const USB_SAVE_KEY = 'pb_cam_save';
+      function usbSaveOn() { try { return localStorage.getItem(USB_SAVE_KEY) !== 'off'; } catch (e) { return true; } }
+      let usbWantAt = Date.now(), usbPowerBusy = false, usbKeepAt = 0, usbTouchAt = Date.now();
+      const USB_SETUP_LIVE_MS = 2 * 60 * 1000;    // Setup > Camera step: the preview pauses after this long without a touch (touch anything to resume)
+      const USB_SCREEN_LIVE_MS = 5 * 60 * 1000;   // a welcome screen that shows the camera: same, after this long without a touch
+      ['pointerdown', 'touchstart', 'keydown', 'wheel'].forEach(function (ev) {
+        document.addEventListener(ev, function () { usbTouchAt = Date.now(); }, true);
+      });
+      usbCam.sleeping = false; usbCam.shotsDone = false; usbCam.waking = null;
+      function usbSetupStep() { const t = document.querySelector('#stepBar .step-tab.on'); return t && t.dataset ? String(t.dataset.step) : ''; }
+      function usbWantLive() {
+        if (!usbSaveOn()) return true;
+        if (usbCam.shooting) return true;
+        if (state === 'capturing') return !usbCam.shotsDone;
+        if (document.hidden) return false;                                     // minimised / screen off: nobody is looking                 // get ready, countdown, between photos (not the review / stickers after the last one)
+        if (!tabSetup.classList.contains('hidden')) {                          // Setup: only the Camera step shows the picture
+          const st = usbSetupStep();
+          return (st === '4' || (st === '7' && fx.hands !== 'off')) && Date.now() - usbTouchAt < USB_SETUP_LIVE_MS;
+        }
+        if (state === 'result') return false;                                  // QR, print, share: the guest is done
+        if (pickOpen || (typeof btPickOpen !== 'undefined' && btPickOpen)) return false; // keep camera asleep while choosing layout/template
+        if (flowBusy) return true;                                             // countdown and shooting session
+        if (!welcomeOn) return Date.now() - usbTouchAt < USB_SCREEN_LIVE_MS;     // no welcome screen: the camera is the screen (while someone is around)
+        if (attractMode === 'camera') return Date.now() - usbTouchAt < USB_SCREEN_LIVE_MS;   // the welcome screen shows the live camera (while someone is around)
+        if (fx.hands !== 'off') return true;                                   // wave / smile to start needs the picture
+        return false;
+      }
+      async function usbLiveSleep() {
+        if (usbCam.sleeping || usbCam.shooting || usbPowerBusy) return;
+        usbPowerBusy = true;
+        try {
+          usbCam.sleeping = true;
+          // Blank the picture: the next guest must not see the last one, and the stream stops changing.
+          try { usbCam.ctx.fillStyle = '#000'; usbCam.ctx.fillRect(0, 0, usbCam.canvas.width, usbCam.canvas.height); } catch (e) { }
+          try { video.pause(); } catch (e) { }
+          usbLog('live-sleep', { camera: usbCam.name });
+          try { await usbCam.camera.setConfigValue('viewfinder', 0); }
+          catch (e) { if (usbIsCritical(e)) throw e; }
+          usbCam.vfOn = false;
+        } catch (e) {
+          usbCam.sleeping = false;
+          if (usbCam.active && usbCam.camera) usbDead(e, 'sleep');
+        } finally { usbPowerBusy = false; }
+      }
+      function usbLiveWake() {
+        if (!usbCam.sleeping) return Promise.resolve(true);
+        if (usbCam.waking) return usbCam.waking;
+        usbCam.waking = (async function () {
+          usbPowerBusy = true;
+          try {
+            usbLog('live-wake', { camera: usbCam.name });
+            usbCam.graceUntil = Date.now() + 20000;      // no "Reconnecting" while it starts
+            await usbViewfinderOn();
+            usbCam.frameAt = 0; usbCam.kicked = false; usbCam.lastFrameAt = Date.now();
+            usbCam.sleeping = false;
+            try { const pp = video.play(); if (pp && pp.catch) pp.catch(function () { }); } catch (e) { }
+            const t0 = Date.now();
+            while (!usbCam.frameAt && usbCam.active && Date.now() - t0 < 10000) await new Promise(r => setTimeout(r, 80));
+            return !!usbCam.frameAt;
+          } catch (e) {
+            usbCam.sleeping = false;
+            if (usbIsCritical(e) && usbCam.active && usbCam.camera) usbDead(e, 'viewfinder');
+            return false;
+          } finally { usbPowerBusy = false; usbCam.waking = null; }
+        })();
+        return usbCam.waking;
+      }
+      // The guest's photos are all taken and recorded: switch live view off now (usbWantLive would only notice after the idle pause).
+      function usbSleepNow() {
+        try { if (usbSaveOn() && usbCam.shotsDone && currentDeviceId === USB_CAM_ID && usbCam.active && usbCam.camera) usbLiveSleep(); } catch (e) { }
+      }
+      // Called before anything that needs the picture (a guest starts, a countdown, a photo): waits until live view is back.
+      async function usbEnsureLive() {
+        try {
+          if (currentDeviceId !== USB_CAM_ID || !usbCam.camera) return;
+          usbWantAt = Date.now(); usbCam.shotsDone = false;
+          if (usbCam.sleeping) await usbLiveWake();
+        } catch (e) { }
+      }
+      setInterval(async function () {
+        try {
+          const row = document.getElementById('camSaveRow');
+          if (row) row.style.display = currentDeviceId === USB_CAM_ID ? '' : 'none';
+          const stEl = document.getElementById('camSaveState');
+          if (stEl && row && row.style.display !== 'none') stEl.textContent = !usbSaveOn() ? 'Saver off: live view always on.' : usbCam.sleeping ? 'Camera live view: asleep (saving battery).' : 'Camera live view: on.';
+          const focusBox = document.getElementById('usbCamFocusBox');
+          if (focusBox) focusBox.style.display = currentDeviceId === USB_CAM_ID ? 'block' : 'none';
+          if (usbPowerBusy || currentDeviceId !== USB_CAM_ID || !usbCam.active || !usbCam.camera || !streamActive) return;
+          if (usbWantLive()) {
+            usbWantAt = Date.now();
+            if (usbCam.sleeping) await usbLiveWake();
+            return;
+          }
+          if (!usbCam.sleeping) {
+            if (Date.now() - usbWantAt > USB_IDLE_SLEEP_MS) await usbLiveSleep();
+          } else if (usbCam.viaHelper && Date.now() - usbKeepAt > 25000) {
+            // Asleep, but still connected: a quiet question now and then keeps the camera from powering itself off.
+            usbKeepAt = Date.now();
+            fetch(CAM_HELPER + '/camera', { cache: 'no-store', signal: AbortSignal.timeout(8000) }).catch(function () { });
+          }
+        } catch (e) { }
+      }, 1000);
+      (function () {
+        const t = document.getElementById('camSaveToggle');
+        if (!t) return;
+        t.checked = usbSaveOn();
+        t.addEventListener('change', function () {
+          try { localStorage.setItem(USB_SAVE_KEY, t.checked ? 'on' : 'off'); } catch (e) { }
+          if (!t.checked && usbCam.sleeping) usbLiveWake();
+        });
+      })();
+      (function () {
+        const afBtn = document.getElementById('usbCamAfBtn');
+        if (afBtn) {
+          afBtn.addEventListener('click', async function () {
+            if (afBtn.disabled) return;
+            afBtn.disabled = true;
+            const orig = afBtn.textContent;
+            afBtn.textContent = 'Focusing lens…';
+            try {
+              await usbEnsureLive();
+              if (usbCam.viaHelper) {
+                await fetch(CAM_HELPER + '/camera/af', { method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(15000) });
+              } else if (usbCam.camera && typeof usbCam.camera.autoFocus === 'function') {
+                await usbCam.camera.autoFocus();
+              } else if (usbCam.camera && typeof usbCam.camera.setConfigValue === 'function') {
+                try { await usbCam.camera.setConfigValue('autofocusdrive', 1); } catch (e) { }
+                await new Promise(r => setTimeout(r, 1200));
+                try { await usbCam.camera.setConfigValue('autofocusdrive', 0); } catch (e) { }
+              }
+              showToast('Lens auto-focused! Inspect preview, then switch lens to MF to lock.', 6000);
+            } catch (err) {
+              console.warn('Auto-focus failed:', err);
+              showToast('Auto-focus command sent. If lens didn\’t move, make sure lens is on AF.', 5000);
+            } finally {
+              afBtn.disabled = false;
+              afBtn.textContent = orig;
+            }
+          });
+        }
+        const testBtn = document.getElementById('usbCamTestShotBtn');
+        const box = document.getElementById('usbTestShotBox');
+        const img = document.getElementById('usbTestShotImg');
+        const meta = document.getElementById('usbTestShotMeta');
+        const closeBtn = document.getElementById('usbTestShotClose');
+        if (closeBtn && box) closeBtn.addEventListener('click', function () { box.style.display = 'none'; });
+        if (testBtn) {
+          testBtn.addEventListener('click', async function () {
+            if (testBtn.disabled) return;
+            testBtn.disabled = true;
+            const orig = testBtn.textContent;
+            testBtn.textContent = 'Shooting…';
+            try {
+              await usbEnsureLive();
+              showToast('Taking test shot… smile!', 2000);
+              const t0 = Date.now();
+              let file;
+              if (usbCam.active && usbCam.camera && typeof usbCam.camera.captureImageAsFile === 'function') {
+                file = await Promise.race([
+                  usbCam.camera.captureImageAsFile(),
+                  new Promise(function (_, rej) { setTimeout(function () { rej(new Error('Test shot timed out')); }, 25000); })
+                ]);
+              } else {
+                throw new Error('Camera not active');
+              }
+              if (img) img.src = URL.createObjectURL(file);
+              if (meta) meta.textContent = Math.round(file.size / 1024) + ' KB JPEG · ' + (Date.now() - t0) + ' ms · Inspect sharpness, then switch lens to MF to lock focus.';
+              if (box) box.style.display = 'block';
+              showToast('Test shot ready! Inspect sharpness above, then flip lens to MF.', 6000);
+            } catch (err) {
+              console.error('Test shot failed:', err);
+              showToast('Test shot failed: ' + (err.helperMsg || err.message || err), 6000);
+            } finally {
+              testBtn.disabled = false;
+              testBtn.textContent = orig;
+            }
+          });
+        }
+      })();
       // One line every 15 minutes while a camera is in use, so a long session shows how often it reconnected and how memory behaves.
       setInterval(function () {
         if (usbCam.active && usbCam.camera && !usbCam.viaHelper) usbLog('alive', { camera: usbCam.name, connects: usbCam.libGen, heapMB: usbHeapMB() });
@@ -22576,6 +22821,7 @@
         currentStream = null;
         usbStopLive();
         try {
+          usbCam.sleeping = false; usbCam.shotsDone = false;
           if (!usbCam.supported) throw new Error('USB cameras need Chrome or Edge on a Mac or Android device');
           await usbConnect();
           if (!usbCam.canvas) {
@@ -23226,12 +23472,19 @@
       const USB_SHOT_MAX = 3000;   // longest side in px: a full 4R box at 300 dpi even after the box's crop
       // After a photo (helper cameras): hide any "Reconnecting" for a while, ask for live view again at once (a Canon leaves
       // it after every photo) and learn how long the camera took from the shutter command to the exposure.
-      function usbAfterShot() {
+      function usbAfterShot(final) {
         if (!usbCam.viaHelper) return;
+        if (usbCam.sleeping) return;
         usbCam.graceUntil = Date.now() + USB_GRACE_MS;
         usbCam.shotAt = Date.now(); usbCam.frameAt = 0; usbCam.kickAt = 0;
         if (usbCam.stallShown) { usbCam.stallShown = false; cameraError.style.display = 'none'; }
-        try { usbCam.kicked = true; Promise.resolve(usbViewfinderOn()).catch(function () { }); } catch (e) { }
+        if (final && usbSaveOn()) {
+          // The guest's last photo: don't bring live view back (the camera would sit with its mirror up while they review);
+          // switch it off once the session has finished recording (see usbSleepNow). A retake wakes it again in about a second.
+          usbCam.shotsDone = true;
+        } else {
+          try { usbCam.kicked = true; Promise.resolve(usbViewfinderOn()).catch(function () { }); } catch (e) { }
+        }
         fetch(CAM_HELPER + '/camera', { cache: 'no-store', signal: AbortSignal.timeout(8000) }).then(r => r.json()).then(j => {
           const ms = Number(j && j.shutterMs) || 0;
           if (ms > 0) usbCam.shutterLagMs = usbCam.shutterLagMs ? Math.round(usbCam.shutterLagMs * 0.5 + ms * 0.5) : ms;
@@ -23357,6 +23610,7 @@
         }
       }
       async function captureShot(index) {
+        await usbEnsureLive();
         captureFrame(index);
         if (webcamRes.photo === 'max' && isMaxWebcamShotEligible()) return webcamMaxShot(index);
         if (!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
@@ -23364,11 +23618,12 @@
         try {
           // Never wait forever: a camera that stops answering must not freeze the whole session.
           let capTimer;
+          const finalShot = shotCanvases.every(function (c, i) { return i === index || !!c; });   // every other photo is already taken
           usbCam.shooting = true;   // live view legitimately pauses while the camera sends the photo
           const file = await Promise.race([
             usbCam.camera.captureImageAsFile(),
             new Promise((_, rej) => { capTimer = setTimeout(() => { const e = new Error('The camera took too long to send the photo'); e.helperMsg = 'The camera took too long to send the photo.'; rej(e); }, USB_CAPTURE_MAX_MS); })
-          ]).finally(() => { clearTimeout(capTimer); usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); usbAfterShot(); });
+          ]).finally(() => { clearTimeout(capTimer); usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); usbAfterShot(finalShot); });
           const bmp = await createImageBitmap(file);
           const sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;   // whole photo; the layout box crops it once
           const k = Math.min(1, USB_SHOT_MAX / Math.max(sw, sh));
@@ -23920,6 +24175,7 @@
 
       async function countdownThenCapture(index, noPause) {
         stageShot = index;
+        await usbEnsureLive();   // a retake after the camera went to sleep waits for the picture
         applyStageAspect();   // frame this shot's box
         const extra = index === 0 && !noPause ? firstExtraSec : 0;
         try { voiceReady(index, !!noPause, timerSec + extra); } catch (e) { }
@@ -24083,6 +24339,7 @@
           updateFilmTrack(); guestCall('shots');
           countdownOverlay.style.display = 'flex';
           await countdownThenCapture(pick, true);
+          usbCam.shotsDone = true; usbSleepNow();
           if (sess.cancelled) return;
         }
       }
@@ -24999,6 +25256,7 @@
           const ok = await initCamera(cameraSelect.value || null);
           if (!ok) return;
         }
+        await usbEnsureLive();   // live view is only on while a guest is using the booth (battery saver)
         // Show live feed again if we're coming from result state
         video.style.display = 'block';
         previewCanvas.style.display = 'none';
@@ -25044,7 +25302,9 @@
           }
           i++;
         }
+        usbCam.shotsDone = true;   // all photos taken: live view may switch off while the guest reviews and decorates
         completedGifCapture = await stopGifSessionCapture(!sess.cancelled);
+        usbSleepNow();
         if (!sess.cancelled) await reviewPhase();
         if (sess.cancelled) { endCancelledSession(); return; }
         if (guestStickersOn && !sess.cancelled) await guestStickersPhase();
@@ -25632,7 +25892,7 @@
             if (usable.length) {
               const _last58 = (() => { try { return localStorage.getItem('pb_print_paper'); } catch(e){ return null; }})();
               const _pName = typeof activePrinterName === 'function' ? activePrinterName() : '';
-              if (usable.includes('receipt58') && (!usable.includes('receipt80') || _last58 === 'receipt58' || /58/.test(_pName)))
+              if (usable.includes('receipt58') && (!usable.includes('receipt80') || _last58 === 'receipt58' || (typeof is58mmPrinterName === 'function' ? is58mmPrinterName(_pName) : /58/.test(_pName))))
                 printSize = 'receipt58';
               else
                 printSize = usable.includes('receipt80') ? 'receipt80' : usable[0];
@@ -28324,7 +28584,7 @@
         // 576-dot image on a 384-dot head — even when receipt80 was saved from a previous session.
         if (printSize === 'receipt80' && usable.includes('receipt58')) {
           const _pn58 = typeof activePrinterName === 'function' ? activePrinterName() : '';
-          if (/58/.test(_pn58)) {
+          if (typeof is58mmPrinterName === 'function' ? is58mmPrinterName(_pn58) : /58/.test(_pn58)) {
             printSize = 'receipt58';
             try { localStorage.setItem('pb_print_paper', 'receipt58'); } catch (e) { }
           }
@@ -28347,7 +28607,9 @@
         try { refreshPhotoFitUI(); } catch (e) { }
         try { refreshStep4Printer(); } catch (e) { }
         try { if (window.__pbSyncBtSpeed) window.__pbSyncBtSpeed(); } catch (e) { }
-        printBtn.disabled = !ready || !printSize || printing;
+        const curPaper = printSize ? paperFor(printSize) : null;
+        const is58mmBusy = !!(curPaper && curPaper.w <= 55 && printQueued > 0);
+        printBtn.disabled = !ready || !printSize || printing || is58mmBusy;
         if (!printSize) {
           printHint.textContent = 'Pick a paper size above to print.';
         } else if (!ready) {
@@ -28739,6 +29001,7 @@
           const rx = rc.getContext('2d');
           rx.fillStyle = '#ffffff'; rx.fillRect(0, 0, rc.width, rc.height);
           rx.imageSmoothingEnabled = rc.width !== src.width;
+          rx.imageSmoothingQuality = 'high';
           rx.drawImage(src, 0, 0, rc.width, rc.height);
           // A black & white receipt layout already took the printer's Lightness when its photos were turned into dots
           // (ditherRegion); adding it again here would grey the black dots until a high setting wipes them out.
@@ -29000,10 +29263,22 @@
       function activePrinterName() {
         const fp = typeof forcedPrinterName === 'function' ? forcedPrinterName() : '';
         if (fp) return fp;               // a voucher / payment option linked to a printer
+        if (window._btThermal && window._btThermal.btPrinter && window._btThermal.btPrinter.connected) {
+          return window._btThermal.btPrinter.name || 'Bluetooth Printer';
+        }
         if (window.__PBNet && wifiPrinter) {
           return wifiPrinter.name || wifiPrinter.ip || 'android';
         }
         return (printSize ? printerFor(printSize) : '') || '';
+      }
+      function is58mmPrinterName(name) {
+        if (!name) return false;
+        var s = String(name).toLowerCase();
+        if (/58/.test(s)) return true;
+        if (/\b(p50|mp210|pt-?210|pt-?280|mtp-?ii|mtp-?2)\b/.test(s)) return true;
+        if (/^mp\b/.test(s) && !/80/.test(s)) return true;
+        if (window._btThermal && window._btThermal.btPrinter && window._btThermal.btPrinter.connected && window._btThermal.btPrinter._paperWidth <= 384) return true;
+        return false;
       }
       function printPreviewKey() { return (printSize || 'default') + '|' + activePrinterName(); }
       function needsPrintPreview(isAuto) {
@@ -29637,7 +29912,9 @@
         }
         if (paper.receipt && p.raw && window._btThermal && window._btThermal.EscPosEncoder) {
           const dotW = paper.w <= 55 ? 384 : 576;
-          const bVal = 0;          // already in the page (printAdjust)
+          const bVal = (typeof window !== 'undefined' && window._colorAdj && typeof window._colorAdj.brightness === 'number' && window._colorAdj.brightness !== 0)
+            ? window._colorAdj.brightness
+            : ((typeof colorAdj !== 'undefined' && colorAdj && typeof colorAdj.brightness === 'number' && colorAdj.brightness !== 0) ? colorAdj.brightness : 0);
           const T = window._btThermal;
           const lv = (wo.tune >= 1 && wo.tune <= 4) ? wo.tune : (T.tuneGet ? T.tuneGet('raw:' + wifiPKey(p)) : 0);
           for (let i = 0; i < all.length; i++) {
@@ -30236,6 +30513,8 @@
       async function printCurrentPhoto(auto, copies) {
         try { wifiRelink(); wifiSyncForSize(); } catch (e) { }
         if (printing || !printSize || !(state === 'result' && shotCanvases.every(Boolean))) return false;
+        const curPaper = paperFor(printSize);
+        if (curPaper && curPaper.w <= 55 && printQueued > 0) return false;
         const per = sheetsPerCopy(printSize);
         let n = Math.max(1, Math.min(MAX_COPIES, Math.floor(Number(copies) || printPrefs.copies || 1)));
         const room = maxCopies(printSize);
@@ -30591,12 +30870,16 @@
         pq.hidden = !on;
         if (!on) { copiesSheet.hidden = true; return; }
         const lim = printLimits(), left = maxCopies(printSize), out = left < 1;
-        pq.disabled = printing || out;
+        const curPaper = paperFor(printSize);
+        const is58mmBusy = !!(curPaper && curPaper.w <= 55 && printQueued > 0);
+        pq.disabled = printing || out || is58mmBusy;
         let small = '';
         if (out) small = 'limit reached';
+        else if (is58mmBusy) small = 'printing…';
         else if (printQueued > 0) small = printQueued + (printQueued === 1 ? ' print' : ' prints') + ' in the queue';
         else if (lim.se || lim.ev) small = (left >= MAX_COPIES ? MAX_COPIES + '+' : left) + (left === 1 ? ' print left' : ' prints left');
-        pq.innerHTML = ICON('printer') + ' ' + escHtml(printing ? printTxt('txtPrinting') : printTxt('txtPrint')) + (small && !printing ? '<small>' + small + '</small>' : '');
+        const showBusy = printing || is58mmBusy;
+        pq.innerHTML = ICON('printer') + ' ' + escHtml(showBusy ? printTxt('txtPrinting') : printTxt('txtPrint')) + (small && !showBusy ? '<small>' + small + '</small>' : (is58mmBusy ? '<small>' + small + '</small>' : ''));
       }
       function escHtml(v) { return String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
@@ -31890,6 +32173,12 @@
         var baseOnline = location.origin || 'https://photobooth4u.com';
         var q = [];
         if (fKey) q.push('f=' + encodeURIComponent(fKey));
+        var k = '';
+        try {
+          var fid = fKey || (typeof gvFolderId === 'function' ? gvFolderId(getCachedFolderUrl()) : '');
+          if (fid) k = localStorage.getItem('pb_gvk:' + fid) || '';
+        } catch (e) { }
+        if (k) q.push('k=' + encodeURIComponent(k));
         if (priv) q.push(priv);
         return baseOnline + '/station/' + (q.length ? ('?' + q.join('&')) : '');
       }
@@ -31949,10 +32238,12 @@
           }, 450);
           return;
         }
-        if (shareStationHandoff === 'photo3') {
+        var mPhoto = /^photo(\d+)$/.exec(shareStationHandoff);
+        if (mPhoto) {
+          var sec = parseInt(mPhoto[1], 10) || 3;
           shareStationHandoffTimer = setTimeout(function () {
             if (state === 'result') resetForNextGuest();
-          }, 3000);
+          }, sec * 1000);
           return;
         }
         // 'handoff2'

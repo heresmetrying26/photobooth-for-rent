@@ -495,6 +495,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     private val usbAsked = HashSet<String>()
     private val usbWaiters = ConcurrentHashMap<String, CountDownLatch>()
     private val usbEntries = ConcurrentHashMap<String, Entry>()
+    private val usbDeviceLocks = ConcurrentHashMap<String, Any>()
+    private fun usbLockFor(id: String): Any = usbDeviceLocks.getOrPut(id) { Any() }
     private val usbPermAction = "com.photobooth4u.booth.USB_PRINTER_PERMISSION"
     // USB Vendor IDs of known thermal/receipt printer chipsets.
     // 0x0519 = Star Micronics (TSP143IIIU, mC-Print series)
@@ -1389,37 +1391,45 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     /** Receipt printers on USB: the ESC/POS bytes go straight to the printer. */
     private fun usbRaw(id: String, data: ByteArray) {
-        val d = usbFind(id)
-        usbEnsure(d)
-        val iface = usbRawIface(d) ?: usbIfaces(d).firstOrNull { it.interfaceClass == 7 }
-            ?: throw IllegalStateException("Connected USB device is not a supported printer.")
-        usbSession(d, iface) { conn, out, inn ->
-            // A bidirectional printer can send status back; read and drop it while we write so it never waits on us.
-            val stop = java.util.concurrent.atomic.AtomicBoolean(false)
-            val reader = if (inn == null) null else Thread {
-                val b = ByteArray(1024)
-                while (!stop.get()) { try { conn.bulkTransfer(inn, b, b.size, 200) } catch (_: Exception) {} }
-            }.also { it.isDaemon = true; it.start() }
-            try {
-                // Paced write for thermal receipt printers: small chunks (256 bytes) with pacing delay
-                // so small RAM buffers (2-4 KB) on cheap mobile thermal printers never overflow or wrap around.
-                var off = 0
-                val chunkSize = 256
-                while (off < data.size) {
-                    val len = minOf(chunkSize, data.size - off)
-                    val r = conn.bulkTransfer(out, data, off, len, 30_000)
-                    if (r < 0) throw IllegalStateException("Printer communication timed out. Power cycle the printer and retry.")
-                    off += r
-                    if (off < data.size) {
-                        try { Thread.sleep(8) } catch (_: InterruptedException) {}
+        synchronized(usbLockFor(id)) {
+            val d = usbFind(id)
+            usbEnsure(d)
+            val iface = usbRawIface(d) ?: usbIfaces(d).firstOrNull { it.interfaceClass == 7 }
+                ?: throw IllegalStateException("Connected USB device is not a supported printer.")
+            usbSession(d, iface) { conn, out, inn ->
+                // A bidirectional printer can send status back; read and drop it while we write so it never waits on us.
+                val stop = java.util.concurrent.atomic.AtomicBoolean(false)
+                val reader = if (inn == null) null else Thread {
+                    val b = ByteArray(1024)
+                    while (!stop.get()) { try { conn.bulkTransfer(inn, b, b.size, 200) } catch (_: Exception) {} }
+                }.also { it.isDaemon = true; it.start() }
+                try {
+                    // Paced write for thermal receipt printers: small chunks (256 bytes) with pacing delay
+                    // so small RAM buffers (2-4 KB) on cheap mobile thermal printers never overflow or wrap around.
+                    var off = 0
+                    val chunkSize = 256
+                    while (off < data.size) {
+                        val len = minOf(chunkSize, data.size - off)
+                        val r = conn.bulkTransfer(out, data, off, len, 30_000)
+                        if (r < 0) throw IllegalStateException("Printer communication timed out. Power cycle the printer and retry.")
+                        off += r
+                        if (off < data.size) {
+                            try { Thread.sleep(8) } catch (_: InterruptedException) {}
+                        }
                     }
+                    // Allow the printer mechanism to finish burning the final lines and feeding before closing connection.
+                    // 58mm has ~48 image bytes/row, 8 rows/mm, and prints at ~50-60 mm/s (16-20 ms/mm).
+                    val rows = data.size / 52.0
+                    val mm = rows / 8.0
+                    val drainMs = (mm * 18.0).toLong().coerceIn(1500L, 5000L)
+                    try { Thread.sleep(drainMs) } catch (_: InterruptedException) {}
+                } finally {
+                    stop.set(true)
+                    reader?.join(1000)
                 }
-                // Allow the printer mechanism to finish burning the final lines and feeding before closing connection
-                try { Thread.sleep(1500) } catch (_: InterruptedException) {}
-            } finally {
-                stop.set(true)
-                reader?.join(1000)
             }
+            // Give USB interface and printer controller a short pause to settle before releasing lock
+            try { Thread.sleep(250) } catch (_: InterruptedException) {}
         }
     }
 

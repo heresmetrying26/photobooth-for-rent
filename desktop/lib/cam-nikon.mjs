@@ -149,12 +149,29 @@ export function createNikon(ctx) {
     return null;
   };
 
+  d.af = async () => {
+    if (!d.live) await d.liveOn();
+    if (has(0x90C1)) {
+      const r = await ptp.op(0x90C1);
+      await sleep(1200);
+      await drain();
+      return r === OK;
+    }
+    return true;
+  };
+
   d.capture = async () => {
     const t0 = Date.now();
     let r;
     // Focus first while in live view (contrast AF); a miss is fine, the shot decides.
     if (d.live && has(0x90C1)) {
-      try { r = await ptp.op(0x90C1); if (r === OK) await waitReady(3000); } catch (e) { if (e instanceof GoneError) throw e; }
+      try {
+        r = await ptp.op(0x90C1);
+        if (r === OK) {
+          await sleep(1200);
+          await drain();
+        }
+      } catch (e) { if (e instanceof GoneError) throw e; }
     }
     await drain();
     const shutter = Date.now();

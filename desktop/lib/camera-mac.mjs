@@ -385,6 +385,17 @@ export async function call(cmd, arg) {
     if (!s.ptp) throw new GoneError('NOCAMERA The camera isn’t connected.');
     if (cmd === 'info') return reply('OK', 'J', infoJson());
     if (cmd === 'battery') { if (s.drv) s.battery = await s.drv.battery(); return reply('OK', 'J', JSON.stringify({ battery: s.battery })); }
+    if (cmd === 'af') {
+      if (s.drv && typeof s.drv.af === 'function') await s.drv.af();
+      else if (s.brand === 'canon') {
+        try {
+          await opRetry(0x9128, 1, 0);
+          await sleep(800);
+          await opRetry(0x9129, 1);
+        } catch (e) { }
+      }
+      return reply('OK', 'J', JSON.stringify({ ok: true }));
+    }
     if (cmd === 'live') {
       if (s.drv) { if (arg === 'off') await s.drv.liveOff(); else await s.drv.liveOn(); }
       else if (arg === 'off') await liveOff(); else await restartLive();   // "on" is also how the booth asks for live view again when frames stopped

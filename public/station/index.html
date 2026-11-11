@@ -116,6 +116,7 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
       <p>Point your phone’s camera at the QR code to open and save your photo.</p>
       <div id="mSessionPills" class="session-pills" style="display:none"></div>
       <div class="qr-frame"><img id="mQr" alt="QR Code"></div>
+      <div class="qr-session-note" id="mQrNote" style="display:none;font-size:11px;color:#8E8A93;margin:-6px 0 10px;text-align:center">1 QR saves all session photos (print, GIF & solos)</div>
       <a class="btn" id="mDl" download>Save Photo</a>
       <button type="button" class="btn alt" id="mDone">Done (Next guest)</button>
       <div class="timer-bar"><i id="mBar"></i></div>
@@ -239,9 +240,19 @@ function openModal(it, sessionItems) {
   var m = document.getElementById('modal');
   var med = document.getElementById('mMedia');
   var qr = document.getElementById('mQr');
+  var qrNote = document.getElementById('mQrNote');
   var dl = document.getElementById('mDl');
   var pillsBox = document.getElementById('mSessionPills');
-  var pageUrl = it.pageUrl ? (location.origin + it.pageUrl) : (location.origin + '/g/' + folderId + (it.id ? ('#' + it.id) : ''));
+  var key = (/[?&]k=([A-Za-z0-9_-]{10,40})/.exec(location.search) || [])[1] || '';
+
+  var items = sessionItems || (files && files.filter(function(f) {
+    return getSessionPrefix(f.name) === getSessionPrefix(it.name) || Math.abs((f.mtime || 0) - (it.mtime || 0)) < 8000;
+  })) || [it];
+
+  var sessionPrefix = getSessionPrefix(it.name);
+  var sessionUrl = location.origin + '/g/' + folderId + '?session=' + encodeURIComponent(sessionPrefix) + (key ? '&k=' + encodeURIComponent(key) : '');
+  var pageUrl = (items.length > 1) ? sessionUrl : (it.pageUrl ? (location.origin + it.pageUrl) : sessionUrl);
+  if (qrNote) qrNote.style.display = (items.length > 1) ? 'block' : 'none';
   
   if (it.kind === 'video') {
     med.innerHTML = '<video src="' + it.url + '" controls autoplay loop playsinline></video>';
@@ -274,9 +285,6 @@ function openModal(it, sessionItems) {
 
   // Multi-item session support (e.g. print strip + solo photos or GIF)
   if (pillsBox) {
-    var items = sessionItems || (files && files.filter(function(f) {
-      return getSessionPrefix(f.name) === getSessionPrefix(it.name) || Math.abs((f.mtime || 0) - (it.mtime || 0)) < 8000;
-    })) || [it];
 
     if (items.length > 1) {
       pillsBox.style.display = 'flex';
@@ -359,7 +367,8 @@ async function poll() {
     return;
   }
   try {
-    var r = await fetch('/api/gallery?f=' + encodeURIComponent(folderId));
+    var key = (/[?&]k=([A-Za-z0-9_-]{10,40})/.exec(location.search) || [])[1] || '';
+    var r = await fetch('/api/gallery?f=' + encodeURIComponent(folderId) + (key ? '&k=' + encodeURIComponent(key) : ''));
     var j = await r.json();
     if (j && j.ok && Array.isArray(j.files)) {
       if (j.name) document.getElementById('stTitle').textContent = j.name;

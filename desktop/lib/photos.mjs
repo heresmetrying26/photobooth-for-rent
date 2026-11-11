@@ -182,7 +182,7 @@ function photosIn(dir) {
         if (!seen.has(n)) {
           seen.add(n);
           let t = 0;
-          try { t = statSync(full).mtimeMs; } catch {}
+          try { t = statSync(full).mtimeMs; } catch { }
           files.push({ n, t });
         }
       }
@@ -756,12 +756,13 @@ function guestButtonsHtml(slug, file, isVid, isGif, type, req) {
   const dlText = isVid ? 'Save video' : isGif ? 'Save GIF' : isSoloPhoto ? 'Save solo photo' : 'Save photo';
   const printPart = (!/^video\//.test(type) && !isGif ? (isLocalReq(req) ? opPrintButtonHtml(slug, file) : '<button class="btn alt" type="button" onclick="window.print()">Print photo</button>') : '');
   const reqPart = (guestPrintOn && !isVid && !isGif ? reqButtonHtml(slug, file) : '');
+  const allPhotosPart = guestView !== 'only' ? '<a class="btn alt" href="/e/' + slug + '/">All photos</a>' : '';
   return '<div>' +
     '<button class="btn" id="btnShare" type="button" style="display:none">Share / AirDrop ↗</button>' +
     '<a class="btn" id="btnDl" href="' + src + '?dl=1" download="' + esc(file) + '">' + dlText + '</a>' +
     '<button class="btn alt" id="btnCopy" type="button">Copy link 📋</button>' +
     printPart + reqPart +
-    '<a class="btn alt" href="/e/' + slug + '/">All photos</a>' +
+    allPhotosPart +
     '</div>' +
     savingTipHtml(slug, file) +
     '<script>(function(){' +
@@ -895,6 +896,7 @@ ${QR_JS_CODE ? `<script>${QR_JS_CODE}</script>` : `<script src="/qr.js"></script
       <p>Point your phone’s camera at the QR code to open and save your photo.</p>
       <div id="mSessionPills" class="session-pills" style="display:none"></div>
       <div class="qr-frame"><img id="mQr" alt="QR Code"></div>
+      <div class="qr-session-note" id="mQrNote" style="display:none;font-size:11px;color:#8E8A93;margin:-6px 0 10px;text-align:center">1 QR saves all session photos (print, GIF & solos)</div>
       <a class="btn" id="mDl" download>Save Photo</a>
       <button type="button" class="btn alt" id="mDone">Done (Next guest)</button>
       <div class="timer-bar"><i id="mBar"></i></div>
@@ -1006,9 +1008,18 @@ function openModal(it, sessionItems) {
   var m = document.getElementById('modal');
   var med = document.getElementById('mMedia');
   var qr = document.getElementById('mQr');
+  var qrNote = document.getElementById('mQrNote');
   var dl = document.getElementById('mDl');
   var pillsBox = document.getElementById('mSessionPills');
-  var pageUrl = it.pageUrl ? (location.origin + it.pageUrl) : (location.origin + it.url);
+  
+  var items = sessionItems || (files && files.filter(function(f) {
+    return getSessionPrefix(f.name) === getSessionPrefix(it.name) || Math.abs((f.mtime || 0) - (it.mtime || 0)) < 8000;
+  })) || [it];
+
+  var sessionPrefix = getSessionPrefix(it.name);
+  var sessionUrl = it.sessionUrl ? (location.origin + it.sessionUrl) : (location.origin + '/e/' + SLUG + '/s/' + encodeURIComponent(sessionPrefix));
+  var pageUrl = (items.length > 1) ? sessionUrl : (it.pageUrl ? (location.origin + it.pageUrl) : sessionUrl);
+  if (qrNote) qrNote.style.display = (items.length > 1) ? 'block' : 'none';
   
   if (it.kind === 'video') {
     med.innerHTML = '<video src="' + it.url + '" controls autoplay loop playsinline></video>';
@@ -1041,9 +1052,6 @@ function openModal(it, sessionItems) {
 
   // Multi-item session support (e.g. print strip + solo photos or GIF)
   if (pillsBox) {
-    var items = sessionItems || (files && files.filter(function(f) {
-      return getSessionPrefix(f.name) === getSessionPrefix(it.name) || Math.abs((f.mtime || 0) - (it.mtime || 0)) < 8000;
-    })) || [it];
 
     if (items.length > 1) {
       pillsBox.style.display = 'flex';
@@ -1402,13 +1410,19 @@ function handleStation(req, res, url, stm) {
     const evName = ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : '360 Booth';
     const list = photosIn(dir);
     const isSolo = (n) => /_solo_\d+/i.test(n);
+    const getPrefix = (filename) => {
+      const pm = /^([A-Za-z0-9_-]+?)_(?:strip|grid|solo|clip|[0-9]+up)/i.exec(filename);
+      if (pm) return pm[1];
+      const pm2 = /^(\d+)[._]/i.exec(filename);
+      return pm2 ? pm2[1] : filename;
+    };
     const files = list.map(({ n, t }) => ({
       name: n,
-      kind: VIDEO_RE.test(n) ? 'video' : /\.gif$/i.test(n) ? 'gif' : 'photo',
       kind: VIDEO_RE.test(n) ? 'video' : /\.gif$/i.test(n) ? 'gif' : isSolo(n) ? 'solo' : 'photo',
       url: '/e/' + slug + '/f/' + encodeURIComponent(n),
       thumbUrl: '/e/' + slug + '/t/' + encodeURIComponent(n),
       pageUrl: '/e/' + slug + '/p/' + encodeURIComponent(n),
+      sessionUrl: '/e/' + slug + '/s/' + encodeURIComponent(getPrefix(n)),
       mtime: t
     }));
     return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug, name: evName, count: files.length, files }), cors);
@@ -1495,7 +1509,7 @@ async function handleShare(req, res) {
   const stm2 = /^\/e\/([A-Za-z0-9]{6,20})\/stats\/?$/.exec(url.pathname);
   if (stm2) return send(res, 200, 'application/json; charset=utf-8', JSON.stringify({ ok: true, slug: stm2[1], stats: getStats(stm2[1]) }), { 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
 
-  if (guestView === 'only' && /^\/e\//.test(url.pathname) && !isLocalReq(req)) {
+  if (guestView === 'only' && /^\/e\/[A-Za-z0-9]{6,20}\/?$/.test(url.pathname) && !isLocalReq(req)) {
     return send(res, 403, 'text/html; charset=utf-8', page('Private', '<p class="empty">Guests of this event see only their own photos. Scan your own QR code at the booth to open yours.</p>'));
   }
   const pnm = /^\/e\/([A-Za-z0-9]{6,20})\/printnow\/([^/]+)\/?$/.exec(url.pathname);
@@ -1505,7 +1519,7 @@ async function handleShare(req, res) {
   const prm = /^\/e\/([A-Za-z0-9]{6,20})\/print\/([^/]+)\/?$/.exec(url.pathname);
   if (prm) return handlePrintReq(req, res, prm);
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
-  const m = /^\/e\/([A-Za-z0-9]{6,20})(?:\/(p|f|t)\/([^/]+))?\/?$/.exec(url.pathname);
+  const m = /^\/e\/([A-Za-z0-9]{6,20})(?:\/(p|f|t|s)\/([^/]+))?\/?$/.exec(url.pathname);
   if (!m) return send(res, 404, 'text/html; charset=utf-8', page('Not found', '<p class="empty">This link isn’t on this booth.</p>'));
   const dir = dirOf(m[1]);
   if (!dir || !existsSync(dir)) return send(res, 404, 'text/html; charset=utf-8', page('Not found', '<p class="empty">This event isn’t on this booth anymore.</p>'));
@@ -1549,6 +1563,45 @@ async function handleShare(req, res) {
         : '<p class="empty">No photos yet. Pull down to refresh after your session.</p>') + tabScript;
     return send(res, 200, 'text/html; charset=utf-8', page(evName + ' photos', body));
   }
+  if (m[2] === 's') {
+    let prefix; try { prefix = decodeURIComponent(m[3]); } catch { prefix = ''; }
+    const list = photosIn(dir);
+    function getPrefix(name) {
+      const pm = /^([A-Za-z0-9_-]+?)_(?:strip|grid|solo|clip|[0-9]+up)/i.exec(name);
+      if (pm) return pm[1];
+      const pm2 = /^(\d+)[._]/i.exec(name);
+      return pm2 ? pm2[1] : name;
+    }
+    const targetPrefix = getPrefix(prefix);
+    const sessionFiles = list.filter(({ n }) => getPrefix(n) === targetPrefix || n.startsWith(prefix));
+    const rankOf = (n) => {
+      if (/_solo_\d+/i.test(n)) return 3;
+      if (/\.gif$/i.test(n) || VIDEO_RE.test(n)) return 2;
+      return 1;
+    };
+    const mine = sessionFiles.map(x => x.n).sort((a, b) => {
+      const ra = rankOf(a), rb = rankOf(b);
+      if (ra !== rb) return ra - rb;
+      return a.localeCompare(b, undefined, { numeric: true });
+    });
+    mine.forEach((f) => recordStat(m[1], 'views', f));
+    const items = mine.map((f, i) => {
+      const type = TYPES[extname(f).toLowerCase()] || 'application/octet-stream';
+      const isGif = /\.gif$/i.test(f), isVid = VIDEO_RE.test(f), isSoloPhoto = /_solo_\d+/i.test(f);
+      const soloMatch = /_solo_(\d+)/i.exec(f);
+      const badgeLabel = isVid ? '360 Video' : isGif ? 'GIF' : isSoloPhoto ? ('Solo Shot ' + (soloMatch ? soloMatch[1] : '')) : 'Template Print';
+      const badgeStyle = 'display:inline-block;margin:0 auto 10px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;background:' + (isSoloPhoto ? 'rgba(201,61,39,0.12);color:#C93D27' : isGif ? 'rgba(28,26,30,0.08);color:#1C1A1E' : 'rgba(46,125,50,0.12);color:#2E7D32') + ';';
+      const src = '/e/' + m[1] + '/f/' + encodeURIComponent(f);
+      const media = /^video\//.test(type) ? '<video src="' + src + '" controls playsinline autoplay muted loop></video>' : '<img src="' + src + '" alt="' + (isGif ? 'Your GIF' : isSoloPhoto ? 'Your solo photo' : 'Your photo') + '">';
+      const dlText = isVid ? 'Save video' : isGif ? 'Save GIF' : isSoloPhoto ? 'Save solo photo' : 'Save photo';
+      return '<div class="one" style="padding-bottom:12px"><div style="text-align:center"><span style="' + badgeStyle + '">' + badgeLabel + '</span></div>' + media + '<div><a class="btn" href="' + src + '?dl=1" download="' + esc(f) + '">' + dlText + '</a>' +
+        (guestPrintOn && !isVid && !isGif ? reqButtonHtml(m[1], f, '/e/' + m[1] + '/print/' + encodeURIComponent(f), String(i)) : '') + '</div></div>';
+    });
+    const others = guestView !== 'only' ? '<div class="one" style="padding-top:0"><a class="btn alt" href="/e/' + m[1] + '/">Show photos with other guests</a></div>' : '';
+    const body = '<div style="text-align:center;padding:0 16px"><h1>Your photos</h1><p class="sub">' + esc(evName) + '</p></div>' +
+      (items.length ? items.join('') + savingTipHtml(null, null, evName) : '<p class="empty">This photo isn’t here yet. Wait a moment and refresh.</p><script>setTimeout(function(){location.reload()},5000)</script>') + others;
+    return send(res, 200, 'text/html; charset=utf-8', page('Your photos', body + holoFor(mine)));
+  }
   let file;
   try { file = decodeURIComponent(m[3]); } catch { file = ''; }
   if (!file || file !== basename(file) || file.startsWith('.') || !IMG_RE.test(file)) return send(res, 404, 'text/plain', 'Not found');
@@ -1562,7 +1615,7 @@ async function handleShare(req, res) {
         '<div style="margin:28px auto;width:44px;height:44px;border:4px solid #E4DCCF;border-top-color:#C93D27;border-radius:50%;animation:pbSpin 1s linear infinite"></div>' +
         '<style>@keyframes pbSpin{to{transform:rotate(360deg)}}</style>' +
         '<p class="empty" style="padding:10px 0 20px">' + msg + '</p>' +
-        '<a class="btn alt" href="/e/' + m[1] + '/">All photos</a></div>' +
+        (guestView !== 'only' ? '<a class="btn alt" href="/e/' + m[1] + '/">All photos</a>' : '') + '</div>' +
         '<script>setTimeout(function(){location.reload()},3000)</script>';
       return send(res, 200, 'text/html; charset=utf-8', page(title, body), { 'cache-control': 'no-store' });
     }

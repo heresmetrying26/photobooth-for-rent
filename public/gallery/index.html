@@ -204,9 +204,11 @@
   var pm = /^\/p\/([A-Za-z0-9_-]{16,40})\/?$/.exec(location.pathname), CODE = pm ? pm[1] : null;
   var KEY = (/[?&]k=([A-Za-z0-9_-]{10,40})/.exec(location.search) || [])[1] || '';       // the booth's own key to a "guests see only their own" event
   var FROM = (/[?&]c=([A-Za-z0-9_-]{16,40})/.exec(location.search) || [])[1] || '';      // came here from a guest's own page: offer the way back
+  var SESSION = (/[?&]session=([^&]+)/.exec(location.search) || [])[1] || '';
+  if (SESSION) { try { SESSION = decodeURIComponent(SESSION); } catch(e) {} }
   var FOLDER = !CODE && m ? m[1] : null, pendTries = 0, pendT = null;
-  var DL_ALL = CODE ? 'Download all my files' : 'Download all files';
-  var DL_P = CODE ? 'Download my prints' : 'Download all prints', DL_S = CODE ? 'Download my solo photos' : 'Download all solo photos', DL_G = CODE ? 'Download my GIFs' : 'Download all GIFs';
+  var DL_ALL = (CODE || SESSION) ? 'Download all my files' : 'Download all files';
+  var DL_P = (CODE || SESSION) ? 'Download my prints' : 'Download all prints', DL_S = (CODE || SESSION) ? 'Download my solo photos' : 'Download all solo photos', DL_G = (CODE || SESSION) ? 'Download my GIFs' : 'Download all GIFs';
   var DRIVE = FOLDER ? 'https://drive.google.com/drive/folders/' + FOLDER : null;
   var files = [], view = [], cur = -1, tiles = {}, firstLoad = true, timer = null, activeCategory = 'photos', PRINT_REQ = false;
   // A guest's own QR opens straight to their saved photo: /g/<folder>#<file id>.
@@ -304,17 +306,37 @@
     }
     $('state').classList.add('hidden');
     DRIVE = j.folderUrl || DRIVE;
-    setupQr(!CODE && j.qr !== false);
+    if(SESSION && Array.isArray(j.files)){
+      function getSessionPrefix(filename) {
+        if (!filename) return '';
+        var pm = /^([A-Za-z0-9_-]+?)_(?:strip|grid|solo|clip|[0-9]+up)/i.exec(filename);
+        if (pm) return pm[1];
+        var pm2 = /^(\d+)[._]/i.exec(filename);
+        return pm2 ? pm2[1] : filename;
+      }
+      var targetPrefix = getSessionPrefix(SESSION);
+      j.files = j.files.filter(function(f){
+        return getSessionPrefix(f.name) === targetPrefix || f.name.indexOf(SESSION) === 0;
+      });
+      $('title').textContent = 'Your photos';
+      setupQr(false);
+    } else {
+      setupQr(!CODE && j.qr !== false);
+    }
     // Switch between the guest's own photos and everyone's (only when the booth allows it).
-    if(CODE){
+    if(CODE || SESSION){
       $('photosTab').firstChild.nodeValue = 'Photos '; $('gifsTab').firstChild.nodeValue = 'GIFs ';
       $('dlPhotosLabel').textContent = DL_P; $('dlGifsLabel').textContent = DL_G;
     }
-    if(CODE && j.canAll && j.folder){ var ob = $('othersBtn'); ob.href = '/g/' + j.folder + '?c=' + CODE; ob.classList.remove('hidden'); }
-    if(FROM){ var mb = $('mineBtn'); mb.href = '/p/' + FROM; mb.classList.remove('hidden'); }
+    if(CODE && j.canAll && j.folder && !SESSION){ var ob = $('othersBtn'); ob.href = '/g/' + j.folder + '?c=' + CODE; ob.classList.remove('hidden'); }
+    if(FROM && !SESSION){ var mb = $('mineBtn'); mb.href = '/p/' + FROM; mb.classList.remove('hidden'); }
     PRINT_REQ = !!j.printReq;      // the booth lets guests ask for a print from here
-    document.title = j.name + ' | photobooth4u';
-    $('title').textContent = j.name;
+    if(!SESSION){
+      document.title = j.name + ' | photobooth4u';
+      $('title').textContent = j.name;
+    } else {
+      document.title = 'Your photos | ' + j.name;
+    }
     if(navigator.share) $('shareBtn').classList.remove('hidden');
     var videoCount = j.files.filter(isVideo).length, gifCount = j.files.filter(isGif).length, soloCount = j.files.filter(isSolo).length;
     var photoCount = j.files.length - videoCount - gifCount - soloCount;

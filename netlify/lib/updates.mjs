@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.24', date: '2026-11-11' },
   { version: '1.1.23', date: '2026-11-11' },
   { version: '1.1.22', date: '2026-11-11' },
   { version: '1.1.21', date: '2026-11-10' },
@@ -195,6 +196,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-11', title: 'Desktop 1.1.24 + Android 1.1.41: Session QR, privacy fix & configurable handoff duration', for: ['website', 'app'], app: '1.1.24',
+    items: [
+      '🔒 "Only their own" privacy fix: guests scanning the sharing station QR can now view their own session photos (strip, solos, GIF all on one page) — previously they were blocked entirely.',
+      '📲 Single session QR: when a session has multiple items (print strip + solo shots + GIF), the QR opens one page showing all of them together so guests only need to scan once.',
+      '⏱️ Configurable booth handoff duration: "Show photo Xs" now has options from 2 s to 15 s (2, 3, 5, 7, 10, 15 seconds), letting operators control how long the photo lingers before the sharing station pops up.',
+      '🔄 Auto-update fix: resolves the v1.1.40 auto-update issue — this version forces the upgrade prompt correctly.'
+    ]
+  },
   {
     date: '2026-11-11', title: 'Desktop 1.1.23 + Android 1.1.40: Sharing Station QR fix, 58mm printer USB pacing & zero-waste tear feed', for: ['website', 'app'], app: '1.1.23',
     items: [

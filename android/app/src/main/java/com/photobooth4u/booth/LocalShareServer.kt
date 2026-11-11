@@ -41,7 +41,7 @@ class LocalShareServer(private val store: PBLocal) {
     companion object {
         private const val TAG = "PBShare"
         val PORTS = intArrayOf(47777, 47778, 47779, 47787, 47797)
-        private val ROUTE = Regex("^/e/([A-Za-z0-9_-]{6,40})(?:/(?:(p|f|t)/([^/]+)|(list\\.json)))?/?$")
+        private val ROUTE = Regex("^/e/([A-Za-z0-9_-]{6,40})(?:/(?:(p|f|t|s)/([^/]+)|(list\\.json)))?/?$")
         private val FILENAME_UNSAFE = Regex("[^\\w.() -]")
         private val SEND_ROUTE = Regex("^/send/([A-Za-z0-9_-]+)(?:/(photos|photo|upload|hello|file|edited)(?:/([^/]+))?)?/?$")
         private val RANGE_RE = Regex("^bytes=(\\d*)-(\\d*)$")
@@ -203,8 +203,9 @@ class LocalShareServer(private val store: PBLocal) {
         // A guest's own page (/o/<code>): only the files the booth saved for their session.
         val ownM = OWN_ROUTE.find(path)
         if (ownM != null) return ownRoute(ownM, method, query, out, ip, head)
-        // "Guests see only their own photos": the event pages answer only this tablet itself (the operator), not a guest's phone.
-        if (store.guestView == "only" && path.startsWith("/e/") && !store.isOwnAddress(ip)) {
+        // "Guests see only their own photos": block the gallery index but allow individual photo/session pages.
+        val isGalleryIndex = Regex("^/e/[A-Za-z0-9_-]{6,40}/?$").matches(path)
+        if (store.guestView == "only" && isGalleryIndex && !store.isOwnAddress(ip)) {
             return sendBytes(out, 403, "Forbidden", "text/html; charset=utf-8", privatePage().toByteArray(Charsets.UTF_8), method == "HEAD", "no-store")
         }
 
@@ -298,6 +299,55 @@ class LocalShareServer(private val store: PBLocal) {
             return sendBytes(out, 200, "OK", "application/json; charset=utf-8", o.toString().toByteArray(Charsets.UTF_8), headOnly, "no-store")
         }
 
+        // /e/<slug>/s/<prefix> — session landing page: all files sharing the same prefix
+        if (kind == "s") {
+            val prefix = Uri.decode(fileEnc)
+            val files = store.photosIn(dir).filter {
+                it.name.startsWith(prefix + "_") || it.name.startsWith(prefix + ".")
+            }
+            val eventTitle = store.galleryTitle(folder)
+            val showAll = store.guestView != "only"
+            val sb = StringBuilder()
+            sb.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">")
+            sb.append("<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">")
+            sb.append("<title>Your photos – ${esc(eventTitle)}</title>")
+            sb.append("<style>")
+            sb.append("body{margin:0;background:#F5F1EA;font-family:system-ui,sans-serif;color:#1a1a1a;text-align:center;padding:24px 16px}")
+            sb.append("h1{font-size:1.3rem;margin:0 0 4px}p.sub{color:#6B666C;margin:0 0 24px;font-size:.9rem}")
+            sb.append(".items{display:flex;flex-direction:column;gap:16px;max-width:480px;margin:0 auto}")
+            sb.append(".item{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)}")
+            sb.append(".item img{width:100%;display:block}.item .lbl{padding:8px 12px;font-size:.85rem;color:#6B666C;text-align:left}")
+            sb.append(".btn{display:block;width:calc(100% - 32px);margin:0 16px 16px;padding:12px;background:#C93D27;color:#fff;")
+            sb.append("border:none;border-radius:8px;font-size:1rem;font-weight:600;text-decoration:none}")
+            sb.append(".btn.alt{background:#E4DCCF;color:#1a1a1a;width:auto;display:inline-block;padding:10px 24px;margin-top:24px}")
+            sb.append("</style></head><body>")
+            sb.append("<h1>Your photos</h1><p class=\"sub\">${esc(eventTitle)}</p>")
+            sb.append("<div class=\"items\">")
+            val sorted = files.sortedBy { f ->
+                val isGif = f.name.endsWith(".gif", ignoreCase = true)
+                val isSolo = Regex("_solo_\\d+", RegexOption.IGNORE_CASE).containsMatchIn(f.name)
+                val isVid = PBLocal.VIDEO_RE.containsMatchIn(f.name)
+                when { isVid -> 3; isGif -> 1; isSolo -> 2; else -> 0 }
+            }
+            for (f in sorted) {
+                val isVid = PBLocal.VIDEO_RE.containsMatchIn(f.name)
+                val isGif = f.name.endsWith(".gif", ignoreCase = true)
+                val isSolo = Regex("_solo_\\d+", RegexOption.IGNORE_CASE).containsMatchIn(f.name)
+                val label = when { isVid -> "360 Video"; isGif -> "GIF"; isSolo -> "Solo photo"; else -> "Print strip" }
+                val enc = Uri.encode(f.name)
+                sb.append("<div class=\"item\">")
+                if (!isVid) sb.append("<img src=\"/e/$slug/t/$enc\" alt=\"${esc(label)}\">")
+                sb.append("<div class=\"lbl\">${esc(label)}</div>")
+                sb.append("<a class=\"btn\" href=\"/e/$slug/f/$enc?dl=1\">Download</a>")
+                sb.append("</div>")
+            }
+            if (sorted.isEmpty()) sb.append("<p style=\"color:#6B666C\">No photos yet — refresh in a moment.</p>")
+            sb.append("</div>")
+            if (showAll) sb.append("<a class=\"btn alt\" href=\"/e/$slug/\">All photos</a>")
+            sb.append("</body></html>")
+            return sendBytes(out, 200, "OK", "text/html; charset=utf-8", sb.toString().toByteArray(Charsets.UTF_8), headOnly, "no-store")
+        }
+
         // f = the file, t = a small preview of it
         val name = Uri.decode(fileEnc)
         if (name.isEmpty() || name != File(name).name || name.startsWith(".") || !PBLocal.IMG_RE.containsMatchIn(name)) {
@@ -310,11 +360,12 @@ class LocalShareServer(private val store: PBLocal) {
                 val isSolo = Regex("_solo_\\d+", RegexOption.IGNORE_CASE).containsMatchIn(name)
                 val title = if (isVid) "Your 360 video is on its way" else if (isSolo) "Your solo photo is on its way" else "Your photo is on its way"
                 val msg = if (isVid) "We’re preparing your video. It appears here in a few seconds. You can keep this page open." else "This photo isn’t here yet. Wait a moment and refresh."
+                val allPhotosLink = if (store.guestView != "only") "<a class=\"btn alt\" href=\"/e/$slug/\">All photos</a>" else ""
                 val body = "<div class=\"one\"><h1>$title</h1><p class=\"sub\">${esc(store.galleryTitle(folder))}</p>" +
                     "<div style=\"margin:28px auto;width:44px;height:44px;border:4px solid #E4DCCF;border-top-color:#C93D27;border-radius:50%;animation:pbSpin 1s linear infinite\"></div>" +
                     "<style>@keyframes pbSpin{to{transform:rotate(360deg)}}</style>" +
                     "<p class=\"empty\" style=\"padding:10px 0 20px\">$msg</p>" +
-                    "<a class=\"btn alt\" href=\"/e/$slug/\">All photos</a></div>" +
+                    "$allPhotosLink</div>" +
                     "<script>setTimeout(function(){location.reload()},3000)</script>"
                 return sendBytes(out, 200, "OK", "text/html; charset=utf-8", shell(title, body).toByteArray(Charsets.UTF_8), headOnly, "no-store")
             }
@@ -601,12 +652,15 @@ class LocalShareServer(private val store: PBLocal) {
                 val isGif = f.name.endsWith(".gif", ignoreCase = true)
                 val isSolo = Regex("_solo_\\d+", RegexOption.IGNORE_CASE).containsMatchIn(f.name)
                 val kind = if (isVid) "video" else if (isGif) "gif" else if (isSolo) "solo" else "photo"
+                // prefix = everything before the first underscore (the timestamp token)
+                val prefix = f.name.substringBefore('_')
                 arr.put(JSONObject()
                     .put("name", f.name)
                     .put("kind", kind)
                     .put("url", "/e/${folder.slug}/f/" + Uri.encode(f.name))
                     .put("thumbUrl", "/e/${folder.slug}/t/" + Uri.encode(f.name))
                     .put("pageUrl", "/e/${folder.slug}/p/" + Uri.encode(f.name))
+                    .put("sessionUrl", "/e/${folder.slug}/s/" + Uri.encode(prefix))
                     .put("mtime", f.lastModified())
                 )
             }

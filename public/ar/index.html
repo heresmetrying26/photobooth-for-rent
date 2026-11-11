@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex, nofollow">
+<title>Your moving picture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#1C1A1E; --ink-dim:#6e6672; --cream:#faf7f2; --line:#e7e0d6; --green:#2EA66B; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; }
+  body { font-family:'Manrope',-apple-system,BlinkMacSystemFont,sans-serif; background:var(--cream); color:var(--ink); }
+  .scr { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; }
+  .scr[hidden] { display:none; }
+  h1 { font:700 clamp(26px,6vw,34px)/1.15 'Fraunces',Georgia,serif; margin:0 0 10px; }
+  p.sub { color:var(--ink-dim); font-size:15px; line-height:1.55; margin:0 0 22px; max-width:420px; }
+  .big-btn { font:800 17px 'Manrope',sans-serif; background:var(--ink); color:#fff; border:0; border-radius:999px; padding:16px 34px; cursor:pointer; touch-action:manipulation; }
+  .big-btn:disabled { opacity:.45; }
+  .big-btn.green { background:var(--green); }
+  .ghost-btn { font:700 14px 'Manrope',sans-serif; background:none; border:1px solid var(--line); color:var(--ink-dim); border-radius:999px; padding:11px 22px; cursor:pointer; margin-top:12px; }
+  .badge { display:inline-block; font:800 10px monospace; letter-spacing:.12em; text-transform:uppercase; padding:3px 10px; border:1px solid var(--line); border-radius:999px; color:var(--ink-dim); margin-bottom:14px; }
+  .pick-row { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:0 0 18px; max-width:480px; }
+  .pick-row img { width:72px; height:96px; object-fit:cover; border-radius:10px; border:3px solid transparent; cursor:pointer; background:#eee; }
+  .pick-row img.sel { border-color:var(--green); }
+  .pick-row .vchip { font:700 12px 'Manrope',sans-serif; border:2px solid var(--line); background:#fff; border-radius:999px; padding:9px 16px; cursor:pointer; color:var(--ink); }
+  .pick-row .vchip.sel { border-color:var(--green); background:#eafff3; }
+  .pick-label { font:800 11px monospace; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-dim); margin:14px 0 8px; }
+  .file-lab { display:block; font:700 13px 'Manrope',sans-serif; margin:8px 0; }
+  .file-lab input { display:block; margin:6px auto 0; font-size:12px; }
+  .bar { width:min(320px,80vw); height:10px; border-radius:999px; background:#eee5d8; overflow:hidden; margin:16px auto 0; }
+  .bar i { display:block; height:100%; width:0%; background:var(--green); border-radius:999px; transition:width .25s; }
+  .spin { width:34px; height:34px; border:3px solid #e3dccf; border-top-color:var(--ink); border-radius:50%; animation:sp 1s linear infinite; margin:0 auto 16px; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+  /* AR screen */
+  #scrAr { padding:0; background:#000; justify-content:flex-start; }
+  #arHost { position:absolute; inset:0; }
+  #arHost a-scene, #arHost canvas, #arHost video { position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; object-fit:cover; }
+  .ar-top { position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; padding:max(14px, env(safe-area-inset-top)) 14px 0; z-index:5; }
+  .ar-chip { font:700 13px 'Manrope',sans-serif; background:rgba(20,16,22,.62); color:#f6f1ea; border:1px solid rgba(255,255,255,.25); border-radius:999px; padding:10px 18px; cursor:pointer; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+  .ar-hint { position:absolute; left:0; right:0; bottom:max(26px, env(safe-area-inset-bottom)); z-index:5; text-align:center; pointer-events:none; }
+  .ar-hint span { display:inline-block; font:700 14px 'Manrope',sans-serif; background:rgba(20,16,22,.62); color:#f6f1ea; border-radius:999px; padding:11px 20px; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); animation:pulse 2.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:.95; } 50% { opacity:.55; } }
+  .ar-hint.found span { animation:none; background:rgba(46,166,107,.85); }
+  /* flat player */
+  #flatVid { position:fixed; inset:0; width:100%; height:100%; background:#000; object-fit:contain; z-index:40; }
+  footer { position:fixed; bottom:10px; left:0; right:0; text-align:center; font-size:11px; color:var(--ink-dim); }
+  footer a { color:inherit; }
+</style>
+</head>
+<body>
+
+  <!-- 1. Start -->
+  <div class="scr" id="scrStart" hidden>
+    <span class="badge">Moving picture</span>
+    <h1 id="startTitle">Watch your photo come alive</h1>
+    <p class="sub" id="startSub">Hold your printed photo in front of you, then point this camera at it — the moment you captured plays right on the print, like magic.</p>
+    <div id="pickBox" hidden>
+      <div class="pick-label" id="photoPickLabel">Which photo are you pointing at?</div>
+      <div class="pick-row" id="photoPick"></div>
+      <div class="pick-label" id="vidPickLabel" hidden>Which video should play on it?</div>
+      <div class="pick-row" id="vidPick" hidden></div>
+    </div>
+    <div id="demoBox" hidden>
+      <label class="file-lab">The printed photo (image file)<input type="file" id="demoPhoto" accept="image/*"></label>
+      <label class="file-lab">The video to play on it<input type="file" id="demoVideo" accept="video/*"></label>
+    </div>
+    <button class="big-btn green" id="startBtn" disabled>Start the magic ✨</button>
+    <button class="ghost-btn" id="flatBtn1" hidden>Just watch the video</button>
+  </div>
+
+  <!-- 2. Working -->
+  <div class="scr" id="scrWork" hidden>
+    <div class="spin"></div>
+    <h1 style="font-size:22px" id="workTitle">Getting ready…</h1>
+    <p class="sub" id="workSub">This takes a few seconds.</p>
+    <div class="bar"><i id="workBar"></i></div>
+  </div>
+
+  <!-- 3. AR view -->
+  <div class="scr" id="scrAr" hidden>
+    <div id="arHost"></div>
+    <div class="ar-top">
+      <button class="ar-chip" id="backBtn">‹ Back</button>
+      <div style="display:flex;gap:8px">
+        <button class="ar-chip" id="soundBtn" hidden>🔇 Sound off</button>
+        <button class="ar-chip" id="flatBtn2">Watch it flat</button>
+      </div>
+    </div>
+    <div class="ar-hint" id="arHint"><span id="arHintText">Point the camera at your printed photo</span></div>
+  </div>
+
+  <!-- 4. Error / message -->
+  <div class="scr" id="scrErr" hidden>
+    <span class="badge">Moving picture</span>
+    <h1 style="font-size:24px" id="errTitle">Something went wrong</h1>
+    <p class="sub" id="errSub"></p>
+    <button class="big-btn" id="errFlatBtn" hidden>Just watch the video</button>
+    <a class="ghost-btn" id="errGalleryBtn" style="text-decoration:none" hidden>See my photos instead</a>
+  </div>
+
+  <video id="flatVid" controls playsinline webkit-playsinline hidden></video>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var pm = /^\/ar\/([A-Za-z0-9_-]{16,40})\/?$/.exec(location.pathname);
+  var CODE = pm ? pm[1] : ((/[?&]c=([A-Za-z0-9_-]{16,40})/.exec(location.search) || [])[1] || '');
+  var DEMO = !CODE;
+
+  var st = { files: [], photo: null, video: null, photoImg: null, videoUrl: '', mindUrl: '', muted: true, scriptsLoaded: false };
+
+  function show(id) {
+    ['scrStart', 'scrWork', 'scrAr', 'scrErr'].forEach(function (s) { $(s).hidden = s !== id; });
+  }
+  function fail(title, sub, withFlat) {
+    show('scrErr');
+    $('errTitle').textContent = title;
+    $('errSub').textContent = sub || '';
+    $('errFlatBtn').hidden = !(withFlat && st.videoUrl);
+    $('errGalleryBtn').hidden = !CODE;
+    if (CODE) $('errGalleryBtn').href = '/p/' + CODE;
+  }
+  function work(title, sub, pct) {
+    show('scrWork');
+    $('workTitle').textContent = title;
+    $('workSub').textContent = sub || '';
+    $('workBar').style.width = (pct || 0) + '%';
+  }
+
+  function isVideo(f) { return /^video\//.test(f.mime || '') || /\.(mp4|mov|m4v|webm)$/i.test(f.name || ''); }
+  function isGif(f) { return !isVideo(f) && (f.mime === 'image/gif' || /\.gif$/i.test(f.name || '')); }
+  function isPhoto(f) { return !isVideo(f) && !isGif(f); }
+
+  // ---------- the guest's files ----------
+  async function loadGuest() {
+    var r, j;
+    try {
+      r = await fetch('/api/guestview?c=' + encodeURIComponent(CODE), { cache: 'no-store' });
+      j = await r.json();
+    } catch (e) { return fail('Can’t load your photos', 'Check your internet and try again.'); }
+    if (!j || !j.ok) return fail('Page not found', 'Check the link or scan your QR code again.');
+    if (j.pending) return fail('Your photos are still saving', 'Give it a few seconds, then open this link again.');
+    st.files = j.files || [];
+    var photos = st.files.filter(isPhoto);
+    var videos = st.files.filter(function (f) { return isVideo(f) && f.vsrc; });
+    if (!photos.length) return fail('No photo found yet', 'The printed photo hasn’t been saved online yet. Try again in a minute.');
+    if (!videos.length) return fail('No video with this session', 'A moving picture needs a short video saved with your photos — ask the booth attendant to record one.', false);
+    st.photo = photos[0];
+    st.video = videos[0];
+    // choosers only when there is a real choice
+    if (photos.length > 1) {
+      $('photoPick').innerHTML = '';
+      photos.slice(0, 8).forEach(function (f, i) {
+        var im = document.createElement('img');
+        im.src = f.src; im.alt = f.name;
+        if (i === 0) im.classList.add('sel');
+        im.addEventListener('click', function () {
+          st.photo = f;
+          Array.prototype.forEach.call($('photoPick').children, function (c) { c.classList.remove('sel'); });
+          im.classList.add('sel');
+        });
+        $('photoPick').appendChild(im);
+      });
+      $('pickBox').hidden = false;
+    }
+    if (videos.length > 1) {
+      $('vidPick').innerHTML = '';
+      videos.slice(0, 8).forEach(function (f, i) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'vchip' + (i === 0 ? ' sel' : '');
+        b.textContent = 'Video ' + (i + 1);
+        b.addEventListener('click', function () {
+          st.video = f;
+          Array.prototype.forEach.call($('vidPick').children, function (c) { c.classList.remove('sel'); });
+          b.classList.add('sel');
+        });
+        $('vidPick').appendChild(b);
+      });
+      $('pickBox').hidden = false; $('vidPickLabel').hidden = false; $('vidPick').hidden = false;
+    }
+    $('startBtn').disabled = false;
+    $('flatBtn1').hidden = false;
+    show('scrStart');
+  }
+
+  // ---------- demo mode (no code): try it with your own files ----------
+  function setupDemo() {
+    $('startTitle').textContent = 'Try a moving picture';
+    $('startSub').textContent = 'Pick a photo and a short video. Then point the camera at that photo — on a print, or on another screen — and the video plays on top of it.';
+    $('demoBox').hidden = false;
+    function ready() { $('startBtn').disabled = !($('demoPhoto').files[0] && $('demoVideo').files[0]); }
+    $('demoPhoto').addEventListener('change', ready);
+    $('demoVideo').addEventListener('change', ready);
+    show('scrStart');
+  }
+
+  // ---------- libraries (loaded only when the magic starts) ----------
+  function addScript(src) {
+    return new Promise(function (res, rej) {
+      var s = document.createElement('script');
+      s.src = src; s.onload = res; s.onerror = function () { rej(new Error('load ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+  async function loadLibs() {
+    if (st.scriptsLoaded) return;
+    work('Waking up the magic…', 'Loading the camera tools.', 5);
+    await addScript('https://cdn.jsdelivr.net/npm/aframe@1.5.0/dist/aframe-v1.5.0.min.js');
+    await addScript('https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js');
+    await addScript('https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js');
+    st.scriptsLoaded = true;
+  }
+
+  // ---------- the pipeline: photo -> compiled target, video -> object URL ----------
+  function loadImage(src) {
+    return new Promise(function (res, rej) {
+      var im = new Image();
+      im.crossOrigin = 'anonymous';
+      im.onload = function () { res(im); };
+      im.onerror = function () { rej(new Error('image')); };
+      im.src = src;
+    });
+  }
+  async function fetchBlobUrl(src) {
+    var r = await fetch(src);
+    if (!r.ok) throw new Error('video ' + r.status);
+    return URL.createObjectURL(await r.blob());
+  }
+  // Phones learn a smaller copy much faster, and tracking works just as well around 640px.
+  function shrink(img) {
+    var max = 640, w = img.naturalWidth, h = img.naturalHeight;
+    if (Math.max(w, h) <= max) return Promise.resolve(img);
+    var s = max / Math.max(w, h), c = document.createElement('canvas');
+    c.width = Math.round(w * s); c.height = Math.round(h * s);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return loadImage(c.toDataURL('image/jpeg', 0.92));
+  }
+  async function prepare() {
+    // 1. the photo
+    work('Reading your photo…', '', 10);
+    try {
+      st.photoImg = await loadImage(DEMO ? URL.createObjectURL($('demoPhoto').files[0]) : st.photo.src);
+      st.photoImg = await shrink(st.photoImg);
+    } catch (e) { return fail('Couldn’t read the photo', 'Check your internet and try again.'); }
+    // 2. the video
+    work('Getting the video…', '', 20);
+    try {
+      st.videoUrl = DEMO ? URL.createObjectURL($('demoVideo').files[0]) : await fetchBlobUrl(st.video.vsrc);
+    } catch (e) { return fail('Couldn’t get the video', 'Check your internet and try again.'); }
+    // 3. learn the photo (compile the tracking target on this phone)
+    work('Learning your photo…', 'The phone memorises what your print looks like. About 10–20 seconds.', 25);
+    try {
+      var compiler = new window.MINDAR.IMAGE.Compiler();
+      await compiler.compileImageTargets([st.photoImg], function (p) {
+        work('Learning your photo…', 'The phone memorises what your print looks like.', 25 + Math.round(p * 0.7));
+      });
+      var buf = await compiler.exportData();
+      st.mindUrl = URL.createObjectURL(new Blob([buf]));
+    } catch (e) {
+      console.error(e);
+      return fail('This phone can’t do the magic', 'The camera trick needs a newer phone. You can still watch the video.', true);
+    }
+    startAr();
+  }
+
+  // ---------- AR ----------
+  function startAr() {
+    work('Starting the camera…', 'Say yes when the phone asks to use it.', 97);
+    var host = $('arHost');
+    var aspect = st.photoImg.naturalHeight / st.photoImg.naturalWidth;
+    host.innerHTML =
+      '<a-scene mindar-image="imageTargetSrc: ' + st.mindUrl + '; filterMinCF: 0.0005; filterBeta: 0.01; uiLoading: no; uiError: no; uiScanning: no;" ' +
+      'color-space="sRGB" embedded renderer="colorManagement: true, physicallyCorrectLights: false" ' +
+      'vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">' +
+      '  <a-assets>' +
+      '    <video id="arVid" src="' + st.videoUrl + '" playsinline webkit-playsinline loop muted preload="auto"></video>' +
+      '  </a-assets>' +
+      '  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>' +
+      '  <a-entity id="arAnchor" mindar-image-target="targetIndex: 0">' +
+      '    <a-video src="#arVid" width="1" height="' + aspect.toFixed(4) + '" position="0 0 0"></a-video>' +
+      '  </a-entity>' +
+      '</a-scene>';
+    var scene = host.querySelector('a-scene');
+    var vid = $('arVid');
+    scene.addEventListener('arReady', function () {
+      show('scrAr');
+      $('soundBtn').hidden = false;
+    });
+    scene.addEventListener('arError', function () {
+      fail('The camera didn’t start', 'Allow the camera for this page in your browser, then try again. You can still watch the video.', true);
+    });
+    var anchor = host.querySelector('#arAnchor');
+    anchor.addEventListener('targetFound', function () {
+      $('arHint').classList.add('found');
+      $('arHintText').textContent = st.muted ? 'There it is! Tap Sound for audio' : 'There it is!';
+      try { vid.currentTime = 0; } catch (e) { }
+      vid.play().catch(function () { });
+    });
+    anchor.addEventListener('targetLost', function () {
+      $('arHint').classList.remove('found');
+      $('arHintText').textContent = 'Point the camera at your printed photo';
+      try { vid.pause(); } catch (e) { }
+    });
+    $('soundBtn').onclick = function () {
+      st.muted = !st.muted;
+      vid.muted = st.muted;
+      $('soundBtn').textContent = st.muted ? '🔇 Sound off' : '🔊 Sound on';
+      if (!st.muted) vid.play().catch(function () { });
+    };
+  }
+
+  function stopAr() {
+    var scene = $('arHost').querySelector('a-scene');
+    if (scene && scene.systems && scene.systems['mindar-image-system']) {
+      try { scene.systems['mindar-image-system'].stop(); } catch (e) { }
+    }
+    $('arHost').innerHTML = '';
+  }
+
+  // ---------- flat playback (the no-magic fallback) ----------
+  async function playFlat() {
+    if (!st.videoUrl) {
+      try { st.videoUrl = DEMO ? URL.createObjectURL($('demoVideo').files[0]) : await fetchBlobUrl(st.video.vsrc); }
+      catch (e) { return fail('Couldn’t get the video', 'Check your internet and try again.'); }
+    }
+    stopAr();
+    var v = $('flatVid');
+    v.src = st.videoUrl; v.hidden = false; v.muted = false;
+    v.play().catch(function () { });
+    v.onclick = null;
+    // tap-and-hold the top corner to close? keep simple: a close on ended + back via history
+    if (!v.dataset.esc) {
+      v.dataset.esc = '1';
+      var esc = document.createElement('button');
+      esc.className = 'ar-chip'; esc.textContent = '✕ Close';
+      esc.style.cssText = 'position:fixed;top:max(14px, env(safe-area-inset-top));right:14px;z-index:50;';
+      esc.onclick = function () { v.pause(); v.hidden = true; esc.remove(); delete v.dataset.esc; show(st.mindUrl ? 'scrAr' : 'scrStart'); if (st.mindUrl) startAr(); };
+      document.body.appendChild(esc);
+    }
+  }
+
+  // ---------- wiring ----------
+  $('startBtn').addEventListener('click', async function () {
+    try { await loadLibs(); } catch (e) { return fail('Couldn’t load the magic', 'Check your internet and try again.'); }
+    prepare();
+  });
+  $('flatBtn1').addEventListener('click', playFlat);
+  $('flatBtn2').addEventListener('click', playFlat);
+  $('errFlatBtn').addEventListener('click', playFlat);
+  $('backBtn').addEventListener('click', function () { stopAr(); st.mindUrl = ''; show('scrStart'); });
+
+  if (DEMO) setupDemo(); else { work('Finding your photos…', '', 5); loadGuest(); }
+})();
+</script>
+<footer><a href="/about-us/">photobooth4u</a> · moving picture</footer>
+</body>
+</html>

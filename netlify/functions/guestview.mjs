@@ -57,7 +57,8 @@ export default safe(async (req) => {
     }
     const files = (doc.files || []).filter((x) => ID_RE.test(x.id)).map((x) => ({
       id: x.id, name: x.name, mime: x.mime, t: x.t,
-      src: /^video\//.test(x.mime || '') ? '' : '/api/gallery?img=' + x.id + '&s=' + sigOf(x.id)
+      src: /^video\//.test(x.mime || '') ? '' : '/api/gallery?img=' + x.id + '&s=' + sigOf(x.id),
+      vsrc: /^video\//.test(x.mime || '') ? '/api/gallery?vid=' + x.id + '&s=' + sigOf(x.id) : undefined
     })).sort((a, b) => {
       const ra = fileRank(a.name), rb = fileRank(b.name);
       if (ra !== rb) return ra - rb;

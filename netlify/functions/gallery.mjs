@@ -33,11 +33,37 @@ async function serveImage(id, sig) {
   });
 }
 
+// A session's short video for the moving-picture page (/ar/<code>): same signature rule as
+// images, so only listed files can be fetched. Buffered like images; booth videos stay small
+// (the guestbook caps them at 25 MB), bigger ones still play through Drive's own player.
+async function serveVideo(id, sig) {
+  if (!ID_RE.test(id) || sig !== sigOf(id)) return notFound();
+  let r;
+  try { r = await fetch('https://drive.google.com/uc?export=download&id=' + encodeURIComponent(id), { redirect: 'follow' }); }
+  catch { return notFound(); }
+  const type = (r.headers.get('content-type') || '').split(';')[0].trim();
+  if (!r.ok || !/^video\/(mp4|webm|quicktime|x-m4v)$/.test(type)) return notFound();
+  const buf = await r.arrayBuffer();
+  if (buf.byteLength > MAX_BYTES) return notFound();
+  return new Response(buf, {
+    status: 200,
+    headers: {
+      'content-type': type,
+      'x-content-type-options': 'nosniff',
+      'cache-control': 'public, max-age=86400',
+      'netlify-cdn-cache-control': 'public, durable, max-age=604800',
+      'netlify-vary': 'query=vid'
+    }
+  });
+}
+
 export default safe(async (req) => {
   if (req.method !== 'GET') return json({ error: 'Method not allowed' }, 405);
   const u = new URL(req.url);
   const img = u.searchParams.get('img');
   if (img) return serveImage(img, u.searchParams.get('s') || '');
+  const vid = u.searchParams.get('vid');
+  if (vid) return serveVideo(vid, u.searchParams.get('s') || '');
 
   const f = u.searchParams.get('f') || '';
   if (!ID_RE.test(f)) return json({ ok: false, error: 'not-found' }, 404);
@@ -70,7 +96,8 @@ export default safe(async (req) => {
     name: String(x.name || '').slice(0, 120),
     mime: x.mime,
     t: Number(x.t) || 0,
-    src: /^video\//.test(x.mime) ? '' : '/api/gallery?img=' + x.id + '&s=' + sigOf(x.id)
+    src: /^video\//.test(x.mime) ? '' : '/api/gallery?img=' + x.id + '&s=' + sigOf(x.id),
+    vsrc: /^video\//.test(x.mime) ? '/api/gallery?vid=' + x.id + '&s=' + sigOf(x.id) : undefined
   }));
   return new Response(JSON.stringify({
     ok: true,

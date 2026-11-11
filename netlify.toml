@@ -130,6 +130,19 @@
   to = "/gallery/index.html"
   status = 200
 
+# Moving picture (AR): /ar/<code> plays the guest's video on top of their printed photo
+# through the phone's camera. /ar/ with no code is a try-it page with local files.
+[[redirects]]
+  from = "/ar/*"
+  to = "/ar/index.html"
+  status = 200
+
+[[headers]]
+  for = "/ar/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-cache"
+
 [[headers]]
   for = "/p/*"
   [headers.values]

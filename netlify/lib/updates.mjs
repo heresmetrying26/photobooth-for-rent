@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.22', date: '2026-11-11' },
   { version: '1.1.21', date: '2026-11-10' },
   { version: '1.1.20', date: '2026-11-10' },
   { version: '1.1.19', date: '2026-11-10' },
@@ -193,6 +194,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-11', title: 'Desktop 1.1.22 + Android 1.1.39: Sharing Station — pure LumaShare session mode, single-photo QR & multi-item pills', for: ['website', 'app'], app: '1.1.22',
+    items: [
+      '🔒 Pure LumaShare Session Mode: the Sharing Station no longer displays an event-wide photo grid by default. It stays on a clean, branded standby screen between sessions and automatically pops only the current session\'s photos.',
+      '📲 Single-Photo QR Code: scanning the station QR with a phone camera now opens only that specific photo or strip directly in the high-res downloader, never the entire event gallery.',
+      '✨ Multi-Item Session Selector: for sessions with composite strips, solo photos, or GIFs, interactive pills allow guests to switch between their session assets and scan direct QR codes for each one.',
+      '⚡ Fresh Session Auto-Display: opening or refreshing the station page within 2 minutes of taking photos immediately shows that session instead of an empty screen.'
+    ]
+  },
   {
     date: '2026-11-10', title: 'Desktop 1.1.21 + Android 1.1.38: Live Layout Editor — sticker corner handles, dummy guest photos & top bar clearance', for: ['website', 'app'], app: '1.1.21',
     items: [

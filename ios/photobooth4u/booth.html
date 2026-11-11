@@ -31855,7 +31855,7 @@
       refreshShareStationUI();
 
       function getShareStationUrl() {
-        var priv = (shareStationPrivacy === 'only') ? 'privacy=only' : '';
+        var priv = (shareStationPrivacy === 'all') ? 'gallery=1' : '';
         if (LOCALSHARE) {
           // Offline (Desktop/Android): server auto-resolves latest event via resolveSlug().
           // Never embed a folder ID in the URL — that would pin it to an old event.
@@ -44734,9 +44734,38 @@
       var DESIGN_KEYS =['backdropPreset', 'backdropColor', 'elementsChoice', 'accent', 'frameColorChoice', 'photoPlacement', 'cropFocus',
         'textColor', 'font', 'dateFont', 'titleSize', 'titleBg', 'titleBgColor', 'outline', 'outlineColor', 'shadow',
         'filter', 'softSkin', 'dateStamp', 'overlay', 'logo', 'decor', 'myProps', 'titleStyle', 'kicker', 'upper', 'art', 'artPal'];
-      function myThemesKey() { var pb = window.__PB || {}; return 'pb_mythemes:' + (pb.folderPrefix || pb.folderKey || 'local'); }
+      function myThemesKey() { return 'pb_mythemes:device'; }
       async function loadMyThemes() {
-        try { myThemes = JSON.parse(localStorage.getItem(myThemesKey()) || '[]') || []; } catch (e) { myThemes = []; }
+        var tk = myThemesKey();
+        try { myThemes = JSON.parse(localStorage.getItem(tk) || '[]') || []; } catch (e) { myThemes = []; }
+        // Rescue themes from any legacy scope keys
+        try {
+          var themesMigrated = false;
+          var byId = {};
+          myThemes.forEach(function (t) { if (t && t.id) byId[t.id] = t; });
+          for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k && k !== tk && k.indexOf('pb_mythemes:') === 0) {
+              try {
+                var oldT = JSON.parse(localStorage.getItem(k) || '[]') || [];
+                if (Array.isArray(oldT) && oldT.length) {
+                  oldT.forEach(function (t) {
+                    if (t && t.id && (!byId[t.id] || (t.savedAt || 0) > (byId[t.id].savedAt || 0))) {
+                      byId[t.id] = t;
+                      themesMigrated = true;
+                    }
+                  });
+                }
+                localStorage.removeItem(k);
+                i--;
+              } catch (err) { }
+            }
+          }
+          if (themesMigrated) {
+            myThemes = Object.values(byId).sort(function (a, b) { return (b.savedAt || 0) - (a.savedAt || 0); }).slice(0, 40);
+            localStorage.setItem(tk, JSON.stringify(myThemes));
+          }
+        } catch (e) { }
         if (canSyncServer()) {
           try {
             var r = await fetch('/api/setup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: setupBody({ action: 'themes-get' }) });
@@ -44799,13 +44828,14 @@
 
       // ---- Saved profiles: the whole setup (design, timers, printing, payments...) saved under a name ----
       // Kept on this device, and on the server for rental / lifetime codes (merged, so two devices never overwrite each other).
+      // Profiles are templates belonging to the photobooth operator: they must persist across app updates, renewals and events.
       var setupProfiles = [], profileTomb = {}, profActive = null, profUndo = null;
       var PROFILE_MAX = 12, PROFILE_TOMB_MAX = 60;
       // Things that belong to the device (printers, payments, screen turn), kept when only the design is loaded.
       // (Voucher batches and the print choices in p.device are only loaded by "Use everything", never by "Design only".)
       var PROFILE_DEVICE_KEYS = ['printerProfiles', 'printPrefs', 'pay', 'androidOrientation', 'colorAdj', 'flipPrinterPool', 'flipPoolMode'];
-      function profScope() { var pb = window.__PB || {}; return pb.folderPrefix || pb.folderKey || 'local'; }
-      function profilesKey() { return 'pb_profiles:' + profScope(); }
+      function profScope() { return 'device'; }
+      function profilesKey() { return 'pb_profiles:device'; }
       function strHash(str) { str = String(str || ''); var h = 0; for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return str.length + ':' + h; }
       function newProfileId() { return 'pf-' + newAssetId().slice(1, 11).toLowerCase(); }
       // Joins two copies of the list (this device + server): the newer save of each profile wins, and a delete beats an older save.
@@ -44825,9 +44855,66 @@
         return { list: list.slice(0, PROFILE_MAX), tomb: tomb2 };
       }
       function profilesReadLocal() {
-        var o = null; try { o = JSON.parse(localStorage.getItem(profilesKey()) || 'null'); } catch (e) { }
+        var pk = profilesKey();
+        var o = null; try { o = JSON.parse(localStorage.getItem(pk) || 'null'); } catch (e) { }
         if (Array.isArray(o)) o = { profiles: o, del: {} };
-        return { list: (o && Array.isArray(o.profiles)) ? o.profiles : [], tomb: (o && o.del && typeof o.del === 'object') ? o.del : {} };
+        var list = (o && Array.isArray(o.profiles)) ? o.profiles : [];
+        var tomb = (o && o.del && typeof o.del === 'object') ? o.del : {};
+
+        // Rescue and merge profiles from ANY legacy scope keys
+        // (e.g. pb_profiles:local, pb_profiles:null, pb_profiles:desktop, pb_profiles:android, pb_profiles:<folderKey>)
+        try {
+          var migrated = false;
+          var legacyKeys = [];
+          for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k && k !== pk && k.indexOf('pb_profiles:') === 0) {
+              legacyKeys.push(k);
+            }
+          }
+          legacyKeys.forEach(function (k) {
+            try {
+              var old = JSON.parse(localStorage.getItem(k) || 'null');
+              if (Array.isArray(old)) old = { profiles: old, del: {} };
+              if (old && Array.isArray(old.profiles) && old.profiles.length) {
+                var m = profileMerge(list, tomb, old.profiles, old.del || {});
+                list = m.list;
+                tomb = m.tomb;
+                migrated = true;
+              }
+              localStorage.removeItem(k);
+            } catch (err) { }
+          });
+          if (migrated) {
+            localStorage.setItem(pk, JSON.stringify({ profiles: list, del: tomb }));
+          }
+        } catch (e) { }
+
+        // Rescue active profile and undo if not in 'device' scope
+        try {
+          var activeKey = 'pb_profile_active:device';
+          if (!localStorage.getItem(activeKey)) {
+            for (var a = 0; a < localStorage.length; a++) {
+              var ak = localStorage.key(a);
+              if (ak && ak !== activeKey && ak.indexOf('pb_profile_active:') === 0) {
+                var av = localStorage.getItem(ak);
+                if (av) { localStorage.setItem(activeKey, av); localStorage.removeItem(ak); break; }
+              }
+            }
+          }
+          var undoKey = 'pb_profile_undo:device';
+          if (!localStorage.getItem(undoKey)) {
+            for (var u = 0; u < localStorage.length; u++) {
+              var uk = localStorage.key(u);
+              if (uk && uk !== undoKey && uk.indexOf('pb_profile_undo:') === 0) {
+                var uv = localStorage.getItem(uk);
+                if (uv) { localStorage.setItem(undoKey, uv); localStorage.removeItem(uk); break; }
+              }
+            }
+          }
+        } catch (e) { }
+
+        return { list: list, tomb: tomb };
       }
       function profilesCacheLocal() { try { localStorage.setItem(profilesKey(), JSON.stringify({ profiles: setupProfiles, del: profileTomb })); } catch (e) { } }
       function profIdAt(p) { return p.id + '@' + (p.savedAt || 0); }

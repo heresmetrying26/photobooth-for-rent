@@ -17,12 +17,13 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
 .pulse{width:8px;height:8px;background:#2EA66B;border-radius:50%;box-shadow:0 0 8px #2EA66B;animation:pbPulse 2s infinite}
 @keyframes pbPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
 
-.controls{display:flex;align-items:center;justify-content:center;padding:12px 16px 4px}
+/* Default: LumaShare Session Mode (Standby / Current Session only). Grid is hidden by default. */
+.controls{display:none;align-items:center;justify-content:center;padding:12px 16px 4px}
 .tabs{display:inline-flex;background:rgba(255,255,255,0.06);border-radius:20px;padding:3px;gap:2px}
 .tab{background:transparent;border:0;border-radius:18px;padding:6px 16px;font-size:13px;font-weight:700;color:#A49FA9;cursor:pointer}
 .tab.active{background:#fff;color:#0F0E13;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;padding:16px 20px 60px;max-width:1300px;margin:0 auto}
+.grid{display:none;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;padding:16px 20px 60px;max-width:1300px;margin:0 auto}
 .card{background:rgba(255,255,255,0.05);border-radius:14px;overflow:hidden;aspect-ratio:9/16;position:relative;cursor:pointer;border:1px solid rgba(255,255,255,0.08);transition:transform .15s}
 .card:active{transform:scale(0.97)}
 .card img,.card video{width:100%;height:100%;object-fit:cover;display:block}
@@ -30,26 +31,31 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
 .card .time{position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#eee;border-radius:6px;padding:3px 7px;font-size:10px;font-weight:600}
 .empty{text-align:center;color:#8E8994;padding:80px 20px;font-size:15px;grid-column:1/-1}
 
-/* Standby screen for Privacy / Single-Session mode */
-.standby-wrap{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:75vh;padding:32px 20px;text-align:center}
-.standby-card{max-width:440px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:36px 28px;box-shadow:0 20px 50px rgba(0,0,0,0.5)}
-.standby-icon{font-size:46px;margin-bottom:12px;animation:stBounce 1.6s infinite alternate ease-in-out}
+/* Standby screen (Clean kiosk standby - LumaShare style) */
+.standby-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:75vh;padding:32px 20px;text-align:center}
+.standby-card{max-width:460px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:38px 28px;box-shadow:0 20px 50px rgba(0,0,0,0.5)}
+.standby-icon{font-size:48px;margin-bottom:12px;animation:stBounce 1.6s infinite alternate ease-in-out}
 @keyframes stBounce{from{transform:translateY(0)}to{transform:translateY(-8px)}}
 .standby-card h2{margin:0 0 10px;font-size:24px;font-weight:800;letter-spacing:-.02em;color:#fff}
 .standby-card p{margin:0;color:#A49FA9;font-size:14.5px;line-height:1.55}
-.wrong-event-bar{margin-top:20px;padding:0}
+.standby-status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#2EA66B;margin-top:16px;background:rgba(46,166,107,0.12);padding:5px 12px;border-radius:20px}
+.wrong-event-bar{margin-top:20px}
 .wrong-event-btn{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.14);color:#A49FA9;font-size:12px;font-weight:700;border-radius:10px;padding:7px 16px;cursor:pointer;font-family:inherit;transition:background .15s}
 .wrong-event-btn:hover{background:rgba(255,255,255,0.14);color:#fff}
 
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s}
+/* Active Session Display / Modal (LumaShare screen) */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);backdrop-filter:blur(18px);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s}
 .modal-overlay.open{opacity:1;pointer-events:auto}
-.modal{background:#18161D;border:1px solid rgba(255,255,255,0.12);border-radius:24px;width:100%;max-width:920px;max-height:92vh;display:flex;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,0.7);position:relative}
+.modal{background:#18161D;border:1px solid rgba(255,255,255,0.12);border-radius:24px;width:100%;max-width:940px;max-height:92vh;display:flex;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,0.8);position:relative}
 .modal-media{flex:1.2;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;min-height:360px}
 .modal-media video,.modal-media img{max-width:100%;max-height:86vh;object-fit:contain}
 .modal-share{flex:1;padding:32px 28px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:#18161D;border-left:1px solid rgba(255,255,255,0.08)}
 .modal-share h2{margin:0 0 6px;font-size:24px;font-weight:800;letter-spacing:-.02em}
-.modal-share p{color:#A49FA9;font-size:13px;line-height:1.45;margin:0 0 20px;max-width:280px}
-.qr-frame{background:#fff;padding:14px;border-radius:18px;box-shadow:0 12px 36px rgba(0,0,0,0.4);display:inline-block;margin-bottom:20px}
+.modal-share p{color:#A49FA9;font-size:13px;line-height:1.45;margin:0 0 16px;max-width:280px}
+.session-pills{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:14px;max-width:280px}
+.session-pill{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14);color:#D2CED6;font-size:11.5px;font-weight:700;border-radius:12px;padding:4px 10px;cursor:pointer;transition:all .15s;font-family:inherit}
+.session-pill.active{background:#C93D27;color:#fff;border-color:#C93D27;box-shadow:0 2px 8px rgba(201,61,39,0.3)}
+.qr-frame{background:#fff;padding:14px;border-radius:18px;box-shadow:0 12px 36px rgba(0,0,0,0.4);display:inline-block;margin-bottom:18px}
 .qr-frame img{display:block;width:200px;height:200px}
 .btn{display:inline-block;padding:13px 24px;border-radius:12px;background:#C93D27;color:#fff;font-weight:800;text-decoration:none;font-size:14px;border:0;cursor:pointer;width:100%;max-width:260px;margin-bottom:8px;text-align:center;font-family:inherit}
 .btn.alt{background:rgba(255,255,255,0.08);color:#fff}
@@ -74,7 +80,7 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
     <h1 id="stTitle">Sharing Station</h1>
     <div class="badge">📱 Sharing Station</div>
   </div>
-  <div class="stat"><span class="pulse"></span><span id="stCount">0 items</span></div>
+  <div class="stat"><span class="pulse"></span><span id="stCount">Live</span></div>
 </header>
 
 <div class="controls" id="stControls">
@@ -94,6 +100,7 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
     <div class="standby-icon">✨ 📸</div>
     <h2>Ready for your photos!</h2>
     <p>Step up to the booth to start your session. Your photos and QR code will appear here automatically.</p>
+    <div class="standby-status"><span class="pulse"></span> Live Sync Active</div>
     <div class="wrong-event-bar" id="wrongEventBar" style="display:none">
       <button type="button" class="wrong-event-btn" onclick="goLatestStation()">⟳ Seeing wrong event? Switch to current</button>
     </div>
@@ -107,6 +114,7 @@ h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:now
     <div class="modal-share">
       <h2>Scan to save</h2>
       <p>Point your phone’s camera at the QR code to open and save your photo.</p>
+      <div id="mSessionPills" class="session-pills" style="display:none"></div>
       <div class="qr-frame"><img id="mQr" alt="QR Code"></div>
       <a class="btn" id="mDl" download>Save Photo</a>
       <button type="button" class="btn alt" id="mDone">Done (Next guest)</button>
@@ -123,28 +131,31 @@ if (!folderId) {
   var mPath = /\/station\/([A-Za-z0-9_-]{10,80})/i.exec(location.pathname);
   if (mPath) folderId = mPath[1];
 }
-var privacyOnly = /[?&]privacy=only\b/i.test(location.search);
+// Default mode is pure LumaShare Session Mode (Standby + auto-pop current session only).
+// Only allow gallery grid if explicitly requested via ?gallery=1 or ?mode=gallery.
+var isGalleryMode = /[?&](gallery=1|mode=gallery)\b/i.test(location.search);
+var privacyOnly = !isGalleryMode;
 var files = [], currentFilter = 'all', activeItem = null, timerId = null, timeLeft = 35;
 var hasLoaded = false, lastKnownTop = null;
 var emptyPollCount = 0;
 
-// If a folderId is pinned in the URL, offer a "switch to current" escape hatch
-// after 20 s of no photos — the booth may have moved to a different event.
 function goLatestStation() {
-  // Strip the ?f= param so the server resolves to the latest event.
-  location.href = location.origin + '/station/' + (privacyOnly ? '?privacy=only' : '');
+  location.href = location.origin + '/station/' + (isGalleryMode ? '?gallery=1' : '');
 }
 
-if (privacyOnly) {
+if (isGalleryMode) {
+  document.getElementById('stControls').style.display = 'flex';
+  document.getElementById('stGrid').style.display = 'grid';
+  document.getElementById('standbyView').style.display = 'none';
+} else {
   document.getElementById('stControls').style.display = 'none';
   document.getElementById('stGrid').style.display = 'none';
   document.getElementById('standbyView').style.display = 'flex';
-  // Show "switch event" button if a folder was pinned (old QR scan).
   if (folderId) {
     setTimeout(function() {
       var b = document.getElementById('wrongEventBar');
       if (b && !hasLoaded) b.style.display = 'block';
-    }, 20000);
+    }, 15000);
   }
 }
 
@@ -189,8 +200,16 @@ function makeQr(url) {
   }
 }
 
+function getSessionPrefix(filename) {
+  if (!filename) return '';
+  var m = /^([A-Za-z0-9_-]+?)_(?:strip|grid|solo|clip|[0-9]+up)/i.exec(filename);
+  if (m) return m[1];
+  var m2 = /^(\d+)[._]/i.exec(filename);
+  return m2 ? m2[1] : filename;
+}
+
 function render() {
-  if (privacyOnly) return;
+  if (!isGalleryMode) return;
   var g = document.getElementById('stGrid');
   var list = files.filter(function(f){ return currentFilter === 'all' || f.kind === currentFilter; });
   if (!list.length) {
@@ -213,13 +232,14 @@ function render() {
   });
 }
 
-function openModal(it) {
+function openModal(it, sessionItems) {
   activeItem = it;
   var m = document.getElementById('modal');
   var med = document.getElementById('mMedia');
   var qr = document.getElementById('mQr');
   var dl = document.getElementById('mDl');
-  var pageUrl = it.pageUrl ? (location.origin + it.pageUrl) : (location.origin + '/g/' + folderId);
+  var pillsBox = document.getElementById('mSessionPills');
+  var pageUrl = it.pageUrl ? (location.origin + it.pageUrl) : (location.origin + '/g/' + folderId + (it.id ? ('#' + it.id) : ''));
   
   if (it.kind === 'video') {
     med.innerHTML = '<video src="' + it.url + '" controls autoplay loop playsinline></video>';
@@ -237,6 +257,35 @@ function openModal(it) {
   dl.href = it.url + (it.url.indexOf('?') >= 0 ? '&dl=1' : '?dl=1');
   dl.setAttribute('download', it.name);
   qr.src = makeQr(pageUrl);
+
+  // Multi-item session support (e.g. print strip + solo photos or GIF)
+  if (pillsBox) {
+    var items = sessionItems || (files && files.filter(function(f) {
+      return getSessionPrefix(f.name) === getSessionPrefix(it.name) || Math.abs((f.mtime || 0) - (it.mtime || 0)) < 8000;
+    })) || [it];
+
+    if (items.length > 1) {
+      pillsBox.style.display = 'flex';
+      pillsBox.innerHTML = items.map(function(item, idx) {
+        var label = item.kind === 'video' ? '🎬 360 Video' :
+                    item.kind === 'gif' ? '✨ GIF' :
+                    item.kind === 'solo' ? ('📸 Solo ' + (idx)) : '🖨️ Print Strip';
+        var isCur = item.name === it.name;
+        return '<button type="button" class="session-pill' + (isCur ? ' active' : '') + '" data-name="' + item.name + '">' + label + '</button>';
+      }).join('');
+
+      pillsBox.querySelectorAll('.session-pill').forEach(function(pill) {
+        pill.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var targetItem = items.find(function(x) { return x.name === pill.dataset.name; });
+          if (targetItem) openModal(targetItem, items);
+        });
+      });
+    } else {
+      pillsBox.style.display = 'none';
+      pillsBox.innerHTML = '';
+    }
+  }
   
   m.classList.add('open');
   resetTimer();
@@ -249,6 +298,11 @@ function closeModal() {
   med.innerHTML = '';
   activeItem = null;
   clearInterval(timerId);
+  if (!isGalleryMode) {
+    document.getElementById('standbyView').style.display = 'flex';
+    document.getElementById('stGrid').style.display = 'none';
+    document.getElementById('stControls').style.display = 'none';
+  }
 }
 
 function resetTimer() {
@@ -301,22 +355,22 @@ async function poll() {
         var isGif = /gif/i.test(f.mime || '') || /\.gif$/i.test(f.name);
         var kind = isVid ? 'video' : isGif ? 'gif' : isSolo(f.name) ? 'solo' : 'photo';
         return {
+          id: f.id,
           name: f.name,
           kind: kind,
           url: f.src || ('https://drive.google.com/uc?export=view&id=' + f.id),
           thumbUrl: f.src,
-          pageUrl: '/g/' + folderId,
+          pageUrl: '/g/' + folderId + '#' + f.id,
           mtime: f.t || 0
         };
       });
       var isFirst = !hasLoaded;
-      var changed = mapped.length !== files.length || (mapped[0] && files[0] && mapped[0].name !== files[0].name);
       var newest = mapped[0];
+      var changed = mapped.length !== files.length || (newest && files[0] && newest.name !== files[0].name);
       files = mapped;
       hasLoaded = true;
-      document.getElementById('stCount').textContent = files.length + (files.length === 1 ? ' item' : ' items');
-      // If this event folder is pinned but has no photos yet, start counting.
-      // After 5 consecutive empty polls (~11 s), reveal the "switch event" button.
+      document.getElementById('stCount').textContent = files.length ? (files.length + ' item' + (files.length === 1 ? '' : 's')) : 'Live';
+
       if (folderId && files.length === 0) {
         emptyPollCount++;
         if (emptyPollCount >= 5) {
@@ -325,14 +379,25 @@ async function poll() {
         }
       } else {
         emptyPollCount = 0;
+        var b2 = document.getElementById('wrongEventBar');
+        if (b2) b2.style.display = 'none';
       }
-      if (changed) {
-        if (!privacyOnly && !activeItem) render();
-        if (newest && (!lastKnownTop || newest.name !== lastKnownTop)) {
-          lastKnownTop = newest.name;
-          if (!isFirst) {
-            playChime();
-            openModal(newest);
+
+      if (changed || isFirst) {
+        if (isGalleryMode && !activeItem) render();
+        if (newest) {
+          var isFresh = newest.mtime && (Date.now() - newest.mtime < 120000); // 2 mins
+          var isNewArrival = !lastKnownTop || newest.name !== lastKnownTop;
+
+          if (isNewArrival) {
+            lastKnownTop = newest.name;
+            if (!isFirst) {
+              playChime();
+              openModal(newest);
+            } else if (isFresh) {
+              // Opened station right after session: auto-show current session!
+              openModal(newest);
+            }
           }
         }
       }
@@ -341,7 +406,7 @@ async function poll() {
 }
 
 poll();
-setInterval(poll, 2200);
+setInterval(poll, 2000);
 </script>
 </body>
 </html>

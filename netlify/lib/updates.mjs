@@ -196,8 +196,9 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
-    date: '2026-11-11', title: 'Desktop 1.1.23 + Android 1.1.40: 58mm mobile printer USB flow pacing, multi-copy protection & zero-waste tear feed', for: ['website', 'app'], app: '1.1.23',
+    date: '2026-11-11', title: 'Desktop 1.1.23 + Android 1.1.40: Sharing Station QR fix, 58mm printer USB pacing & zero-waste tear feed', for: ['website', 'app'], app: '1.1.23',
     items: [
+      '📱 Sharing Station QR Fix: resolved missing/broken QR code display by removing classic script parsing errors in qr.js, inlining the generator for instant zero-latency rendering, and fixing Windows offline path resolution.',
       '🚀 USB Flow Control Pacing: implemented 256-byte paced transfers with 8ms inter-chunk delay and 1.5s mechanical completion wait in NetPrintBridge.kt, preventing USB buffer overflow and ring-buffer wrap-around on cheap mobile thermal printers (MP58C7 / POS-58).',
       '🛡️ Multi-Copy & Sequential Print Protection: added automatic 2-second inter-copy delay to prevent subsequent prints from colliding with or resetting the mechanical print head mid-print.',
       '✂️ Zero-Waste Tear-Bar Feed: tightened 58mm trailing paper feed to 2 lines (~8 mm) so the print stops right at the tear bar, completely eliminating excess bottom margin and runaway paper.',
@@ -205,9 +206,9 @@ export const NOTES = [
     ]
   },
   {
-    date: '2026-11-11', title: 'Desktop 1.1.22 + Android 1.1.39: Sharing Station — pure LumaShare session mode, single-photo QR & multi-item pills', for: ['website', 'app'], app: '1.1.22',
+    date: '2026-11-11', title: 'Desktop 1.1.22 + Android 1.1.39: Sharing Station — pure session mode, single-photo QR & multi-item pills', for: ['website', 'app'], app: '1.1.22',
     items: [
-      '🔒 Pure LumaShare Session Mode: the Sharing Station no longer displays an event-wide photo grid by default. It stays on a clean, branded standby screen between sessions and automatically pops only the current session\'s photos.',
+      '🔒 Pure Session Mode: the Sharing Station no longer displays an event-wide photo grid by default. It stays on a clean, branded standby screen between sessions and automatically pops only the current session\'s photos.',
       '📲 Single-Photo QR Code: scanning the station QR with a phone camera now opens only that specific photo or strip directly in the high-res downloader, never the entire event gallery.',
       '✨ Multi-Item Session Selector: for sessions with composite strips, solo photos, or GIFs, interactive pills allow guests to switch between their session assets and scan direct QR codes for each one.',
       '⚡ Fresh Session Auto-Display: opening or refreshing the station page within 2 minutes of taking photos immediately shows that session instead of an empty screen.'

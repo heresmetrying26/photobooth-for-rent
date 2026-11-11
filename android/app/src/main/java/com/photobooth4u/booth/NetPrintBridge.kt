@@ -1400,7 +1400,26 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 val b = ByteArray(1024)
                 while (!stop.get()) { try { conn.bulkTransfer(inn, b, b.size, 200) } catch (_: Exception) {} }
             }.also { it.isDaemon = true; it.start() }
-            try { usbWrite(conn, out, data) } finally { stop.set(true); reader?.join(1000) }
+            try {
+                // Paced write for thermal receipt printers: small chunks (256 bytes) with pacing delay
+                // so small RAM buffers (2-4 KB) on cheap mobile thermal printers never overflow or wrap around.
+                var off = 0
+                val chunkSize = 256
+                while (off < data.size) {
+                    val len = minOf(chunkSize, data.size - off)
+                    val r = conn.bulkTransfer(out, data, off, len, 30_000)
+                    if (r < 0) throw IllegalStateException("Printer communication timed out. Power cycle the printer and retry.")
+                    off += r
+                    if (off < data.size) {
+                        try { Thread.sleep(8) } catch (_: InterruptedException) {}
+                    }
+                }
+                // Allow the printer mechanism to finish burning the final lines and feeding before closing connection
+                try { Thread.sleep(1500) } catch (_: InterruptedException) {}
+            } finally {
+                stop.set(true)
+                reader?.join(1000)
+            }
         }
     }
 

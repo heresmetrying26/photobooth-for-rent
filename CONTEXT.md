@@ -8,5 +8,6 @@
 - Hardcoded all 58mm optimizations directly to `Receipt 58 mm` (no separate 10 cm button) with tight 2-line (~8 mm) tear feed to eliminate bottom waste.
 
 **Next Steps**:
-- Verify APK build and in-app update on Android tablet with MP58C7 printer.
-- Confirm client test with standard "Receipt 58 mm".
+- Verify GitHub Actions re-triggered APK build from retagged `android-v1.1.40` → `65f1c90`.
+- Client to re-test: 2nd print should no longer cut off; bottom margin should be tighter (~8 mm tear feed).
+- Monitor for any QR code issues on share station page (fix landed in `65f1c90`).

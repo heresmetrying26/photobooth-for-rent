@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.26', date: '2026-11-11' },
   { version: '1.1.25', date: '2026-11-11' },
   { version: '1.1.24', date: '2026-11-11' },
   { version: '1.1.23', date: '2026-11-11' },
@@ -197,6 +198,18 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-11', title: 'Desktop 1.1.26 + Android 1.1.44: 58mm printer reliability & image quality improvements', for: ['website', 'app'], app: '1.1.26',
+    items: [
+      '🔒 Print Lock for 58mm: disabled the Print button while a 58mm job is still physically printing — prevents double-tap data corruption when two jobs reach the printer buffer simultaneously.',
+      '🎨 Accurate brightness for USB prints: Bluetooth and USB receipt prints now read the same lightness/brightness slider value — USB was previously locked at 0 regardless of the slider setting.',
+      '📡 Bluetooth Tune 3 & 4 band cap: capped Smooth-mode (Tune 3/4) image bands to 64 rows on 58mm BT printers (was 192) — prevents rare buffer overflow on printers with extra-small internal RAM.',
+      '⏱️ Scaled USB drain wait: post-print mechanical drain now scales with strip length (1.5–5 s) instead of a fixed 1.5 s, so long custom-template strips have time to fully eject before the connection closes.',
+      '🔑 Per-printer USB lock: a mutex now prevents two concurrent USB write sessions to the same 58mm printer, eliminating the race condition when prints arrive back-to-back from the queue.',
+      '🖼️ 58mm canvas high-quality downscale: when resizing the receipt canvas from 576 to 384 dots for 58mm, imageSmoothingQuality is now set to "high" — reduces aliasing on template borders and thin text.',
+      '🖨️ Smarter 58mm detection: "MP"-prefixed BT device names and printers whose BT-reported paper width is ≤ 384 dots are now recognized as 58mm even without "58" in the name (catches MP58C7 and similar).'
+    ]
+  },
   {
     date: '2026-11-11', title: 'Desktop 1.1.25 + Android 1.1.43: Clean Wi-Fi UI, auto-linked hotspot, undistorted GIF scaling & solo white frame', for: ['website', 'app'], app: '1.1.25',
     items: [

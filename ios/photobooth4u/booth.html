@@ -22725,7 +22725,7 @@
       // session (from tap on welcome screen to the last photo), Camera step in Setup, or when the welcome screen explicitly
       // shows the live camera (attractMode === 'camera' or hands-free wave/smile). Everywhere else the camera is really idle
       // and asleep (webcam stream tracks stopped, DSLR mirror down). Wakes up instantly when needed. Turn off in Setup > Camera.
-      const USB_IDLE_SLEEP_MS = 2500;      // not needed for this long: switch live view off
+      const USB_IDLE_SLEEP_MS = 2000;      // not needed for this long: switch live view off
       const USB_SAVE_KEY = 'pb_cam_save';
       function usbSaveOn() { try { return localStorage.getItem(USB_SAVE_KEY) !== 'off'; } catch (e) { return true; } }
       let usbWantAt = Date.now(), usbPowerBusy = false, usbKeepAt = 0, usbTouchAt = Date.now();
@@ -22743,15 +22743,21 @@
       const SONY_DEEP_SLEEP_MS = 10 * 60 * 1000;
       const SONY_DEEP_KEY = 'pb_cam_deep';
       function sonyDeepOn() { try { return localStorage.getItem(SONY_DEEP_KEY) !== 'off'; } catch (e) { return true; } }
-      var camSleptAt = 0, camDeep = false;
+      var camSleptAt = 0, camDeep = false, camReassertAt = 0;
       function camIsSony() {
         const i = (usbCam.camera && usbCam.camera.info) || {};
         return /sony|\bILC[AEX]|\bILME|\bZV-|\bDSC-|α/i.test([usbCam.name, i.name, i.brand, i.vendor, i.maker].join(' '));
       }
       function usbSetupStep() { const t = document.querySelector('#stepBar .step-tab.on'); return t && t.dataset ? String(t.dataset.step) : ''; }
+      // The guest's "Get ready" screen (waiting for Start), not the layout editor's preview of it.
+      function camReadyWaiting() { return readyOverlay.classList.contains('ready-active') && !readyOverlay.classList.contains('hands') && !readyOverlay.classList.contains('edit-preview'); }
       function camWantLive() {
         if (!usbSaveOn()) return true;
         if (usbCam.shooting) return true;
+        // "Get ready" waiting for the guest to press Start (the session is already 'capturing' here): the camera rests after
+        // USB_IDLE_SLEEP_MS. A touch on the screen keeps it on / wakes it, and pressing Start brings the picture back before the
+        // countdown. Wave / smile to start needs the picture, so it stays on then.
+        if (camReadyWaiting()) return false;
         if (state === 'capturing') return !usbCam.shotsDone;
         if (document.hidden) return false;
         // Start screen splash: definitely idle
@@ -22875,6 +22881,7 @@
       // A guest touches the Touch to Start / welcome screen while the camera rests (a Sony let go of, a webcam stopped, a USB webcam
       // on a tablet that takes a few seconds to open): start waking it now so it is ready by the time they press Start.
       function camPrewarmOk() {
+        if (camReadyWaiting()) return true;   // Get ready: a touch wakes the preview
         if (!tabSetup.classList.contains('hidden') || state === 'capturing') return false;   // Setup taps and a running session do their own thing
         const ss = document.getElementById('startScreen');
         if (ss && !ss.classList.contains('gone') && ss.style.display !== 'none') return true;
@@ -22883,10 +22890,13 @@
       }
       ['pointerdown', 'touchstart'].forEach(function (ev) {
         document.addEventListener(ev, function () {
-          if (!usbSaveOn() || !(camDeep || camSleeping) || camWaking || reconnectTimer || usbPowerBusy || document.hidden) return;
+          if (!usbSaveOn() || document.hidden) return;
+          if (camReadyWaiting()) usbWantAt = Date.now();   // a touch on Get ready keeps the picture on for 2 s more
+          if (!(camDeep || camSleeping) || camWaking || reconnectTimer || usbPowerBusy) return;
           if (!camDeep && !camPrewarmOk()) return;
           if (!cameraSelect || !cameraSelect.value) return;
-          usbWantAt = Date.now() + 15000;       // stay awake ~15 s for the guest to press Start
+          // Stay awake ~15 s for the guest to press Start (on the Get ready screen only the usual 2 s after the touch).
+          usbWantAt = Date.now() + (camReadyWaiting() ? 0 : 15000);
           camLiveWake();
         }, true);
       });
@@ -22934,6 +22944,13 @@
             usbWantAt = Date.now();
             if (camSleeping || !streamActive) await camLiveWake();
             return;
+          }
+          // A Nikon refuses "live view off" while it is still saving the last photo, and some bodies go back into live view by
+          // themselves. For the first minute after the camera was put to sleep, say "live view off" again every 6 s (a no-op once it is off).
+          if (camSleeping && !camDeep && !camWaking && currentDeviceId === USB_CAM_ID && usbCam.viaHelper && usbCam.camera && !usbCam.shooting
+            && camSleptAt && Date.now() - camSleptAt < 60000 && Date.now() - camReassertAt > 6000) {
+            camReassertAt = Date.now();
+            try { Promise.resolve(usbCam.camera.setConfigValue('viewfinder', 0)).catch(function () { }); } catch (e) { }
           }
           if (!camSleeping && streamActive) {
             if (Date.now() - usbWantAt > USB_IDLE_SLEEP_MS) await camLiveSleep();
@@ -25603,6 +25620,8 @@
         payPrintAllow = 0;
         if (typeof sessionNoPrint !== 'undefined') sessionNoPrint = false;
         if (skipReady !== true) await waitForReadyTap();
+        if (sess.cancelled) { endCancelledSession(); return; }
+        await camEnsureLive();       // the camera may have rested while "Get ready" waited for Start: bring the picture back before the countdown
         if (sess.cancelled) { endCancelledSession(); return; }
         consumePayCredit();          // the paid session is used once the countdown starts (Cancel at Get ready keeps it)
         countingDown = true;

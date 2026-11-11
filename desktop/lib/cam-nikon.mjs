@@ -105,9 +105,15 @@ export function createNikon(ctx) {
 
   d.liveOff = async () => {
     if (!d.live) return;
-    try { await ptp.op(0x9202); } catch (e) { if (e instanceof GoneError) throw e; }
-    await waitReady(3000);
-    d.live = false;
+    // EndLiveView is refused (busy) while the camera is still saving the last photo; ask again until it accepts, or live view stays on.
+    let r = 0;
+    for (let k = 0; k < 14; k++) {
+      try { r = await ptp.op(0x9202); } catch (e) { if (e instanceof GoneError) throw e; r = 0xFFFF; }
+      if (r === OK || r === NOT_IN_LIVE_VIEW) { d.live = false; break; }
+      await sleep(300);
+    }
+    if (d.live) log('EndLiveView not accepted (' + hex(r) + '): live view may still be on, will ask again');
+    else await waitReady(3000);
   };
 
   // New photo handles from Nikon's event queue (ObjectAdded 0x4002 / 0xC101).

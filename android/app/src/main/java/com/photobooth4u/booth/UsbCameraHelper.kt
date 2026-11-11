@@ -830,9 +830,14 @@ class UsbCameraHelper(private val ctx: Context) {
 
     private fun stopLive() {
         if (!live) return
-        try { op(0x9202) } catch (e: CamErr) { throw e } catch (_: Exception) { }
-        waitReady(3000)
-        live = false
+        // EndLiveView is refused (busy) while the camera is still saving the last photo; ask again until it accepts, or live view stays on.
+        var r = 0
+        for (k in 0 until 14) {
+            r = try { op(0x9202) } catch (e: CamErr) { throw e } catch (_: Exception) { 0xFFFF }
+            if (r == OK || r == 0xA00B) { live = false; break }
+            Thread.sleep(300)
+        }
+        if (live) log("EndLiveView not accepted (${hex(r)}): live view may still be on, will ask again") else waitReady(3000)
     }
 
     private fun jpegStart(d: ByteArray): Int {

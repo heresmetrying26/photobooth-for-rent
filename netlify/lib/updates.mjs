@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.29', date: '2026-11-11' },
   { version: '1.1.28', date: '2026-11-11' },
   { version: '1.1.27', date: '2026-11-11' },
   { version: '1.1.26', date: '2026-11-11' },
@@ -200,6 +201,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-11', title: 'Desktop 1.1.29 + Android 1.1.46: camera live view really switches off when idle', for: ['website', 'app'], app: '1.1.29',
+    items: [
+      'Nikon: the camera is now asked again until it accepts live view off. Right after the last photo it answered busy, and live view stayed on through the result and Touch to Start screens. The booth also asks again for the first minute after the camera is put to sleep.',
+      'On the Get ready screen the camera turns off 2 seconds after the last touch if the guest has not pressed Start. A touch wakes it, and pressing Start brings the picture back before the countdown begins.',
+      'The camera now switches live view off 2 seconds after it is no longer needed (it was 2.5 seconds). Touching the Touch to Start or welcome screen wakes a resting camera early, so it is ready when the guest presses Start.',
+      'Wave or smile to start still keeps the camera on, because it needs the picture. Turn the battery saver off in Setup > Camera if you prefer the camera always on.'
+    ]
+  },
   {
     date: '2026-11-11', title: 'Android 1.1.45: camera rests when not in use', for: ['website'],
     items: [

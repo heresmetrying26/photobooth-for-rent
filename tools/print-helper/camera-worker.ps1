@@ -733,9 +733,17 @@ namespace Pb4uCam
         static void StopLive()
         {
             if (!live) return;
-            try { ptp.Op(0x9202); } catch (GoneException) { throw; } catch { }
-            WaitReady(3000);
-            live = false;
+            // EndLiveView is refused ("busy") while the camera is still saving the last photo, and the booth asks for live view off right
+            // after the last photo. Ignoring that left the camera in live view for good, so ask again until it accepts.
+            uint r = 0;
+            for (int k = 0; k < 14; k++)
+            {
+                try { r = ptp.Op(0x9202); } catch (GoneException) { throw; } catch { r = 0xFFFF; }
+                if (r == Ptp.OK || r == 0xA00B) { live = false; break; }     // 0xA00B: it was not in live view any more
+                Thread.Sleep(300);
+            }
+            if (live) Log("EndLiveView not accepted (" + H(r) + "): live view may still be on, will ask again");
+            else WaitReady(3000);
         }
         static int JpegStart(byte[] d) { for (int k = 0; k + 1 < d.Length && k < 4096; k++) if (d[k] == 0xFF && d[k + 1] == 0xD8) return k; return -1; }
         static byte[] Frame()

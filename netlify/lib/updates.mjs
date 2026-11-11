@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.27', date: '2026-11-11' },
   { version: '1.1.26', date: '2026-11-11' },
   { version: '1.1.25', date: '2026-11-11' },
   { version: '1.1.24', date: '2026-11-11' },
@@ -198,6 +199,18 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-11', title: 'Desktop 1.1.27: safer booth Wi-Fi and graphics on older laptops', for: ['app'], app: '1.1.27',
+    items: [
+      'Booth Wi-Fi crash guard: if the laptop shuts down while starting its own booth Wi-Fi, the app stops starting it by itself. If that happens twice in a row, the switch is locked and the app asks you to use a pocket Wi-Fi router or a phone hotspot. It unlocks after the Wi-Fi driver is updated.',
+      'Lighter on the laptop: the app no longer checks the booth Wi-Fi in the background every few seconds. It wakes the booth Wi-Fi when a guest starts a session, and the Wi-Fi checks on the settings page pause during sessions.',
+      'Sleep: the booth Wi-Fi is turned off before the laptop sleeps and comes back after it wakes.',
+      'A failed start (Wi-Fi switched off, or one-time set-up still needed) no longer blocks the switch: fix the cause and try again.',
+      'The Join QR follows the booth Wi-Fi when it starts or stops, also during a session.',
+      'Graphics: the app now respects the list of graphics drivers known to crash, so older laptops draw a little slower instead of crashing. After two graphics crashes in a week it starts in safe graphics for 30 days.',
+      'One-time set-up also stops Windows 10 from switching the booth Wi-Fi off after 5 idle minutes.'
+    ]
+  },
   {
     date: '2026-11-11', title: 'Desktop 1.1.26 + Android 1.1.44: 58mm printer reliability & image quality improvements', for: ['website', 'app'], app: '1.1.26',
     items: [

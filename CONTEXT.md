@@ -1,13 +1,13 @@
 # Session Context
 
-**Current Task**: Implement camera battery saver and dslrBooth-style autofocus test shot workflow for DSLRs.
+**Current Task**: Release Desktop 1.1.24 and Android 1.1.42 with deep DSLR battery optimization and dslrBooth-style autofocus test shot workflow.
 
 **Key Decisions**:
-- Dropped Live View mirror during idle/welcome screen, post-capture review, and idle timeout to cut power draw from ~450mA to ~20mA.
-- Added `/camera/af` route and setup Step 4 UI for AF test shot and manual focus (MF) lock on Nikon D5300 and Canon EOS.
-- Resolved Nikon contrast AF timing bug by settling lens seek before shutter capture command.
+- Desktop 1.1.24 verified and deployed with full camera battery saver, autofocus test shot UI, and PTP settle fixes.
+- Bumped Android to v1.1.42 (versionCode 144) to trigger APK build on Netlify CDN and in-app auto-update.
+- Added comprehensive in-app camera battery guide in Step 4 and Live View sleeping during template selection.
 
 **Next Steps**:
-- Verify Nikon D5300 with physical strobe test in active event session.
-- Confirm lens remains locked in MF with zero shutter delay during multi-shot guest flow.
-- Monitor camera temperature and battery longevity over a 1+ hour session.
+- Push `android-v1.1.42` tag to trigger GitHub Actions Android build.
+- Verify in-app update prompt appears on Android devices running v1.1.41.
+- Confirm client tests Nikon D5300 with strobe light setup.

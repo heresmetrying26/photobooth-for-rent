@@ -191,7 +191,9 @@ function timeAgo(mtime) {
 
 function makeQr(url) {
   try {
-    var q = qrcode(0, 'M');
+    var qrFn = (typeof qrcode !== 'undefined') ? qrcode : (window.qrcode || globalThis.qrcode);
+    if (!qrFn) return '';
+    var q = qrFn(0, 'M');
     q.addData(url);
     q.make();
     return q.createDataURL(6, 2);
@@ -256,7 +258,19 @@ function openModal(it, sessionItems) {
   }
   dl.href = it.url + (it.url.indexOf('?') >= 0 ? '&dl=1' : '?dl=1');
   dl.setAttribute('download', it.name);
-  qr.src = makeQr(pageUrl);
+  var qrData = makeQr(pageUrl);
+  if (qrData) {
+    qr.src = qrData;
+    qr.style.display = 'block';
+  } else {
+    setTimeout(function() {
+      var retry = makeQr(pageUrl);
+      if (retry) {
+        qr.src = retry;
+        qr.style.display = 'block';
+      }
+    }, 200);
+  }
 
   // Multi-item session support (e.g. print strip + solo photos or GIF)
   if (pillsBox) {

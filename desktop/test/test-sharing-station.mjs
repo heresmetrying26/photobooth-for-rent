@@ -54,5 +54,25 @@ assert(boothHtml.includes('triggerShareStationHandoff()'), 'triggerShareStationH
 assert(boothHtml.includes('shareStation: shareStationOn'), 'snapshotSetup includes shareStation');
 console.log('PASS: Booth engine (booth.html) UI controls, modal, and handoff logic verified');
 
+// 5. Verify QR Code generation across all platforms (classic script safe, no ESM syntax error)
+['desktop/lib/qr.js', 'android/app/src/main/assets/share/qr.js', 'public/qr.js'].forEach(rel => {
+  const code = readFileSync(join(ROOT, rel), 'utf8');
+  assert(!code.includes('export default'), `${rel} must not contain "export default" (breaks classic <script> tags)`);
+  assert(!code.includes('export {'), `${rel} must not contain "export {" (breaks classic <script> tags)`);
+  
+  // Test evaluation
+  const ctx = {};
+  const fn = new Function('window', 'globalThis', code + '; return window.qrcode || globalThis.qrcode;');
+  const qrcodeFn = fn(ctx, ctx);
+  assert(typeof qrcodeFn === 'function', `${rel} should define qrcode function`);
+  const q = qrcodeFn(0, 'M');
+  q.addData('http://192.168.1.100:47777/e/test/p/1_strip.jpg');
+  q.make();
+  const dataUrl = q.createDataURL(6, 2);
+  assert(dataUrl.startsWith('data:image/gif;base64,'), `${rel} generates valid data:image/gif;base64 URL`);
+  assert(dataUrl.length > 500, `${rel} generated data URL is non-empty`);
+});
+console.log('PASS: QR code library verified across Desktop, Android, and Online (syntax & generation tested)');
+
 console.log('All Sharing Station tests passed successfully!');
 

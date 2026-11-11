@@ -22872,10 +22872,20 @@
           try { await fetch(CAM_HELPER + '/camera/close', { method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(10000) }); } catch (e) { }
         } finally { usbPowerBusy = false; }
       }
-      // A guest touches the screen while the Sony is disconnected: start reconnecting now so it is ready by the time they press Start.
+      // A guest touches the Touch to Start / welcome screen while the camera rests (a Sony let go of, a webcam stopped, a USB webcam
+      // on a tablet that takes a few seconds to open): start waking it now so it is ready by the time they press Start.
+      function camPrewarmOk() {
+        if (!tabSetup.classList.contains('hidden') || state === 'capturing') return false;   // Setup taps and a running session do their own thing
+        const ss = document.getElementById('startScreen');
+        if (ss && !ss.classList.contains('gone') && ss.style.display !== 'none') return true;
+        const wel = document.getElementById('welcomeOverlay');
+        return !!(wel && wel.classList.contains('on') && !wel.classList.contains('dismissing'));
+      }
       ['pointerdown', 'touchstart'].forEach(function (ev) {
         document.addEventListener(ev, function () {
-          if (!camDeep || camWaking || usbPowerBusy || document.hidden) return;
+          if (!usbSaveOn() || !(camDeep || camSleeping) || camWaking || reconnectTimer || usbPowerBusy || document.hidden) return;
+          if (!camDeep && !camPrewarmOk()) return;
+          if (!cameraSelect || !cameraSelect.value) return;
           usbWantAt = Date.now() + 15000;       // stay awake ~15 s for the guest to press Start
           camLiveWake();
         }, true);

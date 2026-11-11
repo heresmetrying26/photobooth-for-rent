@@ -201,6 +201,15 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-11', title: 'Android 1.1.45: camera rests when not in use', for: ['website'],
+    items: [
+      'The tablet no longer keeps the camera running on the Touch to Start screen. A built-in or USB webcam stops completely, and a Nikon or Canon switches its live view off, so the battery lasts longer. Turn it off in Setup > Camera.',
+      'The camera wakes as soon as a guest touches the start or welcome screen, so it is ready when they press Start.',
+      'Setup: the camera only runs on the Camera & Printer step, and pauses after 2 minutes without a touch.',
+      'Sony cameras cannot switch live view off over USB, so after 10 idle minutes the tablet lets go of the camera so it can rest, and reconnects when a guest touches the screen (a few seconds). Turn this off in Setup > Camera if your Sony switches itself off.'
+    ]
+  },
+  {
     date: '2026-11-11', title: 'Desktop 1.1.28: camera rests when not in use, guest Wi-Fi page, 360 presets', for: ['app'], app: '1.1.28',
     items: [
       'Camera battery saver: a webcam stops completely (its light goes off) and a Nikon or Canon switches its live view off. This happens on the Touch to Start screen, on the result and QR screens, and in Setup outside the Camera & Printer step. The camera wakes in about a second when a guest taps Start. Turn it off in Setup > Camera.',

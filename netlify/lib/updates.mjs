@@ -197,8 +197,12 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
-    date: '2026-11-11', title: 'Desktop 1.1.24 + Android 1.1.41: Session QR, privacy fix & configurable handoff duration', for: ['website', 'app'], app: '1.1.24',
+    date: '2026-11-11', title: 'Desktop 1.1.24 + Android 1.1.42: Deep DSLR battery saver, dslrBooth AF test shot & session QR', for: ['website', 'app'], app: '1.1.24',
     items: [
+      '🔋 Deep DSLR Battery Saver: Camera Live View mirror stays dropped during idle welcome screen, layout picker selection, payment, and post-capture guest review/print screen — dropping power draw by ~85% (from ~480mA to ~20mA standby) and preventing camera overheating on Nikon D5300 and other DSLRs.',
+      '🎯 dslrBooth-Style AF Setup & Test Shot: Added Setup Step 4 tool with "Auto-Focus Lens" and "Take Test Shot" instant preview with autofocus settle timing fix; allows operator to acquire sharp focus in setup and switch lens to MF for zero-lag instant shutter triggers during events.',
+      '⏱️ Paced Live View: Paced frame loop to prevent camera DSP overload and thermal throttling.',
+      '📋 In-App Operator Battery Guide: Added collapsible DSLR battery and heat optimization guide in Setup Step 4 covering lens VR off, screen fold, in-camera menu timer, and manual mode settings.',
       '🔒 "Only their own" privacy fix: guests scanning the sharing station QR can now view their own session photos (strip, solos, GIF all on one page) — previously they were blocked entirely.',
       '📲 Single session QR: when a session has multiple items (print strip + solo shots + GIF), the QR opens one page showing all of them together so guests only need to scan once.',
       '⏱️ Configurable booth handoff duration: "Show photo Xs" now has options from 2 s to 15 s (2, 3, 5, 7, 10, 15 seconds), letting operators control how long the photo lingers before the sharing station pops up.',

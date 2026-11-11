@@ -1,1 +1,1 @@
-export default '1.1.41';
+export default '1.1.42';

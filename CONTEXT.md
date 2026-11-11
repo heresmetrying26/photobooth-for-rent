@@ -1,13 +1,13 @@
 # Session Context
 
-**Current Task**: Release Desktop 1.1.24 and Android 1.1.42 with deep DSLR battery optimization and dslrBooth-style autofocus test shot workflow.
+**Current Task**: Release Desktop 1.1.25 and Android 1.1.43 with clean Wi-Fi UI, auto-linked hotspot, undistorted GIF scaling, and solo white frame.
 
 **Key Decisions**:
-- Desktop 1.1.24 verified and deployed with full camera battery saver, autofocus test shot UI, and PTP settle fixes.
-- Bumped Android to v1.1.42 (versionCode 144) to trigger APK build on Netlify CDN and in-app auto-update.
-- Added comprehensive in-app camera battery guide in Step 4 and Live View sleeping during template selection.
+- Cleaned up redundant Wi-Fi inputs in Setup Step 6 when hotspot is active; linked hotspot checkboxes.
+- Fixed GIF aspect distortion by dynamically sizing slot canvases to native camera ratio and using drawImageCover.
+- Isolated Solo 1 large frame GIF to default white border frame without custom strip frame overlay contamination.
 
 **Next Steps**:
-- Push `android-v1.1.42` tag to trigger GitHub Actions Android build.
-- Verify in-app update prompt appears on Android devices running v1.1.41.
-- Confirm client tests Nikon D5300 with strobe light setup.
+- Push `desktop-v1.1.25` and `android-v1.1.43` tags to trigger GitHub Actions builds.
+- Verify in-app update prompt for Desktop and Android on client devices.
+- Confirm guest GIF playback and clean Wi-Fi setup during booth operations.

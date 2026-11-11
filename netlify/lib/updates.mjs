@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.25', date: '2026-11-11' },
   { version: '1.1.24', date: '2026-11-11' },
   { version: '1.1.23', date: '2026-11-11' },
   { version: '1.1.22', date: '2026-11-11' },
@@ -196,6 +197,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-11', title: 'Desktop 1.1.25 + Android 1.1.43: Clean Wi-Fi UI, auto-linked hotspot, undistorted GIF scaling & solo white frame', for: ['website', 'app'], app: '1.1.25',
+    items: [
+      '📶 Clean Wi-Fi UI: eliminated duplicate/redundant Wi-Fi SSID and password input fields and redundant "Use current Wi-Fi" buttons when booth hotspot is active.',
+      '🔗 Auto-linked Hotspot Checkboxes: toggling "Make this laptop the booth Wi-Fi" now automatically activates and persists "Turn it on whenever the app opens", and dock Wi-Fi QR button stays reliably accessible offline.',
+      '🖼️ Clean Solo GIF White Border: when using custom multi-photo or strip frames for prints, Solo (1 large frame) GIFs automatically bypass the strip frame overlay and use the classic default white border frame.',
+      '📐 Undistorted GIF Scaling: fixed aspect-ratio stretching and distortion in Multi-Box Boomerang and sequential GIFs — slot buffers now dynamically match native camera aspect ratios (16:9, 3:2, 4:3, or portrait) with aspect-preserving drawImageCover rendering.'
+    ]
+  },
   {
     date: '2026-11-11', title: 'Desktop 1.1.24 + Android 1.1.42: Deep DSLR battery saver, dslrBooth AF test shot & session QR', for: ['website', 'app'], app: '1.1.24',
     items: [

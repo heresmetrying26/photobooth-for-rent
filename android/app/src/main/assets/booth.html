@@ -15085,13 +15085,15 @@
                   type="button" class="action-btn" id="deskHotspotPhone" style="width:auto; margin:0;">Use the
                   phone&rsquo;s own Hotspot instead</button></div>
             </div>
-            <input type="text" class="label-input" id="deskWifiName" placeholder="Wi-Fi name" maxlength="32"
-              autocomplete="off" spellcheck="false">
-            <input type="text" class="label-input" id="deskWifiPass" placeholder="Wi-Fi password (empty if none)"
-              maxlength="63" autocomplete="off" spellcheck="false" style="margin-top:8px;">
-            <div class="desk-row" style="margin-top:8px;"><button type="button" class="action-btn" id="deskWifiDetect"
-                style="width:auto; margin:0; display:none;">Use current Wi-Fi</button></div>
-            <p class="panel-hint" id="deskWifiHint" style="margin:6px 0 0;"></p>
+            <div id="deskExternalWifiBox">
+              <input type="text" class="label-input" id="deskWifiName" placeholder="Wi-Fi name" maxlength="32"
+                autocomplete="off" spellcheck="false">
+              <input type="text" class="label-input" id="deskWifiPass" placeholder="Wi-Fi password (empty if none)"
+                maxlength="63" autocomplete="off" spellcheck="false" style="margin-top:8px;">
+              <div class="desk-row" style="margin-top:8px;"><button type="button" class="action-btn" id="deskWifiDetect"
+                  style="width:auto; margin:0; display:none;">Use current Wi-Fi</button></div>
+              <p class="panel-hint" id="deskWifiHint" style="margin:6px 0 0;"></p>
+            </div>
             <div id="deskWifiQrBox" style="display:none; margin-top:12px; text-align:center;">
               <img id="deskWifiQrImg" class="qr-img" style="width:140px;height:140px;" alt="Wi-Fi QR code">
               <p class="qr-caption" id="deskWifiQrCap"></p>
@@ -19535,7 +19537,13 @@
       const WIFI_KEY = 'pb_wifi';
       function wifiInfo() {
         if (!LOCALSHARE) return null;
-        try { var w = JSON.parse(localStorage.getItem(WIFI_KEY) || 'null'); return w && w.ssid ? { ssid: String(w.ssid), pass: String(w.pass || '') } : null; } catch (e) { return null; }
+        try {
+          var w = JSON.parse(localStorage.getItem(WIFI_KEY) || 'null');
+          if (w && w.ssid) return { ssid: String(w.ssid), pass: String(w.pass || '') };
+          var hn = document.getElementById('deskHotspotName'), hp = document.getElementById('deskHotspotPass');
+          if (hn && hn.value && hn.value.trim()) return { ssid: hn.value.trim(), pass: hp ? hp.value : '' };
+          return null;
+        } catch (e) { return null; }
       }
       function wifiQrText(w) {
         var e = function (t) { return String(t).replace(/([\\;,":])/g, '\\$1'); };
@@ -20953,8 +20961,11 @@
           }
         }
 
-        var sampleW = framesObj && framesObj.width ? framesObj.width : 640;
-        var sampleH = framesObj && framesObj.height ? framesObj.height : 480;
+        var camW = (video && video.videoWidth) || (shotCanvases && shotCanvases[0] && shotCanvases[0].width) || (framesObj && framesObj.width) || 640;
+        var camH = (video && video.videoHeight) || (shotCanvases && shotCanvases[0] && shotCanvases[0].height) || (framesObj && framesObj.height) || 480;
+        var cRatio = camW / camH;
+        var sampleW = 640;
+        var sampleH = Math.max(1, Math.round(sampleW / cRatio));
         var dummyShots = [];
         var slotCanvases = [];
         for (var d = 0; d < n; d++) {
@@ -20968,7 +20979,18 @@
         }
 
         var box = document.createElement('canvas');
-        composeCanvas(key, box, dummyShots);
+        var prevOverlayInit = overlay;
+        var prevFrameColorInit = currentFrameColor;
+        if (key === 'solo') {
+          overlay = null;
+          currentFrameColor = '#ffffff';
+        }
+        try {
+          composeCanvas(key, box, dummyShots);
+        } finally {
+          overlay = prevOverlayInit;
+          currentFrameColor = prevFrameColorInit;
+        }
         var k = Math.min(1, 900 / Math.max(box.width, box.height));
         var ow = Math.max(1, Math.round(box.width * k)), oh = Math.max(1, Math.round(box.height * k));
         var small = document.createElement('canvas'); small.width = ow; small.height = oh;
@@ -21027,18 +21049,29 @@
                     if (seq && seq.length > 0) {
                       var item = seq[frameIdx % seq.length];
                       if (item.isCanvas) {
-                        sCtx.drawImage(item.canvas, 0, 0, sc.width, sc.height);
+                        drawImageCover(sCtx, item.canvas, 0, 0, sc.width, sc.height);
                       } else if (item.blob) {
                         var bmp = await createImageBitmap(item.blob);
-                        sCtx.drawImage(bmp, 0, 0, sc.width, sc.height);
+                        drawImageCover(sCtx, bmp, 0, 0, sc.width, sc.height);
                         if (bmp.close) bmp.close();
                         try { if (typeof applyFilterToCanvas === 'function') applyFilterToCanvas(sc); } catch (e) { }
                       }
                     } else if (shotCanvases[sIdx]) {
-                      sCtx.drawImage(shotCanvases[sIdx], 0, 0, sc.width, sc.height);
+                      drawImageCover(sCtx, shotCanvases[sIdx], 0, 0, sc.width, sc.height);
                     }
                   }
-                  composeCanvas(key, box, slotCanvases);
+                  var prevOverlay = overlay;
+                  var prevFrameColor = currentFrameColor;
+                  if (key === 'solo') {
+                    overlay = null;
+                    currentFrameColor = '#ffffff';
+                  }
+                  try {
+                    composeCanvas(key, box, slotCanvases);
+                  } finally {
+                    overlay = prevOverlay;
+                    currentFrameColor = prevFrameColor;
+                  }
                   stampTrialMark(box);
                   sx.fillStyle = currentFrameColor || '#ffffff';
                   sx.fillRect(0, 0, ow, oh);
@@ -21090,18 +21123,29 @@
                       sCtx.clearRect(0, 0, sc.width, sc.height);
                       if (sIdx === targetSlot && stepItem) {
                         if (stepItem.isCanvas) {
-                          sCtx.drawImage(stepItem.canvas, 0, 0, sc.width, sc.height);
+                          drawImageCover(sCtx, stepItem.canvas, 0, 0, sc.width, sc.height);
                         } else if (stepItem.blob) {
                           var bmp = await createImageBitmap(stepItem.blob);
-                          sCtx.drawImage(bmp, 0, 0, sc.width, sc.height);
+                          drawImageCover(sCtx, bmp, 0, 0, sc.width, sc.height);
                           if (bmp.close) bmp.close();
                           try { if (typeof applyFilterToCanvas === 'function') applyFilterToCanvas(sc); } catch (e) { }
                         }
                       } else if (shotCanvases[sIdx]) {
-                        sCtx.drawImage(shotCanvases[sIdx], 0, 0, sc.width, sc.height);
+                        drawImageCover(sCtx, shotCanvases[sIdx], 0, 0, sc.width, sc.height);
                       }
                     }
-                    composeCanvas(key, box, slotCanvases);
+                    var prevOverlay = overlay;
+                    var prevFrameColor = currentFrameColor;
+                    if (key === 'solo') {
+                      overlay = null;
+                      currentFrameColor = '#ffffff';
+                    }
+                    try {
+                      composeCanvas(key, box, slotCanvases);
+                    } finally {
+                      overlay = prevOverlay;
+                      currentFrameColor = prevFrameColor;
+                    }
                     stampTrialMark(box);
                     sx.fillStyle = currentFrameColor || '#ffffff';
                     sx.fillRect(0, 0, ow, oh);
@@ -21122,9 +21166,20 @@
                 var sCtx = sc.getContext('2d');
                 sCtx.imageSmoothingEnabled = true; sCtx.imageSmoothingQuality = 'high';
                 sCtx.clearRect(0, 0, sc.width, sc.height);
-                if (shotCanvases[sIdx]) sCtx.drawImage(shotCanvases[sIdx], 0, 0, sc.width, sc.height);
+                if (shotCanvases[sIdx]) drawImageCover(sCtx, shotCanvases[sIdx], 0, 0, sc.width, sc.height);
               }
-              composeCanvas(key, box, slotCanvases);
+              var prevOverlay = overlay;
+              var prevFrameColor = currentFrameColor;
+              if (key === 'solo') {
+                overlay = null;
+                currentFrameColor = '#ffffff';
+              }
+              try {
+                composeCanvas(key, box, slotCanvases);
+              } finally {
+                overlay = prevOverlay;
+                currentFrameColor = prevFrameColor;
+              }
               stampTrialMark(box);
               sx.fillStyle = currentFrameColor || '#ffffff';
               sx.fillRect(0, 0, ow, oh);
@@ -21168,7 +21223,18 @@
         var box = document.createElement('canvas'), src = document.createElement('canvas');
         src.width = framesObj.width; src.height = framesObj.height; src._isShot = true;
         var sc = src.getContext('2d');
-        composeCanvas(key, box, new Array(n).fill(src));                     // the layout's size does not depend on the picture
+        var prevOverlayLayout = overlay;
+        var prevFrameColorLayout = currentFrameColor;
+        if (key === 'solo') {
+          overlay = null;
+          currentFrameColor = '#ffffff';
+        }
+        try {
+          composeCanvas(key, box, new Array(n).fill(src));                     // the layout's size does not depend on the picture
+        } finally {
+          overlay = prevOverlayLayout;
+          currentFrameColor = prevFrameColorLayout;
+        }
         var k = Math.min(1, 900 / Math.max(box.width, box.height));
         var ow = Math.max(1, Math.round(box.width * k)), oh = Math.max(1, Math.round(box.height * k));
         var small = document.createElement('canvas'); small.width = ow; small.height = oh;
@@ -21191,8 +21257,21 @@
             time: idx * frameDelayMs,
             make: async function () {
               var bmp = await createImageBitmap(f.blob);
-              sc.clearRect(0, 0, src.width, src.height); sc.drawImage(bmp, 0, 0, src.width, src.height); bmp.close();
-              composeCanvas(key, box, new Array(n).fill(src));
+              sc.clearRect(0, 0, src.width, src.height);
+              drawImageCover(sc, bmp, 0, 0, src.width, src.height);
+              bmp.close();
+              var prevOverlay = overlay;
+              var prevFrameColor = currentFrameColor;
+              if (key === 'solo') {
+                overlay = null;
+                currentFrameColor = '#ffffff';
+              }
+              try {
+                composeCanvas(key, box, new Array(n).fill(src));
+              } finally {
+                overlay = prevOverlay;
+                currentFrameColor = prevFrameColor;
+              }
               stampTrialMark(box);
               sx.fillStyle = currentFrameColor || '#ffffff'; sx.fillRect(0, 0, ow, oh); sx.drawImage(box, 0, 0, ow, oh);
               return small;
@@ -48665,12 +48744,15 @@
             else if (i.on) { hint.className = 'panel-hint'; hint.textContent = 'The booth Wi-Fi is on ✓ Guests scan the Join QR below, then their photo QR. Their phone may say “no internet”: they should stay connected.'; }
             else if (i.error) { hint.className = 'panel-hint bad'; hint.textContent = i.error; }
             else { hint.className = 'panel-hint'; hint.textContent = 'Off. Turn it on and this laptop makes its own Wi-Fi for guests. Then the laptop has no internet unless it also uses a cable.'; }
+            var extBox = document.getElementById('deskExternalWifiBox');
             if (i.locked) {
+              if (extBox) extBox.style.display = 'none';
               wn.readOnly = wp.readOnly = true;
               var cur = wifiInfo();
               if (!cur || cur.ssid !== i.ssid || cur.pass !== i.pass) { wn.value = i.ssid; wp.value = i.pass; saveWifiInfo(i.ssid, i.pass); }
               wHint.className = 'panel-hint'; wHint.textContent = 'Using the booth Wi-Fi this laptop is making ✓';
             } else {
+              if (extBox) extBox.style.display = '';
               wn.readOnly = wp.readOnly = false;
               if (wasLocked) { wn.value = ''; wp.value = ''; saveWifiInfo('', ''); wHint.textContent = ''; lastSsid = null; detectWifi(false); }
             }
@@ -48679,6 +48761,10 @@
           on.addEventListener('change', function () {
             on.disabled = true;
             hint.className = 'panel-hint'; hint.textContent = on.checked ? 'Starting the booth Wi-Fi…' : 'Turning it off…';
+            if (on.checked) {
+              auto.checked = true;
+              try { api.hotspotAuto(true); } catch (e) { }
+            }
             api.hotspotSet(on.checked).then(render).catch(function () { refresh(); });
           });
           auto.addEventListener('change', function () { api.hotspotAuto(auto.checked).then(render).catch(function () { }); });

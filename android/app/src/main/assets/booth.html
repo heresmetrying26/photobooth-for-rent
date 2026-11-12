@@ -3249,6 +3249,58 @@
       min-height: 18px;
     }
 
+    .vg-event {
+      margin: 0;
+      font: 800 12px 'Manrope', sans-serif;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      opacity: .8;
+    }
+
+    .vg-event[hidden] {
+      display: none;
+    }
+
+    .vg-q {
+      position: absolute;
+      left: 50%;
+      top: 64px;
+      transform: translateX(-50%);
+      width: min(620px, calc(100% - 32px));
+      padding: 14px 18px;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, .55);
+      color: #fff;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .vg-q[hidden] {
+      display: none;
+    }
+
+    .vg-q-text {
+      margin: 0;
+      font: 800 clamp(20px, 3vw, 30px)/1.25 'Manrope', sans-serif;
+    }
+
+    .vg-q-next {
+      border: 1.5px solid rgba(255, 255, 255, .6);
+      background: transparent;
+      color: #fff;
+      border-radius: 999px;
+      padding: 6px 14px;
+      font: 700 13px 'Manrope', sans-serif;
+      cursor: pointer;
+    }
+
+    .vg-q-next[hidden] {
+      display: none;
+    }
+
     .vg-qr {
       background: #fff;
       border-radius: 16px;
@@ -15109,6 +15161,27 @@
             </div>
           </div>
         </div>
+        <div class="panel-section" id="gbSetupCard" style="display:none;margin-top:14px;padding:14px 16px;background:var(--panel-2);border-radius:12px;border:1.5px solid var(--line);">
+          <p class="sub-label" style="margin:0 0 6px;">🎥 Video guestbook</p>
+          <p class="panel-hint" style="margin:0 0 10px;">What guests see when they leave a video message. Leave the questions empty and guests just talk.</p>
+          <label class="sub-label" for="gbQuestions" style="display:block;margin:0 0 4px;">Questions (one per line, up to 5)</label>
+          <textarea id="gbQuestions" rows="4" maxlength="640" placeholder="Best advice for the couple?&#10;Your favourite memory with them?&#10;A wish for their future?" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font:600 14px 'Manrope',sans-serif;resize:vertical;"></textarea>
+          <p class="panel-hint" style="margin:4px 0 10px;">Each guest gets the next question in turn. With more than one, guests can tap <b>Another question</b>.</p>
+          <div class="fb-row"><span class="lbl">Message length</span>
+            <select id="gbLength" class="pillify" aria-label="Message length">
+              <option value="15">15 seconds</option>
+              <option value="30" selected>30 seconds</option>
+              <option value="60">60 seconds</option>
+            </select>
+          </div>
+          <label class="sub-label" for="gbEvent" style="display:block;margin:10px 0 4px;">Event name on the screen (optional)</label>
+          <input type="text" id="gbEvent" maxlength="50" placeholder="e.g. Anna &amp; Ben&rsquo;s Wedding" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font:600 14px 'Manrope',sans-serif;">
+          <label class="sub-label" for="gbTitle" style="display:block;margin:10px 0 4px;">Heading</label>
+          <input type="text" id="gbTitle" maxlength="50" placeholder="Leave a video message" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font:600 14px 'Manrope',sans-serif;">
+          <label class="sub-label" for="gbThanks" style="display:block;margin:10px 0 4px;">Thank-you message</label>
+          <input type="text" id="gbThanks" maxlength="60" placeholder="Thank you!" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font:600 14px 'Manrope',sans-serif;">
+          <p class="panel-hint" style="margin:8px 0 0;">All the messages are in the online gallery under <b>Guestbook</b>, with one button to download them all.</p>
+        </div>
         <div class="step-nav"><button type="button" class="action-btn back-btn" data-go="4">← Back</button><button
             type="button" class="action-btn primary next-btn" data-go="6">Next: Share →</button></div>
       </section>
@@ -17731,7 +17804,12 @@
     <div class="qs-top"><button type="button" class="qs-btn" id="vgClose">Close</button><span class="qs-count"
         id="vgInfo"></span><span></span></div>
     <div class="cap-big" id="vgBig" hidden></div>
+    <div class="vg-q" id="vgQ" hidden>
+      <p class="vg-q-text" id="vgQText"></p>
+      <button type="button" class="vg-q-next" id="vgQNext" hidden>Another question</button>
+    </div>
     <div class="vg-panel">
+      <p class="vg-event" id="vgEvent" hidden></p>
       <p class="vg-title" id="vgTitle">Leave a video message</p>
       <p class="vg-sub" id="vgSub"></p>
       <div class="vg-qr" id="vgQr" hidden></div>
@@ -29659,6 +29737,25 @@
           txtPrint: txt(p.txtPrint, 24), txtPrinting: txt(p.txtPrinting, 60), txtCopies: txt(p.txtCopies, 40), txtLimit: txt(p.txtLimit, 70)
         };
       }
+      // ---- Video guestbook settings (saved with the setup, so every device on the code gets them) ----
+      // questions: up to 5, shown to guests one at a time; length: seconds a message may last; event/title/thanks: the words on the screen.
+      var GB_LENGTHS = [15, 30, 60];
+      var gbPrefs = { questions: [], length: 30, event: '', title: '', thanks: '' };
+      function cleanGbPrefs(p) {
+        p = p && typeof p === 'object' ? p : {};
+        var txt = function (v, n) { return typeof v === 'string' ? v.replace(/[<>]/g, '').trim().slice(0, n) : ''; };
+        var qs = (Array.isArray(p.questions) ? p.questions : []).map(function (q) { return txt(q, 120); }).filter(Boolean).slice(0, 5);
+        var len = Math.floor(Number(p.length) || 30);
+        return { questions: qs, length: GB_LENGTHS.indexOf(len) >= 0 ? len : 30, event: txt(p.event, 50), title: txt(p.title, 50), thanks: txt(p.thanks, 60) };
+      }
+      function gbCardRefresh() {
+        var card = document.getElementById('gbSetupCard'); if (!card) return;
+        card.style.display = (typeof extraOn === 'function' && extraOn('video') && window.MediaRecorder) ? '' : 'none';
+        var set = function (id, v) { var el = document.getElementById(id); if (el && document.activeElement !== el) el.value = v; };
+        set('gbQuestions', gbPrefs.questions.join('\n')); set('gbLength', String(gbPrefs.length));
+        set('gbEvent', gbPrefs.event); set('gbTitle', gbPrefs.title); set('gbThanks', gbPrefs.thanks);
+      }
+      function applyGbPrefs(p) { gbPrefs = cleanGbPrefs(p); try { gbCardRefresh(); } catch (e) { } try { vgRefresh(); } catch (e) { } }
       let sessPrinted = 0;                 // sheets printed for the guest session on screen
       function resetSessionPrints() { sessPrinted = 0; }
       let printCount = null;               // { used, left (null = no limit), at } from the server
@@ -33778,6 +33875,7 @@
         if (studioFab) studioFab.hidden = !studioOn() || state === 'capturing';
         var vgFab = document.getElementById('vgFab');
         if (vgFab) vgFab.hidden = !vgAvailable() || state === 'capturing';
+        try { gbCardRefresh(); } catch (e) { }
         var roveBridgeOn = !!(window.__PBLocal && typeof window.__PBLocal.openRoveBridge === 'function');
         var roveBridgeFab = document.getElementById('roveBridgeFab');
         if (roveBridgeFab) roveBridgeFab.hidden = !roveBridgeOn || state === 'capturing';
@@ -36182,9 +36280,12 @@
       // ---- Video guestbook (included extra "video"): a guest records a short message on the booth, then gets a QR for it ----
       // Kiosk: the operator opens it and hands the device over. Up to 30 seconds, and a small video (about 10 MB at most),
       // saved in the event folder like a photo (the online gallery shows it under Videos).
-      var VG_MAX_S = 30, VG_MAX_BYTES = 25 * 1024 * 1024;
+      var VG_MAX_BYTES = 25 * 1024 * 1024;
+      function vgMaxS() { return gbPrefs.length || 30; }           // seconds (Setup: 15 / 30 / 60)
+      function vgIdleTitle() { return gbPrefs.title || 'Leave a video message'; }
+      function vgIdleSub() { return 'Up to ' + vgMaxS() + ' seconds'; }
       var vgOverlay = document.getElementById('vgOverlay'), vgVideo = document.getElementById('vgVideo');
-      var vg = { state: 'idle', rec: null, chunks: [], timer: null, tick: null, audio: null, blob: null, url: '', mime: '' };
+      var vg = { state: 'idle', rec: null, chunks: [], timer: null, tick: null, audio: null, blob: null, url: '', mime: '', qi: 0 };
       function vgAvailable() { return extraOn('video') && !!window.MediaRecorder && (driveReady() || LOCALSHARE); }
       function vgEl(id) { return document.getElementById(id); }
       function vgText(title, sub) { vgEl('vgTitle').textContent = title; vgEl('vgSub').textContent = sub || ''; }
@@ -36193,8 +36294,21 @@
         vgEl('vgQr').hidden = st !== 'done';
         second.hidden = !(st === 'review' || st === 'failed');
         main.disabled = st === 'counting' || st === 'saving';
+        vgQUi();
         main.textContent = st === 'idle' ? 'Record a message' : st === 'recording' ? 'Stop' : st === 'review' ? 'Save my message' : st === 'saving' ? 'Saving…' : st === 'failed' ? 'Try saving again' : st === 'done' ? 'Next guest' : 'Get ready…';
         second.textContent = st === 'failed' ? 'Record again' : 'Retake';
+      }
+      // The question for this guest: shown before and while recording. Each guest gets the next one in turn.
+      function vgQUi() {
+        var qs = gbPrefs.questions, st = vg.state, show = qs.length > 0 && (st === 'idle' || st === 'counting' || st === 'recording');
+        vgEl('vgQ').hidden = !show;
+        if (show) vgEl('vgQText').textContent = qs[vg.qi % qs.length];
+        vgEl('vgQNext').hidden = !(show && st === 'idle' && qs.length > 1);
+      }
+      function vgRefresh() {            // Setup words changed: update the screen if it is open and waiting
+        var ev = vgEl('vgEvent'); ev.textContent = gbPrefs.event; ev.hidden = !gbPrefs.event;
+        if (vg.state === 'idle') vgText(vgIdleTitle(), vgIdleSub());
+        vgUi();
       }
       function vgBig(t, rec) { var b = vgEl('vgBig'); b.hidden = !t; b.textContent = t || ''; b.classList.toggle('rec', !!rec); }
       function vgClearBlob() { if (vg.url) { try { URL.revokeObjectURL(vg.url); } catch (e) { } } vg.url = ''; vg.blob = null; }
@@ -36208,7 +36322,8 @@
         if (state === 'capturing') { showToast('Finish the session first.', 3000); return; }
         if (!streamActive) { var ok = await initCamera(cameraSelect.value || null); if (!ok) return; }
         vg.state = 'idle'; vgClearBlob(); vgBig('');
-        vgText('Leave a video message', 'Up to ' + VG_MAX_S + ' seconds');
+        vgText(vgIdleTitle(), vgIdleSub());
+        var ev = vgEl('vgEvent'); ev.textContent = gbPrefs.event; ev.hidden = !gbPrefs.event;
         await vgLive(); vgOverlay.hidden = false; vgUi();
       }
       function closeVg() {
@@ -36235,7 +36350,7 @@
         var stream = currentStream || video.srcObject, vt = stream && stream.getVideoTracks ? stream.getVideoTracks() : [];
         if (!vt.length) { vg.state = 'idle'; vgText('The camera has no picture yet', 'Wait a second and try again.'); vgUi(); return; }
         var tracks = vt.slice(0, 1).concat(vg.audio ? vg.audio.getAudioTracks() : []), mime = vgMime();
-        var opts = { videoBitsPerSecond: 2500000, audioBitsPerSecond: 64000 }; if (mime) opts.mimeType = mime;
+        var opts = { videoBitsPerSecond: vgMaxS() > 30 ? 1500000 : 2500000, audioBitsPerSecond: 64000 };      // 60 s uses a lower rate so it stays under the size cap if (mime) opts.mimeType = mime;
         var rec;
         try { rec = new MediaRecorder(new MediaStream(tracks), opts); }
         catch (e) { vg.state = 'idle'; vgText('This device cannot record video here', ''); vgUi(); return; }
@@ -36243,9 +36358,9 @@
         rec.ondataavailable = function (e) { if (e.data && e.data.size) vg.chunks.push(e.data); };
         rec.onstop = function () { clearTimeout(vg.timer); clearInterval(vg.tick); vgBig(''); vgReview(); };
         rec.start(500);
-        var left = VG_MAX_S; vgBig('REC ' + left, true); vgText('Recording…', vg.audio ? 'Tap Stop when you are done.' : 'No microphone: this message will have no sound.'); vgUi();
+        var left = vgMaxS(); vgBig('REC ' + left, true); vgText('Recording…', vg.audio ? 'Tap Stop when you are done.' : 'No microphone: this message will have no sound.'); vgUi();
         vg.tick = setInterval(function () { left--; if (left >= 0) vgBig('REC ' + left, true); }, 1000);
-        vg.timer = setTimeout(function () { try { rec.stop(); } catch (e) { } }, VG_MAX_S * 1000);
+        vg.timer = setTimeout(function () { try { rec.stop(); } catch (e) { } }, vgMaxS() * 1000);
       }
       async function vgReview() {
         var blob = new Blob(vg.chunks, { type: String(vg.mime).split(';')[0] }); vg.chunks = [];      // "video/mp4" (the upload accepts only the plain type)
@@ -36265,7 +36380,7 @@
           vg.state = 'done';
           var box = vgEl('vgQr'); box.innerHTML = '';
           if (res.url) { var im = document.createElement('img'); im.src = qrImageUrl(res.url); im.alt = 'QR code for your message'; box.appendChild(im); }
-          vgText('Thank you!', res.url ? (res.queued ? 'Saved. Scan to see it once the internet is back.' : 'Scan to watch and keep your message.') : 'Your message is saved.');
+          vgText(gbPrefs.thanks || 'Thank you!', res.url ? (res.queued ? 'Saved. Scan to see it once the internet is back.' : 'Scan to watch and keep your message.') : 'Your message is saved.');
           vgVideo.pause(); vgUi();
         } catch (e) {
           console.error('Video guestbook save failed:', e);
@@ -36276,16 +36391,26 @@
         if (vg.state === 'idle') return vgCountdown();
         if (vg.state === 'recording') { try { vg.rec.stop(); } catch (e) { } return; }
         if (vg.state === 'review' || vg.state === 'failed') return vgSave();
-        if (vg.state === 'done') { vgClearBlob(); vg.state = 'idle'; vgText('Leave a video message', 'Up to ' + VG_MAX_S + ' seconds'); await vgLive(); vgUi(); }
+        if (vg.state === 'done') { vgClearBlob(); vg.qi++; vg.state = 'idle'; vgText(vgIdleTitle(), vgIdleSub()); await vgLive(); vgUi(); }
       }
       async function vgRetake() {
         if (vg.state !== 'review' && vg.state !== 'failed') return;
-        vgClearBlob(); vg.state = 'idle'; vgText('Leave a video message', 'Up to ' + VG_MAX_S + ' seconds'); await vgLive(); vgUi();
+        vgClearBlob(); vg.state = 'idle'; vgText(vgIdleTitle(), vgIdleSub()); await vgLive(); vgUi();
       }
       vgEl('vgFab').addEventListener('click', openVg);
       vgEl('vgClose').addEventListener('click', closeVg);
       vgEl('vgMain').addEventListener('click', vgMainClick);
       vgEl('vgSecond').addEventListener('click', vgRetake);
+      vgEl('vgQNext').addEventListener('click', function () { if (vg.state === 'idle') { vg.qi++; vgQUi(); } });
+
+      // ---- Video guestbook words and length, in Setup -> Extras ----
+      function gbChanged() { gbPrefs = cleanGbPrefs(gbPrefs); try { vgRefresh(); } catch (e) { } if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); }
+      vgEl('gbQuestions').addEventListener('input', function () { gbPrefs.questions = this.value.split(/\r?\n/); gbChanged(); vg.qi = 0; vgQUi(); });
+      vgEl('gbLength').addEventListener('change', function () { gbPrefs.length = Number(this.value); gbChanged(); });
+      [['gbEvent', 'event'], ['gbTitle', 'title'], ['gbThanks', 'thanks']].forEach(function (k) {
+        vgEl(k[0]).addEventListener('input', function () { gbPrefs[k[1]] = this.value.replace(/[<>]/g, ''); gbChanged(); });
+      });
+      try { gbCardRefresh(); } catch (e) { }
 
       // ---- Guests ask for a print from their phone (off until switched on in Setup -> Print) ----
       // The guest's photo page (the QR code) gets an "Ask for a print at the booth" button. A request waits here for the
@@ -44495,6 +44620,7 @@
           frameMode: frameMode, chooseIds: chooseList(), sheetSize: sheetSize,
           titleStyle: titleStyle, kicker: kickerText, receiptNote: receiptCustomNote, upper: titleUpper, art: themeArt.slice(), artPal: Object.assign({}, artPal),
           printPrefs: Object.assign({}, printPrefs),
+          guestbook: cleanGbPrefs(gbPrefs),
           printerProfiles: (window._pfExport ? window._pfExport() : null),
           bgRep: Object.assign({}, bgRep), bgMine: bgMine.slice(),
           fx: Object.assign({}, fx),
@@ -44831,6 +44957,7 @@
           refreshTitleUI();
           if (s.printerProfiles && window._pfImport) window._pfImport(s.printerProfiles);
           if (s.printPrefs) applyPrintPrefs(s.printPrefs);
+          if (s.guestbook) applyGbPrefs(s.guestbook);
           applyBgRepSetup(s.bgRep, s.bgMine);
           if (s.fx) applyFxSetup(s.fx);
           applyGvSetup(s.guestView);

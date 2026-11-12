@@ -144,6 +144,7 @@
         <button class="btn primary hidden" id="dlPhotosBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span id="dlPhotosLabel">Download all photos</span></button>
         <button class="btn primary hidden" id="dlSoloBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span id="dlSoloLabel">Download all solo photos</span></button>
         <button class="btn primary hidden" id="dlGifsBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span id="dlGifsLabel">Download all GIFs</span></button>
+        <button class="btn primary hidden" id="dlGuestbookBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span id="dlGuestbookLabel">Download all guestbook videos</span></button>
       </div>
     </section>
 
@@ -153,6 +154,7 @@
       <button class="tab hidden" id="soloTab" type="button" aria-selected="false">Solo Photos <i id="soloTabCount">0</i></button>
       <button class="tab" id="gifsTab" type="button" aria-selected="false">All GIFs <i id="gifTabCount">0</i></button>
       <button class="tab hidden" id="videosTab" type="button" aria-selected="false">Videos <i id="videoTabCount">0</i></button>
+      <button class="tab hidden" id="guestbookTab" type="button" aria-selected="false">Guestbook <i id="guestbookTabCount">0</i></button>
       <span class="live" id="live">Live</span>
     </nav>
 
@@ -208,7 +210,7 @@
   if (SESSION) { try { SESSION = decodeURIComponent(SESSION); } catch(e) {} }
   var FOLDER = !CODE && m ? m[1] : null, pendTries = 0, pendT = null;
   var DL_ALL = (CODE || SESSION) ? 'Download all my files' : 'Download all files';
-  var DL_P = (CODE || SESSION) ? 'Download my prints' : 'Download all prints', DL_S = (CODE || SESSION) ? 'Download my solo photos' : 'Download all solo photos', DL_G = (CODE || SESSION) ? 'Download my GIFs' : 'Download all GIFs';
+  var DL_P = (CODE || SESSION) ? 'Download my prints' : 'Download all prints', DL_S = (CODE || SESSION) ? 'Download my solo photos' : 'Download all solo photos', DL_G = (CODE || SESSION) ? 'Download my GIFs' : 'Download all GIFs', DL_GB = (CODE || SESSION) ? 'Download my guestbook video' : 'Download all guestbook videos';
   var DRIVE = FOLDER ? 'https://drive.google.com/drive/folders/' + FOLDER : null;
   var files = [], view = [], cur = -1, tiles = {}, firstLoad = true, timer = null, activeCategory = 'photos', PRINT_REQ = false;
   // A guest's own QR opens straight to their saved photo: /g/<folder>#<file id>.
@@ -223,18 +225,20 @@
   function isVideo(f){ return /^video\//.test(f.mime || '') || /\.(mp4|mov|m4v|webm)$/i.test(f.name || ''); }
   function isGif(f){ return !isVideo(f) && (f.mime === 'image/gif' || /\.gif$/i.test(f.name || '')); }
   function isSolo(f){ return !isVideo(f) && !isGif(f) && /_solo_\d+/i.test(f.name || ''); }
-  function catOf(f){ return isVideo(f) ? 'videos' : isGif(f) ? 'gifs' : isSolo(f) ? 'solo' : 'photos'; }
+  function isGuestbook(f){ return isVideo(f) && /_guestbook/i.test(f.name || ''); }
+  function catOf(f){ return isGuestbook(f) ? 'guestbook' : isVideo(f) ? 'videos' : isGif(f) ? 'gifs' : isSolo(f) ? 'solo' : 'photos'; }
   function categoryFiles(category){
     if(category === 'all') return files;
     return files.filter(function(f){ return catOf(f) === category; });
   }
   function refreshCategoryUI(){
-    var photos = categoryFiles('photos'), solos = categoryFiles('solo'), gifs = categoryFiles('gifs'), videos = categoryFiles('videos');
-    var kindsCount = (photos.length ? 1 : 0) + (solos.length ? 1 : 0) + (gifs.length ? 1 : 0) + (videos.length ? 1 : 0);
-    $('allTabCount').textContent = files.length; $('photoTabCount').textContent = photos.length; $('soloTabCount').textContent = solos.length; $('gifTabCount').textContent = gifs.length; $('videoTabCount').textContent = videos.length;
+    var photos = categoryFiles('photos'), solos = categoryFiles('solo'), gifs = categoryFiles('gifs'), videos = categoryFiles('videos'), gbooks = categoryFiles('guestbook');
+    var kindsCount = (photos.length ? 1 : 0) + (solos.length ? 1 : 0) + (gifs.length ? 1 : 0) + (videos.length ? 1 : 0) + (gbooks.length ? 1 : 0);
+    $('allTabCount').textContent = files.length; $('photoTabCount').textContent = photos.length; $('soloTabCount').textContent = solos.length; $('gifTabCount').textContent = gifs.length; $('videoTabCount').textContent = videos.length; $('guestbookTabCount').textContent = gbooks.length;
     $('allTab').classList.toggle('hidden', kindsCount <= 1);
     $('soloTab').classList.toggle('hidden', !solos.length);
     $('videosTab').classList.toggle('hidden', !videos.length);
+    $('guestbookTab').classList.toggle('hidden', !gbooks.length);
     if(solos.length){
       $('photosTab').firstChild.nodeValue = CODE ? 'Prints ' : 'Prints ';
       $('soloTab').firstChild.nodeValue = CODE ? 'Solo photos ' : 'Solo Photos ';
@@ -249,16 +253,19 @@
     $('soloTab').setAttribute('aria-selected', activeCategory === 'solo' ? 'true' : 'false');
     $('gifsTab').setAttribute('aria-selected', activeCategory === 'gifs' ? 'true' : 'false');
     $('videosTab').setAttribute('aria-selected', activeCategory === 'videos' ? 'true' : 'false');
+    $('guestbookTab').setAttribute('aria-selected', activeCategory === 'guestbook' ? 'true' : 'false');
     $('dlAllBtn').classList.toggle('hidden', activeCategory !== 'all' || !files.length);
     $('dlPhotosBtn').classList.toggle('hidden', activeCategory !== 'photos' || !photos.length);
     $('dlSoloBtn').classList.toggle('hidden', activeCategory !== 'solo' || !solos.length);
     $('dlGifsBtn').classList.toggle('hidden', activeCategory !== 'gifs' || !gifs.length);
+    $('dlGuestbookBtn').classList.toggle('hidden', activeCategory !== 'guestbook' || !gbooks.length);
   }
   $('allTab').addEventListener('click', function(){ activeCategory = 'all'; refreshCategoryUI(); render(false); });
   $('photosTab').addEventListener('click', function(){ activeCategory = 'photos'; refreshCategoryUI(); render(false); });
   $('soloTab').addEventListener('click', function(){ activeCategory = 'solo'; refreshCategoryUI(); render(false); });
   $('gifsTab').addEventListener('click', function(){ activeCategory = 'gifs'; refreshCategoryUI(); render(false); });
   $('videosTab').addEventListener('click', function(){ activeCategory = 'videos'; refreshCategoryUI(); render(false); });
+  $('guestbookTab').addEventListener('click', function(){ activeCategory = 'guestbook'; refreshCategoryUI(); render(false); });
   function thumbUrl(f, w){ return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w' + w; }
   function downloadUrl(f){ return 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(f.id); }
   function withFallbacks(img, f, w){
@@ -400,7 +407,7 @@
     var grid = $('grid');
     if(!view.length){
       grid.classList.add('hidden');
-      $('empty').textContent = activeCategory === 'gifs' ? 'No GIFs yet. They show up here after a GIF session.' : activeCategory === 'videos' ? 'No videos yet.' : activeCategory === 'solo' ? 'No solo photos yet. They show up here after each photo session.' : 'No photos yet. They show up here a few seconds after each photo session.';
+      $('empty').textContent = activeCategory === 'gifs' ? 'No GIFs yet. They show up here after a GIF session.' : activeCategory === 'videos' ? 'No videos yet.' : activeCategory === 'guestbook' ? 'No guestbook messages yet. They show up here after a guest records one.' : activeCategory === 'solo' ? 'No solo photos yet. They show up here after each photo session.' : 'No photos yet. They show up here a few seconds after each photo session.';
       $('empty').classList.remove('hidden');
       return;
     }
@@ -602,11 +609,12 @@
   }
   function fileName(f, i){
     var n = String(f.name || ((isGif(f) ? 'gif-' : 'photo-') + (i + 1))).replace(/[\\\/:*?"<>|]+/g, '_');
-    if(/\.(jpe?g|png|webp|gif)$/i.test(n)) return n;
+    if(/\.(jpe?g|png|webp|gif|mp4|webm|mov|m4v)$/i.test(n)) return n;
+    if(isVideo(f)) return n + (/webm/.test(f.mime || '') ? '.webm' : '.mp4');
     return n + (isGif(f) ? '.gif' : f.mime === 'image/png' ? '.png' : f.mime === 'image/webp' ? '.webp' : '.jpg');
   }
   async function fetchPhoto(f){
-    var r = await fetch(f.src, { cache: 'force-cache' });
+    var r = await fetch(f.src || f.vsrc, { cache: 'force-cache' });      // videos come through the signed relay (vsrc)
     if(!r.ok) throw new Error('HTTP ' + r.status);
     return r.blob();
   }
@@ -640,11 +648,11 @@
     var list = categoryFiles(category);
     if(zipping || !list.length) return;
     zipping = true;
-    var isAll = category === 'all', isGifs = category === 'gifs', isSolo = category === 'solo';
-    var btn = $(isAll ? 'dlAllBtn' : isGifs ? 'dlGifsBtn' : isSolo ? 'dlSoloBtn' : 'dlPhotosBtn');
-    var label = $(isAll ? 'dlAllLabel' : isGifs ? 'dlGifsLabel' : isSolo ? 'dlSoloLabel' : 'dlPhotosLabel');
+    var isAll = category === 'all', isGifs = category === 'gifs', isSolo = category === 'solo', isGb = category === 'guestbook';
+    var btn = $(isAll ? 'dlAllBtn' : isGifs ? 'dlGifsBtn' : isSolo ? 'dlSoloBtn' : isGb ? 'dlGuestbookBtn' : 'dlPhotosBtn');
+    var label = $(isAll ? 'dlAllLabel' : isGifs ? 'dlGifsLabel' : isSolo ? 'dlSoloLabel' : isGb ? 'dlGuestbookLabel' : 'dlPhotosLabel');
     var base = (document.title.split(' | ')[0] || 'gallery').replace(/[\\\/:*?"<>|]+/g, '_').trim() || 'gallery';
-    var chunkSize = isGifs ? 10 : 80;
+    var chunkSize = isGb ? 5 : isGifs ? 10 : (isAll && list.some(isVideo)) ? 10 : 80;      // guestbook videos are big: a few per zip
     var parts = Math.ceil(list.length / chunkSize), failed = 0, used = {};
     btn.disabled = true;
     try{
@@ -663,15 +671,15 @@
           }catch(e){ failed++; }
         }
         if(entries.length){
-          var categoryName = isAll ? 'All Media' : isGifs ? 'GIFs' : isSolo ? 'Solo Photos' : 'Photos';
+          var categoryName = isAll ? 'All Media' : isGifs ? 'GIFs' : isSolo ? 'Solo Photos' : isGb ? 'Guestbook' : 'Photos';
           saveBlob(buildZip(entries), base + ' - ' + categoryName + (parts > 1 ? ' (part ' + (p + 1) + ' of ' + parts + ')' : '') + '.zip');
         }
         if(p < parts - 1) await new Promise(function(r){ setTimeout(r, 800); });
       }
-      var categoryLabel = isAll ? 'file' : isGifs ? 'GIF' : isSolo ? 'solo photo' : 'photo';
+      var categoryLabel = isAll ? 'file' : isGifs ? 'GIF' : isSolo ? 'solo photo' : isGb ? 'guestbook video' : 'photo';
       toast(failed ? 'Downloaded ' + (list.length - failed) + ' ' + categoryLabel + 's (' + failed + ' could not load)' : 'Downloaded ' + list.length + ' ' + categoryLabel + (list.length === 1 ? '' : 's'));
     }finally{
-      label.textContent = isAll ? DL_ALL : isGifs ? DL_G : isSolo ? DL_S : DL_P;
+      label.textContent = isAll ? DL_ALL : isGifs ? DL_G : isSolo ? DL_S : isGb ? DL_GB : DL_P;
       btn.disabled = false; zipping = false;
     }
   }
@@ -679,6 +687,7 @@
   $('dlPhotosBtn').addEventListener('click', function(){ downloadCategory('photos'); });
   $('dlSoloBtn').addEventListener('click', function(){ downloadCategory('solo'); });
   $('dlGifsBtn').addEventListener('click', function(){ downloadCategory('gifs'); });
+  $('dlGuestbookBtn').addEventListener('click', function(){ downloadCategory('guestbook'); });
   // Single photo: save it directly; fall back to Google's download link.
   $('vDownload').addEventListener('click', async function(e){
     var f = view[cur]; if(!f) return;

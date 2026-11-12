@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.32', date: '2026-11-12' },
   { version: '1.1.31', date: '2026-11-12' },
   { version: '1.1.30', date: '2026-11-12' },
   { version: '1.1.29', date: '2026-11-11' },
@@ -203,6 +204,12 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-12', title: 'Desktop 1.1.32: Epson photo prints now fill the 4R sheet edge to edge', for: ['website', 'app'], app: '1.1.32',
+    items: [
+      'Fixed Epson printers (L8050, L3210 and similar) on Windows printing 4R with white edges and the picture smaller than the paper. The app now switches on the Borderless mode of the printer driver for the booth paper size by itself, so you no longer have to tick it in the printer preferences. Printers without a Borderless option print as before.'
+    ]
+  },
   {
     date: '2026-11-12', title: 'Desktop 1.1.31 + Android 1.1.49: a Guestbook tab in the offline galleries', for: ['website', 'app'], app: '1.1.31',
     items: [

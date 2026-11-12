@@ -16625,6 +16625,12 @@
                 <button type="button" class="action-btn" id="wifiPrinterAddBtn"
                   style="width:auto;margin:0;">Add</button>
               </div>
+              <label id="pdiagRow" style="display:none;gap:8px;align-items:flex-start;margin:10px 0 0;font-size:13px;">
+                <input type="checkbox" id="pdiagToggle" style="margin-top:3px;">
+                <span>Send printer diagnostics to help fix printing problems<br>
+                  <span class="panel-hint" style="font-size:12px;">Sends the printer's name, USB ID, which print method the
+                    app used and whether the print worked. No photos, no guest details, no network addresses.</span></span>
+              </label>
             </div>
             <details class="ps-steps" id="printStepsWrap">
               <summary>Printer setup checklist</summary>
@@ -30255,6 +30261,7 @@
           box.appendChild(bd);
         }
         d.printers.forEach(p => {
+          if (p.usb && !p.needsPermission) { try { pdiagSend('detect', p); } catch (e) { } }      // printer diagnostics (see pdiagSend)
           if (wifiPrinter && p.usb && wifiPrinter.ip === p.ip) { wifiPrinter.info = p.info || ''; wifiPrinter.vid = p.vid || 0; wifiPrinter.pid = p.pid || 0; }
           if (wifiPrinter && wifiPrinter.ip === p.ip) { wifiPrinter.qualities = p.qualities || []; wifiPrinter.colorModes = p.colorModes || []; wifiPrinter.mediaTypes = p.mediaTypes || []; }
           const b = document.createElement('button');
@@ -30577,7 +30584,70 @@
           }
         }
       }
+      // ---- Printer diagnostics (Android app only; on by default, switch under Setup > Printer) ----
+      // Sends only: the printer's name, USB ids and the print method the app chose, the paper size and print options, and
+      // whether the print worked (with the error text). No photos, no guest details, no IP addresses. Received by
+      // netlify/functions/printerdiag.mjs, shown in Admin > Printer reports. Described in the Agreement.
+      const PDIAG_KEY = 'pb_printer_diag', PDIAG_SEEN_KEY = 'pb_printer_diag_seen', PDIAG_NOTICE_KEY = 'pb_printer_diag_notice';
+      function pdiagOn() { try { return localStorage.getItem(PDIAG_KEY) !== '0'; } catch (e) { return true; } }
+      function pdiagSend(kind, p, extra) {
+        try {
+          if (!pdiagOn() || !p || p.dialog || !window.__PBNet) return;
+          let token = null, deviceId = null;
+          try { token = localStorage.getItem('pb_token'); deviceId = localStorage.getItem('pb_device'); } catch (e) { }
+          if (!token || !deviceId) return;
+          const flags = {};
+          ['usb', 'ipp', 'raw', 'escpr', 'epsonL', 'escp2', 'canon', 'selphy', 'dnp', 'noDriver', 'needsPermission', 'borderless'].forEach(k => { if (p[k]) flags[k] = true; });
+          const pr = { name: String(p.name || '').slice(0, 120), vid: p.vid | 0, pid: p.pid | 0, info: String(p.info || '').replace(/\b(SN|SERIAL|SERIALNUMBER|UUID):[^;]*;?/gi, '').slice(0, 300), model: String(p.epsonModel || p.dnpModel || p.canonModel || '').slice(0, 40), flags: flags };
+          const sig = pr.name + '|' + pr.vid + '|' + pr.pid + '|' + Object.keys(flags).sort().join(',');
+          const day = new Date().toISOString().slice(0, 10);
+          let seen = {};
+          try { seen = JSON.parse(localStorage.getItem(PDIAG_SEEN_KEY) || '{}') || {}; } catch (e) { seen = {}; }
+          // Keep traffic small: one "detected" per printer per week, one good print per printer per day, a few failures per day.
+          let key, limit;
+          if (kind === 'detect') { key = 'd|' + sig; limit = 1; if (seen[key] && Date.now() - seen[key] < 7 * 86400000) return; }
+          else { key = (extra && extra.ok ? 'ok|' : 'fail|') + sig + '|' + day; limit = extra && extra.ok ? 1 : 3; if ((seen[key] || 0) >= limit) return; }
+          if (!localStorage.getItem(PDIAG_NOTICE_KEY)) {
+            try { localStorage.setItem(PDIAG_NOTICE_KEY, '1'); } catch (e) { }
+            showToast('Printer diagnostics are on: the printer name, USB ID and whether prints work are sent to photobooth4u to fix printing problems. No photos or guest details. You can turn this off under Setup > Printer.', 14000);
+          }
+          const ver = String((window.__PB && window.__PB.desktop && window.__PB.desktop.v) || (/PB4uAndroid\/?([\d.]*)/.exec(navigator.userAgent || '') || [])[1] || '');
+          const body = { token: token, deviceId: deviceId, kind: kind, printer: pr, app: ver };
+          if (extra) { if (extra.paper) body.paper = extra.paper; if (extra.opts) body.opts = extra.opts; body.ok = !!extra.ok; if (extra.error) body.error = String(extra.error).slice(0, 200); }
+          fetch('/api/printerdiag', { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+            .then(r => {
+              if (!r.ok) return;
+              try {
+                const s2 = JSON.parse(localStorage.getItem(PDIAG_SEEN_KEY) || '{}') || {};
+                s2[key] = kind === 'detect' ? Date.now() : (s2[key] || 0) + 1;
+                const ks = Object.keys(s2); if (ks.length > 200) ks.slice(0, ks.length - 200).forEach(k => delete s2[k]);
+                localStorage.setItem(PDIAG_SEEN_KEY, JSON.stringify(s2));
+              } catch (e) { }
+            }).catch(() => { });
+        } catch (e) { }
+      }
+      (function () {
+        const row = document.getElementById('pdiagRow'), cb = document.getElementById('pdiagToggle');
+        if (!row || !cb) return;
+        if (window.__PBNet) row.style.display = 'flex';
+        cb.checked = pdiagOn();
+        cb.addEventListener('change', () => {
+          try { localStorage.setItem(PDIAG_KEY, cb.checked ? '1' : '0'); } catch (e) { }
+          showToast(cb.checked ? 'Printer diagnostics on.' : 'Printer diagnostics off. Nothing will be sent.', 3000);
+        });
+      })();
       async function printViaWifi(all, paper, printer, wopts) {
+        const p = printer || wifiPrinter;
+        const wo = wopts || wifiOpts(p);
+        try {
+          await printViaWifiRaw(all, paper, printer, wopts);
+          if (p && !p.dialog) pdiagSend('print', p, { ok: true, paper: { w: paper && paper.w, h: paper && paper.h, name: paper && paper.name }, opts: { quality: wo && wo.quality, color: wo && wo.color, media: wo && wo.media, borderless: wo && wo.borderless } });
+        } catch (e) {
+          if (p && !p.dialog) pdiagSend('print', p, { ok: false, error: e && e.message, paper: { w: paper && paper.w, h: paper && paper.h, name: paper && paper.name }, opts: { quality: wo && wo.quality, color: wo && wo.color, media: wo && wo.media, borderless: wo && wo.borderless } });
+          throw e;
+        }
+      }
+      async function printViaWifiRaw(all, paper, printer, wopts) {
         const p = printer || wifiPrinter;
         const wo = wopts || wifiOpts(p);               // the printer's own colour / quality / paper type
         if (p.dialog) {

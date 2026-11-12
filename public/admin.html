@@ -1265,6 +1265,19 @@
           <button class="small" id="backupDownloadBtn">Download a backup file</button>
         </details>
 
+        <details class="card" id="printerDiagCard">
+          <summary>
+            <h2>Printer reports (Android app)</h2>
+          </summary>
+          <div class="meta">What the Android app reports about printers when its "Send printer diagnostics" switch is on
+            (it is on by default and the renter can turn it off). One row per printer model: its USB ID, how the app
+            classified it, how many prints worked or failed, the newest error and the last results. No photos, guest
+            details or network addresses are sent. A printer shown as <b>no driver</b> or an unknown USB ID is one to add
+            to the app.</div>
+          <button class="small" id="printerDiagRefresh">Refresh</button>
+          <div id="printerDiagList" style="margin-top:10px;overflow-x:auto;"></div>
+        </details>
+
       </div>
 
       <div class="tabpane" data-pane="tools">
@@ -2450,6 +2463,31 @@
         if (!this.open) return;
         try { backupShow((await api({ action: 'backupstatus' })).last); } catch (err) { if (err.message !== 'auth') toast(err.message, true); }
       });
+      // Printer reports from the Android apps (functions/printerdiag.mjs).
+      async function printerDiagLoad() {
+        var box = $('printerDiagList');
+        box.textContent = 'Loading…';
+        try {
+          var r = await api({ action: 'printerdiag' });
+          if (!r.printers.length) { box.textContent = 'No reports yet.'; return; }
+          var h = '<table style="border-collapse:collapse;font-size:13px;width:100%;"><thead><tr>' +
+            ['Printer', 'USB ID', 'Classified as', 'Seen', 'Worked', 'Failed', 'Newest error', 'Last report', 'App'].map(function (t) { return '<th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--line,#ccc);">' + t + '</th>'; }).join('') + '</tr></thead><tbody>';
+          r.printers.forEach(function (d) {
+            var cls = Object.keys(d.flags || {}).filter(function (k) { return k !== 'usb'; }).join(', ') || '(none)';
+            var usbId = d.vid ? d.vid.toString(16).padStart(4, '0') + ':' + d.pid.toString(16).padStart(4, '0') : '—';
+            var apps = Object.keys(d.apps || {}).join(', ');
+            var td = function (v, extra) { return '<td style="padding:4px 8px;vertical-align:top;border-bottom:1px solid var(--line,#eee);' + (extra || '') + '">' + v + '</td>'; };
+            h += '<tr>' + td('<b>' + esc(d.name) + '</b>' + (d.model ? '<br>' + esc(d.model) : '')) + td(esc(usbId)) +
+              td(esc(cls), (d.flags && d.flags.noDriver) ? 'color:#b3261e;font-weight:700;' : '') +
+              td(d.detect || 0) + td(d.ok || 0) + td(d.fail || 0, d.fail ? 'color:#b3261e;' : '') +
+              td(d.lastError ? esc(d.lastError) + '<br><small>' + new Date(d.lastErrorAt).toLocaleString() + '</small>' : '—') +
+              td(new Date(d.lastAt).toLocaleString()) + td(esc(apps)) + '</tr>';
+          });
+          box.innerHTML = h + '</tbody></table>';
+        } catch (err) { box.textContent = ''; if (err.message !== 'auth') toast(err.message, true); }
+      }
+      $('printerDiagCard').addEventListener('toggle', function () { if (this.open) printerDiagLoad(); });
+      $('printerDiagRefresh').addEventListener('click', printerDiagLoad);
       $('backupDriveBtn').addEventListener('click', async function () {
         this.disabled = true;
         try { var r = await api({ action: 'backupdrive' }); backupShow(r); toast(r.ok ? 'Backup saved to Drive' : r.error, !r.ok); }

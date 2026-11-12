@@ -180,6 +180,46 @@ export async function probe(file) {
   return info;
 }
 
+// A small H.264 copy of a clip, for the 360 desk's preview only (the render always uses the original). iPhone clips are often HEVC
+// (.mov) and some Windows laptops cannot play those in the preview. ffmpeg turns the picture upright by itself, so a sideways phone
+// clip comes out the right way up too. Reused when it is already there and newer than the original.
+export async function makeProxy(inputPath, outPath) {
+  const bin = await findFfmpeg(); if (!bin) throw new Error('Video editing is not available on this laptop.');
+  try { if (existsSync(outPath) && statSync(outPath).mtimeMs >= statSync(inputPath).mtimeMs && statSync(outPath).size > 1024) return outPath; } catch { /* make it */ }
+  mkdirSync(dirname(outPath), { recursive: true });
+  const tmp = outPath + '.part.mp4';
+  const r = await run(bin, ['-hide_banner', '-y', '-i', inputPath, '-map', '0:v:0', '-map', '0:a:0?', '-vf', 'scale=-2:min(720\\,ih)',
+    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '27', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', tmp], { timeout: 10 * 60 * 1000 });
+  if (!existsSync(tmp) || statSync(tmp).size < 1024) { try { unlinkSync(tmp); } catch { /* ignore */ } throw new Error('Could not make a preview of that video.' + (r && r.err ? '' : '')); }
+  renameSync(tmp, outPath);
+  return outPath;
+}
+
+// A short loop made from a finished video: an animated GIF (at most about 5 s: a longer video is sped up to fit, so the whole spin is in it),
+// or a square MP4 cropped from the middle, for posts. Written next to the finished video; the caller shares it.
+export async function makeExtra(inputPath, outPath, kind) {
+  const bin = await findFfmpeg(); if (!bin) throw new Error('Video editing is not available on this laptop.');
+  const info = await probe(inputPath);
+  mkdirSync(dirname(outPath), { recursive: true });
+  const tmp = outPath.replace(/\.(gif|mp4)$/i, '.part.$1');
+  let args;
+  if (kind === 'square') {
+    args = ['-hide_banner', '-y', '-i', inputPath, '-t', '10', '-vf', "crop='min(iw,ih)':'min(iw,ih)',scale=720:720:flags=lanczos,fps=30,format=yuv420p",
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-map', '0:v:0'];
+    if (info.hasAudio) args.push('-map', '0:a:0', '-c:a', 'aac', '-b:a', '128k'); else args.push('-an');
+    args.push('-movflags', '+faststart', tmp);
+  } else {
+    const maxSec = 5, k = info.duration > maxSec ? maxSec / info.duration : 1;
+    const w = info.width > info.height ? 480 : (info.width === info.height ? 400 : 320);
+    const vf = '[0:v]setpts=' + k.toFixed(5) + '*PTS,fps=12,scale=' + w + ':-2:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle';
+    args = ['-hide_banner', '-y', '-i', inputPath, '-filter_complex', vf, '-an', '-loop', '0', '-t', String(maxSec + 0.2), tmp];
+  }
+  await run(bin, args, { timeout: 5 * 60 * 1000 });
+  if (!existsSync(tmp) || statSync(tmp).size < 1024) { try { unlinkSync(tmp); } catch { /* ignore */ } throw new Error('Could not make that ' + (kind === 'square' ? 'clip' : 'GIF') + '.'); }
+  renameSync(tmp, outPath);
+  return outPath;
+}
+
 // Optional hardware H.264 encoder detection (1.5). Tested once with a 1-frame encode and cached.
 export async function findHwEncoder() {
   if (resolvedHw !== undefined) return resolvedHw;
@@ -321,7 +361,7 @@ export function resolveFx(spec, orientation) {
 export function normOptions(o) {
   o = o || {};
   const speed = SPEEDS.includes(o.speed) ? o.speed : 'slow';
-  const q = o.quality === 720 || speed === 'boomerang' || (speed === 'custom' && o.reverse) ? 720 : 1080;      // boomerang and backwards are kept at 720 to stay light
+  const q = o.quality === 540 ? 540 : (o.quality === 720 || speed === 'boomerang' || (speed === 'custom' && o.reverse) ? 720 : 1080);      // 540 = "Light": small files for crowded Wi-Fi      // boomerang and backwards are kept at 720 to stay light
   const short = q, long = Math.round(q * 16 / 9 / 2) * 2;
   const orient = o.orientation === 'landscape' ? 'landscape' : (o.orientation === 'square' ? 'square' : 'portrait');
   const landscape = orient === 'landscape';
@@ -329,7 +369,7 @@ export function normOptions(o) {
   const W = square ? q : (landscape ? long : short);
   const H = square ? q : (landscape ? short : long);
   return {
-    speed, smooth: !!o.smooth, gpu: !!o.gpu, landscape, square, orientation: orient,
+    speed, smooth: !!o.smooth, gpu: !!o.gpu, light: q === 540, landscape, square, orientation: orient,
     // custom: the clip is cut in equal parts and each part plays at its own rate (0.25x to 4x); reverse adds the whole thing backwards
     rates: speed === 'custom' ? (Array.isArray(o.rates) ? o.rates : []).map(Number).filter((r) => r >= 0.25 && r <= 4).slice(0, 6) : [],
     reverse: speed === 'custom' && !!o.reverse,
@@ -728,19 +768,19 @@ export function buildArgs({ input, output, overlay, textOverlay, fx, music, intr
   a.push('-t', f2(dur), '-r', '30');
   const hw = hwEncoder || (o.gpu && resolvedHw) || null;
   if (hw === 'h264_nvenc') {
-    a.push('-c:v', 'h264_nvenc', '-preset', 'p4', '-cq', '22', '-pix_fmt', 'yuv420p');
+    a.push('-c:v', 'h264_nvenc', '-preset', 'p4', '-cq', o.light ? '30' : '22', '-pix_fmt', 'yuv420p');
   } else if (hw === 'h264_videotoolbox') {
-    a.push('-c:v', 'h264_videotoolbox', '-q:v', '65', '-pix_fmt', 'yuv420p');
+    a.push('-c:v', 'h264_videotoolbox', '-q:v', o.light ? '45' : '65', '-pix_fmt', 'yuv420p');
   } else if (hw === 'h264_qsv') {
-    a.push('-c:v', 'h264_qsv', '-global_quality', '22', '-pix_fmt', 'yuv420p');
+    a.push('-c:v', 'h264_qsv', '-global_quality', o.light ? '30' : '22', '-pix_fmt', 'yuv420p');
   } else if (hw === 'h264_amf') {
-    a.push('-c:v', 'h264_amf', '-rc', 'cqp', '-qp_i', '22', '-qp_p', '22', '-pix_fmt', 'yuv420p');
+    a.push('-c:v', 'h264_amf', '-rc', 'cqp', '-qp_i', o.light ? '30' : '22', '-qp_p', o.light ? '30' : '22', '-pix_fmt', 'yuv420p');
   } else {
     const cpuCount = (typeof os.cpus === 'function' ? os.cpus()?.length : 4) || 4;
     const safeThreads = Math.min(4, Math.max(2, cpuCount - 1));
-    a.push('-c:v', 'libx264', '-threads', String(safeThreads), '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p');
+    a.push('-c:v', 'libx264', '-threads', String(safeThreads), '-preset', 'veryfast', '-crf', o.light ? '27' : '20', '-pix_fmt', 'yuv420p');
   }
-  if (audioMap.length) a.push('-c:a', 'aac', '-b:a', '160k', '-ar', '44100'); else a.push('-an');
+  if (audioMap.length) a.push('-c:a', 'aac', '-b:a', o.light ? '96k' : '160k', '-ar', '44100'); else a.push('-an');
   a.push('-movflags', '+faststart', output);
   return { args: a, duration: dur, W: o.W, H: o.H };
 }

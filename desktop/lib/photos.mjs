@@ -10,6 +10,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync, statSy
 import { join, extname, basename } from 'node:path';
 import { networkInterfaces } from 'node:os';
 import { randomBytes } from 'node:crypto';
+import { deflateSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 import { hotspotInfo } from './hotspot.mjs';
@@ -78,6 +79,7 @@ export function initPhotos({ root, dataDir, makeThumb }) {
   ROOT = root; INDEX_FILE = join(dataDir, 'folders.json'); thumbFn = makeThumb || null;
   CODES_FILE = join(dataDir, 'guestcodes.json');
   STATS_FILE = join(dataDir, 'spin-stats.json');
+  loadSpinToken(dataDir);
   mkdirSync(ROOT, { recursive: true });
   try { index = JSON.parse(readFileSync(INDEX_FILE, 'utf8')) || { folders: {} }; } catch { index = { folders: {} }; }
   if (!index.folders) index.folders = {};
@@ -351,7 +353,18 @@ function serveFile(req, res, full, type, extra) {
 }
 
 let spinDir = null;
-const spinToken = randomBytes(9).toString('base64url').replace(/[-_]/g, 'x');
+// The tablet / phone remembers "laptop-address/send/<token>". A token made fresh at every start broke that address each time the app
+// was reopened, so it is kept in the data folder (loadSpinToken, called from initPhotos) and stays the same.
+let spinToken = randomBytes(9).toString('base64url').replace(/[-_]/g, 'x');
+function loadSpinToken(dataDir) {
+  try {
+    const f = join(dataDir, 'spin-token.txt');
+    let t = '';
+    try { t = readFileSync(f, 'utf8').trim(); } catch { /* first start */ }
+    if (/^[A-Za-z0-9]{8,40}$/.test(t)) { spinToken = t; return; }
+    writeFileSync(f, spinToken);
+  } catch { /* read-only data folder: keep the one made for this run */ }
+}
 const SPIN_MAX = 1024 * 1024 * 1024;
 export function setSpinDir(dir) { spinDir = dir || null; }
 export function spinDirNow() {
@@ -386,15 +399,27 @@ export function spinList(opts = {}) {
     .sort((a, b) => b.mtime - a.mtime)
     .slice(0, 300);
 }
-export function spinShare(name, folderKey, subfolder, outName) {
+// The name of the look a shared 360 clip was made with, kept beside the event's files (a hidden file, so it is never listed or shared)
+// and handed to the Sharing Station, which shows it on the clip.
+function readLooks(dir) { try { return JSON.parse(readFileSync(join(dir, '.looks.json'), 'utf8')) || {}; } catch { return {}; } }
+function writeLook(dir, file, look) {
+  const l = String(look || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 60);
+  if (!l) return;
+  try {
+    const all = readLooks(dir); all[file] = l;
+    const ks = Object.keys(all); if (ks.length > 600) ks.slice(0, ks.length - 600).forEach((k) => { delete all[k]; });
+    writeFileSync(join(dir, '.looks.json'), JSON.stringify(all));
+  } catch { /* the clip is shared anyway */ }
+}
+export function spinShare(name, folderKey, subfolder, outName, look) {
   const rel = String(name || '');
   const d = /^edited\//.test(rel) ? spinEditedDir() : spinDirNow();
   const n = basename(rel);
-  if (!d || !VIDEO_RE.test(n)) return { ok: false, error: 'No video' };
+  if (!d || !(VIDEO_RE.test(n) || /\.gif$/i.test(n))) return { ok: false, error: 'No video' };       // a GIF made from a finished video is shared the same way
   const src = join(d, n);
   if (!existsSync(src)) return { ok: false, error: 'That video is no longer in the inbox' };
   const f = folderFor(folderKey, subfolder);
-  let base = basename(safeName(outName) || n); if (!VIDEO_RE.test(base)) base += (/\.[a-z0-9]+$/i.exec(n) || ['.mp4'])[0].toLowerCase();
+  let base = basename(safeName(outName) || n); if (!VIDEO_RE.test(base) && !/\.gif$/i.test(base)) base += (/\.[a-z0-9]+$/i.exec(n) || ['.mp4'])[0].toLowerCase();
   let out = base, i = 2;
   while (existsSync(join(f.dir, out))) { out = base.replace(/(\.[a-z0-9]+)$/i, ' (' + i + ')$1'); i++; }
   try {
@@ -402,21 +427,87 @@ export function spinShare(name, folderKey, subfolder, outName) {
   } catch {
     copyFileSync(src, join(f.dir, out));
   }
-  recordStat(f.slug, 'rendered', out);
+  if (!/(\.gif|_square\.mp4)$/i.test(out)) recordStat(f.slug, 'rendered', out);       // the numbers count videos, not their GIFs or square clips
+  writeLook(f.dir, out, look);
   return { ok: true, fileId: f.slug + '/' + out, downloadUrl: 'pb4u-local:' + f.slug + '/' + out, folderUrl: 'pb4u-local:' + f.slug, folderName: f.name, folderPath: f.dir };
 }
-const SEND_PAGE = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Send a video</title>' +
+// What the 360 desk's Connect panel shows: when a recorder last said hello, when a recording last started, when a video last arrived.
+const conn = { helloAt: 0, recAt: 0, uploadAt: 0 };
+export function spinConnectInfo(test) {
+  const out = { dir: spinDirNow(), sendUrl: spinSendUrl(), port: sharePort || 0, helloAt: conn.helloAt, recAt: conn.recAt, uploadAt: conn.uploadAt, now: Date.now() };
+  if (test && out.dir) {
+    try { const f = join(out.dir, '.pbtest-' + randomBytes(3).toString('hex')); writeFileSync(f, 'ok'); unlinkSync(f); out.writable = true; } catch { out.writable = false; }
+    try { const st = statfsSync(out.dir); out.freeMb = Math.round(st.bavail * st.bsize / 1048576); } catch { /* unknown */ }
+  }
+  return out;
+}
+// The little picture a phone shows when the send page is saved to the home screen (a red tile with a white ring), made here, so no file is needed.
+const crcTable = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(buf) { let c = 0xFFFFFFFF; for (let i = 0; i < buf.length; i++) c = crcTable[(c ^ buf[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+const iconCache = new Map();
+export function sendIconPng(size) {
+  size = [180, 192, 512].includes(size) ? size : 192;
+  if (iconCache.has(size)) return iconCache.get(size);
+  const raw = Buffer.alloc((size * 4 + 1) * size), cx = size / 2, cy = size / 2;
+  const smooth = (d, r) => Math.max(0, Math.min(1, r - d + 0.5));       // one pixel soft edge
+  for (let y = 0; y < size; y++) {
+    raw[y * (size * 4 + 1)] = 0;
+    for (let x = 0; x < size; x++) {
+      const i = y * (size * 4 + 1) + 1 + x * 4, d = Math.hypot(x - cx, y - cy);
+      const ring = Math.min(smooth(d, size * 0.36), smooth(size * 0.27, d));      // a white ring ...
+      const dot = smooth(Math.hypot(x - (cx + size * 0.2), y - (cy - size * 0.2)), size * 0.06);       // ... and a dot on it (the arm)
+      const w = Math.max(ring, dot);
+      raw[i] = Math.round(201 + (255 - 201) * w); raw[i + 1] = Math.round(61 + (255 - 61) * w); raw[i + 2] = Math.round(39 + (255 - 39) * w); raw[i + 3] = 255;
+    }
+  }
+  const chunk = (type, data) => {
+    const b = Buffer.alloc(12 + data.length); b.writeUInt32BE(data.length, 0); b.write(type, 4, 'latin1'); data.copy(b, 8);
+    b.writeUInt32BE(crc32(b.subarray(4, 8 + data.length)), 8 + data.length); return b;
+  };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(size, 0); ihdr.writeUInt32BE(size, 4); ihdr[8] = 8; ihdr[9] = 6;
+  const png = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))]);
+  iconCache.set(size, png);
+  return png;
+}
+
+// Looks a guest may pick from their own phone (the page they sent the video from). The booth page sets the list; the picks wait here
+// until the booth page collects them. Nothing from the phone is trusted: the clip must be in the inbox and the look must be on the list.
+let lookOffer = { on: false, looks: [] };
+const lookPicks = new Map();
+const cleanText = (s, n) => String(s == null ? '' : s).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n);
+export function spinLookOfferSet(o) {
+  const looks = (Array.isArray(o && o.looks) ? o.looks : []).slice(0, 40).map((l) => ({
+    key: cleanText(l && l.key, 80), title: cleanText(l && l.title, 40), icon: cleanText(l && l.icon, 8),
+    c1: /^#[0-9a-f]{6}$/i.test(l && l.c1) ? l.c1 : '#2b282c', c2: /^#[0-9a-f]{6}$/i.test(l && l.c2) ? l.c2 : '#8a7f70'
+  })).filter((l) => l.key && l.title);
+  lookOffer = { on: !!(o && o.on) && looks.length > 0, looks };
+  if (!lookOffer.on) lookPicks.clear();
+  return lookOffer.on;
+}
+export function spinLookPicksTake() {
+  const out = [...lookPicks.entries()].map(([name, p]) => ({ name, key: p.key, who: p.who }));
+  lookPicks.clear();
+  return out;
+}
+export function spinStatsFor(folderKey, subfolder) {
+  const f = folderFor(folderKey, subfolder);
+  return { event: getStats(f && f.slug), totals: (getStats() || {}).totals || {} };
+}
+const SEND_PAGE = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#C93D27"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="360 Send"><link rel="manifest" href="/send/__T__/manifest"><link rel="apple-touch-icon" href="/send/__T__/icon/180"><title>Send a video</title>' +
   '<style>body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#F6F1EA;color:#1C1A1E;padding:24px 18px;text-align:center}h1{font-size:22px;margin:6px 0}p{color:#6B666C}' +
-  'label.pick{display:inline-block;margin:18px 0 8px;padding:16px 26px;border-radius:14px;background:#C93D27;color:#fff;font-weight:800;font-size:17px}input{display:none}' +
+  'label.pick{display:block;max-width:420px;margin:14px auto;padding:24px 20px;border-radius:18px;background:#C93D27;color:#fff;font-weight:800;font-size:21px}label.alt{background:#1F3A52}input{display:none}.looks{margin-top:10px;padding:10px;border-radius:12px;background:#fff;text-align:center}.hint{display:none;margin:22px auto 0;max-width:420px;font-size:13px;color:#6B666C;background:#fff;border-radius:12px;padding:10px 12px;text-align:left}' +
   '.bar{height:10px;border-radius:6px;background:#E4DCCF;overflow:hidden;margin:14px auto;max-width:420px}.bar i{display:block;height:100%;width:0;background:#2EA66B}.row{margin:6px auto;max-width:420px;text-align:left;font-size:14px}</style></head><body>' +
   '<h1>Send a 360 video</h1><p>Pick the clip you just recorded. It goes straight to the booth laptop.</p>' +
-  '<label class="pick" for="f">Choose a video</label><input id="f" type="file" accept="video/*" multiple><div id="list"></div>' +
-  '<script>var T=location.pathname.replace(/[/]+$/,"");document.getElementById("f").addEventListener("change",function(e){Array.prototype.forEach.call(e.target.files,send);e.target.value=""});' +
+  '<label class="alt pick" for="r">🎥 Record now</label><input id="r" type="file" accept="video/*" capture="environment"><label class="pick" for="f">Choose a video</label><input id="f" type="file" accept="video/*" multiple><div id="list"></div><div id="hint" class="hint"></div>' +
+  '<script>var T=location.pathname.replace(/[/]+$/,"");["f","r"].forEach(function(id){document.getElementById(id).addEventListener("change",function(e){Array.prototype.forEach.call(e.target.files,send);e.target.value=""})});' +
+  'function offer(row,name){fetch(T+"/looks").then(function(r){return r.json()}).then(function(j){if(!j.on)return;var box=document.createElement("div");box.className="looks";var h=document.createElement("b");h.textContent="Choose your look";box.appendChild(h);var inp=document.createElement("input");inp.type="text";inp.placeholder="Your name (optional)";inp.maxLength=40;inp.style.cssText="display:block;width:100%;box-sizing:border-box;margin:6px 0;padding:10px;border-radius:10px;border:1px solid #ccc;font-size:16px";box.appendChild(inp);j.looks.forEach(function(l){var b=document.createElement("button");b.type="button";b.textContent=l.icon+" "+l.title;b.style.cssText="margin:3px;padding:10px 14px;border-radius:12px;border:0;color:#fff;font-weight:700;font-size:14px;background:linear-gradient(135deg,"+l.c1+","+l.c2+")";b.onclick=function(){fetch(T+"/look?name="+encodeURIComponent(name)+"&key="+encodeURIComponent(l.key)+"&who="+encodeURIComponent(inp.value),{method:"POST"}).then(function(r){box.textContent=r.ok?"Look chosen. Your video is being made!":"Could not send your choice."})};box.appendChild(b)});row.appendChild(box)}).catch(function(){})}' +
   'function send(file){var row=document.createElement("div");row.className="row";row.innerHTML="<b></b><div class=bar><i></i></div><span></span>";row.querySelector("b").textContent=file.name;document.getElementById("list").appendChild(row);' +
   'var x=new XMLHttpRequest();x.open("POST",T+"/upload?name="+encodeURIComponent(file.name));x.setRequestHeader("content-type","application/octet-stream");' +
   'x.upload.onprogress=function(p){if(p.lengthComputable)row.querySelector("i").style.width=Math.round(p.loaded/p.total*100)+"%"};' +
-  'x.onload=function(){var ok=x.status===200;row.querySelector("span").textContent=ok?"Sent. It is on the laptop now.":"Could not send ("+x.status+"). Try again.";if(ok)row.querySelector("i").style.width="100%"};' +
-  'x.onerror=function(){row.querySelector("span").textContent="No connection to the laptop. Are you on the booth Wi-Fi?"};x.send(file)}</script></body></html>';
+  'x.onload=function(){var ok=x.status===200;row.querySelector("span").textContent=ok?"Sent. It is on the laptop now.":"Could not send ("+x.status+"). Try again.";if(ok){row.querySelector("i").style.width="100%";try{offer(row,JSON.parse(x.responseText).name)}catch(e){}}};' +
+  'x.onerror=function(){row.querySelector("span").textContent="No connection to the laptop. Are you on the booth Wi-Fi?"};x.send(file)}' +
+  '(function(){var h=document.getElementById("hint");var sa=navigator.standalone||(window.matchMedia&&matchMedia("(display-mode: standalone)").matches);if(sa)return;var ios=/iPhone|iPad|iPod/.test(navigator.userAgent);h.textContent=ios?"Tip: tap the Share button, then Add to Home Screen. Next time you are two taps from sending: open it, tap Record now.":"Tip: open the browser menu, then Add to Home screen. Next time you are two taps from sending: open it, tap Record now.";h.style.display="block"})();' +
+  '</script></body></html>';
 
 const ROVE_MAX = 80 * 1024 * 1024;
 const ROVE_RE = /\.(jpe?g|png|webp)$/i;
@@ -515,16 +606,43 @@ function handleSend(req, res, url, sm) {
   if (sm[2] === 'photo') return handleRovePhoto(req, res, url);
   if (sm[2] === 'hello') {
     if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'GET', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
+    const who = url.searchParams.get('r');                 // a recorder says hello (r=1) or that a recording just started (r=rec)
+    if (who === 'rec') { conn.recAt = Date.now(); conn.helloAt = conn.recAt; } else if (who) conn.helloAt = Date.now();
     return send(res, 200, 'application/json', JSON.stringify({ ok: true, app: 'photobooth4u', kind: 'laptop' }), cors);
+  }
+  if (sm[2] === 'manifest') {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
+    return send(res, 200, 'application/manifest+json', JSON.stringify({
+      name: 'Send a 360 video', short_name: '360 Send', start_url: '/send/' + spinToken, scope: '/send/' + spinToken, display: 'standalone',
+      background_color: '#F6F1EA', theme_color: '#C93D27',
+      icons: [{ src: '/send/' + spinToken + '/icon/192', sizes: '192x192', type: 'image/png', purpose: 'any maskable' }, { src: '/send/' + spinToken + '/icon/512', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }]
+    }));
+  }
+  if (sm[2] === 'icon') {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
+    return send(res, 200, 'image/png', sendIconPng(Number(sm[3])), { 'cache-control': 'public, max-age=86400' });
+  }
+  if (sm[2] === 'looks') {
+    if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'GET', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
+    return send(res, 200, 'application/json', JSON.stringify({ ok: true, on: lookOffer.on, looks: lookOffer.on ? lookOffer.looks : [] }), cors);
+  }
+  if (sm[2] === 'look') {
+    if (req.method === 'OPTIONS') return send(res, 204, 'text/plain', '', { ...cors, 'access-control-allow-methods': 'POST', 'access-control-allow-headers': 'content-type', 'access-control-allow-private-network': 'true' });
+    if (req.method !== 'POST') return send(res, 405, 'text/plain', 'Method not allowed', cors);
+    const dd = spinDirNow(), n = basename(String(url.searchParams.get('name') || '')), key = String(url.searchParams.get('key') || '');
+    if (!lookOffer.on || !dd || !n || n.startsWith('.') || !VIDEO_RE.test(n) || !existsSync(join(dd, n)) || !lookOffer.looks.some((l) => l.key === key)) return send(res, 400, 'application/json', JSON.stringify({ ok: false }), cors);
+    if (lookPicks.size > 200) lookPicks.clear();
+    lookPicks.set(n, { key, who: cleanText(url.searchParams.get('who'), 40) });
+    return send(res, 200, 'application/json', JSON.stringify({ ok: true }), cors);
   }
   const d = spinDirNow(); if (!d) return send(res, 503, 'text/plain', 'Not ready');
   if (!sm[2]) {
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
-    return send(res, 200, 'text/html; charset=utf-8', SEND_PAGE);
+    return send(res, 200, 'text/html; charset=utf-8', SEND_PAGE.replace(/__T__/g, spinToken));
   }
-  if (sm[2] === 'file' || sm[2] === 'edited') {
+  if (sm[2] === 'file' || sm[2] === 'edited' || sm[2] === 'proxy') {
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'text/plain', 'Method not allowed');
-    const base = sm[2] === 'edited' ? join(d, 'edited') : d;
+    const base = sm[2] === 'edited' ? join(d, 'edited') : (sm[2] === 'proxy' ? join(d, '.proxy') : d);
     let n; try { n = decodeURIComponent(sm[3] || ''); } catch { n = ''; }
     if (!n || n !== basename(n) || n.startsWith('.') || !VIDEO_RE.test(n) || !existsSync(join(base, n))) return send(res, 404, 'text/plain', 'Not found');
     return serveFile(req, res, join(base, n), TYPES[extname(n).toLowerCase()] || 'video/mp4', cors);
@@ -556,6 +674,7 @@ function handleSend(req, res, url, sm) {
     if (dead) return;
     try { renameSync(part, join(d, out)); } catch { return fail(500, 'Could not save'); }
     recordStat(null, 'captured', out);
+    conn.uploadAt = Date.now();
     send(res, 200, 'application/json', JSON.stringify({ ok: true, name: out }), cors);
   });
   req.pipe(ws);
@@ -988,10 +1107,11 @@ function render() {
     g.innerHTML = '<div class="empty">No ' + (currentFilter === 'all' ? 'items' : currentFilter + 's') + ' yet. Take a shot on the booth to get started!</div>';
     return;
   }
+  function lk(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
   g.innerHTML = list.map(function(f){
     var isVid = f.kind === 'video';
     var thumb = isVid
-      ? '<video src="' + f.url + '#t=0.1" preload="metadata" muted playsinline></video><div class="play-pill"><i>▶</i> 360</div>'
+      ? '<video src="' + f.url + '#t=0.1" preload="metadata" muted playsinline></video><div class="play-pill"><i>▶</i> 360</div>' + (f.look ? '<div style="position:absolute;left:8px;bottom:10px;max-width:60%;background:rgba(212,175,55,.92);color:#000;border-radius:14px;padding:3px 9px;font-size:10.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">✨ ' + lk(f.look) + '</div>' : '')
       : '<img src="' + f.thumbUrl + '" loading="lazy" alt="">';
     return '<div class="card" data-name="' + f.name + '">' + thumb + '<div class="time">' + timeAgo(f.mtime) + '</div></div>';
   }).join('');
@@ -1025,7 +1145,10 @@ function openModal(it, sessionItems) {
   if (it.kind === 'video') {
     med.innerHTML = '<video src="' + it.url + '" controls autoplay loop playsinline></video>';
     dl.textContent = 'Save Video';
+    var oldCap = document.getElementById('lookCap'); if (oldCap) oldCap.remove();
+    if (it.look) { var cap = document.createElement('div'); cap.id = 'lookCap'; cap.textContent = '✨ ' + it.look; cap.style.cssText = 'margin:0 0 8px;font-weight:800;font-size:14px;color:#D4AF37;text-align:center'; dl.parentNode.insertBefore(cap, dl); }
   } else if (it.kind === 'solo') {
+    var capS = document.getElementById('lookCap'); if (capS) capS.remove();
     med.innerHTML = '<img src="' + it.url + '" alt="">';
     dl.textContent = 'Save Solo Photo';
   } else if (it.kind === 'gif') {
@@ -1417,8 +1540,10 @@ function handleStation(req, res, url, stm) {
       const pm2 = /^(\d+)[._]/i.exec(filename);
       return pm2 ? pm2[1] : filename;
     };
+    const looks = readLooks(dir);
     const files = list.map(({ n, t }) => ({
       name: n,
+      look: VIDEO_RE.test(n) && looks[n] ? looks[n] : undefined,
       kind: VIDEO_RE.test(n) ? 'video' : /\.gif$/i.test(n) ? 'gif' : isSolo(n) ? 'solo' : 'photo',
       url: '/e/' + slug + '/f/' + encodeURIComponent(n),
       thumbUrl: '/e/' + slug + '/t/' + encodeURIComponent(n),
@@ -1796,7 +1921,7 @@ async function handleShare(req, res) {
       return res.end();
     }
   }
-  const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited|photos|photo|hello)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);
+  const sm = /^\/send\/([A-Za-z0-9]+)(?:\/(upload|file|edited|proxy|photos|photo|hello|looks|look|manifest|icon)(?:\/([^/]+))?)?\/?$/.exec(url.pathname);
   if (sm) return handleSend(req, res, url, sm);
   const om = /^\/o\/([A-Za-z0-9_-]{16,40})(?:\/(f|print)\/([^/]+))?\/?$/.exec(url.pathname);
   if (om) return handleOwn(req, res, url, om);

@@ -16,7 +16,7 @@ import * as L from './lib/licence.mjs';
 import { initServer, setBoothHtml, syncRecord, handleApi, boothPage } from './lib/server.mjs';
 import { allowBoothRequest } from './lib/netguard.mjs';
 import { createLanHandler, newPin, validPin } from './lib/lan.mjs';
-import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
+import { initPhotos, setLanHandler, driveRequest, startShareServer, stopShareServer, shareBase, lanAddress, sharePortNow, photosRoot, setPhotosRoot, folderPathOf, setSpinDir, spinDirNow, spinEditedDir, spinSendUrl, spinPreviewBase, spinList, spinShare, spinConnectInfo, spinLookOfferSet, spinLookPicksTake, spinStatsFor, setWallCue, roveDirNow, roveSendUrl, rovePreviewBase, roveList, roveTake, setGuestPrint, setGuestView, printReqList, printReqDone, printReqRead, printNowTake, printNowDone, studioFolders, studioList, studioRead, setExternalWifi } from './lib/photos.mjs';
 import { initHelper, handleHelper, stopHelper } from './lib/helper.mjs';
 import { makeShrinkPage } from './lib/pageshrink.mjs';
 import * as SPIN from './lib/spin.mjs';
@@ -360,9 +360,41 @@ function wireIpc() {
     return spinInfo();
   });
   ipcMain.handle('pb4u:spinScan', () => spinList());
-  ipcMain.handle('pb4u:spinShare', (e, name, folderKey, subfolder, outName) => spinShare(name, folderKey, subfolder, outName));
+  ipcMain.handle('pb4u:spinShare', (e, name, folderKey, subfolder, outName, look) => spinShare(name, folderKey, subfolder, outName, look));
   // Editing (ffmpeg): environment, one job per clip, progress, cancel, the music file, the overlay picture
-  ipcMain.handle('pb4u:spinEnv', async () => ({ ffmpeg: await SPIN.hasFfmpeg(), gpu: !!(await SPIN.findHwEncoder()), music: settings.spinMusic ? basename(settings.spinMusic) : '' }));
+  ipcMain.handle('pb4u:spinEnv', async () => ({ ffmpeg: await SPIN.hasFfmpeg(), gpu: !!(await SPIN.findHwEncoder()), music: settings.spinMusic ? basename(settings.spinMusic) : '', musicList: musicLib().map((p) => basename(p)), stingerList: stingerLib().map((p) => basename(p)) }));
+  // More tracks than the one default: a look can use its own song. The page only ever names a track; the file is found here in the list.
+  const musicLib = () => (Array.isArray(settings.spinMusicLib) ? settings.spinMusicLib : []).filter((p) => typeof p === 'string' && existsSync(p));
+  // The same for short branded clips that open or close a look's video (stingers).
+  const stingerLib = () => (Array.isArray(settings.spinStingerLib) ? settings.spinStingerLib : []).filter((p) => typeof p === 'string' && existsSync(p));
+  ipcMain.handle('pb4u:spinStingerAdd', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Add short clips to open or close a look', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Video', extensions: ['mp4', 'mov', 'm4v', 'webm'] }] });
+    if (r.canceled || !r.filePaths.length) return null;
+    const lib = stingerLib();
+    for (const p of r.filePaths) { if (!lib.some((x) => basename(x) === basename(p))) lib.push(p); }
+    settings.spinStingerLib = lib.slice(0, 30); saveSettings();
+    return { list: stingerLib().map((p) => basename(p)) };
+  });
+  ipcMain.handle('pb4u:spinStingerRemove', (e, name) => {
+    settings.spinStingerLib = stingerLib().filter((p) => basename(p) !== String(name || '')); saveSettings();
+    return { list: stingerLib().map((p) => basename(p)) };
+  });
+  ipcMain.handle('pb4u:spinConnect', (e, test) => { try { return spinConnectInfo(!!test); } catch { return null; } });
+  ipcMain.handle('pb4u:spinLookOffer', (e, offer) => spinLookOfferSet(offer));
+  ipcMain.handle('pb4u:spinPicks', () => spinLookPicksTake());
+  ipcMain.handle('pb4u:spinStats', (e, folderKey, subfolder) => { try { return spinStatsFor(String(folderKey || ''), String(subfolder || '')); } catch { return null; } });
+  ipcMain.handle('pb4u:spinMusicAdd', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Add music tracks for the 360 looks', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Audio', extensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'flac'] }] });
+    if (r.canceled || !r.filePaths.length) return null;
+    const lib = musicLib();
+    for (const p of r.filePaths) { if (!lib.some((x) => basename(x) === basename(p))) lib.push(p); }
+    settings.spinMusicLib = lib.slice(0, 40); saveSettings();
+    return { list: musicLib().map((p) => basename(p)) };
+  });
+  ipcMain.handle('pb4u:spinMusicRemove', (e, name) => {
+    settings.spinMusicLib = musicLib().filter((p) => basename(p) !== String(name || '')); saveSettings();
+    return { list: musicLib().map((p) => basename(p)) };
+  });
   ipcMain.handle('pb4u:spinMusic', async (e, clear) => {
     if (clear) { delete settings.spinMusic; saveSettings(); return { music: '' }; }
     const r = await dialog.showOpenDialog(win, { title: 'Music for the 360 videos', properties: ['openFile'], filters: [{ name: 'Audio', extensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'flac'] }] });
@@ -373,10 +405,34 @@ function wireIpc() {
   ipcMain.handle('pb4u:spinFxList', () => SPIN.listFx());
   ipcMain.handle('pb4u:spinOverlay', (e, bytes) => SPIN.saveOverlay(bytes));
   ipcMain.handle('pb4u:spinFxBake', (e, bytes) => SPIN.saveFxBake(bytes));
+  // A preview-only H.264 copy of an inbox clip the preview cannot play (iPhone HEVC .mov). Answers its name under /send/<token>/proxy/.
+  ipcMain.handle('pb4u:spinProxy', async (e, name) => {
+    try {
+      const d = spinDirNow(); const n = basename(String(name || ''));
+      if (!d || !n || n.startsWith('.') || !existsSync(join(d, n))) return { error: 'Video not found' };
+      const out = n.replace(/\.[^.]+$/, '') + '.mp4';
+      await SPIN.makeProxy(join(d, n), join(d, '.proxy', out));
+      return { name: out };
+    } catch (err) { return { error: (err && err.message) || 'Could not make a preview' }; }
+  });
+  // A GIF or square clip from a finished video (written into the edited folder; the page then shares it like any clip).
+  ipcMain.handle('pb4u:spinExtra', async (e, req) => {
+    try {
+      const kind = req && req.kind === 'square' ? 'square' : 'gif';
+      const rel = String((req && req.name) || ''), n = basename(rel);
+      const ed = spinEditedDir(), d = spinDirNow();
+      const src = /^edited\//.test(rel) ? (ed && join(ed, n)) : (d && join(d, n));
+      if (!n || n.startsWith('.') || !src || !existsSync(src) || !/\.(mp4|webm|mov|m4v)$/i.test(n)) return { error: 'Video not found' };
+      const out = n.replace(/\.[^.]+$/, '') + (kind === 'gif' ? ' GIF.gif' : ' square.mp4');
+      await SPIN.makeExtra(src, join(ed, out), kind);
+      return { name: 'edited/' + out };
+    } catch (err) { return { error: (err && err.message) || 'Could not make it' }; }
+  });
   ipcMain.handle('pb4u:spinProcess', (e, req) => {
     const d = spinDirNow(); const n = basename(String((req && req.name) || ''));
     if (!d || !n || !/\.(mp4|webm|mov|m4v)$/i.test(n)) return { error: 'No video' };
-    const music = settings.spinMusic && existsSync(settings.spinMusic) ? settings.spinMusic : null;
+    const wantMusic = String((req && req.musicName) || '');
+    const music = (wantMusic && musicLib().find((p) => basename(p) === wantMusic)) || (settings.spinMusic && existsSync(settings.spinMusic) ? settings.spinMusic : null);
     const options = { ...((req && req.options) || {}) };
     options.fxBakeDir = SPIN.fxBakePath(options.fxBake);     // only a folder this app made (by name), never a path from the page
     delete options.fxBake;
@@ -389,6 +445,8 @@ function wireIpc() {
       textOverlay: SPIN.overlayPath(req && req.textOverlay),
       fx,
       music,
+      intro: (req && req.introName && stingerLib().find((p) => basename(p) === String(req.introName))) || null,
+      outro: (req && req.outroName && stingerLib().find((p) => basename(p) === String(req.outroName))) || null,
       options
     });
   });

@@ -3950,6 +3950,35 @@
     .spin-preset-tile .sw { position: relative; height: 58px; display: flex; align-items: center; justify-content: center; font-size: 26px; line-height: 1; }
     .spin-preset-tile .sw::after { content: ''; position: absolute; inset: 5px; border: 2px solid var(--acc, #D4AF37); border-radius: 7px; opacity: .9; pointer-events: none; }
     .spin-preset-tile .sw.noframe::after { border-style: dashed; opacity: .35; }
+    .spin-preset-tile .sw.pv { height: 134px; background: #1c1a1e; }
+    .spin-preset-tile .sw.pv::after { display: none; }
+    .spin-preset-tile .sw.pv canvas { height: 100%; aspect-ratio: 9 / 16; border-radius: 6px; display: block; }
+    .spin-preset-tile .sw.pv .ic { position: absolute; top: 4px; left: 6px; font-size: 16px; line-height: 1; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
+    .spin-guest-grid .spin-preset-tile .sw.pv { height: 190px; }
+    .spin-auto { margin: 0 0 12px; padding: 12px 14px; border-radius: 14px; background: linear-gradient(135deg, #1C1A1E, #3a3140); color: #fff; }
+    .spin-auto-sw { display: flex; align-items: center; gap: 12px; cursor: pointer; margin: 0; }
+    .spin-auto-sw input { width: 22px; height: 22px; accent-color: #D4AF37; flex: 0 0 auto; }
+    .spin-auto-sw b { font: 800 15px 'Manrope', sans-serif; }
+    .spin-auto-sw span { display: block; font: 500 12px 'Manrope', sans-serif; opacity: .8; }
+    .spin-auto .spin-quick-row > span:first-child { color: #d9d0c3; }
+    .spin-auto .spin-chip { background: transparent; color: #fff; border-color: rgba(255, 255, 255, .35); }
+    .spin-auto .spin-chip.on { background: #D4AF37; color: #000; border-color: #D4AF37; }
+    .spin-auto-summary { margin-top: 8px; font: 600 12px 'Manrope', sans-serif; color: #f3e3b0; }
+    .spin-auto.off .spin-quick-row, .spin-auto.off .spin-auto-summary { opacity: .55; }
+    .spin-connect { margin: 0 0 12px; padding: 12px 14px; border-radius: 14px; background: #f7f1e6; border: 1.5px solid #ecd9b5; }
+    .spin-connect-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font: 800 14px 'Manrope', sans-serif; }
+    .spin-connect-head .desk-btn { margin-left: auto; padding: 4px 12px; font-size: 12px; }
+    .spin-connect-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+    .spin-connect-list li { display: flex; align-items: flex-start; gap: 8px; font: 600 13px 'Manrope', sans-serif; }
+    .spin-connect-list .ic { flex: 0 0 20px; text-align: center; }
+    .spin-connect-list .tx { flex: 1 1 auto; min-width: 0; }
+    .spin-connect-list .tx small { display: block; font-weight: 500; font-size: 11.5px; color: var(--ink-dim, #6B666C); word-break: break-word; }
+    .spin-connect-list .desk-btn { padding: 3px 10px; font-size: 11.5px; flex: 0 0 auto; }
+    .spin-connect-warn { margin-top: 10px; padding: 9px 11px; border-radius: 10px; background: #fff0e0; border: 1.5px solid #e8a24a; color: #7a4300; font: 700 12.5px 'Manrope', sans-serif; display: flex; gap: 10px; align-items: center; }
+    .spin-connect-warn[hidden] { display: none; }
+    .spin-connect-warn .desk-btn { padding: 3px 10px; font-size: 11.5px; flex: 0 0 auto; }
+    .spin-stats { margin: 8px 0 0; font: 700 12px 'Manrope', sans-serif; color: #5a534b; }
+    .spin-stats[hidden] { display: none; }
     .spin-preset-tile .tick { position: absolute; top: 4px; right: 5px; font-size: 11px; font-weight: 800; background: #D4AF37; color: #000; border-radius: 999px; padding: 1px 6px; z-index: 1; }
     .spin-preset-tile b { font-size: 12px; font-weight: 800; padding: 6px 8px 0; line-height: 1.25; }
     .spin-preset-tile small { font-size: 10.5px; font-weight: 600; color: var(--ink-dim, #6B666C); padding: 2px 8px 7px; line-height: 1.3; }
@@ -4468,6 +4497,32 @@
     .desk-item .done.wait {
       background: #b7791f;
     }
+    .desk-item .done.ready { background: #2E7D4F; }
+    .desk-item .done.new { background: #1F6FEB; animation: spinNewPulse 1.4s ease-in-out 4; }
+    @keyframes spinNewPulse { 50% { transform: scale(1.12); } }
+    .spin-activity { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; background: #f7f1e6; font: 700 12px 'Manrope', sans-serif; color: #3d372f; }
+    .spin-activity[hidden] { display: none; }
+    .spin-activity .it { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .spin-activity .it.hot { color: #9a5b00; }
+    .spin-activity .desk-btn { padding: 3px 9px; font-size: 11.5px; margin-left: auto; }
+    .spin-guest-opt { margin-top: 10px; border: 1.5px solid var(--line, #E8E1D9); border-radius: 12px; background: #fff; padding: 8px 10px; }
+    .spin-guest-opt > summary { cursor: pointer; font: 800 12.5px 'Manrope', sans-serif; }
+    .spin-guest-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .spin-guest-chips .spin-chip { font-size: 11px; padding: 3px 9px; }
+    .spin-guest-ov { position: fixed; inset: 0; z-index: 10050; display: flex; align-items: center; justify-content: center; padding: 14px; box-sizing: border-box; background: rgba(14, 13, 18, .94); }
+    .spin-guest-ov[hidden] { display: none !important; }
+    .spin-guest-box { display: flex; gap: 18px; width: min(1100px, 100%); max-height: 100%; color: #fff; font-family: 'Manrope', sans-serif; }
+    .spin-guest-box video { flex: 0 0 auto; height: min(70vh, 520px); aspect-ratio: 9 / 16; object-fit: cover; border-radius: 16px; background: #000; align-self: center; }
+    .spin-guest-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; max-height: 100%; }
+    .spin-guest-main h2 { margin: 0 0 4px; font: 800 clamp(24px, 4vw, 38px) 'Fraunces', Georgia, serif; }
+    .spin-guest-main p { margin: 0 0 12px; opacity: .8; font-size: 15px; }
+    .spin-guest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; overflow-y: auto; padding: 2px; }
+    .spin-guest-grid .spin-preset-tile { border-color: transparent; }
+    .spin-guest-grid .spin-preset-tile .sw { height: 84px; font-size: 38px; }
+    .spin-guest-grid .spin-preset-tile b { font-size: 14px; }
+    .spin-guest-grid .spin-preset-tile small { font-size: 11.5px; }
+    .spin-guest-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; font-weight: 700; }
+    @media (max-width: 760px) { .spin-guest-box { flex-direction: column; overflow-y: auto; } .spin-guest-box video { height: 28vh; } }
 
     .spin-send {
       margin: 10px 0 0;
@@ -16936,6 +16991,13 @@
             <span class="spin-pill" id="spinQueueBadge">0 videos</span>
           </div>
 
+          <div class="spin-connect" id="spinConnect">
+            <div class="spin-connect-head"><span>🔌 Connect</span><span class="spin-pill" id="spinConnectState">Checking…</span>
+              <button type="button" class="desk-btn" id="spinConnectTest" title="Check that the editor, the folder and the network are ready">Test</button></div>
+            <ul class="spin-connect-list" id="spinConnectList"></ul>
+            <div class="spin-connect-warn" id="spinConnectWarn" hidden></div>
+          </div>
+
           <div class="desk-drop" id="spinDrop">Drop the 360 videos here, or <button type="button" class="desk-btn"
               id="spinPick">Choose videos</button> <button type="button" class="desk-btn" id="spinPickDir">Choose
               folder</button><input type="file" id="spinFile" accept="video/*" multiple hidden><input type="file"
@@ -16962,6 +17024,8 @@
           <div class="desk-hint" id="spinNoEdit" hidden>Editing (slow motion, frame, music) is not available in this copy of
             the app, so videos are shared as they are.</div>
           <div class="desk-hint" id="spinHint"></div>
+          <div class="spin-stats" id="spinStats" hidden></div>
+          <div class="spin-activity" id="spinActivity" hidden aria-live="polite"></div>
           <div class="desk-grid" id="spinGrid"></div>
           <div class="desk-foot"><button type="button" class="desk-btn" id="spinClear">Clear list</button><span
               class="sp"></span></div>
@@ -16972,6 +17036,20 @@
           <div class="spin-card-title" style="margin-bottom:8px;">
             <span>✨ Design &amp; Layout Presets</span>
             <span class="spin-pill" id="spinPresetState" style="background:#fae7c9;color:#855400;">Multi-Preset</span>
+          </div>
+          <div class="spin-auto" id="spinAutoCard">
+            <label class="spin-auto-sw"><input type="checkbox" id="spinAutoMode"><div><b>⚡ Auto mode</b><span>One switch: every new video is edited by itself and its QR code is made ready.</span></div></label>
+            <div class="spin-quick-row"><span>Look</span>
+              <button type="button" class="spin-chip" data-alook="same" title="Every video gets the look you have picked below">Same look</button>
+              <button type="button" class="spin-chip" data-alook="rotate" title="Each video gets the next look from your list">Different each time</button>
+              <button type="button" class="spin-chip" data-alook="guest" title="The guest picks on the booth screen or on their phone">Guest chooses</button></div>
+            <div class="spin-quick-row"><span>Text on video</span>
+              <button type="button" class="spin-chip" data-atext="none" title="No words on the video">None</button>
+              <button type="button" class="spin-chip" data-atext="fixed" title="The text you typed in the Text tab">My text</button>
+              <button type="button" class="spin-chip" data-atext="guest" title="Only the name the guest types">Guest's name</button></div>
+            <div class="spin-quick-row"><span>Extras</span>
+              <label class="chk" style="color:#fff;font-size:12px;"><input type="checkbox" id="spinAlsoGif"> Also make a GIF for each shared video</label></div>
+            <div class="spin-auto-summary" id="spinAutoSummary"></div>
           </div>
           <p class="spin-preset-lead">Pick a look. One tap sets the frame, animated effect, text style, speed and colour.</p>
           <div class="spin-chip-row" id="spinPresetCats" role="tablist" aria-label="Preset categories"></div>
@@ -16987,12 +17065,46 @@
           </div>
           <label class="chk" style="font-size:12px;margin-top:6px;display:inline-flex;" title="Off: a preset only changes the frame, effect and text, and keeps your own speed and colour grade"><input type="checkbox" id="spinPresetMotion" checked> Presets also set the speed and colour grade</label>
 
+          <div class="spin-row" id="spinLookMusicRow" style="gap:8px;margin-top:8px;align-items:center;">
+            <label style="font-weight:700;font-size:12px;display:flex;align-items:center;gap:6px;">🎵 Music for this look
+              <select id="spinLookMusic" style="min-width:170px;font-size:12px;"><option value="">Default track</option></select></label>
+            <span class="spin-dim" id="spinLookMusicHint" style="font-size:11.5px;"></span>
+          </div>
+          <div class="spin-row" id="spinLookStingerRow" style="gap:8px 14px;margin-top:6px;align-items:center;">
+            <label style="font-weight:700;font-size:12px;display:flex;align-items:center;gap:6px;">🎬 Opens with
+              <select id="spinLookIntro" style="min-width:130px;font-size:12px;"><option value="">Nothing</option></select></label>
+            <label style="font-weight:700;font-size:12px;display:flex;align-items:center;gap:6px;">Ends with
+              <select id="spinLookOutro" style="min-width:130px;font-size:12px;"><option value="">Nothing</option></select></label>
+            <span class="spin-dim" style="font-size:11.5px;">Short branded clips for this look. Add them in the Audio tab.</span>
+          </div>
+
           <!-- One-tap auto edit: the preset is the template, the app does the editing -->
           <div class="spin-preset-auto">
             <button type="button" class="desk-btn primary" id="spinAutoEditBtn" style="padding:7px 14px;font-size:12.5px;font-weight:800;">⚡ Auto-edit this video</button>
             <button type="button" class="desk-btn" id="spinAutoEditAllBtn" style="padding:7px 14px;font-size:12.5px;font-weight:700;">⚡ Auto-edit all videos</button>
             <label class="chk" title="As soon as you tap a preset, the selected video is edited with it"><input type="checkbox" id="spinOneTap"> One-tap: picking a preset edits the selected video right away</label>
           </div>
+
+          <!-- Let the guest choose: a full-screen "Choose your look" appears on the booth screen when their video arrives -->
+          <details class="spin-guest-opt" id="spinGuestOpt">
+            <summary>🙋 Guest choice &amp; rotating looks</summary>
+            <div class="spin-row" style="gap:8px 14px;margin-top:8px;">
+              <label class="chk"><input type="checkbox" id="spinGuestPick"> Ask the guest to pick a look when their video arrives</label>
+              <label style="font-size:12px;">Time to choose
+                <select id="spinGuestSec" style="padding:3px 8px;font-size:12px;border-radius:6px;">
+                  <option value="10">10 s</option><option value="20">20 s</option><option value="30">30 s</option><option value="0">No limit</option>
+                </select></label>
+            </div>
+            <div class="spin-row" style="gap:8px 14px;margin-top:6px;">
+              <label class="chk" title="Every new video that is edited automatically gets the next look in the list below, so each guest gets a different one"><input type="checkbox" id="spinRotate"> Give each new video a different look (automatic editing)</label>
+              <label style="font-size:12px;">Order
+                <select id="spinRotateMode" style="padding:3px 8px;font-size:12px;border-radius:6px;">
+                  <option value="shuffle">Shuffled, no repeats</option><option value="order">In list order</option>
+                </select></label>
+            </div>
+            <div class="spin-dim" style="font-size:11.5px;margin-top:6px;">If a guest does not choose in time, your current look is used. If both options are on, the guest chooses. These looks are used for the guest choice and for rotating (tap to turn on or off):</div>
+            <div class="spin-guest-chips" id="spinGuestChips"></div>
+          </details>
 
           <!-- Quick customise: the few things people change most, without opening the other tabs -->
           <div class="spin-quick" id="spinQuick">
@@ -17084,6 +17196,7 @@
               <label>Quality <select id="spinQual">
                   <option value="1080">1080p Full HD</option>
                   <option value="720">720p (faster)</option>
+                  <option value="540">540p Light (small files, quick downloads)</option>
                 </select></label>
               <label title="Cinematic color grading filter applied to the video">Color Grade <select id="spinLut">
                   <option value="none" selected>Natural (Original)</option>
@@ -17273,6 +17386,10 @@
                 </select></label>
               <button type="button" class="desk-btn" id="spinMusicBtn">Choose music track</button>
               <span id="spinMusicName" class="spin-dim" style="font-weight:600;">no music chosen</span>
+              <button type="button" class="desk-btn" id="spinMusicAddBtn" title="Add more songs, so each look can have its own">＋ Add tracks</button>
+              <span id="spinMusicLib" class="spin-guest-chips" style="margin:0;"></span>
+              <button type="button" class="desk-btn" id="spinStingerAddBtn" title="Add short video clips (a logo animation) to open or end a look's video">＋ Add intro/outro clips</button>
+              <span id="spinStingerLib" class="spin-guest-chips" style="margin:0;"></span>
               <label style="margin-left:auto;">Volume <input type="range" id="spinVol" min="0" max="100" value="80"></label>
             </div>
             <div class="spin-row" style="margin-top:6px;gap:12px;flex-wrap:wrap;">
@@ -17343,6 +17460,8 @@
             <button type="button" class="desk-btn primary" id="spinEditBtn" style="flex:1;min-width:130px;padding:9px 14px;font-weight:800;font-size:13px;"><span>🎬 Edit / Process</span></button>
             <button type="button" class="desk-btn" id="spinShareBtn" style="flex:1;min-width:110px;padding:9px 14px;font-weight:700;font-size:13px;background:var(--blue-deep,#1F3A52);color:#fff;">📱 Share + QR</button>
             <button type="button" class="desk-btn" id="spinPrintBtn" style="flex:1;min-width:110px;padding:9px 14px;font-weight:700;font-size:13px;background:#2E5A44;color:#fff;" title="Extract photo from 360 video and print strip / keychain">🖨️ Spin &amp; Print</button>
+            <button type="button" class="desk-btn" id="spinGifBtn" disabled style="padding:9px 12px;font-size:12px;" title="Make a short looping GIF from this finished video">🎞️ GIF</button>
+            <button type="button" class="desk-btn" id="spinSquareBtn" disabled style="padding:9px 12px;font-size:12px;" title="Make a square clip (for posts) from this finished video">⬜ Square</button>
             <button type="button" class="desk-btn" id="spinViewBtn" hidden style="padding:9px 12px;font-size:12px;">View original</button>
             <button type="button" class="desk-btn" id="spinRemove" style="padding:9px 12px;font-size:12px;color:#c0392b;">Remove</button>
           </div>
@@ -17368,6 +17487,23 @@
           <div id="spinControlsCol" hidden style="display:none!important;"></div>
           <div id="spinStudioWrap" hidden style="display:none!important;"></div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Guest: choose the look for the video that just arrived -->
+  <div class="spin-guest-ov" id="spinGuestPickOv" hidden role="dialog" aria-modal="true" aria-label="Choose your look">
+    <div class="spin-guest-box">
+      <video id="spinGuestVid" muted loop playsinline></video>
+      <div class="spin-guest-main">
+        <h2>Choose your look ✨</h2>
+        <p id="spinGuestSub">Tap one. Your 360 video will be ready in a moment.</p>
+        <div style="display:flex;gap:10px;align-items:center;margin:0 0 10px;flex-wrap:wrap;">
+          <input type="text" id="spinGuestWho" maxlength="40" placeholder="Your name on the video (optional)" autocomplete="off" style="flex:1;min-width:200px;padding:11px 13px;border-radius:10px;border:0;font-size:16px;">
+          <span id="spinGuestPhoneHint" style="font-size:12.5px;opacity:.75;"></span>
+        </div>
+        <div class="spin-guest-grid" id="spinGuestGrid"></div>
+        <div class="spin-guest-foot"><span id="spinGuestTimer"></span><button type="button" class="desk-btn" id="spinGuestSkip">Use the default look</button></div>
       </div>
     </div>
   </div>
@@ -17621,6 +17757,7 @@
         <label>Start <select id="capMode">
             <option value="button">With the button</option>
             <option value="motion">When the arm moves</option>
+            <option value="person">When someone steps in</option>
           </select></label>
         <label id="capSensRow" hidden>Sensitivity <select id="capSens">
             <option value="low">Low</option>
@@ -17631,6 +17768,7 @@
       <div class="cap-row" id="capLaptopRow" hidden>
         <label>Laptop address <input type="text" id="capLaptop" placeholder="192.168.1.20:47777/send/..."
             autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+        <button type="button" class="desk-btn" id="capScan">📷 Scan QR</button>
         <button type="button" class="desk-btn" id="capTest">Test</button><span class="cap-msg" id="capLaptopMsg"></span>
       </div>
       <p class="cap-status" id="capStatus"></p>
@@ -34089,6 +34227,7 @@
         if (it.src !== 'inbox') return it.objUrl;
         if (!spinInfo || !spinInfo.previewBase) return '';
         if (edited && it.edited) return spinInfo.previewBase + '/edited/' + encodeURIComponent(it.edited.replace(/^edited\//, ''));
+        if (it.proxy) return spinInfo.previewBase + '/proxy/' + encodeURIComponent(it.proxy);   // preview copy of a clip this laptop could not play (iPhone HEVC)
         return spinInfo.previewBase + '/file/' + encodeURIComponent(it.name);
       }
 
@@ -34115,13 +34254,17 @@
         text2: '', text2Font: 'serif', text2Color: '#FFFFFF', text2Size: 34, text2X: 50, text2Y: 26,
         textPos: 'top', textAlign: 'center', textTiming: 'always',
         classicBorderColor: '#D4AF37', classicBandOn: true, classicBandColor: '#1C1A1E', classicBandAlpha: 85,
-        activeDesignPreset: 'wedding_floral', presetMotion: true, oneTap: false
+        activeDesignPreset: 'wedding_floral', presetMotion: true, oneTap: false, guestPick: false, guestSec: 20, guestPresets: [], rotate: false, rotateMode: 'shuffle', rotateBag: [], rotateLast: '', autoText: '', alsoGif: false, music: '', musicByLook: {}, intro: '', outro: '', stingerByLook: {}
       };
       // Effects were renamed once. An old name has no option in the effect list and no loop in the app, so the render came out with no effect.
       var SPIN_FX_ALIASES = {
         'sparkles': 'sparkler_fountain', 'floating_hearts': 'hearts_floating', 'rose_petals': 'rose_petals_red',
         'smoke_ring': 'stage_smoke', 'bokeh': 'bokeh_golden', 'confetti': 'confetti_multi', 'neon_glow_edge': 'neon_cyberpunk'
       };
+      // Text on automatically edited videos: none by default. An operator who already typed text keeps it ("My text").
+      function spinAutoTextMode() { return spinLook.autoText || (((spinLook.text1 || '').trim() || (spinLook.text2 || '').trim()) ? 'fixed' : 'none'); }
+      // True when this clip must be edited without the fixed text (only a name the guest typed is allowed).
+      function spinAutoNoText(it) { return spinAutoTextMode() !== 'fixed' && !(it && it.guestName); }
       function spinFxNorm(id) { id = String(id || 'none'); return SPIN_FX_ALIASES[id] || id; }
       try {
         var sl = JSON.parse(localStorage.getItem(SPIN_LOOK_KEY) || 'null');
@@ -34295,6 +34438,109 @@
           text1Font: 'impact', text1Color: '#7CFF6B', text1Size: 58, text1X: 50, text1Y: 15,
           text2Font: 'sans', text2Color: '#FFFFFF', text2Size: 26, text2X: 50, text2Y: 23,
           textAlign: 'center'
+        },
+        sweet_sixteen: {
+          name: '💖 Sweet 16 Sparkle', cat: 'party', sw: ['#3b1a4a', '#ff7ac8'], style: 'fsf', lut: 'vibrant',
+          frameStyle: 'classic_box',
+          classicBandColor: '#3B1A4A', classicBandAlpha: 88, classicBorderColor: '#FF7AC8', classicBandOn: true,
+          fx: 'confetti_multi', fxMovement: 'fall',
+          text1Font: 'dancing', text1Color: '#FFD9F0', text1Size: 52, text1X: 50, text1Y: 90,
+          text2Font: 'sans', text2Color: '#FF7AC8', text2Size: 22, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
+        quince_princess: {
+          name: '👑 Quinceañera Princess', cat: 'wedding', sw: ['#4a1f3d', '#d9a5c8'], style: 'classic', lut: 'golden_hour',
+          frameStyle: 'floral_gold',
+          fx: 'fairy_dust', fxMovement: 'rise',
+          text1Font: 'cursive', text1Color: '#FFE9F4', text1Size: 52, text1X: 50, text1Y: 82,
+          text2Font: 'serif', text2Color: '#F4C6E1', text2Size: 26, text2X: 50, text2Y: 89,
+          textAlign: 'center'
+        },
+        prom_night: {
+          name: '🌟 Prom Night', cat: 'night', sw: ['#0b1030', '#6a4bd8'], style: 'ramp', lut: 'none',
+          frameStyle: 'gilded_art_deco',
+          fx: 'galaxy_stars', fxMovement: 'drift',
+          text1Font: 'serif', text1Color: '#E6E0FF', text1Size: 48, text1X: 50, text1Y: 82,
+          text2Font: 'sans', text2Color: '#A99CFF', text2Size: 24, text2X: 50, text2Y: 89,
+          textAlign: 'center'
+        },
+        anniversary_gold: {
+          name: '💍 Anniversary Gold', cat: 'wedding', sw: ['#2d2418', '#c9a24a'], style: 'classic', lut: 'golden_hour',
+          frameStyle: 'classic_box',
+          classicBandColor: '#2D2418', classicBandAlpha: 88, classicBorderColor: '#C9A24A', classicBandOn: true,
+          fx: 'bokeh_golden', fxMovement: 'drift', fxOpacity: 70,
+          text1Font: 'playfair', text1Color: '#FFF2C8', text1Size: 46, text1X: 50, text1Y: 90,
+          text2Font: 'serif', text2Color: '#C9A24A', text2Size: 22, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
+        baby_shower: {
+          name: '🍼 Baby Shower Pastel', cat: 'party', sw: ['#cfe8f7', '#f7d4e4'], style: 'classic', lut: 'none', flash: false,
+          frameStyle: 'classic_box',
+          classicBandColor: '#FFFFFF', classicBandAlpha: 90, classicBorderColor: '#A8D4F0', classicBandOn: true,
+          fx: 'balloons_pastel', fxMovement: 'rise', fxOpacity: 80,
+          text1Font: 'dancing', text1Color: '#5B7FA6', text1Size: 50, text1X: 50, text1Y: 90,
+          text2Font: 'sans', text2Color: '#D98DB0', text2Size: 22, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
+        gender_reveal: {
+          name: '🎀 Gender Reveal', cat: 'party', sw: ['#7cc8ff', '#ff9ec4'], style: 'super', lut: 'vibrant',
+          frameStyle: 'classic_box',
+          classicBandColor: '#FFFFFF', classicBandAlpha: 88, classicBorderColor: '#FF9EC4', classicBandOn: true,
+          fx: 'confetti_multi', fxMovement: 'fall',
+          text1Font: 'impact', text1Color: '#3D8BD9', text1Size: 54, text1X: 50, text1Y: 90,
+          text2Font: 'sans', text2Color: '#FF6FA5', text2Size: 22, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
+        valentine_romance: {
+          name: '❤️ Valentine\'s Romance', cat: 'season', sw: ['#4a0f1f', '#e0405a'], style: 'classic', lut: 'golden_hour',
+          frameStyle: 'floral_gold',
+          fx: 'hearts_floating', fxMovement: 'rise',
+          text1Font: 'cursive', text1Color: '#FFD1DA', text1Size: 54, text1X: 50, text1Y: 82,
+          text2Font: 'serif', text2Color: '#FFFFFF', text2Size: 24, text2X: 50, text2Y: 89,
+          textAlign: 'center'
+        },
+        summer_beach: {
+          name: '🏖️ Summer Beach', cat: 'season', sw: ['#0f8fb5', '#ffd36b'], style: 'ramp', lut: 'vibrant',
+          frameStyle: 'classic_box',
+          classicBandColor: '#0F6F8F', classicBandAlpha: 85, classicBorderColor: '#FFD36B', classicBandOn: true,
+          fx: 'summer_flare', fxMovement: 'drift',
+          text1Font: 'dancing', text1Color: '#FFFFFF', text1Size: 52, text1X: 50, text1Y: 90,
+          text2Font: 'sans', text2Color: '#FFE9A8', text2Size: 22, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
+        team_spirit: {
+          name: '🏆 Team Spirit', cat: 'corporate', sw: ['#0e2a5a', '#e03a2f'], style: 'fastslow', lut: 'teal_orange',
+          frameStyle: 'classic_box',
+          classicBandColor: '#0E2A5A', classicBandAlpha: 92, classicBorderColor: '#E03A2F', classicBandOn: true,
+          fx: 'action_speed_lines',
+          text1Font: 'impact', text1Color: '#FFFFFF', text1Size: 58, text1X: 50, text1Y: 90,
+          text2Font: 'oswald', text2Color: '#FFD23F', text2Size: 26, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
+        product_launch: {
+          name: '🚀 Product Launch', cat: 'corporate', sw: ['#071a2e', '#18a0fb'], style: 'ramp', lut: 'teal_orange',
+          frameStyle: 'neon_cyberpunk',
+          fx: 'corporate_grid',
+          text1Font: 'sans', text1Color: '#FFFFFF', text1Size: 46, text1X: 50, text1Y: 15,
+          text2Font: 'sans', text2Color: '#18A0FB', text2Size: 24, text2X: 50, text2Y: 22,
+          textAlign: 'center'
+        },
+        retirement_toast: {
+          name: '🥂 Retirement Toast', cat: 'corporate', sw: ['#2a2a35', '#b8c4d6'], style: 'classic', lut: 'none',
+          frameStyle: 'classic_box',
+          classicBandColor: '#22252E', classicBandAlpha: 90, classicBorderColor: '#C9D3E3', classicBandOn: true,
+          fx: 'champagne_bubbles', fxMovement: 'rise',
+          text1Font: 'playfair', text1Color: '#FFFFFF', text1Size: 46, text1X: 50, text1Y: 90,
+          text2Font: 'sans', text2Color: '#C9D3E3', text2Size: 22, text2X: 50, text2Y: 95,
+          textAlign: 'center'
+        },
+        mothers_day: {
+          name: '💐 Mother\'s Day Blooms', cat: 'season', sw: ['#5a2d45', '#f4b6c8'], style: 'classic', lut: 'golden_hour',
+          frameStyle: 'floral_gold',
+          fx: 'petals_white_drift', fxMovement: 'fall', fxSpeed: 80,
+          text1Font: 'cursive', text1Color: '#FFE4EC', text1Size: 54, text1X: 50, text1Y: 82,
+          text2Font: 'serif', text2Color: '#F8C9D8', text2Size: 24, text2X: 50, text2Y: 89,
+          textAlign: 'center'
         }
       };
       var SPIN_PRESET_CATS = [['all', 'All'], ['wedding', 'Wedding & Debut'], ['party', 'Birthday & Family'], ['corporate', 'Corporate & School'], ['season', 'Holidays'], ['night', 'Nightlife'], ['mine', '⭐ My presets']];
@@ -34346,6 +34592,68 @@
         var item = (typeof spinFxCatalog !== 'undefined' && spinFxCatalog || []).find(function (x) { return x.id === id; });
         return item ? item.name : id;
       }
+      // One preset tile (the gallery and the guest "Choose your look" screen use the same).
+      // The tile is a small picture of the look: the frame, the text style and the colours drawn over a still from the clip that is open
+      // (or a colour wash when there is none), so what you pick is what you will see.
+      function spinPresetParts(key, p, builtin) {
+        var name = String(p.name || key.replace(/^custom:/, ''));
+        var m = /^(\S+)\s+(.*)$/.exec(name);
+        return { icon: builtin && m ? m[1] : '⭐', title: builtin && m ? m[2] : name };
+      }
+      function spinTileStill(v) {
+        if (!v || !v.videoWidth || v.readyState < 2) return null;
+        var key = v.currentSrc || v.src;
+        if (v.__still && v.__still.key === key) return v.__still.cvs;
+        try {
+          var c = document.createElement('canvas'); c.width = 108; c.height = 192;
+          var cx = c.getContext('2d'), k = Math.max(108 / v.videoWidth, 192 / v.videoHeight);
+          cx.drawImage(v, (108 - v.videoWidth * k) / 2, (192 - v.videoHeight * k) / 2, v.videoWidth * k, v.videoHeight * k);
+          v.__still = { key: key, cvs: c };
+          return c;
+        } catch (e) { return null; }
+      }
+      function spinPaintTile(cv, p, vEl) {
+        var W = cv.width, H = cv.height, x = cv.getContext('2d');
+        var still = spinTileStill(vEl);
+        if (still) x.drawImage(still, 0, 0, W, H);
+        else {
+          var sw = p.sw || [p.classicBandColor || '#3a3440', p.text1Color || '#8a7f70'], g = x.createLinearGradient(0, 0, W, H);
+          g.addColorStop(0, sw[0]); g.addColorStop(1, sw[1]); x.fillStyle = g; x.fillRect(0, 0, W, H);
+        }
+        var o = { classicBorderColor: p.classicBorderColor, classicBandOn: p.classicBandOn, classicBandColor: p.classicBandColor, classicBandAlpha: p.classicBandAlpha, drawTextInFrame: false, text1: '', text2: '' };
+        var fs = p.frameStyle;
+        try {
+          if (fs === 'floral_gold') drawWeddingFloralFrame(x, W, H, o);
+          else if (fs === 'gilded_art_deco') drawArtDecoGalaFrame(x, W, H, o);
+          else if (fs === 'neon_cyberpunk') drawNeonCyberpunkFrame(x, W, H, o);
+          else if (fs === 'classic_box') drawClassicBoxFrame(x, W, H, o);
+        } catch (e) { }
+        try {
+          drawSpinExtraText(x, W, H, { text1: (spinLook.text1 || '').trim() || 'Name', text2: '', textOn: true, text1Font: p.text1Font, text1Color: p.text1Color,
+            text1Size: p.text1Size, text1X: p.text1X, text1Y: p.text1Y, textAlign: p.textAlign || 'center' });
+        } catch (e) { }
+      }
+      // The clip a tile should be drawn over: the open clip, but never a finished video (the look is already burned into that one).
+      function spinTileVideo() {
+        var v = document.getElementById('spinVideo');
+        if (!v || !spinCur) return null;
+        return (!spinCur.edited || spinCur.isDrafting || spinCur.viewOrig) ? v : null;
+      }
+      function spinMakeTile(key, p, builtin, vEl) {
+        var parts = spinPresetParts(key, p, builtin), icon = parts.icon, title = parts.title;
+        var styleKey = p.style || p.preset, st = SPIN_PRESETS[styleKey];
+        var t = document.createElement('button'); t.type = 'button'; t.className = 'spin-preset-tile' + (spinLook.activeDesignPreset === key ? ' on' : '');
+        t.dataset.key = key; t.title = 'Use “' + title + '”';
+        var s = document.createElement('span'); s.className = 'sw pv';
+        var cv = document.createElement('canvas'); cv.width = 108; cv.height = 192; s.appendChild(cv);
+        spinPaintTile(cv, p, vEl === undefined ? spinTileVideo() : vEl);
+        var ic = document.createElement('span'); ic.className = 'ic'; ic.textContent = icon; s.appendChild(ic);
+        if (spinLook.activeDesignPreset === key) { var tk = document.createElement('i'); tk.className = 'tick'; tk.style.fontStyle = 'normal'; tk.textContent = '✓'; s.appendChild(tk); }
+        var b = document.createElement('b'); b.textContent = title;
+        var sm = document.createElement('small'); sm.textContent = (st ? st.label + ' · ' : '') + spinFxName(spinFxNorm(p.fx));
+        t.appendChild(s); t.appendChild(b); t.appendChild(sm);
+        return t;
+      }
       // The tiles of the preset gallery (built-in looks by category, plus the operator's own saved ones).
       function spinRenderPresetGallery() {
         var cats = document.getElementById('spinPresetCats'), grid = document.getElementById('spinPresetGrid');
@@ -34370,27 +34678,50 @@
           em.textContent = 'No saved presets yet. Set up a look you like, then click “Save As Preset”.';
           grid.appendChild(em);
         }
-        items.forEach(function (o) {
-          var p = o.p, name = String(p.name || o.key.replace(/^custom:/, ''));
-          var m = /^(\S+)\s+(.*)$/.exec(name), icon = o.builtin && m ? m[1] : '⭐', title = o.builtin && m ? m[2] : name;
-          var sw = p.sw || [p.classicBandColor || '#2b282c', p.text1Color || '#8a7f70'];
-          var styleKey = p.style || p.preset, st = SPIN_PRESETS[styleKey];
-          var t = document.createElement('button'); t.type = 'button'; t.className = 'spin-preset-tile' + (spinLook.activeDesignPreset === o.key ? ' on' : '');
-          t.dataset.key = o.key; t.title = 'Use “' + title + '”';
-          var s = document.createElement('span'); s.className = 'sw' + (p.frameStyle === 'none' ? ' noframe' : '');
-          s.style.background = 'linear-gradient(135deg, ' + sw[0] + ', ' + sw[1] + ')';
-          s.style.setProperty('--acc', p.classicBorderColor && p.frameStyle === 'classic_box' ? p.classicBorderColor : (p.text1Color || '#D4AF37'));
-          s.textContent = icon;
-          if (spinLook.activeDesignPreset === o.key) { var tk = document.createElement('i'); tk.className = 'tick'; tk.style.fontStyle = 'normal'; tk.textContent = '✓'; s.appendChild(tk); }
-          var b = document.createElement('b'); b.textContent = title;
-          var sm = document.createElement('small'); sm.textContent = (st ? st.label + ' · ' : '') + spinFxName(spinFxNorm(p.fx));
-          t.appendChild(s); t.appendChild(b); t.appendChild(sm);
-          grid.appendChild(t);
-        });
+        items.forEach(function (o) { grid.appendChild(spinMakeTile(o.key, o.p, o.builtin)); });
+        spinRenderGuestChips();
         spinRefreshPresetState();
       }
       // The small things that follow the current look: "edited" pill, which motion chip is on, the effect name, the two checkboxes.
+      function spinStingerUI() {
+        var list = (spinEnv && spinEnv.stingerList) || [];
+        [['spinLookIntro', 'intro'], ['spinLookOutro', 'outro']].forEach(function (pr) {
+          var sel = document.getElementById(pr[0]); if (!sel) return;
+          sel.textContent = '';
+          var o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'Nothing'; sel.appendChild(o0);
+          list.forEach(function (n) { var o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
+          sel.value = list.indexOf(spinLook[pr[1]]) >= 0 ? spinLook[pr[1]] : '';
+        });
+        var lib = document.getElementById('spinStingerLib');
+        if (lib) {
+          lib.textContent = '';
+          list.forEach(function (n) {
+            var c = document.createElement('button'); c.type = 'button'; c.className = 'spin-chip'; c.dataset.srm = n; c.title = 'Remove this clip from the list'; c.textContent = n + ' ✕';
+            lib.appendChild(c);
+          });
+        }
+      }
+      function spinMusicUI() {
+        try { spinStingerUI(); } catch (e) { }
+        var sel = document.getElementById('spinLookMusic'), lib = document.getElementById('spinMusicLib'), hint = document.getElementById('spinLookMusicHint');
+        var list = (spinEnv && spinEnv.musicList) || [];
+        if (sel) {
+          sel.textContent = '';
+          var d0 = document.createElement('option'); d0.value = ''; d0.textContent = spinEnv.music ? 'Default (' + spinEnv.music + ')' : 'Default track'; sel.appendChild(d0);
+          list.forEach(function (n) { var o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
+          sel.value = list.indexOf(spinLook.music) >= 0 ? spinLook.music : '';
+        }
+        if (hint) hint.textContent = spinLook.audio !== 'music' ? 'Sound track is not set to Music (Audio tab), so no song is added.' : (list.length ? '' : 'Add tracks in the Audio tab to give looks their own song.');
+        if (lib) {
+          lib.textContent = '';
+          list.forEach(function (n) {
+            var c = document.createElement('button'); c.type = 'button'; c.className = 'spin-chip'; c.dataset.mrm = n; c.title = 'Remove this track from the list'; c.textContent = n + ' ✕';
+            lib.appendChild(c);
+          });
+        }
+      }
       function spinRefreshPresetState() {
+        try { spinMusicUI(); } catch (e) { }
         var pill = document.getElementById('spinPresetState');
         if (pill) {
           var p = spinPresetGet(spinLook.activeDesignPreset);
@@ -34402,6 +34733,25 @@
         document.querySelectorAll('#spinQuick .spin-swatch').forEach(function (c) { c.classList.toggle('on', String(c.dataset.accent).toLowerCase() === String(spinLook.text1Color || '').toLowerCase()); });
         var mo = document.getElementById('spinPresetMotion'); if (mo) mo.checked = spinLook.presetMotion !== false;
         var ot = document.getElementById('spinOneTap'); if (ot) ot.checked = !!spinLook.oneTap;
+        var gp = document.getElementById('spinGuestPick'); if (gp) gp.checked = !!spinLook.guestPick;
+        var ag = document.getElementById('spinAlsoGif'); if (ag) ag.checked = !!spinLook.alsoGif;
+        var am = document.getElementById('spinAutoMode'), ac = document.getElementById('spinAutoCard');
+        if (am) am.checked = !!(spinLook.auto && spinLook.autoShare);
+        if (ac) {
+          ac.classList.toggle('off', !(spinLook.auto && spinLook.autoShare));
+          var lk = spinLook.guestPick ? 'guest' : (spinLook.rotate ? 'rotate' : 'same'), tx = spinAutoTextMode();
+          ac.querySelectorAll('[data-alook]').forEach(function (c) { c.classList.toggle('on', c.dataset.alook === lk); });
+          ac.querySelectorAll('[data-atext]').forEach(function (c) { c.classList.toggle('on', c.dataset.atext === tx); });
+          var sm = document.getElementById('spinAutoSummary');
+          if (sm) {
+            var lookTxt = lk === 'guest' ? 'the guest chooses the look' : (lk === 'rotate' ? 'a different look each time' : 'the “' + spinLookName() + '” look');
+            var txtTxt = tx === 'none' ? 'no text' : (tx === 'guest' ? 'the guest’s name only' : 'your text');
+            sm.textContent = spinLook.auto && spinLook.autoShare ? 'New videos: edited by themselves with ' + lookTxt + ', ' + txtTxt + ', QR code ready.' : 'Off. Switch it on and new videos are edited by themselves with ' + lookTxt + ', ' + txtTxt + '.';
+          }
+        }
+        var rt = document.getElementById('spinRotate'); if (rt) rt.checked = !!spinLook.rotate;
+        var rm = document.getElementById('spinRotateMode'); if (rm) rm.value = spinLook.rotateMode === 'order' ? 'order' : 'shuffle';
+        var gs = document.getElementById('spinGuestSec'); if (gs) gs.value = String(spinLook.guestSec != null ? spinLook.guestSec : 20);
       }
 
       function spinPopulateDesignPresetsUI(activeKey) {
@@ -34441,6 +34791,9 @@
         if (!out || !p) return false;
         spinLook.activeDesignPreset = key;
         Object.keys(out).forEach(function (k) { spinLook[k] = out[k]; });
+        spinLook.music = (spinLook.musicByLook || {})[key] || '';       // each look can have its own song
+        var stg = (spinLook.stingerByLook || {})[key] || {};             // and its own opening / closing clip
+        spinLook.intro = stg.intro || ''; spinLook.outro = stg.outro || '';
         // The effect must be one the effect list really has; otherwise the dropdown goes blank and the effect is lost on the next sync.
         var known = (spinFxCatalog || []).some(function (x) { return x.id === spinLook.fx; });
         if (spinLook.fx !== 'none' && !known && spinFxCatalog && spinFxCatalog.length) spinLook.fx = 'none';
@@ -34784,7 +35137,7 @@
       function spinPresetLabel() { return (SPIN_PRESETS[spinLook.preset] && SPIN_PRESETS[spinLook.preset].label) || (spinLook.speed === 'slow' ? 'slow-mo' : spinLook.speed); }
       // Output size of the picture drawn over the video (boomerang is kept at 720 to stay light).
       function spinDims() {
-        var q = (spinLook.quality === 720 || spinLook.speed === 'boomerang' || (spinLook.speed === 'custom' && spinLook.reverse)) ? 720 : 1080;
+        var q = spinLook.quality === 540 ? 540 : ((spinLook.quality === 720 || spinLook.speed === 'boomerang' || (spinLook.speed === 'custom' && spinLook.reverse)) ? 720 : 1080);
         if (spinLook.orient === 'square') return { W: q, H: q };
         var long = Math.round(q * 16 / 9 / 2) * 2;
         return spinLook.orient === 'landscape' ? { W: long, H: q } : { W: q, H: long };
@@ -35452,9 +35805,46 @@
           ? 'Tap a video to play it' + (spinEnv.ffmpeg ? ', trim and edit it,' : '') + ' and share it. The guest scans the QR to watch and save the video.'
           : (spinDesktop() ? 'No videos yet. Send one from the recording phone, or save it into the folder above.' : 'No videos yet. Choose the 360 videos from this device. Editing (slow motion, frame, music) is in the laptop app.');
       }
+      // About how long an edit has left, from how far it got and how long it has taken (shown once it is a few percent in).
+      // The name of the look a clip is edited with: the preset's name, or "Custom look" once the controls were changed by hand.
+      function spinLookName() {
+        var p = spinPresetGet(spinLook.activeDesignPreset);
+        if (!p) return 'Custom look';
+        var n = String(p.name || spinLook.activeDesignPreset).replace(/^custom:/, '');
+        if (String(spinLook.activeDesignPreset).indexOf('custom:') !== 0) n = n.replace(/^\S+\s+/, '');   // built-in names start with an emoji
+        return spinPresetModified() ? n + ' (edited)' : n;
+      }
+      function spinEta(it) {
+        if (!it || !it.t0 || !it.pct || it.pct < 6 || it.pct >= 100) return '';
+        var left = Math.round((Date.now() - it.t0) / 1000 * (100 - it.pct) / it.pct);
+        return left >= 90 ? ' · ~' + Math.round(left / 60) + ' min' : ' · ~' + Math.max(5, Math.round(left / 5) * 5) + ' s';
+      }
       function spinTag(it) {
+        if (it.status === 'new' && it.arrived && Date.now() - it.arrived < 180000) return ['New', 'new'];
         return it.status === 'shared' ? ['Shared', ''] : it.status === 'queued' ? ['Saved', 'wait'] : it.status === 'sharing' ? ['Sharing…', 'wait']
-          : it.status === 'editing' ? ['Editing ' + (it.pct || 0) + '%', 'wait'] : it.status === 'edited' ? ['Edited', ''] : it.status === 'error' ? ['Failed', 'err'] : null;
+          : it.status === 'editing' ? ['Editing ' + Math.round(it.pct || 0) + '%' + spinEta(it), 'wait'] : it.status === 'edited' ? ['✓ Ready', 'ready'] : it.status === 'error' ? ['Failed', 'err'] : null;
+      }
+      // One line above the list: what is waiting, being edited and ready for a guest, so the operator never has to open each tile.
+      function spinActivityUpdate() {
+        var box = document.getElementById('spinActivity'); if (!box) return;
+        var inbox = spinQueue.filter(function (q) { return q.src === 'inbox'; });
+        if (!inbox.length) { box.hidden = true; return; }
+        var waiting = inbox.filter(function (q) { return q.status === 'new'; }), editing = inbox.filter(function (q) { return q.status === 'editing'; });
+        var ready = inbox.filter(function (q) { return q.status === 'edited'; }), shared = inbox.filter(function (q) { return q.status === 'shared'; });
+        var failed = inbox.filter(function (q) { return q.status === 'error'; });
+        box.textContent = '';
+        var add = function (txt, hot) { var sp = document.createElement('span'); sp.className = 'it' + (hot ? ' hot' : ''); sp.textContent = txt; box.appendChild(sp); };
+        if (waiting.length) add('🆕 ' + waiting.length + ' waiting', true);
+        if (editing.length) add('⚙️ ' + editing.length + ' editing' + spinEta(editing[editing.length - 1]), true);
+        if (ready.length) add('✅ ' + ready.length + ' ready for the guest');
+        if (shared.length) add('📱 ' + shared.length + ' shared');
+        if (failed.length) add('⚠️ ' + failed.length + ' failed', true);
+        if (waiting.length && spinEnv.ffmpeg) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'desk-btn'; b.textContent = '⚡ Edit all waiting';
+          b.addEventListener('click', function () { spinAutoEditAll(); });
+          box.appendChild(b);
+        }
+        box.hidden = !box.childNodes.length;
       }
       function spinRender() {
         // Tiles are updated in place (matched by clip id), so a thumbnail's <video> is only reloaded when its source really changes.
@@ -35478,7 +35868,7 @@
           b.className = 'desk-item' + (it.status === 'shared' ? ' used' : '') + (isSel ? ' selected' : '');
           var v = b.querySelector('video'), src = spinSrc(it, !it.viewOrig), want = src ? src + '#t=0.1' : '';
           if (v && v.dataset.want !== want) { v.dataset.want = want; if (want) v.src = want; else v.removeAttribute('src'); }
-          var nm = b.querySelector('.nm'), nmTxt = it.name + (it.size ? ' · ' + spinMb(it.size) : '');
+          var nm = b.querySelector('.nm'), nmTxt = it.name + (it.lookName && (it.edited || it.status === 'editing') ? ' · ' + it.lookName : (it.size ? ' · ' + spinMb(it.size) : ''));
           if (nm && nm.textContent !== nmTxt) nm.textContent = nmTxt;
           var tag = spinTag(it), dn = b.querySelector('.done');
           if (tag) { if (!dn) { dn = document.createElement('span'); b.appendChild(dn); } dn.className = 'done ' + tag[1]; if (dn.textContent !== tag[0]) dn.textContent = tag[0]; }
@@ -35488,13 +35878,14 @@
         });
         Object.keys(existing).forEach(function (id) { if (!seenIds[id]) existing[id].remove(); });
         spinHint();
+        spinActivityUpdate();
         // Nothing selected yet (first clip just arrived): open it so the preview and buttons work straight away.
         if (!spinCur && spinQueue.length && spinOverlay && !spinOverlay.hidden) spinOpenItem(spinQueue[0]);
       }
       function spinTagUpdate(it) {     // progress only: don't rebuild the tiles (their pictures would reload)
         var d = spinGrid.querySelector('.desk-item[data-id="' + it.id + '"] .done');
         var tag = spinTag(it);
-        if (d && tag) { d.textContent = tag[0]; d.className = 'done ' + tag[1]; } else spinRender();
+        if (d && tag) { d.textContent = tag[0]; d.className = 'done ' + tag[1]; spinActivityUpdate(); } else spinRender();
       }
       function spinAddFile(file) {
         if (!(/^video\//.test(file.type) || /\.(mp4|mov|m4v|webm)$/i.test(file.name || ''))) return;
@@ -35526,9 +35917,9 @@
         } catch (e) { }
       }
       function spinDoneAll() { try { return JSON.parse(localStorage.getItem(SPIN_DONE_KEY) || '{}') || {}; } catch (e) { return {}; } }
-      function spinDoneSet(key, out) {
+      function spinDoneSet(key, out, look) {
         try {
-          var all = spinDoneAll(); all[key] = { out: out, t: Date.now() };
+          var all = spinDoneAll(); all[key] = { out: out, t: Date.now(), look: look || '' };
           var ks = Object.keys(all); if (ks.length > 400) { ks.sort(function (a, b) { return all[a].t - all[b].t; }).slice(0, ks.length - 400).forEach(function (k) { delete all[k]; }); }
           localStorage.setItem(SPIN_DONE_KEY, JSON.stringify(all));
         } catch (e) { }
@@ -35536,28 +35927,131 @@
       async function spinDoneStill(rec) {
         try { if (!rec || !rec.out || !spinInfo || !spinInfo.previewBase) return false; var r = await fetch(spinInfo.previewBase + '/edited/' + encodeURIComponent(rec.out.replace(/^edited\//, '')), { method: 'HEAD' }); return r.ok; } catch (e) { return false; }
       }
+      // "This event" numbers from the laptop's own counters (kept on this laptop; they count 360 videos saved for sharing, page views and downloads).
+      var spinStatsAt = 0;
+      async function spinStatsUpdate() {
+        var box = document.getElementById('spinStats');
+        if (!box || !window.pb4u || !window.pb4u.spinStats) return;
+        spinStatsAt = Date.now();
+        try {
+          var r = await window.pb4u.spinStats(rawFolderKey(), driveSubfolder()), e = r && r.event;
+          if (!e || !(e.rendered || e.views || e.downloads || e.shares)) { box.hidden = true; return; }
+          box.textContent = '📊 This event: ' + (e.rendered || 0) + ' video' + (e.rendered === 1 ? '' : 's') + ' shared · ' + (e.views || 0) + ' view' + (e.views === 1 ? '' : 's') + ' · ' + (e.downloads || 0) + ' download' + (e.downloads === 1 ? '' : 's');
+          box.hidden = false;
+        } catch (err) { box.hidden = true; }
+      }
+      // ---- Connect panel: is everything ready for videos to arrive? ----
+      var spinNewest = null, spinWarnToasted = 0, spinWarnDismissed = 0, spinConnTick = 0;
+      function spinAgoMs(ms) {
+        var s = Math.max(0, Math.round(ms / 1000));
+        if (s < 10) return 'just now';
+        if (s < 90) return s + ' s ago';
+        var m = Math.round(s / 60);
+        if (m < 90) return m + ' min ago';
+        return Math.round(m / 60) + ' h ago';
+      }
+      async function spinConnectRefresh(test) {
+        var list = document.getElementById('spinConnectList');
+        if (!list || !window.pb4u || !window.pb4u.spinConnect) return null;
+        var c = null; try { c = await window.pb4u.spinConnect(!!test); } catch (e) { }
+        if (!c) return null;
+        var reach = null;
+        if (test && c.sendUrl) {
+          // An address that does not answer would otherwise leave the Test button waiting for a minute or more.
+          var ac = new AbortController(), tm = setTimeout(function () { ac.abort(); }, 4000);
+          try { var rr = await fetch(c.sendUrl + '/hello', { cache: 'no-store', signal: ac.signal }); reach = rr.ok; } catch (e2) { reach = false; }
+          clearTimeout(tm);
+        }
+        var rows = [];
+        rows.push(spinEnv.ffmpeg ? { ok: true, t: 'Video editor ready' } : { ok: false, t: 'Video editor missing', d: 'Reinstall the latest app from the Downloads page.' });
+        var folderBad = !c.dir || c.writable === false || (c.freeMb != null && c.freeMb < 1024);
+        rows.push({ ok: !folderBad, t: 'Inbox folder', d: (c.dir || 'not set') + (c.writable === false ? ' · cannot save files here' : '') + (c.freeMb != null ? ' · ' + (c.freeMb >= 1024 ? Math.round(c.freeMb / 1024) + ' GB free' : c.freeMb + ' MB free (low)') : ''), act: ['Change folder', 'spinDirBtn'] });
+        var lan = c.sendUrl ? c.sendUrl.replace(/^https?:\/\//, '').replace(/\/send\/.*/, '') : '';
+        if (!c.sendUrl) rows.push({ ok: false, t: 'No network', d: 'Join the booth Wi-Fi, or turn on this laptop’s hotspot, so phones and tablets can send videos here.' });
+        else if (reach === false) rows.push({ ok: false, t: 'The laptop did not answer on ' + lan, d: 'A firewall may be blocking it. When the app asks to allow network access, choose Allow.' });
+        else rows.push({ ok: true, t: 'Phones and tablets can connect', d: lan + (reach ? ' · answered ✓' : '') });
+        var wf = null; try { wf = wifiInfo(); } catch (e3) { }
+        rows.push(wf ? { ok: true, t: 'Wi-Fi QR for guests', d: 'Network “' + wf.ssid + '”' } : { ok: null, t: 'Wi-Fi QR for guests (optional)', d: 'Set the booth Wi-Fi in Setup → Share so guests can join by scanning.' });
+        if (c.helloAt && c.now - c.helloAt < 90000) rows.push({ ok: true, t: 'Recorder connected', d: 'seen ' + spinAgoMs(c.now - c.helloAt) });
+        else rows.push({ ok: null, t: 'Recorder not seen yet', d: c.helloAt ? 'last seen ' + spinAgoMs(c.now - c.helloAt) + '. Open Record 360 on the tablet.' : 'Open Record 360 on the tablet and scan the QR below.' });
+        var newest = Math.max(spinNewest ? spinNewest.mtime : 0, c.uploadAt || 0);
+        rows.push(newest ? { ok: true, t: 'Last video received ' + spinAgoMs(Date.now() - newest), d: spinNewest && spinNewest.mtime >= (c.uploadAt || 0) ? spinNewest.name : '' } : { ok: null, t: 'No video received yet', d: 'Record one, or send a test from a phone.' });
+        list.textContent = '';
+        rows.forEach(function (r) {
+          var li = document.createElement('li');
+          var ic = document.createElement('span'); ic.className = 'ic'; ic.textContent = r.ok === true ? '✅' : (r.ok === false ? '⚠️' : '•');
+          var tx = document.createElement('span'); tx.className = 'tx';
+          var b = document.createElement('b'); b.textContent = r.t; tx.appendChild(b);
+          if (r.d) { var d = document.createElement('small'); d.textContent = r.d; tx.appendChild(d); }
+          li.appendChild(ic); li.appendChild(tx);
+          if (r.act && r.ok === false) { var ab = document.createElement('button'); ab.type = 'button'; ab.className = 'desk-btn'; ab.textContent = r.act[0]; ab.addEventListener('click', function () { var t0 = document.getElementById(r.act[1]); if (t0) t0.click(); }); li.appendChild(ab); }
+          list.appendChild(li);
+        });
+        var bad = rows.some(function (r) { return r.ok === false; }), st = document.getElementById('spinConnectState');
+        if (st) { st.textContent = bad ? 'Check setup' : 'Ready'; st.className = 'spin-pill' + (bad ? '' : ' active'); }
+        // A recording started but no video came: say so, with the likely reasons.
+        var warn = document.getElementById('spinConnectWarn');
+        var waiting = c.recAt && c.recAt > (c.uploadAt || 0) && (!spinNewest || spinNewest.mtime < c.recAt) && c.now - c.recAt > 120000 && spinWarnDismissed !== c.recAt;
+        if (warn) {
+          warn.hidden = !waiting;
+          if (waiting) {
+            warn.textContent = '';
+            var wt = document.createElement('span'); wt.textContent = '⚠️ A recording started ' + spinAgoMs(c.now - c.recAt) + ' but no video has arrived. Check that the tablet is on the booth Wi-Fi and that the recording finished. If the tablet shows "Send again", tap it.';
+            var wb = document.createElement('button'); wb.type = 'button'; wb.className = 'desk-btn'; wb.textContent = 'Dismiss';
+            wb.addEventListener('click', function () { spinWarnDismissed = c.recAt; warn.hidden = true; });
+            warn.appendChild(wt); warn.appendChild(wb);
+          }
+        }
+        if (waiting && spinWarnToasted !== c.recAt) { spinWarnToasted = c.recAt; showToast('⚠️ A recording started a while ago but no video has arrived. Check the tablet’s Wi-Fi.', 9000); }
+        c.reach = reach; c.bad = bad;
+        return c;
+      }
+      // Asked once, the first time the desk is opened: should new videos edit themselves?
+      async function spinFirstRunPrompt() {
+        var k = 'pb_spin_auto_asked';
+        try { if (localStorage.getItem(k)) return; localStorage.setItem(k, '1'); } catch (e) { return; }       // asked once, whatever the answer
+        if (!spinEnv.ffmpeg || (spinLook.auto && spinLook.autoShare) || spinOverlay.hidden) return;
+        var v = await pbChoose({ title: 'Edit new videos automatically?', body: 'Turn on Auto mode and every 360 video that arrives is edited by itself with your look, and its QR code is made ready. You can change this any time with the ⚡ Auto mode switch at the top of the Presets tab.', buttons: [{ label: 'Yes, turn on Auto mode', value: 'yes' }, { label: 'Not now', value: null }] });
+        if (v !== 'yes') return;
+        spinLook.auto = true; spinLook.autoShare = true;
+        spinLookToUI(); try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e2) { }
+        showToast('Auto mode is on: new videos edit themselves.', 3500);
+      }
+      // The recorder (tablet or this laptop's Record 360) tells the laptop it is there and when a recording starts.
+      function capPing(kind) {
+        var base = DESKTOP ? (spinInfo && spinInfo.previewBase) : capLaptopBase();
+        if (!base) return;
+        try { fetch(base + '/hello?r=' + kind, { cache: 'no-store' }).catch(function () { }); } catch (e) { }
+      }
+
       async function spinPoll() {
         if (!spinDesktop()) return;
+        if (Date.now() - spinStatsAt > 15000) spinStatsUpdate();
+        if (++spinConnTick % 4 === 1) spinConnectRefresh(false);      // about every 10 seconds, also with the desk closed, so a missing video is noticed
+        spinCollectPicks();
         try {
           var list = await PBX.spinScan(), fresh = [];
+          if (list.length) spinNewest = { name: list[0].name, mtime: list[0].mtime };       // the newest file in the inbox (the list is newest first)
           for (var i = list.length - 1; i >= 0; i--) {
             var f = list[i], key = f.name + '|' + f.mtime;
             if (spinDismissed[key] || spinSeen[key]) continue;
             var prev = spinPrev[key]; spinPrev[key] = f.size;
             if (prev !== f.size || f.size < 1024) continue;           // still being copied: wait for the next look
             spinSeen[key] = true;
-            var it = { id: ++spinSeq, src: 'inbox', name: f.name, size: f.size, key: key, status: 'new', url: '' };
+            var it = { id: ++spinSeq, src: 'inbox', name: f.name, size: f.size, key: key, status: 'new', url: '', arrived: Date.now() };
             var rec = spinDoneAll()[key];
             if (rec) {
               if (!spinInfo || !spinInfo.previewBase) try { spinInfo = await window.pb4u.spinInfo(); } catch (e2) { }
-              if (await spinDoneStill(rec)) { it.edited = rec.out; it.status = 'edited'; spinQueue.unshift(it); continue; }   // already edited: show it as edited, do not edit again
+              if (await spinDoneStill(rec)) { it.edited = rec.out; it.lookName = rec.look || ''; it.status = 'edited'; spinQueue.unshift(it); continue; }   // already edited: show it as edited, do not edit again
             }
             spinQueue.unshift(it); fresh.push(it);
           }
           if (fresh.length) {
             spinRender();
             if (spinOverlay.hidden) { spinNew += fresh.length; document.getElementById('spinFab').dataset.n = String(spinNew); }
-            if (spinLook.auto && spinEnv.ffmpeg) fresh.forEach(function (it) { spinAuto(it); });
+            else showToast('🆕 ' + (fresh.length > 1 ? fresh.length + ' new 360 videos arrived' : 'New 360 video arrived: ' + fresh[0].name), 3500);
+            if (spinLook.guestPick && spinEnv.ffmpeg) fresh.forEach(function (it) { spinGuestOffer(it); });      // the guest picks the look, then it is edited
+            else if ((spinLook.auto || spinLook.rotate) && spinEnv.ffmpeg) fresh.forEach(function (it) { spinAutoWithLook(it); });
           }
         } catch (e) { }
       }
@@ -35653,7 +36147,7 @@
           return;
         }
         spinOverlay.hidden = false; spinNew = 0; document.getElementById('spinFab').dataset.n = '0';
-        spinRender(); spinSetupInfo(); spinWebShow();
+        spinRender(); spinSetupInfo().then(function () { spinConnectRefresh(false); spinFirstRunPrompt(); }); spinWebShow();
         if (!spinCur && spinQueue.length) {
           spinOpenItem(spinQueue[0]);
         } else if (spinCur) {
@@ -36835,7 +37329,7 @@
       function capPrefsLoad() {
         var p = {}; try { p = JSON.parse(localStorage.getItem(CAP_PREFS_KEY) || '{}') || {}; } catch (e) { }
         if ([6, 8, 10, 12, 15].indexOf(Number(p.len)) >= 0) capEl('capLen').value = String(p.len);
-        if (p.mode === 'motion' || p.mode === 'button') capEl('capMode').value = p.mode;
+        if (p.mode === 'motion' || p.mode === 'button' || p.mode === 'person') capEl('capMode').value = p.mode;
         if (['low', 'mid', 'high'].indexOf(p.sens) >= 0) capEl('capSens').value = p.sens;
         var lap = ''; try { lap = localStorage.getItem(CAP_LAPTOP_KEY) || ''; } catch (e) { }
         capEl('capLaptop').value = lap;
@@ -36852,13 +37346,13 @@
       function capRefresh() {
         capEl('capInfo').textContent = capInfo();
         var warn = capWarning(), w = capEl('capWarn'); w.textContent = warn; w.hidden = !warn;
-        capEl('capSensRow').hidden = capEl('capMode').value !== 'motion';
+        capEl('capSensRow').hidden = capEl('capMode').value !== 'motion' && capEl('capMode').value !== 'person';
         capEl('capLaptopRow').hidden = !ANDROID_LOCAL;
-        var go = capEl('capGo'), motion = capEl('capMode').value === 'motion';
+        var go = capEl('capGo'), motion = capEl('capMode').value === 'motion', person = capEl('capMode').value === 'person';
         go.classList.toggle('armed', cap.state === 'armed');
         go.disabled = cap.state === 'recording' || cap.state === 'counting' || cap.state === 'sending';
-        go.textContent = cap.state === 'armed' ? 'Waiting for the arm to move… (tap to cancel)' : cap.state === 'recording' ? 'Recording…' : cap.state === 'counting' ? 'Get ready…'
-          : cap.state === 'sending' ? 'Sending…' : cap.state === 'failed' ? 'Send again' : motion ? 'Arm: record when the arm moves' : 'Record (3, 2, 1)';
+        go.textContent = cap.state === 'armed' ? (person ? 'Waiting for a guest… (tap to cancel)' : 'Waiting for the arm to move… (tap to cancel)') : cap.state === 'recording' ? 'Recording…' : cap.state === 'counting' ? 'Get ready…'
+          : cap.state === 'sending' ? 'Sending…' : cap.state === 'failed' ? 'Send again' : motion ? 'Arm: record when the arm moves' : person ? 'Start: record when a guest steps in' : 'Record (3, 2, 1)';
       }
       function capBig(text, rec) { var b = capEl('capBig'); b.hidden = !text; b.textContent = text || ''; b.classList.toggle('rec', !!rec); }
       async function openCap() {
@@ -36869,17 +37363,19 @@
         try { await capVideo.play(); } catch (e) { }
         await capBoost();
         capPrefsLoad(); cap.state = 'idle'; cap.last = null; capSet(''); capBig('');
+        capPing('1'); clearInterval(cap.hb); cap.hb = setInterval(function () { capPing('1'); }, 20000);      // "the recorder is here", for the 360 desk's Connect panel
         capOverlay.hidden = false; capRefresh();
         setTimeout(capRefresh, 800);          // the camera reports its real size a moment after it starts
       }
       function capDisarm() {
         if (cap.motion) { window.removeEventListener('devicemotion', cap.motion); cap.motion = null; }
         clearTimeout(cap.sensor); cap.sensor = null;
+        if (cap.pres) { clearInterval(cap.pres); cap.pres = null; }
         if (cap.state === 'armed') cap.state = 'idle';
       }
       function closeCap() {
         if (cap.state === 'recording') { try { cap.rec.onstop = null; cap.rec.stop(); } catch (e) { } clearTimeout(cap.timer); clearInterval(cap.tick); }
-        capDisarm(); cap.state = 'idle'; capBig(''); capOverlay.hidden = true; capVideo.srcObject = null;
+        capDisarm(); cap.state = 'idle'; capBig(''); capOverlay.hidden = true; capVideo.srcObject = null; clearInterval(cap.hb); cap.hb = null;
       }
       function capMime() {
         // mp4 first: an iPhone can play it even if the clip is shared without editing
@@ -36897,7 +37393,7 @@
         var rec;
         try { rec = new MediaRecorder(new MediaStream(vt), opts); }
         catch (e) { cap.state = 'idle'; capSet('This device cannot record video here.'); capRefresh(); return; }
-        cap.chunks = []; cap.rec = rec; cap.state = 'recording';
+        cap.chunks = []; cap.rec = rec; cap.state = 'recording'; capPing('rec');      // the laptop notes that a video should be coming
         rec.ondataavailable = function (e) { if (e.data && e.data.size) cap.chunks.push(e.data); };
         rec.onstop = function () { clearInterval(cap.tick); capBig(''); capFinish(rec.mimeType || mime || 'video/webm'); };
         rec.start(500);
@@ -36931,12 +37427,55 @@
           if (!seen) { capDisarm(); capSet('This device has no motion sensor. Start with the button instead.'); capRefresh(); }
         }, 2500);
       }
+      // "When someone steps in": watch the camera and start the 3-2-1 when a guest walks into view, then arm again once they have left.
+      // Frames are shrunk to 64x36 and compared with a picture of the empty platform. A change in the light overall is ignored, and the
+      // picture of the empty platform slowly follows daylight or shadows, but not a person walking in.
+      // Frames are r,g,b triples. Colour is compared (not only brightness), after taking away the overall change in light.
+      function capFrameDiff(a, b) {
+        var oR = a.mean[0] - b.mean[0], oG = a.mean[1] - b.mean[1], oB = a.mean[2] - b.mean[2], n = 0, px = a.length / 3;
+        for (var i = 0; i < a.length; i += 3) {
+          if (Math.abs(a[i] - b[i] - oR) + Math.abs(a[i + 1] - b[i + 1] - oG) + Math.abs(a[i + 2] - b[i + 2] - oB) > 66) n++;
+        }
+        return n / px;
+      }
+      function capArmPerson(afterRecording) {
+        cap.state = 'armed'; capRefresh();
+        var cv = document.createElement('canvas'); cv.width = 64; cv.height = 36;
+        var cx = cv.getContext('2d', { willReadFrequently: true });
+        var covTh = { low: 0.22, mid: 0.12, high: 0.06 }[capEl('capSens').value] || 0.12;
+        var prev = null, bg = null, quiet = 0, hits = 0, needQuiet = afterRecording ? 15 : 8, phase = 'settle';
+        function grab() {
+          if (!capVideo.videoWidth) return null;
+          try { cx.drawImage(capVideo, 0, 0, 64, 36); } catch (e) { return null; }
+          var d = cx.getImageData(0, 0, 64, 36).data, g = new Float32Array(64 * 36 * 3), sr = 0, sg = 0, sb = 0;
+          for (var i = 0, j = 0; i < d.length; i += 4, j += 3) { g[j] = d[i]; g[j + 1] = d[i + 1]; g[j + 2] = d[i + 2]; sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; }
+          var np = g.length / 3;
+          g.mean = [sr / np, sg / np, sb / np];
+          return g;
+        }
+        capSet(afterRecording ? 'Waiting for the platform to be clear…' : 'Getting ready…');
+        cap.pres = setInterval(function () {
+          if (cap.state !== 'armed') return;
+          var g = grab(); if (!g) return;
+          if (phase === 'settle') {
+            if (prev && capFrameDiff(g, prev) < 0.02) quiet++; else quiet = 0;
+            prev = g;
+            if (quiet >= needQuiet) { bg = g; phase = 'watch'; capSet('Waiting for a guest to step in… (tap to cancel)'); }
+            return;
+          }
+          var cov = capFrameDiff(g, bg);
+          if (cov < covTh * 0.5) { for (var i = 0; i < bg.length; i++) bg[i] += (g[i] - bg[i]) * 0.03; for (var c = 0; c < 3; c++) bg.mean[c] += (g.mean[c] - bg.mean[c]) * 0.03; }
+          hits = cov > covTh ? hits + 1 : Math.max(0, hits - 1);
+          if (hits >= 4) { capDisarm(); capCountdown(); }      // a guest is there: 3, 2, 1, record
+        }, 200);
+      }
       function capGoClick() {
         if (cap.state === 'armed') { capDisarm(); capSet(''); capRefresh(); return; }
         if (cap.state === 'failed' && cap.last) { capDeliver(cap.last.blob, cap.last.name); return; }
         if (cap.state !== 'idle' && cap.state !== 'failed') return;
         capPrefsSave(); cap.state = 'idle';
-        if (capEl('capMode').value === 'motion') capArm(); else capCountdown();
+        var cm = capEl('capMode').value;
+        if (cm === 'motion') capArm(); else if (cm === 'person') capArmPerson(false); else capCountdown();
       }
       function capFinish(mime) {
         var blob = new Blob(cap.chunks, { type: String(mime).split(';')[0] }), ext = /mp4/.test(mime) ? 'mp4' : 'webm';
@@ -36947,7 +37486,11 @@
       }
       async function capDeliver(blob, name) {
         cap.state = 'sending'; capSet('Sending the video… (' + Math.round(blob.size / 104857.6) / 10 + ' MB)'); capRefresh();
-        var done = function (t) { cap.state = 'idle'; cap.last = null; capSet('✓ ' + t); capRefresh(); };
+        var done = function (t) {
+          cap.state = 'idle'; cap.last = null; capSet('✓ ' + t); capRefresh();
+          // "When someone steps in": get ready for the next guest once this one has left the platform
+          if (capEl('capMode').value === 'person' && !capOverlay.hidden) setTimeout(function () { if (cap.state === 'idle' && !capOverlay.hidden) capArmPerson(true); }, 1500);
+        };
         try {
           if (DESKTOP) {
             if (!spinInfo || !spinInfo.previewBase) spinInfo = await PBX.spinInfo();
@@ -36980,7 +37523,31 @@
           if (!j || !j.ok) throw new Error('not the booth laptop');
           try { localStorage.setItem(CAP_LAPTOP_KEY, capEl('capLaptop').value.trim()); } catch (e) { }
           m.textContent = '✓ Connected to the laptop.';
-        } catch (e) { m.textContent = 'Could not reach it. Same Wi-Fi? Address typed right?'; }
+        } catch (e) { m.textContent = 'Could not reach it. Same Wi-Fi? Address typed right? If the laptop was reinstalled, scan its QR again.'; }
+      }
+      // Scan the QR on the laptop's 360 desk with this tablet's camera (the one already showing in the Record 360 screen), so nothing is typed.
+      var capScanning = false;
+      async function capScanLaptop() {
+        var m = capEl('capLaptopMsg');
+        if (capScanning) { capScanning = false; return; }
+        if (!('BarcodeDetector' in window)) { m.textContent = 'This device cannot read QR codes here. Type the address under the QR on the laptop.'; return; }
+        var det; try { det = new BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { m.textContent = 'This device cannot read QR codes here. Type the address under the QR on the laptop.'; return; }
+        capScanning = true; capEl('capScan').textContent = '✕ Stop';
+        m.textContent = 'Point the camera at the QR code on the laptop’s 360 desk…';
+        var found = '';
+        for (var n = 0; capScanning && n < 240 && !found; n++) {      // about a minute
+          try {
+            if (capVideo.videoWidth) {
+              var codes = await det.detect(capVideo);
+              for (var i = 0; i < codes.length; i++) { var t = String(codes[i].rawValue || ''); if (/\/send\/[A-Za-z0-9]+/.test(t)) { found = t; break; } }
+            }
+          } catch (e) { }
+          if (!found) await wait(250);
+        }
+        capScanning = false; capEl('capScan').textContent = '📷 Scan QR';
+        if (!found) { m.textContent = 'No laptop QR found. Try again, or type the address.'; return; }
+        capEl('capLaptop').value = found.replace(/^https?:\/\//i, '');
+        await capTestLaptop();
       }
       async function capFlip() {
         var opts = Array.from(cameraSelect.options).filter(function (o) { return o.value && o.value !== USB_CAM_ID; });
@@ -36999,10 +37566,12 @@
       capEl('capGo').addEventListener('click', capGoClick);
       capEl('capFlip').addEventListener('click', capFlip);
       capEl('capTest').addEventListener('click', capTestLaptop);
+      capEl('capScan').addEventListener('click', capScanLaptop);
       ['capLen', 'capMode', 'capSens'].forEach(function (id) { capEl(id).addEventListener('change', function () { capPrefsSave(); capRefresh(); }); });
       window.addEventListener('pb-extras-change', function () { try { refreshDeskBtn(); } catch (e) { } });
       // Edit (and, if asked, share) a new clip by itself, so the QR is ready when the guest comes over.
       async function spinAuto(it) {
+        it.noText = spinAutoNoText(it);
         if (!it.targetFname) it.targetFname = filePrefix() + nextSessionNumber() + '_360' + deviceTag() + '.mp4';
         var curFUrl = getCachedFolderUrl();
         if (LOCALSHARE && curFUrl && !it.url) it.url = localShareUrl(curFUrl, it.targetFname) || '';
@@ -37794,11 +38363,12 @@
         var curFUrl = getCachedFolderUrl();
         if (LOCALSHARE && curFUrl && !it.url) it.url = localShareUrl(curFUrl, it.targetFname) || '';
         var dims = spinDims();
-        it.status = 'editing'; it.pct = 0; it.err = ''; it.viewOrig = false; it.isDrafting = false; spinTagUpdate(it); spinModalUpdate();
+        it.status = 'editing'; it.pct = 0; it.t0 = Date.now(); it.lookName = spinLookName(); it.err = ''; it.viewOrig = false; it.isDrafting = false; spinRender(); spinModalUpdate();
         try {
           var ov = null, txtOv = null;
           var effectiveT1 = (it.text1 != null && String(it.text1).trim() !== '') ? String(it.text1).trim() : (spinLook.text1 || '').trim();
           var effectiveT2 = (it.text2 != null && String(it.text2).trim() !== '') ? String(it.text2).trim() : (spinLook.text2 || '').trim();
+          if (it.noText) { effectiveT1 = ''; effectiveT2 = ''; }
           var hasText = Boolean(effectiveT1 || effectiveT2);
           var effectiveFrameStyle = it.frameStyle || (spinLook && spinLook.frameStyle) || 'floral_gold';
           var textOpt = {
@@ -37841,7 +38411,7 @@
           try { if (window.pb4u && window.pb4u.setWallCue) window.pb4u.setWallCue('recording', '360 SPINNING! 🌀', 5000); } catch (e) { }
           var fxBakeToken = await spinBakeFx(it.fx || spinLook.fx || 'none', dims, spinOutSeconds(it), function (p) { it.pct = Math.min(p, 99) / 20; spinTagUpdate(it); });
           var j = await window.pb4u.spinProcess({
-            name: it.name, label: spinPresetLabel(), overlay: ov, textOverlay: txtOv,
+            name: it.name, label: spinPresetLabel(), musicName: spinLook.music || '', introName: spinLook.intro || '', outroName: spinLook.outro || '', overlay: ov, textOverlay: txtOv,
             options: {
               speed: spinLook.speed, rates: spinLook.rates, reverse: spinLook.reverse, smooth: spinLook.smooth, gpu: !!spinLook.gpu, orientation: spinLook.orient, quality: spinLook.quality, audio: spinLook.audio,
               volume: spinLook.volume / 100, trimStart: it.trimA || 0, trimEnd: it.trimB || null, fx: it.fx || spinLook.fx || 'none',
@@ -37868,7 +38438,7 @@
             it.pct = st.pct || 0; spinTagUpdate(it); spinModalUpdate();
             if (st.state === 'done') {
               it.edited = st.out; it.status = 'edited';
-              if (it.key) spinDoneSet(it.key, st.out);
+              if (it.key) spinDoneSet(it.key, st.out, it.lookName);
               try { if (window.pb4u && window.pb4u.setWallCue) window.pb4u.setWallCue('celebrate', '✨ FRESH OFF THE 360! ✨', 6000); } catch (e) { }
               break;
             }
@@ -37960,6 +38530,7 @@
           if (eb) eb.disabled = true;
           if (vb) vb.hidden = true;
           if (rm) rm.disabled = true;
+          ['spinGifBtn', 'spinSquareBtn'].forEach(function (id) { var x = document.getElementById(id); if (x) x.disabled = true; });
           if (lockBanner) lockBanner.hidden = true;
           if (controlsCol) { controlsCol.classList.remove('spin-locked-controls'); spinSetCardsInert(controlsCol, false); }
           if (badge) { badge.textContent = 'Sample Demo'; badge.classList.remove('active'); }
@@ -37980,6 +38551,7 @@
         if (badge) { badge.textContent = it.name || 'Active clip'; badge.classList.add('active'); }
         if (eb) eb.disabled = false;
         if (rm) rm.disabled = false;
+        ['spinGifBtn', 'spinSquareBtn'].forEach(function (id) { var x = document.getElementById(id); if (x) x.disabled = !(it.src === 'inbox' && it.edited && !it.isDrafting && spinEnv.ffmpeg) || !!it.extraBusy; });
         var editing = it.status === 'editing', canEdit = spinEnv.ffmpeg && it.src === 'inbox';
         if (box) box.innerHTML = '';
         var wf = it.url && !it.queued ? wifiInfo() : null;
@@ -38130,6 +38702,31 @@
         var v = document.getElementById('spinVideo'); try { v.pause(); } catch (e) { }
       }
 
+      // ---- A GIF or a square clip made from a finished 360 video (for Instagram-style posts and for guests who want a quick loop) ----
+      function spinExtraBase(it) { return String(it.targetFname || ('360_' + Date.now())).replace(/\.[^.]+$/, ''); }
+      // quiet: no pop-ups (the "also make a GIF" option); the file is shared into the event next to the video, so it shows beside it on the Sharing Station
+      async function spinMakeExtra(it, kind, opts) {
+        opts = opts || {};
+        if (!it || it.src !== 'inbox' || !it.edited || !spinEnv.ffmpeg || !window.pb4u || !window.pb4u.spinExtra) { if (!opts.quiet) showToast('Edit the video first, then make the ' + (kind === 'gif' ? 'GIF' : 'square clip') + '.', 3500); return false; }
+        if (it.extraBusy) return false;
+        it.extraBusy = true; spinModalUpdate();
+        if (!opts.quiet) showToast('Making the ' + (kind === 'gif' ? 'GIF' : 'square clip') + '…', 2500);
+        try {
+          var r = await window.pb4u.spinExtra({ name: it.edited, kind: kind });
+          if (!r || !r.name) throw new Error((r && r.error) || 'Could not make it');
+          var out = spinExtraBase(it) + (kind === 'gif' ? '.gif' : '_square.mp4');
+          var sh = await PBX.spinShare(r.name, rawFolderKey(), driveSubfolder(), out, '');
+          if (!sh || !sh.ok) throw new Error((sh && sh.error) || 'Could not save it');
+          try { if (sh.folderUrl) rememberFolderUrl(sh.folderUrl); } catch (e) { }
+          if (!opts.quiet) showToast('✓ ' + (kind === 'gif' ? 'GIF' : 'Square clip') + ' ready and shared. Guests find it with their video in the event gallery and on the Sharing Station.', 6000);
+          it.extras = (it.extras || []).concat([kind]);
+          return true;
+        } catch (e) {
+          if (!opts.quiet) showToast('Could not make it: ' + ((e && e.message) || e), 5000);
+          return false;
+        } finally { it.extraBusy = false; try { spinModalUpdate(); } catch (e2) { } }
+      }
+
       async function spinDoShare(it) {
         if (it.src === 'drive' || it.status === 'sharing' || it.status === 'editing') return;
         it.status = 'sharing'; it.err = ''; spinRender(); spinModalUpdate();
@@ -38139,7 +38736,7 @@
           if (useEdit) ext = '.mp4';
           var fname = it.targetFname || (filePrefix() + nextSessionNumber() + '_360' + deviceTag() + ext);
           if (it.src === 'inbox') {
-            var r = await PBX.spinShare(useEdit ? it.edited : it.name, rawFolderKey(), driveSubfolder(), fname);
+            var r = await PBX.spinShare(useEdit ? it.edited : it.name, rawFolderKey(), driveSubfolder(), fname, useEdit ? (it.lookName || '') : '');
             if (!r || !r.ok) throw new Error((r && r.error) || 'Could not save the video');
             try { if (r.folderUrl) rememberFolderUrl(r.folderUrl); registerEvent(r.folderUrl || getCachedFolderUrl(), true); } catch (e) { }
             it.url = fileShareUrl(r.fileId) || ''; it.queued = false;
@@ -38149,6 +38746,7 @@
             it.url = res.url || ''; it.queued = !!res.queued;
           }
           it.status = it.queued ? 'queued' : 'shared';
+          if (it.status === 'shared' && useEdit && spinLook.alsoGif && spinEnv.ffmpeg) spinMakeExtra(it, 'gif', { quiet: true });      // not waited for: the QR must not be held up
         } catch (e) { it.status = 'error'; it.err = (e && e.message) || 'Failed'; }
         spinRender(); spinModalUpdate();
         if (it && it.url && it.status !== 'error') {
@@ -38163,6 +38761,8 @@
         if (!modal) return;
         var card = document.getElementById('spinShareCard');
         if (card) card.classList.remove('qr-hidden');
+        var shTitle = document.getElementById('spinShareTitle');
+        if (shTitle) shTitle.textContent = '✨ Your 360 Video is Ready' + (it.lookName && it.edited ? ' · ' + it.lookName : '');
         var toggleText = document.getElementById('spinShareToggleQrText');
         if (toggleText) toggleText.textContent = 'Full-screen video';
         var toggleIcon = document.getElementById('spinShareToggleQrIcon');
@@ -38731,6 +39331,7 @@
         var t2El = document.getElementById('spinText2') || document.getElementById('spinTrimText2');
         it.text1 = t1El ? t1El.value.trim() : null;
         it.text2 = t2El ? t2El.value.trim() : null;
+        if (it.useAutoText) { it.useAutoText = false; it.noText = spinAutoNoText(it); if (it.guestName) it.text1 = it.guestName; } else it.noText = false;      // the one-tap buttons follow the Auto mode text choice; the Edit button uses what is in the Text tab
 
         var fSel = document.getElementById('spinFrameStyle') || document.getElementById('spinModalFrameStyle');
         if (fSel) it.frameStyle = fSel.value;
@@ -39063,6 +39664,135 @@
         });
       }
 
+      // iPhone clips are often HEVC (.mov). When the preview cannot play the original, make a small H.264 copy for the preview only;
+      // the render still starts from the original, so quality is not lost.
+      (function () {
+        var v = document.getElementById('spinVideo'); if (!v) return;
+        v.addEventListener('error', async function () {
+          var it = spinCur;
+          if (!it || it.src !== 'inbox' || it.proxy || it.proxyTried || !window.pb4u || !window.pb4u.spinProxy) return;
+          if (!/\/file\//.test(v.getAttribute('src') || '')) return;      // only the original; a failed render is a different problem
+          it.proxyTried = true;
+          var msg = document.getElementById('spinMsg');
+          if (msg) msg.textContent = 'This video format (probably from an iPhone) cannot play here. Making a preview copy… the final video is still made from the original.';
+          var r = null; try { r = await window.pb4u.spinProxy(it.name); } catch (e) { }
+          if (r && r.name) {
+            it.proxy = r.name;
+            if (spinCur === it) { v.src = spinSrc(it, false); v.load(); v.play().catch(function () { }); if (msg) msg.textContent = 'Preview copy ready.'; }
+          } else if (msg) msg.textContent = 'Could not preview this video' + (r && r.error ? ' (' + r.error + ')' : '') + '. You can still try Edit / Process.';
+        });
+      })();
+
+      // ---- Guest "Choose your look": when a guest's video arrives, the booth screen offers the looks to pick from ----
+      var spinGuestQ = [], spinGuestBusy = false, spinGuestChain = Promise.resolve(), spinGuestTick = null, spinGuestFinish = null;
+      function spinGuestAllKeys() { return Object.keys(SPIN_BUILTIN_PRESETS).concat(Object.keys(spinGetCustomPresets()).map(function (k) { return 'custom:' + k; })); }
+      function spinGuestKeys() {
+        var all = spinGuestAllKeys(), sel = (spinLook.guestPresets || []).filter(function (k) { return all.indexOf(k) >= 0; });
+        return sel.length ? sel : Object.keys(SPIN_BUILTIN_PRESETS);
+      }
+      function spinRenderGuestChips() {
+        var box = document.getElementById('spinGuestChips'); if (!box) return;
+        var on = spinGuestKeys();
+        box.textContent = '';
+        spinGuestAllKeys().forEach(function (k) {
+          var p = spinPresetGet(k) || {}, nm = String(p.name || k.replace(/^custom:/, ''));
+          var c = document.createElement('button'); c.type = 'button'; c.className = 'spin-chip' + (on.indexOf(k) >= 0 ? ' on' : '');
+          c.dataset.gkey = k; c.textContent = nm; c.setAttribute('aria-pressed', on.indexOf(k) >= 0 ? 'true' : 'false');
+          box.appendChild(c);
+        });
+        spinPushOffer();
+      }
+      // Next look for "different look per video": shuffled with no repeats until every look was used, or simply in list order.
+      function spinNextRotateKey() {
+        var keys = spinGuestKeys(), bag = (spinLook.rotateBag || []).filter(function (k) { return keys.indexOf(k) >= 0; });
+        if (!bag.length) {
+          bag = keys.slice();
+          if (spinLook.rotateMode !== 'order') {
+            for (var i = bag.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = bag[i]; bag[i] = bag[j]; bag[j] = t; }
+            if (bag.length > 1 && bag[0] === spinLook.rotateLast) { bag.push(bag.shift()); }       // never the same look twice in a row
+          }
+        }
+        var k = bag.shift();
+        spinLook.rotateBag = bag; spinLook.rotateLast = k;
+        try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { }
+        return k;
+      }
+      // Automatic edit of a new video, with the next rotating look when that is on. One at a time so a look is never swapped under a running edit.
+      function spinAutoWithLook(it) {
+        spinGuestChain = spinGuestChain.then(function () {
+          if (spinLook.rotate) { var k = spinNextRotateKey(); if (k) spinApplyDesignPreset(k, { quiet: true }); }
+          return spinAuto(it);
+        }).catch(function () { });
+      }
+      function spinGuestOffer(it) { spinGuestQ.push(it); spinGuestNext(); }
+      // Picks made on a guest's phone (the page they sent the video from) are collected from the laptop and kept until their clip's turn.
+      var spinPhonePicks = {}, spinOfferLast = '';
+      async function spinCollectPicks() {
+        if (!window.pb4u || !window.pb4u.spinPicks || !spinLook.guestPick) return;
+        try { (await window.pb4u.spinPicks() || []).forEach(function (p) { spinPhonePicks[p.name] = p; }); } catch (e) { }
+      }
+      // Tell the laptop which looks a phone may choose from (nothing when guest choice is off).
+      function spinPushOffer() {
+        if (!window.pb4u || !window.pb4u.spinLookOffer) return;
+        var looks = [];
+        if (spinLook.guestPick && spinEnv.ffmpeg) {
+          spinGuestKeys().forEach(function (k) {
+            var p = spinPresetGet(k); if (!p) return;
+            var pt = spinPresetParts(k, p, k.indexOf('custom:') !== 0), sw = p.sw || [p.classicBandColor || '#2b282c', p.text1Color || '#8a7f70'];
+            looks.push({ key: k, title: pt.title, icon: pt.icon, c1: sw[0], c2: sw[1] });
+          });
+        }
+        var payload = { on: looks.length > 0, looks: looks }, sig = JSON.stringify(payload);
+        if (sig === spinOfferLast) return;
+        spinOfferLast = sig;
+        window.pb4u.spinLookOffer(payload).catch(function () { });
+      }
+      function spinGuestNext() {
+        if (spinGuestBusy || !spinGuestQ.length) return;
+        if (typeof state !== 'undefined' && state === 'capturing') { setTimeout(spinGuestNext, 1500); return; }      // never over a guest's photo session
+        spinGuestBusy = true;
+        var it = spinGuestQ.shift(), ov = document.getElementById('spinGuestPickOv'), grid = document.getElementById('spinGuestGrid');
+        var vid = document.getElementById('spinGuestVid'), tm = document.getElementById('spinGuestTimer'), sub = document.getElementById('spinGuestSub');
+        var who = document.getElementById('spinGuestWho'), ph = document.getElementById('spinGuestPhoneHint');
+        var sec = Number(spinLook.guestSec) || 0, left = sec, done = false;
+        function buildGrid() {
+          grid.textContent = '';
+          spinGuestKeys().forEach(function (k) { var p = spinPresetGet(k); if (p) grid.appendChild(spinMakeTile(k, p, k.indexOf('custom:') !== 0, vid)); });
+        }
+        buildGrid();
+        who.value = '';
+        ph.textContent = spinInfo && spinInfo.sendUrl ? 'On your phone? Open the page you sent the video from and choose there.' : '';
+        sub.textContent = spinGuestQ.length ? 'Tap one. ' + spinGuestQ.length + ' more video' + (spinGuestQ.length > 1 ? 's' : '') + ' after this one.' : 'Tap one. Your 360 video will be ready in a moment.';
+        var src = spinSrc(it, false);
+        vid.onerror = function () { vid.style.display = 'none'; };
+        vid.onloadeddata = buildGrid;           // the tiles are drawn over this guest's own spin as soon as it can be shown
+        vid.style.display = src ? '' : 'none';
+        if (src) { vid.src = src; vid.play().catch(function () { }); }
+        function paint() { tm.textContent = left > 0 ? 'Choosing for you in ' + left + ' s' : ''; }
+        spinGuestFinish = function (key, whoOverride) {
+          if (done) return; done = true; spinGuestFinish = null;
+          clearInterval(spinGuestTick); spinGuestTick = null;
+          var nm = String(typeof whoOverride === 'string' ? whoOverride : (who.value || '')).replace(/[<>]/g, '').trim().slice(0, 40);
+          if (nm) { it.text1 = nm; it.guestName = nm; }                  // the guest's name becomes the heading of their video
+          vid.onloadeddata = null;
+          ov.hidden = true; try { vid.pause(); } catch (e) { } vid.removeAttribute('src');
+          spinGuestBusy = false;
+          // one render at a time: the look is applied right before this clip's edit starts, so two guests' choices never mix
+          spinGuestChain = spinGuestChain.then(function () { if (key) spinApplyDesignPreset(key, { quiet: true }); return spinAuto(it); }).catch(function () { });
+          showToast(key ? 'Making your video…' : 'Making your video with the default look…', 3000);
+          spinGuestNext();
+        };
+        ov.hidden = false;
+        paint();
+        spinGuestTick = setInterval(async function () {
+          if (done) return;
+          await spinCollectPicks();
+          var pk = spinPhonePicks[it.name];
+          if (pk && !done) { delete spinPhonePicks[it.name]; spinGuestFinish(pk.key, pk.who || ''); return; }
+          if (sec > 0) { left--; paint(); if (left <= 0) spinGuestFinish(null); }
+        }, 1000);
+      }
+
       // ---- Preset gallery, one-tap auto edit and quick customise ----
       function spinLookChanged() {      // after code (not a control) changed spinLook: sync the controls, the open clip, the preview
         spinLookToUI();
@@ -39084,6 +39814,7 @@
         if (!spinEnv.ffmpeg || it.src !== 'inbox') { showToast('Editing needs the desktop app and a clip from the inbox.', 4000); return; }
         if (it.status === 'editing') { showToast('This video is already being edited.', 2500); return; }
         if (it.edited && !it.isDrafting) spinUnlockEditing();
+        it.useAutoText = true;
         document.getElementById('spinEditBtn').click();
       }
       async function spinAutoEditAll() {
@@ -39091,7 +39822,11 @@
         var todo = spinQueue.filter(function (q) { return q.src === 'inbox' && q.status !== 'editing' && !q.edited; });
         if (!todo.length) { showToast('Every video in the list is already edited.', 3500); return; }
         showToast('Editing ' + todo.length + ' video' + (todo.length > 1 ? 's' : '') + ' with this look…', 4000);
-        for (var i = 0; i < todo.length; i++) await spinEdit(todo[i]);
+        for (var i = 0; i < todo.length; i++) {
+          if (spinLook.rotate) { var rk = spinNextRotateKey(); if (rk) spinApplyDesignPreset(rk, { quiet: true }); }       // a different look for each, when rotating is on
+          todo[i].noText = spinAutoNoText(todo[i]);
+          await spinEdit(todo[i]);
+        }
         showToast('Done: ' + todo.length + ' video' + (todo.length > 1 ? 's' : '') + ' edited.', 4000);
       }
       function spinPickPreset(key) {
@@ -39122,6 +39857,109 @@
         if (mo) mo.addEventListener('change', function () { spinLook.presetMotion = mo.checked; try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { } });
         var ot = document.getElementById('spinOneTap');
         if (ot) ot.addEventListener('change', function () { spinLook.oneTap = ot.checked; try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { } });
+
+        var spinTileT = null, svTile = document.getElementById('spinVideo');
+        if (svTile) svTile.addEventListener('loadeddata', function () { clearTimeout(spinTileT); spinTileT = setTimeout(spinRenderPresetGallery, 250); });   // tiles are drawn over the open clip
+        ['spinLookIntro', 'spinLookOutro'].forEach(function (id) {
+          var el = document.getElementById(id); if (!el) return;
+          el.addEventListener('change', function () {
+            var f = id === 'spinLookIntro' ? 'intro' : 'outro';
+            spinLook[f] = el.value; spinLook.stingerByLook = spinLook.stingerByLook || {};
+            var ak = spinLook.activeDesignPreset;
+            if (ak) {
+              var e0 = spinLook.stingerByLook[ak] || {};
+              if (el.value) e0[f] = el.value; else delete e0[f];
+              if (e0.intro || e0.outro) spinLook.stingerByLook[ak] = e0; else delete spinLook.stingerByLook[ak];
+            }
+            try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e1) { }
+          });
+        });
+        var sab = document.getElementById('spinStingerAddBtn');
+        if (sab) sab.addEventListener('click', async function () {
+          try { var r = await window.pb4u.spinStingerAdd(); if (r) { spinEnv.stingerList = r.list; spinMusicUI(); } } catch (e) { showToast('Could not add the clips.', 3000); }
+        });
+        var slib = document.getElementById('spinStingerLib');
+        if (slib) slib.addEventListener('click', async function (e) {
+          var c = e.target.closest('[data-srm]'); if (!c) return;
+          try {
+            var r = await window.pb4u.spinStingerRemove(c.dataset.srm);
+            if (r) {
+              spinEnv.stingerList = r.list;
+              Object.keys(spinLook.stingerByLook || {}).forEach(function (k) { var e0 = spinLook.stingerByLook[k]; if (e0.intro === c.dataset.srm) delete e0.intro; if (e0.outro === c.dataset.srm) delete e0.outro; if (!e0.intro && !e0.outro) delete spinLook.stingerByLook[k]; });
+              if (spinLook.intro === c.dataset.srm) spinLook.intro = ''; if (spinLook.outro === c.dataset.srm) spinLook.outro = '';
+              spinMusicUI();
+            }
+          } catch (e2) { }
+        });
+        var agif = document.getElementById('spinAlsoGif');
+        if (agif) agif.addEventListener('change', function () { spinLook.alsoGif = agif.checked; try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { } });
+        var gb = document.getElementById('spinGifBtn'), sqb = document.getElementById('spinSquareBtn');
+        if (gb) gb.addEventListener('click', function () { spinMakeExtra(spinCur, 'gif'); });
+        if (sqb) sqb.addEventListener('click', function () { spinMakeExtra(spinCur, 'square'); });
+        var ctest = document.getElementById('spinConnectTest');
+        if (ctest) ctest.addEventListener('click', async function () {
+          ctest.disabled = true; ctest.textContent = 'Testing…';
+          var c = await spinConnectRefresh(true);
+          ctest.disabled = false; ctest.textContent = 'Test';
+          if (!c) showToast('Could not check. Is this the laptop app?', 4000);
+          else showToast(c.bad ? '⚠️ Something needs attention: see the list.' : '✅ Ready: videos can arrive.', 4500);
+        });
+        var amode = document.getElementById('spinAutoMode');
+        if (amode) amode.addEventListener('change', function () {
+          spinLook.auto = amode.checked; spinLook.autoShare = amode.checked;
+          if (amode.checked && !spinEnv.ffmpeg) showToast('Editing is only in the laptop app.', 3500);
+          else showToast(amode.checked ? 'Auto mode on: new videos edit themselves.' : 'Auto mode off.', 2600);
+          spinLookToUI(); try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { }
+        });
+        var acard = document.getElementById('spinAutoCard');
+        if (acard) acard.addEventListener('click', function (e) {
+          var al = e.target.closest('[data-alook]'), at = e.target.closest('[data-atext]');
+          if (al) { spinLook.guestPick = al.dataset.alook === 'guest'; spinLook.rotate = al.dataset.alook === 'rotate'; spinLook.rotateBag = []; spinPushOffer(); }
+          else if (at) { spinLook.autoText = at.dataset.atext; }
+          else return;
+          spinLookToUI(); try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e2) { }
+        });
+        var lm = document.getElementById('spinLookMusic');
+        if (lm) lm.addEventListener('change', function () {
+          spinLook.music = lm.value; spinLook.musicByLook = spinLook.musicByLook || {};
+          var ak = spinLook.activeDesignPreset;
+          if (ak) { if (lm.value) spinLook.musicByLook[ak] = lm.value; else delete spinLook.musicByLook[ak]; }
+          try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { }
+        });
+        var mab = document.getElementById('spinMusicAddBtn');
+        if (mab) mab.addEventListener('click', async function () {
+          try { var r = await window.pb4u.spinMusicAdd(); if (r) { spinEnv.musicList = r.list; spinMusicUI(); } } catch (e) { showToast('Could not add the tracks.', 3000); }
+        });
+        var mlib = document.getElementById('spinMusicLib');
+        if (mlib) mlib.addEventListener('click', async function (e) {
+          var c = e.target.closest('[data-mrm]'); if (!c) return;
+          try { var r = await window.pb4u.spinMusicRemove(c.dataset.mrm); if (r) { spinEnv.musicList = r.list; Object.keys(spinLook.musicByLook || {}).forEach(function (k) { if (spinLook.musicByLook[k] === c.dataset.mrm) delete spinLook.musicByLook[k]; }); if (spinLook.music === c.dataset.mrm) spinLook.music = ''; spinMusicUI(); } } catch (e2) { }
+        });
+        var gpk = document.getElementById('spinGuestPick');
+        if (gpk) gpk.addEventListener('change', function () { spinLook.guestPick = gpk.checked; spinPushOffer(); try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { } if (gpk.checked && !spinEnv.ffmpeg) showToast('Editing is only in the laptop app.', 3500); });
+        var rot = document.getElementById('spinRotate');
+        if (rot) rot.addEventListener('change', function () {
+          spinLook.rotate = rot.checked; spinLook.rotateBag = [];
+          try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { }
+          if (rot.checked && !spinEnv.ffmpeg) showToast('Editing is only in the laptop app.', 3500);
+          else if (rot.checked) showToast('Each new video now gets a different look.', 3000);
+        });
+        var rotm = document.getElementById('spinRotateMode');
+        if (rotm) rotm.addEventListener('change', function () { spinLook.rotateMode = rotm.value; spinLook.rotateBag = []; try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { } });
+        var gsc = document.getElementById('spinGuestSec');
+        if (gsc) gsc.addEventListener('change', function () { spinLook.guestSec = Number(gsc.value) || 0; try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e) { } });
+        var gch = document.getElementById('spinGuestChips');
+        if (gch) gch.addEventListener('click', function (e) {
+          var c = e.target.closest('[data-gkey]'); if (!c) return;
+          var all = spinGuestAllKeys(), cur = (spinLook.guestPresets && spinLook.guestPresets.length) ? spinLook.guestPresets.filter(function (k) { return all.indexOf(k) >= 0; }) : all.slice();
+          var i = cur.indexOf(c.dataset.gkey); if (i >= 0) { if (cur.length > 1) cur.splice(i, 1); else showToast('Keep at least one look.', 2200); } else cur.push(c.dataset.gkey);
+          spinLook.guestPresets = cur; spinLook.rotateBag = []; try { localStorage.setItem(SPIN_LOOK_KEY, JSON.stringify(spinLook)); } catch (e2) { }
+          spinRenderGuestChips();
+        });
+        var gsk = document.getElementById('spinGuestSkip');
+        if (gsk) gsk.addEventListener('click', function () { if (spinGuestFinish) spinGuestFinish(null); });
+        var ggrid = document.getElementById('spinGuestGrid');
+        if (ggrid) ggrid.addEventListener('click', function (e) { var t = e.target.closest('.spin-preset-tile'); if (t && spinGuestFinish) spinGuestFinish(t.dataset.key); });
 
         var q = document.getElementById('spinQuick'); if (!q) return;
         function setAccent(c) { spinLook.text1Color = c; spinLook.classicBorderColor = c; spinLookChanged(); }

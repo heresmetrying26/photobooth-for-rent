@@ -768,10 +768,13 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     /**
      * Epson ink-tank models that speak ESC/P-R over USB: the L120 / L210 era (L1xx, L2xx, L3xx, L5xx) and the newer
-     * four-digit names (L3210, L3250, L3276, L4260, L5290, L8050…). The five-digit A3 models (L14150) are not matched.
+     * four-digit names (L3210, L3250, L3276, L4260, L5290, L8050…), plus the A3+ L18050 (sold as ET-18100 elsewhere),
+     * which shares the L8050's 6-ink ESC/P-R platform. Other five-digit A3 models (L14150) are not matched.
+     * Only a name fallback: its USB product id is not hardcoded in [EpsonLModels] yet (read it from the
+     * "epson usb 04b8:xxxx" PBNet log line with the printer plugged in).
      */
     private fun epsonLSeries(name: String?): Boolean =
-        name != null && Regex("""(?i)\bL\s?(1\d\d|2\d\d|3\d\d|5\d\d|[1-8]\d{3})\b""").containsMatchIn(name)
+        name != null && Regex("""(?i)\b(L\s?(1\d\d|2\d\d|3\d\d|5\d\d|[1-8]\d{3}|18050)|ET-?18100)\b""").containsMatchIn(name)
 
     /** True when the printer says it speaks Epson's ESC/P-R language (the family the L120 / L210 belong to). */
     private fun usbIsEscpr(d: UsbDevice): Boolean {

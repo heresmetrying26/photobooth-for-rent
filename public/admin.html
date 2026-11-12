@@ -1832,6 +1832,7 @@
           if (st !== 'revoked') acts += '<button class="small" data-a="bonuslen" data-c="' + c + '">Change length</button>';
         } else {
           if (st !== 'revoked' && !l.lifetime) acts += '<button class="small" data-a="extend" data-c="' + c + '">+ Add days</button>';
+          if (st !== 'revoked' && !l.lifetime) acts += '<button class="small" data-a="shorten" data-c="' + c + '">− Remove days</button>';
           if (st !== 'revoked' && !l.lifetime) acts += '<button class="small" data-a="makelifetime" data-c="' + c + '">Make lifetime</button>';
           if (unusedish || (st === 'expired' && !l.redeemedAt)) acts += '<button class="small" data-a="schedopen" data-c="' + c + '">' + (l.startsAt ? 'Change date' : 'Set date') + '</button>';
         }
@@ -2368,6 +2369,10 @@
           if (a === 'extend') {
             var d = prompt('Add how many days?', '1'); if (!d) return;
             body.days = d;
+          }
+          if (a === 'shorten') {
+            var rd = prompt('Remove how many days?', '1'); if (!rd) return;
+            body.days = rd;
           }
           await api(body);
           if (a === 'delete') { delete SEL[code]; if (host === code) delete OPEN[code]; }

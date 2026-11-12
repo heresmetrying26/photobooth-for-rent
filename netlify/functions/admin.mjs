@@ -404,6 +404,25 @@ export default safe(async (req, context) => {
       return json({ ok: true });
     }
 
+    case 'shorten': { // take days off a code (e.g. a month was set by mistake instead of a few days)
+      const sub = intIn(b.days, 1, 365);
+      if (!sub) return json({ error: 'Days must be between 1 and 365.' }, 400);
+      const { key, rec } = await getRec();
+      if (!rec) return json({ error: 'Code not found.' }, 404);
+      if (rec.kind === 'bonus') return json({ error: 'For a bonus code, change its length in minutes instead.' }, 400);
+      if (rec.lifetime) return json({ error: 'Lifetime codes never expire.' }, 400);
+      if (rec.status === 'active') {
+        const next = rec.expiresAt - sub * DAY;
+        if (next <= Date.now()) return json({ error: 'That would end the code right now. Remove fewer days, or disable the code instead.' }, 400);
+        rec.expiresAt = next;
+      } else if (rec.status === 'unused') {
+        if (rec.days - sub < 1) return json({ error: 'A code needs at least 1 day. It has ' + rec.days + ' day' + (rec.days === 1 ? '' : 's') + ' now, so remove ' + (rec.days - 1) + ' or fewer.' }, 400);
+        rec.days -= sub;
+      } else return json({ error: 'Restore this code before changing its days.' }, 400);
+      await putLicense(store, key, rec);
+      return json({ ok: true });
+    }
+
     case 'print': { // change printing for one code; applies to an active booth within ~5 minutes
       const { key, rec } = await getRec();
       if (!rec) return json({ error: 'Code not found.' }, 404);

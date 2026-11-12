@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.30', date: '2026-11-12' },
   { version: '1.1.29', date: '2026-11-11' },
   { version: '1.1.28', date: '2026-11-11' },
   { version: '1.1.27', date: '2026-11-11' },
@@ -201,6 +202,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-12', title: 'Desktop 1.1.30 + Android 1.1.48: more ready-made designs and categories', for: ['website', 'app'], app: '1.1.30',
+    items: [
+      'The Design picker has 23 new ready-made designs: Baby Shower, Summer, Anniversary and Prom, plus new Kids Party, Corporate, Debut, Christmas, New Year, Graduation and Wedding looks.',
+      'There are 4 new categories (Baby Shower, Summer, Anniversary, Prom) and 4 new backdrops (sunset, neon, polka dots, gingham). They are drawn by the app, so the app does not get bigger.',
+      'The design list loads faster: pictures are drawn only when you scroll to them.'
+    ]
+  },
   {
     date: '2026-11-12', title: 'Android 1.1.47: 58mm Bluetooth printers no longer print choppy after the first part', for: ['website'],
     items: [

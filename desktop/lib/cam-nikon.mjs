@@ -180,7 +180,6 @@ export function createNikon(ctx) {
       } catch (e) { if (e instanceof GoneError) throw e; }
     }
     await drain();
-    const shutter = Date.now();
     if (has(0x90C0)) r = await ptp.op(0x90C0, 0xFFFFFFFF);   // InitiateCaptureRecInSdram
     else r = await ptp.op(0x100E, 0, 0);
     if (r === AF_FAILED && has(0x9207)) {
@@ -200,11 +199,16 @@ export function createNikon(ctx) {
     const ew = Date.now();
     while (Date.now() - ew < 8000) {
       add(await events());
-      if (handles.length > 0) { await sleep(150); add(await events()); break; }
+      if (handles.length > 0) {
+        // From the start (so the autofocus above counts: it is most of a Nikon's delay) until the camera reports the photo.
+        // The booth fires the shutter that much earlier, so the photo lands on "Pose".
+        d.lastShutterMs = Math.min(Date.now() - t0, 10000);
+        log('Shutter lag ' + d.lastShutterMs + ' ms');
+        await sleep(150); add(await events()); break;
+      }
       await sleep(100);
     }
     if (handles.length === 0) handles.push(0xFFFF0001);   // the photo in the camera's memory
-    d.lastShutterMs = Math.min(Date.now() - shutter, 10000);
     let pick = handles[0];
     if (handles.length > 1) {
       // RAW + JPEG: take the JPEG

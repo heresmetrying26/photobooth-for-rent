@@ -22155,15 +22155,25 @@
         function showShotTimingNote() {
           if (!shotTimingNote) return;
           const d = camDelayMs();
+          if (cameraSelect && cameraSelect.value === USB_CAM_ID) {
+            // DSLR / mirrorless: the app times the shutter itself from the delay it measured; the choice below is on top of that.
+            if (!usbCam.shutterLagMs && usbCam.name) usbLagLoad();
+            const lag = usbCam.shutterLagMs;
+            shotTimingNote.textContent = (lag > 0
+              ? 'This camera takes about ' + lag + ' ms from the shutter command to the photo (it focuses first). The app fires the shutter that much earlier on its own, so the photo lands on "Pose". '
+              : 'The app learns this camera\'s delay from its first photo: take one test shot before the event so even guest #1 is on time. ') + shotTimingHint;
+            return;
+          }
           const m = webcamRes.leadMs === 'auto'
             ? (d > 0 ? 'Measured camera delay: about ' + d + ' ms. The photo waits that long after "Pose" so it shows the right moment. ' : 'This camera does not report its delay, so Auto does nothing here. Choose a time below if photos are blurred. ')
             : '';
           shotTimingNote.textContent = m + shotTimingHint;
         }
-        // Not for DSLR / mirrorless cameras: they time their own shutter (see usbShutterLead).
+        // Also for DSLR / mirrorless cameras: the app fires their shutter early by the delay it measured (see usbShutterLead),
+        // and this choice adds to that when photos still come out late.
         const shotTimingBox = document.getElementById('shotTimingBox');
         function updateShotTimingBox() {
-          if (shotTimingBox) shotTimingBox.style.display = (cameraSelect && cameraSelect.value === USB_CAM_ID) ? 'none' : '';
+          if (shotTimingBox) shotTimingBox.style.display = '';
         }
         setTimeout(function () { try { updateShotTimingBox(); } catch (e) { } }, 0);   // USB_CAM_ID is declared further down: not before the script has run
         cameraSelect.addEventListener('change', () => setTimeout(updateShotTimingBox, 0));
@@ -24186,7 +24196,7 @@
       // real photo replaces it, cropped like the live view and sized for print.
       const USB_CAPTURE_MAX_MS = 25000;   // longest wait for the camera's photo before the live view frame is used (a photo this late is the wrong moment anyway)
       const USB_GRACE_MS = 45000;         // after a photo, live view may take this long to come back without "Reconnecting" (a Canon saving a big file can take a while; a real unplug is still noticed at once)
-      const USB_LEAD_MAX = 1500;          // the shutter is fired at most this much before "Pose"
+      const USB_LEAD_MAX = 2500;          // the shutter is fired at most this much before "Pose" (a Nikon focuses first: about 1.5 s from command to photo)
       const USB_SHOT_MAX = 3000;   // longest side in px: a full 4R box at 300 dpi even after the box's crop
       // After a photo (helper cameras): hide any "Reconnecting" for a while, ask for live view again at once (a Canon leaves
       // it after every photo) and learn how long the camera took from the shutter command to the exposure.
@@ -24205,13 +24215,22 @@
         }
         fetch(CAM_HELPER + '/camera', { cache: 'no-store', signal: AbortSignal.timeout(8000) }).then(r => r.json()).then(j => {
           const ms = Number(j && j.shutterMs) || 0;
-          if (ms > 0) usbCam.shutterLagMs = usbCam.shutterLagMs ? Math.round(usbCam.shutterLagMs * 0.5 + ms * 0.5) : ms;
+          if (ms > 0) {
+            usbCam.shutterLagMs = usbCam.shutterLagMs ? Math.round(usbCam.shutterLagMs * 0.5 + ms * 0.5) : ms;
+            try { localStorage.setItem(usbLagKey(), String(usbCam.shutterLagMs)); } catch (e) { }   // remembered, so the next event's first photo is already early enough
+          }
         }).catch(function () { });
+      }
+      // The learned delay is kept per camera: without it the first photo of every session would fire late (nothing measured yet).
+      function usbLagKey() { return 'pb_usb_lag_' + String(usbCam.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '_'); }
+      function usbLagLoad() {
+        try { const v = Number(localStorage.getItem(usbLagKey())); if (v > 0 && v <= 10000) usbCam.shutterLagMs = v; } catch (e) { }
       }
       // How much earlier than "Pose + 0.6 s" the shutter command goes out. The lag includes saving the photo, so some of it is
       // taken off (the exposure itself is a bit before the camera reports the file).
       function usbShutterLead() {
         if (!(usbCam.viaHelper && usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return 0;
+        if (!usbCam.shutterLagMs && usbCam.name) usbLagLoad();
         return Math.max(0, Math.min(USB_LEAD_MAX, usbCam.shutterLagMs - 200));
       }
       // USB webcam set to "Max resolution" photos: the full-size still replaces the live-view frame

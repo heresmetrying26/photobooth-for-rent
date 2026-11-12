@@ -822,7 +822,14 @@ namespace Pb4uCam
             while (ew.ElapsedMilliseconds < 8000)
             {
                 foreach (uint h in Events()) if (!handles.Contains(h)) handles.Add(h);
-                if (handles.Count > 0) { Thread.Sleep(150); foreach (uint h in Events()) if (!handles.Contains(h)) handles.Add(h); break; }
+                if (handles.Count > 0)
+                {
+                    // Same figure as the Canon's: from the shutter command (so the autofocus above counts too, it is most of a
+                    // Nikon's delay) until the camera reports the photo. The booth fires the shutter that much earlier.
+                    lastShutterMs = (int)Math.Min(sw.ElapsedMilliseconds, 10000);
+                    Log("Shutter lag " + lastShutterMs + " ms");
+                    Thread.Sleep(150); foreach (uint h in Events()) if (!handles.Contains(h)) handles.Add(h); break;
+                }
                 Thread.Sleep(100);
             }
             if (handles.Count == 0) handles.Add(0xFFFF0001);    // the photo in the camera's memory
@@ -1419,6 +1426,7 @@ namespace Pb4uCam
                 Log("Cleared an old photo from the camera's memory");
             }
             // Half press, full press (the camera focuses, then shoots).
+            var lagSw = Stopwatch.StartNew();   // the booth fires the shutter that much earlier (see lastShutterMs)
             uint r = SonyButton(0xD2C1, 2);
             if (r == Ptp.OK) r = SonyButton(0xD2C2, 2);
             if (r != Ptp.OK)
@@ -1451,7 +1459,7 @@ namespace Pb4uCam
             while (ew.ElapsedMilliseconds < 15000)
             {
                 mem = SonyVal(SonyProps(), 0xD215);
-                if (mem >= 0x8000) break;
+                if (mem >= 0x8000) { lastShutterMs = (int)Math.Min(lagSw.ElapsedMilliseconds, 10000); Log("Shutter lag " + lastShutterMs + " ms"); break; }
                 Thread.Sleep(100);
             }
             cd = "memory " + (mem < 0 ? "?" : "0x" + mem.ToString("X"));

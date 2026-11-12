@@ -652,7 +652,7 @@
     var btn = $(isAll ? 'dlAllBtn' : isGifs ? 'dlGifsBtn' : isSolo ? 'dlSoloBtn' : isGb ? 'dlGuestbookBtn' : 'dlPhotosBtn');
     var label = $(isAll ? 'dlAllLabel' : isGifs ? 'dlGifsLabel' : isSolo ? 'dlSoloLabel' : isGb ? 'dlGuestbookLabel' : 'dlPhotosLabel');
     var base = (document.title.split(' | ')[0] || 'gallery').replace(/[\\\/:*?"<>|]+/g, '_').trim() || 'gallery';
-    var chunkSize = isGb ? 5 : isGifs ? 10 : (isAll && list.some(isVideo)) ? 10 : 80;      // guestbook videos are big: a few per zip
+    var chunkSize = isGb ? 3 : isGifs ? 10 : (isAll && list.some(isVideo)) ? 10 : 80;      // guestbook videos are big: a few per zip
     var parts = Math.ceil(list.length / chunkSize), failed = 0, used = {};
     btn.disabled = true;
     try{

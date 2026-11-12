@@ -147,6 +147,63 @@ function dirOf(slug) {
 }
 const SUBDIRS = ['Prints', 'Solo Shots', 'GIFs', '360 Videos'];
 
+const GB_ZIP_JS = String.raw`function gbSave(blob, name) {
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 60000);
+}
+var gbCRC = (function () { var t = new Uint32Array(256); for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function gbCrc(u) { var c = 0xFFFFFFFF; for (var i = 0; i < u.length; i++) c = gbCRC[(c ^ u[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function gbBuildZip(entries) {
+  var parts = [], central = [], offset = 0, enc = new TextEncoder();
+  var d = new Date(), dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  entries.forEach(function (e) {
+    var name = enc.encode(e.name), h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint16(10, dosTime, true); h.setUint16(12, dosDate, true); h.setUint32(14, e.crc, true);
+    h.setUint32(18, e.size, true); h.setUint32(22, e.size, true); h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+    parts.push(h.buffer, name, e.blob);
+    var c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+    c.setUint16(12, dosTime, true); c.setUint16(14, dosDate, true); c.setUint32(16, e.crc, true); c.setUint32(20, e.size, true); c.setUint32(24, e.size, true);
+    c.setUint16(28, name.length, true); c.setUint32(42, offset, true);
+    central.push(c.buffer, name);
+    offset += 30 + name.length + e.size;
+  });
+  var cdSize = central.reduce(function (n, b) { return n + (b.byteLength || b.length); }, 0);
+  var end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+  return new Blob(parts.concat(central, [end.buffer]), { type: 'application/zip' });
+}
+// items: [{ name, url }]. A few videos per zip (they are big); the button shows the progress.
+var gbBusy = false;
+async function gbDownloadAll(items, btn, base) {
+  if (gbBusy || !items.length) return;
+  gbBusy = true;
+  var label = btn.textContent, chunkSize = 3, parts = Math.ceil(items.length / chunkSize), failed = 0;
+  btn.disabled = true;
+  try {
+    for (var p = 0; p < parts; p++) {
+      var chunk = items.slice(p * chunkSize, (p + 1) * chunkSize), entries = [];
+      for (var i = 0; i < chunk.length; i++) {
+        btn.textContent = 'Preparing ' + (p * chunkSize + i + 1) + ' of ' + items.length + '...';
+        try {
+          var r = await fetch(chunk[i].url); if (!r.ok) throw new Error('HTTP ' + r.status);
+          var blob = await r.blob(), u8 = new Uint8Array(await blob.arrayBuffer());
+          entries.push({ name: chunk[i].name, blob: blob, size: u8.length, crc: gbCrc(u8) });
+        } catch (e) { failed++; }
+      }
+      if (entries.length) gbSave(gbBuildZip(entries), base + ' - Guestbook' + (parts > 1 ? ' (part ' + (p + 1) + ' of ' + parts + ')' : '') + '.zip');
+      if (p < parts - 1) await new Promise(function (r) { setTimeout(r, 800); });
+    }
+    btn.textContent = failed ? 'Done (' + failed + ' could not load)' : 'Done';
+    setTimeout(function () { btn.textContent = label; }, 4000);
+  } finally { btn.disabled = false; gbBusy = false; }
+}
+`;
+
 function categoryOf(name) {
   const n = String(name || '');
   if (VIDEO_RE.test(n) || /^360_|_360\./i.test(n)) return '360 Videos';
@@ -302,7 +359,9 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
 .grid.filter-solo > [data-kind]:not([data-kind="solo"]){display:none!important}
 .grid.filter-gif > [data-kind]:not([data-kind="gif"]){display:none!important}
 .grid.filter-video > [data-kind]:not([data-kind="video"]){display:none!important}
+.grid.filter-guestbook > [data-kind]:not([data-kind="guestbook"]){display:none!important}
 .grid a{position:relative}
+.grid [data-kind="guestbook"]::after{content:'MESSAGE';position:absolute;top:6px;left:6px;background:rgba(0,0,0,.75);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}
 .grid [data-kind="gif"]::after{content:'GIF';position:absolute;bottom:6px;right:6px;background:rgba(28,26,30,.8);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}
 .grid [data-kind="solo"]::after{content:'SOLO';position:absolute;bottom:6px;right:6px;background:rgba(201,61,39,.85);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}`;
 
@@ -842,7 +901,7 @@ function handleOwn(req, res, url, om) {
     const type = TYPES[extname(file).toLowerCase()] || 'application/octet-stream';
     const isGif = /\.gif$/i.test(file), isVid = VIDEO_RE.test(file), isSoloPhoto = /_solo_\d+/i.test(file);
     const soloMatch = /_solo_(\d+)/i.exec(file);
-    const badgeLabel = isVid ? '360 Video' : isGif ? 'GIF' : isSoloPhoto ? ('Solo Shot ' + (soloMatch ? soloMatch[1] : '')) : 'Template Print';
+    const badgeLabel = isVid ? (/_guestbook/i.test(file) ? 'Guestbook message' : '360 Video') : isGif ? 'GIF' : isSoloPhoto ? ('Solo Shot ' + (soloMatch ? soloMatch[1] : '')) : 'Template Print';
     const badgeStyle = 'display:inline-block;margin:0 auto 10px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;background:' + (isSoloPhoto ? 'rgba(201,61,39,0.12);color:#C93D27' : isGif ? 'rgba(28,26,30,0.08);color:#1C1A1E' : 'rgba(46,125,50,0.12);color:#2E7D32') + ';';
     const src = '/o/' + code + '/f/' + encodeURIComponent(file);
     const media = /^video\//.test(type) ? '<video src="' + src + '" controls playsinline autoplay muted loop></video>' : '<img src="' + src + '" alt="' + (isGif ? 'Your GIF' : isSoloPhoto ? 'Your solo photo' : 'Your photo') + '">';
@@ -990,6 +1049,7 @@ ${QR_JS_CODE ? `<script>${QR_JS_CODE}</script>` : `<script src="/qr.js"></script
     <button type="button" class="tab" data-filter="solo">Solo Photos</button>
     <button type="button" class="tab" data-filter="gif">GIFs</button>
     <button type="button" class="tab" data-filter="video">360 Videos</button>
+    <button type="button" class="tab" data-filter="guestbook">Guestbook</button>
   </div>
 </div>
 
@@ -1104,14 +1164,14 @@ function render() {
   var g = document.getElementById('stGrid');
   var list = files.filter(function(f){ return currentFilter === 'all' || f.kind === currentFilter; });
   if (!list.length) {
-    g.innerHTML = '<div class="empty">No ' + (currentFilter === 'all' ? 'items' : currentFilter + 's') + ' yet. Take a shot on the booth to get started!</div>';
+    g.innerHTML = '<div class="empty">No ' + (currentFilter === 'all' ? 'items' : currentFilter === 'guestbook' ? 'guestbook messages' : currentFilter + 's') + ' yet. Take a shot on the booth to get started!</div>';
     return;
   }
   function lk(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
   g.innerHTML = list.map(function(f){
-    var isVid = f.kind === 'video';
+    var isVid = f.kind === 'video' || f.kind === 'guestbook';
     var thumb = isVid
-      ? '<video src="' + f.url + '#t=0.1" preload="metadata" muted playsinline></video><div class="play-pill"><i>▶</i> 360</div>' + (f.look ? '<div style="position:absolute;left:8px;bottom:10px;max-width:60%;background:rgba(212,175,55,.92);color:#000;border-radius:14px;padding:3px 9px;font-size:10.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">✨ ' + lk(f.look) + '</div>' : '')
+      ? '<video src="' + f.url + '#t=0.1" preload="metadata" muted playsinline></video><div class="play-pill"><i>▶</i> ' + (f.kind === 'guestbook' ? 'Message' : '360') + '</div>' + (f.look ? '<div style="position:absolute;left:8px;bottom:10px;max-width:60%;background:rgba(212,175,55,.92);color:#000;border-radius:14px;padding:3px 9px;font-size:10.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">✨ ' + lk(f.look) + '</div>' : '')
       : '<img src="' + f.thumbUrl + '" loading="lazy" alt="">';
     return '<div class="card" data-name="' + f.name + '">' + thumb + '<div class="time">' + timeAgo(f.mtime) + '</div></div>';
   }).join('');
@@ -1142,9 +1202,9 @@ function openModal(it, sessionItems) {
   var pageUrl = (items.length > 1) ? sessionUrl : (it.pageUrl ? (location.origin + it.pageUrl) : sessionUrl);
   if (qrNote) qrNote.style.display = (items.length > 1) ? 'block' : 'none';
   
-  if (it.kind === 'video') {
+  if (it.kind === 'video' || it.kind === 'guestbook') {
     med.innerHTML = '<video src="' + it.url + '" controls autoplay loop playsinline></video>';
-    dl.textContent = 'Save Video';
+    dl.textContent = it.kind === 'guestbook' ? 'Save Message' : 'Save Video';
     var oldCap = document.getElementById('lookCap'); if (oldCap) oldCap.remove();
     if (it.look) { var cap = document.createElement('div'); cap.id = 'lookCap'; cap.textContent = '✨ ' + it.look; cap.style.cssText = 'margin:0 0 8px;font-weight:800;font-size:14px;color:#D4AF37;text-align:center'; dl.parentNode.insertBefore(cap, dl); }
   } else if (it.kind === 'solo') {
@@ -1180,7 +1240,7 @@ function openModal(it, sessionItems) {
     if (items.length > 1) {
       pillsBox.style.display = 'flex';
       pillsBox.innerHTML = items.map(function(item, idx) {
-        var label = item.kind === 'video' ? '🎬 360 Video' :
+        var label = item.kind === 'guestbook' ? '🎥 Guestbook' : item.kind === 'video' ? '🎬 360 Video' :
                     item.kind === 'gif' ? '✨ GIF' :
                     item.kind === 'solo' ? ('📸 Solo ' + (idx)) : '🖨️ Print Strip';
         var isCur = item.name === it.name;
@@ -1544,7 +1604,7 @@ function handleStation(req, res, url, stm) {
     const files = list.map(({ n, t }) => ({
       name: n,
       look: VIDEO_RE.test(n) && looks[n] ? looks[n] : undefined,
-      kind: VIDEO_RE.test(n) ? 'video' : /\.gif$/i.test(n) ? 'gif' : isSolo(n) ? 'solo' : 'photo',
+      kind: VIDEO_RE.test(n) && /_guestbook/i.test(n) ? 'guestbook' : VIDEO_RE.test(n) ? 'video' : /\.gif$/i.test(n) ? 'gif' : isSolo(n) ? 'solo' : 'photo',
       url: '/e/' + slug + '/f/' + encodeURIComponent(n),
       thumbUrl: '/e/' + slug + '/t/' + encodeURIComponent(n),
       pageUrl: '/e/' + slug + '/p/' + encodeURIComponent(n),
@@ -1577,7 +1637,7 @@ function handleWall(req, res, url, wlm) {
     if (!dir || !existsSync(dir)) return send(res, 200, 'application/json', JSON.stringify({ ok: true, slug, name: '', cue: getWallCue(), videos: [] }), cors);
     const ev = index.folders[slug];
     const evName = ev ? (ev.sub ? ev.name + ' · ' + ev.sub : ev.name) : '360 Booth';
-    const list = photosIn(dir).filter(({ n }) => VIDEO_RE.test(n));
+    const list = photosIn(dir).filter(({ n }) => VIDEO_RE.test(n) && !/_guestbook/i.test(n));
     const videos = list.map(({ n, t }) => ({
       name: n,
       url: '/e/' + slug + '/f/' + encodeURIComponent(n),
@@ -1953,12 +2013,13 @@ async function handleShare(req, res) {
   if (!m[2]) {
     const list = photosIn(dir);
     const isSolo = (n) => /_solo_\d+/i.test(n);
-    const kindOf = (n) => (VIDEO_RE.test(n) ? 'video' : /\.gif$/i.test(n) ? 'gif' : isSolo(n) ? 'solo' : 'photo');
+    const kindOf = (n) => (VIDEO_RE.test(n) && /_guestbook/i.test(n) ? 'guestbook' : VIDEO_RE.test(n) ? 'video' : /\.gif$/i.test(n) ? 'gif' : isSolo(n) ? 'solo' : 'photo');
     const videoCount = list.filter(({ n }) => kindOf(n) === 'video').length;
+    const guestbookCount = list.filter(({ n }) => kindOf(n) === 'guestbook').length;
     const gifCount = list.filter(({ n }) => kindOf(n) === 'gif').length;
     const soloCount = list.filter(({ n }) => kindOf(n) === 'solo').length;
     const photoCount = list.filter(({ n }) => kindOf(n) === 'photo').length;
-    const kinds = [photoCount > 0, soloCount > 0, gifCount > 0, videoCount > 0].filter(Boolean).length;
+    const kinds = [photoCount > 0, soloCount > 0, gifCount > 0, videoCount > 0, guestbookCount > 0].filter(Boolean).length;
     let tabsHtml = '';
     if (kinds > 1) {
       tabsHtml = '<div style="text-align:center"><div class="tabs">' +
@@ -1967,26 +2028,34 @@ async function handleShare(req, res) {
         (soloCount ? '<button type="button" class="tab" onclick="setTab(\'solo\',this)">Solo Photos (' + soloCount + ')</button>' : '') +
         (gifCount ? '<button type="button" class="tab" onclick="setTab(\'gif\',this)">GIFs (' + gifCount + ')</button>' : '') +
         (videoCount ? '<button type="button" class="tab" onclick="setTab(\'video\',this)">Videos (' + videoCount + ')</button>' : '') +
-        '</div></div>';
+        (guestbookCount ? '<button type="button" class="tab" onclick="setTab(\'guestbook\',this)">Guestbook (' + guestbookCount + ')</button>' : '') +
+        '</div></div>' +
+        (guestbookCount ? '<div style="text-align:center"><button type="button" id="gbDl" class="btn" style="display:none;margin:0 auto 14px">Download all guestbook videos</button></div>' : '');
     }
     const countSub = [
       photoCount && (photoCount + (soloCount ? ' print' : ' photo') + (photoCount === 1 ? '' : 's')),
       soloCount && (soloCount + ' solo photo' + (soloCount === 1 ? '' : 's')),
       gifCount && (gifCount + ' GIF' + (gifCount === 1 ? '' : 's')),
-      videoCount && (videoCount + ' video' + (videoCount === 1 ? '' : 's'))
+      videoCount && (videoCount + ' video' + (videoCount === 1 ? '' : 's')),
+      guestbookCount && (guestbookCount + ' guestbook message' + (guestbookCount === 1 ? '' : 's'))
     ].filter(Boolean).join(' · ') || '0 photos';
     const tabScript = '<script>function setTab(k,b){document.querySelectorAll(".tab").forEach(function(t){t.classList.remove("active")});b.classList.add("active");var g=document.querySelector(".grid");if(g)g.className="grid"+(k==="all"?"":" filter-"+k);}</script>';
     const body = '<div style="text-align:center;padding:0 16px"><h1>' + esc(evName) + '</h1><p class="sub">' + countSub + ' · tap one to save it</p></div>' +
       tabsHtml +
       (list.length ? '<div class="grid">' + list.map(({ n }) => {
         const k = kindOf(n);
-        const thumb = k === 'video'
+        const thumb = (k === 'video' || k === 'guestbook')
           ? '<video preload="metadata" muted playsinline src="/e/' + m[1] + '/f/' + encodeURIComponent(n) + '#t=0.1"></video><span style="position:absolute;right:8px;bottom:8px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px">&#9654;</span>'
           : '<img loading="lazy" alt="" src="/e/' + m[1] + '/t/' + encodeURIComponent(n) + '">';
         return '<a href="/e/' + m[1] + '/p/' + encodeURIComponent(n) + '" data-kind="' + k + '" style="position:relative">' + thumb + '</a>';
       }).join('') + '</div>'
         : '<p class="empty">No photos yet. Pull down to refresh after your session.</p>') + tabScript;
-    return send(res, 200, 'text/html; charset=utf-8', page(evName + ' photos', body));
+    const gbItems = list.filter(({ n }) => kindOf(n) === 'guestbook').map(({ n }) => ({ name: n, url: '/e/' + m[1] + '/f/' + encodeURIComponent(n) }));
+    const gbScript = gbItems.length
+      ? '<script>' + GB_ZIP_JS + 'var GB_ITEMS=' + JSON.stringify(gbItems).replace(/</g, '\\u003c') + ';var GB_BASE=' + JSON.stringify(evName).replace(/</g, '\\u003c') + '.replace(/[\\\\\\/:*?"<>|]+/g,"_");' +
+        '(function(){var st=setTab;setTab=function(k,b){st(k,b);var d=document.getElementById("gbDl");if(d)d.style.display=k==="guestbook"?"":"none";};var d=document.getElementById("gbDl");if(d)d.onclick=function(){gbDownloadAll(GB_ITEMS,d,GB_BASE);};})();</script>'
+      : '';
+    return send(res, 200, 'text/html; charset=utf-8', page(evName + ' photos', body + gbScript));
   }
   if (m[2] === 's') {
     let prefix; try { prefix = decodeURIComponent(m[3]); } catch { prefix = ''; }
@@ -2014,7 +2083,7 @@ async function handleShare(req, res) {
       const type = TYPES[extname(f).toLowerCase()] || 'application/octet-stream';
       const isGif = /\.gif$/i.test(f), isVid = VIDEO_RE.test(f), isSoloPhoto = /_solo_\d+/i.test(f);
       const soloMatch = /_solo_(\d+)/i.exec(f);
-      const badgeLabel = isVid ? '360 Video' : isGif ? 'GIF' : isSoloPhoto ? ('Solo Shot ' + (soloMatch ? soloMatch[1] : '')) : 'Template Print';
+      const badgeLabel = isVid ? (/_guestbook/i.test(f) ? 'Guestbook message' : '360 Video') : isGif ? 'GIF' : isSoloPhoto ? ('Solo Shot ' + (soloMatch ? soloMatch[1] : '')) : 'Template Print';
       const badgeStyle = 'display:inline-block;margin:0 auto 10px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;background:' + (isSoloPhoto ? 'rgba(201,61,39,0.12);color:#C93D27' : isGif ? 'rgba(28,26,30,0.08);color:#1C1A1E' : 'rgba(46,125,50,0.12);color:#2E7D32') + ';';
       const src = '/e/' + m[1] + '/f/' + encodeURIComponent(f);
       const media = /^video\//.test(type) ? '<video src="' + src + '" controls playsinline autoplay muted loop></video>' : '<img src="' + src + '" alt="' + (isGif ? 'Your GIF' : isSoloPhoto ? 'Your solo photo' : 'Your photo') + '">';

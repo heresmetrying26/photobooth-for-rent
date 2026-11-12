@@ -534,6 +534,7 @@
       <button type="button" class="tab" data-filter="solo">Solo Photos</button>
       <button type="button" class="tab" data-filter="gif">GIFs</button>
       <button type="button" class="tab" data-filter="video">360 Videos</button>
+      <button type="button" class="tab" data-filter="guestbook">Guestbook</button>
     </div>
   </div>
 
@@ -653,13 +654,13 @@
       var g = document.getElementById('stGrid');
       var list = files.filter(function (f) { return currentFilter === 'all' || f.kind === currentFilter; });
       if (!list.length) {
-        g.innerHTML = '<div class="empty">No ' + (currentFilter === 'all' ? 'items' : currentFilter + 's') + ' yet. Take a shot on the booth to get started!</div>';
+        g.innerHTML = '<div class="empty">No ' + (currentFilter === 'all' ? 'items' : currentFilter === 'guestbook' ? 'guestbook messages' : currentFilter + 's') + ' yet. Take a shot on the booth to get started!</div>';
         return;
       }
       g.innerHTML = list.map(function (f) {
-        var isVid = f.kind === 'video';
+        var isVid = f.kind === 'video' || f.kind === 'guestbook';
         var thumb = isVid
-          ? '<video src="' + f.url + '#t=0.1" preload="metadata" muted playsinline></video><div class="play-pill"><i>▶</i> 360</div>'
+          ? '<video src="' + f.url + '#t=0.1" preload="metadata" muted playsinline></video><div class="play-pill"><i>▶</i> ' + (f.kind === 'guestbook' ? 'Message' : '360') + '</div>'
           : '<img src="' + f.thumbUrl + '" loading="lazy" alt="">';
         return '<div class="card" data-name="' + f.name + '">' + thumb + '<div class="time">' + timeAgo(f.mtime) + '</div></div>';
       }).join('');
@@ -690,9 +691,9 @@
       var pageUrl = (items.length > 1) ? sessionUrl : (it.pageUrl ? (location.origin + it.pageUrl) : sessionUrl);
       if (qrNote) qrNote.style.display = (items.length > 1) ? 'block' : 'none';
 
-      if (it.kind === 'video') {
+      if (it.kind === 'video' || it.kind === 'guestbook') {
         med.innerHTML = '<video src="' + it.url + '" controls autoplay loop playsinline></video>';
-        dl.textContent = 'Save Video';
+        dl.textContent = it.kind === 'guestbook' ? 'Save Message' : 'Save Video';
       } else if (it.kind === 'solo') {
         med.innerHTML = '<img src="' + it.url + '" alt="">';
         dl.textContent = 'Save Solo Photo';
@@ -725,7 +726,7 @@
         if (items.length > 1) {
           pillsBox.style.display = 'flex';
           pillsBox.innerHTML = items.map(function (item, idx) {
-            var label = item.kind === 'video' ? '🎬 360 Video' :
+            var label = item.kind === 'guestbook' ? '🎥 Guestbook' : item.kind === 'video' ? '🎬 360 Video' :
               item.kind === 'gif' ? '✨ GIF' :
                 item.kind === 'solo' ? ('📸 Solo ' + (idx)) : '🖨️ Print Strip';
             var isCur = item.name === it.name;

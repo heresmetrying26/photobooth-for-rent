@@ -333,7 +333,7 @@ class LocalShareServer(private val store: PBLocal) {
                 val isVid = PBLocal.VIDEO_RE.containsMatchIn(f.name)
                 val isGif = f.name.endsWith(".gif", ignoreCase = true)
                 val isSolo = Regex("_solo_\\d+", RegexOption.IGNORE_CASE).containsMatchIn(f.name)
-                val label = when { isVid -> "360 Video"; isGif -> "GIF"; isSolo -> "Solo photo"; else -> "Print strip" }
+                val label = when { isVid && f.name.contains("_guestbook", ignoreCase = true) -> "Guestbook message"; isVid -> "360 Video"; isGif -> "GIF"; isSolo -> "Solo photo"; else -> "Print strip" }
                 val enc = Uri.encode(f.name)
                 sb.append("<div class=\"item\">")
                 if (!isVid) sb.append("<img src=\"/e/$slug/t/$enc\" alt=\"${esc(label)}\">")
@@ -555,7 +555,7 @@ class LocalShareServer(private val store: PBLocal) {
             val isGif = type == "image/gif"
             val isSolo = Regex("_solo_\\d+", RegexOption.IGNORE_CASE).containsMatchIn(f)
             val soloMatch = Regex("_solo_(\\d+)", RegexOption.IGNORE_CASE).find(f)
-            val badgeLabel = if (isVid) "360 Video" else if (isGif) "GIF" else if (isSolo) "Solo Shot " + (soloMatch?.groupValues?.get(1) ?: "") else "Template Print"
+            val badgeLabel = if (isVid && f.contains("_guestbook", ignoreCase = true)) "Guestbook message" else if (isVid) "360 Video" else if (isGif) "GIF" else if (isSolo) "Solo Shot " + (soloMatch?.groupValues?.get(1) ?: "") else "Template Print"
             val badgeColor = if (isSolo) "background:rgba(201,61,39,0.12);color:#C93D27;" else if (isGif) "background:rgba(28,26,30,0.08);color:#1C1A1E;" else "background:rgba(46,125,50,0.12);color:#2E7D32;"
             sb.append("<div class=\"one\" style=\"padding-bottom:12px\">")
             sb.append("<div style=\"text-align:center\"><span style=\"display:inline-block;margin:0 auto 10px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;").append(badgeColor).append("\">").append(badgeLabel).append("</span></div>")
@@ -651,7 +651,7 @@ class LocalShareServer(private val store: PBLocal) {
                 val isVid = PBLocal.VIDEO_RE.containsMatchIn(f.name)
                 val isGif = f.name.endsWith(".gif", ignoreCase = true)
                 val isSolo = Regex("_solo_\\d+", RegexOption.IGNORE_CASE).containsMatchIn(f.name)
-                val kind = if (isVid) "video" else if (isGif) "gif" else if (isSolo) "solo" else "photo"
+                val kind = if (isVid && f.name.contains("_guestbook", ignoreCase = true)) "guestbook" else if (isVid) "video" else if (isGif) "gif" else if (isSolo) "solo" else "photo"
                 // prefix = everything before the first underscore (the timestamp token)
                 val prefix = f.name.substringBefore('_')
                 arr.put(JSONObject()
@@ -687,7 +687,7 @@ class LocalShareServer(private val store: PBLocal) {
             val dir = store.dirOf(folder)
             val arr = JSONArray()
             for (f in store.photosIn(dir)) {
-                if (!PBLocal.VIDEO_RE.containsMatchIn(f.name)) continue
+                if (!PBLocal.VIDEO_RE.containsMatchIn(f.name) || f.name.contains("_guestbook", ignoreCase = true)) continue      // the 360 wall plays 360 clips, not guestbook messages
                 arr.put(JSONObject()
                     .put("name", f.name)
                     .put("url", "/e/${folder.slug}/f/" + Uri.encode(f.name))

@@ -24,6 +24,8 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
 .grid.filter-solo > [data-kind]:not([data-kind="solo"]){display:none!important}
 .grid.filter-gif > [data-kind]:not([data-kind="gif"]){display:none!important}
 .grid.filter-video > [data-kind]:not([data-kind="video"]){display:none!important}
+.grid.filter-guestbook > [data-kind]:not([data-kind="guestbook"]){display:none!important}
+.grid [data-kind="guestbook"]::after{content:'MESSAGE';position:absolute;top:6px;left:6px;background:rgba(0,0,0,.75);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}
 .grid a{position:relative}
 .grid [data-kind="gif"]::after{content:'GIF';position:absolute;bottom:6px;right:6px;background:rgba(28,26,30,.8);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}
 .grid [data-kind="solo"]::after{content:'SOLO';position:absolute;bottom:6px;right:6px;background:rgba(201,61,39,.85);color:#fff;font-size:10px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.5px;pointer-events:none}
@@ -35,6 +37,63 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
   <span class="brand"><span class="mk"><i></i><i></i><i></i><i></i></span>photobooth4u</span>
 </header>
 <div id="app"><p class="empty">Loading&hellip;</p></div>
+<script>
+function gbSave(blob, name) {
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 60000);
+}
+var gbCRC = (function () { var t = new Uint32Array(256); for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function gbCrc(u) { var c = 0xFFFFFFFF; for (var i = 0; i < u.length; i++) c = gbCRC[(c ^ u[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function gbBuildZip(entries) {
+  var parts = [], central = [], offset = 0, enc = new TextEncoder();
+  var d = new Date(), dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  entries.forEach(function (e) {
+    var name = enc.encode(e.name), h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint16(10, dosTime, true); h.setUint16(12, dosDate, true); h.setUint32(14, e.crc, true);
+    h.setUint32(18, e.size, true); h.setUint32(22, e.size, true); h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+    parts.push(h.buffer, name, e.blob);
+    var c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+    c.setUint16(12, dosTime, true); c.setUint16(14, dosDate, true); c.setUint32(16, e.crc, true); c.setUint32(20, e.size, true); c.setUint32(24, e.size, true);
+    c.setUint16(28, name.length, true); c.setUint32(42, offset, true);
+    central.push(c.buffer, name);
+    offset += 30 + name.length + e.size;
+  });
+  var cdSize = central.reduce(function (n, b) { return n + (b.byteLength || b.length); }, 0);
+  var end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+  return new Blob(parts.concat(central, [end.buffer]), { type: 'application/zip' });
+}
+// items: [{ name, url }]. A few videos per zip (they are big); the button shows the progress.
+var gbBusy = false;
+async function gbDownloadAll(items, btn, base) {
+  if (gbBusy || !items.length) return;
+  gbBusy = true;
+  var label = btn.textContent, chunkSize = 3, parts = Math.ceil(items.length / chunkSize), failed = 0;
+  btn.disabled = true;
+  try {
+    for (var p = 0; p < parts; p++) {
+      var chunk = items.slice(p * chunkSize, (p + 1) * chunkSize), entries = [];
+      for (var i = 0; i < chunk.length; i++) {
+        btn.textContent = 'Preparing ' + (p * chunkSize + i + 1) + ' of ' + items.length + '...';
+        try {
+          var r = await fetch(chunk[i].url); if (!r.ok) throw new Error('HTTP ' + r.status);
+          var blob = await r.blob(), u8 = new Uint8Array(await blob.arrayBuffer());
+          entries.push({ name: chunk[i].name, blob: blob, size: u8.length, crc: gbCrc(u8) });
+        } catch (e) { failed++; }
+      }
+      if (entries.length) gbSave(gbBuildZip(entries), base + ' - Guestbook' + (parts > 1 ? ' (part ' + (p + 1) + ' of ' + parts + ')' : '') + '.zip');
+      if (p < parts - 1) await new Promise(function (r) { setTimeout(r, 800); });
+    }
+    btn.textContent = failed ? 'Done (' + failed + ' could not load)' : 'Done';
+    setTimeout(function () { btn.textContent = label; }, 4000);
+  } finally { btn.disabled = false; gbBusy = false; }
+}
+</script>
 <script>
 /* The guests' page for one booth event, served by the tablet itself (LocalShareServer).
    /e/<event>/ shows every photo; /e/<event>/p/<file> shows one photo or GIF with a Save button.
@@ -65,7 +124,8 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
   function isGif(n){ return /\.gif$/i.test(n); }
   function isVideo(n){ return /\.(mp4|webm)$/i.test(n); }
   function isSolo(n){ return /_solo_\d+/i.test(n); }
-  function kindOf(n){ return isVideo(n) ? 'video' : isGif(n) ? 'gif' : isSolo(n) ? 'solo' : 'photo'; }
+  function isGuestbook(n){ return isVideo(n) && /_guestbook/i.test(n); }
+  function kindOf(n){ return isGuestbook(n) ? 'guestbook' : isVideo(n) ? 'video' : isGif(n) ? 'gif' : isSolo(n) ? 'solo' : 'photo'; }
   function showMessage(msg, title){
     document.title = title || 'Not found';
     app.innerHTML = '';
@@ -77,13 +137,14 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
   if(m[2]){ try{ file = decodeURIComponent(m[2]); }catch(e){ file = ''; } }
 
   function renderList(d){
-    var files = d.files || [], gifs = 0, solos = 0, videos = 0, i;
+    var files = d.files || [], gifs = 0, solos = 0, videos = 0, guestbooks = 0, i;
     for(i = 0; i < files.length; i++){
       if(isGif(files[i].n)) gifs++;
       else if(isSolo(files[i].n)) solos++;
+      else if(isGuestbook(files[i].n)) guestbooks++;
       else if(isVideo(files[i].n)) videos++;
     }
-    var photos = files.length - gifs - solos - videos;
+    var photos = files.length - gifs - solos - videos - guestbooks;
     document.title = d.name + ' photos';
     app.innerHTML = '';
 
@@ -95,6 +156,7 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
     if(solos > 0) countParts.push(solos + ' solo photo' + (solos === 1 ? '' : 's'));
     if(gifs > 0) countParts.push(gifs + ' GIF' + (gifs === 1 ? '' : 's'));
     if(videos > 0) countParts.push(videos + ' video' + (videos === 1 ? '' : 's'));
+    if(guestbooks > 0) countParts.push(guestbooks + ' guestbook message' + (guestbooks === 1 ? '' : 's'));
     var count = countParts.join(' · ') || (files.length + ' photo' + (files.length === 1 ? '' : 's'));
     head.appendChild(el('p', 'sub', count + ' · tap one to save it'));
     app.appendChild(head);
@@ -105,15 +167,17 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
     }
 
     var grid = el('div', 'grid');
-    var kindsCount = (photos > 0 ? 1 : 0) + (solos > 0 ? 1 : 0) + (gifs > 0 ? 1 : 0) + (videos > 0 ? 1 : 0);
+    var kindsCount = (photos > 0 ? 1 : 0) + (solos > 0 ? 1 : 0) + (gifs > 0 ? 1 : 0) + (videos > 0 ? 1 : 0) + (guestbooks > 0 ? 1 : 0);
     if(kindsCount > 1){
       var holder = el('div'); holder.style.textAlign = 'center';
       var tabs = el('div', 'tabs');
-      var defs = [['all', 'All (' + files.length + ')')];
+      var defs = [['all', 'All (' + files.length + ')']];
       if(photos > 0) defs.push(['photo', (solos > 0 ? 'Prints (' : 'Photos (') + photos + ')']);
       if(solos > 0) defs.push(['solo', 'Solo Photos (' + solos + ')']);
       if(gifs > 0) defs.push(['gif', 'GIFs (' + gifs + ')']);
       if(videos > 0) defs.push(['video', 'Videos (' + videos + ')']);
+      if(guestbooks > 0) defs.push(['guestbook', 'Guestbook (' + guestbooks + ')']);
+      var gbBtn = null;
       defs.forEach(function(def, idx){
         var b = el('button', 'tab' + (idx === 0 ? ' active' : ''), def[1]);
         b.type = 'button';
@@ -122,10 +186,17 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
           for(var k = 0; k < all.length; k++) all[k].classList.remove('active');
           b.classList.add('active');
           grid.className = 'grid' + (def[0] === 'all' ? '' : ' filter-' + def[0]);
+          if(gbBtn) gbBtn.style.display = def[0] === 'guestbook' ? '' : 'none';
         };
         tabs.appendChild(b);
       });
       holder.appendChild(tabs);
+      if(guestbooks > 0){
+        gbBtn = el('button', 'btn', 'Download all guestbook videos'); gbBtn.type = 'button'; gbBtn.style.cssText = 'display:none;margin:0 auto 14px';
+        var gbItems = files.filter(function(f){ return isGuestbook(f.n); }).map(function(f){ return { name: f.n, url: '/e/' + slug + '/f/' + encodeURIComponent(f.n) }; });
+        gbBtn.onclick = function(){ gbDownloadAll(gbItems, gbBtn, String(d.name || 'gallery').replace(/[\\\/:*?"<>|]+/g, '_')); };
+        holder.appendChild(gbBtn);
+      }
       app.appendChild(holder);
     }
     files.forEach(function(f){
@@ -133,7 +204,7 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
       a.href = '/e/' + slug + '/p/' + encodeURIComponent(f.n);
       var k = kindOf(f.n);
       a.setAttribute('data-kind', k);
-      if(k === 'video'){
+      if(k === 'video' || k === 'guestbook'){
         var vid = el('video');
         vid.preload = 'metadata'; vid.muted = true;
         vid.setAttribute('playsinline', '');
@@ -165,7 +236,7 @@ h1{font-size:24px;line-height:1.2;margin:10px 0 2px;font-weight:800;letter-spaci
       return;
     }
     var gif = isGif(name), vid = isVideo(name), solo = isSolo(name);
-    var title = vid ? 'Your video' : gif ? 'Your GIF' : solo ? 'Solo photo' : 'Your photo';
+    var title = vid ? (isGuestbook(name) ? 'Your message' : 'Your video') : gif ? 'Your GIF' : solo ? 'Solo photo' : 'Your photo';
     document.title = title;
     wrap.appendChild(el('h1', null, title));
     wrap.appendChild(el('p', 'sub', d.name));

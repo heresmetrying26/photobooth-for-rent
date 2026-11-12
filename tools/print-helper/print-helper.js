@@ -224,7 +224,7 @@ async function airPrintQualityOptions(printer, want){
 }
 
 const WIN_PRINT_PS = String.raw`
-param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best')
+param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [switch]$Borderless)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 # @( ) keeps a one-page list an array (otherwise $files[0] is just the first letter of the path)
@@ -266,6 +266,49 @@ try {
 if ($PaperName) {
   $p = $doc.PrinterSettings.PaperSizes | Where-Object { $_.PaperName -eq $PaperName } | Select-Object -First 1
   if ($p) { $doc.DefaultPageSettings.PaperSize = $p }
+}
+# Borderless: when the booth's paper matched one of the printer's papers, ask the driver for its Borderless mode on
+# that paper (Epson L-series keep it as a separate switch, off unless someone ticked it in the printer's preferences,
+# and with it off the page is fitted inside a ~3 mm margin: white edges). Only if the driver lists a Borderless
+# option and accepts it on this paper; otherwise nothing changes.
+if ($Borderless) {
+  try {
+    Add-Type -AssemblyName System.Printing
+    Add-Type -AssemblyName ReachFramework
+    Add-Type -MemberDefinition @'
+[DllImport("kernel32.dll")] public static extern IntPtr GlobalLock(IntPtr h);
+[DllImport("kernel32.dll")] public static extern bool GlobalUnlock(IntPtr h);
+[DllImport("kernel32.dll")] public static extern UIntPtr GlobalSize(IntPtr h);
+[DllImport("kernel32.dll")] public static extern IntPtr GlobalFree(IntPtr h);
+'@ -Name K32 -Namespace PB4U
+    $bq = (New-Object System.Printing.LocalPrintServer).GetPrintQueue($Printer)
+    $bc = New-Object System.Printing.Interop.PrintTicketConverter($Printer, $bq.ClientPrintSchemaVersion)
+    $bh = $doc.PrinterSettings.GetHdevmode($doc.DefaultPageSettings)
+    $bp = [PB4U.K32]::GlobalLock($bh); $bn = ([PB4U.K32]::GlobalSize($bh)).ToUInt32()
+    $bb = New-Object byte[] $bn
+    [Runtime.InteropServices.Marshal]::Copy($bp, $bb, 0, $bn)
+    [void][PB4U.K32]::GlobalUnlock($bh); [void][PB4U.K32]::GlobalFree($bh)
+    $bt = $bc.ConvertDevModeToPrintTicket($bb)
+    $bx = [xml]([IO.StreamReader]::new($bt.GetXmlStream()).ReadToEnd())
+    $bf = $bx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageBorderless']/*[local-name()='Option']")
+    $bcx = [xml]([IO.StreamReader]::new($bq.GetPrintCapabilitiesAsXml()).ReadToEnd())
+    $bhas = $bcx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageBorderless']/*[local-name()='Option' and @name='psk:Borderless']")
+    if ($bf -and $bhas -and $bf.GetAttribute('name') -ne 'psk:Borderless') {
+      $bf.SetAttribute('name', 'psk:Borderless')
+      $bd = New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($bx.OuterXml))))
+      $bv = $bq.MergeAndValidatePrintTicket($bt, $bd).ValidatedPrintTicket
+      $bvx = [xml]([IO.StreamReader]::new($bv.GetXmlStream()).ReadToEnd())
+      $bvo = $bvx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageBorderless']/*[local-name()='Option']")
+      if ($bvo -and $bvo.GetAttribute('name') -eq 'psk:Borderless') {
+        $bm = $bc.ConvertPrintTicketToDevMode($bv, [System.Printing.Interop.BaseDevModeType]::UserDefault)
+        $bhd = [Runtime.InteropServices.Marshal]::AllocHGlobal($bm.Length)
+        [Runtime.InteropServices.Marshal]::Copy($bm, 0, $bhd, $bm.Length)
+        $doc.PrinterSettings.SetHdevmode($bhd); $doc.DefaultPageSettings.SetHdevmode($bhd)
+        [Runtime.InteropServices.Marshal]::FreeHGlobal($bhd)
+        [Console]::Out.WriteLine('info|borderless switched on')
+      } else { [Console]::Out.WriteLine('info|driver did not accept Borderless on this paper') }
+    }
+  } catch { [Console]::Out.WriteLine('info|borderless not set: ' + $_.Exception.Message) }
 }
 $doc.DocumentName = 'photobooth4u'
 # Print silently (no "Printing page 1 of 1" window popping over the booth)
@@ -339,7 +382,7 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm, quality){
       await writeFile(list, files.join('\r\n'), 'utf8');
       const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
       if(pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
-      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && !pick.keep ? ['-PaperName', pick.key] : [])]);
+      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && !pick.keep ? ['-PaperName', pick.key] : []), ...(pick ? ['-Borderless'] : [])]);
     } else {
       // Pages are already exactly paper-sized at 300 dpi; fit-to-page fills the
       // sheet. The paper size is the printer's own one that matches the booth's.

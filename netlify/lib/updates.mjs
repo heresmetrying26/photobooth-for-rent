@@ -203,8 +203,12 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
-    date: '2026-11-12', title: 'Desktop 1.1.30 + Android 1.1.48: more ready-made designs and categories', for: ['website', 'app'], app: '1.1.30',
+    date: '2026-11-12', title: 'Desktop 1.1.30 + Android 1.1.48: more designs, a smarter 360 desk and video guestbook questions', for: ['website', 'app'], app: '1.1.30',
     items: [
+      '360 desk: a new Auto mode switch edits every new video by itself and gets its QR code ready. Use the same look, a different look each time, or let the guest choose on the booth screen or on their phone. There is no text on the video unless you want it.',
+      '360 desk: 12 more looks (30 in all) with real previews, a song and opening or ending clip for each look, GIF and square clips, and a 540p Light size for busy Wi-Fi.',
+      '360 desk: a Connect panel checks the editor, the inbox folder and the network, shows when the last video arrived, and warns if a recording started but no video came. The phone send page can be saved to the home screen, and Record 360 can start when a guest steps in.',
+      'Video guestbook: up to 5 questions, messages of 15, 30 or 60 seconds, and a Guestbook tab in the online gallery with Download all.',
       'The Design picker has 23 new ready-made designs: Baby Shower, Summer, Anniversary and Prom, plus new Kids Party, Corporate, Debut, Christmas, New Year, Graduation and Wedding looks.',
       'There are 4 new categories (Baby Shower, Summer, Anniversary, Prom) and 4 new backdrops (sunset, neon, polka dots, gingham). They are drawn by the app, so the app does not get bigger.',
       'The design list loads faster: pictures are drawn only when you scroll to them.'

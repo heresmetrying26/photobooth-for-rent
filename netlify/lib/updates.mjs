@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.31', date: '2026-11-12' },
   { version: '1.1.30', date: '2026-11-12' },
   { version: '1.1.29', date: '2026-11-11' },
   { version: '1.1.28', date: '2026-11-11' },
@@ -202,6 +203,14 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-12', title: 'Desktop 1.1.31 + Android 1.1.49: a Guestbook tab in the offline galleries', for: ['website', 'app'], app: '1.1.31',
+    items: [
+      'The laptop and tablet photo pages now have their own Guestbook tab, with a Download all guestbook videos button that saves a few messages per zip so older phones keep up. Guestbook messages no longer show under 360 Videos or on the 360 live wall.',
+      'Fixed the tablet guest photo page not loading its tabs.',
+      'The online gallery zips guestbook videos three at a time, so it is lighter on older phones.'
+    ]
+  },
   {
     date: '2026-11-12', title: 'Desktop 1.1.30 + Android 1.1.48: more designs, a smarter 360 desk and video guestbook questions', for: ['website', 'app'], app: '1.1.30',
     items: [

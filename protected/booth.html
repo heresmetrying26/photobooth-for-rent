@@ -14705,6 +14705,21 @@
             </select>
             <p class="panel-hint" id="webcamResNote"></p>
           </div>
+          <div id="shotTimingBox" style="margin-top:8px;">
+            <p class="panel-label" style="margin-top:6px;">Shot timing</p>
+            <select class="cam-select" id="shotTimingSel">
+              <option value="auto">Auto (recommended): the app measures this camera's delay</option>
+              <option value="0">Off (photo taken right after "Pose")</option>
+              <option value="200">Take photo 0.2 s earlier</option>
+              <option value="400">Take photo 0.4 s earlier</option>
+              <option value="600">Take photo 0.6 s earlier</option>
+              <option value="800">Take photo 0.8 s earlier</option>
+              <option value="1000">Take photo 1.0 s earlier</option>
+              <option value="1250">Take photo 1.25 s earlier</option>
+              <option value="1500">Take photo 1.5 s earlier</option>
+            </select>
+            <p class="panel-hint" id="shotTimingNote" style="margin-top:4px;">Auto checks how far the live picture is behind the real scene and lines the photo up with "Pose". If photos are still blurred because guests have already moved when the camera takes the picture, choose a time to take the photo earlier: try 0.4 s, then raise it until photos are sharp.</p>
+          </div>
           <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
           <p class="panel-hint" id="usbWhyNote" style="display:none; font-weight:600;"></p>
           <button type="button" class="action-btn" id="usbLogBtn" style="display:none; width:auto; margin:6px 0 0;">Copy
@@ -21884,7 +21899,11 @@
         v = v || {};
         return {
           preview: (['auto', 'max', 'yuyv', '1080', '720', '480'].includes(v.preview) || /^x:\d+:\d+:\d+:\d+$/.test(String(v.preview))) ? v.preview : 'auto',
-          photo: (['preview', 'max'].includes(v.photo)) ? v.photo : (IS_ANDROID_APP ? 'preview' : 'max')
+          photo: (['preview', 'max'].includes(v.photo)) ? v.photo : (IS_ANDROID_APP ? 'preview' : 'max'),
+          // Shot timing: 'auto' = measure the camera's own delay and sync the photo to the "Pose" cue;
+          // a number = take the photo that many ms earlier than "Pose + 0.6 s" (for cameras that capture late and blur).
+          // Auto is the default on the Android app only (tablets are where the lag is); everywhere else it is Off until the operator picks it.
+          leadMs: (v.leadMs === undefined || v.leadMs === null) ? (IS_ANDROID_APP ? 'auto' : 0) : v.leadMs === 'auto' ? 'auto' : Math.max(0, Math.min(1500, Math.round(Number(v.leadMs) / 50) * 50 || 0))
         };
       })();
       function saveWebcamRes() { try { localStorage.setItem(WEBCAM_RES_KEY, JSON.stringify(webcamRes)); } catch (e) { } }
@@ -22125,6 +22144,31 @@
         }
         if (note) note.textContent = noteText.trim();
       }
+      const shotTimingSel = document.getElementById('shotTimingSel');
+      if (shotTimingSel) {
+        if (!Array.from(shotTimingSel.options).some(o => o.value === String(webcamRes.leadMs))) webcamRes.leadMs = IS_ANDROID_APP ? 'auto' : 0;
+        shotTimingSel.value = String(webcamRes.leadMs);
+        shotTimingSel.addEventListener('change', () => { webcamRes.leadMs = shotTimingSel.value === 'auto' ? 'auto' : (Number(shotTimingSel.value) || 0); saveWebcamRes(); showShotTimingNote(); });
+        // Show what the app measured, so the operator can see it working on the real tablet.
+        const shotTimingNote = document.getElementById('shotTimingNote');
+        const shotTimingHint = shotTimingNote ? shotTimingNote.textContent : '';
+        function showShotTimingNote() {
+          if (!shotTimingNote) return;
+          const d = camDelayMs();
+          const m = webcamRes.leadMs === 'auto'
+            ? (d > 0 ? 'Measured camera delay: about ' + d + ' ms. The photo waits that long after "Pose" so it shows the right moment. ' : 'This camera does not report its delay, so Auto does nothing here. Choose a time below if photos are blurred. ')
+            : '';
+          shotTimingNote.textContent = m + shotTimingHint;
+        }
+        // Not for DSLR / mirrorless cameras: they time their own shutter (see usbShutterLead).
+        const shotTimingBox = document.getElementById('shotTimingBox');
+        function updateShotTimingBox() {
+          if (shotTimingBox) shotTimingBox.style.display = (cameraSelect && cameraSelect.value === USB_CAM_ID) ? 'none' : '';
+        }
+        setTimeout(function () { try { updateShotTimingBox(); } catch (e) { } }, 0);   // USB_CAM_ID is declared further down: not before the script has run
+        cameraSelect.addEventListener('change', () => setTimeout(updateShotTimingBox, 0));
+        setInterval(() => { try { updateShotTimingBox(); } catch (e) { } if (!document.hidden && shotTimingNote && shotTimingNote.offsetParent !== null) showShotTimingNote(); }, 2000);
+      }
       if (webcamResBox) {
         webcamPreviewRes.addEventListener('change', () => {
           webcamRes.preview = webcamPreviewRes.value; saveWebcamRes();
@@ -22269,10 +22313,25 @@
       // cable) leaves the last frame on screen, then black. The track stays "live" and never says "muted", so count the
       // frames the video really shows: none for 8 s = treat it as lost and reconnect.
       let rvfcCount = 0;
+      // How far behind the real scene the live picture is: the browser reports when the camera captured each frame, so
+      // "now minus capture time" is the delay. Median of the latest frames; 0 until enough frames, or if the camera doesn't say.
+      const camLat = [];
+      function camDelayMs() {
+        if (camLat.length < 8) return 0;
+        const s = camLat.slice().sort((a, b) => a - b);
+        return Math.round(s[s.length >> 1]);
+      }
       function listenVideoFrames(v) {
         if (!v || !('requestVideoFrameCallback' in HTMLVideoElement.prototype)) return;
-        const cb = () => {
+        camLat.length = 0;
+        const cb = (now, meta) => {
           rvfcCount++;
+          try {
+            if (meta && typeof meta.captureTime === 'number') {
+              const lat = now - meta.captureTime;
+              if (lat > 0 && lat < 1500) { camLat.push(lat); if (camLat.length > 40) camLat.shift(); }   // anything else is a bad clock, not a delay
+            }
+          } catch (e) { }
           if (streamActive && currentStream && !v.paused) {
             try { v.requestVideoFrameCallback(cb); } catch (e) { }
           }
@@ -24270,6 +24329,16 @@
       }
       async function captureShot(index) {
         await usbEnsureLive();
+        // Auto shot timing: a webcam frame shows the scene as it was a moment ago (camera + tablet delay). Wait that long so
+        // the photo shows the "Pose" moment, not the one before it. Only when the photo is this live frame and the delay is known.
+        if (webcamRes.leadMs === 'auto' && currentDeviceId !== USB_CAM_ID && !(webcamRes.photo === 'max' && isMaxWebcamShotEligible())) {
+          const d = Math.min(400, camDelayMs());
+          if (d > 0) {
+            const shots0 = shotCanvases;
+            await wait(d);
+            if (shotCanvases !== shots0 || (sess && sess.cancelled)) return;
+          }
+        }
         captureFrame(index);
         if (webcamRes.photo === 'max' && isMaxWebcamShotEligible()) return webcamMaxShot(index);
         if (!(usbCam.active && usbCam.camera && currentDeviceId === USB_CAM_ID)) return;
@@ -24840,7 +24909,8 @@
         try { voiceReady(index, !!noPause, timerSec + extra); } catch (e) { }
         // The photo is wanted 0.6 s after "Pose". A camera that needs `lead` ms between the shutter command and the exposure
         // gets the command that much earlier: after "Pose" if lead < 0.6 s, else during the last seconds of the countdown.
-        const lead = usbShutterLead();
+        // Plus the operator's own "Shot timing" (Setup → Camera), for tablets/cameras that capture late.
+        const lead = Math.min(USB_LEAD_MAX, usbShutterLead() + (typeof webcamRes.leadMs === 'number' ? webcamRes.leadMs : 0));
         let shot = null;
         const fireNow = () => { if (!shot) shot = captureShot(index); };   // webcam: instant; USB camera: fires the real shutter
         var isGif = isGifAllowed() && (outputMode === 'gif' || outputMode === 'both');
@@ -45669,13 +45739,19 @@
           var url = URL.createObjectURL(file), im = new Image();
           im.onload = function () {
             var sc = Math.min(1, maxSide / Math.max(im.width, im.height));
-            var c = document.createElement('canvas');
-            c.width = Math.max(1, Math.round(im.width * sc)); c.height = Math.max(1, Math.round(im.height * sc));
-            var x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(im, 0, 0, c.width, c.height);
+            var keepAlpha = /png|webp/.test(file.type), out = '';
+            // Keep the picture as big and sharp as the server's size limit allows: if it is too heavy, shrink it in
+            // small steps (always from the original, smoothing on high), never one big blurry drop.
+            for (var tries = 0; tries < 10; tries++) {
+              var c = document.createElement('canvas');
+              c.width = Math.max(1, Math.round(im.width * sc)); c.height = Math.max(1, Math.round(im.height * sc));
+              var x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(im, 0, 0, c.width, c.height);
+              out = keepAlpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.88);
+              if (out.length > 3400000 && !keepAlpha) out = c.toDataURL('image/jpeg', 0.78);
+              if (out.length <= 3400000) break;
+              sc *= 0.88;
+            }
             URL.revokeObjectURL(url);
-            var keepAlpha = /png|webp/.test(file.type);
-            var out = keepAlpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.88);
-            if (out.length > 3400000) out = keepAlpha ? (function () { var c2 = document.createElement('canvas'); c2.width = Math.round(c.width * 0.7); c2.height = Math.round(c.height * 0.7); c2.getContext('2d').drawImage(c, 0, 0, c2.width, c2.height); return c2.toDataURL('image/png'); })() : c.toDataURL('image/jpeg', 0.75);
             resolve(out);
           };
           im.onerror = function () { URL.revokeObjectURL(url); reject(new Error('That image could not be opened.')); };

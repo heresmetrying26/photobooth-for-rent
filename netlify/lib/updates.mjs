@@ -202,6 +202,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-12', title: 'Android 1.1.47: 58mm Bluetooth printers no longer print choppy after the first part', for: ['website'],
+    items: [
+      'Small 58mm Bluetooth printers printed the first part of a dark strip correctly and then only short broken pieces. Dark areas print slower than light ones, and the printer cannot tell the tablet to wait, so its small buffer overflowed and data was lost.',
+      'The strip is now sent band by band, and after each dark band the tablet waits for the printer to catch up. Light pictures print as fast as before; a dark strip takes a few seconds longer. 80mm printers are not changed.',
+      'If a 58mm printer still breaks up, set Speed to Slow and safe in the Bluetooth printer settings.'
+    ]
+  },
+  {
     date: '2026-11-11', title: 'Desktop 1.1.29 + Android 1.1.46: camera live view really switches off when idle', for: ['website', 'app'], app: '1.1.29',
     items: [
       'Nikon: the camera is now asked again until it accepts live view off. Right after the last photo it answered busy, and live view stayed on through the result and Touch to Start screens. The booth also asks again for the first minute after the camera is put to sleep.',

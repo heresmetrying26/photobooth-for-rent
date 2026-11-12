@@ -13243,6 +13243,7 @@
           this._byte(byteW & 0xFF, (byteW >> 8) & 0xFF);
           this._byte(bandH & 0xFF, (bandH >> 8) & 0xFF);
 
+          var bandBlack = 0;
           for (var y = 0; y < bandH; y++) {
             var srcY = startY + y;
             for (var bx = 0; bx < byteW; bx++) {
@@ -13252,12 +13253,14 @@
                 if (x < W) {
                   var idx = (srcY * W + x) * 4;
                   var lum = 0.299 * imgData[idx] + 0.587 * imgData[idx + 1] + 0.114 * imgData[idx + 2];
-                  if (lum < 128) byte |= (0x80 >> bit);
+                  if (lum < 128) { byte |= (0x80 >> bit); bandBlack++; }
                 }
               }
               this._buf.push(byte);
             }
           }
+          // Where this band ends in the job and how dark it is: a dark band takes the printer longer to print (see btPrintMs).
+          (this._marks = this._marks || []).push({ end: this._buf.length, rows: bandH, black: bandBlack, dots: bandH * W });
         }
         return this;
       };
@@ -13299,6 +13302,7 @@
       EscPosEncoder.prototype.getBuffer = function () {
         return new Uint8Array(this._buf);
       };
+      EscPosEncoder.prototype.getMarks = function () { return this._marks || []; };
 
       // How a job is sent over Bluetooth. A small mobile printer (58mm) has a tiny buffer and no flow control over
       // Bluetooth serial: a job sent in one burst overruns it, bytes go missing, and the rest of the picture is read as
@@ -13366,6 +13370,23 @@
         if (sp === 'safe' && dots > 384) sp = 'auto';
         var lv = sp === 'auto' ? tuneGet('bt:' + (printer._name || '')) : 0;
         return lv ? btTunePacing(dots, lv) : btPacing(dots, sp);
+      }
+
+      // ---- Dark pictures on a small (58mm) Bluetooth printer ----
+      // A thermal head can only heat so many dots at once, so a dark row takes the printer several times longer than a
+      // light one. Over Bluetooth serial the printer cannot tell us to wait, and a steady send speed that suits light
+      // paper fills its small buffer on a dark picture: it keeps the first part, drops bytes, and the rest comes out in
+      // short broken pieces. So the job is sent band by band and, after each band, we wait until the printer has caught
+      // up to within BT_LEAD_MS of what was sent. Light bands cost nothing (sending is already the slower side).
+      var BT_LEAD_MS = 250;
+      function btPrintMs(m, scale) {
+        var frac = m.dots ? m.black / m.dots : 0;
+        return m.rows * (3 + 10 * frac) * (scale || 1);
+      }
+      function btLoadScale(printer, pace) {
+        var sp = btProfile().speed, lv = sp === 'auto' ? tuneGet('bt:' + (printer._name || '')) : 0;
+        if (pace && pace.slow) return 1.6;                    // slow printing: the printer itself is slower
+        return (sp === 'safe' || lv === 1) ? 1.5 : 1;
       }
 
       // quality: 'best' (sharpened, dot-gain corrected, Atkinson dithering: crisp and not too dark),
@@ -13766,7 +13787,24 @@
         enc.feed(feed);
         // 58mm mobile printers have no cutter: skip the cut command (some read it as text) and leave room to tear.
         if (cut && this._paperWidth > 384) enc.cut(); else if (cut) enc.feed(2);
-        return this.write(enc.getBuffer(), pace);
+        var data = enc.getBuffer(), marks = enc.getMarks();
+        if (this._paperWidth > 384 || prof.speed === 'fast' || !marks.length) return this.write(data, pace);
+
+        // 58mm: send band by band and let the printer catch up after dark ones (see BT_LEAD_MS).
+        var self = this, scale = btLoadScale(this, pace), pos = 0, i = 0, t0 = 0, due = 0;
+        function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+        function nextBand() {
+          if (i >= marks.length) return pos < data.length ? self.write(data.subarray(pos), pace) : Promise.resolve();
+          var m = marks[i++], piece = data.subarray(pos, m.end);
+          pos = m.end;
+          if (!t0) t0 = Date.now();
+          due += btPrintMs(m, scale);
+          return self.write(piece, pace).then(function () {
+            var wait = t0 + due - BT_LEAD_MS - Date.now();
+            return wait > 0 ? sleep(wait) : null;
+          }).then(nextBand);
+        }
+        return nextBand();
       };
 
       // Step 1 of the printer check: plain text only. If this prints, the link and the printer are fine.

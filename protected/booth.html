@@ -19469,6 +19469,66 @@
         var cx = w / 2, cy = m * 0.9, r = u * 0.04;
         ctx.fillRect(cx - r * 0.12, cy - r * 0.6, r * 0.24, r * 1.6); ctx.fillRect(cx - r * 0.5, cy - r * 0.2, r, r * 0.24);
       }
+      // ---- More ready-made backdrops (all drawn in code: no images, so they add almost no size). ----
+      // Sunset: purple sky, warm glow, soft waves
+      function fillSunset(ctx, w, h) {
+        var base = themeBase('#ff9a62');
+        var g = ctx.createLinearGradient(0, 0, 0, h);
+        g.addColorStop(0, mixHex(base, '#5a3fa8', 0.6)); g.addColorStop(0.55, base); g.addColorStop(1, mixHex(base, '#ffe08a', 0.6));
+        ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+        var r = Math.max(w, h) * 0.55, s = ctx.createRadialGradient(w / 2, h * 0.78, 0, w / 2, h * 0.78, r);
+        s.addColorStop(0, 'rgba(255,244,200,0.7)'); s.addColorStop(1, 'rgba(255,244,200,0)');
+        ctx.fillStyle = s; ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = 'rgba(255,255,255,0.14)';
+        for (var k = 0; k < 3; k++) {
+          var y0 = h * (0.8 + k * 0.07), amp = h * 0.012;
+          ctx.beginPath(); ctx.moveTo(0, h);
+          for (var x = 0; x <= w; x += w / 24) ctx.lineTo(x, y0 + Math.sin(x / w * 9 + k) * amp);
+          ctx.lineTo(w, h); ctx.closePath(); ctx.fill();
+        }
+      }
+      // Neon night: dark with magenta + cyan glow, faint grid and a glowing border
+      function fillNeon(ctx, w, h) {
+        var base = themeBase('#0c0a1c');
+        ctx.fillStyle = base; ctx.fillRect(0, 0, w, h);
+        var u = Math.min(w, h), r = Math.max(w, h) * 0.7;
+        [[0, 0, '255,60,190'], [w, h, '40,210,255']].forEach(function (c) {
+          var g = ctx.createRadialGradient(c[0], c[1], 0, c[0], c[1], r);
+          g.addColorStop(0, 'rgba(' + c[2] + ',0.5)'); g.addColorStop(1, 'rgba(' + c[2] + ',0)');
+          ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+        });
+        ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = Math.max(1, u * 0.002);
+        for (var x = 0; x < w; x += w / 12) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+        for (var y = 0; y < h; y += w / 12) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+        ctx.save(); ctx.shadowColor = '#ff3cbe'; ctx.shadowBlur = u * 0.03; ctx.strokeStyle = '#ff7bd5'; ctx.lineWidth = Math.max(2, u * 0.006);
+        var m = u * 0.03; ctx.strokeRect(m, m, w - 2 * m, h - 2 * m); ctx.restore();
+      }
+      // Polka dots on a soft base
+      function fillPolka(ctx, w, h) {
+        var base = themeBase('#fde4ec');
+        ctx.fillStyle = mixHex(base, '#ffffff', 0.55); ctx.fillRect(0, 0, w, h);
+        var step = w / 9, r = step * 0.17;
+        ctx.fillStyle = base;
+        for (var y = 0, row = 0; y < h + step; y += step * 0.8, row++) {
+          for (var x = (row % 2 ? step / 2 : 0); x < w + step; x += step) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+        }
+      }
+      // Gingham picnic check
+      function fillGingham(ctx, w, h) {
+        var base = themeBase('#cfe6ff');
+        ctx.fillStyle = mixHex(base, '#ffffff', 0.7); ctx.fillRect(0, 0, w, h);
+        var s = w / 12;
+        ctx.fillStyle = base; ctx.globalAlpha = 0.55;
+        for (var x = 0; x < w; x += s * 2) ctx.fillRect(x, 0, s, h);
+        for (var y = 0; y < h; y += s * 2) ctx.fillRect(0, y, w, s);
+        ctx.globalAlpha = 1;
+      }
+      Object.assign(BACKDROP_PRESETS, {
+        sunset: { fill: fillSunset, elements: 'none', base: '#ff9a62' },
+        neon: { fill: fillNeon, elements: 'none', base: '#0c0a1c' },
+        polka: { fill: fillPolka, elements: 'none', base: '#fde4ec' },
+        gingham: { fill: fillGingham, elements: 'none', base: '#cfe6ff' }
+      });
       Object.assign(BACKDROP_PRESETS, {
         grad: { fill: fillGraduation, elements: 'none', base: '#14254a' },
         diploma: { fill: fillDiploma, elements: 'none', base: '#f6efdf' },
@@ -44168,7 +44228,7 @@
       // ---- Themes: ready-made designs (backdrop + colors + fonts) ----
       // Picking one sets the backdrop, Polaroid color, text color, fonts and text
       // style; everything can still be fine-tuned afterwards.
-      var THEME_CATS = ['All', 'Receipt', 'Wedding', 'Birthday', 'Debut', 'Kids Party', 'Graduation', 'Christening', 'Christmas', 'New Year', 'Corporate'];
+      var THEME_CATS = ['All', 'Receipt', 'Wedding', 'Birthday', 'Debut', 'Kids Party', 'Baby Shower', 'Graduation', 'Christening', 'Christmas', 'New Year', 'Summer', 'Anniversary', 'Prom', 'Corporate'];
       var THEMES = [
         { id: 'cafe-receipt', name: 'Classic Cafe Receipt', cats: ['Receipt', 'Corporate'], tags: 'receipt thermal coffee cafe minimalist b&w retro barcode pos', layout: 'receipt', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Courier New', monospace", dateFont: "'Courier New', monospace", titleStyle: 'classic', kicker: 'COFFEE & GOOD VIBES' },
         { id: 'wedding-receipt', name: 'Wedding Love Receipt', cats: ['Receipt', 'Wedding'], tags: 'receipt thermal wedding love eternal vows couple the wedding of', layout: 'receipt', preset: 'none', color: '#ffffff', elements: 'none', frame: '#ffffff', text: '#151515', font: "'Cinzel', serif", dateFont: "'Cinzel', serif", titleStyle: 'wedding', kicker: 'The wedding of' },
@@ -44247,6 +44307,54 @@
           id: 'boho-pampas', name: 'Boho Pampas', cats: ['Wedding', 'Debut', 'Birthday'], tags: 'beige neutral pampas grass rustic modern', sample: 'Kyla & Marco', layout: 'strip',
           preset: 'none', color: '#efe5d8', elements: 'none', frame: '#ffffff', text: '#7a5c43', font: "'Allura', cursive", dateFont: "'Josefin Sans', sans-serif", titleBg: false, outline: false, shadow: false,
           titleStyle: 'wedding', kicker: 'Forever starts today', art: ['pampas'], artPal: { pampas: '#d9c3a3' }
+        },
+        // ---- More designs: they reuse the backdrops, artwork and fonts above, so they add almost no size. ----
+        { id: 'shower-boy', name: 'Baby Boy Blue', cats: ['Baby Shower', 'Christening'], tags: 'baby shower boy blue polka dots clouds', preset: 'polka', color: '#cfe6fb', elements: 'clouds', frame: '#ffffff', text: '#3d6a9e', font: "'Pacifico', cursive", dateFont: "'Quicksand', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
+        { id: 'shower-girl', name: 'Baby Girl Pink', cats: ['Baby Shower', 'Christening'], tags: 'baby shower girl pink polka dots hearts', preset: 'polka', color: '#fbd0de', elements: 'hearts', frame: '#ffffff', text: '#c2577a', font: "'Dancing Script', cursive", dateFont: "'Quicksand', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
+        { id: 'shower-mint', name: 'Mint Gingham Baby', cats: ['Baby Shower', 'Kids Party'], tags: 'baby shower neutral gender reveal green mint butterflies', preset: 'gingham', color: '#cfeadb', elements: 'butterflies', frame: '#ffffff', text: '#3f6b4a', font: "'Allura', cursive", dateFont: "'Quicksand', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
+        {
+          id: 'shower-bunny', name: 'Bunny Baby Shower', cats: ['Baby Shower', 'Kids Party'], tags: 'baby shower girl pink bunny rabbit', sample: 'Baby Mia', layout: 'strip4',
+          preset: 'polka', color: '#fbd9e3', elements: 'none', frame: '#ffffff', text: '#d95f86', font: "'Fredoka', sans-serif", dateFont: "'Fredoka', sans-serif", titleBg: false, outline: true, outlineColor: '#ffffff', shadow: false,
+          titleStyle: 'turns', kicker: 'Baby Shower', art: ['bunny'], artPal: { bunny: '#f6cdd8', dress: '#ffffff', bow: '#e889a6' }
+        },
+        {
+          id: 'shower-teddy', name: 'Teddy Baby Shower', cats: ['Baby Shower', 'Kids Party'], tags: 'baby shower boy blue teddy bear gingham', sample: 'Baby Lucas', layout: 'strip',
+          preset: 'gingham', color: '#cfe0f3', elements: 'none', frame: '#ffffff', text: '#3d5a80', font: "'Fredoka', sans-serif", dateFont: "'Quicksand', sans-serif", titleBg: false, outline: true, outlineColor: '#ffffff', shadow: false,
+          titleStyle: 'turns', kicker: 'Baby Shower', art: ['teddy'], artPal: { fur: '#c8955f', sweater: '#9cc0e4', bow: '#3d5a80' }
+        },
+        { id: 'sunset-beach', name: 'Sunset Beach', cats: ['Summer', 'Birthday', 'Debut'], tags: 'summer beach sunset tropical orange purple pool', preset: 'sunset', frame: '#ffffff', text: '#ffffff', font: "'Pacifico', cursive", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: true },
+        { id: 'sunny-picnic', name: 'Sunny Picnic', cats: ['Summer', 'Kids Party', 'Birthday'], tags: 'summer yellow gingham picnic flowers garden', preset: 'gingham', color: '#ffe08a', elements: 'florals', frame: '#ffffff', text: '#b5651d', font: "'Dancing Script', cursive", dateFont: "'Quicksand', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
+        { id: 'pool-party', name: 'Pool Party', cats: ['Summer', 'Kids Party', 'Birthday'], tags: 'summer swimming pool aqua blue splash confetti', preset: 'sky', color: '#a6e3ef', elements: 'confetti', frame: '#ffffff', text: '#0b5e7e', font: "'Lobster', cursive", dateFont: "'Poppins', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
+        {
+          id: 'golden-anniversary', name: 'Golden Anniversary', cats: ['Anniversary', 'Wedding'], tags: 'anniversary 50 golden years gold ivory chevron milestone', sample: 'Ben & Lita', layout: 'grid4',
+          preset: 'chevron', frame: '#ffffff', text: '#9c7a2e', font: "'Great Vibes', cursive", dateFont: "'Cinzel', serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false,
+          titleStyle: 'bignum', kicker: '50'
+        },
+        {
+          id: 'silver-anniversary', name: 'Silver Anniversary', cats: ['Anniversary', 'Corporate'], tags: 'anniversary 25 silver years milestone navy deco', sample: 'Ben & Lita', layout: 'grid4',
+          preset: 'deco', color: '#1d2433', accent: 'silver', frame: '#dfe4ea', text: '#e3e8ee', font: "'Cinzel', serif", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'bignum', kicker: '25'
+        },
+        { id: 'neon-night', name: 'Neon Night', cats: ['Prom', 'Birthday', 'Corporate'], tags: 'prom club party disco glow pink cyan night 80s', preset: 'neon', frame: '#ffffff', text: '#ff7bd5', font: "'Pacifico', cursive", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: true },
+        { id: 'royal-gala', name: 'Royal Blue Gala', cats: ['Prom', 'Corporate', 'New Year', 'Debut'], tags: 'prom gala formal royal blue night bokeh', preset: 'midnight', color: '#0f1f4d', elements: 'bokeh', frame: '#ffffff', text: '#e8efff', font: "'Cinzel', serif", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: false },
+        { id: 'rose-gold-glam', name: 'Rose Gold Glam', cats: ['Prom', 'Wedding', 'Debut'], tags: 'prom blush pink rose gold marble elegant', preset: 'marble', color: '#fbefec', accent: 'rosegold', frame: '#ffffff', text: '#a5645a', font: "'Parisienne', cursive", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: true, outlineColor: '#ffffff', shadow: false },
+        { id: 'pastel-butterflies', name: 'Pastel Butterflies', cats: ['Kids Party', 'Birthday', 'Debut'], tags: 'unicorn lilac purple pastel butterflies girl', preset: 'party', elements: 'butterflies', frame: '#ffffff', text: '#a05cc4', font: "'Lobster', cursive", dateFont: "'Poppins', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
+        { id: 'space-explorer', name: 'Space Explorer', cats: ['Kids Party', 'Birthday'], tags: 'space galaxy stars astronaut boy night rocket', preset: 'stars', color: '#0d1b3e', elements: 'goldstars', frame: '#ffffff', text: '#ffd86b', font: "'Lobster', cursive", dateFont: "'Poppins', sans-serif", titleBg: false, outline: false, shadow: false },
+        { id: 'rainbow-polka', name: 'Rainbow Polka', cats: ['Kids Party', 'Birthday'], tags: 'colorful fun polka dots confetti cheerful', preset: 'polka', color: '#ffe2a8', elements: 'confetti', frame: '#ffffff', text: '#e0457b', font: "'Fredoka', sans-serif", dateFont: "'Fredoka', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
+        { id: 'candy-cane', name: 'Candy Cane Red', cats: ['Christmas', 'Kids Party'], tags: 'christmas holiday red white stripes snow noel', preset: 'blush', color: '#c0392b', elements: 'snowflakes', frame: '#ffffff', text: '#c0392b', font: "'Cookie', cursive", dateFont: "'Quicksand', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
+        { id: 'new-year-cheers', name: 'Champagne Cheers', cats: ['New Year', 'Birthday', 'Corporate'], tags: 'new year eve countdown champagne black gold glam party', sample: 'Cheers', layout: 'strip', preset: 'blackgold', frame: '#d4af37', text: '#f1d68a', font: "'Great Vibes', cursive", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false, titleStyle: 'wedding', kicker: 'Happy New Year' },
+        { id: 'grad-forest', name: 'Graduation Forest Green', cats: ['Graduation'], tags: 'grad cap class of commencement green gold', preset: 'grad', color: '#12392d', frame: '#f3ead6', text: '#f1d68a', font: "'Cinzel', serif", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: false },
+        { id: 'corporate-navy', name: 'Corporate Navy', cats: ['Corporate', 'Graduation'], tags: 'business office launch conference clean blue silver formal', preset: 'chevron', color: '#e9eef6', accent: 'silver', frame: '#ffffff', text: '#1f3a63', font: "'Montserrat', sans-serif", dateFont: "'Montserrat', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false },
+        { id: 'executive-black', name: 'Executive Black', cats: ['Corporate', 'Prom', 'New Year'], tags: 'business gala dinner awards black silver formal', preset: 'blackgold', accent: 'silver', frame: '#ffffff', text: '#e5e7eb', font: "'Cinzel', serif", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: false },
+        {
+          id: 'navy-florals', name: 'Navy Line Florals', cats: ['Wedding', 'Anniversary'], tags: 'navy blue minimalist line art flowers elegant the wedding of', sample: 'Paolo & Bea', layout: 'grid4',
+          preset: 'none', color: '#1f2f4f', elements: 'none', frame: '#f3e6d0', text: '#f6ead8', font: "'Cinzel', serif", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'wedding', kicker: 'The wedding of', upper: true, art: ['linefloral'], artPal: { line: '#f3e6d0' }
+        },
+        {
+          id: 'lilac-eighteen', name: 'Lilac Butterflies 18', cats: ['Debut', 'Birthday'], tags: 'eighteenth debutante lilac purple butterflies big number landscape', sample: 'Isabelle', layout: 'land3',
+          preset: 'party', color: '#e7d9f7', elements: 'butterflies', frame: '#ffffff', text: '#7a4fa3', font: "'Allura', cursive", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'bignum', kicker: '18'
         }
       ];
       var themeCat = 'All';
@@ -44305,7 +44413,23 @@
           themeCatsEl.appendChild(b);
         });
       }
-      var thumbQueue = [], thumbBusy = false;
+      var thumbQueue = [], thumbBusy = false, thumbIO = null;
+      // Thumbnails are drawn only when they scroll into view, so a long list of designs never slows the app.
+      function queueThumb(cv, t) {
+        var job = { canvas: cv, theme: t };
+        if (!('IntersectionObserver' in window)) { thumbQueue.push(job); return; }
+        if (!thumbIO) {
+          thumbIO = new IntersectionObserver(function (es) {
+            es.forEach(function (e) {
+              if (!e.isIntersecting) return;
+              thumbIO.unobserve(e.target);
+              if (e.target.__thumbJob) thumbQueue.push(e.target.__thumbJob);
+            });
+            pumpThumbs();
+          }, { rootMargin: '300px' });
+        }
+        cv.__thumbJob = job; thumbIO.observe(cv);
+      }
       function pumpThumbs() {
         if (thumbBusy) return;
         var job = thumbQueue.shift(); if (!job) return;
@@ -44326,6 +44450,7 @@
         });
         themeGridEl.innerHTML = '';
         thumbQueue = [];
+        if (thumbIO) thumbIO.disconnect();
         if (!list.length) { themeGridEl.innerHTML = '<p class="theme-empty">No themes match. Try another word or category.</p>'; return; }
         list.forEach(function (t) {
           var b = document.createElement('button'); b.type = 'button'; b.className = 'theme-card' + (t.mine ? ' mine' : ''); b.dataset.theme = t.id;
@@ -44341,7 +44466,7 @@
             var cv = document.createElement('canvas'); cv.width = 240; cv.height = 360;
             b.append(cv, n, c);
             b.addEventListener('click', function () { openTemplatePreview(t); });
-            thumbQueue.push({ canvas: cv, theme: t });
+            queueThumb(cv, t);
           }
           themeGridEl.appendChild(b);
         });

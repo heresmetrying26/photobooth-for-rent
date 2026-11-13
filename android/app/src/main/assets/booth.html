@@ -30792,7 +30792,8 @@
             // Fix: 58mm mobile printers have no auto-cutter — feed just 2 lines to reach tear bar without excess bottom space
             if (wo.noCut) enc.feed(wo.feed || 1); else if (dotW <= 384) enc.feed(2); else enc.cut();
             const bytes = enc.getBuffer();
-            await wifiJob(id => window.__PBNet.printRaw(id, p.ip, wifiBytesToB64(bytes)));
+            // 58 mm USB printers get paced writes (tiny buffer); 80 mm like the Xprinter XP-T80Q must get full-speed writes
+            await wifiJob(id => (dotW <= 384 && window.__PBNet.printRawPaced ? window.__PBNet.printRawPaced : window.__PBNet.printRaw).call(window.__PBNet, id, p.ip, wifiBytesToB64(bytes)));
             // Wait between multiple copies so physical motor/printing finishes cleanly
             if (i < all.length - 1) {
               await new Promise(r => setTimeout(r, dotW <= 384 ? 2000 : 500));

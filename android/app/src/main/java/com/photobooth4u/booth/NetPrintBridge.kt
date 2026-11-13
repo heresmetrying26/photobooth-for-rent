@@ -252,12 +252,18 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     /** Sends raw bytes (ESC/POS) to port 9100. Result arrives as window.__PBNetResult. */
     @JavascriptInterface
-    fun printRaw(job: String, ip: String, base64Data: String): String {
+    fun printRaw(job: String, ip: String, base64Data: String): String = printRawImpl(job, ip, base64Data, false)
+
+    /** Same as printRaw, but over USB the bytes are paced for small-buffer 58 mm printers. */
+    @JavascriptInterface
+    fun printRawPaced(job: String, ip: String, base64Data: String): String = printRawImpl(job, ip, base64Data, true)
+
+    private fun printRawImpl(job: String, ip: String, base64Data: String, paced: Boolean): String {
         pool.execute {
             val r = JSONObject().put("job", job)
             try {
                 val data = Base64.decode(base64Data, Base64.DEFAULT)
-                if (ip.startsWith("usb:")) usbRaw(ip, data)
+                if (ip.startsWith("usb:")) usbRaw(ip, data, paced)
                 else newSocket(ip).use { s ->
                     s.connect(InetSocketAddress(ip, found[ip]?.rawPort?.takeIf { it > 0 } ?: 9100), 4000)
                     s.soTimeout = 15000
@@ -1416,7 +1422,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     }
 
     /** Receipt printers on USB: the ESC/POS bytes go straight to the printer. */
-    private fun usbRaw(id: String, data: ByteArray) {
+    private fun usbRaw(id: String, data: ByteArray, paced: Boolean = false) {
         synchronized(usbLockFor(id)) {
             val d = usbFind(id)
             usbEnsure(d)
@@ -1432,23 +1438,36 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                 try {
                     // Paced write for thermal receipt printers: small chunks (256 bytes) with pacing delay
                     // so small RAM buffers (2-4 KB) on cheap mobile thermal printers never overflow or wrap around.
-                    var off = 0
-                    val chunkSize = 256
-                    while (off < data.size) {
-                        val len = minOf(chunkSize, data.size - off)
-                        val r = conn.bulkTransfer(out, data, off, len, 30_000)
-                        if (r < 0) throw IllegalStateException("Printer communication timed out. Power cycle the printer and retry.")
-                        off += r
-                        if (off < data.size) {
-                            try { Thread.sleep(8) } catch (_: InterruptedException) {}
+                    if (paced) {
+                        var off = 0
+                        val chunkSize = 256
+                        while (off < data.size) {
+                            val len = minOf(chunkSize, data.size - off)
+                            val r = conn.bulkTransfer(out, data, off, len, 30_000)
+                            if (r < 0) throw IllegalStateException("Printer communication timed out. Power cycle the printer and retry.")
+                            off += r
+                            if (off < data.size) {
+                                try { Thread.sleep(8) } catch (_: InterruptedException) {}
+                            }
                         }
+                        // Allow the printer mechanism to finish burning the final lines and feeding before closing connection.
+                        // 58mm has ~48 image bytes/row, 8 rows/mm, and prints at ~50-60 mm/s (16-20 ms/mm).
+                        val rows = data.size / 52.0
+                        val mm = rows / 8.0
+                        val drainMs = (mm * 18.0).toLong().coerceIn(1500L, 5000L)
+                        try { Thread.sleep(drainMs) } catch (_: InterruptedException) {}
+                    } else {
+                        // 80 mm receipt printers (Xprinter XP-T80Q etc.) and photo printers: full-speed writes. The printer
+                        // holds the bus (NAK) when its buffer is full, so no pacing is needed, and pacing starves a fast head
+                        // (80 mm at 200 mm/s eats ~115 KB/s; 256 B per 8 ms is under 32 KB/s -> it stops and starts).
+                        var off = 0
+                        while (off < data.size) {
+                            val r = conn.bulkTransfer(out, data, off, minOf(16384, data.size - off), 60_000)
+                            if (r < 0) throw IllegalStateException("Printer communication timed out. Power cycle the printer and retry.")
+                            off += r
+                        }
+                        try { Thread.sleep(300) } catch (_: InterruptedException) {}
                     }
-                    // Allow the printer mechanism to finish burning the final lines and feeding before closing connection.
-                    // 58mm has ~48 image bytes/row, 8 rows/mm, and prints at ~50-60 mm/s (16-20 ms/mm).
-                    val rows = data.size / 52.0
-                    val mm = rows / 8.0
-                    val drainMs = (mm * 18.0).toLong().coerceIn(1500L, 5000L)
-                    try { Thread.sleep(drainMs) } catch (_: InterruptedException) {}
                 } finally {
                     stop.set(true)
                     reader?.join(1000)
@@ -2009,7 +2028,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                             try {
                                 val rollW = if (widthMm <= 55.0) 384 else 576
                                 val escpos = ReceiptRaster.build(bmp, rollW, receiptOpt)
-                                usbRaw(id, escpos)
+                                usbRaw(id, escpos, paced = rollW <= 384)
                             } finally {
                                 try { bmp.recycle() } catch (_: Exception) {}
                             }

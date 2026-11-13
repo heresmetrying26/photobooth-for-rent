@@ -208,6 +208,14 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-13', title: 'Android 1.1.56: easier-to-tap tick boxes and clearer setup wording', for: ['website'],
+    items: [
+      'Every tick box row in Setup is now at least 40 px tall with the same box size, so switches are easier to hit on a tablet. Nothing moved and every option is where it was.',
+      'When "No QR code for guests" is on, "Show the QR code in a pop-up" now says why it is greyed out, and a note says guests still get their QR code on a Sharing Station if you use one.',
+      'Plainer wording for a few options (faster video export, smoother slow motion, resize on the guest screen, display & monitor size), consistent spelling, and names for the colour dots so screen readers can read them.'
+    ]
+  },
+  {
     date: '2026-11-13', title: 'Android 1.1.55: 80mm USB receipt printers (Xprinter XP-T80Q etc.) print in one go again', for: ['website'],
     items: [
       'Since Android 1.1.40, prints to USB receipt printers were sent in tiny slow pieces to protect small 58mm printers. A fast 80mm printer (for example the Xprinter XP-T80Q at 200 mm/s) ran out of data, stopped and restarted while printing, and each stop left a line across the strip.',

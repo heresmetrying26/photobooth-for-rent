@@ -9267,6 +9267,21 @@
       height: 20px;
     }
 
+    /* Easier to tap on a tablet: every tick row is at least 40 px tall and every tick box is the same size. */
+    .toggle-row,
+    .switch-row {
+      min-height: 40px;
+    }
+
+    .lay-guest-toggle {
+      min-height: 40px;
+    }
+
+    .lay-guest-toggle input {
+      width: 20px;
+      height: 20px;
+    }
+
     /* Layout cards with a live picture of your design */
     /* Every card gets the same picture area; the thumbnail fits inside it whole. */
     .layout-btn .lt-box {
@@ -15417,7 +15432,7 @@
               <option value="0" selected>Until tap</option>
             </select>
           </details>
-          <p class="sub-label" style="margin-top:16px;">Display &amp; Monitor Scaling</p>
+          <p class="sub-label" style="margin-top:16px;">Display &amp; monitor size</p>
           <p class="panel-hint" style="margin:2px 0 8px;">Adapt buttons, countdown visibility for guests, and side session photos for small (11.5") or large monitors.</p>
           <div class="chip-row" id="uiScaleChips" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
             <button type="button" class="chip" data-scale="compact">Compact (11.5")</button>
@@ -15454,13 +15469,14 @@
               </select>
             </div>
           </details>
-          <button type="button" class="action-btn" id="openLiveScaleBtn" style="margin-top:10px; width:100%;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:6px;" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v6h6"/><path d="M9 21v-6H3"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>Live Resize on Screen (Zero Back-and-Forth)</button>
+          <button type="button" class="action-btn" id="openLiveScaleBtn" style="margin-top:10px; width:100%;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:6px;" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v6h6"/><path d="M9 21v-6H3"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>Resize on the guest screen (live)</button>
           
           <p class="sub-label" style="margin-top:16px;">After the photos</p>
           <label class="toggle-row" style="margin-top:4px;"><input type="checkbox" id="hideQrToggle"> No QR code for guests (photo, Print and Done only)</label>
           <p class="panel-hint" id="hideQrHint" style="margin:2px 0 6px;">Photos are still saved. Turn this on when guests only receive prints.</p>
           <label class="toggle-row" style="margin-top:4px;"><input type="checkbox" id="qrPopToggle"> Show the QR
             code in a pop-up</label>
+          <p class="panel-hint" id="qrPopOffNote" style="display:none;margin:0 0 6px;">Greyed out because <b>No QR code for guests</b> is on. Untick it to use this.</p>
           <div class="opt-row" id="qrPopDelayRow">
             <span class="lbl">Show the photo first for</span>
             <select class="mini-select pillify" id="qrPopDelaySelect">
@@ -15478,6 +15494,7 @@
             when the print is done.</p>
 
           <label class="toggle-row" style="margin-top:14px;"><input type="checkbox" id="shareStationToggle"> Show QR on a separate Sharing Station</label>
+          <p class="panel-hint" id="shareStationNoQrNote" style="display:none;margin:2px 0 0;">The booth screen shows no QR code (see above), but guests still get theirs on the Sharing Station.</p>
           <div id="shareStationOptions" style="display:none;margin-top:8px;">
             <div class="opt-row">
               <span class="lbl">Booth screen after photos</span>
@@ -15667,7 +15684,7 @@
               your event title, date, 3-step guest instructions, and a sample photo print.</p>
             <div id="welcomeCardCustomBlock"
               style="margin-top:12px; padding:12px; background:var(--panel-2); border-radius:12px; border:1px solid var(--line);">
-              <label class="switch-row" style="margin-top:0;"><span>Personalize welcome card text &amp;
+              <label class="switch-row" style="margin-top:0;"><span>Personalise welcome card text &amp;
                   font</span><input type="checkbox" id="welcomeCustomToggle"></label>
               <p class="panel-hint" style="margin:4px 0 0;">Separate what guests see on the welcome card from your photo
                 print text.</p>
@@ -15774,7 +15791,7 @@
                     "Smile" when hands-free is on).</p>
                 </div>
                 <div id="welcomeBtnColorRow" style="margin-top:10px;">
-                  <p class="sub-label" style="margin:0 0 6px;">Button color</p>
+                  <p class="sub-label" style="margin:0 0 6px;">Button colour</p>
                   <div class="chip-row" id="welcomeBtnColorChips">
                     <button type="button" class="chip active" data-color="#C93D27"
                       style="display:inline-flex; align-items:center; gap:6px;"><i
@@ -17277,11 +17294,11 @@
                 </select></label>
               <label class="chk"
                 title="Tip: Record at 60 fps (or 120 fps for 0.25×) for instant real slow motion with no extra processing wait."><input
-                  type="checkbox" id="spinSmooth"> Smoother slow motion (30 fps clips; 60+ fps is smooth
-                automatically)</label>
+                  type="checkbox" id="spinSmooth"> Smoother slow motion (for normal clips; fast-recorded
+                clips are already smooth)</label>
               <label class="chk" id="spinGpuWrap" hidden
                 title="Use hardware GPU video encoding when available (falls back to CPU automatically)."><input
-                  type="checkbox" id="spinGpu"> GPU fast encode</label>
+                  type="checkbox" id="spinGpu"> Faster video export (uses the graphics card)</label>
               <label class="chk" title="Smooth camera punch-in zoom during slow motion and speed ramps"><input
                   type="checkbox" id="spinZoom" checked> Dynamic zoom</label>
               <label class="chk" title="Optical white flash at speed change and beat drops"><input
@@ -32979,6 +32996,8 @@
         qrPopToggle.disabled = hideQrOn;
         document.getElementById('qrPopDelayRow').style.display = qrPopOn && !hideQrOn ? '' : 'none';
         try { qrSection.classList.toggle('qr-off', hideQrOn); } catch (e) { }
+        var offNote = document.getElementById('qrPopOffNote'); if (offNote) offNote.style.display = hideQrOn ? '' : 'none';
+        var stNote = document.getElementById('shareStationNoQrNote'); if (stNote) stNote.style.display = (hideQrOn && typeof shareStationOn !== 'undefined' && shareStationOn) ? '' : 'none';
       }
       hideQrToggle.addEventListener('change', function () { hideQrOn = hideQrToggle.checked; refreshQrPopUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
       qrPopToggle.addEventListener('change', function () { qrPopOn = qrPopToggle.checked; refreshQrPopUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
@@ -33000,6 +33019,7 @@
       function refreshShareStationUI() {
         if (shareStationToggle) shareStationToggle.checked = shareStationOn;
         if (shareStationOptions) shareStationOptions.style.display = shareStationOn ? 'block' : 'none';
+        var stNote = document.getElementById('shareStationNoQrNote'); if (stNote) stNote.style.display = (hideQrOn && shareStationOn) ? '' : 'none';
       }
       if (shareStationToggle) {
         shareStationToggle.addEventListener('change', function () {
@@ -50882,6 +50902,46 @@
       }
       window._pbDeclutter = declutter;
       if (isAndroidApp()) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', declutter); else declutter(); }
+    })();
+  </script>
+  <script>
+    // Screen-reader and hover names for controls that only have a picture or a nearby caption (colour dots, sliders,
+    // dropdowns). Nothing changes on screen; it only adds aria-label / title where one is missing.
+    (function () {
+      function colourName(hex) {
+        var m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim()); if (!m) return 'Colour';
+        var n = parseInt(m[1], 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+        var mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+        if (l < 0.14) return 'Black'; if (l > 0.93) return 'White';
+        var s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+        if (s < 0.12) return l < 0.4 ? 'Dark grey' : l < 0.75 ? 'Grey' : 'Light grey';
+        var h = d === 0 ? 0 : mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60;
+        var name = h < 15 || h >= 345 ? 'Red' : h < 40 ? 'Orange' : h < 65 ? 'Yellow' : h < 160 ? 'Green' : h < 200 ? 'Teal' : h < 255 ? 'Blue' : h < 290 ? 'Purple' : 'Pink';
+        if (name === 'Orange' && l < 0.4) name = 'Brown';
+        return (l < 0.3 ? 'Dark ' : l > 0.75 ? 'Light ' : '') + name.toLowerCase().replace(/^./, function (c) { return l < 0.3 || l > 0.75 ? c : c.toUpperCase(); });
+      }
+      function nameControls() {
+        try {
+          document.querySelectorAll('.color-swatch-btn:not([aria-label])').forEach(function (b) {
+            var nm = colourName(b.getAttribute('data-color')); b.setAttribute('aria-label', nm); if (!b.title) b.title = nm;
+          });
+          document.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([aria-label]), select:not([aria-label])').forEach(function (el) {
+            if (el.closest('label') || (el.id && document.querySelector('label[for="' + el.id + '"]'))) return;
+            var cap = '';
+            var row = el.closest('.opt-row, .stepper, .field, .row');
+            var lbl = row && row.querySelector('.lbl, .sub-label, span');
+            if (lbl && !lbl.contains(el)) cap = (lbl.textContent || '').replace(/\s+/g, ' ').trim();
+            if (!cap) cap = el.title || el.placeholder || '';
+            if (!cap && el.type === 'color') cap = 'Pick a colour';
+            if (!cap && el.id === 'titleSizeSlider') cap = 'Text size';
+            if (cap) el.setAttribute('aria-label', cap.slice(0, 80));
+          });
+        } catch (e) { }
+      }
+      var t = 0;
+      function later() { clearTimeout(t); t = setTimeout(nameControls, 600); }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', later); else later();
+      try { var setupTab = document.getElementById('tabSetup'); if (setupTab) new MutationObserver(later).observe(setupTab, { childList: true, subtree: true }); } catch (e) { }
     })();
   </script>
 </body>

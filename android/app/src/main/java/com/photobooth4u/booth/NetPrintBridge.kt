@@ -54,7 +54,8 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         private const val SCAN_MIN_MS = 8_000L        // the Bonjour answers need this long even when the sweep is quick
         private const val SCAN_MAX_MS = 45_000L
         private const val PROBE_MS = 900              // a sleeping or busy Wi-Fi printer can take over half a second to answer
-        private const val RESOLVE_MS = 4L             // seconds to wait for one Bonjour name to resolve
+        private const val SLOW_PROBE_MS = 2_500       // second pass for a printer that was asleep during the quick sweep
+        private const val RESOLVE_MS = 4L            // seconds to wait for one Bonjour name to resolve
     }
 
     /** One local IPv4 network the tablet is on. [network] is set when Android knows it, so sockets can be bound to it. */
@@ -452,13 +453,35 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         targets.removeAll(mine)
         scanNote = if (list.isEmpty()) "The tablet has no Wi-Fi address, so there is nothing to search. Connect it to the printer's Wi-Fi."
         else "Searched " + targets.size + " addresses on " + list.joinToString(", ") { it.addr.hostAddress + "/" + it.prefix }
-        probeTotal = targets.size
+        // Second, slower look at the tablet's own /24 for the addresses that stayed silent. A Wi-Fi printer that is
+        // asleep (Brother, Epson, HP…) often misses the first quick knock and only answers after being woken by it.
+        val ownBases = HashSet<Long>()
+        for (n in list) ownBases.add(ipLong(n.addr) and 0xFFFFFF00L)
+        val slow = targets.filter { (it and 0xFFFFFF00L) in ownBases }
+        probeTotal = targets.size + slow.size
         for (v in targets) {
             val ip = ipText(v)
             scanPool.execute {
                 try { if (scanning && scanId == id) probe(ip) } finally { probed.incrementAndGet() }
             }
         }
+        for (v in slow) {
+            val ip = ipText(v)
+            scanPool.execute {
+                try { if (scanning && scanId == id) probeSlow(ip) } finally { probed.incrementAndGet() }
+            }
+        }
+    }
+
+    /** Patient retry for an address the quick sweep got no answer from: only the IPP port, but with time to wake up. */
+    private fun probeSlow(ip: String) {
+        if (found[ip]?.let { it.ippPort > 0 || it.rawPort > 0 } == true) return
+        if (!open(ip, 631, SLOW_PROBE_MS)) return
+        val e = Entry(ip)
+        e.ippPort = 631
+        val cur = found.getOrPut(ip) { e }
+        if (cur.ippPort == 0) cur.ippPort = 631
+        fetchAttrs(cur)
     }
 
     private fun open(ip: String, port: Int, timeoutMs: Int = PROBE_MS): Boolean = try {
@@ -1472,7 +1495,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     private fun ippPaths(e: Entry): Set<String> {
         val paths = LinkedHashSet<String>()
         if (e.ippPath.isNotBlank()) paths.add(e.ippPath)
-        paths.addAll(listOf("/ipp/print", "/ipp", "/"))
+        paths.addAll(listOf("/ipp/print", "/ipp", "/", "/ipp/printer", "/printer"))
         return paths
     }
 
@@ -1591,15 +1614,23 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         val named = if (isSelphy(e)) selphyMedia(e, wMm, hMm) else null
         val attempts = (if (named != null) listOf(Triple(true, true, named), Triple(true, false, named)) else emptyList()) +
             base.map { Triple(it.first, it.second, "") }
+        var drops = 0
         for ((format, make) in candidates) {
             val data = try { make() } catch (ex: Exception) { lastErr = ex.message ?: lastErr; continue }
             for ((withMedia, withOpts, mediaName) in attempts) {
                 for (path in ippPaths(e)) {
                     val body = ippPrintJob(ippUri(e, path), job, format, data, if (withMedia) wMm else 0.0, hMm,
                         if (withOpts) qv else 0, if (withOpts) cm else "", if (withOpts) mt else "", if (opts.borderless) "none" else "fill", mediaName)
-                    val r = doPost(e, path, body)
+                    val r = try { doPost(e, path, body) } catch (nf: NetFail) {
+                        // Can't connect at all: stop now. Connected but dropped mid-job: try the next settings, up to 3 times.
+                        if (!nf.connected || ++drops >= 3) throw nf
+                        lastErr = nf.message ?: lastErr
+                        continue
+                    }
                     when {
                         r.http == 200 && r.ipp in 0..2 -> return
+                        r.http == 200 && r.ipp == 0x406 -> lastErr = "The printer says it has no print queue at the addresses tried (" +
+                            ippPaths(e).joinToString(", ") + "; code 0x406). Add it by its IP address again, or check it has IPP / AirPrint turned on."
                         r.http == 200 -> lastErr = "The printer refused the photo (code 0x" + Integer.toHexString(r.ipp) + ")."
                         r.http == 426 || r.http == 301 || r.http == 302 -> lastErr = "This printer only accepts secure printing, which the app doesn't support yet."
                         r.http == 404 -> {}
@@ -1702,29 +1733,52 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
 
     private class Reply(val http: Int, val ipp: Int, val body: ByteArray = ByteArray(0))
 
+    /** A network failure talking to the printer. [connected] is true when the printer did answer the connection, then dropped it. */
+    private class NetFail(msg: String, val connected: Boolean) : IllegalStateException(msg)
+
     private fun post(ip: String, port: Int, path: String, body: ByteArray): Reply {
+        var connected = false
         try {
             newSocket(ip).use { s ->
                 s.connect(InetSocketAddress(ip, port), 5000)
+                connected = true
                 s.soTimeout = 90_000
                 val out = s.getOutputStream()
                 val head = "POST $path HTTP/1.1\r\nHost: $ip:$port\r\nContent-Type: application/ipp\r\n" +
                     "Content-Length: ${body.size}\r\nConnection: close\r\n\r\n"
-                out.write(head.toByteArray(Charsets.ISO_8859_1))
-                out.write(body)
-                out.flush()
+                // A printer that dislikes the job often answers at once and hangs up, which breaks our write halfway.
+                // Keep the error, but still read what it said: that answer is the real reason.
+                var sendErr: java.io.IOException? = null
+                try {
+                    out.write(head.toByteArray(Charsets.ISO_8859_1))
+                    out.write(body)
+                    out.flush()
+                } catch (ex: java.io.IOException) { sendErr = ex }
                 val buf = ByteArrayOutputStream()
                 val tmp = ByteArray(4096)
-                while (buf.size() < 65536) {
-                    val n = s.getInputStream().read(tmp)
-                    if (n < 0) break
-                    buf.write(tmp, 0, n)
+                try {
+                    while (buf.size() < 65536) {
+                        val n = s.getInputStream().read(tmp)
+                        if (n < 0) break
+                        buf.write(tmp, 0, n)
+                    }
+                } catch (ex: java.io.IOException) {
+                    if (buf.size() == 0) throw sendErr ?: ex
                 }
+                if (buf.size() == 0 && sendErr != null) throw sendErr
                 return parseReply(buf.toByteArray())
             }
         } catch (ex: Exception) {
             Log.w(TAG, "post $ip:$port$path", ex)
-            throw IllegalStateException("Could not reach printer at $ip. Verify it is powered on and connected to the same network.")
+            val why = when {
+                ex is java.net.SocketTimeoutException && !connected -> "it did not answer within 5 seconds"
+                ex is java.net.SocketTimeoutException -> "it stopped answering while printing"
+                ex is java.net.ConnectException -> "it refused the connection on port $port"
+                ex is java.net.NoRouteToHostException || ex is java.net.UnknownHostException -> "the tablet has no route to it"
+                connected -> "it hung up while the photo was being sent (${ex.message ?: ex.javaClass.simpleName})"
+                else -> ex.message ?: ex.javaClass.simpleName
+            }
+            throw NetFail("Could not reach printer at $ip: $why. Check it is on, and on the same Wi-Fi as the tablet.", connected)
         }
     }
 

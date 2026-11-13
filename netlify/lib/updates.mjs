@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.35', date: '2026-11-13' },
   { version: '1.1.34', date: '2026-11-12' },
   { version: '1.1.33', date: '2026-11-12' },
   { version: '1.1.32', date: '2026-11-12' },

@@ -11254,6 +11254,8 @@
       #qrSection.hidden {
         display: none;
       }
+      /* Setup, "Hide the QR code": the guest sees the photo and Done / Print only, no QR code. */
+      #qrSection.qr-off #qrResults, #qrSection.qr-off #qrHint, #qrSection.qr-off #shareSlot, #qrSection.qr-off #printFirstHold { display: none !important; }
 
       #qrSection .panel-label {
         grid-area: title;
@@ -15455,6 +15457,8 @@
           <button type="button" class="action-btn" id="openLiveScaleBtn" style="margin-top:10px; width:100%;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;margin-right:6px;" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v6h6"/><path d="M9 21v-6H3"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg>Live Resize on Screen (Zero Back-and-Forth)</button>
           
           <p class="sub-label" style="margin-top:16px;">After the photos</p>
+          <label class="toggle-row" style="margin-top:4px;"><input type="checkbox" id="hideQrToggle"> No QR code for guests (photo, Print and Done only)</label>
+          <p class="panel-hint" id="hideQrHint" style="margin:2px 0 6px;">Photos are still saved. Turn this on when guests only receive prints.</p>
           <label class="toggle-row" style="margin-top:4px;"><input type="checkbox" id="qrPopToggle"> Show the QR
             code in a pop-up</label>
           <div class="opt-row" id="qrPopDelayRow">
@@ -18718,6 +18722,8 @@
         trio: { name: 'Trio', shots: 3, kind: 'sheet', hint: '3 wide shots, stacked.' },
         feature: { name: 'Feature 1+2', shots: 3, kind: 'sheet', hint: '1 wide shot on top, 2 below.' },
         film6: { name: 'Film 6', shots: 6, kind: 'sheet', hint: '6 shots in a 2×3 grid.' },
+        land2: { name: 'Landscape 2', shots: 2, kind: 'landscape', hint: 'Landscape 4R: 2 big shots side by side, the name underneath.' },
+        land2t: { name: 'Landscape 2 (name on top)', shots: 2, kind: 'landscape', hint: 'Landscape 4R: the name on top, 2 big shots side by side below it.' },
         land3: { name: 'Landscape 3', shots: 3, kind: 'landscape', hint: 'Landscape 4R: the name in its own panel, 3 shots.' },
         land4: { name: 'Landscape 4', shots: 4, kind: 'landscape', hint: 'Landscape 4R: 1 big shot and the name on top, 3 below.' },
         // Receipt photo booth: looks like a shop receipt. Black & white is made for
@@ -18743,7 +18749,7 @@
           hint: 'Two or more of your frames together on one sheet. Tick them below, choose the sheet size and an arrangement, then drag them in the preview.'
         }
       };
-      const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'feature', 'film6', 'land3', 'land4', 'receipt', 'receipt1', 'receipt2', 'receipt4', 'receiptc', 'receipt1c', 'receipt2c', 'receipt4c'];
+      const LAYOUT_ORDER = ['strip', 'strip4', 'grid', 'grid4', 'hero', 'solo', 'duo', 'feature', 'film6', 'land2', 'land2t', 'land3', 'land4', 'receipt', 'receipt1', 'receipt2', 'receipt4', 'receiptc', 'receipt1c', 'receipt2c', 'receipt4c'];
       // The built-in layouts, plus your frames once at least one is uploaded.
       function layoutOrder() {
         var has = typeof myFrames !== 'undefined' && myFrames && myFrames.length;
@@ -23430,6 +23436,7 @@
               } else {
                 throw new Error('Camera not active');
               }
+              try { usbAfterShot(); } catch (e) { }   // learns the camera's shutter delay (and brings live view back), like a real shot does
               if (img) img.src = URL.createObjectURL(file);
               if (meta) meta.textContent = Math.round(file.size / 1024) + ' KB JPEG · ' + (Date.now() - t0) + ' ms · Inspect sharpness, then switch lens to MF to lock focus.';
               if (box) box.style.display = 'block';
@@ -24083,6 +24090,7 @@
 
         const showQr = hasAllShots && !isCapturing;
         qrSection.classList.toggle('hidden', !showQr);
+        qrSection.classList.toggle('qr-off', hideQrOn);
         if (!showQr && typeof qrPopEnd === 'function') qrPopEnd();
         appShell.classList.toggle('has-qr', showQr);
         try {
@@ -26471,7 +26479,7 @@
       const LAYOUT_GROUPS = [
         { t: 'Strips', s: '2×6, or 2 strips on 4R', keys: ['strip', 'strip4'] },
         { t: '4R sheet', s: '4×6 photo paper', keys: ['grid', 'grid4', 'hero', 'solo', 'duo', 'feature', 'film6'] },
-        { t: 'Landscape', s: '4R turned sideways', keys: ['land3', 'land4'] },
+        { t: 'Landscape', s: '4R turned sideways', keys: ['land2', 'land2t', 'land3', 'land4'] },
         { t: 'Receipt & Thermal', s: 'Thermal receipt printer (80/58 mm), or photo paper', keys: ['receipt', 'receipt1', 'receipt2', 'receipt4', 'receiptc', 'receipt1c', 'receipt2c', 'receipt4c'] }
       ];
       let layoutPicked = false;            // the renter tapped a layout (ready designs then ask before changing it)
@@ -28126,6 +28134,14 @@
       // ---- Landscape 4R layouts (event name in its own panel) ----
       function landscapeCells(key, W, H) {
         var m = H * 0.035, g = H * 0.025, iw = W - 2 * m, ih = H - 2 * m;
+        if (key === 'land2' || key === 'land2t') {
+          // Two big photos side by side and the event name in a wide band under them (land2) or over them (land2t).
+          var nameH = ih * 0.2, picH = ih - g - nameH, pw2 = (iw - g) / 2, py = key === 'land2' ? m : m + nameH + g;
+          return {
+            title: { x: m, y: key === 'land2' ? m + picH + g : m, w: iw, h: nameH },
+            shots: [0, 1].map(function (i) { return { x: m + i * (pw2 + g), y: py, w: pw2, h: picH }; })
+          };
+        }
         if (key === 'land4') {
           var topH = (ih - g) * 0.55, botH = ih - g - topH, bw = (iw - 2 * g) / 3, lw = (iw - g) * 0.55;
           return {
@@ -29139,21 +29155,27 @@
         } catch (e) { return 'best'; }
       }
       async function printViaHelper(pages, paper, name) {
-        const h = await checkHelper(true);
-        if (!h.ok) return false;
+        let h = await checkHelper(true);
+        // The built-in helper can be slow to list printers right after the app starts: ask again before giving up.
+        for (let i = 0; DESKTOP && i < 3 && (!h.ok || !(h.printers || []).includes(name)); i++) {
+          await new Promise(r => setTimeout(r, 1500));
+          h = await checkHelper(true);
+        }
+        if (!h.ok) { if (DESKTOP) showToast('The app can’t reach its printing service. Close and reopen photobooth4u, then try again.', 6500); return false; }
+        const dlg = DESKTOP ? '' : ' Opening the print dialog instead.';
         // Older Windows helpers stretch the picture to the driver's page; Mac (CUPS) already keeps its shape.
         if (paper.receipt && /Win/i.test(navigator.platform || '') && !helperAtLeast('1.1.4')) {
           showToast('Receipts need Print Helper 1.1.4 or newer (download it again from photobooth4u.netlify.app/downloads). Opening the print dialog instead.', 7000);
           return false;
         }
         try {
-          const body = JSON.stringify({ printer: name, quality: helperQualityFor(name), widthMm: paper.w, heightMm: paper.h, fit: paper.receipt ? 'width' : undefined, pages: pages.map(c => c.toDataURL('image/png')) });
+          const body = JSON.stringify({ printer: name, quality: helperQualityFor(name), widthMm: paper.w, heightMm: paper.h, fit: paper.receipt ? 'width' : undefined, custom: ownSizes().some(k => { const op = paperFor(k); return !!op && Math.abs(op.w - paper.w) < 0.6 && Math.abs(op.h - paper.h) < 0.6; }), pages: pages.map(c => c.toDataURL('image/png')) });
           const r = await fetch(HELPER_URL + '/print', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
           const j = await r.json().catch(() => ({}));
           if (r.ok && j.ok) return true;
-          showToast('Print Helper couldn’t print (' + (j.error || ('error ' + r.status)) + '). Opening the print dialog instead.', 5500);
+          showToast((DESKTOP ? 'Couldn’t print on ' + name : 'Print Helper couldn’t print') + ' (' + (j.error || ('error ' + r.status)) + ').' + (DESKTOP ? ' Check the printer is on and has paper, then print again.' : dlg), 6500);
         } catch (e) {
-          showToast('Lost the Print Helper. Opening the print dialog instead.', 4500);
+          showToast((DESKTOP ? 'Lost the printing service.' : 'Lost the Print Helper.') + dlg, 4500);
         }
         return false;
       }
@@ -29171,11 +29193,11 @@
         const p = window.__PB && window.__PB.print;
         if (isTrialBooth()) {
           if (p && p.enabled && Array.isArray(p.sizes) && p.sizes.length) {
-            const merged = Array.from(new Set([...p.sizes, 'receipt80', 'receipt58']));
+            const merged = Array.from(new Set([...p.sizes, 'receipt80', 'receipt58', ...ownSizes()]));
             const sizes = merged.filter(k => paperFor(k));
             if (sizes.length) return sizes;
           }
-          return ['receipt80', 'receipt58', '4x6', '2x6'];
+          return Array.from(new Set(['receipt80', 'receipt58', '4x6', '2x6', ...ownSizes()])).filter(k => paperFor(k));
         }
         if (!p || !p.enabled || !Array.isArray(p.sizes)) return null;
         const sizes = Array.from(new Set(p.sizes.concat(ownSizes()))).filter(k => paperFor(k));
@@ -29183,8 +29205,10 @@
       }
       // Lifetime renters can add their own paper sizes (kept on this device, up to 6).
       const OWN_KEY = 'pb_own_sizes', OWN_MAX = 6;
+      // Own paper sizes (XL strips and the like): every booth can add them, Lifetime, rental, desktop app or tester alike.
+      function ownSizesAllowed() { return true; }
       function ownSizes() {
-        if (!(window.__PB && window.__PB.lifetime) || isTrialBooth()) return [];
+        if (!ownSizesAllowed()) return [];
         try { const a = JSON.parse(localStorage.getItem(OWN_KEY) || '[]'); return Array.isArray(a) ? a.filter(k => typeof k === 'string' && !PAPER[k] && paperFor(k)).slice(0, OWN_MAX) : []; } catch (e) { return []; }
       }
       function saveOwnSizes(a) { try { localStorage.setItem(OWN_KEY, JSON.stringify(a)); } catch (e) { } }
@@ -29341,7 +29365,7 @@
           }
         }
         printSizeRow.innerHTML = '';
-        document.getElementById('customSizeRow').classList.toggle('hidden', !(window.__PB && window.__PB.lifetime) || isTrialBooth());
+        document.getElementById('customSizeRow').classList.toggle('hidden', !ownSizesAllowed());
         const own = ownSizes();
         sizes.forEach(key => {
           const b = document.createElement('button');
@@ -29420,8 +29444,13 @@
           if (cur.length >= OWN_MAX) { showToast('Up to ' + OWN_MAX + ' own sizes. Remove one first.', 4000); return; }
           saveOwnSizes(cur.concat(key));
         }
+        // The new size becomes the booth's paper for the next sessions, and prints on the same printer as the size used until now,
+        // so auto-print keeps going with no extra setup.
+        const prevPrinter = printSize ? printerFor(printSize) : '';
         printSize = key;
         try { localStorage.setItem('pb_print_paper', key); } catch (e) { }
+        if (prevPrinter && !printerFor(key)) { printerMap[printerKey(key)] = prevPrinter; savePrinterMap(); }
+        showToast(paperFor(key).name + ' is now the print size' + (prevPrinter ? ' on ' + prevPrinter : '') + '.' + (prevPrinter ? '' : ' Pick its printer below.'), 4500);
         document.getElementById('csW').value = ''; document.getElementById('csH').value = '';
         refreshPrintUI();
       });
@@ -31478,6 +31507,8 @@
             }
             sent = await printSheets(all, paper, pname);
             if (extraJob) await extraJob;
+            // The app never falls back to the Windows print dialog once a printer is chosen: a guest session must not stall behind it.
+            if (!sent && DESKTOP) return false;
             if (sent) {
               showToast((auto === true ? 'Auto-printing on ' : 'Printing on ') + pname + (sec ? ' & ' + sec.name : '') + ' (' + label + ').');
               armAutoPrintAfterFirst(auto === true);
@@ -31531,6 +31562,11 @@
               showToast('Couldn’t open printing: ' + (e2.message || e2), 5500);
               return false;
             }
+          }
+          if (DESKTOP && (pname || auto === true)) {
+            // Auto-print (or a chosen printer that was not reachable) must never open the Windows dialog.
+            showToast('No printer is chosen for ' + paper.name + '. Open Printer settings and pick one.', 6500);
+            return false;
           }
           const urls = [];
           printArea.innerHTML = '';
@@ -31737,6 +31773,7 @@
       function autoPrintHintText() {
         if (useStation()) return 'Each session goes to the laptop print station by itself.';
         if (helperOn && helper.ok && printSize && helper.printers.includes(printerFor(printSize))) return 'Each session sends a job to the selected printer with no dialog.';
+        if (DESKTOP) return printSize && printerFor(printSize) ? 'The app is still looking for “' + printerFor(printSize) + '”. Tap Refresh printer list below. It will never open the Windows print dialog.' : 'Pick a printer for this paper size below and each session prints with no dialog.';
         if (isMobileOS()) return 'After each session the AirPrint sheet opens by itself, so the guest just taps Print. A web page can’t skip that sheet; for no pop-up at all, send prints to a laptop print station.';
         return 'Each session opens the print dialog by itself. To skip the dialog, use the Print Helper or start Chrome with --kiosk-printing.' + (isTraditional() ? ' Turns on after your first print, on the same paper.' : '');
       }
@@ -32338,6 +32375,7 @@
       var reviewEach = true;     // show each photo during the pause between shots
       var resultReviewSec = 0;     // 0 = finished photo stays until the next tap
       var qrPopOn = false;         // Step 7: QR code in a pop-up, after the finished photo is shown on its own
+      var hideQrOn = false;        // Step 7: no QR code at all for the guest (prints only); the photo is still saved
       var qrPopDelay = 3;          // seconds the photo is shown before the pop-up
       var guestPickOn = false;
       var guestLayoutSet = [];     // extra layouts guests may pick (besides setupLayout)
@@ -32933,10 +32971,15 @@
       var resultReviewSelect = document.getElementById('resultReviewSelect');
       resultReviewSelect.addEventListener('change', function () { resultReviewSec = Number(resultReviewSelect.value) || 0; });
       var qrPopToggle = document.getElementById('qrPopToggle'), qrPopDelaySelect = document.getElementById('qrPopDelaySelect');
+      var hideQrToggle = document.getElementById('hideQrToggle');
       function refreshQrPopUI() {
-        qrPopToggle.checked = qrPopOn;
-        document.getElementById('qrPopDelayRow').style.display = qrPopOn ? '' : 'none';
+        hideQrToggle.checked = hideQrOn;
+        qrPopToggle.checked = qrPopOn && !hideQrOn;
+        qrPopToggle.disabled = hideQrOn;
+        document.getElementById('qrPopDelayRow').style.display = qrPopOn && !hideQrOn ? '' : 'none';
+        try { qrSection.classList.toggle('qr-off', hideQrOn); } catch (e) { }
       }
+      hideQrToggle.addEventListener('change', function () { hideQrOn = hideQrToggle.checked; refreshQrPopUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
       qrPopToggle.addEventListener('change', function () { qrPopOn = qrPopToggle.checked; refreshQrPopUI(); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
       qrPopDelaySelect.addEventListener('change', function () { qrPopDelay = Math.max(0, Math.min(15, Number(qrPopDelaySelect.value) || 0)); if (typeof scheduleSetupSave === 'function') scheduleSetupSave(); });
       refreshQrPopUI();
@@ -33124,7 +33167,7 @@
       }
       function qrPopBegin() {
         qrPopEnd();
-        if (!qrPopOn || state !== 'result') return;
+        if (!qrPopOn || hideQrOn || state !== 'result') return;
         var ov = document.getElementById('qrPopOv');
         qrPop.phase = 'wait';
         clearTimeout(resultTimer); runResultTimerBar(0);     // the "next guest" timer starts with the pop-up
@@ -44730,7 +44773,7 @@
           guestPick: guestPickOn, guestLayouts: guestLayoutSet.slice(),
           boothType: boothType, btCfg: JSON.parse(JSON.stringify(btCfg)), tpls: tplsSnapshot(),
           timerSec: timerSec, firstExtraSec: firstExtraSec, betweenSec: betweenSec, advanceMode: advanceMode, photoFit: photoFit,
-          reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake, qrPop: qrPopOn, qrPopDelay: qrPopDelay,
+          reviewEach: reviewEach, resultReviewSec: resultReviewSec, allowRetake: allowRetake, qrPop: qrPopOn, hideQr: hideQrOn, qrPopDelay: qrPopDelay,
           shareStation: shareStationOn, shareStationHandoff: shareStationHandoff, shareStationPrivacy: shareStationPrivacy,
           outputMode: outputMode, gifSpeed: gifSpeed, gifLayout: gifLayoutMode, gifMotionStyle: gifMotionStyle, gifLoopMode: gifLoopMode, flipSec: flipSec, flipFrames: flipFrames, flipCover: flipCover, flipBack: flipBack, flipCollation: flipCollation, flipGutter: flipGutter, flipNumbers: flipNumbers, flipCues: flipCues, flipGridPreset: flipGridPreset, flipPrinterPool: flipPrinterPool, flipPoolMode: flipPoolMode, flipCoverStyle: flipCoverStyle, flipCoverAssetId: flipCoverAssetId, flipBackQr: flipBackQr, flipBackText: flipBackText,
           backdropPreset: pendingCustom ? 'custom' : backdropPreset, backdropColor: backdropColor, elementsChoice: elementsChoice,
@@ -44861,6 +44904,7 @@
           if (s.advanceMode === 'tap' || s.advanceMode === 'auto') { advanceMode = s.advanceMode; setSelectValue('advanceSelect', s.advanceMode); refreshAdvanceUI(); }
           if (typeof s.reviewEach === 'boolean') { reviewEach = s.reviewEach; reviewEachToggle.checked = s.reviewEach; }
           if (typeof s.qrPop === 'boolean') { qrPopOn = s.qrPop; refreshQrPopUI(); }
+          if (typeof s.hideQr === 'boolean') { hideQrOn = s.hideQr; refreshQrPopUI(); }
           if (typeof s.qrPopDelay === 'number') { qrPopDelay = Math.max(0, Math.min(15, s.qrPopDelay)); setSelectValue('qrPopDelaySelect', qrPopDelay); }
           if (typeof s.shareStation === 'boolean') { shareStationOn = s.shareStation; refreshShareStationUI(); }
           if (typeof s.shareStationHandoff === 'string') { shareStationHandoff = s.shareStationHandoff; setSelectValue('shareStationHandoffSelect', s.shareStationHandoff); }
@@ -45481,8 +45525,73 @@
           id: 'lilac-eighteen', name: 'Lilac Butterflies 18', cats: ['Debut', 'Birthday'], tags: 'eighteenth debutante lilac purple butterflies big number landscape', sample: 'Isabelle', layout: 'land3',
           preset: 'party', color: '#e7d9f7', elements: 'butterflies', frame: '#ffffff', text: '#7a4fa3', font: "'Allura', cursive", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: false, shadow: false,
           titleStyle: 'bignum', kicker: '18'
+        },
+        // ---- Landscape 2-photo designs (4R sideways: two big shots side by side, the name in a wide band) ----
+        {
+          id: 'l2-bear-blue', name: 'Landscape Teddy Blue', cats: ['Christening', 'Kids Party', 'Birthday'], tags: 'landscape two photos 2 baptism baby boy blue teddy bear clouds', sample: 'Lucas', layout: 'land2',
+          preset: 'none', color: '#dfeaf5', elements: 'clouds', frame: '#ffffff', text: '#3d5a80', font: "'Fredoka', sans-serif", dateFont: "'Quicksand', sans-serif", titleBg: false, outline: true, outlineColor: '#ffffff', shadow: false,
+          titleStyle: 'turns', kicker: 'Christening', art: ['teddy'], artPal: { fur: '#c8955f', sweater: '#9cc0e4', bow: '#3d5a80' }
+        },
+        {
+          id: 'l2-bunny-pink', name: 'Landscape Bunny Pink', cats: ['Christening', 'Baby Shower', 'Kids Party'], tags: 'landscape two photos 2 baptism baby girl pink bunny hearts', sample: 'Baby Mia', layout: 'land2',
+          preset: 'none', color: '#f9e3ea', elements: 'hearts', frame: '#ffffff', text: '#d95f86', font: "'Fredoka', sans-serif", dateFont: "'Fredoka', sans-serif", titleBg: false, outline: true, outlineColor: '#ffffff', shadow: true,
+          titleStyle: 'turns', kicker: 'Baby Shower', art: ['bunny'], artPal: { bunny: '#f6cdd8', dress: '#ffffff', bow: '#e889a6' }
+        },
+        {
+          id: 'l2-sage-wedding', name: 'Landscape Sage Wedding', cats: ['Wedding', 'Anniversary'], tags: 'landscape two photos 2 green olive line art flowers garden', sample: 'Paolo & Bea', layout: 'land2',
+          preset: 'none', color: '#7c8d72', elements: 'none', frame: '#f6f2e8', text: '#fbf8f0', font: "'Italianno', cursive", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'wedding', kicker: 'Together with their families', art: ['linefloral'], artPal: { line: '#f6f2e8' }
+        },
+        {
+          id: 'l2-burgundy-wedding', name: 'Landscape Burgundy Wedding', cats: ['Wedding', 'Debut', 'Anniversary'], tags: 'landscape two photos 2 maroon wine elegant the wedding of', sample: 'Gabriel & Nicole', layout: 'land2t',
+          preset: 'none', color: '#5c1424', elements: 'none', frame: '#f3e6d0', text: '#f6ead8', font: "'Cinzel', serif", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'wedding', kicker: 'The wedding of', upper: true, art: ['linefloral'], artPal: { line: '#f3e6d0' }
+        },
+        {
+          id: 'l2-blush-debut', name: 'Landscape Blush Debut', cats: ['Debut', 'Birthday'], tags: 'landscape two photos 2 eighteenth debutante pink roses', sample: "Jenicka's", layout: 'land2',
+          preset: 'none', color: '#ffffff', elements: 'none', frame: '#f3c7d1', text: '#c86d8a', font: "'Great Vibes', cursive", dateFont: "'Cormorant Garamond', serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'wedding', kicker: 'Debut', art: ['roses'], artPal: { rose: '#f3a9bb', leaf: '#a9bf9c' }
+        },
+        {
+          id: 'l2-gold-glam', name: 'Landscape Black & Gold', cats: ['Debut', 'Birthday', 'New Year', 'Prom'], tags: 'landscape two photos 2 gold glam black elegant', sample: 'Sophia', layout: 'land2t',
+          preset: 'none', color: '#151515', elements: 'none', frame: '#d9bd7a', text: '#e6c983', font: "'Great Vibes', cursive", dateFont: "'Cinzel', serif", titleBg: false, outline: false, shadow: false,
+          titleStyle: 'wedding', kicker: 'Celebration', art: ['linefloral'], artPal: { line: '#d9bd7a' }
+        },
+        {
+          id: 'l2-party', name: 'Landscape Party Confetti', cats: ['Birthday', 'Kids Party', 'Summer'], tags: 'landscape two photos 2 colorful confetti fun party', sample: 'Mia', layout: 'land2',
+          preset: 'party', color: '#fff4e2', elements: 'confetti', frame: '#ffffff', text: '#c7372f', font: "'Fredoka', sans-serif", dateFont: "'Fredoka', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false
+        },
+        {
+          id: 'l2-corporate', name: 'Landscape Corporate Navy', cats: ['Corporate', 'Graduation'], tags: 'landscape two photos 2 business office launch conference clean blue', sample: 'Annual Summit', layout: 'land2t',
+          preset: 'chevron', color: '#e9eef6', accent: 'silver', frame: '#ffffff', text: '#1f3a63', font: "'Montserrat', sans-serif", dateFont: "'Montserrat', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false
+        },
+        {
+          id: 'l2-grad', name: 'Landscape Graduation', cats: ['Graduation', 'Prom'], tags: 'landscape two photos 2 graduation school blue gold', sample: 'Class of 2027', layout: 'land2',
+          preset: 'blackgold', accent: 'gold', frame: '#ffffff', text: '#e6c983', font: "'Cinzel', serif", dateFont: "'Montserrat', sans-serif", titleBg: false, outline: false, shadow: false
+        },
+        {
+          id: 'l2-mint-baby', name: 'Landscape Mint Baby', cats: ['Baby Shower', 'Kids Party', 'Christening'], tags: 'landscape two photos 2 baby shower neutral mint green butterflies', sample: 'Baby Noah', layout: 'land2t',
+          preset: 'gingham', color: '#cfeadb', elements: 'butterflies', frame: '#ffffff', text: '#3f6b4a', font: "'Allura', cursive", dateFont: "'Quicksand', sans-serif", titleBg: true, titleBgColor: '#ffffff', outline: false, shadow: false
         }
       ];
+      // Landscape 2-photo twins of existing designs: the same look, laid out as two big shots on a sideways 4R sheet.
+      // (Designs with an awning use "name on top" so the awning sits over the name band, not over a photo.)
+      (function () {
+        var twins = {
+          'teddy-awning': 'land2t', 'carnival': 'land2t', 'ivory-monogram': 'land2', 'boho-pampas': 'land2', 'shower-teddy': 'land2',
+          'golden-anniversary': 'land2', 'silver-anniversary': 'land2t', 'new-year-cheers': 'land2t', 'navy-florals': 'land2',
+          'candy-cane': 'land2', 'royal-gala': 'land2t', 'sunset-beach': 'land2', 'pool-party': 'land2', 'neon-night': 'land2t',
+          'rose-gold-glam': 'land2', 'space-explorer': 'land2', 'rainbow-polka': 'land2', 'pastel-butterflies': 'land2',
+          'grad-forest': 'land2t', 'executive-black': 'land2t'
+        };
+        var add = [];
+        THEMES.forEach(function (t) {
+          var lay = twins[t.id];
+          if (!lay) return;
+          add.push(Object.assign({}, t, { id: t.id + '-l2', name: t.name + ' · Landscape', layout: lay, tags: (t.tags || '') + ' landscape two photos 2' }));
+        });
+        add.forEach(function (t) { THEMES.push(t); });
+      })();
       var themeCat = 'All';
       var themeCatsEl = document.getElementById('themeCats');
       var themeGridEl = document.getElementById('themeGrid');
@@ -47279,7 +47388,7 @@
       function profileDeviceApply(d) {
         if (!d || typeof d !== 'object') return;
         try {
-          if (Array.isArray(d.ownSizes) && window.__PB && window.__PB.lifetime) {
+          if (Array.isArray(d.ownSizes) && ownSizesAllowed()) {
             var cur = ownSizes();
             saveOwnSizes(cur.concat(d.ownSizes.filter(function (k) { return typeof k === 'string' && cur.indexOf(k) < 0; })).slice(0, OWN_MAX));
           }

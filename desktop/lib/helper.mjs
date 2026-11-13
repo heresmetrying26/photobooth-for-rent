@@ -52,13 +52,17 @@ async function listPrinters() {
 }
 function refreshPrinters() {
   if (printersCache.loading) return printersCache.loading;
-  printersCache.loading = listPrinters().then((list) => { printersCache.list = list; printersCache.at = Date.now(); return list; })
+  // An empty answer (PowerShell slow or failed right after start-up) never replaces a good list, and is asked for again next time.
+  printersCache.loading = listPrinters().then((list) => {
+    if (!list.length && printersCache.list.length) return printersCache.list;
+    printersCache.list = list; printersCache.at = list.length ? Date.now() : 0; return list;
+  })
     .catch(() => printersCache.list).finally(() => { printersCache.loading = null; });
   return printersCache.loading;
 }
 async function printers(force) {
   if (force) return refreshPrinters();
-  if (!printersCache.at) { await Promise.race([refreshPrinters(), new Promise((r) => setTimeout(r, 1000))]); return printersCache.list; }
+  if (!printersCache.at) { await Promise.race([refreshPrinters(), new Promise((r) => setTimeout(r, 6000))]); return printersCache.list; }
   if (Date.now() - printersCache.at > 10000) refreshPrinters();
   return printersCache.list;
 }
@@ -321,7 +325,7 @@ async function macBorderlessScale(printer, pick) {
 }
 
 const WIN_PRINT_PS = String.raw`
-param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [switch]$Borderless)
+param([string]$Printer, [string]$ListFile, [switch]$FitWidth, [string]$PaperName, [string]$Quality = 'best', [switch]$Borderless, [int]$CustomW = 0, [int]$CustomH = 0, [int]$ActualW = 0, [int]$ActualH = 0)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $files = @(Get-Content -LiteralPath $ListFile -Encoding UTF8 | Where-Object { $_ })
@@ -363,6 +367,57 @@ if ($PaperName) {
   $p = $doc.PrinterSettings.PaperSizes | Where-Object { $_.PaperName -eq $PaperName } | Select-Object -First 1
   if ($p) { $doc.DefaultPageSettings.PaperSize = $p }
 }
+# A size the renter typed in (4 x 12 in ...) that the driver has no paper for: ask the driver for its own "User-Defined"
+# paper at exactly that size (Windows print ticket, Epson L-series list it with the width and length it can do). It is
+# only kept when the driver confirms the size back; otherwise nothing changes and the printer's own paper is used,
+# as before. Never errors out: a print always goes ahead.
+$customApplied = $false
+if ($CustomW -gt 0 -and $CustomH -gt 0 -and -not $PaperName) {
+  try {
+    Add-Type -AssemblyName System.Printing
+    Add-Type -AssemblyName ReachFramework
+    if (-not ('PB4U.K32' -as [type])) {
+      Add-Type -MemberDefinition @'
+[DllImport("kernel32.dll")] public static extern IntPtr GlobalLock(IntPtr h);
+[DllImport("kernel32.dll")] public static extern bool GlobalUnlock(IntPtr h);
+[DllImport("kernel32.dll")] public static extern UIntPtr GlobalSize(IntPtr h);
+[DllImport("kernel32.dll")] public static extern IntPtr GlobalFree(IntPtr h);
+'@ -Name K32 -Namespace PB4U
+    }
+    $cq = (New-Object System.Printing.LocalPrintServer).GetPrintQueue($Printer)
+    $cc = New-Object System.Printing.Interop.PrintTicketConverter($Printer, $cq.ClientPrintSchemaVersion)
+    $ch = $doc.PrinterSettings.GetHdevmode($doc.DefaultPageSettings)
+    $cp = [PB4U.K32]::GlobalLock($ch); $cn = ([PB4U.K32]::GlobalSize($ch)).ToUInt32()
+    $cb = New-Object byte[] $cn
+    [Runtime.InteropServices.Marshal]::Copy($cp, $cb, 0, $cn)
+    [void][PB4U.K32]::GlobalUnlock($ch); [void][PB4U.K32]::GlobalFree($ch)
+    $cwMic = [int]($CustomW * 254); $chMic = [int]($CustomH * 254)
+    $cxml = @'
+<psf:PrintTicket xmlns:psf="http://schemas.microsoft.com/windows/2003/08/printing/printschemaframework" xmlns:psk="http://schemas.microsoft.com/windows/2003/08/printing/printschemakeywords" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" version="1"><psf:Feature name="psk:PageMediaSize"><psf:Option name="psk:CustomMediaSize"><psf:ScoredProperty name="psk:MediaSizeWidth"><psf:ParameterRef name="psk:PageMediaSizeMediaSizeWidth"/></psf:ScoredProperty><psf:ScoredProperty name="psk:MediaSizeHeight"><psf:ParameterRef name="psk:PageMediaSizeMediaSizeHeight"/></psf:ScoredProperty></psf:Option></psf:Feature><psf:ParameterInit name="psk:PageMediaSizeMediaSizeWidth"><psf:Value xsi:type="xsd:integer">__W__</psf:Value></psf:ParameterInit><psf:ParameterInit name="psk:PageMediaSizeMediaSizeHeight"><psf:Value xsi:type="xsd:integer">__H__</psf:Value></psf:ParameterInit></psf:PrintTicket>
+'@
+    $cxml = $cxml.Replace('__W__', [string]$cwMic).Replace('__H__', [string]$chMic)
+    $cwant = New-Object System.Printing.PrintTicket((New-Object IO.MemoryStream (,[Text.Encoding]::UTF8.GetBytes($cxml))))
+    $cvt = $cq.MergeAndValidatePrintTicket($cc.ConvertDevModeToPrintTicket($cb), $cwant).ValidatedPrintTicket
+    $cvx = [xml]([IO.StreamReader]::new($cvt.GetXmlStream()).ReadToEnd())
+    $cvo = $cvx.SelectSingleNode("//*[local-name()='Feature' and @name='psk:PageMediaSize']/*[local-name()='Option']")
+    $cvw = $cvx.SelectSingleNode("//*[local-name()='ParameterInit' and @name='psk:PageMediaSizeMediaSizeWidth']")
+    $cvh = $cvx.SelectSingleNode("//*[local-name()='ParameterInit' and @name='psk:PageMediaSizeMediaSizeHeight']")
+    if ($cvo -and $cvo.GetAttribute('name') -eq 'psk:CustomMediaSize' -and $cvw -and $cvh -and [int]$cvw.InnerText -eq $cwMic -and [int]$cvh.InnerText -eq $chMic) {
+      $cm = $cc.ConvertPrintTicketToDevMode($cvt, [System.Printing.Interop.BaseDevModeType]::UserDefault)
+      $chd = [Runtime.InteropServices.Marshal]::AllocHGlobal($cm.Length)
+      [Runtime.InteropServices.Marshal]::Copy($cm, 0, $chd, $cm.Length)
+      $doc.PrinterSettings.SetHdevmode($chd); $doc.DefaultPageSettings.SetHdevmode($chd)
+      [Runtime.InteropServices.Marshal]::FreeHGlobal($chd)
+      # .NET reads the driver's own User-Defined entry back (A4); tell it the size that was really asked for.
+      $cur = $doc.DefaultPageSettings.PaperSize
+      $np = New-Object System.Drawing.Printing.PaperSize($cur.PaperName, $CustomW, $CustomH)
+      $np.RawKind = $cur.RawKind
+      $doc.DefaultPageSettings.PaperSize = $np
+      $customApplied = $true
+      [Console]::Out.WriteLine('info|custom paper ' + $CustomW + 'x' + $CustomH + ' (1/100 in) set on the driver')
+    } else { [Console]::Out.WriteLine('info|driver did not take the custom paper size; the printer''s own paper is used') }
+  } catch { [Console]::Out.WriteLine('info|custom paper not set: ' + $_.Exception.Message) }
+}
 # Borderless: when the booth's paper matched one of the printer's papers, ask the driver for its Borderless mode on
 # that paper (Epson L-series keep it as a separate switch, off unless someone ticked it in the printer's preferences,
 # and with it off the page is fitted inside a ~3 mm margin: white edges). Only if the driver lists a Borderless
@@ -371,13 +426,15 @@ if ($Borderless) {
   try {
     Add-Type -AssemblyName System.Printing
     Add-Type -AssemblyName ReachFramework
-    Add-Type -MemberDefinition @'
+    if (-not ('PB4U.K32' -as [type])) {
+      Add-Type -MemberDefinition @'
 [DllImport("kernel32.dll")] public static extern IntPtr GlobalLock(IntPtr h);
 [DllImport("kernel32.dll")] public static extern bool GlobalUnlock(IntPtr h);
 [DllImport("kernel32.dll")] public static extern UIntPtr GlobalSize(IntPtr h);
 [DllImport("kernel32.dll")] public static extern IntPtr GlobalFree(IntPtr h);
 '@ -Name K32 -Namespace PB4U
-    $bq = (New-Object System.Printing.LocalPrintServer).GetPrintQueue($Printer)
+    }
+    $bq =(New-Object System.Printing.LocalPrintServer).GetPrintQueue($Printer)
     $bc = New-Object System.Printing.Interop.PrintTicketConverter($Printer, $bq.ClientPrintSchemaVersion)
     $bh = $doc.PrinterSettings.GetHdevmode($doc.DefaultPageSettings)
     $bp = [PB4U.K32]::GlobalLock($bh); $bn = ([PB4U.K32]::GlobalSize($bh)).ToUInt32()
@@ -438,18 +495,42 @@ $doc.add_PrintPage({
     $paH = if (($pa.Width -gt $pa.Height) -ne $pageLandscape) { $pa.Width } else { $pa.Height }
     $clip = New-Object System.Drawing.RectangleF $vis.X, $vis.Y, ([Math]::Min($vis.Width, $paW)), ([Math]::Min($vis.Height, $paH))
     [Console]::Out.WriteLine(('info|sheet {0}x{1}, printable {2}x{3} at {4},{5}, hard margin {6},{7} (1/100 in)' -f $page.Width, $page.Height, $clip.Width, $clip.Height, $clip.X, $clip.Y, $hx, $hy))
+    # The picture's true size on the sheet, when the booth's paper size is known. It is only given when none of the
+    # driver's own papers matched: then the picture is printed at that size, never stretched to whatever paper the
+    # printer happens to hold.
+    $aw = 0; $ah = 0
+    if ($ActualW -gt 0 -and $ActualH -gt 0) { if ($pageLandscape) { $aw = $ActualH; $ah = $ActualW } else { $aw = $ActualW; $ah = $ActualH } }
     if ($clip.Width -ge $page.Width * 0.99 -and $clip.Height -ge $page.Height * 0.99) {
       # The driver says the whole sheet is printable (Borderless is on): the picture covers it edge to edge.
       # How far the driver enlarges it past the edge is its own setting (Epson: Borderless > Settings >
       # Expansion), so the app does not add a margin of its own: move that slider if a white line or a
       # trimmed edge shows.
-      $e.Graphics.DrawImage($img, [single](-$hx), [single](-$hy), [single]$page.Width, [single]$page.Height)
+      if ($aw -le 0 -and [Math]::Abs(($page.Width / $page.Height) / ($img.Width / $img.Height) - 1) -le 0.04) {
+        $e.Graphics.DrawImage($img, [single](-$hx), [single](-$hy), [single]$page.Width, [single]$page.Height)
+      } else {
+        # A different shape or size from this sheet: never stretch it. Real size, centred (smaller only if it would not fit).
+        if ($aw -gt 0) { $rs = [Math]::Min([Math]::Min($page.Width / $aw, $page.Height / $ah), 1.0); $w = [single]($aw * $rs); $h = [single]($ah * $rs) }
+        else { $rs = [Math]::Min($page.Width / $img.Width, $page.Height / $img.Height); $w = [single]($img.Width * $rs); $h = [single]($img.Height * $rs) }
+        $e.Graphics.DrawImage($img, [single](-$hx + ($page.Width - $w) / 2), [single](-$hy + ($page.Height - $h) / 2), $w, $h)
+      }
     } else {
       # The driver keeps a margin it cannot print on. Fit the whole picture inside the part it says it can
       # print, so nothing is cut off at the edges.
       $s = [Math]::Min($clip.Width / $img.Width, $clip.Height / $img.Height)
-      $w = [single]($img.Width * $s); $h = [single]($img.Height * $s)
-      $e.Graphics.DrawImage($img, [single]($clip.X + ($clip.Width - $w) / 2), [single]($clip.Y + ($clip.Height - $h) / 2), $w, $h)
+      $sc = [Math]::Max($clip.Width / $img.Width, $clip.Height / $img.Height)
+      if ($customApplied -and ($s / $sc) -ge 0.95) {
+        # A renter's own size (the driver gives no Borderless on custom paper): the driver's own unprintable edge is
+        # the only border left. Fill the whole printable area and trim the small excess (under 5%) evenly off the
+        # two sides, instead of leaving extra white bars.
+        $sw = [single]($clip.Width / $sc); $sh = [single]($clip.Height / $sc)
+        $src = New-Object System.Drawing.RectangleF ([single](($img.Width - $sw) / 2)), ([single](($img.Height - $sh) / 2)), $sw, $sh
+        $dst = New-Object System.Drawing.RectangleF $clip.X, $clip.Y, $clip.Width, $clip.Height
+        $e.Graphics.DrawImage($img, $dst, $src, [System.Drawing.GraphicsUnit]::Pixel)
+      } else {
+        if ($aw -gt 0) { $rs = [Math]::Min([Math]::Min($clip.Width / $aw, $clip.Height / $ah), 1.0); $w = [single]($aw * $rs); $h = [single]($ah * $rs) }
+        else { $w = [single]($img.Width * $s); $h = [single]($img.Height * $s) }
+        $e.Graphics.DrawImage($img, [single]($clip.X + ($clip.Width - $w) / 2), [single]($clip.Y + ($clip.Height - $h) / 2), $w, $h)
+      }
     }
   } finally { $img.Dispose() }
   $script:i++
@@ -458,7 +539,7 @@ $doc.add_PrintPage({
 $doc.Print()
 'ok'
 `;
-async function printPages(printer, pngBuffers, fit, widthMm, heightMm, quality) {
+async function printPages(printer, pngBuffers, fit, widthMm, heightMm, quality, custom) {
   const dir = await mkdtemp(join(tmpdir(), 'pb4u-'));
   try {
     const files = [];
@@ -470,7 +551,15 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm, quality) 
       await writeFile(list, files.join('\r\n'), 'utf8');
       const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
       if (pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
-      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && !pick.keep ? ['-PaperName', pick.key] : []), ...(pick ? ['-Borderless'] : [])]);
+      // A renter's own size with no matching paper in the driver: ask for it as a custom size (hundredths of an inch).
+      const cust = custom && !pick && fit !== 'width' && widthMm > 0 && heightMm > 0
+        ? ['-CustomW', String(Math.round(Math.min(widthMm, heightMm) / 25.4 * 100)), '-CustomH', String(Math.round(Math.max(widthMm, heightMm) / 25.4 * 100))] : [];
+      if (cust.length) log('Paper: no match in the driver, asking for a custom ' + cust[1] + 'x' + cust[3] + ' (1/100 in)');
+      // The booth's real paper size, so a sheet that is not the same shape is printed true to size and never stretched.
+      // Only when no paper of the driver matched at all (a matched paper, including a strip on a 2x wider cut sheet, keeps its own handling).
+      const actual = !pick && fit !== 'width' && widthMm > 0 && heightMm > 0
+        ? ['-ActualW', String(Math.round(Math.min(widthMm, heightMm) / 25.4 * 100)), '-ActualH', String(Math.round(Math.max(widthMm, heightMm) / 25.4 * 100))] : [];
+      r = await run('powershell.exe', [...PS, '-File', ps1, '-Printer', printer, '-ListFile', list, ...(quality ? ['-Quality', quality] : []), ...(fit === 'width' ? ['-FitWidth'] : []), ...(pick && !pick.keep ? ['-PaperName', pick.key] : []), ...(pick || cust.length ? ['-Borderless'] : []), ...cust, ...actual]);
     } else {
       const pick = fit === 'width' ? null : await pickPaper(printer, widthMm, heightMm);
       if (pick) log('Paper: ' + pick.name + (pick.keep ? ' (the printer\'s default)' : ''));
@@ -483,7 +572,8 @@ async function printPages(printer, pngBuffers, fit, widthMm, heightMm, quality) 
         if (done) log('Borderless: page sent at ' + Math.round(scale * 100) + '% so the printer\'s enlargement does not trim the edges');
       }
       const media = fit === 'width' && widthMm > 0 && heightMm > 0 ? ['-o', 'media=Custom.' + Math.round(widthMm) + 'x' + Math.round(heightMm) + 'mm']
-        : pick && !pick.keep ? ['-o', (pick.opt === 'media' ? 'media=' : 'PageSize=') + pick.key] : [];
+        : pick && !pick.keep ? ['-o', (pick.opt === 'media' ? 'media=' : 'PageSize=') + pick.key]
+          : custom && !pick && widthMm > 0 && heightMm > 0 ? ['-o', 'media=Custom.' + Math.round(Math.min(widthMm, heightMm)) + 'x' + Math.round(Math.max(widthMm, heightMm)) + 'mm'] : [];
       const qopts = await airPrintQualityOptions(printer, quality);
       r = await run('lp', ['-d', printer, ...media, ...qopts, '-o', 'fit-to-page', '-t', 'photobooth4u', ...files]);
     }
@@ -751,7 +841,7 @@ export async function handleHelper(req, path, search) {
     const fit = body.fit === 'width' ? 'width' : '';
     const prev = getPrintQueue(name);
     const quality = ['draft', 'normal', 'best'].includes(body.quality) ? body.quality : '';
-    const job = prev.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0, quality));
+    const job = prev.then(() => printPages(name, buffers, fit, Number(body.widthMm) || 0, Number(body.heightMm) || 0, quality, body.custom === true));
     printQueues.set(name, job.catch(() => { }));
     try { await job; log('Printed ' + buffers.length + ' page(s) on ' + name); return json({ ok: true }); }
     catch (e) { log('Print failed on ' + name + ': ' + (e && e.message || e)); return json({ ok: false, error: String(e && e.message || e) }, 500); }

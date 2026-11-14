@@ -71,7 +71,8 @@ export function createNikon(ctx) {
       if (ctx.props.includes(0x5004)) {
         const q = await propDesc(0x5004);
         // Nikon: 0 Basic, 1 Normal, 2 Fine (JPEG); higher values include RAW.
-        if (q && parseInt(q.current, 10) > 2 && q.choices.includes('2') && await setProp(0x5004, q.type, '2')) { ctx.note('Set to JPEG Fine. '); log('Image quality was RAW; set to JPEG Fine'); }
+        // Basic / Normal squeeze the JPEG hard (blocky at a high ISO), so always Fine.
+        if (q && parseInt(q.current, 10) !== 2 && q.choices.includes('2') && await setProp(0x5004, q.type, '2')) { ctx.note('Set to JPEG Fine. '); log('Image quality was ' + q.current + '; set to JPEG Fine'); }
       }
       if (ctx.props.includes(0x5003)) {
         const s = await propDesc(0x5003);
@@ -155,15 +156,36 @@ export function createNikon(ctx) {
     return null;
   };
 
+  // Live view autofocus (same as the Windows camera part): wait until the camera is ready again, at most ~2 s in all, one more try
+  // after a miss if there is time, and a camera that refuses at once (lens on MF) is not a miss. true = focused (or not reported).
+  let afRefusedLogged = false;
+  async function nikonAf() {
+    const t0 = Date.now();
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const one = Date.now();
+      const r = await ptp.op(0x90C1);
+      if (r === OK) {
+        await sleep(250);
+        await waitReady(Math.max(300, 2000 - (Date.now() - t0)));
+        await drain();
+        log('Autofocus' + (attempt ? ' (second try)' : '') + ': done in ' + (Date.now() - t0) + ' ms');
+        return true;
+      }
+      log('Autofocus' + (attempt ? ' (second try)' : '') + ': ' + hex(r) + ' after ' + (Date.now() - one) + ' ms');
+      if (r !== AF_FAILED && r !== BUSY) return true;
+      if (attempt === 0 && Date.now() - one < 200) {
+        if (!afRefusedLogged) { afRefusedLogged = true; log('Autofocus refused at once: lens on MF? Shooting with the lens as it is'); }
+        return true;
+      }
+      if (Date.now() - t0 > 900) break;
+      await sleep(250);
+    }
+    return false;
+  }
+
   d.af = async () => {
     if (!d.live) await d.liveOn();
-    if (has(0x90C1)) {
-      const r = await ptp.op(0x90C1);
-      await sleep(1200);
-      await drain();
-      return r === OK;
-    }
-    return true;
+    return has(0x90C1) ? nikonAf() : true;
   };
 
   d.capture = async () => {
@@ -171,13 +193,7 @@ export function createNikon(ctx) {
     let r;
     // Focus first while in live view (contrast AF); a miss is fine, the shot decides.
     if (d.live && has(0x90C1)) {
-      try {
-        r = await ptp.op(0x90C1);
-        if (r === OK) {
-          await sleep(1200);
-          await drain();
-        }
-      } catch (e) { if (e instanceof GoneError) throw e; }
+      try { await nikonAf(); } catch (e) { if (e instanceof GoneError) throw e; }
     }
     await drain();
     if (has(0x90C0)) r = await ptp.op(0x90C0, 0xFFFFFFFF);   // InitiateCaptureRecInSdram

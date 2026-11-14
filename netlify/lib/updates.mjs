@@ -11,6 +11,7 @@ import ANDROID_VERSION from './android-version.mjs';
 export const REPO = 'heresmetrying26/photobooth-for-rent';
 // Newest first. The newest one whose installers are on GitHub is the one offered.
 export const APP_RELEASES = [
+  { version: '1.1.46', date: '2026-11-15' },
   { version: '1.1.45', date: '2026-11-14' },
   { version: '1.1.44', date: '2026-11-14' },
   { version: '1.1.43', date: '2026-11-14' },
@@ -217,6 +218,15 @@ export async function liveApp() {
 
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
+  {
+    date: '2026-11-15', title: 'Desktop 1.1.46: sharper, less grainy Nikon photos; a Nikon keeps its mirror down on the start screen', for: ['website', 'app'], app: '1.1.46',
+    items: [
+      'Nikon cameras (not yet tried on a real D5300): each photo is now shrunk into its frame in steps instead of one jump, then lightly cleaned of grain and sharpened at the size it is printed, and the printed page gets a last light sharpen. Under Setup > Camera, “Nikon photo clean-up” can be set to Off, Auto (default) or Strong. If a computer is too slow for it, it switches itself off.',
+      'A Nikon is now set to JPEG Fine (before, only RAW was changed, so Basic or Normal stayed blocky at a high ISO).',
+      'Nikon autofocus waits until the camera has finished focusing (up to about 2 s) and tries once more after a miss, instead of waiting a fixed 1.2 s. A lens switched to MF is left alone. A photo taken without a focus lock, a high ISO or a slow shutter shows a note in the Camera menu, and the test shot shows ISO, shutter and a 100% crop to judge focus.',
+      'A Nikon no longer raises its mirror when a guest touches the start or welcome screen (Touch to Start); it wakes when the guest presses Start. Canon, Sony and webcams are unchanged.'
+    ]
+  },
   {
     date: '2026-11-14', title: 'Android 1.1.68: Epson L805 prints borderless edge to edge over Wi-Fi; the Lock button asks first', for: ['website'],
     items: [

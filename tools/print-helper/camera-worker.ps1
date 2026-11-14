@@ -661,7 +661,8 @@ namespace Pb4uCam
                     {
                         int cur; int.TryParse(q.Current, out cur);
                         // Nikon: 0 Basic, 1 Normal, 2 Fine (JPEG); higher values include RAW.
-                        if (cur > 2 && q.Choices.Contains("2") && SetProp(0x5004, q.Type, "2")) { setupNote += "Set to JPEG Fine. "; Log("Image quality was RAW; set to JPEG Fine"); }
+                        // Basic and Normal squeeze the JPEG hard: at a high ISO that shows as blocky, pixelated detail. Always use Fine.
+                        if (cur != 2 && q.Choices.Contains("2") && SetProp(0x5004, q.Type, "2")) { setupNote += "Set to JPEG Fine. "; Log("Image quality was " + (cur > 2 ? "RAW" : cur == 1 ? "JPEG Normal" : "JPEG Basic") + "; set to JPEG Fine"); }
                     }
                 }
                 if (props.Contains(0x5003))
@@ -782,22 +783,51 @@ namespace Pb4uCam
         }
 
         // ---------- photo ----------
+        // "miss" when the last Nikon photo was taken without a focus lock (sent to the booth with the photo).
+        static string shotFocus = "";
+        // Nikon live view autofocus: start it and wait until the camera says it is ready again (not a fixed 1.2 s: a D5300 in
+        // dim light needs longer), but never more than ~2 s in all (the booth fires the shutter earlier by the camera's whole
+        // delay, and that has a limit). One more try if it reported no focus and there is time. true = focused (or not reported).
+        // A camera that refuses at once (lens switch on MF, which the booth's own guide recommends) is not a focus miss.
+        static bool afRefusedLogged;
+        static bool NikonAf()
+        {
+            var total = Stopwatch.StartNew();
+            for (int attempt = 0; attempt < 2; attempt++)
+            {
+                var one = Stopwatch.StartNew();
+                uint r = ptp.Op(0x90C1);
+                if (r == Ptp.OK)
+                {
+                    Thread.Sleep(250);   // the camera starts moving the lens; a "ready" answer before this means nothing
+                    WaitReady((int)Math.Max(300, 2000 - total.ElapsedMilliseconds));
+                    DrainEvents();
+                    Log("Autofocus" + (attempt > 0 ? " (second try)" : "") + ": done in " + total.ElapsedMilliseconds + " ms");
+                    return true;
+                }
+                Log("Autofocus" + (attempt > 0 ? " (second try)" : "") + ": " + H(r) + " after " + one.ElapsedMilliseconds + " ms");
+                if (r != 0xA002 && r != Ptp.BUSY) return true;   // not a focus miss (e.g. not in live view): the shot decides
+                if (attempt == 0 && one.ElapsedMilliseconds < 200)
+                {
+                    // Refused straight away: the lens is on MF (or has no autofocus). Nothing to retry and nothing to warn about.
+                    if (!afRefusedLogged) { afRefusedLogged = true; Log("Autofocus refused at once: lens on MF? Shooting with the lens as it is"); }
+                    return true;
+                }
+                if (total.ElapsedMilliseconds > 900) break;   // no time for a second try
+                Thread.Sleep(250);
+            }
+            return false;
+        }
         static byte[] Capture()
         {
             var sw = Stopwatch.StartNew();
             uint r;
-            // Focus first while in live view (contrast AF); a miss is fine, the shot decides.
+            shotFocus = "";
+            // Focus first while in live view (contrast AF). It waits for the camera to finish focusing and tries once more
+            // if the first try missed; a miss still takes the photo, but the booth is told (shotFocus) so it can warn.
             if (live && Has(0x90C1))
             {
-                try
-                {
-                    r = ptp.Op(0x90C1);
-                    if (r == Ptp.OK)
-                    {
-                        var afSw = Stopwatch.StartNew();
-                        while (afSw.ElapsedMilliseconds < 1200) { Thread.Sleep(80); DrainEvents(); }
-                    }
-                }
+                try { if (!NikonAf()) shotFocus = "miss"; }
                 catch (GoneException) { throw; } catch { }
             }
             DrainEvents();
@@ -805,6 +835,7 @@ namespace Pb4uCam
             else r = ptp.Op(0x100E, 0, 0);
             if (r == 0xA002 && Has(0x9207))
             {
+                shotFocus = "miss";
                 Log("Out of focus; shooting without autofocus");
                 r = ptp.Op(0x9207, 0xFFFFFFFF, 1);    // InitiateCaptureRecInMedia, no AF, to SDRAM
                 if (r != Ptp.OK) r = ptp.Op(0x9207, 0xFFFFFFFF, 0);
@@ -1569,10 +1600,8 @@ namespace Pb4uCam
                             if (nikon)
                             {
                                 if (!live) StartLive();
-                                uint afR = ptp.Op(0x90C1);
-                                var afSw = Stopwatch.StartNew();
-                                while (afSw.ElapsedMilliseconds < 1400) { Thread.Sleep(80); DrainEvents(); }
-                                kind = "J"; body = Encoding.UTF8.GetBytes("{\"ok\":" + (afR == Ptp.OK ? "true" : "false") + "}");
+                                bool afOk = Has(0x90C1) ? NikonAf() : true;
+                                kind = "J"; body = Encoding.UTF8.GetBytes("{\"ok\":" + (afOk ? "true" : "false") + "}");
                             }
                             else if (canon)
                             {
@@ -1626,7 +1655,9 @@ namespace Pb4uCam
                     kind = "N";
                     body = Encoding.UTF8.GetBytes(e.Message);
                 }
-                byte[] head = Encoding.ASCII.GetBytes(id + " " + status + " " + kind + " " + body.Length + "\n");
+                // A fifth word is optional: "focus-miss" = a Nikon photo that was taken without a focus lock.
+                string flags = (cmd == "capture" && status == "OK" && nikon && shotFocus == "miss") ? " focus-miss" : "";
+                byte[] head = Encoding.ASCII.GetBytes(id + " " + status + " " + kind + " " + body.Length + flags + "\n");
                 net.Write(head, 0, head.Length);
                 if (body.Length > 0) net.Write(body, 0, body.Length);
                 net.Flush();

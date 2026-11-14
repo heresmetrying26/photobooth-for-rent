@@ -653,7 +653,7 @@ function camParse() {
     if (w && head[0] === w.id) {
       cam.wait = null;
       if (head[1] === 'OK' && (w.cmd === 'frame' || w.cmd === 'capture')) cam.hangs = 0;   // real work got through, not just a reconnect
-      w.resolve({ status: head[1], kind: head[2], body });
+      w.resolve({ status: head[1], kind: head[2], body, flags: head.slice(4) });
     }
   }
 }
@@ -851,7 +851,13 @@ export async function handleHelper(req, path, search) {
       if (method === 'GET' && path === '/camera/frame') { const r = await camCall('frame', '', 10000); return send(r, () => (r.kind === 'B' ? jpeg(r.body) : new Response(null, { status: 204 }))); }
       if (method === 'POST' && path === '/camera/capture') {
         const t0 = Date.now(); const r = await camCall('capture', '', 45000);
-        return send(r, () => { log('Photo taken (' + Math.round(r.body.length / 1024) + ' KB, ' + (Date.now() - t0) + ' ms)'); return jpeg(r.body); });
+        return send(r, () => {
+          const miss = Array.isArray(r.flags) && r.flags.includes('focus-miss');   // a Nikon photo taken without a focus lock
+          log('Photo taken (' + Math.round(r.body.length / 1024) + ' KB, ' + (Date.now() - t0) + ' ms)' + (miss ? ', NOT focused' : ''));
+          const res = jpeg(r.body);
+          if (miss) { res.headers.set('x-pb-focus', 'miss'); res.headers.set('access-control-expose-headers', 'x-pb-focus'); }
+          return res;
+        });
       }
       if (method === 'GET' && path === '/camera/battery') { const r = await camCall('battery', '', 10000); return send(r, () => json({ ok: true, ...JSON.parse(r.body.toString('utf8')) })); }
       if (method === 'POST' && path === '/camera/close') { const r = await camCall('close', '', 10000); cam.open = null; return send(r, () => json({ ok: true })); }

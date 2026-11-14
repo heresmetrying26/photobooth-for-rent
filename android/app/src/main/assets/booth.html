@@ -14792,6 +14792,7 @@
             <p class="panel-hint" id="shotTimingNote" style="margin-top:4px;">Auto checks how far the live picture is behind the real scene and lines the photo up with "Pose". If photos are still blurred because guests have already moved when the camera takes the picture, choose a time to take the photo earlier: try 0.4 s, then raise it until photos are sharp.</p>
           </div>
           <p class="panel-hint" id="usbCamNote" style="display:none;"></p>
+          <p class="panel-hint" id="nikonWarnNote" style="display:none; margin-top:6px; padding:6px 8px; border-radius:6px; background:#fff3cd; color:#7a5200; font-weight:700; line-height:1.45;"></p>
           <p class="panel-hint" id="usbWhyNote" style="display:none; font-weight:600;"></p>
           <label id="cdiagRow" style="display:none;gap:8px;align-items:flex-start;margin:10px 0 0;font-size:13px;">
             <input type="checkbox" id="cdiagToggle" style="margin-top:3px;">
@@ -14839,6 +14840,15 @@
               <button type="button" class="action-btn" id="usbCamAfBtn" style="flex:1; min-width:130px; margin:0; padding:8px 12px; font-size:13px; font-weight:700;">🔍 Auto-Focus Lens</button>
               <button type="button" class="action-btn" id="usbCamTestShotBtn" style="flex:1; min-width:130px; margin:0; padding:8px 12px; font-size:13px; font-weight:700; background:var(--ink); color:#fff;">📸 Take Test Shot</button>
             </div>
+            <div id="nikonCleanRow" style="display:none; margin-top:10px; align-items:center; gap:8px; flex-wrap:wrap;">
+              <label for="nikonCleanSel" style="font-size:12px; font-weight:700; color:var(--ink);">Nikon photo clean-up</label>
+              <select id="nikonCleanSel" style="padding:5px 8px; font-size:12.5px; border-radius:6px; border:1px solid var(--line);">
+                <option value="off">Off</option>
+                <option value="auto" selected>Auto (light)</option>
+                <option value="strong">Strong</option>
+              </select>
+              <span class="panel-hint" style="margin:0; font-size:11px; flex-basis:100%;">Reduces grain and sharpens Nikon photos at the size they are printed. Auto suits most events; Strong is for dim rooms (it can soften skin).</span>
+            </div>
             <div id="usbTestShotBox" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <span style="font-size:12px; font-weight:700; color:var(--ink);" id="usbTestShotTitle">Test Shot Result</span>
@@ -14846,6 +14856,11 @@
               </div>
               <img id="usbTestShotImg" alt="Test shot preview" style="width:100%; max-height:260px; object-fit:contain; border-radius:8px; background:#111; display:block;">
               <p class="panel-hint" id="usbTestShotMeta" style="margin:4px 0 0; font-size:11.5px;"></p>
+              <p id="usbTestShotWarn" style="display:none; margin:6px 0 0; padding:6px 8px; border-radius:6px; background:#fff3cd; color:#7a5200; font-size:12px; font-weight:700; line-height:1.45;"></p>
+              <div id="usbTestShotCropWrap" style="display:none; margin-top:8px;">
+                <div style="font-size:11.5px; font-weight:700; color:var(--ink); margin-bottom:3px;">Focus check: centre of the photo at 100%</div>
+                <canvas id="usbTestShotCrop" width="480" height="320" style="width:100%; max-width:480px; border-radius:8px; background:#111; display:block;"></canvas>
+              </div>
             </div>
             <details style="margin-top:10px; font-size:12px; color:var(--ink-dim); background:#f8f9fa; border-radius:8px; padding:8px 10px; border:1px solid var(--line);">
               <summary style="font-weight:700; cursor:pointer; color:var(--ink);">🔋 Camera Battery &amp; Heat Tips (Nikon D5300 &amp; DSLRs)</summary>
@@ -22843,7 +22858,9 @@
         }
         async captureImageAsFile() {
           const r = await this.req('/camera/capture', { method: 'POST' }, 50000);
-          return new File([await r.blob()], 'photo.jpg', { type: 'image/jpeg' });
+          const f = new File([await r.blob()], 'photo.jpg', { type: 'image/jpeg' });
+          if (r.headers.get('x-pb-focus') === 'miss') f._focusMiss = true;   // a Nikon photo taken without a focus lock
+          return f;
         }
       }
       // Only asks the helper when it can be there (Chrome asks once before a page
@@ -23083,6 +23100,7 @@
           usbCam.camera = hc;
           usbCam.vfOn = false;
           usbCam.name = hc.name;
+          try { nikonUiSync(); } catch (e) { }
           usbCam.helperSees = true; usbCam.helperUp = true;
           const hopt = Array.from(cameraSelect.options).find(o => o.value === USB_CAM_ID);
           if (hopt) hopt.textContent = usbOptionLabel();
@@ -23662,7 +23680,29 @@
               }
               try { usbAfterShot(); } catch (e) { }   // learns the camera's shutter delay (and brings live view back), like a real shot does
               if (img) img.src = URL.createObjectURL(file);
-              if (meta) meta.textContent = Math.round(file.size / 1024) + ' KB JPEG · ' + (Date.now() - t0) + ' ms · Inspect sharpness, then switch lens to MF to lock focus.';
+              let extra = '';
+              const warnEl = document.getElementById('usbTestShotWarn'), cropWrap = document.getElementById('usbTestShotCropWrap'), cropCv = document.getElementById('usbTestShotCrop');
+              if (warnEl) warnEl.style.display = 'none';
+              if (cropWrap) cropWrap.style.display = 'none';
+              if (usbIsNikon()) {
+                // Nikon: show ISO / shutter, warn about grain, motion blur or no focus lock, and a 100% crop of the centre to judge focus.
+                const ex = await pbReadExif(file);
+                if (ex && (ex.iso || ex.shutter)) extra = ' · ' + [ex.iso ? 'ISO ' + ex.iso : '', ex.shutter ? pbShutterText(ex.shutter) : '', ex.f ? 'f/' + (Math.round(ex.f * 10) / 10) : ''].filter(Boolean).join(' · ');
+                const warns = nikonPhotoWarnings(ex, !!file._focusMiss);
+                if (warnEl && warns.length) { warnEl.innerHTML = ''; warns.forEach(function (t) { const d = document.createElement('div'); d.textContent = '⚠ ' + t; warnEl.appendChild(d); }); warnEl.style.display = 'block'; }
+                try {
+                  const bm = await createImageBitmap(file);
+                  if (cropCv) {
+                    const cw = cropCv.width, ch = cropCv.height, cx = cropCv.getContext('2d');
+                    cx.fillStyle = '#111'; cx.fillRect(0, 0, cw, ch);
+                    cx.imageSmoothingEnabled = false;
+                    cx.drawImage(bm, Math.max(0, Math.round((bm.width - cw) / 2)), Math.max(0, Math.round((bm.height - ch) / 2)), Math.min(cw, bm.width), Math.min(ch, bm.height), 0, 0, Math.min(cw, bm.width), Math.min(ch, bm.height));
+                    if (cropWrap) cropWrap.style.display = 'block';
+                  }
+                  bm.close();
+                } catch (e) { }
+              }
+              if (meta) meta.textContent = Math.round(file.size / 1024) + ' KB JPEG' + extra + ' · ' + (Date.now() - t0) + ' ms · Inspect sharpness, then switch lens to MF to lock focus.';
               if (box) box.style.display = 'block';
               showToast('Test shot ready! Inspect sharpness above, then flip lens to MF.', 6000);
             } catch (err) {
@@ -24582,6 +24622,189 @@
           try { usbLog('webcam-max-fail', { error: String(err && err.message || err) }); } catch (e) { }
         }
       }
+      // ---- Nikon photo quality (Nikon cameras only) ----
+      // A Nikon's photo (D5300: 24 MP, noisy at a high ISO) is shrunk into its box in halving steps (the browser's one-step
+      // shrink skips pixels: grainy, jagged), then lightly denoised and sharpened at the size it is printed. The printed page
+      // gets a final light sharpen (paper softens a picture). Setting: Camera menu -> Nikon photo clean-up (Off / Auto / Strong).
+      const NIKON_CLEAN_KEY = 'pb_nikon_clean';
+      // A laptop too slow for the clean-up (one box taking over 1.5 s) drops it for the rest of the session, so guests never wait;
+      // the stepwise shrink stays. Logged in the camera log; the Camera menu note says so.
+      let nikonTooSlow = false;
+      function nikonCleanMode() { if (nikonTooSlow) return 'off'; try { const v = localStorage.getItem(NIKON_CLEAN_KEY); return (v === 'off' || v === 'strong') ? v : 'auto'; } catch (e) { return 'auto'; } }
+      function usbIsNikon() { return /nikon/i.test(usbCam.name || ''); }
+      function nikonUiSync() {
+        const row = document.getElementById('nikonCleanRow'), sel = document.getElementById('nikonCleanSel');
+        if (!row || !sel) return;
+        row.style.display = usbIsNikon() ? 'flex' : 'none';
+        sel.value = nikonCleanMode();
+        if (!sel._pbBound) {
+          sel._pbBound = true;
+          sel.addEventListener('change', function () {
+            try { localStorage.setItem(NIKON_CLEAN_KEY, sel.value); } catch (e) { }
+            if (Array.isArray(shotCanvases)) shotCanvases.forEach(function (s) { if (s) s._nkCache = null; });
+            try { if (state === 'result') renderComposite(); } catch (e) { }
+          });
+        }
+      }
+      // Edge-preserving denoise (3x3, weights fall off with the brightness difference) then a fine unsharp mask, in place.
+      function nikonCleanPixels(d, w, h, mode, denoise) {
+        const strong = mode === 'strong', n = w * h;
+        const amt = strong ? 0.9 : 0.6;
+        let src = d;
+        if (denoise) {
+          const T = strong ? 30 : 16, inv = 1 / (T * T), lum = new Uint8Array(n);
+          for (let i = 0, p = 0; i < n; i++, p += 4) lum[i] = (d[p] * 77 + d[p + 1] * 150 + d[p + 2] * 29) >> 8;
+          src = new Uint8ClampedArray(d.length); src.set(d);
+          for (let y = 1; y < h - 1; y++) {
+            for (let x = 1; x < w - 1; x++) {
+              const i = y * w + x, l0 = lum[i]; let sr = 0, sg = 0, sb = 0, sw = 0;
+              for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                  const j = i + dy * w + dx, df = lum[j] - l0, wt = 1 / (1 + df * df * inv), q = j * 4;
+                  sr += d[q] * wt; sg += d[q + 1] * wt; sb += d[q + 2] * wt; sw += wt;
+                }
+              }
+              const p = i * 4; src[p] = sr / sw; src[p + 1] = sg / sw; src[p + 2] = sb / sw;
+            }
+          }
+        }
+        for (let y = 1; y < h - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            const p = (y * w + x) * 4;
+            for (let c = 0; c < 3; c++) {
+              const o = p + c, m = (src[o - 4 - w * 4] + src[o - w * 4] + src[o + 4 - w * 4] + src[o - 4] + src[o] + src[o + 4] + src[o - 4 + w * 4] + src[o + w * 4] + src[o + 4 + w * 4]) / 9;
+              d[o] = src[o] + amt * (src[o] - m);   // Uint8ClampedArray clamps + rounds
+            }
+          }
+        }
+      }
+      // The part of a photo that goes in one box, shrunk to the box's own pixel size (halving steps) and cleaned. Cached per shot.
+      function nikonTile(ctx, img, sx, sy, sw, sh, w, h) {
+        const mode = nikonCleanMode();
+        let k = 1; try { const m = ctx.getTransform(); k = Math.hypot(m.a, m.b) || 1; } catch (e) { }
+        const tw = Math.max(1, Math.round(w * k)), th = Math.max(1, Math.round(h * k));
+        const ratio = Math.max(sw / tw, sh / th);
+        if (ratio < 1.5 && mode === 'off') return null;
+        const key = [Math.round(sx), Math.round(sy), Math.round(sw), Math.round(sh), tw, th, mode].join(',');
+        const cache = img._nkCache || (img._nkCache = new Map());
+        if (cache.has(key)) return cache.get(key);
+        let cur = img, cx = sx, cy = sy, cw = sw, ch = sh;
+        while (cw > tw * 2 || ch > th * 2) {
+          const nw = Math.max(tw, Math.ceil(cw / 2)), nh = Math.max(th, Math.ceil(ch / 2));
+          const t = document.createElement('canvas'); t.width = nw; t.height = nh;
+          const tx = t.getContext('2d'); tx.imageSmoothingEnabled = true; tx.imageSmoothingQuality = 'high';
+          tx.drawImage(cur, cx, cy, cw, ch, 0, 0, nw, nh);
+          cur = t; cx = 0; cy = 0; cw = nw; ch = nh;
+        }
+        const out = document.createElement('canvas'); out.width = tw; out.height = th;
+        const ox = out.getContext('2d', { willReadFrequently: true }); ox.imageSmoothingEnabled = true; ox.imageSmoothingQuality = 'high';
+        ox.drawImage(cur, cx, cy, cw, ch, 0, 0, tw, th);
+        if (mode !== 'off' && tw * th <= 4500000 && tw > 8 && th > 8) {
+          try {
+            const c0 = performance.now(), id = ox.getImageData(0, 0, tw, th);
+            nikonCleanPixels(id.data, tw, th, mode, true); ox.putImageData(id, 0, 0);
+            const ms = Math.round(performance.now() - c0);
+            if (ms > 1500 && !nikonTooSlow) {
+              nikonTooSlow = true;
+              try { usbLog('nikon-clean-slow', { ms: ms, w: tw, h: th }); } catch (e2) { }
+              const el = document.getElementById('nikonWarnNote');
+              if (el) { el.textContent = '⚠ Photo clean-up is too slow on this computer (' + ms + ' ms for one photo), so it is switched off for now. Photos still print sharp.'; el.style.display = ''; }
+            }
+          } catch (e) { }
+        }
+        if (cache.size >= 8) cache.delete(cache.keys().next().value);
+        cache.set(key, out);
+        return out;
+      }
+      // Printed page: a last light sharpen when the page holds a Nikon photo.
+      function nikonPrintSharpen(c) {
+        if (!c || c._pbSharp || c.width < 900 || c.height < 900 || c.width * c.height > 16000000) return;
+        const mode = nikonCleanMode();
+        if (mode === 'off' || !Array.isArray(shotCanvases) || !shotCanvases.some(function (s) { return s && s._nikon; })) return;
+        c._pbSharp = true;
+        const ctx = c.getContext('2d'), id = ctx.getImageData(0, 0, c.width, c.height);
+        nikonSharpenPage(id.data, c.width, c.height, mode === 'strong' ? 0.5 : 0.35);
+        ctx.putImageData(id, 0, 0);
+      }
+      function nikonSharpenPage(d, w, h, amt) {
+        const src = new Uint8ClampedArray(d.length); src.set(d);
+        for (let y = 1; y < h - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            const p = (y * w + x) * 4;
+            for (let c = 0; c < 3; c++) {
+              const o = p + c, m = (src[o - 4 - w * 4] + src[o - w * 4] + src[o + 4 - w * 4] + src[o - 4] + src[o] + src[o + 4] + src[o - 4 + w * 4] + src[o + w * 4] + src[o + 4 + w * 4]) / 9;
+              d[o] = src[o] + amt * (src[o] - m);
+            }
+          }
+        }
+      }
+      // ISO / shutter / aperture from the JPEG's EXIF block. null when not found.
+      async function pbReadExif(blob) {
+        try {
+          const b = new Uint8Array(await blob.slice(0, 131072).arrayBuffer());
+          if (b[0] !== 0xFF || b[1] !== 0xD8) return null;
+          let p = 2;
+          while (p + 10 < b.length && b[p] === 0xFF) {
+            const mk = b[p + 1], len = (b[p + 2] << 8) | b[p + 3];
+            if (mk === 0xE1 && b[p + 4] === 0x45 && b[p + 5] === 0x78 && b[p + 6] === 0x69 && b[p + 7] === 0x66) {
+              const t = p + 10, le = b[t] === 0x49;
+              const u16 = function (o) { return le ? (b[o] | (b[o + 1] << 8)) : ((b[o] << 8) | b[o + 1]); };
+              const u32 = function (o) { return le ? ((b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0) : (((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3]) >>> 0); };
+              const ifd = function (off, want) {
+                const out = {}, n = u16(t + off);
+                for (let k = 0; k < n; k++) {
+                  const e = t + off + 2 + k * 12, tag = u16(e), type = u16(e + 2);
+                  if (want.indexOf(tag) < 0) continue;
+                  if (type === 3) out[tag] = u16(e + 8);
+                  else if (type === 4) out[tag] = u32(e + 8);
+                  else if (type === 5) { const o = t + u32(e + 8), d = u32(o + 4); out[tag] = d ? u32(o) / d : 0; }
+                }
+                return out;
+              };
+              const top = ifd(u32(t + 4), [0x8769]);
+              if (!top[0x8769]) return null;
+              const ex = ifd(top[0x8769], [0x829A, 0x829D, 0x8827]);
+              return { shutter: ex[0x829A] || 0, f: ex[0x829D] || 0, iso: ex[0x8827] || 0 };
+            }
+            p += 2 + len;
+          }
+        } catch (e) { }
+        return null;
+      }
+      function pbShutterText(s) { return !s ? '' : (s >= 0.5 ? (Math.round(s * 10) / 10) + ' s' : '1/' + Math.round(1 / s) + ' s'); }
+      // What to tell the operator about a Nikon photo: grain, motion blur, no focus lock.
+      function nikonPhotoWarnings(ex, focusMiss) {
+        const w = [];
+        if (focusMiss) w.push('The camera could not lock focus on this photo. Check the lens switch is on AF, add light, and point at something with detail.');
+        if (ex && ex.iso >= 1600) w.push('ISO ' + ex.iso + ' adds visible grain. Add light, use the flash, or open the aperture, so the camera can use a lower ISO.');
+        if (ex && ex.shutter > 1 / 60) w.push('Shutter ' + pbShutterText(ex.shutter) + ' is slow: moving guests will blur. Add light or flash, or allow a higher ISO.');
+        return w;
+      }
+      // During a session the warning goes to the operator only (Camera menu + camera log), never onto the guest's screen.
+      async function nikonShotNote(file) {
+        try {
+          const ex = await pbReadExif(file), w = nikonPhotoWarnings(ex, !!file._focusMiss);
+          usbLog('nikon-shot', { iso: ex && ex.iso, shutter: ex && ex.shutter, f: ex && ex.f, focusMiss: !!file._focusMiss });
+          const el = document.getElementById('nikonWarnNote');
+          if (el) {
+            if (w.length) { el.textContent = '⚠ Last photo: ' + w.join(' '); el.style.display = ''; }
+            else el.style.display = 'none';
+          }
+        } catch (e) { }
+      }
+      // Between photos the layout is drawn once off-screen, so each photo's clean-up (cached) is done while the guests pose
+      // for the next one, not while the result screen waits. The last photo is left: the result screen draws it right away.
+      function nikonPrewarm(finalShot) {
+        if (finalShot || !usbIsNikon() || nikonCleanMode() === 'off') return;
+        setTimeout(function () {
+          try {
+            if (!Array.isArray(shotCanvases) || !shotCanvases.some(function (s) { return s && s._nikon; })) return;
+            const t0 = performance.now(), cv = document.createElement('canvas');
+            composeCanvas(currentLayout, cv, shotCanvases);
+            usbLog('nikon-prewarm', { ms: Math.round(performance.now() - t0), w: cv.width, h: cv.height });
+          } catch (e) { }
+        }, 120);
+      }
       async function captureShot(index) {
         await usbEnsureLive();
         // Auto shot timing: a webcam frame shows the scene as it was a moment ago (camera + tablet delay). Wait that long so
@@ -24612,6 +24835,7 @@
           const k = Math.min(1, USB_SHOT_MAX / Math.max(sw, sh));
           const c = document.createElement('canvas');
           c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+          if (usbIsNikon()) { c._nikon = true; nikonShotNote(file); }   // Nikon: shrunk in steps + cleaned in its box, warned about ISO / shutter / focus
           const ctx = c.getContext('2d');
           ctx.imageSmoothingQuality = 'high';
           if (mirrorPreview()) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }   // match the live view
@@ -24625,7 +24849,7 @@
           c._raw = rawCopy;
           applyFilterToCanvas(c);
           c._isShot = true;
-          if (shotCanvases === shots) { shotCanvases[index] = c; updateFilmTrack(); }
+          if (shotCanvases === shots) { shotCanvases[index] = c; updateFilmTrack(); if (c._nikon) nikonPrewarm(finalShot); }
         } catch (err) {
           console.error('USB shot failed:', err);
           usbCam.shooting = false; usbCam.lastFrameAt = Date.now(); usbAfterShot();
@@ -26958,6 +27182,10 @@
         }
         if (img && typeof img._shotIndex === 'number' && !BOX_PROBE && ctx.canvas === previewCanvas) {
           recordShotSlotBox(img._shotIndex, ctx, x, y, w, h);
+        }
+        if (img && img._nikon && !BOX_PROBE) {
+          var nt = null; try { nt = nikonTile(ctx, img, sx, sy, sw, sh, w, h); } catch (e) { nt = null; }
+          if (nt) { ctx.drawImage(nt, 0, 0, nt.width, nt.height, x, y, w, h); return; }
         }
         ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
       }
@@ -32839,6 +33067,7 @@
       // Every page is a fresh canvas, so it is changed in place. The camera, the screen and the digital copies are untouched.
       function printAdjust(c) {
         try { edgeAdjust(c); } catch (e) { }
+        try { nikonPrintSharpen(c); } catch (e) { }
         if (!c || c._pbToneDone || !hasColorAdj()) return c;
         var ctx = c.getContext('2d'), w = c.width, h = c.height;
         if (!w || !h) return c;
@@ -32884,6 +33113,7 @@
             ctx.clearRect(0, 0, c.width, c.height);
             ctx.drawImage(c._raw, 0, 0);
             applyFilterToCanvas(c);
+            c._nkCache = null;   // Nikon tiles were made from the old pixels
           }
         });
         if (state === 'result') {

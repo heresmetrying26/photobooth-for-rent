@@ -217,6 +217,13 @@ export async function liveApp() {
 // Newest first. for: 'website' | 'app' (laptop app) | 'helper' (Print Helper).
 export const NOTES = [
   {
+    date: '2026-11-14', title: 'Android 1.1.65: Epson L805 borderless now sent the way Epson’s own driver sends it', for: ['website'],
+    items: [
+      'A Wi-Fi Epson ink-tank photo printer (L805 and similar) printing borderless now gets the same job layout Epson’s own driver uses: the page starts a little before the sheet edge and runs a little past every edge, and the picture fills the sheet exactly, so nothing is cut off. Android 1.1.64 started the picture about 3 mm inside the sheet (white top and left, trimmed bottom and right). Borderless is sent on 3.5x5 in (3R), 4x6 in, 5x7 in and A4, the sizes the L805’s Epson driver lists as borderless; other sizes print with the normal border. It could not be tried on a printer here: print the edge test once on the paper in use, and use Edges only if a side still shows white or is trimmed.',
+      'The printer report for a Wi-Fi Epson without a paper list now says so and shows how the last photo was sent (borderless or border, paper size).'
+    ]
+  },
+  {
     date: '2026-11-14', title: 'Android 1.1.64: Epson L805 prints borderless over Wi-Fi, tidier Edges settings', for: ['website'],
     items: [
       'A Wi-Fi Epson ink-tank photo printer (L805, L850 and similar, L2xx and up) now prints borderless on photo paper when Borderless is ticked in Print settings, on 3.5x5 (3R), 4x6, 5x7, 8x10, A4, 16:9 and 100x148 mm paper. Before, the Borderless tick was ignored for these printers and every print had a 3 mm white border. On any other paper size the print keeps its border. It could not be tried on an L805 here: print the edge test once and use Edges if a side is trimmed or a white line shows.',

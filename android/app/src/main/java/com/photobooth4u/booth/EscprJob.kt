@@ -50,12 +50,20 @@ object EscprJob {
         borderless: Boolean = false,
         photoMedia: Boolean = false,
         draft: Boolean = false,
-        adj: PrintColorAdj = PrintColorAdj()
+        adj: PrintColorAdj = PrintColorAdj(),
+        epsonBorderless: Boolean = false
     ): ByteArray {
-        val (paperW, paperH) = paperPixels(widthMm, heightMm)
+        // Borderless the way Epson's own driver sends it (epson-inkjet-printer-escpr, lib/epson-escpr-media.h, 360 dpi): the sheet size
+        // is the table's size, the page area starts 36 px left of and 42 px above the sheet (negative margins) and is 72 px wider and
+        // 112 px taller than the sheet, so the printer prints a little past every edge. Only for the sheet sizes below, only when asked
+        // for (printEscpr: Epson L-series over Wi-Fi). Any other job keeps the earlier layout (the USB L8050 / L3210 path is untouched).
+        val ep = if (borderless && epsonBorderless) epsonBorderlessPaper(widthMm, heightMm) else null
+        val (paperW, paperH) = ep ?: paperPixels(widthMm, heightMm)
         val border = if (borderless) 0 else BORDER
-        val areaW = paperW - 2 * border
-        val areaH = paperH - 2 * border
+        val areaW = if (ep != null) paperW + BL_EXTRA_W else paperW - 2 * border
+        val areaH = if (ep != null) paperH + BL_EXTRA_H else paperH - 2 * border
+        val marginTop = if (ep != null) -BL_TOP else border
+        val marginLeft = if (ep != null) -BL_LEFT else border
         require(areaW > 0 && areaH > 0) { "Sheet too small" }
 
         // Turn a landscape picture to match the portrait feed, then fit it to the printable area.
@@ -69,7 +77,9 @@ object EscprJob {
             rotatedSrc = src
             shouldRecycleRotated = false
         }
-        val bmp = if (rotatedSrc.width == areaW && rotatedSrc.height == areaH) {
+        val bmp = if (ep != null) {
+            epsonBleedPage(rotatedSrc, paperW, paperH, areaW, areaH)
+        } else if (rotatedSrc.width == areaW && rotatedSrc.height == areaH) {
             rotatedSrc
         } else {
             Bitmap.createScaledBitmap(rotatedSrc, areaW, areaH, true)
@@ -100,7 +110,7 @@ object EscprJob {
             bytes(media, quality, if (mono) 1 else 0, 0, 0, 0, 0x00, 0x00, 0x00))
         // job: page size and printable area, 360 dpi, bidirectional
         out.put(bytes(0x1B, 0x6A, 0x16, 0x00, 0x00, 0x00), ascii("setj"),
-            be32(paperW), be32(paperH), be16(border), be16(border), be32(areaW), be32(areaH), bytes(0x00, 0x00))
+            be32(paperW), be32(paperH), be16(marginTop), be16(marginLeft), be32(areaW), be32(areaH), bytes(0x00, 0x00))
         // ── page ──
         out.put(bytes(0x1B, 0x70, 0x00, 0x00, 0x00, 0x00), ascii("sttp"))
         out.put(bytes(0x1B, 0x70, 0x01, 0x00, 0x00, 0x00), ascii("setn"), bytes(0x01))
@@ -146,6 +156,53 @@ object EscprJob {
             try { bmp.recycle() } catch (_: Exception) {}
         }
         return out.toByteArray()
+    }
+
+    private const val BL_LEFT = 36                    // borderless: the page area starts this far left of the sheet (360 dpi)
+    private const val BL_TOP = 42                     // ... and this far above it
+    private const val BL_EXTRA_W = 72                 // ... and is this much wider than the sheet (36 each side)
+    private const val BL_EXTRA_H = 112                // ... and this much taller (42 above, 70 below)
+
+    /** The sheet in 1/360 inch as Epson's media table lists it, for the sizes borderless is sent for; null for any other size. */
+    fun epsonBorderlessPaper(widthMm: Double, heightMm: Double): Pair<Int, Int>? {
+        val a = minOf(widthMm, heightMm)
+        val b = maxOf(widthMm, heightMm)
+        fun near(x: Double, y: Double) = Math.abs(a - x) <= 1.5 && Math.abs(b - y) <= 1.5
+        return when {
+            near(88.9, 127.0) -> 1261 to 1800        // L / 3R (3.5 x 5 in)
+            near(101.6, 152.4) -> 1440 to 2160       // 4 x 6 in
+            near(127.0, 177.8) -> 1800 to 2522       // 5 x 7 in (the L805's own list has it; 360.00 x 504.40 pt x 5)
+            near(210.0, 297.0) -> 2976 to 4209       // A4
+            else -> null
+        }
+    }
+
+    /**
+     * The page for a borderless job: the picture fills the sheet exactly (nothing is cut off), and the strip past each edge, which the
+     * printer prints off the paper, repeats the picture's edge pixels so a hair of misalignment never shows white.
+     */
+    private fun epsonBleedPage(pic: Bitmap, paperW: Int, paperH: Int, areaW: Int, areaH: Int): Bitmap {
+        val page = Bitmap.createBitmap(areaW, areaH, Bitmap.Config.ARGB_8888)
+        val cv = android.graphics.Canvas(page)
+        val l = BL_LEFT
+        val t = BL_TOP
+        val r = l + paperW
+        val bt = t + paperH
+        val w = pic.width
+        val h = pic.height
+        val paint = android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG)
+        cv.drawBitmap(pic, android.graphics.Rect(0, 0, w, 1), android.graphics.Rect(l, 0, r, t), null)
+        cv.drawBitmap(pic, android.graphics.Rect(0, h - 1, w, h), android.graphics.Rect(l, bt, r, areaH), null)
+        cv.drawBitmap(pic, android.graphics.Rect(0, 0, 1, h), android.graphics.Rect(0, t, l, bt), null)
+        cv.drawBitmap(pic, android.graphics.Rect(w - 1, 0, w, h), android.graphics.Rect(r, t, areaW, bt), null)
+        val fill = android.graphics.Paint()
+        fun corner(px: Int, py: Int, x0: Int, y0: Int, x1: Int, y1: Int) { fill.color = pic.getPixel(px, py); cv.drawRect(x0.toFloat(), y0.toFloat(), x1.toFloat(), y1.toFloat(), fill) }
+        corner(0, 0, 0, 0, l, t)
+        corner(w - 1, 0, r, 0, areaW, t)
+        corner(0, h - 1, 0, bt, l, areaH)
+        corner(w - 1, h - 1, r, bt, areaW, areaH)
+        cv.drawBitmap(pic, null, android.graphics.Rect(l, t, r, bt), paint)
+        return page
     }
 
     /** PackBits over whole pixels (bpp bytes each): repeat runs up to 128, literal runs up to 127. */

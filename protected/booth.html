@@ -29788,7 +29788,7 @@
           if (wifiPrinter && epsonEscprBorderlessModel(wifiPrinter)) {
             hint = epsonEscprBorderlessOk(paper)
               ? 'This Epson prints borderless on this paper size (photo paper settings are used). If a side is cut off or a white line shows, use Print edge test below.'
-              : 'This Epson prints borderless only on 3.5×5 in, 4×6 in, 5×7 in, 8×10 in, A4, 16:9 wide (102×181 mm) and 100×148 mm paper. ' + (paper ? paper.name : 'This paper') + ' will print with a normal border.';
+              : 'This Epson prints borderless only on 3.5×5 in (3R), 4×6 in, 5×7 in and A4 paper. ' + (paper ? paper.name : 'This paper') + ' will print with a normal border.';
           }
         } catch (e) { }
         try {
@@ -30480,12 +30480,12 @@
       }
       // Epson ink-tank printers the app drives itself with ESC/P-R over Wi-Fi or USB (L805, L210...): borderless only on photo
       // paper sizes, and not on the 1xx models (L120, L130...), which have no borderless mode.
-      const EPSON_ESCPR_BORDERLESS = EPSON_L_BORDERLESS.concat([[127, 178], [203, 254], [210, 297]]);
+      const EPSON_ESCPR_BORDERLESS = [[88.9, 127], [101.6, 152.4], [127, 177.8], [210, 297]];       // the sizes the L805's own Epson driver file lists for borderless: 3R (3.5x5), 4x6, 5x7, A4
       function epsonEscprBorderlessModel(p) { return !!(p && p.escpr && /\bL\s?(2\d\d|3\d\d|5\d\d|8\d\d|[1-8]\d{3}|18050)\b/i.test(p.name || '')); }
       function epsonEscprBorderlessOk(pp) {
         if (!pp) return false;
         const a = Math.min(pp.w, pp.h), b = Math.max(pp.w, pp.h);
-        return EPSON_ESCPR_BORDERLESS.some(([w, h]) => Math.abs(a - w) <= 2 && Math.abs(b - h) <= 2);
+        return EPSON_ESCPR_BORDERLESS.some(([w, h]) => Math.abs(a - w) <= 1.5 && Math.abs(b - h) <= 1.5);
       }
       function wifiPKey(p) { return p ? String(p.name || p.ip || '') : ''; }
       function wifiOptsFor(p) { return Object.assign({}, wifiOptsShared, (p && (wifiOptsMap[wifiPKey(p)] || wifiOptsMap[p.ip])) || {}); }

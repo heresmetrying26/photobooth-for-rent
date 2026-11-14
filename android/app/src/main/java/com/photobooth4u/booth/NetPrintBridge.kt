@@ -213,7 +213,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         if (e.usbDev != null) return "This printer is on the USB cable, so it has no Wi-Fi paper list."
         fetchAttrs(e)
         fun list(l: List<String>) = if (l.isEmpty()) "(none given)" else l.joinToString(", ")
-        return "Printer: " + e.model.ifBlank { e.name } + " (" + e.ip + ")\n" +
+        // A Wi-Fi Epson photo printer with no IPP (L805...) takes Epson's own raster job on port 9100: it lists no papers.
+        val raw = if (e.ippPort <= 0 && e.rawPort > 0) "Sent in Epson's own print language (port " + e.rawPort + "); this printer lists no paper sizes.\n" else ""
+        return "Printer: " + e.model.ifBlank { e.name } + " (" + e.ip + ")\n" + raw +
             "Takes: " + list(e.formats) + "\n" +
             "Paper loaded now: " + list(e.mediaReady) + "\n" +
             "Papers it lists: " + list(e.mediaSupported) + "\n" +
@@ -1214,8 +1216,9 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
                         val bmp = android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                             ?: throw IllegalStateException("Couldn't read the picture to print.")
                         try {
-                            val data = EscprJob.build(bmp, widthMm, heightMm, false, borderless = borderless, photoMedia = borderless, adj = adj)
+                            val data = EscprJob.build(bmp, widthMm, heightMm, false, borderless = borderless, photoMedia = borderless, adj = adj, epsonBorderless = true)
                             if (net) netRawJob(id, data) else usbRaw(id, data)
+                            if (net) found[id]?.lastSent = (if (borderless) "borderless, photo paper, " else "3 mm border, plain paper, ") + Math.round(minOf(widthMm, heightMm)) + "x" + Math.round(maxOf(widthMm, heightMm)) + " mm"
                         } finally {
                             try { bmp.recycle() } catch (_: Exception) {}
                         }
@@ -1651,7 +1654,14 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
     private class Opts(val quality: String, val color: String, val media: String, val borderless: Boolean = false)
 
     /** One way of asking the printer for a job: with the page size, with the quality / colour / paper-type settings, the paper's own name, and how to scale. */
-    private data class IppAttempt(val withMedia: Boolean, val withOpts: Boolean, val mediaName: String, val scaling: String)
+    private data class IppAttempt(val withMedia: Boolean, val withOpts: Boolean, val mediaName: String, val scaling: String, val sizeW: Double = 0.0, val sizeH: Double = 0.0)
+
+    /** The size in mm that a paper name carries ("jpn_hagaki_100x148mm" -> 100 x 148, "na_index-4x6_4x6in" -> 101.6 x 152.4), or null. */
+    private fun mediaSizeMm(name: String): Pair<Double, Double>? {
+        val m = Regex("_(\\d+(?:\\.\\d+)?)x(\\d+(?:\\.\\d+)?)(mm|in)(?:[-_.]?(?:borderless|full-?bleed))?$", RegexOption.IGNORE_CASE).find(name) ?: return null
+        val k = if (m.groupValues[3].lowercase() == "in") 25.4 else 1.0
+        return Pair(Math.round(m.groupValues[1].toDouble() * k * 100) / 100.0, Math.round(m.groupValues[2].toDouble() * k * 100) / 100.0)
+    }
 
     private fun sendIppJob(e: Entry, job: String, jpegIn: ByteArray, wMm: Double, hMm: Double, opts: Opts) {
         val jpeg = jpegAt300Dpi(jpegIn)
@@ -1693,7 +1703,13 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
         // The page already has the paper's own shape, so a SELPHY is asked to scale it to the whole sheet ("fill") first. "none" prints
         // it at its own size, which can leave a white border all round; it stays as the next try for a printer that refuses "fill".
         // After the paper's own name comes the page size with zero margins (the standard way to ask for no border), also with "fill".
-        val attempts = (if (named != null) listOf(IppAttempt(true, true, named, "fill"), IppAttempt(true, true, named, ownScaling),
+        // A SELPHY lists every paper twice: with its normal margins (a few mm of border) and as a "fullbleed" paper with zero margins. Over
+        // IPP the fullbleed one is not a different name, it is the same paper asked for as a page size with all four margins 0. Asking by
+        // name alone gets the bordered one, so with Borderless on, the zero-margin page (sized as the printer's own paper) goes first.
+        val ns = if (named != null) mediaSizeMm(named) else null
+        val zeroMargin = if (selphy && opts.borderless && ns != null) listOf(
+            IppAttempt(true, true, "", "fill", ns.first, ns.second), IppAttempt(true, false, "", "fill", ns.first, ns.second)) else emptyList()
+        val attempts = zeroMargin + (if (named != null) listOf(IppAttempt(true, true, named, "fill"), IppAttempt(true, true, named, ownScaling),
             IppAttempt(true, false, named, "fill"), IppAttempt(true, false, named, ownScaling)) else emptyList()) +
             (if (selphy) listOf(IppAttempt(true, true, "", "fill"), IppAttempt(true, false, "", "fill")) else emptyList()) +
             base.map { IppAttempt(it.first, it.second, "", ownScaling) }
@@ -1702,7 +1718,7 @@ class NetPrintBridge(private val activity: Activity, private val webView: WebVie
             val data = try { make() } catch (ex: Exception) { lastErr = ex.message ?: lastErr; continue }
             for (at in attempts.distinct()) {
                 for (path in ippPaths(e)) {
-                    val body = ippPrintJob(ippUri(e, path), job, format, data, if (at.withMedia) wMm else 0.0, hMm,
+                    val body = ippPrintJob(ippUri(e, path), job, format, data, if (at.withMedia) (if (at.sizeW > 0) at.sizeW else wMm) else 0.0, if (at.sizeH > 0) at.sizeH else hMm,
                         if (at.withOpts) qv else 0, if (at.withOpts) cm else "", if (at.withOpts) mt else "", at.scaling, at.mediaName)
                     val r = try { doPost(e, path, body) } catch (nf: NetFail) {
                         // Can't connect at all: stop now. Connected but dropped mid-job: try the next settings, up to 3 times.
